@@ -501,8 +501,12 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
 
         var importedItem = importedRoot.GetProperty("items").EnumerateArray().Single();
         Assert.Equal(903, importedItem.GetProperty("id").GetInt32());
-        Assert.Equal("warning", importedItem.GetProperty("sellThroughStatus").GetString());
-        Assert.Equal(0.4m, importedItem.GetProperty("sellThroughRatio").GetDecimal());
+        Assert.Equal("insufficient_data", importedItem.GetProperty("sellThroughStatus").GetString());
+        Assert.Equal(JsonValueKind.Null, importedItem.GetProperty("sellThroughRatio").ValueKind);
+        Assert.False(importedItem.GetProperty("recommendationAllowed").GetBoolean());
+        Assert.False(importedItem.GetProperty("isOpeningStockDerived").GetBoolean());
+        Assert.Equal("unknown", importedItem.GetProperty("openingStockConfidence").GetString());
+        Assert.Contains("opening_stock_unavailable", importedItem.GetProperty("reasonCodes").EnumerateArray().Select(x => x.GetString()));
 
         var existingRoot = await GetJsonAsync(
             factory,
@@ -510,9 +514,13 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
 
         var existingItem = existingRoot.GetProperty("items").EnumerateArray().Single();
         Assert.Equal(903, existingItem.GetProperty("id").GetInt32());
-        Assert.Equal("critical", existingItem.GetProperty("sellThroughStatus").GetString());
-        Assert.Equal(0.2667m, existingItem.GetProperty("sellThroughRatio").GetDecimal());
-        Assert.NotEqual(
+        Assert.Equal("insufficient_data", existingItem.GetProperty("sellThroughStatus").GetString());
+        Assert.Equal(JsonValueKind.Null, existingItem.GetProperty("sellThroughRatio").ValueKind);
+        Assert.False(existingItem.GetProperty("recommendationAllowed").GetBoolean());
+        Assert.False(existingItem.GetProperty("isOpeningStockDerived").GetBoolean());
+        Assert.Equal("unknown", existingItem.GetProperty("openingStockConfidence").GetString());
+        Assert.Contains("opening_stock_unavailable", existingItem.GetProperty("reasonCodes").EnumerateArray().Select(x => x.GetString()));
+        Assert.Equal(
             importedItem.GetProperty("signalConfidencePct").GetDecimal(),
             existingItem.GetProperty("signalConfidencePct").GetDecimal());
     }

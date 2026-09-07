@@ -32,13 +32,16 @@ public sealed class InventoryListEndpointIntegrationTests
         Assert.Equal(0, item.GetProperty("kolicina").GetInt32());
         Assert.Equal(0m, item.GetProperty("estimatedValue").GetDecimal());
         Assert.Equal(InventorySignalCalculator.StockCoverOutOfStockRisk, item.GetProperty("stockCoverStatus").GetString());
-        Assert.Equal(InventorySignalCalculator.SellThroughGood, item.GetProperty("sellThroughStatus").GetString());
-        Assert.Equal(1m, item.GetProperty("sellThroughRatio").GetDecimal());
-        Assert.True(item.GetProperty("recommendationAllowed").GetBoolean());
-        Assert.Equal("good", item.GetProperty("dataQualityStatus").GetString());
+        Assert.Equal(InventorySignalCalculator.SellThroughInsufficientData, item.GetProperty("sellThroughStatus").GetString());
+        Assert.Equal(JsonValueKind.Null, item.GetProperty("sellThroughRatio").ValueKind);
+        Assert.False(item.GetProperty("recommendationAllowed").GetBoolean());
+        Assert.Equal("warning", item.GetProperty("dataQualityStatus").GetString());
+        Assert.False(item.GetProperty("isOpeningStockDerived").GetBoolean());
+        Assert.Equal("unknown", item.GetProperty("openingStockConfidence").GetString());
+        Assert.Contains("opening_stock_unavailable", item.GetProperty("reasonCodes").EnumerateArray().Select(x => x.GetString()));
         Assert.Contains("replenish_needed", item.GetProperty("reasonCodes").EnumerateArray().Select(x => x.GetString()));
         Assert.Contains("stock_cover_out_of_stock_risk", item.GetProperty("reasonCodes").EnumerateArray().Select(x => x.GetString()));
-        Assert.InRange(item.GetProperty("signalConfidencePct").GetDecimal(), 60m, 99m);
+        Assert.InRange(item.GetProperty("signalConfidencePct").GetDecimal(), 35m, 45m);
 
         AssertSuccessMeta(root.GetProperty("meta"));
     }

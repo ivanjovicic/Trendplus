@@ -30,6 +30,7 @@ namespace Trendplus2.Endpoints;
 public static class CachedAnalyticsEndpoints
 {
     private const int MovementStatsBatchSize = 5_000;
+    private const string OpeningStockConfidenceUnknown = "unknown";
     private static readonly TimeSpan DashboardSectionTtl = CacheExpiration.Medium;
     private static readonly TimeSpan DashboardFastSectionTtl = CacheExpiration.Short;
     private static readonly TimeSpan DashboardReferenceSectionTtl = CacheExpiration.Long;
@@ -665,9 +666,12 @@ public static class CachedAnalyticsEndpoints
                             var soldUnits30d = soldUnitsByArticle.TryGetValue(item.Id, out var units) ? units : 0;
                             var movementWindowStats = movementWindowStatsByArticle.TryGetValue(item.Id, out var stats)
                                 ? stats
-                                : new InventorySignalWindowStats(0, 0);
-                            var openingStockUnits = Math.Max(quantity - movementWindowStats.NetMovementUnits, 0);
-                            var hasReliableSellThroughInputs = openingStockUnits > 0 || movementWindowStats.InboundUnits > 0;
+                                : new InventorySignalWindowStats(0, 0, false);
+                            var openingStockUnits = movementWindowStats.HasCompleteJournal
+                                ? Math.Max(quantity - movementWindowStats.NetMovementUnits, 0)
+                                : (int?)null;
+                            var hasReliableSellThroughInputs = openingStockUnits.HasValue
+                                && (openingStockUnits.Value > 0 || movementWindowStats.InboundUnits > 0);
                             var avgDailySalesUnits = Math.Round(soldUnits30d / 30m, 4, MidpointRounding.AwayFromZero);
                             var hasSufficientData = soldUnits30d > 0 || quantity > 0 || hasReliableSellThroughInputs;
                             var signalDataQuality = soldUnits30d > 0 && hasReliableSellThroughInputs
@@ -686,6 +690,11 @@ public static class CachedAnalyticsEndpoints
                                 hasSufficientData: hasSufficientData);
 
                             var reasonCodes = signal.ReasonCodes.ToList();
+                            if (!movementWindowStats.HasCompleteJournal)
+                            {
+                                reasonCodes.Add("opening_stock_unavailable");
+                            }
+
                             if (signal.StockCoverStatus == InventorySignalCalculator.StockCoverOutOfStockRisk)
                             {
                                 reasonCodes.Add("replenish_needed");
@@ -715,7 +724,9 @@ public static class CachedAnalyticsEndpoints
                                 signal.SignalConfidencePct,
                                 signal.RecommendationAllowed,
                                 reasonCodes,
-                                signalDataQuality));
+                                signalDataQuality,
+                                IsOpeningStockDerived: openingStockUnits.HasValue,
+                                OpeningStockConfidence: openingStockUnits.HasValue ? "verified" : OpeningStockConfidenceUnknown));
                         }
 
                         var meta = total == 0
@@ -5926,9 +5937,12 @@ public static class CachedAnalyticsEndpoints
 
             var movementWindowStats = movementWindowStatsByArticle.TryGetValue(article.ProductId, out var stats)
                 ? stats
-                : new InventorySignalWindowStats(0, 0);
-            var openingStockUnits = Math.Max(article.CurrentStock - movementWindowStats.NetMovementUnits, 0);
-            var hasReliableSellThroughInputs = openingStockUnits > 0 || movementWindowStats.InboundUnits > 0;
+                : new InventorySignalWindowStats(0, 0, false);
+            var openingStockUnits = movementWindowStats.HasCompleteJournal
+                ? Math.Max(article.CurrentStock - movementWindowStats.NetMovementUnits, 0)
+                : (int?)null;
+            var hasReliableSellThroughInputs = openingStockUnits.HasValue
+                && (openingStockUnits.Value > 0 || movementWindowStats.InboundUnits > 0);
             var hasSufficientSignalData = unitsSold > 0 || article.CurrentStock > 0 || hasReliableSellThroughInputs;
             var signalDataQuality = unitsSold > 0 && hasReliableSellThroughInputs
                 ? "good"
@@ -5949,6 +5963,10 @@ public static class CachedAnalyticsEndpoints
                 .Concat(signal.ReasonCodes)
                 .Distinct(StringComparer.Ordinal)
                 .ToList();
+            if (!movementWindowStats.HasCompleteJournal)
+            {
+                combinedReasonCodes.Add("opening_stock_unavailable");
+            }
 
             totalLostSalesEstimate += lostSalesEstimate;
             totalSlowStockCapital += slowStockCapital;
@@ -5986,6 +6004,8 @@ public static class CachedAnalyticsEndpoints
                 SellThroughStatusLabel = signal.SellThroughStatusLabel,
                 SignalConfidencePct = signal.SignalConfidencePct,
                 RecommendationAllowed = signal.RecommendationAllowed,
+                IsOpeningStockDerived = openingStockUnits.HasValue,
+                OpeningStockConfidence = openingStockUnits.HasValue ? "verified" : OpeningStockConfidenceUnknown,
                 DataQualityStatus = dataQualityStatus,
                 ConfidencePct = confidencePct,
                 ReliabilityPct = reliabilityPct,
@@ -7763,6 +7783,13 @@ public static class CachedAnalyticsEndpoints
 
         var normalizedDataScope = NormalizeDataScope(dataScope);
 
+        // Opening-stock derivation requires an authoritative, atomic journal
+        // completeness proof for [fromUtc, toExclusiveUtc], scoped to the
+        // article/store and covering every stock-affecting movement type.
+        // DnevnikPromena currently exposes rows but no such watermark or
+        // coverage marker, so a read during/after a partial or concurrent
+        // write must remain unverified and fail closed.
+
         foreach (var batch in articleIds.Chunk(MovementStatsBatchSize))
         {
             var movementQuery = db.DnevnikPromena
@@ -7801,7 +7828,7 @@ public static class CachedAnalyticsEndpoints
                     inboundUnits += Math.Max(movement.Quantity, 0);
                 }
 
-                stats[movement.ArtikalId] = new InventorySignalWindowStats(netMovement, inboundUnits);
+                stats[movement.ArtikalId] = new InventorySignalWindowStats(netMovement, inboundUnits, HasCompleteJournal: false);
             }
         }
 
@@ -7860,7 +7887,10 @@ public static class CachedAnalyticsEndpoints
         ProductDecisionWhyPanelDto WhyPanel);
 
     private sealed record CacheReadResult<T>(T Value, bool CacheHit, AnalyticsCacheEntryMetadata Metadata) where T : class;
-    private readonly record struct InventorySignalWindowStats(int NetMovementUnits, int InboundUnits);
+    private readonly record struct InventorySignalWindowStats(
+        int NetMovementUnits,
+        int InboundUnits,
+        bool HasCompleteJournal);
 }
 
 // DTOs za cache (moraju biti klase za JSON serijalizaciju)
@@ -8059,6 +8089,8 @@ public class ProductDecisionCenterRowDto
     public string SellThroughStatusLabel { get; set; } = InventorySignalCalculator.SellThroughStatusLabel(InventorySignalCalculator.SellThroughInsufficientData);
     public decimal SignalConfidencePct { get; set; }
     public bool RecommendationAllowed { get; set; }
+    public bool IsOpeningStockDerived { get; set; }
+    public string OpeningStockConfidence { get; set; } = "unknown";
     public string DataQualityStatus { get; set; } = "warning";
     public string ConfidenceLevel { get; set; } = "insufficient_data";
     public int? ConfidenceScore { get; set; }
