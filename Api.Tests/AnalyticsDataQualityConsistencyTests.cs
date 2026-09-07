@@ -142,6 +142,68 @@ public sealed class AnalyticsDataQualityConsistencyTests
         Assert.Equal("critical", DataQualityEndpoints.ResolveReadiness(score, "critical", 900, 1_000).Code);
     }
 
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(1, 0)]
+    public void IntakeScore_EmptyArticlesOrImportRows_IsInsufficientWithoutNumericReadiness(int totalArticles, int rowsRead)
+    {
+        var score = DataQualityEndpoints.CalculateIntakeScore(
+            totalArticles,
+            missingSupplierCount: 0,
+            missingCostCount: 0,
+            missingCategoryCount: 0,
+            missingSizeCount: 0,
+            missingColorCount: 0,
+            missingSupplierNameCount: 0,
+            duplicateSkuCount: 0,
+            saleWithoutArticleCount: 0,
+            zeroOrNegativePriceCount: 0,
+            ignoredRows: 0,
+            rowsRead: rowsRead,
+            insufficientSignalCount: 0,
+            freshnessStatus: "fresh",
+            new AnalyticsDataQualityHealthSnapshot
+            {
+                HasRevenueEvidence = false,
+                TotalRevenue = 0m
+            });
+
+        Assert.Equal(0, score);
+        var readiness = DataQualityEndpoints.ResolveReadiness(score, "fresh", 0, totalArticles, rowsRead);
+        Assert.Equal("insufficient_data", readiness.Code);
+        Assert.Equal("insufficient_data", readiness.MetaStatus);
+    }
+
+    [Fact]
+    public void IntakeScore_PopulatedZeroIssueData_RemainsMeasuredAndReady()
+    {
+        var score = DataQualityEndpoints.CalculateIntakeScore(
+            totalArticles: 100,
+            missingSupplierCount: 0,
+            missingCostCount: 0,
+            missingCategoryCount: 0,
+            missingSizeCount: 0,
+            missingColorCount: 0,
+            missingSupplierNameCount: 0,
+            duplicateSkuCount: 0,
+            saleWithoutArticleCount: 0,
+            zeroOrNegativePriceCount: 0,
+            ignoredRows: 0,
+            rowsRead: 100,
+            insufficientSignalCount: 0,
+            freshnessStatus: "fresh",
+            new AnalyticsDataQualityHealthSnapshot
+            {
+                HasRevenueEvidence = true,
+                TotalRevenue = 100_000m,
+                MissingCostRevenueSharePct = 0d,
+                UnknownSupplierRevenueSharePct = 0d
+            });
+
+        Assert.Equal(100, score);
+        Assert.Equal("excellent", DataQualityEndpoints.ResolveReadiness(score, "fresh", 0, 100, 100).Code);
+    }
+
     [Fact]
     public void DashboardQualityStatus_UsesWorstCompletenessOrFreshnessState()
     {

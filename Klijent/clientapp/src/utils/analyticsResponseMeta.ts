@@ -7,6 +7,7 @@ const EMPTY_REASON_MESSAGES: Record<string, string> = {
   no_top_offenders: "Nema top offender zapisa za izabrani tip problema.",
   no_sales_in_period: "Nema prodaje u izabranom periodu.",
   no_import: "Nema import batch-a za izabrani period.",
+  no_intake_evidence: "Nema dovoljno učitanih artikala ili import redova za readiness procenu.",
 };
 
 export class AnalyticsMetaError extends Error {

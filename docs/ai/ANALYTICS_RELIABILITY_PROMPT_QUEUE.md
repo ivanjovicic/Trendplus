@@ -101,7 +101,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ166 | DONE | action-timeline-period-state | Reject reversed action-timeline periods instead of silently swapping the requested scope |
 | RQ167 | DONE | analytics-error-kpi-state | Do not serialize failed sales/inventory KPI responses as valid-looking zero values |
 | RQ168 | DONE | top-products-margin-coverage | Keep partial cost coverage out of confirmed top-product margin ranking |
-| RQ169 | READY | data-quality-empty-readiness | Keep empty intake data from receiving a numeric readiness score or green label |
+| RQ169 | IN_PROGRESS | data-quality-empty-readiness | Keep empty intake data from receiving a numeric readiness score or green label |
 | RQ170 | WAITING | data-quality-report-period-state | Reject invalid pilot-intake report periods instead of silently swapping or defaulting them |
 | RQ183 | WAITING | inventory-opening-stock-proof | Journal-derived opening stock for sell-through denominator integrity |
 | RQ184 | WAITING | velocity-divisor-accuracy | Fixed 30-day divisor for inventory velocity miscalculation |
@@ -5718,7 +5718,7 @@ Do not redesign all sales/margin accounting owned by `RQ148`; do not touch trend
 
 ## RQ169 - Keep empty intake data from receiving a numeric readiness score or green label
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P0
 Type: backend/tests
 Feature family: data-quality-empty-readiness

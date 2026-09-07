@@ -29,7 +29,7 @@ import type {
 import { fmtNumber, fmtPct, fmtPctFromRatio, fmtRsd, formatDateTime } from "../utils/analyticsFormatters";
 import { buildPeriodLineageLabel, resolveLineagePeriod } from "../utils/analyticsPeriodLineage";
 import { dataQualityStatusLabel } from "../utils/analyticsQuality";
-import { getAnalyticsMetaMessage, isAnalyticsMetaWarning } from "../utils/analyticsResponseMeta";
+import { getAnalyticsMetaMessage, isAnalyticsMetaEmpty, isAnalyticsMetaWarning } from "../utils/analyticsResponseMeta";
 import "./PilotReadinessPage.css";
 
 type ReadinessStatus = "ready" | "warning" | "blocked" | "unknown";
@@ -193,20 +193,29 @@ function buildDataQualityCard(intakeReport: PilotDataQualityIntakeReport | null,
 
   const readinessStatus = intakeReport?.readinessStatus?.trim().toLowerCase() ?? "";
   const healthStatus = health?.scoreStatus ?? "";
+  const intakeIsEmpty = isAnalyticsMetaEmpty(intakeReport?.meta);
   const intakeMetaWarning = Boolean(intakeReport?.meta?.isPartial || isAnalyticsMetaWarning(intakeReport?.meta));
   const healthMetaWarning = Boolean(health?.meta?.isPartial || isAnalyticsMetaWarning(health?.meta));
   const blockedRecommendations = intakeReport?.impact.recommendationsBlockedCount ?? 0;
   const hasBlockingIssue = blockedRecommendations > 0;
-  const isCritical = readinessStatus === "critical" || healthStatus === "critical" || hasBlockingIssue;
+  const isCritical = intakeIsEmpty
+    || readinessStatus === "critical"
+    || readinessStatus === "insufficient_data"
+    || healthStatus === "critical"
+    || hasBlockingIssue;
   const isWarning = readinessStatus === "warning" || healthStatus === "warning" || intakeMetaWarning || healthMetaWarning;
   // Intake readiness is the decision gate for this screen. Health score is a
   // separate traffic-quality signal and must not silently replace it.
-  const score = intakeReport?.readinessScore ?? health?.score ?? null;
-  const summary = intakeReport?.readinessLabel ?? health?.scoreSummary ?? "Kvalitet podataka je dostupan.";
+  const score = intakeIsEmpty ? null : intakeReport?.readinessScore ?? health?.score ?? null;
+  const summary = intakeIsEmpty
+    ? intakeReport?.meta?.message ?? "Nema dovoljno podataka za readiness procenu."
+    : intakeReport?.readinessLabel ?? health?.scoreSummary ?? "Kvalitet podataka je dostupan.";
   const qualityReason = isCritical && intakeReport && blockedRecommendations > 0
     ? `Preporuke nisu bezbedne za pilot: ${formatLoadCount(blockedRecommendations)} preporuka je blokirano zbog kvaliteta ulaznih podataka. Skor kvaliteta (${formatLoadCount(score)}) ne otključava preporuke.`
     : intakeReport
-      ? `Kvalitet podataka: ${summary} (skor ${formatLoadCount(score)}). Trenutno je blokirano ${formatLoadCount(blockedRecommendations)} preporuka; ignorisano je ${formatLoadCount(intakeReport.impact.ignoredRowsCount)} redova.`
+      ? intakeIsEmpty
+        ? `Kvalitet podataka: ${summary} Skor spremnosti nije dostupan dok se ne potvrde artikli i import redovi.`
+        : `Kvalitet podataka: ${summary} (skor ${formatLoadCount(score)}). Trenutno je blokirano ${formatLoadCount(blockedRecommendations)} preporuka; ignorisano je ${formatLoadCount(intakeReport.impact.ignoredRowsCount)} redova.`
       : `Health score: ${formatLoadCount(score)}. ${health?.scoreSummary ?? "Data quality health je učitan."}`;
 
   return {
