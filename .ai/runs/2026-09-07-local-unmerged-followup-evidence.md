@@ -6,9 +6,9 @@ Date: 2026-09-07
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct local follow-up
-Main commit SHA: pending
-Main verification: pending until push
-Evidence state: pending
+Main commit SHA: a30152a0
+Main verification: passed - origin/main contains a30152a0 after the reviewed follow-up push
+Evidence state: synchronized
 
 ## What was done
 
