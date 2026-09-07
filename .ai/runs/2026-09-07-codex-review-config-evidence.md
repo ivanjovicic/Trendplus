@@ -4,8 +4,8 @@ Date: 2026-09-07
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct delivery
-Main commit SHA: 1bf187298cf4cd0d9fca8c2cf3e25b0ace74140b
-Main verification: implementation commit `1bf187298cf4cd0d9fca8c2cf3e25b0ace74140b` pushed to `origin/main`; final evidence-sync commit will be verified after push
+Main commit SHA: 1bf1872943c0a72de72a4b2a06bf2fa1e7fa6f29
+Main verification: current `main` and `origin/main` are synchronized and contain implementation commit `1bf1872943c0a72de72a4b2a06bf2fa1e7fa6f29`; evidence-sync commit is delivered separately
 Evidence state: synchronized
 
 ## What was done
