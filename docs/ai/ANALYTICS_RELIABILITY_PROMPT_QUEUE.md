@@ -2,7 +2,7 @@
 
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ170
+Current READY prompt: RQ176
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
@@ -102,7 +102,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ167 | DONE | analytics-error-kpi-state | Do not serialize failed sales/inventory KPI responses as valid-looking zero values |
 | RQ168 | DONE | top-products-margin-coverage | Keep partial cost coverage out of confirmed top-product margin ranking |
 | RQ169 | DONE | data-quality-empty-readiness | Keep empty intake data from receiving a numeric readiness score or green label |
-| RQ170 | READY | data-quality-report-period-state | Reject invalid pilot-intake report periods instead of silently swapping or defaulting them |
+| RQ170 | DONE | data-quality-report-period-state | Reject invalid pilot-intake report periods instead of silently swapping or defaulting them |
 | RQ183 | WAITING | inventory-opening-stock-proof | Journal-derived opening stock for sell-through denominator integrity |
 | RQ184 | WAITING | velocity-divisor-accuracy | Fixed 30-day divisor for inventory velocity miscalculation |
 | RQ185 | WAITING | velocity-active-days-semantics | "Velocity per day" label with active-selling-days divisor confusion |
@@ -149,7 +149,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ226 | WAITING | worker-schedule-safety | Invalid nightly refresh schedule silently defaults |
 | RQ227 | WAITING | cleanup-safety-gates | Batch delete proceeds after archive quota failure |
 | RQ228 | WAITING | period-timezone-contract-consistency | Insight Studio v1/v2 period handling timezone mismatch |
-| RQ176 | WAITING | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
+| RQ176 | READY | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | WAITING | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | WAITING | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
 | RQ179 | WAITING | supplier-footwear-freshness-state | Do not mark supplier footwear data fresh from response generated time |
@@ -5801,7 +5801,7 @@ Do not change the separate traffic health score contract owned by `RQ144`, refre
 
 ## RQ170 - Reject invalid pilot-intake report periods instead of silently swapping or defaulting them
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: backend/contract/tests
 Feature family: data-quality-report-period-state
@@ -5859,14 +5859,31 @@ Do not duplicate `RQ166` action-timeline validation or change valid default-peri
 
 - `RQ137` remains the shared period-lineage owner.
 - `RQ145` remains the parity and safe-messaging owner.
-- Keep this prompt `WAITING` behind the single `READY` item.
-- Keep this prompt `WAITING` behind the single `READY` item.
+- `RQ176` is now the single current `READY` item.
+
+### Completion note
+
+- Date: 2026-09-07
+- Status: DONE
+- Completion: pilot-intake report periods now accept strict valid `yyyy-MM-dd` ranges, preserve the documented default only when both dates are absent, and fail closed for reversed, partial, invalid, timestamp/ambiguous and non-finite input before cache or data access.
+- Changed files: `Api/Endpoints/DataQualityEndpoints.cs`; `Api.Tests/AnalyticsReportsContractTests.cs`; `Klijent/clientapp/src/pages/PilotIntakeReportPage.tsx`; `Klijent/clientapp/src/pages/__tests__/PilotIntakeReportPage.spec.tsx`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-07-RQ170-evidence.md`
+- Checks run: focused backend report/data-quality tests passed 54/54; focused Pilot Intake frontend tests passed 4/4; `npm run check:analytics-guardrails`; `npm run typecheck`; `npm run build`; `git diff --check`; prompt-queue, agent-instruction and planning-architecture validators plus self-tests passed.
+- Checks not run: live database/import-worker/browser deployment proof; wider full-suite proof was not required for this bounded period contract.
+- Run log: `.ai/runs/2026-09-07-RQ170-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: feature branch `codex/rq170-pilot-intake-period-state`, pushed, then locally merged to `main` with `--no-ff`.
+- Main commit SHA: `e91d10cc5adaabb56d6c513be7385b6e2be487f0`
+- Main verification: passed - `git merge-base --is-ancestor e91d10cc5adaabb56d6c513be7385b6e2be487f0 origin/main` succeeded after the local merge and push; `origin/main` contains the implementation commit.
+- Missed: live provider/database/refresh/browser proof remains outside this local contract task.
+- Follow-up: `RQ176` - keep inventory snapshot query time separate from source freshness.
+- Residual risk: live import/refresh serialization may reveal integration-specific date behavior not represented by deterministic local fixtures; the stable UI contract is strict `yyyy-MM-dd`.
+- Prompt defect / scope repair: one-sided date input is rejected because the documented default is permitted only when both dates are absent; the stale queue dependency sentence was repaired to promote the next active item.
 
 ---
 
 ## RQ176 - Keep inventory snapshot query time separate from source freshness
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: backend/contract/frontend/tests
 Feature family: inventory-snapshot-freshness-provenance
@@ -5926,7 +5943,7 @@ Inventory alerts, rebalance and size-curve responses expose `GeneratedAtUtc`, bu
 
 - `RQ141` remains the broad lineage owner; `RQ146` owns full runtime schema/refresh proof.
 - `RQ64`-`RQ71` and `RQ99` remain completed null/count/reader foundations.
-- Keep this prompt `WAITING` while `RQ154` is the sole `READY` item.
+- `RQ176` is now the single current `READY` item.
 
 ---
 
