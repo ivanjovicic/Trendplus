@@ -3574,8 +3574,8 @@ public static class AllEndpoints
                         var preRevenue = preRevenueEvidence ?? 0m;
                         var postQty = postQtyEvidence.HasValue ? (int)postQtyEvidence.Value : 0;
                         var postRevenue = postRevenueEvidence ?? 0m;
-                        var coveragePre30 = coveragePre30Evidence ?? 0m;
-                        var coveragePost30 = coveragePost30Evidence ?? 0m;
+                        var coveragePre30 = coveragePre30Evidence;
+                        var coveragePost30 = coveragePost30Evidence;
                         var changeQty = changeQtyEvidence.HasValue ? (int)changeQtyEvidence.Value : 0;
                         var changeRevenue = changeRevenueEvidence ?? 0m;
                         var hasSalesWindow = preQtyEvidence.HasValue || postQtyEvidence.HasValue
@@ -3696,6 +3696,16 @@ public static class AllEndpoints
                     return Math.Round(((post - pre) / pre) * 100m, 2);
                 }
 
+                static decimal? AverageKnownCoverage(IEnumerable<decimal?> values)
+                {
+                    var known = values
+                        .Where(value => value.HasValue)
+                        .Select(value => value!.Value)
+                        .ToArray();
+
+                    return known.Length == 0 ? null : Math.Round(known.Average(), 4);
+                }
+
                 var vendorsCount = analyzed.Select(x => x.VendorId).Distinct().Count();
                 var articlesCount = analyzed
                     .Select(x => x.Sku)
@@ -3717,9 +3727,9 @@ public static class AllEndpoints
                     .DefaultIfEmpty()
                     .Average();
 
-                var avgCoveragePre30 = analyzedRows == 0 ? 0m : Math.Round(analyzed.Average(x => x.CoveragePre30), 4);
-                var avgCoveragePost30 = analyzedRows == 0 ? 0m : Math.Round(analyzed.Average(x => x.CoveragePost30), 4);
-                var lowPostCoverageRows = analyzed.Count(x => x.CoveragePost30 < 0.2m);
+                var avgCoveragePre30 = AverageKnownCoverage(analyzed.Select(x => x.CoveragePre30));
+                var avgCoveragePost30 = AverageKnownCoverage(analyzed.Select(x => x.CoveragePost30));
+                var lowPostCoverageRows = analyzed.Count(x => x.CoveragePost30.HasValue && x.CoveragePost30.Value < 0.2m);
 
                 var totals = new VendorSalesNivelacijaTotalsDto
                 {
@@ -3803,7 +3813,13 @@ public static class AllEndpoints
                             : g.Key.VendorName.Trim();
                         var isUnknownVendor = !g.Key.VendorId.HasValue
                             || string.Equals(normalizedVendorName, "Nepoznato", StringComparison.OrdinalIgnoreCase);
-                        var splitCoveragePct = Math.Round((double)(g.Average(x => Math.Min(x.CoveragePre30, x.CoveragePost30)) * 100m), 2);
+                        var splitCoverage = AverageKnownCoverage(g.Select(x =>
+                            x.CoveragePre30.HasValue && x.CoveragePost30.HasValue
+                                ? Math.Min(x.CoveragePre30.Value, x.CoveragePost30.Value)
+                                : (decimal?)null));
+                        var splitCoveragePct = splitCoverage.HasValue
+                            ? Math.Round((double)(splitCoverage.Value * 100m), 2)
+                            : (double?)null;
 
                         return new
                         {
@@ -3821,8 +3837,8 @@ public static class AllEndpoints
                                 AbsoluteChangeRevenue = Math.Abs(g.Sum(x => x.ChangeRevenue)),
                                 ChangeSharePercent = 0m,
                                 PostRevenueSharePercent = 0m,
-                                AvgCoveragePre30 = Math.Round(g.Average(x => x.CoveragePre30), 4),
-                                AvgCoveragePost30 = Math.Round(g.Average(x => x.CoveragePost30), 4),
+                                AvgCoveragePre30 = AverageKnownCoverage(g.Select(x => x.CoveragePre30)),
+                                AvgCoveragePost30 = AverageKnownCoverage(g.Select(x => x.CoveragePost30)),
                                 ArticleCount = g
                                     .Select(x => x.Sku)
                                     .Where(s => !string.IsNullOrWhiteSpace(s))

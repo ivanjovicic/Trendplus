@@ -162,7 +162,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ179 | DONE | supplier-footwear-freshness-state | Do not mark supplier footwear data fresh from response generated time |
 | RQ180 | DONE | pre-post-aggregate-owner-parity | Remove frontend reconstruction of backend-owned pre/post aggregate denominators |
 | RQ181 | DONE | decision-board-blocked-action-cta | Do not expose an executable action CTA for blocked Decision Board cards |
-| RQ182 | WAITING | pre-post-coverage-backend-null-state | Preserve unknown pre/post coverage in backend DTOs and aggregate calculations |
+| RQ182 | DONE | pre-post-coverage-backend-null-state | Preserve unknown pre/post coverage in backend DTOs and aggregate calculations |
 
 ---
 
@@ -3089,7 +3089,7 @@ The dashboard still carries a thin legacy/advanced action contract. `DashboardAc
 
 ## RQ136 - Preserve truth in analytics action messages and notifications
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: backend/contract/frontend/tests
 Feature family: analytics-action-notification-truth
@@ -3521,7 +3521,7 @@ Pre/post nivelacija screens expose revenue, units, margin and impact signals, bu
 
 ## RQ141 - Map full analytics lineage, scope, cache and refresh parity
 
-Status: WAITING
+Status: DONE
 Priority: P0
 Type: audit/backend/contract/frontend/tests
 Feature family: analytics-lineage-scope-cache-refresh-parity
@@ -3592,6 +3592,23 @@ Produce and implement a matrix for every listed route and all sales, trend, fore
 - Period, scope, provenance, freshness and quality cannot drift between cached and uncached responses.
 - Last successful refresh is sourced from refresh history, never from request generation time.
 - 404, missing schema, refresh failure, partial/fallback, empty and stale states are distinguishable and visible.
+
+### Completion note
+
+- Date: 2026-09-07
+- Status: DONE
+- Completion: Preserved unknown pre/post coverage as nullable through backend DTOs and the TypeScript contract; aggregate averages exclude unknown values, preserve true zero, and become unavailable when no known basis exists; low-coverage counts exclude unknown rows; focused regression coverage was added.
+- Changed files: `Api/Endpoints/AllEndpoints.cs`, `Api/Models/VendorSalesNivelacijaModels.cs`, `Klijent/clientapp/src/services/vendorSalesNivelacijaApi.ts`, `Api.Tests/SupplierDecisionSchemaSqlTests.cs`, `MASTER_ROADMAP.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `.ai/runs/2026-09-07-RQ182-evidence.md`.
+- Checks run: focused backend coverage test 1/1; focused backend schema/meta tests 60/60; pre/post frontend spec 10/10; `npm run check:analytics-guardrails`; `npm run build`.
+- Checks not run: live database/materializer/refresh/browser/deployed proof, full repository suite and remote CI.
+- Delivery mode: feature branch push, local no-fast-forward merge to main, then origin/main push and verification.
+- Main commit SHA: pending until delivery.
+- Main verification: pending local merge and origin/main verification.
+- Missed: no SQL production change was required; non-finite JSON guard was not added because this C# decimal contract has no permissive NaN/Infinity path.
+- Follow-up: `RQ183` remains WAITING; no further prompt promoted automatically.
+- Residual risk: live refresh/materializer and deployed-client parity remain unverified outside this repository run.
+- Run log: `.ai/runs/2026-09-07-RQ182-evidence.md`
+- Evidence state: pending until delivery verification.
 
 ### Dependencies
 
@@ -6561,7 +6578,7 @@ Do not change the causal/comparability formula, recommendation score, confidence
 - `RQ156` owns the bounded frontend branch/message repair for supplier/category pre/post screens.
 - `RQ145` owns complete table/chart/detail/export/report parity.
 - `RQ146` and `STAB16` retain runtime schema, migration, refresh and deployed proof.
-- Keep this prompt `WAITING` while `RQ154` is the sole `READY` item.
+- `RQ182` was owner-promoted after `RQ181` completed and is now complete.
 
 ---
 
