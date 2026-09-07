@@ -5905,15 +5905,6 @@ public static class CachedAnalyticsEndpoints
                 trendPct,
                 daysSinceLastSale);
 
-            var reliabilityPct = ResolveRecommendationReliability(
-                recommendationStatus,
-                revenue,
-                unitsSold,
-                marginCoveragePct,
-                trendPct,
-                daysSinceLastSale,
-                dataQualityStatus);
-
             var reasonCodes = reasoning.ReasonCodes;
 
             var recommendationReason = BuildRecommendationReason(
@@ -5958,6 +5949,24 @@ public static class CachedAnalyticsEndpoints
                 inboundUnits: movementWindowStats.InboundUnits,
                 dataQualityStatus: signalDataQuality,
                 hasSufficientData: hasSufficientSignalData);
+
+            // Opening-stock uncertainty must remain visible even when product and margin fields are complete.
+            var effectiveDataQualityStatus = dataQualityStatus == "critical" || signalDataQuality == "critical"
+                ? "critical"
+                : dataQualityStatus == "warning" || signalDataQuality == "warning"
+                    ? "warning"
+                    : dataQualityStatus == "insufficient_data" || signalDataQuality == "insufficient_data"
+                        ? "insufficient_data"
+                        : "good";
+
+            var reliabilityPct = ResolveRecommendationReliability(
+                recommendationStatus,
+                revenue,
+                unitsSold,
+                marginCoveragePct,
+                trendPct,
+                daysSinceLastSale,
+                effectiveDataQualityStatus);
 
             var combinedReasonCodes = reasonCodes
                 .Concat(signal.ReasonCodes)
@@ -6006,7 +6015,7 @@ public static class CachedAnalyticsEndpoints
                 RecommendationAllowed = signal.RecommendationAllowed,
                 IsOpeningStockDerived = openingStockUnits.HasValue,
                 OpeningStockConfidence = openingStockUnits.HasValue ? "verified" : OpeningStockConfidenceUnknown,
-                DataQualityStatus = dataQualityStatus,
+                DataQualityStatus = effectiveDataQualityStatus,
                 ConfidencePct = confidencePct,
                 ReliabilityPct = reliabilityPct,
                 RecommendationStatus = recommendationStatus,
