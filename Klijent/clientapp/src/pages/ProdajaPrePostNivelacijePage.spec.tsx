@@ -280,6 +280,45 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(snapshot?.metadata.some((meta) => meta.key === "absoluteChangeShareFormula" && meta.value.includes("apsolutnih promena"))).toBe(true);
   });
 
+  it("does not reconstruct absolute-change share when the backend aggregate is unavailable", async () => {
+    const base = response();
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
+      response({
+        vendorStats: [vendor({ changeSharePercent: null as unknown as number })],
+        totals: { ...base.totals, absoluteChangeRevenue: null as unknown as number },
+      }),
+    );
+
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+
+    const table = await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
+    const vendorRow = within(table).getByText("Vendor A").closest("tr");
+    expect(vendorRow).not.toBeNull();
+    expect(within(vendorRow!).getByText("Nije dostupno")).toBeInTheDocument();
+    expect(within(vendorRow!).queryByText("100,00%")).not.toBeInTheDocument();
+  });
+
+  it("keeps non-finite backend aggregate and share values unavailable", async () => {
+    const base = response();
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
+      response({
+        vendorStats: [vendor({ changeSharePercent: Number.NaN as unknown as number })],
+        totals: { ...base.totals, absoluteChangeRevenue: Number.NaN as unknown as number },
+      }),
+    );
+
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+
+    const table = await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
+    const vendorRow = within(table).getByText("Vendor A").closest("tr");
+    expect(vendorRow).not.toBeNull();
+    expect(within(vendorRow!).getByText("Nije dostupno")).toBeInTheDocument();
+    expect(within(vendorRow!).queryByText("100,00%")).not.toBeInTheDocument();
+    expect(screen.getByText("Top 5 udeo u promeni").parentElement).toHaveTextContent("N/A");
+  });
+
   it("shows backend reliability percent instead of a local Visoko band", async () => {
     renderPage();
     await screen.findByText("Prioritetna lista dobavljača");

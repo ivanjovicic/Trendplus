@@ -103,7 +103,7 @@ type DecisionVendor = VendorSalesNivelacijaVendorStat & {
 type ConcentrationDatum = {
   name: string;
   sharePct: number | null;
-  changeRevenue: number;
+  changeRevenue: number | null;
   articleCount: number;
   vendorKey: string | null;
   selected: boolean;
@@ -627,13 +627,6 @@ export default function ProdajaPrePostNivelacijePage() {
       data?.totals.postRevenue,
       data?.totals.hasComparableSalesWindow,
     );
-    const totalAbsoluteChangeRevenue =
-      comparablePrePostTotal(data?.totals.absoluteChangeRevenue, data?.totals.hasComparableSalesWindow)
-      ?? (rows.some((item) => !hasComparablePrePostEvidence(item))
-        ? null
-        : rows.reduce((sum, item) => sum + Math.abs(item.changeRevenue), 0));
-
-
     return rows.map((item) => {
       const backendRecommendation = item.recommendation;
       const status = backendRecommendation?.status ?? "insufficient_data";
@@ -642,12 +635,7 @@ export default function ProdajaPrePostNivelacijePage() {
       const confidencePctValue = normalizeRecommendationPct(backendRecommendation?.confidencePct);
       const recommendationReliabilityPct = normalizeRecommendationPct(backendRecommendation?.reliabilityPct ?? item.reliabilityPct);
 
-      const trustedChangeRevenue = trustedMetric(item.changeRevenue, item);
-      const absoluteChangeSharePct = hasComparablePrePostEvidence(item) && item.changeSharePercent != null
-        ? item.changeSharePercent
-        : trustedChangeRevenue != null && totalAbsoluteChangeRevenue != null && totalAbsoluteChangeRevenue > 0
-          ? (Math.abs(trustedChangeRevenue) / totalAbsoluteChangeRevenue) * 100
-          : null;
+      const absoluteChangeSharePct = comparablePrePostMetric(item.changeSharePercent, item);
       const sharePctAvailable = absoluteChangeSharePct != null;
       const sharePct = absoluteChangeSharePct;
       const trustedPostRevenue = trustedMetric(item.postRevenue, item);
@@ -948,7 +936,7 @@ const advancedSignals = useMemo(
       .map((row) => ({
         name: row.vendorName,
         sharePct: row.sharePct,
-        changeRevenue: trustedMetric(row.changeRevenue, row) ?? 0,
+        changeRevenue: trustedMetric(row.changeRevenue, row),
         articleCount: row.articleCount,
         vendorKey: vendorKey(row),
         selected: expandedVendorKey === vendorKey(row),
@@ -958,7 +946,7 @@ const advancedSignals = useMemo(
     const rest = clamp(100 - topShare, 0, 100);
 
     return rest > 0.1
-      ? [...top, { name: "Ostali", sharePct: rest, changeRevenue: 0, articleCount: 0, vendorKey: null, selected: false }]
+      ? [...top, { name: "Ostali", sharePct: rest, changeRevenue: null, articleCount: 0, vendorKey: null, selected: false }]
       : top;
   }, [expandedVendorKey, focusedRows, totalAbsoluteChangeRevenue]);
 

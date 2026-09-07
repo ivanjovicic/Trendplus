@@ -2,7 +2,7 @@
 
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ180
+Current READY prompt: none
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
@@ -160,7 +160,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
 | RQ179 | DONE | supplier-footwear-freshness-state | Do not mark supplier footwear data fresh from response generated time |
-| RQ180 | READY | pre-post-aggregate-owner-parity | Remove frontend reconstruction of backend-owned pre/post aggregate denominators |
+| RQ180 | DONE | pre-post-aggregate-owner-parity | Remove frontend reconstruction of backend-owned pre/post aggregate denominators |
 | RQ181 | WAITING | decision-board-blocked-action-cta | Do not expose an executable action CTA for blocked Decision Board cards |
 | RQ182 | WAITING | pre-post-coverage-backend-null-state | Preserve unknown pre/post coverage in backend DTOs and aggregate calculations |
 
@@ -6222,7 +6222,7 @@ Commit suggestion: `fix(analytics): fail closed on supplier footwear freshness`
 
 ## RQ180 - Remove frontend reconstruction of backend-owned pre/post aggregate denominators
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: frontend/contract/tests
 Feature family: pre-post-aggregate-owner-parity
@@ -6277,10 +6277,27 @@ The pre/post vendor page uses a frontend fallback sum of absolute row changes wh
 - Missing backend aggregate is visible as unavailable, not a plausible locally recomputed number.
 - All pre/post consumers use one value/state and preserve valid zero.
 
+### Completion note
+
+- Date: 2026-09-07
+- Status: DONE
+- Completion: Removed the React fallback that reconstructed the absolute-change denominator and row share from frontend rows; KPI, concentration, chart, table, detail and export projections now consume the backend aggregate/share contract and keep missing/non-finite values unavailable while preserving valid zero.
+- Changed files: `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`, `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.spec.tsx`, `Api.Tests/SupplierDecisionSchemaSqlTests.cs`, this queue, `MASTER_ROADMAP.md` and `.ai/runs/2026-09-07-RQ180-evidence.md`.
+- Checks run: failing-first null aggregate test reproduced the old fallback; 10 focused frontend tests, analytics guardrails/typecheck, production build, 58 focused backend contract/meta tests, 29 focused SQL/schema tests and `git diff --check` passed.
+- Checks not run: live database/materializer/refresh/browser deployment proof, full repository suite and remote CI result.
+- Delivery mode: feature branch push, local no-fast-forward merge to `main`, then `origin/main` push and verification.
+- Main commit SHA: pending until delivery.
+- Main verification: pending local merge and `origin/main` verification.
+- Missed: no backend production contract shape or separate report endpoint was changed because the authoritative fields and shared page projection already existed.
+- Follow-up: no prompt promoted automatically; `RQ181` and `RQ182` remain WAITING.
+- Residual risk: a response that omits or sends a non-finite authoritative aggregate/share intentionally remains unavailable until backend data is present.
+- Run log: `.ai/runs/2026-09-07-RQ180-evidence.md`
+- Evidence state: pending until the local merge and `origin/main` verification are recorded.
+
 ### Dependencies
 
 - `RQ140` owns comparable cohort and causal semantics; `RQ156` owns coverage unknown/zero; `RQ143` owns backend decision ownership; `RQ145` owns parity.
-- `RQ180` is now the single current `READY` item.
+- `RQ180` is complete; no new prompt is promoted automatically. `RQ181` and `RQ182` remain `WAITING`.
 
 ---
 
