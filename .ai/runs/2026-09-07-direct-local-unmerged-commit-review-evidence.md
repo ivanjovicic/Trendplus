@@ -6,9 +6,9 @@ Date: 2026-09-07
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: codex/review-unmerged-local-commits-20260907 / local consolidation
-Main commit SHA: pending
-Main verification: pending until merge and push
-Evidence state: pending
+Main commit SHA: b28361ff
+Main verification: passed - origin/main contains b28361ff after the reviewed local-commit merge
+Evidence state: synchronized
 
 ## What was done
 
