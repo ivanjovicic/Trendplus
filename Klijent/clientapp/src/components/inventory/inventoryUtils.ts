@@ -1,4 +1,4 @@
-import type { InventoryActionSuggestion, InventoryInsightItem, InventoryListItem, InventoryReportScheduleInput, StoreOption, SupplierFilterOption } from "../../types/analytics";
+import type { InventoryActionSuggestion, InventoryInsightItem, InventoryListItem, InventoryReportScheduleInput, InventorySnapshotRowState, StoreOption, SupplierFilterOption } from "../../types/analytics";
 import type { InventoryRow } from "./types";
 import { TONE, resolveTone } from "./toneMap";
 
@@ -58,6 +58,31 @@ export function formatSignalCountBadge(
   }
 
   return `Prikazano ${formatNumber(returned)} ${unitLabel}`;
+}
+
+export function formatInventorySnapshotWarning(warning?: string | null): string | null {
+  const normalized = warning?.trim().toLowerCase();
+  if (!normalized) return null;
+  if (normalized.includes("nepotpun") || normalized.includes("partial") || normalized.includes("incomplete")) {
+    return "Snapshot sadrži redove sa nepotpunom signalnom evidencijom.";
+  }
+  if (normalized.includes("nema") || normalized.includes("empty") || normalized.includes("no_rows")) {
+    return "Snapshot je dostupan, ali nema redova za izabrane filtere.";
+  }
+  if (normalized.includes("nije dostupan") || normalized.includes("missing") || normalized.includes("unavailable")) {
+    return "Snapshot trenutno nije dostupan.";
+  }
+  return "Snapshot ima ograničenje kvaliteta podataka.";
+}
+
+export function inventorySnapshotRowStatusLabel(state?: InventorySnapshotRowState | null): string {
+  if (state?.recommendationAllowed === true && state.dataQualityStatus === "good") return "Preporuka dozvoljena";
+  if (state?.dataQualityStatus === "insufficient_data") return "Nedovoljno podataka";
+  return "Preporuka nije dozvoljena";
+}
+
+export function inventorySnapshotRowReasonLabel(state?: InventorySnapshotRowState | null): string {
+  return state?.reasonLabel?.trim() || "Signal zahteva proveru.";
 }
 
 export function formatDateTime(value?: string | null) {

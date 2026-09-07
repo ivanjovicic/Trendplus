@@ -109,6 +109,8 @@ public sealed class InventorySnapshotContractTests
         Assert.Equal(0m, result.Items[0].Confidence);
         Assert.Equal(0m, result.Items[0].ExpectedSavedSales);
         Assert.Null(result.Items[0].ExpectedCapitalRelease);
+        Assert.False(result.Items[0].Actionability.RecommendationAllowed);
+        Assert.Equal("insufficient_data", result.Items[0].Actionability.DataQualityStatus);
         Assert.Equal("Rebalance snapshot sadrzi redove sa nepotpunom signalnom evidencijom.", result.Warning);
 
         var commandText = context.Connection.LastCommandText ?? string.Empty;
@@ -148,12 +150,103 @@ public sealed class InventorySnapshotContractTests
         Assert.True(result.IsTruncated);
         Assert.Null(result.Items[0].Severity);
         Assert.Equal(0m, result.Items[0].ConfidenceScore);
+        Assert.False(result.Items[0].Actionability.RecommendationAllowed);
+        Assert.Equal("insufficient_data", result.Items[0].Actionability.DataQualityStatus);
         Assert.Equal("Inventory alert snapshot sadrzi redove sa nepotpunom signalnom evidencijom.", result.Warning);
 
         var commandText = context.Connection.LastCommandText ?? string.Empty;
         Assert.DoesNotContain("coalesce(severity, 'info')", commandText, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("coalesce(confidence_score, 0)", commandText, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("else 3", commandText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact(DisplayName = "Complete alert snapshot exposes backend-owned actionability and safe reason")]
+    public async Task AlertsHandler_CompleteSignal_ExposesActionabilityAndSafeReason()
+    {
+        var table = CreateTable(
+            ("alert_type", typeof(string)),
+            ("sku_id", typeof(int)),
+            ("store_id", typeof(int)),
+            ("size_code", typeof(string)),
+            ("severity", typeof(string)),
+            ("title", typeof(string)),
+            ("message", typeof(string)),
+            ("confidence_score", typeof(decimal)),
+            ("total_matching_count", typeof(long)));
+        table.Rows.Add("inventory_missing", 101, 7, "42", "critical", "Alert", "Message", 0m, 1L);
+
+        var context = CreateContext(table);
+        var handler = new GetInventoryAlertsHandler(context, NullLogger<GetInventoryAlertsHandler>.Instance);
+
+        var result = await handler.Handle(new GetInventoryAlertsQuery(Top: 1), CancellationToken.None);
+        var item = Assert.Single(result.Items);
+
+        Assert.Equal(0m, item.ConfidenceScore);
+        Assert.Equal("actionable", item.Actionability.Status);
+        Assert.True(item.Actionability.RecommendationAllowed);
+        Assert.Equal("good", item.Actionability.DataQualityStatus);
+        Assert.Equal("Nedostatak zalihe zahteva proveru.", item.Actionability.ReasonLabel);
+    }
+
+    [Fact(DisplayName = "Complete rebalance snapshot exposes backend-owned actionability and safe reason")]
+    public async Task RebalanceHandler_CompleteSignal_ExposesActionabilityAndSafeReason()
+    {
+        var table = CreateTable(
+            ("from_store_id", typeof(int)),
+            ("to_store_id", typeof(int)),
+            ("sku_id", typeof(int)),
+            ("size_code", typeof(string)),
+            ("recommended_qty", typeof(int)),
+            ("urgency", typeof(string)),
+            ("confidence", typeof(decimal)),
+            ("reason", typeof(string)),
+            ("expected_saved_sales", typeof(decimal)),
+            ("expected_capital_release", typeof(decimal)),
+            ("total_matching_count", typeof(long)));
+        table.Rows.Add(1, 2, 101, "42", 0, "recommended", 0m, "rebalance_imbalance", 0m, 0m, 1L);
+
+        var context = CreateContext(table);
+        var handler = new GetRebalanceSuggestionsHandler(context, NullLogger<GetRebalanceSuggestionsHandler>.Instance);
+
+        var result = await handler.Handle(new GetRebalanceSuggestionsQuery(Top: 1), CancellationToken.None);
+        var item = Assert.Single(result.Items);
+
+        Assert.Equal(0, item.RecommendedQty);
+        Assert.Equal(0m, item.Confidence);
+        Assert.Equal(0m, item.ExpectedSavedSales);
+        Assert.Equal(0m, item.ExpectedCapitalRelease);
+        Assert.Equal("actionable", item.Actionability.Status);
+        Assert.True(item.Actionability.RecommendationAllowed);
+        Assert.Equal("good", item.Actionability.DataQualityStatus);
+        Assert.Equal("Raspodela zalihe između lokacija odstupa.", item.Actionability.ReasonLabel);
+    }
+
+    [Fact(DisplayName = "Unknown rebalance reason blocks actionability without exposing the raw code")]
+    public async Task RebalanceHandler_UnknownReason_BlocksActionability()
+    {
+        var table = CreateTable(
+            ("from_store_id", typeof(int)),
+            ("to_store_id", typeof(int)),
+            ("sku_id", typeof(int)),
+            ("size_code", typeof(string)),
+            ("recommended_qty", typeof(int)),
+            ("urgency", typeof(string)),
+            ("confidence", typeof(decimal)),
+            ("reason", typeof(string)),
+            ("expected_saved_sales", typeof(decimal)),
+            ("expected_capital_release", typeof(decimal)),
+            ("total_matching_count", typeof(long)));
+        table.Rows.Add(1, 2, 101, "42", 1, "recommended", 0.75m, "unknown_reason_code", 0m, 0m, 1L);
+
+        var context = CreateContext(table);
+        var handler = new GetRebalanceSuggestionsHandler(context, NullLogger<GetRebalanceSuggestionsHandler>.Instance);
+
+        var result = await handler.Handle(new GetRebalanceSuggestionsQuery(Top: 1), CancellationToken.None);
+        var item = Assert.Single(result.Items);
+
+        Assert.False(item.Actionability.RecommendationAllowed);
+        Assert.Equal("warning", item.Actionability.DataQualityStatus);
+        Assert.Equal("Razlog redistribucije nije dovoljno precizan za preporuku.", item.Actionability.ReasonLabel);
     }
 
     [Fact(DisplayName = "Size curve snapshot preserves true zero and missing evidence")]
