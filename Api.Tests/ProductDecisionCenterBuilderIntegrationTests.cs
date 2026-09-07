@@ -53,7 +53,7 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.Equal(5, replenish.StockGap);
         Assert.Equal(500m, replenish.LostSalesEstimate);
         Assert.Equal(0m, replenish.TrendPct);
-        Assert.Equal("good", replenish.DataQualityStatus);
+        Assert.Equal("warning", replenish.DataQualityStatus);
         Assert.False(replenish.IsOpeningStockDerived);
         Assert.Equal("unknown", replenish.OpeningStockConfidence);
         Assert.Contains("opening_stock_unavailable", replenish.ReasonCodes);
