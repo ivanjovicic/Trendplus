@@ -279,18 +279,25 @@ export default function PilotIntakeReportPage() {
   }
 
   if (backendError && !resolvedReport) {
+    const invalidPeriod = backendError.errorCode === "invalid_period";
+
     return (
       <div className="pilot-intake-report-page">
         <AnalyticsErrorState
-          title="Podaci trenutno nisu dostupni."
+          title={invalidPeriod ? "Period izveštaja nije validan." : "Podaci trenutno nisu dostupni."}
           message={backendError.message}
           errorCode={backendError.errorCode}
           correlationId={backendError.correlationId}
-          suggestions={[
-            "Proverite period.",
-            "Proverite refresh status.",
-            "Otvorite kvalitet podataka.",
-          ]}
+          suggestions={invalidPeriod
+            ? [
+                "Unesite oba datuma u formatu YYYY-MM-DD.",
+                "Proverite da početni datum nije posle završnog datuma.",
+              ]
+            : [
+                "Proverite period.",
+                "Proverite refresh status.",
+                "Otvorite kvalitet podataka.",
+              ]}
           onRetry={() => setReloadTick((prev) => prev + 1)}
           helpHref="/analytics/data-quality"
         />
