@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import PilotIntakeReportPage from "../PilotIntakeReportPage";
+import { AnalyticsMetaError } from "../../services/analyticsApi";
 
 const getBrowserPreviewPayloadMock = vi.fn();
 const getAnalyticsRefreshStatusMock = vi.fn();
@@ -94,5 +95,17 @@ describe("PilotIntakeReportPage", () => {
     expect(await screen.findByText("pilot-report:Trajni pilot report")).toBeInTheDocument();
     expect(getBrowserPreviewPayloadMock).not.toHaveBeenCalled();
     expect(screen.queryByRole("heading", { name: "Pregled izveštaja je istekao" })).not.toBeInTheDocument();
+  });
+
+  it("renders an explicit invalid-period state instead of a substituted report", async () => {
+    getPilotIntakeDurableReportMock.mockRejectedValue(
+      new AnalyticsMetaError("Period izveštaja nije validan.", { errorCode: "invalid_period" })
+    );
+
+    renderPage("/analytics/reports/pilot-intake?fromDate=2026-06-30&toDate=2026-06-01");
+
+    expect(await screen.findByRole("heading", { name: "Period izveštaja nije validan." })).toBeInTheDocument();
+    expect(screen.getByText("Unesite oba datuma u formatu YYYY-MM-DD.")).toBeInTheDocument();
+    expect(screen.queryByText("pilot-report:Trajni pilot report")).not.toBeInTheDocument();
   });
 });

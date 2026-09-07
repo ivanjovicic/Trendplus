@@ -1,4 +1,5 @@
 using Infrastructure.Services.Caching;
+using System.Globalization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Configuration;
@@ -188,6 +189,100 @@ public sealed class AnalyticsReportsContractTests
         Assert.Equal("no_intake_evidence", report.Meta?.EmptyReason);
         Assert.Empty(report.Kpis);
         Assert.DoesNotContain(report.Rows, row => row.Item.Equals("Readiness score", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void PilotIntakePeriod_AbsentDates_UsesDocumentedDefaultWithoutFallbackMetadata()
+    {
+        var resolved = DataQualityEndpoints.TryResolveIntakePeriod(
+            null,
+            null,
+            out var period,
+            out var errorCode,
+            out var errorMessage);
+
+        Assert.True(resolved);
+        Assert.Null(errorCode);
+        Assert.Null(errorMessage);
+        Assert.Equal(DateTime.UtcNow.Date, period.ToUtc);
+        Assert.Equal(period.ToUtc.AddDays(-29), period.FromUtc);
+        Assert.Equal(period.ToUtc.AddDays(1), period.ToExclusiveUtc);
+    }
+
+    [Theory]
+    [InlineData("2026-06-01", "2026-06-30")]
+    [InlineData("2026-06-15", "2026-06-15")]
+    public void PilotIntakePeriod_ValidEqualOrRangeDates_PreservesRequestedPeriod(string fromDate, string toDate)
+    {
+        var resolved = DataQualityEndpoints.TryResolveIntakePeriod(
+            fromDate,
+            toDate,
+            out var period,
+            out var errorCode,
+            out var errorMessage);
+
+        Assert.True(resolved);
+        Assert.Null(errorCode);
+        Assert.Null(errorMessage);
+        Assert.Equal(DateTime.Parse(fromDate, CultureInfo.InvariantCulture), period.FromUtc);
+        Assert.Equal(DateTime.Parse(toDate, CultureInfo.InvariantCulture), period.ToUtc);
+        Assert.Equal(period.ToUtc.AddDays(1), period.ToExclusiveUtc);
+    }
+
+    [Theory]
+    [InlineData("2026-06-30", "2026-06-01")]
+    [InlineData("2026-06-01", null)]
+    [InlineData("2026-06-01T00:00:00", "2026-06-30")]
+    [InlineData("NaN", "2026-06-30")]
+    public void PilotIntakePeriod_InvalidUserInput_IsRejectedWithoutSubstitutedPeriod(
+        string? fromDate,
+        string? toDate)
+    {
+        var resolved = DataQualityEndpoints.TryResolveIntakePeriod(
+            fromDate,
+            toDate,
+            out var period,
+            out var errorCode,
+            out var errorMessage);
+
+        Assert.False(resolved);
+        Assert.Equal("invalid_period", errorCode);
+        Assert.NotNull(errorMessage);
+        Assert.NotEmpty(errorMessage!);
+        Assert.Equal(default, period);
+    }
+
+    [Fact]
+    public async Task PilotIntakeReport_InvalidPeriod_ReturnsErrorMetaBeforeCacheOrDataAccess()
+    {
+        var cache = new StubAnalyticsCacheService();
+        var cacheAdmin = new AnalyticsCacheAdminService(cache, null, NullLogger<AnalyticsCacheAdminService>.Instance);
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Headers["X-Correlation-ID"] = "corr-invalid-pilot-period";
+
+        var result = await DataQualityEndpoints.HandlePilotIntakeReportAsync(
+            httpContext,
+            trendDb: null!,
+            analyticsDb: null!,
+            cache,
+            cacheAdmin,
+            NullLoggerFactory.Instance,
+            healthService: null!,
+            refreshStatusService: null!,
+            fromDate: "2026-06-30",
+            toDate: "2026-06-01",
+            storeId: null,
+            supplierId: null,
+            scope: "all",
+            dataScope: null,
+            ct: CancellationToken.None);
+
+        var ok = Assert.IsType<Ok<DataQualityEndpoints.PilotIntakeInvalidPeriodResponseDto>>(result);
+        var meta = ok.Value!.Meta;
+        Assert.NotNull(meta);
+        Assert.False(meta!.Success);
+        Assert.Equal("invalid_period", meta.ErrorCode);
+        Assert.Equal("corr-invalid-pilot-period", meta.CorrelationId);
     }
 
     [Fact]

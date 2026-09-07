@@ -279,6 +279,20 @@ public static class DataQualityEndpoints
             CancellationToken ct) =>
         {
             var correlationId = ResolveCorrelationId(httpContext);
+            if (!TryResolveIntakePeriod(fromDate, toDate, out var resolvedPeriod, out var periodErrorCode, out var periodErrorMessage))
+            {
+                return Results.Ok(BuildPilotIntakeInvalidPeriodResponse(
+                    storeId,
+                    supplierId,
+                    dataScope,
+                    ApplyCorrelationId(
+                        AnalyticsResponseMetaFactory.Error(
+                            periodErrorCode!,
+                            periodErrorMessage!,
+                            correlationId),
+                        correlationId)));
+            }
+
             try
             {
                 var report = await BuildPilotDataQualityIntakeReportAsync(
@@ -286,8 +300,7 @@ public static class DataQualityEndpoints
                     analyticsDb,
                     healthService,
                     refreshStatusService,
-                    fromDate,
-                    toDate,
+                    resolvedPeriod,
                     storeId,
                     supplierId,
                     dataScope,
@@ -301,9 +314,8 @@ public static class DataQualityEndpoints
             catch (Exception)
             {
                 var generatedAtUtcErr = DateTime.UtcNow;
-                var periodErr = ResolveIntakePeriod(fromDate, toDate);
                 return Results.Ok(new PilotDataQualityIntakeReportDto(
-                    generatedAtUtcErr, periodErr.FromUtc, periodErr.ToUtc,
+                    generatedAtUtcErr, resolvedPeriod.FromUtc, resolvedPeriod.ToUtc,
                     string.IsNullOrWhiteSpace(dataScope) ? "all" : dataScope,
                     storeId?.ToString(CultureInfo.InvariantCulture),
                     supplierId?.ToString(CultureInfo.InvariantCulture),
@@ -349,10 +361,20 @@ public static class DataQualityEndpoints
         CancellationToken ct)
     {
         var correlationId = ResolveCorrelationId(httpContext);
+        if (!TryResolveIntakePeriod(fromDate, toDate, out var period, out var periodErrorCode, out var periodErrorMessage))
+        {
+            return Results.Ok(new PilotIntakeInvalidPeriodResponseDto(
+                ApplyCorrelationId(
+                    AnalyticsResponseMetaFactory.Error(
+                        periodErrorCode!,
+                        periodErrorMessage!,
+                        correlationId),
+                    correlationId)));
+        }
+
         var resolvedScope = !string.IsNullOrWhiteSpace(scope)
             ? scope
             : dataScope;
-        var period = ResolveIntakePeriod(fromDate, toDate);
         var reportCacheVersion = await cacheAdmin.GetReportCacheVersionAsync(ct);
         var reportCacheKey = AnalyticsCacheKeys.PilotIntakeReport(
             period.FromUtc,
@@ -396,8 +418,7 @@ public static class DataQualityEndpoints
                     analyticsDb,
                     healthService,
                     refreshStatusService,
-                    fromDate,
-                    toDate,
+                    period,
                     storeId,
                     supplierId,
                     resolvedScope,
@@ -483,14 +504,12 @@ public static class DataQualityEndpoints
         AnalyticsDbContext analyticsDb,
         AnalyticsDataQualityHealthService healthService,
         AnalyticsRefreshStatusService refreshStatusService,
-        string? fromDate,
-        string? toDate,
+        (DateTime FromUtc, DateTime ToUtc, DateTime ToExclusiveUtc) period,
         int? storeId,
         int? supplierId,
         string? dataScope,
         CancellationToken ct)
     {
-        var period = ResolveIntakePeriod(fromDate, toDate);
         var lookbackDays = Math.Clamp((int)Math.Ceiling((period.ToUtc.Date - period.FromUtc.Date).TotalDays) + 1, 2, 90);
         var health = await healthService.CaptureAsync(lookbackDays, dataScope, ct);
         var refreshStatus = await refreshStatusService.GetStatusAsync(ct);
@@ -906,6 +925,35 @@ public static class DataQualityEndpoints
                 "pilot_intake_report_error",
                 "Pilot intake report trenutno nije dostupan.",
                 correlationId));
+    }
+
+    private static PilotDataQualityIntakeReportDto BuildPilotIntakeInvalidPeriodResponse(
+        int? storeId,
+        int? supplierId,
+        string? dataScope,
+        AnalyticsResponseMetaDto meta)
+    {
+        return new PilotDataQualityIntakeReportDto(
+            DateTime.UtcNow,
+            null,
+            null,
+            string.IsNullOrWhiteSpace(dataScope) ? "all" : dataScope,
+            storeId?.ToString(CultureInfo.InvariantCulture),
+            supplierId?.ToString(CultureInfo.InvariantCulture),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            0,
+            "error",
+            "Period nije validan",
+            new PilotDataQualityIntakeLoadedDataDto(0, 0, 0, 0, 0, null, null),
+            new PilotDataQualityIntakeIssuesDto(0, 0, 0, null, null, 0, 0, 0, 0),
+            new PilotDataQualityIntakeImpactDto(0d, 0d, 0, 0, 0),
+            [],
+            meta);
     }
 
     private static AnalyticsResolvedReportPayloadDto BuildPilotIntakePayload(
@@ -1549,18 +1597,51 @@ public static class DataQualityEndpoints
         return Math.Clamp((int)Math.Round(100d - penalty), 0, 100);
     }
 
-    private static (DateTime FromUtc, DateTime ToUtc, DateTime ToExclusiveUtc) ResolveIntakePeriod(string? fromDate, string? toDate)
+    internal static bool TryResolveIntakePeriod(
+        string? fromDate,
+        string? toDate,
+        out (DateTime FromUtc, DateTime ToUtc, DateTime ToExclusiveUtc) period,
+        out string? errorCode,
+        out string? errorMessage)
     {
-        var today = DateTime.UtcNow.Date;
-        var fromUtc = TryParseUtcDate(fromDate) ?? today.AddDays(-29);
-        var toUtc = TryParseUtcDate(toDate) ?? today;
+        period = default;
+        errorCode = null;
+        errorMessage = null;
 
-        if (toUtc < fromUtc)
+        var hasFrom = !string.IsNullOrWhiteSpace(fromDate);
+        var hasTo = !string.IsNullOrWhiteSpace(toDate);
+        if (!hasFrom && !hasTo)
         {
-            (fromUtc, toUtc) = (toUtc, fromUtc);
+            var today = DateTime.UtcNow.Date;
+            period = (today.AddDays(-29), today, today.AddDays(1));
+            return true;
         }
 
-        return (fromUtc, toUtc, toUtc.AddDays(1));
+        if (!hasFrom || !hasTo)
+        {
+            errorCode = "invalid_period";
+            errorMessage = "Pilot intake period zahteva i početni i završni datum u formatu YYYY-MM-DD.";
+            return false;
+        }
+
+        var fromUtc = TryParseUtcDate(fromDate);
+        var toUtc = TryParseUtcDate(toDate);
+        if (fromUtc is null || toUtc is null)
+        {
+            errorCode = "invalid_period";
+            errorMessage = "Pilot intake period nije validan. Koristite datum u formatu YYYY-MM-DD.";
+            return false;
+        }
+
+        if (toUtc.Value < fromUtc.Value)
+        {
+            errorCode = "invalid_period";
+            errorMessage = "Pilot intake period nije validan. Početni datum ne može biti posle završnog datuma.";
+            return false;
+        }
+
+        period = (fromUtc.Value, toUtc.Value, toUtc.Value.AddDays(1));
+        return true;
     }
 
     private static DateTime? TryParseUtcDate(string? value)
@@ -1570,7 +1651,7 @@ public static class DataQualityEndpoints
             return null;
         }
 
-        if (!DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var parsed))
+        if (!DateTime.TryParseExact(value.Trim(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed))
         {
             return null;
         }
@@ -1580,6 +1661,7 @@ public static class DataQualityEndpoints
 
     internal sealed record DataQualityScoreDto(int Value, string Status, string Summary);
     internal sealed record IntakeReadinessDto(string Code, string Label, string MetaStatus);
+    internal sealed record PilotIntakeInvalidPeriodResponseDto(AnalyticsResponseMetaDto Meta);
     private sealed record IntakeBatchSnapshot
     {
         public long Id { get; init; }
