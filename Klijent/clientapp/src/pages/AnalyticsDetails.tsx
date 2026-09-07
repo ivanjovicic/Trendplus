@@ -138,12 +138,14 @@ function std(values: number[]): number {
   return Math.sqrt(v);
 }
 
-function topRows(data: TopProductsAdvancedResult | null, tab: TopTab): TopProductAdvancedItem[] {
+export function topRows(data: TopProductsAdvancedResult | null, tab: TopTab): TopProductAdvancedItem[] {
   if (!data) return [];
-  if (tab === "revenue") return data.byRevenue;
-  if (tab === "units") return data.byUnits;
-  if (tab === "velocity") return data.byVelocity;
-  return data.byMarginImpact;
+  const listOrEmpty = (value: unknown): TopProductAdvancedItem[] =>
+    Array.isArray(value) ? value as TopProductAdvancedItem[] : [];
+  if (tab === "revenue") return listOrEmpty(data.byRevenue);
+  if (tab === "units") return listOrEmpty(data.byUnits);
+  if (tab === "velocity") return listOrEmpty(data.byVelocity);
+  return listOrEmpty(data.byMarginImpact);
 }
 
 export function selectTrendRowsByDirection(

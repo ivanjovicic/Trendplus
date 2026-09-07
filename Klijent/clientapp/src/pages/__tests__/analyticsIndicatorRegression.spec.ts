@@ -6,7 +6,9 @@ import {
   getTrendDirection,
   isAnalyticsDetailPeriodValid,
   selectTrendRowsByDirection,
+  topRows,
 } from "../AnalyticsDetails";
+import { asStringList, formatTrendNumber } from "../GlobalTrendsPage";
 import { describePopMetric } from "../ColorSalesStatsPage";
 import { calculateAnomalyDeviation, calculateDeltaPct } from "../DailySalesStatsPage";
 import { formatPercent } from "../../components/inventory/inventoryUtils";
@@ -89,6 +91,13 @@ describe("analytics indicator regression guards", () => {
 
     expect(selectTrendRowsByDirection(rows, "up").map((row) => row.productId)).toEqual([5]);
     expect(selectTrendRowsByDirection(rows, "down").map((row) => row.productId)).toEqual([6]);
+  });
+
+  it("keeps malformed trend payload fields from crashing render helpers", () => {
+    expect(formatTrendNumber(null, 2)).toBe("N/A");
+    expect(formatTrendNumber("12.5", 1)).toBe("12.5");
+    expect(asStringList(["red", null, 42, "blue"])).toEqual(["red", "blue"]);
+    expect(topRows({ byRevenue: null, byUnits: [], byVelocity: [], byMarginImpact: [] } as never, "revenue")).toEqual([]);
   });
 
   it("does not describe an unknown previous-period revenue as zero", () => {

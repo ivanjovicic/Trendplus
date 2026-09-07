@@ -30,6 +30,19 @@ interface ScraperResult {
     status: string;
 }
 
+export function formatTrendNumber(value: unknown, digits: number): string {
+    const numeric = typeof value === "number"
+        ? value
+        : typeof value === "string" && value.trim() !== ""
+            ? Number(value)
+            : Number.NaN;
+    return Number.isFinite(numeric) ? numeric.toFixed(digits) : "N/A";
+}
+
+export function asStringList(value: unknown): string[] {
+    return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
 export default function GlobalTrendsPage() {
     const toast = useToast();
     const [loading, setLoading] = useState(false);
@@ -339,7 +352,7 @@ export default function GlobalTrendsPage() {
                                         />
                                         {/* Price badge */}
                                         <div className="absolute bottom-2 left-2 px-3 py-1 rounded-full bg-info text-white font-bold shadow">
-                                            €{trend.priceEur.toFixed(2)}
+                                            €{formatTrendNumber(trend.priceEur, 2)}
                                         </div>
                                         <div className="absolute top-2 right-2 bg-surface-elevated px-3 py-1 rounded-full text-sm font-semibold">
                                             {trend.trendLevel}
@@ -351,22 +364,22 @@ export default function GlobalTrendsPage() {
                                         <div className="mb-4">
                                             <div className="text-sm text-muted mb-1 font-semibold">{trend.brand}</div>
                                             <h3 className="text-lg font-bold text-contrast m-0">{trend.productName}</h3>
-                                            <div className="text-2xl font-bold text-info mt-2">€{trend.priceEur.toFixed(2)}</div>
+                                            <div className="text-2xl font-bold text-info mt-2">€{formatTrendNumber(trend.priceEur, 2)}</div>
                                         </div>
 
                                         {/* Trend Scores */}
                                         <div className="grid grid-cols-3 gap-3 mb-4 p-4 bg-surface-darker rounded">
                                             <div className="text-center">
                                                 <div className="text-xs text-muted">Trend skor</div>
-                                                <div className="text-lg font-bold text-contrast">{trend.finalTrendScore.toFixed(1)}</div>
+                                                <div className="text-lg font-bold text-contrast">{formatTrendNumber(trend.finalTrendScore, 1)}</div>
                                             </div>
                                             <div className="text-center">
                                                 <div className="text-xs text-muted">TikTok</div>
-                                                <div className="text-lg font-bold text-error">{trend.tiktokScore.toFixed(1)}</div>
+                                                <div className="text-lg font-bold text-error">{formatTrendNumber(trend.tiktokScore, 1)}</div>
                                             </div>
                                             <div className="text-center">
                                                 <div className="text-xs text-muted">Instagram</div>
-                                                <div className="text-lg font-bold text-accent">{trend.instagramScore.toFixed(1)}</div>
+                                                <div className="text-lg font-bold text-accent">{formatTrendNumber(trend.instagramScore, 1)}</div>
                                             </div>
                                         </div>
 
@@ -374,7 +387,7 @@ export default function GlobalTrendsPage() {
                                         <div className="mb-4">
                                             <div className="text-sm font-semibold text-contrast mb-2">Ključne karakteristike:</div>
                                             <div className="flex flex-wrap gap-2">
-                                                {trend.keyFeatures.map((feature, idx) => (
+                                                {asStringList(trend.keyFeatures).map((feature, idx) => (
                                                     <span key={idx} className="px-3 py-1 rounded-full text-xs font-medium bg-accent/10 text-accent">{feature}</span>
                                                 ))}
                                             </div>
@@ -384,7 +397,7 @@ export default function GlobalTrendsPage() {
                                         <div className="mb-4">
                                             <div className="text-sm font-semibold text-muted mb-2">Popularne boje:</div>
                                             <div className="flex flex-wrap gap-2">
-                                                {trend.popularColors.map((color, idx) => (
+                                                {asStringList(trend.popularColors).map((color, idx) => (
                                                     <span key={idx} className="px-3 py-1 rounded-full text-xs font-medium bg-surface-elevated text-muted">{color}</span>
                                                 ))}
                                             </div>
@@ -392,8 +405,8 @@ export default function GlobalTrendsPage() {
 
                                         {/* Social Stats */}
                                         <div className="text-xs text-muted border-t border-border pt-4">
-                                            <div>📱 TikTok: {(trend.tiktokViews / 1000000000).toFixed(1)}B views</div>
-                                            <div>📸 Instagram: {(trend.instagramPosts / 1000000).toFixed(1)}M posts</div>
+                                            <div>📱 TikTok: {formatTrendNumber(Number(trend.tiktokViews) / 1000000000, 1)}B views</div>
+                                            <div>📸 Instagram: {formatTrendNumber(Number(trend.instagramPosts) / 1000000, 1)}M posts</div>
                                         </div>
                                     </div>
                                 </div>
