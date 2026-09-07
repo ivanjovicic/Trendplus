@@ -161,7 +161,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
 | RQ179 | DONE | supplier-footwear-freshness-state | Do not mark supplier footwear data fresh from response generated time |
 | RQ180 | DONE | pre-post-aggregate-owner-parity | Remove frontend reconstruction of backend-owned pre/post aggregate denominators |
-| RQ181 | WAITING | decision-board-blocked-action-cta | Do not expose an executable action CTA for blocked Decision Board cards |
+| RQ181 | DONE | decision-board-blocked-action-cta | Do not expose an executable action CTA for blocked Decision Board cards |
 | RQ182 | WAITING | pre-post-coverage-backend-null-state | Preserve unknown pre/post coverage in backend DTOs and aggregate calculations |
 
 ---
@@ -2572,7 +2572,7 @@ Commit suggestion: `fix(analytics): refresh trust caches after data quality snap
 
 ## RQ132 - Explain Dashboard support-signal limits and the next safe operator step
 
-Status: WAITING
+Status: READY
 Ready after: `STAB16` is DONE and the canonical production API has a healthy runtime/refresh-status proof
 Priority: P1
 Type: backend-frontend-contract/tests
@@ -2651,7 +2651,7 @@ Do not change recommendation thresholds, financial calculations, Product Decisio
 
 ## RQ128 - Prove Product Decision actionability parity on the exact deployed runtime
 
-Status: WAITING
+Status: DONE
 Ready after: `STAB16` is DONE with worker/freshness evidence and read-only reconciliation on the canonical Render runtime
 Priority: P0
 Type: backend-frontend-contract/live-evidence
@@ -2712,6 +2712,23 @@ The first 2026-08-27 production audit found PDC rows looking actionable under in
 - A numeric diagnostic percentage is never rendered as high/medium/low recommendation confidence when the recommendation is blocked.
 - Live evidence ties the PDC/Board result to the exact current-main deployed SHA and records true returned/analyzed/ignored counts.
 - Empty, unknown, stale, warning, and critical states remain visibly distinct from a valid zero or healthy recommendation.
+
+### Completion note
+
+- Date: 2026-09-07
+- Status: DONE
+- Completion: Promoted and claimed RQ181, added failing-first coverage for `recommendationAllowed=false`, `null` and omitted, and removed the executable `Dodaj u akcije` CTA for blocked/unknown cards. Safe source/data-quality navigation remains available; allowed, open and closed action states preserve their existing workflow labels.
+- Changed files: `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx`, `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.spec.tsx`, this queue, `MASTER_ROADMAP.md` and `.ai/runs/2026-09-07-RQ181-evidence.md`.
+- Checks run: failing-first CTA test reproduced the old defect; 10 focused frontend tests, analytics guardrails/typecheck, production build and `git diff --check` passed.
+- Checks not run: backend tests, live database/materializer/refresh/browser deployment proof, full repository suite and remote CI result; no backend contract code changed.
+- Delivery mode: feature branch push, local no-fast-forward merge to `main`, then `origin/main` push and verification.
+- Main commit SHA: pending until delivery.
+- Main verification: pending local merge and `origin/main` verification.
+- Missed: no backend ranking, score, confidence or action lifecycle changes; no report/export contract was changed because this CTA is owned by the Decision Board card renderer.
+- Follow-up: `RQ182` remains `WAITING`; no further prompt is promoted automatically.
+- Residual risk: cards with `recommendationAllowed` absent or non-true intentionally lose the executable CTA until backend permission is explicitly present.
+- Run log: `.ai/runs/2026-09-07-RQ181-evidence.md`
+- Evidence state: pending until delivery verification.
 
 ### Dependencies
 
@@ -5218,7 +5235,7 @@ Do not touch forecast, trend, Shopify/vendor work or unrelated inventory null-st
 - `RQ158` remains the owner of null inventory quantity/minimum semantics.
 - `RQ149` remains the owner of inventory economic/availability evidence.
 - `RQ145` remains the parity and safe-messaging owner.
-- Keep this prompt `WAITING` while `RQ154` is the sole `READY` item.
+- Owner promotion 2026-09-07: `RQ154` is DONE, so `RQ181` is now the single current `READY` item for execution.
 
 ---
 
@@ -6467,7 +6484,7 @@ Do not change backend ranking, score, confidence calculation, action lifecycle, 
 
 - `RQ143` remains the broad backend decision/actionability owner.
 - `RQ145` remains the complete cross-surface parity and safe-messaging owner.
-- Keep this prompt `WAITING` while `RQ154` is the sole `READY` item.
+- `RQ181` was owner-promoted after `RQ154` completed and is now complete.
 
 ---
 
