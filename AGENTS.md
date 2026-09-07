@@ -185,6 +185,20 @@ dotnet ef migrations list `
   --context AnalyticsDbContext
 ```
 
+## Code Review Rules
+
+### Analytics trust boundaries
+
+- Flag changes that turn backend errors, unknown values, stale/partial data or successful empty results into fake zero-valued KPIs or an apparently successful state. Safe path: preserve the established meta contract and distinct frontend error, empty and degraded states.
+
+### Decision and period provenance
+
+- Flag changes that recreate final business recommendations in the frontend or mix requested period, effective/observed period, data scope, freshness or data quality. Safe path: keep decision semantics on the backend and render the authoritative metadata and reason on every affected decision surface.
+
+### Review-fix discipline
+
+- When fixing a confirmed review finding, keep the patch within the owning subsystem, add the smallest meaningful regression proof when practical, and do not weaken tenant, authorization, secret-handling or migration safety to make a review pass. If the finding is not proven, document the uncertainty instead of guessing.
+
 Use non-watch test mode for agent runs.
 
 ## 9. Evidence and completion
