@@ -115,7 +115,15 @@ public static class TrendScoringService
         int uniqueMarkets,
         Dictionary<string, int> sourceCounts)
     {
-        if (!double.IsFinite(baseScore)) return null;
+        if (!double.IsFinite(baseScore)
+            || uniqueSources <= 0
+            || uniqueMarkets <= 0
+            || sourceCounts is null
+            || sourceCounts.Count == 0
+            || sourceCounts.Count != uniqueSources
+            || sourceCounts.Values.Any(count => count <= 0))
+            return null;
+
         if (baseScore <= 0) return 0.0;
 
         // Cross-source: svaki dodatni izvor dodaje 40%
@@ -130,7 +138,8 @@ public static class TrendScoringService
         double entropyRatio = Hmax > 0 ? H / Hmax : 0.0;
         double entropyMult  = 1.0 + entropyRatio * EntropyBonusMax;
 
-        return baseScore * crossSrcMult * crossMktMult * entropyMult;
+        double result = baseScore * crossSrcMult * crossMktMult * entropyMult;
+        return double.IsFinite(result) ? result : null;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -380,7 +389,14 @@ public static class TrendScoringService
             || !double.IsFinite(salesVelocityPerDay))
             return null;
 
-        if (salesVelocityPerDay <= 0)
+        if (salesVelocityPerDay < 0
+            || stockOnHand < 0
+            || leadTimeDays < 0
+            || targetCoverageDays < 0
+            || leadTimeDays > int.MaxValue - targetCoverageDays)
+            return null;
+
+        if (salesVelocityPerDay == 0)
             return 0;
 
         int    horizon   = leadTimeDays + targetCoverageDays;
@@ -393,7 +409,11 @@ public static class TrendScoringService
         double momentumMult = 1.0 + 0.30 * m;  // negativan momentum = naruči manje
 
         double target = baseline * trendMult * momentumMult;
-        int recommended = (int)Math.Round(target - stockOnHand);
+        double rawRecommended = target - stockOnHand;
+        if (!double.IsFinite(rawRecommended) || rawRecommended > int.MaxValue)
+            return null;
+
+        int recommended = (int)Math.Round(rawRecommended);
 
         return Math.Max(0, recommended);
     }

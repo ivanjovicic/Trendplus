@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Application.Analytics.Services;
 using Xunit;
 
@@ -45,6 +46,43 @@ public sealed class TrendScoringServiceTests
         Assert.Null(TrendScoringService.ComputeRecommendedOrderQty(double.NaN, 0d, 1d, 0));
         Assert.Null(TrendScoringService.ComputeRecommendedOrderQty(0.5d, double.PositiveInfinity, 1d, 0));
         Assert.Equal(0, TrendScoringService.ComputeRecommendedOrderQty(0.5d, 0d, 0d, 10));
+    }
+
+    [Fact]
+    public void RecommendationQuantity_RejectsInvalidNumericInputs_ButPreservesValidZero()
+    {
+        Assert.Null(TrendScoringService.ComputeRecommendedOrderQty(0.5d, 0d, -1d, 0));
+        Assert.Null(TrendScoringService.ComputeRecommendedOrderQty(0.5d, 0d, 1d, -1));
+        Assert.Null(TrendScoringService.ComputeRecommendedOrderQty(0.5d, 0d, 1d, 0, -1));
+        Assert.Null(TrendScoringService.ComputeRecommendedOrderQty(0.5d, 0d, 1d, 0, 1, -1));
+        Assert.Null(TrendScoringService.ComputeRecommendedOrderQty(0.5d, 0d, 1d, 0, int.MaxValue, 1));
+        Assert.Equal(0, TrendScoringService.ComputeRecommendedOrderQty(0.5d, 0d, 1d, 100));
+    }
+
+    [Fact]
+    public void GroupFinalScore_RejectsMissingOrInvalidEvidence()
+    {
+        Assert.Null(TrendScoringService.GroupFinalScore(0d, 1, 1, null!));
+        Assert.Null(TrendScoringService.GroupFinalScore(10d, 1, 1, new Dictionary<string, int>()));
+        Assert.Null(TrendScoringService.GroupFinalScore(10d, 1, 1,
+            new Dictionary<string, int> { ["source-a"] = -1 }));
+        Assert.Null(TrendScoringService.GroupFinalScore(10d, 2, 1,
+            new Dictionary<string, int> { ["source-a"] = 1 }));
+        Assert.Null(TrendScoringService.GroupFinalScore(10d, 0, 1,
+            new Dictionary<string, int> { ["source-a"] = 1 }));
+    }
+
+    [Fact]
+    public void GroupFinalScore_ValidZeroAndPositiveEvidenceRemainFinite()
+    {
+        var validZero = TrendScoringService.GroupFinalScore(
+            0d, 1, 1, new Dictionary<string, int> { ["source-a"] = 1 });
+        var positive = TrendScoringService.GroupFinalScore(
+            10d, 1, 1, new Dictionary<string, int> { ["source-a"] = 1 });
+
+        Assert.Equal(0d, validZero);
+        Assert.Equal(10d, positive);
+        Assert.True(double.IsFinite(positive!.Value));
     }
 
     [Fact]
