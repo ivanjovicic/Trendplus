@@ -2,7 +2,7 @@
 
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ179
+Current READY prompt: RQ180
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
@@ -159,8 +159,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
-| RQ179 | READY | supplier-footwear-freshness-state | Do not mark supplier footwear data fresh from response generated time |
-| RQ180 | WAITING | pre-post-aggregate-owner-parity | Remove frontend reconstruction of backend-owned pre/post aggregate denominators |
+| RQ179 | DONE | supplier-footwear-freshness-state | Do not mark supplier footwear data fresh from response generated time |
+| RQ180 | READY | pre-post-aggregate-owner-parity | Remove frontend reconstruction of backend-owned pre/post aggregate denominators |
 | RQ181 | WAITING | decision-board-blocked-action-cta | Do not expose an executable action CTA for blocked Decision Board cards |
 | RQ182 | WAITING | pre-post-coverage-backend-null-state | Preserve unknown pre/post coverage in backend DTOs and aggregate calculations |
 
@@ -6141,7 +6141,7 @@ Inventory alerts and rebalance rows preserve nullable evidence, but their DTOs d
 
 ## RQ179 - Do not mark supplier footwear data fresh from response generated time
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: frontend/contract/tests
 Feature family: supplier-footwear-freshness-state
@@ -6196,13 +6196,33 @@ Commit suggestion: `fix(analytics): fail closed on supplier footwear freshness`
 ### Dependencies
 
 - `RQ141` remains the broad lineage owner and `RQ140` the pre/post comparability owner.
-- `RQ179` is now the single current `READY` item.
+- `RQ180` is now the single current `READY` item.
+
+### Completion note
+
+- Date: 2026-09-07
+- Status: DONE
+- Completion: supplier footwear freshness now fails closed to `unknown` when only response generation time is present, uses `fresh` only for a valid backend `lastRefreshAtUtc`, preserves backend warning/partial states as `stale` or `critical`, and applies the same state to embedded and standalone trust headers.
+- Changed files: `Klijent/clientapp/src/pages/SupplierFootwearAnalyticsPage.tsx`; `Klijent/clientapp/src/pages/__tests__/SupplierFootwearAnalyticsPage.spec.tsx`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-07-RQ179-evidence.md`
+- Contract/runtime behavior changed: `generatedAt` remains response-generation metadata and is no longer used as freshness proof; missing/invalid refresh lineage is visibly unknown.
+- Checks run: failing-first generated-only test reproduced the defect; focused SupplierFootwear/AnalyticsTrustHeader tests passed 12/12; `npm run check:analytics-guardrails`; direct `npx vite build --logLevel info`; `git diff --check`; prompt-queue, agent-instruction and planning-architecture validators plus self-tests passed.
+- Checks not run: backend tests/build (no backend files changed); live database/worker/browser deployment proof; full repository test suite.
+- Run log: `.ai/runs/2026-09-07-RQ179-evidence.md`.
+- Evidence state: pending.
+- Delivery mode: feature branch `codex/rq179-supplier-footwear-freshness-state`, pushed and merged into `main`.
+- Main commit SHA: `PENDING_MERGE_VERIFICATION`.
+- Main verification: `PENDING_MERGE_VERIFICATION`.
+- Missed: live provider/worker proof of the source refresh writer remains outside this bounded frontend lineage task.
+- Follow-up: `RQ180` - remove frontend reconstruction of backend-owned pre/post aggregate denominators.
+- Residual risk: until the backend supplies a proven refresh timestamp for this endpoint, the screen will correctly remain `unknown` even when the response has data.
+- Next: execute `RQ180` as the new current READY prompt.
+- Prompt defect / scope repair: no backend schema or endpoint change was needed; the existing nullable `meta.lastRefreshAtUtc` contract was sufficient for fail-closed presentation.
 
 ---
 
 ## RQ180 - Remove frontend reconstruction of backend-owned pre/post aggregate denominators
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: frontend/contract/tests
 Feature family: pre-post-aggregate-owner-parity
@@ -6260,7 +6280,7 @@ The pre/post vendor page uses a frontend fallback sum of absolute row changes wh
 ### Dependencies
 
 - `RQ140` owns comparable cohort and causal semantics; `RQ156` owns coverage unknown/zero; `RQ143` owns backend decision ownership; `RQ145` owns parity.
-- Keep this prompt `WAITING` while `RQ154` is the sole `READY` item.
+- `RQ180` is now the single current `READY` item.
 
 ---
 
