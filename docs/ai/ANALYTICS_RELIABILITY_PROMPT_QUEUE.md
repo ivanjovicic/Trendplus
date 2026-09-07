@@ -149,6 +149,13 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ226 | WAITING | worker-schedule-safety | Invalid nightly refresh schedule silently defaults |
 | RQ227 | WAITING | cleanup-safety-gates | Batch delete proceeds after archive quota failure |
 | RQ228 | WAITING | period-timezone-contract-consistency | Insight Studio v1/v2 period handling timezone mismatch |
+| RQ258 | WAITING | trust-header-safe-metadata | Keep shared AnalyticsTrustHeader metadata user-safe and finite |
+| RQ259 | WAITING | trust-header-mode-freshness | Make shared trust-header gating and freshness normalization mode-aware |
+| RQ260 | WAITING | empty-state-safe-reason-action | Keep shared analytics empty state user-safe and actionable |
+| RQ261 | WAITING | refresh-status-duration-message-truth | Preserve refresh duration unknown state and safe operational messaging |
+| RQ262 | WAITING | executive-kpi-value-tone-parity | Keep executive KPI availability and visual tone consistent |
+| RQ263 | WAITING | analytics-export-operation-truth | Keep export/preview status honest on failure or missing artifacts |
+| RQ264 | WAITING | analytics-shared-output-finite-parity | Preserve finite/null semantics across table, detail, print and export |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | READY | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | WAITING | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -9035,4 +9042,1090 @@ Pilot Intake readiness treats `articlesWithoutSupplierPercent` as a guaranteed f
 - `RQ169` owns empty-intake readiness score/status semantics.
 - `RQ144`/`RQ147` own health/evidence-tier semantics; this prompt hardens the Pilot Intake numeric presentation boundary.
 - Keep this prompt `WAITING` while `RQ167` remains the existing `READY` item.
+
+---
+
+## RQ249 - Do not expose or create supplier actions when the Hub recommendation is blocked
+
+Status: WAITING
+Priority: P1
+Type: frontend/contract/tests
+Feature family: supplier-decision-hub-actionability-gate
+Parallel-safe: yes, bounded to the Supplier Decision Hub action entry point
+Owner: Supplier Analytics
+Commit suggestion: `fix(analytics): gate supplier hub actions by recommendation status`
+
+### Problem
+
+The Supplier Decision Hub marks a blocked or fallback result as a `Pomoćni signal`, but the selected-supplier detail still renders a `Dodaj u akcije` button and writes a `signal_check` item to the central Analytics Actions queue when `recommendationAllowed=false`. This contradicts the product invariant that no action is shown when the backend disallows a recommendation and makes a non-actionable signal look like an executable workflow.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx:375` resolves the page gate from backend `trustMetadata.recommendationAllowed`.
+- `SupplierDecisionHubPage.tsx:764-802` deliberately changes the action kind to `signal_check` and still calls `upsertAnalyticsAction` when that gate is false.
+- `SupplierDecisionHubPage.tsx:1248-1264` always renders the selected-row `Dodaj u akcije` button; the false branch changes the label text elsewhere to `Pomoćni signal`, but does not remove or disable this CTA.
+- `Klijent/clientapp/src/pages/__tests__/SupplierDecisionHubPage.spec.tsx:231-268` verifies the blocked helper-signal banner but never opens the detail and asserts that no action CTA/write exists.
+- Git history: `8fb20b11` introduced the Hub action queue entry point; later trust hardening in `29a5943a` added blocked labels and metadata handling but left the CTA/write path intact.
+- Existing `RQ235` covers concrete negotiation actions in the supplier report, and `RQ181` covers the Decision Board CTA; neither owns this Supplier Decision Hub detail control.
+
+### Scope
+
+- `SupplierDecisionHubPage.tsx`, its action-source helper and nearest page/action tests.
+- The selected-row detail CTA, blocked/fallback/unknown actionability states and the resulting `upsertAnalyticsAction` call.
+- Preserve read-only links to supplier detail and Data Quality. Do not change backend recommendation formulas or reinterpret `signal_check` as a new business action.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ143`, `RQ145`, `RQ178`, `RQ181`, `RQ235`
+- `SupplierDecisionHubPage.tsx`, `SupplierDecisionHubPage.spec.tsx`, `analyticsApi.ts` and the central action contract
+
+### Do
+
+1. Add failing-first tests for `recommendationAllowed=false`, missing gate, fallback, stale/partial and allowed recommendation states.
+2. When the backend gate is not exactly `true`, do not render an action CTA and do not call `upsertAnalyticsAction`; show a clear Serbian limitation and a read-only verification/Data Quality link instead.
+3. Preserve the allowed path, idempotency and backend-owned status/reason/confidence fields. Do not create a second local actionability rule.
+4. Verify the same gate in the selected detail, table-derived action affordance, export/report links and embedded supplier surface without hiding useful non-actionable evidence.
+
+### Tests
+
+- Focused page tests for blocked, missing, fallback, stale/partial, empty and allowed states.
+- Assert no blocked CTA, no `upsertAnalyticsAction` call and no misleading `Dodaj u akcije` label; assert read-only verification navigation remains available.
+- Verify table/detail/export/report parity for actionability, plus no console warning/error and dark/light/soft-gray smoke checks where supported.
+- Run analytics guardrails and the nearest frontend validation.
+
+### Acceptance
+
+- `recommendationAllowed=false` or missing never exposes or creates a central supplier action from the Hub.
+- Blocked/fallback/partial signals remain visible as evidence with an understandable limitation and safe next step.
+- `recommendationAllowed=true` preserves the existing allowed action flow and backend decision payload.
+- No raw backend codes, fake confidence/reliability or frontend recomputed recommendation status are introduced.
+
+### Dependencies
+
+- `RQ235` remains the supplier report action gate; `RQ181` remains the Decision Board gate.
+- `RQ178` remains the inventory actionability owner.
+- `RQ145` remains the broad cross-surface parity owner.
+- Keep this prompt `WAITING` while `RQ169` remains the existing `READY` item.
+
+---
+
+## RQ250 - Reconcile Supplier Decision Hub and supplier report margin contribution
+
+Status: WAITING
+Priority: P1
+Type: backend/contract/frontend/tests
+Feature family: supplier-decision-margin-parity
+Parallel-safe: no, Hub cards, client report and server report share the metric contract
+Owner: Supplier Analytics
+Commit suggestion: `fix(analytics): reconcile supplier margin contribution contract`
+
+### Problem
+
+The Supplier Decision Hub and its client-side report calculate total margin contribution as `revenue * preMarkdownMarginPct`, while the server-side supplier report KPI calculates `revenue * preMarkdownMarginPct * fullPriceRevenueShare`. The UI tooltip, table/detail snapshot, client report and server report can therefore show different values for the same period and scope. The product currently has no explicit contract stating whether the metric is all-sales margin, full-price margin or only an estimate with coverage limits.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx:391-395` derives each row's `marginContribution` as `item.revenue * item.preMarkdownMarginPct`, without `fullPriceRevenueShare`.
+- `SupplierDecisionHubPage.tsx:442-448` aggregates those rows into the Hub KPI, and `:1079-1088` labels it `Ukupan maržni doprinos` with the same formula explanation.
+- `Klijent/clientapp/src/services/supplierDecisionReport.ts:105-113` receives that frontend total and uses it in the client report payload, while also independently weighting other margin-related values.
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs:1054-1067` computes the server report KPI as `x.Revenue * x.PreMarkdownMarginPct * x.FullPriceRevenueShare` and describes it as full-price revenue contribution.
+- `Klijent/clientapp/src/pages/__tests__/SupplierDecisionHubPage.percentExport.spec.ts:57-98` only verifies percent-unit formatting, not the contribution formula or server/client parity; no backend contract test compares both definitions.
+- Git history: the Hub derivation originates in `d000e349b`; the server report formula was added in `8006a4a6`; trust hardening commits did not reconcile the metric definition.
+- `RQ145` owns broad parity, but does not provide this concrete supplier margin formula owner; `RQ148` owns measurement-basis proof and should receive the chosen definition.
+
+### Scope
+
+- Supplier Decision Hub ranking/summary/report payload and the server supplier report KPI contract.
+- Backend-owned metric definition, denominator/coverage metadata, null/non-finite handling and parity tests for card, table, detail, client export/report and server report.
+- No forecast, Trend Models, Shopify, vendor integration or redesign of recommendation scoring.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ139`, `RQ145`, `RQ147`, `RQ148`, `RQ236`
+- `SupplierDecisionHubPage.tsx`, `supplierDecisionReport.ts`, `SupplierDecisionHubEndpoints.cs`, metric definitions and current supplier report tests
+
+### Do
+
+1. Add failing-first fixtures with different `fullPriceRevenueShare` values so the current two formulas produce visibly different outputs, plus valid zero, missing/null, partial and non-finite inputs.
+2. Establish one backend-owned definition and field/metadata contract for margin contribution, including whether it is measured or estimated and which cost/full-price coverage is required.
+3. Remove duplicated frontend arithmetic where the backend contract can provide the authoritative metric; otherwise make the frontend adapter consume the exact backend definition without silently adding/removing a weighting factor.
+4. Keep unknown, insufficient, partial and invalid evidence unavailable; preserve a genuine measured zero only when its denominator and required inputs are valid.
+5. Verify card, table, chart/tooltip where applicable, selected detail, client export, printable/client report and server report use the same value, unit, period, scope, freshness and limitation metadata.
+
+### Tests
+
+- Backend contract tests for all-sales versus full-price contribution definition, valid zero, missing cost/coverage, null, `NaN`/`Infinity` and empty result.
+- Frontend Hub/report parity tests with deliberately different full-price shares, plus table/detail/export/server-report comparison.
+- Period/scope/fallback/stale/partial/error state coverage; no confidence/reliability display without valid basis.
+- Analytics guardrails, focused backend/frontend tests, frontend build and no-console/theme checks where supported.
+
+### Acceptance
+
+- Hub, client report/export and server report cannot disagree on margin contribution for the same authoritative dataset.
+- The displayed label and methodology state exactly what the metric measures and when it is only an estimate/unavailable.
+- Missing, unknown, partial and non-finite inputs never become a valid zero or a stronger recommendation signal; valid measured zero remains zero.
+- Backend remains the owner of the metric definition and recommendation semantics; the frontend only formats and explains the payload.
+
+### Dependencies
+
+- `RQ148` owns sales/margin measurement-basis proof; this prompt is the concrete supplier Hub/report parity reproduction.
+- `RQ236` owns supplier-report optional numeric state; coordinate instead of duplicating its null handling.
+- `RQ145` remains the broad card/table/chart/detail/export/report parity gate.
+- Keep this prompt `WAITING` while `RQ169` remains the existing `READY` item.
+
+---
+
+## RQ251 - Map Inventory workflow and scheduler statuses to safe user labels
+
+Status: WAITING
+Priority: P1
+Type: frontend/tests
+Feature family: inventory-operational-status-labels
+Parallel-safe: yes, bounded to Inventory workflow and report-scheduler presentation
+Owner: Inventory Analytics
+Commit suggestion: `fix(analytics): map inventory operational statuses`
+
+### Problem
+
+The Inventory analytics screen uses tone helpers for workflow and scheduler states but renders the backend values themselves in visible text. `ActionWorkflowPanel` exposes raw `actionType`, `status` and priority tokens, while `MailSchedulerPanel` appends raw `lastRunStatus`. Unknown, future or technical values can therefore leak to users and the same state has no consistent Serbian label across the inventory workflow, scheduler and error/empty messages.
+
+### Evidence
+
+- `Klijent/clientapp/src/components/inventory/ActionWorkflowPanel.tsx:51-56` renders `item.actionType`, `item.status` and `item.priority` directly; only CSS tone selection uses `getActionTypeTone`/`getActionStatusTone`.
+- `ActionWorkflowPanel.tsx:61-69` also presents the workflow quantity/value context without a shared status/provenance projection, so a partial workflow payload can mix safe numeric copy with an unrecognized operational state.
+- `Klijent/clientapp/src/components/inventory/MailSchedulerPanel.tsx:106-109` renders `schedule.lastRunStatus` verbatim after the localized run timestamp.
+- `Klijent/clientapp/src/types/analytics.ts:1534-1608` types `actionType`, `status`, `frequency`, `format` and `lastRunStatus` as open strings, allowing unknown runtime tokens.
+- `Klijent/clientapp/src/components/inventory/inventoryUtils.ts:442-448` maps tones but does not provide a user-facing label mapping.
+- `Klijent/clientapp/src/components/inventory/ActionWorkflowPanel.spec.tsx:5-91` covers cost and quantity copy only; there is no status/action-type unknown, null/empty or scheduler-status test.
+- Git history: workflow status rendering comes from `d75d49e6`/`c65ab34a`, and scheduler status rendering from `c65ab34a`; later analytics hardening did not add safe label projections for these fields.
+- Existing `RQ178` owns inventory actionability and `RQ196` owns schedule validation; neither owns user-safe status text mapping.
+
+### Scope
+
+- `ActionWorkflowPanel.tsx`, `MailSchedulerPanel.tsx`, shared inventory status-label helper if needed and nearest component/page tests.
+- Visible labels for action type, workflow status, priority, schedule frequency/format and last-run status, including unknown/empty values.
+- No forecast formula, workflow state transition, scheduler validation, actionability or backend operational-state change.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ145`, `RQ178`, `RQ196`, `RQ206`
+- `ActionWorkflowPanel.tsx`, `MailSchedulerPanel.tsx`, `inventoryUtils.ts`, analytics types and their nearest tests
+
+### Do
+
+1. Add failing-first tests for known pending/approved/deferred/closed states, known action types/priorities, null/empty values and unknown/future tokens.
+2. Map known values to clear Serbian user labels and unknown values to `Nepoznato` or another established safe label; never display raw backend tokens or underscore-normalized technical text.
+3. Reuse one display projection in workflow cards, scheduler rows, copied summaries and any Inventory export/report projection that carries these statuses.
+4. Keep tone selection, backend workflow transitions, schedule validation and actionability semantics unchanged. Status label mapping must not imply successful execution or a permitted recommendation.
+
+### Tests
+
+- Focused component tests for known, missing, empty, unknown and future status/action-type/priority/frequency/format values.
+- Table/card/scheduler/report/export parity where these fields are projected, plus clear failed/empty/partial copy.
+- Dark/light/soft-gray theme and no console warning/error checks where supported; analytics guardrails and focused frontend validation.
+
+### Acceptance
+
+- No raw Inventory workflow or scheduler status token is visible to users.
+- Known statuses retain their meaning; unknown/missing statuses remain visibly unknown and do not imply success, freshness or completion.
+- Workflow and scheduler presentations use the same Serbian label contract wherever the same state appears.
+- Backend state, schedule validation, recommendation ownership and actionability are unchanged.
+
+### Dependencies
+
+- `RQ178` remains the Inventory actionability owner; this prompt only maps operational state text.
+- `RQ196` remains the schedule input/validation owner and `RQ206` the refresh-run state owner.
+- `RQ145` remains the broad cross-surface parity owner.
+- Keep this prompt `WAITING` while `RQ169` remains the existing `READY` item.
+
+---
+
+## RQ252 - Fail closed when supplier report trust metadata is missing
+
+Status: WAITING
+Priority: P1
+Type: backend/contract/tests
+Feature family: supplier-report-trust-fail-closed
+Parallel-safe: no, report action generation and response meta share the same trust contract
+Owner: Supplier Analytics
+Commit suggestion: `fix(analytics): fail closed on missing supplier report trust`
+
+### Problem
+
+The supplier report action builder only blocks concrete report actions for an explicit `RecommendationAllowed=false`. If trust metadata is missing, the report can still emit actions such as “Pregledaj rast”, “Smanji rizik” and the OOS investigation action. The response/meta path also has a separate default that can resolve a non-empty report as recommendation-allowed when trust metadata is absent. Missing decision evidence must fail closed, not become permission to recommend.
+
+### Evidence
+
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs:1076-1131` accepts nullable `ScorecardTrustMetadata`; its guard is `!hasData || trust is { RecommendationAllowed: false }`, so `trust == null` does not block the subsequent concrete actions.
+- `SupplierDecisionHubEndpoints.cs:843-861` builds actions from the same nullable trust object, while the response exposes `trust?.RecommendationAllowed ?? false`; this can leave action rows and top-level recommendation state inconsistent.
+- `SupplierDecisionHubEndpoints.cs:1847-1855` uses `recommendationGated = trustMetadata is { RecommendationAllowed: false }`, so a missing trust object is not treated as a gated success path in the metadata builder.
+- `Api.Tests/AnalyticsReportsContractTests.cs` and `Api.Tests/SupplierNegotiationPackReportTests.cs` cover explicit false, fallback and empty data, but do not assert that a non-empty report with missing trust metadata has no concrete actions and has an insufficient/blocked meta contract.
+- Git history: report action generation was introduced in `8006a4a6`; later trust hardening (`569705f1`, `29a5943a`, `e4d53a618`) did not add the nullable-trust fail-closed branch.
+- `RQ235` covers the client negotiation-pack action gate; this prompt is the backend report response/action-builder branch and is not a duplicate frontend fix.
+
+### Scope
+
+- `SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse`, `BuildSupplierDecisionReportActions`, `BuildSupplierDecisionReportMeta` and their focused backend contract tests.
+- The supplier report API response, recommended actions and exported/legacy report projections produced by that response.
+- No change to supplier scoring formulas, dataset selection, forecast, Trend, Shopify or vendor integrations.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ145`, `RQ235`, `RQ249`, `RQ250`
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs`
+- `Api.Tests/AnalyticsReportsContractTests.cs`
+- `Api.Tests/SupplierNegotiationPackReportTests.cs`
+
+### Do
+
+1. Add failing-first tests for a non-empty dataset with `trust == null`, asserting that every concrete supplier report action is suppressed and only a clear verification/data-quality action remains.
+2. Make the backend recommendation gate fail closed for missing, false, stale, fallback, partial and insufficient trust metadata; preserve the allowed path only when the authoritative contract explicitly says true and all required evidence is valid.
+3. Keep `AnalyticsReportResponseDto.RecommendationAllowed`, `Meta.RecommendationAllowed`, action rows, negotiation-pack rows, legacy rows and payload metadata consistent for the same response.
+4. Do not convert missing trust into fake good quality, confidence, reliability or a valid zero; expose a clear Serbian limitation without raw backend codes.
+
+### Tests
+
+- Backend contract tests for `trust == null`, explicit false, explicit true, fallback, stale/partial, insufficient and empty datasets.
+- Assert no concrete action title or `Preporučeno` negotiation row is emitted unless recommendation is explicitly allowed.
+- Assert report, legacy/export payload and meta expose the same blocked/allowed state and no fake KPI/confidence/reliability.
+- Run the nearest backend tests, analytics guardrails and relevant build validation.
+
+### Acceptance
+
+- Missing trust metadata never produces an actionable supplier recommendation or an allowed recommendation state.
+- Concrete report actions are emitted only when backend-owned recommendation permission is explicitly true.
+- Response, meta, report sections, legacy rows and export payload cannot disagree about actionability.
+- Empty, fallback, partial, stale, insufficient and error states remain visible and user-safe; valid business zeros remain distinguishable from unavailable values.
+
+### Dependencies
+
+- `RQ235` remains the frontend negotiation-pack action gate; this prompt owns the backend response/action-builder fail-closed contract.
+- `RQ249` remains the Supplier Decision Hub detail CTA gate, and `RQ250` the supplier margin parity contract.
+- `RQ145` remains the broad cross-surface parity owner.
+- Keep this prompt `WAITING` while `RQ169` remains the existing `READY` item.
+
+---
+
+## RQ253 - Hide raw analytics error codes from the shared error surface
+
+Status: WAITING
+Priority: P1
+Type: frontend/tests
+Feature family: analytics-shared-error-safe-messaging
+Parallel-safe: no, one shared component controls error presentation across analytics screens
+Owner: Analytics Frontend Foundations
+Commit suggestion: `fix(analytics): hide raw error codes from shared error state`
+
+### Problem
+
+The shared `AnalyticsErrorState` renders the backend `errorCode` verbatim as `Šifra greške: ...`. The component is used by the dashboard, products, supplier, inventory, actions, Decision Board, Data Quality, reports and pre/post analytics surfaces, so an internal or future backend code can leak directly into user-facing text. This violates the rule that user messages must explain the limitation in clear Serbian without raw backend codes. A correlation identifier may remain available as a deliberate support/debug reference, but it must not be confused with the user explanation.
+
+### Evidence
+
+- `Klijent/clientapp/src/components/analytics/AnalyticsErrorState.tsx:31-50` accepts `errorCode` and renders it directly in the visible alert.
+- `AnalyticsErrorState.tsx:43-49` has a safe generic fallback for an empty message, but no safe mapping or suppression policy for non-empty technical codes.
+- The shared component is used by `AnalyticsDashboard.tsx`, `ProductDecisionCenterPage.tsx`, `SupplierDecisionHubPage.tsx`, `InventoryPage.tsx`, `AnalyticsActionsPage.tsx`, `ExecutiveDecisionBoardPage.tsx`, `DataQualityPage.tsx`, `SupplierDecisionReportPage.tsx`, `PilotReadinessPage.tsx`, `ProdajaPrePostNivelacijePage.tsx`, `ColorSalesStatsPage.tsx` and `ShoeTypeSalesStatsPage.tsx`.
+- Existing tests mock the component in several page specs, but there is no focused `AnalyticsErrorState` test proving that unknown, known, empty or malicious-looking backend codes cannot appear verbatim in visible user copy.
+- Git history: the direct error-code presentation originates in `c7b81d060`; later refresh/action hardening added correlation support but did not remove the raw code line.
+- `RQ151` owns unknown Analytics Actions warning/reason labels; `RQ145` owns broad parity. Neither owns this shared error component's common user-message boundary.
+
+### Scope
+
+- `Klijent/clientapp/src/components/analytics/AnalyticsErrorState.tsx`, its nearest focused test and the shared error-message mapping if one is introduced.
+- All active analytics consumers of the shared component, including report and pre/post error states where they reuse it.
+- Preserve retry, Data Quality navigation, support correlation ID behavior and technical logging; do not expose backend error codes in normal user copy.
+- No changes to backend error taxonomy, recommendation formulas, forecast, Trend or Shopify functionality.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ145`, `RQ151`, `RQ252`
+- `AnalyticsErrorState.tsx`, `AnalyticsErrorState.css` and all direct analytics consumers
+
+### Do
+
+1. Add failing-first component tests for a known code, unknown/future code, empty code, code containing underscores/technical text and a valid correlation ID.
+2. Replace raw `errorCode` rendering with a clear Serbian user-facing explanation or a safe generic message; preserve the code only in an explicitly technical/support channel if the existing product contract requires it.
+3. Ensure page-provided messages are also safe and do not blindly pass raw backend exception text into the visible error paragraph.
+4. Keep the error/empty/partial distinction, retry action, Data Quality link and correlation ID support behavior unchanged.
+
+### Tests
+
+- Focused shared-component tests for known, unknown, empty and malformed/technical error codes.
+- Consumer smoke/assertion coverage for dashboard, products, supplier, inventory, actions, Decision Board, Data Quality and report paths where practical.
+- Assert no raw backend code appears in alert text, tooltip, export or report error copy; preserve correlation ID only as support metadata.
+- Run analytics guardrails, focused frontend validation and no-console/theme checks where supported.
+
+### Acceptance
+
+- No backend error code is shown verbatim in normal user-facing analytics error copy.
+- Users see a clear Serbian explanation and a safe next step; technical support correlation remains available without exposing internal taxonomy as the explanation.
+- Known and unknown errors, empty results and partial responses remain distinct and do not acquire fake KPI values.
+- All shared-component consumers use the same safe error-message contract without local duplicated mappings.
+
+### Dependencies
+
+- `RQ151` remains the Analytics Actions warning/reason-code mapping owner; this prompt owns the shared error alert boundary.
+- `RQ145` remains the broad cross-surface safe-messaging/parity owner.
+- `RQ252` remains the backend supplier-report trust fail-closed owner.
+- Keep this prompt `WAITING` while `RQ169` remains the existing `READY` item.
+
+---
+
+## RQ254 - Separate Product Decision generation time from last successful refresh
+
+Status: WAITING
+Priority: P1
+Type: backend/contract/tests
+Feature family: pdc-refresh-provenance
+Parallel-safe: no, PDC metadata is consumed by the product and Decision Board surfaces
+Owner: Analytics Backend
+Commit suggestion: `fix(analytics): separate pdc generation and refresh provenance`
+
+### Problem
+
+The Product Decision Center builder supplies `DateTime.UtcNow` as `LastRefreshAtUtc` for both empty and non-empty results. The cached PDC route can overwrite this on a cache hit, but the Decision Board calls the builder directly and a cache-miss/direct composition still presents query generation time as the last successful source refresh. This makes a live query look like proof that the underlying analytics snapshot was refreshed.
+
+### Evidence
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs:5661-5678` creates `nowUtc` for the response build, not from a refresh-run record.
+- `:6048-6056` passes that query-time value into `BuildSuccessMeta(... lastRefreshAtUtc: nowUtc)` for both empty and populated PDC results.
+- `Api/Endpoints/DecisionBoardEndpoints.cs:40-75` calls `BuildProductDecisionCenterAsync` directly while composing the board, so this path is not guaranteed to receive cache-entry metadata.
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs:2634-2656` only addresses cache-entry metadata through `ApplyStaleCacheWarning`; it does not establish a source refresh timestamp for the direct builder path.
+- Git history: the PDC builder and `LastRefreshAtUtc` assignment originate in `fba948690`/`ae9c7ba6`; later PDC trust hardening (`a5c97d66`, `c5e6ce689`) changed evidence and summaries but did not separate generation from refresh.
+- Existing PDC/Decision Board tests assert response generation and empty/error contracts, but do not prove that a query timestamp cannot be returned as `LastRefreshAtUtc` on the direct path.
+
+### Scope
+
+- PDC response/meta construction and Decision Board PDC composition only.
+- A refresh metadata dependency or nullable refresh field if the current owner can prove one; otherwise preserve `LastRefreshAtUtc=null` until a successful refresh record exists.
+- Focused PDC and Decision Board metadata tests.
+- No period, score, confidence, recommendation, cache TTL or formula changes.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ141`, `RQ176`, `RQ187`, `RQ239`
+- `CachedAnalyticsEndpoints.cs`, `DecisionBoardEndpoints.cs`, PDC DTOs and nearest contract tests
+
+### Do
+
+1. Add failing-first tests with separate response generation time, successful source refresh time, cache-entry creation time and no-refresh metadata.
+2. Keep `GeneratedAtUtc` as response generation metadata only. Populate `LastRefreshAtUtc` only from a proven successful source/worker refresh record or an explicitly trusted cache metadata contract.
+3. Ensure direct PDC, cached PDC, Dashboard bootstrap and Decision Board projections preserve the same distinction; a missing refresh timestamp must render unknown rather than current time.
+4. Preserve successful empty versus error/fallback semantics and do not use period end, query time or cache write time as a refresh substitute.
+
+### Tests
+
+- Backend contract tests for direct builder, cache miss, cache hit, stale cache, successful empty, error and missing refresh metadata.
+- Decision Board/PDC parity tests proving generation and last refresh remain different fields and no query timestamp is promoted.
+- Assertions for stale and unknown freshness, safe Serbian copy, valid empty result and no fake fresh state.
+- Run focused backend tests, analytics guardrails, selected build validation and `git diff --check`.
+
+### Acceptance
+
+- `LastRefreshAtUtc` never equals a query-only `DateTime.UtcNow` value unless that exact value comes from a proven refresh record.
+- `GeneratedAtUtc`, cache-created time and source refresh time remain distinct in API, Dashboard, PDC and Decision Board.
+- Unknown refresh is visibly unknown and cannot be presented as fresh.
+- No recommendation, score or confidence semantics are changed by the metadata repair.
+
+### Dependencies
+
+- `RQ187` remains the generic cache-hit metadata owner; this prompt owns the PDC direct-builder/cache-miss gap.
+- `RQ176` remains the inventory snapshot freshness owner and `RQ239` the Executive compatibility fallback timestamp owner.
+- `RQ141` and `RQ145` remain broad lineage/parity owners.
+- Keep this prompt `WAITING` while `RQ169` remains the existing `READY` item.
+
+---
+
+## RQ255 - Preserve nullable stock evidence in Product Decision Center
+
+Status: WAITING
+Priority: P0
+Type: backend/contract/frontend/tests
+Feature family: pdc-stock-evidence-state
+Parallel-safe: no, PDC stock evidence drives row explanations and signal gating
+Owner: Product Analytics
+Commit suggestion: `fix(analytics): preserve pdc nullable stock evidence`
+
+### Problem
+
+Product Decision Center maps nullable article quantity and minimum stock to zero before calculating `stockGap`, slow-stock capital, opening stock, stock-cover status and the evidence-chain text. A product with unknown stock can therefore be described as `0 kom`, `min 0`, or an out-of-stock signal, even though the response does not prove a measured zero. The later sell-through gate may block action, but it does not repair the false stock fact shown to the user or used by alternate decision explanations.
+
+### Evidence
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs:5481-5485` declares the internal PDC snapshot as non-nullable `int` stock fields.
+- `:5708-5709` assigns `a.Kolicina ?? 0` and `a.MinimalnaKolicina ?? 0` before the PDC calculation.
+- `:5847`, `:5923-5940` use those values for stock gap, slow-stock capital, opening stock, sufficiency and `InventorySignalCalculator` input.
+- `:5973-5975` serializes the substituted values into the public row DTO, and `:6656-6669` uses them in the PDC evidence chain.
+- Git history: the null inventory fix `69511be0`/`7a3cc040` hardened inventory list/detail paths, while the PDC snapshot projection remains from `fba948690`; no PDC nullable projection was changed.
+- Existing `ProductDecisionCenterBuilderIntegrationTests` prove a measured zero stock case but do not distinguish null quantity/minimum from true zero in the PDC row and evidence chain.
+
+### Scope
+
+- PDC article snapshot, row DTO/state contract, stock signal input and PDC evidence-chain projection.
+- Nearest Product Decision Center builder, contract and frontend presentation tests.
+- No redesign of inventory formulas, opening-stock methodology or recommendation thresholds.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ143`, `RQ149`, `RQ157`, `RQ158`, `RQ162`
+- PDC builder/DTOs, `InventorySignalCalculator`, `ProductDecisionCenterPage.tsx` and nearest tests
+
+### Do
+
+1. Add failing-first fixtures for null quantity, null minimum, both null, measured quantity zero, measured minimum zero, positive stock and complete stock evidence.
+2. Preserve unknown stock/minimum through the PDC contract; do not derive OOS, low-stock, stable-stock, stock gap, opening stock or capital from a missing value.
+3. Gate stock-dependent signals and recommendation permission conservatively when required stock evidence is absent, while retaining a genuine measured zero as valid evidence.
+4. Align row, Why/evidence panel, card, detail, export and Decision Board projections with the same backend-owned stock state. Do not let the frontend infer null from `0`.
+
+### Tests
+
+- Backend builder/DTO tests for null versus true zero quantity/minimum and stock-dependent signal states.
+- PDC frontend tests for evidence-chain, table/detail/export and blocked action behavior.
+- Tests for empty, partial/fallback/error responses and `NaN`/`Infinity` at any accepted boundary.
+- Run focused PDC/inventory tests, analytics guardrails, selected builds and `git diff --check`.
+
+### Acceptance
+
+- Null quantity/minimum never becomes measured `0`, OOS, stable stock, stock gap or stock capital.
+- True measured zero remains distinct and visible according to the backend stock contract.
+- Stock-dependent confidence/recommendation is unavailable or blocked when evidence is missing.
+- PDC cards, table, detail, evidence panel, export and Decision Board use the same state.
+
+### Dependencies
+
+- `RQ158` remains the general inventory null-stock owner; this prompt owns the uncovered PDC projection and evidence-chain path.
+- `RQ162` remains the sell-through denominator owner, and `RQ149` the inventory economics evidence owner.
+- `RQ143` and `RQ145` remain broad decision/parity owners.
+- Keep this prompt `WAITING` while `RQ169` remains the existing `READY` item.
+
+---
+
+## RQ256 - Keep Product Decision margin coverage unavailable without sales evidence
+
+Status: WAITING
+Priority: P1
+Type: backend/contract/frontend/tests
+Feature family: pdc-margin-coverage-denominator
+Parallel-safe: no, PDC margin quality and recommendation evidence share this field
+Owner: Product Analytics
+Commit suggestion: `fix(analytics): preserve pdc margin coverage denominator state`
+
+### Problem
+
+PDC defines margin coverage as cost-covered revenue divided by current-period revenue, but when an article has no current-period sales it sets the result to `0m`. That is an undefined/no-denominator state, not measured zero coverage. The row then receives `Nizak kvalitet` and the Why/evidence panel says `Pokrivenost nabavnom cenom 0%`, making absence of sales look like measured cost coverage evidence.
+
+### Evidence
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs:5831-5845` uses `sales?.CostCoveredRevenue ?? 0m` and assigns `marginCoveragePct = 0m` whenever `revenue <= 0m`.
+- `:5880` passes that fallback into backend reasoning, and `:5973` serializes it as a non-null `MarginCoveragePct`.
+- `:5841-5845` maps the fallback to `Nizak kvalitet`, while `:6667-6669` renders it as a measured `0%` coverage in the PDC evidence chain.
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs:7975` already models nullable coverage for the separate top-product advanced contract, but the PDC row at `:8038-8048` remains non-nullable.
+- Existing PDC integration tests cover a positive-sales row with 100% coverage and empty results, but not an article row with no current sales and an undefined coverage denominator.
+
+### Scope
+
+- PDC margin coverage calculation, row DTO nullability/state metadata, reasoning input only as required to preserve unavailable evidence, and PDC frontend/evidence/export consumers.
+- Focused backend and frontend regression tests.
+- No change to the established cost basis, margin formula, supplier report formula or recommendation thresholds.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ143`, `RQ147`, `RQ148`, `RQ157`, `RQ168`, `RQ250`
+- PDC builder/DTOs, `ProductDecisionReasoningHelper`, margin formatters and nearest tests
+
+### Do
+
+1. Add failing-first tests for no sales, true zero cost-covered revenue with positive revenue, positive coverage, missing cost, empty result and partial response.
+2. Preserve `null`/unavailable coverage when the revenue denominator is absent or invalid; keep finite measured `0%` only when a positive denominator proves it.
+3. Prevent unavailable coverage from selecting a measured quality label, confidence/reliability or recommendation rationale. Keep a true measured zero distinct.
+4. Align PDC row, Why panel, table, chart/detail if present, export and report consumers with the same coverage state and user-safe explanation.
+
+### Tests
+
+- Backend PDC builder/DTO tests for no-sales denominator, valid zero numerator with positive denominator, null/partial cost evidence, `NaN`/`Infinity` where accepted and empty result.
+- Frontend PDC presentation and export/table parity tests for unavailable versus measured zero coverage.
+- Assert no fake low-quality percentage is shown as a measured `0%` and no blocked row gains confidence/actionability.
+- Run focused backend/frontend tests, analytics guardrails, selected builds and `git diff --check`.
+
+### Acceptance
+
+- No current-period sales never serializes as measured `MarginCoveragePct=0`.
+- A genuine finite `0%` with a valid positive revenue denominator remains visible as true zero.
+- Unknown coverage cannot create a quality, confidence or recommendation signal.
+- All PDC consumers preserve identical null/zero/positive coverage semantics.
+
+### Dependencies
+
+- `RQ157` remains the owner of missing PDC trend/margin/split evidence; this prompt owns the separate no-sales margin-coverage denominator.
+- `RQ168` owns top-product margin coverage and `RQ148` the wider financial measurement basis.
+- `RQ145` remains the cross-surface parity owner.
+- Keep this prompt `WAITING` while `RQ169` remains the existing `READY` item.
+
+---
+
+## RQ257 - Reject non-finite supplier decision metrics before classification
+
+Status: WAITING
+Priority: P1
+Type: frontend/contract/tests
+Feature family: supplier-decision-finite-boundary
+Parallel-safe: yes, bounded to supplier sales and decision presentation adapters
+Owner: Supplier Analytics Frontend
+Commit suggestion: `fix(analytics): reject non-finite supplier decision metrics`
+
+### Problem
+
+Supplier Sales Stats and Supplier Decision Hub use `Number.isNaN` rather than `Number.isFinite` for PoP percentages, trend classes and ratio-to-percent conversion. `Infinity` therefore enters the available branch: the formatter may print `N/A`, while the class, sorting, tooltip or detail/export value treats it as a positive/valid signal. The same metric can consequently have contradictory state across the supplier table, card, detail and action explanation.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx:320-331` accepts a non-null PoP revenue change when only `Number.isNaN` is false.
+- `:396-407` repeats the same condition for PoP units, and `:254-258` classifies non-finite values using only an `isNaN` guard.
+- `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx:102-106` converts `preMarkdownMarginPct` with only `Number.isNaN`; `Infinity` becomes `Infinity * 100`.
+- `:130-135` uses the same `Number.isNaN` trend-class guard for supplier quality trends.
+- Shared `analyticsFormatters.ts` correctly rejects non-finite display values, which makes the mismatch observable: classification can accept a value that formatting renders as unavailable.
+- Git history shows prior supplier/pre-post hardening switched selected pre/post helpers to `Number.isFinite` (`7a3cc040`), but the PoP and margin helper branches were not included. No focused supplier regression currently asserts `Infinity` parity for these helpers.
+
+### Scope
+
+- Supplier Sales Stats and Supplier Decision Hub frontend numeric adapters/classification helpers, nearest table/detail/action/export projections and focused tests.
+- Boundary normalization only; no supplier score formula, period, scope, pre/post or backend recommendation changes.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ139`, `RQ145`, `RQ191`, `RQ233`, `RQ250`
+- `SupplierSalesStatsPage.tsx`, `SupplierDecisionHubPage.tsx`, `analyticsFormatters.ts` and nearest tests
+
+### Do
+
+1. Add failing-first tests for `null`, missing, measured zero, positive/negative finite values, `NaN`, `Infinity`, `-Infinity`, invalid ratio and valid ratio boundaries.
+2. Replace availability/classification checks with finite-state checks; preserve true finite zero and render invalid/non-finite evidence as unavailable.
+3. Ensure sorting, status class, tooltip, table, detail, action payload and export/report adapter use one normalized state and never promote invalid values to recommendation confidence or reliability.
+4. Keep backend-owned recommendation/status semantics authoritative; this prompt must not create a frontend decision or unlock an action.
+
+### Tests
+
+- Focused helper/page tests for all numeric states above, including `Infinity` entering from a mocked/legacy response boundary.
+- Supplier table/card/detail/action/export parity assertions and blocked recommendation behavior.
+- Run analytics guardrails, focused frontend tests, build, theme checks and no-console warning/error checks where supported.
+
+### Acceptance
+
+- `NaN`, `Infinity` and `-Infinity` never enter a valid supplier metric branch, sort rank, tooltip, action payload or export value.
+- True finite zero remains a measured zero and is not treated as missing.
+- Supplier table, card, detail, action and export/report state are identical for the same payload.
+- No frontend metric normalization changes backend recommendation permission or score ownership.
+
+### Dependencies
+
+- `RQ191` remains the shared confidence/reliability range formatter owner; this prompt owns supplier-specific classification and ratio adapters.
+- `RQ233` remains supplier concentration scope owner, and `RQ250` supplier margin formula parity owner.
+- `RQ145` remains broad parity owner.
+- Keep this prompt `WAITING` while `RQ169` remains the existing `READY` item.
+
+---
+
+## RQ258 - Keep shared AnalyticsTrustHeader metadata user-safe and finite
+
+Status: WAITING
+Priority: P1
+Type: frontend/tests
+Feature family: trust-header-safe-metadata
+Parallel-safe: yes, bounded to the shared analytics trust-header presentation boundary
+Owner: Analytics Frontend
+Commit suggestion: `fix(analytics): harden trust header metadata rendering`
+
+### Problem
+
+The shared `AnalyticsTrustHeader` renders backend-provided `fallbackReasonCode` verbatim and appends `refreshCurrentStep` verbatim to visible refresh text. Internal enum/operational tokens can therefore leak into the user-facing trust context. Its summary helper also treats any non-null number as displayable, so `NaN` and `Infinity` can appear as trusted quality counts instead of unavailable evidence. This affects every analytics page that reuses the header and can make a degraded response look more precise than its evidence allows.
+
+### Evidence
+
+- `Klijent/clientapp/src/components/analytics/AnalyticsTrustHeader.tsx:99-105` formats every non-null summary value without a `Number.isFinite` check, while `:114-120` considers `NaN`/`Infinity` present evidence.
+- `:180-182` appends `refreshCurrentStep` directly to visible Serbian copy.
+- `:226-232` renders `fallbackReasonCode` directly in the visible fallback banner.
+- The header is used by Dashboard, Actions, Data Quality, Product, Supplier, Inventory, Decision Board, reports and pre/post analytics pages, including `SupplierConsolidatedPage.tsx:177-198` and `SupplierDecisionHubPage.tsx:850-873`.
+- Git history: `06b2ca1f`, `95efbdda`, `25ec2435` and `41790622` strengthened trust metadata and fallback semantics, but did not add a safe code boundary or finite summary validation. `RQ253` owns the separate shared error component; `RQ151`/`RQ245` own page/action metadata mappings.
+- Existing `AnalyticsTrustHeader` specs cover normal status/period/fallback rendering but do not prove that unknown fallback/refresh tokens or non-finite summary counts are absent from user-facing text.
+
+### Scope
+
+- Shared `AnalyticsTrustHeader` and its nearest presentation/types/tests.
+- Safe Serbian copy or established label mapping for unknown fallback/refresh tokens; raw technical values may remain only in an explicit technical channel if one already exists.
+- Finite numeric-state handling for all five data-quality summary counters, preserving a measured finite zero.
+- No backend decision, recommendation, confidence, freshness source or business metric formula changes.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ145`, `RQ151`, `RQ191`, `RQ245`, `RQ253`
+- `Klijent/clientapp/src/components/analytics/AnalyticsTrustHeader.tsx`
+- `Klijent/clientapp/src/components/analytics/__tests__/AnalyticsTrustHeader.spec.tsx`
+
+### Do
+
+1. Add failing-first tests for known and unknown fallback reason values, known and unknown refresh steps, `null`, missing, measured `0`, positive/negative counts, `NaN`, `Infinity` and `-Infinity`.
+2. Replace raw code/token rendering with clear user-facing Serbian wording or a safe mapped label; do not silently display the backend token in banners, tooltips, exports or reports that reuse the adapter.
+3. Treat only finite summary counts as measured evidence; render invalid/non-finite values as unavailable and preserve true finite zero.
+4. Keep fallback, partial, stale, unknown and recommendation-gated visibility intact while changing presentation only.
+
+### Tests
+
+- Focused shared-header component tests for safe text, all numeric states and preserved measured zero.
+- Consumer smoke/assertion tests for at least Dashboard, Supplier, Actions and report/pre-post reuse where the shared header is rendered.
+- Assertions that no raw backend code, `NaN`, `Infinity` or `-Infinity` appears in visible text.
+- Run focused frontend tests, analytics guardrails, frontend build and `git diff --check`.
+
+### Acceptance
+
+- Unknown fallback/refresh tokens never appear verbatim in user-facing trust text.
+- `NaN`, `Infinity` and `-Infinity` never render as quality counts or establish the presence of a quality summary.
+- A measured finite `0` remains visible as `0` and is not treated as missing.
+- Fallback/partial/stale/unknown/gated trust semantics remain visible and no frontend decision or recommendation ownership is introduced.
+
+### Dependencies
+
+- `RQ253` remains the owner of raw error-code removal from `AnalyticsErrorState`; this prompt owns the trust-header metadata boundary.
+- `RQ145` remains the broad cross-surface safe-messaging/parity owner.
+- Keep this prompt `WAITING` while `RQ169` remains the existing `READY` item.
+
+---
+
+## RQ259 - Make shared trust-header gating and freshness normalization mode-aware
+
+Status: WAITING
+Priority: P1
+Type: frontend/tests
+Feature family: trust-header-mode-freshness
+Parallel-safe: yes, bounded to shared trust-header state normalization and mode presentation
+Owner: Analytics Frontend
+Commit suggestion: `fix(analytics): align trust header mode and freshness states`
+
+### Problem
+
+`AnalyticsTrustHeader` uses `recommendationAllowed !== true` to show the “Preporuka je gated” banner for every mode. Signal and report screens commonly omit that field because they are not recommendation surfaces, so they can incorrectly claim that a recommendation is blocked. Separately, `normalizeFreshness` accepts only exact lowercase tokens and does not trim or normalize case, so a valid backend value such as `" STALE "` or `"STALE"` becomes `unknown` and hides the stale warning. The shared component therefore reports the wrong state at the mode and freshness boundaries.
+
+### Evidence
+
+- `Klijent/clientapp/src/components/analytics/AnalyticsTrustHeader.tsx:70-76` performs exact-match freshness normalization, unlike the trim/lowercase status normalizer at `:78-89`.
+- `:167-169` calculates `showGatedBanner` without checking `mode`; `mode="report"` is used by `AnalyticsActionsPage.tsx:849-851` and `DataQualityPage.tsx:730-732`, while `mode="signal"` is used by `DailySalesStatsPage.tsx:1397-1399`, `ShoeTypeSalesStatsPage.tsx:959-961` and `SupplierFootwearAnalyticsPage.tsx:658-660`.
+- Those signal/report call sites do not consistently provide `recommendationAllowed`, so omission is interpreted as a blocked recommendation even when the screen is explicitly a signal or report.
+- Git history: `06b2ca1f` introduced the gate for scorecard semantics and `16bf0a3f` introduced freshness normalization; later commits widened shared-header usage without adding mode-specific gating or variant-token tests.
+- Existing header/page tests cover `recommendationAllowed=false` but do not assert that signal/report modes omit recommendation gating or that whitespace/case variants preserve stale/critical warnings.
+
+### Scope
+
+- `AnalyticsTrustHeader` mode-specific gate visibility and freshness token normalization.
+- Nearest shared-header and representative signal/report/recommendation tests.
+- No change to backend freshness calculation, recommendation permission, score, confidence or business status.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ141`, `RQ145`, `RQ176`, `RQ187`, `RQ253`
+- `AnalyticsTrustHeader.tsx`, its focused specs and representative page specs listed in Evidence
+
+### Do
+
+1. Add failing-first tests for `recommendation`, `signal` and `report` modes with `recommendationAllowed` missing, `false` and `true`.
+2. Show the recommendation-gated banner only where the mode contract says recommendation semantics apply; signal/report screens must use neutral explanatory copy or no gate, never an invented recommendation decision.
+3. Normalize freshness defensively by trimming and case-normalizing supported tokens, while preserving unknown for unsupported/missing values and never upgrading unknown to fresh.
+4. Preserve explicit stale/critical warning visibility and keep backend-owned recommendation permission authoritative.
+
+### Tests
+
+- Focused shared-header tests for all modes, missing/false/true permission and `fresh`, `stale`, `critical`, `unknown`, whitespace/case variants and unsupported values.
+- Representative page tests for Actions, Data Quality, Daily Sales, Shoe Type/Supplier signal and one recommendation surface.
+- Assert no false “Preporuka je gated” text on signal/report surfaces and no stale/critical state is downgraded to unknown solely because of formatting.
+- Run focused frontend tests, analytics guardrails, frontend build and `git diff --check`.
+
+### Acceptance
+
+- Signal/report screens do not display an invented recommendation gate when recommendation permission is absent or not applicable.
+- Recommendation surfaces still visibly gate when backend says `recommendationAllowed !== true`.
+- Supported freshness tokens are robust to harmless case/whitespace variation; missing/unsupported values remain visibly unknown.
+- No frontend logic recomputes or overrides backend recommendation permission.
+
+### Dependencies
+
+- `RQ176` and `RQ187` remain backend/source freshness owners for inventory and cache metadata; this prompt only normalizes the shared display boundary.
+- `RQ143` remains the backend decision-ownership owner and `RQ145` the broad parity owner.
+- Keep this prompt `WAITING` while `RQ169` remains the existing `READY` item.
+
+---
+
+## RQ260 - Keep shared analytics empty state user-safe and actionable
+
+Status: WAITING
+Priority: P1
+Type: frontend/tests
+Feature family: empty-state-safe-reason-action
+Parallel-safe: yes, bounded to the shared analytics empty-state presentation boundary
+Owner: Analytics Frontend
+Commit suggestion: `fix(analytics): harden empty state reason and actions`
+
+### Problem
+
+The shared `AnalyticsEmptyState` prints the `emptyReason` prop verbatim. Several core pages pass `meta.emptyReason ?? safeMetaMessage`, so the backend code wins over the already available Serbian mapping and can be shown as raw text such as `no_data_in_period` or `no_open_issues`. The component also renders the default “Proširi period” item without an `href` or `onClick`, presenting a non-action as a suggested action. Empty data must remain distinct from error, but its reason and next step must also be honest and usable.
+
+### Evidence
+
+- `Klijent/clientapp/src/components/analytics/AnalyticsEmptyState.tsx:57-58` trims `emptyReason` but does not map or suppress backend reason codes, and `:93-94` renders the result directly.
+- `Klijent/clientapp/src/utils/analyticsResponseMeta.ts:3-7,82-97` already contains the safe Serbian `EMPTY_REASON_MESSAGES` mapping, but it is not used by the component boundary.
+- `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx:1538-1542`, `DataQualityPage.tsx:1019-1021`, `ProdajaPrePostNivelacijaPage.tsx:1367-1369` and `ProductDecisionCenterPage.tsx:1546-1548` pass the raw `meta.emptyReason` before the safe message, making the ordering bug observable on core screens.
+- `AnalyticsEmptyState.tsx:61-76` creates the default “Proširi period”/“Promenite filtere ili proširite period” item with only a label; it is rendered as plain text at `:111-119`, despite the “Predlog akcija” heading.
+- Git history: `95efbdda` introduced direct empty-reason rendering and `13d7523a` added shared default actions; later metadata hardening added safe message helpers but did not close this component boundary. No focused `AnalyticsEmptyState` component spec currently proves raw reason suppression or that default suggested actions are executable.
+
+### Scope
+
+- Shared `AnalyticsEmptyState`, the existing empty-reason mapping helper and nearest core page/component tests.
+- Safe user-facing Serbian reason mapping for known/unknown empty reasons.
+- Default empty-state action contract: every advertised action must have a valid link or callback, or be presented as explanatory text rather than an action.
+- No change to backend empty/error classification, period semantics or recommendation logic.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ145`, `RQ161`, `RQ169`, `RQ253`, `RQ258`
+- `AnalyticsEmptyState.tsx`, `analyticsResponseMeta.ts`, representative page call sites and nearest tests
+
+### Do
+
+1. Add failing-first tests for known reason codes, unknown/malicious-looking reason strings, blank/null reason, successful empty, insufficient-data empty and failed response separation.
+2. Map known empty reasons through the shared safe Serbian vocabulary and use a generic safe explanation for unknown values; never render a raw backend code in title, message, reason list, export or report copy.
+3. Ensure default “expand period/filter” guidance is an actual controlled link/callback supplied by the owner, or remove it from the action list and keep it as non-action guidance.
+4. Preserve the empty-not-error state, retry behavior, data-quality/status links and recommendation/action gating.
+
+### Tests
+
+- Focused `AnalyticsEmptyState` tests for reason mapping, raw-code suppression, blank/null input and executable default actions.
+- Representative Dashboard, Data Quality, pre/post and PDC tests proving empty responses remain explicit and do not expose backend codes.
+- Assert no `no_data_in_period`, `no_open_issues`, `NaN` or `Infinity` appears in visible empty-state text and no fake KPI/action is introduced.
+- Run focused frontend tests, analytics guardrails, frontend build and `git diff --check`.
+
+### Acceptance
+
+- Empty reason codes are never exposed verbatim to users; known reasons have clear Serbian copy and unknown reasons have a safe generic explanation.
+- A successful empty response remains an empty state, not an error or fake zero.
+- Every item under “Predlog akcija” is executable, or non-executable guidance is not labelled as an action.
+- Retry, quality and refresh links remain available where supplied, without changing backend ownership of data quality or recommendations.
+
+### Dependencies
+
+- `RQ145` remains the broad safe-messaging/parity owner; this prompt owns the shared empty-state boundary.
+- `RQ169` remains the existing empty-readiness owner; this prompt does not change readiness scoring.
+- `RQ253` and `RQ258` own separate error/trust-header code-safety boundaries.
+- Keep this prompt `WAITING` while `RQ169` remains the existing `READY` item.
+
+---
+
+## RQ261 - Preserve refresh duration unknown state and safe operational messaging
+
+Status: WAITING
+Priority: P1
+Type: backend/contract/frontend/tests
+Feature family: refresh-status-duration-message-truth
+Parallel-safe: no, backend refresh aggregation and the shared banner must change as one contract
+Owner: Analytics Refresh / Analytics Frontend
+Commit suggestion: `fix(analytics): harden refresh status truth`
+
+### Problem
+
+The refresh-status service aggregates missing job durations through `DefaultIfEmpty().Max()`, producing `0` even when no duration was measured. If an attempt timestamp exists, the shared banner presents that fabricated value as `0 s`. The banner also assumes `jobs` is always present and renders process/current-step/error/object strings verbatim, so a partial response can crash the trust surface and backend operational tokens or technical errors can leak into user copy. Refresh status is a trust source for Dashboard, Data Quality, inventory and supplier screens; it must distinguish measured zero from unknown and remain safe under degraded responses.
+
+### Evidence
+
+- `Api/Services/AnalyticsRefreshStatusService.cs:210-214` projects `DurationSeconds` with `DefaultIfEmpty().Max()`, which returns zero when all job durations are null or no duration exists.
+- `Klijent/clientapp/src/components/analytics/AnalyticsRefreshStatusBanner.tsx:111-115` renders every non-null duration using `Math.round`, without finite/non-negative validation; a recorded attempt plus backend fallback zero appears as measured `0 s`, while `NaN`/`Infinity` can render directly at a mocked/legacy boundary.
+- `AnalyticsRefreshStatusBanner.tsx:59` calls `status.jobs.filter(...)` without a null/array guard; a partial or backward-compatible payload missing `jobs` throws instead of showing an unknown/degraded state.
+- `:57,83-90,99-103,117-147` renders raw `processMode`, `currentStep`, `lastErrorMessage`, refreshed/failed relation names, `workerWarning` and failed-job display strings in the user-facing banner.
+- `Api/Services/AnalyticsRefreshStatusService.cs:195-214,304-321,339-354` forwards job/worker messages and object names into the DTO; correlation IDs already exist as the appropriate support reference.
+- Git history: `c7b81d060` introduced the direct banner presentation, `16bf0a3f` added process/step/object/duration fields, `2f694cdd` added correlation support and `9efdbe3e` hid zero only when no attempt existed. No backend test distinguishes missing aggregate duration from genuine measured zero, and current frontend tests explicitly expect raw `product_dim_refresh` text.
+
+### Scope
+
+- `AnalyticsRefreshStatusService`, refresh DTO contract and `AnalyticsRefreshStatusBanner` with nearest backend/frontend tests.
+- Duration null/zero/finite validation and safe display mapping for operational status.
+- Partial/backward-compatible response handling for jobs/object arrays and optional fields.
+- No worker scheduling, refresh execution, cache invalidation or business recommendation changes.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ141`, `RQ145`, `RQ146`, `RQ176`, `RQ187`, `RQ251`, `RQ258`, `RQ259`
+- Refresh-status service/DTO/endpoint, shared banner, callers and nearest tests
+
+### Do
+
+1. Add failing-first backend tests for no jobs, jobs with null duration, genuine measured zero, positive duration, failed refresh, worker fallback and mixed-duration jobs.
+2. Preserve `DurationSeconds=null` when no duration was measured; accept/display zero only when an authoritative run explicitly records finite zero, and reject negative/non-finite values at every accepted boundary.
+3. Make the banner tolerate missing/null jobs and object arrays by showing a visible unknown/partial state rather than crashing or silently looking fresh.
+4. Map process/step/status values to clear Serbian copy and replace technical error/object details with safe summaries plus correlation ID/support navigation. Keep raw identifiers only in an explicitly technical/admin channel.
+5. Preserve last-success, last-attempt and last-failure timestamps as separate facts; never use generated/query time as last refresh.
+
+### Tests
+
+- Backend service/DTO tests for null versus genuine zero duration and mixed refresh runs.
+- Frontend banner tests for missing arrays, null/zero/positive/negative/`NaN`/`Infinity` duration, stale/critical/unknown freshness, running/failed states and safe unknown-token mapping.
+- Representative Dashboard/Data Quality/inventory/supplier rendering tests plus no-console-error assertion for partial payloads.
+- Light/dark/soft-gray theme assertions where the existing harness supports them.
+- Run focused backend/frontend tests, analytics guardrails, selected builds and `git diff --check`.
+
+### Acceptance
+
+- Missing duration never becomes measured `0 s`; genuine finite zero remains distinguishable and valid only when recorded by an authoritative run.
+- Partial refresh payloads render an explicit degraded/unknown banner and do not throw.
+- Raw process/current-step/error/relation codes are not exposed in ordinary analytics user copy; correlation ID remains available for support.
+- Last successful refresh, attempt, failure and generated time retain separate meanings across API and UI.
+
+### Dependencies
+
+- `RQ187` remains the cache metadata freshness owner; this prompt owns refresh-status duration and banner presentation.
+- `RQ251` owns inventory workflow/scheduler labels, while `RQ258-RQ259` own the separate trust header.
+- `RQ145-RQ146` remain broad parity/runtime-schema owners.
+- Keep this prompt `WAITING` while `RQ169` remains the existing `READY` item.
+
+---
+
+## RQ262 - Keep executive KPI availability and visual tone consistent
+
+Status: WAITING
+Priority: P1
+Type: frontend/contract/tests
+Feature family: executive-kpi-value-tone-parity
+Parallel-safe: yes, bounded to Dashboard executive KPI presentation and its response adapter
+Owner: Analytics Dashboard Frontend
+Commit suggestion: `fix(analytics): align executive kpi value and tone`
+
+### Problem
+
+The executive Dashboard KPI row always marks Revenue with the healthy `good` tone, including when the value is null or non-finite and the formatter displays “Nije dostupno”. Margin and inventory-risk tone selection also checks only null and sign, so `Infinity` can receive a healthy/warning tone while its formatter rejects the value. The readiness card converts `insufficient_data` to neutral styling. These mismatches let visual status contradict the exact metric text and can make unknown or insufficient evidence look healthy.
+
+### Evidence
+
+- `Klijent/clientapp/src/components/analytics/ExecutiveKpiRow.tsx:37-40` treats only null as unavailable before delegating display formatting.
+- `:55-60` hardcodes Revenue `tone="good"` independently of value availability, freshness or data quality.
+- `:63-80` assigns margin and stock-risk tones from null/sign checks without `Number.isFinite`; non-finite values can enter positive/risk branches even when shared formatters render them unavailable.
+- `:42-43,83-94` maps `insufficient_data` readiness tone to neutral, weakening the visible distinction between unknown/insufficient evidence and an ordinary neutral metric.
+- `AnalyticsDashboard.tsx:1601-1624` feeds summary/executive values and dashboard quality into this row; partial bootstrap data can therefore produce null metrics while the KPI row still renders.
+- The focused `ExecutiveKpiRow.spec.tsx` tests one true-zero/critical readiness fixture but has no null, non-finite, partial, stale/unknown or value/tone parity assertions.
+- Git history: the unconditional Revenue tone originates in `95efbdda`; `8006a4a6` added unavailable formatting and metric methodology without changing tone semantics, while later readiness commits did not cover KPI availability.
+
+### Scope
+
+- `ExecutiveKpiRow`, the Dashboard adapter that supplies its trust context and focused component/page tests.
+- Availability/tone semantics for revenue, margin contribution, units, stock-at-risk and recommendation readiness.
+- No backend KPI formula, aggregation, score, recommendation or theme redesign.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ139`, `RQ145`, `RQ148`, `RQ167`, `RQ191`, `RQ258`
+- `ExecutiveKpiRow.tsx`, `AnalyticsDashboard.tsx`, shared formatters/quality helpers and nearest specs
+
+### Do
+
+1. Add failing-first tests for null/missing, genuine zero, positive/negative finite values, `NaN`, `Infinity`, `-Infinity`, partial response, stale/unknown freshness and insufficient quality.
+2. Derive display availability once and use the same state for value text, CSS tone, accessible label and methodology affordance; non-finite values must be unavailable everywhere.
+3. Keep true finite zero visible and neutral/appropriate, never missing; do not mark null/unavailable revenue green.
+4. Preserve an explicit insufficient/unknown/degraded visual state for recommendation readiness instead of flattening it into healthy or ambiguous neutral styling.
+5. Verify Dashboard card/table/report/export projections use the same backend values and do not recompute KPI or recommendation semantics in the browser.
+
+### Tests
+
+- Focused `ExecutiveKpiRow` tests for value/tone/accessibility parity across all numeric and trust states.
+- Dashboard integration tests for partial/fallback/error/empty payloads and genuine-zero revenue.
+- Assertions for table/card/report/export parity where the executive values are reused.
+- Light/dark/soft-gray theme and no-console-warning/error assertions.
+- Run focused frontend tests, analytics guardrails, frontend build and `git diff --check`.
+
+### Acceptance
+
+- A null, missing or non-finite executive KPI renders unavailable and never receives healthy/success styling.
+- Genuine finite zero remains visible and distinct from unavailable evidence.
+- Insufficient/unknown readiness remains visibly degraded and cannot look neutral-good.
+- KPI value, visual tone, accessibility text and downstream projection agree without changing backend-owned calculations or recommendations.
+
+### Dependencies
+
+- `RQ167` remains the failed backend KPI response owner and `RQ191` the shared numeric formatter/range owner.
+- `RQ148` owns sales/margin measurement basis; this prompt changes presentation consistency only.
+- `RQ145` remains broad cross-surface parity ownership.
+- Keep this prompt `WAITING` while `RQ169` remains the existing `READY` item.
+
+---
+
+## RQ263 - Keep export and preview operation status honest
+
+Status: WAITING
+Priority: P1
+Type: frontend/contract/tests
+Feature family: analytics-export-operation-truth
+Parallel-safe: yes, bounded to shared analytics document-operation presentation
+Owner: Analytics Export Frontend
+Commit suggestion: `fix(analytics): make export status truthful`
+
+### Problem
+
+The shared analytics export toolbar stores every operation message in one `statusText` state and always renders it with a green success style and check icon. Exceptions therefore look successful. PDF preview responses without `printUrl` close silently, and completed asynchronous exports without `downloadUrl` are reported as “završen i preuzet” even though no document was downloaded. A failed or incomplete export must remain visibly failed/degraded and must never be reported as a successful artifact.
+
+### Evidence
+
+- `Klijent/clientapp/src/components/analytics/AnalyticsTableToolbar.tsx:254-257` stores exception text in the same state used by successful operations.
+- `:338-347` renders every non-null `statusText` with success colors and `CheckCircle2`, with no status kind or error role.
+- `:211-228` closes PDF preview when `printUrl` is missing without displaying an error or keeping a recovery path open.
+- `:237-245` unconditionally says the async export was downloaded after polling, even when the completed response has no `downloadUrl` and `downloadExport` was not called.
+- `:246-250` accepts a synchronous response without an artifact URL as “Eksport je pokrenut”, even if the response claims terminal completion.
+- `AnalyticsTableToolbar.spec.tsx` covers successful sync, preview and async downloads only; no test covers thrown errors, failed/poisoned status, missing artifact URLs, blocked popup or status color/icon semantics.
+- Git history: the operation flow originates in `bfbad6538`; accessibility and shared-surface commits `b5681782`/`3ca81032` improved the menu and live status but retained a success-only presentation model.
+
+### Scope
+
+- `AnalyticsTableToolbar`, document operation client types/helpers only as needed to classify result state, and nearest component tests.
+- Honest queued/running/completed/downloaded/failed/incomplete/timeout/preview-blocked presentation.
+- No document generator implementation, backend authorization or report calculation changes.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ123`, `RQ145`, `RQ146`, `RQ196`, `RQ197`, `RQ247`, `RQ251`
+- `AnalyticsTableToolbar.tsx`, `exportApi.ts`, document response DTOs/endpoints and nearest tests
+
+### Do
+
+1. Add failing-first tests for synchronous success, asynchronous queued/running/completed, failed, poisoned, timeout, missing `downloadUrl`, missing `printUrl`, rejected request and blocked `window.open`.
+2. Replace the single success-only text state with an explicit operation status/tone contract; errors and incomplete artifacts must use warning/error semantics and remain visible with a retry path.
+3. Claim “preuzet” only after a non-empty download URL is validated and download initiation succeeds; claim preview opened only when a valid URL exists and the browser returns an opened window where testable.
+4. Map backend status/error values to clear Serbian copy. Do not expose raw backend codes or technical exception details in ordinary user text; preserve a correlation/support reference if the contract provides one.
+5. Keep filters, metadata, row payload and recommendation gates unchanged.
+
+### Tests
+
+- Focused toolbar and export-client tests for all operation states above.
+- Assertions for correct role, icon, tone and text in light/dark/soft-gray themes.
+- Verify no false success after missing URL, failed polling or popup failure and no new console warning/error output.
+- Run analytics guardrails, focused frontend tests, frontend build and `git diff --check`.
+
+### Acceptance
+
+- Failed, timed-out, incomplete or blocked export/preview operations never use success styling or success wording.
+- “Preuzet” is shown only when a valid artifact URL caused a download attempt; “preview otvoren” is shown only for a valid opened preview.
+- Queued/running state remains distinct from terminal completion.
+- User copy is safe and actionable without changing exported analytics values or backend business decisions.
+
+### Dependencies
+
+- `RQ145` remains broad export/report parity ownership; this prompt owns operation-state truth only.
+- `RQ196-RQ197` remain Inventory scheduling/row-cap owners.
+- `RQ247` owns Pilot Intake status vocabulary and `RQ251` Inventory workflow/scheduler vocabulary.
+- Keep this prompt `WAITING` while `RQ169` remains the existing `READY` item.
+
+---
+
+## RQ264 - Preserve finite and null semantics across shared analytics outputs
+
+Status: WAITING
+Priority: P1
+Type: frontend/contract/tests
+Feature family: analytics-shared-output-finite-parity
+Parallel-safe: no, shared table payload, detail snapshot and generic print must use one value contract
+Owner: Analytics Frontend / Export
+Commit suggestion: `fix(analytics): align shared output numeric states`
+
+### Problem
+
+The shared analytics table-state formatter rejects non-finite numbers during parsing but then falls back to `String(value)`, exposing `NaN`, `Infinity` or `-Infinity` in detail fields and metadata. The raw table payload still retains those values; browser JSON persistence converts non-finite numbers to `null`, while the generic print page ignores column data types and prints every value with `String(...)`. The same input can therefore appear as unavailable in the table, raw `Infinity` in detail, `null` after storage/export serialization and an unformatted number in print.
+
+### Evidence
+
+- `Klijent/clientapp/src/services/analyticsTableState.ts:32-35` stringifies any non-null scalar, including non-finite numbers.
+- `:70-82` detects invalid currency/percent/number values but returns the raw string form when conversion fails.
+- `:113-130` copies `getValue` output into export/print rows without validating finite numeric state; `JSON.stringify` later turns non-finite numbers into `null` during requests or browser persistence.
+- `:168-174` also stringifies metadata values without finite validation.
+- `Klijent/clientapp/src/pages/AnalyticsPrintPage.tsx:93-115` prints filters/metadata directly and `:119-136` uses `String(row[column.key])`, ignoring `dataType`, `formatHint` and locale. Currency, percent, date and unavailable states can differ from the table/detail view.
+- Current `analyticsTableState.spec.ts` proves valid currency/percent/date formatting and ratio-vs-percent units, but has no `NaN`/`Infinity`/`-Infinity` or print parity fixture. There is no focused `AnalyticsPrintPage` spec.
+- Git history: `a1b9231a` added finite parsing and detail formatting to close RQ44-era parity, but retained raw-string fallback; the generic print body is still based on the original `bfbad6538` implementation.
+
+### Scope
+
+- `analyticsTableState`, `AnalyticsPrintPage`, shared table/export payload normalization and focused tests.
+- Numeric unavailable/zero/finite semantics plus currency/percent/number/date/datetime/boolean display parity.
+- No metric formula, source query, row selection, backend recommendation or server document layout redesign.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- historical RQ44/RQ46 evidence, `RQ139`, `RQ145`, `RQ154-RQ156`, `RQ191`, `RQ257`, `RQ262`, `RQ263`
+- `analyticsTableState.ts`, `AnalyticsPrintPage.tsx`, `AnalyticsTableToolbar.tsx`, `exportApi.ts`, analytics table types and nearest tests
+
+### Do
+
+1. Add failing-first fixtures for null/missing, genuine zero, positive/negative finite values, `NaN`, `Infinity`, `-Infinity`, numeric strings, malformed numeric strings and all declared column data types.
+2. Define one shared availability/display projection: non-finite numeric evidence must become explicit unavailable state, never raw text and never an unexplained serialization-only null.
+3. Make generic print format cells from the same column `dataType`/format contract used by detail/table presentation, while keeping machine export values typed and explicitly nullable.
+4. Normalize metadata/filter output through safe user-facing formatting and preserve requested/effective period, scope, freshness, quality, fallback and limitation metadata unchanged.
+5. Prove that table, detail snapshot, browser print, synchronous/async export payload and report adapter preserve the same value/state; retain measured finite zero.
+
+### Tests
+
+- Focused `analyticsTableState` tests for every numeric state and data type.
+- New generic print-page tests for currency/percent/date/null/non-finite formatting, empty payload, expired/malformed storage and metadata parity.
+- Toolbar/export request tests proving non-finite inputs do not silently change meaning during JSON serialization.
+- Representative page parity fixture for table/detail/print/export/report plus theme and no-console checks.
+- Run analytics guardrails, focused frontend tests, frontend build and `git diff --check`.
+
+### Acceptance
+
+- `NaN`, `Infinity` and `-Infinity` never appear in table detail, print, export or report user text and cannot become a valid zero.
+- Genuine finite zero remains visible and distinct from unavailable evidence.
+- Currency, percent, number, date/datetime and boolean states match across table, detail and print; machine export preserves typed null/finite semantics.
+- Period, scope, freshness, quality, fallback and recommendation metadata are unchanged and consistent across outputs.
+
+### Dependencies
+
+- `RQ145` remains the complete cross-surface parity owner; this prompt owns the concrete shared client serialization/formatting gap.
+- `RQ191`, `RQ257` and `RQ262` remain formatter/page-specific finite-state owners.
+- `RQ263` owns export operation status, not exported data values.
+- Keep this prompt `WAITING` while `RQ169` remains the existing `READY` item.
 
