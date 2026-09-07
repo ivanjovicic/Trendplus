@@ -2,7 +2,7 @@
 
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ177
+Current READY prompt: RQ178
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
@@ -157,8 +157,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ263 | WAITING | analytics-export-operation-truth | Keep export/preview status honest on failure or missing artifacts |
 | RQ264 | WAITING | analytics-shared-output-finite-parity | Preserve finite/null semantics across table, detail, print and export |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
-| RQ177 | READY | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
-| RQ178 | WAITING | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
+| RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
+| RQ178 | READY | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
 | RQ179 | WAITING | supplier-footwear-freshness-state | Do not mark supplier footwear data fresh from response generated time |
 | RQ180 | WAITING | pre-post-aggregate-owner-parity | Remove frontend reconstruction of backend-owned pre/post aggregate denominators |
 | RQ181 | WAITING | decision-board-blocked-action-cta | Do not expose an executable action CTA for blocked Decision Board cards |
@@ -5974,7 +5974,7 @@ Inventory alerts, rebalance and size-curve responses expose `GeneratedAtUtc`, bu
 
 ## RQ177 - Preserve missing, empty and partial size-curve states in the panel
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: frontend/tests
 Feature family: size-curve-empty-error-state
@@ -6033,13 +6033,31 @@ The size-curve panel uses the same branch and copy for a missing snapshot relati
 
 - `RQ64`/`RQ71` own backend null and boolean evidence semantics.
 - `RQ145` owns broader parity; this prompt only repairs the size-curve panel state projection.
-- `RQ177` is now the single current `READY` item.
+- `RQ178` is now the single current `READY` item.
+
+### Completion note
+
+- Date: 2026-09-07
+- Status: DONE
+- Completion: `SizeCurvePanel` now distinguishes an unavailable/missing snapshot relation from a successful empty snapshot, preserves partial warning state beside populated data, maps warning tokens to safe Serbian copy and keeps complete size-curve data on the visualization path.
+- Changed files: `Klijent/clientapp/src/components/inventory/SizeCurvePanel.tsx`; `Klijent/clientapp/src/components/inventory/SizeCurvePanel.spec.tsx`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-07-RQ177-evidence.md`
+- Checks run: failing-first focused test reproduced the old merged state; focused RQ177 test passed 4/4; adjacent inventory tests passed 8/8; `npm run check:analytics-guardrails`; direct `npx vite build --logLevel info`; `git diff --check`; prompt-queue, agent-instruction and planning-architecture validators plus self-tests passed.
+- Checks not run: live browser deployment, database/materializer proof and full repository test suite.
+- Run log: `.ai/runs/2026-09-07-RQ177-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: feature branch `codex/rq177-size-curve-empty-error-state`, pushed and merged into `main` per request.
+- Main commit SHA: `35a58fc38c74519965a7fbf4691fd1ac37504002` (feature implementation commit; main verification follows the requested merge/push).
+- Main verification: recorded after the local fast-forward merge and `origin/main` push in the final delivery verification.
+- Missed: live provider/database/materializer/browser proof remains outside this bounded panel-state task.
+- Follow-up: `RQ178` - add backend-owned actionability and safe user copy to inventory signal snapshots.
+- Residual risk: `SKUDetailModal` retains its separate size-curve projection and should be reconciled if it becomes part of the same user-facing state contract; this task stayed bounded to `SizeCurvePanel`.
+- Prompt defect / scope repair: no prompt defect; the existing backend `snapshotAvailable`, `items` and `warning` fields were sufficient, so no API/schema change was introduced.
 
 ---
 
 ## RQ178 - Add backend-owned actionability and safe copy to inventory signal snapshots
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: backend/contract/frontend/tests
 Feature family: inventory-snapshot-safe-actionability
@@ -6099,7 +6117,7 @@ Inventory alerts and rebalance rows preserve nullable evidence, but their DTOs d
 
 - `RQ143`/`RQ145` remain broad owners; this prompt is the bounded inventory snapshot slice.
 - `RQ64`-`RQ71` remain the completed nullable evidence foundation.
-- Keep this prompt `WAITING` while `RQ154` is the sole `READY` item.
+- `RQ178` is now the single current `READY` item.
 
 ---
 
