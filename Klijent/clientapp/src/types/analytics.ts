@@ -1455,6 +1455,13 @@ export interface SizeCurveDto {
   items: SizeCurvePointDto[];
 }
 
+export interface InventorySnapshotRowState {
+  status: "actionable" | "blocked" | string;
+  recommendationAllowed: boolean;
+  dataQualityStatus: "good" | "warning" | "critical" | "insufficient_data" | string;
+  reasonLabel: string;
+}
+
 // ── Rebalancing ───────────────────────────────────────────────────────────────
 
 export interface RebalanceSuggestionDto {
@@ -1465,9 +1472,10 @@ export interface RebalanceSuggestionDto {
   recommendedQty: number | null;
   urgency: string | null;              // 'urgent' | 'recommended' | 'optional'
   confidence: number | null;           // 0–1
-  reason: string;
+  reason: string | null;
   expectedSavedSales: number | null;   // RSD
   expectedCapitalRelease: number | null;
+  actionability?: InventorySnapshotRowState | null;
 }
 
 export interface RebalanceListDto {
@@ -1495,6 +1503,7 @@ export interface InventoryAlertDto {
   title: string;
   message: string;
   confidenceScore: number | null;
+  actionability?: InventorySnapshotRowState | null;
 }
 
 export interface InventoryAlertListDto {

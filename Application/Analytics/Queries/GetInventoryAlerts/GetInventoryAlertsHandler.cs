@@ -71,15 +71,19 @@ public sealed class GetInventoryAlertsHandler
             while (await reader.ReadAsync(ct))
             {
                 totalMatchingCount = Convert.ToInt32(reader.GetInt64(8));
+                var alertType = reader.GetString(0);
+                var severity = reader.GetNullableString(4);
+                var confidenceScore = reader.GetNullableDecimal(7);
                 items.Add(new InventoryAlertDto(
-                    AlertType: reader.GetString(0),
+                    AlertType: alertType,
                     SkuId: reader.GetInt32(1),
                     StoreId: reader.GetInt32(2),
                     SizeCode: reader.IsDBNull(3) ? null : reader.GetString(3),
-                    Severity: reader.GetNullableString(4),
+                    Severity: severity,
                     Title: reader.GetString(5),
                     Message: reader.GetString(6),
-                    ConfidenceScore: reader.GetNullableDecimal(7)));
+                    ConfidenceScore: confidenceScore,
+                    Actionability: InventorySnapshotRowStateResolver.ForAlert(alertType, severity, confidenceScore)));
             }
 
             var returnedCount = items.Count;

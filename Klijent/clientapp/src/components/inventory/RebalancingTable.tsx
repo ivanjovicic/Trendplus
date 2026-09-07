@@ -1,7 +1,7 @@
 ﻿import { ArrowRightLeft } from "lucide-react";
 import type { RebalanceListDto, StoreOption } from "../../types/analytics";
 import { fmtNumber } from "../../utils/analyticsFormatters";
-import { formatCurrency, formatSignalCountBadge, getRebalanceUrgencyTone } from "./inventoryUtils";
+import { formatCurrency, formatInventorySnapshotWarning, formatSignalCountBadge, getRebalanceUrgencyTone, inventorySnapshotRowReasonLabel, inventorySnapshotRowStatusLabel } from "./inventoryUtils";
 import type { InventoryRow } from "./types";
 
 type RebalancingTableProps = {
@@ -51,7 +51,8 @@ export function RebalancingTable({
         </div>
       ) : !rebalance?.snapshotAvailable ? (
         <div className="mt-4 rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">
-          {rebalanceLoading ? "Učitavam predloge za redistribuciju..." : "Redistribucija nije dostupna. Snapshot tabela je prazna."}
+          <div>{rebalanceLoading ? "Učitavam predloge za redistribuciju..." : "Redistribucija nije dostupna. Snapshot tabela nije dostupna."}</div>
+          {formatInventorySnapshotWarning(rebalance?.warning) ? <div className="mt-2 text-xs text-warning">{formatInventorySnapshotWarning(rebalance?.warning)}</div> : null}
         </div>
       ) : (rebalance.items ?? []).length === 0 ? (
         <div className="mt-4 rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">
@@ -95,7 +96,10 @@ export function RebalancingTable({
                       <td className="px-4 py-3 text-[var(--text-primary)]">{item.sizeCode}</td>
                       <td className="px-4 py-3 text-right font-semibold text-foreground">{fmtNumber(item.recommendedQty)}</td>
                       <td className="px-4 py-3 text-right text-[var(--text-primary)]">{formatCurrency(item.expectedSavedSales)}</td>
-                      <td className="max-w-[220px] truncate px-4 py-3 text-[var(--text-primary)]">{item.reason}</td>
+                      <td className="max-w-[260px] px-4 py-3 text-[var(--text-primary)]">
+                        <div>{inventorySnapshotRowReasonLabel(item.actionability)}</div>
+                        <div className="mt-1 text-[11px] text-muted">{inventorySnapshotRowStatusLabel(item.actionability)}</div>
+                      </td>
                       <td className="px-4 py-3 text-right">
                         <button type="button" aria-label={`Uporedi lokacije ${fromStore} i ${toStore}`} onClick={() => onCompareStores(item.fromStoreId, item.toStoreId)} className="rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-2.5 py-1 text-[11px] font-semibold text-[var(--text-primary)] transition-all duration-200 hover:border-[var(--border-default)] hover:bg-[var(--surface-light)] hover:text-foreground hover:shadow-md focus:outline-none focus-visible:border-[var(--border-default)] focus-visible:ring-2 focus-visible:ring-[var(--theme-color-44d0ff, #44d0ff)] focus-visible:ring-opacity-30">
                           Uporedi lokacije
@@ -109,7 +113,7 @@ export function RebalancingTable({
           </div>
         </div>
       )}
-      {rebalance?.warning ? <p className="mt-3 text-xs text-warning">Napomena: {rebalance.warning}</p> : null}
+      {formatInventorySnapshotWarning(rebalance?.warning) ? <p className="mt-3 text-xs text-warning">Napomena: {formatInventorySnapshotWarning(rebalance?.warning)}</p> : null}
     </section>
   );
 }

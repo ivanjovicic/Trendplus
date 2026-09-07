@@ -1,4 +1,5 @@
 using MediatR;
+using Application.Analytics.Queries;
 
 namespace Application.Analytics.Queries.GetRebalanceSuggestions;
 
@@ -18,9 +19,10 @@ public sealed record RebalanceSuggestionDto(
     int? RecommendedQty,
     string? Urgency,
     decimal? Confidence,
-    string Reason,
+    string? Reason,
     decimal? ExpectedSavedSales,
-    decimal? ExpectedCapitalRelease
+    decimal? ExpectedCapitalRelease,
+    InventorySnapshotRowState Actionability
 );
 
 public sealed record RebalanceSuggestionListDto(

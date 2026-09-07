@@ -1,7 +1,7 @@
 ﻿import { AlertTriangle } from "lucide-react";
 import type { InventoryAlertListDto } from "../../types/analytics";
 import { fmtPctFromRatio } from "../../utils/analyticsFormatters";
-import { formatSignalCountBadge, getAlertSeverityTone } from "./inventoryUtils";
+import { formatInventorySnapshotWarning, formatSignalCountBadge, getAlertSeverityTone, inventorySnapshotRowReasonLabel, inventorySnapshotRowStatusLabel } from "./inventoryUtils";
 
 type InventoryAlertsFeedProps = {
   alerts: InventoryAlertListDto | null;
@@ -63,7 +63,7 @@ export function InventoryAlertsFeed({
       ) : !alerts?.snapshotAvailable ? (
         <div className="mt-4 rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">
           {alertsLoading ? "Učitavam upozorenja..." : "Upozorenja nisu dostupna. Snapshot tabela je prazna ili nije pokrenuta analitika."}
-          {alerts?.warning ? <div className="mt-2 text-xs text-warning">{alerts.warning}</div> : null}
+          {formatInventorySnapshotWarning(alerts?.warning) ? <div className="mt-2 text-xs text-warning">{formatInventorySnapshotWarning(alerts?.warning)}</div> : null}
         </div>
       ) : (
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -73,14 +73,16 @@ export function InventoryAlertsFeed({
                 <div className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${alert.severity ? getAlertSeverityTone(alert.severity) : "border-dashed border-border bg-surface text-muted"}`}>
                   {alert.severity === "critical" ? "Kritično" : alert.severity === "warning" ? "Upozorenje" : alert.severity === "info" ? "Info" : "Nepoznato"}
                 </div>
-                <div className="rounded-full border border-border bg-surface px-2 py-0.5 text-[11px] font-semibold text-muted">
-                  {fmtPctFromRatio(alert.confidenceScore)}
-                </div>
+                {alert.actionability?.recommendationAllowed === true && alert.actionability.dataQualityStatus === "good" && alert.confidenceScore != null && Number.isFinite(alert.confidenceScore) ? (
+                  <div className="rounded-full border border-border bg-surface px-2 py-0.5 text-[11px] font-semibold text-muted">
+                    {fmtPctFromRatio(alert.confidenceScore)}
+                  </div>
+                ) : <div aria-label="Pouzdanost nije dostupna" className="rounded-full border border-dashed border-border bg-surface px-2 py-0.5 text-[11px] font-semibold text-muted">N/A</div>}
               </div>
               <div className="mt-3 text-sm font-semibold text-foreground">{alert.title}</div>
               <div className="mt-1 text-xs leading-5 text-muted">{alert.message}</div>
+              <div className="mt-2 text-xs text-muted">{inventorySnapshotRowStatusLabel(alert.actionability)} · {inventorySnapshotRowReasonLabel(alert.actionability)}</div>
               <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted">
-                <span>Tip: {alert.alertType}</span>
                 {alert.sizeCode ? <span>Vel: {alert.sizeCode}</span> : null}
                 <button type="button" aria-label={`Otvori detalj artikla za alert ${alert.title}`} onClick={(event) => { event.stopPropagation(); onOpenDetail(alert.skuId, alert.storeId, alert.title); }} className="text-muted transition hover:text-foreground">
                   Detalj artikla -&gt;
@@ -96,7 +98,7 @@ export function InventoryAlertsFeed({
           ) : null}
         </div>
       )}
-      {alerts?.warning ? <p className="mt-3 text-xs text-warning">Napomena: {alerts.warning}</p> : null}
+      {formatInventorySnapshotWarning(alerts?.warning) ? <p className="mt-3 text-xs text-warning">Napomena: {formatInventorySnapshotWarning(alerts?.warning)}</p> : null}
     </section>
   );
 }

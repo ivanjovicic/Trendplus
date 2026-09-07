@@ -42,7 +42,7 @@ public sealed class GetRebalanceSuggestionsHandler
                 recommended_qty,
                 urgency,
                 confidence,
-                coalesce(reason, 'snapshot') as reason,
+                reason,
                 expected_saved_sales,
                 expected_capital_release,
                 count(*) over() as total_matching_count
@@ -68,17 +68,30 @@ public sealed class GetRebalanceSuggestionsHandler
             while (await reader.ReadAsync(ct))
             {
                 totalMatchingCount = Convert.ToInt32(reader.GetInt64(10));
+                var urgency = reader.GetNullableString(5);
+                var confidence = reader.GetNullableDecimal(6);
+                var reason = reader.GetNullableString(7);
+                var recommendedQty = reader.GetNullableInt32(4);
+                var expectedSavedSales = reader.GetNullableDecimal(8);
+                var expectedCapitalRelease = reader.GetNullableDecimal(9);
                 items.Add(new RebalanceSuggestionDto(
                     FromStoreId: reader.GetInt32(0),
                     ToStoreId: reader.GetInt32(1),
                     SkuId: reader.GetInt32(2),
                     SizeCode: reader.GetString(3),
-                    RecommendedQty: reader.GetNullableInt32(4),
-                    Urgency: reader.GetNullableString(5),
-                    Confidence: reader.GetNullableDecimal(6),
-                    Reason: reader.GetString(7),
-                    ExpectedSavedSales: reader.GetNullableDecimal(8),
-                    ExpectedCapitalRelease: reader.GetNullableDecimal(9)));
+                    RecommendedQty: recommendedQty,
+                    Urgency: urgency,
+                    Confidence: confidence,
+                    Reason: reason,
+                    ExpectedSavedSales: expectedSavedSales,
+                    ExpectedCapitalRelease: expectedCapitalRelease,
+                    Actionability: InventorySnapshotRowStateResolver.ForRebalance(
+                        urgency,
+                        confidence,
+                        reason,
+                        recommendedQty,
+                        expectedSavedSales,
+                        expectedCapitalRelease)));
             }
 
             var returnedCount = items.Count;

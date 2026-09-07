@@ -1,4 +1,5 @@
 using MediatR;
+using Application.Analytics.Queries;
 
 namespace Application.Analytics.Queries.GetInventoryAlerts;
 
@@ -17,7 +18,8 @@ public sealed record InventoryAlertDto(
     string? Severity,
     string Title,
     string Message,
-    decimal? ConfidenceScore
+    decimal? ConfidenceScore,
+    InventorySnapshotRowState Actionability
 );
 
 public sealed record InventoryAlertListDto(
