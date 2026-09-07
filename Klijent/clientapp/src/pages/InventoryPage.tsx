@@ -88,6 +88,52 @@ function resolveLatestTimestamp(values: Array<string | null | undefined>): strin
   return latest?.value ?? null;
 }
 
+type SnapshotFreshnessSource = {
+  timestamp?: string | null;
+  status?: string | null;
+};
+
+type SecondarySnapshotFreshness = {
+  timestamp: string | null;
+  status: "fresh" | "stale" | "critical" | "unknown";
+};
+
+function normalizeSnapshotFreshnessStatus(value: string | null | undefined): SecondarySnapshotFreshness["status"] {
+  const normalized = (value ?? "").trim().toLowerCase();
+  if (normalized === "trusted" || normalized === "fresh") return "fresh";
+  if (normalized === "stale") return "stale";
+  if (normalized === "critical") return "critical";
+  return "unknown";
+}
+
+function resolveSecondarySnapshotFreshness(sources: SnapshotFreshnessSource[]): SecondarySnapshotFreshness {
+  const normalized = sources.map((source) => ({
+    timestamp: source.timestamp ?? null,
+    status: normalizeSnapshotFreshnessStatus(source.status),
+  }));
+  const status = normalized.some((source) => source.status === "critical")
+    ? "critical"
+    : normalized.some((source) => source.status === "stale")
+      ? "stale"
+      : normalized.some((source) => source.status === "fresh")
+        ? "fresh"
+        : "unknown";
+  const timestamp = resolveLatestTimestamp(
+    normalized
+      .filter((source) => source.status !== "unknown")
+      .map((source) => source.timestamp),
+  );
+
+  return { timestamp, status };
+}
+
+function snapshotFreshnessLabel(status: SecondarySnapshotFreshness["status"]): string {
+  if (status === "fresh") return "potvrđeno svež";
+  if (status === "stale") return "zastareo";
+  if (status === "critical") return "kritično zastareo";
+  return "nepoznat";
+}
+
 function resolveInventoryExpectedImpactRsd(row: InventoryRow): number | null {
   if (row.estimatedValue != null) {
     return row.estimatedValue;
@@ -659,16 +705,16 @@ export default function InventoryPage() {
     () => ([pageData?.meta, balance?.meta, insights?.meta].filter((meta): meta is AnalyticsResponseMeta => Boolean(meta))),
     [balance?.meta, insights?.meta, pageData?.meta],
   );
-  const secondaryPanelTimestamps = useMemo(
-    () => resolveLatestTimestamp([
-      actionWorkflow?.generatedAtUtc,
-      forecast?.generatedAtUtc,
-      alerts?.generatedAtUtc,
-      rebalance?.generatedAtUtc,
-      storeComparison?.generatedAtUtc,
+  const secondaryPanelFreshness = useMemo(
+    () => resolveSecondarySnapshotFreshness([
+      { timestamp: forecast?.snapshotFreshnessUtc, status: forecast?.provenanceStatus },
+      { timestamp: alerts?.snapshotFreshnessUtc, status: alerts?.snapshotFreshnessStatus },
+      { timestamp: rebalance?.snapshotFreshnessUtc, status: rebalance?.snapshotFreshnessStatus },
+      { timestamp: sizeCurve?.snapshotFreshnessUtc, status: sizeCurve?.snapshotFreshnessStatus },
     ]),
-    [actionWorkflow?.generatedAtUtc, alerts?.generatedAtUtc, forecast?.generatedAtUtc, rebalance?.generatedAtUtc, storeComparison?.generatedAtUtc],
+    [alerts?.snapshotFreshnessStatus, alerts?.snapshotFreshnessUtc, forecast?.provenanceStatus, forecast?.snapshotFreshnessUtc, rebalance?.snapshotFreshnessStatus, rebalance?.snapshotFreshnessUtc, sizeCurve?.snapshotFreshnessStatus, sizeCurve?.snapshotFreshnessUtc],
   );
+  const secondaryPanelsSettled = !forecastLoading && !alertsLoading && !rebalanceLoading && !sizeCurveLoading;
   const primaryRefreshAt = useMemo(
     () => resolveLatestTimestamp(primaryInventoryMetas.map((meta) => meta.lastRefreshAtUtc ?? null)),
     [primaryInventoryMetas],
@@ -701,24 +747,29 @@ export default function InventoryPage() {
     && (hasActivePrimaryFilters || emptyReasonCode.includes("filter"));
   const showEmptyState = !loading && !error && pageData != null && (showInsufficientEmptyState || totalCount === 0);
   const freshnessLineageNote = useMemo(() => {
-    if (!secondaryPanelTimestamps) {
+    if (!secondaryPanelsSettled) {
       return null;
     }
 
+    const freshnessLabel = snapshotFreshnessLabel(secondaryPanelFreshness.status);
+    if (!secondaryPanelFreshness.timestamp) {
+      return `Sekundarni inventory snapshoti imaju status svežine „${freshnessLabel}“. Vreme odgovora nije poslednje uspešno osvežavanje.`;
+    }
+
     if (!primaryRefreshAt) {
-      return `Sekundarni paneli imaju zasebnu svežinu: ${formatDateTime(secondaryPanelTimestamps)}. Primarni bilans nema potvrđen refresh.`;
+      return `Sekundarni paneli imaju ${freshnessLabel} svežinu: ${formatDateTime(secondaryPanelFreshness.timestamp)}. Primarni bilans nema potvrđen refresh.`;
     }
 
     const primaryTime = new Date(primaryRefreshAt).getTime();
-    const secondaryTime = new Date(secondaryPanelTimestamps).getTime();
+    const secondaryTime = new Date(secondaryPanelFreshness.timestamp).getTime();
     const deltaMinutes = Math.abs(secondaryTime - primaryTime) / 60000;
 
     if (deltaMinutes < 30) {
       return null;
     }
 
-    return `Primarni bilans je osvežen ${formatDateTime(primaryRefreshAt)}, a sekundarni paneli ${formatDateTime(secondaryPanelTimestamps)}.`;
-  }, [primaryRefreshAt, secondaryPanelTimestamps]);
+    return `Primarni bilans je osvežen ${formatDateTime(primaryRefreshAt)}, a sekundarni snapshoti (${freshnessLabel}) ${formatDateTime(secondaryPanelFreshness.timestamp)}.`;
+  }, [primaryRefreshAt, secondaryPanelFreshness, secondaryPanelsSettled]);
   const signalSearchLineageNote = searchInput.trim().length > 0
     ? "Napomena: tekst pretraga ne utiče na prognozu, upozorenja i redistribuciju; ti paneli slede samo prodavnicu i dobavljača."
     : null;

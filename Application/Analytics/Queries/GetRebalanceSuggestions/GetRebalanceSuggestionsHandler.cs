@@ -97,6 +97,8 @@ public sealed class GetRebalanceSuggestionsHandler
                 TotalMatchingCount: totalMatchingCount,
                 IsTruncated: totalMatchingCount > returnedCount,
                 SnapshotAvailable: true,
+                SnapshotFreshnessUtc: null,
+                SnapshotFreshnessStatus: InventorySnapshotFreshness.Unknown,
                 Warning: items.Count == 0
                     ? "Rebalance snapshot postoji, ali nema predloga za trazene filtere."
                     : hasMissingEvidence ? "Rebalance snapshot sadrzi redove sa nepotpunom signalnom evidencijom." : null,
@@ -112,6 +114,8 @@ public sealed class GetRebalanceSuggestionsHandler
                 TotalMatchingCount: 0,
                 IsTruncated: false,
                 SnapshotAvailable: false,
+                SnapshotFreshnessUtc: null,
+                SnapshotFreshnessStatus: InventorySnapshotFreshness.Unknown,
                 Warning: "Rebalance snapshot jos nije dostupan.",
                 Items: []);
         }

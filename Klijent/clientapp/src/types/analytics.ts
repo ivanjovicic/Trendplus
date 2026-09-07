@@ -1448,6 +1448,9 @@ export interface SizeCurveDto {
   totalMatchingCount?: number | null;
   isTruncated?: boolean | null;
   snapshotAvailable: boolean;
+  /** Proven source snapshot freshness; null/unknown when lineage is unavailable. */
+  snapshotFreshnessUtc?: string | null;
+  snapshotFreshnessStatus?: "fresh" | "stale" | "critical" | "unknown" | string | null;
   warning?: string | null;
   items: SizeCurvePointDto[];
 }
@@ -1474,6 +1477,9 @@ export interface RebalanceListDto {
   totalMatchingCount?: number | null;
   isTruncated?: boolean | null;
   snapshotAvailable: boolean;
+  /** Proven source snapshot freshness; null/unknown when lineage is unavailable. */
+  snapshotFreshnessUtc?: string | null;
+  snapshotFreshnessStatus?: "fresh" | "stale" | "critical" | "unknown" | string | null;
   warning?: string | null;
   items: RebalanceSuggestionDto[];
 }
@@ -1498,6 +1504,9 @@ export interface InventoryAlertListDto {
   totalMatchingCount?: number | null;
   isTruncated?: boolean | null;
   snapshotAvailable: boolean;
+  /** Proven source snapshot freshness; null/unknown when lineage is unavailable. */
+  snapshotFreshnessUtc?: string | null;
+  snapshotFreshnessStatus?: "fresh" | "stale" | "critical" | "unknown" | string | null;
   warning?: string | null;
   items: InventoryAlertDto[];
 }
