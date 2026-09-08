@@ -2,7 +2,7 @@
 
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ211 (claimed; IN_PROGRESS)
+Current READY prompt: none
 
 Owner promotion 2026-09-08: `RQ209` was explicitly promoted by the user after completed `RQ208` and is claimed in this workspace.
 
@@ -164,7 +164,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ208 | DONE | period-timezone-boundary-safety | Dashboard per-day KPIs use local day count |
 | RQ209 | DONE | database-migration-orchestration | Dual concurrent EF migration paths cause race condition |
 | RQ210 | DONE | startup-readiness-gate | Startup init silently skipped after lock timeout |
-| RQ211 | IN_PROGRESS | migration-sequencing | Parallel SQL migrations without ordering guarantees |
+| RQ211 | DONE | migration-sequencing | Parallel SQL migrations without ordering guarantees |
 | RQ212 | WAITING | migration-failure-safety | Migration failures swallowed; app runs on drifted schema |
 | RQ213 | WAITING | migration-reversibility | EF migration Down() drops fact tables without backup |
 | RQ214 | WAITING | seed-data-consistency | Seed sales created without decrementing stock |
@@ -8337,7 +8337,7 @@ If advisory startup lock not acquired within 120s, database init skipped with on
 
 ## RQ211 - Parallel SQL migrations without ordering guarantees
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/infra
 Feature family: migration-sequencing
@@ -8386,6 +8386,25 @@ Migrations 012, 017, 019 run in parallel via `Task.WhenAll`; failures logged but
 ### Acceptance
 
 - All migrations complete or startup fails; no partial state.
+
+### Completion note
+
+- Date: 2026-09-08
+- Status: DONE
+- Completion: Startup migrations 012, 017 and 019 now execute in explicit dependency order, with missing/lock-timeout failures propagated to the deferred startup owner for host shutdown.
+- Changed files: `Infrastructure/Seed/DatabaseInitializer.cs`, `Api/Services/Startup/DeferredStartupTasksHostedService.cs`, `Api.Tests/DatabaseMigrationOwnershipTests.cs`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-08-RQ211-evidence.md`.
+- Contract/runtime behavior changed: 012 -> 017 -> 019 is sequential; each dependent migration verifies its predecessor in startup SQL history; required script and relation-lock failures no longer become a successful startup completion.
+- Checks run: API build (0 errors, 104 existing warnings), DatabaseMigrationOwnershipTests (4/4), DatabaseInitializerP0IntegrationTests (5/5 under the existing fixture convention), `git diff --check`, and all six agent/queue/planning governance checks passed.
+- Checks not run: live PostgreSQL migration ordering/multi-instance proof because Docker/Testcontainers was unavailable locally, full backend suite, production startup smoke and remote CI.
+- Run log: `.ai/runs/2026-09-08-RQ211-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `54d69117a255a2811f027eb018119eb9a48cc9f9`
+- Main verification: passed - final `git rev-parse HEAD` equals `git rev-parse origin/main`, and implementation SHA `54d69117a255a2811f027eb018119eb9a48cc9f9` is an ancestor of both.
+- Missed: no live multi-instance PostgreSQL proof was available locally.
+- Follow-up: RQ212 remains WAITING for broader migration failure propagation; RQ213 remains WAITING for migration reversibility. No current READY prompt is auto-promoted.
+- Residual risk: staging/CI should execute ordered migrations against existing production schema variants and concurrent application instances.
+- Prompt defect / scope repair: the legacy RQ211 prompt omitted Scope, Read first, Tests and Dependencies; those required sections were added, and propagation was bounded to the required 012/017/019 sequence while leaving RQ212-owned broader failures separate.
 
 ---
 
