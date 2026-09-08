@@ -7339,10 +7339,10 @@ Commit suggestion: `fix(pilot-readiness): sequence signal loads`
 - Checks run: focused Pilot Readiness tests (3 files/19 tests), `npm run check:analytics-guardrails`, `npm run build`, `git diff --check`, `node scripts/check-agent-instructions.mjs`, `node scripts/check-prompt-queues.mjs`, `node scripts/check-planning-architecture.mjs`.
 - Checks not run: full frontend suite, backend tests/build, live browser/provider/deployed proof and remote CI; see durable run log.
 - Run log: `.ai/runs/2026-09-08-RQ195-pilot-readiness-request-sequencing-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: local merge
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `af9c189791e7fbf508ab769b92b78514d0b98ab0`
+- Main verification: passed - local `main` and `origin/main` both resolve to `af9c189791e7fbf508ab769b92b78514d0b98ab0`; implementation commit `fceea00f` is contained in `origin/main`.
 - Missed: no live browser or deployed runtime proof.
 - Follow-up: none for RQ195.
 - Residual risk: network cancellation remains cooperative; stale results are blocked when applying state.

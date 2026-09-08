@@ -4,9 +4,9 @@ Date: 2026-09-08
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: codex/rq195-pilot-readiness-request-sequencing-20260908 / local merge
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: af9c189791e7fbf508ab769b92b78514d0b98ab0
+Main verification: passed - local main and origin/main both resolve to af9c189791e7fbf508ab769b92b78514d0b98ab0; the implementation commit fceea00f is contained in origin/main.
+Evidence state: synchronized
 
 ## What was done
 - The user explicitly promoted RQ195 after RQ194; it was claimed in this workspace and completed within the Pilot Readiness frontend owner boundary.
