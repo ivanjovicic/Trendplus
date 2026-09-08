@@ -6784,7 +6784,7 @@ Velocity is computed as `units / COUNT(active sale days)` or `units / active_day
 - Checks not run: live PostgreSQL endpoint/browser proof and full suites; the Product Decision Center focused Vitest command did not exit after initialization and was cancelled, while guardrails/typecheck passed.
 - Run log: `.ai/runs/2026-09-08-RQ185-velocity-semantics-evidence.md`.
 - Main commit SHA: `b1ab70ab48ffd4676fd083b2f3f37a1269656d0f`.
-- Main verification: pending push verification.
+- Main verification: passed - `origin/main` at `6928a8f8f5406fb56ccc722a0e8e654bee2cf977` contains merge SHA `b1ab70ab48ffd4676fd083b2f3f37a1269656d0f`.
 - Delivery mode: direct-main local merge and push; exact merge SHA and `origin/main` verification are synchronized in the evidence log after delivery.
 - Analytics safety gate: backend SQL remains the decision source of truth; no fake-zero or fallback behavior was introduced; the divisor and units are explicit on every affected surface.
 - Prompt defect/scope repair: the queue evidence line references were stale after RQ184's line shifts; implementation was verified against current producers. Separate Insight Studio velocity remains outside this prompt's contract.
