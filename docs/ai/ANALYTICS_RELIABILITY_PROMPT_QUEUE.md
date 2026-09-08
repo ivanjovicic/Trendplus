@@ -3,7 +3,7 @@
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
-Owner promotion 2026-09-07: RQ183 was the next safe inventory contract slice after RQ182 and is now complete; no further prompt was promoted automatically.
+Owner promotion 2026-09-08: RQ184 was explicitly promoted by the user as the next safe parallel-safe backend inventory contract slice after RQ183 and is now complete; no further prompt was promoted automatically.
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
@@ -105,7 +105,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ169 | DONE | data-quality-empty-readiness | Keep empty intake data from receiving a numeric readiness score or green label |
 | RQ170 | DONE | data-quality-report-period-state | Reject invalid pilot-intake report periods instead of silently swapping or defaulting them |
 | RQ183 | DONE | inventory-opening-stock-proof | Journal-derived opening stock for sell-through denominator integrity |
-| RQ184 | WAITING | velocity-divisor-accuracy | Fixed 30-day divisor for inventory velocity miscalculation |
+| RQ184 | DONE | velocity-divisor-accuracy | Fixed 30-day divisor for inventory velocity miscalculation |
 | RQ185 | WAITING | velocity-active-days-semantics | "Velocity per day" label with active-selling-days divisor confusion |
 | RQ186 | WAITING | pdc-lost-sales-arithmetic | Product Decision lost-sales formula ignores velocity |
 | RQ187 | WAITING | cache-meta-freshness-truth | Cache write time published as LastRefreshAtUtc on cache hits |
@@ -6656,12 +6656,14 @@ Cached inventory list and Product Decision Center infer `openingStockUnits = cur
 
 ## RQ184 - Fixed 30-day divisor for inventory velocity miscalculation
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend/tests
 Feature family: velocity-divisor-accuracy
 Parallel-safe: yes
 Owner: Analytics
+
+Promotion/claim note: 2026-09-08 - explicitly promoted by the user after the queue reported no current READY prompt; claimed in this workspace with `.ai/task-locks/RQ184-codex.lock.md`.
 
 Commit suggestion: `fix(analytics): use actual elapsed days or active selling span for velocity divisor`
 
@@ -6694,6 +6696,38 @@ Sales are counted over `UtcNow.AddDays(-30)`, but `avgDailySalesUnits` always di
 
 - Velocity divisor matches actual elapsed days in the query window.
 - Stock-cover and replenishment signals reflect correct daily run-rate.
+
+### Completion note
+
+- Date: 2026-09-08
+- Status: DONE
+- Completion: Cached inventory-list velocity now uses one explicit half-open UTC window `[start, end)` and divides by its actual elapsed duration; future sales and invalid windows cannot silently become velocity evidence.
+- Changed files: `Api/Endpoints/CachedAnalyticsEndpoints.cs`, `Api.Tests/CachedInventoryVelocityTests.cs`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `.ai/runs/2026-09-08-RQ184-velocity-divisor-evidence.md`.
+- Contract/runtime behavior changed: `avgDailySalesUnits` is derived from the actual UTC window duration instead of a fixed `30m`; `end` is exclusive and invalid/negative evidence returns unavailable from the focused helper.
+- Checks run: focused and inventory-list integration tests 13/13 passed; Release API build passed with 0 errors; agent-instruction, prompt-queue and planning-architecture validators passed; `git diff --check` passed.
+- Checks not run: full repository suite, live database/refresh/browser/deployed proof and remote CI; not required for this bounded backend calculation and remain external/runtime evidence.
+- Run log: `.ai/runs/2026-09-08-RQ184-velocity-divisor-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: no live provider proof or broader active-selling-days semantic change; those remain outside RQ184.
+- Follow-up: RQ185 remains WAITING for the separate calendar-days versus active-selling-days contract.
+- Residual risk: existing unrelated analyzer warnings and other velocity producers remain outside the cached inventory-list scope.
+- Next: none; keep RQ185 WAITING until explicitly promoted.
+- Prompt defect / scope repair: the prompt's evidence line referenced stale source line numbers (`:596`, `:631`); current fixed-divisor code was located at the inventory-list calculation and the implementation stayed within the declared scope.
+
+Analytics safety gate:
+- Source of truth: `CachedAnalyticsEndpoints` inventory-list sales query and its captured UTC `[start, end)` window.
+- Contract changed? yes, divisor and upper-bound semantics are now explicit; response shape is unchanged.
+- Unit/denominator: sold units divided by elapsed UTC days in the half-open sales window.
+- True zero case: zero sold units remains `0` units/day and existing no-velocity signal behavior.
+- Missing/unknown case: invalid/negative evidence or non-positive window returns unavailable from the helper; the endpoint fails through its existing error path rather than substituting zero.
+- No-baseline case: not applicable; this is a direct elapsed-window rate.
+- Freshness/fallback case: no fallback introduced; the captured query window is explicit and cache behavior is unchanged.
+- Surfaces affected: cached inventory list stock-cover and replenishment/slow-stock signals; no frontend or export contract changed.
+- Tests proving table/detail/export/action parity: not applicable to this backend-only divisor slice; inventory-list integration coverage passed.
+- Stop condition hit? no.
 
 ---
 

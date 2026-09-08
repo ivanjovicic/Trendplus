@@ -46,6 +46,26 @@ public static class CachedAnalyticsEndpoints
         "Subota"
     };
 
+    /// <summary>
+    /// Calculates units per day for the half-open UTC sales window [start, end).
+    /// The divisor is the actual elapsed duration so callers cannot accidentally
+    /// report a fixed 30-day rate for a shorter or longer query window.
+    /// </summary>
+    internal static decimal? CalculateAverageDailySalesUnits(
+        int soldUnits,
+        DateTime windowStartUtc,
+        DateTime windowEndUtc)
+    {
+        if (soldUnits < 0 || windowEndUtc <= windowStartUtc)
+            return null;
+
+        var elapsedDays = (decimal)(windowEndUtc - windowStartUtc).TotalDays;
+        if (elapsedDays <= 0m)
+            return null;
+
+        return Math.Round(soldUnits / elapsedDays, 4, MidpointRounding.AwayFromZero);
+    }
+
     public static void MapCachedAnalyticsEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/analytics/cached")
@@ -634,12 +654,15 @@ public static class CachedAnalyticsEndpoints
                             .ToListAsync(ct);
 
                         var articleIds = rawItems.Select(item => item.Id).ToArray();
-                        var salesFromDate = DateTime.UtcNow.AddDays(-30);
+                        // Inventory velocity uses one explicit half-open UTC window.
+                        var salesWindowEndUtc = DateTime.UtcNow;
+                        var salesWindowStartUtc = salesWindowEndUtc.AddDays(-30);
                         var soldUnitsByArticle = await (
                             from pz in db.ProdajaZaglavlja.AsNoTracking()
                             join ps in db.ProdajaStavke.AsNoTracking() on pz.Id equals ps.IdProdaja
                             where articleIds.Contains(ps.IdArtikal)
-                                  && pz.DatumProdaje >= salesFromDate
+                                  && pz.DatumProdaje >= salesWindowStartUtc
+                                  && pz.DatumProdaje < salesWindowEndUtc
                                   && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
                             group ps by ps.IdArtikal
                             into g
@@ -654,8 +677,8 @@ public static class CachedAnalyticsEndpoints
                             db,
                             articleIds,
                             storeId,
-                            salesFromDate,
-                            DateTime.UtcNow,
+                            salesWindowStartUtc,
+                            salesWindowEndUtc,
                             normalizedDataScope,
                             ct);
 
@@ -672,7 +695,14 @@ public static class CachedAnalyticsEndpoints
                                 : (int?)null;
                             var hasReliableSellThroughInputs = openingStockUnits.HasValue
                                 && (openingStockUnits.Value > 0 || movementWindowStats.InboundUnits > 0);
-                            var avgDailySalesUnits = Math.Round(soldUnits30d / 30m, 4, MidpointRounding.AwayFromZero);
+                            var avgDailySalesUnits = CalculateAverageDailySalesUnits(
+                                soldUnits30d,
+                                salesWindowStartUtc,
+                                salesWindowEndUtc);
+                            if (!avgDailySalesUnits.HasValue)
+                            {
+                                throw new InvalidOperationException("Invalid inventory sales window.");
+                            }
                             var hasSufficientData = soldUnits30d > 0 || quantity > 0 || hasReliableSellThroughInputs;
                             var signalDataQuality = soldUnits30d > 0 && hasReliableSellThroughInputs
                                 ? "good"
@@ -682,7 +712,7 @@ public static class CachedAnalyticsEndpoints
 
                             var signal = InventorySignalCalculator.Calculate(
                                 currentOnHandUnits: quantity,
-                                avgDailySalesUnits: avgDailySalesUnits,
+                                avgDailySalesUnits: avgDailySalesUnits.Value,
                                 soldUnits: soldUnits30d,
                                 openingStockUnits: openingStockUnits,
                                 inboundUnits: movementWindowStats.InboundUnits,
