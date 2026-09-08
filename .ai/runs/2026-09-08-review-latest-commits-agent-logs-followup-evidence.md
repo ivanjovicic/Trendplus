@@ -4,8 +4,8 @@ Date: 2026-09-08
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct delivery
-Main commit SHA: d42869fe8f11f40b4beef8d4a8fe76fcd7699227
-Main verification: passed - current `main` and `origin/main` contain delivered follow-up audit implementation `d42869fe8f11f40b4beef8d4a8fe76fcd7699227`
+Main commit SHA: d42869fef81592c169d715ea0582e98a545414a3
+Main verification: passed - current `main` and `origin/main` contain delivered follow-up audit implementation `d42869fef81592c169d715ea0582e98a545414a3`
 Evidence state: synchronized
 
 ## What was done
