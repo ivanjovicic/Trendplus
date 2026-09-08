@@ -175,8 +175,14 @@ public static class AnalyticsCacheKeys
         $"{SupplierDataPrefix}{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
     
     // Inventory
-    public static string Inventory(int threshold) => 
-        $"{Prefix}inventory:{threshold}";
+    public static string Inventory(
+        int threshold,
+        DateTime? from = null,
+        DateTime? to = null,
+        int? storeId = null,
+        int? supplierId = null,
+        string? dataScope = null) =>
+        $"{Prefix}inventory:{threshold}:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
     
     // Quick Insights
     public static string QuickInsights(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, string? dataScope = null) => 

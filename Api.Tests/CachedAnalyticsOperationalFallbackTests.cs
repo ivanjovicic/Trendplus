@@ -1,5 +1,6 @@
 using System.Data.Common;
 using System.Net;
+using System.Globalization;
 using System.Text.Json;
 using Application.Artikli.Common.Interfaces;
 using Domain.Model;
@@ -82,6 +83,27 @@ public sealed class CachedAnalyticsOperationalFallbackTests
         Assert.Equal("inventory_status_operational_fallback", meta.GetProperty("warningCode").GetString());
         Assert.Contains("Artikli", meta.GetProperty("warningMessage").GetString(), StringComparison.Ordinal);
         Assert.Equal(JsonValueKind.Null, meta.GetProperty("errorCode").ValueKind);
+    }
+
+    [Fact]
+    public async Task InventoryStatus_OperationalFallbackRespectsPeriodAndScope()
+    {
+        await using var factory = CreateFactory();
+        var now = DateTime.UtcNow;
+        var fromDate = Uri.EscapeDataString(now.AddHours(-1).ToString("O", CultureInfo.InvariantCulture));
+        var toDate = Uri.EscapeDataString(now.AddHours(1).ToString("O", CultureInfo.InvariantCulture));
+
+        var root = await GetJsonAsync(
+            factory,
+            $"/api/analytics/cached/inventory/status?lowStockThreshold=2&fromDate={fromDate}&toDate={toDate}&storeId=1&supplierId=1");
+
+        Assert.Equal(1, root.GetProperty("totalSkuCount").GetInt32());
+        Assert.Equal(2, root.GetProperty("totalOnHand").GetInt32());
+        Assert.Equal(1, root.GetProperty("lowStockCount").GetInt32());
+        Assert.Equal(0, root.GetProperty("outOfStockCount").GetInt32());
+        Assert.True(root.GetProperty("usedOperationalFallback").GetBoolean());
+        Assert.True(root.GetProperty("meta").GetProperty("success").GetBoolean());
+        Assert.True(root.GetProperty("meta").GetProperty("isPartial").GetBoolean());
     }
 
     [Fact]

@@ -56,6 +56,23 @@ describe("AnalyticsDetails period state", () => {
     expect(apiMocks.getSalesSummary).not.toHaveBeenCalled();
   });
 
+  it("requests inventory status for the selected period", async () => {
+    render(
+      <MemoryRouter>
+        <AnalyticsDetails />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(apiMocks.getInventoryStatus).toHaveBeenCalled());
+
+    expect(apiMocks.getInventoryStatus).toHaveBeenCalledWith(
+      2,
+      true,
+      expect.stringMatching(/T00:00$/),
+      expect.stringMatching(/T23:59$/),
+    );
+  });
+
   it("ignores a stale analytics load after the period changes", async () => {
     const healthRequests: Array<{ resolve: (value: unknown) => void }> = [];
     apiMocks.checkAnalyticsHealth.mockImplementation(() => new Promise((resolve) => {

@@ -2,7 +2,9 @@
 
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: `RQ204` (claimed; `IN_PROGRESS`)
+
+Owner promotion 2026-09-08: `RQ204` was explicitly promoted by the user after completed `RQ203` and is claimed in this workspace.
 
 Owner promotion 2026-09-08: `RQ203` was explicitly promoted by the user after completed `RQ202` and is claimed in this workspace.
 
@@ -141,7 +143,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ201 | DONE | sales-stats-chart-table-parity | Daily Sales chart vs table order divergence |
 | RQ202 | DONE | date-timezone-safety | Daily Sales date sort timezone drift |
 | RQ203 | DONE | inventory-detail-scope-consistency | Inventory detail now shares parent scope and signal period |
-| RQ204 | WAITING | analytics-details-scope-parity | Analytics Details global inventory snapshot unrelated to period |
+| RQ204 | IN_PROGRESS | analytics-details-scope-parity | Analytics Details global inventory snapshot unrelated to period |
 | RQ205 | WAITING | client-cache-invalidation | Frontend 15s cache not invalidated after refresh |
 | RQ206 | WAITING | refresh-run-status-accuracy | Partial nightly refresh treated as successful |
 | RQ207 | WAITING | refresh-failure-cache-safety | Failed refresh skips cache invalidation |
@@ -7796,7 +7798,7 @@ Detail endpoint uses hardcoded `DateTime.UtcNow.AddDays(-30)` and `/30` divisor.
 
 ## RQ204 - Analytics Details uses global inventory snapshot unrelated to selected period
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P2
 Type: frontend/contract/tests
 Feature family: analytics-details-scope-parity
@@ -7821,6 +7823,36 @@ Calls `getInventoryStatus(2, true)` with no period/store filters while sales ser
 ### Acceptance
 
 - Detail page metrics are temporally consistent.
+
+### Scope
+
+- Update the existing Analytics Details inventory-status request and its backend source-of-truth query/contract only as needed for period and store scope.
+- Add focused frontend/backend regression coverage for the selected period and scope.
+- Do not redesign Analytics Details, introduce a second inventory snapshot contract, or alter unrelated Inventory list/detail behavior.
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+- `Application/Analytics/Queries/GetInventoryStatus/GetInventoryStatusQuery.cs`
+- `Application/Analytics/Queries/GetInventoryStatus/GetInventoryStatusQueryHandler.cs`
+- `Klijent/clientapp/src/pages/AnalyticsDetails.tsx`
+- `Klijent/clientapp/src/services/analyticsApi.ts`
+- `Klijent/clientapp/src/pages/__tests__/AnalyticsDetails.periodState.spec.tsx`
+
+### Tests
+
+- `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/AnalyticsDetails.periodState.spec.tsx`
+- `cd Klijent/clientapp && npm run check:analytics-guardrails`
+- Focused backend Analytics Details/InventoryStatus tests covering period and store scope.
+- `git diff --check`
+
+### Dependencies
+
+- `RQ203` DONE.
+- Preserve the established InventoryStatus empty/error/fallback semantics; unknown values must not become zero-valued success.
+- Use the existing Analytics Details period and data-scope state as the request source; do not invent a new selector.
 
 ---
 

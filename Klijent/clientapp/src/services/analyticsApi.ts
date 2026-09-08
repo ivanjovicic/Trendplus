@@ -490,9 +490,14 @@ export async function getTopProductsAdvanced(
 
 export async function getInventoryStatus(
   lowStockThreshold = 2,
-  useCached = true
+  useCached = true,
+  fromDate?: string,
+  toDate?: string,
+  storeId?: number | null,
+  supplierId?: number | null
 ): Promise<InventoryStatus> {
   const params = new URLSearchParams({ lowStockThreshold: String(lowStockThreshold) });
+  appendFilterParams(params, fromDate, toDate, storeId, supplierId);
 
   return fetchJson(
     useCached ? "/api/analytics/cached/inventory/status" : "/api/analytics/inventory/status",

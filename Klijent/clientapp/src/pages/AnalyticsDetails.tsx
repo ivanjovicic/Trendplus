@@ -244,7 +244,7 @@ export default function AnalyticsDetails() {
       checkAnalyticsHealth(),
       getSalesSummary(fromDate, toDate, true),
       getDailySales(fromDate, toDate, true),
-      getInventoryStatus(2, true),
+      getInventoryStatus(2, true, fromDate, toDate),
       getTopProductsAdvanced(20, fromDate, toDate, true),
       getDashboardAdvanced(fromDate, toDate, true),
       getValidationCompleteness(true),

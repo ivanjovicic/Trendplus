@@ -482,13 +482,40 @@ public static class CachedAnalyticsEndpoints
             HttpContext httpContext,
             ILoggerFactory loggerFactory,
             int lowStockThreshold = 2,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            int? storeId = null,
+            int? supplierId = null,
+            string? dataScope = null,
             CancellationToken ct = default) =>
         {
             var correlationId = ResolveCorrelationId(httpContext);
             var logger = loggerFactory.CreateLogger("CachedAnalyticsEndpoints.InventoryStatus");
             try
             {
-                var cacheKey = AnalyticsCacheKeys.Inventory(lowStockThreshold);
+                if (fromDate.HasValue)
+                    fromDate = NormalizeUtc(fromDate.Value);
+                if (toDate.HasValue)
+                    toDate = NormalizeUtc(toDate.Value);
+
+                if (fromDate.HasValue && toDate.HasValue && fromDate.Value > toDate.Value)
+                {
+                    return Results.BadRequest(new
+                    {
+                        message = "Neispravan period: fromDate mora biti manji ili jednak toDate.",
+                        fromDate,
+                        toDate
+                    });
+                }
+
+                var normalizedDataScope = NormalizeDataScope(dataScope);
+                var cacheKey = AnalyticsCacheKeys.Inventory(
+                    lowStockThreshold,
+                    fromDate,
+                    toDate,
+                    storeId,
+                    supplierId,
+                    normalizedDataScope);
 
                 var result = await cache.GetOrSetAsync(
                     cacheKey,
@@ -496,11 +523,28 @@ public static class CachedAnalyticsEndpoints
                     {
                         try
                         {
-                            return await mediator.Send(new GetInventoryStatusQuery(lowStockThreshold), ct);
+                            return await mediator.Send(
+                                new GetInventoryStatusQuery(
+                                    lowStockThreshold,
+                                    fromDate,
+                                    toDate,
+                                    storeId,
+                                    supplierId,
+                                    normalizedDataScope),
+                                ct);
                         }
                         catch (Exception ex) when (IsMissingRelation(ex))
                         {
-                            var inventoryData = await trendDb.Artikli.AsNoTracking()
+                            var inventoryQuery = trendDb.Artikli.AsNoTracking()
+                                .Where(a => (!fromDate.HasValue || a.UpdatedAt >= fromDate.Value)
+                                    && (!toDate.HasValue || a.UpdatedAt <= toDate.Value)
+                                    && (!storeId.HasValue || a.IDObjekat == storeId.Value)
+                                    && (!supplierId.HasValue || a.IDDobavljac == supplierId.Value));
+
+                            if (normalizedDataScope != "all")
+                                inventoryQuery = inventoryQuery.Where(a => a.DataOrigin == normalizedDataScope);
+
+                            var inventoryData = await inventoryQuery
                                 .GroupBy(a => 1)
                                 .Select(g => new
                                 {
@@ -4857,15 +4901,38 @@ public static class CachedAnalyticsEndpoints
         ITrendplusDbContext trendDb,
         IMediator mediator,
         int lowStockThreshold,
-        CancellationToken ct)
+        CancellationToken ct,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        int? storeId = null,
+        int? supplierId = null,
+        string? dataScope = null)
     {
         try
         {
-            return await mediator.Send(new GetInventoryStatusQuery(lowStockThreshold), ct);
+            return await mediator.Send(
+                new GetInventoryStatusQuery(
+                    lowStockThreshold,
+                    fromDate,
+                    toDate,
+                    storeId,
+                    supplierId,
+                    dataScope),
+                ct);
         }
         catch (Exception ex) when (IsMissingRelation(ex))
         {
-            var inventoryData = await trendDb.Artikli.AsNoTracking()
+            var inventoryQuery = trendDb.Artikli.AsNoTracking()
+                .Where(a => (!fromDate.HasValue || a.UpdatedAt >= fromDate.Value)
+                    && (!toDate.HasValue || a.UpdatedAt <= toDate.Value)
+                    && (!storeId.HasValue || a.IDObjekat == storeId.Value)
+                    && (!supplierId.HasValue || a.IDDobavljac == supplierId.Value));
+
+            var normalizedDataScope = NormalizeDataScope(dataScope);
+            if (normalizedDataScope != "all")
+                inventoryQuery = inventoryQuery.Where(a => a.DataOrigin == normalizedDataScope);
+
+            var inventoryData = await inventoryQuery
                 .GroupBy(a => 1)
                 .Select(g => new
                 {
