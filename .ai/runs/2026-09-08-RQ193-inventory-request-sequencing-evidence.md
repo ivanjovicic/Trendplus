@@ -4,9 +4,9 @@ Date: 2026-09-08
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: codex/rq193-inventory-request-sequencing-20260908 / local merge
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: fc77546de90654dc26052c5c11635bdd81634f4b
+Main verification: passed - local main and origin/main both resolve to fc77546de90654dc26052c5c11635bdd81634f4b; the RQ193 implementation merge is contained in origin/main.
+Evidence state: synchronized
 
 ## What was done
 - RQ193 was explicitly promoted by the owner after the queue had no current READY prompt, then claimed locally within the Frontend owner boundary.

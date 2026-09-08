@@ -7241,10 +7241,10 @@ Inventory page fires 6–7 parallel requests without a monotonic sequence check.
 - Checks run: Inventory-focused page tests 6 files/24 tests, analytics encoding/guardrails/typecheck, frontend production build and diff check.
 - Checks not run: full frontend suite, backend tests/build, live browser/provider/deployed proof and remote CI; see durable run log.
 - Run log: `.ai/runs/2026-09-08-RQ193-inventory-request-sequencing-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: fc77546de90654dc26052c5c11635bdd81634f4b
+- Main verification: passed - local main and origin/main both resolve to fc77546de90654dc26052c5c11635bdd81634f4b; RQ193 implementation is contained in origin/main.
 - Missed: no live browser or deployed runtime proof; RQ194 remains WAITING for separate Analytics Details sequencing.
 - Follow-up: none for RQ193.
 - Residual risk: network cancellation remains cooperative; stale results are blocked when applying state.
