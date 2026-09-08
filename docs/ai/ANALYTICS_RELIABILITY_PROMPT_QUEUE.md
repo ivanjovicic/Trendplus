@@ -6846,7 +6846,7 @@ Commit suggestion: `fix(pdc): lost-sales estimate must incorporate velocity or m
 - Checks run: focused backend unit 3/3, PDC integration 4/4, frontend methodology 7/7, analytics guardrails/typecheck, Release backend build with 0 errors, governance validators and `git diff --check`.
 - Checks not run: live PostgreSQL/browser proof and full backend/frontend suites.
 - Run log: `.ai/runs/2026-09-08-RQ186-pdc-lost-sales-evidence.md`.
-- Main commit SHA: pending.
+- Main commit SHA: `498553a0989c099cc1d38fda53098a894e8904ca`.
 - Main verification: pending push verification.
 - Delivery mode: direct-main local merge and push; exact merge SHA and `origin/main` verification will be synchronized after delivery.
 - Analytics safety gate: backend PDC remains the source of truth; the contract now models 14-day RSD demand exposure as `velocityUnitsPerDay * 14 * averageUnitPrice * min(1, stockGap / minimumStock)`, preserves true zero for no gap or insufficient positive inputs, and leaves freshness, fallback, filters and RQ03 source-status semantics unchanged.

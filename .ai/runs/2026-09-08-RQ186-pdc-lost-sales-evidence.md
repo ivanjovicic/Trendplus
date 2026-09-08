@@ -6,8 +6,8 @@ Date: 2026-09-08
 Agent/tool: Codex
 Delivery target: `main`
 Working branch / PR: `codex/rq186-pdc-lost-sales-20260908` / local merge, no PR
-Main commit SHA: pending
-Main verification: pending
+Main commit SHA: `498553a0989c099cc1d38fda53098a894e8904ca`
+Main verification: pending push verification
 Evidence state: pending
 
 ## What was done
