@@ -2,7 +2,7 @@
 
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ208` (claimed; `IN_PROGRESS`)
+Current READY prompt: none
 
 Owner promotion 2026-09-08: `RQ208` was explicitly promoted by the user after completed `RQ207` and is claimed in this workspace.
 
@@ -155,7 +155,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ205 | DONE | client-cache-invalidation | Frontend 15s cache not invalidated after refresh |
 | RQ206 | DONE | refresh-run-status-accuracy | Partial nightly refresh treated as successful |
 | RQ207 | DONE | refresh-failure-cache-safety | Failed refresh skips cache invalidation |
-| RQ208 | IN_PROGRESS | period-timezone-boundary-safety | Dashboard per-day KPIs use local day count |
+| RQ208 | DONE | period-timezone-boundary-safety | Dashboard per-day KPIs use local day count |
 | RQ209 | WAITING | database-migration-orchestration | Dual concurrent EF migration paths cause race condition |
 | RQ210 | WAITING | startup-readiness-gate | Startup init silently skipped after lock timeout |
 | RQ211 | WAITING | migration-sequencing | Parallel SQL migrations without ordering guarantees |
@@ -8107,7 +8107,7 @@ When `errors.Count > 0`, worker returns before cache clear. Some views may have 
 
 ## RQ208 - Dashboard "per day" KPIs use local calendar day count (timezone drift)
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P2
 Type: frontend/tests
 Feature family: period-timezone-boundary-safety
@@ -8156,6 +8156,24 @@ Commit suggestion: `fix(dashboard): use UTC day count for per-day divisor`
 
 - `RQ207` is DONE and remains separate from this Dashboard period-divisor correction.
 - Backend timestamps/period boundaries remain authoritative; the frontend must not use local calendar arithmetic.
+
+### Completion note
+
+- Date: 2026-09-08
+- Status: DONE
+- Completion: Dashboard revenue/day and transactions/day now use backend UTC calendar-day boundaries, preventing DST-driven divisor drift.
+- Changed files: `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx`, `Klijent/clientapp/src/pages/__tests__/AnalyticsDashboard.periodBoundary.spec.ts`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-08-RQ208-evidence.md`.
+- Checks run: DST period-boundary test (3 tests), Dashboard control-bar test (3 tests), analytics guardrails/typecheck, `git diff --check`, and all six agent/queue/planning governance checks passed.
+- Checks not run: full frontend suite, production build, backend checks and live browser/remote timezone proof; see run log for scope reasons.
+- Run log: `.ai/runs/2026-09-08-RQ208-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `6e4eff8d6788398fc8eee5c58447d1f5189e3326`
+- Main verification: passed - current `main` and `origin/main` contain delivered implementation `6e4eff8d6788398fc8eee5c58447d1f5189e3326`.
+- Missed: live deployed/browser proof remains unavailable; no backend period-boundary code was changed.
+- Follow-up: none; the RQ queue returns to no current READY prompt.
+- Residual risk: a future response missing both requested and effective UTC period metadata uses the existing filter fallback.
+- Prompt defect / scope repair: the legacy prompt referenced a missing test path and omitted Scope, Read first, Tests and Dependencies; the path and required sections were repaired without expanding beyond Dashboard divisor ownership.
 
 ---
 
