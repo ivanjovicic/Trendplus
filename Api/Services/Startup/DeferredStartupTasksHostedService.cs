@@ -164,6 +164,15 @@ public sealed class DeferredStartupTasksHostedService : IHostedService, IDisposa
                     _hostApplicationLifetime.StopApplication();
                     return;
                 }
+                catch (DatabaseMigrationFailureException ex)
+                {
+                    _logger.LogCritical(
+                        ex,
+                        "EF migration failed for the {DatabaseName} database. Stopping the host to prevent traffic against a drifted schema.",
+                        ex.DatabaseName);
+                    _hostApplicationLifetime.StopApplication();
+                    return;
+                }
                 catch (DatabaseInitializationLockTimeoutException ex)
                 {
                     _logger.LogCritical(

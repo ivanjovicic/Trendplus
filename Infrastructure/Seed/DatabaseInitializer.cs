@@ -79,6 +79,10 @@ public static class DatabaseInitializer
             {
                 throw;
             }
+            catch (DatabaseMigrationFailureException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Trendplus DB initialization failed.");
@@ -88,6 +92,10 @@ public static class DatabaseInitializer
             {
                 await InitializeAnalyticsDbAsync(services, configuration, logger);
                 analyticsInitialized = true;
+            }
+            catch (DatabaseMigrationFailureException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -821,26 +829,17 @@ public static class DatabaseInitializer
 
         await EnsureTrendplusMigrationHistorySeededAsync(connectionString, logger);
 
-        // Apply EF migrations
+        // Apply EF migrations. Any failure means the schema contract is unknown;
+        // the caller must not continue with self-heal SQL or serve traffic.
         try
         {
             await context.Database.MigrateAsync();
             logger.LogInformation("✔ Trendplus DB migrations applied.");
         }
-        catch (PostgresException pgEx) when (pgEx.SqlState == "42P07")
-        {
-            // Duplicate-object errors (relation already exists) may occur when
-            // core schema was bootstrapped earlier. Log a concise warning and continue.
-            logger.LogWarning("Trendplus DB migrations encountered duplicate-relation error (42P07): {Message}", pgEx.MessageText);
-        }
-        catch (PostgresException pgEx)
-        {
-            // Other Postgres errors: log details but continue (initializer is tolerant by design).
-            logger.LogWarning(pgEx, "Trendplus DB migrations failed with Postgres error: SqlState={SqlState}", pgEx.SqlState);
-        }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Trendplus DB migrations failed; core schema was already self-healed.");
+            logger.LogCritical(ex, "Trendplus DB migrations failed; startup cannot continue safely.");
+            throw new DatabaseMigrationFailureException("Trendplus", ex);
         }
 
         // Execute the startup SQL migrations in dependency order. 017 reads the
@@ -2118,7 +2117,8 @@ public static class DatabaseInitializer
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Analytics DB migrations failed; continuing with core analytics table self-heal.");
+            logger.LogCritical(ex, "Analytics DB migrations failed; startup cannot continue safely.");
+            throw new DatabaseMigrationFailureException("Analytics", ex);
         }
 
         await EnsureCoreAnalyticsDimensionTablesAsync(connectionString, logger);
@@ -3478,4 +3478,15 @@ public sealed class StartupMigrationSequenceException : InvalidOperationExceptio
     }
 
     public string MigrationPath { get; }
+}
+
+public sealed class DatabaseMigrationFailureException : InvalidOperationException
+{
+    public DatabaseMigrationFailureException(string databaseName, Exception innerException)
+        : base($"EF migration failed for the {databaseName} database; startup cannot continue safely.", innerException)
+    {
+        DatabaseName = databaseName;
+    }
+
+    public string DatabaseName { get; }
 }

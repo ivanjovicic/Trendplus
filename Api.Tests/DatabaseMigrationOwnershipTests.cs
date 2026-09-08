@@ -59,6 +59,20 @@ public sealed class DatabaseMigrationOwnershipTests
         Assert.DoesNotContain("Parallel migration {File} encountered an error; continuing.", initializer, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void EfMigrationFailuresPropagateToTerminalStartupHandling()
+    {
+        var initializer = ReadRepoFile("Infrastructure/Seed/DatabaseInitializer.cs");
+        var deferredService = ReadRepoFile("Api/Services/Startup/DeferredStartupTasksHostedService.cs");
+
+        Assert.Contains("throw new DatabaseMigrationFailureException(\"Trendplus\", ex);", initializer, StringComparison.Ordinal);
+        Assert.Contains("throw new DatabaseMigrationFailureException(\"Analytics\", ex);", initializer, StringComparison.Ordinal);
+        Assert.Contains("catch (DatabaseMigrationFailureException)", initializer, StringComparison.Ordinal);
+        Assert.Contains("catch (DatabaseMigrationFailureException ex)", deferredService, StringComparison.Ordinal);
+        Assert.Contains("Stopping the host to prevent traffic against a drifted schema.", deferredService, StringComparison.Ordinal);
+        Assert.DoesNotContain("migrations failed; continuing with core analytics table self-heal", initializer, StringComparison.Ordinal);
+    }
+
     private static string ReadRepoFile(string relativePath)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
