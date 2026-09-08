@@ -2,7 +2,7 @@
 
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ210 (claimed; IN_PROGRESS)
+Current READY prompt: none
 
 Owner promotion 2026-09-08: `RQ209` was explicitly promoted by the user after completed `RQ208` and is claimed in this workspace.
 
@@ -161,7 +161,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ207 | DONE | refresh-failure-cache-safety | Failed refresh skips cache invalidation |
 | RQ208 | DONE | period-timezone-boundary-safety | Dashboard per-day KPIs use local day count |
 | RQ209 | DONE | database-migration-orchestration | Dual concurrent EF migration paths cause race condition |
-| RQ210 | IN_PROGRESS | startup-readiness-gate | Startup init silently skipped after lock timeout |
+| RQ210 | DONE | startup-readiness-gate | Startup init silently skipped after lock timeout |
 | RQ211 | WAITING | migration-sequencing | Parallel SQL migrations without ordering guarantees |
 | RQ212 | WAITING | migration-failure-safety | Migration failures swallowed; app runs on drifted schema |
 | RQ213 | WAITING | migration-reversibility | EF migration Down() drops fact tables without backup |
@@ -8263,7 +8263,7 @@ In Development, `Program.cs:997-1014` calls `Database.Migrate()` while `Deferred
 
 ## RQ210 - Startup init silently skipped after lock timeout
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/infra
 Feature family: startup-readiness-gate
@@ -8311,6 +8311,25 @@ If advisory startup lock not acquired within 120s, database init skipped with on
 ### Acceptance
 
 - Unmigrated schemas cause startup failure, not silent skip.
+
+### Completion note
+
+- Date: 2026-09-08
+- Status: DONE
+- Completion: Startup advisory-lock timeout now raises a typed critical exception; the deferred startup owner stops the host immediately so a process cannot continue serving against an uninitialized schema.
+- Changed files: `Infrastructure/Seed/DatabaseInitializer.cs`, `Api/Services/Startup/DeferredStartupTasksHostedService.cs`, `Api.Tests/DatabaseInitializerP0IntegrationTests.cs`, `Api.Tests/DatabaseMigrationOwnershipTests.cs`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-08-RQ210-evidence.md`.
+- Contract/runtime behavior changed: lock timeout is no longer a warning-and-return success path; it fails initialization and requests host shutdown. Existing non-lock migration error semantics remain unchanged for RQ212.
+- Checks run: API build (0 errors, 104 existing warnings), DatabaseMigrationOwnershipTests (3/3), StartupReadinessStateTests (4/4), DatabaseInitializerP0IntegrationTests (5/5 under the existing fixture convention), `git diff --check`, and all six agent/queue/planning governance checks passed.
+- Checks not run: live multi-instance PostgreSQL lock-contention execution because Docker/Testcontainers was unavailable locally, full backend suite, production startup smoke and remote CI.
+- Run log: `.ai/runs/2026-09-08-RQ210-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `fcef2d42cce8a8ea2cc50a5923666616d54c43a3`
+- Main verification: passed - implementation SHA `fcef2d42cce8a8ea2cc50a5923666616d54c43a3` is current `main` and `origin/main` before this documentation-only close commit; final `main` verification will confirm it remains an ancestor.
+- Missed: no live multi-instance PostgreSQL proof was available locally.
+- Follow-up: RQ211 remains WAITING for migration sequencing; RQ212 remains WAITING for migration failure propagation. No current READY prompt is auto-promoted.
+- Residual risk: staging/CI should exercise two live application instances contending for the startup advisory lock.
+- Prompt defect / scope repair: the legacy RQ210 prompt omitted Scope, Read first, Tests and Dependencies; those required sections were added without expanding beyond the startup lock-timeout owner.
 
 ---
 
