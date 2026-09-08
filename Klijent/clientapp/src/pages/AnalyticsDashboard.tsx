@@ -79,6 +79,11 @@ import {
   formatDateTime,
 } from "../utils/analyticsFormatters";
 import {
+  ANALYTICS_VELOCITY_HELP,
+  ANALYTICS_VELOCITY_LABEL,
+  ANALYTICS_VELOCITY_SHORT_LABEL,
+} from "../utils/analyticsVelocitySemantics";
+import {
   buildPeriodLineageLabel,
   resolveLineagePeriod,
 } from "../utils/analyticsPeriodLineage";
@@ -119,7 +124,7 @@ const HELP: Record<string, string> = {
   transakcije: "Jedan račun = jedna transakcija.",
   jedinice: "Ukupan broj prodatih komada.",
   sku: "Jedinstvena interna šifra artikla.",
-  velocity: "Prosečno prodata količina po danu.",
+  velocity: ANALYTICS_VELOCITY_HELP,
   oos: "Out of stock: artikal je rasprodat i nije dostupan za prodaju.",
   pareto: "Koliko mali broj artikala pravi većinu prometa.",
   ma7: "7-dnevni pokretni prosek smanjuje dnevni šum i prikazuje realniji trend. Prikazuje se tek kada postoji svih 7 dnevnih tačaka.",
@@ -188,7 +193,7 @@ const topProductColumns: AnalyticsTableColumn<TopProductAdvancedItem>[] = [
   { key: "productName", header: "Artikal", dataType: "text" },
   { key: "revenue", header: "Promet", dataType: "currency" },
   { key: "units", header: "Kom", dataType: "number" },
-  { key: "velocityUnitsPerDay", header: "Brzina prodaje", dataType: "number" },
+  { key: "velocityUnitsPerDay", header: ANALYTICS_VELOCITY_LABEL, dataType: "number" },
   { key: "marginImpact", header: "Uticaj na maržu", dataType: "currency" },
   { key: "trendPct", header: "Trend %", dataType: "percent" },
   { key: "stockStatus", header: "Status zalihe", dataType: "text" },
@@ -1350,7 +1355,7 @@ export default function AnalyticsDashboard() {
         "Artikal",
         "Promet",
         "Komadi",
-        "Brzina prodaje",
+        ANALYTICS_VELOCITY_LABEL,
         "Uticaj na maržu",
         "Trend",
         "Status zalihe",
@@ -2373,7 +2378,7 @@ export default function AnalyticsDashboard() {
                       <span className="metric-label">
                         <span>
                           {card.key === "velocity"
-                            ? "Brzina prodaje (velocity)"
+                            ? ANALYTICS_VELOCITY_LABEL
                             : card.key === "oos"
                               ? "Rasprodato (OOS)"
                               : card.key === "pareto"
@@ -2743,7 +2748,7 @@ export default function AnalyticsDashboard() {
                           </th>
                           <th className="analytics-data-table__numeric">
                             <span className="with-tip">
-                              <span>Brzina prodaje</span>
+                              <span>{ANALYTICS_VELOCITY_LABEL}</span>
                               <InfoTip text={HELP.velocity} />
                             </span>
                           </th>
@@ -2861,7 +2866,7 @@ export default function AnalyticsDashboard() {
                 </h3>
                 <div className="glossary-grid">
                   {[
-                    ["Brzina prodaje (Velocity)", HELP.velocity],
+                    [ANALYTICS_VELOCITY_LABEL, HELP.velocity],
                     ["OOS", HELP.oos],
                     ["Pareto", HELP.pareto],
                     ["MA7", HELP.ma7],

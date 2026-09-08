@@ -3,7 +3,7 @@
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
-Owner promotion 2026-09-08: RQ184 was explicitly promoted by the user as the next safe parallel-safe backend inventory contract slice after RQ183 and is now complete; no further prompt was promoted automatically.
+Owner promotion 2026-09-08: RQ185 was explicitly promoted by the user as the next safe parallel-safe velocity semantics slice after RQ184, completed locally and delivered to main; no further prompt was promoted automatically.
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
@@ -106,7 +106,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ170 | DONE | data-quality-report-period-state | Reject invalid pilot-intake report periods instead of silently swapping or defaulting them |
 | RQ183 | DONE | inventory-opening-stock-proof | Journal-derived opening stock for sell-through denominator integrity |
 | RQ184 | DONE | velocity-divisor-accuracy | Fixed 30-day divisor for inventory velocity miscalculation |
-| RQ185 | WAITING | velocity-active-days-semantics | "Velocity per day" label with active-selling-days divisor confusion |
+| RQ185 | DONE | velocity-active-days-semantics | "Velocity per day" label with active-selling-days divisor confusion |
 | RQ186 | WAITING | pdc-lost-sales-arithmetic | Product Decision lost-sales formula ignores velocity |
 | RQ187 | WAITING | cache-meta-freshness-truth | Cache write time published as LastRefreshAtUtc on cache hits |
 | RQ188 | WAITING | price-intelligence-validity | Price-intelligence discount depth encodes missing list price as 0% |
@@ -6733,12 +6733,13 @@ Analytics safety gate:
 
 ## RQ185 - "Velocity per day" label with active-selling-days divisor confusion
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend/frontend/contract/tests
 Feature family: velocity-active-days-semantics
 Parallel-safe: yes
 Owner: Analytics
+Promotion/claim note: 2026-09-08 - explicitly promoted by the user after the queue reported no current READY prompt; claimed in this workspace with `.ai/task-locks/RQ185-codex.lock.md`.
 
 Commit suggestion: `fix(analytics): clarify velocity metric definition: calendar days vs active selling days`
 
@@ -6772,6 +6773,24 @@ Velocity is computed as `units / COUNT(active sale days)` or `units / active_day
 
 - Velocity metric definition is unambiguous and matches label.
 - Intermittent and continuous sellers are ranked with correct run-rate understanding.
+
+### Completion note
+
+- Date: 2026-09-08.
+- Status: DONE.
+- Completion: both RQ185 dashboard SQL producers now divide by the inclusive calendar-day period; the compatible `velocityUnitsPerDay` field is retained and all affected dashboard/detail/decision labels state the calendar-day basis.
+- Changed files: `Api/Endpoints/CachedAnalyticsEndpoints.cs`, `Api.Tests/CachedInventoryVelocityTests.cs`, `Klijent/clientapp/src/utils/analyticsVelocitySemantics.ts`, `Klijent/clientapp/src/utils/analyticsVelocitySemantics.spec.ts`, `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx`, `Klijent/clientapp/src/pages/AnalyticsDetails.tsx`, `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`, `Klijent/clientapp/src/pages/__tests__/AnalyticsDashboard.tableSystem.spec.tsx`, this queue and `.ai/runs/2026-09-08-RQ185-velocity-semantics-evidence.md`.
+- Checks run: focused backend tests 6/6; focused frontend tests 1/1 and 4/4; analytics guardrails; production build; agent-instruction, prompt-queue and planning validators; `git diff --check`.
+- Checks not run: live PostgreSQL endpoint/browser proof and full suites; the Product Decision Center focused Vitest command did not exit after initialization and was cancelled, while guardrails/typecheck passed.
+- Run log: `.ai/runs/2026-09-08-RQ185-velocity-semantics-evidence.md`.
+- Main commit SHA: pending.
+- Main verification: pending.
+- Delivery mode: direct-main local merge and push; exact merge SHA and `origin/main` verification will be synchronized in the evidence log after delivery.
+- Analytics safety gate: backend SQL remains the decision source of truth; no fake-zero or fallback behavior was introduced; the divisor and units are explicit on every affected surface.
+- Prompt defect/scope repair: the queue evidence line references were stale after RQ184's line shifts; implementation was verified against current producers. Separate Insight Studio velocity remains outside this prompt's contract.
+- Missed: live PostgreSQL endpoint/browser proof and full suites; Product Decision Center focused Vitest completion due the runner hang described above.
+- Residual risk: null-date fallback periods and separate Insight Studio velocity semantics were not runtime-proven or redefined in this slice.
+- Follow-up: RQ186 remains WAITING; no next prompt is promoted automatically.
 
 ---
 

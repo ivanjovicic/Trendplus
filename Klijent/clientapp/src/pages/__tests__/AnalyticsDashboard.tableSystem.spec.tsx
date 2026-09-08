@@ -224,6 +224,9 @@ describe("AnalyticsDashboard table system", () => {
     expect(
       within(table).getByRole("columnheader", { name: /Promet/i }),
     ).toHaveClass("analytics-data-table__numeric");
+    expect(
+      within(table).getByRole("columnheader", { name: /kalendarskom danu/i }),
+    ).toBeInTheDocument();
     expect(within(table).getByText("SKU-101")).toBeInTheDocument();
     expect(within(table).getByText("Dostupno")).toBeInTheDocument();
     expect(
