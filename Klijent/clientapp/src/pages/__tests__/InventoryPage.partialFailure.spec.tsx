@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -51,7 +51,11 @@ vi.mock("../../components/inventory/DemandForecastPanel", () => ({ DemandForecas
 vi.mock("../../components/inventory/ExportSchedulerPanel", () => ({ ExportSchedulerPanel: () => null }));
 vi.mock("../../components/inventory/InventoryAlertsFeed", () => ({ InventoryAlertsFeed: () => null }));
 vi.mock("../../components/inventory/InventoryInsightPanels", () => ({ InventoryInsightPanels: () => null }));
-vi.mock("../../components/inventory/InventoryItemsTable", () => ({ InventoryItemsTable: () => null }));
+vi.mock("../../components/inventory/InventoryItemsTable", () => ({
+  InventoryItemsTable: ({ rows }: { rows: Array<{ naziv: string }> }) => (
+    <div data-testid="inventory-items-table">{rows.map((row) => row.naziv).join(",")}</div>
+  ),
+}));
 vi.mock("../../components/inventory/InventoryKPICards", () => ({
   InventoryKPICards: () => <div data-testid="inventory-kpi-cards">KPI</div>,
 }));
@@ -124,6 +128,76 @@ describe("InventoryPage partial load failure", () => {
     expect(screen.queryByTestId("inventory-kpi-cards")).not.toBeInTheDocument();
     await waitFor(() => {
       expect(getInventoryBalanceMock).toHaveBeenCalled();
+    });
+  });
+
+  it("ignores a stale list response after a newer filter load", async () => {
+    getInventoryBalanceMock.mockResolvedValue({
+      totalSku: 1,
+      totalOnHand: 10,
+      outOfStockCount: 0,
+      lowStockCount: 0,
+      estimatedInventoryValue: 1000,
+      meta: { success: true },
+    });
+
+    const listRequests: Array<{
+      promise: Promise<unknown>;
+      resolve: (value: unknown) => void;
+    }> = [];
+    getInventoryListMock.mockImplementation(() => {
+      let resolve!: (value: unknown) => void;
+      const promise = new Promise<unknown>((nextResolve) => {
+        resolve = nextResolve;
+      });
+      listRequests.push({ promise, resolve });
+      return promise;
+    });
+
+    const responseFor = (name: string) => ({
+      items: [{
+        id: 501,
+        naziv: name,
+        plu: `PLU-${name}`,
+        kolicina: 10,
+        minimalnaKolicina: 3,
+        nabavnaCena: 100,
+        estimatedValue: 1000,
+        idObjekat: 1,
+        idDobavljac: null,
+        stockCoverDays: 4,
+        stockCoverStatus: "low_cover",
+        sellThroughRatio: 0.5,
+        sellThroughStatus: "good",
+      }],
+      totalCount: 1,
+      pageNumber: 1,
+      pageSize: 50,
+      meta: { success: true },
+    });
+
+    render(
+      <MemoryRouter>
+        <InventoryPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(listRequests).toHaveLength(1));
+    listRequests[0].resolve(responseFor("Početni artikal"));
+    await waitFor(() => expect(screen.getByTestId("inventory-items-table")).toHaveTextContent("Početni artikal"));
+
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "stari" } });
+    await waitFor(() => expect(listRequests).toHaveLength(2));
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "novi" } });
+    await waitFor(() => expect(listRequests).toHaveLength(3));
+
+    listRequests[2].resolve(responseFor("Novi artikal"));
+    await waitFor(() => expect(screen.getByTestId("inventory-items-table")).toHaveTextContent("Novi artikal"));
+
+    listRequests[1].resolve(responseFor("Stari artikal"));
+    await waitFor(() => {
+      expect(screen.getByTestId("inventory-items-table")).toHaveTextContent("Novi artikal");
+      expect(screen.getByTestId("inventory-items-table")).not.toHaveTextContent("Stari artikal");
     });
   });
 });

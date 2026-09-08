@@ -3,6 +3,7 @@
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+Owner promotion 2026-09-08: RQ193 was explicitly promoted by the user after RQ189, claimed and completed in this workspace.
 Owner promotion 2026-09-08: RQ189 was explicitly promoted by the user after completed RQ188, claimed and completed in this workspace.
 Owner promotion 2026-09-08: RQ188 was explicitly promoted by the user after completed RQ187, claimed and completed in this workspace.
 Owner promotion 2026-09-08: RQ187 was explicitly promoted by the user as the next cache freshness slice after completed RQ186, claimed and completed in this workspace.
@@ -116,7 +117,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ190 | OBSOLETE | forecast-snapshot-freshness-aggregation | Excluded: standalone forecast provenance work is deferred |
 | RQ191 | WAITING | frontend-numeric-safety | Frontend percent clamp hides negative backend signals |
 | RQ192 | WAITING | ml-feature-missing-encoding | Supplier ML return rate coalesces missing to 0% |
-| RQ193 | WAITING | analytics-async-ordering | Inventory page cross-panel async race condition |
+| RQ193 | DONE | analytics-async-ordering | Inventory page cross-panel async race condition |
 | RQ194 | WAITING | analytics-details-async-safety | Analytics Details missing in-flight guard |
 | RQ195 | WAITING | pilot-readiness-async-consistency | Pilot Readiness multi-signal load can mix reload generations |
 | RQ196 | WAITING | report-schedule-validation | Inventory report schedules saved without validation |
@@ -7203,7 +7204,7 @@ Commit suggestion: `fix(ml): preserve missing return rate as NULL, not zero feat
 
 ## RQ193 - Inventory page cross-panel async race condition
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/tests
 Feature family: analytics-async-ordering
@@ -7229,6 +7230,26 @@ Inventory page fires 6–7 parallel requests without a monotonic sequence check.
 ### Acceptance
 
 - KPI cards, table rows, and panels show consistent snapshot after filter changes.
+
+### Completion note
+
+- Date: 2026-09-08
+- Status: DONE
+- Completion: Inventory fetches now use monotonic request generations; stale primary, insight, and operational responses are ignored, while signal panels retain their intentional store/supplier-only refresh scope. Focused regression coverage proves an older list response cannot overwrite a newer filter result.
+- Changed files: `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.partialFailure.spec.tsx`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.queueStatus.spec.tsx`.
+- Contract/runtime behavior changed: frontend request ordering only; no API, business-metric, freshness, export or action contract changed.
+- Checks run: Inventory-focused page tests 6 files/24 tests, analytics encoding/guardrails/typecheck, frontend production build and diff check.
+- Checks not run: full frontend suite, backend tests/build, live browser/provider/deployed proof and remote CI; see durable run log.
+- Run log: `.ai/runs/2026-09-08-RQ193-inventory-request-sequencing-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: no live browser or deployed runtime proof; RQ194 remains WAITING for separate Analytics Details sequencing.
+- Follow-up: none for RQ193.
+- Residual risk: network cancellation remains cooperative; stale results are blocked when applying state.
+- Next: none; return the RQ queue to no READY prompt.
+- Prompt defect / scope repair: the prompt omitted a dependency section; source inspection confirmed no named blocker, and the implementation preserved the existing distinction between all-filter loads and store/supplier-only signal refreshes.
 
 ---
 
