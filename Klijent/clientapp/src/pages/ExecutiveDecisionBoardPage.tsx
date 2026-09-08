@@ -43,6 +43,7 @@ import type {
   SummaryResponse,
   SummarySupplierItem,
 } from "../services/supplierDecisionHubApi";
+import { getDataScope, type DataScope } from "../utils/dataScope";
 import { getRecommendationMeta } from "../components/supplierDecisionHub/utils";
 import { fmtNumber, fmtPct, fmtPctFromRatio, fmtRsd, formatDateTime } from "../utils/analyticsFormatters";
 import { getAnalyticsMetaMessage, isAnalyticsMetaError, isAnalyticsMetaInsufficient } from "../utils/analyticsResponseMeta";
@@ -1348,12 +1349,24 @@ export default function ExecutiveDecisionBoardPage() {
   const [loadError, setLoadError] = useState<BoardLoadError | null>(null);
   const [loading, setLoading] = useState(true);
   const [reloadTick, setReloadTick] = useState(0);
+  const [dataScope, setDataScopeValue] = useState<DataScope>(() => getDataScope());
+
+  useEffect(() => {
+    const handleScopeChange = () => {
+      setDataScopeValue(getDataScope());
+    };
+
+    window.addEventListener("trendplus:data-scope-changed", handleScopeChange);
+    return () => {
+      window.removeEventListener("trendplus:data-scope-changed", handleScopeChange);
+    };
+  }, []);
 
   const loadBoard = useCallback(async (isCancelled?: () => boolean) => {
     setLoading(true);
 
     try {
-      const response = await getDecisionBoardAggregate({ dataScope: "all" });
+      const response = await getDecisionBoardAggregate({ dataScope });
       if (isCancelled?.()) return;
       setPayload(response);
       setLoadError(null);
@@ -1366,7 +1379,7 @@ export default function ExecutiveDecisionBoardPage() {
         setLoading(false);
       }
     }
-  }, []);
+  }, [dataScope]);
 
   useEffect(() => {
     let cancelled = false;

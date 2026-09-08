@@ -288,8 +288,26 @@ function renderPage() {
 
 describe("ExecutiveDecisionBoardPage", () => {
   beforeEach(() => {
+    localStorage.clear();
     vi.mocked(getDecisionBoardAggregate).mockReset();
     vi.mocked(getDecisionBoardAggregate).mockResolvedValue(aggregate());
+  });
+
+  it("forwards the persisted DataScope and reloads after a scope change", async () => {
+    localStorage.setItem("trendplus:dataScope", "imported");
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(getDecisionBoardAggregate).toHaveBeenCalledWith({ dataScope: "imported" });
+    });
+
+    localStorage.setItem("trendplus:dataScope", "existing");
+    window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+
+    await waitFor(() => {
+      expect(getDecisionBoardAggregate).toHaveBeenLastCalledWith({ dataScope: "existing" });
+    });
   });
 
   it("renders the executive decision board with metrics, sections, cards and action links", async () => {

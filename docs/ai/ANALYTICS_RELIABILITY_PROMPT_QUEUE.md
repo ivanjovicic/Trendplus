@@ -4,6 +4,7 @@ Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-08: RQ198 was explicitly promoted by the user after completed RQ197 and is claimed in this workspace.
 Owner promotion 2026-09-08: RQ197 was explicitly promoted by the user after completed RQ196, claimed and completed in this workspace.
 Owner promotion 2026-09-08: RQ196 was explicitly promoted by the user after completed RQ195, claimed and completed in this workspace.
 
@@ -128,7 +129,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ195 | DONE | pilot-readiness-async-consistency | Pilot Readiness multi-signal load can mix reload generations |
 | RQ196 | DONE | report-schedule-validation | Inventory report schedules saved without validation |
 | RQ197 | DONE | export-truncation-safety | Scheduled inventory export has no row cap |
-| RQ198 | WAITING | decision-board-datascope-override | Executive Decision Board hardcoded dataScope |
+| RQ198 | DONE | decision-board-datascope-override | Executive Decision Board hardcoded dataScope |
 | RQ199 | WAITING | pre-nivelacija-datascope | Pre-nivelacija priority endpoint missing DataScope |
 | RQ200 | WAITING | pdc-search-pagination-boundary | Product Decision Center search capped at backend rows |
 | RQ201 | WAITING | sales-stats-chart-table-parity | Daily Sales chart vs table order divergence |
@@ -7460,12 +7461,14 @@ Export loads all articles unbounded; completion waits ~90s. Large catalogs can t
 
 ## RQ198 - Executive Decision Board hardcoded dataScope="all"
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend/frontend/contract/tests
 Feature family: decision-board-datascope-override
 Parallel-safe: no
 Owner: Analytics/Decision Board
+
+Promotion/claim note: 2026-09-08 - explicitly promoted by the user after the queue reported no current READY prompt; claimed in this workspace.
 
 Commit suggestion: `fix(decision-board): pass user DataScope`
 
@@ -7486,6 +7489,25 @@ Board calls `getDecisionBoardAggregate({ dataScope: "all" })` explicitly, overri
 ### Acceptance
 
 - Board respects user scope selection.
+
+### Completion note
+
+- Date: 2026-09-08
+- Status: DONE
+- Completion: Executive Decision Board now reads the persisted user `DataScope`, reloads on the standard scope-change event, and forwards the selected scope to the backend instead of hardcoding `all`.
+- Changed files: `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx`, `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.spec.tsx`, `MASTER_ROADMAP.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `.ai/runs/2026-09-08-RQ198-decision-board-datascope-evidence.md`
+- Checks run: focused Decision Board tests (14 passed), analytics encoding and guardrails, TypeScript typecheck, frontend production build, `git diff --check`, governance checks after delivery.
+- Checks not run: full frontend/backend suites, live API/database/provider/browser proof and remote CI; see durable run log.
+- Run log: `.ai/runs/2026-09-08-RQ198-decision-board-datascope-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: local merge
+- Main commit SHA: pending
+- Main verification: pending until local merge and push
+- Missed: no live multi-scope API/browser proof.
+- Follow-up: none for RQ198.
+- Residual risk: the persisted scope remains browser-local and depends on the existing DataScope event contract; backend decision semantics are unchanged.
+- Prompt defect / scope repair: prompt omitted a Dependencies section; no dependency blocker was found and implementation stayed within the Decision Board page and its focused contract test.
+- Next: none; return queue to no READY prompt.
 
 ---
 
