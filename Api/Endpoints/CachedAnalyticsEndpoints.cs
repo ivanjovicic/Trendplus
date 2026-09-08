@@ -30,6 +30,7 @@ namespace Trendplus2.Endpoints;
 public static class CachedAnalyticsEndpoints
 {
     private const int MovementStatsBatchSize = 5_000;
+    private const int ProductDecisionLostSalesImpactWindowDays = 14;
     private const string OpeningStockConfidenceUnknown = "unknown";
     private static readonly TimeSpan DashboardSectionTtl = CacheExpiration.Medium;
     private static readonly TimeSpan DashboardFastSectionTtl = CacheExpiration.Short;
@@ -80,6 +81,31 @@ public static class CachedAnalyticsEndpoints
 
         var calendarDays = (periodEndUtc.Date - periodStartUtc.Date).Days + 1;
         return Math.Round(soldUnits / Math.Max(calendarDays, 1), 2, MidpointRounding.AwayFromZero);
+    }
+
+    /// <summary>
+    /// Estimates the RSD demand exposure for a stock shortfall over the PDC impact window.
+    /// The shortfall ratio weights projected demand by the portion of minimum stock that is missing.
+    /// </summary>
+    internal static decimal CalculateLostSalesEstimate(
+        int stockGap,
+        int minimumStock,
+        decimal velocityUnitsPerDay,
+        decimal averageUnitPrice,
+        int impactWindowDays)
+    {
+        if (stockGap <= 0
+            || minimumStock <= 0
+            || velocityUnitsPerDay <= 0m
+            || averageUnitPrice <= 0m
+            || impactWindowDays <= 0)
+        {
+            return 0m;
+        }
+
+        var stockShortfallRatio = Math.Min(1m, (decimal)stockGap / minimumStock);
+        var projectedDemandValue = velocityUnitsPerDay * impactWindowDays * averageUnitPrice;
+        return Math.Round(projectedDemandValue * stockShortfallRatio, 2, MidpointRounding.AwayFromZero);
     }
 
     public static void MapCachedAnalyticsEndpoints(this WebApplication app)
@@ -5921,9 +5947,12 @@ public static class CachedAnalyticsEndpoints
             var trendPct = ProductDecisionReasoningHelper.ComputeTrendPct(revenue, previousBaseline);
 
             var avgUnitPrice = unitsSold > 0 ? revenue / unitsSold : 0m;
-            var lostSalesEstimate = stockGap > 0 && velocityUnitsPerDay > 0m && avgUnitPrice > 0m
-                ? Math.Round(stockGap * avgUnitPrice, 2)
-                : 0m;
+            var lostSalesEstimate = CalculateLostSalesEstimate(
+                stockGap,
+                article.MinStock,
+                velocityUnitsPerDay,
+                avgUnitPrice,
+                ProductDecisionLostSalesImpactWindowDays);
 
             var missingSupplier = !article.SupplierId.HasValue || string.IsNullOrWhiteSpace(article.SupplierName);
             var missingCost = !article.UnitCost.HasValue;
@@ -8108,6 +8137,7 @@ public class ProductDecisionCenterSummaryDto
     public int MarkdownCount { get; set; }
     public int HighPotentialCount { get; set; }
     public int BadDataCount { get; set; }
+    /// <summary>Projected RSD demand over the 14-day PDC impact window, weighted by calendar-day velocity and stock shortfall ratio; not booked sales.</summary>
     public decimal LostSalesEstimate { get; set; }
     public decimal SlowStockCapital { get; set; }
     /// <summary>Denominator for count KPIs. Current contract: <see cref="ProductDecisionDenominatorScope.ReturnedRows"/>.</summary>
@@ -8143,6 +8173,7 @@ public class ProductDecisionCenterRowDto
     public int StockGap { get; set; }
     public int? DaysSinceLastSale { get; set; }
     public decimal? TrendPct { get; set; }
+    /// <summary>Projected RSD demand over the 14-day PDC impact window, weighted by calendar-day velocity and stock shortfall ratio; not booked sales.</summary>
     public decimal LostSalesEstimate { get; set; }
     public decimal SlowStockCapital { get; set; }
     public decimal? StockCoverDays { get; set; }

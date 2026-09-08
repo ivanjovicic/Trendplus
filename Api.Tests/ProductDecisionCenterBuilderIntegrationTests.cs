@@ -51,7 +51,7 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.Equal(100m, replenish.MarginCoveragePct);
         Assert.Equal(0, replenish.CurrentStock);
         Assert.Equal(5, replenish.StockGap);
-        Assert.Equal(500m, replenish.LostSalesEstimate);
+        Assert.Equal(1_400m, replenish.LostSalesEstimate);
         Assert.Equal(0m, replenish.TrendPct);
         Assert.Equal("warning", replenish.DataQualityStatus);
         Assert.False(replenish.IsOpeningStockDerived);
@@ -140,7 +140,7 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.Equal("critical", fixData.InputFreshnessStatus);
         Assert.False(fixData.RecommendationAllowed);
         Assert.Contains("product_recommendation_blocked", fixData.WarningCodes);
-        Assert.Equal(400m, fixData.LostSalesEstimate);
+        Assert.Equal(124.44m, fixData.LostSalesEstimate);
         Assert.Null(fixData.ExpectedImpactRsd);
         Assert.Equal("Proveri podatke", fixData.RecommendationLabel);
         Assert.NotEqual(fixData.RecommendationStatus, fixData.RecommendationLabel);
@@ -171,7 +171,7 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
 
         Assert.Equal(1, response.Summary.ReplenishCount);
         Assert.Equal(1, response.Summary.BadDataCount);
-        Assert.Equal(900m, response.Summary.LostSalesEstimate);
+        Assert.Equal(1_524.44m, response.Summary.LostSalesEstimate);
         Assert.Equal(0m, response.Summary.SlowStockCapital);
         Assert.Equal(ProductDecisionDenominatorScope.ReturnedRows, response.Summary.CountDenominatorScope);
         Assert.Equal(ProductDecisionDenominatorScope.AnalyzedRows, response.Summary.MoneyDenominatorScope);
@@ -213,7 +213,7 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.Equal("FIX_DATA", response.Rows[0].RecommendationStatus);
         Assert.Equal(0, response.Summary.ReplenishCount);
         Assert.Equal(1, response.Summary.BadDataCount);
-        Assert.Equal(900m, response.Summary.LostSalesEstimate);
+        Assert.Equal(1_524.44m, response.Summary.LostSalesEstimate);
         Assert.Equal(0m, response.Summary.SlowStockCapital);    }
 
     [Fact]

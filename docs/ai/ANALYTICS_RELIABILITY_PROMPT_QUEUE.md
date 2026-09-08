@@ -3,7 +3,7 @@
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
-Owner promotion 2026-09-08: RQ185 was explicitly promoted by the user as the next safe parallel-safe velocity semantics slice after RQ184, completed locally and delivered to main; no further prompt was promoted automatically.
+Owner promotion 2026-09-08: RQ186 was explicitly promoted by the user as the next PDC lost-sales arithmetic slice after RQ185, claimed and completed in this workspace.
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
@@ -107,7 +107,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ183 | DONE | inventory-opening-stock-proof | Journal-derived opening stock for sell-through denominator integrity |
 | RQ184 | DONE | velocity-divisor-accuracy | Fixed 30-day divisor for inventory velocity miscalculation |
 | RQ185 | DONE | velocity-active-days-semantics | "Velocity per day" label with active-selling-days divisor confusion |
-| RQ186 | WAITING | pdc-lost-sales-arithmetic | Product Decision lost-sales formula ignores velocity |
+| RQ186 | DONE | pdc-lost-sales-arithmetic | Product Decision lost-sales formula ignores velocity |
 | RQ187 | WAITING | cache-meta-freshness-truth | Cache write time published as LastRefreshAtUtc on cache hits |
 | RQ188 | WAITING | price-intelligence-validity | Price-intelligence discount depth encodes missing list price as 0% |
 | RQ189 | WAITING | demand-acceleration-new-product-state | Demand acceleration hardcodes 1.0 sentinel for new demand |
@@ -6796,12 +6796,13 @@ Velocity is computed as `units / COUNT(active sale days)` or `units / active_day
 
 ## RQ186 - Product Decision lost-sales formula ignores velocity (static stock-gap risk)
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend/contract/tests
 Feature family: pdc-lost-sales-arithmetic
 Parallel-safe: no
 Owner: Analytics
+Promotion/claim note: 2026-09-08 - explicitly promoted by the user after the queue reported no current READY prompt; claimed in this workspace with `.ai/task-locks/RQ186-codex.lock.md`.
 
 Commit suggestion: `fix(pdc): lost-sales estimate must incorporate velocity or mark unavailable`
 
@@ -6835,6 +6836,24 @@ Commit suggestion: `fix(pdc): lost-sales estimate must incorporate velocity or m
 
 - Lost-sales RSD reflects both stock gap and demand velocity.
 - Fast movers are correctly ranked higher-opportunity than slow movers.
+
+### Completion note
+
+- Date: 2026-09-08.
+- Status: DONE.
+- Completion: Promoted and claimed RQ186, added velocity-weighted 14-day lost-sales arithmetic with a bounded stock shortfall ratio, updated DTO/frontend methodology and added focused regression coverage.
+- Changed files: `Api/Endpoints/CachedAnalyticsEndpoints.cs`, `Api.Tests/ProductDecisionLostSalesTests.cs`, `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`, `Klijent/clientapp/src/utils/analyticsMetricDefinitions.ts`, `Klijent/clientapp/src/utils/__tests__/analyticsMetricDefinitions.spec.ts`, this queue and the run log.
+- Checks run: focused backend unit 3/3, PDC integration 4/4, frontend methodology 7/7, analytics guardrails/typecheck, Release backend build with 0 errors, governance validators and `git diff --check`.
+- Checks not run: live PostgreSQL/browser proof and full backend/frontend suites.
+- Run log: `.ai/runs/2026-09-08-RQ186-pdc-lost-sales-evidence.md`.
+- Main commit SHA: pending.
+- Main verification: pending push verification.
+- Delivery mode: direct-main local merge and push; exact merge SHA and `origin/main` verification will be synchronized after delivery.
+- Analytics safety gate: backend PDC remains the source of truth; the contract now models 14-day RSD demand exposure as `velocityUnitsPerDay * 14 * averageUnitPrice * min(1, stockGap / minimumStock)`, preserves true zero for no gap or insufficient positive inputs, and leaves freshness, fallback, filters and RQ03 source-status semantics unchanged.
+- Prompt defect/scope repair: the original example was dimensionally ambiguous; the same-owner contract was made explicit as projected 14-day demand value weighted by the stock shortfall ratio. Stale line references were checked against current code.
+- Missed: live PostgreSQL/browser proof and full suites.
+- Residual risk: this is a modeled exposure, not booked sales, and remains dependent on existing data-quality and freshness evidence.
+- Follow-up: RQ187 remains WAITING; no next prompt is promoted automatically.
 
 ### Dependencies
 

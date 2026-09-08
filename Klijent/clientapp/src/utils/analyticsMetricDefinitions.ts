@@ -226,10 +226,10 @@ const baseMetrics = {
   lostSalesEstimate: defineMetric("lostSalesEstimate", {
     label: "Procena izgubljene prodaje",
     shortDescription: "Modelirana procena propuštenog prihoda zbog out-of-stock ili preniske dostupnosti.",
-    formula: "SUM((procenjena_potražnja - realizacija) * prosečna_cena)",
+    formula: "SUM(velocityUnitsPerDay * 14 dana * prosečna_cena * MIN(1, stockGap / minimumStock)) za minimumStock > 0, inače 0",
     dataSource: "Product decision snapshot",
     interpretation: "Signal potencijalnog rasta kroz bolju dostupnost.",
-    limitations: ["Modelska procena, nije knjižena prodaja."],
+    limitations: ["Modelska procena 14-dnevne potražnje ponderisana manjkom do minimalne zalihe; nije knjižena prodaja."],
     dataQualityDependencies: ["Istorija prodaje", "OOS signal", "Svežina snapshot-a"],
     relatedScreens: ["/analytics", "/analytics/products", "/analytics/inventory"],
   }),

@@ -58,4 +58,12 @@ describe("analyticsMetricDefinitions", () => {
     expect(sellThrough.blockedWhen.join(" ")).toContain("openingStockUnits + inboundUnits <= 0");
     expect(stockCoverDays.blockedWhen.join(" ")).toContain("avgDailySalesUnits <= 0");
   });
+
+  it("documents the velocity-weighted lost-sales formula", () => {
+    const lostSales = getAnalyticsMetricDefinition("lostSalesEstimate");
+
+    expect(lostSales.formula).toContain("velocityUnitsPerDay");
+    expect(lostSales.formula).toContain("stockGap / minimumStock");
+    expect(lostSales.limitations.join(" ")).toContain("14-dnevne");
+  });
 });
