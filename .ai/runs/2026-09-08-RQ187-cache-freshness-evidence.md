@@ -6,8 +6,8 @@ Date: 2026-09-08
 Agent/tool: Codex
 Delivery target: `main`
 Working branch / PR: `codex/rq187-cache-refresh-provenance-20260908` / local merge, no PR
-Main commit SHA: pending
-Main verification: pending
+Main commit SHA: `b8d37328ac6681c3f0339514e9c701a26ede1bf6`
+Main verification: pending push verification
 Evidence state: pending
 
 ## What was done

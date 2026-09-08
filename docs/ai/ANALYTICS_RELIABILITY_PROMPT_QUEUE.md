@@ -6915,7 +6915,7 @@ Commit suggestion: `fix(analytics): distinguish cache creation time from data re
 - Checks run: cache freshness unit 3/3, existing cached analytics integration 15/16, analytics guardrails/typecheck, frontend production build, governance validators/self-tests and `git diff --check`.
 - Checks not run: live refresh-worker/browser/deployed proof and full backend/frontend suites.
 - Run log: `.ai/runs/2026-09-08-RQ187-cache-freshness-evidence.md`.
-- Main commit SHA: pending.
+- Main commit SHA: `b8d37328ac6681c3f0339514e9c701a26ede1bf6`.
 - Main verification: pending push verification.
 - Delivery mode: direct-main local merge and push; exact merge SHA and `origin/main` verification will be synchronized after delivery.
 - Analytics safety gate: durable successful refresh status is the source of truth; cache creation is diagnostic only; missing/legacy refresh stays null; no numeric formulas, filters, export values or action semantics changed.
