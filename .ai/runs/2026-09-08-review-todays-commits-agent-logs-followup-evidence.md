@@ -4,9 +4,9 @@ Date: 2026-09-08
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: codex/review-agent-logs-20260908-2 / local merge
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: f95247e9717ae45f192c33be3e675bc30a83d7e2
+Main verification: passed - local main and origin/main both resolve to f95247e9717ae45f192c33be3e675bc30a83d7e2; review corrections are contained in origin/main.
+Evidence state: synchronized
 
 ## What was done
 - Reviewed the 2026-09-08 commit history from the previous verified `main` tip through the RQ195 delivery, separating functional commits from merge/documentation-only commits.
