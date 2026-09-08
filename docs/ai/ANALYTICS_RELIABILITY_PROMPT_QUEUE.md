@@ -2,7 +2,7 @@
 
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ204` (claimed; `IN_PROGRESS`)
+Current READY prompt: none
 
 Owner promotion 2026-09-08: `RQ204` was explicitly promoted by the user after completed `RQ203` and is claimed in this workspace.
 
@@ -143,7 +143,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ201 | DONE | sales-stats-chart-table-parity | Daily Sales chart vs table order divergence |
 | RQ202 | DONE | date-timezone-safety | Daily Sales date sort timezone drift |
 | RQ203 | DONE | inventory-detail-scope-consistency | Inventory detail now shares parent scope and signal period |
-| RQ204 | IN_PROGRESS | analytics-details-scope-parity | Analytics Details global inventory snapshot unrelated to period |
+| RQ204 | DONE | analytics-details-scope-parity | Analytics Details InventoryStatus now respects selected period and scope |
 | RQ205 | WAITING | client-cache-invalidation | Frontend 15s cache not invalidated after refresh |
 | RQ206 | WAITING | refresh-run-status-accuracy | Partial nightly refresh treated as successful |
 | RQ207 | WAITING | refresh-failure-cache-safety | Failed refresh skips cache invalidation |
@@ -7798,7 +7798,7 @@ Detail endpoint uses hardcoded `DateTime.UtcNow.AddDays(-30)` and `/30` divisor.
 
 ## RQ204 - Analytics Details uses global inventory snapshot unrelated to selected period
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P2
 Type: frontend/contract/tests
 Feature family: analytics-details-scope-parity
@@ -7853,6 +7853,25 @@ Calls `getInventoryStatus(2, true)` with no period/store filters while sales ser
 - `RQ203` DONE.
 - Preserve the established InventoryStatus empty/error/fallback semantics; unknown values must not become zero-valued success.
 - Use the existing Analytics Details period and data-scope state as the request source; do not invent a new selector.
+
+### Completion note
+
+- Date: 2026-09-08
+- Status: DONE
+- Completion: Analytics Details now requests InventoryStatus with its selected period; backend snapshot and operational fallback queries apply period/store/supplier/data-scope filters and cache keys include the same dimensions.
+- Changed files: `Api/Endpoints/CachedAnalyticsEndpoints.cs`, `Api.Tests/CachedAnalyticsOperationalFallbackTests.cs`, `Application/Analytics/Queries/GetInventoryStatus/GetInventoryStatusHandler.cs`, `Application/Analytics/Queries/GetInventoryStatus/GetInventoryStatusQuery.cs`, `Infrastructure/Services/Caching/IAnalyticsCacheService.cs`, `Klijent/clientapp/src/pages/AnalyticsDetails.tsx`, `Klijent/clientapp/src/pages/__tests__/AnalyticsDetails.periodState.spec.tsx`, `Klijent/clientapp/src/services/analyticsApi.ts`, `MASTER_ROADMAP.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `.ai/runs/2026-09-08-RQ204-evidence.md`
+- Contract/runtime behavior changed: yes; InventoryStatus accepts and honors period/scope filters while preserving existing empty and fallback metadata semantics.
+- Checks run: Release API build with 0 errors and 166 existing warnings, focused CachedAnalyticsOperationalFallbackTests (5 passed), AnalyticsDetails period tests (3 passed), frontend analytics guardrails, `git diff --check`, instruction/queue/planning governance validators.
+- Checks not run: full frontend/backend suites, live provider/database/API/browser proof and remote CI; see durable run log.
+- Run log: `.ai/runs/2026-09-08-RQ204-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `74d960db56dbd5d4a8641d6b99124769ab9956e9`
+- Main verification: passed - current `main` and `origin/main` contain delivered implementation `74d960db56dbd5d4a8641d6b99124769ab9956e9`.
+- Missed: no historical stock reconstruction was added; ProductsDim remains a latest-row snapshot source filtered by its stored timestamp.
+- Follow-up: none; RQ205 remains WAITING pending explicit promotion.
+- Residual risk: periods without matching snapshot rows correctly produce empty inventory status, while historical reconstruction remains a separate contract.
+- Prompt defect / scope repair: the legacy prompt omitted Scope, Read first, Tests and Dependencies sections; they were added, and scope remained within Analytics Details/InventoryStatus ownership.
 
 ---
 
