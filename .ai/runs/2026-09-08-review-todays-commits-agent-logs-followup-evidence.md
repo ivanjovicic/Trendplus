@@ -12,10 +12,11 @@ Evidence state: synchronized
 - Reviewed the 2026-09-08 commit history from the previous verified `main` tip through the RQ195 delivery, separating functional commits from merge/documentation-only commits.
 - Read the corresponding agent run logs for the review audit and RQ184, RQ185, RQ186, RQ187, RQ188, RQ189, RQ193, RQ194 and RQ195.
 - Reconciled the implementation claims with the recorded focused tests and the current source: velocity window/divisor and calendar-boundary behavior, backend-owned lost-sales and demand-state semantics, cache/source freshness provenance, and frontend request-generation guards are consistent with the stated requirements and analytics trust rules.
-- Found no additional product-code defect justified by the current evidence. Corrected two evidence-log inconsistencies: RQ185 was marked pending despite a recorded successful main verification, and RQ194 described governance checks as pending even though the subsequent RQ195 verification passed them.
+- Found no additional product-code defect justified by the current evidence. Corrected three evidence-log inconsistencies: RQ185 was marked pending despite a recorded successful main verification, and RQ193/RQ194 described governance checks as pending even though the subsequent RQ195 verification passed them.
 
 ## Files changed
 - .ai/runs/2026-09-08-RQ185-velocity-semantics-evidence.md
+- .ai/runs/2026-09-08-RQ193-inventory-request-sequencing-evidence.md
 - .ai/runs/2026-09-08-RQ194-analytics-details-request-sequencing-evidence.md
 - .ai/runs/2026-09-08-review-todays-commits-agent-logs-followup-evidence.md
 
@@ -35,7 +36,7 @@ Evidence state: synchronized
 - Live database/provider/browser/deployed runtime proof and remote CI -> not run; no live or remote execution was required for the documentation-only corrections.
 
 ## Documentation impact
-- Corrected stale evidence state/proof wording in the RQ185 and RQ194 run logs and added this audit follow-up log. No product contract or queue status was changed.
+- Corrected stale evidence state/proof wording in the RQ185, RQ193 and RQ194 run logs and added this audit follow-up log. No product contract or queue status was changed.
 
 ## What was missed
 - No new product-code issue was proven from today's commits; live provider/deployed behavior remains unverified as recorded in the individual logs.

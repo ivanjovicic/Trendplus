@@ -46,7 +46,7 @@ Analytics safety gate:
 - `npm run check:analytics-guardrails` -> pass; encoding, analytics guardrails and TypeScript check passed.
 - `npm run build` -> pass; Vite production build completed successfully with the existing large `recharts` chunk warning.
 - `git diff --check` -> pass.
-- Final queue/planning governance checks after metadata synchronization: pending.
+- Final queue/planning governance checks after metadata synchronization -> pass in the subsequent RQ195 delivery verification: agent instructions (8 canonical files), prompt queues (403 tasks) and planning architecture (78 tasks).
 
 ## Validation not run
 - Full frontend suite, browser/live API smoke, provider/deployed runtime proof and remote CI result inspection -> not run; this bounded client-side race fix is covered by focused page tests and the production build.
