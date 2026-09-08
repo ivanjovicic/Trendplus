@@ -3349,7 +3349,7 @@ public static class CachedAnalyticsEndpoints
               JOIN "prodaja_zaglavlje" p ON p."id" = ps."id_prodaja"
               {supplierJoin}
               WHERE (@fromDate IS NULL OR p."datum_prodaje" >= @fromDate)
-                AND (@toDate IS NULL OR p."datum_prodaje" <= @toDate)
+                AND (@toDate IS NULL OR p."datum_prodaje" < (@toDate::date + INTERVAL '1 day'))
                 AND (@storeId IS NULL OR p."id_objekat" = @storeId)
                 {supplierPredicate}
                 AND (@scope <> 'imported' OR p."data_origin" = 'access')
@@ -3428,7 +3428,7 @@ public static class CachedAnalyticsEndpoints
                   JOIN "prodaja_zaglavlje" p ON p."id" = ps."id_prodaja"
                   {supplierJoin}
                   WHERE (@fromDate IS NULL OR p."datum_prodaje" >= @fromDate)
-                    AND (@toDate IS NULL OR p."datum_prodaje" <= @toDate)
+                    AND (@toDate IS NULL OR p."datum_prodaje" < (@toDate::date + INTERVAL '1 day'))
                     AND (@storeId IS NULL OR p."id_objekat" = @storeId)
                     {supplierPredicate}
                     AND (@scope <> 'imported' OR p."data_origin" = 'access')
@@ -3532,7 +3532,7 @@ public static class CachedAnalyticsEndpoints
               JOIN "prodaja_zaglavlje" p ON p."id" = ps."id_prodaja"
               {supplierJoin}
               WHERE (@fromDate IS NULL OR p."datum_prodaje" >= @fromDate)
-                AND (@toDate IS NULL OR p."datum_prodaje" <= @toDate)
+                AND (@toDate IS NULL OR p."datum_prodaje" < (@toDate::date + INTERVAL '1 day'))
                 AND (@storeId IS NULL OR p."id_objekat" = @storeId)
                 {supplierPredicate}
                 AND (@scope <> 'imported' OR p."data_origin" = 'access')
@@ -3644,7 +3644,7 @@ public static class CachedAnalyticsEndpoints
               JOIN "prodaja_zaglavlje" p ON p."id" = ps."id_prodaja"
               JOIN "Artikli" a ON a."Id" = ps."id_artikal"
               WHERE (@fromDate IS NULL OR p."datum_prodaje" >= @fromDate)
-                AND (@toDate IS NULL OR p."datum_prodaje" <= @toDate)
+                AND (@toDate IS NULL OR p."datum_prodaje" < (@toDate::date + INTERVAL '1 day'))
                 AND (@storeId IS NULL OR p."id_objekat" = @storeId)
                 AND (@supplierId IS NULL OR a."IDDobavljac" = @supplierId)
                 AND (@scope <> 'imported' OR p."data_origin" = 'access')
