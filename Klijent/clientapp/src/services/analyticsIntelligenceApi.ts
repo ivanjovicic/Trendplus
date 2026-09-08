@@ -58,7 +58,7 @@ export interface PriceIntelligenceItem {
   cost: number;
   priceIndexVsCategory: number | null;
   priceIndexVsBrand: number | null;
-  discountDepth: number;
+  discountDepth: number | null;
   marginPct: number | null;
 }
 

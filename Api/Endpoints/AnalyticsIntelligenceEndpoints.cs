@@ -294,7 +294,7 @@ public static class AnalyticsIntelligenceEndpoints
                 GetDecimal(record, "cost"),
                 GetNullableDecimal(record, "price_index_vs_category"),
                 GetNullableDecimal(record, "price_index_vs_brand"),
-                GetDecimal(record, "discount_depth"),
+                GetNullableDecimal(record, "discount_depth"),
                 GetNullableDecimal(record, "margin_pct")),
             "analytics_intel.mv_price_intelligence_v1_cache",
             "price_date",
@@ -818,10 +818,10 @@ LIMIT @limit OFFSET @offset;
             "productName" => $"product_name {(desc ? "DESC" : "ASC")}, article_id ASC",
             "priceDate" => $"price_date {(desc ? "DESC" : "ASC")}, article_id ASC",
             "netPrice" => $"net_price {(desc ? "DESC" : "ASC")}, article_id ASC",
-            "discountDepth" => $"discount_depth {(desc ? "DESC" : "ASC")}, margin_pct DESC NULLS LAST, article_id ASC",
+            "discountDepth" => $"discount_depth {(desc ? "DESC NULLS LAST" : "ASC NULLS LAST")}, margin_pct DESC NULLS LAST, article_id ASC",
             "priceIndexVsCategory" => $"price_index_vs_category {(desc ? "DESC NULLS LAST" : "ASC NULLS LAST")}, article_id ASC",
             "priceIndexVsBrand" => $"price_index_vs_brand {(desc ? "DESC NULLS LAST" : "ASC NULLS LAST")}, article_id ASC",
-            _ => $"margin_pct {(desc ? "DESC NULLS LAST" : "ASC NULLS LAST")}, discount_depth DESC, article_id ASC"
+            _ => $"margin_pct {(desc ? "DESC NULLS LAST" : "ASC NULLS LAST")}, discount_depth DESC NULLS LAST, article_id ASC"
         };
     }
 
@@ -1074,7 +1074,7 @@ public sealed record PriceIntelligenceItem(
     decimal Cost,
     decimal? PriceIndexVsCategory,
     decimal? PriceIndexVsBrand,
-    decimal DiscountDepth,
+    decimal? DiscountDepth,
     decimal? MarginPct);
 
 public sealed record TrendMomentumRequest(
