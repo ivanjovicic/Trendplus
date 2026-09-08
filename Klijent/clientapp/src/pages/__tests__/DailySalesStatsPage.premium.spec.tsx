@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -14,7 +14,9 @@ vi.mock("recharts", () => ({
   ComposedChart: ({ children }: { children?: ReactNode }) => <div data-testid="composed-chart">{children}</div>,
   Legend: () => null,
   Line: () => null,
-  LineChart: ({ children }: { children?: ReactNode }) => <div data-testid="line-chart">{children}</div>,
+  LineChart: ({ children, data }: { children?: ReactNode; data?: Array<{ date?: string }> }) => (
+    <div data-testid="line-chart" data-order={data?.map((item) => item.date ?? "").join(",")}>{children}</div>
+  ),
   ResponsiveContainer: ({ children }: { children?: ReactNode }) => <div data-testid="responsive-container">{children}</div>,
   Tooltip: () => null,
   XAxis: () => null,
@@ -161,6 +163,37 @@ describe("DailySalesStatsPage premium controls", () => {
       expect(screen.getByTestId("daily-sales-stats-data-table")).toBeInTheDocument();
     });
     expect(screen.getByText("Tabela po danima")).toBeInTheDocument();
+  });
+
+  it("keeps the trend chart in the same order as the default date-sorted table", async () => {
+    const baseRow = response().dateRows[0];
+    vi.mocked(getDailySalesStats).mockResolvedValue(response({
+      dateRows: [
+        { ...baseRow, date: "2026-04-01", totalRevenue: 9000 },
+        { ...baseRow, date: "2026-04-02", totalRevenue: 1000 },
+      ],
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/daily-sales"]}>
+        <Routes>
+          <Route path="/analytics/daily-sales" element={<DailySalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId("line-chart")).toHaveAttribute(
+      "data-order",
+      "2026-04-02,2026-04-01",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Prihod dana/ }));
+    await waitFor(() => {
+      expect(screen.getByTestId("line-chart")).toHaveAttribute(
+        "data-order",
+        "2026-04-01,2026-04-02",
+      );
+    });
   });
 
   it("shows shared error state instead of KPI zeros when daily sales fails", async () => {

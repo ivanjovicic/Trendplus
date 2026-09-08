@@ -4,6 +4,7 @@ import {
   calculateAnomalyDeviation,
   calculateDeltaPct,
   safeDivide,
+  sortDailySalesRows,
   summarizePeriod,
 } from "../DailySalesStatsPage";
 import type { DailySalesRow, DailySalesTableResponse } from "../../services/dailySalesStatsApi";
@@ -63,6 +64,22 @@ describe("Daily Sales numeric evidence states", () => {
     expect(summary.totalVisibleItems).toBeNull();
     expect(summary.avgRevenuePerDay).toBeNull();
     expect(summary.avgRevenuePerItem).toBeNull();
+  });
+
+  it("provides one stable sort order for table and chart rows", () => {
+    const rows = [
+      row({ date: "2026-07-01", totalRevenue: 100 }),
+      row({ date: "2026-07-02", totalRevenue: 50 }),
+    ];
+
+    expect(sortDailySalesRows(rows, "date", "desc").map((item) => item.date)).toEqual([
+      "2026-07-02",
+      "2026-07-01",
+    ]);
+    expect(sortDailySalesRows(rows, "totalRevenue", "asc").map((item) => item.date)).toEqual([
+      "2026-07-02",
+      "2026-07-01",
+    ]);
   });
 
   it("preserves null and missing row evidence instead of filling rolling averages with zero", () => {
