@@ -4,8 +4,8 @@ Date: 2026-09-08
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: codex/rq194-analytics-details-request-sequencing-20260908 / local merge
-Main commit SHA: pending
-Main verification: pending
+Main commit SHA: 4856201a77b142f84fa698761ad4badb1c9531ba
+Main verification: pending - local main contains the implementation commit; origin/main will be freshly verified after push.
 Evidence state: pending
 
 ## What was done

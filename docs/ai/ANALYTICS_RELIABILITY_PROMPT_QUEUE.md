@@ -7294,8 +7294,8 @@ Commit suggestion: `fix(analytics-details): add request sequencing`
 - Run log: `.ai/runs/2026-09-08-RQ194-analytics-details-request-sequencing-evidence.md`
 - Evidence state: pending
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: 4856201a77b142f84fa698761ad4badb1c9531ba
+- Main verification: pending - local main contains the implementation commit; origin/main will be freshly verified after push.
 - Missed: no live browser or deployed runtime proof; RQ195 remains WAITING for separate Pilot Readiness sequencing.
 - Follow-up: none for RQ194.
 - Residual risk: network cancellation remains cooperative; stale results are blocked when applying state.
