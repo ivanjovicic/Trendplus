@@ -2821,7 +2821,7 @@ The live Decision Board still exposes numeric confidence where the contract says
 - Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `164012c85102383c9c15ecd785b710212776c866`
-- Main verification: pending - local merge complete; verify `origin/main` after push
+- Main verification: passed - `origin/main` contains merge commit `164012c85102383c9c15ecd785b710212776c866`
 - Missed: the broader cross-surface trust/freshness lanes remain for RQ125-RQ127
 - Follow-up: `RQ125` is now READY
 - Residual risk: legacy dashboard action cards still rely on the advanced fallback bridge when Product Decision rows are absent, so any future backend schema drift should be caught by the new trust-state regression test before it reaches the UI
