@@ -7392,10 +7392,10 @@ Schedules persist with no checks for empty/invalid recipients, timezone, or `Run
 - Checks run: focused backend schedule-validation tests (4 passed), focused frontend schedule-validation tests (3 passed), `npm run check:analytics-guardrails`, `npm run typecheck`, `npm run build`, `git diff --check`, governance checks after delivery.
 - Checks not run: full frontend/backend suites, live browser/provider/deployed runtime proof and remote CI; see durable run log.
 - Run log: `.ai/runs/2026-09-08-RQ196-report-schedule-validation-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: local merge
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `96f20f4e9b143c634e9086d4e5e6f672992033af`
+- Main verification: passed - local `main` and `origin/main` both resolve to `96f20f4e9b143c634e9086d4e5e6f672992033af`; implementation commit `45224629` is contained in `origin/main`.
 - Missed: no live endpoint/provider/browser runtime proof.
 - Follow-up: none for RQ196.
 - Residual risk: runtime timezone availability can vary by host; invalid IDs fail closed and must be corrected.
