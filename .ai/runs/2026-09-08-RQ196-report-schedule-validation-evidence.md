@@ -5,7 +5,7 @@ Agent/tool: Codex
 Delivery target: main
 Working branch / PR: codex/rq196-report-schedule-validation-20260908 / local merge
 Main commit SHA: 96f20f4e9b143c634e9086d4e5e6f672992033af
-Main verification: passed - local `main` and `origin/main` both resolve to `96f20f4e9b143c634e9086d4e5e6f672992033af`; implementation commit `45224629` is contained in `origin/main`.
+Main verification: passed - local `main` and `origin/main` both contain delivered merge `96f20f4e9b143c634e9086d4e5e6f672992033af`; implementation commit `45224629` is contained in `origin/main`.
 Evidence state: synchronized
 
 ## What was done
