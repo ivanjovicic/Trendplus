@@ -5,6 +5,7 @@ using System.Xml.Linq;
 using Application.Documents.Models;
 using Infrastructure.Configuration;
 using Infrastructure.Services.Documents;
+using Infrastructure.Services.Inventory;
 using Microsoft.Extensions.Options;
 using Xunit;
 
@@ -32,6 +33,20 @@ public class DocumentRendererTests
     }
 
     [Fact]
+    public async Task CsvRenderer_Writes_TruncationFooter()
+    {
+        var renderer = new CsvDocumentRenderer(Options.Create(new DocumentExportOptions()));
+        var request = CreateRequest();
+        request.Table.FooterText = "Napomena: Izvestaj je ogranicen na 50.000 redova.";
+
+        await using var stream = new MemoryStream();
+        await renderer.RenderAsync(stream, request, string.Empty, CancellationToken.None);
+
+        var text = Encoding.UTF8.GetString(stream.ToArray());
+        Assert.Contains("# Napomena: Izvestaj je ogranicen na 50.000 redova.", text);
+    }
+
+    [Fact]
     public async Task XlsxRenderer_WritesWorksheetEntry()
     {
         var renderer = new XlsxDocumentRenderer();
@@ -43,6 +58,23 @@ public class DocumentRendererTests
 
         using var archive = new ZipArchive(stream, ZipArchiveMode.Read, leaveOpen: true);
         Assert.NotNull(archive.GetEntry("xl/worksheets/sheet1.xml"));
+    }
+
+    [Fact]
+    public async Task XlsxRenderer_Writes_TruncationFooterRow()
+    {
+        var renderer = new XlsxDocumentRenderer();
+        var request = CreateRequest();
+        request.Format = "xlsx";
+        request.Table.FooterText = "Napomena: Izvestaj je ogranicen na 50.000 redova.";
+
+        await using var stream = new MemoryStream();
+        await renderer.RenderAsync(stream, request, string.Empty, CancellationToken.None);
+        stream.Position = 0;
+
+        using var archive = new ZipArchive(stream, ZipArchiveMode.Read, leaveOpen: true);
+        var sheetXml = await ReadEntryTextAsync(archive, "xl/worksheets/sheet1.xml");
+        Assert.Contains("# Napomena: Izvestaj je ogranicen na 50.000 redova.", sheetXml, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -165,6 +197,32 @@ public class DocumentRendererTests
 
         Assert.Null(exception);
         Assert.NotEmpty(stream.ToArray());
+    }
+
+    [Fact]
+    public async Task PdfRenderer_Writes_TruncationFooter()
+    {
+        var renderer = new PdfDocumentRenderer();
+        var request = CreateRequest();
+        request.Table.FooterText = "Napomena: Izvestaj je ogranicen na 50.000 redova.";
+
+        await using var stream = new MemoryStream();
+        await renderer.RenderAsync(stream, request, string.Empty, CancellationToken.None);
+
+        var pdf = Encoding.ASCII.GetString(stream.ToArray());
+        Assert.Contains("Napomena: Izvestaj je ogranicen na 50.000 redova.", pdf, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void InventoryExportRowLimit_ClampsConfiguration_AndMarksTruncation()
+    {
+        Assert.Equal(50_000, InventoryReportDeliveryService.ResolveMaxExportRows(new DocumentExportOptions()));
+        Assert.Equal(1_000_000, InventoryReportDeliveryService.ResolveMaxExportRows(new DocumentExportOptions { MaxExportRows = int.MaxValue }));
+
+        var limited = InventoryReportDeliveryService.LimitRows(new[] { 1, 2, 3 }, 2);
+
+        Assert.True(limited.IsTruncated);
+        Assert.Equal(new[] { 1, 2 }, limited.Rows);
     }
 
     [Fact]

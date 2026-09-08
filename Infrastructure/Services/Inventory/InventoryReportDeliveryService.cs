@@ -54,8 +54,8 @@ public sealed class InventoryReportDeliveryService
         var executedAtUtc = DateTime.UtcNow;
         try
         {
-            var rows = await BuildRowsAsync(schedule, ct);
-            var request = BuildDocumentRequest(schedule, rows);
+            var export = await BuildRowsAsync(schedule, ct);
+            var request = BuildDocumentRequest(schedule, export.Rows, export.IsTruncated, export.MaxExportRows);
             var context = new DocumentExecutionContext
             {
                 UserId = initiatedByUserId,
@@ -78,7 +78,7 @@ public sealed class InventoryReportDeliveryService
 
             if (_emailService.IsEnabled)
             {
-                await TrySendEmailAsync(schedule, status.DocumentId, status.FileName, context, rows.Count, manualTrigger, ct);
+                await TrySendEmailAsync(schedule, status.DocumentId, status.FileName, context, export.Rows.Count, manualTrigger, ct);
                 return new InventoryReportScheduleRunResult(
                     true,
                     "emailed",
@@ -196,9 +196,10 @@ public sealed class InventoryReportDeliveryService
         return await _documentService.GetStatusAsync(documentId, context, ct);
     }
 
-    private async Task<List<InventoryExportRow>> BuildRowsAsync(InventoryReportScheduleDefinition schedule, CancellationToken ct)
+    private async Task<(List<InventoryExportRow> Rows, bool IsTruncated, int MaxExportRows)> BuildRowsAsync(InventoryReportScheduleDefinition schedule, CancellationToken ct)
     {
-        var baseItems = await _db.Artikli
+        var maxExportRows = ResolveMaxExportRows(_documentOptions);
+        var baseItemsQuery = _db.Artikli
             .AsNoTracking()
             .Where(a =>
                 (!schedule.StoreId.HasValue || a.IDObjekat == schedule.StoreId.Value)
@@ -216,8 +217,27 @@ public sealed class InventoryReportDeliveryService
                 UnitCost = a.NabavnaCena ?? 0m,
                 StoreId = a.IDObjekat,
                 SupplierId = a.IDDobavljac
-            })
+            });
+
+        var normalizedSortBy = schedule.SortBy?.Trim().ToLowerInvariant();
+        switch (normalizedSortBy)
+        {
+            case "naziv":
+                baseItemsQuery = baseItemsQuery.OrderBy(item => item.Naziv);
+                break;
+            case "vrednost":
+                baseItemsQuery = baseItemsQuery.OrderByDescending(item => item.UnitCost * item.Quantity);
+                break;
+            default:
+                baseItemsQuery = baseItemsQuery.OrderByDescending(item => item.Quantity).ThenBy(item => item.Naziv);
+                break;
+        }
+
+        var baseItems = await baseItemsQuery
+            .Take(maxExportRows + 1)
             .ToListAsync(ct);
+        var limitedItems = LimitRows(baseItems, maxExportRows);
+        baseItems = limitedItems.Rows.ToList();
 
         var storeIds = baseItems.Where(x => x.StoreId.HasValue).Select(x => x.StoreId!.Value).Distinct().ToList();
         var supplierIds = baseItems.Where(x => x.SupplierId.HasValue).Select(x => x.SupplierId!.Value).Distinct().ToList();
@@ -253,22 +273,27 @@ public sealed class InventoryReportDeliveryService
                 item.SupplierId.HasValue ? supplierNames.GetValueOrDefault(item.SupplierId.Value, $"Dobavljac {item.SupplierId.Value}") : "Nerasporedjen"))
             .ToList();
 
-        return ApplySorting(rows, schedule.SortBy);
+        return (rows, limitedItems.IsTruncated, maxExportRows);
     }
 
-    private static List<InventoryExportRow> ApplySorting(List<InventoryExportRow> rows, string? sortBy)
+    internal static int ResolveMaxExportRows(DocumentExportOptions options)
     {
-        return sortBy?.Trim().ToLowerInvariant() switch
-        {
-            "naziv" => rows.OrderBy(x => x.Naziv).ToList(),
-            "vrednost" => rows.OrderByDescending(x => x.EstimatedValue).ToList(),
-            _ => rows.OrderByDescending(x => x.Quantity).ThenBy(x => x.Naziv).ToList()
-        };
+        return Math.Clamp(options.MaxExportRows, 1, 1_000_000);
+    }
+
+    internal static (IReadOnlyList<T> Rows, bool IsTruncated) LimitRows<T>(IReadOnlyList<T> rows, int maxRows)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxRows);
+        return rows.Count > maxRows
+            ? (rows.Take(maxRows).ToList(), true)
+            : (rows, false);
     }
 
     private static DocumentGenerationRequest BuildDocumentRequest(
         InventoryReportScheduleDefinition schedule,
-        List<InventoryExportRow> rows)
+        List<InventoryExportRow> rows,
+        bool isTruncated,
+        int maxExportRows)
     {
         return new DocumentGenerationRequest
         {
@@ -283,6 +308,9 @@ public sealed class InventoryReportDeliveryService
             {
                 TableKey = "inventory-balance",
                 TableTitle = $"Bilans stanja | {schedule.Name}",
+                FooterText = isTruncated
+                    ? $"Napomena: Izvestaj je ogranicen na {maxExportRows.ToString("N0", SerbianCulture)} redova. Prikazani su prvi redovi prema izabranoj pretrazi i sortiranju."
+                    : null,
                 Columns =
                 {
                     new() { Key = "plu", Header = "PLU", DataType = "text" },

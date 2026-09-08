@@ -4,6 +4,7 @@ Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-08: RQ197 was explicitly promoted by the user after completed RQ196, claimed and completed in this workspace.
 Owner promotion 2026-09-08: RQ196 was explicitly promoted by the user after completed RQ195, claimed and completed in this workspace.
 
 Owner promotion 2026-09-08: RQ195 was explicitly promoted by the user after RQ194, claimed and completed in this workspace.
@@ -126,7 +127,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ194 | DONE | analytics-details-async-safety | Analytics Details missing in-flight guard |
 | RQ195 | DONE | pilot-readiness-async-consistency | Pilot Readiness multi-signal load can mix reload generations |
 | RQ196 | DONE | report-schedule-validation | Inventory report schedules saved without validation |
-| RQ197 | WAITING | export-truncation-safety | Scheduled inventory export has no row cap |
+| RQ197 | DONE | export-truncation-safety | Scheduled inventory export has no row cap |
 | RQ198 | WAITING | decision-board-datascope-override | Executive Decision Board hardcoded dataScope |
 | RQ199 | WAITING | pre-nivelacija-datascope | Pre-nivelacija priority endpoint missing DataScope |
 | RQ200 | WAITING | pdc-search-pagination-boundary | Product Decision Center search capped at backend rows |
@@ -7406,12 +7407,14 @@ Schedules persist with no checks for empty/invalid recipients, timezone, or `Run
 
 ## RQ197 - Scheduled inventory export has no row cap / tight completion window
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: backend/tests
 Feature family: export-truncation-safety
 Parallel-safe: yes
 Owner: Reports/Export
+
+Promotion/claim note: 2026-09-08 - explicitly promoted by the user after the queue reported no current READY prompt; claimed in this workspace with `.ai/task-locks/RQ197-codex.lock.md`.
 
 Commit suggestion: `fix(export): add row cap and graceful truncation`
 
@@ -7432,6 +7435,26 @@ Export loads all articles unbounded; completion waits ~90s. Large catalogs can t
 ### Acceptance
 
 - Large exports complete with clear truncation messaging.
+
+### Completion note
+
+- Date: 2026-09-08
+- Status: DONE
+- Completion: Scheduled inventory exports now apply a configurable `MaxExportRows` cap (default 50,000) in the database query, preserve deterministic sorting before truncation, and emit a visible truncation footer in CSV, XLSX and PDF output (and the HTML table path).
+- Changed files: `Infrastructure/Configuration/DocumentExportOptions.cs`, `Api/appsettings.json`, `Api/appsettings.Development.json`, `Application/Documents/Models/DocumentContracts.cs`, `Infrastructure/Services/Inventory/InventoryReportDeliveryService.cs`, `Infrastructure/Services/Documents/DocumentRenderer.cs`, `Infrastructure/Services/Documents/DocumentTemplateService.cs`, `Infrastructure/Services/Documents/Internal/DocumentPdfWriter.cs`, `Api.Tests/DocumentRendererTests.cs`, `MASTER_ROADMAP.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `.ai/runs/2026-09-08-RQ197-export-row-cap-evidence.md`
+- Contract/runtime behavior changed: inventory report generation reads at most `MaxExportRows + 1` rows to detect truncation, renders at most the configured cap, and clearly labels incomplete exports; untruncated exports remain unchanged.
+- Checks run: focused document renderer tests (16 passed), Release API build, `git diff --check`, governance checks after delivery.
+- Checks not run: full frontend/backend suites, live database/provider/deployed runtime proof and remote CI; see durable run log.
+- Run log: `.ai/runs/2026-09-08-RQ197-export-row-cap-evidence.md`
+- Evidence state: pending
+- Delivery mode: local merge
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: no live large-catalog or deployed export runtime proof.
+- Follow-up: none for RQ197.
+- Residual risk: the configured cap is bounded to 1,000,000 rows; downstream document generation still depends on available storage and renderer capacity.
+- Next: none; return queue to no READY prompt.
+- Prompt defect / scope repair: prompt omitted a Dependencies section; no dependency blocker was found and the implementation stayed within Reports/Export and its directly supporting document-renderer contract.
 
 ---
 
