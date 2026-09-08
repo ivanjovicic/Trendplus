@@ -7,7 +7,7 @@ Agent/tool: Codex
 Delivery target: `main`
 Working branch / PR: `codex/rq186-pdc-lost-sales-20260908` / local merge, no PR
 Main commit SHA: `498553a0989c099cc1d38fda53098a894e8904ca`
-Main verification: passed — `origin/main` at `633de4db4bb65a88ababd9b0d78d5ce60d56fa57` contains merge SHA `498553a0989c099cc1d38fda53098a894e8904ca`; local `main` matches `origin/main`.
+Main verification: passed — `origin/main` at `650dc244e6a8b30050e21a7438913e471327bc31` contains merge SHA `498553a0989c099cc1d38fda53098a894e8904ca`; local `main` matches `origin/main`.
 Evidence state: synchronized
 
 ## What was done
