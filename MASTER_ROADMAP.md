@@ -41,6 +41,7 @@ Owner promotion 2026-09-08: RQ199 was explicitly promoted and completed for Pre-
 Owner promotion 2026-09-08: RQ200 was explicitly promoted and completed for backend-first Product Decision Center search before the top-row limit; the RQ queue remains the canonical execution owner.
 Owner promotion 2026-09-08: RQ201 was explicitly promoted for Daily Sales chart/table sort parity; the RQ queue remains the canonical execution owner.
 Owner promotion 2026-09-08: RQ201 was explicitly promoted and completed for Daily Sales chart/table sort parity; the RQ queue remains the canonical execution owner.
+Owner promotion 2026-09-08: RQ202 was explicitly promoted and completed for timezone-safe Daily Sales date sorting; the RQ queue remains the canonical execution owner.
 
 | Program | Owner queue / roadmap | Current READY | Blocked by / current truth | Parallel-safe planning | Next milestone |
 |---|---|---|---|---|---|

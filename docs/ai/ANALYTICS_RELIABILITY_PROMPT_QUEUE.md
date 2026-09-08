@@ -4,6 +4,7 @@ Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-08: RQ202 was explicitly promoted by the user after completed RQ201 and is claimed in this workspace.
 Owner promotion 2026-09-08: RQ201 was explicitly promoted by the user after completed RQ200 and is claimed in this workspace.
 Owner promotion 2026-09-08: RQ200 was explicitly promoted by the user after completed RQ199 and is claimed in this workspace.
 Owner promotion 2026-09-08: RQ199 was explicitly promoted by the user after completed RQ198 and is claimed in this workspace.
@@ -136,7 +137,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ199 | DONE | pre-nivelacija-datascope | Pre-nivelacija priority endpoint missing DataScope |
 | RQ200 | DONE | pdc-search-pagination-boundary | Product Decision Center search capped at backend rows |
 | RQ201 | DONE | sales-stats-chart-table-parity | Daily Sales chart vs table order divergence |
-| RQ202 | WAITING | date-timezone-safety | Daily Sales date sort timezone drift |
+| RQ202 | DONE | date-timezone-safety | Daily Sales date sort timezone drift |
 | RQ203 | WAITING | inventory-detail-scope-consistency | Inventory detail ignores parent scope and uses fixed 30-day |
 | RQ204 | WAITING | analytics-details-scope-parity | Analytics Details global inventory snapshot unrelated to period |
 | RQ205 | WAITING | client-cache-invalidation | Frontend 15s cache not invalidated after refresh |
@@ -7671,12 +7672,14 @@ Chart always uses ascending order; table uses user sort (date desc or user colum
 
 ## RQ202 - Daily Sales date sort uses local Date parsing (timezone drift)
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/tests
 Feature family: date-timezone-safety
 Parallel-safe: yes
 Owner: Daily Sales/Analytics
+
+Promotion/claim note: 2026-09-08 - explicitly promoted by the user after the queue reported no current READY prompt; claimed in this workspace.
 
 Commit suggestion: `fix(daily-sales): use UTC date parsing`
 
@@ -7696,6 +7699,25 @@ Date sort uses `new Date(row.date).getTime()`, which drifts across timezone boun
 ### Acceptance
 
 - Date boundaries sort correctly regardless of timezone.
+
+### Completion note
+
+- Date: 2026-09-08
+- Status: DONE
+- Completion: Daily Sales date sorting now anchors date-only values at UTC midnight, with regression coverage for the 2026 European DST transition dates in ascending and descending order.
+- Changed files: `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.numericState.spec.ts`, `MASTER_ROADMAP.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `.ai/runs/2026-09-08-RQ202-daily-sales-utc-date-evidence.md`
+- Checks run: focused Daily Sales tests (13 passed), related Daily Sales/trust tests (19 passed), frontend analytics guardrails including encoding and typecheck, frontend production build, `git diff --check`, prompt-queue governance and planning-architecture validation.
+- Checks not run: full frontend/backend suites, live provider/database/API/browser proof and remote CI; see durable run log.
+- Run log: `.ai/runs/2026-09-08-RQ202-daily-sales-utc-date-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: local merge
+- Main commit SHA: `ee49be88c94fe567d1897229cb897f2a215fb902`
+- Main verification: passed - local `main` and `origin/main` both contain delivered merge `ee49be88c94fe567d1897229cb897f2a215fb902`; implementation commit `756f4d52` is contained in `origin/main`.
+- Missed: no live browser/timezone matrix inspection against production data.
+- Follow-up: none for RQ202.
+- Residual risk: the runtime test environment did not execute a separate non-Europe timezone matrix; the comparator is explicitly UTC and the focused DST boundary regression passed.
+- Prompt defect / scope repair: prompt omitted a Dependencies section; no dependency blocker was found and implementation stayed within the Daily Sales date comparator and focused tests.
+- Next: none; return queue to no READY prompt.
 
 ---
 
