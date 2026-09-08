@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using System.Globalization;
 using Application.Artikli.Common.Interfaces;
 using Domain.Model;
 using Domain.Model.Prodaja;
@@ -83,6 +84,30 @@ public sealed class InventoryListEndpointIntegrationTests
         Assert.Contains("replenish_needed", root.GetProperty("reasonCodes").EnumerateArray().Select(x => x.GetString()));
         Assert.Contains("sell_through_denominator_zero", root.GetProperty("reasonCodes").EnumerateArray().Select(x => x.GetString()));
         Assert.Contains("stock_cover_out_of_stock_risk", root.GetProperty("reasonCodes").EnumerateArray().Select(x => x.GetString()));
+    }
+
+    [Fact]
+    public async Task InventoryDetail_RespectsParentScopeAndHalfOpenSignalWindow()
+    {
+        await using var factory = CreateFactory();
+        var now = DateTime.UtcNow;
+        var fromDate = now.AddDays(-6);
+        var toDate = now.AddDays(-3);
+        var query = $"storeId=1&supplierId=1&fromDate={Uri.EscapeDataString(fromDate.ToString("O", CultureInfo.InvariantCulture))}&toDate={Uri.EscapeDataString(toDate.ToString("O", CultureInfo.InvariantCulture))}";
+
+        var list = await GetJsonAsync(factory, $"/api/analytics/cached/inventory/list?pageSize=10&storeId=1&supplierId=1&search=OOS-101&fromDate={Uri.EscapeDataString(fromDate.ToString("O", CultureInfo.InvariantCulture))}&toDate={Uri.EscapeDataString(toDate.ToString("O", CultureInfo.InvariantCulture))}");
+        var detail = await GetJsonAsync(factory, $"/api/analytics/inventory/101/detail?{query}");
+
+        var listItem = Assert.Single(list.GetProperty("items").EnumerateArray());
+        Assert.Equal(101, listItem.GetProperty("id").GetInt32());
+        Assert.Equal(listItem.GetProperty("stockCoverStatus").GetString(), detail.GetProperty("stockCoverStatus").GetString());
+        Assert.Equal(listItem.GetProperty("sellThroughStatus").GetString(), detail.GetProperty("sellThroughStatus").GetString());
+        Assert.Equal(1, detail.GetProperty("movementCount").GetInt32());
+        Assert.Single(detail.GetProperty("history").EnumerateArray());
+
+        using var client = factory.CreateClient();
+        using var mismatchedScope = await client.GetAsync("/api/analytics/inventory/101/detail?storeId=2&supplierId=1");
+        Assert.Equal(HttpStatusCode.NotFound, mismatchedScope.StatusCode);
     }
 
     [Fact]

@@ -103,10 +103,16 @@ public static class InventoryEndpoints
             string? search = null,
             string? sortBy = null,
             string? dataScope = null,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
             CancellationToken ct = default) =>
         {
             page = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize, 1, 1000);
+            if (!TryResolveInventorySignalWindow(fromDate, toDate, out var signalWindow, out var invalidWindow))
+            {
+                return invalidWindow!;
+            }
 
             var query = ApplyInventorySorting(
                 ApplyInventoryFilters(db.Artikli.AsNoTracking(), storeId, supplierId, search, dataScope: dataScope),
@@ -130,8 +136,8 @@ public static class InventoryEndpoints
                 .ToListAsync(ct);
 
             var articleIds = rawItems.Select(item => item.Id).ToArray();
-            var soldUnitsByArticle = await LoadSoldUnitsByArticleAsync(db, articleIds, storeId, 30, ct);
-            var movementWindowStatsByArticle = await LoadInventorySignalWindowStatsAsync(analyticsDb, articleIds, storeId, 30, ct);
+            var soldUnitsByArticle = await LoadSoldUnitsByArticleAsync(db, articleIds, storeId, signalWindow.FromUtc, signalWindow.ToExclusiveUtc, ct);
+            var movementWindowStatsByArticle = await LoadInventorySignalWindowStatsAsync(analyticsDb, articleIds, storeId, signalWindow.FromUtc, signalWindow.ToExclusiveUtc, ct);
 
             var items = new List<InventoryListItemDto>(rawItems.Count);
             foreach (var item in rawItems)
@@ -148,7 +154,7 @@ public static class InventoryEndpoints
                     ? (int?)null
                     : Math.Max(quantity.Value - movementWindowStats.NetMovementUnits, 0);
                 var hasReliableSellThroughInputs = (openingStockUnits ?? 0) > 0 || movementWindowStats.InboundUnits > 0;
-                var avgDailySalesUnits = Math.Round(soldUnits30d / 30m, 4, MidpointRounding.AwayFromZero);
+                var avgDailySalesUnits = Math.Round(soldUnits30d / signalWindow.ElapsedDays, 4, MidpointRounding.AwayFromZero);
                 var hasQuantityEvidence = quantity is not null;
                 var hasSufficientData = hasQuantityEvidence
                     && (soldUnits30d > 0 || quantity > 0 || hasReliableSellThroughInputs);
@@ -219,11 +225,22 @@ public static class InventoryEndpoints
             int id,
             ITrendplusDbContext db,
             IAnalyticsDbContext analyticsDb,
-            CancellationToken ct) =>
+            int? storeId = null,
+            int? supplierId = null,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            CancellationToken ct = default) =>
         {
+            if (!TryResolveInventorySignalWindow(fromDate, toDate, out var signalWindow, out var invalidWindow))
+            {
+                return invalidWindow!;
+            }
+
             var article = await db.Artikli
                 .AsNoTracking()
-                .Where(a => a.Id == id)
+                .Where(a => a.Id == id
+                    && (!storeId.HasValue || a.IDObjekat == storeId.Value)
+                    && (!supplierId.HasValue || a.IDDobavljac == supplierId.Value))
                 .Select(a => new InventoryArticleProjection(
                     a.Id,
                     a.PLU,
@@ -246,7 +263,8 @@ public static class InventoryEndpoints
 
             var history = await analyticsDb.InventoryMovementFacts
                 .AsNoTracking()
-                .Where(x => x.ArtikalId == id)
+                .Where(x => x.ArtikalId == id
+                    && (!storeId.HasValue || x.StoreId == storeId.Value))
                 .OrderByDescending(x => x.Datum)
                 .Take(12)
                 .Select(x => new InventoryHistoryProjection(
@@ -269,7 +287,9 @@ public static class InventoryEndpoints
             {
                 history = await db.DnevnikPromena
                     .AsNoTracking()
-                    .Where(x => x.ArtikalId == id)
+                    .Where(x => x.ArtikalId == id
+                        && (!storeId.HasValue || x.IDObjekat == storeId.Value)
+                        )
                     .OrderByDescending(x => x.Datum)
                     .Take(12)
                     .Select(x => new InventoryHistoryProjection(
@@ -289,16 +309,22 @@ public static class InventoryEndpoints
                     .ToListAsync(ct);
             }
 
-            var movementCount30d = await analyticsDb.InventoryMovementFacts
+            var movementCount = await analyticsDb.InventoryMovementFacts
                 .AsNoTracking()
-                .Where(x => x.ArtikalId == id && x.Datum >= DateTime.UtcNow.AddDays(-30))
+                .Where(x => x.ArtikalId == id
+                    && x.Datum >= signalWindow.FromUtc
+                    && x.Datum < signalWindow.ToExclusiveUtc
+                    && (!storeId.HasValue || x.StoreId == storeId.Value))
                 .CountAsync(ct);
 
-            if (movementCount30d == 0)
+            if (movementCount == 0)
             {
-                movementCount30d = await db.DnevnikPromena
+                movementCount = await db.DnevnikPromena
                     .AsNoTracking()
-                    .Where(x => x.ArtikalId == id && x.Datum >= DateTime.UtcNow.AddDays(-30))
+                    .Where(x => x.ArtikalId == id
+                        && x.Datum >= signalWindow.FromUtc
+                        && x.Datum < signalWindow.ToExclusiveUtc
+                        && (!storeId.HasValue || x.IDObjekat == storeId.Value))
                     .CountAsync(ct);
             }
 
@@ -341,7 +367,7 @@ public static class InventoryEndpoints
                     article.Materijal,
                     EnsureUtc(article.UpdatedAt),
                     lastMovementAt,
-                    movementCount30d,
+                    movementCount,
                     daysSinceMovement,
                     agingBucket,
                     agingLabel,
@@ -350,8 +376,9 @@ public static class InventoryEndpoints
             .Single();
 
             var articleIds = new[] { singleton.Id };
-            var soldUnitsByArticle = await LoadSoldUnitsByArticleAsync(db, articleIds, singleton.StoreId, 30, ct);
-            var movementWindowStatsByArticle = await LoadInventorySignalWindowStatsAsync(analyticsDb, articleIds, singleton.StoreId, 30, ct);
+            var signalStoreId = storeId ?? singleton.StoreId;
+            var soldUnitsByArticle = await LoadSoldUnitsByArticleAsync(db, articleIds, signalStoreId, signalWindow.FromUtc, signalWindow.ToExclusiveUtc, ct);
+            var movementWindowStatsByArticle = await LoadInventorySignalWindowStatsAsync(analyticsDb, articleIds, signalStoreId, signalWindow.FromUtc, signalWindow.ToExclusiveUtc, ct);
             var soldUnits30d = soldUnitsByArticle.TryGetValue(singleton.Id, out var soldUnitsValue) ? soldUnitsValue : 0;
             var movementWindowStats = movementWindowStatsByArticle.TryGetValue(singleton.Id, out var movementStats)
                 ? movementStats
@@ -366,7 +393,7 @@ public static class InventoryEndpoints
             {
                 var openingStockUnits = Math.Max(article.Quantity.Value - movementWindowStats.NetMovementUnits, 0);
                 var hasReliableSellThroughInputs = openingStockUnits > 0 || movementWindowStats.InboundUnits > 0;
-                var avgDailySalesUnits = Math.Round(soldUnits30d / 30m, 4, MidpointRounding.AwayFromZero);
+                var avgDailySalesUnits = Math.Round(soldUnits30d / signalWindow.ElapsedDays, 4, MidpointRounding.AwayFromZero);
                 var hasSufficientData = soldUnits30d > 0 || article.Quantity > 0 || hasReliableSellThroughInputs;
                 var signalDataQuality = soldUnits30d > 0 && hasReliableSellThroughInputs
                     ? "good"
@@ -989,18 +1016,35 @@ public static class InventoryEndpoints
         int lookbackDays,
         CancellationToken ct)
     {
+        var toExclusiveUtc = DateTime.UtcNow;
+        return await LoadSoldUnitsByArticleAsync(
+            db,
+            articleIds,
+            storeId,
+            toExclusiveUtc.AddDays(-Math.Max(lookbackDays, 1)),
+            toExclusiveUtc,
+            ct);
+    }
+
+    private static async Task<Dictionary<int, int>> LoadSoldUnitsByArticleAsync(
+        ITrendplusDbContext db,
+        int[] articleIds,
+        int? storeId,
+        DateTime fromUtc,
+        DateTime toExclusiveUtc,
+        CancellationToken ct)
+    {
         if (articleIds.Length == 0)
         {
             return [];
         }
 
-        var fromDate = DateTime.UtcNow.AddDays(-Math.Max(lookbackDays, 1));
-
         var grouped = await (
             from pz in db.ProdajaZaglavlja.AsNoTracking()
             join ps in db.ProdajaStavke.AsNoTracking() on pz.Id equals ps.IdProdaja
             where articleIds.Contains(ps.IdArtikal)
-                  && pz.DatumProdaje >= fromDate
+                  && pz.DatumProdaje >= fromUtc
+                  && pz.DatumProdaje < toExclusiveUtc
                   && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
             group ps by ps.IdArtikal
             into g
@@ -1021,12 +1065,29 @@ public static class InventoryEndpoints
         int lookbackDays,
         CancellationToken ct)
     {
+        var toExclusiveUtc = DateTime.UtcNow;
+        return await LoadInventorySignalWindowStatsAsync(
+            analyticsDb,
+            articleIds,
+            storeId,
+            toExclusiveUtc.AddDays(-Math.Max(lookbackDays, 1)),
+            toExclusiveUtc,
+            ct);
+    }
+
+    private static async Task<Dictionary<int, InventorySignalWindowStats>> LoadInventorySignalWindowStatsAsync(
+        IAnalyticsDbContext analyticsDb,
+        int[] articleIds,
+        int? storeId,
+        DateTime fromUtc,
+        DateTime toExclusiveUtc,
+        CancellationToken ct)
+    {
         if (articleIds.Length == 0)
         {
             return [];
         }
 
-        var fromDate = DateTime.UtcNow.AddDays(-Math.Max(lookbackDays, 1));
         var inboundTypes = TipPromeneConstants.UlazTypes.ToArray();
         var stats = new Dictionary<int, InventorySignalWindowStats>(articleIds.Length);
 
@@ -1036,7 +1097,8 @@ public static class InventoryEndpoints
                 .AsNoTracking()
                 .Where(x => x.ArtikalId.HasValue
                     && batch.Contains(x.ArtikalId.Value)
-                    && x.Datum >= fromDate
+                    && x.Datum >= fromUtc
+                    && x.Datum < toExclusiveUtc
                     && (!storeId.HasValue || x.StoreId == storeId.Value))
                 .GroupBy(x => x.ArtikalId!.Value)
                 .Select(g => new
@@ -1738,6 +1800,31 @@ public static class InventoryEndpoints
         };
     }
 
+    private static bool TryResolveInventorySignalWindow(
+        DateTime? fromDate,
+        DateTime? toDate,
+        out InventorySignalWindow window,
+        out IResult? invalidResult)
+    {
+        var toExclusiveUtc = EnsureUtc(toDate ?? DateTime.UtcNow);
+        var fromUtc = EnsureUtc(fromDate ?? toExclusiveUtc.AddDays(-30));
+        if (fromUtc >= toExclusiveUtc)
+        {
+            window = default;
+            invalidResult = Results.BadRequest(new
+            {
+                message = "Neispravan period: fromDate mora biti pre toDate.",
+                fromDate = fromUtc,
+                toDate = toExclusiveUtc
+            });
+            return false;
+        }
+
+        window = new InventorySignalWindow(fromUtc, toExclusiveUtc);
+        invalidResult = null;
+        return true;
+    }
+
     private static string? ResolveLookup(Dictionary<int, string> values, int? id)
         => id.HasValue && values.TryGetValue(id.Value, out var value) ? value : null;
 
@@ -1942,6 +2029,11 @@ public static class InventoryEndpoints
     private sealed record InventoryMovementStats(
         DateTime LastMovementAt,
         int MovementCount30d);
+
+    private readonly record struct InventorySignalWindow(DateTime FromUtc, DateTime ToExclusiveUtc)
+    {
+        public decimal ElapsedDays => (decimal)(ToExclusiveUtc - FromUtc).TotalDays;
+    }
 
     private sealed record InventorySignalWindowStats(
         int NetMovementUnits,

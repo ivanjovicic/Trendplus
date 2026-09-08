@@ -650,6 +650,8 @@ public static class CachedAnalyticsEndpoints
             string? dataScope = null,
             string? search = null,
             string? sortBy = null,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
             CancellationToken ct = default) =>
         {
             var logger = loggerFactory.CreateLogger("CachedAnalyticsEndpoints");
@@ -657,8 +659,19 @@ public static class CachedAnalyticsEndpoints
             page = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize, 1, 1000);
             var normalizedDataScope = NormalizeDataScope(dataScope);
+            var salesWindowEndUtc = NormalizeUtc(toDate ?? DateTime.UtcNow);
+            var salesWindowStartUtc = NormalizeUtc(fromDate ?? salesWindowEndUtc.AddDays(-30));
+            if (salesWindowStartUtc >= salesWindowEndUtc)
+            {
+                return Results.BadRequest(new
+                {
+                    message = "Neispravan period: fromDate mora biti pre toDate.",
+                    fromDate = salesWindowStartUtc,
+                    toDate = salesWindowEndUtc
+                });
+            }
 
-            var cacheKey = $"analytics:inventory:list:{page}:{pageSize}:{storeId}:{supplierId}:{normalizedDataScope}:{search}:{sortBy}";
+            var cacheKey = $"analytics:inventory:list:{page}:{pageSize}:{storeId}:{supplierId}:{normalizedDataScope}:{search}:{sortBy}:{salesWindowStartUtc:O}:{salesWindowEndUtc:O}";
             try
             {
                 var paged = await cache.GetOrSetAsync(
@@ -702,8 +715,6 @@ public static class CachedAnalyticsEndpoints
 
                         var articleIds = rawItems.Select(item => item.Id).ToArray();
                         // Inventory velocity uses one explicit half-open UTC window.
-                        var salesWindowEndUtc = DateTime.UtcNow;
-                        var salesWindowStartUtc = salesWindowEndUtc.AddDays(-30);
                         var soldUnitsByArticle = await (
                             from pz in db.ProdajaZaglavlja.AsNoTracking()
                             join ps in db.ProdajaStavke.AsNoTracking() on pz.Id equals ps.IdProdaja
@@ -7900,6 +7911,14 @@ public static class CachedAnalyticsEndpoints
         var normalized = (dataScope ?? "all").Trim().ToLowerInvariant();
         return normalized is "all" or "imported" or "existing" ? normalized : "all";
     }
+
+    private static DateTime NormalizeUtc(DateTime value)
+        => value.Kind switch
+        {
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+        };
 
     private static async Task<Dictionary<int, InventorySignalWindowStats>> LoadInventorySignalWindowStatsFromJournalAsync(
         ITrendplusDbContext db,

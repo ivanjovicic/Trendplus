@@ -35,7 +35,7 @@ public sealed record InventoryItemDetailDto(
     string? Materijal,
     DateTime UpdatedAt,
     DateTime? LastMovementAt,
-    int MovementCount30d,
+    int MovementCount,
     int DaysSinceMovement,
     string AgingBucket,
     string AgingLabel,

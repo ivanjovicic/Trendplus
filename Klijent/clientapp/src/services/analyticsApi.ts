@@ -1190,6 +1190,8 @@ export async function getInventoryList(
     storeId?: number | null;
     supplierId?: number | null;
     sortBy?: string | null;
+    fromDate?: string | null;
+    toDate?: string | null;
   }
 ): Promise<import("../types/analytics").InventoryPagedResponse> {
   const pageNumber = options?.pageNumber ?? 1;
@@ -1199,6 +1201,8 @@ export async function getInventoryList(
   if (options?.storeId != null) params.append("storeId", String(options.storeId));
   if (options?.supplierId != null) params.append("supplierId", String(options.supplierId));
   if (options?.sortBy) params.append("sortBy", options.sortBy);
+  if (options?.fromDate) params.append("fromDate", options.fromDate);
+  if (options?.toDate) params.append("toDate", options.toDate);
 
   return fetchJson(
     "/api/analytics/cached/inventory/list",
@@ -1227,10 +1231,21 @@ export async function getInventoryInsights(options?: {
   );
 }
 
-export async function getInventoryItemDetail(id: number): Promise<InventoryItemDetail> {
+export async function getInventoryItemDetail(
+  id: number,
+  options?: {
+    storeId?: number | null;
+    supplierId?: number | null;
+    fromDate?: string | null;
+    toDate?: string | null;
+  }
+): Promise<InventoryItemDetail> {
+  const params = new URLSearchParams();
+  appendFilterParams(params, options?.fromDate ?? undefined, options?.toDate ?? undefined, options?.storeId, options?.supplierId);
+
   return fetchJson(
     `/api/analytics/inventory/${id}/detail`,
-    undefined,
+    params,
     "Greska pri ucitavanju detalja artikla"
   );
 }

@@ -40,6 +40,7 @@ const ALERTS_DISPLAY_COUNT = 12;
 const REBALANCE_DISPLAY_COUNT = 20;
 const REBALANCE_FETCH_LIMIT = 20;
 const FORECAST_FETCH_LIMIT = 50;
+const INVENTORY_SIGNAL_LOOKBACK_DAYS = 30;
 const OOS_RISK_THRESHOLD = 0.25;
 const OVERSTOCK_RISK_THRESHOLD = 0.5;
 const STORE_COMPARISON_SECTION_ID = "inventory-store-comparison";
@@ -67,6 +68,13 @@ function toInventoryPageError(reason: unknown, fallback: string): InventoryPageE
   }
 
   return { message: fallback };
+}
+
+function createInventorySignalWindow() {
+  const toDate = new Date();
+  const fromDate = new Date(toDate);
+  fromDate.setUTCDate(fromDate.getUTCDate() - INVENTORY_SIGNAL_LOOKBACK_DAYS);
+  return { fromDate: fromDate.toISOString(), toDate: toDate.toISOString() };
 }
 
 function toActionDataQualityStatus(value: string | null | undefined): AnalyticsActionDataQualityStatus {
@@ -263,6 +271,7 @@ export default function InventoryPage() {
   const [reloadNonce, setReloadNonce] = useState(0);
   const deferredSearch = useDeferredValue(searchInput);
   const trimmedSearch = deferredSearch.trim();
+  const inventorySignalWindow = useMemo(createInventorySignalWindow, []);
   const serverSortBy = isInventoryPageLocalRiskSort(sortBy) ? "kolicina" : sortBy;
   const selectedStoreName = selectedStoreId == null ? null : stores.find((store) => store.storeId === selectedStoreId)?.storeName ?? null;
   const rebalanceScopeLabel = selectedStoreId == null
@@ -388,7 +397,7 @@ export default function InventoryPage() {
 
     const primaryTasks = [
       { key: "balance" as const, promise: getInventoryBalance(true, selectedStoreId, selectedSupplierId) },
-      { key: "list" as const, promise: getInventoryList({ pageNumber, pageSize, search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy }) },
+      { key: "list" as const, promise: getInventoryList({ pageNumber, pageSize, search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy, ...inventorySignalWindow }) },
     ];
 
     void Promise.allSettled(primaryTasks.map((task) => task.promise))
@@ -521,7 +530,7 @@ export default function InventoryPage() {
     }
 
     return () => { cancelled = true; };
-  }, [compareStoreIds, pageNumber, pageSize, reloadNonce, selectedStoreId, selectedSupplierId, sortBy, trimmedSearch]);
+  }, [compareStoreIds, inventorySignalWindow, pageNumber, pageSize, reloadNonce, selectedStoreId, selectedSupplierId, sortBy, trimmedSearch]);
 
   useEffect(() => {
     if (!detailRow) {
@@ -535,7 +544,11 @@ export default function InventoryPage() {
     let cancelled = false;
     setDetailLoading(true);
     setDetailError(null);
-    void getInventoryItemDetail(detailRow.id)
+    void getInventoryItemDetail(detailRow.id, {
+      storeId: selectedStoreId ?? detailRow.idObjekat,
+      supplierId: selectedSupplierId ?? detailRow.idDobavljac,
+      ...inventorySignalWindow,
+    })
       .then((nextDetail) => {
         if (!cancelled) setDetailData(nextDetail);
       })
@@ -549,7 +562,7 @@ export default function InventoryPage() {
         if (!cancelled) setDetailLoading(false);
       });
     return () => { cancelled = true; };
-  }, [detailRow]);
+  }, [detailRow, inventorySignalWindow, selectedStoreId, selectedSupplierId]);
 
   useEffect(() => {
     if (!detailRow || detailTab !== "sizeCurve") {

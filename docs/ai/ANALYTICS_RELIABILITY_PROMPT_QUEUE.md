@@ -2,7 +2,9 @@
 
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: `RQ203` (claimed; `IN_PROGRESS`)
+
+Owner promotion 2026-09-08: `RQ203` was explicitly promoted by the user after completed `RQ202` and is claimed in this workspace.
 
 Owner promotion 2026-09-08: RQ202 was explicitly promoted by the user after completed RQ201 and is claimed in this workspace.
 Owner promotion 2026-09-08: RQ201 was explicitly promoted by the user after completed RQ200 and is claimed in this workspace.
@@ -138,7 +140,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ200 | DONE | pdc-search-pagination-boundary | Product Decision Center search capped at backend rows |
 | RQ201 | DONE | sales-stats-chart-table-parity | Daily Sales chart vs table order divergence |
 | RQ202 | DONE | date-timezone-safety | Daily Sales date sort timezone drift |
-| RQ203 | WAITING | inventory-detail-scope-consistency | Inventory detail ignores parent scope and uses fixed 30-day |
+| RQ203 | IN_PROGRESS | inventory-detail-scope-consistency | Inventory detail ignores parent scope and uses fixed 30-day |
 | RQ204 | WAITING | analytics-details-scope-parity | Analytics Details global inventory snapshot unrelated to period |
 | RQ205 | WAITING | client-cache-invalidation | Frontend 15s cache not invalidated after refresh |
 | RQ206 | WAITING | refresh-run-status-accuracy | Partial nightly refresh treated as successful |
@@ -7723,7 +7725,7 @@ Date sort uses `new Date(row.date).getTime()`, which drifts across timezone boun
 
 ## RQ203 - Inventory SKU detail ignores parent list scope and uses fixed 30-day window
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: backend/frontend/contract/tests
 Feature family: inventory-detail-scope-consistency
@@ -7749,6 +7751,28 @@ Detail endpoint uses hardcoded `DateTime.UtcNow.AddDays(-30)` and `/30` divisor.
 ### Acceptance
 
 - Detail view signals match list-view values and respect filters.
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`
+- `Api/Endpoints/InventoryEndpoints.cs`
+- `Api.Tests/InventoryListEndpointIntegrationTests.cs`
+- `Klijent/clientapp/src/pages/InventoryPage.tsx`
+- `Klijent/clientapp/src/services/analyticsApi.ts`
+- `Klijent/clientapp/src/components/inventory/SKUDetailModal.tsx`
+
+### Tests
+
+- `dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~InventoryListEndpointIntegrationTests`
+- `cd Klijent/clientapp && npm run test -- --run src/components/inventory/SKUDetailModal.spec.tsx`
+- `cd Klijent/clientapp && npm run check:analytics-guardrails`
+- `git diff --check`
+
+### Dependencies
+
+- `RQ202` DONE.
+- Keep the existing Inventory snapshot contract; do not invent a new period selector or alter unrelated analytics surfaces.
 
 ---
 

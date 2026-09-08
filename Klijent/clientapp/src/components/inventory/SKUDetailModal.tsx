@@ -125,7 +125,7 @@ export function SKUDetailModal({
               ["Pokrice minimuma", detailCoverageRatio == null ? "Nije dostupno" : `${detailCoverageRatio.toFixed(2)}x`],
               ["Poslednje kretanje", formatDateTime(detailData?.lastMovementAt)],
               ["Dana bez kretanja", detailData ? formatNumber(detailData.daysSinceMovement) : "Ucitavanje..."],
-              ["Kretanja u 30 dana", detailData ? formatNumber(detailData.movementCount30d) : "Ucitavanje..."],
+              ["Kretanja u izabranom periodu", detailData ? formatNumber(detailData.movementCount) : "Ucitavanje..."],
               ["Kategorija", detailData?.kategorija ?? "Nije upisano"],
               ["Pol", detailData?.pol ?? "Nije upisano"],
               ["Materijal", detailData?.materijal ?? "Nije upisano"],

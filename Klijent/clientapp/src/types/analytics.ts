@@ -1274,7 +1274,7 @@ export interface InventoryItemDetail {
   materijal?: string | null;
   updatedAt: string;
   lastMovementAt?: string | null;
-  movementCount30d: number;
+  movementCount: number;
   daysSinceMovement: number;
   agingBucket: string;
   agingLabel: string;
