@@ -210,9 +210,14 @@ describe("InventoryPage queue status sync", () => {
         expect(getAnalyticsActionSourceStatusesMock).toHaveBeenCalled();
       });
 
+      getInventoryListMock.mockResolvedValue({
+        ...refreshedInventoryList,
+        items: [{ ...refreshedInventoryList.items[0], id: 502, naziv: "Artikal B" }],
+      });
       fireEvent.change(screen.getByRole("searchbox", { name: "Pretraga artikala" }), { target: { value: "Artikal" } });
 
       await waitFor(() => {
+        expect(getInventoryListMock.mock.calls.length).toBeGreaterThan(1);
         expect(getAnalyticsActionSourceStatusesMock.mock.calls.length).toBeGreaterThan(1);
       });
 

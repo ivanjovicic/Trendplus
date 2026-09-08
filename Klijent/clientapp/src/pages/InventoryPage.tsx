@@ -269,6 +269,16 @@ export default function InventoryPage() {
     ? "za sve prodavnice"
     : `za prodavnicu ${selectedStoreName ?? `#${selectedStoreId}`}`;
   const previousLoadRef = useRef<PreviousLoadState | null>(null);
+  const requestSequenceRef = useRef(0);
+  const signalRequestSequenceRef = useRef(0);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -352,7 +362,13 @@ export default function InventoryPage() {
 
     previousLoadRef.current = currentLoad;
 
+    const requestSequence = ++requestSequenceRef.current;
+    const signalRequestSequence = shouldRefreshSignals ? ++signalRequestSequenceRef.current : null;
     let cancelled = false;
+    const isCurrentRequest = () => !cancelled && requestSequenceRef.current === requestSequence;
+    const isCurrentSignalRequest = () => signalRequestSequence != null
+      && mountedRef.current
+      && signalRequestSequenceRef.current === signalRequestSequence;
     setLoading(true);
     setInsightsLoading(true);
     if (shouldRefreshOperations) setOperationsLoading(true);
@@ -366,6 +382,7 @@ export default function InventoryPage() {
     }
 
     const setFirstError = (reason: unknown, fallback: string) => {
+      if (!isCurrentRequest()) return;
       setError((current) => current ?? toInventoryPageError(reason, fallback));
     };
 
@@ -376,7 +393,7 @@ export default function InventoryPage() {
 
     void Promise.allSettled(primaryTasks.map((task) => task.promise))
       .then((results) => {
-        if (cancelled) return;
+        if (!isCurrentRequest()) return;
         let balanceFailed = false;
         let listFailed = false;
         results.forEach((result, index) => {
@@ -403,21 +420,21 @@ export default function InventoryPage() {
         }
       })
       .finally(() => {
-        if (cancelled) return;
+        if (!isCurrentRequest()) return;
         setLoading(false);
       });
 
     void getInventoryInsights({ search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy })
       .then((result) => {
-        if (!cancelled) setInsights(result);
+        if (isCurrentRequest()) setInsights(result);
       })
       .catch((reason) => {
-        if (!cancelled) {
+        if (isCurrentRequest()) {
           setFirstError(reason, "Inventory uvidi trenutno nisu dostupni.");
         }
       })
       .finally(() => {
-        if (cancelled) return;
+        if (!isCurrentRequest()) return;
         setInsightsLoading(false);
       });
 
@@ -429,7 +446,7 @@ export default function InventoryPage() {
 
       void Promise.allSettled(operationTasks.map((task) => task.promise))
         .then((results) => {
-          if (cancelled) return;
+          if (!isCurrentRequest()) return;
           results.forEach((result, index) => {
             const task = operationTasks[index];
             if (result.status === "rejected") {
@@ -448,7 +465,7 @@ export default function InventoryPage() {
           });
         })
         .finally(() => {
-          if (cancelled) return;
+          if (!isCurrentRequest()) return;
           setOperationsLoading(false);
         });
     }
@@ -462,7 +479,7 @@ export default function InventoryPage() {
 
       void Promise.allSettled(signalTasks.map((task) => task.promise))
         .then((results) => {
-          if (cancelled) return;
+          if (!isCurrentSignalRequest()) return;
           results.forEach((result, index) => {
             const task = signalTasks[index];
             if (result.status === "rejected") {
@@ -496,7 +513,7 @@ export default function InventoryPage() {
           });
         })
         .finally(() => {
-          if (cancelled) return;
+          if (!isCurrentSignalRequest()) return;
           setForecastLoading(false);
           setAlertsLoading(false);
           setRebalanceLoading(false);
