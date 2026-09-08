@@ -4,6 +4,8 @@ Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-08: `RQ212` was explicitly promoted by the user after completed `RQ211`, transitioned `WAITING -> READY -> IN_PROGRESS`, and is claimed in this workspace.
+
 Owner promotion 2026-09-08: `RQ209` was explicitly promoted by the user after completed `RQ208` and is claimed in this workspace.
 
 Owner promotion 2026-09-08: `RQ210` was explicitly promoted by the user after completed `RQ209`, transitioned `WAITING -> READY -> IN_PROGRESS`, and is claimed in this workspace.
@@ -165,7 +167,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ209 | DONE | database-migration-orchestration | Dual concurrent EF migration paths cause race condition |
 | RQ210 | DONE | startup-readiness-gate | Startup init silently skipped after lock timeout |
 | RQ211 | DONE | migration-sequencing | Parallel SQL migrations without ordering guarantees |
-| RQ212 | WAITING | migration-failure-safety | Migration failures swallowed; app runs on drifted schema |
+| RQ212 | DONE | migration-failure-safety | Migration failures swallowed; app runs on drifted schema |
 | RQ213 | WAITING | migration-reversibility | EF migration Down() drops fact tables without backup |
 | RQ214 | WAITING | seed-data-consistency | Seed sales created without decrementing stock |
 | RQ215 | WAITING | aggregation-worker-atomicity | Aggregate refresh delete+insert is non-transactional (P0) |
@@ -8410,12 +8412,35 @@ Migrations 012, 017, 019 run in parallel via `Task.WhenAll`; failures logged but
 
 ## RQ212 - Migration failures swallowed; app runs on drifted schema
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend/infra
 Feature family: migration-failure-safety
 Parallel-safe: no
 Owner: Infrastructure
+
+### Scope
+
+Make EF migration failures for the Trendplus and Analytics databases fail closed through the existing database-initialization and deferred-startup owners. Keep RQ211 ordered SQL migration behavior and RQ213 rollback reversibility separate.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`
+- `Infrastructure/Seed/DatabaseInitializer.cs`
+- `Api/Services/Startup/DeferredStartupTasksHostedService.cs`
+
+### Tests
+
+- Add or extend a focused regression guardrail proving both EF migration paths propagate typed failures to terminal startup handling.
+- Run the nearest database-initializer tests, API build and governance checks because this queue document is being promoted and closed.
+
+### Dependencies
+
+- RQ211 ordered critical startup migration behavior is complete on `main`.
+- Live PostgreSQL migration-failure execution is not required for the local contract proof, but unavailable live proof must be recorded as not run.
 
 Commit suggestion: `fix(db): fail on EF migration errors instead of continuing`
 
@@ -8435,6 +8460,25 @@ EF migration exceptions logged as warnings; init continues with "self-heal" SQL.
 ### Acceptance
 
 - Migration errors prevent app startup; no drifted schema.
+
+### Completion note
+
+- Date: 2026-09-08
+- Status: DONE
+- Completion: Trendplus and Analytics EF migration failures now raise a typed critical exception; initializer propagation and deferred startup handling stop the host, preventing traffic against a drifted schema.
+- Changed files: `Infrastructure/Seed/DatabaseInitializer.cs`, `Api/Services/Startup/DeferredStartupTasksHostedService.cs`, `Api.Tests/DatabaseMigrationOwnershipTests.cs`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-08-RQ212-evidence.md`.
+- Contract/runtime behavior changed: EF `MigrateAsync` errors no longer become warning-and-continue or successful non-strict initialization; both database paths fail closed. RQ211 SQL sequencing and RQ213 rollback remain separate.
+- Checks run: API build (0 errors, 104 existing warnings), `DatabaseMigrationOwnershipTests` (5/5), `DatabaseInitializerP0IntegrationTests` (5/5 under the existing fixture convention), `git diff --check`, and all six governance checks passed.
+- Checks not run: live PostgreSQL migration-failure/drift proof because Docker/Testcontainers was unavailable locally, full backend suite, production startup smoke and remote CI.
+- Run log: `.ai/runs/2026-09-08-RQ212-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `bd018c9bde14a61829852fff01bd16a777f755c7`
+- Main verification: passed - final `git rev-parse HEAD` equals `git rev-parse origin/main`, and implementation SHA `bd018c9bde14a61829852fff01bd16a777f755c7` is an ancestor of both.
+- Missed: no live PostgreSQL proof was available locally.
+- Follow-up: RQ213 remains WAITING for rollback reversibility; no current READY prompt is auto-promoted.
+- Residual risk: staging/CI should exercise real provider migration exceptions and process restart behavior.
+- Prompt defect / scope repair: the legacy RQ212 prompt omitted Scope, Read first, Tests and Dependencies; those required sections were added, and failure handling was bounded to EF migration paths while preserving RQ211/RQ213 ownership.
 
 ---
 
