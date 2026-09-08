@@ -4,6 +4,7 @@ Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-08: RQ200 was explicitly promoted by the user after completed RQ199 and is claimed in this workspace.
 Owner promotion 2026-09-08: RQ199 was explicitly promoted by the user after completed RQ198 and is claimed in this workspace.
 Owner promotion 2026-09-08: RQ198 was explicitly promoted by the user after completed RQ197 and is claimed in this workspace.
 Owner promotion 2026-09-08: RQ197 was explicitly promoted by the user after completed RQ196, claimed and completed in this workspace.
@@ -132,7 +133,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ197 | DONE | export-truncation-safety | Scheduled inventory export has no row cap |
 | RQ198 | DONE | decision-board-datascope-override | Executive Decision Board hardcoded dataScope |
 | RQ199 | DONE | pre-nivelacija-datascope | Pre-nivelacija priority endpoint missing DataScope |
-| RQ200 | WAITING | pdc-search-pagination-boundary | Product Decision Center search capped at backend rows |
+| RQ200 | DONE | pdc-search-pagination-boundary | Product Decision Center search capped at backend rows |
 | RQ201 | WAITING | sales-stats-chart-table-parity | Daily Sales chart vs table order divergence |
 | RQ202 | WAITING | date-timezone-safety | Daily Sales date sort timezone drift |
 | RQ203 | WAITING | inventory-detail-scope-consistency | Inventory detail ignores parent scope and uses fixed 30-day |
@@ -7566,12 +7567,14 @@ Endpoint accepts no `dataScope`; cache key omits scope. Imported and existing ar
 
 ## RQ200 - Product Decision Center search is client-only over capped backend rows
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend/frontend/contract/tests
 Feature family: pdc-search-pagination-boundary
 Parallel-safe: no
 Owner: Product Decision/Search
+
+Promotion/claim note: 2026-09-08 - explicitly promoted by the user after the queue reported no current READY prompt; claimed in this workspace.
 
 Commit suggestion: `fix(pdc): move search to backend or extend cap`
 
@@ -7592,6 +7595,25 @@ Backend fetch uses `top: 1200`; search runs only on returned rows. Products rank
 ### Acceptance
 
 - All PDC products are searchable.
+
+### Completion note
+
+- Date: 2026-09-08
+- Status: DONE
+- Completion: Product Decision Center now sends search to the backend, filters the article population before the top limit, and keeps search variants isolated in the cache key; the UI regression proves a tail SKU query is forwarded with `top: 1200`.
+- Changed files: `Api/Endpoints/CachedAnalyticsEndpoints.cs`, `Infrastructure/Services/Caching/IAnalyticsCacheService.cs`, `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`, `Api.Tests/AnalyticsScreenCacheKeyContractTests.cs`, `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`, `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.queueStatus.spec.tsx`, `MASTER_ROADMAP.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `.ai/runs/2026-09-08-RQ200-pdc-search-evidence.md`
+- Checks run: focused PDC queue-status tests (7 passed), focused backend builder/cache tests (16 passed), frontend analytics guardrails and typecheck, frontend production build, Release API build (104 warnings, 0 errors), `git diff --check`, prompt-queue governance and planning-architecture validation.
+- Checks not run: full frontend/backend suites, live provider/database/API/browser proof and remote CI; see durable run log.
+- Run log: `.ai/runs/2026-09-08-RQ200-pdc-search-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: local merge
+- Main commit SHA: `bb992fdf`
+- Main verification: passed - local `main` and `origin/main` both contain delivered merge `bb992fdf`; implementation commit `9eca1b42` is contained in `origin/main`.
+- Missed: no live mixed-provider tail-SKU proof.
+- Follow-up: none for RQ200.
+- Residual risk: search is submitted on each committed input change, so high-latency deployments may benefit from a future debounce or explicit submit control; this task keeps the existing client-side filtering for immediate continuity while the backend result loads.
+- Prompt defect / scope repair: prompt omitted a Dependencies section; no dependency blocker was found and the fix stayed within Product Decision Center search, cache identity and focused tests.
+- Next: none; return queue to no READY prompt.
 
 ---
 
