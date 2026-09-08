@@ -21,6 +21,8 @@ import type {
   SmartReorderResult,
 } from "./insightStudioV2Api";
 
+export type DemandState = DemandSignalItem["demandState"];
+
 type AggregatedDemandSignal = {
   articleId: number;
   productName: string;
@@ -28,7 +30,8 @@ type AggregatedDemandSignal = {
   supplierName: string;
   daysSinceLastSale: number | null;
   salesVelocity: number;
-  demandAcceleration: number;
+  demandAcceleration: number | null;
+  demandState: DemandState;
   storeCoverage: number;
 };
 
@@ -112,9 +115,7 @@ function aggregateDemandSignals(demand: DemandSignalItem[]) {
   const map = new Map<number, AggregatedDemandSignal>();
 
   for (const item of demand) {
-    if (!isFiniteNumber(item.salesVelocity)
-      || !isFiniteNumber(item.demandAcceleration)
-      || !isFiniteNumber(item.storeCoverage)) continue;
+    if (!isFiniteNumber(item.salesVelocity) || !isFiniteNumber(item.storeCoverage)) continue;
     const existing = map.get(item.articleId);
     if (!existing) {
       map.set(item.articleId, {
@@ -125,13 +126,18 @@ function aggregateDemandSignals(demand: DemandSignalItem[]) {
         daysSinceLastSale: item.daysSinceLastSale,
         salesVelocity: item.salesVelocity,
         demandAcceleration: item.demandAcceleration,
+        demandState: item.demandState,
         storeCoverage: item.storeCoverage,
       });
       continue;
     }
 
     existing.salesVelocity = Math.max(existing.salesVelocity, item.salesVelocity);
-    existing.demandAcceleration = Math.max(existing.demandAcceleration, item.demandAcceleration);
+    if (isFiniteNumber(item.demandAcceleration)
+      && (!isFiniteNumber(existing.demandAcceleration) || item.demandAcceleration > existing.demandAcceleration)) {
+      existing.demandAcceleration = item.demandAcceleration;
+      existing.demandState = item.demandState;
+    }
     existing.storeCoverage = Math.max(existing.storeCoverage, item.storeCoverage);
     existing.daysSinceLastSale =
       existing.daysSinceLastSale == null

@@ -57,6 +57,18 @@ function formatSignedPercent(value: number | null | undefined, decimals = 1) {
   return `${pct >= 0 ? "+" : ""}${pct.toFixed(decimals)}%`;
 }
 
+function formatDemandSignal(item: DemandSignalItem) {
+  if (item.demandState === "NEW_DEMAND") return "Novi signal";
+  if (item.demandState === "NO_BASELINE") return "Nema baze";
+  return formatSignedPercent(item.demandAcceleration, 0);
+}
+
+function demandSignalTone(item: DemandSignalItem) {
+  if (item.demandState === "NEW_DEMAND") return PAL.blue;
+  if (item.demandState === "NO_BASELINE") return PAL.yellow;
+  return signalTone(item.demandAcceleration ?? 0, 0, PAL.green, PAL.orange);
+}
+
 function formatDateLabel(value?: string | null) {
   if (!value) return "latest cache";
   const date = new Date(value);
@@ -207,7 +219,7 @@ export default function IntelligenceSnapshotPanel({
           subtitle="Najjaci artikli po ubrzanju traznje i aktuelnoj brzini prodaje."
           accent={PAL.blue}
           summaryLabel="Top acceleration"
-          summaryValue={topDemand ? formatSignedPercent(topDemand.demandAcceleration, 0) : "n/a"}
+          summaryValue={topDemand ? formatDemandSignal(topDemand) : "n/a"}
           summaryMeta={topDemand ? `${topDemand.productName} | vel ${formatCompact(topDemand.salesVelocity)}` : "No demand signal"}
         >
           {demand.slice(0, 4).map((item) => (
@@ -215,8 +227,8 @@ export default function IntelligenceSnapshotPanel({
               key={`${item.articleId}-${item.storeId}-${item.date}`}
               title={item.productName}
               subtitle={`${item.storeName} | ${item.category} | cover ${item.storeCoverage}`}
-              badge={formatSignedPercent(item.demandAcceleration, 0)}
-              badgeColor={signalTone(item.demandAcceleration, 0, PAL.green, PAL.orange)}
+              badge={formatDemandSignal(item)}
+              badgeColor={demandSignalTone(item)}
             />
           ))}
         </SignalCard>

@@ -230,7 +230,8 @@ public static class AnalyticsIntelligenceEndpoints
                 GetNullableString(record, "store_city"),
                 GetDateTime(record, "date"),
                 GetDecimal(record, "sales_velocity"),
-                GetDecimal(record, "demand_acceleration"),
+                GetNullableDecimal(record, "demand_acceleration"),
+                GetString(record, "demand_state"),
                 GetNullableInt32(record, "days_since_last_sale"),
                 GetInt32(record, "launch_age_days"),
                 GetInt32(record, "store_coverage"),
@@ -439,6 +440,7 @@ filtered AS (
         m.date,
         m.sales_velocity,
         m.demand_acceleration,
+        m.demand_state,
         m.days_since_last_sale,
         m.launch_age_days,
         m.store_coverage,
@@ -476,6 +478,7 @@ SELECT
     date,
     sales_velocity,
     demand_acceleration,
+    demand_state,
     days_since_last_sale,
     launch_age_days,
     store_coverage,
@@ -774,7 +777,7 @@ LIMIT @limit OFFSET @offset;
     {
         if (!value.HasValue)
             return;
-        where.AppendLine(string.Format(CultureInfo.InvariantCulture, "  AND COALESCE({0}, 0) >= @{1}", sqlColumn, parameterName));
+        where.AppendLine(string.Format(CultureInfo.InvariantCulture, "  AND {0} >= @{1}", sqlColumn, parameterName));
         parameters.Add(new NpgsqlParameter(parameterName, NpgsqlDbType.Numeric) { Value = value.Value });
     }
 
@@ -785,12 +788,12 @@ LIMIT @limit OFFSET @offset;
         {
             "productName" => $"product_name {(desc ? "DESC" : "ASC")}, date DESC, article_id ASC, store_id ASC",
             "date" => $"date {(desc ? "DESC" : "ASC")}, sales_velocity DESC, article_id ASC, store_id ASC",
-            "salesVelocity" => $"sales_velocity {(desc ? "DESC" : "ASC")}, demand_acceleration DESC, article_id ASC, store_id ASC",
+            "salesVelocity" => $"sales_velocity {(desc ? "DESC" : "ASC")}, demand_acceleration DESC NULLS LAST, article_id ASC, store_id ASC",
             "daysSinceLastSale" => $"days_since_last_sale {(desc ? "DESC NULLS LAST" : "ASC NULLS LAST")}, sales_velocity DESC, article_id ASC, store_id ASC",
             "launchAgeDays" => $"launch_age_days {(desc ? "DESC" : "ASC")}, sales_velocity DESC, article_id ASC, store_id ASC",
             "storeCoverage" => $"store_coverage {(desc ? "DESC" : "ASC")}, sales_velocity DESC, article_id ASC, store_id ASC",
             "sourceRows" => $"source_rows {(desc ? "DESC" : "ASC")}, sales_velocity DESC, article_id ASC, store_id ASC",
-            _ => $"demand_acceleration {(desc ? "DESC" : "ASC")}, sales_velocity DESC, article_id ASC, store_id ASC"
+            _ => $"demand_acceleration {(desc ? "DESC NULLS LAST" : "ASC NULLS LAST")}, sales_velocity DESC, article_id ASC, store_id ASC"
         };
     }
 
@@ -1013,7 +1016,8 @@ public sealed record DemandSignalItem(
     string? StoreCity,
     DateTime Date,
     decimal SalesVelocity,
-    decimal DemandAcceleration,
+    decimal? DemandAcceleration,
+    string DemandState,
     int? DaysSinceLastSale,
     int LaunchAgeDays,
     int StoreCoverage,

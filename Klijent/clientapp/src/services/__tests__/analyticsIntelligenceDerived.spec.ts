@@ -225,6 +225,7 @@ describe("buildCategoryIntelligenceFromSignals (RQ39)", () => {
         daysSinceLastSale: 10,
         salesVelocity: 5,
         demandAcceleration: 1,
+        demandState: "ACCELERATING",
         storeCoverage: 1,
       }],
     );
@@ -239,8 +240,8 @@ describe("buildCategoryIntelligenceFromSignals (RQ39)", () => {
         inventoryItem({ articleId: 2, category: "Missing", avgDailySales30d: 0, stockQty: 4 }),
       ],
       [
-        { articleId: 1, productName: "Zero cost", category: "Known", supplierName: "Dobavljac", daysSinceLastSale: 100, salesVelocity: 0, demandAcceleration: 0, storeCoverage: 1 },
-        { articleId: 2, productName: "Missing cost", category: "Missing", supplierName: "Dobavljac", daysSinceLastSale: 100, salesVelocity: 0, demandAcceleration: 0, storeCoverage: 1 },
+        { articleId: 1, productName: "Zero cost", category: "Known", supplierName: "Dobavljac", daysSinceLastSale: 100, salesVelocity: 0, demandAcceleration: 0, demandState: "STABLE", storeCoverage: 1 },
+        { articleId: 2, productName: "Missing cost", category: "Missing", supplierName: "Dobavljac", daysSinceLastSale: 100, salesVelocity: 0, demandAcceleration: 0, demandState: "STABLE", storeCoverage: 1 },
       ],
       [
         priceItem({ articleId: 1, category: "Known", netPrice: 100, cost: 0 }),
