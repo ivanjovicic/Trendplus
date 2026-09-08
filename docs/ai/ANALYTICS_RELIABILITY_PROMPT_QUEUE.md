@@ -2,7 +2,7 @@
 
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ205` (claimed; `IN_PROGRESS`)
+Current READY prompt: none
 
 Owner promotion 2026-09-08: `RQ205` was explicitly promoted by the user after completed `RQ204` and is claimed in this workspace.
 
@@ -146,7 +146,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ202 | DONE | date-timezone-safety | Daily Sales date sort timezone drift |
 | RQ203 | DONE | inventory-detail-scope-consistency | Inventory detail now shares parent scope and signal period |
 | RQ204 | DONE | analytics-details-scope-parity | Analytics Details InventoryStatus now respects selected period and scope |
-| RQ205 | IN_PROGRESS | client-cache-invalidation | Frontend 15s cache not invalidated after refresh |
+| RQ205 | DONE | client-cache-invalidation | Frontend 15s cache not invalidated after refresh |
 | RQ206 | WAITING | refresh-run-status-accuracy | Partial nightly refresh treated as successful |
 | RQ207 | WAITING | refresh-failure-cache-safety | Failed refresh skips cache invalidation |
 | RQ208 | WAITING | period-timezone-boundary-safety | Dashboard per-day KPIs use local day count |
@@ -7879,7 +7879,7 @@ Calls `getInventoryStatus(2, true)` with no period/store filters while sales ser
 
 ## RQ205 - Frontend 15s client cache not invalidated after refresh
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P2
 Type: frontend/tests
 Feature family: client-cache-invalidation
@@ -7932,6 +7932,24 @@ Commit suggestion: `fix(analytics): clear client cache after refresh`
 - `RQ204` is DONE and its analytics client changes are present on current `main`.
 - Only a successful refresh completion invalidates the local client cache; failed/partial refresh behavior remains owned by `RQ207`.
 - No backend contract, tenant authority, or server-side cache invalidation semantics change is required.
+
+### Completion note
+
+- Date: 2026-09-08
+- Status: DONE
+- Completion: Successful refresh completion now clears the frontend analytics response cache and prevents stale in-flight responses from repopulating it.
+- Changed files: `Klijent/clientapp/src/services/analyticsApi.ts`, `Klijent/clientapp/src/components/WorkersPanel.tsx`, `Klijent/clientapp/src/components/__tests__/WorkersPanel.spec.tsx`, `Klijent/clientapp/src/services/__tests__/analyticsApi.contract.spec.ts`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-08-RQ205-evidence.md`.
+- Checks run: focused Vitest (2 files, 12 tests), analytics guardrails/typecheck, frontend production build, `git diff --check`, and all six agent/queue/planning governance checks passed.
+- Checks not run: full frontend/backend suites and live worker/browser/remote proof; see run log for scope reasons.
+- Run log: `.ai/runs/2026-09-08-RQ205-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `e3e7a6c0416cad4f6866380a8b523deebf03dd47`
+- Main verification: passed - current `main` and `origin/main` contain delivered implementation `e3e7a6c0416cad4f6866380a8b523deebf03dd47`.
+- Missed: failed/partial-refresh invalidation remains the declared RQ207 follow-up; live deployed proof was not run.
+- Follow-up: none; the RQ queue returns to no current READY prompt.
+- Residual risk: provider worker/polling behavior remains unverified in a live deployment.
+- Prompt defect / scope repair: the legacy prompt omitted Scope, Read first, Tests and Dependencies; they were added without expanding the runtime owner boundary.
 
 ---
 
