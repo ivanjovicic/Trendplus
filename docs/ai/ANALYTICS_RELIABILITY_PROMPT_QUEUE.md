@@ -2,9 +2,11 @@
 
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ210 (claimed; IN_PROGRESS)
 
 Owner promotion 2026-09-08: `RQ209` was explicitly promoted by the user after completed `RQ208` and is claimed in this workspace.
+
+Owner promotion 2026-09-08: `RQ210` was explicitly promoted by the user after completed `RQ209`, transitioned `WAITING -> READY -> IN_PROGRESS`, and is claimed in this workspace.
 
 Owner promotion 2026-09-08: `RQ208` was explicitly promoted by the user after completed `RQ207` and is claimed in this workspace.
 
@@ -159,7 +161,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ207 | DONE | refresh-failure-cache-safety | Failed refresh skips cache invalidation |
 | RQ208 | DONE | period-timezone-boundary-safety | Dashboard per-day KPIs use local day count |
 | RQ209 | DONE | database-migration-orchestration | Dual concurrent EF migration paths cause race condition |
-| RQ210 | WAITING | startup-readiness-gate | Startup init silently skipped after lock timeout |
+| RQ210 | IN_PROGRESS | startup-readiness-gate | Startup init silently skipped after lock timeout |
 | RQ211 | WAITING | migration-sequencing | Parallel SQL migrations without ordering guarantees |
 | RQ212 | WAITING | migration-failure-safety | Migration failures swallowed; app runs on drifted schema |
 | RQ213 | WAITING | migration-reversibility | EF migration Down() drops fact tables without backup |
@@ -8261,12 +8263,35 @@ In Development, `Program.cs:997-1014` calls `Database.Migrate()` while `Deferred
 
 ## RQ210 - Startup init silently skipped after lock timeout
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: backend/infra
 Feature family: startup-readiness-gate
 Parallel-safe: no
 Owner: Infrastructure
+
+### Scope
+
+Change the existing startup database-initialization lock-timeout path and its deferred startup caller so a lock timeout cannot be reported as successful initialization or leave the process serving indefinitely. Keep the existing advisory-lock ownership, retry budget and unrelated migration error semantics out of scope.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`
+- `Infrastructure/Seed/DatabaseInitializer.cs`
+- `Api/Services/Startup/DeferredStartupTasksHostedService.cs`
+
+### Tests
+
+- Add or extend a focused regression test proving advisory-lock timeout is terminal for startup initialization.
+- Run the nearest API startup/database tests and the API build; run governance checks because this queue document is being promoted and closed.
+
+### Dependencies
+
+- RQ209 single-owner migration orchestration is complete on `main`.
+- A live multi-instance PostgreSQL deployment is not required for the local contract proof, but any unavailable live proof must be recorded as not run.
 
 Commit suggestion: `fix(db): fail fast if startup lock cannot be acquired`
 

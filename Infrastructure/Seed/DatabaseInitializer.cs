@@ -52,10 +52,17 @@ public static class DatabaseInitializer
 
         if (!lockAcquired)
         {
-            logger.LogWarning(
-                "Skipping database initialization because advisory startup lock {Key} is still held by another instance.",
-                AdvisoryLockKey);
-            return;
+            var timeoutException = new DatabaseInitializationLockTimeoutException(
+                AdvisoryLockKey,
+                TimeSpan.FromSeconds(AdvisoryLockMaxWaitSeconds));
+
+            logger.LogCritical(
+                timeoutException,
+                "Database initialization cannot continue because advisory startup lock {Key} was not acquired within {MaxWaitSeconds}s.",
+                AdvisoryLockKey,
+                AdvisoryLockMaxWaitSeconds);
+
+            throw timeoutException;
         }
 
         var trendplusInitialized = false;
@@ -257,7 +264,7 @@ public static class DatabaseInitializer
         return null;
     }
 
-    private static async Task<bool> TryAcquireAdvisoryLockAsync(
+    internal static async Task<bool> TryAcquireAdvisoryLockAsync(
         NpgsqlConnection connection,
         ILogger logger,
         long key,
@@ -3404,4 +3411,18 @@ public static class DatabaseInitializer
 
         return "custom";
     }
+}
+
+public sealed class DatabaseInitializationLockTimeoutException : InvalidOperationException
+{
+    public DatabaseInitializationLockTimeoutException(long key, TimeSpan maxWait)
+        : base($"Could not acquire advisory startup lock {key} within {maxWait.TotalSeconds:0} seconds.")
+    {
+        Key = key;
+        MaxWait = maxWait;
+    }
+
+    public long Key { get; }
+
+    public TimeSpan MaxWait { get; }
 }

@@ -155,6 +155,14 @@ public sealed class DeferredStartupTasksHostedService : IHostedService, IDisposa
                     _logger.LogInformation("Deferred startup tasks cancelled during database initialization.");
                     return;
                 }
+                catch (DatabaseInitializationLockTimeoutException ex)
+                {
+                    _logger.LogCritical(
+                        ex,
+                        "Database initialization could not acquire the startup lock. Stopping the host to prevent traffic against an uninitialized schema.");
+                    _hostApplicationLifetime.StopApplication();
+                    return;
+                }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Database initialization failed on deferred attempt {Attempt}/{MaxRetries}.", attempt, maxRetries);

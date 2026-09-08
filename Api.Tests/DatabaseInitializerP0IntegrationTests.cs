@@ -471,6 +471,43 @@ public sealed class DatabaseInitializerP0IntegrationTests : IClassFixture<Postgr
         Assert.Equal(0, await analyticsBackfillDb.ReturnFacts.CountAsync());
     }
 
+    [Fact]
+    public async Task TryAcquireAdvisoryLockAsync_ReturnsFalseAfterTimeout_WhenAnotherConnectionHoldsLock()
+    {
+        if (!_fixture.IsAvailable)
+        {
+            return;
+        }
+
+        var connectionString = await _fixture.TryCreateDatabaseConnectionStringAsync(
+            $"tp_lock_timeout_{Guid.NewGuid():N}");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            return;
+        }
+
+        var lockKey = Random.Shared.NextInt64(1_000_000, long.MaxValue);
+        await using var holder = new NpgsqlConnection(connectionString);
+        await using var contender = new NpgsqlConnection(connectionString);
+        await holder.OpenAsync();
+        await contender.OpenAsync();
+
+        await using (var acquireCommand = new NpgsqlCommand("SELECT pg_advisory_lock(@key);", holder))
+        {
+            acquireCommand.Parameters.AddWithValue("key", lockKey);
+            await acquireCommand.ExecuteScalarAsync();
+        }
+
+        var acquired = await DatabaseInitializer.TryAcquireAdvisoryLockAsync(
+            contender,
+            NullLogger.Instance,
+            lockKey,
+            TimeSpan.FromMilliseconds(250),
+            TimeSpan.Zero);
+
+        Assert.False(acquired);
+    }
+
     private static TrendplusDbContext CreateTrendDbContext(string connectionString)
     {
         var options = new DbContextOptionsBuilder<TrendplusDbContext>()

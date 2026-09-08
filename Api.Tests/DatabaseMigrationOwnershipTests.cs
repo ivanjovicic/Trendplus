@@ -33,6 +33,18 @@ public sealed class DatabaseMigrationOwnershipTests
         Assert.Contains("RegistersInWebProcess: true", deferredBlock, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void AdvisoryLockTimeoutFailsClosedAndStopsDeferredStartup()
+    {
+        var initializer = ReadRepoFile("Infrastructure/Seed/DatabaseInitializer.cs");
+        var deferredService = ReadRepoFile("Api/Services/Startup/DeferredStartupTasksHostedService.cs");
+
+        Assert.Contains("throw timeoutException;", initializer, StringComparison.Ordinal);
+        Assert.Contains("catch (DatabaseInitializationLockTimeoutException ex)", deferredService, StringComparison.Ordinal);
+        Assert.Contains("_hostApplicationLifetime.StopApplication();", deferredService, StringComparison.Ordinal);
+        Assert.DoesNotContain("Skipping database initialization because advisory startup lock", initializer, StringComparison.Ordinal);
+    }
+
     private static string ReadRepoFile(string relativePath)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
