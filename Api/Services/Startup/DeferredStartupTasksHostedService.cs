@@ -155,6 +155,15 @@ public sealed class DeferredStartupTasksHostedService : IHostedService, IDisposa
                     _logger.LogInformation("Deferred startup tasks cancelled during database initialization.");
                     return;
                 }
+                catch (StartupMigrationSequenceException ex)
+                {
+                    _logger.LogCritical(
+                        ex,
+                        "Required startup migration sequence failed at {MigrationPath}. Stopping the host to prevent traffic against an incomplete schema.",
+                        ex.MigrationPath);
+                    _hostApplicationLifetime.StopApplication();
+                    return;
+                }
                 catch (DatabaseInitializationLockTimeoutException ex)
                 {
                     _logger.LogCritical(

@@ -75,6 +75,10 @@ public static class DatabaseInitializer
                 await InitializeTrendplusDbAsync(services, configuration, logger);
                 trendplusInitialized = true;
             }
+            catch (StartupMigrationSequenceException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Trendplus DB initialization failed.");
@@ -839,39 +843,42 @@ public static class DatabaseInitializer
             logger.LogWarning(ex, "Trendplus DB migrations failed; core schema was already self-healed.");
         }
 
-        // Execute additional SQL files with optimized parallelization.
-        // Strategy: Independent migrations run in parallel; dependent ones run sequentially.
-        
-        // 1️⃣ Run independent migrations in parallel (012, 017, 019)
-        var independentMigrations = new[]
+        // Execute the startup SQL migrations in dependency order. 017 reads the
+        // operational sales schema patched by 012, and 019 is only meaningful
+        // after the analytics objects from 017 have been created. A failure is
+        // allowed to reach the startup owner instead of being reported as success.
+        var orderedMigrations = new[]
         {
-            ("Database/Migrations/012_AddAccessImportSupport.sql", false),
-            ("Database/Migrations/017_CreateNightlyAnalyticsMaterializedViews.sql", false),
-            ("Database/Migrations/019_AddAnalyticsDashboardIndexes.sql", false)
+            (ScriptPath: "Database/Migrations/012_AddAccessImportSupport.sql", DependsOn: (string?)null),
+            (ScriptPath: "Database/Migrations/017_CreateNightlyAnalyticsMaterializedViews.sql", DependsOn: "Database/Migrations/012_AddAccessImportSupport.sql"),
+            (ScriptPath: "Database/Migrations/019_AddAnalyticsDashboardIndexes.sql", DependsOn: "Database/Migrations/017_CreateNightlyAnalyticsMaterializedViews.sql")
         };
-        
-        logger.LogInformation("[Startup] Executing independent migrations in parallel: 012, 017, 019...");
-        var independentTasks = independentMigrations
-            .Select(async (fileSpec) => 
+
+        logger.LogInformation("[Startup] Executing ordered migrations: 012 -> 017 -> 019...");
+        foreach (var migration in orderedMigrations)
+        {
+            try
             {
-                try
+                if (migration.DependsOn is not null)
                 {
-                    await ExecuteSqlFileAsync(
-                        connectionString, 
-                        fileSpec.Item1, 
-                        logger, 
-                        commandTimeoutSeconds: 300,
-                        useTransaction: fileSpec.Item2);
+                    await EnsureStartupSqlDependencyAsync(connectionString, migration.ScriptPath, migration.DependsOn, logger);
                 }
-                catch (Exception ex)
-                {
-                    logger.LogWarning(ex, "Parallel migration {File} encountered an error; continuing.", fileSpec.Item1);
-                }
-            })
-            .ToList();
-        
-        await Task.WhenAll(independentTasks);
-        logger.LogInformation("[Startup] Independent migrations completed.");
+
+                await ExecuteSqlFileAsync(
+                    connectionString,
+                    migration.ScriptPath,
+                    logger,
+                    commandTimeoutSeconds: 300,
+                    useTransaction: false,
+                    failClosed: true);
+            }
+            catch (Exception ex) when (ex is not StartupMigrationSequenceException)
+            {
+                throw new StartupMigrationSequenceException(migration.ScriptPath, ex);
+            }
+        }
+
+        logger.LogInformation("[Startup] Ordered migrations completed: 012 -> 017 -> 019.");
 
         // 2️⃣ Run dependent/sequential migrations in order
         
@@ -2882,6 +2889,25 @@ public static class DatabaseInitializer
         await command.ExecuteNonQueryAsync();
     }
 
+    private static async Task EnsureStartupSqlDependencyAsync(
+        string connectionString,
+        string scriptPath,
+        string dependencyPath,
+        ILogger logger)
+    {
+        var dependencyHash = await GetAppliedStartupSqlHashAsync(connectionString, dependencyPath);
+        if (string.IsNullOrWhiteSpace(dependencyHash))
+        {
+            throw new InvalidOperationException(
+                $"Startup SQL migration '{scriptPath}' cannot run before dependency '{dependencyPath}' is recorded as applied.");
+        }
+
+        logger.LogDebug(
+            "Verified startup SQL migration dependency {Dependency} before {Migration}.",
+            dependencyPath,
+            scriptPath);
+    }
+
     private static async Task RecordAppliedStartupSqlAsync(
         string connectionString,
         string scriptPath,
@@ -3037,11 +3063,17 @@ public static class DatabaseInitializer
         bool useTransaction = true,
         int startBatchNumber = 1,
         int? maxBatchCount = null,
-        string? historyIdentifier = null)
+        string? historyIdentifier = null,
+        bool failClosed = false)
     {
         var resolvedPath = ResolveSqlFilePath(sqlFilePath);
         if (resolvedPath == null)
         {
+            if (failClosed)
+            {
+                throw new FileNotFoundException($"Required startup SQL file was not found: {sqlFilePath}", sqlFilePath);
+            }
+
             logger.LogWarning("SQL file not found: {FilePath}", sqlFilePath);
             return;
         }
@@ -3245,6 +3277,16 @@ public static class DatabaseInitializer
 
             if (pgEx.SqlState == "55P03")
             {
+                if (failClosed)
+                {
+                    logger.LogError(
+                        pgEx,
+                        "Required startup SQL file {FilePath} failed because a required relation lock was not acquired within {LockTimeoutSeconds}s.",
+                        scriptDisplayIdentifier,
+                        StartupSqlLockTimeoutSeconds);
+                    throw;
+                }
+
                 logger.LogWarning(
                     pgEx,
                     "Skipping startup SQL file {FilePath} because a required relation lock was not acquired within {LockTimeoutSeconds}s.",
@@ -3425,4 +3467,15 @@ public sealed class DatabaseInitializationLockTimeoutException : InvalidOperatio
     public long Key { get; }
 
     public TimeSpan MaxWait { get; }
+}
+
+public sealed class StartupMigrationSequenceException : InvalidOperationException
+{
+    public StartupMigrationSequenceException(string migrationPath, Exception innerException)
+        : base($"Required startup migration '{migrationPath}' failed; startup cannot continue safely.", innerException)
+    {
+        MigrationPath = migrationPath;
+    }
+
+    public string MigrationPath { get; }
 }

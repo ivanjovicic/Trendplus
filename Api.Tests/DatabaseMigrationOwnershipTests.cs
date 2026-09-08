@@ -41,8 +41,22 @@ public sealed class DatabaseMigrationOwnershipTests
 
         Assert.Contains("throw timeoutException;", initializer, StringComparison.Ordinal);
         Assert.Contains("catch (DatabaseInitializationLockTimeoutException ex)", deferredService, StringComparison.Ordinal);
+        Assert.Contains("catch (StartupMigrationSequenceException ex)", deferredService, StringComparison.Ordinal);
         Assert.Contains("_hostApplicationLifetime.StopApplication();", deferredService, StringComparison.Ordinal);
         Assert.DoesNotContain("Skipping database initialization because advisory startup lock", initializer, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CriticalStartupMigrationsUseExplicitDependencyOrder()
+    {
+        var initializer = ReadRepoFile("Infrastructure/Seed/DatabaseInitializer.cs");
+
+        Assert.Contains("012 -> 017 -> 019", initializer, StringComparison.Ordinal);
+        Assert.Contains("EnsureStartupSqlDependencyAsync", initializer, StringComparison.Ordinal);
+        Assert.Contains("failClosed: true", initializer, StringComparison.Ordinal);
+        Assert.Contains("StartupMigrationSequenceException", initializer, StringComparison.Ordinal);
+        Assert.DoesNotContain("Task.WhenAll(independentTasks)", initializer, StringComparison.Ordinal);
+        Assert.DoesNotContain("Parallel migration {File} encountered an error; continuing.", initializer, StringComparison.Ordinal);
     }
 
     private static string ReadRepoFile(string relativePath)
