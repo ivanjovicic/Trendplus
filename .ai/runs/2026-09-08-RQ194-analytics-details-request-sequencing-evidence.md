@@ -5,8 +5,8 @@ Agent/tool: Codex
 Delivery target: main
 Working branch / PR: codex/rq194-analytics-details-request-sequencing-20260908 / local merge
 Main commit SHA: 4856201a77b142f84fa698761ad4badb1c9531ba
-Main verification: pending - local main contains the implementation commit; origin/main will be freshly verified after push.
-Evidence state: pending
+Main verification: passed - local main and origin/main contain 4856201a77b142f84fa698761ad4badb1c9531ba; implementation SHA is an ancestor of origin/main.
+Evidence state: synchronized
 
 ## What was done
 - RQ194 was explicitly promoted by the owner after RQ193, claimed locally, and implemented within the Frontend owner boundary.
