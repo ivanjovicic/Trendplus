@@ -2,7 +2,7 @@
 
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ203` (claimed; `IN_PROGRESS`)
+Current READY prompt: none
 
 Owner promotion 2026-09-08: `RQ203` was explicitly promoted by the user after completed `RQ202` and is claimed in this workspace.
 
@@ -140,7 +140,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ200 | DONE | pdc-search-pagination-boundary | Product Decision Center search capped at backend rows |
 | RQ201 | DONE | sales-stats-chart-table-parity | Daily Sales chart vs table order divergence |
 | RQ202 | DONE | date-timezone-safety | Daily Sales date sort timezone drift |
-| RQ203 | IN_PROGRESS | inventory-detail-scope-consistency | Inventory detail ignores parent scope and uses fixed 30-day |
+| RQ203 | DONE | inventory-detail-scope-consistency | Inventory detail now shares parent scope and signal period |
 | RQ204 | WAITING | analytics-details-scope-parity | Analytics Details global inventory snapshot unrelated to period |
 | RQ205 | WAITING | client-cache-invalidation | Frontend 15s cache not invalidated after refresh |
 | RQ206 | WAITING | refresh-run-status-accuracy | Partial nightly refresh treated as successful |
@@ -7725,7 +7725,7 @@ Date sort uses `new Date(row.date).getTime()`, which drifts across timezone boun
 
 ## RQ203 - Inventory SKU detail ignores parent list scope and uses fixed 30-day window
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/frontend/contract/tests
 Feature family: inventory-detail-scope-consistency
@@ -7773,6 +7773,24 @@ Detail endpoint uses hardcoded `DateTime.UtcNow.AddDays(-30)` and `/30` divisor.
 
 - `RQ202` DONE.
 - Keep the existing Inventory snapshot contract; do not invent a new period selector or alter unrelated analytics surfaces.
+
+### Completion note
+
+- Date: 2026-09-08
+- Status: DONE
+- Completion: Inventory list and SKU detail now share store/supplier scope and the same half-open UTC signal window; the cached list key also includes the selected period.
+- Changed files: `Api/Endpoints/InventoryEndpoints.cs`, `Api/Endpoints/CachedAnalyticsEndpoints.cs`, `Api/Dtos/InventoryExperienceDtos.cs`, `Api.Tests/InventoryListEndpointIntegrationTests.cs`, `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/services/analyticsApi.ts`, `Klijent/clientapp/src/types/analytics.ts`, `Klijent/clientapp/src/components/inventory/SKUDetailModal.tsx`, `MASTER_ROADMAP.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `.ai/runs/2026-09-08-RQ203-evidence.md`
+- Checks run: Release API build (0 warnings, 0 errors), focused Inventory integration tests (11 passed), SKU detail modal tests (3 passed), frontend analytics guardrails, `git diff --check`, instruction/queue/planning governance validators.
+- Checks not run: full frontend/backend suites, live provider/database/API/browser proof and remote CI; see durable run log.
+- Run log: `.ai/runs/2026-09-08-RQ203-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `c8665544c73626786d187f3ba932e4e554927a1b`
+- Main verification: passed - current `main` and `origin/main` contain delivered implementation `c8665544c73626786d187f3ba932e4e554927a1b`.
+- Missed: no visible Inventory date selector or live production/timezone matrix was added; the existing implicit 30-day window remains shared by list and detail.
+- Follow-up: none; RQ204 remains WAITING pending explicit promotion.
+- Residual risk: external consumers of the detail DTO must adopt `movementCount` in place of the old `movementCount30d` field.
+- Prompt defect / scope repair: the legacy prompt omitted Read first, Tests and Dependencies sections; they were added, and the implementation stayed within Inventory detail/list scope ownership.
 
 ---
 
