@@ -213,6 +213,27 @@ function parseInputDate(value: string): Date {
   return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
 }
 
+const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+
+export function calculateDashboardPeriodDays(
+  fromUtc?: string | null,
+  toUtc?: string | null,
+): number {
+  if (!fromUtc || !toUtc) {
+    return 1;
+  }
+
+  const from = new Date(fromUtc);
+  const to = new Date(toUtc);
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || to < from) {
+    return 1;
+  }
+
+  const fromDayUtc = Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate());
+  const toDayUtc = Date.UTC(to.getUTCFullYear(), to.getUTCMonth(), to.getUTCDate());
+  return Math.max(Math.floor((toDayUtc - fromDayUtc) / MILLISECONDS_PER_DAY) + 1, 1);
+}
+
 function statusTone(value?: string | null): Tone {
   if (!value) return "neutral";
   if (value === "good") return "good";
@@ -654,10 +675,16 @@ export default function AnalyticsDashboard() {
     [fromDate, toDate],
   );
   const selectedDays = useMemo(() => {
-    const diff =
-      parseInputDate(toDate).getTime() - parseInputDate(fromDate).getTime();
-    return Math.max(Math.floor(diff / (24 * 60 * 60 * 1000)) + 1, 1);
-  }, [fromDate, toDate]);
+    const periodFromUtc =
+      dashboardMeta?.requestedPeriodFromUtc ??
+      dashboardMeta?.effectivePeriodFromUtc ??
+      fromDate;
+    const periodToUtc =
+      dashboardMeta?.requestedPeriodToUtc ??
+      dashboardMeta?.effectivePeriodToUtc ??
+      toDate;
+    return calculateDashboardPeriodDays(periodFromUtc, periodToUtc);
+  }, [dashboardMeta, fromDate, toDate]);
   const storeId = useMemo(
     () => (selectedStore ? Number(selectedStore) : undefined),
     [selectedStore],

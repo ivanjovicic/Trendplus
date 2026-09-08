@@ -2,7 +2,9 @@
 
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: `RQ208` (claimed; `IN_PROGRESS`)
+
+Owner promotion 2026-09-08: `RQ208` was explicitly promoted by the user after completed `RQ207` and is claimed in this workspace.
 
 Owner promotion 2026-09-08: `RQ207` was explicitly promoted by the user after completed `RQ206` and is claimed in this workspace.
 
@@ -153,7 +155,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ205 | DONE | client-cache-invalidation | Frontend 15s cache not invalidated after refresh |
 | RQ206 | DONE | refresh-run-status-accuracy | Partial nightly refresh treated as successful |
 | RQ207 | DONE | refresh-failure-cache-safety | Failed refresh skips cache invalidation |
-| RQ208 | WAITING | period-timezone-boundary-safety | Dashboard per-day KPIs use local day count |
+| RQ208 | IN_PROGRESS | period-timezone-boundary-safety | Dashboard per-day KPIs use local day count |
 | RQ209 | WAITING | database-migration-orchestration | Dual concurrent EF migration paths cause race condition |
 | RQ210 | WAITING | startup-readiness-gate | Startup init silently skipped after lock timeout |
 | RQ211 | WAITING | migration-sequencing | Parallel SQL migrations without ordering guarantees |
@@ -8105,7 +8107,7 @@ When `errors.Count > 0`, worker returns before cache clear. Some views may have 
 
 ## RQ208 - Dashboard "per day" KPIs use local calendar day count (timezone drift)
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P2
 Type: frontend/tests
 Feature family: period-timezone-boundary-safety
@@ -8130,6 +8132,30 @@ Commit suggestion: `fix(dashboard): use UTC day count for per-day divisor`
 ### Acceptance
 
 - Revenue/day and Transactions/day divisors match backend period length.
+
+### Scope
+
+- Keep the change within the Dashboard per-day KPI calculation and its focused frontend tests.
+- Derive the divisor from the backend period timestamps using UTC whole-day semantics.
+- Preserve the existing empty, invalid-period and unavailable-data behavior.
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`
+- `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx`
+- `Klijent/clientapp/src/pages/__tests__/AnalyticsDashboard.periodBoundary.spec.ts`
+
+### Tests
+
+- `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/AnalyticsDashboard.periodBoundary.spec.ts`
+- `cd Klijent/clientapp && npm run check:analytics-guardrails`
+- `git diff --check`
+
+### Dependencies
+
+- `RQ207` is DONE and remains separate from this Dashboard period-divisor correction.
+- Backend timestamps/period boundaries remain authoritative; the frontend must not use local calendar arithmetic.
 
 ---
 
