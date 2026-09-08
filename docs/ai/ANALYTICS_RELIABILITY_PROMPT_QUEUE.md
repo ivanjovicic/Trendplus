@@ -4,6 +4,8 @@ Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-08: RQ196 was explicitly promoted by the user after completed RQ195, claimed and completed in this workspace.
+
 Owner promotion 2026-09-08: RQ195 was explicitly promoted by the user after RQ194, claimed and completed in this workspace.
 Owner promotion 2026-09-08: RQ194 was explicitly promoted by the user after RQ193, claimed and completed in this workspace.
 Owner promotion 2026-09-08: RQ193 was explicitly promoted by the user after RQ189, claimed and completed in this workspace.
@@ -123,7 +125,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ193 | DONE | analytics-async-ordering | Inventory page cross-panel async race condition |
 | RQ194 | DONE | analytics-details-async-safety | Analytics Details missing in-flight guard |
 | RQ195 | DONE | pilot-readiness-async-consistency | Pilot Readiness multi-signal load can mix reload generations |
-| RQ196 | WAITING | report-schedule-validation | Inventory report schedules saved without validation |
+| RQ196 | DONE | report-schedule-validation | Inventory report schedules saved without validation |
 | RQ197 | WAITING | export-truncation-safety | Scheduled inventory export has no row cap |
 | RQ198 | WAITING | decision-board-datascope-override | Executive Decision Board hardcoded dataScope |
 | RQ199 | WAITING | pre-nivelacija-datascope | Pre-nivelacija priority endpoint missing DataScope |
@@ -7353,7 +7355,7 @@ Commit suggestion: `fix(pilot-readiness): sequence signal loads`
 
 ## RQ196 - Inventory report schedules saved without validation
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend/frontend/tests
 Feature family: report-schedule-validation
@@ -7379,6 +7381,26 @@ Schedules persist with no checks for empty/invalid recipients, timezone, or `Run
 ### Acceptance
 
 - Users cannot save schedules that will silently fail.
+
+### Completion note
+
+- Date: 2026-09-08
+- Status: DONE
+- Completion: Inventory report schedule writes now validate recipients, timezone, local time and supported schedule values before persistence; invalid requests return structured HTTP 400 validation problems and the UI blocks them before submission.
+- Changed files: `Application/Inventory/Models/InventoryReportScheduleValidation.cs`, `Infrastructure/Services/Inventory/InventoryReportScheduleService.cs`, `Api/Endpoints/InventoryEndpoints.cs`, `Api.Tests/InventoryReportScheduleValidationTests.cs`, `Klijent/clientapp/src/components/inventory/inventoryUtils.ts`, `Klijent/clientapp/src/components/inventory/MailSchedulerPanel.tsx`, `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/components/inventory/inventoryScheduleValidation.spec.ts`, `MASTER_ROADMAP.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `.ai/runs/2026-09-08-RQ196-report-schedule-validation-evidence.md`
+- Contract/runtime behavior changed: invalid schedule writes fail with HTTP 400 before persistence; valid schedule shapes remain compatible.
+- Checks run: focused backend schedule-validation tests (4 passed), focused frontend schedule-validation tests (3 passed), `npm run check:analytics-guardrails`, `npm run typecheck`, `npm run build`, `git diff --check`, governance checks after delivery.
+- Checks not run: full frontend/backend suites, live browser/provider/deployed runtime proof and remote CI; see durable run log.
+- Run log: `.ai/runs/2026-09-08-RQ196-report-schedule-validation-evidence.md`
+- Evidence state: pending
+- Delivery mode: local merge
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: no live endpoint/provider/browser runtime proof.
+- Follow-up: none for RQ196.
+- Residual risk: runtime timezone availability can vary by host; invalid IDs fail closed and must be corrected.
+- Next: none; return queue to no READY prompt.
+- Prompt defect / scope repair: prompt omitted a Dependencies section; no dependency blocker was found and implementation stayed within Inventory/Reports schedule validation.
 
 ---
 

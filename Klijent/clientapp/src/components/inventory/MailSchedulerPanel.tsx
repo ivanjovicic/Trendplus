@@ -1,6 +1,6 @@
 ﻿import { Mail, Play, RefreshCw } from "lucide-react";
 import type { InventoryReportSchedule, InventoryReportScheduleInput } from "../../types/analytics";
-import { WEEKDAY_OPTIONS } from "./inventoryUtils";
+import { validateScheduleDraft, WEEKDAY_OPTIONS } from "./inventoryUtils";
 
 type MailSchedulerPanelProps = {
   scheduleDraft: InventoryReportScheduleInput;
@@ -23,6 +23,8 @@ export function MailSchedulerPanel({
   onSaveSchedule,
   onRunScheduleNow,
 }: MailSchedulerPanelProps) {
+  const validationMessage = validateScheduleDraft(scheduleDraft);
+
   return (
     <section className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
       <div className="rounded-[28px] border border-[var(--border-default)] bg-[var(--surface-elevated)] p-5">
@@ -36,7 +38,7 @@ export function MailSchedulerPanel({
               <RefreshCw size={14} />
               Preuzmi trenutne filtere
             </button>
-            <button type="button" onClick={onSaveSchedule} disabled={schedulerBusy || !scheduleDraft.name.trim() || !scheduleDraft.recipientsCsv.trim()} className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-60">
+            <button type="button" onClick={onSaveSchedule} disabled={schedulerBusy || Boolean(validationMessage)} className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-60">
               <Mail size={14} />
               Sacuvaj raspored
             </button>
@@ -91,6 +93,7 @@ export function MailSchedulerPanel({
         </div>
 
         {schedulerMessage ? <div className="mt-4 rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-3 text-sm text-[var(--text-primary)]">{schedulerMessage}</div> : null}
+        {validationMessage ? <div role="alert" className="mt-4 rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-3 text-sm text-[var(--text-primary)]">{validationMessage}</div> : null}
 
         <div className="mt-5 space-y-3">
           {schedules.length === 0 ? <div className="rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Jos nema sacuvanih rasporeda za Bilans stanja.</div> : schedules.map((schedule) => (
