@@ -442,8 +442,9 @@ public static class AnalyticsCacheKeys
         decimal? minScore,
         decimal? marginFloor,
         int page,
-        int pageSize) =>
-        $"{Prefix}pre-nivelacija-priority:v1:supplier:{FormatNullable(supplierId)}:season:{FormatNullable(seasonId)}:footwear:{FormatNullable(footwearTypeId)}:stock-min:{FormatNullable(stockMin)}:stock-max:{FormatNullable(stockMax)}:no-sale:{FormatNullable(noSaleDaysMin)}:min-score:{FormatNullable(minScore)}:margin-floor:{FormatNullable(marginFloor)}:page:{page}:size:{pageSize}";
+        int pageSize,
+        string? dataScope = null) =>
+        $"{Prefix}pre-nivelacija-priority:v1:supplier:{FormatNullable(supplierId)}:season:{FormatNullable(seasonId)}:footwear:{FormatNullable(footwearTypeId)}:stock-min:{FormatNullable(stockMin)}:stock-max:{FormatNullable(stockMax)}:no-sale:{FormatNullable(noSaleDaysMin)}:min-score:{FormatNullable(minScore)}:margin-floor:{FormatNullable(marginFloor)}:scope:{NormalizeDataScope(dataScope)}:page:{page}:size:{pageSize}";
 
     public static string PreNivelacijaPriorityBase(
         int? supplierId,
@@ -453,8 +454,9 @@ public static class AnalyticsCacheKeys
         int? stockMax,
         int? noSaleDaysMin,
         decimal? minScore,
-        decimal? marginFloor) =>
-        $"{Prefix}pre-nivelacija-priority:v2:supplier:{FormatNullable(supplierId)}:season:{FormatNullable(seasonId)}:footwear:{FormatNullable(footwearTypeId)}:stock-min:{FormatNullable(stockMin)}:stock-max:{FormatNullable(stockMax)}:no-sale:{FormatNullable(noSaleDaysMin)}:min-score:{FormatNullable(minScore)}:margin-floor:{FormatNullable(marginFloor)}";
+        decimal? marginFloor,
+        string? dataScope = null) =>
+        $"{Prefix}pre-nivelacija-priority:v2:supplier:{FormatNullable(supplierId)}:season:{FormatNullable(seasonId)}:footwear:{FormatNullable(footwearTypeId)}:stock-min:{FormatNullable(stockMin)}:stock-max:{FormatNullable(stockMax)}:no-sale:{FormatNullable(noSaleDaysMin)}:min-score:{FormatNullable(minScore)}:margin-floor:{FormatNullable(marginFloor)}:scope:{NormalizeDataScope(dataScope)}";
 }
 
 /// <summary>

@@ -160,6 +160,21 @@ public sealed class AnalyticsScreenCacheKeyContractTests
     }
 
     [Fact]
+    public void PreNivelacijaPriority_SeparatesDataScopeCacheEntries()
+    {
+        var all = AnalyticsCacheKeys.PreNivelacijaPriorityBase(null, null, null, null, null, null, null, null, "all");
+        var imported = AnalyticsCacheKeys.PreNivelacijaPriorityBase(null, null, null, null, null, null, null, null, "imported");
+        var existing = AnalyticsCacheKeys.PreNivelacijaPriorityBase(null, null, null, null, null, null, null, null, "existing");
+
+        Assert.NotEqual(all, imported);
+        Assert.NotEqual(all, existing);
+        Assert.NotEqual(imported, existing);
+        Assert.Contains("scope:all", all, StringComparison.Ordinal);
+        Assert.Contains("scope:imported", imported, StringComparison.Ordinal);
+        Assert.Contains("scope:existing", existing, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void SafeKeyFingerprint_IsStableShortAndDoesNotExposeRawKey()
     {
         const string key = "analytics:supplier-decision-hub:ranking:secret-filter-value";

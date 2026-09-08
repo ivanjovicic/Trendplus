@@ -5,6 +5,17 @@ namespace Api.Tests;
 
 public sealed class PreNivelacijaMarginEvidenceTests
 {
+    [Theory]
+    [InlineData(null, "all")]
+    [InlineData("", "all")]
+    [InlineData(" IMPORTED ", "imported")]
+    [InlineData("existing", "existing")]
+    [InlineData("unsupported", "all")]
+    public void NormalizeDataScope_UsesCanonicalValues(string? rawScope, string expected)
+    {
+        Assert.Equal(expected, PreNivelacijaPriorityEndpoints.NormalizeDataScope(rawScope));
+    }
+
     [Fact]
     public void ResolveMarginEvidence_NullPurchaseCost_IsIncomplete_NotHundredPercent()
     {

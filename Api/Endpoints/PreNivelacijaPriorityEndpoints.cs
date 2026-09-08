@@ -57,6 +57,7 @@ public static class PreNivelacijaPriorityEndpoints
             int? noSaleDaysMin = null,
             decimal? minScore = null,
             decimal? marginFloor = null,
+            string dataScope = "all",
             int page = 1,
             int pageSize = 20,
             CancellationToken ct = default) =>
@@ -66,6 +67,7 @@ public static class PreNivelacijaPriorityEndpoints
 
             try
             {
+            var normalizedDataScope = NormalizeDataScope(dataScope);
 
             var cacheKey = AnalyticsCacheKeys.PreNivelacijaPriorityBase(
                 supplierId,
@@ -75,7 +77,8 @@ public static class PreNivelacijaPriorityEndpoints
                 stockMax,
                 noSaleDaysMin,
                 minScore,
-                marginFloor);
+                marginFloor,
+                normalizedDataScope);
 
             var baseEntry = await cache.GetOrSetAsync(
                 cacheKey,
@@ -107,6 +110,15 @@ public static class PreNivelacijaPriorityEndpoints
                     var artikliQuery = db.Artikli
                         .AsNoTracking()
                         .Where(a => (a.Kolicina ?? 0) > 0);
+
+                    if (normalizedDataScope == "imported")
+                    {
+                        artikliQuery = artikliQuery.Where(a => a.DataOrigin == "access");
+                    }
+                    else if (normalizedDataScope == "existing")
+                    {
+                        artikliQuery = artikliQuery.Where(a => a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "");
+                    }
 
                     if (supplierId.HasValue)
                     {
@@ -163,6 +175,9 @@ public static class PreNivelacijaPriorityEndpoints
                             from ps in db.ProdajaStavke.AsNoTracking()
                             join p in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals p.Id
                             where artikalIds.Contains(ps.IdArtikal) && p.DatumProdaje >= from180Utc
+                                && (normalizedDataScope == "all"
+                                    || (normalizedDataScope == "imported" && p.DataOrigin == "access")
+                                    || (normalizedDataScope == "existing" && (p.DataOrigin == "existing" || p.DataOrigin == null || p.DataOrigin == "")))
                             group new { ps, p } by ps.IdArtikal into g
                             select new
                             {
@@ -198,6 +213,9 @@ public static class PreNivelacijaPriorityEndpoints
                             .AsNoTracking()
                             .Where(dp => dp.ArtikalId.HasValue
                                          && artikalIds.Contains(dp.ArtikalId.Value)
+                                         && (normalizedDataScope == "all"
+                                             || (normalizedDataScope == "imported" && dp.DataOrigin == "access")
+                                             || (normalizedDataScope == "existing" && (dp.DataOrigin == "existing" || dp.DataOrigin == null || dp.DataOrigin == "")))
                                          && (dp.TipPromene == "Nivelacija" || dp.TipPromene == "Nivelacija cena"))
                             .GroupBy(dp => dp.ArtikalId!.Value)
                             .Select(g => new
@@ -485,6 +503,12 @@ public static class PreNivelacijaPriorityEndpoints
     private static string BuildFormulaDescription()
     {
         return "Pre-Nivelacija Score = 0.30*StockPressure + 0.25*VelocityRisk + 0.20*RecencyRisk + 0.10*MarkdownOpportunity + 0.10*MarginPotential + 0.05*SeasonRecencyBoost; Recommendation = 0.50*Score + 0.20*ScenarioDelta + 0.15*StaleRisk + 0.15*Reliability";
+    }
+
+    internal static string NormalizeDataScope(string? rawScope)
+    {
+        var normalized = (rawScope ?? "all").Trim().ToLowerInvariant();
+        return normalized is "existing" or "imported" ? normalized : "all";
     }
 
     internal static AnalyticsResponseMetaDto BuildQueryFailureMeta(bool salesQueryFailed, bool markdownQueryFailed)
