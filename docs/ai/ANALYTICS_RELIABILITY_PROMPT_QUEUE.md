@@ -4,6 +4,7 @@ Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-08: RQ199 was explicitly promoted by the user after completed RQ198 and is claimed in this workspace.
 Owner promotion 2026-09-08: RQ198 was explicitly promoted by the user after completed RQ197 and is claimed in this workspace.
 Owner promotion 2026-09-08: RQ197 was explicitly promoted by the user after completed RQ196, claimed and completed in this workspace.
 Owner promotion 2026-09-08: RQ196 was explicitly promoted by the user after completed RQ195, claimed and completed in this workspace.
@@ -130,7 +131,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ196 | DONE | report-schedule-validation | Inventory report schedules saved without validation |
 | RQ197 | DONE | export-truncation-safety | Scheduled inventory export has no row cap |
 | RQ198 | DONE | decision-board-datascope-override | Executive Decision Board hardcoded dataScope |
-| RQ199 | WAITING | pre-nivelacija-datascope | Pre-nivelacija priority endpoint missing DataScope |
+| RQ199 | DONE | pre-nivelacija-datascope | Pre-nivelacija priority endpoint missing DataScope |
 | RQ200 | WAITING | pdc-search-pagination-boundary | Product Decision Center search capped at backend rows |
 | RQ201 | WAITING | sales-stats-chart-table-parity | Daily Sales chart vs table order divergence |
 | RQ202 | WAITING | date-timezone-safety | Daily Sales date sort timezone drift |
@@ -7513,12 +7514,14 @@ Board calls `getDecisionBoardAggregate({ dataScope: "all" })` explicitly, overri
 
 ## RQ199 - Pre-nivelacija priority endpoint has no DataScope parameter
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend/contract/tests
 Feature family: pre-nivelacija-datascope
 Parallel-safe: no
 Owner: Pre-nivelacija/Analytics
+
+Promotion/claim note: 2026-09-08 - explicitly promoted by the user after the queue reported no current READY prompt; claimed in this workspace.
 
 Commit suggestion: `fix(pre-nivelacija): add DataScope parameter`
 
@@ -7539,6 +7542,25 @@ Endpoint accepts no `dataScope`; cache key omits scope. Imported and existing ar
 ### Acceptance
 
 - Priority list respects user scope selection.
+
+### Completion note
+
+- Date: 2026-09-08
+- Status: DONE
+- Completion: Pre-nivelacija priority now accepts and normalizes `dataScope`, filters article, sales and nivelacija-event populations consistently, and isolates each scope in the cache key.
+- Changed files: `Api/Endpoints/PreNivelacijaPriorityEndpoints.cs`, `Infrastructure/Services/Caching/IAnalyticsCacheService.cs`, `Api.Tests/PreNivelacijaMarginEvidenceTests.cs`, `Api.Tests/AnalyticsScreenCacheKeyContractTests.cs`, `MASTER_ROADMAP.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `.ai/runs/2026-09-08-RQ199-pre-nivelacija-datascope-evidence.md`
+- Checks run: focused Pre-nivelacija/cache tests (21 passed), Release API build, `git diff --check`, governance checks after delivery.
+- Checks not run: full frontend/backend suites, live API/database/provider/browser proof and remote CI; see durable run log.
+- Run log: `.ai/runs/2026-09-08-RQ199-pre-nivelacija-datascope-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: local merge
+- Main commit SHA: pending
+- Main verification: pending until local merge and push
+- Missed: no live mixed-origin dataset proof.
+- Follow-up: none for RQ199.
+- Residual risk: scope semantics depend on the established `DataOrigin` vocabulary (`access` versus existing/null/empty); legacy rows with unexpected values intentionally fall back out of scoped populations.
+- Prompt defect / scope repair: prompt omitted a Dependencies section; no dependency blocker was found and implementation stayed within Pre-nivelacija analytics and its cache contract.
+- Next: none; return queue to no READY prompt.
 
 ---
 

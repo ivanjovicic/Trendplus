@@ -37,6 +37,8 @@ The new DEX/RL/DT/PERF/OBS/SEC programs are future planning lanes. Their first R
 
 ## Program routing matrix
 
+Owner promotion 2026-09-08: RQ199 was explicitly promoted and completed for Pre-nivelacija DataScope filtering and cache isolation; the RQ queue remains the canonical execution owner.
+
 | Program | Owner queue / roadmap | Current READY | Blocked by / current truth | Parallel-safe planning | Next milestone |
 |---|---|---|---|---|---|
 | BCI | `MASTER_ROADMAP.md` / `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md` + `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md` | none | Historical `BCI01`/`BCI05`/`BCI06` remain DONE, and `BCI10` is DONE after re-closing the backend suite with the test-host checkpoint-sync registration fix. | No | queue complete unless a new red current-main run appears |
