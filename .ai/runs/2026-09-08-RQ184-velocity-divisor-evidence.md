@@ -3,9 +3,9 @@ Queue: docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md
 Date: 2026-09-08
 Agent/tool: Codex
 Delivery target: main
-Working branch / PR: codex/rq184-velocity-divisor-20260908 / local merge, no PR
-Main commit SHA: pending
-Main verification: pending
+Working branch / PR: main via local merge `164012c85102383c9c15ecd785b710212776c866` from `codex/rq184-velocity-divisor-20260908` / no PR
+Main commit SHA: 164012c85102383c9c15ecd785b710212776c866
+Main verification: pending - local merge complete; verify `origin/main` after push
 Evidence state: pending
 
 ## What was done
@@ -14,7 +14,7 @@ Evidence state: pending
 - Confirmed the inventory-list cached endpoint used `UtcNow.AddDays(-30)` but divided sales by fixed `30m`, with no exclusive upper bound.
 - Added a shared owner-scope helper that calculates units/day from actual elapsed UTC days, enforced the half-open `[start, end)` sales window, and reused one captured end timestamp for sales and journal reads.
 - Added regression tests for 30-day and 10-day windows, zero-duration/reversed windows and negative sales evidence.
-- Closed RQ184 as DONE after local proof; the next RQ185 active-selling-days semantics prompt remains WAITING.
+- Closed RQ184 as DONE after local proof and local merge commit `164012c85102383c9c15ecd785b710212776c866`; remote verification is pending the push.
 
 ## Files changed
 
