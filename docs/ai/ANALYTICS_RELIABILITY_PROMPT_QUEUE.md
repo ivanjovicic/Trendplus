@@ -2315,7 +2315,7 @@ Several earlier contracts added additive backend trust metadata, while earlier e
 - Checks run: `npm run test:run -- src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx src/pages/__tests__/analyticsTrustStateProof.spec.tsx`
 - Checks not run: full repo build/test suites
 - Run log: `.ai/runs/2026-08-26-RQ120-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: ead24ae3c531802ca54a58b607f3ef107121abb2
 - Main verification: `git merge-base --is-ancestor ead24ae3c531802ca54a58b607f3ef107121abb2 HEAD -> true`
@@ -2839,8 +2839,8 @@ The live Decision Board still exposes numeric confidence where the contract says
 - Run log: .ai/runs/2026-08-26-RQ121-evidence.md
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: f90d1f98eccabc5cfe26323fc099ef9001931c45
+- Main verification: passed - local main and origin/main both resolve to f90d1f98eccabc5cfe26323fc099ef9001931c45; the RQ188 implementation merge is contained in origin/main
 - Missed: supplier trust payload remains the next lane in RQ122; no formula/ranking rewrite was attempted
 - Follow-up: RQ122 READY
 - Residual risk: advanced top-products data still depends on the existing SQL path for real runtime data; the new trust payload itself is derived conservatively from margin-impact availability

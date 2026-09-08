@@ -4,9 +4,9 @@ Date: 2026-09-08
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: codex/rq188-price-intelligence-validity-20260908 / local merge
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: f90d1f98eccabc5cfe26323fc099ef9001931c45
+Main verification: passed - local main and origin/main both resolve to f90d1f98eccabc5cfe26323fc099ef9001931c45; the RQ188 implementation merge is contained in origin/main
+Evidence state: synchronized
 Queue status: DONE
 
 ## What was done
