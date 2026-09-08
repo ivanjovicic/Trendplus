@@ -94,6 +94,8 @@ try
     // - default: web
     var processType = WorkerRuntimeConfig.ResolveProcessType(builder.Configuration, out var processTypeSource);
     var isWorkerProcess = processType == ProcessType.Worker;
+    var shouldRunDeferredDatabaseInitialization =
+        builder.Configuration.GetValue<bool>("Database:AutoMigrate") || builder.Environment.IsDevelopment();
     if (processTypeSource == "PROCESS_TYPE_INVALID")
     {
         Console.WriteLine("Invalid PROCESS_TYPE value. Falling back to web process mode.");
@@ -597,6 +599,15 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
             nightlyRegisteredInWeb = true;
         }
     }
+
+    // Database initialization has one owner. When an explicitly requested migration
+    // is needed in a production web process with workers disabled, register only the
+    // deferred initializer instead of reintroducing a synchronous Program.cs migration.
+    if (!isWorkerProcess && shouldRunDeferredDatabaseInitialization && !workersEnabled)
+    {
+        WorkerRuntimeConfig.RegisterWebEligibleWorker(builder.Services, "DeferredStartupTasksHostedService");
+        nightlyRegisteredInWeb = true;
+    }
     Console.WriteLine($"Background workers startup state: {(effectiveWorkersEnabled ? "ENABLED" : "DISABLED")}");
     Console.WriteLine($"Background workers runtime toggle: {(effectiveWorkersRuntimeToggleAllowed ? "ALLOWED" : "LOCKED")}");
     Console.WriteLine($"Worker hosted services registered: {(isWorkerProcess ? "YES" : registerAccessImportWorkerInWebProcess ? "ACCESS_IMPORT_ONLY" : nightlyRegisteredInWeb ? "WEB_ELIGIBLE" : "NO")}");
@@ -990,48 +1001,9 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
         return Results.Ok(payload);
     }
 
-    // --- Optional guarded automatic migrations ---
-    // Applies migrations automatically in Development or when the configuration
-    // flag `Database:AutoMigrate` is set to true. This is safe for local/dev
-    // environments but guarded to avoid accidental production schema changes.
-    if (builder.Configuration.GetValue<bool>("Database:AutoMigrate") || app.Environment.IsDevelopment())
-    {
-        using var scope = app.Services.CreateScope();
-        try
-        {
-            var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
-            Console.WriteLine("Auto-migrate enabled - applying EF Core migrations for main DB...");
-            db.Database.Migrate();
-            Console.WriteLine("Main database migrations applied successfully.");
-
-            // Also apply analytics DB migrations when available to ensure analytics tables exist
-            try
-            {
-                var analyticsDb = scope.ServiceProvider.GetService<Infrastructure.DbContexts.AnalyticsDbContext>();
-                if (analyticsDb is not null)
-                {
-                    Console.WriteLine("Applying EF Core migrations for AnalyticsDb...");
-                    analyticsDb.Database.Migrate();
-                    Console.WriteLine("Analytics database migrations applied successfully.");
-                }
-            }
-            catch (Exception ex)
-            {
-                var logger = scope.ServiceProvider.GetService<Microsoft.Extensions.Logging.ILogger<Program>>();
-                logger?.LogWarning(ex, "Applying analytics DB migrations failed (continuing)");
-            }
-        }
-        catch (Exception ex)
-        {
-            var logger = scope.ServiceProvider.GetService<ILogger<Program>>();
-            logger?.LogError(ex, "Auto-migrate failed");
-            // In non-development environments prefer failing fast so deployment/job runner
-            // becomes aware of migration problems. In development we swallow to avoid
-            // blocking iterative work.
-            if (!app.Environment.IsDevelopment())
-                throw;
-        }
-    }
+    // Database initialization is owned by DeferredStartupTasksHostedService.
+    // Keeping migration orchestration out of Program.cs prevents a second EF path
+    // from racing or repeating the deferred initializer.
 
     // ================= MIDDLEWARE PIPELINE =================
 

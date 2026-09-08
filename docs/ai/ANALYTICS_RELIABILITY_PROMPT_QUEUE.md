@@ -4,6 +4,8 @@ Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-08: `RQ209` was explicitly promoted by the user after completed `RQ208` and is claimed in this workspace.
+
 Owner promotion 2026-09-08: `RQ208` was explicitly promoted by the user after completed `RQ207` and is claimed in this workspace.
 
 Owner promotion 2026-09-08: `RQ207` was explicitly promoted by the user after completed `RQ206` and is claimed in this workspace.
@@ -156,7 +158,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ206 | DONE | refresh-run-status-accuracy | Partial nightly refresh treated as successful |
 | RQ207 | DONE | refresh-failure-cache-safety | Failed refresh skips cache invalidation |
 | RQ208 | DONE | period-timezone-boundary-safety | Dashboard per-day KPIs use local day count |
-| RQ209 | WAITING | database-migration-orchestration | Dual concurrent EF migration paths cause race condition |
+| RQ209 | DONE | database-migration-orchestration | Dual concurrent EF migration paths cause race condition |
 | RQ210 | WAITING | startup-readiness-gate | Startup init silently skipped after lock timeout |
 | RQ211 | WAITING | migration-sequencing | Parallel SQL migrations without ordering guarantees |
 | RQ212 | WAITING | migration-failure-safety | Migration failures swallowed; app runs on drifted schema |
@@ -8180,7 +8182,7 @@ Commit suggestion: `fix(dashboard): use UTC day count for per-day divisor`
 
 ## RQ209 - Dual concurrent EF migration paths cause race condition
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend/infra/tests
 Feature family: database-migration-orchestration
@@ -8198,6 +8200,34 @@ In Development, `Program.cs:997-1014` calls `Database.Migrate()` while `Deferred
 - `Program.cs:997-1014` (sync migrate at startup)
 - `DatabaseInitializer.cs:816` (async migrate in hosted service)
 
+### Scope
+
+- Keep the change within `Api/Program.cs`, startup-service registration/configuration and focused startup tests.
+- Establish one deferred database-initialization owner per process so the web startup path does not run a second synchronous EF migration.
+- Preserve the existing worker/web process split and the deferred initializer's advisory-lock behavior.
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `Api/Program.cs`
+- `Api/Services/Startup/DeferredStartupTasksHostedService.cs`
+- `Infrastructure/Seed/DatabaseInitializer.cs`
+- `Api/Config/WorkerRuntimeConfig.cs`
+- `Api.Tests/WorkerRuntimeConfigTests.cs`
+
+### Tests
+
+- `dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~WorkerRuntimeConfigTests`
+- `dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~DatabaseInitializerP0IntegrationTests`
+- `dotnet build Api/Api.csproj --no-restore --nologo`
+- `git diff --check`
+
+### Dependencies
+
+- `RQ208` is DONE and remains separate from this startup migration-orchestration correction.
+- No live database migration is required for the local registration/ownership proof; container-backed integration tests remain environment-dependent.
+
 ### Do
 
 1. Remove sync migrate from Program.cs; rely only on DeferredStartupTasksHostedService.
@@ -8207,6 +8237,25 @@ In Development, `Program.cs:997-1014` calls `Database.Migrate()` while `Deferred
 ### Acceptance
 
 - Single migration runs per instance; no duplicate-table errors.
+
+### Completion note
+
+- Date: 2026-09-08
+- Status: DONE
+- Completion: EF migration ownership is now single-path: `Program.cs` no longer executes synchronous migrations, while `DeferredStartupTasksHostedService` is the deferred owner for worker processes and explicitly requested web initialization.
+- Changed files: `Api/Program.cs`, `Infrastructure/Services/WorkerRegistryCatalog.cs`, `Api.Tests/DatabaseMigrationOwnershipTests.cs`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-08-RQ209-evidence.md`.
+- Contract/runtime behavior changed: duplicate synchronous/deferred EF migration execution was removed; the existing initializer advisory lock and deferred retry behavior remain unchanged.
+- Checks run: ownership test (2/2), WorkerRuntimeConfig tests (11/11), DatabaseInitializerP0IntegrationTests (4/4), API build (0 warnings, 0 errors), `git diff --check`, and all six agent/queue/planning governance checks passed.
+- Checks not run: full backend suite, live multi-instance PostgreSQL migration race proof, production startup smoke and remote CI; the local container-backed test convention did not provide live migration proof.
+- Run log: `.ai/runs/2026-09-08-RQ209-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending - implementation will be verified on current `main` and `origin/main` after delivery.
+- Missed: no live multi-instance migration race was executed locally.
+- Follow-up: RQ210/RQ211 remain separate migration startup-gate and sequencing prompts; no current READY prompt is auto-promoted.
+- Residual risk: initializer error-swallowing and lock-timeout semantics remain owned by RQ210/RQ212 and were not changed here.
+- Prompt defect / scope repair: the legacy RQ209 prompt omitted Scope, Read first, Tests and Dependencies; those required sections were added without expanding beyond migration ownership.
 
 ---
 

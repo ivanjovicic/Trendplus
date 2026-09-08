@@ -116,7 +116,7 @@ public static class WorkerRegistryCatalog
             IsRuntimeControllable: false,
             IsScheduleControllable: false,
             RegistersInWorkerProcess: true,
-            RegistersInWebProcess: false,
+            RegistersInWebProcess: true,
             RuntimeControlDisabledReason: "Startup-only service.",
             ScheduleControlDisabledReason: "Startup-only service."),
         new(
