@@ -136,6 +136,21 @@ describe("ProductDecisionCenterPage queue status sync", () => {
     unmount();
   });
 
+  it("sends search to the backend before the top-row limit is applied", async () => {
+    const { unmount } = render(<ProductDecisionCenterPage />);
+
+    const input = await screen.findByPlaceholderText("npr. Air, 45123...");
+    fireEvent.change(input, { target: { value: "TAIL-SKU" } });
+
+    await waitFor(() => {
+      expect(getProductDecisionCenterMock).toHaveBeenCalledWith(
+        expect.objectContaining({ search: "TAIL-SKU", top: 1200 }),
+      );
+    });
+
+    unmount();
+  });
+
   it("keeps explicit UI labels but does not rewrite backend reason or action text", async () => {
     getProductDecisionCenterMock.mockResolvedValue({
       rows: [
@@ -213,7 +228,7 @@ describe("ProductDecisionCenterPage queue status sync", () => {
 
     render(<ProductDecisionCenterPage />);
 
-    const addButtons = await screen.findAllByRole("button", { name: "Dodaj u akcije" });
+    const addButtons = await screen.findAllByRole("button", { name: "Dodaj u proveru" });
     fireEvent.click(addButtons[0]);
     fireEvent.click(addButtons[0]);
 
@@ -237,7 +252,7 @@ describe("ProductDecisionCenterPage queue status sync", () => {
 
     render(<ProductDecisionCenterPage />);
 
-    const addButtons = await screen.findAllByRole("button", { name: "Dodaj u akcije" });
+    const addButtons = await screen.findAllByRole("button", { name: "Dodaj u proveru" });
     fireEvent.click(addButtons[0]);
 
     expect(await screen.findByText("Nemate dozvolu za izmenu akcija. Preporuke ostaju dostupne za pregled.")).toBeInTheDocument();
@@ -256,7 +271,7 @@ describe("ProductDecisionCenterPage queue status sync", () => {
     expect(screen.getByText("Dopuni zalihe")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "U akcijama" })).not.toBeInTheDocument();
     expect(screen.getByText("404 Not Found")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Dodaj u akcije" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Dodaj u proveru" })).toBeInTheDocument();
   });
 
   it("keeps blocking error state when the main product decision endpoint fails", async () => {

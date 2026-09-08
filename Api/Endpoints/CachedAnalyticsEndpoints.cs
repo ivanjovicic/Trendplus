@@ -1627,9 +1627,11 @@ public static class CachedAnalyticsEndpoints
             int? supplierId = null,
             int top = 500,
             string dataScope = "all",
+            string? search = null,
             CancellationToken ct = default) =>
         {
             var normalizedDataScope = NormalizeDataScope(dataScope);
+            var normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
             top = Math.Clamp(top, 50, 2000);
 
             if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
@@ -1639,13 +1641,13 @@ public static class CachedAnalyticsEndpoints
 
             try
             {
-                var cacheKey = AnalyticsCacheKeys.ProductDecisionCenter(fromDate, toDate, storeId, supplierId, top, normalizedDataScope);
+                var cacheKey = AnalyticsCacheKeys.ProductDecisionCenter(fromDate, toDate, storeId, supplierId, top, normalizedDataScope, normalizedSearch);
                 var cacheResult = await GetOrSetWithPolicyAsync(
                     cache,
                     cacheKey,
                     AnalyticsCachePolicy.ProductDecisionCenterFamily,
                     AnalyticsCachePolicy.ProductDecisionCenter,
-                    async () => await BuildProductDecisionCenterAsync(db, fromDate, toDate, storeId, supplierId, top, normalizedDataScope, ct),
+                    async () => await BuildProductDecisionCenterAsync(db, fromDate, toDate, storeId, supplierId, top, normalizedDataScope, ct, normalizedSearch),
                     ct,
                     loggerFactory: loggerFactory,
                     dataRefreshAtUtcFactory: () => TryGetLastSuccessfulRefreshAtUtcAsync(refreshStatusService, loggerFactory, ct),
@@ -5792,9 +5794,11 @@ public static class CachedAnalyticsEndpoints
         int? supplierId,
         int top,
         string dataScope,
-        CancellationToken ct)
+        CancellationToken ct,
+        string? search = null)
     {
         var normalizedDataScope = NormalizeDataScope(dataScope);
+        var normalizedSearch = string.IsNullOrWhiteSpace(search) ? string.Empty : search.Trim().ToLowerInvariant();
         var importedOnly = normalizedDataScope == "imported";
         var existingOnly = normalizedDataScope == "existing";
 
@@ -5820,6 +5824,10 @@ public static class CachedAnalyticsEndpoints
                   && (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
                   && (!importedOnly || a.DataOrigin == "access")
                   && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+                  && (normalizedSearch == string.Empty
+                      || (a.PLU ?? string.Empty).ToLower().Contains(normalizedSearch)
+                      || (a.Naziv ?? string.Empty).ToLower().Contains(normalizedSearch)
+                      || (d != null && (d.Naziv ?? string.Empty).ToLower().Contains(normalizedSearch)))
             select new ProductDecisionArticleSnapshot
             {
                 ProductId = a.Id,

@@ -798,6 +798,7 @@ export default function ProductDecisionCenterPage() {
         storeId,
         supplierId,
         top: 1200,
+        ...(search.trim() ? { search: search.trim() } : {}),
       });
       if (dataRequestSeqRef.current !== requestSeq) {
         return;
@@ -829,13 +830,16 @@ export default function ProductDecisionCenterPage() {
         setLoading(false);
       }
     }
-  }, [fromDate, supplierId, storeId, toDate]);
+  }, [fromDate, search, supplierId, storeId, toDate]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  const rows = (payload?.rows ?? []) as ProductDecisionRow[];
+  const rows = useMemo(
+    () => (payload?.rows ?? []) as ProductDecisionRow[],
+    [payload?.rows],
+  );
   const responseMeta = payload?.meta ?? null;
   const responseMetaMessage = getAnalyticsMetaMessage(responseMeta);
 
