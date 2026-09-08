@@ -217,6 +217,34 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.Equal(0m, response.Summary.SlowStockCapital);    }
 
     [Fact]
+    public async Task BuildProductDecisionCenter_SearchFiltersBeforeTopLimit()
+    {
+        var databaseName = $"product-decision-search-{Guid.NewGuid():N}";
+        await using var db = CreateDbContext(databaseName);
+        var fromDate = PilotAnalyticsSeedPack.ProductDecisionFromUtc;
+        var toDate = PilotAnalyticsSeedPack.ProductDecisionToUtc;
+        PilotAnalyticsSeedPack.SeedProductDecisionCenter(db, fromDate, toDate);
+        await db.SaveChangesAsync();
+
+        var response = await CachedAnalyticsEndpoints.BuildProductDecisionCenterAsync(
+            db,
+            fromDate,
+            toDate,
+            storeId: 1,
+            supplierId: null,
+            top: 1,
+            dataScope: "all",
+            CancellationToken.None,
+            search: "SKU-101");
+
+        var row = Assert.Single(response.Rows);
+        Assert.Equal(101, row.ProductId);
+        Assert.Equal(1, response.AnalyzedRows);
+        Assert.Equal(1, response.TotalRows);
+        Assert.Equal(0, response.IgnoredRowsCount);
+    }
+
+    [Fact]
     public async Task BuildProductDecisionCenter_UnknownStoreReturnsExplicitEmptySuccessMeta()
     {
         var databaseName = $"product-decision-empty-{Guid.NewGuid():N}";

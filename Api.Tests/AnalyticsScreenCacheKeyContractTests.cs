@@ -29,6 +29,19 @@ public sealed class AnalyticsScreenCacheKeyContractTests
     }
 
     [Fact]
+    public void ProductDecisionCenter_SearchGetsItsOwnCacheIdentity()
+    {
+        var withoutSearch = AnalyticsCacheKeys.ProductDecisionCenter(FromUtc, ToUtc, 1, 2, 1200, "all");
+        var withSearch = AnalyticsCacheKeys.ProductDecisionCenter(FromUtc, ToUtc, 1, 2, 1200, "all", "TAIL-SKU");
+        var equivalentSearch = AnalyticsCacheKeys.ProductDecisionCenter(FromUtc, ToUtc, 1, 2, 1200, "all", " TAIL-SKU ");
+
+        Assert.NotEqual(withoutSearch, withSearch);
+        Assert.Equal(withSearch, equivalentSearch);
+        Assert.DoesNotContain("TAIL-SKU", withSearch, StringComparison.Ordinal);
+        Assert.Contains("search:", withSearch, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void SupplierDecisionHubSummary_NormalizesTextAndScopeWithoutDroppingDimensions()
     {
         var normalized = AnalyticsCacheKeys.SupplierDecisionHubSummary(
