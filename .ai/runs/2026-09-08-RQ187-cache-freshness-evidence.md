@@ -7,8 +7,8 @@ Agent/tool: Codex
 Delivery target: `main`
 Working branch / PR: `codex/rq187-cache-refresh-provenance-20260908` / local merge, no PR
 Main commit SHA: `b8d37328ac6681c3f0339514e9c701a26ede1bf6`
-Main verification: pending push verification
-Evidence state: pending
+Main verification: passed — `origin/main` at `2cc93acf911922ea0ebc5f68857b5cfaea72f3dd` contains merge SHA `b8d37328ac6681c3f0339514e9c701a26ede1bf6`; local `main` matches `origin/main`.
+Evidence state: synchronized
 
 ## What was done
 

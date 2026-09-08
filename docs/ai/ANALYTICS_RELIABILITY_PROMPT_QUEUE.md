@@ -6916,7 +6916,7 @@ Commit suggestion: `fix(analytics): distinguish cache creation time from data re
 - Checks not run: live refresh-worker/browser/deployed proof and full backend/frontend suites.
 - Run log: `.ai/runs/2026-09-08-RQ187-cache-freshness-evidence.md`.
 - Main commit SHA: `b8d37328ac6681c3f0339514e9c701a26ede1bf6`.
-- Main verification: pending push verification.
+- Main verification: passed — `origin/main` at `2cc93acf911922ea0ebc5f68857b5cfaea72f3dd` contains merge SHA `b8d37328ac6681c3f0339514e9c701a26ede1bf6`; local `main` matches `origin/main`.
 - Delivery mode: direct-main local merge and push; exact merge SHA and `origin/main` verification will be synchronized after delivery.
 - Analytics safety gate: durable successful refresh status is the source of truth; cache creation is diagnostic only; missing/legacy refresh stays null; no numeric formulas, filters, export values or action semantics changed.
 - Prompt defect/scope repair: the prompt did not name the current durable refresh provider, so the existing `AnalyticsRefreshStatusService` was used as the same-owner source; RQ254 remains the direct PDC builder/cache-miss follow-up.
