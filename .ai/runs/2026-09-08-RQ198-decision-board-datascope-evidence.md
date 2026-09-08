@@ -4,9 +4,9 @@ Date: 2026-09-08
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: codex/rq198-decision-board-datascope-20260908 / local merge
-Main commit SHA: pending
-Main verification: pending until local merge and push
-Evidence state: pending
+Main commit SHA: 8df578059937dfad2a7818cca50bde7cbe868ba3
+Main verification: passed - local `main` and `origin/main` both contain delivered merge `8df578059937dfad2a7818cca50bde7cbe868ba3`; implementation commit `e7eaac7b` is contained in `origin/main`.
+Evidence state: synchronized
 
 ## What was done
 
@@ -29,7 +29,9 @@ Evidence state: pending
 - `npm run check:analytics-guardrails` -> pass (encoding, analytics guardrails and TypeScript typecheck).
 - `npm run build` -> pass (frontend production build; existing chunk-size warnings only).
 - `git diff --check` -> pass.
-- Governance checks after delivery -> pending.
+- `node scripts/check-agent-instructions.mjs` -> pass.
+- `node scripts/check-prompt-queues.mjs` -> pass (403 tasks).
+- `node scripts/check-planning-architecture.mjs` -> pass (78 planning tasks checked).
 
 ## Validation not run
 
@@ -51,4 +53,4 @@ Evidence state: pending
 
 ## Next
 
-- Complete local merge/push, synchronize the exact delivered SHA in this run log and queue note, then leave the queue at no READY prompt.
+- Local merge/push completed; exact delivered SHA is synchronized in this run log and queue note.

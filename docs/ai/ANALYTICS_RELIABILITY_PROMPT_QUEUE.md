@@ -7501,8 +7501,8 @@ Board calls `getDecisionBoardAggregate({ dataScope: "all" })` explicitly, overri
 - Run log: `.ai/runs/2026-09-08-RQ198-decision-board-datascope-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: local merge
-- Main commit SHA: pending
-- Main verification: pending until local merge and push
+- Main commit SHA: `8df578059937dfad2a7818cca50bde7cbe868ba3`
+- Main verification: passed - local `main` and `origin/main` both contain delivered merge `8df578059937dfad2a7818cca50bde7cbe868ba3`; implementation commit `e7eaac7b` is contained in `origin/main`.
 - Missed: no live multi-scope API/browser proof.
 - Follow-up: none for RQ198.
 - Residual risk: the persisted scope remains browser-local and depends on the existing DataScope event contract; backend decision semantics are unchanged.
