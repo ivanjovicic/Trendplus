@@ -8325,7 +8325,7 @@ If advisory startup lock not acquired within 120s, database init skipped with on
 - Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `fcef2d420e94e92838e21901b083df5708417be8`
-- Main verification: passed - final current `main` and `origin/main` are `1b3d8815477d810c1aa789e9ba08b34b4903aae2`, and implementation SHA `fcef2d420e94e92838e21901b083df5708417be8` is an ancestor of both.
+- Main verification: passed - final `git rev-parse HEAD` equals `git rev-parse origin/main`, and implementation SHA `fcef2d420e94e92838e21901b083df5708417be8` is an ancestor of both.
 - Missed: no live multi-instance PostgreSQL proof was available locally.
 - Follow-up: RQ211 remains WAITING for migration sequencing; RQ212 remains WAITING for migration failure propagation. No current READY prompt is auto-promoted.
 - Residual risk: staging/CI should exercise two live application instances contending for the startup advisory lock.
