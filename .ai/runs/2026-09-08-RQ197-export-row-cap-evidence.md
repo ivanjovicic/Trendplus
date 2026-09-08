@@ -4,9 +4,9 @@ Date: 2026-09-08
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: codex/rq197-export-row-cap-20260908 / local merge
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: 569d02cef1ba5117c6613646d9b71181720110cc
+Main verification: passed - local `main` and `origin/main` both contain delivered merge `569d02cef1ba5117c6613646d9b71181720110cc`; implementation commit `1b05b810` is contained in `origin/main`.
+Evidence state: synchronized
 
 ## What was done
 

@@ -7446,10 +7446,10 @@ Export loads all articles unbounded; completion waits ~90s. Large catalogs can t
 - Checks run: focused document renderer tests (16 passed), Release API build, `git diff --check`, governance checks after delivery.
 - Checks not run: full frontend/backend suites, live database/provider/deployed runtime proof and remote CI; see durable run log.
 - Run log: `.ai/runs/2026-09-08-RQ197-export-row-cap-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: local merge
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `569d02cef1ba5117c6613646d9b71181720110cc`
+- Main verification: passed - local `main` and `origin/main` both contain delivered merge `569d02cef1ba5117c6613646d9b71181720110cc`; implementation commit `1b05b810` is contained in `origin/main`.
 - Missed: no live large-catalog or deployed export runtime proof.
 - Follow-up: none for RQ197.
 - Residual risk: the configured cap is bounded to 1,000,000 rows; downstream document generation still depends on available storage and renderer capacity.
