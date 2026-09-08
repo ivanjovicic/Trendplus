@@ -7049,10 +7049,10 @@ When prior 7-day rolling units = 0 and current > 0, `demand_acceleration` is fix
 - Checks run: focused intelligence smoke 5/5, React derived/panel tests 13/13, analytics guardrails/typecheck, frontend build, Release backend build, diff check and final governance checks.
 - Checks not run: full suites, live production/browser/provider proof and remote CI; see durable run log.
 - Run log: `.ai/runs/2026-09-08-RQ189-new-demand-state-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: 0e831f7520bab8c5d3225295cad2e158e87d2fcf
+- Main verification: passed - local main and origin/main both resolve to 0e831f7520bab8c5d3225295cad2e158e87d2fcf; RQ189 implementation is contained in origin/main.
 - Missed: RQ190 remains WAITING on RQ141; no live cache refresh was performed.
 - Follow-up: none for RQ189.
 - Residual risk: existing build warnings and the normal post-deploy cache refresh remain; no production mutation was performed.

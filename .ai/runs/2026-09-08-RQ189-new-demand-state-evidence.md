@@ -4,9 +4,9 @@ Date: 2026-09-08
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: codex/rq189-new-demand-state-20260908 / local merge
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: 0e831f7520bab8c5d3225295cad2e158e87d2fcf
+Main verification: passed - local main and origin/main both resolve to 0e831f7520bab8c5d3225295cad2e158e87d2fcf; the RQ189 implementation merge is contained in origin/main.
+Evidence state: synchronized
 
 ## What was done
 - RQ189 was explicitly promoted by the owner, claimed locally, and implemented within the Analytics owner boundary.
@@ -46,7 +46,9 @@ Analytics safety gate:
 - `npm run build` -> pass; Vite completed successfully with the existing large `recharts` chunk warning.
 - `dotnet build Api.Tests/Api.Tests.csproj --configuration Release --no-restore --nologo` -> pass, 0 errors and 157 existing warnings.
 - `git diff --check` -> pass.
-- Governance checks after final queue synchronization: pending.
+- `node scripts/check-agent-instructions.mjs` -> pass.
+- `node scripts/check-prompt-queues.mjs` -> pass, 403 tasks.
+- `node scripts/check-planning-architecture.mjs` -> pass, 78 planning tasks.
 
 ## Validation not run
 - Full backend and frontend suites -> not run; the focused tests and release build cover the changed contracts, while unrelated full-suite execution was outside the narrow proof.
