@@ -4,9 +4,9 @@ Date: 2026-09-08
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: codex/review-unreviewed-commits-20260908 / local merge
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: bb56a2a6cc625709356c63a031de399217d9ef4c
+Main verification: passed - local main and origin/main both resolve to bb56a2a6cc625709356c63a031de399217d9ef4c; merge commit is an ancestor of origin/main
+Evidence state: synchronized
 
 ## What was done
 - Reviewed the functional commits from 2026-09-08 that were not covered by the earlier 2026-09-07 review evidence: RQ184, RQ185, RQ186 and RQ187, together with their related backend, React and focused-test changes.
@@ -45,7 +45,7 @@ Evidence state: pending
 ## Risks
 - SQL boundary behavior was proven by static contract inspection plus focused backend tests; no live provider query was executed.
 - Release build reports existing warnings, including nullable/analyzer warnings outside this repair; no unrelated warning cleanup was included.
-- Delivery is pending until the local merge, push and fresh `main`/`origin/main` SHA verification complete.
+- Delivery completed through the local merge and push; the exact target SHA is recorded above.
 
 ## Next
-- Commit the scoped repair and evidence, merge locally to `main`, push `main`, then synchronize this log with the exact delivered SHA and final verification.
+- None for this review scope.
