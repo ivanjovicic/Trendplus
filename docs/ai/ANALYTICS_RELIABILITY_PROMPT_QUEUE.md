@@ -8174,6 +8174,7 @@ Commit suggestion: `fix(dashboard): use UTC day count for per-day divisor`
 - Follow-up: none; the RQ queue returns to no current READY prompt.
 - Residual risk: a future response missing both requested and effective UTC period metadata uses the existing filter fallback.
 - Prompt defect / scope repair: the legacy prompt referenced a missing test path and omitted Scope, Read first, Tests and Dependencies; the path and required sections were repaired without expanding beyond Dashboard divisor ownership.
+- Post-close audit: complete requested/effective period-pair validation and fallback resolution were hardened in the direct review follow-up; see `.ai/runs/2026-09-08-review-latest-commits-agent-logs-followup-evidence.md`.
 
 ---
 

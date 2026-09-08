@@ -215,6 +215,27 @@ function parseInputDate(value: string): Date {
 
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
+type DashboardPeriodMeta = Pick<
+  AnalyticsResponseMeta,
+  | "requestedPeriodFromUtc"
+  | "requestedPeriodToUtc"
+  | "effectivePeriodFromUtc"
+  | "effectivePeriodToUtc"
+>;
+
+function isValidDashboardPeriod(
+  fromUtc?: string | null,
+  toUtc?: string | null,
+): fromUtc is string {
+  if (!fromUtc || !toUtc) {
+    return false;
+  }
+
+  const from = new Date(fromUtc);
+  const to = new Date(toUtc);
+  return !Number.isNaN(from.getTime()) && !Number.isNaN(to.getTime()) && to >= from;
+}
+
 export function calculateDashboardPeriodDays(
   fromUtc?: string | null,
   toUtc?: string | null,
@@ -232,6 +253,26 @@ export function calculateDashboardPeriodDays(
   const fromDayUtc = Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate());
   const toDayUtc = Date.UTC(to.getUTCFullYear(), to.getUTCMonth(), to.getUTCDate());
   return Math.max(Math.floor((toDayUtc - fromDayUtc) / MILLISECONDS_PER_DAY) + 1, 1);
+}
+
+export function resolveDashboardPeriodDays(
+  meta?: DashboardPeriodMeta | null,
+  fallbackFromUtc?: string | null,
+  fallbackToUtc?: string | null,
+): number {
+  const periodCandidates: Array<[string | null | undefined, string | null | undefined]> = [
+    [meta?.requestedPeriodFromUtc, meta?.requestedPeriodToUtc],
+    [meta?.effectivePeriodFromUtc, meta?.effectivePeriodToUtc],
+    [fallbackFromUtc, fallbackToUtc],
+  ];
+
+  for (const [fromUtc, toUtc] of periodCandidates) {
+    if (isValidDashboardPeriod(fromUtc, toUtc)) {
+      return calculateDashboardPeriodDays(fromUtc, toUtc);
+    }
+  }
+
+  return 1;
 }
 
 function statusTone(value?: string | null): Tone {
@@ -675,15 +716,7 @@ export default function AnalyticsDashboard() {
     [fromDate, toDate],
   );
   const selectedDays = useMemo(() => {
-    const periodFromUtc =
-      dashboardMeta?.requestedPeriodFromUtc ??
-      dashboardMeta?.effectivePeriodFromUtc ??
-      fromDate;
-    const periodToUtc =
-      dashboardMeta?.requestedPeriodToUtc ??
-      dashboardMeta?.effectivePeriodToUtc ??
-      toDate;
-    return calculateDashboardPeriodDays(periodFromUtc, periodToUtc);
+    return resolveDashboardPeriodDays(dashboardMeta, fromDate, toDate);
   }, [dashboardMeta, fromDate, toDate]);
   const storeId = useMemo(
     () => (selectedStore ? Number(selectedStore) : undefined),
