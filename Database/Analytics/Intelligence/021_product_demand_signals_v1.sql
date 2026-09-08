@@ -7,6 +7,7 @@
 -- - sales_velocity: rolling 7-day unit sum at article/store/day grain
 -- - demand_acceleration: current 7-day velocity vs previous 7-day velocity
 --   using LAG(rolling_7d, 7) over a gap-free daily calendar
+-- - demand_state: explicit state for new demand, missing baseline and measured change
 -- - days_since_last_sale: date distance to the latest selling day at or before
 --   the signal date
 -- - launch_age_days: first selling day, with ProductsDim.Timestamp fallback
@@ -23,6 +24,7 @@ DECLARE
         'date',
         'sales_velocity',
         'demand_acceleration',
+        'demand_state',
         'days_since_last_sale',
         'launch_age_days',
         'store_coverage',
@@ -197,16 +199,25 @@ SELECT
     ROUND(
         CASE
             WHEN COALESCE(ds.prior_rolling_units_7d, 0) = 0
-             AND COALESCE(ds.rolling_units_7d, 0) > 0
-            THEN 1::numeric
-            WHEN COALESCE(ds.prior_rolling_units_7d, 0) = 0
-            THEN 0::numeric
+            THEN NULL::numeric
             ELSE (
                 COALESCE(ds.rolling_units_7d, 0) - COALESCE(ds.prior_rolling_units_7d, 0)
             ) / NULLIF(ds.prior_rolling_units_7d, 0)
         END,
         4
     ) AS demand_acceleration,
+    CASE
+        WHEN COALESCE(ds.prior_rolling_units_7d, 0) = 0
+         AND COALESCE(ds.rolling_units_7d, 0) > 0
+        THEN 'NEW_DEMAND'
+        WHEN COALESCE(ds.prior_rolling_units_7d, 0) = 0
+        THEN 'NO_BASELINE'
+        WHEN COALESCE(ds.rolling_units_7d, 0) > COALESCE(ds.prior_rolling_units_7d, 0)
+        THEN 'ACCELERATING'
+        WHEN COALESCE(ds.rolling_units_7d, 0) < COALESCE(ds.prior_rolling_units_7d, 0)
+        THEN 'DECELERATING'
+        ELSE 'STABLE'
+    END AS demand_state,
     CASE
         WHEN ds.last_sale_date IS NULL THEN NULL
         ELSE (ds.signal_date - ds.last_sale_date)
@@ -228,7 +239,10 @@ COMMENT ON COLUMN analytics_intel.vw_product_demand_signals_v1.sales_velocity IS
 'Rolling 7-day sum of sold units. Window size is intentionally fixed in SQL for deterministic dashboard behavior.';
 
 COMMENT ON COLUMN analytics_intel.vw_product_demand_signals_v1.demand_acceleration IS
-'Relative change between the current 7-day velocity and the prior 7-day velocity. 1.0 means velocity doubled; 0 means flat; negative values indicate deceleration.';
+'Relative change between current and prior 7-day velocity. It is unavailable when no positive prior baseline exists; use demand_state for NEW_DEMAND and NO_BASELINE.';
+
+COMMENT ON COLUMN analytics_intel.vw_product_demand_signals_v1.demand_state IS
+'Backend-owned demand state: NEW_DEMAND, NO_BASELINE, ACCELERATING, DECELERATING or STABLE.';
 
 COMMENT ON COLUMN analytics_intel.vw_product_demand_signals_v1.days_since_last_sale IS
 'Calendar days between the signal date and the latest selling day at or before that signal date.';

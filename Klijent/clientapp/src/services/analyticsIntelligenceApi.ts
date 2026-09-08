@@ -20,7 +20,8 @@ export interface DemandSignalItem {
   storeCity: string | null;
   date: string;
   salesVelocity: number;
-  demandAcceleration: number;
+  demandAcceleration: number | null;
+  demandState: "NEW_DEMAND" | "NO_BASELINE" | "ACCELERATING" | "DECELERATING" | "STABLE";
   daysSinceLastSale: number | null;
   launchAgeDays: number;
   storeCoverage: number;

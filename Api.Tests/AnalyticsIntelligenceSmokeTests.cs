@@ -37,6 +37,7 @@ public sealed class AnalyticsIntelligenceSmokeTests
                 date,
                 sales_velocity,
                 demand_acceleration,
+                demand_state,
                 days_since_last_sale,
                 launch_age_days,
                 store_coverage,
@@ -62,6 +63,7 @@ public sealed class AnalyticsIntelligenceSmokeTests
             "date",
             "sales_velocity",
             "demand_acceleration",
+            "demand_state",
             "days_since_last_sale",
             "launch_age_days",
             "store_coverage",
@@ -74,6 +76,35 @@ public sealed class AnalyticsIntelligenceSmokeTests
         {
             _ = reader.GetValue(0);
         }
+    }
+
+    [Fact]
+    public async Task ProductDemandSignalsView_DistinguishesNewDemandFromMeasuredAcceleration()
+    {
+        if (!TryGetAnalyticsConnectionString(out var connectionString))
+        {
+            return;
+        }
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        await BootstrapIntelligenceSqlAsync(connection,
+            "Database/Analytics/Intelligence/020_create_intelligence_schema.sql",
+            "Database/Analytics/Intelligence/021_product_demand_signals_v1.sql");
+
+        await using var command = new NpgsqlCommand("""
+            SELECT COUNT(*)
+            FROM analytics_intel.vw_product_demand_signals_v1
+            WHERE demand_state IN ('NEW_DEMAND', 'NO_BASELINE')
+              AND demand_acceleration IS NOT NULL;
+            """, connection)
+        {
+            CommandTimeout = 0
+        };
+
+        var invalidBaselineCount = Convert.ToInt64(await command.ExecuteScalarAsync());
+        Assert.Equal(0L, invalidBaselineCount);
     }
 
     [Fact]

@@ -3,6 +3,7 @@
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+Owner promotion 2026-09-08: RQ189 was explicitly promoted by the user after completed RQ188, claimed and completed in this workspace.
 Owner promotion 2026-09-08: RQ188 was explicitly promoted by the user after completed RQ187, claimed and completed in this workspace.
 Owner promotion 2026-09-08: RQ187 was explicitly promoted by the user as the next cache freshness slice after completed RQ186, claimed and completed in this workspace.
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
@@ -110,8 +111,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ185 | DONE | velocity-active-days-semantics | "Velocity per day" label with active-selling-days divisor confusion |
 | RQ186 | DONE | pdc-lost-sales-arithmetic | Product Decision lost-sales formula ignores velocity |
 | RQ187 | DONE | cache-meta-freshness-truth | Cache write time published as LastRefreshAtUtc on cache hits |
-| RQ188 | WAITING | price-intelligence-validity | Price-intelligence discount depth encodes missing list price as 0% |
-| RQ189 | WAITING | demand-acceleration-new-product-state | Demand acceleration hardcodes 1.0 sentinel for new demand |
+| RQ188 | DONE | price-intelligence-validity | Price-intelligence discount depth encodes missing list price as 0% |
+| RQ189 | DONE | demand-acceleration-new-product-state | Demand acceleration hardcodes 1.0 sentinel for new demand |
 | RQ190 | OBSOLETE | forecast-snapshot-freshness-aggregation | Excluded: standalone forecast provenance work is deferred |
 | RQ191 | WAITING | frontend-numeric-safety | Frontend percent clamp hides negative backend signals |
 | RQ192 | WAITING | ml-feature-missing-encoding | Supplier ML return rate coalesces missing to 0% |
@@ -6997,7 +6998,7 @@ SQL view encodes `WHEN pp.list_price <= 0 THEN 0::numeric` for `discount_depth`.
 
 ## RQ189 - Demand acceleration hardcodes 1.0 sentinel for new demand
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: backend/tests
 Feature family: demand-acceleration-new-product-state
@@ -7038,6 +7039,24 @@ When prior 7-day rolling units = 0 and current > 0, `demand_acceleration` is fix
 ### Dependencies
 
 - `RQ152` owns derived-builder semantics; this is the specific new-demand state.
+
+### Completion note
+
+- Date: 2026-09-08
+- Status: DONE
+- Completion: New demand and no-baseline states now use nullable acceleration plus an explicit backend-owned `demand_state`; measured acceleration remains distinct and the dashboard renders safe Serbian state copy.
+- Changed files: `Database/Analytics/Intelligence/021_product_demand_signals_v1.sql`, `Api/Endpoints/AnalyticsIntelligenceEndpoints.cs`, `Api.Tests/AnalyticsIntelligenceSmokeTests.cs`, `Klijent/clientapp/src/services/analyticsIntelligenceApi.ts`, `Klijent/clientapp/src/services/analyticsIntelligenceDerived.ts`, `Klijent/clientapp/src/services/__tests__/analyticsIntelligenceDerived.spec.ts`, `Klijent/clientapp/src/components/dashboard/IntelligenceSnapshotPanel.tsx`, `Klijent/clientapp/src/components/dashboard/IntelligenceSnapshotPanel.spec.tsx`.
+- Checks run: focused intelligence smoke 5/5, React derived/panel tests 13/13, analytics guardrails/typecheck, frontend build, Release backend build, diff check and final governance checks.
+- Checks not run: full suites, live production/browser/provider proof and remote CI; see durable run log.
+- Run log: `.ai/runs/2026-09-08-RQ189-new-demand-state-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: RQ190 remains WAITING on RQ141; no live cache refresh was performed.
+- Follow-up: none for RQ189.
+- Residual risk: existing build warnings and the normal post-deploy cache refresh remain; no production mutation was performed.
+- Prompt defect / scope repair: the prompt allowed either NULL or a separate state, so both were used to preserve numeric truth and provide explicit UI semantics; numeric minimum filters were tightened to exclude unknowns rather than coalesce them to zero.
 
 ---
 
