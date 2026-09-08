@@ -11,6 +11,7 @@ using Application.Artikli.Common.Interfaces;
 using Application.Common.Interfaces;
 using Infrastructure.Services.Caching;
 using Infrastructure.Services.Analytics;
+using Api.Services;
 using MediatR;
 using Domain.Model;
 using Domain.Model.Analytics;
@@ -119,6 +120,7 @@ public static class CachedAnalyticsEndpoints
             IAnalyticsCacheService cache,
             ITrendplusDbContext trendDb,
             IMediator mediator,
+            AnalyticsRefreshStatusService refreshStatusService,
             ILoggerFactory loggerFactory,
             HttpContext httpContext,
             DateTime? fromDate = null,
@@ -190,6 +192,7 @@ public static class CachedAnalyticsEndpoints
                     },
                     ct,
                     loggerFactory: loggerFactory,
+                    dataRefreshAtUtcFactory: () => TryGetLastSuccessfulRefreshAtUtcAsync(refreshStatusService, loggerFactory, ct),
                     routeName: "sales.summary");
                 var result = cacheResult.Value;
 
@@ -287,6 +290,7 @@ public static class CachedAnalyticsEndpoints
             IAnalyticsCacheService cache,
             ITrendplusDbContext trendDb,
             IMediator mediator,
+            AnalyticsRefreshStatusService refreshStatusService,
             ILoggerFactory loggerFactory,
             HttpContext httpContext,
             DateTime? fromDate = null,
@@ -382,6 +386,7 @@ public static class CachedAnalyticsEndpoints
                     },
                     ct,
                     loggerFactory: loggerFactory,
+                    dataRefreshAtUtcFactory: () => TryGetLastSuccessfulRefreshAtUtcAsync(refreshStatusService, loggerFactory, ct),
                     routeName: "sales.top-products");
                 var result = cacheResult.Value;
 
@@ -1612,6 +1617,7 @@ public static class CachedAnalyticsEndpoints
         group.MapGet("/products/decision-center", async (
             IAnalyticsCacheService cache,
             ITrendplusDbContext db,
+            AnalyticsRefreshStatusService refreshStatusService,
             ILogger<Program> logger,
             ILoggerFactory loggerFactory,
             HttpContext httpContext,
@@ -1642,6 +1648,7 @@ public static class CachedAnalyticsEndpoints
                     async () => await BuildProductDecisionCenterAsync(db, fromDate, toDate, storeId, supplierId, top, normalizedDataScope, ct),
                     ct,
                     loggerFactory: loggerFactory,
+                    dataRefreshAtUtcFactory: () => TryGetLastSuccessfulRefreshAtUtcAsync(refreshStatusService, loggerFactory, ct),
                     routeName: "products.decision-center");
                 var result = cacheResult.Value;
 
@@ -1918,6 +1925,7 @@ public static class CachedAnalyticsEndpoints
             IAnalyticsCacheService cache,
             ITrendplusDbContext db,
             IMediator mediator,
+            AnalyticsRefreshStatusService refreshStatusService,
             ILogger<Program> logger,
             IConfiguration configuration,
             ILoggerFactory loggerFactory,
@@ -2229,6 +2237,7 @@ public static class CachedAnalyticsEndpoints
                     },
                     ct,
                     loggerFactory: loggerFactory,
+                    dataRefreshAtUtcFactory: () => TryGetLastSuccessfulRefreshAtUtcAsync(refreshStatusService, loggerFactory, ct),
                     routeName: "dashboard.bootstrap");
                 var result = cacheResult.Value;
 
@@ -2703,6 +2712,7 @@ public static class CachedAnalyticsEndpoints
         Func<Task<T>> factory,
         CancellationToken ct,
         ILoggerFactory? loggerFactory = null,
+        Func<Task<DateTime?>>? dataRefreshAtUtcFactory = null,
         string? routeName = null) where T : class
     {
         var sw = Stopwatch.StartNew();
@@ -2736,9 +2746,13 @@ public static class CachedAnalyticsEndpoints
         }
 
         var value = await factory();
+        var dataRefreshAtUtc = dataRefreshAtUtcFactory is null
+            ? null
+            : await dataRefreshAtUtcFactory();
         var entryMetadata = new AnalyticsCacheEntryMetadata
         {
             CreatedAtUtc = DateTime.UtcNow,
+            DataRefreshAtUtc = dataRefreshAtUtc,
             Family = family,
             Provider = provider
         };
@@ -2757,14 +2771,16 @@ public static class CachedAnalyticsEndpoints
         return new CacheReadResult<T>(value, false, entryMetadata);
     }
 
-    private static void ApplyStaleCacheWarning(
+    internal static void ApplyStaleCacheWarning(
         AnalyticsResponseMetaDto meta,
         AnalyticsCacheEntryMetadata metadata,
         AnalyticsCachePolicyEntry policy)
     {
-        meta.LastRefreshAtUtc = metadata.CreatedAtUtc;
+        meta.CacheCreatedAtUtc = metadata.CreatedAtUtc;
+        meta.LastRefreshAtUtc = metadata.DataRefreshAtUtc;
 
-        var age = DateTime.UtcNow - metadata.CreatedAtUtc;
+        var freshnessAnchor = metadata.DataRefreshAtUtc ?? metadata.CreatedAtUtc;
+        var age = DateTime.UtcNow - freshnessAnchor;
         if (age <= policy.StaleAfter)
         {
             return;
@@ -2779,6 +2795,24 @@ public static class CachedAnalyticsEndpoints
         if (string.IsNullOrWhiteSpace(meta.DataQualityStatus))
         {
             meta.DataQualityStatus = staleWarning.DataQualityStatus;
+        }
+    }
+
+    private static async Task<DateTime?> TryGetLastSuccessfulRefreshAtUtcAsync(
+        AnalyticsRefreshStatusService refreshStatusService,
+        ILoggerFactory loggerFactory,
+        CancellationToken ct)
+    {
+        try
+        {
+            return (await refreshStatusService.GetStatusAsync(ct)).LastSuccessfulRefreshAtUtc;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            loggerFactory.CreateLogger("AnalyticsCachePolicy").LogWarning(
+                ex,
+                "Authoritative analytics refresh metadata could not be loaded for a cache entry.");
+            return null;
         }
     }
 

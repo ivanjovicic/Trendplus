@@ -17,6 +17,7 @@ export interface AnalyticsResponseMeta {
   message?: string | null;
   generatedAtUtc?: string | null;
   lastRefreshAtUtc?: string | null;
+  cacheCreatedAtUtc?: string | null;
   requestedPeriodFromUtc?: string | null;
   requestedPeriodToUtc?: string | null;
   effectivePeriodFromUtc?: string | null;

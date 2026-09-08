@@ -14,6 +14,7 @@ public class AnalyticsResponseMetaDto
     public string? Message { get; set; }
     public DateTime GeneratedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime? LastRefreshAtUtc { get; set; }
+    public DateTime? CacheCreatedAtUtc { get; set; }
     public DateTime? RequestedPeriodFromUtc { get; set; }
     public DateTime? RequestedPeriodToUtc { get; set; }
     public DateTime? EffectivePeriodFromUtc { get; set; }
