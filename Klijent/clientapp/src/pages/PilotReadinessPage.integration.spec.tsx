@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import PilotReadinessPage from "./PilotReadinessPage";
 import {
@@ -92,6 +93,15 @@ vi.mock("../services/analyticsApi", () => ({
 
 function currentIso(): string {
   return new Date().toISOString();
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((nextResolve) => {
+    resolve = nextResolve;
+  });
+
+  return { promise, resolve };
 }
 
 function readyBootstrap(): AnalyticsDashboardBootstrap {
@@ -382,6 +392,33 @@ describe("PilotReadinessPage", () => {
     expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("partial: false");
     expect(screen.queryByTestId("analytics-empty-state")).not.toBeInTheDocument();
     expect(screen.queryByTestId("analytics-error-state")).not.toBeInTheDocument();
+  });
+
+  it("does not let an older reload generation overwrite the latest readiness state", async () => {
+    const oldIntake = deferred<PilotDataQualityIntakeReport>();
+    vi.mocked(getPilotDataQualityIntakeReport).mockImplementationOnce(() => oldIntake.promise);
+
+    render(
+      <StrictMode>
+        <MemoryRouter>
+          <PilotReadinessPage />
+        </MemoryRouter>
+      </StrictMode>,
+    );
+
+    expect(await screen.findByRole("heading", { name: "Spremno za demo" })).toBeInTheDocument();
+
+    oldIntake.resolve(readyIntake({
+      readinessStatus: "critical",
+      readinessLabel: "Blokirano",
+      readinessScore: 38,
+      meta: { success: true, dataQualityStatus: "critical", generatedAtUtc: currentIso() },
+    }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Spremno za demo" })).toBeInTheDocument();
+      expect(screen.queryByRole("heading", { name: "Pilot nije spreman" })).not.toBeInTheDocument();
+    });
   });
 
   it("renders blocked readiness when data quality blocks recommendations", async () => {

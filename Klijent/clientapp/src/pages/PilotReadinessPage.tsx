@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
@@ -662,8 +662,10 @@ export default function PilotReadinessPage() {
   const [payload, setPayload] = useState<ReadinessPayload>(EMPTY_PAYLOAD);
   const [loading, setLoading] = useState(true);
   const [reloadTick, setReloadTick] = useState(0);
+  const loadSequenceRef = useRef(0);
 
   const loadSignals = useCallback(async (isCancelled?: () => boolean) => {
+    const loadSequence = ++loadSequenceRef.current;
     setLoading(true);
 
     const nextPayload: ReadinessPayload = {
@@ -685,7 +687,7 @@ export default function PilotReadinessPage() {
 
     const results = await Promise.allSettled(tasks.map((task) => task.request));
 
-    if (isCancelled?.()) {
+    if (loadSequenceRef.current !== loadSequence || isCancelled?.()) {
       return;
     }
 
@@ -699,13 +701,13 @@ export default function PilotReadinessPage() {
       nextPayload.errors.push(normalizeLoadError(task.key, result.reason, task.fallback));
     });
 
-    if (isCancelled?.()) {
+    if (loadSequenceRef.current !== loadSequence || isCancelled?.()) {
       return;
     }
 
     setPayload(nextPayload);
 
-    if (isCancelled?.()) {
+    if (loadSequenceRef.current !== loadSequence || isCancelled?.()) {
       return;
     }
 

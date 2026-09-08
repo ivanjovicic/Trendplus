@@ -3,6 +3,8 @@
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+
+Owner promotion 2026-09-08: RQ195 was explicitly promoted by the user after RQ194, claimed and completed in this workspace.
 Owner promotion 2026-09-08: RQ194 was explicitly promoted by the user after RQ193, claimed and completed in this workspace.
 Owner promotion 2026-09-08: RQ193 was explicitly promoted by the user after RQ189, claimed and completed in this workspace.
 Owner promotion 2026-09-08: RQ189 was explicitly promoted by the user after completed RQ188, claimed and completed in this workspace.
@@ -120,7 +122,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ192 | WAITING | ml-feature-missing-encoding | Supplier ML return rate coalesces missing to 0% |
 | RQ193 | DONE | analytics-async-ordering | Inventory page cross-panel async race condition |
 | RQ194 | DONE | analytics-details-async-safety | Analytics Details missing in-flight guard |
-| RQ195 | WAITING | pilot-readiness-async-consistency | Pilot Readiness multi-signal load can mix reload generations |
+| RQ195 | DONE | pilot-readiness-async-consistency | Pilot Readiness multi-signal load can mix reload generations |
 | RQ196 | WAITING | report-schedule-validation | Inventory report schedules saved without validation |
 | RQ197 | WAITING | export-truncation-safety | Scheduled inventory export has no row cap |
 | RQ198 | WAITING | decision-board-datascope-override | Executive Decision Board hardcoded dataScope |
@@ -7306,7 +7308,7 @@ Commit suggestion: `fix(analytics-details): add request sequencing`
 
 ## RQ195 - Pilot Readiness multi-signal load can mix reload generations
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/tests
 Feature family: pilot-readiness-async-consistency
@@ -7326,6 +7328,26 @@ Commit suggestion: `fix(pilot-readiness): sequence signal loads`
 ### Acceptance
 
 - Readiness cards show coherent state (all fresh or all stale).
+
+### Completion note
+
+- Date: 2026-09-08
+- Status: DONE
+- Completion: Pilot Readiness now applies results only from the latest reload generation; stale signal batches cannot overwrite current state.
+- Changed files: `Klijent/clientapp/src/pages/PilotReadinessPage.tsx`, `Klijent/clientapp/src/pages/PilotReadinessPage.integration.spec.tsx`, `MASTER_ROADMAP.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `.ai/runs/2026-09-08-RQ195-pilot-readiness-request-sequencing-evidence.md`
+- Contract/runtime behavior changed: frontend request ordering only; no API, metric, freshness, export or action contract changed.
+- Checks run: focused Pilot Readiness tests (3 files/19 tests), `npm run check:analytics-guardrails`, `npm run build`, `git diff --check`, `node scripts/check-agent-instructions.mjs`, `node scripts/check-prompt-queues.mjs`, `node scripts/check-planning-architecture.mjs`.
+- Checks not run: full frontend suite, backend tests/build, live browser/provider/deployed proof and remote CI; see durable run log.
+- Run log: `.ai/runs/2026-09-08-RQ195-pilot-readiness-request-sequencing-evidence.md`
+- Evidence state: pending
+- Delivery mode: local merge
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: no live browser or deployed runtime proof.
+- Follow-up: none for RQ195.
+- Residual risk: network cancellation remains cooperative; stale results are blocked when applying state.
+- Next: none; return queue to no READY prompt.
+- Prompt defect / scope repair: prompt omitted a Dependencies section; implementation stayed within Pilot Readiness fetch orchestration.
 
 ---
 
