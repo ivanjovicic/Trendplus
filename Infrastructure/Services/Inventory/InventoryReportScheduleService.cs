@@ -60,6 +60,7 @@ public sealed class InventoryReportScheduleService : IInventoryReportScheduleSer
 
     public async Task<InventoryReportScheduleDefinition> UpsertAsync(long? id, InventoryReportScheduleUpsertRequest request, CancellationToken ct = default)
     {
+        InventoryReportScheduleValidator.EnsureValid(request);
         await EnsureSchemaAsync(ct);
         var connection = _db.GetDbConnection();
         if (connection.State != ConnectionState.Open)

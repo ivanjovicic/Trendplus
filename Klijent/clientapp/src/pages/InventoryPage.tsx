@@ -23,7 +23,7 @@ import { SKUDetailModal } from "../components/inventory/SKUDetailModal";
 import { SizeCurvePanel } from "../components/inventory/SizeCurvePanel";
 import { StoreComparisonPanel } from "../components/inventory/StoreComparisonPanel";
 import KpiExplainButton from "../components/analytics/KpiExplainButton";
-import { buildForecastRestockSuggestion, buildInventoryRow, buildInventoryScreenCsvFilename, buildInventoryScreenCsvLines, buildSupplierChart, createScheduleDraft, formatPercent, inventoryRiskSortScopeWarning, isInventoryPageLocalRiskSort } from "../components/inventory/inventoryUtils";
+import { buildForecastRestockSuggestion, buildInventoryRow, buildInventoryScreenCsvFilename, buildInventoryScreenCsvLines, buildSupplierChart, createScheduleDraft, formatPercent, inventoryRiskSortScopeWarning, isInventoryPageLocalRiskSort, validateScheduleDraft } from "../components/inventory/inventoryUtils";
 import type { InventoryRow } from "../components/inventory/types";
 import { fmtNumber, formatDateTime } from "../utils/analyticsFormatters";
 import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
@@ -918,6 +918,12 @@ export default function InventoryPage() {
   }
 
   async function saveSchedule() {
+    const validationMessage = validateScheduleDraft(scheduleDraft);
+    if (validationMessage) {
+      setSchedulerMessage(validationMessage);
+      return;
+    }
+
     try {
       setSchedulerBusy(true);
       setSchedulerMessage("Cuvam raspored i pripremam scheduler...");

@@ -464,6 +464,34 @@ export function createScheduleDraft(): InventoryReportScheduleInput {
   };
 }
 
+export function validateScheduleDraft(draft: InventoryReportScheduleInput): string | null {
+  if (!draft.name.trim()) return "Naziv rasporeda je obavezan.";
+
+  const recipients = draft.recipientsCsv.split(/[;,\r\n]/).map((recipient) => recipient.trim());
+  if (recipients.length === 0 || recipients.some((recipient) => !recipient)) {
+    return "Unesite najmanje jednog primaoca i razdvojite email adrese zarezom ili tačka-zarezom.";
+  }
+  if (recipients.some((recipient) => !/^\S+@\S+\.\S+$/.test(recipient))) {
+    return "Svi primaoci moraju biti validne email adrese.";
+  }
+
+  if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(draft.runAtLocalTime)) {
+    return "Vreme mora biti u formatu HH:mm.";
+  }
+
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: draft.timeZoneId }).format();
+  } catch {
+    return "Vremenska zona nije validna.";
+  }
+
+  if (draft.frequency === "weekly" && (!draft.dayOfWeek || draft.dayOfWeek < 1 || draft.dayOfWeek > 7)) {
+    return "Dan u nedelji je obavezan za nedeljni raspored.";
+  }
+
+  return null;
+}
+
 export function getActionTypeTone(actionType: string) {
   return resolveTone(TONE.actionType, actionType, TONE.actionType.clearance);
 }

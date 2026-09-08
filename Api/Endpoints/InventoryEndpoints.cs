@@ -643,29 +643,36 @@ public static class InventoryEndpoints
             CancellationToken ct) =>
         {
             var user = userContextAccessor.GetCurrent();
-            var saved = await scheduleService.UpsertAsync(
-                null,
-                new InventoryReportScheduleUpsertRequest(
-                    dto.Name,
-                    dto.IsEnabled,
-                    dto.Frequency,
-                    dto.DayOfWeek,
-                    dto.RunAtLocalTime,
-                    dto.TimeZoneId,
-                    dto.Format,
-                    dto.Orientation,
-                    dto.IncludeFiltersAndMetadata,
-                    dto.RecipientsCsv,
-                    dto.Subject,
-                    dto.Search,
-                    dto.StoreId,
-                    dto.SupplierId,
-                    dto.SortBy,
-                    user.UserId,
-                    user.UserName),
-                ct);
+            try
+            {
+                var saved = await scheduleService.UpsertAsync(
+                    null,
+                    new InventoryReportScheduleUpsertRequest(
+                        dto.Name,
+                        dto.IsEnabled,
+                        dto.Frequency,
+                        dto.DayOfWeek,
+                        dto.RunAtLocalTime,
+                        dto.TimeZoneId,
+                        dto.Format,
+                        dto.Orientation,
+                        dto.IncludeFiltersAndMetadata,
+                        dto.RecipientsCsv,
+                        dto.Subject,
+                        dto.Search,
+                        dto.StoreId,
+                        dto.SupplierId,
+                        dto.SortBy,
+                        user.UserId,
+                        user.UserName),
+                    ct);
 
-            return Results.Ok(MapScheduleDto(saved));
+                return Results.Ok(MapScheduleDto(saved));
+            }
+            catch (InventoryReportScheduleValidationException ex)
+            {
+                return Results.ValidationProblem(ex.Errors.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase));
+            }
         })
         .WithName("CreateInventoryReportSchedule")
         .RequireRateLimiting("writes");
@@ -678,29 +685,36 @@ public static class InventoryEndpoints
             CancellationToken ct) =>
         {
             var user = userContextAccessor.GetCurrent();
-            var saved = await scheduleService.UpsertAsync(
-                id,
-                new InventoryReportScheduleUpsertRequest(
-                    dto.Name,
-                    dto.IsEnabled,
-                    dto.Frequency,
-                    dto.DayOfWeek,
-                    dto.RunAtLocalTime,
-                    dto.TimeZoneId,
-                    dto.Format,
-                    dto.Orientation,
-                    dto.IncludeFiltersAndMetadata,
-                    dto.RecipientsCsv,
-                    dto.Subject,
-                    dto.Search,
-                    dto.StoreId,
-                    dto.SupplierId,
-                    dto.SortBy,
-                    user.UserId,
-                    user.UserName),
-                ct);
+            try
+            {
+                var saved = await scheduleService.UpsertAsync(
+                    id,
+                    new InventoryReportScheduleUpsertRequest(
+                        dto.Name,
+                        dto.IsEnabled,
+                        dto.Frequency,
+                        dto.DayOfWeek,
+                        dto.RunAtLocalTime,
+                        dto.TimeZoneId,
+                        dto.Format,
+                        dto.Orientation,
+                        dto.IncludeFiltersAndMetadata,
+                        dto.RecipientsCsv,
+                        dto.Subject,
+                        dto.Search,
+                        dto.StoreId,
+                        dto.SupplierId,
+                        dto.SortBy,
+                        user.UserId,
+                        user.UserName),
+                    ct);
 
-            return Results.Ok(MapScheduleDto(saved));
+                return Results.Ok(MapScheduleDto(saved));
+            }
+            catch (InventoryReportScheduleValidationException ex)
+            {
+                return Results.ValidationProblem(ex.Errors.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase));
+            }
         })
         .WithName("UpdateInventoryReportSchedule")
         .RequireRateLimiting("writes");
