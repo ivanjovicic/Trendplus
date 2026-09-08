@@ -6,7 +6,7 @@ Date: 2026-09-08
 Agent/tool: Codex
 Delivery target: `main`
 Working branch / PR: `codex/rq185-velocity-semantics-20260908` / local merge, no PR
-Main commit SHA: pending
+Main commit SHA: b1ab70ab48ffd4676fd083b2f3f37a1269656d0f
 Main verification: pending
 Evidence state: pending
 
@@ -72,4 +72,4 @@ The null-date fallback period is derived from the filtered Quick Insights sales 
 
 ## Next
 
-Remove the local lock before commit, merge the feature branch locally into `main`, push `main`, then replace the pending SHA/verification fields with the exact delivered merge SHA and verify `origin/main` contains it. RQ186 remains WAITING.
+The local lock was removed before commit; the feature branch was merged locally into `main`. Push `main`, then replace the pending verification field with proof that `origin/main` contains `b1ab70ab48ffd4676fd083b2f3f37a1269656d0f`. RQ186 remains WAITING.
