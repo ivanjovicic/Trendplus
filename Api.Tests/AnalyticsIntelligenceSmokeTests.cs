@@ -243,6 +243,35 @@ public sealed class AnalyticsIntelligenceSmokeTests
         Assert.True(trend.TotalCount >= trend.Items.Count);
     }
 
+    [Fact]
+    public async Task PriceIntelligenceView_DoesNotExposeDiscountDepthForInvalidListPrice()
+    {
+        if (!TryGetAnalyticsConnectionString(out var connectionString))
+        {
+            return;
+        }
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        await BootstrapIntelligenceSqlAsync(connection,
+            "Database/Analytics/Intelligence/020_create_intelligence_schema.sql",
+            "Database/Analytics/Intelligence/023_price_intelligence_v1.sql");
+
+        await using var command = new NpgsqlCommand("""
+            SELECT COUNT(*)
+            FROM analytics_intel.vw_price_intelligence_v1
+            WHERE list_price <= 0
+              AND discount_depth IS NOT NULL;
+            """, connection)
+        {
+            CommandTimeout = 0
+        };
+
+        var invalidDiscountCount = Convert.ToInt64(await command.ExecuteScalarAsync());
+        Assert.Equal(0L, invalidDiscountCount);
+    }
+
     private static bool TryGetAnalyticsConnectionString(out string connectionString)
     {
         var configuration = new ConfigurationBuilder()

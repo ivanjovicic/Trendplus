@@ -141,6 +141,16 @@ describe("buildCategoryIntelligenceFromSignals (RQ39)", () => {
     expect(result.byCategory[0].totalRevenue).toBe(0);
   });
 
+  it("does not derive category intelligence from an unavailable discount depth", () => {
+    const result = buildCategoryIntelligenceFromSignals(
+      [priceItem({ articleId: 1, category: "Unknown discount", netPrice: 100, discountDepth: null })],
+      [inventoryItem({ articleId: 1, category: "Unknown discount", avgDailySales30d: 1 })],
+      [],
+    );
+
+    expect(result.byCategory).toEqual([]);
+  });
+
   it("does not promote frontend-derived signals over the backend result", () => {
     const legacy: CategoryIntelligence = {
       byCategory: [

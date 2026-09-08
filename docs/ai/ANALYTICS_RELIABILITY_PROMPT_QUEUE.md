@@ -3,6 +3,7 @@
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+Owner promotion 2026-09-08: RQ188 was explicitly promoted by the user after completed RQ187, claimed and completed in this workspace.
 Owner promotion 2026-09-08: RQ187 was explicitly promoted by the user as the next cache freshness slice after completed RQ186, claimed and completed in this workspace.
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
@@ -6932,7 +6933,7 @@ Commit suggestion: `fix(analytics): distinguish cache creation time from data re
 
 ## RQ188 - Price-intelligence discount depth encodes missing list price as 0%
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: backend/tests
 Feature family: price-intelligence-validity
@@ -6972,7 +6973,25 @@ SQL view encodes `WHEN pp.list_price <= 0 THEN 0::numeric` for `discount_depth`.
 
 ### Dependencies
 
-- Pricing/ML owners for consumer impact.
+- Pricing/ML owners for consumer impact; completed as a same-owner analytics view/API/React consumer repair without changing pricing or ML contracts.
+
+### Completion note
+
+- Date: 2026-09-08
+- Status: DONE
+- Completion: Missing/invalid list price now produces unavailable discount depth; downstream API and React analytics preserve and render the unknown state safely.
+- Changed files: `Database/Analytics/Intelligence/023_price_intelligence_v1.sql`, `Api/Endpoints/AnalyticsIntelligenceEndpoints.cs`, `Api.Tests/AnalyticsIntelligenceSmokeTests.cs`, `Klijent/clientapp/src/services/analyticsIntelligenceApi.ts`, `Klijent/clientapp/src/services/__tests__/analyticsIntelligenceDerived.spec.ts`.
+- Checks run: focused intelligence smoke 4/4, React derived tests 12/12, analytics guardrails/typecheck, frontend build, Release backend build, governance checks and diff check.
+- Checks not run: full suites, live production/browser/provider proof and remote CI; see durable run log.
+- Run log: `.ai/runs/2026-09-08-RQ188-price-intelligence-validity-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: none within the narrowed analytics consumer scope; RQ189 remains WAITING.
+- Follow-up: none for RQ188.
+- Residual risk: normal cache refresh is required after the SQL view is applied; no production mutation was performed.
+- Prompt defect / scope repair: the dependency note was narrowed to the existing analytics consumers; missing `FirstSalePrice` fallback was repaired because it contradicted the canonical list-price mapping and acceptance outcome.
 
 ---
 

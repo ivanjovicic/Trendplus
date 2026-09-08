@@ -65,7 +65,7 @@ latest_products AS (
             END
         ) AS brand_key,
         COALESCE(pd."SalePrice", 0)::numeric(18,4) AS net_price,
-        COALESCE(pd."FirstSalePrice", pd."SalePrice", 0)::numeric(18,4) AS list_price,
+        COALESCE(pd."FirstSalePrice", 0)::numeric(18,4) AS list_price,
         COALESCE(pd."PurchasePriceRsd", pd."PurchasePrice", 0)::numeric(18,4) AS cost
     FROM "ProductsDim" pd
     LEFT JOIN latest_suppliers ls
@@ -107,7 +107,7 @@ SELECT
     ) AS price_index_vs_brand,
     ROUND(
         CASE
-            WHEN pp.list_price <= 0 THEN 0::numeric
+            WHEN pp.list_price <= 0 THEN NULL::numeric
             ELSE (pp.list_price - pp.net_price) / NULLIF(pp.list_price, 0)
         END,
         4
