@@ -8250,8 +8250,8 @@ In Development, `Program.cs:997-1014` calls `Database.Migrate()` while `Deferred
 - Run log: `.ai/runs/2026-09-08-RQ209-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending - implementation will be verified on current `main` and `origin/main` after delivery.
+- Main commit SHA: `68e542eb7e8d4b634af1ebe082384f020f78b69d`
+- Main verification: passed - current `main` and `origin/main` contain delivered implementation `68e542eb7e8d4b634af1ebe082384f020f78b69d`.
 - Missed: no live multi-instance migration race was executed locally.
 - Follow-up: RQ210/RQ211 remain separate migration startup-gate and sequencing prompts; no current READY prompt is auto-promoted.
 - Residual risk: initializer error-swallowing and lock-timeout semantics remain owned by RQ210/RQ212 and were not changed here.
