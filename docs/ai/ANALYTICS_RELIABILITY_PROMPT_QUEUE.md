@@ -8324,8 +8324,8 @@ If advisory startup lock not acquired within 120s, database init skipped with on
 - Run log: `.ai/runs/2026-09-08-RQ210-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: `fcef2d42cce8a8ea2cc50a5923666616d54c43a3`
-- Main verification: passed - final current `main` and `origin/main` are `75c3ab48c2502b8fb6839ace1eb7a804b531da58`, and implementation SHA `fcef2d42cce8a8ea2cc50a5923666616d54c43a3` is an ancestor of both.
+- Main commit SHA: `fcef2d420e94e92838e21901b083df5708417be8`
+- Main verification: passed - final current `main` and `origin/main` are `1b3d8815477d810c1aa789e9ba08b34b4903aae2`, and implementation SHA `fcef2d420e94e92838e21901b083df5708417be8` is an ancestor of both.
 - Missed: no live multi-instance PostgreSQL proof was available locally.
 - Follow-up: RQ211 remains WAITING for migration sequencing; RQ212 remains WAITING for migration failure propagation. No current READY prompt is auto-promoted.
 - Residual risk: staging/CI should exercise two live application instances contending for the startup advisory lock.
