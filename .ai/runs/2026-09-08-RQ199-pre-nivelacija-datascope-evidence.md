@@ -4,9 +4,9 @@ Date: 2026-09-08
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: codex/rq199-pre-nivelacija-datascope-20260908 / local merge
-Main commit SHA: pending
-Main verification: pending until local merge and push
-Evidence state: pending
+Main commit SHA: 79d62792db24140c269de5b4591324323c16e393
+Main verification: passed - local `main` and `origin/main` both contain delivered merge `79d62792db24140c269de5b4591324323c16e393`; implementation commit `3d1bfb63` is contained in `origin/main`.
+Evidence state: synchronized
 
 ## What was done
 
@@ -32,8 +32,8 @@ Evidence state: pending
 - `dotnet test Api.Tests/Api.Tests.csproj --no-restore --nologo --filter "FullyQualifiedName~PreNivelacijaMarginEvidenceTests|FullyQualifiedName~AnalyticsScreenCacheKeyContractTests" --verbosity minimal` -> pass (21 tests).
 - `dotnet build Api/Api.csproj --configuration Release --no-restore --nologo --verbosity minimal` -> pass (95 existing warnings, 0 errors).
 - `node scripts/check-agent-instructions.mjs` -> pass.
-- `node scripts/check-prompt-queues.mjs` -> pending after final delivery.
-- `node scripts/check-planning-architecture.mjs` -> pending after final delivery.
+- `node scripts/check-prompt-queues.mjs` -> pass (403 tasks).
+- `node scripts/check-planning-architecture.mjs` -> pass (78 planning tasks checked).
 
 ## Validation not run
 
@@ -54,4 +54,4 @@ Evidence state: pending
 
 ## Next
 
-- Complete local merge/push, synchronize the exact delivered SHA in this run log and queue note, then leave the queue at no READY prompt.
+- Local merge/push completed; exact delivered SHA is synchronized in this run log and queue note.

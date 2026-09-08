@@ -7554,8 +7554,8 @@ Endpoint accepts no `dataScope`; cache key omits scope. Imported and existing ar
 - Run log: `.ai/runs/2026-09-08-RQ199-pre-nivelacija-datascope-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: local merge
-- Main commit SHA: pending
-- Main verification: pending until local merge and push
+- Main commit SHA: `79d62792db24140c269de5b4591324323c16e393`
+- Main verification: passed - local `main` and `origin/main` both contain delivered merge `79d62792db24140c269de5b4591324323c16e393`; implementation commit `3d1bfb63` is contained in `origin/main`.
 - Missed: no live mixed-origin dataset proof.
 - Follow-up: none for RQ199.
 - Residual risk: scope semantics depend on the established `DataOrigin` vocabulary (`access` versus existing/null/empty); legacy rows with unexpected values intentionally fall back out of scoped populations.
