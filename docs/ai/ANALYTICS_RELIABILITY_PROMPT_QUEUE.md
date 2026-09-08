@@ -2,7 +2,7 @@
 
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ206` (claimed; `IN_PROGRESS`)
+Current READY prompt: none
 
 Owner promotion 2026-09-08: `RQ206` was explicitly promoted by the user after completed `RQ205` and is claimed in this workspace.
 
@@ -149,7 +149,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ203 | DONE | inventory-detail-scope-consistency | Inventory detail now shares parent scope and signal period |
 | RQ204 | DONE | analytics-details-scope-parity | Analytics Details InventoryStatus now respects selected period and scope |
 | RQ205 | DONE | client-cache-invalidation | Frontend 15s cache not invalidated after refresh |
-| RQ206 | IN_PROGRESS | refresh-run-status-accuracy | Partial nightly refresh treated as successful |
+| RQ206 | DONE | refresh-run-status-accuracy | Partial nightly refresh treated as successful |
 | RQ207 | WAITING | refresh-failure-cache-safety | Failed refresh skips cache invalidation |
 | RQ208 | WAITING | period-timezone-boundary-safety | Dashboard per-day KPIs use local day count |
 | RQ209 | WAITING | database-migration-orchestration | Dual concurrent EF migration paths cause race condition |
@@ -7957,7 +7957,7 @@ Commit suggestion: `fix(analytics): clear client cache after refresh`
 
 ## RQ206 - Partial nightly refresh treated as "last successful refresh"
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/tests
 Feature family: refresh-run-status-accuracy
@@ -8008,6 +8008,24 @@ Commit suggestion: `fix(analytics): distinguish partial from successful refresh`
 - `RQ205` is DONE and remains separate from this backend status-contract correction.
 - Failed-refresh cache safety remains owned by `RQ207`.
 - Partial data must remain visibly non-successful; it must not become a fresh/successful timestamp or healthy state.
+
+### Completion note
+
+- Date: 2026-09-08
+- Status: DONE
+- Completion: Partial refresh runs no longer establish successful/fresh analytics status; backend and WorkersPanel now expose the incomplete state explicitly.
+- Changed files: `Api/Services/AnalyticsRefreshStatusService.cs`, `Api.Tests/AnalyticsRefreshStatusServiceTests.cs`, `Klijent/clientapp/src/components/WorkersPanel.tsx`, `Klijent/clientapp/src/components/__tests__/WorkersPanel.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-08-RQ206-evidence.md`.
+- Checks run: focused backend test (10 tests), WorkersPanel test (6 tests), analytics guardrails/typecheck, `git diff --check`, and all six agent/queue/planning governance checks passed.
+- Checks not run: full backend/frontend suites, frontend production build and live worker/browser/remote proof; see run log for scope reasons.
+- Run log: `.ai/runs/2026-09-08-RQ206-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `ff44f8f520e4ee3068cc85f5a32d32d9b931bedf`
+- Main verification: passed - current `main` and `origin/main` contain delivered implementation `ff44f8f520e4ee3068cc85f5a32d32d9b931bedf`.
+- Missed: failed-refresh cache invalidation remains the declared RQ207 follow-up; live deployment proof was not run.
+- Follow-up: none; the RQ queue returns to no current READY prompt.
+- Residual risk: provider worker behavior and deployed refresh-status rendering remain unverified live.
+- Prompt defect / scope repair: the legacy prompt omitted Scope, Read first, Tests and Dependencies; they were added without expanding beyond refresh-status/WorkersPanel ownership.
 
 ---
 
