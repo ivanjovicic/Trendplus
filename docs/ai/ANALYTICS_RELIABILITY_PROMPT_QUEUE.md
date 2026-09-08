@@ -2,7 +2,9 @@
 
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: `RQ207` (claimed; `IN_PROGRESS`)
+
+Owner promotion 2026-09-08: `RQ207` was explicitly promoted by the user after completed `RQ206` and is claimed in this workspace.
 
 Owner promotion 2026-09-08: `RQ206` was explicitly promoted by the user after completed `RQ205` and is claimed in this workspace.
 
@@ -150,7 +152,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ204 | DONE | analytics-details-scope-parity | Analytics Details InventoryStatus now respects selected period and scope |
 | RQ205 | DONE | client-cache-invalidation | Frontend 15s cache not invalidated after refresh |
 | RQ206 | DONE | refresh-run-status-accuracy | Partial nightly refresh treated as successful |
-| RQ207 | WAITING | refresh-failure-cache-safety | Failed refresh skips cache invalidation |
+| RQ207 | IN_PROGRESS | refresh-failure-cache-safety | Failed refresh skips cache invalidation |
 | RQ208 | WAITING | period-timezone-boundary-safety | Dashboard per-day KPIs use local day count |
 | RQ209 | WAITING | database-migration-orchestration | Dual concurrent EF migration paths cause race condition |
 | RQ210 | WAITING | startup-readiness-gate | Startup init silently skipped after lock timeout |
@@ -8031,7 +8033,7 @@ Commit suggestion: `fix(analytics): distinguish partial from successful refresh`
 
 ## RQ207 - Failed nightly refresh skips cache invalidation despite partial MV updates
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: backend/tests
 Feature family: refresh-failure-cache-safety
@@ -8056,6 +8058,30 @@ When `errors.Count > 0`, worker returns before cache clear. Some views may have 
 ### Acceptance
 
 - Cache is invalidated consistently after failures.
+
+### Scope
+
+- Keep the change within `Workers/NightlyAnalyticsRefreshWorker.cs` and its focused worker tests.
+- Invalidate analytics cache when at least one materialized view completed, including failed/partial refresh outcomes.
+- Preserve the no-refresh/no-completed-object path and existing refresh-run failure reporting.
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`
+- `Workers/NightlyAnalyticsRefreshWorker.cs`
+- `Infrastructure/Services/Caching/AnalyticsCacheAdminService.cs`
+- `Api.Tests/AnalyticsAggregationWorkerTests.cs`
+
+### Tests
+
+- `dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~NightlyAnalyticsRefreshWorkerTests`
+- `git diff --check`
+
+### Dependencies
+
+- `RQ206` is DONE and remains separate from this failed-refresh cache-safety correction.
+- Cache invalidation must not be claimed when no materialized view completed.
 
 ---
 

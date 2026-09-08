@@ -346,6 +346,11 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
 
             sw.Stop();
 
+            if (ShouldInvalidateAnalyticsCache(refreshedObjects))
+            {
+                await InvalidateAnalyticsCacheAsync(scope.ServiceProvider, warnings, ct);
+            }
+
             if (errors.Count > 0)
             {
                 var message = $"Nightly refresh finished with {errors.Count} errors; {warnings.Count} warnings. Duration: {sw.Elapsed.TotalSeconds:0}s";
@@ -378,25 +383,6 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
 
             var okMessage = $"Nightly refresh OK. Duration: {sw.Elapsed.TotalSeconds:0}s"
                             + (warnings.Count > 0 ? $" | Warnings: {string.Join("; ", warnings.Distinct())}" : string.Empty);
-
-            try
-            {
-                var cacheAdmin = scope.ServiceProvider.GetService<AnalyticsCacheAdminService>();
-                if (cacheAdmin is not null)
-                {
-                    var cacheState = await cacheAdmin.ClearFamiliesAsync(AnalyticsCachePolicy.CoreFamilies, ct);
-                    _logger.LogInformation(
-                        "[nightly] Analytics cache invalidation completed. ReportCacheVersion={ReportCacheVersion} LastAnalyticsClearAtUtc={LastAnalyticsCacheClearAtUtc:O} LastReportClearAtUtc={LastReportCacheClearAtUtc:O}",
-                        cacheState.ReportCacheVersion,
-                        cacheState.LastAnalyticsCacheClearAtUtc,
-                        cacheState.LastReportCacheClearAtUtc);
-                }
-            }
-            catch (Exception ex)
-            {
-                warnings.Add($"Analytics cache invalidation failed: {ex.Message}");
-                _logger.LogWarning(ex, "[nightly] Analytics cache invalidation failed after successful refresh.");
-            }
 
             _logger.LogInformation("[nightly] {Message}", okMessage);
             _healthService.ReportHealthy(WorkerName, okMessage);
@@ -447,6 +433,36 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
                 ct));
         }
     }
+
+    private async Task InvalidateAnalyticsCacheAsync(
+        IServiceProvider serviceProvider,
+        List<string> warnings,
+        CancellationToken ct)
+    {
+        try
+        {
+            var cacheAdmin = serviceProvider.GetService<AnalyticsCacheAdminService>();
+            if (cacheAdmin is null)
+            {
+                return;
+            }
+
+            var cacheState = await cacheAdmin.ClearFamiliesAsync(AnalyticsCachePolicy.CoreFamilies, ct);
+            _logger.LogInformation(
+                "[nightly] Analytics cache invalidation completed after one or more materialized views completed. ReportCacheVersion={ReportCacheVersion} LastAnalyticsCacheClearAtUtc={LastAnalyticsCacheClearAtUtc:O} LastReportCacheClearAtUtc={LastReportCacheClearAtUtc:O}",
+                cacheState.ReportCacheVersion,
+                cacheState.LastAnalyticsCacheClearAtUtc,
+                cacheState.LastReportCacheClearAtUtc);
+        }
+        catch (Exception ex)
+        {
+            warnings.Add($"Analytics cache invalidation failed: {ex.Message}");
+            _logger.LogWarning(ex, "[nightly] Analytics cache invalidation failed after one or more materialized views completed.");
+        }
+    }
+
+    private static bool ShouldInvalidateAnalyticsCache(IReadOnlyCollection<string> refreshedObjects)
+        => refreshedObjects.Count > 0;
 
     private async Task<T> UseRefreshRunRecorderAsync<T>(Func<AnalyticsRefreshRunRecorder, Task<T>> action)
     {
