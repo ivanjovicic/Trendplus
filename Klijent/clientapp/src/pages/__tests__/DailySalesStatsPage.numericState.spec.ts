@@ -82,6 +82,25 @@ describe("Daily Sales numeric evidence states", () => {
     ]);
   });
 
+  it("sorts date-only rows as UTC calendar dates across DST boundaries", () => {
+    const rows = [
+      row({ date: "2026-10-25" }),
+      row({ date: "2026-03-29" }),
+      row({ date: "2026-03-28" }),
+    ];
+
+    expect(sortDailySalesRows(rows, "date", "asc").map((item) => item.date)).toEqual([
+      "2026-03-28",
+      "2026-03-29",
+      "2026-10-25",
+    ]);
+    expect(sortDailySalesRows(rows, "date", "desc").map((item) => item.date)).toEqual([
+      "2026-10-25",
+      "2026-03-29",
+      "2026-03-28",
+    ]);
+  });
+
   it("preserves null and missing row evidence instead of filling rolling averages with zero", () => {
     const rows = [row({ totalRevenue: 100, totalItemsSold: null }), row({ totalRevenue: null })];
     const summary = summarizePeriod(response({ dateRows: rows }));

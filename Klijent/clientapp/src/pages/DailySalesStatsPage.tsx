@@ -257,7 +257,7 @@ function sortMarker(field: SortKey, active: SortKey, dir: SortDir): ReactNode | 
 
 export function sortDailySalesRows(rows: DailySalesRow[], sortKey: SortKey, sortDir: SortDir): DailySalesRow[] {
   const resolveValue = (row: DailySalesRow): number | string | null => {
-    if (sortKey === "date") return new Date(row.date).getTime();
+    if (sortKey === "date") return new Date(`${row.date}T00:00:00Z`).getTime();
     if (sortKey === "firstShiftTotalItems") return finiteOrNull(row.firstShiftTotalItems);
     if (sortKey === "secondShiftTotalItems") return finiteOrNull(row.secondShiftTotalItems);
     if (sortKey === "totalRevenue") return finiteOrNull(row.totalRevenue);
