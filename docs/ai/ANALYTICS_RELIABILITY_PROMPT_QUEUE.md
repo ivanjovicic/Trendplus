@@ -2,7 +2,7 @@
 
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ207` (claimed; `IN_PROGRESS`)
+Current READY prompt: none
 
 Owner promotion 2026-09-08: `RQ207` was explicitly promoted by the user after completed `RQ206` and is claimed in this workspace.
 
@@ -152,7 +152,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ204 | DONE | analytics-details-scope-parity | Analytics Details InventoryStatus now respects selected period and scope |
 | RQ205 | DONE | client-cache-invalidation | Frontend 15s cache not invalidated after refresh |
 | RQ206 | DONE | refresh-run-status-accuracy | Partial nightly refresh treated as successful |
-| RQ207 | IN_PROGRESS | refresh-failure-cache-safety | Failed refresh skips cache invalidation |
+| RQ207 | DONE | refresh-failure-cache-safety | Failed refresh skips cache invalidation |
 | RQ208 | WAITING | period-timezone-boundary-safety | Dashboard per-day KPIs use local day count |
 | RQ209 | WAITING | database-migration-orchestration | Dual concurrent EF migration paths cause race condition |
 | RQ210 | WAITING | startup-readiness-gate | Startup init silently skipped after lock timeout |
@@ -8033,7 +8033,7 @@ Commit suggestion: `fix(analytics): distinguish partial from successful refresh`
 
 ## RQ207 - Failed nightly refresh skips cache invalidation despite partial MV updates
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/tests
 Feature family: refresh-failure-cache-safety
@@ -8082,6 +8082,24 @@ When `errors.Count > 0`, worker returns before cache clear. Some views may have 
 
 - `RQ206` is DONE and remains separate from this failed-refresh cache-safety correction.
 - Cache invalidation must not be claimed when no materialized view completed.
+
+### Completion note
+
+- Date: 2026-09-08
+- Status: DONE
+- Completion: Nightly refresh now invalidates core analytics/report cache families after any completed MV, including failed/partial runs, while preserving the no-completed-view failure path.
+- Changed files: `Workers/NightlyAnalyticsRefreshWorker.cs`, `Api.Tests/NightlyAnalyticsRefreshWorkerTests.cs`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-08-RQ207-evidence.md`.
+- Checks run: focused worker test (4 tests), `git diff --check`, and all six agent/queue/planning governance checks passed.
+- Checks not run: full backend suite, frontend checks/build and live worker/browser/remote proof; Postgres-backed worker scenarios were unavailable locally because the Testcontainers fixture could not start. See run log for scope reasons.
+- Run log: `.ai/runs/2026-09-08-RQ207-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `4f1d4eea0485558b2724f152f1c055b1f5c03477`
+- Main verification: passed - current `main` and `origin/main` contain delivered implementation `4f1d4eea0485558b2724f152f1c055b1f5c03477`.
+- Missed: live Postgres/provider worker proof remains unavailable; RQ216 remains a separate aggregate-refresh failure cache-safety follow-up.
+- Follow-up: none; the RQ queue returns to no current READY prompt.
+- Residual risk: deployed worker behavior and live distributed cache invalidation remain unverified.
+- Prompt defect / scope repair: the legacy prompt omitted Scope, Read first, Tests and Dependencies; they were added without expanding beyond nightly refresh/cache ownership.
 
 ---
 
