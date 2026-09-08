@@ -255,6 +255,39 @@ function sortMarker(field: SortKey, active: SortKey, dir: SortDir): ReactNode | 
   return <span className="sort-badge">{dir === "asc" ? up : down}</span>;
 }
 
+export function sortDailySalesRows(rows: DailySalesRow[], sortKey: SortKey, sortDir: SortDir): DailySalesRow[] {
+  const resolveValue = (row: DailySalesRow): number | string | null => {
+    if (sortKey === "date") return new Date(row.date).getTime();
+    if (sortKey === "firstShiftTotalItems") return finiteOrNull(row.firstShiftTotalItems);
+    if (sortKey === "secondShiftTotalItems") return finiteOrNull(row.secondShiftTotalItems);
+    if (sortKey === "totalRevenue") return finiteOrNull(row.totalRevenue);
+    if (sortKey === "othersCount") return finiteOrNull(row.othersCount);
+    if (sortKey === "totalItemsSold") return finiteOrNull(row.totalItemsSold);
+    if (sortKey.startsWith("supplier:")) {
+      const index = Number(sortKey.split(":")[1]);
+      return finiteOrNull(row.topSupplierCounts[index]);
+    }
+    return null;
+  };
+
+  return [...rows].sort((a, b) => {
+    const left = resolveValue(a);
+    const right = resolveValue(b);
+    let compare = 0;
+
+    if (left == null && right == null) return 0;
+    if (left == null) return sortDir === "asc" ? 1 : -1;
+    if (right == null) return sortDir === "asc" ? -1 : 1;
+    if (typeof left === "number" && typeof right === "number") {
+      compare = left - right;
+    } else {
+      compare = String(left).localeCompare(String(right), "sr");
+    }
+
+    return sortDir === "asc" ? compare : -compare;
+  });
+}
+
 function sum(values: DailySalesNumeric[]): number | null {
   const normalized = values.map(finiteOrNull);
   if (normalized.length === 0 || !normalized.every((value): value is number => value != null)) return null;
@@ -515,39 +548,10 @@ export default function DailySalesStatsPage() {
     [data?.dateRows]
   );
 
-  const sortedRows = useMemo(() => {
-    const rows = [...(data?.dateRows ?? [])];
-    const resolveValue = (row: DailySalesRow, key: SortKey): number | string | null => {
-      if (key === "date") return new Date(row.date).getTime();
-      if (key === "firstShiftTotalItems") return finiteOrNull(row.firstShiftTotalItems);
-      if (key === "secondShiftTotalItems") return finiteOrNull(row.secondShiftTotalItems);
-      if (key === "totalRevenue") return finiteOrNull(row.totalRevenue);
-      if (key === "othersCount") return finiteOrNull(row.othersCount);
-      if (key === "totalItemsSold") return finiteOrNull(row.totalItemsSold);
-      if (key.startsWith("supplier:")) {
-        const index = Number(key.split(":")[1]);
-        return finiteOrNull(row.topSupplierCounts[index]);
-      }
-      return null;
-    };
-
-    return rows.sort((a, b) => {
-      const left = resolveValue(a, sortKey);
-      const right = resolveValue(b, sortKey);
-      let compare = 0;
-
-      if (left == null && right == null) return 0;
-      if (left == null) return sortDir === "asc" ? 1 : -1;
-      if (right == null) return sortDir === "asc" ? -1 : 1;
-      if (typeof left === "number" && typeof right === "number") {
-        compare = left - right;
-      } else {
-        compare = String(left).localeCompare(String(right), "sr");
-      }
-
-      return sortDir === "asc" ? compare : -compare;
-    });
-  }, [data?.dateRows, sortDir, sortKey]);
+  const sortedRows = useMemo(
+    () => sortDailySalesRows(data?.dateRows ?? [], sortKey, sortDir),
+    [data?.dateRows, sortDir, sortKey],
+  );
 
   const mismatchCount = useMemo(
     () =>
@@ -657,7 +661,7 @@ export default function DailySalesStatsPage() {
   ], [data?.metadata.totalDays, data?.metadata.unknownSupplierPct, data?.metadata.warnings, data?.requestedFrom, data?.requestedTo]);
 
 
-  const trendData = useMemo<TrendPoint[]>(() => (
+  const chronologicalTrendData = useMemo<TrendPoint[]>(() => (
     timeSeriesRows.map((row, index) => ({
       date: row.date,
       label: fmtDateShort(row.date),
@@ -669,8 +673,21 @@ export default function DailySalesStatsPage() {
     }))
   ), [timeSeriesRows]);
 
+  const trendData = useMemo<TrendPoint[]>(() => {
+    const byDate = new Map(chronologicalTrendData.map((point) => [point.date, point]));
+    return sortedRows.map((row) => byDate.get(row.date) ?? {
+      date: row.date,
+      label: fmtDateShort(row.date),
+      fullLabel: fmtDate(row.date),
+      totalRevenue: finiteOrNull(row.totalRevenue),
+      totalItemsSold: finiteOrNull(row.totalItemsSold),
+      ma7Revenue: null,
+      ma7Items: null,
+    });
+  }, [chronologicalTrendData, sortedRows]);
+
   const shiftMixData = useMemo<ShiftMixPoint[]>(() => (
-    timeSeriesRows.map((row) => ({
+    sortedRows.map((row) => ({
       date: row.date,
       label: fmtDateShort(row.date),
       fullLabel: fmtDate(row.date),
@@ -678,7 +695,7 @@ export default function DailySalesStatsPage() {
       secondShiftTotalItems: finiteOrNull(row.secondShiftTotalItems),
       totalItemsSold: finiteOrNull(row.totalItemsSold),
     }))
-  ), [timeSeriesRows]);
+  ), [sortedRows]);
 
   const supplierConcentration = useMemo(() => {
     if (!data) {
@@ -1146,8 +1163,8 @@ export default function DailySalesStatsPage() {
   }, [weekdayData]);
 
   const chartTickInterval = useMemo(
-    () => Math.max(0, Math.ceil(Math.max(timeSeriesRows.length, 1) / 10) - 1),
-    [timeSeriesRows.length]
+    () => Math.max(0, Math.ceil(Math.max(sortedRows.length, 1) / 10) - 1),
+    [sortedRows.length]
   );
 
   const handleSort = useCallback((field: SortKey) => {
