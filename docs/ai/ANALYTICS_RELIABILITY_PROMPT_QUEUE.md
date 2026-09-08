@@ -3,7 +3,7 @@
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
-Owner promotion 2026-09-08: RQ186 was explicitly promoted by the user as the next PDC lost-sales arithmetic slice after RQ185, claimed and completed in this workspace.
+Owner promotion 2026-09-08: RQ187 was explicitly promoted by the user as the next cache freshness slice after completed RQ186, claimed and completed in this workspace.
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
@@ -108,7 +108,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ184 | DONE | velocity-divisor-accuracy | Fixed 30-day divisor for inventory velocity miscalculation |
 | RQ185 | DONE | velocity-active-days-semantics | "Velocity per day" label with active-selling-days divisor confusion |
 | RQ186 | DONE | pdc-lost-sales-arithmetic | Product Decision lost-sales formula ignores velocity |
-| RQ187 | WAITING | cache-meta-freshness-truth | Cache write time published as LastRefreshAtUtc on cache hits |
+| RQ187 | DONE | cache-meta-freshness-truth | Cache write time published as LastRefreshAtUtc on cache hits |
 | RQ188 | WAITING | price-intelligence-validity | Price-intelligence discount depth encodes missing list price as 0% |
 | RQ189 | WAITING | demand-acceleration-new-product-state | Demand acceleration hardcodes 1.0 sentinel for new demand |
 | RQ190 | OBSOLETE | forecast-snapshot-freshness-aggregation | Excluded: standalone forecast provenance work is deferred |
@@ -6863,12 +6863,13 @@ Commit suggestion: `fix(pdc): lost-sales estimate must incorporate velocity or m
 
 ## RQ187 - Cache write time published as LastRefreshAtUtc on cache hits
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend/frontend/contract/tests
 Feature family: cache-meta-freshness-truth
 Parallel-safe: no
 Owner: Analytics
+Promotion/claim note: 2026-09-08 - explicitly promoted by the user after the queue reported no current READY prompt; claimed in this workspace with `.ai/task-locks/RQ187-codex.lock.md`.
 
 Commit suggestion: `fix(analytics): distinguish cache creation time from data refresh timestamp`
 
@@ -6903,6 +6904,25 @@ Commit suggestion: `fix(analytics): distinguish cache creation time from data re
 
 - Dashboard/PDC freshness display uses true data refresh time, not cache write time.
 - Cache hits do not reset the refresh timestamp.
+
+### Completion note
+
+- Date: 2026-09-08.
+- Status: DONE.
+- Completion: Promoted and claimed RQ187, separated cache creation time from authoritative source refresh time, propagated durable refresh metadata on cache misses, preserved it on cache hits and kept legacy/missing refresh lineage unknown.
+- Changed files: `Infrastructure/Services/Caching/AnalyticsCacheEntryMetadata.cs`, `Api/Dtos/AnalyticsResponseMetaDto.cs`, `Api/Endpoints/CachedAnalyticsEndpoints.cs`, `Klijent/clientapp/src/types/analytics.ts`, `Api.Tests/AnalyticsCacheFreshnessTests.cs`, this queue and the run log.
+- Contract/runtime behavior changed: `LastRefreshAtUtc` now comes from `DataRefreshAtUtc`; `CacheCreatedAtUtc` is diagnostic-only; source refresh age drives stale evaluation when available.
+- Checks run: cache freshness unit 3/3, existing cached analytics integration 15/16, analytics guardrails/typecheck, frontend production build, governance validators/self-tests and `git diff --check`.
+- Checks not run: live refresh-worker/browser/deployed proof and full backend/frontend suites.
+- Run log: `.ai/runs/2026-09-08-RQ187-cache-freshness-evidence.md`.
+- Main commit SHA: pending.
+- Main verification: pending push verification.
+- Delivery mode: direct-main local merge and push; exact merge SHA and `origin/main` verification will be synchronized after delivery.
+- Analytics safety gate: durable successful refresh status is the source of truth; cache creation is diagnostic only; missing/legacy refresh stays null; no numeric formulas, filters, export values or action semantics changed.
+- Prompt defect/scope repair: the prompt did not name the current durable refresh provider, so the existing `AnalyticsRefreshStatusService` was used as the same-owner source; RQ254 remains the direct PDC builder/cache-miss follow-up.
+- Missed: live refresh-worker/browser/deployed proof; one cached integration fixture failed on Neon authentication and was classified as environment/tooling.
+- Residual risk: pre-existing cache entries without `DataRefreshAtUtc` remain unknown until repopulated, by design.
+- Follow-up: RQ188 remains WAITING; no next prompt is promoted automatically.
 
 ### Dependencies
 
