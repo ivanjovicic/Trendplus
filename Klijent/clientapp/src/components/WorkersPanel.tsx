@@ -237,6 +237,15 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
     return "wp-badge wp-badge--muted";
   };
 
+  const formatRefreshRunStatus = (status: string) => {
+    const normalized = status.toLowerCase();
+    if (normalized === "succeeded") return "Uspešno";
+    if (normalized === "running") return "U toku";
+    if (normalized === "partial") return "Delimično (nepotpuno)";
+    if (normalized === "failed") return "Neuspešno";
+    return status;
+  };
+
   const orderedWorkers = useMemo(
     () => [...workers].sort((a, b) => a.displayName.localeCompare(b.displayName)),
     [workers],
@@ -518,7 +527,7 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
                     <td className="wp-td wp-td--date">{formatDate(run.startedAtUtc)}</td>
                     <td className="wp-td wp-td--date">{formatDate(run.finishedAtUtc)}</td>
                     <td className="wp-td">
-                      <span className={refreshRunBadgeClass(run.status)}>{run.status}</span>
+                      <span className={refreshRunBadgeClass(run.status)}>{formatRefreshRunStatus(run.status)}</span>
                     </td>
                     <td className="wp-td">
                       <div className="wp-worker-name">{run.jobName}</div>

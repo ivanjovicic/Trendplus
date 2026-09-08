@@ -2,7 +2,9 @@
 
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: `RQ206` (claimed; `IN_PROGRESS`)
+
+Owner promotion 2026-09-08: `RQ206` was explicitly promoted by the user after completed `RQ205` and is claimed in this workspace.
 
 Owner promotion 2026-09-08: `RQ205` was explicitly promoted by the user after completed `RQ204` and is claimed in this workspace.
 
@@ -147,7 +149,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ203 | DONE | inventory-detail-scope-consistency | Inventory detail now shares parent scope and signal period |
 | RQ204 | DONE | analytics-details-scope-parity | Analytics Details InventoryStatus now respects selected period and scope |
 | RQ205 | DONE | client-cache-invalidation | Frontend 15s cache not invalidated after refresh |
-| RQ206 | WAITING | refresh-run-status-accuracy | Partial nightly refresh treated as successful |
+| RQ206 | IN_PROGRESS | refresh-run-status-accuracy | Partial nightly refresh treated as successful |
 | RQ207 | WAITING | refresh-failure-cache-safety | Failed refresh skips cache invalidation |
 | RQ208 | WAITING | period-timezone-boundary-safety | Dashboard per-day KPIs use local day count |
 | RQ209 | WAITING | database-migration-orchestration | Dual concurrent EF migration paths cause race condition |
@@ -7955,7 +7957,7 @@ Commit suggestion: `fix(analytics): clear client cache after refresh`
 
 ## RQ206 - Partial nightly refresh treated as "last successful refresh"
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: backend/tests
 Feature family: refresh-run-status-accuracy
@@ -7972,14 +7974,40 @@ Commit suggestion: `fix(analytics): distinguish partial from successful refresh`
 
 - `AnalyticsRefreshStatusService.cs:418–427`.
 
+### Scope
+
+- Correct the backend refresh-status success selection and the existing WorkersPanel status presentation only.
+- Preserve durable run history, cache invalidation ownership, and all unrelated worker statuses.
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`
+- `Api/Services/AnalyticsRefreshStatusService.cs`
+- `Api.Tests/AnalyticsRefreshStatusServiceTests.cs`
+- `Klijent/clientapp/src/components/WorkersPanel.tsx`
+- `Klijent/clientapp/src/components/__tests__/WorkersPanel.spec.tsx`
+
 ### Do
 
 1. Exclude `"partial"` from success check.
 2. Update UI to render partial as yellow/warning.
 
+### Tests
+
+- `dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~AnalyticsRefreshStatusServiceTests`
+- `cd Klijent/clientapp && npm run test -- --run src/components/__tests__/WorkersPanel.spec.tsx`
+- `git diff --check`
+
 ### Acceptance
 
 - Dashboard clearly indicates partial/incomplete refreshes.
+
+### Dependencies
+
+- `RQ205` is DONE and remains separate from this backend status-contract correction.
+- Failed-refresh cache safety remains owned by `RQ207`.
+- Partial data must remain visibly non-successful; it must not become a fresh/successful timestamp or healthy state.
 
 ---
 

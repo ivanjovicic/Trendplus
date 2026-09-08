@@ -146,6 +146,57 @@ public sealed class AnalyticsRefreshStatusServiceTests
     }
 
     [Fact]
+    public async Task GetStatus_DoesNotTreatPartialRefreshAsSuccessful()
+    {
+        await using var db = CreateAnalyticsDbContext();
+        var nowUtc = DateTime.UtcNow;
+        var successfulFinishedAt = nowUtc.AddHours(-4);
+        db.AnalyticsRefreshRuns.AddRange(
+            new AnalyticsRefreshRun
+            {
+                JobKey = "nightly_analytics_refresh",
+                JobName = "Nightly analytics refresh",
+                Status = "succeeded",
+                StartedAtUtc = successfulFinishedAt.AddMinutes(-10),
+                FinishedAtUtc = successfulFinishedAt,
+                DurationSeconds = 600,
+                RefreshedObjectsJson = "[\"sales_facts_mv\"]",
+                TriggeredBy = "nightly",
+                ProcessMode = "worker",
+                WorkerName = "NightlyAnalyticsRefreshWorker",
+                CreatedAtUtc = successfulFinishedAt.AddMinutes(-10)
+            },
+            new AnalyticsRefreshRun
+            {
+                JobKey = "nightly_analytics_refresh",
+                JobName = "Nightly analytics refresh",
+                Status = "partial",
+                StartedAtUtc = nowUtc.AddHours(-1),
+                FinishedAtUtc = nowUtc.AddMinutes(-45),
+                DurationSeconds = 900,
+                RefreshedObjectsJson = "[\"sales_facts_mv\"]",
+                FailedObjectsJson = "[\"mv_inventory_recommendations\"]",
+                ErrorCode = "partial_refresh",
+                ErrorMessage = "Jedan view nije osvežen.",
+                TriggeredBy = "nightly",
+                ProcessMode = "worker",
+                WorkerName = "NightlyAnalyticsRefreshWorker",
+                CreatedAtUtc = nowUtc.AddHours(-1)
+            });
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var status = await service.GetStatusAsync();
+        var salesJob = Assert.Single(status.Jobs, job => job.Key == "sales_facts_refresh");
+
+        Assert.Equal("critical", status.DataFreshnessStatus);
+        Assert.Equal("critical", salesJob.DataFreshnessStatus);
+        Assert.Equal(successfulFinishedAt, salesJob.LastSuccessfulRefreshAtUtc);
+        Assert.Equal("Refresh je završen delimično; podaci nisu kompletni.", salesJob.StatusReason);
+        Assert.Contains(status.RecentRuns, run => run.Status == "partial");
+    }
+
+    [Fact]
     public async Task GetStatus_ReturnsIsRunningTrue_WhenRunningJobExists()
     {
         await using var db = CreateAnalyticsDbContext();

@@ -25,6 +25,7 @@ public sealed class AnalyticsRefreshStatusService
     private static readonly TimeSpan ActiveWorkerHeartbeatThreshold = TimeSpan.FromMinutes(15);
     private const int DefaultStuckRunningThresholdMinutes = 120;
     private const string StuckRunningStatusReason = "Refresh je započet, ali nije završen u očekivanom vremenu.";
+    private const string PartialRefreshStatusReason = "Refresh je završen delimično; podaci nisu kompletni.";
 
     private readonly IConfiguration _configuration;
     private readonly IHostEnvironment _hostEnvironment;
@@ -214,6 +215,8 @@ public sealed class AnalyticsRefreshStatusService
                 .Max(),
             DataFreshnessStatus = hasStuckRunningJob
                 ? "critical"
+                : jobs.Any(job => string.Equals(job.StatusReason, PartialRefreshStatusReason, StringComparison.Ordinal))
+                    ? "critical"
                 : ResolveOverallFreshness(
                 hasLastSuccess ? lastSuccess : null,
                 hasLastFailure ? lastFailure : null,
@@ -271,6 +274,7 @@ public sealed class AnalyticsRefreshStatusService
             var lastFailure = failureRun?.FinishedAtUtc ?? failureRun?.StartedAtUtc;
             var lastAttempt = latestJobRun.StartedAtUtc;
             var isRunning = string.Equals(latestJobRun.Status, "running", StringComparison.OrdinalIgnoreCase);
+            var isPartial = string.Equals(latestJobRun.Status, "partial", StringComparison.OrdinalIgnoreCase);
             var isStuckRunning = isRunning && latestJobRun.StartedAtUtc <= nowUtc.Subtract(stuckRunningThreshold);
 
             var refreshedObjects = ParseObjects(latestJobRun.RefreshedObjectsJson);
@@ -318,7 +322,9 @@ public sealed class AnalyticsRefreshStatusService
                 FailedObjects = failedObjects,
                 DurationSeconds = latestJobRun.DurationSeconds,
                 DataFreshnessStatus = freshnessStatus,
-                StatusReason = isStuckRunning ? StuckRunningStatusReason : null
+                StatusReason = isStuckRunning
+                    ? StuckRunningStatusReason
+                    : isPartial ? PartialRefreshStatusReason : null
             };
         }
 
@@ -418,8 +424,7 @@ public sealed class AnalyticsRefreshStatusService
         return runs
             .Where(run =>
                 string.Equals(run.WorkerName, workerName, StringComparison.OrdinalIgnoreCase) &&
-                (string.Equals(run.Status, "succeeded", StringComparison.OrdinalIgnoreCase)
-                 || string.Equals(run.Status, "partial", StringComparison.OrdinalIgnoreCase)) &&
+                string.Equals(run.Status, "succeeded", StringComparison.OrdinalIgnoreCase) &&
                 (string.Equals(run.JobKey, jobKey, StringComparison.OrdinalIgnoreCase)
                  || (!string.IsNullOrWhiteSpace(historyFallbackJobKey)
                      && string.Equals(run.JobKey, historyFallbackJobKey, StringComparison.OrdinalIgnoreCase))))
@@ -501,10 +506,14 @@ public sealed class AnalyticsRefreshStatusService
             return WorkerStatusType.Error;
         }
 
-        if (string.Equals(status, "succeeded", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(status, "partial", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(status, "succeeded", StringComparison.OrdinalIgnoreCase))
         {
             return WorkerStatusType.Healthy;
+        }
+
+        if (string.Equals(status, "partial", StringComparison.OrdinalIgnoreCase))
+        {
+            return WorkerStatusType.Error;
         }
 
         return null;

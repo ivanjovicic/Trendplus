@@ -255,6 +255,7 @@ describe("WorkersPanel", () => {
     expect(await screen.findByText("Neuspešni objekti")).toBeInTheDocument();
     expect(await screen.findByText("sales_facts_mv")).toBeInTheDocument();
     expect(await screen.findByText("mv_inventory_recommendations")).toBeInTheDocument();
+    expect(await screen.findByText("Delimično (nepotpuno)")).toBeInTheDocument();
   });
 
   it("invalidates the client analytics cache after a successful refresh completes", async () => {
