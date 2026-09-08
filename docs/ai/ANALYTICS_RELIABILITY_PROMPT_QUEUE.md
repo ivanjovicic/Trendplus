@@ -3,6 +3,7 @@
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+Owner promotion 2026-09-08: RQ194 was explicitly promoted by the user after RQ193, claimed and completed in this workspace.
 Owner promotion 2026-09-08: RQ193 was explicitly promoted by the user after RQ189, claimed and completed in this workspace.
 Owner promotion 2026-09-08: RQ189 was explicitly promoted by the user after completed RQ188, claimed and completed in this workspace.
 Owner promotion 2026-09-08: RQ188 was explicitly promoted by the user after completed RQ187, claimed and completed in this workspace.
@@ -118,7 +119,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ191 | WAITING | frontend-numeric-safety | Frontend percent clamp hides negative backend signals |
 | RQ192 | WAITING | ml-feature-missing-encoding | Supplier ML return rate coalesces missing to 0% |
 | RQ193 | DONE | analytics-async-ordering | Inventory page cross-panel async race condition |
-| RQ194 | WAITING | analytics-details-async-safety | Analytics Details missing in-flight guard |
+| RQ194 | DONE | analytics-details-async-safety | Analytics Details missing in-flight guard |
 | RQ195 | WAITING | pilot-readiness-async-consistency | Pilot Readiness multi-signal load can mix reload generations |
 | RQ196 | WAITING | report-schedule-validation | Inventory report schedules saved without validation |
 | RQ197 | WAITING | export-truncation-safety | Scheduled inventory export has no row cap |
@@ -7255,7 +7256,7 @@ Inventory page fires 6–7 parallel requests without a monotonic sequence check.
 
 ## RQ194 - Analytics Details missing in-flight guard for parallel requests
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/tests
 Feature family: analytics-details-async-safety
@@ -7280,6 +7281,26 @@ Commit suggestion: `fix(analytics-details): add request sequencing`
 ### Acceptance
 
 - Trend cards and tables reflect one consistent period after rapid changes.
+
+### Completion note
+
+- Date: 2026-09-08
+- Status: DONE
+- Completion: Analytics Details now applies results only from the newest period load generation across all parallel API calls; stale responses cannot overwrite the visible period state.
+- Changed files: `Klijent/clientapp/src/pages/AnalyticsDetails.tsx`, `Klijent/clientapp/src/pages/__tests__/AnalyticsDetails.periodState.spec.tsx`.
+- Contract/runtime behavior changed: frontend request ordering only; no API, metric, freshness, export or action contract changed.
+- Checks run: Analytics Details focused tests 2 files/14 tests, analytics encoding/guardrails/typecheck, frontend production build and diff check.
+- Checks not run: full frontend suite, backend tests/build, live browser/provider/deployed proof and remote CI; see durable run log.
+- Run log: `.ai/runs/2026-09-08-RQ194-analytics-details-request-sequencing-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: no live browser or deployed runtime proof; RQ195 remains WAITING for separate Pilot Readiness sequencing.
+- Follow-up: none for RQ194.
+- Residual risk: network cancellation remains cooperative; stale results are blocked when applying state.
+- Next: none; return the RQ queue to no READY prompt.
+- Prompt defect / scope repair: the prompt omitted a Dependencies section; source inspection found no named blocker, and the implementation stayed within the Analytics Details fetch-orchestration boundary.
 
 ---
 

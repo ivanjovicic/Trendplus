@@ -55,4 +55,30 @@ describe("AnalyticsDetails period state", () => {
     expect(screen.queryByText("Promet/dan")).not.toBeInTheDocument();
     expect(apiMocks.getSalesSummary).not.toHaveBeenCalled();
   });
+
+  it("ignores a stale analytics load after the period changes", async () => {
+    const healthRequests: Array<{ resolve: (value: unknown) => void }> = [];
+    apiMocks.checkAnalyticsHealth.mockImplementation(() => new Promise((resolve) => {
+      healthRequests.push({ resolve });
+    }));
+
+    render(
+      <MemoryRouter>
+        <AnalyticsDetails />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(healthRequests).toHaveLength(1));
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "7d" } });
+    await waitFor(() => expect(healthRequests).toHaveLength(2));
+
+    healthRequests[1].resolve({ tables: { salesFacts: 2, salesLineFacts: 2, productsDim: 2 } });
+    await waitFor(() => expect(screen.getByText("Analytics baza: 2 prodaja, 2 stavki, 2 proizvoda.")).toBeInTheDocument());
+
+    healthRequests[0].resolve({ tables: { salesFacts: 1, salesLineFacts: 1, productsDim: 1 } });
+    await waitFor(() => {
+      expect(screen.getByText("Analytics baza: 2 prodaja, 2 stavki, 2 proizvoda.")).toBeInTheDocument();
+      expect(screen.queryByText("Analytics baza: 1 prodaja, 1 stavki, 1 proizvoda.")).not.toBeInTheDocument();
+    });
+  });
 });

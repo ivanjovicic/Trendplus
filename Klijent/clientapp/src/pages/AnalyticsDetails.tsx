@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
@@ -218,9 +218,11 @@ export default function AnalyticsDetails() {
   const [validL, setValidL] = useState<DashboardValidationEndpoint | null>(null);
   const [validN, setValidN] = useState<DashboardValidationEndpoint | null>(null);
   const [adv, setAdv] = useState<{ cards: Array<{ key: string; value: number; trendPct?: number | null; status: string; subtitle: string }>; insights: Array<{ badge: string; description: string; color?: string }>; actions: Array<{ priority: string; title: string; recommendation: string }>; validations: Array<{ severity: string; message: string }> } | null>(null);
+  const loadSequenceRef = useRef(0);
   const periodValid = isAnalyticsDetailPeriodValid(fromDate, toDate);
 
   const load = useCallback(async () => {
+    const loadSequence = ++loadSequenceRef.current;
     setLoading(true);
     setErrors([]);
     if (!isAnalyticsDetailPeriodValid(fromDate, toDate)) {
@@ -250,6 +252,7 @@ export default function AnalyticsDetails() {
       getValidationLostSales(true),
       getValidationNegativeQty(fromDate, toDate, true),
     ]);
+    if (loadSequenceRef.current !== loadSequence) return;
     const errs: string[] = [];
     if (rs[0].status === "fulfilled") setHealthText(`Analytics baza: ${rs[0].value.tables.salesFacts} prodaja, ${rs[0].value.tables.salesLineFacts} stavki, ${rs[0].value.tables.productsDim} proizvoda.`);
     else errs.push(getErrorText(rs[0].reason, "Health check nije dostupan."));
