@@ -8,7 +8,7 @@ Delivery target: `main`
 Working branch / PR: `codex/rq185-velocity-semantics-20260908` / local merge, no PR
 Main commit SHA: b1ab70ab48ffd4676fd083b2f3f37a1269656d0f
 Main verification: passed - `git merge-base --is-ancestor b1ab70ab48ffd4676fd083b2f3f37a1269656d0f origin/main`; `origin/main` is `6928a8f8f5406fb56ccc722a0e8e654bee2cf977` and contains the merge SHA.
-Evidence state: pending
+Evidence state: synchronized
 
 ## What was done
 
