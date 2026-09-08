@@ -24,6 +24,7 @@ import {
   formatDateTime,
 } from "../utils/analyticsFormatters";
 import { formatMetricDisplayValue } from "../utils/analyticsMetricValue";
+import { ANALYTICS_VELOCITY_LABEL } from "../utils/analyticsVelocitySemantics";
 import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
 import { downloadDecisionTimelineExportCsv } from "../utils/decisionTimelineExport";
 import {
@@ -204,7 +205,7 @@ const TABLE_COLUMNS: AnalyticsTableColumn<ProductDecisionCenterItem>[] = [
   { key: "productName", header: "Artikal", dataType: "text" },
   { key: "supplierName", header: "Dobavljač", dataType: "text" },
   { key: "revenue", header: "Prodaja / komadi", dataType: "currency" },
-  { key: "velocityUnitsPerDay", header: "Brzina prodaje", dataType: "number" },
+  { key: "velocityUnitsPerDay", header: ANALYTICS_VELOCITY_LABEL, dataType: "number" },
   { key: "marginPct", header: "Marža", dataType: "percent" },
   { key: "currentStock", header: "Zaliha", dataType: "number" },
   { key: "trendPct", header: "Trend", dataType: "percent" },
@@ -1432,7 +1433,7 @@ export default function ProductDecisionCenterPage() {
               <option value="recommendationStatus:desc">Preporuka (prioritet)</option>
               <option value="confidencePct:desc">Sigurnost preporuke opadajuće</option>
               <option value="revenue:desc">Promet opadajuće</option>
-              <option value="velocityUnitsPerDay:desc">Brzina prodaje opadajuće</option>
+              <option value="velocityUnitsPerDay:desc">{ANALYTICS_VELOCITY_LABEL} opadajuće</option>
               <option value="stockCoverDays:asc">Pokrivenost zalihe rastuće</option>
               <option value="sellThroughRatio:desc">Obrt zalihe opadajuće</option>
               <option value="trendPct:desc">Trend opadajuće</option>
@@ -1622,7 +1623,7 @@ export default function ProductDecisionCenterPage() {
                 <th onClick={() => setSort("productName")}>Artikal</th>
                 <th onClick={() => setSort("supplierName")}>Dobavljač</th>
                 <th onClick={() => setSort("revenue")}>Prodaja / komadi</th>
-                <th onClick={() => setSort("velocityUnitsPerDay")}>Brzina prodaje</th>
+                <th onClick={() => setSort("velocityUnitsPerDay")}>{ANALYTICS_VELOCITY_LABEL}</th>
                 <th onClick={() => setSort("marginPct")}>Marža</th>
                 <th onClick={() => setSort("currentStock")}>Zaliha</th>
                 <th onClick={() => setSort("trendPct")}>Trend</th>
@@ -2100,7 +2101,7 @@ export default function ProductDecisionCenterPage() {
                                   <KpiExplainButton metricKey="unitsSold" ariaLabel="Kako je izračunat broj prodatih jedinica" />
                                 </div>
                                 <div>
-                                  <strong>Brzina prodaje:</strong> {fmtNumber(row.velocityUnitsPerDay, 2, "N/A")}
+                                  <strong>{ANALYTICS_VELOCITY_LABEL}:</strong> {fmtNumber(row.velocityUnitsPerDay, 2, "N/A")}
                                   <KpiExplainButton metricKey="velocity" ariaLabel="Kako je izračunata brzina prodaje" />
                                 </div>
                                 <div><strong>Marža:</strong> {fmtPct(row.marginPct, 1)}</div>

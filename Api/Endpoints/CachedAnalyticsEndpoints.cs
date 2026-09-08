@@ -66,6 +66,22 @@ public static class CachedAnalyticsEndpoints
         return Math.Round(soldUnits / elapsedDays, 4, MidpointRounding.AwayFromZero);
     }
 
+    /// <summary>
+    /// Calculates units per calendar day for an inclusive date window.
+    /// This mirrors the SQL velocity contract used by dashboard producers.
+    /// </summary>
+    internal static decimal? CalculateVelocityPerCalendarDay(
+        decimal soldUnits,
+        DateTime periodStartUtc,
+        DateTime periodEndUtc)
+    {
+        if (soldUnits < 0m || periodEndUtc.Date < periodStartUtc.Date)
+            return null;
+
+        var calendarDays = (periodEndUtc.Date - periodStartUtc.Date).Days + 1;
+        return Math.Round(soldUnits / Math.Max(calendarDays, 1), 2, MidpointRounding.AwayFromZero);
+    }
+
     public static void MapCachedAnalyticsEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/analytics/cached")
@@ -3280,10 +3296,19 @@ public static class CachedAnalyticsEndpoints
                 AND (@scope <> 'existing' OR p."data_origin" = 'existing' OR p."data_origin" IS NULL OR p."data_origin" = '')
               GROUP BY ps."id_artikal", DATE(p."datum_prodaje")
             ),
+            period_size AS (
+              SELECT GREATEST(
+                COALESCE(
+                  COALESCE(@toDate::date, MAX(sale_day))
+                    - COALESCE(@fromDate::date, MIN(sale_day)) + 1,
+                  1),
+                1)::int AS days_count
+              FROM base
+            ),
             agg AS (
               SELECT
                 article_id,
-                SUM(units_day) / GREATEST(COUNT(*), 1) AS velocity
+                SUM(units_day) / (SELECT days_count FROM period_size) AS velocity
               FROM base
               GROUP BY article_id
             )
@@ -3540,7 +3565,6 @@ public static class CachedAnalyticsEndpoints
                 ps."id_artikal" AS product_id,
                 SUM(ps."kolicina" * ps."cena") AS revenue,
                 SUM(ps."kolicina")::int AS units,
-                GREATEST(COUNT(DISTINCT DATE(p."datum_prodaje")), 1)::int AS active_days,
                 CASE
                   WHEN COUNT(*) FILTER (WHERE {resolvedUnitCostSql} IS NOT NULL) = 0 THEN NULL
                   ELSE SUM((ps."cena" - {resolvedUnitCostSql}) * ps."kolicina")
@@ -3589,7 +3613,7 @@ public static class CachedAnalyticsEndpoints
               COALESCE(a."Naziv", 'Nepoznato') AS product_name,
               COALESCE(cp.revenue, 0) AS revenue,
               COALESCE(cp.units, 0)::int AS units,
-              ROUND(COALESCE(cp.units, 0)::decimal / GREATEST(cp.active_days, 1), 2) AS velocity_units_per_day,
+              ROUND(COALESCE(cp.units, 0)::decimal / GREATEST(s.days_count, 1), 2) AS velocity_units_per_day,
               cp.margin_impact,
               cp.cost_covered_revenue,
               cp.cost_covered_units,
@@ -3607,6 +3631,7 @@ public static class CachedAnalyticsEndpoints
                 ELSE ROUND(((COALESCE(cp.units, 0)::decimal - pp.prev_units) / pp.prev_units) * 100, 2)
               END AS trend_pct
             FROM current_period cp
+            CROSS JOIN period_size s
             JOIN "Artikli" a ON a."Id" = cp.product_id
             LEFT JOIN previous_period pp ON pp.product_id = cp.product_id;
             """;
@@ -3780,12 +3805,12 @@ public static class CachedAnalyticsEndpoints
                 new DashboardMetricCardDto
                 {
                     Key = "velocity",
-                    Label = "Velocity",
+                    Label = "Velocity (calendar days)",
                     Value = avgVelocity,
-                    Unit = "units/day",
+                    Unit = "units/calendar day",
                     TrendPct = velocityTrend,
                     Status = velocityStatus,
-                    Subtitle = $"Top SKU: {topSku} ({topVelocity.ToString("0.##", CultureInfo.InvariantCulture)})"
+                    Subtitle = $"Top SKU: {topSku} ({topVelocity.ToString("0.##", CultureInfo.InvariantCulture)} units/calendar day)"
                 },
                 new DashboardMetricCardDto
                 {
@@ -6704,7 +6729,7 @@ public static class CachedAnalyticsEndpoints
             "evidence",
             "sales_signal",
             "Signal prodaje",
-            $"{FormatProductDecisionNumber(row.VelocityUnitsPerDay, 2)} kom/dan · {row.UnitsSold} kom",
+            $"{FormatProductDecisionNumber(row.VelocityUnitsPerDay, 2)} kom/kalendarski dan · {row.UnitsSold} kom",
             ["VelocityUnitsPerDay", "UnitsSold", "Revenue"],
             detail: $"Prihod {FormatProductDecisionAmount(row.Revenue)}");
 
@@ -7667,9 +7692,9 @@ public static class CachedAnalyticsEndpoints
 
         return recommendationStatus switch
         {
-            "BOOST" => $"Trend {trendText}, marža {marginText}, velocity {velocityUnitsPerDay:0.00}/dan i gap zalihe {stockGap}.",
-            "REPLENISH" => $"Brza rotacija ({velocityUnitsPerDay:0.00}/dan) uz manjak zalihe ({currentStock}/{minStock}).",
-            "MARKDOWN" => $"Spora prodaja ({velocityUnitsPerDay:0.00}/dan), trend {trendText} i starost bez prodaje {staleText}.",
+            "BOOST" => $"Trend {trendText}, marža {marginText}, velocity {velocityUnitsPerDay:0.00}/kalendarski dan i gap zalihe {stockGap}.",
+            "REPLENISH" => $"Brza rotacija ({velocityUnitsPerDay:0.00}/kalendarski dan) uz manjak zalihe ({currentStock}/{minStock}).",
+            "MARKDOWN" => $"Spora prodaja ({velocityUnitsPerDay:0.00}/kalendarski dan), trend {trendText} i starost bez prodaje {staleText}.",
             "DO_NOT_ORDER" => $"Visoka zaliha ({currentStock}), slab trend {trendText} i marža {marginText}.",
             "FIX_DATA" => $"Kritični problemi kvaliteta podataka ({dataQualityStatus}) blokiraju pouzdanu preporuku.",
             "INSUFFICIENT_DATA" => BuildInsufficientDataReason(
@@ -7677,7 +7702,7 @@ public static class CachedAnalyticsEndpoints
                 unitsSold,
                 daysSinceLastSale,
                 staleText),
-            _ => $"Stabilan signal bez hitne akcije. Trend {trendText}, marža {marginText}, velocity {velocityUnitsPerDay:0.00}/dan."
+            _ => $"Stabilan signal bez hitne akcije. Trend {trendText}, marža {marginText}, velocity {velocityUnitsPerDay:0.00}/kalendarski dan."
         };
     }
 

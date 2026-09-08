@@ -20,6 +20,10 @@ import {
   getAnalyticsPeriodPresetRange,
 } from "../utils/analyticsPeriodPresets";
 import { fmtNumber, fmtPct, fmtRsd } from "../utils/analyticsFormatters";
+import {
+  ANALYTICS_VELOCITY_LABEL,
+  ANALYTICS_VELOCITY_SHORT_LABEL,
+} from "../utils/analyticsVelocitySemantics";
 import "./AnalyticsDetails.css";
 
 type TopTab = "revenue" | "units" | "velocity" | "margin";
@@ -472,7 +476,7 @@ export default function AnalyticsDetails() {
               <div className="ad-tabs">
                 <button className={topTab === "revenue" ? "active" : ""} onClick={() => setTopTab("revenue")}>Promet</button>
                 <button className={topTab === "units" ? "active" : ""} onClick={() => setTopTab("units")}>Komadi</button>
-                <button className={topTab === "velocity" ? "active" : ""} onClick={() => setTopTab("velocity")}>Velocity</button>
+                <button className={topTab === "velocity" ? "active" : ""} onClick={() => setTopTab("velocity")}>{ANALYTICS_VELOCITY_SHORT_LABEL}</button>
                 <button className={topTab === "margin" ? "active" : ""} onClick={() => setTopTab("margin")}>Marza</button>
                 <button onClick={() => setShowFullList(true)}>Prikazi celu listu</button>
               </div>
@@ -481,7 +485,7 @@ export default function AnalyticsDetails() {
               <span>SKU / Artikal</span>
               <span>Promet</span>
               <span>Kom</span>
-              <span>Velocity</span>
+              <span>{ANALYTICS_VELOCITY_LABEL}</span>
               <span>Trend</span>
               <span>Status</span>
             </div>
@@ -556,7 +560,7 @@ export default function AnalyticsDetails() {
                   <span>SKU / Artikal</span>
                   <span>Promet</span>
                   <span>Kom</span>
-                  <span>Velocity</span>
+                  <span>{ANALYTICS_VELOCITY_LABEL}</span>
                   <span>Trend</span>
                   <span>Status</span>
                 </div>
