@@ -23,6 +23,7 @@ public sealed class DocumentTablePayload
     public List<List<string?>> Rows { get; set; } = new();
     public List<DocumentNamedValue> Filters { get; set; } = new();
     public List<DocumentNamedValue> Metadata { get; set; } = new();
+    public string? FooterText { get; set; }
 }
 
 public sealed class DocumentGenerationRequest

@@ -111,6 +111,13 @@ public sealed class DocumentTemplateRenderer : IDocumentTemplateRenderer
         }
 
         builder.Append("</tbody></table>");
+        if (!string.IsNullOrWhiteSpace(request.Table.FooterText))
+        {
+            builder.Append("<p class=\"document-footer\">");
+            builder.Append(DocumentHtmlEncoder.Encode(request.Table.FooterText));
+            builder.Append("</p>");
+        }
+
         return builder.ToString();
     }
 

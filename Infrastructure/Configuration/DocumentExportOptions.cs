@@ -6,6 +6,7 @@ public sealed class DocumentExportOptions
 
     public int SyncRowLimit { get; set; } = 5000;
     public int WorkerBatchSize { get; set; } = 4;
+    public int MaxExportRows { get; set; } = 50_000;
     public int SignedUrlTtlMinutes { get; set; } = 30;
     public int FileTtlHours { get; set; } = 72;
     public string StorageRoot { get; set; } = "out/documents";

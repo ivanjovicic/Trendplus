@@ -38,6 +38,11 @@ public sealed class CsvDocumentRenderer : IDocumentRenderer
             await writer.WriteLineAsync(string.Join(_delimiter, row.Select(cell => Escape(cell, _delimiter))));
         }
 
+        if (!string.IsNullOrWhiteSpace(request.Table.FooterText))
+        {
+            await writer.WriteLineAsync(Escape($"# {request.Table.FooterText}", _delimiter));
+        }
+
         await writer.FlushAsync(ct);
     }
 
@@ -102,6 +107,11 @@ public sealed class XlsxDocumentRenderer : IDocumentRenderer
             await WriteDataRowAsync(writer, rowIndex + 2, columns, request.Table.Rows[rowIndex]);
         }
 
+        if (!string.IsNullOrWhiteSpace(request.Table.FooterText))
+        {
+            await WriteFooterRowAsync(writer, request.Table.Rows.Count + 2, request.Table.FooterText);
+        }
+
         await writer.WriteEndElementAsync();
         await writer.WriteEndElementAsync();
         await writer.WriteEndDocumentAsync();
@@ -150,6 +160,14 @@ public sealed class XlsxDocumentRenderer : IDocumentRenderer
             }
         }
 
+        await writer.WriteEndElementAsync();
+    }
+
+    private static async Task WriteFooterRowAsync(XmlWriter writer, int rowIndex, string footerText)
+    {
+        await writer.WriteStartElementAsync(null, "row", null);
+        await writer.WriteAttributeStringAsync(null, "r", null, rowIndex.ToString(CultureInfo.InvariantCulture));
+        await WriteInlineStringCellAsync(writer, $"A{rowIndex}", $"# {footerText}", StyleGeneral);
         await writer.WriteEndElementAsync();
     }
 

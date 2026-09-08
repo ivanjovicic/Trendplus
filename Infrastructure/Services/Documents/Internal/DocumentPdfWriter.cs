@@ -46,6 +46,12 @@ internal static class DocumentPdfWriter
             lines.Add(string.Join(" | ", row.Select(cell => SanitizeCell(cell))));
         }
 
+        if (!string.IsNullOrWhiteSpace(request.Table.FooterText))
+        {
+            lines.Add(string.Empty);
+            lines.Add(request.Table.FooterText!);
+        }
+
         var pageContents = new List<string>();
         for (var index = 0; index < lines.Count; index += linesPerPage)
         {
