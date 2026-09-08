@@ -19,6 +19,7 @@ vi.mock("../../services/analyticsApi", () => ({
   getAnalyticsRefreshStatus: vi.fn(),
   getAnalyticsCacheStatus: vi.fn(),
   clearAnalyticsCache: vi.fn(),
+  invalidateAnalyticsCache: vi.fn(),
 }));
 
 describe("WorkersPanel", () => {
@@ -254,5 +255,43 @@ describe("WorkersPanel", () => {
     expect(await screen.findByText("Neuspešni objekti")).toBeInTheDocument();
     expect(await screen.findByText("sales_facts_mv")).toBeInTheDocument();
     expect(await screen.findByText("mv_inventory_recommendations")).toBeInTheDocument();
+  });
+
+  it("invalidates the client analytics cache after a successful refresh completes", async () => {
+    const runningRun = {
+      id: 43,
+      jobKey: "nightly_analytics_refresh",
+      jobName: "Nightly analytics refresh",
+      status: "running",
+      startedAtUtc: "2026-05-25T05:00:00Z",
+      finishedAtUtc: null,
+      durationSeconds: null,
+      refreshedObjects: [],
+      failedObjects: [],
+      triggeredBy: "manual",
+      processMode: "worker",
+      workerName: "NightlyAnalyticsRefreshWorker",
+      createdAtUtc: "2026-05-25T05:00:00Z",
+    };
+    const succeededRun = {
+      ...runningRun,
+      status: "succeeded",
+      finishedAtUtc: "2026-05-25T05:04:00Z",
+      durationSeconds: 240,
+      refreshedObjects: ["sales_facts_mv"],
+    };
+
+    vi.mocked(analyticsApiModule.getAnalyticsRefreshStatus)
+      .mockResolvedValueOnce({ isRunning: false, recentRuns: [] } as any)
+      .mockResolvedValueOnce({ isRunning: true, recentRuns: [runningRun] } as any)
+      .mockResolvedValueOnce({ isRunning: false, recentRuns: [succeededRun] } as any);
+
+    const view = render(<WorkersPanel refreshInterval={20} />);
+
+    await waitFor(() => {
+      expect(analyticsApiModule.invalidateAnalyticsCache).toHaveBeenCalledTimes(1);
+    });
+
+    view.unmount();
   });
 });

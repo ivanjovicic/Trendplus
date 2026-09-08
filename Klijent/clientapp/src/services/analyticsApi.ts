@@ -79,6 +79,7 @@ const DEFAULT_CLIENT_CACHE_TTL_MS = 15_000;
 const DEFAULT_ANALYTICS_GET_TIMEOUT_MS = API_COLD_START_TIMEOUT_MS;
 const responseCache = new Map<string, { expiresAt: number; value: unknown }>();
 const inFlightRequests = new Map<string, Promise<unknown>>();
+let clientCacheGeneration = 0;
 
 type FailoverAwareWindow = Window & {
   __trendplusFailoverInstalled?: boolean;
@@ -207,9 +208,10 @@ async function fetchJson<T>(
     }
   }
 
+  const requestGeneration = clientCacheGeneration;
   const request = (async () => {
     const data = await fetchJsonWithRetry<T>(url, DEFAULT_ANALYTICS_GET_TIMEOUT_MS, errorMessage, onResponse);
-    if (cacheTtlMs > 0) {
+    if (cacheTtlMs > 0 && requestGeneration === clientCacheGeneration) {
       responseCache.set(url, { expiresAt: Date.now() + cacheTtlMs, value: data });
     }
 
@@ -223,7 +225,7 @@ async function fetchJson<T>(
   try {
     return await request;
   } finally {
-    if (cacheTtlMs > 0) {
+    if (cacheTtlMs > 0 && inFlightRequests.get(url) === request) {
       inFlightRequests.delete(url);
     }
   }
@@ -758,6 +760,12 @@ export async function getAnalyticsCacheStatus(): Promise<AnalyticsCacheStatus> {
     undefined,
     "Greska pri ucitavanju statusa analytics cache-a"
   );
+}
+
+export function invalidateAnalyticsCache(): void {
+  clientCacheGeneration += 1;
+  responseCache.clear();
+  inFlightRequests.clear();
 }
 
 export async function clearAnalyticsCache(family = "all", adminKey?: string): Promise<AnalyticsCacheInvalidateResponse> {

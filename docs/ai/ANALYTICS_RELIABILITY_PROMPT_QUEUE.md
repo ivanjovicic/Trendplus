@@ -2,7 +2,9 @@
 
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: `RQ205` (claimed; `IN_PROGRESS`)
+
+Owner promotion 2026-09-08: `RQ205` was explicitly promoted by the user after completed `RQ204` and is claimed in this workspace.
 
 Owner promotion 2026-09-08: `RQ204` was explicitly promoted by the user after completed `RQ203` and is claimed in this workspace.
 
@@ -144,7 +146,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ202 | DONE | date-timezone-safety | Daily Sales date sort timezone drift |
 | RQ203 | DONE | inventory-detail-scope-consistency | Inventory detail now shares parent scope and signal period |
 | RQ204 | DONE | analytics-details-scope-parity | Analytics Details InventoryStatus now respects selected period and scope |
-| RQ205 | WAITING | client-cache-invalidation | Frontend 15s cache not invalidated after refresh |
+| RQ205 | IN_PROGRESS | client-cache-invalidation | Frontend 15s cache not invalidated after refresh |
 | RQ206 | WAITING | refresh-run-status-accuracy | Partial nightly refresh treated as successful |
 | RQ207 | WAITING | refresh-failure-cache-safety | Failed refresh skips cache invalidation |
 | RQ208 | WAITING | period-timezone-boundary-safety | Dashboard per-day KPIs use local day count |
@@ -7877,7 +7879,7 @@ Calls `getInventoryStatus(2, true)` with no period/store filters while sales ser
 
 ## RQ205 - Frontend 15s client cache not invalidated after refresh
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P2
 Type: frontend/tests
 Feature family: client-cache-invalidation
@@ -7894,15 +7896,42 @@ Commit suggestion: `fix(analytics): clear client cache after refresh`
 
 - `analyticsApi.ts:78–80, 353–361`.
 
+### Scope
+
+- Update the frontend analytics client cache and the existing WorkersPanel refresh-status consumer only.
+- Preserve server-side `clearAnalyticsCache`, request deduplication, and backend refresh status semantics.
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`
+- `Klijent/clientapp/src/services/analyticsApi.ts`
+- `Klijent/clientapp/src/components/WorkersPanel.tsx`
+- `Klijent/clientapp/src/components/__tests__/WorkersPanel.spec.tsx`
+- `Klijent/clientapp/src/services/__tests__/analyticsApi.contract.spec.ts`
+
 ### Do
 
 1. Expose `invalidateAnalyticsCache()`.
 2. Call after refresh completion.
 3. Add tests: cache clears after refresh.
 
+### Tests
+
+- `cd Klijent/clientapp && npm run test -- --run src/services/__tests__/analyticsApi.contract.spec.ts`
+- `cd Klijent/clientapp && npm run test -- --run src/components/__tests__/WorkersPanel.spec.tsx`
+- `cd Klijent/clientapp && npm run check:analytics-guardrails`
+- `git diff --check`
+
 ### Acceptance
 
 - Users see updated numbers immediately after refresh.
+
+### Dependencies
+
+- `RQ204` is DONE and its analytics client changes are present on current `main`.
+- Only a successful refresh completion invalidates the local client cache; failed/partial refresh behavior remains owned by `RQ207`.
+- No backend contract, tenant authority, or server-side cache invalidation semantics change is required.
 
 ---
 

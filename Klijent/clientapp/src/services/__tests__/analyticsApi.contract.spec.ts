@@ -7,11 +7,54 @@ import {
   getDataQualityIssues,
   getDataQualityTopOffenders,
   getDecisionBoardAggregate,
+  getDashboardBootstrap,
+  invalidateAnalyticsCache,
   updateAnalyticsActionOutcome,
 } from "../analyticsApi";
 import { getColorSalesStats } from "../colorSalesStatsApi";
 
 describe("analytics API contract requests", () => {
+  it("clears cached dashboard bootstrap responses when invalidated", async () => {
+    let requestCount = 0;
+
+    server.use(
+      rest.get("/api/analytics/cached/dashboard/bootstrap", (_req, res, ctx) => {
+        requestCount += 1;
+        return res(ctx.status(200), ctx.json({
+          summary: null,
+          inventory: null,
+          dailySales: [],
+          categoryData: [],
+          genderData: [],
+          supplierData: [],
+          supplierOptions: [],
+          paymentData: [],
+          weekdayData: [],
+          hourData: [],
+          quickInsights: null,
+          transactionStats: null,
+          advanced: null,
+          topAdvanced: null,
+          validationCompleteness: null,
+          validationFreshness: null,
+          validationLostSales: null,
+          decisionActions: [],
+          errors: [],
+          meta: { success: true },
+        }));
+      }),
+    );
+
+    invalidateAnalyticsCache();
+    await getDashboardBootstrap();
+    await getDashboardBootstrap();
+    expect(requestCount).toBe(1);
+
+    invalidateAnalyticsCache();
+    await getDashboardBootstrap();
+    expect(requestCount).toBe(2);
+  });
+
   it("requests Decision Board aggregate with explicit filters and default data scope", async () => {
     let receivedUrl: URL | null = null;
 
