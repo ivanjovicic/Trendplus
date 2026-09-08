@@ -7785,8 +7785,8 @@ Detail endpoint uses hardcoded `DateTime.UtcNow.AddDays(-30)` and `/30` divisor.
 - Run log: `.ai/runs/2026-09-08-RQ203-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: `c8665544c73626786d187f3ba932e4e554927a1b`
-- Main verification: passed - current `main` and `origin/main` contain delivered implementation `c8665544c73626786d187f3ba932e4e554927a1b`.
+- Main commit SHA: `c866554473653b8b1bd2b0adfe347b59f001d404`
+- Main verification: passed - current `main` and `origin/main` contain delivered implementation `c866554473653b8b1bd2b0adfe347b59f001d404`.
 - Missed: no visible Inventory date selector or live production/timezone matrix was added; the existing implicit 30-day window remains shared by list and detail.
 - Follow-up: none; RQ204 remains WAITING pending explicit promotion.
 - Residual risk: external consumers of the detail DTO must adopt `movementCount` in place of the old `movementCount30d` field.
