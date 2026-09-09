@@ -8797,10 +8797,10 @@ Per-table refresh failures are caught individually, but cache invalidation still
 - Checks run: Workers build (0 warnings, 0 errors), focused worker tests (6/6), all six governance checks, and `git diff --check` passed.
 - Checks not run: authenticated live PostgreSQL partial-refresh/cache proof, full backend suite, production worker smoke and remote CI.
 - Run log: `.ai/runs/2026-09-09-RQ216-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `0f85c81ef133fc12b7c1b7b78ad941c8d8bdf024`
+- Main verification: passed after push - implementation SHA `0f85c81ef133fc12b7c1b7b78ad941c8d8bdf024` is contained in current `main`, and local `HEAD` equals `origin/main`.
 - Missed: no live provider-backed cache-safety proof was available locally.
 - Follow-up: `RQ217` remains WAITING for outbox concurrent-processing idempotency; no current READY prompt is auto-promoted.
 - Residual risk: staging/CI should exercise a real missing-table/partial-refresh path and verify cache freshness externally.
