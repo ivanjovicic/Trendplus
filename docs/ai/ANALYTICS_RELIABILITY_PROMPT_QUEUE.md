@@ -9055,10 +9055,10 @@ Commit suggestion: `fix(host): fail host on worker exception or add external mon
 - Checks run: `dotnet build Api/Api.csproj --no-restore` passed with 0 errors and existing analyzer warnings; `dotnet build Api.Tests/Api.Tests.csproj --no-restore` passed with 0 errors and existing analyzer warnings; focused worker process health test passed 1/1; all six governance checks and `git diff --check` passed.
 - Checks not run: live crash/restart through the deployment supervisor, production alert delivery, full backend suite and remote CI.
 - Run log: `.ai/runs/2026-09-09-RQ219-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `6335543a9dedf158556c6c9a377b82b756adcb53`
+- Main verification: passed after fresh fetch - implementation SHA `6335543a9dedf158556c6c9a377b82b756adcb53` is contained in current `main`, and local `HEAD` equals `origin/main`.
 - Missed: no live deployment-supervisor restart or alert proof was available locally.
 - Follow-up: `RQ220` remains WAITING for dead-letter/outbox observability; no current READY prompt is auto-promoted.
 - Residual risk: `StopHost` makes process termination visible to the supervisor, but restart policy and alert routing remain deployment/provider responsibilities outside this repository change.
