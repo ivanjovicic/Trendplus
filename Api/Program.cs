@@ -63,7 +63,7 @@ try
 
     builder.Services.Configure<HostOptions>(options =>
     {
-        options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore;
+        options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.StopHost;
     });
 
     Console.WriteLine("Builder created successfully");

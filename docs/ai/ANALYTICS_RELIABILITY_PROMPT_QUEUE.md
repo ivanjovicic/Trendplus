@@ -4,6 +4,8 @@ Date: 2026-09-09
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-09: `RQ219` was explicitly promoted by the user after completed `RQ218`, transitioned to `READY` and claimed as `IN_PROGRESS`; it is now completed and the RQ queue has no current READY prompt.
+
 Owner promotion 2026-09-09: `RQ218` was explicitly promoted by the user after completed `RQ217`, transitioned to `READY` and claimed as `IN_PROGRESS`; it is now completed and the RQ queue has no current READY prompt.
 
 Owner promotion 2026-09-09: `RQ217` was explicitly promoted by the user after completed `RQ216`, transitioned to `READY` and claimed as `IN_PROGRESS`; it is now completed and the RQ queue has no current READY prompt.
@@ -186,7 +188,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ216 | DONE | aggregation-failure-cache-safety | Cache invalidated after partially failed aggregate refresh |
 | RQ217 | DONE | outbox-concurrent-processing | Outbox worker has no row-level locking |
 | RQ218 | DONE | import-retry-idempotency | Access import auto-retry requeues without rolling back |
-| RQ219 | WAITING | worker-process-health | Background worker crashes are silently ignored (P0) |
+| RQ219 | DONE | worker-process-health | Background worker crashes are silently ignored (P0) |
 | RQ220 | WAITING | outbox-dlq-observability | Outbox messages dead-lettered with no automatic surfacing |
 | RQ221 | WAITING | error-response-sanitization | Insight Studio endpoints return raw exception messages |
 | RQ222 | WAITING | aggregate-consistency | Daily vs dimensional aggregates disagree on orphan sales |
@@ -8982,12 +8984,46 @@ Failed batches reset to `pending` with progress zeroed but no rollback of partia
 
 ## RQ219 - Background worker crashes are silently ignored (CRITICAL)
 
-Status: WAITING
+Status: DONE
 Priority: P0
 Type: backend/infra/monitoring
 Feature family: worker-process-health
 Parallel-safe: no
 Owner: Infrastructure/Monitoring
+
+### Scope
+
+Make unhandled `BackgroundService` failures visible to the process supervisor by changing the existing host policy in the core API entrypoints. Keep the change bounded to host exception behavior and focused contract tests; do not redesign worker health reporting, deployment manifests or external alerting.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`
+- `Api/Program.cs`
+- `Trendplus2/Program.cs`
+- `Infrastructure/Services/WorkerHealthService.cs`
+- nearest worker health/host configuration tests
+
+### Tests
+
+- Add a focused contract proof that each core host entrypoint uses the fail-fast `StopHost` policy.
+- Preserve the existing worker health endpoint/reporting behavior.
+- Run the focused worker-health test, changed-project build and governance checks.
+
+### Dependencies
+
+- RQ218 import retry/idempotency is complete on `main`.
+- The runtime uses the actual .NET `BackgroundServiceExceptionBehavior.StopHost` enum; the legacy prompt's `ThrowAndStop` wording is not a valid enum member in this target framework.
+- No production deployment/restart or external alerting configuration is required for this bounded host-policy change.
+
+### Promotion note
+
+- Date: 2026-09-09
+- Status: DONE
+- Promotion: explicitly promoted by the user after RQ218 completion, then claimed in this workspace; this is the single current RQ prompt.
+- Next: no current READY prompt; explicitly promote the next safe RQ prompt when ready.
 
 Commit suggestion: `fix(host): fail host on worker exception or add external monitoring`
 
@@ -9008,6 +9044,25 @@ Commit suggestion: `fix(host): fail host on worker exception or add external mon
 ### Acceptance
 
 - Worker death is visible and causes app restart or alert.
+
+### Completion note
+
+- Date: 2026-09-09
+- Status: DONE
+- Completion: both core host entrypoints now configure `BackgroundServiceExceptionBehavior.StopHost`, so an unhandled background-service failure stops the host and exposes process death to the deployment supervisor for restart/alerting.
+- Changed files: `Api/Program.cs`, `Trendplus2/Program.cs`, `Api.Tests/WorkerProcessHealthTests.cs`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-09-RQ219-evidence.md`.
+- Contract/runtime behavior changed: the previous `Ignore` policy no longer allows a worker process to remain apparently healthy after an unhandled hosted-service failure. Existing `WorkerHealthService` reporting and health endpoints are unchanged.
+- Checks run: `dotnet build Api/Api.csproj --no-restore` passed with 0 errors and existing analyzer warnings; `dotnet build Api.Tests/Api.Tests.csproj --no-restore` passed with 0 errors and existing analyzer warnings; focused worker process health test passed 1/1; all six governance checks and `git diff --check` passed.
+- Checks not run: live crash/restart through the deployment supervisor, production alert delivery, full backend suite and remote CI.
+- Run log: `.ai/runs/2026-09-09-RQ219-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: no live deployment-supervisor restart or alert proof was available locally.
+- Follow-up: `RQ220` remains WAITING for dead-letter/outbox observability; no current READY prompt is auto-promoted.
+- Residual risk: `StopHost` makes process termination visible to the supervisor, but restart policy and alert routing remain deployment/provider responsibilities outside this repository change.
+- Prompt defect / scope repair: the legacy prompt named `ThrowAndStop`, which is not a valid enum member in this target framework; the implementation uses the actual `BackgroundServiceExceptionBehavior.StopHost` behavior and added the required Scope, Read first, Tests and Dependencies sections.
 
 ---
 
