@@ -8812,7 +8812,7 @@ Per-table refresh failures are caught individually, but cache invalidation still
 
 ## RQ217 - Outbox worker has no row-level locking
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/worker/tests
 Feature family: outbox-concurrent-processing
