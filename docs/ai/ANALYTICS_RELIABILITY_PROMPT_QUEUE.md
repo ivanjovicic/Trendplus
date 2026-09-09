@@ -2,7 +2,9 @@
 
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ215 (promoted; ready to claim)
+
+Owner promotion 2026-09-09: `RQ215` was explicitly promoted by the user after completed `RQ214`; it is the current RQ READY prompt and is ready to claim in this workspace.
 
 Owner promotion 2026-09-09: `RQ214` was explicitly promoted by the user after completed `RQ213`, transitioned `WAITING -> READY -> IN_PROGRESS`, and is claimed in this workspace.
 
@@ -174,7 +176,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ212 | DONE | migration-failure-safety | Migration failures swallowed; app runs on drifted schema |
 | RQ213 | DONE | migration-reversibility | EF migration Down() drops fact tables without backup |
 | RQ214 | DONE | seed-data-consistency | Seed sales created without decrementing stock |
-| RQ215 | WAITING | aggregation-worker-atomicity | Aggregate refresh delete+insert is non-transactional (P0) |
+| RQ215 | READY | aggregation-worker-atomicity | Aggregate refresh delete+insert is non-transactional (P0) |
 | RQ216 | WAITING | aggregation-failure-cache-safety | Cache invalidated after partially failed aggregate refresh |
 | RQ217 | WAITING | outbox-concurrent-processing | Outbox worker has no row-level locking |
 | RQ218 | WAITING | import-retry-idempotency | Access import auto-retry requeues without rolling back |
@@ -8646,12 +8648,38 @@ Seed creates up to 100 `SEED-*` sales from articles with `Kolicina > 0` but neve
 
 ## RQ215 - Aggregate refresh delete+insert is non-transactional (CRITICAL)
 
-Status: WAITING
+Status: READY
 Priority: P0
 Type: backend/worker/tests
 Feature family: aggregation-worker-atomicity
 Parallel-safe: no
 Owner: Analytics Worker
+
+### Scope
+
+Make each aggregate refresh replacement all-or-nothing by keeping its delete-and-insert operation inside one retryable transaction. Limit the change to the existing `AnalyticsAggregationWorker` refresh path and focused worker tests; do not redesign aggregate schemas, cache policy or unrelated worker scheduling.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`
+- `Workers/AnalyticsAggregationWorker.cs`
+- nearest existing `AnalyticsAggregationWorker` tests
+
+### Dependencies
+
+- RQ214 seed-data consistency is complete on `main`.
+- RQ216 cache invalidation-after-partial-refresh remains a separate follow-up; do not absorb it into this transaction boundary unless the focused proof shows the same owner contract requires it.
+- Live PostgreSQL refresh execution is not required for the local transaction orchestration proof, but unavailable live proof must be recorded as not run.
+
+### Promotion note
+
+- Date: 2026-09-09
+- Status: READY
+- Promotion: explicitly promoted by the user after RQ214 completion; this is the single current RQ READY prompt.
+- Next: claim RQ215 and implement the bounded aggregate refresh transaction.
 
 Commit suggestion: `fix(aggregation): wrap delete+insert in transaction`
 
