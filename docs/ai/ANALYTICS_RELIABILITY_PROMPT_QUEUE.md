@@ -8885,10 +8885,10 @@ Messages fetched with plain SELECT, not `FOR UPDATE SKIP LOCKED`. Multiple insta
 - Checks run: `dotnet build Workers/Workers.csproj --no-restore` passed with 0 warnings and 0 errors; `dotnet build Api.Tests/Api.Tests.csproj --no-restore` passed with 0 errors and existing analyzer warnings; focused outbox tests passed 2/2; EF migration listing exposed `20260909190000_AddSalesLineFactIdempotency`; all governance checks and `git diff --check` passed.
 - Checks not run: live PostgreSQL/Testcontainers concurrency proof because Docker provider was unavailable locally; full backend suite, production worker/broker smoke and remote CI.
 - Run log: `.ai/runs/2026-09-09-RQ217-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `de3b0e6a7e21715d1310d0441b8881749ab712dd`
+- Main verification: passed after fresh fetch - implementation SHA `de3b0e6a7e21715d1310d0441b8881749ab712dd` is contained in current `main`, and local `HEAD` equals `origin/main`.
 - Missed: no live provider-backed two-worker execution was available locally.
 - Follow-up: `RQ218` remains WAITING for import retry idempotency; no current READY prompt is auto-promoted.
 - Residual risk: existing duplicate `(SaleId, ProductId)` rows require an approved data-cleanup plan before the migration can apply; broker publish exactly-once semantics remain outside this prompt.
