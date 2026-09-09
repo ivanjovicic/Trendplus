@@ -467,9 +467,11 @@ public class AnalyticsAggregationWorker : BackgroundService
     {
         for (var attempt = 1; attempt <= AggregateReplacementMaxAttempts; attempt++)
         {
-            await using var transaction = await connection.BeginTransactionAsync(ct);
+            NpgsqlTransaction? transaction = null;
             try
             {
+                transaction = await connection.BeginTransactionAsync(ct);
+
                 await using (var deleteCmd = new NpgsqlCommand(deleteSql, connection, transaction))
                 {
                     deleteCmd.CommandTimeout = CommandTimeoutSeconds;
@@ -493,7 +495,10 @@ public class AnalyticsAggregationWorker : BackgroundService
             {
                 try
                 {
-                    await transaction.RollbackAsync(CancellationToken.None);
+                    if (transaction is not null)
+                    {
+                        await transaction.RollbackAsync(CancellationToken.None);
+                    }
                 }
                 catch
                 {
@@ -511,7 +516,10 @@ public class AnalyticsAggregationWorker : BackgroundService
             {
                 try
                 {
-                    await transaction.RollbackAsync(CancellationToken.None);
+                    if (transaction is not null)
+                    {
+                        await transaction.RollbackAsync(CancellationToken.None);
+                    }
                 }
                 catch
                 {
@@ -519,6 +527,13 @@ public class AnalyticsAggregationWorker : BackgroundService
                 }
 
                 throw;
+            }
+            finally
+            {
+                if (transaction is not null)
+                {
+                    await transaction.DisposeAsync();
+                }
             }
         }
     }
