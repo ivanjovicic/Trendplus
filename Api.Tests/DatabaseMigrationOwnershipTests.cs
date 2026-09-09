@@ -73,6 +73,22 @@ public sealed class DatabaseMigrationOwnershipTests
         Assert.DoesNotContain("migrations failed; continuing with core analytics table self-heal", initializer, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void SalesFactsRollbackFailsClosedBeforeDroppingFactTables()
+    {
+        var migration = ReadRepoFile("Infrastructure/Migrations/AnalyticsDb/20260110170000_AddSalesFacts.cs");
+        var downStart = migration.IndexOf("protected override void Down", StringComparison.Ordinal);
+
+        Assert.True(downStart >= 0);
+
+        var down = migration[downStart..];
+
+        Assert.Contains("throw new InvalidOperationException(", down, StringComparison.Ordinal);
+        Assert.Contains("SalesFacts", down, StringComparison.Ordinal);
+        Assert.Contains("SalesLineFacts", down, StringComparison.Ordinal);
+        Assert.DoesNotContain("migrationBuilder.DropTable(", down, StringComparison.Ordinal);
+    }
+
     private static string ReadRepoFile(string relativePath)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

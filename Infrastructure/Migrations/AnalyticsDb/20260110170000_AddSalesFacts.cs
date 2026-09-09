@@ -83,11 +83,8 @@ namespace Infrastructure.Migrations.AnalyticsDb
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "SalesLineFacts");
-
-            migrationBuilder.DropTable(
-                name: "SalesFacts");
+            throw new InvalidOperationException(
+                "The AddSalesFacts migration cannot be rolled back because it would drop SalesFacts and SalesLineFacts history. Create and verify an explicit archive before introducing a replacement migration.");
         }
     }
 }
