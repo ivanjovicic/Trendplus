@@ -4,6 +4,8 @@ Date: 2026-09-09
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-09: `RQ218` was explicitly promoted by the user after completed `RQ217`, transitioned to `READY` and claimed as `IN_PROGRESS`; it is now completed and the RQ queue has no current READY prompt.
+
 Owner promotion 2026-09-09: `RQ217` was explicitly promoted by the user after completed `RQ216`, transitioned to `READY` and claimed as `IN_PROGRESS`; it is now completed and the RQ queue has no current READY prompt.
 
 Owner promotion 2026-09-09: `RQ216` was explicitly promoted by the user after completed `RQ215`, transitioned to `READY` and claimed as `IN_PROGRESS`; it is the current RQ prompt in this workspace.
@@ -183,7 +185,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ215 | DONE | aggregation-worker-atomicity | Aggregate refresh delete+insert is non-transactional (P0) |
 | RQ216 | DONE | aggregation-failure-cache-safety | Cache invalidated after partially failed aggregate refresh |
 | RQ217 | DONE | outbox-concurrent-processing | Outbox worker has no row-level locking |
-| RQ218 | WAITING | import-retry-idempotency | Access import auto-retry requeues without rolling back |
+| RQ218 | DONE | import-retry-idempotency | Access import auto-retry requeues without rolling back |
 | RQ219 | WAITING | worker-process-health | Background worker crashes are silently ignored (P0) |
 | RQ220 | WAITING | outbox-dlq-observability | Outbox messages dead-lettered with no automatic surfacing |
 | RQ221 | WAITING | error-response-sanitization | Insight Studio endpoints return raw exception messages |
@@ -8898,12 +8900,44 @@ Messages fetched with plain SELECT, not `FOR UPDATE SKIP LOCKED`. Multiple insta
 
 ## RQ218 - Access import auto-retry requeues without rolling back
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend/worker/tests
 Feature family: import-retry-idempotency
 Parallel-safe: no
 Owner: Import/Access
+
+### Scope
+
+Make Access import retry failure handling consistent and idempotent within the existing import/worker owner. Preserve the current queue and progress contract; bound changes to `AccessImportBackgroundWorker`, its import transaction/cleanup collaborators and focused tests. Do not redesign source mapping, tenant authority or analytics semantics.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`
+- `Api/Workers/AccessImportBackgroundWorker.cs`
+- `Api/Services/AccessImportService.cs`
+- nearest Access import retry/transaction tests
+
+### Tests
+
+- Add a focused regression proof that a failed import does not leave rows that a retry can duplicate.
+- Prove the failure/requeue path and preserve the existing successful import path.
+- Run the focused import tests, changed-project build and governance checks.
+
+### Dependencies
+
+- RQ217 outbox concurrency/idempotency is complete on `main`.
+- No live Access file or production data mutation is required; unavailable Access/PostgreSQL provider proof must be recorded as not run.
+
+### Promotion note
+
+- Date: 2026-09-09
+- Status: DONE
+- Promotion: explicitly promoted by the user after RQ217 completion, then claimed in this workspace; this is the single current RQ prompt.
+- Next: no current READY prompt; explicitly promote the next safe RQ prompt when ready.
 
 Commit suggestion: `fix(import): compensate partial writes before retry`
 
@@ -8924,6 +8958,25 @@ Failed batches reset to `pending` with progress zeroed but no rollback of partia
 ### Acceptance
 
 - Retried imports don't duplicate facts; data is consistent.
+
+### Completion note
+
+- Date: 2026-09-09
+- Status: DONE
+- Completion: Access import analytics projection now runs all dimension/fact steps inside one analytics database transaction, so a failed batch rolls back the complete analytics projection before the worker requeues a transient failure.
+- Changed files: `Api/Services/AccessImportService.cs`, `Api.Tests/AccessImportRetryAtomicityTests.cs`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-09-RQ218-evidence.md`.
+- Contract/runtime behavior changed: Trendplus batch writes retain their existing transaction/retry behavior; the separate analytics projection now has a single rollback boundary instead of committing each step independently. Existing upsert and sales-line replacement semantics are preserved.
+- Checks run: `dotnet build Api/Api.csproj --no-restore` passed with 0 errors and existing analyzer warnings; `dotnet build Api.Tests/Api.Tests.csproj --no-restore` passed with 0 errors and existing analyzer warnings; focused import tests passed 4/4; all six governance checks and `git diff --check` passed.
+- Checks not run: live Access-file and PostgreSQL rollback/retry proof because no provider fixture was available locally; full backend suite, production worker/Access smoke and remote CI.
+- Run log: `.ai/runs/2026-09-09-RQ218-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: no live provider-backed failed-import/retry execution was available locally.
+- Follow-up: `RQ219` remains WAITING for worker-process health; no current READY prompt is auto-promoted.
+- Residual risk: Trendplus and analytics remain separate databases and cannot be committed atomically as one distributed transaction; retry remains protected by analytics rollback plus existing upsert/replacement idempotency.
+- Prompt defect / scope repair: the legacy RQ218 prompt omitted Scope, Read first, Tests and Dependencies; those required sections were added, and the implementation stayed bounded to Access import retry/analytics transaction ownership.
 
 ---
 
