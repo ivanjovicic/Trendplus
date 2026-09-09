@@ -4,6 +4,8 @@ Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-09: `RQ216` was explicitly promoted by the user after completed `RQ215`, transitioned to `READY` and claimed as `IN_PROGRESS`; it is the current RQ prompt in this workspace.
+
 Owner promotion 2026-09-09: `RQ215` was explicitly promoted by the user after completed `RQ214`, transitioned `WAITING -> READY -> IN_PROGRESS`, and is claimed in this workspace.
 
 Owner promotion 2026-09-09: `RQ214` was explicitly promoted by the user after completed `RQ213`, transitioned `WAITING -> READY -> IN_PROGRESS`, and is claimed in this workspace.
@@ -177,7 +179,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ213 | DONE | migration-reversibility | EF migration Down() drops fact tables without backup |
 | RQ214 | DONE | seed-data-consistency | Seed sales created without decrementing stock |
 | RQ215 | DONE | aggregation-worker-atomicity | Aggregate refresh delete+insert is non-transactional (P0) |
-| RQ216 | WAITING | aggregation-failure-cache-safety | Cache invalidated after partially failed aggregate refresh |
+| RQ216 | DONE | aggregation-failure-cache-safety | Cache invalidated after partially failed aggregate refresh |
 | RQ217 | WAITING | outbox-concurrent-processing | Outbox worker has no row-level locking |
 | RQ218 | WAITING | import-retry-idempotency | Access import auto-retry requeues without rolling back |
 | RQ219 | WAITING | worker-process-health | Background worker crashes are silently ignored (P0) |
@@ -8728,12 +8730,43 @@ Category/Supplier/Gender/TopProducts refresh DELETEs a day's rows then INSERTs r
 
 ## RQ216 - Cache invalidated after partially failed aggregate refresh
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend/worker/tests
 Feature family: aggregation-failure-cache-safety
 Parallel-safe: no
 Owner: Analytics Worker
+
+### Scope
+
+Make cache invalidation reflect the actual result of the aggregate refresh. Keep the change bounded to `AnalyticsAggregationWorker` and its focused tests; do not redesign cache keys, aggregate schemas or the separate transaction/retry owner in RQ215.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`
+- `Workers/AnalyticsAggregationWorker.cs`
+- nearest existing `AnalyticsAggregationWorker` tests
+
+### Tests
+
+- Add focused proof that a failed or partially completed aggregate refresh does not invalidate aggregate-backed caches.
+- Preserve the existing success-path proof that successful refresh invalidates the expected cache families.
+- Run the focused worker tests, the changed-project build and governance checks because this prompt is being promoted and will be closed.
+
+### Dependencies
+
+- RQ215 aggregate delete+insert transaction ownership is complete on `main`.
+- No live cache/provider mutation is required; unavailable live PostgreSQL or external-cache proof must be recorded as not run.
+
+### Promotion note
+
+- Date: 2026-09-09
+- Status: DONE
+- Promotion: explicitly promoted by the user after RQ215 completion, then claimed in this workspace; this is the single current RQ prompt.
+- Next: no current READY prompt; explicitly promote the next safe RQ prompt when ready.
 
 Commit suggestion: `fix(aggregation): only invalidate cache after all tables succeed`
 
@@ -8753,6 +8786,25 @@ Per-table refresh failures are caught individually, but cache invalidation still
 ### Acceptance
 
 - Cache invalidated consistently with actual refresh success.
+
+### Completion note
+
+- Date: 2026-09-09
+- Status: DONE
+- Completion: aggregate-backed cache invalidation now runs only after every daily/dimensional/top-product aggregate refresh reports success; missing aggregate tables leave existing caches intact.
+- Changed files: `Workers/AnalyticsAggregationWorker.cs`, `Api.Tests/AnalyticsAggregationWorkerTests.cs`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-09-RQ216-evidence.md`.
+- Contract/runtime behavior changed: the worker preserves cache state when a refresh path handles a missing aggregate table, while successful refreshes retain the existing cache-family and prefix invalidation behavior. RQ215 transaction ownership remains separate.
+- Checks run: Workers build (0 warnings, 0 errors), focused worker tests (6/6), all six governance checks, and `git diff --check` passed.
+- Checks not run: authenticated live PostgreSQL partial-refresh/cache proof, full backend suite, production worker smoke and remote CI.
+- Run log: `.ai/runs/2026-09-09-RQ216-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: no live provider-backed cache-safety proof was available locally.
+- Follow-up: `RQ217` remains WAITING for outbox concurrent-processing idempotency; no current READY prompt is auto-promoted.
+- Residual risk: staging/CI should exercise a real missing-table/partial-refresh path and verify cache freshness externally.
+- Prompt defect / scope repair: the legacy RQ216 prompt omitted Scope, Read first, Tests and Dependencies; those required sections were added, and the implementation stayed bounded to the worker refresh success gate.
 
 ---
 

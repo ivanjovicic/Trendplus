@@ -89,6 +89,32 @@ public sealed class AnalyticsAggregationWorkerTests : IClassFixture<PostgresCont
 
     [Trait("Category", "Integration")]
     [Fact]
+    public async Task RefreshAnalyticsAsync_WhenAggregateTableIsMissing_DoesNotInvalidateCache()
+    {
+        if (!_fixture.IsAvailable)
+        {
+            return;
+        }
+
+        var connectionString = await _fixture.TryCreateDatabaseConnectionStringAsync($"tp_analytics_missing_{Guid.NewGuid():N}");
+        Assert.False(string.IsNullOrWhiteSpace(connectionString));
+
+        await using var harness = CreateHarness(connectionString!, useInMemoryDatabase: false);
+
+        await InvokeRefreshAnalyticsAsync(harness.Worker);
+
+        Assert.Empty(harness.Cache.RemovedPrefixes);
+
+        var state = await harness.CacheAdmin.GetStateAsync(CancellationToken.None);
+        Assert.Null(state.LastClearAtUtc);
+        Assert.Null(state.LastClearFamily);
+        Assert.Null(state.LastAnalyticsCacheClearAtUtc);
+        Assert.Null(state.LastReportCacheClearAtUtc);
+        Assert.Equal(1, state.ReportCacheVersion);
+    }
+
+    [Trait("Category", "Integration")]
+    [Fact]
     public async Task AggregateReplacementTransaction_WhenInsertFails_RollsBackDelete()
     {
         if (!_fixture.IsAvailable)

@@ -200,18 +200,26 @@ public class AnalyticsAggregationWorker : BackgroundService
             _logger.LogInformation("📊 Refreshing analytics for {StartDate} to {EndDate}...", 
                 startDate.ToString("yyyy-MM-dd"), today.ToString("yyyy-MM-dd"));
 
+            var allAggregateRefreshesSucceeded = true;
+
             // Refresh each day
             for (var date = startDate; date <= today; date = date.AddDays(1))
             {
-                await RefreshDailySummaryAsync(connection, date, ct);
-                await RefreshCategorySummaryAsync(connection, date, ct);
-                await RefreshSupplierSummaryAsync(connection, date, ct);
-                await RefreshGenderSummaryAsync(connection, date, ct);
+                allAggregateRefreshesSucceeded &= await RefreshDailySummaryAsync(connection, date, ct);
+                allAggregateRefreshesSucceeded &= await RefreshCategorySummaryAsync(connection, date, ct);
+                allAggregateRefreshesSucceeded &= await RefreshSupplierSummaryAsync(connection, date, ct);
+                allAggregateRefreshesSucceeded &= await RefreshGenderSummaryAsync(connection, date, ct);
             }
 
             // Refresh top products (only for today)
-            await RefreshTopProductsAsync(connection, today, ct);
+            allAggregateRefreshesSucceeded &= await RefreshTopProductsAsync(connection, today, ct);
             await LogDataQualitySnapshotAsync(connection, ct);
+
+            if (!allAggregateRefreshesSucceeded)
+            {
+                _logger.LogWarning("⚠️ Analytics cache invalidation skipped because one or more aggregate refreshes did not complete.");
+                return;
+            }
 
             await InvalidateAggregateBackedCachesAsync(scope.ServiceProvider, cache, ct);
 
@@ -280,7 +288,7 @@ public class AnalyticsAggregationWorker : BackgroundService
         }
     }
 
-    private async Task RefreshDailySummaryAsync(NpgsqlConnection connection, DateTime date, CancellationToken ct)
+    private async Task<bool> RefreshDailySummaryAsync(NpgsqlConnection connection, DateTime date, CancellationToken ct)
     {
         try
         {
@@ -331,14 +339,16 @@ public class AnalyticsAggregationWorker : BackgroundService
             cmd.Parameters.AddWithValue("date_from", date.Date);
             cmd.Parameters.AddWithValue("date_to", date.Date.AddDays(1));
             await cmd.ExecuteNonQueryAsync(ct);
+            return true;
         }
         catch (PostgresException ex) when (ex.SqlState == "42P01") // Table doesn't exist
         {
             _logger.LogWarning("⚠️ AnalyticsDailySummary table doesn't exist. Run migration 007 first.");
+            return false;
         }
     }
 
-    private async Task RefreshCategorySummaryAsync(NpgsqlConnection connection, DateTime date, CancellationToken ct)
+    private async Task<bool> RefreshCategorySummaryAsync(NpgsqlConnection connection, DateTime date, CancellationToken ct)
     {
         try
         {
@@ -360,14 +370,16 @@ public class AnalyticsAggregationWorker : BackgroundService
                 GROUP BY a.""Kategorija"";";
 
             await ExecuteAggregateReplacementTransactionAsync(connection, date, deleteSql, insertSql, ct);
+            return true;
         }
         catch (PostgresException ex) when (ex.SqlState == "42P01")
         {
             _logger.LogWarning("⚠️ AnalyticsCategorySummary table doesn't exist. Run migration 007 first.");
+            return false;
         }
     }
 
-    private async Task RefreshSupplierSummaryAsync(NpgsqlConnection connection, DateTime date, CancellationToken ct)
+    private async Task<bool> RefreshSupplierSummaryAsync(NpgsqlConnection connection, DateTime date, CancellationToken ct)
     {
         try
         {
@@ -391,14 +403,16 @@ public class AnalyticsAggregationWorker : BackgroundService
                 GROUP BY d.""Id"", d.""Naziv"";";
 
             await ExecuteAggregateReplacementTransactionAsync(connection, date, deleteSql, insertSql, ct);
+            return true;
         }
         catch (PostgresException ex) when (ex.SqlState == "42P01")
         {
             _logger.LogWarning("⚠️ AnalyticsSupplierSummary table doesn't exist. Run migration 007 first.");
+            return false;
         }
     }
 
-    private async Task RefreshGenderSummaryAsync(NpgsqlConnection connection, DateTime date, CancellationToken ct)
+    private async Task<bool> RefreshGenderSummaryAsync(NpgsqlConnection connection, DateTime date, CancellationToken ct)
     {
         try
         {
@@ -419,14 +433,16 @@ public class AnalyticsAggregationWorker : BackgroundService
                 GROUP BY a.""Pol"";";
 
             await ExecuteAggregateReplacementTransactionAsync(connection, date, deleteSql, insertSql, ct);
+            return true;
         }
         catch (PostgresException ex) when (ex.SqlState == "42P01")
         {
             _logger.LogWarning("⚠️ AnalyticsGenderSummary table doesn't exist. Run migration 007 first.");
+            return false;
         }
     }
 
-    private async Task RefreshTopProductsAsync(NpgsqlConnection connection, DateTime date, CancellationToken ct)
+    private async Task<bool> RefreshTopProductsAsync(NpgsqlConnection connection, DateTime date, CancellationToken ct)
     {
         try
         {
@@ -451,10 +467,12 @@ public class AnalyticsAggregationWorker : BackgroundService
                 LIMIT 50;";
 
             await ExecuteAggregateReplacementTransactionAsync(connection, date, deleteSql, insertSql, ct);
+            return true;
         }
         catch (PostgresException ex) when (ex.SqlState == "42P01")
         {
             _logger.LogWarning("⚠️ AnalyticsTopProducts table doesn't exist. Run migration 007 first.");
+            return false;
         }
     }
 
