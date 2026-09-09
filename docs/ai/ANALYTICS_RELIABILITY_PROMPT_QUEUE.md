@@ -8969,10 +8969,10 @@ Failed batches reset to `pending` with progress zeroed but no rollback of partia
 - Checks run: `dotnet build Api/Api.csproj --no-restore` passed with 0 errors and existing analyzer warnings; `dotnet build Api.Tests/Api.Tests.csproj --no-restore` passed with 0 errors and existing analyzer warnings; focused import tests passed 4/4; all six governance checks and `git diff --check` passed.
 - Checks not run: live Access-file and PostgreSQL rollback/retry proof because no provider fixture was available locally; full backend suite, production worker/Access smoke and remote CI.
 - Run log: `.ai/runs/2026-09-09-RQ218-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `86762678df0aa7103374b7f61d2c7c057e1c3f0c`
+- Main verification: passed after fresh fetch - implementation SHA `86762678df0aa7103374b7f61d2c7c057e1c3f0c` is contained in current `main`, and local `HEAD` equals `origin/main`.
 - Missed: no live provider-backed failed-import/retry execution was available locally.
 - Follow-up: `RQ219` remains WAITING for worker-process health; no current READY prompt is auto-promoted.
 - Residual risk: Trendplus and analytics remain separate databases and cannot be committed atomically as one distributed transaction; retry remains protected by analytics rollback plus existing upsert/replacement idempotency.
