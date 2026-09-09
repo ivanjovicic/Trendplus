@@ -2,9 +2,9 @@
 
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ215 (promoted; ready to claim)
+Current READY prompt: RQ215 (claimed; IN_PROGRESS)
 
-Owner promotion 2026-09-09: `RQ215` was explicitly promoted by the user after completed `RQ214`; it is the current RQ READY prompt and is ready to claim in this workspace.
+Owner promotion 2026-09-09: `RQ215` was explicitly promoted by the user after completed `RQ214`, transitioned `WAITING -> READY -> IN_PROGRESS`, and is claimed in this workspace.
 
 Owner promotion 2026-09-09: `RQ214` was explicitly promoted by the user after completed `RQ213`, transitioned `WAITING -> READY -> IN_PROGRESS`, and is claimed in this workspace.
 
@@ -176,7 +176,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ212 | DONE | migration-failure-safety | Migration failures swallowed; app runs on drifted schema |
 | RQ213 | DONE | migration-reversibility | EF migration Down() drops fact tables without backup |
 | RQ214 | DONE | seed-data-consistency | Seed sales created without decrementing stock |
-| RQ215 | READY | aggregation-worker-atomicity | Aggregate refresh delete+insert is non-transactional (P0) |
+| RQ215 | IN_PROGRESS | aggregation-worker-atomicity | Aggregate refresh delete+insert is non-transactional (P0) |
 | RQ216 | WAITING | aggregation-failure-cache-safety | Cache invalidated after partially failed aggregate refresh |
 | RQ217 | WAITING | outbox-concurrent-processing | Outbox worker has no row-level locking |
 | RQ218 | WAITING | import-retry-idempotency | Access import auto-retry requeues without rolling back |
@@ -8648,7 +8648,7 @@ Seed creates up to 100 `SEED-*` sales from articles with `Kolicina > 0` but neve
 
 ## RQ215 - Aggregate refresh delete+insert is non-transactional (CRITICAL)
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P0
 Type: backend/worker/tests
 Feature family: aggregation-worker-atomicity
@@ -8677,9 +8677,9 @@ Make each aggregate refresh replacement all-or-nothing by keeping its delete-and
 ### Promotion note
 
 - Date: 2026-09-09
-- Status: READY
-- Promotion: explicitly promoted by the user after RQ214 completion; this is the single current RQ READY prompt.
-- Next: claim RQ215 and implement the bounded aggregate refresh transaction.
+- Status: IN_PROGRESS
+- Promotion: explicitly promoted by the user after RQ214 completion, then claimed in this workspace; this remains the single current RQ prompt.
+- Next: implement the bounded aggregate refresh transaction and validation.
 
 Commit suggestion: `fix(aggregation): wrap delete+insert in transaction`
 

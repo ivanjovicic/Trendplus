@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Npgsql;
 using Workers;
 using Xunit;
 
@@ -84,6 +85,58 @@ public sealed class AnalyticsAggregationWorkerTests : IClassFixture<PostgresCont
         Assert.Null(state.LastAnalyticsCacheClearAtUtc);
         Assert.Null(state.LastReportCacheClearAtUtc);
         Assert.Equal(1, state.ReportCacheVersion);
+    }
+
+    [Trait("Category", "Integration")]
+    [Fact]
+    public async Task AggregateReplacementTransaction_WhenInsertFails_RollsBackDelete()
+    {
+        if (!_fixture.IsAvailable)
+        {
+            return;
+        }
+
+        var connectionString = await _fixture.TryCreateDatabaseConnectionStringAsync($"tp_analytics_atomicity_{Guid.NewGuid():N}");
+        Assert.False(string.IsNullOrWhiteSpace(connectionString));
+
+        await using var harness = CreateHarness(connectionString!, useInMemoryDatabase: false);
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        await using (var setup = new NpgsqlCommand(
+            """
+            CREATE TEMP TABLE "AggregateAtomicityProbe" ("Date" date PRIMARY KEY, "Value" integer);
+            INSERT INTO "AggregateAtomicityProbe" ("Date", "Value") VALUES (@date::DATE, 7);
+            """,
+            connection))
+        {
+            setup.Parameters.AddWithValue("date", DateTime.UtcNow.Date);
+            await setup.ExecuteNonQueryAsync();
+        }
+
+        var method = typeof(AnalyticsAggregationWorker).GetMethod(
+            "ExecuteAggregateReplacementTransactionAsync",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+
+        Assert.NotNull(method);
+
+        var replacementTask = (Task)method!.Invoke(
+            harness.Worker,
+            [
+                connection,
+                DateTime.UtcNow.Date,
+                "DELETE FROM \"AggregateAtomicityProbe\" WHERE \"Date\" = @date::DATE;",
+                "INSERT INTO \"AggregateAtomicityProbe\" (\"Date\", \"Value\") VALUES (@date::DATE, 1 / 0);",
+                CancellationToken.None
+            ])!;
+
+        await Assert.ThrowsAsync<PostgresException>(async () => await replacementTask);
+
+        await using var verify = new NpgsqlCommand(
+            "SELECT \"Value\" FROM \"AggregateAtomicityProbe\" WHERE \"Date\" = @date::DATE;",
+            connection);
+        verify.Parameters.AddWithValue("date", DateTime.UtcNow.Date);
+        Assert.Equal(7, await verify.ExecuteScalarAsync());
     }
 
     private static List<string> ExpectedRemovedPrefixes() =>

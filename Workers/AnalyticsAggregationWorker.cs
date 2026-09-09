@@ -36,6 +36,7 @@ public class AnalyticsAggregationWorker : BackgroundService
     
     private const string WorkerName = "AnalyticsAggregationWorker";
     private const int CommandTimeoutSeconds = 300;
+    private const int AggregateReplacementMaxAttempts = 3;
     
     // Configuration
     private readonly TimeSpan _refreshInterval = TimeSpan.FromMinutes(5);  // Refresh every 5 minutes
@@ -341,16 +342,7 @@ public class AnalyticsAggregationWorker : BackgroundService
     {
         try
         {
-            // Delete existing records for this date
             var deleteSql = @"DELETE FROM ""AnalyticsCategorySummary"" WHERE ""Date"" = @date::DATE;";
-            await using (var deleteCmd = new NpgsqlCommand(deleteSql, connection))
-            {
-                deleteCmd.CommandTimeout = CommandTimeoutSeconds;
-                deleteCmd.Parameters.AddWithValue("date", date);
-                await deleteCmd.ExecuteNonQueryAsync(ct);
-            }
-
-            // Insert new records
             var insertSql = @"
                 INSERT INTO ""AnalyticsCategorySummary"" (""Date"", ""Kategorija"", ""TotalRevenue"", ""TotalUnits"", ""TransactionCount"", ""UpdatedAt"")
                 SELECT 
@@ -367,12 +359,7 @@ public class AnalyticsAggregationWorker : BackgroundService
                   AND p.datum_prodaje < @date_to
                 GROUP BY a.""Kategorija"";";
 
-            await using var cmd = new NpgsqlCommand(insertSql, connection);
-            cmd.CommandTimeout = CommandTimeoutSeconds;
-            cmd.Parameters.AddWithValue("date", date.Date);
-            cmd.Parameters.AddWithValue("date_from", date.Date);
-            cmd.Parameters.AddWithValue("date_to", date.Date.AddDays(1));
-            await cmd.ExecuteNonQueryAsync(ct);
+            await ExecuteAggregateReplacementTransactionAsync(connection, date, deleteSql, insertSql, ct);
         }
         catch (PostgresException ex) when (ex.SqlState == "42P01")
         {
@@ -384,16 +371,7 @@ public class AnalyticsAggregationWorker : BackgroundService
     {
         try
         {
-            // Delete existing records for this date
             var deleteSql = @"DELETE FROM ""AnalyticsSupplierSummary"" WHERE ""Date"" = @date::DATE;";
-            await using (var deleteCmd = new NpgsqlCommand(deleteSql, connection))
-            {
-                deleteCmd.CommandTimeout = CommandTimeoutSeconds;
-                deleteCmd.Parameters.AddWithValue("date", date);
-                await deleteCmd.ExecuteNonQueryAsync(ct);
-            }
-
-            // Insert new records
             var insertSql = @"
                 INSERT INTO ""AnalyticsSupplierSummary"" (""Date"", ""DobavljacId"", ""DobavljacNaziv"", ""TotalRevenue"", ""TotalUnits"", ""TransactionCount"", ""UpdatedAt"")
                 SELECT 
@@ -412,12 +390,7 @@ public class AnalyticsAggregationWorker : BackgroundService
                   AND p.datum_prodaje < @date_to
                 GROUP BY d.""Id"", d.""Naziv"";";
 
-            await using var cmd = new NpgsqlCommand(insertSql, connection);
-            cmd.CommandTimeout = CommandTimeoutSeconds;
-            cmd.Parameters.AddWithValue("date", date.Date);
-            cmd.Parameters.AddWithValue("date_from", date.Date);
-            cmd.Parameters.AddWithValue("date_to", date.Date.AddDays(1));
-            await cmd.ExecuteNonQueryAsync(ct);
+            await ExecuteAggregateReplacementTransactionAsync(connection, date, deleteSql, insertSql, ct);
         }
         catch (PostgresException ex) when (ex.SqlState == "42P01")
         {
@@ -429,16 +402,7 @@ public class AnalyticsAggregationWorker : BackgroundService
     {
         try
         {
-            // Delete existing records for this date
             var deleteSql = @"DELETE FROM ""AnalyticsGenderSummary"" WHERE ""Date"" = @date::DATE;";
-            await using (var deleteCmd = new NpgsqlCommand(deleteSql, connection))
-            {
-                deleteCmd.CommandTimeout = CommandTimeoutSeconds;
-                deleteCmd.Parameters.AddWithValue("date", date);
-                await deleteCmd.ExecuteNonQueryAsync(ct);
-            }
-
-            // Insert new records
             var insertSql = @"
                 INSERT INTO ""AnalyticsGenderSummary"" (""Date"", ""Pol"", ""TotalRevenue"", ""TotalUnits"", ""UpdatedAt"")
                 SELECT 
@@ -454,12 +418,7 @@ public class AnalyticsAggregationWorker : BackgroundService
                   AND p.datum_prodaje < @date_to
                 GROUP BY a.""Pol"";";
 
-            await using var cmd = new NpgsqlCommand(insertSql, connection);
-            cmd.CommandTimeout = CommandTimeoutSeconds;
-            cmd.Parameters.AddWithValue("date", date.Date);
-            cmd.Parameters.AddWithValue("date_from", date.Date);
-            cmd.Parameters.AddWithValue("date_to", date.Date.AddDays(1));
-            await cmd.ExecuteNonQueryAsync(ct);
+            await ExecuteAggregateReplacementTransactionAsync(connection, date, deleteSql, insertSql, ct);
         }
         catch (PostgresException ex) when (ex.SqlState == "42P01")
         {
@@ -471,16 +430,7 @@ public class AnalyticsAggregationWorker : BackgroundService
     {
         try
         {
-            // Delete existing records for this date
             var deleteSql = @"DELETE FROM ""AnalyticsTopProducts"" WHERE ""Date"" = @date::DATE;";
-            await using (var deleteCmd = new NpgsqlCommand(deleteSql, connection))
-            {
-                deleteCmd.CommandTimeout = CommandTimeoutSeconds;
-                deleteCmd.Parameters.AddWithValue("date", date);
-                await deleteCmd.ExecuteNonQueryAsync(ct);
-            }
-
-            // Insert top 50 products for today
             var insertSql = @"
                 INSERT INTO ""AnalyticsTopProducts"" (""Date"", ""ProductId"", ""ProductName"", ""TotalRevenue"", ""TotalUnits"", ""Rank"", ""UpdatedAt"")
                 SELECT 
@@ -500,18 +450,82 @@ public class AnalyticsAggregationWorker : BackgroundService
                 ORDER BY total_revenue DESC
                 LIMIT 50;";
 
-            await using var cmd = new NpgsqlCommand(insertSql, connection);
-            cmd.CommandTimeout = CommandTimeoutSeconds;
-            cmd.Parameters.AddWithValue("date", date.Date);
-            cmd.Parameters.AddWithValue("date_from", date.Date);
-            cmd.Parameters.AddWithValue("date_to", date.Date.AddDays(1));
-            await cmd.ExecuteNonQueryAsync(ct);
+            await ExecuteAggregateReplacementTransactionAsync(connection, date, deleteSql, insertSql, ct);
         }
         catch (PostgresException ex) when (ex.SqlState == "42P01")
         {
             _logger.LogWarning("⚠️ AnalyticsTopProducts table doesn't exist. Run migration 007 first.");
         }
     }
+
+    private async Task ExecuteAggregateReplacementTransactionAsync(
+        NpgsqlConnection connection,
+        DateTime date,
+        string deleteSql,
+        string insertSql,
+        CancellationToken ct)
+    {
+        for (var attempt = 1; attempt <= AggregateReplacementMaxAttempts; attempt++)
+        {
+            await using var transaction = await connection.BeginTransactionAsync(ct);
+            try
+            {
+                await using (var deleteCmd = new NpgsqlCommand(deleteSql, connection, transaction))
+                {
+                    deleteCmd.CommandTimeout = CommandTimeoutSeconds;
+                    deleteCmd.Parameters.AddWithValue("date", date.Date);
+                    await deleteCmd.ExecuteNonQueryAsync(ct);
+                }
+
+                await using (var insertCmd = new NpgsqlCommand(insertSql, connection, transaction))
+                {
+                    insertCmd.CommandTimeout = CommandTimeoutSeconds;
+                    insertCmd.Parameters.AddWithValue("date", date.Date);
+                    insertCmd.Parameters.AddWithValue("date_from", date.Date);
+                    insertCmd.Parameters.AddWithValue("date_to", date.Date.AddDays(1));
+                    await insertCmd.ExecuteNonQueryAsync(ct);
+                }
+
+                await transaction.CommitAsync(ct);
+                return;
+            }
+            catch (Exception ex) when (attempt < AggregateReplacementMaxAttempts && IsTransientAggregateReplacementFailure(ex))
+            {
+                try
+                {
+                    await transaction.RollbackAsync(CancellationToken.None);
+                }
+                catch
+                {
+                    // Preserve the original transient failure for the retry decision.
+                }
+
+                _logger.LogWarning(
+                    ex,
+                    "⚠️ Retrying aggregate replacement transaction after transient failure (attempt {Attempt}/{MaxAttempts}).",
+                    attempt,
+                    AggregateReplacementMaxAttempts);
+                await Task.Delay(TimeSpan.FromMilliseconds(100 * attempt), ct);
+            }
+            catch
+            {
+                try
+                {
+                    await transaction.RollbackAsync(CancellationToken.None);
+                }
+                catch
+                {
+                    // Preserve the original replacement failure for the worker owner.
+                }
+
+                throw;
+            }
+        }
+    }
+
+    private static bool IsTransientAggregateReplacementFailure(Exception exception)
+        => exception is NpgsqlException and not PostgresException
+            || exception is PostgresException { SqlState: "40001" or "40P01" or "55P03" };
 
     private async Task LogDataQualitySnapshotAsync(NpgsqlConnection connection, CancellationToken ct)
     {
