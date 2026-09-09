@@ -2,7 +2,9 @@
 
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ214 (claimed; IN_PROGRESS)
+
+Owner promotion 2026-09-09: `RQ214` was explicitly promoted by the user after completed `RQ213`, transitioned `WAITING -> READY -> IN_PROGRESS`, and is claimed in this workspace.
 
 Owner promotion 2026-09-09: `RQ213` was explicitly promoted by the user after completed `RQ212`, transitioned `WAITING -> READY -> IN_PROGRESS`, and is claimed in this workspace.
 
@@ -171,7 +173,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ211 | DONE | migration-sequencing | Parallel SQL migrations without ordering guarantees |
 | RQ212 | DONE | migration-failure-safety | Migration failures swallowed; app runs on drifted schema |
 | RQ213 | DONE | migration-reversibility | EF migration Down() drops fact tables without backup |
-| RQ214 | WAITING | seed-data-consistency | Seed sales created without decrementing stock |
+| RQ214 | IN_PROGRESS | seed-data-consistency | Seed sales created without decrementing stock |
 | RQ215 | WAITING | aggregation-worker-atomicity | Aggregate refresh delete+insert is non-transactional (P0) |
 | RQ216 | WAITING | aggregation-failure-cache-safety | Cache invalidated after partially failed aggregate refresh |
 | RQ217 | WAITING | outbox-concurrent-processing | Outbox worker has no row-level locking |
@@ -8565,12 +8567,42 @@ Rolling back SalesFacts migration drops both `SalesFacts` and `SalesLineFacts` w
 
 ## RQ214 - Seed sales created without decrementing stock
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P2
 Type: backend/seed/tests
 Feature family: seed-data-consistency
 Parallel-safe: yes
 Owner: Data/Seeding
+
+### Scope
+
+Keep the deterministic `SEED-*` sale path internally consistent by decrementing the same `Artikli.Kolicina` inventory used to select seeded articles. Limit the change to `TrendplusDbSeeder` and its focused seed-data proof; do not change production import, sale posting, tenant or stock-reservation workflows.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`
+- `Infrastructure/Seed/TrendplusDbSeeder.cs`
+- nearest existing seed/inventory tests
+
+### Tests
+
+- Add or extend a focused test proving generated seed sales and final article stock reconcile for the seeded quantity.
+- Run the focused seed test, the changed-project build and governance checks because this queue prompt is being promoted and will be closed.
+
+### Dependencies
+
+- RQ213 fail-closed migration rollback behavior is complete on `main`.
+- No live database mutation is required; any unavailable provider-backed seed execution must be recorded as not run.
+
+### Promotion note
+
+- Date: 2026-09-09
+- Status: IN_PROGRESS
+- Promotion: explicitly promoted by the user after RQ213 completion, then claimed in this workspace; this remains the single current RQ prompt.
+- Next: implement the narrow seeded-stock reconciliation and validation.
 
 Commit suggestion: `fix(seed): decrement article stock when creating seed sales`
 

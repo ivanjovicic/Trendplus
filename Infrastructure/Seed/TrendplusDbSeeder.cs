@@ -258,9 +258,8 @@ public static class TrendplusDbSeeder
 
         // --- GENERISI 100 TEST PRODAJA ---
         var allArtikli = await db.Artikli
-            .AsNoTracking()
             .Where(a => a.Kolicina > 0)
-            .Select(a => new { a.Id, a.ProdajnaCena })
+            .OrderBy(a => a.Id)
             .ToListAsync(ct);
 
         if (allArtikli.Count == 0)
@@ -304,18 +303,32 @@ public static class TrendplusDbSeeder
             var brojStavki = rng.Next(1, 6);
             var stavke = new List<ProdajaStavka>();
 
-            // Izaberi random artikle
-            var shuffled = allArtikli.OrderBy(_ => rng.Next()).Take(brojStavki).ToList();
+            // Izaberi random artikle sa preostalom zalihom. Artikli ostaju trackovani
+            // kako bi isti SaveChanges atomarno upisao prodaju i novo stanje zalihe.
+            var shuffled = allArtikli
+                .Where(art => art.Kolicina is > 0)
+                .OrderBy(_ => rng.Next())
+                .Take(brojStavki)
+                .ToList();
+
+            if (shuffled.Count == 0)
+            {
+                // Nema vise raspolozive zalihe za novu seed prodaju.
+                break;
+            }
 
             foreach (var art in shuffled)
             {
-                var kolicina = rng.Next(1, 4); // 1-3 komada
+                var raspolozivo = art.Kolicina!.Value;
+                var kolicina = Math.Min(rng.Next(1, 4), raspolozivo); // 1-3 komada, bez oversellinga
                 stavke.Add(new ProdajaStavka
                 {
                     IdArtikal = art.Id,
                     Kolicina = kolicina,
                     Cena = art.ProdajnaCena ?? 0m
                 });
+
+                art.Kolicina = raspolozivo - kolicina;
             }
 
             prodajeToAdd.Add(new ProdajaZaglavlje
