@@ -2,7 +2,7 @@
 
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ213 (claimed; IN_PROGRESS)
+Current READY prompt: none
 
 Owner promotion 2026-09-09: `RQ213` was explicitly promoted by the user after completed `RQ212`, transitioned `WAITING -> READY -> IN_PROGRESS`, and is claimed in this workspace.
 
@@ -170,7 +170,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ210 | DONE | startup-readiness-gate | Startup init silently skipped after lock timeout |
 | RQ211 | DONE | migration-sequencing | Parallel SQL migrations without ordering guarantees |
 | RQ212 | DONE | migration-failure-safety | Migration failures swallowed; app runs on drifted schema |
-| RQ213 | IN_PROGRESS | migration-reversibility | EF migration Down() drops fact tables without backup |
+| RQ213 | DONE | migration-reversibility | EF migration Down() drops fact tables without backup |
 | RQ214 | WAITING | seed-data-consistency | Seed sales created without decrementing stock |
 | RQ215 | WAITING | aggregation-worker-atomicity | Aggregate refresh delete+insert is non-transactional (P0) |
 | RQ216 | WAITING | aggregation-failure-cache-safety | Cache invalidated after partially failed aggregate refresh |
@@ -8486,7 +8486,7 @@ EF migration exceptions logged as warnings; init continues with "self-heal" SQL.
 
 ## RQ213 - EF migration Down() drops core analytics fact tables without backup
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/infra
 Feature family: migration-reversibility
@@ -8541,6 +8541,25 @@ Rolling back SalesFacts migration drops both `SalesFacts` and `SalesLineFacts` w
 ### Acceptance
 
 - Core fact tables cannot be accidentally dropped without explicit backup.
+
+### Completion note
+
+- Date: 2026-09-09
+- Status: DONE
+- Completion: `AddSalesFacts.Down()` now fails closed before any destructive operation, so an EF rollback cannot drop `SalesFacts` or `SalesLineFacts` without a separately reviewed replacement/backup decision.
+- Changed files: `Infrastructure/Migrations/AnalyticsDb/20260110170000_AddSalesFacts.cs`, `Api.Tests/DatabaseMigrationOwnershipTests.cs`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-09-RQ213-evidence.md`.
+- Contract/runtime behavior changed: rollback of the historical sales fact migration raises an explicit `InvalidOperationException`; the previous `DropTable` operations are unreachable and no automatic archive/export or production data mutation was introduced.
+- Checks run: Infrastructure build (0 warnings, 0 errors), `DatabaseMigrationOwnershipTests` (6/6), `dotnet ef migrations list` (migration inventory listed; applied-state lookup unavailable because the local PostgreSQL authentication failed), `git diff --check`, and all six governance checks passed.
+- Checks not run: live PostgreSQL rollback execution because no authenticated live database environment was available, full backend suite, production startup smoke and remote CI.
+- Run log: `.ai/runs/2026-09-09-RQ213-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `d2bab09908686dfcbe5677d3a986b63d58baa7f1`
+- Main verification: passed - final `git rev-parse HEAD` equals `git rev-parse origin/main`, and implementation SHA `d2bab09908686dfcbe5677d3a986b63d58baa7f1` is an ancestor of both.
+- Missed: no live provider-backed rollback proof was available locally.
+- Follow-up: RQ214 remains WAITING for seed-data consistency; no current READY prompt is auto-promoted.
+- Residual risk: staging/CI should exercise migration rollback policy with authenticated PostgreSQL and an approved backup/archive workflow before any reversal is attempted.
+- Prompt defect / scope repair: the legacy RQ213 prompt omitted Scope, Read first, Tests and Dependencies; those required sections were added, and the safe guard was bounded to the named `AddSalesFacts` rollback.
 
 ---
 
