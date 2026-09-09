@@ -2,7 +2,7 @@
 
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ214 (claimed; IN_PROGRESS)
+Current READY prompt: none
 
 Owner promotion 2026-09-09: `RQ214` was explicitly promoted by the user after completed `RQ213`, transitioned `WAITING -> READY -> IN_PROGRESS`, and is claimed in this workspace.
 
@@ -173,7 +173,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ211 | DONE | migration-sequencing | Parallel SQL migrations without ordering guarantees |
 | RQ212 | DONE | migration-failure-safety | Migration failures swallowed; app runs on drifted schema |
 | RQ213 | DONE | migration-reversibility | EF migration Down() drops fact tables without backup |
-| RQ214 | IN_PROGRESS | seed-data-consistency | Seed sales created without decrementing stock |
+| RQ214 | DONE | seed-data-consistency | Seed sales created without decrementing stock |
 | RQ215 | WAITING | aggregation-worker-atomicity | Aggregate refresh delete+insert is non-transactional (P0) |
 | RQ216 | WAITING | aggregation-failure-cache-safety | Cache invalidated after partially failed aggregate refresh |
 | RQ217 | WAITING | outbox-concurrent-processing | Outbox worker has no row-level locking |
@@ -8567,7 +8567,7 @@ Rolling back SalesFacts migration drops both `SalesFacts` and `SalesLineFacts` w
 
 ## RQ214 - Seed sales created without decrementing stock
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P2
 Type: backend/seed/tests
 Feature family: seed-data-consistency
@@ -8600,9 +8600,9 @@ Keep the deterministic `SEED-*` sale path internally consistent by decrementing 
 ### Promotion note
 
 - Date: 2026-09-09
-- Status: IN_PROGRESS
-- Promotion: explicitly promoted by the user after RQ213 completion, then claimed in this workspace; this remains the single current RQ prompt.
-- Next: implement the narrow seeded-stock reconciliation and validation.
+- Status: DONE
+- Promotion: explicitly promoted by the user after RQ213 completion, then claimed in this workspace; this was the single current RQ prompt.
+- Next: no current READY prompt; explicitly promote the next safe RQ prompt when ready.
 
 Commit suggestion: `fix(seed): decrement article stock when creating seed sales`
 
@@ -8622,6 +8622,25 @@ Seed creates up to 100 `SEED-*` sales from articles with `Kolicina > 0` but neve
 ### Acceptance
 
 - Seed data is internally consistent (inventory + sales = reality).
+
+### Completion note
+
+- Date: 2026-09-09
+- Status: DONE
+- Completion: deterministic `SEED-*` sales now consume available `Artikli.Kolicina`, cap each line quantity to remaining stock and persist the stock decrement with the generated sale batch.
+- Changed files: `Infrastructure/Seed/TrendplusDbSeeder.cs`, `Api.Tests/TrendplusDbSeederTests.cs`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-09-RQ214-evidence.md`.
+- Contract/runtime behavior changed: seed sale generation uses tracked article rows, never oversells an article, stops when no stock remains and atomically saves sale inserts with inventory decrements through the existing `SaveChangesAsync` unit of work.
+- Checks run: API.Tests build (0 errors; 62 existing warnings), `TrendplusDbSeederTests` and `DatabaseMigrationOwnershipTests` (7/7), all six governance checks, and `git diff --check` passed.
+- Checks not run: authenticated live PostgreSQL seed execution, full backend suite, production startup smoke and remote CI; no live database mutation was authorized.
+- Run log: `.ai/runs/2026-09-09-RQ214-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `b4fdef869ea1322cacd25899a1e7a2f637aeb19c`
+- Main verification: passed - final `git rev-parse HEAD` equals `git rev-parse origin/main`, and implementation SHA `b4fdef869ea1322cacd25899a1e7a2f637aeb19c` is an ancestor of both.
+- Missed: no authenticated live provider-backed seed proof was available locally.
+- Follow-up: RQ215 remains WAITING for aggregate refresh atomicity; no current READY prompt is auto-promoted.
+- Residual risk: staging/CI should exercise provider-backed seed generation and rollback/retry behavior before relying on live inventory reconciliation.
+- Prompt defect / scope repair: the legacy RQ214 prompt omitted Scope, Read first, Tests and Dependencies; those required sections were added, and the implementation remained bounded to deterministic Trendplus seed sales and stock.
 
 ---
 
