@@ -1,8 +1,10 @@
 # Analytics Reliability Prompt Queue
 
-Date: 2026-09-07
+Date: 2026-09-09
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+
+Owner promotion 2026-09-09: `RQ217` was explicitly promoted by the user after completed `RQ216`, transitioned to `READY` and claimed as `IN_PROGRESS`; it is now completed and the RQ queue has no current READY prompt.
 
 Owner promotion 2026-09-09: `RQ216` was explicitly promoted by the user after completed `RQ215`, transitioned to `READY` and claimed as `IN_PROGRESS`; it is the current RQ prompt in this workspace.
 
@@ -180,7 +182,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ214 | DONE | seed-data-consistency | Seed sales created without decrementing stock |
 | RQ215 | DONE | aggregation-worker-atomicity | Aggregate refresh delete+insert is non-transactional (P0) |
 | RQ216 | DONE | aggregation-failure-cache-safety | Cache invalidated after partially failed aggregate refresh |
-| RQ217 | WAITING | outbox-concurrent-processing | Outbox worker has no row-level locking |
+| RQ217 | DONE | outbox-concurrent-processing | Outbox worker has no row-level locking |
 | RQ218 | WAITING | import-retry-idempotency | Access import auto-retry requeues without rolling back |
 | RQ219 | WAITING | worker-process-health | Background worker crashes are silently ignored (P0) |
 | RQ220 | WAITING | outbox-dlq-observability | Outbox messages dead-lettered with no automatic surfacing |
@@ -2694,7 +2696,7 @@ Do not change recommendation thresholds, financial calculations, Product Decisio
 
 ## RQ128 - Prove Product Decision actionability parity on the exact deployed runtime
 
-Status: WAITING
+Status: IN_PROGRESS
 Ready after: `STAB16` is DONE with worker/freshness evidence and read-only reconciliation on the canonical Render runtime
 Priority: P0
 Type: backend-frontend-contract/live-evidence
@@ -8810,12 +8812,44 @@ Per-table refresh failures are caught individually, but cache invalidation still
 
 ## RQ217 - Outbox worker has no row-level locking
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: backend/worker/tests
 Feature family: outbox-concurrent-processing
 Parallel-safe: no
 Owner: Outbox/Worker
+
+### Scope
+
+Make outbox message claiming safe across concurrent worker instances and make analytics sales projection idempotent at the database boundary. Keep the change bounded to `OutboxProcessorWorker`, the `SalesLineFacts` uniqueness contract/migration and focused worker tests; do not redesign broker delivery, import workflows or tenant ownership.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`
+- `Workers/OutboxProcessorWorker.cs`
+- `Infrastructure/DbContexts/AnalyticsDbContext.cs`
+- nearest outbox/worker and PostgreSQL integration tests
+
+### Tests
+
+- Add a focused source/model guard for the row-lock and unique-index contracts.
+- Add a PostgreSQL concurrency test where two worker transactions contend for the same pending message and only one claims it.
+- Preserve the existing projection idempotency behavior and run the focused worker tests, changed-project build and governance checks.
+
+### Dependencies
+
+- RQ216 aggregate-refresh cache-safety is complete on `main`.
+- No live broker delivery or production data mutation is required; unavailable PostgreSQL/Testcontainers proof must be recorded as not run.
+
+### Promotion note
+
+- Date: 2026-09-09
+- Status: DONE
+- Promotion: explicitly promoted by the user after RQ216 completion, then claimed in this workspace; this is the single current RQ prompt.
+- Next: no current READY prompt; explicitly promote the next safe RQ prompt when ready.
 
 Commit suggestion: `fix(outbox): add FOR UPDATE SKIP LOCKED to prevent duplicates`
 
@@ -8840,6 +8874,25 @@ Messages fetched with plain SELECT, not `FOR UPDATE SKIP LOCKED`. Multiple insta
 ### Acceptance
 
 - Outbox projection is idempotent across concurrent workers.
+
+### Completion note
+
+- Date: 2026-09-09
+- Status: DONE
+- Completion: outbox batches are claimed inside a database transaction with `FOR UPDATE SKIP LOCKED`, and analytics sales-line projection now has a unique `(SaleId, ProductId)` database constraint.
+- Changed files: `Workers/OutboxProcessorWorker.cs`, `Infrastructure/DbContexts/AnalyticsDbContext.cs`, `Infrastructure/Migrations/AnalyticsDb/AnalyticsDbContextModelSnapshot.cs`, `Infrastructure/Migrations/AnalyticsDb/20260909190000_AddSalesLineFactIdempotency.cs`, `Api.Tests/OutboxProcessorWorkerConcurrencyTests.cs`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-09-RQ217-evidence.md`.
+- Contract/runtime behavior changed: concurrent workers no longer claim the same pending outbox row; existing projection checks remain in place and the analytics database rejects duplicate `(SaleId, ProductId)` facts. The migration fails closed with an actionable error if historical duplicates exist.
+- Checks run: `dotnet build Workers/Workers.csproj --no-restore` passed with 0 warnings and 0 errors; `dotnet build Api.Tests/Api.Tests.csproj --no-restore` passed with 0 errors and existing analyzer warnings; focused outbox tests passed 2/2; EF migration listing exposed `20260909190000_AddSalesLineFactIdempotency`; all governance checks and `git diff --check` passed.
+- Checks not run: live PostgreSQL/Testcontainers concurrency proof because Docker provider was unavailable locally; full backend suite, production worker/broker smoke and remote CI.
+- Run log: `.ai/runs/2026-09-09-RQ217-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: no live provider-backed two-worker execution was available locally.
+- Follow-up: `RQ218` remains WAITING for import retry idempotency; no current READY prompt is auto-promoted.
+- Residual risk: existing duplicate `(SaleId, ProductId)` rows require an approved data-cleanup plan before the migration can apply; broker publish exactly-once semantics remain outside this prompt.
+- Prompt defect / scope repair: the legacy RQ217 prompt omitted Scope, Read first, Tests and Dependencies; those required sections were added, and the implementation stayed bounded to outbox claiming, analytics uniqueness and focused tests.
 
 ---
 

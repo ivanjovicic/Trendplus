@@ -111,7 +111,7 @@ namespace Infrastructure.DbContexts
                 entity.Property(e => e.DataOrigin).HasMaxLength(32).HasDefaultValue("existing");
 
                 entity.HasIndex(e => e.SaleId);
-                entity.HasIndex(e => new { e.ProductId, e.SaleId });
+                entity.HasIndex(e => new { e.SaleId, e.ProductId }).IsUnique();
             });
 
             modelBuilder.Entity<SuppliersDim>(entity =>

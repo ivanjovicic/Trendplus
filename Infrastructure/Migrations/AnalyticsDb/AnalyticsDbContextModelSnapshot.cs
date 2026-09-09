@@ -1405,7 +1405,8 @@ namespace Infrastructure.Migrations.AnalyticsDb
 
                     b.HasIndex("SaleId");
 
-                    b.HasIndex("ProductId", "SaleId");
+                    b.HasIndex("SaleId", "ProductId")
+                        .IsUnique();
 
                     b.ToTable("SalesLineFacts", (string)null);
                 });

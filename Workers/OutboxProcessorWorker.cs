@@ -165,69 +165,99 @@ namespace Workers
             var analyticsDb = scope.ServiceProvider.GetRequiredService<AnalyticsDbContext>();
             var messageBroker = scope.ServiceProvider.GetRequiredService<IMessageBroker>();
 
-            var messages = await db.OutboxMessages
-                .Where(m => !m.IsProcessed && m.RetryCount < 5)
-                .OrderBy(m => m.CreatedAt)
-                .Take(50)
-                .ToListAsync(ct);
-
-            if (!messages.Any())
+            await using var transaction = await db.Database.BeginTransactionAsync(ct);
+            try
             {
-                return;
+                var messages = await ClaimPendingMessagesAsync(db, ct);
+
+                if (!messages.Any())
+                {
+                    await transaction.CommitAsync(ct);
+                    return;
+                }
+
+                _logger.LogInformation("Processing {Count} outbox messages", messages.Count);
+
+                foreach (var message in messages)
+                {
+                    try
+                    {
+                        _logger.LogInformation(
+                            "Processing outbox message {Id} - EventType: {EventType}, CorrelationId: {CorrelationId}",
+                            message.Id,
+                            message.EventType,
+                            message.CorrelationId);
+
+                        // 1) Project to analytics DB (read model)
+                        await TryProjectToAnalyticsAsync(message, db, analyticsDb, ct);
+
+                        // 2) Publish to RabbitMQ if enabled
+                        if (messageBroker.IsEnabled)
+                        {
+                            await messageBroker.PublishAsync(
+                                message.EventType,
+                                message.Payload,
+                                routingKey: message.EventType.ToLowerInvariant(),
+                                ct: ct);
+                        }
+                        else
+                        {
+                            _logger.LogDebug(
+                                "Message broker disabled - skipping publish for outbox message {Id}",
+                                message.Id);
+                        }
+
+                        message.IsProcessed = true;
+                        message.ProcessedAt = DateTime.UtcNow;
+
+                        _logger.LogInformation("Outbox message {Id} processed successfully", message.Id);
+                    }
+                    catch (Exception ex)
+                    {
+                        message.RetryCount++;
+                        message.ErrorMessage = $"{ex.GetType().Name}: {ex.Message}";
+
+                        _logger.LogError(
+                            ex,
+                            "Failed to process outbox message {Id} (Retry: {RetryCount}/5)",
+                            message.Id,
+                            message.RetryCount);
+                    }
+                }
+
+                await db.SaveChangesAsync(ct);
+                await transaction.CommitAsync(ct);
+                _logger.LogInformation("Processed {Count} outbox messages", messages.Count);
             }
-
-            _logger.LogInformation("Processing {Count} outbox messages", messages.Count);
-
-            foreach (var message in messages)
+            catch
             {
                 try
                 {
-                    _logger.LogInformation(
-                        "Processing outbox message {Id} - EventType: {EventType}, CorrelationId: {CorrelationId}",
-                        message.Id,
-                        message.EventType,
-                        message.CorrelationId);
-
-                    // 1) Project to analytics DB (read model)
-                    await TryProjectToAnalyticsAsync(message, db, analyticsDb, ct);
-
-                    // 2) Publish to RabbitMQ if enabled
-                    if (messageBroker.IsEnabled)
-                    {
-                        await messageBroker.PublishAsync(
-                            message.EventType,
-                            message.Payload,
-                            routingKey: message.EventType.ToLowerInvariant(),
-                            ct: ct);
-                    }
-                    else
-                    {
-                        _logger.LogDebug(
-                            "Message broker disabled - skipping publish for outbox message {Id}",
-                            message.Id);
-                    }
-
-                    message.IsProcessed = true;
-                    message.ProcessedAt = DateTime.UtcNow;
-
-                    _logger.LogInformation("Outbox message {Id} processed successfully", message.Id);
+                    await transaction.RollbackAsync(CancellationToken.None);
                 }
-                catch (Exception ex)
+                catch
                 {
-                    message.RetryCount++;
-                    message.ErrorMessage = $"{ex.GetType().Name}: {ex.Message}";
-
-                    _logger.LogError(
-                        ex,
-                        "Failed to process outbox message {Id} (Retry: {RetryCount}/5)",
-                        message.Id,
-                        message.RetryCount);
+                    // Preserve the original processing failure.
                 }
-            }
 
-            await db.SaveChangesAsync(ct);
-            _logger.LogInformation("Processed {Count} outbox messages", messages.Count);
+                throw;
+            }
         }
+
+        private static Task<List<OutboxMessage>> ClaimPendingMessagesAsync(
+            ITrendplusDbContext db,
+            CancellationToken ct)
+            => db.OutboxMessages
+                .FromSqlRaw("""
+                    SELECT "Id", "EventType", "Payload", "CreatedAt", "ProcessedAt",
+                           "IsProcessed", "RetryCount", "ErrorMessage", "CorrelationId"
+                    FROM "OutboxMessages"
+                    WHERE NOT "IsProcessed" AND "RetryCount" < 5
+                    ORDER BY "CreatedAt", "Id"
+                    LIMIT 50
+                    FOR UPDATE SKIP LOCKED;
+                    """)
+                .ToListAsync(ct);
 
         private static async Task TryProjectToAnalyticsAsync(
             OutboxMessage message,
