@@ -2,7 +2,7 @@
 
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ215 (claimed; IN_PROGRESS)
+Current READY prompt: none
 
 Owner promotion 2026-09-09: `RQ215` was explicitly promoted by the user after completed `RQ214`, transitioned `WAITING -> READY -> IN_PROGRESS`, and is claimed in this workspace.
 
@@ -176,7 +176,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ212 | DONE | migration-failure-safety | Migration failures swallowed; app runs on drifted schema |
 | RQ213 | DONE | migration-reversibility | EF migration Down() drops fact tables without backup |
 | RQ214 | DONE | seed-data-consistency | Seed sales created without decrementing stock |
-| RQ215 | IN_PROGRESS | aggregation-worker-atomicity | Aggregate refresh delete+insert is non-transactional (P0) |
+| RQ215 | DONE | aggregation-worker-atomicity | Aggregate refresh delete+insert is non-transactional (P0) |
 | RQ216 | WAITING | aggregation-failure-cache-safety | Cache invalidated after partially failed aggregate refresh |
 | RQ217 | WAITING | outbox-concurrent-processing | Outbox worker has no row-level locking |
 | RQ218 | WAITING | import-retry-idempotency | Access import auto-retry requeues without rolling back |
@@ -8648,7 +8648,7 @@ Seed creates up to 100 `SEED-*` sales from articles with `Kolicina > 0` but neve
 
 ## RQ215 - Aggregate refresh delete+insert is non-transactional (CRITICAL)
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P0
 Type: backend/worker/tests
 Feature family: aggregation-worker-atomicity
@@ -8677,9 +8677,9 @@ Make each aggregate refresh replacement all-or-nothing by keeping its delete-and
 ### Promotion note
 
 - Date: 2026-09-09
-- Status: IN_PROGRESS
-- Promotion: explicitly promoted by the user after RQ214 completion, then claimed in this workspace; this remains the single current RQ prompt.
-- Next: implement the bounded aggregate refresh transaction and validation.
+- Status: DONE
+- Promotion: explicitly promoted by the user after RQ214 completion, then claimed in this workspace; this was the single current RQ prompt.
+- Next: no current READY prompt; explicitly promote the next safe RQ prompt when ready.
 
 Commit suggestion: `fix(aggregation): wrap delete+insert in transaction`
 
@@ -8704,6 +8704,25 @@ Category/Supplier/Gender/TopProducts refresh DELETEs a day's rows then INSERTs r
 ### Acceptance
 
 - Aggregates are all-or-nothing; no partial deletions.
+
+### Completion note
+
+- Date: 2026-09-09
+- Status: DONE
+- Completion: Category, Supplier, Gender and TopProducts aggregate replacements now execute delete+insert inside a retryable transaction, so an insert failure rolls back the preceding delete.
+- Changed files: `Workers/AnalyticsAggregationWorker.cs`, `Api.Tests/AnalyticsAggregationWorkerTests.cs`, `Api.Tests/AnalyticsAggregationWorkerAtomicityTests.cs`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-09-RQ215-evidence.md`.
+- Contract/runtime behavior changed: each replacement opens a transaction, binds both commands to it, commits only after both succeed, rolls back on failure and retries transient Npgsql/PostgreSQL failures up to three attempts. RQ216 cache invalidation policy remains separate.
+- Checks run: Workers build (0 warnings, 0 errors), API.Tests build (0 errors; 166 existing warnings), focused worker tests (5/5), all six governance checks and `git diff --check` passed.
+- Checks not run: authenticated live PostgreSQL aggregate refresh/rollback execution because Docker/Testcontainers and a valid live database were unavailable, full backend suite, production worker smoke and remote CI.
+- Run log: `.ai/runs/2026-09-09-RQ215-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `bc495ea11b2ad9ae27e6d55c4c1e1fcf5ed0f354`
+- Main verification: passed - final `git rev-parse HEAD` equals `git rev-parse origin/main`, and implementation SHA `bc495ea11b2ad9ae27e6d55c4c1e1fcf5ed0f354` is an ancestor of both.
+- Missed: no live provider-backed mid-operation rollback proof was available locally.
+- Follow-up: RQ216 remains WAITING for cache invalidation after partial refresh; no current READY prompt is auto-promoted.
+- Residual risk: staging/CI should exercise transient retry, deadlock/serialization behavior and authenticated PostgreSQL rollback semantics.
+- Prompt defect / scope repair: the legacy RQ215 prompt omitted Scope, Read first and Dependencies; those required sections were added, and the change remained bounded to aggregate replacement transaction ownership.
 
 ---
 
