@@ -2,7 +2,9 @@
 
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ213 (promoted; ready to claim)
+
+Owner promotion 2026-09-09: `RQ213` was explicitly promoted by the user after completed `RQ212`; it is the current RQ READY prompt and is ready to claim in this workspace.
 
 Owner promotion 2026-09-08: `RQ212` was explicitly promoted by the user after completed `RQ211`, transitioned `WAITING -> READY -> IN_PROGRESS`, and is claimed in this workspace.
 
@@ -168,7 +170,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ210 | DONE | startup-readiness-gate | Startup init silently skipped after lock timeout |
 | RQ211 | DONE | migration-sequencing | Parallel SQL migrations without ordering guarantees |
 | RQ212 | DONE | migration-failure-safety | Migration failures swallowed; app runs on drifted schema |
-| RQ213 | WAITING | migration-reversibility | EF migration Down() drops fact tables without backup |
+| RQ213 | READY | migration-reversibility | EF migration Down() drops fact tables without backup |
 | RQ214 | WAITING | seed-data-consistency | Seed sales created without decrementing stock |
 | RQ215 | WAITING | aggregation-worker-atomicity | Aggregate refresh delete+insert is non-transactional (P0) |
 | RQ216 | WAITING | aggregation-failure-cache-safety | Cache invalidated after partially failed aggregate refresh |
@@ -8484,12 +8486,42 @@ EF migration exceptions logged as warnings; init continues with "self-heal" SQL.
 
 ## RQ213 - EF migration Down() drops core analytics fact tables without backup
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: backend/infra
 Feature family: migration-reversibility
 Parallel-safe: no
 Owner: Infrastructure
+
+### Scope
+
+Prevent the `AddSalesFacts` rollback from dropping the `SalesFacts` and `SalesLineFacts` history tables without an explicit, reviewable safety decision. Keep the change bounded to this migration and its focused regression proof; do not redesign the migration history or add a production backup workflow.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`
+- `Infrastructure/Migrations/AnalyticsDb/20260110170000_AddSalesFacts.cs`
+- `Infrastructure/DbContexts/AnalyticsDbContext.cs`
+
+### Tests
+
+- Add a focused migration guardrail proving the `AddSalesFacts` `Down()` path cannot emit destructive drops without the required explicit safety gate.
+- Run the focused migration test, the Infrastructure build and governance checks because this queue prompt is being promoted and will be closed.
+
+### Dependencies
+
+- RQ212 fail-closed EF migration startup behavior is complete on `main`.
+- No live database mutation is required; any provider-backed rollback execution unavailable locally must be recorded as not run.
+
+### Promotion note
+
+- Date: 2026-09-09
+- Status: READY
+- Promotion: explicitly promoted by the user after RQ212 completion; this is the single current RQ READY prompt.
+- Next: claim RQ213 and implement the narrow rollback safety guard.
 
 Commit suggestion: `fix(migrations): archive or prevent irreversible rollbacks of fact tables`
 
