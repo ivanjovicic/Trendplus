@@ -136,8 +136,7 @@ public static class InsightStudioEndpoints
             }
             catch (Exception ex)
             {
-                await HandledErrorLogging.PersistHandledExceptionAsync(httpContext, ex, "Insight Studio endpoint failed", ct);
-                return Results.Problem(detail: ex.Message, statusCode: 500, title: "GreÅ¡ka KPI snapshot");
+                return await CreateSafeErrorResponseAsync(httpContext, ex, "Greška KPI snapshot", ct);
             }
         }).RequireRateLimiting("db-heavy");
 
@@ -253,8 +252,7 @@ public static class InsightStudioEndpoints
             }
             catch (Exception ex)
             {
-                await HandledErrorLogging.PersistHandledExceptionAsync(httpContext, ex, "Insight Studio endpoint failed", ct);
-                return Results.Problem(detail: ex.Message, statusCode: 500, title: "GreÅ¡ka supplier scorecard");
+                return await CreateSafeErrorResponseAsync(httpContext, ex, "Greška supplier scorecard", ct);
             }
         }).RequireRateLimiting("db-heavy");
 
@@ -332,8 +330,7 @@ public static class InsightStudioEndpoints
             }
             catch (Exception ex)
             {
-                await HandledErrorLogging.PersistHandledExceptionAsync(httpContext, ex, "Insight Studio endpoint failed", ct);
-                return Results.Problem(detail: ex.Message, statusCode: 500, title: "GreÅ¡ka ABC klasifikacija");
+                return await CreateSafeErrorResponseAsync(httpContext, ex, "Greška ABC klasifikacija", ct);
             }
         }).RequireRateLimiting("db-heavy");
 
@@ -424,8 +421,7 @@ public static class InsightStudioEndpoints
             }
             catch (Exception ex)
             {
-                await HandledErrorLogging.PersistHandledExceptionAsync(httpContext, ex, "Insight Studio endpoint failed", ct);
-                return Results.Problem(detail: ex.Message, statusCode: 500, title: "GreÅ¡ka aging stock");
+                return await CreateSafeErrorResponseAsync(httpContext, ex, "Greška aging stock", ct);
             }
         }).RequireRateLimiting("db-heavy");
 
@@ -528,8 +524,7 @@ public static class InsightStudioEndpoints
             }
             catch (Exception ex)
             {
-                await HandledErrorLogging.PersistHandledExceptionAsync(httpContext, ex, "Insight Studio endpoint failed", ct);
-                return Results.Problem(detail: ex.Message, statusCode: 500, title: "GreÅ¡ka daily analysis");
+                return await CreateSafeErrorResponseAsync(httpContext, ex, "Greška daily analysis", ct);
             }
         }).RequireRateLimiting("db-heavy");
 
@@ -648,8 +643,7 @@ public static class InsightStudioEndpoints
             }
             catch (Exception ex)
             {
-                await HandledErrorLogging.PersistHandledExceptionAsync(httpContext, ex, "Insight Studio endpoint failed", ct);
-                return Results.Problem(detail: ex.Message, statusCode: 500, title: "GreÅ¡ka category intelligence");
+                return await CreateSafeErrorResponseAsync(httpContext, ex, "Greška category intelligence", ct);
             }
         }).RequireRateLimiting("db-heavy");
 
@@ -752,9 +746,26 @@ public static class InsightStudioEndpoints
             }
             catch (Exception ex)
             {
-                await HandledErrorLogging.PersistHandledExceptionAsync(httpContext, ex, "Insight Studio endpoint failed", ct);
-                return Results.Problem(detail: ex.Message, statusCode: 500, title: "GreÅ¡ka reorder plan");
+                return await CreateSafeErrorResponseAsync(httpContext, ex, "Greška reorder plan", ct);
             }
         }).RequireRateLimiting("db-heavy");
+    }
+
+    private static async Task<IResult> CreateSafeErrorResponseAsync(
+        HttpContext httpContext,
+        Exception exception,
+        string title,
+        CancellationToken ct)
+    {
+        await HandledErrorLogging.PersistHandledExceptionAsync(
+            httpContext,
+            exception,
+            "Insight Studio endpoint failed",
+            ct);
+
+        return Results.Problem(
+            detail: "Insight Studio trenutno nije dostupan. Pokušajte ponovo ili kontaktirajte podršku.",
+            statusCode: StatusCodes.Status500InternalServerError,
+            title: title);
     }
 }

@@ -4,6 +4,8 @@ Date: 2026-09-10
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-10: `RQ221` was explicitly promoted by the user after completed `RQ220`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
+
 Owner promotion 2026-09-10: `RQ220` was explicitly promoted by the user after completed `RQ219`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ220` was delivered on `main` as the outbox dead-letter observability correction; the RQ queue returned to no current READY prompt.
 
@@ -193,7 +195,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ218 | DONE | import-retry-idempotency | Access import auto-retry requeues without rolling back |
 | RQ219 | DONE | worker-process-health | Background worker crashes are silently ignored (P0) |
 | RQ220 | DONE | outbox-dlq-observability | Outbox messages dead-lettered with no automatic surfacing |
-| RQ221 | WAITING | error-response-sanitization | Insight Studio endpoints return raw exception messages |
+| RQ221 | IN_PROGRESS | error-response-sanitization | Insight Studio endpoints return raw exception messages |
 | RQ222 | WAITING | aggregate-consistency | Daily vs dimensional aggregates disagree on orphan sales |
 | RQ223 | WAITING | import-data-completeness | SkipInvalidForeignKeys default silently drops orphan lines |
 | RQ224 | WAITING | analytics-db-routing-safety | Analytics DB connection silently falls back in production |
@@ -9149,7 +9151,7 @@ Messages with `RetryCount >= 5` excluded forever; recovery requires manual `/api
 
 ## RQ221 - Insight Studio endpoints return raw exception messages
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P2
 Type: backend/security
 Feature family: error-response-sanitization
@@ -9166,6 +9168,32 @@ Analytics endpoints return `Results.Problem(detail: ex.Message)` on failure. Pos
 
 - `InsightStudioEndpoints.cs:137-140, 257, 336, 428, 532, 652, 756`.
 
+### Scope
+
+- Keep the change bounded to `Api/Endpoints/InsightStudioEndpoints.cs` and focused backend contract tests.
+- Preserve the existing endpoint status codes, exception persistence and route shapes; only sanitize the response detail/title text.
+- Do not expand into `InsightStudioV2Endpoints.cs`, global middleware, authorization or unrelated endpoint families.
+
+### Read first
+
+- `Api/Endpoints/InsightStudioEndpoints.cs`
+- `Api/Endpoints/HandledErrorLogging.cs`
+- `Infrastructure/Middleware/GlobalExceptionMiddleware.cs`
+- `Api.Tests/AnalyticsResponseMetaContractTests.cs`
+
+### Do
+
+1. Centralize the handled Insight Studio exception response behind a safe generic `ProblemDetails` detail.
+2. Keep `HandledErrorLogging.PersistHandledExceptionAsync` so full diagnostics remain available to the existing error store/logging path.
+3. Repair only the affected user-visible Serbian titles from confirmed mojibake; do not rewrite unrelated historical text in the file.
+4. Add a focused regression guard proving no Insight Studio handled response returns `ex.Message` or an equivalent raw exception detail.
+
+### Tests
+
+- Focused `InsightStudioEndpoints` error-response contract test: all seven handled exception paths use the safe response helper and retain diagnostic persistence.
+- Assert the source contains no `Results.Problem(detail: ex.Message` response in this endpoint family.
+- Run the focused backend test filter and build the changed backend projects.
+
 ### Do
 
 1. Wrap exception details in `ProblemDetails` with generic message.
@@ -9173,7 +9201,14 @@ Analytics endpoints return `Results.Problem(detail: ex.Message)` on failure. Pos
 
 ### Acceptance
 
-- No internal SQL errors or table names visible in API responses.
+- No internal SQL errors, exception messages or table names are visible in any of the seven Insight Studio v1 handled error responses.
+- The response remains a 500 `ProblemDetails` result with a generic Serbian explanation; full diagnostics continue through the existing persistence path.
+- No route, status-code, authorization or `InsightStudioV2Endpoints` behavior changes.
+
+### Dependencies
+
+- `RQ220` outbox observability correction is complete on current `main`.
+- Existing `HandledErrorLogging` remains the diagnostic persistence owner.
 
 ---
 
