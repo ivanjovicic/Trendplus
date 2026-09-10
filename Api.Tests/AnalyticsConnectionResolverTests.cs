@@ -30,39 +30,49 @@ public sealed class AnalyticsConnectionResolverTests
     }
 
     [Fact]
-    public void ResolveDetailed_FallsBackToDefault_WhenAnalyticsConnectionMissingInProduction()
+    public void ResolveDetailed_Throws_WhenAnalyticsConnectionMissingInProduction()
     {
         var warnings = new List<string>();
 
-        var result = AnalyticsConnectionResolver.ResolveDetailed(
-            DefaultConnection,
-            analyticsConnection: null,
-            isDevelopment: false,
-            onWarning: warnings.Add);
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            AnalyticsConnectionResolver.ResolveDetailed(
+                DefaultConnection,
+                analyticsConnection: null,
+                isDevelopment: false,
+                onWarning: warnings.Add));
 
-        Assert.Equal(DefaultConnection, result.ConnectionString);
-        Assert.Equal(AnalyticsConnectionResolver.SourceMissingAnalyticsFallback, result.Source);
-        Assert.True(result.UsedFallback);
-        Assert.NotNull(result.Warning);
-        Assert.Single(warnings);
+        Assert.Contains("refusing to fall back", exception.Message);
+        Assert.Empty(warnings);
     }
 
     [Fact]
-    public void ResolveDetailed_FallsBackToDefault_WhenAnalyticsConnectionIsLoopbackInProduction()
+    public void ResolveDetailed_PreservesDefaultFallback_WhenAnalyticsConnectionMissingInDevelopment()
+    {
+        var result = AnalyticsConnectionResolver.ResolveDetailed(
+            DefaultConnection,
+            analyticsConnection: null,
+            isDevelopment: true);
+
+        Assert.Equal(DefaultConnection, result.ConnectionString);
+        Assert.Equal(AnalyticsConnectionResolver.SourceDefaultConnectionFallback, result.Source);
+        Assert.True(result.UsedFallback);
+        Assert.Null(result.Warning);
+    }
+
+    [Fact]
+    public void ResolveDetailed_Throws_WhenAnalyticsConnectionIsLoopbackInProduction()
     {
         var warnings = new List<string>();
 
-        var result = AnalyticsConnectionResolver.ResolveDetailed(
-            DefaultConnection,
-            LoopbackAnalyticsConnection,
-            isDevelopment: false,
-            onWarning: warnings.Add);
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            AnalyticsConnectionResolver.ResolveDetailed(
+                DefaultConnection,
+                LoopbackAnalyticsConnection,
+                isDevelopment: false,
+                onWarning: warnings.Add));
 
-        Assert.Equal(DefaultConnection, result.ConnectionString);
-        Assert.Equal(AnalyticsConnectionResolver.SourceLoopbackAnalyticsFallback, result.Source);
-        Assert.True(result.UsedFallback);
-        Assert.NotNull(result.Warning);
-        Assert.Single(warnings);
+        Assert.Contains("loopback host", exception.Message);
+        Assert.Empty(warnings);
     }
 
     [Fact]

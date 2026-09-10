@@ -2,7 +2,9 @@
 
 Date: 2026-09-10
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: `RQ224` (claimed `IN_PROGRESS` in this workspace)
+
+Owner promotion 2026-09-10: `RQ224` was explicitly promoted by the user after completed `RQ223`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 
 Owner promotion 2026-09-10: `RQ223` was explicitly promoted by the user after completed `RQ222`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ223` was delivered on `main` as the fail-closed invalid-foreign-key default correction; the RQ queue returned to no current READY prompt.
@@ -205,7 +207,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ221 | DONE | error-response-sanitization | Insight Studio endpoints return raw exception messages |
 | RQ222 | DONE | aggregate-consistency | Daily vs dimensional aggregates disagree on orphan sales |
 | RQ223 | DONE | import-data-completeness | SkipInvalidForeignKeys default silently drops orphan lines |
-| RQ224 | WAITING | analytics-db-routing-safety | Analytics DB connection silently falls back in production |
+| RQ224 | IN_PROGRESS | analytics-db-routing-safety | Analytics DB connection silently falls back in production |
 | RQ225 | WAITING | feature-flag-safety | UseSnapshotCost feature flag toggles live without validation |
 | RQ226 | WAITING | worker-schedule-safety | Invalid nightly refresh schedule silently defaults |
 | RQ227 | WAITING | cleanup-safety-gates | Batch delete proceeds after archive quota failure |
@@ -9392,12 +9394,13 @@ Access import skips `prodaja_stavke` rows with missing parent headers when defau
 
 ## RQ224 - Analytics DB connection silently falls back in production
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: backend/infra
 Feature family: analytics-db-routing-safety
 Parallel-safe: no
 Owner: Infrastructure
+Local lock: `.ai/task-locks/RQ224-codex.lock.md`
 
 Commit suggestion: `fix(config): fail startup if AnalyticsConnection missing in prod`
 
@@ -9409,6 +9412,20 @@ Missing `AnalyticsConnection` falls back to `DefaultConnection` in non-dev. Stag
 
 - `AnalyticsConnectionResolver.cs:71-87`.
 
+### Scope
+
+- `Api/Config/AnalyticsConnectionResolver.cs` and its focused tests
+- startup connection-resolution behavior in `Api/Program.cs` only if required by the resolver contract
+- no production database changes, data migration, analytics query changes or frontend work
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `Api/Config/AnalyticsConnectionResolver.cs`
+- `Api.Tests/AnalyticsConnectionResolverTests.cs`
+- `Api/Program.cs` connection-resolution registration
+
 ### Do
 
 1. In prod/staging, throw if `AnalyticsConnection` not configured.
@@ -9417,6 +9434,16 @@ Missing `AnalyticsConnection` falls back to `DefaultConnection` in non-dev. Stag
 ### Acceptance
 
 - Wrong database configuration causes startup failure, not silent fallback.
+
+### Tests
+
+- focused `AnalyticsConnectionResolverTests`
+- `dotnet build Api/Api.csproj --configuration Release --no-restore`
+- `git diff --check`
+
+### Dependencies
+
+- None. Existing explicit development/test fallback behavior remains covered and bounded.
 
 ---
 
