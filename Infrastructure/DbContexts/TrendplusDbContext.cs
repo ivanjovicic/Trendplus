@@ -357,7 +357,7 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.IncludeAnalytics).HasDefaultValue(true);
                 eb.Property(e => e.OverwriteExisting).HasDefaultValue(true);
                 eb.Property(e => e.IncludeTemporaryTables).HasDefaultValue(false);
-                eb.Property(e => e.SkipInvalidForeignKeys).HasDefaultValue(true);
+                eb.Property(e => e.SkipInvalidForeignKeys).HasDefaultValue(false);
                 eb.Property(e => e.CancellationRequested).HasDefaultValue(false);
                 eb.Property(e => e.CancellationRequestedAtUtc);
                 eb.Property(e => e.RetryCount).HasDefaultValue(0);

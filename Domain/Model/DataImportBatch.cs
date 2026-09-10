@@ -35,7 +35,7 @@ namespace Domain.Model
         public bool IncludeAnalytics { get; set; } = true;
         public bool OverwriteExisting { get; set; } = true;
         public bool IncludeTemporaryTables { get; set; }
-        public bool SkipInvalidForeignKeys { get; set; } = true;
+        public bool SkipInvalidForeignKeys { get; set; }
         public bool CancellationRequested { get; set; }
         public DateTime? CancellationRequestedAtUtc { get; set; }
         public int RetryCount { get; set; }

@@ -4,6 +4,8 @@ Date: 2026-09-10
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-10: `RQ223` was explicitly promoted by the user after completed `RQ222`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
+
 Owner promotion 2026-09-10: `RQ222` was explicitly promoted by the user after completed `RQ221`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ222` was delivered on `main` as the dimensional aggregate orphan-line reconciliation correction; the RQ queue returned to no current READY prompt.
 
@@ -201,7 +203,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ220 | DONE | outbox-dlq-observability | Outbox messages dead-lettered with no automatic surfacing |
 | RQ221 | DONE | error-response-sanitization | Insight Studio endpoints return raw exception messages |
 | RQ222 | DONE | aggregate-consistency | Daily vs dimensional aggregates disagree on orphan sales |
-| RQ223 | WAITING | import-data-completeness | SkipInvalidForeignKeys default silently drops orphan lines |
+| RQ223 | IN_PROGRESS | import-data-completeness | SkipInvalidForeignKeys default silently drops orphan lines |
 | RQ224 | WAITING | analytics-db-routing-safety | Analytics DB connection silently falls back in production |
 | RQ225 | WAITING | feature-flag-safety | UseSnapshotCost feature flag toggles live without validation |
 | RQ226 | WAITING | worker-schedule-safety | Invalid nightly refresh schedule silently defaults |
@@ -9312,7 +9314,7 @@ Commit suggestion: `fix(aggregation): align join logic across daily and dimensio
 
 ## RQ223 - Default SkipInvalidForeignKeys=true silently drops orphan import lines
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: backend/import/tests
 Feature family: import-data-completeness
@@ -9329,15 +9331,42 @@ Access import skips `prodaja_stavke` rows with missing parent headers when defau
 
 - `AccessImportOptions.cs:28`; `AccessImportService.cs:4769, 4896-4898`.
 
+### Scope
+
+- Keep the change bounded to the Access import invalid-foreign-key defaults, runtime batch-schema defaults, the owning migration/model metadata and focused importer tests.
+- Preserve the existing explicit opt-in warning path, fail-closed path, batch/result warning evidence and transaction/retry behavior.
+- Do not redesign Access row mapping, auto-parent insertion, analytics refresh or live-provider operations.
+
+### Read first
+
+- `Api/Config/AccessImportOptions.cs`
+- `Domain/Model/DataImportBatch.cs`
+- `Api/Services/AccessImportService.cs`
+- `Infrastructure/DbContexts/TrendplusDbContext.cs`
+- `Api.Tests/AccessImportForeignKeyGuardTests.cs`
+- `Api.Tests/AccessImportServiceTests.cs`
+
 ### Do
 
-1. Default to `SkipInvalidForeignKeys=false` (fail on invalid FKs).
-2. Log count of skipped rows; fail import if count > 0.
-3. Add tests for orphan detection.
+1. Make `SkipInvalidForeignKeys=false` the default in options, new import batches, checked-in configuration and runtime/schema defaults.
+2. Add a migration that changes the existing `DataImportBatches` column default without rewriting historical batch choices.
+3. Keep the explicit `true` path warning/count visible and the `false` path fail closed; add focused tests for defaults and orphan handling.
 
 ### Acceptance
 
 - Invalid FKs cause import failure or explicit warning; no silent data loss.
+- Newly created import batches default to `SkipInvalidForeignKeys=false` across options, configuration, EF metadata, runtime bootstrap and the migration.
+- Existing explicit opt-in `true` behavior remains warning-based with skipped-row counts; `false` rejects the orphan rows before persistence.
+
+### Tests
+
+- Focused Access import option and foreign-key guard tests covering the false default, explicit warning/count path and fail-closed path.
+- Owning backend build and migration inventory/static checks.
+
+### Dependencies
+
+- `RQ222` aggregate consistency is complete on current `main`.
+- No live-provider or production data mutation is required; the migration must preserve existing batch values.
 
 ---
 

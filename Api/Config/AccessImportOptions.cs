@@ -25,7 +25,7 @@ public sealed class AccessImportOptions
     public bool EnableMdbSql { get; set; }
     public bool EnableFastWritePath { get; set; } = true;
     public bool PreventConcurrentRuns { get; set; } = true;
-    public bool SkipInvalidForeignKeys { get; set; } = true;
+    public bool SkipInvalidForeignKeys { get; set; }
     // Deleted-row rollback archives are opt-in so routine cleanup cannot grow storage silently.
     public bool ArchiveDeletedRows { get; set; }
     public long ArchiveDeletedRowsMaxBytes { get; set; } = 16 * 1024 * 1024;

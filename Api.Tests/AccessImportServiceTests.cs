@@ -417,11 +417,19 @@ public sealed class AccessImportServiceTests
     }
 
     [Fact]
-    public void AccessImportOptions_SkipInvalidForeignKeys_DefaultsToTrue()
+    public void AccessImportOptions_SkipInvalidForeignKeys_DefaultsToFalse()
     {
         var options = new AccessImportOptions();
 
-        Assert.True(options.SkipInvalidForeignKeys);
+        Assert.False(options.SkipInvalidForeignKeys);
+    }
+
+    [Fact]
+    public void DataImportBatch_SkipInvalidForeignKeys_DefaultsToFalse()
+    {
+        var batch = new Domain.Model.DataImportBatch();
+
+        Assert.False(batch.SkipInvalidForeignKeys);
     }
 
     [Fact]

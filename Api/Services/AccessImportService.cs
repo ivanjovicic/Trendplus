@@ -8443,7 +8443,7 @@ using NpgsqlTypes;
                 "IncludeAnalytics" boolean NOT NULL DEFAULT TRUE,
                 "OverwriteExisting" boolean NOT NULL DEFAULT TRUE,
                 "IncludeTemporaryTables" boolean NOT NULL DEFAULT FALSE,
-                "SkipInvalidForeignKeys" boolean NOT NULL DEFAULT TRUE,
+                "SkipInvalidForeignKeys" boolean NOT NULL DEFAULT FALSE,
                 "CancellationRequested" boolean NOT NULL DEFAULT FALSE,
                 "CancellationRequestedAtUtc" timestamp with time zone,
                 "RetryCount"      integer NOT NULL DEFAULT 0,
@@ -8482,7 +8482,7 @@ using NpgsqlTypes;
             ALTER TABLE IF EXISTS "DataImportBatches" ADD COLUMN IF NOT EXISTS "IncludeAnalytics" boolean NOT NULL DEFAULT TRUE;
             ALTER TABLE IF EXISTS "DataImportBatches" ADD COLUMN IF NOT EXISTS "OverwriteExisting" boolean NOT NULL DEFAULT TRUE;
             ALTER TABLE IF EXISTS "DataImportBatches" ADD COLUMN IF NOT EXISTS "IncludeTemporaryTables" boolean NOT NULL DEFAULT FALSE;
-            ALTER TABLE IF EXISTS "DataImportBatches" ADD COLUMN IF NOT EXISTS "SkipInvalidForeignKeys" boolean NOT NULL DEFAULT TRUE;
+            ALTER TABLE IF EXISTS "DataImportBatches" ADD COLUMN IF NOT EXISTS "SkipInvalidForeignKeys" boolean NOT NULL DEFAULT FALSE;
             ALTER TABLE IF EXISTS "DataImportBatches" ADD COLUMN IF NOT EXISTS "CancellationRequested" boolean NOT NULL DEFAULT FALSE;
             ALTER TABLE IF EXISTS "DataImportBatches" ADD COLUMN IF NOT EXISTS "CancellationRequestedAtUtc" timestamp with time zone;
             ALTER TABLE IF EXISTS "DataImportBatches" ADD COLUMN IF NOT EXISTS "RetryCount" integer NOT NULL DEFAULT 0;

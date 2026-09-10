@@ -161,7 +161,7 @@ public sealed class AccessImportExecutionStrategyTests : IClassFixture<PostgresC
                 "IncludeAnalytics" boolean NOT NULL DEFAULT TRUE,
                 "OverwriteExisting" boolean NOT NULL DEFAULT TRUE,
                 "IncludeTemporaryTables" boolean NOT NULL DEFAULT FALSE,
-                "SkipInvalidForeignKeys" boolean NOT NULL DEFAULT TRUE,
+                "SkipInvalidForeignKeys" boolean NOT NULL DEFAULT FALSE,
                 "CancellationRequested" boolean NOT NULL DEFAULT FALSE,
                 "CancellationRequestedAtUtc" timestamp with time zone,
                 "RetryCount" integer NOT NULL DEFAULT 0,

@@ -774,7 +774,7 @@ namespace Infrastructure.Migrations
                     b.Property<bool>("SkipInvalidForeignKeys")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
-                        .HasDefaultValue(true);
+                        .HasDefaultValue(false);
 
                     b.Property<int>("SkippedRowCount")
                         .ValueGeneratedOnAdd()
