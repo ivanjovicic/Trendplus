@@ -1,6 +1,13 @@
+using System.Reflection;
 using Api.Config;
 using Api.Services;
+using Infrastructure.DbContexts;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using Npgsql;
+using Xunit;
 using Xunit;
 
 namespace Api.Tests;
@@ -65,5 +72,41 @@ public sealed class AccessImportArchivePolicyTests
 
         Assert.False(decision.Allowed);
         Assert.Contains("invalid", decision.Reason, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("53100")] // disk_full
+    [InlineData("42P01")] // undefined_table
+    public async Task ArchiveWriteFailure_stops_batch_deletion(string sqlState)
+    {
+        await using var db = new TrendplusDbContext(
+            new DbContextOptionsBuilder<TrendplusDbContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .Options);
+        var service = new AccessImportService(
+            db,
+            analyticsDb: null!,
+            NullLogger<AccessImportService>.Instance,
+            Options.Create(new AccessImportOptions { ArchiveDeletedRows = true }));
+        var method = typeof(AccessImportService).GetMethod(
+            "TryArchiveInsertCompatAsync",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.NotNull(method);
+
+        var postgresFailure = new PostgresException(
+            "archive write failed",
+            "ERROR",
+            "ERROR",
+            sqlState);
+        Func<Task> archiveAction = () => Task.FromException(postgresFailure);
+
+        var result = (Task)method!.Invoke(
+            service,
+            [archiveAction, "Artikli", "delete-batch-archive", 42L])!;
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => result);
+
+        Assert.Equal("Deleted-row archive write failed; batch deletion was stopped.", exception.Message);
+        Assert.Same(postgresFailure, exception.InnerException);
     }
 }

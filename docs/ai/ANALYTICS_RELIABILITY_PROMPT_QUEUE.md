@@ -4,6 +4,9 @@ Date: 2026-09-10
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-10: `RQ227` was explicitly promoted by the user after completed `RQ226`; it is the single current RQ prompt.
+Owner completion 2026-09-10: `RQ227` was delivered on `main` with fail-closed deleted-row archive handling and focused regression coverage; the RQ queue returned to no current READY prompt.
+
 Owner promotion 2026-09-10: `RQ226` was explicitly promoted by the user after completed `RQ225`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ226` was delivered on `main` with startup validation and explicit UTC schedule logging; the RQ queue returned to no current READY prompt.
 
@@ -217,7 +220,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ224 | DONE | analytics-db-routing-safety | Analytics DB connection silently falls back in production |
 | RQ225 | DONE | feature-flag-safety | UseSnapshotCost feature flag toggles live without validation |
 | RQ226 | DONE | worker-schedule-safety | Invalid nightly refresh schedule silently defaults |
-| RQ227 | WAITING | cleanup-safety-gates | Batch delete proceeds after archive quota failure |
+| RQ227 | DONE | cleanup-safety-gates | Batch delete proceeds after archive quota failure |
 | RQ228 | WAITING | period-timezone-contract-consistency | Insight Studio v1/v2 period handling timezone mismatch |
 | RQ258 | WAITING | trust-header-safe-metadata | Keep shared AnalyticsTrustHeader metadata user-safe and finite |
 | RQ259 | WAITING | trust-header-mode-freshness | Make shared trust-header gating and freshness normalization mode-aware |
@@ -9623,7 +9626,7 @@ Malformed `NightlyAnalyticsRefresh:RunAtUtc` values fall back to 00:10 UTC with 
 
 ## RQ227 - Batch delete proceeds after archive quota failure
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: backend/operations
 Feature family: cleanup-safety-gates
@@ -9648,6 +9651,44 @@ When archive insert fails (storage full), delete still proceeds. Irreversible da
 ### Acceptance
 
 - Data cleanup doesn't proceed without successful archive backup.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `Api/Services/AccessImportService.cs`
+- `Api/Services/ArchiveStorageBudgetGuard.cs`
+- `Api.Tests/AccessImportArchivePolicyTests.cs`
+
+### Tests
+
+- `git diff --check`
+- `dotnet test .\\Api.Tests\\Api.Tests.csproj --filter "FullyQualifiedName~Api.Tests.AccessImportArchivePolicyTests" --no-restore`
+- queue and planning governance validators
+
+### Dependencies
+
+- `RQ226` DONE; no additional dependency was declared for this bounded cleanup-safety correction.
+
+### Completion note
+
+- Date: 2026-09-10
+- Status: DONE
+- Completion: archive write failures for missing archive schema and PostgreSQL storage-quota exhaustion now fail closed and stop batch deletion instead of disabling archiving and continuing.
+- Changed files: `Api/Services/AccessImportService.cs`; `Api.Tests/AccessImportArchivePolicyTests.cs`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-10-RQ227-evidence.md`
+- Contract/runtime behavior changed: yes; when deleted-row archiving is enabled, a recognized archive write failure raises a safe operation error before the next delete operation is attempted.
+- Checks run: `git diff --check`; `dotnet test .\\Api.Tests\\Api.Tests.csproj --filter "FullyQualifiedName~Api.Tests.AccessImportArchivePolicyTests" --no-restore` (7/7); `node scripts/check-agent-instructions.mjs --self-test`; `node scripts/check-agent-instructions.mjs`; `node scripts/check-prompt-queues.mjs --self-test`; `node scripts/check-prompt-queues.mjs`; `node scripts/check-planning-architecture.mjs --self-test`; `node scripts/check-planning-architecture.mjs`
+- Checks not run: full `Api.Tests` suite; live PostgreSQL quota/schema-failure integration; production cleanup execution
+- Run log: `.ai/runs/2026-09-10-RQ227-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending until commit and push
+- Missed: no cross-database transaction/rollback proof for failures that occur after earlier tables in the batch were already processed
+- Follow-up: consider a separately scoped transactional cleanup design if full-batch atomicity is required across Trendplus and Analytics databases
+- Residual risk: a late archive failure stops subsequent deletes but cannot atomically undo earlier work across two database contexts
+- Next: none (RQ Current READY none)
+- Prompt defect / scope repair: the legacy prompt lacked explicit `Read first`, `Tests` and `Dependencies` sections; those were added without changing runtime scope.
 
 ---
 

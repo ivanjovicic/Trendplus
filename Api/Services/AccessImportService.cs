@@ -3365,9 +3365,6 @@ using NpgsqlTypes;
         var storeDeleted = 0;
         var summaryDeleted = 0;
 
-        var trendArchiveEnabled = _options.ArchiveDeletedRows;
-        var analyticsArchiveEnabled = _options.ArchiveDeletedRows;
-
         if (_options.ArchiveDeletedRows)
         {
             await EnsureArchiveBudgetAsync(_trendDb, "trendplus", ct);
@@ -3376,10 +3373,10 @@ using NpgsqlTypes;
 
         async Task ArchiveTrendAsync(string tableName, string sql, params object[] parameters)
         {
-            if (!trendArchiveEnabled)
+            if (!_options.ArchiveDeletedRows)
                 return;
 
-            trendArchiveEnabled = await TryArchiveInsertCompatAsync(
+            await TryArchiveInsertCompatAsync(
                 () => _trendDb.Database.ExecuteSqlRawAsync(sql, parameters),
                 tableName,
                 "delete-batch-archive",
@@ -3388,10 +3385,10 @@ using NpgsqlTypes;
 
         async Task ArchiveAnalyticsAsync(string tableName, string sql, params object[] parameters)
         {
-            if (!analyticsArchiveEnabled)
+            if (!_options.ArchiveDeletedRows)
                 return;
 
-            analyticsArchiveEnabled = await TryArchiveInsertCompatAsync(
+            await TryArchiveInsertCompatAsync(
                 () => _analyticsDb.Database.ExecuteSqlRawAsync(sql, parameters),
                 tableName,
                 "delete-batch-analytics-archive",
@@ -3768,32 +3765,35 @@ using NpgsqlTypes;
         }
     }
 
-    private async Task<bool> TryArchiveInsertCompatAsync(Func<Task> archiveAction, string tableName, string operation, long batchId)
+    private async Task TryArchiveInsertCompatAsync(Func<Task> archiveAction, string tableName, string operation, long batchId)
     {
         try
         {
             await archiveAction();
-            return true;
         }
         catch (PostgresException ex) when (IsLegacySchemaArtifact(ex))
         {
-            _logger.LogWarning(
+            _logger.LogError(
                 ex,
-                "Skipping archive write for legacy schema artifact. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}.",
+                "Stopping batch deletion because the deleted-row archive is unavailable in the current schema. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}.",
                 batchId,
                 tableName,
                 operation);
-            return false;
+            throw new InvalidOperationException(
+                "Deleted-row archive write failed; batch deletion was stopped.",
+                ex);
         }
         catch (PostgresException ex) when (IsArchiveStorageLimitExceeded(ex))
         {
-            _logger.LogWarning(
+            _logger.LogError(
                 ex,
-                "Skipping archive write because PostgreSQL storage quota is full. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}.",
+                "Stopping batch deletion because the deleted-row archive storage quota is full. BatchId: {BatchId}. TableName: {TableName}. Operation: {Operation}.",
                 batchId,
                 tableName,
                 operation);
-            return false;
+            throw new InvalidOperationException(
+                "Deleted-row archive write failed; batch deletion was stopped.",
+                ex);
         }
     }
 
