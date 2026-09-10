@@ -2,9 +2,10 @@
 
 Date: 2026-09-10
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ224` (claimed `IN_PROGRESS` in this workspace)
+Current READY prompt: none
 
 Owner promotion 2026-09-10: `RQ224` was explicitly promoted by the user after completed `RQ223`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
+Owner completion 2026-09-10: `RQ224` was delivered on `main` with fail-closed analytics DB connection resolution; the RQ queue returned to no current READY prompt.
 
 Owner promotion 2026-09-10: `RQ223` was explicitly promoted by the user after completed `RQ222`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ223` was delivered on `main` as the fail-closed invalid-foreign-key default correction; the RQ queue returned to no current READY prompt.
@@ -207,7 +208,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ221 | DONE | error-response-sanitization | Insight Studio endpoints return raw exception messages |
 | RQ222 | DONE | aggregate-consistency | Daily vs dimensional aggregates disagree on orphan sales |
 | RQ223 | DONE | import-data-completeness | SkipInvalidForeignKeys default silently drops orphan lines |
-| RQ224 | IN_PROGRESS | analytics-db-routing-safety | Analytics DB connection silently falls back in production |
+| RQ224 | DONE | analytics-db-routing-safety | Analytics DB connection silently falls back in production |
 | RQ225 | WAITING | feature-flag-safety | UseSnapshotCost feature flag toggles live without validation |
 | RQ226 | WAITING | worker-schedule-safety | Invalid nightly refresh schedule silently defaults |
 | RQ227 | WAITING | cleanup-safety-gates | Batch delete proceeds after archive quota failure |
@@ -9394,7 +9395,7 @@ Access import skips `prodaja_stavke` rows with missing parent headers when defau
 
 ## RQ224 - Analytics DB connection silently falls back in production
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/infra
 Feature family: analytics-db-routing-safety
@@ -9444,6 +9445,24 @@ Missing `AnalyticsConnection` falls back to `DefaultConnection` in non-dev. Stag
 ### Dependencies
 
 - None. Existing explicit development/test fallback behavior remains covered and bounded.
+
+### Completion note
+
+- Date: 2026-09-10
+- Status: DONE
+- Completion: Non-development startup now fails when `AnalyticsConnection` is missing or points to loopback, instead of silently using `DefaultConnection`; explicit development fallback and opt-in loopback behavior remain intact.
+- Changed files: `Api/Config/AnalyticsConnectionResolver.cs`; `Api.Tests/AnalyticsConnectionResolverTests.cs`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-10-RQ224-evidence.md`.
+- Checks run: focused `AnalyticsConnectionResolverTests` passed 8/8; `dotnet build Api/Api.csproj --configuration Release --no-restore --nologo` passed with 0 warnings and 0 errors; `dotnet build Api.Tests/Api.Tests.csproj --configuration Release --no-restore --nologo` passed with 0 errors and existing warnings; `git diff --check` passed; all six instruction/queue/planning governance checks passed.
+- Checks not run: full backend test suite; live production/staging startup or database connection proof.
+- Run log: `.ai/runs/2026-09-10-RQ224-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `64a8d9e7ad1e9f439281795159d8bc0c56846f60`
+- Main verification: fresh `git fetch origin main` followed by `git merge-base --is-ancestor 64a8d9e7ad1e9f439281795159d8bc0c56846f60 origin/main` passed; `origin/main` resolved to `64a8d9e7ad1e9f439281795159d8bc0c56846f60`.
+- Missed: live production/staging startup proof; full backend suite.
+- Follow-up: `RQ225` remains WAITING; no current READY prompt.
+- Residual risk: deployments must provide a valid non-loopback `ConnectionStrings__AnalyticsConnection` in non-development environments.
+- Prompt defect / scope repair: legacy prompt omitted Scope, Read first, Tests and Dependencies; these were added, and the fix remained bounded to resolver behavior and focused tests.
 
 ---
 
