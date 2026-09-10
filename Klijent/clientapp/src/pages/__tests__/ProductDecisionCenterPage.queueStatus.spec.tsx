@@ -270,7 +270,7 @@ describe("ProductDecisionCenterPage queue status sync", () => {
     expect(await screen.findByText("Status akcija trenutno nije dostupan.")).toBeInTheDocument();
     expect(screen.getByText("Dopuni zalihe")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "U akcijama" })).not.toBeInTheDocument();
-    expect(screen.getByText("404 Not Found")).toBeInTheDocument();
+    expect(screen.queryByText("404 Not Found")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Dodaj u proveru" })).toBeInTheDocument();
   });
 

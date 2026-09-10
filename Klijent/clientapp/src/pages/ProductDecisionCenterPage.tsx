@@ -79,7 +79,6 @@ type DataQualityFilter = "all" | "good" | "warning" | "critical" | "insufficient
 type PeriodPreset = "last30" | "last60" | "last90" | "custom";
 type OptionalActionStatusWarning = {
   message: string;
-  detail?: string | null;
 };
 
 export type ProductDecisionSignalFields = {
@@ -596,31 +595,8 @@ function toActionDataQualityStatus(value: string | null | undefined): AnalyticsA
   return "insufficient_data";
 }
 
-function buildActionStatusWarning(reason: unknown): OptionalActionStatusWarning {
-  const message = "Status akcija trenutno nije dostupan.";
-
-  if (reason instanceof AnalyticsMetaError) {
-    const details = [
-      reason.message?.trim(),
-      reason.errorCode ? `Kod: ${reason.errorCode}` : null,
-      reason.correlationId ? `Correlation ID: ${reason.correlationId}` : null,
-    ].filter((value): value is string => Boolean(value));
-
-    return {
-      message,
-      detail: details.length > 0 ? details.join(" | ") : null,
-    };
-  }
-
-  if (reason instanceof Error) {
-    const detail = reason.message.trim();
-    return {
-      message,
-      detail: detail && detail !== message ? detail : null,
-    };
-  }
-
-  return { message, detail: null };
+function buildActionStatusWarning(_reason: unknown): OptionalActionStatusWarning {
+  return { message: "Status akcija trenutno nije dostupan." };
 }
 
 export function buildProductQueueSpec(row: ProductDecisionRow): {
@@ -1543,7 +1519,6 @@ export default function ProductDecisionCenterPage() {
       {actionStatusWarning ? (
         <div className="product-decision-message product-decision-message-info" role="status">
           <strong>{actionStatusWarning.message}</strong>
-          {actionStatusWarning.detail ? <div>{actionStatusWarning.detail}</div> : null}
         </div>
       ) : null}
       {!hasBlockingError && error ? (

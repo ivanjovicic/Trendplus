@@ -3720,7 +3720,7 @@ Commit suggestion: `feat(analytics): materialize measured forecast evaluation`
 
 ## RQ143 - Remove frontend decision and ranking invention from analytics surfaces
 
-Status: DONE
+Status: IN_PROGRESS
 Priority: P0
 Type: backend/contract/frontend/tests
 Feature family: backend-decision-ranking-ownership
