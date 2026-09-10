@@ -9757,7 +9757,7 @@ Both v1 (`/api/analytics/advanced`) and v2 (`/api/analytics/advanced/v2`) use `D
 - Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: 9bef2d41e36c1921b42d2dd8305843af80dca2a8
-- Main verification: implementation commit pushed; fresh origin/main verification follows after evidence-sync commit
+- Main verification: passed - `HEAD` and `origin/main` are `2c95fa1fa6afe35cdb865cd437ba5b2dc213794a`; `origin/main` contains implementation `9bef2d41e36c1921b42d2dd8305843af80dca2a8`.
 - Missed: live cross-endpoint KPI parity was not run because it requires a live analytics database and seeded period data.
 - Follow-up: promote the next safe RQ candidate after this queue remains empty.
 - Residual risk: date-only semantics follow the host runtime local timezone, so deployments serving multiple business timezones need a separate tenant/business-timezone contract.
