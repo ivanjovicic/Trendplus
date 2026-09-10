@@ -9834,7 +9834,7 @@ Owner: Supplier Analytics
 - Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: 49267ec47f1ca1ea910b682111357f60111e3913
-- Main verification: implementation commit pushed; fresh origin/main verification follows after evidence-sync commit
+- Main verification: passed - `HEAD` and `origin/main` are `e1a8427744ffb43468fa7d81bd65103eb9dd6e2d`; `origin/main` contains implementation `49267ec47f1ca1ea910b682111357f60111e3913`.
 - Missed: no live backend response comparison was run; this fix owns frontend visible-population arithmetic.
 - Follow-up: promote the next safe RQ candidate after this queue remains empty.
 - Residual risk: other supplier surfaces may still expose backend-global share fields for metrics outside this concentration card and chart.
