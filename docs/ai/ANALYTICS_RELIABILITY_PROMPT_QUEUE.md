@@ -5,6 +5,7 @@ Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
 Owner promotion 2026-09-10: `RQ223` was explicitly promoted by the user after completed `RQ222`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
+Owner completion 2026-09-10: `RQ223` was delivered on `main` as the fail-closed invalid-foreign-key default correction; the RQ queue returned to no current READY prompt.
 
 Owner promotion 2026-09-10: `RQ222` was explicitly promoted by the user after completed `RQ221`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ222` was delivered on `main` as the dimensional aggregate orphan-line reconciliation correction; the RQ queue returned to no current READY prompt.
@@ -203,7 +204,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ220 | DONE | outbox-dlq-observability | Outbox messages dead-lettered with no automatic surfacing |
 | RQ221 | DONE | error-response-sanitization | Insight Studio endpoints return raw exception messages |
 | RQ222 | DONE | aggregate-consistency | Daily vs dimensional aggregates disagree on orphan sales |
-| RQ223 | IN_PROGRESS | import-data-completeness | SkipInvalidForeignKeys default silently drops orphan lines |
+| RQ223 | DONE | import-data-completeness | SkipInvalidForeignKeys default silently drops orphan lines |
 | RQ224 | WAITING | analytics-db-routing-safety | Analytics DB connection silently falls back in production |
 | RQ225 | WAITING | feature-flag-safety | UseSnapshotCost feature flag toggles live without validation |
 | RQ226 | WAITING | worker-schedule-safety | Invalid nightly refresh schedule silently defaults |
@@ -9314,7 +9315,7 @@ Commit suggestion: `fix(aggregation): align join logic across daily and dimensio
 
 ## RQ223 - Default SkipInvalidForeignKeys=true silently drops orphan import lines
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/import/tests
 Feature family: import-data-completeness
@@ -9367,6 +9368,25 @@ Access import skips `prodaja_stavke` rows with missing parent headers when defau
 
 - `RQ222` aggregate consistency is complete on current `main`.
 - No live-provider or production data mutation is required; the migration must preserve existing batch values.
+
+### Completion note
+
+- Date: 2026-09-10
+- Status: DONE
+- Completion: Invalid foreign-key handling now defaults to fail closed, with explicit warning/count behavior retained for opt-in skipping.
+- Changed files: `Api/Config/AccessImportOptions.cs`; `Domain/Model/DataImportBatch.cs`; `Api/Services/AccessImportService.cs`; `Api/appsettings.json`; `Api/appsettings.Production.json`; `Infrastructure/DbContexts/TrendplusDbContext.cs`; `Infrastructure/Migrations/TrendplusDbContextModelSnapshot.cs`; `Infrastructure/Migrations/20260910100000_DefaultSkipInvalidForeignKeysToFalse.cs`; focused Access import test fixtures; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-10-RQ223-evidence.md`.
+- Contract/runtime behavior changed: missing `prodaja_zaglavlje` parents now reject new import batches by default before persistence; callers may explicitly opt into skipping, which remains logged with counts and samples; the migration changes only the database default and preserves existing row choices.
+- Checks run: focused Access importer/FK filter passed 43/43; backend build passed with 0 errors (104 existing analyzer warnings); API and Infrastructure builds passed with 0 warnings and 0 errors; Release migration inventory listed the new migration; `git diff --check` and all six governance checks passed.
+- Checks not run: Docker-backed PostgreSQL FK execution was unavailable locally because Docker Desktop was stopped; full backend suite and production/live import/migration application were outside scope.
+- Run log: `.ai/runs/2026-09-10-RQ223-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `e0576dfc8966123be583c4322809fbba0e1565db`
+- Main verification: fresh `git fetch origin main` followed by `git merge-base --is-ancestor e0576dfc8966123be583c4322809fbba0e1565db origin/main` passed; `origin/main` resolved to `e0576dfc8966123be583c4322809fbba0e1565db`.
+- Missed: local PostgreSQL-backed orphan-import execution and production applied-migration/live-import proof.
+- Follow-up: `RQ224` remains WAITING; no auto-promotion.
+- Residual risk: deployment must apply the migration, and CI/future local Docker runs should execute the PostgreSQL-backed guard cases.
+- Prompt defect / scope repair: the legacy prompt omitted Scope, Read first, Tests and Dependencies; these were added, and the implementation stayed bounded to FK defaults/schema metadata and focused tests.
 
 ---
 
