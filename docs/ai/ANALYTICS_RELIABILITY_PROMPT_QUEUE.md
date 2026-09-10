@@ -9756,7 +9756,7 @@ Both v1 (`/api/analytics/advanced`) and v2 (`/api/analytics/advanced/v2`) use `D
 - Run log: `.ai/runs/2026-09-10-RQ228-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: 9bef2d41bbd026f8a3d2e2a4e22f0135e32d4ed0
+- Main commit SHA: 9bef2d41e36c1921b42d2dd8305843af80dca2a8
 - Main verification: implementation commit pushed; fresh origin/main verification follows after evidence-sync commit
 - Missed: live cross-endpoint KPI parity was not run because it requires a live analytics database and seeded period data.
 - Follow-up: promote the next safe RQ candidate after this queue remains empty.
