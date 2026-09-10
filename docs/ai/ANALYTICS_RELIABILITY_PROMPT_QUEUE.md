@@ -6,6 +6,8 @@ Current READY prompt: none
 
 Owner promotion 2026-09-10: `RQ227` was explicitly promoted by the user after completed `RQ226`; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ227` was delivered on `main` with fail-closed deleted-row archive handling and focused regression coverage; the RQ queue returned to no current READY prompt.
+Owner promotion 2026-09-10: `RQ228` was explicitly promoted by the user after completed `RQ227`; it is the single current RQ prompt.
+Owner completion 2026-09-10: `RQ228` was delivered on `main` with shared Insight Studio v1/v2 period normalization and focused contract coverage; the RQ queue returned to no current READY prompt.
 
 Owner promotion 2026-09-10: `RQ226` was explicitly promoted by the user after completed `RQ225`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ226` was delivered on `main` with startup validation and explicit UTC schedule logging; the RQ queue returned to no current READY prompt.
@@ -221,7 +223,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ225 | DONE | feature-flag-safety | UseSnapshotCost feature flag toggles live without validation |
 | RQ226 | DONE | worker-schedule-safety | Invalid nightly refresh schedule silently defaults |
 | RQ227 | DONE | cleanup-safety-gates | Batch delete proceeds after archive quota failure |
-| RQ228 | WAITING | period-timezone-contract-consistency | Insight Studio v1/v2 period handling timezone mismatch |
+| RQ228 | DONE | period-timezone-contract-consistency | Insight Studio v1/v2 period handling timezone mismatch |
 | RQ258 | WAITING | trust-header-safe-metadata | Keep shared AnalyticsTrustHeader metadata user-safe and finite |
 | RQ259 | WAITING | trust-header-mode-freshness | Make shared trust-header gating and freshness normalization mode-aware |
 | RQ260 | WAITING | empty-state-safe-reason-action | Keep shared analytics empty state user-safe and actionable |
@@ -9694,7 +9696,7 @@ When archive insert fails (storage full), delete still proceeds. Irreversible da
 
 ## RQ228 - Insight Studio v1/v2 period handling treats local dates as UTC
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: backend/contract
 Feature family: period-timezone-contract-consistency
@@ -9720,6 +9722,46 @@ Both v1 (`/api/analytics/advanced`) and v2 (`/api/analytics/advanced/v2`) use `D
 ### Acceptance
 
 - Same local date produces same KPIs across all endpoints.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `Api/Endpoints/InsightStudioEndpoints.cs`
+- `Api/Endpoints/InsightStudioV2Endpoints.cs`
+- `Klijent/clientapp/src/services/insightStudioApi.ts`
+- `Klijent/clientapp/src/services/insightStudioV2Api.ts`
+
+### Tests
+
+- `Api.Tests/InsightStudioPeriodNormalizationTests.cs`
+- `Api.Tests/InsightStudioErrorResponseContractTests.cs`
+- source guardrail proving both endpoint families use the shared normalizer
+
+### Dependencies
+
+- Same-owner backend contract repair; no schema, migration or frontend response-shape change.
+- Keep broader analytics period contracts outside this prompt unchanged.
+
+### Completion note
+
+- Date: 2026-09-10
+- Status: DONE
+- Completion: Shared local/UTC period normalization is used by all Insight Studio v1/v2 period endpoints.
+- Changed files: `Api/Endpoints/InsightStudioPeriod.cs`; `Api/Endpoints/InsightStudioEndpoints.cs`; `Api/Endpoints/InsightStudioV2Endpoints.cs`; `Api.Tests/InsightStudioPeriodNormalizationTests.cs`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-10-RQ228-evidence.md`
+- Contract/runtime behavior changed: date-only query values are interpreted in the runtime local timezone; explicit UTC values remain unchanged and explicit local values are converted to UTC before analytics queries.
+- Checks run: focused Insight Studio tests 5/5 passed; `git diff --check` passed; agent, prompt-queue and planning validators passed.
+- Checks not run: full `Api.Tests` suite; live PostgreSQL period/KPI parity; browser smoke and production timezone proof.
+- Run log: `.ai/runs/2026-09-10-RQ228-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending until commit and push
+- Missed: live cross-endpoint KPI parity was not run because it requires a live analytics database and seeded period data.
+- Follow-up: promote the next safe RQ candidate after this queue remains empty.
+- Residual risk: date-only semantics follow the host runtime local timezone, so deployments serving multiple business timezones need a separate tenant/business-timezone contract.
+- Prompt defect / scope repair: the legacy prompt lacked explicit `Read first`, `Tests` and `Dependencies` sections; those were added without expanding runtime scope.
 
 ---
 

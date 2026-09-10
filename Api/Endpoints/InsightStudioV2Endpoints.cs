@@ -32,10 +32,10 @@ public static class InsightStudioV2Endpoints
             try
             {
                 var fromUtc = fromDate.HasValue
-                    ? DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc)
+                    ? InsightStudioPeriod.ToUtc(fromDate.Value)
                     : DateTime.UtcNow.AddDays(-90);
                 var toUtc = toDate.HasValue
-                    ? DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc)
+                    ? InsightStudioPeriod.ToUtc(toDate.Value)
                     : DateTime.UtcNow;
 
                 var salesData = await (
@@ -102,10 +102,10 @@ public static class InsightStudioV2Endpoints
             try
             {
                 var fromUtc = fromDate.HasValue
-                    ? DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc)
+                    ? InsightStudioPeriod.ToUtc(fromDate.Value)
                     : DateTime.UtcNow.AddDays(-90);
                 var to = toDate.HasValue
-                    ? DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc)
+                    ? InsightStudioPeriod.ToUtc(toDate.Value)
                     : DateTime.UtcNow;
 
                 // Get multi-item transactions: aggregate distinct categories per sale
@@ -198,10 +198,10 @@ public static class InsightStudioV2Endpoints
             try
             {
                 var fromUtc = fromDate.HasValue
-                    ? DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc)
+                    ? InsightStudioPeriod.ToUtc(fromDate.Value)
                     : DateTime.UtcNow.AddDays(-90);
                 var to = toDate.HasValue
-                    ? DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc)
+                    ? InsightStudioPeriod.ToUtc(toDate.Value)
                     : DateTime.UtcNow;
                 var days = Math.Max(1, (to - fromUtc).TotalDays);
 
@@ -326,10 +326,10 @@ public static class InsightStudioV2Endpoints
             try
             {
                 var from = fromDate.HasValue
-                    ? DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc)
+                    ? InsightStudioPeriod.ToUtc(fromDate.Value)
                     : DateTime.UtcNow.AddDays(-90);
                 var to = toDate.HasValue
-                    ? DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc)
+                    ? InsightStudioPeriod.ToUtc(toDate.Value)
                     : DateTime.UtcNow;
 
                 // Split period into halves to detect trend
@@ -424,10 +424,10 @@ public static class InsightStudioV2Endpoints
             try
             {
                 var from = fromDate.HasValue
-                    ? DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc)
+                    ? InsightStudioPeriod.ToUtc(fromDate.Value)
                     : DateTime.UtcNow.AddDays(-30);
                 var to = toDate.HasValue
-                    ? DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc)
+                    ? InsightStudioPeriod.ToUtc(toDate.Value)
                     : DateTime.UtcNow;
                 var days = Math.Max(1, (to - from).TotalDays);
 
@@ -511,10 +511,10 @@ public static class InsightStudioV2Endpoints
             try
             {
                 var from = fromDate.HasValue
-                    ? DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc)
+                    ? InsightStudioPeriod.ToUtc(fromDate.Value)
                     : DateTime.UtcNow.AddDays(-90);
                 var to = toDate.HasValue
-                    ? DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc)
+                    ? InsightStudioPeriod.ToUtc(toDate.Value)
                     : DateTime.UtcNow;
 
                 var prodajeIds = await db.ProdajaZaglavlja
@@ -742,10 +742,10 @@ public static class InsightStudioV2Endpoints
             {
                 var now = DateTime.UtcNow;
                 var fromUtc = fromDate.HasValue
-                    ? DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc)
+                    ? InsightStudioPeriod.ToUtc(fromDate.Value)
                     : now.AddDays(-90);
                 var toUtc = toDate.HasValue
-                    ? DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc)
+                    ? InsightStudioPeriod.ToUtc(toDate.Value)
                     : now;
                 var days = Math.Max(1, (toUtc - fromUtc).TotalDays);
 
@@ -882,10 +882,10 @@ public static class InsightStudioV2Endpoints
             try
             {
                 var from = fromDate.HasValue
-                    ? DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc)
+                    ? InsightStudioPeriod.ToUtc(fromDate.Value)
                     : DateTime.UtcNow.AddDays(-60);
                 var to = toDate.HasValue
-                    ? DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc)
+                    ? InsightStudioPeriod.ToUtc(toDate.Value)
                     : DateTime.UtcNow;
                 var days = Math.Max(1, (to - from).TotalDays);
                 const int leadTimeDays = 14;

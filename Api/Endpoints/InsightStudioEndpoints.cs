@@ -30,10 +30,10 @@ public static class InsightStudioEndpoints
             {
                 var now = DateTime.UtcNow;
                 var from = fromDate.HasValue
-                    ? DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc)
+                    ? InsightStudioPeriod.ToUtc(fromDate.Value)
                     : now.AddDays(-30);
                 var to = toDate.HasValue
-                    ? DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc)
+                    ? InsightStudioPeriod.ToUtc(toDate.Value)
                     : now;
                 var span = (to - from).TotalDays;
                 var prevFrom = from.AddDays(-span);
@@ -151,10 +151,10 @@ public static class InsightStudioEndpoints
             try
             {
                 var from = fromDate.HasValue
-                    ? DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc)
+                    ? InsightStudioPeriod.ToUtc(fromDate.Value)
                     : DateTime.UtcNow.AddDays(-90);
                 var to = toDate.HasValue
-                    ? DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc)
+                    ? InsightStudioPeriod.ToUtc(toDate.Value)
                     : DateTime.UtcNow;
 
                 var prodajeIds = await db.ProdajaZaglavlja
@@ -267,10 +267,10 @@ public static class InsightStudioEndpoints
             try
             {
                 var from = fromDate.HasValue
-                    ? DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc)
+                    ? InsightStudioPeriod.ToUtc(fromDate.Value)
                     : DateTime.UtcNow.AddDays(-90);
                 var to = toDate.HasValue
-                    ? DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc)
+                    ? InsightStudioPeriod.ToUtc(toDate.Value)
                     : DateTime.UtcNow;
 
                 var prodajeIds = await db.ProdajaZaglavlja
@@ -437,12 +437,8 @@ public static class InsightStudioEndpoints
             try
             {
                 var targetDate = (analysisDate ?? DateTime.UtcNow.AddDays(-1)).Date;
-                var from = DateTime.SpecifyKind(
-                    (fromDate ?? targetDate.AddDays(-60)),
-                    DateTimeKind.Utc);
-                var to = DateTime.SpecifyKind(
-                    (toDate ?? targetDate),
-                    DateTimeKind.Utc);
+                var from = InsightStudioPeriod.ToUtc(fromDate ?? targetDate.AddDays(-60));
+                var to = InsightStudioPeriod.ToUtc(toDate ?? targetDate);
 
                 var prodajeAll = await db.ProdajaZaglavlja
                     .Where(p => p.DatumProdaje.Date >= from && p.DatumProdaje.Date <= to)
@@ -539,10 +535,10 @@ public static class InsightStudioEndpoints
             try
             {
                 var from = fromDate.HasValue
-                    ? DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc)
+                    ? InsightStudioPeriod.ToUtc(fromDate.Value)
                     : DateTime.UtcNow.AddDays(-90);
                 var to = toDate.HasValue
-                    ? DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc)
+                    ? InsightStudioPeriod.ToUtc(toDate.Value)
                     : DateTime.UtcNow;
                 var days = Math.Max(1, (to - from).TotalDays);
 
@@ -658,10 +654,10 @@ public static class InsightStudioEndpoints
             try
             {
                 var from = fromDate.HasValue
-                    ? DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc)
+                    ? InsightStudioPeriod.ToUtc(fromDate.Value)
                     : DateTime.UtcNow.AddDays(-30);
                 var to = toDate.HasValue
-                    ? DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc)
+                    ? InsightStudioPeriod.ToUtc(toDate.Value)
                     : DateTime.UtcNow;
                 var days = Math.Max(1, (to - from).TotalDays);
                 const int leadTimeDays = 14;
