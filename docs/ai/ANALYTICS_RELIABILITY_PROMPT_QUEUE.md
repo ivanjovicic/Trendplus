@@ -2,7 +2,9 @@
 
 Date: 2026-09-10
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: `RQ225` (claimed `IN_PROGRESS` in this workspace)
+
+Owner promotion 2026-09-10: `RQ225` was explicitly promoted by the user after completed `RQ224`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 
 Owner promotion 2026-09-10: `RQ224` was explicitly promoted by the user after completed `RQ223`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ224` was delivered on `main` with fail-closed analytics DB connection resolution; the RQ queue returned to no current READY prompt.
@@ -209,7 +211,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ222 | DONE | aggregate-consistency | Daily vs dimensional aggregates disagree on orphan sales |
 | RQ223 | DONE | import-data-completeness | SkipInvalidForeignKeys default silently drops orphan lines |
 | RQ224 | DONE | analytics-db-routing-safety | Analytics DB connection silently falls back in production |
-| RQ225 | WAITING | feature-flag-safety | UseSnapshotCost feature flag toggles live without validation |
+| RQ225 | IN_PROGRESS | feature-flag-safety | UseSnapshotCost feature flag toggles live without validation |
 | RQ226 | WAITING | worker-schedule-safety | Invalid nightly refresh schedule silently defaults |
 | RQ227 | WAITING | cleanup-safety-gates | Batch delete proceeds after archive quota failure |
 | RQ228 | WAITING | period-timezone-contract-consistency | Insight Studio v1/v2 period handling timezone mismatch |
@@ -9468,12 +9470,13 @@ Missing `AnalyticsConnection` falls back to `DefaultConnection` in non-dev. Stag
 
 ## RQ225 - UseSnapshotCost feature flag toggles live without validation
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: backend/config
 Feature family: feature-flag-safety
 Parallel-safe: no
 Owner: Config/Analytics
+Local lock: `.ai/task-locks/RQ225-codex.lock.md`
 
 Commit suggestion: `fix(config): validate snapshot-cost flag at startup or add runtime guards`
 
@@ -9485,6 +9488,21 @@ Only `StorageOptions` validates at startup; snapshot cost flag read via `IOption
 
 - `AnalyticsSnapshotOptions.cs:7-9`; `AnalyticsCostSnapshotService.cs:408-410, 656`.
 
+### Scope
+
+- `Api/Services/AnalyticsCostSnapshotService.cs` option consumption
+- focused snapshot-cost service tests
+- `Api/Program.cs` option registration only if required by the stable-option contract
+- no database, migration, frontend or unrelated feature-flag changes
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `Infrastructure/Configuration/AnalyticsSnapshotOptions.cs`
+- `Api/Services/AnalyticsCostSnapshotService.cs`
+- `Api.Tests/AnalyticsCostSnapshotServiceTests.cs`
+
 ### Do
 
 1. Add `ValidateOnStart` for snapshot cost options.
@@ -9493,6 +9511,16 @@ Only `StorageOptions` validates at startup; snapshot cost flag read via `IOption
 ### Acceptance
 
 - Snapshot cost flag is stable; changes require restart or explicit audit log.
+
+### Tests
+
+- focused `AnalyticsCostSnapshotServiceTests`
+- `dotnet build Api/Api.csproj --configuration Release --no-restore`
+- `git diff --check`
+
+### Dependencies
+
+- None. Existing endpoint consumers already use `IOptions<AnalyticsSnapshotOptions>`.
 
 ---
 

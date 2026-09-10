@@ -16,12 +16,13 @@ public sealed class AnalyticsCostSnapshotService
 
     private readonly TrendplusDbContext _db;
     private readonly ILogger<AnalyticsCostSnapshotService> _logger;
-    private readonly IOptionsMonitor<AnalyticsSnapshotOptions> _snapshotOptions;
+    // Snapshot costing is a process-start contract; live reload must not change KPI semantics mid-run.
+    private readonly IOptions<AnalyticsSnapshotOptions> _snapshotOptions;
 
     public AnalyticsCostSnapshotService(
         TrendplusDbContext db,
         ILogger<AnalyticsCostSnapshotService> logger,
-        IOptionsMonitor<AnalyticsSnapshotOptions> snapshotOptions)
+        IOptions<AnalyticsSnapshotOptions> snapshotOptions)
     {
         _db = db;
         _logger = logger;
@@ -355,7 +356,7 @@ public sealed class AnalyticsCostSnapshotService
 
     public async Task<SnapshotHealthResult> GetHealthAsync(CancellationToken ct)
     {
-        var options = _snapshotOptions.CurrentValue;
+        var options = _snapshotOptions.Value;
 
         var activeBatch = await _db.AnalyticsCostSnapshotBatches
             .AsNoTracking()
@@ -653,7 +654,7 @@ public sealed class AnalyticsCostSnapshotService
                 request.BatchId.HasValue,
                 batch.GeneratedAtUtc,
                 batch.ActivatedAtUtc),
-            FeatureFlagEnabled: _snapshotOptions.CurrentValue.UseSnapshotCost,
+            FeatureFlagEnabled: _snapshotOptions.Value.UseSnapshotCost,
             SnapshotCostByArtikalId: snapshotCostByArtikalId,
             Top: Math.Clamp(request.Top ?? 25, 1, 100));
     }

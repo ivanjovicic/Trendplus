@@ -152,7 +152,7 @@ public class AnalyticsCostSnapshotServiceTests
     }
 
     private static AnalyticsCostSnapshotService CreateService(TrendplusDbContext db, AnalyticsSnapshotOptions options)
-        => new(db, NullLogger<AnalyticsCostSnapshotService>.Instance, new TestOptionsMonitor<AnalyticsSnapshotOptions>(options));
+        => new(db, NullLogger<AnalyticsCostSnapshotService>.Instance, Options.Create(options));
 
     private static void SeedComparisonFixture(TrendplusDbContext db, long batchId)
     {
@@ -248,26 +248,4 @@ public class AnalyticsCostSnapshotServiceTests
             });
     }
 
-    private sealed class TestOptionsMonitor<T> : IOptionsMonitor<T>
-    {
-        public TestOptionsMonitor(T currentValue)
-        {
-            CurrentValue = currentValue;
-        }
-
-        public T CurrentValue { get; }
-
-        public T Get(string? name) => CurrentValue;
-
-        public IDisposable OnChange(Action<T, string?> listener) => NoopDisposable.Instance;
-
-        private sealed class NoopDisposable : IDisposable
-        {
-            public static readonly NoopDisposable Instance = new();
-
-            public void Dispose()
-            {
-            }
-        }
-    }
 }
