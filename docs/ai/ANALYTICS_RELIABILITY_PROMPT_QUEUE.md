@@ -192,7 +192,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ217 | DONE | outbox-concurrent-processing | Outbox worker has no row-level locking |
 | RQ218 | DONE | import-retry-idempotency | Access import auto-retry requeues without rolling back |
 | RQ219 | DONE | worker-process-health | Background worker crashes are silently ignored (P0) |
-| RQ220 | WAITING | outbox-dlq-observability | Outbox messages dead-lettered with no automatic surfacing |
+| RQ220 | DONE | outbox-dlq-observability | Outbox messages dead-lettered with no automatic surfacing |
 | RQ221 | WAITING | error-response-sanitization | Insight Studio endpoints return raw exception messages |
 | RQ222 | WAITING | aggregate-consistency | Daily vs dimensional aggregates disagree on orphan sales |
 | RQ223 | WAITING | import-data-completeness | SkipInvalidForeignKeys default silently drops orphan lines |
