@@ -165,6 +165,110 @@ public sealed class AnalyticsAggregationWorkerTests : IClassFixture<PostgresCont
         Assert.Equal(7, await verify.ExecuteScalarAsync());
     }
 
+    [Trait("Category", "Integration")]
+    [Fact]
+    public async Task DimensionalAggregates_IncludeOrphanSalesLines_AndReconcileWithDailyTotal()
+    {
+        if (!_fixture.IsAvailable)
+        {
+            return;
+        }
+
+        var connectionString = await _fixture.TryCreateDatabaseConnectionStringAsync($"tp_analytics_orphan_{Guid.NewGuid():N}");
+        Assert.False(string.IsNullOrWhiteSpace(connectionString));
+
+        await using var harness = CreateHarness(connectionString!, useInMemoryDatabase: false);
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        await using (var setup = new NpgsqlCommand(
+            """
+            CREATE TABLE prodaja_zaglavlje (
+                id bigint PRIMARY KEY,
+                datum_prodaje timestamptz NOT NULL
+            );
+            CREATE TABLE prodaja_stavke (
+                id bigint PRIMARY KEY,
+                id_prodaja bigint NOT NULL,
+                id_artikal bigint NOT NULL,
+                kolicina numeric(18,2) NOT NULL,
+                cena numeric(18,2) NOT NULL
+            );
+            CREATE TABLE ""Artikli"" (
+                ""Id" bigint PRIMARY KEY,
+                ""Kategorija" text NULL,
+                ""Pol" text NULL,
+                ""IDDobavljac" bigint NULL
+            );
+            CREATE TABLE ""Dobavljaci"" (
+                ""Id" bigint PRIMARY KEY,
+                ""Naziv" text NULL
+            );
+            CREATE TABLE ""AnalyticsDailySummary"" (
+                ""Date" date PRIMARY KEY,
+                ""TotalRevenue" numeric(18,2),
+                ""TotalTransactions" bigint,
+                ""TotalUnits" numeric(18,2),
+                ""AvgBasketValue" numeric(18,2),
+                ""AvgItemPrice" numeric(18,2),
+                ""BasketStdDev" numeric(18,2),
+                ""ItemPriceStdDev" numeric(18,2),
+                ""EffectiveTransactionCount" numeric(18,2),
+                ""DataConfidence" numeric(18,2),
+                ""UpdatedAt" timestamptz
+            );
+            CREATE TABLE ""AnalyticsCategorySummary"" (
+                ""Date" date NOT NULL,
+                ""Kategorija" text NOT NULL,
+                ""TotalRevenue" numeric(18,2),
+                ""TotalUnits" numeric(18,2),
+                ""TransactionCount" bigint,
+                ""UpdatedAt" timestamptz
+            );
+            CREATE TABLE ""AnalyticsSupplierSummary"" (
+                ""Date" date NOT NULL,
+                ""DobavljacId" bigint NULL,
+                ""DobavljacNaziv" text NOT NULL,
+                ""TotalRevenue" numeric(18,2),
+                ""TotalUnits" numeric(18,2),
+                ""TransactionCount" bigint,
+                ""UpdatedAt" timestamptz
+            );
+            CREATE TABLE ""AnalyticsGenderSummary"" (
+                ""Date" date NOT NULL,
+                ""Pol" text NOT NULL,
+                ""TotalRevenue" numeric(18,2),
+                ""TotalUnits" numeric(18,2),
+                ""UpdatedAt" timestamptz
+            );
+            INSERT INTO prodaja_zaglavlje (id, datum_prodaje) VALUES (1, '2026-09-10T10:00:00Z');
+            INSERT INTO prodaja_stavke (id, id_prodaja, id_artikal, kolicina, cena)
+            VALUES (1, 1, 10, 2, 100), (2, 1, 999, 3, 50);
+            INSERT INTO ""Artikli"" (""Id"", ""Kategorija"", ""Pol"", ""IDDobavljac"")
+            VALUES (10, 'Obuca', 'M', 20);
+            INSERT INTO ""Dobavljaci"" (""Id"", ""Naziv"") VALUES (20, 'Dobavljac A');
+            """,
+            connection))
+        {
+            await setup.ExecuteNonQueryAsync();
+        }
+
+        var date = new DateTime(2026, 9, 10, 0, 0, 0, DateTimeKind.Utc);
+        Assert.True(await InvokeAggregateAsync(harness.Worker, "RefreshDailySummaryAsync", connection, date));
+        Assert.True(await InvokeAggregateAsync(harness.Worker, "RefreshCategorySummaryAsync", connection, date));
+        Assert.True(await InvokeAggregateAsync(harness.Worker, "RefreshSupplierSummaryAsync", connection, date));
+        Assert.True(await InvokeAggregateAsync(harness.Worker, "RefreshGenderSummaryAsync", connection, date));
+
+        const decimal expectedRevenue = 350m;
+        Assert.Equal(expectedRevenue, await ReadDecimalAsync(connection, "SELECT \"TotalRevenue\" FROM \"AnalyticsDailySummary\" WHERE \"Date\" = DATE '2026-09-10';"));
+        Assert.Equal(expectedRevenue, await ReadDecimalAsync(connection, "SELECT SUM(\"TotalRevenue\") FROM \"AnalyticsCategorySummary\" WHERE \"Date\" = DATE '2026-09-10';"));
+        Assert.Equal(expectedRevenue, await ReadDecimalAsync(connection, "SELECT SUM(\"TotalRevenue\") FROM \"AnalyticsSupplierSummary\" WHERE \"Date\" = DATE '2026-09-10';"));
+        Assert.Equal(expectedRevenue, await ReadDecimalAsync(connection, "SELECT SUM(\"TotalRevenue\") FROM \"AnalyticsGenderSummary\" WHERE \"Date\" = DATE '2026-09-10';"));
+        Assert.Equal("Nepoznato", await ReadStringAsync(connection, "SELECT \"Kategorija\" FROM \"AnalyticsCategorySummary\" WHERE \"Date\" = DATE '2026-09-10' AND \"TotalRevenue\" = 150;"));
+        Assert.Equal("Nepoznato", await ReadStringAsync(connection, "SELECT \"DobavljacNaziv\" FROM \"AnalyticsSupplierSummary\" WHERE \"Date\" = DATE '2026-09-10' AND \"TotalRevenue\" = 150;"));
+        Assert.Equal("Neodređeno", await ReadStringAsync(connection, "SELECT \"Pol\" FROM \"AnalyticsGenderSummary\" WHERE \"Date\" = DATE '2026-09-10' AND \"TotalRevenue\" = 150;"));
+    }
+
     private static List<string> ExpectedRemovedPrefixes() =>
     [
         AnalyticsCachePolicy.ResolveFamilyPrefix(AnalyticsCachePolicy.DashboardFamily),
@@ -198,6 +302,33 @@ public sealed class AnalyticsAggregationWorkerTests : IClassFixture<PostgresCont
             ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
             throw;
         }
+    }
+
+    private static async Task<bool> InvokeAggregateAsync(
+        AnalyticsAggregationWorker worker,
+        string methodName,
+        NpgsqlConnection connection,
+        DateTime date)
+    {
+        var method = typeof(AnalyticsAggregationWorker).GetMethod(
+            methodName,
+            BindingFlags.Instance | BindingFlags.NonPublic);
+
+        Assert.NotNull(method);
+        var task = (Task<bool>)method!.Invoke(worker, [connection, date, CancellationToken.None])!;
+        return await task;
+    }
+
+    private static async Task<decimal> ReadDecimalAsync(NpgsqlConnection connection, string sql)
+    {
+        await using var command = new NpgsqlCommand(sql, connection);
+        return Convert.ToDecimal(await command.ExecuteScalarAsync());
+    }
+
+    private static async Task<string> ReadStringAsync(NpgsqlConnection connection, string sql)
+    {
+        await using var command = new NpgsqlCommand(sql, connection);
+        return (string)(await command.ExecuteScalarAsync())!;
     }
 
     private static WorkerHarness CreateHarness(string? connectionString, bool useInMemoryDatabase)

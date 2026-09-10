@@ -364,7 +364,8 @@ public class AnalyticsAggregationWorker : BackgroundService
                     NOW()
                 FROM prodaja_zaglavlje p
                 JOIN prodaja_stavke ps ON p.id = ps.id_prodaja
-                JOIN ""Artikli"" a ON ps.id_artikal = a.""Id""
+                -- Preserve sales lines whose article reference is missing; they roll up as Nepoznato.
+                LEFT JOIN ""Artikli"" a ON ps.id_artikal = a.""Id""
                 WHERE p.datum_prodaje >= @date_from
                   AND p.datum_prodaje < @date_to
                 GROUP BY a.""Kategorija"";";
@@ -396,7 +397,8 @@ public class AnalyticsAggregationWorker : BackgroundService
                     NOW()
                 FROM prodaja_zaglavlje p
                 JOIN prodaja_stavke ps ON p.id = ps.id_prodaja
-                JOIN ""Artikli"" a ON ps.id_artikal = a.""Id""
+                -- Preserve sales lines whose article or supplier reference is missing; they roll up as Nepoznato.
+                LEFT JOIN ""Artikli"" a ON ps.id_artikal = a.""Id""
                 LEFT JOIN ""Dobavljaci"" d ON a.""IDDobavljac"" = d.""Id""
                 WHERE p.datum_prodaje >= @date_from
                   AND p.datum_prodaje < @date_to
@@ -427,7 +429,8 @@ public class AnalyticsAggregationWorker : BackgroundService
                     NOW()
                 FROM prodaja_zaglavlje p
                 JOIN prodaja_stavke ps ON p.id = ps.id_prodaja
-                JOIN ""Artikli"" a ON ps.id_artikal = a.""Id""
+                -- Preserve sales lines whose article reference is missing; they roll up as Neodređeno.
+                LEFT JOIN ""Artikli"" a ON ps.id_artikal = a.""Id""
                 WHERE p.datum_prodaje >= @date_from
                   AND p.datum_prodaje < @date_to
                 GROUP BY a.""Pol"";";

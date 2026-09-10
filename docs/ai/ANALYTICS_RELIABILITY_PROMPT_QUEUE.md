@@ -2,7 +2,9 @@
 
 Date: 2026-09-10
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ222
+
+Owner promotion 2026-09-10: `RQ222` was explicitly promoted by the user after completed `RQ221`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 
 Owner promotion 2026-09-10: `RQ221` was explicitly promoted by the user after completed `RQ220`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ221` was delivered on `main` as the Insight Studio error-response sanitization correction; the RQ queue returned to no current READY prompt.
@@ -197,7 +199,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ219 | DONE | worker-process-health | Background worker crashes are silently ignored (P0) |
 | RQ220 | DONE | outbox-dlq-observability | Outbox messages dead-lettered with no automatic surfacing |
 | RQ221 | DONE | error-response-sanitization | Insight Studio endpoints return raw exception messages |
-| RQ222 | WAITING | aggregate-consistency | Daily vs dimensional aggregates disagree on orphan sales |
+| RQ222 | IN_PROGRESS | aggregate-consistency | Daily vs dimensional aggregates disagree on orphan sales |
 | RQ223 | WAITING | import-data-completeness | SkipInvalidForeignKeys default silently drops orphan lines |
 | RQ224 | WAITING | analytics-db-routing-safety | Analytics DB connection silently falls back in production |
 | RQ225 | WAITING | feature-flag-safety | UseSnapshotCost feature flag toggles live without validation |
@@ -9152,7 +9154,7 @@ Messages with `RetryCount >= 5` excluded forever; recovery requires manual `/api
 
 ## RQ221 - Insight Studio endpoints return raw exception messages
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P2
 Type: backend/security
 Feature family: error-response-sanitization
@@ -9234,7 +9236,7 @@ Analytics endpoints return `Results.Problem(detail: ex.Message)` on failure. Pos
 
 ## RQ222 - Daily vs dimensional aggregates disagree on orphan sales lines
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: backend/tests
 Feature family: aggregate-consistency
@@ -9251,15 +9253,40 @@ Commit suggestion: `fix(aggregation): align join logic across daily and dimensio
 
 - `AnalyticsAggregationWorker.cs:311-312 vs 363-365`.
 
+### Scope
+
+- Keep the change bounded to the four existing daily/category/supplier/gender aggregate queries in `Workers/AnalyticsAggregationWorker.cs` and focused aggregation tests.
+- Preserve the existing aggregate tables, transaction/retry owner, cache invalidation contract and date-window semantics.
+- Do not expand into dashboard presentation, unrelated top-product logic, schema/migration work or a new orphan-data policy.
+
+### Read first
+
+- `Workers/AnalyticsAggregationWorker.cs`
+- `Api.Tests/AnalyticsAggregationWorkerTests.cs`
+- `Infrastructure/Seed/DatabaseInitializer.cs`
+- `Infrastructure/DbContexts/TrendplusDbContext.cs`
+
 ### Do
 
-1. Use consistent join logic across all aggregates.
-2. Document whether orphan lines are included or excluded.
-3. Add tests proving total = sum of parts.
+1. Use consistent line-preserving join semantics for daily, category, supplier and gender aggregates so missing article references are not silently dropped from dimensional totals.
+2. Keep explicit fallback labels (`Nepoznato`/`Neodređeno`) for missing article or supplier dimensions.
+3. Add a focused regression proof that orphan sales lines remain included and the dimensional revenue sum reconciles to the daily total.
 
 ### Acceptance
 
-- Dashboard total revenue = sum of category/supplier/gender breakdowns.
+- For a fixture containing a sales line whose article reference is missing, daily revenue equals the sum of category, supplier and gender aggregate revenue.
+- Orphan lines are represented under explicit unknown-dimension labels rather than silently excluded.
+- Existing atomic replacement, retry and cache invalidation behavior remains unchanged.
+
+### Tests
+
+- Focused aggregation contract/integration test covering one valid and one orphan sales line, asserting daily/category/supplier/gender revenue parity and unknown labels.
+- Run the owning aggregation test filter and build the changed backend projects.
+
+### Dependencies
+
+- `RQ221` Insight Studio error-response sanitization is complete on current `main`.
+- No migration or live-provider evidence is required for this bounded query/join consistency correction.
 
 ---
 
