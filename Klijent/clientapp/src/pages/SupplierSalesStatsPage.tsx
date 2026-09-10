@@ -178,6 +178,44 @@ function toDateOnly(value: string): string {
   return parsed.toISOString().slice(0, 10);
 }
 
+type SupplierRevenueRow = Pick<SupplierSalesStat, "dobavljacNaziv" | "ukupanPromet">;
+
+export function calculateTopSupplierRevenueShare(rows: readonly SupplierRevenueRow[]): number | null {
+  if (rows.length === 0 || rows.some((row) => !Number.isFinite(row.ukupanPromet))) return null;
+
+  const totalRevenue = rows.reduce((sum, row) => sum + row.ukupanPromet, 0);
+  if (!Number.isFinite(totalRevenue) || totalRevenue <= 0) return null;
+
+  const top5Revenue = [...rows]
+    .sort((a, b) => b.ukupanPromet - a.ukupanPromet)
+    .slice(0, 5)
+    .reduce((sum, row) => sum + row.ukupanPromet, 0);
+
+  return Number.isFinite(top5Revenue) ? (top5Revenue / totalRevenue) * 100 : null;
+}
+
+export function buildSupplierConcentrationData(
+  rows: readonly SupplierRevenueRow[],
+): Array<{ name: string; sharePct: number }> {
+  if (rows.length === 0 || rows.some((row) => !Number.isFinite(row.ukupanPromet))) return [];
+
+  const totalRevenue = rows.reduce((sum, row) => sum + row.ukupanPromet, 0);
+  if (!Number.isFinite(totalRevenue) || totalRevenue <= 0) return [];
+
+  const ranked = [...rows].sort((a, b) => b.ukupanPromet - a.ukupanPromet);
+  const topRows = ranked.slice(0, 6).map((row) => ({
+    name: row.dobavljacNaziv,
+    sharePct: Number(((row.ukupanPromet / totalRevenue) * 100).toFixed(2)),
+  }));
+  const remaining = ranked.slice(6).reduce((sum, row) => sum + (row.ukupanPromet / totalRevenue) * 100, 0);
+
+  if (remaining > 0.1) {
+    topRows.push({ name: "Ostali", sharePct: Number(remaining.toFixed(2)) });
+  }
+
+  return topRows;
+}
+
 function parseDateInputOrDefault(value: string | null, fallback: string): string {
   if (!value) return fallback;
   const normalized = toDateOnly(value);
@@ -877,14 +915,10 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     [visibleSuppliers]
   );
 
-  const top5SharePct = useMemo(() => {
-    if (knownSuppliers.length === 0 || totalRevenue == null || totalRevenue <= 0) return null;
-    const top5Revenue = [...knownSuppliers]
-      .sort((a, b) => b.ukupanPromet - a.ukupanPromet)
-      .slice(0, 5)
-      .reduce((sum, row) => sum + row.ukupanPromet, 0);
-    return (top5Revenue / totalRevenue) * 100;
-  }, [knownSuppliers, totalRevenue]);
+  const top5SharePct = useMemo(
+    () => calculateTopSupplierRevenueShare(knownSuppliers),
+    [knownSuppliers]
+  );
 
   const totalMarginContribution = useMemo(
     () => data?.totals.ukupanMarzniDoprinos
@@ -896,25 +930,10 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     return data?.totals.popRevenueChangePct ?? null;
   }, [data?.totals.popRevenueChangePct]);
 
-  const concentrationData = useMemo(() => {
-    if (knownSuppliers.length === 0) return [] as Array<{ name: string; sharePct: number }>;
-
-    const ranked = [...knownSuppliers]
-      .filter((row) => row.sharePct != null)
-      .sort((a, b) => (b.sharePct ?? -1) - (a.sharePct ?? -1));
-
-    const topRows = ranked.slice(0, 6).map((row) => ({
-      name: row.dobavljacNaziv,
-      sharePct: Number(row.sharePct!.toFixed(2)),
-    }));
-
-    const remaining = ranked.slice(6).reduce((sum, row) => sum + row.sharePct!, 0);
-    if (remaining > 0.1) {
-      topRows.push({ name: "Ostali", sharePct: Number(remaining.toFixed(2)) });
-    }
-
-    return topRows;
-  }, [knownSuppliers]);
+  const concentrationData = useMemo(
+    () => buildSupplierConcentrationData(knownSuppliers),
+    [knownSuppliers]
+  );
 
   const comparisonData = useMemo(() => {
     if (knownSuppliers.length === 0) return [] as Array<{ name: string; udeoPrometa: number; udeoMarznogDoprinosa: number; marza: number }>;
@@ -1572,7 +1591,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                 <KpiExplainButton metricKey="grossMarginPct" ariaLabel="Kako je izračunata prosečna marža" />
               </article>
               <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Koncentracija prometa na najjacim partnerima.">
-                <span>Udeo top 5 dobavljača <InfoTip text="Procenat ukupnog prometa koji dolazi od pet dobavljača sa najvećim prometom. Formula: promet top 5 / ukupan promet x 100." /></span>
+                <span>Udeo top 5 dobavljača <InfoTip text="Procenat prometa vidljivih poznatih dobavljača koji dolazi od pet dobavljača sa najvećim prometom. Formula: promet top 5 / promet vidljivih poznatih dobavljača x 100." /></span>
                 <strong>{formatMetricDisplayValue({ value: top5SharePct, kind: "percent" })}</strong>
                 <KpiExplainButton metricKey="topSupplierRevenueShare" ariaLabel="Kako je izračunat udeo top 5 dobavljača" />
               </article>

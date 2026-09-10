@@ -8,6 +8,8 @@ Owner promotion 2026-09-10: `RQ227` was explicitly promoted by the user after co
 Owner completion 2026-09-10: `RQ227` was delivered on `main` with fail-closed deleted-row archive handling and focused regression coverage; the RQ queue returned to no current READY prompt.
 Owner promotion 2026-09-10: `RQ228` was explicitly promoted by the user after completed `RQ227`; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ228` was delivered on `main` with shared Insight Studio v1/v2 period normalization and focused contract coverage; the RQ queue returned to no current READY prompt.
+Owner promotion 2026-09-10: `RQ233` was explicitly promoted by the user after completed `RQ228`; it is the single current RQ prompt.
+Owner completion 2026-09-10: `RQ233` was delivered on `main` with visible-scope supplier concentration denominators and focused UI regression coverage; the RQ queue returned to no current READY prompt.
 
 Owner promotion 2026-09-10: `RQ226` was explicitly promoted by the user after completed `RQ225`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ226` was delivered on `main` with startup validation and explicit UTC schedule logging; the RQ queue returned to no current READY prompt.
@@ -224,6 +226,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ226 | DONE | worker-schedule-safety | Invalid nightly refresh schedule silently defaults |
 | RQ227 | DONE | cleanup-safety-gates | Batch delete proceeds after archive quota failure |
 | RQ228 | DONE | period-timezone-contract-consistency | Insight Studio v1/v2 period handling timezone mismatch |
+| RQ233 | DONE | supplier-concentration-scope-parity | Supplier concentration denominator changes with visible scope |
 | RQ258 | WAITING | trust-header-safe-metadata | Keep shared AnalyticsTrustHeader metadata user-safe and finite |
 | RQ259 | WAITING | trust-header-mode-freshness | Make shared trust-header gating and freshness normalization mode-aware |
 | RQ260 | WAITING | empty-state-safe-reason-action | Keep shared analytics empty state user-safe and actionable |
@@ -9767,7 +9770,7 @@ Both v1 (`/api/analytics/advanced`) and v2 (`/api/analytics/advanced/v2`) use `D
 
 ## RQ233 - Preserve supplier concentration denominator scope
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend/contract/tests
 Feature family: supplier-concentration-scope-parity
@@ -9817,6 +9820,25 @@ Owner: Supplier Analytics
 
 - Coordinates with `RQ145` but is independently reproducible in the supplier overview.
 - Does not redo supplier period validation from `RQ231` or supplier-footwear denominator work from `RQ232`.
+
+### Completion note
+
+- Date: 2026-09-10
+- Status: DONE
+- Completion: Concentration KPI and chart now use the same visible known-supplier population, including focused-supplier and unknown-filter scopes.
+- Changed files: `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`; `Klijent/clientapp/src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-10-RQ233-evidence.md`
+- Contract/runtime behavior changed: top-five supplier revenue share and concentration chart shares are calculated against visible known suppliers, with null/empty output for empty, non-positive or non-finite evidence.
+- Checks run: focused Supplier Sales Stats Vitest 8/8 passed; analytics guardrails passed; frontend production build passed; prompt-queue and planning validators passed; `git diff --check` passed.
+- Checks not run: full frontend test suite; browser/live API parity and production data-scope proof.
+- Run log: `.ai/runs/2026-09-10-RQ233-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending until commit and push
+- Missed: no live backend response comparison was run; this fix owns frontend visible-population arithmetic.
+- Follow-up: promote the next safe RQ candidate after this queue remains empty.
+- Residual risk: other supplier surfaces may still expose backend-global share fields for metrics outside this concentration card and chart.
+- Prompt defect / scope repair: RQ233 was present as a detailed WAITING prompt but absent from the compact queue summary; its DONE row was added without changing ownership.
 
 ---
 

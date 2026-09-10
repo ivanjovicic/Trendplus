@@ -1,7 +1,10 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import SupplierSalesStatsPage from "../SupplierSalesStatsPage";
+import SupplierSalesStatsPage, {
+  buildSupplierConcentrationData,
+  calculateTopSupplierRevenueShare,
+} from "../SupplierSalesStatsPage";
 import { getStores } from "../../services/analyticsApi";
 import { getSupplierSalesStats } from "../../services/supplierSalesStatsApi";
 
@@ -26,6 +29,37 @@ vi.mock("../../services/supplierSalesStatsApi", () => ({
 }));
 
 describe("SupplierSalesStatsPage premium controls", () => {
+  it("uses the same visible known-supplier population for concentration KPI and chart", () => {
+    const rows = [
+      { dobavljacNaziv: "Alfa", ukupanPromet: 100 },
+      { dobavljacNaziv: "Beta", ukupanPromet: 50 },
+      { dobavljacNaziv: "Gamma", ukupanPromet: 25 },
+      { dobavljacNaziv: "Delta", ukupanPromet: 10 },
+      { dobavljacNaziv: "Epsilon", ukupanPromet: 5 },
+      { dobavljacNaziv: "Zeta", ukupanPromet: 10 },
+    ];
+
+    expect(calculateTopSupplierRevenueShare(rows)).toBe(97.5);
+    expect(calculateTopSupplierRevenueShare([rows[0]])).toBe(100);
+    expect(buildSupplierConcentrationData(rows)).toEqual([
+      { name: "Alfa", sharePct: 50 },
+      { name: "Beta", sharePct: 25 },
+      { name: "Gamma", sharePct: 12.5 },
+      { name: "Delta", sharePct: 5 },
+      { name: "Zeta", sharePct: 5 },
+      { name: "Epsilon", sharePct: 2.5 },
+    ]);
+  });
+
+  it.each([
+    [[]],
+    [[{ dobavljacNaziv: "Zero", ukupanPromet: 0 }]],
+    [[{ dobavljacNaziv: "Unknown", ukupanPromet: Number.NaN }]],
+  ])("keeps unavailable concentration evidence distinct for %j", (rows) => {
+    expect(calculateTopSupplierRevenueShare(rows)).toBeNull();
+    expect(buildSupplierConcentrationData(rows)).toEqual([]);
+  });
+
   beforeEach(() => {
     vi.mocked(getStores).mockResolvedValue([]);
     vi.mocked(getSupplierSalesStats).mockResolvedValue({
