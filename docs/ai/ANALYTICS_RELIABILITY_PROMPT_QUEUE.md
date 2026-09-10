@@ -2,9 +2,10 @@
 
 Date: 2026-09-10
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ220
+Current READY prompt: none
 
 Owner promotion 2026-09-10: `RQ220` was explicitly promoted by the user after completed `RQ219`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
+Owner completion 2026-09-10: `RQ220` was delivered on `main` as the outbox dead-letter observability correction; the RQ queue returned to no current READY prompt.
 
 Owner promotion 2026-09-09: `RQ219` was explicitly promoted by the user after completed `RQ218`, transitioned to `READY` and claimed as `IN_PROGRESS`; it is now completed and the RQ queue has no current READY prompt.
 
@@ -2702,7 +2703,7 @@ Do not change recommendation thresholds, financial calculations, Product Decisio
 
 ## RQ128 - Prove Product Decision actionability parity on the exact deployed runtime
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: `STAB16` is DONE with worker/freshness evidence and read-only reconciliation on the canonical Render runtime
 Priority: P0
 Type: backend-frontend-contract/live-evidence
@@ -9124,6 +9125,25 @@ Messages with `RetryCount >= 5` excluded forever; recovery requires manual `/api
 
 - `RQ219` worker-process health correction is complete on current `main`.
 - No STAB16/live-provider evidence is required for this bounded local observability contract.
+
+### Completion note
+
+- Date: 2026-09-10
+- Status: DONE
+- Completion: periodic outbox dead-letter counts now surface through worker health/OBS08 evidence, with truthful unknown handling and a warning for non-zero backlog.
+- Changed files: `Workers/OutboxProcessorWorker.cs`; `Infrastructure/Services/WorkerHealthService.cs`; `Infrastructure/Services/WorkerSlaEvidenceMapper.cs`; focused `Api.Tests`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-10-RQ220-evidence.md`
+- Contract/runtime behavior changed: yes; `/api/workers/health` now includes the observed outbox dead-letter count in SLA evidence, and observation failures do not retain stale counts.
+- Checks run: focused backend tests 10/10; `dotnet build Trendplus2.Backend.slnf --configuration Release --no-restore`; governance validators; `git diff --check`
+- Checks not run: full Api.Tests suite; frontend checks; live provider/deployment alert routing and production reconciliation.
+- Run log: `.ai/runs/2026-09-10-RQ220-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `8bf653b933a93e2f5f2570bb5663db7df91b9697`
+- Main verification: fresh `git fetch origin main`; `origin/main` is `8bf653b933a93e2f5f2570bb5663db7df91b9697`, and implementation SHA `8bf653b9` is an ancestor.
+- Missed: no deployment-provider alert rule or live runtime proof.
+- Follow-up: `RQ221` remains WAITING; no current READY prompt is auto-promoted.
+- Residual risk: external log retention/alert routing and production reconciliation remain deployment responsibilities.
+- Prompt defect / scope repair: the legacy prompt omitted Scope, Read first, Tests and Dependencies and presented two broad alternatives; these were repaired into a bounded same-owner observability contract without retry-policy or schema expansion.
 
 ---
 
