@@ -2,9 +2,10 @@
 
 Date: 2026-09-10
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ222
+Current READY prompt: none
 
 Owner promotion 2026-09-10: `RQ222` was explicitly promoted by the user after completed `RQ221`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
+Owner completion 2026-09-10: `RQ222` was delivered on `main` as the dimensional aggregate orphan-line reconciliation correction; the RQ queue returned to no current READY prompt.
 
 Owner promotion 2026-09-10: `RQ221` was explicitly promoted by the user after completed `RQ220`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ221` was delivered on `main` as the Insight Studio error-response sanitization correction; the RQ queue returned to no current READY prompt.
@@ -199,7 +200,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ219 | DONE | worker-process-health | Background worker crashes are silently ignored (P0) |
 | RQ220 | DONE | outbox-dlq-observability | Outbox messages dead-lettered with no automatic surfacing |
 | RQ221 | DONE | error-response-sanitization | Insight Studio endpoints return raw exception messages |
-| RQ222 | IN_PROGRESS | aggregate-consistency | Daily vs dimensional aggregates disagree on orphan sales |
+| RQ222 | DONE | aggregate-consistency | Daily vs dimensional aggregates disagree on orphan sales |
 | RQ223 | WAITING | import-data-completeness | SkipInvalidForeignKeys default silently drops orphan lines |
 | RQ224 | WAITING | analytics-db-routing-safety | Analytics DB connection silently falls back in production |
 | RQ225 | WAITING | feature-flag-safety | UseSnapshotCost feature flag toggles live without validation |
@@ -9236,7 +9237,7 @@ Analytics endpoints return `Results.Problem(detail: ex.Message)` on failure. Pos
 
 ## RQ222 - Daily vs dimensional aggregates disagree on orphan sales lines
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/tests
 Feature family: aggregate-consistency
@@ -9287,6 +9288,25 @@ Commit suggestion: `fix(aggregation): align join logic across daily and dimensio
 
 - `RQ221` Insight Studio error-response sanitization is complete on current `main`.
 - No migration or live-provider evidence is required for this bounded query/join consistency correction.
+
+### Completion note
+
+- Date: 2026-09-10
+- Status: DONE
+- Completion: Category, supplier and gender aggregates now preserve orphan sales lines and reconcile revenue with the daily aggregate.
+- Changed files: `Workers/AnalyticsAggregationWorker.cs`; `Api.Tests/AnalyticsAggregationWorkerTests.cs`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-10-RQ222-evidence.md`.
+- Contract/runtime behavior changed: missing article references remain in dimensional aggregates under `Nepoznato`/`Neodređeno`; top-product behavior and existing transaction/retry/cache/date-window contracts are unchanged.
+- Checks run: owning `AnalyticsAggregationWorkerTests` filter passed 6/6; backend solution build passed with 0 warnings and 0 errors; `git diff --check` passed; all three repository governance validators and self-tests passed.
+- Checks not run: Docker-backed PostgreSQL execution was unavailable locally because Docker Desktop was stopped; full backend suite, frontend, migration and live-provider checks were outside scope.
+- Run log: `.ai/runs/2026-09-10-RQ222-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `806b21a6f9a6dca98c0a8424849cf193a16ceb35`
+- Main verification: fresh `git fetch origin main` followed by `git merge-base --is-ancestor 806b21a6f9a6dca98c0a8424849cf193a16ceb35 origin/main` passed; `origin/main` resolved to `806b21a6f9a6dca98c0a8424849cf193a16ceb35`.
+- Missed: local PostgreSQL-backed runtime assertion and live data reconciliation; no schema/migration work was required.
+- Follow-up: `RQ223` remains WAITING; no auto-promotion.
+- Residual risk: CI or a future local Docker run must execute the PostgreSQL-backed regression fixture; the local test process could only exercise the fixture's unavailable-environment path.
+- Prompt defect / scope repair: the legacy prompt omitted Scope, Read first, Tests and Dependencies; these were added, and the implementation remained bounded to the four requested aggregate queries plus focused tests.
 
 ---
 
