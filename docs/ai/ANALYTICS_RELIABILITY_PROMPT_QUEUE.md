@@ -2,9 +2,10 @@
 
 Date: 2026-09-10
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ225` (claimed `IN_PROGRESS` in this workspace)
+Current READY prompt: none
 
 Owner promotion 2026-09-10: `RQ225` was explicitly promoted by the user after completed `RQ224`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
+Owner completion 2026-09-10: `RQ225` was delivered on `main` with stable process-lifetime snapshot-cost option consumption; the RQ queue returned to no current READY prompt.
 
 Owner promotion 2026-09-10: `RQ224` was explicitly promoted by the user after completed `RQ223`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ224` was delivered on `main` with fail-closed analytics DB connection resolution; the RQ queue returned to no current READY prompt.
@@ -211,7 +212,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ222 | DONE | aggregate-consistency | Daily vs dimensional aggregates disagree on orphan sales |
 | RQ223 | DONE | import-data-completeness | SkipInvalidForeignKeys default silently drops orphan lines |
 | RQ224 | DONE | analytics-db-routing-safety | Analytics DB connection silently falls back in production |
-| RQ225 | IN_PROGRESS | feature-flag-safety | UseSnapshotCost feature flag toggles live without validation |
+| RQ225 | DONE | feature-flag-safety | UseSnapshotCost feature flag toggles live without validation |
 | RQ226 | WAITING | worker-schedule-safety | Invalid nightly refresh schedule silently defaults |
 | RQ227 | WAITING | cleanup-safety-gates | Batch delete proceeds after archive quota failure |
 | RQ228 | WAITING | period-timezone-contract-consistency | Insight Studio v1/v2 period handling timezone mismatch |
@@ -9470,7 +9471,7 @@ Missing `AnalyticsConnection` falls back to `DefaultConnection` in non-dev. Stag
 
 ## RQ225 - UseSnapshotCost feature flag toggles live without validation
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/config
 Feature family: feature-flag-safety
@@ -9521,6 +9522,24 @@ Only `StorageOptions` validates at startup; snapshot cost flag read via `IOption
 ### Dependencies
 
 - None. Existing endpoint consumers already use `IOptions<AnalyticsSnapshotOptions>`.
+
+### Completion note
+
+- Date: 2026-09-10
+- Status: DONE
+- Completion: `AnalyticsCostSnapshotService` now consumes `IOptions<AnalyticsSnapshotOptions>` rather than `IOptionsMonitor.CurrentValue`, so `UseSnapshotCost` cannot change KPI semantics through live configuration reload during a process lifetime.
+- Changed files: `Api/Services/AnalyticsCostSnapshotService.cs`; `Api.Tests/AnalyticsCostSnapshotServiceTests.cs`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-10-RQ225-evidence.md`.
+- Checks run: focused `AnalyticsCostSnapshotServiceTests` passed 3/3; `dotnet build Api/Api.csproj --configuration Release --no-restore --nologo` passed with 0 errors and 104 existing analyzer warnings; `git diff --check` passed; all six instruction/queue/planning governance checks passed.
+- Checks not run: full backend test suite; live configuration reload/production KPI run.
+- Run log: `.ai/runs/2026-09-10-RQ225-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `6d02adfafaca650d9b8d3f4479d14c7c75262c0b`
+- Main verification: fresh `git fetch origin main` followed by `git merge-base --is-ancestor 6d02adfafaca650d9b8d3f4479d14c7c75262c0b origin/main` passed; `origin/main` resolved to `6d02adfafaca650d9b8d3f4479d14c7c75262c0b`.
+- Missed: live configuration reload/production KPI proof; full backend suite.
+- Follow-up: `RQ226` remains WAITING; no current READY prompt.
+- Residual risk: changing `UseSnapshotCost` requires a process restart, and deployment operators must treat it as a deployment-time setting.
+- Prompt defect / scope repair: legacy prompt omitted Scope, Read first, Tests and Dependencies; these were added, and the fix remained bounded to option consumption and focused tests.
 
 ---
 
