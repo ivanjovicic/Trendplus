@@ -9754,10 +9754,10 @@ Both v1 (`/api/analytics/advanced`) and v2 (`/api/analytics/advanced/v2`) use `D
 - Checks run: focused Insight Studio tests 5/5 passed; `git diff --check` passed; agent, prompt-queue and planning validators passed.
 - Checks not run: full `Api.Tests` suite; live PostgreSQL period/KPI parity; browser smoke and production timezone proof.
 - Run log: `.ai/runs/2026-09-10-RQ228-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending until commit and push
+- Main commit SHA: 9bef2d41bbd026f8a3d2e2a4e22f0135e32d4ed0
+- Main verification: implementation commit pushed; fresh origin/main verification follows after evidence-sync commit
 - Missed: live cross-endpoint KPI parity was not run because it requires a live analytics database and seeded period data.
 - Follow-up: promote the next safe RQ candidate after this queue remains empty.
 - Residual risk: date-only semantics follow the host runtime local timezone, so deployments serving multiple business timezones need a separate tenant/business-timezone contract.
