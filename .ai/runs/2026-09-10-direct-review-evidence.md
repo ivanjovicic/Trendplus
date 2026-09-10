@@ -5,7 +5,7 @@ Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct delivery
 Main commit SHA: 72d1c0f6526c44ca51adc334ef45564b0b81f1a5
-Main verification: pass - origin/main contains 72d1c0f6526c44ca51adc334ef45564b0b81f1a5 after push; final verification is repeated after evidence synchronization
+Main verification: pass - origin/main=99eb7ce59b60b1550c171b718a9945c9810eec90 contains implementation 72d1c0f6526c44ca51adc334ef45564b0b81f1a5; fresh ancestor check passed
 Evidence state: synchronized
 
 ## What was done
