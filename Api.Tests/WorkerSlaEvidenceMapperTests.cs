@@ -120,4 +120,31 @@ public sealed class WorkerSlaEvidenceMapperTests
         Assert.Null(worker.LastSuccessfulRunAgeSeconds);
         Assert.NotEqual("enabled", worker.DataQualityStatus);
     }
+
+    [Fact]
+    public void Capture_KnownDeadLetterCount_IsVisible_AndNotMarkedUninstrumented()
+    {
+        var now = new DateTime(2026, 8, 17, 9, 0, 0, DateTimeKind.Utc);
+        var summary = new WorkerHealthSummary
+        {
+            Workers =
+            [
+                new WorkerStatusDto
+                {
+                    WorkerName = "OutboxProcessorWorker",
+                    Status = nameof(WorkerStatusType.Healthy),
+                    LastHeartbeat = now,
+                    DeadLetterCount = 3,
+                    IsStale = false
+                }
+            ]
+        };
+
+        var snapshot = WorkerSlaEvidenceMapper.Capture(summary, true, now);
+        var worker = Assert.Single(snapshot.Workers);
+
+        Assert.Equal(3, worker.DeadLetterCount);
+        Assert.DoesNotContain(WorkerSlaEvidenceMapper.RetryDlqUnknownCode, snapshot.WarningCodes);
+        Assert.DoesNotContain(WorkerSlaEvidenceMapper.RetryDlqUnknownCode, worker.WarningCodes);
+    }
 }

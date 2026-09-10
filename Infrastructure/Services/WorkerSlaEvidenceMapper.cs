@@ -30,6 +30,9 @@ public static class WorkerSlaEvidenceMapper
             RetryDlqUnknownCode
         };
 
+        if (workers.Count > 0 && workers.All(worker => worker.DeadLetterCount is not null))
+            warningCodes.Remove(RetryDlqUnknownCode);
+
         if (workers.Count == 0)
             warningCodes.Add(InventoryMissingCode);
 
@@ -90,20 +93,20 @@ public static class WorkerSlaEvidenceMapper
             SuccessCount = null,
             FailureCount = null,
             RetryCount = null,
-            DeadLetterCount = null,
+            DeadLetterCount = worker.DeadLetterCount,
             LastSuccessfulRunAtUtc = null,
             LastSuccessfulRunAgeSeconds = null,
             LastErrorPresent = !string.IsNullOrWhiteSpace(worker.LastError),
             SourceJobId = null,
             SourceSystem = null,
             CorrelationId = null,
-            WarningCodes =
-            [
+            WarningCodes = new[]
+            {
                 QueueDepthUnknownCode,
                 OldestWorkUnknownCode,
                 LastSuccessUnknownCode,
                 RetryDlqUnknownCode
-            ],
+            }.Where(code => worker.DeadLetterCount is null || code != RetryDlqUnknownCode).ToList(),
             DataQualityStatus = "partial"
         };
     }

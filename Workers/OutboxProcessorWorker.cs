@@ -126,8 +126,11 @@ namespace Workers
                 try
                 {
                     _healthService.ReportRunning(WorkerName, "Processing messages...");
-                    await ProcessOutboxMessagesAsync(stoppingToken);
-                    _healthService.ReportHealthy(WorkerName, $"Last check: {DateTime.UtcNow:HH:mm:ss}");
+                    var deadLetterCount = await ProcessOutboxMessagesAsync(stoppingToken);
+                    _healthService.ReportHealthy(
+                        WorkerName,
+                        $"Last check: {DateTime.UtcNow:HH:mm:ss}",
+                        deadLetterCount);
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                 {
@@ -136,6 +139,7 @@ namespace Workers
                 catch (TaskCanceledException)
                 {
                     _logger.LogWarning("OutboxProcessorWorker iteration canceled (likely shutdown or transient connection timeout)");
+                    _healthService.ReportRunning(WorkerName, "Dead-letter observation unavailable after canceled iteration.");
                 }
                 catch (Exception ex)
                 {
@@ -158,7 +162,7 @@ namespace Workers
             _logger.LogInformation("OutboxProcessorWorker stopped");
         }
 
-        private async Task ProcessOutboxMessagesAsync(CancellationToken ct)
+        private async Task<int> ProcessOutboxMessagesAsync(CancellationToken ct)
         {
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<ITrendplusDbContext>();
@@ -172,8 +176,10 @@ namespace Workers
 
                 if (!messages.Any())
                 {
+                    var deadLetterCount = await CountDeadLetterMessagesAsync(db, ct);
+                    LogDeadLetterQueueIfNeeded(deadLetterCount);
                     await transaction.CommitAsync(ct);
-                    return;
+                    return deadLetterCount;
                 }
 
                 _logger.LogInformation("Processing {Count} outbox messages", messages.Count);
@@ -226,8 +232,11 @@ namespace Workers
                 }
 
                 await db.SaveChangesAsync(ct);
+                var observedDeadLetterCount = await CountDeadLetterMessagesAsync(db, ct);
+                LogDeadLetterQueueIfNeeded(observedDeadLetterCount);
                 await transaction.CommitAsync(ct);
                 _logger.LogInformation("Processed {Count} outbox messages", messages.Count);
+                return observedDeadLetterCount;
             }
             catch
             {
@@ -241,6 +250,23 @@ namespace Workers
                 }
 
                 throw;
+            }
+        }
+
+        private static Task<int> CountDeadLetterMessagesAsync(
+            ITrendplusDbContext db,
+            CancellationToken ct)
+            => db.OutboxMessages.CountAsync(
+                message => !message.IsProcessed && message.RetryCount >= 5,
+                ct);
+
+        private void LogDeadLetterQueueIfNeeded(int deadLetterCount)
+        {
+            if (deadLetterCount > 0)
+            {
+                _logger.LogWarning(
+                    "Outbox dead-letter queue contains {DeadLetterCount} messages requiring manual retry",
+                    deadLetterCount);
             }
         }
 

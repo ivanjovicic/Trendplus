@@ -1,8 +1,10 @@
 # Analytics Reliability Prompt Queue
 
-Date: 2026-09-09
+Date: 2026-09-10
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ220
+
+Owner promotion 2026-09-10: `RQ220` was explicitly promoted by the user after completed `RQ219`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 
 Owner promotion 2026-09-09: `RQ219` was explicitly promoted by the user after completed `RQ218`, transitioned to `READY` and claimed as `IN_PROGRESS`; it is now completed and the RQ queue has no current READY prompt.
 
@@ -9068,7 +9070,7 @@ Commit suggestion: `fix(host): fail host on worker exception or add external mon
 
 ## RQ220 - Outbox messages dead-lettered with no automatic surfacing
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: backend/worker/monitoring
 Feature family: outbox-dlq-observability
@@ -9085,14 +9087,43 @@ Messages with `RetryCount >= 5` excluded forever; recovery requires manual `/api
 
 - `OutboxProcessorWorker.cs:217-224`; `WorkerSlaEvidenceMapper.cs:13`.
 
+### Scope
+
+- Keep the change bounded to outbox worker health reporting, the OBS08 SLA evidence projection, and focused backend tests.
+- Surface the current dead-letter count (`!IsProcessed && RetryCount >= 5`) as observed evidence; do not redesign retry policy, outbox schema, or the manual retry endpoints.
+
+### Read first
+
+- `Workers/OutboxProcessorWorker.cs`
+- `Infrastructure/Services/WorkerHealthService.cs`
+- `Infrastructure/Services/WorkerSlaEvidenceMapper.cs`
+- `Api/Endpoints/OutboxEndpoints.cs`
+- `Api.Tests/WorkerSlaEvidenceMapperTests.cs`
+- `Api.Tests/OutboxProcessorWorkerConcurrencyTests.cs`
+
 ### Do
 
-1. Add background task to periodically alert on dead-lettered messages.
-2. Or implement exponential-backoff DLQ with eventual flush to error log.
+1. Add bounded periodic dead-letter observation to the existing outbox worker health cycle.
+2. Preserve unknown/null when the count cannot be observed; log a warning when a non-zero dead-letter count is observed.
+3. Project the observed count through the existing worker health and OBS08 SLA evidence contract.
+4. Add focused regression proof for known zero/non-zero counts and the still-unknown path.
+
+### Tests
+
+- `Api.Tests/WorkerSlaEvidenceMapperTests.cs`: known dead-letter count is visible and does not retain the not-instrumented warning; missing count remains unknown.
+- Focused outbox worker/health contract test: the worker observes `!IsProcessed && RetryCount >= 5` without changing the retry endpoint or transaction ownership.
+- Run the owning test project with the narrowest available filter, then build the changed backend projects.
 
 ### Acceptance
 
-- Dead-letter queue is visible; operators can detect and fix stuck events.
+- Dead-letter queue is visible in `/api/workers/health` SLA evidence with a true observed count (including true zero).
+- A non-zero dead-letter count emits an operator-visible warning/log signal; failures to observe it remain unknown rather than becoming zero or healthy.
+- Existing manual retry remains the remediation path; no automatic retry or schema change is introduced.
+
+### Dependencies
+
+- `RQ219` worker-process health correction is complete on current `main`.
+- No STAB16/live-provider evidence is required for this bounded local observability contract.
 
 ---
 

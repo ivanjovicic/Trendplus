@@ -9,19 +9,33 @@ public class WorkerHealthService
     private readonly Dictionary<string, WorkerStatus> _workerStatuses = new();
     private readonly object _lock = new();
 
-    public void ReportHealthy(string workerName, string? message = null)
+    public void ReportHealthy(string workerName, string? message = null, int? deadLetterCount = null)
     {
         lock (_lock)
         {
-            _workerStatuses[workerName] = new WorkerStatus
+            if (_workerStatuses.TryGetValue(workerName, out var existing))
             {
-                WorkerName = workerName,
-                Status = WorkerStatusType.Healthy,
-                LastHeartbeat = DateTime.UtcNow,
-                Message = message,
-                LastError = null,
-                ErrorCount = 0
-            };
+                existing.Status = WorkerStatusType.Healthy;
+                existing.LastHeartbeat = DateTime.UtcNow;
+                existing.Message = message;
+                existing.LastError = null;
+                existing.ErrorCount = 0;
+                if (deadLetterCount.HasValue)
+                    existing.DeadLetterCount = deadLetterCount;
+            }
+            else
+            {
+                _workerStatuses[workerName] = new WorkerStatus
+                {
+                    WorkerName = workerName,
+                    Status = WorkerStatusType.Healthy,
+                    LastHeartbeat = DateTime.UtcNow,
+                    Message = message,
+                    LastError = null,
+                    ErrorCount = 0,
+                    DeadLetterCount = deadLetterCount
+                };
+            }
         }
     }
 
@@ -34,6 +48,7 @@ public class WorkerHealthService
                 existing.Status = WorkerStatusType.Running;
                 existing.LastHeartbeat = DateTime.UtcNow;
                 existing.Message = message;
+                existing.DeadLetterCount = null;
             }
             else
             {
@@ -59,6 +74,7 @@ public class WorkerHealthService
                 existing.LastError = $"{ex.GetType().Name}: {ex.Message}";
                 existing.LastErrorTime = DateTime.UtcNow;
                 existing.ErrorCount++;
+                existing.DeadLetterCount = null;
             }
             else
             {
@@ -84,6 +100,7 @@ public class WorkerHealthService
                 existing.Status = WorkerStatusType.Stopped;
                 existing.LastHeartbeat = DateTime.UtcNow;
                 existing.Message = reason;
+                existing.DeadLetterCount = null;
             }
             else
             {
@@ -138,6 +155,7 @@ public class WorkerHealthService
                     LastError = s.LastError,
                     LastErrorTime = s.LastErrorTime,
                     ErrorCount = s.ErrorCount,
+                    DeadLetterCount = s.DeadLetterCount,
                     IsStale = s.LastHeartbeat <= staleThreshold
                 }).ToList(),
                 HasCriticalIssues = statuses.Any(s => s.Status == WorkerStatusType.Error || s.LastHeartbeat <= staleThreshold)
@@ -155,6 +173,7 @@ public class WorkerStatus
     public string? LastError { get; set; }
     public DateTime? LastErrorTime { get; set; }
     public int ErrorCount { get; set; }
+    public int? DeadLetterCount { get; set; }
 }
 
 public enum WorkerStatusType
@@ -188,5 +207,6 @@ public class WorkerStatusDto
     public string? LastError { get; set; }
     public DateTime? LastErrorTime { get; set; }
     public int ErrorCount { get; set; }
+    public int? DeadLetterCount { get; set; }
     public bool IsStale { get; set; }
 }

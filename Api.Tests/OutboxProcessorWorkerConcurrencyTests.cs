@@ -36,6 +36,16 @@ public sealed class OutboxProcessorWorkerConcurrencyTests : IClassFixture<Postgr
     }
 
     [Fact]
+    public void WorkerDeclaresDeadLetterObservationAndOperatorWarning()
+    {
+        var worker = ReadRepoFile("Workers/OutboxProcessorWorker.cs");
+
+        Assert.Contains("!message.IsProcessed && message.RetryCount >= 5", worker, StringComparison.Ordinal);
+        Assert.Contains("Outbox dead-letter queue contains {DeadLetterCount} messages requiring manual retry", worker, StringComparison.Ordinal);
+        Assert.Contains("CountDeadLetterMessagesAsync", worker, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ConcurrentTransactionsClaimPendingMessageOnlyOnce()
     {
         if (!_fixture.IsAvailable)
