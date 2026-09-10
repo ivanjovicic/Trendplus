@@ -2,7 +2,9 @@
 
 Date: 2026-09-10
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: `RQ226` (claimed `IN_PROGRESS` in this workspace)
+
+Owner promotion 2026-09-10: `RQ226` was explicitly promoted by the user after completed `RQ225`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 
 Owner promotion 2026-09-10: `RQ225` was explicitly promoted by the user after completed `RQ224`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ225` was delivered on `main` with stable process-lifetime snapshot-cost option consumption; the RQ queue returned to no current READY prompt.
@@ -213,7 +215,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ223 | DONE | import-data-completeness | SkipInvalidForeignKeys default silently drops orphan lines |
 | RQ224 | DONE | analytics-db-routing-safety | Analytics DB connection silently falls back in production |
 | RQ225 | DONE | feature-flag-safety | UseSnapshotCost feature flag toggles live without validation |
-| RQ226 | WAITING | worker-schedule-safety | Invalid nightly refresh schedule silently defaults |
+| RQ226 | IN_PROGRESS | worker-schedule-safety | Invalid nightly refresh schedule silently defaults |
 | RQ227 | WAITING | cleanup-safety-gates | Batch delete proceeds after archive quota failure |
 | RQ228 | WAITING | period-timezone-contract-consistency | Insight Studio v1/v2 period handling timezone mismatch |
 | RQ258 | WAITING | trust-header-safe-metadata | Keep shared AnalyticsTrustHeader metadata user-safe and finite |
@@ -3717,7 +3719,7 @@ Commit suggestion: `feat(analytics): materialize measured forecast evaluation`
 
 ## RQ143 - Remove frontend decision and ranking invention from analytics surfaces
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P0
 Type: backend/contract/frontend/tests
 Feature family: backend-decision-ranking-ownership
@@ -9545,12 +9547,13 @@ Only `StorageOptions` validates at startup; snapshot cost flag read via `IOption
 
 ## RQ226 - Invalid nightly refresh schedule silently defaults
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P2
 Type: backend/config/worker
 Feature family: worker-schedule-safety
 Parallel-safe: yes
 Owner: Worker/Config
+Local lock: `.ai/task-locks/RQ226-codex.lock.md`
 
 Commit suggestion: `fix(config): fail or alert if nightly refresh schedule is malformed`
 
@@ -9562,6 +9565,22 @@ Malformed `NightlyAnalyticsRefresh:RunAtUtc` values fall back to 00:10 UTC with 
 
 - `NightlyAnalyticsRefreshWorker.cs:794-802`; `WorkerRegistryService.cs:178-184`.
 
+### Scope
+
+- `Infrastructure/Configuration/NightlyAnalyticsRefreshOptions.cs` and its validator
+- `Api/Program.cs` options registration
+- `Workers/NightlyAnalyticsRefreshWorker.cs` schedule parsing and startup logging
+- focused configuration/worker tests
+- no database, migration, frontend or unrelated scheduler changes
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `Infrastructure/Configuration/NightlyAnalyticsRefreshOptions.cs`
+- `Workers/NightlyAnalyticsRefreshWorker.cs`
+- `Api.Tests/NightlyAnalyticsRefreshWorkerTests.cs`
+
 ### Do
 
 1. Add validation for `RunAtUtc` at startup.
@@ -9570,6 +9589,16 @@ Malformed `NightlyAnalyticsRefresh:RunAtUtc` values fall back to 00:10 UTC with 
 ### Acceptance
 
 - Malformed refresh schedule causes startup failure or explicit audit trail.
+
+### Tests
+
+- focused `NightlyAnalyticsRefreshOptionsValidatorTests` and `NightlyAnalyticsRefreshWorkerTests`
+- `dotnet build Trendplus2.Backend.slnf --configuration Release --no-restore`
+- `git diff --check`
+
+### Dependencies
+
+- None. The existing worker remains the schedule owner and receives validated options through DI.
 
 ---
 

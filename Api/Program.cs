@@ -36,6 +36,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using System.Net.Http.Json;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
+using Microsoft.Extensions.Options;
 using Api.Services;
 using Api.Endpoints;
 using Api.Services.Analytics;
@@ -168,8 +169,10 @@ try
     builder.Services.Configure<DataSourceOptions>(builder.Configuration.GetSection(DataSourceOptions.Section));
     builder.Services.Configure<Infrastructure.Configuration.AnalyticsDataQualityHealthOptions>(
         builder.Configuration.GetSection(Infrastructure.Configuration.AnalyticsDataQualityHealthOptions.Section));
-    builder.Services.Configure<Infrastructure.Configuration.NightlyAnalyticsRefreshOptions>(
-        builder.Configuration.GetSection(Infrastructure.Configuration.NightlyAnalyticsRefreshOptions.Section));
+    builder.Services.AddOptions<Infrastructure.Configuration.NightlyAnalyticsRefreshOptions>()
+        .Bind(builder.Configuration.GetSection(Infrastructure.Configuration.NightlyAnalyticsRefreshOptions.Section))
+        .ValidateOnStart();
+    builder.Services.AddSingleton<IValidateOptions<Infrastructure.Configuration.NightlyAnalyticsRefreshOptions>, Infrastructure.Configuration.NightlyAnalyticsRefreshOptionsValidator>();
     builder.Services.Configure<Infrastructure.Configuration.OpenTrainingModelTrainingOptions>(
         builder.Configuration.GetSection(Infrastructure.Configuration.OpenTrainingModelTrainingOptions.Section));
     builder.Services.Configure<Infrastructure.Configuration.TrendIngestionOptions>(

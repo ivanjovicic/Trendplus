@@ -70,6 +70,13 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
             return;
         }
 
+        var runAtUtc = ParseRunAtUtc(_options.RunAtUtc);
+        _logger.LogInformation(
+            "{WorkerName} schedule configured for {RunAtUtc} UTC. CatchUpIfMissed={CatchUpIfMissed}.",
+            WorkerName,
+            runAtUtc.ToString(@"hh\:mm", CultureInfo.InvariantCulture),
+            _options.CatchUpIfMissed);
+
         while (!stoppingToken.IsCancellationRequested)
         {
             if (!_controlService.IsEnabled || !_options.Enabled)
@@ -149,7 +156,6 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
                 paused = false;
             }
 
-            var runAtUtc = ParseRunAtUtc(_options.RunAtUtc);
             var nowUtc = DateTime.UtcNow;
             var todayUtc = DateOnly.FromDateTime(nowUtc);
             var scheduledTodayUtc = nowUtc.Date.Add(runAtUtc);
@@ -809,13 +815,13 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
 
     private static TimeSpan ParseRunAtUtc(string value)
     {
-        if (TimeSpan.TryParseExact(value, "hh\\:mm", CultureInfo.InvariantCulture, out var ts))
+        if (TimeSpan.TryParseExact(value?.Trim(), "hh\\:mm", CultureInfo.InvariantCulture, out var ts) &&
+            ts >= TimeSpan.Zero &&
+            ts < TimeSpan.FromDays(1))
             return ts;
 
-        if (TimeSpan.TryParse(value, CultureInfo.InvariantCulture, out ts))
-            return new TimeSpan(ts.Hours, ts.Minutes, 0);
-
-        return new TimeSpan(0, 10, 0);
+        throw new InvalidOperationException(
+            "NightlyAnalyticsRefresh:RunAtUtc must be a valid 24-hour UTC time in HH:mm format.");
     }
 
     private static bool TryParseRelation(string value, out string schema, out string name, out string quoted)
