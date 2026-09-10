@@ -5,6 +5,7 @@ Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
 Owner promotion 2026-09-10: `RQ221` was explicitly promoted by the user after completed `RQ220`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
+Owner completion 2026-09-10: `RQ221` was delivered on `main` as the Insight Studio error-response sanitization correction; the RQ queue returned to no current READY prompt.
 
 Owner promotion 2026-09-10: `RQ220` was explicitly promoted by the user after completed `RQ219`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ220` was delivered on `main` as the outbox dead-letter observability correction; the RQ queue returned to no current READY prompt.
@@ -195,7 +196,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ218 | DONE | import-retry-idempotency | Access import auto-retry requeues without rolling back |
 | RQ219 | DONE | worker-process-health | Background worker crashes are silently ignored (P0) |
 | RQ220 | DONE | outbox-dlq-observability | Outbox messages dead-lettered with no automatic surfacing |
-| RQ221 | IN_PROGRESS | error-response-sanitization | Insight Studio endpoints return raw exception messages |
+| RQ221 | DONE | error-response-sanitization | Insight Studio endpoints return raw exception messages |
 | RQ222 | WAITING | aggregate-consistency | Daily vs dimensional aggregates disagree on orphan sales |
 | RQ223 | WAITING | import-data-completeness | SkipInvalidForeignKeys default silently drops orphan lines |
 | RQ224 | WAITING | analytics-db-routing-safety | Analytics DB connection silently falls back in production |
@@ -9073,7 +9074,7 @@ Commit suggestion: `fix(host): fail host on worker exception or add external mon
 
 ## RQ220 - Outbox messages dead-lettered with no automatic surfacing
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/worker/monitoring
 Feature family: outbox-dlq-observability
@@ -9209,6 +9210,25 @@ Analytics endpoints return `Results.Problem(detail: ex.Message)` on failure. Pos
 
 - `RQ220` outbox observability correction is complete on current `main`.
 - Existing `HandledErrorLogging` remains the diagnostic persistence owner.
+
+### Completion note
+
+- Date: 2026-09-10
+- Status: DONE
+- Completion: all seven Insight Studio v1 handled exception paths now return a generic Serbian ProblemDetails detail while preserving existing diagnostic persistence.
+- Changed files: `Api/Endpoints/InsightStudioEndpoints.cs`; `Api.Tests/InsightStudioErrorResponseContractTests.cs`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-10-RQ221-evidence.md`
+- Contract/runtime behavior changed: yes; raw exception/SQL details are no longer exposed by the seven v1 handled error responses, and affected titles use valid Serbian UTF-8 text.
+- Checks run: focused contract test 1/1; `dotnet build Trendplus2.Backend.slnf --configuration Release --no-restore`; governance validators; `git diff --check`
+- Checks not run: full Api.Tests suite; `InsightStudioV2Endpoints` tests; frontend checks; live deployment/API smoke and provider log inspection.
+- Run log: `.ai/runs/2026-09-10-RQ221-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `a5551a5b2abbffc1b867b0dd2eff2f39b170a898`
+- Main verification: fresh `git fetch origin main`; `origin/main` is `a5551a5b2abbffc1b867b0dd2eff2f39b170a898` and contains the implementation commit.
+- Missed: no live production response or provider log evidence.
+- Follow-up: `RQ222` remains WAITING; no current READY prompt is auto-promoted.
+- Residual risk: diagnostic visibility still depends on the existing error-store/logging path being configured.
+- Prompt defect / scope repair: the legacy prompt omitted Scope, Read first, Tests and Dependencies; these were added and the change was bounded to v1 Insight Studio responses, excluding V2 and global middleware.
 
 ---
 
