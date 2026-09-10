@@ -2,9 +2,10 @@
 
 Date: 2026-09-10
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ226` (claimed `IN_PROGRESS` in this workspace)
+Current READY prompt: none
 
 Owner promotion 2026-09-10: `RQ226` was explicitly promoted by the user after completed `RQ225`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
+Owner completion 2026-09-10: `RQ226` was delivered on `main` with startup validation and explicit UTC schedule logging; the RQ queue returned to no current READY prompt.
 
 Owner promotion 2026-09-10: `RQ225` was explicitly promoted by the user after completed `RQ224`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ225` was delivered on `main` with stable process-lifetime snapshot-cost option consumption; the RQ queue returned to no current READY prompt.
@@ -215,7 +216,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ223 | DONE | import-data-completeness | SkipInvalidForeignKeys default silently drops orphan lines |
 | RQ224 | DONE | analytics-db-routing-safety | Analytics DB connection silently falls back in production |
 | RQ225 | DONE | feature-flag-safety | UseSnapshotCost feature flag toggles live without validation |
-| RQ226 | IN_PROGRESS | worker-schedule-safety | Invalid nightly refresh schedule silently defaults |
+| RQ226 | DONE | worker-schedule-safety | Invalid nightly refresh schedule silently defaults |
 | RQ227 | WAITING | cleanup-safety-gates | Batch delete proceeds after archive quota failure |
 | RQ228 | WAITING | period-timezone-contract-consistency | Insight Studio v1/v2 period handling timezone mismatch |
 | RQ258 | WAITING | trust-header-safe-metadata | Keep shared AnalyticsTrustHeader metadata user-safe and finite |
@@ -3719,7 +3720,7 @@ Commit suggestion: `feat(analytics): materialize measured forecast evaluation`
 
 ## RQ143 - Remove frontend decision and ranking invention from analytics surfaces
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P0
 Type: backend/contract/frontend/tests
 Feature family: backend-decision-ranking-ownership
@@ -9599,6 +9600,24 @@ Malformed `NightlyAnalyticsRefresh:RunAtUtc` values fall back to 00:10 UTC with 
 ### Dependencies
 
 - None. The existing worker remains the schedule owner and receives validated options through DI.
+
+### Completion note
+
+- Date: 2026-09-10
+- Status: DONE
+- Completion: `NightlyAnalyticsRefresh:RunAtUtc` now requires an exact valid `HH:mm` UTC value at startup; malformed values fail validation, the worker no longer silently defaults to `00:10`, and the resolved schedule is logged explicitly.
+- Changed files: `Api/Program.cs`; `Workers/NightlyAnalyticsRefreshWorker.cs`; `Infrastructure/Configuration/NightlyAnalyticsRefreshOptionsValidator.cs`; `Api.Tests/NightlyAnalyticsRefreshOptionsValidatorTests.cs`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-10-RQ226-evidence.md`.
+- Checks run: focused validator/worker tests passed 12/12 (Docker-backed cases were skipped by their fixture when Docker was unavailable); `dotnet build Trendplus2.Backend.slnf --configuration Release --no-restore --nologo` passed with 0 warnings and 0 errors; `git diff --check` passed; all six instruction/queue/planning governance checks passed.
+- Checks not run: full backend test suite; live production startup or scheduled refresh.
+- Run log: `.ai/runs/2026-09-10-RQ226-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `975942fd288ec4e13fd2dc05a2d0a355ca9a27a2`
+- Main verification: fresh `git fetch origin main` followed by `git merge-base --is-ancestor 975942fd288ec4e13fd2dc05a2d0a355ca9a27a2 origin/main` passed; `origin/main` resolved to `975942fd288ec4e13fd2dc05a2d0a355ca9a27a2`.
+- Missed: live production startup/schedule proof; full backend suite.
+- Follow-up: `RQ227` remains WAITING; no current READY prompt.
+- Residual risk: deployments with malformed or differently formatted `RunAtUtc` now fail startup intentionally and must correct configuration before the worker can run.
+- Prompt defect / scope repair: legacy prompt omitted Scope, Read first, Tests and Dependencies; these were added. The initial lock metadata patch did not persist the lock, so it was recreated before commit and removed before commit; no concurrent work was detected.
 
 ---
 
