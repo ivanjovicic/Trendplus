@@ -9831,10 +9831,10 @@ Owner: Supplier Analytics
 - Checks run: focused Supplier Sales Stats Vitest 8/8 passed; analytics guardrails passed; frontend production build passed; prompt-queue and planning validators passed; `git diff --check` passed.
 - Checks not run: full frontend test suite; browser/live API parity and production data-scope proof.
 - Run log: `.ai/runs/2026-09-10-RQ233-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending until commit and push
+- Main commit SHA: 49267ec47f1ca1ea910b682111357f60111e3913
+- Main verification: implementation commit pushed; fresh origin/main verification follows after evidence-sync commit
 - Missed: no live backend response comparison was run; this fix owns frontend visible-population arithmetic.
 - Follow-up: promote the next safe RQ candidate after this queue remains empty.
 - Residual risk: other supplier surfaces may still expose backend-global share fields for metrics outside this concentration card and chart.
