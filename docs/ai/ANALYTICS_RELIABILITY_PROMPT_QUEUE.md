@@ -10230,10 +10230,10 @@ The Analytics Dashboard parses a malformed or temporarily empty `datetime-local`
 - Checks run: focused Dashboard/integration/period-boundary tests 14/14; analytics guardrails/encoding/typecheck; frontend build; queue/planning validators; diff check.
 - Checks not run: full frontend/backend suites; browser/live API/production data.
 - Run log: `.ai/runs/2026-09-11-RQ241-evidence.md`
-- Evidence state: pending final synchronization
+- Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `098c6184a6d06e09a49b36b8f82015cfe53e63b2`
-- Main verification: passed - implementation commit was pushed to `main`; final docs-sync verification is pending.
+- Main verification: passed - implementation commit was pushed to `main`; docs/evidence sync commit `c0fac260` was subsequently pushed and verified on `main`.
 - Missed: no browser/live API proof; full suites were outside the scoped frontend validation.
 - Residual risk: Vite reports the existing large-chunk warning; browser-native edge behavior remains environment-dependent.
 - Next: the next RQ candidate remains WAITING and is not promoted by this run.
