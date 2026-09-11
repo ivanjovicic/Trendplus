@@ -2,7 +2,7 @@
 
 Date: 2026-09-11
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ236
+Current READY prompt: none
 
 Owner promotion 2026-09-10: `RQ227` was explicitly promoted by the user after completed `RQ226`; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ227` was delivered on `main` with fail-closed deleted-row archive handling and focused regression coverage; the RQ queue returned to no current READY prompt.
@@ -15,6 +15,7 @@ Owner completion 2026-09-11: `RQ234` was delivered on `main` with canonical supp
 Owner promotion 2026-09-11: `RQ235` was explicitly promoted by the user after completed `RQ234`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-11: `RQ235` was delivered on `main` with a backend-owned actionability gate across all supplier report negotiation actions; the RQ queue returned to no current READY prompt.
 Owner promotion 2026-09-11: `RQ236` was explicitly promoted by the user after completed `RQ235`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
+Owner completion 2026-09-11: `RQ236` was delivered on `main` with explicit supplier-report numeric availability states, no zero-filling for incomplete optional metrics, and focused report/print/export parity coverage; the RQ queue returned to no current READY prompt.
 
 Owner promotion 2026-09-10: `RQ226` was explicitly promoted by the user after completed `RQ225`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ226` was delivered on `main` with startup validation and explicit UTC schedule logging; the RQ queue returned to no current READY prompt.
@@ -9996,7 +9997,7 @@ The supplier report correctly marks `Preporuka dozvoljena: Ne` and changes `Fina
 
 ## RQ236 - Preserve unavailable supplier report numerics instead of zero-filling
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: frontend/contract/tests
 Feature family: supplier-report-numeric-state
@@ -10045,6 +10046,26 @@ Owner: Supplier Analytics Reports
 ### Dependencies
 
 - Coordinates with `RQ145` and `RQ147`; it is the focused supplier-report numeric-state reproduction.
+
+### Completion note
+
+- Date: 2026-09-11
+- Status: DONE
+- Completion: Supplier report payloads now classify optional units and markdown metrics as measured, measured zero, unavailable, partial or non-finite. Missing/invalid values remain unavailable, are excluded from weighted markdown and threshold evidence, and emit explicit Serbian limitations; valid zero remains measured zero.
+- Changed files: `Klijent/clientapp/src/services/supplierDecisionReport.ts`; `Klijent/clientapp/src/services/__tests__/supplierDecisionReport.spec.ts`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-11-RQ236-evidence.md`
+- Contract/runtime behavior changed: report, print summary and export payloads consume the same safe numeric values and evidence-state metadata; incomplete markdown evidence cannot create a concrete negotiation recommendation.
+- Checks run: focused supplier report/page/actions/component tests 31/31 passed; analytics guardrails, encoding and typecheck passed; frontend production build passed; prompt-queue and planning validators passed; `git diff --check` passed.
+- Checks not run: full frontend/backend suites; browser/live API/production-data PDF/XLSX/CSV rendering.
+- Run log: `.ai/runs/2026-09-11-RQ236-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: 67d4f0b210d1c06e58e33c391b2a294b6744448d
+- Main verification: passed - `HEAD` and `origin/main` both contained `67d4f0b210d1c06e58e33c391b2a294b6744448d`; `origin/main` contains the implementation commit.
+- Missed: no live/browser verification of generated PDF/XLSX/CSV rendering.
+- Residual risk: existing frontend bundle-size warning remains; full suites and live document rendering remain unverified.
+- Next: RQ237 remains the next supplier-report/inventory queue candidate and is not promoted by this run.
+- Follow-up: Explicitly promote RQ237 on the next user-directed queue execution.
+- Prompt defect / scope repair: none; the existing report builder owns the shared report, print and export payload rows, so no second owner was introduced.
 
 ---
 
