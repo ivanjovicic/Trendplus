@@ -2,7 +2,7 @@
 
 Date: 2026-09-11
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ237
 
 Owner promotion 2026-09-10: `RQ227` was explicitly promoted by the user after completed `RQ226`; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ227` was delivered on `main` with fail-closed deleted-row archive handling and focused regression coverage; the RQ queue returned to no current READY prompt.
@@ -16,6 +16,7 @@ Owner promotion 2026-09-11: `RQ235` was explicitly promoted by the user after co
 Owner completion 2026-09-11: `RQ235` was delivered on `main` with a backend-owned actionability gate across all supplier report negotiation actions; the RQ queue returned to no current READY prompt.
 Owner promotion 2026-09-11: `RQ236` was explicitly promoted by the user after completed `RQ235`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-11: `RQ236` was delivered on `main` with explicit supplier-report numeric availability states, no zero-filling for incomplete optional metrics, and focused report/print/export parity coverage; the RQ queue returned to no current READY prompt.
+Owner promotion 2026-09-11: `RQ237` was explicitly promoted by the user after completed `RQ236`, repaired a stale same-owner dependency on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 
 Owner promotion 2026-09-10: `RQ226` was explicitly promoted by the user after completed `RQ225`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ226` was delivered on `main` with startup validation and explicit UTC schedule logging; the RQ queue returned to no current READY prompt.
@@ -10071,7 +10072,7 @@ Owner: Supplier Analytics Reports
 
 ## RQ237 - Aggregate inventory trust metadata conservatively across panels
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend/tests
 Feature family: inventory-composite-trust-lineage
@@ -10128,7 +10129,7 @@ Commit suggestion: `fix(analytics): aggregate inventory trust state conservative
 
 - `RQ141` remains broad lineage owner; `RQ176`/`RQ187` remain source timestamp owners.
 - `RQ178` remains row actionability owner; this prompt does not redesign rebalance or alert DTOs.
-- Keep this prompt `WAITING` while `RQ167` remains the existing `READY` item.
+- `RQ167` is DONE; this prompt is runnable after the explicit owner promotion recorded above.
 
 ---
 

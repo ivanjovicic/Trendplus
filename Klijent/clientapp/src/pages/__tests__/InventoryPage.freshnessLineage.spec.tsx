@@ -18,7 +18,12 @@ const getInventoryAlertsMock = vi.fn();
 const getRebalanceSuggestionsMock = vi.fn();
 const getInventoryReportSchedulesMock = vi.fn();
 
-let capturedTrustHeaderProps: { lastRefreshAt?: string | null; dataFreshnessStatus?: string | null } | null = null;
+let capturedTrustHeaderProps: {
+  lastRefreshAt?: string | null;
+  dataFreshnessStatus?: string | null;
+  dataQualityStatus?: string | null;
+  isPartial?: boolean;
+} | null = null;
 
 vi.mock("../../services/analyticsApi", () => ({
   AnalyticsMetaError: class extends Error {},
@@ -46,13 +51,15 @@ vi.mock("../../services/analyticsApi", () => ({
 }));
 
 vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({
-  default: (props: { lastRefreshAt?: string | null; dataFreshnessStatus?: string | null }) => {
+  default: (props: { lastRefreshAt?: string | null; dataFreshnessStatus?: string | null; dataQualityStatus?: string | null; isPartial?: boolean }) => {
     capturedTrustHeaderProps = props;
     return (
       <div
         data-testid="trust-header"
         data-last-refresh={props.lastRefreshAt ?? ""}
         data-freshness={props.dataFreshnessStatus ?? ""}
+        data-quality={props.dataQualityStatus ?? ""}
+        data-partial={String(Boolean(props.isPartial))}
       />
     );
   },
@@ -161,6 +168,60 @@ describe("InventoryPage freshness lineage", () => {
     const note = await screen.findByRole("note");
     expect(note).toHaveTextContent(formatDateTime("2026-08-05T11:45:00Z"));
     expect(note).not.toHaveTextContent(formatDateTime("2026-08-05T10:45:00Z"));
+  });
+
+  it("aggregates primary inventory trust conservatively across degraded sources", async () => {
+    getInventoryBalanceMock.mockResolvedValue({
+      totalSku: 1,
+      totalOnHand: 10,
+      outOfStockCount: 0,
+      lowStockCount: 0,
+      estimatedInventoryValue: 1000,
+      meta: {
+        success: true,
+        dataQualityStatus: "stale",
+        warningCode: "STALE_CACHE",
+        warningMessage: "Bilans je zastareo.",
+        lastRefreshAtUtc: "2026-08-05T11:00:00Z",
+      },
+    });
+    getInventoryListMock.mockResolvedValue({
+      items: [{
+        id: 501,
+        naziv: "Artikal A",
+        plu: "PLU-501",
+        kolicina: 10,
+        minimalnaKolicina: 3,
+        nabavnaCena: 100,
+        estimatedValue: 1000,
+        idObjekat: 1,
+        idDobavljac: null,
+        stockCoverDays: 4,
+        stockCoverStatus: "low_cover",
+        sellThroughRatio: 0.5,
+        sellThroughStatus: "good",
+      }],
+      totalCount: 1,
+      pageNumber: 1,
+      pageSize: 50,
+      meta: { success: true, dataQualityStatus: "good", lastRefreshAtUtc: "2026-08-05T12:00:00Z" },
+    });
+    getInventoryInsightsMock.mockResolvedValue({
+      meta: { success: true, dataQualityStatus: "good", lastRefreshAtUtc: "2026-08-05T10:00:00Z" },
+    });
+
+    render(
+      <MemoryRouter>
+        <InventoryPage />
+      </MemoryRouter>,
+    );
+
+    const trustHeader = await screen.findByTestId("trust-header");
+    expect(trustHeader).toHaveAttribute("data-quality", "stale");
+    expect(trustHeader).toHaveAttribute("data-partial", "true");
+    expect(trustHeader).toHaveAttribute("data-last-refresh", "2026-08-05T10:00:00Z");
+    expect(await screen.findByRole("status")).toHaveTextContent("Bilans");
+    expect(screen.getByRole("status")).toHaveTextContent("Bilans je zastareo.");
   });
 
   it("does not present a single inventory snapshot as an observed health trend", async () => {

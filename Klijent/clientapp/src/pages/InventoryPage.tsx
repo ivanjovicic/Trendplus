@@ -96,6 +96,79 @@ function resolveLatestTimestamp(values: Array<string | null | undefined>): strin
   return latest?.value ?? null;
 }
 
+type InventoryTrustSource = {
+  label: string;
+  meta?: AnalyticsResponseMeta | null;
+};
+
+type InventoryTrustAggregation = {
+  meta: AnalyticsResponseMeta | null;
+  sourceLabels: string[];
+  degradedSourceLabels: string[];
+};
+
+const INVENTORY_TRUST_QUALITY_RANK: Record<string, number> = {
+  good: 0,
+  unknown: 1,
+  warning: 2,
+  insufficient_data: 2,
+  stale: 3,
+  critical: 4,
+  error: 5,
+};
+
+function normalizeInventoryTrustQuality(meta: AnalyticsResponseMeta): string {
+  if (meta.success === false || meta.errorCode) return "error";
+
+  const normalized = (meta.dataQualityStatus ?? "").trim().toLowerCase();
+  if (normalized === "critical" || normalized === "stale" || normalized === "insufficient_data") return normalized;
+  if (normalized === "warning" || isAnalyticsMetaWarning(meta)) return "warning";
+  if (normalized === "good" && !isAnalyticsMetaWarning(meta)) return "good";
+  return "unknown";
+}
+
+function aggregateInventoryTrust(sources: InventoryTrustSource[]): InventoryTrustAggregation {
+  const availableSources = sources.filter((source): source is InventoryTrustSource & { meta: AnalyticsResponseMeta } => Boolean(source.meta));
+  if (availableSources.length === 0) {
+    return { meta: null, sourceLabels: [], degradedSourceLabels: [] };
+  }
+
+  const rankedSources = availableSources
+    .map((source) => ({ ...source, quality: normalizeInventoryTrustQuality(source.meta) }))
+    .sort((left, right) => (INVENTORY_TRUST_QUALITY_RANK[right.quality] ?? 1) - (INVENTORY_TRUST_QUALITY_RANK[left.quality] ?? 1));
+  const worstSource = rankedSources[0];
+  const allRefreshTimestampsKnown = availableSources.every((source) => {
+    const value = source.meta.lastRefreshAtUtc;
+    return typeof value === "string" && value.length > 0 && !Number.isNaN(new Date(value).getTime());
+  });
+  const oldestRefreshAt = allRefreshTimestampsKnown
+    ? availableSources
+      .map((source) => source.meta.lastRefreshAtUtc!)
+      .sort((left, right) => new Date(left).getTime() - new Date(right).getTime())[0]
+    : null;
+  const degradedSourceLabels = rankedSources
+    .filter((source) => source.quality !== "good")
+    .map((source) => source.label);
+  const worstMessage = worstSource.meta.warningMessage ?? worstSource.meta.errorMessage ?? worstSource.meta.message ?? null;
+  const compositeMessage = degradedSourceLabels.length > 0 && worstMessage
+    ? `${degradedSourceLabels.join(", ")}: ${worstMessage}`
+    : worstMessage;
+
+  return {
+    sourceLabels: availableSources.map((source) => source.label),
+    degradedSourceLabels,
+    meta: {
+      ...worstSource.meta,
+      success: availableSources.every((source) => source.meta.success === true),
+      dataQualityStatus: worstSource.quality,
+      isPartial: availableSources.some((source) => source.meta.isPartial === true || isAnalyticsMetaWarning(source.meta))
+        || worstSource.quality !== "good",
+      lastRefreshAtUtc: oldestRefreshAt,
+      warningMessage: compositeMessage,
+    },
+  };
+}
+
 type SnapshotFreshnessSource = {
   timestamp?: string | null;
   status?: string | null;
@@ -731,8 +804,12 @@ export default function InventoryPage() {
       goodSellThroughSkus,
     };
   }, [rows]);
-  const primaryInventoryMetas = useMemo(
-    () => ([pageData?.meta, balance?.meta, insights?.meta].filter((meta): meta is AnalyticsResponseMeta => Boolean(meta))),
+  const primaryInventoryTrust = useMemo(
+    () => aggregateInventoryTrust([
+      { label: "Lista artikala", meta: pageData?.meta },
+      { label: "Bilans", meta: balance?.meta },
+      { label: "Insights", meta: insights?.meta },
+    ]),
     [balance?.meta, insights?.meta, pageData?.meta],
   );
   const secondaryPanelFreshness = useMemo(
@@ -745,14 +822,11 @@ export default function InventoryPage() {
     [alerts?.snapshotFreshnessStatus, alerts?.snapshotFreshnessUtc, forecast?.provenanceStatus, forecast?.snapshotFreshnessUtc, rebalance?.snapshotFreshnessStatus, rebalance?.snapshotFreshnessUtc, sizeCurve?.snapshotFreshnessStatus, sizeCurve?.snapshotFreshnessUtc],
   );
   const secondaryPanelsSettled = !forecastLoading && !alertsLoading && !rebalanceLoading && !sizeCurveLoading;
-  const primaryRefreshAt = useMemo(
-    () => resolveLatestTimestamp(primaryInventoryMetas.map((meta) => meta.lastRefreshAtUtc ?? null)),
-    [primaryInventoryMetas],
-  );
-  const primaryMeta = primaryInventoryMetas[0] ?? null;
+  const primaryRefreshAt = primaryInventoryTrust.meta?.lastRefreshAtUtc ?? null;
+  const primaryMeta = primaryInventoryTrust.meta;
   const inventoryMetas = useMemo(
-    () => ([...primaryInventoryMetas, storeComparison?.meta, actionWorkflow?.meta].filter((meta): meta is AnalyticsResponseMeta => Boolean(meta))),
-    [actionWorkflow?.meta, primaryInventoryMetas, storeComparison?.meta],
+    () => ([primaryMeta, storeComparison?.meta, actionWorkflow?.meta].filter((meta): meta is AnalyticsResponseMeta => Boolean(meta))),
+    [actionWorkflow?.meta, primaryMeta, storeComparison?.meta],
   );
   const warningMeta = inventoryMetas.find((meta) => isAnalyticsMetaWarning(meta)) ?? null;
   const inventoryMetaMessage = getAnalyticsMetaMessage(warningMeta ?? primaryMeta);
@@ -1131,7 +1205,7 @@ export default function InventoryPage() {
       <div className="space-y-6">
       <AnalyticsTrustHeader
         title="Inventory analytics"
-        description="Decision cockpit za zalihe: dopuna, OOS rizik, višak zalihe, transferi i workflow odluka."
+        description="Decision cockpit za zalihe: dopuna, OOS rizik, višak zalihe, transferi i workflow odluka. Trust status objedinjuje listu artikala, bilans i insights."
         periodFrom={null}
         periodTo={null}
         lastRefreshAt={primaryRefreshAt}
@@ -1154,6 +1228,7 @@ export default function InventoryPage() {
       {showMetaWarning ? (
         <div className="rounded-2xl border border-[var(--warning)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--warning)]" role="status">
           Prikazani podaci su delimični ili fallback. {inventoryMetaMessage ?? "Proverite status osvežavanja i data quality signal."}
+          {primaryInventoryTrust.degradedSourceLabels.length > 0 ? ` Izvor(i) sa ograničenjem: ${primaryInventoryTrust.degradedSourceLabels.join(", ")}.` : ""}
         </div>
       ) : null}
       <section className="rounded-[24px] border border-muted surface-light p-4">
