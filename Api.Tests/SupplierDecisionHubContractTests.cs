@@ -58,7 +58,7 @@ public sealed class SupplierDecisionHubContractTests
     }
 
     [Fact]
-    public void TryCreateFilters_NormalizesDatesWhitespaceAndUnknownScope()
+    public void TryCreateFilters_NormalizesDatesAndWhitespace()
     {
         var valid = SupplierDecisionHubEndpoints.TryCreateFilters(
             fromDate: new DateTime(2026, 1, 2, 14, 30, 0, DateTimeKind.Unspecified),
@@ -71,7 +71,7 @@ public sealed class SupplierDecisionHubContractTests
             excludeOosBeforeMarkdown: true,
             supplierId: 17,
             storeId: 2,
-            dataScope: "not-supported",
+            dataScope: " existing ",
             out var filters,
             out var validationErrors);
 
@@ -83,9 +83,67 @@ public sealed class SupplierDecisionHubContractTests
         Assert.True(filters.HasExplicitDateRange);
         Assert.Equal("Patike", filters.Category);
         Assert.Equal("Ženski", filters.Gender);
-        Assert.Equal("all", filters.DataScope);
+        Assert.Equal("existing", filters.DataScope);
         Assert.True(filters.OnlyHighConfidence);
         Assert.True(filters.ExcludeOosBeforeMarkdown);
+    }
+
+    [Fact]
+    public void TryCreateFilters_RejectsUnknownScopeInsteadOfBroadeningToAll()
+    {
+        var valid = SupplierDecisionHubEndpoints.TryCreateFilters(
+            fromDate: null,
+            toDate: null,
+            category: null,
+            gender: null,
+            seasonId: null,
+            minRevenue: null,
+            onlyHighConfidence: false,
+            excludeOosBeforeMarkdown: false,
+            supplierId: null,
+            storeId: null,
+            dataScope: "not-supported",
+            out var filters,
+            out var validationErrors);
+
+        Assert.False(valid);
+        Assert.Null(filters);
+        Assert.Contains("dataScope", validationErrors!.Keys);
+    }
+
+    [Fact]
+    public void BuildSupplierDecisionReportResponse_PreservesEveryMaterialFilterIncludingZeroAndFalse()
+    {
+        var filters = new SupplierDecisionHubEndpoints.SupplierDecisionHubFilters(
+            new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc),
+            true,
+            "Patike & čizme",
+            "Ženski",
+            0,
+            0m,
+            false,
+            true,
+            0,
+            0,
+            "existing");
+        var dataset = Dataset();
+        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(
+            SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters),
+            dataset,
+            filters);
+
+        Assert.Contains("category=Patike%20%26%20%C4%8Dizme", report.StableQueryUrl, StringComparison.Ordinal);
+        Assert.Contains("gender=%C5%BDenski", report.StableQueryUrl, StringComparison.Ordinal);
+        Assert.Contains("seasonId=0", report.StableQueryUrl, StringComparison.Ordinal);
+        Assert.Contains("minRevenue=0", report.StableQueryUrl, StringComparison.Ordinal);
+        Assert.Contains("onlyHighConfidence=false", report.StableQueryUrl, StringComparison.Ordinal);
+        Assert.Contains("excludeOosBeforeMarkdown=true", report.StableQueryUrl, StringComparison.Ordinal);
+        Assert.Contains("supplierId=0", report.StableQueryUrl, StringComparison.Ordinal);
+        Assert.Contains("storeId=0", report.StableQueryUrl, StringComparison.Ordinal);
+        Assert.Contains(report.Payload.Filters, item => item.Key == "category" && item.Value == "Patike & čizme");
+        Assert.Contains(report.Payload.Filters, item => item.Key == "minRevenue" && item.Value == "0");
+        Assert.Contains(report.Payload.Filters, item => item.Key == "onlyHighConfidence" && item.Value == "false");
     }
 
     [Fact]

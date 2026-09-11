@@ -1,5 +1,6 @@
 ﻿import { makeUrl } from "./analyticsApi";
 import type { AnalyticsResponseMeta } from "../types/analytics";
+import { appendSupplierDecisionReportQuery } from "./supplierDecisionReportQuery";
 import { AnalyticsMetaError, assertAnalyticsMetaSuccess } from "../utils/analyticsResponseMeta";
 
 export type RecommendationCode =
@@ -297,22 +298,7 @@ function normalizeTrustMetadata(raw: unknown): ScorecardTrustMetadata | null {
 }
 
 function appendFilterParams(params: URLSearchParams, filters: SupplierDecisionHubFilters) {
-  if (filters.fromDate) params.append("fromDate", filters.fromDate);
-  if (filters.toDate) params.append("toDate", filters.toDate);
-
-  const category = filters.category?.trim();
-  if (category) params.append("category", category);
-
-  const gender = filters.gender?.trim();
-  if (gender) params.append("gender", gender);
-
-  if (filters.seasonId != null) params.append("seasonId", String(filters.seasonId));
-  if (filters.minRevenue != null) params.append("minRevenue", String(filters.minRevenue));
-  if (filters.onlyHighConfidence) params.append("onlyHighConfidence", "true");
-  if (filters.excludeOosBeforeMarkdown) params.append("excludeOosBeforeMarkdown", "true");
-  if (filters.supplierId != null) params.append("supplierId", String(filters.supplierId));
-  if (filters.storeId != null) params.append("storeId", String(filters.storeId));
-  if (filters.dataScope) params.append("dataScope", filters.dataScope);
+  appendSupplierDecisionReportQuery(params, filters);
 }
 
 async function fetchJson<T>(path: string, params: URLSearchParams, errorMessage: string): Promise<T> {

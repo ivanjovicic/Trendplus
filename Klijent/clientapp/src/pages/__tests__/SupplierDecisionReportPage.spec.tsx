@@ -123,6 +123,13 @@ describe("SupplierDecisionReportPage", () => {
     );
   });
 
+  it("fails closed for an explicit empty numeric filter instead of dropping it", () => {
+    renderPage("/analytics/supplier/report?fromDate=2026-04-01&toDate=2026-06-30&minRevenue=");
+
+    expect(screen.getByText(/Neispravan filter u report linku \(minRevenue\)/i)).toBeInTheDocument();
+    expect(getSupplierDecisionDurableReportMock).not.toHaveBeenCalled();
+  });
+
   it("shows expired state only for a preview-only URL whose browser snapshot is missing", () => {
     renderPage("/analytics/supplier/report?preview=browser&stateKey=missing");
 

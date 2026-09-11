@@ -63,6 +63,7 @@ import type {
 import type { DocumentOperationResponse } from "./exportApi";
 import { ensureExportAdminKey } from "./exportApi";
 import { apiUrl } from "../utils/apiUrl";
+import { appendSupplierDecisionReportQuery } from "./supplierDecisionReportQuery";
 import { appendDataScopeToParams } from "../utils/dataScope";
 import {
   API_FAILOVER_TIMEOUT_MS_OPTION,
@@ -1135,19 +1136,7 @@ export async function getSupplierDecisionDurableReport(paramsInput: {
   section?: string | null;
 }): Promise<SupplierDecisionDurableReport> {
   const params = new URLSearchParams();
-  if (paramsInput.fromDate) params.set("fromDate", paramsInput.fromDate);
-  if (paramsInput.toDate) params.set("toDate", paramsInput.toDate);
-  if (paramsInput.storeId != null) params.set("storeId", String(paramsInput.storeId));
-  if (paramsInput.supplierId != null) params.set("supplierId", String(paramsInput.supplierId));
-  if (paramsInput.scope) params.set("scope", paramsInput.scope);
-  if (paramsInput.dataScope) params.set("dataScope", paramsInput.dataScope);
-  if (paramsInput.category) params.set("category", paramsInput.category);
-  if (paramsInput.gender) params.set("gender", paramsInput.gender);
-  if (paramsInput.seasonId != null) params.set("seasonId", String(paramsInput.seasonId));
-  if (paramsInput.minRevenue != null) params.set("minRevenue", String(paramsInput.minRevenue));
-  if (paramsInput.onlyHighConfidence != null) params.set("onlyHighConfidence", String(paramsInput.onlyHighConfidence));
-  if (paramsInput.excludeOosBeforeMarkdown != null) params.set("excludeOosBeforeMarkdown", String(paramsInput.excludeOosBeforeMarkdown));
-  if (paramsInput.section) params.set("section", paramsInput.section);
+  appendSupplierDecisionReportQuery(params, paramsInput);
 
   return fetchJson(
     "/api/analytics/reports/supplier-decision",

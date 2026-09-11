@@ -23,6 +23,7 @@ import { getAnalyticsActions, getAnalyticsRefreshStatus, upsertAnalyticsAction }
 import type { AnalyticsActionDataQualityStatus, AnalyticsActionStatus, AnalyticsRefreshStatus } from "../types/analytics";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import { buildSupplierDecisionReportPayload } from "../services/supplierDecisionReport";
+import { buildSupplierDecisionReportHref } from "../services/supplierDecisionReportQuery";
 import {
   getAllSupplierDecisionRanking,
   getSupplierDecisionSummary,
@@ -686,21 +687,18 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
   ]);
 
   const durableReportHref = useMemo(() => {
-    const params = new URLSearchParams();
-    params.set("fromDate", activeFilters.fromDate);
-    params.set("toDate", activeFilters.toDate);
-    params.set("scope", activeFilters.dataScope ?? "all");
-
-    if (activeFilters.supplierId != null) {
-      params.set("supplierId", String(activeFilters.supplierId));
-    }
-
-    if (activeFilters.storeId != null) {
-      params.set("storeId", String(activeFilters.storeId));
-    }
-
-    return `/analytics/supplier/report?${params.toString()}`;
-  }, [activeFilters.dataScope, activeFilters.fromDate, activeFilters.storeId, activeFilters.supplierId, activeFilters.toDate]);
+    return buildSupplierDecisionReportHref({
+      fromDate: activeFilters.fromDate,
+      toDate: activeFilters.toDate,
+      scope: activeFilters.dataScope ?? "all",
+      seasonId: activeFilters.seasonId,
+      minRevenue: activeFilters.minRevenue,
+      onlyHighConfidence: activeFilters.onlyHighConfidence,
+      excludeOosBeforeMarkdown: false,
+      supplierId: activeFilters.supplierId,
+      storeId: activeFilters.storeId,
+    });
+  }, [activeFilters.dataScope, activeFilters.fromDate, activeFilters.minRevenue, activeFilters.onlyHighConfidence, activeFilters.seasonId, activeFilters.storeId, activeFilters.supplierId, activeFilters.toDate]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) { setSortDir((current) => (current === "asc" ? "desc" : "asc")); return; }

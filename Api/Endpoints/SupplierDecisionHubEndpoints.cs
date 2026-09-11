@@ -460,9 +460,7 @@ public static class SupplierDecisionHubEndpoints
         string? dataScope = null,
         CancellationToken ct = default)
     {
-        var resolvedScope = !string.IsNullOrWhiteSpace(scope)
-            ? scope
-            : (string.IsNullOrWhiteSpace(dataScope) ? "all" : dataScope);
+        var resolvedScope = scope ?? dataScope;
 
         if (!TryCreateFilters(
                 fromDate,
@@ -674,6 +672,15 @@ public static class SupplierDecisionHubEndpoints
             return false;
         }
 
+        if (!TryNormalizeDataScope(dataScope, out var normalizedDataScope))
+        {
+            validationError = new Dictionary<string, string[]>
+            {
+                ["dataScope"] = ["dataScope must be one of: all, existing, imported."]
+            };
+            return false;
+        }
+
         filters = new SupplierDecisionHubFilters(
             fromUtc,
             toUtc,
@@ -686,15 +693,28 @@ public static class SupplierDecisionHubEndpoints
             excludeOosBeforeMarkdown,
             supplierId,
             storeId,
-            NormalizeDataScope(dataScope));
+            normalizedDataScope);
 
         return true;
     }
 
-    private static string NormalizeDataScope(string? value)
+    private static bool TryNormalizeDataScope(string? value, out string normalizedScope)
     {
-        var normalized = (value ?? "all").Trim().ToLowerInvariant();
-        return normalized is "all" or "existing" or "imported" ? normalized : "all";
+        if (value is null)
+        {
+            normalizedScope = "all";
+            return true;
+        }
+
+        var normalized = value.Trim().ToLowerInvariant();
+        if (normalized is "all" or "existing" or "imported")
+        {
+            normalizedScope = normalized;
+            return true;
+        }
+
+        normalizedScope = "all";
+        return false;
     }
 
     private static DateTime? NormalizeDate(DateTime? value)
@@ -961,7 +981,7 @@ public static class SupplierDecisionHubEndpoints
 
     private static string BuildSupplierDecisionReportId(SupplierDecisionHubFilters filters)
     {
-        return $"sdr-{filters.FromDate:yyyyMMdd}-{filters.ToDate:yyyyMMdd}-{filters.SupplierId?.ToString(CultureInfo.InvariantCulture) ?? "all"}-{filters.StoreId?.ToString(CultureInfo.InvariantCulture) ?? "all"}-{filters.DataScope}";
+        return $"sdr-{filters.FromDate:yyyyMMdd}-{filters.ToDate:yyyyMMdd}-{filters.SupplierId?.ToString(CultureInfo.InvariantCulture) ?? "all"}-{filters.StoreId?.ToString(CultureInfo.InvariantCulture) ?? "all"}-{filters.DataScope}-{filters.Category ?? "all"}-{filters.Gender ?? "all"}-{filters.SeasonId?.ToString(CultureInfo.InvariantCulture) ?? "all"}-{filters.MinRevenue?.ToString(CultureInfo.InvariantCulture) ?? "all"}-{filters.OnlyHighConfidence}-{filters.ExcludeOosBeforeMarkdown}";
     }
 
     private static string BuildSupplierDecisionStableQueryUrl(SupplierDecisionHubFilters filters)
@@ -982,6 +1002,29 @@ public static class SupplierDecisionHubEndpoints
         {
             query.Add($"storeId={filters.StoreId.Value.ToString(CultureInfo.InvariantCulture)}");
         }
+
+        if (filters.Category is not null)
+        {
+            query.Add($"category={Uri.EscapeDataString(filters.Category)}");
+        }
+
+        if (filters.Gender is not null)
+        {
+            query.Add($"gender={Uri.EscapeDataString(filters.Gender)}");
+        }
+
+        if (filters.SeasonId.HasValue)
+        {
+            query.Add($"seasonId={filters.SeasonId.Value.ToString(CultureInfo.InvariantCulture)}");
+        }
+
+        if (filters.MinRevenue.HasValue)
+        {
+            query.Add($"minRevenue={filters.MinRevenue.Value.ToString(CultureInfo.InvariantCulture)}");
+        }
+
+        query.Add($"onlyHighConfidence={filters.OnlyHighConfidence.ToString().ToLowerInvariant()}");
+        query.Add($"excludeOosBeforeMarkdown={filters.ExcludeOosBeforeMarkdown.ToString().ToLowerInvariant()}");
 
         return $"/analytics/supplier/report?{string.Join("&", query)}";
     }
@@ -1679,7 +1722,13 @@ public static class SupplierDecisionHubEndpoints
             new("period", "Period", $"{period.FromUtc:yyyy-MM-dd} - {period.ToUtc:yyyy-MM-dd}"),
             new("dataScope", "Opseg podataka", filters.DataScope),
             new("supplier", "Dobavljač", filters.SupplierId?.ToString(CultureInfo.InvariantCulture) ?? "all"),
-            new("store", "Objekat", filters.StoreId?.ToString(CultureInfo.InvariantCulture) ?? "all")
+            new("store", "Objekat", filters.StoreId?.ToString(CultureInfo.InvariantCulture) ?? "all"),
+            new("category", "Kategorija", filters.Category ?? "all"),
+            new("gender", "Pol", filters.Gender ?? "all"),
+            new("seasonId", "Sezona", filters.SeasonId?.ToString(CultureInfo.InvariantCulture) ?? "all"),
+            new("minRevenue", "Minimalni prihod", filters.MinRevenue?.ToString(CultureInfo.InvariantCulture) ?? "all"),
+            new("onlyHighConfidence", "Samo visoka pouzdanost", filters.OnlyHighConfidence.ToString().ToLowerInvariant()),
+            new("excludeOosBeforeMarkdown", "Isključi OOS pre nivelacije", filters.ExcludeOosBeforeMarkdown.ToString().ToLowerInvariant())
         };
 
         return new AnalyticsResolvedReportPayloadDto(

@@ -11,6 +11,7 @@ import {
   type BrowserPreviewSnapshot,
 } from "../services/analyticsTableState";
 import { AnalyticsMetaError, getSupplierDecisionDurableReport } from "../services/analyticsApi";
+import { buildSupplierDecisionReportHref } from "../services/supplierDecisionReportQuery";
 import type { ResolvedAnalyticsTablePayload } from "../types/analyticsTable";
 import { formatDateTime } from "../utils/analyticsFormatters";
 import "./SupplierDecisionReportPage.css";
@@ -44,6 +45,28 @@ function parseOptionalBoolean(value: string | null): boolean | null {
   if (normalized === "true") return true;
   if (normalized === "false") return false;
   return null;
+}
+
+function hasInvalidOptionalNumber(value: string | null): boolean {
+  return value !== null && (value.trim() === "" || !Number.isFinite(Number(value)));
+}
+
+function hasInvalidOptionalBoolean(value: string | null): boolean {
+  return value !== null && value.trim().toLowerCase() !== "true" && value.trim().toLowerCase() !== "false";
+}
+
+function hasInvalidDate(value: string | null): boolean {
+  if (value === null || value.trim() === "") return value !== null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return true;
+  const parsed = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  return parsed.getUTCFullYear() !== Number(match[1])
+    || parsed.getUTCMonth() !== Number(match[2]) - 1
+    || parsed.getUTCDate() !== Number(match[3]);
+}
+
+function isSupportedScope(value: string | null): boolean {
+  return value === null || ["all", "existing", "imported"].includes(value.trim().toLowerCase());
 }
 
 function formatTtlMinutes(ttlMs: number): string {
@@ -86,6 +109,27 @@ export default function SupplierDecisionReportPage() {
   const parsedOnlyHighConfidence = useMemo(() => parseOptionalBoolean(onlyHighConfidence), [onlyHighConfidence]);
   const parsedExcludeOosBeforeMarkdown = useMemo(() => parseOptionalBoolean(excludeOosBeforeMarkdown), [excludeOosBeforeMarkdown]);
 
+  const queryValidationError = useMemo(() => {
+    const invalid = [
+      hasInvalidDate(fromDate) ? "period" : null,
+      hasInvalidDate(toDate) ? "period" : null,
+      hasInvalidOptionalNumber(supplierId) ? "supplierId" : null,
+      hasInvalidOptionalNumber(storeId) ? "storeId" : null,
+      hasInvalidOptionalNumber(seasonId) ? "seasonId" : null,
+      hasInvalidOptionalNumber(minRevenue) ? "minRevenue" : null,
+      hasInvalidOptionalBoolean(onlyHighConfidence) ? "onlyHighConfidence" : null,
+      hasInvalidOptionalBoolean(excludeOosBeforeMarkdown) ? "excludeOosBeforeMarkdown" : null,
+      category !== null && category.trim() === "" ? "category" : null,
+      gender !== null && gender.trim() === "" ? "gender" : null,
+      dataScope !== null && dataScope.trim() === "" ? "dataScope" : null,
+      !isSupportedScope(scope) ? "scope" : null,
+      !isSupportedScope(dataScope) ? "dataScope" : null,
+    ].filter((key): key is string => Boolean(key));
+
+    if (invalid.length === 0) return null;
+    return `Neispravan filter u report linku (${Array.from(new Set(invalid)).join(", ")}). Report nije učitan da se podaci ne bi proširili na drugi skup.`;
+  }, [category, dataScope, excludeOosBeforeMarkdown, fromDate, gender, minRevenue, onlyHighConfidence, scope, seasonId, storeId, supplierId, toDate]);
+
   const [backendPayload, setBackendPayload] = useState<ResolvedAnalyticsTablePayload | null>(null);
   const [backendError, setBackendError] = useState<ReportLoadError | null>(null);
   const [loading, setLoading] = useState(false);
@@ -109,10 +153,19 @@ export default function SupplierDecisionReportPage() {
   );
   // A stateKey only represents an intentionally opened browser preview. Durable URLs
   // always reload the backend payload, including the default report URL with no filters.
-  const isBrowserPreview = Boolean(stateKey) && (previewMode === "browser" || !hasDurableQueryValues);
+  const isBrowserPreview = !queryValidationError && Boolean(stateKey) && (previewMode === "browser" || !hasDurableQueryValues);
 
   useEffect(() => {
     let cancelled = false;
+
+    if (queryValidationError) {
+      setBackendPayload(null);
+      setBackendError({ message: queryValidationError, errorCode: "invalid_filter" });
+      setLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
 
     if (isBrowserPreview) {
       setBackendPayload(null);
@@ -202,6 +255,7 @@ export default function SupplierDecisionReportPage() {
     parsedSeasonId,
     parsedStoreId,
     parsedSupplierId,
+    queryValidationError,
     reloadTick,
     section,
     scope,
@@ -218,21 +272,22 @@ export default function SupplierDecisionReportPage() {
   const payload = isBrowserPreview ? browserPreviewPayload : backendPayload;
 
   const durableReportHref = useMemo(() => {
-    const params = new URLSearchParams();
-    if (fromDate) params.set("fromDate", fromDate);
-    if (toDate) params.set("toDate", toDate);
-    if (scope) params.set("scope", scope);
-    if (dataScope) params.set("dataScope", dataScope);
-    if (supplierId) params.set("supplierId", supplierId);
-    if (storeId) params.set("storeId", storeId);
-    if (category) params.set("category", category);
-    if (gender) params.set("gender", gender);
-    if (seasonId) params.set("seasonId", seasonId);
-    if (minRevenue) params.set("minRevenue", minRevenue);
-    if (onlyHighConfidence) params.set("onlyHighConfidence", onlyHighConfidence);
-    if (excludeOosBeforeMarkdown) params.set("excludeOosBeforeMarkdown", excludeOosBeforeMarkdown);
-    if (section) params.set("section", section);
-    return params.toString() ? `/analytics/supplier/report?${params.toString()}` : null;
+    if (queryValidationError) return null;
+    return buildSupplierDecisionReportHref({
+      fromDate,
+      toDate,
+      scope,
+      dataScope,
+      supplierId: parsedSupplierId,
+      storeId: parsedStoreId,
+      category,
+      gender,
+      seasonId: parsedSeasonId,
+      minRevenue: parsedMinRevenue,
+      onlyHighConfidence: parsedOnlyHighConfidence,
+      excludeOosBeforeMarkdown: parsedExcludeOosBeforeMarkdown,
+      section,
+    });
   }, [
     category,
     dataScope,
@@ -241,6 +296,13 @@ export default function SupplierDecisionReportPage() {
     gender,
     minRevenue,
     onlyHighConfidence,
+    parsedExcludeOosBeforeMarkdown,
+    parsedMinRevenue,
+    parsedOnlyHighConfidence,
+    parsedSeasonId,
+    parsedStoreId,
+    parsedSupplierId,
+    queryValidationError,
     section,
     scope,
     seasonId,

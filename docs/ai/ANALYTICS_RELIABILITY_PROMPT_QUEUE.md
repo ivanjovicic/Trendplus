@@ -1,8 +1,8 @@
 # Analytics Reliability Prompt Queue
 
-Date: 2026-09-10
+Date: 2026-09-11
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ234
 
 Owner promotion 2026-09-10: `RQ227` was explicitly promoted by the user after completed `RQ226`; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ227` was delivered on `main` with fail-closed deleted-row archive handling and focused regression coverage; the RQ queue returned to no current READY prompt.
@@ -10,6 +10,7 @@ Owner promotion 2026-09-10: `RQ228` was explicitly promoted by the user after co
 Owner completion 2026-09-10: `RQ228` was delivered on `main` with shared Insight Studio v1/v2 period normalization and focused contract coverage; the RQ queue returned to no current READY prompt.
 Owner promotion 2026-09-10: `RQ233` was explicitly promoted by the user after completed `RQ228`; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ233` was delivered on `main` with visible-scope supplier concentration denominators and focused UI regression coverage; the RQ queue returned to no current READY prompt.
+Owner promotion 2026-09-11: `RQ234` was explicitly promoted by the user after completed `RQ233`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 
 Owner promotion 2026-09-10: `RQ226` was explicitly promoted by the user after completed `RQ225`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ226` was delivered on `main` with startup validation and explicit UTC schedule logging; the RQ queue returned to no current READY prompt.
@@ -3728,7 +3729,7 @@ Commit suggestion: `feat(analytics): materialize measured forecast evaluation`
 
 ## RQ143 - Remove frontend decision and ranking invention from analytics surfaces
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P0
 Type: backend/contract/frontend/tests
 Feature family: backend-decision-ranking-ownership
@@ -9844,7 +9845,7 @@ Owner: Supplier Analytics
 
 ## RQ234 - Preserve all supplier decision filters in report deep-links
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend/backend/contract/tests
 Feature family: supplier-report-filter-fidelity
