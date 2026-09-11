@@ -10073,7 +10073,7 @@ Owner: Supplier Analytics Reports
 
 ## RQ237 - Aggregate inventory trust metadata conservatively across panels
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: frontend/tests
 Feature family: inventory-composite-trust-lineage
