@@ -6,9 +6,9 @@ Date: 2026-09-11
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct-main
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: 782e5e6acc04e4e43735a6579899238ea936e9b6
+Main verification: passed - `origin/main` contains implementation `782e5e6acc04e4e43735a6579899238ea936e9b6`
+Evidence state: synchronized
 
 ## What was done
 
@@ -46,4 +46,4 @@ Evidence state: pending
 
 ## Next
 
-- Push and verify this implementation on `origin/main`.
+- Implementation pushed and verified on `origin/main`.
