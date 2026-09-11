@@ -22,6 +22,8 @@ Owner promotion 2026-09-11: `RQ241` was explicitly promoted by the user after co
 Owner completion 2026-09-11: `RQ241` was delivered on `main` with fail-closed Dashboard custom-date validation, trusted-response preservation and focused request-gating coverage; the RQ queue returned to no current READY prompt.
 Owner promotion 2026-09-11: `RQ242` was explicitly promoted by the user after completed `RQ241`, repaired a stale same-owner dependency on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-11: `RQ242` was delivered on `main` with fail-closed Daily Sales supplier concentration reconciliation and focused contradictory-total coverage; the RQ queue returned to no current READY prompt.
+Owner completion 2026-09-11: `RQ238` was delivered on `main` with explicit Shoe Type coverage denominator semantics, unavailable-state protection and focused projection coverage; the RQ queue returned to no current READY prompt.
+Owner promotion 2026-09-11: `RQ238` was explicitly promoted by the user after completed `RQ242`, repaired a stale same-owner dependency on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 
 Owner promotion 2026-09-10: `RQ226` was explicitly promoted by the user after completed `RQ225`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ226` was delivered on `main` with startup validation and explicit UTC schedule logging; the RQ queue returned to no current READY prompt.
@@ -10333,7 +10335,7 @@ Daily Sales receives a full-period item/revenue total and a `TopN` supplier list
 
 ## RQ238 - Preserve undefined zero-denominator coverage on Shoe Type Sales
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/tests
 Feature family: shoe-type-coverage-denominator-state
@@ -10390,7 +10392,27 @@ The Shoe Type Sales page derives an article-level nivelacija coverage value as `
 ### Dependencies
 
 - `RQ140` remains pre/post comparability owner; `RQ156` remains revenue-coverage unknown-state owner.
-- Keep this prompt `WAITING` while `RQ167` remains the existing `READY` item.
+- `RQ167` is DONE; this prompt is runnable after the explicit owner promotion recorded above.
+
+### Completion note
+
+- Date: 2026-09-11
+- Status: DONE
+- Completion: Shoe Type coverage now stays unavailable when denominator/evidence is zero, missing or non-finite, while genuine finite zero coverage with a positive denominator remains `0%`.
+- Changed files: `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/ShoeTypeSalesStatsPage.premium.spec.tsx`, `Klijent/clientapp/src/utils/shoeTypeSalesCoverage.ts`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-11-RQ238-evidence.md`
+- Contract/runtime behavior changed: zero denominator no longer becomes measured `0%`; finite valid zero remains zero; invalid counts do not influence recommendation/confidence presentation; table, status tooltip, detail and export preserve unavailable state.
+- Checks run: focused Shoe Type test `npm run test:run -- src/pages/__tests__/ShoeTypeSalesStatsPage.premium.spec.tsx` (pass, 14/14); `npm run check:analytics-guardrails` (pass); `npm run typecheck` (pass); `npm run build` (pass, existing Vite large-chunk warning); `git diff --check` (pass).
+- Checks not run: full frontend/backend suites; browser/live API/production data.
+- Run log: `.ai/runs/2026-09-11-RQ238-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `d5e320da415eb99c0f9d7d46e91258bb00077550`
+- Main verification: passed - implementation pushed to `main`; final queue/roadmap/evidence synchronization follows in the current delivery commit.
+- Missed: full cross-surface suite and live/browser proof were outside this bounded frontend task.
+- Residual risk: Vite reports the existing large-chunk warning; runtime behavior with a live backend payload was not exercised in a browser.
+- Next: `RQ239` remains the next candidate and is not promoted by this run.
+- Follow-up: Explicitly promote `RQ239` on the next user-directed queue execution.
+- Prompt defect / scope repair: stale `RQ167` dependency repaired same-owner because `RQ167` is DONE.
 
 ---
 
