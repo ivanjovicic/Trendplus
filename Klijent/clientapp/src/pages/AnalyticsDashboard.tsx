@@ -208,9 +208,33 @@ function formatInputDateTime(value: Date): string {
   return `${year}-${month}-${day}T${hour}:${minute}`;
 }
 
-function parseInputDate(value: string): Date {
+function parseInputDate(value: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+
+  const [, yearText, monthText, dayText, hourText, minuteText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const hour = Number(hourText);
+  const minute = Number(minuteText);
+  if (month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || minute > 59) {
+    return null;
+  }
+
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+  if (!Number.isFinite(parsed.getTime())) return null;
+  if (
+    parsed.getFullYear() !== year ||
+    parsed.getMonth() + 1 !== month ||
+    parsed.getDate() !== day ||
+    parsed.getHours() !== hour ||
+    parsed.getMinutes() !== minute
+  ) {
+    return null;
+  }
+
+  return parsed;
 }
 
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -233,7 +257,7 @@ function isValidDashboardPeriod(
 
   const from = new Date(fromUtc);
   const to = new Date(toUtc);
-  return !Number.isNaN(from.getTime()) && !Number.isNaN(to.getTime()) && to >= from;
+  return Number.isFinite(from.getTime()) && Number.isFinite(to.getTime()) && to >= from;
 }
 
 export function calculateDashboardPeriodDays(
@@ -246,7 +270,7 @@ export function calculateDashboardPeriodDays(
 
   const from = new Date(fromUtc);
   const to = new Date(toUtc);
-  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || to < from) {
+  if (!Number.isFinite(from.getTime()) || !Number.isFinite(to.getTime()) || to < from) {
     return 1;
   }
 
@@ -711,10 +735,17 @@ export default function AnalyticsDashboard() {
   const storesRequestSeqRef = useRef(0);
   const dashboardRequestSeqRef = useRef(0);
 
-  const isInvalidFilterRange = useMemo(
-    () => parseInputDate(fromDate) > parseInputDate(toDate),
-    [fromDate, toDate],
-  );
+  const filterValidationMessage = useMemo(() => {
+    const from = parseInputDate(fromDate);
+    const to = parseInputDate(toDate);
+    if (!from || !to) {
+      return "Proverite filtere: unesite oba validna datuma i vremena.";
+    }
+    if (from > to) {
+      return "Proverite filtere: datum od ne može biti posle datuma do.";
+    }
+    return null;
+  }, [fromDate, toDate]);
   const selectedDays = useMemo(() => {
     return resolveDashboardPeriodDays(dashboardMeta, fromDate, toDate);
   }, [dashboardMeta, fromDate, toDate]);
@@ -779,8 +810,9 @@ export default function AnalyticsDashboard() {
 
   const load = useCallback(async () => {
     const requestSeq = ++dashboardRequestSeqRef.current;
-    if (isInvalidFilterRange) {
-      setErrors(["Proverite filtere: datum od ne može biti posle datuma do."]);
+    if (filterValidationMessage) {
+      setLoading(false);
+      setErrors([]);
       return;
     }
 
@@ -869,7 +901,7 @@ export default function AnalyticsDashboard() {
     setErrors(compactErrorMessages(nextErrors));
     setLoading(false);
     void loadHealth(requestSeq);
-  }, [fromDate, isInvalidFilterRange, loadHealth, storeId, supplierId, toDate]);
+  }, [filterValidationMessage, fromDate, loadHealth, storeId, supplierId, toDate]);
 
   useEffect(() => {
     void loadStores();
@@ -1561,9 +1593,9 @@ export default function AnalyticsDashboard() {
         fields={controlBarFields}
       />
       {healthText ? <div className="analytics-health">{healthText}</div> : null}
-      {isInvalidFilterRange ? (
-        <div className="analytics-empty warning">
-          Proverite filtere: neispravan vremenski opseg.
+      {filterValidationMessage ? (
+        <div className="analytics-empty warning" data-testid="dashboard-period-validation" role="alert">
+          {filterValidationMessage}
         </div>
       ) : null}
       {errors.length > 0 && !hasFatalLoadError ? (

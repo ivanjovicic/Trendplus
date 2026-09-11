@@ -322,4 +322,54 @@ describe("AnalyticsDashboard control bar", () => {
     );
     expect(screen.getByText("Novi signal", { selector: "strong" })).toBeInTheDocument();
   });
+
+  it("fails closed for invalid custom dates and preserves the trusted response", async () => {
+    const getBootstrap = vi
+      .spyOn(analyticsApi, "getDashboardBootstrap")
+      .mockResolvedValue(buildBootstrapResponse("Trusted signal"));
+
+    render(
+      <MemoryRouter>
+        <AnalyticsDashboard />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Trusted signal", { selector: "strong" })).toBeInTheDocument();
+    const initialCallCount = getBootstrap.mock.calls.length;
+    fireEvent.change(screen.getByLabelText("Period"), {
+      target: { value: "custom" },
+    });
+
+    const fromDate = await screen.findByLabelText("Datum od");
+    const toDate = screen.getByLabelText("Datum do");
+    fireEvent.change(fromDate, { target: { value: "" } });
+    expect(await screen.findByTestId("dashboard-period-validation")).toHaveTextContent(
+      "unesite oba validna datuma i vremena",
+    );
+    expect(getBootstrap).toHaveBeenCalledTimes(initialCallCount);
+    expect(screen.getByText("Trusted signal", { selector: "strong" })).toBeInTheDocument();
+
+    fireEvent.change(toDate, { target: { value: "" } });
+    fireEvent.change(fromDate, { target: { value: "not-a-date" } });
+    expect(getBootstrap).toHaveBeenCalledTimes(initialCallCount);
+
+    fireEvent.change(toDate, { target: { value: "2026-09-11T10:00" } });
+    fireEvent.change(fromDate, { target: { value: "2026-09-10T10:00" } });
+    await waitFor(() => expect(getBootstrap).toHaveBeenCalledTimes(initialCallCount + 1));
+    fireEvent.change(toDate, { target: { value: "2026-09-09T10:00" } });
+    expect(await screen.findByTestId("dashboard-period-validation")).toHaveTextContent(
+      "datum od ne može biti posle datuma do",
+    );
+    expect(getBootstrap).toHaveBeenCalledTimes(initialCallCount + 1);
+
+    fireEvent.change(toDate, { target: { value: "2026-09-10T10:00" } });
+    await waitFor(() => expect(getBootstrap).toHaveBeenCalledTimes(initialCallCount + 2));
+    expect(getBootstrap).toHaveBeenLastCalledWith(
+      "2026-09-10T10:00",
+      "2026-09-10T10:00",
+      true,
+      undefined,
+      undefined,
+    );
+  });
 });

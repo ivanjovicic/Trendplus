@@ -2,7 +2,7 @@
 
 Date: 2026-09-11
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ241
 
 Owner promotion 2026-09-10: `RQ227` was explicitly promoted by the user after completed `RQ226`; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ227` was delivered on `main` with fail-closed deleted-row archive handling and focused regression coverage; the RQ queue returned to no current READY prompt.
@@ -18,6 +18,7 @@ Owner promotion 2026-09-11: `RQ236` was explicitly promoted by the user after co
 Owner completion 2026-09-11: `RQ236` was delivered on `main` with explicit supplier-report numeric availability states, no zero-filling for incomplete optional metrics, and focused report/print/export parity coverage; the RQ queue returned to no current READY prompt.
 Owner promotion 2026-09-11: `RQ237` was explicitly promoted by the user after completed `RQ236`, repaired a stale same-owner dependency on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-11: `RQ237` was delivered on `main` with conservative inventory composite trust aggregation, explicit degraded-source lineage and confirmed-refresh handling; the RQ queue returned to no current READY prompt.
+Owner promotion 2026-09-11: `RQ241` was explicitly promoted by the user after completed `RQ237`, repaired a stale same-owner dependency on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 
 Owner promotion 2026-09-10: `RQ226` was explicitly promoted by the user after completed `RQ225`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ226` was delivered on `main` with startup validation and explicit UTC schedule logging; the RQ queue returned to no current READY prompt.
@@ -10156,7 +10157,7 @@ Commit suggestion: `fix(analytics): aggregate inventory trust state conservative
 
 ## RQ241 - Reject invalid custom Dashboard dates instead of using current time
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend/tests
 Feature family: analytics-dashboard-period-validation
@@ -10216,7 +10217,7 @@ The Analytics Dashboard parses a malformed or temporarily empty `datetime-local`
 
 - `RQ208` remains the valid-period DST/day-count owner.
 - `RQ145`/`RQ161` remain broad period-lineage and validation owners; this prompt is the concrete Dashboard input-boundary repair.
-- Keep this prompt `WAITING` while `RQ167` remains the existing `READY` item.
+- `RQ167` is DONE; this prompt is runnable after the explicit owner promotion recorded above.
 
 ---
 
