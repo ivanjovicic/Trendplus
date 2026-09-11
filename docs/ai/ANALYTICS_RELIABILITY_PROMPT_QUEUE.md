@@ -24,6 +24,8 @@ Owner promotion 2026-09-11: `RQ242` was explicitly promoted by the user after co
 Owner completion 2026-09-11: `RQ242` was delivered on `main` with fail-closed Daily Sales supplier concentration reconciliation and focused contradictory-total coverage; the RQ queue returned to no current READY prompt.
 Owner completion 2026-09-11: `RQ238` was delivered on `main` with explicit Shoe Type coverage denominator semantics, unavailable-state protection and focused projection coverage; the RQ queue returned to no current READY prompt.
 Owner promotion 2026-09-11: `RQ238` was explicitly promoted by the user after completed `RQ242`, repaired a stale same-owner dependency on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
+Owner promotion 2026-09-11: `RQ239` was explicitly promoted by the user after completed `RQ238`, repaired a stale same-owner dependency on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
+Owner completion 2026-09-11: `RQ239` was delivered on `main` with fail-closed Executive fallback provenance, explicit generated/refresh timestamp precedence and focused fallback-card coverage; the RQ queue returned to no current READY prompt.
 
 Owner promotion 2026-09-10: `RQ226` was explicitly promoted by the user after completed `RQ225`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ226` was delivered on `main` with startup validation and explicit UTC schedule logging; the RQ queue returned to no current READY prompt.
@@ -10418,7 +10420,7 @@ The Shoe Type Sales page derives an article-level nivelacija coverage value as `
 
 ## RQ239 - Do not use Executive fallback period end as generation time
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/contract/tests
 Feature family: decision-board-fallback-provenance
@@ -10475,7 +10477,27 @@ The Executive Decision Board compatibility supplier fallback puts the selected p
 ### Dependencies
 
 - `RQ141` remains broad provenance owner and `RQ181` remains blocked-action CTA owner.
-- Keep this prompt `WAITING` while `RQ167` remains the existing `READY` item.
+- `RQ167` is DONE; this prompt is runnable after the explicit owner promotion recorded above.
+
+### Completion note
+
+- Date: 2026-09-11
+- Status: DONE
+- Completion: Executive supplier fallback cards now use only valid explicit generated/refresh provenance; period end is never used as generation time, and missing provenance remains unavailable.
+- Changed files: `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx`, `Klijent/clientapp/src/pages/__tests__/ExecutiveDecisionBoardPage.spec.ts`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-11-RQ239-evidence.md`
+- Contract/runtime behavior changed: fallback timestamp precedence is `meta.generatedAtUtc`, then `trustMetadata.lastRefreshAtUtc`, otherwise `null`; recommendation/actionability gates and expected-impact semantics remain unchanged.
+- Checks run: Executive Decision Board focused specs (pass, 22/22); `npm run check:analytics-guardrails` (pass); `npm run build` (pass, existing Vite large-chunk warning); `git diff --check` (pass); governance validators (pass).
+- Checks not run: full frontend/backend suites; browser/live API/production data.
+- Run log: `.ai/runs/2026-09-11-RQ239-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `f02dfd4aaf558f3f8ca64dbe2afbd7697c4310b5`
+- Main verification: passed - implementation was pushed to `main`; final queue/roadmap/evidence synchronization follows in the current delivery commit.
+- Missed: full cross-surface suite and live/browser provenance proof were outside this bounded frontend task.
+- Residual risk: Vite reports the existing large-chunk warning; the legacy fallback helper is not currently the primary aggregate loading path.
+- Next: `RQ240` remains the next candidate and is not promoted by this run.
+- Follow-up: Explicitly promote `RQ240` on the next user-directed queue execution.
+- Prompt defect / scope repair: stale `RQ167` dependency repaired same-owner because `RQ167` is DONE.
 
 ---
 
