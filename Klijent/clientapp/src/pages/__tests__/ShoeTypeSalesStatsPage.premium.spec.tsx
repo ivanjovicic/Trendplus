@@ -155,6 +155,7 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     [0, Number.POSITIVE_INFINITY],
     [Number.NaN, 10],
     [Number.POSITIVE_INFINITY, 10],
+    [9, 8],
   ])("keeps shoe-type coverage unavailable when evidence is not measurable (%s / %s)", (numerator, denominator) => {
     expect(resolveShoeTypeCoveragePct(numerator, denominator)).toBeNull();
   });

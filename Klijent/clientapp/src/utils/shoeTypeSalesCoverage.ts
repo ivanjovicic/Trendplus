@@ -8,7 +8,8 @@ export function resolveShoeTypeCoveragePct(
     numerator < 0 ||
     typeof denominator !== "number" ||
     !Number.isFinite(denominator) ||
-    denominator <= 0
+    denominator <= 0 ||
+    numerator > denominator
   ) {
     return null;
   }
