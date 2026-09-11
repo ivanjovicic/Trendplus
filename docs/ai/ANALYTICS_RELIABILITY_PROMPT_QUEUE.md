@@ -2,7 +2,7 @@
 
 Date: 2026-09-11
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ237
+Current READY prompt: none
 
 Owner promotion 2026-09-10: `RQ227` was explicitly promoted by the user after completed `RQ226`; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ227` was delivered on `main` with fail-closed deleted-row archive handling and focused regression coverage; the RQ queue returned to no current READY prompt.
@@ -17,6 +17,7 @@ Owner completion 2026-09-11: `RQ235` was delivered on `main` with a backend-owne
 Owner promotion 2026-09-11: `RQ236` was explicitly promoted by the user after completed `RQ235`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-11: `RQ236` was delivered on `main` with explicit supplier-report numeric availability states, no zero-filling for incomplete optional metrics, and focused report/print/export parity coverage; the RQ queue returned to no current READY prompt.
 Owner promotion 2026-09-11: `RQ237` was explicitly promoted by the user after completed `RQ236`, repaired a stale same-owner dependency on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
+Owner completion 2026-09-11: `RQ237` was delivered on `main` with conservative inventory composite trust aggregation, explicit degraded-source lineage and confirmed-refresh handling; the RQ queue returned to no current READY prompt.
 
 Owner promotion 2026-09-10: `RQ226` was explicitly promoted by the user after completed `RQ225`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ226` was delivered on `main` with startup validation and explicit UTC schedule logging; the RQ queue returned to no current READY prompt.
@@ -9563,7 +9564,7 @@ Only `StorageOptions` validates at startup; snapshot cost flag read via `IOption
 
 ## RQ226 - Invalid nightly refresh schedule silently defaults
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P2
 Type: backend/config/worker
 Feature family: worker-schedule-safety
@@ -10130,6 +10131,26 @@ Commit suggestion: `fix(analytics): aggregate inventory trust state conservative
 - `RQ141` remains broad lineage owner; `RQ176`/`RQ187` remain source timestamp owners.
 - `RQ178` remains row actionability owner; this prompt does not redesign rebalance or alert DTOs.
 - `RQ167` is DONE; this prompt is runnable after the explicit owner promotion recorded above.
+
+### Completion note
+
+- Date: 2026-09-11
+- Status: DONE
+- Completion: `InventoryPage` now aggregates lista artikala, bilans and insights trust metadata conservatively for the shared header and warning surface.
+- Changed files: `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.freshnessLineage.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-11-RQ237-evidence.md`
+- Contract/runtime behavior changed: explicit trust severity wins across primary sources; the refresh timestamp is the oldest valid source refresh only when all primary source refresh timestamps are known; missing refresh remains unknown; degraded sources are named in the warning lineage.
+- Checks run: focused Inventory tests 9/9; analytics guardrails/encoding/typecheck; frontend build; queue/planning validators; diff check.
+- Checks not run: full frontend/backend suites; browser/live API/production data.
+- Run log: `.ai/runs/2026-09-11-RQ237-evidence.md`
+- Evidence state: pending final synchronization
+- Delivery mode: direct-main
+- Main commit SHA: `b8ba38a6662e76862cc1db5737ee6ee82c0e45e3`
+- Main verification: passed - `HEAD` and `origin/main` contained `b8ba38a6662e76862cc1db5737ee6ee82c0e45e3` at implementation delivery.
+- Missed: no browser/live API proof; full suites were outside the scoped frontend validation.
+- Residual risk: Vite reports the existing large-chunk warning; live data freshness behavior remains environment-dependent.
+- Next: `RQ241` remains the next candidate and is not promoted by this run.
+- Follow-up: Explicitly promote `RQ241` on the next user-directed queue execution.
+- Prompt defect / scope repair: the stale `RQ167` READY dependency was repaired within the same queue owner because `RQ167` is already DONE.
 
 ---
 
