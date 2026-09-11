@@ -109,4 +109,40 @@ describe("buildSupplierDecisionReportPayload", () => {
     expect(payload.rows.find((row) => row.section === "supplier_negotiation_pack" && row.item === "Finalni savet")?.value)
       .toContain("Pomoćni signal");
   });
+
+  it("never emits concrete negotiation recommendations when backend actionability is blocked", () => {
+    const base = buildInput();
+    const payload = buildSupplierDecisionReportPayload({
+      ...base,
+      trustMetadata: { ...base.trustMetadata, recommendationAllowed: false },
+      supplierCounts: { boost: 3, keep: 1, caution: 2, reduce: 2, insufficient: 0 },
+      rows: [{
+        ...base.rows[0],
+        unsoldStockValue: 10_000,
+        markdownRevenueShare: 0.8,
+      }],
+    });
+
+    const negotiationRows = payload.rows.filter((row) => row.section === "supplier_negotiation_pack" && row.secondary === "Predlog razgovora" && row.item !== "Finalni savet");
+    expect(negotiationRows).toHaveLength(6);
+    expect(negotiationRows.every((row) => row.value !== "Preporučeno")).toBe(true);
+    expect(negotiationRows.every((row) => row.value === "Blokirano — proveriti podatke")).toBe(true);
+    expect(negotiationRows.every((row) => row.note?.includes("backend nije dozvolio preporuku"))).toBe(true);
+    expect(payload.rows.find((row) => row.section === "supplier_negotiation_pack" && row.item === "Finalni savet")?.value)
+      .toContain("Pomoćni signal");
+  });
+
+  it("keeps concrete negotiation recommendations when backend actionability is allowed", () => {
+    const base = buildInput();
+    const payload = buildSupplierDecisionReportPayload({
+      ...base,
+      trustMetadata: { ...base.trustMetadata, recommendationAllowed: true },
+      scorecardMeta: { success: true, dataQualityStatus: "good" },
+      supplierCounts: { boost: 3, keep: 1, caution: 2, reduce: 2, insufficient: 0 },
+      rows: [{ ...base.rows[0], unsoldStockValue: 10_000, markdownRevenueShare: 0.8 }],
+    });
+
+    const negotiationRows = payload.rows.filter((row) => row.section === "supplier_negotiation_pack" && row.secondary === "Predlog razgovora" && row.item !== "Finalni savet");
+    expect(negotiationRows.some((row) => row.value === "Preporučeno")).toBe(true);
+  });
 });

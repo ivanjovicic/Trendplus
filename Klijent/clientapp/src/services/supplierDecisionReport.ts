@@ -213,6 +213,10 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 3);
   const missingCostSignalDetected = input.rows.some((row) => row.reasonCodes.some((code) => code.toLowerCase().includes("missing_cost")));
+  const gatedNegotiationValue = (allowedValue: string) => recommendationAllowed ? allowedValue : "Blokirano — proveriti podatke";
+  const gatedNegotiationNote = (allowedNote: string) => recommendationAllowed
+    ? allowedNote
+    : "Akcija je blokirana jer backend nije dozvolio preporuku; proverite kvalitet podataka pre odluke.";
 
   detailRows.push(
     buildSectionRow("supplier_negotiation_pack", "Dobavljač", input.supplierLabel, "Sažetak", ""),
@@ -249,12 +253,12 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
   }
 
   detailRows.push(
-    buildSectionRow("supplier_negotiation_pack", "Pojačaj saradnju", input.supplierCounts.boost > input.supplierCounts.reduce ? "Preporučeno" : "Razmotriti", "Predlog razgovora", "Fokus na artikle sa stabilnim signalom rasta."),
-    buildSectionRow("supplier_negotiation_pack", "Zadrži", input.supplierCounts.keep > 0 ? "Razmotriti" : "Nije prioritet", "Predlog razgovora", "Stabilan učinak bez eskalacije."),
-    buildSectionRow("supplier_negotiation_pack", "Pregovaraj bolje uslove", input.supplierCounts.caution > 0 ? "Preporučeno" : "Razmotriti", "Predlog razgovora", "Marža i markdown signal ukazuju na prostor za pregovor."),
-    buildSectionRow("supplier_negotiation_pack", "Smanji narednu narudžbinu", input.supplierCounts.reduce > 0 ? "Preporučeno" : "Razmotriti", "Predlog razgovora", "Signal upozorava na rizičan asortiman."),
-    buildSectionRow("supplier_negotiation_pack", "Traži zamenu/povrat spore robe", slowStockRows.length > 0 ? "Preporučeno" : "Razmotriti", "Predlog razgovora", "Spor obrt i visok lager u riziku."),
-    buildSectionRow("supplier_negotiation_pack", "Traži rabat za robu koja se prodaje samo kroz sniženje", markdownDependentRows.length > 0 ? "Preporučeno" : "Razmotriti", "Predlog razgovora", "Zavisnost od sniženja smanjuje kvalitet marže."),
+    buildSectionRow("supplier_negotiation_pack", "Pojačaj saradnju", gatedNegotiationValue(input.supplierCounts.boost > input.supplierCounts.reduce ? "Preporučeno" : "Razmotriti"), "Predlog razgovora", gatedNegotiationNote("Fokus na artikle sa stabilnim signalom rasta.")),
+    buildSectionRow("supplier_negotiation_pack", "Zadrži", gatedNegotiationValue(input.supplierCounts.keep > 0 ? "Razmotriti" : "Nije prioritet"), "Predlog razgovora", gatedNegotiationNote("Stabilan učinak bez eskalacije.")),
+    buildSectionRow("supplier_negotiation_pack", "Pregovaraj bolje uslove", gatedNegotiationValue(input.supplierCounts.caution > 0 ? "Preporučeno" : "Razmotriti"), "Predlog razgovora", gatedNegotiationNote("Marža i markdown signal ukazuju na prostor za pregovor.")),
+    buildSectionRow("supplier_negotiation_pack", "Smanji narednu narudžbinu", gatedNegotiationValue(input.supplierCounts.reduce > 0 ? "Preporučeno" : "Razmotriti"), "Predlog razgovora", gatedNegotiationNote("Signal upozorava na rizičan asortiman.")),
+    buildSectionRow("supplier_negotiation_pack", "Traži zamenu/povrat spore robe", gatedNegotiationValue(slowStockRows.length > 0 ? "Preporučeno" : "Razmotriti"), "Predlog razgovora", gatedNegotiationNote("Spor obrt i visok lager u riziku.")),
+    buildSectionRow("supplier_negotiation_pack", "Traži rabat za robu koja se prodaje samo kroz sniženje", gatedNegotiationValue(markdownDependentRows.length > 0 ? "Preporučeno" : "Razmotriti"), "Predlog razgovora", gatedNegotiationNote("Zavisnost od sniženja smanjuje kvalitet marže.")),
     buildSectionRow(
       "supplier_negotiation_pack",
       "Finalni savet",
