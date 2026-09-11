@@ -13,7 +13,7 @@ import type { SummaryResponse } from "./supplierDecisionHubApi";
 import { dataQualityStatusLabel, normalizeDataQualityStatus } from "../utils/analyticsQuality";
 import { fmtPct, fmtRsd } from "../utils/analyticsFormatters";
 import { buildPeriodLineageLabel } from "../utils/analyticsPeriodLineage";
-import { formatMetricDisplayValue } from "../utils/analyticsMetricValue";
+import { formatMetricDisplayValue, isFiniteMetricNumber } from "../utils/analyticsMetricValue";
 import { recommendationReasonLabel } from "../utils/canonicalRecommendationSemantics";
 
 type ScorecardTrustMetadata = {
@@ -101,15 +101,59 @@ function buildSectionRow(section: string, item: string, value: string, secondary
   return { section, item, value, secondary, note };
 }
 
+export type SupplierReportNumericState =
+  | "measured"
+  | "measured_zero"
+  | "unavailable"
+  | "partial"
+  | "non_finite";
+
+function classifyNumericEvidence(values: Array<number | null | undefined>): SupplierReportNumericState {
+  if (values.length === 0) return "unavailable";
+  if (values.some((value) => typeof value === "number" && !Number.isFinite(value))) return "non_finite";
+
+  const finiteValues = values.filter(isFiniteMetricNumber);
+  if (finiteValues.length === 0) return "unavailable";
+  if (finiteValues.length < values.length) return "partial";
+  return finiteValues.every((value) => value === 0) ? "measured_zero" : "measured";
+}
+
+function numericStateLimitation(metricLabel: string, state: SupplierReportNumericState): string {
+  switch (state) {
+    case "partial":
+      return `Nije moguće izračunati ${metricLabel} za ceo skup: podatak je dostupan samo za deo redova.`;
+    case "non_finite":
+      return `Nije moguće izračunati ${metricLabel}: pronađene su nevažeće NaN/Infinity vrednosti.`;
+    case "unavailable":
+      return `Nije moguće izračunati ${metricLabel}: potrebni podaci nisu dostupni.`;
+    default:
+      return "";
+  }
+}
+
 export function buildSupplierDecisionReportPayload(input: SupplierDecisionReportBuildInput): ResolvedAnalyticsTablePayload {
   const nowUtc = new Date().toISOString();
   const trust = input.trustMetadata;
   const meta = input.scorecardMeta;
   const recommendationAllowed = trust?.recommendationAllowed === true;
-  const totalUnits = input.rows.reduce((sum, row) => sum + (row.units ?? 0), 0);
+  const unitsEvidenceState = classifyNumericEvidence(input.rows.map((row) => row.units));
+  const totalUnits = unitsEvidenceState === "measured" || unitsEvidenceState === "measured_zero"
+    ? input.rows.reduce((sum, row) => sum + row.units!, 0)
+    : null;
   const totalStockRisk = input.rows.reduce((sum, row) => sum + row.unsoldStockValue, 0);
-  const weightedMarkdownDependencyPct = input.totalRevenue > 0
-    ? input.rows.reduce((sum, row) => sum + ((row.markdownRevenueShare ?? 0) * row.revenue), 0) / input.totalRevenue
+  const markdownEvidenceState = classifyNumericEvidence(input.rows.map((row) => row.markdownRevenueShare));
+  const markdownRevenueRowsAreFinite = input.rows.every((row) => isFiniteMetricNumber(row.revenue));
+  const markdownDependencyState: SupplierReportNumericState = !markdownRevenueRowsAreFinite
+    ? "non_finite"
+    : markdownEvidenceState === "non_finite"
+      ? "non_finite"
+      : markdownEvidenceState === "partial"
+        ? "partial"
+        : !isFiniteMetricNumber(input.totalRevenue) || input.totalRevenue <= 0
+          ? "unavailable"
+          : markdownEvidenceState;
+  const weightedMarkdownDependencyPct = markdownDependencyState === "measured" || markdownDependencyState === "measured_zero"
+    ? input.rows.reduce((sum, row) => sum + row.markdownRevenueShare! * row.revenue, 0) / input.totalRevenue
     : null;
   const confidenceRows = recommendationAllowed ? input.rows.filter((row) => row.confidenceAvailable) : [];
   const avgConfidencePct = confidenceRows.length > 0
@@ -158,9 +202,9 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     buildSectionRow("KPI", "Prihod", fmtRsd(input.totalRevenue), "", ""),
     buildSectionRow("KPI", "Maržni doprinos", fmtRsd(input.totalMarginContribution), "", ""),
     buildSectionRow("KPI", "Broj dobavljača", String(input.summary?.supplierCount ?? input.rows.length), "", ""),
-    buildSectionRow("KPI", "Prodate jedinice", totalUnits.toLocaleString("sr-RS"), "", ""),
+    buildSectionRow("KPI", "Prodate jedinice", formatMetricDisplayValue({ value: totalUnits, kind: "qty" }), "", numericStateLimitation("prodatih jedinica", unitsEvidenceState)),
     buildSectionRow("KPI", "Rizik zaliha", fmtRsd(totalStockRisk), "", ""),
-    buildSectionRow("KPI", "Zavisnost od nivelacija", formatMetricDisplayValue({ value: weightedMarkdownDependencyPct, kind: "ratioPercent" }), "", ""),
+    buildSectionRow("KPI", "Zavisnost od nivelacija", formatMetricDisplayValue({ value: weightedMarkdownDependencyPct, kind: "ratioPercent" }), "", numericStateLimitation("zavisnost od nivelacija", markdownDependencyState)),
     buildSectionRow("KPI", "Sigurnost signala", formatMetricDisplayValue({ value: avgConfidencePct, kind: "percent" }), "", ""),
     buildSectionRow("KPI", "Pouzdanost signala", formatMetricDisplayValue({ value: avgReliabilityPct, kind: "percent" }), "", ""),
     buildSectionRow("KPI", "Top 5 udeo", formatMetricDisplayValue({ value: input.top5SharePct, kind: "percent" }), "", ""),
@@ -182,6 +226,13 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     ),
   ];
 
+  if (unitsEvidenceState !== "measured" && unitsEvidenceState !== "measured_zero") {
+    detailRows.push(buildSectionRow("Upozorenje", "Prodate jedinice", "Nije dostupno", "Ograničenje", numericStateLimitation("prodatih jedinica", unitsEvidenceState)));
+  }
+  if (markdownDependencyState !== "measured" && markdownDependencyState !== "measured_zero") {
+    detailRows.push(buildSectionRow("Upozorenje", "Zavisnost od nivelacija", "Nije dostupno", "Ograničenje", numericStateLimitation("zavisnost od nivelacija", markdownDependencyState)));
+  }
+
   for (const row of topRevenueRows) {
     detailRows.push(buildSectionRow("Top artikli / dobavljači", row.supplierName, fmtRsd(row.revenue), `Marža ${fmtPct(row.preMarkdownMarginPct * 100, 1)}`, row.statusReason));
   }
@@ -201,10 +252,12 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
   const topMarginRows = [...input.rows]
     .sort((a, b) => b.marginContribution - a.marginContribution)
     .slice(0, 3);
-  const markdownDependentRows = input.rows
-    .filter((row) => (row.markdownRevenueShare ?? 0) >= 0.5)
-    .sort((a, b) => (b.markdownRevenueShare ?? 0) - (a.markdownRevenueShare ?? 0))
-    .slice(0, 3);
+  const markdownDependentRows = markdownDependencyState === "measured" || markdownDependencyState === "measured_zero"
+    ? input.rows
+      .filter((row) => row.markdownRevenueShare! >= 0.5)
+      .sort((a, b) => b.markdownRevenueShare! - a.markdownRevenueShare!)
+      .slice(0, 3)
+    : [];
   const slowStockRows = [...input.rows]
     .sort((a, b) => b.unsoldStockValue - a.unsoldStockValue)
     .slice(0, 3);
@@ -222,9 +275,9 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     buildSectionRow("supplier_negotiation_pack", "Dobavljač", input.supplierLabel, "Sažetak", ""),
     buildSectionRow("supplier_negotiation_pack", "Prihod", fmtRsd(input.totalRevenue), "Sažetak", ""),
     buildSectionRow("supplier_negotiation_pack", "Maržni doprinos", fmtRsd(input.totalMarginContribution), "Sažetak", ""),
-    buildSectionRow("supplier_negotiation_pack", "Prodate jedinice", totalUnits.toLocaleString("sr-RS"), "Sažetak", ""),
+    buildSectionRow("supplier_negotiation_pack", "Prodate jedinice", formatMetricDisplayValue({ value: totalUnits, kind: "qty" }), "Sažetak", numericStateLimitation("prodatih jedinica", unitsEvidenceState)),
     buildSectionRow("supplier_negotiation_pack", "Lager u riziku", fmtRsd(totalStockRisk), "Sažetak", ""),
-    buildSectionRow("supplier_negotiation_pack", "Zavisnost od nivelacija", formatMetricDisplayValue({ value: weightedMarkdownDependencyPct, kind: "ratioPercent" }), "Sažetak", ""),
+    buildSectionRow("supplier_negotiation_pack", "Zavisnost od nivelacija", formatMetricDisplayValue({ value: weightedMarkdownDependencyPct, kind: "ratioPercent" }), "Sažetak", numericStateLimitation("zavisnost od nivelacija", markdownDependencyState)),
     buildSectionRow("supplier_negotiation_pack", "Preporuka dozvoljena", trust?.recommendationAllowed ? "Da" : "Ne", "Sažetak", ""),
     buildSectionRow("supplier_negotiation_pack", "Korišćen fallback", trust?.usedFallback ? "Da" : "Ne", "Sažetak", trust?.effectivePeriodLabel ?? ""),
     buildSectionRow("supplier_negotiation_pack", "Status kvaliteta podataka", trust?.dataCoverageStatus ?? normalizeDataQualityStatus(meta?.dataQualityStatus), "Sažetak", "")
@@ -378,6 +431,8 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     { key: "dataQualityStatus", label: "Kvalitet podataka", value: dataQualityStatusLabel(meta?.dataQualityStatus) },
     { key: "confidencePct", label: "Sigurnost signala", value: avgConfidencePct },
     { key: "reliabilityPct", label: "Pouzdanost signala", value: avgReliabilityPct },
+    { key: "unitsEvidenceState", label: "Stanje prodatih jedinica", value: unitsEvidenceState },
+    { key: "markdownDependencyEvidenceState", label: "Stanje zavisnosti od nivelacija", value: markdownDependencyState },
     { key: "requestedDataset", label: "Traženi dataset", value: trust?.requestedDataset ?? null },
     { key: "effectiveDataset", label: "Efektivni dataset", value: trust?.effectiveDataset ?? null },
     { key: "requestedPeriodFromUtc", label: "Traženi period od", value: requestedFromUtc },
@@ -537,7 +592,10 @@ export function buildSupplierDecisionReportSummaryText(payload: ResolvedAnalytic
     distribution ? `Preporuke (raspodela): ${distribution}` : null,
     ...payload.rows
       .filter((row) => String(row.section) === "supplier_negotiation_pack")
-      .map((row) => `${String(row.secondary ?? row.section)} - ${String(row.item)}: ${String(row.value)}`),
+      .map((row) => {
+        const note = String(row.note ?? "").trim();
+        return `${String(row.secondary ?? row.section)} - ${String(row.item)}: ${String(row.value)}${note ? ` (${note})` : ""}`;
+      }),
     dataQuality != null ? `Kvalitet podataka: ${String(dataQuality)}` : null,
     freshness != null ? `Svežina podataka: ${String(freshness)}` : null,
     effectiveDataset != null ? `Efektivni dataset: ${String(effectiveDataset)}` : null,

@@ -2,7 +2,7 @@
 
 Date: 2026-09-11
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ236
 
 Owner promotion 2026-09-10: `RQ227` was explicitly promoted by the user after completed `RQ226`; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ227` was delivered on `main` with fail-closed deleted-row archive handling and focused regression coverage; the RQ queue returned to no current READY prompt.
@@ -14,6 +14,7 @@ Owner promotion 2026-09-11: `RQ234` was explicitly promoted by the user after co
 Owner completion 2026-09-11: `RQ234` was delivered on `main` with canonical supplier-report filter serialization, fail-closed invalid-link handling and backend stable URL/payload parity; the RQ queue returned to no current READY prompt.
 Owner promotion 2026-09-11: `RQ235` was explicitly promoted by the user after completed `RQ234`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-11: `RQ235` was delivered on `main` with a backend-owned actionability gate across all supplier report negotiation actions; the RQ queue returned to no current READY prompt.
+Owner promotion 2026-09-11: `RQ236` was explicitly promoted by the user after completed `RQ235`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 
 Owner promotion 2026-09-10: `RQ226` was explicitly promoted by the user after completed `RQ225`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ226` was delivered on `main` with startup validation and explicit UTC schedule logging; the RQ queue returned to no current READY prompt.
@@ -9995,7 +9996,7 @@ The supplier report correctly marks `Preporuka dozvoljena: Ne` and changes `Fina
 
 ## RQ236 - Preserve unavailable supplier report numerics instead of zero-filling
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend/contract/tests
 Feature family: supplier-report-numeric-state

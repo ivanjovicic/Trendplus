@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildSupplierDecisionReportPayload, type SupplierDecisionReportBuildInput } from "../supplierDecisionReport";
+import {
+  buildSupplierDecisionReportPayload,
+  buildSupplierDecisionReportSummaryText,
+  type SupplierDecisionReportBuildInput,
+} from "../supplierDecisionReport";
 
 function buildInput(overrides: Partial<SupplierDecisionReportBuildInput> = {}): SupplierDecisionReportBuildInput {
   return {
@@ -86,6 +90,68 @@ describe("buildSupplierDecisionReportPayload", () => {
     expect(payload.rows.find((row) => row.section === "supplier_negotiation_pack" && row.item === "Zavisnost od nivelacija")?.value).toBe("Nije dostupno");
     expect(payload.rows.find((row) => row.section === "Header" && row.item === "Posmatrani period")?.value).toContain("Efektivni opseg");
     expect(payload.metadata.find((row) => row.key === "observedPeriodFromUtc")?.value).toBe("2026-08-01T00:00:00Z");
+  });
+
+  it("keeps measured zero units and markdown dependency distinct from unavailable evidence", () => {
+    const base = buildInput();
+    const payload = buildSupplierDecisionReportPayload({
+      ...base,
+      totalRevenue: 100,
+      trustMetadata: { ...base.trustMetadata, recommendationAllowed: true, dataCoverageStatus: "good" },
+      scorecardMeta: { success: true, dataQualityStatus: "good" },
+      rows: [{ ...base.rows[0], revenue: 100, units: 0, markdownRevenueShare: 0 }],
+    });
+
+    expect(payload.rows.find((row) => row.section === "KPI" && row.item === "Prodate jedinice")?.value).toBe("0 kom");
+    expect(payload.rows.find((row) => row.section === "KPI" && row.item === "Zavisnost od nivelacija")?.value).toBe("0,0%");
+    expect(payload.metadata.find((row) => row.key === "unitsEvidenceState")?.value).toBe("measured_zero");
+    expect(payload.metadata.find((row) => row.key === "markdownDependencyEvidenceState")?.value).toBe("measured_zero");
+  });
+
+  it("keeps mixed optional numeric coverage unavailable and removes incomplete markdown evidence from actions", () => {
+    const base = buildInput();
+    const payload = buildSupplierDecisionReportPayload({
+      ...base,
+      totalRevenue: 100,
+      trustMetadata: { ...base.trustMetadata, recommendationAllowed: true, dataCoverageStatus: "good" },
+      scorecardMeta: { success: true, dataQualityStatus: "good" },
+      supplierCounts: { boost: 0, keep: 0, caution: 0, reduce: 0, insufficient: 0 },
+      rows: [
+        { ...base.rows[0], supplierId: 1, supplierName: "Dobavljač 1", revenue: 60, units: 12, markdownRevenueShare: 0.8 },
+        { ...base.rows[0], supplierId: 2, supplierName: "Dobavljač 2", revenue: 40, units: undefined, markdownRevenueShare: undefined },
+      ],
+    });
+
+    expect(payload.rows.find((row) => row.section === "KPI" && row.item === "Prodate jedinice")?.value).toBe("Nije dostupno");
+    expect(payload.rows.find((row) => row.section === "KPI" && row.item === "Zavisnost od nivelacija")?.value).toBe("Nije dostupno");
+    expect(payload.metadata.find((row) => row.key === "unitsEvidenceState")?.value).toBe("partial");
+    expect(payload.metadata.find((row) => row.key === "markdownDependencyEvidenceState")?.value).toBe("partial");
+    expect(payload.rows.some((row) => row.section === "Upozorenje" && row.item === "Zavisnost od nivelacija" && row.note?.includes("deo redova"))).toBe(true);
+    expect(payload.rows.find((row) => row.section === "supplier_negotiation_pack" && row.item === "Traži rabat za robu koja se prodaje samo kroz sniženje")?.value).toBe("Razmotriti");
+    expect(buildSupplierDecisionReportSummaryText(payload)).toContain("deo redova");
+  });
+
+  it("fails closed for empty and non-finite optional numeric evidence", () => {
+    const base = buildInput();
+    const emptyPayload = buildSupplierDecisionReportPayload({ ...base, rows: [], totalRevenue: 0 });
+    expect(emptyPayload.rows.find((row) => row.section === "KPI" && row.item === "Prodate jedinice")?.value).toBe("Nije dostupno");
+    expect(emptyPayload.metadata.find((row) => row.key === "unitsEvidenceState")?.value).toBe("unavailable");
+    expect(emptyPayload.metadata.find((row) => row.key === "markdownDependencyEvidenceState")?.value).toBe("unavailable");
+
+    const nonFinitePayload = buildSupplierDecisionReportPayload({
+      ...base,
+      totalRevenue: 100,
+      trustMetadata: { ...base.trustMetadata, recommendationAllowed: true, dataCoverageStatus: "good" },
+      scorecardMeta: { success: true, dataQualityStatus: "good" },
+      rows: [{ ...base.rows[0], revenue: 100, units: Number.NaN, markdownRevenueShare: Number.POSITIVE_INFINITY }],
+    });
+
+    expect(nonFinitePayload.rows.find((row) => row.section === "KPI" && row.item === "Prodate jedinice")?.value).toBe("Nije dostupno");
+    expect(nonFinitePayload.rows.find((row) => row.section === "KPI" && row.item === "Zavisnost od nivelacija")?.value).toBe("Nije dostupno");
+    expect(nonFinitePayload.metadata.find((row) => row.key === "unitsEvidenceState")?.value).toBe("non_finite");
+    expect(nonFinitePayload.metadata.find((row) => row.key === "markdownDependencyEvidenceState")?.value).toBe("non_finite");
+    expect(nonFinitePayload.rows.find((row) => row.section === "supplier_negotiation_pack" && row.item === "Traži rabat za robu koja se prodaje samo kroz sniženje")?.value).toBe("Razmotriti");
+    expect(buildSupplierDecisionReportSummaryText(nonFinitePayload)).toContain("NaN/Infinity");
   });
 
   it("fails closed when report trust metadata is missing", () => {
