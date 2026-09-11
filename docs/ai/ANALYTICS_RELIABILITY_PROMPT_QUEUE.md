@@ -2,7 +2,7 @@
 
 Date: 2026-09-11
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ241
+Current READY prompt: none
 
 Owner promotion 2026-09-10: `RQ227` was explicitly promoted by the user after completed `RQ226`; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ227` was delivered on `main` with fail-closed deleted-row archive handling and focused regression coverage; the RQ queue returned to no current READY prompt.
@@ -19,6 +19,7 @@ Owner completion 2026-09-11: `RQ236` was delivered on `main` with explicit suppl
 Owner promotion 2026-09-11: `RQ237` was explicitly promoted by the user after completed `RQ236`, repaired a stale same-owner dependency on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-11: `RQ237` was delivered on `main` with conservative inventory composite trust aggregation, explicit degraded-source lineage and confirmed-refresh handling; the RQ queue returned to no current READY prompt.
 Owner promotion 2026-09-11: `RQ241` was explicitly promoted by the user after completed `RQ237`, repaired a stale same-owner dependency on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
+Owner completion 2026-09-11: `RQ241` was delivered on `main` with fail-closed Dashboard custom-date validation, trusted-response preservation and focused request-gating coverage; the RQ queue returned to no current READY prompt.
 
 Owner promotion 2026-09-10: `RQ226` was explicitly promoted by the user after completed `RQ225`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ226` was delivered on `main` with startup validation and explicit UTC schedule logging; the RQ queue returned to no current READY prompt.
@@ -10157,7 +10158,7 @@ Commit suggestion: `fix(analytics): aggregate inventory trust state conservative
 
 ## RQ241 - Reject invalid custom Dashboard dates instead of using current time
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: frontend/tests
 Feature family: analytics-dashboard-period-validation
@@ -10218,6 +10219,26 @@ The Analytics Dashboard parses a malformed or temporarily empty `datetime-local`
 - `RQ208` remains the valid-period DST/day-count owner.
 - `RQ145`/`RQ161` remain broad period-lineage and validation owners; this prompt is the concrete Dashboard input-boundary repair.
 - `RQ167` is DONE; this prompt is runnable after the explicit owner promotion recorded above.
+
+### Completion note
+
+- Date: 2026-09-11
+- Status: DONE
+- Completion: `AnalyticsDashboard` now fails closed for empty, malformed, non-finite and calendar-invalid custom date input before issuing a bootstrap request, while preserving the previous trusted response and showing a clear validation message.
+- Changed files: `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx`, `Klijent/clientapp/src/pages/__tests__/AnalyticsDashboard.controlBar.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-11-RQ241-evidence.md`
+- Contract/runtime behavior changed: invalid custom input is explicit and request-gated; valid same-day periods remain valid; inverted ranges remain rejected; existing backend-owned UTC period/day-count, freshness and recommendation semantics are unchanged.
+- Checks run: focused Dashboard/integration/period-boundary tests 14/14; analytics guardrails/encoding/typecheck; frontend build; queue/planning validators; diff check.
+- Checks not run: full frontend/backend suites; browser/live API/production data.
+- Run log: `.ai/runs/2026-09-11-RQ241-evidence.md`
+- Evidence state: pending final synchronization
+- Delivery mode: direct-main
+- Main commit SHA: `098c6184a6d06e09a49b36b8f82015cfe53e63b2`
+- Main verification: passed - implementation commit was pushed to `main`; final docs-sync verification is pending.
+- Missed: no browser/live API proof; full suites were outside the scoped frontend validation.
+- Residual risk: Vite reports the existing large-chunk warning; browser-native edge behavior remains environment-dependent.
+- Next: the next RQ candidate remains WAITING and is not promoted by this run.
+- Follow-up: Explicitly promote the next claimable RQ prompt on the next user-directed queue execution.
+- Prompt defect / scope repair: the stale `RQ167` READY dependency was repaired within the same queue owner because `RQ167` is already DONE.
 
 ---
 
