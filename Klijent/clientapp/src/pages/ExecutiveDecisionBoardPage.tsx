@@ -666,7 +666,7 @@ export function buildExecutiveFallbackSupplierCards(summary: SummaryResponse | n
             : []
           : ["supplier_recommendation_blocked"],
         dataQualityStatus,
-        generatedAtUtc: summary.to,
+        generatedAtUtc: resolveExecutiveSummaryProvenanceTimestamp(summary),
         priorityScore: capInsufficientDataPriority(
           computePriorityScore(impact, confidenceScore, dataQualityStatus, item.recommendationCode),
           confidenceTone,
@@ -679,6 +679,17 @@ export function buildExecutiveFallbackSupplierCards(summary: SummaryResponse | n
   }
 
   return cards.sort((a, b) => b.priorityScore - a.priorityScore);
+}
+
+function normalizeExecutiveProvenanceTimestamp(value: string | null | undefined): string | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  return Number.isNaN(new Date(value).getTime()) ? null : value;
+}
+
+export function resolveExecutiveSummaryProvenanceTimestamp(summary: SummaryResponse | null): string | null {
+  if (!summary) return null;
+  return normalizeExecutiveProvenanceTimestamp(summary.meta?.generatedAtUtc)
+    ?? normalizeExecutiveProvenanceTimestamp(summary.trustMetadata?.lastRefreshAtUtc);
 }
 
 function buildActionCards(actions: AnalyticsActionListResponse | null): BoardCard[] {

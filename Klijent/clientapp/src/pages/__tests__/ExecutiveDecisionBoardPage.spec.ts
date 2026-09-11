@@ -4,6 +4,7 @@ import {
   buildExecutiveFallbackProductCards,
   buildExecutiveFallbackSupplierCards,
   buildInventoryCards,
+  resolveExecutiveSummaryProvenanceTimestamp,
 } from "../ExecutiveDecisionBoardPage";
 import type { InventoryRow } from "../../components/inventory/types";
 import type { SummaryResponse } from "../../services/supplierDecisionHubApi";
@@ -256,6 +257,35 @@ function baseInventoryInsights(overrides: Partial<InventoryInsights> = {}): Inve
     topAgedItems: [topItem],
     topCapitalLockedItems: [topItem],
     meta: null,
+    ...overrides,
+  };
+}
+
+function supplierSummary(overrides: Partial<SummaryResponse> = {}): SummaryResponse {
+  return {
+    from: "2026-06-01T00:00:00Z",
+    to: "2026-06-30T23:59:59Z",
+    supplierCount: 1,
+    fullPriceRevenueShare: 0.8,
+    fullPriceSellthrough: 0.6,
+    markdownRevenueShare: 0.2,
+    preMarkdownMarginPct: 0.3,
+    capitalAtRisk: 10_000,
+    topGrowSuppliers: [{
+      supplierId: 78,
+      supplierName: "Dobavljač provenance",
+      revenue: 900_000,
+      mlSupplierScore: 80,
+      supplierQualityIndex: 75,
+      recommendationCode: "EXPAND",
+      confidenceScore: 95,
+      reliabilityPct: 95,
+      dataQualityStatus: "good",
+      statusReason: "Signal je inače jak.",
+      reasonCodes: ["supplier_grow"],
+    }],
+    topRiskSuppliers: [],
+    keyInsights: [],
     ...overrides,
   };
 }
@@ -705,6 +735,23 @@ describe("buildExecutiveFallbackProductCards (RQ72)", () => {
 });
 
 describe("buildExecutiveFallbackSupplierCards", () => {
+  it.each([
+    ["generated-only", "2026-06-30T09:05:00Z", null, "2026-06-30T09:05:00Z"],
+    ["refresh-only", null, "2026-06-30T09:00:00Z", "2026-06-30T09:00:00Z"],
+    ["missing-provenance", null, null, null],
+    ["period-end-only", null, null, null],
+  ])("uses only explicit provenance for %s fallback cards", (_caseName, generatedAtUtc, lastRefreshAtUtc, expected) => {
+    const summary = supplierSummary({
+      meta: generatedAtUtc ? { success: true, generatedAtUtc } : null,
+      trustMetadata: lastRefreshAtUtc ? { lastRefreshAtUtc } : null,
+    });
+
+    expect(resolveExecutiveSummaryProvenanceTimestamp(summary)).toBe(expected);
+    expect(buildExecutiveFallbackSupplierCards(summary)[0]?.generatedAtUtc).toBe(expected);
+    expect(buildExecutiveFallbackSupplierCards(summary)[0]?.recommendationAllowed).toBe(false);
+    expect(buildExecutiveFallbackSupplierCards(summary)[0]?.expectedImpactRsd).toBeNull();
+  });
+
   it("blocks a supplier signal when compatibility payload omits trust metadata", () => {
     const summary: SummaryResponse = {
       from: "2026-06-01T00:00:00Z",
