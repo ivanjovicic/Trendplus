@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import DailySalesStatsPage from "../DailySalesStatsPage";
+import DailySalesStatsPage, { buildSupplierConcentration } from "../DailySalesStatsPage";
 import { getStores } from "../../services/analyticsApi";
 import { getDailySalesStats } from "../../services/dailySalesStatsApi";
 import type { DailySalesTableResponse } from "../../services/dailySalesStatsApi";
@@ -360,5 +360,24 @@ describe("DailySalesStatsPage premium controls", () => {
     expect(concentrationPanel).not.toBeNull();
     expect(within(concentrationPanel as HTMLElement).getAllByText("N/A")).toHaveLength(2);
     expect(within(concentrationPanel as HTMLElement).getByText("Nije dostupno")).toBeInTheDocument();
+  });
+
+  it("marks concentration as unavailable when either denominator is missing", () => {
+    const result = buildSupplierConcentration(
+      response({
+        topSuppliers: [{
+          ...response().topSuppliers[0],
+          totalQty: null,
+          totalRevenue: null,
+        }],
+        metadata: { ...response().metadata, totalItemsInRange: null },
+      }),
+      null,
+    );
+
+    expect(result.warning).toContain("Nedostaje validan denominator količine");
+    expect(result.warning).toContain("Nedostaje validan prihodovni denominator");
+    expect(result.top3QtySharePct).toBeNull();
+    expect(result.suppliersTo80Pct).toBeNull();
   });
 });

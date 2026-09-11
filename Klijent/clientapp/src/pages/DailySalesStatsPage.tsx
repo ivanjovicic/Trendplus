@@ -359,6 +359,8 @@ export function buildSupplierConcentration(
   const warnings = [
     quantityMismatch ? "Top dobavljači imaju više komada nego autoritativni period total." : null,
     revenueMismatch ? "Top dobavljači imaju veći prihod nego autoritativni period total." : null,
+    supplierQtyBasis == null && !quantityMismatch ? "Nedostaje validan denominator količine za koncentraciju dobavljača." : null,
+    supplierRevenueBasis == null && !revenueMismatch ? "Nedostaje validan prihodovni denominator za koncentraciju dobavljača." : null,
   ].filter((warning): warning is string => warning != null);
 
   const baseRows = data.topSuppliers.map((supplier) => ({
