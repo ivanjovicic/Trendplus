@@ -154,6 +154,47 @@ describe("buildSupplierDecisionReportPayload", () => {
     expect(buildSupplierDecisionReportSummaryText(nonFinitePayload)).toContain("NaN/Infinity");
   });
 
+  it("does not zero-fill confidence or reliability when availability flags contain incomplete evidence", () => {
+    const base = buildInput();
+    const payload = buildSupplierDecisionReportPayload({
+      ...base,
+      totalRevenue: 100,
+      trustMetadata: { ...base.trustMetadata, recommendationAllowed: true, dataCoverageStatus: "good" },
+      scorecardMeta: { success: true, dataQualityStatus: "good" },
+      rows: [
+        {
+          ...base.rows[0],
+          revenue: 60,
+          units: 1,
+          markdownRevenueShare: 0,
+          normalizedConfidence: 80,
+          confidenceAvailable: true,
+          reliabilityPct: 70,
+          reliabilityAvailable: true,
+        },
+        {
+          ...base.rows[0],
+          supplierId: 2,
+          supplierName: "Dobavljač 2",
+          revenue: 40,
+          units: 1,
+          markdownRevenueShare: 0,
+          normalizedConfidence: null,
+          confidenceAvailable: true,
+          reliabilityPct: Number.NaN,
+          reliabilityAvailable: true,
+        },
+      ],
+    });
+
+    expect(payload.rows.find((row) => row.section === "KPI" && row.item === "Sigurnost signala")?.value).toBe("Nije dostupno");
+    expect(payload.rows.find((row) => row.section === "KPI" && row.item === "Pouzdanost signala")?.value).toBe("Nije dostupno");
+    expect(payload.metadata.find((row) => row.key === "confidenceEvidenceState")?.value).toBe("partial");
+    expect(payload.metadata.find((row) => row.key === "reliabilityEvidenceState")?.value).toBe("non_finite");
+    expect(payload.rows.find((row) => row.section === "KPI" && row.item === "Sigurnost signala")?.note).toContain("deo redova");
+    expect(payload.rows.find((row) => row.section === "KPI" && row.item === "Pouzdanost signala")?.note).toContain("NaN/Infinity");
+  });
+
   it("fails closed when report trust metadata is missing", () => {
     const base = buildInput();
     const payload = buildSupplierDecisionReportPayload({

@@ -155,13 +155,21 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
   const weightedMarkdownDependencyPct = markdownDependencyState === "measured" || markdownDependencyState === "measured_zero"
     ? input.rows.reduce((sum, row) => sum + row.markdownRevenueShare! * row.revenue, 0) / input.totalRevenue
     : null;
-  const confidenceRows = recommendationAllowed ? input.rows.filter((row) => row.confidenceAvailable) : [];
+  const confidenceEvidenceState = classifyNumericEvidence(input.rows.map((row) => row.confidenceAvailable ? row.normalizedConfidence : null));
+  const confidenceEvidenceComplete = confidenceEvidenceState === "measured" || confidenceEvidenceState === "measured_zero";
+  const confidenceRows = recommendationAllowed && confidenceEvidenceComplete
+    ? input.rows.filter((row) => row.confidenceAvailable && isFiniteMetricNumber(row.normalizedConfidence))
+    : [];
   const avgConfidencePct = confidenceRows.length > 0
-    ? confidenceRows.reduce((sum, row) => sum + (row.normalizedConfidence ?? 0), 0) / confidenceRows.length
+    ? confidenceRows.reduce((sum, row) => sum + row.normalizedConfidence!, 0) / confidenceRows.length
     : null;
-  const reliabilityRows = recommendationAllowed ? input.rows.filter((row) => row.reliabilityAvailable) : [];
+  const reliabilityEvidenceState = classifyNumericEvidence(input.rows.map((row) => row.reliabilityAvailable ? row.reliabilityPct : null));
+  const reliabilityEvidenceComplete = reliabilityEvidenceState === "measured" || reliabilityEvidenceState === "measured_zero";
+  const reliabilityRows = recommendationAllowed && reliabilityEvidenceComplete
+    ? input.rows.filter((row) => row.reliabilityAvailable && isFiniteMetricNumber(row.reliabilityPct))
+    : [];
   const avgReliabilityPct = reliabilityRows.length > 0
-    ? reliabilityRows.reduce((sum, row) => sum + (row.reliabilityPct ?? 0), 0) / reliabilityRows.length
+    ? reliabilityRows.reduce((sum, row) => sum + row.reliabilityPct!, 0) / reliabilityRows.length
     : null;
   const reasonCodePreview = Array.from(new Set(input.rows.flatMap((row) => row.reasonCodes ?? []).filter((code) => Boolean(String(code).trim()))))
     .slice(0, 8)
@@ -205,8 +213,8 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     buildSectionRow("KPI", "Prodate jedinice", formatMetricDisplayValue({ value: totalUnits, kind: "qty" }), "", numericStateLimitation("prodatih jedinica", unitsEvidenceState)),
     buildSectionRow("KPI", "Rizik zaliha", fmtRsd(totalStockRisk), "", ""),
     buildSectionRow("KPI", "Zavisnost od nivelacija", formatMetricDisplayValue({ value: weightedMarkdownDependencyPct, kind: "ratioPercent" }), "", numericStateLimitation("zavisnost od nivelacija", markdownDependencyState)),
-    buildSectionRow("KPI", "Sigurnost signala", formatMetricDisplayValue({ value: avgConfidencePct, kind: "percent" }), "", ""),
-    buildSectionRow("KPI", "Pouzdanost signala", formatMetricDisplayValue({ value: avgReliabilityPct, kind: "percent" }), "", ""),
+    buildSectionRow("KPI", "Sigurnost signala", formatMetricDisplayValue({ value: avgConfidencePct, kind: "percent" }), "", numericStateLimitation("sigurnost signala", confidenceEvidenceState)),
+    buildSectionRow("KPI", "Pouzdanost signala", formatMetricDisplayValue({ value: avgReliabilityPct, kind: "percent" }), "", numericStateLimitation("pouzdanost signala", reliabilityEvidenceState)),
     buildSectionRow("KPI", "Top 5 udeo", formatMetricDisplayValue({ value: input.top5SharePct, kind: "percent" }), "", ""),
     buildSectionRow(
       "Preporuke",
@@ -433,6 +441,8 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     { key: "reliabilityPct", label: "Pouzdanost signala", value: avgReliabilityPct },
     { key: "unitsEvidenceState", label: "Stanje prodatih jedinica", value: unitsEvidenceState },
     { key: "markdownDependencyEvidenceState", label: "Stanje zavisnosti od nivelacija", value: markdownDependencyState },
+    { key: "confidenceEvidenceState", label: "Stanje sigurnosti signala", value: confidenceEvidenceState },
+    { key: "reliabilityEvidenceState", label: "Stanje pouzdanosti signala", value: reliabilityEvidenceState },
     { key: "requestedDataset", label: "Traženi dataset", value: trust?.requestedDataset ?? null },
     { key: "effectiveDataset", label: "Efektivni dataset", value: trust?.effectiveDataset ?? null },
     { key: "requestedPeriodFromUtc", label: "Traženi period od", value: requestedFromUtc },
