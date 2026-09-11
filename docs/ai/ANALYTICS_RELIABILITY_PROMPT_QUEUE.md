@@ -10319,10 +10319,10 @@ Daily Sales receives a full-period item/revenue total and a `TopN` supplier list
 - Checks run: focused Daily Sales tests 15/15; analytics guardrails/encoding/typecheck; frontend build; queue/planning validators; diff check.
 - Checks not run: full frontend/backend suites; browser/live API/production data.
 - Run log: `.ai/runs/2026-09-11-RQ242-evidence.md`
-- Evidence state: pending final synchronization
+- Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `49629ba114389955b58416e257bd7c14bbe9d3da`
-- Main verification: passed - implementation commit was pushed to `main`; final docs/evidence sync verification is pending.
+- Main verification: passed - implementation commit was pushed to `main`; docs/evidence sync commit `011ef760` was subsequently pushed and verified on `main`.
 - Missed: no live backend payload or browser proof; full suites were outside the scoped frontend reconciliation.
 - Residual risk: Vite reports the existing large-chunk warning; backend generation remains unchanged and only the frontend boundary is hardened.
 - Next: `RQ238` remains the next candidate and is not promoted by this run.
