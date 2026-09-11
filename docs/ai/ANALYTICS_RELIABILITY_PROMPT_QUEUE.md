@@ -2,7 +2,7 @@
 
 Date: 2026-09-11
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ234
+Current READY prompt: none
 
 Owner promotion 2026-09-10: `RQ227` was explicitly promoted by the user after completed `RQ226`; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ227` was delivered on `main` with fail-closed deleted-row archive handling and focused regression coverage; the RQ queue returned to no current READY prompt.
@@ -11,6 +11,7 @@ Owner completion 2026-09-10: `RQ228` was delivered on `main` with shared Insight
 Owner promotion 2026-09-10: `RQ233` was explicitly promoted by the user after completed `RQ228`; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ233` was delivered on `main` with visible-scope supplier concentration denominators and focused UI regression coverage; the RQ queue returned to no current READY prompt.
 Owner promotion 2026-09-11: `RQ234` was explicitly promoted by the user after completed `RQ233`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
+Owner completion 2026-09-11: `RQ234` was delivered on `main` with canonical supplier-report filter serialization, fail-closed invalid-link handling and backend stable URL/payload parity; the RQ queue returned to no current READY prompt.
 
 Owner promotion 2026-09-10: `RQ226` was explicitly promoted by the user after completed `RQ225`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ226` was delivered on `main` with startup validation and explicit UTC schedule logging; the RQ queue returned to no current READY prompt.
@@ -9845,7 +9846,7 @@ Owner: Supplier Analytics
 
 ## RQ234 - Preserve all supplier decision filters in report deep-links
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: frontend/backend/contract/tests
 Feature family: supplier-report-filter-fidelity
@@ -9894,6 +9895,26 @@ Supplier Decision Hub report links preserve period, scope, supplier and store on
 ### Dependencies
 
 - Coordinates with `RQ141` and `RQ145`; this is the narrow report-link reproduction, not a replacement for their full matrix/parity work.
+
+### Completion note
+
+- Date: 2026-09-11
+- Status: DONE
+- Completion: Hub durable report links, report reload links, API requests, backend stable URLs and report filter metadata now preserve the same material supplier decision filters; malformed/empty typed URL values and unknown scopes fail closed.
+- Changed files: `Api/Endpoints/SupplierDecisionHubEndpoints.cs`; `Api.Tests/SupplierDecisionHubContractTests.cs`; `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx`; `Klijent/clientapp/src/pages/SupplierDecisionReportPage.tsx`; `Klijent/clientapp/src/pages/__tests__/SupplierDecisionReportPage.spec.tsx`; `Klijent/clientapp/src/services/analyticsApi.ts`; `Klijent/clientapp/src/services/supplierDecisionHubApi.ts`; `Klijent/clientapp/src/services/supplierDecisionReportQuery.ts`; `Klijent/clientapp/src/services/__tests__/supplierDecisionReportQuery.spec.ts`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-11-RQ234-evidence.md`
+- Contract/runtime behavior changed: season, minimum revenue, high-confidence, OOS, category, gender, supplier, store and data-scope filters use one durable query contract; zero/false/explicit-empty values are not silently dropped by the serializer, invalid typed values do not trigger a broadened report, and backend report metadata exposes the material filter values alongside period/scope.
+- Checks run: focused frontend Vitest 18/18 passed; focused backend supplier/report contract tests 55/55 passed; API Release build passed with 0 errors; frontend analytics guardrails passed; frontend production build passed; agent-instruction, prompt-queue and planning validators plus `git diff --check` passed.
+- Checks not run: full frontend/backend suites; browser/live API/production-data print/export parity.
+- Run log: `.ai/runs/2026-09-11-RQ234-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: bfbae63faff307a0ab81c9635fedb6fa0db881f3
+- Main verification: passed - `HEAD` and `origin/main` are `bfbae63faff307a0ab81c9635fedb6fa0db881f3`; `origin/main` contains the implementation commit.
+- Missed: no live/browser report, print or export comparison.
+- Follow-up: RQ235 remains the next supplier-report actionability follow-up and is not promoted by this run.
+- Residual risk: existing API analyzer warnings remain; production/live data-scope and export rendering still need environment-specific proof.
+- Next: Keep the queue at explicit no current READY prompt until the next user-directed promotion.
+- Prompt defect / scope repair: RQ233 was already delivered but its queue status was stale as `IN_PROGRESS`; it was repaired to `DONE` before RQ234 promotion. RQ234’s evidence names category/gender/OOS as compatible report-contract filters although the current Hub UI exposes only the subset it owns; the shared contract preserves them without adding a second UI owner.
 
 ---
 
