@@ -2,7 +2,7 @@
 
 Date: 2026-09-11
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ235
+Current READY prompt: none
 
 Owner promotion 2026-09-10: `RQ227` was explicitly promoted by the user after completed `RQ226`; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ227` was delivered on `main` with fail-closed deleted-row archive handling and focused regression coverage; the RQ queue returned to no current READY prompt.
@@ -13,6 +13,7 @@ Owner completion 2026-09-10: `RQ233` was delivered on `main` with visible-scope 
 Owner promotion 2026-09-11: `RQ234` was explicitly promoted by the user after completed `RQ233`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-11: `RQ234` was delivered on `main` with canonical supplier-report filter serialization, fail-closed invalid-link handling and backend stable URL/payload parity; the RQ queue returned to no current READY prompt.
 Owner promotion 2026-09-11: `RQ235` was explicitly promoted by the user after completed `RQ234`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
+Owner completion 2026-09-11: `RQ235` was delivered on `main` with a backend-owned actionability gate across all supplier report negotiation actions; the RQ queue returned to no current READY prompt.
 
 Owner promotion 2026-09-10: `RQ226` was explicitly promoted by the user after completed `RQ225`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ226` was delivered on `main` with startup validation and explicit UTC schedule logging; the RQ queue returned to no current READY prompt.
@@ -9969,6 +9970,26 @@ The supplier report correctly marks `Preporuka dozvoljena: Ne` and changes `Fina
 ### Dependencies
 
 - Consumes backend decision truth and coordinates with `RQ145`; no new local recommendation engine is allowed.
+
+### Completion note
+
+- Date: 2026-09-11
+- Status: DONE
+- Completion: Supplier report negotiation-pack actions now honor `recommendationAllowed` for every concrete action. Blocked, missing and false gate states show a non-actionable verification state while evidence rows and the safe helper signal remain visible.
+- Changed files: `Klijent/clientapp/src/services/supplierDecisionReport.ts`; `Klijent/clientapp/src/services/__tests__/supplierDecisionReport.spec.ts`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-11-RQ235-evidence.md`
+- Contract/runtime behavior changed: no concrete negotiation action is emitted as `Preporučeno` unless backend `recommendationAllowed=true`; printable and export payloads consume the same gated report rows, and allowed reports preserve their existing recommendations.
+- Checks run: focused supplier report/frontend tests 28/28 passed; analytics guardrails passed; frontend production build passed; agent-instruction, prompt-queue and planning validators plus `git diff --check` passed.
+- Checks not run: full frontend/backend suites; browser/live API/production-data print/export rendering.
+- Run log: `.ai/runs/2026-09-11-RQ235-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: 822a025aaadfb9b6bd701712f04faea1158b1b5d
+- Main verification: passed - `HEAD` and `origin/main` are `822a025aaadfb9b6bd701712f04faea1158b1b5d`; `origin/main` contains the implementation commit.
+- Missed: no live/browser verification of generated PDF/XLSX/CSV rendering.
+- Follow-up: RQ236 remains the next supplier-report numeric-state follow-up and is not promoted by this run.
+- Residual risk: existing bundle-size and unrelated repository warnings remain; the RQ236 numeric-state issue is unchanged.
+- Next: Keep the queue at explicit no current READY prompt until the next user-directed promotion.
+- Prompt defect / scope repair: none; the existing report builder already owned the shared rows consumed by report, print and export surfaces, so no second owner was introduced.
 
 ---
 
