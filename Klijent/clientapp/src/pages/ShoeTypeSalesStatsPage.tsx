@@ -58,6 +58,7 @@ import {
   type RecommendationQualityStatus,
 } from "../utils/canonicalRecommendationSemantics";
 import { qualityTierIcon, qualityTierClass, tierNeedsWarning, buildCoverageTooltip, buildRecommendationCaveat, buildMarginDetailNote, buildSnapshotBadgeLabel, buildSnapshotTooltip } from "../utils/marginQuality";
+import { resolveShoeTypeCoveragePct } from "../utils/shoeTypeSalesCoverage";
 import "./ShoeTypeSalesStatsPage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
@@ -88,7 +89,7 @@ type DecisionShoeType = ShoeTypeSalesStat & {
   marginContribution: number;
   reliabilityPct: number | null;
   reliabilityAvailable: boolean;
-  coveragePct: number;
+  coveragePct: number | null;
   splitCoveragePct: number | null;
   confidencePct: number | null;
   recommendationConfidencePct: number | null;
@@ -105,6 +106,7 @@ const STATUS_PRIORITY: Record<DecisionStatus, number> = {
 };
 
 const decisionColumns: AnalyticsTableColumn<DecisionShoeType>[] = [
+  { key: "coveragePct", header: "Pokriće artikala %", dataType: "percent" },
   { key: "tipObuceNaziv", header: "Tip obuće", dataType: "text" },
   { key: "ukupanPromet", header: "Promet", dataType: "currency" },
   { key: "ukupnaKolicina", header: "Količina", dataType: "number" },
@@ -224,6 +226,7 @@ type StatusTooltipData = {
   splitCoveragePct: number | null;
   reliabilityPct: number | null;
   reliabilityAvailable: boolean;
+  coveragePct: number | null;
   confidencePct: number | null;
   confidenceAvailable: boolean;
   dataQualityStatus: RecommendationQualityStatus;
@@ -243,7 +246,7 @@ function buildStatusTooltip(data: StatusTooltipData): string {
   const confidenceText = data.confidenceAvailable ? fmtPct(data.confidencePct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
   const qualityText = recommendationQualityLabel(data.dataQualityStatus);
   const hintText = recommendationReasonHints(data.reasonCodes).join(" | ");
-  return `${recommendationStatusLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Udeo ${fmtPct(data.sharePct, 1)} | Marža ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Nivelacija impact ${impactText} | Split pokriće ${fmtPct(data.splitCoveragePct, 1)} | ${RECOMMENDATION_RELIABILITY_LABEL} ${reliabilityText} | ${RECOMMENDATION_CONFIDENCE_LABEL} ${confidenceText} | Kvalitet ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
+  return `${recommendationStatusLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Udeo ${fmtPct(data.sharePct, 1)} | Marža ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Nivelacija artikala ${fmtPct(data.coveragePct, 1)} | Nivelacija impact ${impactText} | Split pokriće ${fmtPct(data.splitCoveragePct, 1)} | ${RECOMMENDATION_RELIABILITY_LABEL} ${reliabilityText} | ${RECOMMENDATION_CONFIDENCE_LABEL} ${confidenceText} | Kvalitet ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
 }
 
 function describePopMetric(item: ShoeTypeSalesStat): { label: string; title: string; className: string } {
@@ -432,9 +435,10 @@ export default function ShoeTypeSalesStatsPage() {
       const totalCost = item.totalCost ?? null;
       const marginContribution = item.marginContribution;
       const splitCoveragePct = item.prePostNivelacijaRevenueCoveragePct ?? null;
-      const coveragePct = item.brojArtikalaUkupno > 0
-        ? (item.brojArtikalaSaNivelacijom / item.brojArtikalaUkupno) * 100
-        : 0;
+      const coveragePct = resolveShoeTypeCoveragePct(
+        item.brojArtikalaSaNivelacijom,
+        item.brojArtikalaUkupno,
+      );
       const backendStatus = mapRecommendationStatus(item.recommendation?.status) ?? "insufficient_data";
       const recommendationAllowed = item.recommendation?.recommendationAllowed === true;
       const displayStatus = recommendationAllowed ? backendStatus : "insufficient_data";
@@ -1196,6 +1200,7 @@ export default function ShoeTypeSalesStatsPage() {
                 <table className="shoetype-decision-table">
                   <thead>
                     <tr>
+                      <th className="analytics-data-table__numeric">Pokriće artikala % <InfoTip text="Udeo različitih artikala ovog tipa koji imaju registrovanu nivelaciju. Nulti denominator znači da procenat nije merljiv." /></th>
                       <th className={isSortActive("tipObuceNaziv", sortField) ? "is-sorted" : undefined}>
                         <button
                           type="button"
@@ -1312,7 +1317,7 @@ export default function ShoeTypeSalesStatsPage() {
                   <tbody>
                     {sortedRows.length === 0 ? (
                       <tr>
-                        <td colSpan={11} className="shoetype-decision-empty-row">
+                        <td colSpan={12} className="shoetype-decision-empty-row">
                           Nema podataka za izabrane filtere.
                         </td>
                       </tr>
@@ -1325,6 +1330,7 @@ export default function ShoeTypeSalesStatsPage() {
                         const nivelacijaImpactMetric = describeNivelacijaImpactMetric(row);
                         return (
                           <tr key={rowKey} className={[expanded ? "expanded-row" : "", rank <= 3 ? `shoetype-rank-row shoetype-rank-row-${rank}` : ""].filter(Boolean).join(" ")}>
+                            <td className="analytics-data-table__numeric"><span className="metric-chip metric-chip-neutral">{fmtPct(row.coveragePct, 1)}</span></td>
                             <td>
                               <div className="shoetype-name-cell">
                                 <span className={`shoetype-rank-badge ${rank <= 3 ? `rank-${rank}` : "rank-other"}`}>#{rank}</span>
@@ -1434,6 +1440,10 @@ export default function ShoeTypeSalesStatsPage() {
                 <article>
                   <span>Broj artikala <InfoTip text="Ukupan broj različitih artikala ovog tipa obuće koji su prodati." /></span>
                   <strong>{selectedRow.brojArtikalaUkupno}</strong>
+                </article>
+                <article>
+                  <span>Pokriće artikala sa nivelacijom <InfoTip text="Udeo različitih artikala ovog tipa koji imaju registrovanu nivelaciju. Nulti denominator znači da procenat nije merljiv." /></span>
+                  <strong>{fmtPct(selectedRow.coveragePct, 1)}</strong>
                 </article>
               </div>
 

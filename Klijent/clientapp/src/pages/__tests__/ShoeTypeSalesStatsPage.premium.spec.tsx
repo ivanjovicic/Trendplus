@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import ShoeTypeSalesStatsPage from "../ShoeTypeSalesStatsPage";
 import { getStores } from "../../services/analyticsApi";
 import { getShoeTypeSalesStats } from "../../services/shoeTypeSalesStatsApi";
+import { resolveShoeTypeCoveragePct } from "../../utils/shoeTypeSalesCoverage";
 import type { ShoeTypeSalesStat, ShoeTypeSalesStatsResponse } from "../../services/shoeTypeSalesStatsApi";
 
 vi.mock("recharts", () => ({
@@ -142,6 +143,53 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     localStorage.setItem("trendplus:dataScope", "all");
     vi.mocked(getStores).mockResolvedValue([]);
     vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response());
+  });
+
+  it.each([
+    [0, 0],
+    [1, 0],
+    [0, null],
+    [0, undefined],
+    [undefined, 10],
+    [0, Number.NaN],
+    [0, Number.POSITIVE_INFINITY],
+    [Number.NaN, 10],
+    [Number.POSITIVE_INFINITY, 10],
+  ])("keeps shoe-type coverage unavailable when evidence is not measurable (%s / %s)", (numerator, denominator) => {
+    expect(resolveShoeTypeCoveragePct(numerator, denominator)).toBeNull();
+  });
+
+  it("preserves a genuine finite zero coverage with a positive denominator", () => {
+    expect(resolveShoeTypeCoveragePct(0, 8)).toBe(0);
+    expect(resolveShoeTypeCoveragePct(5, 8)).toBe(62.5);
+  });
+
+  it("keeps undefined shoe-type coverage unavailable in table, tooltip and detail", async () => {
+    vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
+      shoeTypes: [shoeType({ brojArtikalaSaNivelacijom: 0, brojArtikalaUkupno: 0 })],
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const table = await screen.findByTestId("shoe-type-sales-stats-data-table");
+    const row = within(table).getAllByRole("row").find((candidate) => within(candidate).queryByText("Patike"));
+    expect(row).toBeDefined();
+    if (!row) throw new Error("Shoe type data row was not rendered");
+    expect(row).toHaveTextContent("N/A");
+    const status = within(row).getByLabelText(/Nivelacija artikala N\/A/);
+    expect(status).toBeInTheDocument();
+    expect(status).not.toHaveAttribute("aria-label", expect.stringContaining("Nivelacija artikala 0%"));
+
+    within(row).getByRole("button", { name: "Detalji" }).click();
+    const detailLabel = await screen.findByText("Pokriće artikala sa nivelacijom");
+    expect(detailLabel.parentElement).toHaveTextContent("N/A");
+    expect(detailLabel.parentElement).not.toHaveTextContent("0%");
   });
 
   it("uses shared control bar and analytics data table without changing recommendation labels", async () => {
