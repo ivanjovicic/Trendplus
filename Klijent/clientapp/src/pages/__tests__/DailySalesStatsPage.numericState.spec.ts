@@ -3,6 +3,7 @@ import {
   buildRollingAverage,
   calculateAnomalyDeviation,
   calculateDeltaPct,
+  buildSupplierConcentration,
   safeDivide,
   sortDailySalesRows,
   summarizePeriod,
@@ -149,6 +150,29 @@ describe("Daily Sales numeric evidence states", () => {
       deviationValue: null,
       deviationPct: null,
     });
+  });
+
+  it("keeps supplier concentration unavailable when top totals contradict the period totals", () => {
+    const inconsistent = response({
+      topSuppliers: [{
+        supplierId: 1,
+        supplierName: "Alfa",
+        isUnknown: false,
+        totalQty: 25,
+        totalRevenue: 12000,
+      }],
+      metadata: { ...response().metadata, totalItemsInRange: 18 },
+      dateRows: [row({ totalItemsSold: 18, totalRevenue: 9000 })],
+    });
+
+    const concentration = buildSupplierConcentration(inconsistent, 9000);
+
+    expect(concentration.warning).toContain("više komada");
+    expect(concentration.top3QtySharePct).toBeNull();
+    expect(concentration.top5QtySharePct).toBeNull();
+    expect(concentration.suppliersTo80Pct).toBeNull();
+    expect(concentration.chartData[0]?.qtySharePct).toBeNull();
+    expect(concentration.chartData.find((item) => item.supplierName === "Ostali")).toBeUndefined();
   });
 
   it("does not turn partial metadata into trusted zero values", () => {

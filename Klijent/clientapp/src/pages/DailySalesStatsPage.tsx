@@ -114,6 +114,15 @@ type SupplierConcentrationPoint = {
   cumulativeQtySharePct: number | null;
 };
 
+type SupplierConcentration = {
+  chartData: SupplierConcentrationPoint[];
+  displayChartData: SupplierConcentrationPoint[];
+  top3QtySharePct: number | null;
+  top5QtySharePct: number | null;
+  suppliersTo80Pct: number | null;
+  warning: string | null;
+};
+
 type WeekdayPoint = {
   weekday: number;
   dayName: string;
@@ -318,6 +327,113 @@ export function safeDivide(value: DailySalesNumeric, total: DailySalesNumeric): 
   if (numerator == null || denominator == null || denominator === 0) return null;
   const result = numerator / denominator;
   return Number.isFinite(result) ? result : null;
+}
+
+export function buildSupplierConcentration(
+  data: DailySalesTableResponse | null,
+  periodRevenue: DailySalesNumeric,
+): SupplierConcentration {
+  if (!data) {
+    return {
+      chartData: [],
+      displayChartData: [],
+      top3QtySharePct: null,
+      top5QtySharePct: null,
+      suppliersTo80Pct: null,
+      warning: null,
+    };
+  }
+
+  const supplierTotalsQty = sum(data.topSuppliers.map((supplier) => supplier.totalQty));
+  const supplierTotalsRevenue = sum(data.topSuppliers.map((supplier) => supplier.totalRevenue));
+  const metadataQty = finiteOrNull(data.metadata.totalItemsInRange);
+  const normalizedPeriodRevenue = finiteOrNull(periodRevenue);
+  const quantityMismatch = metadataQty != null && supplierTotalsQty != null && supplierTotalsQty > metadataQty;
+  const revenueMismatch = normalizedPeriodRevenue != null && supplierTotalsRevenue != null && supplierTotalsRevenue > normalizedPeriodRevenue;
+  const supplierQtyBasis = !quantityMismatch && metadataQty != null && supplierTotalsQty != null
+    ? metadataQty
+    : null;
+  const supplierRevenueBasis = !revenueMismatch && normalizedPeriodRevenue != null && supplierTotalsRevenue != null
+    ? normalizedPeriodRevenue
+    : null;
+  const warnings = [
+    quantityMismatch ? "Top dobavljači imaju više komada nego autoritativni period total." : null,
+    revenueMismatch ? "Top dobavljači imaju veći prihod nego autoritativni period total." : null,
+  ].filter((warning): warning is string => warning != null);
+
+  const baseRows = data.topSuppliers.map((supplier) => ({
+    supplierName: supplier.supplierName,
+    displayName: truncateLabel(supplier.supplierName),
+    totalQty: finiteOrNull(supplier.totalQty),
+    totalRevenue: finiteOrNull(supplier.totalRevenue),
+    qtySharePct: percent(safeDivide(supplier.totalQty, supplierQtyBasis)),
+    revenueSharePct: percent(safeDivide(supplier.totalRevenue, supplierRevenueBasis)),
+    cumulativeQtySharePct: 0,
+  }));
+
+  const topSupplierQty = sum(baseRows.map((row) => row.totalQty));
+  const topSupplierRevenue = sum(baseRows.map((row) => row.totalRevenue));
+  const othersQty = supplierQtyBasis != null && topSupplierQty != null
+    ? Math.max(0, supplierQtyBasis - topSupplierQty)
+    : null;
+  const othersRevenue = supplierRevenueBasis != null && topSupplierRevenue != null
+    ? Math.max(0, supplierRevenueBasis - topSupplierRevenue)
+    : null;
+
+  const allRows = [...baseRows];
+  if (othersQty != null && othersQty > 0) {
+    allRows.push({
+      supplierName: "Ostali",
+      displayName: "Ostali",
+      totalQty: othersQty,
+      totalRevenue: othersRevenue,
+      qtySharePct: percent(safeDivide(othersQty, supplierQtyBasis)),
+      revenueSharePct: percent(safeDivide(othersRevenue, supplierRevenueBasis)),
+      cumulativeQtySharePct: 0,
+    });
+  }
+
+  let runningShare: number | null = 0;
+  const chartData = allRows.map((row) => {
+    runningShare = runningShare == null || row.qtySharePct == null ? null : runningShare + row.qtySharePct;
+    return {
+      ...row,
+      cumulativeQtySharePct: runningShare,
+    };
+  });
+
+  const top3QtySharePct = percent(safeDivide(sum(baseRows.slice(0, 3).map((row) => row.totalQty)), supplierQtyBasis));
+  const top5QtySharePct = percent(safeDivide(sum(baseRows.slice(0, 5).map((row) => row.totalQty)), supplierQtyBasis));
+
+  let cumulative: number | null = 0;
+  let suppliersTo80Pct: number | null = null;
+  for (let index = 0; index < baseRows.length; index += 1) {
+    const current = baseRows[index];
+    cumulative = cumulative == null || current?.qtySharePct == null
+      ? null
+      : cumulative + current.qtySharePct;
+    if (cumulative != null && cumulative >= 80) {
+      suppliersTo80Pct = index + 1;
+      break;
+    }
+  }
+
+  const displayChartData = chartData.length <= 9
+    ? chartData
+    : (() => {
+        const othersRow = chartData.find((row) => row.supplierName === "Ostali");
+        const headRows = chartData.filter((row) => row.supplierName !== "Ostali").slice(0, 8);
+        return othersRow ? [...headRows, othersRow] : headRows;
+      })();
+
+  return {
+    chartData,
+    displayChartData,
+    top3QtySharePct,
+    top5QtySharePct,
+    suppliersTo80Pct,
+    warning: warnings.length > 0 ? warnings.join(" ") : null,
+  };
 }
 
 function percent(value: number | null): number | null {
@@ -697,100 +813,10 @@ export default function DailySalesStatsPage() {
     }))
   ), [sortedRows]);
 
-  const supplierConcentration = useMemo(() => {
-    if (!data) {
-      return {
-        chartData: [] as SupplierConcentrationPoint[],
-        displayChartData: [] as SupplierConcentrationPoint[],
-        top3QtySharePct: null,
-        top5QtySharePct: null,
-        suppliersTo80Pct: 0,
-      };
-    }
-
-    const supplierTotalsQty = sum(data.topSuppliers.map((supplier) => supplier.totalQty));
-    const supplierTotalsRevenue = sum(data.topSuppliers.map((supplier) => supplier.totalRevenue));
-    const metadataQty = finiteOrNull(data.metadata.totalItemsInRange);
-    const supplierQtyBasis = metadataQty != null && supplierTotalsQty != null
-      ? Math.max(metadataQty, supplierTotalsQty)
-      : null;
-    const supplierRevenueBasis = currentSummary.totalRevenue != null && supplierTotalsRevenue != null
-      ? Math.max(currentSummary.totalRevenue, supplierTotalsRevenue)
-      : null;
-
-    const baseRows = data.topSuppliers.map((supplier) => ({
-      supplierName: supplier.supplierName,
-      displayName: truncateLabel(supplier.supplierName),
-      totalQty: finiteOrNull(supplier.totalQty),
-      totalRevenue: finiteOrNull(supplier.totalRevenue),
-      qtySharePct: percent(safeDivide(supplier.totalQty, supplierQtyBasis)),
-      revenueSharePct: percent(safeDivide(supplier.totalRevenue, supplierRevenueBasis)),
-      cumulativeQtySharePct: 0,
-    }));
-
-    const topSupplierQty = sum(baseRows.map((row) => row.totalQty));
-    const topSupplierRevenue = sum(baseRows.map((row) => row.totalRevenue));
-    const othersQty = supplierQtyBasis != null && topSupplierQty != null
-      ? Math.max(0, supplierQtyBasis - topSupplierQty)
-      : null;
-    const othersRevenue = supplierRevenueBasis != null && topSupplierRevenue != null
-      ? Math.max(0, supplierRevenueBasis - topSupplierRevenue)
-      : null;
-
-    const allRows = [...baseRows];
-    if ((othersQty ?? 0) > 0 || (othersRevenue ?? 0) > 0) {
-      allRows.push({
-        supplierName: "Ostali",
-        displayName: "Ostali",
-        totalQty: othersQty,
-        totalRevenue: othersRevenue,
-        qtySharePct: percent(safeDivide(othersQty, supplierQtyBasis)),
-        revenueSharePct: percent(safeDivide(othersRevenue, supplierRevenueBasis)),
-        cumulativeQtySharePct: 0,
-      });
-    }
-
-    let runningShare: number | null = 0;
-    const chartData = allRows.map((row) => {
-      runningShare = runningShare == null || row.qtySharePct == null ? null : runningShare + row.qtySharePct;
-      return {
-        ...row,
-        cumulativeQtySharePct: runningShare,
-      };
-    });
-
-    const top3QtySharePct = percent(safeDivide(sum(baseRows.slice(0, 3).map((row) => row.totalQty)), supplierQtyBasis));
-    const top5QtySharePct = percent(safeDivide(sum(baseRows.slice(0, 5).map((row) => row.totalQty)), supplierQtyBasis));
-
-    let cumulative: number | null = 0;
-    let suppliersTo80Pct = 0;
-    for (let index = 0; index < baseRows.length; index += 1) {
-      const current = baseRows[index];
-      cumulative = cumulative == null || current?.qtySharePct == null
-        ? null
-        : cumulative + current.qtySharePct;
-      if (cumulative != null && cumulative >= 80) {
-        suppliersTo80Pct = index + 1;
-        break;
-      }
-    }
-
-    const displayChartData = chartData.length <= 9
-      ? chartData
-      : (() => {
-          const othersRow = chartData.find((row) => row.supplierName === "Ostali");
-          const headRows = chartData.filter((row) => row.supplierName !== "Ostali").slice(0, 8);
-          return othersRow ? [...headRows, othersRow] : headRows;
-        })();
-
-    return {
-      chartData,
-      displayChartData,
-      top3QtySharePct,
-      top5QtySharePct,
-      suppliersTo80Pct,
-    };
-  }, [currentSummary.totalRevenue, data]);
+  const supplierConcentration = useMemo(
+    () => buildSupplierConcentration(data, currentSummary.totalRevenue),
+    [currentSummary.totalRevenue, data],
+  );
 
   const weekdayData = useMemo<WeekdayPoint[]>(() => {
     const buckets = new Map<number, { revenue: number | null; items: number | null; firstShift: number | null; secondShift: number | null; dayCount: number }>();
@@ -971,6 +997,13 @@ export default function DailySalesStatsPage() {
       description: "Dani gde se totals ne poklapaju sa top+others sabiranjem.",
     },
     {
+      key: "supplierConcentration",
+      label: "Koncentracija dobavljača",
+      value: supplierConcentration.warning ? "Nije dostupno" : "Potvrđeno",
+      tone: supplierConcentration.warning ? "danger" : "good",
+      description: supplierConcentration.warning ?? "Top dobavljači su u granicama autoritativnog period total-a.",
+    },
+    {
       key: "missingShift",
       label: "Dani bez satnice",
       value: fmtNumber(missingShiftCount),
@@ -1024,6 +1057,7 @@ export default function DailySalesStatsPage() {
     data?.metadata.unknownSupplierPct,
     mismatchCount,
     missingShiftCount,
+    supplierConcentration.warning,
   ]);
 
   // Data Health badge: count non-info, non-good signals
@@ -1143,6 +1177,7 @@ export default function DailySalesStatsPage() {
     previousRange.fromDate,
     previousRange.toDate,
     supplierConcentration.top3QtySharePct,
+    supplierConcentration.warning,
   ]);
 
   const dayPatternSummary = useMemo(() => {
@@ -1826,6 +1861,11 @@ export default function DailySalesStatsPage() {
                   <p>Pareto pogled za procenu zavisnosti od nekoliko dobavljača.</p>
                 </div>
               </div>
+              {supplierConcentration.warning ? (
+                <div className="daily-sales-message error" data-testid="supplier-concentration-warning" role="alert">
+                  Koncentracija dobavljača nije dostupna: {supplierConcentration.warning} Prikaz ostaje bez rekonstruisanog „Ostali“ udela.
+                </div>
+              ) : null}
 
               <div className="daily-sales-chart-wrap">
                 <ResponsiveContainer width="100%" height={320}>
@@ -1861,7 +1901,7 @@ export default function DailySalesStatsPage() {
                 </div>
                 <div>
                   <span>Dobavljaca za 80%</span>
-                  <strong>{supplierConcentration.suppliersTo80Pct > 0 ? fmtNumber(supplierConcentration.suppliersTo80Pct) : "N/A"}</strong>
+                  <strong>{supplierConcentration.suppliersTo80Pct != null ? fmtNumber(supplierConcentration.suppliersTo80Pct) : "Nije dostupno"}</strong>
                 </div>
               </div>
             </article>

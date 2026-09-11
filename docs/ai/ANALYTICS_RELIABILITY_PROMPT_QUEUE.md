@@ -2,7 +2,7 @@
 
 Date: 2026-09-11
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ242
 
 Owner promotion 2026-09-10: `RQ227` was explicitly promoted by the user after completed `RQ226`; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ227` was delivered on `main` with fail-closed deleted-row archive handling and focused regression coverage; the RQ queue returned to no current READY prompt.
@@ -20,6 +20,7 @@ Owner promotion 2026-09-11: `RQ237` was explicitly promoted by the user after co
 Owner completion 2026-09-11: `RQ237` was delivered on `main` with conservative inventory composite trust aggregation, explicit degraded-source lineage and confirmed-refresh handling; the RQ queue returned to no current READY prompt.
 Owner promotion 2026-09-11: `RQ241` was explicitly promoted by the user after completed `RQ237`, repaired a stale same-owner dependency on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-11: `RQ241` was delivered on `main` with fail-closed Dashboard custom-date validation, trusted-response preservation and focused request-gating coverage; the RQ queue returned to no current READY prompt.
+Owner promotion 2026-09-11: `RQ242` was explicitly promoted by the user after completed `RQ241`, repaired a stale same-owner dependency on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 
 Owner promotion 2026-09-10: `RQ226` was explicitly promoted by the user after completed `RQ225`, transitioned `WAITING -> READY -> IN_PROGRESS`, and claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ226` was delivered on `main` with startup validation and explicit UTC schedule logging; the RQ queue returned to no current READY prompt.
@@ -10244,7 +10245,7 @@ The Analytics Dashboard parses a malformed or temporarily empty `datetime-local`
 
 ## RQ242 - Do not fabricate Daily Sales supplier shares from inconsistent totals
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend/backend/contract/tests
 Feature family: daily-sales-supplier-concentration-reconciliation
@@ -10305,7 +10306,7 @@ Daily Sales receives a full-period item/revenue total and a `TopN` supplier list
 
 - `RQ154` remains the Daily Sales nullable/non-finite numeric-state owner; `RQ201`/`RQ202` remain chart order and date-timezone owners.
 - `RQ233` remains Supplier Sales denominator-scope owner; do not merge the two routes or duplicate its fix.
-- Keep this prompt `WAITING` while `RQ167` remains the existing `READY` item.
+- `RQ167` is DONE; this prompt is runnable after the explicit owner promotion recorded above.
 
 ---
 

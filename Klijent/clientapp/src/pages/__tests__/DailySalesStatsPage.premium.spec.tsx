@@ -321,4 +321,44 @@ describe("DailySalesStatsPage premium controls", () => {
       expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-partial", "true");
     });
   });
+
+  it("does not reconcile contradictory supplier totals into trusted concentration shares", async () => {
+    vi.mocked(getDailySalesStats).mockResolvedValue(
+      response({
+        topSuppliers: [{
+          supplierId: 1,
+          supplierName: "Alfa",
+          isUnknown: false,
+          totalQty: 25,
+          totalRevenue: 12000,
+        }],
+        dateRows: [
+          {
+            ...response().dateRows[0],
+            totalItemsSold: 18,
+            totalRevenue: 9000,
+          },
+        ],
+        metadata: { ...response().metadata, totalItemsInRange: 18 },
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/daily-sales"]}>
+        <Routes>
+          <Route path="/analytics/daily-sales" element={<DailySalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId("supplier-concentration-warning")).toHaveTextContent(
+      "Koncentracija dobavljača nije dostupna",
+    );
+    const concentrationPanel = screen
+      .getByRole("heading", { name: /Koncentracija dobavljača/ })
+      .closest("article");
+    expect(concentrationPanel).not.toBeNull();
+    expect(within(concentrationPanel as HTMLElement).getAllByText("N/A")).toHaveLength(2);
+    expect(within(concentrationPanel as HTMLElement).getByText("Nije dostupno")).toBeInTheDocument();
+  });
 });
