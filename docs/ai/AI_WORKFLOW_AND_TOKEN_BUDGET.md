@@ -1,10 +1,78 @@
 # AI Workflow and Token Budget
 
+Updated: 2026-09-12
+
 Ovaj dokument je za agente koji rade sa ograničenim kontekstom/tokenima.
 
 ## Osnovno pravilo
 
 Bolje je završiti mali ispravan patch nego započeti veliki rewrite.
+
+Podrazumevana topologija rada je **jedan glavni agent, bez subagenata**. Subagent je izuzetak za jasno ograničen audit, izolaciju velikog istraživačkog izlaza ili nezavisnu verifikaciju — nije podrazumevani način implementacije.
+
+Cursor-specifična always-applied verzija ovog pravila nalazi se u `.cursor/rules/agent-execution-efficiency.mdc`.
+
+## Direct-by-default / subagent pravila
+
+Za normalan bounded task glavni agent radi direktno:
+
+```text
+razumi -> pročitaj tačne ownere -> izmeni -> focused proof -> popravi -> verifikuj -> isporuči
+```
+
+Ne pokreći subagenta za:
+- rutinski repo search;
+- čitanje tačnih fajlova;
+- shell komande;
+- queue selection/claim;
+- običnu frontend/backend implementaciju;
+- formatiranje;
+- focused testove;
+- `git status` / diff;
+- dokumentaciju;
+- poznat bug koji staje u mali scope.
+
+Ne delegiraj samo zato što Auto/router nudi subagenta ili zato što task nije trivijalan.
+
+Jedan subagent je opravdan samo kada ima **nezavisno i konačno pitanje/read set** i kada važi bar jedno:
+- eksploracija bi proizvela veliki međurezultat koji bi nepotrebno zatrpao parent context;
+- nezavisni verifier proverava već završenu implementaciju bez ponavljanja istog istraživanja;
+- konačan audit ima zaseban scope, a parent može da nastavi drugi nepoklapajući posao.
+
+Podrazumevano: **najviše jedan subagent u trenutku**.
+
+Više paralelnih subagenata je dozvoljeno samo kada dodeljeni prompt eksplicitno definiše nezavisne, nepoklapajuće workstreamove i parent zabeleži zašto dodatni token/context trošak ima smisla.
+
+Nikad ne koristiti nested/recursive subagente.
+
+Pre delegiranja parent mora da zabeleži:
+
+```text
+Delegated question:
+Exact scope/read set:
+Expected result/artifact:
+Why direct execution is worse:
+Stop condition:
+```
+
+Ako ovo nije jasno u nekoliko redova, radi direktno.
+
+Subagent **ne dobija novi budžet**. Njegova čitanja, pretrage, komande, output, vreme i vraćeni kontekst računaju se u isti task.
+
+`Waiting for subagent` ne pauzira vreme zadatka. Ako parent može bezbedno da nastavi inspekciju, implementaciju, validaciju, dokumentaciju ili pripremu isporuke, treba da nastavi umesto da samo čeka.
+
+Parent ne sme ponovo da radi isto istraživanje koje je subagent već završio osim ako trenutni code/test dokaz direktno protivreči rezultatu.
+
+Ako subagent izađe iz scope-a, ponavlja isto pitanje ili ne donese novi dokaz, prekini delegiranje i vrati se na direct rad ili napravi split/handoff.
+
+## Auto/model routing
+
+Auto može da bira model, ali izbor rutera ne menja repo pravila.
+
+- Ne menjaj model samo zato što je prethodni korak bio spor.
+- Ne pokreći dodatne agente samo zato što je Auto procenio task kao kompleksan.
+- Za bounded implementation task, ako Auto počne da pravi ponovljene `Waiting for subagent` cikluse ili prevelik context/token overhead, nastavi jednim eksplicitno izabranim coding modelom i zadrži isti execution packet/scope.
+- Promena modela ne resetuje read/search/context budžet i ne opravdava ponovno čitanje već potvrđenog konteksta.
 
 ## Kada čitati manje
 
@@ -26,6 +94,8 @@ Stani ako:
 - ne znaš source of truth
 - frontend i backend DTO se ne poklapaju
 - postoji rizik migracije
+- delegiranje počinje da ponavlja već poznato istraživanje
+- drugi subagent bi bio potreban samo zato što prvi nije dao dovoljan rezultat
 
 Napiši:
 ```text
@@ -74,6 +144,26 @@ Ne traži generički `analytics` ako nije potrebno.
 3. Guardrails
 4. Test
 5. Tek onda UX polish
+
+## Progress visibility
+
+Posle većeg koraka ili važnog tool rezultata napiši jednu kratku statusnu poruku:
+- šta je potvrđeno/završeno;
+- koji je sledeći korak.
+
+Ne ispisuj svaku komandu i ne ostaj dugo u generičkom `Waiting for subagent` stanju kada postoji bezbedan direct sledeći korak.
+
+## Evidence za delegiranje
+
+Za non-trivial task zabeleži:
+
+```text
+Subagents used: <n>
+Delegation reason: none | <jedna rečenica>
+Duplicated research: no | <obrazloženje>
+```
+
+Više od jednog subagenta bez eksplicitnog parallel ownera je signal za scope/budget problem, ne razlog da se nastavi šire.
 
 ## Final response
 
