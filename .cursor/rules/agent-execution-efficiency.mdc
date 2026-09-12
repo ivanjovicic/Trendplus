@@ -1,0 +1,75 @@
+---
+description: Keep Cursor agent execution direct, bounded, visible, and token-efficient; prevent unnecessary subagent delegation.
+alwaysApply: true
+---
+
+# Cursor execution efficiency
+
+Follow `AGENTS.md`, `docs/ai/AGENT_START_HERE.md`, and `docs/ai/AI_WORKFLOW_AND_TOKEN_BUDGET.md`. This rule narrows execution topology; it does not replace architecture ownership, queue, validation, or delivery policy.
+
+## Direct-by-default
+
+The current/main agent owns normal execution. Complete bounded work directly through:
+
+```text
+classify -> claim if needed -> interpret -> inspect exact owners -> patch -> focused proof -> fix -> verify -> deliver
+```
+
+Do **not** spawn a subagent for routine repository search, exact file reads, shell commands, queue selection/claim, frontend/backend implementation, formatting, focused tests, git status/diff, documentation updates, or a known-fix investigation that fits the selected scope.
+
+Do not delegate merely because Auto/router mode offers a subagent or because the task is non-trivial.
+
+## When one subagent is justified
+
+Use at most **one subagent at a time by default**, and only when its work is genuinely independent and one of these is true:
+
+- finite exploration would create large intermediate output and isolating it materially protects the parent context;
+- an independent verifier can check completed work without repeating implementation research;
+- a finite audit has a clearly separated read set/question and the parent has other independent work it can continue.
+
+More than one concurrent subagent is allowed only when the assigned prompt explicitly authorizes parallel, non-overlapping workstreams and the parent records why the extra token/context cost is justified.
+
+Never use nested or recursively delegated subagents.
+
+## Delegation gate
+
+Before spawning a subagent, the parent must be able to state:
+
+```text
+Delegated question:
+Exact scope/read set:
+Expected result/artifact:
+Why direct execution is worse:
+Stop condition:
+```
+
+If those fields are not clear, do the work directly.
+
+A subagent does not expand the task's read/search/edit/time budget. Its reads, searches, command output, elapsed time, and returned context count against the same run.
+
+## No duplicated research
+
+The parent must not repeat a subagent's repository exploration after it returns unless current code/test evidence conflicts with the result. Consume the concise result and continue from it.
+
+Do not start another agent to redo research already performed by the parent or another agent.
+
+## Waiting and progress visibility
+
+Use a foreground subagent only when its answer blocks the next safe step. Otherwise prefer direct execution or bounded background delegation and continue independent parent work.
+
+Do not remain in `Waiting for subagent` while the parent can safely inspect, edit, validate, document, or prepare delivery independently.
+
+After each major phase or material tool result, emit one concise progress update stating what was proven/completed and the next action. Avoid narrating every command.
+
+## Stop conditions
+
+Stop delegation and return to direct work or split/handoff when:
+
+- a subagent exceeds its exact scope;
+- the same question/research is being repeated;
+- a second subsystem/owner appears;
+- delegation would exceed the bounded task budget;
+- a subagent fails without producing new evidence;
+- the parent already has enough evidence to patch and prove the task.
+
+Subagents are a context-isolation tool for exceptional bounded work, not the default execution engine.
