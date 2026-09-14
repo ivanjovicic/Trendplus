@@ -389,12 +389,15 @@ function formatRecommendationTypeLabel(value: string | null | undefined): string
 
 function getMeasuredImpactLabel(item: AnalyticsActionItem): string {
   const outcomeStatus = normalizeOutcomeStatus(item.outcomeStatus);
-  if (!outcomeStatus && item.measuredImpactRsd == null) {
-    return "Nije uneto";
+  const hasFiniteMeasuredImpact = item.measuredImpactRsd != null && Number.isFinite(item.measuredImpactRsd);
+  const hasConfirmedEvidence = hasConfirmedOutcomeEvidence(item) === true;
+
+  if (hasFiniteMeasuredImpact && hasConfirmedEvidence) {
+    return fmtRsd(item.measuredImpactRsd, 0, "-");
   }
 
-  if (item.measuredImpactRsd != null) {
-    return fmtRsd(item.measuredImpactRsd, 0, "-");
+  if (!outcomeStatus && item.measuredImpactRsd == null) {
+    return item.outcomeMeasuredAtUtc ? "Nije dostupno" : "Nije uneto";
   }
 
   if (outcomeStatus === "pending") {
@@ -416,7 +419,7 @@ function getOutcomeStatusLabel(value: string | null | undefined): string {
 function hasConfirmedOutcomeEvidence(item: AnalyticsActionItem): boolean | null {
   const ledgerEvidence = item.impactLedger?.derived.hasEvidence;
   if (ledgerEvidence != null) {
-    return ledgerEvidence;
+    return ledgerEvidence === true;
   }
 
   const resolutionSnapshot = item.ledgerSnapshot?.resolutionSnapshot;
@@ -426,7 +429,7 @@ function hasConfirmedOutcomeEvidence(item: AnalyticsActionItem): boolean | null 
   }
 
   if (item.measuredImpactRsd != null || item.outcomeMeasuredAtUtc) {
-    return true;
+    return false;
   }
 
   return null;
@@ -447,17 +450,24 @@ function getOutcomeStateMessage(item: AnalyticsActionItem): string {
   if (
     (outcomeStatus === "success" || outcomeStatus === "neutral" || outcomeStatus === "negative")
     && hasEvidence !== true
-    && item.measuredImpactRsd == null
-    && !item.outcomeMeasuredAtUtc
   ) {
+    if (item.outcomeMeasuredAtUtc) {
+      return "Datum unosa ishoda postoji, ali sam po sebi ne potvrđuje dokaz ili merljivi uticaj.";
+    }
+    if (item.measuredImpactRsd != null) {
+      return "Ishod ima numeričku vrednost, ali bez potvrđenog izvora dokaza ostaje nedostupan.";
+    }
     return "Ishod je evidentiran kvalitativno, ali bez potvrđenog dokaza i merljivog traga.";
   }
 
   if (!outcomeStatus && item.measuredImpactRsd == null) {
+    if (item.outcomeMeasuredAtUtc) {
+      return "Datum unosa ishoda postoji, ali bez statusa i izvora dokaza ne potvrđuje merenje.";
+    }
     return "Ishod još nije unet. Proverite akciju, pa izaberite ishod kada bude poznat.";
   }
 
-  if (item.measuredImpactRsd == null) {
+  if (item.measuredImpactRsd == null || !Number.isFinite(item.measuredImpactRsd)) {
     return "Status ishoda je evidentiran, ali izmereni uticaj još nije dostupan.";
   }
 
@@ -1428,7 +1438,9 @@ export default function AnalyticsActionsPage() {
                                   <div><strong>Svežina ulaza:</strong> {formatFreshnessLabel(impactLedger.snapshot.inputFreshnessStatus)}</div>
                                   <div><strong>Opseg signala:</strong> {impactLedger.snapshot.impactWindowDays != null ? `${impactLedger.snapshot.impactWindowDays} dana` : "-"}</div>
                                   <div><strong>Status ishoda:</strong> {normalizeOutcomeStatus(impactLedger.resolution.outcomeStatus) ? OUTCOME_LABELS[normalizeOutcomeStatus(impactLedger.resolution.outcomeStatus)!] : impactLedger.resolution.outcomeStatus}</div>
-                                  <div><strong>Izmeren uticaj:</strong> {fmtRsd(impactLedger.resolution.measuredImpactRsd, 0, "N/A")}</div>
+                                  <div><strong>Izmeren uticaj:</strong> {hasConfirmedOutcomeEvidence(detailsItem) === true && Number.isFinite(impactLedger.resolution.measuredImpactRsd)
+                                    ? fmtRsd(impactLedger.resolution.measuredImpactRsd, 0, "N/A")
+                                    : "Nije dostupno"}</div>
                                   <div><strong>Razlika uticaja:</strong> {fmtRsd(impactLedger.derived.impactDeltaRsd, 0, "N/A")}</div>
                                   <div><strong>Realizacija:</strong> {fmtPctFromRatio(impactLedger.derived.realizationRatio, 0, "N/A")}</div>
                                   <div><strong>Korekcioni bucket:</strong> {impactLedger.derived.calibrationBucket}</div>

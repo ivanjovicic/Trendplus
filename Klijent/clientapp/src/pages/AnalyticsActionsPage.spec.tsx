@@ -338,6 +338,107 @@ describe("AnalyticsActionsPage", () => {
     expect(screen.getAllByText("Sveže").length).toBeGreaterThan(0);
   });
 
+  it("does not treat an outcome timestamp alone as measurement proof", async () => {
+    const timestampOnly = action({
+      outcomeStatus: "success",
+      outcomeMeasuredAtUtc: "2026-07-05T10:00:00Z",
+      measuredImpactRsd: null,
+      outcomeNotes: "Legacy timestamp-only payload.",
+    });
+    vi.mocked(getAnalyticsActions).mockResolvedValue(list([timestampOnly]));
+    vi.mocked(getAnalyticsActionById).mockResolvedValue(timestampOnly);
+
+    renderPage();
+    await screen.findByText("Dopuni kritičan artikal");
+    expect(screen.getByText("Izmereni uticaj: Nije dostupno")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Detalji" }));
+    expect(await screen.findByText("Datum unosa ishoda postoji, ali sam po sebi ne potvrđuje dokaz ili merljivi uticaj.")).toBeInTheDocument();
+    expect(screen.getByText(/Izvor dokaza:/i).parentElement).toHaveTextContent("Nije evidentirano");
+  });
+
+  it("allows qualitative evidence without inventing a numeric impact", async () => {
+    const qualitative = action({
+      outcomeStatus: "neutral",
+      outcomeMeasuredAtUtc: null,
+      measuredImpactRsd: null,
+      ledgerSnapshot: {
+        schemaVersion: 1,
+        creationSnapshot: null,
+        resolutionSnapshot: {
+          outcomeStatus: "neutral",
+          evidenceSource: "manager_review",
+          outcomeMeasuredAtUtc: null,
+          measuredImpactRsd: null,
+        },
+      },
+    });
+    vi.mocked(getAnalyticsActions).mockResolvedValue(list([qualitative]));
+    vi.mocked(getAnalyticsActionById).mockResolvedValue(qualitative);
+
+    renderPage();
+    await screen.findByText("Dopuni kritičan artikal");
+    fireEvent.click(screen.getByRole("button", { name: "Detalji" }));
+
+    expect(await screen.findByText("Status ishoda je evidentiran, ali izmereni uticaj još nije dostupan.")).toBeInTheDocument();
+    expect(screen.getByText(/Izvor dokaza:/i).parentElement).toHaveTextContent("manager_review");
+    expect(screen.getByText("Izmereni uticaj: Nije dostupno")).toBeInTheDocument();
+  });
+
+  it("preserves a measured zero only with finite evidence", async () => {
+    const measuredZero = action({
+      outcomeStatus: "success",
+      outcomeMeasuredAtUtc: "2026-07-05T10:00:00Z",
+      measuredImpactRsd: 0,
+      ledgerSnapshot: {
+        schemaVersion: 1,
+        creationSnapshot: null,
+        resolutionSnapshot: {
+          outcomeStatus: "success",
+          evidenceSource: "action_outcome_summary",
+          outcomeMeasuredAtUtc: "2026-07-05T10:00:00Z",
+          measuredImpactRsd: 0,
+        },
+      },
+    });
+    vi.mocked(getAnalyticsActions).mockResolvedValue(list([measuredZero]));
+    vi.mocked(getAnalyticsActionById).mockResolvedValue(measuredZero);
+
+    renderPage();
+    await screen.findByText("Dopuni kritičan artikal");
+    expect(screen.getByText(/Izmereni uticaj: 0/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Detalji" }));
+    expect(await screen.findByText("Izmereni ishod je evidentiran. Tumačite ga zajedno sa dokazom i periodom merenja.")).toBeInTheDocument();
+  });
+
+  it.each([Number.NaN, Number.POSITIVE_INFINITY])("keeps non-finite measured impact unavailable (%s)", async (value) => {
+    const nonFinite = action({
+      outcomeStatus: "success",
+      outcomeMeasuredAtUtc: "2026-07-05T10:00:00Z",
+      measuredImpactRsd: value,
+      ledgerSnapshot: {
+        schemaVersion: 1,
+        creationSnapshot: null,
+        resolutionSnapshot: {
+          outcomeStatus: "success",
+          evidenceSource: "action_outcome_summary",
+          outcomeMeasuredAtUtc: "2026-07-05T10:00:00Z",
+          measuredImpactRsd: value,
+        },
+      },
+    });
+    vi.mocked(getAnalyticsActions).mockResolvedValue(list([nonFinite]));
+    vi.mocked(getAnalyticsActionById).mockResolvedValue(nonFinite);
+
+    renderPage();
+    await screen.findByText("Dopuni kritičan artikal");
+    expect(screen.getByText("Izmereni uticaj: Nije dostupno")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Detalji" }));
+    expect(await screen.findByText("Status ishoda je evidentiran, ali izmereni uticaj još nije dostupan.")).toBeInTheDocument();
+  });
+
   it("updates action status directly for accept action", async () => {
     renderPage();
     await screen.findByText("Dopuni kritičan artikal");
