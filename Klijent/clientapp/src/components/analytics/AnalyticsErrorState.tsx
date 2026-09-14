@@ -1,4 +1,8 @@
 import { Link } from "react-router-dom";
+import {
+  ANALYTICS_EMPTY_ERROR_FALLBACK_MESSAGE,
+  getSafeAnalyticsErrorMessage,
+} from "../../utils/analyticsErrorMessages";
 import "./AnalyticsErrorState.css";
 
 type AnalyticsErrorStateProps = {
@@ -40,13 +44,16 @@ export default function AnalyticsErrorState({
   helpLabel,
 }: AnalyticsErrorStateProps) {
   const resolvedSuggestions = suggestions && suggestions.length > 0 ? suggestions : DEFAULT_SUGGESTIONS;
-  const displayMessage = message || "Ne prikazujemo nule jer nije potvrđeno da je period stvarno prazan.";
+  const displayMessage = getSafeAnalyticsErrorMessage(
+    message,
+    errorCode,
+    ANALYTICS_EMPTY_ERROR_FALLBACK_MESSAGE,
+  );
 
   return (
     <section className="analytics-error-state" role="alert" aria-live="assertive">
       <h2>{title}</h2>
       <p>{displayMessage}</p>
-      {errorCode ? <p className="aes-code">Šifra greške: {errorCode}</p> : null}
       {correlationId ? <p className="aes-code">Correlation ID: {correlationId}</p> : null}
       {resolvedSuggestions.length > 0 ? (
         <ul className="aes-suggestions">

@@ -1,5 +1,10 @@
 ﻿import type { AnalyticsResponseMeta } from "../types/analytics";
 
+import {
+  ANALYTICS_ERROR_FALLBACK_MESSAGE,
+  getSafeAnalyticsErrorMessage,
+} from "./analyticsErrorMessages";
+
 const EMPTY_REASON_MESSAGES: Record<string, string> = {
   no_data_in_period: "Nema podataka za izabrani period.",
   insufficient_data: "Nema dovoljno podataka za pouzdanu analizu.",
@@ -110,11 +115,12 @@ export function assertAnalyticsMetaSuccess<T>(
     return response;
   }
 
-  const detail = getAnalyticsMetaMessage(meta) || "Podaci trenutno nisu dostupni.";
+  const detail = getSafeAnalyticsErrorMessage(
+    getAnalyticsMetaMessage(meta),
+    meta?.errorCode,
+    ANALYTICS_ERROR_FALLBACK_MESSAGE,
+  );
   const suffixParts: string[] = [];
-  if (meta?.errorCode) {
-    suffixParts.push(`šifra: ${meta.errorCode}`);
-  }
   if (meta?.correlationId) {
     suffixParts.push(`correlation: ${meta.correlationId}`);
   }

@@ -144,7 +144,7 @@ describe("RecommendationMeasurementStatisticsReview", () => {
 
     const alert = screen.getByRole("alert");
     expect(alert).toHaveTextContent("Polje measurementStatistics nedostaje");
-    expect(alert).toHaveTextContent("missing_statistics");
+    expect(alert).not.toHaveTextContent("missing_statistics");
     expect(screen.queryByText("90%")).not.toBeInTheDocument();
     expect(screen.queryByText("Stopa pozitivnih ishoda")).not.toBeInTheDocument();
   });

@@ -37,6 +37,8 @@ describe("analyticsResponseMeta", () => {
       assertAnalyticsMetaSuccess(payload, (response) => response.meta, "test-context");
     } catch (reason) {
       const err = reason as AnalyticsMetaError;
+      expect(err.message).toContain("correlation: cid-1");
+      expect(err.message).not.toContain("sql_timeout");
       expect(err.errorCode).toBe("sql_timeout");
       expect(err.correlationId).toBe("cid-1");
       expect(err.context).toBe("test-context");
