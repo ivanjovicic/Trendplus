@@ -2,9 +2,10 @@
 
 Date: 2026-09-14
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ247
+Current READY prompt: none
 
 Owner promotion 2026-09-14: `RQ247` was explicitly promoted from `WAITING` after completed `RQ246`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
+Owner completion 2026-09-14: `RQ247` was delivered on `main` with shared safe Serbian Pilot Intake readiness/import status and scope labels across card, report, copied summary and exports; the queue returned to no current READY prompt.
 Owner promotion 2026-09-14: `RQ246` was explicitly promoted from `WAITING` after completed `RQ245`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-14: `RQ246` was delivered on `main` with fail-closed legacy Pilot Intake preview period/provenance mapping and focused unknown/explicit metadata coverage; the queue returned to no current READY prompt.
 Owner promotion 2026-09-14: `RQ245` was explicitly promoted from `WAITING` after completed `RQ244`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
@@ -10917,7 +10918,7 @@ The legacy browser-preview adapter for Pilot Intake creates a durable-shaped rep
 
 ## RQ247 - Map Pilot Intake import status and scope to safe user-facing labels
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: frontend/tests
 Feature family: pilot-intake-import-metadata-labels
@@ -10978,6 +10979,24 @@ Pilot Intake readiness renders backend import metadata directly in the readiness
 - `RQ245` remains the Analytics Actions metadata-label owner.
 - `RQ170` remains the backend Pilot Intake period/contract owner.
 - `RQ167` is already `DONE`; no remaining dependency blocker prevents this prompt.
+
+### Completion note
+
+- Date: 2026-09-14
+- Status: DONE
+- Completion: Pilot Intake readiness/import status and scope now use one display-only Serbian label projection across the readiness card, report, copied summary, CSV and server export metadata; unknown/future values remain visibly unknown or unmapped and backend readiness branching is unchanged.
+- Changed files: `Klijent/clientapp/src/utils/pilotImportReadiness.ts`, `Klijent/clientapp/src/components/analytics/PilotImportReadinessCard.tsx`, `Klijent/clientapp/src/components/analytics/PilotDataQualityIntakeReport.tsx`, `Klijent/clientapp/src/utils/__tests__/pilotImportReadiness.spec.ts`, `Klijent/clientapp/src/components/analytics/__tests__/PilotImportReadinessCard.spec.tsx`, `Klijent/clientapp/src/components/analytics/__tests__/PilotDataQualityIntakeReport.spec.tsx`, `MASTER_ROADMAP.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `.ai/runs/2026-09-14-RQ247-evidence.md`
+- Checks run: `npm run typecheck` (pass); focused `npm run test:run -- src/utils/__tests__/pilotImportReadiness.spec.ts src/components/analytics/__tests__/PilotImportReadinessCard.spec.tsx src/components/analytics/__tests__/PilotDataQualityIntakeReport.spec.tsx` (pass, 25 tests); `npm run check:analytics-guardrails` (pass); `npm run build` (pass); `git diff --check` (pass); queue/governance validators (pass); remote ancestry check (pass).
+- Checks not run: full frontend/backend suites and live/provider/browser export/print proof were not run; this was a bounded frontend display-contract correction.
+- Run log: `.ai/runs/2026-09-14-RQ247-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `19eeea527772791448e647a641d7b9216777e1f5`
+- Main verification: passed - fresh `origin/main` contains `19eeea527772791448e647a641d7b9216777e1f5`.
+- Missed: no live browser/provider verification of generated PDF/XLSX output was available in this run.
+- Follow-up: `RQ248` remains `WAITING` and is the next candidate for explicit owner promotion.
+- Residual risk: runtime export rendering still depends on the live server path, but all local payload builders now receive the same safe labels.
+- Prompt defect / scope repair: stale dependency note claiming `RQ167` was the existing `READY` item was repaired because `RQ167` is already `DONE`.
 
 ---
 
