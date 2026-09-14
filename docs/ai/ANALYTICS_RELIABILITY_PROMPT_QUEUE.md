@@ -2,7 +2,7 @@
 
 Date: 2026-09-14
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ252
+Current READY prompt: RQ253
 
 Owner completion 2026-09-14: `RQ249` was delivered on `main` with fail-closed Supplier Decision Hub detail and report-toolbar actionability gates; blocked, fallback, stale/partial and missing recommendation permission remain review-only.
 Owner promotion 2026-09-14: `RQ250` was explicitly promoted after completed `RQ249`, repaired the stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
@@ -10,6 +10,8 @@ Owner completion 2026-09-14: `RQ250` was delivered on `main` with full-price-wei
 Owner promotion 2026-09-14: `RQ251` was explicitly promoted after completed `RQ250`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
 Owner completion 2026-09-14: `RQ251` was delivered on `main` with shared safe Serbian labels for Inventory workflow action type/status/priority and scheduler frequency/format/run status across workflow, mail-scheduler and export-scheduler surfaces; the queue advanced to `RQ252`.
 Owner promotion 2026-09-14: `RQ252` was explicitly promoted after completed `RQ251`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
+Owner completion 2026-09-14: `RQ252` was delivered on `main` with a shared fail-closed supplier-report recommendation gate; missing, stale, fallback, partial, insufficient and explicitly disallowed trust evidence now suppresses concrete actions and keeps report/meta/legacy/export actionability consistent; the queue advanced to `RQ253`.
+Owner promotion 2026-09-14: `RQ253` was explicitly promoted after completed `RQ252`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
 
 Owner promotion 2026-09-14: `RQ248` was explicitly promoted from `WAITING` after completed `RQ247`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-14: `RQ248` was delivered on `main` with shared finite/null Pilot Intake impact projection, positive-denominator true-zero handling and parity across readiness, card, report, copied summary, export and Executive Decision Board surfaces; the queue advanced to `RQ249`.
@@ -11365,7 +11367,23 @@ The Inventory analytics screen uses tone helpers for workflow and scheduler stat
 
 ## RQ252 - Fail closed when supplier report trust metadata is missing
 
-Status: READY
+Status: DONE
+Owner claim 2026-09-14: `RQ252` was claimed in this workspace after verifying the canonical RQ pointer, satisfied dependencies and no competing supplier report trust lock.
+Completion 2026-09-14: Supplier report recommendation permission now fails closed unless trust metadata is present, explicit, complete and fresh; concrete report actions and recommendation rows are suppressed for blocked evidence, while Serbian verification guidance remains visible and report/meta/legacy/export projections agree.
+- Changed files: `Api/Endpoints/SupplierDecisionHubEndpoints.cs`; `Api.Tests/AnalyticsReportsContractTests.cs`; this queue; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-14-RQ252-evidence.md`.
+- Contract/runtime behavior changed: missing, false, stale, fallback, partial and insufficient trust evidence cannot produce an allowed supplier recommendation or concrete report action; valid business KPI values remain visible without being relabeled as unavailable.
+- Checks run: expected failing-first missing-trust regression; final Supplier report contract tests 47/47; `dotnet build Api/Api.csproj --no-restore`; `git diff --check`; queue/planning/instruction validators.
+- Checks not run: full backend solution suite, live database/API/browser proof, generated document delivery and production scheduler execution.
+- Run log: `.ai/runs/2026-09-14-RQ252-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `dedea82d87e1517c2607f66a11ae88d544ea99a9`
+- Main verification: pass - fresh `origin/main` contains implementation SHA `dedea82d87e1517c2607f66a11ae88d544ea99a9`; implementation ancestry verified with `git merge-base --is-ancestor`.
+- Missed: no live supplier report payload or browser/export rendering was available in this local run.
+- Follow-up: `RQ253` is promoted to `READY` as the next shared analytics error-message safety slice.
+- Residual risk: current build still reports pre-existing repository analyzer warnings; deployed runtime and provider-backed report generation remain unexercised.
+- Next: claim and execute `RQ253` after this delivery is verified on `origin/main`.
+- Prompt defect / scope repair: `RQ253`'s stale “keep WAITING while RQ169 is READY” dependency was repaired because `RQ169` is already DONE.
 Priority: P1
 Type: backend/contract/tests
 Feature family: supplier-report-trust-fail-closed
@@ -11434,7 +11452,7 @@ The supplier report action builder only blocks concrete report actions for an ex
 
 ## RQ253 - Hide raw analytics error codes from the shared error surface
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: frontend/tests
 Feature family: analytics-shared-error-safe-messaging
@@ -11496,7 +11514,7 @@ The shared `AnalyticsErrorState` renders the backend `errorCode` verbatim as `Š
 - `RQ151` remains the Analytics Actions warning/reason-code mapping owner; this prompt owns the shared error alert boundary.
 - `RQ145` remains the broad cross-surface safe-messaging/parity owner.
 - `RQ252` remains the backend supplier-report trust fail-closed owner.
-- Keep this prompt `WAITING` while `RQ169` remains the existing `READY` item.
+- `RQ169` is already `DONE`; no remaining dependency blocker prevents promotion of this bounded shared error-message safety slice.
 
 ---
 
