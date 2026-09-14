@@ -10581,8 +10581,8 @@ Analytics Details and the main Analytics Dashboard treat missing OOS and low-sto
 - Run log: `.ai/runs/2026-09-14-RQ240-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: `dae90709f59ee9d871c67b03dff410baf6a81513`
-- Main verification: passed - `origin/main` contains implementation commit `dae90709f59ee9d871c67b03dff410baf6a81513`; current pushed target is `ee84153fa996fc0cae8b4664ac02581e17dc17f8`.
+- Main commit SHA: `dae90709b8c6d8de998545654ffa46f593a421f6`
+- Main verification: passed - `origin/main` contains implementation commit `dae90709b8c6d8de998545654ffa46f593a421f6`; current pushed target is `920f6d458fb614cc79b7bdc498b1cc77a5762449`.
 - Missed: full cross-surface suite and live/browser payload proof were outside this bounded frontend task.
 - Residual risk: Vite reports the existing large-chunk warning; runtime payloads with malformed count types remain handled as unavailable by the shared projection.
 - Next: `RQ243` remains the next candidate and is not promoted by this run.
