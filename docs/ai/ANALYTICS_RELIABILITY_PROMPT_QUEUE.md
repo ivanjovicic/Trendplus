@@ -11170,7 +11170,7 @@ The Supplier Decision Hub marks a blocked or fallback result as a `Pomoćni sign
 - Run log: `.ai/runs/2026-09-14-RQ249-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: `769b7510b0af86080cc1cbb57cb7d71a7c677b5d`
+- Main commit SHA: `912511a80a734aa29ce005a0aab2929526802d2c`
 - Main verification: pending push and fresh origin/main containment check
 - Missed: live/browser proof and unrelated supplier margin parity (`RQ250`) remain outside this bounded actionability fix.
 - Follow-up: `RQ250` is explicitly promoted to `READY` as the next non-parallel supplier Hub/report metric contract slice.
