@@ -11798,7 +11798,7 @@ PDC defines margin coverage as cost-covered revenue divided by current-period re
 
 ## RQ257 - Reject non-finite supplier decision metrics before classification
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: frontend/contract/tests
 Feature family: supplier-decision-finite-boundary
