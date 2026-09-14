@@ -120,4 +120,36 @@ describe("PilotDataQualityIntakeReport", () => {
       expect(text).not.toContain("future_status_v2");
     }
   });
+
+  it("does not export a fake supplier zero for an empty intake", () => {
+    const report = emptyIntakeReport();
+    const surfaces = [
+      buildCsv(report),
+      buildSummary(report),
+      JSON.stringify(buildExportPayload(report, [])),
+    ];
+
+    for (const text of surfaces) {
+      expect(text).toContain("Nije dostupno");
+      expect(text).not.toContain("Artikli bez dobavljača,0%");
+      expect(text).not.toContain("artikli bez dobavljača 0%");
+    }
+  });
+
+  it("exports the measured supplier zero consistently when the denominator is positive", () => {
+    const report = emptyIntakeReport();
+    report.loadedData.articlesCount = 10;
+    report.impact.articlesWithoutSupplierPercent = 0;
+    const surfaces = [
+      buildCsv(report),
+      buildSummary(report),
+      JSON.stringify(buildExportPayload(report, [])),
+    ];
+
+    for (const text of surfaces) {
+      expect(text).toContain("0%");
+      expect(text).not.toContain("Artikli bez dobavljača,Nije dostupno");
+      expect(text).not.toContain("artikli bez dobavljača Nije dostupno");
+    }
+  });
 });

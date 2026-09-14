@@ -116,4 +116,23 @@ describe("PilotImportReadinessCard", () => {
     expect(screen.getByText(/Oznaka spremnosti: Nije mapirano/i)).toBeInTheDocument();
     expect(screen.queryByText(/future_status_v2|future_readiness_v2/i)).not.toBeInTheDocument();
   });
+
+  it("shows the same unavailable impact state used by readiness reasoning", () => {
+    render(
+      <MemoryRouter>
+        <PilotImportReadinessCard
+          report={buildReport({
+            impact: {
+              ...buildReport().impact,
+              articlesWithoutSupplierPercent: Number.NaN,
+            },
+          })}
+          refreshStatus={buildRefresh()}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText("Artikli bez dobavljača: Nije dostupno")).toBeInTheDocument();
+    expect(screen.queryByText(/Artikli bez dobavljača: 0%/i)).not.toBeInTheDocument();
+  });
 });

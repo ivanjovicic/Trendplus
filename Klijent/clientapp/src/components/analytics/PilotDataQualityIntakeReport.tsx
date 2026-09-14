@@ -13,13 +13,14 @@ import {
   type AnalyticsMetricKey,
 } from "../../utils/analyticsMetricDefinitions";
 import {
+  formatPilotImpactPercentage,
   getPilotImportScopeLabel,
   getPilotImportStatusLabel,
   getPilotReadinessStatusLabel,
+  resolvePilotIntakeImpact,
 } from "../../utils/pilotImportReadiness";
 import {
   fmtNumber,
-  fmtPctFromRatio,
   formatDate,
   formatDateTime,
 } from "../../utils/analyticsFormatters";
@@ -61,6 +62,7 @@ function formatOptionalCount(value: number | null | undefined): string {
 }
 
 export function buildCsv(report: PilotDataQualityIntakeReport): string {
+  const impact = resolvePilotIntakeImpact(report);
   const rows = [
     ["Sekcija", "Stavka", "Vrednost"],
     ["Skor", "Status spremnosti", getPilotReadinessStatusLabel(report.readinessStatus)],
@@ -82,8 +84,8 @@ export function buildCsv(report: PilotDataQualityIntakeReport): string {
     ["Problemi", "Nulta/negativna cena", String(report.issues.zeroOrNegativePriceCount)],
     ["Problemi", "Dupliran SKU", formatOptionalCount(report.issues.duplicateSkuCount)],
     ["Problemi", "Dobavljač bez naziva", String(report.issues.missingSupplierNameCount)],
-    ["Uticaj", "Prihod bez cene", fmtPctFromRatio(report.impact.revenueWithoutCostPercent, 1, "-")],
-    ["Uticaj", "Artikli bez dobavljača", fmtPctFromRatio(report.impact.articlesWithoutSupplierPercent, 1, "-")],
+    ["Uticaj", "Prihod bez cene", formatPilotImpactPercentage(impact.revenueWithoutCost)],
+    ["Uticaj", "Artikli bez dobavljača", formatPilotImpactPercentage(impact.articlesWithoutSupplier)],
     ["Uticaj", "Blokirane preporuke", String(report.impact.recommendationsBlockedCount)],
     ["Uticaj", "Ignorisani redovi", String(report.impact.ignoredRowsCount)],
     ["Uticaj", "Nedovoljni signali", String(report.impact.insufficientSignalCount)],
@@ -104,13 +106,14 @@ export function buildCsv(report: PilotDataQualityIntakeReport): string {
 }
 
 export function buildSummary(report: PilotDataQualityIntakeReport): string {
+  const impact = resolvePilotIntakeImpact(report);
   return [
     `Trendplus pilot izveštaj kvaliteta podataka`,
     `Status spremnosti: ${getPilotReadinessStatusLabel(report.readinessStatus)}`,
     `Skor spremnosti: ${getPilotReadinessStatusLabel(report.readinessStatus)} (${report.readinessScore}/100)`,
     `Učitano: ${fmtNumber(report.loadedData.articlesCount, 0, "-")} artikala, ${fmtNumber(report.loadedData.saleItemsCount, 0, "-")} stavki prodaje, ${fmtNumber(report.loadedData.receiptsCount, 0, "-")} računa`,
     `Top problemi: bez dobavljača ${fmtNumber(report.issues.missingSupplierCount, 0, "-")}, bez nabavne cene ${fmtNumber(report.issues.missingCostCount, 0, "-")}, bez kategorije ${fmtNumber(report.issues.missingCategoryCount, 0, "-")}`,
-    `Uticaj: prihod bez cene ${fmtPctFromRatio(report.impact.revenueWithoutCostPercent, 1, "-")}, artikli bez dobavljača ${fmtPctFromRatio(report.impact.articlesWithoutSupplierPercent, 1, "-")}, blokirane preporuke ${fmtNumber(report.impact.recommendationsBlockedCount, 0, "-")}`,
+    `Uticaj: prihod bez cene ${formatPilotImpactPercentage(impact.revenueWithoutCost)}, artikli bez dobavljača ${formatPilotImpactPercentage(impact.articlesWithoutSupplier)}, blokirane preporuke ${fmtNumber(report.impact.recommendationsBlockedCount, 0, "-")}`,
     `Status importa: ${getPilotImportStatusLabel(report.lastImportStatus)}`,
     `Scope importa: ${getPilotImportScopeLabel(report.lastImportScope)}`,
     `Preporučene akcije: ${report.recommendedActions.join("; ")}`,
@@ -118,6 +121,7 @@ export function buildSummary(report: PilotDataQualityIntakeReport): string {
 }
 
 export function buildExportPayload(report: PilotDataQualityIntakeReport, filters: AnalyticsNamedValue[]) {
+  const impact = resolvePilotIntakeImpact(report);
   const rows: Array<{ section: string; item: string; value: string }> = [
     { section: "Skor", item: "Status spremnosti", value: getPilotReadinessStatusLabel(report.readinessStatus) },
     { section: "Skor", item: "Oznaka spremnosti", value: getPilotReadinessStatusLabel(report.readinessStatus) },
@@ -138,8 +142,8 @@ export function buildExportPayload(report: PilotDataQualityIntakeReport, filters
     { section: "Problemi", item: "Nulta/negativna cena", value: String(report.issues.zeroOrNegativePriceCount) },
     { section: "Problemi", item: "Dupliran SKU", value: formatOptionalCount(report.issues.duplicateSkuCount) },
     { section: "Problemi", item: "Dobavljač bez naziva", value: String(report.issues.missingSupplierNameCount) },
-    { section: "Uticaj", item: "Prihod bez cene", value: fmtPctFromRatio(report.impact.revenueWithoutCostPercent, 1, "-") },
-    { section: "Uticaj", item: "Artikli bez dobavljača", value: fmtPctFromRatio(report.impact.articlesWithoutSupplierPercent, 1, "-") },
+    { section: "Uticaj", item: "Prihod bez cene", value: formatPilotImpactPercentage(impact.revenueWithoutCost) },
+    { section: "Uticaj", item: "Artikli bez dobavljača", value: formatPilotImpactPercentage(impact.articlesWithoutSupplier) },
     { section: "Uticaj", item: "Blokirane preporuke", value: String(report.impact.recommendationsBlockedCount) },
     { section: "Uticaj", item: "Ignorisani redovi", value: String(report.impact.ignoredRowsCount) },
     { section: "Uticaj", item: "Nedovoljni signali", value: String(report.impact.insufficientSignalCount) },
@@ -247,10 +251,11 @@ export function issueSignalState(report: PilotDataQualityIntakeReport): TrustSig
 }
 
 export function impactSignalState(report: PilotDataQualityIntakeReport): TrustSignalState {
+  const impact = resolvePilotIntakeImpact(report);
   return resolveTrustSignalState(
     [
-      report.impact.revenueWithoutCostPercent,
-      report.impact.articlesWithoutSupplierPercent,
+      impact.revenueWithoutCost.percentage,
+      impact.articlesWithoutSupplier.percentage,
       report.impact.recommendationsBlockedCount,
       report.impact.ignoredRowsCount,
       report.impact.insufficientSignalCount,
@@ -353,6 +358,7 @@ export default function PilotDataQualityIntakeReportPanel({ report, loading, err
   const tone = readinessTone(report.readinessStatus);
   const issueState = issueSignalState(report);
   const impactState = impactSignalState(report);
+  const impact = resolvePilotIntakeImpact(report);
 
   return (
     <section className={`pilot-intake-card tone-${tone}`}>
@@ -397,7 +403,7 @@ export default function PilotDataQualityIntakeReportPanel({ report, loading, err
         <article className={`state-${signalStateTone(impactState)}`}>
           <span>Uticaj na preporuke</span>
           <strong>{signalStateLabel(impactState)}</strong>
-          <p>{fmtPctFromRatio(report.impact.revenueWithoutCostPercent, 1, "-")} prihoda bez cene · {fmtNumber(report.impact.recommendationsBlockedCount, 0, "-")} blokiranih preporuka</p>
+          <p>{formatPilotImpactPercentage(impact.revenueWithoutCost)} prihoda bez cene · {formatPilotImpactPercentage(impact.articlesWithoutSupplier)} artikala bez dobavljača · {fmtNumber(report.impact.recommendationsBlockedCount, 0, "-")} blokiranih preporuka</p>
         </article>
       </div>
 

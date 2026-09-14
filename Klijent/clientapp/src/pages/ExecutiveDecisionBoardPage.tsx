@@ -49,6 +49,7 @@ import { fmtNumber, fmtPct, fmtPctFromRatio, fmtRsd, formatDateTime } from "../u
 import { getAnalyticsMetaMessage, isAnalyticsMetaError, isAnalyticsMetaInsufficient } from "../utils/analyticsResponseMeta";
 import { dataQualityStatusLabel } from "../utils/analyticsQuality";
 import { normalizeRecommendationPct } from "../utils/canonicalRecommendationSemantics";
+import { formatPilotImpactPercentage, resolvePilotIntakeImpact } from "../utils/pilotImportReadiness";
 import "./ExecutiveDecisionBoardPage.css";
 
 type BoardTone = "good" | "warning" | "critical" | "neutral" | "insufficient";
@@ -886,14 +887,16 @@ function buildBlockerCards(
   }
 
   if (intake) {
-    if (intake.issues.missingCostCount > 0 || (intake.impact.revenueWithoutCostPercent ?? 0) > 0) {
+    const impact = resolvePilotIntakeImpact(intake);
+
+    if (intake.issues.missingCostCount > 0 || !impact.revenueWithoutCost.available || impact.revenueWithoutCost.percentage! > 0) {
       cards.push({
         id: "blocker-cost",
         sectionKey: "blockers",
         kind: "blocker",
         sourceModule: "Pilot spremnost",
         title: "Dopuni nabavnu cenu",
-        summary: `Redovi bez nabavne cene: ${fmtNumber(intake.issues.missingCostCount, 0)} · Prihod bez cene: ${fmtPctFromRatio(intake.impact.revenueWithoutCostPercent, 1)}.`,
+        summary: `Redovi bez nabavne cene: ${fmtNumber(intake.issues.missingCostCount, 0)} · Prihod bez cene: ${formatPilotImpactPercentage(impact.revenueWithoutCost)}.`,
         confidenceLabel: "Upozorenje",
         confidenceTone: "warning",
         confidenceScore: null,
@@ -916,14 +919,14 @@ function buildBlockerCards(
       });
     }
 
-    if (intake.issues.missingSupplierCount > 0 || intake.impact.articlesWithoutSupplierPercent > 0) {
+    if (intake.issues.missingSupplierCount > 0 || !impact.articlesWithoutSupplier.available || impact.articlesWithoutSupplier.percentage! > 0) {
       cards.push({
         id: "blocker-supplier",
         sectionKey: "blockers",
         kind: "blocker",
         sourceModule: "Pilot spremnost",
         title: "Poveži dobavljače",
-        summary: `Artikli bez dobavljača: ${fmtNumber(intake.issues.missingSupplierCount, 0)} · Udeo: ${fmtPctFromRatio(intake.impact.articlesWithoutSupplierPercent, 1)}.`,
+        summary: `Artikli bez dobavljača: ${fmtNumber(intake.issues.missingSupplierCount, 0)} · Udeo: ${formatPilotImpactPercentage(impact.articlesWithoutSupplier)}.`,
         confidenceLabel: "Upozorenje",
         confidenceTone: "warning",
         confidenceScore: null,

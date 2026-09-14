@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import type { AnalyticsRefreshStatus, PilotDataQualityIntakeReport } from "../../types/analytics";
 import {
   computePilotImportReadiness,
+  formatPilotImpactPercentage,
   getPilotImportScopeLabel,
   getPilotImportStatusLabel,
   getPilotReadinessStatusLabel,
+  resolvePilotIntakeImpact,
 } from "../pilotImportReadiness";
 
 function buildReport(overrides: Partial<PilotDataQualityIntakeReport> = {}): PilotDataQualityIntakeReport {
@@ -172,6 +174,48 @@ describe("computePilotImportReadiness", () => {
 
     expect(result.status).toBe("ready_with_warnings");
     expect(result.reasons.some((reason) => reason.includes("globalan"))).toBe(true);
+  });
+
+  it.each([null, undefined, Number.NaN, Number.POSITIVE_INFINITY, -0.1])(
+    "does not turn malformed supplier impact %s into a healthy zero",
+    (value) => {
+      const report = buildReport({
+        impact: {
+          ...buildReport().impact,
+          articlesWithoutSupplierPercent: value,
+        },
+      });
+      const projection = resolvePilotIntakeImpact(report);
+      const result = computePilotImportReadiness(report, buildRefreshStatus());
+
+      expect(projection.articlesWithoutSupplier.available).toBe(false);
+      expect(projection.articlesWithoutSupplier.percentage).toBeNull();
+      expect(formatPilotImpactPercentage(projection.articlesWithoutSupplier)).toBe("Nije dostupno");
+      expect(result.status).toBe("ready_with_warnings");
+      expect(result.reasons.some((reason) => reason.includes("Udeo artikala bez dobavljača"))).toBe(true);
+      expect(result.reasons.some((reason) => reason.includes("0%"))).toBe(false);
+    },
+  );
+
+  it("keeps a measured supplier zero only with a positive article denominator", () => {
+    const report = buildReport();
+    const projection = resolvePilotIntakeImpact(report);
+
+    expect(projection.articlesWithoutSupplier.available).toBe(true);
+    expect(projection.articlesWithoutSupplier.percentage).toBe(0);
+    expect(formatPilotImpactPercentage(projection.articlesWithoutSupplier)).toBe("0%");
+    expect(computePilotImportReadiness(report, buildRefreshStatus()).status).toBe("ready");
+  });
+
+  it("does not trust backend zero when the article denominator is empty", () => {
+    const report = buildReport({
+      loadedData: { ...buildReport().loadedData, articlesCount: 0 },
+      impact: { ...buildReport().impact, articlesWithoutSupplierPercent: 0 },
+    });
+    const projection = resolvePilotIntakeImpact(report);
+
+    expect(projection.articlesWithoutSupplier.available).toBe(false);
+    expect(formatPilotImpactPercentage(projection.articlesWithoutSupplier)).toBe("Nije dostupno");
   });
 });
 

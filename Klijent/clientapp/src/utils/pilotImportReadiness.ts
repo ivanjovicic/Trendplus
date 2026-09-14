@@ -63,12 +63,76 @@ const IMPORT_SCOPE_LABELS: Record<string, string> = {
 const NUMBER_FORMAT = new Intl.NumberFormat("sr-RS", { maximumFractionDigits: 0 });
 const PERCENT_FORMAT = new Intl.NumberFormat("sr-RS", { maximumFractionDigits: 1 });
 
+export interface PilotImpactPercentageState {
+  percentage: number | null;
+  available: boolean;
+  reason: string | null;
+}
+
+export interface PilotIntakeImpactProjection {
+  revenueWithoutCost: PilotImpactPercentageState;
+  articlesWithoutSupplier: PilotImpactPercentageState;
+}
+
 function formatCount(value: number): string {
   return NUMBER_FORMAT.format(value);
 }
 
 function formatPercent(value: number): string {
   return `${PERCENT_FORMAT.format(value)}%`;
+}
+
+export function resolvePilotImpactPercentage(
+  value: number | null | undefined,
+  options: {
+    label: string;
+    denominator?: number | null | undefined;
+    requirePositiveDenominator?: boolean;
+  },
+): PilotImpactPercentageState {
+  if (options.requirePositiveDenominator) {
+    const denominator = options.denominator;
+    if (typeof denominator !== "number" || !Number.isFinite(denominator) || denominator <= 0) {
+      return {
+        percentage: null,
+        available: false,
+        reason: `${options.label} nije moguće izračunati bez validnog imenitelja.`,
+      };
+    }
+  }
+
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1) {
+    return {
+      percentage: null,
+      available: false,
+      reason: `${options.label} nije dostupan ili nije validan.`,
+    };
+  }
+
+  return {
+    percentage: value * 100,
+    available: true,
+    reason: null,
+  };
+}
+
+export function resolvePilotIntakeImpact(
+  report: Pick<PilotDataQualityIntakeReport, "impact" | "loadedData">,
+): PilotIntakeImpactProjection {
+  return {
+    revenueWithoutCost: resolvePilotImpactPercentage(report.impact.revenueWithoutCostPercent, {
+      label: "Udeo prihoda bez nabavne cene",
+    }),
+    articlesWithoutSupplier: resolvePilotImpactPercentage(report.impact.articlesWithoutSupplierPercent, {
+      label: "Udeo artikala bez dobavljača",
+      denominator: report.loadedData.articlesCount,
+      requirePositiveDenominator: true,
+    }),
+  };
+}
+
+export function formatPilotImpactPercentage(state: PilotImpactPercentageState): string {
+  return state.percentage == null ? "Nije dostupno" : formatPercent(state.percentage);
 }
 
 function normalizeStatus(value: string | null | undefined): string {
@@ -140,10 +204,7 @@ export function computePilotImportReadiness(
   const supplierCount = report.loadedData.suppliersCount;
   const firstSaleDate = report.loadedData.firstSaleDate;
   const lastSaleDate = report.loadedData.lastSaleDate;
-  const missingCostRevenueSharePct = report.impact.revenueWithoutCostPercent == null
-    ? null
-    : Math.max(0, report.impact.revenueWithoutCostPercent * 100);
-  const missingSupplierSharePct = Math.max(0, report.impact.articlesWithoutSupplierPercent * 100);
+  const impact = resolvePilotIntakeImpact(report);
 
   const hardBlockers = [
     articleCount <= 0 ? "Nema artikala u pilot paketu." : null,
@@ -160,12 +221,16 @@ export function computePilotImportReadiness(
     supplierCount <= 0 ? "Nema dobavljača u pilot paketu." : null,
     report.issues.missingSupplierCount > 0 ? `${formatCount(report.issues.missingSupplierCount)} artikala nema dobavljača.` : null,
     report.issues.missingCostCount > 0 ? `${formatCount(report.issues.missingCostCount)} stavki nema nabavnu cenu.` : null,
-    report.impact.revenueWithoutCostPercent == null
-      ? "Udeo prihoda bez nabavne cene nije moguće izračunati bez prometnog imenitelja."
-      : report.impact.revenueWithoutCostPercent > 0
-        ? `${formatPercent(missingCostRevenueSharePct!)} prihoda nema nabavnu cenu.`
+    !impact.revenueWithoutCost.available
+      ? impact.revenueWithoutCost.reason
+      : impact.revenueWithoutCost.percentage! > 0
+        ? `${formatPilotImpactPercentage(impact.revenueWithoutCost)} prihoda nema nabavnu cenu.`
         : null,
-    report.impact.articlesWithoutSupplierPercent > 0 ? `${formatPercent(missingSupplierSharePct)} artikala nema dobavljača.` : null,
+    !impact.articlesWithoutSupplier.available
+      ? impact.articlesWithoutSupplier.reason
+      : impact.articlesWithoutSupplier.percentage! > 0
+        ? `${formatPilotImpactPercentage(impact.articlesWithoutSupplier)} artikala nema dobavljača.`
+        : null,
     report.impact.insufficientSignalCount > 0 ? `${formatCount(report.impact.insufficientSignalCount)} artikala nema dovoljno signala.` : null,
     report.impact.ignoredRowsCount > 0 ? `${formatCount(report.impact.ignoredRowsCount)} redova je ignorisano pri importu.` : null,
     !report.lastImportAtUtc ? "Poslednji import nije dostupan." : null,

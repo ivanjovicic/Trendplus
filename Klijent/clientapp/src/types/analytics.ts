@@ -961,7 +961,7 @@ export interface PilotDataQualityIntakeImpactItem {
 
 export interface PilotDataQualityIntakeImpact {
   revenueWithoutCostPercent: number | null;
-  articlesWithoutSupplierPercent: number;
+  articlesWithoutSupplierPercent: number | null;
   recommendationsBlockedCount: number;
   ignoredRowsCount: number;
   insufficientSignalCount: number;

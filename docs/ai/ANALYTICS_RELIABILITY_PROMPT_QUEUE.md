@@ -2,8 +2,9 @@
 
 Date: 2026-09-14
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ248
 
+Owner promotion 2026-09-14: `RQ248` was explicitly promoted from `WAITING` after completed `RQ247`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
 Owner promotion 2026-09-14: `RQ247` was explicitly promoted from `WAITING` after completed `RQ246`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-14: `RQ247` was delivered on `main` with shared safe Serbian Pilot Intake readiness/import status and scope labels across card, report, copied summary and exports; the queue returned to no current READY prompt.
 Owner promotion 2026-09-14: `RQ246` was explicitly promoted from `WAITING` after completed `RQ245`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
@@ -11002,7 +11003,7 @@ Pilot Intake readiness renders backend import metadata directly in the readiness
 
 ## RQ248 - Preserve unknown and non-finite Pilot Intake impact percentages
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend/backend-contract/tests
 Feature family: pilot-intake-impact-numeric-state
@@ -11062,7 +11063,7 @@ Pilot Intake readiness treats `articlesWithoutSupplierPercent` as a guaranteed f
 
 - `RQ169` owns empty-intake readiness score/status semantics.
 - `RQ144`/`RQ147` own health/evidence-tier semantics; this prompt hardens the Pilot Intake numeric presentation boundary.
-- Keep this prompt `WAITING` while `RQ167` remains the existing `READY` item.
+- `RQ167` is already `DONE`; no remaining dependency blocker prevents this prompt.
 
 ---
 

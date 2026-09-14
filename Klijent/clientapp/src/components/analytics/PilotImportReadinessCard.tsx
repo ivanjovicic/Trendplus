@@ -3,9 +3,11 @@ import type { AnalyticsRefreshStatus, PilotDataQualityIntakeReport } from "../..
 import { formatDate, formatDateTime, fmtNumber } from "../../utils/analyticsFormatters";
 import {
   computePilotImportReadiness,
+  formatPilotImpactPercentage,
   getPilotImportScopeLabel,
   getPilotImportStatusLabel,
   getPilotReadinessStatusLabel,
+  resolvePilotIntakeImpact,
 } from "../../utils/pilotImportReadiness";
 import "./PilotDataQualityIntakeReport.css";
 
@@ -29,6 +31,7 @@ export default function PilotImportReadinessCard({
   importHref = "/access-import",
 }: Props) {
   const readiness = computePilotImportReadiness(report, refreshStatus);
+  const impact = report ? resolvePilotIntakeImpact(report) : null;
 
   return (
     <section className={`pilot-card pilot-import-readiness pilot-import-readiness-${readiness.status}`}>
@@ -60,6 +63,8 @@ export default function PilotImportReadinessCard({
               <li>Scope importa: {getPilotImportScopeLabel(report.lastImportScope)}</li>
               <li>Poslednje osveženje: {formatDateTime(report.lastRefreshAtUtc, "-")}</li>
               <li>Status osvežavanja: {refreshStatus?.dataFreshnessStatus ?? "-"}</li>
+              <li>Prihod bez nabavne cene: {formatPilotImpactPercentage(impact!.revenueWithoutCost)}</li>
+              <li>Artikli bez dobavljača: {formatPilotImpactPercentage(impact!.articlesWithoutSupplier)}</li>
             </ul>
           ) : (
             <p className="pilot-card-note">Pilot intake report još nije dostupan.</p>
