@@ -67,6 +67,16 @@ describe("AnalyticsErrorState", () => {
     expect(alert).not.toHaveTextContent("TypeError: Failed to fetch analytics payload");
   });
 
+  it("suppresses a lowercase technical code even when no separate error code is provided", () => {
+    renderError({ message: "sql_timeout_v2" });
+
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent(
+      "Podaci trenutno nisu dostupni. Proverite kvalitet podataka i pokušajte ponovo.",
+    );
+    expect(alert).not.toHaveTextContent("sql_timeout_v2");
+  });
+
   it("does not render a code row when the code is empty and preserves the empty-message fallback", () => {
     renderError({ message: "", errorCode: "" });
 

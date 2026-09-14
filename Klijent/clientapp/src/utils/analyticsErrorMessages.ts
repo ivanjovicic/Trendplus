@@ -11,6 +11,7 @@ const TECHNICAL_ERROR_PATTERNS = [
   /(?:^|\s)at\s+(?:[\w$]+\.)+[\w$]+\s*\(/i,
   /\b(?:invalidoperation|argumentnull|argumentoutofrange|nullreference)exception\b/i,
   /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/,
+  /\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/,
 ];
 
 export function getSafeAnalyticsErrorMessage(
