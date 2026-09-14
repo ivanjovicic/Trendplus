@@ -7406,7 +7406,7 @@ public static class CachedAnalyticsEndpoints
     private static string FormatProductDecisionAmount(decimal value)
         => $"{value.ToString("0.##", CultureInfo.InvariantCulture)} RSD";
 
-    private static string DescribeProductDecisionWarningCode(string code)
+    internal static string DescribeProductDecisionWarningCode(string? code)
     {
         var normalized = (code ?? string.Empty).Trim().ToLowerInvariant();
         return normalized switch
@@ -7422,7 +7422,7 @@ public static class CachedAnalyticsEndpoints
             "data_quality_critical" => "Kvalitet podataka je kritičan",
             "insufficient_data" => "Nedovoljno podataka",
             "data_quality_blocker" => "Blokada kvaliteta podataka",
-            _ => code
+            _ => string.IsNullOrWhiteSpace(code) ? "Nije poznato" : code
         };
     }
 
@@ -7450,7 +7450,7 @@ public static class CachedAnalyticsEndpoints
         };
     }
 
-    private static string DescribeProductDecisionDataQualityStatus(string dataQualityStatus)
+    internal static string DescribeProductDecisionDataQualityStatus(string? dataQualityStatus)
     {
         var normalized = (dataQualityStatus ?? string.Empty).Trim().ToLowerInvariant();
         return normalized switch
@@ -7459,7 +7459,7 @@ public static class CachedAnalyticsEndpoints
             "warning" => "upozorenje",
             "critical" => "kritičan",
             "insufficient_data" => "nedovoljno podataka",
-            _ => dataQualityStatus
+            _ => string.IsNullOrWhiteSpace(dataQualityStatus) ? "Nije poznato" : dataQualityStatus
         };
     }
 
