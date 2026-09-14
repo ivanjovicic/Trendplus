@@ -496,6 +496,107 @@ export function getActionTypeTone(actionType: string) {
   return resolveTone(TONE.actionType, actionType, TONE.actionType.clearance);
 }
 
+function normalizeInventoryStatusToken(value: string | null | undefined): string {
+  return (value ?? "").trim().toLowerCase();
+}
+
+export function inventoryActionTypeLabel(actionType: string | null | undefined): string {
+  switch (normalizeInventoryStatusToken(actionType)) {
+    case "dopuna":
+    case "replenish":
+      return "Dopuna";
+    case "transfer":
+    case "redistribute":
+      return "Transfer";
+    case "markdown":
+      return "Sniženje";
+    case "clearance":
+      return "Rasprodaja";
+    default:
+      return "Nepoznato";
+  }
+}
+
+export function inventoryActionStatusLabel(status: string | null | undefined): string {
+  switch (normalizeInventoryStatusToken(status)) {
+    case "pending":
+      return "Na čekanju";
+    case "approved":
+      return "Odobreno";
+    case "deferred":
+      return "Odloženo";
+    case "closed":
+      return "Zatvoreno";
+    default:
+      return "Nepoznato";
+  }
+}
+
+export function inventoryPriorityLabel(priority: string | null | undefined): string {
+  switch (normalizeInventoryStatusToken(priority)) {
+    case "critical":
+    case "p1":
+      return "Kritičan prioritet";
+    case "high":
+    case "p2":
+      return "Visok prioritet";
+    case "medium":
+      return "Srednji prioritet";
+    case "low":
+    case "p3":
+      return "Nizak prioritet";
+    default:
+      return "Nepoznato";
+  }
+}
+
+export function inventoryScheduleFrequencyLabel(frequency: string | null | undefined): string {
+  switch (normalizeInventoryStatusToken(frequency)) {
+    case "daily":
+      return "Dnevno";
+    case "weekly":
+      return "Nedeljno";
+    default:
+      return "Nepoznato";
+  }
+}
+
+export function inventoryScheduleFormatLabel(format: string | null | undefined): string {
+  switch (normalizeInventoryStatusToken(format)) {
+    case "pdf":
+      return "PDF";
+    case "xlsx":
+      return "Excel";
+    case "csv":
+      return "CSV";
+    default:
+      return "Nepoznato";
+  }
+}
+
+export function inventoryScheduleRunStatusLabel(
+  status: string | null | undefined,
+  lastRunAtUtc?: string | null,
+): string {
+  switch (normalizeInventoryStatusToken(status)) {
+    case "queued":
+      return "Na čekanju";
+    case "processing":
+    case "running":
+      return "U obradi";
+    case "completed":
+    case "generated":
+      return "Generisan";
+    case "emailed":
+      return "Poslat mejlom";
+    case "failed":
+    case "poisoned":
+      return "Neuspešno";
+    default:
+      return lastRunAtUtc ? "Nepoznato" : "Nije pokrenuto";
+  }
+}
+
 export function getActionStatusTone(status: string) {
   return resolveTone(TONE.actionStatus, status, TONE.actionStatus.pending);
 }

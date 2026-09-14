@@ -1,6 +1,6 @@
 ﻿import { Mail, Play, RefreshCw } from "lucide-react";
 import type { InventoryReportSchedule, InventoryReportScheduleInput } from "../../types/analytics";
-import { validateScheduleDraft, WEEKDAY_OPTIONS } from "./inventoryUtils";
+import { inventoryScheduleFormatLabel, inventoryScheduleFrequencyLabel, inventoryScheduleRunStatusLabel, validateScheduleDraft, WEEKDAY_OPTIONS } from "./inventoryUtils";
 
 type MailSchedulerPanelProps = {
   scheduleDraft: InventoryReportScheduleInput;
@@ -103,11 +103,11 @@ export function MailSchedulerPanel({
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-semibold text-white">{schedule.name}</span>
                     <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${schedule.isEnabled ? "border-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)]" : "border-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)]"}`}>{schedule.isEnabled ? "Aktivan" : "Pauziran"}</span>
-                    <span className="inline-flex rounded-full border border-[var(--border-default)] bg-[var(--surface-elevated)] px-2.5 py-1 text-[11px] font-semibold text-[var(--text-primary)]">{schedule.frequency === "weekly" ? "Nedeljno" : "Dnevno"} u {schedule.runAtLocalTime}</span>
+                    <span className="inline-flex rounded-full border border-[var(--border-default)] bg-[var(--surface-elevated)] px-2.5 py-1 text-[11px] font-semibold text-[var(--text-primary)]">{inventoryScheduleFrequencyLabel(schedule.frequency)} u {schedule.runAtLocalTime}</span>
                   </div>
-                  <div className="mt-2 text-sm text-[var(--text-primary)]">{schedule.format.toUpperCase()} | {schedule.recipientsCsv}</div>
+                  <div className="mt-2 text-sm text-[var(--text-primary)]">{inventoryScheduleFormatLabel(schedule.format)} | {schedule.recipientsCsv}</div>
                   <div className="mt-2 text-xs text-[var(--text-primary)]">
-                    Poslednje pokretanje: {schedule.lastRunAtUtc ? new Date(schedule.lastRunAtUtc).toLocaleString("sr-RS") : "jos nije pokrenuto"}{schedule.lastRunStatus ? ` | status: ${schedule.lastRunStatus}` : ""}
+                    Poslednje pokretanje: {schedule.lastRunAtUtc ? new Date(schedule.lastRunAtUtc).toLocaleString("sr-RS") : "nije pokrenuto"} | status: {inventoryScheduleRunStatusLabel(schedule.lastRunStatus, schedule.lastRunAtUtc)}
                   </div>
                   {schedule.lastError ? <div className="mt-2 text-xs text-[var(--text-primary)]">{schedule.lastError}</div> : null}
                 </div>

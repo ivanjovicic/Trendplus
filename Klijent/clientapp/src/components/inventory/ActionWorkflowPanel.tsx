@@ -1,6 +1,6 @@
 import { Archive, CheckCircle2, Clock3, GitCompareArrows, Tag, Truck, XCircle } from "lucide-react";
 import type { InventoryActionSuggestion, InventoryActionWorkflow } from "../../types/analytics";
-import { formatCurrency, formatNumber, getActionStatusTone, getActionTypeTone, getPriorityTone } from "./inventoryUtils";
+import { formatCurrency, formatNumber, getActionStatusTone, getActionTypeTone, getPriorityTone, inventoryActionStatusLabel, inventoryActionTypeLabel, inventoryPriorityLabel } from "./inventoryUtils";
 
 type ActionWorkflowPanelProps = {
   actionWorkflow: InventoryActionWorkflow | null;
@@ -36,10 +36,10 @@ export function ActionWorkflowPanel({
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-4">
-        <div className="rounded-2xl border border-border bg-surface p-3"><div className="text-xs uppercase tracking-[0.18em] text-info">Pending</div><div className="mt-2 text-xl font-semibold text-foreground">{formatNumber(actionWorkflow?.pendingCount ?? 0)}</div></div>
-        <div className="rounded-2xl border border-border bg-surface p-3"><div className="text-xs uppercase tracking-[0.18em] text-success">Approved</div><div className="mt-2 text-xl font-semibold text-foreground">{formatNumber(actionWorkflow?.approvedCount ?? 0)}</div></div>
-        <div className="rounded-2xl border border-border bg-surface p-3"><div className="text-xs uppercase tracking-[0.18em] text-muted">Deferred</div><div className="mt-2 text-xl font-semibold text-foreground">{formatNumber(actionWorkflow?.deferredCount ?? 0)}</div></div>
-        <div className="rounded-2xl border border-border bg-surface p-3"><div className="text-xs uppercase tracking-[0.18em] text-warning">Closed</div><div className="mt-2 text-xl font-semibold text-foreground">{formatNumber(actionWorkflow?.closedCount ?? 0)}</div></div>
+        <div className="rounded-2xl border border-border bg-surface p-3"><div className="text-xs uppercase tracking-[0.18em] text-info">Na čekanju</div><div className="mt-2 text-xl font-semibold text-foreground">{formatNumber(actionWorkflow?.pendingCount ?? 0)}</div></div>
+        <div className="rounded-2xl border border-border bg-surface p-3"><div className="text-xs uppercase tracking-[0.18em] text-success">Odobreno</div><div className="mt-2 text-xl font-semibold text-foreground">{formatNumber(actionWorkflow?.approvedCount ?? 0)}</div></div>
+        <div className="rounded-2xl border border-border bg-surface p-3"><div className="text-xs uppercase tracking-[0.18em] text-muted">Odloženo</div><div className="mt-2 text-xl font-semibold text-foreground">{formatNumber(actionWorkflow?.deferredCount ?? 0)}</div></div>
+        <div className="rounded-2xl border border-border bg-surface p-3"><div className="text-xs uppercase tracking-[0.18em] text-warning">Zatvoreno</div><div className="mt-2 text-xl font-semibold text-foreground">{formatNumber(actionWorkflow?.closedCount ?? 0)}</div></div>
       </div>
 
       <div className="mt-5 space-y-3">
@@ -50,10 +50,10 @@ export function ActionWorkflowPanel({
                 <div className="flex flex-wrap items-center gap-2">
                   <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${getActionTypeTone(item.actionType)}`}>
                     {item.actionType === "dopuna" ? <Truck size={12} /> : item.actionType === "transfer" ? <GitCompareArrows size={12} /> : item.actionType === "markdown" ? <Tag size={12} /> : <Archive size={12} />}
-                    <span className="ml-1 capitalize">{item.actionType}</span>
+                    <span className="ml-1">{inventoryActionTypeLabel(item.actionType)}</span>
                   </span>
-                  <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${getActionStatusTone(item.status)}`}>{item.status}</span>
-                  <span className={`text-xs font-semibold uppercase tracking-[0.18em] ${getPriorityTone(item.priority)}`}>{item.priority}</span>
+                  <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${getActionStatusTone(item.status)}`}>{inventoryActionStatusLabel(item.status)}</span>
+                  <span className={`text-xs font-semibold tracking-[0.08em] ${getPriorityTone(item.priority)}`}>{inventoryPriorityLabel(item.priority)}</span>
                 </div>
                 <div className="mt-3 text-sm font-semibold text-foreground">{item.label}</div>
                 <div className="mt-1 text-sm leading-6 text-muted">{item.reason}</div>

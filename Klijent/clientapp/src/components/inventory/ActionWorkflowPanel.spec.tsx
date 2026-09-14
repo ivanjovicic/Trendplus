@@ -84,4 +84,46 @@ describe("ActionWorkflowPanel cost trust", () => {
     expect(screen.getByText("Forecast demand qty: 2")).toBeInTheDocument();
     expect(screen.queryByText("Qty: 2")).not.toBeInTheDocument();
   });
+
+  it("uses safe Serbian labels for known and unknown workflow tokens", () => {
+    render(
+      <ActionWorkflowPanel
+        actionWorkflow={{
+          generatedAtUtc: "2026-08-10T10:00:00Z",
+          pendingCount: 1,
+          approvedCount: 0,
+          deferredCount: 0,
+          closedCount: 0,
+          items: [
+            {
+              suggestionKey: "unknown-1",
+              actionType: "future_action",
+              priority: "future_priority",
+              label: "Nepoznat predlog",
+              reason: "Potrebna provera",
+              status: "future_status",
+              artikalId: 501,
+              naziv: "Artikal A",
+              fromStoreName: null,
+              toStoreName: null,
+              suggestedQty: 1,
+              estimatedValue: null,
+              costMissing: true,
+              daysSinceMovement: 0,
+              note: null,
+              updatedAtUtc: "2026-08-10T10:00:00Z",
+            },
+          ],
+        }}
+        operationsLoading={false}
+        workflowBusyKey={null}
+        onUpdateWorkflowStatus={vi.fn()}
+      />,
+    );
+
+    expect(screen.getAllByText("Nepoznato")).toHaveLength(3);
+    expect(screen.queryByText("future_action")).not.toBeInTheDocument();
+    expect(screen.queryByText("future_status")).not.toBeInTheDocument();
+    expect(screen.queryByText("future_priority")).not.toBeInTheDocument();
+  });
 });

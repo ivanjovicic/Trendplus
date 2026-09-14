@@ -2,12 +2,14 @@
 
 Date: 2026-09-14
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ251
+Current READY prompt: RQ252
 
 Owner completion 2026-09-14: `RQ249` was delivered on `main` with fail-closed Supplier Decision Hub detail and report-toolbar actionability gates; blocked, fallback, stale/partial and missing recommendation permission remain review-only.
 Owner promotion 2026-09-14: `RQ250` was explicitly promoted after completed `RQ249`, repaired the stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
 Owner completion 2026-09-14: `RQ250` was delivered on `main` with full-price-weighted Supplier Decision Hub/client-report/server-report margin contribution parity and fail-closed missing, partial and non-finite evidence handling; the queue advanced to `RQ251`.
 Owner promotion 2026-09-14: `RQ251` was explicitly promoted after completed `RQ250`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
+Owner completion 2026-09-14: `RQ251` was delivered on `main` with shared safe Serbian labels for Inventory workflow action type/status/priority and scheduler frequency/format/run status across workflow, mail-scheduler and export-scheduler surfaces; the queue advanced to `RQ252`.
+Owner promotion 2026-09-14: `RQ252` was explicitly promoted after completed `RQ251`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
 
 Owner promotion 2026-09-14: `RQ248` was explicitly promoted from `WAITING` after completed `RQ247`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-14: `RQ248` was delivered on `main` with shared finite/null Pilot Intake impact projection, positive-denominator true-zero handling and parity across readiness, card, report, copied summary, export and Executive Decision Board surfaces; the queue advanced to `RQ249`.
@@ -11274,7 +11276,8 @@ The Supplier Decision Hub and its client-side report calculate total margin cont
 
 ## RQ251 - Map Inventory workflow and scheduler statuses to safe user labels
 
-Status: READY
+Status: DONE
+Owner claim 2026-09-14: `RQ251` was claimed in this workspace after verifying the canonical RQ pointer, satisfied dependencies and no competing Inventory status-label lock.
 Priority: P1
 Type: frontend/tests
 Feature family: inventory-operational-status-labels
@@ -11338,11 +11341,31 @@ The Inventory analytics screen uses tone helpers for workflow and scheduler stat
 - `RQ145` remains the broad cross-surface parity owner.
 - `RQ169` is already `DONE`; no remaining dependency blocker prevents promotion of this bounded Inventory label-mapping slice.
 
+### Completion note
+
+- Date: 2026-09-14
+- Status: DONE
+- Completion: Inventory workflow, mail scheduler and export scheduler now map known action/status/priority/frequency/format/run-status values to safe Serbian labels; missing and unknown values remain visibly `Nepoznato`, while a schedule with no run remains `Nije pokrenuto`.
+- Changed files: `Klijent/clientapp/src/components/inventory/inventoryUtils.ts`; `Klijent/clientapp/src/components/inventory/ActionWorkflowPanel.tsx`; `Klijent/clientapp/src/components/inventory/MailSchedulerPanel.tsx`; `Klijent/clientapp/src/components/inventory/ExportSchedulerPanel.tsx`; `Klijent/clientapp/src/components/inventory/ActionWorkflowPanel.spec.tsx`; `Klijent/clientapp/src/components/inventory/MailSchedulerPanel.spec.tsx`; `Klijent/clientapp/src/components/inventory/ExportSchedulerPanel.spec.tsx`; `Klijent/clientapp/src/components/inventory/inventoryStatusLabels.spec.ts`; this queue; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-14-RQ251-evidence.md`.
+- Contract/runtime behavior changed: visible Inventory operational tokens no longer render raw backend values; tone selection, backend workflow transitions, scheduler validation and actionability semantics remain unchanged.
+- Checks run: Inventory component/page tests 21 files / 75 tests; focused label/scheduler tests 6 files / 19 tests; `npm run check:analytics-guardrails`; `npm run build`; `git diff --check`; queue/planning/instruction validators.
+- Checks not run: full frontend/backend suites, browser/live API, production scheduler execution and deployed rendering.
+- Run log: `.ai/runs/2026-09-14-RQ251-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending until implementation commit is pushed and freshly checked against `origin/main`.
+- Missed: live scheduler execution and browser proof remain outside this local presentation-contract slice; backend scheduler validation and worker behavior were intentionally unchanged.
+- Follow-up: `RQ252` is promoted to `READY` as the next non-parallel Supplier Analytics trust-gate slice.
+- Residual risk: future backend tokens remain intentionally unknown until an explicit label contract is added; no success/completion meaning is inferred for them.
+- Next: claim and execute `RQ252` after this delivery is verified on `origin/main`.
+- Prompt defect / scope repair: no product-scope expansion; `RQ252`'s stale “keep WAITING while RQ169 is READY” dependency was repaired because `RQ169` is already DONE.
+
 ---
 
 ## RQ252 - Fail closed when supplier report trust metadata is missing
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: backend/contract/tests
 Feature family: supplier-report-trust-fail-closed
@@ -11405,7 +11428,7 @@ The supplier report action builder only blocks concrete report actions for an ex
 - `RQ235` remains the frontend negotiation-pack action gate; this prompt owns the backend response/action-builder fail-closed contract.
 - `RQ249` remains the Supplier Decision Hub detail CTA gate, and `RQ250` the supplier margin parity contract.
 - `RQ145` remains the broad cross-surface parity owner.
-- Keep this prompt `WAITING` while `RQ169` remains the existing `READY` item.
+- `RQ169` is already `DONE`; no remaining dependency blocker prevents promotion of this bounded supplier-report trust gate.
 
 ---
 

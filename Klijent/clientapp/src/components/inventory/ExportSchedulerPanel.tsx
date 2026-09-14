@@ -1,6 +1,7 @@
 import { ChevronDown, Download, FileSpreadsheet, FileText, MailIcon, Printer, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import type { InventoryReportSchedule, InventoryReportScheduleInput } from "../../types/analytics";
+import { inventoryScheduleFormatLabel, inventoryScheduleFrequencyLabel } from "./inventoryUtils";
 
 type ExportSchedulerPanelProps = {
   isOpen?: boolean;
@@ -202,7 +203,7 @@ export function ExportSchedulerPanel({
                     <div>
                       <div className="font-semibold text-foreground">{schedule.name}</div>
                       <div className="text-muted">
-                        {schedule.isEnabled ? "Aktivan" : "Neaktivan"} · {schedule.frequency}
+                        {schedule.isEnabled ? "Aktivan" : "Neaktivan"} · {inventoryScheduleFrequencyLabel(schedule.frequency)} · {inventoryScheduleFormatLabel(schedule.format)}
                       </div>
                     </div>
                     <button
