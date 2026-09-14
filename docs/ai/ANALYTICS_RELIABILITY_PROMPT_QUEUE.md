@@ -2,7 +2,7 @@
 
 Date: 2026-09-14
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ257
+Current READY prompt: RQ258
 
 Owner completion 2026-09-14: `RQ249` was delivered on `main` with fail-closed Supplier Decision Hub detail and report-toolbar actionability gates; blocked, fallback, stale/partial and missing recommendation permission remain review-only.
 Owner promotion 2026-09-14: `RQ250` was explicitly promoted after completed `RQ249`, repaired the stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
@@ -18,6 +18,8 @@ Owner completion 2026-09-14: `RQ254` was delivered on `main` with separate Produ
 Owner completion 2026-09-15: `RQ255` was delivered on `main` with nullable PDC stock evidence through snapshot, row, stock-gap/capital/opening-stock derivations, evidence chain, frontend table/detail and Decision Board actionability; null quantity/minimum no longer becomes a measured zero or stock-dependent recommendation, while measured zero remains valid; the queue advanced to `RQ256`.
 Owner promotion 2026-09-15: `RQ256` was explicitly promoted after completed `RQ255`, repaired the stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
 Owner completion 2026-09-15: `RQ256` was delivered on `main` with nullable PDC margin coverage when the current-period revenue denominator is absent; measured finite `0%` with positive revenue remains visible, unavailable coverage fails closed in reasoning/confidence/reliability/actionability, and row/evidence/table/detail consumers preserve the same state. The queue advanced to `RQ257`.
+Owner completion 2026-09-15: `RQ257` was delivered on `main` with finite/null normalization across Supplier Sales Stats and Supplier Decision Hub PoP, trend, ratio, sort, tooltip, detail, action and export/report adapters; measured zero remains visible, non-finite values are unavailable, and backend recommendation ownership is unchanged. The queue advanced to `RQ258`.
+Owner promotion 2026-09-15: `RQ258` was explicitly promoted after completed `RQ257`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
 Owner promotion 2026-09-15: `RQ257` was explicitly promoted after completed `RQ256`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
 
 ### Completion note
@@ -3216,7 +3218,7 @@ The dashboard still carries a thin legacy/advanced action contract. `DashboardAc
 
 ## RQ136 - Preserve truth in analytics action messages and notifications
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1
 Type: backend/contract/frontend/tests
 Feature family: analytics-action-notification-truth
@@ -11798,7 +11800,7 @@ PDC defines margin coverage as cost-covered revenue divided by current-period re
 
 ## RQ257 - Reject non-finite supplier decision metrics before classification
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: frontend/contract/tests
 Feature family: supplier-decision-finite-boundary
@@ -11857,13 +11859,31 @@ Supplier Sales Stats and Supplier Decision Hub use `Number.isNaN` rather than `N
 - `RQ191` remains the shared confidence/reliability range formatter owner; this prompt owns supplier-specific classification and ratio adapters.
 - `RQ233` remains supplier concentration scope owner, and `RQ250` supplier margin formula parity owner.
 - `RQ145` remains broad parity owner.
-- Keep this prompt `WAITING` while `RQ169` remains the existing `READY` item.
+- RQ256 is complete; this prompt is the single current `IN_PROGRESS` item for Supplier Analytics Frontend.
+
+### Completion note
+
+- Date: 2026-09-15
+- Status: DONE
+- Completion: Supplier Sales Stats and Supplier Decision Hub now reject non-finite and invalid ratio evidence before valid metric classification. Sorting, PoP/trend labels, ratio/detail values, action impact and supplier report projections fail closed to unavailable state; measured finite zero remains valid.
+- Changed files: `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx`, `Klijent/clientapp/src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx`, `Klijent/clientapp/src/pages/__tests__/SupplierDecisionHubPage.percentExport.spec.ts`, `Klijent/clientapp/src/services/supplierDecisionReport.ts`
+- Checks run: focused supplier/decision/report tests 40 passed; analytics guardrails/typecheck passed; frontend build passed; prompt-queue self-test and governance validator passed; `git diff --check` passed.
+- Checks not run: full frontend suite, backend build/tests and live provider/browser/deployed API proof were not run because this was a frontend boundary-only change.
+- Run log: `.ai/runs/2026-09-15-RQ257-evidence.md`
+- Evidence state: pending docs commit/final fetch; implementation SHA `a38cf2638f55a6ce9b2fdb70b6a2a3a8dfc8c1c5` was pushed to `origin/main`.
+- Delivery mode: direct-main
+- Main commit SHA: `a38cf2638f55a6ce9b2fdb70b6a2a3a8dfc8c1c5`
+- Main verification: implementation push succeeded; final fresh-fetch verification is recorded in the run log after queue documentation delivery.
+- Missed: no backend recommendation, score, period, scope or formula changes were made by design; no live-provider proof was available.
+- Residual risk: existing analyzer warnings and frontend chunk-size advisory remain outside this bounded prompt; malformed upstream payloads are handled at the frontend/report boundary.
+- Prompt defect / scope repair: repaired the stale dependency wording that incorrectly referenced already-DONE `RQ169`; no business-scope expansion was made.
+- Follow-up: `RQ258` is READY for Analytics Frontend.
 
 ---
 
 ## RQ258 - Keep shared AnalyticsTrustHeader metadata user-safe and finite
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: frontend/tests
 Feature family: trust-header-safe-metadata
@@ -11925,7 +11945,7 @@ The shared `AnalyticsTrustHeader` renders backend-provided `fallbackReasonCode` 
 
 - `RQ253` remains the owner of raw error-code removal from `AnalyticsErrorState`; this prompt owns the trust-header metadata boundary.
 - `RQ145` remains the broad cross-surface safe-messaging/parity owner.
-- Keep this prompt `WAITING` while `RQ169` remains the existing `READY` item.
+- RQ257 is complete; this prompt is the single current `READY` item for Analytics Frontend.
 
 ---
 
