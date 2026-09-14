@@ -77,6 +77,24 @@ public class InventorySignalCalculatorTests
         Assert.False(result.RecommendationAllowed);
     }
 
+    [Fact(DisplayName = "Missing current stock keeps stock cover unavailable")]
+    public void Calculate_StockCoverInsufficient_WhenCurrentStockMissing()
+    {
+        var result = InventorySignalCalculator.Calculate(
+            currentOnHandUnits: null,
+            avgDailySalesUnits: 2m,
+            soldUnits: 30,
+            openingStockUnits: 40,
+            inboundUnits: 10,
+            dataQualityStatus: "warning",
+            hasSufficientData: true);
+
+        Assert.Null(result.StockCoverDays);
+        Assert.Equal(InventorySignalCalculator.StockCoverInsufficientData, result.StockCoverStatus);
+        Assert.False(result.RecommendationAllowed);
+        Assert.Contains("stock_cover_insufficient_data", result.ReasonCodes);
+    }
+
     [Fact(DisplayName = "Sell-through denominator zero maps to insufficient_data")]
     public void Calculate_SellThroughInsufficient_WhenDenominatorIsZero()
     {

@@ -385,8 +385,8 @@ public sealed class DecisionBoardAggregationContractTests
                 MarkdownCount = rows.Count(row => row.RecommendationStatus == "MARKDOWN"),
                 HighPotentialCount = rows.Count(row => row.RecommendationStatus == "BOOST"),
                 BadDataCount = rows.Count(row => row.RecommendationStatus == "FIX_DATA"),
-                LostSalesEstimate = rows.Sum(row => row.LostSalesEstimate),
-                SlowStockCapital = rows.Sum(row => row.SlowStockCapital)
+                LostSalesEstimate = rows.Sum(row => row.LostSalesEstimate ?? 0m),
+                SlowStockCapital = rows.Sum(row => row.SlowStockCapital ?? 0m)
             },
             Rows = rows.ToList(),
             Meta = new AnalyticsResponseMetaDto

@@ -99,6 +99,30 @@ public class ProductDecisionReasoningHelperTests
         Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.InsufficientHistory, result.ReasonCodes);
     }
 
+    [Fact(DisplayName = "Missing stock evidence -> INSUFFICIENT_DATA + stock_evidence_unavailable")]
+    public void MissingStockEvidence_MapsToInsufficientDataWithExplicitCode()
+    {
+        var result = ProductDecisionReasoningHelper.Evaluate(new ProductDecisionReasoningHelper.Input(
+            MissingSupplier: false,
+            MissingCost: false,
+            MissingCategory: false,
+            MissingVariantData: false,
+            Revenue: 80_000m,
+            UnitsSold: 40,
+            VelocityUnitsPerDay: 0.95m,
+            MarginPct: 20m,
+            MarginCoveragePct: 90m,
+            TrendPct: 8m,
+            StockGap: null,
+            CurrentStock: null,
+            MinStock: null,
+            DaysSinceLastSale: 1));
+
+        Assert.Equal("INSUFFICIENT_DATA", result.RecommendationStatus);
+        Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.StockEvidenceUnavailable, result.ReasonCodes);
+        Assert.DoesNotContain(ProductDecisionReasoningHelper.ReasonCodes.LowStock, result.ReasonCodes);
+    }
+
     [Fact(DisplayName = "Small sales sample -> explicit history blockers")]
     public void SmallSalesSample_ExplainsWhyRecommendationIsBlocked()
     {

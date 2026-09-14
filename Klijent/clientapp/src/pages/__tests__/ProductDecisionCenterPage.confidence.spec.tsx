@@ -1199,6 +1199,48 @@ describe("ProductDecisionCenterPage confidence contract", () => {
     expect(screen.queryByText(/Visoka sigurnost/i)).not.toBeInTheDocument();
   });
 
+  it("keeps unknown stock evidence unavailable instead of rendering measured zero", async () => {
+    getProductDecisionCenterMock.mockResolvedValueOnce(
+      buildResponse([
+        makeRow({
+          productId: 404,
+          recommendationId: "product:404:INSUFFICIENT_DATA:20260528:20260626",
+          sourceKey: "product:404",
+          recommendationType: "INSUFFICIENT_DATA",
+          productName: "Model Unknown Stock",
+          sku: "SKU-404",
+          currentStock: null,
+          minStock: null,
+          stockGap: null,
+          lostSalesEstimate: null,
+          slowStockCapital: null,
+          stockCoverDays: null,
+          stockCoverStatus: "insufficient_data",
+          stockCoverStatusLabel: "Nedovoljno podataka",
+          recommendationAllowed: false,
+          confidenceLevel: "insufficient_data",
+          confidenceScore: null,
+          confidencePct: 35,
+          recommendationStatus: "INSUFFICIENT_DATA",
+          recommendationLabel: "Nedovoljno podataka",
+          recommendationReason: "Podaci o trenutnoj i minimalnoj zalihi nisu dostupni; preporuka je blokirana.",
+          reasonCodes: ["stock_evidence_unavailable"],
+          inputFreshnessStatus: "critical",
+        }),
+      ], "warning"),
+    );
+
+    render(<ProductDecisionCenterPage />);
+
+    expect(await screen.findByText("Model Unknown Stock")).toBeInTheDocument();
+    expect(screen.getAllByText("Nije dostupno").length).toBeGreaterThan(0);
+    expect(screen.queryByText("0 kom · min 0 · gap 0")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Model Unknown Stock"));
+    const stockDetailLabel = await screen.findByText(/Trenutna zaliha:/i);
+    expect(stockDetailLabel.parentElement).toHaveTextContent("Nije dostupna");
+  });
+
   it("explains a small sales sample and offers a data-review next step", async () => {
     getProductDecisionCenterMock.mockResolvedValueOnce(
       buildResponse([

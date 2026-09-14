@@ -284,6 +284,83 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.DoesNotContain(response.Rows, row => row.ExpectedImpactRsd == 0m);
     }
 
+    [Theory]
+    [InlineData(null, 5)]
+    [InlineData(5, null)]
+    [InlineData(null, null)]
+    public async Task BuildProductDecisionCenter_PreservesUnknownStockEvidence_InsteadOfInventingZeros(
+        int? quantity,
+        int? minimumStock)
+    {
+        var databaseName = $"product-decision-unknown-stock-{Guid.NewGuid():N}";
+        await using var db = CreateDbContext(databaseName);
+        var fromDate = PilotAnalyticsSeedPack.ProductDecisionFromUtc;
+        var toDate = PilotAnalyticsSeedPack.ProductDecisionToUtc;
+        PilotAnalyticsSeedPack.SeedProductDecisionCenter(db, fromDate, toDate);
+
+        db.Artikli.Add(new Artikli
+        {
+            Id = 104,
+            PLU = "SKU-104",
+            Naziv = "Unknown stock model",
+            IDDobavljac = 1,
+            IDObjekat = 1,
+            Kolicina = quantity,
+            MinimalnaKolicina = minimumStock,
+            NabavnaCena = 70m,
+            Kategorija = "Patike",
+            Boja = "Crna",
+            Velicina = "42",
+            DataOrigin = "existing",
+            UpdatedAt = toDate
+        });
+        db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+        {
+            Id = 40,
+            DatumProdaje = toDate.AddHours(12),
+            IDObjekat = 1,
+            DataOrigin = "existing"
+        });
+        db.ProdajaStavke.Add(new ProdajaStavka
+        {
+            Id = 41,
+            IdProdaja = 40,
+            IdArtikal = 104,
+            Kolicina = 5,
+            Cena = 140m,
+            NabavnaCena = 70m
+        });
+        await db.SaveChangesAsync();
+
+        var response = await CachedAnalyticsEndpoints.BuildProductDecisionCenterAsync(
+            db,
+            fromDate,
+            toDate,
+            storeId: 1,
+            supplierId: null,
+            top: 50,
+            dataScope: "all",
+            CancellationToken.None);
+
+        var row = Assert.Single(response.Rows.Where(item => item.ProductId == 104));
+        Assert.Equal(quantity, row.CurrentStock);
+        Assert.Equal(minimumStock, row.MinStock);
+        Assert.Null(row.StockGap);
+        Assert.Null(row.LostSalesEstimate);
+        Assert.Null(row.SlowStockCapital);
+        Assert.Equal(
+            quantity.HasValue
+                ? InventorySignalCalculator.StockCoverHealthy
+                : InventorySignalCalculator.StockCoverInsufficientData,
+            row.StockCoverStatus);
+        Assert.False(row.RecommendationAllowed);
+        Assert.Contains("stock_evidence_unavailable", row.ReasonCodes);
+        var stockEvidence = Assert.Single(row.EvidenceChain.Where(item => item.Code == "stock_signal"));
+        Assert.True(stockEvidence.IsMissing);
+        Assert.DoesNotContain("0 kom", stockEvidence.ValueText, StringComparison.Ordinal);
+        Assert.DoesNotContain("gap 0", stockEvidence.ValueText, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task BuildProductDecisionCenter_DataScopeSeparatesImportedAndExistingProducts()
     {

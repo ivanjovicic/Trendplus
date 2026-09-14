@@ -587,12 +587,12 @@ export interface ProductDecisionCenterItem {
   marginPct?: number | null;
   marginQualityLabel: string;
   marginCoveragePct: number;
-  currentStock: number;
-  minStock: number;
-  stockGap: number;
+  currentStock: number | null;
+  minStock: number | null;
+  stockGap: number | null;
   daysSinceLastSale?: number | null;
   trendPct?: number | null;
-  lostSalesEstimate: number;
+  lostSalesEstimate: number | null;
   slowStockCapital?: number | null;
   isOpeningStockDerived?: boolean;
   openingStockConfidence?: string | null;

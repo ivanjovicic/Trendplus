@@ -16,6 +16,7 @@ public static class ProductDecisionReasoningHelper
         public const string LowSampleSize = "low_sample_size";
         public const string NoSalesInPeriod = "no_sales_in_period";
         public const string MissingLastSale = "missing_last_sale";
+        public const string StockEvidenceUnavailable = "stock_evidence_unavailable";
         public const string ReplenishNeeded = "replenish_needed";
         public const string HighStockRisk = "high_stock_risk";
         public const string DataQualityBlocker = "data_quality_blocker";
@@ -32,9 +33,9 @@ public static class ProductDecisionReasoningHelper
         decimal? MarginPct,
         decimal MarginCoveragePct,
         decimal? TrendPct,
-        int StockGap,
-        int CurrentStock,
-        int MinStock,
+        int? StockGap,
+        int? CurrentStock,
+        int? MinStock,
         int? DaysSinceLastSale);
 
     public sealed record Result(
@@ -65,6 +66,9 @@ public static class ProductDecisionReasoningHelper
         if (input.MissingSupplier || input.MissingCost || input.MissingCategory)
             return "FIX_DATA";
 
+        if (!input.StockGap.HasValue || !input.CurrentStock.HasValue || !input.MinStock.HasValue)
+            return "INSUFFICIENT_DATA";
+
         if (input.UnitsSold < MinimumUnitsForRecommendation || input.Revenue <= 0m || !input.DaysSinceLastSale.HasValue)
             return "INSUFFICIENT_DATA";
 
@@ -83,15 +87,15 @@ public static class ProductDecisionReasoningHelper
         var highVelocity = input.VelocityUnitsPerDay >= 0.8m;
         var lowVelocity = input.VelocityUnitsPerDay < 0.15m;
         var staleStock = input.DaysSinceLastSale.Value >= 45;
-        var highStock = input.CurrentStock > Math.Max(input.MinStock * 3, input.MinStock + 10);
+        var highStock = input.CurrentStock.Value > Math.Max(input.MinStock.Value * 3, input.MinStock.Value + 10);
 
-        if (goodTrend && goodMargin && highVelocity && input.StockGap > 0)
+        if (goodTrend && goodMargin && highVelocity && input.StockGap.Value > 0)
             return "BOOST";
 
-        if (highVelocity && input.StockGap > 0)
+        if (highVelocity && input.StockGap.Value > 0)
             return "REPLENISH";
 
-        if ((staleStock && lowVelocity && (badTrend || lowMargin)) && input.CurrentStock > input.MinStock)
+        if ((staleStock && lowVelocity && (badTrend || lowMargin)) && input.CurrentStock.Value > input.MinStock.Value)
             return "MARKDOWN";
 
         if ((badTrend && lowMargin && highStock) || (staleStock && highStock && lowVelocity))
@@ -110,7 +114,10 @@ public static class ProductDecisionReasoningHelper
         if (input.MissingCategory || input.MissingVariantData)
             codes.Add(ReasonCodes.DataQualityBlocker);
 
-        if (input.StockGap > 0 || input.CurrentStock < input.MinStock)
+        if (!input.StockGap.HasValue || !input.CurrentStock.HasValue || !input.MinStock.HasValue)
+            codes.Add(ReasonCodes.StockEvidenceUnavailable);
+
+        if (input.StockGap is > 0 || (input.CurrentStock.HasValue && input.MinStock.HasValue && input.CurrentStock.Value < input.MinStock.Value))
             codes.Add(ReasonCodes.LowStock);
 
         if (input.VelocityUnitsPerDay >= 0.8m)

@@ -4301,7 +4301,7 @@ public static class CachedAnalyticsEndpoints
 
         snapshot.TotalMarginContributionRsd = rows.Sum(x => x.MarginContribution);
         snapshot.InventoryDangerValueRsd = productDecisionSnapshot?.Summary?.SlowStockCapital
-            ?? rows.Sum(x => x.SlowStockCapital);
+            ?? rows.Sum(x => x.SlowStockCapital ?? 0m);
 
         // Kvalitet podataka: brojimo eksplicitno "rupe" (dobavljač, nabavna cena) i redove koji nemaju signal.
         snapshot.DataQualitySummary = new ExecutiveDataQualitySummaryDto
@@ -4433,7 +4433,7 @@ public static class CachedAnalyticsEndpoints
                 Description = string.IsNullOrWhiteSpace(row.RecommendationReason)
                     ? "Spor obrt i kapital vezan u zalihama."
                     : row.RecommendationReason,
-                ImpactEstimateRsd = row.SlowStockCapital > 0 ? row.SlowStockCapital : null,
+                ImpactEstimateRsd = row.SlowStockCapital is > 0 ? row.SlowStockCapital : null,
                 ConfidencePct = row.ConfidencePct,
                 DataQualityStatus = row.DataQualityStatus,
                 RecommendationStatus = row.RecommendationStatus,
@@ -4448,7 +4448,7 @@ public static class CachedAnalyticsEndpoints
 
         // Dead stock / 90+ dana bez prodaje (ili eksplicitno nema prodaje u periodu)
         foreach (var row in rows
-            .Where(x => x.CurrentStock > 0 && (x.UnitsSold <= 0 || (x.DaysSinceLastSale.HasValue && x.DaysSinceLastSale.Value >= 90)))
+            .Where(x => x.CurrentStock is > 0 && (x.UnitsSold <= 0 || (x.DaysSinceLastSale.HasValue && x.DaysSinceLastSale.Value >= 90)))
             .OrderByDescending(x => x.SlowStockCapital)
             .ThenByDescending(x => x.Revenue)
             .Take(1))
@@ -4461,7 +4461,7 @@ public static class CachedAnalyticsEndpoints
                 Description = row.DaysSinceLastSale.HasValue
                     ? $"Nema prodaje {row.DaysSinceLastSale.Value} dana, a zaliha je {row.CurrentStock} kom."
                     : "Nema prodaje u periodu, a zaliha je i dalje prisutna.",
-                ImpactEstimateRsd = row.SlowStockCapital > 0 ? row.SlowStockCapital : null,
+                ImpactEstimateRsd = row.SlowStockCapital is > 0 ? row.SlowStockCapital : null,
                 ConfidencePct = row.ConfidencePct,
                 DataQualityStatus = row.DataQualityStatus,
                 RecommendationStatus = row.RecommendationStatus,
@@ -4476,7 +4476,7 @@ public static class CachedAnalyticsEndpoints
 
         // Lost sales / OOS rizik (replenish + lostSalesEstimate)
         foreach (var row in rows
-            .Where(x => x.RecommendationStatus == "REPLENISH" && x.LostSalesEstimate > 0m)
+            .Where(x => x.RecommendationStatus == "REPLENISH" && x.LostSalesEstimate is > 0m)
             .OrderByDescending(x => x.LostSalesEstimate)
             .ThenByDescending(x => x.VelocityUnitsPerDay)
             .Take(1))
@@ -4489,7 +4489,7 @@ public static class CachedAnalyticsEndpoints
                 Description = string.IsNullOrWhiteSpace(row.RecommendationReason)
                     ? "Visok velocity i manjak zalihe; procenjena izgubljena prodaja raste."
                     : row.RecommendationReason,
-                ImpactEstimateRsd = row.LostSalesEstimate > 0 ? row.LostSalesEstimate : null,
+                ImpactEstimateRsd = row.LostSalesEstimate is > 0 ? row.LostSalesEstimate : null,
                 ConfidencePct = row.ConfidencePct,
                 DataQualityStatus = row.DataQualityStatus,
                 RecommendationStatus = row.RecommendationStatus,
@@ -5687,8 +5687,8 @@ public static class CachedAnalyticsEndpoints
         public string? ShoeTypeName { get; init; }
         public string? Color { get; init; }
         public string? Size { get; init; }
-        public int CurrentStock { get; init; }
-        public int MinStock { get; init; }
+        public int? CurrentStock { get; init; }
+        public int? MinStock { get; init; }
         public decimal? UnitCost { get; init; }
         public DateTime UpdatedAtUtc { get; init; }
     }
@@ -5917,8 +5917,8 @@ public static class CachedAnalyticsEndpoints
                 ShoeTypeName = t != null ? t.Naziv : null,
                 Color = a.Boja,
                 Size = a.Velicina,
-                CurrentStock = a.Kolicina ?? 0,
-                MinStock = a.MinimalnaKolicina ?? 0,
+                CurrentStock = a.Kolicina,
+                MinStock = a.MinimalnaKolicina,
                 UnitCost = a.NabavnaCena,
                 UpdatedAtUtc = a.UpdatedAt
             })
@@ -6056,7 +6056,10 @@ public static class CachedAnalyticsEndpoints
                     ? "Srednji kvalitet"
                     : "Nizak kvalitet";
 
-            var stockGap = Math.Max(0, article.MinStock - article.CurrentStock);
+            var stockEvidenceComplete = article.CurrentStock.HasValue && article.MinStock.HasValue;
+            var stockGap = stockEvidenceComplete
+                ? Math.Max(0, article.MinStock!.Value - article.CurrentStock!.Value)
+                : (int?)null;
             var daysSinceLastSale = lastSaleAtUtc > default(DateTime)
                 ? (int?)Math.Max(0, (int)Math.Floor((nowUtc - DateTime.SpecifyKind(lastSaleAtUtc, DateTimeKind.Utc)).TotalDays))
                 : null;
@@ -6067,12 +6070,14 @@ public static class CachedAnalyticsEndpoints
             var trendPct = ProductDecisionReasoningHelper.ComputeTrendPct(revenue, previousBaseline);
 
             var avgUnitPrice = unitsSold > 0 ? revenue / unitsSold : 0m;
-            var lostSalesEstimate = CalculateLostSalesEstimate(
-                stockGap,
-                article.MinStock,
-                velocityUnitsPerDay,
-                avgUnitPrice,
-                ProductDecisionLostSalesImpactWindowDays);
+            decimal? lostSalesEstimate = stockEvidenceComplete
+                ? CalculateLostSalesEstimate(
+                    stockGap!.Value,
+                    article.MinStock!.Value,
+                    velocityUnitsPerDay,
+                    avgUnitPrice,
+                    ProductDecisionLostSalesImpactWindowDays)
+                : null;
 
             var missingSupplier = !article.SupplierId.HasValue || string.IsNullOrWhiteSpace(article.SupplierName);
             var missingCost = !article.UnitCost.HasValue;
@@ -6081,7 +6086,7 @@ public static class CachedAnalyticsEndpoints
 
             var dataQualityStatus = missingSupplier || missingCost || missingCategory
                 ? "critical"
-                : (marginCoveragePct < 60m || missingVariantData ? "warning" : "good");
+                : (!stockEvidenceComplete || marginCoveragePct < 60m || missingVariantData ? "warning" : "good");
 
             var reasoning = ProductDecisionReasoningHelper.Evaluate(new ProductDecisionReasoningHelper.Input(
                 MissingSupplier: missingSupplier,
@@ -6111,34 +6116,38 @@ public static class CachedAnalyticsEndpoints
 
             var reasonCodes = reasoning.ReasonCodes;
 
-            var recommendationReason = BuildRecommendationReason(
-                recommendationStatus,
-                revenue,
-                unitsSold,
-                velocityUnitsPerDay,
-                marginPct,
-                trendPct,
-                stockGap,
-                article.CurrentStock,
-                article.MinStock,
-                daysSinceLastSale,
-                dataQualityStatus);
+            var recommendationReason = !stockEvidenceComplete
+                ? "Podaci o trenutnoj i minimalnoj zalihi nisu dostupni; preporuka je blokirana."
+                : BuildRecommendationReason(
+                    recommendationStatus,
+                    revenue,
+                    unitsSold,
+                    velocityUnitsPerDay,
+                    marginPct,
+                    trendPct,
+                    stockGap,
+                    article.CurrentStock,
+                    article.MinStock,
+                    daysSinceLastSale,
+                    dataQualityStatus);
 
             var recommendationLabel = RecommendationLabel(recommendationStatus);
             var recommendedAction = RecommendedAction(recommendationStatus);
-            var slowStockCapital = velocityUnitsPerDay < 0.15m && article.CurrentStock > article.MinStock * 2
-                ? Math.Round((article.UnitCost ?? 0m) * article.CurrentStock, 2)
-                : 0m;
+            decimal? slowStockCapital = !stockEvidenceComplete
+                ? null
+                : velocityUnitsPerDay < 0.15m && article.CurrentStock!.Value > article.MinStock!.Value * 2
+                    ? Math.Round((article.UnitCost ?? 0m) * article.CurrentStock.Value, 2)
+                    : 0m;
 
             var movementWindowStats = movementWindowStatsByArticle.TryGetValue(article.ProductId, out var stats)
                 ? stats
                 : new InventorySignalWindowStats(0, 0, false);
-            var openingStockUnits = movementWindowStats.HasCompleteJournal
-                ? Math.Max(article.CurrentStock - movementWindowStats.NetMovementUnits, 0)
+            var openingStockUnits = article.CurrentStock.HasValue && movementWindowStats.HasCompleteJournal
+                ? Math.Max(article.CurrentStock.Value - movementWindowStats.NetMovementUnits, 0)
                 : (int?)null;
             var hasReliableSellThroughInputs = openingStockUnits.HasValue
                 && (openingStockUnits.Value > 0 || movementWindowStats.InboundUnits > 0);
-            var hasSufficientSignalData = unitsSold > 0 || article.CurrentStock > 0 || hasReliableSellThroughInputs;
+            var hasSufficientSignalData = unitsSold > 0 || article.CurrentStock.GetValueOrDefault() > 0 || hasReliableSellThroughInputs;
             var signalDataQuality = unitsSold > 0 && hasReliableSellThroughInputs
                 ? "good"
                 : hasSufficientSignalData
@@ -6181,8 +6190,8 @@ public static class CachedAnalyticsEndpoints
                 combinedReasonCodes.Add("opening_stock_unavailable");
             }
 
-            totalLostSalesEstimate += lostSalesEstimate;
-            totalSlowStockCapital += slowStockCapital;
+            totalLostSalesEstimate += lostSalesEstimate ?? 0m;
+            totalSlowStockCapital += slowStockCapital ?? 0m;
 
             var row = new ProductDecisionCenterRowDto
             {
@@ -6864,6 +6873,11 @@ public static class CachedAnalyticsEndpoints
             });
         }
 
+        var stockEvidenceComplete = row.CurrentStock.HasValue && row.MinStock.HasValue && row.StockGap.HasValue;
+        var stockEvidenceText = stockEvidenceComplete
+            ? $"{row.CurrentStock!.Value} kom · min {row.MinStock!.Value} · gap {row.StockGap!.Value}"
+            : "Zaliha, minimum ili gap nisu dostupni";
+
         AddNode(
             "decision",
             "selected_recommendation",
@@ -6884,9 +6898,12 @@ public static class CachedAnalyticsEndpoints
             "evidence",
             "stock_signal",
             "Signal zalihe",
-            $"{row.CurrentStock} kom · min {row.MinStock} · gap {row.StockGap}",
+            stockEvidenceText,
             ["CurrentStock", "MinStock", "StockGap", "StockCoverDays", "StockCoverStatus"],
-            detail: $"Pokrivenost: {(string.IsNullOrWhiteSpace(row.StockCoverStatusLabel) ? row.StockCoverStatus : row.StockCoverStatusLabel)}");
+            isMissing: !stockEvidenceComplete,
+            detail: stockEvidenceComplete
+                ? $"Pokrivenost: {(string.IsNullOrWhiteSpace(row.StockCoverStatusLabel) ? row.StockCoverStatus : row.StockCoverStatusLabel)}"
+                : "Nedostaju podaci o trenutnoj ili minimalnoj zalihi.");
 
         AddNode(
             "evidence",
@@ -7166,11 +7183,12 @@ public static class CachedAnalyticsEndpoints
     private static int ResolveReplenishAlternativeScore(ProductDecisionCenterRowDto row, string dataQuality, int lowConfidencePenalty)
     {
         var score = 15;
-        score += (int)Math.Round(Math.Clamp(row.StockGap, 0, 20) * 4m, MidpointRounding.AwayFromZero);
+        if (row.StockGap.HasValue)
+            score += (int)Math.Round(Math.Clamp(row.StockGap.Value, 0, 20) * 4m, MidpointRounding.AwayFromZero);
         score += (int)Math.Round(Math.Clamp(row.VelocityUnitsPerDay, 0m, 3m) * 12m, MidpointRounding.AwayFromZero);
-        if (row.LostSalesEstimate > 0m) score += 10;
-        if (row.CurrentStock <= row.MinStock) score += 12;
-        if (row.CurrentStock <= 0) score += 8;
+        if (row.LostSalesEstimate is > 0m) score += 10;
+        if (row.CurrentStock.HasValue && row.MinStock.HasValue && row.CurrentStock.Value <= row.MinStock.Value) score += 12;
+        if (row.CurrentStock is <= 0) score += 8;
         if (dataQuality == "warning") score -= 4;
         if (dataQuality == "critical" || dataQuality == "insufficient_data") score -= 18;
         return score - lowConfidencePenalty / 2;
@@ -7182,7 +7200,7 @@ public static class CachedAnalyticsEndpoints
         if (row.TrendPct.HasValue && row.TrendPct.Value > 0m) score += (int)Math.Round(Math.Min(row.TrendPct.Value, 20m), MidpointRounding.AwayFromZero);
         if (row.MarginPct.HasValue) score += (int)Math.Round(Math.Min(row.MarginPct.Value / 2m, 20m), MidpointRounding.AwayFromZero);
         score += (int)Math.Round(Math.Clamp(row.VelocityUnitsPerDay, 0m, 3m) * 10m, MidpointRounding.AwayFromZero);
-        if (row.StockGap > 0) score += 8;
+        if (row.StockGap is > 0) score += 8;
         if (row.Revenue > 0m) score += 4;
         if (dataQuality == "warning") score -= 3;
         if (dataQuality == "critical" || dataQuality == "insufficient_data") score -= 16;
@@ -7196,8 +7214,8 @@ public static class CachedAnalyticsEndpoints
         if (row.VelocityUnitsPerDay < 0.25m) score += 22;
         if ((row.TrendPct ?? 0m) < -5m) score += 16;
         if ((row.MarginPct ?? 0m) < 12m) score += 10;
-        if (row.CurrentStock > row.MinStock) score += 10;
-        if (row.SlowStockCapital > 0m) score += 10;
+        if (row.CurrentStock.HasValue && row.MinStock.HasValue && row.CurrentStock.Value > row.MinStock.Value) score += 10;
+        if (row.SlowStockCapital is > 0m) score += 10;
         if (dataQuality == "warning") score += 2;
         if (dataQuality == "critical" || dataQuality == "insufficient_data") score -= 10;
         return score - lowConfidencePenalty / 4;
@@ -7206,7 +7224,7 @@ public static class CachedAnalyticsEndpoints
     private static int ResolveDoNotOrderAlternativeScore(ProductDecisionCenterRowDto row, string dataQuality, int lowConfidencePenalty)
     {
         var score = 14;
-        if (row.CurrentStock > row.MinStock * 3) score += 28;
+        if (row.CurrentStock.HasValue && row.MinStock.HasValue && row.CurrentStock.Value > row.MinStock.Value * 3) score += 28;
         if (row.VelocityUnitsPerDay < 0.25m) score += 18;
         if ((row.TrendPct ?? 0m) < 0m) score += 10;
         if (row.DaysSinceLastSale.HasValue && row.DaysSinceLastSale.Value >= 45) score += 10;
@@ -7336,7 +7354,7 @@ public static class CachedAnalyticsEndpoints
                 }
                 break;
             case "REPLENISH":
-                if (row.StockGap > 0 || row.CurrentStock < row.MinStock) Add("low_stock");
+                if (row.StockGap is > 0 || (row.CurrentStock.HasValue && row.MinStock.HasValue && row.CurrentStock.Value < row.MinStock.Value)) Add("low_stock");
                 if (row.VelocityUnitsPerDay >= 0.8m) Add("high_velocity");
                 if (row.ReasonCodes.Contains("replenish_needed", StringComparer.OrdinalIgnoreCase)) Add("replenish_needed");
                 break;
@@ -7344,15 +7362,15 @@ public static class CachedAnalyticsEndpoints
                 if (row.VelocityUnitsPerDay >= 0.8m) Add("high_velocity");
                 if (row.TrendPct.HasValue && row.TrendPct.Value >= 0m) Add("low_stock");
                 if (row.MarginPct.HasValue && row.MarginPct.Value >= 10m) Add("high_velocity");
-                if (row.StockGap > 0) Add("low_stock");
+                if (row.StockGap is > 0) Add("low_stock");
                 break;
             case "MARKDOWN":
                 if (row.DaysSinceLastSale.HasValue && row.DaysSinceLastSale.Value >= 45) Add("stale_stock");
-                if (row.CurrentStock > row.MinStock) Add("high_stock_risk");
+                if (row.CurrentStock.HasValue && row.MinStock.HasValue && row.CurrentStock.Value > row.MinStock.Value) Add("high_stock_risk");
                 if ((row.MarginPct ?? 0m) < 10m) Add("poor_margin");
                 break;
             case "DO_NOT_ORDER":
-                if (row.CurrentStock > row.MinStock * 3) Add("high_stock_risk");
+                if (row.CurrentStock.HasValue && row.MinStock.HasValue && row.CurrentStock.Value > row.MinStock.Value * 3) Add("high_stock_risk");
                 if (row.DaysSinceLastSale.HasValue && row.DaysSinceLastSale.Value >= 45) Add("stale_stock");
                 if ((row.MarginPct ?? 0m) < 10m) Add("poor_margin");
                 break;
@@ -7701,8 +7719,8 @@ public static class CachedAnalyticsEndpoints
             AddDriver("margin");
         }
 
-        if (row.StockGap > 0
-            || row.CurrentStock <= row.MinStock
+        if (row.StockGap is > 0
+            || (row.CurrentStock.HasValue && row.MinStock.HasValue && row.CurrentStock.Value <= row.MinStock.Value)
             || string.Equals(row.StockCoverStatus, "low_cover", StringComparison.OrdinalIgnoreCase)
             || string.Equals(row.StockCoverStatus, "out_of_stock_risk", StringComparison.OrdinalIgnoreCase)
             || string.Equals(row.StockCoverStatus, "slow_stock", StringComparison.OrdinalIgnoreCase)
@@ -7736,13 +7754,13 @@ public static class CachedAnalyticsEndpoints
         if (string.Equals(row.RecommendationStatus, "REPLENISH", StringComparison.OrdinalIgnoreCase)
             || string.Equals(row.RecommendationStatus, "BOOST", StringComparison.OrdinalIgnoreCase))
         {
-            return row.LostSalesEstimate > 0m ? row.LostSalesEstimate : null;
+            return row.LostSalesEstimate is > 0m ? row.LostSalesEstimate : null;
         }
 
         if (string.Equals(row.RecommendationStatus, "MARKDOWN", StringComparison.OrdinalIgnoreCase)
             || string.Equals(row.RecommendationStatus, "DO_NOT_ORDER", StringComparison.OrdinalIgnoreCase))
         {
-            return row.SlowStockCapital > 0m ? row.SlowStockCapital : null;
+            return row.SlowStockCapital is > 0m ? row.SlowStockCapital : null;
         }
 
         return null;
@@ -7827,22 +7845,26 @@ public static class CachedAnalyticsEndpoints
         decimal velocityUnitsPerDay,
         decimal? marginPct,
         decimal? trendPct,
-        int stockGap,
-        int currentStock,
-        int minStock,
+        int? stockGap,
+        int? currentStock,
+        int? minStock,
         int? daysSinceLastSale,
         string dataQualityStatus)
     {
         var trendText = trendPct.HasValue ? $"{trendPct.Value:0.0}%" : "N/A";
         var marginText = marginPct.HasValue ? $"{marginPct.Value:0.0}%" : "N/A";
         var staleText = daysSinceLastSale.HasValue ? $"{daysSinceLastSale.Value} dana" : "N/A";
+        var stockText = currentStock.HasValue && minStock.HasValue
+            ? $"{currentStock.Value}/{minStock.Value}"
+            : "nije dostupna";
+        var gapText = stockGap?.ToString(CultureInfo.InvariantCulture) ?? "nije dostupan";
 
         return recommendationStatus switch
         {
-            "BOOST" => $"Trend {trendText}, marža {marginText}, velocity {velocityUnitsPerDay:0.00}/kalendarski dan i gap zalihe {stockGap}.",
-            "REPLENISH" => $"Brza rotacija ({velocityUnitsPerDay:0.00}/kalendarski dan) uz manjak zalihe ({currentStock}/{minStock}).",
+            "BOOST" => $"Trend {trendText}, marža {marginText}, velocity {velocityUnitsPerDay:0.00}/kalendarski dan i gap zalihe {gapText}.",
+            "REPLENISH" => $"Brza rotacija ({velocityUnitsPerDay:0.00}/kalendarski dan) uz manjak zalihe ({stockText}).",
             "MARKDOWN" => $"Spora prodaja ({velocityUnitsPerDay:0.00}/kalendarski dan), trend {trendText} i starost bez prodaje {staleText}.",
-            "DO_NOT_ORDER" => $"Visoka zaliha ({currentStock}), slab trend {trendText} i marža {marginText}.",
+            "DO_NOT_ORDER" => $"Visoka zaliha ({(currentStock?.ToString(CultureInfo.InvariantCulture) ?? "nije dostupna")}), slab trend {trendText} i marža {marginText}.",
             "FIX_DATA" => $"Kritični problemi kvaliteta podataka ({dataQualityStatus}) blokiraju pouzdanu preporuku.",
             "INSUFFICIENT_DATA" => BuildInsufficientDataReason(
                 revenue,
@@ -8294,14 +8316,14 @@ public class ProductDecisionCenterRowDto
     public decimal? MarginPct { get; set; }
     public string MarginQualityLabel { get; set; } = string.Empty;
     public decimal MarginCoveragePct { get; set; }
-    public int CurrentStock { get; set; }
-    public int MinStock { get; set; }
-    public int StockGap { get; set; }
+    public int? CurrentStock { get; set; }
+    public int? MinStock { get; set; }
+    public int? StockGap { get; set; }
     public int? DaysSinceLastSale { get; set; }
     public decimal? TrendPct { get; set; }
     /// <summary>Projected RSD demand over the 14-day PDC impact window, weighted by calendar-day velocity and stock shortfall ratio; not booked sales.</summary>
-    public decimal LostSalesEstimate { get; set; }
-    public decimal SlowStockCapital { get; set; }
+    public decimal? LostSalesEstimate { get; set; }
+    public decimal? SlowStockCapital { get; set; }
     public decimal? StockCoverDays { get; set; }
     public string StockCoverStatus { get; set; } = InventorySignalCalculator.StockCoverInsufficientData;
     public string StockCoverStatusLabel { get; set; } = InventorySignalCalculator.StockCoverStatusLabel(InventorySignalCalculator.StockCoverInsufficientData);

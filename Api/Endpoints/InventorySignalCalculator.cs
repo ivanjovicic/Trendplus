@@ -29,7 +29,7 @@ public static class InventorySignalCalculator
         IReadOnlyList<string> ReasonCodes);
 
     public static SignalResult Calculate(
-        int currentOnHandUnits,
+        int? currentOnHandUnits,
         decimal avgDailySalesUnits,
         int soldUnits,
         int? openingStockUnits,
@@ -79,24 +79,30 @@ public static class InventorySignalCalculator
     }
 
     private static (decimal? Days, string Status) CalculateStockCover(
-        int currentOnHandUnits,
+        int? currentOnHandUnits,
         decimal avgDailySalesUnits,
         bool hasSufficientData,
         List<string> reasonCodes)
     {
+        if (!currentOnHandUnits.HasValue)
+        {
+            reasonCodes.Add("stock_cover_insufficient_data");
+            return (null, StockCoverInsufficientData);
+        }
+
         if (!hasSufficientData)
         {
             reasonCodes.Add("stock_cover_insufficient_data");
             return (null, StockCoverInsufficientData);
         }
 
-        if (currentOnHandUnits <= 0 && avgDailySalesUnits > 0)
+        if (currentOnHandUnits.Value <= 0 && avgDailySalesUnits > 0)
         {
             reasonCodes.Add("stock_cover_out_of_stock_risk");
             return (null, StockCoverOutOfStockRisk);
         }
 
-        if (avgDailySalesUnits <= 0 && currentOnHandUnits > 0)
+        if (avgDailySalesUnits <= 0 && currentOnHandUnits.Value > 0)
         {
             reasonCodes.Add("stock_cover_no_velocity");
             return (null, StockCoverNoVelocity);
@@ -108,7 +114,7 @@ public static class InventorySignalCalculator
             return (null, StockCoverInsufficientData);
         }
 
-        var days = Math.Round(currentOnHandUnits / avgDailySalesUnits, 2, MidpointRounding.AwayFromZero);
+        var days = Math.Round(currentOnHandUnits.Value / avgDailySalesUnits, 2, MidpointRounding.AwayFromZero);
         var status = days switch
         {
             <= 7m => StockCoverLow,

@@ -570,8 +570,12 @@ function recommendationActionTitle(status: ProductDecisionRecommendationStatus, 
 function mapActionPriority(row: ProductDecisionRow): "P1" | "P2" | "P3" {
   const dataQuality = canonicalDataQualityStatus(row.dataQualityStatus);
   const recommendationStatusValue = row["recommendationStatus"];
-  const hasCriticalOos = recommendationStatusValue === "REPLENISH" && row.stockGap > 0 && row.currentStock <= 0;
-  const hasLargeLostSales = row.lostSalesEstimate >= 100_000;
+  const hasCriticalOos = recommendationStatusValue === "REPLENISH"
+    && row.stockGap != null
+    && row.currentStock != null
+    && row.stockGap > 0
+    && row.currentStock <= 0;
+  const hasLargeLostSales = row.lostSalesEstimate != null && row.lostSalesEstimate >= 100_000;
   const hasCriticalDataIssue = recommendationStatusValue === "FIX_DATA" && dataQuality === "critical";
 
   if (hasCriticalOos || hasLargeLostSales || hasCriticalDataIssue) return "P1";
@@ -840,7 +844,7 @@ export default function ProductDecisionCenterPage() {
       else if (sortField === "unitsSold") diff = a.unitsSold - b.unitsSold;
       else if (sortField === "velocityUnitsPerDay") diff = a.velocityUnitsPerDay - b.velocityUnitsPerDay;
       else if (sortField === "marginPct") diff = (a.marginPct ?? -9999) - (b.marginPct ?? -9999);
-      else if (sortField === "currentStock") diff = a.currentStock - b.currentStock;
+      else if (sortField === "currentStock") diff = (a.currentStock ?? -9999) - (b.currentStock ?? -9999);
       else if (sortField === "trendPct") diff = (a.trendPct ?? -9999) - (b.trendPct ?? -9999);
       else if (sortField === "stockCoverDays") diff = (a.stockCoverDays ?? -9999) - (b.stockCoverDays ?? -9999);
       else if (sortField === "sellThroughRatio") diff = (a.sellThroughRatio ?? -9999) - (b.sellThroughRatio ?? -9999);
@@ -1666,8 +1670,8 @@ export default function ProductDecisionCenterPage() {
                           <small>{row.marginQualityLabel ?? "N/A"} | pokriće: {fmtPct(row.marginCoveragePct, 1)}</small>
                         </td>
                         <td>
-                          <span>{fmtNumber(row.currentStock, 0, "0")}</span>
-                          <small>min: {fmtNumber(row.minStock, 0, "0")} | gap: {fmtNumber(row.stockGap, 0, "0")}</small>
+                          <span>{fmtNumber(row.currentStock, 0, "Nije dostupno")}</span>
+                          <small>min: {fmtNumber(row.minStock, 0, "Nije dostupno")} | gap: {fmtNumber(row.stockGap, 0, "Nije dostupan")}</small>
                         </td>
                         <td>{fmtPct(row.trendPct, 1)}</td>
                         <td>
@@ -2088,7 +2092,7 @@ export default function ProductDecisionCenterPage() {
                                   <strong>Maržni doprinos:</strong> {fmtRsd(row.marginContribution, 0, "N/A")}
                                   <KpiExplainButton metricKey="marginContribution" ariaLabel="Kako je izračunat maržni doprinos" />
                                 </div>
-                                <div><strong>Trenutna zaliha:</strong> {fmtNumber(row.currentStock, 0, "0")}</div>
+                                <div><strong>Trenutna zaliha:</strong> {fmtNumber(row.currentStock, 0, "Nije dostupna")}</div>
                                 <div><strong>Dani od poslednje prodaje:</strong> {row.daysSinceLastSale != null ? `${fmtNumber(row.daysSinceLastSale, 0, "0")} dana` : "N/A"}</div>
                                 <div><strong>Trend:</strong> {fmtPct(row.trendPct, 1)}</div>
                                 <div>
