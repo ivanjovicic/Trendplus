@@ -82,6 +82,12 @@ function mapLegacyPayloadToDurable(
 
   const periodFrom = query.fromDate ?? metadataMap.get("periodFromUtc") ?? metadataMap.get("periodFrom") ?? null;
   const periodTo = query.toDate ?? metadataMap.get("periodToUtc") ?? metadataMap.get("periodTo") ?? null;
+  const requestedFrom = query.fromDate ?? metadataMap.get("requestedPeriodFromUtc") ?? metadataMap.get("requestedFromUtc") ?? null;
+  const requestedTo = query.toDate ?? metadataMap.get("requestedPeriodToUtc") ?? metadataMap.get("requestedToUtc") ?? null;
+  const effectiveFrom = metadataMap.get("effectivePeriodFromUtc") ?? metadataMap.get("effectiveFromUtc") ?? null;
+  const effectiveTo = metadataMap.get("effectivePeriodToUtc") ?? metadataMap.get("effectiveToUtc") ?? null;
+  const observedFrom = metadataMap.get("observedPeriodFromUtc") ?? metadataMap.get("observedFromUtc") ?? null;
+  const observedTo = metadataMap.get("observedPeriodToUtc") ?? metadataMap.get("observedToUtc") ?? null;
   const usedFallback = asBool(metadataMap.get("usedFallback") ?? null);
   const recommendationAllowed = asBool(metadataMap.get("recommendationAllowed") ?? null);
   const stableParams = new URLSearchParams();
@@ -99,15 +105,22 @@ function mapLegacyPayloadToDurable(
       : "/analytics/reports/pilot-intake",
     reportTitle: payload.tableTitle || "Trendplus pilot izveštaj kvaliteta podataka",
     reportType: payload.documentType || "pilot-intake",
-    generatedAtUtc: metadataMap.get("generatedAtUtc") ?? new Date().toISOString(),
-    periodFrom: periodFrom ?? undefined,
-    periodTo: periodTo ?? undefined,
+    generatedAtUtc: metadataMap.get("generatedAtUtc") ?? null,
+    periodFrom,
+    periodTo,
     period: {
-      fromUtc: periodFrom ?? new Date().toISOString(),
-      toUtc: periodTo ?? new Date().toISOString(),
-      label: "Pilot intake",
+      fromUtc: periodFrom,
+      toUtc: periodTo,
+      label: metadataMap.get("periodLabel") ?? "Period nije dostupan",
+      requestedFromUtc: requestedFrom,
+      requestedToUtc: requestedTo,
+      effectiveFromUtc: effectiveFrom,
+      effectiveToUtc: effectiveTo,
+      observedFromUtc: observedFrom,
+      observedToUtc: observedTo,
     },
     lastRefreshAtUtc: metadataMap.get("lastRefreshAtUtc") ?? null,
+    dataFreshnessStatus: metadataMap.get("dataFreshnessStatus") ?? metadataMap.get("freshnessStatus") ?? null,
     dataQualityStatus: metadataMap.get("dataQualityStatus") ?? "warning",
     recommendationAllowed,
     usedFallback,
@@ -354,10 +367,10 @@ export default function PilotIntakeReportPage() {
         mode="report"
         periodFrom={resolvedReport.periodFrom ?? resolvedReport.period?.fromUtc ?? null}
         periodTo={resolvedReport.periodTo ?? resolvedReport.period?.toUtc ?? null}
-        lastRefreshAt={resolvedReport.lastRefreshAtUtc ?? refreshStatus?.lastSuccessfulRefreshAtUtc ?? null}
-        dataFreshnessStatus={refreshStatus?.dataFreshnessStatus ?? null}
-        refreshIsRunning={refreshStatus?.isRunning ?? false}
-        refreshCurrentStep={refreshStatus?.currentStep ?? null}
+        lastRefreshAt={resolvedReport.lastRefreshAtUtc ?? (isBrowserPreview ? null : refreshStatus?.lastSuccessfulRefreshAtUtc ?? null)}
+        dataFreshnessStatus={isBrowserPreview ? resolvedReport.dataFreshnessStatus ?? null : refreshStatus?.dataFreshnessStatus ?? null}
+        refreshIsRunning={isBrowserPreview ? false : refreshStatus?.isRunning ?? false}
+        refreshCurrentStep={isBrowserPreview ? null : refreshStatus?.currentStep ?? null}
         dataSource="Data quality checks"
         dataQualityStatus={resolvedReport.dataQualityStatus}
         dataQualityHref="/analytics/data-quality"

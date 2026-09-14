@@ -2,8 +2,9 @@
 
 Date: 2026-09-14
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ246
 
+Owner promotion 2026-09-14: `RQ246` was explicitly promoted from `WAITING` after completed `RQ245`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
 Owner promotion 2026-09-14: `RQ245` was explicitly promoted from `WAITING` after completed `RQ244`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-14: `RQ245` was delivered on `main` as the safe Analytics Actions metadata-label correction; the queue returned to no current READY prompt.
 Owner promotion 2026-09-14: `RQ244` was explicitly promoted from `WAITING` after completed `RQ243`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
@@ -10829,7 +10830,7 @@ Analytics Actions has maps for known freshness, confidence, action-code, source-
 
 ## RQ246 - Do not synthesize Pilot Intake preview period or provenance from current time
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend/contract/tests
 Feature family: pilot-intake-preview-provenance
@@ -10890,7 +10891,7 @@ The legacy browser-preview adapter for Pilot Intake creates a durable-shaped rep
 
 - `RQ170` remains the backend Pilot Intake request-period owner.
 - `RQ239` remains the Executive Decision Board fallback-provenance owner.
-- Keep this prompt `WAITING` while `RQ167` remains the existing `READY` item.
+- `RQ167` is already `DONE`; no remaining dependency blocker prevents this prompt.
 
 ---
 

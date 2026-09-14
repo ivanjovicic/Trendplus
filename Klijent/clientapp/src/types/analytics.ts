@@ -1077,8 +1077,8 @@ export interface DurableResolvedReportPayload {
 }
 
 export interface DurableReportPeriod {
-  fromUtc: string;
-  toUtc: string;
+  fromUtc: string | null;
+  toUtc: string | null;
   label: string;
   requestedDataset?: string | null;
   effectiveDataset?: string | null;
@@ -1175,9 +1175,9 @@ export interface PilotIntakeDurableReport {
   type?: string;
   reportTitle?: string;
   reportType?: string;
-  generatedAtUtc: string;
-  periodFrom?: string;
-  periodTo?: string;
+  generatedAtUtc: string | null;
+  periodFrom?: string | null;
+  periodTo?: string | null;
   period: DurableReportPeriod;
   lastRefreshAtUtc?: string | null;
   dataFreshnessStatus?: string | null;
