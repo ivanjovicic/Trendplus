@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { AnalyticsRefreshStatus, PilotDataQualityIntakeReport } from "../../types/analytics";
-import { computePilotImportReadiness } from "../pilotImportReadiness";
+import {
+  computePilotImportReadiness,
+  getPilotImportScopeLabel,
+  getPilotImportStatusLabel,
+  getPilotReadinessStatusLabel,
+} from "../pilotImportReadiness";
 
 function buildReport(overrides: Partial<PilotDataQualityIntakeReport> = {}): PilotDataQualityIntakeReport {
   return {
@@ -167,5 +172,32 @@ describe("computePilotImportReadiness", () => {
 
     expect(result.status).toBe("ready_with_warnings");
     expect(result.reasons.some((reason) => reason.includes("globalan"))).toBe(true);
+  });
+});
+
+describe("Pilot Intake display labels", () => {
+  it.each([
+    ["completed", "Završen"],
+    ["failed", "Neuspešan"],
+    ["running", "U toku"],
+    ["partial", "Delimično završen"],
+  ])("maps import status %s to %s", (value, label) => {
+    expect(getPilotImportStatusLabel(value)).toBe(label);
+  });
+
+  it.each([
+    ["global", "Svi podaci"],
+    ["all", "Svi podaci"],
+    ["store", "Prodavnica"],
+    ["supplier", "Dobavljač"],
+  ])("maps import scope %s to %s", (value, label) => {
+    expect(getPilotImportScopeLabel(value)).toBe(label);
+  });
+
+  it("does not expose missing or future contract tokens", () => {
+    expect(getPilotImportStatusLabel(null)).toBe("Nepoznato");
+    expect(getPilotImportScopeLabel("future_scope_v2")).toBe("Nije mapirano");
+    expect(getPilotReadinessStatusLabel("future_readiness_v2")).toBe("Nije mapirano");
+    expect(getPilotReadinessStatusLabel("insufficient_data")).toBe("Nedovoljno podataka");
   });
 });

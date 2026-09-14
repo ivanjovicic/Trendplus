@@ -2,8 +2,9 @@
 
 Date: 2026-09-14
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ247
 
+Owner promotion 2026-09-14: `RQ247` was explicitly promoted from `WAITING` after completed `RQ246`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
 Owner promotion 2026-09-14: `RQ246` was explicitly promoted from `WAITING` after completed `RQ245`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-14: `RQ246` was delivered on `main` with fail-closed legacy Pilot Intake preview period/provenance mapping and focused unknown/explicit metadata coverage; the queue returned to no current READY prompt.
 Owner promotion 2026-09-14: `RQ245` was explicitly promoted from `WAITING` after completed `RQ244`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
@@ -10916,7 +10917,7 @@ The legacy browser-preview adapter for Pilot Intake creates a durable-shaped rep
 
 ## RQ247 - Map Pilot Intake import status and scope to safe user-facing labels
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend/tests
 Feature family: pilot-intake-import-metadata-labels
@@ -10976,7 +10977,7 @@ Pilot Intake readiness renders backend import metadata directly in the readiness
 
 - `RQ245` remains the Analytics Actions metadata-label owner.
 - `RQ170` remains the backend Pilot Intake period/contract owner.
-- Keep this prompt `WAITING` while `RQ167` remains the existing `READY` item.
+- `RQ167` is already `DONE`; no remaining dependency blocker prevents this prompt.
 
 ---
 

@@ -13,6 +13,11 @@ import {
   type AnalyticsMetricKey,
 } from "../../utils/analyticsMetricDefinitions";
 import {
+  getPilotImportScopeLabel,
+  getPilotImportStatusLabel,
+  getPilotReadinessStatusLabel,
+} from "../../utils/pilotImportReadiness";
+import {
   fmtNumber,
   fmtPctFromRatio,
   formatDate,
@@ -55,11 +60,11 @@ function formatOptionalCount(value: number | null | undefined): string {
   return value == null ? "-" : String(value);
 }
 
-function buildCsv(report: PilotDataQualityIntakeReport): string {
+export function buildCsv(report: PilotDataQualityIntakeReport): string {
   const rows = [
     ["Sekcija", "Stavka", "Vrednost"],
-    ["Skor", "Status spremnosti", report.readinessStatus],
-    ["Skor", "Oznaka spremnosti", report.readinessLabel],
+    ["Skor", "Status spremnosti", getPilotReadinessStatusLabel(report.readinessStatus)],
+    ["Skor", "Oznaka spremnosti", getPilotReadinessStatusLabel(report.readinessStatus)],
     ["Skor", "Skor spremnosti", String(report.readinessScore)],
     ["Učitano", "Artikli", String(report.loadedData.articlesCount)],
     ["Učitano", "Stavke prodaje", String(report.loadedData.saleItemsCount)],
@@ -82,6 +87,8 @@ function buildCsv(report: PilotDataQualityIntakeReport): string {
     ["Uticaj", "Blokirane preporuke", String(report.impact.recommendationsBlockedCount)],
     ["Uticaj", "Ignorisani redovi", String(report.impact.ignoredRowsCount)],
     ["Uticaj", "Nedovoljni signali", String(report.impact.insufficientSignalCount)],
+    ["Import", "Status importa", getPilotImportStatusLabel(report.lastImportStatus)],
+    ["Import", "Scope importa", getPilotImportScopeLabel(report.lastImportScope)],
   ];
 
   for (const action of report.recommendedActions) {
@@ -96,21 +103,24 @@ function buildCsv(report: PilotDataQualityIntakeReport): string {
     .join("\n");
 }
 
-function buildSummary(report: PilotDataQualityIntakeReport): string {
+export function buildSummary(report: PilotDataQualityIntakeReport): string {
   return [
     `Trendplus pilot izveštaj kvaliteta podataka`,
-    `Skor spremnosti: ${report.readinessLabel} (${report.readinessScore}/100)`,
+    `Status spremnosti: ${getPilotReadinessStatusLabel(report.readinessStatus)}`,
+    `Skor spremnosti: ${getPilotReadinessStatusLabel(report.readinessStatus)} (${report.readinessScore}/100)`,
     `Učitano: ${fmtNumber(report.loadedData.articlesCount, 0, "-")} artikala, ${fmtNumber(report.loadedData.saleItemsCount, 0, "-")} stavki prodaje, ${fmtNumber(report.loadedData.receiptsCount, 0, "-")} računa`,
     `Top problemi: bez dobavljača ${fmtNumber(report.issues.missingSupplierCount, 0, "-")}, bez nabavne cene ${fmtNumber(report.issues.missingCostCount, 0, "-")}, bez kategorije ${fmtNumber(report.issues.missingCategoryCount, 0, "-")}`,
     `Uticaj: prihod bez cene ${fmtPctFromRatio(report.impact.revenueWithoutCostPercent, 1, "-")}, artikli bez dobavljača ${fmtPctFromRatio(report.impact.articlesWithoutSupplierPercent, 1, "-")}, blokirane preporuke ${fmtNumber(report.impact.recommendationsBlockedCount, 0, "-")}`,
+    `Status importa: ${getPilotImportStatusLabel(report.lastImportStatus)}`,
+    `Scope importa: ${getPilotImportScopeLabel(report.lastImportScope)}`,
     `Preporučene akcije: ${report.recommendedActions.join("; ")}`,
   ].join("\n");
 }
 
-function buildExportPayload(report: PilotDataQualityIntakeReport, filters: AnalyticsNamedValue[]) {
+export function buildExportPayload(report: PilotDataQualityIntakeReport, filters: AnalyticsNamedValue[]) {
   const rows: Array<{ section: string; item: string; value: string }> = [
-    { section: "Skor", item: "Status spremnosti", value: report.readinessStatus },
-    { section: "Skor", item: "Oznaka spremnosti", value: report.readinessLabel },
+    { section: "Skor", item: "Status spremnosti", value: getPilotReadinessStatusLabel(report.readinessStatus) },
+    { section: "Skor", item: "Oznaka spremnosti", value: getPilotReadinessStatusLabel(report.readinessStatus) },
     { section: "Skor", item: "Skor spremnosti", value: String(report.readinessScore) },
     { section: "Učitano", item: "Artikli", value: String(report.loadedData.articlesCount) },
     { section: "Učitano", item: "Stavke prodaje", value: String(report.loadedData.saleItemsCount) },
@@ -154,8 +164,8 @@ function buildExportPayload(report: PilotDataQualityIntakeReport, filters: Analy
     metadata: [
       { key: "generatedAtUtc", label: "Generisano", value: report.generatedAtUtc },
       { key: "lastImportAtUtc", label: "Poslednji import", value: report.lastImportAtUtc ?? null },
-      { key: "lastImportStatus", label: "Status importa", value: report.lastImportStatus ?? null },
-      { key: "lastImportScope", label: "Scope importa", value: report.lastImportScope ?? null },
+      { key: "lastImportStatus", label: "Status importa", value: getPilotImportStatusLabel(report.lastImportStatus) },
+      { key: "lastImportScope", label: "Scope importa", value: getPilotImportScopeLabel(report.lastImportScope) },
       { key: "lastRefreshAtUtc", label: "Poslednje osveženje", value: report.lastRefreshAtUtc ?? null },
       { key: "dataScope", label: "Opseg podataka", value: report.dataScope },
     ],
@@ -352,7 +362,7 @@ export default function PilotDataQualityIntakeReportPanel({ report, loading, err
           <p>Spremnost podataka za bezbedne preporuke, uz jasno označene rupe u katalogu i signalu.</p>
         </div>
         <div className="pilot-intake-score">
-          <span>{report.readinessLabel}</span>
+          <span>{getPilotReadinessStatusLabel(report.readinessStatus)}</span>
           <strong>{report.readinessScore}/100</strong>
         </div>
       </div>

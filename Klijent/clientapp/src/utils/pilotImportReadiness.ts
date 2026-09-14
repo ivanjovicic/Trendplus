@@ -25,6 +25,41 @@ const STATUS_SUMMARIES: Record<PilotImportReadinessStatus, string> = {
   unknown: "Nedovoljno signala je dostupno da bismo procenili spremnost pilota.",
 };
 
+const READINESS_STATUS_LABELS: Record<string, string> = {
+  excellent: "Odlično",
+  good: "Dobro",
+  warning: "Upozorenje",
+  critical: "Kritično",
+  insufficient_data: "Nedovoljno podataka",
+};
+
+const IMPORT_STATUS_LABELS: Record<string, string> = {
+  completed: "Završen",
+  success: "Završen",
+  succeeded: "Završen",
+  failed: "Neuspešan",
+  error: "Greška",
+  blocked: "Blokiran",
+  cancelled: "Otkazan",
+  canceled: "Otkazan",
+  running: "U toku",
+  in_progress: "U toku",
+  partial: "Delimično završen",
+  warning: "Upozorenje",
+  queued: "Na čekanju",
+  pending: "Na čekanju",
+};
+
+const IMPORT_SCOPE_LABELS: Record<string, string> = {
+  global: "Svi podaci",
+  all: "Svi podaci",
+  store: "Prodavnica",
+  store_id: "Prodavnica",
+  supplier: "Dobavljač",
+  supplier_id: "Dobavljač",
+  filtered: "Filtrirani podaci",
+};
+
 const NUMBER_FORMAT = new Intl.NumberFormat("sr-RS", { maximumFractionDigits: 0 });
 const PERCENT_FORMAT = new Intl.NumberFormat("sr-RS", { maximumFractionDigits: 1 });
 
@@ -38,6 +73,21 @@ function formatPercent(value: number): string {
 
 function normalizeStatus(value: string | null | undefined): string {
   return value?.trim().toLowerCase() ?? "";
+}
+
+export function getPilotReadinessStatusLabel(value: string | null | undefined): string {
+  const normalized = normalizeStatus(value);
+  return normalized ? READINESS_STATUS_LABELS[normalized] ?? "Nije mapirano" : "Nepoznato";
+}
+
+export function getPilotImportStatusLabel(value: string | null | undefined): string {
+  const normalized = normalizeStatus(value);
+  return normalized ? IMPORT_STATUS_LABELS[normalized] ?? "Nije mapirano" : "Nepoznato";
+}
+
+export function getPilotImportScopeLabel(value: string | null | undefined): string {
+  const normalized = normalizeStatus(value);
+  return normalized ? IMPORT_SCOPE_LABELS[normalized] ?? "Nije mapirano" : "Nepoznato";
 }
 
 function dedupe(values: string[]): string[] {
@@ -106,7 +156,7 @@ export function computePilotImportReadiness(
   ].filter((value): value is string => value !== null);
 
   const warningSignals = [
-    baseStatus === "warning" ? `Backend readiness je ${report.readinessLabel}.` : null,
+    baseStatus === "warning" ? `Backend readiness je ${getPilotReadinessStatusLabel(report.readinessStatus)}.` : null,
     supplierCount <= 0 ? "Nema dobavljača u pilot paketu." : null,
     report.issues.missingSupplierCount > 0 ? `${formatCount(report.issues.missingSupplierCount)} artikala nema dobavljača.` : null,
     report.issues.missingCostCount > 0 ? `${formatCount(report.issues.missingCostCount)} stavki nema nabavnu cenu.` : null,
@@ -131,7 +181,7 @@ export function computePilotImportReadiness(
   ].filter((value): value is string => value !== null);
 
   if (hardBlockers.length === 0 && warningSignals.length === 0 && baseStatus !== "good" && baseStatus !== "excellent") {
-    warningSignals.push(`Backend readiness status nije standardno prepoznat: ${report.readinessStatus}.`);
+    warningSignals.push(`Backend readiness status nije mapiran: ${getPilotReadinessStatusLabel(report.readinessStatus)}.`);
   }
 
   reasons.push(...hardBlockers, ...warningSignals);

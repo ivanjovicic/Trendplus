@@ -1,7 +1,12 @@
 import { Link } from "react-router-dom";
 import type { AnalyticsRefreshStatus, PilotDataQualityIntakeReport } from "../../types/analytics";
 import { formatDate, formatDateTime, fmtNumber } from "../../utils/analyticsFormatters";
-import { computePilotImportReadiness } from "../../utils/pilotImportReadiness";
+import {
+  computePilotImportReadiness,
+  getPilotImportScopeLabel,
+  getPilotImportStatusLabel,
+  getPilotReadinessStatusLabel,
+} from "../../utils/pilotImportReadiness";
 import "./PilotDataQualityIntakeReport.css";
 
 type Props = {
@@ -43,7 +48,7 @@ export default function PilotImportReadinessCard({
           {report ? (
             <ul>
               <li>Skor spremnosti: {fmtNumber(report.readinessScore, 0, "-")}/100</li>
-              <li>Oznaka spremnosti: {report.readinessLabel}</li>
+              <li>Oznaka spremnosti: {getPilotReadinessStatusLabel(report.readinessStatus)}</li>
               <li>Artikli: {fmtNumber(report.loadedData.articlesCount, 0, "-")}</li>
               <li>Stavke prodaje: {fmtNumber(report.loadedData.saleItemsCount, 0, "-")}</li>
               <li>Računi: {fmtNumber(report.loadedData.receiptsCount, 0, "-")}</li>
@@ -51,8 +56,8 @@ export default function PilotImportReadinessCard({
               <li>Prva prodaja: {formatDate(report.loadedData.firstSaleDate, "-")}</li>
               <li>Poslednja prodaja: {formatDate(report.loadedData.lastSaleDate, "-")}</li>
               <li>Poslednji import: {formatDateTime(report.lastImportAtUtc, "-")}</li>
-              <li>Status importa: {report.lastImportStatus?.trim() || "unknown"}</li>
-              <li>Scope importa: {report.lastImportScope?.trim() || "-"}</li>
+              <li>Status importa: {getPilotImportStatusLabel(report.lastImportStatus)}</li>
+              <li>Scope importa: {getPilotImportScopeLabel(report.lastImportScope)}</li>
               <li>Poslednje osveženje: {formatDateTime(report.lastRefreshAtUtc, "-")}</li>
               <li>Status osvežavanja: {refreshStatus?.dataFreshnessStatus ?? "-"}</li>
             </ul>

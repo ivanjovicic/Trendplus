@@ -83,8 +83,9 @@ describe("PilotImportReadinessCard", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText(/Status importa: completed/i)).toBeInTheDocument();
-    expect(screen.getByText(/Scope importa: global/i)).toBeInTheDocument();
+    expect(screen.getByText(/Status importa: Završen/i)).toBeInTheDocument();
+    expect(screen.getByText(/Scope importa: Svi podaci/i)).toBeInTheDocument();
+    expect(screen.queryByText(/completed|global/i)).not.toBeInTheDocument();
     expect(screen.getByText("Spremno")).toBeInTheDocument();
   });
 
@@ -96,6 +97,23 @@ describe("PilotImportReadinessCard", () => {
     );
 
     expect(screen.getByText("Nije spremno")).toBeInTheDocument();
+    expect(screen.getByText(/Status importa: Neuspešan/i)).toBeInTheDocument();
     expect(screen.getByText(/Poslednji import nije uspeo/i)).toBeInTheDocument();
+  });
+
+  it("maps missing and future values without exposing backend tokens", () => {
+    render(
+      <MemoryRouter>
+        <PilotImportReadinessCard
+          report={buildReport({ lastImportStatus: "future_status_v2", lastImportScope: null, readinessStatus: "future_readiness_v2" })}
+          refreshStatus={buildRefresh()}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText(/Status importa: Nije mapirano/i)).toBeInTheDocument();
+    expect(screen.getByText(/Scope importa: Nepoznato/i)).toBeInTheDocument();
+    expect(screen.getByText(/Oznaka spremnosti: Nije mapirano/i)).toBeInTheDocument();
+    expect(screen.queryByText(/future_status_v2|future_readiness_v2/i)).not.toBeInTheDocument();
   });
 });

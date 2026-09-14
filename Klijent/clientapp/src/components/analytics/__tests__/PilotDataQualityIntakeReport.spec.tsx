@@ -2,7 +2,11 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import type { PilotDataQualityIntakeReport } from "../../../types/analytics";
-import PilotDataQualityIntakeReportPanel from "../PilotDataQualityIntakeReport";
+import PilotDataQualityIntakeReportPanel, {
+  buildCsv,
+  buildExportPayload,
+  buildSummary,
+} from "../PilotDataQualityIntakeReport";
 
 function emptyIntakeReport(): PilotDataQualityIntakeReport {
   return {
@@ -74,5 +78,46 @@ describe("PilotDataQualityIntakeReport", () => {
     expect(screen.getByRole("heading", { name: "Pilot intake izveštaj nema dovoljno podataka" })).toBeInTheDocument();
     expect(screen.getByText("Nema dovoljno ucitanih artikala ili import redova za readiness procenu.")).toBeInTheDocument();
     expect(screen.queryByText("0/100")).not.toBeInTheDocument();
+  });
+
+  it("uses the same safe readiness/import labels in report, copied summary and exports", () => {
+    const report = emptyIntakeReport();
+    report.readinessStatus = "warning";
+    report.lastImportStatus = "completed";
+    report.lastImportScope = "global";
+
+    const csv = buildCsv(report);
+    const summary = buildSummary(report);
+    const exportPayload = buildExportPayload(report, []);
+    const exportText = JSON.stringify(exportPayload);
+
+    for (const text of [csv, summary, exportText]) {
+      expect(text).toContain("Upozorenje");
+      expect(text).toContain("Završen");
+      expect(text).toContain("Svi podaci");
+      expect(text).not.toContain("warning");
+      expect(text).not.toContain("completed");
+      expect(text).not.toContain("global");
+    }
+  });
+
+  it("keeps unknown and future values visibly unknown in every export surface", () => {
+    const report = emptyIntakeReport();
+    report.readinessStatus = "future_readiness_v2";
+    report.lastImportStatus = "future_status_v2";
+    report.lastImportScope = null;
+
+    const surfaces = [
+      buildCsv(report),
+      buildSummary(report),
+      JSON.stringify(buildExportPayload(report, [])),
+    ];
+
+    for (const text of surfaces) {
+      expect(text).toContain("Nije mapirano");
+      expect(text).toContain("Nepoznato");
+      expect(text).not.toContain("future_readiness_v2");
+      expect(text).not.toContain("future_status_v2");
+    }
   });
 });
