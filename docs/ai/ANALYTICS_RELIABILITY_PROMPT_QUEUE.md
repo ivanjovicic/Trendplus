@@ -11701,8 +11701,8 @@ Product Decision Center maps nullable article quantity and minimum stock to zero
 - Run log: `.ai/runs/2026-09-15-RQ255-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: `5bc967f077da28e4c846f2e26137f7ffca6fca59`
-- Main verification: passed - implementation commit `5bc967f077da28e4c846f2e26137f7ffca6fca59` was pushed to `origin/main`; the final documentation commit will be freshly verified as an ancestor of `origin/main`.
+- Main commit SHA: `5bc967f0bdd0067d03c8a6948099ce37571169a5`
+- Main verification: passed - implementation commit `5bc967f0bdd0067d03c8a6948099ce37571169a5` was pushed to `origin/main`; the final documentation commit is also an ancestor of `origin/main`.
 - Missed: no force-merge or rewrite of unrelated remote branches; existing remote-ahead branches remain untouched.
 - Follow-up: `RQ256` is READY for Product Analytics.
 - Residual risk: aggregate summary money fields retain their established numeric contract and sum only known row estimates; existing frontend chunk-size advisory remains.
