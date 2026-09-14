@@ -2,7 +2,7 @@
 
 Date: 2026-09-14
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ258
+Current READY prompt: RQ259
 
 Owner completion 2026-09-14: `RQ249` was delivered on `main` with fail-closed Supplier Decision Hub detail and report-toolbar actionability gates; blocked, fallback, stale/partial and missing recommendation permission remain review-only.
 Owner promotion 2026-09-14: `RQ250` was explicitly promoted after completed `RQ249`, repaired the stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
@@ -20,7 +20,8 @@ Owner promotion 2026-09-15: `RQ256` was explicitly promoted after completed `RQ2
 Owner completion 2026-09-15: `RQ256` was delivered on `main` with nullable PDC margin coverage when the current-period revenue denominator is absent; measured finite `0%` with positive revenue remains visible, unavailable coverage fails closed in reasoning/confidence/reliability/actionability, and row/evidence/table/detail consumers preserve the same state. The queue advanced to `RQ257`.
 Owner completion 2026-09-15: `RQ257` was delivered on `main` with finite/null normalization across Supplier Sales Stats and Supplier Decision Hub PoP, trend, ratio, sort, tooltip, detail, action and export/report adapters; measured zero remains visible, non-finite values are unavailable, and backend recommendation ownership is unchanged. The queue advanced to `RQ258`.
 Owner promotion 2026-09-15: `RQ258` was explicitly promoted after completed `RQ257`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
-Owner promotion 2026-09-15: `RQ257` was explicitly promoted after completed `RQ256`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
+Owner completion 2026-09-15: `RQ258` was delivered on `main` with safe Serbian mappings for shared refresh/fallback tokens, finite/null data-quality summary semantics, case/whitespace freshness normalization and preserved trust/recommendation gating; measured finite zero remains visible and backend ownership is unchanged. The queue advanced to `RQ259`.
+Owner promotion 2026-09-15: `RQ259` was explicitly promoted after completed `RQ258`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
 
 ### Completion note
 
@@ -295,8 +296,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ227 | DONE | cleanup-safety-gates | Batch delete proceeds after archive quota failure |
 | RQ228 | DONE | period-timezone-contract-consistency | Insight Studio v1/v2 period handling timezone mismatch |
 | RQ233 | DONE | supplier-concentration-scope-parity | Supplier concentration denominator changes with visible scope |
-| RQ258 | WAITING | trust-header-safe-metadata | Keep shared AnalyticsTrustHeader metadata user-safe and finite |
-| RQ259 | WAITING | trust-header-mode-freshness | Make shared trust-header gating and freshness normalization mode-aware |
+| RQ258 | DONE | trust-header-safe-metadata | Keep shared AnalyticsTrustHeader metadata user-safe and finite |
+| RQ259 | READY | trust-header-mode-freshness | Make shared trust-header gating and freshness normalization mode-aware |
 | RQ260 | WAITING | empty-state-safe-reason-action | Keep shared analytics empty state user-safe and actionable |
 | RQ261 | WAITING | refresh-status-duration-message-truth | Preserve refresh duration unknown state and safe operational messaging |
 | RQ262 | WAITING | executive-kpi-value-tone-parity | Keep executive KPI availability and visual tone consistent |
@@ -11883,7 +11884,7 @@ Supplier Sales Stats and Supplier Decision Hub use `Number.isNaN` rather than `N
 
 ## RQ258 - Keep shared AnalyticsTrustHeader metadata user-safe and finite
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: frontend/tests
 Feature family: trust-header-safe-metadata
@@ -11945,13 +11946,31 @@ The shared `AnalyticsTrustHeader` renders backend-provided `fallbackReasonCode` 
 
 - `RQ253` remains the owner of raw error-code removal from `AnalyticsErrorState`; this prompt owns the trust-header metadata boundary.
 - `RQ145` remains the broad cross-surface safe-messaging/parity owner.
-- RQ257 is complete; this prompt is the single current `READY` item for Analytics Frontend.
+- RQ257 is complete; this prompt was the single current `READY` item for Analytics Frontend before completion.
+
+### Completion note
+
+- Date: 2026-09-15
+- Status: DONE
+- Completion: Shared `AnalyticsTrustHeader` now maps known and unknown refresh/fallback tokens to safe Serbian copy, normalizes supported freshness values defensively and treats only finite summary counts as measured evidence; finite zero remains visible while `NaN`/`Infinity`/`-Infinity` fail closed. Fallback, partial, stale, unknown and recommendation-gated semantics remain unchanged, with no backend decision ownership changes.
+- Changed files: `Klijent/clientapp/src/components/analytics/AnalyticsTrustHeader.tsx`, `Klijent/clientapp/src/components/analytics/__tests__/AnalyticsTrustHeader.spec.tsx`
+- Checks run: failing-first focused header test recorded 3 failures and 2 passes before implementation; focused shared-header and representative consumer tests passed with 5 files and 43 tests; `npm run check:analytics-guardrails` passed; `npm run build` passed with the existing frontend chunk-size advisory; `node scripts/check-prompt-queues.mjs --self-test` passed; `node scripts/check-prompt-queues.mjs` passed; `git diff --check` passed.
+- Checks not run: full frontend suite, backend build/tests and live provider/browser/deployed proof were not run because this was a bounded shared frontend presentation change.
+- Run log: `.ai/runs/2026-09-15-RQ258-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `049f1c4c45779d46dc684f3b204a0e7bdca9255d`
+- Main verification: passed - fresh `git fetch origin main` confirmed local `main` and `origin/main` are synchronized; implementation SHA `049f1c4c45779d46dc684f3b204a0e7bdca9255d` is an ancestor of `origin/main`.
+- Missed: no backend freshness, recommendation, confidence, data-quality calculation or business-metric changes were made by design; no live-provider proof was available.
+- Residual risk: existing frontend chunk-size advisory and malformed upstream metadata outside this shared header boundary remain outside the prompt.
+- Prompt defect / scope repair: repaired the stale dependency wording that incorrectly referenced already-DONE `RQ169`; no business-scope expansion was made.
+- Follow-up: `RQ259` is READY for Analytics Frontend.
 
 ---
 
 ## RQ259 - Make shared trust-header gating and freshness normalization mode-aware
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: frontend/tests
 Feature family: trust-header-mode-freshness
@@ -12010,7 +12029,7 @@ Commit suggestion: `fix(analytics): align trust header mode and freshness states
 
 - `RQ176` and `RQ187` remain backend/source freshness owners for inventory and cache metadata; this prompt only normalizes the shared display boundary.
 - `RQ143` remains the backend decision-ownership owner and `RQ145` the broad parity owner.
-- Keep this prompt `WAITING` while `RQ169` remains the existing `READY` item.
+- `RQ258` is complete; this prompt is the single current `READY` item for Analytics Frontend.
 
 ---
 
