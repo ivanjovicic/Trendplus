@@ -2,9 +2,10 @@
 
 Date: 2026-09-14
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ240
+Current READY prompt: none
 
 Owner promotion 2026-09-14: `RQ240` was explicitly promoted from `WAITING` after completed `RQ239`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
+Owner completion 2026-09-14: `RQ240` was delivered on `main`; the queue returned to no current READY prompt.
 
 Owner promotion 2026-09-10: `RQ227` was explicitly promoted by the user after completed `RQ226`; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ227` was delivered on `main` with fail-closed deleted-row archive handling and focused regression coverage; the RQ queue returned to no current READY prompt.
@@ -9649,7 +9650,7 @@ Malformed `NightlyAnalyticsRefresh:RunAtUtc` values fall back to 00:10 UTC with 
 
 ## RQ227 - Batch delete proceeds after archive quota failure
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/operations
 Feature family: cleanup-safety-gates
@@ -10567,6 +10568,26 @@ Analytics Details and the main Analytics Dashboard treat missing OOS and low-sto
 - `RQ204` remains the Analytics Details period/scope owner.
 - `RQ154`/`RQ161` remain numeric/trend state owners for their respective families.
 - `RQ167` is already `DONE`; no remaining dependency blocker prevents this prompt.
+
+### Completion note
+
+- Date: 2026-09-14
+- Status: DONE
+- Completion: Details and Dashboard now share finite/nullable inventory ratio projection; missing, non-finite or semantically incompatible counts remain unavailable, valid zero counts remain measured zero, and unavailable ratios use neutral presentation.
+- Changed files: `Klijent/clientapp/src/pages/AnalyticsDetails.tsx`, `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx`, `Klijent/clientapp/src/utils/inventoryRatioState.ts`, `Klijent/clientapp/src/utils/__tests__/inventoryRatioState.spec.ts`, `Klijent/clientapp/src/pages/__tests__/AnalyticsDetails.periodState.spec.tsx`, `Klijent/clientapp/src/pages/__tests__/AnalyticsDashboard.controlBar.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-14-RQ240-evidence.md`
+- Contract/runtime behavior changed: absent, `NaN`, `Infinity`, negative and over-total ratio inputs no longer become fake `0%`, `95%` or `100%`; period, scope, recommendation and backend ownership semantics are unchanged.
+- Checks run: focused inventory projection and Details/Dashboard specs (pass, 34/34); `npm run check:analytics-guardrails` (pass); `npm run build` (pass, existing Vite large-chunk warning); governance validators and self-tests (pass); `git diff --check` (pass).
+- Checks not run: full frontend/backend suites; browser/live API/production data.
+- Run log: `.ai/runs/2026-09-14-RQ240-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `dae90709f59ee9d871c67b03dff410baf6a81513`
+- Main verification: passed - `origin/main` contains implementation commit `dae90709f59ee9d871c67b03dff410baf6a81513`; current pushed target is `ee84153fa996fc0cae8b4664ac02581e17dc17f8`.
+- Missed: full cross-surface suite and live/browser payload proof were outside this bounded frontend task.
+- Residual risk: Vite reports the existing large-chunk warning; runtime payloads with malformed count types remain handled as unavailable by the shared projection.
+- Next: `RQ243` remains the next candidate and is not promoted by this run.
+- Follow-up: Explicitly promote `RQ243` on the next user-directed queue execution.
+- Prompt defect / scope repair: stale `RQ167` dependency repaired same-owner because `RQ167` is DONE.
 
 ---
 
