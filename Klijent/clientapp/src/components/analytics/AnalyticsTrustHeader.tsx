@@ -59,6 +59,22 @@ const FRESHNESS_LABELS: Record<string, string> = {
   unknown: "Nije poznato",
 };
 
+const REFRESH_STEP_LABELS: Record<string, string> = {
+  sales_facts_refresh: "osvežavanje prodajnih činjenica",
+  product_dim_refresh: "osvežavanje proizvoda",
+  supplier_decision_mvs: "osvežavanje signala dobavljača",
+  product_decision_snapshot: "osvežavanje odluka za proizvode",
+  inventory_recommendations: "osvežavanje preporuka zaliha",
+};
+
+const FALLBACK_REASON_LABELS: Record<string, string> = {
+  no_mv_30d: "Nema dovoljno zapisa u traženom periodu",
+  no_window_rows: "Nema dovoljno zapisa u traženom periodu",
+  range_uses_all_time: "Korišćen je širi istorijski skup podataka",
+  fallback_dataset_used: "Korišćen je pomoćni skup podataka",
+  missing_post_observation: "Nedostaje deo post-nivelacija podataka",
+};
+
 function renderLink(href: string, label: string, className: string) {
   if (href.startsWith("/")) {
     return <Link to={href} className={className}>{label}</Link>;
@@ -68,11 +84,29 @@ function renderLink(href: string, label: string, className: string) {
 }
 
 function normalizeFreshness(value: string | null | undefined): "fresh" | "stale" | "critical" | "unknown" {
-  if (value === "fresh" || value === "stale" || value === "critical") {
-    return value;
+  const normalized = value?.trim().toLowerCase();
+  if (normalized === "fresh" || normalized === "stale" || normalized === "critical") {
+    return normalized;
   }
 
   return "unknown";
+}
+
+function normalizeToken(value: string | null | undefined): string | null {
+  const normalized = value?.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  return normalized || null;
+}
+
+function safeRefreshStepLabel(value: string | null | undefined): string | null {
+  const normalized = normalizeToken(value);
+  if (!normalized) return null;
+  return REFRESH_STEP_LABELS[normalized] ?? "Obrada podataka";
+}
+
+function safeFallbackReasonLabel(value: string | null | undefined): string | null {
+  const normalized = normalizeToken(value);
+  if (!normalized) return null;
+  return FALLBACK_REASON_LABELS[normalized] ?? "Dodatni razlog fallback-a nije naveden.";
 }
 
 function normalizeStatus(value: string | null | undefined): "good" | "warning" | "critical" | "insufficient_data" | null {
@@ -97,7 +131,7 @@ function statusTone(status: ReturnType<typeof normalizeStatus>): "good" | "warni
 }
 
 function renderSummaryValue(value: number | null | undefined): string {
-  if (value == null) {
+  if (value == null || !Number.isFinite(value)) {
     return "-";
   }
 
@@ -117,7 +151,7 @@ function hasSummaryValues(
     summary.missingCategoryCount,
     summary.insufficientSignalCount,
     summary.ignoredRowsCount,
-  ].some((value) => value != null);
+  ].some((value) => value != null && Number.isFinite(value));
 }
 
 export default function AnalyticsTrustHeader({
@@ -164,6 +198,8 @@ export default function AnalyticsTrustHeader({
     : (normalizedEffectiveDataset ?? normalizedRequestedDataset);
   const effectiveLabel = effectivePeriodLabel?.trim() || null;
   const provenanceLabel = provenanceBasis?.trim() || null;
+  const refreshStepLabel = safeRefreshStepLabel(refreshCurrentStep);
+  const fallbackReasonLabel = safeFallbackReasonLabel(fallbackReasonCode);
   const showFallbackBanner = Boolean(usedFallback);
   const showGatedBanner = recommendationAllowed !== true && !showFallbackBanner;
   const showPartialBanner = Boolean(isPartial) || freshness === "stale" || freshness === "critical";
@@ -178,7 +214,7 @@ export default function AnalyticsTrustHeader({
           <h1 className="ath-title">{title}</h1>
           <p className="ath-description">{description}</p>
           {refreshIsRunning ? (
-            <p className="ath-live">Osvežavanje je u toku{refreshCurrentStep ? ` (${refreshCurrentStep})` : ""}</p>
+            <p className="ath-live">Osvežavanje je u toku{refreshStepLabel ? ` (${refreshStepLabel})` : ""}</p>
           ) : null}
         </div>
         <div className={`ath-status ath-status-${tone}`}>
@@ -228,7 +264,7 @@ export default function AnalyticsTrustHeader({
           <strong>Fallback aktiviran.</strong>{" "}
           Za traženi period nema dovoljno podataka. Korišćen je dataset {effectiveLabel ?? normalizedEffectiveDataset ?? "n/a"} kao pomoćni signal.
           {fallbackReason ? ` ${fallbackReason}` : null}
-          {fallbackReasonCode ? <span className="ath-banner-code"> ({fallbackReasonCode})</span> : null}
+          {fallbackReasonLabel ? <span className="ath-banner-code"> ({fallbackReasonLabel})</span> : null}
         </div>
       ) : null}
 

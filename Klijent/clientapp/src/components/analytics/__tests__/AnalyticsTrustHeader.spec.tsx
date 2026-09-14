@@ -58,7 +58,8 @@ describe("AnalyticsTrustHeader", () => {
   it("shows running subtitle while refresh is active", () => {
     renderHeader({ refreshIsRunning: true, refreshCurrentStep: "supplier_decision_mvs" });
 
-    expect(screen.getByText(/Osvežavanje je u toku \(supplier_decision_mvs\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Osvežavanje je u toku \(osvežavanje signala dobavljača\)/)).toBeInTheDocument();
+    expect(screen.queryByText(/supplier_decision_mvs/)).not.toBeInTheDocument();
   });
 
   it("prioritizes fallback messaging over gated messaging and keeps dataset lineage visible", () => {
@@ -81,7 +82,8 @@ describe("AnalyticsTrustHeader", () => {
     expect(screen.getByText("All-time fallback")).toBeInTheDocument();
     expect(screen.getByText("mv_supplier_decision_score_cache_90d")).toBeInTheDocument();
     expect(screen.getByText(/Fallback aktiviran\./i)).toBeInTheDocument();
-    expect(screen.getByText(/NO_WINDOW_ROWS/i)).toBeInTheDocument();
+    expect(screen.getByText(/Nema dovoljno zapisa u traženom periodu/i)).toBeInTheDocument();
+    expect(screen.queryByText(/NO_WINDOW_ROWS/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Preporuka je gated/i)).not.toBeInTheDocument();
     expect(screen.getByText(/Prikaz može biti delimičan ili zastareo/i)).toBeInTheDocument();
   });
@@ -105,5 +107,31 @@ describe("AnalyticsTrustHeader", () => {
     expect(screen.getByText("Ne prikazuj konačnu preporuku bez jačeg signala.")).toBeInTheDocument();
     expect(screen.getByText("Nema dovoljno podataka za izabrani period.")).toBeInTheDocument();
     expect(screen.queryByText("Dataset")).not.toBeInTheDocument();
+  });
+
+  it("keeps supported freshness normalization and fails closed for unknown tokens and non-finite counts", () => {
+    renderHeader({
+      dataFreshnessStatus: "  STALE ",
+      refreshIsRunning: true,
+      refreshCurrentStep: "internal_secret_step",
+      usedFallback: true,
+      fallbackReasonCode: "internal_secret_fallback",
+      dataQualitySummary: {
+        missingSupplierCount: Number.NaN,
+        missingCostCount: Number.POSITIVE_INFINITY,
+        missingCategoryCount: -2,
+        insufficientSignalCount: 0,
+        ignoredRowsCount: Number.NEGATIVE_INFINITY,
+      },
+    });
+
+    expect(screen.getByText("Zastarelo")).toBeInTheDocument();
+    expect(screen.getByText(/Osvežavanje je u toku \(Obrada podataka\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Dodatni razlog fallback-a nije naveden/i)).toBeInTheDocument();
+    expect(screen.queryByText(/internal_secret/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("NaN")).not.toBeInTheDocument();
+    expect(screen.queryByText("Infinity")).not.toBeInTheDocument();
+    expect(screen.getByText("-2")).toBeInTheDocument();
+    expect(screen.getByText("0")).toBeInTheDocument();
   });
 });
