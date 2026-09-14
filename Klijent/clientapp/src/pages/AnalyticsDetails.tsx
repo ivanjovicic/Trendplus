@@ -20,6 +20,7 @@ import {
   getAnalyticsPeriodPresetRange,
 } from "../utils/analyticsPeriodPresets";
 import { fmtNumber, fmtPct, fmtRsd } from "../utils/analyticsFormatters";
+import { projectInventoryRatios } from "../utils/inventoryRatioState";
 import {
   ANALYTICS_VELOCITY_LABEL,
   ANALYTICS_VELOCITY_SHORT_LABEL,
@@ -309,10 +310,7 @@ export default function AnalyticsDetails() {
     const sL = l7.reduce((a, b) => a + b, 0);
     const sP = p7.reduce((a, b) => a + b, 0);
     const pct = sP > 0 ? ((sL - sP) / sP) * 100 : null;
-    const oos = inventory?.outOfStockCount ?? 0;
-    const total = inventory?.totalSkuCount ?? 0;
-    const inStock = total > 0 ? ((total - oos) / total) * 100 : null;
-    const red = total > 0 ? ((inventory?.lowStockCount ?? 0) / total) * 100 : null;
+    const { availablePct: inStock, redZonePct: red } = projectInventoryRatios(inventory ?? {});
     const pareto = adv?.cards.find((c) => c.key === "pareto")?.value ?? null;
     return { sl, pct, inStock, red, pareto };
   }, [adv?.cards, inventory, trend]);
@@ -414,11 +412,11 @@ export default function AnalyticsDetails() {
           </section>
 
           <section className="ad-grid ad-risk-grid">
-            <article className={`ad-risk-card ${metric.inStock != null && metric.inStock >= 95 ? "good" : metric.inStock != null && metric.inStock >= 90 ? "warning" : "critical"}`}>
+            <article className={`ad-risk-card ${metric.inStock == null ? "neutral" : metric.inStock >= 95 ? "good" : metric.inStock >= 90 ? "warning" : "critical"}`}>
               <span>In-stock %</span><strong>{fmtPct(metric.inStock, 1, "Nije dostupno")}</strong><small>(SKU na stanju / ukupan SKU) * 100</small>
             </article>
             <article className={`ad-risk-card ${tone(validL?.status)}`}><span>OOS + Lost sales</span><strong>{fmtNumber(inventory?.outOfStockCount, 0, "Nije dostupno")} | {fmtRsd(validL?.lostSalesEstimate, 0, "Nije dostupno")}</strong><small>Rizik od rasprodatosti</small></article>
-            <article className={`ad-risk-card ${metric.red != null && metric.red < 8 ? "good" : metric.red != null && metric.red < 15 ? "warning" : "critical"}`}><span>Red zone SKU %</span><strong>{fmtPct(metric.red, 1, "Nije dostupno")}</strong><small>Niska zaliha / ukupan SKU</small></article>
+            <article className={`ad-risk-card ${metric.red == null ? "neutral" : metric.red < 8 ? "good" : metric.red < 15 ? "warning" : "critical"}`}><span>Red zone SKU %</span><strong>{fmtPct(metric.red, 1, "Nije dostupno")}</strong><small>Niska zaliha / ukupan SKU</small></article>
             <article className={`ad-risk-card ${metric.pareto != null && metric.pareto > 85 ? "warning" : "good"}`}><span>Pareto 80/20</span><strong>{fmtPct(metric.pareto, 1, "Nije dostupno")}</strong><small>Udeo prometa top 20 SKU</small></article>
             <article className={`ad-risk-card ${tone(validF?.status)}`}><span>Data Health</span><strong>{validC?.score == null ? "N/A" : fmtPct(validC.score * 100)} | {validF?.freshnessHours == null ? "N/A" : `${fmtNumber(validF.freshnessHours, 1)}h`}</strong><small>Completeness + freshness</small></article>
           </section>

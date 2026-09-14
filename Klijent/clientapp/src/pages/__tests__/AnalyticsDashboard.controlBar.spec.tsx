@@ -2,7 +2,7 @@ import React from "react";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { rest } from "../../mocks/mswCompat";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { server } from "../../mocks/server";
 import * as analyticsApi from "../../services/analyticsApi";
 import AnalyticsDashboard from "../AnalyticsDashboard";
@@ -77,6 +77,12 @@ function buildBootstrapResponse(actionTitle: string) {
 }
 
 describe("AnalyticsDashboard control bar", () => {
+  const getMetricCard = (label: string) => screen.getByText(label).closest("article") as HTMLElement;
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   beforeEach(() => {
     // Align fetch signal checks with the browser AbortSignal used by app hooks.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -371,5 +377,48 @@ describe("AnalyticsDashboard control bar", () => {
       undefined,
       undefined,
     );
+  });
+
+  it.each([
+    [{ totalSkuCount: 100, outOfStockCount: 5, lowStockCount: 10 }, "95,0%", "10,0%", "good", "warning"],
+    [{ totalSkuCount: 100, outOfStockCount: 0, lowStockCount: 0 }, "100,0%", "0,0%", "good", "warning"],
+    [{ totalSkuCount: 100, outOfStockCount: null, lowStockCount: undefined }, "Nije dostupno", "Nije dostupno", "neutral", "neutral"],
+    [{ totalSkuCount: undefined, outOfStockCount: 5, lowStockCount: 10 }, "Nije dostupno", "Nije dostupno", "neutral", "neutral"],
+    [{ totalSkuCount: 100, outOfStockCount: Number.NaN, lowStockCount: Number.POSITIVE_INFINITY }, "Nije dostupno", "Nije dostupno", "neutral", "neutral"],
+    [null, "Nije dostupno", "Nije dostupno", "neutral", "neutral"],
+  ])("keeps dashboard inventory ratios and tones trustworthy for %#", async (inventory, available, red, availableTone, redTone) => {
+    vi.spyOn(analyticsApi, "getDashboardBootstrap").mockResolvedValue({
+      ...buildBootstrapResponse("Inventory state"),
+      inventory,
+    } as never);
+
+    render(
+      <MemoryRouter>
+        <AnalyticsDashboard />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText("Inventory state", { selector: "strong" });
+    fireEvent.click(screen.getByRole("button", { name: "Prikaži detaljnu analizu" }));
+    await waitFor(() => expect(within(getMetricCard("Dostupnost SKU")).getByText(available)).toBeInTheDocument());
+    expect(within(getMetricCard("Crvena zona zaliha")).getByText(red)).toBeInTheDocument();
+    expect(getMetricCard("Dostupnost SKU")).toHaveClass(availableTone);
+    expect(getMetricCard("Crvena zona zaliha")).toHaveClass(redTone);
+    expect(getMetricCard("Dostupnost SKU")).not.toHaveClass("critical");
+    expect(getMetricCard("Crvena zona zaliha")).not.toHaveClass("critical");
+  });
+
+  it("keeps dashboard API errors separate from unavailable ratio values", async () => {
+    vi.spyOn(analyticsApi, "getDashboardBootstrap").mockRejectedValue(new Error("dashboard unavailable"));
+
+    render(
+      <MemoryRouter>
+        <AnalyticsDashboard />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/dashboard unavailable/)).toBeInTheDocument();
+    expect(screen.queryByText("100,0%")).not.toBeInTheDocument();
+    expect(screen.queryByText("0,0%")).not.toBeInTheDocument();
   });
 });

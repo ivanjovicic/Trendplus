@@ -101,6 +101,7 @@ import {
   normalizeDataQualityStatus,
 } from "../utils/analyticsQuality";
 import type { AnalyticsMetricKey } from "../utils/analyticsMetricDefinitions";
+import { projectInventoryRatios } from "../utils/inventoryRatioState";
 import "./AnalyticsDashboard.css";
 
 type TopTabKey = "revenue" | "units" | "velocity" | "margin";
@@ -920,15 +921,12 @@ export default function AnalyticsDashboard() {
   const movingStats = useMemo(() => calculateDashboardMovingStats(dailySales), [dailySales]);
 
   const derived = useMemo(() => {
-    const totalSku = inventory?.totalSkuCount ?? 0;
-    const out = inventory?.outOfStockCount ?? 0;
-    const low = inventory?.lowStockCount ?? 0;
-    const available = Math.max(totalSku - out, 0);
+    const { availablePct, redZonePct } = projectInventoryRatios(inventory ?? {});
     return {
       revenuePerDay: summary ? summary.totalRevenue / selectedDays : null,
       transactionsPerDay: summary ? summary.totalTransactions / selectedDays : null,
-      availablePct: totalSku > 0 ? (available / totalSku) * 100 : null,
-      redZonePct: totalSku > 0 ? (low / totalSku) * 100 : null,
+      availablePct,
+      redZonePct,
     };
   }, [inventory, selectedDays, summary]);
 
@@ -2374,13 +2372,13 @@ export default function AnalyticsDashboard() {
                   <MetricCard
                     label="Dostupnost SKU"
                     value={fmtPct(derived.availablePct, 1, "Nije dostupno")}
-                    tone="good"
+                    tone={derived.availablePct == null ? "neutral" : "good"}
                     infoTip={HELP.sku}
                   />
                   <MetricCard
                     label="Crvena zona zaliha"
                     value={fmtPct(derived.redZonePct, 1, "Nije dostupno")}
-                    tone="warning"
+                    tone={derived.redZonePct == null ? "neutral" : "warning"}
                     infoTip={HELP.oos}
                   />
                   <MetricCard

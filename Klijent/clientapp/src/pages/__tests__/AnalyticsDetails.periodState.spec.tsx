@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import AnalyticsDetails from "../AnalyticsDetails";
@@ -19,6 +19,8 @@ const apiMocks = vi.hoisted(() => ({
 vi.mock("../../services/analyticsApi", () => apiMocks);
 
 describe("AnalyticsDetails period state", () => {
+  const getRiskCard = (label: string) => screen.getByText(label).closest("article") as HTMLElement;
+
   beforeEach(() => {
     vi.clearAllMocks();
     apiMocks.checkAnalyticsHealth.mockResolvedValue({ tables: { salesFacts: 0, salesLineFacts: 0, productsDim: 0 } });
@@ -97,5 +99,56 @@ describe("AnalyticsDetails period state", () => {
       expect(screen.getByText("Analytics baza: 2 prodaja, 2 stavki, 2 proizvoda.")).toBeInTheDocument();
       expect(screen.queryByText("Analytics baza: 1 prodaja, 1 stavki, 1 proizvoda.")).not.toBeInTheDocument();
     });
+  });
+
+  it("preserves valid zero inventory ratios and uses the shared projection", async () => {
+    apiMocks.getInventoryStatus.mockResolvedValue({ totalSkuCount: 100, lowStockCount: 0, outOfStockCount: 0 });
+
+    render(
+      <MemoryRouter>
+        <AnalyticsDetails />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(within(getRiskCard("In-stock %")).getByText("100,0%")).toBeInTheDocument());
+    expect(within(getRiskCard("Red zone SKU %")).getByText("0,0%")).toBeInTheDocument();
+    expect(getRiskCard("In-stock %")).toHaveClass("good");
+    expect(getRiskCard("Red zone SKU %")).toHaveClass("good");
+  });
+
+  it.each([
+    [{ totalSkuCount: 100, lowStockCount: 10 }, "Nije dostupno", "10,0%", "neutral", "warning"],
+    [{ totalSkuCount: 100, lowStockCount: 10, outOfStockCount: Number.NaN }, "Nije dostupno", "10,0%", "neutral", "warning"],
+    [{ totalSkuCount: 100, lowStockCount: Number.POSITIVE_INFINITY, outOfStockCount: 5 }, "95,0%", "Nije dostupno", "good", "neutral"],
+    [null, "Nije dostupno", "Nije dostupno", "neutral", "neutral"],
+  ])("renders unavailable ratios without a misleading critical tone for %#", async (inventory, available, red, availableTone, redTone) => {
+    apiMocks.getInventoryStatus.mockResolvedValue(inventory);
+
+    render(
+      <MemoryRouter>
+        <AnalyticsDetails />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(within(getRiskCard("In-stock %")).getByText(available)).toBeInTheDocument());
+    expect(within(getRiskCard("Red zone SKU %")).getByText(red)).toBeInTheDocument();
+    expect(getRiskCard("In-stock %")).toHaveClass(availableTone);
+    expect(getRiskCard("Red zone SKU %")).toHaveClass(redTone);
+    expect(getRiskCard("In-stock %")).not.toHaveClass("critical");
+    expect(getRiskCard("Red zone SKU %")).not.toHaveClass("critical");
+  });
+
+  it("keeps the error state separate from unavailable inventory ratios", async () => {
+    apiMocks.getInventoryStatus.mockRejectedValue(new Error("inventory unavailable"));
+
+    render(
+      <MemoryRouter>
+        <AnalyticsDetails />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Greske pri ucitavanju")).toBeInTheDocument();
+    await waitFor(() => expect(within(getRiskCard("In-stock %")).getByText("Nije dostupno")).toBeInTheDocument());
+    expect(screen.getByText(/inventory unavailable/)).toBeInTheDocument();
   });
 });

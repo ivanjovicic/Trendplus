@@ -1,8 +1,10 @@
 # Analytics Reliability Prompt Queue
 
-Date: 2026-09-11
+Date: 2026-09-14
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ240
+
+Owner promotion 2026-09-14: `RQ240` was explicitly promoted from `WAITING` after completed `RQ239`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
 
 Owner promotion 2026-09-10: `RQ227` was explicitly promoted by the user after completed `RQ226`; it is the single current RQ prompt.
 Owner completion 2026-09-10: `RQ227` was delivered on `main` with fail-closed deleted-row archive handling and focused regression coverage; the RQ queue returned to no current READY prompt.
@@ -10503,7 +10505,7 @@ The Executive Decision Board compatibility supplier fallback puts the selected p
 
 ## RQ240 - Preserve nullable inventory counts in Analytics Details and Dashboard ratios
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend/tests
 Feature family: analytics-inventory-ratio-state
@@ -10564,7 +10566,7 @@ Analytics Details and the main Analytics Dashboard treat missing OOS and low-sto
 
 - `RQ204` remains the Analytics Details period/scope owner.
 - `RQ154`/`RQ161` remain numeric/trend state owners for their respective families.
-- Keep this prompt `WAITING` while `RQ167` remains the existing `READY` item.
+- `RQ167` is already `DONE`; no remaining dependency blocker prevents this prompt.
 
 ---
 
