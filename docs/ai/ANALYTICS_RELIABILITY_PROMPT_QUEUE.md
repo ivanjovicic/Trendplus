@@ -2,7 +2,7 @@
 
 Date: 2026-09-14
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ253
+Current READY prompt: RQ254
 
 Owner completion 2026-09-14: `RQ249` was delivered on `main` with fail-closed Supplier Decision Hub detail and report-toolbar actionability gates; blocked, fallback, stale/partial and missing recommendation permission remain review-only.
 Owner promotion 2026-09-14: `RQ250` was explicitly promoted after completed `RQ249`, repaired the stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
@@ -12,6 +12,8 @@ Owner completion 2026-09-14: `RQ251` was delivered on `main` with shared safe Se
 Owner promotion 2026-09-14: `RQ252` was explicitly promoted after completed `RQ251`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
 Owner completion 2026-09-14: `RQ252` was delivered on `main` with a shared fail-closed supplier-report recommendation gate; missing, stale, fallback, partial, insufficient and explicitly disallowed trust evidence now suppresses concrete actions and keeps report/meta/legacy/export actionability consistent; the queue advanced to `RQ253`.
 Owner promotion 2026-09-14: `RQ253` was explicitly promoted after completed `RQ252`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
+Owner completion 2026-09-14: `RQ253` was delivered on `main` with shared safe analytics error messaging; raw error codes and technical exception text no longer appear in the shared alert, safe Serbian guidance and correlation support metadata remain available, and empty/error/retry/help behavior is preserved; the queue advanced to `RQ254`.
+Owner promotion 2026-09-14: `RQ254` was explicitly promoted after completed `RQ253`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
 
 Owner promotion 2026-09-14: `RQ248` was explicitly promoted from `WAITING` after completed `RQ247`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-14: `RQ248` was delivered on `main` with shared finite/null Pilot Intake impact projection, positive-denominator true-zero handling and parity across readiness, card, report, copied summary, export and Executive Decision Board surfaces; the queue advanced to `RQ249`.
@@ -11452,12 +11454,28 @@ The supplier report action builder only blocks concrete report actions for an ex
 
 ## RQ253 - Hide raw analytics error codes from the shared error surface
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: frontend/tests
 Feature family: analytics-shared-error-safe-messaging
 Parallel-safe: no, one shared component controls error presentation across analytics screens
 Owner: Analytics Frontend Foundations
+Owner claim 2026-09-14: `RQ253` claimed in this workspace after verifying the canonical READY pointer, satisfied dependencies and no competing shared analytics error-surface lock.
+Completion 2026-09-14: Shared analytics error presentation now suppresses raw backend error codes and technical exception text, keeps safe Serbian guidance for unsafe messages, preserves correlation IDs as support metadata and leaves retry/help/empty-versus-error behavior unchanged.
+- Changed files: `Klijent/clientapp/src/components/analytics/AnalyticsErrorState.tsx`; `Klijent/clientapp/src/components/analytics/__tests__/AnalyticsErrorState.spec.tsx`; `Klijent/clientapp/src/components/analytics/__tests__/RecommendationMeasurementStatisticsReview.spec.tsx`; `Klijent/clientapp/src/utils/analyticsErrorMessages.ts`; `Klijent/clientapp/src/utils/analyticsResponseMeta.ts`; `Klijent/clientapp/src/utils/__tests__/analyticsResponseMeta.spec.ts`; this queue; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-14-RQ253-evidence.md`.
+- Contract/runtime behavior changed: `errorCode` is no longer rendered in normal user copy; technical page/meta messages use a generic Serbian explanation; `AnalyticsMetaError` retains structured `errorCode`/`correlationId` fields while its user-facing message omits the code; correlation, retry, Data Quality help, empty state and partial/error distinctions remain intact.
+- Checks run: failing-first shared component tests; focused shared/meta/consumer tests 29/29; analytics smoke suite 97 files / 539 tests; `npm run check:analytics-guardrails`; `npm run build`; `git diff --check`; `node scripts/check-prompt-queues.mjs`.
+- Checks not run: full frontend/backend suites, browser/live API proof and deployed rendering.
+- Run log: `.ai/runs/2026-09-14-RQ253-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `c0bc570e`
+- Main verification: pass - `origin/main` contains implementation SHA `c0bc570e`; final synchronized documentation commit was pushed on `main`.
+- Missed: no live provider-backed analytics error payload or browser rendering was available in this local run.
+- Follow-up: `RQ254` is promoted to `READY` as the next PDC refresh-provenance slice.
+- Residual risk: technical-text detection is intentionally conservative and unknown business wording remains visible when it is not identified as an exception/code; future taxonomy labels should continue using safe shared contracts.
+- Next: claim and execute `RQ254` after this delivery is verified on `origin/main`.
+- Prompt defect / scope repair: `RQ254`'s stale “keep WAITING while RQ169 is READY” dependency was repaired because `RQ169` is already DONE.
 Commit suggestion: `fix(analytics): hide raw error codes from shared error state`
 
 ### Problem
@@ -11520,7 +11538,7 @@ The shared `AnalyticsErrorState` renders the backend `errorCode` verbatim as `Š
 
 ## RQ254 - Separate Product Decision generation time from last successful refresh
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: backend/contract/tests
 Feature family: pdc-refresh-provenance
@@ -11582,7 +11600,7 @@ The Product Decision Center builder supplies `DateTime.UtcNow` as `LastRefreshAt
 - `RQ187` remains the generic cache-hit metadata owner; this prompt owns the PDC direct-builder/cache-miss gap.
 - `RQ176` remains the inventory snapshot freshness owner and `RQ239` the Executive compatibility fallback timestamp owner.
 - `RQ141` and `RQ145` remain broad lineage/parity owners.
-- Keep this prompt `WAITING` while `RQ169` remains the existing `READY` item.
+- `RQ169` is already `DONE`; no remaining dependency blocker prevents promotion of this bounded PDC refresh-provenance slice.
 
 ---
 
