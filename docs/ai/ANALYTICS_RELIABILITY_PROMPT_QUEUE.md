@@ -2,9 +2,11 @@
 
 Date: 2026-09-14
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ248
+Current READY prompt: RQ249
 
 Owner promotion 2026-09-14: `RQ248` was explicitly promoted from `WAITING` after completed `RQ247`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
+Owner completion 2026-09-14: `RQ248` was delivered on `main` with shared finite/null Pilot Intake impact projection, positive-denominator true-zero handling and parity across readiness, card, report, copied summary, export and Executive Decision Board surfaces; the queue advanced to `RQ249`.
+Owner promotion 2026-09-14: `RQ249` was explicitly promoted from `WAITING` after completed `RQ248`, repaired the stale same-owner dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt for its Supplier Analytics owner.
 Owner promotion 2026-09-14: `RQ247` was explicitly promoted from `WAITING` after completed `RQ246`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-14: `RQ247` was delivered on `main` with shared safe Serbian Pilot Intake readiness/import status and scope labels across card, report, copied summary and exports; the queue returned to no current READY prompt.
 Owner promotion 2026-09-14: `RQ246` was explicitly promoted from `WAITING` after completed `RQ245`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
@@ -11003,7 +11005,7 @@ Pilot Intake readiness renders backend import metadata directly in the readiness
 
 ## RQ248 - Preserve unknown and non-finite Pilot Intake impact percentages
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: frontend/backend-contract/tests
 Feature family: pilot-intake-impact-numeric-state
@@ -11065,11 +11067,31 @@ Pilot Intake readiness treats `articlesWithoutSupplierPercent` as a guaranteed f
 - `RQ144`/`RQ147` own health/evidence-tier semantics; this prompt hardens the Pilot Intake numeric presentation boundary.
 - `RQ167` is already `DONE`; no remaining dependency blocker prevents this prompt.
 
+### Completion note
+
+- Date: 2026-09-14
+- Status: DONE
+- Completion: Pilot Intake impact percentages now use one finite/null-safe projection. A measured `0%` requires a positive article denominator; null, missing, non-finite, negative, out-of-range and empty-denominator values remain `Nije dostupno` and add an explicit readiness limitation.
+- Changed files: `Klijent/clientapp/src/utils/pilotImportReadiness.ts`, `Klijent/clientapp/src/types/analytics.ts`, `Klijent/clientapp/src/components/analytics/PilotImportReadinessCard.tsx`, `Klijent/clientapp/src/components/analytics/PilotDataQualityIntakeReport.tsx`, `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx`, `Klijent/clientapp/src/utils/__tests__/pilotImportReadiness.spec.ts`, `Klijent/clientapp/src/components/analytics/__tests__/PilotImportReadinessCard.spec.tsx`, `Klijent/clientapp/src/components/analytics/__tests__/PilotDataQualityIntakeReport.spec.tsx`, `MASTER_ROADMAP.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `.ai/runs/2026-09-14-RQ248-evidence.md`
+- Contract/runtime behavior changed: nullable supplier impact is accepted at the frontend boundary; readiness/card/report/summary/CSV/server export and Decision Board use the same validated numeric state, without changing backend readiness or recommendation ownership.
+- Checks run: focused Pilot Intake tests (pass, 35 tests); Executive Decision Board tests (pass, 33 tests); `npm run check:analytics-guardrails` (pass); `npm run build` (pass); queue/planning validators (pass); `git diff --check` (pass); fresh remote SHA/ancestry verification (pass).
+- Checks not run: full frontend/backend suites and live/provider/browser PDF/XLSX/print proof were not run; direct ESLint remains red on existing fast-refresh/export and unused-helper findings in touched files.
+- Run log: `.ai/runs/2026-09-14-RQ248-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `ae33a12019c33f15f982a0fe6af9473d3452a7a4`
+- Main verification: passed - fresh `origin/main` contains `ae33a12019c33f15f982a0fe6af9473d3452a7a4`.
+- Missed: no live generated-document/browser proof; no backend DTO extension was needed because loaded article count supplies the frontend denominator guard.
+- Follow-up: `RQ249` is promoted to `READY` for Supplier Analytics.
+- Residual risk: consumers that bypass the shared Pilot Intake projection may require separate finite/null hardening; generated-document rendering remains live-path dependent.
+- Prompt defect / scope repair: stale wording on RQ249 claiming RQ169 was the existing READY item was repaired because RQ169 is already DONE; no cross-owner scope was taken.
+- Next: Execute `RQ249`, then explicitly promote `RQ250` after delivery.
+
 ---
 
 ## RQ249 - Do not expose or create supplier actions when the Hub recommendation is blocked
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: frontend/contract/tests
 Feature family: supplier-decision-hub-actionability-gate
@@ -11130,7 +11152,7 @@ The Supplier Decision Hub marks a blocked or fallback result as a `Pomoćni sign
 - `RQ235` remains the supplier report action gate; `RQ181` remains the Decision Board gate.
 - `RQ178` remains the inventory actionability owner.
 - `RQ145` remains the broad cross-surface parity owner.
-- Keep this prompt `WAITING` while `RQ169` remains the existing `READY` item.
+- `RQ169` is already `DONE`; no remaining dependency blocker prevents this prompt.
 
 ---
 
