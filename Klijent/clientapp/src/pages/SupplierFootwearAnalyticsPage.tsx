@@ -23,6 +23,7 @@ import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/a
 import { formatMetricDisplayValue, normalizeMetricNumber } from "../utils/analyticsMetricValue";
 import { getAnalyticsMetaMessage, isAnalyticsMetaInsufficient, isAnalyticsMetaWarning, shouldShowAnalyticsEmptyState } from "../utils/analyticsResponseMeta";
 import { comparablePrePostMetric, hasComparablePrePostEvidence } from "../utils/prePostNivelacijaTrust";
+import { projectVendorSalesDataQuality } from "../utils/vendorSalesDataQuality";
 import type { SupplierEmbeddedPageProps } from "./supplierSharedState";
 import "./SupplierFootwearAnalyticsPage.css";
 
@@ -199,11 +200,16 @@ function getDataQualityStatus(data: VendorSalesNivelacijaResponse | null): DataQ
     return "insufficient_data";
   }
 
-  if ((data.dataQuality.analyzedRows ?? 0) === 0) {
+  const dataQuality = projectVendorSalesDataQuality(data.dataQuality);
+  if (!dataQuality.isComplete) {
     return "insufficient_data";
   }
 
-  if ((data.dataQuality.inactiveRows ?? 0) > 0 || (data.dataQuality.lowPostCoverageRows ?? 0) > 0) {
+  if (dataQuality.analyzedRows === 0) {
+    return "insufficient_data";
+  }
+
+  if ((dataQuality.inactiveRows ?? 0) > 0 || (dataQuality.lowPostCoverageRows ?? 0) > 0) {
     return "warning";
   }
 
@@ -321,7 +327,11 @@ export default function SupplierFootwearAnalyticsPage({
       let previousData = previousResult.status === "fulfilled" ? previousResult.value : null;
 
       const hasNoRows = currentData.vendorStats.length === 0 && currentData.articleStats.length === 0;
-      const likelyFilteredOutByInactive = hasNoRows && currentData.dataQuality.deduplicatedRows > 0 && currentData.dataQuality.inactiveRows > 0;
+      const currentDataQuality = projectVendorSalesDataQuality(currentData.dataQuality);
+      const likelyFilteredOutByInactive = hasNoRows
+        && currentDataQuality.isComplete
+        && (currentDataQuality.deduplicatedRows ?? 0) > 0
+        && (currentDataQuality.inactiveRows ?? 0) > 0;
 
       const stillNoRows = currentData.vendorStats.length === 0 && currentData.articleStats.length === 0;
       if (stillNoRows) {
@@ -462,6 +472,7 @@ export default function SupplierFootwearAnalyticsPage({
   const dataMetaMessage = getAnalyticsMetaMessage(dataMeta);
   const showMetaWarning = !loading && !error && isAnalyticsMetaWarning(dataMeta);
   const showEmptyState = !loading && !error && ((data?.vendorStats.length ?? 0) === 0 && (data?.articleStats.length ?? 0) === 0);
+  const dataQualityProjection = useMemo(() => projectVendorSalesDataQuality(data?.dataQuality), [data?.dataQuality]);
   const dataQualityStatus = useMemo(() => getDataQualityStatus(data), [data]);
   const recommendationAllowed = data?.recommendationAllowed === true;
   const controlBarChips = useMemo<AnalyticsControlBarChip[]>(() => [
@@ -727,11 +738,13 @@ export default function SupplierFootwearAnalyticsPage({
             <div className="sf-decision-message warning">
               <strong>Zašto je promet 0 RSD?</strong>
               <p>
-                {data.dataQuality.rawRows === 0
-                  ? "U izabranom periodu nema evidentirane nivelacije u Dnevniku promena. Pokušajte sa drugačijim periodom ili dobavljačem."
-                  : data.dataQuality.analyzedRows === 0 && data.dataQuality.inactiveRows > 0
-                    ? `Nivelacije postoje (${data.dataQuality.rawRows} redova), ali bez prodaje u 30-dnevnom post-prozoru. Pokušajte sa periodima gde postoji prodajna aktivnost.`
-                    : `Analizirano je ${data.dataQuality.analyzedRows} redova, ali bez detektovanog prometa. Proverite filtere ili proširite vremenski raspon.`}
+                {!dataQualityProjection.isComplete
+                  ? "Kvalitet podataka nije potvrđen; nije bezbedno zaključiti da je promet stvarno nula."
+                  : dataQualityProjection.rawRows === 0
+                    ? "U izabranom periodu nema evidentirane nivelacije u Dnevniku promena. Pokušajte sa drugačijim periodom ili dobavljačem."
+                    : dataQualityProjection.analyzedRows === 0 && (dataQualityProjection.inactiveRows ?? 0) > 0
+                      ? `Nivelacije postoje (${dataQualityProjection.rawRows} redova), ali bez prodaje u 30-dnevnom post-prozoru. Pokušajte sa periodima gde postoji prodajna aktivnost.`
+                      : `Analizirano je ${dataQualityProjection.analyzedRows} redova, ali bez detektovanog prometa. Proverite filtere ili proširite vremenski raspon.`}
               </p>
             </div>
           )}

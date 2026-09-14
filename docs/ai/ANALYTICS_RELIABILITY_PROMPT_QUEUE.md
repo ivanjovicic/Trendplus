@@ -2,8 +2,9 @@
 
 Date: 2026-09-14
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ243
 
+Owner promotion 2026-09-14: `RQ243` was explicitly promoted from `WAITING` after completed `RQ240`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
 Owner promotion 2026-09-14: `RQ240` was explicitly promoted from `WAITING` after completed `RQ239`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-14: `RQ240` was delivered on `main`; the queue returned to no current READY prompt.
 
@@ -3893,7 +3894,7 @@ Data Quality health uses revenue shares as decision signals. When the sales deno
 
 ## RQ145 - Prove analytics card/table/chart/detail/export/report parity and safe messaging
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend/backend/contract/tests
 Feature family: analytics-surface-parity-and-safe-messaging
@@ -10656,7 +10657,7 @@ The supplier footwear pre/post endpoint uses a non-null data-quality DTO and con
 
 - `RQ156`/`RQ182` remain owners of pre/post coverage and backend unknown aggregate semantics.
 - `RQ180` remains the owner of frontend denominator reconstruction; do not merge this prompt into formula work.
-- Keep this prompt `WAITING` while `RQ167` remains the existing `READY` item.
+- `RQ167` is already `DONE`; no remaining dependency blocker prevents this prompt.
 
 ---
 

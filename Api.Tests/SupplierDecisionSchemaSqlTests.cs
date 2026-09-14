@@ -137,6 +137,23 @@ public sealed class SupplierDecisionSchemaSqlTests
     }
 
     [Fact]
+    public void VendorSalesNivelacijaDataQualityContractPreservesMissingSnapshotAndMeasuredZeros()
+    {
+        var source = ReadRepoFile("Api/Endpoints/AllEndpoints.cs");
+
+        AssertNullableIntProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.RawRows));
+        AssertNullableIntProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.DeduplicatedRows));
+        AssertNullableIntProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.DuplicateRowsRemoved));
+        AssertNullableIntProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.InactiveRows));
+        AssertNullableIntProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.UnchangedPriceRows));
+        AssertNullableIntProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.AnalyzedRows));
+        AssertNullableIntProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.LowPostCoverageRows));
+        AssertNullableCoverageProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.AnalyzedSharePercent));
+        Assert.Contains("DataQuality = null", source);
+        Assert.Contains("DataQuality = new VendorSalesNivelacijaDataQualityDto", source);
+    }
+
+    [Fact]
     public void VendorSalesNivelacijaEndpointDoesNotConvertMissingCoverageToZero()
     {
         var source = ReadRepoFile("Api/Endpoints/AllEndpoints.cs");
@@ -154,6 +171,13 @@ public sealed class SupplierDecisionSchemaSqlTests
         var property = typeof(T).GetProperty(propertyName);
         Assert.NotNull(property);
         Assert.Equal(typeof(decimal), Nullable.GetUnderlyingType(property!.PropertyType));
+    }
+
+    private static void AssertNullableIntProperty<T>(string propertyName)
+    {
+        var property = typeof(T).GetProperty(propertyName);
+        Assert.NotNull(property);
+        Assert.Equal(typeof(int), Nullable.GetUnderlyingType(property!.PropertyType));
     }
 
     [Fact]

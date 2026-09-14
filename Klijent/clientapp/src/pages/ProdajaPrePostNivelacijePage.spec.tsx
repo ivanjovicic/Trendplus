@@ -328,6 +328,38 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(screen.queryByText(/Srednje signal/)).not.toBeInTheDocument();
   });
 
+  it("keeps a missing quality snapshot unknown across the trust surface", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
+      response({
+        dataQuality: null,
+        meta: {
+          success: true,
+          dataQualityStatus: "warning",
+          warningCode: "schema_fallback",
+          isPartial: true,
+        } as VendorSalesNivelacijaResponse["meta"],
+      }),
+    );
+
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+
+    const trustButton = await screen.findByRole("button", { name: /Kvalitet signala: Nepoznato/i });
+    expect(trustButton).toBeInTheDocument();
+    fireEvent.click(trustButton);
+    expect(screen.getByText("Kvalitet signala nije potvrđen jer snapshot kvaliteta nedostaje ili je delimičan.")).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Otvori puni detalj" }));
+    const snapshot = getAnalyticsDetailSnapshot("nivelacije-pre-post", "10");
+    expect(snapshot?.metadata).toEqual(expect.arrayContaining([
+      expect.objectContaining({ key: "dataTrust", label: "Poverenje", value: "Nepoznato" }),
+      expect.objectContaining({ key: "analyzedShare", label: "Analizirani redovi", value: "Nije dostupno" }),
+      expect.objectContaining({ key: "duplicateRowsRemoved", label: "Duplicati uklonjeni", value: "" }),
+      expect.objectContaining({ key: "inactiveRows", label: "Neaktivni redovi", value: "" }),
+    ]));
+  });
+
   it("does not render legacy zero placeholders when comparability evidence is missing", async () => {
     vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
       response({

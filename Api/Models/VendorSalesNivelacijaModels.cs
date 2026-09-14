@@ -111,14 +111,14 @@ public sealed class VendorSalesNivelacijaTotalsDto
 
 public sealed class VendorSalesNivelacijaDataQualityDto
 {
-    public int RawRows { get; set; }
-    public int DeduplicatedRows { get; set; }
-    public int DuplicateRowsRemoved { get; set; }
-    public int InactiveRows { get; set; }
-    public int UnchangedPriceRows { get; set; }
-    public int AnalyzedRows { get; set; }
-    public decimal AnalyzedSharePercent { get; set; }
-    public int LowPostCoverageRows { get; set; }
+    public int? RawRows { get; set; }
+    public int? DeduplicatedRows { get; set; }
+    public int? DuplicateRowsRemoved { get; set; }
+    public int? InactiveRows { get; set; }
+    public int? UnchangedPriceRows { get; set; }
+    public int? AnalyzedRows { get; set; }
+    public decimal? AnalyzedSharePercent { get; set; }
+    public int? LowPostCoverageRows { get; set; }
     public decimal? AvgCoveragePre30 { get; set; }
     public decimal? AvgCoveragePost30 { get; set; }
 }
@@ -171,7 +171,7 @@ public sealed class VendorSalesNivelacijaResponseDto
     public List<VendorSalesNivelacijaVendorStatDto> VendorStats { get; set; } = [];
     public List<VendorSalesNivelacijaArticleStatDto> ArticleStats { get; set; } = [];
     public VendorSalesNivelacijaTotalsDto Totals { get; set; } = new();
-    public VendorSalesNivelacijaDataQualityDto DataQuality { get; set; } = new();
+    public VendorSalesNivelacijaDataQualityDto? DataQuality { get; set; }
     public List<VendorSalesNivelacijaCategoryStatDto> CategoryStats { get; set; } = [];
     public List<VendorSalesNivelacijaPriceDirectionStatDto> PriceDirectionStats { get; set; } = [];
     public List<VendorSalesNivelacijaInsightDto> Insights { get; set; } = [];

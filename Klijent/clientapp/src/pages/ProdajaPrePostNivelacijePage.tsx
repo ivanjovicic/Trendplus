@@ -59,6 +59,7 @@ import {
 } from "../utils/canonicalRecommendationSemantics";
 import { getDataScope, type DataScope } from "../utils/dataScope";
 import { comparablePrePostMetric, comparablePrePostTotal, hasComparablePrePostEvidence } from "../utils/prePostNivelacijaTrust";
+import { projectVendorSalesDataQuality } from "../utils/vendorSalesDataQuality";
 import "./ProdajaPrePostNivelacijePage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
@@ -768,6 +769,10 @@ export default function ProdajaPrePostNivelacijePage() {
   }, [sortedRows]);
 
   const dataQualityWarnings = useMemo(() => parseMetricsStatus(data?.metricsStatus), [data?.metricsStatus]);
+  const dataQualityProjection = useMemo(
+    () => projectVendorSalesDataQuality(data?.dataQuality),
+    [data?.dataQuality],
+  );
   const dataMeta = data?.meta ?? null;
   const dataMetaMessage = getAnalyticsMetaMessage(dataMeta);
   const showMetaWarning = !loading && !error && isAnalyticsMetaWarning(dataMeta);
@@ -781,14 +786,24 @@ export default function ProdajaPrePostNivelacijePage() {
         : "no_data";
 
   const dataTrustSummary = useMemo(() => {
-    const analyzedShare = data?.dataQuality.analyzedSharePercent ?? 0;
-    const duplicateRows = data?.dataQuality.duplicateRowsRemoved ?? 0;
-    const inactiveRows = data?.dataQuality.inactiveRows ?? 0;
-    const analyzedRows = data?.dataQuality.analyzedRows ?? 0;
-    const deduplicatedRows = data?.dataQuality.deduplicatedRows ?? 0;
-    const unchangedPriceRows = data?.dataQuality.unchangedPriceRows ?? 0;
+    const {
+      analyzedSharePercent: analyzedShare,
+      duplicateRowsRemoved: duplicateRows,
+      inactiveRows,
+      analyzedRows,
+      deduplicatedRows,
+      unchangedPriceRows,
+    } = dataQualityProjection;
 
-    const countDetail = deduplicatedRows > 0
+    if (!dataQualityProjection.isComplete) {
+      return {
+        label: "Nepoznato",
+        tone: "unknown" as const,
+        details: "Kvalitet signala nije potvrđen jer snapshot kvaliteta nedostaje ili je delimičan.",
+      };
+    }
+
+    const countDetail = deduplicatedRows != null && deduplicatedRows > 0
       ? `${analyzedRows} od ${deduplicatedRows} nivelacija redova (${fmtPct(analyzedShare, 0)})`
       : `${fmtPct(analyzedShare, 0)} redova`;
 
@@ -796,7 +811,7 @@ export default function ProdajaPrePostNivelacijePage() {
 
     const hasUnexpectedWarnings = dataQualityWarnings.some((warning) => !getMetricWarningMeta(warning).isExpected);
 
-    if (analyzedShare >= 70 && !hasUnexpectedWarnings) {
+    if (analyzedShare != null && analyzedShare >= 70 && !hasUnexpectedWarnings) {
       return {
         label: "Visoko poverenje",
         tone: "strong" as const,
@@ -804,7 +819,7 @@ export default function ProdajaPrePostNivelacijePage() {
       };
     }
 
-    if (analyzedShare >= 45) {
+    if (analyzedShare != null && analyzedShare >= 45) {
       return {
         label: "Srednje poverenje",
         tone: "watch" as const,
@@ -818,27 +833,22 @@ export default function ProdajaPrePostNivelacijePage() {
       details,
     };
   }, [
-    data?.dataQuality.analyzedSharePercent,
-    data?.dataQuality.duplicateRowsRemoved,
-    data?.dataQuality.inactiveRows,
-    data?.dataQuality.analyzedRows,
-    data?.dataQuality.deduplicatedRows,
-    data?.dataQuality.unchangedPriceRows,
+    dataQualityProjection,
     dataQualityWarnings,
   ]);
 
   const concentrationQuality = useMemo(() => {
-    const analyzedRows = data?.dataQuality.analyzedRows ?? 0;
+    const analyzedRows = dataQualityProjection.analyzedRows;
     const vendorRows = decisionRows.length;
     const nonZeroChangeVendors = decisionRows.filter((row) => {
       const changeRevenue = trustedMetric(row.changeRevenue, row);
       return changeRevenue != null && Math.abs(changeRevenue) > 0.0001;
     }).length;
-    const avgPostCoveragePct = data?.dataQuality.avgCoveragePost30 != null
-      ? data.dataQuality.avgCoveragePost30 * 100
+    const avgPostCoveragePct = dataQualityProjection.avgCoveragePost30 != null
+      ? dataQualityProjection.avgCoveragePost30 * 100
       : null;
 
-    if (analyzedRows === 0 || vendorRows === 0 || totalAbsoluteChangeRevenue == null || totalAbsoluteChangeRevenue <= 0) {
+    if (!dataQualityProjection.isComplete || analyzedRows == null || analyzedRows === 0 || vendorRows === 0 || totalAbsoluteChangeRevenue == null || totalAbsoluteChangeRevenue <= 0) {
       return {
         tone: "weak" as const,
         label: "Nema pouzdanog signala",
@@ -876,8 +886,7 @@ export default function ProdajaPrePostNivelacijePage() {
       details: `Dovoljno promena i pokrivenosti za citanje koncentracije: ${analyzedRows} redova, post-window pokrivenost ${fmtPct(avgPostCoveragePct, 0)}.`,
     };
   }, [
-    data?.dataQuality.analyzedRows,
-    data?.dataQuality.avgCoveragePost30,
+    dataQualityProjection,
     decisionRows,
     totalAbsoluteChangeRevenue,
   ]);
@@ -1042,16 +1051,14 @@ const advancedSignals = useMemo(
         value: "abs(promena prometa) / zbir apsolutnih promena prometa",
       },
       { key: "dataTrust", label: "Poverenje", value: dataTrustSummary.label },
-      { key: "analyzedShare", label: "Analizirani redovi", value: fmtPct(data?.dataQuality.analyzedSharePercent, 0) },
-      { key: "duplicateRowsRemoved", label: "Duplicati uklonjeni", value: data?.dataQuality.duplicateRowsRemoved ?? 0 },
-      { key: "inactiveRows", label: "Neaktivni redovi", value: data?.dataQuality.inactiveRows ?? 0 },
+      { key: "analyzedShare", label: "Analizirani redovi", value: fmtPct(dataQualityProjection.isComplete ? dataQualityProjection.analyzedSharePercent : null, 0, "Nije dostupno") },
+      { key: "duplicateRowsRemoved", label: "Duplicati uklonjeni", value: dataQualityProjection.isComplete ? dataQualityProjection.duplicateRowsRemoved : null },
+      { key: "inactiveRows", label: "Neaktivni redovi", value: dataQualityProjection.isComplete ? dataQualityProjection.inactiveRows : null },
       { key: "metricsStatus", label: "Status metrika", value: data?.metricsStatus ?? "OK" },
     ],
     [
       activeFilters.storeId,
-      data?.dataQuality.analyzedSharePercent,
-      data?.dataQuality.duplicateRowsRemoved,
-      data?.dataQuality.inactiveRows,
+      dataQualityProjection,
       data?.generatedAt,
       data?.metricsStatus,
       data?.totals.articlesCount,
@@ -1094,7 +1101,9 @@ const advancedSignals = useMemo(
             ? "success"
             : dataTrustSummary.tone === "watch"
               ? "warning"
-              : "critical",
+              : dataTrustSummary.tone === "weak"
+                ? "critical"
+                : "neutral",
       },
     ],
     [
@@ -1396,7 +1405,11 @@ const advancedSignals = useMemo(
               ) : (
                 <div className="ppn-chip-wrap">
                   <span className="ppn-signal-pill signal-strong">Bez aktivnih upozorenja</span>
-                  <span className="ppn-signal-pill signal-neutral">Redovi {data.dataQuality.analyzedRows}/{data.dataQuality.rawRows}</span>
+                  {dataQualityProjection.isComplete ? (
+                    <span className="ppn-signal-pill signal-neutral">Redovi {dataQualityProjection.analyzedRows}/{dataQualityProjection.rawRows}</span>
+                  ) : (
+                    <span className="ppn-signal-pill signal-neutral">Snapshot kvaliteta nije potvrđen</span>
+                  )}
                 </div>
               )}
             </div>

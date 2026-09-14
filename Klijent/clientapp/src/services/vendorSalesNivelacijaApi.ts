@@ -104,14 +104,14 @@ export interface VendorSalesNivelacijaTotals {
 }
 
 export interface VendorSalesNivelacijaDataQuality {
-    rawRows: number;
-    deduplicatedRows: number;
-    duplicateRowsRemoved: number;
-    inactiveRows: number;
-    unchangedPriceRows: number;
-    analyzedRows: number;
-    analyzedSharePercent: number;
-    lowPostCoverageRows: number;
+    rawRows: number | null;
+    deduplicatedRows: number | null;
+    duplicateRowsRemoved: number | null;
+    inactiveRows: number | null;
+    unchangedPriceRows: number | null;
+    analyzedRows: number | null;
+    analyzedSharePercent: number | null;
+    lowPostCoverageRows: number | null;
     avgCoveragePre30: number | null;
     avgCoveragePost30: number | null;
 }
@@ -160,7 +160,7 @@ export interface VendorSalesNivelacijaResponse {
     vendorStats: VendorSalesNivelacijaVendorStat[];
     articleStats: VendorSalesNivelacijaArticleStat[];
     totals: VendorSalesNivelacijaTotals;
-    dataQuality: VendorSalesNivelacijaDataQuality;
+    dataQuality?: VendorSalesNivelacijaDataQuality | null;
     categoryStats: VendorSalesNivelacijaCategoryStat[];
     priceDirectionStats: VendorSalesNivelacijaPriceDirectionStat[];
     insights: VendorSalesNivelacijaInsight[];

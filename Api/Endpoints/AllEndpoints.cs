@@ -6777,7 +6777,7 @@ public static class AllEndpoints
             VendorStats = [],
             ArticleStats = [],
             Totals = new VendorSalesNivelacijaTotalsDto(),
-            DataQuality = new VendorSalesNivelacijaDataQualityDto(),
+            DataQuality = null,
             CategoryStats = [],
             PriceDirectionStats = [],
             Insights = new List<VendorSalesNivelacijaInsightDto>
