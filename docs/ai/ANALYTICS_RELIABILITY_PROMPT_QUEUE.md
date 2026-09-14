@@ -2,7 +2,7 @@
 
 Date: 2026-09-14
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ254
+Current READY prompt: RQ255
 
 Owner completion 2026-09-14: `RQ249` was delivered on `main` with fail-closed Supplier Decision Hub detail and report-toolbar actionability gates; blocked, fallback, stale/partial and missing recommendation permission remain review-only.
 Owner promotion 2026-09-14: `RQ250` was explicitly promoted after completed `RQ249`, repaired the stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
@@ -14,6 +14,25 @@ Owner completion 2026-09-14: `RQ252` was delivered on `main` with a shared fail-
 Owner promotion 2026-09-14: `RQ253` was explicitly promoted after completed `RQ252`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
 Owner completion 2026-09-14: `RQ253` was delivered on `main` with shared safe analytics error messaging; raw error codes and technical exception text no longer appear in the shared alert, safe Serbian guidance and correlation support metadata remain available, and empty/error/retry/help behavior is preserved; the queue advanced to `RQ254`.
 Owner promotion 2026-09-14: `RQ254` was explicitly promoted after completed `RQ253`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
+Owner completion 2026-09-14: `RQ254` was delivered on `main` with separate Product Decision Center generation and source-refresh provenance; direct and empty PDC responses now leave unknown refresh nullable, cached responses retain trusted cache refresh metadata, and Decision Board no longer promotes query generation time to last refresh; the queue advanced to `RQ255`.
+
+### Completion note
+
+- Date: 2026-09-14
+- Status: DONE
+- Completion: Direct/empty PDC builder paths no longer report query time as source refresh; Decision Board preserves nullable unknown refresh and cached paths retain trusted cache metadata.
+- Changed files: `Api/Endpoints/CachedAnalyticsEndpoints.cs`, `Api/Endpoints/DecisionBoardEndpoints.cs`, `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`, `Api.Tests/DecisionBoardEndpointsTests.cs`
+- Checks run: focused PDC/Decision Board tests 43 passed; cache freshness/board contract tests 13 passed; `dotnet build Api.Tests/Api.Tests.csproj --no-restore -m:1 -v:q` passed; governance validators passed; `git diff --check` passed.
+- Checks not run: full solution build did not complete because parallel MSBuild processes stalled; full test suite and frontend analytics guardrails were not run because this was a backend-only metadata change.
+- Run log: `.ai/runs/2026-09-14-RQ254-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `09933c22e6149172ae635a2712fef7584686b038`
+- Main verification: passed - fresh `git fetch origin main` confirmed local `main` and `origin/main` at `09933c22e6149172ae635a2712fef7584686b038`; implementation SHA is an ancestor of `origin/main`.
+- Missed: live provider/browser/deployed freshness proof remains outside this local run.
+- Follow-up: `RQ255` is READY for Product Analytics.
+- Residual risk: legacy cache entries without `DataRefreshAtUtc` remain intentionally unknown until repopulated.
+- Prompt defect / scope repair: none; the existing refresh-status/cache metadata owners were sufficient.
 
 Owner promotion 2026-09-14: `RQ248` was explicitly promoted from `WAITING` after completed `RQ247`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-14: `RQ248` was delivered on `main` with shared finite/null Pilot Intake impact projection, positive-denominator true-zero handling and parity across readiness, card, report, copied summary, export and Executive Decision Board surfaces; the queue advanced to `RQ249`.
@@ -11538,7 +11557,7 @@ The shared `AnalyticsErrorState` renders the backend `errorCode` verbatim as `Š
 
 ## RQ254 - Separate Product Decision generation time from last successful refresh
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: backend/contract/tests
 Feature family: pdc-refresh-provenance
@@ -11606,7 +11625,7 @@ The Product Decision Center builder supplies `DateTime.UtcNow` as `LastRefreshAt
 
 ## RQ255 - Preserve nullable stock evidence in Product Decision Center
 
-Status: WAITING
+Status: READY
 Priority: P0
 Type: backend/contract/frontend/tests
 Feature family: pdc-stock-evidence-state
