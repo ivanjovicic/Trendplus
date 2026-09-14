@@ -2,7 +2,10 @@
 
 Date: 2026-09-14
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ249
+Current READY prompt: RQ250
+
+Owner completion 2026-09-14: `RQ249` was delivered on `main` with fail-closed Supplier Decision Hub detail and report-toolbar actionability gates; blocked, fallback, stale/partial and missing recommendation permission remain review-only.
+Owner promotion 2026-09-14: `RQ250` was explicitly promoted after completed `RQ249`, repaired the stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
 
 Owner promotion 2026-09-14: `RQ248` was explicitly promoted from `WAITING` after completed `RQ247`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-14: `RQ248` was delivered on `main` with shared finite/null Pilot Intake impact projection, positive-denominator true-zero handling and parity across readiness, card, report, copied summary, export and Executive Decision Board surfaces; the queue advanced to `RQ249`.
@@ -11091,7 +11094,8 @@ Pilot Intake readiness treats `articlesWithoutSupplierPercent` as a guaranteed f
 
 ## RQ249 - Do not expose or create supplier actions when the Hub recommendation is blocked
 
-Status: READY
+Status: DONE
+Owner claim 2026-09-14: `RQ249` was claimed in this workspace after verifying the canonical RQ pointer, satisfied dependencies and no competing Supplier Decision Hub lock.
 Priority: P1
 Type: frontend/contract/tests
 Feature family: supplier-decision-hub-actionability-gate
@@ -11154,11 +11158,31 @@ The Supplier Decision Hub marks a blocked or fallback result as a `Pomoćni sign
 - `RQ145` remains the broad cross-surface parity owner.
 - `RQ169` is already `DONE`; no remaining dependency blocker prevents this prompt.
 
+### Completion note
+
+- Date: 2026-09-14
+- Status: DONE
+- Completion: Supplier Decision Hub and its embedded supplier report action toolbar now fail closed unless backend `recommendationAllowed === true`; blocked, fallback, stale/partial and missing-gate states retain evidence and a read-only Data Quality path.
+- Changed files: `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx`; `Klijent/clientapp/src/pages/__tests__/SupplierDecisionHubPage.spec.tsx`; `Klijent/clientapp/src/components/analytics/SupplierDecisionReportActions.tsx`; `Klijent/clientapp/src/components/analytics/__tests__/SupplierDecisionReportActions.spec.tsx`; this queue; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-14-RQ249-evidence.md`.
+- Contract/runtime behavior changed: no blocked Supplier Decision Hub path renders `Dodaj u akcije` or calls the action upsert; explicit allowed recommendations preserve the existing action payload, idempotency and backend-owned status/reason/confidence fields.
+- Checks run: focused page/action tests 22/22; `npm run check:analytics-guardrails`; `npm run build`; queue/planning/instruction validators; `git diff --check`.
+- Checks not run: full frontend/backend suites, browser/live API, production data and deployed report/export rendering.
+- Run log: `.ai/runs/2026-09-14-RQ249-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `769b7510b0af86080cc1cbb57cb7d71a7c677b5d`
+- Main verification: pending push and fresh origin/main containment check
+- Missed: live/browser proof and unrelated supplier margin parity (`RQ250`) remain outside this bounded actionability fix.
+- Follow-up: `RQ250` is explicitly promoted to `READY` as the next non-parallel supplier Hub/report metric contract slice.
+- Residual risk: direct API callers and live deployed bundles still require environment-level verification; local UI and write-path guards are covered.
+- Next: execute `RQ250` only after this delivery is verified on `origin/main`.
+- Prompt defect / scope repair: the existing `RQ250` dependency note incorrectly implied `RQ169` was still a READY blocker; it was repaired to match current DONE evidence before promotion.
+
 ---
 
 ## RQ250 - Reconcile Supplier Decision Hub and supplier report margin contribution
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: backend/contract/frontend/tests
 Feature family: supplier-decision-margin-parity
@@ -11221,7 +11245,7 @@ The Supplier Decision Hub and its client-side report calculate total margin cont
 - `RQ148` owns sales/margin measurement-basis proof; this prompt is the concrete supplier Hub/report parity reproduction.
 - `RQ236` owns supplier-report optional numeric state; coordinate instead of duplicating its null handling.
 - `RQ145` remains the broad card/table/chart/detail/export/report parity gate.
-- Keep this prompt `WAITING` while `RQ169` remains the existing `READY` item.
+- `RQ169` is already `DONE`; no remaining dependency blocker prevents this prompt.
 
 ---
 

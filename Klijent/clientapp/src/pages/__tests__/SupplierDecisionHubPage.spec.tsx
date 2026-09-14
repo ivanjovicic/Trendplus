@@ -303,6 +303,106 @@ describe("SupplierDecisionHubPage", () => {
     expect(await screen.findByText(/Prikazan je pomoćni dataset: Poslednjih 90 dana. Finalna preporuka je blokirana./i)).toBeInTheDocument();
     expect(screen.getAllByText("Pomoćni signal").length).toBeGreaterThan(0);
     expect(screen.getAllByText("mv_supplier_decision_score_cache_90d").length).toBeGreaterThan(0);
+
+    fireEvent.click((await screen.findByText("Dobavljač 1")).closest("tr")!.querySelector("button")!);
+
+    const detail = screen.getByRole("heading", { name: /Detalj scorecard signala/i }).closest("section");
+    expect(detail).not.toBeNull();
+    expect(within(detail!).getByText(/Akcija nije dostupna: finalna preporuka nije dozvoljena/i)).toBeInTheDocument();
+    expect(within(detail!).queryByRole("button", { name: "Dodaj u akcije" })).not.toBeInTheDocument();
+    expect(within(detail!).getByRole("link", { name: "Proveri Data Quality" })).toHaveAttribute("href", "/analytics/data-quality");
+    const postBodies = fetchMock.mock.calls
+      .filter((call) => (call[1] as RequestInit | undefined)?.method === "POST")
+      .map((call) => JSON.parse(String((call[1] as RequestInit).body)));
+    expect(postBodies.some((body) => body.title || body.recommendationStatus)).toBe(false);
+  });
+
+  it("keeps the action CTA and write path only for an explicitly allowed recommendation", async () => {
+    const trustMetadata = {
+      requestedFrom: "2026-05-01T00:00:00Z",
+      requestedTo: "2026-05-12T00:00:00Z",
+      effectiveFrom: "2026-05-01T00:00:00Z",
+      effectiveTo: "2026-05-12T00:00:00Z",
+      requestedDataset: "30d",
+      effectiveDataset: "30d",
+      effectivePeriodLabel: "Poslednjih 30 dana",
+      provenanceBasis: "mv_supplier_decision_score_cache_90d",
+      dataCoverageStatus: "good",
+      usedFallback: false,
+      fallbackReason: null,
+      lastRefreshAtUtc: "2026-05-12T00:00:00Z",
+      rowCount: 1,
+      ignoredRowCount: 0,
+      zeroRevenueRowsExcludedCount: 0,
+      missingSupplierNameCount: 0,
+      hasData: true,
+      hasExplicitDateRange: true,
+      recommendationAllowed: true,
+      noSilentFallback: true,
+      windowDays: 90,
+      dataScope: "all",
+      coverage: "window_90d",
+    };
+
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = requestUrl(input);
+
+      if (url.pathname === "/api/analytics/suppliers/decision-hub/summary") {
+        return jsonResponse({ ...summaryResponse, supplierCount: 1, trustMetadata });
+      }
+
+      if (url.pathname === "/api/analytics/suppliers/decision-hub/ranking") {
+        return jsonResponse({
+          page: 1,
+          pageSize: 100,
+          totalCount: 1,
+          items: [rankingItem(1, 100_000)],
+          dataNote: summaryResponse.dataNote,
+          trustMetadata,
+        });
+      }
+
+      if (url.pathname === "/api/analytics/actions" && init?.method === "POST") {
+        return jsonResponse({
+          item: { sourceKey: "supplier:negotiation:1:2026-04-13:2026-05-12:all:all" },
+          created: true,
+          existing: false,
+          status: "open",
+          sourceKey: "supplier:negotiation:1:2026-04-13:2026-05-12:all:all",
+        });
+      }
+
+      if (url.pathname === "/api/analytics/actions") {
+        return jsonResponse({ items: [] });
+      }
+
+      if (url.pathname === "/api/sezone") {
+        return jsonResponse([]);
+      }
+
+      return jsonResponse({ message: `Unhandled test request: ${url.pathname}` }, 404);
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+    renderPage();
+
+    fireEvent.click((await screen.findByText("Dobavljač 1")).closest("tr")!.querySelector("button")!);
+    const detail = screen.getByRole("heading", { name: /Detalj scorecard signala/i }).closest("section");
+    expect(detail).not.toBeNull();
+    const actionButton = within(detail!).getByRole("button", { name: "Dodaj u akcije" });
+    fireEvent.click(actionButton);
+
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some((call) => (call[1] as RequestInit | undefined)?.method === "POST")).toBe(true);
+    });
+    const postCall = fetchMock.mock.calls.find((call) => {
+      if ((call[1] as RequestInit | undefined)?.method !== "POST") return false;
+      const body = JSON.parse(String((call[1] as RequestInit).body));
+      return Boolean(body.title && body.recommendationStatus);
+    });
+    const postBody = JSON.parse(String((postCall?.[1] as RequestInit).body));
+    expect(postBody).toMatchObject({ recommendationStatus: "increase_focus" });
+    expect(JSON.parse(postBody.metadataJson)).toMatchObject({ recommendationAllowed: true });
   });
   it("keeps missing supplier confidence unavailable instead of inventing a 0% value", async () => {
     installFetchMock((url) => ({

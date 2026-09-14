@@ -760,6 +760,11 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
   };
 
   const addSupplierSignalToQueue = useCallback(async (row: DecisionRow) => {
+    if (recommendationAllowed !== true) {
+      setQueueMessage("Finalna preporuka nije dozvoljena za ovaj signal. Proverite Data Quality pre bilo kakve akcije.");
+      return;
+    }
+
     const sourceKey = buildSupplierActionSourceKey(row, activeFilters, recommendationAllowed);
     const alreadyQueued = queuedActionKeys.has(sourceKey);
     setQueueBusyKey(sourceKey);
@@ -1249,17 +1254,23 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                 <h3>Detalj scorecard signala: {selectedRow.supplierName}</h3>
                 <div className="inline-flex items-center gap-2">
                   <button type="button" onClick={() => openSupplierDetail(selectedRow)}>Otvori puni detalj</button>
-                  <button
-                    type="button"
-                    onClick={() => void addSupplierSignalToQueue(selectedRow)}
-                    disabled={queueBusyKey === buildSupplierActionSourceKey(selectedRow, activeFilters, recommendationAllowed) || queuedActionKeys.has(buildSupplierActionSourceKey(selectedRow, activeFilters, recommendationAllowed))}
-                  >
-                    {queueBusyKey === buildSupplierActionSourceKey(selectedRow, activeFilters, recommendationAllowed)
-                      ? "Dodavanje..."
-                      : queuedActionKeys.has(buildSupplierActionSourceKey(selectedRow, activeFilters, recommendationAllowed))
-                        ? "U akcijama"
-                        : "Dodaj u akcije"}
-                  </button>
+                  {recommendationAllowed === true ? (
+                    <button
+                      type="button"
+                      onClick={() => void addSupplierSignalToQueue(selectedRow)}
+                      disabled={queueBusyKey === buildSupplierActionSourceKey(selectedRow, activeFilters, recommendationAllowed) || queuedActionKeys.has(buildSupplierActionSourceKey(selectedRow, activeFilters, recommendationAllowed))}
+                    >
+                      {queueBusyKey === buildSupplierActionSourceKey(selectedRow, activeFilters, recommendationAllowed)
+                        ? "Dodavanje..."
+                        : queuedActionKeys.has(buildSupplierActionSourceKey(selectedRow, activeFilters, recommendationAllowed))
+                          ? "U akcijama"
+                          : "Dodaj u akcije"}
+                    </button>
+                  ) : (
+                    <p className="sdh-decision-reason" role="note">
+                      Akcija nije dostupna: finalna preporuka nije dozvoljena. <Link to="/analytics/data-quality">Proveri Data Quality</Link>
+                    </p>
+                  )}
                 </div>
               </div>
               <SupplierExplainabilitySnapshot

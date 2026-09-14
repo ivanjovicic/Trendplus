@@ -49,6 +49,11 @@ const payload = {
   locale: "sr-RS",
 };
 
+const allowedPayload = {
+  ...payload,
+  metadata: payload.metadata.map((entry) => entry.key === "recommendationAllowed" ? { ...entry, value: true } : entry),
+};
+
 describe("SupplierDecisionReportActions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -182,7 +187,7 @@ describe("SupplierDecisionReportActions", () => {
     });
   });
 
-  it("maps recommendationAllowed=false to signal review action", async () => {
+  it("does not expose or create a queue action when recommendation is blocked", async () => {
     vi.stubEnv("VITE_ENABLE_PDF_EXPORT", "false");
 
     render(
@@ -191,18 +196,9 @@ describe("SupplierDecisionReportActions", () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Dodaj u akcije" }));
-
-    await waitFor(() => {
-      expect(upsertAnalyticsActionWithResultMock).toHaveBeenCalledTimes(1);
-    });
-
-    expect(upsertAnalyticsActionWithResultMock).toHaveBeenCalledWith(expect.objectContaining({
-      sourceType: "supplier",
-      title: "Proveri signal dobavljača",
-      recommendationStatus: "SIGNAL_REVIEW",
-      priority: "P2",
-    }));
+    expect(screen.queryByRole("button", { name: "Dodaj u akcije" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Proveri Data Quality" })).toHaveAttribute("href", "/analytics/data-quality");
+    expect(upsertAnalyticsActionWithResultMock).not.toHaveBeenCalled();
   });
 
   it("shows existing message when backend reports existing action", async () => {
@@ -217,7 +213,7 @@ describe("SupplierDecisionReportActions", () => {
 
     render(
       <MemoryRouter>
-        <SupplierDecisionReportActions payload={payload} durableReportHref="/analytics/supplier/report?fromDate=2026-04-01&toDate=2026-06-30" />
+        <SupplierDecisionReportActions payload={allowedPayload} durableReportHref="/analytics/supplier/report?fromDate=2026-04-01&toDate=2026-06-30" />
       </MemoryRouter>
     );
 
@@ -234,7 +230,7 @@ describe("SupplierDecisionReportActions", () => {
 
     render(
       <MemoryRouter>
-        <SupplierDecisionReportActions payload={payload} durableReportHref="/analytics/supplier/report?fromDate=2026-04-01&toDate=2026-06-30" />
+        <SupplierDecisionReportActions payload={allowedPayload} durableReportHref="/analytics/supplier/report?fromDate=2026-04-01&toDate=2026-06-30" />
       </MemoryRouter>
     );
 

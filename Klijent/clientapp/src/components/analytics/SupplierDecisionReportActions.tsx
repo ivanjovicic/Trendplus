@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import type { ResolvedAnalyticsTablePayload } from "../../types/analyticsTable";
 import { getAnalyticsActionSourceStatuses, upsertAnalyticsActionWithResult } from "../../services/analyticsApi";
 import type { AnalyticsActionDataQualityStatus } from "../../types/analytics";
@@ -179,6 +179,11 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
       }
 
       if (type === "queue") {
+        if (recommendationAllowed !== true) {
+          setStatus("Akcija nije dostupna: finalna preporuka nije dozvoljena. Proverite Data Quality pre bilo kakve akcije.");
+          return;
+        }
+
         if (!sourceKey) throw new Error("Nedostaje sourceKey za akciju.");
         const title = recommendationAllowed
           ? "Pripremi razgovor sa dobavljačem"
@@ -255,14 +260,20 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
       ) : null}
       {payload ? (
         <>
-          <button
-            type="button"
-            className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
-            onClick={() => void run("queue")}
-            disabled={queueDisabled}
-          >
-            {busy === "queue" ? "Dodajem..." : queued ? "U akcijama" : "Dodaj u akcije"}
-          </button>
+          {recommendationAllowed === true ? (
+            <button
+              type="button"
+              className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
+              onClick={() => void run("queue")}
+              disabled={queueDisabled}
+            >
+              {busy === "queue" ? "Dodajem..." : queued ? "U akcijama" : "Dodaj u akcije"}
+            </button>
+          ) : (
+            <span role="note" className="inline-flex items-center gap-2 text-xs text-muted">
+              Akcija nije dostupna: finalna preporuka nije dozvoljena. <Link to="/analytics/data-quality">Proveri Data Quality</Link>
+            </span>
+          )}
           <button
             type="button"
             className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
