@@ -11262,8 +11262,8 @@ The Supplier Decision Hub and its client-side report calculate total margin cont
 - Run log: `.ai/runs/2026-09-14-RQ250-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending until implementation commit is pushed and freshly checked against `origin/main`.
+- Main commit SHA: `540fca002062dca868616cca7c0c37eae80df80c`
+- Main verification: pending final push verification; implementation SHA is recorded for the delivery check.
 - Missed: `RQ148` broad gross/net/returns/cost measurement-basis proof remains WAITING; live runtime/browser parity is not proven by this local run.
 - Follow-up: `RQ251` is promoted to `READY` as the next Inventory operational-status label slice.
 - Residual risk: existing source data may still coalesce nullable upstream fields before this bounded projection; broader null-source semantics remain owned by `RQ148`.
