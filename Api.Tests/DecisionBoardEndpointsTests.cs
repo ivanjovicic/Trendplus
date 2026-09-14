@@ -45,6 +45,38 @@ public sealed class DecisionBoardEndpointsTests
         Assert.True(response.Meta?.Success ?? false);
     }
 
+    [Fact]
+    public void BuildDecisionBoardResponse_DoesNotPromotePdcGenerationToRefreshTime()
+    {
+        var generatedAtUtc = new DateTime(2026, 6, 19, 12, 0, 0, DateTimeKind.Utc);
+        var productDecisionCenter = CreateProductDecisionCenter(generatedAtUtc);
+
+        var response = DecisionBoardEndpoints.BuildDecisionBoardResponse(
+            generatedAtUtc,
+            productDecisionCenter.PeriodFromUtc,
+            productDecisionCenter.PeriodToUtc,
+            lastRefreshAtUtc: null,
+            productDecisionCenter,
+            inventoryInsights: null,
+            inventoryWorkflow: null,
+            supplierSummary: null,
+            actions: [],
+            outcomeSummary: null,
+            refreshStatus: null,
+            dataQualityHealth: null,
+            loadWarnings: [],
+            dataScope: "all",
+            storeId: null,
+            supplierId: null);
+
+        Assert.Equal(generatedAtUtc, response.GeneratedAtUtc);
+        Assert.Null(response.LastRefreshAtUtc);
+        Assert.NotNull(response.Meta);
+        Assert.Null(response.Meta!.LastRefreshAtUtc);
+        var productSource = Assert.Single(response.SourceStates.Where(source => source.SourceKey == "product-decision-center"));
+        Assert.Equal(generatedAtUtc, productSource.GeneratedAtUtc);
+    }
+
     [Theory]
     [InlineData("REPLENISH", 18500.0)]
     [InlineData("BOOST", 9250.0)]

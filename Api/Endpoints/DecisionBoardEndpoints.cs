@@ -215,7 +215,7 @@ public static class DecisionBoardEndpoints
             generatedAtUtc: DateTime.UtcNow,
             periodFromUtc,
             periodToUtc,
-            refreshStatus?.LastSuccessfulRefreshAtUtc ?? productDecisionCenter?.GeneratedAtUtc,
+            refreshStatus?.LastSuccessfulRefreshAtUtc,
             productDecisionCenter,
             inventoryInsights,
             inventoryWorkflow,

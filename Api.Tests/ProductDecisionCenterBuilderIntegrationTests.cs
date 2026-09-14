@@ -36,6 +36,9 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.Equal(2, response.TotalRows);
         Assert.Equal(2, response.Rows.Count);
         Assert.Equal(0, response.IgnoredRowsCount);
+        Assert.NotEqual(default, response.GeneratedAtUtc);
+        Assert.NotNull(response.Meta);
+        Assert.Null(response.Meta!.LastRefreshAtUtc);
 
         var replenish = Assert.Single(response.Rows.Where(row => row.ProductId == 101));
         Assert.Equal("REPLENISH", replenish.RecommendationStatus);
@@ -273,6 +276,8 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.Equal("insufficient_data", response.Meta.DataQualityStatus);
         Assert.Equal("no_rows_for_period", response.Meta.EmptyReason);
         Assert.Null(response.Meta.ErrorCode);
+        Assert.NotEqual(default, response.GeneratedAtUtc);
+        Assert.Null(response.Meta.LastRefreshAtUtc);
         Assert.Equal(0, response.Summary.ReplenishCount);
         Assert.Equal(0m, response.Summary.LostSalesEstimate);
         Assert.DoesNotContain(response.Rows, row => row.RecommendationStatus == "REPLENISH");

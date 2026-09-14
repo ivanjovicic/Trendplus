@@ -6282,11 +6282,9 @@ public static class CachedAnalyticsEndpoints
                 ? BuildSuccessMeta(
                     dataQualityStatus: "insufficient_data",
                     message: "Nema dovoljno podataka za preporuke u ovom periodu.",
-                    lastRefreshAtUtc: nowUtc,
                     emptyReason: "no_rows_for_period")
                 : BuildSuccessMeta(
-                    dataQualityStatus: ResolveDataQualityFromRows(sortedRows),
-                    lastRefreshAtUtc: nowUtc)
+                    dataQualityStatus: ResolveDataQualityFromRows(sortedRows))
         };
     }
 
