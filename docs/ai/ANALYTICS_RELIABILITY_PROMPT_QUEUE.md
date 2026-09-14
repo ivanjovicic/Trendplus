@@ -11873,7 +11873,7 @@ Supplier Sales Stats and Supplier Decision Hub use `Number.isNaN` rather than `N
 - Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `a38cf2634601be510b80d6531744c8c296a708ba`
-- Main verification: passed - fresh `git fetch origin main` confirmed local `main` and `origin/main` at `c003becc8394cf97b75fe2b93f5781e684e1571f`; implementation SHA `a38cf2634601be510b80d6531744c8c296a708ba` is an ancestor of `origin/main`.
+- Main verification: passed - fresh `git fetch origin main` confirmed local `main` and `origin/main` at `5d4e570c96fffea7afa3f69ccd53dba01c4bbe23`; implementation SHA `a38cf2634601be510b80d6531744c8c296a708ba` is an ancestor of `origin/main`.
 - Missed: no backend recommendation, score, period, scope or formula changes were made by design; no live-provider proof was available.
 - Residual risk: existing analyzer warnings and frontend chunk-size advisory remain outside this bounded prompt; malformed upstream payloads are handled at the frontend/report boundary.
 - Prompt defect / scope repair: repaired the stale dependency wording that incorrectly referenced already-DONE `RQ169`; no business-scope expansion was made.
