@@ -2,8 +2,9 @@
 
 Date: 2026-09-14
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ245
 
+Owner promotion 2026-09-14: `RQ245` was explicitly promoted from `WAITING` after completed `RQ244`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
 Owner promotion 2026-09-14: `RQ244` was explicitly promoted from `WAITING` after completed `RQ243`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-14: `RQ244` was delivered on `main` as the Analytics Actions outcome-evidence proof correction; the queue returned to no current READY prompt.
 Owner promotion 2026-09-14: `RQ243` was explicitly promoted from `WAITING` after completed `RQ240`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
@@ -10753,7 +10754,7 @@ The Analytics Actions read-side helper treats `outcomeMeasuredAtUtc` alone as co
 
 ## RQ245 - Map unknown Analytics Actions metadata to safe user labels
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend/tests
 Feature family: analytics-actions-metadata-label-safety
@@ -10811,7 +10812,7 @@ Analytics Actions has maps for known freshness, confidence, action-code, source-
 
 - `RQ178` remains the Inventory-specific reason/alert code owner; this prompt covers Analytics Actions metadata.
 - Backend remains the source of truth for actionability and scores.
-- Keep this prompt `WAITING` while `RQ167` remains the existing `READY` item.
+- `RQ167` is already `DONE`; no remaining dependency blocker prevents this prompt.
 
 ---
 

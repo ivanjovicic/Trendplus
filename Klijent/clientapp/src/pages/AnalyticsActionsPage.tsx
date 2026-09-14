@@ -151,6 +151,8 @@ const ACTION_CODE_LABELS: Record<string, string> = {
   out_of_stock_risk: "Rizik rasprodaje",
 };
 
+const UNKNOWN_METADATA_LABEL = "Nepoznato";
+
 function normalizeDataQualityStatus(value: string | null | undefined): AnalyticsActionDataQualityStatus | null {
   if (!value) return null;
   const lower = value.toLowerCase();
@@ -163,7 +165,7 @@ function normalizeDataQualityStatus(value: string | null | undefined): Analytics
 function getDataQualityLabel(value: AnalyticsActionAnyDataQualityStatus | null | undefined): string {
   if (!value) return "-";
   const normalized = normalizeDataQualityStatus(value);
-  if (!normalized) return value;
+  if (!normalized) return UNKNOWN_METADATA_LABEL;
   return DATA_QUALITY_LABELS[normalized];
 }
 
@@ -358,8 +360,8 @@ function formatLedgerList(values: string[] | null | undefined, unavailableLabel:
 
 function formatActionCodeLabel(value: string): string {
   const normalized = value.trim();
-  if (!normalized) return value;
-  return ACTION_CODE_LABELS[normalized.toLowerCase()] ?? normalized.replaceAll("_", " ");
+  if (!normalized) return "Nije evidentirano";
+  return ACTION_CODE_LABELS[normalized.toLowerCase()] ?? UNKNOWN_METADATA_LABEL;
 }
 
 function formatSourceModuleLabel(value: string | null | undefined): string {
@@ -368,23 +370,23 @@ function formatSourceModuleLabel(value: string | null | undefined): string {
   if (normalized in SOURCE_LABELS) {
     return SOURCE_LABELS[normalized as AnalyticsActionSourceType];
   }
-  return normalized.replaceAll("_", " ");
+  return UNKNOWN_METADATA_LABEL;
 }
 
 function formatFreshnessLabel(value: string | null | undefined): string {
   if (!value) return "Nije evidentirano";
-  return FRESHNESS_LABELS[value] ?? value;
+  return FRESHNESS_LABELS[value] ?? UNKNOWN_METADATA_LABEL;
 }
 
 function formatConfidenceLevelLabel(value: string | null | undefined): string {
   if (!value) return "Nije evidentirano";
-  return CONFIDENCE_LEVEL_LABELS[value] ?? value;
+  return CONFIDENCE_LEVEL_LABELS[value] ?? UNKNOWN_METADATA_LABEL;
 }
 
 function formatRecommendationTypeLabel(value: string | null | undefined): string {
   const normalized = (value ?? "").trim();
   if (!normalized) return "Nije evidentirano";
-  return RECOMMENDATION_TYPE_LABELS[normalized.toUpperCase()] ?? normalized.replaceAll("_", " ");
+  return RECOMMENDATION_TYPE_LABELS[normalized.toUpperCase()] ?? UNKNOWN_METADATA_LABEL;
 }
 
 function getMeasuredImpactLabel(item: AnalyticsActionItem): string {

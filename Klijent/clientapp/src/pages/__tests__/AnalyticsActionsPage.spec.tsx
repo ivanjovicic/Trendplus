@@ -847,6 +847,88 @@ describe("AnalyticsActionsPage", () => {
     expect(screen.queryByText("unknown_backend_warning")).not.toBeInTheDocument();
   });
 
+  it("maps unknown action metadata to safe labels across table and detail", async () => {
+    const unknownMetadata = createActionItem({
+      recommendationStatus: "backend_new_recommendation",
+      dataQualityStatus: "future_quality_state",
+      ledgerSnapshot: {
+        schemaVersion: 1,
+        creationSnapshot: {
+          sourceRecommendationId: "inventory:7:replenish",
+          recommendationType: "future_recommendation_type",
+          expectedImpactBasis: "unknown basis",
+          impactWindowDays: null,
+          confidenceLevel: "future_confidence_level",
+          warningCodes: ["future_warning_code"],
+          primaryDrivers: ["future_action_code"],
+          decisionReason: "Unknown reason.",
+          recommendedAction: "Unknown action.",
+          generatedAtUtc: "2026-06-01T00:00:00Z",
+          inputFreshnessStatus: "future_freshness_state",
+        },
+        resolutionSnapshot: null,
+      },
+      impactLedger: {
+        version: 1,
+        sourceRecommendationId: "inventory:7:replenish",
+        sourceRecommendationIdDerivation: "source_key",
+        capturedAtUtc: "2026-06-01T00:00:00Z",
+        snapshot: {
+          expectedImpactBasis: "unknown basis",
+          primaryDrivers: ["future_ledger_action_code"],
+          decisionReason: "Unknown reason.",
+          recommendedAction: "Unknown action.",
+          sourcePeriodStartUtc: null,
+          sourcePeriodEndUtc: null,
+          sourceModule: "future_source_module",
+          inputFreshnessStatus: "future_ledger_freshness",
+          impactWindowDays: null,
+        },
+        resolution: {
+          outcomeStatus: "pending",
+          measuredImpactRsd: null,
+          measurementMethod: null,
+          evidenceSource: null,
+          outcomeMeasuredAtUtc: null,
+          resolvedAtUtc: null,
+          measuredWindowDays: null,
+          resolutionNote: null,
+        },
+        derived: {
+          impactDeltaRsd: null,
+          realizationRatio: null,
+          calibrationBucket: null,
+          hasEvidence: false,
+        },
+      },
+    });
+    getAnalyticsActionsMock.mockResolvedValueOnce({ items: [unknownMetadata], totalCount: 1, page: 1, pageSize: 25, totalPages: 1 });
+    getAnalyticsActionByIdMock.mockResolvedValueOnce(unknownMetadata);
+
+    render(<AnalyticsActionsPage />);
+
+    expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
+    expect(screen.getAllByText("Nepoznato").length).toBeGreaterThan(0);
+    expect(screen.queryByText("backend_new_recommendation")).not.toBeInTheDocument();
+    expect(screen.queryByText("future_quality_state")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Detalji" }));
+    expect(await screen.findByText("Pregled ishoda")).toBeInTheDocument();
+    expect(screen.getAllByText("Nepoznato").length).toBeGreaterThan(3);
+    for (const rawToken of [
+      "future_recommendation_type",
+      "future_confidence_level",
+      "future_warning_code",
+      "future_action_code",
+      "future_freshness_state",
+      "future_ledger_action_code",
+      "future_source_module",
+      "future_ledger_freshness",
+    ]) {
+      expect(screen.queryByText(rawToken)).not.toBeInTheDocument();
+    }
+  });
+
   it("shows the shared error state and does not fall through to the empty list copy when list loading fails", async () => {
     getAnalyticsActionsMock.mockRejectedValueOnce(new Error("list down"));
 
