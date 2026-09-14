@@ -123,6 +123,30 @@ public class ProductDecisionReasoningHelperTests
         Assert.DoesNotContain(ProductDecisionReasoningHelper.ReasonCodes.LowStock, result.ReasonCodes);
     }
 
+    [Fact(DisplayName = "Missing margin coverage -> INSUFFICIENT_DATA + margin_coverage_unavailable")]
+    public void MissingMarginCoverage_MapsToInsufficientDataWithExplicitCode()
+    {
+        var result = ProductDecisionReasoningHelper.Evaluate(new ProductDecisionReasoningHelper.Input(
+            MissingSupplier: false,
+            MissingCost: false,
+            MissingCategory: false,
+            MissingVariantData: false,
+            Revenue: 80_000m,
+            UnitsSold: 40,
+            VelocityUnitsPerDay: 0.95m,
+            MarginPct: 20m,
+            MarginCoveragePct: null,
+            TrendPct: 8m,
+            StockGap: 6,
+            CurrentStock: 1,
+            MinStock: 7,
+            DaysSinceLastSale: 1));
+
+        Assert.Equal("INSUFFICIENT_DATA", result.RecommendationStatus);
+        Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.MarginCoverageUnavailable, result.ReasonCodes);
+        Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.InsufficientHistory, result.ReasonCodes);
+    }
+
     [Fact(DisplayName = "Small sales sample -> explicit history blockers")]
     public void SmallSalesSample_ExplainsWhyRecommendationIsBlocked()
     {

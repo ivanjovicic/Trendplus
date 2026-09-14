@@ -586,7 +586,7 @@ export interface ProductDecisionCenterItem {
   marginContribution: number;
   marginPct?: number | null;
   marginQualityLabel: string;
-  marginCoveragePct: number;
+  marginCoveragePct: number | null;
   currentStock: number | null;
   minStock: number | null;
   stockGap: number | null;

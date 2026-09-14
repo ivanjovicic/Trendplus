@@ -4307,7 +4307,7 @@ public static class CachedAnalyticsEndpoints
         snapshot.DataQualitySummary = new ExecutiveDataQualitySummaryDto
         {
             MissingSupplierCount = rows.Count(x => !x.SupplierId.HasValue || string.IsNullOrWhiteSpace(x.SupplierName)),
-            MissingCostCount = rows.Count(x => x.MarginCoveragePct <= 1m),
+            MissingCostCount = rows.Count(x => !x.MarginCoveragePct.HasValue || x.MarginCoveragePct <= 1m),
             InsufficientSignalCount = rows.Count(x =>
                 x.RecommendationStatus == "INSUFFICIENT_DATA" || x.RecommendationStatus == "FIX_DATA"),
             IgnoredRowsCount = productDecisionSnapshot?.IgnoredRowsCount ?? 0,
@@ -6047,14 +6047,16 @@ public static class CachedAnalyticsEndpoints
             var velocityUnitsPerDay = periodDays > 0 ? (decimal)unitsSold / periodDays : 0m;
             var marginContribution = sales?.MarginContribution ?? 0m;
             var marginPct = revenue > 0m ? (marginContribution / revenue) * 100m : (decimal?)null;
-            var marginCoveragePct = revenue > 0m
+            decimal? marginCoveragePct = revenue > 0m
                 ? ((sales?.CostCoveredRevenue ?? 0m) / revenue) * 100m
-                : 0m;
-            var marginQualityLabel = marginCoveragePct >= 85m
-                ? "Visok kvalitet"
-                : marginCoveragePct >= 60m
-                    ? "Srednji kvalitet"
-                    : "Nizak kvalitet";
+                : null;
+            var marginQualityLabel = marginCoveragePct.HasValue
+                ? marginCoveragePct.Value >= 85m
+                    ? "Visok kvalitet"
+                    : marginCoveragePct.Value >= 60m
+                        ? "Srednji kvalitet"
+                        : "Nizak kvalitet"
+                : "Nedovoljno podataka";
 
             var stockEvidenceComplete = article.CurrentStock.HasValue && article.MinStock.HasValue;
             var stockGap = stockEvidenceComplete
@@ -6083,10 +6085,11 @@ public static class CachedAnalyticsEndpoints
             var missingCost = !article.UnitCost.HasValue;
             var missingCategory = string.IsNullOrWhiteSpace(article.Category) && string.IsNullOrWhiteSpace(article.ShoeTypeName);
             var missingVariantData = string.IsNullOrWhiteSpace(article.Color) || string.IsNullOrWhiteSpace(article.Size);
+            var missingMarginCoverage = !marginCoveragePct.HasValue;
 
             var dataQualityStatus = missingSupplier || missingCost || missingCategory
                 ? "critical"
-                : (!stockEvidenceComplete || marginCoveragePct < 60m || missingVariantData ? "warning" : "good");
+                : (!stockEvidenceComplete || missingMarginCoverage || marginCoveragePct is < 60m || missingVariantData ? "warning" : "good");
 
             var reasoning = ProductDecisionReasoningHelper.Evaluate(new ProductDecisionReasoningHelper.Input(
                 MissingSupplier: missingSupplier,
@@ -6210,7 +6213,7 @@ public static class CachedAnalyticsEndpoints
                 MarginContribution = Math.Round(marginContribution, 2),
                 MarginPct = marginPct.HasValue ? Math.Round(marginPct.Value, 2) : null,
                 MarginQualityLabel = marginQualityLabel,
-                MarginCoveragePct = Math.Round(marginCoveragePct, 2),
+                MarginCoveragePct = marginCoveragePct.HasValue ? Math.Round(marginCoveragePct.Value, 2) : null,
                 CurrentStock = article.CurrentStock,
                 MinStock = article.MinStock,
                 StockGap = stockGap,
@@ -6451,7 +6454,7 @@ public static class CachedAnalyticsEndpoints
         string recommendationStatus,
         decimal revenue,
         int unitsSold,
-        decimal marginCoveragePct,
+        decimal? marginCoveragePct,
         decimal? trendPct,
         int? daysSinceLastSale)
     {
@@ -6461,8 +6464,8 @@ public static class CachedAnalyticsEndpoints
         else if (unitsSold >= 8) confidence += 10m;
 
         if (revenue >= 100_000m) confidence += 10m;
-        if (marginCoveragePct >= 80m) confidence += 15m;
-        else if (marginCoveragePct < 50m) confidence -= 20m;
+        if (marginCoveragePct is >= 80m) confidence += 15m;
+        else if (marginCoveragePct is < 50m) confidence -= 20m;
 
         if (trendPct.HasValue) confidence += 10m;
         if (daysSinceLastSale.HasValue && daysSinceLastSale.Value > 90) confidence -= 15m;
@@ -6480,7 +6483,7 @@ public static class CachedAnalyticsEndpoints
         string recommendationStatus,
         decimal revenue,
         int unitsSold,
-        decimal marginCoveragePct,
+        decimal? marginCoveragePct,
         decimal? trendPct,
         int? daysSinceLastSale,
         string dataQualityStatus)
@@ -6492,9 +6495,9 @@ public static class CachedAnalyticsEndpoints
 
         if (revenue >= 100_000m) reliability += 10m;
 
-        if (marginCoveragePct >= 85m) reliability += 20m;
-        else if (marginCoveragePct >= 60m) reliability += 10m;
-        else reliability -= 20m;
+        if (marginCoveragePct is >= 85m) reliability += 20m;
+        else if (marginCoveragePct is >= 60m) reliability += 10m;
+        else if (marginCoveragePct.HasValue) reliability -= 20m;
 
         reliability += trendPct.HasValue ? 10m : -5m;
 
@@ -6894,6 +6897,10 @@ public static class CachedAnalyticsEndpoints
             ["VelocityUnitsPerDay", "UnitsSold", "Revenue"],
             detail: $"Prihod {FormatProductDecisionAmount(row.Revenue)}");
 
+        var marginCoverageDetail = row.MarginCoveragePct.HasValue
+            ? $"Pokrivenost nabavnom cenom {FormatProductDecisionNumber(row.MarginCoveragePct.Value, 1)}%"
+            : "Pokrivenost nabavnom cenom nije dostupna";
+
         AddNode(
             "evidence",
             "stock_signal",
@@ -6913,8 +6920,8 @@ public static class CachedAnalyticsEndpoints
                 ? $"{FormatProductDecisionNumber(row.MarginPct.Value, 1)}% · doprinos {FormatProductDecisionAmount(row.MarginContribution)}"
                 : "Nedostaje marža",
             ["MarginPct", "MarginContribution", "MarginCoveragePct"],
-            isMissing: !row.MarginPct.HasValue,
-            detail: $"Pokrivenost nabavnom cenom {FormatProductDecisionNumber(row.MarginCoveragePct, 1)}%");
+            isMissing: !row.MarginPct.HasValue || !row.MarginCoveragePct.HasValue,
+            detail: marginCoverageDetail);
 
         AddNode(
             "evidence",
@@ -7433,6 +7440,7 @@ public static class CachedAnalyticsEndpoints
             "low_sample_size" => "Premali uzorak prodaje",
             "no_sales_in_period" => "Nema prodaje u periodu",
             "missing_last_sale" => "Nedostaje poslednja prodaja",
+            "margin_coverage_unavailable" => "Pokrivenost nabavnom cenom nije dostupna",
             "expected_impact_denominator_missing" => "Nedostaje ulaz za procenu uticaja",
             "product_recommendation_blocked" => "Preporuka proizvoda je blokirana",
             "data_quality_critical" => "Kvalitet podataka je kritičan",
@@ -7531,7 +7539,7 @@ public static class CachedAnalyticsEndpoints
 
     private static bool HasStrongProductDecisionEvidence(ProductDecisionCenterRowDto row) =>
         row.UnitsSold >= 20
-        && row.MarginCoveragePct >= 80m
+        && row.MarginCoveragePct is >= 80m
         && row.TrendPct.HasValue
         && row.VelocityUnitsPerDay > 0.5m;
 
@@ -7585,7 +7593,9 @@ public static class CachedAnalyticsEndpoints
 
             if (row.Revenue <= 0m)
             {
-                return "U izabranom periodu nema evidentirane prodaje.";
+                return row.MarginCoveragePct.HasValue
+                    ? "U izabranom periodu nema evidentirane prodaje."
+                    : "U izabranom periodu nema evidentirane prodaje, pa pokrivenost nabavnom cenom nije dostupna.";
             }
 
             if (!row.DaysSinceLastSale.HasValue)
@@ -7629,7 +7639,9 @@ public static class CachedAnalyticsEndpoints
 
             if (row.Revenue <= 0m)
             {
-                return "Nema prodaje u izabranom periodu, pa se poslovni signal ne može pouzdano proceniti.";
+                return row.MarginCoveragePct.HasValue
+                    ? "Nema prodaje u izabranom periodu, pa se poslovni signal ne može pouzdano proceniti."
+                    : "Nema prodaje u izabranom periodu, pa se pokrivenost nabavnom cenom ne može izračunati.";
             }
 
             return "Nedovoljno signala za stabilnu preporuku.";
@@ -7663,7 +7675,8 @@ public static class CachedAnalyticsEndpoints
                 || string.Equals(code, "insufficient_history", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(code, "low_sample_size", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(code, "no_sales_in_period", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(code, "missing_last_sale", StringComparison.OrdinalIgnoreCase)))
+                || string.Equals(code, "missing_last_sale", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(code, "margin_coverage_unavailable", StringComparison.OrdinalIgnoreCase)))
         {
             foreach (var code in row.ReasonCodes.Where(code =>
                          string.Equals(code, "missing_cost", StringComparison.OrdinalIgnoreCase)
@@ -7671,7 +7684,8 @@ public static class CachedAnalyticsEndpoints
                          || string.Equals(code, "insufficient_history", StringComparison.OrdinalIgnoreCase)
                          || string.Equals(code, "low_sample_size", StringComparison.OrdinalIgnoreCase)
                          || string.Equals(code, "no_sales_in_period", StringComparison.OrdinalIgnoreCase)
-                         || string.Equals(code, "missing_last_sale", StringComparison.OrdinalIgnoreCase)))
+                         || string.Equals(code, "missing_last_sale", StringComparison.OrdinalIgnoreCase)
+                         || string.Equals(code, "margin_coverage_unavailable", StringComparison.OrdinalIgnoreCase)))
             {
                 AddWarning(code);
             }
@@ -8315,7 +8329,7 @@ public class ProductDecisionCenterRowDto
     public decimal MarginContribution { get; set; }
     public decimal? MarginPct { get; set; }
     public string MarginQualityLabel { get; set; } = string.Empty;
-    public decimal MarginCoveragePct { get; set; }
+    public decimal? MarginCoveragePct { get; set; }
     public int? CurrentStock { get; set; }
     public int? MinStock { get; set; }
     public int? StockGap { get; set; }

@@ -150,6 +150,7 @@ const REASON_CODE_MESSAGES: Record<string, string> = {
   low_sample_size: "Uzorak prodaje je premali za sigurnu odluku.",
   no_sales_in_period: "U izabranom periodu nema evidentirane prodaje.",
   missing_last_sale: "Nedostaje datum poslednje prodaje.",
+  margin_coverage_unavailable: "Pokrivenost nabavnom cenom nije dostupna bez prodaje.",
   replenish_needed: "Potrebna je dopuna da bi se izbegao gubitak prodaje.",
   high_stock_risk: "Postoji rizik od viška zalihe.",
   data_quality_blocker: "Kvalitet podataka blokira pouzdanu preporuku.",
@@ -276,6 +277,9 @@ function isDecisionBlocked(whyPanel: ProductDecisionWhyPanel): boolean {
 
 function blockedDecisionNextStep(whyPanel: ProductDecisionWhyPanel): string {
   const reasonCodes = new Set(whyPanel.reasonCodes.map((code) => code.trim().toLowerCase()));
+  if (reasonCodes.has("margin_coverage_unavailable")) {
+    return "Proširite period ili dopunite istoriju prodaje da bi se pokrivenost nabavnom cenom mogla izračunati.";
+  }
   if (reasonCodes.has("missing_cost") || reasonCodes.has("missing_supplier") || reasonCodes.has("data_quality_blocker")) {
     return "Proverite kvalitet podataka i ponovite analizu.";
   }
@@ -1667,7 +1671,7 @@ export default function ProductDecisionCenterPage() {
                         <td>{fmtNumber(row.velocityUnitsPerDay, 2, "N/A")}</td>
                         <td>
                           <span>{fmtPct(row.marginPct, 1)}</span>
-                          <small>{row.marginQualityLabel ?? "N/A"} | pokriće: {fmtPct(row.marginCoveragePct, 1)}</small>
+                          <small>{row.marginQualityLabel ?? "Nedovoljno podataka"} | pokriće: {fmtPct(row.marginCoveragePct, 1, "Nije dostupno")}</small>
                         </td>
                         <td>
                           <span>{fmtNumber(row.currentStock, 0, "Nije dostupno")}</span>
@@ -2111,7 +2115,7 @@ export default function ProductDecisionCenterPage() {
                                   <strong>Obrt zalihe:</strong> {formatSignalMetricValue(row.sellThroughRatio, row.sellThroughStatus, "ratio")}
                                   <KpiExplainButton metricKey="sellThrough" ariaLabel="Kako je izračunat signal obrta zalihe" />
                                 </div>
-                                <div><strong>Pokrivenost nabavnom cenom:</strong> {fmtPct(row.marginCoveragePct, 1)}</div>
+                                <div><strong>Pokrivenost nabavnom cenom:</strong> {fmtPct(row.marginCoveragePct, 1, "Nije dostupno")}</div>
                                 <div>
                                   <strong>Pouzdanost:</strong> {whyPanel.reliabilityPct != null ? `${fmtNumber(whyPanel.reliabilityPct, 0, "N/A")}%` : "N/A"}
                                   <KpiExplainButton metricKey="reliabilityPct" ariaLabel="Kako je izračunata pouzdanost signala" />

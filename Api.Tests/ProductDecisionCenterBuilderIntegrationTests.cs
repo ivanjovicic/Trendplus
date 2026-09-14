@@ -362,6 +362,100 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
     }
 
     [Fact]
+    public async Task BuildProductDecisionCenter_PreservesMissingAndMeasuredZeroMarginCoverage()
+    {
+        var databaseName = $"product-decision-margin-coverage-{Guid.NewGuid():N}";
+        await using var db = CreateDbContext(databaseName);
+        var fromDate = PilotAnalyticsSeedPack.ProductDecisionFromUtc;
+        var toDate = PilotAnalyticsSeedPack.ProductDecisionToUtc;
+        PilotAnalyticsSeedPack.SeedProductDecisionCenter(db, fromDate, toDate);
+
+        db.Artikli.AddRange(
+            new Artikli
+            {
+                Id = 105,
+                PLU = "SKU-105",
+                Naziv = "No sales margin coverage",
+                IDDobavljac = 1,
+                IDObjekat = 1,
+                Kolicina = 4,
+                MinimalnaKolicina = 2,
+                NabavnaCena = 70m,
+                Kategorija = "Patike",
+                Boja = "Crna",
+                Velicina = "42",
+                DataOrigin = "existing",
+                UpdatedAt = toDate
+            },
+            new Artikli
+            {
+                Id = 106,
+                PLU = "SKU-106",
+                Naziv = "Measured zero margin coverage",
+                IDDobavljac = 1,
+                IDObjekat = 1,
+                Kolicina = 4,
+                MinimalnaKolicina = 2,
+                NabavnaCena = null,
+                Kategorija = "Patike",
+                Boja = "Crna",
+                Velicina = "42",
+                DataOrigin = "existing",
+                UpdatedAt = toDate
+            });
+        db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+        {
+            Id = 42,
+            DatumProdaje = toDate.AddHours(12),
+            IDObjekat = 1,
+            DataOrigin = "existing"
+        });
+        db.ProdajaStavke.Add(new ProdajaStavka
+        {
+            Id = 43,
+            IdProdaja = 42,
+            IdArtikal = 106,
+            Kolicina = 2,
+            Cena = 140m,
+            NabavnaCena = null
+        });
+        await db.SaveChangesAsync();
+
+        var response = await CachedAnalyticsEndpoints.BuildProductDecisionCenterAsync(
+            db,
+            fromDate,
+            toDate,
+            storeId: 1,
+            supplierId: null,
+            top: 50,
+            dataScope: "all",
+            CancellationToken.None);
+
+        var noSales = Assert.Single(response.Rows.Where(item => item.ProductId == 105));
+        Assert.Equal(0m, noSales.Revenue);
+        Assert.Null(noSales.MarginPct);
+        Assert.Null(noSales.MarginCoveragePct);
+        Assert.Equal("Nedovoljno podataka", noSales.MarginQualityLabel);
+        Assert.Equal("INSUFFICIENT_DATA", noSales.RecommendationStatus);
+        Assert.False(noSales.RecommendationAllowed);
+        Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.MarginCoverageUnavailable, noSales.ReasonCodes);
+        var unavailableMargin = Assert.Single(noSales.EvidenceChain.Where(item => item.Code == "margin_signal"));
+        Assert.True(unavailableMargin.IsMissing);
+        Assert.Contains("nije dostupna", unavailableMargin.Detail, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("0%", unavailableMargin.Detail, StringComparison.Ordinal);
+
+        var measuredZero = Assert.Single(response.Rows.Where(item => item.ProductId == 106));
+        Assert.True(measuredZero.Revenue > 0m);
+        Assert.Equal(0m, measuredZero.MarginPct);
+        Assert.Equal(0m, measuredZero.MarginCoveragePct);
+        Assert.Equal("Nizak kvalitet", measuredZero.MarginQualityLabel);
+        Assert.DoesNotContain(ProductDecisionReasoningHelper.ReasonCodes.MarginCoverageUnavailable, measuredZero.ReasonCodes);
+        var measuredMargin = Assert.Single(measuredZero.EvidenceChain.Where(item => item.Code == "margin_signal"));
+        Assert.False(measuredMargin.IsMissing);
+        Assert.Contains("0%", measuredMargin.Detail, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task BuildProductDecisionCenter_DataScopeSeparatesImportedAndExistingProducts()
     {
         var databaseName = $"product-decision-scope-{Guid.NewGuid():N}";

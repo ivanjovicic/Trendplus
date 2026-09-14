@@ -1199,6 +1199,56 @@ describe("ProductDecisionCenterPage confidence contract", () => {
     expect(screen.queryByText(/Visoka sigurnost/i)).not.toBeInTheDocument();
   });
 
+  it("keeps no-sales margin coverage unavailable instead of rendering 0%", async () => {
+    getProductDecisionCenterMock.mockResolvedValueOnce(
+      buildResponse([
+        makeRow({
+          productId: 505,
+          recommendationId: "product:505:INSUFFICIENT_DATA:20260528:20260626",
+          sourceKey: "product:505",
+          recommendationType: "INSUFFICIENT_DATA",
+          productName: "Model No Margin Coverage",
+          sku: "SKU-505",
+          revenue: 0,
+          unitsSold: 0,
+          velocityUnitsPerDay: 0,
+          marginContribution: 0,
+          marginPct: null,
+          marginQualityLabel: "Nedovoljno podataka",
+          marginCoveragePct: null,
+          trendPct: null,
+          recommendationAllowed: false,
+          confidenceLevel: "insufficient_data",
+          confidenceScore: null,
+          confidencePct: 32,
+          reliabilityPct: 24,
+          recommendationStatus: "INSUFFICIENT_DATA",
+          recommendationLabel: "Nedovoljno podataka",
+          recommendationReason: "Pokrivenost nabavnom cenom nije dostupna bez prodaje u periodu.",
+          explainabilityText: "Pokrivenost nabavnom cenom nije dostupna bez prodaje u periodu.",
+          warningCodes: ["margin_coverage_unavailable", "insufficient_data"],
+          reasonCodes: ["margin_coverage_unavailable", "no_sales_in_period"],
+          inputFreshnessStatus: "critical",
+          expectedImpactRsd: null,
+          impactWindowDays: null,
+          lostSalesEstimate: null,
+          slowStockCapital: null,
+        }),
+      ], "warning"),
+    );
+
+    render(<ProductDecisionCenterPage />);
+
+    expect(await screen.findByText("Model No Margin Coverage")).toBeInTheDocument();
+    expect(screen.getByText(/Nedovoljno podataka \| pokriće: Nije dostupno/i)).toBeInTheDocument();
+    expect(screen.queryByText(/pokriće: 0,0%/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Model No Margin Coverage"));
+    const marginCoverageDetail = await screen.findByText(/Pokrivenost nabavnom cenom:/i);
+    expect(marginCoverageDetail.parentElement).toHaveTextContent("Nije dostupno");
+    expect(marginCoverageDetail.parentElement).not.toHaveTextContent(/0,0%/i);
+  });
+
   it("keeps unknown stock evidence unavailable instead of rendering measured zero", async () => {
     getProductDecisionCenterMock.mockResolvedValueOnce(
       buildResponse([

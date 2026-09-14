@@ -16,6 +16,7 @@ public static class ProductDecisionReasoningHelper
         public const string LowSampleSize = "low_sample_size";
         public const string NoSalesInPeriod = "no_sales_in_period";
         public const string MissingLastSale = "missing_last_sale";
+        public const string MarginCoverageUnavailable = "margin_coverage_unavailable";
         public const string StockEvidenceUnavailable = "stock_evidence_unavailable";
         public const string ReplenishNeeded = "replenish_needed";
         public const string HighStockRisk = "high_stock_risk";
@@ -31,7 +32,7 @@ public static class ProductDecisionReasoningHelper
         int UnitsSold,
         decimal VelocityUnitsPerDay,
         decimal? MarginPct,
-        decimal MarginCoveragePct,
+        decimal? MarginCoveragePct,
         decimal? TrendPct,
         int? StockGap,
         int? CurrentStock,
@@ -67,6 +68,9 @@ public static class ProductDecisionReasoningHelper
             return "FIX_DATA";
 
         if (!input.StockGap.HasValue || !input.CurrentStock.HasValue || !input.MinStock.HasValue)
+            return "INSUFFICIENT_DATA";
+
+        if (!input.MarginCoveragePct.HasValue)
             return "INSUFFICIENT_DATA";
 
         if (input.UnitsSold < MinimumUnitsForRecommendation || input.Revenue <= 0m || !input.DaysSinceLastSale.HasValue)
@@ -117,13 +121,17 @@ public static class ProductDecisionReasoningHelper
         if (!input.StockGap.HasValue || !input.CurrentStock.HasValue || !input.MinStock.HasValue)
             codes.Add(ReasonCodes.StockEvidenceUnavailable);
 
+        if (!input.MarginCoveragePct.HasValue)
+            codes.Add(ReasonCodes.MarginCoverageUnavailable);
+
         if (input.StockGap is > 0 || (input.CurrentStock.HasValue && input.MinStock.HasValue && input.CurrentStock.Value < input.MinStock.Value))
             codes.Add(ReasonCodes.LowStock);
 
         if (input.VelocityUnitsPerDay >= 0.8m)
             codes.Add(ReasonCodes.HighVelocity);
 
-        if (input.MarginPct.HasValue && (input.MarginPct.Value < 10m || input.MarginCoveragePct < 60m))
+        if (input.MarginPct.HasValue
+            && (input.MarginPct.Value < 10m || input.MarginCoveragePct is < 60m))
             codes.Add(ReasonCodes.PoorMargin);
 
         if (input.DaysSinceLastSale.HasValue && input.DaysSinceLastSale.Value >= 45)
@@ -132,6 +140,7 @@ public static class ProductDecisionReasoningHelper
         var missingDecisionEvidence =
             input.TrendPct is null ||
             input.MarginPct is null ||
+            input.MarginCoveragePct is null ||
             input.UnitsSold < MinimumUnitsForRecommendation ||
             input.Revenue <= 0m ||
             !input.DaysSinceLastSale.HasValue;
