@@ -2,9 +2,10 @@
 
 Date: 2026-09-14
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ246
+Current READY prompt: none
 
 Owner promotion 2026-09-14: `RQ246` was explicitly promoted from `WAITING` after completed `RQ245`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
+Owner completion 2026-09-14: `RQ246` was delivered on `main` with fail-closed legacy Pilot Intake preview period/provenance mapping and focused unknown/explicit metadata coverage; the queue returned to no current READY prompt.
 Owner promotion 2026-09-14: `RQ245` was explicitly promoted from `WAITING` after completed `RQ244`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-14: `RQ245` was delivered on `main` as the safe Analytics Actions metadata-label correction; the queue returned to no current READY prompt.
 Owner promotion 2026-09-14: `RQ244` was explicitly promoted from `WAITING` after completed `RQ243`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
@@ -10830,7 +10831,7 @@ Analytics Actions has maps for known freshness, confidence, action-code, source-
 
 ## RQ246 - Do not synthesize Pilot Intake preview period or provenance from current time
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: frontend/contract/tests
 Feature family: pilot-intake-preview-provenance
@@ -10892,6 +10893,24 @@ The legacy browser-preview adapter for Pilot Intake creates a durable-shaped rep
 - `RQ170` remains the backend Pilot Intake request-period owner.
 - `RQ239` remains the Executive Decision Board fallback-provenance owner.
 - `RQ167` is already `DONE`; no remaining dependency blocker prevents this prompt.
+
+### Completion note
+
+- Date: 2026-09-14
+- Status: DONE
+- Completion: Legacy Pilot Intake browser previews now preserve only explicit query/metadata period and generated/refresh timestamps; absent provenance remains unavailable and requested/effective/observed fields stay separate.
+- Changed files: `Klijent/clientapp/src/pages/PilotIntakeReportPage.tsx`, `Klijent/clientapp/src/types/analytics.ts`, `Klijent/clientapp/src/pages/__tests__/PilotIntakeReportPage.spec.tsx`, `MASTER_ROADMAP.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `.ai/runs/2026-09-14-RQ246-evidence.md`
+- Checks run: `npm run typecheck` (pass); focused `npm run test:run -- src/pages/__tests__/PilotIntakeReportPage.spec.tsx` (pass, 8 tests); `npm run check:analytics-guardrails` (pass); `npm run build` (pass); `git diff --check` (pass); remote ancestry check (pass).
+- Checks not run: full frontend/backend suites and live/provider/browser export/print proof were not run; this was a bounded legacy adapter correction.
+- Run log: `.ai/runs/2026-09-14-RQ246-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `fc3ba60426605ad69aefbaebf4c30d6dc02674f4`
+- Main verification: passed - fresh `origin/main` contains `fc3ba60426605ad69aefbaebf4c30d6dc02674f4`.
+- Missed: no live browser/provider proof for temporary preview expiration or server-generated export/print was available in this run.
+- Follow-up: `RQ247` remains `WAITING` and is the next candidate for explicit owner promotion.
+- Residual risk: legacy payloads without period/provenance now show unknown metadata as intended, while full export/print parity still depends on the live runtime path.
+- Prompt defect / scope repair: stale dependency note claiming `RQ167` was the existing `READY` item was repaired because `RQ167` is already `DONE`.
 
 ---
 
