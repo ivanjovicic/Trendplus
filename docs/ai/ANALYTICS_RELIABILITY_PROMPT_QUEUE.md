@@ -10582,7 +10582,7 @@ Analytics Details and the main Analytics Dashboard treat missing OOS and low-sto
 - Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `dae90709b8c6d8de998545654ffa46f593a421f6`
-- Main verification: passed - `origin/main` contains implementation commit `dae90709b8c6d8de998545654ffa46f593a421f6`; current pushed target is `64fd571b85a9d927b5a431d1604db818b8469af6`.
+- Main verification: passed - `origin/main` contains implementation commit `dae90709b8c6d8de998545654ffa46f593a421f6`.
 - Missed: full cross-surface suite and live/browser payload proof were outside this bounded frontend task.
 - Residual risk: Vite reports the existing large-chunk warning; runtime payloads with malformed count types remain handled as unavailable by the shared projection.
 - Next: `RQ243` remains the next candidate and is not promoted by this run.
