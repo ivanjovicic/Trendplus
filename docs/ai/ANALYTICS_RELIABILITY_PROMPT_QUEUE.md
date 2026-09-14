@@ -2,9 +2,10 @@
 
 Date: 2026-09-14
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ243
+Current READY prompt: none
 
 Owner promotion 2026-09-14: `RQ243` was explicitly promoted from `WAITING` after completed `RQ240`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
+Owner completion 2026-09-14: `RQ243` was delivered on `main` as the supplier-footwear data-quality evidence-state correction; the queue returned to no current READY prompt.
 Owner promotion 2026-09-14: `RQ240` was explicitly promoted from `WAITING` after completed `RQ239`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-14: `RQ240` was delivered on `main`; the queue returned to no current READY prompt.
 
@@ -3960,7 +3961,7 @@ Even when an endpoint is correct, analytics trust fails if cards, tables, charts
 
 ## RQ146 - Prove analytics endpoint, schema, migration and refresh-failure behavior
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend/integration/EF/SQL/tests
 Feature family: analytics-schema-runtime-proof
@@ -10658,6 +10659,17 @@ The supplier footwear pre/post endpoint uses a non-null data-quality DTO and con
 - `RQ156`/`RQ182` remain owners of pre/post coverage and backend unknown aggregate semantics.
 - `RQ180` remains the owner of frontend denominator reconstruction; do not merge this prompt into formula work.
 - `RQ167` is already `DONE`; no remaining dependency blocker prevents this prompt.
+
+### Completion note
+
+- Changed the supplier-footwear data-quality DTO and JSON contract to preserve nullable counters/share and a nullable fallback snapshot; successful measured zeroes remain representable.
+- Added a shared finite/complete frontend quality projection and applied it to the pre/post trust header, concentration state, detail/export metadata and supplier-footwear empty-result messaging.
+- Added regression coverage for measured zero, omitted/null, partial and non-finite quality evidence, plus backend nullable/fallback contract assertions.
+- Validation: `npm run typecheck` (pass); `npm run test:run -- src/utils/__tests__/vendorSalesDataQuality.spec.ts src/pages/ProdajaPrePostNivelacijePage.spec.tsx src/pages/__tests__/SupplierFootwearAnalyticsPage.spec.tsx` (pass, 24 tests); `dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~SupplierDecisionSchemaSqlTests --no-restore` (pass, 32 tests); `npm run check:analytics-guardrails` (pass); `npm run build` (pass); `git diff --check` (pass).
+- Validation not run: full solution test suite and live/provider/browser proof were not run; no live environment was required for this contract correction.
+- Delivery: direct-main commit `ea538f6ce9d3e72d0041598d44eac3368542e0d1`; pushed to `origin/main` and freshly verified as contained there.
+- Run log: `.ai/runs/2026-09-14-RQ243-evidence.md`
+- Evidence state: synchronized
 
 ---
 
