@@ -11870,9 +11870,9 @@ Supplier Sales Stats and Supplier Decision Hub use `Number.isNaN` rather than `N
 - Checks run: focused supplier/decision/report tests 40 passed; analytics guardrails/typecheck passed; frontend build passed; prompt-queue self-test and governance validator passed; `git diff --check` passed.
 - Checks not run: full frontend suite, backend build/tests and live provider/browser/deployed API proof were not run because this was a frontend boundary-only change.
 - Run log: `.ai/runs/2026-09-15-RQ257-evidence.md`
-- Evidence state: pending docs commit/final fetch; implementation SHA `a38cf2638f55a6ce9b2fdb70b6a2a3a8dfc8c1c5` was pushed to `origin/main`.
+- Evidence state: pending final fetch; implementation SHA `a38cf2634601be510b80d6531744c8c296a708ba` was pushed to `origin/main`.
 - Delivery mode: direct-main
-- Main commit SHA: `a38cf2638f55a6ce9b2fdb70b6a2a3a8dfc8c1c5`
+- Main commit SHA: `a38cf2634601be510b80d6531744c8c296a708ba`
 - Main verification: implementation push succeeded; final fresh-fetch verification is recorded in the run log after queue documentation delivery.
 - Missed: no backend recommendation, score, period, scope or formula changes were made by design; no live-provider proof was available.
 - Residual risk: existing analyzer warnings and frontend chunk-size advisory remain outside this bounded prompt; malformed upstream payloads are handled at the frontend/report boundary.
