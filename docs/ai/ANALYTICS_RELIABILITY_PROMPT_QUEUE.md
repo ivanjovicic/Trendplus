@@ -2,7 +2,7 @@
 
 Date: 2026-09-14
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ255
+Current READY prompt: RQ256
 
 Owner completion 2026-09-14: `RQ249` was delivered on `main` with fail-closed Supplier Decision Hub detail and report-toolbar actionability gates; blocked, fallback, stale/partial and missing recommendation permission remain review-only.
 Owner promotion 2026-09-14: `RQ250` was explicitly promoted after completed `RQ249`, repaired the stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
@@ -15,6 +15,8 @@ Owner promotion 2026-09-14: `RQ253` was explicitly promoted after completed `RQ2
 Owner completion 2026-09-14: `RQ253` was delivered on `main` with shared safe analytics error messaging; raw error codes and technical exception text no longer appear in the shared alert, safe Serbian guidance and correlation support metadata remain available, and empty/error/retry/help behavior is preserved; the queue advanced to `RQ254`.
 Owner promotion 2026-09-14: `RQ254` was explicitly promoted after completed `RQ253`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
 Owner completion 2026-09-14: `RQ254` was delivered on `main` with separate Product Decision Center generation and source-refresh provenance; direct and empty PDC responses now leave unknown refresh nullable, cached responses retain trusted cache refresh metadata, and Decision Board no longer promotes query generation time to last refresh; the queue advanced to `RQ255`.
+Owner completion 2026-09-15: `RQ255` was delivered on `main` with nullable PDC stock evidence through snapshot, row, stock-gap/capital/opening-stock derivations, evidence chain, frontend table/detail and Decision Board actionability; null quantity/minimum no longer becomes a measured zero or stock-dependent recommendation, while measured zero remains valid; the queue advanced to `RQ256`.
+Owner promotion 2026-09-15: `RQ256` was explicitly promoted after completed `RQ255`, repaired the stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
 
 ### Completion note
 
@@ -11625,7 +11627,7 @@ The Product Decision Center builder supplies `DateTime.UtcNow` as `LastRefreshAt
 
 ## RQ255 - Preserve nullable stock evidence in Product Decision Center
 
-Status: READY
+Status: DONE
 Priority: P0
 Type: backend/contract/frontend/tests
 Feature family: pdc-stock-evidence-state
@@ -11686,13 +11688,31 @@ Product Decision Center maps nullable article quantity and minimum stock to zero
 - `RQ158` remains the general inventory null-stock owner; this prompt owns the uncovered PDC projection and evidence-chain path.
 - `RQ162` remains the sell-through denominator owner, and `RQ149` the inventory economics evidence owner.
 - `RQ143` and `RQ145` remain broad decision/parity owners.
-- Keep this prompt `WAITING` while `RQ169` remains the existing `READY` item.
+- `RQ169` is already `DONE`; no remaining dependency blocker prevents this bounded PDC stock-evidence slice.
+
+### Completion note
+
+- Date: 2026-09-15
+- Status: DONE
+- Completion: PDC preserves null quantity/minimum as unavailable evidence, keeps known measured zeros intact, blocks stock-dependent recommendations when required evidence is absent, and aligns row/evidence-chain/table/detail/Decision Board projections without frontend zero inference.
+- Changed files: `Api/Endpoints/CachedAnalyticsEndpoints.cs`, `Api/Endpoints/InventorySignalCalculator.cs`, `Application/Analytics/ProductDecisionReasoningHelper.cs`, `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`, `Api.Tests/ProductDecisionReasoningHelperTests.cs`, `Api.Tests/InventorySignalCalculatorTests.cs`, `Api.Tests/DecisionBoardAggregationContractTests.cs`, `Klijent/clientapp/src/types/analytics.ts`, `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`, `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx`
+- Checks run: focused backend tests 80 passed; additional backend contract tests 12 passed; frontend PDC tests 34 passed; analytics guardrails and typecheck passed; frontend production build passed; `git diff --check` passed.
+- Checks not run: full solution test suite and live provider/browser/deployed API proof were not run; live proof is outside this local delivery scope.
+- Run log: `.ai/runs/2026-09-15-RQ255-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `5bc967f077da28e4c846f2e26137f7ffca6fca59`
+- Main verification: passed - implementation commit `5bc967f077da28e4c846f2e26137f7ffca6fca59` was pushed to `origin/main`; the final documentation commit will be freshly verified as an ancestor of `origin/main`.
+- Missed: no force-merge or rewrite of unrelated remote branches; existing remote-ahead branches remain untouched.
+- Follow-up: `RQ256` is READY for Product Analytics.
+- Residual risk: aggregate summary money fields retain their established numeric contract and sum only known row estimates; existing frontend chunk-size advisory remains.
+- Prompt defect / scope repair: repaired the stale `RQ169` dependency wording because `RQ169` is already DONE; no business-scope expansion was made.
 
 ---
 
 ## RQ256 - Keep Product Decision margin coverage unavailable without sales evidence
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: backend/contract/frontend/tests
 Feature family: pdc-margin-coverage-denominator
