@@ -11353,8 +11353,8 @@ The Inventory analytics screen uses tone helpers for workflow and scheduler stat
 - Run log: `.ai/runs/2026-09-14-RQ251-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending until implementation commit is pushed and freshly checked against `origin/main`.
+- Main commit SHA: `5b90362627f039063c4c11f281d9ae346830be65`
+- Main verification: pending final push verification; implementation SHA is recorded for the delivery check.
 - Missed: live scheduler execution and browser proof remain outside this local presentation-contract slice; backend scheduler validation and worker behavior were intentionally unchanged.
 - Follow-up: `RQ252` is promoted to `READY` as the next non-parallel Supplier Analytics trust-gate slice.
 - Residual risk: future backend tokens remain intentionally unknown until an explicit label contract is added; no success/completion meaning is inferred for them.
