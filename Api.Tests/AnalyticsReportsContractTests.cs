@@ -47,6 +47,48 @@ public sealed class AnalyticsReportsContractTests
     }
 
     [Fact]
+    public void SupplierDecisionReport_MissingTrustMetadata_FailsClosedAcrossResponseActionsMetaAndExports()
+    {
+        var fromUtc = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);
+        var toUtc = new DateTime(2026, 6, 29, 0, 0, 0, DateTimeKind.Utc);
+        var filters = CreateDefaultFilters(fromUtc, toUtc, reportSection: "supplier_negotiation_pack");
+        var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
+            [CreateSupplierRow(1, "Alpha", "EXPAND", 82m, 84m, 520000m, 1400m)],
+            0,
+            0,
+            toUtc);
+
+        var sourceSummary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
+        var summary = sourceSummary with
+        {
+            TrustMetadata = null,
+            Meta = new AnalyticsResponseMetaDto
+            {
+                Success = true,
+                DataQualityStatus = "good",
+                RecommendationAllowed = true
+            }
+        };
+
+        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(summary, dataset, filters);
+        var negotiationPack = Assert.Single(report.Sections.Where(section => section.Key == "supplier_negotiation_pack"));
+
+        Assert.False(report.RecommendationAllowed);
+        Assert.False(report.Meta?.RecommendationAllowed);
+        Assert.Equal(report.RecommendationAllowed, report.Meta?.RecommendationAllowed);
+        Assert.Equal("insufficient_data", report.Meta?.DataQualityStatus);
+        Assert.Equal("RECOMMENDATION_GATED", report.Meta?.WarningCode);
+        Assert.Single(report.RecommendedActions);
+        Assert.Equal("Proveri kvalitet podataka", report.RecommendedActions[0].Title);
+        Assert.DoesNotContain(report.RecommendedActions, action =>
+            action.Title is "Pregledaj rast za Alpha" or "Smanji rizik za Alpha");
+        Assert.DoesNotContain(report.Rows, row => row.Value.Contains("Preporučeno", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(negotiationPack.Rows, row =>
+            Convert.ToString(row.GetValueOrDefault("value"))?.Contains("Preporučeno", StringComparison.OrdinalIgnoreCase) == true);
+        Assert.DoesNotContain(report.Payload.Rows, row => row.Value.Contains("Preporučeno", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public void SupplierDecisionReport_MarginContribution_UsesFullPriceRevenueShare()
     {
         var fromUtc = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -114,6 +156,36 @@ public sealed class AnalyticsReportsContractTests
         Assert.False(report.RecommendationAllowed);
         Assert.True(report.Meta?.IsPartial);
         Assert.Equal("FALLBACK_DATASET_USED", report.Meta?.WarningCode);
+    }
+
+    [Fact]
+    public void SupplierDecisionReport_StaleRefresh_GatesOtherwiseValidRecommendation()
+    {
+        var fromUtc = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);
+        var toUtc = new DateTime(2026, 6, 29, 0, 0, 0, DateTimeKind.Utc);
+        var filters = CreateDefaultFilters(fromUtc, toUtc);
+        var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
+            [
+                CreateSupplierRow(1, "Alpha", "EXPAND", 82m, 84m, 520000m, 1400m),
+                CreateSupplierRow(2, "Beta", "HOLD", 80m, 82m, 410000m, 1200m),
+                CreateSupplierRow(3, "Gamma", "HOLD", 78m, 80m, 300000m, 900m)
+            ],
+            0,
+            0,
+            toUtc);
+        var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
+        var refreshInfo = new SupplierDecisionHubEndpoints.ReportRefreshInfo(
+            new DateTime(2026, 6, 30, 9, 15, 0, DateTimeKind.Utc),
+            "stale",
+            "Refresh je stariji od generisanja reporta.");
+
+        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(summary, dataset, filters, refreshInfo);
+
+        Assert.False(report.RecommendationAllowed);
+        Assert.False(report.Meta?.RecommendationAllowed);
+        Assert.Equal("STALE_REFRESH", report.Meta?.WarningCode);
+        Assert.Single(report.RecommendedActions);
+        Assert.Equal("Proveri kvalitet podataka", report.RecommendedActions[0].Title);
     }
 
     [Fact]

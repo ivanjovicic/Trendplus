@@ -855,17 +855,18 @@ public static class SupplierDecisionHubEndpoints
             ObservedFromUtc: summary.From,
             ObservedToUtc: summary.To);
         var methodology = BuildSupplierDecisionMethodology(filters, trust, details is not null);
-        var warnings = BuildSupplierDecisionWarnings(summary.Meta, trust, refreshInfo);
         var hasData = dataset.Rows.Count > 0;
         var kpis = hasData
             ? BuildSupplierDecisionReportKpis(summary, dataset)
             : [];
-        var actions = BuildSupplierDecisionReportActions(summary, filters, trust, details, hasData);
-        var sections = BuildSupplierDecisionReportSections(summary, dataset, trust, refreshInfo, details, actions, methodology, hasData);
-        var rows = BuildSupplierDecisionLegacyRows(summary, dataset, filters, trust, refreshInfo, kpis, actions, methodology.Summary, warnings, hasData, details);
-        var payload = BuildSupplierDecisionPayload(reportId, generatedAtUtc, filters, period, trust, refreshInfo, methodology.Summary, rows);
-        var meta = BuildSupplierDecisionReportMeta(summary.Meta, trust, refreshInfo);
+        var meta = BuildSupplierDecisionReportMeta(summary.Meta, trust, refreshInfo, dataset.Rows);
         var dataQualityStatus = meta.DataQualityStatus ?? trust?.DataCoverageStatus ?? "insufficient_data";
+        var recommendationAllowed = meta.RecommendationAllowed == true;
+        var warnings = BuildSupplierDecisionWarnings(meta, trust, refreshInfo);
+        var actions = BuildSupplierDecisionReportActions(summary, filters, trust, details, hasData, recommendationAllowed);
+        var sections = BuildSupplierDecisionReportSections(summary, dataset, trust, refreshInfo, details, actions, methodology, hasData, recommendationAllowed, dataQualityStatus);
+        var rows = BuildSupplierDecisionLegacyRows(summary, dataset, filters, trust, refreshInfo, kpis, actions, methodology.Summary, warnings, hasData, details, recommendationAllowed, dataQualityStatus);
+        var payload = BuildSupplierDecisionPayload(reportId, generatedAtUtc, filters, period, trust, refreshInfo, methodology.Summary, rows, recommendationAllowed, dataQualityStatus);
 
         return new AnalyticsReportResponseDto(
             reportId,
@@ -879,7 +880,7 @@ public static class SupplierDecisionHubEndpoints
             refreshInfo?.LastRefreshAtUtc ?? trust?.LastRefreshAtUtc,
             refreshInfo?.DataFreshnessStatus,
             dataQualityStatus,
-            trust?.RecommendationAllowed ?? false,
+            recommendationAllowed,
             trust?.UsedFallback ?? false,
             trust?.FallbackReason,
             warnings,
@@ -1121,11 +1122,12 @@ public static class SupplierDecisionHubEndpoints
         SupplierDecisionHubFilters filters,
         ScorecardTrustMetadata? trust,
         SupplierDecisionDetailsResponse? details,
-        bool hasData)
+        bool hasData,
+        bool recommendationAllowed)
     {
         var actions = new List<AnalyticsReportActionDto>();
 
-        if (!hasData || trust is { RecommendationAllowed: false })
+        if (!hasData || !recommendationAllowed)
         {
             actions.Add(new AnalyticsReportActionDto(
                 "Proveri kvalitet podataka",
@@ -1141,6 +1143,11 @@ public static class SupplierDecisionHubEndpoints
                 "Report koristi pomoćni dataset; proveri da li su worker refresh-evi ažurni.",
                 "/admin/configuration?panel=workers",
                 "high"));
+        }
+
+        if (!recommendationAllowed)
+        {
+            return actions;
         }
 
         var topGrow = summary.TopGrowSuppliers.Count > 0 ? summary.TopGrowSuppliers[0] : null;
@@ -1186,7 +1193,9 @@ public static class SupplierDecisionHubEndpoints
         SupplierDecisionDetailsResponse? details,
         List<AnalyticsReportActionDto> actions,
         AnalyticsReportMethodologyDto methodology,
-        bool hasData)
+        bool hasData,
+        bool recommendationAllowed,
+        string dataQualityStatus)
     {
         var sections = new List<AnalyticsReportSectionDto>();
 
@@ -1271,7 +1280,7 @@ public static class SupplierDecisionHubEndpoints
                 supplierRows.Select(supplier => new Dictionary<string, object?>
                 {
                     ["supplierName"] = supplier.SupplierName,
-                    ["recommendation"] = supplier.RecommendationCode,
+                    ["recommendation"] = recommendationAllowed ? supplier.RecommendationCode : "Pomoćni signal",
                     ["revenue"] = Round2(supplier.Revenue),
                     ["confidencePct"] = Round2(supplier.ConfidenceScore),
                     ["reliabilityPct"] = Round2(supplier.ReliabilityPct),
@@ -1302,7 +1311,7 @@ public static class SupplierDecisionHubEndpoints
                     .Select(supplier => new Dictionary<string, object?>
                     {
                         ["supplierName"] = supplier.SupplierName,
-                        ["recommendation"] = supplier.RecommendationCode,
+                        ["recommendation"] = recommendationAllowed ? supplier.RecommendationCode : "Pomoćni signal",
                         ["revenue"] = Round2(supplier.Revenue),
                         ["confidencePct"] = Round2(supplier.ConfidenceScore),
                         ["reliabilityPct"] = Round2(supplier.ReliabilityPct),
@@ -1376,14 +1385,14 @@ public static class SupplierDecisionHubEndpoints
                 new()
                 {
                     ["metric"] = "Recommendation allowed",
-                    ["value"] = trust?.RecommendationAllowed ?? false,
-                    ["note"] = trust?.UsedFallback == true ? "Pomoćni signal" : "Finalna preporuka dozvoljena"
+                    ["value"] = recommendationAllowed,
+                    ["note"] = recommendationAllowed ? "Finalna preporuka dozvoljena" : "Pomoćni signal - proveriti podatke pre odluke"
                 }
             },
             5,
             null));
 
-        var negotiationRows = BuildSupplierNegotiationPackRows(summary, dataset, trust, details, dataQualityStatus: summary.Meta?.DataQualityStatus);
+        var negotiationRows = BuildSupplierNegotiationPackRows(summary, dataset, trust, details, dataQualityStatus, recommendationAllowed);
         sections.Add(new AnalyticsReportSectionDto(
             "supplier_negotiation_pack",
             "Paket za razgovor sa dobavljačem",
@@ -1449,7 +1458,8 @@ public static class SupplierDecisionHubEndpoints
         SupplierRowsDataset dataset,
         ScorecardTrustMetadata? trust,
         SupplierDecisionDetailsResponse? details,
-        string? dataQualityStatus)
+        string? dataQualityStatus,
+        bool recommendationAllowed)
     {
         var rows = new List<AnalyticsLegacyReportRowDto>();
         var section = "supplier_negotiation_pack";
@@ -1486,7 +1496,6 @@ public static class SupplierDecisionHubEndpoints
         {
             coverageStatus = dataQualityStatus;
         }
-        var recommendationAllowed = trust?.RecommendationAllowed ?? false;
         var usedFallback = trust?.UsedFallback ?? false;
         var recommendationCode = details?.SupplierHeader.RecommendationCode
             ?? primarySupplier?.RecommendationCode
@@ -1582,18 +1591,20 @@ public static class SupplierDecisionHubEndpoints
             rows.Add(new AnalyticsLegacyReportRowDto(section, "Artikli sa missing cost problemom", "Maržni doprinos može biti nepouzdan", "Argumenti", "Detektovan missing_cost signal u reasonCodes."));
         }
 
-        rows.Add(new AnalyticsLegacyReportRowDto(section, "Pojačaj saradnju", recommendationCode is "EXPAND" or "EXPAND_SELECTIVELY" ? "Da" : "Razmotriti", "Predlog razgovora", RecommendationReason("EXPAND")));
-        rows.Add(new AnalyticsLegacyReportRowDto(section, "Zadrži", recommendationCode is "HOLD" ? "Da" : "Razmotriti", "Predlog razgovora", RecommendationReason("HOLD")));
-        rows.Add(new AnalyticsLegacyReportRowDto(section, "Pregovaraj bolje uslove", recommendationCode is "PRICE_NEGOTIATE" ? "Da" : "Razmotriti", "Predlog razgovora", RecommendationReason("PRICE_NEGOTIATE")));
-        rows.Add(new AnalyticsLegacyReportRowDto(section, "Smanji narednu narudžbinu", recommendationCode is "ASSORTMENT_REDUCE" ? "Da" : "Razmotriti", "Predlog razgovora", RecommendationReason("ASSORTMENT_REDUCE")));
-        rows.Add(new AnalyticsLegacyReportRowDto(section, "Traži zamenu/povrat spore robe", supplierStockAtRisk > 0 ? "Preporučeno" : "Nije prioritet", "Predlog razgovora", "Fokus na artikle sa povišenim lagerom u riziku."));
-        rows.Add(new AnalyticsLegacyReportRowDto(section, "Traži rabat za robu koja se prodaje samo kroz sniženje", supplierMarkdownDependency >= 0.5m ? "Preporučeno" : "Razmotriti", "Predlog razgovora", "Visoka zavisnost od sniženja smanjuje kvalitet marže."));
+        const string blockedRecommendation = "Pomoćni signal - proveriti podatke";
+        const string blockedRecommendationReason = "Trust podaci nisu dovoljni za bezbednu preporuku.";
+        rows.Add(new AnalyticsLegacyReportRowDto(section, "Pojačaj saradnju", recommendationAllowed ? (recommendationCode is "EXPAND" or "EXPAND_SELECTIVELY" ? "Da" : "Razmotriti") : blockedRecommendation, "Predlog razgovora", recommendationAllowed ? RecommendationReason("EXPAND") : blockedRecommendationReason));
+        rows.Add(new AnalyticsLegacyReportRowDto(section, "Zadrži", recommendationAllowed ? (recommendationCode is "HOLD" ? "Da" : "Razmotriti") : blockedRecommendation, "Predlog razgovora", recommendationAllowed ? RecommendationReason("HOLD") : blockedRecommendationReason));
+        rows.Add(new AnalyticsLegacyReportRowDto(section, "Pregovaraj bolje uslove", recommendationAllowed ? (recommendationCode is "PRICE_NEGOTIATE" ? "Da" : "Razmotriti") : blockedRecommendation, "Predlog razgovora", recommendationAllowed ? RecommendationReason("PRICE_NEGOTIATE") : blockedRecommendationReason));
+        rows.Add(new AnalyticsLegacyReportRowDto(section, "Smanji narednu narudžbinu", recommendationAllowed ? (recommendationCode is "ASSORTMENT_REDUCE" ? "Da" : "Razmotriti") : blockedRecommendation, "Predlog razgovora", recommendationAllowed ? RecommendationReason("ASSORTMENT_REDUCE") : blockedRecommendationReason));
+        rows.Add(new AnalyticsLegacyReportRowDto(section, "Traži zamenu/povrat spore robe", recommendationAllowed ? (supplierStockAtRisk > 0 ? "Preporučeno" : "Nije prioritet") : blockedRecommendation, "Predlog razgovora", recommendationAllowed ? "Fokus na artikle sa povišenim lagerom u riziku." : blockedRecommendationReason));
+        rows.Add(new AnalyticsLegacyReportRowDto(section, "Traži rabat za robu koja se prodaje samo kroz sniženje", recommendationAllowed ? (supplierMarkdownDependency >= 0.5m ? "Preporučeno" : "Razmotriti") : blockedRecommendation, "Predlog razgovora", recommendationAllowed ? "Visoka zavisnost od sniženja smanjuje kvalitet marže." : blockedRecommendationReason));
         rows.Add(new AnalyticsLegacyReportRowDto(
             section,
             "Finalni savet",
             recommendationAllowed ? RecommendationTitle(recommendationCode) : "Pomoćni signal - proveriti podatke pre odluke",
             "Predlog razgovora",
-            recommendationAllowed ? RecommendationReason(recommendationCode) : "Finalni savet je blokiran jer recommendationAllowed=false."));
+            recommendationAllowed ? RecommendationReason(recommendationCode) : "Finalni savet je blokiran jer trust podaci nisu dovoljni za bezbednu preporuku."));
 
         if (!recommendationAllowed)
         {
@@ -1644,14 +1655,16 @@ public static class SupplierDecisionHubEndpoints
         string methodologySummary,
         IReadOnlyList<string> warnings,
         bool hasData,
-        SupplierDecisionDetailsResponse? details)
+        SupplierDecisionDetailsResponse? details,
+        bool recommendationAllowed,
+        string dataQualityStatus)
     {
         var rows = new List<AnalyticsLegacyReportRowDto>
         {
             new("Header", "Naziv izveštaja", "Trendplus izveštaj dobavljača"),
             new("Header", "Period", $"{summary.From:yyyy-MM-dd} - {summary.To:yyyy-MM-dd}", trust?.EffectivePeriodLabel, null),
-            new("Header", "Kvalitet podataka", summary.Meta?.DataQualityStatus ?? trust?.DataCoverageStatus ?? "insufficient_data", refreshInfo?.DataFreshnessStatus, trust?.FallbackReason),
-            new("Header", "Preporuka dozvoljena", trust?.RecommendationAllowed == true ? "Da" : "Ne", trust?.EffectiveDataset, trust?.UsedFallback == true ? "Pomoćni signal" : null)
+            new("Header", "Kvalitet podataka", dataQualityStatus, refreshInfo?.DataFreshnessStatus, trust?.FallbackReason),
+            new("Header", "Preporuka dozvoljena", recommendationAllowed ? "Da" : "Ne", trust?.EffectiveDataset, recommendationAllowed ? null : "Pomoćni signal")
         };
 
         if (hasData)
@@ -1667,7 +1680,7 @@ public static class SupplierDecisionHubEndpoints
                     "Top dobavljači",
                     supplier.SupplierName,
                     supplier.Revenue.ToString("0.##", CultureInfo.InvariantCulture),
-                    $"Signal: {supplier.RecommendationCode}",
+                    recommendationAllowed ? $"Signal: {supplier.RecommendationCode}" : "Pomoćni signal",
                     supplier.StatusReason));
             }
 
@@ -1677,7 +1690,7 @@ public static class SupplierDecisionHubEndpoints
                     "Rizik",
                     supplier.SupplierName,
                     supplier.Revenue.ToString("0.##", CultureInfo.InvariantCulture),
-                    $"Signal: {supplier.RecommendationCode}",
+                    recommendationAllowed ? $"Signal: {supplier.RecommendationCode}" : "Pomoćni signal",
                     supplier.StatusReason));
             }
         }
@@ -1696,7 +1709,7 @@ public static class SupplierDecisionHubEndpoints
             rows.Add(new AnalyticsLegacyReportRowDto("Upozorenja", "Upozorenje", warning));
         }
 
-        rows.AddRange(BuildSupplierNegotiationPackRows(summary, dataset, trust, details, summary.Meta?.DataQualityStatus));
+        rows.AddRange(BuildSupplierNegotiationPackRows(summary, dataset, trust, details, dataQualityStatus, recommendationAllowed));
 
         foreach (var action in actions)
         {
@@ -1715,7 +1728,9 @@ public static class SupplierDecisionHubEndpoints
         ScorecardTrustMetadata? trust,
         ReportRefreshInfo? refreshInfo,
         string methodologySummary,
-        IReadOnlyList<AnalyticsLegacyReportRowDto> rows)
+        IReadOnlyList<AnalyticsLegacyReportRowDto> rows,
+        bool recommendationAllowed,
+        string dataQualityStatus)
     {
         var filterValues = new List<AnalyticsReportNamedValueDto>
         {
@@ -1759,10 +1774,10 @@ public static class SupplierDecisionHubEndpoints
                 new("effectiveDataset", "Efektivni dataset", trust?.EffectiveDataset ?? string.Empty),
                 new("effectivePeriodLabel", "Efektivni period", trust?.EffectivePeriodLabel ?? string.Empty),
                 new("dataFreshnessStatus", "Svežina podataka", refreshInfo?.DataFreshnessStatus ?? string.Empty),
-                new("dataQualityStatus", "Kvalitet podataka", trust?.DataCoverageStatus ?? "insufficient_data"),
+                new("dataQualityStatus", "Kvalitet podataka", dataQualityStatus),
                 new("provenanceBasis", "Osnova generisanja", trust?.ProvenanceBasis ?? SelectDecisionScoreMv(GetDecisionScoreWindowDays(filters))),
                 new("usedFallback", "Korišćen fallback", (trust?.UsedFallback ?? false).ToString()),
-                new("recommendationAllowed", "Preporuka dozvoljena", (trust?.RecommendationAllowed ?? false).ToString()),
+                new("recommendationAllowed", "Preporuka dozvoljena", recommendationAllowed.ToString()),
                 new("methodology", "Metodologija", methodologySummary)
             },
             "sr-RS",
@@ -1771,19 +1786,69 @@ public static class SupplierDecisionHubEndpoints
             1);
     }
 
+    private static bool IsSupplierDecisionRecommendationAllowed(
+        ScorecardTrustMetadata? trust,
+        ReportRefreshInfo? refreshInfo = null)
+    {
+        if (trust is null
+            || !trust.RecommendationAllowed
+            || trust.HasData != true
+            || trust.UsedFallback
+            || !trust.NoSilentFallback
+            || trust.MissingSupplierNameCount > 0
+            || !string.Equals(trust.DataCoverageStatus, "good", StringComparison.OrdinalIgnoreCase)
+            || !string.IsNullOrWhiteSpace(trust.FallbackReasonCode))
+        {
+            return false;
+        }
+
+        return refreshInfo?.DataFreshnessStatus is not ("stale" or "critical");
+    }
+
     private static AnalyticsResponseMetaDto BuildSupplierDecisionReportMeta(
         AnalyticsResponseMetaDto? meta,
         ScorecardTrustMetadata? trust,
-        ReportRefreshInfo? refreshInfo)
+        ReportRefreshInfo? refreshInfo,
+        IReadOnlyCollection<SupplierScoreRow> rows)
     {
-        var resolved = CloneMeta(meta ?? BuildResponseMeta(Array.Empty<SupplierScoreRow>(), trust));
+        var resolved = CloneMeta(meta ?? BuildResponseMeta(rows, trust));
         resolved.LastRefreshAtUtc = refreshInfo?.LastRefreshAtUtc ?? resolved.LastRefreshAtUtc ?? trust?.LastRefreshAtUtc;
+        var recommendationAllowed = IsSupplierDecisionRecommendationAllowed(trust, refreshInfo);
+        resolved.RecommendationAllowed = recommendationAllowed;
+        var refreshIsStale = refreshInfo is { DataFreshnessStatus: "stale" or "critical" };
 
-        if (refreshInfo is { DataFreshnessStatus: "stale" or "critical" } && string.IsNullOrWhiteSpace(resolved.WarningCode))
+        if (trust is null)
+        {
+            resolved.IsPartial = true;
+            resolved.WarningCode ??= "RECOMMENDATION_GATED";
+            resolved.WarningMessage ??= "Preporuka je onemogućena jer nedostaju podaci za proveru pouzdanosti reporta.";
+            resolved.Message ??= resolved.WarningMessage;
+            if (string.IsNullOrWhiteSpace(resolved.DataQualityStatus)
+                || string.Equals(resolved.DataQualityStatus, "good", StringComparison.OrdinalIgnoreCase))
+            {
+                resolved.DataQualityStatus = "insufficient_data";
+            }
+        }
+        else if (!recommendationAllowed && trust is { HasData: true } && !refreshIsStale)
+        {
+            resolved.IsPartial = true;
+            resolved.WarningCode ??= trust.UsedFallback ? "FALLBACK_DATASET_USED" : "RECOMMENDATION_GATED";
+            resolved.WarningMessage ??= trust.UsedFallback
+                ? "Report koristi pomoćni signal; proveri kvalitet i svežinu podataka pre odluke."
+                : "Preporuka je onemogućena zbog nedovoljne pouzdanosti podataka.";
+            resolved.Message ??= resolved.WarningMessage;
+            if (string.IsNullOrWhiteSpace(resolved.DataQualityStatus)
+                || string.Equals(resolved.DataQualityStatus, "good", StringComparison.OrdinalIgnoreCase))
+            {
+                resolved.DataQualityStatus = "warning";
+            }
+        }
+
+        if (refreshIsStale && string.IsNullOrWhiteSpace(resolved.WarningCode))
         {
             resolved.IsPartial = true;
             resolved.WarningCode = "STALE_REFRESH";
-            resolved.WarningMessage = refreshInfo.WarningMessage ?? "Analytics refresh može biti zastareo.";
+            resolved.WarningMessage = refreshInfo?.WarningMessage ?? "Analytics refresh može biti zastareo.";
             resolved.Message ??= resolved.WarningMessage;
             if (string.IsNullOrWhiteSpace(resolved.DataQualityStatus) || string.Equals(resolved.DataQualityStatus, "good", StringComparison.OrdinalIgnoreCase))
             {
@@ -1885,7 +1950,7 @@ public static class SupplierDecisionHubEndpoints
             };
         }
 
-        var recommendationGated = trustMetadata is { RecommendationAllowed: false };
+        var recommendationGated = !IsSupplierDecisionRecommendationAllowed(trustMetadata);
         var warningCode = trustMetadata?.UsedFallback == true
             ? "FALLBACK_DATASET_USED"
             : (recommendationGated ? "RECOMMENDATION_GATED" : null);
@@ -1896,7 +1961,8 @@ public static class SupplierDecisionHubEndpoints
         return new AnalyticsResponseMetaDto
         {
             Success = true,
-            DataQualityStatus = trustMetadata?.DataCoverageStatus ?? "good",
+            DataQualityStatus = trustMetadata?.DataCoverageStatus
+                ?? (recommendationGated ? "insufficient_data" : "good"),
             RecommendationAllowed = !recommendationGated,
             IsPartial = trustMetadata?.UsedFallback == true || recommendationGated,
             WarningCode = warningCode,
