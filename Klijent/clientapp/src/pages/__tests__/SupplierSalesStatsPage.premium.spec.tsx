@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import SupplierSalesStatsPage, {
   buildSupplierConcentrationData,
   calculateTopSupplierRevenueShare,
+  describePopMetric,
+  describePopUnitsMetric,
 } from "../SupplierSalesStatsPage";
 import { getStores } from "../../services/analyticsApi";
 import { getSupplierSalesStats } from "../../services/supplierSalesStatsApi";
@@ -58,6 +60,13 @@ describe("SupplierSalesStatsPage premium controls", () => {
   ])("keeps unavailable concentration evidence distinct for %j", (rows) => {
     expect(calculateTopSupplierRevenueShare(rows)).toBeNull();
     expect(buildSupplierConcentrationData(rows)).toEqual([]);
+  });
+
+  it("keeps non-finite PoP revenue and units unavailable while preserving zero", () => {
+    expect(describePopMetric({ popRevenueChangePct: Number.POSITIVE_INFINITY, previousPeriodRevenue: 100, ukupanPromet: 200 }).label).toBe("N/A");
+    expect(describePopMetric({ popRevenueChangePct: 0, previousPeriodRevenue: 100, ukupanPromet: 200 }).label).toBe("0,00%");
+    expect(describePopUnitsMetric({ popUnitsChangePct: Number.NEGATIVE_INFINITY, previousPeriodUnits: 100, ukupnaKolicina: 200 }).label).toBe("N/A");
+    expect(describePopUnitsMetric({ popUnitsChangePct: 0, previousPeriodUnits: 100, ukupnaKolicina: 200 }).label).toBe("0,00%");
   });
 
   beforeEach(() => {

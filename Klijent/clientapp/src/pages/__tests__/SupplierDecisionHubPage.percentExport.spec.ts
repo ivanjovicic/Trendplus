@@ -6,6 +6,9 @@ import {
 } from "../../services/analyticsTableState";
 import {
   decisionColumns,
+  calculateSupplierQualityTrendPct,
+  calculateSupplierRevenueSharePct,
+  trendClass,
   toSupplierDecisionMarginPercentUnits,
   type DecisionRow,
 } from "../SupplierDecisionHubPage";
@@ -56,6 +59,31 @@ describe("Supplier Decision percent export/detail (RQ40)", () => {
     expect(toSupplierDecisionMarginPercentUnits(0.35)).toBe(35);
     expect(fmtPct(toSupplierDecisionMarginPercentUnits(0.35), 2)).toBe(fmtPct(35, 2));
     expect(fmtPct(toSupplierDecisionMarginPercentUnits(0.35), 2)).not.toBe(fmtPct(0.35, 2));
+  });
+
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, -0.1, 1.1])(
+    "rejects invalid margin ratio %s instead of exporting a non-finite percent",
+    (value) => {
+      expect(toSupplierDecisionMarginPercentUnits(value)).toBeNull();
+    },
+  );
+
+  it("keeps measured zero margin and neutralizes non-finite trend values", () => {
+    expect(toSupplierDecisionMarginPercentUnits(0)).toBe(0);
+    expect(trendClass(0)).toBe("trend-neutral");
+    expect(trendClass(Number.POSITIVE_INFINITY)).toBe("trend-neutral");
+    expect(trendClass(Number.NEGATIVE_INFINITY)).toBe("trend-neutral");
+  });
+
+  it("keeps invalid ranking inputs unavailable instead of producing sortable Infinity", () => {
+    expect(calculateSupplierQualityTrendPct(Number.POSITIVE_INFINITY, 0.2)).toBeNull();
+    expect(calculateSupplierQualityTrendPct(0.6, Number.NEGATIVE_INFINITY)).toBeNull();
+    expect(calculateSupplierQualityTrendPct(1.1, 0.2)).toBeNull();
+    expect(calculateSupplierQualityTrendPct(0.6, -0.1)).toBeNull();
+    expect(calculateSupplierQualityTrendPct(0.6, 0.2)).toBe(40);
+    expect(calculateSupplierRevenueSharePct(Number.POSITIVE_INFINITY, 100)).toBeNull();
+    expect(calculateSupplierRevenueSharePct(50, Number.POSITIVE_INFINITY)).toBeNull();
+    expect(calculateSupplierRevenueSharePct(0, 100)).toBe(0);
   });
 
   it("uses the full-price-weighted margin contribution definition", () => {

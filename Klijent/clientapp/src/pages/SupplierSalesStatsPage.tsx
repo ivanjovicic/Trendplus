@@ -86,9 +86,9 @@ type ActiveFilters = {
   storeId: number | null;
 };
 
-type DecisionSupplier = Omit<SupplierSalesStat, "sharePct" | "reliabilityPct" | "primaryFootwearTypeSharePct"> & {
+type DecisionSupplier = Omit<SupplierSalesStat, "sharePct" | "reliabilityPct" | "primaryFootwearTypeSharePct" | "totalCost"> & {
   sharePct: number | null;
-  totalCost: number;
+  totalCost: number | null;
   shareOfMarginContribution: number | null;
   shareOfUnits: number | null;
   reliabilityPct: number | null;
@@ -163,6 +163,19 @@ const COMMAND_TOOLTIP_LABEL_STYLE = {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+function finiteOrNull(value: number | null | undefined): number | null {
+  return value != null && Number.isFinite(value) ? value : null;
+}
+
+function compareFiniteMetrics(left: number | null | undefined, right: number | null | undefined): number {
+  const leftValue = finiteOrNull(left);
+  const rightValue = finiteOrNull(right);
+  if (leftValue == null && rightValue == null) return 0;
+  if (leftValue == null) return -1;
+  if (rightValue == null) return 1;
+  return leftValue - rightValue;
 }
 
 function toUtcRange(fromDate: string, toDate: string): { fromDate: string; toDate: string } {
@@ -289,7 +302,7 @@ function displaySignalLabel(
   return displayStatusLabel(status);
 }
 function trendClass(value: number | null | undefined): string {
-  if (value == null || Number.isNaN(value)) return "trend-neutral";
+  if (value == null || !Number.isFinite(value)) return "trend-neutral";
   if (value > 0) return "trend-up";
   if (value < 0) return "trend-down";
   return "trend-neutral";
@@ -330,11 +343,12 @@ function formatReasonCode(code: string): string {
 
 function buildStatusTooltip(data: StatusTooltipData): string {
   const popText = data.popRevenueChangePct != null
+    && Number.isFinite(data.popRevenueChangePct)
     ? fmtSignedPct(data.popRevenueChangePct, 1)
-    : data.previousPeriodRevenue != null && data.previousPeriodRevenue <= 0
+    : data.previousPeriodRevenue != null && Number.isFinite(data.previousPeriodRevenue) && data.previousPeriodRevenue <= 0
       ? "Novo / bez prethodne baze"
       : "N/A";
-  const impactText = data.prePostNivelacijaRevenueImpactPct != null
+  const impactText = data.prePostNivelacijaRevenueImpactPct != null && Number.isFinite(data.prePostNivelacijaRevenueImpactPct)
     ? fmtSignedPct(data.prePostNivelacijaRevenueImpactPct, 1)
     : "N/A";
   const reliabilityText = data.reliabilityAvailable
@@ -354,8 +368,8 @@ function buildStatusTooltip(data: StatusTooltipData): string {
   return `${data.statusLabel}: ${data.statusReason} | Udeo ${formatMetricDisplayValue({ value: data.sharePct, kind: "percent", digits: 1 })} | Marža ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Nivelacija impact ${impactText} | Split pokrivanje ${fmtPct(data.splitCoveragePct, 1)} | Pouzdanost ${reliabilityText} | Sigurnost ${confidenceText} | Kvalitet ${qualityText} | Razlozi: ${reasons}${hintText}`;
 }
 
-function describePopMetric(supplier: Pick<DecisionSupplier, "popRevenueChangePct" | "previousPeriodRevenue" | "ukupanPromet">): { label: string; title: string; className: string } {
-  if (supplier.popRevenueChangePct != null && !Number.isNaN(supplier.popRevenueChangePct)) {
+export function describePopMetric(supplier: Pick<DecisionSupplier, "popRevenueChangePct" | "previousPeriodRevenue" | "ukupanPromet">): { label: string; title: string; className: string } {
+  if (supplier.popRevenueChangePct != null && Number.isFinite(supplier.popRevenueChangePct)) {
     return {
       label: fmtSignedPct(supplier.popRevenueChangePct, 2),
       title: buildPopMetricDescription(supplier.previousPeriodRevenue),
@@ -363,7 +377,7 @@ function describePopMetric(supplier: Pick<DecisionSupplier, "popRevenueChangePct
     };
   }
 
-  if (supplier.previousPeriodRevenue != null && supplier.previousPeriodRevenue <= 0 && supplier.ukupanPromet > 0) {
+  if (supplier.previousPeriodRevenue != null && Number.isFinite(supplier.previousPeriodRevenue) && supplier.previousPeriodRevenue <= 0 && Number.isFinite(supplier.ukupanPromet) && supplier.ukupanPromet > 0) {
     return {
       label: "Novo",
       title: "Dobavljač nije imao promet u prethodnom uporedivom periodu, pa PoP procenat nije smislen.",
@@ -415,7 +429,7 @@ export function describeNivelacijaImpactMetric(supplier: Pick<DecisionSupplier, 
     };
   }
 
-  if (supplier.preNivelacijePromet <= 0 && supplier.posleNivelacijePromet > 0) {
+  if (Number.isFinite(supplier.preNivelacijePromet) && Number.isFinite(supplier.posleNivelacijePromet) && supplier.preNivelacijePromet <= 0 && supplier.posleNivelacijePromet > 0) {
     return {
       label: "Bez baze",
       title: "Postoji promet posle prve nivelacije, ali nema pre-nivelacija baze za smislen procenat promene.",
@@ -430,8 +444,8 @@ export function describeNivelacijaImpactMetric(supplier: Pick<DecisionSupplier, 
   };
 }
 
-function describePopUnitsMetric(supplier: Pick<DecisionSupplier, "popUnitsChangePct" | "previousPeriodUnits" | "ukupnaKolicina">): { label: string; title: string; className: string } {
-  if (supplier.popUnitsChangePct != null && !Number.isNaN(supplier.popUnitsChangePct)) {
+export function describePopUnitsMetric(supplier: Pick<DecisionSupplier, "popUnitsChangePct" | "previousPeriodUnits" | "ukupnaKolicina">): { label: string; title: string; className: string } {
+  if (supplier.popUnitsChangePct != null && Number.isFinite(supplier.popUnitsChangePct)) {
     return {
       label: fmtSignedPct(supplier.popUnitsChangePct, 2),
       title: "Promena prodane kolicine u odnosu na prethodni uporedivi period iste dužine.",
@@ -439,7 +453,7 @@ function describePopUnitsMetric(supplier: Pick<DecisionSupplier, "popUnitsChange
     };
   }
 
-  if (supplier.previousPeriodUnits != null && supplier.previousPeriodUnits <= 0 && supplier.ukupnaKolicina > 0) {
+  if (supplier.previousPeriodUnits != null && Number.isFinite(supplier.previousPeriodUnits) && supplier.previousPeriodUnits <= 0 && Number.isFinite(supplier.ukupnaKolicina) && supplier.ukupnaKolicina > 0) {
     return {
       label: "Novo",
       title: "Dobavljač nije imao prodatu količinu u prethodnom uporedivom periodu.",
@@ -489,7 +503,7 @@ export function describeNivelacijaUnitsImpactMetric(supplier: Pick<DecisionSuppl
     };
   }
 
-  if (supplier.preNivelacijeKolicina <= 0 && supplier.posleNivelacijeKolicina > 0) {
+  if (Number.isFinite(supplier.preNivelacijeKolicina) && Number.isFinite(supplier.posleNivelacijeKolicina) && supplier.preNivelacijeKolicina <= 0 && supplier.posleNivelacijeKolicina > 0) {
     return {
       label: "Bez baze",
       title: "Postoji količina posle prve nivelacije, ali nema pre-nivelacija baze za smislen procenat promene.",
@@ -505,15 +519,16 @@ export function describeNivelacijaUnitsImpactMetric(supplier: Pick<DecisionSuppl
 }
 
 function describeFootwearMix(supplier: Pick<DecisionSupplier, "primaryFootwearType" | "primaryFootwearTypeSharePct" | "footwearTypeCount">): string {
-  if (supplier.footwearTypeCount <= 0 || supplier.primaryFootwearType === "N/A" || supplier.primaryFootwearTypeSharePct == null) {
+  const sharePct = finiteOrNull(supplier.primaryFootwearTypeSharePct);
+  if (supplier.footwearTypeCount <= 0 || supplier.primaryFootwearType === "N/A" || sharePct == null) {
     return "Nema dovoljno podataka o vrstama obuće za ovog dobavljača.";
   }
 
-  if (supplier.primaryFootwearTypeSharePct >= 65) {
-    return `${supplier.primaryFootwearType} nosi većinu prometa dobavljača (${fmtPct(supplier.primaryFootwearTypeSharePct, 1)}). Ovo je jak signal koncentracije asortimana.`;
+  if (sharePct >= 65) {
+    return `${supplier.primaryFootwearType} nosi većinu prometa dobavljača (${fmtPct(sharePct, 1)}). Ovo je jak signal koncentracije asortimana.`;
   }
 
-  if (supplier.primaryFootwearTypeSharePct >= 40) {
+  if (sharePct >= 40) {
     return `${supplier.primaryFootwearType} je vodeća vrsta obuće, ali dobavljač ima i sekundarne segmente.`;
   }
 
@@ -521,7 +536,7 @@ function describeFootwearMix(supplier: Pick<DecisionSupplier, "primaryFootwearTy
 }
 
 function footwearMixTone(sharePct: number | null | undefined): string {
-  if (sharePct == null) return "mix-balanced";
+  if (sharePct == null || !Number.isFinite(sharePct)) return "mix-balanced";
   if (sharePct >= 65) return "mix-high";
   if (sharePct >= 40) return "mix-medium";
   return "mix-balanced";
@@ -745,13 +760,22 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     const totalUnits = data?.totals.ukupnaKolicina ?? suppliers.reduce((sum, item) => sum + item.ukupnaKolicina, 0);
 
     return suppliers.map((supplier) => {
-      const sharePct = supplier.sharePct ?? (totalRevenue > 0 ? (supplier.ukupanPromet / totalRevenue) * 100 : null);
-      const totalCost = supplier.totalCost ?? Math.max(0, supplier.revenueWithCost - supplier.marginContribution);
-      const shareOfMarginContribution = supplier.shareOfMarginContribution
-        ?? supplier.shareOfProfit
-        ?? (totalMarginContribution > 0 ? (supplier.marginContribution / totalMarginContribution) * 100 : null);
-      const shareOfUnits = supplier.shareOfUnits ?? (totalUnits > 0 ? (supplier.ukupnaKolicina / totalUnits) * 100 : null);
-      const splitCoveragePct = supplier.prePostNivelacijaRevenueCoveragePct ?? null;
+      const sharePct = finiteOrNull(supplier.sharePct)
+        ?? (Number.isFinite(totalRevenue) && totalRevenue > 0 && Number.isFinite(supplier.ukupanPromet)
+          ? finiteOrNull((supplier.ukupanPromet / totalRevenue) * 100)
+          : null);
+      const totalCost = finiteOrNull(supplier.totalCost)
+        ?? finiteOrNull(Math.max(0, supplier.revenueWithCost - supplier.marginContribution));
+      const shareOfMarginContribution = finiteOrNull(supplier.shareOfMarginContribution)
+        ?? finiteOrNull(supplier.shareOfProfit)
+        ?? (Number.isFinite(totalMarginContribution) && totalMarginContribution > 0 && Number.isFinite(supplier.marginContribution)
+          ? finiteOrNull((supplier.marginContribution / totalMarginContribution) * 100)
+          : null);
+      const shareOfUnits = finiteOrNull(supplier.shareOfUnits)
+        ?? (Number.isFinite(totalUnits) && totalUnits > 0 && Number.isFinite(supplier.ukupnaKolicina)
+          ? finiteOrNull((supplier.ukupnaKolicina / totalUnits) * 100)
+          : null);
+      const splitCoveragePct = finiteOrNull(supplier.prePostNivelacijaRevenueCoveragePct);
       const recommended = supplier.recommendation;
       const recommendationAllowed = recommended?.recommendationAllowed === true;
       const backendStatus = (recommended?.status ?? (supplier.isUnknown ? "do_not_trust" : "insufficient_data")) as DecisionStatus;
@@ -780,14 +804,15 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       const primaryFootwearType = supplier.primaryFootwearType
         ?? footwearBreakdown[0]?.tipObuceNaziv
         ?? "N/A";
-      const primaryFootwearTypeSharePct = supplier.primaryFootwearTypeSharePct
-        ?? footwearBreakdown[0]?.shareOfSupplierRevenuePct
-        ?? null;
+      const primaryFootwearTypeSharePct = finiteOrNull(supplier.primaryFootwearTypeSharePct)
+        ?? finiteOrNull(footwearBreakdown[0]?.shareOfSupplierRevenuePct);
       const footwearTypeCount = supplier.footwearTypeCount ?? footwearBreakdown.length;
 
       return {
         ...supplier,
         sharePct,
+        popRevenueChangePct: finiteOrNull(supplier.popRevenueChangePct),
+        popUnitsChangePct: finiteOrNull(supplier.popUnitsChangePct),
         totalCost,
         shareOfMarginContribution,
         shareOfUnits,
@@ -822,33 +847,33 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       if (sortField === "dobavljacNaziv") {
         compare = a.dobavljacNaziv.localeCompare(b.dobavljacNaziv, "sr");
       } else if (sortField === "ukupanPromet") {
-        compare = a.ukupanPromet - b.ukupanPromet;
+        compare = compareFiniteMetrics(a.ukupanPromet, b.ukupanPromet);
       } else if (sortField === "ukupnaKolicina") {
-        compare = a.ukupnaKolicina - b.ukupnaKolicina;
+        compare = compareFiniteMetrics(a.ukupnaKolicina, b.ukupnaKolicina);
       } else if (sortField === "totalCost") {
-        compare = a.totalCost - b.totalCost;
+        compare = compareFiniteMetrics(a.totalCost, b.totalCost);
       } else if (sortField === "sharePct") {
-        compare = (a.sharePct ?? -1) - (b.sharePct ?? -1);
+        compare = compareFiniteMetrics(a.sharePct, b.sharePct);
       } else if (sortField === "marginContribution") {
-        compare = a.marginContribution - b.marginContribution;
+        compare = compareFiniteMetrics(a.marginContribution, b.marginContribution);
       } else if (sortField === "marginPct") {
-        compare = a.marginPct - b.marginPct;
+        compare = compareFiniteMetrics(a.marginPct, b.marginPct);
       } else if (sortField === "shareOfMarginContribution") {
-        compare = (a.shareOfMarginContribution ?? -1) - (b.shareOfMarginContribution ?? -1);
+        compare = compareFiniteMetrics(a.shareOfMarginContribution, b.shareOfMarginContribution);
       } else if (sortField === "popRevenueChangePct") {
-        compare = (a.popRevenueChangePct ?? -9999) - (b.popRevenueChangePct ?? -9999);
+        compare = compareFiniteMetrics(a.popRevenueChangePct, b.popRevenueChangePct);
       } else if (sortField === "prePostNivelacijaRevenueImpactPct") {
-        compare = (a.prePostNivelacijaRevenueImpactPct ?? -9999) - (b.prePostNivelacijaRevenueImpactPct ?? -9999);
+        compare = compareFiniteMetrics(a.prePostNivelacijaRevenueImpactPct, b.prePostNivelacijaRevenueImpactPct);
       } else if (sortField === "status") {
         compare = STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status];
       }
 
       if (compare === 0) {
-        compare = (a.confidencePct ?? -1) - (b.confidencePct ?? -1);
+        compare = compareFiniteMetrics(a.confidencePct, b.confidencePct);
       }
 
       if (compare === 0) {
-        compare = a.ukupanPromet - b.ukupanPromet;
+        compare = compareFiniteMetrics(a.ukupanPromet, b.ukupanPromet);
       }
 
       return sortDir === "asc" ? compare : -compare;
@@ -871,7 +896,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
 
   const selectedFootwearRows = useMemo(
     () => [...(selectedSupplier?.footwearBreakdown ?? [])]
-      .sort((a, b) => b.ukupanPromet - a.ukupanPromet)
+      .sort((a, b) => compareFiniteMetrics(b.ukupanPromet, a.ukupanPromet))
       .slice(0, 8),
     [selectedSupplier?.footwearBreakdown]
   );
@@ -938,8 +963,9 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
   const comparisonData = useMemo(() => {
     if (knownSuppliers.length === 0) return [] as Array<{ name: string; udeoPrometa: number; udeoMarznogDoprinosa: number; marza: number }>;
 
-    const ranked = [...knownSuppliers]
-      .sort((a, b) => b.ukupanPromet - a.ukupanPromet);
+    const ranked = knownSuppliers
+      .filter((row) => Number.isFinite(row.ukupanPromet))
+      .sort((a, b) => compareFiniteMetrics(b.ukupanPromet, a.ukupanPromet));
 
     return ranked
       .filter((row) => row.sharePct != null && row.shareOfMarginContribution != null && Number.isFinite(row.marginPct))

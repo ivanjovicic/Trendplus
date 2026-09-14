@@ -40,9 +40,9 @@ import {
 } from "../services/supplierDecisionHubApi";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import type { Sezona } from "../types/Sezona";
-import { formatDate, fmtPct, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
+import { formatDate, fmtNumber, fmtPct, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
 import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
-import { formatMetricDisplayValue } from "../utils/analyticsMetricValue";
+import { formatMetricDisplayValue, isFiniteMetricNumber } from "../utils/analyticsMetricValue";
 import {
   getAnalyticsMetaMessage,
   isAnalyticsMetaInsufficient,
@@ -88,7 +88,7 @@ type ActiveFilters = {
 export type DecisionRow = RankingItem & {
   sharePct: number | null;
   marginContribution: number | null;
-  qualityTrendPct: number;
+  qualityTrendPct: number | null;
   status: DecisionStatus;
   statusReason: string;
   normalizedConfidence: number | null;
@@ -107,8 +107,44 @@ const OPEN_ACTION_STATUSES: AnalyticsActionStatus[] = ["new", "accepted", "defer
  * `sharePct` and `qualityTrendPct` on DecisionRow are already percent units.
  */
 export function toSupplierDecisionMarginPercentUnits(ratio: number | null | undefined): number | null {
-  if (ratio == null || Number.isNaN(ratio)) return null;
+  if (!isValidSupplierRatio(ratio)) return null;
   return ratio * 100;
+}
+
+export function calculateSupplierQualityTrendPct(
+  fullPriceRevenueShare: number | null | undefined,
+  markdownRevenueShare: number | null | undefined,
+): number | null {
+  if (!isValidSupplierRatio(fullPriceRevenueShare) || !isValidSupplierRatio(markdownRevenueShare)) return null;
+  const trendPct = (fullPriceRevenueShare - markdownRevenueShare) * 100;
+  return Number.isFinite(trendPct) ? trendPct : null;
+}
+
+export function calculateSupplierRevenueSharePct(
+  revenue: number | null | undefined,
+  totalRevenue: number | null | undefined,
+): number | null {
+  if (!isFiniteMetricNumber(revenue) || !isFiniteMetricNumber(totalRevenue) || totalRevenue <= 0) return null;
+  const sharePct = (revenue / totalRevenue) * 100;
+  return Number.isFinite(sharePct) ? sharePct : null;
+}
+
+function compareFiniteMetrics(left: number | null | undefined, right: number | null | undefined): number {
+  const leftValue = Number.isFinite(left) ? left! : null;
+  const rightValue = Number.isFinite(right) ? right! : null;
+  if (leftValue == null && rightValue == null) return 0;
+  if (leftValue == null) return -1;
+  if (rightValue == null) return 1;
+  return leftValue - rightValue;
+}
+
+function fmtSupplierUnits(value: number | null | undefined): string {
+  const formatted = fmtNumber(value, 0, RECOMMENDATION_SIGNAL_UNAVAILABLE);
+  return formatted === RECOMMENDATION_SIGNAL_UNAVAILABLE ? formatted : `${formatted} kom`;
+}
+
+function isValidSupplierRatio(value: number | null | undefined): value is number {
+  return isFiniteMetricNumber(value) && value >= 0 && value <= 1;
 }
 
 export const decisionColumns: AnalyticsTableColumn<DecisionRow>[] = [
@@ -136,8 +172,8 @@ function statusClass(status: DecisionStatus): string {
 function statusDisplayLabel(status: DecisionStatus): string {
   return recommendationStatusLabel(status);
 }
-function trendClass(value: number | null | undefined): string {
-  if (value == null || Number.isNaN(value)) return "trend-neutral";
+export function trendClass(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) return "trend-neutral";
   if (value > 0) return "trend-up";
   if (value < 0) return "trend-down";
   return "trend-neutral";
@@ -393,12 +429,12 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
   const decisionRows = useMemo<DecisionRow[]>(() => {
     const rows = ranking?.items ?? [];
     if (rows.length === 0) return [];
-    const totalRevenue = rows.reduce((sum, item) => sum + item.revenue, 0);
+    const totalRevenue = rows.reduce((sum, item) => Number.isFinite(item.revenue) ? sum + item.revenue : sum, 0);
 
     return rows.map((item) => {
-      const sharePct = totalRevenue > 0 ? (item.revenue / totalRevenue) * 100 : null;
+      const sharePct = calculateSupplierRevenueSharePct(item.revenue, totalRevenue);
       const marginContribution = calculateSupplierMarginContribution(item);
-      const qualityTrendPct = (item.fullPriceRevenueShare - item.markdownRevenueShare) * 100;
+      const qualityTrendPct = calculateSupplierQualityTrendPct(item.fullPriceRevenueShare, item.markdownRevenueShare);
       const confidencePctValue = normalizeRecommendationPct(item.confidenceScore);
       const normalizedConfidence = confidencePctValue ?? null;
 
@@ -434,20 +470,20 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     return rows.sort((a, b) => {
       let compare = 0;
       if (sortField === "supplierName") compare = a.supplierName.localeCompare(b.supplierName, "sr");
-      else if (sortField === "revenue") compare = a.revenue - b.revenue;
-      else if (sortField === "sharePct") compare = (a.sharePct ?? -1) - (b.sharePct ?? -1);
-      else if (sortField === "preMarkdownMarginPct") compare = a.preMarkdownMarginPct - b.preMarkdownMarginPct;
-      else if (sortField === "qualityTrendPct") compare = a.qualityTrendPct - b.qualityTrendPct;
+      else if (sortField === "revenue") compare = compareFiniteMetrics(a.revenue, b.revenue);
+      else if (sortField === "sharePct") compare = compareFiniteMetrics(a.sharePct, b.sharePct);
+      else if (sortField === "preMarkdownMarginPct") compare = compareFiniteMetrics(a.preMarkdownMarginPct, b.preMarkdownMarginPct);
+      else if (sortField === "qualityTrendPct") compare = compareFiniteMetrics(a.qualityTrendPct, b.qualityTrendPct);
       else if (sortField === "status") compare = RECOMMENDATION_STATUS_PRIORITY[a.status] - RECOMMENDATION_STATUS_PRIORITY[b.status];
       if (compare === 0) compare = (a.normalizedConfidence ?? -1) - (b.normalizedConfidence ?? -1);
       return sortDir === "asc" ? compare : -compare;
     });
   }, [decisionRows, sortDir, sortField]);
 
-  const totalRevenue = useMemo(() => sortedRows.reduce((sum, row) => sum + row.revenue, 0), [sortedRows]);
+  const totalRevenue = useMemo(() => sortedRows.reduce((sum, row) => Number.isFinite(row.revenue) ? sum + row.revenue : sum, 0), [sortedRows]);
   const top5SharePct = useMemo(() => {
     if (sortedRows.length === 0 || totalRevenue <= 0) return null;
-    const top5 = [...sortedRows].sort((a, b) => b.revenue - a.revenue).slice(0, 5).reduce((sum, row) => sum + row.revenue, 0);
+    const top5 = [...sortedRows].sort((a, b) => compareFiniteMetrics(b.revenue, a.revenue)).slice(0, 5).reduce((sum, row) => Number.isFinite(row.revenue) ? sum + row.revenue : sum, 0);
     return (top5 / totalRevenue) * 100;
   }, [sortedRows, totalRevenue]);
   const totalMarginContribution = useMemo(() => {
@@ -457,7 +493,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
   }, [sortedRows]);
   const fullPriceDeltaPctPoints = useMemo(() => {
     if (!summary || !previousSummary) return null;
-    return (summary.fullPriceRevenueShare - previousSummary.fullPriceRevenueShare) * 100;
+    return calculateSupplierQualityTrendPct(summary.fullPriceRevenueShare, previousSummary.fullPriceRevenueShare);
   }, [previousSummary, summary]);
   const supplierCounts = useMemo(() => ({
     boost: sortedRows.filter((row) => row.status === "increase_focus").length,
@@ -795,7 +831,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
         description,
         recommendationStatus: nextRecommendationStatus,
         priority: mapSupplierActionPriority(row, recommendationAllowed),
-        impactEstimateRsd: row.unsoldStockValue > 0 ? row.unsoldStockValue : undefined,
+        impactEstimateRsd: Number.isFinite(row.unsoldStockValue) && row.unsoldStockValue > 0 ? row.unsoldStockValue : undefined,
         confidencePct: row.confidenceAvailable && row.normalizedConfidence != null ? Math.round(row.normalizedConfidence) : undefined,
         reliabilityPct: row.reliabilityAvailable && row.reliabilityPct != null ? Math.round(row.reliabilityPct) : undefined,
         dataQualityStatus: toActionDataQualityStatus(row.dataQualityStatus),
@@ -1305,20 +1341,20 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                 </article>
                 <article>
                   <span>Komadi <InfoTip text="Koliko artikala je prodato ovog dobavljača u periodu." /></span>
-                  <strong>{selectedRow.units.toLocaleString("sr-RS")} kom</strong>
+                  <strong>{fmtSupplierUnits(selectedRow.units)}</strong>
                 </article>
                 <article>
                   <span>Udeo pune cene <InfoTip text="Koliki deo prihoda dolazi od prodaje po punoj ceni (bez sniženja)." /></span>
-                  <strong>{fmtPct(selectedRow.fullPriceRevenueShare * 100, 2)}</strong>
+                  <strong>{fmtPct(toSupplierDecisionMarginPercentUnits(selectedRow.fullPriceRevenueShare), 2)}</strong>
                 </article>
                 <article>
                   <span>Udeo nivelacija <InfoTip text="Koliki deo prihoda od ovog dobavljača dolazi od prodaje sa sniženjima (nivelacijama). Viši procenat može ukazivati da je asortiman precenjen ili da potražnja slabi." /></span>
-                  <strong>{fmtPct(selectedRow.markdownRevenueShare * 100, 2)}</strong>
+                  <strong>{fmtPct(toSupplierDecisionMarginPercentUnits(selectedRow.markdownRevenueShare), 2)}</strong>
                   <KpiExplainButton metricKey="markdownDependency" ariaLabel="Kako je izračunata zavisnost od nivelacija" />
                 </article>
                 <article>
                   <span>Stopa neaktivnih artikala <InfoTip text="Koliki deo artikala ovog dobavljača leži na zalihi bez prodaje. Viša stopa znači prekomerne narudžbine u odnosu na potražnju — rizik za kapital i skladište." /></span>
-                  <strong>{fmtPct(selectedRow.deadStockRate * 100, 2)}</strong>
+                  <strong>{fmtPct(toSupplierDecisionMarginPercentUnits(selectedRow.deadStockRate), 2)}</strong>
                 </article>
                 <article>
                   <span>Vrednost neprodate zalihe <InfoTip text="Procenjena vrednost artikala koji su na zalihi a se nisu prodali. To je kapital koji nije obrnut." /></span>
@@ -1326,11 +1362,11 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                 </article>
                 <article>
                   <span>Stopa dobrih artikala <InfoTip text="Procenat artikala dobavljača koji se redovno dobro prodaju — malo neaktivne zalihe, dobra marža, pozitivan trend. Viši procenat = pouzdaniji i predvidiviji asortiman." /></span>
-                  <strong>{fmtPct(selectedRow.repeatWinnerRate * 100, 2)}</strong>
+                  <strong>{fmtPct(toSupplierDecisionMarginPercentUnits(selectedRow.repeatWinnerRate), 2)}</strong>
                 </article>
                 <article>
                   <span>Skor / indeks kvaliteta <InfoTip text="Dva pokazatelja: levi (0–100) je automatski skor na osnovu prodajnih signala, desni je indeks pouzdanosti asortimana. Viši skor = bolji učinak. Korisno za poređenje dobavljača između sebe." /></span>
-                  <strong>{selectedRow.mlSupplierScore.toFixed(1)} / {selectedRow.supplierQualityIndex.toFixed(1)}</strong>
+                  <strong>{fmtNumber(selectedRow.mlSupplierScore, 1, RECOMMENDATION_SIGNAL_UNAVAILABLE)} / {fmtNumber(selectedRow.supplierQualityIndex, 1, RECOMMENDATION_SIGNAL_UNAVAILABLE)}</strong>
                 </article>
                 <article>
                   <span>Confidence signala <InfoTip text="Backend confidence signal za scorecard signal. Ovo nije isto što i lokalni heuristic score." /></span>

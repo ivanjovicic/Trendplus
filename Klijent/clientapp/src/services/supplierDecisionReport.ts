@@ -106,6 +106,15 @@ function buildSectionRow(section: string, item: string, value: string, secondary
   return { section, item, value, secondary, note };
 }
 
+function compareFiniteDescending(left: number | null | undefined, right: number | null | undefined): number {
+  const leftIsFinite = isFiniteMetricNumber(left);
+  const rightIsFinite = isFiniteMetricNumber(right);
+  if (!leftIsFinite && !rightIsFinite) return 0;
+  if (!leftIsFinite) return 1;
+  if (!rightIsFinite) return -1;
+  return right! - left!;
+}
+
 export type SupplierReportNumericState =
   | "measured"
   | "measured_zero"
@@ -149,7 +158,9 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
   const totalUnits = unitsEvidenceState === "measured" || unitsEvidenceState === "measured_zero"
     ? input.rows.reduce((sum, row) => sum + row.units!, 0)
     : null;
-  const totalStockRisk = input.rows.reduce((sum, row) => sum + row.unsoldStockValue, 0);
+  const totalStockRisk = input.rows.every((row) => isFiniteMetricNumber(row.unsoldStockValue))
+    ? input.rows.reduce((sum, row) => sum + row.unsoldStockValue, 0)
+    : null;
   const markdownEvidenceState = classifyNumericEvidence(input.rows.map((row) => row.markdownRevenueShare));
   const markdownRevenueRowsAreFinite = input.rows.every((row) => isFiniteMetricNumber(row.revenue));
   const markdownDependencyState: SupplierReportNumericState = !markdownRevenueRowsAreFinite
@@ -183,8 +194,12 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
   const reasonCodePreview = Array.from(new Set(input.rows.flatMap((row) => row.reasonCodes ?? []).filter((code) => Boolean(String(code).trim()))))
     .slice(0, 8)
     .map(recommendationReasonLabel);
-  const topRevenueRows = [...input.rows].sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+  const topRevenueRows = input.rows
+    .filter((row) => isFiniteMetricNumber(row.revenue))
+    .sort((a, b) => compareFiniteDescending(a.revenue, b.revenue))
+    .slice(0, 5);
   const riskRows = [...input.rows]
+    .filter((row) => isFiniteMetricNumber(row.unsoldStockValue) && isFiniteMetricNumber(row.deadStockRate))
     .sort((a, b) => (b.unsoldStockValue + b.deadStockRate * 1000) - (a.unsoldStockValue + a.deadStockRate * 1000))
     .slice(0, 5);
   const reduceRows = input.rows.filter((row) => row.status === "do_not_trust").slice(0, 5);
@@ -268,7 +283,7 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
 
   const topMarginRows = [...input.rows]
     .filter((row) => isFiniteMetricNumber(row.marginContribution))
-    .sort((a, b) => (b.marginContribution ?? 0) - (a.marginContribution ?? 0))
+    .sort((a, b) => compareFiniteDescending(a.marginContribution, b.marginContribution))
     .slice(0, 3);
   const markdownDependentRows = markdownDependencyState === "measured" || markdownDependencyState === "measured_zero"
     ? input.rows
@@ -277,11 +292,12 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
       .slice(0, 3)
     : [];
   const slowStockRows = [...input.rows]
-    .sort((a, b) => b.unsoldStockValue - a.unsoldStockValue)
+    .filter((row) => isFiniteMetricNumber(row.unsoldStockValue))
+    .sort((a, b) => compareFiniteDescending(a.unsoldStockValue, b.unsoldStockValue))
     .slice(0, 3);
   const replenishRows = input.rows
-    .filter((row) => row.status === "increase_focus" && row.deadStockRate <= 0.2)
-    .sort((a, b) => b.revenue - a.revenue)
+    .filter((row) => row.status === "increase_focus" && isFiniteMetricNumber(row.deadStockRate) && row.deadStockRate <= 0.2 && isFiniteMetricNumber(row.revenue))
+    .sort((a, b) => compareFiniteDescending(a.revenue, b.revenue))
     .slice(0, 3);
   const missingCostSignalDetected = input.rows.some((row) => row.reasonCodes.some((code) => code.toLowerCase().includes("missing_cost")));
   const gatedNegotiationValue = (allowedValue: string) => recommendationAllowed ? allowedValue : "Blokirano — proveriti podatke";
