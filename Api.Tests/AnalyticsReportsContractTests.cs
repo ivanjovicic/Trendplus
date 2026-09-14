@@ -47,6 +47,41 @@ public sealed class AnalyticsReportsContractTests
     }
 
     [Fact]
+    public void SupplierDecisionReport_MarginContribution_UsesFullPriceRevenueShare()
+    {
+        var fromUtc = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);
+        var toUtc = new DateTime(2026, 6, 29, 0, 0, 0, DateTimeKind.Utc);
+        var filters = new SupplierDecisionHubEndpoints.SupplierDecisionHubFilters(
+            fromUtc,
+            toUtc,
+            true,
+            null,
+            null,
+            null,
+            null,
+            false,
+            false,
+            null,
+            null,
+            "all");
+        var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
+            [
+                CreateSupplierRow(1, "Alpha", "EXPAND", 82m, 84m, 1_000m, 10m, fullPriceRevenueShare: 0.8m, preMarkdownMarginPct: 0.25m),
+                CreateSupplierRow(2, "Beta", "HOLD", 82m, 84m, 1_000m, 10m, fullPriceRevenueShare: 0.2m, preMarkdownMarginPct: 0.50m)
+            ],
+            0,
+            0,
+            new DateTime(2026, 6, 30, 12, 0, 0, DateTimeKind.Utc));
+
+        var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
+        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(summary, dataset, filters);
+        var marginKpi = Assert.Single(report.Kpis, kpi => kpi.Key == "marginContribution");
+
+        Assert.Equal(300m, marginKpi.Value);
+        Assert.Contains("full-price", marginKpi.Note, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void SupplierDecisionReport_Fallback_ReturnsWarningMetaAndUsedFallback()
     {
         var toUtc = new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc);
@@ -1158,7 +1193,9 @@ public sealed class AnalyticsReportsContractTests
         DateTime? periodTo = null,
         bool supplierNameMissing = false,
         string dataQualityStatus = "good",
-        IReadOnlyList<string>? reasonCodes = null)
+        IReadOnlyList<string>? reasonCodes = null,
+        decimal fullPriceRevenueShare = 0.64m,
+        decimal preMarkdownMarginPct = 0.31m)
     {
         var fromUtc = periodFrom ?? new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);
         var toUtc = periodTo ?? new DateTime(2026, 6, 29, 0, 0, 0, DateTimeKind.Utc);
@@ -1170,10 +1207,10 @@ public sealed class AnalyticsReportsContractTests
             toUtc,
             revenue,
             units,
-            0.64m,
+            fullPriceRevenueShare,
             0.57m,
             0.36m,
-            0.31m,
+            preMarkdownMarginPct,
             0.18m,
             145000m,
             0.44m,

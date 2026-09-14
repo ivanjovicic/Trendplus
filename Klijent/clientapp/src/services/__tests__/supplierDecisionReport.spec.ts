@@ -62,6 +62,7 @@ function buildInput(overrides: Partial<SupplierDecisionReportBuildInput> = {}): 
         units: 0,
         sharePct: null,
         preMarkdownMarginPct: 0.3,
+        fullPriceRevenueShare: 0.4,
         markdownRevenueShare: null,
         marginContribution: 0,
         status: "insufficient_data",
@@ -90,6 +91,23 @@ describe("buildSupplierDecisionReportPayload", () => {
     expect(payload.rows.find((row) => row.section === "supplier_negotiation_pack" && row.item === "Zavisnost od nivelacija")?.value).toBe("Nije dostupno");
     expect(payload.rows.find((row) => row.section === "Header" && row.item === "Posmatrani period")?.value).toContain("Efektivni opseg");
     expect(payload.metadata.find((row) => row.key === "observedPeriodFromUtc")?.value).toBe("2026-08-01T00:00:00Z");
+  });
+
+  it("keeps the full-price-weighted margin contribution value and definition across report surfaces", () => {
+    const base = buildInput();
+    const payload = buildSupplierDecisionReportPayload({
+      ...base,
+      totalRevenue: 100,
+      totalMarginContribution: 12,
+      trustMetadata: { ...base.trustMetadata, recommendationAllowed: true, dataCoverageStatus: "good" },
+      scorecardMeta: { success: true, dataQualityStatus: "good" },
+      rows: [{ ...base.rows[0], revenue: 100, fullPriceRevenueShare: 0.4, preMarkdownMarginPct: 0.3 }],
+    });
+
+    expect(payload.rows.find((row) => row.section === "KPI" && row.item === "Maržni doprinos")?.value).toBe("12 RSD");
+    expect(payload.rows.find((row) => row.section === "supplier_negotiation_pack" && row.item === "Maržni doprinos")?.value).toBe("12 RSD");
+    expect(payload.metadata.find((row) => row.key === "marginContributionEvidenceState")?.value).toBe("measured");
+    expect(payload.metadata.find((row) => row.key === "marginContributionDefinition")?.value).toContain("Full-price prihod");
   });
 
   it("keeps measured zero units and markdown dependency distinct from unavailable evidence", () => {

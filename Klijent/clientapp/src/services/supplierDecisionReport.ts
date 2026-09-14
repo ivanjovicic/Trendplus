@@ -15,6 +15,10 @@ import { fmtPct, fmtRsd } from "../utils/analyticsFormatters";
 import { buildPeriodLineageLabel } from "../utils/analyticsPeriodLineage";
 import { formatMetricDisplayValue, isFiniteMetricNumber } from "../utils/analyticsMetricValue";
 import { recommendationReasonLabel } from "../utils/canonicalRecommendationSemantics";
+import {
+  classifySupplierMarginContributionEvidence,
+  SUPPLIER_MARGIN_CONTRIBUTION_DEFINITION,
+} from "./supplierDecisionMargin";
 
 type ScorecardTrustMetadata = {
   lastRefreshAtUtc?: string | null;
@@ -44,8 +48,9 @@ export type SupplierDecisionReportRow = {
   units?: number;
   sharePct: number | null;
   preMarkdownMarginPct: number;
+  fullPriceRevenueShare: number | null;
   markdownRevenueShare?: number;
-  marginContribution: number;
+  marginContribution: number | null;
   status: string;
   statusReason: string;
   normalizedConfidence: number | null;
@@ -70,7 +75,7 @@ export type SupplierDecisionReportBuildInput = {
   trustMetadata: ScorecardTrustMetadata | null;
   scorecardMeta: AnalyticsResponseMeta | null;
   totalRevenue: number;
-  totalMarginContribution: number;
+  totalMarginContribution: number | null;
   top5SharePct: number | null;
   supplierCounts: {
     boost: number;
@@ -136,6 +141,10 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
   const trust = input.trustMetadata;
   const meta = input.scorecardMeta;
   const recommendationAllowed = trust?.recommendationAllowed === true;
+  const marginContributionEvidenceState = classifySupplierMarginContributionEvidence(input.rows);
+  const resolvedMarginContribution = marginContributionEvidenceState === "measured" || marginContributionEvidenceState === "measured_zero"
+    ? input.totalMarginContribution
+    : null;
   const unitsEvidenceState = classifyNumericEvidence(input.rows.map((row) => row.units));
   const totalUnits = unitsEvidenceState === "measured" || unitsEvidenceState === "measured_zero"
     ? input.rows.reduce((sum, row) => sum + row.units!, 0)
@@ -208,7 +217,7 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     buildSectionRow("Header", "Korišćen fallback", trust?.usedFallback ? "Da" : "Ne", trust?.fallbackReason ?? "", ""),
     buildSectionRow("Header", "Preporuka dozvoljena", trust?.recommendationAllowed ? "Da" : "Ne", trust?.dataCoverageStatus ?? "", ""),
     buildSectionRow("KPI", "Prihod", fmtRsd(input.totalRevenue), "", ""),
-    buildSectionRow("KPI", "Maržni doprinos", fmtRsd(input.totalMarginContribution), "", ""),
+    buildSectionRow("KPI", "Maržni doprinos", fmtRsd(resolvedMarginContribution), "", numericStateLimitation("maržnog doprinosa", marginContributionEvidenceState)),
     buildSectionRow("KPI", "Broj dobavljača", String(input.summary?.supplierCount ?? input.rows.length), "", ""),
     buildSectionRow("KPI", "Prodate jedinice", formatMetricDisplayValue({ value: totalUnits, kind: "qty" }), "", numericStateLimitation("prodatih jedinica", unitsEvidenceState)),
     buildSectionRow("KPI", "Rizik zaliha", fmtRsd(totalStockRisk), "", ""),
@@ -258,7 +267,8 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
   }
 
   const topMarginRows = [...input.rows]
-    .sort((a, b) => b.marginContribution - a.marginContribution)
+    .filter((row) => isFiniteMetricNumber(row.marginContribution))
+    .sort((a, b) => (b.marginContribution ?? 0) - (a.marginContribution ?? 0))
     .slice(0, 3);
   const markdownDependentRows = markdownDependencyState === "measured" || markdownDependencyState === "measured_zero"
     ? input.rows
@@ -282,7 +292,7 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
   detailRows.push(
     buildSectionRow("supplier_negotiation_pack", "Dobavljač", input.supplierLabel, "Sažetak", ""),
     buildSectionRow("supplier_negotiation_pack", "Prihod", fmtRsd(input.totalRevenue), "Sažetak", ""),
-    buildSectionRow("supplier_negotiation_pack", "Maržni doprinos", fmtRsd(input.totalMarginContribution), "Sažetak", ""),
+    buildSectionRow("supplier_negotiation_pack", "Maržni doprinos", fmtRsd(resolvedMarginContribution), "Sažetak", numericStateLimitation("maržnog doprinosa", marginContributionEvidenceState)),
     buildSectionRow("supplier_negotiation_pack", "Prodate jedinice", formatMetricDisplayValue({ value: totalUnits, kind: "qty" }), "Sažetak", numericStateLimitation("prodatih jedinica", unitsEvidenceState)),
     buildSectionRow("supplier_negotiation_pack", "Lager u riziku", fmtRsd(totalStockRisk), "Sažetak", ""),
     buildSectionRow("supplier_negotiation_pack", "Zavisnost od nivelacija", formatMetricDisplayValue({ value: weightedMarkdownDependencyPct, kind: "ratioPercent" }), "Sažetak", numericStateLimitation("zavisnost od nivelacija", markdownDependencyState)),
@@ -443,6 +453,8 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     { key: "markdownDependencyEvidenceState", label: "Stanje zavisnosti od nivelacija", value: markdownDependencyState },
     { key: "confidenceEvidenceState", label: "Stanje sigurnosti signala", value: confidenceEvidenceState },
     { key: "reliabilityEvidenceState", label: "Stanje pouzdanosti signala", value: reliabilityEvidenceState },
+    { key: "marginContributionEvidenceState", label: "Stanje maržnog doprinosa", value: marginContributionEvidenceState },
+    { key: "marginContributionDefinition", label: "Definicija maržnog doprinosa", value: SUPPLIER_MARGIN_CONTRIBUTION_DEFINITION },
     { key: "requestedDataset", label: "Traženi dataset", value: trust?.requestedDataset ?? null },
     { key: "effectiveDataset", label: "Efektivni dataset", value: trust?.effectiveDataset ?? null },
     { key: "requestedPeriodFromUtc", label: "Traženi period od", value: requestedFromUtc },

@@ -2,10 +2,12 @@
 
 Date: 2026-09-14
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ250
+Current READY prompt: RQ251
 
 Owner completion 2026-09-14: `RQ249` was delivered on `main` with fail-closed Supplier Decision Hub detail and report-toolbar actionability gates; blocked, fallback, stale/partial and missing recommendation permission remain review-only.
 Owner promotion 2026-09-14: `RQ250` was explicitly promoted after completed `RQ249`, repaired the stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
+Owner completion 2026-09-14: `RQ250` was delivered on `main` with full-price-weighted Supplier Decision Hub/client-report/server-report margin contribution parity and fail-closed missing, partial and non-finite evidence handling; the queue advanced to `RQ251`.
+Owner promotion 2026-09-14: `RQ251` was explicitly promoted after completed `RQ250`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
 
 Owner promotion 2026-09-14: `RQ248` was explicitly promoted from `WAITING` after completed `RQ247`, repaired the stale same-owner dependency note on already-DONE `RQ167`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; it is the single current RQ prompt.
 Owner completion 2026-09-14: `RQ248` was delivered on `main` with shared finite/null Pilot Intake impact projection, positive-denominator true-zero handling and parity across readiness, card, report, copied summary, export and Executive Decision Board surfaces; the queue advanced to `RQ249`.
@@ -11182,7 +11184,8 @@ The Supplier Decision Hub marks a blocked or fallback result as a `Pomoćni sign
 
 ## RQ250 - Reconcile Supplier Decision Hub and supplier report margin contribution
 
-Status: READY
+Status: DONE
+Owner claim 2026-09-14: `RQ250` was claimed in this workspace after verifying the canonical RQ pointer, satisfied dependencies and no competing supplier margin-parity lock.
 Priority: P1
 Type: backend/contract/frontend/tests
 Feature family: supplier-decision-margin-parity
@@ -11247,11 +11250,31 @@ The Supplier Decision Hub and its client-side report calculate total margin cont
 - `RQ145` remains the broad card/table/chart/detail/export/report parity gate.
 - `RQ169` is already `DONE`; no remaining dependency blocker prevents this prompt.
 
+### Completion note
+
+- Date: 2026-09-14
+- Status: DONE
+- Completion: Supplier Decision Hub, client report/export payload and server supplier report now use the full-price-weighted pre-markdown margin contribution definition; missing, partial, invalid and non-finite evidence is unavailable, while a valid measured zero remains zero.
+- Changed files: `Klijent/clientapp/src/services/supplierDecisionMargin.ts`; `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx`; `Klijent/clientapp/src/pages/__tests__/SupplierDecisionHubPage.percentExport.spec.ts`; `Klijent/clientapp/src/services/supplierDecisionReport.ts`; `Klijent/clientapp/src/services/__tests__/supplierDecisionReport.spec.ts`; `Api.Tests/AnalyticsReportsContractTests.cs`; this queue; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-14-RQ250-evidence.md`.
+- Contract/runtime behavior changed: the shared Hub adapter calculates `revenue × pre-markdown marža × full-price revenue share`; client report metadata carries the same definition/evidence state; the server report KPI remains authoritative with the same formula.
+- Checks run: focused frontend tests 24/24; `dotnet test Api.Tests/Api.Tests.csproj --no-restore --filter "FullyQualifiedName~AnalyticsReportsContractTests"` 41/41; `npm run check:analytics-guardrails`; `npm run build`; `git diff --check`; queue/planning/instruction validators.
+- Checks not run: full frontend/backend suites, browser/live API, production data and deployed report/export rendering.
+- Run log: `.ai/runs/2026-09-14-RQ250-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending until implementation commit is pushed and freshly checked against `origin/main`.
+- Missed: `RQ148` broad gross/net/returns/cost measurement-basis proof remains WAITING; live runtime/browser parity is not proven by this local run.
+- Follow-up: `RQ251` is promoted to `READY` as the next Inventory operational-status label slice.
+- Residual risk: existing source data may still coalesce nullable upstream fields before this bounded projection; broader null-source semantics remain owned by `RQ148`.
+- Next: claim and execute `RQ251` after this delivery is verified on `origin/main`.
+- Prompt defect / scope repair: no product-scope expansion; `RQ251`'s stale “keep WAITING while RQ169 is READY” dependency was repaired because `RQ169` is already DONE.
+
 ---
 
 ## RQ251 - Map Inventory workflow and scheduler statuses to safe user labels
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: frontend/tests
 Feature family: inventory-operational-status-labels
@@ -11313,7 +11336,7 @@ The Inventory analytics screen uses tone helpers for workflow and scheduler stat
 - `RQ178` remains the Inventory actionability owner; this prompt only maps operational state text.
 - `RQ196` remains the schedule input/validation owner and `RQ206` the refresh-run state owner.
 - `RQ145` remains the broad cross-surface parity owner.
-- Keep this prompt `WAITING` while `RQ169` remains the existing `READY` item.
+- `RQ169` is already `DONE`; no remaining dependency blocker prevents promotion of this bounded Inventory label-mapping slice.
 
 ---
 

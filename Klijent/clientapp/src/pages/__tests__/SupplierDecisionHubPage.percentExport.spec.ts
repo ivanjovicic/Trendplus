@@ -10,6 +10,10 @@ import {
   type DecisionRow,
 } from "../SupplierDecisionHubPage";
 import type { RankingItem } from "../../services/supplierDecisionHubApi";
+import {
+  calculateSupplierMarginContribution,
+  classifySupplierMarginContributionEvidence,
+} from "../../services/supplierDecisionMargin";
 
 function decisionRow(overrides: Partial<DecisionRow> & Pick<DecisionRow, "supplierId" | "supplierName" | "preMarkdownMarginPct">): DecisionRow {
   const base: RankingItem = {
@@ -52,6 +56,39 @@ describe("Supplier Decision percent export/detail (RQ40)", () => {
     expect(toSupplierDecisionMarginPercentUnits(0.35)).toBe(35);
     expect(fmtPct(toSupplierDecisionMarginPercentUnits(0.35), 2)).toBe(fmtPct(35, 2));
     expect(fmtPct(toSupplierDecisionMarginPercentUnits(0.35), 2)).not.toBe(fmtPct(0.35, 2));
+  });
+
+  it("uses the full-price-weighted margin contribution definition", () => {
+    expect(calculateSupplierMarginContribution({
+      revenue: 100_000,
+      preMarkdownMarginPct: 0.35,
+      fullPriceRevenueShare: 0.6,
+    })).toBe(21_000);
+    expect(calculateSupplierMarginContribution({
+      revenue: 100_000,
+      preMarkdownMarginPct: 0.35,
+      fullPriceRevenueShare: 0.1,
+    })).toBe(3_500);
+    expect(classifySupplierMarginContributionEvidence([
+      { revenue: 100_000, preMarkdownMarginPct: 0.35, fullPriceRevenueShare: 0.6 },
+      { revenue: 0, preMarkdownMarginPct: 0.35, fullPriceRevenueShare: 0.1 },
+    ])).toBe("measured");
+  });
+
+  it("keeps missing, non-finite and invalid margin evidence unavailable", () => {
+    expect(calculateSupplierMarginContribution({
+      revenue: 100_000,
+      preMarkdownMarginPct: null,
+      fullPriceRevenueShare: 0.6,
+    })).toBeNull();
+    expect(calculateSupplierMarginContribution({
+      revenue: Number.NaN,
+      preMarkdownMarginPct: 0.35,
+      fullPriceRevenueShare: 0.6,
+    })).toBeNull();
+    expect(classifySupplierMarginContributionEvidence([
+      { revenue: Number.POSITIVE_INFINITY, preMarkdownMarginPct: 0.35, fullPriceRevenueShare: 0.6 },
+    ])).toBe("non_finite");
   });
 
   it("export payload uses percent units for preMarkdownMarginPct, not raw ratio", () => {

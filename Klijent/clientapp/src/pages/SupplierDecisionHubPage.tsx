@@ -23,6 +23,10 @@ import { getAnalyticsActions, getAnalyticsRefreshStatus, upsertAnalyticsAction }
 import type { AnalyticsActionDataQualityStatus, AnalyticsActionStatus, AnalyticsRefreshStatus } from "../types/analytics";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import { buildSupplierDecisionReportPayload } from "../services/supplierDecisionReport";
+import {
+  calculateSupplierMarginContribution,
+  classifySupplierMarginContributionEvidence,
+} from "../services/supplierDecisionMargin";
 import { buildSupplierDecisionReportHref } from "../services/supplierDecisionReportQuery";
 import {
   getAllSupplierDecisionRanking,
@@ -83,7 +87,7 @@ type ActiveFilters = {
 
 export type DecisionRow = RankingItem & {
   sharePct: number | null;
-  marginContribution: number;
+  marginContribution: number | null;
   qualityTrendPct: number;
   status: DecisionStatus;
   statusReason: string;
@@ -393,7 +397,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
 
     return rows.map((item) => {
       const sharePct = totalRevenue > 0 ? (item.revenue / totalRevenue) * 100 : null;
-      const marginContribution = item.revenue * item.preMarkdownMarginPct;
+      const marginContribution = calculateSupplierMarginContribution(item);
       const qualityTrendPct = (item.fullPriceRevenueShare - item.markdownRevenueShare) * 100;
       const confidencePctValue = normalizeRecommendationPct(item.confidenceScore);
       const normalizedConfidence = confidencePctValue ?? null;
@@ -446,7 +450,11 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     const top5 = [...sortedRows].sort((a, b) => b.revenue - a.revenue).slice(0, 5).reduce((sum, row) => sum + row.revenue, 0);
     return (top5 / totalRevenue) * 100;
   }, [sortedRows, totalRevenue]);
-  const totalMarginContribution = useMemo(() => sortedRows.reduce((sum, row) => sum + row.marginContribution, 0), [sortedRows]);
+  const totalMarginContribution = useMemo(() => {
+    const evidenceState = classifySupplierMarginContributionEvidence(sortedRows);
+    if (evidenceState !== "measured" && evidenceState !== "measured_zero") return null;
+    return sortedRows.reduce((sum, row) => sum + (row.marginContribution ?? 0), 0);
+  }, [sortedRows]);
   const fullPriceDeltaPctPoints = useMemo(() => {
     if (!summary || !previousSummary) return null;
     return (summary.fullPriceRevenueShare - previousSummary.fullPriceRevenueShare) * 100;
@@ -1084,7 +1092,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
             <article className="sdh-decision-kpi">
               <span>
                 Ukupan maržni doprinos
-                <InfoTip text="Procena maržnog doprinosa za prikazane dobavljače: prihod ponderisan pre-markdown maržom. Viša vrednost je bolja, ali je proveri zajedno sa rizikom zaliha." />
+                <InfoTip text="Procena maržnog doprinosa: prihod od prodaje po punoj ceni ponderisan pre-markdown maržom. Viša vrednost je bolja, ali proveri je zajedno sa rizikom zaliha." />
               </span>
               <strong>{formatMetricDisplayValue({ value: totalMarginContribution, kind: "currency" })}</strong>
               <KpiExplainButton metricKey="marginContribution" ariaLabel="Kako je izračunat ukupan maržni doprinos" />
