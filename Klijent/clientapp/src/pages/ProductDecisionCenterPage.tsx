@@ -39,6 +39,10 @@ import {
   shouldShowAnalyticsEmptyState,
 } from "../utils/analyticsResponseMeta";
 import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescriptions";
+import {
+  resolveSupplierFilterFallbackState,
+  SUPPLIER_FILTER_STALE_LIST_MESSAGE,
+} from "../utils/supplierFilterFallbackState";
 import { recommendationReasonLabel } from "../utils/canonicalRecommendationSemantics";
 import type {
   AnalyticsActionDataQualityStatus,
@@ -714,6 +718,9 @@ export default function ProductDecisionCenterPage() {
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierFilterOption[]>([]);
   const [supplierFiltersWarning, setSupplierFiltersWarning] = useState<string | null>(null);
+  const [supplierFiltersStale, setSupplierFiltersStale] = useState(false);
+  const suppliersRef = useRef(suppliers);
+  suppliersRef.current = suppliers;
   const [payload, setPayload] = useState<ProductDecisionCenterResponse | null>(null);
   const payloadRef = useRef<ProductDecisionCenterResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -748,16 +755,13 @@ export default function ProductDecisionCenterPage() {
       try {
         const items = await getSupplierFilters(fromDate, toDate, true, storeId);
         if (!cancelled) {
-          const fallbackWarning = items.meta
-            ? getAnalyticsMetaMessage(items.meta) ?? "Filteri dobavljača trenutno koriste pomoćni signal."
-            : null;
-          if (fallbackWarning) {
-            setSupplierFiltersWarning(fallbackWarning);
-            return;
+          const resolved = resolveSupplierFilterFallbackState(items, suppliersRef.current);
+          setSupplierFiltersWarning(resolved.warning);
+          setSupplierFiltersStale(resolved.isStale);
+          setSuppliers(resolved.suppliers);
+          if (resolved.shouldClearSelection && supplierId != null) {
+            setSupplierId(null);
           }
-
-          setSuppliers(items);
-          setSupplierFiltersWarning(null);
         }
       } catch {
         if (!cancelled) {
@@ -1381,15 +1385,26 @@ export default function ProductDecisionCenterPage() {
           </label>
           <label>
             Dobavljač
-            <select value={supplierId ?? ""} onChange={(event) => setSupplierId(event.target.value ? Number(event.target.value) : null)}>
-              <option value="">Svi dobavljači</option>
+            {supplierFiltersStale ? <span className="product-decision-message product-decision-message-info" style={{ marginLeft: "0.5rem" }}>Zastarela lista</span> : null}
+            <select
+              value={supplierId ?? ""}
+              onChange={(event) => setSupplierId(event.target.value ? Number(event.target.value) : null)}
+              disabled={supplierFiltersStale}
+              aria-invalid={supplierFiltersStale || undefined}
+            >
+              <option value="">{supplierFiltersStale ? "Izbor je privremeno blokiran" : "Svi dobavljači"}</option>
               {suppliers.map((supplier) => (
-                <option key={supplier.supplierId} value={supplier.supplierId}>
+                <option key={supplier.supplierId} value={supplier.supplierId} disabled={supplierFiltersStale}>
                   {supplier.supplierName}
                 </option>
               ))}
             </select>
-            {supplierFiltersWarning ? <p className="product-decision-message product-decision-message-info" style={{ marginTop: "0.5rem" }}>{supplierFiltersWarning}</p> : null}
+            {supplierFiltersWarning ? (
+              <p className="product-decision-message product-decision-message-info" style={{ marginTop: "0.5rem" }} role="status">
+                {supplierFiltersWarning}
+                {supplierFiltersStale ? ` ${SUPPLIER_FILTER_STALE_LIST_MESSAGE}` : ""}
+              </p>
+            ) : null}
           </label>
           <label>
             Preporuka

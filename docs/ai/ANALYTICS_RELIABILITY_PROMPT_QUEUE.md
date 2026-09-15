@@ -4,6 +4,10 @@ Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-15: `RQ279` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ278` completion; it is the single current RQ prompt for supplier filter fallback visibility and was claimed in this workspace.
+
+Owner completion 2026-09-15: `RQ279` was delivered with shared stale supplier-filter state, disabled selection and cleared supplier on fallback metadata, prominent Serbian stale-list copy, and focused helper/page tests.
+
 Owner promotion 2026-09-15: `RQ278` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ277` completion; it is the single current RQ prompt for Supplier filter scope lineage and was claimed in this workspace.
 
 Owner completion 2026-09-15: `RQ278` was delivered with explicit `dataScope` on `getSupplierFilters`, canonical Supplier and Inventory callers passing authoritative scope, invalid supplier selection clearing, and focused scope-contract tests.
@@ -394,7 +398,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ276 | DONE | inventory-impact-semantics | Separate expected business impact from inventory exposure/value |
 | RQ277 | DONE | supplier-embedded-surface-composition | Remove only confirmed duplicate supplier titles or filters |
 | RQ278 | DONE | supplier-filter-scope-contract | Make supplier filter dataset scope explicit or prove the ambient contract |
-| RQ279 | WAITING | supplier-filter-fallback-visibility | Make retained supplier filter options visibly stale/degraded |
+| RQ279 | DONE | supplier-filter-fallback-visibility | Make retained supplier filter options visibly stale/degraded |
 | RQ280 | WAITING | supplier-previous-period-warning | Distinguish missing previous-period data from a failed request |
 | RQ281 | WAITING | supplier-embedded-freshness-provenance | Preserve valid refresh timestamps in embedded supplier trust metadata |
 | RQ282 | WAITING | supplier-null-id-identity | Prevent vendor-key collisions when supplier IDs are absent |
@@ -13632,13 +13636,28 @@ Reproduction: load Supplier with `?dataScope=imported` while local storage conta
 
 ## RQ279 - Make retained Supplier filter options visibly stale
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/UX/tests
 Feature family: supplier-filter-fallback-visibility
 Parallel-safe: no
 Owner: Analytics Frontend / Supplier Analytics
 Commit suggestion: `fix(analytics): expose stale supplier filter options`
+
+### Completion note
+
+- Date: 2026-09-15
+- Status: DONE
+- Completion: shared `resolveSupplierFilterFallbackState` keeps the previous supplier list only when fallback metadata marks it stale; Supplier consolidated, Inventory and PDC disable supplier selection, clear active supplier and show prominent Serbian stale-list copy.
+- Changed files: `supplierFilterFallbackState.ts`, `SupplierConsolidatedPage.tsx`, `InventoryPage.tsx`, `ProductDecisionCenterPage.tsx`, related specs/CSS
+- Checks run: focused supplier fallback specs 11 passed
+- Checks not run: full frontend suite, browser proof
+- Run log: `.ai/runs/2026-09-15-RQ279-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: branch/PR
+- Follow-up: `RQ280` is next WAITING for supplier previous-period warning semantics
+- Residual risk: live browser proof of stale dropdown styling not run in this workspace
+- Prompt defect / scope repair: none
 
 ### Problem
 

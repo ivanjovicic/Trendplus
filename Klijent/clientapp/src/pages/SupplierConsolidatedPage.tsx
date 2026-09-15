@@ -5,6 +5,10 @@ import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import type { StoreOption, SupplierFilterOption } from "../types/analytics";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { getAnalyticsMetaMessage } from "../utils/analyticsResponseMeta";
+import {
+  resolveSupplierFilterFallbackState,
+  SUPPLIER_FILTER_STALE_LIST_MESSAGE,
+} from "../utils/supplierFilterFallbackState";
 import SupplierSalesStatsPage from "./SupplierSalesStatsPage";
 import SupplierDecisionHubPage from "./SupplierDecisionHubPage";
 import SupplierFootwearAnalyticsPage from "./SupplierFootwearAnalyticsPage";
@@ -76,8 +80,11 @@ export default function SupplierConsolidatedPage() {
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierFilterOption[]>([]);
   const [supplierFiltersWarning, setSupplierFiltersWarning] = useState<string | null>(null);
+  const [supplierFiltersStale, setSupplierFiltersStale] = useState(false);
+  const suppliersRef = useRef(suppliers);
   const [trustPayload, setTrustPayload] = useState<SupplierTrustHeaderPayload | null>(null);
   const didInitTrustResetRef = useRef(false);
+  suppliersRef.current = suppliers;
   const {
     currentTab,
     canonicalFilters,
@@ -180,19 +187,23 @@ export default function SupplierConsolidatedPage() {
       .then((items) => {
         if (cancelled) return;
 
-        const fallbackWarning = items.meta
-          ? getAnalyticsMetaMessage(items.meta) ?? "Filteri dobavljača trenutno koriste pomoćni signal."
-          : null;
-        if (fallbackWarning) {
-          setSupplierFiltersWarning(fallbackWarning);
+        const resolved = resolveSupplierFilterFallbackState(items, suppliersRef.current);
+        setSupplierFiltersWarning(resolved.warning);
+        setSupplierFiltersStale(resolved.isStale);
+        setSuppliers(resolved.suppliers);
+
+        if (
+          resolved.shouldClearSelection
+          && canonicalFilters.supplierId != null
+        ) {
+          setSupplier("");
           return;
         }
 
-        setSuppliers(items);
-        setSupplierFiltersWarning(null);
         if (
-          canonicalFilters.supplierId != null
-          && !items.some((entry) => String(entry.supplierId) === String(canonicalFilters.supplierId))
+          !resolved.isStale
+          && canonicalFilters.supplierId != null
+          && !resolved.suppliers.some((entry) => String(entry.supplierId) === String(canonicalFilters.supplierId))
         ) {
           setSupplier("");
         }
@@ -313,15 +324,36 @@ export default function SupplierConsolidatedPage() {
           </select>
         </label>
 
-        <label className="supplier-consolidated-field">
-          <span>Dobavljač</span>
-          <select value={canonicalFilters.supplierId ?? ""} onChange={(event) => setSupplier(event.target.value)}>
-            <option value="">Svi dobavljači</option>
+        <label className={`supplier-consolidated-field${supplierFiltersStale ? " supplier-consolidated-field--stale" : ""}`}>
+          <span className="supplier-consolidated-field-label">
+            Dobavljač
+            {supplierFiltersStale ? <span className="supplier-consolidated-stale-badge">Zastarela lista</span> : null}
+          </span>
+          <select
+            aria-label="Dobavljač"
+            value={canonicalFilters.supplierId ?? ""}
+            onChange={(event) => setSupplier(event.target.value)}
+            disabled={supplierFiltersStale}
+            aria-invalid={supplierFiltersStale || undefined}
+            aria-describedby={supplierFiltersStale ? "supplier-filter-stale-warning" : undefined}
+          >
+            <option value="">{supplierFiltersStale ? "Izbor je privremeno blokiran" : "Svi dobavljači"}</option>
             {suppliers.map((supplier) => (
-              <option key={supplier.supplierId} value={supplier.supplierId}>{supplier.supplierName}</option>
+              <option key={supplier.supplierId} value={supplier.supplierId} disabled={supplierFiltersStale}>
+                {supplier.supplierName}
+              </option>
             ))}
           </select>
-          {supplierFiltersWarning ? <span className="supplier-consolidated-filter-note">{supplierFiltersWarning}</span> : null}
+          {supplierFiltersWarning ? (
+            <span
+              id="supplier-filter-stale-warning"
+              className={`supplier-consolidated-filter-note${supplierFiltersStale ? " supplier-consolidated-filter-note--stale" : ""}`}
+              role="status"
+            >
+              {supplierFiltersWarning}
+              {supplierFiltersStale ? ` ${SUPPLIER_FILTER_STALE_LIST_MESSAGE}` : ""}
+            </span>
+          ) : null}
         </label>
 
         <div className="supplier-consolidated-actions">

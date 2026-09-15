@@ -29,6 +29,10 @@ import type { InventoryRow } from "../components/inventory/types";
 import { fmtNumber, formatDateTime } from "../utils/analyticsFormatters";
 import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
 import { getAnalyticsMetaMessage, isAnalyticsMetaInsufficient, isAnalyticsMetaWarning, shouldShowAnalyticsEmptyState } from "../utils/analyticsResponseMeta";
+import {
+  resolveSupplierFilterFallbackState,
+  SUPPLIER_FILTER_STALE_LIST_MESSAGE,
+} from "../utils/supplierFilterFallbackState";
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 250];
 const DEFAULT_COMPARE_STORES = 3;
@@ -299,6 +303,9 @@ export default function InventoryPage() {
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierFilterOption[]>([]);
   const [supplierFiltersWarning, setSupplierFiltersWarning] = useState<string | null>(null);
+  const [supplierFiltersStale, setSupplierFiltersStale] = useState(false);
+  const suppliersRef = useRef(suppliers);
+  suppliersRef.current = suppliers;
   const [loading, setLoading] = useState(true);
   const [insightsLoading, setInsightsLoading] = useState(true);
   const [filtersLoading, setFiltersLoading] = useState(true);
@@ -423,16 +430,19 @@ export default function InventoryPage() {
     void getSupplierFilters(undefined, undefined, true, selectedStoreId ?? undefined, inventoryDataScope)
       .then((nextSuppliers) => {
         if (cancelled) return;
-        const fallbackWarning = nextSuppliers.meta
-          ? getAnalyticsMetaMessage(nextSuppliers.meta) ?? "Filteri dobavljača trenutno koriste pomoćni signal."
-          : null;
-        if (fallbackWarning) {
-          setSupplierFiltersWarning(fallbackWarning);
+        const resolved = resolveSupplierFilterFallbackState(nextSuppliers, suppliersRef.current);
+        setSupplierFiltersWarning(resolved.warning);
+        setSupplierFiltersStale(resolved.isStale);
+        setSuppliers(resolved.suppliers);
+        if (resolved.shouldClearSelection && selectedSupplierId != null) {
+          setSelectedSupplierId(null);
           return;
         }
-        setSuppliers(nextSuppliers);
-        setSupplierFiltersWarning(null);
-        if (selectedSupplierId != null && !nextSuppliers.some((entry) => entry.supplierId === selectedSupplierId)) {
+        if (
+          !resolved.isStale
+          && selectedSupplierId != null
+          && !resolved.suppliers.some((entry) => entry.supplierId === selectedSupplierId)
+        ) {
           setSelectedSupplierId(null);
         }
       })
@@ -1395,14 +1405,20 @@ export default function InventoryPage() {
                     aria-label="Filter po dobavljaču"
                     value={selectedSupplierId ?? ""}
                     onChange={(event) => { setSelectedSupplierId(event.target.value ? Number(event.target.value) : null); setPageNumber(1); }}
-                    disabled={filtersLoading}
+                    disabled={filtersLoading || supplierFiltersStale}
+                    aria-invalid={supplierFiltersStale || undefined}
                   >
-                    <option value="">Svi dobavljači</option>
-                    {suppliers.map((supplier) => <option key={supplier.supplierId} value={supplier.supplierId}>{supplier.supplierName}</option>)}
+                    <option value="">{supplierFiltersStale ? "Izbor je privremeno blokiran" : "Svi dobavljači"}</option>
+                    {suppliers.map((supplier) => (
+                      <option key={supplier.supplierId} value={supplier.supplierId} disabled={supplierFiltersStale}>
+                        {supplier.supplierName}
+                      </option>
+                    ))}
                   </select>
                   {supplierFiltersWarning ? (
-                    <p className="text-[11px] font-semibold tracking-wide text-[var(--warning)]">
+                    <p className="text-[11px] font-semibold tracking-wide text-[var(--warning)]" role="status">
                       {supplierFiltersWarning}
+                      {supplierFiltersStale ? ` ${SUPPLIER_FILTER_STALE_LIST_MESSAGE}` : ""}
                     </p>
                   ) : null}
                 </div>
