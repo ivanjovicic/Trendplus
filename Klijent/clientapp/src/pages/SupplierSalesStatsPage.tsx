@@ -1560,7 +1560,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
             ]}
             dataQualityHref="/analytics/data-quality"
             refreshStatusHref="/admin/configuration?panel=workers"
-            emptyReason={emptyStateHint}
+            emptyReason={responseMeta?.emptyReason ?? null}
             onRetry={() => {
               void load(activeFilters);
             }}

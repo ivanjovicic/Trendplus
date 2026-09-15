@@ -1029,7 +1029,7 @@ export default function ShoeTypeSalesStatsPage() {
           ]}
           dataQualityHref="/analytics/data-quality"
           refreshStatusHref="/admin/configuration?panel=workers"
-          emptyReason={emptyStateHint}
+          emptyReason={responseMeta?.emptyReason ?? null}
           onRetry={() => void load(activeFilters, dataScope)}
         />
       ) : null}

@@ -23,6 +23,16 @@ describe("AnalyticsEmptyState", () => {
     expect(screen.queryByText("no_data_in_period")).not.toBeInTheDocument();
   });
 
+  it("preserves safe contextual copy separately from the reason code", () => {
+    renderEmptyState({
+      message: "Izabrani period je van dostupnog raspona prodaje (01.01.2026 - 31.03.2026).",
+      emptyReason: "no_data_in_period",
+    });
+
+    expect(screen.getByText(/van dostupnog raspona prodaje/)).toBeInTheDocument();
+    expect(screen.getAllByText("Nema podataka za izabrani period.")).toHaveLength(2);
+  });
+
   it("fails closed for unknown or malicious-looking empty reasons", () => {
     renderEmptyState({ emptyReason: "<script>alert('backend-code')</script>" });
 

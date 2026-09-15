@@ -863,7 +863,8 @@ export default function ColorSalesStatsPage() {
       {!loading && !error && emptyStateVariant ? (
         <AnalyticsEmptyState
           variant={emptyStateVariant ?? undefined}
-          emptyReason={emptyStateHint}
+          message={emptyStateHint ?? undefined}
+          emptyReason={responseMeta?.emptyReason ?? null}
           dataQualityHref="/analytics/data-quality"
           refreshStatusHref="/admin/configuration?panel=workers"
           onRetry={() => {

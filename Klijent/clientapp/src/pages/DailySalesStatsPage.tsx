@@ -1507,7 +1507,8 @@ export default function DailySalesStatsPage() {
       {!loading && !error && emptyStateVariant ? (
         <AnalyticsEmptyState
           variant={emptyStateVariant}
-          emptyReason={emptyStateHint}
+          message={emptyStateHint ?? undefined}
+          emptyReason={responseMeta?.emptyReason ?? null}
           dataQualityHref="/analytics/data-quality"
           refreshStatusHref="/admin/configuration?panel=workers"
           onRetry={() => {

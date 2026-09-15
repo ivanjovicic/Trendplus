@@ -4,7 +4,11 @@ Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
-Operations audit intake 2026-09-15: `RQ265`-`RQ300` are individual `WAITING` follow-ups from the Operacije screen/code review. No new prompt is promoted to `READY`; the queue remains explicitly idle until the owner advances one item.
+Operations audit intake 2026-09-15: `RQ266`-`RQ300` remain individual `WAITING` follow-ups from the Operacije screen/code review; `RQ265` has been completed on `main`.
+
+Owner promotion 2026-09-15: `RQ265` was explicitly promoted from `WAITING` to `READY` by the user request because the RQ queue had no current READY prompt; it is the single current RQ prompt for the confirmed Operations empty-reason regression.
+
+Owner completion 2026-09-15: `RQ265` was delivered on `main` with separate safe contextual empty-state messages and backend reason-code mapping across Daily, Shoe Type, Color and Supplier Sales Stats; the confirmed Daily available-range regression now passes. The RQ queue has no current READY prompt.
 
 Scope reconciliation for this intake: `analyticsApi.makeUrl`/`appendDataScopeToParams` already inject the persisted global `dataScope` when an analytics URL does not provide one. The remaining scope findings therefore target mounted-page refresh/event propagation and explicit request-contract proof, not an assumed universal omission. The existing `RQ66` placeholder, `RQ67` forecast-cost, `RQ70` forecast-quantity, `RQ179` supplier-footwear-freshness and `RQ203` inventory-detail-scope items remain closed and are not resurrected. The offline runtime check had no backend; connection refusal is not itself a product finding, while blank/unclear error copy remains in the relevant prompts.
 
@@ -318,7 +322,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ262 | DONE | executive-kpi-value-tone-parity | Keep executive KPI availability and visual tone consistent |
 | RQ263 | DONE | analytics-export-operation-truth | Keep export/preview status honest on failure or missing artifacts |
 | RQ264 | DONE | analytics-shared-output-finite-parity | Preserve finite/null semantics across table, detail, print and export |
-| RQ265 | WAITING | operations-empty-reason-context | Preserve contextual empty-state messages, including available date ranges |
+| RQ265 | DONE | operations-empty-reason-context | Preserve contextual empty-state messages, including available date ranges |
 | RQ266 | WAITING | operations-freshness-provenance | Derive page freshness from authoritative refresh metadata |
 | RQ267 | WAITING | operations-heading-hierarchy | Remove duplicate/conflicting h1 landmarks across the Operations shell |
 | RQ268 | WAITING | supplier-legacy-navigation | Keep legacy supplier redirects discoverable and correctly active |
@@ -12541,9 +12545,11 @@ The shared analytics table-state formatter rejects non-finite numbers during par
 
 ---
 
+Owner claim 2026-09-15: `RQ265` transitioned `READY -> IN_PROGRESS` in this workspace after explicit user request; local lock `.ai/task-locks/RQ265-codex.lock.md` is active.
+
 ## RQ265 - Preserve contextual empty-state reasons across Operations pages
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/tests
 Feature family: operations-empty-reason-context
@@ -12601,6 +12607,26 @@ Reproduction: return a successful empty response with a selected period outside 
 
 - `RQ260` is the completed shared safety baseline; this is a residual caller/contract correction, not a resurrection of that prompt.
 - Backend was unavailable during the audit; this prompt must not treat connection refusal as a product bug.
+
+### Completion note
+
+- Date: 2026-09-15
+- Status: DONE
+- Completion: Preserved page-owned contextual empty-state copy through the safe `message` prop while passing only `responseMeta.emptyReason` to the shared reason-code mapper. Daily, Shoe Type, Color and Supplier callers now retain available-range and filter context without exposing raw/unknown codes.
+- Changed files: `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`, `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/ColorSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`, `Klijent/clientapp/src/components/analytics/__tests__/AnalyticsEmptyState.spec.tsx`, `.ai/runs/2026-09-15-RQ265-evidence.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- Contract/runtime behavior changed: contextual page messages are no longer interpreted as backend reason codes; known codes remain Serbian-mapped and unknown/unsafe codes remain generic and fail-closed. Empty/error/partial/retry classification was not changed.
+- Checks run: focused Operations/shared suite 6 files / 52 tests passed; `npm run check:analytics-guardrails` passed; `npm run build` passed; `node scripts/check-prompt-queues.mjs` passed; `git diff --check` passed.
+- Checks not run: live backend/browser runtime and full frontend suite; backend was unavailable and the focused matrix plus required guardrails/build were sufficient for this scoped caller correction.
+- Run log: `.ai/runs/2026-09-15-RQ265-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: no backend or API changes; no live payload matrix was available.
+- Follow-up: consider a separate UX decision on whether contextual copy and the safe mapped reason should be visually deduplicated when both are present.
+- Residual risk: existing Vite large-chunk advisory remains; live backend/runtime behavior is not verified in this run.
+- Next: queue owner refill or explicit promotion of the next Operations follow-up.
+- Prompt defect / scope repair: none; RQ265 was explicitly promoted because the queue had no READY prompt, per user instruction.
 
 ---
 
