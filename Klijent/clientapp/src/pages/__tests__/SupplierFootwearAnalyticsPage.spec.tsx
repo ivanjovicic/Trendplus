@@ -248,6 +248,68 @@ describe("SupplierFootwearAnalyticsPage", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
+  it("shows degraded comparison evidence when only the previous-period request fails", async () => {
+    const currentResponse = await getVendorSalesNivelacija({});
+    vi.mocked(getVendorSalesNivelacija)
+      .mockResolvedValueOnce({
+        ...currentResponse,
+        totals: {
+          ...currentResponse.totals,
+          postRevenue: 1_200,
+          changePercent: 20,
+          hasComparableSalesWindow: true,
+        },
+      })
+      .mockRejectedValueOnce(new Error("Prethodni period nije dostupan."));
+
+    render(
+      <MemoryRouter>
+        <SupplierFootwearAnalyticsPage />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText("Ukupan promet")).toBeInTheDocument();
+    expect(screen.getByText("Prethodni period nije dostupan.")).toBeInTheDocument();
+    expect(screen.getByText("Rast/pad u odnosu na prethodni period")).toBeInTheDocument();
+    expect(screen.queryByText("+20,00%")).not.toBeInTheDocument();
+    expect(screen.queryByText("20,00%")).not.toBeInTheDocument();
+  });
+
+  it("keeps a successful empty previous baseline distinct from a failed comparison", async () => {
+    const currentResponse = await getVendorSalesNivelacija({});
+    vi.mocked(getVendorSalesNivelacija)
+      .mockResolvedValueOnce({
+        ...currentResponse,
+        totals: {
+          ...currentResponse.totals,
+          postRevenue: 1_200,
+          changePercent: 20,
+          hasComparableSalesWindow: true,
+        },
+      })
+      .mockResolvedValueOnce({
+        ...currentResponse,
+        vendorStats: [],
+        articleStats: [],
+        totals: {
+          ...currentResponse.totals,
+          postRevenue: 0,
+          changePercent: 0,
+          hasComparableSalesWindow: false,
+        },
+      });
+
+    render(
+      <MemoryRouter>
+        <SupplierFootwearAnalyticsPage />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText("Prethodni uporedivi period nema dovoljno podataka za poređenje.")).toBeInTheDocument();
+    expect(screen.queryByText("Prethodni period nije dostupan.")).not.toBeInTheDocument();
+    expect(screen.queryByText("+20,00%")).not.toBeInTheDocument();
+  });
+
   it("keeps a supplier footwear fallback error unavailable and not fresh", async () => {
     vi.mocked(getVendorSalesNivelacija).mockRejectedValueOnce(new Error("Pre/post nivelacija nije dostupna."));
 

@@ -21,8 +21,15 @@ import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyti
 import type { AnalyticsFreshnessStatus } from "../types/analytics";
 import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
 import { formatMetricDisplayValue, normalizeMetricNumber } from "../utils/analyticsMetricValue";
+import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { getAnalyticsMetaMessage, isAnalyticsMetaInsufficient, isAnalyticsMetaWarning, shouldShowAnalyticsEmptyState } from "../utils/analyticsResponseMeta";
 import { comparablePrePostMetric, hasComparablePrePostEvidence } from "../utils/prePostNivelacijaTrust";
+import {
+  resolvePreviousPeriodComparison,
+  resolveSupplierPeriodGrowthPct,
+  type PreviousPeriodComparisonState,
+  SUPPLIER_PREVIOUS_PERIOD_FAILURE_NOTE,
+} from "../utils/supplierPreviousPeriodComparison";
 import { projectVendorSalesDataQuality } from "../utils/vendorSalesDataQuality";
 import type { SupplierEmbeddedPageProps } from "./supplierSharedState";
 import "./SupplierFootwearAnalyticsPage.css";
@@ -254,6 +261,9 @@ export default function SupplierFootwearAnalyticsPage({
   const [vendors, setVendors] = useState<Dobavljac[]>([]);
   const [data, setData] = useState<VendorSalesNivelacijaResponse | null>(null);
   const [previousRevenue, setPreviousRevenue] = useState<number | null>(null);
+  const [previousPeriodState, setPreviousPeriodState] = useState<PreviousPeriodComparisonState>("empty");
+  const [previousPeriodWarning, setPreviousPeriodWarning] = useState<string | null>(null);
+  const [previousPeriodEmptyNote, setPreviousPeriodEmptyNote] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dataHint, setDataHint] = useState<string | null>(null);
@@ -312,6 +322,8 @@ export default function SupplierFootwearAnalyticsPage({
     setError(null);
     setDataHint(null);
     setSuggestedRange(null);
+    setPreviousPeriodWarning(null);
+    setPreviousPeriodEmptyNote(null);
     try {
       const currentRange = toUtcRange(filters.fromDate, filters.toDate);
       const previousRange = buildPreviousRange(filters.fromDate, filters.toDate);
@@ -323,8 +335,19 @@ export default function SupplierFootwearAnalyticsPage({
       if (requestId !== requestIdRef.current) return;
       if (currentResult.status === "rejected") throw currentResult.reason;
 
-      let currentData = currentResult.value;
-      let previousData = previousResult.status === "fulfilled" ? previousResult.value : null;
+      const currentData = currentResult.value;
+      const previousComparison = resolvePreviousPeriodComparison(
+        previousResult,
+        (reason) => getSafeAnalyticsErrorMessage(
+          reason instanceof Error ? reason.message : String(reason),
+          undefined,
+          SUPPLIER_PREVIOUS_PERIOD_FAILURE_NOTE,
+        ),
+      );
+      setPreviousPeriodState(previousComparison.state);
+      setPreviousPeriodWarning(previousComparison.warning);
+      setPreviousPeriodEmptyNote(previousComparison.emptyBaselineNote);
+      setPreviousRevenue(previousComparison.previousRevenue);
 
       const hasNoRows = currentData.vendorStats.length === 0 && currentData.articleStats.length === 0;
       const currentDataQuality = projectVendorSalesDataQuality(currentData.dataQuality);
@@ -363,16 +386,13 @@ export default function SupplierFootwearAnalyticsPage({
 
       setData(currentData);
       setExpandedVendorKey(null);
-      setPreviousRevenue(
-        comparablePrePostMetric(
-          previousData?.totals.postRevenue,
-          { hasComparableSalesWindow: previousData?.totals.hasComparableSalesWindow },
-        ),
-      );
     } catch (reason) {
       if (requestId !== requestIdRef.current) return;
       setData(null);
       setPreviousRevenue(null);
+      setPreviousPeriodState("empty");
+      setPreviousPeriodWarning(null);
+      setPreviousPeriodEmptyNote(null);
       setDataHint(null);
       setSuggestedRange(null);
       setError(reason instanceof Error ? reason.message : "Greška pri učitavanju analize dobavljača i tipova obuće.");
@@ -450,11 +470,14 @@ export default function SupplierFootwearAnalyticsPage({
     return (top5 / totalRevenue) * 100;
   }, [sortedRows, totalRevenue]);
   const totalChangeRevenue = hasUntrustedRows ? null : data?.totals.changeRevenue ?? null;
-  const periodGrowthPct = useMemo(() => (
-    previousRevenue == null || previousRevenue <= 0 || totalRevenue == null
-      ? data?.totals.changePercent ?? null
-      : ((totalRevenue - previousRevenue) / previousRevenue) * 100
-  ), [data?.totals.changePercent, previousRevenue, totalRevenue]);
+  const periodGrowthPct = useMemo(
+    () => resolveSupplierPeriodGrowthPct({
+      previousPeriodState,
+      previousRevenue,
+      totalRevenue,
+    }),
+    [previousPeriodState, previousRevenue, totalRevenue],
+  );
   const dominantTypeSummary = useMemo(() => {
     const topType = typeInsights.globalTypeShare[0];
     if (!topType) return "N/A";
@@ -600,7 +623,9 @@ export default function SupplierFootwearAnalyticsPage({
       dataSource: "Supplier sales nivelacija po dobavljaču i tipu obuće",
       dataQualityStatus: dataQualityStatus ?? (showMetaWarning ? "warning" : "good"),
       recommendationAllowed,
-      recommendationNote: "Asortiman je analitički signal. Finalna preporuka ostaje u centralnom dobavljačkom pregledu.",
+      recommendationNote: previousPeriodState === "failed"
+        ? "Asortiman je analitički signal. Uporedni prethodni period nije učitan."
+        : "Asortiman je analitički signal. Finalna preporuka ostaje u centralnom dobavljačkom pregledu.",
       emptyStateReason: showEmptyState ? (dataMetaMessage ?? dataHint ?? null) : null,
     });
   }, [
@@ -612,6 +637,7 @@ export default function SupplierFootwearAnalyticsPage({
     dataQualityStatus,
     embedded,
     onTrustMetadataChange,
+    previousPeriodState,
     recommendationAllowed,
     showEmptyState,
     showMetaWarning,
@@ -728,6 +754,12 @@ export default function SupplierFootwearAnalyticsPage({
       {invalidRange ? <div className="sf-decision-message error" role="alert">Datum 'od' ne može biti posle datuma 'do'.</div> : null}
       {error ? <div className="sf-decision-message error" role="alert">{error}</div> : null}
       {loading ? <div className="sf-decision-message loading" role="status" aria-live="polite">Učitavam dobavljače i tipove obuće...</div> : null}
+      {!loading && !error && previousPeriodWarning ? (
+        <div className="sf-decision-message warning" role="status" aria-live="polite">{previousPeriodWarning}</div>
+      ) : null}
+      {!loading && !error && !previousPeriodWarning && previousPeriodEmptyNote ? (
+        <div className="sf-decision-message info" role="status" aria-live="polite">{previousPeriodEmptyNote}</div>
+      ) : null}
       {!loading && !error && dataHint ? <div className="sf-decision-message info" role="status" aria-live="polite">{dataHint}</div> : null}
       {!embedded && !loading && !error && suggestedRange ? (
         <div className="sf-decision-message suggestion">
