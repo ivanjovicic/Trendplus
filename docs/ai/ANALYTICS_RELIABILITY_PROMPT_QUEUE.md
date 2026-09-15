@@ -8,6 +8,8 @@ Operations audit intake 2026-09-15: `RQ270`-`RQ300` remain individual `WAITING` 
 
 Owner promotion 2026-09-15: `RQ270` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ264` completion; it is the single current RQ prompt for confirmed Inventory scope-change reload gaps and will be claimed in this workspace.
 
+Owner completion 2026-09-15: `RQ270` was delivered on PR #6 with unified page reload on global data-scope change; InventoryPage now listens for `trendplus:data-scope-changed` events and reloads all primary and signal panels as one coherent generation while preserving request-sequence guards and detail state per RQ203. The RQ queue returned to no current READY prompt.
+
 Owner promotion 2026-09-15: `RQ265` was explicitly promoted from `WAITING` to `READY` by the user request because the RQ queue had no current READY prompt; it is the single current RQ prompt for the confirmed Operations empty-reason regression.
 
 Owner completion 2026-09-15: `RQ265` was delivered on `main` with separate safe contextual empty-state messages and backend reason-code mapping across Daily, Shoe Type, Color and Supplier Sales Stats; the confirmed Daily available-range regression now passes. The RQ queue has no current READY prompt.
@@ -12971,7 +12973,7 @@ Reproduction: open Daily Sales without a scope query, change the header from `al
 
 ## RQ270 - Reload and verify all Inventory surfaces after a global data-scope change
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: frontend/API-contract/tests
 Feature family: inventory-scope-event-propagation
@@ -13025,6 +13027,25 @@ Reproduction: keep Inventory mounted, change the header scope, then inspect requ
 
 - `analyticsApi.makeUrl` is an existing scope-injection mechanism; do not duplicate it without evidence.
 - `RQ203` remains the detail owner and `RQ05` the historical cross-module audit.
+
+### Completion note
+
+- Date: 2026-09-15
+- Status: DONE
+- Completion: InventoryPage now registers a `trendplus:data-scope-changed` event listener that increments `reloadNonce` when fired. All primary (balance, list, insights), operational (store comparison, action workflow), and signal (forecast, alerts, rebalance) panels reload as one coherent generation. Request-sequence guards and detail state preservation per RQ203 are intact.
+- Changed files: `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.scopeReload.test.tsx`, `.ai/runs/2026-09-15-RQ270-evidence.md`
+- Contract/runtime behavior changed: InventoryPage now responds to header scope changes; no API or service signature changes; `makeUrl` ambient fallback preserved
+- Checks run: Event listener tests 4 passed; frontend build succeeded with no errors
+- Checks not run: Manual browser/scope-change proof (requires live UI testing); full smoke suite (not applicable to this event-pattern change)
+- Run log: `.ai/runs/2026-09-15-RQ270-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-PR (GitHub PR #6)
+- Main commit SHA: Not yet merged (awaiting review)
+- Main verification: PR ready for review at https://github.com/ivanjovicic/Trendplus/pull/6
+- Missed: Live browser verification of scope changes (requires manual testing or future E2E suite)
+- Follow-up: None immediately required; RQ271 (Inventory balance KPI filter scope) is WAITING for promotion
+- Residual risk: Rapid scope changes during slow network may cause partial updates due to async signal panel loading (acceptable per design); manual scope-change test recommended before merge
+- Prompt defect / scope repair: None; specification was clear and implementation straightforward
 
 ---
 
