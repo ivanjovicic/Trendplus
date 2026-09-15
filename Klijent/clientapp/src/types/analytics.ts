@@ -1570,7 +1570,7 @@ export interface InventoryActionSuggestion {
   forecastDemandQty?: number | null;
   estimatedValue: number | null;
   costMissing?: boolean | null;
-  daysSinceMovement: number;
+  daysSinceMovement: number | null;
   note?: string | null;
   updatedAtUtc?: string | null;
 }
