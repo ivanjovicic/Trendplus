@@ -4,7 +4,7 @@ Date: 2026-09-15
 
 Queue: direct-user-request
 
-Status: delivered to local `main`; remote push pending final commit.
+Status: DONE — delivered and verified on `main`.
 
 ## Outcome and ownership
 
@@ -50,3 +50,9 @@ Reviewed dirty detached worktrees `Trendplus2-mainlatest`, `Trendplus2-obs10`, `
 ## Residual risk and next owner
 
 The scope contract for snapshot-driven forecast, alert, rebalance, and size-curve panels remains a backend data-model task. The owner must add a proven per-row data-origin dimension to the snapshot materializers and then expose and test `dataScope`; sending an ignored query parameter would not be a valid fix.
+
+## Delivery verification
+
+- Delivery commit: `ff289a1ce50e5425eeb1d8a67a52d55bb472c94a`.
+- `git push origin main` completed successfully.
+- Post-push fetch verified that local `main` and `origin/main` both resolve to the delivery commit and that local `main` is contained by `origin/main`.
