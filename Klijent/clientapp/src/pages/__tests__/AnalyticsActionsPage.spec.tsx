@@ -847,6 +847,17 @@ describe("AnalyticsActionsPage", () => {
     expect(screen.queryByText("unknown_backend_warning")).not.toBeInTheDocument();
   });
 
+  it("keeps malformed empty metadata from crashing the summary state", async () => {
+    const payload = buildOutcomeSummaryResponse(0, 0);
+    payload.meta.emptyReason = { unexpected: "object" } as never;
+    getAnalyticsActionOutcomeSummaryMock.mockResolvedValueOnce(payload);
+
+    render(<AnalyticsActionsPage />);
+
+    expect(await screen.findByText("Nema akcija za izabrani period ili filter sažetka")).toBeInTheDocument();
+    expect(screen.queryByText("[object Object]")).not.toBeInTheDocument();
+  });
+
   it("maps unknown action metadata to safe labels across table and detail", async () => {
     const unknownMetadata = createActionItem({
       recommendationStatus: "backend_new_recommendation",

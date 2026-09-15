@@ -260,12 +260,18 @@ function getOutcomeSummaryWarningLabel(code: string): string {
   return OUTCOME_SUMMARY_WARNING_LABELS[code] ?? "Upozorenje o kvalitetu ili merenju nije detaljnije mapirano.";
 }
 
+function getOutcomeSummaryEmptyReason(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toLowerCase();
+  return normalized || null;
+}
+
 function getOutcomeSummaryEmptyState(summary: AnalyticsActionOutcomeSummaryResponse | null): {
   kind: "no-rows" | "no-measurement";
   title: string;
   message: string;
 } {
-  const reason = summary?.meta.emptyReason?.trim().toLowerCase();
+  const reason = getOutcomeSummaryEmptyReason(summary?.meta.emptyReason);
   if (reason === "no_measured_outcomes" || reason === "no_measured_closed_outcomes") {
     const actionCount = fmtNumber(summary?.totals.createdCount ?? 0, 0, "0");
     const pendingCount = fmtNumber(summary?.totals.pendingOutcomeCount ?? 0, 0, "0");
@@ -929,7 +935,7 @@ export default function AnalyticsActionsPage() {
           <div className="aaq-summary-error" role="status">
             Sažetak ishoda trenutno nije dostupan. Lista akcija i dalje radi.
           </div>
-        ) : outcomeSummary?.meta.emptyReason || outcomeSummary?.meta.sampleSize === 0 ? (
+        ) : getOutcomeSummaryEmptyReason(outcomeSummary?.meta.emptyReason) || outcomeSummary?.meta.sampleSize === 0 ? (
           (() => {
             const emptyState = getOutcomeSummaryEmptyState(outcomeSummary);
             return (

@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { AlertTriangle } from "lucide-react";
 import { getDecisionPulse, type DecisionPulseResponse } from "../services/decisionPulseApi";
+import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
+import { getAnalyticsMetaMessage } from "../utils/analyticsResponseMeta";
 
 export default function DecisionPulsePage() {
   const [feed, setFeed] = useState<DecisionPulseResponse | null>(null);
@@ -20,7 +22,13 @@ export default function DecisionPulsePage() {
       .catch((err: unknown) => {
         if (!cancelled) {
           setFeed(null);
-          setError(err instanceof Error ? err.message : "Decision Pulse nije dostupan.");
+          setError(
+            getSafeAnalyticsErrorMessage(
+              err instanceof Error ? err.message : null,
+              null,
+              "Decision Pulse nije dostupan.",
+            ),
+          );
         }
       })
       .finally(() => {
@@ -34,6 +42,7 @@ export default function DecisionPulsePage() {
 
   const metaFailed = feed?.meta?.success === false;
   const items = feed?.items ?? [];
+  const metaMessage = getAnalyticsMetaMessage(feed?.meta);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-6">
@@ -56,7 +65,7 @@ export default function DecisionPulsePage() {
           className="rounded-2xl border border-[var(--error)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--error)]"
           role="alert"
         >
-          {error ?? feed?.meta?.errorMessage ?? feed?.meta?.message ?? "Pulse izvor nije pouzdan."}
+          {error ?? metaMessage ?? "Pulse izvor nije pouzdan."}
           <div className="mt-2 text-xs text-muted">KPI nule se ne prikazuju kao validan alert.</div>
         </div>
       ) : loading ? (
@@ -66,7 +75,7 @@ export default function DecisionPulsePage() {
       ) : items.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">
           Nema actionable Pulse stavki. Prazan rezultat nije greška.
-          {feed?.meta?.message ? <div className="mt-2 text-xs">{feed.meta.message}</div> : null}
+          {metaMessage ? <div className="mt-2 text-xs">{metaMessage}</div> : null}
         </div>
       ) : (
         <div className="grid gap-3">
