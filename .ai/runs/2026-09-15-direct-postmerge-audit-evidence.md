@@ -63,7 +63,7 @@ Not used as a completion gate:
 
 - The direct repair was committed as `6a13f2c5` and pushed to `main`; the evidence finalization commit is `9b6dd9a0`.
 - `git fetch --prune origin` confirmed `HEAD` and `origin/main` at `9b6dd9a0`.
-- `git push --all --dry-run origin` found no local-only branch update to publish. It rejected only two local refs that are already strictly behind their remote counterparts (`feature/TrendShoesCarousel` and `fix/basket-affinity-sql-aggregation`); both have zero local-only commits, so no force-push or destructive ref move was performed.
+- The initial `git push --all --dry-run origin` found no local-only branch update to publish and rejected only two local refs that were strictly behind their remote counterparts (`feature/TrendShoesCarousel` and `fix/basket-affinity-sql-aggregation`). Both had zero local-only commits, so they were safely fast-forwarded to their remote tips; the subsequent `git push --all origin` completed with `Everything up-to-date`. No force-push was used.
 - No safe merge of the remaining unique local tips was performed: the old broad branches contain unrelated code/build artifacts, while the analytics/document branches conflict with newer `main` versions or duplicate already-landed work.
 - Active or detached worktrees with staged/uncommitted changes were not merged, reset, cleaned, or deleted.
 - Old local branches with unique broad commits were not blindly merged because they cross owners, contain stale snapshots/build artifacts, or lack current contract validation.
