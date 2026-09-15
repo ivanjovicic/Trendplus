@@ -12312,8 +12312,8 @@ The executive Dashboard KPI row always marks Revenue with the healthy `good` ton
 - Run log: `.ai/runs/2026-09-15-RQ262-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: `e1911037d8acb3f37f6df0c476340cbe8a0e2b2e`
-- Main verification: passed - fresh fetch confirmed implementation commit `e1911037d8acb3f37f6df0c476340cbe8a0e2b2e` is an ancestor of `origin/main`
+- Main commit SHA: `e19110375bdbe68e33c8048505928d9506afeef7`
+- Main verification: passed - fresh fetch confirmed implementation commit `e19110375bdbe68e33c8048505928d9506afeef7` is an ancestor of `origin/main`
 - Missed: no backend KPI formula, aggregation, score, recommendation or report/export calculation changes were made; no live-provider proof was available.
 - Follow-up: `RQ263` is READY for Analytics Export Frontend.
 - Residual risk: existing frontend chunk-size advisory and live deployment behavior remain unverified.
