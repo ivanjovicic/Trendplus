@@ -12222,8 +12222,8 @@ The refresh-status service aggregates missing job durations through `DefaultIfEm
 - Run log: `.ai/runs/2026-09-15-RQ261-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: `pending`
-- Main verification: pending until push and fresh remote verification
+- Main commit SHA: `add29154a963d4066d5aab387c89fdab0945dfd5`
+- Main verification: passed - fresh `git fetch origin main` confirmed local `main` and `origin/main` at `add29154a963d4066d5aab387c89fdab0945dfd5`; implementation SHA is an ancestor of `origin/main`.
 - Missed: no worker scheduling, refresh execution, cache invalidation, recommendation logic or generated-time semantics were changed.
 - Follow-up: `RQ262` is READY for Analytics Dashboard Frontend.
 - Residual risk: existing frontend chunk-size advisory remains; live worker/provider behavior still requires deployment-level proof.
