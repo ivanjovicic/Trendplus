@@ -99,6 +99,46 @@ describe("SupplierConsolidatedPage", () => {
     expect(screen.queryByText("Kontrole asortimana")).not.toBeInTheDocument();
   });
 
+  it("marks retained supplier options stale and blocks selection when filter fallback metadata is returned", async () => {
+    vi.mocked(getSupplierFilters)
+      .mockResolvedValueOnce([
+        { supplierId: 101, supplierName: "Dobavljač A" },
+      ] as Awaited<ReturnType<typeof getSupplierFilters>>)
+      .mockResolvedValueOnce(Object.assign(
+        [{ supplierId: 202, supplierName: "Dobavljač B" }],
+        {
+          meta: {
+            success: true,
+            warningMessage: "Filteri dobavljača trenutno koriste pomoćni signal.",
+            dataQualityStatus: "warning",
+            isPartial: true,
+          },
+        },
+      ) as Awaited<ReturnType<typeof getSupplierFilters>>);
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier"]}>
+        <SupplierConsolidatedPage />
+      </MemoryRouter>,
+    );
+
+    const supplierSelect = await screen.findByRole("combobox", { name: /Dobavljač/i });
+    await waitFor(() => {
+      expect(screen.getByRole("option", { name: "Dobavljač A" })).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByDisplayValue("Svi podaci"), { target: { value: "imported" } });
+
+    await waitFor(() => {
+      expect(screen.getByText("Zastarela lista")).toBeInTheDocument();
+      expect(supplierSelect).toBeDisabled();
+      expect(supplierSelect).toHaveValue("");
+      expect(screen.getByText(/Filteri dobavljača trenutno koriste pomoćni signal/i)).toBeInTheDocument();
+      expect(screen.getByText(/Lista dobavljača je zastarela/i)).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "Dobavljač A" })).toBeDisabled();
+    });
+  });
+
   it("requests supplier filters with canonical dataScope and clears invalid supplier selection", async () => {
     vi.mocked(getSupplierFilters).mockResolvedValue([
       { supplierId: 202, supplierName: "Dobavljač B" },
@@ -121,7 +161,7 @@ describe("SupplierConsolidatedPage", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Dobavljač")).toHaveValue("");
+      expect(screen.getByRole("combobox", { name: /Dobavljač/i })).toHaveValue("");
     });
   });
 
