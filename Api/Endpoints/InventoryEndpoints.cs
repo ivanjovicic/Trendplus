@@ -487,7 +487,10 @@ public static class InventoryEndpoints
                 return rejected!;
             }
 
-            var normalizedDataScope = NormalizeDataScope(dto.DataScope);
+            if (!TryNormalizeInventoryExportDataScope(dto.DataScope, out var normalizedDataScope))
+            {
+                return Results.BadRequest(new { error = "DataScope mora biti all, existing ili imported." });
+            }
             var items = await BuildInventoryDatasetAsync(db, analyticsDb, dto.StoreId, dto.SupplierId, dto.Search, dto.SortBy, ct, dataScope: normalizedDataScope);
             var request = BuildDocumentRequest(items, dto, preview: false, dataScope: normalizedDataScope);
             var result = await documentService.GenerateAsync(request, context, ct);
@@ -522,7 +525,10 @@ public static class InventoryEndpoints
                 return rejected!;
             }
 
-            var normalizedDataScope = NormalizeDataScope(dto.DataScope);
+            if (!TryNormalizeInventoryExportDataScope(dto.DataScope, out var normalizedDataScope))
+            {
+                return Results.BadRequest(new { error = "DataScope mora biti all, existing ili imported." });
+            }
             var items = await BuildInventoryDatasetAsync(db, analyticsDb, dto.StoreId, dto.SupplierId, dto.Search, dto.SortBy, ct, dataScope: normalizedDataScope);
             var result = await documentService.GenerateAsync(
                 BuildDocumentRequest(items, dto, preview: true, dataScope: normalizedDataScope),
@@ -961,6 +967,7 @@ public static class InventoryEndpoints
                     item.Minimum ?? 0,
                     item.UnitCost ?? 0m,
                     Application.Analytics.InventoryStockEvidence.ComputeEstimatedValue(item.Quantity, item.UnitCost) ?? 0m,
+                    item.UnitCost is null or <= 0m,
                     item.StoreId,
                     ResolveLookup(storeNameMap, item.StoreId),
                     item.SupplierId,
@@ -1491,6 +1498,17 @@ public static class InventoryEndpoints
         };
     }
 
+    internal static bool TryNormalizeInventoryExportDataScope(string? rawScope, out string normalizedScope)
+    {
+        normalizedScope = NormalizeDataScope(rawScope);
+        if (string.IsNullOrWhiteSpace(rawScope))
+        {
+            return true;
+        }
+
+        return rawScope.Trim().ToLowerInvariant() is "all" or "existing" or "imported";
+    }
+
     private static string ResolveInventoryDataScopeLabel(string? rawScope)
     {
         return NormalizeDataScope(rawScope) switch
@@ -1542,7 +1560,9 @@ public static class InventoryEndpoints
             signalEvidence.SignalConfidencePct,
             signalEvidence.RecommendationAllowed,
             signalEvidence.DataQualityStatus,
-            signalEvidence.ReasonCodes);
+            signalEvidence.ReasonCodes,
+            item.CostMissing,
+            actionType == "transfer" ? "suggested_action_cost" : "current_stock_value");
     }
 
     private sealed record InventorySignalEvidenceSnapshot(
@@ -2064,6 +2084,7 @@ public static class InventoryEndpoints
         int Minimum,
         decimal UnitCost,
         decimal EstimatedValue,
+        bool CostMissing,
         int? StoreId,
         string? StoreName,
         int? SupplierId,

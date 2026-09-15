@@ -131,7 +131,8 @@ describe("RecommendationMeasurementStatisticsReview", () => {
     });
 
     expect(screen.getByText("Nema izdatih preporuka za izabrani period.")).toBeInTheDocument();
-    expect(screen.getByText("no_rows")).toBeInTheDocument();
+    expect(screen.getByText("Nema podataka za izabrani opseg.")).toBeInTheDocument();
+    expect(screen.queryByText("no_rows")).not.toBeInTheDocument();
     expect(screen.queryByText("0%")).not.toBeInTheDocument();
     expect(screen.queryByText("Stopa pozitivnih ishoda")).not.toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();

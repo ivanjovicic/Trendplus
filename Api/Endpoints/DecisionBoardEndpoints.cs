@@ -470,7 +470,7 @@ public static class DecisionBoardEndpoints
                     "high" => 210m,
                     "medium" => 160m,
                     _ => 100m
-                } + Math.Min(item.EstimatedValue / 5_000m, 50m) - Math.Min(item.DaysSinceMovement / 5m, 30m);
+                } - Math.Min(item.DaysSinceMovement / 5m, 30m);
 
                 return new DecisionBoardCardDto(
                     Id: $"inventory:{item.SuggestionKey}:{index}",
@@ -486,7 +486,9 @@ public static class DecisionBoardEndpoints
                     ReliabilityPct: confidence.ConfidenceScore.HasValue
                         ? (int?)Math.Clamp((int)Math.Round(confidence.ConfidenceScore.Value, MidpointRounding.AwayFromZero), 0, 100)
                         : null,
-                    ExpectedImpactRsd: item.EstimatedValue > 0 ? item.EstimatedValue : null,
+                    // Inventory workflow estimated values are exposure or suggested-action cost,
+                    // not an authoritative expected business impact.
+                    ExpectedImpactRsd: null,
                     MeasuredImpactRsd: null,
                     RealizationRatio: null,
                     RiskIfIgnored: item.Reason,
@@ -501,7 +503,7 @@ public static class DecisionBoardEndpoints
                         priorityScore,
                         confidence.Level,
                         confidence.DataQualityStatus),
-                    ImpactScore: item.EstimatedValue,
+                    ImpactScore: 0m,
                     ConfidenceSource: confidenceSource,
                     ReasonCodes: reasonCodes,
                     RecommendationAllowed: item.RecommendationAllowed);

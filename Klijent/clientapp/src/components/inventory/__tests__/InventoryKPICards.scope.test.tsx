@@ -26,7 +26,7 @@ describe("InventoryKPICards - scope contract", () => {
     expect(text).toMatch(/ne utiče pretraga|ne utiče/i);
   });
 
-  it("should distinguish whole-inventory context in KPI descriptions", () => {
+  it("should distinguish selected-scope context in KPI descriptions", () => {
     render(
       <InventoryKPICards
         totalSku={100}
@@ -42,9 +42,12 @@ describe("InventoryKPICards - scope contract", () => {
     const kpiArticles = screen.getAllByRole("article");
     expect(kpiArticles.length).toBeGreaterThanOrEqual(5);
     
-    // Verify at least one has "celom inventaru" (whole inventory) language
+    // Store, supplier and global data-scope filters still apply; only text search is excluded.
     const allText = kpiArticles.map(a => a.textContent).join(" ");
-    expect(allText).toMatch(/celom inventaru|ne utiče/i);
+    expect(allText).toMatch(/izabranu prodavnicu/i);
+    expect(allText).toMatch(/dobavljača/i);
+    expect(allText).toMatch(/opseg podataka/i);
+    expect(allText).not.toMatch(/celom inventaru|celog fonda/i);
   });
 
   it("should handle unavailable values gracefully without implying false totals", () => {

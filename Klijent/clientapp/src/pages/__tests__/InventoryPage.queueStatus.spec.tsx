@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import InventoryPage from "../InventoryPage";
+import { setDataScope } from "../../utils/dataScope";
 
 const getAnalyticsActionSourceStatusesMock = vi.fn();
 const getStoresMock = vi.fn();
@@ -78,6 +79,7 @@ vi.mock("../../components/ErrorBoundary", () => ({ ErrorBoundary: ({ children }:
 describe("InventoryPage queue status sync", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    setDataScope("all");
 
     getStoresMock.mockResolvedValue([{ storeId: 1, storeName: "Prodavnica 1" }]);
     getSupplierFiltersMock.mockResolvedValue([]);
@@ -140,6 +142,33 @@ describe("InventoryPage queue status sync", () => {
         ]),
       }),
     );
+  });
+
+  it("refreshes scope-dependent operational and signal panels after a global scope change", async () => {
+    render(
+      <MemoryRouter>
+        <InventoryPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(getInventoryActionSuggestionsMock).toHaveBeenCalledTimes(1);
+      expect(getInventoryStoreComparisonMock).toHaveBeenCalledTimes(1);
+      expect(getForecastMock).toHaveBeenCalledTimes(1);
+      expect(getInventoryAlertsMock).toHaveBeenCalledTimes(1);
+      expect(getRebalanceSuggestionsMock).toHaveBeenCalledTimes(1);
+    });
+
+    setDataScope("existing");
+    window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+
+    await waitFor(() => {
+      expect(getInventoryActionSuggestionsMock).toHaveBeenCalledTimes(2);
+      expect(getInventoryStoreComparisonMock).toHaveBeenCalledTimes(2);
+      expect(getForecastMock).toHaveBeenCalledTimes(2);
+      expect(getInventoryAlertsMock).toHaveBeenCalledTimes(2);
+      expect(getRebalanceSuggestionsMock).toHaveBeenCalledTimes(2);
+    });
   });
 
   it("passes the selected store into rebalance suggestions", async () => {

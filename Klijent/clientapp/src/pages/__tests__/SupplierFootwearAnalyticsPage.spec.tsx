@@ -457,7 +457,7 @@ describe("SupplierFootwearAnalyticsPage", () => {
 
     expect(payload.rows[0].postRevenue).toBeNull();
     expect(payload.rows[0].confidencePct).toBeNull();
-    expect(snapshot.fields.find((field) => field.key === "postRevenue")?.value).toBe("");
-    expect(snapshot.fields.find((field) => field.key === "confidencePct")?.value).toBe("");
+    expect(snapshot.fields.find((field) => field.key === "postRevenue")?.value).toBe("N/A");
+    expect(snapshot.fields.find((field) => field.key === "confidencePct")?.value).toBe("N/A");
   });
 });

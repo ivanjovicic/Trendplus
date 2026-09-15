@@ -12,6 +12,7 @@ using Domain.Model.Analytics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
+using Trendplus2.Endpoints;
 using Xunit;
 
 namespace Trendplus2.Tests;
@@ -19,6 +20,24 @@ namespace Trendplus2.Tests;
 [Trait("Category", "Unit")]
 public sealed class InventorySnapshotContractTests
 {
+    [Theory(DisplayName = "Inventory export accepts only explicit supported data scopes")]
+    [InlineData(null, true, "all")]
+    [InlineData("", true, "all")]
+    [InlineData("all", true, "all")]
+    [InlineData("existing", true, "existing")]
+    [InlineData("imported", true, "imported")]
+    [InlineData("unexpected", false, "all")]
+    public void ExportDataScope_FailsClosedForUnsupportedValues(
+        string? rawScope,
+        bool expectedValid,
+        string expectedNormalized)
+    {
+        var valid = InventoryEndpoints.TryNormalizeInventoryExportDataScope(rawScope, out var normalized);
+
+        Assert.Equal(expectedValid, valid);
+        Assert.Equal(expectedNormalized, normalized);
+    }
+
     [Fact(DisplayName = "Forecast snapshot preserves true zero and missing evidence")]
     public async Task ForecastHandler_PreservesZeroAndNullEvidence()
     {

@@ -48,7 +48,16 @@ const STORE_COMPARISON_SECTION_ID = "inventory-store-comparison";
 const ACTION_WORKFLOW_SECTION_ID = "inventory-action-workflow";
 const INVENTORY_ACTIONS_QUEUE_URL = "/analytics/actions?sourceType=inventory";
 
-type PreviousLoadState = { pageNumber: number; pageSize: number; selectedStoreId: number | null; selectedSupplierId: number | null; sortBy: string; trimmedSearch: string; compareStoreIdsKey: string };
+type PreviousLoadState = {
+  pageNumber: number;
+  pageSize: number;
+  selectedStoreId: number | null;
+  selectedSupplierId: number | null;
+  sortBy: string;
+  trimmedSearch: string;
+  compareStoreIdsKey: string;
+  dataScope: string;
+};
 type InventoryPageError = { message: string; errorCode?: string | null; correlationId?: string | null };
 
 function toInventoryPageError(reason: unknown, fallback: string): InventoryPageError {
@@ -439,11 +448,17 @@ export default function InventoryPage() {
       sortBy,
       trimmedSearch,
       compareStoreIdsKey: compareStoreIds.join(","),
+      dataScope: inventoryDataScope,
     };
     const previousLoad = previousLoadRef.current;
     const isFirstLoad = previousLoad == null;
-    const shouldRefreshSignals = isFirstLoad || previousLoad.selectedStoreId !== selectedStoreId || previousLoad.selectedSupplierId !== selectedSupplierId;
+    const scopeChanged = !isFirstLoad && previousLoad.dataScope !== inventoryDataScope;
+    const shouldRefreshSignals = isFirstLoad
+      || scopeChanged
+      || previousLoad.selectedStoreId !== selectedStoreId
+      || previousLoad.selectedSupplierId !== selectedSupplierId;
     const shouldRefreshOperations = isFirstLoad
+      || scopeChanged
       || previousLoad.selectedStoreId !== selectedStoreId
       || previousLoad.selectedSupplierId !== selectedSupplierId
       || previousLoad.trimmedSearch !== trimmedSearch
@@ -610,7 +625,7 @@ export default function InventoryPage() {
     }
 
     return () => { cancelled = true; };
-  }, [compareStoreIds, inventorySignalWindow, pageNumber, pageSize, reloadNonce, selectedStoreId, selectedSupplierId, sortBy, trimmedSearch]);
+  }, [compareStoreIds, inventoryDataScope, inventorySignalWindow, pageNumber, pageSize, reloadNonce, selectedStoreId, selectedSupplierId, sortBy, trimmedSearch]);
 
   useEffect(() => {
     if (!detailRow) {

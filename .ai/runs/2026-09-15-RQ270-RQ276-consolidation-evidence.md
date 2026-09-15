@@ -17,9 +17,15 @@ Inventory analytics frontend/API contracts plus queue delivery records.
 
 ## Review repairs
 - Scope-change handling now both refreshes the captured `dataScope` used by export and increments the unified reload generation.
+- Second review adds the scope to refresh-generation predicates so operational and signal panels cannot retain the previous scope.
 - Queue ledger summary/statuses are consistent for RQ270–RQ276.
-- RQ276 distinguishes backend current-stock exposure from locally generated forecast suggested-action cost; neither is serialized as expected business impact.
+- KPI copy now states that store, supplier and data-scope filters apply while text search does not.
+- Backend workflow DTOs preserve `CostMissing` and an explicit `EstimatedValueBasis`; transfer cost is no longer labeled as current-stock exposure.
+- Inventory Decision Board cards no longer rank or display exposure/action cost as expected impact.
+- Export and print preview reject unsupported explicit data scopes instead of silently broadening to `all`.
+- RQ276 distinguishes backend current-stock exposure from transfer/forecast suggested-action cost; neither is serialized as expected business impact.
 - Workflow value labels follow the explicit value basis.
+- Three pre-existing frontend full-suite assertions were aligned with the established safe `N/A` and mapped empty-reason contracts.
 - The existing npm-generated package-lock metadata normalization is retained in a separate commit per the request to push all local changes.
 
 ## Validation

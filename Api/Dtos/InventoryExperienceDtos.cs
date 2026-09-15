@@ -25,7 +25,7 @@ public sealed record InventoryItemDetailDto(
     int? Kolicina,
     int? MinimalnaKolicina,
     decimal? NabavnaCena,
-    decimal? EstimatedValue,
+    decimal EstimatedValue,
     int? StoreId,
     string? StoreName,
     int? SupplierId,
@@ -161,14 +161,16 @@ public sealed record InventoryActionSuggestionDto(
     string? FromStoreName,
     string? ToStoreName,
     int SuggestedQty,
-    decimal EstimatedValue,
+    decimal? EstimatedValue,
     int DaysSinceMovement,
     string? Note,
     DateTime? UpdatedAtUtc,
     decimal? SignalConfidencePct = null,
     bool? RecommendationAllowed = null,
     string? SignalDataQualityStatus = null,
-    IReadOnlyList<string>? SignalReasonCodes = null
+    IReadOnlyList<string>? SignalReasonCodes = null,
+    bool CostMissing = false,
+    string EstimatedValueBasis = "current_stock_value"
 );
 
 public sealed record InventoryActionWorkflowDto(
