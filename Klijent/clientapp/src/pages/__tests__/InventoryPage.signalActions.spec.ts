@@ -120,7 +120,7 @@ describe("Inventory signal action mapping", () => {
     expect(spec.expectedImpactRsd).toBeNull();
   });
 
-  it("preserves expected impact on actionable REPLENISH when value exists", () => {
+  it("does not treat stock exposure as expected impact on actionable REPLENISH", () => {
     const spec = buildInventorySignalActionSpec(
       makeRow({
         stockCoverStatus: "out_of_stock_risk",
@@ -129,6 +129,18 @@ describe("Inventory signal action mapping", () => {
     );
 
     expect(spec.recommendationStatus).toBe("REPLENISH");
-    expect(spec.expectedImpactRsd).toBe(18000);
+    expect(spec.expectedImpactRsd).toBeNull();
+  });
+
+  it("does not treat stock exposure as expected impact on slow-stock review", () => {
+    const spec = buildInventorySignalActionSpec(
+      makeRow({
+        stockCoverStatus: "slow_stock",
+        estimatedValue: 22000,
+      })
+    );
+
+    expect(spec.recommendationStatus).toBe("SLOW_STOCK_REVIEW");
+    expect(spec.expectedImpactRsd).toBeNull();
   });
 });

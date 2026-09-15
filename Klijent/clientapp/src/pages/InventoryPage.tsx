@@ -23,7 +23,7 @@ import { SKUDetailModal } from "../components/inventory/SKUDetailModal";
 import { SizeCurvePanel } from "../components/inventory/SizeCurvePanel";
 import { StoreComparisonPanel } from "../components/inventory/StoreComparisonPanel";
 import KpiExplainButton from "../components/analytics/KpiExplainButton";
-import { buildForecastRestockSuggestion, buildInventoryRow, buildInventoryScreenCsvFilename, buildInventoryScreenCsvLines, buildInventoryServerExportContractNote, buildSupplierChart, createScheduleDraft, formatPercent, inventoryRiskSortScopeWarning, isInventoryPageLocalRiskSort, resolveForecastRestockDaysSinceMovement, validateScheduleDraft } from "../components/inventory/inventoryUtils";
+import { buildForecastRestockSuggestion, buildInventoryRow, buildInventoryScreenCsvFilename, buildInventoryScreenCsvLines, buildInventoryServerExportContractNote, buildInventoryWorkflowCentralQueueMetadata, buildSupplierChart, createScheduleDraft, formatPercent, INVENTORY_EXPOSURE_BASIS, inventoryRiskSortScopeWarning, isInventoryPageLocalRiskSort, resolveForecastRestockDaysSinceMovement, resolveInventoryExposureRsdFromRow, validateScheduleDraft } from "../components/inventory/inventoryUtils";
 import { getDataScope } from "../utils/dataScope";
 import type { InventoryRow } from "../components/inventory/types";
 import { fmtNumber, formatDateTime } from "../utils/analyticsFormatters";
@@ -216,18 +216,6 @@ function snapshotFreshnessLabel(status: SecondarySnapshotFreshness["status"]): s
   return "nepoznat";
 }
 
-function resolveInventoryExpectedImpactRsd(row: InventoryRow): number | null {
-  if (row.estimatedValue != null) {
-    return row.estimatedValue;
-  }
-
-  if (row.nabavnaCena == null || row.kolicina == null) {
-    return null;
-  }
-
-  return row.nabavnaCena * row.kolicina;
-}
-
 export function buildInventorySignalActionSpec(row: InventoryRow): {
   sourceKey: string;
   title: string;
@@ -263,7 +251,8 @@ export function buildInventorySignalActionSpec(row: InventoryRow): {
       priority: isCritical ? "P1" : "P2",
       description: `${row.signalText}. Stock cover: ${row.stockCoverStatusLabel}. Sell-through: ${row.sellThroughStatusLabel}.`,
       dueAtUtc,
-      expectedImpactRsd: resolveInventoryExpectedImpactRsd(row),
+      // Stock exposure exists on the row, but inventory has no authoritative expected-impact source.
+      expectedImpactRsd: null,
     };
   }
 
@@ -275,7 +264,7 @@ export function buildInventorySignalActionSpec(row: InventoryRow): {
       priority: normalizedCover === "slow_stock" || normalizedCover === "slow" ? "P2" : "P3",
       description: `${row.signalText}. Artikal zahteva proveru sporog obrta i odluke o markdown/transfer akciji.`,
       dueAtUtc,
-      expectedImpactRsd: resolveInventoryExpectedImpactRsd(row),
+      expectedImpactRsd: null,
     };
   }
 
@@ -996,17 +985,8 @@ export default function InventoryPage() {
         description: item.reason,
         recommendationStatus: item.actionType,
         priority: mapWorkflowPriorityToQueuePriority(item.priority),
-        impactEstimateRsd: item.costMissing ? undefined : item.estimatedValue ?? undefined,
         actionUrl: "/analytics/inventory",
-        metadataJson: JSON.stringify({
-          suggestionKey: item.suggestionKey,
-          actionType: item.actionType,
-          suggestedQty: item.suggestedQty,
-          forecastDemandQty: item.forecastDemandQty ?? item.suggestedQty,
-          costMissing: item.costMissing ?? false,
-          fromStoreName: item.fromStoreName,
-          toStoreName: item.toStoreName,
-        }),
+        metadataJson: JSON.stringify(buildInventoryWorkflowCentralQueueMetadata(item)),
       });
       setQueuedSuggestionKeys((current) => (
         current.includes(item.suggestionKey) ? current : [...current, item.suggestionKey]
@@ -1155,7 +1135,6 @@ export default function InventoryPage() {
         recommendationStatus: actionSpec.recommendationStatus,
         priority: actionSpec.priority,
         dueAtUtc: actionSpec.dueAtUtc,
-        expectedImpactRsd: actionSpec.expectedImpactRsd ?? undefined,
         confidencePct: row.signalConfidencePct ?? undefined,
         dataQualityStatus: toActionDataQualityStatus(row.dataQualityStatus),
         actionUrl: "/analytics/inventory",
@@ -1166,6 +1145,8 @@ export default function InventoryPage() {
           stockCoverDays: row.stockCoverDays,
           sellThroughRatio: row.sellThroughRatio,
           recommendationAllowed: row.recommendationAllowed,
+          inventoryExposureRsd: resolveInventoryExposureRsdFromRow(row),
+          inventoryExposureBasis: INVENTORY_EXPOSURE_BASIS,
         }),
       });
       setQueuedSuggestionKeys((current) => (

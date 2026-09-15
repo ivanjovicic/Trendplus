@@ -39,7 +39,7 @@ describe("ActionWorkflowPanel cost trust", () => {
       />,
     );
 
-    expect(screen.getByText("Vrednost: Nije dostupno (nedostaje nabavna cena)")).toBeInTheDocument();
+    expect(screen.getByText("Vrednost zalihe: Nije dostupno (nedostaje nabavna cena)")).toBeInTheDocument();
     expect(screen.getByText("Qty: 2")).toBeInTheDocument();
     expect(screen.getByText("Predlozena dopuna")).toBeInTheDocument();
   });

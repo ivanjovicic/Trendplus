@@ -8,6 +8,10 @@ Owner promotion 2026-09-15: `RQ274` was explicitly promoted from `WAITING` to `R
 
 Owner completion 2026-09-15: `RQ274` was delivered with nullable forecast restock `daysSinceMovement`, `resolveForecastRestockDaysSinceMovement` helper, defer-while-detail-loading behavior and focused regression tests; the RQ queue advanced to `RQ275`.
 
+Owner promotion 2026-09-15: `RQ276` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ275` completion; it is the single current RQ prompt for inventory impact semantics and is claimed in this workspace.
+
+Owner completion 2026-09-15: `RQ276` was delivered with inventory exposure kept separate from central-queue expected impact (`impactEstimateRsd`/`expectedImpactRsd` omitted); exposure serialized in metadata; workflow UI labels stock value explicitly; tests `inventoryImpactSemantics.spec.ts`.
+
 Owner promotion 2026-09-15: `RQ275` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ274` completion; it is the single current RQ prompt for inventory queue empty-reset behavior and is claimed in this workspace.
 
 Owner completion 2026-09-15: `RQ275` was delivered with `setQueuedSuggestionKeys([])` when the inventory source-key set is empty; filter-to-empty and restored-row regression in `InventoryPage.queueStatus.spec.tsx`; lookup failures still preserve last-known state.
@@ -379,7 +383,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ273 | WAITING | inventory-report-window-parity | Prove or repair Inventory export/print period and scope parity |
 | RQ274 | DONE | inventory-forecast-age-evidence | Keep missing days-since-movement unknown in forecast workflow |
 | RQ275 | DONE | inventory-queue-empty-reset | Clear stale queued-action state when source keys disappear |
-| RQ276 | WAITING | inventory-impact-semantics | Separate expected business impact from inventory exposure/value |
+| RQ276 | DONE | inventory-impact-semantics | Separate expected business impact from inventory exposure/value |
 | RQ277 | WAITING | supplier-embedded-surface-composition | Remove only confirmed duplicate supplier titles or filters |
 | RQ278 | WAITING | supplier-filter-scope-contract | Make supplier filter dataset scope explicit or prove the ambient contract |
 | RQ279 | WAITING | supplier-filter-fallback-visibility | Make retained supplier filter options visibly stale/degraded |
@@ -13410,7 +13414,8 @@ Reproduction: load a queued row, change filters so no source keys remain or repl
 
 ## RQ276 - Separate Inventory expected impact from exposure/value
 
-Status: WAITING
+Status: DONE
+Completion note: 2026-09-15 — central queue omits `impactEstimateRsd`/`expectedImpactRsd` for inventory workflow and signal writes; `inventoryExposureRsd` + basis in metadata; workflow panel labels "Vrednost zalihe"; tests `inventoryImpactSemantics.spec.ts`.
 Priority: P1
 Type: frontend/action-contract/tests
 Feature family: inventory-impact-semantics
