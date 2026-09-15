@@ -104,7 +104,8 @@ describe("AnalyticsTableToolbar", () => {
     vi.mocked(requestPrintPreview).mockReset();
     vi.mocked(waitForExport).mockReset();
     vi.mocked(downloadExport).mockReset();
-    vi.spyOn(window, "open").mockImplementation(() => null);
+    vi.spyOn(window, "open").mockImplementation(() => ({ close: vi.fn() }) as unknown as Window);
+    vi.mocked(window.open).mockClear();
   });
 
   it("prints the exact resolved table payload through local print state", () => {
@@ -234,5 +235,126 @@ describe("AnalyticsTableToolbar", () => {
     expect(screen.getByRole("status")).toHaveTextContent(
       "Eksport je zavr\u0161en i preuzet.",
     );
+  });
+
+  it("keeps failed export visible as an error and leaves the dialog available for retry", async () => {
+    vi.mocked(generateExport).mockRejectedValue(
+      new Error("NpgsqlException: password=secret; SQL timeout"),
+    );
+
+    renderToolbar();
+    fireEvent.click(screen.getByRole("button", { name: /Izvoz/i }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Izvezi kao Excel" }));
+    fireEvent.click(screen.getByRole("button", { name: /Pokreni export/i }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Podaci trenutno nisu dostupni");
+    expect(alert).not.toHaveTextContent(/NpgsqlException|password=secret|SQL timeout/i);
+    expect(alert).not.toHaveClass("text-[var(--success)]");
+    expect(screen.getByRole("dialog", { name: /Export Supplier test/i })).toBeInTheDocument();
+  });
+
+  it("does not claim preview opened when the response has no print URL", async () => {
+    vi.mocked(requestPrintPreview).mockResolvedValue(operation({ printUrl: "   " }));
+
+    renderToolbar();
+    fireEvent.click(screen.getByRole("button", { name: /Izvoz/i }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Izvezi kao PDF" }));
+    fireEvent.click(screen.getByRole("button", { name: /Otvori preview/i }));
+
+    const warning = await screen.findByRole("status");
+    expect(warning).toHaveTextContent(/nije otvoren.*validan link/i);
+    expect(warning).not.toHaveTextContent(/otvoren u novom tabu/i);
+    expect(window.open).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog", { name: /Export Supplier test/i })).toBeInTheDocument();
+  });
+
+  it("does not claim preview opened when the browser blocks the new window", async () => {
+    vi.mocked(window.open).mockReturnValueOnce(null);
+    vi.mocked(requestPrintPreview).mockResolvedValue(operation({ printUrl: "/print-preview/blocked" }));
+
+    renderToolbar();
+    fireEvent.click(screen.getByRole("button", { name: /Izvoz/i }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Izvezi kao PDF" }));
+    fireEvent.click(screen.getByRole("button", { name: /Otvori preview/i }));
+
+    const warning = await screen.findByRole("status");
+    expect(warning).toHaveTextContent(/novi prozor blokiran/i);
+    expect(warning).not.toHaveTextContent(/otvoren u novom tabu/i);
+    expect(screen.getByRole("dialog", { name: /Export Supplier test/i })).toBeInTheDocument();
+  });
+
+  it("does not claim async export was downloaded without a completed artifact", async () => {
+    vi.mocked(generateExport).mockResolvedValue(
+      operation({ isAsync: true, documentId: "doc-incomplete", status: "queued" }),
+    );
+    vi.mocked(waitForExport).mockResolvedValue(
+      status({ status: "completed", downloadUrl: "   " }),
+    );
+
+    renderToolbar();
+    fireEvent.click(screen.getByRole("button", { name: /Izvoz/i }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Izvezi kao CSV" }));
+    fireEvent.click(screen.getByRole("button", { name: /Pokreni export/i }));
+
+    const warning = await screen.findByRole("status");
+    expect(warning).toHaveTextContent(/nije dostupan za preuzimanje/i);
+    expect(warning).not.toHaveTextContent(/završen i preuzet/i);
+    expect(downloadExport).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog", { name: /Export Supplier test/i })).toBeInTheDocument();
+  });
+
+  it("keeps malformed async completion status incomplete", async () => {
+    vi.mocked(generateExport).mockResolvedValue(
+      operation({ isAsync: true, documentId: "doc-malformed", status: "queued" }),
+    );
+    vi.mocked(waitForExport).mockResolvedValue(
+      status({ status: { unexpected: "object" } as never, downloadUrl: "/exports/unsafe.csv" }),
+    );
+
+    renderToolbar();
+    fireEvent.click(screen.getByRole("button", { name: /Izvoz/i }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Izvezi kao CSV" }));
+    fireEvent.click(screen.getByRole("button", { name: /Pokreni export/i }));
+
+    const warning = await screen.findByRole("status");
+    expect(warning).toHaveTextContent(/nije dostupan za preuzimanje/i);
+    expect(downloadExport).not.toHaveBeenCalled();
+  });
+
+  it("keeps a timed out async export in an error state", async () => {
+    vi.mocked(generateExport).mockResolvedValue(
+      operation({ isAsync: true, documentId: "doc-timeout", status: "queued" }),
+    );
+    vi.mocked(waitForExport).mockRejectedValue(
+      new Error("Export jos nije spreman nakon dozvoljenog vremena"),
+    );
+
+    renderToolbar();
+    fireEvent.click(screen.getByRole("button", { name: /Izvoz/i }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Izvezi kao CSV" }));
+    fireEvent.click(screen.getByRole("button", { name: /Pokreni export/i }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/Export jos nije spreman/i);
+    expect(alert).not.toHaveTextContent(/završen|preuzet/i);
+    expect(downloadExport).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog", { name: /Export Supplier test/i })).toBeInTheDocument();
+  });
+
+  it("keeps a terminal sync response without an artifact visibly incomplete", async () => {
+    vi.mocked(generateExport).mockResolvedValue(
+      operation({ status: "completed", downloadUrl: null }),
+    );
+
+    renderToolbar();
+    fireEvent.click(screen.getByRole("button", { name: /Izvoz/i }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Izvezi kao CSV" }));
+    fireEvent.click(screen.getByRole("button", { name: /Pokreni export/i }));
+
+    const warning = await screen.findByRole("status");
+    expect(warning).toHaveTextContent(/nije vratio validan dokument/i);
+    expect(warning).not.toHaveTextContent(/pokrenut|preuzet/i);
+    expect(screen.getByRole("dialog", { name: /Export Supplier test/i })).toBeInTheDocument();
   });
 });

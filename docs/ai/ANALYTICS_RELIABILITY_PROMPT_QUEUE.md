@@ -1,8 +1,8 @@
 # Analytics Reliability Prompt Queue
 
-Date: 2026-09-14
+Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ263
+Current READY prompt: RQ264
 
 Owner completion 2026-09-14: `RQ249` was delivered on `main` with fail-closed Supplier Decision Hub detail and report-toolbar actionability gates; blocked, fallback, stale/partial and missing recommendation permission remain review-only.
 Owner promotion 2026-09-14: `RQ250` was explicitly promoted after completed `RQ249`, repaired the stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
@@ -30,6 +30,8 @@ Owner completion 2026-09-15: `RQ261` was delivered on `main` with nullable finit
 Owner promotion 2026-09-15: `RQ262` was explicitly promoted after completed `RQ261`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
 Owner completion 2026-09-15: `RQ262` was delivered on `main` with one finite/null executive KPI presentation state shared by value text, CSS tone and accessibility labels; finite zero remains visible, non-finite values fail closed and insufficient readiness stays visibly degraded. The queue advanced to `RQ263`.
 Owner promotion 2026-09-15: `RQ263` was explicitly promoted after completed `RQ262`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
+Owner completion 2026-09-15: `RQ263` was delivered on `main` with explicit export/preview operation feedback, valid artifact and popup validation, safe failure messaging and retry-preserving incomplete states; the queue advanced to `RQ264`.
+Owner promotion 2026-09-15: `RQ264` was explicitly promoted after completed `RQ263`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
 
 ### Completion note
 
@@ -309,8 +311,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ260 | DONE | empty-state-safe-reason-action | Keep shared analytics empty state user-safe and actionable |
 | RQ261 | DONE | refresh-status-duration-message-truth | Preserve refresh duration unknown state and safe operational messaging |
 | RQ262 | READY | executive-kpi-value-tone-parity | Keep executive KPI availability and visual tone consistent |
-| RQ263 | WAITING | analytics-export-operation-truth | Keep export/preview status honest on failure or missing artifacts |
-| RQ264 | WAITING | analytics-shared-output-finite-parity | Preserve finite/null semantics across table, detail, print and export |
+| RQ263 | DONE | analytics-export-operation-truth | Keep export/preview status honest on failure or missing artifacts |
+| RQ264 | READY | analytics-shared-output-finite-parity | Preserve finite/null semantics across table, detail, print and export |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -9995,7 +9997,7 @@ Supplier Decision Hub report links preserve period, scope, supplier and store on
 
 ## RQ235 - Suppress supplier report negotiation actions when recommendation is blocked
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: frontend/contract/tests
 Feature family: supplier-report-actionability-gate
@@ -12323,7 +12325,7 @@ The executive Dashboard KPI row always marks Revenue with the healthy `good` ton
 
 ## RQ263 - Keep export and preview operation status honest
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: frontend/contract/tests
 Feature family: analytics-export-operation-truth
@@ -12388,11 +12390,29 @@ The shared analytics export toolbar stores every operation message in one `statu
 - `RQ247` owns Pilot Intake status vocabulary and `RQ251` Inventory workflow/scheduler vocabulary.
 - `RQ262` is complete; this prompt is the single current `READY` item for Analytics Export Frontend. The historical `RQ169` dependency is already DONE and no longer blocks this prompt.
 
+### Completion note
+
+- Date: 2026-09-15
+- Status: DONE
+- Completion: Export and PDF preview operations now use explicit tone/role feedback. Failed, timed-out, blocked-popup and incomplete-artifact paths stay visible and retryable; successful copy is shown only after validated artifact/popup initiation.
+- Changed files: `Klijent/clientapp/src/components/analytics/AnalyticsTableToolbar.tsx`, `Klijent/clientapp/src/components/analytics/__tests__/AnalyticsTableToolbar.spec.tsx`, `Klijent/clientapp/src/services/exportApi.ts`
+- Checks run: focused toolbar/export-client tests 13 passed; analytics guardrails passed; frontend build passed; `git diff --check` passed; governance validators passed.
+- Checks not run: full frontend suite, backend build/tests and live provider/browser export proof were not run because scope was bounded to frontend operation-state behavior.
+- Run log: `.ai/runs/2026-09-15-RQ263-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending until final push verification
+- Main verification: pending until final push verification
+- Missed: no backend generator, authorization, metric or report calculation changes were made; live popup/provider behavior remains outside this local proof.
+- Follow-up: `RQ264` is READY for Analytics Frontend / Export.
+- Residual risk: existing frontend chunk-size advisory remains; live provider behavior is unverified.
+- Prompt defect / scope repair: repaired the stale RQ264 dependency wording that referenced already-DONE `RQ169`; no business-scope expansion was made.
+
 ---
 
 ## RQ264 - Preserve finite and null semantics across shared analytics outputs
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: frontend/contract/tests
 Feature family: analytics-shared-output-finite-parity
@@ -12456,5 +12476,5 @@ The shared analytics table-state formatter rejects non-finite numbers during par
 - `RQ145` remains the complete cross-surface parity owner; this prompt owns the concrete shared client serialization/formatting gap.
 - `RQ191`, `RQ257` and `RQ262` remain formatter/page-specific finite-state owners.
 - `RQ263` owns export operation status, not exported data values.
-- Keep this prompt `WAITING` while `RQ169` remains the existing `READY` item.
+- `RQ263` is complete; this prompt is the single current `READY` item for Analytics Frontend / Export. The historical `RQ169` dependency is already DONE and no longer blocks this prompt.
 

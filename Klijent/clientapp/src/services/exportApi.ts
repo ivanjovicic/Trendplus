@@ -101,6 +101,12 @@ export function resolveApiUrl(path: string): string {
   return apiUrl(path);
 }
 
+export function normalizeDocumentUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
 export async function generateExport(
   payload: ResolvedAnalyticsTablePayload,
   options: ExportOptions

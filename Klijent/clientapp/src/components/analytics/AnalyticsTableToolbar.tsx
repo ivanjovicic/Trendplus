@@ -1,5 +1,6 @@
 import React from "react";
 import {
+  AlertTriangle,
   CheckCircle2,
   ChevronDown,
   Download,
@@ -13,6 +14,7 @@ import InfoTip from "../ui/InfoTip";
 import {
   downloadExport,
   generateExport,
+  normalizeDocumentUrl,
   requestPrintPreview,
   resolveApiUrl,
   SYNC_ROW_LIMIT,
@@ -20,6 +22,7 @@ import {
   type ExportFormat,
   type ExportOrientation,
 } from "../../services/exportApi";
+import { getSafeAnalyticsErrorMessage } from "../../utils/analyticsErrorMessages";
 import {
   resolveAnalyticsTablePayload,
   savePrintPayload,
@@ -50,6 +53,18 @@ function formatIcon(format: ExportFormat) {
   return Printer;
 }
 
+type OperationFeedback = {
+  tone: "success" | "info" | "warning" | "error";
+  message: string;
+};
+
+function operationFeedbackClass(tone: OperationFeedback["tone"]): string {
+  if (tone === "success") return "text-[var(--success)] border-[var(--success)]/40 bg-success-soft";
+  if (tone === "error") return "text-[var(--error)] border-[var(--error)]/40 bg-error-soft";
+  if (tone === "warning") return "text-[var(--warning)] border-[var(--warning)]/40 bg-warning-soft";
+  return "text-[var(--info)] border-[var(--info)]/40 bg-[var(--info)]/10";
+}
+
 export default function AnalyticsTableToolbar<Row>(props: {
   tableKey: string;
   tableTitle: string;
@@ -73,7 +88,7 @@ export default function AnalyticsTableToolbar<Row>(props: {
   const [includeFilters, setIncludeFilters] = React.useState(true);
   const [preview, setPreview] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
-  const [statusText, setStatusText] = React.useState<string | null>(null);
+  const [operationFeedback, setOperationFeedback] = React.useState<OperationFeedback | null>(null);
   const exportButtonRef = React.useRef<HTMLButtonElement>(null);
   const exportMenuRef = React.useRef<HTMLDivElement>(null);
   const exportMenuId = React.useId();
@@ -199,7 +214,7 @@ export default function AnalyticsTableToolbar<Row>(props: {
 
   const handleExport = async () => {
     setSubmitting(true);
-    setStatusText(null);
+    setOperationFeedback(null);
 
     try {
       console.info("Export triggered", {
@@ -215,15 +230,32 @@ export default function AnalyticsTableToolbar<Row>(props: {
           preview: true,
         });
 
-        if (previewResult.printUrl) {
-          window.open(
-            resolveApiUrl(previewResult.printUrl),
-            "_blank",
-            "noopener",
-          );
-          setStatusText("Print preview je otvoren u novom tabu.");
+        const printUrl = normalizeDocumentUrl(previewResult.printUrl);
+        if (!printUrl) {
+          setOperationFeedback({
+            tone: "warning",
+            message: "Preview nije otvoren jer servis nije vratio validan link. Pokušajte ponovo.",
+          });
+          return;
         }
 
+        const previewWindow = window.open(
+          resolveApiUrl(printUrl),
+          "_blank",
+          "noopener",
+        );
+        if (!previewWindow) {
+          setOperationFeedback({
+            tone: "warning",
+            message: "Preview nije otvoren jer je novi prozor blokiran. Dozvolite popup i pokušajte ponovo.",
+          });
+          return;
+        }
+
+        setOperationFeedback({
+          tone: "success",
+          message: "Print preview je otvoren u novom tabu.",
+        });
         setModalOpen(false);
         return;
       }
@@ -235,26 +267,64 @@ export default function AnalyticsTableToolbar<Row>(props: {
       });
 
       if (result.isAsync) {
-        setStatusText(
-          "Veliki eksport je stavljen u red. \u010Cekam da dokument bude spreman...",
-        );
-        const completed = await waitForExport(result.documentId);
-        if (completed.downloadUrl) {
-          downloadExport(completed.downloadUrl, completed.fileName);
+        const documentId = normalizeDocumentUrl(result.documentId);
+        if (!documentId) {
+          setOperationFeedback({
+            tone: "error",
+            message: "Eksport nije dobio validan identifikator dokumenta. Pokušajte ponovo.",
+          });
+          return;
         }
-        setStatusText("Eksport je zavr\u0161en i preuzet.");
-      } else if (result.downloadUrl) {
-        downloadExport(result.downloadUrl, result.fileName);
-        setStatusText("Eksport je preuzet.");
+
+        setOperationFeedback({
+          tone: "info",
+          message: "Veliki eksport je stavljen u red. Čekam da dokument bude spreman...",
+        });
+        const completed = await waitForExport(documentId);
+        const downloadUrl = normalizeDocumentUrl(completed.downloadUrl);
+        const completedStatus = typeof completed.status === "string" ? completed.status.trim().toLowerCase() : "";
+        if (completedStatus !== "completed" || !downloadUrl) {
+          setOperationFeedback({
+            tone: "warning",
+            message: "Eksport nije dostupan za preuzimanje jer dokument nema validan završni artifact. Pokušajte ponovo.",
+          });
+          return;
+        }
+
+        downloadExport(downloadUrl, completed.fileName);
+        setOperationFeedback({
+          tone: "success",
+          message: "Eksport je završen i preuzet.",
+        });
+      } else if (normalizeDocumentUrl(result.downloadUrl)) {
+        const downloadUrl = normalizeDocumentUrl(result.downloadUrl)!;
+        downloadExport(downloadUrl, result.fileName);
+        setOperationFeedback({
+          tone: "success",
+          message: "Eksport je preuzet.",
+        });
       } else {
-        setStatusText("Eksport je pokrenut.");
+        const status = typeof result.status === "string" ? result.status.trim().toLowerCase() : "";
+        const acceptedWithoutArtifact = status === "queued" || status === "running" || status === "pending";
+        setOperationFeedback({
+          tone: acceptedWithoutArtifact ? "info" : "warning",
+          message: acceptedWithoutArtifact
+            ? "Eksport je prihvaćen, ali dokument još nije spreman za preuzimanje."
+            : "Eksport nije vratio validan dokument za preuzimanje. Pokušajte ponovo.",
+        });
+        return;
       }
 
       setModalOpen(false);
     } catch (reason) {
-      setStatusText(
-        reason instanceof Error ? reason.message : "Eksport nije uspeo.",
-      );
+      setOperationFeedback({
+        tone: "error",
+        message: getSafeAnalyticsErrorMessage(
+          reason instanceof Error ? reason.message : null,
+          null,
+          "Eksport nije uspeo. Pokušajte ponovo.",
+        ),
+      });
     } finally {
       setSubmitting(false);
     }
@@ -336,14 +406,17 @@ export default function AnalyticsTableToolbar<Row>(props: {
           Redova: {payload.rows.length.toLocaleString("sr-RS")}
         </span>
 
-        {statusText ? (
+        {operationFeedback ? (
           <span
-            role="status"
-            aria-live="polite"
-            className="inline-flex items-center gap-1 rounded-full border border-[var(--success)]/40 bg-success-soft px-2.5 py-1 text-xs font-semibold text-[var(--success)]"
+            role={operationFeedback.tone === "error" ? "alert" : "status"}
+            aria-live={operationFeedback.tone === "error" ? "assertive" : "polite"}
+            className={[
+              "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold",
+              operationFeedbackClass(operationFeedback.tone),
+            ].join(" ")}
           >
-            <CheckCircle2 size={13} />
-            {statusText}
+            {operationFeedback.tone === "success" ? <CheckCircle2 size={13} /> : <AlertTriangle size={13} />}
+            {operationFeedback.message}
           </span>
         ) : null}
       </div>
