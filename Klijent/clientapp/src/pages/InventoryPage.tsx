@@ -697,9 +697,7 @@ export default function InventoryPage() {
   const rows = useMemo(() => (pageData?.items ?? []).map((item) => buildInventoryRow(item, stores, suppliers)), [pageData, stores, suppliers]);
   const totalCount = pageData?.totalCount ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-  const totalValue = balance
-    ? balance.estimatedInventoryValue ?? rows.reduce((sum, row) => sum + (row.estimatedValueAmount ?? 0), 0)
-    : null;
+  const totalValue = balance?.estimatedInventoryValue ?? null;
   const activeSkuShare = useMemo(() => (balance && balance.totalSku > 0 ? ((balance.totalSku - balance.outOfStockCount) / balance.totalSku) * 100 : null), [balance]);
   const lowStockShare = useMemo(() => (balance && balance.totalSku > 0 ? (balance.lowStockCount / balance.totalSku) * 100 : null), [balance]);
   const avgUnitsPerSku = useMemo(() => (balance && balance.totalSku > 0 ? balance.totalOnHand / balance.totalSku : null), [balance]);
