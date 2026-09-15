@@ -12724,7 +12724,7 @@ Reproduction: feed a successful non-partial response with `lastRefreshAtUtc: nul
 
 ## RQ267 - Restore one coherent heading hierarchy in the Operations shell
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: frontend/accessibility/tests
 Feature family: operations-heading-hierarchy
@@ -12789,10 +12789,10 @@ Reproduction: inspect the heading tree on Daily Sales, Shoe Type, Color, Supplie
 - Checks run: heading-focused matrix 10 passed; analytics guardrails/encoding/typecheck passed; frontend build passed; queue governance and `git diff --check` passed.
 - Checks not run: live backend/browser/deployed smoke, axe accessibility scan and full frontend suite.
 - Run log: `.ai/runs/2026-09-15-RQ267-evidence.md`
-- Evidence state: pending main delivery verification
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `5e78fc79e22087b3e64f2b85aa08d0a795b8e240`
+- Main verification: passed - `origin/main` is `5e78fc79e22087b3e64f2b85aa08d0a795b8e240`; implementation commit is an ancestor.
 - Missed: SEO impact and live screen-reader output were not measured; two unrelated existing contract assertions remain failing (`N/A` versus empty value).
 - Follow-up: RQ268 remains the next Operations navigation follow-up but is not READY until explicitly promoted or selected by the queue owner.
 - Residual risk: any future page that composes a trust header with a local title must preserve the one-page-level-h1 contract; runtime axe/browser evidence remains outstanding.
