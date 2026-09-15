@@ -165,4 +165,15 @@ describe("AnalyticsTrustHeader", () => {
     expect(screen.getByText("-2")).toBeInTheDocument();
     expect(screen.getByText("0")).toBeInTheDocument();
   });
+
+  it("does not expose technical fallback reasons", () => {
+    renderHeader({
+      usedFallback: true,
+      fallbackReason: "sql_timeout_v2 at internal_table",
+      fallbackReasonCode: "internal_secret_fallback",
+    });
+
+    expect(screen.queryByText(/sql_timeout_v2|internal_table|internal_secret_fallback/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Dodatni razlog fallback-a nije naveden/i)).toBeInTheDocument();
+  });
 });

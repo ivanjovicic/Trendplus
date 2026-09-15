@@ -30,6 +30,13 @@ describe("AnalyticsEmptyState", () => {
     expect(screen.queryByText(/backend-code|<script>/i)).not.toBeInTheDocument();
   });
 
+  it("sanitizes technical empty-state messages", () => {
+    renderEmptyState({ message: "sql_timeout_v2 at internal_table" });
+
+    expect(screen.getByText("Podaci trenutno nisu dostupni. Proverite kvalitet podataka i pokušajte ponovo.")).toBeInTheDocument();
+    expect(screen.queryByText(/sql_timeout_v2|internal_table/i)).not.toBeInTheDocument();
+  });
+
   it("keeps blank and null reasons safe and does not invent a raw reason", () => {
     const { rerender } = renderEmptyState({ emptyReason: "   " });
     expect(screen.getByText("Nije specificirano")).toBeInTheDocument();

@@ -11,7 +11,7 @@ type AnalyticsRefreshStatusBannerProps = {
 };
 
 function normalizeFreshness(value: string | null | undefined): "fresh" | "stale" | "critical" | "unknown" {
-  const normalized = value?.trim().toLowerCase();
+  const normalized = typeof value === "string" ? value.trim().toLowerCase() : null;
   if (normalized === "fresh" || normalized === "stale" || normalized === "critical") return normalized;
   return "unknown";
 }
@@ -43,7 +43,7 @@ const ANALYTICS_OBJECT_LABELS: Record<string, string> = {
 };
 
 function normalizeToken(value: string | null | undefined): string | null {
-  const normalized = value?.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  const normalized = typeof value === "string" ? value.trim().toLowerCase().replace(/[\s-]+/g, "_") : null;
   return normalized || null;
 }
 
@@ -68,7 +68,7 @@ function analyticsJobLabel(value: string | null | undefined): string {
 }
 
 function safeWorkerWarning(value: string | null | undefined): string | null {
-  const normalized = value?.trim().toLowerCase();
+  const normalized = typeof value === "string" ? value.trim().toLowerCase() : null;
   if (!normalized) return null;
   if (normalized.includes("worker nije aktivan")) return "Worker nije aktivan u ovom procesu. Automatsko osvežavanje nije aktivno.";
   if (normalized.includes("worker nije registrovan")) return "Automatsko osvežavanje radnika nije aktivno u ovom procesu.";
@@ -94,7 +94,9 @@ export default function AnalyticsRefreshStatusBanner({
 }: AnalyticsRefreshStatusBannerProps) {
   const freshness = normalizeFreshness(status?.dataFreshnessStatus);
   const recentRuns = Array.isArray(status?.recentRuns) ? status.recentRuns : [];
-  const latestCorrelationId = recentRuns[0]?.correlationId?.trim() || null;
+  const latestCorrelationId = typeof recentRuns[0]?.correlationId === "string"
+    ? recentRuns[0].correlationId.trim() || null
+    : null;
   const shouldShowCorrelationId = Boolean(
     latestCorrelationId && (error || status?.lastErrorMessage || freshness === "stale" || freshness === "critical")
   );
@@ -123,9 +125,9 @@ export default function AnalyticsRefreshStatusBanner({
   const processMode = processModeLabel(status.processMode || status.processType);
   const currentStep = refreshStepLabel(status.currentStep);
   const workerWarning = safeWorkerWarning(status.workerWarning ?? status.workerProcessWarning);
-  const hasPartialPayload = status.jobs === undefined
-    || status.refreshedObjects === undefined
-    || status.failedObjects === undefined;
+  const hasPartialPayload = !Array.isArray(status.jobs)
+    || !Array.isArray(status.refreshedObjects)
+    || !Array.isArray(status.failedObjects);
   const jobs = Array.isArray(status.jobs) ? status.jobs : [];
   const failedJobs = jobs.filter((job) => normalizeFreshness(job.dataFreshnessStatus) === "critical");
   const refreshedObjects = Array.isArray(status.refreshedObjects) ? status.refreshedObjects : [];

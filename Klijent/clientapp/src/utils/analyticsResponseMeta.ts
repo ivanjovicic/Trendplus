@@ -103,13 +103,19 @@ export function getAnalyticsMetaMessage(meta?: AnalyticsResponseMeta | null): st
   if (!meta) return null;
 
   const errorMessage = meta.errorMessage?.trim();
-  if (errorMessage) return errorMessage;
+  if (errorMessage) {
+    return getSafeAnalyticsErrorMessage(errorMessage, meta.errorCode);
+  }
 
   const warningMessage = meta.warningMessage?.trim();
-  if (warningMessage) return warningMessage;
+  if (warningMessage) {
+    return getSafeAnalyticsErrorMessage(warningMessage, meta.warningCode);
+  }
 
   const message = meta.message?.trim();
-  if (message) return message;
+  if (message) {
+    return getSafeAnalyticsErrorMessage(message, meta.errorCode ?? meta.warningCode);
+  }
 
   const emptyReason = meta.emptyReason?.trim();
   if (emptyReason) {

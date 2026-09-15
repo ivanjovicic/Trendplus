@@ -160,9 +160,9 @@ describe("AnalyticsRefreshStatusBanner", () => {
       isRunning: true,
       currentStep: "secret_step",
       lastErrorMessage: "sql_timeout at internal_table",
-      refreshedObjects: ["internal_object"],
-      failedObjects: ["secret_object"],
-      jobs: undefined as never,
+      refreshedObjects: null as never,
+      failedObjects: null as never,
+      jobs: null as never,
       recentRuns: undefined,
       durationSeconds: Number.NaN,
     }));

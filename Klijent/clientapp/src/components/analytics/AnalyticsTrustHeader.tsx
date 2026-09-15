@@ -1,5 +1,6 @@
 ﻿import { Link } from "react-router-dom";
 import { formatDate, formatDateTime } from "../../utils/analyticsFormatters";
+import { getSafeAnalyticsErrorMessage } from "../../utils/analyticsErrorMessages";
 import "./AnalyticsTrustHeader.css";
 
 type AnalyticsTrustHeaderProps = {
@@ -200,6 +201,9 @@ export default function AnalyticsTrustHeader({
   const provenanceLabel = provenanceBasis?.trim() || null;
   const refreshStepLabel = safeRefreshStepLabel(refreshCurrentStep);
   const fallbackReasonLabel = safeFallbackReasonLabel(fallbackReasonCode);
+  const fallbackReasonText = fallbackReason
+    ? getSafeAnalyticsErrorMessage(fallbackReason, fallbackReasonCode, "Dodatni razlog fallback-a nije naveden.")
+    : null;
   const showFallbackBanner = Boolean(usedFallback);
   const showGatedBanner = mode === "recommendation" && recommendationAllowed !== true && !showFallbackBanner;
   const showPartialBanner = Boolean(isPartial) || freshness === "stale" || freshness === "critical";
@@ -263,7 +267,7 @@ export default function AnalyticsTrustHeader({
         <div className="ath-banner ath-banner-warning" role="note">
           <strong>Fallback aktiviran.</strong>{" "}
           Za traženi period nema dovoljno podataka. Korišćen je dataset {effectiveLabel ?? normalizedEffectiveDataset ?? "n/a"} kao pomoćni signal.
-          {fallbackReason ? ` ${fallbackReason}` : null}
+          {fallbackReasonText ? ` ${fallbackReasonText}` : null}
           {fallbackReasonLabel ? <span className="ath-banner-code"> ({fallbackReasonLabel})</span> : null}
         </div>
       ) : null}

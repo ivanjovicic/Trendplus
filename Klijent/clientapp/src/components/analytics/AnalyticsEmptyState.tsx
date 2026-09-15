@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { getAnalyticsEmptyReasonMessage } from "../../utils/analyticsResponseMeta";
+import { getSafeAnalyticsErrorMessage } from "../../utils/analyticsErrorMessages";
 import "./AnalyticsEmptyState.css";
 
 type EmptyStateAction = {
@@ -53,7 +54,10 @@ export default function AnalyticsEmptyState({
 }: AnalyticsEmptyStateProps) {
   const defaults = variant ? VARIANT_DEFAULTS[variant] : null;
   const displayTitle = title ?? defaults?.title ?? "Nema podataka.";
-  const displayMessage = message ?? defaults?.message ?? null;
+  const rawDisplayMessage = message ?? defaults?.message ?? null;
+  const displayMessage = rawDisplayMessage
+    ? getSafeAnalyticsErrorMessage(rawDisplayMessage, undefined, defaults?.message ?? "Nema podataka za izabrani opseg.")
+    : null;
   const variantClass = variant ? ` aes-${variant.replace(/_/g, "-")}` : "";
   const displayEmptyReason = getAnalyticsEmptyReasonMessage(emptyReason);
   const showEmptyReason = displayEmptyReason !== null;

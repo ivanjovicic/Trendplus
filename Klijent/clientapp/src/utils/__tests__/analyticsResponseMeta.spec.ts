@@ -109,6 +109,15 @@ describe("analyticsResponseMeta", () => {
     );
   });
 
+  it("sanitizes technical metadata messages before shared surfaces consume them", () => {
+    expect(getAnalyticsMetaMessage({ success: false, errorMessage: "sql_timeout_v2" })).toBe(
+      "Podaci trenutno nisu dostupni. Proverite kvalitet podataka i pokušajte ponovo.",
+    );
+    expect(getAnalyticsMetaMessage({ success: true, warningMessage: "internal_worker_step" })).toBe(
+      "Podaci trenutno nisu dostupni. Proverite kvalitet podataka i pokušajte ponovo.",
+    );
+  });
+
   it("maps known empty reasons and fails closed for unknown or blank values", () => {
     expect(getAnalyticsEmptyReasonMessage(" NO_DATA_IN_PERIOD ")).toBe("Nema podataka za izabrani period.");
     expect(getAnalyticsEmptyReasonMessage("backend_secret_reason")).toBe("Nema podataka za izabrani opseg.");
