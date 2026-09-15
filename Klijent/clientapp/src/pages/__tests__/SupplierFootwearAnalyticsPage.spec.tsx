@@ -662,6 +662,7 @@ describe("SupplierFootwearAnalyticsPage", () => {
     expect(detailPanel).not.toBeNull();
     expect(within(detailPanel!).getByText("900 RSD")).toBeInTheDocument();
     expect(within(detailPanel!).queryByText("1.200 RSD")).not.toBeInTheDocument();
+    expect(within(detailPanel!).getByText(/Identitet dobavljača nije potvrđen/)).toBeInTheDocument();
 
     within(detailPanel!).getByRole("button", { name: "Otvori puni detalj" }).click();
     expect(saveSpy).toHaveBeenCalledWith(expect.objectContaining({
@@ -669,5 +670,119 @@ describe("SupplierFootwearAnalyticsPage", () => {
     }));
 
     saveSpy.mockRestore();
+  });
+
+  it("keeps blank-name null-ID vendors distinct and does not merge their type insights", async () => {
+    const recommendation = {
+      status: "maintain" as const,
+      label: "Zadrži",
+      summary: "Stabilan signal.",
+      confidencePct: 70,
+      reliabilityPct: 75,
+      dataQualityStatus: "good" as const,
+      recommendationAllowed: true,
+      reasonCodes: ["stable_margin"],
+    };
+    const comparableVendor = {
+      vendorId: null,
+      vendorName: "",
+      preQty: 10,
+      preRevenue: 1_000,
+      postQty: 12,
+      postRevenue: 1_200,
+      changeQty: 2,
+      changeRevenue: 200,
+      changePercent: 20,
+      absoluteChangeRevenue: 200,
+      changeSharePercent: 50,
+      postRevenueSharePercent: 50,
+      avgCoveragePre30: 0.8,
+      avgCoveragePost30: 0.7,
+      articleCount: 1,
+      activeArticlesCount: 1,
+      increasedPriceArticlesCount: 0,
+      decreasedPriceArticlesCount: 0,
+      reliabilityPct: 75,
+      hasComparableSalesWindow: true,
+      recommendation,
+    };
+
+    const baseResponse = await getVendorSalesNivelacija({});
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValueOnce({
+      ...baseResponse,
+      vendorStats: [
+        comparableVendor,
+        { ...comparableVendor, postRevenue: 800, changePercent: 10 },
+      ],
+      articleStats: [
+        {
+          eventDate: "2026-08-01T00:00:00Z",
+          vendorId: null,
+          vendorName: "",
+          sku: "SKU-A",
+          articleName: "Patika A",
+          category: "Patike",
+          oldPrice: 100,
+          newPrice: 120,
+          preQty: 10,
+          preRevenue: 1_000,
+          postQty: 12,
+          postRevenue: 1_200,
+          changeQty: 2,
+          changeRevenue: 200,
+          changePercent: 20,
+          coveragePre30: 0.8,
+          coveragePost30: 0.7,
+          hasSalesWindow: true,
+          hasComparableSalesWindow: true,
+          priceChanged: true,
+          priceChangePercent: 20,
+        },
+        {
+          eventDate: "2026-08-01T00:00:00Z",
+          vendorId: null,
+          vendorName: "",
+          sku: "SKU-B",
+          articleName: "Čizma B",
+          category: "Čizme",
+          oldPrice: 80,
+          newPrice: 90,
+          preQty: 4,
+          preRevenue: 400,
+          postQty: 5,
+          postRevenue: 800,
+          changeQty: 1,
+          changeRevenue: 400,
+          changePercent: 100,
+          coveragePre30: 0.8,
+          coveragePost30: 0.7,
+          hasSalesWindow: true,
+          hasComparableSalesWindow: true,
+          priceChanged: true,
+          priceChangePercent: 12,
+        },
+      ],
+      totals: {
+        ...baseResponse.totals,
+        postRevenue: 2_000,
+        vendorsCount: 2,
+        hasComparableSalesWindow: true,
+      },
+    } as never);
+
+    render(
+      <MemoryRouter>
+        <SupplierFootwearAnalyticsPage />
+      </MemoryRouter>,
+    );
+
+    const tableSurface = await screen.findByTestId("supplier-footwear-analytics-data-table");
+    const unknownRows = within(tableSurface).getAllByText("Nepoznat dobavljač");
+    expect(unknownRows).toHaveLength(2);
+    expect(within(tableSurface).getAllByText("N/A").length).toBeGreaterThanOrEqual(2);
+
+    within(unknownRows[0].closest("tr")!).getByRole("button", { name: "Detalji" }).click();
+    expect(await screen.findByText("Detalj odluke: Nepoznat dobavljač")).toBeInTheDocument();
+    expect(screen.getByText(/Identitet dobavljača nije potvrđen/)).toBeInTheDocument();
   });
 });

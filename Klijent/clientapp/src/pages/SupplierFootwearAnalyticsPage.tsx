@@ -33,7 +33,7 @@ import {
 import { projectVendorSalesDataQuality } from "../utils/vendorSalesDataQuality";
 import {
   buildSupplierVendorDetailRecordId,
-  buildSupplierVendorKey,
+  buildSupplierVendorKeys,
   resolveSupplierArticleVendorKey,
 } from "../utils/supplierVendorIdentity";
 import type { SupplierEmbeddedPageProps } from "./supplierSharedState";
@@ -150,13 +150,14 @@ function buildTypeInsights(
   articleStats: VendorSalesNivelacijaArticleStat[],
   vendorStats: VendorSalesNivelacijaVendorStat[],
 ) {
+  const vendorKeys = buildSupplierVendorKeys(vendorStats);
   const vendorCategoryRevenue = new Map<string, Map<string, number>>();
   const vendorCategoryElasticities = new Map<string, Map<string, number[]>>();
   const globalCategoryRevenue = new Map<string, number>();
 
   articleStats.forEach((row, articleIndex) => {
     if (!hasComparablePrePostEvidence(row)) return;
-    const vKey = resolveSupplierArticleVendorKey(row, articleIndex, vendorStats);
+    const vKey = resolveSupplierArticleVendorKey(row, articleIndex, vendorStats, vendorKeys);
     const category = (row.category ?? "").trim() || "N/A";
     const revenue = normalizeMetricNumber(row.postRevenue);
     if (revenue == null) return;
@@ -420,11 +421,12 @@ export default function SupplierFootwearAnalyticsPage({
 
     const evidenceRows = rows.filter(rowHasComparableEvidence);
     const totalRevenue = evidenceRows.reduce((sum, item) => sum + (comparableMetric(item.postRevenue, true) ?? 0), 0);
+    const vendorRowKeys = buildSupplierVendorKeys(rows);
     return rows.flatMap((item, rowIndex) => {
       const recommendation = item.recommendation;
       if (!recommendation) return [];
 
-      const vendorRowKey = buildSupplierVendorKey(item, rowIndex);
+      const vendorRowKey = vendorRowKeys[rowIndex];
       const typeInsight = typeInsights.byVendor.get(vendorRowKey);
       const hasComparableEvidence = rowHasComparableEvidence(item);
       const postRevenue = comparableMetric(item.postRevenue, hasComparableEvidence);
@@ -883,6 +885,9 @@ export default function SupplierFootwearAnalyticsPage({
                 <article className="analytics-kpi-card analytics-kpi-card--tone-success"><span>Pouzdanost signala</span><strong>{formatMetricDisplayValue({ value: selectedRow.recommendationAllowed ? selectedRow.reliabilityPct : null, kind: "percent" })}</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-value"><span>Poverenje preporuke</span><strong>{formatMetricDisplayValue({ value: selectedRow.recommendationAllowed ? selectedRow.confidencePct : null, kind: "percent" })}</strong></article>
               </div>
+              {selectedRow.vendorId == null || !selectedRow.vendorRowKey.startsWith("id:") ? (
+                <p className="sf-mini-note" role="status">Identitet dobavljača nije potvrđen. Detalj važi samo za izabrani red, bez spajanja po nazivu.</p>
+              ) : null}
               <p className="sf-decision-reason"><strong>Razlog preporuke:</strong> {selectedRow.statusReason}</p>
             </section>
           ) : null}

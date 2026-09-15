@@ -401,6 +401,68 @@ describe("SupplierSalesStatsPage premium controls", () => {
     expect(screen.queryByText("Prioritetna lista dobavljača")).not.toBeInTheDocument();
   });
 
+  it("clears embedded trust metadata on supplier sales error instead of promoting generated time", async () => {
+    vi.mocked(getSupplierSalesStats).mockRejectedValue(new Error("backend down"));
+    const onTrustMetadataChange = vi.fn();
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage embedded onTrustMetadataChange={onTrustMetadataChange} />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Podaci trenutno nisu dostupni/i);
+    await waitFor(() => {
+      expect(onTrustMetadataChange).toHaveBeenCalledWith(null);
+    });
+  });
+
+  it("keeps embedded empty payloads unknown without dropping a valid refresh timestamp", async () => {
+    vi.mocked(getSupplierSalesStats).mockResolvedValue({
+      fromDate: "2026-06-01",
+      toDate: "2026-06-30",
+      generatedAt: "2026-07-01T08:00:00Z",
+      meta: {
+        success: true,
+        lastRefreshAtUtc: "2026-07-01T07:55:00Z",
+        dataQualityStatus: "insufficient_data",
+        emptyReason: "no_supplier_sales",
+        isPartial: false,
+      },
+      sezone: [],
+      suppliers: [],
+      totals: {
+        ukupanPromet: 0,
+        ukupnaKolicina: 0,
+        marginContribution: 0,
+        marginPct: 0,
+        missingCostRevenueSharePct: 0,
+        unknownSupplierRevenueSharePct: 0,
+        marginQualityTier: "insufficient_data",
+        isSnapshotActive: false,
+        snapshotCostCoveragePct: null,
+      },
+      dataQuality: {
+        missingCostRevenueSharePct: 0,
+        unknownSupplierRevenueSharePct: 0,
+      },
+    } as never);
+
+    const onTrustMetadataChange = vi.fn();
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage embedded onTrustMetadataChange={onTrustMetadataChange} />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(onTrustMetadataChange).toHaveBeenCalledWith(expect.objectContaining({
+        dataFreshnessStatus: "unknown",
+        lastRefreshAt: "2026-07-01T07:55:00Z",
+      }));
+    });
+  });
+
   it("empty is not error when supplier sales returns no rows", async () => {
     vi.mocked(getSupplierSalesStats).mockResolvedValue({
       fromDate: "2026-06-01",

@@ -13803,6 +13803,7 @@ Commit suggestion: `fix(analytics): preserve embedded supplier freshness`
 - Follow-up: `RQ282` is next WAITING for supplier null-ID identity
 - Residual risk: live browser proof of parent trust header parity not run in this workspace
 - Prompt defect / scope repair: none
+- Follow-up hardening 2026-09-15: parseable `lastRefreshAtUtc` only; failed/malformed timestamps stay unknown; parent header and embedded error/empty callbacks covered. Run log: `.ai/runs/2026-09-15-RQ281-RQ282-hardening-evidence.md`
 
 ### Problem
 
@@ -13873,6 +13874,7 @@ Commit suggestion: `fix(analytics): preserve supplier identity without IDs`
 - Follow-up: `RQ283` is next WAITING for shoe-type negative margin signal
 - Residual risk: ambiguous null-ID article-to-vendor attribution remains unavailable by design when names collide
 - Prompt defect / scope repair: none
+- Follow-up hardening 2026-09-15: duplicate vendor IDs and blank names stay collision-safe; detail copy states unconfirmed identity. Run log: `.ai/runs/2026-09-15-RQ281-RQ282-hardening-evidence.md`
 
 ### Problem
 
