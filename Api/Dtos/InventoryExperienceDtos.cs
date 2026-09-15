@@ -116,6 +116,7 @@ public sealed class InventoryExportRequestDto
     public int? StoreId { get; set; }
     public int? SupplierId { get; set; }
     public string? SortBy { get; set; }
+    public string? DataScope { get; set; }
 }
 
 public sealed record InventoryStoreComparisonItemDto(

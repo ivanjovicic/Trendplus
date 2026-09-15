@@ -487,8 +487,9 @@ public static class InventoryEndpoints
                 return rejected!;
             }
 
-            var items = await BuildInventoryDatasetAsync(db, analyticsDb, dto.StoreId, dto.SupplierId, dto.Search, dto.SortBy, ct);
-            var request = BuildDocumentRequest(items, dto, preview: false);
+            var normalizedDataScope = NormalizeDataScope(dto.DataScope);
+            var items = await BuildInventoryDatasetAsync(db, analyticsDb, dto.StoreId, dto.SupplierId, dto.Search, dto.SortBy, ct, dataScope: normalizedDataScope);
+            var request = BuildDocumentRequest(items, dto, preview: false, dataScope: normalizedDataScope);
             var result = await documentService.GenerateAsync(request, context, ct);
             var response = ToDocumentResponse(result, tokenService, options.Value);
 
@@ -521,9 +522,10 @@ public static class InventoryEndpoints
                 return rejected!;
             }
 
-            var items = await BuildInventoryDatasetAsync(db, analyticsDb, dto.StoreId, dto.SupplierId, dto.Search, dto.SortBy, ct);
+            var normalizedDataScope = NormalizeDataScope(dto.DataScope);
+            var items = await BuildInventoryDatasetAsync(db, analyticsDb, dto.StoreId, dto.SupplierId, dto.Search, dto.SortBy, ct, dataScope: normalizedDataScope);
             var result = await documentService.GenerateAsync(
-                BuildDocumentRequest(items, dto, preview: true),
+                BuildDocumentRequest(items, dto, preview: true, dataScope: normalizedDataScope),
                 context,
                 ct);
 
@@ -1489,6 +1491,16 @@ public static class InventoryEndpoints
         };
     }
 
+    private static string ResolveInventoryDataScopeLabel(string? rawScope)
+    {
+        return NormalizeDataScope(rawScope) switch
+        {
+            "imported" => "Importovani",
+            "existing" => "Postojeći",
+            _ => "Sve"
+        };
+    }
+
     private static InventoryActionSuggestionDto ToSuggestion(
         IReadOnlyDictionary<string, InventoryActionDecisionDefinition> decisions,
         string key,
@@ -1831,7 +1843,8 @@ public static class InventoryEndpoints
     private static DocumentGenerationRequest BuildDocumentRequest(
         List<InventoryDatasetItem> items,
         InventoryExportRequestDto dto,
-        bool preview)
+        bool preview,
+        string? dataScope = null)
     {
         var insights = BuildInsights(items);
         var table = new DocumentTablePayload
@@ -1881,6 +1894,7 @@ public static class InventoryEndpoints
                 new() { Key = "search", Label = "Pretraga", Value = string.IsNullOrWhiteSpace(dto.Search) ? "Sve" : dto.Search },
                 new() { Key = "store", Label = "Prodavnica", Value = dto.StoreId?.ToString(SerbianCulture) ?? "Sve" },
                 new() { Key = "supplier", Label = "Dobavljac", Value = dto.SupplierId?.ToString(SerbianCulture) ?? "Svi" },
+                new() { Key = "dataScope", Label = "Opseg podataka", Value = ResolveInventoryDataScopeLabel(dataScope ?? dto.DataScope) },
                 new() { Key = "sortBy", Label = "Sortiranje", Value = dto.SortBy switch
                     {
                         "naziv" => "Naziv A-Z",
@@ -1893,6 +1907,9 @@ public static class InventoryEndpoints
             Metadata =
             [
                 new() { Key = "generatedAt", Label = "Generisano", Value = DateTime.Now.ToString("dd.MM.yyyy HH:mm", SerbianCulture) },
+                new() { Key = "reportScope", Label = "Tip izvestaja", Value = "Snapshot trenutnog stanja zaliha" },
+                new() { Key = "dataScope", Label = "Opseg podataka", Value = ResolveInventoryDataScopeLabel(dataScope ?? dto.DataScope) },
+                new() { Key = "signalWindowNote", Label = "Napomena o signalima", Value = "Signali stock cover/sell-through na ekranu koriste poslednjih 30 dana prodaje; ovaj dokument prikazuje trenutno stanje zaliha i aging na osnovu kretanja." },
                 new() { Key = "totalRows", Label = "Ukupno artikala", Value = items.Count.ToString(SerbianCulture) },
                 new() { Key = "inventoryValue", Label = "Procena vrednosti", Value = FormatCurrency(insights.TotalEstimatedValue) },
                 new() { Key = "aging90", Label = "Aging 90+", Value = insights.Aging.FirstOrDefault(x => x.BucketKey == "90+")?.ItemCount.ToString(SerbianCulture) ?? "0" },

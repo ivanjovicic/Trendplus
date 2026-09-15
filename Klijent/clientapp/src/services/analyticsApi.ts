@@ -1261,6 +1261,7 @@ export async function exportInventoryReport(options: {
   storeId?: number | null;
   supplierId?: number | null;
   sortBy?: string | null;
+  dataScope?: string | null;
 }): Promise<DocumentOperationResponse> {
   const adminKey = ensureExportAdminKey("izvoz zaliha");
   if (!adminKey) {
@@ -1278,6 +1279,7 @@ export async function exportInventoryReport(options: {
       storeId: options.storeId,
       supplierId: options.supplierId,
       sortBy: options.sortBy,
+      dataScope: options.dataScope,
     },
     "Greska pri server-side eksportu bilansa",
     adminKey
@@ -1291,6 +1293,7 @@ export async function previewInventoryReport(options?: {
   storeId?: number | null;
   supplierId?: number | null;
   sortBy?: string | null;
+  dataScope?: string | null;
 }): Promise<DocumentOperationResponse> {
   const adminKey = ensureExportAdminKey("pregled stampe zaliha");
   if (!adminKey) {
@@ -1306,6 +1309,7 @@ export async function previewInventoryReport(options?: {
       storeId: options?.storeId,
       supplierId: options?.supplierId,
       sortBy: options?.sortBy,
+      dataScope: options?.dataScope,
     },
     "Greska pri pripremi print preview-a",
     adminKey

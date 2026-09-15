@@ -26,6 +26,7 @@ type ExportSchedulerPanelProps = {
   totalCount: number;
   rowsLength: number;
   exportStatus: string | null;
+  contractNote?: string | null;
 };
 
 export function ExportSchedulerPanel({
@@ -51,6 +52,7 @@ export function ExportSchedulerPanel({
   totalCount,
   rowsLength,
   exportStatus,
+  contractNote,
 }: ExportSchedulerPanelProps) {
   const [isOpen, setIsOpen] = useState(initialOpen ?? false);
 
@@ -78,6 +80,11 @@ export function ExportSchedulerPanel({
           {/* Print & Export Section */}
           <div>
             <h3 className="text-sm font-semibold text-foreground mb-3">Štampa i izvoz</h3>
+            {contractNote ? (
+              <p className="mb-3 text-xs leading-5 text-muted" data-testid="inventory-export-contract-note-inline">
+                {contractNote}
+              </p>
+            ) : null}
             <div className="flex flex-wrap items-center gap-2 mb-3">
               <span className="inline-flex rounded-xl border border-border overflow-hidden text-xs font-semibold" role="group" aria-label="Orijentacija štampe">
                 <button
