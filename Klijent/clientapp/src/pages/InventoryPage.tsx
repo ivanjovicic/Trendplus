@@ -23,7 +23,7 @@ import { SKUDetailModal } from "../components/inventory/SKUDetailModal";
 import { SizeCurvePanel } from "../components/inventory/SizeCurvePanel";
 import { StoreComparisonPanel } from "../components/inventory/StoreComparisonPanel";
 import KpiExplainButton from "../components/analytics/KpiExplainButton";
-import { buildForecastRestockSuggestion, buildInventoryRow, buildInventoryScreenCsvFilename, buildInventoryScreenCsvLines, buildSupplierChart, createScheduleDraft, formatPercent, inventoryRiskSortScopeWarning, isInventoryPageLocalRiskSort, validateScheduleDraft } from "../components/inventory/inventoryUtils";
+import { buildForecastRestockSuggestion, buildInventoryRow, buildInventoryScreenCsvFilename, buildInventoryScreenCsvLines, buildSupplierChart, createScheduleDraft, formatPercent, inventoryRiskSortScopeWarning, isInventoryPageLocalRiskSort, resolveForecastRestockDaysSinceMovement, validateScheduleDraft } from "../components/inventory/inventoryUtils";
 import type { InventoryRow } from "../components/inventory/types";
 import { fmtNumber, formatDateTime } from "../utils/analyticsFormatters";
 import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
@@ -1094,7 +1094,19 @@ export default function InventoryPage() {
       setExportStatus("Predlog dopune nije moguće dodati bez učitanog stock baseline-a.");
       return;
     }
-    const suggestion = buildForecastRestockSuggestion(row, item, stores, detailData?.daysSinceMovement ?? 0);
+
+    if (detailRow?.id === item.skuId && detailLoading) {
+      setExportStatus("Sačekajte učitavanje aging detalja pre dodavanja forecast predloga.");
+      return;
+    }
+
+    const daysSinceMovement = resolveForecastRestockDaysSinceMovement(
+      item.skuId,
+      detailRow,
+      detailData,
+      detailLoading,
+    );
+    const suggestion = buildForecastRestockSuggestion(row, item, stores, daysSinceMovement);
     setActionWorkflow((current) => {
       const base = current ?? { generatedAtUtc: "", pendingCount: 0, approvedCount: 0, deferredCount: 0, closedCount: 0, items: [] };
       if (base.items.some((entry) => entry.suggestionKey === suggestion.suggestionKey)) return base;

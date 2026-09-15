@@ -4,6 +4,10 @@ Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-15: `RQ274` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt; it is the single current RQ prompt for forecast workflow age evidence and will be claimed in this workspace.
+
+Owner completion 2026-09-15: `RQ274` was delivered with nullable forecast restock `daysSinceMovement`, `resolveForecastRestockDaysSinceMovement` helper, defer-while-detail-loading behavior and focused regression tests; the RQ queue has no current READY prompt.
+
 Operations audit intake 2026-09-15: `RQ270`-`RQ300` remain individual `WAITING` follow-ups from the Operacije screen/code review; `RQ266`, `RQ267`, `RQ268` and `RQ269` have been completed on `main`.
 
 Owner promotion 2026-09-15: `RQ265` was explicitly promoted from `WAITING` to `READY` by the user request because the RQ queue had no current READY prompt; it is the single current RQ prompt for the confirmed Operations empty-reason regression.
@@ -353,7 +357,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ271 | WAITING | inventory-kpi-filter-contract | Define whether balance KPIs follow the SKU search filter |
 | RQ272 | WAITING | inventory-total-value-totality | Prevent page-local rows from masquerading as total inventory value |
 | RQ273 | WAITING | inventory-report-window-parity | Prove or repair Inventory export/print period and scope parity |
-| RQ274 | WAITING | inventory-forecast-age-evidence | Keep missing days-since-movement unknown in forecast workflow |
+| RQ274 | DONE | inventory-forecast-age-evidence | Keep missing days-since-movement unknown in forecast workflow |
 | RQ275 | WAITING | inventory-queue-empty-reset | Clear stale queued-action state when source keys disappear |
 | RQ276 | WAITING | inventory-impact-semantics | Separate expected business impact from inventory exposure/value |
 | RQ277 | WAITING | supplier-embedded-surface-composition | Remove only confirmed duplicate supplier titles or filters |
@@ -13200,7 +13204,8 @@ Reproduction: use a non-default signal window and non-`all` scope, export/previe
 
 ## RQ274 - Keep missing days-since-movement unknown in forecast workflow
 
-Status: WAITING
+Status: DONE
+Completion note: 2026-09-15 — `daysSinceMovement` nullable in suggestion type; `resolveForecastRestockDaysSinceMovement` returns null when detail not loaded; `queueForecastRestock` defers while detail loading; measured `0` preserved; tests `forecastRestockAge.spec.ts`.
 Priority: P2
 Type: frontend/action-contract/tests
 Feature family: inventory-forecast-age-evidence

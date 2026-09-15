@@ -351,11 +351,29 @@ export type ForecastRestockSignal = {
   probabilityOfOOSIn7d: number | null;
 };
 
+export function resolveForecastRestockDaysSinceMovement(
+  skuId: number,
+  detailRow: { id: number } | null,
+  detailData: { id: number; daysSinceMovement: number } | null,
+  detailLoading: boolean,
+): number | null {
+  if (!detailRow || detailRow.id !== skuId) {
+    return null;
+  }
+
+  if (detailLoading || !detailData || detailData.id !== skuId) {
+    return null;
+  }
+
+  const days = detailData.daysSinceMovement;
+  return Number.isFinite(days) ? days : null;
+}
+
 export function buildForecastRestockSuggestion(
   row: InventoryRow,
   signal: ForecastRestockSignal,
   stores: StoreOption[],
-  daysSinceMovement = 0,
+  daysSinceMovement: number | null = null,
 ): InventoryActionSuggestion {
   const forecast7d = signal.forecast7d ?? 0;
   const probabilityOfOOSIn7d = signal.probabilityOfOOSIn7d ?? 0;
@@ -380,7 +398,9 @@ export function buildForecastRestockSuggestion(
     estimatedValue: costMissing || unitCost == null ? null : unitCost * suggestedQty,
     costMissing,
     daysSinceMovement,
-    note: `Automatski dodat iz forecast sekcije za velicinu ${signal.sizeCode} kao signal prognozirane potraznje.`,
+    note: daysSinceMovement == null
+      ? `Automatski dodat iz forecast sekcije za velicinu ${signal.sizeCode} kao signal prognozirane potraznje. Dana bez kretanja: nedostupno (detalj nije učitan ili nema aging evidencije).`
+      : `Automatski dodat iz forecast sekcije za velicinu ${signal.sizeCode} kao signal prognozirane potraznje. Dana bez kretanja: ${daysSinceMovement} dana.`,
     updatedAtUtc: new Date().toISOString(),
   };
 }
