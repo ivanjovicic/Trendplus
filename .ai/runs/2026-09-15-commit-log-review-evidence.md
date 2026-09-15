@@ -6,8 +6,8 @@ Date: 2026-09-15
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct-main
-Main commit SHA: pending
-Main verification: pending until push and fresh remote verification
+Main commit SHA: a0b1d69e9fa09f748810e01d9ff09fd6bc6756ff
+Main verification: passed - fresh `git fetch origin main` confirmed local `main` and `origin/main` at `a0b1d69e9fa09f748810e01d9ff09fd6bc6756ff`; implementation SHA is an ancestor of `origin/main`.
 Evidence state: synchronized
 
 ## What was done
