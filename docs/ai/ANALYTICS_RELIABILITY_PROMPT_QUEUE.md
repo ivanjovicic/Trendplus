@@ -12492,7 +12492,7 @@ The shared analytics table-state formatter rejects non-finite numbers during par
 - Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `2001eb88e55afe9cd046a0442d9c33c6cefbb31e`
-- Main verification: passed - implementation commit `2001eb88e55afe9cd046a0442d9c33c6cefbb31e` was pushed to `origin/main`; final fresh-fetch verification follows the evidence-sync commit.
+- Main verification: passed - fresh `git fetch origin main --prune` confirmed `origin/main` at `dbf8740d10497d8f1436731825bdf5eb5fe36397`; implementation commit `2001eb88e55afe9cd046a0442d9c33c6cefbb31e` is an ancestor.
 - Missed: no metric formulas, source queries, backend recommendation logic or server report layout changes were made; live provider/browser behavior remains unverified.
 - Follow-up: no later RQ prompt exists in the canonical queue; current RQ READY is explicitly `none` pending a new owner prompt/refill.
 - Residual risk: existing frontend bundle chunk-size advisory and live provider behavior remain unverified.
