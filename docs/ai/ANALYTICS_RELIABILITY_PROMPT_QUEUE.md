@@ -4,7 +4,7 @@ Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
-Operations audit intake 2026-09-15: `RQ269`-`RQ300` remain individual `WAITING` follow-ups from the Operacije screen/code review; `RQ266`, `RQ267` and `RQ268` have been completed on `main`.
+Operations audit intake 2026-09-15: `RQ270`-`RQ300` remain individual `WAITING` follow-ups from the Operacije screen/code review; `RQ266`, `RQ267`, `RQ268` and `RQ269` have been completed on `main`.
 
 Owner promotion 2026-09-15: `RQ265` was explicitly promoted from `WAITING` to `READY` by the user request because the RQ queue had no current READY prompt; it is the single current RQ prompt for the confirmed Operations empty-reason regression.
 
@@ -25,6 +25,12 @@ Owner promotion 2026-09-15: `RQ268` was explicitly promoted from `WAITING` to `R
 Owner claim 2026-09-15: `RQ268` transitioned `READY -> IN_PROGRESS` in this workspace after explicit user request; local lock `.ai/task-locks/RQ268-codex.lock.md` is active.
 
 Owner completion 2026-09-15: `RQ268` was delivered on `main` with canonical Supplier navigation context for the two legacy Operations redirects; target tabs and existing query parameters are preserved, the canonical page explains the compatibility origin, and only the canonical Supplier link is active. The RQ queue has no current READY prompt.
+
+Owner promotion 2026-09-15: `RQ269` was explicitly promoted from `WAITING` to `READY` by the user request because the RQ queue had no current READY prompt; it is the single current RQ prompt for Daily Sales scope event propagation.
+
+Owner claim 2026-09-15: `RQ269` transitioned `READY -> IN_PROGRESS` in this workspace after explicit user request; local lock `.ai/task-locks/RQ269-codex.lock.md` is active.
+
+Owner completion 2026-09-15: `RQ269` refreshes Daily Sales current/previous requests after the shared data-scope event, synchronizes the scope into the URL/export filter lineage, normalizes invalid scope values and ignores late responses from the prior scope. The RQ queue has no current READY prompt.
 
 Scope reconciliation for this intake: `analyticsApi.makeUrl`/`appendDataScopeToParams` already inject the persisted global `dataScope` when an analytics URL does not provide one. The remaining scope findings therefore target mounted-page refresh/event propagation and explicit request-contract proof, not an assumed universal omission. The existing `RQ66` placeholder, `RQ67` forecast-cost, `RQ70` forecast-quantity, `RQ179` supplier-footwear-freshness and `RQ203` inventory-detail-scope items remain closed and are not resurrected. The offline runtime check had no backend; connection refusal is not itself a product finding, while blank/unclear error copy remains in the relevant prompts.
 
@@ -342,7 +348,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ266 | DONE | operations-freshness-provenance | Derive page freshness from authoritative refresh metadata |
 | RQ267 | DONE | operations-heading-hierarchy | Remove duplicate/conflicting h1 landmarks across the Operations shell |
 | RQ268 | DONE | supplier-legacy-navigation | Keep legacy supplier redirects discoverable and correctly active |
-| RQ269 | WAITING | daily-scope-event-propagation | Reload Daily Sales when the global data scope changes |
+| RQ269 | DONE | daily-scope-event-propagation | Reload Daily Sales when the global data scope changes |
 | RQ270 | WAITING | inventory-scope-event-propagation | Reload and verify all Inventory surfaces after global scope changes |
 | RQ271 | WAITING | inventory-kpi-filter-contract | Define whether balance KPIs follow the SKU search filter |
 | RQ272 | WAITING | inventory-total-value-totality | Prevent page-local rows from masquerading as total inventory value |
@@ -12885,7 +12891,7 @@ Reproduction: click each legacy item, load the resulting URL directly, refresh i
 
 ## RQ269 - Reload Daily Sales after a global data-scope change
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/scope/tests
 Feature family: daily-scope-event-propagation
@@ -12940,6 +12946,24 @@ Reproduction: open Daily Sales without a scope query, change the header from `al
 
 - `RQ05` is the broad historical scope audit; this prompt owns the mounted Daily Sales event gap.
 - Do not infer backend unavailability as a product failure.
+
+### Completion note
+
+- Date: 2026-09-15
+- Status: DONE
+- Completion: Daily Sales now owns normalized mounted `DataScope` state, listens to `trendplus:data-scope-changed`, updates the URL without dropping existing filters, reloads current and previous periods with the same scope, and preserves request-id protection against late old-scope responses.
+- Changed files: `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.premium.spec.tsx`, `.ai/runs/2026-09-15-RQ269-evidence.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- Checks run: focused Daily Sales premium tests 13 passed; Daily Sales integration tests 2 passed; `npm run check:analytics-guardrails` passed; frontend production build passed; `git diff --check` passed; prompt-queue governance passed.
+- Checks not run: full frontend suite, live backend/database/API/browser/deployed smoke and full lint; backend unavailability was not treated as a product failure.
+- Run log: `.ai/runs/2026-09-15-RQ269-evidence.md`
+- Evidence state: pending main delivery verification
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: none known within the mounted Daily Sales scope-event contract.
+- Follow-up: `RQ270` remains the next Operations scope-event prompt and stays `WAITING` until explicitly promoted.
+- Residual risk: live header-to-page browser behavior and backend scope contents remain unverified in this offline/local run.
+- Prompt defect / scope repair: none; the change stayed within the Daily Sales Analytics Frontend owner boundary.
 
 ---
 

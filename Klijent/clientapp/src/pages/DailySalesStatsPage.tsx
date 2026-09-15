@@ -33,7 +33,7 @@ import {
 } from "../services/dailySalesStatsApi";
 import type { StoreOption } from "../types/analytics";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
-import { getDataScope } from "../utils/dataScope";
+import { getDataScope, normalizeDataScope, type DataScope } from "../utils/dataScope";
 import UltraSpinner from "../components/ui/UltraSpinner";
 import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
 import { fmtPct, fmtRsd, fmtRsdShort, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
@@ -560,7 +560,7 @@ export default function DailySalesStatsPage() {
   const queryToDate = parseDateInputOrDefault(searchParams.get("toDate"), initialRange.toDate);
   const queryStoreId = parseNullableInt(searchParams.get("storeId"));
   const queryTopN = parseTopN(searchParams.get("topN"));
-  const queryDataScope = (searchParams.get("dataScope") ?? getDataScope()).trim() || "all";
+  const queryDataScope = normalizeDataScope(searchParams.get("dataScope") ?? getDataScope());
   const hasExplicitDate = searchParams.has("fromDate") || searchParams.has("toDate");
   const initialPreset: PeriodPreset = hasExplicitDate ? "custom" : "30d";
 
@@ -584,13 +584,38 @@ export default function DailySalesStatsPage() {
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [qualityPanelOpen, setQualityPanelOpen] = useState(false);
+  const [dataScope, setDataScopeValue] = useState<DataScope>(() => queryDataScope);
 
-  const memoizedQueryDataScope = useMemo(() => queryDataScope, [queryDataScope]);
+  const memoizedQueryDataScope = useMemo(() => dataScope, [dataScope]);
 
   const invalidRange = useMemo(() => {
     if (!fromDate || !toDate) return false;
     return fromDate > toDate;
   }, [fromDate, toDate]);
+
+  useEffect(() => {
+    setDataScopeValue(queryDataScope);
+  }, [queryDataScope]);
+
+  useEffect(() => {
+    const handleScopeChange = () => {
+      const nextScope = normalizeDataScope(getDataScope());
+      setDataScopeValue(nextScope);
+      if (searchParams.get("dataScope") === nextScope) return;
+
+      setSearchParams((current) => {
+        if (current.get("dataScope") === nextScope) return current;
+        const next = new URLSearchParams(current);
+        next.set("dataScope", nextScope);
+        return next;
+      }, { replace: true });
+    };
+
+    window.addEventListener("trendplus:data-scope-changed", handleScopeChange);
+    return () => {
+      window.removeEventListener("trendplus:data-scope-changed", handleScopeChange);
+    };
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     const loadStores = async () => {

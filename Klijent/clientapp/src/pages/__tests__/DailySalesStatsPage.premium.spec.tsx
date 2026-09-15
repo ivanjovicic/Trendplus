@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import DailySalesStatsPage, { buildSupplierConcentration } from "../DailySalesStatsPage";
 import { getStores } from "../../services/analyticsApi";
@@ -31,6 +31,7 @@ vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({
     dataQualityStatus,
     isPartial,
     emptyStateReason,
+    dataSource,
   }: {
     title: string;
     lastRefreshAt?: string | null;
@@ -38,6 +39,7 @@ vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({
     dataQualityStatus?: string | null;
     isPartial?: boolean;
     emptyStateReason?: string | null;
+    dataSource?: string | null;
   }) => (
     <div
       data-testid="analytics-trust-header"
@@ -46,6 +48,7 @@ vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({
       data-quality={dataQualityStatus ?? ""}
       data-partial={isPartial ? "true" : "false"}
       data-empty-reason={emptyStateReason ?? ""}
+      data-source={dataSource ?? ""}
     >
       {title}
     </div>
@@ -67,6 +70,19 @@ vi.mock("../../services/analyticsApi", async () => {
 vi.mock("../../services/dailySalesStatsApi", () => ({
   getDailySalesStats: vi.fn(),
 }));
+
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="location-search">{location.search}</output>;
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((nextResolve) => {
+    resolve = nextResolve;
+  });
+  return { promise, resolve };
+}
 
 function response(overrides: Partial<DailySalesTableResponse> = {}): DailySalesTableResponse {
   return {
@@ -130,8 +146,115 @@ function response(overrides: Partial<DailySalesTableResponse> = {}): DailySalesT
 describe("DailySalesStatsPage premium controls", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     vi.mocked(getStores).mockResolvedValue([]);
     vi.mocked(getDailySalesStats).mockResolvedValue(response());
+  });
+
+  it.each(["all", "existing", "imported"] as const)(
+    "uses the %s scope for both initial Daily Sales period requests",
+    async (scope) => {
+      localStorage.setItem("trendplus:dataScope", scope);
+      render(
+        <MemoryRouter initialEntries={["/analytics/daily-sales"]}>
+          <Routes>
+            <Route path="/analytics/daily-sales" element={<DailySalesStatsPage />} />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(getDailySalesStats).toHaveBeenCalledTimes(2);
+      });
+      expect(vi.mocked(getDailySalesStats).mock.calls.map(([query]) => query.dataScope)).toEqual([scope, scope]);
+    },
+  );
+
+  it("normalizes an invalid URL scope to all", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/daily-sales?dataScope=unexpected"]}>
+        <Routes>
+          <Route path="/analytics/daily-sales" element={<DailySalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(getDailySalesStats).toHaveBeenCalledTimes(2);
+    });
+    expect(vi.mocked(getDailySalesStats).mock.calls.map(([query]) => query.dataScope)).toEqual(["all", "all"]);
+  });
+
+  it("reloads both periods after a global scope change and ignores late old-scope responses", async () => {
+    localStorage.setItem("trendplus:dataScope", "all");
+    const oldCurrent = deferred<DailySalesTableResponse>();
+    const oldPrevious = deferred<DailySalesTableResponse>();
+    const nextCurrent = deferred<DailySalesTableResponse>();
+    const nextPrevious = deferred<DailySalesTableResponse>();
+    const pending = [oldCurrent, oldPrevious, nextCurrent, nextPrevious];
+    let requestIndex = 0;
+
+    vi.mocked(getDailySalesStats).mockImplementation(() => pending[requestIndex++].promise);
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/daily-sales?fromDate=2026-04-01&toDate=2026-04-30"]}>
+        <Routes>
+          <Route
+            path="/analytics/daily-sales"
+            element={
+              <>
+                <DailySalesStatsPage />
+                <LocationProbe />
+              </>
+            }
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(getDailySalesStats).toHaveBeenCalledTimes(2);
+    });
+    expect(vi.mocked(getDailySalesStats).mock.calls.slice(0, 2).map(([query]) => query.dataScope)).toEqual([
+      "all",
+      "all",
+    ]);
+
+    localStorage.setItem("trendplus:dataScope", "imported");
+    act(() => {
+      window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+    });
+
+    await waitFor(() => {
+      expect(getDailySalesStats).toHaveBeenCalledTimes(4);
+    });
+    expect(vi.mocked(getDailySalesStats).mock.calls.slice(-2).map(([query]) => query.dataScope)).toEqual([
+      "imported",
+      "imported",
+    ]);
+
+    nextCurrent.resolve(response({ dataScope: "imported", topSuppliersOrder: ["Novi scope"] }));
+    nextPrevious.resolve(response({ dataScope: "imported", topSuppliersOrder: ["Novi scope"] }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute(
+        "data-source",
+        "Daily sales analytics (scope: imported)",
+      );
+      expect(screen.getByTestId("location-search")).toHaveTextContent(
+        "fromDate=2026-04-01&toDate=2026-04-30&dataScope=imported",
+      );
+    });
+
+    oldCurrent.resolve(response({ dataScope: "all", topSuppliersOrder: ["Stari scope"] }));
+    oldPrevious.resolve(response({ dataScope: "all", topSuppliersOrder: ["Stari scope"] }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute(
+        "data-source",
+        "Daily sales analytics (scope: imported)",
+      );
+    });
   });
 
   it("uses shared trust header, control bar and analytics data table", async () => {
