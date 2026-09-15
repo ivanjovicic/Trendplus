@@ -4,6 +4,14 @@ Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-15: `RQ278` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ277` completion; it is the single current RQ prompt for Supplier filter scope lineage and was claimed in this workspace.
+
+Owner completion 2026-09-15: `RQ278` was delivered with explicit `dataScope` on `getSupplierFilters`, canonical Supplier and Inventory callers passing authoritative scope, invalid supplier selection clearing, and focused scope-contract tests.
+
+Owner promotion 2026-09-15: `RQ277` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ276` completion; it is the single current RQ prompt for Supplier parent/child embedded composition and was claimed in this workspace.
+
+Owner completion 2026-09-15: `RQ277` was delivered with parent-owned canonical filters/trust header, embedded child regions without duplicate titles or filter surfaces, hidden assortment period suggestions in embedded mode, and standalone scorecard duplicate `h1` removal; focused composition tests cover consolidated tabs and embedded/standalone child routes.
+
 Owner promotion 2026-09-15: `RQ274` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt; it is the single current RQ prompt for forecast workflow age evidence and will be claimed in this workspace.
 
 Owner completion 2026-09-15: `RQ274` was delivered with nullable forecast restock `daysSinceMovement`, `resolveForecastRestockDaysSinceMovement` helper, defer-while-detail-loading behavior and focused regression tests; the RQ queue advanced to `RQ275`.
@@ -384,8 +392,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ274 | DONE | inventory-forecast-age-evidence | Keep missing days-since-movement unknown in forecast workflow |
 | RQ275 | DONE | inventory-queue-empty-reset | Clear stale queued-action state when source keys disappear |
 | RQ276 | DONE | inventory-impact-semantics | Separate expected business impact from inventory exposure/value |
-| RQ277 | WAITING | supplier-embedded-surface-composition | Remove only confirmed duplicate supplier titles or filters |
-| RQ278 | WAITING | supplier-filter-scope-contract | Make supplier filter dataset scope explicit or prove the ambient contract |
+| RQ277 | DONE | supplier-embedded-surface-composition | Remove only confirmed duplicate supplier titles or filters |
+| RQ278 | DONE | supplier-filter-scope-contract | Make supplier filter dataset scope explicit or prove the ambient contract |
 | RQ279 | WAITING | supplier-filter-fallback-visibility | Make retained supplier filter options visibly stale/degraded |
 | RQ280 | WAITING | supplier-previous-period-warning | Distinguish missing previous-period data from a failed request |
 | RQ281 | WAITING | supplier-embedded-freshness-provenance | Preserve valid refresh timestamps in embedded supplier trust metadata |
@@ -13476,13 +13484,28 @@ Reproduction: create forecast, rebalance, OOS/dead-stock and other action sugges
 
 ## RQ277 - Make Supplier canonical and embedded composition unambiguous
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/UX/accessibility/tests
 Feature family: supplier-embedded-surface-composition
 Parallel-safe: no
 Owner: Analytics Frontend / Supplier Analytics
 Commit suggestion: `fix(analytics): deduplicate Supplier surface composition`
+
+### Completion note
+
+- Date: 2026-09-15
+- Status: DONE
+- Completion: Canonical Supplier keeps one `h1`, one filter owner and one trust header; embedded children render region-only content and publish trust metadata upward; standalone scorecard no longer duplicates its document `h1`; assortment period suggestions stay hidden in embedded mode.
+- Changed files: `SupplierConsolidatedPage` tests, `SupplierSalesStatsPage.tsx`, `SupplierDecisionHubPage.tsx`, `SupplierFootwearAnalyticsPage.tsx`, related specs
+- Checks run: focused Supplier composition specs 39 passed
+- Checks not run: full frontend suite, browser/manual composition proof
+- Run log: `.ai/runs/2026-09-15-RQ277-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: branch/PR
+- Follow-up: `RQ278` is next WAITING for Supplier filter scope lineage
+- Residual risk: live browser proof of all three consolidated tabs was not run in this workspace
+- Prompt defect / scope repair: none
 
 ### Problem
 
@@ -13535,13 +13558,28 @@ Reproduction: render `/analytics/supplier` for overview, scorecard and assortmen
 
 ## RQ278 - Make Supplier filter data scope explicit or prove the ambient contract
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/API-contract/tests
 Feature family: supplier-filter-scope-contract
 Parallel-safe: no
 Owner: Analytics Frontend / Supplier Analytics
 Commit suggestion: `fix(analytics): make supplier filter scope explicit`
+
+### Completion note
+
+- Date: 2026-09-15
+- Status: DONE
+- Completion: `getSupplierFilters` now accepts explicit `dataScope`; canonical Supplier and Inventory pass authoritative scope; invalid supplier selection clears when absent from the active dataset; ambient local-storage fallback remains for compatible callers without explicit scope.
+- Changed files: `analyticsApi.ts`, `SupplierConsolidatedPage.tsx`, `InventoryPage.tsx`, `supplierFilterScopeContract.spec.ts`, `SupplierConsolidatedPage.spec.tsx`
+- Checks run: focused supplier scope specs 11 passed
+- Checks not run: full frontend suite, PDC live scope-change proof
+- Run log: `.ai/runs/2026-09-15-RQ278-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: branch/PR
+- Follow-up: `RQ279` is next WAITING for stale supplier filter visibility
+- Residual risk: Product Decision Center still relies on ambient scope injection when explicit scope is omitted
+- Prompt defect / scope repair: none
 
 ### Problem
 

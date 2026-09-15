@@ -890,12 +890,14 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
   }, [activeFilters, queuedActionKeys, recommendationAllowed]);
 
   return (
-    <div className={`sdh-decision-page ${embedded ? "sdh-decision-page--embedded" : ""}`}>
+    <div
+      className={`sdh-decision-page ${embedded ? "sdh-decision-page--embedded" : ""}`}
+      role={embedded ? "region" : undefined}
+      aria-label={embedded ? "Skorkarta dobavljača" : undefined}
+    >
       {!embedded ? (
       <header className="sdh-decision-header">
         <div>
-          <h1 className="sdh-decision-title">Skorkarta dobavljača — pomoćni signal</h1>
-          <p className="sdh-decision-subtitle">Skorkarta poredi dobavljače po scorecard signalu. Koristi se za proveru i objašnjenje, dok je finalna poslovna preporuka u tabu Pregled.</p>
           <details className="sdh-decision-help">
             <summary>Kako se čita ovaj ekran?</summary>
             <div className="sdh-decision-help-content">

@@ -170,7 +170,13 @@ export default function SupplierConsolidatedPage() {
 
   useEffect(() => {
     let cancelled = false;
-    getSupplierFilters(canonicalFilters.fromDate, canonicalFilters.toDate, true, canonicalFilters.storeId)
+    getSupplierFilters(
+      canonicalFilters.fromDate,
+      canonicalFilters.toDate,
+      true,
+      canonicalFilters.storeId,
+      canonicalFilters.dataScope,
+    )
       .then((items) => {
         if (cancelled) return;
 
@@ -184,6 +190,12 @@ export default function SupplierConsolidatedPage() {
 
         setSuppliers(items);
         setSupplierFiltersWarning(null);
+        if (
+          canonicalFilters.supplierId != null
+          && !items.some((entry) => String(entry.supplierId) === String(canonicalFilters.supplierId))
+        ) {
+          setSupplier("");
+        }
       })
       .catch(() => {
         if (!cancelled) {

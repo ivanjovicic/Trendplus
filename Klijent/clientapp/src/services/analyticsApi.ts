@@ -64,7 +64,7 @@ import type { DocumentOperationResponse } from "./exportApi";
 import { ensureExportAdminKey } from "./exportApi";
 import { apiUrl } from "../utils/apiUrl";
 import { appendSupplierDecisionReportQuery } from "./supplierDecisionReportQuery";
-import { appendDataScopeToParams } from "../utils/dataScope";
+import { appendDataScopeToParams, normalizeDataScope } from "../utils/dataScope";
 import {
   API_FAILOVER_TIMEOUT_MS_OPTION,
   type ApiFailoverRequestInit,
@@ -966,12 +966,16 @@ export async function getSupplierFilters(
   fromDate?: string,
   toDate?: string,
   _useCached = true,
-  storeId?: number | null
+  storeId?: number | null,
+  dataScope?: string | null
 ): Promise<AnalyticsArrayWithMeta<SupplierFilterOption>> {
   const params = new URLSearchParams();
   if (fromDate) params.append("fromDate", fromDate);
   if (toDate) params.append("toDate", toDate);
   if (storeId != null) params.append("storeId", String(storeId));
+  if (dataScope != null && dataScope !== "") {
+    params.set("dataScope", normalizeDataScope(dataScope));
+  }
 
   return fetchJson<AnalyticsArrayWithMeta<SupplierFilterOption>>(
     "/api/analytics/cached/filters/suppliers",
