@@ -4,6 +4,10 @@ Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Operations audit intake 2026-09-15: `RQ265`-`RQ300` are individual `WAITING` follow-ups from the Operacije screen/code review. No new prompt is promoted to `READY`; the queue remains explicitly idle until the owner advances one item.
+
+Scope reconciliation for this intake: `analyticsApi.makeUrl`/`appendDataScopeToParams` already inject the persisted global `dataScope` when an analytics URL does not provide one. The remaining scope findings therefore target mounted-page refresh/event propagation and explicit request-contract proof, not an assumed universal omission. The existing `RQ66` placeholder, `RQ67` forecast-cost, `RQ70` forecast-quantity, `RQ179` supplier-footwear-freshness and `RQ203` inventory-detail-scope items remain closed and are not resurrected. The offline runtime check had no backend; connection refusal is not itself a product finding, while blank/unclear error copy remains in the relevant prompts.
+
 Owner completion 2026-09-14: `RQ249` was delivered on `main` with fail-closed Supplier Decision Hub detail and report-toolbar actionability gates; blocked, fallback, stale/partial and missing recommendation permission remain review-only.
 Owner promotion 2026-09-14: `RQ250` was explicitly promoted after completed `RQ249`, repaired the stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
 Owner completion 2026-09-14: `RQ250` was delivered on `main` with full-price-weighted Supplier Decision Hub/client-report/server-report margin contribution parity and fail-closed missing, partial and non-finite evidence handling; the queue advanced to `RQ251`.
@@ -314,6 +318,42 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ262 | DONE | executive-kpi-value-tone-parity | Keep executive KPI availability and visual tone consistent |
 | RQ263 | DONE | analytics-export-operation-truth | Keep export/preview status honest on failure or missing artifacts |
 | RQ264 | DONE | analytics-shared-output-finite-parity | Preserve finite/null semantics across table, detail, print and export |
+| RQ265 | WAITING | operations-empty-reason-context | Preserve contextual empty-state messages, including available date ranges |
+| RQ266 | WAITING | operations-freshness-provenance | Derive page freshness from authoritative refresh metadata |
+| RQ267 | WAITING | operations-heading-hierarchy | Remove duplicate/conflicting h1 landmarks across the Operations shell |
+| RQ268 | WAITING | supplier-legacy-navigation | Keep legacy supplier redirects discoverable and correctly active |
+| RQ269 | WAITING | daily-scope-event-propagation | Reload Daily Sales when the global data scope changes |
+| RQ270 | WAITING | inventory-scope-event-propagation | Reload and verify all Inventory surfaces after global scope changes |
+| RQ271 | WAITING | inventory-kpi-filter-contract | Define whether balance KPIs follow the SKU search filter |
+| RQ272 | WAITING | inventory-total-value-totality | Prevent page-local rows from masquerading as total inventory value |
+| RQ273 | WAITING | inventory-report-window-parity | Prove or repair Inventory export/print period and scope parity |
+| RQ274 | WAITING | inventory-forecast-age-evidence | Keep missing days-since-movement unknown in forecast workflow |
+| RQ275 | WAITING | inventory-queue-empty-reset | Clear stale queued-action state when source keys disappear |
+| RQ276 | WAITING | inventory-impact-semantics | Separate expected business impact from inventory exposure/value |
+| RQ277 | WAITING | supplier-embedded-surface-composition | Remove only confirmed duplicate supplier titles or filters |
+| RQ278 | WAITING | supplier-filter-scope-contract | Make supplier filter dataset scope explicit or prove the ambient contract |
+| RQ279 | WAITING | supplier-filter-fallback-visibility | Make retained supplier filter options visibly stale/degraded |
+| RQ280 | WAITING | supplier-previous-period-warning | Distinguish missing previous-period data from a failed request |
+| RQ281 | WAITING | supplier-embedded-freshness-provenance | Preserve valid refresh timestamps in embedded supplier trust metadata |
+| RQ282 | WAITING | supplier-null-id-identity | Prevent vendor-key collisions when supplier IDs are absent |
+| RQ283 | WAITING | shoe-type-negative-margin-signal | Keep valid zero/negative margin comparison visible |
+| RQ284 | WAITING | shoe-type-status-identity | Preserve backend recommendation status when actionability is gated |
+| RQ285 | WAITING | shoe-type-percent-range | Fail closed on invalid coverage/share percentages |
+| RQ286 | WAITING | color-pre-post-detail-parity | Do not hide valid raw pre/post metrics behind one missing impact percent |
+| RQ287 | WAITING | color-status-identity | Preserve review/do-not-trust meaning on the Color surface |
+| RQ288 | WAITING | color-percent-count-fallbacks | Prevent invalid coverage and unknown color counts from looking measured |
+| RQ289 | WAITING | daily-supplier-order | Use authoritative supplier ordering for concentration calculations |
+| RQ290 | WAITING | daily-shift-partial-state | Distinguish partial shift summaries from measured zero/whole-day totals |
+| RQ291 | WAITING | pre-post-test-contract | Resolve quality metadata contract drift and the missing detail route fixture |
+| RQ292 | WAITING | pre-post-toolbar-unknowns | Keep missing toolbar metadata unknown instead of zero/OK |
+| RQ293 | WAITING | pre-post-detail-identity | Prevent pre/post detail route collisions for unnamed suppliers |
+| RQ294 | WAITING | pre-nivelacija-scope-event-propagation | Reload pre-nivelacija priorities when global scope changes |
+| RQ295 | WAITING | pre-nivelacija-error-copy | Give direct-fetch failures a safe, non-empty user message |
+| RQ296 | WAITING | pre-nivelacija-focus-empty-state | Show the shared filtered-out state when focus removes every row |
+| RQ297 | WAITING | pre-nivelacija-recommendation-gate | Do not imply actionability or score validity when recommendation is blocked |
+| RQ298 | WAITING | pre-nivelacija-reliability-export | Align reliability styling and percent export metadata |
+| RQ299 | WAITING | pre-nivelacija-url-state | Preserve filters and focus in refresh/back/deep-link URLs |
+| RQ300 | WAITING | pre-nivelacija-numeric-robustness | Keep malformed/null numeric payloads from crashing or sorting falsely |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -12498,4 +12538,2042 @@ The shared analytics table-state formatter rejects non-finite numbers during par
 - Residual risk: existing frontend bundle chunk-size advisory and live provider behavior remain unverified.
 - Next: owner refill or a newly defined RQ prompt after reassessment.
 - Prompt defect / scope repair: repaired the stale RQ264 dependency wording that referenced already-DONE `RQ169`, and synchronized the stale summary row for RQ262; no business-scope expansion was made.
+
+---
+
+## RQ265 - Preserve contextual empty-state reasons across Operations pages
+
+Status: WAITING
+Priority: P1
+Type: frontend/tests
+Feature family: operations-empty-reason-context
+Parallel-safe: no
+Owner: Analytics Frontend / Shared Analytics UX
+Commit suggestion: `fix(analytics): preserve contextual empty-state reasons`
+
+### Problem
+
+Confirmed regression: Daily Sales expects a human-readable explanation containing the available date range, but the shared mapper receives that already formatted sentence as if it were a reason code and replaces it with the generic `Nema podataka za izabrani opseg.`. The same contract is used by Shoe Type, Color and Supplier pages.
+
+### Evidence
+
+- `Klijent/clientapp/src/utils/analyticsResponseMeta.ts` maps unknown strings to a generic message.
+- `AnalyticsEmptyState.tsx` calls the mapper for `emptyReason`.
+- `DailySalesStatsPage.tsx`, `ShoeTypeSalesStatsPage.tsx`, `ColorSalesStatsPage.tsx` and `SupplierSalesStatsPage.tsx` pass `emptyStateHint`/`meta.message` that can already be human-readable.
+- `DailySalesStatsPage.premium.spec.tsx` is a confirmed failing regression for the available-range message.
+
+Reproduction: return a successful empty response with a selected period outside `metadata.minAvailableDate`/`maxAvailableDate`, render an Operations page and inspect the empty state. Risk: the user loses the exact next step and may widen the period blindly.
+
+### Scope
+
+- Shared empty-reason contract and the four named page callers plus focused tests.
+- Preserve safe mapping for backend reason codes while allowing validated human-readable contextual copy.
+- No change to backend empty classification, KPI values or error-state behavior.
+
+### Read first
+
+- `AGENTS.md`, `docs/ai/PROMPT_QUEUE_PROTOCOL.md`, `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `RQ260` completion and its residual note
+- `analyticsResponseMeta.ts`, `AnalyticsEmptyState.tsx`
+- the four page implementations and `DailySalesStatsPage.premium.spec.tsx`
+
+### Do
+
+1. Define a single safe distinction between reason code, trusted contextual message and unsafe/unknown text.
+2. Keep raw backend codes hidden and keep successful empty data distinct from errors.
+3. Preserve the available date range and other page-owned context when it is the selected safe message.
+4. Keep title/message/reason rendering deterministic across shared header and body empty states.
+
+### Tests
+
+- Failing-first Daily available-range regression.
+- Shared tests for known code, human contextual message, unknown code, blank/null, unsafe text and empty response with/without rows.
+- Representative Shoe Type, Color and Supplier empty-state tests; `npm run check:analytics-guardrails` and typecheck.
+
+### Acceptance
+
+- The confirmed Daily regression passes with the exact available-range guidance.
+- Known reason codes retain safe Serbian labels; unknown/raw codes remain generic and safe.
+- No human-readable context is silently replaced by the generic message.
+- Empty, error, partial and retry states remain distinct.
+
+### Dependencies
+
+- `RQ260` is the completed shared safety baseline; this is a residual caller/contract correction, not a resurrection of that prompt.
+- Backend was unavailable during the audit; this prompt must not treat connection refusal as a product bug.
+
+---
+
+## RQ266 - Derive Operations freshness from authoritative refresh metadata
+
+Status: WAITING
+Priority: P1
+Type: frontend/contract/tests
+Feature family: operations-freshness-provenance
+Parallel-safe: no
+Owner: Analytics Frontend / Trust Metadata
+Commit suggestion: `fix(analytics): preserve authoritative Operations freshness`
+
+### Problem
+
+Confirmed static contract mismatch: Shoe Type, Color and embedded Supplier project `stale` only for partial responses and otherwise `unknown`, even when a valid `lastRefreshAtUtc` exists. Daily projects `fresh` for any non-empty, non-partial response without requiring a valid refresh timestamp. The runtime effect needs payload tests because the backend was offline.
+
+### Evidence
+
+- `ShoeTypeSalesStatsPage.tsx`, `ColorSalesStatsPage.tsx` and `SupplierSalesStatsPage.tsx` use `trustIsPartial ? "stale" : "unknown"`.
+- `DailySalesStatsPage.tsx` uses `emptyReason ? "unknown" : partial ? "stale" : "fresh"` while separately passing `lastRefreshAtUtc`.
+- `AnalyticsTrustHeader` displays the freshness and timestamp as separate trust facts.
+
+Reproduction: feed a successful non-partial response with `lastRefreshAtUtc: null` to Daily, then a valid timestamp to Shoe Type/Color/Supplier. Risk: users see fresh data without source proof or unknown data despite a valid refresh record.
+
+### Scope
+
+- Freshness projection in Daily, Shoe Type, Color and Supplier Sales Stats, including embedded metadata callbacks and focused tests.
+- Use only the established backend/source refresh contract; do not invent a client “fresh now” rule.
+- No refresh worker, cache, database or recommendation formula change.
+
+### Read first
+
+- `RQ176`, `RQ179`, `RQ187`, `RQ258` and `RQ259` completion notes
+- `AnalyticsTrustHeader.tsx` and its tests
+- all four page trust projections and `analyticsTrustStateProof.spec.tsx`
+
+### Do
+
+1. Establish the precedence of backend freshness status, valid `lastRefreshAtUtc`, partial/warning state and unknown.
+2. Fail closed when the timestamp is missing, malformed or not authoritative; never promote generated/query time.
+3. Apply the same state to page header, embedded parent callback, detail and export metadata where those surfaces expose freshness.
+4. Preserve mode-aware recommendation gating from `RQ259`.
+
+### Tests
+
+- Matrix for fresh/partial/stale/critical/unknown, valid/missing/malformed timestamp, empty and error payloads on each page.
+- Embedded Supplier callback parity test and no-current-time freshness assertion.
+- Focused page tests, typecheck, analytics guardrails and `git diff --check`.
+
+### Acceptance
+
+- `fresh` is never shown without authoritative refresh evidence.
+- Valid refresh metadata is not downgraded to `unknown` merely because the response is non-partial.
+- Partial/stale/critical/unknown states stay visibly distinct across standalone and embedded surfaces.
+
+### Dependencies
+
+- `RQ179` closes Supplier Footwear’s former generated-time path; this prompt owns the remaining Operations page projections.
+- `RQ259` owns shared header normalization and mode gating; do not duplicate that owner.
+
+---
+
+## RQ267 - Restore one coherent heading hierarchy in the Operations shell
+
+Status: WAITING
+Priority: P1
+Type: frontend/accessibility/tests
+Feature family: operations-heading-hierarchy
+Parallel-safe: no
+Owner: Analytics Frontend / Navigation Shell
+Commit suggestion: `fix(analytics): normalize Operations heading landmarks`
+
+### Problem
+
+Confirmed source/runtime finding: the shell renders `h1` for `Backoffice` in `Sidebar.tsx`, `HeaderStatus.tsx` renders the current navigation label as `h1`, and `AnalyticsTrustHeader` plus page-local headers can render additional `h1` elements. Some Operations routes therefore expose three landmarks or duplicate the same title.
+
+### Evidence
+
+- `Klijent/clientapp/src/layout/components/Sidebar.tsx` renders a Backoffice `h1`.
+- `Klijent/clientapp/src/layout/components/HeaderStatus.tsx` renders the current label as `h1`.
+- `Klijent/clientapp/src/components/analytics/AnalyticsTrustHeader.tsx` renders the page title as `h1`.
+- `ProdajaPrePostNivelacijePage.tsx` and `PreNivelacijaPriorityPage.tsx` visibly combine the trust header with a local same-title `h1`; other Operations pages have the same composition pattern.
+
+Reproduction: inspect the heading tree on Daily Sales, Shoe Type, Color, Supplier assortment, Pre/Post and Pre-Nivelacija routes. Risk: screen-reader navigation is ambiguous; SEO impact is secondary and must be verified rather than assumed.
+
+### Scope
+
+- Shell and Operations page heading semantics only: `Sidebar.tsx`, `HeaderStatus.tsx`, `AnalyticsTrustHeader.tsx` and affected page headers/tests.
+- Keep visual hierarchy and route titles intact while assigning one meaningful page `h1` per document.
+- No global theme rewrite, route removal or unrelated layout refactor.
+
+### Read first
+
+- `docs/Frontend/ROUTING_AND_SMOKE_TEST_STANDARDS.md` if present
+- `ARCHITECTURE_BOUNDARIES.md` and `AnalyticsTrustHeader` tests
+- `Sidebar.tsx`, `HeaderStatus.tsx`, the named pages and route smoke tests
+
+### Do
+
+1. Decide which component owns the document-level `h1`; demote shell/status labels or page-local duplicates to suitable non-heading elements where justified.
+2. Preserve meaningful `h2`/`h3` section order and accessible names for tabs, controls and modal content.
+3. Add an explicit route matrix so standalone and embedded Supplier pages do not regress.
+
+### Tests
+
+- Render each named route and assert exactly one document-level `h1` with the expected page title.
+- Assert shell branding/status remains visible without becoming a competing page landmark.
+- Add accessibility heading-order coverage where the repository supports it; run focused tests and guardrails.
+
+### Acceptance
+
+- Each Operations document has one meaningful `h1`; no duplicate same-title `h1` remains.
+- Screen-reader heading navigation is coherent for standalone and embedded compositions.
+- No title, navigation route or visual page context is lost.
+
+### Dependencies
+
+- Coordinate with the routing/navigation owner before changing shared shell semantics.
+- Runtime accessibility evidence may be limited offline; document any axe/browser check that cannot run.
+
+---
+
+## RQ268 - Keep legacy supplier redirects and active navigation coherent
+
+Status: WAITING
+Priority: P2
+Type: frontend/navigation/tests
+Feature family: supplier-legacy-navigation
+Parallel-safe: no
+Owner: Analytics Frontend / Navigation Shell
+Commit suggestion: `fix(analytics): preserve supplier legacy navigation context`
+
+### Problem
+
+Potential UX/deep-link bug: legacy Operations entries `Prodaja po dobavljačima` and `Dobavljači i tipovi obuće` redirect to `/analytics/supplier?tab=...`, but the resulting active navigation belongs to `Pregled dobavljača`, not the clicked Operations entry. The redirect may be technically compatible while still losing user orientation.
+
+### Evidence
+
+- `Klijent/clientapp/src/layout/navConfig.ts` contains the legacy entries and canonical supplier group.
+- `Klijent/clientapp/src/pages/SupplierRedirects.tsx` performs the compatibility redirect.
+- The canonical tab is represented by the query string, while sidebar active-state logic is route/group based.
+
+Reproduction: click each legacy item, load the resulting URL directly, refresh it and use browser back/forward; record URL, active group/item, tab and focus. Risk: users may believe the redirect opened a different report or lose deep-link context.
+
+### Scope
+
+- `navConfig.ts`, `SupplierRedirects.tsx`, active-state logic and nearest navigation/route tests.
+- Preserve compatibility routes and canonical `/analytics/supplier` behavior.
+- No deletion of legacy routes without an explicit replacement plan.
+
+### Read first
+
+- `docs/Frontend/ROUTING_AND_SMOKE_TEST_STANDARDS.md`
+- `navConfig.ts`, `SupplierRedirects.tsx`, canonical Supplier state and navigation tests
+- `RQ234` deep-link completion for filter serialization
+
+### Do
+
+1. Define the intended canonical active item/group after each redirect.
+2. Preserve the target tab and all supported query parameters on direct load and browser navigation.
+3. Make the active state explain the compatibility redirect, or make the legacy item remain visibly associated with the canonical group, without creating two canonical owners.
+
+### Tests
+
+- Click, direct-load, refresh, back/forward and shared-link tests for both legacy entries.
+- Assert target pathname/query/tab and exactly one active navigation item/group.
+- Route smoke and focused navigation tests.
+
+### Acceptance
+
+- Legacy links remain functional and deep-linkable.
+- Active navigation truth matches the canonical supplier page and selected tab.
+- No silent filter loss or duplicate active state occurs.
+
+### Dependencies
+
+- `RQ234` owns supplier report deep-link filter serialization; this prompt owns sidebar/redirect context.
+- If product wants legacy items removed, stop for an explicit product decision rather than guessing.
+
+---
+
+## RQ269 - Reload Daily Sales after a global data-scope change
+
+Status: WAITING
+Priority: P1
+Type: frontend/scope/tests
+Feature family: daily-scope-event-propagation
+Parallel-safe: no
+Owner: Analytics Frontend / Daily Sales
+Commit suggestion: `fix(analytics): refresh Daily Sales on scope change`
+
+### Problem
+
+Confirmed source-level event gap: Daily Sales reads `dataScope` from the URL or local storage during render and passes it to requests, but does not subscribe to `trendplus:data-scope-changed`. Changing `Prikaz` in the shared header while the page is mounted can leave the displayed response from the old scope.
+
+### Evidence
+
+- `DailySalesStatsPage.tsx` derives `queryDataScope` once from `useSearchParams()`/`getDataScope()` and memoizes it.
+- The page has no `trendplus:data-scope-changed` listener.
+- `HeaderStatus.tsx` persists the new scope and dispatches that event.
+- `analyticsApi.makeUrl` adds the ambient scope to new analytics URLs, but cannot refresh an already rendered page by itself.
+
+Reproduction: open Daily Sales without a scope query, change the header from `all` to `imported` or `existing`, and observe whether new current/previous requests occur and whether trust metadata changes. Risk: the screen label and data set diverge.
+
+### Scope
+
+- Daily Sales scope state, URL synchronization, request lineage and focused tests.
+- Preserve current/previous period pairing and stale-response protection.
+- No backend query or global-header redesign unless the existing contract proves it necessary.
+
+### Read first
+
+- `dataScope.ts`, `HeaderStatus.tsx`, `DailySalesStatsPage.tsx`
+- `DailySalesStatsPage.premium.spec.tsx`, `DailySalesStatsPage.spec.tsx`
+- `RQ05`, `RQ201` and `RQ202` completion notes
+
+### Do
+
+1. Choose the existing canonical source for mounted-page scope and update it from the shared event.
+2. Ensure both current and previous requests use the same new scope and the URL/deep link stays truthful.
+3. Avoid duplicate requests and ignore late responses from the prior scope.
+
+### Tests
+
+- Initial `all`, `existing` and `imported` request assertions.
+- Change local storage plus dispatch the event and assert both period requests reload with the new scope.
+- Assert no stale old-scope payload remains visible after the new response.
+
+### Acceptance
+
+- Header scope changes refresh Daily Sales without a manual route remount.
+- Current/previous data, trust metadata and exported filter metadata all identify the same scope.
+- Unknown/invalid scope remains normalized safely.
+
+### Dependencies
+
+- `RQ05` is the broad historical scope audit; this prompt owns the mounted Daily Sales event gap.
+- Do not infer backend unavailability as a product failure.
+
+---
+
+## RQ270 - Reload and verify all Inventory surfaces after a global data-scope change
+
+Status: WAITING
+Priority: P1
+Type: frontend/API-contract/tests
+Feature family: inventory-scope-event-propagation
+Parallel-safe: no
+Owner: Analytics Frontend / Inventory
+Commit suggestion: `fix(inventory): refresh all surfaces on scope change`
+
+### Problem
+
+Confirmed page-level event gap with a contract caveat: `InventoryPage.tsx` does not own a `dataScope` state or `trendplus:data-scope-changed` listener, although `analyticsApi.makeUrl` automatically injects the current persisted scope into new analytics URLs. Balance/list/insights/store-comparison/action-workflow/forecast/alerts/rebalance/detail calls therefore need a single reload generation after a header change; the source signature alone is not proof that the request lacks scope.
+
+### Evidence
+
+- `InventoryPage.tsx` load effects do not depend on a page scope state and the file has no scope-change listener.
+- `analyticsApi.ts` uses `makeUrl` for the named analytics calls and `appendDataScopeToParams` supplies ambient scope when the request does not set one explicitly.
+- `RQ203` already established inventory-detail scope/period consistency and must remain intact.
+
+Reproduction: keep Inventory mounted, change the header scope, then inspect request count, response metadata and every visible panel. Risk: the header can show a new dataset while panels still display the old generation.
+
+### Scope
+
+- Inventory scope state/event handling, request construction and all named Inventory panels, including detail.
+- Prove explicit-versus-ambient scope behavior before changing service signatures.
+- No unrelated inventory formula or workflow semantic rewrite.
+
+### Read first
+
+- `dataScope.ts`, `HeaderStatus.tsx`, `analyticsApi.ts`, `InventoryPage.tsx`
+- `RQ05`, `RQ66`, `RQ67`, `RQ68`-`RQ71`, `RQ176`, `RQ203` completion notes
+- Inventory scope/refresh/detail tests
+
+### Do
+
+1. Add one canonical page scope and one reload trigger for the shared event.
+2. Verify balance, list, insights, comparison, workflow, forecast, alerts, rebalance and detail all use the same scope generation.
+3. Preserve cancellation/request-id guards and keep the `makeUrl` ambient fallback only if it remains an intentional compatibility layer.
+
+### Tests
+
+- Mock every named Inventory API and assert initial and changed-scope calls.
+- Change `all -> imported -> existing`; assert no panel retains old trust scope after the new generation completes.
+- Assert detail reload preserves selected scope/signal window and no duplicate stale response wins.
+
+### Acceptance
+
+- A global scope change refreshes the mounted Inventory page as one coherent generation.
+- All visible panels and detail agree on scope; no claim is based solely on a missing function parameter.
+- Existing completed placeholder, null-evidence, search-lineage and detail-scope contracts remain green.
+
+### Dependencies
+
+- `analyticsApi.makeUrl` is an existing scope-injection mechanism; do not duplicate it without evidence.
+- `RQ203` remains the detail owner and `RQ05` the historical cross-module audit.
+
+---
+
+## RQ271 - Define whether Inventory balance KPIs follow SKU search
+
+Status: WAITING
+Priority: P2
+Type: frontend/product-contract/tests
+Feature family: inventory-kpi-filter-contract
+Parallel-safe: no
+Owner: Analytics Frontend / Inventory
+Commit suggestion: `fix(inventory): clarify balance KPI filter scope`
+
+### Problem
+
+Potential contract ambiguity: Inventory table and insights receive the active SKU search, while the balance KPI remains calculated for the broader inventory scope. This may be intentional (global balance context) or may make the KPI appear to describe the filtered table.
+
+### Evidence
+
+- `InventoryPage.tsx` passes `search` to list/insights paths while `getInventoryBalance` is loaded from the broader filter set.
+- `InventoryKPICards` renders total SKU, on-hand, low-stock and value metrics without an explicit “search excluded” label.
+
+Reproduction: search for one SKU or distinctive text and compare visible rows/insights with balance KPI values. Risk: a user may make a replenishment decision using a KPI they believe is filtered when it is not.
+
+### Scope
+
+- Inventory KPI/filter contract, page labels and focused tests only.
+- Choose and document either whole-scope KPI semantics or search-aware balance semantics based on existing product contract.
+- No invented arithmetic or backend aggregation change without an authoritative owner.
+
+### Read first
+
+- Inventory page, KPI cards, balance/list/insights DTOs and API methods
+- `RQ68`, `RQ159`, `RQ162` and `RQ264` completion notes
+- product/analytics metric descriptions if present
+
+### Do
+
+1. Identify the numerator, denominator and filter scope of every balance KPI.
+2. If KPIs are intentionally global, label that visibly and include the scope in export/print metadata.
+3. If they must follow search, make the backend/API aggregate authoritative rather than summing a paginated table in the client.
+
+### Tests
+
+- Search-empty, one-row, multi-page and no-search cases.
+- Assert KPI labels/value source match the declared scope and are not inferred from page rows.
+- Export/print metadata test for the chosen scope.
+
+### Acceptance
+
+- The UI cannot imply that balance KPIs follow SKU search unless they actually do.
+- True zero, unknown and paginated totals remain distinct.
+- The contract is documented in the nearest test and metadata surface.
+
+### Dependencies
+
+- Requires product/metric contract confirmation if current code and tests do not settle intent; do not silently change business meaning.
+- `RQ203`/`RQ264` remain scope/output-parity baselines.
+
+---
+
+## RQ272 - Prevent Inventory page rows from masquerading as total value
+
+Status: WAITING
+Priority: P1
+Type: frontend/numeric-state/tests
+Feature family: inventory-total-value-totality
+Parallel-safe: no
+Owner: Analytics Frontend / Inventory
+Commit suggestion: `fix(inventory): preserve total inventory value semantics`
+
+### Problem
+
+Confirmed potential false-total path: when `balance.estimatedInventoryValue` is unavailable, `InventoryPage.tsx` falls back to summing the currently loaded `rows`. With pagination, the result is the value of one page but is displayed as total inventory value.
+
+### Evidence
+
+- `InventoryPage.tsx` computes `totalValue` from `balance.estimatedInventoryValue ?? rows.reduce(...)`.
+- `rows` are the current page, while `totalCount`/`totalPages` can represent a larger result set.
+
+Reproduction: return multiple pages, omit the balance total value, load page 2 and inspect the KPI. Risk: inventory capital exposure is understated or changes merely by paging.
+
+### Scope
+
+- Inventory value projection, KPI label/state and focused tests.
+- Prefer an authoritative total; otherwise render unavailable/partial with explicit page scope.
+- No new client aggregation across paginated data.
+
+### Read first
+
+- `InventoryPage.tsx`, `InventoryKPICards.tsx`, inventory DTOs and `inventoryUtils.ts`
+- `RQ01`, `RQ10`, `RQ64`, `RQ152`, `RQ240` and `RQ264` completion notes
+
+### Do
+
+1. Separate authoritative total inventory value from page-local value.
+2. Remove or visibly relabel the fallback so a page sum cannot be called total.
+3. Preserve measured zero and distinguish missing cost/value from a genuine zero.
+
+### Tests
+
+- One page with authoritative total, multiple pages with authoritative total, missing total on page 1/2, genuine zero and null row values.
+- Assert no page navigation changes a value labelled “total”.
+- Focused Inventory KPI tests, typecheck and guardrails.
+
+### Acceptance
+
+- “Ukupna vrednost zaliha” is authoritative or explicitly unavailable/limited.
+- Current-page sum is never silently presented as a repository-wide total.
+- Existing null/finite semantics remain intact.
+
+### Dependencies
+
+- `RQ240`/`RQ264` own nullable/finite display foundations; this prompt owns total-vs-page provenance.
+
+---
+
+## RQ273 - Prove Inventory export/print period and scope parity
+
+Status: WAITING
+Priority: P2
+Type: frontend/API-contract/tests
+Feature family: inventory-report-window-parity
+Parallel-safe: no
+Owner: Analytics Frontend / Inventory Reports
+Commit suggestion: `fix(inventory): align report window and scope metadata`
+
+### Problem
+
+Potential report-parity issue: the Inventory screen loads list/signal data with `inventorySignalWindow`, while server export and print-preview calls omit `fromDate`/`toDate` and do not put `dataScope` in the request body. `makeUrl` adds ambient scope to the query, but the backend export DTO has no date-window fields. The report may therefore intentionally represent current stock rather than the screen’s signal window, but the contract is not obvious.
+
+### Evidence
+
+- `InventoryPage.tsx` passes `inventorySignalWindow` to list/detail paths but not to `previewInventoryReport`/`exportInventoryReport`.
+- `analyticsApi.ts` serializes export/preview through `postJson`; ambient `dataScope` is added only to the URL when absent.
+- `Api/Dtos/InventoryExperienceDtos.cs` export request shape does not contain `FromDate`, `ToDate` or `DataScope` fields.
+
+Reproduction: use a non-default signal window and non-`all` scope, export/preview, then compare report metadata and rows with the screen. Risk: a document can be mistaken for the visible decision surface while using another period or effective scope.
+
+### Scope
+
+- Inventory export/preview request and metadata contract, screen toolbar copy and tests.
+- First determine whether the artifact is current-stock or signal-window scoped; implement only the smallest authoritative parity/documentation change.
+- No generic export-toolbar rewrite (covered by `RQ263`/`RQ264`).
+
+### Read first
+
+- `RQ163`, `RQ197`, `RQ234`, `RQ263`, `RQ264` completion notes
+- Inventory page/API methods and `InventoryExperienceDtos.cs`
+- server report builder/renderer and nearest export tests
+
+### Do
+
+1. Compare screen requested/effective period, scope and visible filters with export/preview request and output metadata.
+2. If current stock is intentional, label the difference prominently and preserve scope/provenance in the artifact.
+3. If parity is required, extend the owning request/endpoint contract with explicit validated fields and pass them from one canonical filter state.
+
+### Tests
+
+- Non-default date window, all/existing/imported scope, store/supplier/search and empty/failed export cases.
+- Assert request/query and artifact metadata agree with the chosen contract.
+- Verify print preview and downloaded export use the same contract.
+
+### Acceptance
+
+- Export/preview semantics are explicit and cannot be confused with the on-screen signal window.
+- No scope is lost because it existed only in ambient local storage.
+- Missing/invalid period or scope fails safely; no silent broadening occurs.
+
+### Dependencies
+
+- `RQ263` owns operation-status truth; `RQ264` owns shared output formatting. Stop for product/report-owner decision if current-stock versus signal-window intent is unresolved.
+
+---
+
+## RQ274 - Keep missing days-since-movement unknown in forecast workflow
+
+Status: WAITING
+Priority: P2
+Type: frontend/action-contract/tests
+Feature family: inventory-forecast-age-evidence
+Parallel-safe: no
+Owner: Analytics Frontend / Inventory Forecast
+Commit suggestion: `fix(inventory): preserve forecast age evidence`
+
+### Problem
+
+Confirmed fallback path with potential business impact: `queueForecastRestock` passes `detailData?.daysSinceMovement ?? 0` to `buildForecastRestockSuggestion`. If detail has not loaded, the workflow suggestion records zero days instead of unknown.
+
+### Evidence
+
+- `InventoryPage.tsx` uses `detailData?.daysSinceMovement ?? 0` when creating the suggestion.
+- `inventoryUtils.ts` stores the received `daysSinceMovement` in the workflow item.
+- Existing forecast prompts cover cost and suggested-quantity semantics, not this age field.
+
+Reproduction: trigger a forecast suggestion before detail data is available and inspect the workflow reason/metadata. Risk: a recent-movement/aging rationale is fabricated and can influence replenishment priority.
+
+### Scope
+
+- Forecast workflow age field, suggestion builder and focused tests only.
+- Preserve valid measured zero days; use unavailable/blocking behavior for missing detail.
+- No forecast calibration or demand formula rewrite.
+
+### Read first
+
+- `RQ67`, `RQ70`, `RQ108`, `RQ117` completion/deferred notes
+- `InventoryPage.tsx`, `inventoryUtils.ts`, forecast DTOs and workflow panel/tests
+
+### Do
+
+1. Define whether a forecast suggestion is executable/queueable without detail age evidence.
+2. Never use zero as a missing-age sentinel; preserve valid zero only when explicitly measured.
+3. Keep user copy and action metadata consistent with the unavailable state.
+
+### Tests
+
+- Detail pending/null, measured zero, positive value, malformed/non-finite value and detail request failure.
+- Assert missing age does not render as zero or create a trusted age rationale.
+- Existing forecast workflow tests and guardrails.
+
+### Acceptance
+
+- Missing days-since-movement is unavailable or the suggestion is safely deferred.
+- Measured zero remains visible as zero.
+- Cost/quantity contracts from completed RQ prompts remain unchanged.
+
+### Dependencies
+
+- `RQ67` and `RQ70` are completed adjacent forecast contracts; do not reopen their scope.
+
+---
+
+## RQ275 - Clear stale Inventory queue state when source keys disappear
+
+Status: WAITING
+Priority: P1
+Type: frontend/action-workflow/tests
+Feature family: inventory-queue-empty-reset
+Parallel-safe: no
+Owner: Analytics Frontend / Inventory Actions
+Commit suggestion: `fix(inventory): clear queue state for removed sources`
+
+### Problem
+
+Confirmed state bug: the action-source status effect returns early when `sourceKeys.length === 0` without clearing `queuedSuggestionKeys`. A row/action removed by filters or reload can retain the visual “already queued” state.
+
+### Evidence
+
+- `InventoryPage.tsx` builds `sourceKeys` from displayed rows and workflow items.
+- The empty-key branch returns a cleanup function but does not call `setQueuedSuggestionKeys([])`.
+- The queue marker is later read by Inventory table/action controls.
+
+Reproduction: load a queued row, change filters so no source keys remain or replace the workflow with an empty result, then restore a different row. Risk: users cannot add a valid new action or believe an old action still exists.
+
+### Scope
+
+- Queue status effect/state in `InventoryPage.tsx` and nearest queue tests.
+- Preserve last-known state only for a failed lookup with still-visible keys; clear state when the source set is definitively empty.
+- No action ledger/backend status semantics.
+
+### Read first
+
+- `InventoryPage.tsx`, `InventoryPage.queueStatus.spec.tsx`, `getAnalyticsActionSourceStatuses`
+- `RQ116`, `RQ193`, `RQ251` completion notes
+
+### Do
+
+1. Make empty source-set behavior explicit and generation-safe.
+2. Keep cancellation and transient-error behavior distinct from a successful empty result.
+3. Ensure restored rows query their current status rather than inherit stale keys.
+
+### Tests
+
+- Initial empty, non-empty queued/unqueued, filter-to-empty, workflow-to-empty, scope change, successful empty response and failed lookup.
+- Assert no stale queued marker remains after source keys disappear and no false unqueued state appears on transient error.
+
+### Acceptance
+
+- Queue markers match the current visible source-key set.
+- Empty source sets clear stale local state; lookup failures preserve last-known state only while appropriate.
+- No duplicate queue writes are introduced.
+
+### Dependencies
+
+- `RQ251` owns shared workflow labels; this prompt owns local Inventory source-key state.
+
+---
+
+## RQ276 - Separate Inventory expected impact from exposure/value
+
+Status: WAITING
+Priority: P1
+Type: frontend/action-contract/tests
+Feature family: inventory-impact-semantics
+Parallel-safe: no
+Owner: Analytics Frontend / Inventory Actions
+Commit suggestion: `fix(inventory): preserve expected impact semantics`
+
+### Problem
+
+Potential decision-contract bug: Inventory central-action writes set `impactEstimateRsd` from `item.estimatedValue` for every action type. That field may be inventory exposure/value, not the expected business impact of replenishment, markdown, transfer or another action.
+
+### Evidence
+
+- `InventoryPage.tsx` maps `impactEstimateRsd: item.costMissing ? undefined : item.estimatedValue ?? undefined` for all workflow suggestions.
+- Inventory action type and label vary, but one value field is reused without proving it means expected impact for each action.
+- Queue protocol distinguishes expected impact from exposure/value and forbids inventing business recommendations in the frontend.
+
+Reproduction: create forecast, rebalance, OOS/dead-stock and other action suggestions with the same estimated stock value; inspect central action card, report/export and action metadata. Risk: prioritization and operator decisions use a plausible but semantically wrong RSD amount.
+
+### Scope
+
+- Inventory action DTO mapping, central queue payload and focused frontend/backend contract tests if the existing endpoint owns the field.
+- Define units, numerator/denominator, true-zero and missing-cost behavior per action type.
+- No new frontend impact formula if backend is the decision source.
+
+### Read first
+
+- `RQ01`, `RQ10`, `RQ67`, `RQ178`, `RQ248`, `RQ251` completion notes
+- `InventoryPage.tsx`, action workflow types/panel, `analyticsApi.ts` and backend action DTO/entity
+
+### Do
+
+1. Trace `impactEstimateRsd` from source suggestion through API, queue, report and display.
+2. Use an authoritative expected-impact field where available; otherwise omit/label unavailable and retain exposure/value separately.
+3. Preserve valid zero and fail closed for missing/non-finite values.
+
+### Tests
+
+- Each action type with expected impact, exposure only, missing cost, true zero, negative/invalid and multiple stores.
+- Assert serialized field meaning and user label remain aligned across action list/detail/export.
+
+### Acceptance
+
+- `impactEstimateRsd` is demonstrably expected business impact, or is not presented as such.
+- Inventory value/exposure cannot silently become expected benefit.
+- Backend-owned action status/recommendation semantics remain authoritative.
+
+### Dependencies
+
+- Stop and record a contract handoff if the backend has no authoritative expected-impact source; do not invent one in this prompt.
+- `RQ251` owns labels/status vocabulary, not the numeric impact formula.
+
+---
+
+## RQ277 - Make Supplier canonical and embedded composition unambiguous
+
+Status: WAITING
+Priority: P2
+Type: frontend/UX/accessibility/tests
+Feature family: supplier-embedded-surface-composition
+Parallel-safe: no
+Owner: Analytics Frontend / Supplier Analytics
+Commit suggestion: `fix(analytics): deduplicate Supplier surface composition`
+
+### Problem
+
+Potential presentation bug: the canonical Supplier page owns a trust header, page title, shared filters and tabs, while child pages also have standalone trust/header/filter/title surfaces. The current child code hides some of those elements in `embedded` mode, so the exact duplicate runtime surface must be verified before changing it. The assortment tab is the highest-risk composition.
+
+### Evidence
+
+- `SupplierConsolidatedPage.tsx` renders the canonical `AnalyticsTrustHeader`, `h1`, filters and tabs, then embeds child pages.
+- `SupplierFootwearAnalyticsPage.tsx` and `SupplierSalesStatsPage.tsx` have standalone headers/control surfaces guarded by `embedded`.
+- Previous runtime inspection found repeated Supplier titles; the current source requires a route-by-route confirmation of whether the duplicate is shell, parent or child.
+
+Reproduction: render `/analytics/supplier` for overview, scorecard and assortment, then render each child standalone; count `h1`s, filter controls, trust metadata and active tabs. Risk: duplicated controls can suggest conflicting filter owners and duplicated headings confuse assistive technology.
+
+### Scope
+
+- Supplier parent/child composition, `embedded` contract, titles, filters, trust metadata and focused tests.
+- Fix only duplicates confirmed by current rendering; preserve standalone child routes.
+- No supplier metric/recommendation formula changes.
+
+### Read first
+
+- `SupplierConsolidatedPage.tsx`, `SupplierSalesStatsPage.tsx`, `SupplierFootwearAnalyticsPage.tsx`, `SupplierDecisionHubPage.tsx`
+- `useSupplierCanonicalState.ts`, `RQ122`, `RQ179`, `RQ243`, `RQ267`
+- Supplier consolidated/embedded tests and route smoke tests
+
+### Do
+
+1. Define parent ownership of period/scope/store/supplier filters and trust header in canonical mode.
+2. Ensure embedded children render only their content/section semantics and report trust payload upward.
+3. Keep standalone child pages complete and avoid hiding legitimate titles/metadata there.
+
+### Tests
+
+- Snapshot/DOM assertions for parent overview, scorecard and assortment plus standalone child routes.
+- Assert one filter owner and one document-level `h1` per route, with trust metadata parity.
+- Verify tab changes do not reset filters or duplicate requests.
+
+### Acceptance
+
+- Canonical Supplier shows one coherent title/filter/trust composition.
+- Standalone children retain their intended independent surface.
+- No duplicate visible filters, headings or conflicting active states remain.
+
+### Dependencies
+
+- `RQ267` owns general heading hierarchy; this prompt owns Supplier parent/child composition.
+- Confirm the current DOM before altering `embedded` guards; do not fix a historical runtime observation that no longer reproduces.
+
+---
+
+## RQ278 - Make Supplier filter data scope explicit or prove the ambient contract
+
+Status: WAITING
+Priority: P2
+Type: frontend/API-contract/tests
+Feature family: supplier-filter-scope-contract
+Parallel-safe: no
+Owner: Analytics Frontend / Supplier Analytics
+Commit suggestion: `fix(analytics): make supplier filter scope explicit`
+
+### Problem
+
+Potential scope-lineage fragility: `getSupplierFilters` accepts period/store but not `dataScope`; its URL relies on `makeUrl` to inject ambient local-storage scope. The parent effect depends on canonical URL scope, so a URL/local-storage mismatch or direct caller can query a different dataset than the visible filter state. This is not a confirmed wrong-dataset bug until that mismatch is tested.
+
+### Evidence
+
+- `analyticsApi.ts` `getSupplierFilters` signature has no explicit `dataScope` parameter.
+- `SupplierConsolidatedPage.tsx` effect depends on `canonicalFilters.dataScope` but calls the scope-less method.
+- `makeUrl`/`appendDataScopeToParams` inject the persisted scope only when the request has none.
+
+Reproduction: load Supplier with `?dataScope=imported` while local storage contains `existing`, or call the filter method directly with a controlled scope; inspect the request and returned supplier options. Risk: dropdown options can be derived from a different dataset than the results.
+
+### Scope
+
+- Supplier filter API signature/callers, canonical state and tests.
+- Choose explicit scope propagation or prove and test the existing ambient compatibility contract.
+- No broad rewrite of `makeUrl` or unrelated analytics callers.
+
+### Read first
+
+- `dataScope.ts`, `analyticsApi.ts`, `useSupplierCanonicalState.ts`, `SupplierConsolidatedPage.tsx`
+- `RQ05`, `RQ119`, `RQ198`, `RQ234` completion notes
+- `supplierFilterFallbackMeta.spec.ts` and Supplier page tests
+
+### Do
+
+1. Compare URL scope, canonical state, local storage and request scope at first render, after changes and on direct calls.
+2. If explicit argument is safer, add it compatibly and update all callers; otherwise codify the ambient rule and guard mismatches.
+3. Ensure supplier selection is cleared or marked invalid when its option is not in the active dataset.
+
+### Tests
+
+- all/existing/imported with matching and mismatching URL/storage values.
+- Scope change and direct page-load tests asserting filter request and result metadata.
+- Product Decision Center caller regression and analytics guardrails.
+
+### Acceptance
+
+- Supplier dropdown and analytics results use the same authoritative scope.
+- No hidden ambient fallback can override visible canonical scope without a visible degraded state.
+- Existing compatible callers remain correct.
+
+### Dependencies
+
+- `makeUrl` is a shared compatibility owner; do not remove ambient injection without migrating its callers.
+- `RQ05` owns the historical broad scope audit; this prompt owns Supplier filter lineage.
+
+---
+
+## RQ279 - Make retained Supplier filter options visibly stale
+
+Status: WAITING
+Priority: P2
+Type: frontend/UX/tests
+Feature family: supplier-filter-fallback-visibility
+Parallel-safe: no
+Owner: Analytics Frontend / Supplier Analytics
+Commit suggestion: `fix(analytics): expose stale supplier filter options`
+
+### Problem
+
+Potential UX trust issue: when Supplier filter API returns a fallback/meta warning, the parent sets a warning and returns without replacing `suppliers`, retaining the previous option list. The warning may not be sufficiently prominent to tell the user that the dropdown is stale.
+
+### Evidence
+
+- `SupplierConsolidatedPage.tsx` keeps the existing `suppliers` list on `items.meta` and only sets `supplierFiltersWarning`.
+- The Supplier select remains usable while the warning is rendered as a small note under the field.
+
+Reproduction: load one period/scope with a populated supplier list, then return a fallback/meta-warning response for another period/scope and inspect the select, selected value and warning. Risk: a user can choose an option that is not present in the active dataset.
+
+### Scope
+
+- Supplier filter fallback state, selected supplier behavior, copy and focused tests.
+- Preserve the last known list only if clearly marked and safely non-actionable; do not silently fake an empty list.
+- No backend filter computation change.
+
+### Read first
+
+- `SupplierConsolidatedPage.tsx`, `useSupplierCanonicalState.ts`, filter API response/meta types
+- `supplierFilterFallbackMeta.spec.ts`, `RQ151`, `RQ253`, `RQ258` and `RQ260`
+
+### Do
+
+1. Define stale-list behavior: visible stale badge, disabled selection, cleared selection or safe fallback list based on product contract.
+2. Keep the selected supplier and results consistent with the active response; never silently broaden or narrow the dataset.
+3. Use safe Serbian copy for fallback/meta warning.
+
+### Tests
+
+- Initial success, fallback warning with old list, empty fallback, selected supplier no longer available and retry success.
+- Assert the user can distinguish stale options from current options and no old selection is submitted accidentally.
+
+### Acceptance
+
+- A retained supplier list cannot look current when its source is degraded.
+- Selected filter/result lineage is explicit and safe.
+- Transient failure does not fabricate a trustworthy empty list.
+
+### Dependencies
+
+- `RQ260`/`RQ253` own shared safe messaging; this prompt owns filter-state visibility.
+
+---
+
+## RQ280 - Distinguish Supplier previous-period failure from no baseline
+
+Status: WAITING
+Priority: P1
+Type: frontend/analytics-contract/tests
+Feature family: supplier-previous-period-warning
+Parallel-safe: no
+Owner: Analytics Frontend / Supplier Analytics
+Commit suggestion: `fix(analytics): expose supplier comparison degradation`
+
+### Problem
+
+Potential trust bug: `SupplierFootwearAnalyticsPage` uses `Promise.allSettled` for current and previous periods, but converts a rejected previous request to `null` without a dedicated warning. The UI can therefore look like the previous period simply has no data.
+
+### Evidence
+
+- `SupplierFootwearAnalyticsPage.tsx` keeps current data when the current request fulfills and assigns `previousData = null` when the previous request rejects.
+- Trend/comparison derivations then treat the missing previous object as an unavailable baseline without preserving the failure cause.
+
+Reproduction: resolve the current request and reject only the previous-period request; inspect trend labels, empty state, warning and trust metadata. Risk: users may trust a comparison that silently lacks its baseline.
+
+### Scope
+
+- Supplier Footwear previous-period load state, warning/meta propagation and affected comparison UI/tests.
+- Preserve current-period usability while making comparison unavailable/degraded.
+- No change to current-period formulas or backend period query.
+
+### Read first
+
+- `SupplierFootwearAnalyticsPage.tsx`, `supplierSharedState.ts`, relevant API error/meta helpers
+- `RQ137`, `RQ145`, `RQ179`, `RQ243`, `RQ257` completion notes
+- Supplier Footwear focused tests
+
+### Do
+
+1. Track previous-period failure separately from a successful empty previous period and from an absent baseline.
+2. Suppress only comparison metrics that require the failed baseline; do not hide valid current-period rows.
+3. Show safe warning/correlation/retry guidance consistent with shared analytics states.
+
+### Tests
+
+- Previous success with rows, successful empty, rejected request, current rejection, partial previous and retry success.
+- Assert no trend/PoP number is shown as zero or “no baseline” when the request actually failed.
+
+### Acceptance
+
+- Previous-period failure is visible as degraded comparison evidence.
+- Current-period decision/signal output remains accurate and non-fabricated.
+- Successful empty previous period remains distinct from error.
+
+### Dependencies
+
+- Shared error/copy owners remain `RQ253`/`RQ260`; backend unavailability is not itself a product bug.
+
+---
+
+## RQ281 - Preserve valid refresh timestamps in embedded Supplier trust metadata
+
+Status: WAITING
+Priority: P1
+Type: frontend/trust-metadata/tests
+Feature family: supplier-embedded-freshness-provenance
+Parallel-safe: no
+Owner: Analytics Frontend / Supplier Analytics
+Commit suggestion: `fix(analytics): preserve embedded supplier freshness`
+
+### Problem
+
+Confirmed projection issue for the Supplier Sales embedded path: non-partial results are reported as `unknown` even when the response contains a valid `lastRefreshAtUtc`. The parent canonical trust header can therefore lose valid source freshness.
+
+### Evidence
+
+- `SupplierSalesStatsPage.tsx` embedded trust callback sets `dataFreshnessStatus` to `trustIsPartial ? "stale" : "unknown"`.
+- The same callback passes `trustLastRefreshAt` separately, allowing contradictory timestamp/state pairs.
+
+Reproduction: render the page embedded with a successful non-partial response and valid `meta.lastRefreshAtUtc`; inspect parent trust metadata. Risk: the canonical Supplier page under-reports valid freshness or displays contradictory trust facts.
+
+### Scope
+
+- Supplier Sales embedded trust projection and focused parent/child tests.
+- Use authoritative refresh metadata and preserve partial/unknown behavior.
+- No backend freshness computation or shared-header rewrite.
+
+### Read first
+
+- `SupplierSalesStatsPage.tsx`, `SupplierConsolidatedPage.tsx`, `AnalyticsTrustHeader.tsx`
+- `RQ179`, `RQ258`, `RQ259`, `RQ266`
+
+### Do
+
+1. Align `dataFreshnessStatus` and `lastRefreshAt` from the same authoritative response state.
+2. Keep missing/malformed timestamp unknown and partial warning degraded.
+3. Verify standalone and embedded parity.
+
+### Tests
+
+- Embedded/standalone valid timestamp, missing timestamp, partial, empty and error payloads.
+- Assert parent callback and rendered trust header agree.
+
+### Acceptance
+
+- Valid `lastRefreshAtUtc` is not discarded in embedded Supplier metadata.
+- No response generation time is promoted to freshness.
+- Partial and unknown remain visibly distinct.
+
+### Dependencies
+
+- `RQ266` is the common Operations freshness contract; `RQ179` is the completed Supplier Footwear-specific baseline.
+
+---
+
+## RQ282 - Prevent Supplier null-ID vendor-key collisions
+
+Status: WAITING
+Priority: P1
+Type: frontend/data-identity/tests
+Feature family: supplier-null-id-identity
+Parallel-safe: no
+Owner: Analytics Frontend / Supplier Analytics
+Commit suggestion: `fix(analytics): preserve supplier identity without IDs`
+
+### Problem
+
+Potential data-loss/detail bug: `SupplierFootwearAnalyticsPage` uses `id:${vendorId}` when available and `name:${normalizedName}` otherwise. Two distinct rows with the same or empty name can share a Map key, collapse categories/metrics or open the wrong detail.
+
+### Evidence
+
+- `SupplierFootwearAnalyticsPage.tsx` defines `vendorKey` with normalized-name fallback and uses that key for vendor/category Maps and drilldown lookups.
+- Backend rows may contain `vendorId: null` and duplicate/blank display names.
+
+Reproduction: return two supplier rows with null IDs and equal names, then equal blank names, with different category/revenue/detail data; inspect row count, concentration/type insights and clicked detail. Risk: one supplier’s evidence is overwritten or attributed to another.
+
+### Scope
+
+- Supplier identity/keying and detail navigation only, plus focused tests.
+- Prefer authoritative stable identity; if unavailable, use collision-safe row identity without claiming two rows are the same supplier.
+- No silent merge or frontend invention of a business ID.
+
+### Read first
+
+- `SupplierFootwearAnalyticsPage.tsx`, vendor DTOs/API response contract and detail snapshot helpers
+- `RQ122`, `RQ163`, `RQ243`, `RQ257`
+
+### Do
+
+1. Trace every Map/key/detail consumer of `vendorKey`.
+2. Define behavior for null ID, duplicate name, blank name and same display name with distinct backend rows.
+3. Preserve row identity and show ambiguity/unavailable detail rather than opening a guessed supplier.
+
+### Tests
+
+- ID-based unique rows, null-ID distinct rows with same name, blank names, duplicate categories and detail click for each row.
+- Assert no row disappears from Maps and snapshot/detail record IDs do not collide.
+
+### Acceptance
+
+- Distinct backend records remain distinct even without a vendor ID.
+- Drilldown opens the selected record or explicitly reports unavailable identity.
+- No name-based collision can overwrite metrics or action context.
+
+### Dependencies
+
+- If only the backend can provide a stable identity, stop with a precise contract handoff; do not fabricate authorization/business identity in the client.
+
+---
+
+## RQ283 - Keep valid zero and negative Shoe Type margin signals visible
+
+Status: WAITING
+Priority: P1
+Type: frontend/analytics-visualization/tests
+Feature family: shoe-type-negative-margin-signal
+Parallel-safe: no
+Owner: Analytics Frontend / Shoe Type Sales
+Commit suggestion: `fix(analytics): preserve negative shoe-type margin signal`
+
+### Problem
+
+Confirmed projection rule with business risk: Shoe Type hides `comparisonData` when total margin contribution is zero or negative. Negative margin is a valid loss signal and should not be presented as “no comparison data”.
+
+### Evidence
+
+- `ShoeTypeSalesStatsPage.tsx` returns empty `comparisonData` when `totalMarginContribution == null || <= 0`.
+- The comparison chart is therefore absent for valid negative/zero totals even when rows and revenue evidence exist.
+
+Reproduction: return finite rows whose total margin contribution is `-1000` or measured `0`, then inspect comparison section and empty-state logic. Risk: loss-making shoe types disappear from a decision surface exactly when they deserve review.
+
+### Scope
+
+- Shoe Type comparison data derivation, chart/empty presentation and focused tests.
+- Preserve absence only for missing/non-finite evidence; define true-zero and negative behavior explicitly.
+- No margin formula or backend recommendation rewrite.
+
+### Read first
+
+- `ShoeTypeSalesStatsPage.tsx`, chart components/formatters and nearest premium tests
+- `RQ139`, `RQ148`, `RQ191`, `RQ238`, `RQ257` and `RQ264` completion notes
+
+### Do
+
+1. Separate “no valid rows/evidence” from a valid non-positive total.
+2. Render negative values with the established loss/warning tone and measured zero as zero.
+3. Keep percentages/denominators and recommendation status backend-owned.
+
+### Tests
+
+- Positive, measured zero, negative, null, NaN/Infinity and mixed valid/unknown margin contributions.
+- Assert chart/data section visibility and labels for each state; ensure no fake positive signal appears.
+
+### Acceptance
+
+- Negative margin remains visible and interpretable as a business risk.
+- Measured zero is not confused with missing data.
+- Only unavailable/non-finite evidence suppresses the comparison.
+
+### Dependencies
+
+- `RQ238` owns Shoe Type coverage denominator semantics; this prompt owns comparison visibility for margin totals.
+
+---
+
+## RQ284 - Preserve Shoe Type backend status identity when recommendation is gated
+
+Status: WAITING
+Priority: P1
+Type: frontend/recommendation-contract/tests
+Feature family: shoe-type-status-identity
+Parallel-safe: no
+Owner: Analytics Frontend / Shoe Type Sales
+Commit suggestion: `fix(analytics): preserve gated shoe-type status semantics`
+
+### Problem
+
+Potential decision-trust bug: Shoe Type changes any backend status to `insufficient_data` when `recommendationAllowed` is not true. This can erase meaningful `review` or `do_not_trust` semantics and leave the user unable to see why the signal is blocked.
+
+### Evidence
+
+- `ShoeTypeSalesStatsPage.tsx` maps `backendStatus`, then sets `displayStatus = recommendationAllowed ? backendStatus : "insufficient_data"`.
+- The page separately knows `recommendationAllowed` and status reason, so status identity and actionability can be represented as separate facts.
+
+Reproduction: provide `review` and `do_not_trust` backend recommendations with `recommendationAllowed: false`; inspect row badge, tooltip, detail, counts and actions. Risk: a data-trust warning is presented as ordinary insufficient volume, leading to the wrong operator response.
+
+### Scope
+
+- Shoe Type status mapping, labels, counts, detail/tooltip and actionability gates.
+- Preserve backend status identity while ensuring blocked recommendations remain non-actionable.
+- No local recommendation generation or backend status enum change.
+
+### Read first
+
+- `ShoeTypeSalesStatsPage.tsx`, recommendation status mappers and trust header
+- `RQ143`, `RQ151`, `RQ245`, `RQ252`, `RQ259` completion notes
+
+### Do
+
+1. Separate displayed backend status from permission/actionability state.
+2. Map `review`, `do_not_trust`, `insufficient_data` and unknown distinctly with safe Serbian copy.
+3. Ensure blocked status cannot render an executable recommendation or misleading confidence/reliability.
+
+### Tests
+
+- Every known status with `recommendationAllowed` true/false/missing, unknown status and missing recommendation.
+- Assert row/detail/tooltip/KPI counts, actions and trust header retain consistent semantics.
+
+### Acceptance
+
+- Backend status meaning is not overwritten merely because actionability is false.
+- Gated states remain review-only/non-actionable with a visible reason.
+- Unknown statuses fail closed without raw backend codes.
+
+### Dependencies
+
+- `RQ259` owns mode-aware shared-header gating; this prompt owns Shoe Type page status projection.
+
+---
+
+## RQ285 - Validate Shoe Type coverage and share percentage ranges
+
+Status: WAITING
+Priority: P2
+Type: frontend/numeric-state/tests
+Feature family: shoe-type-percent-range
+Parallel-safe: no
+Owner: Analytics Frontend / Shoe Type Sales
+Commit suggestion: `fix(analytics): fail closed on invalid shoe-type percentages`
+
+### Problem
+
+Potential numeric-state bug: coverage/share values can be displayed as percentages without proving finite, non-negative and upper-bound validity. Values above 100 may be malformed backend data rather than a meaningful metric.
+
+### Evidence
+
+- `ShoeTypeSalesStatsPage.tsx` derives `sharePct` from revenue and coverage from article counts, while formatter paths render percent values.
+- The existing coverage denominator work does not by itself prove boundary validation for every page-local projection.
+
+Reproduction: return negative revenue, a numerator greater than its denominator, a percentage above 100, null and non-finite values; inspect table, KPI, chart, detail and export. Risk: impossible percentages can look authoritative and distort ranking.
+
+### Scope
+
+- Shoe Type page-local percentage validation/projection and tests.
+- Preserve backend units and true zero; do not clamp away a negative business signal without a warning/unknown contract.
+- No duplicate rewrite of shared numeric formatter ownership.
+
+### Read first
+
+- `ShoeTypeSalesStatsPage.tsx`, `analyticsFormatters.ts`, `analyticsTableState.ts`
+- `RQ191`, `RQ238`, `RQ257`, `RQ264`
+
+### Do
+
+1. Trace numerator/denominator and unit for every coverage/share field.
+2. Treat malformed/non-finite/impossible values as unavailable or degraded with visible warning.
+3. Keep measured zero valid and keep table/chart/detail/export projections consistent.
+
+### Tests
+
+- 0, positive valid, 100, >100, negative, null, NaN, Infinity, denominator zero and mixed-row fixtures.
+- Assert no invalid percentage is ranked or exported as valid.
+
+### Acceptance
+
+- Impossible or malformed percentages fail closed without silently becoming 100 or zero.
+- Valid zero/100 remain visible with correct units.
+- All Shoe Type surfaces agree on the same state.
+
+### Dependencies
+
+- `RQ191` is a broader waiting numeric-safety item; narrow any overlap to Shoe Type fields and do not duplicate shared formatter changes.
+
+---
+
+## RQ286 - Keep valid Color pre/post metrics independent of impact-percent availability
+
+Status: WAITING
+Priority: P1
+Type: frontend/analytics-detail/tests
+Feature family: color-pre-post-detail-parity
+Parallel-safe: no
+Owner: Analytics Frontend / Color Sales
+Commit suggestion: `fix(analytics): preserve color pre-post detail metrics`
+
+### Problem
+
+Confirmed display-gating issue: Color detail shows pre-nivelacija revenue, post-nivelacija revenue and quantities as `Nije dostupno` whenever `prePostNivelacijaRevenueImpactPct` is unavailable, even if the raw pre/post values themselves are valid.
+
+### Evidence
+
+- `ColorSalesStatsPage.tsx` gates all four raw pre/post detail values on `prePostNivelacijaRevenueImpactPct != null`.
+- Impact percentage and raw observations are separate metrics with different evidence requirements.
+
+Reproduction: return valid pre/post revenue and quantity values with null impact percentage, open the row detail and inspect the metrics. Risk: users lose observed sales/quantity evidence because one derived metric is missing.
+
+### Scope
+
+- Color detail metric availability and focused tests.
+- Display each raw metric when its own finite evidence is valid; keep impact percentage independently unavailable.
+- No change to pre/post formula ownership or denominator reconstruction.
+
+### Read first
+
+- `ColorSalesStatsPage.tsx`, shared formatters and detail tests
+- `RQ156`, `RQ180`, `RQ182`, `RQ256`, `RQ264`
+
+### Do
+
+1. Define per-field evidence rules for pre revenue, post revenue, pre quantity, post quantity and impact percent.
+2. Remove only the incorrect cross-field gate; preserve no-baseline/partial warnings.
+3. Keep table, detail, tooltip, print and export values aligned.
+
+### Tests
+
+- All raw values valid/zero/negative where valid, impact null, individual raw fields null, non-finite and partial response.
+- Assert available raw fields render and impact alone remains unavailable.
+
+### Acceptance
+
+- Missing impact percent no longer hides valid raw pre/post observations.
+- Missing raw evidence remains unavailable; no fake zero is introduced.
+- Detail and other output surfaces preserve the same field-level state.
+
+### Dependencies
+
+- `RQ180`/`RQ182` own backend pre/post aggregate/coverage semantics; this prompt owns Color presentation.
+
+---
+
+## RQ287 - Preserve Color review and do-not-trust status meaning
+
+Status: WAITING
+Priority: P1
+Type: frontend/recommendation-contract/tests
+Feature family: color-status-identity
+Parallel-safe: no
+Owner: Analytics Frontend / Color Sales
+Commit suggestion: `fix(analytics): preserve color recommendation status semantics`
+
+### Problem
+
+Potential decision-trust bug: Color page status mapping can replace backend `review`/`do_not_trust` with a generic user action such as `Smanji` or with `NedovoljnoPodataka` when recommendation permission is false. The user may receive the wrong action instead of a review/data-trust explanation.
+
+### Evidence
+
+- `ColorSalesStatsPage.tsx` maps backend recommendation status and separately gates on `recommendationAllowed`.
+- The page derives status labels, KPI counts, detail reason and action tone from the projected status, so a lossy map propagates across surfaces.
+
+Reproduction: provide review/do-not-trust recommendations with permission true and false and inspect row, KPI, detail, tooltip and action text. Risk: a blocked or untrusted signal looks like a valid reduce action.
+
+### Scope
+
+- Color status projection, labels, counts, detail/tooltip and actionability only.
+- Preserve backend status identity and separate it from whether an executable action is allowed.
+- No local replacement recommendation logic.
+
+### Read first
+
+- `ColorSalesStatsPage.tsx`, recommendation mappers and trust components
+- `RQ143`, `RQ151`, `RQ252`, `RQ259`
+
+### Do
+
+1. Enumerate backend statuses and current user labels for every path.
+2. Preserve review/do-not-trust/insufficient/unknown as distinct safe states.
+3. Gate action controls independently and explain blocked permission/data quality.
+
+### Tests
+
+- Known statuses with permission true/false/missing, unknown/malformed status and missing recommendation.
+- Assert row/KPI/detail/tooltip/action parity and no misleading `Smanji` promotion.
+
+### Acceptance
+
+- User-facing status communicates the backend meaning and actionability separately.
+- Review/do-not-trust never becomes an executable reduce action without contract evidence.
+- Unknown data remains visibly unknown.
+
+### Dependencies
+
+- `RQ259` owns shared recommendation gating; this prompt owns Color’s page-local mapping.
+
+---
+
+## RQ288 - Keep Color percentages and counts honest when evidence is missing
+
+Status: WAITING
+Priority: P2
+Type: frontend/numeric-state/tests
+Feature family: color-percent-count-fallbacks
+Parallel-safe: no
+Owner: Analytics Frontend / Color Sales
+Commit suggestion: `fix(analytics): preserve color metric availability`
+
+### Problem
+
+Potential numeric-state issue: Color coverage/share paths need an explicit upper-bound check, and toolbar/count fallbacks such as `brojBoja ?? 0` may turn unknown backend metadata into a measured zero.
+
+### Evidence
+
+- `ColorSalesStatsPage.tsx` derives coverage from article counts and renders percent values in table/chart/detail.
+- Color toolbar metadata uses nullable count fallbacks in the current page projection; inspect the exact `brojBoja` source and all consumers before changing it.
+
+Reproduction: omit count/coverage fields, return numerator greater than denominator or >100 coverage, and inspect toolbar, KPI, table, chart, detail and export. Risk: data-quality gaps look like zero colors or impossible but trusted percentages.
+
+### Scope
+
+- Color page-local coverage/count projection and tests.
+- Preserve true zero; render missing/invalid counts and percentages as unavailable/degraded.
+- No generic formatter rewrite or backend formula change without source proof.
+
+### Read first
+
+- `ColorSalesStatsPage.tsx`, `analyticsFormatters.ts`, `analyticsTableState.ts`
+- `RQ191`, `RQ238`, `RQ240`, `RQ257`, `RQ264`
+
+### Do
+
+1. Trace each count/percentage to its authoritative source and unit.
+2. Reject negative, non-finite and impossible percentage values; do not clamp away evidence without a warning.
+3. Replace only unjustified `?? 0` defaults with nullable/unknown presentation and align all output surfaces.
+
+### Tests
+
+- Missing, true zero, valid 100, >100, negative, null, NaN, Infinity and mixed rows.
+- Assert toolbar/KPI/table/chart/detail/export do not disagree or fabricate measured zero.
+
+### Acceptance
+
+- Unknown counts remain unavailable, not zero.
+- Invalid coverage fails closed and valid zero remains visible.
+- The page does not hide data-quality problems behind a plausible KPI.
+
+### Dependencies
+
+- Reuse `RQ264` shared finite/null projection; narrow any `RQ191` overlap to Color-specific fields.
+
+---
+
+## RQ289 - Use authoritative supplier ordering in Daily concentration
+
+Status: WAITING
+Priority: P1
+Type: frontend/analytics-calculation/tests
+Feature family: daily-supplier-order
+Parallel-safe: no
+Owner: Analytics Frontend / Daily Sales
+Commit suggestion: `fix(analytics): honor Daily supplier ordering metadata`
+
+### Problem
+
+Potential calculation bug: `buildSupplierConcentration` iterates `topSuppliers` in response order, while the response also exposes `topSuppliersOrder`. If the backend does not guarantee that both are aligned, supplier concentration, top-3/top-5 shares and the 80% threshold can be assigned to the wrong suppliers.
+
+### Evidence
+
+- `DailySalesStatsPage.tsx` builds concentration rows directly from `data.topSuppliers`.
+- The same response carries `topSuppliersOrder`, which is used for supplier headers but not clearly for concentration ordering.
+
+Reproduction: provide suppliers in order B,A with `topSuppliersOrder` A,B and different quantities/revenue; inspect chart labels, cumulative shares, top-3/top-5 and suppliers-to-80%. Risk: supplier prioritization and concentration conclusions are wrong despite correct raw totals.
+
+### Scope
+
+- Daily supplier concentration ordering and focused tests only.
+- Establish whether array order or `topSuppliersOrder` is authoritative; preserve unknown/missing suppliers safely.
+- No backend ranking formula change unless the client contract proves insufficient.
+
+### Read first
+
+- `DailySalesStatsPage.tsx`, `dailySalesStatsApi` response type and backend endpoint contract
+- `RQ201`, `RQ202`, `RQ233`, `RQ264`
+
+### Do
+
+1. Align the rows used for cumulative concentration with the authoritative order.
+2. Keep table headers, chart rows and calculated thresholds on the same sequence.
+3. Add warnings or unavailable state for duplicate/missing order metadata rather than guessing.
+
+### Tests
+
+- Already sorted, intentionally unsorted, missing order, duplicate names, zero/unknown totals and fewer than 3/5 suppliers.
+- Assert top-3/top-5 and 80% threshold use the same ordered rows as the visual labels.
+
+### Acceptance
+
+- Concentration metrics are associated with the correct supplier order.
+- Missing/ambiguous ordering does not silently produce a trusted ranking.
+- Existing date/chart order contracts remain green.
+
+### Dependencies
+
+- `RQ233` owns denominator scope; this prompt owns supplier sequence alignment.
+
+---
+
+## RQ290 - Preserve partial shift and whole-day aggregate semantics in Daily Sales
+
+Status: WAITING
+Priority: P1
+Type: frontend/analytics-contract/tests
+Feature family: daily-shift-partial-state
+Parallel-safe: no
+Owner: Analytics Frontend / Daily Sales
+Commit suggestion: `fix(analytics): distinguish Daily shift partial evidence`
+
+### Problem
+
+Potential state bug: when one shift summary is `null` and the other is measured zero, `hasMissingShiftSummary` may treat the day as complete. Conversely, whole-day aggregation may become `null` as soon as one row lacks a metric without exposing a clear partial signal.
+
+### Evidence
+
+- `DailySalesStatsPage.tsx` uses `hasMissingShiftSummary`, `summarizePeriod` and row-level shift totals to derive KPI/quality state.
+- Null and measured zero are distinct analytics facts, but the current branch behavior needs an explicit matrix.
+
+Reproduction: send first shift `null`/second `0`, the reverse, both null, both zero and mixed rows with one missing revenue/quantity metric. Risk: incomplete shift data can look healthy or an entire day can disappear without explaining what is missing.
+
+### Scope
+
+- Daily shift summary/aggregate state, visible warning and focused tests.
+- Preserve measured zero; represent incomplete rows as partial/unavailable, not as zero or silently discarded.
+- No backend aggregate formula rewrite unless the response contract is proven incomplete.
+
+### Read first
+
+- `DailySalesStatsPage.tsx`, daily DTO/type definitions and `DailySalesStatsPage.numericState.spec.ts`
+- `RQ154`, `RQ162`, `RQ208`, `RQ264`
+
+### Do
+
+1. Write a truth table for shift and day aggregate availability.
+2. Ensure `null` in one component produces a visible partial/unknown state while other valid components remain available.
+3. Keep KPI, table, chart, tooltip and export metadata consistent.
+
+### Tests
+
+- All combinations of two shifts null/zero/positive, missing revenue, missing quantity, mixed rows and non-finite values.
+- Assert no incomplete summary is labelled complete and no measured zero is replaced by N/A.
+
+### Acceptance
+
+- Partial shift/day evidence is visible and actionable.
+- Valid zero remains zero; unknown remains unavailable.
+- Aggregation never silently changes the meaning of the response.
+
+### Dependencies
+
+- `RQ154` owns Daily numeric-state baseline; this prompt owns shift/aggregate completeness semantics.
+
+---
+
+## RQ291 - Resolve Pre/Post quality contract drift and the missing detail-route fixture
+
+Status: WAITING
+Priority: P1
+Type: frontend/tests/contract
+Feature family: pre-post-test-contract
+Parallel-safe: no
+Owner: Analytics Frontend / Pre-Post Nivelacija
+Commit suggestion: `test(analytics): align pre-post quality contract and route fixture`
+
+### Problem
+
+Confirmed test/contract drift: `ProdajaPrePostNivelacijePage.spec.tsx` expects missing quality snapshot metadata to remain empty/unknown, while current rendering produces `N/A`. The same test reports that `MemoryRouter` has no `/analitika/nivelacije-pre-post/10` route during detail navigation. It is not yet clear whether `N/A` is an allowed presentation or a regression.
+
+### Evidence
+
+- The focused Pre/Post test fails on the missing quality snapshot expectation.
+- The test console reports a missing MemoryRouter detail route for `/analitika/nivelacije-pre-post/10`.
+- `ProdajaPrePostNivelacijePage.tsx` creates a detail snapshot and navigates to the parameterized route.
+
+Reproduction: run the focused test, inspect the missing-quality assertion and console output, then compare standalone route registration with the application router. Risk: a green test suite can encode the wrong unknown/N/A contract or hide a route smoke regression.
+
+### Scope
+
+- Pre/Post page focused test harness, missing-quality presentation contract and route fixture/route smoke only.
+- Decide explicitly whether empty, `N/A` or `Nije dostupno` is the canonical unknown copy.
+- No metric formula, backend quality DTO or router removal.
+
+### Read first
+
+- `ProdajaPrePostNivelacijePage.tsx`, `ProdajaPrePostNivelacijePage.spec.tsx`
+- application route registration and `ROUTING_AND_SMOKE_TEST_STANDARDS.md`
+- `RQ156`, `RQ180`, `RQ182`, `RQ243`, `RQ264`
+
+### Do
+
+1. Classify each failure as product contract, test expectation or harness route setup.
+2. Add the exact detail route to the test router when the application supports it, or change the test to exercise the real route contract.
+3. Keep missing quality metadata unknown and consistent across header, table, snapshot and detail.
+
+### Tests
+
+- Focused Pre/Post suite before/after the contract decision.
+- Direct route, detail click and back-navigation smoke tests.
+- Missing, partial, valid and non-finite quality metadata fixtures.
+
+### Acceptance
+
+- The focused test passes for the intentionally chosen unknown presentation.
+- The parameterized detail route is tested with the same path contract as production.
+- No missing quality evidence is presented as healthy.
+
+### Dependencies
+
+- If the product has no settled unknown-copy contract, record the authority gap instead of changing runtime solely to satisfy a stale assertion.
+
+---
+
+## RQ292 - Keep Pre/Post toolbar metadata unknown when backend fields are missing
+
+Status: WAITING
+Priority: P1
+Type: frontend/numeric-state/tests
+Feature family: pre-post-toolbar-unknowns
+Parallel-safe: no
+Owner: Analytics Frontend / Pre-Post Nivelacija
+Commit suggestion: `fix(analytics): preserve pre-post toolbar metadata availability`
+
+### Problem
+
+Confirmed false-default path: Pre/Post toolbar metadata uses `?? 0` for supplier count, article count and analysis window, and `metricsStatus ?? "OK"`. Missing backend metadata can therefore look like zero measured rows and a healthy metric status.
+
+### Evidence
+
+- `ProdajaPrePostNivelacijePage.tsx` builds `toolbarMetadata` with `vendorsCount ?? 0`, `articlesCount ?? 0`, `windowDays ?? 0` and `metricsStatus ?? "OK"`.
+- These values are copied into detail snapshots and export/print metadata.
+
+Reproduction: return a successful response with those fields omitted/null and inspect toolbar, detail snapshot and exported metadata. Risk: unknown data quality is presented as a complete empty/healthy analysis.
+
+### Scope
+
+- Pre/Post toolbar/detail/export metadata projections and tests.
+- Preserve true measured zero and use unavailable/unknown for missing fields.
+- No backend metric calculation change.
+
+### Read first
+
+- `ProdajaPrePostNivelacijePage.tsx`, `AnalyticsTableToolbar`, snapshot/print helpers
+- `RQ156`, `RQ182`, `RQ240`, `RQ258`, `RQ264`
+
+### Do
+
+1. Trace each metadata field’s unit and authoritative source.
+2. Remove only unjustified zero/OK defaults; keep empty strings only where the shared export contract requires them.
+3. Ensure trust/quality summary and toolbar values do not contradict one another.
+
+### Tests
+
+- Missing/null, measured zero, positive, non-finite and partial metadata for all four fields.
+- Assert toolbar, detail snapshot, print and export use the same availability state.
+
+### Acceptance
+
+- Missing counts/window/status never appear as measured zero or healthy `OK`.
+- Genuine zero and genuine OK remain visible when authoritative.
+- No fake recommendation/trust state is introduced.
+
+### Dependencies
+
+- `RQ264` owns shared finite/null output projection; this prompt owns Pre/Post source defaults.
+
+---
+
+## RQ293 - Prevent Pre/Post detail identity collisions for suppliers without IDs
+
+Status: WAITING
+Priority: P1
+Type: frontend/routing/identity/tests
+Feature family: pre-post-detail-identity
+Parallel-safe: no
+Owner: Analytics Frontend / Pre-Post Nivelacija
+Commit suggestion: `fix(analytics): preserve pre-post detail identity`
+
+### Problem
+
+Potential detail collision: `openVendorDetail` uses `String(vendorId ?? vendorName)` as snapshot record ID and URL segment. Two records without IDs and equal/blank names can overwrite snapshots or open the wrong detail.
+
+### Evidence
+
+- `ProdajaPrePostNivelacijePage.tsx` uses vendor ID or name for `recordId` and navigation.
+- The page also has a detail route/snapshot contract that assumes the identifier is unique.
+
+Reproduction: return two vendors with null IDs and equal names, then blank names; click each detail and inspect route, snapshot key and selected record. Risk: evidence is attributed to the wrong supplier or a previous snapshot is reused.
+
+### Scope
+
+- Pre/Post row identity, snapshot record ID and detail routing/tests.
+- Use an authoritative stable ID when available; otherwise preserve ambiguity safely without inventing a business identity.
+- No backend vendor identity change in the same prompt unless required as a documented handoff.
+
+### Read first
+
+- Pre/Post page, snapshot storage helpers and application route definition
+- `RQ282`, `RQ291`, `RQ264`
+
+### Do
+
+1. Trace record ID from row click through snapshot storage, URL encoding and detail load.
+2. Define null-ID duplicate/blank-name behavior and avoid Map/snapshot overwrite.
+3. Show unavailable/ambiguous detail rather than opening a guessed record.
+
+### Tests
+
+- Unique IDs, null IDs with same name, blank names, special characters and repeated clicks/back navigation.
+- Assert snapshot/route identity remains unique and selected detail matches the clicked row.
+
+### Acceptance
+
+- Every detail opens the selected record or clearly reports unavailable identity.
+- No duplicate name can overwrite another snapshot/detail.
+- URL encoding and direct route loading remain safe.
+
+### Dependencies
+
+- Coordinate with backend owner if no stable identity exists; do not manufacture a business ID in the frontend.
+
+---
+
+## RQ294 - Reload Pre-Nivelacija priorities after a global data-scope change
+
+Status: WAITING
+Priority: P1
+Type: frontend/API-contract/tests
+Feature family: pre-nivelacija-scope-event-propagation
+Parallel-safe: no
+Owner: Analytics Frontend / Pre-Nivelacija
+Commit suggestion: `fix(analytics): refresh pre-nivelacija on scope change`
+
+### Problem
+
+Confirmed page-level event gap with an ambient-scope caveat: Pre-Nivelacija does not own a data-scope state/listener, so a mounted page may not reload when the header changes `Prikaz`. `preNivelacijaApi.ts` uses `makeUrl`, which can inject the new persisted scope into future requests, but it cannot trigger a new request or update the visible rows by itself.
+
+### Evidence
+
+- `PreNivelacijaPriorityPage.tsx` has no `getDataScope` state or `trendplus:data-scope-changed` listener.
+- `preNivelacijaApi.ts` calls `makeUrl`, so scope is ambient on a new request even though the API interface does not expose it explicitly.
+- The page load effect depends on local filters, not a scope state.
+
+Reproduction: keep the page mounted, change header scope, and inspect request count, table scope/trust metadata and selected detail. Risk: priorities from the old dataset remain visible under a new global scope.
+
+### Scope
+
+- Pre-Nivelacija page scope state/event, API request lineage and focused tests.
+- Preserve backend recommendation/quality semantics and request cancellation.
+- No duplicate global `makeUrl` implementation.
+
+### Read first
+
+- `dataScope.ts`, `HeaderStatus.tsx`, `preNivelacijaApi.ts`, `PreNivelacijaPriorityPage.tsx`
+- `RQ05`, `RQ164`, `RQ199` and `RQ259` as adjacent scope guidance
+
+### Do
+
+1. Add the smallest canonical scope subscription or URL synchronization consistent with other Operations pages.
+2. Ensure reloads use one scope for list, detail snapshot and export metadata.
+3. Preserve stale-response guards and do not treat ambient injection as refresh behavior.
+
+### Tests
+
+- Initial all/existing/imported, header scope event, direct URL scope and invalid scope.
+- Assert exactly one new request generation and no old-scope row/detail wins.
+
+### Acceptance
+
+- Mounted Pre-Nivelacija reflects the new global scope without route remount.
+- Request, table, trust header, detail and export metadata agree on scope.
+- Existing API auto-injection remains compatible.
+
+### Dependencies
+
+- `RQ199` is historical scope work; this prompt owns the current page event/reload gap.
+- Do not use `RQ294` as a runtime dependency of itself; it is the current prompt identifier.
+
+---
+
+## RQ295 - Give Pre-Nivelacija direct-fetch failures safe non-empty copy
+
+Status: WAITING
+Priority: P1
+Type: frontend/error-state/tests
+Feature family: pre-nivelacija-error-copy
+Parallel-safe: no
+Owner: Analytics Frontend / Pre-Nivelacija
+Commit suggestion: `fix(analytics): improve pre-nivelacija fetch errors`
+
+### Problem
+
+Confirmed runtime copy defect: `preNivelacijaApi.ts` uses direct `fetch` and interpolates an empty response body into the error message. Offline/error runtime therefore shows `Neuspešno učitavanje pre-nivelacija prioriteta:` with no explanation.
+
+### Evidence
+
+- `preNivelacijaApi.ts` reads the response body and includes it directly in the thrown message.
+- Offline runtime showed a blank suffix when the backend was unavailable; the connection refusal itself is not the product bug.
+
+Reproduction: mock a non-OK response with an empty body, JSON problem body, HTML/proxy body and network rejection; inspect alert, console and retry behavior. Risk: the operator cannot tell whether to retry, check data quality or contact support.
+
+### Scope
+
+- `preNivelacijaApi.ts`, page error presentation and focused tests.
+- Reuse shared safe error/correlation mapping; suppress raw technical/HTML text.
+- No backend availability assumption or global error-handler rewrite.
+
+### Read first
+
+- `analyticsErrorMessages.ts`, `AnalyticsErrorState`/shared error components
+- `preNivelacijaApi.ts`, `PreNivelacijaPriorityPage.tsx` and tests
+- `RQ221`, `RQ253`, `RQ260`
+
+### Do
+
+1. Map blank, JSON, HTML, network and typed analytics errors to safe Serbian guidance with a non-empty fallback.
+2. Preserve retry and correlation support where available.
+3. Keep error distinct from successful empty/partial data and do not expose raw response bodies.
+
+### Tests
+
+- Empty body, safe JSON error, unsafe/raw HTML, network error, timeout, correlation ID and retry.
+- Assert no trailing colon-only message, raw backend code or HTML appears in visible copy.
+
+### Acceptance
+
+- Every direct-fetch failure has clear safe user guidance.
+- Retry remains available and error/empty states stay distinct.
+- Backend offline is reported as an environment/runtime condition, not misclassified as a product-data bug.
+
+### Dependencies
+
+- `RQ253` owns shared safe error messaging; this prompt closes the direct-fetch caller boundary.
+
+---
+
+## RQ296 - Show the shared filtered-out state when Pre-Nivelacija focus removes all rows
+
+Status: WAITING
+Priority: P1
+Type: frontend/UX/tests
+Feature family: pre-nivelacija-focus-empty-state
+Parallel-safe: no
+Owner: Analytics Frontend / Pre-Nivelacija
+Commit suggestion: `fix(analytics): align pre-nivelacija focus empty state`
+
+### Problem
+
+Confirmed UI-state mismatch: `showEmptyState` depends on `decisionRows.length`, while the table renders `filteredRows.length`. When a focus filter removes every row, the shared empty state is not shown and the user sees only an empty table row.
+
+### Evidence
+
+- `PreNivelacijaPriorityPage.tsx` derives the page empty-state condition from unfiltered decision rows.
+- The table branch checks `filteredRows.length` and renders a plain empty row.
+
+Reproduction: load several decision rows, choose a focus that matches none, and inspect the result area, guidance and action links. Risk: the page looks broken or like the API returned no data, hiding the fact that the local focus filter excluded everything.
+
+### Scope
+
+- Pre-Nivelacija filtered-empty rendering, variant/copy and focused tests.
+- Preserve successful empty, API error and insufficient-data distinctions.
+- No change to decision ranking or backend response.
+
+### Read first
+
+- `PreNivelacijaPriorityPage.tsx`, `AnalyticsEmptyState.tsx`, `analyticsResponseMeta.ts`
+- `RQ260`, existing Pre-Nivelacija page tests and table components
+
+### Do
+
+1. Base filtered-out presentation on the active filtered result set while retaining separate API empty/error logic.
+2. Show the shared filtered-out guidance and executable actions consistently for table/detail contexts.
+3. Keep counts and “visible rows” metadata truthful.
+
+### Tests
+
+- API empty, API rows with matching focus, API rows with zero matching focus, focus reset and loading/error transitions.
+- Assert shared empty-state variant/copy appears only for local filtering and not for an API error.
+
+### Acceptance
+
+- Zero rows after focus filtering produce a clear filtered-out state, not a bare table row.
+- API empty/error/partial semantics remain distinct.
+- Resetting focus restores the rows without stale empty state.
+
+### Dependencies
+
+- `RQ260` owns shared empty-state safety and action semantics.
+
+---
+
+## RQ297 - Gate Pre-Nivelacija actionability and score display separately from backend status
+
+Status: WAITING
+Priority: P1
+Type: frontend/recommendation-contract/tests
+Feature family: pre-nivelacija-recommendation-gate
+Parallel-safe: no
+Owner: Analytics Frontend / Pre-Nivelacija
+Commit suggestion: `fix(analytics): gate pre-nivelacija recommendation evidence`
+
+### Problem
+
+Potential decision-trust bug: when `recommendationAllowed` is not true, the table/detail still show backend status and `decisionScore`. The status may be informative, but an unqualified score and status can imply that a concrete action is approved.
+
+### Evidence
+
+- `PreNivelacijaPriorityPage.tsx` preserves status in decision rows and displays `selectedRow.decisionScore` in detail without the same gate used for confidence/reliability.
+- The page already has `recommendationAllowed` and action callout branches, so actionability and evidence display are separate concerns.
+
+Reproduction: return rows with `recommendationAllowed: false` and valid status/score, then inspect table badge, detail score, tooltip and callouts. Risk: users act on a score that backend explicitly marked non-actionable.
+
+### Scope
+
+- Pre-Nivelacija status/score/detail/action presentation and tests.
+- Preserve backend status as an informative state if safe, but suppress or label score/actionability when permission/evidence is absent.
+- No frontend recreation of recommendation logic.
+
+### Read first
+
+- `PreNivelacijaPriorityPage.tsx`, recommendation types/mappers and trust header
+- `RQ143`, `RQ151`, `RQ252`, `RQ259`, `RQ284`, `RQ287`
+
+### Do
+
+1. Define which fields remain informative when blocked and which require `recommendationAllowed === true`.
+2. Keep status identity distinct from executable action and decision-score validity.
+3. Use safe unavailable copy and no actionable CTA for disallowed/unknown evidence.
+
+### Tests
+
+- Allowed true/false/missing, status review/do-not-trust/insufficient/unknown, score null/zero/positive/non-finite.
+- Assert table/detail/tooltip/callout and export metadata agree on gating.
+
+### Acceptance
+
+- A blocked recommendation cannot look approved or executable.
+- Backend status meaning is preserved where shown and accompanied by the gate reason.
+- Decision score is shown only under its proven evidence contract.
+
+### Dependencies
+
+- `RQ259` owns shared mode/gate normalization; this prompt owns Pre-Nivelacija page projection.
+
+---
+
+## RQ298 - Align Pre-Nivelacija reliability styling and export units
+
+Status: WAITING
+Priority: P2
+Type: frontend/export/accessibility/tests
+Feature family: pre-nivelacija-reliability-export
+Parallel-safe: no
+Owner: Analytics Frontend / Pre-Nivelacija
+Commit suggestion: `fix(analytics): align pre-nivelacija reliability semantics`
+
+### Problem
+
+Confirmed presentation metadata mismatch: `reliabilitySignalDisplay` applies the CSS class `signal-na` both when reliability is unavailable and when a valid percentage is displayed. The export definition also marks `reliabilityPct` as `dataType: "number"` instead of `percent`.
+
+### Evidence
+
+- `PreNivelacijaPriorityPage.tsx` returns `signal-na` for both unavailable and available reliability.
+- The same page’s export columns define `reliabilityPct` with a numeric rather than percent data type.
+
+Reproduction: render a row with valid reliability and one without it, compare visual tone/accessibility, then export and inspect number formatting. Risk: valid evidence looks unavailable and exported values lose percent semantics.
+
+### Scope
+
+- Reliability display class/label/accessibility and export column metadata/tests.
+- Reuse shared percent formatter and unknown-state semantics.
+- No reliability calculation or backend unit change.
+
+### Read first
+
+- `PreNivelacijaPriorityPage.tsx`, export/table types, `analyticsFormatters.ts`
+- `RQ191`, `RQ257`, `RQ258`, `RQ264`
+
+### Do
+
+1. Use distinct semantic class/tone for valid versus unavailable reliability.
+2. Mark export as percent and verify display precision/unit.
+3. Preserve null, non-finite and true-zero behavior consistently.
+
+### Tests
+
+- Valid 0/positive/100, null, NaN/Infinity and malformed reliability.
+- Assert CSS class/accessible label and table/export `dataType`/format.
+
+### Acceptance
+
+- Valid reliability is visually distinguishable from unavailable evidence.
+- Export preserves percentage semantics and does not double-scale values.
+- Unknown values remain unavailable, not zero or green.
+
+### Dependencies
+
+- `RQ264` owns shared output formatting; this prompt owns Pre-Nivelacija column metadata and local styling.
+
+---
+
+## RQ299 - Preserve Pre-Nivelacija filters and focus in URL state
+
+Status: WAITING
+Priority: P2
+Type: frontend/routing/tests
+Feature family: pre-nivelacija-url-state
+Parallel-safe: no
+Owner: Analytics Frontend / Pre-Nivelacija
+Commit suggestion: `fix(analytics): persist pre-nivelacija filter state`
+
+### Problem
+
+Potential deep-link UX bug: Pre-Nivelacija period, supplier/category/store filters and focus state are local React state rather than URL state. Refresh, browser back/forward and shared links can therefore lose the user’s exact decision context.
+
+### Evidence
+
+- `PreNivelacijaPriorityPage.tsx` maintains filter/focus state with component state and does not serialize the active values into query parameters.
+- Detail snapshots/links need the same period, scope and filter provenance to be reproducible.
+
+Reproduction: set non-default filters and focus, refresh, navigate away/back, use browser back/forward and copy the URL to a new tab. Risk: a shared decision link opens a different analysis than the sender saw.
+
+### Scope
+
+- Pre-Nivelacija query-state parsing/serialization, filter controls, focus and detail links/tests.
+- Preserve validation, defaults, scope and current route compatibility.
+- No server-side persistence or broad router rewrite.
+
+### Read first
+
+- `PreNivelacijaPriorityPage.tsx`, application routes, `useSearchParams` patterns in Daily/Shoe/Color/Supplier pages
+- `RQ234`, `RQ268`, `RQ291`
+
+### Do
+
+1. Define supported query keys and safe parsing for period, supplier, category, store, scope and focus.
+2. Serialize only validated state and preserve it through detail/back navigation.
+3. Keep URL and visible controls synchronized without duplicate loads or filter resets.
+
+### Tests
+
+- Initial query load, refresh, back/forward, copied link, invalid/missing values, reset and detail navigation.
+- Assert request parameters, visible controls, table rows and snapshot metadata match the URL.
+
+### Acceptance
+
+- A valid shared URL reproduces the same Pre-Nivelacija context.
+- Invalid query values fail safely to documented defaults.
+- Browser navigation does not silently broaden scope or lose focus.
+
+### Dependencies
+
+- Follow existing route/query conventions; coordinate with `RQ268` if canonical supplier navigation is involved.
+
+---
+
+## RQ300 - Make Pre-Nivelacija numeric rendering and sorting robust to malformed payloads
+
+Status: WAITING
+Priority: P1
+Type: frontend/numeric-state/tests
+Feature family: pre-nivelacija-numeric-robustness
+Parallel-safe: no
+Owner: Analytics Frontend / Pre-Nivelacija
+Commit suggestion: `fix(analytics): harden pre-nivelacija numeric rendering`
+
+### Problem
+
+Potential crash/ranking bug: Pre-Nivelacija rendering calls `toFixed()` and sorting assumes valid numbers. Null, malformed, NaN or Infinity payloads can throw, produce unstable order or appear as trusted scores/percentages.
+
+### Evidence
+
+- `PreNivelacijaPriorityPage.tsx` calls `row.preNivelacijaScore.toFixed(1)` and compares numeric fields directly in sort/render paths.
+- The page receives backend decision, revenue delta, score and reliability values that may be nullable or malformed under fallback/partial responses.
+
+Reproduction: inject null, numeric string, empty string, NaN, Infinity, negative and missing values into score/delta/reliability/stock/day fields; render and sort the table and open detail. Risk: runtime crash or wrong priority order can hide the most important pre-nivelacija item.
+
+### Scope
+
+- Pre-Nivelacija page numeric normalization, sort comparators, table/detail/export and focused tests.
+- Preserve true zero and backend ownership; invalid evidence must be unavailable/degraded, never a fabricated zero.
+- No recommendation formula or ranking policy invention.
+
+### Read first
+
+- `PreNivelacijaPriorityPage.tsx`, `analyticsTableState.ts`, `analyticsFormatters.ts`
+- `RQ152`, `RQ191`, `RQ257`, `RQ264`
+
+### Do
+
+1. Enumerate each numeric field’s unit, valid range and missing behavior.
+2. Normalize at the presentation boundary, guard `toFixed`, and use deterministic unavailable-aware sort ordering.
+3. Keep table/detail/tooltip/export consistent and preserve backend status/recommendation ownership.
+
+### Tests
+
+- Valid positive/zero/negative where allowed, null, numeric string, malformed string, NaN, Infinity, missing row fields and mixed sorting.
+- Assert no render exception, no raw non-finite text and no invalid item outranks valid evidence merely because of a fallback.
+
+### Acceptance
+
+- Malformed/null numeric payloads render safely as unavailable/degraded and sort deterministically.
+- Measured zero remains zero.
+- No frontend fallback creates a trusted score, recommendation or priority.
+
+### Dependencies
+
+- `RQ152`/`RQ264` establish shared finite/null semantics; narrow any `RQ191` overlap to Pre-Nivelacija page-specific behavior.
 
