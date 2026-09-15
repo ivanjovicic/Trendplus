@@ -69,7 +69,7 @@ describe("analyticsTableState", () => {
     });
   });
 
-  it("builds detail snapshots with highlighted numeric fields and stringified booleans/nulls", () => {
+  it("builds detail snapshots with highlighted numeric fields and explicit unavailable nulls", () => {
     const snapshot = buildAnalyticsDetailSnapshot({
       table: "supplier-sales",
       recordId: "7",
@@ -84,7 +84,7 @@ describe("analyticsTableState", () => {
       expect.objectContaining({ key: "supplier", label: "Dobavljač", value: "Dobavljač A", highlight: false }),
       expect.objectContaining({ key: "revenue", label: "Prihod", value: "120.000 RSD", highlight: true }),
       expect.objectContaining({ key: "active", label: "Aktivan", value: "Da", highlight: false }),
-      expect.objectContaining({ key: "optional", label: "Napomena", value: "", highlight: false }),
+      expect.objectContaining({ key: "optional", label: "Napomena", value: "N/A", highlight: false }),
     ]);
     expect(snapshot.metadata).toEqual([
       expect.objectContaining({ key: "period", label: "Period", value: "30d", highlight: false }),
@@ -207,5 +207,86 @@ describe("analyticsTableState", () => {
     // Must not silently treat ratio 0.35 as percent units for a raw percent column value of 0.35
     expect(formatDetailFieldValue(0.35, "percent")).toBe(fmtPct(0.35, 2));
     expect(formatDetailFieldValue(0.35, "percent")).not.toBe(fmtPct(35, 2));
+  });
+
+  it("normalizes numeric states once for payload, detail and metadata", () => {
+    type EdgeRow = {
+      amount: number;
+      units: string;
+      zero: number;
+      negative: number;
+      malformed: string;
+      sharePct: number;
+      date: string;
+      refreshedAt: string;
+      label: string;
+    };
+
+    const edgeColumns: AnalyticsTableColumn<EdgeRow>[] = [
+      { key: "amount", header: "Iznos", dataType: "currency" },
+      { key: "units", header: "Kom", dataType: "number" },
+      { key: "zero", header: "Nula", dataType: "number" },
+      { key: "negative", header: "Minus", dataType: "number" },
+      { key: "malformed", header: "Neispravno", dataType: "number" },
+      { key: "sharePct", header: "Udeo", dataType: "percent" },
+      { key: "date", header: "Datum", dataType: "date" },
+      { key: "refreshedAt", header: "Vreme", dataType: "datetime" },
+      { key: "label", header: "Oznaka", dataType: "text" },
+    ];
+    const edgeRow: EdgeRow = {
+      amount: Number.NaN,
+      units: "12,5",
+      zero: 0,
+      negative: -3,
+      malformed: "nije broj",
+      sharePct: Number.POSITIVE_INFINITY,
+      date: "nije datum",
+      refreshedAt: "-Infinity",
+      label: "NaN",
+    };
+
+    const payload = resolveAnalyticsTablePayload({
+      tableKey: "finite-edge-fixture",
+      tableTitle: "Finite edge fixture",
+      columns: edgeColumns,
+      rows: [edgeRow],
+      filters: [{ key: "badFilter", label: "Filter", value: Number.NEGATIVE_INFINITY }],
+      metadata: [{ key: "badMeta", label: "Meta", value: "Infinity" }],
+    });
+
+    expect(payload.rows[0]).toEqual({
+      amount: null,
+      units: 12.5,
+      zero: 0,
+      negative: -3,
+      malformed: null,
+      sharePct: null,
+      date: "nije datum",
+      refreshedAt: null,
+      label: null,
+    });
+    expect(payload.filters[0].value).toBeNull();
+    expect(payload.metadata[0].value).toBeNull();
+
+    const detail = buildAnalyticsDetailSnapshot({
+      table: "finite-edge-fixture",
+      recordId: "1",
+      title: "Finite edge fixture",
+      columns: edgeColumns,
+      row: edgeRow,
+    });
+
+    expect(detail.fields.map((field) => field.value)).toEqual([
+      "N/A",
+      "12,50",
+      "0",
+      "-3",
+      "N/A",
+      "N/A",
+      "N/A",
+      "N/A",
+      "N/A",
+    ]);
+    expect(detail.fields.map((field) => field.value).join(" ")).not.toMatch(/NaN|Infinity/);
   });
 });

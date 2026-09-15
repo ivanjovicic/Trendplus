@@ -1,4 +1,5 @@
 export type AnalyticsScalar = string | number | boolean | null | undefined;
+export type AnalyticsDataType = "text" | "number" | "currency" | "percent" | "date" | "datetime";
 
 export interface AnalyticsNamedValue {
   key: string;
@@ -9,7 +10,7 @@ export interface AnalyticsNamedValue {
 export interface AnalyticsTableColumn<Row> {
   key: string;
   header: string;
-  dataType?: "text" | "number" | "currency" | "percent" | "date" | "datetime";
+  dataType?: AnalyticsDataType;
   formatHint?: string;
   getValue?: (row: Row) => AnalyticsScalar;
   detailLabel?: string;

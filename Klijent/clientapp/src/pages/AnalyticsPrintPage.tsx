@@ -1,6 +1,6 @@
 import React from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { getPrintPayload } from "../services/analyticsTableState";
+import { formatAnalyticsCellValue, getPrintPayload } from "../services/analyticsTableState";
 
 export default function AnalyticsPrintPage() {
   const params = useParams<{ table?: string }>();
@@ -97,7 +97,7 @@ export default function AnalyticsPrintPage() {
               <h2 style={{ margin: "0 0 8px", fontSize: 14 }}>Filteri</h2>
               {payload.filters.map((item) => (
                 <div key={item.key} style={{ fontSize: 12, marginBottom: 4 }}>
-                  <strong>{item.label}:</strong> {item.value ?? "-"}
+                  <strong>{item.label}:</strong> {formatAnalyticsCellValue(item.value, "text", "-")}
                 </div>
               ))}
             </div>
@@ -108,7 +108,7 @@ export default function AnalyticsPrintPage() {
               <h2 style={{ margin: "0 0 8px", fontSize: 14 }}>Metadata</h2>
               {payload.metadata.map((item) => (
                 <div key={item.key} style={{ fontSize: 12, marginBottom: 4 }}>
-                  <strong>{item.label}:</strong> {item.value ?? "-"}
+                  <strong>{item.label}:</strong> {formatAnalyticsCellValue(item.value, "text", "-")}
                 </div>
               ))}
             </div>
@@ -132,7 +132,7 @@ export default function AnalyticsPrintPage() {
           ) : payload.rows.map((row, index) => (
             <tr key={`${payload.tableKey}-${index}`}>
               {payload.columns.map((column) => (
-                <td key={column.key}>{row[column.key] == null ? "-" : String(row[column.key])}</td>
+                <td key={column.key}>{formatAnalyticsCellValue(row[column.key], column.dataType, "-")}</td>
               ))}
             </tr>
           ))}

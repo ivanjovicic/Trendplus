@@ -2,7 +2,7 @@
 
 Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ264
+Current READY prompt: none
 
 Owner completion 2026-09-14: `RQ249` was delivered on `main` with fail-closed Supplier Decision Hub detail and report-toolbar actionability gates; blocked, fallback, stale/partial and missing recommendation permission remain review-only.
 Owner promotion 2026-09-14: `RQ250` was explicitly promoted after completed `RQ249`, repaired the stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
@@ -32,6 +32,7 @@ Owner completion 2026-09-15: `RQ262` was delivered on `main` with one finite/nul
 Owner promotion 2026-09-15: `RQ263` was explicitly promoted after completed `RQ262`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
 Owner completion 2026-09-15: `RQ263` was delivered on `main` with explicit export/preview operation feedback, valid artifact and popup validation, safe failure messaging and retry-preserving incomplete states; the queue advanced to `RQ264`.
 Owner promotion 2026-09-15: `RQ264` was explicitly promoted after completed `RQ263`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
+Owner completion 2026-09-15: `RQ264` was delivered on `main` with one shared finite/null normalization and display projection for analytics payloads, detail snapshots and generic print; measured finite zero remains visible and non-finite numeric evidence fails closed. The RQ queue has no current READY prompt.
 
 ### Completion note
 
@@ -310,9 +311,9 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ259 | DONE | trust-header-mode-freshness | Make shared trust-header gating and freshness normalization mode-aware |
 | RQ260 | DONE | empty-state-safe-reason-action | Keep shared analytics empty state user-safe and actionable |
 | RQ261 | DONE | refresh-status-duration-message-truth | Preserve refresh duration unknown state and safe operational messaging |
-| RQ262 | READY | executive-kpi-value-tone-parity | Keep executive KPI availability and visual tone consistent |
+| RQ262 | DONE | executive-kpi-value-tone-parity | Keep executive KPI availability and visual tone consistent |
 | RQ263 | DONE | analytics-export-operation-truth | Keep export/preview status honest on failure or missing artifacts |
-| RQ264 | READY | analytics-shared-output-finite-parity | Preserve finite/null semantics across table, detail, print and export |
+| RQ264 | DONE | analytics-shared-output-finite-parity | Preserve finite/null semantics across table, detail, print and export |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -12412,7 +12413,7 @@ The shared analytics export toolbar stores every operation message in one `statu
 
 ## RQ264 - Preserve finite and null semantics across shared analytics outputs
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: frontend/contract/tests
 Feature family: analytics-shared-output-finite-parity
@@ -12476,5 +12477,25 @@ The shared analytics table-state formatter rejects non-finite numbers during par
 - `RQ145` remains the complete cross-surface parity owner; this prompt owns the concrete shared client serialization/formatting gap.
 - `RQ191`, `RQ257` and `RQ262` remain formatter/page-specific finite-state owners.
 - `RQ263` owns export operation status, not exported data values.
-- `RQ263` is complete; this prompt is the single current `READY` item for Analytics Frontend / Export. The historical `RQ169` dependency is already DONE and no longer blocks this prompt.
+- `RQ263` is complete; this prompt was the single current `READY` item for Analytics Frontend / Export. The historical `RQ169` dependency is already DONE and no longer blocks this prompt.
+
+### Completion note
+
+- Date: 2026-09-15
+- Status: DONE
+- Completion: Shared analytics payload resolution now converts finite numeric strings to typed finite numbers, preserves genuine zero, and converts non-finite/malformed numeric evidence to nullable unavailable state. Detail snapshots and generic print cells use the same safe display projection for currency, percent, number, date, datetime, boolean and unavailable values; filters and metadata are sanitized without changing their keys or provenance.
+- Changed files: `Klijent/clientapp/src/services/analyticsTableState.ts`, `Klijent/clientapp/src/pages/AnalyticsPrintPage.tsx`, `Klijent/clientapp/src/types/analyticsTable.ts`, `Klijent/clientapp/src/services/__tests__/analyticsTableState.spec.ts`, `Klijent/clientapp/src/pages/__tests__/AnalyticsPrintPage.spec.tsx`
+- Contract/runtime behavior changed: non-finite numeric evidence no longer appears as raw `NaN`/`Infinity` text or serialization-only null; machine payloads retain typed finite/null values and browser print matches shared column formatting.
+- Checks run: focused shared-state/print/toolbar/export tests 22 passed; focused ESLint passed; analytics guardrails passed; frontend build passed with existing chunk-size advisory; `git diff --check` passed; governance validators passed.
+- Checks not run: full frontend suite, backend build/tests and live provider/deployed browser proof were not run because scope was bounded to shared client serialization/formatting.
+- Run log: `.ai/runs/2026-09-15-RQ264-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending until final push verification
+- Main verification: pending until final push verification
+- Missed: no metric formulas, source queries, backend recommendation logic or server report layout changes were made; live provider/browser behavior remains unverified.
+- Follow-up: no later RQ prompt exists in the canonical queue; current RQ READY is explicitly `none` pending a new owner prompt/refill.
+- Residual risk: existing frontend bundle chunk-size advisory and live provider behavior remain unverified.
+- Next: owner refill or a newly defined RQ prompt after reassessment.
+- Prompt defect / scope repair: repaired the stale RQ264 dependency wording that referenced already-DONE `RQ169`, and synchronized the stale summary row for RQ262; no business-scope expansion was made.
 

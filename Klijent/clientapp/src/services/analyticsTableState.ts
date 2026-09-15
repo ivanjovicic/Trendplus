@@ -1,6 +1,7 @@
 import type {
   AnalyticsDetailField,
   AnalyticsDetailResponse,
+  AnalyticsDataType,
   AnalyticsNamedValue,
   AnalyticsScalar,
   AnalyticsTableColumn,
@@ -29,9 +30,25 @@ export type BrowserPreviewSnapshot = {
   ageMs: number;
 };
 
-function stringifyValue(value: AnalyticsScalar): string {
-  if (value == null) return "";
+const NON_FINITE_TOKEN = /^(?:[+-]?infinity|nan)$/i;
+
+function isNumericDataType(dataType?: AnalyticsDataType | string): boolean {
+  return dataType === "number" || dataType === "currency" || dataType === "percent";
+}
+
+function normalizeAnalyticsScalar(value: AnalyticsScalar, dataType?: AnalyticsDataType | string): AnalyticsScalar {
+  if (value == null) return null;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "string" && NON_FINITE_TOKEN.test(value.trim())) return null;
+  if (isNumericDataType(dataType)) return toFiniteNumber(value);
+  return value;
+}
+
+function stringifyValue(value: AnalyticsScalar, fallback = "N/A"): string {
+  if (value == null) return fallback;
   if (typeof value === "boolean") return value ? "Da" : "Ne";
+  if (typeof value === "number" && !Number.isFinite(value)) return fallback;
+  if (typeof value === "string" && NON_FINITE_TOKEN.test(value.trim())) return fallback;
   return String(value);
 }
 
@@ -57,36 +74,41 @@ function toFiniteNumber(value: AnalyticsScalar): number | null {
  */
 export function formatDetailFieldValue(
   value: AnalyticsScalar,
-  dataType: AnalyticsTableColumn<unknown>["dataType"],
+  dataType: AnalyticsDataType | undefined,
 ): string {
-  if (value == null) {
-    return "";
-  }
+  return formatAnalyticsCellValue(value, dataType);
+}
 
-  if (typeof value === "boolean") {
-    return value ? "Da" : "Ne";
-  }
+export function formatAnalyticsCellValue(
+  value: AnalyticsScalar,
+  dataType?: AnalyticsDataType | string,
+  fallback = "N/A",
+): string {
+  const normalized = normalizeAnalyticsScalar(value, dataType);
+  if (normalized == null) return fallback;
+  if (typeof normalized === "boolean") return normalized ? "Da" : "Ne";
 
   switch (dataType) {
     case "currency": {
-      const amount = toFiniteNumber(value);
-      return amount == null ? stringifyValue(value) : fmtRsd(amount, 0, stringifyValue(value));
+      return fmtRsd(normalized as number, 0, fallback);
     }
     case "percent": {
-      const pct = toFiniteNumber(value);
-      return pct == null ? stringifyValue(value) : fmtPct(pct, 2);
+      return fmtPct(normalized as number, 2, fallback);
     }
     case "number": {
-      const num = toFiniteNumber(value);
-      if (num == null) return stringifyValue(value);
-      return fmtNumber(num, Number.isInteger(num) ? 0 : 2);
+      const num = normalized as number;
+      return fmtNumber(num, Number.isInteger(num) ? 0 : 2, fallback);
     }
-    case "date":
-      return formatDate(typeof value === "string" ? value : String(value), stringifyValue(value));
-    case "datetime":
-      return formatDateTime(typeof value === "string" ? value : String(value), stringifyValue(value));
+    case "date": {
+      if (typeof normalized !== "string" || Number.isNaN(Date.parse(normalized))) return fallback;
+      return formatDate(normalized, fallback);
+    }
+    case "datetime": {
+      if (typeof normalized !== "string" || Number.isNaN(Date.parse(normalized))) return fallback;
+      return formatDateTime(normalized, fallback);
+    }
     default:
-      return stringifyValue(value);
+      return stringifyValue(normalized, fallback);
   }
 }
 
@@ -113,9 +135,10 @@ export function resolveAnalyticsTablePayload<Row>(input: {
   const rows = input.rows.map((row) => {
     const resolvedRow: Record<string, AnalyticsScalar> = {};
     for (const column of input.columns) {
-      resolvedRow[column.key] = column.getValue
+      const rawValue = column.getValue
         ? column.getValue(row)
         : (row as Record<string, AnalyticsScalar>)[column.key];
+      resolvedRow[column.key] = normalizeAnalyticsScalar(rawValue, column.dataType);
     }
 
     return resolvedRow;
@@ -126,8 +149,14 @@ export function resolveAnalyticsTablePayload<Row>(input: {
     tableTitle: input.tableTitle,
     columns,
     rows,
-    filters: input.filters ?? [],
-    metadata: input.metadata ?? [],
+    filters: (input.filters ?? []).map((item) => ({
+      ...item,
+      value: normalizeAnalyticsScalar(item.value),
+    })),
+    metadata: (input.metadata ?? []).map((item) => ({
+      ...item,
+      value: normalizeAnalyticsScalar(item.value),
+    })),
     methodologyMetricKeys: input.methodologyMetricKeys,
     locale: input.locale,
     documentType: input.documentType,
@@ -153,7 +182,7 @@ export function buildAnalyticsDetailSnapshot<Row>(input: {
     return {
       key: column.key,
       label: column.detailLabel ?? column.header,
-      value: formatDetailFieldValue(rawValue, column.dataType),
+      value: formatAnalyticsCellValue(rawValue, column.dataType),
       dataType: column.dataType,
       highlight: column.dataType === "currency" || column.dataType === "percent",
     };
@@ -168,7 +197,7 @@ export function buildAnalyticsDetailSnapshot<Row>(input: {
     metadata: (input.metadata ?? []).map((item) => ({
       key: item.key,
       label: item.label,
-      value: stringifyValue(item.value),
+      value: formatAnalyticsCellValue(item.value, "text"),
       dataType: "text",
       highlight: false,
     })),
