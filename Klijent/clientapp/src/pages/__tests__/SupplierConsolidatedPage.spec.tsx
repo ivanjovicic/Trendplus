@@ -14,6 +14,8 @@ vi.mock("../SupplierSalesStatsPage", () => ({
   default: function MockSupplierSalesStatsPage(props: any) {
     useEffect(() => {
       props.onTrustMetadataChange?.({
+        lastRefreshAt: "2026-07-01T07:55:00Z",
+        dataFreshnessStatus: "fresh",
         requestedDataset: "30d",
         effectiveDataset: "90d",
         effectivePeriodLabel: "Poslednjih 90 dana",
@@ -62,6 +64,7 @@ describe("SupplierConsolidatedPage", () => {
       expect(screen.getByText("mv_supplier_decision_score_cache_90d")).toBeInTheDocument();
       expect(screen.getByText(/Fallback aktiviran\./)).toBeInTheDocument();
       expect(screen.queryByText(/no_data_30d/i)).not.toBeInTheDocument();
+      expect(screen.getByText("Sveže")).toBeInTheDocument();
     });
   });
 
