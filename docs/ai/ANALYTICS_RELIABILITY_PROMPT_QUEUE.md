@@ -4,7 +4,7 @@ Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
-Owner promotion 2026-09-15: `RQ281` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ280` completion; it is the single current RQ prompt for embedded supplier freshness provenance and was claimed in this workspace.
+Owner promotion 2026-09-15: `RQ282` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ281` completion; it is the single current RQ prompt for supplier null-ID identity and was claimed in this workspace.
 
 Owner completion 2026-09-15: `RQ280` was delivered with separate previous-period failure/empty/available states, suppressed fabricated PoP growth on failed baseline, visible Serbian warnings and focused helper/page tests.
 
@@ -405,7 +405,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ279 | DONE | supplier-filter-fallback-visibility | Make retained supplier filter options visibly stale/degraded |
 | RQ280 | DONE | supplier-previous-period-warning | Distinguish missing previous-period data from a failed request |
 | RQ281 | DONE | supplier-embedded-freshness-provenance | Preserve valid refresh timestamps in embedded supplier trust metadata |
-| RQ282 | WAITING | supplier-null-id-identity | Prevent vendor-key collisions when supplier IDs are absent |
+| RQ282 | DONE | supplier-null-id-identity | Prevent vendor-key collisions when supplier IDs are absent |
 | RQ283 | WAITING | shoe-type-negative-margin-signal | Keep valid zero/negative margin comparison visible |
 | RQ284 | WAITING | shoe-type-status-identity | Preserve backend recommendation status when actionability is gated |
 | RQ285 | WAITING | shoe-type-percent-range | Fail closed on invalid coverage/share percentages |
@@ -13852,13 +13852,29 @@ Reproduction: render the page embedded with a successful non-partial response an
 
 ## RQ282 - Prevent Supplier null-ID vendor-key collisions
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/data-identity/tests
 Feature family: supplier-null-id-identity
 Parallel-safe: no
 Owner: Analytics Frontend / Supplier Analytics
 Commit suggestion: `fix(analytics): preserve supplier identity without IDs`
+
+### Completion note
+
+- Date: 2026-09-15
+- Status: DONE
+- Completion: Supplier Footwear now uses collision-safe `row:index` keys for null-ID vendors, resolves article insights without ambiguous name merges, and keeps detail snapshot record IDs distinct.
+- Changed files: `supplierVendorIdentity.ts`, `SupplierFootwearAnalyticsPage.tsx`, related specs
+- Checks run: focused supplier vendor identity specs 17 passed
+- Checks not run: full frontend suite, browser proof
+- Run log: `.ai/runs/2026-09-15-RQ282-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: branch/PR
+- Follow-up: `RQ283` is next WAITING for shoe-type negative margin signal
+- Residual risk: ambiguous null-ID article-to-vendor attribution remains unavailable by design when names collide
+- Prompt defect / scope repair: none
+- Follow-up hardening 2026-09-15: duplicate vendor IDs and blank names stay collision-safe; detail copy states unconfirmed identity. Run log: `.ai/runs/2026-09-15-RQ281-RQ282-hardening-evidence.md`
 
 ### Problem
 

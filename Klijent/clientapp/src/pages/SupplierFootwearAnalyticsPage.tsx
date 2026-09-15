@@ -31,6 +31,11 @@ import {
   SUPPLIER_PREVIOUS_PERIOD_FAILURE_NOTE,
 } from "../utils/supplierPreviousPeriodComparison";
 import { projectVendorSalesDataQuality } from "../utils/vendorSalesDataQuality";
+import {
+  buildSupplierVendorDetailRecordId,
+  buildSupplierVendorKeys,
+  resolveSupplierArticleVendorKey,
+} from "../utils/supplierVendorIdentity";
 import type { SupplierEmbeddedPageProps } from "./supplierSharedState";
 import "./SupplierFootwearAnalyticsPage.css";
 
@@ -44,6 +49,7 @@ type SuggestedRange = { fromDate: string; toDate: string; label: string };
 type DataQualityStatus = "good" | "warning" | "critical" | "insufficient_data" | null;
 
 type DecisionVendor = VendorSalesNivelacijaVendorStat & {
+  vendorRowKey: string;
   sharePct: number | null;
   trendPct: number | null;
   topFootwearType: string;
@@ -140,17 +146,18 @@ function buildStatusTooltip(data: StatusTooltipData): string {
     : " | Pouzdanost Nije dostupno | Poverenje Nije dostupno";
   return `${statusDisplayLabel(data.status)}: ${data.statusReason} | Udeo ${formatMetricDisplayValue({ value: data.sharePct, kind: "percent" })} | Trend ${fmtSignedPct(data.trendPct, 1)} | Tip ${data.topFootwearType} (${formatMetricDisplayValue({ value: data.topFootwearTypeSharePct, kind: "percent" })})${trust}`;
 }
-function normalizeName(value: string | null | undefined): string { return (value ?? "").trim().toUpperCase(); }
-function vendorKey(vendor: { vendorId: number | null; vendorName: string }): string { if (vendor.vendorId != null) return `id:${vendor.vendorId}`; return `name:${normalizeName(vendor.vendorName)}`; }
-
-function buildTypeInsights(articleStats: VendorSalesNivelacijaArticleStat[]) {
+function buildTypeInsights(
+  articleStats: VendorSalesNivelacijaArticleStat[],
+  vendorStats: VendorSalesNivelacijaVendorStat[],
+) {
+  const vendorKeys = buildSupplierVendorKeys(vendorStats);
   const vendorCategoryRevenue = new Map<string, Map<string, number>>();
   const vendorCategoryElasticities = new Map<string, Map<string, number[]>>();
   const globalCategoryRevenue = new Map<string, number>();
 
-  articleStats.forEach((row) => {
+  articleStats.forEach((row, articleIndex) => {
     if (!hasComparablePrePostEvidence(row)) return;
-    const vKey = row.vendorId != null ? `id:${row.vendorId}` : `name:${normalizeName(row.vendorName)}`;
+    const vKey = resolveSupplierArticleVendorKey(row, articleIndex, vendorStats, vendorKeys);
     const category = (row.category ?? "").trim() || "N/A";
     const revenue = normalizeMetricNumber(row.postRevenue);
     if (revenue == null) return;
@@ -403,7 +410,10 @@ export default function SupplierFootwearAnalyticsPage({
 
   useEffect(() => { void load(activeFilters); }, [activeFilters, load]);
 
-  const typeInsights = useMemo(() => buildTypeInsights(data?.articleStats ?? []), [data?.articleStats]);
+  const typeInsights = useMemo(
+    () => buildTypeInsights(data?.articleStats ?? [], data?.vendorStats ?? []),
+    [data?.articleStats, data?.vendorStats],
+  );
 
   const decisionRows = useMemo<DecisionVendor[]>(() => {
     const rows = data?.vendorStats ?? [];
@@ -411,12 +421,13 @@ export default function SupplierFootwearAnalyticsPage({
 
     const evidenceRows = rows.filter(rowHasComparableEvidence);
     const totalRevenue = evidenceRows.reduce((sum, item) => sum + (comparableMetric(item.postRevenue, true) ?? 0), 0);
-    return rows.flatMap((item) => {
+    const vendorRowKeys = buildSupplierVendorKeys(rows);
+    return rows.flatMap((item, rowIndex) => {
       const recommendation = item.recommendation;
       if (!recommendation) return [];
 
-      const key = vendorKey(item);
-      const typeInsight = typeInsights.byVendor.get(key);
+      const vendorRowKey = vendorRowKeys[rowIndex];
+      const typeInsight = typeInsights.byVendor.get(vendorRowKey);
       const hasComparableEvidence = rowHasComparableEvidence(item);
       const postRevenue = comparableMetric(item.postRevenue, hasComparableEvidence);
       const sharePct = postRevenue != null && totalRevenue > 0 ? (postRevenue / totalRevenue) * 100 : null;
@@ -429,6 +440,7 @@ export default function SupplierFootwearAnalyticsPage({
 
       return [{
         ...item,
+        vendorRowKey,
         sharePct,
         trendPct,
         topFootwearType,
@@ -490,7 +502,7 @@ export default function SupplierFootwearAnalyticsPage({
     doNotTrust: sortedRows.filter((row) => row.status === "do_not_trust").length,
     insufficientData: sortedRows.filter((row) => row.status === "insufficient_data").length,
   }), [sortedRows]);
-  const selectedRow = useMemo(() => (!expandedVendorKey ? null : sortedRows.find((row) => vendorKey(row) === expandedVendorKey) ?? null), [expandedVendorKey, sortedRows]);
+  const selectedRow = useMemo(() => (!expandedVendorKey ? null : sortedRows.find((row) => row.vendorRowKey === expandedVendorKey) ?? null), [expandedVendorKey, sortedRows]);
   const dataMeta = data?.meta ?? null;
   const dataMetaMessage = getAnalyticsMetaMessage(dataMeta);
   const showMetaWarning = !loading && !error && isAnalyticsMetaWarning(dataMeta);
@@ -683,7 +695,7 @@ export default function SupplierFootwearAnalyticsPage({
   const openVendorDetail = (row: DecisionVendor) => {
     saveAnalyticsDetailSnapshot(buildAnalyticsDetailSnapshot({
       table: "dobavljaci-tipovi-obuce",
-      recordId: String(row.vendorId ?? row.vendorName),
+      recordId: buildSupplierVendorDetailRecordId(row, row.vendorRowKey),
       title: row.vendorName,
       subtitle: "Podrska odluci po dobavljacu i tipu obuce",
       columns: decisionColumns,
@@ -838,7 +850,7 @@ export default function SupplierFootwearAnalyticsPage({
                       <tr><td colSpan={7} className="sf-decision-empty-row">Nema podataka za izabrane filtere.</td></tr>
                     ) : (
                       sortedRows.map((row) => {
-                        const rowId = vendorKey(row); const expanded = expandedVendorKey === rowId;
+                        const rowId = row.vendorRowKey; const expanded = expandedVendorKey === rowId;
                         return (
                           <tr key={rowId} className={expanded ? "expanded-row" : ""}>
                             <td>{row.vendorName || "Nepoznat dobavljač"}</td>
@@ -873,6 +885,9 @@ export default function SupplierFootwearAnalyticsPage({
                 <article className="analytics-kpi-card analytics-kpi-card--tone-success"><span>Pouzdanost signala</span><strong>{formatMetricDisplayValue({ value: selectedRow.recommendationAllowed ? selectedRow.reliabilityPct : null, kind: "percent" })}</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-value"><span>Poverenje preporuke</span><strong>{formatMetricDisplayValue({ value: selectedRow.recommendationAllowed ? selectedRow.confidencePct : null, kind: "percent" })}</strong></article>
               </div>
+              {selectedRow.vendorId == null || !selectedRow.vendorRowKey.startsWith("id:") ? (
+                <p className="sf-mini-note" role="status">Identitet dobavljača nije potvrđen. Detalj važi samo za izabrani red, bez spajanja po nazivu.</p>
+              ) : null}
               <p className="sf-decision-reason"><strong>Razlog preporuke:</strong> {selectedRow.statusReason}</p>
             </section>
           ) : null}
