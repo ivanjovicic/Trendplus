@@ -1175,11 +1175,13 @@ export async function getPilotIntakeDurableReport(paramsInput: {
 export async function getInventoryBalance(
   useCached = true,
   storeId?: number | null,
-  supplierId?: number | null
+  supplierId?: number | null,
+  dataScope?: string | null,
 ): Promise<import("../types/analytics").InventoryBalance> {
   const params = new URLSearchParams();
   if (storeId != null) params.append("storeId", String(storeId));
   if (supplierId != null) params.append("supplierId", String(supplierId));
+  if (dataScope != null && dataScope !== "") params.append("dataScope", normalizeDataScope(dataScope));
 
   return fetchJson(
     useCached ? "/api/analytics/cached/inventory/balance" : "/api/analytics/inventory/balance",
@@ -1198,6 +1200,7 @@ export async function getInventoryList(
     sortBy?: string | null;
     fromDate?: string | null;
     toDate?: string | null;
+    dataScope?: string | null;
   }
 ): Promise<import("../types/analytics").InventoryPagedResponse> {
   const pageNumber = options?.pageNumber ?? 1;
@@ -1209,6 +1212,7 @@ export async function getInventoryList(
   if (options?.sortBy) params.append("sortBy", options.sortBy);
   if (options?.fromDate) params.append("fromDate", options.fromDate);
   if (options?.toDate) params.append("toDate", options.toDate);
+  if (options?.dataScope != null && options.dataScope !== "") params.append("dataScope", normalizeDataScope(options.dataScope));
 
   return fetchJson(
     "/api/analytics/cached/inventory/list",
@@ -1222,12 +1226,14 @@ export async function getInventoryInsights(options?: {
   storeId?: number | null;
   supplierId?: number | null;
   sortBy?: string | null;
+  dataScope?: string | null;
 }): Promise<InventoryInsights> {
   const params = new URLSearchParams();
   if (options?.search) params.append("search", options.search);
   if (options?.storeId != null) params.append("storeId", String(options.storeId));
   if (options?.supplierId != null) params.append("supplierId", String(options.supplierId));
   if (options?.sortBy) params.append("sortBy", options.sortBy);
+  if (options?.dataScope != null && options.dataScope !== "") params.append("dataScope", normalizeDataScope(options.dataScope));
 
   return fetchJsonWithCachedFallback(
     "/api/analytics/cached/inventory/insights",
@@ -1244,10 +1250,12 @@ export async function getInventoryItemDetail(
     supplierId?: number | null;
     fromDate?: string | null;
     toDate?: string | null;
+    dataScope?: string | null;
   }
 ): Promise<InventoryItemDetail> {
   const params = new URLSearchParams();
   appendFilterParams(params, options?.fromDate ?? undefined, options?.toDate ?? undefined, options?.storeId, options?.supplierId);
+  if (options?.dataScope != null && options.dataScope !== "") params.append("dataScope", normalizeDataScope(options.dataScope));
 
   return fetchJson(
     `/api/analytics/inventory/${id}/detail`,
@@ -1343,6 +1351,7 @@ export async function getInventoryStoreComparison(options?: {
   compareStoreIds?: number[];
   supplierId?: number | null;
   search?: string;
+  dataScope?: string | null;
 }): Promise<InventoryStoreComparison> {
   const params = new URLSearchParams();
   for (const storeId of options?.compareStoreIds ?? []) {
@@ -1350,6 +1359,7 @@ export async function getInventoryStoreComparison(options?: {
   }
   if (options?.supplierId != null) params.append("supplierId", String(options.supplierId));
   if (options?.search) params.append("search", options.search);
+  if (options?.dataScope != null && options.dataScope !== "") params.append("dataScope", normalizeDataScope(options.dataScope));
 
   return fetchJsonWithCachedFallback(
     "/api/analytics/cached/inventory/store-comparison",
@@ -1363,11 +1373,13 @@ export async function getInventoryActionSuggestions(options?: {
   storeId?: number | null;
   supplierId?: number | null;
   search?: string;
+  dataScope?: string | null;
 }): Promise<InventoryActionWorkflow> {
   const params = new URLSearchParams();
   if (options?.storeId != null) params.append("storeId", String(options.storeId));
   if (options?.supplierId != null) params.append("supplierId", String(options.supplierId));
   if (options?.search) params.append("search", options.search);
+  if (options?.dataScope != null && options.dataScope !== "") params.append("dataScope", normalizeDataScope(options.dataScope));
 
   return fetchJson(
     "/api/analytics/inventory/action-suggestions",

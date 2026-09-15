@@ -25,7 +25,7 @@ public sealed record InventoryItemDetailDto(
     int? Kolicina,
     int? MinimalnaKolicina,
     decimal? NabavnaCena,
-    decimal EstimatedValue,
+    decimal? EstimatedValue,
     int? StoreId,
     string? StoreName,
     int? SupplierId,

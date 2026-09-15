@@ -508,8 +508,8 @@ export default function InventoryPage() {
     };
 
     const primaryTasks = [
-      { key: "balance" as const, promise: getInventoryBalance(true, selectedStoreId, selectedSupplierId) },
-      { key: "list" as const, promise: getInventoryList({ pageNumber, pageSize, search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy, ...inventorySignalWindow }) },
+      { key: "balance" as const, promise: getInventoryBalance(true, selectedStoreId, selectedSupplierId, inventoryDataScope) },
+      { key: "list" as const, promise: getInventoryList({ pageNumber, pageSize, search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy, dataScope: inventoryDataScope, ...inventorySignalWindow }) },
     ];
 
     void Promise.allSettled(primaryTasks.map((task) => task.promise))
@@ -545,7 +545,7 @@ export default function InventoryPage() {
         setLoading(false);
       });
 
-    void getInventoryInsights({ search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy })
+    void getInventoryInsights({ search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy, dataScope: inventoryDataScope })
       .then((result) => {
         if (isCurrentRequest()) setInsights(result);
       })
@@ -561,8 +561,8 @@ export default function InventoryPage() {
 
     if (shouldRefreshOperations) {
       const operationTasks = [
-        { key: "storeComparison" as const, promise: getInventoryStoreComparison({ compareStoreIds, supplierId: selectedSupplierId, search: trimmedSearch || undefined }) },
-        { key: "actionWorkflow" as const, promise: getInventoryActionSuggestions({ storeId: selectedStoreId, supplierId: selectedSupplierId, search: trimmedSearch || undefined }) },
+        { key: "storeComparison" as const, promise: getInventoryStoreComparison({ compareStoreIds, supplierId: selectedSupplierId, search: trimmedSearch || undefined, dataScope: inventoryDataScope }) },
+        { key: "actionWorkflow" as const, promise: getInventoryActionSuggestions({ storeId: selectedStoreId, supplierId: selectedSupplierId, search: trimmedSearch || undefined, dataScope: inventoryDataScope }) },
       ];
 
       void Promise.allSettled(operationTasks.map((task) => task.promise))
@@ -659,6 +659,7 @@ export default function InventoryPage() {
     void getInventoryItemDetail(detailRow.id, {
       storeId: selectedStoreId ?? detailRow.idObjekat,
       supplierId: selectedSupplierId ?? detailRow.idDobavljac,
+      dataScope: inventoryDataScope,
       ...inventorySignalWindow,
     })
       .then((nextDetail) => {
@@ -674,7 +675,7 @@ export default function InventoryPage() {
         if (!cancelled) setDetailLoading(false);
       });
     return () => { cancelled = true; };
-  }, [detailRow, inventorySignalWindow, selectedStoreId, selectedSupplierId]);
+  }, [detailRow, inventoryDataScope, inventorySignalWindow, selectedStoreId, selectedSupplierId]);
 
   useEffect(() => {
     if (!detailRow || detailTab !== "sizeCurve") {
@@ -919,8 +920,8 @@ export default function InventoryPage() {
   const refreshSchedules = async () => setSchedules(await getInventoryReportSchedules());
   const refreshOperations = async () => {
     const [nextComparison, nextWorkflow] = await Promise.all([
-      getInventoryStoreComparison({ compareStoreIds, supplierId: selectedSupplierId, search: trimmedSearch || undefined }),
-      getInventoryActionSuggestions({ storeId: selectedStoreId, supplierId: selectedSupplierId, search: trimmedSearch || undefined }),
+      getInventoryStoreComparison({ compareStoreIds, supplierId: selectedSupplierId, search: trimmedSearch || undefined, dataScope: inventoryDataScope }),
+      getInventoryActionSuggestions({ storeId: selectedStoreId, supplierId: selectedSupplierId, search: trimmedSearch || undefined, dataScope: inventoryDataScope }),
     ]);
     setStoreComparison(nextComparison);
     setActionWorkflow(nextWorkflow);
@@ -932,12 +933,12 @@ export default function InventoryPage() {
       setExportBusy(true);
       setExportStatus(preview ? "Pripremam print preview na serveru..." : "Server priprema dokument za izvoz...");
       if (preview) {
-        const previewResult = await previewInventoryReport({ orientation: printOrientation, includeFiltersAndMetadata: true, search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy, dataScope: getDataScope() });
+        const previewResult = await previewInventoryReport({ orientation: printOrientation, includeFiltersAndMetadata: true, search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy, dataScope: inventoryDataScope });
         if (previewResult.printUrl) window.open(resolveApiUrl(previewResult.printUrl), "_blank", "noopener");
         setExportStatus("Print preview je otvoren u novom tabu.");
         return;
       }
-      const result = await exportInventoryReport({ format, orientation: printOrientation, includeFiltersAndMetadata: true, forceAsync: totalCount > 5000, search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy, dataScope: getDataScope() });
+      const result = await exportInventoryReport({ format, orientation: printOrientation, includeFiltersAndMetadata: true, forceAsync: totalCount > 5000, search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy, dataScope: inventoryDataScope });
       if (result.isAsync) {
         setExportStatus("Dokument je u redu cekanja. Cekam da eksport bude spreman...");
         const completed = await waitForExport(result.documentId);

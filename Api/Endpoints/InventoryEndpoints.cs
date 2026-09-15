@@ -31,6 +31,7 @@ public static class InventoryEndpoints
             ILoggerFactory loggerFactory,
             int? storeId,
             int? supplierId,
+            string? dataScope,
             CancellationToken ct) =>
         {
             var logger = loggerFactory.CreateLogger("InventoryEndpoints");
@@ -38,7 +39,7 @@ public static class InventoryEndpoints
 
             try
             {
-                var query = ApplyInventoryFilters(db.Artikli.AsNoTracking(), storeId, supplierId, null);
+                var query = ApplyInventoryFilters(db.Artikli.AsNoTracking(), storeId, supplierId, null, dataScope: dataScope);
 
                 var totalSku = await query.CountAsync(ct);
                 var totalOnHand = await query.SumAsync(
@@ -229,6 +230,7 @@ public static class InventoryEndpoints
             int? supplierId = null,
             DateTime? fromDate = null,
             DateTime? toDate = null,
+            string? dataScope = null,
             CancellationToken ct = default) =>
         {
             if (!TryResolveInventorySignalWindow(fromDate, toDate, out var signalWindow, out var invalidWindow))
@@ -236,11 +238,13 @@ public static class InventoryEndpoints
                 return invalidWindow!;
             }
 
-            var article = await db.Artikli
-                .AsNoTracking()
-                .Where(a => a.Id == id
-                    && (!storeId.HasValue || a.IDObjekat == storeId.Value)
-                    && (!supplierId.HasValue || a.IDDobavljac == supplierId.Value))
+            var article = await ApplyInventoryFilters(
+                    db.Artikli.AsNoTracking(),
+                    storeId,
+                    supplierId,
+                    null,
+                    dataScope: dataScope)
+                .Where(a => a.Id == id)
                 .Select(a => new InventoryArticleProjection(
                     a.Id,
                     a.PLU,
@@ -358,6 +362,7 @@ public static class InventoryEndpoints
                     article.Minimum ?? 0,
                     article.UnitCost ?? 0m,
                     estimatedValue ?? 0m,
+                    article.UnitCost is null or <= 0m,
                     article.StoreId,
                     ResolveLookup(storeNameMap, article.StoreId),
                     article.SupplierId,

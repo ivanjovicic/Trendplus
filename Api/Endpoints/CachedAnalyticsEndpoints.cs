@@ -606,11 +606,13 @@ public static class CachedAnalyticsEndpoints
             ILoggerFactory loggerFactory,
             int? storeId = null,
             int? supplierId = null,
+            string? dataScope = null,
             CancellationToken ct = default) =>
         {
             var logger = loggerFactory.CreateLogger("CachedAnalyticsEndpoints");
             var correlationId = ResolveCorrelationId(httpContext);
-            var cacheKey = $"analytics:inventory:balance:{storeId}:{supplierId}";
+            var normalizedDataScope = NormalizeDataScope(dataScope);
+            var cacheKey = $"analytics:inventory:balance:{storeId}:{supplierId}:{normalizedDataScope}";
             try
             {
                 var result = await cache.GetOrSetAsync(
@@ -623,6 +625,10 @@ public static class CachedAnalyticsEndpoints
                             query = query.Where(a => a.IDObjekat == storeId.Value);
                         if (supplierId.HasValue)
                             query = query.Where(a => a.IDDobavljac == supplierId.Value);
+                        if (normalizedDataScope == "imported")
+                            query = query.Where(a => a.DataOrigin == "access");
+                        else if (normalizedDataScope == "existing")
+                            query = query.Where(a => a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "");
 
                         var totalSku = await query.CountAsync(ct);
                         var totalOnHand = await query.SumAsync(a => (int?)((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0), ct) ?? 0;
@@ -730,6 +736,10 @@ public static class CachedAnalyticsEndpoints
                             query = query.Where(a => a.IDDobavljac == supplierId.Value);
                         if (!string.IsNullOrWhiteSpace(search))
                             query = query.Where(a => (a.Naziv ?? "").Contains(search) || (a.PLU ?? "").Contains(search));
+                        if (normalizedDataScope == "imported")
+                            query = query.Where(a => a.DataOrigin == "access");
+                        else if (normalizedDataScope == "existing")
+                            query = query.Where(a => a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "");
 
                         query = sortBy?.ToLowerInvariant() switch
                         {
