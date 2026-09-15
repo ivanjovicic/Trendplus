@@ -763,6 +763,7 @@ export default function InventoryPage() {
     const sourceKeys = Array.from(new Set([...signalKeys, ...workflowKeys]));
 
     if (sourceKeys.length === 0) {
+      setQueuedSuggestionKeys([]);
       return () => {
         cancelled = true;
       };
