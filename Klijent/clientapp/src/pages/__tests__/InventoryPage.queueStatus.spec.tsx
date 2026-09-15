@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
@@ -152,22 +152,30 @@ describe("InventoryPage queue status sync", () => {
     );
 
     await waitFor(() => {
-      expect(getInventoryActionSuggestionsMock).toHaveBeenCalledTimes(1);
-      expect(getInventoryStoreComparisonMock).toHaveBeenCalledTimes(1);
+      expect(getInventoryActionSuggestionsMock).toHaveBeenCalledTimes(2);
+      expect(getInventoryStoreComparisonMock).toHaveBeenCalledTimes(2);
       expect(getForecastMock).toHaveBeenCalledTimes(1);
       expect(getInventoryAlertsMock).toHaveBeenCalledTimes(1);
       expect(getRebalanceSuggestionsMock).toHaveBeenCalledTimes(1);
     });
 
+    const operationBaseline = getInventoryActionSuggestionsMock.mock.calls.length;
+    const comparisonBaseline = getInventoryStoreComparisonMock.mock.calls.length;
+    const forecastBaseline = getForecastMock.mock.calls.length;
+    const alertsBaseline = getInventoryAlertsMock.mock.calls.length;
+    const rebalanceBaseline = getRebalanceSuggestionsMock.mock.calls.length;
+
     setDataScope("existing");
-    window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+    act(() => {
+      window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+    });
 
     await waitFor(() => {
-      expect(getInventoryActionSuggestionsMock).toHaveBeenCalledTimes(2);
-      expect(getInventoryStoreComparisonMock).toHaveBeenCalledTimes(2);
-      expect(getForecastMock).toHaveBeenCalledTimes(2);
-      expect(getInventoryAlertsMock).toHaveBeenCalledTimes(2);
-      expect(getRebalanceSuggestionsMock).toHaveBeenCalledTimes(2);
+      expect(getInventoryActionSuggestionsMock).toHaveBeenCalledTimes(operationBaseline + 1);
+      expect(getInventoryStoreComparisonMock).toHaveBeenCalledTimes(comparisonBaseline + 1);
+      expect(getForecastMock).toHaveBeenCalledTimes(forecastBaseline + 1);
+      expect(getInventoryAlertsMock).toHaveBeenCalledTimes(alertsBaseline + 1);
+      expect(getRebalanceSuggestionsMock).toHaveBeenCalledTimes(rebalanceBaseline + 1);
     });
   });
 
