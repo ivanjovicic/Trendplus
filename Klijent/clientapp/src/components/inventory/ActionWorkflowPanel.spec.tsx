@@ -26,6 +26,7 @@ describe("ActionWorkflowPanel cost trust", () => {
               toStoreName: "Prodavnica 1",
               suggestedQty: 2,
               estimatedValue: null,
+              estimatedValueBasis: "suggested_action_cost",
               costMissing: true,
               daysSinceMovement: 0,
               note: null,
@@ -39,7 +40,7 @@ describe("ActionWorkflowPanel cost trust", () => {
       />,
     );
 
-    expect(screen.getByText("Vrednost zalihe: Nije dostupno (nedostaje nabavna cena)")).toBeInTheDocument();
+    expect(screen.getByText("Procena troška predloga: Nije dostupno (nedostaje nabavna cena)")).toBeInTheDocument();
     expect(screen.getByText("Qty: 2")).toBeInTheDocument();
     expect(screen.getByText("Predlozena dopuna")).toBeInTheDocument();
   });
@@ -68,6 +69,7 @@ describe("ActionWorkflowPanel cost trust", () => {
               suggestedQty: 2,
               forecastDemandQty: 2,
               estimatedValue: 1000,
+              estimatedValueBasis: "suggested_action_cost",
               costMissing: false,
               daysSinceMovement: 0,
               note: null,
@@ -82,6 +84,7 @@ describe("ActionWorkflowPanel cost trust", () => {
     );
 
     expect(screen.getByText("Forecast demand qty: 2")).toBeInTheDocument();
+    expect(screen.getByText(/Procena troška predloga:.*1\.000.*RSD/)).toBeInTheDocument();
     expect(screen.queryByText("Qty: 2")).not.toBeInTheDocument();
   });
 

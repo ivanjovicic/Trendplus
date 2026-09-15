@@ -1569,6 +1569,7 @@ export interface InventoryActionSuggestion {
   suggestedQty: number;
   forecastDemandQty?: number | null;
   estimatedValue: number | null;
+  estimatedValueBasis?: "current_stock_value" | "suggested_action_cost" | null;
   costMissing?: boolean | null;
   daysSinceMovement: number | null;
   note?: string | null;

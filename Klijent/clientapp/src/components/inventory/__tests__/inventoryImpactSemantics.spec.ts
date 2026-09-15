@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildInventoryWorkflowCentralQueueMetadata,
   INVENTORY_EXPOSURE_BASIS,
+  INVENTORY_SUGGESTED_ACTION_COST_BASIS,
   resolveInventoryExposureRsd,
   resolveInventoryExposureRsdFromRow,
 } from "../inventoryUtils";
@@ -82,7 +83,33 @@ describe("inventory impact semantics", () => {
     expect(metadata).not.toHaveProperty("expectedImpactRsd");
   });
 
-  it("omits workflow exposure when cost evidence is missing", () => {
+  it("keeps forecast action cost separate from current-stock exposure", () => {
+    const metadata = buildInventoryWorkflowCentralQueueMetadata({
+      suggestionKey: "forecast-1",
+      actionType: "dopuna",
+      priority: "high",
+      label: "Predlozena dopuna",
+      reason: "Forecast signal",
+      status: "pending",
+      artikalId: 501,
+      naziv: "Artikal A",
+      fromStoreName: null,
+      toStoreName: "Prodavnica 1",
+      suggestedQty: 2,
+      forecastDemandQty: 2,
+      estimatedValue: 1000,
+      estimatedValueBasis: "suggested_action_cost",
+      costMissing: false,
+      daysSinceMovement: 0,
+    });
+
+    expect(metadata.suggestedActionCostRsd).toBe(1000);
+    expect(metadata.suggestedActionCostBasis).toBe(INVENTORY_SUGGESTED_ACTION_COST_BASIS);
+    expect(metadata).not.toHaveProperty("inventoryExposureRsd");
+    expect(metadata).not.toHaveProperty("expectedImpactRsd");
+  });
+
+  it("keeps missing forecast action cost unavailable", () => {
     const metadata = buildInventoryWorkflowCentralQueueMetadata({
       suggestionKey: "forecast-1",
       actionType: "dopuna",
@@ -97,11 +124,13 @@ describe("inventory impact semantics", () => {
       suggestedQty: 2,
       forecastDemandQty: 2,
       estimatedValue: null,
+      estimatedValueBasis: "suggested_action_cost",
       costMissing: true,
       daysSinceMovement: 0,
     });
 
-    expect(metadata.inventoryExposureRsd).toBeNull();
+    expect(metadata.suggestedActionCostRsd).toBeNull();
+    expect(metadata).not.toHaveProperty("inventoryExposureRsd");
     expect(metadata.costMissing).toBe(true);
   });
 });

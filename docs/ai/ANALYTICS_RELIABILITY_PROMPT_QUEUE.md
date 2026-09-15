@@ -8,15 +8,15 @@ Owner promotion 2026-09-15: `RQ274` was explicitly promoted from `WAITING` to `R
 
 Owner completion 2026-09-15: `RQ274` was delivered with nullable forecast restock `daysSinceMovement`, `resolveForecastRestockDaysSinceMovement` helper, defer-while-detail-loading behavior and focused regression tests; the RQ queue advanced to `RQ275`.
 
-Owner promotion 2026-09-15: `RQ276` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ275` completion; it is the single current RQ prompt for inventory impact semantics and is claimed in this workspace.
-
-Owner completion 2026-09-15: `RQ276` was delivered with inventory exposure kept separate from central-queue expected impact (`impactEstimateRsd`/`expectedImpactRsd` omitted); exposure serialized in metadata; workflow UI labels stock value explicitly; tests `inventoryImpactSemantics.spec.ts`.
-
 Owner promotion 2026-09-15: `RQ275` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ274` completion; it is the single current RQ prompt for inventory queue empty-reset behavior and is claimed in this workspace.
 
 Owner completion 2026-09-15: `RQ275` was delivered with `setQueuedSuggestionKeys([])` when the inventory source-key set is empty; filter-to-empty and restored-row regression in `InventoryPage.queueStatus.spec.tsx`; lookup failures still preserve last-known state.
 
-Operations audit intake 2026-09-15: `RQ270`-`RQ300` remain individual `WAITING` follow-ups from the Operacije screen/code review; `RQ266`, `RQ267`, `RQ268` and `RQ269` have been completed on `main`.
+Owner promotion 2026-09-15: `RQ276` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ275` completion; it is the single current RQ prompt for inventory impact semantics and is claimed in this workspace.
+
+Owner completion 2026-09-15: `RQ276` was delivered with inventory expected impact omitted when no authoritative source exists; current-stock exposure and forecast suggested-action cost are preserved under distinct metadata bases and UI labels; tests `inventoryImpactSemantics.spec.ts`.
+
+Operations audit intake 2026-09-15: `RQ277`-`RQ300` remain individual `WAITING` follow-ups from the Operacije screen/code review; `RQ266`-`RQ276` have been completed.
 
 Owner promotion 2026-09-15: `RQ270` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ264` completion; it is the single current RQ prompt for confirmed Inventory scope-change reload gaps and will be claimed in this workspace.
 
@@ -32,7 +32,7 @@ Owner completion 2026-09-15: `RQ272` was delivered on PR #8 with removed rows fa
 
 Owner promotion 2026-09-15: `RQ273` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ272` completion; it is the single current RQ prompt for Inventory export/print period and scope parity and will be claimed in this workspace.
 
-Owner completion 2026-09-15: `RQ273` was delivered on PR #9 with explicit export/preview `dataScope` in request bodies, backend dataset filtering/metadata for current-stock snapshot semantics, and UI copy clarifying that server documents differ from on-screen 30-day signal windows. The RQ queue returned to no current READY prompt.
+Owner completion 2026-09-15: `RQ273` was delivered on PR #9 with explicit export/preview `dataScope` in request bodies, backend dataset filtering/metadata for current-stock snapshot semantics, and UI copy clarifying that server documents differ from on-screen 30-day signal windows. The RQ queue advanced to `RQ274`.
 
 Owner promotion 2026-09-15: `RQ265` was explicitly promoted from `WAITING` to `READY` by the user request because the RQ queue had no current READY prompt; it is the single current RQ prompt for the confirmed Operations empty-reason regression.
 
@@ -377,10 +377,10 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ267 | DONE | operations-heading-hierarchy | Remove duplicate/conflicting h1 landmarks across the Operations shell |
 | RQ268 | DONE | supplier-legacy-navigation | Keep legacy supplier redirects discoverable and correctly active |
 | RQ269 | DONE | daily-scope-event-propagation | Reload Daily Sales when the global data scope changes |
-| RQ270 | WAITING | inventory-scope-event-propagation | Reload and verify all Inventory surfaces after global scope changes |
-| RQ271 | WAITING | inventory-kpi-filter-contract | Define whether balance KPIs follow the SKU search filter |
-| RQ272 | WAITING | inventory-total-value-totality | Prevent page-local rows from masquerading as total inventory value |
-| RQ273 | WAITING | inventory-report-window-parity | Prove or repair Inventory export/print period and scope parity |
+| RQ270 | DONE | inventory-scope-event-propagation | Reload and verify all Inventory surfaces after global scope changes |
+| RQ271 | DONE | inventory-kpi-filter-contract | Define whether balance KPIs follow the SKU search filter |
+| RQ272 | DONE | inventory-total-value-totality | Prevent page-local rows from masquerading as total inventory value |
+| RQ273 | DONE | inventory-report-window-parity | Prove or repair Inventory export/print period and scope parity |
 | RQ274 | DONE | inventory-forecast-age-evidence | Keep missing days-since-movement unknown in forecast workflow |
 | RQ275 | DONE | inventory-queue-empty-reset | Clear stale queued-action state when source keys disappear |
 | RQ276 | DONE | inventory-impact-semantics | Separate expected business impact from inventory exposure/value |
@@ -13415,7 +13415,7 @@ Reproduction: load a queued row, change filters so no source keys remain or repl
 ## RQ276 - Separate Inventory expected impact from exposure/value
 
 Status: DONE
-Completion note: 2026-09-15 — central queue omits `impactEstimateRsd`/`expectedImpactRsd` for inventory workflow and signal writes; `inventoryExposureRsd` + basis in metadata; workflow panel labels "Vrednost zalihe"; tests `inventoryImpactSemantics.spec.ts`.
+Completion note: 2026-09-15 — central queue omits `impactEstimateRsd`/`expectedImpactRsd` for inventory workflow and signal writes; metadata distinguishes current-stock `inventoryExposureRsd` from forecast `suggestedActionCostRsd`; workflow panel uses the matching value label; tests `inventoryImpactSemantics.spec.ts`.
 Priority: P1
 Type: frontend/action-contract/tests
 Feature family: inventory-impact-semantics

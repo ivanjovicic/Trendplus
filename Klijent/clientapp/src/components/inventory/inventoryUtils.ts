@@ -345,6 +345,7 @@ export function buildRowFromInsightItem(item: InventoryInsightItem, stores: Stor
 }
 
 export const INVENTORY_EXPOSURE_BASIS = "estimated_stock_value";
+export const INVENTORY_SUGGESTED_ACTION_COST_BASIS = "unit_cost_x_suggested_quantity";
 
 export function resolveInventoryExposureRsd(
   estimatedValue: number | null | undefined,
@@ -379,6 +380,17 @@ export function resolveInventoryExposureRsdFromRow(row: InventoryRow): number | 
 export function buildInventoryWorkflowCentralQueueMetadata(
   item: InventoryActionSuggestion,
 ): Record<string, unknown> {
+  const estimatedValue = resolveInventoryExposureRsd(item.estimatedValue, item.costMissing);
+  const valueMetadata = item.estimatedValueBasis === "suggested_action_cost"
+    ? {
+        suggestedActionCostRsd: estimatedValue,
+        suggestedActionCostBasis: INVENTORY_SUGGESTED_ACTION_COST_BASIS,
+      }
+    : {
+        inventoryExposureRsd: estimatedValue,
+        inventoryExposureBasis: INVENTORY_EXPOSURE_BASIS,
+      };
+
   return {
     suggestionKey: item.suggestionKey,
     actionType: item.actionType,
@@ -387,8 +399,7 @@ export function buildInventoryWorkflowCentralQueueMetadata(
     costMissing: item.costMissing ?? false,
     fromStoreName: item.fromStoreName,
     toStoreName: item.toStoreName,
-    inventoryExposureRsd: resolveInventoryExposureRsd(item.estimatedValue, item.costMissing),
-    inventoryExposureBasis: INVENTORY_EXPOSURE_BASIS,
+    ...valueMetadata,
   };
 }
 
@@ -445,6 +456,7 @@ export function buildForecastRestockSuggestion(
     suggestedQty,
     forecastDemandQty: suggestedQty,
     estimatedValue: costMissing || unitCost == null ? null : unitCost * suggestedQty,
+    estimatedValueBasis: "suggested_action_cost",
     costMissing,
     daysSinceMovement,
     note: daysSinceMovement == null
