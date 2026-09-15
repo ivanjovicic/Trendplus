@@ -4,9 +4,9 @@ Date: 2026-09-15
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct-main
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: d4735e6f6313994d9776e0bca10638647944ee45
+Main verification: passed - current `main` contains `d4735e6f6313994d9776e0bca10638647944ee45` as the queue-intake delivery commit.
+Evidence state: synchronized
 
 ## What was done
 
