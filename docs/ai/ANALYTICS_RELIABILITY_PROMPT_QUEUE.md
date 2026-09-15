@@ -6,6 +6,8 @@ Current READY prompt: none
 
 Operations audit intake 2026-09-15: `RQ270`-`RQ300` remain individual `WAITING` follow-ups from the Operacije screen/code review; `RQ266`, `RQ267`, `RQ268` and `RQ269` have been completed on `main`.
 
+Owner promotion 2026-09-15: `RQ270` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ264` completion; it is the single current RQ prompt for confirmed Inventory scope-change reload gaps and will be claimed in this workspace.
+
 Owner promotion 2026-09-15: `RQ265` was explicitly promoted from `WAITING` to `READY` by the user request because the RQ queue had no current READY prompt; it is the single current RQ prompt for the confirmed Operations empty-reason regression.
 
 Owner completion 2026-09-15: `RQ265` was delivered on `main` with separate safe contextual empty-state messages and backend reason-code mapping across Daily, Shoe Type, Color and Supplier Sales Stats; the confirmed Daily available-range regression now passes. The RQ queue has no current READY prompt.
@@ -12969,7 +12971,7 @@ Reproduction: open Daily Sales without a scope query, change the header from `al
 
 ## RQ270 - Reload and verify all Inventory surfaces after a global data-scope change
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: frontend/API-contract/tests
 Feature family: inventory-scope-event-propagation
