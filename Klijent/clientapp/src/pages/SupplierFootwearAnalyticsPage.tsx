@@ -668,7 +668,11 @@ export default function SupplierFootwearAnalyticsPage({
   };
 
   return (
-    <div className={`sf-decision-page ${embedded ? "sf-decision-page--embedded" : ""}`}>
+    <div
+      className={`sf-decision-page ${embedded ? "sf-decision-page--embedded" : ""}`}
+      role={embedded ? "region" : undefined}
+      aria-label={embedded ? "Asortiman dobavljača" : undefined}
+    >
       {!embedded ? (
         <AnalyticsTrustHeader
           title="Dobavljači i tipovi obuće"
@@ -725,7 +729,7 @@ export default function SupplierFootwearAnalyticsPage({
       {error ? <div className="sf-decision-message error" role="alert">{error}</div> : null}
       {loading ? <div className="sf-decision-message loading" role="status" aria-live="polite">Učitavam dobavljače i tipove obuće...</div> : null}
       {!loading && !error && dataHint ? <div className="sf-decision-message info" role="status" aria-live="polite">{dataHint}</div> : null}
-      {!loading && !error && suggestedRange ? (
+      {!embedded && !loading && !error && suggestedRange ? (
         <div className="sf-decision-message suggestion">
           <span>Predlog: {suggestedRange.label}</span>
           <button type="button" onClick={handleApplySuggestedRange}>Primeni predlog perioda</button>

@@ -264,6 +264,21 @@ describe("SupplierSalesStatsPage premium controls", () => {
     });
   });
 
+  it("hides standalone trust header and filter surface when embedded", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage embedded onTrustMetadataChange={vi.fn()} />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("analytics-trust-header")).not.toBeInTheDocument();
+    });
+    expect(screen.queryByText("Opseg i filteri")).not.toBeInTheDocument();
+    expect(screen.queryAllByRole("heading", { level: 1 })).toHaveLength(0);
+    expect(screen.getByRole("region", { name: "Pregled dobavljača" })).toBeInTheDocument();
+  });
+
   it("error hides KPI zeros when supplier sales fails", async () => {
     vi.mocked(getSupplierSalesStats).mockRejectedValue(new Error("backend down"));
 

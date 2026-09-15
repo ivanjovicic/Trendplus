@@ -1463,7 +1463,11 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
   const popTrendTooltip = analyticsMetricDescriptions.popRevenueChangePct;
 
   return (
-    <div className={`supplier-decision-page ${embedded ? "supplier-decision-page--embedded" : ""}`}>
+    <div
+      className={`supplier-decision-page ${embedded ? "supplier-decision-page--embedded" : ""}`}
+      role={embedded ? "region" : undefined}
+      aria-label={embedded ? "Pregled dobavljača" : undefined}
+    >
       {!embedded ? (
         <AnalyticsTrustHeader
           title="Dobavljači: Pregled"
