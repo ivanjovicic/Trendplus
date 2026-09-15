@@ -343,6 +343,54 @@ export function buildRowFromInsightItem(item: InventoryInsightItem, stores: Stor
   }, stores, suppliers);
 }
 
+export const INVENTORY_EXPOSURE_BASIS = "estimated_stock_value";
+
+export function resolveInventoryExposureRsd(
+  estimatedValue: number | null | undefined,
+  costMissing?: boolean | null,
+): number | null {
+  if (costMissing) return null;
+  if (estimatedValue == null || !Number.isFinite(estimatedValue)) return null;
+  return estimatedValue;
+}
+
+export function resolveInventoryExposureRsdFromRow(row: InventoryRow): number | null {
+  if (row.estimatedValueAmount != null && Number.isFinite(row.estimatedValueAmount)) {
+    return row.estimatedValueAmount;
+  }
+
+  if (row.estimatedValue != null && Number.isFinite(row.estimatedValue)) {
+    return row.estimatedValue;
+  }
+
+  if (
+    row.unitCost != null
+    && row.quantity != null
+    && Number.isFinite(row.unitCost)
+    && Number.isFinite(row.quantity)
+  ) {
+    return row.unitCost * row.quantity;
+  }
+
+  return null;
+}
+
+export function buildInventoryWorkflowCentralQueueMetadata(
+  item: InventoryActionSuggestion,
+): Record<string, unknown> {
+  return {
+    suggestionKey: item.suggestionKey,
+    actionType: item.actionType,
+    suggestedQty: item.suggestedQty,
+    forecastDemandQty: item.forecastDemandQty ?? item.suggestedQty,
+    costMissing: item.costMissing ?? false,
+    fromStoreName: item.fromStoreName,
+    toStoreName: item.toStoreName,
+    inventoryExposureRsd: resolveInventoryExposureRsd(item.estimatedValue, item.costMissing),
+    inventoryExposureBasis: INVENTORY_EXPOSURE_BASIS,
+  };
+}
+
 export type ForecastRestockSignal = {
   skuId: number;
   storeId: number;
