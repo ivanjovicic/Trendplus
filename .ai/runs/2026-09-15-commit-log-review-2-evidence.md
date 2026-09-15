@@ -6,9 +6,9 @@ Date: 2026-09-15
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct-main
-Main commit SHA: pending
-Main verification: pending final commit and fresh fetch
-Evidence state: in-progress
+Main commit SHA: 84162fd64515204a39dc3fb2d40762d7f909bfbd
+Main verification: passed - fresh `git fetch origin main` confirmed local `main` and `origin/main` are synchronized; implementation SHA `84162fd64515204a39dc3fb2d40762d7f909bfbd` is an ancestor of `origin/main`.
+Evidence state: synchronized
 
 ## What was done
 
@@ -63,4 +63,4 @@ Evidence state: in-progress
 
 ## Next
 
-- Commit and push the bounded audit fix to `main`, fresh-fetch `origin/main`, verify the delivered SHA is present and synchronize this log with the exact final SHA.
+- Audit fix commit `84162fd64515204a39dc3fb2d40762d7f909bfbd` is pushed to `main` and verified against fresh `origin/main`; only the evidence synchronization commit remains to be pushed.
