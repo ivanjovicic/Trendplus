@@ -20,17 +20,19 @@ vi.mock("recharts", () => ({
 }));
 
 vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({
-  default: ({ title, periodFrom, periodTo, lastRefreshAt }: {
+  default: ({ title, periodFrom, periodTo, lastRefreshAt, dataFreshnessStatus }: {
     title: string;
     periodFrom?: string | null;
     periodTo?: string | null;
     lastRefreshAt?: string | null;
+    dataFreshnessStatus?: string | null;
   }) => (
     <div
       data-testid="analytics-trust-header"
       data-period-from={periodFrom ?? ""}
       data-period-to={periodTo ?? ""}
       data-last-refresh-at={lastRefreshAt ?? ""}
+      data-freshness={dataFreshnessStatus ?? ""}
     >
       {title}
     </div>
@@ -207,6 +209,7 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
       expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-period-from", "2026-06-01T00:00:00Z");
       expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-period-to", "2026-06-30T23:59:59Z");
       expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-last-refresh-at", "2026-07-01T08:30:00Z");
+      expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-freshness", "fresh");
     });
     const controlBar = await screen.findByTestId("analytics-control-bar");
     expect(within(controlBar).getByRole("heading", { name: "Opseg i filteri" })).toBeInTheDocument();
@@ -222,6 +225,29 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     });
     expect(screen.getByText("Patike")).toBeInTheDocument();
     expect(screen.getByText("Prioritetna lista tipova obuće")).toBeInTheDocument();
+  });
+
+  it("fails closed to unknown when the refresh timestamp is missing", async () => {
+    vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
+      meta: {
+        success: true,
+        dataQualityStatus: "good",
+        isPartial: false,
+        lastRefreshAtUtc: null,
+      },
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-freshness", "unknown");
+    });
   });
 
   it("error hides KPI zeros when shoe type sales fails", async () => {

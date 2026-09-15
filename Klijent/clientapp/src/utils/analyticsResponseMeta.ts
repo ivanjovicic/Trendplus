@@ -15,6 +15,25 @@ const EMPTY_REASON_MESSAGES: Record<string, string> = {
   no_intake_evidence: "Nema dovoljno učitanih artikala ili import redova za readiness procenu.",
 };
 
+export function getAnalyticsDataFreshnessStatus(
+  meta?: Pick<AnalyticsResponseMeta, "success" | "emptyReason" | "isPartial" | "lastRefreshAtUtc"> | null,
+): "fresh" | "stale" | "critical" | "unknown" {
+  if (!meta || meta.success !== true) {
+    return "unknown";
+  }
+
+  if (typeof meta.emptyReason === "string" && meta.emptyReason.trim()) {
+    return "unknown";
+  }
+
+  if (meta.isPartial === true) {
+    return "stale";
+  }
+
+  const lastRefreshAtUtc = typeof meta.lastRefreshAtUtc === "string" ? meta.lastRefreshAtUtc.trim() : "";
+  return lastRefreshAtUtc && Number.isFinite(Date.parse(lastRefreshAtUtc)) ? "fresh" : "unknown";
+}
+
 export function getAnalyticsEmptyReasonMessage(emptyReason?: string | null): string | null {
   if (typeof emptyReason !== "string") {
     return null;

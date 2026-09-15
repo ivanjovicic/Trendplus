@@ -165,6 +165,29 @@ describe("DailySalesStatsPage premium controls", () => {
     expect(screen.getByText("Tabela po danima")).toBeInTheDocument();
   });
 
+  it("does not report fresh data when the authoritative refresh timestamp is missing", async () => {
+    vi.mocked(getDailySalesStats).mockResolvedValue(response({
+      meta: {
+        success: true,
+        dataQualityStatus: "good",
+        isPartial: false,
+        lastRefreshAtUtc: null,
+      },
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/daily-sales"]}>
+        <Routes>
+          <Route path="/analytics/daily-sales" element={<DailySalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-freshness", "unknown");
+    });
+  });
+
   it("keeps the trend chart in the same order as the default date-sorted table", async () => {
     const baseRow = response().dateRows[0];
     vi.mocked(getDailySalesStats).mockResolvedValue(response({

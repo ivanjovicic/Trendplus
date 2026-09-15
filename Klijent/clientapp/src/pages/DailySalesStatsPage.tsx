@@ -37,6 +37,7 @@ import { getDataScope } from "../utils/dataScope";
 import UltraSpinner from "../components/ui/UltraSpinner";
 import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
 import { fmtPct, fmtRsd, fmtRsdShort, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
+import { getAnalyticsDataFreshnessStatus } from "../utils/analyticsResponseMeta";
 import "./DailySalesStatsPage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
@@ -717,11 +718,7 @@ export default function DailySalesStatsPage() {
   const trustLastRefreshAt = responseMeta?.lastRefreshAtUtc ?? null;
   const trustDataQualityStatus = responseMeta?.dataQualityStatus ?? null;
   const trustIsPartial = responseMeta?.isPartial ?? false;
-  const trustDataFreshnessStatus = responseMeta?.emptyReason
-    ? "unknown"
-    : trustIsPartial
-      ? "stale"
-      : "fresh";
+  const trustDataFreshnessStatus = getAnalyticsDataFreshnessStatus(responseMeta);
   const trustEmptyStateReason = responseMeta?.emptyReason
     ? responseMeta.message ?? emptyStateHint
     : emptyStateHint;

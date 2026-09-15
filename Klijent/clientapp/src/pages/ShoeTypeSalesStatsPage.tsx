@@ -59,6 +59,7 @@ import {
 } from "../utils/canonicalRecommendationSemantics";
 import { qualityTierIcon, qualityTierClass, tierNeedsWarning, buildCoverageTooltip, buildRecommendationCaveat, buildMarginDetailNote, buildSnapshotBadgeLabel, buildSnapshotTooltip } from "../utils/marginQuality";
 import { resolveShoeTypeCoveragePct } from "../utils/shoeTypeSalesCoverage";
+import { getAnalyticsDataFreshnessStatus } from "../utils/analyticsResponseMeta";
 import "./ShoeTypeSalesStatsPage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
@@ -682,6 +683,7 @@ export default function ShoeTypeSalesStatsPage() {
   const trustDataQualityStatus = responseMeta?.dataQualityStatus ?? headerDataQualityStatus;
   const trustLastRefreshAt = responseMeta?.lastRefreshAtUtc ?? null;
   const trustIsPartial = responseMeta?.isPartial ?? false;
+  const trustDataFreshnessStatus = getAnalyticsDataFreshnessStatus(responseMeta);
   const trustEmptyStateReason = responseMeta?.message ?? emptyStateHint;
 
   const showBlockingError = Boolean(error && !data);
@@ -958,7 +960,7 @@ export default function ShoeTypeSalesStatsPage() {
         periodFrom={data?.fromDate ?? activeFilters.fromDate}
         periodTo={data?.toDate ?? activeFilters.toDate}
         lastRefreshAt={trustLastRefreshAt}
-        dataFreshnessStatus={trustIsPartial ? "stale" : "unknown"}
+        dataFreshnessStatus={trustDataFreshnessStatus}
         dataSource={`Sales facts analytics (scope: ${data?.dataScope ?? dataScope})`}
         dataQualityStatus={trustDataQualityStatus}
         mode="signal"

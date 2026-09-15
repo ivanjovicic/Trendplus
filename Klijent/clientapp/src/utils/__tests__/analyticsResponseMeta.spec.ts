@@ -3,6 +3,7 @@ import type { AnalyticsResponseMeta } from "../../types/analytics";
 import {
   AnalyticsMetaError,
   assertAnalyticsMetaSuccess,
+  getAnalyticsDataFreshnessStatus,
   getAnalyticsEmptyReasonMessage,
   getAnalyticsMetaMessage,
   hasAnalyticsMetaEmptyReason,
@@ -14,6 +15,19 @@ import {
 } from "../analyticsResponseMeta";
 
 describe("analyticsResponseMeta", () => {
+  it.each([
+    [{ success: true, lastRefreshAtUtc: "2026-07-01T08:00:00Z" }, "fresh"],
+    [{ success: true, lastRefreshAtUtc: " 2026-07-01T08:00:00Z " }, "fresh"],
+    [{ success: true, lastRefreshAtUtc: null }, "unknown"],
+    [{ success: true, lastRefreshAtUtc: "not-a-date" }, "unknown"],
+    [{ success: true, isPartial: true, lastRefreshAtUtc: "2026-07-01T08:00:00Z" }, "stale"],
+    [{ success: true, emptyReason: "no_data_in_period", lastRefreshAtUtc: "2026-07-01T08:00:00Z" }, "unknown"],
+    [{ success: false, lastRefreshAtUtc: "2026-07-01T08:00:00Z" }, "unknown"],
+    [null, "unknown"],
+  ] as const)("projects freshness safely for %j", (meta, expected) => {
+    expect(getAnalyticsDataFreshnessStatus(meta)).toBe(expected);
+  });
+
   it("success meta does not throw", () => {
     const payload = { meta: { success: true } as AnalyticsResponseMeta, value: 123 };
     const result = assertAnalyticsMetaSuccess(payload, (response) => response.meta, "context");

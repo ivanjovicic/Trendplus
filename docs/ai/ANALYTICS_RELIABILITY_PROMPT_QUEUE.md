@@ -4,11 +4,15 @@ Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
-Operations audit intake 2026-09-15: `RQ266`-`RQ300` remain individual `WAITING` follow-ups from the Operacije screen/code review; `RQ265` has been completed on `main`.
+Operations audit intake 2026-09-15: `RQ267`-`RQ300` remain individual `WAITING` follow-ups from the Operacije screen/code review; `RQ266` has been completed on `main`.
 
 Owner promotion 2026-09-15: `RQ265` was explicitly promoted from `WAITING` to `READY` by the user request because the RQ queue had no current READY prompt; it is the single current RQ prompt for the confirmed Operations empty-reason regression.
 
 Owner completion 2026-09-15: `RQ265` was delivered on `main` with separate safe contextual empty-state messages and backend reason-code mapping across Daily, Shoe Type, Color and Supplier Sales Stats; the confirmed Daily available-range regression now passes. The RQ queue has no current READY prompt.
+
+Owner promotion 2026-09-15: `RQ266` was explicitly promoted from `WAITING` to `READY` by the user request because the RQ queue had no current READY prompt; it is the single current RQ prompt for Operations freshness provenance.
+
+Owner completion 2026-09-15: `RQ266` was delivered on `main` with shared fail-closed freshness projection across Daily, Shoe Type, Color and standalone/embedded Supplier Sales Stats; valid refresh metadata now prevents false `unknown`, while missing/empty/error metadata cannot appear `fresh`. The RQ queue has no current READY prompt.
 
 Scope reconciliation for this intake: `analyticsApi.makeUrl`/`appendDataScopeToParams` already inject the persisted global `dataScope` when an analytics URL does not provide one. The remaining scope findings therefore target mounted-page refresh/event propagation and explicit request-contract proof, not an assumed universal omission. The existing `RQ66` placeholder, `RQ67` forecast-cost, `RQ70` forecast-quantity, `RQ179` supplier-footwear-freshness and `RQ203` inventory-detail-scope items remain closed and are not resurrected. The offline runtime check had no backend; connection refusal is not itself a product finding, while blank/unclear error copy remains in the relevant prompts.
 
@@ -323,7 +327,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ263 | DONE | analytics-export-operation-truth | Keep export/preview status honest on failure or missing artifacts |
 | RQ264 | DONE | analytics-shared-output-finite-parity | Preserve finite/null semantics across table, detail, print and export |
 | RQ265 | DONE | operations-empty-reason-context | Preserve contextual empty-state messages, including available date ranges |
-| RQ266 | WAITING | operations-freshness-provenance | Derive page freshness from authoritative refresh metadata |
+| RQ266 | DONE | operations-freshness-provenance | Derive page freshness from authoritative refresh metadata |
 | RQ267 | WAITING | operations-heading-hierarchy | Remove duplicate/conflicting h1 landmarks across the Operations shell |
 | RQ268 | WAITING | supplier-legacy-navigation | Keep legacy supplier redirects discoverable and correctly active |
 | RQ269 | WAITING | daily-scope-event-propagation | Reload Daily Sales when the global data scope changes |
@@ -12630,9 +12634,11 @@ Reproduction: return a successful empty response with a selected period outside 
 
 ---
 
+Owner claim 2026-09-15: `RQ266` transitioned `READY -> IN_PROGRESS` in this workspace after explicit user request; local lock `.ai/task-locks/RQ266-codex.lock.md` is active.
+
 ## RQ266 - Derive Operations freshness from authoritative refresh metadata
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/contract/tests
 Feature family: operations-freshness-provenance
@@ -12687,6 +12693,26 @@ Reproduction: feed a successful non-partial response with `lastRefreshAtUtc: nul
 
 - `RQ179` closes Supplier Footwear’s former generated-time path; this prompt owns the remaining Operations page projections.
 - `RQ259` owns shared header normalization and mode gating; do not duplicate that owner.
+
+### Completion note
+
+- Date: 2026-09-15
+- Status: DONE
+- Completion: Added `getAnalyticsDataFreshnessStatus` to the existing response-meta owner and wired all four Operations Sales Stats projections to it. `fresh` now requires successful non-empty metadata with a valid `lastRefreshAtUtc`; partial remains `stale`; empty, error, missing and malformed refresh evidence remain `unknown`.
+- Changed files: `Klijent/clientapp/src/utils/analyticsResponseMeta.ts`, `Klijent/clientapp/src/utils/__tests__/analyticsResponseMeta.spec.ts`, `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`, `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/ColorSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.premium.spec.tsx`, `Klijent/clientapp/src/pages/__tests__/ShoeTypeSalesStatsPage.premium.spec.tsx`, `Klijent/clientapp/src/pages/__tests__/ColorSalesStatsPage.premium.spec.tsx`, `Klijent/clientapp/src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx`, `.ai/runs/2026-09-15-RQ266-evidence.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- Contract/runtime behavior changed: Operations pages no longer infer `fresh` from a non-empty/non-partial response or leave valid refresh metadata as `unknown`; no current-time/generated-time fallback or backend/API contract change was introduced.
+- Checks run: focused Operations/shared trust suite 6 files / 75 tests passed; `npm run check:analytics-guardrails` passed; `npm run build` passed; `node scripts/check-prompt-queues.mjs` passed; `git diff --check` passed.
+- Checks not run: live backend/browser/deployed smoke and full frontend suite; backend was unavailable and the focused matrix plus required guardrails/build were sufficient for this frontend projection change.
+- Run log: `.ai/runs/2026-09-15-RQ266-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: no backend response metadata or live provider payload was changed/verified.
+- Follow-up: if the backend later exposes an explicit page-level freshness status, extend the shared helper only under that authoritative contract.
+- Residual risk: partial responses without timestamps intentionally remain `stale` to preserve degraded-state signaling; existing Vite large-chunk advisory remains.
+- Next: queue owner refill or explicit promotion of the next Operations follow-up.
+- Prompt defect / scope repair: none; RQ266 was explicitly promoted because the queue had no READY prompt, per user instruction.
 
 ---
 

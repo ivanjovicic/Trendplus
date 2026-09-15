@@ -37,6 +37,7 @@ import { getDataScope } from "../utils/dataScope";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
 import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange, formatDate } from "../utils/analyticsFormatters";
 import { formatMetricDisplayValue } from "../utils/analyticsMetricValue";
+import { getAnalyticsDataFreshnessStatus } from "../utils/analyticsResponseMeta";
 import { recommendationReasonLabel } from "../utils/canonicalRecommendationSemantics";
 import {
   analyticsMetricDescriptions,
@@ -1080,6 +1081,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
   const trustDataQualityStatus = responseMeta?.dataQualityStatus ?? headerDataQualityStatus;
   const trustLastRefreshAt = responseMeta?.lastRefreshAtUtc ?? null;
   const trustIsPartial = responseMeta?.isPartial ?? false;
+  const trustDataFreshnessStatus = getAnalyticsDataFreshnessStatus(responseMeta);
   const trustEmptyStateReason = responseMeta?.message ?? emptyStateHint;
 
   const emptyStateVariant = useMemo<"no_data" | "insufficient_data" | "filtered_out" | null>(() => {
@@ -1100,7 +1102,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       periodFrom: data.fromDate ?? activeFilters.fromDate,
       periodTo: data.toDate ?? activeFilters.toDate,
       lastRefreshAt: trustLastRefreshAt,
-      dataFreshnessStatus: trustIsPartial ? "stale" : "unknown",
+      dataFreshnessStatus: trustDataFreshnessStatus,
       dataSource: `Supplier sales stats (scope: ${formatSupplierDataScopeLabel(activeDataScope)})`,
       provenanceBasis: data.provenanceBasis ?? null,
       dataQualityStatus: trustDataQualityStatus,
@@ -1469,7 +1471,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
           periodFrom={data?.fromDate ?? activeFilters.fromDate}
           periodTo={data?.toDate ?? activeFilters.toDate}
           lastRefreshAt={trustLastRefreshAt}
-          dataFreshnessStatus={trustIsPartial ? "stale" : "unknown"}
+          dataFreshnessStatus={trustDataFreshnessStatus}
           dataSource={`Supplier sales stats (scope: ${formatSupplierDataScopeLabel(activeDataScope)})`}
           provenanceBasis={data?.provenanceBasis ?? null}
           dataQualityStatus={trustDataQualityStatus ?? null}

@@ -226,9 +226,42 @@ describe("SupplierSalesStatsPage premium controls", () => {
       provenanceBasis: "live_query",
       requestedDataset: "Svi podaci",
       effectiveDataset: "Svi podaci",
+      dataFreshnessStatus: "unknown",
     }));
     expect(trustHeaderProps.effectivePeriodLabel).toContain("2024");
     expect(trustHeaderProps.effectivePeriodLabel).toContain("2026");
+  });
+
+  it("projects fresh for a non-empty response with a valid refresh timestamp", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      const trustHeaderProps = AnalyticsTrustHeaderMock.mock.calls.at(-1)?.[0] as {
+        dataFreshnessStatus?: string | null;
+      };
+      expect(trustHeaderProps.dataFreshnessStatus).toBe("fresh");
+    });
+  });
+
+  it("forwards freshness provenance to the embedded trust metadata owner", async () => {
+    const onTrustMetadataChange = vi.fn();
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage embedded onTrustMetadataChange={onTrustMetadataChange} />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(onTrustMetadataChange).toHaveBeenCalledWith(expect.objectContaining({
+        dataFreshnessStatus: "fresh",
+        lastRefreshAt: "2026-07-01T07:55:00Z",
+      }));
+    });
   });
 
   it("error hides KPI zeros when supplier sales fails", async () => {

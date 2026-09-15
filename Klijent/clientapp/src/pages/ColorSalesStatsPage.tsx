@@ -32,6 +32,7 @@ import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyti
 import { getDataScope, type DataScope } from "../utils/dataScope";
 import { fmtNumber, fmtPct, fmtQty, fmtRsd, fmtSignedPct, formatDate, getPresetRange } from "../utils/analyticsFormatters";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
+import { getAnalyticsDataFreshnessStatus } from "../utils/analyticsResponseMeta";
 import "./ColorSalesStatsPage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
@@ -590,6 +591,7 @@ export default function ColorSalesStatsPage() {
   const trustDataQualityStatus = responseMeta?.dataQualityStatus ?? headerDataQualityStatus;
   const trustLastRefreshAt = responseMeta?.lastRefreshAtUtc ?? null;
   const trustIsPartial = responseMeta?.isPartial ?? false;
+  const trustDataFreshnessStatus = getAnalyticsDataFreshnessStatus(responseMeta);
   const trustEmptyStateReason = responseMeta?.message ?? emptyStateHint;
 
   const emptyStateVariant = useMemo<"no_data" | "insufficient_data" | "filtered_out" | null>(() => {
@@ -800,7 +802,7 @@ export default function ColorSalesStatsPage() {
         periodFrom={data?.fromDate ?? activeFilters.fromDate}
         periodTo={data?.toDate ?? activeFilters.toDate}
         lastRefreshAt={trustLastRefreshAt}
-        dataFreshnessStatus={trustIsPartial ? "stale" : "unknown"}
+        dataFreshnessStatus={trustDataFreshnessStatus}
         dataSource={`Color sales stats materialized view (scope: ${data?.dataScope ?? dataScope})`}
         dataQualityStatus={trustDataQualityStatus}
         mode="recommendation"

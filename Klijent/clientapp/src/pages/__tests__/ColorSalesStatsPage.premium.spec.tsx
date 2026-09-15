@@ -243,4 +243,27 @@ describe("ColorSalesStatsPage premium controls", () => {
     });
     expect(screen.getByText("Prioritetna lista boja")).toBeInTheDocument();
   });
+
+  it("shows fresh only when the response provides a valid refresh timestamp", async () => {
+    vi.mocked(getColorSalesStats).mockResolvedValue(response({
+      meta: {
+        success: true,
+        dataQualityStatus: "good",
+        isPartial: false,
+        lastRefreshAtUtc: "2026-07-01T08:30:00Z",
+      },
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/color-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/color-sales-stats" element={<ColorSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Sveže")).toBeInTheDocument();
+    });
+  });
 });
