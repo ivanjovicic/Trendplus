@@ -31,8 +31,9 @@ Inventory analytics frontend/API contracts plus queue delivery records.
 - The existing npm-generated package-lock metadata normalization is retained in a separate commit per the request to push all local changes.
 
 ## Validation
-- Focused Inventory tests covering RQ270–RQ276: 11 files, 51 tests passed.
-- Frontend production build: passed; existing Recharts chunk-size warning only.
+- Focused second-review regression: 7 files, 49 tests passed.
+- Complete frontend suite after final repair: 134 files, 801 tests passed.
+- Frontend production build after second review: passed; existing Recharts chunk-size warning only.
 - Prompt queue/planning validators: initial queue check found four missing strict RQ273 completion fields; repaired; queue check, queue self-test, planning check and planning self-test all passed.
 - Backend build: not run because `dotnet` is unavailable in this environment.
 - `git diff --check`: passed before the review commit.
