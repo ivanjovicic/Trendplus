@@ -585,6 +585,7 @@ export default function DailySalesStatsPage() {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [qualityPanelOpen, setQualityPanelOpen] = useState(false);
   const [dataScope, setDataScopeValue] = useState<DataScope>(() => queryDataScope);
+  const dataScopeRef = useRef<DataScope>(queryDataScope);
 
   const memoizedQueryDataScope = useMemo(() => dataScope, [dataScope]);
 
@@ -598,10 +599,19 @@ export default function DailySalesStatsPage() {
   }, [queryDataScope]);
 
   useEffect(() => {
+    dataScopeRef.current = dataScope;
+  }, [dataScope]);
+
+  useEffect(() => {
     const handleScopeChange = () => {
       const nextScope = normalizeDataScope(getDataScope());
-      setDataScopeValue(nextScope);
-      if (searchParams.get("dataScope") === nextScope) return;
+      const scopeChanged = dataScopeRef.current !== nextScope;
+      dataScopeRef.current = nextScope;
+      if (scopeChanged) setDataScopeValue(nextScope);
+
+      const currentQueryScope = searchParams.get("dataScope");
+      const shouldSyncUrl = currentQueryScope !== nextScope && (scopeChanged || searchParams.has("dataScope"));
+      if (!shouldSyncUrl) return;
 
       setSearchParams((current) => {
         if (current.get("dataScope") === nextScope) return current;

@@ -185,6 +185,27 @@ describe("DailySalesStatsPage premium controls", () => {
     expect(vi.mocked(getDailySalesStats).mock.calls.map(([query]) => query.dataScope)).toEqual(["all", "all"]);
   });
 
+  it("does not reload when the global scope event repeats the current scope", async () => {
+    localStorage.setItem("trendplus:dataScope", "all");
+    render(
+      <MemoryRouter initialEntries={["/analytics/daily-sales"]}>
+        <Routes>
+          <Route path="/analytics/daily-sales" element={<DailySalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(getDailySalesStats).toHaveBeenCalledTimes(2);
+    });
+
+    act(() => {
+      window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+    });
+
+    expect(getDailySalesStats).toHaveBeenCalledTimes(2);
+  });
+
   it("reloads both periods after a global scope change and ignores late old-scope responses", async () => {
     localStorage.setItem("trendplus:dataScope", "all");
     const oldCurrent = deferred<DailySalesTableResponse>();
