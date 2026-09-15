@@ -2,7 +2,7 @@
 
 Date: 2026-09-14
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ259
+Current READY prompt: RQ260
 
 Owner completion 2026-09-14: `RQ249` was delivered on `main` with fail-closed Supplier Decision Hub detail and report-toolbar actionability gates; blocked, fallback, stale/partial and missing recommendation permission remain review-only.
 Owner promotion 2026-09-14: `RQ250` was explicitly promoted after completed `RQ249`, repaired the stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
@@ -22,6 +22,8 @@ Owner completion 2026-09-15: `RQ257` was delivered on `main` with finite/null no
 Owner promotion 2026-09-15: `RQ258` was explicitly promoted after completed `RQ257`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
 Owner completion 2026-09-15: `RQ258` was delivered on `main` with safe Serbian mappings for shared refresh/fallback tokens, finite/null data-quality summary semantics, case/whitespace freshness normalization and preserved trust/recommendation gating; measured finite zero remains visible and backend ownership is unchanged. The queue advanced to `RQ259`.
 Owner promotion 2026-09-15: `RQ259` was explicitly promoted after completed `RQ258`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
+Owner completion 2026-09-15: `RQ259` was delivered on `main` with mode-aware recommendation gating and defensive case/whitespace freshness normalization; signal/report surfaces no longer invent recommendation gates, recommendation surfaces retain backend-owned gating, and stale/critical warnings remain visible. The queue advanced to `RQ260`.
+Owner promotion 2026-09-15: `RQ260` was explicitly promoted after completed `RQ259`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
 
 ### Completion note
 
@@ -297,8 +299,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ228 | DONE | period-timezone-contract-consistency | Insight Studio v1/v2 period handling timezone mismatch |
 | RQ233 | DONE | supplier-concentration-scope-parity | Supplier concentration denominator changes with visible scope |
 | RQ258 | DONE | trust-header-safe-metadata | Keep shared AnalyticsTrustHeader metadata user-safe and finite |
-| RQ259 | READY | trust-header-mode-freshness | Make shared trust-header gating and freshness normalization mode-aware |
-| RQ260 | WAITING | empty-state-safe-reason-action | Keep shared analytics empty state user-safe and actionable |
+| RQ259 | DONE | trust-header-mode-freshness | Make shared trust-header gating and freshness normalization mode-aware |
+| RQ260 | READY | empty-state-safe-reason-action | Keep shared analytics empty state user-safe and actionable |
 | RQ261 | WAITING | refresh-status-duration-message-truth | Preserve refresh duration unknown state and safe operational messaging |
 | RQ262 | WAITING | executive-kpi-value-tone-parity | Keep executive KPI availability and visual tone consistent |
 | RQ263 | WAITING | analytics-export-operation-truth | Keep export/preview status honest on failure or missing artifacts |
@@ -11970,7 +11972,7 @@ The shared `AnalyticsTrustHeader` renders backend-provided `fallbackReasonCode` 
 
 ## RQ259 - Make shared trust-header gating and freshness normalization mode-aware
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: frontend/tests
 Feature family: trust-header-mode-freshness
@@ -12031,11 +12033,29 @@ Commit suggestion: `fix(analytics): align trust header mode and freshness states
 - `RQ143` remains the backend decision-ownership owner and `RQ145` the broad parity owner.
 - `RQ258` is complete; this prompt is the single current `READY` item for Analytics Frontend.
 
+### Completion note
+
+- Date: 2026-09-15
+- Status: DONE
+- Completion: Shared `AnalyticsTrustHeader` now shows the recommendation gate only for `recommendation` mode, so signal/report surfaces do not invent a blocked recommendation when permission is missing or false; recommendation surfaces still gate when backend permission is not explicitly true. Supported freshness tokens are trimmed and case-normalized, while unsupported or missing values remain unknown.
+- Changed files: `Klijent/clientapp/src/components/analytics/AnalyticsTrustHeader.tsx`, `Klijent/clientapp/src/components/analytics/__tests__/AnalyticsTrustHeader.spec.tsx`
+- Checks run: failing-first focused header test recorded 4 expected failures and 11 passes before implementation; focused shared-header and representative consumer tests passed with 5 files and 49 tests; `npm run check:analytics-guardrails` passed; `npm run build` passed with the existing frontend chunk-size advisory; `node scripts/check-agent-instructions.mjs --self-test` passed; `node scripts/check-agent-instructions.mjs` passed; `node scripts/check-prompt-queues.mjs --self-test` passed; `node scripts/check-prompt-queues.mjs` passed; `node scripts/check-planning-architecture.mjs --self-test` passed; `node scripts/check-planning-architecture.mjs` passed; `git diff --check` passed.
+- Checks not run: full frontend suite, backend build/tests and live provider/browser/deployed proof were not run because this was a bounded shared frontend presentation change.
+- Run log: `.ai/runs/2026-09-15-RQ259-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `3b84d4496acd245ce5c24168267c5a257e255a0c`
+- Main verification: passed - fresh `git fetch origin main` confirmed local `main` and `origin/main` are synchronized; implementation SHA `3b84d4496acd245ce5c24168267c5a257e255a0c` is an ancestor of `origin/main`.
+- Missed: no backend freshness calculation, recommendation permission, confidence, score or business-metric changes were made by design; no live-provider proof was available.
+- Residual risk: existing frontend chunk-size advisory and malformed metadata outside this shared header boundary remain outside the prompt.
+- Prompt defect / scope repair: repaired the stale dependency wording that incorrectly referenced already-DONE `RQ169`; no business-scope expansion was made.
+- Follow-up: `RQ260` is READY for Analytics Frontend.
+
 ---
 
 ## RQ260 - Keep shared analytics empty state user-safe and actionable
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: frontend/tests
 Feature family: empty-state-safe-reason-action
@@ -12096,7 +12116,7 @@ The shared `AnalyticsEmptyState` prints the `emptyReason` prop verbatim. Several
 - `RQ145` remains the broad safe-messaging/parity owner; this prompt owns the shared empty-state boundary.
 - `RQ169` remains the existing empty-readiness owner; this prompt does not change readiness scoring.
 - `RQ253` and `RQ258` own separate error/trust-header code-safety boundaries.
-- Keep this prompt `WAITING` while `RQ169` remains the existing `READY` item.
+- `RQ259` is complete; this prompt is the single current `READY` item for Analytics Frontend.
 
 ---
 
