@@ -12402,7 +12402,7 @@ The shared analytics export toolbar stores every operation message in one `statu
 - Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `4e6a0fca043047bfffbead4b20c2a3474aee7e49`
-- Main verification: passed - implementation commit `4e6a0fca043047bfffbead4b20c2a3474aee7e49` was pushed to `origin/main`; fresh fetch verification follows the evidence-sync commit.
+- Main verification: passed - fresh `git fetch origin main --prune` confirmed `origin/main` at `c9959685a1c69e351b881f791cf17383b7c0a84b`; implementation commit `4e6a0fca043047bfffbead4b20c2a3474aee7e49` is an ancestor.
 - Missed: no backend generator, authorization, metric or report calculation changes were made; live popup/provider behavior remains outside this local proof.
 - Follow-up: `RQ264` is READY for Analytics Frontend / Export.
 - Residual risk: existing frontend chunk-size advisory remains; live provider behavior is unverified.
