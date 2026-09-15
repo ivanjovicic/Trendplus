@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { getStores, getSupplierFilters } from "../services/analyticsApi";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import type { StoreOption, SupplierFilterOption } from "../types/analytics";
+import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { getAnalyticsMetaMessage } from "../utils/analyticsResponseMeta";
 import SupplierSalesStatsPage from "./SupplierSalesStatsPage";
 import SupplierDecisionHubPage from "./SupplierDecisionHubPage";
@@ -90,11 +91,20 @@ export default function SupplierConsolidatedPage() {
     ? suppliers.find((supplier) => String(supplier.supplierId) === String(canonicalFilters.supplierId))?.supplierName ?? "Izabrani dobavljač"
     : "Svi dobavljači";
   const activeScopeLabel = dataScopeLabels[canonicalFilters.dataScope] ?? canonicalFilters.dataScope;
-  const activePeriodLabel = trustPayload?.effectivePeriodLabel?.trim()
-    ? trustPayload.effectivePeriodLabel
+  const effectivePeriodLabel = typeof trustPayload?.effectivePeriodLabel === "string"
+    ? trustPayload.effectivePeriodLabel.trim()
+    : null;
+  const effectiveDataset = typeof trustPayload?.effectiveDataset === "string"
+    ? trustPayload.effectiveDataset.trim()
+    : null;
+  const requestedDataset = typeof trustPayload?.requestedDataset === "string"
+    ? trustPayload.requestedDataset.trim()
+    : null;
+  const activePeriodLabel = effectivePeriodLabel
+    ? effectivePeriodLabel
     : `${canonicalFilters.fromDate} — ${canonicalFilters.toDate}`;
-  const datasetLabel = trustPayload?.effectiveDataset?.trim()
-    || trustPayload?.requestedDataset?.trim()
+  const datasetLabel = effectiveDataset
+    || requestedDataset
     || "Aktivni dataset nije posebno označen";
   const trustHeadline = trustPayload?.usedFallback
     ? "Fallback ili sužen dataset je aktivan"
@@ -105,9 +115,19 @@ export default function SupplierConsolidatedPage() {
         : currentTab === "scorecard"
           ? "Skorkarta je pomoćni signal"
           : "Asortiman je objašnjenje i drilldown";
+  const fallbackReasonText = trustPayload?.usedFallback
+    ? getSafeAnalyticsErrorMessage(
+      trustPayload.fallbackReason,
+      trustPayload.fallbackReasonCode,
+      "Pre konačnog zaključka proveri effective period i dataset u trust headeru.",
+    )
+    : null;
+  const recommendationNoteText = typeof trustPayload?.recommendationNote === "string"
+    ? getSafeAnalyticsErrorMessage(trustPayload.recommendationNote)
+    : null;
   const trustDescription = trustPayload?.usedFallback
-    ? (trustPayload.fallbackReason ?? "Pre konačnog zaključka proveri effective period i dataset u trust headeru.")
-    : trustPayload?.recommendationNote
+    ? fallbackReasonText
+    : recommendationNoteText
       ?? (currentTab === "scorecard"
         ? "Poređenje dobavljača čitaj uz finalnu preporuku iz taba Pregled."
         : currentTab === "assortment"
@@ -121,8 +141,11 @@ export default function SupplierConsolidatedPage() {
       || trustPayload?.dataQualityStatus === "insufficient_data")
       ? "warning"
       : "info";
-  const trustStatusLabel = trustPayload?.dataQualityStatus
-    ? (dataQualityLabels[trustPayload.dataQualityStatus] ?? trustPayload.dataQualityStatus)
+  const normalizedQualityStatus = typeof trustPayload?.dataQualityStatus === "string"
+    ? trustPayload.dataQualityStatus.trim().toLowerCase()
+    : null;
+  const trustStatusLabel = normalizedQualityStatus
+    ? (dataQualityLabels[normalizedQualityStatus] ?? "Pouzdanost nije potvrđena")
     : "Pouzdanost nije potvrđena";
 
   useEffect(() => {
@@ -201,7 +224,7 @@ export default function SupplierConsolidatedPage() {
               ? (trustPayload?.recommendationAllowed === true ? "recommendation" : "signal")
               : "recommendation"
         }
-        recommendationNote={trustPayload?.recommendationNote ?? (
+        recommendationNote={recommendationNoteText ?? (
           currentTab === "scorecard"
             ? (trustPayload?.recommendationAllowed === true
               ? "Skorkarta je signalni sloj uz aktivnu finalnu preporuku."

@@ -129,7 +129,7 @@ export default function AnalyticsRefreshStatusBanner({
     || !Array.isArray(status.refreshedObjects)
     || !Array.isArray(status.failedObjects);
   const jobs = Array.isArray(status.jobs) ? status.jobs : [];
-  const failedJobs = jobs.filter((job) => normalizeFreshness(job.dataFreshnessStatus) === "critical");
+  const failedJobs = jobs.filter((job) => job && normalizeFreshness(job.dataFreshnessStatus) === "critical");
   const refreshedObjects = Array.isArray(status.refreshedObjects) ? status.refreshedObjects : [];
   const failedObjects = Array.isArray(status.failedObjects) ? status.failedObjects : [];
   const displayedFreshness = hasPartialPayload && freshness === "fresh" ? "unknown" : freshness;

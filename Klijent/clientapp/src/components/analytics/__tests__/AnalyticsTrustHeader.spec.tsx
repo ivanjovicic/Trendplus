@@ -176,4 +176,17 @@ describe("AnalyticsTrustHeader", () => {
     expect(screen.queryByText(/sql_timeout_v2|internal_table|internal_secret_fallback/i)).not.toBeInTheDocument();
     expect(screen.getByText(/Dodatni razlog fallback-a nije naveden/i)).toBeInTheDocument();
   });
+
+  it("does not crash on malformed optional text fields", () => {
+    renderHeader({
+      dataSource: {} as never,
+      requestedDataset: {} as never,
+      effectiveDataset: {} as never,
+      recommendationNote: {} as never,
+      emptyStateReason: {} as never,
+      fallbackReason: {} as never,
+    });
+
+    expect(screen.getByText("Izvor podataka nije naveden")).toBeInTheDocument();
+  });
 });

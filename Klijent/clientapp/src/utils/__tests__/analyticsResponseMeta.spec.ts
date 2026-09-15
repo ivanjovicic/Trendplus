@@ -124,4 +124,9 @@ describe("analyticsResponseMeta", () => {
     expect(getAnalyticsEmptyReasonMessage("   ")).toBe("Nije specificirano");
     expect(getAnalyticsEmptyReasonMessage(null)).toBeNull();
   });
+
+  it("ignores malformed non-string metadata fields without throwing", () => {
+    expect(getAnalyticsEmptyReasonMessage({} as never)).toBeNull();
+    expect(getAnalyticsMetaMessage({ success: true, errorMessage: {} as never, message: "safe" })).toBe("safe");
+  });
 });

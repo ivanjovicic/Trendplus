@@ -16,7 +16,7 @@ const EMPTY_REASON_MESSAGES: Record<string, string> = {
 };
 
 export function getAnalyticsEmptyReasonMessage(emptyReason?: string | null): string | null {
-  if (emptyReason === undefined || emptyReason === null) {
+  if (typeof emptyReason !== "string") {
     return null;
   }
 
@@ -102,22 +102,22 @@ export function shouldShowAnalyticsEmptyState(
 export function getAnalyticsMetaMessage(meta?: AnalyticsResponseMeta | null): string | null {
   if (!meta) return null;
 
-  const errorMessage = meta.errorMessage?.trim();
+  const errorMessage = typeof meta.errorMessage === "string" ? meta.errorMessage.trim() : null;
   if (errorMessage) {
     return getSafeAnalyticsErrorMessage(errorMessage, meta.errorCode);
   }
 
-  const warningMessage = meta.warningMessage?.trim();
+  const warningMessage = typeof meta.warningMessage === "string" ? meta.warningMessage.trim() : null;
   if (warningMessage) {
     return getSafeAnalyticsErrorMessage(warningMessage, meta.warningCode);
   }
 
-  const message = meta.message?.trim();
+  const message = typeof meta.message === "string" ? meta.message.trim() : null;
   if (message) {
     return getSafeAnalyticsErrorMessage(message, meta.errorCode ?? meta.warningCode);
   }
 
-  const emptyReason = meta.emptyReason?.trim();
+  const emptyReason = typeof meta.emptyReason === "string" ? meta.emptyReason.trim() : null;
   if (emptyReason) {
     return getAnalyticsEmptyReasonMessage(emptyReason);
   }

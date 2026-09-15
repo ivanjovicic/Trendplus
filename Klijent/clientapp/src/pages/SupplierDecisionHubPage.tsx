@@ -42,6 +42,7 @@ import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyti
 import type { Sezona } from "../types/Sezona";
 import { formatDate, fmtNumber, fmtPct, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
 import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
+import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { formatMetricDisplayValue, isFiniteMetricNumber } from "../utils/analyticsMetricValue";
 import {
   getAnalyticsMetaMessage,
@@ -421,10 +422,26 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
   );
   const showMetaWarning = !loading && !showBlockingError && isAnalyticsMetaWarning(scorecardMeta);
   const resolvedLastRefreshAt = refreshStatus?.lastSuccessfulRefreshAtUtc ?? trustMetadata?.lastRefreshAtUtc ?? null;
+  const requestedDatasetLabel = typeof trustMetadata?.requestedDataset === "string"
+    ? trustMetadata.requestedDataset.trim() || null
+    : null;
+  const effectiveDatasetLabel = typeof trustMetadata?.effectiveDataset === "string"
+    ? trustMetadata.effectiveDataset.trim() || null
+    : null;
+  const effectivePeriodLabel = typeof trustMetadata?.effectivePeriodLabel === "string"
+    ? trustMetadata.effectivePeriodLabel.trim() || null
+    : null;
   const hasDatasetFallback = Boolean(
     trustMetadata?.usedFallback
-    || (trustMetadata?.requestedDataset && trustMetadata?.effectiveDataset && trustMetadata.requestedDataset !== trustMetadata.effectiveDataset),
+    || (requestedDatasetLabel && effectiveDatasetLabel && requestedDatasetLabel !== effectiveDatasetLabel),
   );
+  const fallbackReasonText = trustMetadata?.fallbackReason
+    ? getSafeAnalyticsErrorMessage(
+      trustMetadata.fallbackReason,
+      trustMetadata.fallbackReasonCode,
+      "Dodatni razlog fallback-a nije naveden.",
+    )
+    : null;
 
   const decisionRows = useMemo<DecisionRow[]>(() => {
     const rows = ranking?.items ?? [];
@@ -442,11 +459,15 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
         ? recommendationToStatus(item.recommendationCode)
         : "insufficient_data";
       const statusReason = recommendationAllowed
-          ? item.statusReason?.trim() || "Backend nije dostavio obrazloženje za ovaj scorecard signal."
+          ? (typeof item.statusReason === "string" ? item.statusReason.trim() : "")
+            || "Backend nije dostavio obrazloženje za ovaj scorecard signal."
         : (trustMetadata?.usedFallback
           ? "Za izabrani period nema dovoljno podataka; prikaz je pomoćni signal iz šireg dataseta."
           : "Nedovoljno podataka u izabranom periodu; scorecard signal je pomoćnog karaktera.");
       const reliabilityPctValue = normalizeRecommendationPct(item.reliabilityPct);
+      const reasonCodes = Array.isArray(item.reasonCodes)
+        ? item.reasonCodes.filter((code): code is string => typeof code === "string")
+        : [];
 
       return {
         ...item,
@@ -460,7 +481,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
         reliabilityPct: reliabilityPctValue ?? null,
         reliabilityAvailable: recommendationAllowed && reliabilityPctValue != null,
         dataQualityStatus: normalizeRecommendationQualityStatus(item.dataQualityStatus),
-        reasonCodes: item.reasonCodes ?? [],
+        reasonCodes,
       };
     });
   }, [ranking?.items, recommendationAllowed, trustMetadata?.usedFallback]);
@@ -569,7 +590,11 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
         dataSource: "Supplier decision scorecard",
         dataQualityStatus: "critical",
         recommendationAllowed: false,
-        recommendationNote: error?.message ?? "Skorkarta dobavljača trenutno nije dostupna.",
+        recommendationNote: getSafeAnalyticsErrorMessage(
+          error?.message,
+          error?.errorCode,
+          "Skorkarta dobavljača trenutno nije dostupna.",
+        ),
       });
       return;
     }
@@ -1066,8 +1091,8 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
 
       {!loading && !showBlockingError && hasDatasetFallback ? (
         <div className="sdh-decision-message warning" role="note">
-          Prikazan je pomoćni dataset: {trustMetadata?.effectivePeriodLabel ?? trustMetadata?.effectiveDataset ?? "nije dostupno"}. Finalna preporuka je blokirana.
-          {trustMetadata?.fallbackReason ? ` ${trustMetadata.fallbackReason}` : ""}
+          Prikazan je pomoćni dataset: {effectivePeriodLabel ?? effectiveDatasetLabel ?? "nije dostupno"}. Finalna preporuka je blokirana.
+          {fallbackReasonText ? ` ${fallbackReasonText}` : ""}
         </div>
       ) : null}
 

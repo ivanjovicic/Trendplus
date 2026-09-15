@@ -85,7 +85,7 @@ function renderLink(href: string, label: string, className: string) {
 }
 
 function normalizeFreshness(value: string | null | undefined): "fresh" | "stale" | "critical" | "unknown" {
-  const normalized = value?.trim().toLowerCase();
+  const normalized = typeof value === "string" ? value.trim().toLowerCase() : null;
   if (normalized === "fresh" || normalized === "stale" || normalized === "critical") {
     return normalized;
   }
@@ -111,7 +111,7 @@ function safeFallbackReasonLabel(value: string | null | undefined): string | nul
 }
 
 function normalizeStatus(value: string | null | undefined): "good" | "warning" | "critical" | "insufficient_data" | null {
-  if (!value) {
+  if (typeof value !== "string" || !value.trim()) {
     return null;
   }
 
@@ -189,16 +189,21 @@ export default function AnalyticsTrustHeader({
   const tone = statusTone(normalizedStatus);
   const statusLabel = normalizedStatus ? STATUS_LABELS[normalizedStatus] : "Status kvaliteta nije dostupan";
   const freshness = normalizeFreshness(dataFreshnessStatus);
-  const hasPeriod = Boolean(periodFrom && periodTo);
+  const safePeriodFrom = typeof periodFrom === "string" ? periodFrom.trim() : null;
+  const safePeriodTo = typeof periodTo === "string" ? periodTo.trim() : null;
+  const hasPeriod = Boolean(safePeriodFrom && safePeriodTo);
   const hasSummary = hasSummaryValues(dataQualitySummary);
-  const hasDataset = Boolean((requestedDataset && requestedDataset.trim()) || (effectiveDataset && effectiveDataset.trim()));
-  const normalizedRequestedDataset = requestedDataset?.trim() || null;
-  const normalizedEffectiveDataset = effectiveDataset?.trim() || null;
+  const normalizedRequestedDataset = typeof requestedDataset === "string" ? requestedDataset.trim() || null : null;
+  const normalizedEffectiveDataset = typeof effectiveDataset === "string" ? effectiveDataset.trim() || null : null;
+  const hasDataset = Boolean(normalizedRequestedDataset || normalizedEffectiveDataset);
   const datasetValue = normalizedRequestedDataset && normalizedEffectiveDataset
     ? `${normalizedRequestedDataset} -> ${normalizedEffectiveDataset}`
     : (normalizedEffectiveDataset ?? normalizedRequestedDataset);
-  const effectiveLabel = effectivePeriodLabel?.trim() || null;
-  const provenanceLabel = provenanceBasis?.trim() || null;
+  const effectiveLabel = typeof effectivePeriodLabel === "string" ? effectivePeriodLabel.trim() || null : null;
+  const provenanceLabel = typeof provenanceBasis === "string" ? provenanceBasis.trim() || null : null;
+  const dataSourceLabel = typeof dataSource === "string" ? dataSource.trim() || null : null;
+  const recommendationNoteText = typeof recommendationNote === "string" ? recommendationNote.trim() || null : null;
+  const emptyStateReasonText = typeof emptyStateReason === "string" ? emptyStateReason.trim() || null : null;
   const refreshStepLabel = safeRefreshStepLabel(refreshCurrentStep);
   const fallbackReasonLabel = safeFallbackReasonLabel(fallbackReasonCode);
   const fallbackReasonText = fallbackReason
@@ -230,7 +235,7 @@ export default function AnalyticsTrustHeader({
         <div className="ath-meta-item">
           <span className="ath-meta-key">Period</span>
           <strong className="ath-meta-value">
-            {hasPeriod ? `${formatDate(periodFrom)} - ${formatDate(periodTo)}` : "Period nije definisan"}
+            {hasPeriod ? `${formatDate(safePeriodFrom)} - ${formatDate(safePeriodTo)}` : "Period nije definisan"}
           </strong>
         </div>
         <div className="ath-meta-item">
@@ -245,7 +250,7 @@ export default function AnalyticsTrustHeader({
         <div className="ath-meta-item">
           <span className="ath-meta-key">Izvor podataka</span>
           <strong className="ath-meta-value">
-            {dataSource?.trim() || "Izvor podataka nije naveden"}
+            {dataSourceLabel || "Izvor podataka nije naveden"}
           </strong>
         </div>
         {provenanceLabel ? (
@@ -284,8 +289,8 @@ export default function AnalyticsTrustHeader({
         </div>
       ) : null}
 
-      {recommendationNote ? <p className="ath-note">{recommendationNote}</p> : null}
-      {emptyStateReason ? <p className="ath-empty-reason">{emptyStateReason}</p> : null}
+      {recommendationNoteText ? <p className="ath-note">{recommendationNoteText}</p> : null}
+      {emptyStateReasonText ? <p className="ath-empty-reason">{emptyStateReasonText}</p> : null}
 
       <div className={`ath-summary ${compact ? "ath-summary-compact" : ""}`}>
         {compact ? null : <h2>Sažetak kvaliteta podataka</h2>}

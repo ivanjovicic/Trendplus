@@ -780,10 +780,12 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       const recommendationAllowed = recommended?.recommendationAllowed === true;
       const backendStatus = (recommended?.status ?? (supplier.isUnknown ? "do_not_trust" : "insufficient_data")) as DecisionStatus;
       const status = recommendationAllowed ? backendStatus : "insufficient_data" as DecisionStatus;
-      const backendStatusReason = recommended?.summary
-        ?? (supplier.isUnknown
-          ? "Dobavljač je nepoznat u master podacima; signal nije pouzdan za odluku."
-          : "Nedovoljno podataka za pouzdanu preporuku.");
+      const fallbackStatusReason = supplier.isUnknown
+        ? "Dobavljač je nepoznat u master podacima; signal nije pouzdan za odluku."
+        : "Nedovoljno podataka za pouzdanu preporuku.";
+      const backendStatusReason = typeof recommended?.summary === "string"
+        ? recommended.summary.trim() || fallbackStatusReason
+        : fallbackStatusReason;
       const statusReason = recommendationAllowed
         ? backendStatusReason
         : `Automatska preporuka nije dozvoljena: ${backendStatusReason}`;
@@ -796,7 +798,9 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       const confidenceAvailable = confidencePctValue != null;
       const reliabilityAvailable = reliabilityPctValue != null;
       const normalizedConfidencePct = confidencePctValue ?? null;
-      const reasonCodes = recommended?.reasonCodes ?? [];
+      const reasonCodes = Array.isArray(recommended?.reasonCodes)
+        ? recommended.reasonCodes.filter((code): code is string => typeof code === "string")
+        : [];
       const dataQualityStatus = normalizeRecommendationQualityStatus(recommended?.dataQualityStatus);
       const normalizedReliabilityPct = reliabilityPctValue ?? null;
       const statusLabel = displaySignalLabel(status, reliabilityAvailable, dataQualityStatus);

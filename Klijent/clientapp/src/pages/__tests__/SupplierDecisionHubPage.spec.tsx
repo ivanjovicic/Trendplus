@@ -164,6 +164,23 @@ describe("SupplierDecisionHubPage", () => {
     expect(await screen.findByText("Dobavljač 101")).toBeInTheDocument();
   });
 
+  it("fails closed when backend reason fields have malformed runtime types", async () => {
+    installFetchMock(() => ({
+      page: 1,
+      pageSize: 100,
+      totalCount: 1,
+      items: [rankingItemWithOverrides(1, 100_000, { statusReason: {}, reasonCodes: {} })],
+      trustMetadata: { recommendationAllowed: true },
+      dataNote: summaryResponse.dataNote,
+    }));
+
+    renderPage();
+
+    expect(await screen.findByText("Dobavljač 1")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Dobavljač 1").closest("tr")!.querySelector("button")!);
+    expect(screen.getAllByText(/Backend nije dostavio obrazloženje za ovaj scorecard signal/i).length).toBeGreaterThan(0);
+  });
+
   it("shows explicit no-silent-fallback empty state when trust metadata says requested range has no rows", async () => {
     const trustMetadata = {
       requestedFrom: "2026-05-01T00:00:00Z",
@@ -301,6 +318,7 @@ describe("SupplierDecisionHubPage", () => {
     renderPage();
 
     expect(await screen.findByText(/Prikazan je pomoćni dataset: Poslednjih 90 dana. Finalna preporuka je blokirana./i)).toBeInTheDocument();
+    expect(screen.queryByText(/no_data_30d/i)).not.toBeInTheDocument();
     expect(screen.getAllByText("Pomoćni signal").length).toBeGreaterThan(0);
     expect(screen.getAllByText("mv_supplier_decision_score_cache_90d").length).toBeGreaterThan(0);
 

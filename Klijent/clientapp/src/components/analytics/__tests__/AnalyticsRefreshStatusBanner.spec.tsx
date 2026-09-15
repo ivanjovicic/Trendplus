@@ -162,7 +162,7 @@ describe("AnalyticsRefreshStatusBanner", () => {
       lastErrorMessage: "sql_timeout at internal_table",
       refreshedObjects: null as never,
       failedObjects: null as never,
-      jobs: null as never,
+      jobs: [null] as never,
       recentRuns: undefined,
       durationSeconds: Number.NaN,
     }));

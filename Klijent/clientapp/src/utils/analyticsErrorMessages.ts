@@ -19,10 +19,10 @@ export function getSafeAnalyticsErrorMessage(
   errorCode?: string | null,
   fallback = ANALYTICS_ERROR_FALLBACK_MESSAGE,
 ): string {
-  const normalizedMessage = message?.trim();
+  const normalizedMessage = typeof message === "string" ? message.trim() : null;
   if (!normalizedMessage) return fallback;
 
-  const normalizedCode = errorCode?.trim().toLocaleLowerCase();
+  const normalizedCode = typeof errorCode === "string" ? errorCode.trim().toLocaleLowerCase() : null;
   if (normalizedCode && normalizedMessage.toLocaleLowerCase().includes(normalizedCode)) {
     return ANALYTICS_ERROR_FALLBACK_MESSAGE;
   }
