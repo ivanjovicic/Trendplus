@@ -4,6 +4,10 @@ Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-15: `RQ280` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ279` completion; it is the single current RQ prompt for supplier previous-period comparison degradation and was claimed in this workspace.
+
+Owner completion 2026-09-15: `RQ280` was delivered with separate previous-period failure/empty/available states, suppressed fabricated PoP growth on failed baseline, visible Serbian warnings and focused helper/page tests.
+
 Owner promotion 2026-09-15: `RQ279` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ278` completion; it is the single current RQ prompt for supplier filter fallback visibility and was claimed in this workspace.
 
 Owner completion 2026-09-15: `RQ279` was delivered with shared stale supplier-filter state, disabled selection and cleared supplier on fallback metadata, prominent Serbian stale-list copy, and focused helper/page tests.
@@ -399,7 +403,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ277 | DONE | supplier-embedded-surface-composition | Remove only confirmed duplicate supplier titles or filters |
 | RQ278 | DONE | supplier-filter-scope-contract | Make supplier filter dataset scope explicit or prove the ambient contract |
 | RQ279 | DONE | supplier-filter-fallback-visibility | Make retained supplier filter options visibly stale/degraded |
-| RQ280 | WAITING | supplier-previous-period-warning | Distinguish missing previous-period data from a failed request |
+| RQ280 | DONE | supplier-previous-period-warning | Distinguish missing previous-period data from a failed request |
 | RQ281 | WAITING | supplier-embedded-freshness-provenance | Preserve valid refresh timestamps in embedded supplier trust metadata |
 | RQ282 | WAITING | supplier-null-id-identity | Prevent vendor-key collisions when supplier IDs are absent |
 | RQ283 | WAITING | shoe-type-negative-margin-signal | Keep valid zero/negative margin comparison visible |
@@ -13706,13 +13710,28 @@ Reproduction: load one period/scope with a populated supplier list, then return 
 
 ## RQ280 - Distinguish Supplier previous-period failure from no baseline
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/analytics-contract/tests
 Feature family: supplier-previous-period-warning
 Parallel-safe: no
 Owner: Analytics Frontend / Supplier Analytics
 Commit suggestion: `fix(analytics): expose supplier comparison degradation`
+
+### Completion note
+
+- Date: 2026-09-15
+- Status: DONE
+- Completion: Supplier Footwear now tracks previous-period comparison as available, empty or failed; failed baselines show safe warning and suppress PoP growth instead of falling back to current-period change percent; successful empty baseline remains informational only.
+- Changed files: `supplierPreviousPeriodComparison.ts`, `SupplierFootwearAnalyticsPage.tsx`, related specs
+- Checks run: focused supplier previous-period specs 15 passed
+- Checks not run: full frontend suite, browser proof
+- Run log: `.ai/runs/2026-09-15-RQ280-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: branch/PR
+- Follow-up: `RQ281` is next WAITING for embedded supplier freshness provenance
+- Residual risk: live browser proof of comparison warning placement not run in this workspace
+- Prompt defect / scope repair: none
 
 ### Problem
 
