@@ -2,7 +2,7 @@
 
 Date: 2026-09-14
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ261
+Current READY prompt: RQ262
 
 Owner completion 2026-09-14: `RQ249` was delivered on `main` with fail-closed Supplier Decision Hub detail and report-toolbar actionability gates; blocked, fallback, stale/partial and missing recommendation permission remain review-only.
 Owner promotion 2026-09-14: `RQ250` was explicitly promoted after completed `RQ249`, repaired the stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
@@ -26,6 +26,8 @@ Owner completion 2026-09-15: `RQ259` was delivered on `main` with mode-aware rec
 Owner promotion 2026-09-15: `RQ260` was explicitly promoted after completed `RQ259`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
 Owner completion 2026-09-15: `RQ260` was delivered on `main` with safe empty-reason mapping, fail-closed unknown reason handling and executable-only action lists; non-executable guidance remains visibly separate, empty/error classification is preserved and backend ownership is unchanged. The queue advanced to `RQ261`.
 Owner promotion 2026-09-15: `RQ261` was explicitly promoted after completed `RQ260`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
+Owner completion 2026-09-15: `RQ261` was delivered on `main` with nullable finite refresh durations, preserved measured zero, safe Serbian operational labels, fail-closed invalid duration handling and partial-payload protection in the shared refresh banner; timestamps and correlation support remain distinct. The queue advanced to `RQ262`.
+Owner promotion 2026-09-15: `RQ262` was explicitly promoted after completed `RQ261`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
 
 ### Completion note
 
@@ -303,8 +305,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ258 | DONE | trust-header-safe-metadata | Keep shared AnalyticsTrustHeader metadata user-safe and finite |
 | RQ259 | DONE | trust-header-mode-freshness | Make shared trust-header gating and freshness normalization mode-aware |
 | RQ260 | DONE | empty-state-safe-reason-action | Keep shared analytics empty state user-safe and actionable |
-| RQ261 | READY | refresh-status-duration-message-truth | Preserve refresh duration unknown state and safe operational messaging |
-| RQ262 | WAITING | executive-kpi-value-tone-parity | Keep executive KPI availability and visual tone consistent |
+| RQ261 | DONE | refresh-status-duration-message-truth | Preserve refresh duration unknown state and safe operational messaging |
+| RQ262 | READY | executive-kpi-value-tone-parity | Keep executive KPI availability and visual tone consistent |
 | RQ263 | WAITING | analytics-export-operation-truth | Keep export/preview status honest on failure or missing artifacts |
 | RQ264 | WAITING | analytics-shared-output-finite-parity | Preserve finite/null semantics across table, detail, print and export |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
@@ -3223,7 +3225,7 @@ The dashboard still carries a thin legacy/advanced action contract. `DashboardAc
 
 ## RQ136 - Preserve truth in analytics action messages and notifications
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/contract/frontend/tests
 Feature family: analytics-action-notification-truth
@@ -12142,7 +12144,7 @@ The shared `AnalyticsEmptyState` prints the `emptyReason` prop verbatim. Several
 
 ## RQ261 - Preserve refresh duration unknown state and safe operational messaging
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1
 Type: backend/contract/frontend/tests
 Feature family: refresh-status-duration-message-truth
@@ -12208,11 +12210,30 @@ The refresh-status service aggregates missing job durations through `DefaultIfEm
 - `RQ145-RQ146` remain broad parity/runtime-schema owners.
 - `RQ260` is complete; this prompt is the single current `READY` item for Analytics Refresh / Analytics Frontend.
 
+### Completion note
+
+- Date: 2026-09-15
+- Status: DONE
+- Completion: Refresh-status aggregation now preserves `null` when no valid duration is measured, keeps authoritative finite zero visible and rejects negative/non-finite values in job, recent-run and worker-fallback boundaries. The shared banner now normalizes freshness, tolerates missing arrays, marks incomplete payloads unknown, maps known process/step/object values to Serbian copy, hides raw operational errors/tokens and retains correlation support metadata.
+- Changed files: `Api/Services/AnalyticsRefreshStatusService.cs`, `Api.Tests/AnalyticsRefreshStatusServiceTests.cs`, `Klijent/clientapp/src/components/analytics/AnalyticsRefreshStatusBanner.tsx`, `Klijent/clientapp/src/components/analytics/__tests__/AnalyticsRefreshStatusBanner.spec.tsx`
+- Contract/runtime behavior changed: missing/invalid refresh duration is unavailable rather than zero; finite measured zero remains valid; partial refresh status is degraded/unknown and safe user copy is used for operational values.
+- Checks run: failing-first backend 10 passed/2 failed as expected; failing-first frontend 5 passed/5 failed as expected; focused backend `AnalyticsRefreshStatusServiceTests` 12/12 passed; focused frontend `AnalyticsRefreshStatusBanner.spec.tsx` 10/10 passed; `npm run check:analytics-guardrails` passed; `npm run build` passed with the existing chunk-size advisory; `git diff --check` passed.
+- Checks not run: full backend/frontend suites, representative cross-page rendering tests, light/dark theme assertions and live provider/browser/deployed proof were not run because this was a bounded refresh-status contract/banner change.
+- Run log: `.ai/runs/2026-09-15-RQ261-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `pending`
+- Main verification: pending until push and fresh remote verification
+- Missed: no worker scheduling, refresh execution, cache invalidation, recommendation logic or generated-time semantics were changed.
+- Follow-up: `RQ262` is READY for Analytics Dashboard Frontend.
+- Residual risk: existing frontend chunk-size advisory remains; live worker/provider behavior still requires deployment-level proof.
+- Prompt defect / scope repair: repaired the stale dependency wording that referred to already-DONE `RQ169`; no business-scope expansion was made.
+
 ---
 
 ## RQ262 - Keep executive KPI availability and visual tone consistent
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: frontend/contract/tests
 Feature family: executive-kpi-value-tone-parity
@@ -12276,7 +12297,7 @@ The executive Dashboard KPI row always marks Revenue with the healthy `good` ton
 - `RQ167` remains the failed backend KPI response owner and `RQ191` the shared numeric formatter/range owner.
 - `RQ148` owns sales/margin measurement basis; this prompt changes presentation consistency only.
 - `RQ145` remains broad cross-surface parity ownership.
-- Keep this prompt `WAITING` while `RQ169` remains the existing `READY` item.
+- `RQ261` is complete; this prompt is the single current `READY` item for Analytics Dashboard Frontend.
 
 ---
 

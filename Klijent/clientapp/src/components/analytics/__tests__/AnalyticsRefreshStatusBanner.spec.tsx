@@ -87,7 +87,8 @@ describe("AnalyticsRefreshStatusBanner", () => {
 
     expect(screen.getByText("Kritično")).toBeInTheDocument();
     expect(screen.getByText("Podaci su kritično zastareli. Ne preporučuje se donošenje odluka bez provere osvežavanja.")).toBeInTheDocument();
-    expect(screen.getByText(/supplier_decision_mv failed/i)).toBeInTheDocument();
+    expect(screen.getByText("Osvežavanje nije uspešno završeno.")).toBeInTheDocument();
+    expect(screen.queryByText(/supplier_decision_mv failed/i)).not.toBeInTheDocument();
     expect(screen.getByText("Correlation ID:")).toBeInTheDocument();
     expect(screen.getByText("corr-123")).toBeInTheDocument();
     expect(screen.getByText("Neuspešni objekti:")).toBeInTheDocument();
@@ -101,7 +102,8 @@ describe("AnalyticsRefreshStatusBanner", () => {
       })
     );
 
-    expect(screen.getByText(/Osvežavanje u toku \(product_dim_refresh\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Osvežavanje u toku \(osvežavanje proizvoda\)/)).toBeInTheDocument();
+    expect(screen.queryByText("product_dim_refresh")).not.toBeInTheDocument();
   });
 
   it("shows worker warning", () => {
@@ -128,5 +130,66 @@ describe("AnalyticsRefreshStatusBanner", () => {
 
     expect(screen.getByText("Nema pokušaja u istoriji")).toBeInTheDocument();
     expect(screen.queryByText("0 s")).not.toBeInTheDocument();
+  });
+
+  it("keeps measured zero duration and hides invalid duration values", () => {
+    const { rerender } = render(
+      <MemoryRouter>
+        <AnalyticsRefreshStatusBanner status={buildStatus({ durationSeconds: 0 })} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("0 s")).toBeInTheDocument();
+
+    for (const invalidDuration of [-1, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+      rerender(
+        <MemoryRouter>
+          <AnalyticsRefreshStatusBanner status={buildStatus({ durationSeconds: invalidDuration })} />
+        </MemoryRouter>,
+      );
+
+      expect(screen.queryByText(/Infinity|NaN|-Infinity/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Trajanje:/)).not.toBeInTheDocument();
+    }
+  });
+
+  it("handles partial status payloads and hides raw operational tokens", () => {
+    renderBanner(buildStatus({
+      processMode: "internal_process",
+      processType: "internal_process",
+      isRunning: true,
+      currentStep: "secret_step",
+      lastErrorMessage: "sql_timeout at internal_table",
+      refreshedObjects: ["internal_object"],
+      failedObjects: ["secret_object"],
+      jobs: undefined as never,
+      recentRuns: undefined,
+      durationSeconds: Number.NaN,
+    }));
+
+    expect(screen.getByText("Nepoznat proces")).toBeInTheDocument();
+    expect(screen.getByText("Nepoznato")).toBeInTheDocument();
+    expect(screen.getByText(/Obrada podataka/)).toBeInTheDocument();
+    expect(screen.getByText("Osvežavanje nije uspešno završeno.")).toBeInTheDocument();
+    expect(screen.queryByText(/internal_process|secret_step|sql_timeout|internal_table|internal_object|secret_object|NaN/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Trajanje:/)).not.toBeInTheDocument();
+  });
+
+  it("normalizes freshness tokens without upgrading unsupported values", () => {
+    const { rerender } = render(
+      <MemoryRouter>
+        <AnalyticsRefreshStatusBanner status={buildStatus({ dataFreshnessStatus: " STALE " })} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Zastarelo")).toBeInTheDocument();
+
+    rerender(
+      <MemoryRouter>
+        <AnalyticsRefreshStatusBanner status={buildStatus({ dataFreshnessStatus: " unsupported_status " })} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Nepoznato")).toBeInTheDocument();
   });
 });

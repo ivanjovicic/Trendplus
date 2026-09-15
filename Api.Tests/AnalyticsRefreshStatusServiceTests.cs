@@ -44,7 +44,90 @@ public sealed class AnalyticsRefreshStatusServiceTests
         var status = await service.GetStatusAsync();
 
         Assert.Equal("unknown", status.DataFreshnessStatus);
+        Assert.Null(status.DurationSeconds);
         Assert.All(status.Jobs, job => Assert.Equal("unknown", job.DataFreshnessStatus));
+    }
+
+    [Fact]
+    public async Task GetStatus_PreservesMeasuredZeroDuration_WhenSuccessfulRunRecordsZero()
+    {
+        await using var db = CreateAnalyticsDbContext();
+        var nowUtc = DateTime.UtcNow;
+        db.AnalyticsRefreshRuns.Add(new AnalyticsRefreshRun
+        {
+            JobKey = "nightly_analytics_refresh",
+            JobName = "Nightly analytics refresh",
+            Status = "succeeded",
+            StartedAtUtc = nowUtc.AddMinutes(-2),
+            FinishedAtUtc = nowUtc.AddMinutes(-2),
+            DurationSeconds = 0,
+            TriggeredBy = "manual",
+            ProcessMode = "worker",
+            WorkerName = "NightlyAnalyticsRefreshWorker",
+            CreatedAtUtc = nowUtc.AddMinutes(-2)
+        });
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var status = await service.GetStatusAsync();
+
+        Assert.Equal(0, status.DurationSeconds);
+        Assert.Contains(status.Jobs, job => job.DurationSeconds == 0);
+    }
+
+    [Fact]
+    public async Task GetStatus_RejectsNegativeAndNonFiniteDurations()
+    {
+        await using var db = CreateAnalyticsDbContext();
+        var nowUtc = DateTime.UtcNow;
+        db.AnalyticsRefreshRuns.AddRange(
+            new AnalyticsRefreshRun
+            {
+                JobKey = "nightly_analytics_refresh",
+                JobName = "Nightly analytics refresh",
+                Status = "succeeded",
+                StartedAtUtc = nowUtc.AddMinutes(-3),
+                FinishedAtUtc = nowUtc.AddMinutes(-3),
+                DurationSeconds = double.NaN,
+                TriggeredBy = "manual",
+                ProcessMode = "worker",
+                WorkerName = "NightlyAnalyticsRefreshWorker",
+                CreatedAtUtc = nowUtc.AddMinutes(-3)
+            },
+            new AnalyticsRefreshRun
+            {
+                JobKey = "data_quality_snapshot",
+                JobName = "Data quality snapshot",
+                Status = "succeeded",
+                StartedAtUtc = nowUtc.AddMinutes(-2),
+                FinishedAtUtc = nowUtc.AddMinutes(-2),
+                DurationSeconds = double.PositiveInfinity,
+                TriggeredBy = "manual",
+                ProcessMode = "worker",
+                WorkerName = "AnalyticsDataQualityHealthWorker",
+                CreatedAtUtc = nowUtc.AddMinutes(-2)
+            },
+            new AnalyticsRefreshRun
+            {
+                JobKey = "nightly_analytics_refresh",
+                JobName = "Nightly analytics refresh",
+                Status = "failed",
+                StartedAtUtc = nowUtc.AddMinutes(-1),
+                FinishedAtUtc = nowUtc.AddMinutes(-1),
+                DurationSeconds = -1,
+                TriggeredBy = "manual",
+                ProcessMode = "worker",
+                WorkerName = "NightlyAnalyticsRefreshWorker",
+                CreatedAtUtc = nowUtc.AddMinutes(-1)
+            });
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var status = await service.GetStatusAsync();
+
+        Assert.Null(status.DurationSeconds);
+        Assert.All(status.Jobs, job => Assert.Null(job.DurationSeconds));
+        Assert.All(status.RecentRuns, run => Assert.Null(run.DurationSeconds));
     }
 
     [Fact]

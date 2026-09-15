@@ -185,6 +185,12 @@ public sealed class AnalyticsRefreshStatusService
             string.Equals(job.DataFreshnessStatus, "critical", StringComparison.OrdinalIgnoreCase) &&
             string.Equals(job.StatusReason, StuckRunningStatusReason, StringComparison.Ordinal));
 
+        var measuredDurations = jobs
+            .Select(job => NormalizeDurationSeconds(job.DurationSeconds))
+            .Where(value => value.HasValue)
+            .Select(value => value!.Value)
+            .ToList();
+
         var status = new AnalyticsRefreshStatusDto
         {
             ProcessMode = processMode,
@@ -208,11 +214,7 @@ public sealed class AnalyticsRefreshStatusService
                 .SelectMany(j => j.FailedObjects)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList(),
-            DurationSeconds = jobs
-                .Where(j => j.DurationSeconds.HasValue)
-                .Select(j => j.DurationSeconds!.Value)
-                .DefaultIfEmpty()
-                .Max(),
+            DurationSeconds = measuredDurations.Count > 0 ? measuredDurations.Max() : null,
             DataFreshnessStatus = hasStuckRunningJob
                 ? "critical"
                 : jobs.Any(job => string.Equals(job.StatusReason, PartialRefreshStatusReason, StringComparison.Ordinal))
@@ -320,7 +322,7 @@ public sealed class AnalyticsRefreshStatusService
                     : isRunning ? "Refresh u toku..." : null,
                 RefreshedObjects = refreshedObjects,
                 FailedObjects = failedObjects,
-                DurationSeconds = latestJobRun.DurationSeconds,
+                DurationSeconds = NormalizeDurationSeconds(latestJobRun.DurationSeconds),
                 DataFreshnessStatus = freshnessStatus,
                 StatusReason = isStuckRunning
                     ? StuckRunningStatusReason
@@ -481,7 +483,7 @@ public sealed class AnalyticsRefreshStatusService
             Status = run.Status,
             StartedAtUtc = run.StartedAtUtc,
             FinishedAtUtc = run.FinishedAtUtc,
-            DurationSeconds = run.DurationSeconds,
+            DurationSeconds = NormalizeDurationSeconds(run.DurationSeconds),
             RefreshedObjects = ParseObjects(run.RefreshedObjectsJson),
             FailedObjects = ParseObjects(run.FailedObjectsJson),
             ErrorCode = run.ErrorCode,
@@ -538,8 +540,18 @@ public sealed class AnalyticsRefreshStatusService
             NumberStyles.Float,
             CultureInfo.InvariantCulture,
             out var seconds)
-            ? seconds
+            ? NormalizeDurationSeconds(seconds)
             : null;
+    }
+
+    private static double? NormalizeDurationSeconds(double? value)
+    {
+        if (!value.HasValue || !double.IsFinite(value.Value) || value.Value < 0)
+        {
+            return null;
+        }
+
+        return value.Value;
     }
 
     private static string ResolveFreshnessStatus(
