@@ -12956,10 +12956,10 @@ Reproduction: open Daily Sales without a scope query, change the header from `al
 - Checks run: focused Daily Sales premium tests 13 passed; Daily Sales integration tests 2 passed; `npm run check:analytics-guardrails` passed; frontend production build passed; `git diff --check` passed; prompt-queue governance passed.
 - Checks not run: full frontend suite, live backend/database/API/browser/deployed smoke and full lint; backend unavailability was not treated as a product failure.
 - Run log: `.ai/runs/2026-09-15-RQ269-evidence.md`
-- Evidence state: pending main delivery verification
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `7e067b37189202505662d0dd6f451a0528a1efdf`
+- Main verification: passed - fresh `git fetch origin main` confirmed local `main` and `origin/main` at `7e067b37189202505662d0dd6f451a0528a1efdf`; implementation commit is an ancestor.
 - Missed: none known within the mounted Daily Sales scope-event contract.
 - Follow-up: `RQ270` remains the next Operations scope-event prompt and stays `WAITING` until explicitly promoted.
 - Residual risk: live header-to-page browser behavior and backend scope contents remain unverified in this offline/local run.
