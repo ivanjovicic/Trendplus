@@ -12706,8 +12706,8 @@ Reproduction: feed a successful non-partial response with `lastRefreshAtUtc: nul
 - Run log: `.ai/runs/2026-09-15-RQ266-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `7919d927cecdb24e0086bfe90c9515cbc6f367b2`
+- Main verification: passed - `origin/main` is `7919d927cecdb24e0086bfe90c9515cbc6f367b2`; implementation commit is an ancestor.
 - Missed: no backend response metadata or live provider payload was changed/verified.
 - Follow-up: if the backend later exposes an explicit page-level freshness status, extend the shared helper only under that authoritative contract.
 - Residual risk: partial responses without timestamps intentionally remain `stale` to preserve degraded-state signaling; existing Vite large-chunk advisory remains.
