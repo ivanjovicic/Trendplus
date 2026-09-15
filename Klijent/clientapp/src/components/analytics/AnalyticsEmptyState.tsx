@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { getAnalyticsEmptyReasonMessage } from "../../utils/analyticsResponseMeta";
 import "./AnalyticsEmptyState.css";
 
 type EmptyStateAction = {
@@ -54,8 +55,8 @@ export default function AnalyticsEmptyState({
   const displayTitle = title ?? defaults?.title ?? "Nema podataka.";
   const displayMessage = message ?? defaults?.message ?? null;
   const variantClass = variant ? ` aes-${variant.replace(/_/g, "-")}` : "";
-  const normalizedEmptyReason = emptyReason?.trim();
-  const showEmptyReason = emptyReason !== undefined && emptyReason !== null;
+  const displayEmptyReason = getAnalyticsEmptyReasonMessage(emptyReason);
+  const showEmptyReason = displayEmptyReason !== null;
   const resolvedDataQualityHref = dataQualityHref || "/analytics/data-quality";
   const resolvedRefreshStatusHref = refreshStatusHref || "/admin/configuration?panel=workers";
   const defaultActionLabels = variant === "filtered_out"
@@ -75,6 +76,9 @@ export default function AnalyticsEmptyState({
       ...(onRetry ? [{ label: "Pokušaj ponovo", onClick: onRetry }] : []),
     ];
   const resolvedActions = actions && actions.length > 0 ? actions : defaultActions;
+  const isExecutableAction = (action: EmptyStateAction) => Boolean(action.onClick || action.href?.trim());
+  const executableActions = resolvedActions.filter(isExecutableAction);
+  const guidanceActions = resolvedActions.filter((action) => !isExecutableAction(action));
 
   function renderActionLink(href: string, label: string, className: string) {
     if (href.startsWith("/")) {
@@ -88,7 +92,7 @@ export default function AnalyticsEmptyState({
     <section className={`analytics-empty-state${variantClass}`} role="status" aria-live="polite">
       <h2>{displayTitle}</h2>
       {displayMessage ? <p>{displayMessage}</p> : null}
-      {showEmptyReason ? <p className="aes-empty-reason">{normalizedEmptyReason || "Nije specificirano"}</p> : null}
+      {showEmptyReason ? <p className="aes-empty-reason">{displayEmptyReason}</p> : null}
 
       {reasons && reasons.length > 0 ? (
         <div className="aes-reasons">
@@ -101,21 +105,28 @@ export default function AnalyticsEmptyState({
         </div>
       ) : null}
 
-      {resolvedActions.length > 0 ? (
+      {executableActions.length > 0 ? (
         <div className="aes-actions">
           <h3>Predlog akcija</h3>
           <ul>
-            {resolvedActions.map((action) => (
+            {executableActions.map((action) => (
               <li key={action.label}>
-                {action.href ? (
-                  renderActionLink(action.href, action.label, "aes-action-link")
+                {action.href?.trim() ? (
+                  renderActionLink(action.href.trim(), action.label, "aes-action-link")
                 ) : action.onClick ? (
                   <button type="button" className="aes-action-btn" onClick={action.onClick}>{action.label}</button>
-                ) : (
-                  action.label
-                )}
+                ) : null}
               </li>
             ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {guidanceActions.length > 0 ? (
+        <div className="aes-reasons">
+          <h3>Smernice</h3>
+          <ul>
+            {guidanceActions.map((action) => <li key={action.label}>{action.label}</li>)}
           </ul>
         </div>
       ) : null}

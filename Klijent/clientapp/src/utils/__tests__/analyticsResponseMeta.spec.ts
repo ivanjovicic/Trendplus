@@ -3,6 +3,7 @@ import type { AnalyticsResponseMeta } from "../../types/analytics";
 import {
   AnalyticsMetaError,
   assertAnalyticsMetaSuccess,
+  getAnalyticsEmptyReasonMessage,
   getAnalyticsMetaMessage,
   hasAnalyticsMetaEmptyReason,
   isAnalyticsMetaEmpty,
@@ -106,5 +107,12 @@ describe("analyticsResponseMeta", () => {
     expect(getAnalyticsMetaMessage({ success: true, emptyReason: "no_data_in_period" })).toBe(
       "Nema podataka za izabrani period."
     );
+  });
+
+  it("maps known empty reasons and fails closed for unknown or blank values", () => {
+    expect(getAnalyticsEmptyReasonMessage(" NO_DATA_IN_PERIOD ")).toBe("Nema podataka za izabrani period.");
+    expect(getAnalyticsEmptyReasonMessage("backend_secret_reason")).toBe("Nema podataka za izabrani opseg.");
+    expect(getAnalyticsEmptyReasonMessage("   ")).toBe("Nije specificirano");
+    expect(getAnalyticsEmptyReasonMessage(null)).toBeNull();
   });
 });

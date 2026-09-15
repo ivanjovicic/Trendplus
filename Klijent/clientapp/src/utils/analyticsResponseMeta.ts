@@ -15,6 +15,20 @@ const EMPTY_REASON_MESSAGES: Record<string, string> = {
   no_intake_evidence: "Nema dovoljno učitanih artikala ili import redova za readiness procenu.",
 };
 
+export function getAnalyticsEmptyReasonMessage(emptyReason?: string | null): string | null {
+  if (emptyReason === undefined || emptyReason === null) {
+    return null;
+  }
+
+  const normalized = emptyReason.trim();
+  if (!normalized) {
+    return "Nije specificirano";
+  }
+
+  const key = normalized.toLowerCase().replace(/[\s-]+/g, "_");
+  return EMPTY_REASON_MESSAGES[key] ?? "Nema podataka za izabrani opseg.";
+}
+
 export class AnalyticsMetaError extends Error {
   readonly errorCode?: string | null;
   readonly correlationId?: string | null;
@@ -99,7 +113,7 @@ export function getAnalyticsMetaMessage(meta?: AnalyticsResponseMeta | null): st
 
   const emptyReason = meta.emptyReason?.trim();
   if (emptyReason) {
-    return EMPTY_REASON_MESSAGES[emptyReason] ?? "Nema podataka za izabrani opseg.";
+    return getAnalyticsEmptyReasonMessage(emptyReason);
   }
 
   return null;
