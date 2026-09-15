@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import React, { useEffect } from "react";
 import { MemoryRouter } from "react-router-dom";
 import SupplierConsolidatedPage from "../SupplierConsolidatedPage";
+import { getSupplierFilters } from "../../services/analyticsApi";
 
 vi.mock("../../services/analyticsApi", () => ({
   getStores: vi.fn().mockResolvedValue([]),
@@ -96,6 +97,32 @@ describe("SupplierConsolidatedPage", () => {
     expect(screen.getByRole("button", { name: new RegExp(tabLabel, "i") })).toHaveAttribute("aria-selected", "true");
     expect(screen.queryByText("Opseg i filteri")).not.toBeInTheDocument();
     expect(screen.queryByText("Kontrole asortimana")).not.toBeInTheDocument();
+  });
+
+  it("requests supplier filters with canonical dataScope and clears invalid supplier selection", async () => {
+    vi.mocked(getSupplierFilters).mockResolvedValue([
+      { supplierId: 202, supplierName: "Dobavljač B" },
+    ] as Awaited<ReturnType<typeof getSupplierFilters>>);
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier?dataScope=imported&supplierId=101"]}>
+        <SupplierConsolidatedPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(getSupplierFilters).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        true,
+        null,
+        "imported",
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Dobavljač")).toHaveValue("");
+    });
   });
 
   it("does not duplicate filter owners when switching tabs", async () => {

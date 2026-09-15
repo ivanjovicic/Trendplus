@@ -420,7 +420,7 @@ export default function InventoryPage() {
 
   useEffect(() => {
     let cancelled = false;
-    void getSupplierFilters(undefined, undefined, true, selectedStoreId ?? undefined)
+    void getSupplierFilters(undefined, undefined, true, selectedStoreId ?? undefined, inventoryDataScope)
       .then((nextSuppliers) => {
         if (cancelled) return;
         const fallbackWarning = nextSuppliers.meta
@@ -442,7 +442,7 @@ export default function InventoryPage() {
         }
       });
     return () => { cancelled = true; };
-  }, [selectedStoreId, selectedSupplierId]);
+  }, [inventoryDataScope, selectedStoreId, selectedSupplierId]);
 
   useEffect(() => {
     const currentLoad = {
