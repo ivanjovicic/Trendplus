@@ -63,4 +63,4 @@ Evidence state: synchronized
 
 ## Next
 
-- Audit fix commit `84162fd64515204a39dc3fb2d40762d7f909bfbd` is pushed to `main` and verified against fresh `origin/main`; only the evidence synchronization commit remains to be pushed.
+- Audit fix commit `84162fd64515204a39dc3fb2d40762d7f909bfbd` and its evidence synchronization are pushed to `main` and verified against fresh `origin/main`.
