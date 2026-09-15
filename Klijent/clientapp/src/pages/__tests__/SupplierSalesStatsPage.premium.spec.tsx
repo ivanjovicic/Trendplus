@@ -264,6 +264,114 @@ describe("SupplierSalesStatsPage premium controls", () => {
     });
   });
 
+  it("keeps embedded and standalone trust freshness aligned for partial payloads", async () => {
+    vi.mocked(getSupplierSalesStats).mockResolvedValue({
+      ...(await getSupplierSalesStats({} as never)),
+      meta: {
+        success: true,
+        lastRefreshAtUtc: "2026-07-01T07:55:00Z",
+        dataQualityStatus: "warning",
+        isPartial: true,
+        warningCode: "partial_payload",
+      },
+    } as never);
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(AnalyticsTrustHeaderMock).toHaveBeenCalled();
+    });
+
+    const standaloneTrustHeaderProps = AnalyticsTrustHeaderMock.mock.calls.at(-1)?.[0] as {
+      dataFreshnessStatus?: string | null;
+      lastRefreshAt?: string | null;
+      isPartial?: boolean;
+    };
+
+    const onTrustMetadataChange = vi.fn();
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage embedded onTrustMetadataChange={onTrustMetadataChange} />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(onTrustMetadataChange).toHaveBeenCalledWith(expect.objectContaining({
+        dataFreshnessStatus: standaloneTrustHeaderProps.dataFreshnessStatus,
+        lastRefreshAt: standaloneTrustHeaderProps.lastRefreshAt,
+      }));
+    });
+
+    expect(standaloneTrustHeaderProps.dataFreshnessStatus).toBe("stale");
+    expect(standaloneTrustHeaderProps.isPartial).toBe(true);
+  });
+
+  it("keeps embedded trust metadata unknown when refresh timestamp is missing", async () => {
+    vi.mocked(getSupplierSalesStats).mockResolvedValue({
+      ...(await getSupplierSalesStats({} as never)),
+      generatedAt: "2026-07-01T08:00:00Z",
+      meta: {
+        success: true,
+        lastRefreshAtUtc: null,
+        dataQualityStatus: "good",
+        isPartial: false,
+      },
+    } as never);
+
+    const onTrustMetadataChange = vi.fn();
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage embedded onTrustMetadataChange={onTrustMetadataChange} />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(onTrustMetadataChange).toHaveBeenCalledWith(expect.objectContaining({
+        dataFreshnessStatus: "unknown",
+        lastRefreshAt: null,
+      }));
+    });
+  });
+
+  it("matches standalone and embedded freshness projection for the same payload", async () => {
+    const onTrustMetadataChange = vi.fn();
+
+    const { unmount } = render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(AnalyticsTrustHeaderMock).toHaveBeenCalled();
+    });
+
+    const standaloneTrustHeaderProps = AnalyticsTrustHeaderMock.mock.calls.at(-1)?.[0] as {
+      dataFreshnessStatus?: string | null;
+      lastRefreshAt?: string | null;
+    };
+
+    unmount();
+    onTrustMetadataChange.mockClear();
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage embedded onTrustMetadataChange={onTrustMetadataChange} />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(onTrustMetadataChange).toHaveBeenCalledWith(expect.objectContaining({
+        dataFreshnessStatus: standaloneTrustHeaderProps.dataFreshnessStatus,
+        lastRefreshAt: standaloneTrustHeaderProps.lastRefreshAt,
+      }));
+    });
+  });
+
   it("hides standalone trust header and filter surface when embedded", async () => {
     render(
       <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
