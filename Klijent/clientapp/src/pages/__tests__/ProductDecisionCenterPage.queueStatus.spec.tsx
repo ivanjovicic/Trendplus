@@ -48,6 +48,7 @@ vi.mock("../../components/ui/InfoTip", () => ({ default: () => null }));
 describe("ProductDecisionCenterPage queue status sync", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
 
     getStoresMock.mockResolvedValue([]);
     getSupplierFiltersMock.mockResolvedValue([]);
@@ -145,6 +146,96 @@ describe("ProductDecisionCenterPage queue status sync", () => {
     await waitFor(() => {
       expect(getProductDecisionCenterMock).toHaveBeenCalledWith(
         expect.objectContaining({ search: "TAIL-SKU", top: 1200 }),
+      );
+    });
+
+    unmount();
+  });
+
+  it("forwards the global data scope to products and supplier filters, then reloads on a scope change", async () => {
+    localStorage.setItem("trendplus:dataScope", "imported");
+    const { unmount } = render(<ProductDecisionCenterPage />);
+
+    await waitFor(() => {
+      expect(getProductDecisionCenterMock).toHaveBeenCalledWith(
+        expect.objectContaining({ dataScope: "imported", top: 1200 }),
+      );
+      expect(getSupplierFiltersMock).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        true,
+        null,
+        "imported",
+      );
+    });
+
+    localStorage.setItem("trendplus:dataScope", "existing");
+    window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+
+    await waitFor(() => {
+      expect(getProductDecisionCenterMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ dataScope: "existing", top: 1200 }),
+      );
+      expect(getSupplierFiltersMock).toHaveBeenLastCalledWith(
+        expect.any(String),
+        expect.any(String),
+        true,
+        null,
+        "existing",
+      );
+    });
+
+    unmount();
+  });
+
+  it("blocks retained supplier options when their refresh fails after a scope change", async () => {
+    getSupplierFiltersMock.mockResolvedValue([
+      { supplierId: 101, supplierName: "Dobavljač A" },
+    ]);
+    const { unmount } = render(<ProductDecisionCenterPage />);
+
+    const supplierSelect = await screen.findByRole("combobox", { name: "Dobavljač" });
+    await waitFor(() => {
+      expect(screen.getByRole("option", { name: "Dobavljač A" })).toBeInTheDocument();
+    });
+
+    getSupplierFiltersMock.mockRejectedValueOnce(new Error("supplier filters unavailable"));
+    localStorage.setItem("trendplus:dataScope", "existing");
+    window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+
+    await waitFor(() => {
+      expect(supplierSelect).toBeDisabled();
+      expect(screen.getByText(/Lista dobavljača nije osvežena/i)).toBeInTheDocument();
+      expect(screen.getByText(/Lista dobavljača je zastarela/i)).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "Dobavljač A" })).toBeDisabled();
+    });
+
+    unmount();
+  });
+
+  it("clears the dependent supplier selection before loading the newly selected global scope", async () => {
+    getSupplierFiltersMock.mockResolvedValue([
+      { supplierId: 101, supplierName: "Dobavljač A" },
+    ]);
+    const { unmount } = render(<ProductDecisionCenterPage />);
+
+    const supplierSelect = await screen.findByRole("combobox", { name: "Dobavljač" });
+    await screen.findByRole("option", { name: "Dobavljač A" });
+    fireEvent.change(supplierSelect, { target: { value: "101" } });
+
+    await waitFor(() => {
+      expect(getProductDecisionCenterMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ supplierId: 101 }),
+      );
+    });
+
+    localStorage.setItem("trendplus:dataScope", "existing");
+    window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+
+    await waitFor(() => {
+      expect(supplierSelect).toHaveValue("");
+      expect(getProductDecisionCenterMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ dataScope: "existing", supplierId: null }),
       );
     });
 

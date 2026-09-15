@@ -41,8 +41,10 @@ import {
 import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescriptions";
 import {
   resolveSupplierFilterFallbackState,
+  SUPPLIER_FILTER_LOAD_FAILED_MESSAGE,
   SUPPLIER_FILTER_STALE_LIST_MESSAGE,
 } from "../utils/supplierFilterFallbackState";
+import { getDataScope, type DataScope } from "../utils/dataScope";
 import { recommendationReasonLabel } from "../utils/canonicalRecommendationSemantics";
 import type {
   AnalyticsActionDataQualityStatus,
@@ -712,6 +714,7 @@ export default function ProductDecisionCenterPage() {
   const [timelineExportError, setTimelineExportError] = useState<string | null>(null);
   const [timelineExportingProductId, setTimelineExportingProductId] = useState<number | null>(null);
   const [evidenceSnapshotByProductId, setEvidenceSnapshotByProductId] = useState<Record<number, { capturedAtUtc: string; recommendationId: string } | null>>({});
+  const [dataScope, setDataScope] = useState<DataScope>(() => getDataScope());
   const timelineRequestSeqRef = useRef(0);
   const dataRequestSeqRef = useRef(0);
 
@@ -720,7 +723,9 @@ export default function ProductDecisionCenterPage() {
   const [supplierFiltersWarning, setSupplierFiltersWarning] = useState<string | null>(null);
   const [supplierFiltersStale, setSupplierFiltersStale] = useState(false);
   const suppliersRef = useRef(suppliers);
+  const supplierIdRef = useRef(supplierId);
   suppliersRef.current = suppliers;
+  supplierIdRef.current = supplierId;
   const [payload, setPayload] = useState<ProductDecisionCenterResponse | null>(null);
   const payloadRef = useRef<ProductDecisionCenterResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -731,6 +736,19 @@ export default function ProductDecisionCenterPage() {
   const [queueBusyKey, setQueueBusyKey] = useState<string | null>(null);
   const [queuedActionKeys, setQueuedActionKeys] = useState<Set<string> | null>(null);
   const queueBusyKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const handleScopeChange = () => {
+      // A supplier choice belongs to the previous dataset and must not narrow the next one.
+      setSupplierId(null);
+      setDataScope(getDataScope());
+    };
+
+    window.addEventListener("trendplus:data-scope-changed", handleScopeChange);
+    return () => {
+      window.removeEventListener("trendplus:data-scope-changed", handleScopeChange);
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -753,26 +771,36 @@ export default function ProductDecisionCenterPage() {
     let cancelled = false;
     (async () => {
       try {
-        const items = await getSupplierFilters(fromDate, toDate, true, storeId);
+        const items = await getSupplierFilters(fromDate, toDate, true, storeId, dataScope);
         if (!cancelled) {
           const resolved = resolveSupplierFilterFallbackState(items, suppliersRef.current);
           setSupplierFiltersWarning(resolved.warning);
           setSupplierFiltersStale(resolved.isStale);
           setSuppliers(resolved.suppliers);
-          if (resolved.shouldClearSelection && supplierId != null) {
+          if (
+            resolved.shouldClearSelection
+            || (
+              !resolved.isStale
+              && supplierIdRef.current != null
+              && !resolved.suppliers.some((supplier) => supplier.supplierId === supplierIdRef.current)
+            )
+          ) {
             setSupplierId(null);
           }
         }
       } catch {
         if (!cancelled) {
-          // Preserve the last known supplier list on transient failures instead of faking an empty filter set.
+          // Preserve prior options without claiming that they match the active period and scope.
+          setSupplierFiltersWarning(SUPPLIER_FILTER_LOAD_FAILED_MESSAGE);
+          setSupplierFiltersStale(true);
+          setSupplierId(null);
         }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [fromDate, toDate, storeId]);
+  }, [dataScope, fromDate, toDate, storeId]);
 
   const loadData = useCallback(async () => {
     const requestSeq = ++dataRequestSeqRef.current;
@@ -786,6 +814,7 @@ export default function ProductDecisionCenterPage() {
         storeId,
         supplierId,
         top: 1200,
+        dataScope,
         ...(search.trim() ? { search: search.trim() } : {}),
       });
       if (dataRequestSeqRef.current !== requestSeq) {
@@ -818,7 +847,7 @@ export default function ProductDecisionCenterPage() {
         setLoading(false);
       }
     }
-  }, [fromDate, search, supplierId, storeId, toDate]);
+  }, [dataScope, fromDate, search, supplierId, storeId, toDate]);
 
   useEffect(() => {
     loadData();

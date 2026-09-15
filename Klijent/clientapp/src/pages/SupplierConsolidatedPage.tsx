@@ -7,6 +7,7 @@ import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { getAnalyticsMetaMessage } from "../utils/analyticsResponseMeta";
 import {
   resolveSupplierFilterFallbackState,
+  SUPPLIER_FILTER_LOAD_FAILED_MESSAGE,
   SUPPLIER_FILTER_STALE_LIST_MESSAGE,
 } from "../utils/supplierFilterFallbackState";
 import SupplierSalesStatsPage from "./SupplierSalesStatsPage";
@@ -210,7 +211,12 @@ export default function SupplierConsolidatedPage() {
       })
       .catch(() => {
         if (!cancelled) {
-          // Preserve the last known supplier list on transient failures instead of faking an empty filter set.
+          // Preserve prior options without claiming that they match the active period and scope.
+          setSupplierFiltersWarning(SUPPLIER_FILTER_LOAD_FAILED_MESSAGE);
+          setSupplierFiltersStale(true);
+          if (canonicalFilters.supplierId != null) {
+            setSupplier("");
+          }
         }
       });
     return () => { cancelled = true; };

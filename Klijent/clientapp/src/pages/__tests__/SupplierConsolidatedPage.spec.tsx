@@ -188,4 +188,33 @@ describe("SupplierConsolidatedPage", () => {
     expect(screen.getAllByLabelText("Supplier filteri")).toHaveLength(1);
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   });
+
+  it("blocks retained supplier options when the filter request itself fails", async () => {
+    vi.mocked(getSupplierFilters)
+      .mockReset()
+      .mockResolvedValueOnce([
+        { supplierId: 101, supplierName: "Dobavljač A" },
+      ] as Awaited<ReturnType<typeof getSupplierFilters>>)
+      .mockRejectedValueOnce(new Error("supplier filters unavailable"));
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier"]}>
+        <SupplierConsolidatedPage />
+      </MemoryRouter>,
+    );
+
+    const supplierSelect = await screen.findByRole("combobox", { name: /Dobavljač/i });
+    await waitFor(() => {
+      expect(screen.getByRole("option", { name: "Dobavljač A" })).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByDisplayValue("Svi podaci"), { target: { value: "imported" } });
+
+    await waitFor(() => {
+      expect(supplierSelect).toBeDisabled();
+      expect(screen.getByText(/Lista dobavljača nije osvežena/i)).toBeInTheDocument();
+      expect(screen.getByText(/Lista dobavljača je zastarela/i)).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "Dobavljač A" })).toBeDisabled();
+    });
+  });
 });

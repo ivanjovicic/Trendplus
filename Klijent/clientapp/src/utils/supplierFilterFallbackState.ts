@@ -4,6 +4,9 @@ import { getAnalyticsMetaMessage } from "./analyticsResponseMeta";
 export const SUPPLIER_FILTER_STALE_LIST_MESSAGE =
   "Lista dobavljača je zastarela za izabrani period i opseg. Izbor je blokiran dok se ne učita pouzdan odgovor.";
 
+export const SUPPLIER_FILTER_LOAD_FAILED_MESSAGE =
+  "Lista dobavljača nije osvežena jer zahtev nije uspeo.";
+
 export type SupplierFilterFallbackResolution = {
   warning: string | null;
   isStale: boolean;
