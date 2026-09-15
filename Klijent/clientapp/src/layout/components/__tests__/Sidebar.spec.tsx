@@ -24,4 +24,17 @@ describe("Sidebar", () => {
       "/analytics/products",
     );
   });
+
+  it("marks only the canonical supplier page active after a legacy redirect", () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier?tab=assortment&legacySource=operations-supplier-footwear"]}>
+        <Sidebar mobileOpen={false} onCloseMobile={() => {}} collapsed={false} onToggleCollapse={() => {}} />
+      </MemoryRouter>,
+    );
+
+    const activeLinks = screen.getAllByRole("link").filter((link) => link.getAttribute("aria-current") === "page");
+    expect(activeLinks).toHaveLength(1);
+    expect(activeLinks[0]).toHaveAttribute("href", "/analytics/supplier");
+    expect(activeLinks[0]).toHaveTextContent("Pregled dobavljača");
+  });
 });

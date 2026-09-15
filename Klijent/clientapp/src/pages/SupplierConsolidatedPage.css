@@ -172,6 +172,12 @@
   color: var(--danger, #ef4444);
 }
 
+.supplier-consolidated-message--compatibility {
+  border: 1px solid color-mix(in srgb, var(--info, #3b82f6) 42%, var(--border-default));
+  background: color-mix(in srgb, var(--info, #3b82f6) 10%, var(--surface-default));
+  color: var(--text-secondary);
+}
+
 .supplier-consolidated-filter-note {
   margin-top: 0.45rem;
   display: block;

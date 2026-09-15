@@ -4,7 +4,7 @@ Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
-Operations audit intake 2026-09-15: `RQ268`-`RQ300` remain individual `WAITING` follow-ups from the Operacije screen/code review; `RQ266` and `RQ267` have been completed on `main`.
+Operations audit intake 2026-09-15: `RQ269`-`RQ300` remain individual `WAITING` follow-ups from the Operacije screen/code review; `RQ266`, `RQ267` and `RQ268` have been completed on `main`.
 
 Owner promotion 2026-09-15: `RQ265` was explicitly promoted from `WAITING` to `READY` by the user request because the RQ queue had no current READY prompt; it is the single current RQ prompt for the confirmed Operations empty-reason regression.
 
@@ -19,6 +19,12 @@ Owner promotion 2026-09-15: `RQ267` was explicitly promoted from `WAITING` to `R
 Owner claim 2026-09-15: `RQ267` transitioned `READY -> IN_PROGRESS` in this workspace after explicit user request; local lock `.ai/task-locks/RQ267-codex.lock.md` is active.
 
 Owner completion 2026-09-15: `RQ267` was delivered on `main` with one page-level `h1` owner for Operations analytics; shell branding/status and duplicate local page titles no longer compete as document landmarks, while standalone and embedded Supplier compositions retain their visible context. The RQ queue has no current READY prompt.
+
+Owner promotion 2026-09-15: `RQ268` was explicitly promoted from `WAITING` to `READY` by the user request because the RQ queue had no current READY prompt; it is the single current RQ prompt for Supplier legacy navigation context.
+
+Owner claim 2026-09-15: `RQ268` transitioned `READY -> IN_PROGRESS` in this workspace after explicit user request; local lock `.ai/task-locks/RQ268-codex.lock.md` is active.
+
+Owner completion 2026-09-15: `RQ268` was delivered on `main` with canonical Supplier navigation context for the two legacy Operations redirects; target tabs and existing query parameters are preserved, the canonical page explains the compatibility origin, and only the canonical Supplier link is active. The RQ queue has no current READY prompt.
 
 Scope reconciliation for this intake: `analyticsApi.makeUrl`/`appendDataScopeToParams` already inject the persisted global `dataScope` when an analytics URL does not provide one. The remaining scope findings therefore target mounted-page refresh/event propagation and explicit request-contract proof, not an assumed universal omission. The existing `RQ66` placeholder, `RQ67` forecast-cost, `RQ70` forecast-quantity, `RQ179` supplier-footwear-freshness and `RQ203` inventory-detail-scope items remain closed and are not resurrected. The offline runtime check had no backend; connection refusal is not itself a product finding, while blank/unclear error copy remains in the relevant prompts.
 
@@ -335,7 +341,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ265 | DONE | operations-empty-reason-context | Preserve contextual empty-state messages, including available date ranges |
 | RQ266 | DONE | operations-freshness-provenance | Derive page freshness from authoritative refresh metadata |
 | RQ267 | DONE | operations-heading-hierarchy | Remove duplicate/conflicting h1 landmarks across the Operations shell |
-| RQ268 | WAITING | supplier-legacy-navigation | Keep legacy supplier redirects discoverable and correctly active |
+| RQ268 | DONE | supplier-legacy-navigation | Keep legacy supplier redirects discoverable and correctly active |
 | RQ269 | WAITING | daily-scope-event-propagation | Reload Daily Sales when the global data scope changes |
 | RQ270 | WAITING | inventory-scope-event-propagation | Reload and verify all Inventory surfaces after global scope changes |
 | RQ271 | WAITING | inventory-kpi-filter-contract | Define whether balance KPIs follow the SKU search filter |
@@ -12802,7 +12808,7 @@ Reproduction: inspect the heading tree on Daily Sales, Shoe Type, Color, Supplie
 
 ## RQ268 - Keep legacy supplier redirects and active navigation coherent
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/navigation/tests
 Feature family: supplier-legacy-navigation
@@ -12856,6 +12862,24 @@ Reproduction: click each legacy item, load the resulting URL directly, refresh i
 
 - `RQ234` owns supplier report deep-link filter serialization; this prompt owns sidebar/redirect context.
 - If product wants legacy items removed, stop for an explicit product decision rather than guessing.
+
+### Completion note
+
+- Date: 2026-09-15
+- Status: DONE
+- Completion: Legacy Operations routes preserve supported query parameters, set the canonical Supplier tab, and carry a safe source marker; canonical Supplier renders a compatibility notice while Sidebar keeps exactly one active canonical link.
+- Changed files: `Klijent/clientapp/src/pages/SupplierRedirects.tsx`, `Klijent/clientapp/src/pages/SupplierConsolidatedPage.tsx`, `Klijent/clientapp/src/pages/SupplierConsolidatedPage.css`, focused Sidebar/Supplier/redirect tests, `.ai/runs/2026-09-15-RQ268-evidence.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- Checks run: focused navigation/route matrix 6 files / 24 tests passed; analytics guardrails/encoding/typecheck passed; frontend build passed; queue governance and `git diff --check` passed.
+- Checks not run: live backend/browser/deployed smoke, axe accessibility scan and full frontend suite.
+- Run log: `.ai/runs/2026-09-15-RQ268-evidence.md`
+- Evidence state: pending main delivery verification
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: `SupplierDecisionHubRedirect` was intentionally left outside this prompt because its source group is Decisions, not the two legacy Operations entries.
+- Follow-up: RQ269 remains the next Operations scope-event follow-up but is not READY until explicitly promoted or selected by the queue owner.
+- Residual risk: an unknown or manually constructed legacy source marker is intentionally silent; live browser/back-forward evidence remains unverified.
+- Prompt defect / scope repair: none; the repair stayed within the Supplier navigation / Analytics Frontend owner boundary.
 
 ---
 

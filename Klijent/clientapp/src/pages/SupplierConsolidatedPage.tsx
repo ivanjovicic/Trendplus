@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { getStores, getSupplierFilters } from "../services/analyticsApi";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import type { StoreOption, SupplierFilterOption } from "../types/analytics";
@@ -60,12 +61,18 @@ const tabTakeaways: Record<SupplierTab, { title: string; description: string }> 
   },
 };
 
+const legacyContextMessages: Record<string, string> = {
+  "operations-supplier-sales": "Kompatibilna veza iz Operacija otvorila je canonical Pregled dobavljača, tab Pregled. Aktivna navigacija prati ovaj canonical ekran.",
+  "operations-supplier-footwear": "Kompatibilna veza iz Operacija otvorila je canonical Pregled dobavljača, tab Asortiman. Aktivna navigacija prati ovaj canonical ekran.",
+};
+
 function buildStoreLabel(store: StoreOption): string {
   const extras = [store.city, store.region].filter(Boolean).join(", ");
   return extras ? `${store.storeName} (${extras})` : store.storeName;
 }
 
 export default function SupplierConsolidatedPage() {
+  const [searchParams] = useSearchParams();
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierFilterOption[]>([]);
   const [supplierFiltersWarning, setSupplierFiltersWarning] = useState<string | null>(null);
@@ -91,6 +98,7 @@ export default function SupplierConsolidatedPage() {
     ? suppliers.find((supplier) => String(supplier.supplierId) === String(canonicalFilters.supplierId))?.supplierName ?? "Izabrani dobavljač"
     : "Svi dobavljači";
   const activeScopeLabel = dataScopeLabels[canonicalFilters.dataScope] ?? canonicalFilters.dataScope;
+  const legacyContextMessage = legacyContextMessages[searchParams.get("legacySource") ?? ""] ?? null;
   const effectivePeriodLabel = typeof trustPayload?.effectivePeriodLabel === "string"
     ? trustPayload.effectivePeriodLabel.trim()
     : null;
@@ -237,6 +245,11 @@ export default function SupplierConsolidatedPage() {
         refreshStatusHref="/admin/configuration?panel=workers"
         compact
       />
+      {legacyContextMessage ? (
+        <div className="supplier-consolidated-message supplier-consolidated-message--compatibility" role="status" data-testid="supplier-legacy-context">
+          {legacyContextMessage}
+        </div>
+      ) : null}
       <header className="supplier-consolidated-header">
         <div className="supplier-consolidated-header-content">
           <div>

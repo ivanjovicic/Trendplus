@@ -63,4 +63,17 @@ describe("SupplierConsolidatedPage", () => {
       expect(screen.queryByText(/no_data_30d/i)).not.toBeInTheDocument();
     });
   });
+
+  it("explains an Operations legacy source while preserving the canonical tab", () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier?tab=assortment&legacySource=operations-supplier-footwear&dataScope=imported"]}>
+        <SupplierConsolidatedPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("supplier-legacy-context")).toHaveTextContent(
+      "Kompatibilna veza iz Operacija otvorila je canonical Pregled dobavljača, tab Asortiman",
+    );
+    expect(screen.getByRole("button", { name: /Asortiman/i })).toHaveAttribute("aria-selected", "true");
+  });
 });
