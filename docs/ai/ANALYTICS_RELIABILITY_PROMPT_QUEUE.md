@@ -12,6 +12,8 @@ Owner completion 2026-09-15: `RQ270` was delivered on PR #6 with unified page re
 
 Owner promotion 2026-09-15: `RQ271` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ270` completion; it is the single current RQ prompt for Inventory KPI/search filter scope contract clarification and will be claimed in this workspace.
 
+Owner completion 2026-09-15: `RQ271` was delivered on PR #7 with confirmed whole-scope KPI contract and explicit scope documentation; all five balance KPI cards now clarify they represent whole-inventory totals not filtered by SKU search, preventing user confusion between visible filtered rows and authoritative balance metrics. The RQ queue returned to no current READY prompt.
+
 Owner promotion 2026-09-15: `RQ265` was explicitly promoted from `WAITING` to `READY` by the user request because the RQ queue had no current READY prompt; it is the single current RQ prompt for the confirmed Operations empty-reason regression.
 
 Owner completion 2026-09-15: `RQ265` was delivered on `main` with separate safe contextual empty-state messages and backend reason-code mapping across Daily, Shoe Type, Color and Supplier Sales Stats; the confirmed Daily available-range regression now passes. The RQ queue has no current READY prompt.
@@ -13053,7 +13055,7 @@ Reproduction: keep Inventory mounted, change the header scope, then inspect requ
 
 ## RQ271 - Define whether Inventory balance KPIs follow SKU search
 
-Status: READY
+Status: DONE
 Priority: P2
 Type: frontend/product-contract/tests
 Feature family: inventory-kpi-filter-contract
@@ -13106,6 +13108,25 @@ Reproduction: search for one SKU or distinctive text and compare visible rows/in
 
 - Requires product/metric contract confirmation if current code and tests do not settle intent; do not silently change business meaning.
 - `RQ203`/`RQ264` remain scope/output-parity baselines.
+
+### Completion note
+
+- Date: 2026-09-15
+- Status: DONE
+- Completion: Confirmed via backend code inspection that balance KPIs are computed without search filtering. Updated all five KPI card notes with explicit scope documentation: "ne utiče pretraga" (search does not affect) and "u celom inventaru" (whole inventory) language. No backend changes required; product contract is already correct—UI documentation was the gap.
+- Changed files: `Klijent/clientapp/src/components/inventory/InventoryKPICards.tsx`, `Klijent/clientapp/src/components/inventory/__tests__/InventoryKPICards.scope.test.tsx`, `.ai/runs/2026-09-15-RQ271-evidence.md`
+- Contract/runtime behavior changed: None (backend contract unchanged); UI labels clarified
+- Checks run: Scope documentation tests 5 passed; frontend build succeeded
+- Checks not run: Manual user testing (external); full suite (not required for label changes)
+- Run log: `.ai/runs/2026-09-15-RQ271-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-PR (GitHub PR #7)
+- Main commit SHA: Not yet merged (awaiting review)
+- Main verification: PR ready for review at https://github.com/ivanjovicic/Trendplus/pull/7
+- Missed: User perception testing; export/print metadata scope (addressed in RQ273)
+- Follow-up: RQ272 (total value pagination), RQ273 (export scope metadata), RQ300+ (future operations scope tasks)
+- Residual risk: Label clarity is subjective; product owner review recommended before merge
+- Prompt defect / scope repair: None; specification confirmed contract; no invention required
 
 ---
 
