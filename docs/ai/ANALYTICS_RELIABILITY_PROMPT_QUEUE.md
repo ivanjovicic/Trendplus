@@ -4,6 +4,10 @@ Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-15: `RQ275` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ274` completion; it is the single current RQ prompt for inventory queue empty-reset behavior and is claimed in this workspace.
+
+Owner completion 2026-09-15: `RQ275` was delivered with `setQueuedSuggestionKeys([])` when the inventory source-key set is empty; filter-to-empty and restored-row regression in `InventoryPage.queueStatus.spec.tsx`; lookup failures still preserve last-known state.
+
 Operations audit intake 2026-09-15: `RQ270`-`RQ300` remain individual `WAITING` follow-ups from the Operacije screen/code review; `RQ266`, `RQ267`, `RQ268` and `RQ269` have been completed on `main`.
 
 Owner promotion 2026-09-15: `RQ265` was explicitly promoted from `WAITING` to `READY` by the user request because the RQ queue had no current READY prompt; it is the single current RQ prompt for the confirmed Operations empty-reason regression.
@@ -354,7 +358,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ272 | WAITING | inventory-total-value-totality | Prevent page-local rows from masquerading as total inventory value |
 | RQ273 | WAITING | inventory-report-window-parity | Prove or repair Inventory export/print period and scope parity |
 | RQ274 | WAITING | inventory-forecast-age-evidence | Keep missing days-since-movement unknown in forecast workflow |
-| RQ275 | WAITING | inventory-queue-empty-reset | Clear stale queued-action state when source keys disappear |
+| RQ275 | DONE | inventory-queue-empty-reset | Clear stale queued-action state when source keys disappear |
 | RQ276 | WAITING | inventory-impact-semantics | Separate expected business impact from inventory exposure/value |
 | RQ277 | WAITING | supplier-embedded-surface-composition | Remove only confirmed duplicate supplier titles or filters |
 | RQ278 | WAITING | supplier-filter-scope-contract | Make supplier filter dataset scope explicit or prove the ambient contract |
@@ -13257,7 +13261,8 @@ Reproduction: trigger a forecast suggestion before detail data is available and 
 
 ## RQ275 - Clear stale Inventory queue state when source keys disappear
 
-Status: WAITING
+Status: DONE
+Completion note: 2026-09-15 — queue status effect clears `queuedSuggestionKeys` when `sourceKeys` is empty; lookup failures still preserve last-known state; regression in `InventoryPage.queueStatus.spec.tsx`.
 Priority: P1
 Type: frontend/action-workflow/tests
 Feature family: inventory-queue-empty-reset

@@ -43,7 +43,13 @@ vi.mock("../../services/analyticsApi", () => ({
 }));
 
 vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({ default: () => null }));
-vi.mock("../../components/analytics/AnalyticsEmptyState", () => ({ default: () => null }));
+vi.mock("../../components/analytics/AnalyticsEmptyState", () => ({
+  default: ({ onRetry }: { onRetry?: () => void }) => (
+    <button type="button" data-testid="analytics-empty-retry" onClick={() => onRetry?.()}>
+      Ponovi učitavanje
+    </button>
+  ),
+}));
 vi.mock("../../components/analytics/AnalyticsErrorState", () => ({ default: () => null }));
 vi.mock("../../components/analytics/KpiExplainButton", () => ({ default: () => null }));
 vi.mock("../../components/inventory/ActionWorkflowPanel", () => ({ ActionWorkflowPanel: () => null }));
@@ -153,6 +159,78 @@ describe("InventoryPage queue status sync", () => {
 
     await waitFor(() => {
       expect(getRebalanceSuggestionsMock).toHaveBeenCalledWith(expect.objectContaining({ fromStoreId: 1 }));
+    });
+  });
+
+  it("clears queued marker when inventory source keys disappear", async () => {
+    const row501 = {
+      id: 501,
+      naziv: "Artikal A",
+      plu: "PLU-501",
+      kolicina: 10,
+      minimalnaKolicina: 3,
+      nabavnaCena: 100,
+      estimatedValue: 1000,
+      idObjekat: 1,
+      idDobavljac: null,
+      stockCoverDays: 4,
+      stockCoverStatus: "low_cover",
+      sellThroughRatio: 0.5,
+      sellThroughStatus: "good",
+    };
+    const row502 = {
+      ...row501,
+      id: 502,
+      naziv: "Artikal B",
+      plu: "PLU-502",
+    };
+    const emptyInventoryList = {
+      items: [],
+      totalCount: 0,
+      pageNumber: 1,
+      pageSize: 50,
+      meta: { success: true, dataQualityStatus: "good" },
+    };
+
+    getAnalyticsActionSourceStatusesMock
+      .mockImplementationOnce(({ items }: { items: Array<{ sourceKey: string }> }) => Promise.resolve({
+        items: items.map(({ sourceKey }) => ({ sourceKey, exists: true })),
+      }))
+      .mockImplementation(({ items }: { items: Array<{ sourceKey: string }> }) => Promise.resolve({
+        items: items.map(({ sourceKey }) => ({ sourceKey, exists: false })),
+      }));
+
+    render(
+      <MemoryRouter>
+        <InventoryPage />
+      </MemoryRouter>,
+    );
+
+    const searchbox = await screen.findByRole("searchbox", { name: "Pretraga artikala" });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("inventory-items-table")).toHaveAttribute("data-queued", "true");
+    });
+
+    getInventoryListMock.mockResolvedValue(emptyInventoryList);
+    fireEvent.change(searchbox, { target: { value: "nema rezultata" } });
+
+    await waitFor(() => {
+      expect(getInventoryListMock.mock.calls.length).toBeGreaterThan(1);
+      expect(screen.getByTestId("analytics-empty-retry")).toBeInTheDocument();
+    });
+
+    getInventoryListMock.mockResolvedValue({
+      items: [row502],
+      totalCount: 1,
+      pageNumber: 1,
+      pageSize: 50,
+      meta: { success: true, dataQualityStatus: "good" },
+    });
+    fireEvent.click(screen.getByTestId("analytics-empty-retry"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("inventory-items-table")).toHaveAttribute("data-queued", "false");
     });
   });
 
