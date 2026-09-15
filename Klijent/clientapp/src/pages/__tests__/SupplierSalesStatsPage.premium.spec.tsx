@@ -264,6 +264,114 @@ describe("SupplierSalesStatsPage premium controls", () => {
     });
   });
 
+  it("keeps embedded and standalone trust freshness aligned for partial payloads", async () => {
+    vi.mocked(getSupplierSalesStats).mockResolvedValue({
+      ...(await getSupplierSalesStats({} as never)),
+      meta: {
+        success: true,
+        lastRefreshAtUtc: "2026-07-01T07:55:00Z",
+        dataQualityStatus: "warning",
+        isPartial: true,
+        warningCode: "partial_payload",
+      },
+    } as never);
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(AnalyticsTrustHeaderMock).toHaveBeenCalled();
+    });
+
+    const standaloneTrustHeaderProps = AnalyticsTrustHeaderMock.mock.calls.at(-1)?.[0] as {
+      dataFreshnessStatus?: string | null;
+      lastRefreshAt?: string | null;
+      isPartial?: boolean;
+    };
+
+    const onTrustMetadataChange = vi.fn();
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage embedded onTrustMetadataChange={onTrustMetadataChange} />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(onTrustMetadataChange).toHaveBeenCalledWith(expect.objectContaining({
+        dataFreshnessStatus: standaloneTrustHeaderProps.dataFreshnessStatus,
+        lastRefreshAt: standaloneTrustHeaderProps.lastRefreshAt,
+      }));
+    });
+
+    expect(standaloneTrustHeaderProps.dataFreshnessStatus).toBe("stale");
+    expect(standaloneTrustHeaderProps.isPartial).toBe(true);
+  });
+
+  it("keeps embedded trust metadata unknown when refresh timestamp is missing", async () => {
+    vi.mocked(getSupplierSalesStats).mockResolvedValue({
+      ...(await getSupplierSalesStats({} as never)),
+      generatedAt: "2026-07-01T08:00:00Z",
+      meta: {
+        success: true,
+        lastRefreshAtUtc: null,
+        dataQualityStatus: "good",
+        isPartial: false,
+      },
+    } as never);
+
+    const onTrustMetadataChange = vi.fn();
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage embedded onTrustMetadataChange={onTrustMetadataChange} />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(onTrustMetadataChange).toHaveBeenCalledWith(expect.objectContaining({
+        dataFreshnessStatus: "unknown",
+        lastRefreshAt: null,
+      }));
+    });
+  });
+
+  it("matches standalone and embedded freshness projection for the same payload", async () => {
+    const onTrustMetadataChange = vi.fn();
+
+    const { unmount } = render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(AnalyticsTrustHeaderMock).toHaveBeenCalled();
+    });
+
+    const standaloneTrustHeaderProps = AnalyticsTrustHeaderMock.mock.calls.at(-1)?.[0] as {
+      dataFreshnessStatus?: string | null;
+      lastRefreshAt?: string | null;
+    };
+
+    unmount();
+    onTrustMetadataChange.mockClear();
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage embedded onTrustMetadataChange={onTrustMetadataChange} />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(onTrustMetadataChange).toHaveBeenCalledWith(expect.objectContaining({
+        dataFreshnessStatus: standaloneTrustHeaderProps.dataFreshnessStatus,
+        lastRefreshAt: standaloneTrustHeaderProps.lastRefreshAt,
+      }));
+    });
+  });
+
   it("hides standalone trust header and filter surface when embedded", async () => {
     render(
       <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
@@ -291,6 +399,68 @@ describe("SupplierSalesStatsPage premium controls", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/Podaci trenutno nisu dostupni/i);
     expect(screen.queryByText("Ukupan promet")).not.toBeInTheDocument();
     expect(screen.queryByText("Prioritetna lista dobavljača")).not.toBeInTheDocument();
+  });
+
+  it("clears embedded trust metadata on supplier sales error instead of promoting generated time", async () => {
+    vi.mocked(getSupplierSalesStats).mockRejectedValue(new Error("backend down"));
+    const onTrustMetadataChange = vi.fn();
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage embedded onTrustMetadataChange={onTrustMetadataChange} />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Podaci trenutno nisu dostupni/i);
+    await waitFor(() => {
+      expect(onTrustMetadataChange).toHaveBeenCalledWith(null);
+    });
+  });
+
+  it("keeps embedded empty payloads unknown without dropping a valid refresh timestamp", async () => {
+    vi.mocked(getSupplierSalesStats).mockResolvedValue({
+      fromDate: "2026-06-01",
+      toDate: "2026-06-30",
+      generatedAt: "2026-07-01T08:00:00Z",
+      meta: {
+        success: true,
+        lastRefreshAtUtc: "2026-07-01T07:55:00Z",
+        dataQualityStatus: "insufficient_data",
+        emptyReason: "no_supplier_sales",
+        isPartial: false,
+      },
+      sezone: [],
+      suppliers: [],
+      totals: {
+        ukupanPromet: 0,
+        ukupnaKolicina: 0,
+        marginContribution: 0,
+        marginPct: 0,
+        missingCostRevenueSharePct: 0,
+        unknownSupplierRevenueSharePct: 0,
+        marginQualityTier: "insufficient_data",
+        isSnapshotActive: false,
+        snapshotCostCoveragePct: null,
+      },
+      dataQuality: {
+        missingCostRevenueSharePct: 0,
+        unknownSupplierRevenueSharePct: 0,
+      },
+    } as never);
+
+    const onTrustMetadataChange = vi.fn();
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage embedded onTrustMetadataChange={onTrustMetadataChange} />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(onTrustMetadataChange).toHaveBeenCalledWith(expect.objectContaining({
+        dataFreshnessStatus: "unknown",
+        lastRefreshAt: "2026-07-01T07:55:00Z",
+      }));
+    });
   });
 
   it("empty is not error when supplier sales returns no rows", async () => {

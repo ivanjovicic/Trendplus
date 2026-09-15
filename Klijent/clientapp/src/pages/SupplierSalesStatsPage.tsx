@@ -37,7 +37,7 @@ import { getDataScope } from "../utils/dataScope";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
 import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange, formatDate } from "../utils/analyticsFormatters";
 import { formatMetricDisplayValue } from "../utils/analyticsMetricValue";
-import { getAnalyticsDataFreshnessStatus } from "../utils/analyticsResponseMeta";
+import { buildSupplierSalesStatsTrustProjection } from "../utils/supplierSalesStatsTrust";
 import { recommendationReasonLabel } from "../utils/canonicalRecommendationSemantics";
 import {
   analyticsMetricDescriptions,
@@ -1079,9 +1079,10 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
 
   const responseMeta = data?.meta ?? null;
   const trustDataQualityStatus = responseMeta?.dataQualityStatus ?? headerDataQualityStatus;
-  const trustLastRefreshAt = responseMeta?.lastRefreshAtUtc ?? null;
-  const trustIsPartial = responseMeta?.isPartial ?? false;
-  const trustDataFreshnessStatus = getAnalyticsDataFreshnessStatus(responseMeta);
+  const trustProjection = buildSupplierSalesStatsTrustProjection(responseMeta);
+  const trustLastRefreshAt = trustProjection.lastRefreshAt;
+  const trustIsPartial = trustProjection.isPartial;
+  const trustDataFreshnessStatus = trustProjection.dataFreshnessStatus;
   const trustEmptyStateReason = responseMeta?.message ?? emptyStateHint;
 
   const emptyStateVariant = useMemo<"no_data" | "insufficient_data" | "filtered_out" | null>(() => {
@@ -1113,7 +1114,18 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       recommendationNote: "Pregled je canonical decision surface za dobavljače. Preporuke dolaze iz backenda.",
       emptyStateReason: trustEmptyStateReason,
     });
-  }, [activeDataScope, activeFilters.fromDate, activeFilters.toDate, data, embedded, onTrustMetadataChange, trustDataQualityStatus, trustEmptyStateReason, trustIsPartial, trustLastRefreshAt]);
+  }, [
+    activeDataScope,
+    activeFilters.fromDate,
+    activeFilters.toDate,
+    data,
+    embedded,
+    onTrustMetadataChange,
+    trustDataFreshnessStatus,
+    trustDataQualityStatus,
+    trustEmptyStateReason,
+    trustLastRefreshAt,
+  ]);
 
   const toolbarFilters = useMemo<AnalyticsNamedValue[]>(
     () => [

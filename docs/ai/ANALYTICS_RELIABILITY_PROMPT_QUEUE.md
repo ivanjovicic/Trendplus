@@ -4,7 +4,7 @@ Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
-Owner promotion 2026-09-15: `RQ280` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ279` completion; it is the single current RQ prompt for supplier previous-period comparison degradation and was claimed in this workspace.
+Owner promotion 2026-09-15: `RQ281` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ280` completion; it is the single current RQ prompt for embedded supplier freshness provenance and was claimed in this workspace.
 
 Owner completion 2026-09-15: `RQ280` was delivered with separate previous-period failure/empty/available states, suppressed fabricated PoP growth on failed baseline, visible Serbian warnings and focused helper/page tests.
 
@@ -404,7 +404,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ278 | DONE | supplier-filter-scope-contract | Make supplier filter dataset scope explicit or prove the ambient contract |
 | RQ279 | DONE | supplier-filter-fallback-visibility | Make retained supplier filter options visibly stale/degraded |
 | RQ280 | DONE | supplier-previous-period-warning | Distinguish missing previous-period data from a failed request |
-| RQ281 | WAITING | supplier-embedded-freshness-provenance | Preserve valid refresh timestamps in embedded supplier trust metadata |
+| RQ281 | DONE | supplier-embedded-freshness-provenance | Preserve valid refresh timestamps in embedded supplier trust metadata |
 | RQ282 | WAITING | supplier-null-id-identity | Prevent vendor-key collisions when supplier IDs are absent |
 | RQ283 | WAITING | shoe-type-negative-margin-signal | Keep valid zero/negative margin comparison visible |
 | RQ284 | WAITING | shoe-type-status-identity | Preserve backend recommendation status when actionability is gated |
@@ -13781,13 +13781,29 @@ Reproduction: resolve the current request and reject only the previous-period re
 
 ## RQ281 - Preserve valid refresh timestamps in embedded Supplier trust metadata
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/trust-metadata/tests
 Feature family: supplier-embedded-freshness-provenance
 Parallel-safe: no
 Owner: Analytics Frontend / Supplier Analytics
 Commit suggestion: `fix(analytics): preserve embedded supplier freshness`
+
+### Completion note
+
+- Date: 2026-09-15
+- Status: DONE
+- Completion: Supplier Sales embedded trust metadata now projects `lastRefreshAt` and `dataFreshnessStatus` from the same authoritative meta via `buildSupplierSalesStatsTrustProjection`; valid timestamps stay fresh, partial stays stale, missing timestamps stay unknown without promoting `generatedAt`.
+- Changed files: `supplierSalesStatsTrust.ts`, `SupplierSalesStatsPage.tsx`, related specs
+- Checks run: focused supplier sales stats trust specs 19 passed
+- Checks not run: full frontend suite, browser proof
+- Run log: `.ai/runs/2026-09-15-RQ281-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: branch/PR
+- Follow-up: `RQ282` is next WAITING for supplier null-ID identity
+- Residual risk: live browser proof of parent trust header parity not run in this workspace
+- Prompt defect / scope repair: none
+- Follow-up hardening 2026-09-15: parseable `lastRefreshAtUtc` only; failed/malformed timestamps stay unknown; parent header and embedded error/empty callbacks covered. Run log: `.ai/runs/2026-09-15-RQ281-RQ282-hardening-evidence.md`
 
 ### Problem
 
