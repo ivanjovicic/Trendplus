@@ -6,7 +6,7 @@
 - Queue: `direct-user-request`
 - Delivery target: `main`
 - Working branch / PR: `main` / direct delivery
-- Main commit SHA: `d0e8af81`
+- Main commit SHA: `6a13f2c5`
 - Main verification: pending
 
 ## Interpreted outcome
