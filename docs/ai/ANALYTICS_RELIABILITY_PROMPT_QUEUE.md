@@ -16,6 +16,8 @@ Owner completion 2026-09-15: `RQ271` was delivered on PR #7 with confirmed whole
 
 Owner promotion 2026-09-15: `RQ272` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ271` completion; it is the single current RQ prompt for total value fallback pagination risk and will be claimed in this workspace.
 
+Owner completion 2026-09-15: `RQ272` was delivered on PR #8 with removed rows fallback; total inventory value now uses only authoritative backend `balance.estimatedInventoryValue` and renders unavailable ("-") rather than silently presenting page sums as totals during pagination. The RQ queue returned to no current READY prompt.
+
 Owner promotion 2026-09-15: `RQ265` was explicitly promoted from `WAITING` to `READY` by the user request because the RQ queue had no current READY prompt; it is the single current RQ prompt for the confirmed Operations empty-reason regression.
 
 Owner completion 2026-09-15: `RQ265` was delivered on `main` with separate safe contextual empty-state messages and backend reason-code mapping across Daily, Shoe Type, Color and Supplier Sales Stats; the confirmed Daily available-range regression now passes. The RQ queue has no current READY prompt.
@@ -13134,7 +13136,7 @@ Reproduction: search for one SKU or distinctive text and compare visible rows/in
 
 ## RQ272 - Prevent Inventory page rows from masquerading as total value
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: frontend/numeric-state/tests
 Feature family: inventory-total-value-totality
@@ -13185,6 +13187,25 @@ Reproduction: return multiple pages, omit the balance total value, load page 2 a
 ### Dependencies
 
 - `RQ240`/`RQ264` own nullable/finite display foundations; this prompt owns total-vs-page provenance.
+
+### Completion note
+
+- Date: 2026-09-15
+- Status: DONE
+- Completion: Removed fallback logic that summed current page rows as total when backend `estimatedInventoryValue` was unavailable. Now uses only authoritative backend value; unavailable totals render as "-" rather than false partial sums. Pagination no longer changes reported total inventory value.
+- Changed files: `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.totalValue.test.tsx`, `.ai/runs/2026-09-15-RQ272-evidence.md`
+- Contract/runtime behavior changed: Total value now exclusively backend-sourced; page sum never displayed as total
+- Checks run: Total value semantics tests 5 passed; frontend build succeeded
+- Checks not run: Manual pagination testing (architecture/logic verified through tests)
+- Run log: `.ai/runs/2026-09-15-RQ272-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-PR (GitHub PR #8)
+- Main commit SHA: Not yet merged (awaiting review)
+- Main verification: PR ready for review at https://github.com/ivanjovicic/Trendplus/pull/8
+- Missed: Live pagination testing with varying row values (requires manual QA)
+- Follow-up: RQ273 (export scope metadata), RQ300+ (remaining Inventory operations scope)
+- Residual risk: Missing backend totals will now show as unavailable (correct behavior); ensure backend computation is complete across all data scenarios
+- Prompt defect / scope repair: None; fix is minimal and surgical
 
 ---
 
