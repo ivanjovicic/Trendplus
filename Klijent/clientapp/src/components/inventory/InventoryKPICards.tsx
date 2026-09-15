@@ -20,11 +20,11 @@ export function InventoryKPICards({
   totalValue,
 }: InventoryKPICardsProps) {
   const cards: Array<{ label: string; value: string; note: string; tone: KpiTone }> = [
-    { label: "Ukupno SKU", value: totalSku != null ? formatNumber(totalSku) : "-", note: "Broj jedinstvenih artikala u izabranom opsegu.", tone: "cyan" },
-    { label: "Ukupno na stanju", value: totalOnHand != null ? formatNumber(totalOnHand) : "-", note: "Ukupna pozitivna raspoloziva kolicina robe.", tone: "green" },
-    { label: "Niska zaliha", value: lowStockCount != null ? formatNumber(lowStockCount) : "-", note: `${formatPercent(lowStockShare)} fonda je blizu minimuma.`, tone: "amber" },
-    { label: "Prosecno po SKU", value: avgUnitsPerSku != null ? formatNumber(avgUnitsPerSku, 1) : "Nije dostupno", note: "Srednja kolicina robe po artiklu.", tone: "blue" },
-    { label: "Procena vrednosti", value: formatCurrency(totalValue), note: "Nabavna vrednost pozitivne zalihe.", tone: "value" },
+    { label: "Ukupno SKU", value: totalSku != null ? formatNumber(totalSku) : "-", note: "Broj jedinstvenih artikala u izabranom opsegu (ne utiče pretraga po tekstu).", tone: "cyan" },
+    { label: "Ukupno na stanju", value: totalOnHand != null ? formatNumber(totalOnHand) : "-", note: "Ukupna pozitivna raspoloziva kolicina robe u celom inventaru (ne utiče pretraga).", tone: "green" },
+    { label: "Niska zaliha", value: lowStockCount != null ? formatNumber(lowStockCount) : "-", note: `${formatPercent(lowStockShare)} celog fonda je blizu minimuma (ne utiče pretraga po tekstu).`, tone: "amber" },
+    { label: "Prosecno po SKU", value: avgUnitsPerSku != null ? formatNumber(avgUnitsPerSku, 1) : "Nije dostupno", note: "Srednja kolicina robe po artiklu u celom inventaru (ne utiče pretraga).", tone: "blue" },
+    { label: "Procena vrednosti", value: formatCurrency(totalValue), note: "Nabavna vrednost pozitivne zalihe u celom inventaru (ne utiče pretraga po tekstu).", tone: "value" },
   ];
 
   const toneClasses: Record<KpiTone, string> = {
