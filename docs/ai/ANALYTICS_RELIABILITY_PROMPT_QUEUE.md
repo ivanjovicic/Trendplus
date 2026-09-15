@@ -13293,6 +13293,10 @@ Reproduction: use a non-default signal window and non-`all` scope, export/previe
 - Run log: `.ai/runs/2026-09-15-RQ273-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-PR
+- Main commit SHA: Not yet merged; consolidated delivery is on `cursor/evening-inventory-prompts-consolidation-c753`
+- Main verification: Not yet applicable; integration PR targets `main`
+- Missed: Backend build and live export artifact inspection because `dotnet` is unavailable in this environment
+- Residual risk: Backend export compilation and rendered artifact layout require CI or a .NET-capable environment
 - Follow-up: RQ274 (forecast age evidence)
 
 ---
