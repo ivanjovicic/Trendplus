@@ -4,7 +4,7 @@ Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
-Operations audit intake 2026-09-15: `RQ267`-`RQ300` remain individual `WAITING` follow-ups from the Operacije screen/code review; `RQ266` has been completed on `main`.
+Operations audit intake 2026-09-15: `RQ268`-`RQ300` remain individual `WAITING` follow-ups from the Operacije screen/code review; `RQ266` and `RQ267` have been completed on `main`.
 
 Owner promotion 2026-09-15: `RQ265` was explicitly promoted from `WAITING` to `READY` by the user request because the RQ queue had no current READY prompt; it is the single current RQ prompt for the confirmed Operations empty-reason regression.
 
@@ -13,6 +13,12 @@ Owner completion 2026-09-15: `RQ265` was delivered on `main` with separate safe 
 Owner promotion 2026-09-15: `RQ266` was explicitly promoted from `WAITING` to `READY` by the user request because the RQ queue had no current READY prompt; it is the single current RQ prompt for Operations freshness provenance.
 
 Owner completion 2026-09-15: `RQ266` was delivered on `main` with shared fail-closed freshness projection across Daily, Shoe Type, Color and standalone/embedded Supplier Sales Stats; valid refresh metadata now prevents false `unknown`, while missing/empty/error metadata cannot appear `fresh`. The RQ queue has no current READY prompt.
+
+Owner promotion 2026-09-15: `RQ267` was explicitly promoted from `WAITING` to `READY` by the user request because the RQ queue had no current READY prompt; it is the single current RQ prompt for Operations heading hierarchy.
+
+Owner claim 2026-09-15: `RQ267` transitioned `READY -> IN_PROGRESS` in this workspace after explicit user request; local lock `.ai/task-locks/RQ267-codex.lock.md` is active.
+
+Owner completion 2026-09-15: `RQ267` was delivered on `main` with one page-level `h1` owner for Operations analytics; shell branding/status and duplicate local page titles no longer compete as document landmarks, while standalone and embedded Supplier compositions retain their visible context. The RQ queue has no current READY prompt.
 
 Scope reconciliation for this intake: `analyticsApi.makeUrl`/`appendDataScopeToParams` already inject the persisted global `dataScope` when an analytics URL does not provide one. The remaining scope findings therefore target mounted-page refresh/event propagation and explicit request-contract proof, not an assumed universal omission. The existing `RQ66` placeholder, `RQ67` forecast-cost, `RQ70` forecast-quantity, `RQ179` supplier-footwear-freshness and `RQ203` inventory-detail-scope items remain closed and are not resurrected. The offline runtime check had no backend; connection refusal is not itself a product finding, while blank/unclear error copy remains in the relevant prompts.
 
@@ -328,7 +334,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ264 | DONE | analytics-shared-output-finite-parity | Preserve finite/null semantics across table, detail, print and export |
 | RQ265 | DONE | operations-empty-reason-context | Preserve contextual empty-state messages, including available date ranges |
 | RQ266 | DONE | operations-freshness-provenance | Derive page freshness from authoritative refresh metadata |
-| RQ267 | WAITING | operations-heading-hierarchy | Remove duplicate/conflicting h1 landmarks across the Operations shell |
+| RQ267 | DONE | operations-heading-hierarchy | Remove duplicate/conflicting h1 landmarks across the Operations shell |
 | RQ268 | WAITING | supplier-legacy-navigation | Keep legacy supplier redirects discoverable and correctly active |
 | RQ269 | WAITING | daily-scope-event-propagation | Reload Daily Sales when the global data scope changes |
 | RQ270 | WAITING | inventory-scope-event-propagation | Reload and verify all Inventory surfaces after global scope changes |
@@ -10782,7 +10788,7 @@ The supplier footwear pre/post endpoint uses a non-null data-quality DTO and con
 
 ## RQ244 - Do not treat an outcome measurement timestamp as proof
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: frontend/contract/tests
 Feature family: analytics-actions-outcome-evidence-proof
@@ -12718,7 +12724,7 @@ Reproduction: feed a successful non-partial response with `lastRefreshAtUtc: nul
 
 ## RQ267 - Restore one coherent heading hierarchy in the Operations shell
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend/accessibility/tests
 Feature family: operations-heading-hierarchy
@@ -12773,6 +12779,24 @@ Reproduction: inspect the heading tree on Daily Sales, Shoe Type, Color, Supplie
 
 - Coordinate with the routing/navigation owner before changing shared shell semantics.
 - Runtime accessibility evidence may be limited offline; document any axe/browser check that cannot run.
+
+### Completion note
+
+- Date: 2026-09-15
+- Status: DONE
+- Completion: `AnalyticsTrustHeader` remains the page-level `h1`; Sidebar `Backoffice` and HeaderStatus route text are neutral elements; duplicate local page titles in SupplierConsolidated, Pre/Posle and Pre-Nivelacija are `h2` with visual styling preserved.
+- Changed files: `Klijent/clientapp/src/layout/components/Sidebar.tsx`, `Klijent/clientapp/src/layout/components/HeaderStatus.tsx`, `Klijent/clientapp/src/pages/SupplierConsolidatedPage.tsx`, `Klijent/clientapp/src/pages/SupplierConsolidatedPage.css`, `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`, `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`, focused shell/page heading tests, `.ai/runs/2026-09-15-RQ267-evidence.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- Checks run: heading-focused matrix 10 passed; analytics guardrails/encoding/typecheck passed; frontend build passed; queue governance and `git diff --check` passed.
+- Checks not run: live backend/browser/deployed smoke, axe accessibility scan and full frontend suite.
+- Run log: `.ai/runs/2026-09-15-RQ267-evidence.md`
+- Evidence state: pending main delivery verification
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: SEO impact and live screen-reader output were not measured; two unrelated existing contract assertions remain failing (`N/A` versus empty value).
+- Follow-up: RQ268 remains the next Operations navigation follow-up but is not READY until explicitly promoted or selected by the queue owner.
+- Residual risk: any future page that composes a trust header with a local title must preserve the one-page-level-h1 contract; runtime axe/browser evidence remains outstanding.
+- Prompt defect / scope repair: none; the repair stayed within the Navigation Shell / Analytics Frontend owner boundary.
 
 ---
 

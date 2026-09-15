@@ -1314,7 +1314,7 @@ const advancedSignals = useMemo(
       />
       <header className="ppn-decision-header">
         <div>
-          <h1 className="ppn-decision-title">Prodaja pre/posle nivelacije</h1>
+          <h2 className="ppn-decision-title">Prodaja pre/posle nivelacije</h2>
           <p className="ppn-decision-subtitle">
             Event-window analiza: poredi 30 dana pre i 30 dana posle svake nivelacije, pa sabira signal po dobavljaču.
             Nije izolovani profit, već poslovni signal za prioritet nabavke i nadzor cene.

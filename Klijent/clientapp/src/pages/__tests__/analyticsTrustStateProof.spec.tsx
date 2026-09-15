@@ -79,6 +79,7 @@ describe("analytics trust-state header proof", () => {
 
     expect(screen.getByRole("region", { name: "Kontekst pouzdanosti analitike" })).toBeInTheDocument();
     expect(screen.getByText("Analitički signal")).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(await screen.findByRole("alert")).toHaveTextContent(/Dnevna prodaja trenutno nije dostupna/i);
   });
 
@@ -95,6 +96,7 @@ describe("analytics trust-state header proof", () => {
 
     expect(screen.getByRole("region", { name: "Kontekst pouzdanosti analitike" })).toBeInTheDocument();
     expect(screen.getByText("Analitički signal")).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(await screen.findByRole("alert")).toBeInTheDocument();
   });
 
@@ -109,6 +111,7 @@ describe("analytics trust-state header proof", () => {
 
     expect(screen.getByRole("region", { name: "Kontekst pouzdanosti analitike" })).toBeInTheDocument();
     expect(screen.getByText("Preporuka sistema")).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(await screen.findByRole("alert")).toBeInTheDocument();
   });
 

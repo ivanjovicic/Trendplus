@@ -14,7 +14,9 @@ vi.mock("recharts", () => ({
   Bar: () => <div />,
 }));
 
-vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({ default: () => null }));
+vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({
+  default: ({ title }: { title: string }) => <h1 data-testid="analytics-trust-header">{title}</h1>,
+}));
 vi.mock("../../components/analytics/AnalyticsTableToolbar", () => ({ default: () => null }));
 vi.mock("../../components/analytics/AnalyticsErrorState", () => ({
   default: ({ title, message }: { title: string; message: string }) => (
@@ -198,6 +200,20 @@ describe("PreNivelacijaPriorityPage", () => {
     expect(await screen.findByTestId("pre-nivelacija-prioriteti-data-table")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Primeni filtere/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Reset filtera/i })).toBeInTheDocument();
+  });
+
+  it("keeps the trust header as the only page-level h1", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByTestId("pre-nivelacija-prioriteti-data-table");
+
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 1, name: "Prioriteti pre-nivelacije" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Prioriteti pre-nivelacije" })).toBeInTheDocument();
   });
 
   it("shows backend reliability as a percent instead of local Visoko/Srednje/Nisko bands", async () => {

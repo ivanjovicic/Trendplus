@@ -160,6 +160,8 @@ describe("SupplierFootwearAnalyticsPage", () => {
     expect(within(await screen.findByTestId("analytics-control-bar")).getByText("Kvalitet podataka")).toBeInTheDocument();
     expect(await screen.findByText(/Prikazano:\s*1 red/i)).toBeInTheDocument();
     expect(screen.getByText("Sveže")).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 1, name: "Dobavljači i tipovi obuće" })).toBeInTheDocument();
   });
 
   it("does not infer fresh supplier footwear data from response generated time", async () => {
@@ -290,6 +292,8 @@ describe("SupplierFootwearAnalyticsPage", () => {
         recommendationAllowed: true,
       }));
     });
+
+    expect(screen.queryAllByRole("heading", { level: 1 })).toHaveLength(0);
   });
 
   it("keeps missing share and confidence metrics unavailable across KPI, chart, table, tooltip, and details", async () => {

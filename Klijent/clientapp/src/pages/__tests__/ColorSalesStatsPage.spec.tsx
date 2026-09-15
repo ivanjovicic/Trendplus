@@ -546,6 +546,8 @@ describe("ColorSalesStatsPage", () => {
 
     expect(screen.getByRole("region", { name: "Kontekst pouzdanosti analitike" })).toBeInTheDocument();
     expect(screen.getByText("Preporuka sistema")).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 1, name: "Prodaja po boji artikla" })).toBeInTheDocument();
     await screen.findByText("Crna");
   });
 

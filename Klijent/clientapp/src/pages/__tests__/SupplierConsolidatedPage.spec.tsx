@@ -51,6 +51,9 @@ describe("SupplierConsolidatedPage", () => {
     );
 
     expect(screen.getAllByText("Dobavljači").length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 1, name: "Dobavljači" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Dobavljači" })).toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.getByText("Dataset")).toBeInTheDocument();

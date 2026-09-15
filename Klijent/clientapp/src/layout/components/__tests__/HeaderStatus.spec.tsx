@@ -51,7 +51,8 @@ describe("HeaderStatus", () => {
       "href",
       "/analytics/products"
     );
-    expect(screen.getByRole("heading", { level: 1, name: "Odluke o proizvodima" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1, name: "Odluke o proizvodima" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Odluke o proizvodima" })).toBeInTheDocument();
     expect(screen.getByText("123")).toBeInTheDocument();
     expect(screen.getByText("Edit")).toBeInTheDocument();
   });

@@ -715,7 +715,7 @@ export default function PreNivelacijaPriorityPage() {
       />
       <header className="pnp-decision-header">
         <div>
-          <h1 className="pnp-decision-title">Prioriteti pre-nivelacije</h1>
+          <h2 className="pnp-decision-title">Prioriteti pre-nivelacije</h2>
           <p className="pnp-decision-subtitle">
             Operativna podrška za odluke po SKU pre faze sniženja: gde treba pojačati izlaganje,
             šta zadržati pod nadzorom i šta spustiti iz fokusa.

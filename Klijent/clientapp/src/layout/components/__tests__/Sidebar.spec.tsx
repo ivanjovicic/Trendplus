@@ -17,6 +17,8 @@ describe("Sidebar", () => {
     expect(screen.getByRole("button", { name: /Operacije/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Kvalitet podataka/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Izveštaji \/ Legacy/i })).toBeInTheDocument();
+    expect(screen.getByText("Backoffice")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Backoffice" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Odluke o proizvodima" })).toHaveAttribute(
       "href",
       "/analytics/products",

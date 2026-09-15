@@ -27,8 +27,11 @@ vi.mock("../components/analytics/AnalyticsTableToolbar", () => ({
 }));
 
 vi.mock("../components/analytics/AnalyticsTrustHeader", () => ({
-  default: ({ dataSource }: { dataSource?: string | null }) => (
-    <div data-testid="analytics-trust-header">{dataSource}</div>
+  default: ({ title, dataSource }: { title?: string; dataSource?: string | null }) => (
+    <div data-testid="analytics-trust-header">
+      <h1>{title}</h1>
+      <span>{dataSource}</span>
+    </div>
   ),
 }));
 
@@ -200,6 +203,16 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     });
 
     expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("store: 2");
+  });
+
+  it("keeps the trust header as the only page-level h1", async () => {
+    renderPage();
+
+    await screen.findByText("Prioritetna lista dobavljača");
+
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 1, name: "Prodaja pre/posle nivelacije" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Prodaja pre/posle nivelacije" })).toBeInTheDocument();
   });
 
   it("reloads both period requests when global dataScope changes", async () => {

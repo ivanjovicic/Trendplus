@@ -241,7 +241,7 @@ export default function SupplierConsolidatedPage() {
         <div className="supplier-consolidated-header-content">
           <div>
             <div className="supplier-consolidated-overline">Centralna analitika dobavljača</div>
-            <h1>Dobavljači</h1>
+            <h2>Dobavljači</h2>
             <p className="supplier-consolidated-header-desc">{tabDescriptions[currentTab]}</p>
           </div>
         </div>

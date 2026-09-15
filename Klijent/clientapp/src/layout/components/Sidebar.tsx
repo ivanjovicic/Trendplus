@@ -82,7 +82,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile, collapsed, onToggle
             <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border-default)] bg-[var(--surface-light)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
               Trendplus
             </div>
-            <h1 className="mt-3 text-xl font-semibold leading-tight text-contrast">Backoffice</h1>
+            <div className="mt-3 text-xl font-semibold leading-tight text-contrast">Backoffice</div>
             <p className="mt-1 text-xs leading-relaxed text-secondary">Prodaja, lager, odluke i kontrola podataka.</p>
           </div>
           <div className="flex items-center gap-1">

@@ -383,9 +383,9 @@ export default function HeaderStatus({ onOpenMobileNav }: HeaderStatusProps) {
               {trailToNodes(trail)}
             </div>
             <div className="mt-0.5 flex min-w-0 items-center gap-2">
-              <h1 className="truncate text-sm font-semibold text-contrast sm:text-base">
+              <div className="truncate text-sm font-semibold text-contrast sm:text-base">
                 {item?.label ?? "Trendplus Backoffice"}
-              </h1>
+              </div>
               <span className="hidden rounded-full border border-muted bg-[var(--surface-elevated)] px-2 py-0.5 text-[11px] font-semibold text-muted md:inline-flex">
                 Premium workspace
               </span>
