@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import SupplierFootwearAnalyticsPage, { decisionColumns } from "../SupplierFootwearAnalyticsPage";
-import { getVendorSalesNivelacija } from "../../services/vendorSalesNivelacijaApi";
+import { getVendorSalesNivelacija, getVendorSalesNivelacijaOptions } from "../../services/vendorSalesNivelacijaApi";
 import { buildAnalyticsDetailSnapshot, resolveAnalyticsTablePayload } from "../../services/analyticsTableState";
 
 vi.mock("recharts", () => ({
@@ -294,6 +294,51 @@ describe("SupplierFootwearAnalyticsPage", () => {
     });
 
     expect(screen.queryAllByRole("heading", { level: 1 })).toHaveLength(0);
+    expect(screen.getByRole("region", { name: "Asortiman dobavljača" })).toBeInTheDocument();
+    expect(screen.queryByText("Kontrole asortimana")).not.toBeInTheDocument();
+  });
+
+  it("keeps period suggestions in the parent-owned embedded composition", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValueOnce({
+      ...(await getVendorSalesNivelacija({})),
+      vendorStats: [],
+      articleStats: [],
+    });
+    vi.mocked(getVendorSalesNivelacijaOptions).mockResolvedValueOnce([
+      {
+        eventDate: "2026-07-01T00:00:00Z",
+        label: "Jul 2026",
+        hasSalesWindow: true,
+      },
+    ]);
+
+    const sharedFilters = {
+      periodPreset: "30d" as const,
+      fromDate: "2026-07-13",
+      toDate: "2026-08-11",
+      dataScope: "all",
+      storeId: null,
+      supplierId: null,
+    };
+
+    const { unmount } = render(
+      <MemoryRouter>
+        <SupplierFootwearAnalyticsPage sharedFilters={sharedFilters} />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("button", { name: "Primeni predlog perioda" })).toBeInTheDocument();
+    unmount();
+
+    render(
+      <MemoryRouter>
+        <SupplierFootwearAnalyticsPage embedded sharedFilters={sharedFilters} onTrustMetadataChange={vi.fn()} />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: "Primeni predlog perioda" })).not.toBeInTheDocument();
+    });
   });
 
   it("keeps missing share and confidence metrics unavailable across KPI, chart, table, tooltip, and details", async () => {

@@ -137,6 +137,34 @@ describe("SupplierDecisionHubPage", () => {
     expect(await screen.findByText(/Koncentracija prihoda/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Trend pune cene/i).length).toBeGreaterThan(0);
     expect(await screen.findByTestId("supplier-decision-hub-data-table")).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  });
+
+  it("hides standalone title, trust header and filters when embedded", async () => {
+    installFetchMock();
+
+    render(
+      <MemoryRouter>
+        <SupplierDecisionHubPage
+          embedded
+          sharedFilters={{
+            periodPreset: "30d",
+            fromDate: "2026-04-13",
+            toDate: "2026-05-12",
+            dataScope: "all",
+            storeId: null,
+            supplierId: null,
+          }}
+          onTrustMetadataChange={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId("supplier-decision-hub-data-table")).toBeInTheDocument();
+    expect(screen.queryAllByRole("heading", { level: 1 })).toHaveLength(0);
+    expect(screen.queryByRole("button", { name: "Primeni" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Poništi filtere" })).not.toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Skorkarta dobavljača" })).toBeInTheDocument();
   });
 
   it("loads every ranking page before deriving table and KPI data", async () => {
