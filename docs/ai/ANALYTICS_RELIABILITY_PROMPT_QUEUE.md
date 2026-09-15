@@ -12310,10 +12310,10 @@ The executive Dashboard KPI row always marks Revenue with the healthy `good` ton
 - Checks run: focused Executive KPI test 3/3 passed; focused Dashboard integration/regression tests 15/15 passed; `npm run check:analytics-guardrails` passed; `npm run build` passed with the existing chunk-size advisory; `git diff --check` passed.
 - Checks not run: full frontend/backend suites and live provider/browser/deployed proof were not run because this was a bounded frontend presentation contract change.
 - Run log: `.ai/runs/2026-09-15-RQ262-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `e1911037d8acb3f37f6df0c476340cbe8a0e2b2e`
+- Main verification: passed - fresh fetch confirmed implementation commit `e1911037d8acb3f37f6df0c476340cbe8a0e2b2e` is an ancestor of `origin/main`
 - Missed: no backend KPI formula, aggregation, score, recommendation or report/export calculation changes were made; no live-provider proof was available.
 - Follow-up: `RQ263` is READY for Analytics Export Frontend.
 - Residual risk: existing frontend chunk-size advisory and live deployment behavior remain unverified.
