@@ -12872,10 +12872,10 @@ Reproduction: click each legacy item, load the resulting URL directly, refresh i
 - Checks run: focused navigation/route matrix 6 files / 24 tests passed; analytics guardrails/encoding/typecheck passed; frontend build passed; queue governance and `git diff --check` passed.
 - Checks not run: live backend/browser/deployed smoke, axe accessibility scan and full frontend suite.
 - Run log: `.ai/runs/2026-09-15-RQ268-evidence.md`
-- Evidence state: pending main delivery verification
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `30a72c29c1d65f6e1538a4c01cfcef833f41bebd`
+- Main verification: passed - `origin/main` is `30a72c29c1d65f6e1538a4c01cfcef833f41bebd`; implementation commit is an ancestor.
 - Missed: `SupplierDecisionHubRedirect` was intentionally left outside this prompt because its source group is Decisions, not the two legacy Operations entries.
 - Follow-up: RQ269 remains the next Operations scope-event follow-up but is not READY until explicitly promoted or selected by the queue owner.
 - Residual risk: an unknown or manually constructed legacy source marker is intentionally silent; live browser/back-forward evidence remains unverified.
