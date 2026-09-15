@@ -57,6 +57,7 @@ type PreviousLoadState = {
   trimmedSearch: string;
   compareStoreIdsKey: string;
   dataScope: string;
+  reloadNonce: number;
 };
 type InventoryPageError = { message: string; errorCode?: string | null; correlationId?: string | null };
 
@@ -369,14 +370,18 @@ export default function InventoryPage() {
   useEffect(() => {
     const handleScopeChange = () => {
       if (mountedRef.current) {
-        setInventoryDataScope(getDataScope());
-        setReloadNonce((current) => current + 1);
+        const nextDataScope = getDataScope();
+        if (nextDataScope === inventoryDataScope) {
+          setReloadNonce((current) => current + 1);
+        } else {
+          setInventoryDataScope(nextDataScope);
+        }
       }
     };
 
     window.addEventListener("trendplus:data-scope-changed", handleScopeChange);
     return () => window.removeEventListener("trendplus:data-scope-changed", handleScopeChange);
-  }, []);
+  }, [inventoryDataScope]);
 
   useEffect(() => {
     let cancelled = false;
@@ -449,16 +454,18 @@ export default function InventoryPage() {
       trimmedSearch,
       compareStoreIdsKey: compareStoreIds.join(","),
       dataScope: inventoryDataScope,
+      reloadNonce,
     };
     const previousLoad = previousLoadRef.current;
     const isFirstLoad = previousLoad == null;
-    const scopeChanged = !isFirstLoad && previousLoad.dataScope !== inventoryDataScope;
+    const scopeGenerationChanged = !isFirstLoad
+      && (previousLoad.dataScope !== inventoryDataScope || previousLoad.reloadNonce !== reloadNonce);
     const shouldRefreshSignals = isFirstLoad
-      || scopeChanged
+      || scopeGenerationChanged
       || previousLoad.selectedStoreId !== selectedStoreId
       || previousLoad.selectedSupplierId !== selectedSupplierId;
     const shouldRefreshOperations = isFirstLoad
-      || scopeChanged
+      || scopeGenerationChanged
       || previousLoad.selectedStoreId !== selectedStoreId
       || previousLoad.selectedSupplierId !== selectedSupplierId
       || previousLoad.trimmedSearch !== trimmedSearch

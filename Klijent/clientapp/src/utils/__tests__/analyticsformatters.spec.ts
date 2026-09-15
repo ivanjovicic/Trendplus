@@ -41,9 +41,9 @@ describe("analyticsformatters", () => {
   it("returns comparable ranges for standard presets", () => {
     const now = new Date(Date.UTC(2026, 4, 20, 12, 0, 0));
 
-    expect(getPresetRange("30d", now)).toEqual({ fromDate: "2026-04-20", toDate: "2026-05-20" });
-    expect(getPresetRange("90d", now)).toEqual({ fromDate: "2026-02-19", toDate: "2026-05-20" });
-    expect(getPresetRange("180d", now)).toEqual({ fromDate: "2025-11-21", toDate: "2026-05-20" });
-    expect(getPresetRange("365d", now)).toEqual({ fromDate: "2025-05-20", toDate: "2026-05-20" });
+    expect(getPresetRange("30d", now)).toEqual({ fromDate: "2026-04-21", toDate: "2026-05-20" });
+    expect(getPresetRange("90d", now)).toEqual({ fromDate: "2026-02-20", toDate: "2026-05-20" });
+    expect(getPresetRange("180d", now)).toEqual({ fromDate: "2025-11-22", toDate: "2026-05-20" });
+    expect(getPresetRange("365d", now)).toEqual({ fromDate: "2025-05-21", toDate: "2026-05-20" });
   });
 });

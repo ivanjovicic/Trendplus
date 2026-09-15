@@ -26,6 +26,8 @@ Inventory analytics frontend/API contracts plus queue delivery records.
 - RQ276 distinguishes backend current-stock exposure from transfer/forecast suggested-action cost; neither is serialized as expected business impact.
 - Workflow value labels follow the explicit value basis.
 - Three pre-existing frontend full-suite assertions were aligned with the established safe `N/A` and mapped empty-reason contracts.
+- Full-suite rerun exposed duplicate scope refreshes; the event handler now performs exactly one state-generation update while still refreshing on same-scope events.
+- The stale preset-range test now follows inclusive 30/90/180/365-day semantics owned by `getAnalyticsPeriodPresetRange`.
 - The existing npm-generated package-lock metadata normalization is retained in a separate commit per the request to push all local changes.
 
 ## Validation
@@ -34,6 +36,7 @@ Inventory analytics frontend/API contracts plus queue delivery records.
 - Prompt queue/planning validators: initial queue check found four missing strict RQ273 completion fields; repaired; queue check, queue self-test, planning check and planning self-test all passed.
 - Backend build: not run because `dotnet` is unavailable in this environment.
 - `git diff --check`: passed before the review commit.
+- PR CI before the second review: frontend failed three stale safe-output assertions; backend had broad shared-database/schema failures including missing `StoresDim`. The frontend assertions were repaired; the backend-specific DTO/Decision Board changes await CI because local .NET is unavailable.
 
 ## Delivery
 - Consolidation branch: `cursor/evening-inventory-prompts-consolidation-c753`
