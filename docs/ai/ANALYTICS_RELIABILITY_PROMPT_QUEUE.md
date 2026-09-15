@@ -13803,6 +13803,7 @@ Commit suggestion: `fix(analytics): preserve embedded supplier freshness`
 - Follow-up: `RQ282` is next WAITING for supplier null-ID identity
 - Residual risk: live browser proof of parent trust header parity not run in this workspace
 - Prompt defect / scope repair: none
+- Follow-up hardening 2026-09-15: parseable `lastRefreshAtUtc` only; failed/malformed timestamps stay unknown; parent header and embedded error/empty callbacks covered. Run log: `.ai/runs/2026-09-15-RQ281-RQ282-hardening-evidence.md`
 
 ### Problem
 
