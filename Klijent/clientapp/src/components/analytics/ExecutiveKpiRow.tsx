@@ -21,27 +21,47 @@ type Props = {
   dataQualityScopeLabel?: string | null;
 };
 
-function MetricCard(props: { label: string; value: string; tone?: Tone; infoTip?: string; metricKey?: AnalyticsMetricKey }) {
+type MetricPresentation = {
+  value: string;
+  tone: Tone;
+  available: boolean;
+};
+
+function MetricCard(props: { label: string; presentation: MetricPresentation; infoTip?: string; metricKey?: AnalyticsMetricKey }) {
   return (
-    <article className={`metric-card ${props.tone ?? "neutral"}`}>
+    <article
+      className={`metric-card ${props.presentation.tone}`}
+      data-value-state={props.presentation.available ? "available" : "unavailable"}
+      aria-label={`${props.label}: ${props.presentation.value}`}
+    >
       <span className="metric-label">
         <span>{props.label}</span>
         {props.infoTip ? <InfoTip text={props.infoTip} /> : null}
       </span>
-      <strong>{props.value}</strong>
+      <strong>{props.presentation.value}</strong>
       {props.metricKey ? <KpiExplainButton metricKey={props.metricKey} ariaLabel={`Kako je izračunat ${props.label}`} /> : null}
     </article>
   );
 }
 
-function formatMetricValue(value: number | null, formatter: (amount: number) => string): string {
-  if (value == null) return "Nije dostupno";
-  return formatter(value);
+function buildMetricPresentation(
+  value: number | null,
+  formatter: (amount: number) => string,
+  positiveTone: Exclude<Tone, "insufficient_data">,
+): MetricPresentation {
+  const available = typeof value === "number" && Number.isFinite(value);
+  if (!available) {
+    return { value: "Nije dostupno", tone: "insufficient_data", available: false };
+  }
+
+  return {
+    value: formatter(value),
+    tone: value > 0 ? positiveTone : value < 0 ? "critical" : "neutral",
+    available: true,
+  };
 }
 
 export default function ExecutiveKpiRow(props: Props) {
-  const qualityCardTone = props.dataQualityTone === "insufficient_data" ? "neutral" : props.dataQualityTone;
-
   if (props.loading) {
     return (
       <div className="analytics-skeleton-grid">
@@ -54,33 +74,33 @@ export default function ExecutiveKpiRow(props: Props) {
     <div className="analytics-card-grid analytics-exec-kpi-grid">
       <MetricCard
         label="Prihod"
-        value={formatMetricValue(props.totalRevenue, (amount) => fmtRsd(amount, 0, "Nije dostupno"))}
-        tone="good"
+        presentation={buildMetricPresentation(props.totalRevenue, (amount) => fmtRsd(amount, 0, "Nije dostupno"), "good")}
         infoTip="Formula: zbir prodajne vrednosti svih prodaja u izabranom periodu."
         metricKey="revenue"
       />
       <MetricCard
         label="Maržni doprinos"
-        value={formatMetricValue(props.marginContributionRsd, (amount) => fmtRsd(amount, 0, "Nije dostupno"))}
-        tone={props.marginContributionRsd != null && props.marginContributionRsd > 0 ? "good" : "neutral"}
+        presentation={buildMetricPresentation(props.marginContributionRsd, (amount) => fmtRsd(amount, 0, "Nije dostupno"), "good")}
         infoTip="Formula: zbir (prodajna vrednost - nabavna vrednost) za stavke sa dostupnim troškom."
         metricKey="marginContribution"
       />
       <MetricCard
         label="Prodate jedinice"
-        value={formatMetricValue(props.totalUnits, (amount) => fmtNumber(amount, 0, "Nije dostupno"))}
-        tone="neutral"
+        presentation={buildMetricPresentation(props.totalUnits, (amount) => fmtNumber(amount, 0, "Nije dostupno"), "neutral")}
         infoTip="Formula: zbir prodatih komada u izabranom periodu."
         metricKey="unitsSold"
       />
       <MetricCard
         label="Lager u riziku"
-        value={formatMetricValue(props.inventoryDangerValueRsd, (amount) => fmtRsd(amount, 0, "Nije dostupno"))}
-        tone={props.inventoryDangerValueRsd != null && props.inventoryDangerValueRsd > 0 ? "warning" : "neutral"}
+        presentation={buildMetricPresentation(props.inventoryDangerValueRsd, (amount) => fmtRsd(amount, 0, "Nije dostupno"), "warning")}
         infoTip="Procena kapitala vezanog u sporoj i rizičnoj zalihi (indikativno)."
         metricKey="stockAtRisk"
       />
-      <article className={`metric-card ${qualityCardTone}`}>
+      <article
+        className={`metric-card ${props.dataQualityTone}`}
+        data-value-state={props.dataQualityTone === "insufficient_data" ? "unavailable" : "available"}
+        aria-label={`Spremnost za preporuke: ${props.readinessLabel ?? dataQualityStatusLabel(props.dataQualityStatus)}`}
+      >
         <span className="metric-label">
           <span>Spremnost za preporuke</span>
           <InfoTip text="Najlošiji status kompletnosti i svežine za skup podataka koji dashboard koristi za odluke." />

@@ -2,7 +2,7 @@
 
 Date: 2026-09-14
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ262
+Current READY prompt: RQ263
 
 Owner completion 2026-09-14: `RQ249` was delivered on `main` with fail-closed Supplier Decision Hub detail and report-toolbar actionability gates; blocked, fallback, stale/partial and missing recommendation permission remain review-only.
 Owner promotion 2026-09-14: `RQ250` was explicitly promoted after completed `RQ249`, repaired the stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
@@ -28,6 +28,8 @@ Owner completion 2026-09-15: `RQ260` was delivered on `main` with safe empty-rea
 Owner promotion 2026-09-15: `RQ261` was explicitly promoted after completed `RQ260`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
 Owner completion 2026-09-15: `RQ261` was delivered on `main` with nullable finite refresh durations, preserved measured zero, safe Serbian operational labels, fail-closed invalid duration handling and partial-payload protection in the shared refresh banner; timestamps and correlation support remain distinct. The queue advanced to `RQ262`.
 Owner promotion 2026-09-15: `RQ262` was explicitly promoted after completed `RQ261`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
+Owner completion 2026-09-15: `RQ262` was delivered on `main` with one finite/null executive KPI presentation state shared by value text, CSS tone and accessibility labels; finite zero remains visible, non-finite values fail closed and insufficient readiness stays visibly degraded. The queue advanced to `RQ263`.
+Owner promotion 2026-09-15: `RQ263` was explicitly promoted after completed `RQ262`, repaired its stale dependency note on already-DONE `RQ169`, and transitioned `WAITING -> READY`; it is the single current RQ prompt.
 
 ### Completion note
 
@@ -9845,7 +9847,7 @@ Both v1 (`/api/analytics/advanced`) and v2 (`/api/analytics/advanced/v2`) use `D
 
 ## RQ233 - Preserve supplier concentration denominator scope
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: frontend/contract/tests
 Feature family: supplier-concentration-scope-parity
@@ -12233,7 +12235,7 @@ The refresh-status service aggregates missing job durations through `DefaultIfEm
 
 ## RQ262 - Keep executive KPI availability and visual tone consistent
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend/contract/tests
 Feature family: executive-kpi-value-tone-parity
@@ -12299,11 +12301,29 @@ The executive Dashboard KPI row always marks Revenue with the healthy `good` ton
 - `RQ145` remains broad cross-surface parity ownership.
 - `RQ261` is complete; this prompt is the single current `READY` item for Analytics Dashboard Frontend.
 
+### Completion note
+
+- Date: 2026-09-15
+- Status: DONE
+- Completion: Executive KPI availability now uses finite numeric evidence consistently for display text, tone, accessible label and value-state metadata. Null/non-finite values render as unavailable with an insufficient-data tone; finite zero remains visible and neutral; negative finite evidence is visibly critical; insufficient readiness is no longer flattened to neutral.
+- Changed files: `Klijent/clientapp/src/components/analytics/ExecutiveKpiRow.tsx`, `Klijent/clientapp/src/pages/AnalyticsDashboard.css`, `Klijent/clientapp/src/components/analytics/__tests__/ExecutiveKpiRow.spec.tsx`
+- Checks run: focused Executive KPI test 3/3 passed; focused Dashboard integration/regression tests 15/15 passed; `npm run check:analytics-guardrails` passed; `npm run build` passed with the existing chunk-size advisory; `git diff --check` passed.
+- Checks not run: full frontend/backend suites and live provider/browser/deployed proof were not run because this was a bounded frontend presentation contract change.
+- Run log: `.ai/runs/2026-09-15-RQ262-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: no backend KPI formula, aggregation, score, recommendation or report/export calculation changes were made; no live-provider proof was available.
+- Follow-up: `RQ263` is READY for Analytics Export Frontend.
+- Residual risk: existing frontend chunk-size advisory and live deployment behavior remain unverified.
+- Prompt defect / scope repair: repaired the stale RQ263 dependency wording that referenced already-DONE `RQ169`; no business-scope expansion was made.
+
 ---
 
 ## RQ263 - Keep export and preview operation status honest
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: frontend/contract/tests
 Feature family: analytics-export-operation-truth
@@ -12366,7 +12386,7 @@ The shared analytics export toolbar stores every operation message in one `statu
 - `RQ145` remains broad export/report parity ownership; this prompt owns operation-state truth only.
 - `RQ196-RQ197` remain Inventory scheduling/row-cap owners.
 - `RQ247` owns Pilot Intake status vocabulary and `RQ251` Inventory workflow/scheduler vocabulary.
-- Keep this prompt `WAITING` while `RQ169` remains the existing `READY` item.
+- `RQ262` is complete; this prompt is the single current `READY` item for Analytics Export Frontend. The historical `RQ169` dependency is already DONE and no longer blocks this prompt.
 
 ---
 

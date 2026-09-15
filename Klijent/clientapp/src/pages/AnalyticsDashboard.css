@@ -802,6 +802,10 @@
   border-color: var(--theme-rgba-138-160-214-0p34, var(--theme-color-rgba-138-160-214-0p34, var(--theme-color-rgba-138-160-214-0p34, rgba(138, 160, 214, 0.34))));
 }
 
+.metric-card.insufficient_data {
+  border-color: var(--warning, var(--panel-border));
+}
+
 .analytics-panels-2 {
   margin-top: 12px;
   display: grid;
