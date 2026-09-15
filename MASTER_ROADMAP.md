@@ -100,6 +100,7 @@ Owner promotion 2026-09-15: `RQ263` was explicitly promoted after completed `RQ2
 Owner completion 2026-09-15: `RQ263` was delivered on `main` with explicit export/preview operation feedback, valid artifact and popup validation, safe failure messaging and retry-preserving incomplete states; the RQ queue advanced to `RQ264`.
 Owner promotion 2026-09-15: `RQ264` was explicitly promoted after completed `RQ263`, repairing its stale same-owner dependency on already-DONE `RQ169`; the RQ queue is the canonical execution owner.
 Owner completion 2026-09-15: `RQ264` was delivered on `main` with one shared finite/null normalization and display projection for analytics payloads, detail snapshots and generic print; measured finite zero remains visible and non-finite numeric evidence fails closed. The RQ queue has no current READY prompt.
+Owner completion 2026-09-15: `RQ276` was delivered with inventory exposure separated from central-queue expected impact; the RQ queue has no current READY prompt.
 Owner completion 2026-09-10: `RQ225` was delivered on `main` with stable process-lifetime snapshot-cost option consumption; the RQ queue returned to no current READY prompt.
 Owner completion 2026-09-10: `RQ224` was delivered on `main` with fail-closed analytics DB connection resolution; the RQ queue returned to no current READY prompt.
 Owner completion 2026-09-10: `RQ223` was delivered on `main` as the fail-closed invalid-foreign-key default correction; the RQ queue returned to no current READY prompt.
