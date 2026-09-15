@@ -16,7 +16,11 @@ Owner completion 2026-09-15: `RQ271` was delivered on PR #7 with confirmed whole
 
 Owner promotion 2026-09-15: `RQ272` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ271` completion; it is the single current RQ prompt for total value fallback pagination risk and will be claimed in this workspace.
 
-Owner completion 2026-09-15: `RQ272` was delivered on PR #8 with removed rows fallback; total inventory value now uses only authoritative backend `balance.estimatedInventoryValue` and renders unavailable ("-") rather than silently presenting page sums as totals during pagination. The RQ queue returned to no current READY prompt.
+Owner completion 2026-09-15: `RQ272` was delivered on PR #8 with removed rows fallback; total inventory value now uses only authoritative backend `balance.estimatedInventoryValue` and renders unavailable ("-") rather than silently presenting page sums as totals during pagination. The RQ queue advanced to `RQ273`.
+
+Owner promotion 2026-09-15: `RQ273` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ272` completion; it is the single current RQ prompt for Inventory export/print period and scope parity and will be claimed in this workspace.
+
+Owner completion 2026-09-15: `RQ273` was delivered on PR #9 with explicit export/preview `dataScope` in request bodies, backend dataset filtering/metadata for current-stock snapshot semantics, and UI copy clarifying that server documents differ from on-screen 30-day signal windows. The RQ queue returned to no current READY prompt.
 
 Owner promotion 2026-09-15: `RQ265` was explicitly promoted from `WAITING` to `READY` by the user request because the RQ queue had no current READY prompt; it is the single current RQ prompt for the confirmed Operations empty-reason regression.
 
@@ -13203,7 +13207,7 @@ Reproduction: return multiple pages, omit the balance total value, load page 2 a
 - Main commit SHA: Not yet merged (awaiting review)
 - Main verification: PR ready for review at https://github.com/ivanjovicic/Trendplus/pull/8
 - Missed: Live pagination testing with varying row values (requires manual QA)
-- Follow-up: RQ273 (export scope metadata), RQ300+ (remaining Inventory operations scope)
+- Follow-up: RQ273 (export scope metadata) promoted to READY per standard queue advancement
 - Residual risk: Missing backend totals will now show as unavailable (correct behavior); ensure backend computation is complete across all data scenarios
 - Prompt defect / scope repair: None; fix is minimal and surgical
 
@@ -13211,7 +13215,7 @@ Reproduction: return multiple pages, omit the balance total value, load page 2 a
 
 ## RQ273 - Prove Inventory export/print period and scope parity
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/API-contract/tests
 Feature family: inventory-report-window-parity
@@ -13264,6 +13268,20 @@ Reproduction: use a non-default signal window and non-`all` scope, export/previe
 ### Dependencies
 
 - `RQ263` owns operation-status truth; `RQ264` owns shared output formatting. Stop for product/report-owner decision if current-stock versus signal-window intent is unresolved.
+
+### Completion note
+
+- Date: 2026-09-15
+- Status: DONE
+- Completion: Confirmed current-stock snapshot as intentional export contract; added explicit `dataScope` to export/preview DTO and request bodies; backend export now filters by scope and documents report type/signal-window difference in artifact metadata; UI shows contract note in export panel.
+- Changed files: see `.ai/runs/2026-09-15-RQ273-evidence.md`
+- Contract/runtime behavior changed: Export/preview now honor explicit `dataScope`; metadata documents snapshot vs signal-window semantics
+- Checks run: Frontend tests 3 passed; frontend build succeeded
+- Checks not run: Backend build (`dotnet` unavailable); live export artifact inspection
+- Run log: `.ai/runs/2026-09-15-RQ273-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-PR
+- Follow-up: RQ274 (forecast age evidence)
 
 ---
 

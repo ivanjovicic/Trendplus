@@ -23,7 +23,8 @@ import { SKUDetailModal } from "../components/inventory/SKUDetailModal";
 import { SizeCurvePanel } from "../components/inventory/SizeCurvePanel";
 import { StoreComparisonPanel } from "../components/inventory/StoreComparisonPanel";
 import KpiExplainButton from "../components/analytics/KpiExplainButton";
-import { buildForecastRestockSuggestion, buildInventoryRow, buildInventoryScreenCsvFilename, buildInventoryScreenCsvLines, buildSupplierChart, createScheduleDraft, formatPercent, inventoryRiskSortScopeWarning, isInventoryPageLocalRiskSort, validateScheduleDraft } from "../components/inventory/inventoryUtils";
+import { buildForecastRestockSuggestion, buildInventoryRow, buildInventoryScreenCsvFilename, buildInventoryScreenCsvLines, buildInventoryServerExportContractNote, buildSupplierChart, createScheduleDraft, formatPercent, inventoryRiskSortScopeWarning, isInventoryPageLocalRiskSort, validateScheduleDraft } from "../components/inventory/inventoryUtils";
+import { getDataScope } from "../utils/dataScope";
 import type { InventoryRow } from "../components/inventory/types";
 import { fmtNumber, formatDateTime } from "../utils/analyticsFormatters";
 import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
@@ -342,9 +343,14 @@ export default function InventoryPage() {
   const [sizeCurveError, setSizeCurveError] = useState<string | null>(null);
   const [sizeCurveSkuId, setSizeCurveSkuId] = useState<number | null>(null);
   const [reloadNonce, setReloadNonce] = useState(0);
+  const [inventoryDataScope, setInventoryDataScope] = useState(() => getDataScope());
   const deferredSearch = useDeferredValue(searchInput);
   const trimmedSearch = deferredSearch.trim();
   const inventorySignalWindow = useMemo(createInventorySignalWindow, []);
+  const exportContractNote = useMemo(
+    () => buildInventoryServerExportContractNote(inventoryDataScope),
+    [inventoryDataScope],
+  );
   const serverSortBy = isInventoryPageLocalRiskSort(sortBy) ? "kolicina" : sortBy;
   const selectedStoreName = selectedStoreId == null ? null : stores.find((store) => store.storeId === selectedStoreId)?.storeName ?? null;
   const rebalanceScopeLabel = selectedStoreId == null
@@ -365,6 +371,7 @@ export default function InventoryPage() {
   useEffect(() => {
     const handleScopeChange = () => {
       if (mountedRef.current) {
+        setInventoryDataScope(getDataScope());
         setReloadNonce((current) => current + 1);
       }
     };
@@ -903,12 +910,12 @@ export default function InventoryPage() {
       setExportBusy(true);
       setExportStatus(preview ? "Pripremam print preview na serveru..." : "Server priprema dokument za izvoz...");
       if (preview) {
-        const previewResult = await previewInventoryReport({ orientation: printOrientation, includeFiltersAndMetadata: true, search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy });
+        const previewResult = await previewInventoryReport({ orientation: printOrientation, includeFiltersAndMetadata: true, search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy, dataScope: getDataScope() });
         if (previewResult.printUrl) window.open(resolveApiUrl(previewResult.printUrl), "_blank", "noopener");
         setExportStatus("Print preview je otvoren u novom tabu.");
         return;
       }
-      const result = await exportInventoryReport({ format, orientation: printOrientation, includeFiltersAndMetadata: true, forceAsync: totalCount > 5000, search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy });
+      const result = await exportInventoryReport({ format, orientation: printOrientation, includeFiltersAndMetadata: true, forceAsync: totalCount > 5000, search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy, dataScope: getDataScope() });
       if (result.isAsync) {
         setExportStatus("Dokument je u redu cekanja. Cekam da eksport bude spreman...");
         const completed = await waitForExport(result.documentId);
@@ -1508,6 +1515,7 @@ export default function InventoryPage() {
           <summary className="cursor-pointer text-sm font-semibold text-contrast">Izvoz i scheduler</summary>
           <div className="mt-4">
             <ExportSchedulerPanel
+              contractNote={exportContractNote}
               printOrientation={printOrientation}
               onPrintOrientationChange={setPrintOrientation}
               onPrintPreview={() => void runServerExport("pdf", true)}

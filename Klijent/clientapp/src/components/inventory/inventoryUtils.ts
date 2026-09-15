@@ -1,4 +1,5 @@
 import type { InventoryActionSuggestion, InventoryInsightItem, InventoryListItem, InventoryReportScheduleInput, InventorySnapshotRowState, StoreOption, SupplierFilterOption } from "../../types/analytics";
+import type { DataScope } from "../../utils/dataScope";
 import type { InventoryRow } from "./types";
 import { TONE, resolveTone } from "./toneMap";
 
@@ -442,6 +443,16 @@ export function buildSupplierChart(rows: InventoryRow[]) {
 export function buildStoreLabel(store: StoreOption) {
   const extras = [store.city, store.region].filter(Boolean).join(", ");
   return extras ? `${store.storeName} (${extras})` : store.storeName;
+}
+
+export function inventoryDataScopeLabel(scope: DataScope): string {
+  if (scope === "existing") return "Postojeći";
+  if (scope === "imported") return "Importovani";
+  return "Sve";
+}
+
+export function buildInventoryServerExportContractNote(dataScope: DataScope): string {
+  return `Server izvoz i print koriste snapshot trenutnog stanja zaliha za opseg „${inventoryDataScopeLabel(dataScope)}“. Aktivni filteri (prodavnica, dobavljač, pretraga, sort) se prenose u dokument; signali stock cover/sell-through sa tabele (30-dnevni period prodaje) nisu deo server dokumenta.`;
 }
 
 export function createScheduleDraft(): InventoryReportScheduleInput {
