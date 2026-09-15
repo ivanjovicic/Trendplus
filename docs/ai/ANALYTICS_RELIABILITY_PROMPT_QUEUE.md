@@ -8,7 +8,9 @@ Operations audit intake 2026-09-15: `RQ270`-`RQ300` remain individual `WAITING` 
 
 Owner promotion 2026-09-15: `RQ270` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ264` completion; it is the single current RQ prompt for confirmed Inventory scope-change reload gaps and will be claimed in this workspace.
 
-Owner completion 2026-09-15: `RQ270` was delivered on PR #6 with unified page reload on global data-scope change; InventoryPage now listens for `trendplus:data-scope-changed` events and reloads all primary and signal panels as one coherent generation while preserving request-sequence guards and detail state per RQ203. The RQ queue returned to no current READY prompt.
+Owner completion 2026-09-15: `RQ270` was delivered on PR #6 with unified page reload on global data-scope change; InventoryPage now listens for `trendplus:data-scope-changed` events and reloads all primary and signal panels as one coherent generation while preserving request-sequence guards and detail state per RQ203. The RQ queue advanced to `RQ271`.
+
+Owner promotion 2026-09-15: `RQ271` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ270` completion; it is the single current RQ prompt for Inventory KPI/search filter scope contract clarification and will be claimed in this workspace.
 
 Owner promotion 2026-09-15: `RQ265` was explicitly promoted from `WAITING` to `READY` by the user request because the RQ queue had no current READY prompt; it is the single current RQ prompt for the confirmed Operations empty-reason regression.
 
@@ -13043,7 +13045,7 @@ Reproduction: keep Inventory mounted, change the header scope, then inspect requ
 - Main commit SHA: Not yet merged (awaiting review)
 - Main verification: PR ready for review at https://github.com/ivanjovicic/Trendplus/pull/6
 - Missed: Live browser verification of scope changes (requires manual testing or future E2E suite)
-- Follow-up: None immediately required; RQ271 (Inventory balance KPI filter scope) is WAITING for promotion
+- Follow-up: RQ271 (Inventory balance KPI filter scope) promoted to READY per standard queue advancement
 - Residual risk: Rapid scope changes during slow network may cause partial updates due to async signal panel loading (acceptable per design); manual scope-change test recommended before merge
 - Prompt defect / scope repair: None; specification was clear and implementation straightforward
 
@@ -13051,7 +13053,7 @@ Reproduction: keep Inventory mounted, change the header scope, then inspect requ
 
 ## RQ271 - Define whether Inventory balance KPIs follow SKU search
 
-Status: WAITING
+Status: READY
 Priority: P2
 Type: frontend/product-contract/tests
 Feature family: inventory-kpi-filter-contract
