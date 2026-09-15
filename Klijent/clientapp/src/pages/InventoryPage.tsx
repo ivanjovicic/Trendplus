@@ -363,6 +363,17 @@ export default function InventoryPage() {
   }, []);
 
   useEffect(() => {
+    const handleScopeChange = () => {
+      if (mountedRef.current) {
+        setReloadNonce((current) => current + 1);
+      }
+    };
+
+    window.addEventListener("trendplus:data-scope-changed", handleScopeChange);
+    return () => window.removeEventListener("trendplus:data-scope-changed", handleScopeChange);
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     void getStores(true)
       .then((nextStores) => {
