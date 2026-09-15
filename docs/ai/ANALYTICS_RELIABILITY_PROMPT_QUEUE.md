@@ -12620,8 +12620,8 @@ Reproduction: return a successful empty response with a selected period outside 
 - Run log: `.ai/runs/2026-09-15-RQ265-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `90b0342cad2847a6cba4d619923abf6db386e680`
+- Main verification: passed - `origin/main` contains `90b0342cad2847a6cba4d619923abf6db386e680`
 - Missed: no backend or API changes; no live payload matrix was available.
 - Follow-up: consider a separate UX decision on whether contextual copy and the safe mapped reason should be visually deduplicated when both are present.
 - Residual risk: existing Vite large-chunk advisory remains; live backend/runtime behavior is not verified in this run.
