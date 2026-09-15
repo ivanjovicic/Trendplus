@@ -95,18 +95,49 @@ describe("AnalyticsTrustHeader", () => {
       dataQualitySummary: undefined,
       requestedDataset: null,
       effectiveDataset: null,
-      mode: "signal",
+      mode: "recommendation",
       recommendationNote: "Ne prikazuj konačnu preporuku bez jačeg signala.",
       emptyStateReason: "Nema dovoljno podataka za izabrani period.",
     });
 
-    expect(screen.getByText("Analitički signal")).toBeInTheDocument();
+    expect(screen.getByText("Preporuka sistema")).toBeInTheDocument();
     expect(screen.getByText("Nedovoljno podataka")).toBeInTheDocument();
     expect(screen.getByText(/Preporuka je gated/i)).toBeInTheDocument();
     expect(screen.getByText("Detaljan kvalitet podataka nije dostupan za ovaj ekran.")).toBeInTheDocument();
     expect(screen.getByText("Ne prikazuj konačnu preporuku bez jačeg signala.")).toBeInTheDocument();
     expect(screen.getByText("Nema dovoljno podataka za izabrani period.")).toBeInTheDocument();
     expect(screen.queryByText("Dataset")).not.toBeInTheDocument();
+  });
+
+  it.each([
+    { mode: "signal" as const, recommendationAllowed: undefined },
+    { mode: "signal" as const, recommendationAllowed: false },
+    { mode: "signal" as const, recommendationAllowed: true },
+    { mode: "report" as const, recommendationAllowed: undefined },
+    { mode: "report" as const, recommendationAllowed: false },
+    { mode: "report" as const, recommendationAllowed: true },
+  ])("does not invent a recommendation gate for $mode when permission is $recommendationAllowed", ({ mode, recommendationAllowed }) => {
+    renderHeader({ mode, recommendationAllowed });
+
+    expect(screen.queryByText(/Preporuka je gated/i)).not.toBeInTheDocument();
+  });
+
+  it.each([
+    { mode: "recommendation" as const, recommendationAllowed: undefined },
+    { mode: "recommendation" as const, recommendationAllowed: false },
+  ])("keeps the recommendation gate for recommendation mode when permission is $recommendationAllowed", ({ mode, recommendationAllowed }) => {
+    renderHeader({ mode, recommendationAllowed });
+
+    expect(screen.getByText(/Preporuka je gated/i)).toBeInTheDocument();
+  });
+
+  it.each([
+    { value: " STALE ", label: "Zastarelo" },
+    { value: "CRITICAL", label: "Kritično" },
+  ])("preserves $label freshness warning for harmless token formatting", ({ value, label }) => {
+    renderHeader({ dataFreshnessStatus: value });
+
+    expect(screen.getByText(label)).toBeInTheDocument();
   });
 
   it("keeps supported freshness normalization and fails closed for unknown tokens and non-finite counts", () => {

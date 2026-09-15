@@ -201,7 +201,7 @@ export default function AnalyticsTrustHeader({
   const refreshStepLabel = safeRefreshStepLabel(refreshCurrentStep);
   const fallbackReasonLabel = safeFallbackReasonLabel(fallbackReasonCode);
   const showFallbackBanner = Boolean(usedFallback);
-  const showGatedBanner = recommendationAllowed !== true && !showFallbackBanner;
+  const showGatedBanner = mode === "recommendation" && recommendationAllowed !== true && !showFallbackBanner;
   const showPartialBanner = Boolean(isPartial) || freshness === "stale" || freshness === "critical";
   const resolvedDataQualityHref = dataQualityHref || "/analytics/data-quality";
   const resolvedRefreshStatusHref = refreshStatusHref || "/admin/configuration?panel=workers";
