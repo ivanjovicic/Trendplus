@@ -12,7 +12,9 @@ Owner completion 2026-09-15: `RQ270` was delivered on PR #6 with unified page re
 
 Owner promotion 2026-09-15: `RQ271` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ270` completion; it is the single current RQ prompt for Inventory KPI/search filter scope contract clarification and will be claimed in this workspace.
 
-Owner completion 2026-09-15: `RQ271` was delivered on PR #7 with confirmed whole-scope KPI contract and explicit scope documentation; all five balance KPI cards now clarify they represent whole-inventory totals not filtered by SKU search, preventing user confusion between visible filtered rows and authoritative balance metrics. The RQ queue returned to no current READY prompt.
+Owner completion 2026-09-15: `RQ271` was delivered on PR #7 with confirmed whole-scope KPI contract and explicit scope documentation; all five balance KPI cards now clarify they represent whole-inventory totals not filtered by SKU search, preventing user confusion between visible filtered rows and authoritative balance metrics. The RQ queue advanced to `RQ272`.
+
+Owner promotion 2026-09-15: `RQ272` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ271` completion; it is the single current RQ prompt for total value fallback pagination risk and will be claimed in this workspace.
 
 Owner promotion 2026-09-15: `RQ265` was explicitly promoted from `WAITING` to `READY` by the user request because the RQ queue had no current READY prompt; it is the single current RQ prompt for the confirmed Operations empty-reason regression.
 
@@ -13124,7 +13126,7 @@ Reproduction: search for one SKU or distinctive text and compare visible rows/in
 - Main commit SHA: Not yet merged (awaiting review)
 - Main verification: PR ready for review at https://github.com/ivanjovicic/Trendplus/pull/7
 - Missed: User perception testing; export/print metadata scope (addressed in RQ273)
-- Follow-up: RQ272 (total value pagination), RQ273 (export scope metadata), RQ300+ (future operations scope tasks)
+- Follow-up: RQ272 (total value pagination) promoted to READY per standard queue advancement
 - Residual risk: Label clarity is subjective; product owner review recommended before merge
 - Prompt defect / scope repair: None; specification confirmed contract; no invention required
 
@@ -13132,7 +13134,7 @@ Reproduction: search for one SKU or distinctive text and compare visible rows/in
 
 ## RQ272 - Prevent Inventory page rows from masquerading as total value
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: frontend/numeric-state/tests
 Feature family: inventory-total-value-totality
