@@ -432,7 +432,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ286 | DONE | color-pre-post-detail-parity | Do not hide valid raw pre/post metrics behind one missing impact percent |
 | RQ287 | DONE | color-status-identity | Preserve review/do-not-trust meaning on the Color surface |
 | RQ288 | DONE | color-percent-count-fallbacks | Prevent invalid coverage and unknown color counts from looking measured |
-| RQ289 | WAITING | daily-supplier-order | Use authoritative supplier ordering for concentration calculations |
+| RQ289 | DONE | daily-supplier-order | Use authoritative supplier ordering for concentration calculations |
 | RQ290 | WAITING | daily-shift-partial-state | Distinguish partial shift summaries from measured zero/whole-day totals |
 | RQ291 | WAITING | pre-post-test-contract | Resolve quality metadata contract drift and the missing detail route fixture |
 | RQ292 | WAITING | pre-post-toolbar-unknowns | Keep missing toolbar metadata unknown instead of zero/OK |
@@ -14403,13 +14403,31 @@ Reproduction: omit count/coverage fields, return numerator greater than denomina
 
 ## RQ289 - Use authoritative supplier ordering in Daily concentration
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/analytics-calculation/tests
 Feature family: daily-supplier-order
 Parallel-safe: no
 Owner: Analytics Frontend / Daily Sales
 Commit suggestion: `fix(analytics): honor Daily supplier ordering metadata`
+
+### Completion note
+
+- Date: 2026-09-16
+- Status: DONE
+- Completion: Daily supplier concentration now resolves rows through `dailySupplierOrder.ts`, using `topSuppliersOrder` as the authoritative sequence for chart labels, cumulative shares, top-3/top-5 and suppliers-to-80% metrics. Missing, duplicate or mismatched order metadata fails closed with an explicit warning instead of trusting response array order.
+- Changed files: `dailySupplierOrder.ts`, `DailySalesStatsPage.tsx`, related specs, queue/evidence
+- Checks run: focused daily supplier order + Daily Sales specs 33 passed
+- Checks not run: full frontend suite, deployed-browser check
+- Run log: `.ai/runs/2026-09-16-RQ289-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main via `cursor/rq289-daily-supplier-order-c753`
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: none known
+- Follow-up: `RQ290` is next WAITING for Daily shift partial state
+- Residual risk: deployed-browser visual check not run in this workspace
+- Prompt defect / scope repair: none
 
 ### Problem
 

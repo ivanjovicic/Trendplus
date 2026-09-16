@@ -499,6 +499,7 @@ describe("DailySalesStatsPage premium controls", () => {
           totalQty: 25,
           totalRevenue: 12000,
         }],
+        topSuppliersOrder: ["Alfa"],
         dateRows: [
           {
             ...response().dateRows[0],
@@ -527,6 +528,33 @@ describe("DailySalesStatsPage premium controls", () => {
     expect(concentrationPanel).not.toBeNull();
     expect(within(concentrationPanel as HTMLElement).getAllByText("N/A")).toHaveLength(2);
     expect(within(concentrationPanel as HTMLElement).getByText("Nije dostupno")).toBeInTheDocument();
+  });
+
+  it("shows concentration warning when supplier order metadata is missing", async () => {
+    vi.mocked(getDailySalesStats).mockResolvedValue(
+      response({
+        topSuppliers: [{
+          supplierId: 1,
+          supplierName: "Alfa",
+          isUnknown: false,
+          totalQty: 12,
+          totalRevenue: 6000,
+        }],
+        topSuppliersOrder: [],
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/daily-sales"]}>
+        <Routes>
+          <Route path="/analytics/daily-sales" element={<DailySalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId("supplier-concentration-warning")).toHaveTextContent(
+      "topSuppliersOrder",
+    );
   });
 
   it("marks concentration as unavailable when either denominator is missing", () => {

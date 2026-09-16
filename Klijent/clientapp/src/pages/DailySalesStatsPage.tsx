@@ -38,6 +38,7 @@ import UltraSpinner from "../components/ui/UltraSpinner";
 import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
 import { fmtPct, fmtRsd, fmtRsdShort, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
 import { getAnalyticsDataFreshnessStatus } from "../utils/analyticsResponseMeta";
+import { resolveAuthoritativeTopSuppliers } from "../utils/dailySupplierOrder";
 import "./DailySalesStatsPage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
@@ -345,8 +346,10 @@ export function buildSupplierConcentration(
     };
   }
 
-  const supplierTotalsQty = sum(data.topSuppliers.map((supplier) => supplier.totalQty));
-  const supplierTotalsRevenue = sum(data.topSuppliers.map((supplier) => supplier.totalRevenue));
+  const orderResolution = resolveAuthoritativeTopSuppliers(data.topSuppliers, data.topSuppliersOrder);
+  const orderedSuppliers = orderResolution.warning ? [] : orderResolution.suppliers;
+  const supplierTotalsQty = sum(orderedSuppliers.map((supplier) => supplier.totalQty));
+  const supplierTotalsRevenue = sum(orderedSuppliers.map((supplier) => supplier.totalRevenue));
   const metadataQty = finiteOrNull(data.metadata.totalItemsInRange);
   const normalizedPeriodRevenue = finiteOrNull(periodRevenue);
   const quantityMismatch = metadataQty != null && supplierTotalsQty != null && supplierTotalsQty > metadataQty;
@@ -358,13 +361,14 @@ export function buildSupplierConcentration(
     ? normalizedPeriodRevenue
     : null;
   const warnings = [
+    orderResolution.warning,
     quantityMismatch ? "Top dobavljači imaju više komada nego autoritativni period total." : null,
     revenueMismatch ? "Top dobavljači imaju veći prihod nego autoritativni period total." : null,
     supplierQtyBasis == null && !quantityMismatch ? "Nedostaje validan denominator količine za koncentraciju dobavljača." : null,
     supplierRevenueBasis == null && !revenueMismatch ? "Nedostaje validan prihodovni denominator za koncentraciju dobavljača." : null,
   ].filter((warning): warning is string => warning != null);
 
-  const baseRows = data.topSuppliers.map((supplier) => ({
+  const baseRows = orderedSuppliers.map((supplier) => ({
     supplierName: supplier.supplierName,
     displayName: truncateLabel(supplier.supplierName),
     totalQty: finiteOrNull(supplier.totalQty),

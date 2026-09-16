@@ -161,6 +161,7 @@ describe("Daily Sales numeric evidence states", () => {
         totalQty: 25,
         totalRevenue: 12000,
       }],
+      topSuppliersOrder: ["Alfa"],
       metadata: { ...response().metadata, totalItemsInRange: 18 },
       dateRows: [row({ totalItemsSold: 18, totalRevenue: 9000 })],
     });
@@ -173,6 +174,56 @@ describe("Daily Sales numeric evidence states", () => {
     expect(concentration.suppliersTo80Pct).toBeNull();
     expect(concentration.chartData[0]?.qtySharePct).toBeNull();
     expect(concentration.chartData.find((item) => item.supplierName === "Ostali")).toBeUndefined();
+  });
+
+  it("uses topSuppliersOrder for concentration ranking instead of response array order", () => {
+    const payload = response({
+      topSuppliers: [
+        { supplierId: 2, supplierName: "Bravo", isUnknown: false, totalQty: 8, totalRevenue: 800 },
+        { supplierId: 1, supplierName: "Alfa", isUnknown: false, totalQty: 52, totalRevenue: 5200 },
+        { supplierId: 3, supplierName: "Charlie", isUnknown: false, totalQty: 5, totalRevenue: 500 },
+      ],
+      topSuppliersOrder: ["Alfa", "Bravo", "Charlie"],
+      metadata: { ...response().metadata, totalItemsInRange: 65 },
+      dateRows: [row({ totalItemsSold: 65, totalRevenue: 6500 })],
+    });
+
+    const concentration = buildSupplierConcentration(payload, 6500);
+
+    expect(concentration.warning).toBeNull();
+    expect(concentration.chartData.map((item) => item.supplierName)).toEqual(["Alfa", "Bravo", "Charlie"]);
+    expect(concentration.chartData[0]?.qtySharePct).toBeCloseTo((52 / 65) * 100, 5);
+    expect(concentration.suppliersTo80Pct).toBe(1);
+  });
+
+  it("marks concentration unavailable when supplier order metadata is missing or ambiguous", () => {
+    const missingOrder = buildSupplierConcentration(response({
+      topSuppliers: [{
+        supplierId: 1,
+        supplierName: "Alfa",
+        isUnknown: false,
+        totalQty: 10,
+        totalRevenue: 1000,
+      }],
+      topSuppliersOrder: [],
+      metadata: { ...response().metadata, totalItemsInRange: 10 },
+    }), 1000);
+
+    expect(missingOrder.warning).toContain("topSuppliersOrder");
+    expect(missingOrder.chartData).toEqual([]);
+    expect(missingOrder.top3QtySharePct).toBeNull();
+
+    const duplicateOrder = buildSupplierConcentration(response({
+      topSuppliers: [
+        { supplierId: 1, supplierName: "Alfa", isUnknown: false, totalQty: 10, totalRevenue: 1000 },
+        { supplierId: 2, supplierName: "Bravo", isUnknown: false, totalQty: 5, totalRevenue: 500 },
+      ],
+      topSuppliersOrder: ["Alfa", "Alfa"],
+      metadata: { ...response().metadata, totalItemsInRange: 15 },
+    }), 1500);
+
+    expect(duplicateOrder.warning).toContain("duplirana imena");
+    expect(duplicateOrder.suppliersTo80Pct).toBeNull();
   });
 
   it("does not turn partial metadata into trusted zero values", () => {
