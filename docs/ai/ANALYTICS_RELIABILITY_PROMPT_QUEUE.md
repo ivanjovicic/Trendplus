@@ -14744,8 +14744,8 @@ Commit suggestion: `fix(analytics): preserve pre-post detail identity`
 - Run log: `.ai/runs/2026-09-16-RQ293-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main via `cursor/rq293-pre-post-detail-identity-c753`
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `41dfdb91`
+- Main verification: passed - `origin/main` at `19f2aaaf`
 - Missed: none known
 - Follow-up: `RQ294` is next WAITING for Pre-Nivelacija scope reload
 - Residual risk: deployed-browser detail modal not exercised in this workspace
