@@ -569,21 +569,42 @@ export default function ShoeTypeSalesStatsPage() {
     return topRows;
   }, [sortedRows]);
 
-  const comparisonData = useMemo(() => {
-    if (sortedRows.length === 0 || totalMarginContribution == null || totalMarginContribution <= 0)
-      return [] as Array<{ name: string; udeoPrometa: number; udeoMarznogDoprinosa: number }>;
+  const marginComparison = useMemo(() => {
+    if (typeof totalMarginContribution !== "number" || !Number.isFinite(totalMarginContribution)) {
+      return {
+        mode: "unavailable" as const,
+        data: [] as Array<{ name: string; udeoPrometa: number; udeoMarznogDoprinosa: number | null; marginContributionRsd: number }>,
+      };
+    }
 
     const ranked = [...sortedRows]
-      .filter((row): row is typeof row & { sharePct: number } => row.sharePct != null && Number.isFinite(row.sharePct))
-      .sort((a, b) => b.ukupanPromet - a.ukupanPromet);
+      .filter((row): row is typeof row & { sharePct: number } => (
+        row.sharePct != null
+        && Number.isFinite(row.sharePct)
+        && Number.isFinite(row.marginContribution)
+      ))
+      .sort((a, b) => b.ukupanPromet - a.ukupanPromet)
+      .slice(0, 8);
 
-    return ranked.slice(0, 8).map((row) => ({
-      name: row.tipObuceNaziv,
-      udeoPrometa: Number(row.sharePct.toFixed(1)),
-      udeoMarznogDoprinosa: Number(
-        ((row.marginContribution / totalMarginContribution) * 100).toFixed(1)
-      ),
-    }));
+    if (ranked.length === 0) {
+      return {
+        mode: "unavailable" as const,
+        data: [] as Array<{ name: string; udeoPrometa: number; udeoMarznogDoprinosa: number | null; marginContributionRsd: number }>,
+      };
+    }
+
+    const hasPositiveMarginDenominator = totalMarginContribution > 0;
+    return {
+      mode: hasPositiveMarginDenominator ? "share" as const : "value" as const,
+      data: ranked.map((row) => ({
+        name: row.tipObuceNaziv,
+        udeoPrometa: Number(row.sharePct.toFixed(1)),
+        udeoMarznogDoprinosa: hasPositiveMarginDenominator
+          ? Number(((row.marginContribution / totalMarginContribution) * 100).toFixed(1))
+          : null,
+        marginContributionRsd: Number(row.marginContribution.toFixed(2)),
+      })),
+    };
   }, [sortedRows, totalMarginContribution]);
 
   const avgMarginPct = useMemo(() => {
@@ -1129,12 +1150,43 @@ export default function ShoeTypeSalesStatsPage() {
             </article>
 
             <article className="shoetype-decision-card shoetype-decision-card--chart analytics-surface-panel">
-              <h2>Promet vs Maržni doprinos <InfoTip text="Grafikon poredi udeo u prometu i udeo u maržnom doprinosu po tipu obuće. Maržni doprinos nije neto profit i ne uključuje operativne troškove. Ako je deo troška procenjen iz raspoloživih podataka, i ovaj signal treba čitati oprezno." /></h2>
-              <p className="shoetype-decision-chart-desc">Poređenje udela u prometu i udela u maržnom doprinosu - tipovi obuće s visokim prometom ne moraju imati i visok maržni doprinos.</p>
-              {comparisonData.length > 0 ? (
-                <div className="shoetype-decision-chart-wrap">
+              <h2>
+                {marginComparison.mode === "value" ? "Maržni doprinos po tipu obuće" : "Promet vs Maržni doprinos"}
+                <InfoTip text={marginComparison.mode === "value"
+                  ? "Grafikon prikazuje stvarni maržni doprinos po tipu obuće kada ukupan maržni doprinos nije pozitivan. Udeo u maržnom doprinosu tada nije smislen procenat."
+                  : "Grafikon poredi udeo u prometu i udeo u maržnom doprinosu po tipu obuće. Maržni doprinos nije neto profit i ne uključuje operativne troškove. Ako je deo troška procenjen iz raspoloživih podataka, i ovaj signal treba čitati oprezno."}
+                />
+              </h2>
+              {marginComparison.mode === "share" ? (
+                <p className="shoetype-decision-chart-desc">Poređenje udela u prometu i udela u maržnom doprinosu - tipovi obuće s visokim prometom ne moraju imati i visok maržni doprinos.</p>
+              ) : null}
+              {marginComparison.mode === "value" ? (
+                <div data-testid="shoe-type-margin-value-chart">
+                  <p className="shoetype-decision-message warning">
+                    Ukupan maržni doprinos je {fmtRsd(totalMarginContribution)}. Udeo u maržnom doprinosu nije smislen procenat kada je ukupan doprinos nula ili negativan, zato grafikon prikazuje stvarne RSD vrednosti po tipu obuće.
+                  </p>
+                  <div className="shoetype-decision-chart-wrap">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
+                      <BarChart data={marginComparison.data} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
+                        <CartesianGrid strokeDasharray="2 6" stroke="var(--dashboard-grid, rgba(102, 255, 126, 0.16))" />
+                        <XAxis type="number" tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} />
+                        <YAxis type="category" dataKey="name" width={180} tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} />
+                        <Tooltip
+                          contentStyle={COMMAND_TOOLTIP_STYLE}
+                          labelStyle={COMMAND_TOOLTIP_LABEL_STYLE}
+                          cursor={CHART_CURSOR_STYLE}
+                          formatter={((value: any) => fmtRsd(Number(value))) as any}
+                        />
+                        <Legend wrapperStyle={CHART_LEGEND_STYLE} iconType="circle" iconSize={8} />
+                        <Bar dataKey="marginContributionRsd" fill="var(--dashboard-danger)" radius={[0, 6, 6, 0]} name="Maržni doprinos (RSD)" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              ) : marginComparison.mode === "share" ? (
+                <div className="shoetype-decision-chart-wrap" data-testid="shoe-type-margin-share-chart">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
-                    <BarChart data={comparisonData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
+                    <BarChart data={marginComparison.data} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
                       <CartesianGrid strokeDasharray="2 6" stroke="var(--dashboard-grid, rgba(102, 255, 126, 0.16))" />
                       <XAxis type="number" tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} unit="%" />
                       <YAxis type="category" dataKey="name" width={180} tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} />

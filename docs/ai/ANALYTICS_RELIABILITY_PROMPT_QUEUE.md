@@ -2,7 +2,11 @@
 
 Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ283
+
+Owner promotion 2026-09-16: `RQ283` was explicitly promoted from `WAITING` to `READY` by user request because the RQ queue had no current READY prompt after `RQ282` completion. It is the single current RQ prompt for Shoe Type valid zero/negative margin comparison visibility.
+
+Owner claim 2026-09-16: `RQ283` transitioned `READY -> IN_PROGRESS` in this workspace; local lock `.ai/task-locks/RQ283-codex.lock.md` is active.
 
 Owner promotion 2026-09-15: `RQ282` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ281` completion; it is the single current RQ prompt for supplier null-ID identity and was claimed in this workspace.
 
@@ -406,7 +410,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ280 | DONE | supplier-previous-period-warning | Distinguish missing previous-period data from a failed request |
 | RQ281 | DONE | supplier-embedded-freshness-provenance | Preserve valid refresh timestamps in embedded supplier trust metadata |
 | RQ282 | DONE | supplier-null-id-identity | Prevent vendor-key collisions when supplier IDs are absent |
-| RQ283 | WAITING | shoe-type-negative-margin-signal | Keep valid zero/negative margin comparison visible |
+| RQ283 | IN_PROGRESS | shoe-type-negative-margin-signal | Keep valid zero/negative margin comparison visible |
 | RQ284 | WAITING | shoe-type-status-identity | Preserve backend recommendation status when actionability is gated |
 | RQ285 | WAITING | shoe-type-percent-range | Fail closed on invalid coverage/share percentages |
 | RQ286 | WAITING | color-pre-post-detail-parity | Do not hide valid raw pre/post metrics behind one missing impact percent |
@@ -13511,6 +13515,9 @@ Commit suggestion: `fix(analytics): deduplicate Supplier surface composition`
 - Run log: `.ai/runs/2026-09-15-RQ277-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: branch/PR
+- Main commit SHA: `b34fe394f60c5e88ad78c141fc9ca8cdfad0434f`
+- Main verification: passed - `git merge-base --is-ancestor b34fe394f60c5e88ad78c141fc9ca8cdfad0434f origin/main` returned 0; fresh `origin/main` was `851cd244d7747b4efdc9f74900b58d431781ad1e`.
+- Missed: none beyond the explicitly skipped full-suite and live-browser composition proof.
 - Follow-up: `RQ278` is next WAITING for Supplier filter scope lineage
 - Residual risk: live browser proof of all three consolidated tabs was not run in this workspace
 - Prompt defect / scope repair: none
@@ -13585,6 +13592,9 @@ Commit suggestion: `fix(analytics): make supplier filter scope explicit`
 - Run log: `.ai/runs/2026-09-15-RQ278-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: branch/PR
+- Main commit SHA: `fcab9e3bcd9040e017fa4c2ed4de2261c3f51244`
+- Main verification: passed - `git merge-base --is-ancestor fcab9e3bcd9040e017fa4c2ed4de2261c3f51244 origin/main` returned 0; fresh `origin/main` was `851cd244d7747b4efdc9f74900b58d431781ad1e`.
+- Missed: none beyond the explicitly skipped full-suite and live Product Decision scope-change proof.
 - Follow-up: `RQ279` is next WAITING for stale supplier filter visibility
 - Residual risk: Product Decision Center still relies on ambient scope injection when explicit scope is omitted
 - Prompt defect / scope repair: none
@@ -13659,6 +13669,9 @@ Commit suggestion: `fix(analytics): expose stale supplier filter options`
 - Run log: `.ai/runs/2026-09-15-RQ279-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: branch/PR
+- Main commit SHA: `6d0e2db718c0ca8ed1a93b16a76202768e6d1d3c`
+- Main verification: passed - `git merge-base --is-ancestor 6d0e2db718c0ca8ed1a93b16a76202768e6d1d3c origin/main` returned 0; fresh `origin/main` was `851cd244d7747b4efdc9f74900b58d431781ad1e`.
+- Missed: none beyond the explicitly skipped full-suite and live-browser proof.
 - Follow-up: `RQ280` is next WAITING for supplier previous-period warning semantics
 - Residual risk: live browser proof of stale dropdown styling not run in this workspace
 - Prompt defect / scope repair: none
@@ -13729,6 +13742,9 @@ Commit suggestion: `fix(analytics): expose supplier comparison degradation`
 - Run log: `.ai/runs/2026-09-15-RQ280-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: branch/PR
+- Main commit SHA: `18df01d40a11e0ab818a4131e98fa3d3df0258c0`
+- Main verification: passed - `git merge-base --is-ancestor 18df01d40a11e0ab818a4131e98fa3d3df0258c0 origin/main` returned 0; fresh `origin/main` was `851cd244d7747b4efdc9f74900b58d431781ad1e`.
+- Missed: none beyond the explicitly skipped full-suite and live-browser proof.
 - Follow-up: `RQ281` is next WAITING for embedded supplier freshness provenance
 - Residual risk: live browser proof of comparison warning placement not run in this workspace
 - Prompt defect / scope repair: none
@@ -13800,6 +13816,9 @@ Commit suggestion: `fix(analytics): preserve embedded supplier freshness`
 - Run log: `.ai/runs/2026-09-15-RQ281-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: branch/PR
+- Main commit SHA: `bcdfc2f32c174861f325854fcd03826ea965173e`
+- Main verification: passed - `git merge-base --is-ancestor bcdfc2f32c174861f325854fcd03826ea965173e origin/main` returned 0; fresh `origin/main` was `851cd244d7747b4efdc9f74900b58d431781ad1e`.
+- Missed: none beyond the explicitly skipped full-suite and live-browser parent-header proof.
 - Follow-up: `RQ282` is next WAITING for supplier null-ID identity
 - Residual risk: live browser proof of parent trust header parity not run in this workspace
 - Prompt defect / scope repair: none
@@ -13871,6 +13890,9 @@ Commit suggestion: `fix(analytics): preserve supplier identity without IDs`
 - Run log: `.ai/runs/2026-09-15-RQ282-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: branch/PR
+- Main commit SHA: `7b98efa79b00ea90df675d17f5ed3e1e1fb877ab`
+- Main verification: passed - `git merge-base --is-ancestor 7b98efa79b00ea90df675d17f5ed3e1e1fb877ab origin/main` returned 0; fresh `origin/main` was `851cd244d7747b4efdc9f74900b58d431781ad1e`.
+- Missed: none beyond the explicitly skipped full-suite and live-browser proof.
 - Follow-up: `RQ283` is next WAITING for shoe-type negative margin signal
 - Residual risk: ambiguous null-ID article-to-vendor attribution remains unavailable by design when names collide
 - Prompt defect / scope repair: none
@@ -13923,7 +13945,7 @@ Reproduction: return two supplier rows with null IDs and equal names, then equal
 
 ## RQ283 - Keep valid zero and negative Shoe Type margin signals visible
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend/analytics-visualization/tests
 Feature family: shoe-type-negative-margin-signal

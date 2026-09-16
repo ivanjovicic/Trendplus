@@ -10,7 +10,9 @@ import type { ShoeTypeSalesStat, ShoeTypeSalesStatsResponse } from "../../servic
 
 vi.mock("recharts", () => ({
   Bar: () => null,
-  BarChart: () => <div data-testid="bar-chart" />,
+  BarChart: ({ data, children }: { data?: unknown[]; children?: ReactNode }) => (
+    <div data-testid="bar-chart" data-chart-data={JSON.stringify(data ?? [])}>{children}</div>
+  ),
   CartesianGrid: () => null,
   Legend: () => null,
   ResponsiveContainer: ({ children }: { children?: ReactNode }) => <div data-testid="responsive-container">{children}</div>,
@@ -300,5 +302,96 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.queryByText("Ukupan promet")).not.toBeInTheDocument();
     expect(screen.queryByText("Ukupan maržni doprinos")).not.toBeInTheDocument();
+  });
+
+  it("keeps a positive total margin as percentage-share comparison data", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId("shoe-type-margin-share-chart")).toBeInTheDocument();
+    expect(screen.queryByTestId("shoe-type-margin-value-chart")).not.toBeInTheDocument();
+  });
+
+  it.each([
+    {
+      label: "measured zero",
+      totalMarginContribution: 0,
+      rows: [
+        shoeType({ tipObuceNaziv: "Patike", ukupanPromet: 70000, marginContribution: 0 }),
+        shoeType({ tipObuceId: 2, tipObuceNaziv: "Cipele", ukupanPromet: 50000, marginContribution: Number.NaN }),
+      ],
+      excludedChartName: "Cipele",
+    },
+    {
+      label: "negative total",
+      totalMarginContribution: -1000,
+      rows: [
+        shoeType({ tipObuceNaziv: "Patike", ukupanPromet: 70000, marginContribution: -1500 }),
+        shoeType({ tipObuceId: 2, tipObuceNaziv: "Cipele", ukupanPromet: 50000, marginContribution: 500 }),
+      ],
+    },
+  ])("keeps $label margin evidence visible without an undefined margin-share percentage", async ({ totalMarginContribution, rows, excludedChartName }) => {
+    vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
+      shoeTypes: rows,
+      totals: {
+        ukupanPromet: 120000,
+        ukupanMarzniDoprinos: totalMarginContribution,
+        prePromet: 90000,
+        poslePromet: 30000,
+        brojTipovaObuce: rows.length,
+        snapshotCostCoveragePct: 0,
+        isSnapshotActive: false,
+      },
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const chart = await screen.findByTestId("shoe-type-margin-value-chart");
+    expect(screen.getByRole("heading", { name: /Maržni doprinos po tipu obuće/ })).toBeInTheDocument();
+    expect(chart).toHaveTextContent("Ukupan maržni doprinos je");
+    const chartData = within(chart).getByTestId("bar-chart");
+    if (excludedChartName) {
+      expect(chartData).not.toHaveAttribute("data-chart-data", expect.stringContaining(excludedChartName));
+    } else {
+      expect(chartData).toHaveAttribute("data-chart-data", expect.stringContaining("Cipele"));
+    }
+    expect(screen.queryByText("Nema podataka za poređenja.")).not.toBeInTheDocument();
+  });
+
+  it.each([null, Number.NaN, Number.POSITIVE_INFINITY])("keeps a non-finite or missing total margin unavailable (%s)", async (totalMarginContribution) => {
+    vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
+      totals: {
+        ukupanPromet: 120000,
+        ukupanMarzniDoprinos: totalMarginContribution as unknown as number,
+        prePromet: 90000,
+        poslePromet: 30000,
+        brojTipovaObuce: 1,
+        snapshotCostCoveragePct: 0,
+        isSnapshotActive: false,
+      },
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Nema podataka za poređenja.")).toBeInTheDocument();
+    expect(screen.queryByTestId("shoe-type-margin-share-chart")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("shoe-type-margin-value-chart")).not.toBeInTheDocument();
   });
 });
