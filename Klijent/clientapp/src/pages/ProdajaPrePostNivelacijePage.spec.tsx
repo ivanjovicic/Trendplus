@@ -142,11 +142,16 @@ function response(overrides: Partial<VendorSalesNivelacijaResponse> = {}): Vendo
   };
 }
 
+function PrePostDetailRouteStub() {
+  return <div>Pre/Post detail route</div>;
+}
+
 function renderPage() {
   return render(
     <MemoryRouter initialEntries={["/analitika/nivelacije-pre-post"]}>
       <Routes>
         <Route path="/analitika/nivelacije-pre-post" element={<ProdajaPrePostNivelacijePage />} />
+        <Route path="/analitika/nivelacije-pre-post/:id" element={<PrePostDetailRouteStub />} />
       </Routes>
     </MemoryRouter>,
   );
@@ -272,6 +277,17 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(screen.queryByText(/Nisko signal/)).not.toBeInTheDocument();
   });
 
+  it("keeps detail navigation aligned with the production analitika route contract", async () => {
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Otvori puni detalj" }));
+
+    expect(await screen.findByText("Pre/Post detail route")).toBeInTheDocument();
+    expect(getAnalyticsDetailSnapshot("nivelacije-pre-post", "10")).not.toBeNull();
+  });
+
   it("labels absolute-change share explicitly in detail and export snapshot", async () => {
     renderPage();
     await screen.findByText("Prioritetna lista dobavljača");
@@ -282,6 +298,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(screen.getAllByText(/abs\(promena prometa\) \/ zbir apsolutnih promena prometa/i).length).toBeGreaterThanOrEqual(2);
 
     fireEvent.click(screen.getByRole("button", { name: "Otvori puni detalj" }));
+    expect(await screen.findByText("Pre/Post detail route")).toBeInTheDocument();
 
     const snapshot = getAnalyticsDetailSnapshot("nivelacije-pre-post", "10");
     expect(snapshot).toEqual(expect.objectContaining({
@@ -341,6 +358,34 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(screen.queryByText(/Srednje signal/)).not.toBeInTheDocument();
   });
 
+  it("uses the canonical unknown copy for missing quality metadata in snapshots", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
+      response({
+        dataQuality: null,
+        meta: {
+          success: true,
+          dataQualityStatus: "warning",
+          warningCode: "schema_fallback",
+          isPartial: true,
+        } as VendorSalesNivelacijaResponse["meta"],
+      }),
+    );
+
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Otvori puni detalj" }));
+
+    const snapshot = getAnalyticsDetailSnapshot("nivelacije-pre-post", "10");
+    expect(snapshot?.metadata).toEqual(expect.arrayContaining([
+      expect.objectContaining({ key: "dataTrust", label: "Poverenje", value: "Nepoznato" }),
+      expect.objectContaining({ key: "analyzedShare", label: "Analizirani redovi", value: "Nije dostupno" }),
+      expect.objectContaining({ key: "duplicateRowsRemoved", label: "Duplicati uklonjeni", value: "N/A" }),
+      expect.objectContaining({ key: "inactiveRows", label: "Neaktivni redovi", value: "N/A" }),
+    ]));
+  });
+
   it("keeps a missing quality snapshot unknown across the trust surface", async () => {
     vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
       response({
@@ -363,14 +408,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(screen.getByText("Kvalitet signala nije potvrđen jer snapshot kvaliteta nedostaje ili je delimičan.")).toBeInTheDocument();
 
     fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
-    fireEvent.click(screen.getByRole("button", { name: "Otvori puni detalj" }));
-    const snapshot = getAnalyticsDetailSnapshot("nivelacije-pre-post", "10");
-    expect(snapshot?.metadata).toEqual(expect.arrayContaining([
-      expect.objectContaining({ key: "dataTrust", label: "Poverenje", value: "Nepoznato" }),
-      expect.objectContaining({ key: "analyzedShare", label: "Analizirani redovi", value: "Nije dostupno" }),
-      expect.objectContaining({ key: "duplicateRowsRemoved", label: "Duplicati uklonjeni", value: "N/A" }),
-      expect.objectContaining({ key: "inactiveRows", label: "Neaktivni redovi", value: "N/A" }),
-    ]));
+    expect(screen.getByText("Kvalitet signala nije potvrđen jer snapshot kvaliteta nedostaje ili je delimičan.")).toBeInTheDocument();
   });
 
   it("does not render legacy zero placeholders when comparability evidence is missing", async () => {

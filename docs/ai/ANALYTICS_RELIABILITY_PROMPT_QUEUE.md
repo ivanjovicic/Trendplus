@@ -4,6 +4,12 @@ Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-16: `RQ291` was explicitly promoted from `WAITING` to `READY` by user request because the RQ queue had no current READY prompt after `RQ290` completion; it is the single current RQ prompt for Pre/Post quality contract and route fixture alignment.
+
+Owner claim 2026-09-16: `RQ291` transitioned `READY -> IN_PROGRESS` in this workspace for Pre/Post test harness and missing-quality presentation contract.
+
+Owner completion 2026-09-16: `RQ291` was delivered on `main` with the production `/analitika/nivelacije-pre-post/:id` detail route in the focused test harness, explicit canonical unknown-copy assertions for missing quality snapshots, and detail-navigation smoke coverage.
+
 Owner promotion 2026-09-16: under the user's explicit instruction to promote when no READY prompt exists, `RQ290` moved from WAITING to READY. `RQ154`, `RQ162`, `RQ208` and `RQ264` are DONE; the stale RQ pointer was repaired to reflect RQ285-RQ289 as DONE, and no release, tenant, authority or backend-contract gate applies to this page-local Daily Sales state work.
 
 Owner claim 2026-09-16: `RQ290` READY -> IN_PROGRESS by Codex. Local runtime lock: `.ai/task-locks/RQ290-codex.lock.md`.
@@ -442,7 +448,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ288 | DONE | color-percent-count-fallbacks | Prevent invalid coverage and unknown color counts from looking measured |
 | RQ289 | DONE | daily-supplier-order | Use authoritative supplier ordering for concentration calculations |
 | RQ290 | DONE | daily-shift-partial-state | Distinguish partial shift summaries from measured zero/whole-day totals |
-| RQ291 | WAITING | pre-post-test-contract | Resolve quality metadata contract drift and the missing detail route fixture |
+| RQ291 | DONE | pre-post-test-contract | Resolve quality metadata contract drift and the missing detail route fixture |
 | RQ292 | WAITING | pre-post-toolbar-unknowns | Keep missing toolbar metadata unknown instead of zero/OK |
 | RQ293 | WAITING | pre-post-detail-identity | Prevent pre/post detail route collisions for unnamed suppliers |
 | RQ294 | WAITING | pre-nivelacija-scope-event-propagation | Reload pre-nivelacija priorities when global scope changes |
@@ -14558,13 +14564,31 @@ Reproduction: send first shift `null`/second `0`, the reverse, both null, both z
 
 ## RQ291 - Resolve Pre/Post quality contract drift and the missing detail-route fixture
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/tests/contract
 Feature family: pre-post-test-contract
 Parallel-safe: no
 Owner: Analytics Frontend / Pre-Post Nivelacija
 Commit suggestion: `test(analytics): align pre-post quality contract and route fixture`
+
+### Completion note
+
+- Date: 2026-09-16
+- Status: DONE
+- Completion: Pre/Post focused tests now register the production `/analitika/nivelacije-pre-post/:id` detail route, assert detail-navigation smoke without router warnings, and codify the canonical unknown-copy contract (`Nije dostupno` for analyzed share, `N/A` for absent quality counts, `Nepoznato` for trust) without changing runtime formulas.
+- Changed files: `ProdajaPrePostNivelacijePage.spec.tsx`, queue/evidence
+- Checks run: focused Pre/Post spec 14 passed
+- Checks not run: full frontend suite, deployed-browser check
+- Run log: `.ai/runs/2026-09-16-RQ291-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main via `cursor/rq291-pre-post-test-contract-c753`
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: none known
+- Follow-up: `RQ292` is next WAITING for Pre/Post toolbar unknowns
+- Residual risk: deployed-browser detail modal/back-navigation not exercised in this workspace
+- Prompt defect / scope repair: base product contract was already correct; failures were harness-only drift
 
 ### Problem
 
