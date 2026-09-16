@@ -312,6 +312,114 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     saveSpy.mockRestore();
   });
 
+  it("keeps blank-name null-ID vendors distinct with fallback labels and row keys", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
+      response({
+        vendorStats: [
+          vendor({ vendorId: null, vendorName: "", postRevenue: 1200, changeRevenue: 200 }),
+          vendor({ vendorId: null, vendorName: "   ", postRevenue: 900, changeRevenue: 400 }),
+        ],
+        totals: {
+          ...response().totals,
+          postRevenue: 2100,
+          vendorsCount: 2,
+        },
+      }),
+    );
+
+    const saveSpy = vi.spyOn(analyticsTableState, "saveAnalyticsDetailSnapshot");
+    renderPage();
+    const table = await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
+
+    expect(within(table).getAllByText("Nepoznat dobavljač")).toHaveLength(2);
+    expect(within(table).getByText("1.200 RSD")).toBeInTheDocument();
+    expect(within(table).getByText("900 RSD")).toBeInTheDocument();
+
+    const secondRow = within(table).getByText("900 RSD").closest("tr");
+    expect(secondRow).not.toBeNull();
+    fireEvent.click(within(secondRow!).getAllByRole("button", { name: "Detalji" })[0]);
+
+    expect(await screen.findByText(/Identitet dobavljača nije potvrđen/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Otvori puni detalj" }));
+    expect(await screen.findByText("Pre/Post detail route")).toBeInTheDocument();
+    expect(saveSpy).toHaveBeenLastCalledWith(expect.objectContaining({ recordId: "row:1" }));
+
+    saveSpy.mockRestore();
+  });
+
+  it("does not collapse duplicate vendor IDs into one detail snapshot", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
+      response({
+        vendorStats: [
+          vendor({ vendorId: 10, vendorName: "Vendor A", postRevenue: 100000, changeRevenue: 20000 }),
+          vendor({ vendorId: 10, vendorName: "Vendor A magacin", postRevenue: 50000, changeRevenue: 10000 }),
+        ],
+        totals: {
+          ...response().totals,
+          postRevenue: 150000,
+          vendorsCount: 2,
+        },
+      }),
+    );
+
+    const saveSpy = vi.spyOn(analyticsTableState, "saveAnalyticsDetailSnapshot");
+    renderPage();
+    const table = await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
+
+    const secondRow = within(table).getByText("Vendor A magacin").closest("tr");
+    expect(secondRow).not.toBeNull();
+    fireEvent.click(within(secondRow!).getAllByRole("button", { name: "Detalji" })[0]);
+
+    expect(await screen.findByText(/Identitet dobavljača nije potvrđen/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Otvori puni detalj" }));
+    expect(await screen.findByText("Pre/Post detail route")).toBeInTheDocument();
+    expect(saveSpy).toHaveBeenLastCalledWith(expect.objectContaining({ recordId: "row:1", title: "Vendor A magacin" }));
+
+    saveSpy.mockRestore();
+  });
+
+  it("keeps special-character vendor names collision-safe for detail routes", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
+      response({
+        vendorStats: [
+          vendor({ vendorId: null, vendorName: "A/B & Co.", postRevenue: 1200, changeRevenue: 200 }),
+          vendor({ vendorId: null, vendorName: "A/B & Co", postRevenue: 900, changeRevenue: 400 }),
+        ],
+        totals: {
+          ...response().totals,
+          postRevenue: 2100,
+          vendorsCount: 2,
+        },
+      }),
+    );
+
+    const saveSpy = vi.spyOn(analyticsTableState, "saveAnalyticsDetailSnapshot");
+    renderPage();
+    const table = await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
+
+    const secondRow = within(table).getByText("A/B & Co").closest("tr");
+    expect(secondRow).not.toBeNull();
+    fireEvent.click(within(secondRow!).getAllByRole("button", { name: "Detalji" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Otvori puni detalj" }));
+
+    expect(await screen.findByText("Pre/Post detail route")).toBeInTheDocument();
+    expect(saveSpy).toHaveBeenLastCalledWith(expect.objectContaining({ recordId: "row:1", title: "A/B & Co" }));
+    expect(getAnalyticsDetailSnapshot("nivelacije-pre-post", "row:1")?.title).toBe("A/B & Co");
+
+    saveSpy.mockRestore();
+  });
+
+  it("collapses inline detail when Sakrij is clicked", async () => {
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
+    expect(await screen.findByText(/Detalj odluke: Vendor A/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Sakrij" }));
+    expect(screen.queryByText(/Detalj odluke: Vendor A/i)).not.toBeInTheDocument();
+  });
+
   it("keeps detail navigation aligned with the production analitika route contract", async () => {
     renderPage();
     await screen.findByText("Prioritetna lista dobavljača");

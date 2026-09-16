@@ -464,6 +464,11 @@ function buildStoreLabel(store: StoreOption): string {
   return extras ? `${store.storeName} (${extras})` : store.storeName;
 }
 
+function displayVendorName(name: string | null | undefined): string {
+  const trimmed = (name ?? "").trim();
+  return trimmed.length > 0 ? trimmed : "Nepoznat dobavljač";
+}
+
 export default function ProdajaPrePostNivelacijePage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -624,11 +629,16 @@ export default function ProdajaPrePostNivelacijePage() {
     return map;
   }, [previousData?.vendorStats]);
 
+  const currentVendorRowKeys = useMemo(
+    () => buildSupplierVendorKeys(data?.vendorStats ?? []),
+    [data?.vendorStats],
+  );
+
   const decisionRows = useMemo<DecisionVendor[]>(() => {
     const rows = data?.vendorStats ?? [];
     if (rows.length === 0) return [];
 
-    const vendorRowKeys = buildSupplierVendorKeys(rows);
+    const vendorRowKeys = currentVendorRowKeys;
     const totalRevenue = comparablePrePostTotal(
       data?.totals.postRevenue,
       data?.totals.hasComparableSalesWindow,
@@ -686,7 +696,7 @@ export default function ProdajaPrePostNivelacijePage() {
         volatilityTone: volatility.tone,
       };
     });
-  }, [data?.totals.absoluteChangeRevenue, data?.vendorStats, previousComparisonError, previousRevenueByVendorKey]);
+  }, [currentVendorRowKeys, data?.totals.absoluteChangeRevenue, data?.totals.hasComparableSalesWindow, data?.totals.postRevenue, data?.vendorStats, previousComparisonError, previousRevenueByVendorKey]);
 
   const sortedRows = useMemo(() => {
     const rows = [...decisionRows];
@@ -974,9 +984,8 @@ const advancedSignals = useMemo(
   const selectedDriverSummary = useMemo<DetailDriverSummary | null>(() => {
     if (!selectedRow || !data) return null;
 
-    const vendorKeys = buildSupplierVendorKeys(data.vendorStats);
     const vendorArticles = data.articleStats.filter((item, articleIndex) =>
-      resolveSupplierArticleVendorKey(item, articleIndex, data.vendorStats, vendorKeys) === selectedRow.vendorRowKey
+      resolveSupplierArticleVendorKey(item, articleIndex, data.vendorStats, currentVendorRowKeys) === selectedRow.vendorRowKey
       && hasComparablePrePostEvidence(item));
     if (vendorArticles.length === 0) return null;
 
@@ -1012,7 +1021,7 @@ const advancedSignals = useMemo(
       avgLostSalesOOS: averageNullable(vendorArticles.map((item) => item.lostSalesOOS)),
       topMetricReasons,
     };
-  }, [data, selectedRow]);
+  }, [currentVendorRowKeys, data, selectedRow]);
 
   const toolbarFilters = useMemo<AnalyticsNamedValue[]>(
     () => [
@@ -1652,7 +1661,7 @@ const advancedSignals = useMemo(
                           <tr key={rowId} className={expanded ? "expanded-row" : ""}>
                             <td>
                               <div className="ppn-vendor-cell">
-                                <strong title={row.vendorName || "Nepoznat dobavljač"}>{row.vendorName || "Nepoznat dobavljač"}</strong>
+                                <strong title={displayVendorName(row.vendorName)}>{displayVendorName(row.vendorName)}</strong>
                                 <div className="ppn-chip-wrap">
                                   <span className={confidenceClass(row.confidenceTone)}>
                                     {row.confidenceLabel} signal
@@ -1703,7 +1712,7 @@ const advancedSignals = useMemo(
           {selectedRow ? (
             <section className="ppn-decision-detail">
               <div className="ppn-decision-detail-head">
-                <h3 title={selectedRow.vendorName || "Nepoznat dobavljač"}>Detalj odluke: {selectedRow.vendorName || "Nepoznat dobavljač"}</h3>
+                <h3 title={displayVendorName(selectedRow.vendorName)}>Detalj odluke: {displayVendorName(selectedRow.vendorName)}</h3>
                 <button type="button" onClick={() => openVendorDetail(selectedRow)}>
                   Otvori puni detalj
                 </button>
