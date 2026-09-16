@@ -14202,9 +14202,9 @@ Commit suggestion: `fix(analytics): preserve color pre-post detail metrics`
 - Checks not run: full frontend suite, deployed-browser check
 - Run log: `.ai/runs/2026-09-16-RQ286-evidence.md`
 - Evidence state: synchronized
-- Delivery mode: branch PR `cursor/rq286-color-pre-post-detail-parity-c753`
-- Main commit SHA: pending merge
-- Main verification: pending merge
+- Delivery mode: direct-main via `cursor/rq286-color-pre-post-detail-parity-c753`
+- Main commit SHA: `ccb2281a`
+- Main verification: passed - `origin/main` at `ccb2281a300d488a2027a48165cd99944db33bef`
 - Missed: none known
 - Follow-up: `RQ287` is next WAITING for Color status identity
 - Residual risk: deployed-browser visual check not run in this workspace
