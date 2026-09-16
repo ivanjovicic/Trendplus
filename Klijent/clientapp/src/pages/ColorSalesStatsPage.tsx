@@ -44,6 +44,13 @@ import {
   formatCategoryPrePostRevenueMetric,
 } from "../utils/categoryPrePostDetailMetrics";
 import { buildColorRecommendationProjection } from "../utils/colorStatusIdentity";
+import {
+  resolveColorComplementPercent,
+  resolveColorCountValue,
+  resolveColorPercentValue,
+  resolveColorRevenueSharePct,
+} from "../utils/colorPercentRange";
+import { resolveColorCoveragePct } from "../utils/colorSalesCoverage";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
 import { getAnalyticsDataFreshnessStatus } from "../utils/analyticsResponseMeta";
 import "./ColorSalesStatsPage.css";
@@ -217,13 +224,13 @@ export function describeNivelacijaImpactMetric(item: ColorSalesStat): { label: s
   if (Number.isFinite(item.prePostNivelacijaRevenueImpactPct)) {
     return {
       label: fmtSignedPct(item.prePostNivelacijaRevenueImpactPct, 2),
-      title: `Pre/post nivelacija impact meri promenu prometa unutar artikala sa poznatim prvim datumom nivelacije. Pokriće: ${fmtPct(item.prePostNivelacijaRevenueCoveragePct, 1)} prometa.`,
+      title: `Pre/post nivelacija impact meri promenu prometa unutar artikala sa poznatim prvim datumom nivelacije. Pokriće: ${fmtPct(resolveColorPercentValue(item.prePostNivelacijaRevenueCoveragePct), 1)} prometa.`,
       className: trendClass(item.prePostNivelacijaRevenueImpactPct),
     };
   }
 
-  const coverage = item.prePostNivelacijaRevenueCoveragePct;
-  if (typeof coverage !== "number" || !Number.isFinite(coverage) || coverage < 0) {
+  const coverage = resolveColorPercentValue(item.prePostNivelacijaRevenueCoveragePct);
+  if (coverage == null) {
     return {
       label: "N/A",
       title: "Pre/post pokriće nije dostupno jer validno pokriće nije dostupno za ovaj skup podataka.",
@@ -360,12 +367,14 @@ export default function ColorSalesStatsPage() {
     );
 
     return rows.map((item) => {
-      const sharePct = totalRevenue > 0 ? (item.ukupanPromet / totalRevenue) * 100 : null;
+      const sharePct = resolveColorPercentValue(item.sharePct)
+        ?? resolveColorRevenueSharePct(item.ukupanPromet, totalRevenue);
       const marginContribution = item.marginContribution;
-      const splitCoveragePct = item.prePostNivelacijaRevenueCoveragePct ?? null;
-      const coveragePct = item.brojArtikalaUkupno > 0
-        ? (item.brojArtikalaSaNivelacijom / item.brojArtikalaUkupno) * 100
-        : null;
+      const splitCoveragePct = resolveColorPercentValue(item.prePostNivelacijaRevenueCoveragePct);
+      const coveragePct = resolveColorCoveragePct(
+        item.brojArtikalaSaNivelacijom,
+        item.brojArtikalaUkupno,
+      );
 
       const recommendationProjection = buildColorRecommendationProjection(
         item.recommendation,
@@ -374,7 +383,7 @@ export default function ColorSalesStatsPage() {
 
       return {
         ...item,
-        sharePct: item.sharePct ?? sharePct,
+        sharePct,
         marginContribution,
         reliabilityPct: recommendationProjection.reliabilityPct,
         reliabilityAvailable: recommendationProjection.reliabilityAvailable,
@@ -442,12 +451,12 @@ export default function ColorSalesStatsPage() {
 
   const totalRevenue = data ? data.totals.ukupanPromet : null;
   const top5SharePct = useMemo(() => {
-    if (sortedRows.length === 0 || totalRevenue == null || totalRevenue <= 0) return null;
+    if (sortedRows.length === 0 || totalRevenue == null) return null;
     const top5Revenue = [...sortedRows]
       .sort((a, b) => b.ukupanPromet - a.ukupanPromet)
       .slice(0, 5)
       .reduce((sum, row) => sum + row.ukupanPromet, 0);
-    return (top5Revenue / totalRevenue) * 100;
+    return resolveColorRevenueSharePct(top5Revenue, totalRevenue);
   }, [sortedRows, totalRevenue]);
 
   const totalMarginContribution = useMemo(
@@ -461,7 +470,7 @@ export default function ColorSalesStatsPage() {
     if (sortedRows.length === 0) return [] as Array<{ name: string; sharePct: number }>;
 
     const ranked = [...sortedRows]
-      .filter((row): row is typeof row & { sharePct: number } => row.sharePct != null && Number.isFinite(row.sharePct))
+      .filter((row): row is typeof row & { sharePct: number } => resolveColorPercentValue(row.sharePct) != null)
       .sort((a, b) => b.sharePct - a.sharePct);
     if (ranked.length === 0) return [];
     const topRows = ranked.slice(0, 6).map((row) => ({
@@ -470,8 +479,9 @@ export default function ColorSalesStatsPage() {
     }));
 
     const remaining = ranked.slice(6).reduce((sum, row) => sum + row.sharePct, 0);
-    if (remaining > 0.1) {
-      topRows.push({ name: "Ostale", sharePct: Number(remaining.toFixed(2)) });
+    const ostaleSharePct = resolveColorPercentValue(Number(remaining.toFixed(2)));
+    if (ostaleSharePct != null && ostaleSharePct > 0.1) {
+      topRows.push({ name: "Ostale", sharePct: ostaleSharePct });
     }
 
     return topRows;
@@ -522,10 +532,10 @@ export default function ColorSalesStatsPage() {
     if (!data) return [] as string[];
 
     const notes: string[] = [];
-    const splitCoverage = data.dataQuality.revenueWithNivelacijaSplitSharePct;
-    const missingCostShare = data.dataQuality.missingCostRevenueSharePct;
-    const knownCostShare = missingCostShare == null ? null : Math.max(0, 100 - missingCostShare);
-    const unknownShare = data.dataQuality.unknownColorRevenueSharePct;
+    const splitCoverage = resolveColorPercentValue(data.dataQuality.revenueWithNivelacijaSplitSharePct);
+    const missingCostShare = resolveColorPercentValue(data.dataQuality.missingCostRevenueSharePct);
+    const knownCostShare = resolveColorComplementPercent(missingCostShare);
+    const unknownShare = resolveColorPercentValue(data.dataQuality.unknownColorRevenueSharePct);
 
     if (splitCoverage != null && splitCoverage < 60) {
       notes.push(`Pre/post nivelacija trenutno pokriva ${fmtPct(splitCoverage, 1)} ukupnog prometa, pa taj signal treba čitati kao delimičan.`);
@@ -557,9 +567,9 @@ export default function ColorSalesStatsPage() {
     () => [
       { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
       { key: "dataScope", label: "Opseg podataka", value: data?.dataScope ?? dataScope },
-      { key: "bojaCount", label: "Broj boja", value: data?.totals.brojBoja ?? 0 },
-      { key: "marginCoverage", label: "Promet sa nabavnom cenom", value: fmtPct(data?.dataQuality.missingCostRevenueSharePct == null ? null : 100 - data.dataQuality.missingCostRevenueSharePct, 1) },
-      { key: "splitCoverage", label: "Pre/post pokriće", value: fmtPct(data?.dataQuality.revenueWithNivelacijaSplitSharePct, 1) },
+      { key: "bojaCount", label: "Broj boja", value: fmtNumber(resolveColorCountValue(data?.totals.brojBoja)) },
+      { key: "marginCoverage", label: "Promet sa nabavnom cenom", value: fmtPct(resolveColorComplementPercent(data?.dataQuality.missingCostRevenueSharePct), 1) },
+      { key: "splitCoverage", label: "Pre/post pokriće", value: fmtPct(resolveColorPercentValue(data?.dataQuality.revenueWithNivelacijaSplitSharePct), 1) },
       { key: "increaseFocus", label: recommendationStatusLabel("increase_focus"), value: counts.increaseFocus },
       { key: "maintain", label: recommendationStatusLabel("maintain"), value: counts.maintain },
       { key: "review", label: recommendationStatusLabel("review"), value: counts.review },
@@ -584,7 +594,9 @@ export default function ColorSalesStatsPage() {
   const headerDataQualityStatus = useMemo(() => {
     if (!data) return null;
     if (sortedRows.length === 0) return "insufficient_data";
-    if (data.dataQuality.missingCostRevenueSharePct == null || data.dataQuality.revenueWithNivelacijaSplitSharePct == null) {
+    const missingCostShare = resolveColorPercentValue(data.dataQuality.missingCostRevenueSharePct);
+    const splitCoverage = resolveColorPercentValue(data.dataQuality.revenueWithNivelacijaSplitSharePct);
+    if (missingCostShare == null || splitCoverage == null) {
       return "insufficient_data";
     }
     return qualityNotes.length > 0 ? "warning" : "good";
@@ -1075,7 +1087,7 @@ export default function ColorSalesStatsPage() {
                 </article>
                 <article>
                   <span>Pre/post pokrice prometa</span>
-                  <strong>{fmtPct(selectedRow.prePostNivelacijaRevenueCoveragePct, 1)}</strong>
+                  <strong>{fmtPct(resolveColorPercentValue(selectedRow.prePostNivelacijaRevenueCoveragePct), 1)}</strong>
                 </article>
                 <article>
                   <span>Pre nivelacije promet</span>
@@ -1103,7 +1115,7 @@ export default function ColorSalesStatsPage() {
                 </article>
                 <article>
                   <span>Pokrice marze</span>
-                  <strong>{fmtPct(selectedRow.marginDataCoveragePct, 1)}</strong>
+                  <strong>{fmtPct(resolveColorPercentValue(selectedRow.marginDataCoveragePct), 1)}</strong>
                 </article>
                 <article>
                   <span>Marza %</span>

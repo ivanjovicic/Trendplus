@@ -10,7 +10,9 @@ import { RECOMMENDATION_SIGNAL_UNAVAILABLE } from "../../utils/canonicalRecommen
 
 vi.mock("recharts", () => ({
   Bar: () => null,
-  BarChart: ({ children }: { children?: ReactNode }) => <div data-testid="bar-chart">{children}</div>,
+  BarChart: ({ data, children }: { data?: unknown[]; children?: ReactNode }) => (
+    <div data-testid="bar-chart" data-chart-data={JSON.stringify(data ?? [])}>{children}</div>
+  ),
   CartesianGrid: () => null,
   ResponsiveContainer: ({ children }: { children?: ReactNode }) => <div data-testid="responsive-container">{children}</div>,
   Tooltip: () => null,
@@ -28,9 +30,16 @@ vi.mock("../../components/analytics/AnalyticsDataTable", () => ({
 }));
 
 vi.mock("../../components/analytics/AnalyticsTableToolbar", () => ({
-  default: ({ tableKey, rows }: { tableKey: string; rows: unknown[] }) => (
+  default: ({ tableKey, rows, metadata }: {
+    tableKey: string;
+    rows: unknown[];
+    metadata?: Array<{ label: string; value: unknown }>;
+  }) => (
     <div data-testid="analytics-toolbar">
       {tableKey}: {rows.length} rows
+      {metadata?.map((item) => (
+        <span key={item.label}>{item.label}: {String(item.value)}</span>
+      ))}
     </div>
   ),
 }));
@@ -434,10 +443,12 @@ describe("ColorSalesStatsPage premium controls", () => {
     expect(within(doNotTrustRow).getByLabelText(/Ne veruj: Backend nije potvrdio da je preporuka izvrsna/)).toBeInTheDocument();
     expect(within(doNotTrustRow).getByText("Akcija blokirana")).toBeInTheDocument();
 
-    expect(screen.getByText(/Pojacaj: 1/)).toBeInTheDocument();
-    expect(screen.getByText(/Pregledaj: 1/)).toBeInTheDocument();
-    expect(screen.getByText(/Ne veruj: 1/)).toBeInTheDocument();
-    expect(screen.getByText(/Nedovoljno podataka: 0/)).toBeInTheDocument();
+    const tableHead = screen.getByText("Prioritetna lista boja").parentElement;
+    expect(tableHead).not.toBeNull();
+    expect(within(tableHead!).getByText(/Pojacaj: 1/)).toBeInTheDocument();
+    expect(within(tableHead!).getByText(/Pregledaj: 1/)).toBeInTheDocument();
+    expect(within(tableHead!).getByText(/Ne veruj: 1/)).toBeInTheDocument();
+    expect(within(tableHead!).getByText(/Nedovoljno podataka: 0/)).toBeInTheDocument();
 
     fireEvent.click(within(reviewRow).getByRole("button", { name: "Detalji" }));
     expect(await screen.findByRole("heading", { name: "Detalj odluke: Crna za pregled" })).toBeInTheDocument();
@@ -484,6 +495,135 @@ describe("ColorSalesStatsPage premium controls", () => {
     expect(within(unknownRow).getByText("Akcija blokirana")).toBeInTheDocument();
     expect(within(missingRow).getByLabelText(/Nedovoljno podataka: Backend preporuka nije dostupna/)).toBeInTheDocument();
     expect(screen.queryByText("backend_future_status")).not.toBeInTheDocument();
-    expect(screen.getByText(/Nedovoljno podataka: 2/)).toBeInTheDocument();
+    const tableHead = screen.getByText("Prioritetna lista boja").parentElement;
+    expect(tableHead).not.toBeNull();
+    expect(within(tableHead!).getByText(/Nedovoljno podataka: 2/)).toBeInTheDocument();
+  });
+
+  it("keeps missing color count unavailable instead of fabricating zero in toolbar metadata", async () => {
+    vi.mocked(getColorSalesStats).mockResolvedValue(response({
+      totals: {
+        ...response().totals,
+        brojBoja: undefined as unknown as number,
+      },
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/color-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/color-sales-stats" element={<ColorSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const toolbar = await screen.findByTestId("analytics-toolbar");
+    expect(within(toolbar).getByText("Broj boja: N/A")).toBeInTheDocument();
+    expect(within(toolbar).queryByText("Broj boja: 0")).not.toBeInTheDocument();
+  });
+
+  it("keeps concentration chart from inventing invalid Ostale share percentages", async () => {
+    vi.mocked(getColorSalesStats).mockResolvedValue(response({
+      colors: [
+        ...Array.from({ length: 6 }, (_, index) => color({
+          boja: `Boja ${index + 1}`,
+          ukupanPromet: 12000 - index,
+          sharePct: 60,
+        })),
+        color({
+          boja: "Boja 7",
+          ukupanPromet: 5000,
+          sharePct: 55,
+        }),
+        color({
+          boja: "Boja 8",
+          ukupanPromet: 4000,
+          sharePct: 55,
+        }),
+      ],
+      totals: {
+        ...response().totals,
+        ukupanPromet: 80000,
+        brojBoja: 8,
+      },
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/color-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/color-sales-stats" element={<ColorSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const chartData = JSON.parse(
+      (await screen.findByTestId("bar-chart")).getAttribute("data-chart-data") ?? "[]",
+    ) as Array<{ name: string; sharePct: number }>;
+    expect(chartData.some((entry) => entry.name === "Ostale")).toBe(false);
+    expect(chartData).toHaveLength(6);
+  });
+
+  it("keeps valid zero and 100 percentages visible across surfaces", async () => {
+    vi.mocked(getColorSalesStats).mockResolvedValue(response({
+      colors: [color({
+        boja: "Crvena",
+        ukupanPromet: 120000,
+        brojArtikalaSaNivelacijom: 0,
+        brojArtikalaUkupno: 8,
+        sharePct: 100,
+        prePostNivelacijaRevenueCoveragePct: 0,
+        marginDataCoveragePct: 0,
+      })],
+      totals: {
+        ...response().totals,
+        ukupanPromet: 120000,
+        brojBoja: 1,
+      },
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/color-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/color-sales-stats" element={<ColorSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const table = await screen.findByTestId("analytics-data-table");
+    const row = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Crvena"));
+    expect(row).toBeDefined();
+    expect(row).toHaveTextContent("100,00%");
+
+    fireEvent.click(within(row!).getByRole("button", { name: "Detalji" }));
+    const detailHeading = await screen.findByRole("heading", { name: "Detalj odluke: Crvena" });
+    const detailPanel = detailHeading.closest("section");
+    expect(detailPanel).not.toBeNull();
+    expect(within(detailPanel!).getByText("Pokrice marze").parentElement).toHaveTextContent("0,0%");
+    expect(within(detailPanel!).getByText("Pre/post pokrice prometa").parentElement).toHaveTextContent("0,0%");
+  });
+
+  it("fails closed on invalid share and coverage percentages in the table", async () => {
+    vi.mocked(getColorSalesStats).mockResolvedValue(response({
+      colors: [color({
+        boja: "Nevalidna",
+        sharePct: 150,
+        prePostNivelacijaRevenueCoveragePct: 130,
+        brojArtikalaSaNivelacijom: 12,
+        brojArtikalaUkupno: 8,
+      })],
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/color-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/color-sales-stats" element={<ColorSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const table = await screen.findByTestId("analytics-data-table");
+    const row = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Nevalidna"));
+    expect(row).toBeDefined();
+    expect(row).not.toHaveTextContent("150,00%");
+    expect(row).not.toHaveTextContent("130,00%");
   });
 });

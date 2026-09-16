@@ -431,7 +431,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ285 | DONE | shoe-type-percent-range | Fail closed on invalid coverage/share percentages |
 | RQ286 | DONE | color-pre-post-detail-parity | Do not hide valid raw pre/post metrics behind one missing impact percent |
 | RQ287 | DONE | color-status-identity | Preserve review/do-not-trust meaning on the Color surface |
-| RQ288 | WAITING | color-percent-count-fallbacks | Prevent invalid coverage and unknown color counts from looking measured |
+| RQ288 | DONE | color-percent-count-fallbacks | Prevent invalid coverage and unknown color counts from looking measured |
 | RQ289 | WAITING | daily-supplier-order | Use authoritative supplier ordering for concentration calculations |
 | RQ290 | WAITING | daily-shift-partial-state | Distinguish partial shift summaries from measured zero/whole-day totals |
 | RQ291 | WAITING | pre-post-test-contract | Resolve quality metadata contract drift and the missing detail route fixture |
@@ -14330,13 +14330,31 @@ Reproduction: provide review/do-not-trust recommendations with permission true a
 
 ## RQ288 - Keep Color percentages and counts honest when evidence is missing
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/numeric-state/tests
 Feature family: color-percent-count-fallbacks
 Parallel-safe: no
 Owner: Analytics Frontend / Color Sales
 Commit suggestion: `fix(analytics): preserve color metric availability`
+
+### Completion note
+
+- Date: 2026-09-16
+- Status: DONE
+- Completion: Color page now validates share/coverage percentages through `colorPercentRange.ts` and `colorSalesCoverage.ts` with 0-100 bounds and incompatible numerator/denominator rejection. Missing `brojBoja` renders as `N/A` via `resolveColorCountValue` instead of `?? 0`. Concentration chart no longer invents invalid `Ostale` buckets when summed shares exceed plausible bounds.
+- Changed files: `colorPercentRange.ts`, `colorSalesCoverage.ts`, `ColorSalesStatsPage.tsx`, related specs, queue/evidence
+- Checks run: focused color percent/coverage + Color page specs 61 passed
+- Checks not run: full frontend suite, deployed-browser check
+- Run log: `.ai/runs/2026-09-16-RQ288-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main via `cursor/rq288-color-percent-count-fallbacks-c753`
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: none known
+- Follow-up: `RQ289` is next WAITING for daily supplier ordering
+- Residual risk: deployed-browser visual check not run in this workspace
+- Prompt defect / scope repair: none
 
 ### Problem
 
