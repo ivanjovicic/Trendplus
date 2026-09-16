@@ -623,6 +623,45 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     expect(within(detailPanel!).getByText("Maržni doprinos").parentElement).toHaveTextContent(/15\.000/);
   });
 
+  it("keeps valid raw pre/post detail metrics visible when impact percent is unavailable", async () => {
+    vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
+      shoeTypes: [
+        shoeType({
+          tipObuceNaziv: "Patike",
+          preNivelacijePromet: 90000,
+          posleNivelacijePromet: 30000,
+          preNivelacijeKolicina: 9,
+          posleNivelacijeKolicina: 3,
+          prePostNivelacijaRevenueImpactPct: null,
+          prePostNivelacijaUnitsImpactPct: null,
+          prePostNivelacijaRevenueCoveragePct: 75,
+        }),
+      ],
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const table = await screen.findByTestId("shoe-type-sales-stats-data-table");
+    const row = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Patike"));
+    expect(row).toBeDefined();
+    fireEvent.click(within(row!).getByRole("button", { name: "Detalji" }));
+
+    const detailHeading = await screen.findByRole("heading", { name: "Detalj odluke: Patike" });
+    const detailPanel = detailHeading.closest("section");
+    expect(detailPanel).not.toBeNull();
+    expect(within(detailPanel!).getByText("Pre nivelacije promet").parentElement).toHaveTextContent(/90\.000/);
+    expect(within(detailPanel!).getByText("Posle nivelacije promet").parentElement).toHaveTextContent(/30\.000/);
+    expect(within(detailPanel!).getByText("Pre nivo količina").parentElement).toHaveTextContent(/9.*kom/);
+    expect(within(detailPanel!).getByText("Posle nivo količina").parentElement).toHaveTextContent(/3.*kom/);
+    expect(within(detailPanel!).getByText("Nivelacija impact prometa").parentElement).toHaveTextContent("N/A");
+  });
+
   it("keeps concentration chart from inventing invalid Ostali share percentages", async () => {
     vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
       shoeTypes: [

@@ -342,4 +342,41 @@ describe("ColorSalesStatsPage premium controls", () => {
     expect(within(detailPanel!).getByText("Posle nivo kolicina").parentElement).toHaveTextContent("Nije dostupno");
     expect(within(detailPanel!).getByText("Nivelacija impact prometa").parentElement).toHaveTextContent(/-8,00%/);
   });
+
+  it("keeps measured zero pre/post evidence visible when impact percent is unavailable", async () => {
+    vi.mocked(getColorSalesStats).mockResolvedValue(response({
+      colors: [
+        color({
+          boja: "Bordo",
+          preNivelacijePromet: 0,
+          posleNivelacijePromet: 25000,
+          preNivelacijeKolicina: 0,
+          posleNivelacijeKolicina: 4,
+          prePostNivelacijaRevenueImpactPct: null,
+          prePostNivelacijaUnitsImpactPct: null,
+          prePostNivelacijaRevenueCoveragePct: 75,
+        }),
+      ],
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/color-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/color-sales-stats" element={<ColorSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const table = await screen.findByTestId("analytics-data-table");
+    const row = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Bordo"));
+    expect(row).toBeDefined();
+    fireEvent.click(within(row!).getByRole("button", { name: "Detalji" }));
+
+    const detailHeading = await screen.findByRole("heading", { name: "Detalj odluke: Bordo" });
+    const detailPanel = detailHeading.closest("section");
+    expect(detailPanel).not.toBeNull();
+    expect(within(detailPanel!).getByText("Pre nivelacije promet").parentElement).toHaveTextContent(/0.*RSD/);
+    expect(within(detailPanel!).getByText("Posle nivelacije promet").parentElement).toHaveTextContent(/25\.000/);
+    expect(within(detailPanel!).getByText("Nivelacija impact prometa").parentElement).toHaveTextContent("Bez baze");
+  });
 });

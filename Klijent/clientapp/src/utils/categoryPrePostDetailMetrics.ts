@@ -1,18 +1,12 @@
 import { formatMetricDisplayValue, isFiniteMetricNumber } from "./analyticsMetricValue";
 
-export function resolveColorPrePostRevenueMetric(
+export function resolveCategoryPrePostRawMetric(
   value: number | null | undefined,
 ): number | null {
   return isFiniteMetricNumber(value) ? value : null;
 }
 
-export function resolveColorPrePostQuantityMetric(
-  value: number | null | undefined,
-): number | null {
-  return isFiniteMetricNumber(value) ? value : null;
-}
-
-export function formatColorPrePostRevenueMetric(
+export function formatCategoryPrePostRevenueMetric(
   value: number | null | undefined,
   fallback = "Nije dostupno",
 ): string {
@@ -23,7 +17,7 @@ export function formatColorPrePostRevenueMetric(
   });
 }
 
-export function formatColorPrePostQuantityMetric(
+export function formatCategoryPrePostQuantityMetric(
   value: number | null | undefined,
   fallback = "Nije dostupno",
 ): string {

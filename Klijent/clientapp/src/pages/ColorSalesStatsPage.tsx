@@ -32,9 +32,9 @@ import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyti
 import { getDataScope, type DataScope } from "../utils/dataScope";
 import { fmtNumber, fmtPct, fmtQty, fmtRsd, fmtSignedPct, formatDate, getPresetRange } from "../utils/analyticsFormatters";
 import {
-  formatColorPrePostQuantityMetric,
-  formatColorPrePostRevenueMetric,
-} from "../utils/colorPrePostDetailMetrics";
+  formatCategoryPrePostQuantityMetric,
+  formatCategoryPrePostRevenueMetric,
+} from "../utils/categoryPrePostDetailMetrics";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
 import { getAnalyticsDataFreshnessStatus } from "../utils/analyticsResponseMeta";
 import "./ColorSalesStatsPage.css";
@@ -84,6 +84,34 @@ const decisionColumns: AnalyticsTableColumn<DecisionColor>[] = [
   { key: "marginContribution", header: "Maržni doprinos", dataType: "currency" },
   { key: "popRevenueChangePct", header: "PoP trend %", dataType: "percent" },
   { key: "prePostNivelacijaRevenueImpactPct", header: "Nivelacija impact %", dataType: "percent" },
+  {
+    key: "preNivelacijePromet",
+    header: "Pre nivelacije promet",
+    detailLabel: "Pre nivelacije promet",
+    dataType: "text",
+    getValue: (row) => formatCategoryPrePostRevenueMetric(row.preNivelacijePromet),
+  },
+  {
+    key: "posleNivelacijePromet",
+    header: "Posle nivelacije promet",
+    detailLabel: "Posle nivelacije promet",
+    dataType: "text",
+    getValue: (row) => formatCategoryPrePostRevenueMetric(row.posleNivelacijePromet),
+  },
+  {
+    key: "preNivelacijeKolicina",
+    header: "Pre nivo kolicina",
+    detailLabel: "Pre nivo kolicina",
+    dataType: "text",
+    getValue: (row) => formatCategoryPrePostQuantityMetric(row.preNivelacijeKolicina),
+  },
+  {
+    key: "posleNivelacijeKolicina",
+    header: "Posle nivo kolicina",
+    detailLabel: "Posle nivo kolicina",
+    dataType: "text",
+    getValue: (row) => formatCategoryPrePostQuantityMetric(row.posleNivelacijeKolicina),
+  },
   { key: "status", header: "Preporuka", dataType: "text", getValue: (row) => displayStatusLabel(row.status) },
   { key: "decisionScore", header: "Skor odluke", dataType: "number" },
 ];
@@ -1075,19 +1103,19 @@ export default function ColorSalesStatsPage() {
                 </article>
                 <article>
                   <span>Pre nivelacije promet</span>
-                  <strong>{formatColorPrePostRevenueMetric(selectedRow.preNivelacijePromet)}</strong>
+                  <strong>{formatCategoryPrePostRevenueMetric(selectedRow.preNivelacijePromet)}</strong>
                 </article>
                 <article>
                   <span>Posle nivelacije promet</span>
-                  <strong>{formatColorPrePostRevenueMetric(selectedRow.posleNivelacijePromet)}</strong>
+                  <strong>{formatCategoryPrePostRevenueMetric(selectedRow.posleNivelacijePromet)}</strong>
                 </article>
                 <article>
                   <span>Pre nivo kolicina</span>
-                  <strong>{formatColorPrePostQuantityMetric(selectedRow.preNivelacijeKolicina)}</strong>
+                  <strong>{formatCategoryPrePostQuantityMetric(selectedRow.preNivelacijeKolicina)}</strong>
                 </article>
                 <article>
                   <span>Posle nivo kolicina</span>
-                  <strong>{formatColorPrePostQuantityMetric(selectedRow.posleNivelacijeKolicina)}</strong>
+                  <strong>{formatCategoryPrePostQuantityMetric(selectedRow.posleNivelacijeKolicina)}</strong>
                 </article>
                 <article>
                   <span>Artikli sa nivelacijom</span>

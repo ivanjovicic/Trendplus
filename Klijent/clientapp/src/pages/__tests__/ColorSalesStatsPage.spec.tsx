@@ -605,4 +605,34 @@ describe("ColorSalesStatsPage", () => {
     }));
     expect(snapshot?.fields.some((field) => field.key === "ukupanPromet" && field.value === "120.000 RSD")).toBe(true);
   });
+
+  it("keeps export snapshot pre/post fields aligned when impact percent is unavailable", async () => {
+    vi.mocked(getColorSalesStats).mockResolvedValue(response({
+      colors: [
+        color({
+          boja: "Crna",
+          preNivelacijePromet: 90000,
+          posleNivelacijePromet: 30000,
+          preNivelacijeKolicina: 9,
+          posleNivelacijeKolicina: 3,
+          prePostNivelacijaRevenueImpactPct: null,
+          prePostNivelacijaUnitsImpactPct: null,
+        }),
+      ],
+    }));
+
+    renderPage();
+    await screen.findByText("Prioritetna lista boja");
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Otvori puni detalj" }));
+
+    expect(await screen.findByText("Color detail route")).toBeInTheDocument();
+    const snapshot = getAnalyticsDetailSnapshot("color-sales-stats", encodeURIComponent("Crna"));
+    expect(snapshot?.fields.some((field) => field.key === "preNivelacijePromet" && field.value === "90.000 RSD")).toBe(true);
+    expect(snapshot?.fields.some((field) => field.key === "posleNivelacijePromet" && field.value === "30.000 RSD")).toBe(true);
+    expect(snapshot?.fields.some((field) => field.key === "preNivelacijeKolicina" && field.value === "9 kom")).toBe(true);
+    expect(snapshot?.fields.some((field) => field.key === "posleNivelacijeKolicina" && field.value === "3 kom")).toBe(true);
+    expect(snapshot?.fields.some((field) => field.key === "prePostNivelacijaRevenueImpactPct" && field.value === "N/A")).toBe(true);
+  });
 });

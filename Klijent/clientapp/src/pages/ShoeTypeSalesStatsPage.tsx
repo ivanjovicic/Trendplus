@@ -57,6 +57,10 @@ import {
 } from "../utils/canonicalRecommendationSemantics";
 import { qualityTierIcon, qualityTierClass, tierNeedsWarning, buildCoverageTooltip, buildRecommendationCaveat, buildMarginDetailNote, buildSnapshotBadgeLabel, buildSnapshotTooltip } from "../utils/marginQuality";
 import {
+  formatCategoryPrePostQuantityMetric,
+  formatCategoryPrePostRevenueMetric,
+} from "../utils/categoryPrePostDetailMetrics";
+import {
   buildShoeTypeMarginComparisonProjection,
   formatShoeTypeMarginContributionShare,
 } from "../utils/shoeTypeMarginComparison";
@@ -1516,19 +1520,19 @@ export default function ShoeTypeSalesStatsPage() {
                 </article>
                 <article>
                   <span>Pre nivelacije promet <InfoTip text="Zbir vrednosti prodaja pre prvog datuma nivelacije (ažuriranja cene) za ovaj tip." /></span>
-                  <strong>{selectedRow.prePostNivelacijaRevenueImpactPct != null ? fmtRsd(selectedRow.preNivelacijePromet) : "Nije dostupno"}</strong>
+                  <strong>{formatCategoryPrePostRevenueMetric(selectedRow.preNivelacijePromet)}</strong>
                 </article>
                 <article>
                   <span>Posle nivelacije promet <InfoTip text="Zbir vrednosti prodaja od prvog datuma nivelacije (ažuriranja cene) nadalje." /></span>
-                  <strong>{selectedRow.prePostNivelacijaRevenueImpactPct != null ? fmtRsd(selectedRow.posleNivelacijePromet) : "Nije dostupno"}</strong>
+                  <strong>{formatCategoryPrePostRevenueMetric(selectedRow.posleNivelacijePromet)}</strong>
                 </article>
                 <article>
                   <span>Pre nivo količina <InfoTip text="Ukupan broj prodanih komada pre prvog datuma nivelacije." /></span>
-                  <strong>{selectedRow.prePostNivelacijaRevenueImpactPct != null ? fmtQty(selectedRow.preNivelacijeKolicina) : "Nije dostupno"}</strong>
+                  <strong>{formatCategoryPrePostQuantityMetric(selectedRow.preNivelacijeKolicina)}</strong>
                 </article>
                 <article>
                   <span>Posle nivo količina <InfoTip text="Ukupan broj prodanih komada od prvog datuma nivelacije nadalje." /></span>
-                  <strong>{selectedRow.prePostNivelacijaRevenueImpactPct != null ? fmtQty(selectedRow.posleNivelacijeKolicina) : "Nije dostupno"}</strong>
+                  <strong>{formatCategoryPrePostQuantityMetric(selectedRow.posleNivelacijeKolicina)}</strong>
                 </article>
                 <article>
                   <span>Artikli sa nivelacijom <InfoTip text="Broj artikala sa registrovnom nivelacijom / ukupan broj artikala ovog tipa." /></span>
