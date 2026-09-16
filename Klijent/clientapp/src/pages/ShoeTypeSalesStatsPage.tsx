@@ -61,6 +61,12 @@ import {
   formatShoeTypeMarginContributionShare,
   hasComparableShoeTypeMarginTotal,
 } from "../utils/shoeTypeMarginComparison";
+import {
+  resolveShoeTypeComplementPercent,
+  resolveShoeTypePercentValue,
+  resolveShoeTypeQuantitySharePct,
+  resolveShoeTypeRevenueSharePct,
+} from "../utils/shoeTypePercentRange";
 import { resolveShoeTypeCoveragePct } from "../utils/shoeTypeSalesCoverage";
 import { buildShoeTypeRecommendationProjection } from "../utils/shoeTypeStatusIdentity";
 import { getAnalyticsDataFreshnessStatus } from "../utils/analyticsResponseMeta";
@@ -432,10 +438,11 @@ export default function ShoeTypeSalesStatsPage() {
       0,
     );
     return rows.map((item) => {
-      const sharePct = totalRevenue > 0 ? (item.ukupanPromet / totalRevenue) * 100 : null;
+      const sharePct = resolveShoeTypePercentValue(item.sharePct)
+        ?? resolveShoeTypeRevenueSharePct(item.ukupanPromet, totalRevenue);
       const totalCost = item.totalCost ?? null;
       const marginContribution = item.marginContribution;
-      const splitCoveragePct = item.prePostNivelacijaRevenueCoveragePct ?? null;
+      const splitCoveragePct = resolveShoeTypePercentValue(item.prePostNivelacijaRevenueCoveragePct);
       const coveragePct = resolveShoeTypeCoveragePct(
         item.brojArtikalaSaNivelacijom,
         item.brojArtikalaUkupno,
@@ -447,7 +454,7 @@ export default function ShoeTypeSalesStatsPage() {
 
       return {
         ...item,
-        sharePct: item.sharePct ?? sharePct,
+        sharePct,
         totalCost,
         marginContribution,
         reliabilityPct: recommendationProjection.reliabilityPct,
@@ -523,12 +530,12 @@ export default function ShoeTypeSalesStatsPage() {
 
   const totalRevenue = data ? data.totals.ukupanPromet : null;
   const top5SharePct = useMemo(() => {
-    if (sortedRows.length === 0 || totalRevenue == null || totalRevenue <= 0) return null;
+    if (sortedRows.length === 0 || totalRevenue == null) return null;
     const top5Revenue = [...sortedRows]
       .sort((a, b) => b.ukupanPromet - a.ukupanPromet)
       .slice(0, 5)
       .reduce((sum, row) => sum + row.ukupanPromet, 0);
-    return (top5Revenue / totalRevenue) * 100;
+    return resolveShoeTypeRevenueSharePct(top5Revenue, totalRevenue);
   }, [sortedRows, totalRevenue]);
 
   const totalMarginContribution = useMemo(
@@ -542,7 +549,7 @@ export default function ShoeTypeSalesStatsPage() {
     if (sortedRows.length === 0) return [] as Array<{ name: string; sharePct: number }>;
 
     const ranked = [...sortedRows]
-      .filter((row): row is typeof row & { sharePct: number } => row.sharePct != null && Number.isFinite(row.sharePct))
+      .filter((row): row is typeof row & { sharePct: number } => resolveShoeTypePercentValue(row.sharePct) != null)
       .sort((a, b) => b.sharePct - a.sharePct);
     if (ranked.length === 0) return [];
     const topRows = ranked.slice(0, 6).map((row) => ({
@@ -618,11 +625,11 @@ export default function ShoeTypeSalesStatsPage() {
     if (!data) return [] as string[];
 
     const notes: string[] = [];
-    const splitCoverage = data.dataQuality.revenueWithNivelacijaSplitSharePct;
-    const missingCostShare = data.dataQuality.missingCostRevenueSharePct;
-    const historicalCostShare = missingCostShare == null ? null : Math.max(0, 100 - missingCostShare);
-    const estimatedCostShare = data.dataQuality.estimatedCostRevenueSharePct;
-    const unknownShare = data.dataQuality.unknownTypeRevenueSharePct;
+    const splitCoverage = resolveShoeTypePercentValue(data.dataQuality.revenueWithNivelacijaSplitSharePct);
+    const missingCostShare = resolveShoeTypePercentValue(data.dataQuality.missingCostRevenueSharePct);
+    const historicalCostShare = resolveShoeTypeComplementPercent(missingCostShare);
+    const estimatedCostShare = resolveShoeTypePercentValue(data.dataQuality.estimatedCostRevenueSharePct);
+    const unknownShare = resolveShoeTypePercentValue(data.dataQuality.unknownTypeRevenueSharePct);
 
     if (splitCoverage != null && splitCoverage < 60) {
       notes.push(`Uporediv pre/posle signal trenutno pokriva ${fmtPct(splitCoverage, 1)} ukupnog prometa, pa ga treba čitati kao delimičan.`);
@@ -640,7 +647,7 @@ export default function ShoeTypeSalesStatsPage() {
       notes.push(`Nepoznati tipovi obuće učestvuju sa ${fmtPct(unknownShare, 1)} ukupnog prometa.`);
     }
 
-    const snapshotPct = data.totals.snapshotCostCoveragePct;
+    const snapshotPct = resolveShoeTypePercentValue(data.totals.snapshotCostCoveragePct);
     if (data.totals.isSnapshotActive && snapshotPct != null && snapshotPct > 0) {
       notes.push(`Za ${fmtPct(snapshotPct, 1)} prometa trosak je stabilizovan zamrznutom procenom (snapshot). Ovo je reproduktivna procena, ne istorijska nabavna cena.`);
     }
@@ -651,8 +658,8 @@ export default function ShoeTypeSalesStatsPage() {
   const headerDataQualityStatus = useMemo<"good" | "warning" | "critical" | "insufficient_data" | null>(() => {
     if (!data) return null;
     if ((data.shoeTypes ?? []).length === 0) return "insufficient_data";
-    const missingCostShare = data.dataQuality.missingCostRevenueSharePct;
-    const splitCoverage = data.dataQuality.revenueWithNivelacijaSplitSharePct;
+    const missingCostShare = resolveShoeTypePercentValue(data.dataQuality.missingCostRevenueSharePct);
+    const splitCoverage = resolveShoeTypePercentValue(data.dataQuality.revenueWithNivelacijaSplitSharePct);
     if (missingCostShare == null || splitCoverage == null) return "insufficient_data";
     if (missingCostShare >= 50 || splitCoverage < 30) return "critical";
     if (qualityNotes.length > 0) return "warning";
@@ -691,11 +698,11 @@ export default function ShoeTypeSalesStatsPage() {
       { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
       { key: "dataScope", label: "Opseg podataka", value: data?.dataScope ?? dataScope },
       { key: "tipova", label: "Tipova", value: data?.totals.brojTipovaObuce ?? 0 },
-      { key: "marginCoverage", label: "Pokrice direktnom nabavnom %", value: fmtPct(data?.dataQuality.missingCostRevenueSharePct == null ? null : 100 - data.dataQuality.missingCostRevenueSharePct, 1) },
-      { key: "fallbackCoverage", label: "Promet sa procenjenom nabavnom %", value: fmtPct(data?.dataQuality.estimatedCostRevenueSharePct, 1) },
-      { key: "noCostCoverage", label: "Promet bez nabavne cene %", value: fmtPct(data?.dataQuality.missingCostRevenueSharePct, 1) },
-      { key: "splitCoverage", label: "Uporediv pre/post pokrice", value: fmtPct(data?.dataQuality.revenueWithNivelacijaSplitSharePct, 1) },
-      { key: "snapshotCoverage", label: "Zamrznuta procena (snapshot) %", value: fmtPct(data?.totals.snapshotCostCoveragePct, 1) },
+      { key: "marginCoverage", label: "Pokrice direktnom nabavnom %", value: fmtPct(resolveShoeTypeComplementPercent(data?.dataQuality.missingCostRevenueSharePct), 1) },
+      { key: "fallbackCoverage", label: "Promet sa procenjenom nabavnom %", value: fmtPct(resolveShoeTypePercentValue(data?.dataQuality.estimatedCostRevenueSharePct), 1) },
+      { key: "noCostCoverage", label: "Promet bez nabavne cene %", value: fmtPct(resolveShoeTypePercentValue(data?.dataQuality.missingCostRevenueSharePct), 1) },
+      { key: "splitCoverage", label: "Uporediv pre/post pokrice", value: fmtPct(resolveShoeTypePercentValue(data?.dataQuality.revenueWithNivelacijaSplitSharePct), 1) },
+      { key: "snapshotCoverage", label: "Zamrznuta procena (snapshot) %", value: fmtPct(resolveShoeTypePercentValue(data?.totals.snapshotCostCoveragePct), 1) },
       { key: "isSnapshotActive", label: "Snapshot aktivan", value: data?.totals.isSnapshotActive ? "da" : "ne" },
       { key: "increaseFocus", label: recommendationStatusLabel("increase_focus"), value: counts.increaseFocus },
       { key: "maintain", label: recommendationStatusLabel("maintain"), value: counts.maintain },
@@ -1427,7 +1434,13 @@ export default function ShoeTypeSalesStatsPage() {
                 </article>
                 <article>
                   <span>Udeo u količini <InfoTip text="Procenat koji ovaj tip obuće čini u ukupno prodatoj količini." /></span>
-                  <strong>{(data?.totals.ukupnaKolicina ?? 0) > 0 ? fmtPct((selectedRow.ukupnaKolicina / data!.totals.ukupnaKolicina) * 100, 2) : "Nije dostupno"}</strong>
+                  <strong>{(() => {
+                    const quantitySharePct = resolveShoeTypeQuantitySharePct(
+                      selectedRow.ukupnaKolicina,
+                      data?.totals.ukupnaKolicina,
+                    );
+                    return quantitySharePct == null ? "Nije dostupno" : fmtPct(quantitySharePct, 2);
+                  })()}</strong>
                 </article>
                 <article>
                   <span>Broj artikala <InfoTip text="Ukupan broj različitih artikala ovog tipa obuće koji su prodati." /></span>
@@ -1473,7 +1486,7 @@ export default function ShoeTypeSalesStatsPage() {
                 </article>
                 <article>
                   <span>Pre/post pokrice prometa <InfoTip text="Procenat prometa koji dolazi od artikala sa prodajom i pre i posle nivelacije." /></span>
-                  <strong>{fmtPct(selectedRow.prePostNivelacijaRevenueCoveragePct, 1)}</strong>
+                  <strong>{fmtPct(selectedRow.splitCoveragePct, 1)}</strong>
                 </article>
                 <article>
                   <span>Uporedivi artikli <InfoTip text="Broj artikala sa prodajom i pre i posle nivelacije (koristi se za proračun pre/post uticaja)." /></span>

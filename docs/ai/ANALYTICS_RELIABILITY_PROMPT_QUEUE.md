@@ -4,6 +4,10 @@ Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-16: `RQ285` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ284` completion; it is the single current RQ prompt for shoe-type percent range validation and was claimed in this workspace.
+
+Owner completion 2026-09-16: `RQ284` was delivered with preserved shoe-type backend status identity when recommendations are gated; the RQ queue advanced to `RQ285`.
+
 Owner promotion 2026-09-16: `RQ284` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ283` completion; it is the single current RQ prompt for shoe-type status identity when recommendation is gated and was claimed in this workspace.
 
 Owner completion 2026-09-16: `RQ283` was delivered with visible zero/negative shoe-type margin comparison signals; the RQ queue advanced to `RQ284`.
@@ -412,7 +416,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ282 | DONE | supplier-null-id-identity | Prevent vendor-key collisions when supplier IDs are absent |
 | RQ283 | DONE | shoe-type-negative-margin-signal | Keep valid zero/negative margin comparison visible |
 | RQ284 | DONE | shoe-type-status-identity | Preserve backend recommendation status when actionability is gated |
-| RQ285 | WAITING | shoe-type-percent-range | Fail closed on invalid coverage/share percentages |
+| RQ285 | DONE | shoe-type-percent-range | Fail closed on invalid coverage/share percentages |
 | RQ286 | WAITING | color-pre-post-detail-parity | Do not hide valid raw pre/post metrics behind one missing impact percent |
 | RQ287 | WAITING | color-status-identity | Preserve review/do-not-trust meaning on the Color surface |
 | RQ288 | WAITING | color-percent-count-fallbacks | Prevent invalid coverage and unknown color counts from looking measured |
@@ -14073,13 +14077,31 @@ Reproduction: provide `review` and `do_not_trust` backend recommendations with `
 
 ## RQ285 - Validate Shoe Type coverage and share percentage ranges
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/numeric-state/tests
 Feature family: shoe-type-percent-range
 Parallel-safe: no
 Owner: Analytics Frontend / Shoe Type Sales
 Commit suggestion: `fix(analytics): fail closed on invalid shoe-type percentages`
+
+### Completion note
+
+- Date: 2026-09-16
+- Status: DONE
+- Completion: Shoe Type share/coverage/split percentages now fail closed unless finite and within 0-100; derived revenue/quantity shares recompute from compatible numerators, and table/KPI/detail/export surfaces stay aligned.
+- Changed files: `shoeTypePercentRange.ts`, `ShoeTypeSalesStatsPage.tsx`, related specs
+- Checks run: focused shoe-type percent range specs 41 passed
+- Checks not run: full frontend suite, browser proof
+- Run log: `.ai/runs/2026-09-16-RQ285-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: branch/PR
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: none known
+- Follow-up: `RQ286` is next WAITING for color pre/post detail parity
+- Residual risk: live browser proof of malformed-percent presentation not run in this workspace
+- Prompt defect / scope repair: none
 
 ### Problem
 
