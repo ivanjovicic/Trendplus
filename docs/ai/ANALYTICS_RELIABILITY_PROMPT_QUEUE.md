@@ -14274,10 +14274,10 @@ Commit suggestion: `fix(analytics): preserve color recommendation status semanti
 - Checks run: focused color status identity + Color page specs 37 passed
 - Checks not run: full frontend suite, deployed-browser check
 - Run log: `.ai/runs/2026-09-16-RQ287-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main via `cursor/rq287-color-status-identity-c753`
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `cb692068`
+- Main verification: passed - `origin/main` at `cb692068`
 - Missed: none known
 - Follow-up: `RQ288` is next WAITING for Color percent/count fallbacks
 - Residual risk: deployed-browser visual check not run in this workspace
