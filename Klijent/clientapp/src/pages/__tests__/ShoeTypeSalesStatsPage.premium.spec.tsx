@@ -583,6 +583,93 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     expect(within(detailPanel!).getByText("Pre/post pokrice prometa").parentElement).toHaveTextContent("N/A");
   });
 
+  it("shows unavailable margin-share detail when total margin is zero", async () => {
+    vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
+      shoeTypes: [
+        shoeType({
+          tipObuceNaziv: "Patike",
+          ukupanPromet: 120000,
+          marginContribution: 15000,
+        }),
+      ],
+      totals: {
+        ukupanPromet: 120000,
+        ukupanMarzniDoprinos: 0,
+        prePromet: 90000,
+        poslePromet: 30000,
+        brojTipovaObuce: 1,
+        snapshotCostCoveragePct: 0,
+        isSnapshotActive: false,
+      },
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const table = await screen.findByTestId("shoe-type-sales-stats-data-table");
+    const row = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Patike"));
+    expect(row).toBeDefined();
+    fireEvent.click(within(row!).getByRole("button", { name: "Detalji" }));
+
+    const detailHeading = await screen.findByRole("heading", { name: "Detalj odluke: Patike" });
+    const detailPanel = detailHeading.closest("section");
+    expect(detailPanel).not.toBeNull();
+    expect(within(detailPanel!).getByText("Udeo u maržnom doprinosu").parentElement).toHaveTextContent("Nije dostupno");
+    expect(within(detailPanel!).getByText("Maržni doprinos").parentElement).toHaveTextContent(/15\.000/);
+  });
+
+  it("keeps concentration chart from inventing invalid Ostali share percentages", async () => {
+    vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
+      shoeTypes: [
+        ...Array.from({ length: 6 }, (_, index) => shoeType({
+          tipObuceId: index + 1,
+          tipObuceNaziv: `Tip ${index + 1}`,
+          ukupanPromet: 12000 - index,
+          sharePct: 60,
+        })),
+        shoeType({
+          tipObuceId: 7,
+          tipObuceNaziv: "Tip 7",
+          ukupanPromet: 5000,
+          sharePct: 55,
+        }),
+        shoeType({
+          tipObuceId: 8,
+          tipObuceNaziv: "Tip 8",
+          ukupanPromet: 4000,
+          sharePct: 55,
+        }),
+      ],
+      totals: {
+        ukupanPromet: 80000,
+        ukupanMarzniDoprinos: 20000,
+        prePromet: 60000,
+        poslePromet: 20000,
+        brojTipovaObuce: 8,
+        snapshotCostCoveragePct: 0,
+        isSnapshotActive: false,
+      },
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const concentrationChart = await screen.findByTestId("shoe-type-concentration-chart");
+    const chartData = JSON.parse(within(concentrationChart).getByTestId("bar-chart").getAttribute("data-chart-data") ?? "[]") as Array<{ name: string; sharePct: number }>;
+    expect(chartData.some((entry) => entry.name === "Ostali")).toBe(false);
+    expect(chartData).toHaveLength(6);
+  });
+
   it("keeps valid zero and 100 percentages visible across surfaces", async () => {
     vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
       shoeTypes: [shoeType({

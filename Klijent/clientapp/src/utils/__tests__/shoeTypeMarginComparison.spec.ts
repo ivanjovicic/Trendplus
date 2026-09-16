@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildShoeTypeComparisonData,
   buildShoeTypeMarginComparisonProjection,
   formatShoeTypeMarginContributionShare,
   resolveShoeTypeMarginContributionSharePct,
@@ -22,27 +21,19 @@ const rows = [
 ];
 
 describe("shoeTypeMarginComparison", () => {
-  it("keeps negative totals comparable and preserves margin share percentages", () => {
+  it("keeps negative totals comparable for detail formatting only", () => {
     expect(resolveShoeTypeMarginContributionSharePct(-600, -1000)).toBe(60);
-    expect(buildShoeTypeComparisonData(rows, -1000)).toEqual([
-      { name: "Patike", udeoPrometa: 60, udeoMarznogDoprinosa: 60 },
-      { name: "Čizme", udeoPrometa: 40, udeoMarznogDoprinosa: 40 },
-    ]);
   });
 
   it("keeps measured zero totals visible while leaving non-zero margin shares unavailable", () => {
     expect(resolveShoeTypeMarginContributionSharePct(0, 0)).toBe(0);
     expect(resolveShoeTypeMarginContributionSharePct(100, 0)).toBeNull();
-    expect(buildShoeTypeComparisonData(rows, 0)).toEqual([
-      { name: "Patike", udeoPrometa: 60, udeoMarznogDoprinosa: null },
-      { name: "Čizme", udeoPrometa: 40, udeoMarznogDoprinosa: null },
-    ]);
   });
 
   it("suppresses comparison only for missing or non-finite totals", () => {
-    expect(buildShoeTypeComparisonData(rows, null)).toEqual([]);
-    expect(buildShoeTypeComparisonData(rows, Number.NaN)).toEqual([]);
-    expect(buildShoeTypeComparisonData(rows, Number.POSITIVE_INFINITY)).toEqual([]);
+    expect(buildShoeTypeMarginComparisonProjection(rows, null).mode).toBe("unavailable");
+    expect(buildShoeTypeMarginComparisonProjection(rows, Number.NaN).mode).toBe("unavailable");
+    expect(buildShoeTypeMarginComparisonProjection(rows, Number.POSITIVE_INFINITY).mode).toBe("unavailable");
     expect(resolveShoeTypeMarginContributionSharePct(100, null)).toBeNull();
   });
 

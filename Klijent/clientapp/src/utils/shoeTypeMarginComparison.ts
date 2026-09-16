@@ -48,37 +48,6 @@ export function resolveShoeTypeMarginContributionSharePct(
   return Number.isFinite(sharePct) ? sharePct : null;
 }
 
-export function buildShoeTypeComparisonData(
-  rows: Array<{
-    tipObuceNaziv: string;
-    ukupanPromet: number;
-    marginContribution: number;
-    sharePct?: number | null;
-  }>,
-  totalMarginContribution: number | null | undefined,
-): ShoeTypeComparisonRow[] {
-  if (rows.length === 0 || !hasComparableShoeTypeMarginTotal(totalMarginContribution)) {
-    return [];
-  }
-
-  const ranked = [...rows]
-    .filter((row): row is typeof row & { sharePct: number } => row.sharePct != null && Number.isFinite(row.sharePct))
-    .sort((a, b) => b.ukupanPromet - a.ukupanPromet);
-
-  return ranked.slice(0, 8).map((row) => {
-    const marginSharePct = resolveShoeTypeMarginContributionSharePct(
-      row.marginContribution,
-      totalMarginContribution,
-    );
-
-    return {
-      name: row.tipObuceNaziv,
-      udeoPrometa: Number(row.sharePct.toFixed(1)),
-      udeoMarznogDoprinosa: marginSharePct == null ? null : Number(marginSharePct.toFixed(1)),
-    };
-  });
-}
-
 export function formatShoeTypeMarginContributionShare(
   marginContribution: number | null | undefined,
   totalMarginContribution: number | null | undefined,

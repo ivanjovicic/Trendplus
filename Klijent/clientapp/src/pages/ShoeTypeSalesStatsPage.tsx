@@ -557,8 +557,9 @@ export default function ShoeTypeSalesStatsPage() {
     }));
 
     const remaining = ranked.slice(6).reduce((sum, row) => sum + row.sharePct, 0);
-    if (remaining > 0.1) {
-      topRows.push({ name: "Ostali", sharePct: Number(remaining.toFixed(2)) });
+    const ostaliSharePct = resolveShoeTypePercentValue(Number(remaining.toFixed(2)));
+    if (ostaliSharePct != null && ostaliSharePct > 0.1) {
+      topRows.push({ name: "Ostali", sharePct: ostaliSharePct });
     }
 
     return topRows;
@@ -1092,7 +1093,7 @@ export default function ShoeTypeSalesStatsPage() {
               <h2>Koncentracija prometa po tipu obuće <InfoTip text="Grafikon prikazuje koliki udeo ukupnog prometa nose tipovi obuće. Koristi samo promet, bez tumačenja profita ili neto marže." /></h2>
               <p>Brz pregled koji tipovi nose najveći deo prihoda.</p>
               {concentrationData.length > 0 ? (
-                <div className="shoetype-decision-chart-wrap">
+                <div className="shoetype-decision-chart-wrap" data-testid="shoe-type-concentration-chart">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
                     <BarChart data={concentrationData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
                       <defs>
