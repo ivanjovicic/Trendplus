@@ -6,8 +6,8 @@ Date: 2026-09-16
 Agent/tool: cursor-cloud-agent
 Delivery target: main
 Working branch / PR: cursor/rq290-shift-partial-hardening-c753
-Main commit SHA: pending
-Main verification: pending
+Main commit SHA: 4f82f929
+Main verification: passed - `origin/main` at `4f82f929`
 Evidence state: synchronized
 
 ## What was done
