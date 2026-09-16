@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -6,6 +6,7 @@ import ShoeTypeSalesStatsPage from "../ShoeTypeSalesStatsPage";
 import { getStores } from "../../services/analyticsApi";
 import { getShoeTypeSalesStats } from "../../services/shoeTypeSalesStatsApi";
 import { resolveShoeTypeCoveragePct } from "../../utils/shoeTypeSalesCoverage";
+import { RECOMMENDATION_SIGNAL_UNAVAILABLE } from "../../utils/canonicalRecommendationSemantics";
 import type { ShoeTypeSalesStat, ShoeTypeSalesStatsResponse } from "../../services/shoeTypeSalesStatsApi";
 
 vi.mock("recharts", () => ({
@@ -22,12 +23,14 @@ vi.mock("recharts", () => ({
 }));
 
 vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({
-  default: ({ title, periodFrom, periodTo, lastRefreshAt, dataFreshnessStatus }: {
+  default: ({ title, periodFrom, periodTo, lastRefreshAt, dataFreshnessStatus, mode, recommendationAllowed }: {
     title: string;
     periodFrom?: string | null;
     periodTo?: string | null;
     lastRefreshAt?: string | null;
     dataFreshnessStatus?: string | null;
+    mode?: string;
+    recommendationAllowed?: boolean | null;
   }) => (
     <div
       data-testid="analytics-trust-header"
@@ -35,6 +38,8 @@ vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({
       data-period-to={periodTo ?? ""}
       data-last-refresh-at={lastRefreshAt ?? ""}
       data-freshness={dataFreshnessStatus ?? ""}
+      data-mode={mode ?? ""}
+      data-recommendation-allowed={recommendationAllowed == null ? "" : String(recommendationAllowed)}
     >
       {title}
     </div>
@@ -207,6 +212,8 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     );
 
     expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("Prodaja po tipu obuće");
+    expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-mode", "signal");
+    expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-recommendation-allowed", "");
     await waitFor(() => {
       expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-period-from", "2026-06-01T00:00:00Z");
       expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-period-to", "2026-06-30T23:59:59Z");
@@ -227,6 +234,122 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     });
     expect(screen.getByText("Patike")).toBeInTheDocument();
     expect(screen.getByText("Prioritetna lista tipova obuće")).toBeInTheDocument();
+  });
+
+  it("keeps known backend statuses visible while false or missing permission blocks actionability", async () => {
+    const baseRecommendation = shoeType().recommendation!;
+    vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
+      shoeTypes: [
+        shoeType({
+          tipObuceId: 1,
+          tipObuceNaziv: "Dozvoljene patike",
+          recommendation: { ...baseRecommendation, recommendationAllowed: true },
+        }),
+        shoeType({
+          tipObuceId: 2,
+          tipObuceNaziv: "Patike za pregled",
+          recommendation: {
+            ...baseRecommendation,
+            status: "review",
+            summary: "Potrebna je rucna provera.",
+            recommendationAllowed: false,
+          },
+        }),
+        shoeType({
+          tipObuceId: 3,
+          tipObuceNaziv: "Nepouzdan signal",
+          recommendation: {
+            ...baseRecommendation,
+            status: "do_not_trust",
+            summary: "Signal zahteva proveru izvora.",
+            recommendationAllowed: undefined,
+          },
+        }),
+      ],
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const table = await screen.findByTestId("shoe-type-sales-stats-data-table");
+    const allowedRow = within(table).getAllByRole("row").find((candidate) => within(candidate).queryByText("Dozvoljene patike"));
+    const reviewRow = within(table).getAllByRole("row").find((candidate) => within(candidate).queryByText("Patike za pregled"));
+    const doNotTrustRow = within(table).getAllByRole("row").find((candidate) => within(candidate).queryByText("Nepouzdan signal"));
+    expect(allowedRow).toBeDefined();
+    expect(reviewRow).toBeDefined();
+    expect(doNotTrustRow).toBeDefined();
+    if (!allowedRow || !reviewRow || !doNotTrustRow) throw new Error("Expected recommendation rows were not rendered");
+
+    expect(within(allowedRow).getByLabelText(/Pojacaj: Jak rast/)).toBeInTheDocument();
+    expect(within(allowedRow).queryByText("Akcija blokirana")).not.toBeInTheDocument();
+    expect(within(reviewRow).getByLabelText(/Pregledaj: Backend je blokirao izvrsenje preporuke/)).toBeInTheDocument();
+    expect(within(reviewRow).getByText("Akcija blokirana")).toBeInTheDocument();
+    expect(within(reviewRow).getByLabelText(/Pouzdanost nije dostupna/)).toBeInTheDocument();
+    expect(within(doNotTrustRow).getByLabelText(/Ne veruj: Backend nije potvrdio da je preporuka izvrsna/)).toBeInTheDocument();
+    expect(within(doNotTrustRow).getByText("Akcija blokirana")).toBeInTheDocument();
+
+    expect(screen.getByLabelText("Raspodela preporuka")).toHaveTextContent("Pojacaj 1");
+    expect(screen.getByLabelText("Raspodela preporuka")).toHaveTextContent("Pregledaj 1");
+    expect(screen.getByLabelText("Raspodela preporuka")).toHaveTextContent("Ne veruj 1");
+    expect(screen.getByLabelText("Raspodela preporuka")).toHaveTextContent("Nedovoljno podataka 0");
+
+    fireEvent.click(within(reviewRow).getByRole("button", { name: "Detalji" }));
+    expect(await screen.findByRole("heading", { name: "Detalj odluke: Patike za pregled" })).toBeInTheDocument();
+    expect(screen.getByText("Razlog preporuke:").parentElement).toHaveTextContent("Backend je blokirao izvrsenje preporuke: Potrebna je rucna provera.");
+    expect(screen.getAllByText(RECOMMENDATION_SIGNAL_UNAVAILABLE)).toHaveLength(2);
+  });
+
+  it("fails closed for unknown or missing recommendations without exposing raw status codes", async () => {
+    const baseRecommendation = shoeType().recommendation!;
+    vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
+      shoeTypes: [
+        shoeType({
+          tipObuceId: 1,
+          tipObuceNaziv: "Nepoznat status",
+          recommendation: {
+            ...baseRecommendation,
+            status: "backend_future_status" as unknown as typeof baseRecommendation.status,
+            summary: "Ovaj tekst ne sme postati status.",
+            recommendationAllowed: true,
+          },
+        }),
+        shoeType({
+          tipObuceId: 2,
+          tipObuceNaziv: "Bez preporuke",
+          recommendation: undefined,
+        }),
+      ],
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const table = await screen.findByTestId("shoe-type-sales-stats-data-table");
+    const unknownRow = within(table).getAllByRole("row").find((candidate) => within(candidate).queryByText("Nepoznat status"));
+    const missingRow = within(table).getAllByRole("row").find((candidate) => within(candidate).queryByText("Bez preporuke"));
+    expect(unknownRow).toBeDefined();
+    expect(missingRow).toBeDefined();
+    if (!unknownRow || !missingRow) throw new Error("Expected unavailable recommendation rows were not rendered");
+
+    expect(within(unknownRow).getByLabelText(/Nedovoljno podataka: Status preporuke nije prepoznat/)).toBeInTheDocument();
+    expect(within(unknownRow).getByText("Akcija blokirana")).toBeInTheDocument();
+    expect(within(unknownRow).getByLabelText(/Pouzdanost nije dostupna/)).toBeInTheDocument();
+    expect(within(missingRow).getByLabelText(/Nedovoljno podataka: Status preporuke nije prepoznat/)).toBeInTheDocument();
+    expect(screen.queryByText("backend_future_status")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Raspodela preporuka")).toHaveTextContent("Nedovoljno podataka 2");
+
+    fireEvent.click(within(unknownRow).getByRole("button", { name: "Detalji" }));
+    expect((await screen.findByText("Razlog preporuke:")).parentElement).toHaveTextContent("Status preporuke nije prepoznat; red ostaje informativan bez automatske preporuke.");
   });
 
   it("fails closed to unknown when the refresh timestamp is missing", async () => {

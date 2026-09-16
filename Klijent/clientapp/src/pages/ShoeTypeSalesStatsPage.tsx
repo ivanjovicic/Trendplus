@@ -440,17 +440,27 @@ export default function ShoeTypeSalesStatsPage() {
         item.brojArtikalaSaNivelacijom,
         item.brojArtikalaUkupno,
       );
-      const backendStatus = mapRecommendationStatus(item.recommendation?.status) ?? "insufficient_data";
-      const recommendationAllowed = item.recommendation?.recommendationAllowed === true;
-      const displayStatus = recommendationAllowed ? backendStatus : "insufficient_data";
+      const mappedBackendStatus = mapRecommendationStatus(item.recommendation?.status);
+      const hasSupportedBackendStatus = mappedBackendStatus != null;
+      const backendStatus = mappedBackendStatus ?? "insufficient_data";
+      const recommendationAllowed = hasSupportedBackendStatus && item.recommendation?.recommendationAllowed === true;
       const reliabilityPctValue = recommendationAllowed
         ? normalizeRecommendationPct(item.recommendation?.reliabilityPct ?? item.reliabilityPct)
         : null;
       const confidencePctValue = recommendationAllowed
         ? normalizeRecommendationPct(item.recommendation?.confidencePct)
         : null;
-      const statusReason = item.recommendation?.summary
-        ?? "Backend recommendation payload nedostaje; red ostaje informativan bez lokalnog izvodjenja preporuke.";
+      const statusReason = hasSupportedBackendStatus
+        ? item.recommendation?.summary
+          ?? "Backend recommendation payload nedostaje; red ostaje informativan bez lokalnog izvodjenja preporuke."
+        : "Status preporuke nije prepoznat; red ostaje informativan bez automatske preporuke.";
+      const actionabilityReason = recommendationAllowed
+        ? statusReason
+        : hasSupportedBackendStatus
+          ? item.recommendation?.recommendationAllowed === false
+            ? `Backend je blokirao izvrsenje preporuke: ${statusReason}`
+            : `Backend nije potvrdio da je preporuka izvrsna: ${statusReason}`
+          : statusReason;
       const reliabilityAvailable = reliabilityPctValue != null;
       const confidenceAvailable = confidencePctValue != null;
 
@@ -467,10 +477,8 @@ export default function ShoeTypeSalesStatsPage() {
         recommendationConfidencePct: confidencePctValue,
         confidenceAvailable,
         recommendationAllowed,
-        status: displayStatus,
-        statusReason: recommendationAllowed
-          ? statusReason
-          : `Automatska preporuka nije dozvoljena: ${statusReason}`,
+        status: backendStatus,
+        statusReason: actionabilityReason,
         dataQualityStatus: normalizeRecommendationQualityStatus(item.recommendation?.dataQualityStatus),
         reasonCodes: item.recommendation?.reasonCodes ?? [],
       };
@@ -1427,7 +1435,7 @@ export default function ShoeTypeSalesStatsPage() {
                                   {displayStatusLabel(row.status)}
                                 </span>
                                 <span className="shoetype-status-reason-chip" title={row.statusReason}>
-                                  Razlog <InfoTip text={row.statusReason} />
+                                  {row.recommendationAllowed ? "Razlog" : "Akcija blokirana"} <InfoTip text={row.statusReason} />
                                 </span>
                               </div>
                             </td>
