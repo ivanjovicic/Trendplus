@@ -10,6 +10,8 @@ Owner claim 2026-09-16: `RQ290` READY -> IN_PROGRESS by Codex. Local runtime loc
 
 Owner completion 2026-09-16: `RQ290` was delivered on `main` as `5a05c8d1fcd08018d023125c46235e413b76f348`. Daily Sales now distinguishes complete, partial and unavailable shift evidence; valid zero remains visible, incomplete shift shares fail closed, and daily aggregate gaps are visibly warned. The local runtime lock was removed before the implementation commit.
 
+Owner follow-up 2026-09-16: supplemental hardening extracted `dailyShiftSummary.ts`, kept partial shift sums visible when only one column is unknown, split missing vs partial quality signals, and aligned weekday/chart projection with the same truth table.
+
 Owner promotion 2026-09-16: `RQ286` was explicitly promoted from `WAITING` to `READY` by user request after `RQ285` completion on `main`; it was claimed in this workspace for Color pre/post detail parity.
 
 Owner completion 2026-09-16: `RQ286` was delivered on `main` with per-field Color pre/post detail availability independent of impact-percent availability, export/snapshot column parity, and a follow-up hardening pass that generalized `categoryPrePostDetailMetrics.ts` and applied the same detail gate fix to Shoe Type.
