@@ -6,6 +6,7 @@ import ColorSalesStatsPage from "../ColorSalesStatsPage";
 import { getStores } from "../../services/analyticsApi";
 import { getColorSalesStats } from "../../services/colorSalesStatsApi";
 import type { ColorSalesStat, ColorSalesStatsResponse } from "../../services/colorSalesStatsApi";
+import { RECOMMENDATION_SIGNAL_UNAVAILABLE } from "../../utils/canonicalRecommendationSemantics";
 
 vi.mock("recharts", () => ({
   Bar: () => null,
@@ -378,5 +379,111 @@ describe("ColorSalesStatsPage premium controls", () => {
     expect(within(detailPanel!).getByText("Pre nivelacije promet").parentElement).toHaveTextContent(/0.*RSD/);
     expect(within(detailPanel!).getByText("Posle nivelacije promet").parentElement).toHaveTextContent(/25\.000/);
     expect(within(detailPanel!).getByText("Nivelacija impact prometa").parentElement).toHaveTextContent("Bez baze");
+  });
+
+  it("preserves gated color status identity across row, KPI and detail surfaces", async () => {
+    const baseRecommendation = color().recommendation!;
+    vi.mocked(getColorSalesStats).mockResolvedValue(response({
+      colors: [
+        color({
+          boja: "Dozvoljena crna",
+          recommendation: { ...baseRecommendation, recommendationAllowed: true },
+        }),
+        color({
+          boja: "Crna za pregled",
+          recommendation: {
+            ...baseRecommendation,
+            status: "review",
+            summary: "Potrebna je rucna provera.",
+            recommendationAllowed: false,
+          },
+        }),
+        color({
+          boja: "Nepouzdan signal",
+          recommendation: {
+            ...baseRecommendation,
+            status: "do_not_trust",
+            summary: "Signal zahteva proveru izvora.",
+            recommendationAllowed: undefined,
+          },
+        }),
+      ],
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/color-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/color-sales-stats" element={<ColorSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const table = await screen.findByTestId("analytics-data-table");
+    const allowedRow = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Dozvoljena crna"));
+    const reviewRow = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Crna za pregled"));
+    const doNotTrustRow = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Nepouzdan signal"));
+    expect(allowedRow).toBeDefined();
+    expect(reviewRow).toBeDefined();
+    expect(doNotTrustRow).toBeDefined();
+    if (!allowedRow || !reviewRow || !doNotTrustRow) throw new Error("Expected recommendation rows were not rendered");
+
+    expect(within(allowedRow).getByLabelText(/Pojacaj:/)).toBeInTheDocument();
+    expect(within(allowedRow).queryByText("Akcija blokirana")).not.toBeInTheDocument();
+    expect(within(reviewRow).getByLabelText(/Pregledaj: Backend je blokirao izvrsenje preporuke/)).toBeInTheDocument();
+    expect(within(reviewRow).getByText("Akcija blokirana")).toBeInTheDocument();
+    expect(within(doNotTrustRow).getByLabelText(/Ne veruj: Backend nije potvrdio da je preporuka izvrsna/)).toBeInTheDocument();
+    expect(within(doNotTrustRow).getByText("Akcija blokirana")).toBeInTheDocument();
+
+    expect(screen.getByText(/Pojacaj: 1/)).toBeInTheDocument();
+    expect(screen.getByText(/Pregledaj: 1/)).toBeInTheDocument();
+    expect(screen.getByText(/Ne veruj: 1/)).toBeInTheDocument();
+    expect(screen.getByText(/Nedovoljno podataka: 0/)).toBeInTheDocument();
+
+    fireEvent.click(within(reviewRow).getByRole("button", { name: "Detalji" }));
+    expect(await screen.findByRole("heading", { name: "Detalj odluke: Crna za pregled" })).toBeInTheDocument();
+    expect(screen.getByText("Razlog preporuke:").parentElement).toHaveTextContent("Backend je blokirao izvrsenje preporuke: Potrebna je rucna provera.");
+    expect(screen.getAllByText(RECOMMENDATION_SIGNAL_UNAVAILABLE)).toHaveLength(1);
+  });
+
+  it("fails closed for unknown or missing recommendations without exposing raw status codes", async () => {
+    const baseRecommendation = color().recommendation!;
+    vi.mocked(getColorSalesStats).mockResolvedValue(response({
+      colors: [
+        color({
+          boja: "Nepoznat status",
+          recommendation: {
+            ...baseRecommendation,
+            status: "backend_future_status" as typeof baseRecommendation.status,
+            summary: "Ovaj tekst ne sme postati status.",
+            recommendationAllowed: true,
+          },
+        }),
+        color({
+          boja: "Bez preporuke",
+          recommendation: undefined,
+        }),
+      ],
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/color-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/color-sales-stats" element={<ColorSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const table = await screen.findByTestId("analytics-data-table");
+    const unknownRow = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Nepoznat status"));
+    const missingRow = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Bez preporuke"));
+    expect(unknownRow).toBeDefined();
+    expect(missingRow).toBeDefined();
+    if (!unknownRow || !missingRow) throw new Error("Expected unavailable recommendation rows were not rendered");
+
+    expect(within(unknownRow).getByLabelText(/Nedovoljno podataka: Status preporuke nije prepoznat/)).toBeInTheDocument();
+    expect(within(unknownRow).getByText("Akcija blokirana")).toBeInTheDocument();
+    expect(within(missingRow).getByLabelText(/Nedovoljno podataka: Backend preporuka nije dostupna/)).toBeInTheDocument();
+    expect(screen.queryByText("backend_future_status")).not.toBeInTheDocument();
+    expect(screen.getByText(/Nedovoljno podataka: 2/)).toBeInTheDocument();
   });
 });

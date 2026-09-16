@@ -430,7 +430,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ284 | DONE | shoe-type-status-identity | Preserve backend recommendation status when actionability is gated |
 | RQ285 | DONE | shoe-type-percent-range | Fail closed on invalid coverage/share percentages |
 | RQ286 | DONE | color-pre-post-detail-parity | Do not hide valid raw pre/post metrics behind one missing impact percent |
-| RQ287 | WAITING | color-status-identity | Preserve review/do-not-trust meaning on the Color surface |
+| RQ287 | DONE | color-status-identity | Preserve review/do-not-trust meaning on the Color surface |
 | RQ288 | WAITING | color-percent-count-fallbacks | Prevent invalid coverage and unknown color counts from looking measured |
 | RQ289 | WAITING | daily-supplier-order | Use authoritative supplier ordering for concentration calculations |
 | RQ290 | WAITING | daily-shift-partial-state | Distinguish partial shift summaries from measured zero/whole-day totals |
@@ -14203,8 +14203,8 @@ Commit suggestion: `fix(analytics): preserve color pre-post detail metrics`
 - Run log: `.ai/runs/2026-09-16-RQ286-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main via `cursor/rq286-color-pre-post-detail-parity-c753`
-- Main commit SHA: `ccb2281a`
-- Main verification: passed - `origin/main` at `ccb2281a300d488a2027a48165cd99944db33bef`
+- Main commit SHA: `74130866`
+- Main verification: passed - `origin/main` at `74130866` (hardening after `ccb2281a`)
 - Missed: none known
 - Follow-up: `RQ287` is next WAITING for Color status identity
 - Residual risk: deployed-browser visual check not run in this workspace
@@ -14257,13 +14257,31 @@ Reproduction: return valid pre/post revenue and quantity values with null impact
 
 ## RQ287 - Preserve Color review and do-not-trust status meaning
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/recommendation-contract/tests
 Feature family: color-status-identity
 Parallel-safe: no
 Owner: Analytics Frontend / Color Sales
 Commit suggestion: `fix(analytics): preserve color recommendation status semantics`
+
+### Completion note
+
+- Date: 2026-09-16
+- Status: DONE
+- Completion: Color now projects backend recommendation status through `colorStatusIdentity.ts` without collapsing `review`/`do_not_trust` into reduce actions or `Nedovoljno podataka` when permission is gated. KPI counts use five canonical buckets; row/detail/tooltip surfaces preserve status identity separately from actionability with an explicit `Akcija blokirana` chip. Missing recommendation payloads use a distinct reason from unknown status codes; gated detail reliability uses `RECOMMENDATION_SIGNAL_UNAVAILABLE`.
+- Changed files: `colorStatusIdentity.ts`, `ColorSalesStatsPage.tsx`, `.css`, related specs, queue/evidence
+- Checks run: focused color status identity + Color page specs 37 passed
+- Checks not run: full frontend suite, deployed-browser check
+- Run log: `.ai/runs/2026-09-16-RQ287-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main via `cursor/rq287-color-status-identity-c753`
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: none known
+- Follow-up: `RQ288` is next WAITING for Color percent/count fallbacks
+- Residual risk: deployed-browser visual check not run in this workspace
+- Prompt defect / scope repair: none
 
 ### Problem
 

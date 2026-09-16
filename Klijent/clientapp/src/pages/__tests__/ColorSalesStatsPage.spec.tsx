@@ -7,6 +7,7 @@ import { getStores } from "../../services/analyticsApi";
 import { getAnalyticsDetailSnapshot } from "../../services/analyticsTableState";
 import { getColorSalesStats } from "../../services/colorSalesStatsApi";
 import type { ColorSalesStat, ColorSalesStatsResponse } from "../../services/colorSalesStatsApi";
+import { RECOMMENDATION_SIGNAL_UNAVAILABLE } from "../../utils/canonicalRecommendationSemantics";
 
 vi.mock("recharts", () => ({
   Bar: () => null,
@@ -260,8 +261,8 @@ describe("ColorSalesStatsPage", () => {
     await screen.findByText("Crna");
     expect(screen.getByText("Koncentracija prometa po bojama")).toBeInTheDocument();
     expect(screen.getByText("Prioritetna lista boja")).toBeInTheDocument();
-    expect(screen.getByText("Pojačaj")).toBeInTheDocument();
-    expect(screen.getByText("Smanji")).toBeInTheDocument();
+    expect(screen.getByText("Pojacaj")).toBeInTheDocument();
+    expect(screen.getByText("Pregledaj")).toBeInTheDocument();
   });
 
   it("includes dataScope in list calls, reloads on scope change, and keeps detail navigation aligned", async () => {
@@ -414,21 +415,13 @@ describe("ColorSalesStatsPage", () => {
     await screen.findByText("Prioritetna lista boja");
 
     expect(screen.getByText(/Nedovoljno podataka: 1/)).toBeInTheDocument();
-    expect(screen.getByText(/Zadrži: 0/)).toBeInTheDocument();
+    expect(screen.getByText(/Zadrzi: 0/)).toBeInTheDocument();
 
     const table = getDecisionTable();
     const sivaRow = within(table).getAllByRole("row").find((row) => row.textContent?.includes("Siva"));
     expect(sivaRow).toBeDefined();
     expect(sivaRow).toHaveTextContent("Nedovoljno podataka");
-    expect(sivaRow).not.toHaveTextContent("Zadrži");
-  });
-
-  it("maps recommendation status codes without promoting insufficient_data to Zadrži", async () => {
-    const { mapRecommendationStatus, displayStatusLabel } = await import("../ColorSalesStatsPage");
-    expect(mapRecommendationStatus("insufficient_data")).toBe("NedovoljnoPodataka");
-    expect(displayStatusLabel("NedovoljnoPodataka")).toBe("Nedovoljno podataka");
-    expect(mapRecommendationStatus("maintain")).toBe("Zadrzi");
-    expect(mapRecommendationStatus("increase_focus")).toBe("Pojacaj");
+    expect(sivaRow).not.toHaveTextContent("Zadrzi");
   });
 
   it("hides an action when the backend recommendation is not allowed", async () => {
@@ -450,13 +443,14 @@ describe("ColorSalesStatsPage", () => {
     renderPage();
     await screen.findByText("Prioritetna lista boja");
 
-    expect(screen.getByText(/Nedovoljno podataka: 1/)).toBeInTheDocument();
-    expect(screen.queryByText(/Pojačaj: 1/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Pojacaj: 1/)).toBeInTheDocument();
+    expect(screen.getByText(/Nedovoljno podataka: 0/)).toBeInTheDocument();
     const table = getDecisionTable();
     const row = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Crna"));
     expect(row).toBeDefined();
-    expect(row).toHaveTextContent("Nedovoljno podataka");
-    expect(row).not.toHaveTextContent("Pojačaj");
+    expect(row).toHaveTextContent("Pojacaj");
+    expect(row).toHaveTextContent("Akcija blokirana");
+    expect(row).not.toHaveTextContent("Nedovoljno podataka");
   });
 
   it("does not invent a business recommendation when backend recommendation is missing", async () => {
@@ -491,20 +485,22 @@ describe("ColorSalesStatsPage", () => {
     await screen.findByText("Prioritetna lista boja");
 
     expect(screen.getByText(/Nedovoljno podataka: 1/)).toBeInTheDocument();
-    expect(screen.getByText(/Pojačaj: 1/)).toBeInTheDocument();
-    expect(screen.getByText(/Zadrži: 0/)).toBeInTheDocument();
-    expect(screen.getByText(/Smanji: 0/)).toBeInTheDocument();
+    expect(screen.getByText(/Pojacaj: 1/)).toBeInTheDocument();
+    expect(screen.getByText(/Zadrzi: 0/)).toBeInTheDocument();
+    expect(screen.getByText(/Pregledaj: 0/)).toBeInTheDocument();
+    expect(screen.getByText(/Ne veruj: 0/)).toBeInTheDocument();
 
     const table = getDecisionTable();
     const tegetRow = within(table).getAllByRole("row").find((row) => row.textContent?.includes("Teget"));
     expect(tegetRow).toBeDefined();
     expect(tegetRow).toHaveTextContent("Nedovoljno podataka");
-    expect(tegetRow).not.toHaveTextContent("Pojačaj");
-    expect(tegetRow).not.toHaveTextContent("Zadrži");
-    expect(tegetRow).not.toHaveTextContent("Smanji");
+    expect(tegetRow).not.toHaveTextContent("Pojacaj");
+    expect(tegetRow).not.toHaveTextContent("Zadrzi");
+    expect(tegetRow).not.toHaveTextContent("Pregledaj");
+    expect(tegetRow).not.toHaveTextContent("Ne veruj");
 
     fireEvent.click(within(tegetRow as HTMLElement).getByRole("button", { name: "Detalji" }));
-    expect(await screen.findByText(/Backend preporuka nije dostupna/i)).toBeInTheDocument();
+    expect((await screen.findByText("Razlog preporuke:")).parentElement).toHaveTextContent(/Backend preporuka nije dostupna/i);
   });
 
   it("error hides KPI zeros when color sales fails", async () => {
@@ -582,7 +578,7 @@ describe("ColorSalesStatsPage", () => {
     expect(decisionScore.closest("article")).not.toHaveTextContent(/Decision score\s*0/);
 
     const reliability = screen.getByText("Pouzdanost podataka");
-    expect(reliability.closest("article")).toHaveTextContent("N/A");
+    expect(reliability.closest("article")).toHaveTextContent(RECOMMENDATION_SIGNAL_UNAVAILABLE);
     expect(reliability.closest("article")).not.toHaveTextContent("83,3");
   });
 

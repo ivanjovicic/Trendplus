@@ -424,6 +424,12 @@
   color: var(--warning, #fcd34d);
 }
 
+.color-decision-status.status-review {
+  background: color-mix(in srgb, var(--warning, #facc15) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warning, #facc15) 42%, transparent);
+  color: var(--warning, #facc15);
+}
+
 .color-decision-status.status-reduce {
   background: var(--error-soft, rgba(248, 113, 113, 0.15));
   border: 1px solid color-mix(in srgb, var(--error, #fca5a5) 46%, transparent);
@@ -434,6 +440,23 @@
   background: rgba(148, 163, 184, 0.14);
   border: 1px solid rgba(148, 163, 184, 0.3);
   color: var(--text-secondary);
+}
+
+.color-status-stack {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.color-status-reason-chip {
+  align-items: center;
+  color: var(--text-secondary);
+  cursor: help;
+  display: inline-flex;
+  font-size: 10px;
+  font-weight: 700;
+  gap: 4px;
+  line-height: 1.2;
 }
 
 .color-decision-detail-btn {

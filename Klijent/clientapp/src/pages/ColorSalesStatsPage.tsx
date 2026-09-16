@@ -32,9 +32,18 @@ import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyti
 import { getDataScope, type DataScope } from "../utils/dataScope";
 import { fmtNumber, fmtPct, fmtQty, fmtRsd, fmtSignedPct, formatDate, getPresetRange } from "../utils/analyticsFormatters";
 import {
+  RECOMMENDATION_SIGNAL_UNAVAILABLE,
+  RECOMMENDATION_STATUS_PRIORITY,
+  recommendationStatusLabel,
+  recommendationStatusTone,
+  recommendationStatusTooltipBrief,
+  type CanonicalRecommendationStatus,
+} from "../utils/canonicalRecommendationSemantics";
+import {
   formatCategoryPrePostQuantityMetric,
   formatCategoryPrePostRevenueMetric,
 } from "../utils/categoryPrePostDetailMetrics";
+import { buildColorRecommendationProjection } from "../utils/colorStatusIdentity";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
 import { getAnalyticsDataFreshnessStatus } from "../utils/analyticsResponseMeta";
 import "./ColorSalesStatsPage.css";
@@ -49,8 +58,6 @@ type SortField =
   | "popRevenueChangePct"
   | "prePostNivelacijaRevenueImpactPct"
   | "status";
-type DecisionStatus = "Pojacaj" | "Zadrzi" | "Smanji" | "NedovoljnoPodataka";
-
 type ActiveFilters = {
   fromDate: string;
   toDate: string;
@@ -66,15 +73,9 @@ type DecisionColor = Omit<ColorSalesStat, "reliabilityPct"> & {
   coveragePct: number | null;
   splitCoveragePct: number | null;
   decisionScore: number | null;
-  status: DecisionStatus;
+  status: CanonicalRecommendationStatus;
   statusReason: string;
-};
-
-const STATUS_PRIORITY: Record<DecisionStatus, number> = {
-  Pojacaj: 3,
-  Zadrzi: 2,
-  Smanji: 1,
-  NedovoljnoPodataka: 0,
+  reliabilityAvailable: boolean;
 };
 
 const decisionColumns: AnalyticsTableColumn<DecisionColor>[] = [
@@ -112,7 +113,7 @@ const decisionColumns: AnalyticsTableColumn<DecisionColor>[] = [
     dataType: "text",
     getValue: (row) => formatCategoryPrePostQuantityMetric(row.posleNivelacijeKolicina),
   },
-  { key: "status", header: "Preporuka", dataType: "text", getValue: (row) => displayStatusLabel(row.status) },
+  { key: "status", header: "Preporuka", dataType: "text", getValue: (row) => recommendationStatusLabel(row.status) },
   { key: "decisionScore", header: "Skor odluke", dataType: "number" },
 ];
 
@@ -142,29 +143,17 @@ function isSortActive(field: SortField, activeField: SortField): boolean {
   return field === activeField;
 }
 
-function statusClass(status: DecisionStatus): string {
-  if (status === "Pojacaj") return "color-decision-status status-boost";
-  if (status === "Smanji") return "color-decision-status status-reduce";
-  if (status === "NedovoljnoPodataka") return "color-decision-status status-na";
-  return "color-decision-status status-keep";
+function statusClass(status: CanonicalRecommendationStatus): string {
+  const tone = recommendationStatusTone(status);
+  if (tone === "boost") return "color-decision-status status-boost";
+  if (tone === "keep") return "color-decision-status status-keep";
+  if (tone === "review") return "color-decision-status status-review";
+  if (tone === "reduce") return "color-decision-status status-reduce";
+  return "color-decision-status status-na";
 }
 
-export function displayStatusLabel(status: DecisionStatus): string {
-  if (status === "Pojacaj") return "Pojačaj";
-  if (status === "Zadrzi") return "Zadrži";
-  if (status === "Smanji") return "Smanji";
-  if (status === "NedovoljnoPodataka") return "Nedovoljno podataka";
-  return status;
-}
-
-/** Maps backend recommendation status. Never promotes insufficient_data to Zadrži. */
-export function mapRecommendationStatus(status?: string | null): DecisionStatus | null {
-  if (!status) return null;
-  if (status === "increase_focus") return "Pojacaj";
-  if (status === "maintain") return "Zadrzi";
-  if (status === "review" || status === "do_not_trust") return "Smanji";
-  if (status === "insufficient_data") return "NedovoljnoPodataka";
-  return null;
+function displayStatusLabel(status: CanonicalRecommendationStatus): string {
+  return recommendationStatusLabel(status);
 }
 
 function trendClass(value: number | null | undefined): string {
@@ -175,7 +164,7 @@ function trendClass(value: number | null | undefined): string {
 }
 
 type StatusTooltipData = {
-  status: DecisionStatus;
+  status: CanonicalRecommendationStatus;
   statusReason: string;
   sharePct: number | null;
   marginPct: number;
@@ -184,10 +173,8 @@ type StatusTooltipData = {
   previousPeriodRevenue: number | null;
   splitCoveragePct: number | null;
   reliabilityPct: number | null;
+  reliabilityAvailable: boolean;
 };
-
-const MISSING_BACKEND_RECOMMENDATION_REASON =
-  "Backend preporuka nije dostupna; lokalna heuristika se ne koristi kao odluka.";
 
 function buildStatusTooltip(data: StatusTooltipData): string {
   const popText = data.popRevenueChangePct != null
@@ -198,7 +185,8 @@ function buildStatusTooltip(data: StatusTooltipData): string {
   const impactText = data.prePostNivelacijaRevenueImpactPct != null
     ? fmtSignedPct(data.prePostNivelacijaRevenueImpactPct, 1)
     : "N/A";
-  return `${displayStatusLabel(data.status)}: ${data.statusReason} | Udeo ${fmtPct(data.sharePct, 1)} | Marža ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Nivelacija impact ${impactText} | Split pokriće ${fmtPct(data.splitCoveragePct, 1)} | Pouzdanost ${fmtPct(data.reliabilityPct, 0)}`;
+  const reliabilityText = data.reliabilityAvailable ? fmtPct(data.reliabilityPct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
+  return `${recommendationStatusLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Udeo ${fmtPct(data.sharePct, 1)} | Marža ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Nivelacija impact ${impactText} | Split pokriće ${fmtPct(data.splitCoveragePct, 1)} | Pouzdanost ${reliabilityText}`;
 }
 
 export function describePopMetric(item: ColorSalesStat): { label: string; title: string; className: string } {
@@ -379,45 +367,25 @@ export default function ColorSalesStatsPage() {
         ? (item.brojArtikalaSaNivelacijom / item.brojArtikalaUkupno) * 100
         : null;
 
-      const backendStatus = mapRecommendationStatus(item.recommendation?.status);
-      if (backendStatus) {
-        const recommendationAllowed = item.recommendation?.recommendationAllowed === true;
-        const displayStatus = recommendationAllowed ? backendStatus : "NedovoljnoPodataka";
-        return {
-          ...item,
-          sharePct: item.sharePct ?? sharePct,
-          marginContribution,
-          reliabilityPct: recommendationAllowed
-            ? item.recommendation?.reliabilityPct ?? item.reliabilityPct ?? null
-            : null,
-          recommendationAllowed,
-          coveragePct,
-          splitCoveragePct,
-          decisionScore: !recommendationAllowed || item.recommendation?.confidencePct == null
-            ? null
-            : Math.round(item.recommendation.confidencePct),
-          status: displayStatus,
-          statusReason: !recommendationAllowed
-            ? `Automatska preporuka nije dozvoljena: ${item.recommendation?.summary ?? "pre/post signal nije uporediv."}`
-            : item.recommendation?.summary
-            ?? (displayStatus === "NedovoljnoPodataka"
-              ? "Nedovoljno podataka za pouzdanu preporuku; ne tretirati kao Zadrži."
-              : "Backend recommendation summary nije dostupan."),
-        };
-      }
+      const recommendationProjection = buildColorRecommendationProjection(
+        item.recommendation,
+        item.reliabilityPct,
+      );
 
-      // Missing/unmapped backend recommendation: never invent Pojacaj/Zadrzi/Smanji locally.
       return {
         ...item,
         sharePct: item.sharePct ?? sharePct,
         marginContribution,
-        reliabilityPct: null,
-        recommendationAllowed: false,
+        reliabilityPct: recommendationProjection.reliabilityPct,
+        reliabilityAvailable: recommendationProjection.reliabilityAvailable,
+        recommendationAllowed: recommendationProjection.recommendationAllowed,
         coveragePct,
         splitCoveragePct,
-        decisionScore: null,
-        status: "NedovoljnoPodataka" as const,
-        statusReason: MISSING_BACKEND_RECOMMENDATION_REASON,
+        decisionScore: recommendationProjection.confidencePct == null
+          ? null
+          : Math.round(recommendationProjection.confidencePct),
+        status: recommendationProjection.status,
+        statusReason: recommendationProjection.statusReason,
       };
     });
   }, [data?.colors]);
@@ -440,7 +408,7 @@ export default function ColorSalesStatsPage() {
       } else if (sortField === "prePostNivelacijaRevenueImpactPct") {
         compare = (a.prePostNivelacijaRevenueImpactPct ?? -9999) - (b.prePostNivelacijaRevenueImpactPct ?? -9999);
       } else if (sortField === "status") {
-        compare = STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status];
+        compare = RECOMMENDATION_STATUS_PRIORITY[a.status] - RECOMMENDATION_STATUS_PRIORITY[b.status];
       }
 
       if (compare === 0) compare = (a.decisionScore ?? -1) - (b.decisionScore ?? -1);
@@ -510,11 +478,12 @@ export default function ColorSalesStatsPage() {
   }, [sortedRows]);
 
   const counts = useMemo(() => {
-    const boost = sortedRows.filter((row) => row.status === "Pojacaj").length;
-    const keep = sortedRows.filter((row) => row.status === "Zadrzi").length;
-    const reduce = sortedRows.filter((row) => row.status === "Smanji").length;
-    const insufficient = sortedRows.filter((row) => row.status === "NedovoljnoPodataka").length;
-    return { boost, keep, reduce, insufficient };
+    const increaseFocus = sortedRows.filter((row) => row.status === "increase_focus").length;
+    const maintain = sortedRows.filter((row) => row.status === "maintain").length;
+    const review = sortedRows.filter((row) => row.status === "review").length;
+    const doNotTrust = sortedRows.filter((row) => row.status === "do_not_trust").length;
+    const insufficientData = sortedRows.filter((row) => row.status === "insufficient_data").length;
+    return { increaseFocus, maintain, review, doNotTrust, insufficientData };
   }, [sortedRows]);
 
   const activeSezonaLabel = useMemo(() => {
@@ -591,16 +560,18 @@ export default function ColorSalesStatsPage() {
       { key: "bojaCount", label: "Broj boja", value: data?.totals.brojBoja ?? 0 },
       { key: "marginCoverage", label: "Promet sa nabavnom cenom", value: fmtPct(data?.dataQuality.missingCostRevenueSharePct == null ? null : 100 - data.dataQuality.missingCostRevenueSharePct, 1) },
       { key: "splitCoverage", label: "Pre/post pokriće", value: fmtPct(data?.dataQuality.revenueWithNivelacijaSplitSharePct, 1) },
-      { key: "boost", label: "Pojačaj", value: counts.boost },
-      { key: "keep", label: "Zadrži", value: counts.keep },
-      { key: "reduce", label: "Smanji", value: counts.reduce },
-      { key: "insufficient", label: "Nedovoljno podataka", value: counts.insufficient },
+      { key: "increaseFocus", label: recommendationStatusLabel("increase_focus"), value: counts.increaseFocus },
+      { key: "maintain", label: recommendationStatusLabel("maintain"), value: counts.maintain },
+      { key: "review", label: recommendationStatusLabel("review"), value: counts.review },
+      { key: "doNotTrust", label: recommendationStatusLabel("do_not_trust"), value: counts.doNotTrust },
+      { key: "insufficientData", label: recommendationStatusLabel("insufficient_data"), value: counts.insufficientData },
     ],
     [
-      counts.boost,
-      counts.keep,
-      counts.reduce,
-      counts.insufficient,
+      counts.doNotTrust,
+      counts.increaseFocus,
+      counts.insufficientData,
+      counts.maintain,
+      counts.review,
       data?.dataQuality.missingCostRevenueSharePct,
       data?.dataQuality.revenueWithNivelacijaSplitSharePct,
       data?.dataScope,
@@ -961,7 +932,7 @@ export default function ColorSalesStatsPage() {
                 <div>
                   <h2>Prioritetna lista boja</h2>
                   <p>
-                    Pojačaj: {counts.boost} | Zadrži: {counts.keep} | Smanji: {counts.reduce} | Nedovoljno podataka: {counts.insufficient}
+                    {recommendationStatusLabel("increase_focus")}: {counts.increaseFocus} | {recommendationStatusLabel("maintain")}: {counts.maintain} | {recommendationStatusLabel("review")}: {counts.review} | {recommendationStatusLabel("do_not_trust")}: {counts.doNotTrust} | {recommendationStatusLabel("insufficient_data")}: {counts.insufficientData}
                   </p>
                   <p className="color-decision-metric-note">
                     PoP trend = promena prometa prema prethodnom uporedivom periodu. Nivelacija impact = pre/post promena unutar prometa sa poznatim prvim datumom nivelacije.
@@ -1018,7 +989,7 @@ export default function ColorSalesStatsPage() {
                       </th>
                       <th>
                         <button type="button" onClick={() => handleSort("status")}>
-                          Preporuka{sortMarker("status", sortField, sortDir)} <InfoTip text="Sistemska preporuka: Pojačaj / Zadrži / Smanji / Nedovoljno podataka. Kliknite na red za detaljnije objašnjenje." />
+                          Preporuka{sortMarker("status", sortField, sortDir)} <InfoTip text="Sistemska preporuka: Pojacaj / Zadrzi / Pregledaj / Ne veruj / Nedovoljno podataka. Status i izvrsivost akcije su odvojeni signali." />
                         </button>
                       </th>
                       <th className="align-center">Detalj</th>
@@ -1046,13 +1017,18 @@ export default function ColorSalesStatsPage() {
                             <td className={["analytics-data-table__numeric", popMetric.className].join(" ")} title={popMetric.title}>{popMetric.label}</td>
                             <td className={["analytics-data-table__numeric", nivelacijaImpactMetric.className].join(" ")} title={nivelacijaImpactMetric.title}>{nivelacijaImpactMetric.label}</td>
                             <td>
-                              <span
-                                className={statusClass(row.status)}
-                                title={buildStatusTooltip(row)}
-                                aria-label={buildStatusTooltip(row)}
-                              >
-                                {displayStatusLabel(row.status)}
-                              </span>
+                              <div className="color-status-stack">
+                                <span
+                                  className={statusClass(row.status)}
+                                  title={buildStatusTooltip(row)}
+                                  aria-label={buildStatusTooltip(row)}
+                                >
+                                  {displayStatusLabel(row.status)}
+                                </span>
+                                <span className="color-status-reason-chip" title={row.statusReason}>
+                                  {row.recommendationAllowed ? "Razlog" : "Akcija blokirana"} <InfoTip text={row.statusReason} />
+                                </span>
+                              </div>
                             </td>
                             <td className="align-center">
                               <button
@@ -1123,7 +1099,7 @@ export default function ColorSalesStatsPage() {
                 </article>
                 <article>
                   <span>Pouzdanost podataka</span>
-                  <strong>{fmtPct(selectedRow.reliabilityPct, 1)}</strong>
+                  <strong>{selectedRow.reliabilityAvailable ? fmtPct(selectedRow.reliabilityPct, 1) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
                 </article>
                 <article>
                   <span>Pokrice marze</span>
