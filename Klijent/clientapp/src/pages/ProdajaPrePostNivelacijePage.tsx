@@ -59,6 +59,11 @@ import {
 } from "../utils/canonicalRecommendationSemantics";
 import { getDataScope, type DataScope } from "../utils/dataScope";
 import { comparablePrePostMetric, comparablePrePostTotal, hasComparablePrePostEvidence } from "../utils/prePostNivelacijaTrust";
+import {
+  finiteToolbarCount,
+  formatPrePostAnalysisWindowHint,
+  resolveToolbarMetricsStatus,
+} from "../utils/prePostToolbarMetadata";
 import { projectVendorSalesDataQuality } from "../utils/vendorSalesDataQuality";
 import "./ProdajaPrePostNivelacijePage.css";
 
@@ -1041,9 +1046,9 @@ const advancedSignals = useMemo(
         label: "Uporedni period",
         value: previousComparisonError ? `Greška: ${previousComparisonError}` : "Učitan",
       },
-      { key: "vendorsCount", label: "Dobavljača", value: data?.totals.vendorsCount ?? 0 },
-      { key: "articlesCount", label: "Artikala", value: data?.totals.articlesCount ?? 0 },
-      { key: "windowDays", label: "Prozor analize", value: data?.windowDays ?? 0 },
+      { key: "vendorsCount", label: "Dobavljača", value: finiteToolbarCount(data?.totals.vendorsCount) },
+      { key: "articlesCount", label: "Artikala", value: finiteToolbarCount(data?.totals.articlesCount) },
+      { key: "windowDays", label: "Prozor analize", value: finiteToolbarCount(data?.windowDays) },
       { key: "rowsExported", label: "Vidljivih redova", value: focusedRows.length },
       {
         key: "absoluteChangeShareFormula",
@@ -1054,7 +1059,7 @@ const advancedSignals = useMemo(
       { key: "analyzedShare", label: "Analizirani redovi", value: fmtPct(dataQualityProjection.isComplete ? dataQualityProjection.analyzedSharePercent : null, 0, "Nije dostupno") },
       { key: "duplicateRowsRemoved", label: "Duplicati uklonjeni", value: dataQualityProjection.isComplete ? dataQualityProjection.duplicateRowsRemoved : null },
       { key: "inactiveRows", label: "Neaktivni redovi", value: dataQualityProjection.isComplete ? dataQualityProjection.inactiveRows : null },
-      { key: "metricsStatus", label: "Status metrika", value: data?.metricsStatus ?? "OK" },
+      { key: "metricsStatus", label: "Status metrika", value: resolveToolbarMetricsStatus(data?.metricsStatus) },
     ],
     [
       activeFilters.storeId,
@@ -1383,7 +1388,7 @@ const advancedSignals = useMemo(
               <span className="ppn-health-caret">{trustPanelOpen ? " ▾" : " ▸"}</span>
             </button>
             <span className="ppn-data-health-hint">
-              Analiza poredjena po nivelacionom prozoru od {data.windowDays ?? 30} dana.
+              {formatPrePostAnalysisWindowHint(data.windowDays)}
             </span>
           </div>
 

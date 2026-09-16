@@ -358,6 +358,66 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(screen.queryByText(/Srednje signal/)).not.toBeInTheDocument();
   });
 
+  it("keeps missing toolbar metadata unavailable in detail snapshots instead of zero or OK", async () => {
+    const base = response();
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
+      response({
+        windowDays: undefined as unknown as number,
+        metricsStatus: null,
+        totals: {
+          ...base.totals,
+          vendorsCount: undefined as unknown as number,
+          articlesCount: null as unknown as number,
+        },
+      }),
+    );
+
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+    expect(screen.getByText("Analiza poredjena po nivelacionom prozoru: prozor nije dostupan.")).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Otvori puni detalj" }));
+
+    const snapshot = getAnalyticsDetailSnapshot("nivelacije-pre-post", "10");
+    expect(snapshot?.metadata).toEqual(expect.arrayContaining([
+      expect.objectContaining({ key: "vendorsCount", label: "Dobavljača", value: "N/A" }),
+      expect.objectContaining({ key: "articlesCount", label: "Artikala", value: "N/A" }),
+      expect.objectContaining({ key: "windowDays", label: "Prozor analize", value: "N/A" }),
+      expect.objectContaining({ key: "metricsStatus", label: "Status metrika", value: "N/A" }),
+    ]));
+  });
+
+  it("preserves measured zero counts and authoritative OK status in detail snapshots", async () => {
+    const base = response();
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
+      response({
+        windowDays: 0,
+        metricsStatus: "OK",
+        totals: {
+          ...base.totals,
+          vendorsCount: 0,
+          articlesCount: 0,
+        },
+      }),
+    );
+
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+    expect(screen.getByText("Analiza poredjena po nivelacionom prozoru od 0 dana.")).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Otvori puni detalj" }));
+
+    const snapshot = getAnalyticsDetailSnapshot("nivelacije-pre-post", "10");
+    expect(snapshot?.metadata).toEqual(expect.arrayContaining([
+      expect.objectContaining({ key: "vendorsCount", label: "Dobavljača", value: "0" }),
+      expect.objectContaining({ key: "articlesCount", label: "Artikala", value: "0" }),
+      expect.objectContaining({ key: "windowDays", label: "Prozor analize", value: "0" }),
+      expect.objectContaining({ key: "metricsStatus", label: "Status metrika", value: "OK" }),
+    ]));
+  });
+
   it("uses the canonical unknown copy for missing quality metadata in snapshots", async () => {
     vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
       response({

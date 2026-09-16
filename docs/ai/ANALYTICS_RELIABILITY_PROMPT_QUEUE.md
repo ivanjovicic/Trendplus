@@ -4,6 +4,12 @@ Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-16: `RQ292` was explicitly promoted from `WAITING` to `READY` by user request because the RQ queue had no current READY prompt after `RQ291` completion; it is the single current RQ prompt for Pre/Post toolbar metadata unknowns.
+
+Owner claim 2026-09-16: `RQ292` transitioned `READY -> IN_PROGRESS` in this workspace for Pre/Post toolbar/detail metadata availability.
+
+Owner completion 2026-09-16: `RQ292` was delivered on `main` with `prePostToolbarMetadata.ts`, removed zero/OK defaults for missing supplier/article/window/status metadata, and aligned trust-window copy plus focused regression tests.
+
 Owner promotion 2026-09-16: `RQ291` was explicitly promoted from `WAITING` to `READY` by user request because the RQ queue had no current READY prompt after `RQ290` completion; it is the single current RQ prompt for Pre/Post quality contract and route fixture alignment.
 
 Owner claim 2026-09-16: `RQ291` transitioned `READY -> IN_PROGRESS` in this workspace for Pre/Post test harness and missing-quality presentation contract.
@@ -449,7 +455,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ289 | DONE | daily-supplier-order | Use authoritative supplier ordering for concentration calculations |
 | RQ290 | DONE | daily-shift-partial-state | Distinguish partial shift summaries from measured zero/whole-day totals |
 | RQ291 | DONE | pre-post-test-contract | Resolve quality metadata contract drift and the missing detail route fixture |
-| RQ292 | WAITING | pre-post-toolbar-unknowns | Keep missing toolbar metadata unknown instead of zero/OK |
+| RQ292 | DONE | pre-post-toolbar-unknowns | Keep missing toolbar metadata unknown instead of zero/OK |
 | RQ293 | WAITING | pre-post-detail-identity | Prevent pre/post detail route collisions for unnamed suppliers |
 | RQ294 | WAITING | pre-nivelacija-scope-event-propagation | Reload pre-nivelacija priorities when global scope changes |
 | RQ295 | WAITING | pre-nivelacija-error-copy | Give direct-fetch failures a safe, non-empty user message |
@@ -14583,8 +14589,8 @@ Commit suggestion: `test(analytics): align pre-post quality contract and route f
 - Run log: `.ai/runs/2026-09-16-RQ291-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main via `cursor/rq291-pre-post-test-contract-c753`
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `f7ffdda2`
+- Main verification: passed - `origin/main` at `f7ffdda2`
 - Missed: none known
 - Follow-up: `RQ292` is next WAITING for Pre/Post toolbar unknowns
 - Residual risk: deployed-browser detail modal/back-navigation not exercised in this workspace
@@ -14640,13 +14646,31 @@ Reproduction: run the focused test, inspect the missing-quality assertion and co
 
 ## RQ292 - Keep Pre/Post toolbar metadata unknown when backend fields are missing
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/numeric-state/tests
 Feature family: pre-post-toolbar-unknowns
 Parallel-safe: no
 Owner: Analytics Frontend / Pre-Post Nivelacija
 Commit suggestion: `fix(analytics): preserve pre-post toolbar metadata availability`
+
+### Completion note
+
+- Date: 2026-09-16
+- Status: DONE
+- Completion: Pre/Post toolbar metadata now projects supplier/article counts, analysis window and metrics status through `prePostToolbarMetadata.ts` without `?? 0` or `?? "OK"` fallbacks. Missing values stay unavailable in detail snapshots while measured zero and authoritative `OK` remain visible; trust-window copy no longer assumes 30 days.
+- Changed files: `prePostToolbarMetadata.ts`, `ProdajaPrePostNivelacijePage.tsx`, related specs, queue/evidence
+- Checks run: focused pre-post toolbar utility + page specs 19 passed
+- Checks not run: full frontend suite, deployed-browser check
+- Run log: `.ai/runs/2026-09-16-RQ292-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main via `cursor/rq292-pre-post-toolbar-unknowns-c753`
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: none known
+- Follow-up: `RQ293` is next WAITING for Pre/Post detail identity
+- Residual risk: deployed-browser export toolbar rendering not exercised in this workspace
+- Prompt defect / scope repair: none
 
 ### Problem
 
