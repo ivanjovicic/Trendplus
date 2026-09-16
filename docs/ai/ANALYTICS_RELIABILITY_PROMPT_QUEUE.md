@@ -14739,7 +14739,7 @@ Commit suggestion: `fix(analytics): preserve pre-post detail identity`
 - Status: DONE
 - Completion: Pre/Post now uses shared `supplierVendorIdentity` row keys (`id:*` or collision-safe `row:*`) for table expansion, chart selection, article-driver matching, detail navigation and snapshot record IDs. Unconfirmed vendor identity is surfaced in the detail panel instead of merging rows by name.
 - Changed files: `ProdajaPrePostNivelacijePage.tsx`, `ProdajaPrePostNivelacijePage.spec.tsx`, queue/evidence
-- Checks run: focused Pre/Post spec 20 passed
+- Checks run: focused Pre/Post spec 17 passed
 - Checks not run: full frontend suite, deployed-browser check
 - Run log: `.ai/runs/2026-09-16-RQ293-evidence.md`
 - Evidence state: synchronized
