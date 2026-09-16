@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import ShoeTypeSalesStatsPage from "../ShoeTypeSalesStatsPage";
 import { getStores } from "../../services/analyticsApi";
 import { getShoeTypeSalesStats } from "../../services/shoeTypeSalesStatsApi";
+import { RECOMMENDATION_SIGNAL_UNAVAILABLE } from "../../utils/canonicalRecommendationSemantics";
 import { resolveShoeTypeCoveragePct } from "../../utils/shoeTypeSalesCoverage";
 import type { ShoeTypeSalesStat, ShoeTypeSalesStatsResponse } from "../../services/shoeTypeSalesStatsApi";
 
@@ -395,5 +396,90 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.queryByText("Ukupan promet")).not.toBeInTheDocument();
     expect(screen.queryByText("Ukupan maržni doprinos")).not.toBeInTheDocument();
+  });
+
+  it("preserves gated review status instead of collapsing it to insufficient data", async () => {
+    vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
+      shoeTypes: [shoeType({
+        tipObuceNaziv: "Sandale",
+        recommendation: {
+          status: "review",
+          label: "Review",
+          summary: "Mesovit signal zahteva rucni pregled.",
+          confidencePct: 55,
+          reliabilityPct: 48,
+          dataQualityStatus: "warning",
+          recommendationAllowed: false,
+          reasonCodes: ["weak_signal"],
+        },
+      })],
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByText("Prioritetna lista tipova obuće");
+    expect(screen.getByLabelText("Raspodela preporuka")).toHaveTextContent("Pregledaj 1");
+    expect(screen.getByLabelText("Raspodela preporuka")).toHaveTextContent("Nedovoljno podataka 0");
+
+    const table = screen.getByTestId("shoe-type-sales-stats-data-table");
+    const row = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Sandale"));
+    expect(row).toBeDefined();
+    expect(row).toHaveTextContent("Pregledaj");
+    expect(row).not.toHaveTextContent("Nedovoljno podataka");
+
+    within(row!).getByRole("button", { name: "Detalji" }).click();
+    const detailSection = await screen.findByRole("heading", { name: "Detalj odluke: Sandale" });
+    const detailPanel = detailSection.closest("section");
+    expect(detailPanel).not.toBeNull();
+    expect(within(detailPanel!).getByText(/Automatska preporuka nije dozvoljena: Mesovit signal zahteva rucni pregled/i)).toBeInTheDocument();
+    expect(within(detailPanel!).getAllByText(RECOMMENDATION_SIGNAL_UNAVAILABLE).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("preserves gated do-not-trust status and keeps confidence unavailable", async () => {
+    vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
+      shoeTypes: [shoeType({
+        tipObuceNaziv: "Cipele",
+        recommendation: {
+          status: "do_not_trust",
+          label: "Do not trust",
+          summary: "Signal nije pouzdan za akciju.",
+          confidencePct: 20,
+          reliabilityPct: 15,
+          dataQualityStatus: "critical",
+          recommendationAllowed: false,
+          reasonCodes: ["data_quality_critical"],
+        },
+      })],
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByText("Prioritetna lista tipova obuće");
+    expect(screen.getByLabelText("Raspodela preporuka")).toHaveTextContent("Ne veruj 1");
+    expect(screen.getByLabelText("Raspodela preporuka")).toHaveTextContent("Nedovoljno podataka 0");
+
+    const table = screen.getByTestId("shoe-type-sales-stats-data-table");
+    const row = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Cipele"));
+    expect(row).toBeDefined();
+    expect(row).toHaveTextContent("Ne veruj");
+    expect(row).not.toHaveTextContent("Nedovoljno podataka");
+
+    within(row!).getByRole("button", { name: "Detalji" }).click();
+    const detailSection = await screen.findByRole("heading", { name: "Detalj odluke: Cipele" });
+    const detailPanel = detailSection.closest("section");
+    expect(detailPanel).not.toBeNull();
+    expect(within(detailPanel!).getByText(/Automatska preporuka nije dozvoljena: Signal nije pouzdan za akciju/i)).toBeInTheDocument();
   });
 });

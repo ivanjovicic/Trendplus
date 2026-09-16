@@ -4,6 +4,10 @@ Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-16: `RQ284` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ283` completion; it is the single current RQ prompt for shoe-type status identity when recommendation is gated and was claimed in this workspace.
+
+Owner completion 2026-09-16: `RQ283` was delivered with visible zero/negative shoe-type margin comparison signals; the RQ queue advanced to `RQ284`.
+
 Owner promotion 2026-09-16: `RQ283` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ282` completion; it is the single current RQ prompt for shoe-type negative margin signal visibility and was claimed in this workspace.
 
 Owner completion 2026-09-15: `RQ280` was delivered with separate previous-period failure/empty/available states, suppressed fabricated PoP growth on failed baseline, visible Serbian warnings and focused helper/page tests.
@@ -407,7 +411,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ281 | DONE | supplier-embedded-freshness-provenance | Preserve valid refresh timestamps in embedded supplier trust metadata |
 | RQ282 | DONE | supplier-null-id-identity | Prevent vendor-key collisions when supplier IDs are absent |
 | RQ283 | DONE | shoe-type-negative-margin-signal | Keep valid zero/negative margin comparison visible |
-| RQ284 | WAITING | shoe-type-status-identity | Preserve backend recommendation status when actionability is gated |
+| RQ284 | DONE | shoe-type-status-identity | Preserve backend recommendation status when actionability is gated |
 | RQ285 | WAITING | shoe-type-percent-range | Fail closed on invalid coverage/share percentages |
 | RQ286 | WAITING | color-pre-post-detail-parity | Do not hide valid raw pre/post metrics behind one missing impact percent |
 | RQ287 | WAITING | color-status-identity | Preserve review/do-not-trust meaning on the Color surface |
@@ -13996,13 +14000,31 @@ Reproduction: return finite rows whose total margin contribution is `-1000` or m
 
 ## RQ284 - Preserve Shoe Type backend status identity when recommendation is gated
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/recommendation-contract/tests
 Feature family: shoe-type-status-identity
 Parallel-safe: no
 Owner: Analytics Frontend / Shoe Type Sales
 Commit suggestion: `fix(analytics): preserve gated shoe-type status semantics`
+
+### Completion note
+
+- Date: 2026-09-16
+- Status: DONE
+- Completion: Shoe Type now keeps backend `review` and `do_not_trust` status identity when `recommendationAllowed` is false; confidence/reliability remain gated while row badges, counts, tooltips and detail reasons stay truthful.
+- Changed files: `shoeTypeStatusIdentity.ts`, `ShoeTypeSalesStatsPage.tsx`, related specs
+- Checks run: focused shoe-type status identity specs 39 passed
+- Checks not run: full frontend suite, browser proof
+- Run log: `.ai/runs/2026-09-16-RQ284-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: branch/PR
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: none known
+- Follow-up: `RQ285` is next WAITING for shoe-type percent range validation
+- Residual risk: live browser proof of gated status styling not run in this workspace
+- Prompt defect / scope repair: none
 
 ### Problem
 

@@ -44,8 +44,6 @@ import {
   RECOMMENDATION_RELIABILITY_LABEL,
   RECOMMENDATION_SIGNAL_UNAVAILABLE,
   RECOMMENDATION_STATUS_PRIORITY,
-  isCanonicalRecommendationStatus,
-  normalizeRecommendationPct,
   normalizeRecommendationQualityStatus,
   recommendationQualityLabel,
   recommendationQualityStyle,
@@ -64,6 +62,7 @@ import {
   hasComparableShoeTypeMarginTotal,
 } from "../utils/shoeTypeMarginComparison";
 import { resolveShoeTypeCoveragePct } from "../utils/shoeTypeSalesCoverage";
+import { buildShoeTypeRecommendationProjection } from "../utils/shoeTypeStatusIdentity";
 import { getAnalyticsDataFreshnessStatus } from "../utils/analyticsResponseMeta";
 import "./ShoeTypeSalesStatsPage.css";
 
@@ -208,10 +207,6 @@ function statusClass(status: DecisionStatus): string {
 
 function displayStatusLabel(status: DecisionStatus): string {
   return recommendationStatusLabel(status);
-}
-
-function mapRecommendationStatus(status?: string | null): DecisionStatus | null {
-  return isCanonicalRecommendationStatus(status) ? status : null;
 }
 
 function trendClass(value: number | null | undefined): string {
@@ -445,37 +440,26 @@ export default function ShoeTypeSalesStatsPage() {
         item.brojArtikalaSaNivelacijom,
         item.brojArtikalaUkupno,
       );
-      const backendStatus = mapRecommendationStatus(item.recommendation?.status) ?? "insufficient_data";
-      const recommendationAllowed = item.recommendation?.recommendationAllowed === true;
-      const displayStatus = recommendationAllowed ? backendStatus : "insufficient_data";
-      const reliabilityPctValue = recommendationAllowed
-        ? normalizeRecommendationPct(item.recommendation?.reliabilityPct ?? item.reliabilityPct)
-        : null;
-      const confidencePctValue = recommendationAllowed
-        ? normalizeRecommendationPct(item.recommendation?.confidencePct)
-        : null;
-      const statusReason = item.recommendation?.summary
-        ?? "Backend recommendation payload nedostaje; red ostaje informativan bez lokalnog izvodjenja preporuke.";
-      const reliabilityAvailable = reliabilityPctValue != null;
-      const confidenceAvailable = confidencePctValue != null;
+      const recommendationProjection = buildShoeTypeRecommendationProjection(
+        item.recommendation,
+        item.reliabilityPct,
+      );
 
       return {
         ...item,
         sharePct: item.sharePct ?? sharePct,
         totalCost,
         marginContribution,
-        reliabilityPct: reliabilityPctValue,
-        reliabilityAvailable,
+        reliabilityPct: recommendationProjection.reliabilityPct,
+        reliabilityAvailable: recommendationProjection.reliabilityAvailable,
         coveragePct,
         splitCoveragePct,
-        confidencePct: confidencePctValue,
-        recommendationConfidencePct: confidencePctValue,
-        confidenceAvailable,
-        recommendationAllowed,
-        status: displayStatus,
-        statusReason: recommendationAllowed
-          ? statusReason
-          : `Automatska preporuka nije dozvoljena: ${statusReason}`,
+        confidencePct: recommendationProjection.confidencePct,
+        recommendationConfidencePct: recommendationProjection.confidencePct,
+        confidenceAvailable: recommendationProjection.confidenceAvailable,
+        recommendationAllowed: recommendationProjection.recommendationAllowed,
+        status: recommendationProjection.status,
+        statusReason: recommendationProjection.statusReason,
         dataQualityStatus: normalizeRecommendationQualityStatus(item.recommendation?.dataQualityStatus),
         reasonCodes: item.recommendation?.reasonCodes ?? [],
       };
