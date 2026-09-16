@@ -64,6 +64,11 @@ import {
   formatPrePostAnalysisWindowHint,
   resolveToolbarMetricsStatus,
 } from "../utils/prePostToolbarMetadata";
+import {
+  buildSupplierVendorDetailRecordId,
+  buildSupplierVendorKeys,
+  resolveSupplierArticleVendorKey,
+} from "../utils/supplierVendorIdentity";
 import { projectVendorSalesDataQuality } from "../utils/vendorSalesDataQuality";
 import "./ProdajaPrePostNivelacijePage.css";
 
@@ -84,6 +89,7 @@ type ActiveFilters = {
 };
 
 type DecisionVendor = VendorSalesNivelacijaVendorStat & {
+  vendorRowKey: string;
   absoluteChangeSharePct: number | null;
   sharePct: number | null;
   sharePctAvailable: boolean;
@@ -449,15 +455,6 @@ function buildStatusTooltip(data: StatusTooltipData): string {
   return `${statusDisplayLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Udeo ${shareText} | Trend ${fmtSignedPct(data.trendPct, 1)} | Delta ${fmtRsd(data.changeRevenue)} | ${RECOMMENDATION_RELIABILITY_LABEL} ${reliabilityText} | ${RECOMMENDATION_CONFIDENCE_LABEL} ${confidenceText} | Kvalitet ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
 }
 
-function normalizeName(value: string | null | undefined): string {
-  return (value ?? "").trim().toUpperCase();
-}
-
-function vendorKey(vendor: { vendorId: number | null; vendorName: string }): string {
-  if (vendor.vendorId != null) return `id:${vendor.vendorId}`;
-  return `name:${normalizeName(vendor.vendorName)}`;
-}
-
 function trustedMetric(value: number | null | undefined, row: { hasComparableSalesWindow?: boolean | null }): number | null {
   return comparablePrePostMetric(value, row);
 }
@@ -617,11 +614,13 @@ export default function ProdajaPrePostNivelacijePage() {
   }, [activeFilters, dataScope, load]);
 
   const previousRevenueByVendorKey = useMemo(() => {
+    const rows = previousData?.vendorStats ?? [];
+    const vendorRowKeys = buildSupplierVendorKeys(rows);
     const map = new Map<string, number>();
-    for (const row of previousData?.vendorStats ?? []) {
+    rows.forEach((row, index) => {
       const value = trustedMetric(row.postRevenue, row);
-      if (value != null) map.set(vendorKey(row), value);
-    }
+      if (value != null) map.set(vendorRowKeys[index], value);
+    });
     return map;
   }, [previousData?.vendorStats]);
 
@@ -629,11 +628,13 @@ export default function ProdajaPrePostNivelacijePage() {
     const rows = data?.vendorStats ?? [];
     if (rows.length === 0) return [];
 
+    const vendorRowKeys = buildSupplierVendorKeys(rows);
     const totalRevenue = comparablePrePostTotal(
       data?.totals.postRevenue,
       data?.totals.hasComparableSalesWindow,
     );
-    return rows.map((item) => {
+    return rows.map((item, rowIndex) => {
+      const vendorRowKey = vendorRowKeys[rowIndex];
       const backendRecommendation = item.recommendation;
       const status = backendRecommendation?.status ?? "insufficient_data";
       const statusReason = backendRecommendation?.summary
@@ -653,7 +654,7 @@ export default function ProdajaPrePostNivelacijePage() {
       const trendPct = trustedMetric(item.changePercent, item);
       const avgCoveragePost30 = item.avgCoveragePost30 != null ? item.avgCoveragePost30 * 100 : null;
       const normalizedReliabilityPct = recommendationReliabilityPct;
-      const previousPostRevenue = previousRevenueByVendorKey.get(vendorKey(item)) ?? null;
+      const previousPostRevenue = previousRevenueByVendorKey.get(vendorRowKey) ?? null;
       const confidence = buildConfidenceMeta(recommendationReliabilityPct, recommendationReliabilityPct != null);
       const volatility = previousComparisonError
         ? { pct: null, label: "Nedostupno", tone: "neutral" as const }
@@ -661,6 +662,7 @@ export default function ProdajaPrePostNivelacijePage() {
 
       return {
         ...item,
+        vendorRowKey,
         absoluteChangeSharePct,
         sharePct,
         sharePctAvailable,
@@ -952,8 +954,8 @@ const advancedSignals = useMemo(
         sharePct: row.sharePct,
         changeRevenue: trustedMetric(row.changeRevenue, row),
         articleCount: row.articleCount,
-        vendorKey: vendorKey(row),
-        selected: expandedVendorKey === vendorKey(row),
+        vendorKey: row.vendorRowKey,
+        selected: expandedVendorKey === row.vendorRowKey,
       }));
 
     const topShare = top.reduce((sum, row) => sum + row.sharePct, 0);
@@ -966,14 +968,16 @@ const advancedSignals = useMemo(
 
   const selectedRow = useMemo(() => {
     if (!expandedVendorKey) return null;
-    return sortedRows.find((row) => vendorKey(row) === expandedVendorKey) ?? null;
+    return sortedRows.find((row) => row.vendorRowKey === expandedVendorKey) ?? null;
   }, [expandedVendorKey, sortedRows]);
 
   const selectedDriverSummary = useMemo<DetailDriverSummary | null>(() => {
     if (!selectedRow || !data) return null;
 
-    const vendorArticles = data.articleStats.filter((item) =>
-      vendorKey(item) === vendorKey(selectedRow) && hasComparablePrePostEvidence(item));
+    const vendorKeys = buildSupplierVendorKeys(data.vendorStats);
+    const vendorArticles = data.articleStats.filter((item, articleIndex) =>
+      resolveSupplierArticleVendorKey(item, articleIndex, data.vendorStats, vendorKeys) === selectedRow.vendorRowKey
+      && hasComparablePrePostEvidence(item));
     if (vendorArticles.length === 0) return null;
 
     const dominantCategoryMap = new Map<string, number>();
@@ -1247,7 +1251,7 @@ const advancedSignals = useMemo(
     saveAnalyticsDetailSnapshot(
       buildAnalyticsDetailSnapshot({
         table: "nivelacije-pre-post",
-        recordId: String(row.vendorId ?? row.vendorName),
+        recordId: buildSupplierVendorDetailRecordId(row, row.vendorRowKey),
         title: row.vendorName,
         subtitle: "Decision support po dobavljaču",
         columns: decisionColumns,
@@ -1256,7 +1260,7 @@ const advancedSignals = useMemo(
       })
     );
 
-    navigate(`/analitika/nivelacije-pre-post/${encodeURIComponent(String(row.vendorId ?? row.vendorName))}`, {
+    navigate(`/analitika/nivelacije-pre-post/${encodeURIComponent(buildSupplierVendorDetailRecordId(row, row.vendorRowKey))}`, {
       state: { backgroundLocation: location },
     });
   };
@@ -1642,7 +1646,7 @@ const advancedSignals = useMemo(
                       </tr>
                     ) : (
                       focusedRows.map((row) => {
-                        const rowId = vendorKey(row);
+                        const rowId = row.vendorRowKey;
                         const expanded = expandedVendorKey === rowId;
                         return (
                           <tr key={rowId} className={expanded ? "expanded-row" : ""}>
@@ -1707,6 +1711,11 @@ const advancedSignals = useMemo(
               <p className="ppn-decision-reason">
                 <strong>Napomena o udelu promene:</strong> kolona koristi abs(promena prometa) / zbir apsolutnih promena prometa, pa ne pokazuje udeo u ukupnom prometu.
               </p>
+              {selectedRow.vendorId == null || !selectedRow.vendorRowKey.startsWith("id:") ? (
+                <p className="ppn-decision-reason" role="status">
+                  Identitet dobavljača nije potvrđen. Detalj važi samo za izabrani red, bez spajanja po nazivu.
+                </p>
+              ) : null}
 
               <div className="ppn-decision-detail-grid">
                 <article>

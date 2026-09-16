@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProdajaPrePostNivelacijePage from "./ProdajaPrePostNivelacijePage";
 import { getStores } from "../services/analyticsApi";
+import * as analyticsTableState from "../services/analyticsTableState";
 import { getAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import { getDobavljaci } from "../services/dobavljaciApi";
 import { getVendorSalesNivelacija } from "../services/vendorSalesNivelacijaApi";
@@ -275,6 +276,40 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
 
     expect(await screen.findByText(/Nije dostupno/)).toBeInTheDocument();
     expect(screen.queryByText(/Nisko signal/)).not.toBeInTheDocument();
+  });
+
+  it("keeps null-ID vendors with duplicate names distinct in detail snapshots and routes", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
+      response({
+        vendorStats: [
+          vendor({ vendorId: null, vendorName: "Nepoznat", postRevenue: 1200, changeRevenue: 200 }),
+          vendor({ vendorId: null, vendorName: "NEPOZNAT", postRevenue: 900, changeRevenue: 400 }),
+        ],
+        totals: {
+          ...response().totals,
+          postRevenue: 2100,
+          vendorsCount: 2,
+        },
+      }),
+    );
+
+    const saveSpy = vi.spyOn(analyticsTableState, "saveAnalyticsDetailSnapshot");
+    renderPage();
+    const table = await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
+
+    const secondRow = within(table).getByText("900 RSD").closest("tr");
+    expect(secondRow).not.toBeNull();
+    fireEvent.click(within(secondRow!).getAllByRole("button", { name: "Detalji" })[0]);
+
+    expect(await screen.findByText(/Identitet dobavljača nije potvrđen/i)).toBeInTheDocument();
+    expect(within(screen.getByText(/Detalj odluke: NEPOZNAT/i).closest("section") as HTMLElement).getByText("900 RSD")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Otvori puni detalj" }));
+    expect(await screen.findByText("Pre/Post detail route")).toBeInTheDocument();
+    expect(saveSpy).toHaveBeenLastCalledWith(expect.objectContaining({ recordId: "row:1" }));
+    expect(getAnalyticsDetailSnapshot("nivelacije-pre-post", "row:1")?.fields.find((field) => field.key === "postRevenue")?.value).toBe("900 RSD");
+
+    saveSpy.mockRestore();
   });
 
   it("keeps detail navigation aligned with the production analitika route contract", async () => {

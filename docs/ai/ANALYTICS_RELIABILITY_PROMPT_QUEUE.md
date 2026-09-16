@@ -4,6 +4,12 @@ Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-16: `RQ293` was explicitly promoted from `WAITING` to `READY` by user request because the RQ queue had no current READY prompt after `RQ292` completion; it is the single current RQ prompt for Pre/Post detail identity.
+
+Owner claim 2026-09-16: `RQ293` transitioned `READY -> IN_PROGRESS` in this workspace for Pre/Post detail route and snapshot identity.
+
+Owner completion 2026-09-16: `RQ293` was delivered on `main` by reusing `supplierVendorIdentity` row keys for Pre/Post detail selection, collision-safe snapshot record IDs, article-driver matching and focused duplicate-name regression tests.
+
 Owner promotion 2026-09-16: `RQ292` was explicitly promoted from `WAITING` to `READY` by user request because the RQ queue had no current READY prompt after `RQ291` completion; it is the single current RQ prompt for Pre/Post toolbar metadata unknowns.
 
 Owner claim 2026-09-16: `RQ292` transitioned `READY -> IN_PROGRESS` in this workspace for Pre/Post toolbar/detail metadata availability.
@@ -456,7 +462,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ290 | DONE | daily-shift-partial-state | Distinguish partial shift summaries from measured zero/whole-day totals |
 | RQ291 | DONE | pre-post-test-contract | Resolve quality metadata contract drift and the missing detail route fixture |
 | RQ292 | DONE | pre-post-toolbar-unknowns | Keep missing toolbar metadata unknown instead of zero/OK |
-| RQ293 | WAITING | pre-post-detail-identity | Prevent pre/post detail route collisions for unnamed suppliers |
+| RQ293 | DONE | pre-post-detail-identity | Prevent pre/post detail route collisions for unnamed suppliers |
 | RQ294 | WAITING | pre-nivelacija-scope-event-propagation | Reload pre-nivelacija priorities when global scope changes |
 | RQ295 | WAITING | pre-nivelacija-error-copy | Give direct-fetch failures a safe, non-empty user message |
 | RQ296 | WAITING | pre-nivelacija-focus-empty-state | Show the shared filtered-out state when focus removes every row |
@@ -14719,13 +14725,31 @@ Reproduction: return a successful response with those fields omitted/null and in
 
 ## RQ293 - Prevent Pre/Post detail identity collisions for suppliers without IDs
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/routing/identity/tests
 Feature family: pre-post-detail-identity
 Parallel-safe: no
 Owner: Analytics Frontend / Pre-Post Nivelacija
 Commit suggestion: `fix(analytics): preserve pre-post detail identity`
+
+### Completion note
+
+- Date: 2026-09-16
+- Status: DONE
+- Completion: Pre/Post now uses shared `supplierVendorIdentity` row keys (`id:*` or collision-safe `row:*`) for table expansion, chart selection, article-driver matching, detail navigation and snapshot record IDs. Unconfirmed vendor identity is surfaced in the detail panel instead of merging rows by name.
+- Changed files: `ProdajaPrePostNivelacijePage.tsx`, `ProdajaPrePostNivelacijePage.spec.tsx`, queue/evidence
+- Checks run: focused Pre/Post spec 20 passed
+- Checks not run: full frontend suite, deployed-browser check
+- Run log: `.ai/runs/2026-09-16-RQ293-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main via `cursor/rq293-pre-post-detail-identity-c753`
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: none known
+- Follow-up: `RQ294` is next WAITING for Pre-Nivelacija scope reload
+- Residual risk: deployed-browser detail modal not exercised in this workspace
+- Prompt defect / scope repair: none
 
 ### Problem
 
