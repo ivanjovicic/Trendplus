@@ -179,6 +179,68 @@ describe("InventoryPage queue status sync", () => {
     });
   });
 
+  it("clears the dependent supplier before loading a changed global scope", async () => {
+    getSupplierFiltersMock.mockResolvedValue([
+      { supplierId: 101, supplierName: "Dobavljač A" },
+    ]);
+
+    render(
+      <MemoryRouter>
+        <InventoryPage />
+      </MemoryRouter>,
+    );
+
+    const supplierSelect = await screen.findByLabelText("Filter po dobavljaču");
+    await screen.findByRole("option", { name: "Dobavljač A" });
+    fireEvent.change(supplierSelect, { target: { value: "101" } });
+
+    await waitFor(() => {
+      expect(getInventoryListMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ supplierId: 101 }),
+      );
+    });
+
+    setDataScope("existing");
+    act(() => {
+      window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+    });
+
+    await waitFor(() => {
+      expect(supplierSelect).toHaveValue("");
+      expect(getInventoryListMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ dataScope: "existing", supplierId: null }),
+      );
+    });
+  });
+
+  it("blocks retained supplier options when their refresh fails", async () => {
+    getSupplierFiltersMock.mockResolvedValue([
+      { supplierId: 101, supplierName: "Dobavljač A" },
+    ]);
+
+    render(
+      <MemoryRouter>
+        <InventoryPage />
+      </MemoryRouter>,
+    );
+
+    const supplierSelect = await screen.findByLabelText("Filter po dobavljaču");
+    await screen.findByRole("option", { name: "Dobavljač A" });
+
+    getSupplierFiltersMock.mockRejectedValueOnce(new Error("supplier filters unavailable"));
+    setDataScope("existing");
+    act(() => {
+      window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+    });
+
+    await waitFor(() => {
+      expect(supplierSelect).toBeDisabled();
+      expect(screen.getByText(/Lista dobavljača nije osvežena/i)).toBeInTheDocument();
+      expect(screen.getByText(/Lista dobavljača je zastarela/i)).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "Dobavljač A" })).toBeDisabled();
+    });
+  });
+
   it("passes the selected store into rebalance suggestions", async () => {
     render(
       <MemoryRouter>

@@ -31,6 +31,7 @@ import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWri
 import { getAnalyticsMetaMessage, isAnalyticsMetaInsufficient, isAnalyticsMetaWarning, shouldShowAnalyticsEmptyState } from "../utils/analyticsResponseMeta";
 import {
   resolveSupplierFilterFallbackState,
+  SUPPLIER_FILTER_LOAD_FAILED_MESSAGE,
   SUPPLIER_FILTER_STALE_LIST_MESSAGE,
 } from "../utils/supplierFilterFallbackState";
 
@@ -381,6 +382,9 @@ export default function InventoryPage() {
         if (nextDataScope === inventoryDataScope) {
           setReloadNonce((current) => current + 1);
         } else {
+          // A supplier selected in the previous dataset must not narrow the next dataset.
+          setSelectedSupplierId(null);
+          setPageNumber(1);
           setInventoryDataScope(nextDataScope);
         }
       }
@@ -448,7 +452,10 @@ export default function InventoryPage() {
       })
       .catch(() => {
         if (!cancelled) {
-          // Preserve the last known supplier list on transient failures instead of faking an empty filter set.
+          // Preserve prior options without claiming that they match the active period and scope.
+          setSupplierFiltersWarning(SUPPLIER_FILTER_LOAD_FAILED_MESSAGE);
+          setSupplierFiltersStale(true);
+          setSelectedSupplierId(null);
         }
       });
     return () => { cancelled = true; };
