@@ -4,6 +4,12 @@ Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-16: under the user's explicit instruction to promote when no READY prompt exists, `RQ290` moved from WAITING to READY. `RQ154`, `RQ162`, `RQ208` and `RQ264` are DONE; the stale RQ pointer was repaired to reflect RQ285-RQ289 as DONE, and no release, tenant, authority or backend-contract gate applies to this page-local Daily Sales state work.
+
+Owner claim 2026-09-16: `RQ290` READY -> IN_PROGRESS by Codex. Local runtime lock: `.ai/task-locks/RQ290-codex.lock.md`.
+
+Owner completion 2026-09-16: `RQ290` was delivered on `main` as `5a05c8d1fcd08018d023125c46235e413b76f348`. Daily Sales now distinguishes complete, partial and unavailable shift evidence; valid zero remains visible, incomplete shift shares fail closed, and daily aggregate gaps are visibly warned. The local runtime lock was removed before the implementation commit.
+
 Owner promotion 2026-09-16: `RQ286` was explicitly promoted from `WAITING` to `READY` by user request after `RQ285` completion on `main`; it was claimed in this workspace for Color pre/post detail parity.
 
 Owner completion 2026-09-16: `RQ286` was delivered on `main` with per-field Color pre/post detail availability independent of impact-percent availability, export/snapshot column parity, and a follow-up hardening pass that generalized `categoryPrePostDetailMetrics.ts` and applied the same detail gate fix to Shoe Type.
@@ -433,7 +439,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ287 | DONE | color-status-identity | Preserve review/do-not-trust meaning on the Color surface |
 | RQ288 | DONE | color-percent-count-fallbacks | Prevent invalid coverage and unknown color counts from looking measured |
 | RQ289 | DONE | daily-supplier-order | Use authoritative supplier ordering for concentration calculations |
-| RQ290 | WAITING | daily-shift-partial-state | Distinguish partial shift summaries from measured zero/whole-day totals |
+| RQ290 | DONE | daily-shift-partial-state | Distinguish partial shift summaries from measured zero/whole-day totals |
 | RQ291 | WAITING | pre-post-test-contract | Resolve quality metadata contract drift and the missing detail route fixture |
 | RQ292 | WAITING | pre-post-toolbar-unknowns | Keep missing toolbar metadata unknown instead of zero/OK |
 | RQ293 | WAITING | pre-post-detail-identity | Prevent pre/post detail route collisions for unnamed suppliers |
@@ -14476,13 +14482,32 @@ Reproduction: provide suppliers in order B,A with `topSuppliersOrder` A,B and di
 
 ## RQ290 - Preserve partial shift and whole-day aggregate semantics in Daily Sales
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/analytics-contract/tests
 Feature family: daily-shift-partial-state
 Parallel-safe: no
 Owner: Analytics Frontend / Daily Sales
 Commit suggestion: `fix(analytics): distinguish Daily shift partial evidence`
+
+### Completion note
+
+- Date: 2026-09-16
+- Status: DONE
+- Completion: Daily Sales now classifies each shift pair as complete, partial or unavailable; a valid remaining shift value (including zero) stays visible with partial evidence, while shares require a complete pair. Missing revenue or total-item values now produce a separate visible daily-aggregate warning rather than a silent aggregate gap.
+- Changed files: `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`; `Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.numericState.spec.ts`; `Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.premium.spec.tsx`; `MASTER_ROADMAP.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `.ai/runs/2026-09-16-RQ290-evidence.md`.
+- Contract/runtime behavior changed: yes - frontend presentation and export metadata only; backend Daily Sales formulas and response DTOs are unchanged.
+- Checks run: initial focused UI reproducer failed as expected before the fix; focused Daily Sales numeric, premium and integration specs passed 32/32; encoding and analytics guardrail scripts passed; all agent-instruction, prompt-queue and planning-architecture self-tests/validators passed; `git diff --check` passed.
+- Checks not run: full frontend suite, deployed-browser/chart/export smoke and CI were not run; `npm run build` was not run because `npm run check:analytics-guardrails` reached an existing unrelated TypeScript error in `src/utils/shoeTypeMarginComparison.ts:47` after its encoding/guardrail steps passed.
+- Run log: `.ai/runs/2026-09-16-RQ290-evidence.md`.
+- Evidence state: synchronized.
+- Delivery mode: direct-main.
+- Main commit SHA: `5a05c8d1fcd08018d023125c46235e413b76f348`.
+- Main verification: passed - fresh `git fetch origin main` confirmed `origin/main` at `5a05c8d1fcd08018d023125c46235e413b76f348` and contains the implementation SHA.
+- Missed: none known within the bounded Daily Sales scope.
+- Follow-up: `RQ291` remains WAITING for its separate Pre/Post contract/test-harness scope.
+- Residual risk: global TypeScript/build proof remains blocked by the pre-existing, out-of-scope Shoe Type nullability error; live browser/chart/export behavior was not exercised.
+- Prompt defect / scope repair: `MASTER_ROADMAP.md` still reported `RQ285`-`RQ300` as WAITING after RQ285-RQ289 were delivered; repaired that same-owner routing truth before the user-authorized RQ290 promotion.
 
 ### Problem
 
