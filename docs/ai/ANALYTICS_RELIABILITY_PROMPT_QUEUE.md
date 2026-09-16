@@ -14126,8 +14126,8 @@ Commit suggestion: `fix(analytics): fail closed on invalid shoe-type percentages
 - Run log: `.ai/runs/2026-09-16-RQ285-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: `db90970d`
-- Main verification: passed - `origin/main` at `db90970ddec372400266c5c69f916e78f650f997`
+- Main commit SHA: `2bc61142`
+- Main verification: passed - `origin/main` at `2bc61142c9d39474eae1c0f054123acd3b41fe40` (consolidation hardening after `db90970d`)
 - Missed: none known
 - Follow-up: `RQ286` is next WAITING for color pre/post detail parity
 - Residual risk: deployed-browser visual check not run in this workspace
