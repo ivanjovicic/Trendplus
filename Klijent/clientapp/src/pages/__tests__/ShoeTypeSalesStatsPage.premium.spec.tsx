@@ -517,4 +517,113 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     expect(screen.queryByTestId("shoe-type-margin-share-chart")).not.toBeInTheDocument();
     expect(screen.queryByTestId("shoe-type-margin-value-chart")).not.toBeInTheDocument();
   });
+
+  it("fails closed on malformed backend share percentages in table, KPI and detail", async () => {
+    vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
+      shoeTypes: [
+        shoeType({
+          tipObuceId: 1,
+          tipObuceNaziv: "Patike",
+          ukupanPromet: 120000,
+          sharePct: 150,
+          prePostNivelacijaRevenueCoveragePct: 130,
+        }),
+        shoeType({
+          tipObuceId: 2,
+          tipObuceNaziv: "Čizme",
+          ukupanPromet: 80000,
+          sharePct: -5,
+        }),
+      ],
+      totals: {
+        ukupanPromet: 200000,
+        ukupanMarzniDoprinos: 46000,
+        prePromet: 150000,
+        poslePromet: 50000,
+        brojTipovaObuce: 2,
+        ukupnaKolicina: 20,
+        snapshotCostCoveragePct: 0,
+        isSnapshotActive: false,
+      },
+      dataQuality: {
+        missingCostRevenue: 0,
+        missingCostRevenueSharePct: 140,
+        unknownTypeRevenue: 0,
+        unknownTypeRevenueSharePct: 0,
+        revenueWithNivelacijaSplit: 100000,
+        revenueWithNivelacijaSplitSharePct: 75,
+      },
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const table = await screen.findByTestId("shoe-type-sales-stats-data-table");
+    const patikeRow = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Patike"));
+    const cizmeRow = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Čizme"));
+    expect(patikeRow).toBeDefined();
+    expect(cizmeRow).toBeDefined();
+    expect(patikeRow).toHaveTextContent("60,00%");
+    expect(cizmeRow).toHaveTextContent("40,00%");
+
+    const top5Kpi = screen.getByText("Udeo top 5 tipova").closest("article");
+    expect(top5Kpi).not.toBeNull();
+    expect(top5Kpi).toHaveTextContent("100,0%");
+
+    fireEvent.click(within(patikeRow!).getByRole("button", { name: "Detalji" }));
+    const detailHeading = await screen.findByRole("heading", { name: "Detalj odluke: Patike" });
+    const detailPanel = detailHeading.closest("section");
+    expect(detailPanel).not.toBeNull();
+    expect(within(detailPanel!).getByText("Udeo u prometu").parentElement).toHaveTextContent("60,00%");
+    expect(within(detailPanel!).getByText("Pre/post pokrice prometa").parentElement).toHaveTextContent("N/A");
+  });
+
+  it("keeps valid zero and 100 percentages visible across surfaces", async () => {
+    vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
+      shoeTypes: [shoeType({
+        tipObuceNaziv: "Patike",
+        ukupanPromet: 120000,
+        ukupnaKolicina: 0,
+        brojArtikalaSaNivelacijom: 0,
+        brojArtikalaUkupno: 8,
+        sharePct: 100,
+        prePostNivelacijaRevenueCoveragePct: 0,
+      })],
+      totals: {
+        ukupanPromet: 120000,
+        ukupanMarzniDoprinos: 46000,
+        prePromet: 90000,
+        poslePromet: 30000,
+        brojTipovaObuce: 1,
+        ukupnaKolicina: 12,
+        snapshotCostCoveragePct: 0,
+        isSnapshotActive: false,
+      },
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const table = await screen.findByTestId("shoe-type-sales-stats-data-table");
+    const row = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Patike"));
+    expect(row).toBeDefined();
+    expect(row).toHaveTextContent("100,00%");
+
+    fireEvent.click(within(row!).getByRole("button", { name: "Detalji" }));
+    const detailHeading = await screen.findByRole("heading", { name: "Detalj odluke: Patike" });
+    const detailPanel = detailHeading.closest("section");
+    expect(detailPanel).not.toBeNull();
+    expect(within(detailPanel!).getByText("Udeo u količini").parentElement).toHaveTextContent("0,00%");
+    expect(within(detailPanel!).getByText("Pre/post pokrice prometa").parentElement).toHaveTextContent("0,0%");
+  });
 });

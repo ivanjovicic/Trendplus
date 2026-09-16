@@ -4,6 +4,10 @@ Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-16: `RQ285` was explicitly promoted from `WAITING` to `READY` after `RQ284` completion on `main`; it was claimed in this workspace for shoe-type percent range validation.
+
+Owner completion 2026-09-16: `RQ285` was delivered on `main` with fail-closed shoe-type share/coverage percent validation and consolidated utility extraction on top of the existing RQ283/RQ284 page contract.
+
 Owner completion 2026-09-16: `RQ283` was delivered on `main` as `2eaa2ff0cf6528afa5bfebbfaf71bb9d0269df48` with finite-margin validation, percentage-share comparison only for a positive denominator, and a visibly warned RSD contribution chart for measured zero/negative totals.
 
 Owner promotion 2026-09-16: under the user's explicit instruction to promote when no READY prompt exists, `RQ284` moved from WAITING to READY. Its `RQ259` dependency is DONE and no external, release, tenant, or authority gate applies.
@@ -420,7 +424,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ282 | DONE | supplier-null-id-identity | Prevent vendor-key collisions when supplier IDs are absent |
 | RQ283 | DONE | shoe-type-negative-margin-signal | Keep valid zero/negative margin comparison visible |
 | RQ284 | DONE | shoe-type-status-identity | Preserve backend recommendation status when actionability is gated |
-| RQ285 | WAITING | shoe-type-percent-range | Fail closed on invalid coverage/share percentages |
+| RQ285 | DONE | shoe-type-percent-range | Fail closed on invalid coverage/share percentages |
 | RQ286 | WAITING | color-pre-post-detail-parity | Do not hide valid raw pre/post metrics behind one missing impact percent |
 | RQ287 | WAITING | color-status-identity | Preserve review/do-not-trust meaning on the Color surface |
 | RQ288 | WAITING | color-percent-count-fallbacks | Prevent invalid coverage and unknown color counts from looking measured |
@@ -14094,7 +14098,7 @@ Reproduction: provide `review` and `do_not_trust` backend recommendations with `
 - Main commit SHA: `bce8d4394dc9e717652d06744ef90e7c4b746531`.
 - Main verification: passed - fresh `git fetch origin main` confirmed local `main` and `origin/main` at `bce8d4394dc9e717652d06744ef90e7c4b746531`; `git merge-base --is-ancestor bce8d4394dc9e717652d06744ef90e7c4b746531 origin/main` returned 0.
 - Missed: none known.
-- Follow-up: `RQ285` remains WAITING and requires explicit owner promotion.
+- Follow-up: `RQ285` delivered on `main` with percent-range validation utilities.
 - Residual risk: no deployed-browser visual check was run; the change uses existing status layout and focused DOM assertions cover row/detail/tooltip/KPI semantics.
 - Next: keep RQ current READY `none` until a user/owner promotes one safe follow-up.
 - Prompt defect / scope repair: none.
@@ -14103,13 +14107,31 @@ Reproduction: provide `review` and `do_not_trust` backend recommendations with `
 
 ## RQ285 - Validate Shoe Type coverage and share percentage ranges
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/numeric-state/tests
 Feature family: shoe-type-percent-range
 Parallel-safe: no
 Owner: Analytics Frontend / Shoe Type Sales
 Commit suggestion: `fix(analytics): fail closed on invalid shoe-type percentages`
+
+### Completion note
+
+- Date: 2026-09-16
+- Status: DONE
+- Completion: Shoe Type share/coverage/split percentages now fail closed unless finite and within 0-100; derived revenue/quantity shares recompute from compatible numerators while preserving the existing RQ283 margin value-chart and RQ284 gated-status contract from `main`.
+- Changed files: `shoeTypePercentRange.ts`, `shoeTypeStatusIdentity.ts`, `shoeTypeMarginComparison.ts`, `ShoeTypeSalesStatsPage.tsx`, related specs
+- Checks run: focused shoe-type utility/page specs 66 passed
+- Checks not run: full frontend suite, deployed-browser check
+- Run log: `.ai/runs/2026-09-16-RQ285-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: none known
+- Follow-up: `RQ286` is next WAITING for color pre/post detail parity
+- Residual risk: deployed-browser visual check not run in this workspace
+- Prompt defect / scope repair: consolidated branch work onto existing `main` RQ283/RQ284 implementations instead of regressing margin value-chart semantics
 
 ### Problem
 
