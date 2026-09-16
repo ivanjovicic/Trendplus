@@ -140,6 +140,26 @@ Exclusive area: <paths/contract>
 10. Record changed files, checks, remaining risk and next status.
 11. Delete local lock before commit.
 
+## Main-first delivery
+
+Unless a prompt explicitly names another target branch, file-changing queue work must be **delivered on `main`**.
+
+Required close path:
+
+```text
+focused local proof → merge/push to main → verify origin/main SHA → synchronized evidence → DONE
+```
+
+Rules:
+
+- branch/PR-only state is transport, not completion;
+- do not wait for CI to finish before merging/pushing to `main`;
+- do not subscribe or poll CI as a default close step;
+- record CI honestly as residual risk or `Checks not run`; CI does not replace main SHA verification;
+- use `PARTIAL` only when `main` cannot be updated safely, never merely because CI is queued/running.
+
+Canonical owner for the full policy: `AGENTS.md` section 7 and `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`.
+
 ## Collision rules
 
 Do not start when:

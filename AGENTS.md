@@ -137,6 +137,25 @@ If delivery cannot be completed safely, preserve useful work using the permitted
 
 Do not force-push, reset/clean unrelated user work, bypass branch protections, expose secrets, mutate production data or perform destructive actions outside the assigned scope unless an explicit authoritative workflow permits the exact action.
 
+### 7.1 Main-first delivery (default)
+
+Unless the task explicitly names another target branch, file-changing work must be **delivered on `main`**, not left on a feature branch or open PR.
+
+Default completion path:
+
+```text
+implement → focused local validation → merge/push to main → verify origin/main contains implementation SHA → close with evidence
+```
+
+Rules:
+
+- treat branch/PR work as transport only; opening or updating a PR is not completion;
+- merge or fast-forward to `main` and push when repository policy allows it;
+- do **not** wait for GitHub/Origin CI to finish before delivering to `main`;
+- do **not** subscribe, poll or block closure on CI unless the assigned prompt explicitly makes a named check part of acceptance;
+- record CI honestly in evidence as `queued`, `running`, `not inspected`, `green` or `red`; CI state is residual risk/follow-up, not a substitute for main SHA verification;
+- use `PARTIAL` only when `main` cannot be updated safely (branch protection, merge conflict outside scope, missing permissions). Never use `PARTIAL` merely because CI is still running.
+
 ## 8. Validation discipline
 
 Choose the narrowest proof through `docs/ai/VALIDATION_SELECTOR.md`.
@@ -159,7 +178,8 @@ Rules:
 - classify failures as product, test, environment/tooling, prompt/contract or evidence failure before editing again;
 - a skipped command is `not run` with a reason, never inferred as passing;
 - CI that is queued has not proved anything yet;
-- do not claim GitHub/remote validation without inspecting the relevant result.
+- do not claim GitHub/remote validation without inspecting the relevant result;
+- CI completion is not required before delivering to `main`; deliver after focused local proof unless a prompt explicitly blocks on a named remote check.
 
 Typical commands are examples, not mandatory checklists:
 

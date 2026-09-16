@@ -103,6 +103,16 @@ Main verification: <exact git/GitHub evidence or skipped reason>
 
 If the implementation reached a branch/PR but not `main`, use `PARTIAL` unless a more specific blocker applies.
 
+### Main-first delivery without CI wait
+
+Unless the task explicitly names another target branch, agents must land file-changing work on `main` before `DONE`.
+
+- merge/push to `main` after focused local validation;
+- verify fresh `origin/main` contains the implementation SHA;
+- do **not** wait for CI to finish as a completion gate;
+- record CI status separately under `Checks not run`, `Residual risk` or an explicit CI note (`queued`, `running`, `not inspected`, `green`, `red`);
+- use `PARTIAL` only when `main` cannot be updated safely, not because CI is still running.
+
 ## Completion gate
 
 Before `DONE`, evidence must identify:
@@ -141,8 +151,10 @@ When work is performed through the GitHub connector:
 - record connector-returned commit/PR/merge identifiers;
 - inspect current branch/PR state before claiming delivery;
 - verify the exact delivered SHA against a fresh current-`main` lookup before `DONE`;
+- merge/push to `main` when permitted; do not stop at branch/PR-only state;
+- do not wait for CI completion before delivering to `main` unless the prompt explicitly requires a named remote check;
 - mark local shell/build/test commands `not run` unless they actually executed in a repository checkout;
-- inspect relevant GitHub checks once when they are part of acceptance;
+- inspect relevant GitHub checks when they are part of acceptance, but treat them as follow-up/residual risk unless the prompt made them mandatory;
 - `queued` is not passing proof;
 - preserve a PR and report `PARTIAL`/`BLOCKED` when required proof cannot complete safely.
 

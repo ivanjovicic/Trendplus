@@ -41,6 +41,21 @@ Ako build/test komanda zapne:
 - zabeleži šta je zapelo
 - ne nastavljaj sa velikim izmenama bez validacije
 
+## Isporuka na `main` (obavezno)
+
+Za izmene fajlova, podrazumevani cilj isporuke je **`main`**, ne samo feature branch ili otvoren PR.
+
+```text
+implementacija → fokusirana lokalna validacija → merge/push na main → provera SHA na origin/main → zatvaranje sa evidence
+```
+
+- ne zaustavljaj se na branch/PR stanju ako `main` može bezbedno da se ažurira;
+- **ne čekaj CI** pre isporuke na `main`, osim ako prompt eksplicitno traži konkretan remote check;
+- CI zabeleži odvojeno (`queued`, `not inspected`, `green`, `red`) kao residual risk, ne kao uslov za `DONE`;
+- `PARTIAL` koristi samo kad `main` stvarno ne može da se ažurira (branch protection, konflikt van scope-a, permisije).
+
+Kanonski owner: `AGENTS.md` sekcija 7.1 i `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`.
+
 Primer:
 ```powershell
 # prvo ciljano

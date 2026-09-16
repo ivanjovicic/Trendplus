@@ -22,7 +22,8 @@ Trendplus is a retail decision-support product, not a dashboard collection.
 - Assume the user may be offline after assigning the task.
 - A direct repository request authorizes ordinary reversible work in Trendplus.
 - Do not invent a queue claim or rewrite planning docs for a direct request unless the task is itself about planning/governance.
-- Do not pause for routine choices like whether to inspect source, add the nearest focused proof, update the mapped owner doc or verify delivery on `main`.
+- Do not pause for routine choices like whether to inspect source, add the nearest focused proof, update the mapped owner doc, merge/push to `main` or verify delivery on `main`.
+- Default delivery target is `main`. Finish by landing the implementation SHA on `main`; do not stop at branch/PR-only state and do not wait for CI before that delivery.
 - Ask only for material business authority, privacy/security/secret decisions, destructive data/schema consequences, production impact, external cost or irreversible actions outside the repo.
 - Resolve non-material ambiguity by choosing the smallest same-owner reversible option and recording the assumption.
 
@@ -168,7 +169,7 @@ If a line cannot be answered, do not guess the runtime contract.
 3. Find shared helpers/contracts and the nearest focused proof before creating new ones.
 4. Run the tenant/analytics safety gate where relevant.
 5. Make the smallest same-owner reversible patch.
-6. Select validation through `docs/ai/VALIDATION_SELECTOR.md` and verify delivery on `main` when files changed.
+6. Select validation through `docs/ai/VALIDATION_SELECTOR.md`, merge/push to `main` when permitted, and verify `origin/main` contains the implementation SHA. Do not wait for CI before this delivery step unless the prompt explicitly requires a named remote check.
 7. Update planning only when the request changes routing/current READY/blocker/milestone truth.
 
 ## Queue task workflow
@@ -182,7 +183,8 @@ If a line cannot be answered, do not guess the runtime contract.
 7. Run tenant/analytics safety gate where relevant.
 8. Make the smallest scoped patch, including a recorded same-owner mechanical prompt repair when required by acceptance.
 9. Select and run exact proof through `docs/ai/VALIDATION_SELECTOR.md`.
-10. Update queue status/evidence and master roadmap only if routing/current READY/blocker/milestone truth changed.
+10. Merge/push to `main` when permitted, verify `origin/main` contains the implementation SHA, and record CI separately without waiting on it by default.
+11. Update queue status/evidence and master roadmap only if routing/current READY/blocker/milestone truth changed.
 
 ## Stop rules
 

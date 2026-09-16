@@ -217,3 +217,13 @@
 - Wrong fix: Adding more local thresholds to make the UI “feel smarter”.
 - Required checks: `npm run check:analytics-guardrails`, affected tests, backend tests if contract changes
 - Usually touched files: `src/pages/*`, `src/components/*`, analytics endpoints, decision board logic
+
+## 22. Agent stops at PR/branch or waits for CI instead of delivering to `main`
+
+- Symptom: Work is committed/pushed to a feature branch or open PR, but `origin/main` does not contain the implementation SHA; the agent reports `DONE` or waits/subscribes for CI before merging.
+- Detection: Compare task evidence `Main commit SHA` with `git fetch origin main && git log -1 --oneline origin/main`; check whether the agent blocked on CI queue/results.
+- Root cause: Branch/PR transport was treated as completion, or CI was mistaken for a delivery gate.
+- Correct fix: Run focused local proof, merge/push to `main`, verify `origin/main` contains the SHA, record CI separately as residual risk (`queued`/`not inspected`) without waiting on it unless the prompt explicitly required a named remote check.
+- Wrong fix: Leaving useful work on a branch indefinitely, claiming `DONE` from green branch CI while `main` is stale, or using `PARTIAL` only because CI is still running.
+- Required checks: fresh `origin/main` SHA verification; governance docs `AGENTS.md` section 7.1 and `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`
+- Usually touched files: evidence/run logs, queue completion notes, agent delivery workflow only
