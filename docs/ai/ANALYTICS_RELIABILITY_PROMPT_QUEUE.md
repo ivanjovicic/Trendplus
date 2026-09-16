@@ -4,7 +4,13 @@ Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
-Owner completion 2026-09-16: `RQ283` was delivered on `main` as `2eaa2ff0cf6528afa5bfebbfaf71bb9d0269df48` with finite-margin validation, percentage-share comparison only for a positive denominator, and a visibly warned RSD contribution chart for measured zero/negative totals. The RQ queue returned to no current READY prompt.
+Owner completion 2026-09-16: `RQ283` was delivered on `main` as `2eaa2ff0cf6528afa5bfebbfaf71bb9d0269df48` with finite-margin validation, percentage-share comparison only for a positive denominator, and a visibly warned RSD contribution chart for measured zero/negative totals.
+
+Owner promotion 2026-09-16: under the user's explicit instruction to promote when no READY prompt exists, `RQ284` moved from WAITING to READY. Its `RQ259` dependency is DONE and no external, release, tenant, or authority gate applies.
+
+Owner claim 2026-09-16: `RQ284` READY -> IN_PROGRESS by Codex. The local runtime lock `.ai/task-locks/RQ284-codex.lock.md` was removed before the implementation commit.
+
+Owner completion 2026-09-16: `RQ284` was delivered on `main` as `bce8d4394dc9e717652d06744ef90e7c4b746531`. It preserves known backend status identity while maintaining the separate non-actionable gate and safe unknown-status fallback. A fresh `origin/main` verification confirmed that SHA; the RQ queue returned to no current READY prompt.
 
 Owner promotion 2026-09-16: `RQ283` was explicitly promoted from `WAITING` to `READY` by user request because the RQ queue had no current READY prompt after `RQ282` completion. It is the single current RQ prompt for Shoe Type valid zero/negative margin comparison visibility.
 
@@ -413,7 +419,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ281 | DONE | supplier-embedded-freshness-provenance | Preserve valid refresh timestamps in embedded supplier trust metadata |
 | RQ282 | DONE | supplier-null-id-identity | Prevent vendor-key collisions when supplier IDs are absent |
 | RQ283 | DONE | shoe-type-negative-margin-signal | Keep valid zero/negative margin comparison visible |
-| RQ284 | WAITING | shoe-type-status-identity | Preserve backend recommendation status when actionability is gated |
+| RQ284 | DONE | shoe-type-status-identity | Preserve backend recommendation status when actionability is gated |
 | RQ285 | WAITING | shoe-type-percent-range | Fail closed on invalid coverage/share percentages |
 | RQ286 | WAITING | color-pre-post-detail-parity | Do not hide valid raw pre/post metrics behind one missing impact percent |
 | RQ287 | WAITING | color-status-identity | Preserve review/do-not-trust meaning on the Color surface |
@@ -14022,7 +14028,7 @@ Reproduction: return finite rows whose total margin contribution is `-1000` or m
 
 ## RQ284 - Preserve Shoe Type backend status identity when recommendation is gated
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/recommendation-contract/tests
 Feature family: shoe-type-status-identity
@@ -14072,6 +14078,26 @@ Reproduction: provide `review` and `do_not_trust` backend recommendations with `
 ### Dependencies
 
 - `RQ259` owns mode-aware shared-header gating; this prompt owns Shoe Type page status projection.
+
+### Completion note
+
+- Date: 2026-09-16
+- Status: DONE
+- Completion: Preserved known backend status identity in Shoe Type rows, KPI counts, detail and tooltip while separately retaining a visible non-actionable gate.
+- Changed files: `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx`; `Klijent/clientapp/src/pages/__tests__/ShoeTypeSalesStatsPage.premium.spec.tsx`; `MASTER_ROADMAP.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `.ai/runs/2026-09-16-RQ284-evidence.md`.
+- Contract/runtime behavior changed: yes - recognised backend statuses remain visible when permission is false or missing; unknown/missing status falls back safely to `insufficient_data` without raw status codes, and actionability/confidence/reliability stay gated.
+- Checks run: `npm run test -- --run src/pages/__tests__/ShoeTypeSalesStatsPage.premium.spec.tsx src/pages/ShoeTypeSalesStatsPage.spec.tsx` (25 passed); `npm run check:analytics-guardrails` (passed); `npm run build` (passed, existing chunk-size advisory only); `node scripts/check-agent-instructions.mjs --self-test`; `node scripts/check-agent-instructions.mjs`; `node scripts/check-prompt-queues.mjs --self-test`; `node scripts/check-prompt-queues.mjs`; `node scripts/check-planning-architecture.mjs --self-test`; `node scripts/check-planning-architecture.mjs` (all passed); `git diff --check` (passed).
+- Checks not run: full frontend suite and deployed-browser check - the bounded page-local contract is covered by focused component tests, guardrails and production build; no deployment behavior changed.
+- Run log: `.ai/runs/2026-09-16-RQ284-evidence.md`.
+- Evidence state: synchronized.
+- Delivery mode: direct-main.
+- Main commit SHA: `bce8d4394dc9e717652d06744ef90e7c4b746531`.
+- Main verification: passed - fresh `git fetch origin main` confirmed local `main` and `origin/main` at `bce8d4394dc9e717652d06744ef90e7c4b746531`; `git merge-base --is-ancestor bce8d4394dc9e717652d06744ef90e7c4b746531 origin/main` returned 0.
+- Missed: none known.
+- Follow-up: `RQ285` remains WAITING and requires explicit owner promotion.
+- Residual risk: no deployed-browser visual check was run; the change uses existing status layout and focused DOM assertions cover row/detail/tooltip/KPI semantics.
+- Next: keep RQ current READY `none` until a user/owner promotes one safe follow-up.
+- Prompt defect / scope repair: none.
 
 ---
 
