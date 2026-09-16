@@ -4,7 +4,7 @@ Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
-Owner promotion 2026-09-15: `RQ282` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ281` completion; it is the single current RQ prompt for supplier null-ID identity and was claimed in this workspace.
+Owner promotion 2026-09-16: `RQ283` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ282` completion; it is the single current RQ prompt for shoe-type negative margin signal visibility and was claimed in this workspace.
 
 Owner completion 2026-09-15: `RQ280` was delivered with separate previous-period failure/empty/available states, suppressed fabricated PoP growth on failed baseline, visible Serbian warnings and focused helper/page tests.
 
@@ -406,7 +406,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ280 | DONE | supplier-previous-period-warning | Distinguish missing previous-period data from a failed request |
 | RQ281 | DONE | supplier-embedded-freshness-provenance | Preserve valid refresh timestamps in embedded supplier trust metadata |
 | RQ282 | DONE | supplier-null-id-identity | Prevent vendor-key collisions when supplier IDs are absent |
-| RQ283 | WAITING | shoe-type-negative-margin-signal | Keep valid zero/negative margin comparison visible |
+| RQ283 | DONE | shoe-type-negative-margin-signal | Keep valid zero/negative margin comparison visible |
 | RQ284 | WAITING | shoe-type-status-identity | Preserve backend recommendation status when actionability is gated |
 | RQ285 | WAITING | shoe-type-percent-range | Fail closed on invalid coverage/share percentages |
 | RQ286 | WAITING | color-pre-post-detail-parity | Do not hide valid raw pre/post metrics behind one missing impact percent |
@@ -13923,13 +13923,31 @@ Reproduction: return two supplier rows with null IDs and equal names, then equal
 
 ## RQ283 - Keep valid zero and negative Shoe Type margin signals visible
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/analytics-visualization/tests
 Feature family: shoe-type-negative-margin-signal
 Parallel-safe: no
 Owner: Analytics Frontend / Shoe Type Sales
 Commit suggestion: `fix(analytics): preserve negative shoe-type margin signal`
+
+### Completion note
+
+- Date: 2026-09-16
+- Status: DONE
+- Completion: Shoe Type comparison data now stays visible for measured zero and negative margin totals; only missing or non-finite totals suppress the chart; negative totals use loss tone and detail margin-share formatting stays distinct from unavailable evidence.
+- Changed files: `shoeTypeMarginComparison.ts`, `ShoeTypeSalesStatsPage.tsx`, related specs
+- Checks run: focused shoe-type margin comparison specs 22 passed
+- Checks not run: full frontend suite, browser proof
+- Run log: `.ai/runs/2026-09-16-RQ283-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: branch/PR
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: none known
+- Follow-up: `RQ284` is next WAITING for shoe-type status identity
+- Residual risk: live browser proof of negative-margin chart styling not run in this workspace
+- Prompt defect / scope repair: none
 
 ### Problem
 

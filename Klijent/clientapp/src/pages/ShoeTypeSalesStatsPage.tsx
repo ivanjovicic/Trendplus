@@ -58,6 +58,11 @@ import {
   type RecommendationQualityStatus,
 } from "../utils/canonicalRecommendationSemantics";
 import { qualityTierIcon, qualityTierClass, tierNeedsWarning, buildCoverageTooltip, buildRecommendationCaveat, buildMarginDetailNote, buildSnapshotBadgeLabel, buildSnapshotTooltip } from "../utils/marginQuality";
+import {
+  buildShoeTypeComparisonData,
+  formatShoeTypeMarginContributionShare,
+  hasComparableShoeTypeMarginTotal,
+} from "../utils/shoeTypeMarginComparison";
 import { resolveShoeTypeCoveragePct } from "../utils/shoeTypeSalesCoverage";
 import { getAnalyticsDataFreshnessStatus } from "../utils/analyticsResponseMeta";
 import "./ShoeTypeSalesStatsPage.css";
@@ -569,22 +574,13 @@ export default function ShoeTypeSalesStatsPage() {
     return topRows;
   }, [sortedRows]);
 
-  const comparisonData = useMemo(() => {
-    if (sortedRows.length === 0 || totalMarginContribution == null || totalMarginContribution <= 0)
-      return [] as Array<{ name: string; udeoPrometa: number; udeoMarznogDoprinosa: number }>;
-
-    const ranked = [...sortedRows]
-      .filter((row): row is typeof row & { sharePct: number } => row.sharePct != null && Number.isFinite(row.sharePct))
-      .sort((a, b) => b.ukupanPromet - a.ukupanPromet);
-
-    return ranked.slice(0, 8).map((row) => ({
-      name: row.tipObuceNaziv,
-      udeoPrometa: Number(row.sharePct.toFixed(1)),
-      udeoMarznogDoprinosa: Number(
-        ((row.marginContribution / totalMarginContribution) * 100).toFixed(1)
-      ),
-    }));
-  }, [sortedRows, totalMarginContribution]);
+  const comparisonData = useMemo(
+    () => buildShoeTypeComparisonData(sortedRows, totalMarginContribution),
+    [sortedRows, totalMarginContribution],
+  );
+  const hasNegativeMarginTotal = hasComparableShoeTypeMarginTotal(totalMarginContribution)
+    && totalMarginContribution! < 0;
+  const hasZeroMarginTotal = totalMarginContribution === 0;
 
   const avgMarginPct = useMemo(() => {
     const validRows = decisionRows.filter((row) => Number.isFinite(row.marginPct));
@@ -1063,7 +1059,7 @@ export default function ShoeTypeSalesStatsPage() {
               </article>
               <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Bruto maržni doprinos po tipovima obuće.">
                 <span>Ukupan maržni doprinos <InfoTip text="Zbir razlike između prodajne i nabavne vrednosti za sve stavke sa dostupnim troškom, grupisano po tipu obuće. Operativni troškovi, plate, zakup i ostali indirektni troškovi nisu uključeni." /></span>
-                <strong>{fmtRsd(totalMarginContribution)}</strong>
+                <strong className={hasNegativeMarginTotal ? "trend-down" : undefined}>{fmtRsd(totalMarginContribution)}</strong>
                 <small
                   className={`shoetype-decision-kpi-badge ${qualityTierClass(data.totals.marginQualityTier)}`}
                   title={data.totals.marginQualityTooltip ?? buildCoverageTooltip(data.totals.historicalCostCoveragePct, data.totals.estimatedCostCoveragePct, data.totals.noCostCoveragePct, fmtPct, data.totals.snapshotCostCoveragePct)}
@@ -1131,6 +1127,16 @@ export default function ShoeTypeSalesStatsPage() {
             <article className="shoetype-decision-card shoetype-decision-card--chart analytics-surface-panel">
               <h2>Promet vs Maržni doprinos <InfoTip text="Grafikon poredi udeo u prometu i udeo u maržnom doprinosu po tipu obuće. Maržni doprinos nije neto profit i ne uključuje operativne troškove. Ako je deo troška procenjen iz raspoloživih podataka, i ovaj signal treba čitati oprezno." /></h2>
               <p className="shoetype-decision-chart-desc">Poređenje udela u prometu i udela u maržnom doprinosu - tipovi obuće s visokim prometom ne moraju imati i visok maržni doprinos.</p>
+              {hasNegativeMarginTotal ? (
+                <p className="shoetype-decision-chart-desc trend-down" role="status">
+                  Ukupan maržni doprinos je negativan; gubitak ostaje vidljiv u poređenju i ne sme se prikazati kao nedostatak podataka.
+                </p>
+              ) : null}
+              {hasZeroMarginTotal ? (
+                <p className="shoetype-decision-chart-desc" role="status">
+                  Izmereni ukupan maržni doprinos je 0 RSD; udeo po tipu ostaje dostupan samo kada postoji pouzdan odnos prema nuli.
+                </p>
+              ) : null}
               {comparisonData.length > 0 ? (
                 <div className="shoetype-decision-chart-wrap">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
@@ -1433,7 +1439,7 @@ export default function ShoeTypeSalesStatsPage() {
                 </article>
                 <article>
                   <span>Udeo u maržnom doprinosu <InfoTip text="Procenat koji ovaj tip obuće čini u ukupnom maržnom doprinosu. Formula: maržni doprinos tipa / ukupan maržni doprinos svih tipova x 100. Ovo nije udeo u profitu niti u neto zaradi." /></span>
-                  <strong>{totalMarginContribution != null && totalMarginContribution > 0 ? fmtPct((selectedRow.marginContribution / totalMarginContribution) * 100, 2) : "Nije dostupno"}</strong>
+                  <strong>{formatShoeTypeMarginContributionShare(selectedRow.marginContribution, totalMarginContribution, fmtPct)}</strong>
                 </article>
                 <article>
                   <span>Udeo u količini <InfoTip text="Procenat koji ovaj tip obuće čini u ukupno prodatoj količini." /></span>

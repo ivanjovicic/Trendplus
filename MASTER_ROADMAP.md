@@ -125,7 +125,9 @@ Owner completion 2026-09-15: `RQ280` was delivered with visible supplier previou
 Owner promotion 2026-09-15: `RQ281` was explicitly promoted after completed `RQ280`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; the RQ queue is the canonical execution owner.
 Owner completion 2026-09-15: `RQ281` was delivered with aligned embedded supplier freshness provenance and standalone/embedded trust parity; the RQ queue advanced to `RQ282`.
 Owner promotion 2026-09-15: `RQ282` was explicitly promoted after completed `RQ281`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; the RQ queue is the canonical execution owner.
-Owner completion 2026-09-15: `RQ282` was delivered with collision-safe null-ID supplier vendor keys and distinct detail snapshot IDs; the RQ queue has no current READY prompt.
+Owner completion 2026-09-15: `RQ282` was delivered with collision-safe null-ID supplier vendor keys and distinct detail snapshot IDs; the RQ queue advanced to `RQ283`.
+Owner promotion 2026-09-16: `RQ283` was explicitly promoted after completed `RQ282`, transitioned `WAITING -> READY -> IN_PROGRESS`, and was claimed in this workspace; the RQ queue is the canonical execution owner.
+Owner completion 2026-09-16: `RQ283` was delivered with visible zero/negative shoe-type margin comparison signals; the RQ queue has no current READY prompt.
 Owner completion 2026-09-10: `RQ225` was delivered on `main` with stable process-lifetime snapshot-cost option consumption; the RQ queue returned to no current READY prompt.
 Owner completion 2026-09-10: `RQ224` was delivered on `main` with fail-closed analytics DB connection resolution; the RQ queue returned to no current READY prompt.
 Owner completion 2026-09-10: `RQ223` was delivered on `main` as the fail-closed invalid-foreign-key default correction; the RQ queue returned to no current READY prompt.

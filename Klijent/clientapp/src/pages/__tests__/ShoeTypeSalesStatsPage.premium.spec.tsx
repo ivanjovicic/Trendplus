@@ -266,6 +266,101 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     expect(screen.queryByText("Prioritetna lista tipova obuće")).not.toBeInTheDocument();
   });
 
+  it("keeps negative margin comparison visible instead of hiding the chart", async () => {
+    vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
+      shoeTypes: [
+        shoeType({
+          tipObuceId: 1,
+          tipObuceNaziv: "Patike",
+          ukupanPromet: 120000,
+          marginContribution: -600,
+          sharePct: 60,
+        }),
+        shoeType({
+          tipObuceId: 2,
+          tipObuceNaziv: "Čizme",
+          ukupanPromet: 80000,
+          marginContribution: -400,
+          sharePct: 40,
+        }),
+      ],
+      totals: {
+        ukupanPromet: 200000,
+        ukupanMarzniDoprinos: -1000,
+        prePromet: 150000,
+        poslePromet: 50000,
+        brojTipovaObuce: 2,
+        snapshotCostCoveragePct: 0,
+        isSnapshotActive: false,
+      },
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Promet vs Maržni doprinos")).toBeInTheDocument();
+    expect(screen.getByText(/Ukupan maržni doprinos je negativan/i)).toBeInTheDocument();
+    expect(screen.queryByText("Nema podataka za poređenja.")).not.toBeInTheDocument();
+    expect(screen.getAllByTestId("bar-chart").length).toBeGreaterThanOrEqual(1);
+
+    const table = await screen.findByTestId("shoe-type-sales-stats-data-table");
+    const patikeRow = within(table).getByText("Patike").closest("tr");
+    expect(patikeRow).not.toBeNull();
+    within(patikeRow!).getByRole("button", { name: "Detalji" }).click();
+    const marginShareLabel = await screen.findByText("Udeo u maržnom doprinosu");
+    const detailArticle = marginShareLabel.closest("article");
+    expect(detailArticle).not.toBeNull();
+    expect(within(detailArticle!).getByText("60,00%")).toBeInTheDocument();
+  });
+
+  it("keeps measured zero margin totals visible without treating them as missing data", async () => {
+    vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
+      shoeTypes: [
+        shoeType({
+          tipObuceId: 1,
+          tipObuceNaziv: "Patike",
+          ukupanPromet: 120000,
+          marginContribution: 0,
+          sharePct: 100,
+        }),
+      ],
+      totals: {
+        ukupanPromet: 120000,
+        ukupanMarzniDoprinos: 0,
+        prePromet: 90000,
+        poslePromet: 30000,
+        brojTipovaObuce: 1,
+        snapshotCostCoveragePct: 0,
+        isSnapshotActive: false,
+      },
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/Izmereni ukupan maržni doprinos je 0 RSD/i)).toBeInTheDocument();
+    expect(screen.queryByText("Nema podataka za poređenja.")).not.toBeInTheDocument();
+
+    const table = await screen.findByTestId("shoe-type-sales-stats-data-table");
+    const patikeRow = within(table).getByText("Patike").closest("tr");
+    expect(patikeRow).not.toBeNull();
+    within(patikeRow!).getByRole("button", { name: "Detalji" }).click();
+    const marginShareLabel = await screen.findByText("Udeo u maržnom doprinosu");
+    const detailArticle = marginShareLabel.closest("article");
+    expect(detailArticle).not.toBeNull();
+    expect(within(detailArticle!).getByText("0,00%")).toBeInTheDocument();
+  });
+
   it("empty is not error when shoe type sales returns no rows", async () => {
     vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
       shoeTypes: [],
