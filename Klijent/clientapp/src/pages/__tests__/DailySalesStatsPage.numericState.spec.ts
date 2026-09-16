@@ -226,6 +226,47 @@ describe("Daily Sales numeric evidence states", () => {
     expect(duplicateOrder.suppliersTo80Pct).toBeNull();
   });
 
+  it("preserves partial shift sums without presenting incomplete period shares as complete", () => {
+    const rows = [
+      row({ totalItemsSold: 10, firstShiftTotalItems: 4, secondShiftTotalItems: 6 }),
+      row({ totalItemsSold: 8, firstShiftTotalItems: 3, secondShiftTotalItems: null }),
+    ];
+    const summary = summarizePeriod(response({ dateRows: rows }));
+
+    expect(summary.firstShiftItems).toBe(7);
+    expect(summary.secondShiftItems).toBe(6);
+    expect(summary.firstShiftSharePct).toBeNull();
+    expect(summary.secondShiftSharePct).toBeNull();
+  });
+
+  it("treats both-null and both-zero sold days as missing shift evidence", () => {
+    const bothNull = summarizePeriod(response({
+      dateRows: [row({ totalItemsSold: 12, firstShiftTotalItems: null, secondShiftTotalItems: null })],
+    }));
+    const bothZero = summarizePeriod(response({
+      dateRows: [row({ totalItemsSold: 12, firstShiftTotalItems: 0, secondShiftTotalItems: 0 })],
+    }));
+
+    expect(bothNull.firstShiftSharePct).toBeNull();
+    expect(bothZero.firstShiftSharePct).toBeNull();
+    expect(bothNull.secondShiftItems).toBeNull();
+    expect(bothZero.secondShiftItems).toBeNull();
+  });
+
+  it("keeps complete shift shares when every sold day has both measured shifts", () => {
+    const summary = summarizePeriod(response({
+      dateRows: [
+        row({ totalItemsSold: 10, firstShiftTotalItems: 4, secondShiftTotalItems: 6 }),
+        row({ totalItemsSold: 8, firstShiftTotalItems: 2, secondShiftTotalItems: 6 }),
+      ],
+    }));
+
+    expect(summary.firstShiftItems).toBe(6);
+    expect(summary.secondShiftItems).toBe(12);
+    expect(summary.firstShiftSharePct).toBeCloseTo(33.333333, 4);
+    expect(summary.secondShiftSharePct).toBeCloseTo(66.666667, 4);
+  });
+
   it("does not turn partial metadata into trusted zero values", () => {
     const partial = response({
       metadata: {

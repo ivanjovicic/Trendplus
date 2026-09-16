@@ -4,6 +4,12 @@ Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-16: `RQ290` was explicitly promoted from `WAITING` to `READY` by user request because the RQ queue had no current READY prompt after `RQ289` completion; it is the single current RQ prompt for Daily shift partial state.
+
+Owner claim 2026-09-16: `RQ290` transitioned `READY -> IN_PROGRESS` in this workspace for Daily shift partial and whole-day aggregate semantics.
+
+Owner completion 2026-09-16: `RQ290` was delivered on `main` with `dailyShiftSummary.ts` truth-table classification, partial period shift sums, unavailable share percentages when evidence is incomplete, visible partial-shift quality signals, and focused regression tests.
+
 Owner promotion 2026-09-16: `RQ286` was explicitly promoted from `WAITING` to `READY` by user request after `RQ285` completion on `main`; it was claimed in this workspace for Color pre/post detail parity.
 
 Owner completion 2026-09-16: `RQ286` was delivered on `main` with per-field Color pre/post detail availability independent of impact-percent availability, export/snapshot column parity, and a follow-up hardening pass that generalized `categoryPrePostDetailMetrics.ts` and applied the same detail gate fix to Shoe Type.
@@ -433,7 +439,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ287 | DONE | color-status-identity | Preserve review/do-not-trust meaning on the Color surface |
 | RQ288 | DONE | color-percent-count-fallbacks | Prevent invalid coverage and unknown color counts from looking measured |
 | RQ289 | DONE | daily-supplier-order | Use authoritative supplier ordering for concentration calculations |
-| RQ290 | WAITING | daily-shift-partial-state | Distinguish partial shift summaries from measured zero/whole-day totals |
+| RQ290 | DONE | daily-shift-partial-state | Distinguish partial shift summaries from measured zero/whole-day totals |
 | RQ291 | WAITING | pre-post-test-contract | Resolve quality metadata contract drift and the missing detail route fixture |
 | RQ292 | WAITING | pre-post-toolbar-unknowns | Keep missing toolbar metadata unknown instead of zero/OK |
 | RQ293 | WAITING | pre-post-detail-identity | Prevent pre/post detail route collisions for unnamed suppliers |
@@ -14425,7 +14431,7 @@ Commit suggestion: `fix(analytics): honor Daily supplier ordering metadata`
 - Main commit SHA: `803accc7`
 - Main verification: passed - `origin/main` at `803accc7`
 - Missed: none known
-- Follow-up: `RQ290` is next WAITING for Daily shift partial state
+- Follow-up: `RQ290` is DONE; `RQ291` is next WAITING for Pre/Post quality contract drift
 - Residual risk: deployed-browser visual check not run in this workspace
 - Prompt defect / scope repair: none
 
@@ -14476,13 +14482,31 @@ Reproduction: provide suppliers in order B,A with `topSuppliersOrder` A,B and di
 
 ## RQ290 - Preserve partial shift and whole-day aggregate semantics in Daily Sales
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/analytics-contract/tests
 Feature family: daily-shift-partial-state
 Parallel-safe: no
 Owner: Analytics Frontend / Daily Sales
 Commit suggestion: `fix(analytics): distinguish Daily shift partial evidence`
+
+### Completion note
+
+- Date: 2026-09-16
+- Status: DONE
+- Completion: Daily shift evidence now classifies each sold day as complete, partial, missing or unavailable through `dailyShiftSummary.ts`. Partial sums keep available shift totals visible while period and weekday share percentages stay unavailable when any day lacks complete shift evidence. Row display, chart projection and quality signals distinguish measured zero from unknown shift values.
+- Changed files: `dailyShiftSummary.ts`, `DailySalesStatsPage.tsx`, related specs, queue/evidence
+- Checks run: focused daily shift summary + Daily Sales specs 35 passed
+- Checks not run: full frontend suite, deployed-browser check
+- Run log: `.ai/runs/2026-09-16-RQ290-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main via `cursor/rq290-daily-shift-partial-state-c753`
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: none known
+- Follow-up: `RQ291` is next WAITING for Pre/Post quality contract drift
+- Residual risk: deployed-browser visual check not run in this workspace
+- Prompt defect / scope repair: none
 
 ### Problem
 
