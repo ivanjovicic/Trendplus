@@ -6,7 +6,7 @@ Current READY prompt: none
 
 Owner promotion 2026-09-16: `RQ286` was explicitly promoted from `WAITING` to `READY` by user request after `RQ285` completion on `main`; it was claimed in this workspace for Color pre/post detail parity.
 
-Owner completion 2026-09-16: `RQ286` was delivered on `main` with per-field Color pre/post detail availability independent of impact-percent availability.
+Owner completion 2026-09-16: `RQ286` was delivered on `main` with per-field Color pre/post detail availability independent of impact-percent availability, export/snapshot column parity, and a follow-up hardening pass that generalized `categoryPrePostDetailMetrics.ts` and applied the same detail gate fix to Shoe Type.
 
 Owner promotion 2026-09-16: `RQ285` was explicitly promoted from `WAITING` to `READY` after `RQ284` completion on `main`; it was claimed in this workspace for shoe-type percent range validation.
 
@@ -14196,9 +14196,9 @@ Commit suggestion: `fix(analytics): preserve color pre-post detail metrics`
 
 - Date: 2026-09-16
 - Status: DONE
-- Completion: Color detail now evaluates pre/post revenue and quantity availability per field via `colorPrePostDetailMetrics.ts`; missing `prePostNivelacijaRevenueImpactPct` no longer hides valid raw observations while impact remains independently unavailable through `describeNivelacijaImpactMetric`.
-- Changed files: `colorPrePostDetailMetrics.ts`, `ColorSalesStatsPage.tsx`, related specs, queue/roadmap/evidence
-- Checks run: focused Color utility/page specs 33 passed
+- Completion: Color detail now evaluates pre/post revenue and quantity availability per field via `categoryPrePostDetailMetrics.ts`; missing `prePostNivelacijaRevenueImpactPct` no longer hides valid raw observations while impact remains independently unavailable through `describeNivelacijaImpactMetric`. Export/detail snapshot columns now include the same formatted raw pre/post fields.
+- Changed files: `categoryPrePostDetailMetrics.ts`, `ColorSalesStatsPage.tsx`, `ShoeTypeSalesStatsPage.tsx` (parity), related specs, queue/roadmap/evidence
+- Checks run: focused category/color/shoe-type specs 60 passed
 - Checks not run: full frontend suite, deployed-browser check
 - Run log: `.ai/runs/2026-09-16-RQ286-evidence.md`
 - Evidence state: synchronized
