@@ -14665,8 +14665,8 @@ Commit suggestion: `fix(analytics): preserve pre-post toolbar metadata availabil
 - Run log: `.ai/runs/2026-09-16-RQ292-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main via `cursor/rq292-pre-post-toolbar-unknowns-c753`
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `06402b0a`
+- Main verification: passed - `origin/main` at `06402b0a`
 - Missed: none known
 - Follow-up: `RQ293` is next WAITING for Pre/Post detail identity
 - Residual risk: deployed-browser export toolbar rendering not exercised in this workspace
