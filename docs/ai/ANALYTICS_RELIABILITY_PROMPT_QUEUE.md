@@ -14420,10 +14420,10 @@ Commit suggestion: `fix(analytics): honor Daily supplier ordering metadata`
 - Checks run: focused daily supplier order + Daily Sales specs 33 passed
 - Checks not run: full frontend suite, deployed-browser check
 - Run log: `.ai/runs/2026-09-16-RQ289-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main via `cursor/rq289-daily-supplier-order-c753`
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `803accc7`
+- Main verification: passed - `origin/main` at `803accc7`
 - Missed: none known
 - Follow-up: `RQ290` is next WAITING for Daily shift partial state
 - Residual risk: deployed-browser visual check not run in this workspace
