@@ -39,6 +39,17 @@ import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "../utils/chartTo
 import { fmtPct, fmtRsd, fmtRsdShort, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
 import { getAnalyticsDataFreshnessStatus } from "../utils/analyticsResponseMeta";
 import { resolveAuthoritativeTopSuppliers } from "../utils/dailySupplierOrder";
+import {
+  hasMissingShiftSummary,
+  hasPartialShiftSummary,
+  periodHasIncompleteShiftEvidence,
+  resolveShiftChartValue,
+  resolveShiftDisplayValue,
+  resolveShiftExportValue,
+  summarizeShiftItems,
+  sumShiftColumn,
+  toDailyShiftEvidenceState,
+} from "../utils/dailyShiftSummary";
 import "./DailySalesStatsPage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
@@ -157,10 +168,7 @@ type AnomalyPoint = {
 
 export type DailyShiftEvidenceState = "complete" | "partial" | "unavailable";
 
-type ShiftAggregate = {
-  value: number | null;
-  state: DailyShiftEvidenceState;
-};
+export { toDailyShiftEvidenceState as getDailyShiftEvidenceState };
 
 const DEFAULT_TOP_N = 15;
 const BLANK_SUPPLIER_COLUMN_COUNT = 15;
@@ -316,50 +324,12 @@ function sum(values: DailySalesNumeric[]): number | null {
   return normalized.reduce((acc, value) => acc + value, 0);
 }
 
-export function getDailyShiftEvidenceState(row: DailySalesRow): DailyShiftEvidenceState {
-  const firstShift = finiteOrNull(row.firstShiftTotalItems);
-  const secondShift = finiteOrNull(row.secondShiftTotalItems);
-
-  if (firstShift == null && secondShift == null) return "unavailable";
-  if (firstShift == null || secondShift == null) return "partial";
-
-  const totalItems = finiteOrNull(row.totalItemsSold);
-  if (totalItems != null && totalItems > 0 && firstShift === 0 && secondShift === 0) {
-    return "unavailable";
-  }
-
-  return "complete";
-}
-
-function hasMissingShiftSummary(row: DailySalesRow): boolean {
-  return getDailyShiftEvidenceState(row) !== "complete";
-}
-
-function summarizeShiftItems(rows: DailySalesRow[], shift: "first" | "second"): ShiftAggregate {
-  if (rows.length === 0) return { value: null, state: "unavailable" };
-
-  const usableRows = rows.filter((row) => getDailyShiftEvidenceState(row) !== "unavailable");
-  const value = sum(usableRows.map((row) => (
-    shift === "first" ? row.firstShiftTotalItems : row.secondShiftTotalItems
-  )));
-
-  if (value == null) return { value: null, state: "unavailable" };
-  if (usableRows.length !== rows.length || rows.some((row) => getDailyShiftEvidenceState(row) !== "complete")) {
-    return { value, state: "partial" };
-  }
-
-  return { value, state: "complete" };
-}
-
 function shiftExportValue(row: DailySalesRow, shift: "first" | "second"): string | number | null {
-  if (getDailyShiftEvidenceState(row) === "unavailable") return SHIFT_PLACEHOLDER;
-  return finiteOrNull(shift === "first" ? row.firstShiftTotalItems : row.secondShiftTotalItems) ?? "N/A";
+  return resolveShiftExportValue(row, shift, SHIFT_PLACEHOLDER);
 }
 
 function shiftDisplayValue(row: DailySalesRow, shift: "first" | "second"): string {
-  if (getDailyShiftEvidenceState(row) === "unavailable") return "N/A";
-  const value = shift === "first" ? row.firstShiftTotalItems : row.secondShiftTotalItems;
-  return fmtNumber(value);
+  return resolveShiftDisplayValue(row, shift, fmtNumber);
 }
 
 function shiftSummaryText(value: number | null, state: DailyShiftEvidenceState): string {
@@ -778,6 +748,14 @@ export default function DailySalesStatsPage() {
     () => timeSeriesRows.filter((row) => hasMissingShiftSummary(row)).length,
     [timeSeriesRows]
   );
+
+  const partialShiftCount = useMemo(
+    () => timeSeriesRows.filter((row) => hasPartialShiftSummary(row)).length,
+    [timeSeriesRows]
+  );
+
+  const incompleteShiftCount = missingShiftCount + partialShiftCount;
+
   const incompleteDailyAggregateCount = useMemo(
     () => timeSeriesRows.filter((row) => (
       finiteOrNull(row.totalRevenue) == null || finiteOrNull(row.totalItemsSold) == null
@@ -869,10 +847,10 @@ export default function DailySalesStatsPage() {
     { key: "unknownSupplierPct", label: "Udeo nepoznatih dobavljača %", value: data?.metadata.unknownSupplierPct ?? null },
     { key: "firstShiftHeader", label: "Prva smena", value: FIRST_SHIFT_LABEL },
     { key: "secondShiftHeader", label: "Druga smena", value: SECOND_SHIFT_LABEL },
-    { key: "shiftEvidence", label: "Smenska evidencija", value: missingShiftCount > 0 ? `Nepotpuna (${missingShiftCount} dana)` : "Potpuna" },
+    { key: "shiftEvidence", label: "Smenska evidencija", value: incompleteShiftCount > 0 ? `Nepotpuna (${incompleteShiftCount} dana)` : "Potpuna" },
     { key: "incompleteDailyAggregates", label: "Nepotpuni dnevni zbirovi", value: incompleteDailyAggregateCount },
     { key: "warnings", label: "Upozorenja", value: data?.metadata.warnings?.join(" | ") ?? "" },
-  ], [data?.metadata.totalDays, data?.metadata.unknownSupplierPct, data?.metadata.warnings, data?.requestedFrom, data?.requestedTo, incompleteDailyAggregateCount, missingShiftCount]);
+  ], [data?.metadata.totalDays, data?.metadata.unknownSupplierPct, data?.metadata.warnings, data?.requestedFrom, data?.requestedTo, incompleteDailyAggregateCount, incompleteShiftCount]);
 
 
   const chronologicalTrendData = useMemo<TrendPoint[]>(() => (
@@ -905,10 +883,10 @@ export default function DailySalesStatsPage() {
       date: row.date,
       label: fmtDateShort(row.date),
       fullLabel: fmtDate(row.date),
-      firstShiftTotalItems: finiteOrNull(row.firstShiftTotalItems),
-      secondShiftTotalItems: finiteOrNull(row.secondShiftTotalItems),
+      firstShiftTotalItems: resolveShiftChartValue(row, "first"),
+      secondShiftTotalItems: resolveShiftChartValue(row, "second"),
       totalItemsSold: finiteOrNull(row.totalItemsSold),
-      shiftEvidenceState: getDailyShiftEvidenceState(row),
+      shiftEvidenceState: toDailyShiftEvidenceState(row),
     }))
   ), [sortedRows]);
 
@@ -918,38 +896,47 @@ export default function DailySalesStatsPage() {
   );
 
   const weekdayData = useMemo<WeekdayPoint[]>(() => {
-    const buckets = new Map<number, { revenue: number | null; items: number | null; firstShift: number | null; secondShift: number | null; dayCount: number }>();
+    const buckets = new Map<number, {
+      revenue: number | null;
+      items: number | null;
+      rows: DailySalesRow[];
+      dayCount: number;
+    }>();
 
     timeSeriesRows.forEach((row) => {
       const parsed = parseDateOnly(row.date);
       if (!parsed) return;
       const weekday = parsed.getUTCDay();
-      const current = buckets.get(weekday) ?? { revenue: 0, items: 0, firstShift: 0, secondShift: 0, dayCount: 0 };
+      const current = buckets.get(weekday) ?? { revenue: 0, items: 0, rows: [], dayCount: 0 };
       current.revenue = current.revenue == null || finiteOrNull(row.totalRevenue) == null
         ? null
         : current.revenue + (row.totalRevenue as number);
       current.items = current.items == null || finiteOrNull(row.totalItemsSold) == null
         ? null
         : current.items + (row.totalItemsSold as number);
-      current.firstShift = current.firstShift == null || finiteOrNull(row.firstShiftTotalItems) == null
-        ? null
-        : current.firstShift + (row.firstShiftTotalItems as number);
-      current.secondShift = current.secondShift == null || finiteOrNull(row.secondShiftTotalItems) == null
-        ? null
-        : current.secondShift + (row.secondShiftTotalItems as number);
+      current.rows.push(row);
       current.dayCount += 1;
       buckets.set(weekday, current);
     });
 
     return WEEKDAY_ORDER.map(({ key, label }) => {
-      const bucket = buckets.get(key) ?? { revenue: 0, items: 0, firstShift: 0, secondShift: 0, dayCount: 0 };
-      const shiftItems = sum([bucket.firstShift, bucket.secondShift]);
+      const bucket = buckets.get(key) ?? { revenue: 0, items: 0, rows: [], dayCount: 0 };
+      const firstShiftAggregate = sumShiftColumn(bucket.rows, "firstShiftTotalItems");
+      const secondShiftAggregate = sumShiftColumn(bucket.rows, "secondShiftTotalItems");
+      const incompleteShiftEvidence = periodHasIncompleteShiftEvidence(bucket.rows)
+        || firstShiftAggregate.isPartial
+        || secondShiftAggregate.isPartial;
+      const shiftItems = firstShiftAggregate.sum != null && secondShiftAggregate.sum != null
+        ? firstShiftAggregate.sum + secondShiftAggregate.sum
+        : null;
       return {
         weekday: key,
         dayName: label,
         avgRevenue: safeDivide(bucket.revenue, bucket.dayCount),
         avgItems: safeDivide(bucket.items, bucket.dayCount),
-        firstShiftSharePct: percent(safeDivide(bucket.firstShift, shiftItems)),
+        firstShiftSharePct: incompleteShiftEvidence
+          ? null
+          : percent(safeDivide(firstShiftAggregate.sum, shiftItems)),
         dayCount: bucket.dayCount,
       };
     });
@@ -1105,9 +1092,16 @@ export default function DailySalesStatsPage() {
     {
       key: "missingShift",
       label: "Dani sa nepotpunom satnicom",
-      value: fmtNumber(missingShiftCount),
-      tone: missingShiftCount > 0 ? "warning" : "good",
+      value: fmtNumber(incompleteShiftCount),
+      tone: incompleteShiftCount > 0 ? "warning" : "good",
       description: "Nedostaje makar jedna smena ili je promet bez pouzdanog razdvajanja po smenama.",
+    },
+    {
+      key: "partialShift",
+      label: "Dani sa delimičnom satnicom",
+      value: fmtNumber(partialShiftCount),
+      tone: partialShiftCount > 0 ? "warning" : "good",
+      description: "Izmerena je samo jedna smena ili je druga nepoznata.",
     },
     {
       key: "incompleteDailyAggregate",
@@ -1162,8 +1156,10 @@ export default function DailySalesStatsPage() {
     data?.metadata.uniqueSuppliersInRange,
     data?.metadata.unknownSupplierPct,
     incompleteDailyAggregateCount,
+    incompleteShiftCount,
     mismatchCount,
     missingShiftCount,
+    partialShiftCount,
     supplierConcentration.warning,
   ]);
 
@@ -1226,10 +1222,10 @@ export default function DailySalesStatsPage() {
       });
     }
 
-    if ((data?.metadata.unknownSupplierPct != null && data.metadata.unknownSupplierPct >= 5) || mismatchCount > 0 || missingShiftCount > 0 || incompleteDailyAggregateCount > 0) {
+    if ((data?.metadata.unknownSupplierPct != null && data.metadata.unknownSupplierPct >= 5) || mismatchCount > 0 || incompleteShiftCount > 0 || incompleteDailyAggregateCount > 0) {
       insights.push({
         title: "Upozorenje: podaci zahtevaju pažnju",
-        detail: `Udeo nepoznatih dobavljača je ${fmtPct(data?.metadata.unknownSupplierPct, 1, "nije dostupan")}, mismatch dana ${fmtNumber(mismatchCount)}, nepotpuna satnica ${fmtNumber(missingShiftCount)}, nepotpuni dnevni zbirovi ${fmtNumber(incompleteDailyAggregateCount)}.`,
+        detail: `Udeo nepoznatih dobavljača je ${fmtPct(data?.metadata.unknownSupplierPct, 1, "nije dostupan")}, mismatch dana ${fmtNumber(mismatchCount)}, nepotpuna satnica ${fmtNumber(incompleteShiftCount)} (delimična ${fmtNumber(partialShiftCount)}), nepotpuni dnevni zbirovi ${fmtNumber(incompleteDailyAggregateCount)}.`,
         tone: "warning",
       });
     }
@@ -1280,8 +1276,10 @@ export default function DailySalesStatsPage() {
     data?.metadata.receiptAmountMismatchCount,
     data?.metadata.unknownSupplierPct,
     incompleteDailyAggregateCount,
+    incompleteShiftCount,
     mismatchCount,
     missingShiftCount,
+    partialShiftCount,
     previousRange.fromDate,
     previousRange.toDate,
     supplierConcentration.top3QtySharePct,

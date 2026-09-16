@@ -277,6 +277,21 @@ describe("Daily Sales numeric evidence states", () => {
     expect(duplicateOrder.suppliersTo80Pct).toBeNull();
   });
 
+  it("preserves partial shift sums without presenting incomplete period shares as complete", () => {
+    const rows = [
+      row({ totalItemsSold: 10, firstShiftTotalItems: 4, secondShiftTotalItems: 6 }),
+      row({ totalItemsSold: 8, firstShiftTotalItems: 3, secondShiftTotalItems: null }),
+    ];
+    const summary = summarizePeriod(response({ dateRows: rows }));
+
+    expect(summary.firstShiftItems).toBe(7);
+    expect(summary.secondShiftItems).toBe(6);
+    expect(summary.firstShiftEvidenceState).toBe("partial");
+    expect(summary.secondShiftEvidenceState).toBe("partial");
+    expect(summary.firstShiftSharePct).toBeNull();
+    expect(summary.secondShiftSharePct).toBeNull();
+  });
+
   it("does not turn partial metadata into trusted zero values", () => {
     const partial = response({
       metadata: {
