@@ -2,7 +2,9 @@
 
 Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ283
+Current READY prompt: none
+
+Owner completion 2026-09-16: `RQ283` was delivered on `main` as `2eaa2ff0cf6528afa5bfebbfaf71bb9d0269df48` with finite-margin validation, percentage-share comparison only for a positive denominator, and a visibly warned RSD contribution chart for measured zero/negative totals. The RQ queue returned to no current READY prompt.
 
 Owner promotion 2026-09-16: `RQ283` was explicitly promoted from `WAITING` to `READY` by user request because the RQ queue had no current READY prompt after `RQ282` completion. It is the single current RQ prompt for Shoe Type valid zero/negative margin comparison visibility.
 
@@ -410,7 +412,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ280 | DONE | supplier-previous-period-warning | Distinguish missing previous-period data from a failed request |
 | RQ281 | DONE | supplier-embedded-freshness-provenance | Preserve valid refresh timestamps in embedded supplier trust metadata |
 | RQ282 | DONE | supplier-null-id-identity | Prevent vendor-key collisions when supplier IDs are absent |
-| RQ283 | IN_PROGRESS | shoe-type-negative-margin-signal | Keep valid zero/negative margin comparison visible |
+| RQ283 | DONE | shoe-type-negative-margin-signal | Keep valid zero/negative margin comparison visible |
 | RQ284 | WAITING | shoe-type-status-identity | Preserve backend recommendation status when actionability is gated |
 | RQ285 | WAITING | shoe-type-percent-range | Fail closed on invalid coverage/share percentages |
 | RQ286 | WAITING | color-pre-post-detail-parity | Do not hide valid raw pre/post metrics behind one missing impact percent |
@@ -13945,13 +13947,33 @@ Reproduction: return two supplier rows with null IDs and equal names, then equal
 
 ## RQ283 - Keep valid zero and negative Shoe Type margin signals visible
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: frontend/analytics-visualization/tests
 Feature family: shoe-type-negative-margin-signal
 Parallel-safe: no
 Owner: Analytics Frontend / Shoe Type Sales
 Commit suggestion: `fix(analytics): preserve negative shoe-type margin signal`
+
+### Completion note
+
+- Date: 2026-09-16
+- Status: DONE
+- Completion: Positive total margin retains the percentage-share chart. Measured zero or negative total margin now renders finite per-type RSD contributions with a visible warning instead of hiding valid loss/zero evidence; missing or non-finite total/row evidence remains unavailable.
+- Changed files: `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.css`, `Klijent/clientapp/src/pages/__tests__/ShoeTypeSalesStatsPage.premium.spec.tsx`, `MASTER_ROADMAP.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `.ai/runs/2026-09-16-RQ283-evidence.md`
+- Contract/runtime behavior changed: yes - frontend presentation only; backend margin, recommendation, detail and export contracts are unchanged.
+- Checks run: focused Shoe Type specs (23 passed); `npm run check:analytics-guardrails`; `npm run build`; `git diff --check`; all agent-instruction, prompt-queue and planning-architecture self-tests/validators passed after the same-owner historical delivery-evidence repair.
+- Checks not run: full frontend suite and live-browser/Recharts rendering were not run because this is a one-page finite-state presentation change with focused component coverage and a production build.
+- Run log: `.ai/runs/2026-09-16-RQ283-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `2eaa2ff0cf6528afa5bfebbfaf71bb9d0269df48`
+- Main verification: passed - fresh `git fetch origin main` confirmed local `main` and `origin/main` at `2eaa2ff0cf6528afa5bfebbfaf71bb9d0269df48`; `git merge-base --is-ancestor HEAD origin/main` returned 0.
+- Missed: none beyond explicitly skipped full-suite and live-browser checks.
+- Follow-up: `RQ284` remains WAITING and requires explicit owner promotion.
+- Residual risk: real-browser chart axis/tooltip layout for a negative RSD range was not manually inspected.
+- Next: keep RQ current READY `none` until a user/owner promotes one safe follow-up.
+- Prompt defect / scope repair: repaired missing delivery-evidence fields in already-DONE `RQ277`-`RQ282` completion notes after the canonical queue validator flagged them; each verified implementation SHA is already an ancestor of `origin/main`.
 
 ### Problem
 
