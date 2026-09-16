@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildShoeTypeComparisonData,
+  buildShoeTypeMarginComparisonProjection,
   formatShoeTypeMarginContributionShare,
   resolveShoeTypeMarginContributionSharePct,
 } from "../shoeTypeMarginComparison";
@@ -50,5 +51,63 @@ describe("shoeTypeMarginComparison", () => {
     expect(formatShoeTypeMarginContributionShare(0, 0, formatPct)).toBe("0.00%");
     expect(formatShoeTypeMarginContributionShare(100, 0, formatPct)).toBe("Nije dostupno");
     expect(formatShoeTypeMarginContributionShare(-600, -1000, formatPct)).toBe("60.00%");
+  });
+
+  it("projects share-mode chart data when total margin is positive", () => {
+    expect(buildShoeTypeMarginComparisonProjection(rows, 1000)).toEqual({
+      mode: "share",
+      data: [
+        {
+          name: "Patike",
+          udeoPrometa: 60,
+          udeoMarznogDoprinosa: -60,
+          marginContributionRsd: -600,
+        },
+        {
+          name: "Čizme",
+          udeoPrometa: 40,
+          udeoMarznogDoprinosa: -40,
+          marginContributionRsd: -400,
+        },
+      ],
+    });
+  });
+
+  it("projects value-mode chart data when total margin is zero or negative", () => {
+    expect(buildShoeTypeMarginComparisonProjection(rows, 0)).toEqual({
+      mode: "value",
+      data: [
+        {
+          name: "Patike",
+          udeoPrometa: 60,
+          udeoMarznogDoprinosa: null,
+          marginContributionRsd: -600,
+        },
+        {
+          name: "Čizme",
+          udeoPrometa: 40,
+          udeoMarznogDoprinosa: null,
+          marginContributionRsd: -400,
+        },
+      ],
+    });
+  });
+
+  it("fails closed on invalid share percentages in chart projection", () => {
+    const invalidShareRows = [
+      {
+        tipObuceNaziv: "Patike",
+        ukupanPromet: 120000,
+        marginContribution: 600,
+        sharePct: 150,
+      },
+    ];
+
+    expect(buildShoeTypeMarginComparisonProjection(invalidShareRows, 1000, (value) => (
+      typeof value === "number" && value >= 0 && value <= 100
+    ))).toEqual({
+      mode: "unavailable",
+      data: [],
+    });
   });
 });

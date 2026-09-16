@@ -6,7 +6,7 @@ Current READY prompt: none
 
 Owner promotion 2026-09-16: `RQ285` was explicitly promoted from `WAITING` to `READY` after `RQ284` completion on `main`; it was claimed in this workspace for shoe-type percent range validation.
 
-Owner completion 2026-09-16: `RQ285` was delivered on `main` with fail-closed shoe-type share/coverage percent validation and consolidated utility extraction on top of the existing RQ283/RQ284 page contract.
+Owner completion 2026-09-16: `RQ285` was delivered on `main` with fail-closed shoe-type share/coverage percent validation, consolidated utility extraction on top of the existing RQ283/RQ284 page contract, and a follow-up hardening pass that moved margin comparison chart projection into `shoeTypeMarginComparison.ts`.
 
 Owner completion 2026-09-16: `RQ283` was delivered on `main` as `2eaa2ff0cf6528afa5bfebbfaf71bb9d0269df48` with finite-margin validation, percentage-share comparison only for a positive denominator, and a visibly warned RSD contribution chart for measured zero/negative totals.
 
@@ -18,7 +18,7 @@ Owner completion 2026-09-16: `RQ284` was delivered on `main` as `bce8d4394dc9e71
 
 Owner promotion 2026-09-16: `RQ283` was explicitly promoted from `WAITING` to `READY` by user request because the RQ queue had no current READY prompt after `RQ282` completion. It is the single current RQ prompt for Shoe Type valid zero/negative margin comparison visibility.
 
-Owner claim 2026-09-16: `RQ283` transitioned `READY -> IN_PROGRESS` in this workspace; local lock `.ai/task-locks/RQ283-codex.lock.md` is active.
+Owner claim 2026-09-16: `RQ283` transitioned `READY -> IN_PROGRESS` in this workspace; local lock `.ai/task-locks/RQ283-codex.lock.md` was removed before delivery.
 
 Owner promotion 2026-09-15: `RQ282` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ281` completion; it is the single current RQ prompt for supplier null-ID identity and was claimed in this workspace.
 
@@ -14119,9 +14119,9 @@ Commit suggestion: `fix(analytics): fail closed on invalid shoe-type percentages
 
 - Date: 2026-09-16
 - Status: DONE
-- Completion: Shoe Type share/coverage/split percentages now fail closed unless finite and within 0-100; derived revenue/quantity shares recompute from compatible numerators while preserving the existing RQ283 margin value-chart and RQ284 gated-status contract from `main`.
+- Completion: Shoe Type share/coverage/split percentages now fail closed unless finite and within 0-100; derived revenue/quantity shares recompute from compatible numerators while preserving the existing RQ283 margin value-chart and RQ284 gated-status contract from `main`. Margin comparison chart projection is owned by `buildShoeTypeMarginComparisonProjection` in `shoeTypeMarginComparison.ts`.
 - Changed files: `shoeTypePercentRange.ts`, `shoeTypeStatusIdentity.ts`, `shoeTypeMarginComparison.ts`, `ShoeTypeSalesStatsPage.tsx`, related specs
-- Checks run: focused shoe-type utility/page specs 66 passed
+- Checks run: focused shoe-type utility/page specs 69 passed
 - Checks not run: full frontend suite, deployed-browser check
 - Run log: `.ai/runs/2026-09-16-RQ285-evidence.md`
 - Evidence state: synchronized

@@ -56,7 +56,10 @@ import {
   type RecommendationQualityStatus,
 } from "../utils/canonicalRecommendationSemantics";
 import { qualityTierIcon, qualityTierClass, tierNeedsWarning, buildCoverageTooltip, buildRecommendationCaveat, buildMarginDetailNote, buildSnapshotBadgeLabel, buildSnapshotTooltip } from "../utils/marginQuality";
-import { formatShoeTypeMarginContributionShare } from "../utils/shoeTypeMarginComparison";
+import {
+  buildShoeTypeMarginComparisonProjection,
+  formatShoeTypeMarginContributionShare,
+} from "../utils/shoeTypeMarginComparison";
 import {
   resolveShoeTypeComplementPercent,
   resolveShoeTypePercentValue,
@@ -561,42 +564,14 @@ export default function ShoeTypeSalesStatsPage() {
     return topRows;
   }, [sortedRows]);
 
-  const marginComparison = useMemo(() => {
-    if (typeof totalMarginContribution !== "number" || !Number.isFinite(totalMarginContribution)) {
-      return {
-        mode: "unavailable" as const,
-        data: [] as Array<{ name: string; udeoPrometa: number; udeoMarznogDoprinosa: number | null; marginContributionRsd: number }>,
-      };
-    }
-
-    const ranked = [...sortedRows]
-      .filter((row): row is typeof row & { sharePct: number } => (
-        resolveShoeTypePercentValue(row.sharePct) != null
-        && Number.isFinite(row.marginContribution)
-      ))
-      .sort((a, b) => b.ukupanPromet - a.ukupanPromet)
-      .slice(0, 8);
-
-    if (ranked.length === 0) {
-      return {
-        mode: "unavailable" as const,
-        data: [] as Array<{ name: string; udeoPrometa: number; udeoMarznogDoprinosa: number | null; marginContributionRsd: number }>,
-      };
-    }
-
-    const hasPositiveMarginDenominator = totalMarginContribution > 0;
-    return {
-      mode: hasPositiveMarginDenominator ? "share" as const : "value" as const,
-      data: ranked.map((row) => ({
-        name: row.tipObuceNaziv,
-        udeoPrometa: Number(row.sharePct.toFixed(1)),
-        udeoMarznogDoprinosa: hasPositiveMarginDenominator
-          ? Number(((row.marginContribution / totalMarginContribution) * 100).toFixed(1))
-          : null,
-        marginContributionRsd: Number(row.marginContribution.toFixed(2)),
-      })),
-    };
-  }, [sortedRows, totalMarginContribution]);
+  const marginComparison = useMemo(
+    () => buildShoeTypeMarginComparisonProjection(
+      sortedRows,
+      totalMarginContribution,
+      (sharePct) => resolveShoeTypePercentValue(sharePct) != null,
+    ),
+    [sortedRows, totalMarginContribution],
+  );
 
   const avgMarginPct = useMemo(() => {
     const validRows = decisionRows.filter((row) => Number.isFinite(row.marginPct));
