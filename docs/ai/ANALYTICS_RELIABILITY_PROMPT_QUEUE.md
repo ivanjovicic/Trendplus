@@ -4,6 +4,10 @@ Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-16: `RQ286` was explicitly promoted from `WAITING` to `READY` by user request after `RQ285` completion on `main`; it was claimed in this workspace for Color pre/post detail parity.
+
+Owner completion 2026-09-16: `RQ286` was delivered on `main` with per-field Color pre/post detail availability independent of impact-percent availability.
+
 Owner promotion 2026-09-16: `RQ285` was explicitly promoted from `WAITING` to `READY` after `RQ284` completion on `main`; it was claimed in this workspace for shoe-type percent range validation.
 
 Owner completion 2026-09-16: `RQ285` was delivered on `main` with fail-closed shoe-type share/coverage percent validation, consolidated utility extraction on top of the existing RQ283/RQ284 page contract, margin comparison chart projection in `shoeTypeMarginComparison.ts`, and a second pass that fail-closed the concentration `Ostali` bucket plus detail margin-share unavailable states.
@@ -425,7 +429,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ283 | DONE | shoe-type-negative-margin-signal | Keep valid zero/negative margin comparison visible |
 | RQ284 | DONE | shoe-type-status-identity | Preserve backend recommendation status when actionability is gated |
 | RQ285 | DONE | shoe-type-percent-range | Fail closed on invalid coverage/share percentages |
-| RQ286 | WAITING | color-pre-post-detail-parity | Do not hide valid raw pre/post metrics behind one missing impact percent |
+| RQ286 | DONE | color-pre-post-detail-parity | Do not hide valid raw pre/post metrics behind one missing impact percent |
 | RQ287 | WAITING | color-status-identity | Preserve review/do-not-trust meaning on the Color surface |
 | RQ288 | WAITING | color-percent-count-fallbacks | Prevent invalid coverage and unknown color counts from looking measured |
 | RQ289 | WAITING | daily-supplier-order | Use authoritative supplier ordering for concentration calculations |
@@ -14180,13 +14184,31 @@ Reproduction: return negative revenue, a numerator greater than its denominator,
 
 ## RQ286 - Keep valid Color pre/post metrics independent of impact-percent availability
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/analytics-detail/tests
 Feature family: color-pre-post-detail-parity
 Parallel-safe: no
 Owner: Analytics Frontend / Color Sales
 Commit suggestion: `fix(analytics): preserve color pre-post detail metrics`
+
+### Completion note
+
+- Date: 2026-09-16
+- Status: DONE
+- Completion: Color detail now evaluates pre/post revenue and quantity availability per field via `colorPrePostDetailMetrics.ts`; missing `prePostNivelacijaRevenueImpactPct` no longer hides valid raw observations while impact remains independently unavailable through `describeNivelacijaImpactMetric`.
+- Changed files: `colorPrePostDetailMetrics.ts`, `ColorSalesStatsPage.tsx`, related specs, queue/roadmap/evidence
+- Checks run: focused Color utility/page specs 33 passed
+- Checks not run: full frontend suite, deployed-browser check
+- Run log: `.ai/runs/2026-09-16-RQ286-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: branch PR `cursor/rq286-color-pre-post-detail-parity-c753`
+- Main commit SHA: pending merge
+- Main verification: pending merge
+- Missed: none known
+- Follow-up: `RQ287` is next WAITING for Color status identity
+- Residual risk: deployed-browser visual check not run in this workspace
+- Prompt defect / scope repair: none
 
 ### Problem
 

@@ -31,6 +31,10 @@ import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../se
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { getDataScope, type DataScope } from "../utils/dataScope";
 import { fmtNumber, fmtPct, fmtQty, fmtRsd, fmtSignedPct, formatDate, getPresetRange } from "../utils/analyticsFormatters";
+import {
+  formatColorPrePostQuantityMetric,
+  formatColorPrePostRevenueMetric,
+} from "../utils/colorPrePostDetailMetrics";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
 import { getAnalyticsDataFreshnessStatus } from "../utils/analyticsResponseMeta";
 import "./ColorSalesStatsPage.css";
@@ -1071,19 +1075,19 @@ export default function ColorSalesStatsPage() {
                 </article>
                 <article>
                   <span>Pre nivelacije promet</span>
-                  <strong>{selectedRow.prePostNivelacijaRevenueImpactPct != null ? fmtRsd(selectedRow.preNivelacijePromet) : "Nije dostupno"}</strong>
+                  <strong>{formatColorPrePostRevenueMetric(selectedRow.preNivelacijePromet)}</strong>
                 </article>
                 <article>
                   <span>Posle nivelacije promet</span>
-                  <strong>{selectedRow.prePostNivelacijaRevenueImpactPct != null ? fmtRsd(selectedRow.posleNivelacijePromet) : "Nije dostupno"}</strong>
+                  <strong>{formatColorPrePostRevenueMetric(selectedRow.posleNivelacijePromet)}</strong>
                 </article>
                 <article>
                   <span>Pre nivo kolicina</span>
-                  <strong>{selectedRow.prePostNivelacijaRevenueImpactPct != null ? fmtQty(selectedRow.preNivelacijeKolicina) : "Nije dostupno"}</strong>
+                  <strong>{formatColorPrePostQuantityMetric(selectedRow.preNivelacijeKolicina)}</strong>
                 </article>
                 <article>
                   <span>Posle nivo kolicina</span>
-                  <strong>{selectedRow.prePostNivelacijaRevenueImpactPct != null ? fmtQty(selectedRow.posleNivelacijeKolicina) : "Nije dostupno"}</strong>
+                  <strong>{formatColorPrePostQuantityMetric(selectedRow.posleNivelacijeKolicina)}</strong>
                 </article>
                 <article>
                   <span>Artikli sa nivelacijom</span>

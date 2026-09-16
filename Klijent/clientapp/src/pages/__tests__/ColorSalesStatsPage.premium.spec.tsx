@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -265,5 +265,81 @@ describe("ColorSalesStatsPage premium controls", () => {
     await waitFor(() => {
       expect(screen.getByText("Sveže")).toBeInTheDocument();
     });
+  });
+
+  it("keeps valid raw pre/post detail metrics visible when impact percent is unavailable", async () => {
+    vi.mocked(getColorSalesStats).mockResolvedValue(response({
+      colors: [
+        color({
+          boja: "Crna",
+          preNivelacijePromet: 90000,
+          posleNivelacijePromet: 30000,
+          preNivelacijeKolicina: 9,
+          posleNivelacijeKolicina: 3,
+          prePostNivelacijaRevenueImpactPct: null,
+          prePostNivelacijaUnitsImpactPct: null,
+          prePostNivelacijaRevenueCoveragePct: 75,
+        }),
+      ],
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/color-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/color-sales-stats" element={<ColorSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const table = await screen.findByTestId("analytics-data-table");
+    const row = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Crna"));
+    expect(row).toBeDefined();
+    fireEvent.click(within(row!).getByRole("button", { name: "Detalji" }));
+
+    const detailHeading = await screen.findByRole("heading", { name: "Detalj odluke: Crna" });
+    const detailPanel = detailHeading.closest("section");
+    expect(detailPanel).not.toBeNull();
+    expect(within(detailPanel!).getByText("Pre nivelacije promet").parentElement).toHaveTextContent(/90\.000/);
+    expect(within(detailPanel!).getByText("Posle nivelacije promet").parentElement).toHaveTextContent(/30\.000/);
+    expect(within(detailPanel!).getByText("Pre nivo kolicina").parentElement).toHaveTextContent(/9.*kom/);
+    expect(within(detailPanel!).getByText("Posle nivo kolicina").parentElement).toHaveTextContent(/3.*kom/);
+    expect(within(detailPanel!).getByText("Nivelacija impact prometa").parentElement).toHaveTextContent("N/A");
+  });
+
+  it("keeps raw pre/post detail metrics independently unavailable when individual evidence is missing", async () => {
+    vi.mocked(getColorSalesStats).mockResolvedValue(response({
+      colors: [
+        color({
+          boja: "Teget",
+          preNivelacijePromet: 50000,
+          posleNivelacijePromet: Number.NaN,
+          preNivelacijeKolicina: 5,
+          posleNivelacijeKolicina: Number.POSITIVE_INFINITY,
+          prePostNivelacijaRevenueImpactPct: -8,
+        }),
+      ],
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/color-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/color-sales-stats" element={<ColorSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const table = await screen.findByTestId("analytics-data-table");
+    const row = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Teget"));
+    expect(row).toBeDefined();
+    fireEvent.click(within(row!).getByRole("button", { name: "Detalji" }));
+
+    const detailHeading = await screen.findByRole("heading", { name: "Detalj odluke: Teget" });
+    const detailPanel = detailHeading.closest("section");
+    expect(detailPanel).not.toBeNull();
+    expect(within(detailPanel!).getByText("Pre nivelacije promet").parentElement).toHaveTextContent(/50\.000/);
+    expect(within(detailPanel!).getByText("Posle nivelacije promet").parentElement).toHaveTextContent("Nije dostupno");
+    expect(within(detailPanel!).getByText("Pre nivo kolicina").parentElement).toHaveTextContent(/5.*kom/);
+    expect(within(detailPanel!).getByText("Posle nivo kolicina").parentElement).toHaveTextContent("Nije dostupno");
+    expect(within(detailPanel!).getByText("Nivelacija impact prometa").parentElement).toHaveTextContent(/-8,00%/);
   });
 });

@@ -130,6 +130,7 @@ Owner promotion 2026-09-16: `RQ283` was explicitly promoted after completed `RQ2
 Owner completion 2026-09-16: `RQ283` was delivered on `main` with explicit finite/zero/negative Shoe Type margin comparison states; the RQ queue advanced to `RQ284`.
 Owner completion 2026-09-16: `RQ284` was delivered on `main` with preserved gated Shoe Type backend status identity and actionability cues; the RQ queue advanced to `RQ285`.
 Owner completion 2026-09-16: `RQ285` was delivered on `main` with fail-closed shoe-type share/coverage percent validation and consolidated margin/status utilities; the RQ queue has no current READY prompt.
+Owner completion 2026-09-16: `RQ286` was delivered with independent Color pre/post detail metric availability; the RQ queue has no current READY prompt.
 Owner completion 2026-09-10: `RQ225` was delivered on `main` with stable process-lifetime snapshot-cost option consumption; the RQ queue returned to no current READY prompt.
 Owner completion 2026-09-10: `RQ224` was delivered on `main` with fail-closed analytics DB connection resolution; the RQ queue returned to no current READY prompt.
 Owner completion 2026-09-10: `RQ223` was delivered on `main` as the fail-closed invalid-foreign-key default correction; the RQ queue returned to no current READY prompt.
