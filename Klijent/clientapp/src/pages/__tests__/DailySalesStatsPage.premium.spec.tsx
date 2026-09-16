@@ -489,6 +489,44 @@ describe("DailySalesStatsPage premium controls", () => {
     });
   });
 
+  it("marks a null-and-zero shift pair as incomplete without replacing the measured zero", async () => {
+    vi.mocked(getDailySalesStats).mockResolvedValue(
+      response({
+        dateRows: [{
+          ...response().dateRows[0],
+          firstShiftTotalItems: null,
+          secondShiftTotalItems: 0,
+          totalItemsSold: 18,
+        }],
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/daily-sales"]}>
+        <Routes>
+          <Route path="/analytics/daily-sales" element={<DailySalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const qualityToggle = await screen.findByRole("button", { name: /upozorenj/i });
+    expect(qualityToggle).toHaveTextContent(/upozorenj/i);
+    fireEvent.click(qualityToggle);
+
+    const qualityPanel = screen.getByRole("heading", { name: /^Kvalitet podataka/ }).closest("article");
+    expect(qualityPanel).not.toBeNull();
+    const incompleteShiftCard = within(qualityPanel as HTMLElement)
+      .getByText("Dani sa nepotpunom satnicom")
+      .closest("article");
+    expect(incompleteShiftCard).not.toBeNull();
+    expect(within(incompleteShiftCard as HTMLElement).getByText("1")).toBeInTheDocument();
+
+    const dayRow = screen.getByRole("cell", { name: "Nije dostupno" }).closest("tr");
+    expect(dayRow).not.toBeNull();
+    expect(within(dayRow as HTMLElement).getByText("Nije dostupno")).toBeInTheDocument();
+    expect(within(dayRow as HTMLElement).getByText("0")).toBeInTheDocument();
+  });
+
   it("does not reconcile contradictory supplier totals into trusted concentration shares", async () => {
     vi.mocked(getDailySalesStats).mockResolvedValue(
       response({

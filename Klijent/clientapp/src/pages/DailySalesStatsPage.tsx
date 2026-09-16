@@ -69,8 +69,11 @@ type PeriodSummary = {
   avgRevenuePerItem: number | null;
   firstShiftItems: number | null;
   secondShiftItems: number | null;
+  firstShiftEvidenceState: DailyShiftEvidenceState;
+  secondShiftEvidenceState: DailyShiftEvidenceState;
   firstShiftSharePct: number | null;
   secondShiftSharePct: number | null;
+  incompleteDailyAggregateDays: number;
   offShiftItems: number | null;
   offShiftRevenue: number | null;
   offShiftSharePct: number | null;
@@ -104,6 +107,7 @@ type ShiftMixPoint = {
   firstShiftTotalItems: number | null;
   secondShiftTotalItems: number | null;
   totalItemsSold: number | null;
+  shiftEvidenceState: DailyShiftEvidenceState;
 };
 
 type SupplierConcentrationPoint = {
@@ -149,6 +153,13 @@ type AnomalyPoint = {
   items: number | null;
   deviationPct: number | null;
   deviationValue: number | null;
+};
+
+export type DailyShiftEvidenceState = "complete" | "partial" | "unavailable";
+
+type ShiftAggregate = {
+  value: number | null;
+  state: DailyShiftEvidenceState;
 };
 
 const DEFAULT_TOP_N = 15;
@@ -305,22 +316,55 @@ function sum(values: DailySalesNumeric[]): number | null {
   return normalized.reduce((acc, value) => acc + value, 0);
 }
 
+export function getDailyShiftEvidenceState(row: DailySalesRow): DailyShiftEvidenceState {
+  const firstShift = finiteOrNull(row.firstShiftTotalItems);
+  const secondShift = finiteOrNull(row.secondShiftTotalItems);
+
+  if (firstShift == null && secondShift == null) return "unavailable";
+  if (firstShift == null || secondShift == null) return "partial";
+
+  const totalItems = finiteOrNull(row.totalItemsSold);
+  if (totalItems != null && totalItems > 0 && firstShift === 0 && secondShift === 0) {
+    return "unavailable";
+  }
+
+  return "complete";
+}
+
 function hasMissingShiftSummary(row: DailySalesRow): boolean {
-  return finiteOrNull(row.totalItemsSold) != null
-    && (row.totalItemsSold as number) > 0
-    && finiteOrNull(row.firstShiftTotalItems) === 0
-    && finiteOrNull(row.secondShiftTotalItems) === 0;
+  return getDailyShiftEvidenceState(row) !== "complete";
+}
+
+function summarizeShiftItems(rows: DailySalesRow[], shift: "first" | "second"): ShiftAggregate {
+  if (rows.length === 0) return { value: null, state: "unavailable" };
+
+  const usableRows = rows.filter((row) => getDailyShiftEvidenceState(row) !== "unavailable");
+  const value = sum(usableRows.map((row) => (
+    shift === "first" ? row.firstShiftTotalItems : row.secondShiftTotalItems
+  )));
+
+  if (value == null) return { value: null, state: "unavailable" };
+  if (usableRows.length !== rows.length || rows.some((row) => getDailyShiftEvidenceState(row) !== "complete")) {
+    return { value, state: "partial" };
+  }
+
+  return { value, state: "complete" };
 }
 
 function shiftExportValue(row: DailySalesRow, shift: "first" | "second"): string | number | null {
-  if (hasMissingShiftSummary(row)) return SHIFT_PLACEHOLDER;
-  return finiteOrNull(shift === "first" ? row.firstShiftTotalItems : row.secondShiftTotalItems);
+  if (getDailyShiftEvidenceState(row) === "unavailable") return SHIFT_PLACEHOLDER;
+  return finiteOrNull(shift === "first" ? row.firstShiftTotalItems : row.secondShiftTotalItems) ?? "N/A";
 }
 
 function shiftDisplayValue(row: DailySalesRow, shift: "first" | "second"): string {
-  if (hasMissingShiftSummary(row)) return "N/A";
+  if (getDailyShiftEvidenceState(row) === "unavailable") return "N/A";
   const value = shift === "first" ? row.firstShiftTotalItems : row.secondShiftTotalItems;
   return fmtNumber(value);
+}
+
+function shiftSummaryText(value: number | null, state: DailyShiftEvidenceState): string {
+  const label = fmtNumber(value);
+  return state === "partial" ? `${label} (delimično evidentirano)` : label;
 }
 
 export function safeDivide(value: DailySalesNumeric, total: DailySalesNumeric): number | null {
@@ -522,11 +566,16 @@ export function summarizePeriod(response: DailySalesTableResponse | null): Perio
   const totalVisibleItems = sum(rows.map((row) => row.totalItemsSold));
   const totalItemsInRange = finiteOrNull(response?.metadata.totalItemsInRange) ?? totalVisibleItems;
   const totalDays = finiteOrNull(response?.metadata.totalDays) ?? (rows.length > 0 ? rows.length : null);
-  const firstShiftItems = sum(rows.map((row) => row.firstShiftTotalItems));
-  const secondShiftItems = sum(rows.map((row) => row.secondShiftTotalItems));
-  const shiftAccountedItems = sum([firstShiftItems, secondShiftItems]);
+  const firstShift = summarizeShiftItems(rows, "first");
+  const secondShift = summarizeShiftItems(rows, "second");
+  const shiftAccountedItems = firstShift.state === "complete" && secondShift.state === "complete"
+    ? sum([firstShift.value, secondShift.value])
+    : null;
   const offShiftItems = finiteOrNull(response?.metadata.offShiftItems);
   const offShiftRevenue = finiteOrNull(response?.metadata.offShiftRevenue);
+  const incompleteDailyAggregateDays = rows.filter((row) => (
+    finiteOrNull(row.totalRevenue) == null || finiteOrNull(row.totalItemsSold) == null
+  )).length;
 
   return {
     totalRevenue,
@@ -536,10 +585,13 @@ export function summarizePeriod(response: DailySalesTableResponse | null): Perio
     avgRevenuePerDay: safeDivide(totalRevenue, totalDays),
     avgItemsPerDay: safeDivide(totalVisibleItems, totalDays),
     avgRevenuePerItem: safeDivide(totalRevenue, totalVisibleItems),
-    firstShiftItems,
-    secondShiftItems,
-    firstShiftSharePct: percent(safeDivide(firstShiftItems, shiftAccountedItems)),
-    secondShiftSharePct: percent(safeDivide(secondShiftItems, shiftAccountedItems)),
+    firstShiftItems: firstShift.value,
+    secondShiftItems: secondShift.value,
+    firstShiftEvidenceState: firstShift.state,
+    secondShiftEvidenceState: secondShift.state,
+    firstShiftSharePct: percent(safeDivide(firstShift.value, shiftAccountedItems)),
+    secondShiftSharePct: percent(safeDivide(secondShift.value, shiftAccountedItems)),
+    incompleteDailyAggregateDays,
     offShiftItems,
     offShiftRevenue,
     offShiftSharePct: percent(safeDivide(offShiftItems, totalItemsInRange)),
@@ -726,6 +778,12 @@ export default function DailySalesStatsPage() {
     () => timeSeriesRows.filter((row) => hasMissingShiftSummary(row)).length,
     [timeSeriesRows]
   );
+  const incompleteDailyAggregateCount = useMemo(
+    () => timeSeriesRows.filter((row) => (
+      finiteOrNull(row.totalRevenue) == null || finiteOrNull(row.totalItemsSold) == null
+    )).length,
+    [timeSeriesRows],
+  );
 
   const currentSummary = useMemo(() => summarizePeriod(data), [data]);
   const previousSummary = useMemo(() => summarizePeriod(previousData), [previousData]);
@@ -772,8 +830,8 @@ export default function DailySalesStatsPage() {
   const toolbarColumns = useMemo<AnalyticsTableColumn<DailySalesRow>[]>(() => {
     const baseColumns: AnalyticsTableColumn<DailySalesRow>[] = [
       { key: "date", header: "Datum", dataType: "date", getValue: (row) => row.date },
-      { key: "firstShiftTotalItems", header: "Prva smena: __________", dataType: "number", getValue: () => "" },
-      { key: "secondShiftTotalItems", header: "Druga smena: __________", dataType: "number", getValue: () => "" },
+      { key: "firstShiftTotalItems", header: "Prva smena", dataType: "number", getValue: (row) => shiftExportValue(row, "first") },
+      { key: "secondShiftTotalItems", header: "Druga smena", dataType: "number", getValue: (row) => shiftExportValue(row, "second") },
       { key: "totalRevenue", header: "Ukupan prihod", dataType: "currency" },
     ];
 
@@ -811,8 +869,10 @@ export default function DailySalesStatsPage() {
     { key: "unknownSupplierPct", label: "Udeo nepoznatih dobavljača %", value: data?.metadata.unknownSupplierPct ?? null },
     { key: "firstShiftHeader", label: "Prva smena", value: FIRST_SHIFT_LABEL },
     { key: "secondShiftHeader", label: "Druga smena", value: SECOND_SHIFT_LABEL },
-      { key: "warnings", label: "Upozorenja", value: data?.metadata.warnings?.join(" | ") ?? "" },
-  ], [data?.metadata.totalDays, data?.metadata.unknownSupplierPct, data?.metadata.warnings, data?.requestedFrom, data?.requestedTo]);
+    { key: "shiftEvidence", label: "Smenska evidencija", value: missingShiftCount > 0 ? `Nepotpuna (${missingShiftCount} dana)` : "Potpuna" },
+    { key: "incompleteDailyAggregates", label: "Nepotpuni dnevni zbirovi", value: incompleteDailyAggregateCount },
+    { key: "warnings", label: "Upozorenja", value: data?.metadata.warnings?.join(" | ") ?? "" },
+  ], [data?.metadata.totalDays, data?.metadata.unknownSupplierPct, data?.metadata.warnings, data?.requestedFrom, data?.requestedTo, incompleteDailyAggregateCount, missingShiftCount]);
 
 
   const chronologicalTrendData = useMemo<TrendPoint[]>(() => (
@@ -848,6 +908,7 @@ export default function DailySalesStatsPage() {
       firstShiftTotalItems: finiteOrNull(row.firstShiftTotalItems),
       secondShiftTotalItems: finiteOrNull(row.secondShiftTotalItems),
       totalItemsSold: finiteOrNull(row.totalItemsSold),
+      shiftEvidenceState: getDailyShiftEvidenceState(row),
     }))
   ), [sortedRows]);
 
@@ -1043,10 +1104,17 @@ export default function DailySalesStatsPage() {
     },
     {
       key: "missingShift",
-      label: "Dani bez satnice",
+      label: "Dani sa nepotpunom satnicom",
       value: fmtNumber(missingShiftCount),
       tone: missingShiftCount > 0 ? "warning" : "good",
-      description: "Dani sa prometom bez pouzdanog razdvajanja po smenama.",
+      description: "Nedostaje makar jedna smena ili je promet bez pouzdanog razdvajanja po smenama.",
+    },
+    {
+      key: "incompleteDailyAggregate",
+      label: "Dani sa nepotpunim zbirima",
+      value: fmtNumber(incompleteDailyAggregateCount),
+      tone: incompleteDailyAggregateCount > 0 ? "warning" : "good",
+      description: "Prihod ili ukupan broj komada nedostaje; zbirni KPI ne koriste nepotpune dane kao merene totale.",
     },
     {
       key: "duplicateReceipts",
@@ -1093,6 +1161,7 @@ export default function DailySalesStatsPage() {
     data?.metadata.receiptAmountMismatchCount,
     data?.metadata.uniqueSuppliersInRange,
     data?.metadata.unknownSupplierPct,
+    incompleteDailyAggregateCount,
     mismatchCount,
     missingShiftCount,
     supplierConcentration.warning,
@@ -1157,10 +1226,10 @@ export default function DailySalesStatsPage() {
       });
     }
 
-    if ((data?.metadata.unknownSupplierPct != null && data.metadata.unknownSupplierPct >= 5) || mismatchCount > 0 || missingShiftCount > 0) {
+    if ((data?.metadata.unknownSupplierPct != null && data.metadata.unknownSupplierPct >= 5) || mismatchCount > 0 || missingShiftCount > 0 || incompleteDailyAggregateCount > 0) {
       insights.push({
         title: "Upozorenje: podaci zahtevaju pažnju",
-        detail: `Udeo nepoznatih dobavljača je ${fmtPct(data?.metadata.unknownSupplierPct, 1, "nije dostupan")}, mismatch dana ${fmtNumber(mismatchCount)}, dana bez satnice ${fmtNumber(missingShiftCount)}.`,
+        detail: `Udeo nepoznatih dobavljača je ${fmtPct(data?.metadata.unknownSupplierPct, 1, "nije dostupan")}, mismatch dana ${fmtNumber(mismatchCount)}, nepotpuna satnica ${fmtNumber(missingShiftCount)}, nepotpuni dnevni zbirovi ${fmtNumber(incompleteDailyAggregateCount)}.`,
         tone: "warning",
       });
     }
@@ -1210,6 +1279,7 @@ export default function DailySalesStatsPage() {
     data?.metadata.offShiftRevenue,
     data?.metadata.receiptAmountMismatchCount,
     data?.metadata.unknownSupplierPct,
+    incompleteDailyAggregateCount,
     mismatchCount,
     missingShiftCount,
     previousRange.fromDate,
@@ -1588,12 +1658,12 @@ export default function DailySalesStatsPage() {
             <article>
               <span>Prva smena <InfoTip text="Udeo komada prodatih u prvoj smeni (06:00–13:59) u odnosu na ukupne smenske komade (prva + druga). Dani bez razdvajanja po smenama nisu ukljuceni u ovaj procenat." /></span>
               <strong>{fmtPct(currentSummary.firstShiftSharePct, 1)}</strong>
-              <small>{fmtNumber(currentSummary.firstShiftItems)} komada</small>
+              <small>{shiftSummaryText(currentSummary.firstShiftItems, currentSummary.firstShiftEvidenceState)} komada</small>
             </article>
             <article>
               <span>Druga smena <InfoTip text="Udeo komada prodatih u drugoj smeni (14:00–21:59) u odnosu na ukupne smenske komade. Komplementarno sa Prvom smenom." /></span>
               <strong>{fmtPct(currentSummary.secondShiftSharePct, 1)}</strong>
-              <small>{fmtNumber(currentSummary.secondShiftItems)} komada</small>
+              <small>{shiftSummaryText(currentSummary.secondShiftItems, currentSummary.secondShiftEvidenceState)} komada</small>
             </article>
             <article>
               <span>Udeo top 3 dob. <InfoTip text="Procenat komada koje nose tri dobavljaca sa najvecim prometom u opsegu. Formula: (top 3 dobavljaci) / ukupni komadi × 100. Visoka vrednost = visoka zavisnost od malog broja dobavljaca." /></span>
@@ -1769,7 +1839,7 @@ export default function DailySalesStatsPage() {
                 <div>
                   <h2 className="with-tip">
                     <span>Kvalitet podataka</span>
-                    <InfoTip text="Signali koji utiču na pouzdanost odluka u ovom periodu. Nepoznati dobavljač: prodaja bez mapiranog dobavljača. Dani nepodudaranja: zbir po dobavljačima ne odgovara dnevnom totalu. Dani bez satnice: nema pouzdanog smenskog razdvajanja. Dupli/neusklađeni računi: neregularnosti u kasi. Visoke vrednosti na bilo kom signalu = zadržite oprez pri interpretaciji trendova." />
+                    <InfoTip text="Signali koji utiču na pouzdanost odluka u ovom periodu. Nepoznati dobavljač: prodaja bez mapiranog dobavljača. Dani nepodudaranja: zbir po dobavljačima ne odgovara dnevnom totalu. Nepotpuna satnica: nedostaje smena ili nema pouzdanog razdvajanja. Nepotpuni zbir: prihod ili ukupan broj komada nije dostupan. Dupli/neusklađeni računi: neregularnosti u kasi. Visoke vrednosti na bilo kom signalu = zadržite oprez pri interpretaciji trendova." />
                   </h2>
                   <p>Dijagnosticki sloj — bitno samo ako planirate dublje analize pouzdanosti.</p>
                 </div>
@@ -1861,7 +1931,13 @@ export default function DailySalesStatsPage() {
                     <Tooltip
                       contentStyle={CHART_TOOLTIP_STYLE}
                       labelStyle={CHART_TOOLTIP_LABEL_STYLE}
-                      labelFormatter={(_, payload) => payload?.[0]?.payload?.fullLabel ?? ""}
+                      labelFormatter={(_, payload) => {
+                        const point = payload?.[0]?.payload as ShiftMixPoint | undefined;
+                        if (!point) return "";
+                        return point.shiftEvidenceState === "complete"
+                          ? point.fullLabel
+                          : `${point.fullLabel} — nepotpuna smenska evidencija`;
+                      }}
                       formatter={(value: number | string | undefined, name: string | undefined) => {
                         const numericValue = finiteOrNull(typeof value === "number" ? value : value == null ? null : Number(value));
                         return [fmtNumber(numericValue), name ?? ""];
@@ -1884,7 +1960,7 @@ export default function DailySalesStatsPage() {
                   <strong>{fmtPct(currentSummary.secondShiftSharePct, 1)}</strong>
                 </div>
                 <div>
-                  <span>Dani bez satnice</span>
+                  <span>Dani sa nepotpunom satnicom</span>
                   <strong>{fmtNumber(missingShiftCount)}</strong>
                 </div>
               </div>

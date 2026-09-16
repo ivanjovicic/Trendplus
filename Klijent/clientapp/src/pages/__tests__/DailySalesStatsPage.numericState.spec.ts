@@ -125,6 +125,57 @@ describe("Daily Sales numeric evidence states", () => {
     expect(summary.avgRevenuePerItem).toBeNull();
   });
 
+  it("keeps a valid zero shift visible while marking the partial shift pair unavailable for shares", () => {
+    const summary = summarizePeriod(response({
+      dateRows: [row({
+        firstShiftTotalItems: null,
+        secondShiftTotalItems: 0,
+        totalItemsSold: 8,
+      })],
+    }));
+
+    expect(summary.firstShiftItems).toBeNull();
+    expect(summary.firstShiftEvidenceState).toBe("unavailable");
+    expect(summary.secondShiftItems).toBe(0);
+    expect(summary.secondShiftEvidenceState).toBe("partial");
+    expect(summary.firstShiftSharePct).toBeNull();
+    expect(summary.secondShiftSharePct).toBeNull();
+  });
+
+  it("keeps two measured zero shifts complete while unknown or non-finite shift values remain incomplete", () => {
+    const measuredZero = summarizePeriod(response({
+      dateRows: [row({ firstShiftTotalItems: 0, secondShiftTotalItems: 0, totalItemsSold: 0 })],
+    }));
+    const unknown = summarizePeriod(response({
+      dateRows: [row({ firstShiftTotalItems: null, secondShiftTotalItems: null, totalItemsSold: 0 })],
+    }));
+    const nonFinite = summarizePeriod(response({
+      dateRows: [row({ firstShiftTotalItems: Number.NaN, secondShiftTotalItems: 3, totalItemsSold: 3 })],
+    }));
+
+    expect(measuredZero.firstShiftEvidenceState).toBe("complete");
+    expect(measuredZero.secondShiftEvidenceState).toBe("complete");
+    expect(measuredZero.firstShiftItems).toBe(0);
+    expect(measuredZero.secondShiftItems).toBe(0);
+    expect(unknown.firstShiftEvidenceState).toBe("unavailable");
+    expect(unknown.secondShiftEvidenceState).toBe("unavailable");
+    expect(nonFinite.firstShiftEvidenceState).toBe("unavailable");
+    expect(nonFinite.secondShiftEvidenceState).toBe("partial");
+  });
+
+  it("labels a whole-day aggregate as incomplete instead of treating its missing row metric as zero", () => {
+    const summary = summarizePeriod(response({
+      dateRows: [
+        row({ totalRevenue: 100, totalItemsSold: 5 }),
+        row({ date: "2026-07-02", totalRevenue: null, totalItemsSold: 0 }),
+      ],
+    }));
+
+    expect(summary.totalRevenue).toBeNull();
+    expect(summary.totalVisibleItems).toBe(5);
+    expect(summary.incompleteDailyAggregateDays).toBe(1);
+  });
+
   it("does not convert a missing denominator into a ratio of zero", () => {
     const summary = summarizePeriod(response({
       dateRows: [row({ totalRevenue: 100, totalItemsSold: 0 })],
