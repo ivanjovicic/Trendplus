@@ -478,12 +478,13 @@ export default function PreNivelacijaPriorityPage() {
   const dataMeta = data?.meta ?? null;
   const dataMetaMessage = getAnalyticsMetaMessage(dataMeta);
   const showMetaWarning = !loading && !error && isAnalyticsMetaWarning(dataMeta);
-  const showEmptyState = !loading && !error && Boolean(data) && decisionRows.length === 0;
+  const showFilteredOutState = !loading && !error && Boolean(data) && decisionRows.length > 0 && filteredRows.length === 0;
+  const showEmptyState = !loading && !error && Boolean(data) && (decisionRows.length === 0 || showFilteredOutState);
   const showInsufficientEmptyState = shouldShowAnalyticsEmptyState(dataMeta, decisionRows.length) && isAnalyticsMetaInsufficient(dataMeta);
   const emptyStateVariant: "no_data" | "insufficient_data" | "filtered_out" =
     showInsufficientEmptyState
       ? "insufficient_data"
-      : focusFilter !== "all"
+      : showFilteredOutState
         ? "filtered_out"
         : "no_data";
   const emptyStateTitle =
@@ -789,7 +790,9 @@ export default function PreNivelacijaPriorityPage() {
           title={emptyStateTitle}
           message={emptyStateMessage}
           actions={[
-            { label: "Promenite filtere dobavljača, sezone ili tipa obuće." },
+            showFilteredOutState
+              ? { label: "Vrati prikaz svih prioriteta.", onClick: () => setFocusFilter("all") }
+              : { label: "Promenite filtere dobavljača, sezone ili tipa obuće." },
             { label: "Proverite kvalitet podataka.", href: "/analytics/data-quality" },
           ]}
           dataQualityHref="/analytics/data-quality"

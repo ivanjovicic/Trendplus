@@ -4,6 +4,10 @@ Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-17: under the user's explicit instruction to promote when no READY prompt exists, `RQ296` moved from WAITING to READY as the first safe P1 follow-up after RQ295 completion; it is the single current RQ prompt for Pre-Nivelacija filtered-empty presentation.
+
+Owner claim 2026-09-17: `RQ296` READY -> IN_PROGRESS by Codex. Local runtime lock: `.ai/task-locks/RQ296-codex.lock.md`.
+
 Owner promotion 2026-09-17: under the user's explicit instruction to promote when no READY prompt exists, `RQ295` moved from WAITING to READY as the first safe P1 follow-up after RQ294 completion; it is the single current RQ prompt for Pre-Nivelacija direct-fetch error copy.
 
 Owner claim 2026-09-17: `RQ295` READY -> IN_PROGRESS by Codex. Local runtime lock: `.ai/task-locks/RQ295-codex.lock.md`.
@@ -4259,7 +4263,7 @@ Analytics code references EF entities, raw SQL relations, views and startup repa
 
 ## RQ147 - Make KPI evidence, decision use and limitations backend-owned
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P0
 Type: backend/contract/frontend/export/report/tests
 Feature family: analytics-metric-evidence-registry

@@ -187,7 +187,12 @@ describe("PreNivelacijaPriorityPage", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: /Visok prioritet \(0\)/i }));
 
-    expect(await screen.findByText("Nema podataka za izabrane filtere.")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Nema rezultata za trenutne filtere." })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Vrati prikaz svih prioriteta." })).toBeInTheDocument();
+    expect(screen.queryByText("SKU-101")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Vrati prikaz svih prioriteta." }));
+    expect((await screen.findAllByText("SKU-101")).length).toBeGreaterThan(0);
   });
 
   it("renders shared control bar and data table chrome", async () => {
