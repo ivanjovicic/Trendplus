@@ -686,6 +686,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
   it("labels absolute-change share explicitly in detail and export snapshot", async () => {
     renderPage();
     await screen.findByText("Prioritetna lista dobavljača");
+    expect(screen.queryByRole("button", { name: /Kvalitet signala: Nepoznato/i })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
 
@@ -695,6 +696,8 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Otvori puni detalj" }));
     expect(await screen.findByText("Pre/Post detail route")).toBeInTheDocument();
 
+    expect(await screen.findByTestId("pre-post-detail-route")).toHaveTextContent("10");
+
     const snapshot = getAnalyticsDetailSnapshot("nivelacije-pre-post", "10");
     expect(snapshot).toEqual(expect.objectContaining({
       table: "nivelacije-pre-post",
@@ -703,6 +706,24 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     }));
     expect(snapshot?.fields.some((field) => field.key === "absoluteChangeSharePct" && field.label === "Udeo u apsolutnoj promeni %")).toBe(true);
     expect(snapshot?.metadata.some((meta) => meta.key === "absoluteChangeShareFormula" && meta.value.includes("apsolutnih promena"))).toBe(true);
+  });
+
+  it("matches the production detail path on direct navigation", () => {
+    renderPage(["/analitika/nivelacije-pre-post/10"]);
+
+    expect(screen.getByTestId("pre-post-detail-route")).toHaveTextContent("10");
+  });
+
+  it("opens the Pre/Post detail route and returns to the list", async () => {
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Otvori puni detalj" }));
+    expect(await screen.findByTestId("pre-post-detail-route")).toHaveTextContent("10");
+
+    fireEvent.click(screen.getByRole("button", { name: "Nazad na pre/post" }));
+    expect(await screen.findByText("Prioritetna lista dobavljača")).toBeInTheDocument();
   });
 
   it("does not reconstruct absolute-change share when the backend aggregate is unavailable", async () => {
@@ -890,6 +911,33 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
       expect.objectContaining({ key: "dataTrust", label: "Poverenje", value: "Nepoznato" }),
       expect.objectContaining({ key: "analyzedShare", label: "Analizirani redovi", value: "Nije dostupno" }),
       expect.objectContaining({ key: "duplicateRowsRemoved", label: "Duplikati događaja uklonjeni", value: "N/A" }),
+    ]));
+  });
+
+  it("keeps non-finite quality metadata unknown rather than healthy", async () => {
+    const validDataQuality = response().dataQuality!;
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
+      response({
+        dataQuality: {
+          ...validDataQuality,
+          analyzedSharePercent: Number.NaN,
+        },
+      }),
+    );
+
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+
+    expect(await screen.findByRole("button", { name: /Kvalitet signala: Nepoznato/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Kvalitet signala: Visoko poverenje/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Otvori puni detalj" }));
+    const snapshot = getAnalyticsDetailSnapshot("nivelacije-pre-post", "10");
+    expect(snapshot?.metadata).toEqual(expect.arrayContaining([
+      expect.objectContaining({ key: "dataTrust", label: "Poverenje", value: "Nepoznato" }),
+      expect.objectContaining({ key: "analyzedShare", label: "Analizirani redovi", value: "Nije dostupno" }),
+      expect.objectContaining({ key: "duplicateRowsRemoved", label: "Duplicati uklonjeni", value: "N/A" }),
     ]));
   });
 
