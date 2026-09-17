@@ -6,8 +6,8 @@ Date: 2026-09-16
 Agent/tool: cursor-cloud-agent
 Delivery target: main
 Working branch / PR: cursor/rq290-shift-partial-hardening-c753
-Main commit SHA: 4f82f929
-Main verification: passed - `origin/main` at `4f82f929`
+Main commit SHA: e37a134444d7951bdaeed02bec4480d024cec49f
+Main verification: passed - `origin/main` contains `e37a134444d7951bdaeed02bec4480d024cec49f`; `4f82f929` is the documentation synchronization commit.
 Evidence state: synchronized
 
 ## What was done
@@ -33,6 +33,18 @@ Evidence state: synchronized
 
 - full frontend suite
 - deployed-browser visual check
+
+## Documentation impact
+
+- The queue hardening note is synchronized to the runtime implementation SHA; the docs commit remains identified separately.
+
+## What was missed
+
+- The original hardening close did not run the full frontend suite or deployed-browser check.
+
+## Risks
+
+- The current frontend-wide typecheck was later repaired by the 2026-09-17 audit; live browser evidence remains outstanding.
 
 ## Next
 

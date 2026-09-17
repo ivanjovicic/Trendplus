@@ -4,11 +4,14 @@ Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner audit repair 2026-09-17: RQ291 was rechecked against its full acceptance. `a3e5ffdd07d1145405afde5e1bfef9f1c8a2953f` adds direct `/analitika/nivelacije-pre-post/:id`, detail click/back and non-finite quality metadata proof; it also closes the TypeScript narrowing failure left by the 2026-09-16 Shoe Type comparison hardening. `origin/main` contains this repair.
+
 Owner promotion 2026-09-16: `RQ293` was explicitly promoted from `WAITING` to `READY` by user request because the RQ queue had no current READY prompt after `RQ292` completion; it is the single current RQ prompt for Pre/Post detail identity.
 
 Owner claim 2026-09-16: `RQ293` transitioned `READY -> IN_PROGRESS` in this workspace for Pre/Post detail route and snapshot identity.
 
 Owner completion 2026-09-16: `RQ293` was delivered on `main` by reusing `supplierVendorIdentity` row keys for Pre/Post detail selection, collision-safe snapshot record IDs, article-driver matching and focused duplicate-name regression tests.
+Owner audit hardening 2026-09-17: `c61567f0809e746ff49b2453ec48017c335d8d10` added blank-name, duplicate-ID and special-character identity regressions plus whitespace-safe vendor labels; it remains same-owner RQ293 hardening and is covered by the direct audit run log.
 
 Owner promotion 2026-09-16: `RQ292` was explicitly promoted from `WAITING` to `READY` by user request because the RQ queue had no current READY prompt after `RQ291` completion; it is the single current RQ prompt for Pre/Post toolbar metadata unknowns.
 
@@ -21,6 +24,7 @@ Owner promotion 2026-09-16: `RQ291` was explicitly promoted from `WAITING` to `R
 Owner claim 2026-09-16: `RQ291` transitioned `READY -> IN_PROGRESS` in this workspace for Pre/Post test harness and missing-quality presentation contract.
 
 Owner completion 2026-09-16: `RQ291` was delivered on `main` with the production `/analitika/nivelacije-pre-post/:id` detail route in the focused test harness, explicit canonical unknown-copy assertions for missing quality snapshots, and detail-navigation smoke coverage.
+Owner audit synchronization 2026-09-17: RQ291 acceptance follow-up `a3e5ffdd07d1145405afde5e1bfef9f1c8a2953f` adds direct-route, back-navigation and non-finite quality fixtures; focused Pre/Post coverage is now 23 tests and `origin/main` contains the repair.
 
 Owner promotion 2026-09-16: under the user's explicit instruction to promote when no READY prompt exists, `RQ290` moved from WAITING to READY. `RQ154`, `RQ162`, `RQ208` and `RQ264` are DONE; the stale RQ pointer was repaired to reflect RQ285-RQ289 as DONE, and no release, tenant, authority or backend-contract gate applies to this page-local Daily Sales state work.
 
@@ -29,6 +33,7 @@ Owner claim 2026-09-16: `RQ290` READY -> IN_PROGRESS by Codex. Local runtime loc
 Owner completion 2026-09-16: `RQ290` was delivered on `main` as `5a05c8d1fcd08018d023125c46235e413b76f348`. Daily Sales now distinguishes complete, partial and unavailable shift evidence; valid zero remains visible, incomplete shift shares fail closed, and daily aggregate gaps are visibly warned. The local runtime lock was removed before the implementation commit.
 
 Owner follow-up 2026-09-16: supplemental hardening extracted `dailyShiftSummary.ts`, kept partial shift sums visible when only one column is unknown, split missing vs partial quality signals, and aligned weekday/chart projection with the same truth table.
+Owner audit synchronization 2026-09-17: the supplemental RQ290 runtime hardening is `e37a134444d7951bdaeed02bec4480d024cec49f`; `4f82f929` is its documentation synchronization commit, not the implementation SHA.
 
 Owner promotion 2026-09-16: `RQ286` was explicitly promoted from `WAITING` to `READY` by user request after `RQ285` completion on `main`; it was claimed in this workspace for Color pre/post detail parity.
 
@@ -14156,8 +14161,8 @@ Commit suggestion: `fix(analytics): fail closed on invalid shoe-type percentages
 - Run log: `.ai/runs/2026-09-16-RQ285-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: `6538d548`
-- Main verification: passed - `origin/main` at `6538d548` (second-pass concentration/detail hardening after `2bc61142`)
+- Main commit SHA: `6538d548d3ffc5c272a84bec2b17c2d6efa839b3`
+- Main verification: passed - `origin/main` contains `6538d548d3ffc5c272a84bec2b17c2d6efa839b3` (second-pass concentration/detail hardening after `2bc61142`)
 - Missed: none known
 - Follow-up: `RQ286` is next WAITING for color pre/post detail parity
 - Residual risk: deployed-browser visual check not run in this workspace
@@ -14229,8 +14234,8 @@ Commit suggestion: `fix(analytics): preserve color pre-post detail metrics`
 - Run log: `.ai/runs/2026-09-16-RQ286-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main via `cursor/rq286-color-pre-post-detail-parity-c753`
-- Main commit SHA: `74130866`
-- Main verification: passed - `origin/main` at `74130866` (hardening after `ccb2281a`)
+- Main commit SHA: `74130866c19762d403ca09b02823a0fa093cddc8`
+- Main verification: passed - `origin/main` contains `74130866c19762d403ca09b02823a0fa093cddc8` (hardening after `ccb2281a`)
 - Missed: none known
 - Follow-up: `RQ287` is next WAITING for Color status identity
 - Residual risk: deployed-browser visual check not run in this workspace
@@ -14302,8 +14307,8 @@ Commit suggestion: `fix(analytics): preserve color recommendation status semanti
 - Run log: `.ai/runs/2026-09-16-RQ287-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main via `cursor/rq287-color-status-identity-c753`
-- Main commit SHA: `cb692068`
-- Main verification: passed - `origin/main` at `cb692068`
+- Main commit SHA: `cb692068391752b219ed3e955f37f9d76187e591`
+- Main verification: passed - `origin/main` contains `cb692068391752b219ed3e955f37f9d76187e591`
 - Missed: none known
 - Follow-up: `RQ288` is next WAITING for Color percent/count fallbacks
 - Residual risk: deployed-browser visual check not run in this workspace
@@ -14375,8 +14380,8 @@ Commit suggestion: `fix(analytics): preserve color metric availability`
 - Run log: `.ai/runs/2026-09-16-RQ288-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main via `cursor/rq288-color-percent-count-fallbacks-c753`
-- Main commit SHA: `efb09007`
-- Main verification: passed - `origin/main` at `efb09007`
+- Main commit SHA: `efb0900712bac37035c848b1662473bce1fd5e21`
+- Main verification: passed - `origin/main` contains `efb0900712bac37035c848b1662473bce1fd5e21`
 - Missed: none known
 - Follow-up: `RQ289` is next WAITING for daily supplier ordering
 - Residual risk: deployed-browser visual check not run in this workspace
@@ -14448,8 +14453,8 @@ Commit suggestion: `fix(analytics): honor Daily supplier ordering metadata`
 - Run log: `.ai/runs/2026-09-16-RQ289-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main via `cursor/rq289-daily-supplier-order-c753`
-- Main commit SHA: `803accc7`
-- Main verification: passed - `origin/main` at `803accc7`
+- Main commit SHA: `803accc7cad9202ade8b94d64529970ab0d2f33b`
+- Main verification: passed - `origin/main` contains `803accc7cad9202ade8b94d64529970ab0d2f33b`
 - Missed: none known
 - Follow-up: `RQ290` is next WAITING for Daily shift partial state
 - Residual risk: deployed-browser visual check not run in this workspace
@@ -14595,8 +14600,8 @@ Commit suggestion: `test(analytics): align pre-post quality contract and route f
 - Run log: `.ai/runs/2026-09-16-RQ291-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main via `cursor/rq291-pre-post-test-contract-c753`
-- Main commit SHA: `f7ffdda2`
-- Main verification: passed - `origin/main` at `f7ffdda2`
+- Main commit SHA: `f7ffdda2ac8e8868a7bdd66bb3249edb39a2218e`
+- Main verification: passed - `origin/main` contains `f7ffdda2ac8e8868a7bdd66bb3249edb39a2218e`
 - Missed: none known
 - Follow-up: `RQ292` is next WAITING for Pre/Post toolbar unknowns
 - Residual risk: deployed-browser detail modal/back-navigation not exercised in this workspace
@@ -14671,8 +14676,8 @@ Commit suggestion: `fix(analytics): preserve pre-post toolbar metadata availabil
 - Run log: `.ai/runs/2026-09-16-RQ292-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main via `cursor/rq292-pre-post-toolbar-unknowns-c753`
-- Main commit SHA: `06402b0a`
-- Main verification: passed - `origin/main` at `06402b0a`
+- Main commit SHA: `06402b0a8d4be5fc3e7881777fabd126498fc734`
+- Main verification: passed - `origin/main` contains `06402b0a8d4be5fc3e7881777fabd126498fc734`
 - Missed: none known
 - Follow-up: `RQ293` is next WAITING for Pre/Post detail identity
 - Residual risk: deployed-browser export toolbar rendering not exercised in this workspace
@@ -14744,8 +14749,8 @@ Commit suggestion: `fix(analytics): preserve pre-post detail identity`
 - Run log: `.ai/runs/2026-09-16-RQ293-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main via `cursor/rq293-pre-post-detail-identity-c753`
-- Main commit SHA: `41dfdb91`
-- Main verification: passed - `origin/main` at `19f2aaaf`
+- Main commit SHA: `41dfdb9153ad6914f62133efa8da55aac1dd2fea`
+- Main verification: passed - historical `origin/main` verification at `19f2aaaf889c910a552c4a62be19c2548ecbfb12`; current `origin/main` contains `41dfdb9153ad6914f62133efa8da55aac1dd2fea`.
 - Missed: none known
 - Follow-up: `RQ294` is next WAITING for Pre-Nivelacija scope reload
 - Residual risk: deployed-browser detail modal not exercised in this workspace
