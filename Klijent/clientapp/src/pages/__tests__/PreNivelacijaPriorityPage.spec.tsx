@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -171,6 +171,7 @@ function makeResponse(candidates = [makeCandidate(), makeCandidate({
 describe("PreNivelacijaPriorityPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     getPreNivelacijaPrioritetiMock.mockResolvedValue(makeResponse());
   });
 
@@ -390,5 +391,73 @@ describe("PreNivelacijaPriorityPage", () => {
     expect(alert).toHaveTextContent("Pre-nivelacija API timeout");
     expect(document.querySelector(".pnp-decision-kpis")).toBeNull();
     expect(screen.queryByText("Nisko")).not.toBeInTheDocument();
+  });
+
+  it("uses a direct URL scope and normalizes an invalid scope to all", async () => {
+    const { unmount } = render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti?dataScope=imported"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByTestId("pre-nivelacija-prioriteti-data-table");
+    expect(getPreNivelacijaPrioritetiMock).toHaveBeenCalledWith(expect.objectContaining({ dataScope: "imported" }));
+
+    unmount();
+    getPreNivelacijaPrioritetiMock.mockClear();
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti?dataScope=unknown"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByTestId("pre-nivelacija-prioriteti-data-table");
+    expect(getPreNivelacijaPrioritetiMock).toHaveBeenCalledWith(expect.objectContaining({ dataScope: "all" }));
+  });
+
+  it("reloads exactly once when the global scope event changes the mounted page", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByTestId("pre-nivelacija-prioriteti-data-table");
+    expect(getPreNivelacijaPrioritetiMock).toHaveBeenCalledTimes(1);
+
+    localStorage.setItem("trendplus:dataScope", "imported");
+    window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+
+    await waitFor(() => expect(getPreNivelacijaPrioritetiMock).toHaveBeenCalledTimes(2));
+    expect(getPreNivelacijaPrioritetiMock).toHaveBeenLastCalledWith(expect.objectContaining({ dataScope: "imported" }));
+  });
+
+  it("does not let the old-scope response replace the newer scope rows", async () => {
+    let resolveAll: ((response: ReturnType<typeof makeResponse>) => void) | undefined;
+    let resolveImported: ((response: ReturnType<typeof makeResponse>) => void) | undefined;
+    getPreNivelacijaPrioritetiMock.mockImplementation(({ dataScope }: { dataScope?: string }) => {
+      if (dataScope === "imported") {
+        return new Promise((resolve) => { resolveImported = resolve; });
+      }
+      return new Promise((resolve) => { resolveAll = resolve; });
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(getPreNivelacijaPrioritetiMock).toHaveBeenCalledTimes(1));
+
+    localStorage.setItem("trendplus:dataScope", "imported");
+    window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+    await waitFor(() => expect(getPreNivelacijaPrioritetiMock).toHaveBeenCalledTimes(2));
+
+    resolveImported?.(makeResponse([makeCandidate({ artikalId: 901, sku: "SKU-IMPORTED" })]));
+    expect(await screen.findByText("SKU-IMPORTED")).toBeInTheDocument();
+
+    resolveAll?.(makeResponse([makeCandidate({ artikalId: 902, sku: "SKU-OLD-SCOPE" })]));
+    await waitFor(() => expect(screen.queryByText("SKU-OLD-SCOPE")).not.toBeInTheDocument());
   });
 });

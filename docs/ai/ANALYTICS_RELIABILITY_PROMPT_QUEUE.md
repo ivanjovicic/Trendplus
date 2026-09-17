@@ -2,7 +2,11 @@
 
 Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ294 (IN_PROGRESS)
+
+Owner promotion 2026-09-17: under the user's explicit instruction to promote when no READY prompt exists, `RQ294` moved from WAITING to READY as the first safe P1 follow-up after RQ293 completion; it is the single current RQ prompt for mounted Pre-Nivelacija scope-change reloads.
+
+Owner claim 2026-09-17: `RQ294` READY -> IN_PROGRESS by Codex. Local runtime lock: `.ai/task-locks/RQ294-codex.lock.md`.
 
 Owner audit repair 2026-09-17: RQ291 was rechecked against its full acceptance. `a3e5ffdd07d1145405afde5e1bfef9f1c8a2953f` adds direct `/analitika/nivelacije-pre-post/:id`, detail click/back and non-finite quality metadata proof; it also closes the TypeScript narrowing failure left by the 2026-09-16 Shoe Type comparison hardening. `origin/main` contains this repair.
 
@@ -14803,7 +14807,7 @@ Reproduction: return two vendors with null IDs and equal names, then blank names
 
 ## RQ294 - Reload Pre-Nivelacija priorities after a global data-scope change
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend/API-contract/tests
 Feature family: pre-nivelacija-scope-event-propagation

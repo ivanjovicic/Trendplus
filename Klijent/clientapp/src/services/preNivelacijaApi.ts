@@ -1,5 +1,6 @@
 import type { PreNivelacijaPriorityResponse } from "../types/preNivelacija";
 import { assertAnalyticsMetaSuccess } from "../utils/analyticsResponseMeta";
+import { normalizeDataScope } from "../utils/dataScope";
 
 import { makeUrl } from "./analyticsApi";
 
@@ -14,6 +15,7 @@ export interface PreNivelacijaQuery {
   marginFloor?: number;
   page?: number;
   pageSize?: number;
+  dataScope?: string | null;
 }
 
 export async function getPreNivelacijaPrioriteti(query: PreNivelacijaQuery): Promise<PreNivelacijaPriorityResponse> {
@@ -28,6 +30,9 @@ export async function getPreNivelacijaPrioriteti(query: PreNivelacijaQuery): Pro
   if (query.marginFloor != null) params.set("marginFloor", String(query.marginFloor));
   params.set("page", String(query.page ?? 1));
   params.set("pageSize", String(query.pageSize ?? 20));
+  if (query.dataScope != null && query.dataScope !== "") {
+    params.set("dataScope", normalizeDataScope(query.dataScope));
+  }
 
   const res = await fetch(makeUrl(`/api/analytics/pre-nivelacija-prioriteti`, params));
   if (!res.ok) {

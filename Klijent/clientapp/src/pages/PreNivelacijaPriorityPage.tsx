@@ -1,5 +1,5 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Bar,
   BarChart,
@@ -23,6 +23,7 @@ import type { PreNivelacijaPriorityResponse, PreNivelacijaRecommendation, PreNiv
 import { CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
 import { fmtPct, fmtRsd } from "../utils/analyticsFormatters";
 import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescriptions";
+import { getDataScope, normalizeDataScope, type DataScope } from "../utils/dataScope";
 import {
   getAnalyticsMetaMessage,
   isAnalyticsMetaInsufficient,
@@ -247,7 +248,9 @@ function getMarkdownSignalLimitMessage(row: DecisionCandidate): string {
 export default function PreNivelacijaPriorityPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const requestIdRef = useRef(0);
+  const queryDataScope = normalizeDataScope(searchParams.get("dataScope") ?? getDataScope());
 
   const [supplierId, setSupplierId] = useState<number | null>(null);
   const [seasonId, setSeasonId] = useState<number | null>(null);
@@ -270,8 +273,33 @@ export default function PreNivelacijaPriorityPage() {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expandedArtikalId, setExpandedArtikalId] = useState<number | null>(null);
   const [focusFilter, setFocusFilter] = useState<FocusFilter>("all");
+  const [dataScope, setDataScopeValue] = useState<DataScope>(() => queryDataScope);
+  const dataScopeRef = useRef<DataScope>(queryDataScope);
 
-  const load = useCallback(async (filters: ActiveFilters, nextPage: number) => {
+  useEffect(() => {
+    if (dataScopeRef.current === queryDataScope) return;
+    dataScopeRef.current = queryDataScope;
+    setDataScopeValue(queryDataScope);
+  }, [queryDataScope]);
+
+  useEffect(() => {
+    const handleScopeChange = () => {
+      const nextScope = normalizeDataScope(getDataScope());
+      dataScopeRef.current = nextScope;
+      setDataScopeValue(nextScope);
+      setSearchParams((current) => {
+        if (current.get("dataScope") === nextScope) return current;
+        const next = new URLSearchParams(current);
+        next.set("dataScope", nextScope);
+        return next;
+      }, { replace: true });
+    };
+
+    window.addEventListener("trendplus:data-scope-changed", handleScopeChange);
+    return () => window.removeEventListener("trendplus:data-scope-changed", handleScopeChange);
+  }, [setSearchParams]);
+
+  const load = useCallback(async (filters: ActiveFilters, nextPage: number, scope: DataScope) => {
     const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
@@ -285,6 +313,7 @@ export default function PreNivelacijaPriorityPage() {
         noSaleDaysMin: filters.noSaleDaysMin,
         page: nextPage,
         pageSize: 60,
+        dataScope: scope,
       });
 
       if (requestId !== requestIdRef.current) return;
@@ -302,8 +331,8 @@ export default function PreNivelacijaPriorityPage() {
   }, []);
 
   useEffect(() => {
-    void load(activeFilters, page);
-  }, [activeFilters, load, page]);
+    void load(activeFilters, page, dataScope);
+  }, [activeFilters, dataScope, load, page]);
 
   const supplierOptions = useMemo(
     () => (data?.supplierLeaderboard ?? []).filter((item) => item.supplierId != null),
@@ -508,9 +537,10 @@ export default function PreNivelacijaPriorityPage() {
       { key: "footwearTypeId", label: "Tip obuće", value: activeFilters.footwearTypeId ?? "" },
       { key: "minScore", label: "Min. skor", value: activeFilters.minScore },
       { key: "noSaleDaysMin", label: "Min. dana bez prodaje", value: activeFilters.noSaleDaysMin },
+      { key: "dataScope", label: "Opseg podataka", value: dataScope },
       { key: "page", label: "Strana", value: page },
     ],
-    [activeFilters.footwearTypeId, activeFilters.minScore, activeFilters.noSaleDaysMin, activeFilters.seasonId, activeFilters.supplierId, page]
+    [activeFilters.footwearTypeId, activeFilters.minScore, activeFilters.noSaleDaysMin, activeFilters.seasonId, activeFilters.supplierId, dataScope, page]
   );
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(
@@ -662,7 +692,7 @@ export default function PreNivelacijaPriorityPage() {
       })
     );
 
-    navigate(`/analitika/pre-nivelacija-prioriteti/${row.artikalId}`, {
+    navigate(`/analitika/pre-nivelacija-prioriteti/${row.artikalId}?dataScope=${encodeURIComponent(dataScope)}`, {
       state: { backgroundLocation: location },
     });
   };
@@ -675,7 +705,7 @@ export default function PreNivelacijaPriorityPage() {
         periodFrom={null}
         periodTo={null}
         lastRefreshAt={dataMeta?.lastRefreshAtUtc ?? null}
-        dataSource="Nivelacija analytics"
+        dataSource={`Nivelacija analytics (scope: ${dataScope})`}
         mode={data?.recommendationAllowed === true ? "recommendation" : "signal"}
         recommendationAllowed={data?.recommendationAllowed ?? null}
         dataQualityStatus={dataMeta?.dataQualityStatus ?? null}
@@ -730,7 +760,7 @@ export default function PreNivelacijaPriorityPage() {
         <AnalyticsErrorState
           title="Podaci trenutno nisu dostupni"
           message={error || "Ne prikazujemo nule dok nije potvrđen prazan rezultat."}
-          onRetry={() => void load(activeFilters, page)}
+          onRetry={() => void load(activeFilters, page, dataScope)}
           helpHref="/analytics/data-quality"
         />
       ) : null}
@@ -751,7 +781,7 @@ export default function PreNivelacijaPriorityPage() {
           dataQualityHref="/analytics/data-quality"
           refreshStatusHref="/admin/configuration?panel=workers"
           emptyReason={safeEmptyStateReason}
-          onRetry={() => void load(activeFilters, page)}
+          onRetry={() => void load(activeFilters, page, dataScope)}
         />
       ) : null}
       {loading ? <div className="pnp-decision-message loading">Učitavam prioritete pre-nivelacije...</div> : null}
