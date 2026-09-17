@@ -14889,7 +14889,7 @@ Reproduction: keep the page mounted, change header scope, and inspect request co
 
 ## RQ295 - Give Pre-Nivelacija direct-fetch failures safe non-empty copy
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: frontend/error-state/tests
 Feature family: pre-nivelacija-error-copy
@@ -14940,6 +14940,25 @@ Reproduction: mock a non-OK response with an empty body, JSON problem body, HTML
 ### Dependencies
 
 - `RQ253` owns shared safe error messaging; this prompt closes the direct-fetch caller boundary.
+
+### Completion note
+
+- Date: 2026-09-17
+- Status: DONE
+- Completion: Pre-Nivelacija direct fetch failures now map empty, network/timeout, JSON, HTML and technical response bodies to non-empty safe Serbian guidance; structured correlation IDs remain available to the error surface, retry remains intact and successful empty/partial states remain distinct.
+- Changed files: `Klijent/clientapp/src/services/preNivelacijaApi.ts`, `Klijent/clientapp/src/services/__tests__/preNivelacijaApi.scope.spec.ts`, `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`, `Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx`, `MASTER_ROADMAP.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `.ai/runs/2026-09-17-RQ295-evidence.md`
+- Contract/runtime behavior changed: direct fetch no longer interpolates raw response bodies; safe structured detail/correlation metadata is preserved while untrusted HTML/codes are suppressed.
+- Checks run: focused Vitest (17 passed), `npm run typecheck`, `npm run check:analytics-guardrails`, `npm run build`, `git diff --check`.
+- Checks not run: full frontend/backend suites, live API/database/browser smoke and remote CI.
+- Run log: `.ai/runs/2026-09-17-RQ295-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct push to main
+- Main commit SHA: `b851afa2`
+- Main verification: passed - `origin/main` contains implementation `b851afa2`.
+- Missed: no live proxy/backend payload or browser rendering proof.
+- Follow-up: RQ296 remains the next safe WAITING candidate for explicit promotion.
+- Residual risk: direct fetch does not gain the shared retrying HTTP transport in this bounded caller repair; failure copy is safe and retry remains user-triggered.
+- Next: no current READY prompt; return to the explicit promotion rule for RQ296.
 
 ---
 
