@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProdajaPrePostNivelacijePage from "./ProdajaPrePostNivelacijePage";
 import { getStores } from "../services/analyticsApi";
@@ -144,12 +144,21 @@ function response(overrides: Partial<VendorSalesNivelacijaResponse> = {}): Vendo
 }
 
 function PrePostDetailRouteStub() {
-  return <div>Pre/Post detail route</div>;
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+
+  return (
+    <section data-testid="pre-post-detail-route">
+      <p>Pre/Post detail route</p>
+      <span data-testid="pre-post-detail-id">{id}</span>
+      <button type="button" onClick={() => navigate(-1)}>Nazad na pre/post</button>
+    </section>
+  );
 }
 
-function renderPage() {
+function renderPage(initialEntries = ["/analitika/nivelacije-pre-post"]) {
   return render(
-    <MemoryRouter initialEntries={["/analitika/nivelacije-pre-post"]}>
+    <MemoryRouter initialEntries={initialEntries}>
       <Routes>
         <Route path="/analitika/nivelacije-pre-post" element={<ProdajaPrePostNivelacijePage />} />
         <Route path="/analitika/nivelacije-pre-post/:id" element={<PrePostDetailRouteStub />} />
@@ -429,6 +438,15 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
 
     expect(await screen.findByText("Pre/Post detail route")).toBeInTheDocument();
     expect(getAnalyticsDetailSnapshot("nivelacije-pre-post", "10")).not.toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Nazad na pre/post" }));
+    expect(await screen.findByText("Prioritetna lista dobavljača")).toBeInTheDocument();
+  });
+
+  it("matches the production detail path on direct navigation", () => {
+    renderPage(["/analitika/nivelacije-pre-post/10"]);
+
+    expect(screen.getByTestId("pre-post-detail-route")).toHaveTextContent("10");
   });
 
   it("labels absolute-change share explicitly in detail and export snapshot", async () => {
@@ -612,6 +630,33 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
 
     fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
     expect(screen.getByText("Kvalitet signala nije potvrđen jer snapshot kvaliteta nedostaje ili je delimičan.")).toBeInTheDocument();
+  });
+
+  it("keeps non-finite quality metadata unknown rather than healthy", async () => {
+    const validDataQuality = response().dataQuality!;
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
+      response({
+        dataQuality: {
+          ...validDataQuality,
+          analyzedSharePercent: Number.NaN,
+        },
+      }),
+    );
+
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+
+    expect(await screen.findByRole("button", { name: /Kvalitet signala: Nepoznato/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Kvalitet signala: Visoko poverenje/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Otvori puni detalj" }));
+    const snapshot = getAnalyticsDetailSnapshot("nivelacije-pre-post", "10");
+    expect(snapshot?.metadata).toEqual(expect.arrayContaining([
+      expect.objectContaining({ key: "dataTrust", label: "Poverenje", value: "Nepoznato" }),
+      expect.objectContaining({ key: "analyzedShare", label: "Analizirani redovi", value: "Nije dostupno" }),
+      expect.objectContaining({ key: "duplicateRowsRemoved", label: "Duplicati uklonjeni", value: "N/A" }),
+    ]));
   });
 
   it("does not render legacy zero placeholders when comparability evidence is missing", async () => {

@@ -24,7 +24,7 @@ type ShoeTypeMarginComparisonInputRow = {
 
 export function hasComparableShoeTypeMarginTotal(
   totalMarginContribution: number | null | undefined,
-): boolean {
+): totalMarginContribution is number {
   return typeof totalMarginContribution === "number" && Number.isFinite(totalMarginContribution);
 }
 
