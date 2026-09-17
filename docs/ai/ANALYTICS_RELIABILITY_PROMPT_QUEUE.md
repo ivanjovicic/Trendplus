@@ -14968,7 +14968,7 @@ Reproduction: mock a non-OK response with an empty body, JSON problem body, HTML
 
 ## RQ296 - Show the shared filtered-out state when Pre-Nivelacija focus removes all rows
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/UX/tests
 Feature family: pre-nivelacija-focus-empty-state
@@ -15018,6 +15018,25 @@ Reproduction: load several decision rows, choose a focus that matches none, and 
 ### Dependencies
 
 - `RQ260` owns shared empty-state safety and action semantics.
+
+### Completion note
+
+- Date: 2026-09-17
+- Status: DONE
+- Completion: Pre-Nivelacija now distinguishes a successful API-empty result from a populated result filtered to zero rows. The latter renders the shared `filtered_out` state with an executable focus-reset action, while API empty/error/partial semantics remain unchanged.
+- Changed files: `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`, `Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx`, `MASTER_ROADMAP.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `.ai/runs/2026-09-17-RQ296-evidence.md`
+- Contract/runtime behavior changed: local focus filtering no longer looks like an API-empty table; resetting focus restores rows without a new API request.
+- Checks run: focused Vitest (17 passed), `npm run typecheck`, `npm run check:analytics-guardrails`, `npm run build`, `git diff --check`.
+- Checks not run: full frontend/backend suites, live API/database/browser smoke and remote CI.
+- Run log: `.ai/runs/2026-09-17-RQ296-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct push to main
+- Main commit SHA: `c0105ae9`
+- Main verification: passed - `origin/main` contains implementation `c0105ae9`.
+- Missed: no live browser proof.
+- Follow-up: RQ297 remains the next safe WAITING candidate for explicit promotion.
+- Residual risk: server-side filter changes still use existing Apply/Reset controls and are intentionally outside this local focus repair.
+- Next: no current READY prompt; return to the explicit promotion rule for RQ297.
 
 ---
 
