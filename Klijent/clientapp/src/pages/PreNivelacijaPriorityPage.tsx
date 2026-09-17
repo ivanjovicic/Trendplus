@@ -23,6 +23,7 @@ import type { PreNivelacijaPriorityResponse, PreNivelacijaRecommendation, PreNiv
 import { CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
 import { fmtPct, fmtRsd } from "../utils/analyticsFormatters";
 import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescriptions";
+import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { getDataScope, normalizeDataScope, type DataScope } from "../utils/dataScope";
 import {
   getAnalyticsMetaMessage,
@@ -268,7 +269,7 @@ export default function PreNivelacijaPriorityPage() {
   const [page, setPage] = useState(1);
   const [data, setData] = useState<PreNivelacijaPriorityResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; errorCode?: string | null; correlationId?: string | null } | null>(null);
   const [sortField, setSortField] = useState<SortField>("status");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expandedArtikalId, setExpandedArtikalId] = useState<number | null>(null);
@@ -322,7 +323,18 @@ export default function PreNivelacijaPriorityPage() {
     } catch (reason) {
       if (requestId !== requestIdRef.current) return;
       setData(null);
-      setError(reason instanceof Error ? reason.message : "Greška pri učitavanju pre-nivelacija prioriteta.");
+      const maybeError = reason as { message?: unknown; errorCode?: unknown; correlationId?: unknown };
+      const errorCode = typeof maybeError.errorCode === "string" ? maybeError.errorCode : null;
+      const correlationId = typeof maybeError.correlationId === "string" ? maybeError.correlationId : null;
+      setError({
+        message: getSafeAnalyticsErrorMessage(
+          typeof maybeError.message === "string" ? maybeError.message : null,
+          errorCode,
+          "Pre-nivelacija prioriteti trenutno nisu dostupni. Proverite status osvežavanja i pokušajte ponovo.",
+        ),
+        errorCode,
+        correlationId,
+      });
     } finally {
       if (requestId === requestIdRef.current) {
         setLoading(false);
@@ -759,7 +771,9 @@ export default function PreNivelacijaPriorityPage() {
       {error ? (
         <AnalyticsErrorState
           title="Podaci trenutno nisu dostupni"
-          message={error || "Ne prikazujemo nule dok nije potvrđen prazan rezultat."}
+          message={error.message}
+          errorCode={error.errorCode}
+          correlationId={error.correlationId}
           onRetry={() => void load(activeFilters, page, dataScope)}
           helpHref="/analytics/data-quality"
         />

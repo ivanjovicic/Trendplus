@@ -1,4 +1,5 @@
 import type { PreNivelacijaPriorityResponse } from "../types/preNivelacija";
+import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { assertAnalyticsMetaSuccess } from "../utils/analyticsResponseMeta";
 import { normalizeDataScope } from "../utils/dataScope";
 
@@ -18,6 +19,56 @@ export interface PreNivelacijaQuery {
   dataScope?: string | null;
 }
 
+const PRE_NIVELACIJA_ERROR_FALLBACK =
+  "Pre-nivelacija prioriteti trenutno nisu dostupni. Proverite status osvežavanja i pokušajte ponovo.";
+
+export class PreNivelacijaApiError extends Error {
+  readonly errorCode: string | null;
+  readonly correlationId: string | null;
+
+  constructor(message: string, errorCode?: string | null, correlationId?: string | null) {
+    super(message);
+    this.name = "PreNivelacijaApiError";
+    this.errorCode = errorCode ?? null;
+    this.correlationId = correlationId ?? null;
+  }
+}
+
+type ErrorPayload = {
+  detail?: unknown;
+  title?: unknown;
+  message?: unknown;
+  error?: unknown;
+  errorCode?: unknown;
+  correlationId?: unknown;
+};
+
+function asText(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function parseErrorBody(body: string, contentType: string): ErrorPayload | null {
+  if (!body || !contentType.toLocaleLowerCase().includes("json")) return null;
+  try {
+    const parsed = JSON.parse(body) as unknown;
+    return parsed && typeof parsed === "object" ? parsed as ErrorPayload : null;
+  } catch {
+    return null;
+  }
+}
+
+function toSafeFetchError(body: string, contentType: string, status: number): PreNivelacijaApiError {
+  const payload = parseErrorBody(body, contentType);
+  const errorCode = asText(payload?.errorCode);
+  const correlationId = asText(payload?.correlationId);
+  const candidate = asText(payload?.detail) ?? asText(payload?.message) ?? asText(payload?.title) ?? asText(payload?.error) ?? body;
+  const isHtml = contentType.toLocaleLowerCase().includes("text/html") || /<[^>]+>/.test(candidate);
+  const message = isHtml
+    ? PRE_NIVELACIJA_ERROR_FALLBACK
+    : getSafeAnalyticsErrorMessage(candidate, errorCode, PRE_NIVELACIJA_ERROR_FALLBACK);
+  return new PreNivelacijaApiError(message || `${PRE_NIVELACIJA_ERROR_FALLBACK} (HTTP ${status})`, errorCode, correlationId);
+}
+
 export async function getPreNivelacijaPrioriteti(query: PreNivelacijaQuery): Promise<PreNivelacijaPriorityResponse> {
   const params = new URLSearchParams();
   if (query.supplierId != null) params.set("supplierId", String(query.supplierId));
@@ -34,10 +85,16 @@ export async function getPreNivelacijaPrioriteti(query: PreNivelacijaQuery): Pro
     params.set("dataScope", normalizeDataScope(query.dataScope));
   }
 
-  const res = await fetch(makeUrl(`/api/analytics/pre-nivelacija-prioriteti`, params));
+  let res: Response;
+  try {
+    res = await fetch(makeUrl(`/api/analytics/pre-nivelacija-prioriteti`, params));
+  } catch {
+    throw new PreNivelacijaApiError(PRE_NIVELACIJA_ERROR_FALLBACK);
+  }
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Neuspesno ucitavanje pre-nivelacija prioriteta: ${text}`);
+    const contentType = res.headers.get("content-type") ?? "";
+    const body = await res.text().catch(() => "");
+    throw toSafeFetchError(body.trim(), contentType, res.status);
   }
 
   const payload = (await res.json()) as PreNivelacijaPriorityResponse;

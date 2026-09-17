@@ -4,6 +4,10 @@ Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-17: under the user's explicit instruction to promote when no READY prompt exists, `RQ295` moved from WAITING to READY as the first safe P1 follow-up after RQ294 completion; it is the single current RQ prompt for Pre-Nivelacija direct-fetch error copy.
+
+Owner claim 2026-09-17: `RQ295` READY -> IN_PROGRESS by Codex. Local runtime lock: `.ai/task-locks/RQ295-codex.lock.md`.
+
 Owner promotion 2026-09-17: under the user's explicit instruction to promote when no READY prompt exists, `RQ294` moved from WAITING to READY as the first safe P1 follow-up after RQ293 completion; it is the single current RQ prompt for mounted Pre-Nivelacija scope-change reloads.
 
 Owner claim 2026-09-17: `RQ294` READY -> IN_PROGRESS by Codex. Local runtime lock: `.ai/task-locks/RQ294-codex.lock.md`.
@@ -14885,7 +14889,7 @@ Reproduction: keep the page mounted, change header scope, and inspect request co
 
 ## RQ295 - Give Pre-Nivelacija direct-fetch failures safe non-empty copy
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend/error-state/tests
 Feature family: pre-nivelacija-error-copy

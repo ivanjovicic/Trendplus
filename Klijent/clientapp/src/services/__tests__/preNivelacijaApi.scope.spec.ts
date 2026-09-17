@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getPreNivelacijaPrioriteti } from "../preNivelacijaApi";
+import { getPreNivelacijaPrioriteti, PreNivelacijaApiError } from "../preNivelacijaApi";
 import { getDataScopeStorageKey } from "../../utils/dataScope";
 
 const responseBody = JSON.stringify({ meta: { success: true, dataQualityStatus: "good" } });
@@ -33,5 +33,42 @@ describe("pre-nivelacija API scope contract", () => {
 
     const requestUrl = new URL(String(fetchMock.mock.calls[0]?.[0]), "http://localhost");
     expect(requestUrl.searchParams.get("dataScope")).toBe("all");
+  });
+
+  it("returns non-empty guidance for an empty response body", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response("", { status: 503 }))));
+
+    await expect(getPreNivelacijaPrioriteti({})).rejects.toMatchObject({
+      name: "PreNivelacijaApiError",
+      message: "Pre-nivelacija prioriteti trenutno nisu dostupni. Proverite status osvežavanja i pokušajte ponovo.",
+    });
+  });
+
+  it("keeps safe JSON guidance and correlation metadata without leaking the backend code", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify({
+      detail: "Servis je privremeno nedostupan.",
+      errorCode: "PRE_NIVELACIJA_BACKEND_TIMEOUT",
+      correlationId: "corr-295",
+    }), { status: 504, headers: { "content-type": "application/problem+json" } }))));
+
+    const failure = await getPreNivelacijaPrioriteti({}).catch((reason) => reason as PreNivelacijaApiError);
+    expect(failure.message).toBe("Servis je privremeno nedostupan.");
+    expect(failure.message).not.toContain("PRE_NIVELACIJA_BACKEND_TIMEOUT");
+    expect(failure.correlationId).toBe("corr-295");
+  });
+
+  it("suppresses raw HTML and network/timeout messages", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response("<html><body>proxy secret</body></html>", {
+      status: 502,
+      headers: { "content-type": "text/html" },
+    }))));
+    await expect(getPreNivelacijaPrioriteti({})).rejects.toMatchObject({
+      message: "Pre-nivelacija prioriteti trenutno nisu dostupni. Proverite status osvežavanja i pokušajte ponovo.",
+    });
+
+    vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new Error("timeout ECONNREFUSED"))));
+    await expect(getPreNivelacijaPrioriteti({})).rejects.toMatchObject({
+      message: "Pre-nivelacija prioriteti trenutno nisu dostupni. Proverite status osvežavanja i pokušajte ponovo.",
+    });
   });
 });
