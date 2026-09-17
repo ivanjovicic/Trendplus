@@ -14875,7 +14875,7 @@ Reproduction: keep the page mounted, change header scope, and inspect request co
 - Evidence state: synchronized
 - Delivery mode: direct push to main
 - Main commit SHA: `36b5c9f31062522187eeb7d8386b099ab2a56450`
-- Main verification: passed - local `main` and `origin/main` both resolve to `36b5c9f31062522187eeb7d8386b099ab2a56450`.
+- Main verification: passed - local `main` and `origin/main` contain implementation `36b5c9f31062522187eeb7d8386b099ab2a56450` (current tip is the documentation close commit).
 - Missed: no live mixed-origin dataset proof.
 - Follow-up: RQ295 remains the next safe WAITING candidate for explicit promotion.
 - Residual risk: shared detail fallback behavior remains outside this page-owned change; live provider/browser proof is still outstanding.
