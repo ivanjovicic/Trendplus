@@ -2,11 +2,13 @@
 
 Date: 2026-09-15
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ294 (IN_PROGRESS)
+Current READY prompt: none
 
 Owner promotion 2026-09-17: under the user's explicit instruction to promote when no READY prompt exists, `RQ294` moved from WAITING to READY as the first safe P1 follow-up after RQ293 completion; it is the single current RQ prompt for mounted Pre-Nivelacija scope-change reloads.
 
 Owner claim 2026-09-17: `RQ294` READY -> IN_PROGRESS by Codex. Local runtime lock: `.ai/task-locks/RQ294-codex.lock.md`.
+
+Owner completion 2026-09-17: RQ294 was delivered on `main`; mounted Pre-Nivelacija now reloads on global scope changes, keeps scope explicit through list/detail/export metadata lineage, normalizes direct URL scope values and rejects stale old-scope responses. Focused page/API scope tests pass.
 
 Owner audit repair 2026-09-17: RQ291 was rechecked against its full acceptance. `a3e5ffdd07d1145405afde5e1bfef9f1c8a2953f` adds direct `/analitika/nivelacije-pre-post/:id`, detail click/back and non-finite quality metadata proof; it also closes the TypeScript narrowing failure left by the 2026-09-16 Shoe Type comparison hardening. `origin/main` contains this repair.
 
@@ -14807,7 +14809,7 @@ Reproduction: return two vendors with null IDs and equal names, then blank names
 
 ## RQ294 - Reload Pre-Nivelacija priorities after a global data-scope change
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: frontend/API-contract/tests
 Feature family: pre-nivelacija-scope-event-propagation
@@ -14859,6 +14861,25 @@ Reproduction: keep the page mounted, change header scope, and inspect request co
 
 - `RQ199` is historical scope work; this prompt owns the current page event/reload gap.
 - Do not use `RQ294` as a runtime dependency of itself; it is the current prompt identifier.
+
+### Completion note
+
+- Date: 2026-09-17
+- Status: DONE
+- Completion: Mounted Pre-Nivelacija now subscribes to the canonical scope event, reloads exactly once per changed scope, synchronizes direct/invalid URL scopes, passes one normalized scope into the request, and carries it into detail URL/snapshot and export metadata. Existing ambient API injection remains compatible when callers omit the explicit value.
+- Changed files: `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`, `Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx`, `Klijent/clientapp/src/services/preNivelacijaApi.ts`, `Klijent/clientapp/src/services/__tests__/preNivelacijaApi.scope.spec.ts`, `MASTER_ROADMAP.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `.ai/runs/2026-09-17-RQ294-evidence.md`
+- Contract/runtime behavior changed: frontend request lineage now makes `dataScope` explicit and normalized; backend recommendation/quality semantics are unchanged.
+- Checks run: focused Vitest (14 passed), `npm run typecheck`, `npm run check:analytics-guardrails`, `npm run build`, `git diff --check`, all six governance validators.
+- Checks not run: full frontend/backend suites, live API/database/browser smoke and remote CI.
+- Run log: `.ai/runs/2026-09-17-RQ294-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct push to main
+- Main commit SHA: `36b5c9f31062522187eeb7d8386b099ab2a56450`
+- Main verification: passed - local `main` and `origin/main` both resolve to `36b5c9f31062522187eeb7d8386b099ab2a56450`.
+- Missed: no live mixed-origin dataset proof.
+- Follow-up: RQ295 remains the next safe WAITING candidate for explicit promotion.
+- Residual risk: shared detail fallback behavior remains outside this page-owned change; live provider/browser proof is still outstanding.
+- Next: no current READY prompt; return to the explicit promotion rule for RQ295.
 
 ---
 
