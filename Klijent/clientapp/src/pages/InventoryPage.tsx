@@ -309,6 +309,7 @@ export default function InventoryPage() {
   suppliersRef.current = suppliers;
   const [loading, setLoading] = useState(true);
   const [insightsLoading, setInsightsLoading] = useState(true);
+  const [insightsError, setInsightsError] = useState<string | null>(null);
   const [filtersLoading, setFiltersLoading] = useState(true);
   const [operationsLoading, setOperationsLoading] = useState(true);
   const [error, setError] = useState<InventoryPageError | null>(null);
@@ -499,6 +500,8 @@ export default function InventoryPage() {
       && signalRequestSequenceRef.current === signalRequestSequence;
     setLoading(true);
     setInsightsLoading(true);
+    setInsightsError(null);
+    setInsights(null);
     if (shouldRefreshOperations) setOperationsLoading(true);
     if (shouldRefreshSignals) {
       setForecastLoading(true);
@@ -554,12 +557,15 @@ export default function InventoryPage() {
 
     void getInventoryInsights({ search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy, dataScope: inventoryDataScope })
       .then((result) => {
-        if (isCurrentRequest()) setInsights(result);
+        if (!isCurrentRequest()) return;
+        setInsights(result);
+        setInsightsError(null);
       })
       .catch((reason) => {
-        if (isCurrentRequest()) {
-          setFirstError(reason, "Inventory uvidi trenutno nisu dostupni.");
-        }
+        if (!isCurrentRequest()) return;
+        setInsights(null);
+        setInsightsError(toInventoryPageError(reason, "Inventory uvidi trenutno nisu dostupni.").message);
+        setFirstError(reason, "Inventory uvidi trenutno nisu dostupni.");
       })
       .finally(() => {
         if (!isCurrentRequest()) return;
@@ -1534,7 +1540,7 @@ export default function InventoryPage() {
       </div>
 
       <InventoryKPICards totalSku={balance?.totalSku} totalOnHand={balance?.totalOnHand} lowStockCount={balance?.lowStockCount} lowStockShare={lowStockShare} avgUnitsPerSku={avgUnitsPerSku} totalValue={totalValue} />
-      <InventoryInsightPanels insights={insights} insightsLoading={insightsLoading} stores={stores} suppliers={suppliers} rows={rows} onOpenDetail={openDetail} />
+      <InventoryInsightPanels insights={insights} insightsLoading={insightsLoading} insightsError={insightsError} stores={stores} suppliers={suppliers} rows={rows} onOpenDetail={openDetail} />
       <InventoryPriorityPanels rows={rows} topRiskRows={topRiskRows} highestValueRows={highestValueRows} chartData={chartData} balance={balance} lowStockShare={lowStockShare} totalCount={totalCount} onOpenDetail={openDetail} />
 
       <div className="grid gap-5 xl:grid-cols-2">

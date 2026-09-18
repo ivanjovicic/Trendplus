@@ -8,11 +8,34 @@ import { InventoryExplainabilitySnapshot } from "./InventoryExplainabilitySnapsh
 type InventoryInsightPanelsProps = {
   insights: InventoryInsights | null;
   insightsLoading: boolean;
+  insightsError?: string | null;
   stores: StoreOption[];
   suppliers: SupplierFilterOption[];
   rows: InventoryRow[];
   onOpenDetail: (row: InventoryRow) => void;
 };
+
+function formatAgingBadgeLabel(
+  insightsLoading: boolean,
+  insightsError: string | null | undefined,
+  staleItemCount: number | null | undefined,
+): string {
+  if (insightsLoading) return "Učitavanje aging analitike...";
+  if (insightsError) return "Aging analitika trenutno nije dostupna";
+  if (staleItemCount == null) return "Broj artikala u 90+ danima nije dostupan";
+  return `${formatNumber(staleItemCount)} artikala je u 90+ dana`;
+}
+
+function formatAbcBadgeLabel(
+  insightsLoading: boolean,
+  insightsError: string | null | undefined,
+  classAItemCount: number | null | undefined,
+): string {
+  if (insightsLoading) return "Učitavanje ABC klase...";
+  if (insightsError) return "ABC analitika trenutno nije dostupna";
+  if (classAItemCount == null) return "Broj artikala u klasi A nije dostupan";
+  return `${formatNumber(classAItemCount)} artikala u klasi A`;
+}
 
 function resolveInsightRow(item: InventoryInsightItem, rows: InventoryRow[], stores: StoreOption[], suppliers: SupplierFilterOption[]) {
   return rows.find((row) => row.id === item.id) ?? buildRowFromInsightItem(item, stores, suppliers);
@@ -21,6 +44,7 @@ function resolveInsightRow(item: InventoryInsightItem, rows: InventoryRow[], sto
 export function InventoryInsightPanels({
   insights,
   insightsLoading,
+  insightsError = null,
   stores,
   suppliers,
   rows,
@@ -42,12 +66,22 @@ export function InventoryInsightPanels({
             <p className="text-sm text-[var(--text-primary)]">Dani bez kretanja su računati po poslednjem movement-u, uz fallback na poslednje ažuriranje artikla.</p>
           </div>
           <div className="rounded-full border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-1 text-xs font-semibold text-[var(--text-primary)]">
-            {insightsLoading ? "Ucitavanje aging analitike..." : `${formatNumber(staleBucket?.itemCount ?? 0)} artikala je u 90+ dana`}
+            {formatAgingBadgeLabel(insightsLoading, insightsError, staleBucket?.itemCount)}
           </div>
         </div>
 
+        {insightsError ? (
+          <div role="alert" className="mt-5 rounded-2xl border border-[var(--accent-danger,#f87171)] bg-[var(--surface-elevated)] px-4 py-4 text-sm text-[var(--text-primary)]">
+            {insightsError}
+          </div>
+        ) : null}
+
         <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {agingBuckets.length === 0 ? (
+          {insightsLoading ? (
+            <div className="col-span-full rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Učitavanje aging analitike...</div>
+          ) : insightsError ? (
+            <div className="col-span-full rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Aging analitika trenutno nije dostupna.</div>
+          ) : agingBuckets.length === 0 ? (
             <div className="col-span-full rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Aging analitika nije dostupna za trenutne filtere.</div>
           ) : agingBuckets.map((bucket) => (
             <article key={bucket.bucketKey} className={`rounded-2xl border bg-[var(--surface-elevated)] p-4${bucket.bucketKey === "90+" ? " border-[var(--accent-danger,#f87171)] ring-1 ring-[var(--accent-danger,#f87171)/30]" : " border-[var(--border-default)]"}`} data-stale={bucket.bucketKey === "90+" || undefined}>
@@ -105,12 +139,16 @@ export function InventoryInsightPanels({
             <p className="text-sm text-[var(--text-primary)]">Klasa A predstavlja artikle koji nose najveci deo nabavne vrednosti filtrirane zalihe.</p>
           </div>
           <div className="rounded-full border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-1 text-xs font-semibold text-[var(--text-primary)]">
-            {insightsLoading ? "Ucitavanje ABC klase..." : `${formatNumber(classABucket?.itemCount ?? 0)} artikala u klasi A`}
+            {formatAbcBadgeLabel(insightsLoading, insightsError, classABucket?.itemCount)}
           </div>
         </div>
 
         <div className="mt-5 grid gap-3 md:grid-cols-3">
-          {abcBuckets.length === 0 ? (
+          {insightsLoading ? (
+            <div className="col-span-full rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Učitavanje ABC analitike...</div>
+          ) : insightsError ? (
+            <div className="col-span-full rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">ABC analitika trenutno nije dostupna.</div>
+          ) : abcBuckets.length === 0 ? (
             <div className="col-span-full rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">ABC raspodela nije dostupna za trenutne filtere.</div>
           ) : abcBuckets.map((bucket) => (
             <article key={bucket.bucketKey} className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4">

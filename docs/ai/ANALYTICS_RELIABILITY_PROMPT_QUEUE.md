@@ -4,6 +4,27 @@ Date: 2026-09-18
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-18: under user instruction to claim next prompt, `RQ313` moved from `WAITING` to `READY` as P1 trust follow-up after `RQ312` (inventory insights fail-closed).
+
+Owner claim 2026-09-18: `RQ313` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ313-codex.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-18
+- Status: DONE
+- Completion: Inventory insights now clear on fetch failure/reload generation; aging/ABC badges fail closed instead of `?? 0`; panel shows explicit error copy.
+- Changed files: `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/components/inventory/InventoryInsightPanels.tsx`, `Klijent/clientapp/src/components/inventory/InventoryInsightPanels.spec.tsx`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.insightsError.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- Checks run: focused insights specs 4/4; `git diff --check`
+- Checks not run: full client suite, CI, live browser
+- Run log: `.ai/runs/2026-09-18-RQ313-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Follow-up: promote `RQ314` (Pre/Post driver fake zero) when requested
+- Residual risk: `RQ323` still covers other secondary panels stale-data pattern
+- Prompt defect / scope repair: none
+
 Owner promotion 2026-09-18: under user instruction to claim next prompt, `RQ312` moved from `WAITING` to `READY` as first safe P1 trust follow-up (inventory signal window freshness).
 
 Owner claim 2026-09-18: `RQ312` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ312-codex.lock.md`.
@@ -19,8 +40,8 @@ Owner claim 2026-09-18: `RQ312` transitioned `READY -> IN_PROGRESS`; local runti
 - Run log: `.ai/runs/2026-09-18-RQ312-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `28dee957`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `28dee957`
 - Follow-up: promote `RQ313` (insights fail-closed) when requested
 - Residual risk: toolbar „Osveži“ still uses full page reload (`RQ351`); unrelated to this prompt
 - Prompt defect / scope repair: none
@@ -590,7 +611,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ310 | WAITING | operations-test-route-alignment | Align Operacije page tests with production `/analytics/...` routes |
 | RQ311 | WAITING | operations-guardrail-cleanup | Resolve Operacije guardrail violations for score/reliability mapping |
 | RQ312 | DONE | inventory-signal-window-freshness | Refresh Inventory signal window instead of freezing at mount |
-| RQ313 | WAITING | inventory-insights-error-state | Fail closed when Inventory insights fetch fails |
+| RQ313 | DONE | inventory-insights-error-state | Fail closed when Inventory insights fetch fails |
 | RQ314 | WAITING | pre-post-driver-fake-zero | Stop Pre/Post driver summary from showing fake zero RSD |
 | RQ315 | WAITING | pre-nivelacija-period-provenance | Expose Pre-Nivelacija analysis period in trust header |
 | RQ316 | WAITING | pre-nivelacija-empty-reason-parity | Align Pre-Nivelacija period empty reasons across surfaces |
@@ -16065,7 +16086,7 @@ Reproduction: open inventory, advance clock or leave tab overnight, trigger relo
 
 ## RQ313 - Fail closed when Inventory insights fetch fails
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/trust/tests
 Feature family: inventory-insights-error-state
