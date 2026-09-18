@@ -19,8 +19,8 @@ Owner claim 2026-09-18: `RQ314` transitioned `READY -> IN_PROGRESS`; local runti
 - Run log: `.ai/runs/2026-09-18-RQ314-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `3d68e1e8`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `3d68e1e8`
 - Follow-up: promote `RQ331` (page-local inventory KPIs) or `RQ315` when requested
 - Residual risk: winner/risk sort still uses raw changeRevenue (`RQ347`)
 - Prompt defect / scope repair: none
