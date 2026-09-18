@@ -40,7 +40,8 @@ No backend formula, ranking policy, tenant/security contract, URL contract, or r
 - Delivery mode: direct-main; current branch was already `main`, so no feature-branch merge was required.
 - Implementation files: `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`, `Klijent/clientapp/src/pages/preNivelacijaDecision.ts`, `Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx`.
 - Evidence file: this run log.
-- Final target-branch SHA and fresh `origin/main` verification to be recorded after push.
+- Implementation commit: `4b8644a43db268efcd8313d29419dcb5f96565b1` (`refactor(analytics): isolate pre-nivelacija table contract`).
+- Main verification: passed — fresh `origin/main` equals and contains implementation SHA `4b8644a43db268efcd8313d29419dcb5f96565b1`.
 
 ## Residual risk
 
