@@ -8,8 +8,8 @@ Agent/tool: cursor cloud agent
 Delivery target: main
 Working branch / PR: cursor/adjacent-commit-audit-c753
 Main commit SHA: e7a1e8c66b72329c13949f500f5837296e1cf707
-Main verification: pending until origin/main contains e7a1e8c66b72329c13949f500f5837296e1cf707
-Evidence state: pending
+Main verification: passed - fresh `origin/main` at `5d9899d6` contains implementation SHA `e7a1e8c66b72329c13949f500f5837296e1cf707`
+Evidence state: synchronized
 ```
 
 ## What was done
