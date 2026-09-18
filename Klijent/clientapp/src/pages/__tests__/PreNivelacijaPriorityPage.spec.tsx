@@ -17,7 +17,11 @@ vi.mock("recharts", () => ({
 vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({
   default: ({ title }: { title: string }) => <h1 data-testid="analytics-trust-header">{title}</h1>,
 }));
-vi.mock("../../components/analytics/AnalyticsTableToolbar", () => ({ default: () => null }));
+vi.mock("../../components/analytics/AnalyticsTableToolbar", () => ({
+  default: ({ rows }: { rows: Array<{ sku: string }> }) => (
+    <output data-testid="export-row-skus" data-skus={rows.map((row) => row.sku).join(",")} />
+  ),
+}));
 vi.mock("../../components/analytics/AnalyticsErrorState", () => ({
   default: ({ title, message }: { title: string; message: string }) => (
     <div role="alert">
@@ -440,6 +444,20 @@ describe("PreNivelacijaPriorityPage", () => {
     });
     expect(reliabilityColumn?.getValue?.({ reliabilityAvailable: true, reliabilityPct: 0 } as never)).toBe(0);
     expect(reliabilityColumn?.getValue?.({ reliabilityAvailable: false, reliabilityPct: null } as never)).toBeNull();
+  });
+
+  it("exports the same focus-filtered rows that the table displays", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId("export-row-skus")).toHaveAttribute("data-skus", "SKU-102,SKU-101"));
+
+    fireEvent.click(screen.getByRole("tab", { name: /Pregledaj \(1\)/i }));
+
+    await waitFor(() => expect(screen.getByTestId("export-row-skus")).toHaveAttribute("data-skus", "SKU-102"));
   });
 
   it("keeps markdown copy scenario-oriented and blocks margin signal without cost", async () => {

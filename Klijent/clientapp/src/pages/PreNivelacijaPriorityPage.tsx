@@ -1180,7 +1180,7 @@ export default function PreNivelacijaPriorityPage() {
                       tableKey="pre-nivelacija-prioriteti"
                       tableTitle="Podrška za odluku pre nivelacije"
                       columns={decisionColumns}
-                      rows={sortedRows}
+                      rows={filteredRows}
                       filters={toolbarFilters}
                       metadata={toolbarMetadata}
                       defaultOrientation="landscape"
