@@ -8,6 +8,23 @@ Owner promotion 2026-09-18: under user instruction to claim next prompt, `RQ332`
 
 Owner claim 2026-09-18: `RQ332` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ332-codex.lock.md`.
 
+### Completion note
+
+- Date: 2026-09-18
+- Status: DONE
+- Completion: Off-page SKU detail placeholder uses null unknown metrics instead of fake zeros; detail fetch failure transitions loadingContext to contextMissing.
+- Changed files: `Klijent/clientapp/src/components/inventory/inventoryUtils.ts`, `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/components/inventory/inventoryOffPageDetail.spec.ts`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.offPageDetail.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- Checks run: off-page detail specs 4/4 + SKUDetailModal placeholder specs 3/3
+- Checks not run: full client suite, CI, live browser
+- Run log: `.ai/runs/2026-09-18-RQ332-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `0339e286`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `0339e286`
+- Follow-up: promote `RQ333` (Pre/Post share recompute) or `RQ334` (supplier prePostComparableArticleCount)
+- Residual risk: insight-built rows still carry insight payload quantities (not zero placeholders)
+- Prompt defect / scope repair: none
+
 Owner promotion 2026-09-18: under user instruction to claim next prompt, `RQ331` moved from `WAITING` to `READY` as P1 trust follow-up (inventory page-local signal KPIs).
 
 Owner claim 2026-09-18: `RQ331` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ331-codex.lock.md`.
@@ -676,7 +693,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ329 | WAITING | shoe-type-truncation-label | Fix or remove dead Shoe Type truncation label |
 | RQ330 | WAITING | pre-post-focus-row-context | Add row-count context when Pre/Post focus hides vendors |
 | RQ331 | DONE | inventory-page-local-signal-kpis | Stop Inventory signal KPI cards from counting only the current page slice |
-| RQ332 | IN_PROGRESS | inventory-detail-placeholder-fake-zero | Remove fake zero inventory/value when opening SKU detail off-page |
+| RQ332 | DONE | inventory-detail-placeholder-fake-zero | Remove fake zero inventory/value when opening SKU detail off-page |
 | RQ333 | WAITING | pre-post-frontend-share-recompute | Stop Pre/Post frontend from recomputing post revenue share percent |
 | RQ334 | WAITING | supplier-prepost-comparable-fake-zero | Fail closed on null Pre/Post comparable article count in Supplier detail |
 | RQ335 | WAITING | daily-sales-previous-period-silent-failure | Surface Daily Sales previous-period fetch failure instead of silent N/A deltas |
@@ -17032,7 +17049,7 @@ Top signal KPI cards (`stockCoverRiskCount`, `lowCoverSkus`, etc.) derive from `
 
 ## RQ332 - Remove fake zero inventory/value when opening SKU detail off-page
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: frontend/trust/tests
 Feature family: inventory-detail-placeholder-fake-zero
