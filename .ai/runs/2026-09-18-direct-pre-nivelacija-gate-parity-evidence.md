@@ -7,8 +7,8 @@ Date: 2026-09-18
 Agent/tool: cursor cloud agent
 Delivery target: main
 Working branch / PR: cursor/pre-nivelacija-gate-parity-c753
-Main commit SHA: 0c9b4446a4c0d5e8d7c1f2b3
-Main verification: pending
+Main commit SHA: 0c9b4446e4808d2efcf671ddcd0dcae9381e7107
+Main verification: pending until origin/main contains 0c9b4446e4808d2efcf671ddcd0dcae9381e7107
 Evidence state: pending
 ```
 
