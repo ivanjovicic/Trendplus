@@ -39,7 +39,8 @@ No backend contract, recommendation formula, ranking policy, tenant/security beh
 
 - Delivery mode: direct-main; branch was already `main`, so no feature-branch merge was required.
 - Changed implementation files: `Klijent/clientapp/src/services/preNivelacijaApi.ts`, `Klijent/clientapp/src/services/__tests__/preNivelacijaApi.scope.spec.ts`.
-- Final target-branch SHA and fresh `origin/main` verification to be recorded after push.
+- Implementation commit: `bc7f2524765ad48d158e379dbc301ad98d591596` (`fix(analytics): suppress raw pre-nivelacija error bodies`).
+- Main verification: passed — fresh `origin/main` equals and contains implementation SHA `bc7f2524765ad48d158e379dbc301ad98d591596`.
 
 ## Residual risk
 
