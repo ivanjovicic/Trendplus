@@ -208,6 +208,19 @@ function formatFiniteNumber(value: unknown, digits = 0): string {
   return normalized == null ? RECOMMENDATION_SIGNAL_UNAVAILABLE : fmtNumber(normalized, digits, RECOMMENDATION_SIGNAL_UNAVAILABLE);
 }
 
+function formatGatedRsd(allowed: boolean, value: FiniteNumber): string {
+  return allowed ? fmtRsd(value, 0, RECOMMENDATION_SIGNAL_UNAVAILABLE) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
+}
+
+function deltaTrendClass(allowed: boolean, value: FiniteNumber): string {
+  if (!allowed || value == null) return "";
+  return value >= 0 ? "trend-up" : "trend-down";
+}
+
+function gatedNumericValue(allowed: boolean, value: FiniteNumber): FiniteNumber {
+  return allowed ? value : null;
+}
+
 function formatNonNegativeNumber(value: unknown, digits = 0): string {
   const normalized = normalizeNonNegativeNumber(value);
   return normalized == null ? RECOMMENDATION_SIGNAL_UNAVAILABLE : fmtNumber(normalized, digits, RECOMMENDATION_SIGNAL_UNAVAILABLE);
@@ -288,12 +301,13 @@ function buildStatusTooltip(data: StatusTooltipData): string {
   const reliabilityText = data.reliabilityAvailable && data.reliabilityPct != null ? fmtPct(data.reliabilityPct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
   const confidenceText = data.confidenceAvailable && data.confidencePct != null ? fmtPct(data.confidencePct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
   const scoreText = data.decisionScoreAvailable && data.decisionScore != null ? formatFiniteNumber(data.decisionScore, 1) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
+  const deltaText = formatGatedRsd(data.recommendationAllowed, data.revenueDelta);
   const qualityText = recommendationQualityLabel(data.dataQualityStatus);
   const hintText = recommendationReasonHints(data.reasonCodes).join(" | ");
   const gateText = data.recommendationAllowed
     ? ""
     : " | Preporuka je blokirana; status je informativan, a ocena i sledeći korak nisu potvrđeni.";
-  return `${statusDisplayLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Ocena ${scoreText} | Delta ${fmtRsd(data.revenueDelta)} | ${RECOMMENDATION_RELIABILITY_LABEL} ${reliabilityText} | ${RECOMMENDATION_CONFIDENCE_LABEL} ${confidenceText} | Kvalitet ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}${gateText}`;
+  return `${statusDisplayLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Ocena ${scoreText} | Delta ${deltaText} | ${RECOMMENDATION_RELIABILITY_LABEL} ${reliabilityText} | ${RECOMMENDATION_CONFIDENCE_LABEL} ${confidenceText} | Kvalitet ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}${gateText}`;
 }
 
 function getRecommendedNextStep(status: DecisionStatus): string {
@@ -331,7 +345,8 @@ function canShowMarkdownMarginSignal(row: DecisionCandidate): boolean {
 }
 
 function hasLimitedMarkdownSignal(row: DecisionCandidate): boolean {
-  return !row.reliabilityAvailable
+  return !row.recommendationAllowed
+    || !row.reliabilityAvailable
     || !row.confidenceAvailable
     || row.preNivelacijaScore == null
     || row.stockUnits == null
@@ -563,7 +578,13 @@ export default function PreNivelacijaPriorityPage() {
       else if (sortField === "preNivelacijaScore") compare = compareNullableNumbers(a.preNivelacijaScore, b.preNivelacijaScore, sortDir);
       else if (sortField === "stockUnits") compare = compareNullableNumbers(a.stockUnits, b.stockUnits, sortDir);
       else if (sortField === "daysSinceLastSale") compare = compareNullableNumbers(a.daysSinceLastSale, b.daysSinceLastSale, sortDir);
-      else if (sortField === "revenueDelta") compare = compareNullableNumbers(a.revenueDelta, b.revenueDelta, sortDir);
+      else if (sortField === "revenueDelta") {
+        compare = compareNullableNumbers(
+          gatedNumericValue(a.recommendationAllowed, a.revenueDelta),
+          gatedNumericValue(b.recommendationAllowed, b.revenueDelta),
+          sortDir,
+        );
+      }
       else if (sortField === "status") compare = compareNullableNumbers(STATUS_PRIORITY[a.status] ?? null, STATUS_PRIORITY[b.status] ?? null, sortDir);
 
       if (compare === 0) compare = compareNullableNumbers(a.decisionScore, b.decisionScore, sortDir);
@@ -622,8 +643,8 @@ export default function PreNivelacijaPriorityPage() {
 
   const selectedRow = useMemo(() => {
     if (expandedArtikalId == null) return null;
-    return sortedRows.find((row) => row.artikalId === expandedArtikalId) ?? null;
-  }, [expandedArtikalId, sortedRows]);
+    return filteredRows.find((row) => row.artikalId === expandedArtikalId) ?? null;
+  }, [expandedArtikalId, filteredRows]);
 
   const canGoPrev = page > 1;
   const pageSize = data ? normalizePositiveInteger(data.pageSize) : null;
@@ -1163,7 +1184,7 @@ export default function PreNivelacijaPriorityPage() {
                             <td title={row.supplierName}>{row.supplierName}</td>
                             <td className="align-right">
                               <div className="pnp-score-cell">
-                                <span>{row.preNivelacijaScore == null ? RECOMMENDATION_SIGNAL_UNAVAILABLE : row.preNivelacijaScore.toFixed(1)}</span>
+                                <span>{formatFiniteNumber(row.preNivelacijaScore, 1)}</span>
                                 {row.preNivelacijaScore != null ? (
                                   <div
                                     className="pnp-score-mini-bar"
@@ -1175,7 +1196,7 @@ export default function PreNivelacijaPriorityPage() {
                             </td>
                             <td className="align-right">{formatNonNegativeNumber(row.stockUnits)}</td>
                             <td className="align-right">{formatNonNegativeNumber(row.daysSinceLastSale)}</td>
-                            <td className={`align-right ${row.recommendationAllowed && row.revenueDelta != null && row.revenueDelta >= 0 ? "trend-up" : "trend-down"}`}>{row.recommendationAllowed ? fmtRsd(row.revenueDelta) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</td>
+                            <td className={`align-right ${deltaTrendClass(row.recommendationAllowed, row.revenueDelta)}`}>{formatGatedRsd(row.recommendationAllowed, row.revenueDelta)}</td>
                             <td className="align-center">
                               <span
                                 className={reliability.className}
@@ -1234,15 +1255,15 @@ export default function PreNivelacijaPriorityPage() {
                 </article>
                 <article>
                   <span>Scenario isticanje (30d procena prihoda)</span>
-                  <strong>{selectedRow.recommendationAllowed ? fmtRsd(selectedRow.scenarioHighlightNow.expectedRevenue30d) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
+                  <strong>{formatGatedRsd(selectedRow.recommendationAllowed, selectedRow.scenarioHighlightNow.expectedRevenue30d)}</strong>
                 </article>
                 <article>
                   <span>Scenario sniženje (30d procena prihoda)</span>
-                  <strong>{selectedRow.recommendationAllowed ? fmtRsd(selectedRow.scenarioMarkdownNow.expectedRevenue30d) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
+                  <strong>{formatGatedRsd(selectedRow.recommendationAllowed, selectedRow.scenarioMarkdownNow.expectedRevenue30d)}</strong>
                 </article>
                 <article>
                   <span>Procenjena delta prihoda</span>
-                  <strong className={selectedRow.recommendationAllowed && selectedRow.revenueDelta != null && selectedRow.revenueDelta >= 0 ? "trend-up" : "trend-down"}>{selectedRow.recommendationAllowed ? fmtRsd(selectedRow.revenueDelta) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
+                  <strong className={deltaTrendClass(selectedRow.recommendationAllowed, selectedRow.revenueDelta)}>{formatGatedRsd(selectedRow.recommendationAllowed, selectedRow.revenueDelta)}</strong>
                 </article>
                 <article>
                   <span>Procenjena delta marže</span>
