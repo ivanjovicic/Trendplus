@@ -2,7 +2,8 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { MemoryRouter, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import PreNivelacijaPriorityPage, { decisionColumns } from "../PreNivelacijaPriorityPage";
+import PreNivelacijaPriorityPage from "../PreNivelacijaPriorityPage";
+import { decisionColumns } from "../preNivelacijaDecision";
 
 vi.mock("recharts", () => ({
   BarChart: ({ children }: { children?: ReactNode }) => <div>{children}</div>,

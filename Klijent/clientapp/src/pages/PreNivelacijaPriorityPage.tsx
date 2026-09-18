@@ -18,8 +18,9 @@ import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import InfoTip from "../components/ui/InfoTip";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import { getPreNivelacijaPrioriteti } from "../services/preNivelacijaApi";
-import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
-import type { PreNivelacijaPriorityResponse, PreNivelacijaRecommendation, PreNivelacijaSkuCandidate } from "../types/preNivelacija";
+import type { AnalyticsNamedValue } from "../types/analyticsTable";
+import type { PreNivelacijaPriorityResponse } from "../types/preNivelacija";
+import { decisionColumns, type DecisionCandidate, type DecisionStatus, type FiniteNumber, type NormalizedScenario } from "./preNivelacijaDecision";
 import { CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
 import { fmtNumber, fmtPct, fmtRsd } from "../utils/analyticsFormatters";
 import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescriptions";
@@ -57,8 +58,6 @@ type SortField =
   | "daysSinceLastSale"
   | "revenueDelta"
   | "status";
-type DecisionStatus = PreNivelacijaRecommendation["status"];
-
 type ActiveFilters = {
   supplierId: number | null;
   seasonId: number | null;
@@ -69,69 +68,6 @@ type ActiveFilters = {
 
 const DEFAULT_MIN_SCORE = 40;
 const DEFAULT_NO_SALE_DAYS_MIN = 14;
-
-type FiniteNumber = number | null;
-type NormalizedScenario = {
-  expectedUnits30d: FiniteNumber;
-  expectedRevenue30d: FiniteNumber;
-  expectedMargin30d: FiniteNumber;
-  effectivePrice: FiniteNumber;
-};
-
-type DecisionCandidate = Omit<
-  PreNivelacijaSkuCandidate,
-  | "stockUnits"
-  | "units180"
-  | "velocity180"
-  | "daysSinceLastSale"
-  | "markdownEvents"
-  | "avgMarkdownPct"
-  | "grossMarginPctEst"
-  | "seasonRecencyBoost"
-  | "preNivelacijaScore"
-  | "scoreBreakdown"
-  | "scenarioHighlightNow"
-  | "scenarioMarkdownNow"
-  | "marginDeltaHighlightVsMarkdown"
-  | "revenueDeltaHighlightVsMarkdown"
-  | "reliabilityPct"
-  | "decisionScore"
-> & {
-  stockUnits: FiniteNumber;
-  units180: FiniteNumber;
-  velocity180: FiniteNumber;
-  daysSinceLastSale: FiniteNumber;
-  markdownEvents: FiniteNumber;
-  avgMarkdownPct: FiniteNumber;
-  grossMarginPctEst: FiniteNumber;
-  seasonRecencyBoost: FiniteNumber;
-  preNivelacijaScore: FiniteNumber;
-  scoreBreakdown: {
-    stockPressure: FiniteNumber;
-    velocityRisk: FiniteNumber;
-    recencyRisk: FiniteNumber;
-    markdownOpportunity: FiniteNumber;
-    marginPotential: FiniteNumber;
-    seasonRecencyBoost: FiniteNumber;
-  };
-  scenarioHighlightNow: NormalizedScenario;
-  scenarioMarkdownNow: NormalizedScenario;
-  marginDeltaHighlightVsMarkdown: FiniteNumber;
-  revenueDeltaHighlightVsMarkdown: FiniteNumber;
-  reliabilityPct: FiniteNumber;
-  decisionScore: FiniteNumber;
-  revenueDelta: FiniteNumber;
-  marginDelta: FiniteNumber;
-  confidencePct: number | null;
-  confidenceAvailable: boolean;
-  reliabilityAvailable: boolean;
-  recommendationAllowed: boolean;
-  decisionScoreAvailable: boolean;
-  status: DecisionStatus;
-  statusReason: string;
-  dataQualityStatus: RecommendationQualityStatus;
-  reasonCodes: string[];
-};
 
 type FocusFilter = "all" | "increaseFocus" | "maintain" | "review" | "doNotTrust" | "insufficientData" | "highPriority";
 const FOCUS_LABELS: Record<FocusFilter, string> = {
@@ -191,18 +127,6 @@ function buildPreNivelacijaSearchParams(filters: ActiveFilters, focus: FocusFilt
 const STATUS_PRIORITY: Record<DecisionStatus, number> = {
   ...RECOMMENDATION_STATUS_PRIORITY,
 };
-
-export const decisionColumns: AnalyticsTableColumn<DecisionCandidate>[] = [
-  { key: "sku", header: "SKU", dataType: "text" },
-  { key: "supplierName", header: "Dobavljač", dataType: "text" },
-  { key: "preNivelacijaScore", header: "Skor nivelacije", dataType: "number" },
-  { key: "stockUnits", header: "Zaliha (kom)", dataType: "number" },
-  { key: "daysSinceLastSale", header: "Dana bez prodaje", dataType: "number" },
-  { key: "revenueDelta", header: "Isticanje vs sniženje (prihod)", dataType: "currency", getValue: (row) => row.recommendationAllowed ? row.revenueDelta : null },
-  { key: "reliabilityPct", header: RECOMMENDATION_RELIABILITY_LABEL, dataType: "percent", getValue: (row) => row.reliabilityAvailable ? row.reliabilityPct : null },
-  { key: "decisionScore", header: "Ocena preporuke", dataType: "number", getValue: (row) => row.decisionScoreAvailable ? row.decisionScore : null },
-  { key: "status", header: "Preporuka", dataType: "text" },
-];
 
 interface CustomSupplierTooltipProps {
   active?: boolean;
@@ -793,7 +717,7 @@ export default function PreNivelacijaPriorityPage() {
       { key: "formulaVersion", label: "Formula", value: data?.formulaVersion ?? "" },
       { key: "totalCandidates", label: "Total", value: data ? normalizeNonNegativeNumber(data.totalCandidates) : null },
     ],
-    [data?.formulaVersion, data?.generatedAtUtc, data?.totalCandidates]
+    [data]
   );
 
   const handleSort = (field: SortField) => {
