@@ -15186,13 +15186,13 @@ Reproduction: render a row with valid reliability and one without it, compare vi
 - Completion: Pre-Nivelacija now uses distinct weak/watch/strong tones for finite reliability percentages, keeps null/non-finite/malformed values unavailable, and exports `reliabilityPct` with `dataType: percent` without double-scaling.
 - Changed files: `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`; `Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx`; `MASTER_ROADMAP.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `.ai/runs/2026-09-18-RQ298-evidence.md`.
 - Contract/runtime behavior changed: yes - valid reliability evidence is visually distinct from unavailable evidence and export metadata preserves percentage semantics.
-- Checks run: focused Pre-Nivelacija spec (25 passed); `npm run check:analytics-guardrails` (passed); `npm run build` (passed with existing chunk-size advisory); `git diff --check` (pending final docs sync).
+- Checks run: focused Pre-Nivelacija spec (25 passed); `npm run check:analytics-guardrails` (passed); `npm run build` (passed with existing chunk-size advisory); `git diff --check` (passed).
 - Checks not run: full frontend suite, backend build/tests and live browser/export artifact proof were not run because this is a bounded frontend presentation/export metadata change.
 - Run log: `.ai/runs/2026-09-18-RQ298-evidence.md`.
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `b77048e29fa24168e92e87ff78605f85785124df`
+- Main verification: passed - fresh `git fetch origin main` confirmed local `main` and `origin/main` at `b77048e29fa24168e92e87ff78605f85785124df`; `git merge-base --is-ancestor b77048e2 origin/main` returned 0.
 - Missed: none known.
 - Follow-up: `RQ299` remains the next safe WAITING Pre-Nivelacija URL-state candidate.
 - Residual risk: no live browser/downloaded export artifact was inspected; focused DOM and column metadata tests cover the changed semantics.
