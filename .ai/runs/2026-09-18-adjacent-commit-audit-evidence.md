@@ -7,9 +7,9 @@ Date: 2026-09-18
 Agent/tool: cursor cloud agent
 Delivery target: main
 Working branch / PR: cursor/adjacent-commit-audit-c753
-Main commit SHA: cb053e659e8f0b8e8c8f6b8e8e8e8e8e8e8e8e8
-Main verification: passed - fresh `origin/main` contains `cb053e659e8f0b8e8c8f6b8e8e8e8e8e8e8e8e8`
-Evidence state: synchronized
+Main commit SHA: e7a1e8c6529b6645d883a4500731d47cee95a718f
+Main verification: pending until origin/main contains e7a1e8c6529b6645d883a4500731d47cee95a718f
+Evidence state: pending
 ```
 
 ## What was done
