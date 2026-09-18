@@ -4,8 +4,8 @@ Date: 2026-09-18
 Agent/tool: Codex Cloud Agent
 Delivery target: main
 Working branch / PR: main / direct-main
-Main commit SHA: pending
-Main verification: pending
+Main commit SHA: 085dd7bd
+Main verification: origin/main contains 085dd7bd
 Evidence state: synchronized
 
 ## What was done

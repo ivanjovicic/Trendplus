@@ -117,7 +117,7 @@ Polish:       RQ305 → RQ309 → RQ310 → RQ311 → RQ328–RQ330
 | `git pull origin main` | up to date |
 | Operacije focused tests | **188/188 passed** |
 | `check:encoding` | pass (prior run) |
-| `check-prompt-queues.mjs` | pending pre-commit |
+| `check-prompt-queues.mjs` | pass (469 tasks) |
 | Live browser/backend | not run |
 
 ---
