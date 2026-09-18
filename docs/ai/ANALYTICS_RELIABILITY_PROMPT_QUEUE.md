@@ -15109,10 +15109,10 @@ Reproduction: return rows with `recommendationAllowed: false` and valid status/s
 - Checks run: focused Pre-Nivelacija spec (17 passed); `npm run check:analytics-guardrails` (passed); `npm run build` (passed with existing chunk-size advisory); all six agent/prompt/planning governance checks (passed); `git diff --check` (passed).
 - Checks not run: full frontend suite, backend build/tests and live browser/deployed proof were not run because this is a bounded frontend contract change.
 - Run log: `.ai/runs/2026-09-18-RQ297-evidence.md`.
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `c6284037c381bc79b1bab5b16ef46db1883bee99`
+- Main verification: passed - fresh `git fetch origin main` confirmed local `main` and `origin/main` at `c6284037c381bc79b1bab5b16ef46db1883bee99`; `git merge-base --is-ancestor c6284037 origin/main` returned 0.
 - Missed: none known.
 - Follow-up: `RQ298` remains the next safe WAITING Pre-Nivelacija reliability/export candidate.
 - Residual risk: no live browser/export artifact proof; focused DOM and projection tests cover the changed gate semantics.
