@@ -161,6 +161,8 @@ Owner completion 2026-09-15: `RQ276` was delivered with inventory expected impac
 
 Operations audit intake 2026-09-15: `RQ277`-`RQ300` were individual Operacije follow-ups from the screen/code review; `RQ266`-`RQ300` are now completed on `main`, and the queue has no current READY prompt.
 
+Operations audit intake 2026-09-18: `RQ301`-`RQ311` were added from a fresh post-`RQ300` Operacije screen/code review on current `main`; all eleven are `WAITING` and the queue has no current READY prompt.
+
 Owner promotion 2026-09-15: `RQ270` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ264` completion; it is the single current RQ prompt for confirmed Inventory scope-change reload gaps and will be claimed in this workspace.
 
 Owner completion 2026-09-15: `RQ270` was delivered on PR #6 with unified page reload on global data-scope change; InventoryPage now listens for `trendplus:data-scope-changed` events and reloads all primary and signal panels as one coherent generation while preserving request-sequence guards and detail state per RQ203. The RQ queue advanced to `RQ271`.
@@ -551,6 +553,17 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ298 | DONE | pre-nivelacija-reliability-export | Align reliability styling and percent export metadata |
 | RQ299 | DONE | pre-nivelacija-url-state | Preserve filters and focus in refresh/back/deep-link URLs |
 | RQ300 | DONE | pre-nivelacija-numeric-robustness | Keep malformed/null numeric payloads from crashing or sorting falsely |
+| RQ301 | WAITING | operations-inventory-serbian-copy | Replace English inventory cockpit copy with Serbian product language |
+| RQ302 | WAITING | operations-route-smoke | Add missing Operacije routes to core App analytics smoke matrix |
+| RQ303 | WAITING | daily-sales-localization | Replace English mismatch badge and mixed QA copy on Daily Sales |
+| RQ304 | WAITING | color-sales-detail-label-parity | Align Color detail score label with table/export Serbian copy |
+| RQ305 | WAITING | operations-supplier-ia-clarity | Clarify Operacije menu entries that redirect into canonical Supplier tabs |
+| RQ306 | WAITING | operations-diacritics-pass | Fix missing Serbian diacritics across Operacije user-facing copy |
+| RQ307 | WAITING | shoe-type-impact-label | Replace English nivelacija impact label on Shoe Type surface |
+| RQ308 | WAITING | inventory-period-provenance | Make Inventory trust header period/snapshot semantics explicit |
+| RQ309 | WAITING | operations-nav-icons | Differentiate duplicate Operacije sidebar icons |
+| RQ310 | WAITING | operations-test-route-alignment | Align Operacije page tests with production `/analytics/...` routes |
+| RQ311 | WAITING | operations-guardrail-cleanup | Resolve Operacije guardrail violations for score/reliability mapping |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -15357,4 +15370,572 @@ Reproduction: inject null, numeric string, empty string, NaN, Infinity, negative
 ### Dependencies
 
 - `RQ152`/`RQ264` establish shared finite/null semantics; narrow any `RQ191` overlap to Pre-Nivelacija page-specific behavior.
+
+---
+
+## RQ301 - Replace English inventory cockpit copy with Serbian product language
+
+Status: WAITING
+Priority: P1
+Type: frontend/copy/tests
+Feature family: operations-inventory-serbian-copy
+Parallel-safe: no
+Owner: Analytics Frontend / Inventory
+Commit suggestion: `fix(analytics): localize inventory operations copy`
+
+### Problem
+
+The Operacije menu entry is „Zalihe i dopuna“, but the primary inventory decision surface still presents English product language in trust header, KPI cards, loading states and child panels (`Inventory analytics`, `Decision cockpit`, `Stock cover risk`, `Low cover SKU`, `workflow`, `sell-through`, `Size curve`, `aging`).
+
+### Evidence
+
+- `InventoryPage.tsx:1257-1262` — English trust header title/dataSource.
+- `InventoryPage.tsx:1297-1314` — English KPI card labels.
+- `InventoryPage.tsx:1321` — duplicated hero „Decision cockpit…“ copy.
+- `ActionWorkflowPanel.tsx:46`, `SKUDetailModal.tsx:69-113`, `StoreComparisonPanel.tsx:49` — mixed English loading/detail copy.
+- `InventoryPage.freshnessLineage.spec.tsx` asserts `h1` „Inventory analytics“.
+
+Reproduction: open `/analytics/inventory` and scan trust header, KPI cards, workflow panel loading and SKU detail modal. Risk: pilot users perceive the screen as unfinished or mistrust Serbian decision surfaces elsewhere.
+
+### Scope
+
+- `InventoryPage.tsx` and inventory child components that render Operacije user copy.
+- Preserve KPI semantics, metric keys and backend contracts; copy-only unless a test harness must follow renamed labels.
+
+### Read first
+
+- `docs/ai/ENCODING_AND_TEXT_SAFETY.md`, `AGENTS.md` §10.4
+- `InventoryPage.tsx`, `components/inventory/*`
+- `RQ267` heading ownership; do not reintroduce duplicate document landmarks
+
+### Do
+
+1. Align trust header title/description with menu label „Zalihe i dopuna“ and Serbian operational framing.
+2. Translate KPI cards and section descriptions; keep `KpiExplainButton` metric keys unchanged.
+3. Replace English loading/error strings in workflow, store comparison and SKU detail panels with Serbian equivalents using correct diacritics.
+4. Update focused inventory specs/assertions accordingly.
+
+### Tests
+
+- `npm run test -- --run src/pages/__tests__/InventoryPage*.spec.tsx`
+- Assert no English primary labels remain on the inventory decision surface.
+
+### Acceptance
+
+- Primary inventory UI is Serbian with correct diacritics; no English cockpit/KPI labels in the main surface.
+- Existing inventory guardrails and behavior tests remain green.
+
+### Dependencies
+
+- `RQ267` owns page-level heading hierarchy; this prompt owns copy/localization only.
+- Coordinate wording with `RQ306` if both touch the same string in one pass.
+
+---
+
+## RQ302 - Add missing Operacije routes to core App analytics smoke matrix
+
+Status: WAITING
+Priority: P1
+Type: frontend/routing/tests
+Feature family: operations-route-smoke
+Parallel-safe: yes
+Owner: Analytics Frontend / Routing Shell
+Commit suggestion: `test(analytics): smoke cover operations routes`
+
+### Problem
+
+Six of eight Operacije menu routes are absent from `CORE_ANALYTICS_ROUTE_DEFINITIONS` and `AppAnalyticsRoutes.spec.tsx`. Lazy-route, redirect or App-shell regressions on Daily Sales, Shoe Type, Color, Pre/Post, Pre-Nivelacija and supplier legacy redirects would not be caught by the canonical smoke matrix.
+
+### Evidence
+
+- `analyticsRouteDefinitions.ts` includes only `/analytics/inventory` from Operacije.
+- `App.tsx:105-120` registers `/analytics/shoe-type-sales-stats`, `/analytics/daily-sales`, `/analytics/nivelacije-pre-post`, `/analytics/color-sales-stats`, `/analytics/pre-nivelacija-prioriteti`, `/analytics/supplier-sales-stats`, `/analytics/dobavljaci-tipovi-obuce`.
+- `AppAnalyticsRoutes.spec.tsx` maps only core executive/decision/inventory routes.
+
+Reproduction: break lazy import or redirect for an Operacije route and run App smoke tests — current matrix stays green. Risk: production navigation failures ship unnoticed.
+
+### Scope
+
+- `analyticsRouteDefinitions.ts`, `AppAnalyticsRoutes.spec.tsx`, minimal App mocks/stubs.
+- No page business-logic changes.
+
+### Read first
+
+- `docs/Frontend/ROUTING_AND_SMOKE_TEST_STANDARDS.md`
+- `App.tsx`, `SupplierRedirects.tsx`, existing smoke route definitions
+
+### Do
+
+1. Register all Operacije list routes in the smoke definition table with accurate labels.
+2. Add App mock stubs and `it.each` coverage for each route, including redirect targets for legacy supplier Operacije entries.
+3. Keep durable report query-string routes unchanged unless required for redirect proof.
+
+### Tests
+
+- `npm run test -- --run src/__tests__/AppAnalyticsRoutes.spec.tsx`
+
+### Acceptance
+
+- All eight Operacije menu targets are represented in the smoke matrix.
+- Legacy supplier Operacije routes resolve to the canonical supplier shell without throwing.
+
+### Dependencies
+
+- `RQ268` owns legacy redirect semantics; this prompt only asserts they remain routable.
+
+---
+
+## RQ303 - Replace English mismatch badge and mixed QA copy on Daily Sales
+
+Status: WAITING
+Priority: P1
+Type: frontend/copy/tests
+Feature family: daily-sales-localization
+Parallel-safe: no
+Owner: Analytics Frontend / Daily Sales
+Commit suggestion: `fix(analytics): localize daily sales mismatch signals`
+
+### Problem
+
+Daily Sales (`/analytics/daily-sales`) shows an English `Check` badge on mismatch rows and mixed Serbian/English data-quality copy (`mismatch`, `total kolone`, `top+others`). Fallback API error text also lacks diacritics (`Greska pri ucitavanju…`).
+
+### Evidence
+
+- `DailySalesStatsPage.tsx:1784` — `<span className="mismatch-badge">Check</span>`.
+- `DailySalesStatsPage.tsx:1228-1236, 1794-1795` — mixed terminology in quality insights/footnote.
+- `dailySalesStatsApi.ts:80` — ASCII fallback error string.
+
+Reproduction: load Daily Sales with rows where supplier totals disagree with daily totals; inspect badge and footnote. Risk: operators miss reconciliation warnings or treat them as dev-only signals.
+
+### Scope
+
+- `DailySalesStatsPage.tsx`, `DailySalesStatsPage.css` if badge text changes, `dailySalesStatsApi.ts` fallback copy.
+- Preserve mismatch detection semantics and row highlighting.
+
+### Read first
+
+- `DailySalesStatsPage.tsx`, `DailySalesStatsPage.premium.spec.tsx`
+- `RQ290` shift/partial semantics — do not weaken data-quality visibility
+
+### Do
+
+1. Replace `Check` with Serbian operational wording (e.g. „Neusklađeno“) and accessible status/tooltip text.
+2. Localize mismatch footnote and quality insight sentences consistently.
+3. Fix API fallback error diacritics.
+
+### Tests
+
+- Extend `DailySalesStatsPage.premium.spec.tsx` for badge/footnote copy.
+- `npm run test -- --run src/pages/__tests__/DailySalesStatsPage*.spec.tsx`
+
+### Acceptance
+
+- No English UI text in mismatch indicators on the Serbian screen.
+- Mismatch rows remain visibly flagged; valid zero/partial shift behavior from `RQ290` is unchanged.
+
+### Dependencies
+
+- `RQ290` owns shift partial semantics; this prompt is presentation-only.
+
+---
+
+## RQ304 - Align Color detail score label with table/export Serbian copy
+
+Status: WAITING
+Priority: P1
+Type: frontend/copy/tests
+Feature family: color-sales-detail-label-parity
+Parallel-safe: no
+Owner: Analytics Frontend / Color Sales
+Commit suggestion: `fix(analytics): align color detail score labeling`
+
+### Problem
+
+Color Sales table/export uses Serbian „Skor odluke“, but the detail panel label is English „Decision score“. The guardrail scanner also flags `decisionScore`/`confidencePct` assignment in the same file.
+
+### Evidence
+
+- `ColorSalesStatsPage.tsx:124` — column header „Skor odluke“.
+- `ColorSalesStatsPage.tsx:1125-1126` — detail `<span>Decision score</span>`.
+- `ColorSalesStatsPage.tsx:393-395` — maps `confidencePct` into `decisionScore`.
+- `ColorSalesStatsPage.spec.tsx` and `ColorSalesStatsPage.premium.spec.tsx` assert „Decision score“.
+
+Reproduction: open Color Sales, click row detail, compare table header vs detail label. Risk: users interpret score semantics differently across table and detail.
+
+### Scope
+
+- Color detail label/copy, focused specs, optional guardrail allowlist only if mapping is proven intentional.
+- Do not change backend recommendation ownership.
+
+### Read first
+
+- `ColorSalesStatsPage.tsx`, `colorStatusIdentity.ts`, `RQ287` status identity completion
+
+### Do
+
+1. Use „Skor odluke“ (or established canonical label) in detail panel, export snapshot and tests.
+2. Document or adjust `confidencePct` → `decisionScore` mapping if it diverges from backend contract.
+3. Resolve or explicitly allowlist guardrail hits with regression proof.
+
+### Tests
+
+- `ColorSalesStatsPage.spec.tsx`, `ColorSalesStatsPage.premium.spec.tsx`
+- `npm run check:analytics-guardrails`
+
+### Acceptance
+
+- Table, detail and export use the same Serbian score label.
+- No unexplained guardrail violation remains for Color score mapping.
+
+### Dependencies
+
+- `RQ287`/`RQ286` own color status/pre-post parity; this prompt is label/contract clarity only.
+
+---
+
+## RQ305 - Clarify Operacije menu entries that redirect into canonical Supplier tabs
+
+Status: WAITING
+Priority: P2
+Type: frontend/navigation/ux
+Feature family: operations-supplier-ia-clarity
+Parallel-safe: no
+Owner: Analytics Frontend / Navigation Shell
+Commit suggestion: `fix(analytics): clarify operations supplier menu aliases`
+
+### Problem
+
+Two Operacije items („Prodaja po dobavljačima“, „Dobavljači i tipovi obuće“) redirect into `/analytics/supplier` tabs. `RQ268` preserved compatibility, but the menu still presents them as independent reports while sidebar activation moves to „Pregled dobavljača“ in Odluke. Users can believe they opened a different screen.
+
+### Evidence
+
+- `navConfig.ts:158-169` — two Operacije entries with distinct labels.
+- `SupplierRedirects.tsx` — redirect to canonical supplier tabs with `legacySource`.
+- `Sidebar.spec.tsx` — canonical supplier link is the sole active item after redirect.
+- `SupplierConsolidatedPage.tsx:69-71` — compatibility banner exists only after navigation.
+
+Reproduction: click each Operacije supplier item, compare menu label vs page title/active nav/tab. Risk: wrong mental model during pilot demos and training.
+
+### Scope
+
+- `navConfig.ts` badges/tooltips, optional sidebar hinting, docs/tests.
+- Do not remove legacy routes without explicit product approval.
+
+### Read first
+
+- `RQ268` completion note, `SupplierConsolidatedPage.tsx`, `Sidebar.tsx`
+- `docs/Frontend/ROUTING_AND_SMOKE_TEST_STANDARDS.md`
+
+### Do
+
+1. Choose and implement one IA pattern: visible „Tab u Pregledu dobavljača“ badge/tooltip on both Operacije entries **or** explicit product decision to restore standalone routes.
+2. Ensure direct-load/refresh/back preserve tab + query context.
+3. Add/adjust navigation tests for menu expectation vs canonical destination.
+
+### Tests
+
+- `Sidebar.spec.tsx`, `SupplierRedirects.spec.tsx`, `SupplierConsolidatedPage.spec.tsx`
+
+### Acceptance
+
+- Before click, user can tell Operacije item opens a Supplier tab alias.
+- Exactly one active nav item; no silent filter/tab loss.
+
+### Dependencies
+
+- `RQ268` delivered redirect compatibility; this is follow-up IA clarity, not a redirect rewrite.
+- Requires lightweight product choice between badge/tooltip vs standalone restoration.
+
+---
+
+## RQ306 - Fix missing Serbian diacritics across Operacije user-facing copy
+
+Status: WAITING
+Priority: P2
+Type: frontend/copy/tests
+Feature family: operations-diacritics-pass
+Parallel-safe: yes
+Owner: Analytics Frontend / Shared Analytics UX
+Commit suggestion: `fix(analytics): restore operacije diacritics`
+
+### Problem
+
+`check:encoding` passes (no mojibake), but Operacije surfaces still use ASCII Serbian in primary, loading and error strings (`Greska`, `Ucitavam`, `poredjenje`, `Pokrice`, `obuce`, `kolicina`, `Predlozen`, `Podrska`, `Jos nema`, `stampu`, `vrednoscu`, `Artrikli`).
+
+### Evidence
+
+Representative files:
+
+- Pages: `DailySalesStatsPage.tsx`, `ColorSalesStatsPage.tsx`, `ShoeTypeSalesStatsPage.tsx`, `ProdajaPrePostNivelacijePage.tsx`, `InventoryPage.tsx`, `SupplierFootwearAnalyticsPage.tsx`
+- Components: `ActionWorkflowPanel.tsx`, `StoreComparisonPanel.tsx`, `SKUDetailModal.tsx`, `MailSchedulerPanel.tsx`, `InventoryPriorityPanels.tsx`
+- Services: `dailySalesStatsApi.ts`, `colorSalesStatsApi.ts`, `shoeTypeSalesStatsApi.ts`, `supplierSalesStatsApi.ts`
+
+Reproduction: scan Operacije screens for missing `č/ć/š/đ/ž`. Risk: inconsistent pilot polish and reduced trust vs other localized surfaces.
+
+### Scope
+
+- User-facing strings in Operacije pages/components/services listed above.
+- Update tests asserting old ASCII copy; no business-logic edits.
+
+### Read first
+
+- `docs/ai/ENCODING_AND_TEXT_SAFETY.md`
+- `npm run check:encoding` script scope
+
+### Do
+
+1. Build a bounded grep list for Operacije owner files only.
+2. Replace ASCII strings with correct Serbian diacritics consistently (e.g. „Greška“, „Učitavam“, „poređenje“, „Pokriće“, „obuće“, „količina“, „štampu“).
+3. Run encoding guardrail and focused Operacije specs.
+
+### Tests
+
+- Focused page specs per touched screen; `npm run check:encoding`
+
+### Acceptance
+
+- Operacije primary/error/loading copy uses correct diacritics.
+- No mojibake introduced; focused Operacije tests remain green.
+
+### Dependencies
+
+- Overlap with `RQ301`/`RQ303`/`RQ307`; coordinate to avoid duplicate edits in one file where possible.
+
+---
+
+## RQ307 - Replace English nivelacija impact label on Shoe Type surface
+
+Status: WAITING
+Priority: P2
+Type: frontend/copy/tests
+Feature family: shoe-type-impact-label
+Parallel-safe: no
+Owner: Analytics Frontend / Shoe Type Sales
+Commit suggestion: `fix(analytics): localize shoe type impact label`
+
+### Problem
+
+Shoe Type sales table uses English `Low signal` in `describeNivelacijaImpactMetric` while neighboring impact labels are Serbian (`Bez baze`, `0% pokriće`, `N/A`).
+
+### Evidence
+
+- `ShoeTypeSalesStatsPage.tsx:300` — `label: "Low signal"`.
+- Premium specs render nivelacija impact cells from this helper.
+
+Reproduction: open Shoe Type sales with rows lacking nivelacija impact percent baseline; inspect impact column. Risk: inconsistent localization on a decision column.
+
+### Scope
+
+- `ShoeTypeSalesStatsPage.tsx` helper labels and nearest tests only.
+
+### Read first
+
+- `canonicalRecommendationSemantics.ts`, `ShoeTypeSalesStatsPage.premium.spec.tsx`
+
+### Do
+
+1. Map to existing Serbian canonical wording (e.g. „Slab signal“ / „Nedovoljan signal“).
+2. Add regression test asserting Serbian label in impact column.
+
+### Tests
+
+- `npm run test -- --run src/pages/__tests__/ShoeTypeSalesStatsPage.premium.spec.tsx`
+
+### Acceptance
+
+- No English impact status label remains in Shoe Type table/detail for nivelacija impact.
+
+### Dependencies
+
+- `RQ306` may touch nearby copy; keep changes localized to impact helper.
+
+---
+
+## RQ308 - Make Inventory trust header period/snapshot semantics explicit
+
+Status: WAITING
+Priority: P2
+Type: frontend/contract/tests
+Feature family: inventory-period-provenance
+Parallel-safe: no
+Owner: Analytics Frontend / Inventory
+Commit suggestion: `fix(analytics): explain inventory period provenance`
+
+### Problem
+
+Inventory is the only Operacije screen without an explicit period in `AnalyticsTrustHeader` (`periodFrom={null}`, `periodTo={null}`) while other Operacije analytics screens expose requested/effective period lineage. Users cannot tell whether inventory is timeless, snapshot-only, or filtered by the 30-day signal window used elsewhere on the page.
+
+### Evidence
+
+- `InventoryPage.tsx:1259-1260` — null period props.
+- `InventoryPage.tsx:89-93` — `createInventorySignalWindow()` defines a 30-day signal window for actions.
+- `RQ273` clarified export/print snapshot semantics vs on-screen signal window.
+
+Reproduction: open inventory, compare trust header to Daily/Shoe Type headers; inspect export contract note. Risk: period/trust mismatch during pilot reviews.
+
+### Scope
+
+- Inventory trust header props, explanatory copy, export/scheduler metadata if already owned by inventory page.
+- Do not invent backend period fields without contract evidence.
+
+### Read first
+
+- `InventoryPage.tsx`, `RQ273` completion, `AnalyticsTrustHeader.tsx`
+
+### Do
+
+1. Identify authoritative period semantics (snapshot-only, signal window, or mixed) from existing contracts/meta.
+2. Pass explicit period labels into trust header **or** show deliberate „Snapshot bez period filtera“ copy with methodology link.
+3. Align export/scheduler notes if they reference a different window.
+
+### Tests
+
+- Extend `InventoryPage.freshnessLineage.spec.tsx` or adjacent inventory trust tests.
+
+### Acceptance
+
+- Trust header never leaves period ambiguous: either shows authoritative range or explicit snapshot-only explanation.
+
+### Dependencies
+
+- `RQ273` owns export window parity; this prompt owns on-screen trust provenance only.
+
+---
+
+## RQ309 - Differentiate duplicate Operacije sidebar icons
+
+Status: WAITING
+Priority: P3
+Type: frontend/navigation
+Feature family: operations-nav-icons
+Parallel-safe: yes
+Owner: Analytics Frontend / Navigation Shell
+Commit suggestion: `fix(analytics): differentiate operations nav icons`
+
+### Problem
+
+Three Operacije entries share `ShoppingBag` (`shoe-type-sales-stats`, `daily-sales`, `dobavljaci-tipovi-obuce`), making quick sidebar recognition harder.
+
+### Evidence
+
+- `navConfig.ts:159-160, 169` — duplicate `ShoppingBag` icons in Operacije group.
+
+### Scope
+
+- `navConfig.ts` icon assignments and any nav config tests only.
+
+### Do
+
+1. Assign distinct lucide icons (e.g. keep `ShoppingBag` for shoe type, use `Clock`/`CalendarDays` for daily shifts, distinct icon for supplier-footwear alias).
+2. Keep labels/routes unchanged.
+
+### Tests
+
+- `navConfig.spec.ts` / `Sidebar.spec.tsx` if icon assertions exist.
+
+### Acceptance
+
+- Operacije items are visually distinguishable by icon without route changes.
+
+### Dependencies
+
+- None.
+
+---
+
+## RQ310 - Align Operacije page tests with production `/analytics/...` routes
+
+Status: WAITING
+Priority: P3
+Type: frontend/tests
+Feature family: operations-test-route-alignment
+Parallel-safe: yes
+Owner: Analytics Frontend / Test Harness
+Commit suggestion: `test(analytics): align operations page route fixtures`
+
+### Problem
+
+Many Operacije specs mount pages on `/analitika/...` list paths, but production list routes live under `/analytics/...`. Detail modal routes correctly use `/analitika/:table/:id`. Tests can pass while production routing regresses.
+
+### Evidence
+
+- `ShoeTypeSalesStatsPage.spec.tsx`, `ColorSalesStatsPage.spec.tsx`, `ColorSalesStatsPage.premium.spec.tsx`, `PreNivelacijaPriorityPage.spec.tsx`, `analyticsTrustStateProof.spec.tsx` use `/analitika/<page>` initial entries.
+- `App.tsx` registers list routes only under `/analytics/...`.
+
+### Scope
+
+- Operacije page spec initial entries and shared test helpers.
+- Keep `/analitika/:table/:id` for detail/modal tests.
+
+### Do
+
+1. Introduce or reuse a helper for canonical `/analytics/...` page mounts.
+2. Migrate Operacije page specs off non-production list paths.
+3. Leave detail-route tests on `/analitika/...` where that is the production contract.
+
+### Tests
+
+- Focused Operacije spec suite after migration.
+
+### Acceptance
+
+- Page-level Operacije tests use production list routes; detail tests still cover modal contract.
+
+### Dependencies
+
+- `RQ302` complements this with App-shell smoke; either order is safe.
+
+---
+
+## RQ311 - Resolve Operacije guardrail violations for score/reliability mapping
+
+Status: WAITING
+Priority: P3
+Type: frontend/guardrails/tests
+Feature family: operations-guardrail-cleanup
+Parallel-safe: no
+Owner: Analytics Frontend / Shared Analytics UX
+Commit suggestion: `fix(analytics): resolve operations guardrail violations`
+
+### Problem
+
+`npm run check:analytics-guardrails` reports violations in Operacije-related pages for `decisionScore_assign`, `confidencePct_assign` and `reliabilityPct_assign`. The script exits 0, but unexplained violations hide potential score/reliability mapping bugs.
+
+### Evidence
+
+2026-09-18 guardrail output includes:
+
+- `ColorSalesStatsPage.tsx:393, 1126`
+- `PreNivelacijaPriorityPage.tsx:260, 544`
+- `ProdajaPrePostNivelacijePage.tsx:378`
+
+Reproduction: run guardrail script and inspect flagged lines. Risk: confidence/reliability/score fields diverge between table, detail and export.
+
+### Scope
+
+- Classify and fix or explicitly allowlist Operacije violations with tests.
+- No backend scoring policy changes.
+
+### Read first
+
+- `scripts/check-analytics-guardrails.mjs`, `RQ264`, `RQ297`, `RQ304`
+
+### Do
+
+1. For each violation, decide bug vs intentional mapping.
+2. Fix incorrect mappings at presentation boundary; add focused regression where bug existed.
+3. Allowlist only with comment + test proving intentional backend projection.
+
+### Tests
+
+- Guardrail script + affected page specs.
+
+### Acceptance
+
+- Operacije pages have no unexplained guardrail violations.
+- Table/detail/export remain consistent for score/reliability fields.
+
+### Dependencies
+
+- `RQ304` may resolve Color portion; coordinate to avoid duplicate work.
 
