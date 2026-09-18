@@ -2,11 +2,32 @@
 
 Date: 2026-09-18
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ299
+Current READY prompt: none
 
 Owner promotion 2026-09-18: under the user's explicit instruction to claim the next prompt, `RQ299` moved from `WAITING` to `READY` as the first safe P2 follow-up after `RQ298` completion; it is the single current RQ prompt for Pre-Nivelacija URL state.
 
 Owner claim 2026-09-18: `RQ299` transitioned `READY -> IN_PROGRESS` in this workspace; local runtime lock `.ai/task-locks/RQ299-codex.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-18
+- Status: DONE
+- Completion: Pre-Nivelacija filter, focus, page and data-scope state now round-trips through validated URL parameters and full-detail navigation.
+- Changed files: `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`, `Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx`, `MASTER_ROADMAP.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- Checks run: focused Pre-Nivelacija spec 28/28; `npm run check:analytics-guardrails`; `npm run build`; `git diff --check`
+- Checks not run: CI/browser manual session not inspected; not named acceptance gates.
+- Run log: `.ai/runs/2026-09-18-RQ299-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `a18d116ca398d74d97ac4f30f0eae665f65d9848`
+- Main verification: passed - fresh `origin/main` contains implementation SHA `a18d116ca398d74d97ac4f30f0eae665f65d9848`.
+- Missed: no unsupported period/category/store query controls were invented; the current Pre-Nivelacija page contract exposes supplier, season, footwear type, score, no-sale threshold, focus, page and data scope.
+- Follow-up: explicitly promote `RQ300` when ready.
+- Residual risk: CI and a full browser back/forward session remain uninspected; focused DOM/API/history-compatible coverage passes.
+- Prompt defect / scope repair: prompt named period/category/store, but those controls are not owned by this page; scope was bounded to existing validated controls and route conventions.
+
+Run log: `.ai/runs/2026-09-18-RQ299-evidence.md`
+Evidence state: synchronized
 
 Owner promotion 2026-09-18: under the user's explicit instruction to claim the next prompt, `RQ298` moved from `WAITING` to `READY` as the first safe P2 follow-up after `RQ297` completion; it is the single current RQ prompt for Pre-Nivelacija reliability styling and export units.
 
@@ -503,7 +524,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ296 | WAITING | pre-nivelacija-focus-empty-state | Show the shared filtered-out state when focus removes every row |
 | RQ297 | WAITING | pre-nivelacija-recommendation-gate | Do not imply actionability or score validity when recommendation is blocked |
 | RQ298 | WAITING | pre-nivelacija-reliability-export | Align reliability styling and percent export metadata |
-| RQ299 | WAITING | pre-nivelacija-url-state | Preserve filters and focus in refresh/back/deep-link URLs |
+| RQ299 | DONE | pre-nivelacija-url-state | Preserve filters and focus in refresh/back/deep-link URLs |
 | RQ300 | WAITING | pre-nivelacija-numeric-robustness | Keep malformed/null numeric payloads from crashing or sorting falsely |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
@@ -15206,7 +15227,7 @@ Reproduction: render a row with valid reliability and one without it, compare vi
 
 ## RQ299 - Preserve Pre-Nivelacija filters and focus in URL state
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P2
 Type: frontend/routing/tests
 Feature family: pre-nivelacija-url-state
