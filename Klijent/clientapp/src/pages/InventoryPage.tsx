@@ -23,6 +23,7 @@ import { SKUDetailModal } from "../components/inventory/SKUDetailModal";
 import { SizeCurvePanel } from "../components/inventory/SizeCurvePanel";
 import { StoreComparisonPanel } from "../components/inventory/StoreComparisonPanel";
 import KpiExplainButton from "../components/analytics/KpiExplainButton";
+import { computeInventorySignalKpis, INVENTORY_SIGNAL_KPI_PAGE_SCOPE_NOTE } from "../components/inventory/inventorySignalKpis";
 import { buildForecastRestockSuggestion, buildInventoryRow, buildInventoryScreenCsvFilename, buildInventoryScreenCsvLines, buildInventoryServerExportContractNote, buildInventoryWorkflowCentralQueueMetadata, buildSupplierChart, createScheduleDraft, formatPercent, INVENTORY_EXPOSURE_BASIS, inventoryRiskSortScopeWarning, isInventoryPageLocalRiskSort, resolveForecastRestockDaysSinceMovement, resolveInventoryExposureRsdFromRow, validateScheduleDraft } from "../components/inventory/inventoryUtils";
 import { getDataScope } from "../utils/dataScope";
 import type { InventoryRow } from "../components/inventory/types";
@@ -832,30 +833,10 @@ export default function InventoryPage() {
     };
   }, [actionWorkflow, displayedRows]);
 
-  const signalKpis = useMemo(() => {
-    const lowCoverSkus = rows.filter((row) => {
-      const status = (row.stockCoverStatus ?? "").toLowerCase();
-      return status === "low_cover" || status === "low" || status === "out_of_stock_risk";
-    }).length;
-
-    const slowStockSkus = rows.filter((row) => {
-      const status = (row.stockCoverStatus ?? "").toLowerCase();
-      return status === "slow_stock" || status === "slow" || status === "no_velocity";
-    }).length;
-
-    const goodSellThroughSkus = rows.filter((row) => (row.sellThroughStatus ?? "").toLowerCase() === "good").length;
-    const stockCoverRiskCount = rows.filter((row) => {
-      const status = (row.stockCoverStatus ?? "").toLowerCase();
-      return status === "low_cover" || status === "low" || status === "out_of_stock_risk" || status === "insufficient_data";
-    }).length;
-
-    return {
-      stockCoverRiskCount,
-      lowCoverSkus,
-      slowStockSkus,
-      goodSellThroughSkus,
-    };
-  }, [rows]);
+  const signalKpis = useMemo(
+    () => computeInventorySignalKpis(rows, totalCount, pageSize),
+    [pageSize, rows, totalCount],
+  );
   const primaryInventoryTrust = useMemo(
     () => aggregateInventoryTrust([
       { label: "Lista artikala", meta: pageData?.meta },
@@ -1298,6 +1279,11 @@ export default function InventoryPage() {
           <KpiExplainButton metricKey="sellThrough" ariaLabel="Kako je izračunat sell-through" />
         </div>
       </section>
+      {signalKpis.scope === "page" ? (
+        <div className="rounded-2xl border border-[var(--warning)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--warning)]" role="status" data-testid="inventory-signal-kpi-scope-note">
+          {INVENTORY_SIGNAL_KPI_PAGE_SCOPE_NOTE} ({fmtNumber(rows.length, 0, "0")} od {fmtNumber(totalCount, 0, "0")} artikala).
+        </div>
+      ) : null}
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <article className="rounded-2xl border border-muted bg-[var(--surface-darker)] p-4">
           <div className="text-xs uppercase tracking-[0.2em] text-muted">Stock cover risk</div>

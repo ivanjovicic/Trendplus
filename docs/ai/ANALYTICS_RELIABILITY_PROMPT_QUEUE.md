@@ -4,6 +4,27 @@ Date: 2026-09-18
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-18: under user instruction to claim next prompt, `RQ331` moved from `WAITING` to `READY` as P1 trust follow-up (inventory page-local signal KPIs).
+
+Owner claim 2026-09-18: `RQ331` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ331-codex.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-18
+- Status: DONE
+- Completion: Inventory signal KPI cards now declare page-local scope when totalCount exceeds pageSize; extracted compute helper and scope banner instead of implying filter-wide totals.
+- Changed files: `Klijent/clientapp/src/components/inventory/inventorySignalKpis.ts`, `Klijent/clientapp/src/components/inventory/inventorySignalKpis.spec.ts`, `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.signalKpis.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- Checks run: signal KPI specs 4/4; `git diff --check`
+- Checks not run: full client suite, CI, live browser
+- Run log: `.ai/runs/2026-09-18-RQ331-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Follow-up: backend aggregate signal KPI endpoint would enable filter-wide counts without page slice
+- Residual risk: KPI values still derived from current page rows when paginated (now explicitly labeled)
+- Prompt defect / scope repair: no backend aggregate exists; implemented honest page-local labeling per prompt option 2
+
 Owner promotion 2026-09-18: under user instruction to claim next prompt, `RQ314` moved from `WAITING` to `READY` as P1 trust follow-up after `RQ313` (Pre/Post driver fake zero).
 
 Owner claim 2026-09-18: `RQ314` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ314-codex.lock.md`.
@@ -650,7 +671,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ328 | WAITING | pre-post-expansion-persistence | Preserve Pre/Post expanded vendor across refetch |
 | RQ329 | WAITING | shoe-type-truncation-label | Fix or remove dead Shoe Type truncation label |
 | RQ330 | WAITING | pre-post-focus-row-context | Add row-count context when Pre/Post focus hides vendors |
-| RQ331 | WAITING | inventory-page-local-signal-kpis | Stop Inventory signal KPI cards from counting only the current page slice |
+| RQ331 | DONE | inventory-page-local-signal-kpis | Stop Inventory signal KPI cards from counting only the current page slice |
 | RQ332 | WAITING | inventory-detail-placeholder-fake-zero | Remove fake zero inventory/value when opening SKU detail off-page |
 | RQ333 | WAITING | pre-post-frontend-share-recompute | Stop Pre/Post frontend from recomputing post revenue share percent |
 | RQ334 | WAITING | supplier-prepost-comparable-fake-zero | Fail closed on null Pre/Post comparable article count in Supplier detail |
@@ -16960,7 +16981,7 @@ Reproduction: select focus with partial matches — table shrinks without count 
 - `RQ317` focus URL state optional complement.
 ## RQ331 - Stop Inventory signal KPI cards from counting only the current page slice
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/trust/tests
 Feature family: inventory-page-local-signal-kpis
