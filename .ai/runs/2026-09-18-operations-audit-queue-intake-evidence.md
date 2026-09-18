@@ -4,8 +4,8 @@ Date: 2026-09-18
 Agent/tool: Codex Cloud Agent
 Delivery target: main
 Working branch / PR: main / direct-main
-Main commit SHA: pending
-Main verification: pending
+Main commit SHA: b695e9a8a516345e7f466ed10d180db4eff8fbbe
+Main verification: passed - `origin/main` is `b695e9a8a516345e7f466ed10d180db4eff8fbbe`
 Evidence state: synchronized
 
 ## What was done
@@ -29,7 +29,9 @@ Evidence state: synchronized
 - Operacije focused tests 15 files -> 188/188 passed
 - `npm run check:encoding` -> pass
 - `npm run check:analytics-guardrails` -> 13 violations logged (5 Operacije pages), exit 0
-- Queue validators -> pending before commit
+- `node scripts/check-prompt-queues.mjs --self-test` -> pass
+- `node scripts/check-prompt-queues.mjs` -> pass (450 tasks)
+- `git diff --check` -> pass
 
 ## Validation not run
 
