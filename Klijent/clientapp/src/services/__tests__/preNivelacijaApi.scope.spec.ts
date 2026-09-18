@@ -71,4 +71,15 @@ describe("pre-nivelacija API scope contract", () => {
       message: "Pre-nivelacija prioriteti trenutno nisu dostupni. Proverite status osvežavanja i pokušajte ponovo.",
     });
   });
+
+  it("suppresses non-JSON technical response bodies", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response("database connection failed", {
+      status: 503,
+      headers: { "content-type": "text/plain" },
+    }))));
+
+    await expect(getPreNivelacijaPrioriteti({})).rejects.toMatchObject({
+      message: "Pre-nivelacija prioriteti trenutno nisu dostupni. Proverite status osvežavanja i pokušajte ponovo.",
+    });
+  });
 });

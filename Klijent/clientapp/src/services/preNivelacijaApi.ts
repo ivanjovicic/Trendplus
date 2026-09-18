@@ -61,7 +61,8 @@ function toSafeFetchError(body: string, contentType: string, status: number): Pr
   const payload = parseErrorBody(body, contentType);
   const errorCode = asText(payload?.errorCode);
   const correlationId = asText(payload?.correlationId);
-  const candidate = asText(payload?.detail) ?? asText(payload?.message) ?? asText(payload?.title) ?? asText(payload?.error) ?? body;
+  const candidate = asText(payload?.detail) ?? asText(payload?.message) ?? asText(payload?.title) ?? asText(payload?.error);
+  if (!candidate) return new PreNivelacijaApiError(PRE_NIVELACIJA_ERROR_FALLBACK, errorCode, correlationId);
   const isHtml = contentType.toLocaleLowerCase().includes("text/html") || /<[^>]+>/.test(candidate);
   const message = isHtml
     ? PRE_NIVELACIJA_ERROR_FALLBACK
