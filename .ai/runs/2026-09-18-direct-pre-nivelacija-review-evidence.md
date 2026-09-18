@@ -31,8 +31,8 @@ No backend formula, ranking policy, tenant/security contract, or route contract 
 ## Delivery
 
 - Delivery mode: direct-main.
-- Planned implementation commit: `fix(analytics): export filtered Pre-Nivelacija rows`.
-- Main verification to record after push: fresh `origin/main` contains the implementation SHA.
+- Implementation commit: `2648137f3dcfe3e409bebd15adea480516c0f05a` (`fix(analytics): export filtered pre-nivelacija rows`).
+- Main verification: passed — fresh `origin/main` equals and contains implementation SHA `2648137f3dcfe3e409bebd15adea480516c0f05a`.
 
 ## Residual risk and next step
 
