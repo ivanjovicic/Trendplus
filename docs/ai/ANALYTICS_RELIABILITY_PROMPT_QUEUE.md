@@ -19,8 +19,8 @@ Owner claim 2026-09-18: `RQ313` transitioned `READY -> IN_PROGRESS`; local runti
 - Run log: `.ai/runs/2026-09-18-RQ313-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `3a1d917b`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `3a1d917b`
 - Follow-up: promote `RQ314` (Pre/Post driver fake zero) when requested
 - Residual risk: `RQ323` still covers other secondary panels stale-data pattern
 - Prompt defect / scope repair: none
