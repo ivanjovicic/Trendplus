@@ -26,7 +26,9 @@ Evidence state: synchronized
 ## Validation run
 
 - Operacije focused tests -> 188/188 passed
-- Queue validators -> pending pre-commit
+- `node scripts/check-prompt-queues.mjs --self-test` -> pass
+- `node scripts/check-prompt-queues.mjs` -> pass (469 tasks)
+- `git diff --check` -> pass
 
 ## Validation not run
 
