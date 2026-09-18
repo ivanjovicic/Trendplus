@@ -366,6 +366,73 @@ describe("PreNivelacijaPriorityPage", () => {
     expect(screen.queryByText("Nisko")).not.toBeInTheDocument();
   });
 
+  it.each([
+    ["false", false, 88],
+    ["missing", undefined, 0],
+  ])("keeps a %s recommendation status informative and gates its score", async (_label, recommendationAllowed, decisionScore) => {
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce(makeResponse([
+      makeCandidate({
+        decisionScore,
+        recommendation: {
+          status: "increase_focus",
+          label: "Pojačaj fokus",
+          summary: "Status dolazi iz backend signala.",
+          confidencePct: 91,
+          reliabilityPct: 88,
+          dataQualityStatus: "good",
+          reasonCodes: ["review_signal"],
+          ...(recommendationAllowed === undefined ? {} : { recommendationAllowed }),
+        },
+      }),
+    ]));
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    expect((await screen.findAllByText("SKU-101")).length).toBeGreaterThan(0);
+    expect(screen.getByText("Pojacaj")).toBeInTheDocument();
+    expect(screen.getByText("Preporuka je blokirana; proveri podatke pre odluke.")).toBeInTheDocument();
+    expect(screen.getByTitle(/Preporuka je blokirana; status je informativan/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Detalji" }));
+
+    expect(screen.getByText("Ocena preporuke")).toBeInTheDocument();
+    expect(screen.getAllByText(/Pouzdanost nije dostupna/).length).toBeGreaterThan(0);
+    expect(screen.queryByText("Pojačaj izlaganje i proveri dopunu pre nivelacije.")).not.toBeInTheDocument();
+  });
+
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])("fails closed for non-finite allowed decision score (%s)", async (decisionScore) => {
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce(makeResponse([
+      makeCandidate({
+        decisionScore,
+        recommendation: {
+          status: "review",
+          label: "Pregled",
+          summary: "Validan status, ali score nije dostupan.",
+          confidencePct: 64,
+          reliabilityPct: 61,
+          dataQualityStatus: "good",
+          recommendationAllowed: true,
+          reasonCodes: ["review_signal"],
+        },
+      }),
+    ]));
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Detalji" }));
+
+    expect(screen.getByText("Ocena preporuke")).toBeInTheDocument();
+    expect(screen.getAllByText(/Pouzdanost nije dostupna/).length).toBeGreaterThan(0);
+  });
+
   it("keeps empty-state copy tied to the SKU priority filters, not a sales period", async () => {
     getPreNivelacijaPrioritetiMock.mockResolvedValueOnce(makeResponse([]));
 

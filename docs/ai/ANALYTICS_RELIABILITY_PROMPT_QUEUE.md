@@ -1,8 +1,14 @@
 # Analytics Reliability Prompt Queue
 
-Date: 2026-09-15
+Date: 2026-09-18
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+
+Owner promotion 2026-09-18: under the user's explicit instruction to promote when no READY prompt exists, `RQ297` moved from `WAITING` to `READY` as the first safe P1 follow-up after `RQ296` completion; it is the single current RQ prompt for Pre-Nivelacija recommendation/actionability gating.
+
+Owner claim 2026-09-18: `RQ297` transitioned `READY -> IN_PROGRESS` in this workspace; local runtime lock `.ai/task-locks/RQ297-codex.lock.md`.
+
+Owner completion 2026-09-18: `RQ297` was delivered on `main` with fail-closed Pre-Nivelacija score/actionability projection, preserved backend status identity and focused gate/non-finite regression coverage; the RQ queue returned to no current READY prompt.
 
 Owner promotion 2026-09-17: under the user's explicit instruction to promote when no READY prompt exists, `RQ296` moved from WAITING to READY as the first safe P1 follow-up after RQ295 completion; it is the single current RQ prompt for Pre-Nivelacija filtered-empty presentation.
 
@@ -4263,7 +4269,7 @@ Analytics code references EF entities, raw SQL relations, views and startup repa
 
 ## RQ147 - Make KPI evidence, decision use and limitations backend-owned
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P0
 Type: backend/contract/frontend/export/report/tests
 Feature family: analytics-metric-evidence-registry
@@ -15042,7 +15048,7 @@ Reproduction: load several decision rows, choose a focus that matches none, and 
 
 ## RQ297 - Gate Pre-Nivelacija actionability and score display separately from backend status
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/recommendation-contract/tests
 Feature family: pre-nivelacija-recommendation-gate
@@ -15092,6 +15098,25 @@ Reproduction: return rows with `recommendationAllowed: false` and valid status/s
 ### Dependencies
 
 - `RQ259` owns shared mode/gate normalization; this prompt owns Pre-Nivelacija page projection.
+
+### Completion note
+
+- Date: 2026-09-18
+- Status: DONE
+- Completion: Pre-Nivelacija now preserves backend recommendation status as an informative state while gating decision score, recommendation-dependent export values and executable next-step copy unless `recommendationAllowed === true`; non-finite scores fail closed as unavailable.
+- Changed files: `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`; `Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx`; `MASTER_ROADMAP.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `.ai/runs/2026-09-18-RQ297-evidence.md`.
+- Contract/runtime behavior changed: yes - status identity remains backend-owned and visible, while score/actionability evidence is unavailable when permission or finite score evidence is missing.
+- Checks run: focused Pre-Nivelacija spec (17 passed); `npm run check:analytics-guardrails` (passed); `npm run build` (passed with existing chunk-size advisory); all six agent/prompt/planning governance checks (passed); `git diff --check` (passed).
+- Checks not run: full frontend suite, backend build/tests and live browser/deployed proof were not run because this is a bounded frontend contract change.
+- Run log: `.ai/runs/2026-09-18-RQ297-evidence.md`.
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: none known.
+- Follow-up: `RQ298` remains the next safe WAITING Pre-Nivelacija reliability/export candidate.
+- Residual risk: no live browser/export artifact proof; focused DOM and projection tests cover the changed gate semantics.
+- Prompt defect / scope repair: none.
 
 ---
 

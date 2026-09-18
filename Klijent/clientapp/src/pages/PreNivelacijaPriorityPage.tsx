@@ -68,13 +68,15 @@ type ActiveFilters = {
   noSaleDaysMin: number;
 };
 
-type DecisionCandidate = PreNivelacijaSkuCandidate & {
+type DecisionCandidate = Omit<PreNivelacijaSkuCandidate, "decisionScore"> & {
   revenueDelta: number;
   marginDelta: number;
   confidencePct: number | null;
   confidenceAvailable: boolean;
   reliabilityAvailable: boolean;
   recommendationAllowed: boolean;
+  decisionScore: number | null;
+  decisionScoreAvailable: boolean;
   status: DecisionStatus;
   statusReason: string;
   dataQualityStatus: RecommendationQualityStatus;
@@ -104,7 +106,7 @@ const decisionColumns: AnalyticsTableColumn<DecisionCandidate>[] = [
   { key: "daysSinceLastSale", header: "Dana bez prodaje", dataType: "number" },
   { key: "revenueDelta", header: "Isticanje vs sniženje (prihod)", dataType: "currency", getValue: (row) => row.recommendationAllowed ? row.revenueDelta : null },
   { key: "reliabilityPct", header: RECOMMENDATION_RELIABILITY_LABEL, dataType: "number", getValue: (row) => row.reliabilityAvailable ? row.reliabilityPct : null },
-  { key: "decisionScore", header: "Ocena preporuke", dataType: "number" },
+  { key: "decisionScore", header: "Ocena preporuke", dataType: "number", getValue: (row) => row.decisionScoreAvailable ? row.decisionScore : null },
   { key: "status", header: "Preporuka", dataType: "text" },
 ];
 
@@ -134,6 +136,10 @@ function CustomSupplierTooltip({ active, payload }: CustomSupplierTooltipProps) 
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+function normalizeDecisionScore(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 function sortMarker(field: SortField, activeField: SortField, dir: SortDir): string {
@@ -178,7 +184,8 @@ function isHighPriorityCandidate(row: DecisionCandidate): boolean {
 type StatusTooltipData = {
   status: DecisionStatus;
   statusReason: string;
-  decisionScore: number;
+  decisionScore: number | null;
+  decisionScoreAvailable: boolean;
   revenueDelta: number;
   reliabilityPct: number | null;
   confidencePct: number | null;
@@ -186,14 +193,19 @@ type StatusTooltipData = {
   confidenceAvailable: boolean;
   dataQualityStatus: RecommendationQualityStatus;
   reasonCodes: string[];
+  recommendationAllowed: boolean;
 };
 
 function buildStatusTooltip(data: StatusTooltipData): string {
   const reliabilityText = data.reliabilityAvailable && data.reliabilityPct != null ? fmtPct(data.reliabilityPct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
   const confidenceText = data.confidenceAvailable && data.confidencePct != null ? fmtPct(data.confidencePct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
+  const scoreText = data.decisionScoreAvailable && data.decisionScore != null ? String(data.decisionScore) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
   const qualityText = recommendationQualityLabel(data.dataQualityStatus);
   const hintText = recommendationReasonHints(data.reasonCodes).join(" | ");
-  return `${statusDisplayLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Ocena ${data.decisionScore} | Delta ${fmtRsd(data.revenueDelta)} | ${RECOMMENDATION_RELIABILITY_LABEL} ${reliabilityText} | ${RECOMMENDATION_CONFIDENCE_LABEL} ${confidenceText} | Kvalitet ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
+  const gateText = data.recommendationAllowed
+    ? ""
+    : " | Preporuka je blokirana; status je informativan, a ocena i sledeći korak nisu potvrđeni.";
+  return `${statusDisplayLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Ocena ${scoreText} | Delta ${fmtRsd(data.revenueDelta)} | ${RECOMMENDATION_RELIABILITY_LABEL} ${reliabilityText} | ${RECOMMENDATION_CONFIDENCE_LABEL} ${confidenceText} | Kvalitet ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}${gateText}`;
 }
 
 function getRecommendedNextStep(status: DecisionStatus): string {
@@ -202,6 +214,12 @@ function getRecommendedNextStep(status: DecisionStatus): string {
   if (status === "review") return "Pregledaj signal pre odluke o jačem isticanju ili markdown-u.";
   if (status === "do_not_trust") return "Ne donosi odluku dok ne proveriš podatke i poslednju prodaju.";
   return "Sačekaj jači signal ili proširi kontekst pre odluke.";
+}
+
+function getStatusNextStep(row: Pick<DecisionCandidate, "recommendationAllowed" | "status">): string {
+  return row.recommendationAllowed
+    ? getRecommendedNextStep(row.status)
+    : "Preporuka je blokirana; proveri podatke pre odluke.";
 }
 
 function hasReasonCode(reasonCodes: string[], targets: string[]): boolean {
@@ -388,6 +406,7 @@ export default function PreNivelacijaPriorityPage() {
       const confidencePctValue = normalizeRecommendationPct(recommendation.confidencePct);
       const reliabilityPctValue = normalizeRecommendationPct(recommendation.reliabilityPct ?? item.reliabilityPct);
       const recommendationAllowed = recommendation.recommendationAllowed === true;
+      const decisionScore = recommendationAllowed ? normalizeDecisionScore(item.decisionScore) : null;
 
       return {
         ...item,
@@ -398,6 +417,8 @@ export default function PreNivelacijaPriorityPage() {
         reliabilityAvailable: recommendationAllowed && reliabilityPctValue != null,
         reliabilityPct: recommendationAllowed ? reliabilityPctValue : null,
         recommendationAllowed,
+        decisionScore,
+        decisionScoreAvailable: decisionScore != null,
         status: recommendation.status,
         statusReason: recommendation.summary,
         dataQualityStatus: normalizeRecommendationQualityStatus(recommendation.dataQualityStatus),
@@ -419,7 +440,7 @@ export default function PreNivelacijaPriorityPage() {
       else if (sortField === "revenueDelta") compare = a.revenueDelta - b.revenueDelta;
       else if (sortField === "status") compare = STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status];
 
-      if (compare === 0) compare = a.decisionScore - b.decisionScore;
+      if (compare === 0) compare = (a.decisionScore ?? -1) - (b.decisionScore ?? -1);
       if (compare === 0) compare = (a.confidencePct ?? -1) - (b.confidencePct ?? -1);
       return sortDir === "asc" ? compare : -compare;
     });
@@ -1016,7 +1037,7 @@ export default function PreNivelacijaPriorityPage() {
                                 >
                                   {statusDisplayLabel(row.status)}
                                 </span>
-                                <small className="pnp-status-next">{getRecommendedNextStep(row.status)}</small>
+                                <small className="pnp-status-next">{getStatusNextStep(row)}</small>
                               </div>
                             </td>
                             <td className="align-center">
@@ -1082,7 +1103,7 @@ export default function PreNivelacijaPriorityPage() {
                 </article>
                 <article>
                   <span>Ocena preporuke</span>
-                  <strong>{selectedRow.decisionScore}</strong>
+                  <strong>{selectedRow.decisionScoreAvailable ? selectedRow.decisionScore : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
                 </article>
                 <article>
                   <span>{RECOMMENDATION_RELIABILITY_LABEL} <InfoTip text={analyticsMetricDescriptions.reliabilityPct} /></span>
