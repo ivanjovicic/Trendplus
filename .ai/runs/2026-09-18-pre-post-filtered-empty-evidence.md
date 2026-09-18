@@ -4,9 +4,9 @@ Date: 2026-09-18
 Agent/tool: Cursor Cloud Agent
 Delivery target: main
 Working branch / PR: main (direct delivery)
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: b57a6383
+Main verification: passed - origin/main contains b57a6383
+Evidence state: synchronized
 
 ## What was done
 - Audited remaining Sep 17–18 commits vs prompt acceptance; confirmed Pre-Nivelacija RQ294–300 and adjacent fixes already on main.
