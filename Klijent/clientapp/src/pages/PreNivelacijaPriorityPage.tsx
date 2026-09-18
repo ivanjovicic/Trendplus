@@ -98,14 +98,14 @@ const STATUS_PRIORITY: Record<DecisionStatus, number> = {
   ...RECOMMENDATION_STATUS_PRIORITY,
 };
 
-const decisionColumns: AnalyticsTableColumn<DecisionCandidate>[] = [
+export const decisionColumns: AnalyticsTableColumn<DecisionCandidate>[] = [
   { key: "sku", header: "SKU", dataType: "text" },
   { key: "supplierName", header: "Dobavljač", dataType: "text" },
   { key: "preNivelacijaScore", header: "Skor nivelacije", dataType: "number" },
   { key: "stockUnits", header: "Zaliha (kom)", dataType: "number" },
   { key: "daysSinceLastSale", header: "Dana bez prodaje", dataType: "number" },
   { key: "revenueDelta", header: "Isticanje vs sniženje (prihod)", dataType: "currency", getValue: (row) => row.recommendationAllowed ? row.revenueDelta : null },
-  { key: "reliabilityPct", header: RECOMMENDATION_RELIABILITY_LABEL, dataType: "number", getValue: (row) => row.reliabilityAvailable ? row.reliabilityPct : null },
+  { key: "reliabilityPct", header: RECOMMENDATION_RELIABILITY_LABEL, dataType: "percent", getValue: (row) => row.reliabilityAvailable ? row.reliabilityPct : null },
   { key: "decisionScore", header: "Ocena preporuke", dataType: "number", getValue: (row) => row.decisionScoreAvailable ? row.decisionScore : null },
   { key: "status", header: "Preporuka", dataType: "text" },
 ];
@@ -161,7 +161,7 @@ function statusDisplayLabel(status: DecisionStatus): string {
 }
 
 function reliabilitySignalDisplay(row: DecisionCandidate): { label: string; className: string; title?: string } {
-  if (!row.reliabilityAvailable) {
+  if (!row.reliabilityAvailable || row.reliabilityPct == null) {
     return {
       label: "Nije dostupno",
       className: "pnp-signal-pill signal-na",
@@ -170,9 +170,14 @@ function reliabilitySignalDisplay(row: DecisionCandidate): { label: string; clas
   }
 
   const label = fmtPct(row.reliabilityPct, 0);
+  const className = row.reliabilityPct >= 70
+    ? "pnp-signal-pill signal-strong"
+    : row.reliabilityPct >= 40
+      ? "pnp-signal-pill signal-watch"
+      : "pnp-signal-pill signal-weak";
   return {
     label,
-    className: "pnp-signal-pill signal-na",
+    className,
     title: `${RECOMMENDATION_RELIABILITY_LABEL}: ${label}`,
   };
 }

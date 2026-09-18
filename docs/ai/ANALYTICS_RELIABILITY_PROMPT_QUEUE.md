@@ -4,6 +4,12 @@ Date: 2026-09-18
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-18: under the user's explicit instruction to claim the next prompt, `RQ298` moved from `WAITING` to `READY` as the first safe P2 follow-up after `RQ297` completion; it is the single current RQ prompt for Pre-Nivelacija reliability styling and export units.
+
+Owner claim 2026-09-18: `RQ298` transitioned `READY -> IN_PROGRESS` in this workspace; local runtime lock `.ai/task-locks/RQ298-codex.lock.md`.
+
+Owner completion 2026-09-18: `RQ298` was delivered on `main` with distinct valid/unavailable Pre-Nivelacija reliability tones and percent-preserving export metadata; the RQ queue returned to no current READY prompt.
+
 Owner promotion 2026-09-18: under the user's explicit instruction to promote when no READY prompt exists, `RQ297` moved from `WAITING` to `READY` as the first safe P1 follow-up after `RQ296` completion; it is the single current RQ prompt for Pre-Nivelacija recommendation/actionability gating.
 
 Owner claim 2026-09-18: `RQ297` transitioned `READY -> IN_PROGRESS` in this workspace; local runtime lock `.ai/task-locks/RQ297-codex.lock.md`.
@@ -15122,7 +15128,7 @@ Reproduction: return rows with `recommendationAllowed: false` and valid status/s
 
 ## RQ298 - Align Pre-Nivelacija reliability styling and export units
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/export/accessibility/tests
 Feature family: pre-nivelacija-reliability-export
@@ -15172,6 +15178,25 @@ Reproduction: render a row with valid reliability and one without it, compare vi
 ### Dependencies
 
 - `RQ264` owns shared output formatting; this prompt owns Pre-Nivelacija column metadata and local styling.
+
+### Completion note
+
+- Date: 2026-09-18
+- Status: DONE
+- Completion: Pre-Nivelacija now uses distinct weak/watch/strong tones for finite reliability percentages, keeps null/non-finite/malformed values unavailable, and exports `reliabilityPct` with `dataType: percent` without double-scaling.
+- Changed files: `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`; `Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx`; `MASTER_ROADMAP.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `.ai/runs/2026-09-18-RQ298-evidence.md`.
+- Contract/runtime behavior changed: yes - valid reliability evidence is visually distinct from unavailable evidence and export metadata preserves percentage semantics.
+- Checks run: focused Pre-Nivelacija spec (25 passed); `npm run check:analytics-guardrails` (passed); `npm run build` (passed with existing chunk-size advisory); `git diff --check` (pending final docs sync).
+- Checks not run: full frontend suite, backend build/tests and live browser/export artifact proof were not run because this is a bounded frontend presentation/export metadata change.
+- Run log: `.ai/runs/2026-09-18-RQ298-evidence.md`.
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: none known.
+- Follow-up: `RQ299` remains the next safe WAITING Pre-Nivelacija URL-state candidate.
+- Residual risk: no live browser/downloaded export artifact was inspected; focused DOM and column metadata tests cover the changed semantics.
+- Prompt defect / scope repair: none.
 
 ---
 

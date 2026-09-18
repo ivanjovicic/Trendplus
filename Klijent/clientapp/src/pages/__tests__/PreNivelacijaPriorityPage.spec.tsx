@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import PreNivelacijaPriorityPage from "../PreNivelacijaPriorityPage";
+import PreNivelacijaPriorityPage, { decisionColumns } from "../PreNivelacijaPriorityPage";
 
 vi.mock("recharts", () => ({
   BarChart: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
@@ -263,6 +263,76 @@ describe("PreNivelacijaPriorityPage", () => {
     expect(screen.queryByText("Visoko")).not.toBeInTheDocument();
     expect(screen.queryByText("Srednje")).not.toBeInTheDocument();
     expect(screen.queryByText("Nisko")).not.toBeInTheDocument();
+  });
+
+  it.each([
+    [0, "signal-weak"],
+    [55, "signal-watch"],
+    [100, "signal-strong"],
+  ])("uses a valid reliability tone for %s%% instead of unavailable styling", async (reliabilityPct, expectedClass) => {
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce(makeResponse([
+      makeCandidate({
+        recommendation: {
+          status: "review",
+          label: "Pregled",
+          summary: "Validan reliability signal.",
+          confidencePct: 64,
+          reliabilityPct,
+          dataQualityStatus: "good",
+          recommendationAllowed: true,
+          reasonCodes: ["review_signal"],
+        },
+      }),
+    ]));
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    const reliability = await screen.findByText(`${reliabilityPct}%`);
+    expect(reliability).toHaveClass(expectedClass);
+    expect(reliability).not.toHaveClass("signal-na");
+  });
+
+  it.each([null, Number.NaN, Number.POSITIVE_INFINITY, "55"])("keeps malformed reliability %s unavailable", async (reliabilityPct) => {
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce(makeResponse([
+      makeCandidate({
+        reliabilityPct,
+        recommendation: {
+          status: "review",
+          label: "Pregled",
+          summary: "Reliability signal nije pouzdan.",
+          confidencePct: 64,
+          reliabilityPct,
+          dataQualityStatus: "warning",
+          recommendationAllowed: true,
+          reasonCodes: ["review_signal"],
+        },
+      }),
+    ]));
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    const unavailable = (await screen.findAllByText("Nije dostupno")).find((element) =>
+      element.className.includes("signal-na"),
+    );
+    expect(unavailable).toBeTruthy();
+  });
+
+  it("exports reliability as a percent while preserving null as unavailable", () => {
+    const reliabilityColumn = decisionColumns.find((column) => column.key === "reliabilityPct");
+
+    expect(reliabilityColumn).toMatchObject({
+      dataType: "percent",
+    });
+    expect(reliabilityColumn?.getValue?.({ reliabilityAvailable: true, reliabilityPct: 0 } as never)).toBe(0);
+    expect(reliabilityColumn?.getValue?.({ reliabilityAvailable: false, reliabilityPct: null } as never)).toBeNull();
   });
 
   it("keeps markdown copy scenario-oriented and blocks margin signal without cost", async () => {
