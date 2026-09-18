@@ -19,8 +19,8 @@ Owner claim 2026-09-18: `RQ331` transitioned `READY -> IN_PROGRESS`; local runti
 - Run log: `.ai/runs/2026-09-18-RQ331-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `a7311ff5`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `a7311ff5`
 - Follow-up: backend aggregate signal KPI endpoint would enable filter-wide counts without page slice
 - Residual risk: KPI values still derived from current page rows when paginated (now explicitly labeled)
 - Prompt defect / scope repair: no backend aggregate exists; implemented honest page-local labeling per prompt option 2
