@@ -353,7 +353,7 @@ export default function InventoryPage() {
   const [inventoryDataScope, setInventoryDataScope] = useState(() => getDataScope());
   const deferredSearch = useDeferredValue(searchInput);
   const trimmedSearch = deferredSearch.trim();
-  const inventorySignalWindow = useMemo(createInventorySignalWindow, []);
+  const inventorySignalWindow = useMemo(createInventorySignalWindow, [reloadNonce, inventoryDataScope]);
   const exportContractNote = useMemo(
     () => buildInventoryServerExportContractNote(inventoryDataScope),
     [inventoryDataScope],

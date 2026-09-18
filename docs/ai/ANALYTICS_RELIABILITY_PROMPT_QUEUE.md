@@ -4,6 +4,27 @@ Date: 2026-09-18
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-18: under user instruction to claim next prompt, `RQ312` moved from `WAITING` to `READY` as first safe P1 trust follow-up (inventory signal window freshness).
+
+Owner claim 2026-09-18: `RQ312` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ312-codex.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-18
+- Status: DONE
+- Completion: Inventory signal window now recomputes on reload generation (`reloadNonce`) and data-scope changes instead of freezing at mount.
+- Changed files: `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.signalWindow.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- Checks run: focused signal window spec 2/2; `git diff --check`
+- Checks not run: full client suite, CI, live browser
+- Run log: `.ai/runs/2026-09-18-RQ312-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Follow-up: promote `RQ313` (insights fail-closed) when requested
+- Residual risk: toolbar „Osveži“ still uses full page reload (`RQ351`); unrelated to this prompt
+- Prompt defect / scope repair: none
+
 Owner promotion 2026-09-18: under the user's explicit instruction to claim the next prompt, `RQ300` moved from `WAITING` to `READY` as the first safe P1 follow-up after `RQ299` completion; it is the single current RQ prompt for Pre-Nivelacija numeric robustness.
 
 Owner claim 2026-09-18: `RQ300` transitioned `READY -> IN_PROGRESS` in this workspace; local runtime lock `.ai/task-locks/RQ300-codex.lock.md`.
@@ -568,7 +589,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ309 | WAITING | operations-nav-icons | Differentiate duplicate Operacije sidebar icons |
 | RQ310 | WAITING | operations-test-route-alignment | Align Operacije page tests with production `/analytics/...` routes |
 | RQ311 | WAITING | operations-guardrail-cleanup | Resolve Operacije guardrail violations for score/reliability mapping |
-| RQ312 | WAITING | inventory-signal-window-freshness | Refresh Inventory signal window instead of freezing at mount |
+| RQ312 | DONE | inventory-signal-window-freshness | Refresh Inventory signal window instead of freezing at mount |
 | RQ313 | WAITING | inventory-insights-error-state | Fail closed when Inventory insights fetch fails |
 | RQ314 | WAITING | pre-post-driver-fake-zero | Stop Pre/Post driver summary from showing fake zero RSD |
 | RQ315 | WAITING | pre-nivelacija-period-provenance | Expose Pre-Nivelacija analysis period in trust header |
@@ -15995,7 +16016,7 @@ Reproduction: run guardrail script and inspect flagged lines. Risk: confidence/r
 
 ## RQ312 - Refresh Inventory signal window instead of freezing it at mount
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/contract/tests
 Feature family: inventory-signal-window-freshness
