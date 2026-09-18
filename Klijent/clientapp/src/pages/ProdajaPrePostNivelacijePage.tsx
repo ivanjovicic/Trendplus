@@ -123,11 +123,11 @@ type ConcentrationDatum = {
 
 type DetailDriverSummary = {
   dominantCategory: string;
-  dominantCategoryRevenue: number;
+  dominantCategoryRevenue: number | null;
   topWinnerLabel: string;
-  topWinnerRevenue: number;
+  topWinnerRevenue: number | null;
   topRiskLabel: string;
-  topRiskRevenue: number;
+  topRiskRevenue: number | null;
   avgMomentumRevenue: number | null;
   avgElasticity: number | null;
   avgDidRevenue: number | null;
@@ -1001,7 +1001,7 @@ const advancedSignals = useMemo(
       }
     }
 
-    const dominantCategoryEntry = [...dominantCategoryMap.entries()].sort((left, right) => right[1] - left[1])[0] ?? ["N/A", 0];
+    const dominantCategoryEntry = [...dominantCategoryMap.entries()].sort((left, right) => right[1] - left[1])[0];
     const topWinner = [...vendorArticles].sort((left, right) => right.changeRevenue - left.changeRevenue)[0];
     const topRisk = [...vendorArticles].sort((left, right) => left.changeRevenue - right.changeRevenue)[0];
     const topMetricReasons = [...metricReasonCounts.entries()]
@@ -1010,12 +1010,12 @@ const advancedSignals = useMemo(
       .map(([reason, count]) => `${reason} (${count})`);
 
     return {
-      dominantCategory: dominantCategoryEntry[0],
-      dominantCategoryRevenue: dominantCategoryEntry[1],
+      dominantCategory: dominantCategoryEntry?.[0] ?? "N/A",
+      dominantCategoryRevenue: dominantCategoryEntry?.[1] ?? null,
       topWinnerLabel: topWinner ? `${topWinner.sku || "-"} • ${topWinner.articleName}` : "N/A",
-      topWinnerRevenue: trustedMetric(topWinner?.changeRevenue, topWinner) ?? 0,
+      topWinnerRevenue: topWinner ? trustedMetric(topWinner.changeRevenue, topWinner) : null,
       topRiskLabel: topRisk ? `${topRisk.sku || "-"} • ${topRisk.articleName}` : "N/A",
-      topRiskRevenue: trustedMetric(topRisk?.changeRevenue, topRisk) ?? 0,
+      topRiskRevenue: topRisk ? trustedMetric(topRisk.changeRevenue, topRisk) : null,
       avgMomentumRevenue: averageNullable(vendorArticles.map((item) => item.momentumRevenue)),
       avgElasticity: averageNullable(vendorArticles.map((item) => item.priceElasticity)),
       avgDidRevenue: averageNullable(vendorArticles.map((item) => item.didRevenue)),

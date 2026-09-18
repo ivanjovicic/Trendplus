@@ -4,6 +4,27 @@ Date: 2026-09-18
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-18: under user instruction to claim next prompt, `RQ314` moved from `WAITING` to `READY` as P1 trust follow-up after `RQ313` (Pre/Post driver fake zero).
+
+Owner claim 2026-09-18: `RQ314` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ314-codex.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-18
+- Status: DONE
+- Completion: Pre/Post driver summary keeps winner/risk/dominant revenue nullable; UI uses fmtRsd null path (N/A) instead of coercing fake 0 RSD.
+- Changed files: `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`, `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- Checks run: focused Pre/Post driver specs 2/2; `git diff --check`
+- Checks not run: full Pre/Post suite, CI, live browser
+- Run log: `.ai/runs/2026-09-18-RQ314-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Follow-up: promote `RQ331` (page-local inventory KPIs) or `RQ315` when requested
+- Residual risk: winner/risk sort still uses raw changeRevenue (`RQ347`)
+- Prompt defect / scope repair: none
+
 Owner promotion 2026-09-18: under user instruction to claim next prompt, `RQ313` moved from `WAITING` to `READY` as P1 trust follow-up after `RQ312` (inventory insights fail-closed).
 
 Owner claim 2026-09-18: `RQ313` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ313-codex.lock.md`.
@@ -612,7 +633,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ311 | WAITING | operations-guardrail-cleanup | Resolve Operacije guardrail violations for score/reliability mapping |
 | RQ312 | DONE | inventory-signal-window-freshness | Refresh Inventory signal window instead of freezing at mount |
 | RQ313 | DONE | inventory-insights-error-state | Fail closed when Inventory insights fetch fails |
-| RQ314 | WAITING | pre-post-driver-fake-zero | Stop Pre/Post driver summary from showing fake zero RSD |
+| RQ314 | DONE | pre-post-driver-fake-zero | Stop Pre/Post driver summary from showing fake zero RSD |
 | RQ315 | WAITING | pre-nivelacija-period-provenance | Expose Pre-Nivelacija analysis period in trust header |
 | RQ316 | WAITING | pre-nivelacija-empty-reason-parity | Align Pre-Nivelacija period empty reasons across surfaces |
 | RQ317 | WAITING | pre-post-focus-url-state | Persist Pre/Post focus filter in URL and across reloads |
@@ -16136,7 +16157,7 @@ Reproduction: load with data, change filters to trigger insights failure — agi
 
 ## RQ314 - Stop Pre/Post driver summary from showing fake zero RSD revenue
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/trust/tests
 Feature family: pre-post-driver-fake-zero
