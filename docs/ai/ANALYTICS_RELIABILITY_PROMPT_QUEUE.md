@@ -2,7 +2,11 @@
 
 Date: 2026-09-18
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ300
+
+Owner promotion 2026-09-18: under the user's explicit instruction to claim the next prompt, `RQ300` moved from `WAITING` to `READY` as the first safe P1 follow-up after `RQ299` completion; it is the single current RQ prompt for Pre-Nivelacija numeric robustness.
+
+Owner claim 2026-09-18: `RQ300` transitioned `READY -> IN_PROGRESS` in this workspace; local runtime lock `.ai/task-locks/RQ300-codex.lock.md`.
 
 Owner promotion 2026-09-18: under the user's explicit instruction to claim the next prompt, `RQ299` moved from `WAITING` to `READY` as the first safe P2 follow-up after `RQ298` completion; it is the single current RQ prompt for Pre-Nivelacija URL state.
 
@@ -15282,7 +15286,7 @@ Reproduction: set non-default filters and focus, refresh, navigate away/back, us
 
 ## RQ300 - Make Pre-Nivelacija numeric rendering and sorting robust to malformed payloads
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend/numeric-state/tests
 Feature family: pre-nivelacija-numeric-robustness

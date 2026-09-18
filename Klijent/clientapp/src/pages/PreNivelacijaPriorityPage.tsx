@@ -21,7 +21,7 @@ import { getPreNivelacijaPrioriteti } from "../services/preNivelacijaApi";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import type { PreNivelacijaPriorityResponse, PreNivelacijaRecommendation, PreNivelacijaSkuCandidate } from "../types/preNivelacija";
 import { CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
-import { fmtPct, fmtRsd } from "../utils/analyticsFormatters";
+import { fmtNumber, fmtPct, fmtRsd } from "../utils/analyticsFormatters";
 import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescriptions";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { getDataScope, normalizeDataScope, type DataScope } from "../utils/dataScope";
@@ -36,7 +36,6 @@ import {
   RECOMMENDATION_RELIABILITY_LABEL,
   RECOMMENDATION_SIGNAL_UNAVAILABLE,
   RECOMMENDATION_STATUS_PRIORITY,
-  normalizeRecommendationPct,
   normalizeRecommendationQualityStatus,
   recommendationQualityLabel,
   recommendationQualityStyle,
@@ -71,14 +70,62 @@ type ActiveFilters = {
 const DEFAULT_MIN_SCORE = 40;
 const DEFAULT_NO_SALE_DAYS_MIN = 14;
 
-type DecisionCandidate = Omit<PreNivelacijaSkuCandidate, "decisionScore"> & {
-  revenueDelta: number;
-  marginDelta: number;
+type FiniteNumber = number | null;
+type NormalizedScenario = {
+  expectedUnits30d: FiniteNumber;
+  expectedRevenue30d: FiniteNumber;
+  expectedMargin30d: FiniteNumber;
+  effectivePrice: FiniteNumber;
+};
+
+type DecisionCandidate = Omit<
+  PreNivelacijaSkuCandidate,
+  | "stockUnits"
+  | "units180"
+  | "velocity180"
+  | "daysSinceLastSale"
+  | "markdownEvents"
+  | "avgMarkdownPct"
+  | "grossMarginPctEst"
+  | "seasonRecencyBoost"
+  | "preNivelacijaScore"
+  | "scoreBreakdown"
+  | "scenarioHighlightNow"
+  | "scenarioMarkdownNow"
+  | "marginDeltaHighlightVsMarkdown"
+  | "revenueDeltaHighlightVsMarkdown"
+  | "reliabilityPct"
+  | "decisionScore"
+> & {
+  stockUnits: FiniteNumber;
+  units180: FiniteNumber;
+  velocity180: FiniteNumber;
+  daysSinceLastSale: FiniteNumber;
+  markdownEvents: FiniteNumber;
+  avgMarkdownPct: FiniteNumber;
+  grossMarginPctEst: FiniteNumber;
+  seasonRecencyBoost: FiniteNumber;
+  preNivelacijaScore: FiniteNumber;
+  scoreBreakdown: {
+    stockPressure: FiniteNumber;
+    velocityRisk: FiniteNumber;
+    recencyRisk: FiniteNumber;
+    markdownOpportunity: FiniteNumber;
+    marginPotential: FiniteNumber;
+    seasonRecencyBoost: FiniteNumber;
+  };
+  scenarioHighlightNow: NormalizedScenario;
+  scenarioMarkdownNow: NormalizedScenario;
+  marginDeltaHighlightVsMarkdown: FiniteNumber;
+  revenueDeltaHighlightVsMarkdown: FiniteNumber;
+  reliabilityPct: FiniteNumber;
+  decisionScore: FiniteNumber;
+  revenueDelta: FiniteNumber;
+  marginDelta: FiniteNumber;
   confidencePct: number | null;
   confidenceAvailable: boolean;
   reliabilityAvailable: boolean;
   recommendationAllowed: boolean;
-  decisionScore: number | null;
   decisionScoreAvailable: boolean;
   status: DecisionStatus;
   statusReason: string;
@@ -159,7 +206,7 @@ export const decisionColumns: AnalyticsTableColumn<DecisionCandidate>[] = [
 
 interface CustomSupplierTooltipProps {
   active?: boolean;
-  payload?: Array<{ payload: { name: string; sharePct: number; weekOverWeekRiskDeltaPct: number } }>;
+  payload?: Array<{ payload: { name: string; sharePct: number; weekOverWeekRiskDeltaPct: FiniteNumber } }>;
 }
 
 function CustomSupplierTooltip({ active, payload }: CustomSupplierTooltipProps) {
@@ -185,8 +232,73 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-function normalizeDecisionScore(value: unknown): number | null {
+function normalizeFiniteNumber(value: unknown): FiniteNumber {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function normalizeBoundedNumber(value: unknown, min: number, max: number): FiniteNumber {
+  const normalized = normalizeFiniteNumber(value);
+  return normalized != null && normalized >= min && normalized <= max ? normalized : null;
+}
+
+function normalizeNonNegativeNumber(value: unknown): FiniteNumber {
+  return normalizeBoundedNumber(value, 0, Number.MAX_VALUE);
+}
+
+function normalizePositiveInteger(value: unknown): number | null {
+  const normalized = normalizeNonNegativeNumber(value);
+  return normalized != null && Number.isInteger(normalized) && normalized > 0 ? normalized : null;
+}
+
+function normalizePercentage(value: unknown): FiniteNumber {
+  const normalized = normalizeFiniteNumber(value);
+  if (normalized == null || normalized < 0) return null;
+  const percentage = normalized <= 1 ? normalized * 100 : normalized;
+  return percentage <= 100 ? percentage : null;
+}
+
+function normalizeScenario(value: unknown): NormalizedScenario {
+  const scenario = value as Partial<Record<keyof NormalizedScenario, unknown>> | null;
+  return {
+    expectedUnits30d: normalizeNonNegativeNumber(scenario?.expectedUnits30d),
+    expectedRevenue30d: normalizeNonNegativeNumber(scenario?.expectedRevenue30d),
+    expectedMargin30d: normalizeFiniteNumber(scenario?.expectedMargin30d),
+    effectivePrice: normalizeNonNegativeNumber(scenario?.effectivePrice),
+  };
+}
+
+function normalizeScoreBreakdown(value: unknown): DecisionCandidate["scoreBreakdown"] {
+  const breakdown = value as Partial<Record<keyof DecisionCandidate["scoreBreakdown"], unknown>> | null;
+  return {
+    stockPressure: normalizeBoundedNumber(breakdown?.stockPressure, 0, 100),
+    velocityRisk: normalizeBoundedNumber(breakdown?.velocityRisk, 0, 100),
+    recencyRisk: normalizeBoundedNumber(breakdown?.recencyRisk, 0, 100),
+    markdownOpportunity: normalizeBoundedNumber(breakdown?.markdownOpportunity, 0, 100),
+    marginPotential: normalizeBoundedNumber(breakdown?.marginPotential, 0, 100),
+    seasonRecencyBoost: normalizeFiniteNumber(breakdown?.seasonRecencyBoost),
+  };
+}
+
+function formatFiniteNumber(value: unknown, digits = 0): string {
+  const normalized = normalizeFiniteNumber(value);
+  return normalized == null ? RECOMMENDATION_SIGNAL_UNAVAILABLE : fmtNumber(normalized, digits, RECOMMENDATION_SIGNAL_UNAVAILABLE);
+}
+
+function formatNonNegativeNumber(value: unknown, digits = 0): string {
+  const normalized = normalizeNonNegativeNumber(value);
+  return normalized == null ? RECOMMENDATION_SIGNAL_UNAVAILABLE : fmtNumber(normalized, digits, RECOMMENDATION_SIGNAL_UNAVAILABLE);
+}
+
+function normalizeDecisionScore(value: unknown): number | null {
+  return normalizeBoundedNumber(value, 0, 100);
+}
+
+function compareNullableNumbers(left: FiniteNumber, right: FiniteNumber, dir: SortDir): number {
+  if (left == null && right == null) return 0;
+  if (left == null) return 1;
+  if (right == null) return -1;
+  const compare = left - right;
+  return dir === "asc" ? compare : -compare;
 }
 
 function sortMarker(field: SortField, activeField: SortField, dir: SortDir): string {
@@ -238,7 +350,7 @@ type StatusTooltipData = {
   statusReason: string;
   decisionScore: number | null;
   decisionScoreAvailable: boolean;
-  revenueDelta: number;
+  revenueDelta: FiniteNumber;
   reliabilityPct: number | null;
   confidencePct: number | null;
   reliabilityAvailable: boolean;
@@ -251,7 +363,7 @@ type StatusTooltipData = {
 function buildStatusTooltip(data: StatusTooltipData): string {
   const reliabilityText = data.reliabilityAvailable && data.reliabilityPct != null ? fmtPct(data.reliabilityPct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
   const confidenceText = data.confidenceAvailable && data.confidencePct != null ? fmtPct(data.confidencePct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
-  const scoreText = data.decisionScoreAvailable && data.decisionScore != null ? String(data.decisionScore) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
+  const scoreText = data.decisionScoreAvailable && data.decisionScore != null ? formatFiniteNumber(data.decisionScore, 1) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
   const qualityText = recommendationQualityLabel(data.dataQualityStatus);
   const hintText = recommendationReasonHints(data.reasonCodes).join(" | ");
   const gateText = data.recommendationAllowed
@@ -290,12 +402,16 @@ function hasSparseSalesSignal(reasonCodes: string[]): boolean {
 function canShowMarkdownMarginSignal(row: DecisionCandidate): boolean {
   return !hasMissingCostSignal(row.reasonCodes)
     && row.status !== "insufficient_data"
-    && row.dataQualityStatus !== "critical";
+    && row.dataQualityStatus !== "critical"
+    && row.marginDelta != null;
 }
 
 function hasLimitedMarkdownSignal(row: DecisionCandidate): boolean {
   return !row.reliabilityAvailable
     || !row.confidenceAvailable
+    || row.preNivelacijaScore == null
+    || row.stockUnits == null
+    || row.daysSinceLastSale == null
     || row.dataQualityStatus !== "good"
     || row.status === "insufficient_data"
     || hasMissingCostSignal(row.reasonCodes)
@@ -473,15 +589,29 @@ export default function PreNivelacijaPriorityPage() {
 
     return rows.map((item) => {
       const recommendation = item.recommendation;
-      const revenueDelta = item.revenueDeltaHighlightVsMarkdown;
-      const marginDelta = item.marginDeltaHighlightVsMarkdown;
-      const confidencePctValue = normalizeRecommendationPct(recommendation.confidencePct);
-      const reliabilityPctValue = normalizeRecommendationPct(recommendation.reliabilityPct ?? item.reliabilityPct);
+      const revenueDelta = normalizeFiniteNumber(item.revenueDeltaHighlightVsMarkdown);
+      const marginDelta = normalizeFiniteNumber(item.marginDeltaHighlightVsMarkdown);
+      const confidencePctValue = normalizePercentage(recommendation.confidencePct);
+      const reliabilityPctValue = normalizePercentage(recommendation.reliabilityPct ?? item.reliabilityPct);
       const recommendationAllowed = recommendation.recommendationAllowed === true;
       const decisionScore = recommendationAllowed ? normalizeDecisionScore(item.decisionScore) : null;
 
       return {
         ...item,
+        stockUnits: normalizeNonNegativeNumber(item.stockUnits),
+        units180: normalizeNonNegativeNumber(item.units180),
+        velocity180: normalizeNonNegativeNumber(item.velocity180),
+        daysSinceLastSale: normalizeNonNegativeNumber(item.daysSinceLastSale),
+        markdownEvents: normalizeNonNegativeNumber(item.markdownEvents),
+        avgMarkdownPct: normalizePercentage(item.avgMarkdownPct),
+        grossMarginPctEst: normalizeFiniteNumber(item.grossMarginPctEst),
+        seasonRecencyBoost: normalizeFiniteNumber(item.seasonRecencyBoost),
+        preNivelacijaScore: normalizeBoundedNumber(item.preNivelacijaScore, 0, 100),
+        scoreBreakdown: normalizeScoreBreakdown(item.scoreBreakdown),
+        scenarioHighlightNow: normalizeScenario(item.scenarioHighlightNow),
+        scenarioMarkdownNow: normalizeScenario(item.scenarioMarkdownNow),
+        marginDeltaHighlightVsMarkdown: marginDelta,
+        revenueDeltaHighlightVsMarkdown: revenueDelta,
         revenueDelta,
         marginDelta,
         confidencePct: recommendationAllowed ? confidencePctValue : null,
@@ -506,15 +636,16 @@ export default function PreNivelacijaPriorityPage() {
 
       if (sortField === "sku") compare = a.sku.localeCompare(b.sku, "sr");
       else if (sortField === "supplierName") compare = a.supplierName.localeCompare(b.supplierName, "sr");
-      else if (sortField === "preNivelacijaScore") compare = a.preNivelacijaScore - b.preNivelacijaScore;
-      else if (sortField === "stockUnits") compare = a.stockUnits - b.stockUnits;
-      else if (sortField === "daysSinceLastSale") compare = a.daysSinceLastSale - b.daysSinceLastSale;
-      else if (sortField === "revenueDelta") compare = a.revenueDelta - b.revenueDelta;
-      else if (sortField === "status") compare = STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status];
+      else if (sortField === "preNivelacijaScore") compare = compareNullableNumbers(a.preNivelacijaScore, b.preNivelacijaScore, sortDir);
+      else if (sortField === "stockUnits") compare = compareNullableNumbers(a.stockUnits, b.stockUnits, sortDir);
+      else if (sortField === "daysSinceLastSale") compare = compareNullableNumbers(a.daysSinceLastSale, b.daysSinceLastSale, sortDir);
+      else if (sortField === "revenueDelta") compare = compareNullableNumbers(a.revenueDelta, b.revenueDelta, sortDir);
+      else if (sortField === "status") compare = compareNullableNumbers(STATUS_PRIORITY[a.status] ?? null, STATUS_PRIORITY[b.status] ?? null, sortDir);
 
-      if (compare === 0) compare = (a.decisionScore ?? -1) - (b.decisionScore ?? -1);
-      if (compare === 0) compare = (a.confidencePct ?? -1) - (b.confidencePct ?? -1);
-      return sortDir === "asc" ? compare : -compare;
+      if (compare === 0) compare = compareNullableNumbers(a.decisionScore, b.decisionScore, sortDir);
+      if (compare === 0) compare = compareNullableNumbers(a.confidencePct, b.confidencePct, sortDir);
+      if (compare === 0) compare = a.sku.localeCompare(b.sku, "sr");
+      return compare;
     });
   }, [decisionRows, sortDir, sortField]);
 
@@ -548,16 +679,20 @@ export default function PreNivelacijaPriorityPage() {
 
   const supplierActionShare = useMemo(() => {
     const items = data?.supplierLeaderboard ?? [];
-    if (items.length === 0) return [] as Array<{ name: string; sharePct: number; weekOverWeekRiskDeltaPct: number }>;
+    if (items.length === 0) return [] as Array<{ name: string; sharePct: number; weekOverWeekRiskDeltaPct: FiniteNumber }>;
 
-    const top = [...items].sort((a, b) => b.actionScore - a.actionScore).slice(0, 7);
-    const total = top.reduce((sum, item) => sum + item.actionScore, 0);
+    const top = items
+      .map((item) => ({ item, actionScore: normalizeNonNegativeNumber(item.actionScore) }))
+      .filter((entry): entry is { item: (typeof items)[number]; actionScore: number } => entry.actionScore != null)
+      .sort((a, b) => b.actionScore - a.actionScore)
+      .slice(0, 7);
+    const total = top.reduce((sum, entry) => sum + entry.actionScore, 0);
     if (total <= 0) return [];
 
-    return top.map((item) => ({
+    return top.map(({ item, actionScore }) => ({
       name: item.supplierName,
-      sharePct: (item.actionScore / total) * 100,
-      weekOverWeekRiskDeltaPct: item.weekOverWeekRiskDeltaPct,
+      sharePct: (actionScore / total) * 100,
+      weekOverWeekRiskDeltaPct: normalizeFiniteNumber(item.weekOverWeekRiskDeltaPct),
     }));
   }, [data?.supplierLeaderboard]);
 
@@ -567,7 +702,9 @@ export default function PreNivelacijaPriorityPage() {
   }, [expandedArtikalId, sortedRows]);
 
   const canGoPrev = page > 1;
-  const canGoNext = data ? page * data.pageSize < data.totalCandidates : false;
+  const pageSize = data ? normalizePositiveInteger(data.pageSize) : null;
+  const totalCandidates = data ? normalizeNonNegativeNumber(data.totalCandidates) : null;
+  const canGoNext = pageSize != null && totalCandidates != null ? page * pageSize < totalCandidates : false;
   const dataMeta = data?.meta ?? null;
   const dataMetaMessage = getAnalyticsMetaMessage(dataMeta);
   const showMetaWarning = !loading && !error && isAnalyticsMetaWarning(dataMeta);
@@ -654,7 +791,7 @@ export default function PreNivelacijaPriorityPage() {
     () => [
       { key: "generatedAtUtc", label: "Generisano", value: data?.generatedAtUtc ?? "" },
       { key: "formulaVersion", label: "Formula", value: data?.formulaVersion ?? "" },
-      { key: "totalCandidates", label: "Total", value: data?.totalCandidates ?? 0 },
+      { key: "totalCandidates", label: "Total", value: data ? normalizeNonNegativeNumber(data.totalCandidates) : null },
     ],
     [data?.formulaVersion, data?.generatedAtUtc, data?.totalCandidates]
   );
@@ -906,7 +1043,7 @@ export default function PreNivelacijaPriorityPage() {
           message={emptyStateMessage}
           actions={[
             showFilteredOutState
-              ? { label: "Vrati prikaz svih prioriteta.", onClick: () => setFocusFilter("all") }
+              ? { label: "Vrati prikaz svih prioriteta.", onClick: () => handleFocusChange("all") }
               : { label: "Promenite filtere dobavljača, sezone ili tipa obuće." },
             { label: "Proverite kvalitet podataka.", href: "/analytics/data-quality" },
           ]}
@@ -950,24 +1087,24 @@ export default function PreNivelacijaPriorityPage() {
           <section className="pnp-decision-kpis">
             <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="SKU koji zadovoljavaju filtere i prag skora.">
               <span>Kandidati <InfoTip text="Ukupan broj SKU koji zadovoljavaju filtere i imaju aktivan signal pre nivelacije (pre-nivelacioni skor ≥ min. skora). Ovo su artikli koji imaju zalihu i prodajni signal dovoljan za intervenciju." /></span>
-              <strong>{data.summary.candidatesCount}</strong>
+              <strong>{formatNonNegativeNumber(data.summary.candidatesCount)}</strong>
             </article>
             <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Kandidati sa najjačim signalom za brzu intervenciju.">
               <span>Visok prioritet <InfoTip text="SKU u prioritetnoj bandi 'high' – imaju najjači kompozitni signal (visok skor zalihe + stagnacija prodaje). Ovo su artikli gde je intervencija pre nivelacije najhitnija." /></span>
-              <strong>{candidateCounts.highPriority}</strong>
+              <strong>{formatNonNegativeNumber(candidateCounts.highPriority)}</strong>
             </article>
             <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Ukupna zaliha kod SKU koji nose operativni rizik.">
               <span>Zaliha pod rizikom <InfoTip text="Ukupna zaliha u komadima svih prikazanih kandidatskih SKU (u skladu sa filterima). Iskazano u komadima, ne u RSD vrednosti. Veća zaliha bez prodaje = veći operativni rizik." /></span>
-              <strong>{data.summary.totalStockAtRisk}</strong>
+              <strong>{formatNonNegativeNumber(data.summary.totalStockAtRisk)}</strong>
               <em>kom ukupno</em>
             </article>
             <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Procena prihoda ako se kandidati istaknu umesto da se sniže.">
               <span>Procena povećanja prihoda <InfoTip text="Procenjeni prihod: scenario isticanja minus scenario sniženja za sve 'Pojačaj' kandidate. PROCENA – bazirana na scenariju sa istorijskim podacima prodaje, nije garantovani prihod. Tretirati kao relativni signal, ne kao apsolutnu predikciju." /></span>
-              <strong>{fmtRsd(data.summary.expectedHighlightRevenueUplift)}</strong>
+              <strong>{fmtRsd(normalizeFiniteNumber(data.summary.expectedHighlightRevenueUplift))}</strong>
             </article>
             <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Procena gubitka koji može da se izbegne pre nivelacije.">
               <span>Procena izbegljivog gubitka od sniženja <InfoTip text="Procenjeni gubitak prihoda koji se može izbeći pravovremenom intervencijom pre nivelacije. PROCENA bazirana na scenario modelu (isticanje vs. sniženje u 30-dnevnom prozoru). Apsolutni iznos je okvirna procena – relativni odnos između SKU-ova je relevantniji." /></span>
-              <strong className="trend-down">{fmtRsd(data.summary.estimatedAvoidableMarkdownLoss)}</strong>
+              <strong className="trend-down">{fmtRsd(normalizeFiniteNumber(data.summary.estimatedAvoidableMarkdownLoss))}</strong>
             </article>
           </section>
 
@@ -1102,17 +1239,19 @@ export default function PreNivelacijaPriorityPage() {
                             <td title={row.supplierName}>{row.supplierName}</td>
                             <td className="align-right">
                               <div className="pnp-score-cell">
-                                <span>{row.preNivelacijaScore.toFixed(1)}</span>
-                                <div
-                                  className="pnp-score-mini-bar"
-                                  style={{ width: `${clamp(row.preNivelacijaScore, 0, 100)}%` }}
-                                  data-level={row.preNivelacijaScore >= 68 ? "high" : row.preNivelacijaScore >= 43 ? "mid" : "low"}
-                                />
+                                <span>{row.preNivelacijaScore == null ? RECOMMENDATION_SIGNAL_UNAVAILABLE : row.preNivelacijaScore.toFixed(1)}</span>
+                                {row.preNivelacijaScore != null ? (
+                                  <div
+                                    className="pnp-score-mini-bar"
+                                    style={{ width: `${clamp(row.preNivelacijaScore, 0, 100)}%` }}
+                                    data-level={row.preNivelacijaScore >= 68 ? "high" : row.preNivelacijaScore >= 43 ? "mid" : "low"}
+                                  />
+                                ) : null}
                               </div>
                             </td>
-                            <td className="align-right">{row.stockUnits}</td>
-                            <td className="align-right">{row.daysSinceLastSale}</td>
-                            <td className={`align-right ${row.recommendationAllowed && row.revenueDelta >= 0 ? "trend-up" : "trend-down"}`}>{row.recommendationAllowed ? fmtRsd(row.revenueDelta) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</td>
+                            <td className="align-right">{formatNonNegativeNumber(row.stockUnits)}</td>
+                            <td className="align-right">{formatNonNegativeNumber(row.daysSinceLastSale)}</td>
+                            <td className={`align-right ${row.recommendationAllowed && row.revenueDelta != null && row.revenueDelta >= 0 ? "trend-up" : "trend-down"}`}>{row.recommendationAllowed ? fmtRsd(row.revenueDelta) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</td>
                             <td className="align-center">
                               <span
                                 className={reliability.className}
@@ -1179,25 +1318,29 @@ export default function PreNivelacijaPriorityPage() {
                 </article>
                 <article>
                   <span>Procenjena delta prihoda</span>
-                  <strong className={selectedRow.recommendationAllowed && selectedRow.revenueDelta >= 0 ? "trend-up" : "trend-down"}>{selectedRow.recommendationAllowed ? fmtRsd(selectedRow.revenueDelta) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
+                  <strong className={selectedRow.recommendationAllowed && selectedRow.revenueDelta != null && selectedRow.revenueDelta >= 0 ? "trend-up" : "trend-down"}>{selectedRow.recommendationAllowed ? fmtRsd(selectedRow.revenueDelta) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
                 </article>
                 <article>
                   <span>Procenjena delta marže</span>
-                  <strong className={canShowMarkdownMarginSignal(selectedRow) ? (selectedRow.marginDelta >= 0 ? "trend-up" : "trend-down") : ""}>
-                    {canShowMarkdownMarginSignal(selectedRow) ? fmtRsd(selectedRow.marginDelta) : "Nije dostupno bez troška"}
+                  <strong className={selectedRow.marginDelta != null && canShowMarkdownMarginSignal(selectedRow) ? (selectedRow.marginDelta >= 0 ? "trend-up" : "trend-down") : ""}>
+                    {canShowMarkdownMarginSignal(selectedRow)
+                      ? fmtRsd(selectedRow.marginDelta)
+                      : hasMissingCostSignal(selectedRow.reasonCodes)
+                        ? "Nije dostupno bez troška"
+                        : RECOMMENDATION_SIGNAL_UNAVAILABLE}
                   </strong>
                 </article>
                 <article>
                   <span>Zaliha (kom.)</span>
-                  <strong>{selectedRow.stockUnits}</strong>
+                  <strong>{formatNonNegativeNumber(selectedRow.stockUnits)}</strong>
                 </article>
                 <article>
                   <span>Dana bez prodaje</span>
-                  <strong>{selectedRow.daysSinceLastSale}</strong>
+                  <strong>{formatNonNegativeNumber(selectedRow.daysSinceLastSale)}</strong>
                 </article>
                 <article>
                   <span>Ocena preporuke</span>
-                  <strong>{selectedRow.decisionScoreAvailable ? selectedRow.decisionScore : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
+                  <strong>{selectedRow.decisionScoreAvailable ? formatFiniteNumber(selectedRow.decisionScore, 1) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
                 </article>
                 <article>
                   <span>{RECOMMENDATION_RELIABILITY_LABEL} <InfoTip text={analyticsMetricDescriptions.reliabilityPct} /></span>
@@ -1274,9 +1417,9 @@ export default function PreNivelacijaPriorityPage() {
                       <div key={c.label} className="pnp-score-component">
                         <span>{c.label}</span>
                         <div className="pnp-score-bar-wrap">
-                          <div className="pnp-score-bar" style={{ width: `${clamp(c.value, 0, 100)}%` }} />
+                          {c.value != null ? <div className="pnp-score-bar" style={{ width: `${clamp(c.value, 0, 100)}%` }} /> : null}
                         </div>
-                        <strong>{c.value.toFixed(1)}</strong>
+                        <strong>{formatFiniteNumber(c.value, 1)}</strong>
                       </div>
                     ))}
                   </div>

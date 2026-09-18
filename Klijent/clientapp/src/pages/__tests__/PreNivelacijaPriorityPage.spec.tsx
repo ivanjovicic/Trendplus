@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -328,6 +328,108 @@ describe("PreNivelacijaPriorityPage", () => {
       element.className.includes("signal-na"),
     );
     expect(unavailable).toBeTruthy();
+  });
+
+  it("fails closed for malformed numeric rows and keeps valid evidence ahead when sorting", async () => {
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce(makeResponse([
+      makeCandidate({
+        artikalId: 701,
+        sku: "SKU-701",
+        preNivelacijaScore: "bad",
+        stockUnits: "12",
+        daysSinceLastSale: Number.POSITIVE_INFINITY,
+        revenueDeltaHighlightVsMarkdown: Number.NaN,
+        marginDeltaHighlightVsMarkdown: "bad",
+        decisionScore: Number.NaN,
+        reliabilityPct: "55",
+        scoreBreakdown: {
+          stockPressure: Number.NaN,
+          velocityRisk: "bad",
+          recencyRisk: null,
+          markdownOpportunity: 40,
+          marginPotential: 30,
+          seasonRecencyBoost: Number.POSITIVE_INFINITY,
+        },
+        recommendation: {
+          status: "review",
+          label: "Pregled",
+          summary: "Numerički signal nije pouzdan.",
+          confidencePct: "bad",
+          reliabilityPct: "55",
+          dataQualityStatus: "warning",
+          recommendationAllowed: true,
+          reasonCodes: ["review_signal"],
+        },
+      }),
+      makeCandidate({
+        artikalId: 702,
+        sku: "SKU-702",
+        preNivelacijaScore: 90,
+        recommendation: {
+          status: "review",
+          label: "Pregled",
+          summary: "Validan signal.",
+          confidencePct: 70,
+          reliabilityPct: 80,
+          dataQualityStatus: "good",
+          recommendationAllowed: true,
+          reasonCodes: ["review_signal"],
+        },
+      }),
+    ]));
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    const table = await screen.findByTestId("pre-nivelacija-prioriteti-data-table");
+    expect(table).toHaveTextContent("Nije dostupno");
+    expect(table).not.toHaveTextContent(/NaN|Infinity|undefined/);
+
+    fireEvent.click(screen.getByRole("button", { name: /Skor/ }));
+    const sortedRows = table.querySelectorAll("tbody tr");
+    expect(sortedRows[0]).toHaveTextContent("SKU-702");
+
+    const malformedRow = within(table).getByText("SKU-701").closest("tr");
+    expect(malformedRow).not.toBeNull();
+    fireEvent.click(within(malformedRow as HTMLElement).getByRole("button", { name: "Detalji" }));
+    expect(screen.getByText("Detalj odluke: SKU-701")).toBeInTheDocument();
+    expect(screen.getAllByText("Nije dostupno").length).toBeGreaterThan(0);
+  });
+
+  it("preserves measured zero and valid negative delta values", async () => {
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce(makeResponse([
+      makeCandidate({
+        preNivelacijaScore: 0,
+        stockUnits: 0,
+        daysSinceLastSale: 0,
+        revenueDeltaHighlightVsMarkdown: -1500,
+        marginDeltaHighlightVsMarkdown: -500,
+        recommendation: {
+          status: "review",
+          label: "Pregled",
+          summary: "Validan negativan scenario signal.",
+          confidencePct: 70,
+          reliabilityPct: 80,
+          dataQualityStatus: "good",
+          recommendationAllowed: true,
+          reasonCodes: ["review_signal"],
+        },
+      }),
+    ]));
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    const table = await screen.findByTestId("pre-nivelacija-prioriteti-data-table");
+    expect(table).toHaveTextContent("0.0");
+    expect(table).toHaveTextContent("-1.500 RSD");
+    expect(table).not.toHaveTextContent("Nije dostupno");
   });
 
   it("exports reliability as a percent while preserving null as unavailable", () => {
