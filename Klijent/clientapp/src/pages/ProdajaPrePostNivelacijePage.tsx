@@ -978,8 +978,8 @@ const advancedSignals = useMemo(
 
   const selectedRow = useMemo(() => {
     if (!expandedVendorKey) return null;
-    return sortedRows.find((row) => row.vendorRowKey === expandedVendorKey) ?? null;
-  }, [expandedVendorKey, sortedRows]);
+    return focusedRows.find((row) => row.vendorRowKey === expandedVendorKey) ?? null;
+  }, [expandedVendorKey, focusedRows]);
 
   const selectedDriverSummary = useMemo<DetailDriverSummary | null>(() => {
     if (!selectedRow || !data) return null;

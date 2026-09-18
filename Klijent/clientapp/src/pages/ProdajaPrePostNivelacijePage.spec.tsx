@@ -418,6 +418,31 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     saveSpy.mockRestore();
   });
 
+  it("hides inline detail when the active focus filter excludes the selected row", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
+      response({
+        vendorStats: [
+          vendor({ vendorId: 10, vendorName: "Vendor A", recommendation: { status: "increase_focus", label: "Increase focus", summary: "Jak signal.", confidencePct: 85, reliabilityPct: 80, dataQualityStatus: "good", reasonCodes: [] } }),
+          vendor({ vendorId: 11, vendorName: "Vendor B", postRevenue: 50000, changeRevenue: 10000, recommendation: { status: "review", label: "Review", summary: "Signal za proveru.", confidencePct: 64, reliabilityPct: 61, dataQualityStatus: "warning", reasonCodes: ["review_signal"] } }),
+        ],
+        totals: {
+          ...response().totals,
+          postRevenue: 150000,
+          vendorsCount: 2,
+        },
+      }),
+    );
+
+    renderPage();
+    const table = await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
+    const reviewRow = within(table).getByText("Vendor B").closest("tr");
+    fireEvent.click(within(reviewRow!).getAllByRole("button", { name: "Detalji" })[0]);
+    expect(await screen.findByText(/Detalj odluke: Vendor B/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Pojacaj/i }));
+    expect(screen.queryByText(/Detalj odluke: Vendor B/i)).not.toBeInTheDocument();
+  });
+
   it("collapses inline detail when Sakrij is clicked", async () => {
     renderPage();
     await screen.findByText("Prioritetna lista dobavljača");

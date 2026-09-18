@@ -17,7 +17,7 @@ import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import InfoTip from "../components/ui/InfoTip";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
-import { getPreNivelacijaPrioriteti } from "../services/preNivelacijaApi";
+import { getPreNivelacijaPrioriteti, PreNivelacijaApiError } from "../services/preNivelacijaApi";
 import type { AnalyticsNamedValue } from "../types/analyticsTable";
 import type { PreNivelacijaPriorityResponse } from "../types/preNivelacija";
 import { decisionColumns, type DecisionCandidate, type DecisionStatus, type FiniteNumber, type NormalizedScenario } from "./preNivelacijaDecision";
@@ -468,14 +468,22 @@ export default function PreNivelacijaPriorityPage() {
     } catch (reason) {
       if (requestId !== requestIdRef.current) return;
       setData(null);
+      const preNivelacijaError = reason instanceof PreNivelacijaApiError
+        ? reason
+        : null;
       const maybeError = reason as { message?: unknown; errorCode?: unknown; correlationId?: unknown };
-      const errorCode = typeof maybeError.errorCode === "string" ? maybeError.errorCode : null;
-      const correlationId = typeof maybeError.correlationId === "string" ? maybeError.correlationId : null;
+      const errorCode = preNivelacijaError?.errorCode
+        ?? (typeof maybeError.errorCode === "string" ? maybeError.errorCode : null);
+      const correlationId = preNivelacijaError?.correlationId
+        ?? (typeof maybeError.correlationId === "string" ? maybeError.correlationId : null);
+      const fallbackMessage = "Pre-nivelacija prioriteti trenutno nisu dostupni. Proverite status osvežavanja i pokušajte ponovo.";
+      const rawMessage = preNivelacijaError?.message
+        ?? (typeof maybeError.message === "string" ? maybeError.message : null);
       setError({
         message: getSafeAnalyticsErrorMessage(
-          typeof maybeError.message === "string" ? maybeError.message : null,
+          preNivelacijaError ? rawMessage : null,
           errorCode,
-          "Pre-nivelacija prioriteti trenutno nisu dostupni. Proverite status osvežavanja i pokušajte ponovo.",
+          fallbackMessage,
         ),
         errorCode,
         correlationId,

@@ -159,7 +159,7 @@ Owner promotion 2026-09-15: `RQ276` was explicitly promoted from `WAITING` to `R
 
 Owner completion 2026-09-15: `RQ276` was delivered with inventory expected impact omitted when no authoritative source exists; current-stock exposure and forecast suggested-action cost are preserved under distinct metadata bases and UI labels; tests `inventoryImpactSemantics.spec.ts`.
 
-Operations audit intake 2026-09-15: `RQ277`-`RQ300` remain individual `WAITING` follow-ups from the Operacije screen/code review; `RQ266`-`RQ276` have been completed.
+Operations audit intake 2026-09-15: `RQ277`-`RQ300` were individual Operacije follow-ups from the screen/code review; `RQ266`-`RQ300` are now completed on `main`, and the queue has no current READY prompt.
 
 Owner promotion 2026-09-15: `RQ270` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ264` completion; it is the single current RQ prompt for confirmed Inventory scope-change reload gaps and will be claimed in this workspace.
 
@@ -544,11 +544,11 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ291 | DONE | pre-post-test-contract | Resolve quality metadata contract drift and the missing detail route fixture |
 | RQ292 | DONE | pre-post-toolbar-unknowns | Keep missing toolbar metadata unknown instead of zero/OK |
 | RQ293 | DONE | pre-post-detail-identity | Prevent pre/post detail route collisions for unnamed suppliers |
-| RQ294 | WAITING | pre-nivelacija-scope-event-propagation | Reload pre-nivelacija priorities when global scope changes |
-| RQ295 | WAITING | pre-nivelacija-error-copy | Give direct-fetch failures a safe, non-empty user message |
-| RQ296 | WAITING | pre-nivelacija-focus-empty-state | Show the shared filtered-out state when focus removes every row |
-| RQ297 | WAITING | pre-nivelacija-recommendation-gate | Do not imply actionability or score validity when recommendation is blocked |
-| RQ298 | WAITING | pre-nivelacija-reliability-export | Align reliability styling and percent export metadata |
+| RQ294 | DONE | pre-nivelacija-scope-event-propagation | Reload pre-nivelacija priorities when global scope changes |
+| RQ295 | DONE | pre-nivelacija-error-copy | Give direct-fetch failures a safe, non-empty user message |
+| RQ296 | DONE | pre-nivelacija-focus-empty-state | Show the shared filtered-out state when focus removes every row |
+| RQ297 | DONE | pre-nivelacija-recommendation-gate | Do not imply actionability or score validity when recommendation is blocked |
+| RQ298 | DONE | pre-nivelacija-reliability-export | Align reliability styling and percent export metadata |
 | RQ299 | DONE | pre-nivelacija-url-state | Preserve filters and focus in refresh/back/deep-link URLs |
 | RQ300 | DONE | pre-nivelacija-numeric-robustness | Keep malformed/null numeric payloads from crashing or sorting falsely |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |

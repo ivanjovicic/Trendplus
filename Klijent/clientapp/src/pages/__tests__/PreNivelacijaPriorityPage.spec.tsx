@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import PreNivelacijaPriorityPage from "../PreNivelacijaPriorityPage";
 import { decisionColumns } from "../preNivelacijaDecision";
+import { PreNivelacijaApiError } from "../../services/preNivelacijaApi";
 
 vi.mock("recharts", () => ({
   BarChart: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
@@ -35,9 +36,13 @@ vi.mock("../../components/ui/InfoTip", () => ({ default: () => null }));
 
 const getPreNivelacijaPrioritetiMock = vi.fn();
 
-vi.mock("../../services/preNivelacijaApi", () => ({
-  getPreNivelacijaPrioriteti: (...args: unknown[]) => getPreNivelacijaPrioritetiMock(...args),
-}));
+vi.mock("../../services/preNivelacijaApi", async () => {
+  const actual = await vi.importActual<typeof import("../../services/preNivelacijaApi")>("../../services/preNivelacijaApi");
+  return {
+    ...actual,
+    getPreNivelacijaPrioriteti: (...args: unknown[]) => getPreNivelacijaPrioritetiMock(...args),
+  };
+});
 
 function makeCandidate(overrides: Record<string, unknown> = {}) {
   return {
@@ -681,8 +686,14 @@ describe("PreNivelacijaPriorityPage", () => {
     expect(document.querySelector(".pnp-decision-kpis")).toBeNull();
   });
 
-  it("shows an error alert and hides KPI cards when the priority load fails", async () => {
-    getPreNivelacijaPrioritetiMock.mockRejectedValueOnce(new Error("Pre-nivelacija API timeout"));
+  it("shows safe guidance and hides KPI cards when the priority load fails", async () => {
+    getPreNivelacijaPrioritetiMock.mockRejectedValueOnce(
+      new PreNivelacijaApiError(
+        "Servis je privremeno nedostupan.",
+        "PRE_NIVELACIJA_BACKEND_TIMEOUT",
+        "corr-pnp-295",
+      ),
+    );
 
     render(
       <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
@@ -691,9 +702,24 @@ describe("PreNivelacijaPriorityPage", () => {
     );
 
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Pre-nivelacija API timeout");
+    expect(alert).toHaveTextContent("Servis je privremeno nedostupan.");
+    expect(alert).not.toHaveTextContent("PRE_NIVELACIJA_BACKEND_TIMEOUT");
     expect(document.querySelector(".pnp-decision-kpis")).toBeNull();
     expect(screen.queryByText("Nisko")).not.toBeInTheDocument();
+  });
+
+  it("does not expose raw technical errors from unexpected fetch failures", async () => {
+    getPreNivelacijaPrioritetiMock.mockRejectedValueOnce(new Error("timeout ECONNREFUSED"));
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Pre-nivelacija prioriteti trenutno nisu dostupni. Proverite status osvežavanja i pokušajte ponovo.");
+    expect(alert).not.toHaveTextContent("ECONNREFUSED");
   });
 
   it("restores validated filters, focus, page and scope from a shared URL", async () => {
