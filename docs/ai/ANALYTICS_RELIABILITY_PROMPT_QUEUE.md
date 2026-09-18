@@ -2,11 +2,32 @@
 
 Date: 2026-09-18
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ300
+Current READY prompt: none
 
 Owner promotion 2026-09-18: under the user's explicit instruction to claim the next prompt, `RQ300` moved from `WAITING` to `READY` as the first safe P1 follow-up after `RQ299` completion; it is the single current RQ prompt for Pre-Nivelacija numeric robustness.
 
 Owner claim 2026-09-18: `RQ300` transitioned `READY -> IN_PROGRESS` in this workspace; local runtime lock `.ai/task-locks/RQ300-codex.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-18
+- Status: DONE
+- Completion: Pre-Nivelacija now normalizes numeric evidence at the presentation boundary, renders malformed values as unavailable, keeps measured zero/valid negative deltas, and sorts invalid numeric evidence after valid values deterministically.
+- Changed files: `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`, `Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx`, `MASTER_ROADMAP.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- Checks run: focused Pre-Nivelacija spec 30/30; `npm run check:analytics-guardrails`; `npm run build`; six governance checks; `git diff --check`
+- Checks not run: full client/server suites, CI and a live browser session were not inspected; none were named acceptance gates.
+- Run log: `.ai/runs/2026-09-18-RQ300-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `0331f8f7d8a241f6172d76ff580ba3f9d3a63ad7`
+- Main verification: passed - fresh `origin/main` contains implementation SHA `0331f8f7d8a241f6172d76ff580ba3f9d3a63ad7`.
+- Missed: no backend recommendation formula or ranking policy was changed; runtime numeric strings remain unavailable under the existing typed numeric contract.
+- Follow-up: explicitly promote the next safe RQ prompt when requested.
+- Residual risk: build retains the existing non-blocking Vite chunk-size advisory; CI and manual browser proof remain uninspected.
+- Prompt defect / scope repair: none; shared formatter and analytics-table normalization semantics were preserved.
+
+Run log: `.ai/runs/2026-09-18-RQ300-evidence.md`
+Evidence state: synchronized
 
 Owner promotion 2026-09-18: under the user's explicit instruction to claim the next prompt, `RQ299` moved from `WAITING` to `READY` as the first safe P2 follow-up after `RQ298` completion; it is the single current RQ prompt for Pre-Nivelacija URL state.
 
@@ -529,7 +550,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ297 | WAITING | pre-nivelacija-recommendation-gate | Do not imply actionability or score validity when recommendation is blocked |
 | RQ298 | WAITING | pre-nivelacija-reliability-export | Align reliability styling and percent export metadata |
 | RQ299 | DONE | pre-nivelacija-url-state | Preserve filters and focus in refresh/back/deep-link URLs |
-| RQ300 | WAITING | pre-nivelacija-numeric-robustness | Keep malformed/null numeric payloads from crashing or sorting falsely |
+| RQ300 | DONE | pre-nivelacija-numeric-robustness | Keep malformed/null numeric payloads from crashing or sorting falsely |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -15286,7 +15307,7 @@ Reproduction: set non-default filters and focus, refresh, navigate away/back, us
 
 ## RQ300 - Make Pre-Nivelacija numeric rendering and sorting robust to malformed payloads
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: frontend/numeric-state/tests
 Feature family: pre-nivelacija-numeric-robustness
