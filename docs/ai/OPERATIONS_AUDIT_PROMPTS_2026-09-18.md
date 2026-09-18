@@ -2,7 +2,7 @@
 
 Queue owner: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
 Base: `origin/main` (post-`RQ300`)
-**Ukupno WAITING promptova iz ovog audita: RQ301–RQ330 (30)**
+**Ukupno WAITING promptova iz ovog audita: RQ301–RQ358 (58)**
 
 ---
 
@@ -26,7 +26,8 @@ Base: `origin/main` (post-`RQ300`)
 | Opseg | ID |
 |---|---|
 | Operacije audit 2026-09-15 | **RQ265–RQ300** |
-| Round 1 audit 2026-09-18 | **RQ301–RQ311** (WAITING, u queue) |
+| Round 1 audit 2026-09-18 | **RQ301–RQ311** (WAITING) |
+| Round 2 audit 2026-09-18 | **RQ312–RQ330** (WAITING) |
 
 ---
 
@@ -48,83 +49,121 @@ Base: `origin/main` (post-`RQ300`)
 
 ---
 
-## Round 2 — RQ312–RQ330 (NOVO — trust, URL, filter UX, unapređenja)
+## Round 2 — RQ312–RQ330 (trust, URL, filter UX)
 
 ### P1 — trust / fake data
 
 | ID | Ekran | Problem |
 |---|---|---|
-| **RQ312** | Inventory | Signal window (`fromDate`/`toDate`) zamrznut na mount — stale API opseg |
-| **RQ313** | Inventory | Insights failure ne briše stare podatke; badge `?? 0` → lažni „0 artikala 90+“ |
-| **RQ314** | Pre/Post | Driver summary `trustedMetric ?? 0` → **fake 0 RSD** za winner/risk SKU |
+| **RQ312** | Inventory | Signal window zamrznut na mount |
+| **RQ313** | Inventory | Insights failure + badge `?? 0` |
+| **RQ314** | Pre/Post | Driver summary fake 0 RSD |
 
-### P2 — URL state, filter UX, silent failures
+### P2 — URL, filter UX, silent failures
 
-| ID | Ekran(i) | Problem / unapređenje |
+| ID | Ekran(i) | Problem |
 |---|---|---|
-| **RQ315** | Pre-Nivelacija | Trust header period uvek `null` |
-| **RQ316** | Pre-Nivelacija | Period empty reason različit u header vs empty state |
-| **RQ317** | Pre/Post | Focus filter nije u URL; reset na svaki load |
-| **RQ318** | Color, Shoe, Pre/Post, Inventory | List filteri nisu URL-backed (faza po ekranu) |
-| **RQ319** | Shoe vs Color/Pre/Post | Auto-apply vs „Primeni filtere“ — nekonzistentno |
-| **RQ320** | Color, Pre/Post | Draft datumi ≠ trust header period pre Apply |
-| **RQ321** | 5 ekrana | Store load failure → tihi prazan dropdown |
-| **RQ322** | Inventory | Store bootstrap samo `console.error` |
-| **RQ323** | Inventory | Secondary paneli zadržavaju stale podatke na partial failure |
-| **RQ325** | Color, Pre/Post, Inventory | Preostali engleski stringovi (snapshot, alerts) |
+| **RQ315–RQ323** | Pre-Nivelacija, Pre/Post, Color, Shoe, Inventory | Period, URL, filter apply, store load, stale paneli |
+| **RQ325** | Color, Pre/Post, Inventory | Preostali engleski stringovi |
 
-### P3 — polish / shareability
+### P3 — polish
 
-| ID | Ekran | Problem / unapređenje |
+| ID | Ekran | Problem |
 |---|---|---|
-| **RQ324** | Inventory | SKU detail size-curve greška = prazan panel |
-| **RQ326** | Pre-Nivelacija | Sort nije u URL (RQ299 pokriva filter/focus/page) |
-| **RQ327** | Daily Sales | Sort nije u URL |
-| **RQ328** | Pre/Post | Expanded vendor se gubi na refetch |
-| **RQ329** | Shoe Type | `truncationLabel` nikad ne trigeruje (dead UX) |
-| **RQ330** | Pre/Post | Focus filter sakriva redove bez „N od M“ konteksta |
+| **RQ324–RQ330** | Inventory, Pre-Nivelacija, Daily, Pre/Post, Shoe | Size-curve error, sort URL, expansion, truncation, focus context |
 
 ---
 
-## Potencijalna unapređenja (product, ne bug)
+## Round 3 — RQ331–RQ358 (NOVO — dubinski trust, chart bug, refetch, supplier redirect)
+
+### P1 — trust / fake data / frontend business logic
+
+| ID | Ekran | Problem |
+|---|---|---|
+| **RQ331** | Inventory | Signal KPI kartice broje samo trenutnu stranicu (~50 redova), ne ceo filter |
+| **RQ332** | Inventory | Off-page SKU detail otvara placeholder sa `kolicina: 0`, `nabavnaCena: 0` |
+| **RQ333** | Pre/Post | Frontend računa `postSharePct` kad backend nema vrednost |
+| **RQ334** | Supplier (redirect) | `prePostComparableArticleCount ?? 0` → lažni 0 artikala |
+
+### P2 — stale data, race, silent failure, filter bias
+
+| ID | Ekran(i) | Problem |
+|---|---|---|
+| **RQ335** | Daily Sales | Previous-period fetch failure gutan — N/A delta bez upozorenja |
+| **RQ336** | Daily Sales | Trend/shift chart koristi `sortedRows` umesto hronološkog reda — **bug sortiranja** |
+| **RQ337** | Shoe, Color, Pre/Post | `getPresetRange("30d")` zamrznut na mount |
+| **RQ338** | Pre/Post | Vendor load failure → tihi prazan dropdown |
+| **RQ339** | Pre/Post | Focus filter reset na svaki reload (uključujući scope) |
+| **RQ340** | Shoe Type | `showStaleError` mrtav kod — refetch uvek briše `data` |
+| **RQ341** | Color | Isti problem — nema stale refetch puta |
+| **RQ342** | 5 ekrana | Nema AbortController — race na brzim filter promenama |
+| **RQ343** | Pre-Nivelacija | Expanded row se gubi na paginaciji |
+| **RQ344** | Pre-Nivelacija | Filter dropdown opcije samo sa trenutne stranice |
+| **RQ345** | Shoe, Color | Frontend share % recompute kad backend nema |
+| **RQ346** | Shoe Type | `avgMarginPct` = frontend prosek redova |
+| **RQ347** | Pre/Post | Winner/risk sort po raw `changeRevenue`, ne `trustedMetric` |
+| **RQ348** | Supplier Footwear (redirect) | Toolbar metadata `?? 0` |
+
+### P3 — polish, empty semantics, URL, localization
+
+| ID | Ekran | Problem |
+|---|---|---|
+| **RQ349** | Color | `decisionScore` = zaokružen `confidencePct`, ne backend score |
+| **RQ350** | Shoe, Color, Pre/Post | Table sort nije u URL |
+| **RQ351** | Inventory | „Osveži“ = `window.location.reload()` |
+| **RQ352** | Daily Sales | `filtered_out` kad je store selektovan i nema prodaje |
+| **RQ353** | Inventory | Insight→detail path fake zero nabavna cena |
+| **RQ354** | Supplier (redirect) | `brojDobavljaca ?? 0` u export metadata |
+| **RQ355** | Color | Empty state = `insufficient_data` samo zbog quality notes |
+| **RQ356** | Pre/Post | Engleske skraćenice na signal karticama (DID, OOS…) |
+| **RQ357** | Inventory | Paginacija/search/compare nisu u URL |
+| **RQ358** | Shoe Type | `brojTipovaObuce ?? 0` u export metadata |
+
+---
+
+## Potencijalna unapređenja (product)
 
 | Tema | Prompt | Napomena |
 |---|---|---|
-| Deljivi linkovi sa filterima | RQ317, RQ318, RQ326, RQ327 | Poboljšava pilot demo i timsku saradnju |
-| Konzistentan filter UX | RQ319, RQ320 | Smanjuje kognitivno opterećenje u Operacije grupi |
-| Eksplicitna store-load degradacija | RQ321, RQ322 | Povezuje se sa RQ279 supplier stale pattern |
-| Fokus + expansion UX | RQ328, RQ330 | Pre/Post dubinski pregled dobavljača |
+| Autoritativni KPI agregati | RQ331, RQ346 | Cockpit brojevi moraju biti filter-wide ili jasno označeni |
+| Chart/table decoupling | RQ336 | Kritičan UX bug — sort ne sme kvareti grafikon |
+| Stale refetch standard | RQ340, RQ341, RQ342 | Operacije grupa treba isti partial-failure ugovor |
+| Deljivi linkovi | RQ350, RQ357 | Pilot demo i timska saradnja |
+| Supplier redirect trust | RQ334, RQ348, RQ354 | Operacije meni vodi na Supplier — trust mora biti konzistentan |
 
 ---
 
-## Preporučeni redosled promocije (round 1 + 2)
+## Preporučeni redosled promocije (round 1 + 2 + 3)
 
 ```text
-Trust first:  RQ312 → RQ313 → RQ314
-Quick wins:   RQ302 → RQ303 → RQ304 → RQ307
-Localization: RQ301 → RQ306 → RQ325
-URL/UX:       RQ317 → RQ318 → RQ326 → RQ327
-Inventory:    RQ308 → RQ321 → RQ322 → RQ323 → RQ324
-Polish:       RQ305 → RQ309 → RQ310 → RQ311 → RQ328–RQ330
+Trust first:     RQ312 → RQ313 → RQ314 → RQ331 → RQ332 → RQ334
+Chart bug:       RQ336
+Quick wins:      RQ302 → RQ303 → RQ304 → RQ307
+Refetch/race:    RQ340 → RQ341 → RQ342 → RQ335
+Localization:    RQ301 → RQ306 → RQ325 → RQ356
+URL/UX:          RQ317 → RQ318 → RQ350 → RQ326 → RQ327 → RQ357
+Inventory depth: RQ308 → RQ321 → RQ322 → RQ323 → RQ324 → RQ351 → RQ353
+Pre-Nivelacija:  RQ315 → RQ344 → RQ343
+Pre/Post depth:  RQ333 → RQ347 → RQ338 → RQ339 → RQ328 → RQ330
+Polish:          RQ305 → RQ309 → RQ310 → RQ311 → RQ349 → RQ352 → RQ355 → RQ358
 ```
 
 ---
 
-## Validacija (round 2 audit)
+## Validacija (round 3 audit)
 
 | Check | Rezultat |
 |---|---|
 | `git pull origin main` | up to date |
-| Operacije focused tests | **188/188 passed** |
-| `check:encoding` | pass (prior run) |
-| `check-prompt-queues.mjs` | pass (469 tasks) |
+| Operacije focused tests | **188/188 passed** (prior rounds) |
+| `check-prompt-queues.mjs` | pending pre-commit |
 | Live browser/backend | not run |
 
 ---
 
 ## Kako pokrenuti
 
-1. Queue owner promoviše jedan `WAITING` prompt (preporuka: **RQ312** ili **RQ302**).
+1. Queue owner promoviše jedan `WAITING` prompt (preporuka: **RQ331** ili **RQ336**).
 2. Agent claim prema `PROMPT_QUEUE_PROTOCOL.md`.
 3. Puni prompt tekst u `ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`.
 

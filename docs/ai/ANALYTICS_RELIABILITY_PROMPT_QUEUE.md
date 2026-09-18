@@ -165,6 +165,8 @@ Operations audit intake 2026-09-18: `RQ301`-`RQ311` were added from a fresh post
 
 Operations audit intake 2026-09-18 (round 2): `RQ312`-`RQ330` were added from a deeper post-`RQ311` Operacije review (trust boundaries, URL state, filter UX, partial failures, unapređenja); all nineteen are `WAITING`; the queue has no current READY prompt.
 
+Operations audit intake 2026-09-18 (round 3): `RQ331`-`RQ358` were added from a third post-`RQ330` Operacije review (page-local KPIs, fake zeros, chart sort bug, stale refetch, abort races, filter facet bias, supplier redirect trust); all twenty-eight are `WAITING`; the queue has no current READY prompt.
+
 Owner promotion 2026-09-15: `RQ270` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ264` completion; it is the single current RQ prompt for confirmed Inventory scope-change reload gaps and will be claimed in this workspace.
 
 Owner completion 2026-09-15: `RQ270` was delivered on PR #6 with unified page reload on global data-scope change; InventoryPage now listens for `trendplus:data-scope-changed` events and reloads all primary and signal panels as one coherent generation while preserving request-sequence guards and detail state per RQ203. The RQ queue advanced to `RQ271`.
@@ -585,6 +587,34 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ328 | WAITING | pre-post-expansion-persistence | Preserve Pre/Post expanded vendor across refetch |
 | RQ329 | WAITING | shoe-type-truncation-label | Fix or remove dead Shoe Type truncation label |
 | RQ330 | WAITING | pre-post-focus-row-context | Add row-count context when Pre/Post focus hides vendors |
+| RQ331 | WAITING | inventory-page-local-signal-kpis | Stop Inventory signal KPI cards from counting only the current page slice |
+| RQ332 | WAITING | inventory-detail-placeholder-fake-zero | Remove fake zero inventory/value when opening SKU detail off-page |
+| RQ333 | WAITING | pre-post-frontend-share-recompute | Stop Pre/Post frontend from recomputing post revenue share percent |
+| RQ334 | WAITING | supplier-prepost-comparable-fake-zero | Fail closed on null Pre/Post comparable article count in Supplier detail |
+| RQ335 | WAITING | daily-sales-previous-period-silent-failure | Surface Daily Sales previous-period fetch failure instead of silent N/A deltas |
+| RQ336 | WAITING | daily-sales-chart-sort-order-bug | Feed Daily Sales trend/shift charts from chronological rows, not table sort |
+| RQ337 | WAITING | operations-frozen-preset-period | Refresh frozen 30d preset period on Operacije pages at apply/reset |
+| RQ338 | WAITING | pre-post-vendor-load-silent-failure | Surface Pre/Post vendor dropdown load failure |
+| RQ339 | WAITING | pre-post-focus-reset-on-reload | Preserve Pre/Post focus filter across non-filter reloads |
+| RQ340 | WAITING | shoe-type-stale-refetch-dead-path | Enable Shoe Type stale overlay on refetch failure |
+| RQ341 | WAITING | color-stale-refetch-contract | Add Color stale/partial refetch contract matching Operacije standard |
+| RQ342 | WAITING | operations-request-abort-races | Add AbortController to Operacije list fetches beyond Daily Sales |
+| RQ343 | WAITING | pre-nivelacija-expansion-persistence | Preserve Pre-Nivelacija expanded row across pagination reload |
+| RQ344 | WAITING | pre-nivelacija-filter-options-page-bias | Load Pre-Nivelacija filter options from full universe, not current page |
+| RQ345 | WAITING | operations-frontend-share-recompute | Remove frontend revenue share recompute on Shoe and Color when backend missing |
+| RQ346 | WAITING | shoe-type-avg-margin-frontend-aggregate | Replace frontend simple-mean avg margin KPI with backend or honest label |
+| RQ347 | WAITING | pre-post-winner-risk-untrusted-sort | Sort Pre/Post winner/risk SKUs with trustedMetric before display |
+| RQ348 | WAITING | supplier-footwear-metadata-fake-zero | Fail closed on null counts in Supplier Footwear toolbar metadata |
+| RQ349 | WAITING | color-decision-score-wrong-field | Map Color decisionScore to authoritative backend field, not rounded confidencePct |
+| RQ350 | WAITING | operations-table-sort-url-state | Persist table sort in URL on Shoe, Color and Pre/Post |
+| RQ351 | WAITING | inventory-hard-reload-refresh | Replace Inventory full page reload refresh with scoped refetch |
+| RQ352 | WAITING | daily-sales-filtered-empty-confusion | Distinguish Daily Sales store-empty from filter-no-match empty state |
+| RQ353 | WAITING | inventory-insight-detail-fake-zero-cost | Guard unit cost fake zero on insight-to-detail navigation path |
+| RQ354 | WAITING | supplier-toolbar-metadata-fake-zero | Fail closed on null supplier count in toolbar export metadata |
+| RQ355 | WAITING | color-empty-quality-conflation | Base Color empty state on row count and meta, not quality notes alone |
+| RQ356 | WAITING | pre-post-english-signal-labels | Serbian labels for Pre/Post advanced signal cards |
+| RQ357 | WAITING | inventory-url-pagination-search | URL-sync Inventory pagination, page size, search and compare stores |
+| RQ358 | WAITING | shoe-type-toolbar-metadata-fake-zero | Fail closed on null shoe type count in toolbar metadata export |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -16865,3 +16895,1294 @@ Reproduction: select focus with partial matches — table shrinks without count 
 ### Dependencies
 
 - `RQ317` focus URL state optional complement.
+## RQ331 - Stop Inventory signal KPI cards from counting only the current page slice
+
+Status: WAITING
+Priority: P1
+Type: frontend/trust/tests
+Feature family: inventory-page-local-signal-kpis
+Parallel-safe: no
+Owner: Analytics Frontend / Inventory
+Commit suggestion: `fix(analytics): inventory page local signal kpis`
+
+### Problem
+
+Top signal KPI cards (`stockCoverRiskCount`, `lowCoverSkus`, etc.) derive from `rows` (current page, max ~50), not the filtered dataset total. Cockpit implies global counts.
+
+### Evidence
+
+- `InventoryPage.tsx:829-851` — `signalKpis` uses `rows.filter(...)`.
+- Reproduction: paginate inventory — KPI counts change with page, not filter total.
+
+### Scope
+
+- Inventory signal KPI cards and any export/snapshot fields that mirror them.
+
+### Read first
+
+- `InventoryPage.tsx`, insights/balance contracts, `InventoryInsightPanels.tsx`
+
+### Do
+
+1. Source KPI counts from authoritative aggregate payload when available.
+2. If only page slice exists, relabel cards (e.g. „na ovoj stranici“) and never imply global totals.
+3. Add regression: KPI stable across pagination for same filter.
+
+### Tests
+
+- InventoryPage signal KPI spec or extend existing inventory spec.
+
+### Acceptance
+
+- Signal KPI cards reflect filter-wide totals or are honestly labeled as page-local.
+
+### Dependencies
+
+- RQ313 insights contract; coordinate aggregate source.
+
+---
+
+## RQ332 - Remove fake zero inventory/value when opening SKU detail off-page
+
+Status: WAITING
+Priority: P1
+Type: frontend/trust/tests
+Feature family: inventory-detail-placeholder-fake-zero
+Parallel-safe: no
+Owner: Analytics Frontend / Inventory
+Commit suggestion: `fix(analytics): inventory detail placeholder fake zero`
+
+### Problem
+
+`openDetailBySku` builds placeholder row with `kolicina: 0`, `nabavnaCena: 0`, `estimatedValue: 0` when SKU is not on current page.
+
+### Evidence
+
+- `InventoryPage.tsx:1102-1113` — `buildInventoryRow` with zero placeholders.
+- Reproduction: click insight/SKU not on current page — detail shows 0 qty and 0 RSD.
+
+### Scope
+
+- `openDetailBySku`, detail panel loading/unavailable states.
+
+### Read first
+
+- `InventoryPage.tsx`, `inventoryUtils.ts`, detail fetch contract
+
+### Do
+
+1. Replace zero placeholders with explicit loading/unavailable presentation.
+2. Never render 0 RSD/qty as measured before context fetch completes.
+3. Regression: off-page SKU click shows loading then real values or unavailable.
+
+### Tests
+
+- Inventory detail/insight navigation spec.
+
+### Acceptance
+
+- Off-page SKU detail never shows fake zero inventory or value.
+
+### Dependencies
+
+- RQ353 insight path; RQ324 size-curve errors.
+
+---
+
+## RQ333 - Stop Pre/Post frontend from recomputing post revenue share percent
+
+Status: WAITING
+Priority: P1
+Type: frontend/trust/tests
+Feature family: pre-post-frontend-share-recompute
+Parallel-safe: no
+Owner: Analytics Frontend / Pre-Post Nivelacija
+Commit suggestion: `fix(analytics): pre post frontend share recompute`
+
+### Problem
+
+When backend `postRevenueSharePercent` is missing, frontend computes `(trustedPostRevenue / totalRevenue) * 100`.
+
+### Evidence
+
+- `ProdajaPrePostNivelacijePage.tsx:659-663` — client-side share fallback.
+- Reproduction: row without backend share — UI shows computed % that may diverge from backend window rules.
+
+### Scope
+
+- Pre/Post row share projection only; no backend policy change.
+
+### Read first
+
+- `ProdajaPrePostNivelacijePage.tsx`, `trustedMetric`, RQ180 aggregate owner parity
+
+### Do
+
+1. Remove client-side share denominator recompute.
+2. Gate share column/cards on backend field availability.
+3. Regression: missing backend share renders unavailable, not computed %.
+
+### Tests
+
+- Pre/Post share unavailable spec.
+
+### Acceptance
+
+- No frontend-recomputed revenue share % on Pre/Post surface.
+
+### Dependencies
+
+- RQ345 shoe/color share pattern; RQ180.
+
+---
+
+## RQ334 - Fail closed on null Pre/Post comparable article count in Supplier detail
+
+Status: WAITING
+Priority: P1
+Type: frontend/trust/tests
+Feature family: supplier-prepost-comparable-fake-zero
+Parallel-safe: no
+Owner: Analytics Frontend / Supplier Sales
+Commit suggestion: `fix(analytics): supplier prepost comparable fake zero`
+
+### Problem
+
+Detail panel renders `prePostComparableArticleCount ?? 0` — null becomes 0 articles.
+
+### Evidence
+
+- `SupplierSalesStatsPage.tsx:2242`.
+- Reproduction: supplier without comparable count metadata — shows 0 artikala.
+
+### Scope
+
+- Supplier detail Pre/Post comparable count presentation (Operacije redirect target).
+
+### Read first
+
+- `SupplierSalesStatsPage.tsx`, supplier detail trust contract
+
+### Do
+
+1. Replace `?? 0` with null-safe formatter.
+2. Regression: null comparable count is unavailable, not zero.
+
+### Tests
+
+- Supplier sales detail spec.
+
+### Acceptance
+
+- Null comparable article count never displays as 0.
+
+### Dependencies
+
+- RQ354 toolbar metadata; RQ305 IA only.
+
+---
+
+## RQ335 - Surface Daily Sales previous-period fetch failure instead of silent N/A deltas
+
+Status: WAITING
+Priority: P2
+Type: frontend/trust/tests
+Feature family: daily-sales-previous-period-silent-failure
+Parallel-safe: no
+Owner: Analytics Frontend / Daily Sales
+Commit suggestion: `fix(analytics): daily sales previous period silent failure`
+
+### Problem
+
+Previous-period fetch failure is swallowed (`.catch(() => null)`); UI shows N/A deltas with no failure banner.
+
+### Evidence
+
+- `DailySalesStatsPage.tsx:691-702`, `945-978`.
+- Reproduction: force previous-period API failure — PoP cards show N/A without warning.
+
+### Scope
+
+- Daily Sales previous-period comparison state and UI.
+
+### Read first
+
+- `DailySalesStatsPage.tsx`, partial failure patterns from RQ290
+
+### Do
+
+1. Distinguish no-baseline vs request-failed in UI.
+2. Add warning banner when previous fetch fails but current succeeds.
+3. Regression: failed previous period shows degraded state, not silent N/A.
+
+### Tests
+
+- Daily Sales previous-period failure spec.
+
+### Acceptance
+
+- Users can tell previous-period comparison failed vs legitimately unavailable.
+
+### Dependencies
+
+- RQ327 sort URL optional.
+
+---
+
+## RQ336 - Feed Daily Sales trend/shift charts from chronological rows, not table sort
+
+Status: WAITING
+Priority: P2
+Type: frontend/trust/tests
+Feature family: daily-sales-chart-sort-order-bug
+Parallel-safe: no
+Owner: Analytics Frontend / Daily Sales
+Commit suggestion: `fix(analytics): daily sales chart sort order bug`
+
+### Problem
+
+Trend and shift-mix charts use `sortedRows` (table sort order), not chronological `timeSeriesRows`. Sorting scrambles time axis.
+
+### Evidence
+
+- `DailySalesStatsPage.tsx:868-891` — `trendData`/`shiftMixData` map `sortedRows`.
+- Reproduction: sort table by supplier/revenue — charts no longer follow date order.
+
+### Scope
+
+- Daily Sales chart data pipelines only.
+
+### Read first
+
+- `DailySalesStatsPage.tsx`, `chronologicalTrendData`, chart components
+
+### Do
+
+1. Refactor chart memos to use chronological ordering.
+2. Table sort must not mutate chart x-axis sequence.
+3. Regression: sort table by revenue — chart dates remain chronological.
+
+### Tests
+
+- Daily Sales chart sort independence spec.
+
+### Acceptance
+
+- Charts always display time-ordered series regardless of table sort.
+
+### Dependencies
+
+- RQ327 table sort URL.
+
+---
+
+## RQ337 - Refresh frozen 30d preset period on Operacije pages at apply/reset
+
+Status: WAITING
+Priority: P2
+Type: frontend/trust/tests
+Feature family: operations-frozen-preset-period
+Parallel-safe: no
+Owner: Analytics Frontend / Operacije
+Commit suggestion: `fix(analytics): operations frozen preset period`
+
+### Problem
+
+`initialRange = useMemo(() => getPresetRange("30d"), [])` freezes default period at mount on Shoe, Color, Pre/Post.
+
+### Evidence
+
+- `ShoeTypeSalesStatsPage.tsx:354`; `ColorSalesStatsPage.tsx:279`; `ProdajaPrePostNivelacijePage.tsx:477`.
+- Reproduction: long-lived tab past midnight — reset/first load uses stale window.
+
+### Scope
+
+- Default preset range initialization on three Operacije list pages.
+
+### Read first
+
+- Affected pages, `getPresetRange`, Daily Sales URL period pattern
+
+### Do
+
+1. Replace mount-frozen preset with reload/reset-scoped computation.
+2. Align reset button with current calendar 30d window.
+3. Regression: preset advances after simulated date rollover on reset.
+
+### Tests
+
+- Focused spec per page or shared preset helper spec.
+
+### Acceptance
+
+- Default 30d window reflects current date on reset/apply, not first mount only.
+
+### Dependencies
+
+- RQ312 inventory signal window; RQ318 URL state.
+
+---
+
+## RQ338 - Surface Pre/Post vendor dropdown load failure
+
+Status: WAITING
+Priority: P2
+Type: frontend/trust/tests
+Feature family: pre-post-vendor-load-silent-failure
+Parallel-safe: no
+Owner: Analytics Frontend / Pre-Post Nivelacija
+Commit suggestion: `fix(analytics): pre post vendor load silent failure`
+
+### Problem
+
+Vendor load failure silently `setVendors([])` — empty dropdown with no degradation message.
+
+### Evidence
+
+- `ProdajaPrePostNivelacijePage.tsx:523-531`.
+- Reproduction: vendor API failure — dropdown empty, no error.
+
+### Scope
+
+- Pre/Post vendor filter load error handling.
+
+### Read first
+
+- `ProdajaPrePostNivelacijePage.tsx`, RQ321 store failure pattern
+
+### Do
+
+1. Track vendor load error state.
+2. Show banner; keep last successful vendor list when refetch fails.
+3. Regression: vendor API error shows message, not silent empty dropdown.
+
+### Tests
+
+- Pre/Post vendor load failure spec.
+
+### Acceptance
+
+- Vendor filter failures are visible; no silent empty dropdown.
+
+### Dependencies
+
+- RQ321 general store pattern.
+
+---
+
+## RQ339 - Preserve Pre/Post focus filter across non-filter reloads
+
+Status: WAITING
+Priority: P2
+Type: frontend/trust/tests
+Feature family: pre-post-focus-reset-on-reload
+Parallel-safe: no
+Owner: Analytics Frontend / Pre-Post Nivelacija
+Commit suggestion: `fix(analytics): pre post focus reset on reload`
+
+### Problem
+
+Every successful reload resets `focusFilter("all")` including scope-only refetches.
+
+### Evidence
+
+- `ProdajaPrePostNivelacijePage.tsx:582-584`.
+- Reproduction: change global scope with active focus chip — focus resets to all.
+
+### Scope
+
+- Pre/Post reload/focus state preservation.
+
+### Read first
+
+- `ProdajaPrePostNivelacijePage.tsx`, RQ317 focus URL, RQ328 expansion
+
+### Do
+
+1. Only reset focus when filter inputs change, not scope-only reload.
+2. Regression: scope change keeps active focus chip when rows still match.
+
+### Tests
+
+- Pre/Post focus persistence spec.
+
+### Acceptance
+
+- Focus filter survives scope reload when still applicable.
+
+### Dependencies
+
+- RQ317 URL state; RQ328 expansion.
+
+---
+
+## RQ340 - Enable Shoe Type stale overlay on refetch failure
+
+Status: WAITING
+Priority: P2
+Type: frontend/trust/tests
+Feature family: shoe-type-stale-refetch-dead-path
+Parallel-safe: no
+Owner: Analytics Frontend / Shoe Type Sales
+Commit suggestion: `fix(analytics): shoe type stale refetch dead path`
+
+### Problem
+
+`showStaleError` banner is dead: catch always `setData(null)`, so `error && data` never true.
+
+### Evidence
+
+- `ShoeTypeSalesStatsPage.tsx:420-422`, `681-682`, `999-1002`.
+- Reproduction: refetch with network error after successful load — full blocking error instead of stale overlay.
+
+### Scope
+
+- Shoe Type load/refetch error contract.
+
+### Read first
+
+- `ShoeTypeSalesStatsPage.tsx`, Daily Sales abort/partial pattern
+
+### Do
+
+1. Split initial vs refetch error handling.
+2. Wire `showStaleError` to real stale path.
+3. Regression: refetch failure retains prior data + banner.
+
+### Tests
+
+- Shoe Type stale refetch spec.
+
+### Acceptance
+
+- Refetch failures show stale overlay when prior data exists.
+
+### Dependencies
+
+- RQ341 color pattern; RQ342 abort.
+
+---
+
+## RQ341 - Add Color stale/partial refetch contract matching Operacije standard
+
+Status: WAITING
+Priority: P2
+Type: frontend/trust/tests
+Feature family: color-stale-refetch-contract
+Parallel-safe: no
+Owner: Analytics Frontend / Color Sales
+Commit suggestion: `fix(analytics): color stale refetch contract`
+
+### Problem
+
+Any load error clears `data` and shows blocking error — no stale path during refetch.
+
+### Evidence
+
+- `ColorSalesStatsPage.tsx:345-348`, `864-873`.
+- Reproduction: refetch failure — prior color data lost.
+
+### Scope
+
+- Color load/refetch error handling.
+
+### Read first
+
+- `ColorSalesStatsPage.tsx`, RQ340 shoe stale pattern
+
+### Do
+
+1. Keep existing data on refetch failure.
+2. Show stale/degraded banner.
+3. Regression: refetch error retains table data.
+
+### Tests
+
+- Color stale refetch spec.
+
+### Acceptance
+
+- Color refetch failures degrade gracefully without wiping prior data.
+
+### Dependencies
+
+- RQ340; RQ342 abort.
+
+---
+
+## RQ342 - Add AbortController to Operacije list fetches beyond Daily Sales
+
+Status: WAITING
+Priority: P2
+Type: frontend/trust/tests
+Feature family: operations-request-abort-races
+Parallel-safe: no
+Owner: Analytics Frontend / Operacije
+Commit suggestion: `fix(analytics): operations request abort races`
+
+### Problem
+
+Only Daily Sales aborts in-flight requests; other Operacije screens use `requestIdRef` without abort.
+
+### Evidence
+
+- Contrast `DailySalesStatsPage.tsx:718-721` vs `ShoeTypeSalesStatsPage.tsx:404-433` and peers.
+
+### Scope
+
+- Shoe, Color, Pre/Post, Pre-Nivelacija, Inventory primary list loads.
+
+### Read first
+
+- Each affected page load effect, Daily Sales abort reference
+
+### Do
+
+1. Add AbortController tied to effect cleanup.
+2. Ignore aborted responses after filter change.
+3. Regression: rapid filter changes commit only latest response.
+
+### Tests
+
+- Per-page race regression spec or shared helper test.
+
+### Acceptance
+
+- Slow responses cannot overwrite newer filter results on Operacije pages.
+
+### Dependencies
+
+- RQ340/RQ341 refetch paths.
+
+---
+
+## RQ343 - Preserve Pre-Nivelacija expanded row across pagination reload
+
+Status: WAITING
+Priority: P2
+Type: frontend/trust/tests
+Feature family: pre-nivelacija-expansion-persistence
+Parallel-safe: no
+Owner: Analytics Frontend / Pre-Nivelacija
+Commit suggestion: `fix(analytics): pre nivelacija expansion persistence`
+
+### Problem
+
+Successful reload clears `expandedArtikalId`; expanded detail lost on pagination/filter reload.
+
+### Evidence
+
+- `PreNivelacijaPriorityPage.tsx:467`, `652-655`.
+- Reproduction: expand row, change page — detail collapses.
+
+### Scope
+
+- Pre-Nivelacija expansion state across reload.
+
+### Read first
+
+- `PreNivelacijaPriorityPage.tsx`, RQ328 Pre/Post expansion
+
+### Do
+
+1. Restore expansion after reload if same artikalId present.
+2. Regression: pagination keeps expansion when row visible.
+
+### Tests
+
+- Pre-Nivelacija expansion persistence spec.
+
+### Acceptance
+
+- Expanded detail survives pagination when row remains in results.
+
+### Dependencies
+
+- RQ299 URL state.
+
+---
+
+## RQ344 - Load Pre-Nivelacija filter options from full universe, not current page
+
+Status: WAITING
+Priority: P2
+Type: frontend/trust/tests
+Feature family: pre-nivelacija-filter-options-page-bias
+Parallel-safe: no
+Owner: Analytics Frontend / Pre-Nivelacija
+Commit suggestion: `fix(analytics): pre nivelacija filter options page bias`
+
+### Problem
+
+Supplier/season/footwear dropdown options built only from current page `candidates`.
+
+### Evidence
+
+- `PreNivelacijaPriorityPage.tsx:502-531`, `851-880`.
+- Reproduction: valid supplier on page 2 missing from dropdown on page 1.
+
+### Scope
+
+- Pre-Nivelacija filter option sources.
+
+### Read first
+
+- `PreNivelacijaPriorityPage.tsx`, backend facet contract if exists
+
+### Do
+
+1. Source dropdown options from metadata/facets, not page slice.
+2. Regression: supplier on page 2 appears in filter list on page 1.
+
+### Tests
+
+- Pre-Nivelacija filter options spec.
+
+### Acceptance
+
+- Filter dropdowns include values from full filtered universe, not current page only.
+
+### Dependencies
+
+- RQ315 period metadata.
+
+---
+
+## RQ345 - Remove frontend revenue share recompute on Shoe and Color when backend missing
+
+Status: WAITING
+Priority: P2
+Type: frontend/trust/tests
+Feature family: operations-frontend-share-recompute
+Parallel-safe: no
+Owner: Analytics Frontend / Operacije
+Commit suggestion: `fix(analytics): operations frontend share recompute`
+
+### Problem
+
+Frontend recomputes revenue share from row totals when backend `sharePct` missing.
+
+### Evidence
+
+- `ShoeTypeSalesStatsPage.tsx:439-445`; `ColorSalesStatsPage.tsx:364-371`.
+
+### Scope
+
+- Shoe and Color share projection.
+
+### Read first
+
+- Shoe/Color pages, RQ333 Pre/Post parity
+
+### Do
+
+1. Remove client-side share fallback.
+2. Show unavailable when backend share absent.
+3. Regression tests per page.
+
+### Tests
+
+- Shoe/Color share unavailable specs.
+
+### Acceptance
+
+- No client-computed revenue share % when backend field missing.
+
+### Dependencies
+
+- RQ333 Pre/Post; RQ180.
+
+---
+
+## RQ346 - Replace frontend simple-mean avg margin KPI with backend or honest label
+
+Status: WAITING
+Priority: P2
+Type: frontend/trust/tests
+Feature family: shoe-type-avg-margin-frontend-aggregate
+Parallel-safe: no
+Owner: Analytics Frontend / Shoe Type Sales
+Commit suggestion: `fix(analytics): shoe type avg margin frontend aggregate`
+
+### Problem
+
+`avgMarginPct` is simple mean of row margins client-side.
+
+### Evidence
+
+- `ShoeTypeSalesStatsPage.tsx:581-586`.
+
+### Scope
+
+- Shoe Type avg margin KPI card.
+
+### Read first
+
+- `ShoeTypeSalesStatsPage.tsx`, backend totals contract
+
+### Do
+
+1. Prefer backend aggregate margin if available.
+2. Otherwise label KPI as non-authoritative row average.
+3. Regression: KPI matches backend or shows unavailable.
+
+### Tests
+
+- Shoe Type margin KPI spec.
+
+### Acceptance
+
+- Avg margin KPI is authoritative or explicitly labeled non-authoritative.
+
+### Dependencies
+
+- RQ345 share pattern.
+
+---
+
+## RQ347 - Sort Pre/Post winner/risk SKUs with trustedMetric before display
+
+Status: WAITING
+Priority: P2
+Type: frontend/trust/tests
+Feature family: pre-post-winner-risk-untrusted-sort
+Parallel-safe: no
+Owner: Analytics Frontend / Pre-Post Nivelacija
+Commit suggestion: `fix(analytics): pre post winner risk untrusted sort`
+
+### Problem
+
+Top winner/risk sorted by raw `changeRevenue`, not `trustedMetric`, before display gate.
+
+### Evidence
+
+- `ProdajaPrePostNivelacijePage.tsx:1005-1018`.
+
+### Scope
+
+- Pre/Post vendor driver summary winner/risk selection.
+
+### Read first
+
+- `ProdajaPrePostNivelacijePage.tsx`, RQ314 fake zero
+
+### Do
+
+1. Filter non-comparable SKUs before winner/risk selection.
+2. Apply trustedMetric to sort keys.
+3. Regression: non-comparable SKU not labeled winner.
+
+### Tests
+
+- Pre/Post driver summary spec.
+
+### Acceptance
+
+- Winner/risk labels only use comparable trusted revenue.
+
+### Dependencies
+
+- RQ314 display gate.
+
+---
+
+## RQ348 - Fail closed on null counts in Supplier Footwear toolbar metadata
+
+Status: WAITING
+Priority: P2
+Type: frontend/trust/tests
+Feature family: supplier-footwear-metadata-fake-zero
+Parallel-safe: no
+Owner: Analytics Frontend / Supplier Footwear
+Commit suggestion: `fix(analytics): supplier footwear metadata fake zero`
+
+### Problem
+
+Toolbar uses `?? 0` for vendor/article/window counts; sums revenue with `comparableMetric(...) ?? 0`.
+
+### Evidence
+
+- `SupplierFootwearAnalyticsPage.tsx:423`, `477-481`, `617-619`.
+
+### Scope
+
+- Supplier Footwear analytics toolbar/export metadata (Operacije assortment redirect).
+
+### Read first
+
+- `SupplierFootwearAnalyticsPage.tsx`, comparable metric helpers
+
+### Do
+
+1. Replace fake zero metadata with unavailable formatting.
+2. Regression: null totals export as N/A.
+
+### Tests
+
+- Supplier footwear metadata spec.
+
+### Acceptance
+
+- Missing footwear metadata never exports as 0.
+
+### Dependencies
+
+- RQ334/RQ354 supplier trust.
+
+---
+
+## RQ349 - Map Color decisionScore to authoritative backend field, not rounded confidencePct
+
+Status: WAITING
+Priority: P3
+Type: frontend/trust/tests
+Feature family: color-decision-score-wrong-field
+Parallel-safe: no
+Owner: Analytics Frontend / Color Sales
+Commit suggestion: `fix(analytics): color decision score wrong field`
+
+### Problem
+
+`decisionScore` column stores rounded `confidencePct`, not backend decision score.
+
+### Evidence
+
+- `ColorSalesStatsPage.tsx:393-395`, guardrail `393`, `1126`.
+
+### Scope
+
+- Color decisionScore projection in table/detail/export.
+
+### Read first
+
+- `ColorSalesStatsPage.tsx`, RQ304 label, RQ311 guardrail
+
+### Do
+
+1. Use backend decision score DTO when present.
+2. Gate unavailable when recommendation blocked.
+3. Regression: score differs from confidence when backend provides both.
+
+### Tests
+
+- Color decision score spec + guardrail clean.
+
+### Acceptance
+
+- Decision score column reflects backend score semantics, not confidence proxy.
+
+### Dependencies
+
+- RQ304 label; RQ311 guardrail.
+
+---
+
+## RQ350 - Persist table sort in URL on Shoe, Color and Pre/Post
+
+Status: WAITING
+Priority: P3
+Type: frontend/trust/tests
+Feature family: operations-table-sort-url-state
+Parallel-safe: no
+Owner: Analytics Frontend / Operacije
+Commit suggestion: `fix(analytics): operations table sort url state`
+
+### Problem
+
+Table sort field/direction not URL-backed (RQ326/327 cover Pre-Nivelacija + Daily only).
+
+### Evidence
+
+- `ShoeTypeSalesStatsPage.tsx:372-373`; `ColorSalesStatsPage.tsx:297-298`; `ProdajaPrePostNivelacijePage.tsx:501-502`.
+
+### Scope
+
+- Sort URL sync on three Operacije list pages.
+
+### Read first
+
+- Affected pages, RQ326/RQ327 URL patterns
+
+### Do
+
+1. Serialize/deserialize sort in URL.
+2. Round-trip on refresh/back.
+3. Regression per page.
+
+### Tests
+
+- Sort URL specs per page.
+
+### Acceptance
+
+- Table sort survives refresh and is shareable via URL.
+
+### Dependencies
+
+- RQ318 list URL phased work.
+
+---
+
+## RQ351 - Replace Inventory full page reload refresh with scoped refetch
+
+Status: WAITING
+Priority: P3
+Type: frontend/trust/tests
+Feature family: inventory-hard-reload-refresh
+Parallel-safe: no
+Owner: Analytics Frontend / Inventory
+Commit suggestion: `fix(analytics): inventory hard reload refresh`
+
+### Problem
+
+„Osveži“ triggers `window.location.reload()` — drops filters, detail, pagination.
+
+### Evidence
+
+- `InventoryPage.tsx:1372-1375`, `1388`, `1443`.
+
+### Scope
+
+- Inventory refresh control.
+
+### Read first
+
+- `InventoryPage.tsx`, retry helpers
+
+### Do
+
+1. Wire refresh button to scoped refetch.
+2. Preserve in-memory UI state where safe.
+3. Regression: refresh refetches without full navigation reload.
+
+### Tests
+
+- Inventory refresh spec.
+
+### Acceptance
+
+- Refresh refetches data without dropping filter/detail state via full reload.
+
+### Dependencies
+
+- RQ357 URL state optional.
+
+---
+
+## RQ352 - Distinguish Daily Sales store-empty from filter-no-match empty state
+
+Status: WAITING
+Priority: P3
+Type: frontend/trust/tests
+Feature family: daily-sales-filtered-empty-confusion
+Parallel-safe: no
+Owner: Analytics Frontend / Daily Sales
+Commit suggestion: `fix(analytics): daily sales filtered empty confusion`
+
+### Problem
+
+Empty state variant `filtered_out` whenever `storeId != null`, even if store truly has zero sales.
+
+### Evidence
+
+- `DailySalesStatsPage.tsx:801-806`.
+
+### Scope
+
+- Daily Sales empty state classification.
+
+### Read first
+
+- `DailySalesStatsPage.tsx`, response meta emptyReason
+
+### Do
+
+1. Use backend emptyReason when store has zero sales.
+2. Reserve filtered_out for rows removed by client filters.
+3. Regression: zero-sales store shows no_data, not filtered_out.
+
+### Tests
+
+- Daily Sales empty state spec.
+
+### Acceptance
+
+- Empty vs filtered-out correctly distinguished when store selected.
+
+### Dependencies
+
+- RQ290 shift empty semantics.
+
+---
+
+## RQ353 - Guard unit cost fake zero on insight-to-detail navigation path
+
+Status: WAITING
+Priority: P3
+Type: frontend/trust/tests
+Feature family: inventory-insight-detail-fake-zero-cost
+Parallel-safe: no
+Owner: Analytics Frontend / Inventory
+Commit suggestion: `fix(analytics): inventory insight detail fake zero cost`
+
+### Problem
+
+Insight click builds row with `nabavnaCena: 0` in edge cases; detail may show 0 RSD unit cost.
+
+### Evidence
+
+- `inventoryUtils.ts:330`; `InventoryInsightPanels.tsx:17-18`, `71`.
+
+### Scope
+
+- Insight panel → detail row construction.
+
+### Read first
+
+- `inventoryUtils.ts`, `InventoryInsightPanels.tsx`, RQ332
+
+### Do
+
+1. Never show 0 RSD unit cost without measured value.
+2. Regression: insight navigation shows unavailable cost until loaded.
+
+### Tests
+
+- Inventory insight detail spec.
+
+### Acceptance
+
+- Insight→detail path never shows fake zero unit cost.
+
+### Dependencies
+
+- RQ332 off-page SKU.
+
+---
+
+## RQ354 - Fail closed on null supplier count in toolbar export metadata
+
+Status: WAITING
+Priority: P3
+Type: frontend/trust/tests
+Feature family: supplier-toolbar-metadata-fake-zero
+Parallel-safe: no
+Owner: Analytics Frontend / Supplier Sales
+Commit suggestion: `fix(analytics): supplier toolbar metadata fake zero`
+
+### Problem
+
+Toolbar metadata `brojDobavljaca ?? 0` exports 0 when totals missing.
+
+### Evidence
+
+- `SupplierSalesStatsPage.tsx:1146`.
+
+### Scope
+
+- Supplier sales toolbar/export metadata.
+
+### Read first
+
+- `SupplierSalesStatsPage.tsx`, RQ292 Pre/Post toolbar pattern
+
+### Do
+
+1. Replace ?? 0 with N/A in export metadata.
+2. Regression: null supplier count exports unavailable.
+
+### Tests
+
+- Supplier toolbar metadata spec.
+
+### Acceptance
+
+- Missing supplier totals never export as 0.
+
+### Dependencies
+
+- RQ334 detail count.
+
+---
+
+## RQ355 - Base Color empty state on row count and meta, not quality notes alone
+
+Status: WAITING
+Priority: P3
+Type: frontend/trust/tests
+Feature family: color-empty-quality-conflation
+Parallel-safe: no
+Owner: Analytics Frontend / Color Sales
+Commit suggestion: `fix(analytics): color empty quality conflation`
+
+### Problem
+
+When rows empty, `emptyStateVariant` becomes `insufficient_data` if `qualityNotes.length > 0`, conflating quality warnings with empty dataset.
+
+### Evidence
+
+- `ColorSalesStatsPage.tsx:612-616`.
+
+### Scope
+
+- Color empty state variant logic.
+
+### Read first
+
+- `ColorSalesStatsPage.tsx`, empty vs degraded patterns
+
+### Do
+
+1. Separate quality warning banner from empty variant.
+2. Regression: quality notes with zero rows still show correct empty reason.
+
+### Tests
+
+- Color empty state spec.
+
+### Acceptance
+
+- Empty dataset and degraded quality are distinct visible states.
+
+### Dependencies
+
+- RQ287 status identity.
+
+---
+
+## RQ356 - Serbian labels for Pre/Post advanced signal cards
+
+Status: WAITING
+Priority: P3
+Type: frontend/trust/tests
+Feature family: pre-post-english-signal-labels
+Parallel-safe: no
+Owner: Analytics Frontend / Pre-Post Nivelacija
+Commit suggestion: `fix(analytics): pre post english signal labels`
+
+### Problem
+
+Advanced signal cards use English abbreviations (DID, Lost sales OOS, avg rev).
+
+### Evidence
+
+- `ProdajaPrePostNivelacijePage.tsx:926-951`.
+
+### Scope
+
+- Pre/Post signal card user-facing labels.
+
+### Read first
+
+- `ProdajaPrePostNivelacijePage.tsx`, RQ325 English pass
+
+### Do
+
+1. Replace English abbreviations with Serbian product copy.
+2. Preserve methodology tooltips.
+3. Encoding-safe UTF-8.
+
+### Tests
+
+- Pre/Post localization spec or snapshot.
+
+### Acceptance
+
+- Advanced signal cards use Serbian labels.
+
+### Dependencies
+
+- RQ325 residual English.
+
+---
+
+## RQ357 - URL-sync Inventory pagination, page size, search and compare stores
+
+Status: WAITING
+Priority: P3
+Type: frontend/trust/tests
+Feature family: inventory-url-pagination-search
+Parallel-safe: no
+Owner: Analytics Frontend / Inventory
+Commit suggestion: `fix(analytics): inventory url pagination search`
+
+### Problem
+
+Pagination, page size, search, compare-store selection not URL-synced.
+
+### Evidence
+
+- `InventoryPage.tsx:318-321`, `1388`, `1443`.
+
+### Scope
+
+- Inventory-specific URL state beyond RQ318 list filters.
+
+### Read first
+
+- `InventoryPage.tsx`, RQ318 phased URL
+
+### Do
+
+1. Serialize pagination/search/compare in URL.
+2. Round-trip on refresh.
+3. Regression: deep link restores inventory view.
+
+### Tests
+
+- Inventory URL state spec.
+
+### Acceptance
+
+- Inventory pagination/search/compare survive refresh via URL.
+
+### Dependencies
+
+- RQ318 list filters.
+
+---
+
+## RQ358 - Fail closed on null shoe type count in toolbar metadata export
+
+Status: WAITING
+Priority: P3
+Type: frontend/trust/tests
+Feature family: shoe-type-toolbar-metadata-fake-zero
+Parallel-safe: no
+Owner: Analytics Frontend / Shoe Type Sales
+Commit suggestion: `fix(analytics): shoe type toolbar metadata fake zero`
+
+### Problem
+
+Toolbar metadata `brojTipovaObuce ?? 0` writes 0 when totals absent.
+
+### Evidence
+
+- `ShoeTypeSalesStatsPage.tsx:705`.
+
+### Scope
+
+- Shoe Type toolbar/export metadata.
+
+### Read first
+
+- `ShoeTypeSalesStatsPage.tsx`, metadata formatters
+
+### Do
+
+1. Replace ?? 0 with unavailable formatter.
+2. Regression: null count exports N/A.
+
+### Tests
+
+- Shoe Type metadata spec.
+
+### Acceptance
+
+- Missing shoe type totals never export as 0.
+
+### Dependencies
+
+- RQ354 supplier metadata pattern.
+
+---
