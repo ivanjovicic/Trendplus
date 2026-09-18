@@ -418,6 +418,49 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     saveSpy.mockRestore();
   });
 
+  it("shows shared filtered-out empty state when focus chips hide every vendor row", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
+      response({
+        vendorStats: [
+          vendor({
+            vendorId: 11,
+            vendorName: "Vendor B",
+            postRevenue: 50000,
+            changeRevenue: 10000,
+            recommendation: {
+              status: "review",
+              label: "Review",
+              summary: "Signal za proveru.",
+              confidencePct: 64,
+              reliabilityPct: 61,
+              dataQualityStatus: "warning",
+              reasonCodes: ["review_signal"],
+            },
+          }),
+        ],
+        totals: {
+          ...response().totals,
+          postRevenue: 50000,
+          vendorsCount: 1,
+        },
+      }),
+    );
+
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+
+    fireEvent.click(screen.getByRole("button", { name: /Pojacaj/i }));
+
+    expect(await screen.findByRole("heading", { name: "Nema rezultata za trenutne filtere." })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Vrati prikaz svih dobavljača." })).toBeInTheDocument();
+    expect(screen.queryByTestId("prodaja-pre-post-nivelacije-data-table")).not.toBeInTheDocument();
+    expect(screen.queryByText("Vendor B")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Vrati prikaz svih dobavljača." }));
+    expect(await screen.findByTestId("prodaja-pre-post-nivelacije-data-table")).toBeInTheDocument();
+    expect(screen.getByText("Vendor B")).toBeInTheDocument();
+  });
+
   it("hides inline detail when the active focus filter excludes the selected row", async () => {
     vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
       response({

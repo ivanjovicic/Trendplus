@@ -793,12 +793,13 @@ export default function ProdajaPrePostNivelacijePage() {
   const dataMeta = data?.meta ?? null;
   const dataMetaMessage = getAnalyticsMetaMessage(dataMeta);
   const showMetaWarning = !loading && !error && isAnalyticsMetaWarning(dataMeta);
-  const showEmptyState = !loading && !error && Boolean(data) && decisionRows.length === 0;
+  const showFilteredOutState = !loading && !error && Boolean(data) && decisionRows.length > 0 && focusedRows.length === 0;
+  const showEmptyState = !loading && !error && Boolean(data) && (decisionRows.length === 0 || showFilteredOutState);
   const showInsufficientEmptyState = shouldShowAnalyticsEmptyState(dataMeta, decisionRows.length) && isAnalyticsMetaInsufficient(dataMeta);
   const emptyStateVariant: "no_data" | "insufficient_data" | "filtered_out" =
     showInsufficientEmptyState
       ? "insufficient_data"
-      : focusFilter !== "all"
+      : showFilteredOutState
         ? "filtered_out"
         : "no_data";
 
@@ -1370,11 +1371,13 @@ const advancedSignals = useMemo(
             emptyStateVariant === "insufficient_data"
               ? "Ne prikazujemo automatsku preporuku jer signal nije dovoljno jak."
               : emptyStateVariant === "filtered_out"
-                ? "Promenite filtere ili proširite period."
+                ? "Promenite brzi fokus ili proširite period."
                 : (dataMetaMessage ?? "Nije bilo prodaje u izabranom periodu.")
           }
           actions={[
-            { label: "Proširite period pretrage." },
+            showFilteredOutState
+              ? { label: "Vrati prikaz svih dobavljača.", onClick: () => setFocusFilter("all") }
+              : { label: "Proširite period pretrage." },
             { label: "Uklonite filter dobavljača ili prodavnice." },
             { label: "Proverite analytics refresh.", href: "/analytics/data-quality" },
           ]}
@@ -1386,7 +1389,7 @@ const advancedSignals = useMemo(
       ) : null}
       {loading ? <div className="ppn-decision-message loading">Učitavam pre/post signal po dobavljačima...</div> : null}
 
-      {!loading && data ? (
+      {!loading && data && !showEmptyState ? (
         <>
           {/* Compact Data Health badge – collapsible trust/quality layer */}
           <div className="ppn-data-health-bar">
