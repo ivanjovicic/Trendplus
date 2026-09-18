@@ -4,6 +4,10 @@ Date: 2026-09-18
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-18: under user instruction to claim next prompt, `RQ332` moved from `WAITING` to `READY` as P1 trust follow-up (inventory off-page detail placeholder fake zero).
+
+Owner claim 2026-09-18: `RQ332` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ332-codex.lock.md`.
+
 Owner promotion 2026-09-18: under user instruction to claim next prompt, `RQ331` moved from `WAITING` to `READY` as P1 trust follow-up (inventory page-local signal KPIs).
 
 Owner claim 2026-09-18: `RQ331` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ331-codex.lock.md`.
@@ -672,7 +676,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ329 | WAITING | shoe-type-truncation-label | Fix or remove dead Shoe Type truncation label |
 | RQ330 | WAITING | pre-post-focus-row-context | Add row-count context when Pre/Post focus hides vendors |
 | RQ331 | DONE | inventory-page-local-signal-kpis | Stop Inventory signal KPI cards from counting only the current page slice |
-| RQ332 | WAITING | inventory-detail-placeholder-fake-zero | Remove fake zero inventory/value when opening SKU detail off-page |
+| RQ332 | IN_PROGRESS | inventory-detail-placeholder-fake-zero | Remove fake zero inventory/value when opening SKU detail off-page |
 | RQ333 | WAITING | pre-post-frontend-share-recompute | Stop Pre/Post frontend from recomputing post revenue share percent |
 | RQ334 | WAITING | supplier-prepost-comparable-fake-zero | Fail closed on null Pre/Post comparable article count in Supplier detail |
 | RQ335 | WAITING | daily-sales-previous-period-silent-failure | Surface Daily Sales previous-period fetch failure instead of silent N/A deltas |
@@ -17028,7 +17032,7 @@ Top signal KPI cards (`stockCoverRiskCount`, `lowCoverSkus`, etc.) derive from `
 
 ## RQ332 - Remove fake zero inventory/value when opening SKU detail off-page
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend/trust/tests
 Feature family: inventory-detail-placeholder-fake-zero

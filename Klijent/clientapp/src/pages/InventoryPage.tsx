@@ -24,7 +24,7 @@ import { SizeCurvePanel } from "../components/inventory/SizeCurvePanel";
 import { StoreComparisonPanel } from "../components/inventory/StoreComparisonPanel";
 import KpiExplainButton from "../components/analytics/KpiExplainButton";
 import { computeInventorySignalKpis, INVENTORY_SIGNAL_KPI_PAGE_SCOPE_NOTE } from "../components/inventory/inventorySignalKpis";
-import { buildForecastRestockSuggestion, buildInventoryRow, buildInventoryScreenCsvFilename, buildInventoryScreenCsvLines, buildInventoryServerExportContractNote, buildInventoryWorkflowCentralQueueMetadata, buildSupplierChart, createScheduleDraft, formatPercent, INVENTORY_EXPOSURE_BASIS, inventoryRiskSortScopeWarning, isInventoryPageLocalRiskSort, resolveForecastRestockDaysSinceMovement, resolveInventoryExposureRsdFromRow, validateScheduleDraft } from "../components/inventory/inventoryUtils";
+import { buildForecastRestockSuggestion, buildInventoryRow, buildInventoryScreenCsvFilename, buildInventoryScreenCsvLines, buildInventoryServerExportContractNote, buildInventoryWorkflowCentralQueueMetadata, buildOffPageDetailPlaceholderRow, buildSupplierChart, createScheduleDraft, formatPercent, INVENTORY_EXPOSURE_BASIS, inventoryRiskSortScopeWarning, isInventoryPageLocalRiskSort, resolveForecastRestockDaysSinceMovement, resolveInventoryExposureRsdFromRow, validateScheduleDraft } from "../components/inventory/inventoryUtils";
 import { getDataScope } from "../utils/dataScope";
 import type { InventoryRow } from "../components/inventory/types";
 import { fmtNumber, formatDateTime } from "../utils/analyticsFormatters";
@@ -683,6 +683,11 @@ export default function InventoryPage() {
         if (!cancelled) {
           setDetailData(null);
           setDetailError(reason instanceof Error ? reason.message : String(reason));
+          setDetailRow((current) =>
+            current?.contextStatus === "loadingContext"
+              ? { ...current, contextStatus: "contextMissing" }
+              : current,
+          );
         }
       })
       .finally(() => {
@@ -1086,18 +1091,7 @@ export default function InventoryPage() {
       openDetail(existingRow);
       return;
     }
-    openDetail(buildInventoryRow({
-      id: skuId,
-      naziv: label ?? `SKU #${skuId}`,
-      plu: null,
-      kolicina: 0,
-      minimalnaKolicina: 0,
-      nabavnaCena: 0,
-      estimatedValue: 0,
-      idObjekat: storeId ?? null,
-      idDobavljac: null,
-      contextStatus: "loadingContext",
-    }, stores, suppliers));
+    openDetail(buildOffPageDetailPlaceholderRow(skuId, stores, suppliers, { storeId, label }));
   }
 
   function retryDetailFetch() {

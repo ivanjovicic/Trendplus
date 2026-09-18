@@ -256,6 +256,30 @@ export function buildSignalText(stockCoverStatus: string, sellThroughStatus: str
   return "Nedovoljno podataka";
 }
 
+export function buildOffPageDetailPlaceholderRow(
+  skuId: number,
+  stores: StoreOption[],
+  suppliers: SupplierFilterOption[],
+  options?: { storeId?: number | null; label?: string },
+): InventoryRow {
+  return buildInventoryRow(
+    {
+      id: skuId,
+      naziv: options?.label ?? `SKU #${skuId}`,
+      plu: null,
+      kolicina: null,
+      minimalnaKolicina: null,
+      nabavnaCena: null,
+      estimatedValue: null,
+      idObjekat: options?.storeId ?? null,
+      idDobavljac: null,
+      contextStatus: "loadingContext",
+    },
+    stores,
+    suppliers,
+  );
+}
+
 export function buildInventoryRow(item: InventoryListItemWithSignals, stores: StoreOption[], suppliers: SupplierFilterOption[]): InventoryRow {
   const quantity =
     item.kolicina == null || !Number.isFinite(item.kolicina) ? null : item.kolicina;
