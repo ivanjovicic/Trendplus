@@ -2,7 +2,11 @@
 
 Date: 2026-09-18
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ299
+
+Owner promotion 2026-09-18: under the user's explicit instruction to claim the next prompt, `RQ299` moved from `WAITING` to `READY` as the first safe P2 follow-up after `RQ298` completion; it is the single current RQ prompt for Pre-Nivelacija URL state.
+
+Owner claim 2026-09-18: `RQ299` transitioned `READY -> IN_PROGRESS` in this workspace; local runtime lock `.ai/task-locks/RQ299-codex.lock.md`.
 
 Owner promotion 2026-09-18: under the user's explicit instruction to claim the next prompt, `RQ298` moved from `WAITING` to `READY` as the first safe P2 follow-up after `RQ297` completion; it is the single current RQ prompt for Pre-Nivelacija reliability styling and export units.
 
@@ -15202,7 +15206,7 @@ Reproduction: render a row with valid reliability and one without it, compare vi
 
 ## RQ299 - Preserve Pre-Nivelacija filters and focus in URL state
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P2
 Type: frontend/routing/tests
 Feature family: pre-nivelacija-url-state

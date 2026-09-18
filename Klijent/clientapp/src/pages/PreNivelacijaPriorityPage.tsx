@@ -68,6 +68,9 @@ type ActiveFilters = {
   noSaleDaysMin: number;
 };
 
+const DEFAULT_MIN_SCORE = 40;
+const DEFAULT_NO_SALE_DAYS_MIN = 14;
+
 type DecisionCandidate = Omit<PreNivelacijaSkuCandidate, "decisionScore"> & {
   revenueDelta: number;
   marginDelta: number;
@@ -93,6 +96,50 @@ const FOCUS_LABELS: Record<FocusFilter, string> = {
   insufficientData: "Nedovoljno podataka",
   highPriority: "Visok prioritet",
 };
+
+function parseOptionalPositiveInteger(value: string | null): number | null {
+  if (!value || !/^\d+$/.test(value)) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function parseBoundedInteger(value: string | null, fallback: number, min: number, max: number): number {
+  if (!value || !/^\d+$/.test(value)) return fallback;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= min && parsed <= max ? parsed : fallback;
+}
+
+function parseNonNegativeInteger(value: string | null, fallback: number): number {
+  if (!value || !/^\d+$/.test(value)) return fallback;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+function parseFocusFilter(value: string | null): FocusFilter {
+  if (value && value in FOCUS_LABELS) return value as FocusFilter;
+  return "all";
+}
+
+function sameActiveFilters(left: ActiveFilters, right: ActiveFilters): boolean {
+  return left.supplierId === right.supplierId
+    && left.seasonId === right.seasonId
+    && left.footwearTypeId === right.footwearTypeId
+    && left.minScore === right.minScore
+    && left.noSaleDaysMin === right.noSaleDaysMin;
+}
+
+function buildPreNivelacijaSearchParams(filters: ActiveFilters, focus: FocusFilter, page: number, dataScope: DataScope): URLSearchParams {
+  const params = new URLSearchParams();
+  if (filters.supplierId != null) params.set("supplierId", String(filters.supplierId));
+  if (filters.seasonId != null) params.set("seasonId", String(filters.seasonId));
+  if (filters.footwearTypeId != null) params.set("footwearTypeId", String(filters.footwearTypeId));
+  params.set("minScore", String(filters.minScore));
+  params.set("noSaleDaysMin", String(filters.noSaleDaysMin));
+  if (focus !== "all") params.set("focus", focus);
+  if (page > 1) params.set("page", String(page));
+  params.set("dataScope", dataScope);
+  return params;
+}
 
 const STATUS_PRIORITY: Record<DecisionStatus, number> = {
   ...RECOMMENDATION_STATUS_PRIORITY,
@@ -275,30 +322,50 @@ export default function PreNivelacijaPriorityPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const requestIdRef = useRef(0);
   const queryDataScope = normalizeDataScope(searchParams.get("dataScope") ?? getDataScope());
+  const queryFilters = useMemo<ActiveFilters>(() => ({
+    supplierId: parseOptionalPositiveInteger(searchParams.get("supplierId")),
+    seasonId: parseOptionalPositiveInteger(searchParams.get("seasonId")),
+    footwearTypeId: parseOptionalPositiveInteger(searchParams.get("footwearTypeId")),
+    minScore: parseBoundedInteger(searchParams.get("minScore"), DEFAULT_MIN_SCORE, 0, 100),
+    noSaleDaysMin: parseNonNegativeInteger(searchParams.get("noSaleDaysMin"), DEFAULT_NO_SALE_DAYS_MIN),
+  }), [searchParams]);
+  const queryFocus = parseFocusFilter(searchParams.get("focus"));
+  const queryPage = parseBoundedInteger(searchParams.get("page"), 1, 1, Number.MAX_SAFE_INTEGER);
 
-  const [supplierId, setSupplierId] = useState<number | null>(null);
-  const [seasonId, setSeasonId] = useState<number | null>(null);
-  const [footwearTypeId, setFootwearTypeId] = useState<number | null>(null);
-  const [minScore, setMinScore] = useState<number>(40);
-  const [noSaleDaysMin, setNoSaleDaysMin] = useState<number>(14);
-  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({
-    supplierId: null,
-    seasonId: null,
-    footwearTypeId: null,
-    minScore: 40,
-    noSaleDaysMin: 14,
-  });
+  const [supplierId, setSupplierId] = useState<number | null>(queryFilters.supplierId);
+  const [seasonId, setSeasonId] = useState<number | null>(queryFilters.seasonId);
+  const [footwearTypeId, setFootwearTypeId] = useState<number | null>(queryFilters.footwearTypeId);
+  const [minScore, setMinScore] = useState<number>(queryFilters.minScore);
+  const [noSaleDaysMin, setNoSaleDaysMin] = useState<number>(queryFilters.noSaleDaysMin);
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>(queryFilters);
 
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(queryPage);
   const [data, setData] = useState<PreNivelacijaPriorityResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<{ message: string; errorCode?: string | null; correlationId?: string | null } | null>(null);
   const [sortField, setSortField] = useState<SortField>("status");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expandedArtikalId, setExpandedArtikalId] = useState<number | null>(null);
-  const [focusFilter, setFocusFilter] = useState<FocusFilter>("all");
+  const [focusFilter, setFocusFilter] = useState<FocusFilter>(queryFocus);
   const [dataScope, setDataScopeValue] = useState<DataScope>(() => queryDataScope);
   const dataScopeRef = useRef<DataScope>(queryDataScope);
+
+  useEffect(() => {
+    setSupplierId((current) => current === queryFilters.supplierId ? current : queryFilters.supplierId);
+    setSeasonId((current) => current === queryFilters.seasonId ? current : queryFilters.seasonId);
+    setFootwearTypeId((current) => current === queryFilters.footwearTypeId ? current : queryFilters.footwearTypeId);
+    setMinScore((current) => current === queryFilters.minScore ? current : queryFilters.minScore);
+    setNoSaleDaysMin((current) => current === queryFilters.noSaleDaysMin ? current : queryFilters.noSaleDaysMin);
+    setActiveFilters((current) => sameActiveFilters(current, queryFilters) ? current : queryFilters);
+    setPage((current) => current === queryPage ? current : queryPage);
+    setFocusFilter((current) => current === queryFocus ? current : queryFocus);
+  }, [queryFilters, queryFocus, queryPage]);
+
+  useEffect(() => {
+    const canonicalParams = buildPreNivelacijaSearchParams(queryFilters, queryFocus, queryPage, queryDataScope);
+    if (canonicalParams.toString() === searchParams.toString()) return;
+    setSearchParams(canonicalParams, { replace: true });
+  }, [queryDataScope, queryFilters, queryFocus, queryPage, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (dataScopeRef.current === queryDataScope) return;
@@ -576,10 +643,11 @@ export default function PreNivelacijaPriorityPage() {
       { key: "footwearTypeId", label: "Tip obuće", value: activeFilters.footwearTypeId ?? "" },
       { key: "minScore", label: "Min. skor", value: activeFilters.minScore },
       { key: "noSaleDaysMin", label: "Min. dana bez prodaje", value: activeFilters.noSaleDaysMin },
+      { key: "focus", label: "Fokus", value: focusFilter },
       { key: "dataScope", label: "Opseg podataka", value: dataScope },
       { key: "page", label: "Strana", value: page },
     ],
-    [activeFilters.footwearTypeId, activeFilters.minScore, activeFilters.noSaleDaysMin, activeFilters.seasonId, activeFilters.supplierId, dataScope, page]
+    [activeFilters.footwearTypeId, activeFilters.minScore, activeFilters.noSaleDaysMin, activeFilters.seasonId, activeFilters.supplierId, dataScope, focusFilter, page]
   );
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(
@@ -600,33 +668,53 @@ export default function PreNivelacijaPriorityPage() {
     setSortDir(field === "sku" || field === "supplierName" ? "asc" : "desc");
   };
 
+  const syncQueryState = (filters: ActiveFilters, focus: FocusFilter, nextPage: number) => {
+    setSearchParams(buildPreNivelacijaSearchParams(filters, focus, nextPage, dataScope), { replace: true });
+  };
+
   const handleApplyFilters = () => {
-    setPage(1);
-    setFocusFilter("all");
-    setActiveFilters({
+    const nextFilters: ActiveFilters = {
       supplierId,
       seasonId,
       footwearTypeId,
       minScore,
       noSaleDaysMin,
-    });
+    };
+    setPage(1);
+    setFocusFilter("all");
+    setActiveFilters(nextFilters);
+    syncQueryState(nextFilters, "all", 1);
   };
 
   const handleResetFilters = () => {
-    setSupplierId(null);
-    setSeasonId(null);
-    setFootwearTypeId(null);
-    setMinScore(40);
-    setNoSaleDaysMin(14);
-    setPage(1);
-    setFocusFilter("all");
-    setActiveFilters({
+    const defaultFilters: ActiveFilters = {
       supplierId: null,
       seasonId: null,
       footwearTypeId: null,
-      minScore: 40,
-      noSaleDaysMin: 14,
-    });
+      minScore: DEFAULT_MIN_SCORE,
+      noSaleDaysMin: DEFAULT_NO_SALE_DAYS_MIN,
+    };
+    setSupplierId(null);
+    setSeasonId(null);
+    setFootwearTypeId(null);
+    setMinScore(DEFAULT_MIN_SCORE);
+    setNoSaleDaysMin(DEFAULT_NO_SALE_DAYS_MIN);
+    setPage(1);
+    setFocusFilter("all");
+    setActiveFilters(defaultFilters);
+    syncQueryState(defaultFilters, "all", 1);
+  };
+
+  const handleFocusChange = (nextFocus: FocusFilter) => {
+    setFocusFilter(nextFocus);
+    setPage(1);
+    syncQueryState(activeFilters, nextFocus, 1);
+  };
+
+  const handlePageChange = (nextPage: number) => {
+    const safePage = Math.max(1, nextPage);
+    setPage(safePage);
+    syncQueryState(activeFilters, focusFilter, safePage);
   };
 
   const controlBarChips = useMemo<AnalyticsControlBarChip[]>(() => {
@@ -731,7 +819,8 @@ export default function PreNivelacijaPriorityPage() {
       })
     );
 
-    navigate(`/analitika/pre-nivelacija-prioriteti/${row.artikalId}?dataScope=${encodeURIComponent(dataScope)}`, {
+    const detailParams = buildPreNivelacijaSearchParams(activeFilters, focusFilter, page, dataScope);
+    navigate(`/analitika/pre-nivelacija-prioriteti/${row.artikalId}?${detailParams.toString()}`, {
       state: { backgroundLocation: location },
     });
   };
@@ -931,7 +1020,7 @@ export default function PreNivelacijaPriorityPage() {
                       type="button"
                       aria-selected={focusFilter === f}
                       className={`pnp-focus-tab ${tabClass}${focusFilter === f ? " active" : ""}`.trim()}
-                      onClick={() => setFocusFilter(f)}
+                      onClick={() => handleFocusChange(f)}
                     >
                       {FOCUS_LABELS[f]} ({count})
                     </button>
@@ -946,9 +1035,9 @@ export default function PreNivelacijaPriorityPage() {
                 toolbar={(
                   <div className="pnp-table-toolbar">
                     <div className="pnp-decision-table-controls">
-                      <button type="button" onClick={() => canGoPrev && setPage((p) => p - 1)} disabled={!canGoPrev || loading}>Prethodna</button>
+                      <button type="button" onClick={() => canGoPrev && handlePageChange(page - 1)} disabled={!canGoPrev || loading}>Prethodna</button>
                       <span>Strana {page}</span>
-                      <button type="button" onClick={() => canGoNext && setPage((p) => p + 1)} disabled={!canGoNext || loading}>Sledeća</button>
+                      <button type="button" onClick={() => canGoNext && handlePageChange(page + 1)} disabled={!canGoNext || loading}>Sledeća</button>
                     </div>
                     <AnalyticsTableToolbar
                       tableKey="pre-nivelacija-prioriteti"

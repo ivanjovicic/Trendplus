@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import PreNivelacijaPriorityPage, { decisionColumns } from "../PreNivelacijaPriorityPage";
@@ -166,6 +166,11 @@ function makeResponse(candidates = [makeCandidate(), makeCandidate({
       dataQualityStatus: "good",
     },
   };
+}
+
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="location-search">{location.pathname}{location.search}</output>;
 }
 
 describe("PreNivelacijaPriorityPage", () => {
@@ -533,6 +538,87 @@ describe("PreNivelacijaPriorityPage", () => {
     expect(alert).toHaveTextContent("Pre-nivelacija API timeout");
     expect(document.querySelector(".pnp-decision-kpis")).toBeNull();
     expect(screen.queryByText("Nisko")).not.toBeInTheDocument();
+  });
+
+  it("restores validated filters, focus, page and scope from a shared URL", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti?supplierId=11&seasonId=7&footwearTypeId=4&minScore=72&noSaleDaysMin=21&focus=review&page=2&dataScope=imported"]}>
+        <LocationProbe />
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId("pre-nivelacija-prioriteti-data-table")).toBeInTheDocument();
+    expect(getPreNivelacijaPrioritetiMock).toHaveBeenCalledWith(expect.objectContaining({
+      supplierId: 11,
+      seasonId: 7,
+      footwearTypeId: 4,
+      minScore: 72,
+      noSaleDaysMin: 21,
+      page: 2,
+      dataScope: "imported",
+    }));
+    expect(screen.getByLabelText("Dobavljač")).toHaveValue("11");
+    expect(screen.getByLabelText("Sezona")).toHaveValue("7");
+    expect(screen.getByLabelText("Tip obuće")).toHaveValue("4");
+    expect(screen.getByLabelText("Min. skor")).toHaveValue(72);
+    expect(screen.getByLabelText("Min. dana bez prodaje")).toHaveValue(21);
+    expect(screen.getByRole("tab", { name: /Pregledaj/i })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("Strana 2")).toBeInTheDocument();
+    expect(screen.getByTestId("location-search")).toHaveTextContent("supplierId=11");
+    expect(screen.getByTestId("location-search")).toHaveTextContent("focus=review");
+  });
+
+  it("fails safely to defaults and canonicalizes invalid query values", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti?supplierId=bad&seasonId=-4&footwearTypeId=0&minScore=101&noSaleDaysMin=-1&focus=unknown&page=0&dataScope=unknown"]}>
+        <LocationProbe />
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId("pre-nivelacija-prioriteti-data-table")).toBeInTheDocument();
+    expect(getPreNivelacijaPrioritetiMock).toHaveBeenLastCalledWith(expect.objectContaining({
+      supplierId: undefined,
+      seasonId: undefined,
+      footwearTypeId: undefined,
+      minScore: 40,
+      noSaleDaysMin: 14,
+      page: 1,
+      dataScope: "all",
+    }));
+    expect(screen.getByLabelText("Dobavljač")).toHaveValue("");
+    expect(screen.getByLabelText("Min. skor")).toHaveValue(40);
+    expect(screen.getByLabelText("Min. dana bez prodaje")).toHaveValue(14);
+    expect(screen.getByRole("tab", { name: /Sve/i })).toHaveAttribute("aria-selected", "true");
+    await waitFor(() => expect(screen.getByTestId("location-search")).toHaveTextContent("minScore=40"));
+    expect(screen.getByTestId("location-search")).not.toHaveTextContent("focus=unknown");
+    expect(screen.getByTestId("location-search")).not.toHaveTextContent("supplierId=bad");
+  });
+
+  it("keeps URL context and snapshot metadata through focus and detail navigation", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti?supplierId=11&seasonId=7&footwearTypeId=4&minScore=72&noSaleDaysMin=21&focus=review&page=1&dataScope=imported"]}>
+        <LocationProbe />
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Detalji" }));
+    fireEvent.click(screen.getByRole("button", { name: "Otvori puni detalj" }));
+
+    expect(screen.getByTestId("location-search")).toHaveTextContent("/analitika/pre-nivelacija-prioriteti/102");
+    expect(screen.getByTestId("location-search")).toHaveTextContent("supplierId=11");
+    expect(screen.getByTestId("location-search")).toHaveTextContent("focus=review");
+    expect(screen.getByTestId("location-search")).toHaveTextContent("dataScope=imported");
+
+    const snapshot = JSON.parse(sessionStorage.getItem("analytics-detail:pre-nivelacija-prioriteti:102") ?? "null") as {
+      metadata?: Array<{ key: string; value: string }>;
+    } | null;
+    expect(snapshot?.metadata).toEqual(expect.arrayContaining([
+      expect.objectContaining({ key: "focus", value: "review" }),
+      expect.objectContaining({ key: "minScore", value: "72" }),
+    ]));
   });
 
   it("uses a direct URL scope and normalizes an invalid scope to all", async () => {
