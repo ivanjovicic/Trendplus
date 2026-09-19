@@ -8,7 +8,11 @@ import * as analyticsTableState from "../services/analyticsTableState";
 import { getAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import { getDobavljaci } from "../services/dobavljaciApi";
 import { getVendorSalesNivelacija } from "../services/vendorSalesNivelacijaApi";
-import type { VendorSalesNivelacijaResponse, VendorSalesNivelacijaVendorStat } from "../services/vendorSalesNivelacijaApi";
+import type {
+  VendorSalesNivelacijaArticleStat,
+  VendorSalesNivelacijaResponse,
+  VendorSalesNivelacijaVendorStat,
+} from "../services/vendorSalesNivelacijaApi";
 
 vi.mock("recharts", () => ({
   Bar: () => null,
@@ -86,6 +90,33 @@ function vendor(overrides: Partial<VendorSalesNivelacijaVendorStat> = {}): Vendo
       dataQualityStatus: "good",
       reasonCodes: [],
     },
+    ...overrides,
+  };
+}
+
+function article(overrides: Partial<VendorSalesNivelacijaArticleStat> = {}): VendorSalesNivelacijaArticleStat {
+  return {
+    eventDate: "2026-06-01T00:00:00Z",
+    vendorId: 10,
+    vendorName: "Vendor A",
+    sku: "SKU-1",
+    articleName: "Patika 1",
+    category: "Patike",
+    oldPrice: 100,
+    newPrice: 120,
+    preQty: 10,
+    preRevenue: 1000,
+    postQty: 12,
+    postRevenue: 1200,
+    changeQty: 2,
+    changeRevenue: 200,
+    changePercent: 20,
+    coveragePre30: 0.8,
+    coveragePost30: 0.7,
+    hasSalesWindow: true,
+    hasComparableSalesWindow: true,
+    priceChanged: true,
+    priceChangePercent: 20,
     ...overrides,
   };
 }
@@ -418,6 +449,74 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     saveSpy.mockRestore();
   });
 
+  it("shows shared filtered-out empty state when focus chips hide every vendor row", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
+      response({
+        vendorStats: [
+          vendor({
+            vendorId: 11,
+            vendorName: "Vendor B",
+            postRevenue: 50000,
+            changeRevenue: 10000,
+            recommendation: {
+              status: "review",
+              label: "Review",
+              summary: "Signal za proveru.",
+              confidencePct: 64,
+              reliabilityPct: 61,
+              dataQualityStatus: "warning",
+              reasonCodes: ["review_signal"],
+            },
+          }),
+        ],
+        totals: {
+          ...response().totals,
+          postRevenue: 50000,
+          vendorsCount: 1,
+        },
+      }),
+    );
+
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+
+    fireEvent.click(screen.getByRole("button", { name: /Pojacaj/i }));
+
+    expect(await screen.findByRole("heading", { name: "Nema rezultata za trenutne filtere." })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Vrati prikaz svih dobavljača." })).toBeInTheDocument();
+    expect(screen.queryByTestId("prodaja-pre-post-nivelacije-data-table")).not.toBeInTheDocument();
+    expect(screen.queryByText("Vendor B")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Vrati prikaz svih dobavljača." }));
+    expect(await screen.findByTestId("prodaja-pre-post-nivelacije-data-table")).toBeInTheDocument();
+    expect(screen.getByText("Vendor B")).toBeInTheDocument();
+  });
+
+  it("hides inline detail when the active focus filter excludes the selected row", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
+      response({
+        vendorStats: [
+          vendor({ vendorId: 10, vendorName: "Vendor A", recommendation: { status: "increase_focus", label: "Increase focus", summary: "Jak signal.", confidencePct: 85, reliabilityPct: 80, dataQualityStatus: "good", reasonCodes: [] } }),
+          vendor({ vendorId: 11, vendorName: "Vendor B", postRevenue: 50000, changeRevenue: 10000, recommendation: { status: "review", label: "Review", summary: "Signal za proveru.", confidencePct: 64, reliabilityPct: 61, dataQualityStatus: "warning", reasonCodes: ["review_signal"] } }),
+        ],
+        totals: {
+          ...response().totals,
+          postRevenue: 150000,
+          vendorsCount: 2,
+        },
+      }),
+    );
+
+    renderPage();
+    const table = await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
+    const reviewRow = within(table).getByText("Vendor B").closest("tr");
+    fireEvent.click(within(reviewRow!).getAllByRole("button", { name: "Detalji" })[0]);
+    expect(await screen.findByText(/Detalj odluke: Vendor B/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Pojacaj/i }));
+    expect(screen.queryByText(/Detalj odluke: Vendor B/i)).not.toBeInTheDocument();
+  });
+
   it("collapses inline detail when Sakrij is clicked", async () => {
     renderPage();
     await screen.findByText("Prioritetna lista dobavljača");
@@ -687,5 +786,51 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(document.querySelector(".ppn-decision-kpis")).toBeNull();
     expect(screen.queryByText(/Nisko signal/)).not.toBeInTheDocument();
     expect(screen.queryByText("Post-window promet posle nivelacije")).not.toBeInTheDocument();
+  });
+
+  it("shows unavailable driver revenue instead of fake zero RSD for non-finite change metrics", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
+      response({
+        articleStats: [
+          article({
+            changeRevenue: Number.NaN as unknown as number,
+          }),
+        ],
+      }),
+    );
+
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+    fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
+
+    expect(await screen.findByText("Top dobitnik SKU")).toBeInTheDocument();
+    const driverGrid = screen.getByText("Top dobitnik SKU").closest(".ppn-driver-grid");
+    expect(driverGrid).not.toBeNull();
+    expect(within(driverGrid!).getAllByText("N/A").length).toBeGreaterThanOrEqual(2);
+    expect(within(driverGrid!).queryByText("0 RSD")).not.toBeInTheDocument();
+  });
+
+  it("keeps measured zero revenue visible in driver summary when comparability is confirmed", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
+      response({
+        articleStats: [
+          article({
+            sku: "SKU-ZERO",
+            articleName: "Patika nula",
+            changeRevenue: 0,
+          }),
+        ],
+      }),
+    );
+
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+    fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
+
+    expect(await screen.findByText("Top dobitnik SKU")).toBeInTheDocument();
+    const winnerCard = screen.getByText("Top dobitnik SKU").closest("article");
+    expect(winnerCard).not.toBeNull();
+    expect(within(winnerCard!).getByText("SKU-ZERO • Patika nula")).toBeInTheDocument();
+    expect(within(winnerCard!).getByText("0 RSD")).toBeInTheDocument();
   });
 });

@@ -91,6 +91,42 @@ function buildInsights(): InventoryInsights {
 }
 
 describe("InventoryInsightPanels", () => {
+  it("shows unavailable aging badge copy on insights error instead of fake zero", () => {
+    render(
+      <InventoryInsightPanels
+        insights={null}
+        insightsLoading={false}
+        insightsError="Inventory uvidi trenutno nisu dostupni."
+        stores={[]}
+        suppliers={[]}
+        rows={[]}
+        onOpenDetail={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Aging analitika trenutno nije dostupna")).toBeInTheDocument();
+    expect(screen.queryByText(/0 artikala je u 90\+ dana/)).not.toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("Inventory uvidi trenutno nisu dostupni.");
+  });
+
+  it("shows measured zero in aging badge when backend returns explicit zero", () => {
+    const insights = buildInsights();
+    insights.aging = [{ bucketKey: "90+", label: "90+", itemCount: 0, totalUnits: 0, estimatedValue: 0 }];
+
+    render(
+      <InventoryInsightPanels
+        insights={insights}
+        insightsLoading={false}
+        stores={[]}
+        suppliers={[]}
+        rows={[baseRow]}
+        onOpenDetail={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("0 artikala je u 90+ dana")).toBeInTheDocument();
+  });
+
   it("renders the explainability snapshot for insight items", () => {
     render(
       <InventoryInsightPanels

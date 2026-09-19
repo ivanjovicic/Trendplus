@@ -123,11 +123,11 @@ type ConcentrationDatum = {
 
 type DetailDriverSummary = {
   dominantCategory: string;
-  dominantCategoryRevenue: number;
+  dominantCategoryRevenue: number | null;
   topWinnerLabel: string;
-  topWinnerRevenue: number;
+  topWinnerRevenue: number | null;
   topRiskLabel: string;
-  topRiskRevenue: number;
+  topRiskRevenue: number | null;
   avgMomentumRevenue: number | null;
   avgElasticity: number | null;
   avgDidRevenue: number | null;
@@ -793,12 +793,13 @@ export default function ProdajaPrePostNivelacijePage() {
   const dataMeta = data?.meta ?? null;
   const dataMetaMessage = getAnalyticsMetaMessage(dataMeta);
   const showMetaWarning = !loading && !error && isAnalyticsMetaWarning(dataMeta);
-  const showEmptyState = !loading && !error && Boolean(data) && decisionRows.length === 0;
+  const showFilteredOutState = !loading && !error && Boolean(data) && decisionRows.length > 0 && focusedRows.length === 0;
+  const showEmptyState = !loading && !error && Boolean(data) && (decisionRows.length === 0 || showFilteredOutState);
   const showInsufficientEmptyState = shouldShowAnalyticsEmptyState(dataMeta, decisionRows.length) && isAnalyticsMetaInsufficient(dataMeta);
   const emptyStateVariant: "no_data" | "insufficient_data" | "filtered_out" =
     showInsufficientEmptyState
       ? "insufficient_data"
-      : focusFilter !== "all"
+      : showFilteredOutState
         ? "filtered_out"
         : "no_data";
 
@@ -978,8 +979,8 @@ const advancedSignals = useMemo(
 
   const selectedRow = useMemo(() => {
     if (!expandedVendorKey) return null;
-    return sortedRows.find((row) => row.vendorRowKey === expandedVendorKey) ?? null;
-  }, [expandedVendorKey, sortedRows]);
+    return focusedRows.find((row) => row.vendorRowKey === expandedVendorKey) ?? null;
+  }, [expandedVendorKey, focusedRows]);
 
   const selectedDriverSummary = useMemo<DetailDriverSummary | null>(() => {
     if (!selectedRow || !data) return null;
@@ -1000,7 +1001,7 @@ const advancedSignals = useMemo(
       }
     }
 
-    const dominantCategoryEntry = [...dominantCategoryMap.entries()].sort((left, right) => right[1] - left[1])[0] ?? ["N/A", 0];
+    const dominantCategoryEntry = [...dominantCategoryMap.entries()].sort((left, right) => right[1] - left[1])[0];
     const topWinner = [...vendorArticles].sort((left, right) => right.changeRevenue - left.changeRevenue)[0];
     const topRisk = [...vendorArticles].sort((left, right) => left.changeRevenue - right.changeRevenue)[0];
     const topMetricReasons = [...metricReasonCounts.entries()]
@@ -1009,12 +1010,12 @@ const advancedSignals = useMemo(
       .map(([reason, count]) => `${reason} (${count})`);
 
     return {
-      dominantCategory: dominantCategoryEntry[0],
-      dominantCategoryRevenue: dominantCategoryEntry[1],
+      dominantCategory: dominantCategoryEntry?.[0] ?? "N/A",
+      dominantCategoryRevenue: dominantCategoryEntry?.[1] ?? null,
       topWinnerLabel: topWinner ? `${topWinner.sku || "-"} • ${topWinner.articleName}` : "N/A",
-      topWinnerRevenue: trustedMetric(topWinner?.changeRevenue, topWinner) ?? 0,
+      topWinnerRevenue: topWinner ? trustedMetric(topWinner.changeRevenue, topWinner) : null,
       topRiskLabel: topRisk ? `${topRisk.sku || "-"} • ${topRisk.articleName}` : "N/A",
-      topRiskRevenue: trustedMetric(topRisk?.changeRevenue, topRisk) ?? 0,
+      topRiskRevenue: topRisk ? trustedMetric(topRisk.changeRevenue, topRisk) : null,
       avgMomentumRevenue: averageNullable(vendorArticles.map((item) => item.momentumRevenue)),
       avgElasticity: averageNullable(vendorArticles.map((item) => item.priceElasticity)),
       avgDidRevenue: averageNullable(vendorArticles.map((item) => item.didRevenue)),
@@ -1370,11 +1371,13 @@ const advancedSignals = useMemo(
             emptyStateVariant === "insufficient_data"
               ? "Ne prikazujemo automatsku preporuku jer signal nije dovoljno jak."
               : emptyStateVariant === "filtered_out"
-                ? "Promenite filtere ili proširite period."
+                ? "Promenite brzi fokus ili proširite period."
                 : (dataMetaMessage ?? "Nije bilo prodaje u izabranom periodu.")
           }
           actions={[
-            { label: "Proširite period pretrage." },
+            showFilteredOutState
+              ? { label: "Vrati prikaz svih dobavljača.", onClick: () => setFocusFilter("all") }
+              : { label: "Proširite period pretrage." },
             { label: "Uklonite filter dobavljača ili prodavnice." },
             { label: "Proverite analytics refresh.", href: "/analytics/data-quality" },
           ]}
@@ -1386,7 +1389,7 @@ const advancedSignals = useMemo(
       ) : null}
       {loading ? <div className="ppn-decision-message loading">Učitavam pre/post signal po dobavljačima...</div> : null}
 
-      {!loading && data ? (
+      {!loading && data && !showEmptyState ? (
         <>
           {/* Compact Data Health badge – collapsible trust/quality layer */}
           <div className="ppn-data-health-bar">

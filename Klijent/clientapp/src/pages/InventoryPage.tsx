@@ -23,7 +23,8 @@ import { SKUDetailModal } from "../components/inventory/SKUDetailModal";
 import { SizeCurvePanel } from "../components/inventory/SizeCurvePanel";
 import { StoreComparisonPanel } from "../components/inventory/StoreComparisonPanel";
 import KpiExplainButton from "../components/analytics/KpiExplainButton";
-import { buildForecastRestockSuggestion, buildInventoryRow, buildInventoryScreenCsvFilename, buildInventoryScreenCsvLines, buildInventoryServerExportContractNote, buildInventoryWorkflowCentralQueueMetadata, buildSupplierChart, createScheduleDraft, formatPercent, INVENTORY_EXPOSURE_BASIS, inventoryRiskSortScopeWarning, isInventoryPageLocalRiskSort, resolveForecastRestockDaysSinceMovement, resolveInventoryExposureRsdFromRow, validateScheduleDraft } from "../components/inventory/inventoryUtils";
+import { computeInventorySignalKpis, INVENTORY_SIGNAL_KPI_PAGE_SCOPE_NOTE } from "../components/inventory/inventorySignalKpis";
+import { buildForecastRestockSuggestion, buildInventoryRow, buildInventoryScreenCsvFilename, buildInventoryScreenCsvLines, buildInventoryServerExportContractNote, buildInventoryWorkflowCentralQueueMetadata, buildOffPageDetailPlaceholderRow, buildSupplierChart, createScheduleDraft, formatPercent, INVENTORY_EXPOSURE_BASIS, inventoryRiskSortScopeWarning, isInventoryPageLocalRiskSort, resolveForecastRestockDaysSinceMovement, resolveInventoryExposureRsdFromRow, validateScheduleDraft } from "../components/inventory/inventoryUtils";
 import { getDataScope } from "../utils/dataScope";
 import type { InventoryRow } from "../components/inventory/types";
 import { fmtNumber, formatDateTime } from "../utils/analyticsFormatters";
@@ -309,6 +310,7 @@ export default function InventoryPage() {
   suppliersRef.current = suppliers;
   const [loading, setLoading] = useState(true);
   const [insightsLoading, setInsightsLoading] = useState(true);
+  const [insightsError, setInsightsError] = useState<string | null>(null);
   const [filtersLoading, setFiltersLoading] = useState(true);
   const [operationsLoading, setOperationsLoading] = useState(true);
   const [error, setError] = useState<InventoryPageError | null>(null);
@@ -353,7 +355,7 @@ export default function InventoryPage() {
   const [inventoryDataScope, setInventoryDataScope] = useState(() => getDataScope());
   const deferredSearch = useDeferredValue(searchInput);
   const trimmedSearch = deferredSearch.trim();
-  const inventorySignalWindow = useMemo(createInventorySignalWindow, []);
+  const inventorySignalWindow = useMemo(createInventorySignalWindow, [reloadNonce, inventoryDataScope]);
   const exportContractNote = useMemo(
     () => buildInventoryServerExportContractNote(inventoryDataScope),
     [inventoryDataScope],
@@ -499,6 +501,8 @@ export default function InventoryPage() {
       && signalRequestSequenceRef.current === signalRequestSequence;
     setLoading(true);
     setInsightsLoading(true);
+    setInsightsError(null);
+    setInsights(null);
     if (shouldRefreshOperations) setOperationsLoading(true);
     if (shouldRefreshSignals) {
       setForecastLoading(true);
@@ -554,12 +558,15 @@ export default function InventoryPage() {
 
     void getInventoryInsights({ search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy, dataScope: inventoryDataScope })
       .then((result) => {
-        if (isCurrentRequest()) setInsights(result);
+        if (!isCurrentRequest()) return;
+        setInsights(result);
+        setInsightsError(null);
       })
       .catch((reason) => {
-        if (isCurrentRequest()) {
-          setFirstError(reason, "Inventory uvidi trenutno nisu dostupni.");
-        }
+        if (!isCurrentRequest()) return;
+        setInsights(null);
+        setInsightsError(toInventoryPageError(reason, "Inventory uvidi trenutno nisu dostupni.").message);
+        setFirstError(reason, "Inventory uvidi trenutno nisu dostupni.");
       })
       .finally(() => {
         if (!isCurrentRequest()) return;
@@ -676,6 +683,11 @@ export default function InventoryPage() {
         if (!cancelled) {
           setDetailData(null);
           setDetailError(reason instanceof Error ? reason.message : String(reason));
+          setDetailRow((current) =>
+            current?.contextStatus === "loadingContext"
+              ? { ...current, contextStatus: "contextMissing" }
+              : current,
+          );
         }
       })
       .finally(() => {
@@ -826,30 +838,10 @@ export default function InventoryPage() {
     };
   }, [actionWorkflow, displayedRows]);
 
-  const signalKpis = useMemo(() => {
-    const lowCoverSkus = rows.filter((row) => {
-      const status = (row.stockCoverStatus ?? "").toLowerCase();
-      return status === "low_cover" || status === "low" || status === "out_of_stock_risk";
-    }).length;
-
-    const slowStockSkus = rows.filter((row) => {
-      const status = (row.stockCoverStatus ?? "").toLowerCase();
-      return status === "slow_stock" || status === "slow" || status === "no_velocity";
-    }).length;
-
-    const goodSellThroughSkus = rows.filter((row) => (row.sellThroughStatus ?? "").toLowerCase() === "good").length;
-    const stockCoverRiskCount = rows.filter((row) => {
-      const status = (row.stockCoverStatus ?? "").toLowerCase();
-      return status === "low_cover" || status === "low" || status === "out_of_stock_risk" || status === "insufficient_data";
-    }).length;
-
-    return {
-      stockCoverRiskCount,
-      lowCoverSkus,
-      slowStockSkus,
-      goodSellThroughSkus,
-    };
-  }, [rows]);
+  const signalKpis = useMemo(
+    () => computeInventorySignalKpis(rows, totalCount, pageSize),
+    [pageSize, rows, totalCount],
+  );
   const primaryInventoryTrust = useMemo(
     () => aggregateInventoryTrust([
       { label: "Lista artikala", meta: pageData?.meta },
@@ -1099,18 +1091,7 @@ export default function InventoryPage() {
       openDetail(existingRow);
       return;
     }
-    openDetail(buildInventoryRow({
-      id: skuId,
-      naziv: label ?? `SKU #${skuId}`,
-      plu: null,
-      kolicina: 0,
-      minimalnaKolicina: 0,
-      nabavnaCena: 0,
-      estimatedValue: 0,
-      idObjekat: storeId ?? null,
-      idDobavljac: null,
-      contextStatus: "loadingContext",
-    }, stores, suppliers));
+    openDetail(buildOffPageDetailPlaceholderRow(skuId, stores, suppliers, { storeId, label }));
   }
 
   function retryDetailFetch() {
@@ -1292,6 +1273,11 @@ export default function InventoryPage() {
           <KpiExplainButton metricKey="sellThrough" ariaLabel="Kako je izračunat sell-through" />
         </div>
       </section>
+      {signalKpis.scope === "page" ? (
+        <div className="rounded-2xl border border-[var(--warning)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--warning)]" role="status" data-testid="inventory-signal-kpi-scope-note">
+          {INVENTORY_SIGNAL_KPI_PAGE_SCOPE_NOTE} ({fmtNumber(rows.length, 0, "0")} od {fmtNumber(totalCount, 0, "0")} artikala).
+        </div>
+      ) : null}
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <article className="rounded-2xl border border-muted bg-[var(--surface-darker)] p-4">
           <div className="text-xs uppercase tracking-[0.2em] text-muted">Stock cover risk</div>
@@ -1534,7 +1520,7 @@ export default function InventoryPage() {
       </div>
 
       <InventoryKPICards totalSku={balance?.totalSku} totalOnHand={balance?.totalOnHand} lowStockCount={balance?.lowStockCount} lowStockShare={lowStockShare} avgUnitsPerSku={avgUnitsPerSku} totalValue={totalValue} />
-      <InventoryInsightPanels insights={insights} insightsLoading={insightsLoading} stores={stores} suppliers={suppliers} rows={rows} onOpenDetail={openDetail} />
+      <InventoryInsightPanels insights={insights} insightsLoading={insightsLoading} insightsError={insightsError} stores={stores} suppliers={suppliers} rows={rows} onOpenDetail={openDetail} />
       <InventoryPriorityPanels rows={rows} topRiskRows={topRiskRows} highestValueRows={highestValueRows} chartData={chartData} balance={balance} lowStockShare={lowStockShare} totalCount={totalCount} onOpenDetail={openDetail} />
 
       <div className="grid gap-5 xl:grid-cols-2">

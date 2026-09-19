@@ -1,9 +1,10 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter, useLocation } from "react-router-dom";
+import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import PreNivelacijaPriorityPage from "../PreNivelacijaPriorityPage";
 import { decisionColumns } from "../preNivelacijaDecision";
+import { PreNivelacijaApiError } from "../../services/preNivelacijaApi";
 
 vi.mock("recharts", () => ({
   BarChart: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
@@ -35,9 +36,13 @@ vi.mock("../../components/ui/InfoTip", () => ({ default: () => null }));
 
 const getPreNivelacijaPrioritetiMock = vi.fn();
 
-vi.mock("../../services/preNivelacijaApi", () => ({
-  getPreNivelacijaPrioriteti: (...args: unknown[]) => getPreNivelacijaPrioritetiMock(...args),
-}));
+vi.mock("../../services/preNivelacijaApi", async () => {
+  const actual = await vi.importActual<typeof import("../../services/preNivelacijaApi")>("../../services/preNivelacijaApi");
+  return {
+    ...actual,
+    getPreNivelacijaPrioriteti: (...args: unknown[]) => getPreNivelacijaPrioritetiMock(...args),
+  };
+});
 
 function makeCandidate(overrides: Record<string, unknown> = {}) {
   return {
@@ -176,6 +181,16 @@ function makeResponse(candidates = [makeCandidate(), makeCandidate({
 function LocationProbe() {
   const location = useLocation();
   return <output data-testid="location-search">{location.pathname}{location.search}</output>;
+}
+
+function HistoryControls() {
+  const navigate = useNavigate();
+  return (
+    <div>
+      <button type="button" onClick={() => navigate(-1)}>Go back</button>
+      <button type="button" onClick={() => navigate(1)}>Go forward</button>
+    </div>
+  );
 }
 
 describe("PreNivelacijaPriorityPage", () => {
@@ -432,9 +447,12 @@ describe("PreNivelacijaPriorityPage", () => {
     );
 
     const table = await screen.findByTestId("pre-nivelacija-prioriteti-data-table");
-    expect(table).toHaveTextContent("0.0");
+    expect(table).toHaveTextContent("0,0");
     expect(table).toHaveTextContent("-1.500 RSD");
     expect(table).not.toHaveTextContent("Nije dostupno");
+    const deltaCell = within(table).getByText("-1.500 RSD");
+    expect(deltaCell).toHaveClass("trend-down");
+    expect(deltaCell).not.toHaveClass("trend-up");
   });
 
   it("exports reliability as a percent while preserving null as unavailable", () => {
@@ -445,6 +463,16 @@ describe("PreNivelacijaPriorityPage", () => {
     });
     expect(reliabilityColumn?.getValue?.({ reliabilityAvailable: true, reliabilityPct: 0 } as never)).toBe(0);
     expect(reliabilityColumn?.getValue?.({ reliabilityAvailable: false, reliabilityPct: null } as never)).toBeNull();
+  });
+
+  it("exports recommendation-gated score and delta as unavailable while preserving measured zero", () => {
+    const scoreColumn = decisionColumns.find((column) => column.key === "decisionScore");
+    const deltaColumn = decisionColumns.find((column) => column.key === "revenueDelta");
+
+    expect(scoreColumn?.getValue?.({ recommendationAllowed: false, decisionScoreAvailable: false, decisionScore: 88 } as never)).toBeNull();
+    expect(deltaColumn?.getValue?.({ recommendationAllowed: false, revenueDelta: 7000 } as never)).toBeNull();
+    expect(scoreColumn?.getValue?.({ recommendationAllowed: true, decisionScoreAvailable: true, decisionScore: 0 } as never)).toBe(0);
+    expect(deltaColumn?.getValue?.({ recommendationAllowed: true, revenueDelta: 0 } as never)).toBe(0);
   });
 
   it("exports the same focus-filtered rows that the table displays", async () => {
@@ -591,13 +619,25 @@ describe("PreNivelacijaPriorityPage", () => {
     expect((await screen.findAllByText("SKU-101")).length).toBeGreaterThan(0);
     expect(screen.getByText("Pojacaj")).toBeInTheDocument();
     expect(screen.getByText("Preporuka je blokirana; proveri podatke pre odluke.")).toBeInTheDocument();
-    expect(screen.getByTitle(/Preporuka je blokirana; status je informativan/i)).toBeInTheDocument();
+    const status = screen.getByTitle(/Preporuka je blokirana; status je informativan/i);
+    expect(status).toBeInTheDocument();
+    expect(status.getAttribute("title")).not.toMatch(/7\.000/);
+
+    const table = screen.getByTestId("pre-nivelacija-prioriteti-data-table");
+    const vendorRow = within(table).getByText("SKU-101").closest("tr");
+    expect(vendorRow).not.toBeNull();
+    expect(within(vendorRow as HTMLElement).queryByText("7.000 RSD")).not.toBeInTheDocument();
+    const deltaCell = (vendorRow as HTMLElement).querySelectorAll("td")[5];
+    expect(deltaCell.className).not.toMatch(/trend-up|trend-down/);
 
     fireEvent.click(screen.getByRole("button", { name: "Detalji" }));
 
-    expect(screen.getByText("Ocena preporuke")).toBeInTheDocument();
+    const scoreArticle = screen.getByText("Ocena preporuke").closest("article");
+    expect(scoreArticle).toHaveTextContent(/Pouzdanost nije dostupna/);
+    expect(scoreArticle).not.toHaveTextContent("88");
     expect(screen.getAllByText(/Pouzdanost nije dostupna/).length).toBeGreaterThan(0);
     expect(screen.queryByText("Pojačaj izlaganje i proveri dopunu pre nivelacije.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Signal je upotrebljiv za odluku")).not.toBeInTheDocument();
   });
 
   it.each([Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])("fails closed for non-finite allowed decision score (%s)", async (decisionScore) => {
@@ -646,8 +686,14 @@ describe("PreNivelacijaPriorityPage", () => {
     expect(document.querySelector(".pnp-decision-kpis")).toBeNull();
   });
 
-  it("shows an error alert and hides KPI cards when the priority load fails", async () => {
-    getPreNivelacijaPrioritetiMock.mockRejectedValueOnce(new Error("Pre-nivelacija API timeout"));
+  it("shows safe guidance and hides KPI cards when the priority load fails", async () => {
+    getPreNivelacijaPrioritetiMock.mockRejectedValueOnce(
+      new PreNivelacijaApiError(
+        "Servis je privremeno nedostupan.",
+        "PRE_NIVELACIJA_BACKEND_TIMEOUT",
+        "corr-pnp-295",
+      ),
+    );
 
     render(
       <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
@@ -656,9 +702,24 @@ describe("PreNivelacijaPriorityPage", () => {
     );
 
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Pre-nivelacija API timeout");
+    expect(alert).toHaveTextContent("Servis je privremeno nedostupan.");
+    expect(alert).not.toHaveTextContent("PRE_NIVELACIJA_BACKEND_TIMEOUT");
     expect(document.querySelector(".pnp-decision-kpis")).toBeNull();
     expect(screen.queryByText("Nisko")).not.toBeInTheDocument();
+  });
+
+  it("does not expose raw technical errors from unexpected fetch failures", async () => {
+    getPreNivelacijaPrioritetiMock.mockRejectedValueOnce(new Error("timeout ECONNREFUSED"));
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Pre-nivelacija prioriteti trenutno nisu dostupni. Proverite status osvežavanja i pokušajte ponovo.");
+    expect(alert).not.toHaveTextContent("ECONNREFUSED");
   });
 
   it("restores validated filters, focus, page and scope from a shared URL", async () => {
@@ -808,5 +869,122 @@ describe("PreNivelacijaPriorityPage", () => {
 
     resolveAll?.(makeResponse([makeCandidate({ artikalId: 902, sku: "SKU-OLD-SCOPE" })]));
     await waitFor(() => expect(screen.queryByText("SKU-OLD-SCOPE")).not.toBeInTheDocument());
+  });
+
+  it("resets filters, focus and URL to documented defaults", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti?supplierId=11&seasonId=7&footwearTypeId=4&minScore=72&noSaleDaysMin=21&focus=review&page=2&dataScope=imported"]}>
+        <LocationProbe />
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByLabelText("Dobavljač")).toHaveValue("11");
+    fireEvent.click(screen.getByRole("button", { name: "Reset filtera" }));
+
+    await waitFor(() => expect(screen.getByLabelText("Dobavljač")).toHaveValue(""));
+    expect(screen.getByLabelText("Min. skor")).toHaveValue(40);
+    expect(screen.getByLabelText("Min. dana bez prodaje")).toHaveValue(14);
+    expect(screen.getByRole("tab", { name: /Sve/i })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByTestId("location-search")).toHaveTextContent("minScore=40");
+    expect(screen.getByTestId("location-search")).not.toHaveTextContent("supplierId=11");
+    expect(screen.getByTestId("location-search")).not.toHaveTextContent("focus=review");
+    expect(getPreNivelacijaPrioritetiMock).toHaveBeenLastCalledWith(expect.objectContaining({
+      supplierId: undefined,
+      minScore: 40,
+      noSaleDaysMin: 14,
+      page: 1,
+      dataScope: "imported",
+    }));
+  });
+
+  it("restores focus through browser back and forward history", async () => {
+    render(
+      <MemoryRouter
+        initialEntries={[
+          "/analitika/pre-nivelacija-prioriteti?minScore=40&noSaleDaysMin=14&dataScope=all",
+          "/analitika/pre-nivelacija-prioriteti?minScore=40&noSaleDaysMin=14&focus=review&dataScope=all",
+        ]}
+        initialIndex={1}
+      >
+        <HistoryControls />
+        <LocationProbe />
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("tab", { name: /Pregledaj/i })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByTestId("location-search")).toHaveTextContent("focus=review");
+
+    fireEvent.click(screen.getByRole("button", { name: "Go back" }));
+    await waitFor(() => expect(screen.getByRole("tab", { name: /Sve/i })).toHaveAttribute("aria-selected", "true"));
+    expect(screen.getByTestId("location-search")).not.toHaveTextContent("focus=review");
+
+    fireEvent.click(screen.getByRole("button", { name: "Go forward" }));
+    await waitFor(() => expect(screen.getByRole("tab", { name: /Pregledaj/i })).toHaveAttribute("aria-selected", "true"));
+    expect(screen.getByTestId("location-search")).toHaveTextContent("focus=review");
+  });
+
+  it("hides inline detail when the active focus filter excludes the selected row", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    const table = await screen.findByTestId("pre-nivelacija-prioriteti-data-table");
+    const reviewRow = within(table).getByText("SKU-102").closest("tr");
+    fireEvent.click(within(reviewRow as HTMLElement).getByRole("button", { name: "Detalji" }));
+    expect(screen.getByText("Detalj odluke: SKU-102")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: /Pojacaj/i }));
+    expect(screen.queryByText("Detalj odluke: SKU-102")).not.toBeInTheDocument();
+  });
+
+  it("does not let a blocked recommendation outrank allowed delta evidence", async () => {
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce(makeResponse([
+      makeCandidate({
+        artikalId: 801,
+        sku: "SKU-BLOCKED",
+        revenueDeltaHighlightVsMarkdown: 90000,
+        recommendation: {
+          status: "increase_focus",
+          label: "Pojačaj fokus",
+          summary: "Blokiran signal.",
+          confidencePct: 91,
+          reliabilityPct: 88,
+          dataQualityStatus: "good",
+          recommendationAllowed: false,
+          reasonCodes: ["review_signal"],
+        },
+      }),
+      makeCandidate({
+        artikalId: 802,
+        sku: "SKU-ALLOWED",
+        revenueDeltaHighlightVsMarkdown: 1000,
+        recommendation: {
+          status: "review",
+          label: "Pregled",
+          summary: "Dozvoljen signal.",
+          confidencePct: 70,
+          reliabilityPct: 80,
+          dataQualityStatus: "good",
+          recommendationAllowed: true,
+          reasonCodes: ["review_signal"],
+        },
+      }),
+    ]));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    const table = await screen.findByTestId("pre-nivelacija-prioriteti-data-table");
+    fireEvent.click(screen.getByRole("button", { name: /Isticanje vs sniženje/ }));
+    const sortedRows = table.querySelectorAll("tbody tr");
+    expect(sortedRows[0]).toHaveTextContent("SKU-ALLOWED");
+    expect(sortedRows[1]).toHaveTextContent("SKU-BLOCKED");
   });
 });
