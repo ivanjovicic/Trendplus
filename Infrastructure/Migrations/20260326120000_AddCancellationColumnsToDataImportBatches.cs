@@ -15,14 +15,19 @@ namespace Infrastructure.Migrations
         {
             migrationBuilder.Sql(
                 """
-                ALTER TABLE IF EXISTS "DataImportBatches"
-                ADD COLUMN IF NOT EXISTS "CancellationRequested" boolean NOT NULL DEFAULT FALSE;
+                DO $$
+                BEGIN
+                    IF to_regclass('public."DataImportBatches"') IS NOT NULL THEN
+                        ALTER TABLE "DataImportBatches"
+                        ADD COLUMN IF NOT EXISTS "CancellationRequested" boolean NOT NULL DEFAULT FALSE;
 
-                ALTER TABLE IF EXISTS "DataImportBatches"
-                ADD COLUMN IF NOT EXISTS "CancellationRequestedAtUtc" timestamp with time zone;
+                        ALTER TABLE "DataImportBatches"
+                        ADD COLUMN IF NOT EXISTS "CancellationRequestedAtUtc" timestamp with time zone;
 
-                CREATE INDEX IF NOT EXISTS "IX_DataImportBatches_CancellationRequested"
-                ON "DataImportBatches" ("CancellationRequested");
+                        CREATE INDEX IF NOT EXISTS "IX_DataImportBatches_CancellationRequested"
+                        ON "DataImportBatches" ("CancellationRequested");
+                    END IF;
+                END $$;
                 """);
         }
 

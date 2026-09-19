@@ -12,13 +12,8 @@ namespace Infrastructure.Migrations.AnalyticsDb
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(
-                name: "IX_ProductsDim_ProductId",
-                table: "ProductsDim");
-
-            migrationBuilder.DropIndex(
-                name: "IX_InventoryMovementFacts_SourceId",
-                table: "InventoryMovementFacts");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_ProductsDim_ProductId\";");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_InventoryMovementFacts_SourceId\";");
 
             migrationBuilder.CreateTable(
                 name: "analytics_action_items",

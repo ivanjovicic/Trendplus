@@ -1630,12 +1630,25 @@ public static class DatabaseInitializer
             ALTER TABLE IF EXISTS ""DnevnikPromena"" ADD COLUMN IF NOT EXISTS ""KorisnikIme"" character varying(200);
             ALTER TABLE IF EXISTS ""DnevnikPromena"" ADD COLUMN IF NOT EXISTS ""DataOrigin"" character varying(32) NOT NULL DEFAULT 'existing';
 
-            CREATE INDEX IF NOT EXISTS ""IX_Dobavljaci_DataOrigin"" ON ""Dobavljaci"" (""DataOrigin"");
-            CREATE INDEX IF NOT EXISTS ""IX_Sezone_DataOrigin"" ON ""Sezone"" (""DataOrigin"");
-            CREATE INDEX IF NOT EXISTS ""IX_TipoviObuce_DataOrigin"" ON ""TipoviObuce"" (""DataOrigin"");
-            CREATE INDEX IF NOT EXISTS ""IX_povracaj_zaglavlje_data_origin"" ON povracaj_zaglavlje (data_origin);
-            CREATE INDEX IF NOT EXISTS ""IX_DnevnikPromena_DataOrigin"" ON ""DnevnikPromena"" (""DataOrigin"");
-            CREATE INDEX IF NOT EXISTS ""IX_DnevnikPromena_IDObjekat_Datum"" ON ""DnevnikPromena"" (""IDObjekat"", ""Datum"");
+            DO $$
+            BEGIN
+                IF to_regclass('public.""Dobavljaci""') IS NOT NULL THEN
+                    CREATE INDEX IF NOT EXISTS ""IX_Dobavljaci_DataOrigin"" ON ""Dobavljaci"" (""DataOrigin"");
+                END IF;
+                IF to_regclass('public.""Sezone""') IS NOT NULL THEN
+                    CREATE INDEX IF NOT EXISTS ""IX_Sezone_DataOrigin"" ON ""Sezone"" (""DataOrigin"");
+                END IF;
+                IF to_regclass('public.""TipoviObuce""') IS NOT NULL THEN
+                    CREATE INDEX IF NOT EXISTS ""IX_TipoviObuce_DataOrigin"" ON ""TipoviObuce"" (""DataOrigin"");
+                END IF;
+                IF to_regclass('public.povracaj_zaglavlje') IS NOT NULL THEN
+                    CREATE INDEX IF NOT EXISTS ""IX_povracaj_zaglavlje_data_origin"" ON povracaj_zaglavlje (data_origin);
+                END IF;
+                IF to_regclass('public.""DnevnikPromena""') IS NOT NULL THEN
+                    CREATE INDEX IF NOT EXISTS ""IX_DnevnikPromena_DataOrigin"" ON ""DnevnikPromena"" (""DataOrigin"");
+                    CREATE INDEX IF NOT EXISTS ""IX_DnevnikPromena_IDObjekat_Datum"" ON ""DnevnikPromena"" (""IDObjekat"", ""Datum"");
+                END IF;
+            END $$;
         ";
 
         await ExecuteSqlCommandAsync(connectionString, sql, logger);
