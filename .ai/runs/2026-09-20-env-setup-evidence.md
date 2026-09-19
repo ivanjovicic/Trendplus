@@ -4,9 +4,9 @@ Date: 2026-09-20
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct delivery
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: ae661d57
+Main verification: passed - origin/main contains ae661d57 via merge e412f1ae
+Evidence state: synchronized
 
 ## What was done
 - Recovered the local development environment using the repository's documented full-stack workflow because the referenced env-setup skill was not available in this session.
