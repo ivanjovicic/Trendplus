@@ -421,7 +421,6 @@ export default function ShoeTypeSalesStatsPage() {
       setData(result);
     } catch (reason) {
       if (requestId !== requestIdRef.current) return;
-      setData(null);
       setError(reason instanceof Error ? reason.message : "Greška pri učitavanju podataka po tipu obuće.");
     } finally {
       if (requestId === requestIdRef.current) {
@@ -999,7 +998,12 @@ export default function ShoeTypeSalesStatsPage() {
         />
       ) : null}
       {showStaleError ? (
-        <div className="shoetype-decision-message info" role="status" aria-live="polite">
+        <div
+          className="shoetype-decision-message info"
+          role="status"
+          aria-live="polite"
+          data-testid="shoe-type-stale-refetch-warning"
+        >
           Prikazujemo prethodno ucitane podatke. Novi upit nije uspeo.
         </div>
       ) : null}

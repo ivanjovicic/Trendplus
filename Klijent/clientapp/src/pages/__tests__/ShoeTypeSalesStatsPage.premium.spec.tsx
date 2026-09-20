@@ -391,6 +391,34 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     expect(screen.queryByText("Prioritetna lista tipova obuće")).not.toBeInTheDocument();
   });
 
+  it("shows stale overlay and keeps prior data when a refetch fails after a successful load", async () => {
+    vi.mocked(getShoeTypeSalesStats)
+      .mockResolvedValueOnce(response())
+      .mockRejectedValueOnce(new Error("Network error on refetch"));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByText("Prioritetna lista tipova obuće");
+    expect(screen.getByText("Patike")).toBeInTheDocument();
+
+    localStorage.setItem("trendplus:dataScope", "existing");
+    window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("shoe-type-stale-refetch-warning")).toHaveTextContent(
+        "Prikazujemo prethodno ucitane podatke. Novi upit nije uspeo.",
+      );
+    });
+    expect(screen.getByText("Patike")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("empty is not error when shoe type sales returns no rows", async () => {
     vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
       shoeTypes: [],

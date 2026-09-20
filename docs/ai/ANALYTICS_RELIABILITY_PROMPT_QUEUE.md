@@ -4,6 +4,27 @@ Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ340` moved from `WAITING` to `READY` as P2 trust follow-up (Shoe Type stale refetch overlay).
+
+Owner claim 2026-09-20: `RQ340` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ340-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Shoe Type refetch failures now preserve prior data and activate showStaleError banner instead of clearing data and showing blocking error.
+- Changed files: `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/ShoeTypeSalesStatsPage.premium.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: ShoeTypeSalesStatsPage.premium spec 31/31; ShoeTypeSalesStatsPage.spec 1/1; `npm run check:analytics-guardrails`; `git diff --check`
+- Checks not run: full client suite, CI, live browser
+- Run log: `.ai/runs/2026-09-20-RQ340-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Follow-up: promote `RQ341` (Color stale refetch) or `RQ321` (Operacije store filter load failure)
+- Residual risk: none known in owned scope
+- Prompt defect / scope repair: none
+
 Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ339` moved from `WAITING` to `READY` as P2 trust follow-up (Pre/Post focus filter persistence).
 
 Owner claim 2026-09-20: `RQ339` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ339-cursor.lock.md`.
@@ -848,7 +869,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ337 | DONE | operations-frozen-preset-period | Refresh frozen 30d preset period on Operacije pages at apply/reset |
 | RQ338 | DONE | pre-post-vendor-load-silent-failure | Surface Pre/Post vendor dropdown load failure |
 | RQ339 | DONE | pre-post-focus-reset-on-reload | Preserve Pre/Post focus filter across non-filter reloads |
-| RQ340 | WAITING | shoe-type-stale-refetch-dead-path | Enable Shoe Type stale overlay on refetch failure |
+| RQ340 | DONE | shoe-type-stale-refetch-dead-path | Enable Shoe Type stale overlay on refetch failure |
 | RQ341 | WAITING | color-stale-refetch-contract | Add Color stale/partial refetch contract matching Operacije standard |
 | RQ342 | WAITING | operations-request-abort-races | Add AbortController to Operacije list fetches beyond Daily Sales |
 | RQ343 | WAITING | pre-nivelacija-expansion-persistence | Preserve Pre-Nivelacija expanded row across pagination reload |
@@ -17570,7 +17591,7 @@ Every successful reload resets `focusFilter("all")` including scope-only refetch
 
 ## RQ340 - Enable Shoe Type stale overlay on refetch failure
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/trust/tests
 Feature family: shoe-type-stale-refetch-dead-path
