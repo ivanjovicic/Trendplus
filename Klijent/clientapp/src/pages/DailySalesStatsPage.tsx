@@ -45,6 +45,7 @@ import {
   resolveDailySalesPreviousPeriodComparison,
 } from "../utils/dailySalesPreviousPeriodComparison";
 import { resolveAuthoritativeTopSuppliers } from "../utils/dailySupplierOrder";
+import { createAnalyticsDatasetProjections } from "../utils/analyticsDatasetProjections";
 import type { PreviousPeriodComparisonState } from "../utils/supplierPreviousPeriodComparison";
 import {
   hasMissingShiftSummary,
@@ -748,51 +749,61 @@ export default function DailySalesStatsPage() {
 
   const supplierHeaders = data?.topSuppliersOrder ?? [];
   const previousRange = useMemo(() => getPreviousPeriodRange(activeFilters), [activeFilters]);
-  const timeSeriesRows = useMemo(
-    () => [...(data?.dateRows ?? [])].sort((left, right) => left.date.localeCompare(right.date)),
-    [data?.dateRows]
-  );
+  const dailyProjections = useMemo(() => {
+    const canonicalRows = data?.dateRows ?? [];
+    const chronologicalChartRows = [...canonicalRows].sort((left, right) => left.date.localeCompare(right.date));
+    const tableRows = sortDailySalesRows(canonicalRows, sortKey, sortDir);
+    return createAnalyticsDatasetProjections({
+      canonicalRows,
+      filteredRows: canonicalRows,
+      tableRows,
+      chronologicalChartRows,
+      exportRows: tableRows,
+      detailRows: canonicalRows,
+      pageRows: canonicalRows,
+      globalTotals: data?.metadata ?? null,
+      globalFacets: data?.topSuppliers ?? null,
+    });
+  }, [data, sortDir, sortKey]);
 
-  const sortedRows = useMemo(
-    () => sortDailySalesRows(data?.dateRows ?? [], sortKey, sortDir),
-    [data?.dateRows, sortDir, sortKey],
-  );
+  const chronologicalChartRows = dailyProjections.chronologicalChartRows;
+  const tableRows = dailyProjections.tableRows;
 
   const mismatchCount = useMemo(
     () =>
-      timeSeriesRows.filter((row) => {
+      chronologicalChartRows.filter((row) => {
         const bySuppliers = sum(row.topSupplierCounts);
         const others = finiteOrNull(row.othersCount);
         const total = finiteOrNull(row.totalItemsSold);
         return bySuppliers != null && others != null && total != null && bySuppliers + others !== total;
       }).length,
-    [timeSeriesRows]
+    [chronologicalChartRows]
   );
 
   const missingShiftCount = useMemo(
-    () => timeSeriesRows.filter((row) => hasMissingShiftSummary(row)).length,
-    [timeSeriesRows]
+    () => chronologicalChartRows.filter((row) => hasMissingShiftSummary(row)).length,
+    [chronologicalChartRows]
   );
 
   const partialShiftCount = useMemo(
-    () => timeSeriesRows.filter((row) => hasPartialShiftSummary(row)).length,
-    [timeSeriesRows]
+    () => chronologicalChartRows.filter((row) => hasPartialShiftSummary(row)).length,
+    [chronologicalChartRows]
   );
 
   const incompleteShiftCount = missingShiftCount + partialShiftCount;
 
   const incompleteDailyAggregateCount = useMemo(
-    () => timeSeriesRows.filter((row) => (
+    () => chronologicalChartRows.filter((row) => (
       finiteOrNull(row.totalRevenue) == null || finiteOrNull(row.totalItemsSold) == null
     )).length,
-    [timeSeriesRows],
+    [chronologicalChartRows],
   );
 
   const currentSummary = useMemo(() => summarizePeriod(data), [data]);
   const previousSummary = useMemo(() => summarizePeriod(previousData), [previousData]);
 
   const emptyStateHint = useMemo(() => {
-    if (!data || sortedRows.length > 0) return null;
+    if (!data || tableRows.length > 0) return null;
     const min = data.metadata.minAvailableDate;
     const max = data.metadata.maxAvailableDate;
     if (!min || !max) {
@@ -812,7 +823,7 @@ export default function DailySalesStatsPage() {
     }
 
     return "Nema podataka za izabrane filtere.";
-  }, [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, data, sortedRows.length]);
+  }, [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, data, tableRows.length]);
 
   const responseMeta = data?.meta ?? null;
   const trustLastRefreshAt = responseMeta?.lastRefreshAtUtc ?? null;
@@ -824,12 +835,12 @@ export default function DailySalesStatsPage() {
     : emptyStateHint;
 
   const emptyStateVariant = useMemo<"no_data" | "insufficient_data" | "filtered_out" | null>(() => {
-    if (!data || loading || error || sortedRows.length > 0) return null;
+    if (!data || loading || error || tableRows.length > 0) return null;
     if (data.meta?.emptyReason) return "no_data";
     if (activeFilters.storeId != null) return "filtered_out";
     if ((data.metadata.warnings?.length ?? 0) > 0) return "insufficient_data";
     return "no_data";
-  }, [activeFilters.storeId, data, error, loading, sortedRows.length]);
+  }, [activeFilters.storeId, data, error, loading, tableRows.length]);
 
   const toolbarColumns = useMemo<AnalyticsTableColumn<DailySalesRow>[]>(() => {
     const baseColumns: AnalyticsTableColumn<DailySalesRow>[] = [
@@ -840,7 +851,7 @@ export default function DailySalesStatsPage() {
     ];
 
     const supplierColumns: AnalyticsTableColumn<DailySalesRow>[] = supplierHeaders.map((name, index) => {
-      const displayName = sortedRows.length === 0 ? "" : name;
+      const displayName = tableRows.length === 0 ? "" : name;
       return {
         key: `supplier:${index}`,
         header: displayName,
@@ -856,7 +867,7 @@ export default function DailySalesStatsPage() {
       { key: "othersCount", header: "Ostali (kom.)", dataType: "number" },
       { key: "totalItemsSold", header: "Ukupno proizvoda", dataType: "number" },
     ];
-  }, [supplierHeaders, sortedRows.length]);
+  }, [supplierHeaders, tableRows.length]);
 
   const toolbarFilters = useMemo<AnalyticsNamedValue[]>(() => [
     { key: "fromDate", label: "Od", value: activeFilters.fromDate },
@@ -880,21 +891,21 @@ export default function DailySalesStatsPage() {
 
 
   const chronologicalTrendData = useMemo<TrendPoint[]>(() => (
-    timeSeriesRows.map((row, index) => ({
+    chronologicalChartRows.map((row, index) => ({
       date: row.date,
       label: fmtDateShort(row.date),
       fullLabel: fmtDate(row.date),
       totalRevenue: finiteOrNull(row.totalRevenue),
       totalItemsSold: finiteOrNull(row.totalItemsSold),
-      ma7Revenue: buildRollingAverage(timeSeriesRows, index, (currentRow) => currentRow.totalRevenue, 7),
-      ma7Items: buildRollingAverage(timeSeriesRows, index, (currentRow) => currentRow.totalItemsSold, 7),
+      ma7Revenue: buildRollingAverage(chronologicalChartRows, index, (currentRow) => currentRow.totalRevenue, 7),
+      ma7Items: buildRollingAverage(chronologicalChartRows, index, (currentRow) => currentRow.totalItemsSold, 7),
     }))
-  ), [timeSeriesRows]);
+  ), [chronologicalChartRows]);
 
   const trendData = chronologicalTrendData;
 
   const shiftMixData = useMemo<ShiftMixPoint[]>(() => (
-    timeSeriesRows.map((row) => ({
+    chronologicalChartRows.map((row) => ({
       date: row.date,
       label: fmtDateShort(row.date),
       fullLabel: fmtDate(row.date),
@@ -903,7 +914,7 @@ export default function DailySalesStatsPage() {
       totalItemsSold: finiteOrNull(row.totalItemsSold),
       shiftEvidenceState: toDailyShiftEvidenceState(row),
     }))
-  ), [timeSeriesRows]);
+  ), [chronologicalChartRows]);
 
   const supplierConcentration = useMemo(
     () => buildSupplierConcentration(data, currentSummary.totalRevenue),
@@ -918,7 +929,7 @@ export default function DailySalesStatsPage() {
       dayCount: number;
     }>();
 
-    timeSeriesRows.forEach((row) => {
+    chronologicalChartRows.forEach((row) => {
       const parsed = parseDateOnly(row.date);
       if (!parsed) return;
       const weekday = parsed.getUTCDay();
@@ -955,7 +966,7 @@ export default function DailySalesStatsPage() {
         dayCount: bucket.dayCount,
       };
     });
-  }, [timeSeriesRows]);
+  }, [chronologicalChartRows]);
 
   const comparisonCards = useMemo<ComparisonCard[]>(() => [
     {
@@ -993,28 +1004,28 @@ export default function DailySalesStatsPage() {
   ], [currentSummary, previousSummary]);
 
   const bestRevenueDay = useMemo(
-    () => timeSeriesRows.reduce<DailySalesRow | null>((best, row) => {
+    () => chronologicalChartRows.reduce<DailySalesRow | null>((best, row) => {
       const value = finiteOrNull(row.totalRevenue);
       const bestValue = finiteOrNull(best?.totalRevenue);
       return value != null && (bestValue == null || value > bestValue) ? row : best;
     }, null),
-    [timeSeriesRows]
+    [chronologicalChartRows]
   );
 
   const weakestRevenueDay = useMemo(
-    () => timeSeriesRows.reduce<DailySalesRow | null>((lowest, row) => {
+    () => chronologicalChartRows.reduce<DailySalesRow | null>((lowest, row) => {
       const value = finiteOrNull(row.totalRevenue);
       const lowestValue = finiteOrNull(lowest?.totalRevenue);
       return value != null && (lowestValue == null || value < lowestValue) ? row : lowest;
     }, null),
-    [timeSeriesRows]
+    [chronologicalChartRows]
   );
 
   const dayOverDayChanges = useMemo(() => {
     const changes = [];
-    for (let index = 1; index < timeSeriesRows.length; index += 1) {
-      const current = timeSeriesRows[index];
-      const previous = timeSeriesRows[index - 1];
+    for (let index = 1; index < chronologicalChartRows.length; index += 1) {
+      const current = chronologicalChartRows[index];
+      const previous = chronologicalChartRows[index - 1];
       const currentRevenue = finiteOrNull(current.totalRevenue);
       const previousRevenue = finiteOrNull(previous.totalRevenue);
       if (currentRevenue == null || previousRevenue == null) continue;
@@ -1027,7 +1038,7 @@ export default function DailySalesStatsPage() {
       });
     }
     return changes;
-  }, [timeSeriesRows]);
+  }, [chronologicalChartRows]);
 
   const biggestJump = useMemo(
     () => dayOverDayChanges.reduce<typeof dayOverDayChanges[number] | null>((best, item) => (!best || item.revenueDelta > best.revenueDelta ? item : best), null),
@@ -1319,8 +1330,8 @@ export default function DailySalesStatsPage() {
   }, [weekdayData]);
 
   const chartTickInterval = useMemo(
-    () => Math.max(0, Math.ceil(Math.max(sortedRows.length, 1) / 10) - 1),
-    [sortedRows.length]
+    () => Math.max(0, Math.ceil(Math.max(chronologicalChartRows.length, 1) / 10) - 1),
+    [chronologicalChartRows.length]
   );
 
   const handleSort = useCallback((field: SortKey) => {
@@ -1459,8 +1470,8 @@ export default function DailySalesStatsPage() {
       {
         key: "rows",
         label: "Prikazano",
-        value: `${sortedRows.length.toLocaleString("sr-RS")} dana`,
-        tone: sortedRows.length === 0 ? "warning" : "success",
+        value: `${tableRows.length.toLocaleString("sr-RS")} dana`,
+        tone: tableRows.length === 0 ? "warning" : "success",
       },
       {
         key: "topn",
@@ -1475,7 +1486,7 @@ export default function DailySalesStatsPage() {
       activeFilters.topN,
       data?.dataScope,
       memoizedQueryDataScope,
-      sortedRows.length,
+      tableRows.length,
     ],
   );
 
@@ -1697,13 +1708,13 @@ export default function DailySalesStatsPage() {
 
             <AnalyticsDataTable
               testId="daily-sales-stats-data-table"
-              rowCount={sortedRows.length}
+              rowCount={tableRows.length}
               toolbar={(
                 <AnalyticsTableToolbar
                   tableKey="daily-sales-stats"
                   tableTitle="Dnevna prodaja po smeni i dobavljačima"
                   columns={toolbarColumns}
-                  rows={sortedRows}
+                  rows={dailyProjections.exportRows}
                   filters={toolbarFilters}
                   metadata={toolbarMetadata}
                   defaultOrientation="portrait"
@@ -1747,7 +1758,7 @@ export default function DailySalesStatsPage() {
                       </button>
                     </th>
                     {supplierHeaders.map((name, index) => {
-                      const displayName = sortedRows.length === 0 ? "" : name;
+                      const displayName = tableRows.length === 0 ? "" : name;
                       return (
                         <th key={`supplier-header-${index}`} className="analytics-data-table__numeric">
                           <button type="button" onClick={() => handleSort(`supplier:${index}`)}>
@@ -1770,14 +1781,14 @@ export default function DailySalesStatsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedRows.length === 0 ? (
+                  {tableRows.length === 0 ? (
                     <tr>
                       <td colSpan={7 + supplierHeaders.length} className="daily-sales-empty-row">
                         Nema podataka za izabrane filtere.
                       </td>
                     </tr>
                   ) : (
-                    sortedRows.map((row) => {
+                    tableRows.map((row) => {
                       const supplierTotal = sum(row.topSupplierCounts);
                       const others = finiteOrNull(row.othersCount);
                       const total = finiteOrNull(row.totalItemsSold);

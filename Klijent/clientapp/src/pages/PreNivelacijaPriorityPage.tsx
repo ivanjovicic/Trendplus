@@ -26,6 +26,7 @@ import { fmtNumber, fmtPct, fmtRsd } from "../utils/analyticsFormatters";
 import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescriptions";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { getDataScope, normalizeDataScope, type DataScope } from "../utils/dataScope";
+import { createAnalyticsDatasetProjections } from "../utils/analyticsDatasetProjections";
 import { useReliableAnalyticsQuery } from "../hooks/useReliableAnalyticsQuery";
 import {
   getAnalyticsMetaMessage,
@@ -594,7 +595,7 @@ export default function PreNivelacijaPriorityPage() {
     });
   }, [data?.candidates]);
 
-  const sortedRows = useMemo(() => {
+  const tableRows = useMemo(() => {
     const rows = [...decisionRows];
     return rows.sort((a, b) => {
       let compare = 0;
@@ -621,25 +622,40 @@ export default function PreNivelacijaPriorityPage() {
   }, [decisionRows, sortDir, sortField]);
 
   const candidateCounts = useMemo(() => {
-    const increaseFocus = sortedRows.filter((row) => row.status === "increase_focus").length;
-    const maintain = sortedRows.filter((row) => row.status === "maintain").length;
-    const review = sortedRows.filter((row) => row.status === "review").length;
-    const doNotTrust = sortedRows.filter((row) => row.status === "do_not_trust").length;
-    const insufficientData = sortedRows.filter((row) => row.status === "insufficient_data").length;
-    const highPriority = sortedRows.filter(isHighPriorityCandidate).length;
+    const increaseFocus = tableRows.filter((row) => row.status === "increase_focus").length;
+    const maintain = tableRows.filter((row) => row.status === "maintain").length;
+    const review = tableRows.filter((row) => row.status === "review").length;
+    const doNotTrust = tableRows.filter((row) => row.status === "do_not_trust").length;
+    const insufficientData = tableRows.filter((row) => row.status === "insufficient_data").length;
+    const highPriority = tableRows.filter(isHighPriorityCandidate).length;
     return { increaseFocus, maintain, review, doNotTrust, insufficientData, highPriority };
-  }, [sortedRows]);
+  }, [tableRows]);
 
-  const filteredRows = useMemo(() => {
-    if (focusFilter === "all") return sortedRows;
-    if (focusFilter === "increaseFocus") return sortedRows.filter((row) => row.status === "increase_focus");
-    if (focusFilter === "maintain") return sortedRows.filter((row) => row.status === "maintain");
-    if (focusFilter === "review") return sortedRows.filter((row) => row.status === "review");
-    if (focusFilter === "doNotTrust") return sortedRows.filter((row) => row.status === "do_not_trust");
-    if (focusFilter === "insufficientData") return sortedRows.filter((row) => row.status === "insufficient_data");
-    if (focusFilter === "highPriority") return sortedRows.filter(isHighPriorityCandidate);
-    return sortedRows;
-  }, [focusFilter, sortedRows]);
+  const filteredTableRows = useMemo(() => {
+    if (focusFilter === "all") return tableRows;
+    if (focusFilter === "increaseFocus") return tableRows.filter((row) => row.status === "increase_focus");
+    if (focusFilter === "maintain") return tableRows.filter((row) => row.status === "maintain");
+    if (focusFilter === "review") return tableRows.filter((row) => row.status === "review");
+    if (focusFilter === "doNotTrust") return tableRows.filter((row) => row.status === "do_not_trust");
+    if (focusFilter === "insufficientData") return tableRows.filter((row) => row.status === "insufficient_data");
+    if (focusFilter === "highPriority") return tableRows.filter(isHighPriorityCandidate);
+    return tableRows;
+  }, [focusFilter, tableRows]);
+
+  const preNivelacijaProjections = useMemo(
+    () => createAnalyticsDatasetProjections({
+      canonicalRows: decisionRows,
+      filteredRows: filteredTableRows,
+      tableRows,
+      chronologicalChartRows: decisionRows,
+      exportRows: filteredTableRows,
+      detailRows: filteredTableRows,
+      pageRows: decisionRows,
+      globalTotals: data?.summary ?? null,
+      globalFacets: data?.filterFacets ?? null,
+    }),
+    [data?.filterFacets, data?.summary, decisionRows, filteredTableRows, tableRows],
+  );
 
   const isDirty =
     supplierId !== activeFilters.supplierId ||
@@ -669,8 +685,8 @@ export default function PreNivelacijaPriorityPage() {
 
   const selectedRow = useMemo(() => {
     if (expandedArtikalId == null) return null;
-    return filteredRows.find((row) => row.artikalId === expandedArtikalId) ?? null;
-  }, [expandedArtikalId, filteredRows]);
+    return preNivelacijaProjections.detailRows.find((row) => row.artikalId === expandedArtikalId) ?? null;
+  }, [expandedArtikalId, preNivelacijaProjections.detailRows]);
 
   const canGoPrev = page > 1;
   const pageSize = data ? normalizePositiveInteger(data.pageSize) : null;
@@ -679,7 +695,7 @@ export default function PreNivelacijaPriorityPage() {
   const dataMeta = data?.meta ?? null;
   const dataMetaMessage = getAnalyticsMetaMessage(dataMeta);
   const showMetaWarning = !loading && !error && isAnalyticsMetaWarning(dataMeta);
-  const showFilteredOutState = !loading && !error && Boolean(data) && decisionRows.length > 0 && filteredRows.length === 0;
+  const showFilteredOutState = !loading && !error && Boolean(data) && decisionRows.length > 0 && preNivelacijaProjections.filteredRows.length === 0;
   const showEmptyState = !loading && !error && Boolean(data) && (decisionRows.length === 0 || showFilteredOutState);
   const showInsufficientEmptyState = shouldShowAnalyticsEmptyState(dataMeta, decisionRows.length) && isAnalyticsMetaInsufficient(dataMeta);
   const emptyStateVariant: "no_data" | "insufficient_data" | "filtered_out" =
@@ -1118,7 +1134,7 @@ export default function PreNivelacijaPriorityPage() {
               <div className="pnp-focus-tabs" role="tablist">
                 {(["all", "increaseFocus", "maintain", "review", "doNotTrust", "insufficientData", "highPriority"] as FocusFilter[]).map((f) => {
                   const count =
-                    f === "all" ? sortedRows.length
+                    f === "all" ? preNivelacijaProjections.tableRows.length
                     : f === "increaseFocus" ? candidateCounts.increaseFocus
                     : f === "maintain" ? candidateCounts.maintain
                     : f === "review" ? candidateCounts.review
@@ -1143,7 +1159,7 @@ export default function PreNivelacijaPriorityPage() {
 
               <AnalyticsDataTable
                 testId="pre-nivelacija-prioriteti-data-table"
-                rowCount={filteredRows.length}
+                rowCount={preNivelacijaProjections.filteredRows.length}
                 truncationLabel={focusFilter !== "all" ? `Fokus: ${FOCUS_LABELS[focusFilter]}` : undefined}
                 toolbar={(
                   <div className="pnp-table-toolbar">
@@ -1156,7 +1172,7 @@ export default function PreNivelacijaPriorityPage() {
                       tableKey="pre-nivelacija-prioriteti"
                       tableTitle="Podrška za odluku pre nivelacije"
                       columns={decisionColumns}
-                      rows={filteredRows}
+                      rows={preNivelacijaProjections.exportRows}
                       filters={toolbarFilters}
                       metadata={toolbarMetadata}
                       defaultOrientation="landscape"
@@ -1201,12 +1217,12 @@ export default function PreNivelacijaPriorityPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredRows.length === 0 ? (
+                    {preNivelacijaProjections.filteredRows.length === 0 ? (
                       <tr>
                         <td colSpan={9} className="pnp-decision-empty-row">Nema podataka za izabrane filtere.</td>
                       </tr>
                     ) : (
-                      filteredRows.map((row) => {
+                      preNivelacijaProjections.filteredRows.map((row) => {
                         const expanded = expandedArtikalId === row.artikalId;
                         const reliability = reliabilitySignalDisplay(row);
                         return (
