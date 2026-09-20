@@ -19041,10 +19041,10 @@ Commit suggestion: `feat(analytics): expand reliability guardrails`
 - Checks run: `npm run check:analytics-guardrails` passed with explicit `baseline-only` output for 51 confirmed violations; self-test covers every new rule and exit semantics; `git diff --check`
 - Checks not run: full frontend suite, live browser, CI; this is tooling/guardrail scope
 - Run log: `.ai/runs/2026-09-20-RQ361-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: pull-request
-- Main commit SHA: pending
-- Main verification: pending until the feature branch is delivered to `main`
+- Main commit SHA: `d1ea2635`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `d1ea2635`
 - Missed: no known RQ361 scope omissions
 - Follow-up: promote `RQ362` after RQ361 main delivery
 - Residual risk: 51 confirmed findings remain explicit baseline debt; future source movement or newly introduced matches fail unless separately reviewed.
