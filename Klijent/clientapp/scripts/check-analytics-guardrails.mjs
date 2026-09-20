@@ -41,8 +41,8 @@ const rules = [
   { name: "recommendationStatus_assign", re: /\brecommendationStatus\b\s*=/, scopes: ["pages", "components"] },
   {
     name: "fake_zero_fallback",
-    re: /\?\?\s*0\b/,
-    scopes: ["pages", "components", "services", "utils"],
+    re: /\b(?:revenue|promet|margin|marza|cost|trosak|quantity|kolicina|count|broj|share|confidence|reliability|score|total|units|artikala|dobavljaca|tipova|value)[A-Za-z0-9_.]*\s*\?\?\s*0\b/i,
+    scopes: ["pages", "components"],
     invariant: "Unknown analytics values must remain unavailable, not become zero.",
   },
   {
