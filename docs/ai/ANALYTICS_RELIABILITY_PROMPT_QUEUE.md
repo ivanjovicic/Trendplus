@@ -4,6 +4,27 @@ Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ336` moved from `WAITING` to `READY` as P2 trust follow-up (Daily Sales chart sort order bug).
+
+Owner claim 2026-09-20: `RQ336` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ336-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Daily Sales trend and shift-mix charts now use chronological timeSeriesRows/chronologicalTrendData instead of table sort order; table sort no longer scrambles chart x-axis.
+- Changed files: `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.premium.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: DailySalesStatsPage.premium spec 18/18; DailySalesStatsPage.numericState spec 15/15; `npm run check:analytics-guardrails`; `git diff --check`
+- Checks not run: full client suite, CI, live browser
+- Run log: `.ai/runs/2026-09-20-RQ336-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Follow-up: promote `RQ337` (Operacije frozen 30d preset) or `RQ338` (Pre/Post vendor dropdown load failure)
+- Residual risk: none known in owned scope
+- Prompt defect / scope repair: none
+
 Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ335` moved from `WAITING` to `READY` as P2 trust follow-up (Daily Sales previous-period silent failure).
 
 Owner claim 2026-09-20: `RQ335` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ335-cursor.lock.md`.
@@ -17299,7 +17320,7 @@ Previous-period fetch failure is swallowed (`.catch(() => null)`); UI shows N/A 
 
 ## RQ336 - Feed Daily Sales trend/shift charts from chronological rows, not table sort
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/trust/tests
 Feature family: daily-sales-chart-sort-order-bug

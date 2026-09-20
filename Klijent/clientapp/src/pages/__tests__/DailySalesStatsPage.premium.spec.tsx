@@ -9,7 +9,9 @@ import type { DailySalesTableResponse } from "../../services/dailySalesStatsApi"
 
 vi.mock("recharts", () => ({
   Bar: () => null,
-  BarChart: ({ children }: { children?: ReactNode }) => <div data-testid="bar-chart">{children}</div>,
+  BarChart: ({ children, data }: { children?: ReactNode; data?: Array<{ date?: string }> }) => (
+    <div data-testid="bar-chart" data-order={data?.map((item) => item.date ?? "").join(",")}>{children}</div>
+  ),
   CartesianGrid: () => null,
   ComposedChart: ({ children }: { children?: ReactNode }) => <div data-testid="composed-chart">{children}</div>,
   Legend: () => null,
@@ -332,7 +334,7 @@ describe("DailySalesStatsPage premium controls", () => {
     });
   });
 
-  it("keeps the trend chart in the same order as the default date-sorted table", async () => {
+  it("keeps trend and shift charts chronological when table sort changes", async () => {
     const baseRow = response().dateRows[0];
     vi.mocked(getDailySalesStats).mockResolvedValue(response({
       dateRows: [
@@ -351,12 +353,23 @@ describe("DailySalesStatsPage premium controls", () => {
 
     expect(await screen.findByTestId("line-chart")).toHaveAttribute(
       "data-order",
-      "2026-04-02,2026-04-01",
+      "2026-04-01,2026-04-02",
+    );
+
+    const shiftMixPanel = screen.getByRole("heading", { name: /Smenski miks po danima/ }).closest("article");
+    expect(shiftMixPanel).not.toBeNull();
+    expect(within(shiftMixPanel as HTMLElement).getByTestId("bar-chart")).toHaveAttribute(
+      "data-order",
+      "2026-04-01,2026-04-02",
     );
 
     fireEvent.click(screen.getByRole("button", { name: /Prihod dana/ }));
     await waitFor(() => {
       expect(screen.getByTestId("line-chart")).toHaveAttribute(
+        "data-order",
+        "2026-04-01,2026-04-02",
+      );
+      expect(within(shiftMixPanel as HTMLElement).getByTestId("bar-chart")).toHaveAttribute(
         "data-order",
         "2026-04-01,2026-04-02",
       );

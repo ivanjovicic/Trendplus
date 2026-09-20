@@ -890,21 +890,10 @@ export default function DailySalesStatsPage() {
     }))
   ), [timeSeriesRows]);
 
-  const trendData = useMemo<TrendPoint[]>(() => {
-    const byDate = new Map(chronologicalTrendData.map((point) => [point.date, point]));
-    return sortedRows.map((row) => byDate.get(row.date) ?? {
-      date: row.date,
-      label: fmtDateShort(row.date),
-      fullLabel: fmtDate(row.date),
-      totalRevenue: finiteOrNull(row.totalRevenue),
-      totalItemsSold: finiteOrNull(row.totalItemsSold),
-      ma7Revenue: null,
-      ma7Items: null,
-    });
-  }, [chronologicalTrendData, sortedRows]);
+  const trendData = chronologicalTrendData;
 
   const shiftMixData = useMemo<ShiftMixPoint[]>(() => (
-    sortedRows.map((row) => ({
+    timeSeriesRows.map((row) => ({
       date: row.date,
       label: fmtDateShort(row.date),
       fullLabel: fmtDate(row.date),
@@ -913,7 +902,7 @@ export default function DailySalesStatsPage() {
       totalItemsSold: finiteOrNull(row.totalItemsSold),
       shiftEvidenceState: toDailyShiftEvidenceState(row),
     }))
-  ), [sortedRows]);
+  ), [timeSeriesRows]);
 
   const supplierConcentration = useMemo(
     () => buildSupplierConcentration(data, currentSummary.totalRevenue),
