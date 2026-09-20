@@ -49,7 +49,6 @@ import {
   resolveColorComplementPercent,
   resolveColorCountValue,
   resolveColorPercentValue,
-  resolveColorRevenueSharePct,
 } from "../utils/colorPercentRange";
 import { resolveColorCoveragePct } from "../utils/colorSalesCoverage";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
@@ -369,14 +368,8 @@ export default function ColorSalesStatsPage() {
     const rows = data?.colors ?? [];
     if (rows.length === 0) return [];
 
-    const totalRevenue = rows.reduce(
-      (sum, item) => Number.isFinite(item.ukupanPromet) ? sum + item.ukupanPromet : sum,
-      0,
-    );
-
     return rows.map((item) => {
-      const sharePct = resolveColorPercentValue(item.sharePct)
-        ?? resolveColorRevenueSharePct(item.ukupanPromet, totalRevenue);
+      const sharePct = resolveColorPercentValue(item.sharePct);
       const marginContribution = item.marginContribution;
       const splitCoveragePct = resolveColorPercentValue(item.prePostNivelacijaRevenueCoveragePct);
       const coveragePct = resolveColorCoveragePct(
@@ -458,14 +451,7 @@ export default function ColorSalesStatsPage() {
   }, [selectedRow]);
 
   const totalRevenue = data ? data.totals.ukupanPromet : null;
-  const top5SharePct = useMemo(() => {
-    if (sortedRows.length === 0 || totalRevenue == null) return null;
-    const top5Revenue = [...sortedRows]
-      .sort((a, b) => b.ukupanPromet - a.ukupanPromet)
-      .slice(0, 5)
-      .reduce((sum, row) => sum + row.ukupanPromet, 0);
-    return resolveColorRevenueSharePct(top5Revenue, totalRevenue);
-  }, [sortedRows, totalRevenue]);
+  const top5SharePct = null;
 
   const totalMarginContribution = useMemo(
     () => data ? data.totals.ukupanMarzniDoprinos : null,
@@ -927,7 +913,7 @@ export default function ColorSalesStatsPage() {
                 <strong>{fmtRsd(totalRevenue)}</strong>
               </article>
               <article className="color-decision-kpi">
-                <span>Udeo top 5 boja</span>
+                <span>Udeo top 5 boja <InfoTip text="N/A dok backend ne vrati autoritativni udeo top 5 boja; frontend ne računa ovaj procenat iz redova." /></span>
                 <strong>{fmtPct(top5SharePct)}</strong>
               </article>
               <article className="color-decision-kpi">

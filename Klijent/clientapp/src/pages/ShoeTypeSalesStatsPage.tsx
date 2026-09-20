@@ -68,7 +68,6 @@ import {
   resolveShoeTypeComplementPercent,
   resolveShoeTypePercentValue,
   resolveShoeTypeQuantitySharePct,
-  resolveShoeTypeRevenueSharePct,
 } from "../utils/shoeTypePercentRange";
 import { resolveShoeTypeCoveragePct } from "../utils/shoeTypeSalesCoverage";
 import { buildShoeTypeRecommendationProjection } from "../utils/shoeTypeStatusIdentity";
@@ -443,13 +442,8 @@ export default function ShoeTypeSalesStatsPage() {
     const rows = data?.shoeTypes ?? [];
     if (rows.length === 0) return [];
 
-    const totalRevenue = rows.reduce(
-      (sum, item) => Number.isFinite(item.ukupanPromet) ? sum + item.ukupanPromet : sum,
-      0,
-    );
     return rows.map((item) => {
-      const sharePct = resolveShoeTypePercentValue(item.sharePct)
-        ?? resolveShoeTypeRevenueSharePct(item.ukupanPromet, totalRevenue);
+      const sharePct = resolveShoeTypePercentValue(item.sharePct);
       const totalCost = item.totalCost ?? null;
       const marginContribution = item.marginContribution;
       const splitCoveragePct = resolveShoeTypePercentValue(item.prePostNivelacijaRevenueCoveragePct);
@@ -539,14 +533,7 @@ export default function ShoeTypeSalesStatsPage() {
   }, [selectedRow]);
 
   const totalRevenue = data ? data.totals.ukupanPromet : null;
-  const top5SharePct = useMemo(() => {
-    if (sortedRows.length === 0 || totalRevenue == null) return null;
-    const top5Revenue = [...sortedRows]
-      .sort((a, b) => b.ukupanPromet - a.ukupanPromet)
-      .slice(0, 5)
-      .reduce((sum, row) => sum + row.ukupanPromet, 0);
-    return resolveShoeTypeRevenueSharePct(top5Revenue, totalRevenue);
-  }, [sortedRows, totalRevenue]);
+  const top5SharePct = null;
 
   const totalMarginContribution = useMemo(
     () => data ? data.totals.ukupanMarzniDoprinos : null,
@@ -1088,7 +1075,7 @@ export default function ShoeTypeSalesStatsPage() {
                 <strong>{fmtPct(avgMarginPct, 1)}</strong>
               </article>
               <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Koliko je promet koncentrisan na top 5 tipova.">
-                <span>Udeo top 5 tipova <InfoTip text="Procenat ukupnog prometa koji dolazi od pet tipova obuće sa najvećim prometom. Formula: promet top 5 / ukupan promet x 100." /></span>
+                <span>Udeo top 5 tipova <InfoTip text="N/A dok backend ne vrati autoritativni udeo top 5 tipova; frontend ne računa ovaj procenat iz redova." /></span>
                 <strong>{fmtPct(top5SharePct)}</strong>
               </article>
               <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Promena prometa prema prethodnom uporedivom periodu.">
