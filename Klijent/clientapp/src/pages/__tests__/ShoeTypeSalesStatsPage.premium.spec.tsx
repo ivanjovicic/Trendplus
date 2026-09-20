@@ -154,6 +154,59 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response());
   });
 
+  it("uses the backend average margin aggregate when available", async () => {
+    const baseResponse = response();
+    vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
+      totals: {
+        ...baseResponse.totals,
+        prosecnaMarza: 31.5,
+      },
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const value = await screen.findByText("31,5%");
+    const card = value.closest("article");
+    expect(card).not.toBeNull();
+    expect(card).toHaveTextContent("Prosečna marža");
+    expect(card).not.toHaveTextContent("redni prosek");
+  });
+
+  it("labels the row average as non-authoritative when the backend aggregate is unavailable", async () => {
+    const baseResponse = response();
+    vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
+      shoeTypes: [
+        shoeType({ tipObuceId: 1, marginPct: 20 }),
+        shoeType({ tipObuceId: 2, tipObuceNaziv: "Čizme", marginPct: 40 }),
+      ],
+      totals: {
+        ...baseResponse.totals,
+        prosecnaMarza: null,
+        brojTipovaObuce: 2,
+      },
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const value = await screen.findByText("30,0%");
+    const card = value.closest("article");
+    expect(card).not.toBeNull();
+    expect(card).toHaveTextContent("Prosečna marža (redni prosek)");
+    expect(card).toHaveAttribute("data-note", "Neautoritativni redni prosek marže po tipovima obuće.");
+  });
+
   it.each([
     [0, 0],
     [1, 0],

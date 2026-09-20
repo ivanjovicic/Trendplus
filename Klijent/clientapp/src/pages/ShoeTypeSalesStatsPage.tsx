@@ -573,11 +573,19 @@ export default function ShoeTypeSalesStatsPage() {
   );
 
   const avgMarginPct = useMemo(() => {
+    const backendAverage = data?.totals.prosecnaMarza;
+    if (backendAverage != null && Number.isFinite(backendAverage)) {
+      return backendAverage;
+    }
+
     const validRows = decisionRows.filter((row) => Number.isFinite(row.marginPct));
     if (validRows.length === 0) return null;
     const sum = validRows.reduce((acc, row) => acc + row.marginPct, 0);
     return sum / validRows.length;
-  }, [decisionRows]);
+  }, [data?.totals.prosecnaMarza, decisionRows]);
+
+  const hasAuthoritativeAvgMargin = data?.totals.prosecnaMarza != null
+    && Number.isFinite(data.totals.prosecnaMarza);
 
   const counts = useMemo(() => {
     const increaseFocus = sortedRows.filter((row) => row.status === "increase_focus").length;
@@ -1070,8 +1078,10 @@ export default function ShoeTypeSalesStatsPage() {
                   </small>
                 ) : null}
               </article>
-              <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Aritmetička sredina marže kroz tipove obuće.">
-                <span>Prosečna marža <InfoTip text="Prosečan procenat maržnog doprinosa po tipu obuće. Formula po tipu: maržni doprinos / promet sa dostupnim troškom x 100. Prikazani prosek je aritmetički prosek među tipovima, nije ponderisan prometom." /></span>
+              <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note={hasAuthoritativeAvgMargin ? "Backend agregat prosečne marže." : "Neautoritativni redni prosek marže po tipovima obuće."}>
+                <span>{hasAuthoritativeAvgMargin ? "Prosečna marža" : "Prosečna marža (redni prosek)"} <InfoTip text={hasAuthoritativeAvgMargin
+                  ? "Autoritativna prosečna marža koju vraća backend."
+                  : "Backend agregat prosečne marže nije dostupan. Prikazan je redni prosek procenata marže po tipovima obuće i nije ponderisan prometom."} /></span>
                 <strong>{fmtPct(avgMarginPct, 1)}</strong>
               </article>
               <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Koliko je promet koncentrisan na top 5 tipova.">
