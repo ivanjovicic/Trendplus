@@ -46,6 +46,14 @@ vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({
   ),
 }));
 
+vi.mock("../../components/analytics/AnalyticsTableToolbar", () => ({
+  default: ({ metadata = [] }: { metadata?: Array<{ label: string; value: unknown }> }) => (
+    <div data-testid="analytics-table-toolbar">
+      {metadata.map((item) => <span key={item.label}>{item.label}: {String(item.value)}</span>)}
+    </div>
+  ),
+}));
+
 vi.mock("../../components/ui/InfoTip", () => ({
   default: ({ text }: { text: string }) => <span data-testid="info-tip">{text}</span>,
 }));
@@ -178,6 +186,28 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     expect(screen.getByTestId("location-search")).toHaveTextContent("sort=ukupanPromet");
     expect(screen.getByTestId("location-search")).toHaveTextContent("dir=desc");
     expect(screen.getByTestId("location-search")).toHaveTextContent("storeId=2");
+  });
+
+  it("exports unavailable shoe type count instead of fake zero", async () => {
+    const baseResponse = response();
+    vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
+      totals: {
+        ...baseResponse.totals,
+        brojTipovaObuce: null,
+      },
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const toolbar = await screen.findByTestId("analytics-table-toolbar");
+    expect(toolbar).toHaveTextContent("Tipova: N/A");
+    expect(toolbar).not.toHaveTextContent("Tipova: 0");
   });
 
   it("uses the backend average margin aggregate when available", async () => {

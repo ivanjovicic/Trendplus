@@ -72,6 +72,7 @@ import {
 import { resolveShoeTypeCoveragePct } from "../utils/shoeTypeSalesCoverage";
 import { buildShoeTypeRecommendationProjection } from "../utils/shoeTypeStatusIdentity";
 import { getAnalyticsDataFreshnessStatus } from "../utils/analyticsResponseMeta";
+import { formatMetricDisplayValue } from "../utils/analyticsMetricValue";
 import { readAnalyticsTableSort, writeAnalyticsTableSort } from "../utils/analyticsTableSortUrl";
 import "./ShoeTypeSalesStatsPage.css";
 
@@ -724,7 +725,7 @@ export default function ShoeTypeSalesStatsPage() {
     () => [
       { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
       { key: "dataScope", label: "Opseg podataka", value: data?.dataScope ?? dataScope },
-      { key: "tipova", label: "Tipova", value: data?.totals.brojTipovaObuce ?? 0 },
+      { key: "tipova", label: "Tipova", value: formatMetricDisplayValue({ value: data?.totals.brojTipovaObuce, kind: "number", fallback: "N/A" }) },
       { key: "marginCoverage", label: "Pokrice direktnom nabavnom %", value: fmtPct(resolveShoeTypeComplementPercent(data?.dataQuality.missingCostRevenueSharePct), 1) },
       { key: "fallbackCoverage", label: "Promet sa procenjenom nabavnom %", value: fmtPct(resolveShoeTypePercentValue(data?.dataQuality.estimatedCostRevenueSharePct), 1) },
       { key: "noCostCoverage", label: "Promet bez nabavne cene %", value: fmtPct(resolveShoeTypePercentValue(data?.dataQuality.missingCostRevenueSharePct), 1) },
