@@ -26,6 +26,7 @@ import { fmtNumber, fmtPct, fmtRsd } from "../utils/analyticsFormatters";
 import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescriptions";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { getDataScope, normalizeDataScope, type DataScope } from "../utils/dataScope";
+import { useReliableAnalyticsQuery } from "../hooks/useReliableAnalyticsQuery";
 import {
   getAnalyticsMetaMessage,
   isAnalyticsMetaInsufficient,
@@ -65,6 +66,32 @@ type ActiveFilters = {
   minScore: number;
   noSaleDaysMin: number;
 };
+
+function getPreNivelacijaErrorDetails(reason: unknown): {
+  message: string;
+  errorCode: string | null;
+  correlationId: string | null;
+} {
+  const preNivelacijaError = reason instanceof PreNivelacijaApiError ? reason : null;
+  const maybeError = reason as { message?: unknown; errorCode?: unknown; correlationId?: unknown };
+  const errorCode = preNivelacijaError?.errorCode
+    ?? (typeof maybeError.errorCode === "string" ? maybeError.errorCode : null);
+  const correlationId = preNivelacijaError?.correlationId
+    ?? (typeof maybeError.correlationId === "string" ? maybeError.correlationId : null);
+  const fallbackMessage = "Pre-nivelacija prioriteti trenutno nisu dostupni. Proverite status osvežavanja i pokušajte ponovo.";
+  const rawMessage = preNivelacijaError?.message
+    ?? (typeof maybeError.message === "string" ? maybeError.message : null);
+
+  return {
+    message: getSafeAnalyticsErrorMessage(
+      preNivelacijaError ? rawMessage : null,
+      errorCode,
+      fallbackMessage,
+    ),
+    errorCode,
+    correlationId,
+  };
+}
 
 const DEFAULT_MIN_SCORE = 40;
 const DEFAULT_NO_SALE_DAYS_MIN = 14;
@@ -375,7 +402,6 @@ export default function PreNivelacijaPriorityPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const requestIdRef = useRef(0);
   const queryDataScope = normalizeDataScope(searchParams.get("dataScope") ?? getDataScope());
   const queryFilters = useMemo<ActiveFilters>(() => ({
     supplierId: parseOptionalPositiveInteger(searchParams.get("supplierId")),
@@ -395,9 +421,6 @@ export default function PreNivelacijaPriorityPage() {
   const [activeFilters, setActiveFilters] = useState<ActiveFilters>(queryFilters);
 
   const [page, setPage] = useState(queryPage);
-  const [data, setData] = useState<PreNivelacijaPriorityResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<{ message: string; errorCode?: string | null; correlationId?: string | null } | null>(null);
   const [sortField, setSortField] = useState<SortField>("status");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expandedArtikalId, setExpandedArtikalId] = useState<number | null>(null);
@@ -445,69 +468,44 @@ export default function PreNivelacijaPriorityPage() {
     return () => window.removeEventListener("trendplus:data-scope-changed", handleScopeChange);
   }, [setSearchParams]);
 
-  const load = useCallback(async (filters: ActiveFilters, nextPage: number, scope: DataScope, signal?: AbortSignal) => {
-    const requestId = ++requestIdRef.current;
-    setLoading(true);
-    setError(null);
-
-    try {
-      const result = await getPreNivelacijaPrioriteti({
-        supplierId: filters.supplierId ?? undefined,
-        seasonId: filters.seasonId ?? undefined,
-        footwearTypeId: filters.footwearTypeId ?? undefined,
-        minScore: filters.minScore,
-        noSaleDaysMin: filters.noSaleDaysMin,
-        page: nextPage,
-        pageSize: 60,
-        dataScope: scope,
-        signal,
-      });
-
-      if (requestId !== requestIdRef.current) return;
-      setData(result);
-      setExpandedArtikalId((current) => {
-        if (current == null) return null;
-        const stillPresent = result.candidates.some((candidate) => candidate.artikalId === current);
-        return stillPresent ? current : null;
-      });
-    } catch (reason) {
-      if (reason instanceof DOMException && reason.name === "AbortError") {
-        return;
+  const preNivelacijaQuery = useCallback((signal: AbortSignal) => getPreNivelacijaPrioriteti({
+    supplierId: activeFilters.supplierId ?? undefined,
+    seasonId: activeFilters.seasonId ?? undefined,
+    footwearTypeId: activeFilters.footwearTypeId ?? undefined,
+    minScore: activeFilters.minScore,
+    noSaleDaysMin: activeFilters.noSaleDaysMin,
+    page,
+    pageSize: 60,
+    dataScope,
+    signal,
+  }), [activeFilters, dataScope, page]);
+  const {
+    data,
+    initialLoading,
+    refetching,
+    error: queryError,
+    errorReason,
+    staleWarning,
+    refetch,
+  } = useReliableAnalyticsQuery<PreNivelacijaPriorityResponse>({
+    query: preNivelacijaQuery,
+    getErrorMessage: (reason) => getPreNivelacijaErrorDetails(reason).message,
+  });
+  const loading = initialLoading || refetching;
+  const queryErrorDetails = errorReason ? getPreNivelacijaErrorDetails(errorReason) : null;
+  const error = queryError
+    ? {
+        message: queryError,
+        errorCode: queryErrorDetails?.errorCode ?? null,
+        correlationId: queryErrorDetails?.correlationId ?? null,
       }
-      if (requestId !== requestIdRef.current) return;
-      setData(null);
-      const preNivelacijaError = reason instanceof PreNivelacijaApiError
-        ? reason
-        : null;
-      const maybeError = reason as { message?: unknown; errorCode?: unknown; correlationId?: unknown };
-      const errorCode = preNivelacijaError?.errorCode
-        ?? (typeof maybeError.errorCode === "string" ? maybeError.errorCode : null);
-      const correlationId = preNivelacijaError?.correlationId
-        ?? (typeof maybeError.correlationId === "string" ? maybeError.correlationId : null);
-      const fallbackMessage = "Pre-nivelacija prioriteti trenutno nisu dostupni. Proverite status osvežavanja i pokušajte ponovo.";
-      const rawMessage = preNivelacijaError?.message
-        ?? (typeof maybeError.message === "string" ? maybeError.message : null);
-      setError({
-        message: getSafeAnalyticsErrorMessage(
-          preNivelacijaError ? rawMessage : null,
-          errorCode,
-          fallbackMessage,
-        ),
-        errorCode,
-        correlationId,
-      });
-    } finally {
-      if (requestId === requestIdRef.current) {
-        setLoading(false);
-      }
-    }
-  }, []);
-
+    : null;
   useEffect(() => {
-    const controller = new AbortController();
-    void load(activeFilters, page, dataScope, controller.signal);
-    return () => controller.abort();
-  }, [activeFilters, dataScope, load, page]);
+    if (!data) return;
+    setExpandedArtikalId((current) => current == null || data.candidates.some((candidate) => candidate.artikalId === current)
+      ? current
+      : null);
+  }, [data]);
 
   const supplierOptions = useMemo(
     () => (data?.supplierLeaderboard ?? []).filter((item) => item.supplierId != null),
@@ -1000,9 +998,14 @@ export default function PreNivelacijaPriorityPage() {
           message={error.message}
           errorCode={error.errorCode}
           correlationId={error.correlationId}
-          onRetry={() => void load(activeFilters, page, dataScope)}
+          onRetry={refetch}
           helpHref="/analytics/data-quality"
         />
+      ) : null}
+      {staleWarning && data ? (
+        <div className="pnp-decision-message info" role="status" data-testid="pnp-stale-refetch-warning">
+          Prikazujemo prethodno učitane podatke. Novi upit nije uspeo.
+        </div>
       ) : null}
       {showMetaWarning ? (
         <div className="pnp-decision-message warning" role="status">
@@ -1023,7 +1026,7 @@ export default function PreNivelacijaPriorityPage() {
           dataQualityHref="/analytics/data-quality"
           refreshStatusHref="/admin/configuration?panel=workers"
           emptyReason={safeEmptyStateReason}
-          onRetry={() => void load(activeFilters, page, dataScope)}
+          onRetry={refetch}
         />
       ) : null}
       {loading ? <div className="pnp-decision-message loading">Učitavam prioritete pre-nivelacije...</div> : null}

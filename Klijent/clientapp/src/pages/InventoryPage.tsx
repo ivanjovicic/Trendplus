@@ -1,4 +1,4 @@
-﻿import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Warehouse } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { AnalyticsMetaError, createInventoryReportSchedule, exportInventoryReport, getAnalyticsActionSourceStatuses, getForecast, getInventoryActionSuggestions, getInventoryAlerts, getInventoryBalance, getInventoryInsights, getInventoryItemDetail, getInventoryList, getInventoryReportSchedules, getInventoryStoreComparison, getRebalanceSuggestions, getSizeCurve, getStores, getSupplierFilters, previewInventoryReport, printBlankInventoryForm, runInventoryReportScheduleNow, saveInventoryActionDecision, upsertAnalyticsActionWithResult } from "../services/analyticsApi";
@@ -36,6 +36,7 @@ import {
   SUPPLIER_FILTER_LOAD_FAILED_MESSAGE,
   SUPPLIER_FILTER_STALE_LIST_MESSAGE,
 } from "../utils/supplierFilterFallbackState";
+import { useReliableAnalyticsQuery } from "../hooks/useReliableAnalyticsQuery";
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 250];
 const INVENTORY_SORT_OPTIONS = ["kolicina", "naziv", "vrednost", "azuriranje", "oosRisk", "overstockRisk"] as const;
@@ -80,18 +81,18 @@ const STORE_COMPARISON_SECTION_ID = "inventory-store-comparison";
 const ACTION_WORKFLOW_SECTION_ID = "inventory-action-workflow";
 const INVENTORY_ACTIONS_QUEUE_URL = "/analytics/actions?sourceType=inventory";
 
-type PreviousLoadState = {
-  pageNumber: number;
-  pageSize: number;
-  selectedStoreId: number | null;
-  selectedSupplierId: number | null;
-  sortBy: string;
-  trimmedSearch: string;
-  compareStoreIdsKey: string;
-  dataScope: string;
-  reloadNonce: number;
-};
 type InventoryPageError = { message: string; errorCode?: string | null; correlationId?: string | null };
+
+type InventoryLifecycleSnapshot = {
+  balance: InventoryBalance;
+  pageData: InventoryPagedResponse;
+  insights: InventoryInsights;
+  storeComparison: InventoryStoreComparison;
+  actionWorkflow: InventoryActionWorkflow;
+  forecast: ForecastDto;
+  alerts: InventoryAlertListDto;
+  rebalance: RebalanceListDto;
+};
 
 function toInventoryPageError(reason: unknown, fallback: string): InventoryPageError {
   if (reason instanceof AnalyticsMetaError) {
@@ -323,11 +324,6 @@ export function buildInventorySignalActionSpec(row: InventoryRow): {
 
 export default function InventoryPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [balance, setBalance] = useState<InventoryBalance | null>(null);
-  const [pageData, setPageData] = useState<InventoryPagedResponse | null>(null);
-  const [insights, setInsights] = useState<InventoryInsights | null>(null);
-  const [storeComparison, setStoreComparison] = useState<InventoryStoreComparison | null>(null);
-  const [actionWorkflow, setActionWorkflow] = useState<InventoryActionWorkflow | null>(null);
   const [schedules, setSchedules] = useState<InventoryReportSchedule[]>([]);
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierFilterOption[]>([]);
@@ -335,12 +331,7 @@ export default function InventoryPage() {
   const [supplierFiltersStale, setSupplierFiltersStale] = useState(false);
   const suppliersRef = useRef(suppliers);
   suppliersRef.current = suppliers;
-  const [loading, setLoading] = useState(true);
-  const [insightsLoading, setInsightsLoading] = useState(true);
-  const [insightsError, setInsightsError] = useState<string | null>(null);
   const [filtersLoading, setFiltersLoading] = useState(true);
-  const [operationsLoading, setOperationsLoading] = useState(true);
-  const [error, setError] = useState<InventoryPageError | null>(null);
   const [searchInput, setSearchInput] = useState(() => searchParams.get("search") ?? "");
   const [selectedStoreId, setSelectedStoreId] = useState<number | null>(() => {
     const parsed = parseInventoryPositiveInt(searchParams.get("storeId"), 0);
@@ -367,19 +358,11 @@ export default function InventoryPage() {
   const [workflowBusyKey, setWorkflowBusyKey] = useState<string | null>(null);
   const [queueBusyKey, setQueueBusyKey] = useState<string | null>(null);
   const [queuedSuggestionKeys, setQueuedSuggestionKeys] = useState<string[]>([]);
+  const [workflowOverride, setWorkflowOverride] = useState<InventoryActionWorkflow | null>(null);
   const [schedulerBusy, setSchedulerBusy] = useState(false);
   const [schedulerMessage, setSchedulerMessage] = useState<string | null>(null);
   const [scheduleDraft, setScheduleDraft] = useState<InventoryReportScheduleInput>(createScheduleDraft);
-  const [forecast, setForecast] = useState<ForecastDto | null>(null);
-  const [forecastLoading, setForecastLoading] = useState(true);
-  const [forecastError, setForecastError] = useState<string | null>(null);
-  const [alerts, setAlerts] = useState<InventoryAlertListDto | null>(null);
-  const [alertsLoading, setAlertsLoading] = useState(true);
-  const [alertsError, setAlertsError] = useState<string | null>(null);
   const [alertSeverityFilter, setAlertSeverityFilter] = useState<"" | "critical" | "warning" | "info">("");
-  const [rebalance, setRebalance] = useState<RebalanceListDto | null>(null);
-  const [rebalanceLoading, setRebalanceLoading] = useState(true);
-  const [rebalanceError, setRebalanceError] = useState<string | null>(null);
   const [sizeCurve, setSizeCurve] = useState<SizeCurveDto | null>(null);
   const [sizeCurveLoading, setSizeCurveLoading] = useState(false);
   const [sizeCurveError, setSizeCurveError] = useState<string | null>(null);
@@ -398,9 +381,6 @@ export default function InventoryPage() {
   const rebalanceScopeLabel = selectedStoreId == null
     ? "za sve prodavnice"
     : `za prodavnicu ${selectedStoreName ?? `#${selectedStoreId}`}`;
-  const previousLoadRef = useRef<PreviousLoadState | null>(null);
-  const requestSequenceRef = useRef(0);
-  const signalRequestSequenceRef = useRef(0);
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -545,207 +525,95 @@ export default function InventoryPage() {
     return () => { cancelled = true; };
   }, [inventoryDataScope, selectedStoreId, selectedSupplierId]);
 
+  const inventoryQuery = useCallback(async (signal: AbortSignal): Promise<InventoryLifecycleSnapshot> => {
+    const results = await Promise.allSettled([
+      getInventoryBalance(true, selectedStoreId, selectedSupplierId, inventoryDataScope),
+      getInventoryList({
+        pageNumber,
+        pageSize,
+        search: trimmedSearch || undefined,
+        storeId: selectedStoreId,
+        supplierId: selectedSupplierId,
+        sortBy: serverSortBy,
+        dataScope: inventoryDataScope,
+        signal,
+        ...inventorySignalWindow,
+      }),
+      getInventoryInsights({
+        search: trimmedSearch || undefined,
+        storeId: selectedStoreId,
+        supplierId: selectedSupplierId,
+        sortBy: serverSortBy,
+        dataScope: inventoryDataScope,
+      }),
+      getInventoryStoreComparison({
+        compareStoreIds,
+        supplierId: selectedSupplierId,
+        search: trimmedSearch || undefined,
+        dataScope: inventoryDataScope,
+      }),
+      getInventoryActionSuggestions({
+        storeId: selectedStoreId,
+        supplierId: selectedSupplierId,
+        search: trimmedSearch || undefined,
+        dataScope: inventoryDataScope,
+      }),
+      getForecast({ storeId: selectedStoreId, supplierId: selectedSupplierId, top: FORECAST_FETCH_LIMIT }),
+      getInventoryAlerts({ storeId: selectedStoreId, supplierId: selectedSupplierId }),
+      getRebalanceSuggestions({ fromStoreId: selectedStoreId, supplierId: selectedSupplierId, top: REBALANCE_FETCH_LIMIT }),
+    ]);
+    const failed = results.find((result) => result.status === "rejected");
+    if (failed?.status === "rejected") throw failed.reason;
+
+    return {
+      balance: (results[0] as PromiseFulfilledResult<InventoryBalance>).value,
+      pageData: (results[1] as PromiseFulfilledResult<InventoryPagedResponse>).value,
+      insights: (results[2] as PromiseFulfilledResult<InventoryInsights>).value,
+      storeComparison: (results[3] as PromiseFulfilledResult<InventoryStoreComparison>).value,
+      actionWorkflow: (results[4] as PromiseFulfilledResult<InventoryActionWorkflow>).value,
+      forecast: (results[5] as PromiseFulfilledResult<ForecastDto>).value,
+      alerts: (results[6] as PromiseFulfilledResult<InventoryAlertListDto>).value,
+      rebalance: (results[7] as PromiseFulfilledResult<RebalanceListDto>).value,
+    };
+  }, [compareStoreIds, inventoryDataScope, inventorySignalWindow, pageNumber, pageSize, selectedStoreId, selectedSupplierId, serverSortBy, trimmedSearch]);
+  const {
+    data: inventorySnapshot,
+    initialLoading,
+    refetching,
+    error: queryError,
+    errorReason,
+    staleWarning,
+    refetch,
+  } = useReliableAnalyticsQuery<InventoryLifecycleSnapshot>({
+    query: inventoryQuery,
+    getErrorMessage: (reason) => toInventoryPageError(reason, "Inventory podaci trenutno nisu dostupni.").message,
+  });
+  const balance = inventorySnapshot?.balance ?? null;
+  const pageData = inventorySnapshot?.pageData ?? null;
+  const insights = inventorySnapshot?.insights ?? null;
+  const storeComparison = inventorySnapshot?.storeComparison ?? null;
+  const actionWorkflow = inventorySnapshot?.actionWorkflow ?? null;
+  const forecast = inventorySnapshot?.forecast ?? null;
+  const alerts = inventorySnapshot?.alerts ?? null;
+  const rebalance = inventorySnapshot?.rebalance ?? null;
+  const loading = initialLoading || refetching;
+  const insightsLoading = loading;
+  const insightsError = queryError;
+  const operationsLoading = loading;
+  const forecastLoading = loading;
+  const alertsLoading = loading;
+  const rebalanceLoading = loading;
+  const forecastError = queryError;
+  const alertsError = queryError;
+  const rebalanceError = queryError;
   useEffect(() => {
-    const currentLoad = {
-      pageNumber,
-      pageSize,
-      selectedStoreId,
-      selectedSupplierId,
-      sortBy,
-      trimmedSearch,
-      compareStoreIdsKey: compareStoreIds.join(","),
-      dataScope: inventoryDataScope,
-      reloadNonce,
-    };
-    const previousLoad = previousLoadRef.current;
-    const isFirstLoad = previousLoad == null;
-    const scopeGenerationChanged = !isFirstLoad
-      && (previousLoad.dataScope !== inventoryDataScope || previousLoad.reloadNonce !== reloadNonce);
-    const shouldRefreshSignals = isFirstLoad
-      || scopeGenerationChanged
-      || previousLoad.selectedStoreId !== selectedStoreId
-      || previousLoad.selectedSupplierId !== selectedSupplierId;
-    const shouldRefreshOperations = isFirstLoad
-      || scopeGenerationChanged
-      || previousLoad.selectedStoreId !== selectedStoreId
-      || previousLoad.selectedSupplierId !== selectedSupplierId
-      || previousLoad.trimmedSearch !== trimmedSearch
-      || previousLoad.compareStoreIdsKey !== currentLoad.compareStoreIdsKey;
-
-    previousLoadRef.current = currentLoad;
-
-    const controller = new AbortController();
-    const requestSequence = ++requestSequenceRef.current;
-    const signalRequestSequence = shouldRefreshSignals ? ++signalRequestSequenceRef.current : null;
-    let cancelled = false;
-    const isCurrentRequest = () => !cancelled && requestSequenceRef.current === requestSequence;
-    const isCurrentSignalRequest = () => signalRequestSequence != null
-      && mountedRef.current
-      && signalRequestSequenceRef.current === signalRequestSequence;
-    setLoading(true);
-    setInsightsLoading(true);
-    setInsightsError(null);
-    setInsights(null);
-    if (shouldRefreshOperations) setOperationsLoading(true);
-    if (shouldRefreshSignals) {
-      setForecastLoading(true);
-      setAlertsLoading(true);
-      setRebalanceLoading(true);
-      setForecastError(null);
-      setAlertsError(null);
-      setRebalanceError(null);
-    }
-
-    const setFirstError = (reason: unknown, fallback: string) => {
-      if (!isCurrentRequest()) return;
-      setError((current) => current ?? toInventoryPageError(reason, fallback));
-    };
-
-    const primaryTasks = [
-      { key: "balance" as const, promise: getInventoryBalance(true, selectedStoreId, selectedSupplierId, inventoryDataScope) },
-      { key: "list" as const, promise: getInventoryList({ pageNumber, pageSize, search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy, dataScope: inventoryDataScope, signal: controller.signal, ...inventorySignalWindow }) },
-    ];
-
-    void Promise.allSettled(primaryTasks.map((task) => task.promise))
-      .then((results) => {
-        if (!isCurrentRequest()) return;
-        let balanceFailed = false;
-        let listFailed = false;
-        results.forEach((result, index) => {
-          const task = primaryTasks[index];
-          if (result.status === "rejected") {
-            if (result.reason instanceof DOMException && result.reason.name === "AbortError") {
-              return;
-            }
-            setFirstError(result.reason, "Bilans zaliha trenutno nije dostupan.");
-            if (task.key === "balance") {
-              setBalance(null);
-              balanceFailed = true;
-            }
-            if (task.key === "list") {
-              setPageData(null);
-              listFailed = true;
-            }
-            return;
-          }
-          switch (task.key) {
-            case "balance": setBalance(result.value as InventoryBalance); break;
-            case "list": setPageData(result.value as InventoryPagedResponse); break;
-          }
-        });
-        if (!balanceFailed && !listFailed) {
-          setError(null);
-        }
-      })
-      .finally(() => {
-        if (!isCurrentRequest()) return;
-        setLoading(false);
-      });
-
-    void getInventoryInsights({ search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy, dataScope: inventoryDataScope })
-      .then((result) => {
-        if (!isCurrentRequest()) return;
-        setInsights(result);
-        setInsightsError(null);
-      })
-      .catch((reason) => {
-        if (!isCurrentRequest()) return;
-        setInsights(null);
-        setInsightsError(toInventoryPageError(reason, "Inventory uvidi trenutno nisu dostupni.").message);
-        setFirstError(reason, "Inventory uvidi trenutno nisu dostupni.");
-      })
-      .finally(() => {
-        if (!isCurrentRequest()) return;
-        setInsightsLoading(false);
-      });
-
-    if (shouldRefreshOperations) {
-      const operationTasks = [
-        { key: "storeComparison" as const, promise: getInventoryStoreComparison({ compareStoreIds, supplierId: selectedSupplierId, search: trimmedSearch || undefined, dataScope: inventoryDataScope }) },
-        { key: "actionWorkflow" as const, promise: getInventoryActionSuggestions({ storeId: selectedStoreId, supplierId: selectedSupplierId, search: trimmedSearch || undefined, dataScope: inventoryDataScope }) },
-      ];
-
-      void Promise.allSettled(operationTasks.map((task) => task.promise))
-        .then((results) => {
-          if (!isCurrentRequest()) return;
-          results.forEach((result, index) => {
-            const task = operationTasks[index];
-            if (result.status === "rejected") {
-              setFirstError(result.reason, "Operativni inventory paneli trenutno nisu dostupni.");
-              return;
-            }
-
-            switch (task.key) {
-              case "storeComparison":
-                setStoreComparison(result.value as InventoryStoreComparison);
-                break;
-              case "actionWorkflow":
-                setActionWorkflow(result.value as InventoryActionWorkflow);
-                break;
-            }
-          });
-        })
-        .finally(() => {
-          if (!isCurrentRequest()) return;
-          setOperationsLoading(false);
-        });
-    }
-
-    if (shouldRefreshSignals) {
-      const signalTasks = [
-        { key: "forecast" as const, promise: getForecast({ storeId: selectedStoreId, supplierId: selectedSupplierId, top: FORECAST_FETCH_LIMIT }) },
-        { key: "alerts" as const, promise: getInventoryAlerts({ storeId: selectedStoreId, supplierId: selectedSupplierId }) },
-        { key: "rebalance" as const, promise: getRebalanceSuggestions({ fromStoreId: selectedStoreId, supplierId: selectedSupplierId, top: REBALANCE_FETCH_LIMIT }) },
-      ];
-
-      void Promise.allSettled(signalTasks.map((task) => task.promise))
-        .then((results) => {
-          if (!isCurrentSignalRequest()) return;
-          results.forEach((result, index) => {
-            const task = signalTasks[index];
-            if (result.status === "rejected") {
-              if (task.key === "forecast") {
-                const nextError = toInventoryPageError(result.reason, "Forecast podaci trenutno nisu dostupni.");
-                setForecastError(nextError.message);
-              } else if (task.key === "alerts") {
-                const nextError = toInventoryPageError(result.reason, "Alert signali trenutno nisu dostupni.");
-                setAlertsError(nextError.message);
-              } else if (task.key === "rebalance") {
-                const nextError = toInventoryPageError(result.reason, "Predlozi za redistribuciju trenutno nisu dostupni.");
-                setRebalanceError(nextError.message);
-              } else {
-                const nextError = toInventoryPageError(result.reason, "Signalni inventory paneli trenutno nisu dostupni.");
-                setForecastError((current) => current ?? nextError.message);
-              }
-              return;
-            }
-
-            switch (task.key) {
-              case "forecast":
-                setForecast(result.value as ForecastDto);
-                break;
-              case "alerts":
-                setAlerts(result.value as InventoryAlertListDto);
-                break;
-              case "rebalance":
-                setRebalance(result.value as RebalanceListDto);
-                break;
-            }
-          });
-        })
-        .finally(() => {
-          if (!isCurrentSignalRequest()) return;
-          setForecastLoading(false);
-          setAlertsLoading(false);
-          setRebalanceLoading(false);
-        });
-    }
-
-    return () => {
-      cancelled = true;
-      controller.abort();
-    };
-  }, [compareStoreIds, inventoryDataScope, inventorySignalWindow, pageNumber, pageSize, reloadNonce, selectedStoreId, selectedSupplierId, sortBy, trimmedSearch]);
+    setWorkflowOverride(inventorySnapshot?.actionWorkflow ?? null);
+  }, [inventorySnapshot]);
+  const effectiveActionWorkflow = workflowOverride ?? actionWorkflow;
+  const inventoryError = queryError
+    ? toInventoryPageError(errorReason ?? queryError, "Inventory podaci trenutno nisu dostupni.")
+    : null;
+  const error = inventoryError;
 
   useEffect(() => {
     if (!detailRow) {
@@ -887,7 +755,7 @@ export default function InventoryPage() {
     let cancelled = false;
 
     const signalKeys = displayedRows.map((row) => buildInventorySignalActionSpec(row).sourceKey);
-    const workflowKeys = (actionWorkflow?.items ?? [])
+    const workflowKeys = (effectiveActionWorkflow?.items ?? [])
       .map((item) => item.suggestionKey)
       .filter((key) => Boolean(key));
     const sourceKeys = Array.from(new Set([...signalKeys, ...workflowKeys]));
@@ -925,7 +793,7 @@ export default function InventoryPage() {
     return () => {
       cancelled = true;
     };
-  }, [actionWorkflow, displayedRows]);
+  }, [displayedRows, effectiveActionWorkflow]);
 
   const signalKpis = useMemo(
     () => computeInventorySignalKpis(rows, totalCount, pageSize),
@@ -952,8 +820,8 @@ export default function InventoryPage() {
   const primaryRefreshAt = primaryInventoryTrust.meta?.lastRefreshAtUtc ?? null;
   const primaryMeta = primaryInventoryTrust.meta;
   const inventoryMetas = useMemo(
-    () => ([primaryMeta, storeComparison?.meta, actionWorkflow?.meta].filter((meta): meta is AnalyticsResponseMeta => Boolean(meta))),
-    [actionWorkflow?.meta, primaryMeta, storeComparison?.meta],
+    () => ([primaryMeta, storeComparison?.meta, effectiveActionWorkflow?.meta].filter((meta): meta is AnalyticsResponseMeta => Boolean(meta))),
+    [effectiveActionWorkflow?.meta, primaryMeta, storeComparison?.meta],
   );
   const warningMeta = inventoryMetas.find((meta) => isAnalyticsMetaWarning(meta)) ?? null;
   const inventoryMetaMessage = getAnalyticsMetaMessage(warningMeta ?? primaryMeta);
@@ -1007,12 +875,7 @@ export default function InventoryPage() {
 
   const refreshSchedules = async () => setSchedules(await getInventoryReportSchedules());
   const refreshOperations = async () => {
-    const [nextComparison, nextWorkflow] = await Promise.all([
-      getInventoryStoreComparison({ compareStoreIds, supplierId: selectedSupplierId, search: trimmedSearch || undefined, dataScope: inventoryDataScope }),
-      getInventoryActionSuggestions({ storeId: selectedStoreId, supplierId: selectedSupplierId, search: trimmedSearch || undefined, dataScope: inventoryDataScope }),
-    ]);
-    setStoreComparison(nextComparison);
-    setActionWorkflow(nextWorkflow);
+    await refetch();
   };
 
   async function runServerExport(format: "pdf" | "xlsx" | "csv", preview = false) {
@@ -1214,8 +1077,8 @@ export default function InventoryPage() {
       detailLoading,
     );
     const suggestion = buildForecastRestockSuggestion(row, item, stores, daysSinceMovement);
-    setActionWorkflow((current) => {
-      const base = current ?? { generatedAtUtc: "", pendingCount: 0, approvedCount: 0, deferredCount: 0, closedCount: 0, items: [] };
+    setWorkflowOverride((current) => {
+      const base = current ?? effectiveActionWorkflow ?? { generatedAtUtc: "", pendingCount: 0, approvedCount: 0, deferredCount: 0, closedCount: 0, items: [] };
       if (base.items.some((entry) => entry.suggestionKey === suggestion.suggestionKey)) return base;
       return {
         ...base,
@@ -1349,6 +1212,11 @@ export default function InventoryPage() {
         <div className="rounded-2xl border border-[var(--warning)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--warning)]" role="status">
           Prikazani podaci su delimični ili fallback. {inventoryMetaMessage ?? "Proverite status osvežavanja i data quality signal."}
           {primaryInventoryTrust.degradedSourceLabels.length > 0 ? ` Izvor(i) sa ograničenjem: ${primaryInventoryTrust.degradedSourceLabels.join(", ")}.` : ""}
+        </div>
+      ) : null}
+      {staleWarning && inventorySnapshot ? (
+        <div className="rounded-2xl border border-[var(--warning)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--warning)]" role="status" data-testid="inventory-stale-refetch-warning">
+          Prikazujemo prethodno učitane inventory podatke. Novi upit nije uspeo.
         </div>
       ) : null}
       <section className="rounded-[24px] border border-muted surface-light p-4">
@@ -1559,19 +1427,19 @@ export default function InventoryPage() {
 
       <DecisionSummaryBar
         balance={balance}
-        actionWorkflow={actionWorkflow}
+        actionWorkflow={effectiveActionWorkflow}
         outOfStockCount={balance?.outOfStockCount}
         lowStockCount={balance?.lowStockCount}
         dataQualityWarning={dataQualityNeedsReview}
         dataQualityHref="/analytics/data-quality"
-        loading={loading && !balance && !actionWorkflow}
+        loading={loading && !balance && !effectiveActionWorkflow}
       />
 
       {/* Decision-Critical Workflow Panel */}
       <ErrorBoundary fallback={<div className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">Workflow panel nije mogao da se prikaže. Osveži stranicu.</div>}>
         <ActionWorkflowPanel
           sectionId={ACTION_WORKFLOW_SECTION_ID}
-          actionWorkflow={actionWorkflow}
+          actionWorkflow={effectiveActionWorkflow}
           operationsLoading={operationsLoading}
           workflowBusyKey={workflowBusyKey}
           onUpdateWorkflowStatus={(item, status) => void updateWorkflowStatus(item, status)}

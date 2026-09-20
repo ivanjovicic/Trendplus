@@ -271,6 +271,26 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("store: 2");
   });
 
+  it("keeps the previous snapshot visible when a later query fails", async () => {
+    vi.mocked(getVendorSalesNivelacija)
+      .mockResolvedValueOnce(response())
+      .mockResolvedValueOnce(response())
+      .mockRejectedValueOnce(new Error("Current period unavailable"))
+      .mockRejectedValueOnce(new Error("Previous period unavailable"));
+
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+
+    localStorage.setItem("trendplus:dataScope", "imported");
+    window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("ppn-stale-refetch-warning")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Vendor A")).toBeInTheDocument();
+    expect(screen.queryByText("Podaci trenutno nisu dostupni")).not.toBeInTheDocument();
+  });
+
   it("uses Serbian labels for advanced Pre/Post signal cards", async () => {
     vi.mocked(getVendorSalesNivelacija).mockResolvedValue(response({
       avgMomentumRevenue: 1200,

@@ -2,7 +2,11 @@
 
 Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ359
+
+Owner promotion 2026-09-20: under user instruction to claim the next prompt, `RQ359` moved from `WAITING` to `READY` as the first systemic analytics reliability candidate after RQ358.
+
+Owner claim 2026-09-20: `RQ359` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ359-cursor.lock.md`.
 
 Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ358` moved from `WAITING` to `READY` as P3 trust follow-up (Shoe Type toolbar metadata fake zero).
 
@@ -5119,7 +5123,7 @@ Commit suggestion: `feat(analytics): expose metric evidence and decision tiers`
 
 ## RQ148 - Prove the gross/net/return/cost basis of sales and margin KPIs
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P0
 Type: audit/backend/EF-SQL/contract/export/report/tests
 Feature family: sales-margin-returns-measurement-basis

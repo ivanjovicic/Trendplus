@@ -54,6 +54,7 @@ import { resolveColorCoveragePct } from "../utils/colorSalesCoverage";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
 import { getAnalyticsDataFreshnessStatus } from "../utils/analyticsResponseMeta";
 import { readAnalyticsTableSort, writeAnalyticsTableSort } from "../utils/analyticsTableSortUrl";
+import { useReliableAnalyticsQuery } from "../hooks/useReliableAnalyticsQuery";
 import "./ColorSalesStatsPage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
@@ -284,7 +285,6 @@ export default function ColorSalesStatsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const requestIdRef = useRef(0);
   const detailSectionRef = useRef<HTMLElement>(null);
 
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("30d");
@@ -303,9 +303,6 @@ export default function ColorSalesStatsPage() {
   });
 
   const [stores, setStores] = useState<StoreOption[]>([]);
-  const [data, setData] = useState<ColorSalesStatsResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [dataScope, setDataScopeValue] = useState<DataScope>(() => getDataScope());
   const [sortField, setSortField] = useState<SortField>(() => readAnalyticsTableSort(searchParams, COLOR_SORT_FIELDS, "status", "desc").field);
   const [sortDir, setSortDir] = useState<SortDir>(() => readAnalyticsTableSort(searchParams, COLOR_SORT_FIELDS, "status", "desc").dir);
@@ -345,41 +342,31 @@ export default function ColorSalesStatsPage() {
     void loadStores();
   }, []);
 
-  const load = useCallback(async (filters: ActiveFilters, scope: DataScope, signal?: AbortSignal) => {
-    const requestId = ++requestIdRef.current;
-    setLoading(true);
-    setError(null);
-
-    try {
-      const currentRange = toUtcRange(filters.fromDate, filters.toDate);
-      const result = await getColorSalesStats({
-        ...currentRange,
-        sezonaId: filters.sezonaId,
-        storeId: filters.storeId,
-        dataScope: scope,
-        signal,
-      });
-
-      if (requestId !== requestIdRef.current) return;
-      setData(result);
-    } catch (reason) {
-      if (reason instanceof DOMException && reason.name === "AbortError") {
-        return;
-      }
-      if (requestId !== requestIdRef.current) return;
-      setError(reason instanceof Error ? reason.message : "Greska pri ucitavanju podataka po boji.");
-    } finally {
-      if (requestId === requestIdRef.current) {
-        setLoading(false);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    void load(activeFilters, dataScope, controller.signal);
-    return () => controller.abort();
-  }, [activeFilters, dataScope, load]);
+  const colorQuery = useCallback((signal: AbortSignal) => {
+    const currentRange = toUtcRange(activeFilters.fromDate, activeFilters.toDate);
+    return getColorSalesStats({
+      ...currentRange,
+      sezonaId: activeFilters.sezonaId,
+      storeId: activeFilters.storeId,
+      dataScope,
+      signal,
+    });
+  }, [activeFilters, dataScope]);
+  const {
+    data,
+    initialLoading,
+    refetching,
+    error: queryError,
+    staleWarning,
+    refetch,
+  } = useReliableAnalyticsQuery<ColorSalesStatsResponse>({
+    query: colorQuery,
+    getErrorMessage: (reason) => reason instanceof Error
+      ? reason.message
+      : "Greska pri ucitavanju podataka po boji.",
+  });
+  const loading = initialLoading || refetching;
+  const error = queryError;
 
   const decisionRows = useMemo<DecisionColor[]>(() => {
     const rows = data?.colors ?? [];
@@ -619,8 +606,8 @@ export default function ColorSalesStatsPage() {
   const trustIsPartial = responseMeta?.isPartial ?? false;
   const trustDataFreshnessStatus = getAnalyticsDataFreshnessStatus(responseMeta);
   const trustEmptyStateReason = responseMeta?.message ?? emptyStateHint;
-  const showBlockingError = Boolean(error && !data);
-  const showStaleError = Boolean(error && data);
+  const showBlockingError = Boolean(queryError && !data);
+  const showStaleError = Boolean(staleWarning && data);
 
   const emptyStateVariant = useMemo<"no_data" | "insufficient_data" | "filtered_out" | null>(() => {
     if (!data || loading || sortedRows.length > 0) return null;
@@ -709,7 +696,6 @@ export default function ColorSalesStatsPage() {
     const range = resolvePresetFilterRange(periodPreset, fromDate, toDate);
     setFromDate(range.fromDate);
     setToDate(range.toDate);
-    setError(null);
     setActiveFilters({
       fromDate: range.fromDate,
       toDate: range.toDate,
@@ -878,9 +864,7 @@ export default function ColorSalesStatsPage() {
         <AnalyticsErrorState
           title="Boje trenutno nisu dostupne"
           message={error || "Ne prikazujemo nule jer nije potvrđeno da je period stvarno prazan."}
-          onRetry={() => {
-            void load(activeFilters, dataScope);
-          }}
+          onRetry={refetch}
           helpHref="/analytics/data-quality"
         />
       ) : null}
@@ -907,9 +891,7 @@ export default function ColorSalesStatsPage() {
           emptyReason={responseMeta?.emptyReason ?? null}
           dataQualityHref="/analytics/data-quality"
           refreshStatusHref="/admin/configuration?panel=workers"
-          onRetry={() => {
-            void load(activeFilters, dataScope);
-          }}
+          onRetry={refetch}
         />
       ) : null}
       {!loading && !showBlockingError && qualityNotes.length > 0 ? (
