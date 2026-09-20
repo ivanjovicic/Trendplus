@@ -4,9 +4,9 @@ Date: 2026-09-20
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / no PR
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: c8e8c427
+Main verification: c8e8c427 is contained in origin/main; final main/origin/main equality verified after evidence delivery
+Evidence state: synchronized
 
 ## What was done
 - Made the systemic Reliability Contract Layer dependency graph explicit.
