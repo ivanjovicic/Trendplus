@@ -4,9 +4,9 @@ Date: 2026-09-20
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / no PR
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: de454c02
+Main verification: passed - `origin/main` contains implementation SHA `de454c02` after fresh push verification
+Evidence state: synchronized
 
 ## What was done
 - Reviewed all commits dated 2026-09-20, including the newly fetched RQ333-RQ344 deliveries, and the local working tree against the repository instructions and owning contracts.
@@ -42,7 +42,7 @@ Evidence state: pending
 - Remote CI status -> not inspected; repository policy does not require waiting for CI before main delivery.
 
 ## Documentation impact
-- Added this durable direct-task evidence log. No queue or roadmap change was needed because RQ291 is already DONE and the stale local branch is not a new prompt.
+- Added this durable direct-task evidence log and repaired the RQ344 queue/run-log delivery SHA evidence. No roadmap routing change was needed because RQ291 is already DONE and the stale local branch is not a new prompt.
 
 ## What was missed
 - No known missed defect within the reviewed today's-commit/setup scope; full suites and remote CI remain outside this run.
