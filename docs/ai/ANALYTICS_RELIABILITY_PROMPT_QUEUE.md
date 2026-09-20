@@ -2,7 +2,7 @@
 
 Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ360
+Current READY prompt: none
 
 Owner promotion 2026-09-20: after RQ359 reached DONE, `RQ360` moved from `WAITING` to `READY` as the reusable analytics reliability contract test-kit follow-up.
 
@@ -826,8 +826,8 @@ Operations audit intake 2026-09-18 (round 2): `RQ312`-`RQ330` were added from a 
 
 Operations audit intake 2026-09-18 (round 3): `RQ331`-`RQ358` were added from a third post-`RQ330` Operacije review (page-local KPIs, fake zeros, chart sort bug, stale refetch, abort races, filter facet bias, supplier redirect trust); `RQ331`-`RQ344` are `DONE` on `main`, `RQ345`-`RQ358` remain `WAITING`, and the queue has no current READY prompt.
 
-System reliability architecture intake 2026-09-20: `RQ359`-`RQ367` were added from the user's Reliability Contract Layer proposal (shared async lifecycle, invariant tests, guardrails, provenance, runtime validation, dataset projections, migration smoke, baseline debt and generated evidence); `RQ359` is DONE and `RQ360`-`RQ367` remain `WAITING`; the queue has no current READY prompt.
-System reliability dependency order 2026-09-20: `RQ359` is DONE; `RQ360 READY AFTER RQ359 DONE`; `RQ366 READY AFTER RQ360 DONE`; `RQ361 READY AFTER RQ366 DONE`; `RQ362 READY AFTER RQ361 DONE`; `RQ363 READY AFTER RQ362 DONE`; `RQ364 READY AFTER RQ363 DONE`; `RQ365` is an independent database-reliability branch; `RQ367 READY AFTER RQ361 + RQ363 + RQ364 + RQ365 DONE` (RQ361 transitively includes RQ366).
+System reliability architecture intake 2026-09-20: `RQ359`-`RQ367` were added from the user's Reliability Contract Layer proposal (shared async lifecycle, invariant tests, guardrails, provenance, runtime validation, dataset projections, migration smoke, baseline debt and generated evidence); `RQ359` and `RQ360` are DONE and `RQ361`-`RQ367` remain `WAITING`; the queue has no current READY prompt.
+System reliability dependency order 2026-09-20: `RQ359` and `RQ360` are DONE; `RQ366 READY AFTER RQ360 DONE`; `RQ361 READY AFTER RQ366 DONE`; `RQ362 READY AFTER RQ361 DONE`; `RQ363 READY AFTER RQ362 DONE`; `RQ364 READY AFTER RQ363 DONE`; `RQ365` is an independent database-reliability branch; `RQ367 READY AFTER RQ361 + RQ363 + RQ364 + RQ365 DONE` (RQ361 transitively includes RQ366).
 
 Owner promotion 2026-09-15: `RQ270` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ264` completion; it is the single current RQ prompt for confirmed Inventory scope-change reload gaps and will be claimed in this workspace.
 
@@ -1278,7 +1278,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ357 | DONE | inventory-url-pagination-search | URL-sync Inventory pagination, page size, search and compare stores |
 | RQ358 | DONE | shoe-type-toolbar-metadata-fake-zero | Fail closed on null shoe type count in toolbar metadata export |
 | RQ359 | DONE | analytics-reliable-query-lifecycle | Centralize abort/latest-request/stale-refetch semantics in one hook |
-| RQ360 | IN_PROGRESS | analytics-invariant-test-kit | Reuse one invariant matrix across critical analytics screens |
+| RQ360 | DONE | analytics-invariant-test-kit | Reuse one invariant matrix across critical analytics screens |
 | RQ361 | WAITING | analytics-guardrail-expansion | Detect fake-zero, silent-catch, frontend-aggregate and pagination anti-patterns |
 | RQ362 | WAITING | analytics-authoritative-provenance | Formalize authoritative versus derived metric provenance |
 | RQ363 | WAITING | analytics-response-runtime-validation | Fail closed on invalid analytics DTOs at the API boundary |
@@ -18941,13 +18941,31 @@ Shoe Type, Color, Pre/Post, Inventory and Pre-Nivelacija each implement their ow
 
 ## RQ360 - Build a reusable Analytics Reliability Contract test kit
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: frontend/tests/architecture
 Feature family: analytics-invariant-test-kit
 Parallel-safe: no
 Owner: Analytics Frontend Foundations
 Commit suggestion: `test(analytics): add reliability contract test kit`
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Added a reusable declarative analytics reliability contract suite and registered adapters for Pre/Post, Shoe Type, Color, Daily Sales and Inventory.
+- Changed files: `Klijent/clientapp/src/testing/analyticsReliabilityContract.ts`, `Klijent/clientapp/src/testing/analyticsReliabilityContract.spec.ts`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: contract suite 70/70; five adopter page suites 114/114; `npm run typecheck`; `npm run check:encoding`; `git diff --check`
+- Checks not run: full client suite, live browser, CI; analytics guardrails report 12 existing violations outside this test-kit scope and stop before their chained typecheck step
+- Run log: `.ai/runs/2026-09-20-RQ360-evidence.md`
+- Evidence state: pending
+- Delivery mode: pull-request
+- Main commit SHA: pending
+- Main verification: pending until the feature branch is delivered to `main`
+- Missed: no known RQ360 scope omissions
+- Follow-up: promote `RQ366` after RQ360 main delivery; it is the next dependency-unblocked reliability prompt
+- Residual risk: the adapters provide response factories and selectors; page-specific lifecycle behavior remains owned by RQ359 and existing page specs.
+- Prompt defect / scope repair: helper was renamed from `.test.ts` to `.ts` after Vitest correctly identified an empty standalone test file; no contract scope changed.
 
 ### Problem
 
