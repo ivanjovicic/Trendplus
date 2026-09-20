@@ -135,6 +135,14 @@
   border-color: var(--accent-danger);
 }
 
+.daily-sales-message.warning {
+  border-color: var(--accent-warning);
+}
+
+.daily-sales-message.info {
+  border-color: var(--border-strong, var(--border-default));
+}
+
 .daily-sales-message.loading {
   border-color: var(--accent-warning);
   display: flex;

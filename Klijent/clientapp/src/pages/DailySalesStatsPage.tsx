@@ -37,8 +37,15 @@ import { getDataScope, normalizeDataScope, type DataScope } from "../utils/dataS
 import UltraSpinner from "../components/ui/UltraSpinner";
 import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
 import { fmtPct, fmtRsd, fmtRsdShort, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
+import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { getAnalyticsDataFreshnessStatus } from "../utils/analyticsResponseMeta";
+import {
+  DAILY_SALES_PREVIOUS_PERIOD_FAILURE_NOTE,
+  formatDailySalesComparisonDelta,
+  resolveDailySalesPreviousPeriodComparison,
+} from "../utils/dailySalesPreviousPeriodComparison";
 import { resolveAuthoritativeTopSuppliers } from "../utils/dailySupplierOrder";
+import type { PreviousPeriodComparisonState } from "../utils/supplierPreviousPeriodComparison";
 import {
   hasMissingShiftSummary,
   hasPartialShiftSummary,
@@ -605,6 +612,9 @@ export default function DailySalesStatsPage() {
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [data, setData] = useState<DailySalesTableResponse | null>(null);
   const [previousData, setPreviousData] = useState<DailySalesTableResponse | null>(null);
+  const [previousPeriodState, setPreviousPeriodState] = useState<PreviousPeriodComparisonState>("empty");
+  const [previousPeriodWarning, setPreviousPeriodWarning] = useState<string | null>(null);
+  const [previousPeriodEmptyNote, setPreviousPeriodEmptyNote] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("date");
@@ -670,36 +680,48 @@ export default function DailySalesStatsPage() {
     const previousRange = getPreviousPeriodRange(filters);
     setLoading(true);
     setError(null);
+    setPreviousPeriodWarning(null);
+    setPreviousPeriodEmptyNote(null);
 
     try {
-      const currentPromise = getDailySalesStats({
-        fromDate: filters.fromDate,
-        toDate: filters.toDate,
-        storeId: filters.storeId,
-        topN: filters.topN,
-        dataScope: memoizedQueryDataScope,
-        signal,
-      });
-
-      const previousPromise = getDailySalesStats({
-        fromDate: previousRange.fromDate,
-        toDate: previousRange.toDate,
-        storeId: filters.storeId,
-        topN: filters.topN,
-        dataScope: memoizedQueryDataScope,
-        signal,
-      }).catch((reason) => {
-        if (reason instanceof DOMException && reason.name === "AbortError") {
-          throw reason;
-        }
-        return null;
-      });
-
-      const [result, previousResult] = await Promise.all([currentPromise, previousPromise]);
+      const [currentResult, previousResult] = await Promise.allSettled([
+        getDailySalesStats({
+          fromDate: filters.fromDate,
+          toDate: filters.toDate,
+          storeId: filters.storeId,
+          topN: filters.topN,
+          dataScope: memoizedQueryDataScope,
+          signal,
+        }),
+        getDailySalesStats({
+          fromDate: previousRange.fromDate,
+          toDate: previousRange.toDate,
+          storeId: filters.storeId,
+          topN: filters.topN,
+          dataScope: memoizedQueryDataScope,
+          signal,
+        }),
+      ]);
 
       if (requestId !== requestIdRef.current) return;
-      setData(result);
-      setPreviousData(previousResult);
+      if (currentResult.status === "rejected") {
+        throw currentResult.reason;
+      }
+
+      const previousComparison = resolveDailySalesPreviousPeriodComparison(
+        previousResult,
+        (reason) => getSafeAnalyticsErrorMessage(
+          reason instanceof Error ? reason.message : String(reason),
+          undefined,
+          DAILY_SALES_PREVIOUS_PERIOD_FAILURE_NOTE,
+        ),
+      );
+
+      setData(currentResult.value);
+      setPreviousData(previousComparison.previousData);
+      setPreviousPeriodState(previousComparison.state);
+      setPreviousPeriodWarning(previousComparison.warning);
+      setPreviousPeriodEmptyNote(previousComparison.emptyBaselineNote);
     } catch (reason) {
       if (reason instanceof DOMException && reason.name === "AbortError") {
         return;
@@ -707,6 +729,9 @@ export default function DailySalesStatsPage() {
       if (requestId !== requestIdRef.current) return;
       setData(null);
       setPreviousData(null);
+      setPreviousPeriodState("empty");
+      setPreviousPeriodWarning(null);
+      setPreviousPeriodEmptyNote(null);
       setError(reason instanceof Error ? reason.message : "Greska pri ucitavanju dnevne prodaje.");
     } finally {
       if (requestId === requestIdRef.current) {
@@ -1805,6 +1830,19 @@ export default function DailySalesStatsPage() {
             </section>
           ) : null}
 
+          {!loading && !error && previousPeriodWarning ? (
+            <div className="daily-sales-message warning" role="status" data-testid="previous-comparison-warning">
+              Uporedni prethodni period nije učitan ({previousPeriodWarning}). PoP kartice nisu dostupne zbog
+              greške zahteva, ne zbog stvarnog nedostatka baze — ovo nije „Nova baza“.
+            </div>
+          ) : null}
+
+          {!loading && !error && !previousPeriodWarning && previousPeriodEmptyNote ? (
+            <div className="daily-sales-message info" role="status" data-testid="previous-comparison-empty-note">
+              {previousPeriodEmptyNote}
+            </div>
+          ) : null}
+
           <section className="daily-sales-section-grid daily-sales-section-grid--double">
             <article className="daily-sales-panel">
               <div className="daily-sales-panel-head">
@@ -1822,11 +1860,24 @@ export default function DailySalesStatsPage() {
 
               <div className="daily-sales-compare-cards">
                 {comparisonCards.map((card) => (
-                  <article key={card.key} className="daily-sales-compare-card" data-tone={comparisonTone(card.deltaPct)}>
+                  <article
+                    key={card.key}
+                    className="daily-sales-compare-card"
+                    data-tone={previousPeriodState === "failed" ? "info" : comparisonTone(card.deltaPct)}
+                  >
                     <span>{card.label}</span>
                     <strong>{card.formatter(card.currentValue)}</strong>
-                    <small>Prethodno: {card.formatter(card.previousValue)}</small>
-                    <div className="daily-sales-delta">{fmtDelta(card.deltaPct, card.currentValue, card.previousValue)}</div>
+                    <small>
+                      Prethodno: {previousPeriodState === "failed" ? "Nedostupno" : card.formatter(card.previousValue)}
+                    </small>
+                    <div className="daily-sales-delta">
+                      {formatDailySalesComparisonDelta(
+                        card.deltaPct,
+                        finiteOrNull(card.currentValue),
+                        finiteOrNull(card.previousValue),
+                        previousPeriodState,
+                      )}
+                    </div>
                   </article>
                 ))}
               </div>

@@ -4,6 +4,27 @@ Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ335` moved from `WAITING` to `READY` as P2 trust follow-up (Daily Sales previous-period silent failure).
+
+Owner claim 2026-09-20: `RQ335` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ335-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Daily Sales now resolves previous-period fetch with Promise.allSettled, shows warning banner on request failure, empty-baseline info note on successful empty previous period, and PoP cards render Nedostupno instead of silent N/A.
+- Changed files: `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`, `Klijent/clientapp/src/pages/DailySalesStatsPage.css`, `Klijent/clientapp/src/utils/dailySalesPreviousPeriodComparison.ts`, `Klijent/clientapp/src/utils/__tests__/dailySalesPreviousPeriodComparison.spec.ts`, `Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.premium.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: dailySalesPreviousPeriodComparison spec 3/3; DailySalesStatsPage.premium spec 18/18; `npm run check:analytics-guardrails`; `git diff --check`
+- Checks not run: full client suite, CI, live browser
+- Run log: `.ai/runs/2026-09-20-RQ335-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Follow-up: promote `RQ336` (Daily Sales chart sort order) or `RQ337` (Operacije frozen 30d preset)
+- Residual risk: none known in owned scope
+- Prompt defect / scope repair: none
+
 Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ334` moved from `WAITING` to `READY` as P1 trust follow-up (supplier prePostComparableArticleCount fake zero).
 
 Owner claim 2026-09-20: `RQ334` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ334-cursor.lock.md`.
@@ -17231,7 +17252,7 @@ Detail panel renders `prePostComparableArticleCount ?? 0` — null becomes 0 art
 
 ## RQ335 - Surface Daily Sales previous-period fetch failure instead of silent N/A deltas
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/trust/tests
 Feature family: daily-sales-previous-period-silent-failure

@@ -595,6 +595,47 @@ describe("DailySalesStatsPage premium controls", () => {
     );
   });
 
+  it("warns when previous-period request fails and does not label it as Nova baza", async () => {
+    vi.mocked(getDailySalesStats)
+      .mockResolvedValueOnce(response())
+      .mockRejectedValueOnce(new Error("Previous period timeout"));
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/daily-sales"]}>
+        <Routes>
+          <Route path="/analytics/daily-sales" element={<DailySalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByText("Poređenje sa prethodnim periodom");
+
+    const warning = await screen.findByTestId("previous-comparison-warning");
+    expect(warning).toHaveTextContent("Previous period timeout");
+    expect(warning).toHaveTextContent("greške zahteva");
+    expect(screen.getAllByText("Nedostupno").length).toBeGreaterThanOrEqual(4);
+    expect(screen.queryByText("Nova baza")).not.toBeInTheDocument();
+  });
+
+  it("keeps a successful empty previous baseline distinct from a failed comparison", async () => {
+    vi.mocked(getDailySalesStats)
+      .mockResolvedValueOnce(response())
+      .mockResolvedValueOnce(response({ dateRows: [] }));
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/daily-sales"]}>
+        <Routes>
+          <Route path="/analytics/daily-sales" element={<DailySalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId("previous-comparison-empty-note")).toHaveTextContent(
+      "Prethodni uporedivi period nema dovoljno podataka za poređenje.",
+    );
+    expect(screen.queryByTestId("previous-comparison-warning")).not.toBeInTheDocument();
+  });
+
   it("marks concentration as unavailable when either denominator is missing", () => {
     const result = buildSupplierConcentration(
       response({
