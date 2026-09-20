@@ -1,4 +1,4 @@
-import { act, render, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
@@ -172,6 +172,24 @@ describe("InventoryPage signal window refresh", () => {
       const lastCall = getInventoryListMock.mock.calls.at(-1)?.[0] as { fromDate: string; toDate: string };
       expect(lastCall.toDate).toBe("2026-09-19T12:00:00.000Z");
       expect(lastCall.fromDate).toBe("2026-08-20T12:00:00.000Z");
+    });
+  });
+
+  it("refreshes inventory in place without a full page reload", async () => {
+    render(
+      <MemoryRouter>
+        <InventoryPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(getInventoryListMock).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Osveži" }));
+
+    await waitFor(() => {
+      expect(getInventoryListMock).toHaveBeenCalledTimes(2);
     });
   });
 

@@ -1364,7 +1364,7 @@ export default function InventoryPage() {
             {
               key: "refresh",
               label: "Osveži",
-              onClick: () => window.location.reload(),
+              onClick: retryPageLoad,
               tone: "secondary",
             },
           ]}
@@ -1557,7 +1557,7 @@ export default function InventoryPage() {
               onExportCsvFiltered={() => void runServerExport("csv")}
               onExportExcel={() => void runServerExport("xlsx")}
               onExportPdf={() => void runServerExport("pdf")}
-              onRefresh={() => window.location.reload()}
+              onRefresh={retryPageLoad}
               schedules={schedules}
               scheduleDraft={scheduleDraft}
               setScheduleDraft={setScheduleDraft}
