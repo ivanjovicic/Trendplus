@@ -863,6 +863,42 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(within(driverGrid!).queryByText("0 RSD")).not.toBeInTheDocument();
   });
 
+  it("selects winner and risk SKU only from trusted comparable revenue", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
+      response({
+        articleStats: [
+          article({
+            sku: "SKU-UNTRUSTED",
+            articleName: "Nevalidan signal",
+            changeRevenue: Number.NaN as unknown as number,
+          }),
+          article({
+            sku: "SKU-WINNER",
+            articleName: "Dobitnik",
+            changeRevenue: 500,
+          }),
+          article({
+            sku: "SKU-RISK",
+            articleName: "Rizik",
+            changeRevenue: -100,
+          }),
+        ],
+      }),
+    );
+
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+    fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
+
+    const winnerCard = screen.getByText("Top dobitnik SKU").closest("article");
+    const riskCard = screen.getByText("Top rizik SKU").closest("article");
+    expect(winnerCard).not.toBeNull();
+    expect(riskCard).not.toBeNull();
+    expect(within(winnerCard!).getByText("SKU-WINNER • Dobitnik")).toBeInTheDocument();
+    expect(within(riskCard!).getByText("SKU-RISK • Rizik")).toBeInTheDocument();
+    expect(screen.queryByText("SKU-UNTRUSTED • Nevalidan signal")).not.toBeInTheDocument();
+  });
+
   it("keeps measured zero revenue visible in driver summary when comparability is confirmed", async () => {
     vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
       response({
