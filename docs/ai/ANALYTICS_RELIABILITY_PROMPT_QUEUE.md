@@ -19339,10 +19339,10 @@ Commit suggestion: `chore(analytics): add non-growing guardrail baseline`
 - Checks run: `npm run check:analytics-guardrails` passed with explicit `baseline-only` output for 12 known violations; baseline self-test passed; `git diff --check`
 - Checks not run: full frontend suite, live browser, CI; no production analytics runtime changed
 - Run log: `.ai/runs/2026-09-20-RQ366-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: pull-request
-- Main commit SHA: pending
-- Main verification: pending until the feature branch is delivered to `main`
+- Main commit SHA: `1fb160bd`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `1fb160bd`
 - Missed: no known RQ366 scope omissions
 - Follow-up: promote `RQ361` after RQ366 main delivery
 - Residual risk: baseline entries use exact line locations; intentional source movement will surface as one removed baseline entry plus one new violation for review.
