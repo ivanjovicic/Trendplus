@@ -2,7 +2,7 @@
 
 Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ359
+Current READY prompt: none
 
 Owner promotion 2026-09-20: under user instruction to claim the next prompt, `RQ359` moved from `WAITING` to `READY` as the first systemic analytics reliability candidate after RQ358.
 
@@ -822,8 +822,8 @@ Operations audit intake 2026-09-18 (round 2): `RQ312`-`RQ330` were added from a 
 
 Operations audit intake 2026-09-18 (round 3): `RQ331`-`RQ358` were added from a third post-`RQ330` Operacije review (page-local KPIs, fake zeros, chart sort bug, stale refetch, abort races, filter facet bias, supplier redirect trust); `RQ331`-`RQ344` are `DONE` on `main`, `RQ345`-`RQ358` remain `WAITING`, and the queue has no current READY prompt.
 
-System reliability architecture intake 2026-09-20: `RQ359`-`RQ367` were added from the user's Reliability Contract Layer proposal (shared async lifecycle, invariant tests, guardrails, provenance, runtime validation, dataset projections, migration smoke, baseline debt and generated evidence); all nine are `WAITING`; the queue has no current READY prompt.
-System reliability dependency order 2026-09-20: `RQ359` is the first systemic candidate; `RQ360 READY AFTER RQ359 DONE`; `RQ366 READY AFTER RQ360 DONE`; `RQ361 READY AFTER RQ366 DONE`; `RQ362 READY AFTER RQ361 DONE`; `RQ363 READY AFTER RQ362 DONE`; `RQ364 READY AFTER RQ363 DONE`; `RQ365` is an independent database-reliability branch; `RQ367 READY AFTER RQ361 + RQ363 + RQ364 + RQ365 DONE` (RQ361 transitively includes RQ366). Do not promote or claim any of these while the current READY pointer is `none`.
+System reliability architecture intake 2026-09-20: `RQ359`-`RQ367` were added from the user's Reliability Contract Layer proposal (shared async lifecycle, invariant tests, guardrails, provenance, runtime validation, dataset projections, migration smoke, baseline debt and generated evidence); `RQ359` is DONE and `RQ360`-`RQ367` remain `WAITING`; the queue has no current READY prompt.
+System reliability dependency order 2026-09-20: `RQ359` is DONE; `RQ360 READY AFTER RQ359 DONE`; `RQ366 READY AFTER RQ360 DONE`; `RQ361 READY AFTER RQ366 DONE`; `RQ362 READY AFTER RQ361 DONE`; `RQ363 READY AFTER RQ362 DONE`; `RQ364 READY AFTER RQ363 DONE`; `RQ365` is an independent database-reliability branch; `RQ367 READY AFTER RQ361 + RQ363 + RQ364 + RQ365 DONE` (RQ361 transitively includes RQ366).
 
 Owner promotion 2026-09-15: `RQ270` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ264` completion; it is the single current RQ prompt for confirmed Inventory scope-change reload gaps and will be claimed in this workspace.
 
@@ -1273,7 +1273,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ356 | DONE | pre-post-english-signal-labels | Serbian labels for Pre/Post advanced signal cards |
 | RQ357 | DONE | inventory-url-pagination-search | URL-sync Inventory pagination, page size, search and compare stores |
 | RQ358 | DONE | shoe-type-toolbar-metadata-fake-zero | Fail closed on null shoe type count in toolbar metadata export |
-| RQ359 | WAITING | analytics-reliable-query-lifecycle | Centralize abort/latest-request/stale-refetch semantics in one hook |
+| RQ359 | DONE | analytics-reliable-query-lifecycle | Centralize abort/latest-request/stale-refetch semantics in one hook |
 | RQ360 | WAITING | analytics-invariant-test-kit | Reuse one invariant matrix across critical analytics screens |
 | RQ361 | WAITING | analytics-guardrail-expansion | Detect fake-zero, silent-catch, frontend-aggregate and pagination anti-patterns |
 | RQ362 | WAITING | analytics-authoritative-provenance | Formalize authoritative versus derived metric provenance |
@@ -5123,7 +5123,7 @@ Commit suggestion: `feat(analytics): expose metric evidence and decision tiers`
 
 ## RQ148 - Prove the gross/net/return/cost basis of sales and margin KPIs
 
-Status: IN_PROGRESS
+Status: WAITING
 Priority: P0
 Type: audit/backend/EF-SQL/contract/export/report/tests
 Feature family: sales-margin-returns-measurement-basis
@@ -18856,13 +18856,31 @@ Toolbar metadata `brojTipovaObuce ?? 0` writes 0 when totals absent.
 
 ## RQ359 - Centralize analytics async loading in `useReliableAnalyticsQuery`
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/architecture/tests
 Feature family: analytics-reliable-query-lifecycle
 Parallel-safe: no
 Owner: Analytics Frontend Foundations
 Commit suggestion: `feat(analytics): centralize reliable query lifecycle`
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Added the typed `useReliableAnalyticsQuery` lifecycle owner and migrated Shoe Type, Color, Pre/Post, Inventory and Pre-Nivelacija list flows without changing API parameters or backend decision/meta contracts.
+- Changed files: `Klijent/clientapp/src/hooks/useReliableAnalyticsQuery.ts`, `Klijent/clientapp/src/hooks/useReliableAnalyticsQuery.spec.ts`, five named analytics pages, `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: hook contract tests 8/8; migrated page suites 146/146; `npm run typecheck`; `git diff --check`; encoding check passed
+- Checks not run: full client suite, live browser, CI; analytics guardrails report 12 pre-existing violations in wider decision/provenance paths and does not complete its chained typecheck step
+- Run log: `.ai/runs/2026-09-20-RQ359-evidence.md`
+- Evidence state: pending
+- Delivery mode: pull-request
+- Main commit SHA: pending
+- Main verification: pending until the feature branch is delivered to `main`
+- Missed: no known RQ359 scope omissions
+- Follow-up: promote `RQ360` after RQ359 main delivery
+- Residual risk: Inventory now uses a conservative aggregate query snapshot; an optional panel failure preserves the previous full snapshot and surfaces the shared stale warning.
+- Prompt defect / scope repair: the queue's systemic intake explicitly said not to promote while the READY pointer was none; the current user instruction explicitly authorized promotion, so RQ359 was promoted and claimed.
 
 ### Problem
 
