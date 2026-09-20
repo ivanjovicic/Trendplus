@@ -6,7 +6,10 @@ import {
 import { FetchTimeoutError, fetchWithTimeout } from "../utils/fetchWithTimeout";
 import { API_COLD_START_TIMEOUT_MS, getRetryTimeouts } from "../utils/apiTimeouts";
 import type { ZodType } from "zod";
-import { validateAnalyticsResponse } from "../validation/analyticsResponseValidation";
+import {
+  AnalyticsResponseValidationError,
+  validateAnalyticsResponse,
+} from "../validation/analyticsResponseValidation";
 import { assertAnalyticsMetaSuccess } from "../utils/analyticsResponseMeta";
 
 type FetchAnalyticsJsonOptions = {
@@ -186,6 +189,10 @@ export async function fetchAnalyticsJson<T>(
       }
 
       if (error instanceof DOMException && error.name === "AbortError") {
+        throw error;
+      }
+
+      if (error instanceof AnalyticsResponseValidationError) {
         throw error;
       }
 
