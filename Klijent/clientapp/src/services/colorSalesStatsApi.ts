@@ -1,5 +1,6 @@
 import type { AnalyticsResponseMeta } from "../types/analytics";
 import { fetchAnalyticsJson } from "./analyticsHttp";
+import { colorSalesStatsResponseSchema } from "../validation/analyticsResponseSchemas";
 
 export interface AnalyticsRecommendation {
   status: "increase_focus" | "maintain" | "review" | "do_not_trust" | "insufficient_data";
@@ -160,6 +161,6 @@ export async function getColorSalesStats(
     "/api/analytics/color-sales-stats",
     params,
     "Greska pri ucitavanju statistike boja artikala",
-    { signal: query.signal }
+    { signal: query.signal, schema: colorSalesStatsResponseSchema }
   );
 }

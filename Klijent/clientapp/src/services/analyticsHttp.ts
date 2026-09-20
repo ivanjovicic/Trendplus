@@ -5,11 +5,15 @@ import {
 } from "../utils/apiFailover";
 import { FetchTimeoutError, fetchWithTimeout } from "../utils/fetchWithTimeout";
 import { API_COLD_START_TIMEOUT_MS, getRetryTimeouts } from "../utils/apiTimeouts";
+import type { ZodType } from "zod";
+import { validateAnalyticsResponse } from "../validation/analyticsResponseValidation";
+import { assertAnalyticsMetaSuccess } from "../utils/analyticsResponseMeta";
 
 type FetchAnalyticsJsonOptions = {
   signal?: AbortSignal;
   timeoutMs?: number;
   dedupe?: boolean;
+  schema?: ZodType<unknown>;
 };
 
 export class ApiHttpError extends Error {
@@ -24,6 +28,26 @@ export class ApiHttpError extends Error {
 
 const DEFAULT_TIMEOUT_MS = API_COLD_START_TIMEOUT_MS;
 const inFlightGetRequests = new Map<string, Promise<unknown>>();
+
+function validateFetchPayload<T>(
+  payload: T,
+  schema: ZodType<unknown> | undefined,
+  fallbackMessage?: string,
+): T {
+  const checked = assertAnalyticsMetaSuccess(
+    payload,
+    (candidate) => {
+      if (!candidate || typeof candidate !== "object") return null;
+      const meta = (candidate as { meta?: unknown }).meta;
+      return meta && typeof meta === "object" ? meta as import("../types/analytics").AnalyticsResponseMeta : null;
+    },
+    fallbackMessage ?? "Podaci trenutno nisu dostupni.",
+  );
+
+  return schema
+    ? validateAnalyticsResponse<T>(checked, schema, fallbackMessage ?? "Analytics")
+    : checked;
+}
 
 type FailoverAwareWindow = Window & {
   __trendplusFailoverInstalled?: boolean;
@@ -86,14 +110,16 @@ async function fetchWithRetry<T>(
   url: string,
   signal: AbortSignal | undefined,
   timeoutMs: number,
-  fallbackMessage?: string
+  fallbackMessage?: string,
+  schema?: ZodType<unknown>,
 ): Promise<T> {
   if (isApiFailoverLayerActive()) {
     const response = await fetchAnalyticsResponse(url, signal, timeoutMs);
     if (!response.ok) {
       throw new ApiHttpError(response.status, await parseApiError(response, fallbackMessage));
     }
-    return (await response.json()) as T;
+    const payload = (await response.json()) as T;
+    return validateFetchPayload(payload, schema, fallbackMessage);
   }
 
   const { firstAttemptTimeoutMs, totalTimeoutMs } = getRetryTimeouts(timeoutMs);
@@ -103,7 +129,8 @@ async function fetchWithRetry<T>(
     if (!response.ok) {
       throw new ApiHttpError(response.status, await parseApiError(response, fallbackMessage));
     }
-    return (await response.json()) as T;
+    const payload = (await response.json()) as T;
+    return validateFetchPayload(payload, schema, fallbackMessage);
   } catch (error) {
     // Don't retry on abort or non-timeout errors
     if (error instanceof DOMException && error.name === "AbortError") {
@@ -119,7 +146,8 @@ async function fetchWithRetry<T>(
     if (!response.ok) {
       throw new ApiHttpError(response.status, await parseApiError(response, fallbackMessage));
     }
-    return (await response.json()) as T;
+    const payload = (await response.json()) as T;
+    return validateFetchPayload(payload, schema, fallbackMessage);
   }
 }
 
@@ -143,7 +171,7 @@ export async function fetchAnalyticsJson<T>(
 
   const request = (async () => {
     try {
-      return await fetchWithRetry<T>(url, options?.signal, timeoutMs, fallbackMessage);
+      return await fetchWithRetry<T>(url, options?.signal, timeoutMs, fallbackMessage, options?.schema);
     } catch (error) {
       if (error instanceof FetchTimeoutError) {
         throw new Error(fallbackMessage ? `${fallbackMessage}: zahtev je istekao.` : error.message);

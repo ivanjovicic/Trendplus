@@ -1,5 +1,6 @@
 import type { AnalyticsResponseMeta } from "../types/analytics";
 import { fetchAnalyticsJson } from "./analyticsHttp";
+import { shoeTypeSalesStatsResponseSchema } from "../validation/analyticsResponseSchemas";
 
 export interface AnalyticsRecommendation {
   status: "increase_focus" | "maintain" | "review" | "do_not_trust" | "insufficient_data";
@@ -159,6 +160,6 @@ export async function getShoeTypeSalesStats(
     "/api/analytics/shoe-type-sales-stats",
     params,
     "Greska pri ucitavanju statistike tipova obuce",
-    { signal: query.signal }
+    { signal: query.signal, schema: shoeTypeSalesStatsResponseSchema }
   );
 }

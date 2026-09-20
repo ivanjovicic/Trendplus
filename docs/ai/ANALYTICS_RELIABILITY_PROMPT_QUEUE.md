@@ -2,7 +2,11 @@
 
 Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ363
+
+Owner promotion 2026-09-20: after RQ362 reached DONE, `RQ363` moved from `WAITING` to `READY` as the critical analytics response runtime-validation follow-up.
+
+Owner claim 2026-09-20: `RQ363` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ363-cursor.lock.md`.
 
 Owner promotion 2026-09-20: after RQ361 reached DONE, `RQ362` moved from `WAITING` to `READY` as the authoritative-versus-derived metric provenance contract follow-up.
 
@@ -19185,7 +19189,7 @@ RQ333, RQ345 and RQ346 expose the same ambiguity: a browser-derived value can lo
 
 ## RQ363 - Validate critical analytics responses at the frontend API boundary
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P2
 Type: frontend/api-contract/tests
 Feature family: analytics-response-runtime-validation

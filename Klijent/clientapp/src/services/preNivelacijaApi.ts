@@ -2,6 +2,8 @@ import type { PreNivelacijaPriorityResponse } from "../types/preNivelacija";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { assertAnalyticsMetaSuccess } from "../utils/analyticsResponseMeta";
 import { normalizeDataScope } from "../utils/dataScope";
+import { validateAnalyticsResponse } from "../validation/analyticsResponseValidation";
+import { preNivelacijaPriorityResponseSchema } from "../validation/analyticsResponseSchemas";
 
 import { makeUrl } from "./analyticsApi";
 
@@ -100,9 +102,14 @@ export async function getPreNivelacijaPrioriteti(query: PreNivelacijaQuery): Pro
   }
 
   const payload = (await res.json()) as PreNivelacijaPriorityResponse;
-  return assertAnalyticsMetaSuccess(
+  const validatedPayload = assertAnalyticsMetaSuccess(
     payload,
     (response) => response.meta,
     "Pre-nivelacija prioriteti trenutno nisu dostupni."
+  );
+  return validateAnalyticsResponse(
+    validatedPayload,
+    preNivelacijaPriorityResponseSchema,
+    "Pre-nivelacija prioriteti",
   );
 }

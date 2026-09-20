@@ -75,6 +75,14 @@ import {
   AnalyticsMetaError,
   assertAnalyticsMetaSuccess as assertAnalyticsMetaSuccessShared,
 } from "../utils/analyticsResponseMeta";
+import type { ZodType } from "zod";
+import {
+  inventoryBalanceResponseSchema,
+  inventoryDetailResponseSchema,
+  inventoryInsightsResponseSchema,
+  inventoryPagedResponseSchema,
+} from "../validation/analyticsResponseSchemas";
+import { validateAnalyticsResponse } from "../validation/analyticsResponseValidation";
 
 const DEFAULT_CLIENT_CACHE_TTL_MS = 15_000;
 const DEFAULT_ANALYTICS_GET_TIMEOUT_MS = API_COLD_START_TIMEOUT_MS;
@@ -148,7 +156,8 @@ async function fetchJsonWithRetry<T>(
   url: string,
   timeoutMs: number,
   errorMessage?: string,
-  onResponse?: FetchJsonResponseHandler<T>
+  onResponse?: FetchJsonResponseHandler<T>,
+  schema?: ZodType<unknown>,
 ): Promise<T> {
   if (isApiFailoverLayerActive()) {
     const res = await fetchAnalyticsResponse(url, undefined, timeoutMs);
@@ -157,7 +166,10 @@ async function fetchJsonWithRetry<T>(
     }
     const payload = (await res.json()) as T;
     const processedPayload = onResponse?.(res, payload) ?? payload;
-    return assertAnalyticsMetaSuccess(processedPayload, errorMessage);
+    const checkedPayload = assertAnalyticsMetaSuccess(processedPayload, errorMessage);
+    return schema
+      ? validateAnalyticsResponse<T>(checkedPayload, schema, errorMessage ?? "Analytics")
+      : checkedPayload;
   }
 
   const { firstAttemptTimeoutMs, totalTimeoutMs } = getRetryTimeouts(timeoutMs);
@@ -169,7 +181,10 @@ async function fetchJsonWithRetry<T>(
     }
     const payload = (await res.json()) as T;
     const processedPayload = onResponse?.(res, payload) ?? payload;
-    return assertAnalyticsMetaSuccess(processedPayload, errorMessage);
+    const checkedPayload = assertAnalyticsMetaSuccess(processedPayload, errorMessage);
+    return schema
+      ? validateAnalyticsResponse<T>(checkedPayload, schema, errorMessage ?? "Analytics")
+      : checkedPayload;
   } catch (error) {
     // Don't retry on non-timeout errors
     if (!(error instanceof FetchTimeoutError)) {
@@ -183,7 +198,10 @@ async function fetchJsonWithRetry<T>(
     }
     const payload = (await res.json()) as T;
     const processedPayload = onResponse?.(res, payload) ?? payload;
-    return assertAnalyticsMetaSuccess(processedPayload, errorMessage);
+    const checkedPayload = assertAnalyticsMetaSuccess(processedPayload, errorMessage);
+    return schema
+      ? validateAnalyticsResponse<T>(checkedPayload, schema, errorMessage ?? "Analytics")
+      : checkedPayload;
   }
 }
 
@@ -191,7 +209,8 @@ async function fetchJson<T>(
   path: string,
   params?: URLSearchParams,
   errorMessage?: string,
-  onResponse?: FetchJsonResponseHandler<T>
+  onResponse?: FetchJsonResponseHandler<T>,
+  schema?: ZodType<unknown>,
 ): Promise<T> {
   const finalParams = params ? new URLSearchParams(params.toString()) : undefined;
   const url = makeUrl(path, finalParams);
@@ -211,7 +230,13 @@ async function fetchJson<T>(
 
   const requestGeneration = clientCacheGeneration;
   const request = (async () => {
-    const data = await fetchJsonWithRetry<T>(url, DEFAULT_ANALYTICS_GET_TIMEOUT_MS, errorMessage, onResponse);
+    const data = await fetchJsonWithRetry<T>(
+      url,
+      DEFAULT_ANALYTICS_GET_TIMEOUT_MS,
+      errorMessage,
+      onResponse,
+      schema,
+    );
     if (cacheTtlMs > 0 && requestGeneration === clientCacheGeneration) {
       responseCache.set(url, { expiresAt: Date.now() + cacheTtlMs, value: data });
     }
@@ -236,10 +261,11 @@ async function fetchJsonWithCachedFallback<T>(
   cachedPath: string,
   fallbackPath: string,
   params?: URLSearchParams,
-  errorMessage?: string
+  errorMessage?: string,
+  schema?: ZodType<unknown>,
 ): Promise<T> {
   try {
-    return await fetchJson<T>(cachedPath, params, errorMessage);
+    return await fetchJson<T>(cachedPath, params, errorMessage, undefined, schema);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const normalized = message.toLowerCase();
@@ -247,7 +273,7 @@ async function fetchJsonWithCachedFallback<T>(
       throw error;
     }
 
-    return fetchJson<T>(fallbackPath, params, errorMessage);
+    return fetchJson<T>(fallbackPath, params, errorMessage, undefined, schema);
   }
 }
 
@@ -1186,7 +1212,9 @@ export async function getInventoryBalance(
   return fetchJson(
     useCached ? "/api/analytics/cached/inventory/balance" : "/api/analytics/inventory/balance",
     params,
-    "Greska pri ucitavanju bilansa zaliha"
+    "Greska pri ucitavanju bilansa zaliha",
+    undefined,
+    inventoryBalanceResponseSchema,
   );
 }
 
@@ -1222,13 +1250,20 @@ export async function getInventoryList(
       throw new Error(await parseApiError(res, "Greska pri ucitavanju liste zaliha"));
     }
     const payload = (await res.json()) as import("../types/analytics").InventoryPagedResponse;
-    return assertAnalyticsMetaSuccess(payload, "Greska pri ucitavanju liste zaliha");
+    const checkedPayload = assertAnalyticsMetaSuccess(payload, "Greska pri ucitavanju liste zaliha");
+    return validateAnalyticsResponse(
+      checkedPayload,
+      inventoryPagedResponseSchema,
+      "Lista zaliha",
+    );
   }
 
   return fetchJson(
     "/api/analytics/cached/inventory/list",
     params,
-    "Greska pri ucitavanju liste zaliha"
+    "Greska pri ucitavanju liste zaliha",
+    undefined,
+    inventoryPagedResponseSchema,
   );
 }
 
@@ -1250,7 +1285,8 @@ export async function getInventoryInsights(options?: {
     "/api/analytics/cached/inventory/insights",
     "/api/analytics/inventory/insights",
     params,
-    "Greska pri ucitavanju inventory uvida"
+    "Greska pri ucitavanju inventory uvida",
+    inventoryInsightsResponseSchema,
   );
 }
 
@@ -1271,7 +1307,9 @@ export async function getInventoryItemDetail(
   return fetchJson(
     `/api/analytics/inventory/${id}/detail`,
     params,
-    "Greska pri ucitavanju detalja artikla"
+    "Greska pri ucitavanju detalja artikla",
+    undefined,
+    inventoryDetailResponseSchema,
   );
 }
 
