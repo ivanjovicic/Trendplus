@@ -287,7 +287,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     await waitFor(() => {
       expect(screen.getByTestId("ppn-stale-refetch-warning")).toBeInTheDocument();
     });
-    expect(screen.getByText("Vendor A")).toBeInTheDocument();
+    expect(screen.getByTitle("Vendor A")).toBeInTheDocument();
     expect(screen.queryByText("Podaci trenutno nisu dostupni")).not.toBeInTheDocument();
   });
 
