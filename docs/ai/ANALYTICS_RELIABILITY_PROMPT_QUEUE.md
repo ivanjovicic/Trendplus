@@ -4,6 +4,27 @@ Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ356` moved from `WAITING` to `READY` as P3 trust follow-up (Pre/Post advanced signal labels).
+
+Owner claim 2026-09-20: `RQ356` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ356-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Pre/Post advanced signal cards now use Serbian product labels and hints for momentum, elasticity, DiD and lost-sales signals while retaining methodology tooltips.
+- Changed files: `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`, `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: Pre/Post focused spec 33/33; `git diff --check`
+- Checks not run: full client suite, CI, live browser; analytics guardrails fail on 12 existing violations outside this localization scope
+- Run log: `.ai/runs/2026-09-20-RQ356-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Follow-up: promote `RQ357` or `RQ321` (Operacije store-filter load failure)
+- Residual risk: none known in owned Pre/Post signal-card scope
+- Prompt defect / scope repair: none
+
 Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ355` moved from `WAITING` to `READY` as P3 trust follow-up (Color empty-state quality conflation).
 
 Owner claim 2026-09-20: `RQ355` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ355-cursor.lock.md`.
@@ -1203,7 +1224,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ353 | DONE | inventory-insight-detail-fake-zero-cost | Guard unit cost fake zero on insight-to-detail navigation path |
 | RQ354 | DONE | supplier-toolbar-metadata-fake-zero | Fail closed on null supplier count in toolbar export metadata |
 | RQ355 | DONE | color-empty-quality-conflation | Base Color empty state on row count and meta, not quality notes alone |
-| RQ356 | WAITING | pre-post-english-signal-labels | Serbian labels for Pre/Post advanced signal cards |
+| RQ356 | DONE | pre-post-english-signal-labels | Serbian labels for Pre/Post advanced signal cards |
 | RQ357 | WAITING | inventory-url-pagination-search | URL-sync Inventory pagination, page size, search and compare stores |
 | RQ358 | WAITING | shoe-type-toolbar-metadata-fake-zero | Fail closed on null shoe type count in toolbar metadata export |
 | RQ359 | WAITING | analytics-reliable-query-lifecycle | Centralize abort/latest-request/stale-refetch semantics in one hook |
@@ -18652,7 +18673,7 @@ When rows empty, `emptyStateVariant` becomes `insufficient_data` if `qualityNote
 
 ## RQ356 - Serbian labels for Pre/Post advanced signal cards
 
-Status: WAITING
+Status: DONE
 Priority: P3
 Type: frontend/trust/tests
 Feature family: pre-post-english-signal-labels
