@@ -145,6 +145,10 @@ function compareViolations(current, baseline) {
   };
 }
 
+function guardrailExitCode(comparison) {
+  return comparison.added.length > 0 ? 2 : 0;
+}
+
 function printViolation(prefix, violation) {
   console.error(`${prefix}: ${violation.file}:${violation.line} -> ${violation.rule}`);
 }
@@ -166,6 +170,7 @@ function runSelfTest() {
 
   const unchanged = compareViolations(baseline.entries, baseline);
   assert(unchanged.added.length === 0 && unchanged.removed.length === 0, "unchanged baseline should pass");
+  assert(guardrailExitCode(unchanged) === 0, "unchanged baseline should exit successfully");
 
   const removed = compareViolations([baseline.entries[0]], baseline);
   assert(removed.added.length === 0 && removed.removed.length === 1, "removed debt should be reported");
@@ -173,6 +178,7 @@ function runSelfTest() {
   const newViolation = { file: "src/pages/c.tsx", rule: "rule_c", line: 30 };
   const grown = compareViolations([...baseline.entries, newViolation], baseline);
   assert(grown.added.length === 1, "new debt should fail");
+  assert(guardrailExitCode(grown) === 2, "new debt should use the failing exit code");
 
   let wildcardRejected = false;
   try {
@@ -198,7 +204,7 @@ async function main() {
   for (const violation of comparison.added) printViolation("NEW VIOLATION", violation);
   for (const violation of comparison.removed) printViolation("BASELINE REMOVED", violation);
 
-  if (comparison.added.length > 0) {
+  if (guardrailExitCode(comparison) !== 0) {
     console.error(`\nFAIL: ${comparison.added.length} new guardrail violation(s); ${comparison.unchanged.length} remain in reviewed baseline.`);
     process.exitCode = 2;
     return;
