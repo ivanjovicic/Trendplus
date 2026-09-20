@@ -17,8 +17,14 @@ vi.mock("recharts", () => ({
 }));
 
 vi.mock("../../components/analytics/AnalyticsTableToolbar", () => ({
-  default: function MockAnalyticsTableToolbar() {
-    return <div data-testid="analytics-table-toolbar" />;
+    default: function MockAnalyticsTableToolbar({ metadata = [] }: {
+      metadata?: Array<{ label: string; value: unknown }>;
+    }) {
+    return (
+      <div data-testid="analytics-table-toolbar">
+        {metadata.map((item) => <span key={item.label}>{item.label}: {String(item.value)}</span>)}
+      </div>
+    );
   },
 }));
 
@@ -143,6 +149,33 @@ vi.mock("../../services/vendorSalesNivelacijaApi", () => ({
 describe("SupplierFootwearAnalyticsPage", () => {
   afterEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("exports unavailable toolbar metadata instead of fake zero counts", async () => {
+    const baseResponse = await getVendorSalesNivelacija({});
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValueOnce({
+      ...baseResponse,
+      windowDays: null,
+      totals: {
+        ...baseResponse.totals,
+        vendorsCount: null,
+        articlesCount: null,
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <SupplierFootwearAnalyticsPage />
+      </MemoryRouter>,
+    );
+
+    const toolbar = await screen.findByTestId("analytics-table-toolbar");
+    expect(toolbar).toHaveTextContent("Dobavljača: N/A");
+    expect(toolbar).toHaveTextContent("Artikala: N/A");
+    expect(toolbar).toHaveTextContent("Prozor (dani): N/A");
+    expect(toolbar).not.toHaveTextContent("Dobavljača: 0");
+    expect(toolbar).not.toHaveTextContent("Artikala: 0");
+    expect(toolbar).not.toHaveTextContent("Prozor (dani): 0");
   });
 
   it("renders shared trust header, control bar, and data table chrome", async () => {

@@ -472,13 +472,24 @@ export default function SupplierFootwearAnalyticsPage({
 
   const hasUntrustedRows = data?.vendorStats?.some((row) => !rowHasComparableEvidence(row)) ?? false;
   const serverTotalRevenue = normalizeMetricNumber(data?.totals.postRevenue);
+  const fallbackTotalRevenue = data?.vendorStats?.length
+    ? data.vendorStats.reduce<number | null>((sum, row) => {
+      const metric = comparableMetric(row.postRevenue, rowHasComparableEvidence(row));
+      return metric == null ? null : (sum ?? 0) + metric;
+    }, 0)
+    : null;
   const totalRevenue = data?.totals.hasComparableSalesWindow === true && !hasUntrustedRows
     ? serverTotalRevenue
-      ?? (data?.vendorStats?.length ? data.vendorStats.reduce((sum, row) => sum + (comparableMetric(row.postRevenue, rowHasComparableEvidence(row)) ?? 0), 0) : null)
+      ?? fallbackTotalRevenue
     : null;
   const top5SharePct = useMemo(() => {
     if (sortedRows.length === 0 || totalRevenue == null || totalRevenue <= 0) return null;
-    const top5 = [...sortedRows].sort((a, b) => (comparableMetric(b.postRevenue, rowHasComparableEvidence(b)) ?? -1) - (comparableMetric(a.postRevenue, rowHasComparableEvidence(a)) ?? -1)).slice(0, 5).reduce((sum, item) => sum + (comparableMetric(item.postRevenue, true) ?? 0), 0);
+    const top5 = [...sortedRows]
+      .sort((a, b) => (comparableMetric(b.postRevenue, rowHasComparableEvidence(b)) ?? -1) - (comparableMetric(a.postRevenue, rowHasComparableEvidence(a)) ?? -1))
+      .slice(0, 5)
+      .map((item) => comparableMetric(item.postRevenue, rowHasComparableEvidence(item)))
+      .filter((value): value is number => value != null)
+      .reduce((sum, value) => sum + value, 0);
     return (top5 / totalRevenue) * 100;
   }, [sortedRows, totalRevenue]);
   const totalChangeRevenue = hasUntrustedRows ? null : data?.totals.changeRevenue ?? null;
@@ -614,9 +625,9 @@ export default function SupplierFootwearAnalyticsPage({
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(() => [
     { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
-    { key: "vendorsCount", label: "Dobavljača", value: data?.totals.vendorsCount ?? 0 },
-    { key: "articlesCount", label: "Artikala", value: data?.totals.articlesCount ?? 0 },
-    { key: "windowDays", label: "Prozor (dani)", value: data?.windowDays ?? 0 },
+    { key: "vendorsCount", label: "Dobavljača", value: formatMetricDisplayValue({ value: normalizeMetricNumber(data?.totals.vendorsCount), kind: "number", fallback: "N/A" }) },
+    { key: "articlesCount", label: "Artikala", value: formatMetricDisplayValue({ value: normalizeMetricNumber(data?.totals.articlesCount), kind: "number", fallback: "N/A" }) },
+    { key: "windowDays", label: "Prozor (dani)", value: formatMetricDisplayValue({ value: normalizeMetricNumber(data?.windowDays), kind: "number", fallback: "N/A" }) },
   ], [data?.generatedAt, data?.totals.articlesCount, data?.totals.vendorsCount, data?.windowDays]);
 
   useEffect(() => {

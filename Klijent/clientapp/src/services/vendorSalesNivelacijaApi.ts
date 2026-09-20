@@ -149,7 +149,7 @@ export interface VendorSalesNivelacijaInsight {
 
 export interface VendorSalesNivelacijaResponse {
     generatedAt: string;
-    windowDays: number;
+    windowDays: number | null;
     vendorId: number | null;
     eventDate: string | null;
     from: string | null;
@@ -190,9 +190,9 @@ export interface VendorSalesNivelacijaQuery {
 export interface VendorSalesNivelacijaOption {
     eventDate: string;
     eventsCount: number;
-    vendorsCount: number;
-    articlesCount: number;
-    activeArticlesCount: number;
+    vendorsCount: number | null;
+    articlesCount: number | null;
+    activeArticlesCount: number | null;
     hasSalesWindow: boolean;
     label: string;
 }
