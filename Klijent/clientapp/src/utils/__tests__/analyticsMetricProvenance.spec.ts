@@ -63,6 +63,17 @@ describe("analyticsMetricProvenance", () => {
     expect(isAuthoritativeAnalyticsMetric(meta, "counts")).toBe(false);
   });
 
+  it("preserves the same provenance across table, detail, chart, export, and action projections", () => {
+    const surfaces = ["table", "detail", "chart", "export", "action"];
+    const expected = readAnalyticsMetricProvenance(meta, "revenueShare");
+
+    for (const surface of surfaces) {
+      const projectedMeta = { ...meta, surface };
+      expect(readAnalyticsMetricProvenance(projectedMeta, "revenueShare"), surface).toEqual(expected);
+      expect(isAuthoritativeAnalyticsMetric(projectedMeta, "revenueShare")).toBe(true);
+    }
+  });
+
   it("fails closed for missing or contradictory provenance", () => {
     expect(readAnalyticsMetricProvenance(null, "margin")).toBeNull();
     expect(readAnalyticsMetricProvenance({ metricProvenance: {} }, "margin")).toBeNull();
