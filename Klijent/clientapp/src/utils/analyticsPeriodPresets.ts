@@ -24,14 +24,14 @@ export function getAnalyticsPeriodPresetRange(
 ): { fromDate: string; toDate: string } {
   const from = new Date(now);
   const to = new Date(now);
-  to.setHours(23, 59, 59, 999);
+  to.setUTCHours(23, 59, 59, 999);
 
-  if (preset === "30d") from.setDate(from.getDate() - 29);
-  if (preset === "90d") from.setDate(from.getDate() - 89);
-  if (preset === "180d") from.setDate(from.getDate() - 179);
-  if (preset === "365d") from.setDate(from.getDate() - 364);
+  if (preset === "30d") from.setUTCDate(from.getUTCDate() - 29);
+  if (preset === "90d") from.setUTCDate(from.getUTCDate() - 89);
+  if (preset === "180d") from.setUTCDate(from.getUTCDate() - 179);
+  if (preset === "365d") from.setUTCDate(from.getUTCDate() - 364);
 
-  from.setHours(0, 0, 0, 0);
+  from.setUTCHours(0, 0, 0, 0);
 
   const toDateInput = (date: Date): string => date.toISOString().slice(0, 10);
   return { fromDate: toDateInput(from), toDate: toDateInput(to) };

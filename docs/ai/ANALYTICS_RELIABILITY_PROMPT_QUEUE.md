@@ -19,8 +19,8 @@ Owner claim 2026-09-20: `RQ344` transitioned `READY -> IN_PROGRESS`; local runti
 - Run log: `.ai/runs/2026-09-20-RQ344-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `dc487179`
+- Main verification: passed - fresh `origin/main` contains implementation SHA `dc487179`
 - Follow-up: promote `RQ345` (Operacije frontend share recompute) or `RQ321` (Operacije store filter load failure)
 - Residual risk: supplier dropdown already used full-universe `supplierLeaderboard`; seasons/footwear now aligned via facets
 - Prompt defect / scope repair: none

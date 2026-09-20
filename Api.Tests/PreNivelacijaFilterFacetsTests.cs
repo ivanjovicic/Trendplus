@@ -1,5 +1,6 @@
-using Api.Endpoints;
 using Api.Models;
+using Xunit;
+using Trendplus2.Endpoints;
 
 namespace Api.Tests;
 
