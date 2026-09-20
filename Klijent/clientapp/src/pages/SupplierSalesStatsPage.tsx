@@ -1143,7 +1143,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(
     () => [
       { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
-      { key: "suppliers", label: "Dobavljača", value: data?.totals.brojDobavljaca ?? 0 },
+      { key: "suppliers", label: "Dobavljača", value: formatMetricDisplayValue({ value: data?.totals.brojDobavljaca, kind: "number", fallback: "N/A" }) },
       { key: "unknownSuppliers", label: "Nepoznato/N-A", value: unknownSuppliers.length },
       { key: "marginCoverage", label: "Pokriće istorijskog troška %", value: fmtPct(data?.dataQuality.missingCostRevenueSharePct == null ? null : 100 - data.dataQuality.missingCostRevenueSharePct, 1) },
       { key: "fallbackCoverage", label: "Promet sa procenjenom nabavnom %", value: fmtPct(data?.dataQuality.estimatedCostRevenueSharePct, 1) },
