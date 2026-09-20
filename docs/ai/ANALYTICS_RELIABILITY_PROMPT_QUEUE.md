@@ -18873,10 +18873,10 @@ Commit suggestion: `feat(analytics): centralize reliable query lifecycle`
 - Checks run: hook contract tests 8/8; migrated page suites 146/146; `npm run typecheck`; `git diff --check`; encoding check passed
 - Checks not run: full client suite, live browser, CI; analytics guardrails report 12 pre-existing violations in wider decision/provenance paths and does not complete its chained typecheck step
 - Run log: `.ai/runs/2026-09-20-RQ359-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: pull-request
-- Main commit SHA: pending
-- Main verification: pending until the feature branch is delivered to `main`
+- Main commit SHA: `94955728`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `94955728`
 - Missed: no known RQ359 scope omissions
 - Follow-up: promote `RQ360` after RQ359 main delivery
 - Residual risk: Inventory now uses a conservative aggregate query snapshot; an optional panel failure preserves the previous full snapshot and surfaces the shared stale warning.
