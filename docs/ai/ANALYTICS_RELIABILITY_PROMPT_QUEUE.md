@@ -19,8 +19,8 @@ Owner claim 2026-09-20: `RQ349` transitioned `READY -> IN_PROGRESS`; local runti
 - Run log: `.ai/runs/2026-09-20-RQ349-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `c1ee115c`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `c1ee115c`
 - Follow-up: promote `RQ350` (table sort URL state) or `RQ321` (Operacije store filter load failure)
 - Residual risk: backend currently emits no Color `decisionScore` field, so the UI remains `N/A` until that authoritative DTO field is supplied
 - Prompt defect / scope repair: none
