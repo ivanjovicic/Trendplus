@@ -897,8 +897,8 @@ export default function DailySalesStatsPage() {
       fullLabel: fmtDate(row.date),
       totalRevenue: finiteOrNull(row.totalRevenue),
       totalItemsSold: finiteOrNull(row.totalItemsSold),
-      ma7Revenue: buildRollingAverage(chronologicalChartRows, index, (currentRow) => currentRow.totalRevenue, 7),
-      ma7Items: buildRollingAverage(chronologicalChartRows, index, (currentRow) => currentRow.totalItemsSold, 7),
+      ma7Revenue: buildRollingAverage([...chronologicalChartRows], index, (currentRow) => currentRow.totalRevenue, 7),
+      ma7Items: buildRollingAverage([...chronologicalChartRows], index, (currentRow) => currentRow.totalItemsSold, 7),
     }))
   ), [chronologicalChartRows]);
 
@@ -1714,7 +1714,7 @@ export default function DailySalesStatsPage() {
                   tableKey="daily-sales-stats"
                   tableTitle="Dnevna prodaja po smeni i dobavljačima"
                   columns={toolbarColumns}
-                  rows={dailyProjections.exportRows}
+                  rows={[...dailyProjections.exportRows]}
                   filters={toolbarFilters}
                   metadata={toolbarMetadata}
                   defaultOrientation="portrait"

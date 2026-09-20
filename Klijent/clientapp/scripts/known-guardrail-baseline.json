@@ -17,13 +17,13 @@
     {
       "file": "src/pages/PreNivelacijaPriorityPage.tsx",
       "rule": "decisionScore_assign",
-      "line": 562,
+      "line": 563,
       "reason": "Existing backend-owned decision-score projection requires a reviewed authority exception."
     },
     {
       "file": "src/pages/PreNivelacijaPriorityPage.tsx",
       "rule": "reliabilityPct_assign",
-      "line": 287,
+      "line": 288,
       "reason": "Existing backend reliability projection requires a reviewed authority exception."
     },
     {
@@ -101,7 +101,7 @@
     {
       "file": "src/pages/DailySalesStatsPage.tsx",
       "rule": "refetch_setData_null",
-      "line": 730,
+      "line": 731,
       "reason": "Existing daily-sales refetch transition predates the shared reliable-query lifecycle."
     },
     {
@@ -269,7 +269,7 @@
     {
       "file": "src/services/analyticsHttp.ts",
       "rule": "swallowed_fetch_failure",
-      "line": 60,
+      "line": 63,
       "reason": "Existing analytics HTTP fallback wrapper requires a reviewed compatibility exception."
     },
     {
