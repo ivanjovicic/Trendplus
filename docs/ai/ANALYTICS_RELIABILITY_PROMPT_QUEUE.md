@@ -2,7 +2,11 @@
 
 Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ364
+
+Owner promotion 2026-09-20: after RQ363 reached DONE, `RQ364` moved from `WAITING` to `READY` as the dataset-projection semantics follow-up.
+
+Owner claim 2026-09-20: `RQ364` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ364-cursor.lock.md`.
 
 Owner promotion 2026-09-20: after RQ362 reached DONE, `RQ363` moved from `WAITING` to `READY` as the critical analytics response runtime-validation follow-up.
 
@@ -19267,7 +19271,7 @@ Malformed runtime values such as `NaN`, `Infinity`, negative counts or percentag
 
 ## RQ364 - Separate analytics datasets by purpose
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P2
 Type: frontend/architecture/tests
 Feature family: analytics-dataset-projections
