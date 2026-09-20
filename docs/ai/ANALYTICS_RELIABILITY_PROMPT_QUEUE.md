@@ -4,6 +4,27 @@ Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ351` moved from `WAITING` to `READY` as P3 trust follow-up (Inventory scoped refresh).
+
+Owner claim 2026-09-20: `RQ351` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ351-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Inventory refresh controls now advance the existing reload generation and refetch scoped data in place instead of calling `window.location.reload()`, preserving filters, pagination, detail and in-memory UI state.
+- Changed files: `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.signalWindow.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: Inventory signal-window/refresh specs 3/3; `git diff --check`
+- Checks not run: full client suite, CI, live browser; analytics guardrails fail on 12 existing violations outside this refresh scope
+- Run log: `.ai/runs/2026-09-20-RQ351-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Follow-up: promote `RQ352` (Daily Sales empty-state distinction) or `RQ321` (Operacije store-filter load failure)
+- Residual risk: none known in owned scope
+- Prompt defect / scope repair: none
+
 Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ350` moved from `WAITING` to `READY` as P3 trust follow-up (Operacije table sort URL state).
 
 Owner claim 2026-09-20: `RQ350` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ350-cursor.lock.md`.
@@ -1093,7 +1114,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ348 | DONE | supplier-footwear-metadata-fake-zero | Fail closed on null counts in Supplier Footwear toolbar metadata |
 | RQ349 | DONE | color-decision-score-wrong-field | Map Color decisionScore to authoritative backend field, not rounded confidencePct |
 | RQ350 | DONE | operations-table-sort-url-state | Persist table sort in URL on Shoe, Color and Pre/Post |
-| RQ351 | WAITING | inventory-hard-reload-refresh | Replace Inventory full page reload refresh with scoped refetch |
+| RQ351 | DONE | inventory-hard-reload-refresh | Replace Inventory full page reload refresh with scoped refetch |
 | RQ352 | WAITING | daily-sales-filtered-empty-confusion | Distinguish Daily Sales store-empty from filter-no-match empty state |
 | RQ353 | WAITING | inventory-insight-detail-fake-zero-cost | Guard unit cost fake zero on insight-to-detail navigation path |
 | RQ354 | WAITING | supplier-toolbar-metadata-fake-zero | Fail closed on null supplier count in toolbar export metadata |
@@ -18320,7 +18341,7 @@ Table sort field/direction not URL-backed (RQ326/327 cover Pre-Nivelacija + Dail
 
 ## RQ351 - Replace Inventory full page reload refresh with scoped refetch
 
-Status: WAITING
+Status: DONE
 Priority: P3
 Type: frontend/trust/tests
 Feature family: inventory-hard-reload-refresh
