@@ -4,6 +4,27 @@ Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ343` moved from `WAITING` to `READY` as P2 trust follow-up (Pre-Nivelacija expansion persistence).
+
+Owner claim 2026-09-20: `RQ343` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ343-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Pre-Nivelacija list reload no longer clears expanded row unconditionally; expansion persists when the same artikalId remains in the new page response and clears only when absent.
+- Changed files: `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`, `Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: PreNivelacijaPriorityPage spec 39/39; `git diff --check`
+- Checks not run: full client suite, CI, live browser, analytics guardrails (pre-existing violations unrelated to owned scope)
+- Run log: `.ai/runs/2026-09-20-RQ343-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Follow-up: promote `RQ344` (Pre-Nivelacija filter options page bias) or `RQ321` (Operacije store filter load failure)
+- Residual risk: none known in owned scope
+- Prompt defect / scope repair: none
+
 Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ342` moved from `WAITING` to `READY` as P2 trust follow-up (Operacije request abort races).
 
 Owner claim 2026-09-20: `RQ342` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ342-cursor.lock.md`.
@@ -914,7 +935,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ340 | DONE | shoe-type-stale-refetch-dead-path | Enable Shoe Type stale overlay on refetch failure |
 | RQ341 | DONE | color-stale-refetch-contract | Add Color stale/partial refetch contract matching Operacije standard |
 | RQ342 | DONE | operations-request-abort-races | Add AbortController to Operacije list fetches beyond Daily Sales |
-| RQ343 | WAITING | pre-nivelacija-expansion-persistence | Preserve Pre-Nivelacija expanded row across pagination reload |
+| RQ343 | DONE | pre-nivelacija-expansion-persistence | Preserve Pre-Nivelacija expanded row across pagination reload |
 | RQ344 | WAITING | pre-nivelacija-filter-options-page-bias | Load Pre-Nivelacija filter options from full universe, not current page |
 | RQ345 | WAITING | operations-frontend-share-recompute | Remove frontend revenue share recompute on Shoe and Color when backend missing |
 | RQ346 | WAITING | shoe-type-avg-margin-frontend-aggregate | Replace frontend simple-mean avg margin KPI with backend or honest label |
@@ -17773,7 +17794,7 @@ Only Daily Sales aborts in-flight requests; other Operacije screens use `request
 
 ## RQ343 - Preserve Pre-Nivelacija expanded row across pagination reload
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/trust/tests
 Feature family: pre-nivelacija-expansion-persistence

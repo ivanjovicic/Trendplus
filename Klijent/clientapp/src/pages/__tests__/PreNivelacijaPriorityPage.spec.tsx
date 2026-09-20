@@ -925,6 +925,41 @@ describe("PreNivelacijaPriorityPage", () => {
     expect(screen.getByTestId("location-search")).toHaveTextContent("focus=review");
   });
 
+  it("keeps expanded detail visible across pagination when the same artikal remains in results", async () => {
+    getPreNivelacijaPrioritetiMock
+      .mockResolvedValueOnce({
+        ...makeResponse([
+          makeCandidate({ artikalId: 101, sku: "SKU-101" }),
+          makeCandidate({ artikalId: 102, sku: "SKU-102" }),
+        ]),
+        page: 1,
+        pageSize: 1,
+        totalCandidates: 2,
+      })
+      .mockResolvedValueOnce({
+        ...makeResponse([makeCandidate({ artikalId: 101, sku: "SKU-101" })]),
+        page: 2,
+        pageSize: 1,
+        totalCandidates: 2,
+      });
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    const table = await screen.findByTestId("pre-nivelacija-prioriteti-data-table");
+    const firstRow = within(table).getByText("SKU-101").closest("tr");
+    fireEvent.click(within(firstRow as HTMLElement).getByRole("button", { name: "Detalji" }));
+    expect(screen.getByText("Detalj odluke: SKU-101")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Sledeća" }));
+
+    await waitFor(() => expect(getPreNivelacijaPrioritetiMock).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 })));
+    expect(await screen.findByText("Detalj odluke: SKU-101")).toBeInTheDocument();
+  });
+
   it("hides inline detail when the active focus filter excludes the selected row", async () => {
     render(
       <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti"]}>

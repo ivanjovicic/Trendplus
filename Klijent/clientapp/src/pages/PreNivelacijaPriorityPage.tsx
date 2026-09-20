@@ -465,7 +465,11 @@ export default function PreNivelacijaPriorityPage() {
 
       if (requestId !== requestIdRef.current) return;
       setData(result);
-      setExpandedArtikalId(null);
+      setExpandedArtikalId((current) => {
+        if (current == null) return null;
+        const stillPresent = result.candidates.some((candidate) => candidate.artikalId === current);
+        return stillPresent ? current : null;
+      });
     } catch (reason) {
       if (reason instanceof DOMException && reason.name === "AbortError") {
         return;
