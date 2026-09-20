@@ -17,10 +17,10 @@ Owner claim 2026-09-20: `RQ334` transitioned `READY -> IN_PROGRESS`; local runti
 - Checks run: SupplierSalesStatsPage.premium spec 18/18; `npm run check:analytics-guardrails`; `git diff --check`
 - Checks not run: full client suite, CI, live browser
 - Run log: `.ai/runs/2026-09-20-RQ334-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `cebfcb59`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `cebfcb59`
 - Follow-up: promote `RQ335` (Daily Sales previous-period silent failure) or `RQ336` (Daily Sales chart chronological rows)
 - Residual risk: none known in owned scope
 - Prompt defect / scope repair: none
