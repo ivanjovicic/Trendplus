@@ -5,14 +5,15 @@ Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / no PR
 Main commit SHA: d9f43c6a
-Main verification: pending final origin/main verification after push
-Evidence state: synchronized after initial delivery commit; final remote verification pending
+Main verification: d9f43c6a is contained in origin/main; final main/origin/main equality verified after evidence delivery
+Evidence state: synchronized
 
 ## What was done
 - Added systemic Reliability Contract Layer prompts RQ359-RQ367 as `WAITING` entries.
 - Covered shared async query lifecycle, reusable invariant tests, guardrail expansion, authoritative/derived provenance, Zod response validation, dataset projection separation, PostgreSQL migration/bootstrap smoke, non-growing guardrail baseline and machine-generated validation evidence.
 - Corrected the live queue summary so completed RQ333-RQ336 are marked `DONE` and the round-3 intake distinguishes DONE RQ331-RQ344 from WAITING RQ345-RQ358.
 - Updated `MASTER_ROADMAP.md` with the planning intake and the RQ345-RQ367 waiting range.
+- Integrated the newer remote `main` audit delivery through RQ347 without overwriting either the audit fixes or this reliability intake; the roadmap now records RQ283-RQ347 as DONE and RQ348-RQ367 as WAITING.
 - Did not promote or claim any prompt; the analytics queue remains `Current READY prompt: none`.
 
 ## Files changed
