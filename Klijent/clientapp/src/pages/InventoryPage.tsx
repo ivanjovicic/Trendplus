@@ -1,5 +1,6 @@
 ﻿import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Warehouse } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import { AnalyticsMetaError, createInventoryReportSchedule, exportInventoryReport, getAnalyticsActionSourceStatuses, getForecast, getInventoryActionSuggestions, getInventoryAlerts, getInventoryBalance, getInventoryInsights, getInventoryItemDetail, getInventoryList, getInventoryReportSchedules, getInventoryStoreComparison, getRebalanceSuggestions, getSizeCurve, getStores, getSupplierFilters, previewInventoryReport, printBlankInventoryForm, runInventoryReportScheduleNow, saveInventoryActionDecision, upsertAnalyticsActionWithResult } from "../services/analyticsApi";
 import { downloadExport, resolveApiUrl, waitForExport } from "../services/exportApi";
 import type { AnalyticsActionDataQualityStatus, AnalyticsResponseMeta, ForecastDto, InventoryActionSuggestion, InventoryActionWorkflow, InventoryAlertListDto, InventoryBalance, InventoryInsights, InventoryItemDetail, InventoryPagedResponse, InventoryReportSchedule, InventoryReportScheduleInput, InventoryStoreComparison, RebalanceListDto, SizeCurveDto, StoreOption, SupplierFilterOption } from "../types/analytics";
@@ -37,12 +38,37 @@ import {
 } from "../utils/supplierFilterFallbackState";
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 250];
+const INVENTORY_SORT_OPTIONS = ["kolicina", "naziv", "vrednost", "azuriranje", "oosRisk", "overstockRisk"] as const;
+const DEFAULT_INVENTORY_PAGE_SIZE = 50;
 const DEFAULT_COMPARE_STORES = 3;
 const TOP_SUPPLIERS_CHART = 6;
 const TOP_RISK_ITEMS = 5;
 const TOP_VALUE_ITEMS = 5;
 const FORECAST_OOS_DISPLAY = 7;
 const FORECAST_OVERSTOCK_DISPLAY = 7;
+
+function parseInventoryPositiveInt(value: string | null, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function parseInventoryPageSize(value: string | null): number {
+  const parsed = parseInventoryPositiveInt(value, DEFAULT_INVENTORY_PAGE_SIZE);
+  return PAGE_SIZE_OPTIONS.includes(parsed) ? parsed : DEFAULT_INVENTORY_PAGE_SIZE;
+}
+
+function parseInventoryCompareStores(value: string | null): number[] {
+  if (!value) return [];
+  return Array.from(new Set(value.split(",")
+    .map((entry) => Number(entry))
+    .filter((entry) => Number.isInteger(entry) && entry > 0)));
+}
+
+function parseInventorySort(value: string | null): string {
+  return value && INVENTORY_SORT_OPTIONS.includes(value as (typeof INVENTORY_SORT_OPTIONS)[number])
+    ? value
+    : "kolicina";
+}
 const ALERTS_DISPLAY_COUNT = 12;
 const REBALANCE_DISPLAY_COUNT = 20;
 const REBALANCE_FETCH_LIMIT = 20;
@@ -296,6 +322,7 @@ export function buildInventorySignalActionSpec(row: InventoryRow): {
 }
 
 export default function InventoryPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [balance, setBalance] = useState<InventoryBalance | null>(null);
   const [pageData, setPageData] = useState<InventoryPagedResponse | null>(null);
   const [insights, setInsights] = useState<InventoryInsights | null>(null);
@@ -314,13 +341,19 @@ export default function InventoryPage() {
   const [filtersLoading, setFiltersLoading] = useState(true);
   const [operationsLoading, setOperationsLoading] = useState(true);
   const [error, setError] = useState<InventoryPageError | null>(null);
-  const [searchInput, setSearchInput] = useState("");
-  const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
-  const [selectedSupplierId, setSelectedSupplierId] = useState<number | null>(null);
-  const [compareStoreIds, setCompareStoreIds] = useState<number[]>([]);
-  const [sortBy, setSortBy] = useState("kolicina");
-  const [pageNumber, setPageNumber] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
+  const [searchInput, setSearchInput] = useState(() => searchParams.get("search") ?? "");
+  const [selectedStoreId, setSelectedStoreId] = useState<number | null>(() => {
+    const parsed = parseInventoryPositiveInt(searchParams.get("storeId"), 0);
+    return parsed > 0 ? parsed : null;
+  });
+  const [selectedSupplierId, setSelectedSupplierId] = useState<number | null>(() => {
+    const parsed = parseInventoryPositiveInt(searchParams.get("supplierId"), 0);
+    return parsed > 0 ? parsed : null;
+  });
+  const [compareStoreIds, setCompareStoreIds] = useState<number[]>(() => parseInventoryCompareStores(searchParams.get("compareStores")));
+  const [sortBy, setSortBy] = useState(() => parseInventorySort(searchParams.get("sortBy")));
+  const [pageNumber, setPageNumber] = useState(() => parseInventoryPositiveInt(searchParams.get("page"), 1));
+  const [pageSize, setPageSize] = useState(() => parseInventoryPageSize(searchParams.get("pageSize")));
   const [detailRow, setDetailRow] = useState<InventoryRow | null>(null);
   const [detailTab, setDetailTab] = useState<"overview" | "sizeCurve">("overview");
   const [detailData, setDetailData] = useState<InventoryItemDetail | null>(null);
@@ -369,6 +402,55 @@ export default function InventoryPage() {
   const requestSequenceRef = useRef(0);
   const signalRequestSequenceRef = useRef(0);
   const mountedRef = useRef(true);
+
+  useEffect(() => {
+    const nextSearch = searchParams.get("search") ?? "";
+    const nextStore = parseInventoryPositiveInt(searchParams.get("storeId"), 0);
+    const nextSupplier = parseInventoryPositiveInt(searchParams.get("supplierId"), 0);
+    setSearchInput((current) => current === nextSearch ? current : nextSearch);
+    setSelectedStoreId((current) => {
+      const next = nextStore > 0 ? nextStore : null;
+      return current === next ? current : next;
+    });
+    setSelectedSupplierId((current) => {
+      const next = nextSupplier > 0 ? nextSupplier : null;
+      return current === next ? current : next;
+    });
+    setCompareStoreIds((current) => {
+      const next = parseInventoryCompareStores(searchParams.get("compareStores"));
+      return current.length === next.length && current.every((value, index) => value === next[index]) ? current : next;
+    });
+    setSortBy((current) => {
+      const next = parseInventorySort(searchParams.get("sortBy"));
+      return current === next ? current : next;
+    });
+    setPageNumber((current) => {
+      const next = parseInventoryPositiveInt(searchParams.get("page"), 1);
+      return current === next ? current : next;
+    });
+    setPageSize((current) => {
+      const next = parseInventoryPageSize(searchParams.get("pageSize"));
+      return current === next ? current : next;
+    });
+  }, [searchParams]);
+
+  useEffect(() => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      const setOrDelete = (key: string, value: string | null) => {
+        if (value == null || value.length === 0) next.delete(key);
+        else next.set(key, value);
+      };
+      setOrDelete("search", searchInput);
+      setOrDelete("storeId", selectedStoreId == null ? null : String(selectedStoreId));
+      setOrDelete("supplierId", selectedSupplierId == null ? null : String(selectedSupplierId));
+      setOrDelete("compareStores", compareStoreIds.length > 0 ? compareStoreIds.join(",") : null);
+      setOrDelete("sortBy", sortBy === "kolicina" ? null : sortBy);
+      setOrDelete("page", pageNumber === 1 ? null : String(pageNumber));
+      setOrDelete("pageSize", pageSize === DEFAULT_INVENTORY_PAGE_SIZE ? null : String(pageSize));
+      return next.toString() === current.toString() ? current : next;
+    }, { replace: true });
+  }, [compareStoreIds, pageNumber, pageSize, searchInput, selectedStoreId, selectedSupplierId, setSearchParams, sortBy]);
 
   useEffect(() => {
     mountedRef.current = true;

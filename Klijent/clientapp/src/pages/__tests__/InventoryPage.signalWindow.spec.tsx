@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import InventoryPage from "../InventoryPage";
 import { setDataScope } from "../../utils/dataScope";
 
@@ -54,7 +54,20 @@ vi.mock("../../components/inventory/ExportSchedulerPanel", () => ({ ExportSchedu
 vi.mock("../../components/inventory/InventoryAlertsFeed", () => ({ InventoryAlertsFeed: () => null }));
 vi.mock("../../components/inventory/InventoryInsightPanels", () => ({ InventoryInsightPanels: () => null }));
 vi.mock("../../components/inventory/InventoryItemsTable", () => ({
-  InventoryItemsTable: () => <div data-testid="inventory-items-table" />,
+  InventoryItemsTable: ({
+    pageNumber,
+    pageSize,
+    onNextPage,
+  }: {
+    pageNumber: number;
+    pageSize: number;
+    onNextPage: () => void;
+  }) => (
+    <div data-testid="inventory-items-table">
+      <span>{`page=${pageNumber};size=${pageSize}`}</span>
+      <button type="button" onClick={onNextPage}>Sledeća strana</button>
+    </div>
+  ),
 }));
 vi.mock("../../components/inventory/InventoryKPICards", () => ({ InventoryKPICards: () => null }));
 vi.mock("../../components/inventory/InventoryPriorityPanels", () => ({ InventoryPriorityPanels: () => null }));
@@ -62,7 +75,20 @@ vi.mock("../../components/inventory/MailSchedulerPanel", () => ({ MailSchedulerP
 vi.mock("../../components/inventory/RebalancingTable", () => ({ RebalancingTable: () => null }));
 vi.mock("../../components/inventory/SKUDetailModal", () => ({ SKUDetailModal: () => null }));
 vi.mock("../../components/inventory/SizeCurvePanel", () => ({ SizeCurvePanel: () => null }));
-vi.mock("../../components/inventory/StoreComparisonPanel", () => ({ StoreComparisonPanel: () => null }));
+vi.mock("../../components/inventory/StoreComparisonPanel", () => ({
+  StoreComparisonPanel: ({
+    compareStoreIds,
+    onToggleStore,
+  }: {
+    compareStoreIds: number[];
+    onToggleStore: (storeId: number) => void;
+  }) => (
+    <div data-testid="store-comparison-panel">
+      <span>{compareStoreIds.join(",")}</span>
+      <button type="button" onClick={() => onToggleStore(1)}>Toggle store 1</button>
+    </div>
+  ),
+}));
 vi.mock("../../components/ErrorBoundary", () => ({ ErrorBoundary: ({ children }: { children: ReactNode }) => <>{children}</> }));
 
 function seedInventoryMocks() {
@@ -115,6 +141,11 @@ function seedInventoryMocks() {
   getForecastMock.mockResolvedValue({ items: [], generatedAtUtc: "2026-05-26T12:00:00Z" });
   getInventoryAlertsMock.mockResolvedValue({ items: [] });
   getRebalanceSuggestionsMock.mockResolvedValue({ items: [] });
+}
+
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="location-search">{location.search}</output>;
 }
 
 describe("InventoryPage signal window refresh", () => {
@@ -191,6 +222,36 @@ describe("InventoryPage signal window refresh", () => {
 
     await waitFor(() => {
       expect(getInventoryListMock.mock.calls.length).toBeGreaterThan(initialCallCount);
+    });
+  });
+
+  it("restores Inventory pagination, search, page size, and compare stores from URL", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/inventory?page=3&pageSize=100&search=patika&compareStores=1,2"]}>
+        <LocationProbe />
+        <InventoryPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(getInventoryListMock).toHaveBeenCalledWith(expect.objectContaining({
+        pageNumber: 3,
+        pageSize: 100,
+        search: "patika",
+      }));
+      expect(getInventoryStoreComparisonMock).toHaveBeenCalledWith(expect.objectContaining({
+        compareStoreIds: [1, 2],
+      }));
+    });
+
+    expect(screen.getByRole("searchbox", { name: "Pretraga artikala" })).toHaveValue("patika");
+    expect(screen.getByTestId("inventory-items-table")).toHaveTextContent("page=3;size=100");
+    expect(screen.getByTestId("store-comparison-panel")).toHaveTextContent("1,2");
+
+    fireEvent.click(screen.getByRole("button", { name: "Sledeća strana" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location-search")).toHaveTextContent("page=4");
     });
   });
 
