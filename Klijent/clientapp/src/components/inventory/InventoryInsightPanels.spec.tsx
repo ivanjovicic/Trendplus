@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { InventoryInsightPanels } from "./InventoryInsightPanels";
 import type { InventoryInsights, InventoryRow } from "./types";
@@ -143,5 +143,45 @@ describe("InventoryInsightPanels", () => {
     expect(screen.getByText("82%")).toBeInTheDocument();
     expect(screen.getByText("Dozvoljena")).toBeInTheDocument();
     expect(screen.getByText("replenish_needed")).toBeInTheDocument();
+  });
+
+  it("keeps insight detail unit cost unavailable when it cannot be derived", () => {
+    const onOpenDetail = vi.fn();
+
+    render(
+      <InventoryInsightPanels
+        insights={buildInsights()}
+        insightsLoading={false}
+        stores={[]}
+        suppliers={[]}
+        rows={[]}
+        onOpenDetail={onOpenDetail}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Model A/ }));
+
+    expect(onOpenDetail).toHaveBeenCalledWith(expect.objectContaining({ unitCost: null, nabavnaCena: null }));
+  });
+
+  it("derives insight detail unit cost only from positive measured value and quantity", () => {
+    const insights = buildInsights();
+    insights.topAgedItems[0] = { ...insights.topAgedItems[0], quantity: 10, estimatedValue: 2500 };
+    const onOpenDetail = vi.fn();
+
+    render(
+      <InventoryInsightPanels
+        insights={insights}
+        insightsLoading={false}
+        stores={[]}
+        suppliers={[]}
+        rows={[]}
+        onOpenDetail={onOpenDetail}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Model A/ }));
+
+    expect(onOpenDetail).toHaveBeenCalledWith(expect.objectContaining({ unitCost: 250, nabavnaCena: 250 }));
   });
 });
