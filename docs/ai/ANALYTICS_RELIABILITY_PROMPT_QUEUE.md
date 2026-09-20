@@ -4,6 +4,27 @@ Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ358` moved from `WAITING` to `READY` as P3 trust follow-up (Shoe Type toolbar metadata fake zero).
+
+Owner claim 2026-09-20: `RQ358` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ358-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Shoe Type toolbar/export metadata now formats an unavailable backend shoe-type count as `N/A` instead of `0`.
+- Changed files: `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/ShoeTypeSalesStatsPage.premium.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: Shoe Type focused specs 37/37; `git diff --check`
+- Checks not run: full client suite, CI, live browser; analytics guardrails fail on 12 existing violations outside this metadata scope
+- Run log: `.ai/runs/2026-09-20-RQ358-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Follow-up: promote `RQ359` or `RQ321` (Operacije store-filter load failure)
+- Residual risk: none known in owned Shoe Type toolbar metadata scope
+- Prompt defect / scope repair: none
+
 Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ357` moved from `WAITING` to `READY` as P3 trust follow-up (Inventory URL pagination/search/compare state).
 
 Owner claim 2026-09-20: `RQ357` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ357-cursor.lock.md`.
@@ -1247,7 +1268,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ355 | DONE | color-empty-quality-conflation | Base Color empty state on row count and meta, not quality notes alone |
 | RQ356 | DONE | pre-post-english-signal-labels | Serbian labels for Pre/Post advanced signal cards |
 | RQ357 | DONE | inventory-url-pagination-search | URL-sync Inventory pagination, page size, search and compare stores |
-| RQ358 | WAITING | shoe-type-toolbar-metadata-fake-zero | Fail closed on null shoe type count in toolbar metadata export |
+| RQ358 | DONE | shoe-type-toolbar-metadata-fake-zero | Fail closed on null shoe type count in toolbar metadata export |
 | RQ359 | WAITING | analytics-reliable-query-lifecycle | Centralize abort/latest-request/stale-refetch semantics in one hook |
 | RQ360 | WAITING | analytics-invariant-test-kit | Reuse one invariant matrix across critical analytics screens |
 | RQ361 | WAITING | analytics-guardrail-expansion | Detect fake-zero, silent-catch, frontend-aggregate and pagination anti-patterns |
@@ -18786,7 +18807,7 @@ Pagination, page size, search, compare-store selection not URL-synced.
 
 ## RQ358 - Fail closed on null shoe type count in toolbar metadata export
 
-Status: WAITING
+Status: DONE
 Priority: P3
 Type: frontend/trust/tests
 Feature family: shoe-type-toolbar-metadata-fake-zero
