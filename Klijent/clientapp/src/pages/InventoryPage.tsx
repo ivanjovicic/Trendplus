@@ -583,6 +583,7 @@ export default function InventoryPage() {
     error: queryError,
     errorReason,
     staleWarning,
+    staleReason,
     refetch,
   } = useReliableAnalyticsQuery<InventoryLifecycleSnapshot>({
     query: inventoryQuery,
@@ -601,7 +602,7 @@ export default function InventoryPage() {
   const rebalance = inventorySnapshot?.rebalance ?? null;
   const loading = initialLoading || refetching;
   const insightsLoading = loading;
-  const insightsError = queryError;
+  const insightsError = queryError ?? staleWarning;
   const operationsLoading = loading;
   const forecastLoading = loading;
   const alertsLoading = loading;
@@ -613,8 +614,11 @@ export default function InventoryPage() {
     setWorkflowOverride(inventorySnapshot?.actionWorkflow ?? null);
   }, [inventorySnapshot]);
   const effectiveActionWorkflow = workflowOverride ?? actionWorkflow;
-  const inventoryError = queryError
-    ? toInventoryPageError(errorReason ?? queryError, "Inventory podaci trenutno nisu dostupni.")
+  const inventoryError = queryError || staleWarning
+    ? toInventoryPageError(
+      errorReason ?? staleReason ?? queryError ?? staleWarning,
+      "Inventory podaci trenutno nisu dostupni.",
+    )
     : null;
   const error = inventoryError;
 

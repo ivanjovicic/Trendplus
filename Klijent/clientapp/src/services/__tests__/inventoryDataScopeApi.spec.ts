@@ -20,7 +20,31 @@ describe("Inventory data-scope API contract", () => {
       urls.push(String(input));
       return {
         ok: true,
-        json: async () => ({}),
+        json: async () => ({
+          totalSku: 0,
+          totalOnHand: 0,
+          lowStockCount: 0,
+          outOfStockCount: 0,
+          items: [],
+          totalCount: 0,
+          pageNumber: 1,
+          pageSize: 50,
+          id: 42,
+          estimatedValue: 0,
+          updatedAt: "2026-05-26T12:00:00Z",
+          movementCount: 0,
+          daysSinceMovement: 0,
+          signalConfidencePct: 0,
+          recommendationAllowed: false,
+          history: [],
+          totalItems: 0,
+          totalEstimatedValue: 0,
+          aging: [],
+          abc: [],
+          topAgedItems: [],
+          topCapitalLockedItems: [],
+          meta: { success: true, dataQualityStatus: "insufficient_evidence" },
+        }),
       };
     }));
 
