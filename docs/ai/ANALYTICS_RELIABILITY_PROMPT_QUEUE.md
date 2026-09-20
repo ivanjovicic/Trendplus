@@ -2,11 +2,12 @@
 
 Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ362
+Current READY prompt: none
 
 Owner promotion 2026-09-20: after RQ361 reached DONE, `RQ362` moved from `WAITING` to `READY` as the authoritative-versus-derived metric provenance contract follow-up.
 
 Owner claim 2026-09-20: `RQ362` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ362-cursor.lock.md`.
+Owner completion 2026-09-20: `RQ362` delivered the optional backend/frontend metric provenance contract for revenue share, margin, confidence/reliability and counts, including unit/denominator metadata, fail-closed mapping and cross-surface parity tests. Follow-up: promote `RQ363` after RQ362 main delivery.
 
 Owner promotion 2026-09-20: after RQ366 reached DONE, `RQ361` moved from `WAITING` to `READY` as the guardrail detection expansion downstream of the baseline contract.
 
@@ -19106,7 +19107,7 @@ The current static guardrail catches some local decision-field reconstruction bu
 
 ## RQ362 - Formalize authoritative versus derived analytics metric provenance
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/frontend/contract/tests
 Feature family: analytics-authoritative-provenance
@@ -19161,6 +19162,24 @@ RQ333, RQ345 and RQ346 expose the same ambiguity: a browser-derived value can lo
 - READY AFTER: RQ361 DONE.
 - RQ180 DONE; coordinate with RQ345 and RQ346 before claiming overlapping paths.
 - RQ363 may consume this vocabulary but is not required to define it.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Added optional backend/frontend provenance metadata for critical metrics, with explicit authority, actionability, unit and denominator semantics plus fail-closed frontend mapping.
+- Changed files: `Api/Dtos/AnalyticsMetricProvenanceDto.cs`, `Api/Dtos/AnalyticsResponseMetaDto.cs`, `Api/Dtos/AnalyticsResponseMetaFactory.cs`, `Api.Tests/AnalyticsMetricProvenanceContractTests.cs`, `Klijent/clientapp/src/types/analytics.ts`, `Klijent/clientapp/src/utils/analyticsMetricProvenance.ts`, `Klijent/clientapp/src/utils/__tests__/analyticsMetricProvenance.spec.ts`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: frontend provenance contract 4/4; shared analytics meta regression 21/21; `npm run check:analytics-guardrails`; `npm run check:encoding`; `npm run typecheck`; `git diff --check`
+- Checks not run: backend focused test - `dotnet` is unavailable in the VM; full frontend suite and CI not run.
+- Run log: `.ai/runs/2026-09-20-RQ362-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: backend runtime test execution due to unavailable `dotnet`; no known implementation scope omission.
+- Follow-up: promote `RQ363` after RQ362 main delivery.
+- Residual risk: backend DTO tests require a .NET-capable environment; provenance remains optional until consuming endpoints populate metric keys.
+- Prompt defect / scope repair: none.
 
 ---
 
