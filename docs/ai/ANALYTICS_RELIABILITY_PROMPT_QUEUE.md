@@ -17,10 +17,10 @@ Owner claim 2026-09-20: `RQ335` transitioned `READY -> IN_PROGRESS`; local runti
 - Checks run: dailySalesPreviousPeriodComparison spec 3/3; DailySalesStatsPage.premium spec 18/18; `npm run check:analytics-guardrails`; `git diff --check`
 - Checks not run: full client suite, CI, live browser
 - Run log: `.ai/runs/2026-09-20-RQ335-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `89622353`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `89622353`
 - Follow-up: promote `RQ336` (Daily Sales chart sort order) or `RQ337` (Operacije frozen 30d preset)
 - Residual risk: none known in owned scope
 - Prompt defect / scope repair: none
