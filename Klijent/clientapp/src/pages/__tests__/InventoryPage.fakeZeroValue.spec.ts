@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildInventoryRow,
   buildInventoryScreenCsvLines,
+  buildRowFromInsightItem,
   buildSupplierChart,
   formatCurrency,
 } from "../../components/inventory/inventoryUtils";
@@ -23,6 +24,38 @@ function makeItem(overrides: Partial<InventoryListItem> = {}): InventoryListItem
 }
 
 describe("inventory fake-zero value guardrail", () => {
+  it("keeps insight-derived unit cost unavailable when no positive measured value exists", () => {
+    const row = buildRowFromInsightItem({
+      id: 99,
+      plu: "SKU-99",
+      naziv: "Insight bez cene",
+      supplierName: null,
+      storeName: null,
+      quantity: 12,
+      minimum: 3,
+      reorderGap: 0,
+      estimatedValue: 0,
+      daysSinceMovement: 120,
+      agingBucket: "90+",
+      agingLabel: "90+",
+      abcClass: "A",
+      stockState: "critical",
+      stockCoverDays: null,
+      stockCoverStatus: "out_of_stock_risk",
+      stockCoverStatusLabel: "Rizik rasprodaje",
+      sellThroughRatio: null,
+      sellThroughStatus: "insufficient_data",
+      sellThroughStatusLabel: "Nedovoljno podataka",
+      signalConfidencePct: 0,
+      recommendationAllowed: false,
+      dataQualityStatus: "insufficient_data",
+      reasonCodes: [],
+    }, [], []);
+
+    expect(row.unitCost).toBeNull();
+    expect(row.estimatedValueAmount).toBe(0);
+  });
+
   it("keeps value unknown when quantity > 0 and cost/estimate are missing", () => {
     const row = buildInventoryRow(makeItem(), [], []);
 

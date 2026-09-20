@@ -4,7 +4,7 @@ Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
-Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ353` moved from `WAITING` to `READY` as the next P3 trust follow-up (Inventory insight-to-detail unit-cost fake zero).
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ353` moved from `WAITING` to `READY` as P3 trust follow-up (Inventory insight unit-cost fake zero).
 
 Owner claim 2026-09-20: `RQ353` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ353-cursor.lock.md`.
 
@@ -12,18 +12,17 @@ Owner claim 2026-09-20: `RQ353` transitioned `READY -> IN_PROGRESS`; local runti
 
 - Date: 2026-09-20
 - Status: DONE
-- Completion: Inventory insight-to-detail rows now keep unit cost unavailable when the backend insight value and quantity cannot produce a measured unit cost; valid positive value/quantity pairs still derive the unit cost.
-- Changed files: `Klijent/clientapp/src/components/inventory/inventoryUtils.ts`, `Klijent/clientapp/src/components/inventory/InventoryInsightPanels.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
-- Contract/runtime behavior changed: removed the `0 RSD` placeholder from the insight navigation path; true measured values remain visible and unknown stays unavailable.
-- Checks run: focused Inventory insight/detail/off-page tests 20/20; `npm run typecheck`; `npm run check:analytics-guardrails`; `git diff --check`
-- Checks not run: full client suite, backend suite, CI, live browser
+- Completion: Inventory insight-to-detail row construction now keeps unit cost unavailable when no positive measured value exists, while preserving an explicit zero estimated inventory value.
+- Changed files: `Klijent/clientapp/src/components/inventory/inventoryUtils.ts`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.fakeZeroValue.spec.ts`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: Inventory insight/detail focused specs 16/16; `git diff --check`
+- Checks not run: full client suite, CI, live browser; analytics guardrails fail on 12 existing violations outside this fake-zero scope
 - Run log: `.ai/runs/2026-09-20-RQ353-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending final delivery
-- Main verification: pending final delivery
+- Main commit SHA: `ce711a7d`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `ce711a7d`
 - Follow-up: promote `RQ354` or `RQ321` (Operacije store-filter load failure)
-- Residual risk: none known in owned scope
+- Residual risk: no known fake-zero path in the owned insight-to-detail mapping
 - Prompt defect / scope repair: none
 
 Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ352` moved from `WAITING` to `READY` as P3 trust follow-up (Daily Sales empty-state distinction).
@@ -18476,7 +18475,7 @@ Empty state variant `filtered_out` whenever `storeId != null`, even if store tru
 
 ## RQ353 - Guard unit cost fake zero on insight-to-detail navigation path
 
-Status: WAITING
+Status: DONE
 Priority: P3
 Type: frontend/trust/tests
 Feature family: inventory-insight-detail-fake-zero-cost
