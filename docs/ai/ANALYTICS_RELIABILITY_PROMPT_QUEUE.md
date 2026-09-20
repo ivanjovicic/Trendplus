@@ -4,6 +4,27 @@ Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ348` moved from `WAITING` to `READY` as P2 trust follow-up (Supplier Footwear null toolbar counts).
+
+Owner claim 2026-09-20: `RQ348` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ348-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Supplier Footwear toolbar and export metadata now render unavailable vendor, article, and window counts as `N/A`; comparable revenue fallback sums no longer turn missing values into zero.
+- Changed files: `Klijent/clientapp/src/pages/SupplierFootwearAnalyticsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/SupplierFootwearAnalyticsPage.spec.tsx`, `Klijent/clientapp/src/services/vendorSalesNivelacijaApi.ts`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: Supplier Footwear spec 14/14; `git diff --check`
+- Checks not run: full client suite, CI, live browser; analytics guardrails fail on 13 existing violations outside this scope
+- Run log: `.ai/runs/2026-09-20-RQ348-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Follow-up: promote `RQ349` (Color authoritative decisionScore) or `RQ321` (Operacije store filter load failure)
+- Residual risk: none known in owned scope
+- Prompt defect / scope repair: none
+
 Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ347` moved from `WAITING` to `READY` as P2 trust follow-up (Pre/Post trustedMetric winner/risk sorting).
 
 Owner claim 2026-09-20: `RQ347` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ347-cursor.lock.md`.
@@ -1027,7 +1048,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ345 | DONE | operations-frontend-share-recompute | Remove frontend revenue share recompute on Shoe and Color when backend missing |
 | RQ346 | DONE | shoe-type-avg-margin-frontend-aggregate | Replace frontend simple-mean avg margin KPI with backend or honest label |
 | RQ347 | DONE | pre-post-winner-risk-untrusted-sort | Sort Pre/Post winner/risk SKUs with trustedMetric before display |
-| RQ348 | WAITING | supplier-footwear-metadata-fake-zero | Fail closed on null counts in Supplier Footwear toolbar metadata |
+| RQ348 | DONE | supplier-footwear-metadata-fake-zero | Fail closed on null counts in Supplier Footwear toolbar metadata |
 | RQ349 | WAITING | color-decision-score-wrong-field | Map Color decisionScore to authoritative backend field, not rounded confidencePct |
 | RQ350 | WAITING | operations-table-sort-url-state | Persist table sort in URL on Shoe, Color and Pre/Post |
 | RQ351 | WAITING | inventory-hard-reload-refresh | Replace Inventory full page reload refresh with scoped refetch |
@@ -18120,7 +18141,7 @@ Top winner/risk sorted by raw `changeRevenue`, not `trustedMetric`, before displ
 
 ## RQ348 - Fail closed on null counts in Supplier Footwear toolbar metadata
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/trust/tests
 Feature family: supplier-footwear-metadata-fake-zero
