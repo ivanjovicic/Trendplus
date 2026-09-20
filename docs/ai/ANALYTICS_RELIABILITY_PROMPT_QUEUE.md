@@ -4,6 +4,27 @@ Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ342` moved from `WAITING` to `READY` as P2 trust follow-up (Operacije request abort races).
+
+Owner claim 2026-09-20: `RQ342` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ342-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Shoe, Color, Pre/Post, Pre-Nivelacija and Inventory primary list loads now tie AbortController to effect cleanup, pass signal into API calls, ignore AbortError, and retain requestId guards against late responses.
+- Changed files: `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/ColorSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`, `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`, `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/services/vendorSalesNivelacijaApi.ts`, `Klijent/clientapp/src/services/preNivelacijaApi.ts`, `Klijent/clientapp/src/services/analyticsApi.ts`, `Klijent/clientapp/src/pages/__tests__/ShoeTypeSalesStatsPage.premium.spec.tsx`, `Klijent/clientapp/src/pages/__tests__/ColorSalesStatsPage.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: ShoeType premium 32/32; Color spec 16/16; PrePost spec 30/30; PreNivelacija spec 38/38; InventoryPage.partialFailure 3/3; `npm run check:analytics-guardrails`; `git diff --check`
+- Checks not run: full client suite, CI, live browser
+- Run log: `.ai/runs/2026-09-20-RQ342-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Follow-up: promote `RQ343` (Pre-Nivelacija expansion persistence) or `RQ321` (Operacije store filter load failure)
+- Residual risk: none known in owned scope
+- Prompt defect / scope repair: none
+
 Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ341` moved from `WAITING` to `READY` as P2 trust follow-up (Color stale refetch contract).
 
 Owner claim 2026-09-20: `RQ341` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ341-cursor.lock.md`.
@@ -892,7 +913,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ339 | DONE | pre-post-focus-reset-on-reload | Preserve Pre/Post focus filter across non-filter reloads |
 | RQ340 | DONE | shoe-type-stale-refetch-dead-path | Enable Shoe Type stale overlay on refetch failure |
 | RQ341 | DONE | color-stale-refetch-contract | Add Color stale/partial refetch contract matching Operacije standard |
-| RQ342 | WAITING | operations-request-abort-races | Add AbortController to Operacije list fetches beyond Daily Sales |
+| RQ342 | DONE | operations-request-abort-races | Add AbortController to Operacije list fetches beyond Daily Sales |
 | RQ343 | WAITING | pre-nivelacija-expansion-persistence | Preserve Pre-Nivelacija expanded row across pagination reload |
 | RQ344 | WAITING | pre-nivelacija-filter-options-page-bias | Load Pre-Nivelacija filter options from full universe, not current page |
 | RQ345 | WAITING | operations-frontend-share-recompute | Remove frontend revenue share recompute on Shoe and Color when backend missing |
@@ -17706,7 +17727,7 @@ Any load error clears `data` and shows blocking error — no stale path during r
 
 ## RQ342 - Add AbortController to Operacije list fetches beyond Daily Sales
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/trust/tests
 Feature family: operations-request-abort-races

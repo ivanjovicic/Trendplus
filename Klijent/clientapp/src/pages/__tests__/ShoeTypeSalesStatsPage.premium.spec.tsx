@@ -821,4 +821,62 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
       );
     });
   });
+
+  it("keeps the newest filter result when an older response arrives late", async () => {
+    type Deferred<T> = {
+      promise: Promise<T>;
+      resolve: (value: T) => void;
+    };
+    const createDeferred = <T,>(): Deferred<T> => {
+      let resolve!: (value: T) => void;
+      const promise = new Promise<T>((nextResolve) => {
+        resolve = nextResolve;
+      });
+      return { promise, resolve };
+    };
+
+    const firstPayload = createDeferred<ReturnType<typeof response>>();
+    const secondPayload = createDeferred<ReturnType<typeof response>>();
+
+    vi.mocked(getShoeTypeSalesStats)
+      .mockImplementationOnce(() => firstPayload.promise)
+      .mockImplementationOnce(() => secondPayload.promise);
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(getShoeTypeSalesStats).toHaveBeenCalledTimes(1);
+    });
+
+    localStorage.setItem("trendplus:dataScope", "existing");
+    window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+
+    await waitFor(() => {
+      expect(getShoeTypeSalesStats).toHaveBeenCalledTimes(2);
+    });
+
+    secondPayload.resolve(response({
+      shoeTypes: [shoeType({ tipObuceNaziv: "Novi tip" })],
+      dataScope: "existing",
+    }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Novi tip")).toBeInTheDocument();
+    });
+
+    firstPayload.resolve(response({
+      shoeTypes: [shoeType({ tipObuceNaziv: "Stari tip" })],
+    }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Novi tip")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Stari tip")).not.toBeInTheDocument();
+  });
 });

@@ -445,7 +445,7 @@ export default function PreNivelacijaPriorityPage() {
     return () => window.removeEventListener("trendplus:data-scope-changed", handleScopeChange);
   }, [setSearchParams]);
 
-  const load = useCallback(async (filters: ActiveFilters, nextPage: number, scope: DataScope) => {
+  const load = useCallback(async (filters: ActiveFilters, nextPage: number, scope: DataScope, signal?: AbortSignal) => {
     const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
@@ -460,12 +460,16 @@ export default function PreNivelacijaPriorityPage() {
         page: nextPage,
         pageSize: 60,
         dataScope: scope,
+        signal,
       });
 
       if (requestId !== requestIdRef.current) return;
       setData(result);
       setExpandedArtikalId(null);
     } catch (reason) {
+      if (reason instanceof DOMException && reason.name === "AbortError") {
+        return;
+      }
       if (requestId !== requestIdRef.current) return;
       setData(null);
       const preNivelacijaError = reason instanceof PreNivelacijaApiError
@@ -496,7 +500,9 @@ export default function PreNivelacijaPriorityPage() {
   }, []);
 
   useEffect(() => {
-    void load(activeFilters, page, dataScope);
+    const controller = new AbortController();
+    void load(activeFilters, page, dataScope, controller.signal);
+    return () => controller.abort();
   }, [activeFilters, dataScope, load, page]);
 
   const supplierOptions = useMemo(

@@ -17,6 +17,7 @@ export interface PreNivelacijaQuery {
   page?: number;
   pageSize?: number;
   dataScope?: string | null;
+  signal?: AbortSignal;
 }
 
 const PRE_NIVELACIJA_ERROR_FALLBACK =
@@ -88,7 +89,7 @@ export async function getPreNivelacijaPrioriteti(query: PreNivelacijaQuery): Pro
 
   let res: Response;
   try {
-    res = await fetch(makeUrl(`/api/analytics/pre-nivelacija-prioriteti`, params));
+    res = await fetch(makeUrl(`/api/analytics/pre-nivelacija-prioriteti`, params), { signal: query.signal });
   } catch {
     throw new PreNivelacijaApiError(PRE_NIVELACIJA_ERROR_FALLBACK);
   }

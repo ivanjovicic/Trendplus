@@ -184,6 +184,7 @@ export interface VendorSalesNivelacijaQuery {
     maxRows?: number;
     storeId?: number | null;
     dataScope?: string | null;
+    signal?: AbortSignal;
 }
 
 export interface VendorSalesNivelacijaOption {
@@ -223,7 +224,7 @@ export async function getVendorSalesNivelacija(
         ? `${baseUrl}?${params.toString()}`
         : baseUrl;
 
-    const response = await fetchWithTimeout(url, undefined, REQUEST_TIMEOUT_MS);
+    const response = await fetchWithTimeout(url, { signal: query.signal }, REQUEST_TIMEOUT_MS);
     if (!response.ok) {
         const text = await response.text();
         throw new Error(`Neuspesno ucitavanje pre/post nivelacija analitike: ${text}`);

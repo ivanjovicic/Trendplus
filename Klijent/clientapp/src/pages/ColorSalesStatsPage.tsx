@@ -329,7 +329,7 @@ export default function ColorSalesStatsPage() {
     void loadStores();
   }, []);
 
-  const load = useCallback(async (filters: ActiveFilters, scope: DataScope) => {
+  const load = useCallback(async (filters: ActiveFilters, scope: DataScope, signal?: AbortSignal) => {
     const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
@@ -341,11 +341,15 @@ export default function ColorSalesStatsPage() {
         sezonaId: filters.sezonaId,
         storeId: filters.storeId,
         dataScope: scope,
+        signal,
       });
 
       if (requestId !== requestIdRef.current) return;
       setData(result);
     } catch (reason) {
+      if (reason instanceof DOMException && reason.name === "AbortError") {
+        return;
+      }
       if (requestId !== requestIdRef.current) return;
       setError(reason instanceof Error ? reason.message : "Greska pri ucitavanju podataka po boji.");
     } finally {
@@ -356,7 +360,9 @@ export default function ColorSalesStatsPage() {
   }, []);
 
   useEffect(() => {
-    void load(activeFilters, dataScope);
+    const controller = new AbortController();
+    void load(activeFilters, dataScope, controller.signal);
+    return () => controller.abort();
   }, [activeFilters, dataScope, load]);
 
   const decisionRows = useMemo<DecisionColor[]>(() => {

@@ -403,7 +403,7 @@ export default function ShoeTypeSalesStatsPage() {
     void loadStores();
   }, []);
 
-  const load = useCallback(async (filters: ActiveFilters, scope: DataScope) => {
+  const load = useCallback(async (filters: ActiveFilters, scope: DataScope, signal?: AbortSignal) => {
     const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
@@ -415,11 +415,15 @@ export default function ShoeTypeSalesStatsPage() {
         sezonaId: filters.sezonaId,
         storeId: filters.storeId,
         dataScope: scope,
+        signal,
       });
 
       if (requestId !== requestIdRef.current) return;
       setData(result);
     } catch (reason) {
+      if (reason instanceof DOMException && reason.name === "AbortError") {
+        return;
+      }
       if (requestId !== requestIdRef.current) return;
       setError(reason instanceof Error ? reason.message : "Greška pri učitavanju podataka po tipu obuće.");
     } finally {
@@ -430,7 +434,9 @@ export default function ShoeTypeSalesStatsPage() {
   }, []);
 
   useEffect(() => {
-    void load(activeFilters, dataScope);
+    const controller = new AbortController();
+    void load(activeFilters, dataScope, controller.signal);
+    return () => controller.abort();
   }, [activeFilters, dataScope, load]);
 
   const decisionRows = useMemo<DecisionShoeType[]>(() => {
