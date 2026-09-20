@@ -624,9 +624,9 @@ export default function ColorSalesStatsPage() {
 
   const emptyStateVariant = useMemo<"no_data" | "insufficient_data" | "filtered_out" | null>(() => {
     if (!data || loading || sortedRows.length > 0) return null;
-    if (qualityNotes.length > 0) return "insufficient_data";
+    if (data.meta?.emptyReason === "filtered_out") return "filtered_out";
     return "no_data";
-  }, [data, loading, qualityNotes.length, sortedRows.length]);
+  }, [data, loading, sortedRows.length]);
 
   const controlBarChips = useMemo<AnalyticsControlBarChip[]>(
     () => [
