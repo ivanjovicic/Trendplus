@@ -39,6 +39,57 @@ const rules = [
   { name: "confidencePct_assign", re: /\bconfidencePct\b\s*=/, scopes: ["pages", "components"] },
   { name: "reliabilityPct_assign", re: /\breliabilityPct\b\s*=/, scopes: ["pages", "components"] },
   { name: "recommendationStatus_assign", re: /\brecommendationStatus\b\s*=/, scopes: ["pages", "components"] },
+  {
+    name: "fake_zero_fallback",
+    re: /\?\?\s*0\b/,
+    scopes: ["pages", "components", "services", "utils"],
+    invariant: "Unknown analytics values must remain unavailable, not become zero.",
+  },
+  {
+    name: "swallowed_fetch_failure",
+    re: /\.catch\(\s*\(\s*\)\s*=>\s*null\s*\)/,
+    scopes: ["pages", "components", "services", "utils"],
+    invariant: "Fetch failures must remain visible through the established error contract.",
+  },
+  {
+    name: "refetch_setData_null",
+    re: /\bsetData\(\s*null\s*\)/,
+    scopes: ["pages", "components"],
+    invariant: "Refetch failure must preserve the last valid snapshot.",
+  },
+  {
+    name: "page_percentage_formula",
+    re: /\b(?:sharePct|marginPct|confidencePct|reliabilityPct)\b\s*=\s*[^;\n]*(?:\/[^;\n]*\*|\*[^;\n]*\/)/,
+    scopes: ["pages", "components"],
+    invariant: "Critical percentages must come from backend-owned fields or an explicit projection owner.",
+  },
+  {
+    name: "page_reduce_kpi",
+    re: /\b(?:totalRevenue|totalMarginContribution|totalUnits|globalTotal|sumRevenue|sumUnits)\b\s*=\s*[^;\n]*\.reduce\s*\(/,
+    scopes: ["pages", "components"],
+    invariant: "Page KPIs must not reconstruct backend aggregates from visible rows.",
+  },
+  {
+    name: "sorted_rows_kpi_reduce",
+    re: /\bsortedRows(?:\.\w+|\[[^\]]+\])*\.\s*reduce\s*\(/,
+    scopes: ["pages", "components"],
+    invariant: "KPI derivation must not depend on table sort or visible-row projection.",
+  },
+  {
+    name: "paginated_total_from_page",
+    re: /\btotal(?:Count|Items|Revenue|Units)\b\s*=\s*[^;\n]*\b(?:rows|items|sortedRows)\.length\b/,
+    scopes: ["pages", "components"],
+    invariant: "Global totals and facets must use backend totals, not the current page length.",
+  },
+];
+
+const reviewedAllowlist = [
+  {
+    file: "src/pages/SupplierFootwearAnalyticsPage.tsx",
+    rule: "page_reduce_kpi",
+    pattern: "const globalTotal = globalTopTypes.reduce",
+    reason: "Chart-only denominator for the backend-provided global top-type projection; it is not a page KPI.",
+  },
 ];
 
 function isTestFile(rel) {
@@ -62,6 +113,31 @@ function relPath(file) {
 
 function violationKey(violation) {
   return `${violation.file}::${violation.rule}::${violation.line}`;
+}
+
+function isAllowlisted(file, rule, line) {
+  return reviewedAllowlist.some((entry) => (
+    entry.file === file
+    && entry.rule === rule.name
+    && line.includes(entry.pattern)
+  ));
+}
+
+function validateAllowlist() {
+  for (const entry of reviewedAllowlist) {
+    if (
+      typeof entry.file !== "string"
+      || typeof entry.rule !== "string"
+      || typeof entry.pattern !== "string"
+      || typeof entry.reason !== "string"
+      || entry.pattern.length === 0
+      || entry.reason.trim().length === 0
+      || /[*?[\]{}]/.test(entry.file)
+      || /[*?[\]{}]/.test(entry.rule)
+    ) {
+      throw new Error("Invalid guardrail allowlist entry: exact file/rule/pattern and reviewed reason are required.");
+    }
+  }
 }
 
 function validateBaseline(baseline) {
@@ -100,6 +176,7 @@ async function loadBaseline() {
 }
 
 async function scanViolations() {
+  validateAllowlist();
   const violations = [];
   for (const target of targets) {
     const dir = path.join(base, target);
@@ -126,7 +203,7 @@ async function scanViolations() {
 
       for (const rule of rules) {
         if (!rule.scopes.includes(category)) continue;
-        const lineIndex = lines.findIndex((line) => rule.re.test(line));
+        const lineIndex = lines.findIndex((line) => rule.re.test(line) && !isAllowlisted(rel, rule, line));
         if (lineIndex < 0) continue;
         violations.push({ file: rel, rule: rule.name, line: lineIndex + 1 });
       }
@@ -158,6 +235,29 @@ function assert(condition, message) {
 }
 
 function runSelfTest() {
+  validateAllowlist();
+  const ruleFixtures = [
+    ["fake_zero_fallback", "const total = data?.total ?? 0;"],
+    ["swallowed_fetch_failure", "request.catch(() => null);"],
+    ["refetch_setData_null", "setData(null);"],
+    ["page_percentage_formula", "const sharePct = revenue / total * 100;"],
+    ["page_reduce_kpi", "const totalRevenue = rows.reduce((sum, row) => sum + row.revenue, 0);"],
+    ["sorted_rows_kpi_reduce", "const top = sortedRows.slice(0, 5).reduce((sum, row) => sum + row.revenue, 0);"],
+    ["paginated_total_from_page", "const totalCount = items.length;"],
+  ];
+  for (const [name, line] of ruleFixtures) {
+    const rule = rules.find((candidate) => candidate.name === name);
+    assert(rule?.re.test(line), `${name} fixture should be detected`);
+  }
+  assert(
+    isAllowlisted(
+      "src/pages/SupplierFootwearAnalyticsPage.tsx",
+      rules.find((candidate) => candidate.name === "page_reduce_kpi"),
+      "const globalTotal = globalTopTypes.reduce((sum, item) => sum + item[1], 0);",
+    ),
+    "the documented chart-only allowlist entry should remain narrow and active",
+  );
+
   const baseline = {
     version: 1,
     maxEntries: 2,
