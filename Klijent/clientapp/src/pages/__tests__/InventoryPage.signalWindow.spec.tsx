@@ -56,15 +56,13 @@ vi.mock("../../components/inventory/InventoryInsightPanels", () => ({ InventoryI
 vi.mock("../../components/inventory/InventoryItemsTable", () => ({
   InventoryItemsTable: ({
     pageNumber,
-    pageSize,
     onNextPage,
   }: {
     pageNumber: number;
-    pageSize: number;
     onNextPage: () => void;
   }) => (
     <div data-testid="inventory-items-table">
-      <span>{`page=${pageNumber};size=${pageSize}`}</span>
+      <span>{`page=${pageNumber}`}</span>
       <button type="button" onClick={onNextPage}>Sledeća strana</button>
     </div>
   ),
@@ -245,7 +243,8 @@ describe("InventoryPage signal window refresh", () => {
     });
 
     expect(screen.getByRole("searchbox", { name: "Pretraga artikala" })).toHaveValue("patika");
-    expect(screen.getByTestId("inventory-items-table")).toHaveTextContent("page=3;size=100");
+    expect(screen.getByTestId("inventory-items-table")).toHaveTextContent("page=3");
+    expect(screen.getByLabelText("Veličina strane tabele artikala")).toHaveValue("100");
     expect(screen.getByTestId("store-comparison-panel")).toHaveTextContent("1,2");
 
     fireEvent.click(screen.getByRole("button", { name: "Sledeća strana" }));
