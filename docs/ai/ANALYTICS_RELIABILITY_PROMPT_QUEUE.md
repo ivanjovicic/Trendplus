@@ -4,6 +4,28 @@ Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ353` moved from `WAITING` to `READY` as the next P3 trust follow-up (Inventory insight-to-detail unit-cost fake zero).
+
+Owner claim 2026-09-20: `RQ353` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ353-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Inventory insight-to-detail rows now keep unit cost unavailable when the backend insight value and quantity cannot produce a measured unit cost; valid positive value/quantity pairs still derive the unit cost.
+- Changed files: `Klijent/clientapp/src/components/inventory/inventoryUtils.ts`, `Klijent/clientapp/src/components/inventory/InventoryInsightPanels.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Contract/runtime behavior changed: removed the `0 RSD` placeholder from the insight navigation path; true measured values remain visible and unknown stays unavailable.
+- Checks run: focused Inventory insight/detail/off-page tests 20/20; `npm run typecheck`; `npm run check:analytics-guardrails`; `git diff --check`
+- Checks not run: full client suite, backend suite, CI, live browser
+- Run log: `.ai/runs/2026-09-20-RQ353-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending final delivery
+- Main verification: pending final delivery
+- Follow-up: promote `RQ354` or `RQ321` (Operacije store-filter load failure)
+- Residual risk: none known in owned scope
+- Prompt defect / scope repair: none
+
 Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ352` moved from `WAITING` to `READY` as P3 trust follow-up (Daily Sales empty-state distinction).
 
 Owner claim 2026-09-20: `RQ352` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ352-cursor.lock.md`.
@@ -1137,7 +1159,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ350 | DONE | operations-table-sort-url-state | Persist table sort in URL on Shoe, Color and Pre/Post |
 | RQ351 | DONE | inventory-hard-reload-refresh | Replace Inventory full page reload refresh with scoped refetch |
 | RQ352 | DONE | daily-sales-filtered-empty-confusion | Distinguish Daily Sales store-empty from filter-no-match empty state |
-| RQ353 | WAITING | inventory-insight-detail-fake-zero-cost | Guard unit cost fake zero on insight-to-detail navigation path |
+| RQ353 | DONE | inventory-insight-detail-fake-zero-cost | Guard unit cost fake zero on insight-to-detail navigation path |
 | RQ354 | WAITING | supplier-toolbar-metadata-fake-zero | Fail closed on null supplier count in toolbar export metadata |
 | RQ355 | WAITING | color-empty-quality-conflation | Base Color empty state on row count and meta, not quality notes alone |
 | RQ356 | WAITING | pre-post-english-signal-labels | Serbian labels for Pre/Post advanced signal cards |
