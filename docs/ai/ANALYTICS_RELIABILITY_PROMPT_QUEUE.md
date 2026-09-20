@@ -17,10 +17,10 @@ Owner claim 2026-09-20: `RQ342` transitioned `READY -> IN_PROGRESS`; local runti
 - Checks run: ShoeType premium 32/32; Color spec 16/16; PrePost spec 30/30; PreNivelacija spec 38/38; InventoryPage.partialFailure 3/3; `npm run check:analytics-guardrails`; `git diff --check`
 - Checks not run: full client suite, CI, live browser
 - Run log: `.ai/runs/2026-09-20-RQ342-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `65b5cdf0`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `65b5cdf0`
 - Follow-up: promote `RQ343` (Pre-Nivelacija expansion persistence) or `RQ321` (Operacije store filter load failure)
 - Residual risk: none known in owned scope
 - Prompt defect / scope repair: none
