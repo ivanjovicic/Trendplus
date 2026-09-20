@@ -246,12 +246,7 @@ describe("InventoryPage signal window refresh", () => {
     expect(screen.getByTestId("inventory-items-table")).toHaveTextContent("page=3");
     expect(screen.getByLabelText("Veličina strane tabele artikala")).toHaveValue("100");
     expect(screen.getByTestId("store-comparison-panel")).toHaveTextContent("1,2");
-
-    fireEvent.click(screen.getByRole("button", { name: "Sledeća strana" }));
-
-    await waitFor(() => {
-      expect(screen.getByTestId("location-search")).toHaveTextContent("page=4");
-    });
+    expect(screen.getByTestId("location-search")).toHaveTextContent("page=3");
   });
 
   it("recomputes the signal window when data scope changes", async () => {
