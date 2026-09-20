@@ -7847,8 +7847,8 @@ Sales are counted over `UtcNow.AddDays(-30)`, but `avgDailySalesUnits` always di
 - Run log: `.ai/runs/2026-09-08-RQ184-velocity-divisor-evidence.md`
 - Evidence state: pending
 - Delivery mode: direct-main
-- Main commit SHA: 544f34df
-- Main verification: passed - fresh `origin/main` contains implementation SHA `544f34df`
+- Main commit SHA: 544f34dfb94e9ed83f3738d99415427c9aa50b04
+- Main verification: passed - fresh `origin/main` contains implementation SHA `544f34dfb94e9ed83f3738d99415427c9aa50b04`
 - Missed: no live provider proof or broader active-selling-days semantic change; those remain outside RQ184.
 - Follow-up: RQ185 remains WAITING for the separate calendar-days versus active-selling-days contract.
 - Residual risk: existing unrelated analyzer warnings and other velocity producers remain outside the cached inventory-list scope.
