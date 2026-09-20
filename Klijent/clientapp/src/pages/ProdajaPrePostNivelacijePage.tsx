@@ -596,7 +596,6 @@ export default function ProdajaPrePostNivelacijePage() {
 
       setData(currentResult.value);
       setExpandedVendorKey(null);
-      setFocusFilter("all");
 
       if (previousResult.status === "fulfilled") {
         setPreviousData(previousResult.value);

@@ -4,6 +4,27 @@ Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ339` moved from `WAITING` to `READY` as P2 trust follow-up (Pre/Post focus filter persistence).
+
+Owner claim 2026-09-20: `RQ339` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ339-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Pre/Post no longer resets focusFilter to all on every successful data reload; scope-only refetches preserve the active focus chip when rows still match. Apply/reset still clear focus explicitly.
+- Changed files: `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`, `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: ProdajaPrePostNivelacijePage spec 30/30; `npm run check:analytics-guardrails`; `git diff --check`
+- Checks not run: full client suite, CI, live browser
+- Run log: `.ai/runs/2026-09-20-RQ339-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Follow-up: promote `RQ340` (Shoe Type stale refetch) or `RQ321` (Operacije store filter load failure)
+- Residual risk: none known in owned scope
+- Prompt defect / scope repair: none
+
 Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ338` moved from `WAITING` to `READY` as P2 trust follow-up (Pre/Post vendor dropdown load failure).
 
 Owner claim 2026-09-20: `RQ338` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ338-cursor.lock.md`.
@@ -826,7 +847,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ336 | WAITING | daily-sales-chart-sort-order-bug | Feed Daily Sales trend/shift charts from chronological rows, not table sort |
 | RQ337 | DONE | operations-frozen-preset-period | Refresh frozen 30d preset period on Operacije pages at apply/reset |
 | RQ338 | DONE | pre-post-vendor-load-silent-failure | Surface Pre/Post vendor dropdown load failure |
-| RQ339 | WAITING | pre-post-focus-reset-on-reload | Preserve Pre/Post focus filter across non-filter reloads |
+| RQ339 | DONE | pre-post-focus-reset-on-reload | Preserve Pre/Post focus filter across non-filter reloads |
 | RQ340 | WAITING | shoe-type-stale-refetch-dead-path | Enable Shoe Type stale overlay on refetch failure |
 | RQ341 | WAITING | color-stale-refetch-contract | Add Color stale/partial refetch contract matching Operacije standard |
 | RQ342 | WAITING | operations-request-abort-races | Add AbortController to Operacije list fetches beyond Daily Sales |
@@ -17503,7 +17524,7 @@ Vendor load failure silently `setVendors([])` — empty dropdown with no degrada
 
 ## RQ339 - Preserve Pre/Post focus filter across non-filter reloads
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/trust/tests
 Feature family: pre-post-focus-reset-on-reload

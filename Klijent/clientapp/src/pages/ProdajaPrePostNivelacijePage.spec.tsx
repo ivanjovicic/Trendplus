@@ -276,6 +276,59 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     });
   });
 
+  it("keeps the active focus chip after a scope-only reload when rows still match", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
+      response({
+        vendorStats: [
+          vendor({ vendorId: 10, vendorName: "Vendor A" }),
+          vendor({
+            vendorId: 11,
+            vendorName: "Vendor B",
+            postRevenue: 50000,
+            changeRevenue: 10000,
+            recommendation: {
+              status: "review",
+              label: "Review",
+              summary: "Signal za proveru.",
+              confidencePct: 64,
+              reliabilityPct: 61,
+              dataQualityStatus: "warning",
+              reasonCodes: ["review_signal"],
+            },
+          }),
+        ],
+        totals: {
+          ...response().totals,
+          postRevenue: 150000,
+          vendorsCount: 2,
+        },
+      }),
+    );
+
+    renderPage();
+    const table = await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
+    expect(within(table).getByText("Vendor A")).toBeInTheDocument();
+    expect(within(table).getByText("Vendor B")).toBeInTheDocument();
+
+    const focusChip = screen.getByRole("button", { name: /Pojacaj/i });
+    fireEvent.click(focusChip);
+    expect(focusChip).toHaveClass("active");
+    expect(within(table).getByText("Vendor A")).toBeInTheDocument();
+    expect(within(table).queryByText("Vendor B")).not.toBeInTheDocument();
+
+    localStorage.setItem("trendplus:dataScope", "existing");
+    window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+
+    await waitFor(() => {
+      expect(vi.mocked(getVendorSalesNivelacija).mock.calls.some((call) => call[0].dataScope === "existing")).toBe(true);
+    });
+
+    const reloadedTable = await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
+    expect(screen.getByRole("button", { name: /Pojacaj/i })).toHaveClass("active");
+    expect(within(reloadedTable).getByText("Vendor A")).toBeInTheDocument();
+    expect(within(reloadedTable).queryByText("Vendor B")).not.toBeInTheDocument();
+  });
+
   it("warns when previous-period request fails and does not label it as Nova baza", async () => {
     vi.mocked(getVendorSalesNivelacija)
       .mockResolvedValueOnce(response())
