@@ -259,7 +259,7 @@ describe("ColorSalesStatsPage", () => {
 
     const table = await screen.findByTestId("analytics-data-table");
     const revenueButton = within(table).getByRole("button", { name: /Promet/ });
-    expect(revenueButton).toHaveAttribute("data-sort-dir", "asc");
+    expect(revenueButton).toHaveTextContent("^");
 
     fireEvent.click(revenueButton);
 

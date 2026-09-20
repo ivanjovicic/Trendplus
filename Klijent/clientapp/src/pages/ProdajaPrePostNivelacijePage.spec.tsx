@@ -220,7 +220,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
 
     const table = await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
     const revenueButton = within(table).getByRole("button", { name: /Promena/ });
-    expect(revenueButton).toHaveAttribute("data-sort-dir", "asc");
+    expect(revenueButton).toHaveTextContent("^");
 
     fireEvent.click(revenueButton);
 
