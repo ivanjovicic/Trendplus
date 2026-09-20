@@ -2,7 +2,11 @@
 
 Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ360
+
+Owner promotion 2026-09-20: after RQ359 reached DONE, `RQ360` moved from `WAITING` to `READY` as the reusable analytics reliability contract test-kit follow-up.
+
+Owner claim 2026-09-20: `RQ360` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ360-cursor.lock.md`.
 
 Owner promotion 2026-09-20: under user instruction to claim the next prompt, `RQ359` moved from `WAITING` to `READY` as the first systemic analytics reliability candidate after RQ358.
 
@@ -1274,7 +1278,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ357 | DONE | inventory-url-pagination-search | URL-sync Inventory pagination, page size, search and compare stores |
 | RQ358 | DONE | shoe-type-toolbar-metadata-fake-zero | Fail closed on null shoe type count in toolbar metadata export |
 | RQ359 | DONE | analytics-reliable-query-lifecycle | Centralize abort/latest-request/stale-refetch semantics in one hook |
-| RQ360 | WAITING | analytics-invariant-test-kit | Reuse one invariant matrix across critical analytics screens |
+| RQ360 | IN_PROGRESS | analytics-invariant-test-kit | Reuse one invariant matrix across critical analytics screens |
 | RQ361 | WAITING | analytics-guardrail-expansion | Detect fake-zero, silent-catch, frontend-aggregate and pagination anti-patterns |
 | RQ362 | WAITING | analytics-authoritative-provenance | Formalize authoritative versus derived metric provenance |
 | RQ363 | WAITING | analytics-response-runtime-validation | Fail closed on invalid analytics DTOs at the API boundary |
@@ -18937,7 +18941,7 @@ Shoe Type, Color, Pre/Post, Inventory and Pre-Nivelacija each implement their ow
 
 ## RQ360 - Build a reusable Analytics Reliability Contract test kit
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend/tests/architecture
 Feature family: analytics-invariant-test-kit
