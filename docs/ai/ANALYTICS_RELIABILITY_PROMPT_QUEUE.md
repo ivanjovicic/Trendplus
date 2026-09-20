@@ -4,6 +4,10 @@ Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-20: after RQ366 reached DONE, `RQ361` moved from `WAITING` to `READY` as the guardrail detection expansion downstream of the baseline contract.
+
+Owner claim 2026-09-20: `RQ361` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ361-cursor.lock.md`.
+
 Owner promotion 2026-09-20: after RQ359 reached DONE, `RQ360` moved from `WAITING` to `READY` as the reusable analytics reliability contract test-kit follow-up.
 
 Owner claim 2026-09-20: `RQ360` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ360-cursor.lock.md`.
@@ -826,8 +830,8 @@ Operations audit intake 2026-09-18 (round 2): `RQ312`-`RQ330` were added from a 
 
 Operations audit intake 2026-09-18 (round 3): `RQ331`-`RQ358` were added from a third post-`RQ330` Operacije review (page-local KPIs, fake zeros, chart sort bug, stale refetch, abort races, filter facet bias, supplier redirect trust); `RQ331`-`RQ344` are `DONE` on `main`, `RQ345`-`RQ358` remain `WAITING`, and the queue has no current READY prompt.
 
-System reliability architecture intake 2026-09-20: `RQ359`-`RQ367` were added from the user's Reliability Contract Layer proposal (shared async lifecycle, invariant tests, guardrails, provenance, runtime validation, dataset projections, migration smoke, baseline debt and generated evidence); `RQ359`, `RQ360` and `RQ366` are DONE and `RQ361`-`RQ365`, `RQ367` remain `WAITING`; the queue has no current READY prompt.
-System reliability dependency order 2026-09-20: `RQ359`, `RQ360` and `RQ366` are DONE; `RQ361 READY AFTER RQ366 DONE`; `RQ362 READY AFTER RQ361 DONE`; `RQ363 READY AFTER RQ362 DONE`; `RQ364 READY AFTER RQ363 DONE`; `RQ365` is an independent database-reliability branch; `RQ367 READY AFTER RQ361 + RQ363 + RQ364 + RQ365 DONE` (RQ361 transitively includes RQ366).
+System reliability architecture intake 2026-09-20: `RQ359`-`RQ367` were added from the user's Reliability Contract Layer proposal (shared async lifecycle, invariant tests, guardrails, provenance, runtime validation, dataset projections, migration smoke, baseline debt and generated evidence); `RQ359`, `RQ360`, `RQ361` and `RQ366` are DONE, while `RQ362`-`RQ365`, `RQ367` remain `WAITING`.
+System reliability dependency order 2026-09-20: `RQ359`, `RQ360`, `RQ361` and `RQ366` are DONE; `RQ362 READY AFTER RQ361 DONE`; `RQ363 READY AFTER RQ362 DONE`; `RQ364 READY AFTER RQ363 DONE`; `RQ365` is an independent database-reliability branch; `RQ367 READY AFTER RQ361 + RQ363 + RQ364 + RQ365 DONE` (RQ361 transitively includes RQ366).
 
 Owner promotion 2026-09-15: `RQ270` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ264` completion; it is the single current RQ prompt for confirmed Inventory scope-change reload gaps and will be claimed in this workspace.
 
@@ -1279,7 +1283,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ358 | DONE | shoe-type-toolbar-metadata-fake-zero | Fail closed on null shoe type count in toolbar metadata export |
 | RQ359 | DONE | analytics-reliable-query-lifecycle | Centralize abort/latest-request/stale-refetch semantics in one hook |
 | RQ360 | DONE | analytics-invariant-test-kit | Reuse one invariant matrix across critical analytics screens |
-| RQ361 | WAITING | analytics-guardrail-expansion | Detect fake-zero, silent-catch, frontend-aggregate and pagination anti-patterns |
+| RQ361 | DONE | analytics-guardrail-expansion | Detect fake-zero, silent-catch, frontend-aggregate and pagination anti-patterns |
 | RQ362 | WAITING | analytics-authoritative-provenance | Formalize authoritative versus derived metric provenance |
 | RQ363 | WAITING | analytics-response-runtime-validation | Fail closed on invalid analytics DTOs at the API boundary |
 | RQ364 | WAITING | analytics-dataset-projections | Separate canonical, filtered, table, chart, export and detail datasets |
@@ -19020,13 +19024,31 @@ The repository adds one regression at a time, but critical pages repeatedly redi
 
 ## RQ361 - Expand `check-analytics-guardrails` beyond decisionScore
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: tooling/guardrails/tests
 Feature family: analytics-guardrail-expansion
 Parallel-safe: no
 Owner: Analytics Reliability Tooling
 Commit suggestion: `feat(analytics): expand reliability guardrails`
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Expanded the guardrail scanner with scoped fake-zero, swallowed-failure, refetch-clear, percentage-formula, page-KPI, sorted-row and paginated-total detections, plus reviewed narrow allowlist validation.
+- Changed files: `Klijent/clientapp/scripts/check-analytics-guardrails.mjs`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: `npm run check:analytics-guardrails` passed with explicit `baseline-only` output for 51 confirmed violations; self-test covers every new rule and exit semantics; `git diff --check`
+- Checks not run: full frontend suite, live browser, CI; this is tooling/guardrail scope
+- Run log: `.ai/runs/2026-09-20-RQ361-evidence.md`
+- Evidence state: pending
+- Delivery mode: pull-request
+- Main commit SHA: pending
+- Main verification: pending until the feature branch is delivered to `main`
+- Missed: no known RQ361 scope omissions
+- Follow-up: promote `RQ362` after RQ361 main delivery
+- Residual risk: 51 confirmed findings remain explicit baseline debt; future source movement or newly introduced matches fail unless separately reviewed.
+- Prompt defect / scope repair: fake-zero detection was narrowed to analytics metric names and page/component scopes after the initial broad scan surfaced unrelated service/utility false positives; all newly confirmed findings were then baselined with exact identities and reasons.
 
 ### Problem
 
