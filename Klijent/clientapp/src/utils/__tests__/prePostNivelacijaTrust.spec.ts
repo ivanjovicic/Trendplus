@@ -3,6 +3,7 @@ import {
   comparablePrePostMetric,
   comparablePrePostTotal,
   hasComparablePrePostEvidence,
+  resolvePostRevenueSharePercent,
 } from "../prePostNivelacijaTrust";
 
 describe("prePostNivelacijaTrust", () => {
@@ -29,5 +30,31 @@ describe("prePostNivelacijaTrust", () => {
     expect(comparablePrePostMetric(Number.NaN, row)).toBeNull();
     expect(comparablePrePostMetric(Number.POSITIVE_INFINITY, row)).toBeNull();
     expect(comparablePrePostMetric(Number.NEGATIVE_INFINITY, row)).toBeNull();
+  });
+
+  it("does not recompute post revenue share when backend field is missing", () => {
+    expect(resolvePostRevenueSharePercent({
+      hasComparableSalesWindow: true,
+      postRevenueSharePercent: null,
+    })).toBeNull();
+    expect(resolvePostRevenueSharePercent({
+      hasComparableSalesWindow: true,
+      postRevenueSharePercent: undefined,
+    })).toBeNull();
+    expect(resolvePostRevenueSharePercent({
+      hasComparableSalesWindow: false,
+      postRevenueSharePercent: 100,
+    })).toBeNull();
+  });
+
+  it("uses backend post revenue share when available", () => {
+    expect(resolvePostRevenueSharePercent({
+      hasComparableSalesWindow: true,
+      postRevenueSharePercent: 42.5,
+    })).toBe(42.5);
+    expect(resolvePostRevenueSharePercent({
+      hasComparableSalesWindow: true,
+      postRevenueSharePercent: 0,
+    })).toBe(0);
   });
 });

@@ -23,3 +23,14 @@ export function comparablePrePostTotal(
   if (hasComparableSalesWindow !== true) return null;
   return normalizeMetricNumber(value);
 }
+
+export type PostRevenueShareRow = PrePostEvidenceRow & {
+  postRevenueSharePercent?: number | null;
+};
+
+export function resolvePostRevenueSharePercent(row: PostRevenueShareRow | null | undefined): number | null {
+  if (!hasComparablePrePostEvidence(row) || row?.postRevenueSharePercent == null) {
+    return null;
+  }
+  return normalizeMetricNumber(row.postRevenueSharePercent);
+}

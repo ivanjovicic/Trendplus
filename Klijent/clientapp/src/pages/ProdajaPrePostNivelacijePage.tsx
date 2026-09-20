@@ -58,7 +58,12 @@ import {
   type RecommendationQualityStatus,
 } from "../utils/canonicalRecommendationSemantics";
 import { getDataScope, type DataScope } from "../utils/dataScope";
-import { comparablePrePostMetric, comparablePrePostTotal, hasComparablePrePostEvidence } from "../utils/prePostNivelacijaTrust";
+import {
+  comparablePrePostMetric,
+  comparablePrePostTotal,
+  hasComparablePrePostEvidence,
+  resolvePostRevenueSharePercent,
+} from "../utils/prePostNivelacijaTrust";
 import {
   finiteToolbarCount,
   formatPrePostAnalysisWindowHint,
@@ -639,10 +644,6 @@ export default function ProdajaPrePostNivelacijePage() {
     if (rows.length === 0) return [];
 
     const vendorRowKeys = currentVendorRowKeys;
-    const totalRevenue = comparablePrePostTotal(
-      data?.totals.postRevenue,
-      data?.totals.hasComparableSalesWindow,
-    );
     return rows.map((item, rowIndex) => {
       const vendorRowKey = vendorRowKeys[rowIndex];
       const backendRecommendation = item.recommendation;
@@ -656,11 +657,7 @@ export default function ProdajaPrePostNivelacijePage() {
       const sharePctAvailable = absoluteChangeSharePct != null;
       const sharePct = absoluteChangeSharePct;
       const trustedPostRevenue = trustedMetric(item.postRevenue, item);
-      const postSharePct = hasComparablePrePostEvidence(item) && item.postRevenueSharePercent != null
-        ? item.postRevenueSharePercent
-        : trustedPostRevenue != null && totalRevenue != null && totalRevenue > 0
-          ? (trustedPostRevenue / totalRevenue) * 100
-          : null;
+      const postSharePct = resolvePostRevenueSharePercent(item);
       const trendPct = trustedMetric(item.changePercent, item);
       const avgCoveragePost30 = item.avgCoveragePost30 != null ? item.avgCoveragePost30 * 100 : null;
       const normalizedReliabilityPct = recommendationReliabilityPct;
@@ -696,7 +693,7 @@ export default function ProdajaPrePostNivelacijePage() {
         volatilityTone: volatility.tone,
       };
     });
-  }, [currentVendorRowKeys, data?.totals.absoluteChangeRevenue, data?.totals.hasComparableSalesWindow, data?.totals.postRevenue, data?.vendorStats, previousComparisonError, previousRevenueByVendorKey]);
+  }, [currentVendorRowKeys, data?.vendorStats, previousComparisonError, previousRevenueByVendorKey]);
 
   const sortedRows = useMemo(() => {
     const rows = [...decisionRows];

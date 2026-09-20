@@ -1,8 +1,29 @@
 # Analytics Reliability Prompt Queue
 
-Date: 2026-09-18
+Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ333` moved from `WAITING` to `READY` as P1 trust follow-up (Pre/Post frontend post revenue share recompute).
+
+Owner claim 2026-09-20: `RQ333` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ333-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Pre/Post row projection now uses backend `postRevenueSharePercent` only; missing backend share stays null instead of frontend `(postRevenue / totalRevenue) * 100` recompute.
+- Changed files: `Klijent/clientapp/src/utils/prePostNivelacijaTrust.ts`, `Klijent/clientapp/src/utils/__tests__/prePostNivelacijaTrust.spec.ts`, `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: prePostNivelacijaTrust spec 6/6; ProdajaPrePostNivelacijePage spec 27/27; `npm run check:analytics-guardrails`; `git diff --check`
+- Checks not run: full client suite, CI, live browser
+- Run log: `.ai/runs/2026-09-20-RQ333-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Follow-up: promote `RQ334` (supplier prePostComparableArticleCount) or `RQ335` (Daily Sales previous-period silent failure)
+- Residual risk: `postSharePct` is not yet a rendered column; RQ345 covers Shoe/Color share recompute separately
+- Prompt defect / scope repair: none
 
 Owner promotion 2026-09-18: under user instruction to claim next prompt, `RQ332` moved from `WAITING` to `READY` as P1 trust follow-up (inventory off-page detail placeholder fake zero).
 
@@ -17096,7 +17117,7 @@ Commit suggestion: `fix(analytics): inventory detail placeholder fake zero`
 
 ## RQ333 - Stop Pre/Post frontend from recomputing post revenue share percent
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/trust/tests
 Feature family: pre-post-frontend-share-recompute
