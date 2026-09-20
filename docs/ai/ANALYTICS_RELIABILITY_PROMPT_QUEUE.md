@@ -522,7 +522,9 @@ Operations audit intake 2026-09-18: `RQ301`-`RQ311` were added from a fresh post
 
 Operations audit intake 2026-09-18 (round 2): `RQ312`-`RQ330` were added from a deeper post-`RQ311` Operacije review (trust boundaries, URL state, filter UX, partial failures, unapređenja); all nineteen are `WAITING`; the queue has no current READY prompt.
 
-Operations audit intake 2026-09-18 (round 3): `RQ331`-`RQ358` were added from a third post-`RQ330` Operacije review (page-local KPIs, fake zeros, chart sort bug, stale refetch, abort races, filter facet bias, supplier redirect trust); all twenty-eight are `WAITING`; the queue has no current READY prompt.
+Operations audit intake 2026-09-18 (round 3): `RQ331`-`RQ358` were added from a third post-`RQ330` Operacije review (page-local KPIs, fake zeros, chart sort bug, stale refetch, abort races, filter facet bias, supplier redirect trust); `RQ331`-`RQ344` are `DONE` on `main`, `RQ345`-`RQ358` remain `WAITING`, and the queue has no current READY prompt.
+
+System reliability architecture intake 2026-09-20: `RQ359`-`RQ367` were added from the user's Reliability Contract Layer proposal (shared async lifecycle, invariant tests, guardrails, provenance, runtime validation, dataset projections, migration smoke, baseline debt and generated evidence); all nine are `WAITING`; the queue has no current READY prompt.
 
 Owner promotion 2026-09-15: `RQ270` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ264` completion; it is the single current RQ prompt for confirmed Inventory scope-change reload gaps and will be claimed in this workspace.
 
@@ -946,10 +948,10 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ330 | WAITING | pre-post-focus-row-context | Add row-count context when Pre/Post focus hides vendors |
 | RQ331 | DONE | inventory-page-local-signal-kpis | Stop Inventory signal KPI cards from counting only the current page slice |
 | RQ332 | DONE | inventory-detail-placeholder-fake-zero | Remove fake zero inventory/value when opening SKU detail off-page |
-| RQ333 | WAITING | pre-post-frontend-share-recompute | Stop Pre/Post frontend from recomputing post revenue share percent |
-| RQ334 | WAITING | supplier-prepost-comparable-fake-zero | Fail closed on null Pre/Post comparable article count in Supplier detail |
-| RQ335 | WAITING | daily-sales-previous-period-silent-failure | Surface Daily Sales previous-period fetch failure instead of silent N/A deltas |
-| RQ336 | WAITING | daily-sales-chart-sort-order-bug | Feed Daily Sales trend/shift charts from chronological rows, not table sort |
+| RQ333 | DONE | pre-post-frontend-share-recompute | Stop Pre/Post frontend from recomputing post revenue share percent |
+| RQ334 | DONE | supplier-prepost-comparable-fake-zero | Fail closed on null Pre/Post comparable article count in Supplier detail |
+| RQ335 | DONE | daily-sales-previous-period-silent-failure | Surface Daily Sales previous-period fetch failure instead of silent N/A deltas |
+| RQ336 | DONE | daily-sales-chart-sort-order-bug | Feed Daily Sales trend/shift charts from chronological rows, not table sort |
 | RQ337 | DONE | operations-frozen-preset-period | Refresh frozen 30d preset period on Operacije pages at apply/reset |
 | RQ338 | DONE | pre-post-vendor-load-silent-failure | Surface Pre/Post vendor dropdown load failure |
 | RQ339 | DONE | pre-post-focus-reset-on-reload | Preserve Pre/Post focus filter across non-filter reloads |
@@ -972,6 +974,15 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ356 | WAITING | pre-post-english-signal-labels | Serbian labels for Pre/Post advanced signal cards |
 | RQ357 | WAITING | inventory-url-pagination-search | URL-sync Inventory pagination, page size, search and compare stores |
 | RQ358 | WAITING | shoe-type-toolbar-metadata-fake-zero | Fail closed on null shoe type count in toolbar metadata export |
+| RQ359 | WAITING | analytics-reliable-query-lifecycle | Centralize abort/latest-request/stale-refetch semantics in one hook |
+| RQ360 | WAITING | analytics-invariant-test-kit | Reuse one invariant matrix across critical analytics screens |
+| RQ361 | WAITING | analytics-guardrail-expansion | Detect fake-zero, silent-catch, frontend-aggregate and pagination anti-patterns |
+| RQ362 | WAITING | analytics-authoritative-provenance | Formalize authoritative versus derived metric provenance |
+| RQ363 | WAITING | analytics-response-runtime-validation | Fail closed on invalid analytics DTOs at the API boundary |
+| RQ364 | WAITING | analytics-dataset-projections | Separate canonical, filtered, table, chart, export and detail datasets |
+| RQ365 | WAITING | analytics-migration-bootstrap-smoke | Prove fresh and repeat PostgreSQL migration/bootstrap lifecycle |
+| RQ366 | WAITING | analytics-guardrail-baseline | Prevent guardrail debt from growing while shrinking the baseline |
+| RQ367 | WAITING | analytics-generated-validation-evidence | Generate machine-readable validation evidence before Markdown summaries |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -18541,5 +18552,544 @@ Toolbar metadata `brojTipovaObuce ?? 0` writes 0 when totals absent.
 ### Dependencies
 
 - RQ354 supplier metadata pattern.
+
+---
+
+## RQ359 - Centralize analytics async loading in `useReliableAnalyticsQuery`
+
+Status: WAITING
+Priority: P1
+Type: frontend/architecture/tests
+Feature family: analytics-reliable-query-lifecycle
+Parallel-safe: no
+Owner: Analytics Frontend Foundations
+Commit suggestion: `feat(analytics): centralize reliable query lifecycle`
+
+### Problem
+
+Shoe Type, Color, Pre/Post, Inventory and Pre-Nivelacija each implement their own combination of loading, abort, request ordering, stale data and error transitions. RQ338, RQ340, RQ341 and RQ342 fixed the same lifecycle contract in separate pages, leaving the next page free to regress with `setData(null)`, `setData([])` or a swallowed error.
+
+### Evidence
+
+- RQ342 changes five page-local AbortController/request-id implementations.
+- RQ338, RQ340 and RQ341 use different vendor/refetch/stale-error state variants.
+- `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx`, `ColorSalesStatsPage.tsx`, `ProdajaPrePostNivelacijePage.tsx`, `InventoryPage.tsx` and `PreNivelacijaPriorityPage.tsx` own overlapping fetch lifecycle logic.
+
+### Scope
+
+- A shared hook under `Klijent/clientapp/src/hooks/` or the existing shared frontend state owner.
+- Focused hook tests and migration of the five named analytics list pages.
+- Existing API client contracts and backend response semantics remain unchanged.
+
+### Read first
+
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- RQ338, RQ340, RQ341 and RQ342
+- The five page implementations and their current focused specs
+- `Klijent/clientapp/src/services/analyticsResponseMeta.ts`
+
+### Do
+
+1. Define a typed hook contract with `initialLoading`, `refetching`, `data`, blocking error, stale warning, `loadedAt` and request generation state.
+2. Abort the previous request, ignore abort as an error, and ensure only the latest request can commit state.
+3. Preserve the last valid snapshot on refetch failure; keep initial failure blocking and distinguish successful empty from error.
+4. Migrate the five named pages without changing their endpoint parameters, trust metadata, empty-state reasons or backend-owned decision fields.
+5. Keep an explicit escape hatch only for non-query workflows, with a focused reason and test.
+
+### Tests
+
+- Hook tests for initial success, initial error, successful empty, refetch success, refetch failure, abort, slow-old/new-fast race and unmount cleanup.
+- One migration regression per page proving the previous snapshot is preserved on refetch failure.
+- Existing RQ338/RQ340/RQ341/RQ342 focused suites.
+
+### Acceptance
+
+- The five pages use one shared lifecycle owner; no duplicate request-id/AbortController state remains in those paths.
+- Unknown, empty, stale and error states remain distinct and no failure becomes fake zero/empty success.
+- An older response cannot overwrite a newer response, and abort never renders an error.
+- `npm run check:analytics-guardrails`, hook/page tests and `npm run typecheck` pass.
+
+### Dependencies
+
+- RQ338, RQ340, RQ341 and RQ342 are DONE.
+- RQ321 store-filter failure semantics must remain compatible; no claim until the current READY pointer is explicitly promoted.
+
+---
+
+## RQ360 - Build a reusable Analytics Reliability Contract test kit
+
+Status: WAITING
+Priority: P1
+Type: frontend/tests/architecture
+Feature family: analytics-invariant-test-kit
+Parallel-safe: no
+Owner: Analytics Frontend Foundations
+Commit suggestion: `test(analytics): add reliability contract test kit`
+
+### Problem
+
+The repository adds one regression at a time, but critical pages repeatedly rediscover the same invariants: unknown must not become zero, refetch errors must preserve data, aborts are not errors, and backend values must not be reconstructed from page rows.
+
+### Evidence
+
+- RQ333-RQ358 contain repeated examples of the same trust failures across different pages.
+- Existing page specs use incompatible mock response factories and lifecycle assertions.
+- `Klijent/clientapp/src/pages` and `src/utils` contain the nearest reusable test seams.
+
+### Scope
+
+- A reusable frontend test helper/factory under `Klijent/clientapp/src/testing/` or the established test utility owner.
+- Declarative adapters for critical analytics screens; no production business-rule rewrite.
+- Initial adoption by Pre/Post, Shoe Type, Color, Daily Sales and Inventory.
+
+### Read first
+
+- `docs/ai/ANALYTICS_TEST_STRATEGY.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- RQ359
+- Current focused specs for Pre/Post, Shoe Type, Color, Daily Sales and Inventory
+- Shared formatters and analytics response-meta helpers
+
+### Do
+
+1. Define a contract matrix for missing, null, valid zero, valid positive, invalid negative, `NaN`, `Infinity`, out-of-range and malformed metadata values.
+2. Provide reusable assertions for initial error versus empty, refetch stale preservation, abort, latest-request-wins, authoritative backend fields, chronological charts and page/global count distinctions.
+3. Let each page supply only its response factory, selectors and endpoint adapter; do not copy page-specific business scoring into the kit.
+4. Add counterexample tests proving valid zero remains visible and unknown remains unavailable.
+
+### Tests
+
+- The kit's own matrix tests for every numeric state above.
+- One contract-suite invocation for each of the five initial adopter pages.
+- Existing page-specific tests remain green without weakening assertions.
+
+### Acceptance
+
+- A new critical analytics page can opt into the invariant suite through a small adapter rather than duplicating lifecycle assertions.
+- The suite covers unknown/zero, error/empty, stale/refetch, abort/race, backend authority, invalid numeric values, chart chronology and pagination/global semantics.
+- No assertion treats a missing value as a valid zero or healthy state.
+
+### Dependencies
+
+- RQ359 shared query lifecycle.
+- RQ336 chart chronology and RQ344 global facet/page distinction are DONE and provide reference contracts.
+
+---
+
+## RQ361 - Expand `check-analytics-guardrails` beyond decisionScore
+
+Status: WAITING
+Priority: P1
+Type: tooling/guardrails/tests
+Feature family: analytics-guardrail-expansion
+Parallel-safe: no
+Owner: Analytics Reliability Tooling
+Commit suggestion: `feat(analytics): expand reliability guardrails`
+
+### Problem
+
+The current static guardrail catches some local decision-field reconstruction but missed `?? 0`, swallowed `catch(() => null)`, frontend revenue-share formulas and page-local aggregation/pagination mistakes that later became RQ333-RQ358.
+
+### Evidence
+
+- RQ334, RQ335 and RQ333 fixed patterns that the current scanner did not flag before runtime review.
+- `Klijent/clientapp/scripts/check-analytics-guardrails.mjs` is the current owner of analytics guardrail checks.
+- Existing allowlist/test fixtures are the safest extension point.
+
+### Scope
+
+- `Klijent/clientapp/scripts/check-analytics-guardrails.mjs` and its deterministic self-test fixtures.
+- Rules for suspicious fake-zero fallbacks, swallowed fetch failures, refetch `setData(null)`, page percentage formulas, page `reduce()` KPI aggregation, sorted-row KPI derivation and paginated facet/total derivation.
+- A documented allowlist with a required reason and narrow path/pattern, not a blanket suppression.
+
+### Read first
+
+- `docs/ai/ANALYTICS_TEST_STRATEGY.md`
+- `docs/ai/COMMON_FAILURES_AND_FIXES.md`
+- `Klijent/clientapp/scripts/check-analytics-guardrails.mjs`
+- Existing guardrail fixtures and RQ311
+
+### Do
+
+1. Add deterministic checks for the listed patterns with messages that name the violated invariant and safer owner.
+2. Permit legitimate cases only through explicit, reviewed allowlist entries with comments and tests.
+3. Keep the first implementation compatible with the existing script; AST/ESLint migration is a follow-up option, not a reason to weaken current checks.
+4. Report new violations separately from known baseline debt until RQ366 establishes the baseline contract.
+
+### Tests
+
+- Self-test fixtures for each suspicious pattern and one legitimate allowlisted case.
+- `npm run check:analytics-guardrails` on all maintained analytics surfaces.
+- Guardrail regression proving a newly introduced violation exits non-zero.
+
+### Acceptance
+
+- The scanner flags the listed anti-patterns without false-positive suppression of valid page mechanics.
+- Every allowlist entry has an owner/reason and a narrow match.
+- A non-zero guardrail command cannot be recorded as PASS by the surrounding validation flow.
+
+### Dependencies
+
+- RQ311 existing guardrail owner.
+- RQ366 will own debt-baseline enforcement; this prompt owns detection quality.
+
+---
+
+## RQ362 - Formalize authoritative versus derived analytics metric provenance
+
+Status: WAITING
+Priority: P1
+Type: backend/frontend/contract/tests
+Feature family: analytics-authoritative-provenance
+Parallel-safe: no
+Owner: Analytics Contract / Backend + Frontend
+Commit suggestion: `feat(analytics): formalize metric provenance contract`
+
+### Problem
+
+RQ333, RQ345 and RQ346 expose the same ambiguity: a browser-derived value can look like a canonical backend aggregate. Critical KPI and trust fields need an explicit source, authority and actionability contract.
+
+### Evidence
+
+- RQ180 already establishes backend ownership for Pre/Post aggregate denominators.
+- RQ333 removes a frontend revenue-share reconstruction; RQ345 and RQ346 remain waiting for the same pattern on other surfaces.
+- Analytics DTOs currently mix observed, aggregate, derived and unavailable values without one shared provenance vocabulary.
+
+### Scope
+
+- A backward-compatible provenance vocabulary for critical analytics metrics: authoritative backend aggregate, observed row value, frontend display derivation, modeled/estimated and unknown.
+- One representative cross-surface contract for revenue share, margin, confidence/reliability and counts, including unit and denominator metadata where relevant.
+- Backend DTO/meta and frontend mapping/tests only where the current owner can prove the field; no breaking API rewrite.
+
+### Read first
+
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/ANALYTICS_STANDARDS.md`
+- RQ180, RQ333, RQ345 and RQ346
+- Current analytics DTOs and `analyticsResponseMeta` helpers
+
+### Do
+
+1. Define the vocabulary and source-of-truth rules before changing runtime projections.
+2. Add provenance/authority metadata as optional, backward-compatible fields where needed.
+3. Remove or label frontend reconstruction for the selected critical metrics.
+4. Make unavailable/blocked provenance fail closed; do not label a page-derived estimate as authoritative.
+
+### Tests
+
+- DTO/schema tests for each provenance value and unit/denominator combination.
+- Cross-surface regression proving table, detail, chart, export and action values preserve the same provenance.
+- Counterexample where backend aggregate differs from page rows; UI must prefer backend authority or show unavailable.
+
+### Acceptance
+
+- Critical metrics visibly and machine-readably distinguish authoritative, derived, modeled and unknown values.
+- No frontend aggregate silently replaces a backend-owned value.
+- Existing clients remain compatible and current valid zero semantics remain intact.
+
+### Dependencies
+
+- RQ180 DONE; coordinate with RQ345 and RQ346 before claiming overlapping paths.
+- RQ363 may consume this vocabulary but is not required to define it.
+
+---
+
+## RQ363 - Validate critical analytics responses at the frontend API boundary
+
+Status: WAITING
+Priority: P2
+Type: frontend/api-contract/tests
+Feature family: analytics-response-runtime-validation
+Parallel-safe: no
+Owner: Analytics Frontend / API Client Contracts
+Commit suggestion: `feat(analytics): validate critical responses at api boundary`
+
+### Problem
+
+Malformed runtime values such as `NaN`, `Infinity`, negative counts or percentages above 100 can reach pages where local formatters guess or silently display misleading values.
+
+### Evidence
+
+- `zod` is already available in `Klijent/clientapp/package.json` and is used by `src/validation/ArtikalSchema.ts`.
+- RQ285 and the current analytics numeric-state specs prove the need for finite/range checks at more than one screen.
+
+### Scope
+
+- Shared schemas under `Klijent/clientapp/src/validation/` for critical analytics response fragments.
+- Boundary parsing in selected API clients: Pre/Post, Daily Sales, Shoe Type, Color, Inventory and Pre-Nivelacija.
+- Controlled contract-violation state that preserves error/empty/degraded distinctions; no silent normalization to zero.
+
+### Read first
+
+- Existing Zod usage and package conventions
+- `src/services/analyticsResponseMeta.ts`
+- Critical API clients and DTO types for the six surfaces
+- RQ285, RQ300 and RQ362
+
+### Do
+
+1. Define finite/range/nullability schemas for percentages, coverage, margin, counts, dates and critical metadata.
+2. Parse immediately after fetch and classify schema violations as controlled analytics errors/degraded responses with a correlation-safe message.
+3. Preserve valid zero, nullable unknown and successful empty semantics.
+4. Keep schema definitions close to the API contract and avoid duplicating formatters or business scoring.
+
+### Tests
+
+- Response fixtures for missing, null, zero, positive, negative, `NaN`, `Infinity`, out-of-range and malformed date values.
+- API-client tests proving valid zero survives and invalid data fails closed.
+- One page regression proving contract violation is not rendered as fake zero or healthy empty.
+
+### Acceptance
+
+- Critical malformed analytics payloads cannot reach business-metric rendering as trusted values.
+- Error, empty, stale and degraded states remain distinct.
+- Backend-authoritative fields are validated, not recomputed or repaired in the browser.
+
+### Dependencies
+
+- RQ362 provenance vocabulary for fields that need authority metadata.
+- Existing page contracts remain backward-compatible during rollout.
+
+---
+
+## RQ364 - Separate analytics datasets by purpose
+
+Status: WAITING
+Priority: P2
+Type: frontend/architecture/tests
+Feature family: analytics-dataset-projections
+Parallel-safe: no
+Owner: Analytics Frontend Foundations
+Commit suggestion: `refactor(analytics): separate dataset projections`
+
+### Problem
+
+Generic `rows`/`sortedRows` pipelines let table sorting change chart order, page rows stand in for global totals, and export/detail projections inherit the wrong filter or pagination semantics.
+
+### Evidence
+
+- RQ336 fixed Daily Sales chart chronology after table sort.
+- RQ344 fixed Pre-Nivelacija facets being derived from the current page.
+- Daily Sales, Pre/Post and Inventory still contain multiple consumers of page-local projections with implicit meaning.
+
+### Scope
+
+- Shared typed projection vocabulary/helpers for `canonicalRows`, `filteredRows`, `tableRows`, `chronologicalChartRows`, `exportRows`, `detailRows`, `pageRows`, `globalTotals` and `globalFacets`.
+- First migration of Daily Sales and Pre-Nivelacija, followed by one Inventory or Pre/Post projection where evidence shows the same risk.
+- No change to backend formulas or user-visible business semantics without a separate contract note.
+
+### Read first
+
+- RQ336 and RQ344
+- `DailySalesStatsPage.tsx`, `PreNivelacijaPriorityPage.tsx`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- Shared analytics table/export helpers
+
+### Do
+
+1. Name each projection by its dataset semantics and prohibit chart/export/metric consumers from using table-sorted rows accidentally.
+2. Keep page-local filters separate from backend global totals/facets and label counts explicitly.
+3. Add narrow helper types/functions only where they remove ambiguity; do not create a generic data framework.
+4. Document any intentional conversion between projections.
+
+### Tests
+
+- Sorting table rows does not change chronological chart order.
+- Pagination does not change global totals/facets.
+- Export/detail use the declared projection and preserve period/scope metadata.
+- Empty and filtered-out states remain distinct.
+
+### Acceptance
+
+- The migrated surfaces have no ambiguous `sortedRows`/`candidates` use for chart, export, detail or global KPI semantics.
+- Projection names and tests make page versus global scope explicit.
+
+### Dependencies
+
+- RQ336 and RQ344 DONE.
+- Coordinate with RQ359 so query lifecycle and dataset projection ownership do not overlap.
+
+---
+
+## RQ365 - Add a PostgreSQL migration/bootstrap lifecycle smoke scenario
+
+Status: WAITING
+Priority: P1
+Type: backend/infrastructure/tests/CI
+Feature family: analytics-migration-bootstrap-smoke
+Parallel-safe: no
+Owner: Analytics Infrastructure / Backend CI
+Commit suggestion: `test(setup): add migration bootstrap lifecycle smoke`
+
+### Problem
+
+Fresh and repeat startup paths have exposed non-idempotent indexes, duplicate objects and migrations that only work after an undocumented manual sequence. Local fixes in `ae661d57` and `4d7206a5` need a repeatable lifecycle proof.
+
+### Evidence
+
+- `Infrastructure/Seed/DatabaseInitializer.cs` and the Trendplus/Analytics EF migrations own the bootstrap path.
+- `ae661d57` and `4d7206a5` harden fresh/repeat setup but were validated manually rather than by a lifecycle test.
+- Both contexts can target the local PostgreSQL database used by the development environment.
+
+### Scope
+
+- An isolated smoke script/test and CI wiring using an ephemeral PostgreSQL instance/database.
+- Trendplus and Analytics migration histories, seed/bootstrap, second bootstrap and restart/init repeat.
+- A representative older migration checkpoint, without production credentials or destructive shared-database operations.
+
+### Read first
+
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `Infrastructure/Seed/DatabaseInitializer.cs`
+- `Infrastructure/Migrations/`
+- `Infrastructure/Migrations/AnalyticsDb/`
+- `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
+- `ae661d57` and `4d7206a5`
+
+### Do
+
+1. Start a clean ephemeral PostgreSQL database with required extensions or an explicit documented skip for optional pgvector.
+2. Apply both contexts, run bootstrap/seed, repeat bootstrap and simulate restart/init again.
+3. Assert migration histories, required tables/indexes and no duplicate-object failures.
+4. Add the smallest CI job or script that runs the same lifecycle without weakening the existing backend gate.
+
+### Tests
+
+- Fresh database migration/bootstrap.
+- Second bootstrap on the same database.
+- Restart/init after the migration history is complete.
+- Representative older migration state and failure output classification.
+
+### Acceptance
+
+- The lifecycle is green from fresh and repeat states.
+- Optional dependencies are explicit; missing pgvector cannot be reported as a product failure when the test does not require it.
+- The smoke scenario catches a regression to unguarded `DROP INDEX`/duplicate-object behavior.
+
+### Dependencies
+
+- `ae661d57` and `4d7206a5` are on `main`.
+- BCI owns generic workflow health; this prompt owns the analytics database/bootstrap contract.
+
+---
+
+## RQ366 - Enforce a non-growing analytics guardrail baseline
+
+Status: WAITING
+Priority: P2
+Type: tooling/governance/tests
+Feature family: analytics-guardrail-baseline
+Parallel-safe: no
+Owner: Analytics Reliability Tooling
+Commit suggestion: `chore(analytics): add non-growing guardrail baseline`
+
+### Problem
+
+A recurring “pre-existing guardrail violation” exception normalizes red quality signals. Existing debt must be visible and allowed to shrink, never silently grow.
+
+### Evidence
+
+- Recent RQ evidence repeatedly reports pre-existing advisory violations.
+- `check-analytics-guardrails` currently has no machine-enforced known-debt baseline.
+
+### Scope
+
+- A versioned `known-guardrail-baseline.json` or equivalent under the existing scripts/quality owner.
+- Stable violation identity, current-vs-baseline comparison and CI/local output showing added, removed and unchanged debt.
+- Queue/evidence wording that distinguishes baseline debt from a green guardrail run.
+
+### Read first
+
+- `Klijent/clientapp/scripts/check-analytics-guardrails.mjs`
+- `.github/workflows/`
+- `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`
+- RQ361 and current guardrail output
+
+### Do
+
+1. Capture only confirmed current violations with stable file/rule/location identity.
+2. Fail on any new violation; pass with an explicit debt report when only baseline violations remain.
+3. Require a focused review/reason for baseline removal and forbid wildcard suppression.
+4. Add a monotonicity self-test proving the baseline cannot grow accidentally.
+
+### Tests
+
+- Baseline self-test with unchanged, removed and newly introduced violations.
+- CI/local command exit-code tests.
+- Guardrail evidence fixture proving baseline debt is not reported as full PASS.
+
+### Acceptance
+
+- New violations fail the check.
+- Existing debt is explicit and the baseline can only shrink through a reviewed diff.
+- Evidence records `guardrails: baseline-only` separately from `guardrails: pass`.
+
+### Dependencies
+
+- RQ361 detection expansion.
+- No production analytics runtime change.
+
+---
+
+## RQ367 - Generate machine-readable validation evidence before Markdown
+
+Status: WAITING
+Priority: P2
+Type: tooling/governance/tests
+Feature family: analytics-generated-validation-evidence
+Parallel-safe: no
+Owner: Agent Evidence / Analytics Reliability Tooling
+Commit suggestion: `feat(analytics): generate validation evidence`
+
+### Problem
+
+Evidence logs currently rely on an agent to transcribe whether commands passed. A non-zero command must never be recorded as PASS through free-text drift.
+
+### Evidence
+
+- `.ai/RUN_LOG_TEMPLATE.md` requires exact validation and delivery truth, but does not generate it.
+- Recent runs have needed manual synchronization of queue SHA and evidence state, including RQ344.
+
+### Scope
+
+- `scripts/run-task-validation.*` producing JSON with command, exit code, status, timestamp, commit and captured summary.
+- Markdown rendering/update that consumes the JSON rather than accepting hand-written PASS values.
+- Integration with frontend guardrails, focused tests, backend build/test and main SHA verification.
+
+### Read first
+
+- `.ai/RUN_LOG_TEMPLATE.md`
+- `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- Existing `scripts/check-*` validators and run logs
+
+### Do
+
+1. Run named validation commands without swallowing exit codes or turning skipped commands into pass.
+2. Emit a stable JSON schema containing `tests`, `guardrails`, `build`, `exitCodes`, `commit`, `timestamp`, `skipped` and `environment`.
+3. Generate/update the Markdown evidence sections from that JSON and preserve manual notes only in clearly separate fields.
+4. Make delivery verification use the fetched `origin/main` SHA and record residual CI honestly.
+
+### Tests
+
+- Fixture command pass, fail, timeout, skipped and environment-blocked outcomes.
+- Generated evidence snapshot with truthful exit codes and no false PASS.
+- Main SHA verification fixture for ancestor/current-tip cases.
+
+### Acceptance
+
+- A non-zero command cannot produce `pass` in generated evidence.
+- Queue completion notes can backlink generated evidence with synchronized SHA/status fields.
+- Existing human-readable run logs remain readable and historical logs are not rewritten.
+
+### Dependencies
+
+- `.ai/RUN_LOG_TEMPLATE.md` and evidence standard.
+- RQ366 for guardrail baseline vocabulary; RQ365 for migration smoke command coverage.
+
+### Boundary note
+
+- Sentry/OpenTelemetry/browser telemetry is intentionally outside this prompt; if runtime telemetry is later approved, route it through `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` rather than expanding this analytics queue.
 
 ---
