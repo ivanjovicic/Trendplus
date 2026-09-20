@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Bar,
   BarChart,
@@ -53,6 +53,7 @@ import {
 import { resolveColorCoveragePct } from "../utils/colorSalesCoverage";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
 import { getAnalyticsDataFreshnessStatus } from "../utils/analyticsResponseMeta";
+import { readAnalyticsTableSort, writeAnalyticsTableSort } from "../utils/analyticsTableSortUrl";
 import "./ColorSalesStatsPage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
@@ -65,6 +66,15 @@ type SortField =
   | "popRevenueChangePct"
   | "prePostNivelacijaRevenueImpactPct"
   | "status";
+const COLOR_SORT_FIELDS: readonly SortField[] = [
+  "boja",
+  "ukupanPromet",
+  "sharePct",
+  "marginContribution",
+  "popRevenueChangePct",
+  "prePostNivelacijaRevenueImpactPct",
+  "status",
+];
 type ActiveFilters = {
   fromDate: string;
   toDate: string;
@@ -273,6 +283,7 @@ function colorKey(item: { boja: string }): string {
 export default function ColorSalesStatsPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const requestIdRef = useRef(0);
   const detailSectionRef = useRef<HTMLElement>(null);
 
@@ -296,9 +307,15 @@ export default function ColorSalesStatsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dataScope, setDataScopeValue] = useState<DataScope>(() => getDataScope());
-  const [sortField, setSortField] = useState<SortField>("status");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [sortField, setSortField] = useState<SortField>(() => readAnalyticsTableSort(searchParams, COLOR_SORT_FIELDS, "status", "desc").field);
+  const [sortDir, setSortDir] = useState<SortDir>(() => readAnalyticsTableSort(searchParams, COLOR_SORT_FIELDS, "status", "desc").dir);
   const [expandedColorKey, setExpandedColorKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    const nextSort = readAnalyticsTableSort(searchParams, COLOR_SORT_FIELDS, "status", "desc");
+    setSortField((current) => current === nextSort.field ? current : nextSort.field);
+    setSortDir((current) => current === nextSort.dir ? current : nextSort.dir);
+  }, [searchParams]);
 
   const invalidRange = useMemo(() => {
     if (!fromDate || !toDate) return false;
@@ -797,15 +814,12 @@ export default function ColorSalesStatsPage() {
   );
 
   const handleSort = (field: SortField) => {
-    setSortField((previousField) => {
-      if (previousField === field) {
-        setSortDir((previousDir) => (previousDir === "asc" ? "desc" : "asc"));
-        return previousField;
-      }
-
-      setSortDir(field === "boja" ? "asc" : "desc");
-      return field;
-    });
+    const nextDir: SortDir = sortField === field
+      ? (sortDir === "asc" ? "desc" : "asc")
+      : (field === "boja" ? "asc" : "desc");
+    setSortField(field);
+    setSortDir(nextDir);
+    setSearchParams((current) => writeAnalyticsTableSort(current, field, nextDir), { replace: true });
   };
 
   return (

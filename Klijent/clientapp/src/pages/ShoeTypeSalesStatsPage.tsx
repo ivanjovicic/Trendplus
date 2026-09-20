@@ -1,5 +1,5 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Bar,
   BarChart,
@@ -72,6 +72,7 @@ import {
 import { resolveShoeTypeCoveragePct } from "../utils/shoeTypeSalesCoverage";
 import { buildShoeTypeRecommendationProjection } from "../utils/shoeTypeStatusIdentity";
 import { getAnalyticsDataFreshnessStatus } from "../utils/analyticsResponseMeta";
+import { readAnalyticsTableSort, writeAnalyticsTableSort } from "../utils/analyticsTableSortUrl";
 import "./ShoeTypeSalesStatsPage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
@@ -87,6 +88,18 @@ type SortField =
   | "popRevenueChangePct"
   | "prePostNivelacijaRevenueImpactPct"
   | "status";
+const SHOE_SORT_FIELDS: readonly SortField[] = [
+  "tipObuceNaziv",
+  "ukupanPromet",
+  "ukupnaKolicina",
+  "totalCost",
+  "sharePct",
+  "marginContribution",
+  "marginPct",
+  "popRevenueChangePct",
+  "prePostNivelacijaRevenueImpactPct",
+  "status",
+];
 type DecisionStatus = CanonicalRecommendationStatus;
 
 type ActiveFilters = {
@@ -347,6 +360,7 @@ function shoeTypeKey(item: { tipObuceId: number | null; tipObuceNaziv: string })
 export default function ShoeTypeSalesStatsPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const requestIdRef = useRef(0);
   const detailSectionRef = useRef<HTMLElement>(null);
 
@@ -370,9 +384,15 @@ export default function ShoeTypeSalesStatsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dataScope, setDataScopeValue] = useState<DataScope>(() => getDataScope());
-  const [sortField, setSortField] = useState<SortField>("status");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [sortField, setSortField] = useState<SortField>(() => readAnalyticsTableSort(searchParams, SHOE_SORT_FIELDS, "status", "desc").field);
+  const [sortDir, setSortDir] = useState<SortDir>(() => readAnalyticsTableSort(searchParams, SHOE_SORT_FIELDS, "status", "desc").dir);
   const [expandedTypeKey, setExpandedTypeKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    const nextSort = readAnalyticsTableSort(searchParams, SHOE_SORT_FIELDS, "status", "desc");
+    setSortField((current) => current === nextSort.field ? current : nextSort.field);
+    setSortDir((current) => current === nextSort.dir ? current : nextSort.dir);
+  }, [searchParams]);
 
   const invalidRange = useMemo(() => {
     if (!fromDate || !toDate) return false;
@@ -812,15 +832,12 @@ export default function ShoeTypeSalesStatsPage() {
   };
 
   const handleSort = (field: SortField) => {
-    setSortField((previousField) => {
-      if (previousField === field) {
-        setSortDir((previousDir) => (previousDir === "asc" ? "desc" : "asc"));
-        return previousField;
-      }
-
-      setSortDir(field === "tipObuceNaziv" ? "asc" : "desc");
-      return field;
-    });
+    const nextDir: SortDir = sortField === field
+      ? (sortDir === "asc" ? "desc" : "asc")
+      : (field === "tipObuceNaziv" ? "asc" : "desc");
+    setSortField(field);
+    setSortDir(nextDir);
+    setSearchParams((current) => writeAnalyticsTableSort(current, field, nextDir), { replace: true });
   };
 
   const controlBarChips = useMemo<AnalyticsControlBarChip[]>(

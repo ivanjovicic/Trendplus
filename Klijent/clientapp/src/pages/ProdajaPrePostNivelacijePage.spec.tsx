@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { MemoryRouter, Route, Routes, useNavigate, useParams } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProdajaPrePostNivelacijePage from "./ProdajaPrePostNivelacijePage";
 import { getStores } from "../services/analyticsApi";
@@ -187,9 +187,15 @@ function PrePostDetailRouteStub() {
   );
 }
 
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="location-search">{location.search}</output>;
+}
+
 function renderPage(initialEntries = ["/analitika/nivelacije-pre-post"]) {
   return render(
     <MemoryRouter initialEntries={initialEntries}>
+      <LocationProbe />
       <Routes>
         <Route path="/analitika/nivelacije-pre-post" element={<ProdajaPrePostNivelacijePage />} />
         <Route path="/analitika/nivelacije-pre-post/:id" element={<PrePostDetailRouteStub />} />
@@ -207,6 +213,20 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
       { storeId: 2, storeName: "Novi Beograd", city: "Beograd", region: "BG" },
     ]);
     vi.mocked(getVendorSalesNivelacija).mockResolvedValue(response());
+  });
+
+  it("round-trips Pre/Post table sort through the URL", async () => {
+    renderPage(["/analitika/nivelacije-pre-post?sort=changeRevenue&dir=asc&focus=review"]);
+
+    const table = await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
+    const revenueButton = within(table).getByRole("button", { name: /Promena/ });
+    expect(revenueButton).toHaveAttribute("data-sort-dir", "asc");
+
+    fireEvent.click(revenueButton);
+
+    expect(screen.getByTestId("location-search")).toHaveTextContent("sort=changeRevenue");
+    expect(screen.getByTestId("location-search")).toHaveTextContent("dir=desc");
+    expect(screen.getByTestId("location-search")).toHaveTextContent("focus=review");
   });
 
   it("passes dataScope and storeId to current and previous period requests", async () => {

@@ -1,5 +1,5 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Bar,
   BarChart,
@@ -76,11 +76,21 @@ import {
   resolveSupplierArticleVendorKey,
 } from "../utils/supplierVendorIdentity";
 import { projectVendorSalesDataQuality } from "../utils/vendorSalesDataQuality";
+import { readAnalyticsTableSort, writeAnalyticsTableSort } from "../utils/analyticsTableSortUrl";
 import "./ProdajaPrePostNivelacijePage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
 type SortDir = "asc" | "desc";
 type SortField = "vendorName" | "postRevenue" | "sharePct" | "changeRevenue" | "trendPct" | "volatilityPct" | "status";
+const PRE_POST_SORT_FIELDS: readonly SortField[] = [
+  "vendorName",
+  "postRevenue",
+  "sharePct",
+  "changeRevenue",
+  "trendPct",
+  "volatilityPct",
+  "status",
+];
 type DecisionStatus = VendorSalesNivelacijaRecommendation["status"];
 type FocusFilter = "all" | "increaseFocus" | "maintain" | "review" | "doNotTrust" | "insufficientData" | "lowConfidence" | "volatile";
 type ConfidenceTone = "strong" | "watch" | "weak";
@@ -478,6 +488,7 @@ function displayVendorName(name: string | null | undefined): string {
 export default function ProdajaPrePostNivelacijePage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const requestIdRef = useRef(0);
 
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("30d");
@@ -507,11 +518,17 @@ export default function ProdajaPrePostNivelacijePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dataScope, setDataScopeValue] = useState<DataScope>(() => getDataScope());
-  const [sortField, setSortField] = useState<SortField>("status");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [sortField, setSortField] = useState<SortField>(() => readAnalyticsTableSort(searchParams, PRE_POST_SORT_FIELDS, "status", "desc").field);
+  const [sortDir, setSortDir] = useState<SortDir>(() => readAnalyticsTableSort(searchParams, PRE_POST_SORT_FIELDS, "status", "desc").dir);
   const [expandedVendorKey, setExpandedVendorKey] = useState<string | null>(null);
   const [trustPanelOpen, setTrustPanelOpen] = useState(false);
   const [focusFilter, setFocusFilter] = useState<FocusFilter>("all");
+
+  useEffect(() => {
+    const nextSort = readAnalyticsTableSort(searchParams, PRE_POST_SORT_FIELDS, "status", "desc");
+    setSortField((current) => current === nextSort.field ? current : nextSort.field);
+    setSortDir((current) => current === nextSort.dir ? current : nextSort.dir);
+  }, [searchParams]);
 
   const invalidRange = useMemo(() => {
     if (!fromDate || !toDate) return false;
@@ -1154,12 +1171,12 @@ const advancedSignals = useMemo(
   );
 
   const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDir((current) => (current === "asc" ? "desc" : "asc"));
-      return;
-    }
+    const nextDir: SortDir = sortField === field
+      ? (sortDir === "asc" ? "desc" : "asc")
+      : (field === "vendorName" ? "asc" : "desc");
     setSortField(field);
-    setSortDir(field === "vendorName" ? "asc" : "desc");
+    setSortDir(nextDir);
+    setSearchParams((current) => writeAnalyticsTableSort(current, field, nextDir), { replace: true });
   };
 
   const handlePresetChange = (value: PeriodPreset) => {

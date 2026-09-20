@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ColorSalesStatsPage from "../ColorSalesStatsPage";
 import { getStores } from "../../services/analyticsApi";
@@ -216,6 +216,11 @@ function response(overrides: Partial<ColorSalesStatsResponse> = {}): ColorSalesS
   };
 }
 
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="location-search">{location.search}</output>;
+}
+
 function renderPage() {
   return render(
     <MemoryRouter initialEntries={["/analitika/color-sales-stats"]}>
@@ -240,6 +245,27 @@ describe("ColorSalesStatsPage", () => {
       { storeId: 2, storeName: "Novi Beograd", city: "Beograd", region: "BG" },
     ]);
     vi.mocked(getColorSalesStats).mockResolvedValue(response());
+  });
+
+  it("round-trips color table sort through the URL", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analitika/color-sales-stats?sort=ukupanPromet&dir=asc&sezonaId=3"]}>
+        <LocationProbe />
+        <Routes>
+          <Route path="/analitika/color-sales-stats" element={<ColorSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const table = await screen.findByTestId("analytics-data-table");
+    const revenueButton = within(table).getByRole("button", { name: /Promet/ });
+    expect(revenueButton).toHaveAttribute("data-sort-dir", "asc");
+
+    fireEvent.click(revenueButton);
+
+    expect(screen.getByTestId("location-search")).toHaveTextContent("sort=ukupanPromet");
+    expect(screen.getByTestId("location-search")).toHaveTextContent("dir=desc");
+    expect(screen.getByTestId("location-search")).toHaveTextContent("sezonaId=3");
   });
 
   it("renders premium chrome with shared control bar and shared data table", async () => {

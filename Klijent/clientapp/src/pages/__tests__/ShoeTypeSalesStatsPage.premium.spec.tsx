@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ShoeTypeSalesStatsPage from "../ShoeTypeSalesStatsPage";
 import { getStores } from "../../services/analyticsApi";
@@ -146,12 +146,38 @@ function response(overrides: Partial<ShoeTypeSalesStatsResponse> = {}): ShoeType
   };
 }
 
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="location-search">{location.search}</output>;
+}
+
 describe("ShoeTypeSalesStatsPage premium controls", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.setItem("trendplus:dataScope", "all");
     vi.mocked(getStores).mockResolvedValue([]);
     vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response());
+  });
+
+  it("round-trips shoe type table sort through the URL", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats?sort=ukupanPromet&dir=asc&storeId=2"]}>
+        <LocationProbe />
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const table = await screen.findByTestId("shoe-type-sales-stats-data-table");
+    const revenueButton = within(table).getByRole("button", { name: /Promet/ });
+    expect(revenueButton).toHaveAttribute("data-sort-dir", "asc");
+
+    fireEvent.click(revenueButton);
+
+    expect(screen.getByTestId("location-search")).toHaveTextContent("sort=ukupanPromet");
+    expect(screen.getByTestId("location-search")).toHaveTextContent("dir=desc");
+    expect(screen.getByTestId("location-search")).toHaveTextContent("storeId=2");
   });
 
   it("uses the backend average margin aggregate when available", async () => {
