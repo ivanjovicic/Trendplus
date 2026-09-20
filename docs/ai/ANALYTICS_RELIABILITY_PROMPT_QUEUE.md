@@ -4,6 +4,27 @@ Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ338` moved from `WAITING` to `READY` as P2 trust follow-up (Pre/Post vendor dropdown load failure).
+
+Owner claim 2026-09-20: `RQ338` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ338-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Pre/Post vendor filter load failures now set vendorLoadError, show warning banner with retry, and preserve the last successful vendor list instead of silently clearing the dropdown.
+- Changed files: `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`, `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: ProdajaPrePostNivelacijePage spec 29/29; `npm run check:analytics-guardrails`; `git diff --check`
+- Checks not run: full client suite, CI, live browser
+- Run log: `.ai/runs/2026-09-20-RQ338-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Follow-up: promote `RQ339` (Pre/Post focus filter persistence) or `RQ321` (Operacije store filter load failure)
+- Residual risk: none known in owned scope
+- Prompt defect / scope repair: none
+
 Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ337` moved from `WAITING` to `READY` as P2 trust follow-up (Operacije frozen 30d preset period).
 
 Owner claim 2026-09-20: `RQ337` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ337-cursor.lock.md`.
@@ -804,7 +825,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ335 | WAITING | daily-sales-previous-period-silent-failure | Surface Daily Sales previous-period fetch failure instead of silent N/A deltas |
 | RQ336 | WAITING | daily-sales-chart-sort-order-bug | Feed Daily Sales trend/shift charts from chronological rows, not table sort |
 | RQ337 | DONE | operations-frozen-preset-period | Refresh frozen 30d preset period on Operacije pages at apply/reset |
-| RQ338 | WAITING | pre-post-vendor-load-silent-failure | Surface Pre/Post vendor dropdown load failure |
+| RQ338 | DONE | pre-post-vendor-load-silent-failure | Surface Pre/Post vendor dropdown load failure |
 | RQ339 | WAITING | pre-post-focus-reset-on-reload | Preserve Pre/Post focus filter across non-filter reloads |
 | RQ340 | WAITING | shoe-type-stale-refetch-dead-path | Enable Shoe Type stale overlay on refetch failure |
 | RQ341 | WAITING | color-stale-refetch-contract | Add Color stale/partial refetch contract matching Operacije standard |
@@ -17435,7 +17456,7 @@ Commit suggestion: `fix(analytics): operations frozen preset period`
 
 ## RQ338 - Surface Pre/Post vendor dropdown load failure
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/trust/tests
 Feature family: pre-post-vendor-load-silent-failure

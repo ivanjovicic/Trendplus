@@ -833,4 +833,37 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(within(winnerCard!).getByText("SKU-ZERO • Patika nula")).toBeInTheDocument();
     expect(within(winnerCard!).getByText("0 RSD")).toBeInTheDocument();
   });
+
+  it("shows a warning when the vendor dropdown fails to load instead of a silent empty list", async () => {
+    vi.mocked(getDobavljaci).mockRejectedValue(new Error("Vendor API unavailable"));
+
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+
+    expect(screen.getByTestId("vendor-load-warning")).toHaveTextContent("Vendor API unavailable");
+    const vendorSelect = screen.getByLabelText("Dobavljač");
+    expect(within(vendorSelect).getAllByRole("option")).toHaveLength(1);
+    expect(within(vendorSelect).getByRole("option", { name: "Svi" })).toBeInTheDocument();
+  });
+
+  it("recovers the vendor dropdown after a failed load via retry", async () => {
+    vi.mocked(getDobavljaci)
+      .mockRejectedValueOnce(new Error("Temporary outage"))
+      .mockResolvedValueOnce([{ id: 10, naziv: "Vendor A" } as never]);
+
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("vendor-load-warning")).toHaveTextContent("Temporary outage");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Pokušaj ponovo" }));
+
+    const vendorSelect = screen.getByLabelText("Dobavljač");
+    await waitFor(() => {
+      expect(within(vendorSelect).getByRole("option", { name: "Vendor A" })).toBeInTheDocument();
+      expect(screen.queryByTestId("vendor-load-warning")).not.toBeInTheDocument();
+    });
+  });
 });

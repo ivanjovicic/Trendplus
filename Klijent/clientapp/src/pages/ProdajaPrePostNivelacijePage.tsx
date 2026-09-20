@@ -498,6 +498,7 @@ export default function ProdajaPrePostNivelacijePage() {
   });
 
   const [vendors, setVendors] = useState<Dobavljac[]>([]);
+  const [vendorLoadError, setVendorLoadError] = useState<string | null>(null);
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [data, setData] = useState<VendorSalesNivelacijaResponse | null>(null);
   const [previousData, setPreviousData] = useState<VendorSalesNivelacijaResponse | null>(null);
@@ -528,16 +529,22 @@ export default function ProdajaPrePostNivelacijePage() {
     };
   }, []);
 
-  useEffect(() => {
-    const loadVendors = async () => {
-      try {
-        setVendors(await getDobavljaci());
-      } catch {
-        setVendors([]);
-      }
-    };
-    void loadVendors();
+  const loadVendors = useCallback(async () => {
+    try {
+      const items = await getDobavljaci();
+      setVendors(items);
+      setVendorLoadError(null);
+    } catch (reason) {
+      setVendorLoadError(
+        reason instanceof Error ? reason.message : "Greška pri učitavanju liste dobavljača.",
+      );
+      // Preserve the last known vendor list on transient failures instead of faking an empty filter set.
+    }
   }, []);
+
+  useEffect(() => {
+    void loadVendors();
+  }, [loadVendors]);
 
   useEffect(() => {
     const loadStores = async () => {
@@ -1365,6 +1372,15 @@ const advancedSignals = useMemo(
         <div className="ppn-decision-message warning" role="status" data-testid="previous-comparison-warning">
           Uporedni prethodni period nije učitan ({previousComparisonError}). PoP rast i volatilnost nisu dostupni zbog
           greške zahteva, ne zbog stvarnog nedostatka baze — ovo nije „Nova baza“.
+        </div>
+      ) : null}
+      {vendorLoadError ? (
+        <div className="ppn-decision-message warning" role="status" data-testid="vendor-load-warning">
+          Lista dobavljača nije učitana ({vendorLoadError}).
+          {" "}
+          <button type="button" onClick={() => void loadVendors()}>
+            Pokušaj ponovo
+          </button>
         </div>
       ) : null}
       {showEmptyState ? (
