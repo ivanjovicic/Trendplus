@@ -1,6 +1,5 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
-using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
@@ -12,9 +11,8 @@ namespace Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(
-                name: "IX_AccessImportCursors_TableKey_LeaseExpiresAtUtc",
-                table: "AccessImportCursors");
+            migrationBuilder.Sql(
+                "DROP INDEX IF EXISTS \"IX_AccessImportCursors_TableKey_LeaseExpiresAtUtc\";");
 
             migrationBuilder.Sql(
                 """
