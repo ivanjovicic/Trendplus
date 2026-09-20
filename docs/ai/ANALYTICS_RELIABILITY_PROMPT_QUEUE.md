@@ -17,10 +17,10 @@ Owner claim 2026-09-20: `RQ337` transitioned `READY -> IN_PROGRESS`; local runti
 - Checks run: analyticsPeriodPresets spec 2/2; ShoeTypeSalesStatsPage.premium spec 30/30; ProdajaPrePostNivelacijePage spec 27/27; `npm run check:analytics-guardrails`; `git diff --check`
 - Checks not run: full client suite, CI, live browser
 - Run log: `.ai/runs/2026-09-20-RQ337-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `4ada0ce5`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `4ada0ce5`
 - Follow-up: promote `RQ338` (Pre/Post vendor dropdown load failure) or `RQ339` (Pre/Post focus filter persistence)
 - Residual risk: none known in owned scope
 - Prompt defect / scope repair: none
