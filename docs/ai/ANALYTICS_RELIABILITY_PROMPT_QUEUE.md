@@ -17,10 +17,10 @@ Owner claim 2026-09-20: `RQ338` transitioned `READY -> IN_PROGRESS`; local runti
 - Checks run: ProdajaPrePostNivelacijePage spec 29/29; `npm run check:analytics-guardrails`; `git diff --check`
 - Checks not run: full client suite, CI, live browser
 - Run log: `.ai/runs/2026-09-20-RQ338-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `d0068f42`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `d0068f42`
 - Follow-up: promote `RQ339` (Pre/Post focus filter persistence) or `RQ321` (Operacije store filter load failure)
 - Residual risk: none known in owned scope
 - Prompt defect / scope repair: none
