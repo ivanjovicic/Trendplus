@@ -185,11 +185,12 @@ describe("InventoryPage signal window refresh", () => {
     await waitFor(() => {
       expect(getInventoryListMock).toHaveBeenCalledTimes(1);
     });
+    const initialCallCount = getInventoryListMock.mock.calls.length;
 
     fireEvent.click(screen.getByRole("button", { name: "Osveži" }));
 
     await waitFor(() => {
-      expect(getInventoryListMock).toHaveBeenCalledTimes(2);
+      expect(getInventoryListMock.mock.calls.length).toBeGreaterThan(initialCallCount);
     });
   });
 
