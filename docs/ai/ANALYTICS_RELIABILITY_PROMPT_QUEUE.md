@@ -17,10 +17,10 @@ Owner claim 2026-09-20: `RQ340` transitioned `READY -> IN_PROGRESS`; local runti
 - Checks run: ShoeTypeSalesStatsPage.premium spec 31/31; ShoeTypeSalesStatsPage.spec 1/1; `npm run check:analytics-guardrails`; `git diff --check`
 - Checks not run: full client suite, CI, live browser
 - Run log: `.ai/runs/2026-09-20-RQ340-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `c46d5d61`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `c46d5d61`
 - Follow-up: promote `RQ341` (Color stale refetch) or `RQ321` (Operacije store filter load failure)
 - Residual risk: none known in owned scope
 - Prompt defect / scope repair: none
