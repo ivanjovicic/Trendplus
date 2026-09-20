@@ -4,6 +4,27 @@ Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ334` moved from `WAITING` to `READY` as P1 trust follow-up (supplier prePostComparableArticleCount fake zero).
+
+Owner claim 2026-09-20: `RQ334` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ334-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Supplier detail nivelacija panel now renders null `prePostComparableArticleCount` as unavailable via shared metric formatter instead of fake zero.
+- Changed files: `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: SupplierSalesStatsPage.premium spec 18/18; `npm run check:analytics-guardrails`; `git diff --check`
+- Checks not run: full client suite, CI, live browser
+- Run log: `.ai/runs/2026-09-20-RQ334-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Follow-up: promote `RQ335` (Daily Sales previous-period silent failure) or `RQ336` (Daily Sales chart chronological rows)
+- Residual risk: none known in owned scope
+- Prompt defect / scope repair: none
+
 Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ333` moved from `WAITING` to `READY` as P1 trust follow-up (Pre/Post frontend post revenue share recompute).
 
 Owner claim 2026-09-20: `RQ333` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ333-cursor.lock.md`.
@@ -17164,7 +17185,7 @@ When backend `postRevenueSharePercent` is missing, frontend computes `(trustedPo
 
 ## RQ334 - Fail closed on null Pre/Post comparable article count in Supplier detail
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/trust/tests
 Feature family: supplier-prepost-comparable-fake-zero
