@@ -4,6 +4,27 @@ Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ357` moved from `WAITING` to `READY` as P3 trust follow-up (Inventory URL pagination/search/compare state).
+
+Owner claim 2026-09-20: `RQ357` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ357-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Inventory now round-trips search, store/supplier filters, sort, pagination, page size and compare-store selection through URL parameters, preserving unrelated query parameters.
+- Changed files: `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.signalWindow.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: Inventory URL-state focused specs 4/4; `git diff --check`
+- Checks not run: full client suite, CI, live browser; analytics guardrails fail on 12 existing violations outside this URL-state scope
+- Run log: `.ai/runs/2026-09-20-RQ357-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Follow-up: promote `RQ358` or `RQ321` (Operacije store-filter load failure)
+- Residual risk: none known in owned Inventory URL-state scope
+- Prompt defect / scope repair: none
+
 Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ356` moved from `WAITING` to `READY` as P3 trust follow-up (Pre/Post advanced signal labels).
 
 Owner claim 2026-09-20: `RQ356` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ356-cursor.lock.md`.
@@ -1225,7 +1246,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ354 | DONE | supplier-toolbar-metadata-fake-zero | Fail closed on null supplier count in toolbar export metadata |
 | RQ355 | DONE | color-empty-quality-conflation | Base Color empty state on row count and meta, not quality notes alone |
 | RQ356 | DONE | pre-post-english-signal-labels | Serbian labels for Pre/Post advanced signal cards |
-| RQ357 | WAITING | inventory-url-pagination-search | URL-sync Inventory pagination, page size, search and compare stores |
+| RQ357 | DONE | inventory-url-pagination-search | URL-sync Inventory pagination, page size, search and compare stores |
 | RQ358 | WAITING | shoe-type-toolbar-metadata-fake-zero | Fail closed on null shoe type count in toolbar metadata export |
 | RQ359 | WAITING | analytics-reliable-query-lifecycle | Centralize abort/latest-request/stale-refetch semantics in one hook |
 | RQ360 | WAITING | analytics-invariant-test-kit | Reuse one invariant matrix across critical analytics screens |
@@ -18719,7 +18740,7 @@ Advanced signal cards use English abbreviations (DID, Lost sales OOS, avg rev).
 
 ## RQ357 - URL-sync Inventory pagination, page size, search and compare stores
 
-Status: WAITING
+Status: DONE
 Priority: P3
 Type: frontend/trust/tests
 Feature family: inventory-url-pagination-search
