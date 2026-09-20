@@ -31,6 +31,7 @@ import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../se
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { getDataScope, type DataScope } from "../utils/dataScope";
 import { fmtNumber, fmtPct, fmtQty, fmtRsd, fmtSignedPct, formatDate, getPresetRange } from "../utils/analyticsFormatters";
+import { resolvePresetFilterRange } from "../utils/analyticsPeriodPresets";
 import {
   RECOMMENDATION_SIGNAL_UNAVAILABLE,
   RECOMMENDATION_STATUS_PRIORITY,
@@ -276,17 +277,19 @@ export default function ColorSalesStatsPage() {
   const requestIdRef = useRef(0);
   const detailSectionRef = useRef<HTMLElement>(null);
 
-  const initialRange = useMemo(() => getPresetRange("30d"), []);
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("30d");
-  const [fromDate, setFromDate] = useState(initialRange.fromDate);
-  const [toDate, setToDate] = useState(initialRange.toDate);
+  const [fromDate, setFromDate] = useState(() => getPresetRange("30d").fromDate);
+  const [toDate, setToDate] = useState(() => getPresetRange("30d").toDate);
   const [sezonaId, setSezonaId] = useState<number | null>(null);
   const [storeId, setStoreId] = useState<number | null>(null);
-  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({
-    fromDate: initialRange.fromDate,
-    toDate: initialRange.toDate,
-    sezonaId: null,
-    storeId: null,
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>(() => {
+    const range = getPresetRange("30d");
+    return {
+      fromDate: range.fromDate,
+      toDate: range.toDate,
+      sezonaId: null,
+      storeId: null,
+    };
   });
 
   const [stores, setStores] = useState<StoreOption[]>([]);
@@ -326,7 +329,7 @@ export default function ColorSalesStatsPage() {
     void loadStores();
   }, []);
 
-  const load = useCallback(async (filters: ActiveFilters, scope: DataScope) => {
+  const load = useCallback(async (filters: ActiveFilters, scope: DataScope, signal?: AbortSignal) => {
     const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
@@ -338,13 +341,16 @@ export default function ColorSalesStatsPage() {
         sezonaId: filters.sezonaId,
         storeId: filters.storeId,
         dataScope: scope,
+        signal,
       });
 
       if (requestId !== requestIdRef.current) return;
       setData(result);
     } catch (reason) {
+      if (reason instanceof DOMException && reason.name === "AbortError") {
+        return;
+      }
       if (requestId !== requestIdRef.current) return;
-      setData(null);
       setError(reason instanceof Error ? reason.message : "Greska pri ucitavanju podataka po boji.");
     } finally {
       if (requestId === requestIdRef.current) {
@@ -354,7 +360,9 @@ export default function ColorSalesStatsPage() {
   }, []);
 
   useEffect(() => {
-    void load(activeFilters, dataScope);
+    const controller = new AbortController();
+    void load(activeFilters, dataScope, controller.signal);
+    return () => controller.abort();
   }, [activeFilters, dataScope, load]);
 
   const decisionRows = useMemo<DecisionColor[]>(() => {
@@ -608,6 +616,8 @@ export default function ColorSalesStatsPage() {
   const trustIsPartial = responseMeta?.isPartial ?? false;
   const trustDataFreshnessStatus = getAnalyticsDataFreshnessStatus(responseMeta);
   const trustEmptyStateReason = responseMeta?.message ?? emptyStateHint;
+  const showBlockingError = Boolean(error && !data);
+  const showStaleError = Boolean(error && data);
 
   const emptyStateVariant = useMemo<"no_data" | "insufficient_data" | "filtered_out" | null>(() => {
     if (!data || loading || sortedRows.length > 0) return null;
@@ -693,10 +703,13 @@ export default function ColorSalesStatsPage() {
       return;
     }
 
+    const range = resolvePresetFilterRange(periodPreset, fromDate, toDate);
+    setFromDate(range.fromDate);
+    setToDate(range.toDate);
     setError(null);
     setActiveFilters({
-      fromDate,
-      toDate,
+      fromDate: range.fromDate,
+      toDate: range.toDate,
       sezonaId,
       storeId,
     });
@@ -823,7 +836,7 @@ export default function ColorSalesStatsPage() {
         mode="recommendation"
         isPartial={trustIsPartial}
         recommendationNote="Preporuke dolaze iz backenda; ovaj ekran zadržava odluku, period i kvalitet podataka na jednom mestu."
-        emptyStateReason={!loading && !error && trustEmptyStateReason ? trustEmptyStateReason : null}
+        emptyStateReason={!loading && !showBlockingError && trustEmptyStateReason ? trustEmptyStateReason : null}
         methodologyHref="/analytics/data-quality"
         dataQualityHref="/analytics/data-quality"
         refreshStatusHref="/admin/configuration?panel=workers"
@@ -861,15 +874,25 @@ export default function ColorSalesStatsPage() {
       {invalidRange ? (
         <div className="color-decision-message error">Datum „Od” ne može biti posle datuma „Do”.</div>
       ) : null}
-      {error ? (
+      {showBlockingError ? (
         <AnalyticsErrorState
           title="Boje trenutno nisu dostupne"
-          message={error}
+          message={error || "Ne prikazujemo nule jer nije potvrđeno da je period stvarno prazan."}
           onRetry={() => {
             void load(activeFilters, dataScope);
           }}
           helpHref="/analytics/data-quality"
         />
+      ) : null}
+      {showStaleError ? (
+        <div
+          className="color-decision-message info"
+          role="status"
+          aria-live="polite"
+          data-testid="color-stale-refetch-warning"
+        >
+          Prikazujemo prethodno učitane podatke. Novi upit nije uspeo.
+        </div>
       ) : null}
       {loading ? (
         <div className="color-decision-message loading">
@@ -877,7 +900,7 @@ export default function ColorSalesStatsPage() {
           <span>Učitavam boje...</span>
         </div>
       ) : null}
-      {!loading && !error && emptyStateVariant ? (
+      {!loading && !showBlockingError && emptyStateVariant ? (
         <AnalyticsEmptyState
           variant={emptyStateVariant ?? undefined}
           message={emptyStateHint ?? undefined}
@@ -889,7 +912,7 @@ export default function ColorSalesStatsPage() {
           }}
         />
       ) : null}
-      {!loading && !error && qualityNotes.length > 0 ? (
+      {!loading && !showBlockingError && qualityNotes.length > 0 ? (
         <div className="color-decision-message info">
           <strong>Kvalitet podataka:</strong> {qualityNotes.join(" ")}
         </div>

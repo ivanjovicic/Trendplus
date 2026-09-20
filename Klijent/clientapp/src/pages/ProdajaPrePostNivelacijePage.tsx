@@ -34,6 +34,7 @@ import type { StoreOption } from "../types/analytics";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
 import { fmtNumber, fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
+import { resolvePresetFilterRange } from "../utils/analyticsPeriodPresets";
 import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescriptions";
 import {
   getAnalyticsMetaMessage,
@@ -58,7 +59,12 @@ import {
   type RecommendationQualityStatus,
 } from "../utils/canonicalRecommendationSemantics";
 import { getDataScope, type DataScope } from "../utils/dataScope";
-import { comparablePrePostMetric, comparablePrePostTotal, hasComparablePrePostEvidence } from "../utils/prePostNivelacijaTrust";
+import {
+  comparablePrePostMetric,
+  comparablePrePostTotal,
+  hasComparablePrePostEvidence,
+  resolvePostRevenueSharePercent,
+} from "../utils/prePostNivelacijaTrust";
 import {
   finiteToolbarCount,
   formatPrePostAnalysisWindowHint,
@@ -474,22 +480,25 @@ export default function ProdajaPrePostNivelacijePage() {
   const location = useLocation();
   const requestIdRef = useRef(0);
 
-  const initialRange = useMemo(() => getPresetRange("30d"), []);
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("30d");
-  const [fromDate, setFromDate] = useState(initialRange.fromDate);
-  const [toDate, setToDate] = useState(initialRange.toDate);
+  const [fromDate, setFromDate] = useState(() => getPresetRange("30d").fromDate);
+  const [toDate, setToDate] = useState(() => getPresetRange("30d").toDate);
   const [vendorId, setVendorId] = useState<number | null>(null);
   const [category, setCategory] = useState("");
   const [storeId, setStoreId] = useState<number | null>(null);
-  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({
-    fromDate: initialRange.fromDate,
-    toDate: initialRange.toDate,
-    vendorId: null,
-    category: "",
-    storeId: null,
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>(() => {
+    const range = getPresetRange("30d");
+    return {
+      fromDate: range.fromDate,
+      toDate: range.toDate,
+      vendorId: null,
+      category: "",
+      storeId: null,
+    };
   });
 
   const [vendors, setVendors] = useState<Dobavljac[]>([]);
+  const [vendorLoadError, setVendorLoadError] = useState<string | null>(null);
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [data, setData] = useState<VendorSalesNivelacijaResponse | null>(null);
   const [previousData, setPreviousData] = useState<VendorSalesNivelacijaResponse | null>(null);
@@ -520,16 +529,22 @@ export default function ProdajaPrePostNivelacijePage() {
     };
   }, []);
 
-  useEffect(() => {
-    const loadVendors = async () => {
-      try {
-        setVendors(await getDobavljaci());
-      } catch {
-        setVendors([]);
-      }
-    };
-    void loadVendors();
+  const loadVendors = useCallback(async () => {
+    try {
+      const items = await getDobavljaci();
+      setVendors(items);
+      setVendorLoadError(null);
+    } catch (reason) {
+      setVendorLoadError(
+        reason instanceof Error ? reason.message : "Greška pri učitavanju liste dobavljača.",
+      );
+      // Preserve the last known vendor list on transient failures instead of faking an empty filter set.
+    }
   }, []);
+
+  useEffect(() => {
+    void loadVendors();
+  }, [loadVendors]);
 
   useEffect(() => {
     const loadStores = async () => {
@@ -542,7 +557,7 @@ export default function ProdajaPrePostNivelacijePage() {
     void loadStores();
   }, []);
 
-  const load = useCallback(async (filters: ActiveFilters, scope: DataScope) => {
+  const load = useCallback(async (filters: ActiveFilters, scope: DataScope, signal?: AbortSignal) => {
     const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
@@ -561,6 +576,7 @@ export default function ProdajaPrePostNivelacijePage() {
           maxRows: VENDOR_NIVELACIJA_MAX_ROWS,
           storeId: filters.storeId,
           dataScope: scope,
+          signal,
         }),
         getVendorSalesNivelacija({
           ...previousRange,
@@ -570,6 +586,7 @@ export default function ProdajaPrePostNivelacijePage() {
           maxRows: VENDOR_NIVELACIJA_MAX_ROWS,
           storeId: filters.storeId,
           dataScope: scope,
+          signal,
         }),
       ]);
 
@@ -581,7 +598,6 @@ export default function ProdajaPrePostNivelacijePage() {
 
       setData(currentResult.value);
       setExpandedVendorKey(null);
-      setFocusFilter("all");
 
       if (previousResult.status === "fulfilled") {
         setPreviousData(previousResult.value);
@@ -601,6 +617,9 @@ export default function ProdajaPrePostNivelacijePage() {
         );
       }
     } catch (reason) {
+      if (reason instanceof DOMException && reason.name === "AbortError") {
+        return;
+      }
       if (requestId !== requestIdRef.current) return;
       setData(null);
       setPreviousData(null);
@@ -615,7 +634,9 @@ export default function ProdajaPrePostNivelacijePage() {
   }, []);
 
   useEffect(() => {
-    void load(activeFilters, dataScope);
+    const controller = new AbortController();
+    void load(activeFilters, dataScope, controller.signal);
+    return () => controller.abort();
   }, [activeFilters, dataScope, load]);
 
   const previousRevenueByVendorKey = useMemo(() => {
@@ -639,10 +660,6 @@ export default function ProdajaPrePostNivelacijePage() {
     if (rows.length === 0) return [];
 
     const vendorRowKeys = currentVendorRowKeys;
-    const totalRevenue = comparablePrePostTotal(
-      data?.totals.postRevenue,
-      data?.totals.hasComparableSalesWindow,
-    );
     return rows.map((item, rowIndex) => {
       const vendorRowKey = vendorRowKeys[rowIndex];
       const backendRecommendation = item.recommendation;
@@ -656,11 +673,7 @@ export default function ProdajaPrePostNivelacijePage() {
       const sharePctAvailable = absoluteChangeSharePct != null;
       const sharePct = absoluteChangeSharePct;
       const trustedPostRevenue = trustedMetric(item.postRevenue, item);
-      const postSharePct = hasComparablePrePostEvidence(item) && item.postRevenueSharePercent != null
-        ? item.postRevenueSharePercent
-        : trustedPostRevenue != null && totalRevenue != null && totalRevenue > 0
-          ? (trustedPostRevenue / totalRevenue) * 100
-          : null;
+      const postSharePct = resolvePostRevenueSharePercent(item);
       const trendPct = trustedMetric(item.changePercent, item);
       const avgCoveragePost30 = item.avgCoveragePost30 != null ? item.avgCoveragePost30 * 100 : null;
       const normalizedReliabilityPct = recommendationReliabilityPct;
@@ -696,7 +709,7 @@ export default function ProdajaPrePostNivelacijePage() {
         volatilityTone: volatility.tone,
       };
     });
-  }, [currentVendorRowKeys, data?.totals.absoluteChangeRevenue, data?.totals.hasComparableSalesWindow, data?.totals.postRevenue, data?.vendorStats, previousComparisonError, previousRevenueByVendorKey]);
+  }, [currentVendorRowKeys, data?.vendorStats, previousComparisonError, previousRevenueByVendorKey]);
 
   const sortedRows = useMemo(() => {
     const rows = [...decisionRows];
@@ -1156,10 +1169,13 @@ const advancedSignals = useMemo(
 
   const handleApplyFilters = () => {
     if (invalidRange) return;
+    const range = resolvePresetFilterRange(periodPreset, fromDate, toDate);
+    setFromDate(range.fromDate);
+    setToDate(range.toDate);
     setFocusFilter("all");
     setActiveFilters({
-      fromDate,
-      toDate,
+      fromDate: range.fromDate,
+      toDate: range.toDate,
       vendorId,
       category,
       storeId,
@@ -1362,6 +1378,15 @@ const advancedSignals = useMemo(
         <div className="ppn-decision-message warning" role="status" data-testid="previous-comparison-warning">
           Uporedni prethodni period nije učitan ({previousComparisonError}). PoP rast i volatilnost nisu dostupni zbog
           greške zahteva, ne zbog stvarnog nedostatka baze — ovo nije „Nova baza“.
+        </div>
+      ) : null}
+      {vendorLoadError ? (
+        <div className="ppn-decision-message warning" role="status" data-testid="vendor-load-warning">
+          Lista dobavljača nije učitana ({vendorLoadError}).
+          {" "}
+          <button type="button" onClick={() => void loadVendors()}>
+            Pokušaj ponovo
+          </button>
         </div>
       ) : null}
       {showEmptyState ? (

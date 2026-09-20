@@ -492,6 +492,7 @@ export default function InventoryPage() {
 
     previousLoadRef.current = currentLoad;
 
+    const controller = new AbortController();
     const requestSequence = ++requestSequenceRef.current;
     const signalRequestSequence = shouldRefreshSignals ? ++signalRequestSequenceRef.current : null;
     let cancelled = false;
@@ -520,7 +521,7 @@ export default function InventoryPage() {
 
     const primaryTasks = [
       { key: "balance" as const, promise: getInventoryBalance(true, selectedStoreId, selectedSupplierId, inventoryDataScope) },
-      { key: "list" as const, promise: getInventoryList({ pageNumber, pageSize, search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy, dataScope: inventoryDataScope, ...inventorySignalWindow }) },
+      { key: "list" as const, promise: getInventoryList({ pageNumber, pageSize, search: trimmedSearch || undefined, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy, dataScope: inventoryDataScope, signal: controller.signal, ...inventorySignalWindow }) },
     ];
 
     void Promise.allSettled(primaryTasks.map((task) => task.promise))
@@ -531,6 +532,9 @@ export default function InventoryPage() {
         results.forEach((result, index) => {
           const task = primaryTasks[index];
           if (result.status === "rejected") {
+            if (result.reason instanceof DOMException && result.reason.name === "AbortError") {
+              return;
+            }
             setFirstError(result.reason, "Bilans zaliha trenutno nije dostupan.");
             if (task.key === "balance") {
               setBalance(null);
@@ -655,7 +659,10 @@ export default function InventoryPage() {
         });
     }
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
   }, [compareStoreIds, inventoryDataScope, inventorySignalWindow, pageNumber, pageSize, reloadNonce, selectedStoreId, selectedSupplierId, sortBy, trimmedSearch]);
 
   useEffect(() => {

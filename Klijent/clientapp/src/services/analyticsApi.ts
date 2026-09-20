@@ -1201,6 +1201,7 @@ export async function getInventoryList(
     fromDate?: string | null;
     toDate?: string | null;
     dataScope?: string | null;
+    signal?: AbortSignal;
   }
 ): Promise<import("../types/analytics").InventoryPagedResponse> {
   const pageNumber = options?.pageNumber ?? 1;
@@ -1213,6 +1214,16 @@ export async function getInventoryList(
   if (options?.fromDate) params.append("fromDate", options.fromDate);
   if (options?.toDate) params.append("toDate", options.toDate);
   if (options?.dataScope != null && options.dataScope !== "") params.append("dataScope", normalizeDataScope(options.dataScope));
+
+  if (options?.signal) {
+    const url = makeUrl("/api/analytics/cached/inventory/list", params);
+    const res = await fetchWithTimeout(url, { signal: options.signal }, DEFAULT_ANALYTICS_GET_TIMEOUT_MS);
+    if (!res.ok) {
+      throw new Error(await parseApiError(res, "Greska pri ucitavanju liste zaliha"));
+    }
+    const payload = (await res.json()) as import("../types/analytics").InventoryPagedResponse;
+    return assertAnalyticsMetaSuccess(payload, "Greska pri ucitavanju liste zaliha");
+  }
 
   return fetchJson(
     "/api/analytics/cached/inventory/list",

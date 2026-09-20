@@ -276,6 +276,59 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     });
   });
 
+  it("keeps the active focus chip after a scope-only reload when rows still match", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
+      response({
+        vendorStats: [
+          vendor({ vendorId: 10, vendorName: "Vendor A" }),
+          vendor({
+            vendorId: 11,
+            vendorName: "Vendor B",
+            postRevenue: 50000,
+            changeRevenue: 10000,
+            recommendation: {
+              status: "review",
+              label: "Review",
+              summary: "Signal za proveru.",
+              confidencePct: 64,
+              reliabilityPct: 61,
+              dataQualityStatus: "warning",
+              reasonCodes: ["review_signal"],
+            },
+          }),
+        ],
+        totals: {
+          ...response().totals,
+          postRevenue: 150000,
+          vendorsCount: 2,
+        },
+      }),
+    );
+
+    renderPage();
+    const table = await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
+    expect(within(table).getByText("Vendor A")).toBeInTheDocument();
+    expect(within(table).getByText("Vendor B")).toBeInTheDocument();
+
+    const focusChip = screen.getByRole("button", { name: /Pojacaj/i });
+    fireEvent.click(focusChip);
+    expect(focusChip).toHaveClass("active");
+    expect(within(table).getByText("Vendor A")).toBeInTheDocument();
+    expect(within(table).queryByText("Vendor B")).not.toBeInTheDocument();
+
+    localStorage.setItem("trendplus:dataScope", "existing");
+    window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+
+    await waitFor(() => {
+      expect(vi.mocked(getVendorSalesNivelacija).mock.calls.some((call) => call[0].dataScope === "existing")).toBe(true);
+    });
+
+    const reloadedTable = await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
+    expect(screen.getByRole("button", { name: /Pojacaj/i })).toHaveClass("active");
+    expect(within(reloadedTable).getByText("Vendor A")).toBeInTheDocument();
+    expect(within(reloadedTable).queryByText("Vendor B")).not.toBeInTheDocument();
+  });
+
   it("warns when previous-period request fails and does not label it as Nova baza", async () => {
     vi.mocked(getVendorSalesNivelacija)
       .mockResolvedValueOnce(response())
@@ -832,5 +885,38 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(winnerCard).not.toBeNull();
     expect(within(winnerCard!).getByText("SKU-ZERO • Patika nula")).toBeInTheDocument();
     expect(within(winnerCard!).getByText("0 RSD")).toBeInTheDocument();
+  });
+
+  it("shows a warning when the vendor dropdown fails to load instead of a silent empty list", async () => {
+    vi.mocked(getDobavljaci).mockRejectedValue(new Error("Vendor API unavailable"));
+
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+
+    expect(screen.getByTestId("vendor-load-warning")).toHaveTextContent("Vendor API unavailable");
+    const vendorSelect = screen.getByLabelText("Dobavljač");
+    expect(within(vendorSelect).getAllByRole("option")).toHaveLength(1);
+    expect(within(vendorSelect).getByRole("option", { name: "Svi" })).toBeInTheDocument();
+  });
+
+  it("recovers the vendor dropdown after a failed load via retry", async () => {
+    vi.mocked(getDobavljaci)
+      .mockRejectedValueOnce(new Error("Temporary outage"))
+      .mockResolvedValueOnce([{ id: 10, naziv: "Vendor A" } as never]);
+
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("vendor-load-warning")).toHaveTextContent("Temporary outage");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Pokušaj ponovo" }));
+
+    const vendorSelect = screen.getByLabelText("Dobavljač");
+    await waitFor(() => {
+      expect(within(vendorSelect).getByRole("option", { name: "Vendor A" })).toBeInTheDocument();
+      expect(screen.queryByTestId("vendor-load-warning")).not.toBeInTheDocument();
+    });
   });
 });

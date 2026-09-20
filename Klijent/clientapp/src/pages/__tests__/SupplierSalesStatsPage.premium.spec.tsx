@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import SupplierSalesStatsPage, {
@@ -461,6 +461,92 @@ describe("SupplierSalesStatsPage premium controls", () => {
         lastRefreshAt: "2026-07-01T07:55:00Z",
       }));
     });
+  });
+
+  it("shows unavailable comparable article count in detail when backend omits the field", async () => {
+    vi.mocked(getSupplierSalesStats).mockResolvedValueOnce({
+      fromDate: "2026-06-01",
+      toDate: "2026-06-30",
+      generatedAt: "2026-07-01T08:00:00Z",
+      meta: {
+        success: true,
+        lastRefreshAtUtc: "2026-07-01T07:55:00Z",
+        dataQualityStatus: "good",
+        isPartial: false,
+      },
+      provenanceBasis: "live_query",
+      sezone: [],
+      suppliers: [
+        {
+          dobavljacId: 1,
+          dobavljacNaziv: "Alfa",
+          isUnknown: false,
+          preNivelacijePromet: 0,
+          preNivelacijeKolicina: 0,
+          posleNivelacijePromet: 10000,
+          posleNivelacijeKolicina: 5,
+          ukupanPromet: 10000,
+          ukupnaKolicina: 5,
+          previousPeriodRevenue: 8000,
+          previousPeriodUnits: 4,
+          brojArtikalaSaNivelacijom: 0,
+          brojArtikalaUkupno: 2,
+          prePostComparableArticleCount: null,
+          revenueWithCost: 10000,
+          estimatedCostRevenue: 0,
+          marginContribution: 4000,
+          marginDataCoveragePct: 100,
+          fallbackCostCoveragePct: 0,
+          marginPct: 40,
+          totalCost: 6000,
+          popRevenueChangePct: 25,
+          popUnitsChangePct: 25,
+          prePostNivelacijaRevenueImpactPct: null,
+          prePostNivelacijaUnitsImpactPct: null,
+          prePostNivelacijaRevenueCoveragePct: null,
+          recommendation: {
+            status: "maintain",
+            label: "Maintain",
+            summary: "Stabilan partner.",
+            confidencePct: 80,
+            reliabilityPct: 75,
+            dataQualityStatus: "good",
+            reasonCodes: ["stable_margin"],
+          },
+          footwearBreakdown: [],
+        },
+      ],
+      totals: {
+        ukupanPromet: 10000,
+        ukupnaKolicina: 5,
+        marginContribution: 4000,
+        marginPct: 40,
+        missingCostRevenueSharePct: 0,
+        unknownSupplierRevenueSharePct: 0,
+        marginQualityTier: "good",
+        isSnapshotActive: false,
+        snapshotCostCoveragePct: null,
+      },
+      dataQuality: {
+        missingCostRevenueSharePct: 0,
+        unknownSupplierRevenueSharePct: 0,
+      },
+    } as never);
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText("Alfa");
+    fireEvent.click(screen.getByRole("button", { name: "Detalji" }));
+
+    const comparableArticles = await screen.findByText("Uporedivi artikli");
+    const articleCard = comparableArticles.closest("article");
+    expect(articleCard).not.toBeNull();
+    expect(within(articleCard!).getByText("Nije dostupno")).toBeInTheDocument();
+    expect(within(articleCard!).queryByText("0")).not.toBeInTheDocument();
   });
 
   it("empty is not error when supplier sales returns no rows", async () => {

@@ -103,6 +103,25 @@ function makeCandidate(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function buildFilterFacetsFromCandidates(candidates: Array<ReturnType<typeof makeCandidate>>) {
+  const seasons = new Map<number, string>();
+  const footwearTypes = new Map<number, string>();
+
+  candidates.forEach((candidate) => {
+    if (candidate.seasonId != null && candidate.season && candidate.season !== "N/A") {
+      seasons.set(candidate.seasonId, candidate.season);
+    }
+    if (candidate.footwearTypeId != null && candidate.footwearType && candidate.footwearType !== "N/A") {
+      footwearTypes.set(candidate.footwearTypeId, candidate.footwearType);
+    }
+  });
+
+  return {
+    seasons: [...seasons.entries()].map(([id, label]) => ({ id, label })).sort((a, b) => a.label.localeCompare(b.label, "sr")),
+    footwearTypes: [...footwearTypes.entries()].map(([id, label]) => ({ id, label })).sort((a, b) => a.label.localeCompare(b.label, "sr")),
+  };
+}
+
 function makeResponse(candidates = [makeCandidate(), makeCandidate({
   artikalId: 102,
   sku: "SKU-102",
@@ -151,6 +170,7 @@ function makeResponse(candidates = [makeCandidate(), makeCandidate({
       },
     ],
     candidates,
+    filterFacets: buildFilterFacetsFromCandidates(candidates),
     queues: {
       highlightNow: [
         {
@@ -923,6 +943,84 @@ describe("PreNivelacijaPriorityPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Go forward" }));
     await waitFor(() => expect(screen.getByRole("tab", { name: /Pregledaj/i })).toHaveAttribute("aria-selected", "true"));
     expect(screen.getByTestId("location-search")).toHaveTextContent("focus=review");
+  });
+
+  it("includes season and footwear filter options from full universe while viewing page 1", async () => {
+    const pageOneCandidate = makeCandidate({
+      artikalId: 101,
+      sku: "SKU-101",
+      seasonId: 7,
+      season: "Prolece/Leto",
+      footwearTypeId: 4,
+      footwearType: "Sneaker",
+    });
+    const pageTwoCandidate = makeCandidate({
+      artikalId: 202,
+      sku: "SKU-202",
+      supplierId: 22,
+      supplierName: "Dobavljac B",
+      seasonId: 8,
+      season: "Jesen/Zima",
+      footwearTypeId: 5,
+      footwearType: "Boot",
+    });
+
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce({
+      ...makeResponse([pageOneCandidate]),
+      page: 1,
+      pageSize: 1,
+      totalCandidates: 2,
+      filterFacets: buildFilterFacetsFromCandidates([pageOneCandidate, pageTwoCandidate]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    const seasonSelect = await screen.findByLabelText("Sezona");
+    expect(within(seasonSelect).getByRole("option", { name: "Jesen/Zima" })).toBeInTheDocument();
+    expect(within(seasonSelect).getByRole("option", { name: "Prolece/Leto" })).toBeInTheDocument();
+
+    const footwearSelect = screen.getByLabelText("Tip obuće");
+    expect(within(footwearSelect).getByRole("option", { name: "Boot" })).toBeInTheDocument();
+    expect(within(footwearSelect).getByRole("option", { name: "Sneaker" })).toBeInTheDocument();
+  });
+
+  it("keeps expanded detail visible across pagination when the same artikal remains in results", async () => {
+    getPreNivelacijaPrioritetiMock
+      .mockResolvedValueOnce({
+        ...makeResponse([
+          makeCandidate({ artikalId: 101, sku: "SKU-101" }),
+          makeCandidate({ artikalId: 102, sku: "SKU-102" }),
+        ]),
+        page: 1,
+        pageSize: 1,
+        totalCandidates: 2,
+      })
+      .mockResolvedValueOnce({
+        ...makeResponse([makeCandidate({ artikalId: 101, sku: "SKU-101" })]),
+        page: 2,
+        pageSize: 1,
+        totalCandidates: 2,
+      });
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    const table = await screen.findByTestId("pre-nivelacija-prioriteti-data-table");
+    const firstRow = within(table).getByText("SKU-101").closest("tr");
+    fireEvent.click(within(firstRow as HTMLElement).getByRole("button", { name: "Detalji" }));
+    expect(screen.getByText("Detalj odluke: SKU-101")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Sledeća" }));
+
+    await waitFor(() => expect(getPreNivelacijaPrioritetiMock).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 })));
+    expect(await screen.findByText("Detalj odluke: SKU-101")).toBeInTheDocument();
   });
 
   it("hides inline detail when the active focus filter excludes the selected row", async () => {

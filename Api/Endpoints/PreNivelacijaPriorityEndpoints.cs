@@ -622,6 +622,7 @@ public static class PreNivelacijaPriorityEndpoints
             FormulaDescription = baseEntry.FormulaDescription,
             Summary = baseEntry.Summary,
             SupplierLeaderboard = baseEntry.SupplierLeaderboard,
+            FilterFacets = BuildFilterFacets(baseEntry.Candidates),
             Candidates = pagedCandidates,
             Queues = baseEntry.Queues,
             Alerts = baseEntry.Alerts,
@@ -634,6 +635,41 @@ public static class PreNivelacijaPriorityEndpoints
 
         response.Meta!.RecommendationAllowed = response.RecommendationAllowed;
         return response;
+    }
+
+    internal static PreNivelacijaFilterFacetsDto BuildFilterFacets(IReadOnlyList<PreNivelacijaSkuCandidateDto> candidates)
+    {
+        var seasons = new Dictionary<int, string>();
+        var footwearTypes = new Dictionary<int, string>();
+
+        foreach (var candidate in candidates)
+        {
+            if (candidate.SeasonId.HasValue
+                && !string.IsNullOrWhiteSpace(candidate.Season)
+                && !string.Equals(candidate.Season, "N/A", StringComparison.OrdinalIgnoreCase))
+            {
+                seasons[candidate.SeasonId.Value] = candidate.Season.Trim();
+            }
+
+            if (candidate.FootwearTypeId.HasValue
+                && !string.IsNullOrWhiteSpace(candidate.FootwearType)
+                && !string.Equals(candidate.FootwearType, "N/A", StringComparison.OrdinalIgnoreCase))
+            {
+                footwearTypes[candidate.FootwearTypeId.Value] = candidate.FootwearType.Trim();
+            }
+        }
+
+        return new PreNivelacijaFilterFacetsDto
+        {
+            Seasons = seasons
+                .Select(entry => new PreNivelacijaFilterOptionDto { Id = entry.Key, Label = entry.Value })
+                .OrderBy(entry => entry.Label, StringComparer.Ordinal)
+                .ToList(),
+            FootwearTypes = footwearTypes
+                .Select(entry => new PreNivelacijaFilterOptionDto { Id = entry.Key, Label = entry.Value })
+                .OrderBy(entry => entry.Label, StringComparer.Ordinal)
+                .ToList(),
+        };
     }
 
     private static string ResolvePriorityBand(decimal score)

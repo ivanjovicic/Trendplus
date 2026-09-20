@@ -2239,7 +2239,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                 </article>
                 <article>
                   <span>Uporedivi artikli <InfoTip text="Broj artikala koji su imali prodaju i pre i posle nivelacije — jedini koji daju merodavan signal o uticaju promene cene." /></span>
-                  <strong>{selectedSupplier.prePostComparableArticleCount ?? 0}</strong>
+                  <strong>{formatMetricDisplayValue({ value: selectedSupplier.prePostComparableArticleCount ?? null, kind: "number" })}</strong>
                 </article>
               </div>
 

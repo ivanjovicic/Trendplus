@@ -391,6 +391,34 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     expect(screen.queryByText("Prioritetna lista tipova obuće")).not.toBeInTheDocument();
   });
 
+  it("shows stale overlay and keeps prior data when a refetch fails after a successful load", async () => {
+    vi.mocked(getShoeTypeSalesStats)
+      .mockResolvedValueOnce(response())
+      .mockRejectedValueOnce(new Error("Network error on refetch"));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByText("Prioritetna lista tipova obuće");
+    expect(screen.getByText("Patike")).toBeInTheDocument();
+
+    localStorage.setItem("trendplus:dataScope", "existing");
+    window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("shoe-type-stale-refetch-warning")).toHaveTextContent(
+        "Prikazujemo prethodno ucitane podatke. Novi upit nije uspeo.",
+      );
+    });
+    expect(screen.getByText("Patike")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("empty is not error when shoe type sales returns no rows", async () => {
     vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
       shoeTypes: [],
@@ -751,5 +779,104 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     expect(detailPanel).not.toBeNull();
     expect(within(detailPanel!).getByText("Udeo u količini").parentElement).toHaveTextContent("0,00%");
     expect(within(detailPanel!).getByText("Pre/post pokrice prometa").parentElement).toHaveTextContent("0,0%");
+  });
+
+  it("refreshes the default 30d preset window on reset after calendar rollover", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-04-01T12:00:00Z"));
+
+    vi.mocked(getShoeTypeSalesStats).mockImplementation(async (params) =>
+      response({
+        fromDate: params.fromDate,
+        toDate: params.toDate,
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(getShoeTypeSalesStats).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fromDate: "2026-03-03T00:00:00Z",
+          toDate: "2026-04-01T23:59:59Z",
+        }),
+      );
+    });
+
+    vi.setSystemTime(new Date("2026-05-01T12:00:00Z"));
+    fireEvent.click(screen.getByRole("button", { name: "Reset filtera" }));
+
+    await waitFor(() => {
+      expect(getShoeTypeSalesStats).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          fromDate: "2026-04-02T00:00:00Z",
+          toDate: "2026-05-01T23:59:59Z",
+        }),
+      );
+    });
+  });
+
+  it("keeps the newest filter result when an older response arrives late", async () => {
+    type Deferred<T> = {
+      promise: Promise<T>;
+      resolve: (value: T) => void;
+    };
+    const createDeferred = <T,>(): Deferred<T> => {
+      let resolve!: (value: T) => void;
+      const promise = new Promise<T>((nextResolve) => {
+        resolve = nextResolve;
+      });
+      return { promise, resolve };
+    };
+
+    const firstPayload = createDeferred<ReturnType<typeof response>>();
+    const secondPayload = createDeferred<ReturnType<typeof response>>();
+
+    vi.mocked(getShoeTypeSalesStats)
+      .mockImplementationOnce(() => firstPayload.promise)
+      .mockImplementationOnce(() => secondPayload.promise);
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(getShoeTypeSalesStats).toHaveBeenCalledTimes(1);
+    });
+
+    localStorage.setItem("trendplus:dataScope", "existing");
+    window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+
+    await waitFor(() => {
+      expect(getShoeTypeSalesStats).toHaveBeenCalledTimes(2);
+    });
+
+    secondPayload.resolve(response({
+      shoeTypes: [shoeType({ tipObuceNaziv: "Novi tip" })],
+      dataScope: "existing",
+    }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Novi tip")).toBeInTheDocument();
+    });
+
+    firstPayload.resolve(response({
+      shoeTypes: [shoeType({ tipObuceNaziv: "Stari tip" })],
+    }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Novi tip")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Stari tip")).not.toBeInTheDocument();
   });
 });

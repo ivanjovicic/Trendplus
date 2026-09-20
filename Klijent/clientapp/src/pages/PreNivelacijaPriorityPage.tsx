@@ -445,7 +445,7 @@ export default function PreNivelacijaPriorityPage() {
     return () => window.removeEventListener("trendplus:data-scope-changed", handleScopeChange);
   }, [setSearchParams]);
 
-  const load = useCallback(async (filters: ActiveFilters, nextPage: number, scope: DataScope) => {
+  const load = useCallback(async (filters: ActiveFilters, nextPage: number, scope: DataScope, signal?: AbortSignal) => {
     const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
@@ -460,12 +460,20 @@ export default function PreNivelacijaPriorityPage() {
         page: nextPage,
         pageSize: 60,
         dataScope: scope,
+        signal,
       });
 
       if (requestId !== requestIdRef.current) return;
       setData(result);
-      setExpandedArtikalId(null);
+      setExpandedArtikalId((current) => {
+        if (current == null) return null;
+        const stillPresent = result.candidates.some((candidate) => candidate.artikalId === current);
+        return stillPresent ? current : null;
+      });
     } catch (reason) {
+      if (reason instanceof DOMException && reason.name === "AbortError") {
+        return;
+      }
       if (requestId !== requestIdRef.current) return;
       setData(null);
       const preNivelacijaError = reason instanceof PreNivelacijaApiError
@@ -496,7 +504,9 @@ export default function PreNivelacijaPriorityPage() {
   }, []);
 
   useEffect(() => {
-    void load(activeFilters, page, dataScope);
+    const controller = new AbortController();
+    void load(activeFilters, page, dataScope, controller.signal);
+    return () => controller.abort();
   }, [activeFilters, dataScope, load, page]);
 
   const supplierOptions = useMemo(
@@ -505,6 +515,11 @@ export default function PreNivelacijaPriorityPage() {
   );
 
   const seasonOptions = useMemo(() => {
+    const facetSeasons = data?.filterFacets?.seasons ?? [];
+    if (facetSeasons.length > 0) {
+      return [...facetSeasons].sort((a, b) => a.label.localeCompare(b.label, "sr"));
+    }
+
     const map = new Map<number, string>();
     (data?.candidates ?? []).forEach((item) => {
       if (item.seasonId != null && item.season && item.season !== "N/A") {
@@ -515,9 +530,14 @@ export default function PreNivelacijaPriorityPage() {
     return [...map.entries()]
       .map(([id, label]) => ({ id, label }))
       .sort((a, b) => a.label.localeCompare(b.label, "sr"));
-  }, [data?.candidates]);
+  }, [data?.candidates, data?.filterFacets?.seasons]);
 
   const footwearTypeOptions = useMemo(() => {
+    const facetFootwearTypes = data?.filterFacets?.footwearTypes ?? [];
+    if (facetFootwearTypes.length > 0) {
+      return [...facetFootwearTypes].sort((a, b) => a.label.localeCompare(b.label, "sr"));
+    }
+
     const map = new Map<number, string>();
     (data?.candidates ?? []).forEach((item) => {
       if (item.footwearTypeId != null && item.footwearType && item.footwearType !== "N/A") {
@@ -528,7 +548,7 @@ export default function PreNivelacijaPriorityPage() {
     return [...map.entries()]
       .map(([id, label]) => ({ id, label }))
       .sort((a, b) => a.label.localeCompare(b.label, "sr"));
-  }, [data?.candidates]);
+  }, [data?.candidates, data?.filterFacets?.footwearTypes]);
 
   const decisionRows = useMemo<DecisionCandidate[]>(() => {
     const rows = data?.candidates ?? [];

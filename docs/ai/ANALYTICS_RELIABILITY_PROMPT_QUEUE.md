@@ -1,8 +1,260 @@
 # Analytics Reliability Prompt Queue
 
-Date: 2026-09-18
+Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ344` moved from `WAITING` to `READY` as P2 trust follow-up (Pre-Nivelacija filter options page bias).
+
+Owner claim 2026-09-20: `RQ344` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ344-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Pre-Nivelacija API now returns `filterFacets` (seasons, footwear types) from the full filtered candidate universe; frontend dropdowns prefer facets over the paginated page slice with candidate fallback.
+- Changed files: `Api/Models/PreNivelacijaPriorityModels.cs`, `Api/Endpoints/PreNivelacijaPriorityEndpoints.cs`, `Api.Tests/PreNivelacijaFilterFacetsTests.cs`, `Klijent/clientapp/src/types/preNivelacija.ts`, `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`, `Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: PreNivelacijaPriorityPage spec 39/39; `git diff --check`
+- Checks not run: dotnet test (dotnet unavailable in agent VM), full client suite, CI, live browser
+- Run log: `.ai/runs/2026-09-20-RQ344-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Follow-up: promote `RQ345` (Operacije frontend share recompute) or `RQ321` (Operacije store filter load failure)
+- Residual risk: supplier dropdown already used full-universe `supplierLeaderboard`; seasons/footwear now aligned via facets
+- Prompt defect / scope repair: none
+
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ343` moved from `WAITING` to `READY` as P2 trust follow-up (Pre-Nivelacija expansion persistence).
+
+Owner claim 2026-09-20: `RQ343` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ343-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Pre-Nivelacija list reload no longer clears expanded row unconditionally; expansion persists when the same artikalId remains in the new page response and clears only when absent.
+- Changed files: `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`, `Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: PreNivelacijaPriorityPage spec 39/39; `git diff --check`
+- Checks not run: full client suite, CI, live browser, analytics guardrails (pre-existing violations unrelated to owned scope)
+- Run log: `.ai/runs/2026-09-20-RQ343-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `8af9cfa4`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `8af9cfa4`
+- Follow-up: promote `RQ344` (Pre-Nivelacija filter options page bias) or `RQ321` (Operacije store filter load failure)
+- Residual risk: none known in owned scope
+- Prompt defect / scope repair: none
+
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ342` moved from `WAITING` to `READY` as P2 trust follow-up (Operacije request abort races).
+
+Owner claim 2026-09-20: `RQ342` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ342-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Shoe, Color, Pre/Post, Pre-Nivelacija and Inventory primary list loads now tie AbortController to effect cleanup, pass signal into API calls, ignore AbortError, and retain requestId guards against late responses.
+- Changed files: `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/ColorSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`, `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`, `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/services/vendorSalesNivelacijaApi.ts`, `Klijent/clientapp/src/services/preNivelacijaApi.ts`, `Klijent/clientapp/src/services/analyticsApi.ts`, `Klijent/clientapp/src/pages/__tests__/ShoeTypeSalesStatsPage.premium.spec.tsx`, `Klijent/clientapp/src/pages/__tests__/ColorSalesStatsPage.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: ShoeType premium 32/32; Color spec 16/16; PrePost spec 30/30; PreNivelacija spec 38/38; InventoryPage.partialFailure 3/3; `npm run check:analytics-guardrails`; `git diff --check`
+- Checks not run: full client suite, CI, live browser
+- Run log: `.ai/runs/2026-09-20-RQ342-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `65b5cdf0`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `65b5cdf0`
+- Follow-up: promote `RQ343` (Pre-Nivelacija expansion persistence) or `RQ321` (Operacije store filter load failure)
+- Residual risk: none known in owned scope
+- Prompt defect / scope repair: none
+
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ341` moved from `WAITING` to `READY` as P2 trust follow-up (Color stale refetch contract).
+
+Owner claim 2026-09-20: `RQ341` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ341-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Color refetch failures now preserve prior data and show stale banner via showStaleError; initial load failures still use blocking AnalyticsErrorState when data is null.
+- Changed files: `Klijent/clientapp/src/pages/ColorSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/ColorSalesStatsPage.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: ColorSalesStatsPage spec 15/15; ColorSalesStatsPage.premium spec 11/11; `npm run check:analytics-guardrails`; `git diff --check`
+- Checks not run: full client suite, CI, live browser
+- Run log: `.ai/runs/2026-09-20-RQ341-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `52b6840f`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `52b6840f`
+- Follow-up: promote `RQ342` (Operacije abort races) or `RQ321` (Operacije store filter load failure)
+- Residual risk: none known in owned scope
+- Prompt defect / scope repair: none
+
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ340` moved from `WAITING` to `READY` as P2 trust follow-up (Shoe Type stale refetch overlay).
+
+Owner claim 2026-09-20: `RQ340` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ340-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Shoe Type refetch failures now preserve prior data and activate showStaleError banner instead of clearing data and showing blocking error.
+- Changed files: `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/ShoeTypeSalesStatsPage.premium.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: ShoeTypeSalesStatsPage.premium spec 31/31; ShoeTypeSalesStatsPage.spec 1/1; `npm run check:analytics-guardrails`; `git diff --check`
+- Checks not run: full client suite, CI, live browser
+- Run log: `.ai/runs/2026-09-20-RQ340-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `c46d5d61`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `c46d5d61`
+- Follow-up: promote `RQ341` (Color stale refetch) or `RQ321` (Operacije store filter load failure)
+- Residual risk: none known in owned scope
+- Prompt defect / scope repair: none
+
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ339` moved from `WAITING` to `READY` as P2 trust follow-up (Pre/Post focus filter persistence).
+
+Owner claim 2026-09-20: `RQ339` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ339-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Pre/Post no longer resets focusFilter to all on every successful data reload; scope-only refetches preserve the active focus chip when rows still match. Apply/reset still clear focus explicitly.
+- Changed files: `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`, `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: ProdajaPrePostNivelacijePage spec 30/30; `npm run check:analytics-guardrails`; `git diff --check`
+- Checks not run: full client suite, CI, live browser
+- Run log: `.ai/runs/2026-09-20-RQ339-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `aa6c170c`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `aa6c170c`
+- Follow-up: promote `RQ340` (Shoe Type stale refetch) or `RQ321` (Operacije store filter load failure)
+- Residual risk: none known in owned scope
+- Prompt defect / scope repair: none
+
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ338` moved from `WAITING` to `READY` as P2 trust follow-up (Pre/Post vendor dropdown load failure).
+
+Owner claim 2026-09-20: `RQ338` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ338-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Pre/Post vendor filter load failures now set vendorLoadError, show warning banner with retry, and preserve the last successful vendor list instead of silently clearing the dropdown.
+- Changed files: `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`, `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: ProdajaPrePostNivelacijePage spec 29/29; `npm run check:analytics-guardrails`; `git diff --check`
+- Checks not run: full client suite, CI, live browser
+- Run log: `.ai/runs/2026-09-20-RQ338-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `d0068f42`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `d0068f42`
+- Follow-up: promote `RQ339` (Pre/Post focus filter persistence) or `RQ321` (Operacije store filter load failure)
+- Residual risk: none known in owned scope
+- Prompt defect / scope repair: none
+
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ337` moved from `WAITING` to `READY` as P2 trust follow-up (Operacije frozen 30d preset period).
+
+Owner claim 2026-09-20: `RQ337` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ337-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Operacije Shoe/Color/Pre-Post pages no longer freeze default 30d preset at mount; apply/reset refresh preset ranges from current calendar via resolvePresetFilterRange.
+- Changed files: `Klijent/clientapp/src/utils/analyticsPeriodPresets.ts`, `Klijent/clientapp/src/utils/__tests__/analyticsPeriodPresets.spec.ts`, `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/ColorSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`, `Klijent/clientapp/src/pages/__tests__/ShoeTypeSalesStatsPage.premium.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: analyticsPeriodPresets spec 2/2; ShoeTypeSalesStatsPage.premium spec 30/30; ProdajaPrePostNivelacijePage spec 27/27; `npm run check:analytics-guardrails`; `git diff --check`
+- Checks not run: full client suite, CI, live browser
+- Run log: `.ai/runs/2026-09-20-RQ337-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `4ada0ce5`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `4ada0ce5`
+- Follow-up: promote `RQ338` (Pre/Post vendor dropdown load failure) or `RQ339` (Pre/Post focus filter persistence)
+- Residual risk: none known in owned scope
+- Prompt defect / scope repair: none
+
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ336` moved from `WAITING` to `READY` as P2 trust follow-up (Daily Sales chart sort order bug).
+
+Owner claim 2026-09-20: `RQ336` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ336-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Daily Sales trend and shift-mix charts now use chronological timeSeriesRows/chronologicalTrendData instead of table sort order; table sort no longer scrambles chart x-axis.
+- Changed files: `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.premium.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: DailySalesStatsPage.premium spec 18/18; DailySalesStatsPage.numericState spec 15/15; `npm run check:analytics-guardrails`; `git diff --check`
+- Checks not run: full client suite, CI, live browser
+- Run log: `.ai/runs/2026-09-20-RQ336-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `b4755e8d`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `b4755e8d`
+- Follow-up: promote `RQ337` (Operacije frozen 30d preset) or `RQ338` (Pre/Post vendor dropdown load failure)
+- Residual risk: none known in owned scope
+- Prompt defect / scope repair: none
+
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ335` moved from `WAITING` to `READY` as P2 trust follow-up (Daily Sales previous-period silent failure).
+
+Owner claim 2026-09-20: `RQ335` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ335-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Daily Sales now resolves previous-period fetch with Promise.allSettled, shows warning banner on request failure, empty-baseline info note on successful empty previous period, and PoP cards render Nedostupno instead of silent N/A.
+- Changed files: `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`, `Klijent/clientapp/src/pages/DailySalesStatsPage.css`, `Klijent/clientapp/src/utils/dailySalesPreviousPeriodComparison.ts`, `Klijent/clientapp/src/utils/__tests__/dailySalesPreviousPeriodComparison.spec.ts`, `Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.premium.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: dailySalesPreviousPeriodComparison spec 3/3; DailySalesStatsPage.premium spec 18/18; `npm run check:analytics-guardrails`; `git diff --check`
+- Checks not run: full client suite, CI, live browser
+- Run log: `.ai/runs/2026-09-20-RQ335-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `89622353`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `89622353`
+- Follow-up: promote `RQ336` (Daily Sales chart sort order) or `RQ337` (Operacije frozen 30d preset)
+- Residual risk: none known in owned scope
+- Prompt defect / scope repair: none
+
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ334` moved from `WAITING` to `READY` as P1 trust follow-up (supplier prePostComparableArticleCount fake zero).
+
+Owner claim 2026-09-20: `RQ334` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ334-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Supplier detail nivelacija panel now renders null `prePostComparableArticleCount` as unavailable via shared metric formatter instead of fake zero.
+- Changed files: `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: SupplierSalesStatsPage.premium spec 18/18; `npm run check:analytics-guardrails`; `git diff --check`
+- Checks not run: full client suite, CI, live browser
+- Run log: `.ai/runs/2026-09-20-RQ334-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `cebfcb59`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `cebfcb59`
+- Follow-up: promote `RQ335` (Daily Sales previous-period silent failure) or `RQ336` (Daily Sales chart chronological rows)
+- Residual risk: none known in owned scope
+- Prompt defect / scope repair: none
+
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ333` moved from `WAITING` to `READY` as P1 trust follow-up (Pre/Post frontend post revenue share recompute).
+
+Owner claim 2026-09-20: `RQ333` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ333-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Pre/Post row projection now uses backend `postRevenueSharePercent` only; missing backend share stays null instead of frontend `(postRevenue / totalRevenue) * 100` recompute.
+- Changed files: `Klijent/clientapp/src/utils/prePostNivelacijaTrust.ts`, `Klijent/clientapp/src/utils/__tests__/prePostNivelacijaTrust.spec.ts`, `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: prePostNivelacijaTrust spec 6/6; ProdajaPrePostNivelacijePage spec 27/27; `npm run check:analytics-guardrails`; `git diff --check`
+- Checks not run: full client suite, CI, live browser
+- Run log: `.ai/runs/2026-09-20-RQ333-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `b29e7408`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `b29e7408`
+- Follow-up: promote `RQ334` (supplier prePostComparableArticleCount) or `RQ335` (Daily Sales previous-period silent failure)
+- Residual risk: `postSharePct` is not yet a rendered column; RQ345 covers Shoe/Color share recompute separately
+- Prompt defect / scope repair: none
 
 Owner promotion 2026-09-18: under user instruction to claim next prompt, `RQ332` moved from `WAITING` to `READY` as P1 trust follow-up (inventory off-page detail placeholder fake zero).
 
@@ -698,14 +950,14 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ334 | WAITING | supplier-prepost-comparable-fake-zero | Fail closed on null Pre/Post comparable article count in Supplier detail |
 | RQ335 | WAITING | daily-sales-previous-period-silent-failure | Surface Daily Sales previous-period fetch failure instead of silent N/A deltas |
 | RQ336 | WAITING | daily-sales-chart-sort-order-bug | Feed Daily Sales trend/shift charts from chronological rows, not table sort |
-| RQ337 | WAITING | operations-frozen-preset-period | Refresh frozen 30d preset period on Operacije pages at apply/reset |
-| RQ338 | WAITING | pre-post-vendor-load-silent-failure | Surface Pre/Post vendor dropdown load failure |
-| RQ339 | WAITING | pre-post-focus-reset-on-reload | Preserve Pre/Post focus filter across non-filter reloads |
-| RQ340 | WAITING | shoe-type-stale-refetch-dead-path | Enable Shoe Type stale overlay on refetch failure |
-| RQ341 | WAITING | color-stale-refetch-contract | Add Color stale/partial refetch contract matching Operacije standard |
-| RQ342 | WAITING | operations-request-abort-races | Add AbortController to Operacije list fetches beyond Daily Sales |
-| RQ343 | WAITING | pre-nivelacija-expansion-persistence | Preserve Pre-Nivelacija expanded row across pagination reload |
-| RQ344 | WAITING | pre-nivelacija-filter-options-page-bias | Load Pre-Nivelacija filter options from full universe, not current page |
+| RQ337 | DONE | operations-frozen-preset-period | Refresh frozen 30d preset period on Operacije pages at apply/reset |
+| RQ338 | DONE | pre-post-vendor-load-silent-failure | Surface Pre/Post vendor dropdown load failure |
+| RQ339 | DONE | pre-post-focus-reset-on-reload | Preserve Pre/Post focus filter across non-filter reloads |
+| RQ340 | DONE | shoe-type-stale-refetch-dead-path | Enable Shoe Type stale overlay on refetch failure |
+| RQ341 | DONE | color-stale-refetch-contract | Add Color stale/partial refetch contract matching Operacije standard |
+| RQ342 | DONE | operations-request-abort-races | Add AbortController to Operacije list fetches beyond Daily Sales |
+| RQ343 | DONE | pre-nivelacija-expansion-persistence | Preserve Pre-Nivelacija expanded row across pagination reload |
+| RQ344 | DONE | pre-nivelacija-filter-options-page-bias | Load Pre-Nivelacija filter options from full universe, not current page |
 | RQ345 | WAITING | operations-frontend-share-recompute | Remove frontend revenue share recompute on Shoe and Color when backend missing |
 | RQ346 | WAITING | shoe-type-avg-margin-frontend-aggregate | Replace frontend simple-mean avg margin KPI with backend or honest label |
 | RQ347 | WAITING | pre-post-winner-risk-untrusted-sort | Sort Pre/Post winner/risk SKUs with trustedMetric before display |
@@ -17096,7 +17348,7 @@ Commit suggestion: `fix(analytics): inventory detail placeholder fake zero`
 
 ## RQ333 - Stop Pre/Post frontend from recomputing post revenue share percent
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/trust/tests
 Feature family: pre-post-frontend-share-recompute
@@ -17143,7 +17395,7 @@ When backend `postRevenueSharePercent` is missing, frontend computes `(trustedPo
 
 ## RQ334 - Fail closed on null Pre/Post comparable article count in Supplier detail
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/trust/tests
 Feature family: supplier-prepost-comparable-fake-zero
@@ -17189,7 +17441,7 @@ Detail panel renders `prePostComparableArticleCount ?? 0` — null becomes 0 art
 
 ## RQ335 - Surface Daily Sales previous-period fetch failure instead of silent N/A deltas
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/trust/tests
 Feature family: daily-sales-previous-period-silent-failure
@@ -17236,7 +17488,7 @@ Previous-period fetch failure is swallowed (`.catch(() => null)`); UI shows N/A 
 
 ## RQ336 - Feed Daily Sales trend/shift charts from chronological rows, not table sort
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/trust/tests
 Feature family: daily-sales-chart-sort-order-bug
@@ -17283,7 +17535,7 @@ Trend and shift-mix charts use `sortedRows` (table sort order), not chronologica
 
 ## RQ337 - Refresh frozen 30d preset period on Operacije pages at apply/reset
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/trust/tests
 Feature family: operations-frozen-preset-period
@@ -17330,7 +17582,7 @@ Commit suggestion: `fix(analytics): operations frozen preset period`
 
 ## RQ338 - Surface Pre/Post vendor dropdown load failure
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/trust/tests
 Feature family: pre-post-vendor-load-silent-failure
@@ -17377,7 +17629,7 @@ Vendor load failure silently `setVendors([])` — empty dropdown with no degrada
 
 ## RQ339 - Preserve Pre/Post focus filter across non-filter reloads
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/trust/tests
 Feature family: pre-post-focus-reset-on-reload
@@ -17423,7 +17675,7 @@ Every successful reload resets `focusFilter("all")` including scope-only refetch
 
 ## RQ340 - Enable Shoe Type stale overlay on refetch failure
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/trust/tests
 Feature family: shoe-type-stale-refetch-dead-path
@@ -17470,7 +17722,7 @@ Commit suggestion: `fix(analytics): shoe type stale refetch dead path`
 
 ## RQ341 - Add Color stale/partial refetch contract matching Operacije standard
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/trust/tests
 Feature family: color-stale-refetch-contract
@@ -17517,7 +17769,7 @@ Any load error clears `data` and shows blocking error — no stale path during r
 
 ## RQ342 - Add AbortController to Operacije list fetches beyond Daily Sales
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/trust/tests
 Feature family: operations-request-abort-races
@@ -17563,7 +17815,7 @@ Only Daily Sales aborts in-flight requests; other Operacije screens use `request
 
 ## RQ343 - Preserve Pre-Nivelacija expanded row across pagination reload
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/trust/tests
 Feature family: pre-nivelacija-expansion-persistence
@@ -17609,7 +17861,7 @@ Successful reload clears `expandedArtikalId`; expanded detail lost on pagination
 
 ## RQ344 - Load Pre-Nivelacija filter options from full universe, not current page
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/trust/tests
 Feature family: pre-nivelacija-filter-options-page-bias

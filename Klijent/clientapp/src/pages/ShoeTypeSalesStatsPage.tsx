@@ -351,17 +351,19 @@ export default function ShoeTypeSalesStatsPage() {
   const requestIdRef = useRef(0);
   const detailSectionRef = useRef<HTMLElement>(null);
 
-  const initialRange = useMemo(() => getPresetRange("30d"), []);
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("30d");
-  const [fromDate, setFromDate] = useState(initialRange.fromDate);
-  const [toDate, setToDate] = useState(initialRange.toDate);
+  const [fromDate, setFromDate] = useState(() => getPresetRange("30d").fromDate);
+  const [toDate, setToDate] = useState(() => getPresetRange("30d").toDate);
   const [sezonaId, setSezonaId] = useState<number | null>(null);
   const [storeId, setStoreId] = useState<number | null>(null);
-  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({
-    fromDate: initialRange.fromDate,
-    toDate: initialRange.toDate,
-    sezonaId: null,
-    storeId: null,
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>(() => {
+    const range = getPresetRange("30d");
+    return {
+      fromDate: range.fromDate,
+      toDate: range.toDate,
+      sezonaId: null,
+      storeId: null,
+    };
   });
 
   const [stores, setStores] = useState<StoreOption[]>([]);
@@ -401,7 +403,7 @@ export default function ShoeTypeSalesStatsPage() {
     void loadStores();
   }, []);
 
-  const load = useCallback(async (filters: ActiveFilters, scope: DataScope) => {
+  const load = useCallback(async (filters: ActiveFilters, scope: DataScope, signal?: AbortSignal) => {
     const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
@@ -413,13 +415,16 @@ export default function ShoeTypeSalesStatsPage() {
         sezonaId: filters.sezonaId,
         storeId: filters.storeId,
         dataScope: scope,
+        signal,
       });
 
       if (requestId !== requestIdRef.current) return;
       setData(result);
     } catch (reason) {
+      if (reason instanceof DOMException && reason.name === "AbortError") {
+        return;
+      }
       if (requestId !== requestIdRef.current) return;
-      setData(null);
       setError(reason instanceof Error ? reason.message : "Greška pri učitavanju podataka po tipu obuće.");
     } finally {
       if (requestId === requestIdRef.current) {
@@ -429,7 +434,9 @@ export default function ShoeTypeSalesStatsPage() {
   }, []);
 
   useEffect(() => {
-    void load(activeFilters, dataScope);
+    const controller = new AbortController();
+    void load(activeFilters, dataScope, controller.signal);
+    return () => controller.abort();
   }, [activeFilters, dataScope, load]);
 
   const decisionRows = useMemo<DecisionShoeType[]>(() => {
@@ -997,7 +1004,12 @@ export default function ShoeTypeSalesStatsPage() {
         />
       ) : null}
       {showStaleError ? (
-        <div className="shoetype-decision-message info" role="status" aria-live="polite">
+        <div
+          className="shoetype-decision-message info"
+          role="status"
+          aria-live="polite"
+          data-testid="shoe-type-stale-refetch-warning"
+        >
           Prikazujemo prethodno ucitane podatke. Novi upit nije uspeo.
         </div>
       ) : null}

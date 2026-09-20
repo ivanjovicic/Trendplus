@@ -514,6 +514,83 @@ describe("ColorSalesStatsPage", () => {
     expect(screen.queryByText("Prioritetna lista boja")).not.toBeInTheDocument();
   });
 
+  it("keeps the newest filter result when an older response arrives late", async () => {
+    type Deferred<T> = {
+      promise: Promise<T>;
+      resolve: (value: T) => void;
+    };
+    const createDeferred = <T,>(): Deferred<T> => {
+      let resolve!: (value: T) => void;
+      const promise = new Promise<T>((nextResolve) => {
+        resolve = nextResolve;
+      });
+      return { promise, resolve };
+    };
+
+    const firstPayload = createDeferred<ReturnType<typeof response>>();
+    const secondPayload = createDeferred<ReturnType<typeof response>>();
+
+    vi.mocked(getColorSalesStats)
+      .mockImplementationOnce(() => firstPayload.promise)
+      .mockImplementationOnce(() => secondPayload.promise);
+
+    renderPage();
+    await waitFor(() => {
+      expect(getColorSalesStats).toHaveBeenCalledTimes(1);
+    });
+
+    localStorage.setItem("trendplus:dataScope", "existing");
+    await act(async () => {
+      window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+    });
+
+    await waitFor(() => {
+      expect(getColorSalesStats).toHaveBeenCalledTimes(2);
+    });
+
+    secondPayload.resolve(response({
+      colors: [color({ boja: "Plava" })],
+      dataScope: "existing",
+    }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Plava")).toBeInTheDocument();
+    });
+
+    firstPayload.resolve(response({
+      colors: [color({ boja: "Crvena" })],
+    }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Plava")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Crvena")).not.toBeInTheDocument();
+  });
+
+  it("shows stale overlay and keeps prior table data when a refetch fails after a successful load", async () => {
+    vi.mocked(getColorSalesStats)
+      .mockResolvedValueOnce(response())
+      .mockRejectedValueOnce(new Error("Network error on refetch"));
+
+    renderPage();
+    await screen.findByText("Prioritetna lista boja");
+    expect(screen.getByText("Crna")).toBeInTheDocument();
+
+    localStorage.setItem("trendplus:dataScope", "existing");
+    await act(async () => {
+      window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("color-stale-refetch-warning")).toHaveTextContent(
+        "Prikazujemo prethodno učitane podatke. Novi upit nije uspeo.",
+      );
+    });
+    expect(screen.getByText("Crna")).toBeInTheDocument();
+    expect(screen.getByText("Prioritetna lista boja")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("empty is not error when color sales returns no rows", async () => {
     vi.mocked(getColorSalesStats).mockResolvedValue(response({
       colors: [],
