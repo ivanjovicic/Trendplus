@@ -347,7 +347,6 @@ export default function ColorSalesStatsPage() {
       setData(result);
     } catch (reason) {
       if (requestId !== requestIdRef.current) return;
-      setData(null);
       setError(reason instanceof Error ? reason.message : "Greska pri ucitavanju podataka po boji.");
     } finally {
       if (requestId === requestIdRef.current) {
@@ -611,6 +610,8 @@ export default function ColorSalesStatsPage() {
   const trustIsPartial = responseMeta?.isPartial ?? false;
   const trustDataFreshnessStatus = getAnalyticsDataFreshnessStatus(responseMeta);
   const trustEmptyStateReason = responseMeta?.message ?? emptyStateHint;
+  const showBlockingError = Boolean(error && !data);
+  const showStaleError = Boolean(error && data);
 
   const emptyStateVariant = useMemo<"no_data" | "insufficient_data" | "filtered_out" | null>(() => {
     if (!data || loading || sortedRows.length > 0) return null;
@@ -829,7 +830,7 @@ export default function ColorSalesStatsPage() {
         mode="recommendation"
         isPartial={trustIsPartial}
         recommendationNote="Preporuke dolaze iz backenda; ovaj ekran zadržava odluku, period i kvalitet podataka na jednom mestu."
-        emptyStateReason={!loading && !error && trustEmptyStateReason ? trustEmptyStateReason : null}
+        emptyStateReason={!loading && !showBlockingError && trustEmptyStateReason ? trustEmptyStateReason : null}
         methodologyHref="/analytics/data-quality"
         dataQualityHref="/analytics/data-quality"
         refreshStatusHref="/admin/configuration?panel=workers"
@@ -867,15 +868,25 @@ export default function ColorSalesStatsPage() {
       {invalidRange ? (
         <div className="color-decision-message error">Datum „Od” ne može biti posle datuma „Do”.</div>
       ) : null}
-      {error ? (
+      {showBlockingError ? (
         <AnalyticsErrorState
           title="Boje trenutno nisu dostupne"
-          message={error}
+          message={error || "Ne prikazujemo nule jer nije potvrđeno da je period stvarno prazan."}
           onRetry={() => {
             void load(activeFilters, dataScope);
           }}
           helpHref="/analytics/data-quality"
         />
+      ) : null}
+      {showStaleError ? (
+        <div
+          className="color-decision-message info"
+          role="status"
+          aria-live="polite"
+          data-testid="color-stale-refetch-warning"
+        >
+          Prikazujemo prethodno učitane podatke. Novi upit nije uspeo.
+        </div>
       ) : null}
       {loading ? (
         <div className="color-decision-message loading">
@@ -883,7 +894,7 @@ export default function ColorSalesStatsPage() {
           <span>Učitavam boje...</span>
         </div>
       ) : null}
-      {!loading && !error && emptyStateVariant ? (
+      {!loading && !showBlockingError && emptyStateVariant ? (
         <AnalyticsEmptyState
           variant={emptyStateVariant ?? undefined}
           message={emptyStateHint ?? undefined}
@@ -895,7 +906,7 @@ export default function ColorSalesStatsPage() {
           }}
         />
       ) : null}
-      {!loading && !error && qualityNotes.length > 0 ? (
+      {!loading && !showBlockingError && qualityNotes.length > 0 ? (
         <div className="color-decision-message info">
           <strong>Kvalitet podataka:</strong> {qualityNotes.join(" ")}
         </div>

@@ -4,6 +4,27 @@ Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ341` moved from `WAITING` to `READY` as P2 trust follow-up (Color stale refetch contract).
+
+Owner claim 2026-09-20: `RQ341` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ341-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Color refetch failures now preserve prior data and show stale banner via showStaleError; initial load failures still use blocking AnalyticsErrorState when data is null.
+- Changed files: `Klijent/clientapp/src/pages/ColorSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/ColorSalesStatsPage.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: ColorSalesStatsPage spec 15/15; ColorSalesStatsPage.premium spec 11/11; `npm run check:analytics-guardrails`; `git diff --check`
+- Checks not run: full client suite, CI, live browser
+- Run log: `.ai/runs/2026-09-20-RQ341-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Follow-up: promote `RQ342` (Operacije abort races) or `RQ321` (Operacije store filter load failure)
+- Residual risk: none known in owned scope
+- Prompt defect / scope repair: none
+
 Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ340` moved from `WAITING` to `READY` as P2 trust follow-up (Shoe Type stale refetch overlay).
 
 Owner claim 2026-09-20: `RQ340` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ340-cursor.lock.md`.
@@ -870,7 +891,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ338 | DONE | pre-post-vendor-load-silent-failure | Surface Pre/Post vendor dropdown load failure |
 | RQ339 | DONE | pre-post-focus-reset-on-reload | Preserve Pre/Post focus filter across non-filter reloads |
 | RQ340 | DONE | shoe-type-stale-refetch-dead-path | Enable Shoe Type stale overlay on refetch failure |
-| RQ341 | WAITING | color-stale-refetch-contract | Add Color stale/partial refetch contract matching Operacije standard |
+| RQ341 | DONE | color-stale-refetch-contract | Add Color stale/partial refetch contract matching Operacije standard |
 | RQ342 | WAITING | operations-request-abort-races | Add AbortController to Operacije list fetches beyond Daily Sales |
 | RQ343 | WAITING | pre-nivelacija-expansion-persistence | Preserve Pre-Nivelacija expanded row across pagination reload |
 | RQ344 | WAITING | pre-nivelacija-filter-options-page-bias | Load Pre-Nivelacija filter options from full universe, not current page |
@@ -17638,7 +17659,7 @@ Commit suggestion: `fix(analytics): shoe type stale refetch dead path`
 
 ## RQ341 - Add Color stale/partial refetch contract matching Operacije standard
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/trust/tests
 Feature family: color-stale-refetch-contract

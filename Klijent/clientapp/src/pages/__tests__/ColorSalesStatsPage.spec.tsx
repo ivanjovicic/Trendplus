@@ -514,6 +514,30 @@ describe("ColorSalesStatsPage", () => {
     expect(screen.queryByText("Prioritetna lista boja")).not.toBeInTheDocument();
   });
 
+  it("shows stale overlay and keeps prior table data when a refetch fails after a successful load", async () => {
+    vi.mocked(getColorSalesStats)
+      .mockResolvedValueOnce(response())
+      .mockRejectedValueOnce(new Error("Network error on refetch"));
+
+    renderPage();
+    await screen.findByText("Prioritetna lista boja");
+    expect(screen.getByText("Crna")).toBeInTheDocument();
+
+    localStorage.setItem("trendplus:dataScope", "existing");
+    await act(async () => {
+      window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("color-stale-refetch-warning")).toHaveTextContent(
+        "Prikazujemo prethodno učitane podatke. Novi upit nije uspeo.",
+      );
+    });
+    expect(screen.getByText("Crna")).toBeInTheDocument();
+    expect(screen.getByText("Prioritetna lista boja")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("empty is not error when color sales returns no rows", async () => {
     vi.mocked(getColorSalesStats).mockResolvedValue(response({
       colors: [],
