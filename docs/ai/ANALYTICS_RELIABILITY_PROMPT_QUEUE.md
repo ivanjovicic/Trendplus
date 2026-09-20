@@ -19184,8 +19184,8 @@ RQ333, RQ345 and RQ346 expose the same ambiguity: a browser-derived value can lo
 - Run log: `.ai/runs/2026-09-20-RQ362-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: 02ff18bbc3539868703ee6046d02392f3d54af35
+- Main verification: passed - fresh `origin/main` contains implementation SHA `02ff18bbc3539868703ee6046d02392f3d54af35`
 - Missed: backend runtime test execution due to unavailable `dotnet`; no known implementation scope omission.
 - Follow-up: promote `RQ363` after RQ362 main delivery.
 - Residual risk: backend DTO tests require a .NET-capable environment; provenance remains optional until consuming endpoints populate metric keys.
