@@ -391,9 +391,9 @@ export default function ColorSalesStatsPage() {
         recommendationAllowed: recommendationProjection.recommendationAllowed,
         coveragePct,
         splitCoveragePct,
-        decisionScore: recommendationProjection.confidencePct == null
-          ? null
-          : Math.round(recommendationProjection.confidencePct),
+        decisionScore: recommendationProjection.recommendationAllowed
+          ? resolveColorPercentValue(item.decisionScore)
+          : null,
         status: recommendationProjection.status,
         statusReason: recommendationProjection.statusReason,
       };

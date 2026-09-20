@@ -54,6 +54,7 @@ export interface ColorSalesStat {
   prePostSignalNote?: string | null;
   prePostComparableArticleCount?: number;
   sharePct?: number | null;
+  decisionScore?: number | null;
   reliabilityPct?: number | null;
   isUnknown?: boolean;
   recommendation?: AnalyticsRecommendation;

@@ -659,6 +659,60 @@ describe("ColorSalesStatsPage", () => {
     expect(reliability.closest("article")).not.toHaveTextContent("83,3");
   });
 
+  it("uses backend decisionScore instead of rounded confidencePct", async () => {
+    vi.mocked(getColorSalesStats).mockResolvedValue(response({
+      colors: [color({
+        boja: "Crvena",
+        decisionScore: 42,
+        recommendation: {
+          status: "increase_focus",
+          label: "Increase focus",
+          summary: "Jak rast.",
+          confidencePct: 88,
+          reliabilityPct: 82,
+          dataQualityStatus: "good",
+          recommendationAllowed: true,
+          reasonCodes: [],
+        },
+      })],
+    }));
+
+    renderPage();
+    await screen.findByText("Prioritetna lista boja");
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
+    const decisionScore = await screen.findByText("Decision score");
+    expect(decisionScore.closest("article")).toHaveTextContent("42");
+    expect(decisionScore.closest("article")).not.toHaveTextContent("88");
+  });
+
+  it("gates backend decisionScore when the recommendation is blocked", async () => {
+    vi.mocked(getColorSalesStats).mockResolvedValue(response({
+      colors: [color({
+        boja: "Blokirana",
+        decisionScore: 42,
+        recommendation: {
+          status: "increase_focus",
+          label: "Increase focus",
+          summary: "Signal nije potvrđen.",
+          confidencePct: 88,
+          reliabilityPct: 82,
+          dataQualityStatus: "warning",
+          recommendationAllowed: false,
+          reasonCodes: ["insufficient_data"],
+        },
+      })],
+    }));
+
+    renderPage();
+    await screen.findByText("Prioritetna lista boja");
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
+    const decisionScore = await screen.findByText("Decision score");
+    expect(decisionScore.closest("article")).toHaveTextContent("N/A");
+    expect(decisionScore.closest("article")).not.toHaveTextContent("42");
+  });
+
   it("expands a color row and saves a detail snapshot before navigating to the detail route", async () => {
     renderPage();
     await screen.findByText("Prioritetna lista boja");
