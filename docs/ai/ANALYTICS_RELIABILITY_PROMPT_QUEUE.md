@@ -4,6 +4,27 @@ Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ354` moved from `WAITING` to `READY` as P3 trust follow-up (Supplier Sales toolbar metadata fake zero).
+
+Owner claim 2026-09-20: `RQ354` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ354-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Supplier Sales toolbar/export metadata now renders an unavailable backend supplier count as `N/A` instead of `0`.
+- Changed files: `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: Supplier Sales focused specs 24/24; `git diff --check`
+- Checks not run: full client suite, CI, live browser; analytics guardrails fail on 12 existing violations outside this metadata scope
+- Run log: `.ai/runs/2026-09-20-RQ354-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Follow-up: promote `RQ355` or `RQ321` (Operacije store-filter load failure)
+- Residual risk: none known in owned toolbar metadata scope
+- Prompt defect / scope repair: none
+
 Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ353` moved from `WAITING` to `READY` as P3 trust follow-up (Inventory insight unit-cost fake zero).
 
 Owner claim 2026-09-20: `RQ353` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ353-cursor.lock.md`.
@@ -1159,7 +1180,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ351 | DONE | inventory-hard-reload-refresh | Replace Inventory full page reload refresh with scoped refetch |
 | RQ352 | DONE | daily-sales-filtered-empty-confusion | Distinguish Daily Sales store-empty from filter-no-match empty state |
 | RQ353 | DONE | inventory-insight-detail-fake-zero-cost | Guard unit cost fake zero on insight-to-detail navigation path |
-| RQ354 | WAITING | supplier-toolbar-metadata-fake-zero | Fail closed on null supplier count in toolbar export metadata |
+| RQ354 | DONE | supplier-toolbar-metadata-fake-zero | Fail closed on null supplier count in toolbar export metadata |
 | RQ355 | WAITING | color-empty-quality-conflation | Base Color empty state on row count and meta, not quality notes alone |
 | RQ356 | WAITING | pre-post-english-signal-labels | Serbian labels for Pre/Post advanced signal cards |
 | RQ357 | WAITING | inventory-url-pagination-search | URL-sync Inventory pagination, page size, search and compare stores |
@@ -18520,7 +18541,7 @@ Insight click builds row with `nabavnaCena: 0` in edge cases; detail may show 0 
 
 ## RQ354 - Fail closed on null supplier count in toolbar export metadata
 
-Status: WAITING
+Status: DONE
 Priority: P3
 Type: frontend/trust/tests
 Feature family: supplier-toolbar-metadata-fake-zero
