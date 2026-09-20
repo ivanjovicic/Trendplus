@@ -19,8 +19,8 @@ Owner claim 2026-09-20: `RQ352` transitioned `READY -> IN_PROGRESS`; local runti
 - Run log: `.ai/runs/2026-09-20-RQ352-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `dc5aeb76`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `dc5aeb76`
 - Follow-up: promote `RQ353` or `RQ321` (Operacije store-filter load failure)
 - Residual risk: none known in owned scope
 - Prompt defect / scope repair: none
