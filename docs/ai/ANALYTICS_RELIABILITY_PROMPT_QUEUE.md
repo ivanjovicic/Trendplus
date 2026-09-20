@@ -19,8 +19,8 @@ Owner claim 2026-09-20: `RQ345` transitioned `READY -> IN_PROGRESS`; local runti
 - Run log: `.ai/runs/2026-09-20-RQ345-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: `8ccbd143`
-- Main verification: passed — fresh `origin/main` contains implementation SHA `8ccbd143`
+- Main commit SHA: `b47f9ffe`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `b47f9ffe`
 - Follow-up: promote `RQ346` (Shoe Type average margin frontend aggregate) or `RQ321` (Operacije store filter load failure)
 - Residual risk: top-5 concentration KPI is intentionally `N/A` until the backend exposes an authoritative aggregate
 - Prompt defect / scope repair: none
