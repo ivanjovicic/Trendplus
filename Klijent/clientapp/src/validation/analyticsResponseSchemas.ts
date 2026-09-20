@@ -7,6 +7,8 @@ const percentage = finiteNumber.min(-100).max(100);
 const nonNegativePercentage = finiteNumber.min(0).max(100);
 const validDate = z.string().min(1).refine((value) => Number.isFinite(Date.parse(value)), "Must be a valid date.");
 const nullableNumber = finiteNumber.nullable();
+const nullableNonNegativeNumber = nonNegativeNumber.nullable();
+const nullableNonNegativeInteger = nonNegativeInteger.nullable();
 const nullablePercentage = percentage.nullable();
 const nullableNonNegativePercentage = nonNegativePercentage.nullable();
 
@@ -169,21 +171,21 @@ const dailySalesRowSchema = z.object({
 }).passthrough();
 
 const dailySalesMetadataSchema = z.object({
-  totalDays: nullableNonNegativePercentage,
-  uniqueSuppliersInRange: nullableNonNegativePercentage,
+  totalDays: nullableNonNegativeInteger,
+  uniqueSuppliersInRange: nullableNonNegativeInteger,
   unknownSupplierPct: nullableNonNegativePercentage,
-  unknownSupplierItems: nullableNumber,
-  offShiftItems: nullableNumber,
-  offShiftRevenue: nullableNumber,
-  totalItemsInRange: nullableNumber,
-  duplicateReceiptGroupCount: nullableNumber,
-  duplicateReceiptHeaderCount: nullableNumber,
-  receiptAmountMismatchCount: nullableNumber,
-  receiptAmountMismatchRevenue: nullableNumber,
-  nonStandardReceiptCount: nullableNumber,
-  nonStandardReceiptRevenue: nullableNumber,
-  debtReceiptCount: nullableNumber,
-  debtReceiptRevenue: nullableNumber,
+  unknownSupplierItems: nullableNonNegativeNumber,
+  offShiftItems: nullableNonNegativeNumber,
+  offShiftRevenue: nullableNonNegativeNumber,
+  totalItemsInRange: nullableNonNegativeNumber,
+  duplicateReceiptGroupCount: nullableNonNegativeInteger,
+  duplicateReceiptHeaderCount: nullableNonNegativeInteger,
+  receiptAmountMismatchCount: nullableNonNegativeInteger,
+  receiptAmountMismatchRevenue: nullableNonNegativeNumber,
+  nonStandardReceiptCount: nullableNonNegativeInteger,
+  nonStandardReceiptRevenue: nullableNonNegativeNumber,
+  debtReceiptCount: nullableNonNegativeInteger,
+  debtReceiptRevenue: nullableNonNegativeNumber,
   minAvailableDate: validDate.nullable(),
   maxAvailableDate: validDate.nullable(),
   warnings: z.array(z.string()).optional(),
