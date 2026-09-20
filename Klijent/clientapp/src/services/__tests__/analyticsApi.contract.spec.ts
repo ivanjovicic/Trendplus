@@ -12,6 +12,7 @@ import {
   updateAnalyticsActionOutcome,
 } from "../analyticsApi";
 import { getColorSalesStats } from "../colorSalesStatsApi";
+import { AnalyticsResponseValidationError } from "../../validation/analyticsResponseValidation";
 
 describe("analytics API contract requests", () => {
   it("clears cached dashboard bootstrap responses when invalidated", async () => {
@@ -166,6 +167,47 @@ describe("analytics API contract requests", () => {
     expect(receivedUrl?.searchParams.get("sezonaId")).toBe("3");
     expect(receivedUrl?.searchParams.get("storeId")).toBe("2");
     expect(receivedUrl?.searchParams.get("dataScope")).toBe("imported");
+  });
+
+  it("fails closed when Color Sales returns a negative revenue metric", async () => {
+    server.use(
+      rest.get("/api/analytics/color-sales-stats", (_req, res, ctx) => res(ctx.status(200), ctx.json({
+        generatedAt: "2026-07-01T08:00:00Z",
+        fromDate: "2026-06-01",
+        toDate: "2026-07-01",
+        dataWindowFrom: "2026-06-01",
+        dataWindowTo: "2026-07-01",
+        sezonaId: null,
+        storeId: null,
+        colors: [],
+        totals: {
+          ukupanPromet: -1,
+          ukupanMarzniDoprinos: 0,
+          prePromet: 0,
+          poslePromet: 0,
+          ukupnaKolicina: 0,
+          preKolicina: 0,
+          posleKolicina: 0,
+          previousPeriodRevenue: null,
+          previousPeriodUnits: null,
+          popRevenueChangePct: null,
+          popUnitsChangePct: null,
+          prePostNivelacijaRevenueImpactPct: null,
+          prePostNivelacijaUnitsImpactPct: null,
+        },
+        dataQuality: {
+          missingCostRevenue: 0,
+          missingCostRevenueSharePct: null,
+          unknownColorRevenue: 0,
+          unknownColorRevenueSharePct: null,
+          revenueWithNivelacijaSplit: 0,
+          revenueWithNivelacijaSplitSharePct: null,
+        },
+        sezone: [],
+      }))),
+    );
+
+    await expect(getColorSalesStats()).rejects.toBeInstanceOf(AnalyticsResponseValidationError);
   });
 
   it("requests Analytics Actions list and outcome summary with matching filter semantics", async () => {
