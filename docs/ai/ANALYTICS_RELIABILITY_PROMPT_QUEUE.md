@@ -2,7 +2,11 @@
 
 Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ362
+
+Owner promotion 2026-09-20: after RQ361 reached DONE, `RQ362` moved from `WAITING` to `READY` as the authoritative-versus-derived metric provenance contract follow-up.
+
+Owner claim 2026-09-20: `RQ362` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ362-cursor.lock.md`.
 
 Owner promotion 2026-09-20: after RQ366 reached DONE, `RQ361` moved from `WAITING` to `READY` as the guardrail detection expansion downstream of the baseline contract.
 
@@ -19102,7 +19106,7 @@ The current static guardrail catches some local decision-field reconstruction bu
 
 ## RQ362 - Formalize authoritative versus derived analytics metric provenance
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: backend/frontend/contract/tests
 Feature family: analytics-authoritative-provenance

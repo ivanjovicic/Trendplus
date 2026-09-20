@@ -6,6 +6,46 @@ export interface SalesSummary {
   avgItemPrice: number;
 }
 
+export const ANALYTICS_CRITICAL_METRIC_KEYS = [
+  "revenueShare",
+  "margin",
+  "confidence",
+  "reliability",
+  "counts",
+] as const;
+
+export type AnalyticsCriticalMetricKey = typeof ANALYTICS_CRITICAL_METRIC_KEYS[number];
+
+export type AnalyticsMetricProvenanceKind =
+  | "authoritative_backend_aggregate"
+  | "observed_row_value"
+  | "frontend_display_derivation"
+  | "modeled_estimated"
+  | "unknown";
+
+export type AnalyticsMetricAuthority =
+  | "authoritative"
+  | "observed"
+  | "derived"
+  | "modeled"
+  | "unknown";
+
+export type AnalyticsMetricActionability =
+  | "actionable"
+  | "informational"
+  | "blocked"
+  | "unknown";
+
+export interface AnalyticsMetricProvenance {
+  kind: AnalyticsMetricProvenanceKind;
+  authority: AnalyticsMetricAuthority;
+  actionability: AnalyticsMetricActionability;
+  unit?: string | null;
+  denominator?: string | null;
+}
+
+export type AnalyticsMetricProvenanceMap = Partial<Record<AnalyticsCriticalMetricKey, AnalyticsMetricProvenance>>;
+
 export interface AnalyticsResponseMeta {
   success: boolean;
   warningCode?: string | null;
@@ -27,6 +67,7 @@ export interface AnalyticsResponseMeta {
   dataQualityStatus?: "good" | "warning" | "critical" | "insufficient_data" | string | null;
   recommendationAllowed?: boolean | null;
   isPartial?: boolean;
+  metricProvenance?: AnalyticsMetricProvenanceMap | null;
 }
 
 export type AnalyticsFreshnessStatus = "fresh" | "stale" | "critical" | "unknown";
