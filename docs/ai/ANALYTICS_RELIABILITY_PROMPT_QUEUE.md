@@ -4,6 +4,27 @@ Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ352` moved from `WAITING` to `READY` as P3 trust follow-up (Daily Sales empty-state distinction).
+
+Owner claim 2026-09-20: `RQ352` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ352-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Daily Sales now honors backend `meta.emptyReason` for empty responses, so a selected store with zero sales renders the no-data state instead of being mislabeled as client-filtered.
+- Changed files: `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.premium.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: Daily Sales focused specs 21/21; `git diff --check`
+- Checks not run: full client suite, CI, live browser; analytics guardrails fail on 12 existing violations outside this empty-state scope
+- Run log: `.ai/runs/2026-09-20-RQ352-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Follow-up: promote `RQ353` or `RQ321` (Operacije store-filter load failure)
+- Residual risk: none known in owned scope
+- Prompt defect / scope repair: none
+
 Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ351` moved from `WAITING` to `READY` as P3 trust follow-up (Inventory scoped refresh).
 
 Owner claim 2026-09-20: `RQ351` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ351-cursor.lock.md`.
@@ -1115,7 +1136,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ349 | DONE | color-decision-score-wrong-field | Map Color decisionScore to authoritative backend field, not rounded confidencePct |
 | RQ350 | DONE | operations-table-sort-url-state | Persist table sort in URL on Shoe, Color and Pre/Post |
 | RQ351 | DONE | inventory-hard-reload-refresh | Replace Inventory full page reload refresh with scoped refetch |
-| RQ352 | WAITING | daily-sales-filtered-empty-confusion | Distinguish Daily Sales store-empty from filter-no-match empty state |
+| RQ352 | DONE | daily-sales-filtered-empty-confusion | Distinguish Daily Sales store-empty from filter-no-match empty state |
 | RQ353 | WAITING | inventory-insight-detail-fake-zero-cost | Guard unit cost fake zero on insight-to-detail navigation path |
 | RQ354 | WAITING | supplier-toolbar-metadata-fake-zero | Fail closed on null supplier count in toolbar export metadata |
 | RQ355 | WAITING | color-empty-quality-conflation | Base Color empty state on row count and meta, not quality notes alone |
@@ -18387,7 +18408,7 @@ Commit suggestion: `fix(analytics): inventory hard reload refresh`
 
 ## RQ352 - Distinguish Daily Sales store-empty from filter-no-match empty state
 
-Status: WAITING
+Status: DONE
 Priority: P3
 Type: frontend/trust/tests
 Feature family: daily-sales-filtered-empty-confusion
