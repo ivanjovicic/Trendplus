@@ -572,7 +572,10 @@ public sealed class PostgresContainerFixture : IAsyncLifetime
         try
         {
             _container = new PostgreSqlBuilder()
-                .WithImage("postgres:16-alpine")
+                // The full startup bootstrap includes OpenProductTraining SQL
+                // that requires pgvector; the fixture therefore mirrors the
+                // repository's supported PostgreSQL image.
+                .WithImage("pgvector/pgvector:pg16")
                 .WithDatabase("postgres")
                 .WithUsername("postgres")
                 .WithPassword("postgres")
