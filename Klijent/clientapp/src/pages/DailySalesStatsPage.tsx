@@ -825,6 +825,7 @@ export default function DailySalesStatsPage() {
 
   const emptyStateVariant = useMemo<"no_data" | "insufficient_data" | "filtered_out" | null>(() => {
     if (!data || loading || error || sortedRows.length > 0) return null;
+    if (data.meta?.emptyReason) return "no_data";
     if (activeFilters.storeId != null) return "filtered_out";
     if ((data.metadata.warnings?.length ?? 0) > 0) return "insufficient_data";
     return "no_data";

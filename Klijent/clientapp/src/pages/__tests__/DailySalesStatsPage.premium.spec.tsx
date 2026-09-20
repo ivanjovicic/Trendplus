@@ -451,6 +451,41 @@ describe("DailySalesStatsPage premium controls", () => {
     expect(screen.getByText(/van dostupnog raspona prodaje/i)).toBeInTheDocument();
   });
 
+  it("keeps a selected zero-sales store in the no-data state", async () => {
+    vi.mocked(getDailySalesStats).mockResolvedValue(
+      response({
+        storeId: 7,
+        dateRows: [],
+        topSuppliers: [],
+        topSuppliersOrder: [],
+        meta: {
+          success: true,
+          dataQualityStatus: "insufficient_data",
+          emptyReason: "no_data_in_period",
+          message: "Nema prodaje za izabrani period.",
+        },
+        metadata: {
+          ...response().metadata,
+          totalDays: 0,
+          totalItemsInRange: 0,
+          minAvailableDate: null,
+          maxAvailableDate: null,
+        },
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/daily-sales?storeId=7"]}>
+        <Routes>
+          <Route path="/analytics/daily-sales" element={<DailySalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("heading", { name: /Nema podataka za izabrani period/i })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /Nema rezultata za trenutne filtere/i })).not.toBeInTheDocument();
+  });
+
   it("surfaces backend trust warnings from Daily Sales meta", async () => {
     vi.mocked(getDailySalesStats).mockResolvedValue(
       response({
