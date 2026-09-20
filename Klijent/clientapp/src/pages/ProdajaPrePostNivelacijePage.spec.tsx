@@ -271,6 +271,25 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("store: 2");
   });
 
+  it("uses Serbian labels for advanced Pre/Post signal cards", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(response({
+      avgMomentumRevenue: 1200,
+      avgElasticity: -0.42,
+      avgDidRevenue: 800,
+      avgLostSalesOOS: 500,
+    }));
+
+    renderPage();
+
+    expect(await screen.findByText("Dodatni analitički signali")).toBeInTheDocument();
+    expect(screen.getByText("Momentum prodaje")).toBeInTheDocument();
+    expect(screen.getByText("Elastičnost cene")).toBeInTheDocument();
+    expect(screen.getByText("Efekat razlike u razlikama (DiD)")).toBeInTheDocument();
+    expect(screen.getByText("Izgubljena prodaja zbog nestašice")).toBeInTheDocument();
+    expect(screen.queryByText("avg rev")).not.toBeInTheDocument();
+    expect(screen.queryByText("Lost sales OOS")).not.toBeInTheDocument();
+  });
+
   it("keeps the trust header as the only page-level h1", async () => {
     renderPage();
 

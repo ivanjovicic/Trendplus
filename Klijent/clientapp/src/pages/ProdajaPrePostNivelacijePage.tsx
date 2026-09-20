@@ -956,28 +956,28 @@ export default function ProdajaPrePostNivelacijePage() {
 const advancedSignals = useMemo(
     () => [
       {
-        label: "Momentum",
+        label: "Momentum prodaje",
         value: fmtRsd(data?.avgMomentumRevenue),
-        hint: "avg rev",
+        hint: "prosečan prihod",
         tip: "Prosečan prihod od ubrzanja prodaje (momentum signal). Pokazuje da li prodajni trend dobija na brzini pre/posle nivelacije. Nedostupno ako vw_sales_momentum view nije kreiran u bazi.",
       },
       {
-        label: "Elasticnost",
+        label: "Elastičnost cene",
         value: fmtNumber(data?.avgElasticity, 2),
-        hint: "avg",
+        hint: "prosek",
         tip: "Prosečna cenovna elastičnost po artiklima dobavljača. Vrednost < 0 znači da rast cene smanjuje prodaju. Računa se kao %Δqty / %Δcena za svaki artikal.",
       },
       {
-        label: "DID",
+        label: "Efekat razlike u razlikama (DiD)",
         value: fmtRsd(data?.avgDidRevenue),
-        hint: "avg rev",
+        hint: "prosečan prihod",
         tip: "Difference-in-Differences procena uzročnog efekta nivelacije. Poredi promenu prodaje sa kontrolnom grupom (artikli bez nivelacije). Nedostupno ako vw_nivelacija_did nije kreiran.",
       },
       {
-        label: "Lost sales OOS",
+        label: "Izgubljena prodaja zbog nestašice",
         value: fmtRsd(data?.avgLostSalesOOS),
-        hint: "avg",
-        tip: "Procena prihoda izgubljenog zbog iscrpljenosti zalihe (Out of Stock). Izračunava se iz vw_stock_red_zone podataka. Nedostupno dok taj view nije kreiran u bazi.",
+        hint: "prosek",
+        tip: "Procena prihoda izgubljenog zbog iscrpljenosti zalihe (nestašica, OOS). Izračunava se iz vw_stock_red_zone podataka. Nedostupno dok taj view nije kreiran u bazi.",
       },
     ],
     [data?.avgDidRevenue, data?.avgElasticity, data?.avgLostSalesOOS, data?.avgMomentumRevenue]
