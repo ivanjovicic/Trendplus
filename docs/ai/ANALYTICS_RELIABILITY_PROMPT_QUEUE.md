@@ -4,6 +4,27 @@ Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ350` moved from `WAITING` to `READY` as P3 trust follow-up (Operacije table sort URL state).
+
+Owner claim 2026-09-20: `RQ350` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ350-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Shoe, Color, and Pre/Post table sort field/direction now round-trip through `sort`/`dir` URL parameters while preserving existing filters and browser navigation state.
+- Changed files: `Klijent/clientapp/src/utils/analyticsTableSortUrl.ts`, `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/ColorSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`, `Klijent/clientapp/src/pages/__tests__/ShoeTypeSalesStatsPage.premium.spec.tsx`, `Klijent/clientapp/src/pages/__tests__/ColorSalesStatsPage.spec.tsx`, `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: Shoe/Color/PrePost focused specs 87/87; `git diff --check`
+- Checks not run: full client suite, CI, live browser; analytics guardrails fail on 12 existing violations outside this URL-state scope
+- Run log: `.ai/runs/2026-09-20-RQ350-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Follow-up: promote `RQ351` (Supplier Footwear sort URL state) or `RQ321` (Operacije store filter load failure)
+- Residual risk: none known in owned scope
+- Prompt defect / scope repair: none
+
 Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ349` moved from `WAITING` to `READY` as P3 trust follow-up (Color authoritative decisionScore).
 
 Owner claim 2026-09-20: `RQ349` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ349-cursor.lock.md`.
@@ -1071,7 +1092,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ347 | DONE | pre-post-winner-risk-untrusted-sort | Sort Pre/Post winner/risk SKUs with trustedMetric before display |
 | RQ348 | DONE | supplier-footwear-metadata-fake-zero | Fail closed on null counts in Supplier Footwear toolbar metadata |
 | RQ349 | DONE | color-decision-score-wrong-field | Map Color decisionScore to authoritative backend field, not rounded confidencePct |
-| RQ350 | WAITING | operations-table-sort-url-state | Persist table sort in URL on Shoe, Color and Pre/Post |
+| RQ350 | DONE | operations-table-sort-url-state | Persist table sort in URL on Shoe, Color and Pre/Post |
 | RQ351 | WAITING | inventory-hard-reload-refresh | Replace Inventory full page reload refresh with scoped refetch |
 | RQ352 | WAITING | daily-sales-filtered-empty-confusion | Distinguish Daily Sales store-empty from filter-no-match empty state |
 | RQ353 | WAITING | inventory-insight-detail-fake-zero-cost | Guard unit cost fake zero on insight-to-detail navigation path |
@@ -18253,7 +18274,7 @@ Commit suggestion: `fix(analytics): color decision score wrong field`
 
 ## RQ350 - Persist table sort in URL on Shoe, Color and Pre/Post
 
-Status: WAITING
+Status: DONE
 Priority: P3
 Type: frontend/trust/tests
 Feature family: operations-table-sort-url-state
