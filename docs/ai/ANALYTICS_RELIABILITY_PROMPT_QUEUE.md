@@ -2,11 +2,12 @@
 
 Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ364
+Current READY prompt: none
 
 Owner promotion 2026-09-20: after RQ363 reached DONE, `RQ364` moved from `WAITING` to `READY` as the dataset-projection semantics follow-up.
 
 Owner claim 2026-09-20: `RQ364` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ364-cursor.lock.md`.
+Owner completion 2026-09-20: `RQ364` delivered explicit dataset projections for Daily Sales and Pre-Nivelacija, separating table/filter/detail/page/chart/export consumers from backend global totals/facets. Follow-up: promote `RQ365` after RQ364 main delivery.
 
 Owner promotion 2026-09-20: after RQ362 reached DONE, `RQ363` moved from `WAITING` to `READY` as the critical analytics response runtime-validation follow-up.
 
@@ -19271,7 +19272,7 @@ Malformed runtime values such as `NaN`, `Infinity`, negative counts or percentag
 
 ## RQ364 - Separate analytics datasets by purpose
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P2
 Type: frontend/architecture/tests
 Feature family: analytics-dataset-projections
@@ -19326,6 +19327,24 @@ Generic `rows`/`sortedRows` pipelines let table sorting change chart order, page
 - READY AFTER: RQ363 DONE.
 - RQ336 and RQ344 DONE.
 - Coordinate with RQ359 so query lifecycle and dataset projection ownership do not overlap.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Added typed projection vocabulary/helper and migrated Daily Sales and Pre-Nivelacija to explicit canonical, filtered, table, chronological chart, export, detail, page and global-total/facet projections.
+- Changed files: `Klijent/clientapp/src/utils/analyticsDatasetProjections.ts`, `Klijent/clientapp/src/utils/__tests__/analyticsDatasetProjections.spec.ts`, `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`, `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: projection/page regressions 56/56; Daily Sales page spec 2/2; `npm run check:analytics-guardrails`; `npm run typecheck`; `git diff --check`
+- Checks not run: full frontend suite, live browser validation and CI not run.
+- Run log: `.ai/runs/2026-09-20-RQ364-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: no known implementation scope omission.
+- Follow-up: promote `RQ365` after RQ364 main delivery.
+- Residual risk: Pre-Nivelacija candidate rows remain page-scoped by backend contract; global summary/facets are kept from response metadata rather than recomputed from page rows.
+- Prompt defect / scope repair: refreshed four line-based guardrail baseline entries after projection code moved existing reviewed patterns.
 
 ---
 
