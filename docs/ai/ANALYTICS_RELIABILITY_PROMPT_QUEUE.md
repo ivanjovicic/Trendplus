@@ -8128,8 +8128,8 @@ SQL view encodes `WHEN pp.list_price <= 0 THEN 0::numeric` for `discount_depth`.
 - Run log: `.ai/runs/2026-09-08-RQ188-price-intelligence-validity-evidence.md`
 - Evidence state: pending
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: 4c942869f929267774c75f6457d4aa29a4551a20
+- Main verification: passed - fresh `origin/main` contains implementation SHA `4c942869f929267774c75f6457d4aa29a4551a20`
 - Missed: none within the narrowed analytics consumer scope; RQ189 remains WAITING.
 - Follow-up: none for RQ188.
 - Residual risk: normal cache refresh is required after the SQL view is applied; no production mutation was performed.
