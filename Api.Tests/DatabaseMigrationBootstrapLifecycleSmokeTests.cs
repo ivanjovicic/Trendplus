@@ -3,7 +3,7 @@ using Infrastructure.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 using Xunit;
 
@@ -43,12 +43,15 @@ public sealed class DatabaseMigrationBootstrapLifecycleSmokeTests : IClassFixtur
             })
             .Build();
 
-        await RunBootstrapAsync(connectionString, configuration);
-        await RunBootstrapAsync(connectionString, configuration);
+        using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+        var logger = loggerFactory.CreateLogger("DatabaseMigrationBootstrapLifecycleSmoke");
+
+        await RunBootstrapAsync(connectionString, configuration, logger);
+        await RunBootstrapAsync(connectionString, configuration, logger);
 
         // A new service provider models a process restart, rather than reusing
         // the scoped contexts from the first two bootstrap calls.
-        await RunBootstrapAsync(connectionString, configuration);
+        await RunBootstrapAsync(connectionString, configuration, logger);
 
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
@@ -77,7 +80,8 @@ public sealed class DatabaseMigrationBootstrapLifecycleSmokeTests : IClassFixtur
 
     private static async Task RunBootstrapAsync(
         string connectionString,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        ILogger logger)
     {
         using var services = new ServiceCollection()
             .AddDbContext<TrendplusDbContext>(options => options.UseNpgsql(connectionString))
@@ -87,7 +91,7 @@ public sealed class DatabaseMigrationBootstrapLifecycleSmokeTests : IClassFixtur
         await DatabaseInitializer.InitializeDatabasesAsync(
             services,
             configuration,
-            NullLogger.Instance);
+            logger);
     }
 
     private static async Task<bool> TableExistsAsync(NpgsqlConnection connection, string tableName)
