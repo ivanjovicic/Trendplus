@@ -19,8 +19,8 @@ Owner claim 2026-09-20: `RQ348` transitioned `READY -> IN_PROGRESS`; local runti
 - Run log: `.ai/runs/2026-09-20-RQ348-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `0009c999`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `0009c999`
 - Follow-up: promote `RQ349` (Color authoritative decisionScore) or `RQ321` (Operacije store filter load failure)
 - Residual risk: none known in owned scope
 - Prompt defect / scope repair: none
