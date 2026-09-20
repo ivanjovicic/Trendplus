@@ -2,7 +2,11 @@
 
 Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ365
+
+Owner promotion 2026-09-20: after RQ364 reached DONE, `RQ365` moved from `WAITING` to `READY` as the PostgreSQL migration/bootstrap lifecycle smoke follow-up.
+
+Owner claim 2026-09-20: `RQ365` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ365-cursor.lock.md`.
 
 Owner promotion 2026-09-20: after RQ363 reached DONE, `RQ364` moved from `WAITING` to `READY` as the dataset-projection semantics follow-up.
 
@@ -19350,7 +19354,7 @@ Generic `rows`/`sortedRows` pipelines let table sorting change chart order, page
 
 ## RQ365 - Add a PostgreSQL migration/bootstrap lifecycle smoke scenario
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: backend/infrastructure/tests/CI
 Feature family: analytics-migration-bootstrap-smoke
