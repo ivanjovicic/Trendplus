@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "maxEntries": 12,
+  "entries": [
+    {
+      "file": "src/pages/ColorSalesStatsPage.tsx",
+      "rule": "decisionScore_assign",
+      "line": 1131,
+      "reason": "Existing backend-owned decision-score projection requires a reviewed authority exception."
+    },
+    {
+      "file": "src/pages/ExecutiveDecisionBoardPage.tsx",
+      "rule": "recommendationStatus_assign",
+      "line": 436,
+      "reason": "Existing backend status mapping requires a reviewed authority exception."
+    },
+    {
+      "file": "src/pages/PreNivelacijaPriorityPage.tsx",
+      "rule": "decisionScore_assign",
+      "line": 562,
+      "reason": "Existing backend-owned decision-score projection requires a reviewed authority exception."
+    },
+    {
+      "file": "src/pages/PreNivelacijaPriorityPage.tsx",
+      "rule": "reliabilityPct_assign",
+      "line": 287,
+      "reason": "Existing backend reliability projection requires a reviewed authority exception."
+    },
+    {
+      "file": "src/pages/ProdajaPrePostNivelacijePage.tsx",
+      "rule": "reliabilityPct_assign",
+      "line": 401,
+      "reason": "Existing backend reliability projection requires a reviewed authority exception."
+    },
+    {
+      "file": "src/pages/ProductDecisionCenterPage.tsx",
+      "rule": "recommendationStatus_assign",
+      "line": 1800,
+      "reason": "Existing backend status mapping requires a reviewed authority exception."
+    },
+    {
+      "file": "src/pages/SupplierDecisionHubPage.tsx",
+      "rule": "confidencePct_assign",
+      "line": 977,
+      "reason": "Existing backend confidence projection requires a reviewed authority exception."
+    },
+    {
+      "file": "src/pages/SupplierDecisionHubPage.tsx",
+      "rule": "reliabilityPct_assign",
+      "line": 978,
+      "reason": "Existing backend reliability projection requires a reviewed authority exception."
+    },
+    {
+      "file": "src/components/analytics/SupplierDecisionReport.tsx",
+      "rule": "confidencePct_assign",
+      "line": 179,
+      "reason": "Existing report confidence projection requires a reviewed authority exception."
+    },
+    {
+      "file": "src/components/analytics/SupplierDecisionReport.tsx",
+      "rule": "reliabilityPct_assign",
+      "line": 180,
+      "reason": "Existing report reliability projection requires a reviewed authority exception."
+    },
+    {
+      "file": "src/components/supplierDecisionHub/SupplierExplainabilitySnapshot.tsx",
+      "rule": "confidencePct_assign",
+      "line": 110,
+      "reason": "Existing explainability confidence projection requires a reviewed authority exception."
+    },
+    {
+      "file": "src/components/supplierDecisionHub/SupplierExplainabilitySnapshot.tsx",
+      "rule": "reliabilityPct_assign",
+      "line": 115,
+      "reason": "Existing explainability reliability projection requires a reviewed authority exception."
+    }
+  ]
+}
