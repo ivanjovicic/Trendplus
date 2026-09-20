@@ -19,8 +19,8 @@ Owner claim 2026-09-20: `RQ356` transitioned `READY -> IN_PROGRESS`; local runti
 - Run log: `.ai/runs/2026-09-20-RQ356-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `0d95013c`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `0d95013c`
 - Follow-up: promote `RQ357` or `RQ321` (Operacije store-filter load failure)
 - Residual risk: none known in owned Pre/Post signal-card scope
 - Prompt defect / scope repair: none
