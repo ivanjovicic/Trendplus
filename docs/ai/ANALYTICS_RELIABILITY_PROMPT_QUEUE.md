@@ -18958,10 +18958,10 @@ Commit suggestion: `test(analytics): add reliability contract test kit`
 - Checks run: contract suite 70/70; five adopter page suites 114/114; `npm run typecheck`; `npm run check:encoding`; `git diff --check`
 - Checks not run: full client suite, live browser, CI; analytics guardrails report 12 existing violations outside this test-kit scope and stop before their chained typecheck step
 - Run log: `.ai/runs/2026-09-20-RQ360-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: pull-request
-- Main commit SHA: pending
-- Main verification: pending until the feature branch is delivered to `main`
+- Main commit SHA: `5769041f`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `5769041f`
 - Missed: no known RQ360 scope omissions
 - Follow-up: promote `RQ366` after RQ360 main delivery; it is the next dependency-unblocked reliability prompt
 - Residual risk: the adapters provide response factories and selectors; page-specific lifecycle behavior remains owned by RQ359 and existing page specs.
