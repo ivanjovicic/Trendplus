@@ -263,13 +263,13 @@
     {
       "file": "src/services/analyticsApi.ts",
       "rule": "swallowed_fetch_failure",
-      "line": 408,
+      "line": 434,
       "reason": "Existing API fallback wrapper requires a reviewed compatibility exception."
     },
     {
       "file": "src/services/analyticsHttp.ts",
       "rule": "swallowed_fetch_failure",
-      "line": 36,
+      "line": 60,
       "reason": "Existing analytics HTTP fallback wrapper requires a reviewed compatibility exception."
     },
     {
