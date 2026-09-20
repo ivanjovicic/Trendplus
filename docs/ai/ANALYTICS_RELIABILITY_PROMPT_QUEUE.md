@@ -14,7 +14,7 @@ Owner claim 2026-09-20: `RQ344` transitioned `READY -> IN_PROGRESS`; local runti
 - Status: DONE
 - Completion: Pre-Nivelacija API now returns `filterFacets` (seasons, footwear types) from the full filtered candidate universe; frontend dropdowns prefer facets over the paginated page slice with candidate fallback.
 - Changed files: `Api/Models/PreNivelacijaPriorityModels.cs`, `Api/Endpoints/PreNivelacijaPriorityEndpoints.cs`, `Api.Tests/PreNivelacijaFilterFacetsTests.cs`, `Klijent/clientapp/src/types/preNivelacija.ts`, `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`, `Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
-- Checks run: PreNivelacijaPriorityPage spec 40/40; `git diff --check`
+- Checks run: PreNivelacijaPriorityPage spec 39/39; `git diff --check`
 - Checks not run: dotnet test (dotnet unavailable in agent VM), full client suite, CI, live browser
 - Run log: `.ai/runs/2026-09-20-RQ344-evidence.md`
 - Evidence state: synchronized
