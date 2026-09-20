@@ -351,7 +351,7 @@ export function buildRowFromInsightItem(item: InventoryInsightItem, stores: Stor
     naziv: item.naziv,
     kolicina: item.quantity,
     minimalnaKolicina: item.minimum,
-    nabavnaCena: item.estimatedValue > 0 && item.quantity > 0 ? item.estimatedValue / item.quantity : 0,
+    nabavnaCena: item.estimatedValue > 0 && item.quantity > 0 ? item.estimatedValue / item.quantity : null,
     estimatedValue: item.estimatedValue,
     idObjekat: stores.find((store) => store.storeName === item.storeName)?.storeId ?? null,
     idDobavljac: suppliers.find((supplier) => supplier.supplierName === item.supplierName)?.supplierId ?? null,
