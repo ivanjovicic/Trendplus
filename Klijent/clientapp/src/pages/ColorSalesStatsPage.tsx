@@ -361,9 +361,9 @@ export default function ColorSalesStatsPage() {
     refetch,
   } = useReliableAnalyticsQuery<ColorSalesStatsResponse>({
     query: colorQuery,
-    getErrorMessage: (reason) => reason instanceof Error
+    getErrorMessage: useCallback((reason: unknown) => reason instanceof Error
       ? reason.message
-      : "Greska pri ucitavanju podataka po boji.",
+      : "Greska pri ucitavanju podataka po boji.", []),
   });
   const loading = initialLoading || refetching;
   const error = queryError;

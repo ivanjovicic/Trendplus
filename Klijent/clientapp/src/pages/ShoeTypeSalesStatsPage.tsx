@@ -439,9 +439,9 @@ export default function ShoeTypeSalesStatsPage() {
     refetch,
   } = useReliableAnalyticsQuery<ShoeTypeSalesStatsResponse>({
     query: shoeTypeQuery,
-    getErrorMessage: (reason) => reason instanceof Error
+    getErrorMessage: useCallback((reason: unknown) => reason instanceof Error
       ? reason.message
-      : "Greška pri učitavanju podataka po tipu obuće.",
+      : "Greška pri učitavanju podataka po tipu obuće.", []),
   });
   const loading = initialLoading || refetching;
   const error = queryError;

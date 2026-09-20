@@ -586,7 +586,10 @@ export default function InventoryPage() {
     refetch,
   } = useReliableAnalyticsQuery<InventoryLifecycleSnapshot>({
     query: inventoryQuery,
-    getErrorMessage: (reason) => toInventoryPageError(reason, "Inventory podaci trenutno nisu dostupni.").message,
+    getErrorMessage: useCallback(
+      (reason: unknown) => toInventoryPageError(reason, "Inventory podaci trenutno nisu dostupni.").message,
+      [],
+    ),
   });
   const balance = inventorySnapshot?.balance ?? null;
   const pageData = inventorySnapshot?.pageData ?? null;

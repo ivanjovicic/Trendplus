@@ -489,7 +489,7 @@ export default function PreNivelacijaPriorityPage() {
     refetch,
   } = useReliableAnalyticsQuery<PreNivelacijaPriorityResponse>({
     query: preNivelacijaQuery,
-    getErrorMessage: (reason) => getPreNivelacijaErrorDetails(reason).message,
+    getErrorMessage: useCallback((reason: unknown) => getPreNivelacijaErrorDetails(reason).message, []),
   });
   const loading = initialLoading || refetching;
   const queryErrorDetails = errorReason ? getPreNivelacijaErrorDetails(errorReason) : null;

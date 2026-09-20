@@ -622,9 +622,9 @@ export default function ProdajaPrePostNivelacijePage() {
     refetch,
   } = useReliableAnalyticsQuery<PrePostQuerySnapshot>({
     query: prePostQuery,
-    getErrorMessage: (reason) => reason instanceof Error
+    getErrorMessage: useCallback((reason: unknown) => reason instanceof Error
       ? reason.message
-      : "Greška pri ucitavanju pre/post analitike.",
+      : "Greška pri ucitavanju pre/post analitike.", []),
   });
   const data = querySnapshot?.current ?? null;
   const previousData = querySnapshot?.previous ?? null;
