@@ -71,7 +71,7 @@ const rules = [
   },
   {
     name: "sorted_rows_kpi_reduce",
-    re: /\bsortedRows(?:\.\w+|\[[^\]]+\])*\.\s*reduce\s*\(/,
+    re: /\bsortedRows(?:\.\w+(?:\([^;\n]*\))?|\[[^\]]+\])*\.\s*reduce\s*\(/,
     scopes: ["pages", "components"],
     invariant: "KPI derivation must not depend on table sort or visible-row projection.",
   },
