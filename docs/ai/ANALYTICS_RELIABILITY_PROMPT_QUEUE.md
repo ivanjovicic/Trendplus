@@ -826,8 +826,8 @@ Operations audit intake 2026-09-18 (round 2): `RQ312`-`RQ330` were added from a 
 
 Operations audit intake 2026-09-18 (round 3): `RQ331`-`RQ358` were added from a third post-`RQ330` Operacije review (page-local KPIs, fake zeros, chart sort bug, stale refetch, abort races, filter facet bias, supplier redirect trust); `RQ331`-`RQ344` are `DONE` on `main`, `RQ345`-`RQ358` remain `WAITING`, and the queue has no current READY prompt.
 
-System reliability architecture intake 2026-09-20: `RQ359`-`RQ367` were added from the user's Reliability Contract Layer proposal (shared async lifecycle, invariant tests, guardrails, provenance, runtime validation, dataset projections, migration smoke, baseline debt and generated evidence); `RQ359` and `RQ360` are DONE and `RQ361`-`RQ367` remain `WAITING`; the queue has no current READY prompt.
-System reliability dependency order 2026-09-20: `RQ359` and `RQ360` are DONE; `RQ366 READY AFTER RQ360 DONE`; `RQ361 READY AFTER RQ366 DONE`; `RQ362 READY AFTER RQ361 DONE`; `RQ363 READY AFTER RQ362 DONE`; `RQ364 READY AFTER RQ363 DONE`; `RQ365` is an independent database-reliability branch; `RQ367 READY AFTER RQ361 + RQ363 + RQ364 + RQ365 DONE` (RQ361 transitively includes RQ366).
+System reliability architecture intake 2026-09-20: `RQ359`-`RQ367` were added from the user's Reliability Contract Layer proposal (shared async lifecycle, invariant tests, guardrails, provenance, runtime validation, dataset projections, migration smoke, baseline debt and generated evidence); `RQ359`, `RQ360` and `RQ366` are DONE and `RQ361`-`RQ365`, `RQ367` remain `WAITING`; the queue has no current READY prompt.
+System reliability dependency order 2026-09-20: `RQ359`, `RQ360` and `RQ366` are DONE; `RQ361 READY AFTER RQ366 DONE`; `RQ362 READY AFTER RQ361 DONE`; `RQ363 READY AFTER RQ362 DONE`; `RQ364 READY AFTER RQ363 DONE`; `RQ365` is an independent database-reliability branch; `RQ367 READY AFTER RQ361 + RQ363 + RQ364 + RQ365 DONE` (RQ361 transitively includes RQ366).
 
 Owner promotion 2026-09-15: `RQ270` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ264` completion; it is the single current RQ prompt for confirmed Inventory scope-change reload gaps and will be claimed in this workspace.
 
@@ -1284,7 +1284,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ363 | WAITING | analytics-response-runtime-validation | Fail closed on invalid analytics DTOs at the API boundary |
 | RQ364 | WAITING | analytics-dataset-projections | Separate canonical, filtered, table, chart, export and detail datasets |
 | RQ365 | WAITING | analytics-migration-bootstrap-smoke | Prove fresh and repeat PostgreSQL migration/bootstrap lifecycle |
-| RQ366 | WAITING | analytics-guardrail-baseline | Prevent guardrail debt from growing while shrinking the baseline |
+| RQ366 | DONE | analytics-guardrail-baseline | Prevent guardrail debt from growing while shrinking the baseline |
 | RQ367 | WAITING | analytics-generated-validation-evidence | Generate machine-readable validation evidence before Markdown summaries |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
@@ -19322,13 +19322,31 @@ Fresh and repeat startup paths have exposed non-idempotent indexes, duplicate ob
 
 ## RQ366 - Enforce a non-growing analytics guardrail baseline
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: tooling/governance/tests
 Feature family: analytics-guardrail-baseline
 Parallel-safe: no
 Owner: Analytics Reliability Tooling
 Commit suggestion: `chore(analytics): add non-growing guardrail baseline`
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Added an exact reviewed guardrail baseline, stable file/rule/line identities, baseline-only output, new-violation failure and self-tests for unchanged, removed, new, wildcard and exit-code behavior.
+- Changed files: `Klijent/clientapp/scripts/check-analytics-guardrails.mjs`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, `Klijent/clientapp/package.json`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: `npm run check:analytics-guardrails` passed with explicit `baseline-only` output for 12 known violations; baseline self-test passed; `git diff --check`
+- Checks not run: full frontend suite, live browser, CI; no production analytics runtime changed
+- Run log: `.ai/runs/2026-09-20-RQ366-evidence.md`
+- Evidence state: pending
+- Delivery mode: pull-request
+- Main commit SHA: pending
+- Main verification: pending until the feature branch is delivered to `main`
+- Missed: no known RQ366 scope omissions
+- Follow-up: promote `RQ361` after RQ366 main delivery
+- Residual risk: baseline entries use exact line locations; intentional source movement will surface as one removed baseline entry plus one new violation for review.
+- Prompt defect / scope repair: no scope repair; existing 12 violations were captured with reviewed reasons and wildcard suppression is rejected.
 
 ### Problem
 
