@@ -4,6 +4,27 @@ Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ355` moved from `WAITING` to `READY` as P3 trust follow-up (Color empty-state quality conflation).
+
+Owner claim 2026-09-20: `RQ355` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ355-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Color empty-state variant now follows empty row count and backend `emptyReason`; quality notes render separately and cannot relabel an empty dataset as insufficient data.
+- Changed files: `Klijent/clientapp/src/pages/ColorSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/ColorSalesStatsPage.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: Color focused specs 32/32; `git diff --check`
+- Checks not run: full client suite, CI, live browser; analytics guardrails fail on 12 existing violations outside this empty-state scope
+- Run log: `.ai/runs/2026-09-20-RQ355-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Follow-up: promote `RQ356` or `RQ321` (Operacije store-filter load failure)
+- Residual risk: none known in owned Color empty-state scope
+- Prompt defect / scope repair: none
+
 Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ354` moved from `WAITING` to `READY` as P3 trust follow-up (Supplier Sales toolbar metadata fake zero).
 
 Owner claim 2026-09-20: `RQ354` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ354-cursor.lock.md`.
@@ -1181,7 +1202,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ352 | DONE | daily-sales-filtered-empty-confusion | Distinguish Daily Sales store-empty from filter-no-match empty state |
 | RQ353 | DONE | inventory-insight-detail-fake-zero-cost | Guard unit cost fake zero on insight-to-detail navigation path |
 | RQ354 | DONE | supplier-toolbar-metadata-fake-zero | Fail closed on null supplier count in toolbar export metadata |
-| RQ355 | WAITING | color-empty-quality-conflation | Base Color empty state on row count and meta, not quality notes alone |
+| RQ355 | DONE | color-empty-quality-conflation | Base Color empty state on row count and meta, not quality notes alone |
 | RQ356 | WAITING | pre-post-english-signal-labels | Serbian labels for Pre/Post advanced signal cards |
 | RQ357 | WAITING | inventory-url-pagination-search | URL-sync Inventory pagination, page size, search and compare stores |
 | RQ358 | WAITING | shoe-type-toolbar-metadata-fake-zero | Fail closed on null shoe type count in toolbar metadata export |
@@ -18586,7 +18607,7 @@ Toolbar metadata `brojDobavljaca ?? 0` exports 0 when totals missing.
 
 ## RQ355 - Base Color empty state on row count and meta, not quality notes alone
 
-Status: WAITING
+Status: DONE
 Priority: P3
 Type: frontend/trust/tests
 Feature family: color-empty-quality-conflation
