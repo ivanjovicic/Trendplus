@@ -17,10 +17,10 @@ Owner claim 2026-09-20: `RQ333` transitioned `READY -> IN_PROGRESS`; local runti
 - Checks run: prePostNivelacijaTrust spec 6/6; ProdajaPrePostNivelacijePage spec 27/27; `npm run check:analytics-guardrails`; `git diff --check`
 - Checks not run: full client suite, CI, live browser
 - Run log: `.ai/runs/2026-09-20-RQ333-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `b29e7408`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `b29e7408`
 - Follow-up: promote `RQ334` (supplier prePostComparableArticleCount) or `RQ335` (Daily Sales previous-period silent failure)
 - Residual risk: `postSharePct` is not yet a rendered column; RQ345 covers Shoe/Color share recompute separately
 - Prompt defect / scope repair: none
