@@ -34,6 +34,7 @@ import type { StoreOption } from "../types/analytics";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
 import { fmtNumber, fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
+import { resolvePresetFilterRange } from "../utils/analyticsPeriodPresets";
 import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescriptions";
 import {
   getAnalyticsMetaMessage,
@@ -479,19 +480,21 @@ export default function ProdajaPrePostNivelacijePage() {
   const location = useLocation();
   const requestIdRef = useRef(0);
 
-  const initialRange = useMemo(() => getPresetRange("30d"), []);
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("30d");
-  const [fromDate, setFromDate] = useState(initialRange.fromDate);
-  const [toDate, setToDate] = useState(initialRange.toDate);
+  const [fromDate, setFromDate] = useState(() => getPresetRange("30d").fromDate);
+  const [toDate, setToDate] = useState(() => getPresetRange("30d").toDate);
   const [vendorId, setVendorId] = useState<number | null>(null);
   const [category, setCategory] = useState("");
   const [storeId, setStoreId] = useState<number | null>(null);
-  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({
-    fromDate: initialRange.fromDate,
-    toDate: initialRange.toDate,
-    vendorId: null,
-    category: "",
-    storeId: null,
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>(() => {
+    const range = getPresetRange("30d");
+    return {
+      fromDate: range.fromDate,
+      toDate: range.toDate,
+      vendorId: null,
+      category: "",
+      storeId: null,
+    };
   });
 
   const [vendors, setVendors] = useState<Dobavljac[]>([]);
@@ -1153,10 +1156,13 @@ const advancedSignals = useMemo(
 
   const handleApplyFilters = () => {
     if (invalidRange) return;
+    const range = resolvePresetFilterRange(periodPreset, fromDate, toDate);
+    setFromDate(range.fromDate);
+    setToDate(range.toDate);
     setFocusFilter("all");
     setActiveFilters({
-      fromDate,
-      toDate,
+      fromDate: range.fromDate,
+      toDate: range.toDate,
       vendorId,
       category,
       storeId,

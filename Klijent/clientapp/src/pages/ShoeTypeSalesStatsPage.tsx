@@ -351,17 +351,19 @@ export default function ShoeTypeSalesStatsPage() {
   const requestIdRef = useRef(0);
   const detailSectionRef = useRef<HTMLElement>(null);
 
-  const initialRange = useMemo(() => getPresetRange("30d"), []);
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("30d");
-  const [fromDate, setFromDate] = useState(initialRange.fromDate);
-  const [toDate, setToDate] = useState(initialRange.toDate);
+  const [fromDate, setFromDate] = useState(() => getPresetRange("30d").fromDate);
+  const [toDate, setToDate] = useState(() => getPresetRange("30d").toDate);
   const [sezonaId, setSezonaId] = useState<number | null>(null);
   const [storeId, setStoreId] = useState<number | null>(null);
-  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({
-    fromDate: initialRange.fromDate,
-    toDate: initialRange.toDate,
-    sezonaId: null,
-    storeId: null,
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>(() => {
+    const range = getPresetRange("30d");
+    return {
+      fromDate: range.fromDate,
+      toDate: range.toDate,
+      sezonaId: null,
+      storeId: null,
+    };
   });
 
   const [stores, setStores] = useState<StoreOption[]>([]);

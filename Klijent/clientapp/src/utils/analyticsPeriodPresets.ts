@@ -36,3 +36,15 @@ export function getAnalyticsPeriodPresetRange(
   const toDateInput = (date: Date): string => date.toISOString().slice(0, 10);
   return { fromDate: toDateInput(from), toDate: toDateInput(to) };
 }
+
+export function resolvePresetFilterRange(
+  preset: AnalyticsPeriodPreset,
+  draftFromDate: string,
+  draftToDate: string,
+  now?: Date,
+): { fromDate: string; toDate: string } {
+  if (preset === "custom") {
+    return { fromDate: draftFromDate, toDate: draftToDate };
+  }
+  return getAnalyticsPeriodPresetRange(preset, now);
+}

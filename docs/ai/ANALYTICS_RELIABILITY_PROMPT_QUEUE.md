@@ -4,6 +4,27 @@ Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ337` moved from `WAITING` to `READY` as P2 trust follow-up (Operacije frozen 30d preset period).
+
+Owner claim 2026-09-20: `RQ337` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ337-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Operacije Shoe/Color/Pre-Post pages no longer freeze default 30d preset at mount; apply/reset refresh preset ranges from current calendar via resolvePresetFilterRange.
+- Changed files: `Klijent/clientapp/src/utils/analyticsPeriodPresets.ts`, `Klijent/clientapp/src/utils/__tests__/analyticsPeriodPresets.spec.ts`, `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/ColorSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`, `Klijent/clientapp/src/pages/__tests__/ShoeTypeSalesStatsPage.premium.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: analyticsPeriodPresets spec 2/2; ShoeTypeSalesStatsPage.premium spec 30/30; ProdajaPrePostNivelacijePage spec 27/27; `npm run check:analytics-guardrails`; `git diff --check`
+- Checks not run: full client suite, CI, live browser
+- Run log: `.ai/runs/2026-09-20-RQ337-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Follow-up: promote `RQ338` (Pre/Post vendor dropdown load failure) or `RQ339` (Pre/Post focus filter persistence)
+- Residual risk: none known in owned scope
+- Prompt defect / scope repair: none
+
 Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ336` moved from `WAITING` to `READY` as P2 trust follow-up (Daily Sales chart sort order bug).
 
 Owner claim 2026-09-20: `RQ336` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ336-cursor.lock.md`.
@@ -782,7 +803,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ334 | WAITING | supplier-prepost-comparable-fake-zero | Fail closed on null Pre/Post comparable article count in Supplier detail |
 | RQ335 | WAITING | daily-sales-previous-period-silent-failure | Surface Daily Sales previous-period fetch failure instead of silent N/A deltas |
 | RQ336 | WAITING | daily-sales-chart-sort-order-bug | Feed Daily Sales trend/shift charts from chronological rows, not table sort |
-| RQ337 | WAITING | operations-frozen-preset-period | Refresh frozen 30d preset period on Operacije pages at apply/reset |
+| RQ337 | DONE | operations-frozen-preset-period | Refresh frozen 30d preset period on Operacije pages at apply/reset |
 | RQ338 | WAITING | pre-post-vendor-load-silent-failure | Surface Pre/Post vendor dropdown load failure |
 | RQ339 | WAITING | pre-post-focus-reset-on-reload | Preserve Pre/Post focus filter across non-filter reloads |
 | RQ340 | WAITING | shoe-type-stale-refetch-dead-path | Enable Shoe Type stale overlay on refetch failure |
@@ -17367,7 +17388,7 @@ Trend and shift-mix charts use `sortedRows` (table sort order), not chronologica
 
 ## RQ337 - Refresh frozen 30d preset period on Operacije pages at apply/reset
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/trust/tests
 Feature family: operations-frozen-preset-period

@@ -752,4 +752,45 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     expect(within(detailPanel!).getByText("Udeo u količini").parentElement).toHaveTextContent("0,00%");
     expect(within(detailPanel!).getByText("Pre/post pokrice prometa").parentElement).toHaveTextContent("0,0%");
   });
+
+  it("refreshes the default 30d preset window on reset after calendar rollover", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-04-01T12:00:00Z"));
+
+    vi.mocked(getShoeTypeSalesStats).mockImplementation(async (params) =>
+      response({
+        fromDate: params.fromDate,
+        toDate: params.toDate,
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(getShoeTypeSalesStats).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fromDate: "2026-03-03T00:00:00Z",
+          toDate: "2026-04-01T23:59:59Z",
+        }),
+      );
+    });
+
+    vi.setSystemTime(new Date("2026-05-01T12:00:00Z"));
+    fireEvent.click(screen.getByRole("button", { name: "Reset filtera" }));
+
+    await waitFor(() => {
+      expect(getShoeTypeSalesStats).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          fromDate: "2026-04-02T00:00:00Z",
+          toDate: "2026-05-01T23:59:59Z",
+        }),
+      );
+    });
+  });
 });

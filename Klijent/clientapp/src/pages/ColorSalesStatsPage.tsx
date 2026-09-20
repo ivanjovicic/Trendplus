@@ -31,6 +31,7 @@ import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../se
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { getDataScope, type DataScope } from "../utils/dataScope";
 import { fmtNumber, fmtPct, fmtQty, fmtRsd, fmtSignedPct, formatDate, getPresetRange } from "../utils/analyticsFormatters";
+import { resolvePresetFilterRange } from "../utils/analyticsPeriodPresets";
 import {
   RECOMMENDATION_SIGNAL_UNAVAILABLE,
   RECOMMENDATION_STATUS_PRIORITY,
@@ -276,17 +277,19 @@ export default function ColorSalesStatsPage() {
   const requestIdRef = useRef(0);
   const detailSectionRef = useRef<HTMLElement>(null);
 
-  const initialRange = useMemo(() => getPresetRange("30d"), []);
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("30d");
-  const [fromDate, setFromDate] = useState(initialRange.fromDate);
-  const [toDate, setToDate] = useState(initialRange.toDate);
+  const [fromDate, setFromDate] = useState(() => getPresetRange("30d").fromDate);
+  const [toDate, setToDate] = useState(() => getPresetRange("30d").toDate);
   const [sezonaId, setSezonaId] = useState<number | null>(null);
   const [storeId, setStoreId] = useState<number | null>(null);
-  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({
-    fromDate: initialRange.fromDate,
-    toDate: initialRange.toDate,
-    sezonaId: null,
-    storeId: null,
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>(() => {
+    const range = getPresetRange("30d");
+    return {
+      fromDate: range.fromDate,
+      toDate: range.toDate,
+      sezonaId: null,
+      storeId: null,
+    };
   });
 
   const [stores, setStores] = useState<StoreOption[]>([]);
@@ -693,10 +696,13 @@ export default function ColorSalesStatsPage() {
       return;
     }
 
+    const range = resolvePresetFilterRange(periodPreset, fromDate, toDate);
+    setFromDate(range.fromDate);
+    setToDate(range.toDate);
     setError(null);
     setActiveFilters({
-      fromDate,
-      toDate,
+      fromDate: range.fromDate,
+      toDate: range.toDate,
       sezonaId,
       storeId,
     });
