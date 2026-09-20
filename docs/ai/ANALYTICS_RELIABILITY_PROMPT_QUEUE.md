@@ -19,8 +19,8 @@ Owner claim 2026-09-20: `RQ343` transitioned `READY -> IN_PROGRESS`; local runti
 - Run log: `.ai/runs/2026-09-20-RQ343-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `8af9cfa4`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `8af9cfa4`
 - Follow-up: promote `RQ344` (Pre-Nivelacija filter options page bias) or `RQ321` (Operacije store filter load failure)
 - Residual risk: none known in owned scope
 - Prompt defect / scope repair: none
