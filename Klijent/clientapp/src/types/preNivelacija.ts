@@ -97,6 +97,16 @@ export interface PreNivelacijaAlert {
   artikalId?: number;
 }
 
+export interface PreNivelacijaFilterOption {
+  id: number;
+  label: string;
+}
+
+export interface PreNivelacijaFilterFacets {
+  seasons: PreNivelacijaFilterOption[];
+  footwearTypes: PreNivelacijaFilterOption[];
+}
+
 export interface PreNivelacijaSummary {
   supplierCount: number;
   candidatesCount: number;
@@ -113,6 +123,7 @@ export interface PreNivelacijaPriorityResponse {
   formulaDescription: string;
   summary: PreNivelacijaSummary;
   supplierLeaderboard: PreNivelacijaSupplierAction[];
+  filterFacets?: PreNivelacijaFilterFacets | null;
   candidates: PreNivelacijaSkuCandidate[];
   queues: PreNivelacijaQueues;
   alerts: PreNivelacijaAlert[];

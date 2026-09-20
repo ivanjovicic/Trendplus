@@ -4,6 +4,27 @@ Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ344` moved from `WAITING` to `READY` as P2 trust follow-up (Pre-Nivelacija filter options page bias).
+
+Owner claim 2026-09-20: `RQ344` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ344-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Pre-Nivelacija API now returns `filterFacets` (seasons, footwear types) from the full filtered candidate universe; frontend dropdowns prefer facets over the paginated page slice with candidate fallback.
+- Changed files: `Api/Models/PreNivelacijaPriorityModels.cs`, `Api/Endpoints/PreNivelacijaPriorityEndpoints.cs`, `Api.Tests/PreNivelacijaFilterFacetsTests.cs`, `Klijent/clientapp/src/types/preNivelacija.ts`, `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`, `Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: PreNivelacijaPriorityPage spec 40/40; `git diff --check`
+- Checks not run: dotnet test (dotnet unavailable in agent VM), full client suite, CI, live browser
+- Run log: `.ai/runs/2026-09-20-RQ344-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Follow-up: promote `RQ345` (Operacije frontend share recompute) or `RQ321` (Operacije store filter load failure)
+- Residual risk: supplier dropdown already used full-universe `supplierLeaderboard`; seasons/footwear now aligned via facets
+- Prompt defect / scope repair: none
+
 Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ343` moved from `WAITING` to `READY` as P2 trust follow-up (Pre-Nivelacija expansion persistence).
 
 Owner claim 2026-09-20: `RQ343` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ343-cursor.lock.md`.
@@ -936,7 +957,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ341 | DONE | color-stale-refetch-contract | Add Color stale/partial refetch contract matching Operacije standard |
 | RQ342 | DONE | operations-request-abort-races | Add AbortController to Operacije list fetches beyond Daily Sales |
 | RQ343 | DONE | pre-nivelacija-expansion-persistence | Preserve Pre-Nivelacija expanded row across pagination reload |
-| RQ344 | WAITING | pre-nivelacija-filter-options-page-bias | Load Pre-Nivelacija filter options from full universe, not current page |
+| RQ344 | DONE | pre-nivelacija-filter-options-page-bias | Load Pre-Nivelacija filter options from full universe, not current page |
 | RQ345 | WAITING | operations-frontend-share-recompute | Remove frontend revenue share recompute on Shoe and Color when backend missing |
 | RQ346 | WAITING | shoe-type-avg-margin-frontend-aggregate | Replace frontend simple-mean avg margin KPI with backend or honest label |
 | RQ347 | WAITING | pre-post-winner-risk-untrusted-sort | Sort Pre/Post winner/risk SKUs with trustedMetric before display |
@@ -17840,7 +17861,7 @@ Successful reload clears `expandedArtikalId`; expanded detail lost on pagination
 
 ## RQ344 - Load Pre-Nivelacija filter options from full universe, not current page
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/trust/tests
 Feature family: pre-nivelacija-filter-options-page-bias

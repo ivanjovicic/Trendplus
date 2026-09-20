@@ -9,6 +9,7 @@ public sealed class PreNivelacijaPriorityResponseDto
     public string FormulaDescription { get; set; } = string.Empty;
     public PreNivelacijaSummaryDto Summary { get; set; } = new();
     public List<PreNivelacijaSupplierActionDto> SupplierLeaderboard { get; set; } = [];
+    public PreNivelacijaFilterFacetsDto FilterFacets { get; set; } = new();
     public List<PreNivelacijaSkuCandidateDto> Candidates { get; set; } = [];
     public PreNivelacijaQueuesDto Queues { get; set; } = new();
     public List<PreNivelacijaAlertDto> Alerts { get; set; } = [];
@@ -17,6 +18,18 @@ public sealed class PreNivelacijaPriorityResponseDto
     public int TotalCandidates { get; set; }
     public bool RecommendationAllowed { get; set; }
     public AnalyticsResponseMetaDto? Meta { get; set; }
+}
+
+public sealed class PreNivelacijaFilterFacetsDto
+{
+    public List<PreNivelacijaFilterOptionDto> Seasons { get; set; } = [];
+    public List<PreNivelacijaFilterOptionDto> FootwearTypes { get; set; } = [];
+}
+
+public sealed class PreNivelacijaFilterOptionDto
+{
+    public int Id { get; set; }
+    public string Label { get; set; } = string.Empty;
 }
 
 public sealed class PreNivelacijaSummaryDto
