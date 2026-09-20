@@ -19,8 +19,8 @@ Owner claim 2026-09-20: `RQ358` transitioned `READY -> IN_PROGRESS`; local runti
 - Run log: `.ai/runs/2026-09-20-RQ358-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `ec08be4d`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `ec08be4d`
 - Follow-up: promote `RQ359` or `RQ321` (Operacije store-filter load failure)
 - Residual risk: none known in owned Shoe Type toolbar metadata scope
 - Prompt defect / scope repair: none
