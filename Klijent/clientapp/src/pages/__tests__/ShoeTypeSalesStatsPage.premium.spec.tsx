@@ -154,6 +154,59 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response());
   });
 
+  it("uses the backend average margin aggregate when available", async () => {
+    const baseResponse = response();
+    vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
+      totals: {
+        ...baseResponse.totals,
+        prosecnaMarza: 31.5,
+      },
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const value = await screen.findByText("31,5%");
+    const card = value.closest("article");
+    expect(card).not.toBeNull();
+    expect(card).toHaveTextContent("Prosečna marža");
+    expect(card).not.toHaveTextContent("redni prosek");
+  });
+
+  it("labels the row average as non-authoritative when the backend aggregate is unavailable", async () => {
+    const baseResponse = response();
+    vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
+      shoeTypes: [
+        shoeType({ tipObuceId: 1, marginPct: 20 }),
+        shoeType({ tipObuceId: 2, tipObuceNaziv: "Čizme", marginPct: 40 }),
+      ],
+      totals: {
+        ...baseResponse.totals,
+        prosecnaMarza: null,
+        brojTipovaObuce: 2,
+      },
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const value = await screen.findByText("30,0%");
+    const card = value.closest("article");
+    expect(card).not.toBeNull();
+    expect(card).toHaveTextContent("Prosečna marža (redni prosek)");
+    expect(card).toHaveAttribute("data-note", "Neautoritativni redni prosek marže po tipovima obuće.");
+  });
+
   it.each([
     [0, 0],
     [1, 0],
@@ -596,19 +649,48 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     const cizmeRow = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Čizme"));
     expect(patikeRow).toBeDefined();
     expect(cizmeRow).toBeDefined();
-    expect(patikeRow).toHaveTextContent("60,00%");
-    expect(cizmeRow).toHaveTextContent("40,00%");
+    expect(patikeRow).toHaveTextContent("N/A");
+    expect(cizmeRow).toHaveTextContent("N/A");
 
     const top5Kpi = screen.getByText("Udeo top 5 tipova").closest("article");
     expect(top5Kpi).not.toBeNull();
-    expect(top5Kpi).toHaveTextContent("100,0%");
+    expect(top5Kpi).toHaveTextContent("N/A");
 
     fireEvent.click(within(patikeRow!).getByRole("button", { name: "Detalji" }));
     const detailHeading = await screen.findByRole("heading", { name: "Detalj odluke: Patike" });
     const detailPanel = detailHeading.closest("section");
     expect(detailPanel).not.toBeNull();
-    expect(within(detailPanel!).getByText("Udeo u prometu").parentElement).toHaveTextContent("60,00%");
+    expect(within(detailPanel!).getByText("Udeo u prometu").parentElement).toHaveTextContent("N/A");
     expect(within(detailPanel!).getByText("Pre/post pokrice prometa").parentElement).toHaveTextContent("N/A");
+  });
+
+  it("does not recompute share when the backend omits it", async () => {
+    vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
+      shoeTypes: [shoeType({ sharePct: null, ukupanPromet: 120000 })],
+      totals: {
+        ukupanPromet: 120000,
+        ukupanMarzniDoprinos: 46000,
+        prePromet: 90000,
+        poslePromet: 30000,
+        brojTipovaObuce: 1,
+        snapshotCostCoveragePct: 0,
+        isSnapshotActive: false,
+      },
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const table = await screen.findByTestId("shoe-type-sales-stats-data-table");
+    const row = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Patike"));
+    expect(row).toBeDefined();
+    expect(row).not.toHaveTextContent("100,00%");
+    expect(row).toHaveTextContent("N/A");
   });
 
   it("shows unavailable margin-share detail when total margin is zero", async () => {

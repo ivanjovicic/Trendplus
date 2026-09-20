@@ -601,6 +601,26 @@ describe("ColorSalesStatsPage premium controls", () => {
     expect(within(detailPanel!).getByText("Pre/post pokrice prometa").parentElement).toHaveTextContent("0,0%");
   });
 
+  it("does not recompute share when the backend omits it", async () => {
+    vi.mocked(getColorSalesStats).mockResolvedValue(response({
+      colors: [color({ boja: "Bez udela", sharePct: null, ukupanPromet: 120000 })],
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/color-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/color-sales-stats" element={<ColorSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const table = await screen.findByTestId("analytics-data-table");
+    const row = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Bez udela"));
+    expect(row).toBeDefined();
+    expect(row).not.toHaveTextContent("100,00%");
+    expect(row).toHaveTextContent("N/A");
+  });
+
   it("fails closed on invalid share and coverage percentages in the table", async () => {
     vi.mocked(getColorSalesStats).mockResolvedValue(response({
       colors: [color({
@@ -625,5 +645,6 @@ describe("ColorSalesStatsPage premium controls", () => {
     expect(row).toBeDefined();
     expect(row).not.toHaveTextContent("150,00%");
     expect(row).not.toHaveTextContent("130,00%");
+    expect(row).toHaveTextContent("N/A");
   });
 });

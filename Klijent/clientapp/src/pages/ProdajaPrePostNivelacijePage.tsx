@@ -1014,9 +1014,12 @@ const advancedSignals = useMemo(
       }
     }
 
+    const trustedVendorArticles = vendorArticles
+      .map((article) => ({ article, metric: trustedMetric(article.changeRevenue, article) }))
+      .filter((entry): entry is { article: (typeof vendorArticles)[number]; metric: number } => entry.metric != null);
     const dominantCategoryEntry = [...dominantCategoryMap.entries()].sort((left, right) => right[1] - left[1])[0];
-    const topWinner = [...vendorArticles].sort((left, right) => right.changeRevenue - left.changeRevenue)[0];
-    const topRisk = [...vendorArticles].sort((left, right) => left.changeRevenue - right.changeRevenue)[0];
+    const topWinner = [...trustedVendorArticles].sort((left, right) => right.metric - left.metric)[0] ?? null;
+    const topRisk = [...trustedVendorArticles].sort((left, right) => left.metric - right.metric)[0] ?? null;
     const topMetricReasons = [...metricReasonCounts.entries()]
       .sort((left, right) => right[1] - left[1])
       .slice(0, 3)
@@ -1025,10 +1028,10 @@ const advancedSignals = useMemo(
     return {
       dominantCategory: dominantCategoryEntry?.[0] ?? "N/A",
       dominantCategoryRevenue: dominantCategoryEntry?.[1] ?? null,
-      topWinnerLabel: topWinner ? `${topWinner.sku || "-"} • ${topWinner.articleName}` : "N/A",
-      topWinnerRevenue: topWinner ? trustedMetric(topWinner.changeRevenue, topWinner) : null,
-      topRiskLabel: topRisk ? `${topRisk.sku || "-"} • ${topRisk.articleName}` : "N/A",
-      topRiskRevenue: topRisk ? trustedMetric(topRisk.changeRevenue, topRisk) : null,
+      topWinnerLabel: topWinner ? `${topWinner.article.sku || "-"} • ${topWinner.article.articleName}` : "N/A",
+      topWinnerRevenue: topWinner?.metric ?? null,
+      topRiskLabel: topRisk ? `${topRisk.article.sku || "-"} • ${topRisk.article.articleName}` : "N/A",
+      topRiskRevenue: topRisk?.metric ?? null,
       avgMomentumRevenue: averageNullable(vendorArticles.map((item) => item.momentumRevenue)),
       avgElasticity: averageNullable(vendorArticles.map((item) => item.priceElasticity)),
       avgDidRevenue: averageNullable(vendorArticles.map((item) => item.didRevenue)),
