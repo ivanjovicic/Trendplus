@@ -1,7 +1,7 @@
 import {
   createFixtureAdapter,
   registerAnalyticsReliabilityContractSuite,
-} from "./analyticsReliabilityContract.test";
+} from "./analyticsReliabilityContract";
 
 registerAnalyticsReliabilityContractSuite(createFixtureAdapter("Pre/Post"));
 registerAnalyticsReliabilityContractSuite(createFixtureAdapter("Shoe Type"));
