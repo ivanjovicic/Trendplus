@@ -588,6 +588,7 @@ Operations audit intake 2026-09-18 (round 2): `RQ312`-`RQ330` were added from a 
 Operations audit intake 2026-09-18 (round 3): `RQ331`-`RQ358` were added from a third post-`RQ330` Operacije review (page-local KPIs, fake zeros, chart sort bug, stale refetch, abort races, filter facet bias, supplier redirect trust); `RQ331`-`RQ344` are `DONE` on `main`, `RQ345`-`RQ358` remain `WAITING`, and the queue has no current READY prompt.
 
 System reliability architecture intake 2026-09-20: `RQ359`-`RQ367` were added from the user's Reliability Contract Layer proposal (shared async lifecycle, invariant tests, guardrails, provenance, runtime validation, dataset projections, migration smoke, baseline debt and generated evidence); all nine are `WAITING`; the queue has no current READY prompt.
+System reliability dependency order 2026-09-20: `RQ359` is the first systemic candidate; `RQ360 READY AFTER RQ359 DONE`; `RQ366 READY AFTER RQ360 DONE`; `RQ361 READY AFTER RQ366 DONE`; `RQ362 READY AFTER RQ361 DONE`; `RQ363 READY AFTER RQ362 DONE`; `RQ364 READY AFTER RQ363 DONE`; `RQ365` is an independent database-reliability branch; `RQ367 READY AFTER RQ361 + RQ363 + RQ364 + RQ365 DONE` (RQ361 transitively includes RQ366). Do not promote or claim any of these while the current READY pointer is `none`.
 
 Owner promotion 2026-09-15: `RQ270` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ264` completion; it is the single current RQ prompt for confirmed Inventory scope-change reload gaps and will be claimed in this workspace.
 
@@ -18675,6 +18676,7 @@ Shoe Type, Color, Pre/Post, Inventory and Pre-Nivelacija each implement their ow
 
 ### Dependencies
 
+- READY AFTER: no systemic predecessor; promote only when the queue owner explicitly advances the current READY pointer to RQ359.
 - RQ338, RQ340, RQ341 and RQ342 are DONE.
 - RQ321 store-filter failure semantics must remain compatible; no claim until the current READY pointer is explicitly promoted.
 
@@ -18735,6 +18737,7 @@ The repository adds one regression at a time, but critical pages repeatedly redi
 
 ### Dependencies
 
+- READY AFTER: RQ359 DONE.
 - RQ359 shared query lifecycle.
 - RQ336 chart chronology and RQ344 global facet/page distinction are DONE and provide reference contracts.
 
@@ -18794,8 +18797,9 @@ The current static guardrail catches some local decision-field reconstruction bu
 
 ### Dependencies
 
+- READY AFTER: RQ366 DONE.
 - RQ311 existing guardrail owner.
-- RQ366 will own debt-baseline enforcement; this prompt owns detection quality.
+- RQ366 owns debt-baseline enforcement; this prompt owns detection quality.
 
 ---
 
@@ -18853,6 +18857,7 @@ RQ333, RQ345 and RQ346 expose the same ambiguity: a browser-derived value can lo
 
 ### Dependencies
 
+- READY AFTER: RQ361 DONE.
 - RQ180 DONE; coordinate with RQ345 and RQ346 before claiming overlapping paths.
 - RQ363 may consume this vocabulary but is not required to define it.
 
@@ -18911,6 +18916,7 @@ Malformed runtime values such as `NaN`, `Infinity`, negative counts or percentag
 
 ### Dependencies
 
+- READY AFTER: RQ362 DONE.
 - RQ362 provenance vocabulary for fields that need authority metadata.
 - Existing page contracts remain backward-compatible during rollout.
 
@@ -18970,6 +18976,7 @@ Generic `rows`/`sortedRows` pipelines let table sorting change chart order, page
 
 ### Dependencies
 
+- READY AFTER: RQ363 DONE.
 - RQ336 and RQ344 DONE.
 - Coordinate with RQ359 so query lifecycle and dataset projection ownership do not overlap.
 
@@ -18981,7 +18988,7 @@ Status: WAITING
 Priority: P1
 Type: backend/infrastructure/tests/CI
 Feature family: analytics-migration-bootstrap-smoke
-Parallel-safe: no
+Parallel-safe: yes
 Owner: Analytics Infrastructure / Backend CI
 Commit suggestion: `test(setup): add migration bootstrap lifecycle smoke`
 
@@ -19032,6 +19039,7 @@ Fresh and repeat startup paths have exposed non-idempotent indexes, duplicate ob
 
 ### Dependencies
 
+- READY AFTER: independent database-reliability branch; no dependency on RQ359-RQ364.
 - `ae661d57` and `4d7206a5` are on `main`.
 - BCI owns generic workflow health; this prompt owns the analytics database/bootstrap contract.
 
@@ -19090,7 +19098,8 @@ A recurring “pre-existing guardrail violation” exception normalizes red qual
 
 ### Dependencies
 
-- RQ361 detection expansion.
+- READY AFTER: RQ360 DONE.
+- RQ361 detection expansion is the downstream consumer of this baseline; RQ366 must be completed before RQ361.
 - No production analytics runtime change.
 
 ---
@@ -19148,6 +19157,7 @@ Evidence logs currently rely on an agent to transcribe whether commands passed. 
 
 ### Dependencies
 
+- READY AFTER: RQ361 + RQ363 + RQ364 + RQ365 DONE; RQ361 transitively requires RQ366.
 - `.ai/RUN_LOG_TEMPLATE.md` and evidence standard.
 - RQ366 for guardrail baseline vocabulary; RQ365 for migration smoke command coverage.
 
