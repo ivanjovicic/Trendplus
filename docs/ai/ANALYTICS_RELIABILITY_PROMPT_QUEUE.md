@@ -19859,8 +19859,8 @@ Inventory's lifecycle query accepts an `AbortSignal` but passes it only to the p
 - Run log: `.ai/runs/2026-09-21-RQ370-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main after branch transport
-- Main commit SHA: `6ac1754e6e404434d7415c2f4cde32c6fcf176c4`
-- Main verification: passed — fresh `origin/main` contains implementation SHA `6ac1754e6e404434d7415c2f4cde32c6fcf176c4`
+- Main commit SHA: `6ac1754eed7fc49139cf610de1223c2d3f34746d`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `6ac1754eed7fc49139cf610de1223c2d3f34746d`
 - Missed: none known in RQ370 scope.
 - Follow-up: return to the remaining Operacije WAITING backlog.
 - Residual risk: cancellation is covered at Inventory page/API-client boundaries; unrelated fixed-lifetime filter/scheduler startup reads remain unchanged by scope.
