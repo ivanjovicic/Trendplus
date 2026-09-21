@@ -1,0 +1,25 @@
+{
+  "taskId": "RQ367",
+  "commands": [
+    {
+      "name": "validation evidence fixtures",
+      "category": "tests",
+      "command": "npm run test:validation-evidence"
+    },
+    {
+      "name": "prompt queue validator",
+      "category": "guardrails",
+      "command": "node scripts/check-prompt-queues.mjs"
+    },
+    {
+      "name": "diff check",
+      "category": "build",
+      "command": "git diff --check"
+    },
+    {
+      "name": "backend test",
+      "category": "tests",
+      "skipReason": "dotnet is unavailable in the VM; backend proof remains CI-only"
+    }
+  ]
+}

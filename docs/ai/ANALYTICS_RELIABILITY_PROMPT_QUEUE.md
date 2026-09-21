@@ -2,7 +2,7 @@
 
 Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ367
+Current READY prompt: none
 
 Owner promotion 2026-09-20: after RQ364 reached DONE, `RQ365` moved from `WAITING` to `READY` as the PostgreSQL migration/bootstrap lifecycle smoke follow-up.
 
@@ -13,6 +13,8 @@ Owner completion 2026-09-21: `RQ365` delivered the PostgreSQL migration/bootstra
 Owner promotion 2026-09-21: after `RQ365` reached DONE by direct-main delivery with residual CI risk recorded, `RQ367` moved from `WAITING` to `READY`.
 
 Owner claim 2026-09-21: `RQ367` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ367-cursor.lock.md`.
+
+Owner completion 2026-09-21: `RQ367` delivered plan-driven JSON validation evidence, generated Markdown rendering, truthful exit/skip/timeout/environment outcomes and exact-tip/ancestor `origin/main` verification. The RQ reliability queue is complete.
 
 Owner promotion 2026-09-20: after RQ363 reached DONE, `RQ364` moved from `WAITING` to `READY` as the dataset-projection semantics follow-up.
 
@@ -1314,7 +1316,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ364 | WAITING | analytics-dataset-projections | Separate canonical, filtered, table, chart, export and detail datasets |
 | RQ365 | DONE | analytics-migration-bootstrap-smoke | Prove fresh and repeat PostgreSQL migration/bootstrap lifecycle |
 | RQ366 | DONE | analytics-guardrail-baseline | Prevent guardrail debt from growing while shrinking the baseline |
-| RQ367 | IN_PROGRESS | analytics-generated-validation-evidence | Generate machine-readable validation evidence before Markdown summaries |
+| RQ367 | DONE | analytics-generated-validation-evidence | Generate machine-readable validation evidence before Markdown summaries |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -19430,8 +19432,8 @@ Fresh and repeat startup paths have exposed non-idempotent indexes, duplicate ob
 - Run log: `.ai/runs/2026-09-20-RQ365-evidence.md`
 - Evidence state: pending
 - Delivery mode: direct-main
-- Main commit SHA: `7253e29f`
-- Main verification: passed - `origin/main` contains implementation SHA `7253e29f`; closure/claim metadata is delivered at `c1c85b5b`.
+- Main commit SHA: `7253e29f54feaabfc3ac05e2d89d4d890174bfb1`
+- Main verification: passed - `origin/main` contains implementation SHA `7253e29f54feaabfc3ac05e2d89d4d890174bfb1`; closure/claim metadata is delivered at `c1c85b5b`.
 - Missed: remote backend smoke is not green yet; latest failure was the test's Int64/Int32 scalar cast, corrected in `7253e29f`.
 - Follow-up: `RQ367` is promoted and claimed.
 - Residual risk: CI must still confirm the corrected bootstrap smoke; Vercel and frontend checks are not blockers for the backend contract.
@@ -19518,7 +19520,7 @@ A recurring “pre-existing guardrail violation” exception normalizes red qual
 
 ## RQ367 - Generate machine-readable validation evidence before Markdown
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: tooling/governance/tests
 Feature family: analytics-generated-validation-evidence
@@ -19576,5 +19578,23 @@ Evidence logs currently rely on an agent to transcribe whether commands passed. 
 ### Boundary note
 
 - Sentry/OpenTelemetry/browser telemetry is intentionally outside this prompt; if runtime telemetry is later approved, route it through `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` rather than expanding this analytics queue.
+
+### Completion note
+
+- Date: 2026-09-21
+- Status: DONE
+- Completion: Added a plan-driven validation runner and JSON schema with command, exit code, status, timeout, skipped/environment-blocked outcome, timestamp, commit, captured summary and environment fields; added generated Markdown rendering and main-ref exact-tip/ancestor verification.
+- Changed files: `scripts/run-task-validation.mjs`, `scripts/render-task-validation-evidence.mjs`, `scripts/run-task-validation.test.mjs`, `package.json`, `.ai/runs/2026-09-21-RQ367-validation-plan.json`, `.ai/runs/2026-09-21-RQ367-validation.json`, `.ai/runs/2026-09-21-RQ367-validation.md`, `.ai/runs/2026-09-21-RQ367-evidence.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: `npm run test:validation-evidence` (4/4); generated validation plan (tests/guardrails/build pass, backend skipped truthfully); `node scripts/check-prompt-queues.mjs`; `git diff --check`; `origin/main` exact-tip verification.
+- Checks not run: full frontend/backend suites; local `dotnet` validation unavailable and intentionally recorded as skipped.
+- Run log: `.ai/runs/2026-09-21-RQ367-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `8ba4d9f6`
+- Main verification: passed - fresh `origin/main` resolves to `8ba4d9f6` and contains the implementation commit.
+- Missed: none known within RQ367 scope.
+- Follow-up: none; RQ359-RQ367 reliability sequence is complete.
+- Residual risk: backend/full-suite proof remains CI-owned; the generated evidence records that omission as skipped rather than pass.
+- Prompt defect / scope repair: none.
 
 ---
