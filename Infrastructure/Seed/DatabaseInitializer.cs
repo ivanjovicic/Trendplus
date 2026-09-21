@@ -2235,6 +2235,12 @@ public static class DatabaseInitializer
         var backfillCommandTimeoutSeconds = configuration.GetValue<int?>("Database:CommandTimeoutSeconds")
             ?? 300;
 
+        // 003_AddGlobalTrendsTables.sql and the deferred Open Product Training
+        // script both declare pgvector. PostgreSQL does not make concurrent
+        // CREATE EXTENSION IF NOT EXISTS calls race-safe, so establish the
+        // shared extension before any deferred task can start.
+        await context.Database.ExecuteSqlRawAsync("CREATE EXTENSION IF NOT EXISTS vector;");
+
         // 6️⃣ Defer Open Product Training 2.0 extensions and other non-critical analytics to background
         var openTrainingTasks = new[]
         {
