@@ -2,11 +2,13 @@
 
 Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ368
+Current READY prompt: none
 
 Owner promotion 2026-09-21: under the user's explicit instruction to claim the next prompt, `RQ368` moved from `WAITING` to `READY` as the first safe P1 follow-up from the second Operacije audit.
 
 Owner claim 2026-09-21: `RQ368` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ368-cursor.lock.md`.
+
+Owner completion 2026-09-21: `RQ368` delivered shared safe-message mapping for Pre/Post previous-period and vendor-load inline warnings, including provider-exception detection and focused regressions. Follow-up: promote `RQ369`.
 
 Owner promotion 2026-09-20: after RQ364 reached DONE, `RQ365` moved from `WAITING` to `READY` as the PostgreSQL migration/bootstrap lifecycle smoke follow-up.
 
@@ -1323,7 +1325,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ365 | DONE | analytics-migration-bootstrap-smoke | Prove fresh and repeat PostgreSQL migration/bootstrap lifecycle |
 | RQ366 | DONE | analytics-guardrail-baseline | Prevent guardrail debt from growing while shrinking the baseline |
 | RQ367 | DONE | analytics-generated-validation-evidence | Generate machine-readable validation evidence before Markdown summaries |
-| RQ368 | IN_PROGRESS | operations-inline-error-safety | Sanitize inline Pre/Post partial-failure messages without hiding degraded state |
+| RQ368 | DONE | operations-inline-error-safety | Sanitize inline Pre/Post partial-failure messages without hiding degraded state |
 | RQ369 | WAITING | inventory-inline-error-safety | Sanitize Inventory detail/export/scheduler error messages |
 | RQ370 | WAITING | inventory-secondary-request-cancellation | Abort Inventory secondary and detail requests on scope changes |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
@@ -12740,7 +12742,7 @@ Product Decision Center maps nullable article quantity and minimum stock to zero
 
 ## RQ256 - Keep Product Decision margin coverage unavailable without sales evidence
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/contract/frontend/tests
 Feature family: pdc-margin-coverage-denominator
@@ -19670,6 +19672,24 @@ The Pre/Post page correctly preserves current-period data when the previous comp
 - `RQ359` is DONE and owns the shared async lifecycle; do not create a second query owner.
 - `getSafeAnalyticsErrorMessage` remains the frontend error-message source of truth.
 - No tenant, migration, production-data or backend dependency.
+
+### Completion note
+
+- Date: 2026-09-21
+- Status: DONE
+- Completion: Pre/Post previous-period and vendor-load inline warnings now reuse the shared safe analytics error mapper; provider exception variants such as `NpgsqlException` fail closed to localized guidance while valid current data, vendor options and retry behavior remain visible.
+- Changed files: `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`, `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.spec.tsx`, `Klijent/clientapp/src/utils/analyticsErrorMessages.ts`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-21-RQ368-evidence.md`
+- Checks run: Pre/Post focused suite 36/36; `npm run check:analytics-guardrails` baseline-only with 51 known violations and typecheck pass; `node scripts/check-prompt-queues.mjs`; `node scripts/check-planning-architecture.mjs`; `git diff --check`
+- Checks not run: full frontend suite, live browser, backend tests and CI; local `dotnet` unavailable.
+- Run log: `.ai/runs/2026-09-21-RQ368-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: none known in RQ368 scope.
+- Follow-up: promote `RQ369` after RQ368 main delivery.
+- Residual risk: other Inventory inline error paths remain covered by RQ369.
+- Prompt defect / scope repair: existing `reliabilityPct_assign` baseline line moved due to the import/helper patch; baseline was refreshed without changing the reviewed exception.
 
 ---
 
