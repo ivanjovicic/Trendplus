@@ -65,9 +65,9 @@ public sealed class DatabaseMigrationBootstrapLifecycleSmokeTests : IClassFixtur
         Assert.True(await MigrationExistsAsync(connection, "20251229125031_AddProductsDimTimestamp"));
         Assert.Equal(0L, await DuplicateIndexCountAsync(connection));
 
-        // pgvector is optional for this lifecycle smoke: no vector-backed
-        // operation is exercised, so its absence is not a product failure.
-        _ = await ScalarAsync<bool>(
+        // Full bootstrap executes vector-backed Open Product Training SQL, so
+        // the supported pgvector fixture is an explicit lifecycle dependency.
+        Assert.True(await ScalarAsync<bool>(
             connection,
             """
             SELECT EXISTS (
@@ -75,7 +75,7 @@ public sealed class DatabaseMigrationBootstrapLifecycleSmokeTests : IClassFixtur
                 FROM pg_extension
                 WHERE extname = 'vector'
             );
-            """);
+            """));
     }
 
     private static async Task RunBootstrapAsync(
@@ -120,7 +120,7 @@ public sealed class DatabaseMigrationBootstrapLifecycleSmokeTests : IClassFixtur
 
     private static async Task<long> DuplicateIndexCountAsync(NpgsqlConnection connection)
     {
-        return await ScalarAsync<int>(
+        return await ScalarAsync<long>(
             connection,
             """
             SELECT COUNT(*)
