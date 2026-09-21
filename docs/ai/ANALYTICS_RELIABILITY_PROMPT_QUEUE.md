@@ -16217,8 +16217,10 @@ Reproduction: open `/analytics/inventory` and scan trust header, KPI cards, work
 - Checks run: full Inventory-focused suite 22 files / 85 tests; `npm run check:analytics-guardrails` baseline-only with 51 known violations and typecheck pass; `git diff --check`
 - Checks not run: full frontend suite, live browser, backend tests and CI; local `dotnet` unavailable.
 - Run log: `.ai/runs/2026-09-21-RQ301-evidence.md`
-- Evidence state: pending main-delivery synchronization
+- Evidence state: synchronized
 - Delivery mode: direct-main after branch transport
+- Main commit SHA: `fa8043107f52e7026762459ce762b29c12cd56e3`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `fa8043107f52e7026762459ce762b29c12cd56e3`
 - Missed: no known English primary labels in the owned Inventory surfaces; technical identifiers such as SKU/OOS and API enum values remain intentionally unchanged.
 - Follow-up: return to the remaining Operacije WAITING backlog.
 - Residual risk: deployed-browser visual review and full repository suite remain unrun.
