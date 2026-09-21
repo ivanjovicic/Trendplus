@@ -733,7 +733,7 @@ export default function DailySalesStatsPage() {
       setPreviousPeriodState("empty");
       setPreviousPeriodWarning(null);
       setPreviousPeriodEmptyNote(null);
-      setError(reason instanceof Error ? reason.message : "Greska pri ucitavanju dnevne prodaje.");
+      setError(reason instanceof Error ? reason.message : "Greška pri učitavanju dnevne prodaje.");
     } finally {
       if (requestId === requestIdRef.current) {
         setLoading(false);
@@ -1106,7 +1106,7 @@ export default function DailySalesStatsPage() {
       label: "Dani nepodudaranja",
       value: fmtNumber(mismatchCount),
       tone: mismatchCount > 0 ? "danger" : "good",
-      description: "Dani gde se totals ne poklapaju sa top+others sabiranjem.",
+      description: "Dani u kojima se zbir najvećih dobavljača i ostalih ne poklapa sa ukupnim brojem komada.",
     },
     {
       key: "supplierConcentration",
@@ -1251,15 +1251,15 @@ export default function DailySalesStatsPage() {
     if ((data?.metadata.unknownSupplierPct != null && data.metadata.unknownSupplierPct >= 5) || mismatchCount > 0 || incompleteShiftCount > 0 || incompleteDailyAggregateCount > 0) {
       insights.push({
         title: "Upozorenje: podaci zahtevaju pažnju",
-        detail: `Udeo nepoznatih dobavljača je ${fmtPct(data?.metadata.unknownSupplierPct, 1, "nije dostupan")}, mismatch dana ${fmtNumber(mismatchCount)}, nepotpuna satnica ${fmtNumber(incompleteShiftCount)} (delimična ${fmtNumber(partialShiftCount)}), nepotpuni dnevni zbirovi ${fmtNumber(incompleteDailyAggregateCount)}.`,
+        detail: `Udeo nepoznatih dobavljača je ${fmtPct(data?.metadata.unknownSupplierPct, 1, "nije dostupan")}, neusklađenih dana ${fmtNumber(mismatchCount)}, nepotpuna satnica ${fmtNumber(incompleteShiftCount)} (delimična ${fmtNumber(partialShiftCount)}), nepotpuni dnevni zbirovi ${fmtNumber(incompleteDailyAggregateCount)}.`,
         tone: "warning",
       });
     }
 
     if ((duplicateReceipts != null && duplicateReceipts > 0) || (receiptMismatch != null && receiptMismatch > 0)) {
       insights.push({
-        title: "Prodaja trazi rekonsilijaciju",
-        detail: `Duplih racuna je ${fmtNumber(duplicateReceipts)}, a racuna sa mismatch-om između dnevnika i stavki ${fmtNumber(receiptMismatch)}.`,
+        title: "Prodaja traži rekonsilijaciju",
+        detail: `Duplih računa je ${fmtNumber(duplicateReceipts)}, a računa sa neusklađenim iznosom između dnevnika i stavki ${fmtNumber(receiptMismatch)}.`,
         tone: "danger",
       });
     }
@@ -1807,7 +1807,16 @@ export default function DailySalesStatsPage() {
                           <td className="analytics-data-table__numeric">{fmtNumber(row.othersCount)}</td>
                           <td className="analytics-data-table__numeric">
                             {fmtNumber(row.totalItemsSold)}
-                            {mismatch ? <span className="mismatch-badge">Check</span> : null}
+                            {mismatch ? (
+                              <span
+                                className="mismatch-badge"
+                                role="status"
+                                aria-label="Red ima neusklađen ukupan broj komada"
+                                title="Neusklađeno: zbir najvećih dobavljača i ostalih ne odgovara ukupnom broju komada"
+                              >
+                                Neusklađeno
+                              </span>
+                            ) : null}
                           </td>
                         </tr>
                       );
@@ -1818,7 +1827,7 @@ export default function DailySalesStatsPage() {
             </AnalyticsDataTable>
             {mismatchCount > 0 ? (
               <p className="daily-sales-footnote">
-                Upozorenje: {mismatchCount} redova ima mismatch između total kolone i top+others sabiranja.
+                Upozorenje: {mismatchCount} redova ima neusklađenost između ukupne kolone i zbira najvećih dobavljača i ostalih.
               </p>
             ) : null}
           </section>

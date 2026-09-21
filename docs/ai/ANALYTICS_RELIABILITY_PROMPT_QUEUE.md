@@ -2,7 +2,11 @@
 
 Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ303
+
+Owner promotion 2026-09-21: under the user's explicit instruction to claim the next prompt, `RQ303` moved from `WAITING` to `READY` as the next P1 Daily Sales localization slice after `RQ302`.
+
+Owner claim 2026-09-21: `RQ303` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ303-cursor.lock.md`.
 
 Owner promotion 2026-09-21: under the user's explicit instruction to claim the next prompt, `RQ302` moved from `WAITING` to `READY` as the next P1 Operacije route-smoke coverage slice after `RQ301`.
 
@@ -1278,7 +1282,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ300 | DONE | pre-nivelacija-numeric-robustness | Keep malformed/null numeric payloads from crashing or sorting falsely |
 | RQ301 | DONE | operations-inventory-serbian-copy | Replace English inventory cockpit copy with Serbian product language |
 | RQ302 | DONE | operations-route-smoke | Add missing Operacije routes to core App analytics smoke matrix |
-| RQ303 | WAITING | daily-sales-localization | Replace English mismatch badge and mixed QA copy on Daily Sales |
+| RQ303 | IN_PROGRESS | daily-sales-localization | Replace English mismatch badge and mixed QA copy on Daily Sales |
 | RQ304 | WAITING | color-sales-detail-label-parity | Align Color detail score label with table/export Serbian copy |
 | RQ305 | WAITING | operations-supplier-ia-clarity | Clarify Operacije menu entries that redirect into canonical Supplier tabs |
 | RQ306 | WAITING | operations-diacritics-pass | Fix missing Serbian diacritics across Operacije user-facing copy |
