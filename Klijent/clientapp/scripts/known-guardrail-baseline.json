@@ -29,7 +29,7 @@
     {
       "file": "src/pages/ProdajaPrePostNivelacijePage.tsx",
       "rule": "reliabilityPct_assign",
-      "line": 401,
+      "line": 411,
       "reason": "Existing backend reliability projection requires a reviewed authority exception."
     },
     {

@@ -19610,7 +19610,7 @@ Evidence logs currently rely on an agent to transcribe whether commands passed. 
 
 ## RQ368 - Sanitize inline Pre/Post partial-failure messages without hiding degraded state
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend/trust/tests
 Feature family: operations-inline-error-safety
