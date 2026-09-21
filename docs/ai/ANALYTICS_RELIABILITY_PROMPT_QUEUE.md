@@ -19590,8 +19590,8 @@ Evidence logs currently rely on an agent to transcribe whether commands passed. 
 - Run log: `.ai/runs/2026-09-21-RQ367-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: `8ba4d9f6`
-- Main verification: passed - fresh `origin/main` resolves to `8ba4d9f6` and contains the implementation commit.
+- Main commit SHA: `a90d626a6c122fefff117bb7c8860aec7121019e`
+- Main verification: passed - `origin/main` contains implementation SHA `a90d626a6c122fefff117bb7c8860aec7121019e`; generated validation snapshot verified that SHA as the exact tip before final evidence synchronization.
 - Missed: none known within RQ367 scope.
 - Follow-up: none; RQ359-RQ367 reliability sequence is complete.
 - Residual risk: backend/full-suite proof remains CI-owned; the generated evidence records that omission as skipped rather than pass.

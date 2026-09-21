@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "taskId": "RQ367",
-  "commit": "8ba4d9f6fcdd613924620a061e755ef29173f7e1",
-  "timestamp": "2026-09-21T12:10:33.566Z",
+  "commit": "a90d626a6c122fefff117bb7c8860aec7121019e",
+  "timestamp": "2026-09-21T12:11:55.409Z",
   "environment": {
     "cwd": "/workspace",
     "node": "v22.14.0",
@@ -20,11 +20,11 @@
         "status": "pass",
         "exitCode": 0,
         "signal": null,
-        "startedAt": "2026-09-21T12:10:32.173Z",
-        "finishedAt": "2026-09-21T12:10:33.473Z",
-        "durationMs": 1300,
-        "summary": "  ...\n# Subtest: main verification distinguishes exact tip and ancestor commits\nok 3 - main verification distinguishes exact tip and ancestor commits\n  ---\n  duration_ms: 79.824822\n  ...\n# Subtest: CLI writes JSON evidence and exits non-zero for a failed command\nok 4 - CLI writes JSON evidence and exits non-zero for a failed command\n  ---\n  duration_ms: 43.222777\n  ...\n1..4\n# tests 4\n# suites 0\n# pass 4\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 1204.175323",
-        "output": "\n> test:validation-evidence\n> node --test scripts/run-task-validation.test.mjs\n\nTAP version 13\n# Subtest: validation plan preserves pass, fail, timeout, skipped and environment-blocked outcomes\nok 1 - validation plan preserves pass, fail, timeout, skipped and environment-blocked outcomes\n  ---\n  duration_ms: 1040.479076\n  ...\n# Subtest: renderer never turns a non-zero command into PASS\nok 2 - renderer never turns a non-zero command into PASS\n  ---\n  duration_ms: 0.433473\n  ...\n# Subtest: main verification distinguishes exact tip and ancestor commits\nok 3 - main verification distinguishes exact tip and ancestor commits\n  ---\n  duration_ms: 79.824822\n  ...\n# Subtest: CLI writes JSON evidence and exits non-zero for a failed command\nok 4 - CLI writes JSON evidence and exits non-zero for a failed command\n  ---\n  duration_ms: 43.222777\n  ...\n1..4\n# tests 4\n# suites 0\n# pass 4\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 1204.175323\n"
+        "startedAt": "2026-09-21T12:11:54.036Z",
+        "finishedAt": "2026-09-21T12:11:55.337Z",
+        "durationMs": 1301,
+        "summary": "  ...\n# Subtest: main verification distinguishes exact tip and ancestor commits\nok 3 - main verification distinguishes exact tip and ancestor commits\n  ---\n  duration_ms: 86.543502\n  ...\n# Subtest: CLI writes JSON evidence and exits non-zero for a failed command\nok 4 - CLI writes JSON evidence and exits non-zero for a failed command\n  ---\n  duration_ms: 42.595666\n  ...\n1..4\n# tests 4\n# suites 0\n# pass 4\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 1206.289973",
+        "output": "\n> test:validation-evidence\n> node --test scripts/run-task-validation.test.mjs\n\nTAP version 13\n# Subtest: validation plan preserves pass, fail, timeout, skipped and environment-blocked outcomes\nok 1 - validation plan preserves pass, fail, timeout, skipped and environment-blocked outcomes\n  ---\n  duration_ms: 1038.347263\n  ...\n# Subtest: renderer never turns a non-zero command into PASS\nok 2 - renderer never turns a non-zero command into PASS\n  ---\n  duration_ms: 0.420089\n  ...\n# Subtest: main verification distinguishes exact tip and ancestor commits\nok 3 - main verification distinguishes exact tip and ancestor commits\n  ---\n  duration_ms: 86.543502\n  ...\n# Subtest: CLI writes JSON evidence and exits non-zero for a failed command\nok 4 - CLI writes JSON evidence and exits non-zero for a failed command\n  ---\n  duration_ms: 42.595666\n  ...\n1..4\n# tests 4\n# suites 0\n# pass 4\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 1206.289973\n"
       },
       {
         "name": "backend test",
@@ -48,8 +48,8 @@
         "status": "pass",
         "exitCode": 0,
         "signal": null,
-        "startedAt": "2026-09-21T12:10:33.473Z",
-        "finishedAt": "2026-09-21T12:10:33.539Z",
+        "startedAt": "2026-09-21T12:11:55.337Z",
+        "finishedAt": "2026-09-21T12:11:55.403Z",
         "durationMs": 66,
         "summary": "OK: prompt-queue governance checks passed (506 tasks).",
         "output": "OK: prompt-queue governance checks passed (506 tasks).\n"
@@ -66,9 +66,9 @@
         "status": "pass",
         "exitCode": 0,
         "signal": null,
-        "startedAt": "2026-09-21T12:10:33.539Z",
-        "finishedAt": "2026-09-21T12:10:33.564Z",
-        "durationMs": 25,
+        "startedAt": "2026-09-21T12:11:55.403Z",
+        "finishedAt": "2026-09-21T12:11:55.407Z",
+        "durationMs": 4,
         "summary": "",
         "output": ""
       }
@@ -82,11 +82,11 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "startedAt": "2026-09-21T12:10:32.173Z",
-      "finishedAt": "2026-09-21T12:10:33.473Z",
-      "durationMs": 1300,
-      "summary": "  ...\n# Subtest: main verification distinguishes exact tip and ancestor commits\nok 3 - main verification distinguishes exact tip and ancestor commits\n  ---\n  duration_ms: 79.824822\n  ...\n# Subtest: CLI writes JSON evidence and exits non-zero for a failed command\nok 4 - CLI writes JSON evidence and exits non-zero for a failed command\n  ---\n  duration_ms: 43.222777\n  ...\n1..4\n# tests 4\n# suites 0\n# pass 4\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 1204.175323",
-      "output": "\n> test:validation-evidence\n> node --test scripts/run-task-validation.test.mjs\n\nTAP version 13\n# Subtest: validation plan preserves pass, fail, timeout, skipped and environment-blocked outcomes\nok 1 - validation plan preserves pass, fail, timeout, skipped and environment-blocked outcomes\n  ---\n  duration_ms: 1040.479076\n  ...\n# Subtest: renderer never turns a non-zero command into PASS\nok 2 - renderer never turns a non-zero command into PASS\n  ---\n  duration_ms: 0.433473\n  ...\n# Subtest: main verification distinguishes exact tip and ancestor commits\nok 3 - main verification distinguishes exact tip and ancestor commits\n  ---\n  duration_ms: 79.824822\n  ...\n# Subtest: CLI writes JSON evidence and exits non-zero for a failed command\nok 4 - CLI writes JSON evidence and exits non-zero for a failed command\n  ---\n  duration_ms: 43.222777\n  ...\n1..4\n# tests 4\n# suites 0\n# pass 4\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 1204.175323\n"
+      "startedAt": "2026-09-21T12:11:54.036Z",
+      "finishedAt": "2026-09-21T12:11:55.337Z",
+      "durationMs": 1301,
+      "summary": "  ...\n# Subtest: main verification distinguishes exact tip and ancestor commits\nok 3 - main verification distinguishes exact tip and ancestor commits\n  ---\n  duration_ms: 86.543502\n  ...\n# Subtest: CLI writes JSON evidence and exits non-zero for a failed command\nok 4 - CLI writes JSON evidence and exits non-zero for a failed command\n  ---\n  duration_ms: 42.595666\n  ...\n1..4\n# tests 4\n# suites 0\n# pass 4\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 1206.289973",
+      "output": "\n> test:validation-evidence\n> node --test scripts/run-task-validation.test.mjs\n\nTAP version 13\n# Subtest: validation plan preserves pass, fail, timeout, skipped and environment-blocked outcomes\nok 1 - validation plan preserves pass, fail, timeout, skipped and environment-blocked outcomes\n  ---\n  duration_ms: 1038.347263\n  ...\n# Subtest: renderer never turns a non-zero command into PASS\nok 2 - renderer never turns a non-zero command into PASS\n  ---\n  duration_ms: 0.420089\n  ...\n# Subtest: main verification distinguishes exact tip and ancestor commits\nok 3 - main verification distinguishes exact tip and ancestor commits\n  ---\n  duration_ms: 86.543502\n  ...\n# Subtest: CLI writes JSON evidence and exits non-zero for a failed command\nok 4 - CLI writes JSON evidence and exits non-zero for a failed command\n  ---\n  duration_ms: 42.595666\n  ...\n1..4\n# tests 4\n# suites 0\n# pass 4\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 1206.289973\n"
     },
     {
       "name": "prompt queue validator",
@@ -95,8 +95,8 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "startedAt": "2026-09-21T12:10:33.473Z",
-      "finishedAt": "2026-09-21T12:10:33.539Z",
+      "startedAt": "2026-09-21T12:11:55.337Z",
+      "finishedAt": "2026-09-21T12:11:55.403Z",
       "durationMs": 66,
       "summary": "OK: prompt-queue governance checks passed (506 tasks).",
       "output": "OK: prompt-queue governance checks passed (506 tasks).\n"
@@ -108,9 +108,9 @@
       "status": "pass",
       "exitCode": 0,
       "signal": null,
-      "startedAt": "2026-09-21T12:10:33.539Z",
-      "finishedAt": "2026-09-21T12:10:33.564Z",
-      "durationMs": 25,
+      "startedAt": "2026-09-21T12:11:55.403Z",
+      "finishedAt": "2026-09-21T12:11:55.407Z",
+      "durationMs": 4,
       "summary": "",
       "output": ""
     },
@@ -139,9 +139,9 @@
   ],
   "mainVerification": {
     "status": "exact-tip",
-    "commit": "8ba4d9f6fcdd613924620a061e755ef29173f7e1",
+    "commit": "a90d626a6c122fefff117bb7c8860aec7121019e",
     "mainRef": "origin/main",
-    "mainSha": "8ba4d9f6fcdd613924620a061e755ef29173f7e1",
+    "mainSha": "a90d626a6c122fefff117bb7c8860aec7121019e",
     "containsCommit": true,
     "exactTip": true
   }
