@@ -2,7 +2,11 @@
 
 Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ302
+
+Owner promotion 2026-09-21: under the user's explicit instruction to claim the next prompt, `RQ302` moved from `WAITING` to `READY` as the next P1 Operacije route-smoke coverage slice after `RQ301`.
+
+Owner claim 2026-09-21: `RQ302` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ302-cursor.lock.md`.
 
 Owner promotion 2026-09-21: under the user's explicit instruction to claim the next prompt, `RQ301` moved from `WAITING` to `READY` as the next P1 Operacije Inventory localization slice after `RQ370`.
 
@@ -1273,7 +1277,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ299 | DONE | pre-nivelacija-url-state | Preserve filters and focus in refresh/back/deep-link URLs |
 | RQ300 | DONE | pre-nivelacija-numeric-robustness | Keep malformed/null numeric payloads from crashing or sorting falsely |
 | RQ301 | DONE | operations-inventory-serbian-copy | Replace English inventory cockpit copy with Serbian product language |
-| RQ302 | WAITING | operations-route-smoke | Add missing Operacije routes to core App analytics smoke matrix |
+| RQ302 | IN_PROGRESS | operations-route-smoke | Add missing Operacije routes to core App analytics smoke matrix |
 | RQ303 | WAITING | daily-sales-localization | Replace English mismatch badge and mixed QA copy on Daily Sales |
 | RQ304 | WAITING | color-sales-detail-label-parity | Align Color detail score label with table/export Serbian copy |
 | RQ305 | WAITING | operations-supplier-ia-clarity | Clarify Operacije menu entries that redirect into canonical Supplier tabs |
@@ -5248,7 +5252,7 @@ Revenue is currently described as a sales-line sum and margin contribution as re
 
 ## RQ149 - Establish inventory economic evidence before GMROI or demand-value claims
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: backend/EF-SQL/contract/frontend/export/report/tests
 Feature family: inventory-economic-metric-evidence

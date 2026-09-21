@@ -43,6 +43,48 @@ export const CORE_ANALYTICS_ROUTE_DEFINITIONS: AnalyticsSmokeRouteDefinition[] =
         legacyAliases: [],
     },
     {
+        path: "/analytics/shoe-type-sales-stats",
+        label: "Prodaja po tipu obuće",
+        isDurableReport: false,
+        legacyAliases: [],
+    },
+    {
+        path: "/analytics/daily-sales",
+        label: "Dnevna prodaja",
+        isDurableReport: false,
+        legacyAliases: [],
+    },
+    {
+        path: "/analytics/nivelacije-pre-post",
+        label: "Pre/Post nivelacija",
+        isDurableReport: false,
+        legacyAliases: [],
+    },
+    {
+        path: "/analytics/color-sales-stats",
+        label: "Prodaja po boji",
+        isDurableReport: false,
+        legacyAliases: [],
+    },
+    {
+        path: "/analytics/pre-nivelacija-prioriteti",
+        label: "Prioriteti Pre-Nivelacije",
+        isDurableReport: false,
+        legacyAliases: [],
+    },
+    {
+        path: "/analytics/supplier-sales-stats",
+        label: "Dobavljači — prodaja (legacy)",
+        isDurableReport: false,
+        legacyAliases: [],
+    },
+    {
+        path: "/analytics/dobavljaci-tipovi-obuce",
+        label: "Dobavljači — tipovi obuće (legacy)",
+        isDurableReport: false,
+        legacyAliases: [],
+    },
+    {
         path: "/analytics/data-quality",
         label: "Kvalitet podataka",
         isDurableReport: false,
