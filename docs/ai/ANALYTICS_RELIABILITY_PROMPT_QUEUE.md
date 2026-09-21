@@ -7865,7 +7865,7 @@ Sales are counted over `UtcNow.AddDays(-30)`, but `avgDailySalesUnits` always di
 - Checks run: focused and inventory-list integration tests 13/13 passed; Release API build passed with 0 errors; agent-instruction, prompt-queue and planning-architecture validators passed; `git diff --check` passed.
 - Checks not run: full repository suite, live database/refresh/browser/deployed proof and remote CI; not required for this bounded backend calculation and remain external/runtime evidence.
 - Run log: `.ai/runs/2026-09-08-RQ184-velocity-divisor-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: 544f34dfb94e9ed83f3738d99415427c9aa50b04
 - Main verification: passed - fresh `origin/main` contains implementation SHA `544f34dfb94e9ed83f3738d99415427c9aa50b04`
@@ -19431,7 +19431,7 @@ Fresh and repeat startup paths have exposed non-idempotent indexes, duplicate ob
 - Evidence state: pending
 - Delivery mode: direct-main
 - Main commit SHA: `7253e29f`
-- Main verification: pending until direct-main merge/push completes.
+- Main verification: passed - `origin/main` contains implementation SHA `7253e29f`; closure/claim metadata is delivered at `c1c85b5b`.
 - Missed: remote backend smoke is not green yet; latest failure was the test's Int64/Int32 scalar cast, corrected in `7253e29f`.
 - Follow-up: `RQ367` is promoted and claimed.
 - Residual risk: CI must still confirm the corrected bootstrap smoke; Vercel and frontend checks are not blockers for the backend contract.

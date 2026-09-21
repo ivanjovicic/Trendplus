@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "test:validation-evidence": "node --test scripts/run-task-validation.test.mjs"
+  },
   "dependencies": {
     "glob": "^13.0.6"
   }
