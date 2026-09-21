@@ -415,7 +415,8 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(warning).toHaveTextContent("Podaci trenutno nisu dostupni");
     expect(warning).not.toHaveTextContent("NpgsqlException");
     expect(warning).not.toHaveTextContent("SqlCommand.Execute");
-    expect(screen.getByText("Vendor A")).toBeInTheDocument();
+    const table = await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
+    expect(within(table).getByText("Vendor A")).toBeInTheDocument();
   });
 
   it("does not treat missing reliability as a weak Nisko signal", async () => {
