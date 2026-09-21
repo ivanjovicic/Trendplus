@@ -16309,7 +16309,7 @@ Reproduction: break lazy import or redirect for an Operacije route and run App s
 
 ## RQ303 - Replace English mismatch badge and mixed QA copy on Daily Sales
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend/copy/tests
 Feature family: daily-sales-localization
@@ -19904,7 +19904,8 @@ Inventory's lifecycle query accepts an `AbortSignal` but passes it only to the p
 - Changed files: `Klijent/clientapp/src/services/analyticsApi.ts`, `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.signalWindow.spec.tsx`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.offPageDetail.spec.tsx`, `Klijent/clientapp/src/services/__tests__/inventoryDataScopeApi.spec.ts`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-21-RQ370-evidence.md`, `.ai/runs/2026-09-21-RQ370-followup-evidence.md`
 - Checks run: follow-up size-curve regression 5/5; focused cancellation/API suite 3 files / 12 tests; existing Inventory reliability regressions 13 files / 48 tests; `npm run check:analytics-guardrails` baseline-only with 51 known violations and typecheck pass; `git diff --check`
 - Checks not run: full frontend suite, live browser, backend tests and CI; local `dotnet` unavailable.
-- Run logs: `.ai/runs/2026-09-21-RQ370-evidence.md`, `.ai/runs/2026-09-21-RQ370-followup-evidence.md`
+- Run log: `.ai/runs/2026-09-21-RQ370-evidence.md`
+- Follow-up run log: `.ai/runs/2026-09-21-RQ370-followup-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main after branch transport
 - Main commit SHA: `ff2e563fcde0238d80bf7a83abd99ada1a4292f8`
