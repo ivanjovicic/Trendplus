@@ -701,7 +701,7 @@ export default function InventoryPage() {
       cancelled = true;
       controller.abort();
     };
-  }, [detailRow, detailTab, selectedStoreId]);
+  }, [detailRow, detailTab, inventoryDataScope, selectedStoreId]);
 
   useEffect(() => {
     if (sizeCurveSkuId == null) {
@@ -730,7 +730,7 @@ export default function InventoryPage() {
       cancelled = true;
       controller.abort();
     };
-  }, [sizeCurveSkuId, selectedStoreId]);
+  }, [inventoryDataScope, selectedStoreId, sizeCurveSkuId]);
 
   const rows = useMemo(() => (pageData?.items ?? []).map((item) => buildInventoryRow(item, stores, suppliers)), [pageData, stores, suppliers]);
   const totalCount = pageData?.totalCount ?? 0;
