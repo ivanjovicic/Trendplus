@@ -14,7 +14,7 @@ Owner promotion 2026-09-21: after `RQ365` reached DONE by direct-main delivery w
 
 Owner claim 2026-09-21: `RQ367` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ367-cursor.lock.md`.
 
-Owner completion 2026-09-21: `RQ367` delivered plan-driven JSON validation evidence, generated Markdown rendering, truthful exit/skip/timeout/environment outcomes and exact-tip/ancestor `origin/main` verification. The RQ reliability queue is complete.
+Owner completion 2026-09-21: `RQ367` delivered plan-driven JSON validation evidence, generated Markdown rendering, explicit frontend guardrail execution, truthful exit/skip/timeout/environment outcomes and exact-tip/ancestor `origin/main` verification. The named backend build/test remains explicitly environment-blocked because `dotnet` is unavailable locally; no backend PASS is inferred. The RQ reliability queue is complete.
 
 Owner promotion 2026-09-20: after RQ363 reached DONE, `RQ364` moved from `WAITING` to `READY` as the dataset-projection semantics follow-up.
 
