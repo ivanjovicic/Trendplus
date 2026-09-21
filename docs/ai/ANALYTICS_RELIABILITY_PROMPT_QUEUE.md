@@ -16,6 +16,8 @@ Owner claim 2026-09-21: `RQ367` transitioned `READY -> IN_PROGRESS`; local runti
 
 Owner completion 2026-09-21: `RQ367` delivered plan-driven JSON validation evidence, generated Markdown rendering, explicit frontend guardrail execution, truthful exit/skip/timeout/environment outcomes and exact-tip/ancestor `origin/main` verification. The named backend build/test remains explicitly environment-blocked because `dotnet` is unavailable locally; no backend PASS is inferred. The RQ reliability queue is complete.
 
+Owner audit 2026-09-21: a fresh static review of all eight Operacije menu surfaces confirmed the existing WAITING backlog and found one new P1 inline-error-safety gap (`RQ368`). The status table was reconciled so completed `RQ362`-`RQ364` are `DONE`, matching their completion notes and `MASTER_ROADMAP.md`; no prompt was promoted.
+
 Owner promotion 2026-09-20: after RQ363 reached DONE, `RQ364` moved from `WAITING` to `READY` as the dataset-projection semantics follow-up.
 
 Owner claim 2026-09-20: `RQ364` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ364-cursor.lock.md`.
@@ -1311,12 +1313,13 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ359 | DONE | analytics-reliable-query-lifecycle | Centralize abort/latest-request/stale-refetch semantics in one hook |
 | RQ360 | DONE | analytics-invariant-test-kit | Reuse one invariant matrix across critical analytics screens |
 | RQ361 | DONE | analytics-guardrail-expansion | Detect fake-zero, silent-catch, frontend-aggregate and pagination anti-patterns |
-| RQ362 | WAITING | analytics-authoritative-provenance | Formalize authoritative versus derived metric provenance |
-| RQ363 | WAITING | analytics-response-runtime-validation | Fail closed on invalid analytics DTOs at the API boundary |
-| RQ364 | WAITING | analytics-dataset-projections | Separate canonical, filtered, table, chart, export and detail datasets |
+| RQ362 | DONE | analytics-authoritative-provenance | Formalize authoritative versus derived metric provenance |
+| RQ363 | DONE | analytics-response-runtime-validation | Fail closed on invalid analytics DTOs at the API boundary |
+| RQ364 | DONE | analytics-dataset-projections | Separate canonical, filtered, table, chart, export and detail datasets |
 | RQ365 | DONE | analytics-migration-bootstrap-smoke | Prove fresh and repeat PostgreSQL migration/bootstrap lifecycle |
 | RQ366 | DONE | analytics-guardrail-baseline | Prevent guardrail debt from growing while shrinking the baseline |
 | RQ367 | DONE | analytics-generated-validation-evidence | Generate machine-readable validation evidence before Markdown summaries |
+| RQ368 | WAITING | operations-inline-error-safety | Sanitize inline Pre/Post partial-failure messages without hiding degraded state |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -19598,3 +19601,66 @@ Evidence logs currently rely on an agent to transcribe whether commands passed. 
 - Prompt defect / scope repair: none.
 
 ---
+
+## RQ368 - Sanitize inline Pre/Post partial-failure messages without hiding degraded state
+
+Status: WAITING
+Priority: P1
+Type: frontend/trust/tests
+Feature family: operations-inline-error-safety
+Parallel-safe: no
+Owner: Analytics Frontend / Pre-Post
+Commit suggestion: `fix(analytics): sanitize operations inline error messages`
+
+### Problem
+
+The Pre/Post page correctly preserves current-period data when the previous comparison period or vendor options fail, but its inline warning text renders raw `Error.message` values. Technical backend/HTTP/stack details can therefore appear in user-facing partial-failure copy even though the shared blocking `AnalyticsErrorState` sanitizes its message.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx` builds `previousError` from `reason.message` in the `Promise.allSettled` previous-period branch and renders `previousComparisonError` directly in the partial warning.
+- The same page stores `vendorLoadError` from `reason.message` and interpolates it into the vendor-load warning.
+- `Klijent/clientapp/src/utils/analyticsErrorMessages.ts` already owns technical-message detection through `getSafeAnalyticsErrorMessage`, but these inline paths do not use it.
+
+### Scope
+
+- Pre/Post previous-period and vendor-option inline warning projection.
+- Existing shared safe analytics error-message helper and focused Pre/Post tests.
+- Preserve current-period data, last-known vendor options and the distinction between partial comparison failure and primary query failure.
+
+### Read first
+
+- `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`
+- `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.spec.tsx`
+- `Klijent/clientapp/src/utils/analyticsErrorMessages.ts`
+- `Klijent/clientapp/src/components/analytics/AnalyticsErrorState.tsx`
+- `RQ335`, `RQ338` and `RQ359`
+
+### Do
+
+1. Map technical previous-period and vendor-load failures through the shared safe error-message owner before storing/rendering inline warning text.
+2. Keep a localized actionable fallback for sanitized technical failures; do not hide the warning, clear the valid current snapshot or turn the partial result into a successful/empty state.
+3. Preserve user-safe backend guidance when it is not classified as technical, and avoid exposing raw error codes, SQL/provider names or stack fragments.
+4. Add focused regressions for technical `Error` values in both inline paths and for the preserved current-period/vendor-list behavior.
+
+### Tests
+
+- `ProdajaPrePostNivelacijePage.spec.tsx` inline previous-period partial-failure case with a technical error message.
+- `ProdajaPrePostNivelacijePage.spec.tsx` vendor-load failure case with a technical error message.
+- Assert the warning remains visible, contains the safe localized fallback, and excludes the raw technical text.
+- Re-run the focused Pre/Post suite, frontend analytics guardrails/typecheck and `git diff --check`.
+
+### Acceptance
+
+- No technical exception/provider/stack text is rendered by the Pre/Post inline partial-failure warnings.
+- Current-period data remains visible when only the previous comparison request fails.
+- The last known vendor list remains usable when a refresh fails, while the load warning remains visible.
+- User-safe non-technical guidance is preserved.
+- No backend DTO, endpoint, recommendation, confidence or data-quality semantics are changed.
+
+### Dependencies
+
+- `RQ335` and `RQ338` are DONE and define previous-period/vendor-load degraded-state behavior.
+- `RQ359` is DONE and owns the shared async lifecycle; do not create a second query owner.
+- `getSafeAnalyticsErrorMessage` remains the frontend error-message source of truth.
+- No tenant, migration, production-data or backend dependency.
