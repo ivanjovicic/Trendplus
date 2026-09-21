@@ -19896,17 +19896,17 @@ Inventory's lifecycle query accepts an `AbortSignal` but passes it only to the p
 
 - Date: 2026-09-21
 - Status: DONE
-- Completion: Inventory lifecycle balance, insights, store comparison, action suggestions, forecast, alerts and rebalance reads now receive the shared lifecycle `AbortSignal`; detail and size-curve effects own and abort per-effect controllers on superseding scope, row or tab changes. Cached/fallback API helpers propagate signals and avoid sharing a cancellable in-flight request with an unrelated caller.
-- Changed files: `Klijent/clientapp/src/services/analyticsApi.ts`, `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.signalWindow.spec.tsx`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.offPageDetail.spec.tsx`, `Klijent/clientapp/src/services/__tests__/inventoryDataScopeApi.spec.ts`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-21-RQ370-evidence.md`
-- Checks run: focused cancellation/API suite 11/11; existing Inventory reliability regressions 13/13; `npm run check:analytics-guardrails` baseline-only with 51 known violations and typecheck pass; `git diff --check`
+- Completion: Inventory lifecycle balance, insights, store comparison, action suggestions, forecast, alerts and rebalance reads now receive the shared lifecycle `AbortSignal`; detail and size-curve effects own and abort per-effect controllers on superseding scope, row or tab changes. Cached/fallback API helpers propagate signals and avoid sharing a cancellable in-flight request with an unrelated caller. A follow-up audit corrected the missing `inventoryDataScope` dependencies on both size-curve effects, so scope changes now execute their cleanup and abort the active size-curve request.
+- Changed files: `Klijent/clientapp/src/services/analyticsApi.ts`, `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.signalWindow.spec.tsx`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.offPageDetail.spec.tsx`, `Klijent/clientapp/src/services/__tests__/inventoryDataScopeApi.spec.ts`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-21-RQ370-evidence.md`, `.ai/runs/2026-09-21-RQ370-followup-evidence.md`
+- Checks run: follow-up size-curve regression 5/5; focused cancellation/API suite 3 files / 12 tests; existing Inventory reliability regressions 13 files / 48 tests; `npm run check:analytics-guardrails` baseline-only with 51 known violations and typecheck pass; `git diff --check`
 - Checks not run: full frontend suite, live browser, backend tests and CI; local `dotnet` unavailable.
-- Run log: `.ai/runs/2026-09-21-RQ370-evidence.md`
+- Run logs: `.ai/runs/2026-09-21-RQ370-evidence.md`, `.ai/runs/2026-09-21-RQ370-followup-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main after branch transport
-- Main commit SHA: `6ac1754eed7fc49139cf610de1223c2d3f34746d`
-- Main verification: passed — fresh `origin/main` contains implementation SHA `6ac1754eed7fc49139cf610de1223c2d3f34746d`
-- Missed: none known in RQ370 scope.
+- Main commit SHA: `ff2e563fcde0238d80bf7a83abd99ada1a4292f8`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `ff2e563fcde0238d80bf7a83abd99ada1a4292f8`
+- Missed: the initial implementation omitted `inventoryDataScope` from the two size-curve effect dependency arrays; the follow-up audit corrected this and added a regression test.
 - Follow-up: return to the remaining Operacije WAITING backlog.
 - Residual risk: cancellation is covered at Inventory page/API-client boundaries; unrelated fixed-lifetime filter/scheduler startup reads remain unchanged by scope.
-- Prompt defect / scope repair: existing guardrail baseline line locations were refreshed after source movement; no new baseline entry was added.
+- Prompt defect / scope repair: existing guardrail baseline line locations were refreshed after source movement; no new baseline entry was added. Follow-up scope repair stayed within RQ370 ownership and changed no endpoint or business metric contract.
 - No backend, migration, tenant or production-data change.
