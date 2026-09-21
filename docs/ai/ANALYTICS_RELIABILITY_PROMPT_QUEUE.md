@@ -19857,8 +19857,10 @@ Inventory's lifecycle query accepts an `AbortSignal` but passes it only to the p
 - Checks run: focused cancellation/API suite 11/11; existing Inventory reliability regressions 13/13; `npm run check:analytics-guardrails` baseline-only with 51 known violations and typecheck pass; `git diff --check`
 - Checks not run: full frontend suite, live browser, backend tests and CI; local `dotnet` unavailable.
 - Run log: `.ai/runs/2026-09-21-RQ370-evidence.md`
-- Evidence state: pending main-delivery synchronization
+- Evidence state: synchronized
 - Delivery mode: direct-main after branch transport
+- Main commit SHA: `6ac1754e6e404434d7415c2f4cde32c6fcf176c4`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `6ac1754e6e404434d7415c2f4cde32c6fcf176c4`
 - Missed: none known in RQ370 scope.
 - Follow-up: return to the remaining Operacije WAITING backlog.
 - Residual risk: cancellation is covered at Inventory page/API-client boundaries; unrelated fixed-lifetime filter/scheduler startup reads remain unchanged by scope.
