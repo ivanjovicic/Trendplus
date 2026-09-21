@@ -2,13 +2,13 @@
 
 - Schema version: 1
 - Task: RQ367
-- Commit: 50c9267491184f52b07e71c94958ac26affcd9df
-- Generated: 2026-09-21T15:42:06.873Z
+- Commit: b419dad3baac0d8c6afbf3780ea8150e714f9860
+- Generated: 2026-09-21T15:44:30.266Z
 
 ## Validation results
 
 ### tests — **PASS**
-- validation evidence fixtures: **PASS**; exitCode=0; command=`npm run test:validation-evidence` —   ... # Subtest: main verification distinguishes exact tip and ancestor commits ok 3 - main verification distinguishes exact tip and ancestor commits   ---   duration_ms: 88.777544   ... # Subtest: CLI writes JSON evidence and exits non-zero for a failed command ok 4 - CLI writes JSON evidence and exits non-zero for a failed command   ---   duration_ms: 45.26177   ... 1..4 # tests 4 # suites 0 # pass 4 # fail 0 # cancelled 0 # skipped 0 # todo 0 # duration_ms 1214.186572
+- validation evidence fixtures: **PASS**; exitCode=0; command=`npm run test:validation-evidence` —   ... # Subtest: main verification distinguishes exact tip and ancestor commits ok 3 - main verification distinguishes exact tip and ancestor commits   ---   duration_ms: 90.768166   ... # Subtest: CLI writes JSON evidence and exits non-zero for a failed command ok 4 - CLI writes JSON evidence and exits non-zero for a failed command   ---   duration_ms: 43.359752   ... 1..4 # tests 4 # suites 0 # pass 4 # fail 0 # cancelled 0 # skipped 0 # todo 0 # duration_ms 1211.034096
 
 ### guardrails — **PASS**
 - prompt queue validator: **PASS**; exitCode=0; command=`node scripts/check-prompt-queues.mjs` — OK: prompt-queue governance checks passed (506 tasks).
@@ -30,9 +30,9 @@
 
 ## Main verification
 - Status: **EXACT-TIP**
-- Commit: 50c9267491184f52b07e71c94958ac26affcd9df
+- Commit: b419dad3baac0d8c6afbf3780ea8150e714f9860
 - Ref: origin/main
-- Ref SHA: 50c9267491184f52b07e71c94958ac26affcd9df
+- Ref SHA: b419dad3baac0d8c6afbf3780ea8150e714f9860
 - Contains commit: true
 
 ## Environment
