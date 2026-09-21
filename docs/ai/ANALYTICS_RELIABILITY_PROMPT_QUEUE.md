@@ -2,7 +2,7 @@
 
 Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ301
+Current READY prompt: none
 
 Owner promotion 2026-09-21: under the user's explicit instruction to claim the next prompt, `RQ301` moved from `WAITING` to `READY` as the next P1 Operacije Inventory localization slice after `RQ370`.
 
@@ -1272,7 +1272,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ298 | DONE | pre-nivelacija-reliability-export | Align reliability styling and percent export metadata |
 | RQ299 | DONE | pre-nivelacija-url-state | Preserve filters and focus in refresh/back/deep-link URLs |
 | RQ300 | DONE | pre-nivelacija-numeric-robustness | Keep malformed/null numeric payloads from crashing or sorting falsely |
-| RQ301 | IN_PROGRESS | operations-inventory-serbian-copy | Replace English inventory cockpit copy with Serbian product language |
+| RQ301 | DONE | operations-inventory-serbian-copy | Replace English inventory cockpit copy with Serbian product language |
 | RQ302 | WAITING | operations-route-smoke | Add missing Operacije routes to core App analytics smoke matrix |
 | RQ303 | WAITING | daily-sales-localization | Replace English mismatch badge and mixed QA copy on Daily Sales |
 | RQ304 | WAITING | color-sales-detail-label-parity | Align Color detail score label with table/export Serbian copy |
@@ -5183,7 +5183,7 @@ Commit suggestion: `feat(analytics): expose metric evidence and decision tiers`
 
 ## RQ148 - Prove the gross/net/return/cost basis of sales and margin KPIs
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P0
 Type: audit/backend/EF-SQL/contract/export/report/tests
 Feature family: sales-margin-returns-measurement-basis
@@ -16207,6 +16207,22 @@ Reproduction: open `/analytics/inventory` and scan trust header, KPI cards, work
 
 - `RQ267` owns page-level heading hierarchy; this prompt owns copy/localization only.
 - Coordinate wording with `RQ306` if both touch the same string in one pass.
+
+### Completion note
+
+- Date: 2026-09-21
+- Status: DONE
+- Completion: Inventory's primary decision surface and child panels now use Serbian product language with preserved metric keys, backend contracts and data-quality semantics. English cockpit/KPI, workflow, forecast, alert, size-distribution, detail, store-comparison, table, export and scheduler copy was replaced with Serbian wording and correct diacritics.
+- Changed files: Inventory page and child components under `Klijent/clientapp/src/components/inventory/`, focused Inventory/page specs, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-21-RQ301-evidence.md`
+- Checks run: full Inventory-focused suite 22 files / 85 tests; `npm run check:analytics-guardrails` baseline-only with 51 known violations and typecheck pass; `git diff --check`
+- Checks not run: full frontend suite, live browser, backend tests and CI; local `dotnet` unavailable.
+- Run log: `.ai/runs/2026-09-21-RQ301-evidence.md`
+- Evidence state: pending main-delivery synchronization
+- Delivery mode: direct-main after branch transport
+- Missed: no known English primary labels in the owned Inventory surfaces; technical identifiers such as SKU/OOS and API enum values remain intentionally unchanged.
+- Follow-up: return to the remaining Operacije WAITING backlog.
+- Residual risk: deployed-browser visual review and full repository suite remain unrun.
+- Prompt defect / scope repair: none; existing metric keys and backend response contracts were preserved.
 
 ---
 
