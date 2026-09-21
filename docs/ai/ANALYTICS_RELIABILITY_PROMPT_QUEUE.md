@@ -2,7 +2,7 @@
 
 Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ302
+Current READY prompt: none
 
 Owner promotion 2026-09-21: under the user's explicit instruction to claim the next prompt, `RQ302` moved from `WAITING` to `READY` as the next P1 Operacije route-smoke coverage slice after `RQ301`.
 
@@ -1277,7 +1277,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ299 | DONE | pre-nivelacija-url-state | Preserve filters and focus in refresh/back/deep-link URLs |
 | RQ300 | DONE | pre-nivelacija-numeric-robustness | Keep malformed/null numeric payloads from crashing or sorting falsely |
 | RQ301 | DONE | operations-inventory-serbian-copy | Replace English inventory cockpit copy with Serbian product language |
-| RQ302 | IN_PROGRESS | operations-route-smoke | Add missing Operacije routes to core App analytics smoke matrix |
+| RQ302 | DONE | operations-route-smoke | Add missing Operacije routes to core App analytics smoke matrix |
 | RQ303 | WAITING | daily-sales-localization | Replace English mismatch badge and mixed QA copy on Daily Sales |
 | RQ304 | WAITING | color-sales-detail-label-parity | Align Color detail score label with table/export Serbian copy |
 | RQ305 | WAITING | operations-supplier-ia-clarity | Clarify Operacije menu entries that redirect into canonical Supplier tabs |
@@ -5252,7 +5252,7 @@ Revenue is currently described as a sales-line sum and margin contribution as re
 
 ## RQ149 - Establish inventory economic evidence before GMROI or demand-value claims
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/EF-SQL/contract/frontend/export/report/tests
 Feature family: inventory-economic-metric-evidence
@@ -16282,6 +16282,22 @@ Reproduction: break lazy import or redirect for an Operacije route and run App s
 ### Dependencies
 
 - `RQ268` owns legacy redirect semantics; this prompt only asserts they remain routable.
+
+### Completion note
+
+- Date: 2026-09-21
+- Status: DONE
+- Completion: The canonical analytics route smoke matrix now covers all eight Operacije targets: inventory, Shoe Type, Daily Sales, Pre/Post, Color, Pre-Nivelacija and both supplier legacy redirect entries. Supplier legacy routes are asserted through the canonical `/analytics/supplier` shell without changing redirect runtime behavior.
+- Changed files: `Klijent/clientapp/src/routes/analyticsRouteDefinitions.ts`, `Klijent/clientapp/src/__tests__/AppAnalyticsRoutes.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-21-RQ302-evidence.md`
+- Checks run: App analytics route smoke 20/20; `npm run check:analytics-guardrails` baseline-only with 51 known violations and typecheck pass; `git diff --check`
+- Checks not run: full frontend suite, live browser, backend tests and CI; local `dotnet` unavailable.
+- Run log: `.ai/runs/2026-09-21-RQ302-evidence.md`
+- Evidence state: pending main-delivery synchronization
+- Delivery mode: direct-main after branch transport
+- Missed: none known in RQ302 scope.
+- Follow-up: return to the remaining Operacije WAITING backlog.
+- Residual risk: route smoke confirms mapping/render/redirect resolution, not browser refresh or live API behavior.
+- Prompt defect / scope repair: none; App lazy/Suspense runtime routing and legacy redirect semantics were preserved.
 
 ---
 
