@@ -2,11 +2,17 @@
 
 Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ365
+Current READY prompt: RQ367
 
 Owner promotion 2026-09-20: after RQ364 reached DONE, `RQ365` moved from `WAITING` to `READY` as the PostgreSQL migration/bootstrap lifecycle smoke follow-up.
 
 Owner claim 2026-09-20: `RQ365` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ365-cursor.lock.md`.
+
+Owner completion 2026-09-21: `RQ365` delivered the PostgreSQL migration/bootstrap lifecycle smoke, explicit pgvector fixture dependency, serialized extension creation and fresh/repeat/restart assertions. CI remains pending/failed on the latest remote run and is recorded as residual risk per user instruction not to wait for CI. Follow-up: promote `RQ367`.
+
+Owner promotion 2026-09-21: after `RQ365` reached DONE by direct-main delivery with residual CI risk recorded, `RQ367` moved from `WAITING` to `READY`.
+
+Owner claim 2026-09-21: `RQ367` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ367-cursor.lock.md`.
 
 Owner promotion 2026-09-20: after RQ363 reached DONE, `RQ364` moved from `WAITING` to `READY` as the dataset-projection semantics follow-up.
 
@@ -1306,9 +1312,9 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ362 | WAITING | analytics-authoritative-provenance | Formalize authoritative versus derived metric provenance |
 | RQ363 | WAITING | analytics-response-runtime-validation | Fail closed on invalid analytics DTOs at the API boundary |
 | RQ364 | WAITING | analytics-dataset-projections | Separate canonical, filtered, table, chart, export and detail datasets |
-| RQ365 | WAITING | analytics-migration-bootstrap-smoke | Prove fresh and repeat PostgreSQL migration/bootstrap lifecycle |
+| RQ365 | DONE | analytics-migration-bootstrap-smoke | Prove fresh and repeat PostgreSQL migration/bootstrap lifecycle |
 | RQ366 | DONE | analytics-guardrail-baseline | Prevent guardrail debt from growing while shrinking the baseline |
-| RQ367 | WAITING | analytics-generated-validation-evidence | Generate machine-readable validation evidence before Markdown summaries |
+| RQ367 | IN_PROGRESS | analytics-generated-validation-evidence | Generate machine-readable validation evidence before Markdown summaries |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -19354,7 +19360,7 @@ Generic `rows`/`sortedRows` pipelines let table sorting change chart order, page
 
 ## RQ365 - Add a PostgreSQL migration/bootstrap lifecycle smoke scenario
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/infrastructure/tests/CI
 Feature family: analytics-migration-bootstrap-smoke
@@ -19412,6 +19418,24 @@ Fresh and repeat startup paths have exposed non-idempotent indexes, duplicate ob
 - READY AFTER: independent database-reliability branch; no dependency on RQ359-RQ364.
 - `ae661d57` and `4d7206a5` are on `main`.
 - BCI owns generic workflow health; this prompt owns the analytics database/bootstrap contract.
+
+### Completion note
+
+- Date: 2026-09-21
+- Status: DONE
+- Completion: Added fresh/repeat/restart PostgreSQL bootstrap smoke coverage, pgvector Testcontainers support, serialized extension creation before deferred tasks, diagnostics, and the PostgreSQL `COUNT(*)` scalar correction.
+- Changed files: `Api.Tests/DatabaseMigrationBootstrapLifecycleSmokeTests.cs`, `Api.Tests/DatabaseInitializerP0IntegrationTests.cs`, `Infrastructure/Seed/DatabaseInitializer.cs`, `.github/workflows/analytics-tests.yml`, `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.queueStatus.spec.tsx`, `Klijent/clientapp/src/services/__tests__/inventoryDataScopeApi.spec.ts`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, `.ai/runs/2026-09-20-RQ365-evidence.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: focused inventory Vitest regressions; `npm run check:analytics-guardrails`; `git diff --check`; frontend encoding and typecheck.
+- Checks not run: local `dotnet test` because `dotnet` is unavailable in the VM. Remote CI remains pending/failed on the latest run and was not awaited per user instruction.
+- Run log: `.ai/runs/2026-09-20-RQ365-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: `7253e29f`
+- Main verification: pending until direct-main merge/push completes.
+- Missed: remote backend smoke is not green yet; latest failure was the test's Int64/Int32 scalar cast, corrected in `7253e29f`.
+- Follow-up: `RQ367` is promoted and claimed.
+- Residual risk: CI must still confirm the corrected bootstrap smoke; Vercel and frontend checks are not blockers for the backend contract.
+- Prompt defect / scope repair: full bootstrap requires pgvector despite the original prompt's optional-dependency wording; the test now uses the supported pgvector image and asserts the dependency explicitly.
 
 ---
 
