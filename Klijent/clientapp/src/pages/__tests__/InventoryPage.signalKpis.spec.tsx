@@ -146,7 +146,7 @@ describe("InventoryPage signal KPI scope", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Stock cover risk")).toBeInTheDocument();
+      expect(screen.getByText("Rizik pokrivenosti zalihe")).toBeInTheDocument();
     });
     expect(screen.queryByText(new RegExp(INVENTORY_SIGNAL_KPI_PAGE_SCOPE_NOTE))).not.toBeInTheDocument();
   });

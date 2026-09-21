@@ -11,7 +11,7 @@ describe("inventory export contract helpers", () => {
   it("documents current-stock snapshot semantics and signal-window difference", () => {
     const note = buildInventoryServerExportContractNote("existing");
 
-    expect(note).toMatch(/snapshot trenutnog stanja zaliha/i);
+    expect(note).toMatch(/snimak trenutnog stanja zaliha/i);
     expect(note).toMatch(/Postojeći/);
     expect(note).toMatch(/30-dnevni period prodaje/i);
     expect(note).toMatch(/nisu deo server dokumenta/i);

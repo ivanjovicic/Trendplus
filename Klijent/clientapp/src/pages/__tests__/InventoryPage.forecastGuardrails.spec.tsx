@@ -79,7 +79,7 @@ describe("DemandForecastPanel guardrails", () => {
     expect(screen.getByRole("heading", { name: /Procena potra/i })).toBeInTheDocument();
     expect(screen.getByText("Prikazano 1 od 2 SKU")).toBeInTheDocument();
     expect(screen.getByText(/signalni indikatori, ne automatski nalozi/i)).toBeInTheDocument();
-    expect(screen.getByText(/Predlozi dopune su procene zasnovane na forecast signalu/i)).toBeInTheDocument();
+    expect(screen.getByText(/Predlozi dopune su procene zasnovane na signalu prognoze/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /SKU 501/i }));
 
