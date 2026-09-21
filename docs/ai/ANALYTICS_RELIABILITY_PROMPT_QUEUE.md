@@ -19682,10 +19682,10 @@ The Pre/Post page correctly preserves current-period data when the previous comp
 - Checks run: Pre/Post focused suite 36/36; `npm run check:analytics-guardrails` baseline-only with 51 known violations and typecheck pass; `node scripts/check-prompt-queues.mjs`; `node scripts/check-planning-architecture.mjs`; `git diff --check`
 - Checks not run: full frontend suite, live browser, backend tests and CI; local `dotnet` unavailable.
 - Run log: `.ai/runs/2026-09-21-RQ368-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `e23448a0c215abb81521ac42d97cd118ea2d5547`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `e23448a0c215abb81521ac42d97cd118ea2d5547`
 - Missed: none known in RQ368 scope.
 - Follow-up: promote `RQ369` after RQ368 main delivery.
 - Residual risk: other Inventory inline error paths remain covered by RQ369.
