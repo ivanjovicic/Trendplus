@@ -533,7 +533,7 @@ export default function InventoryPage() {
 
   const inventoryQuery = useCallback(async (signal: AbortSignal): Promise<InventoryLifecycleSnapshot> => {
     const results = await Promise.allSettled([
-      getInventoryBalance(true, selectedStoreId, selectedSupplierId, inventoryDataScope),
+      getInventoryBalance(true, selectedStoreId, selectedSupplierId, inventoryDataScope, signal),
       getInventoryList({
         pageNumber,
         pageSize,
@@ -551,22 +551,25 @@ export default function InventoryPage() {
         supplierId: selectedSupplierId,
         sortBy: serverSortBy,
         dataScope: inventoryDataScope,
+        signal,
       }),
       getInventoryStoreComparison({
         compareStoreIds,
         supplierId: selectedSupplierId,
         search: trimmedSearch || undefined,
         dataScope: inventoryDataScope,
+        signal,
       }),
       getInventoryActionSuggestions({
         storeId: selectedStoreId,
         supplierId: selectedSupplierId,
         search: trimmedSearch || undefined,
         dataScope: inventoryDataScope,
+        signal,
       }),
-      getForecast({ storeId: selectedStoreId, supplierId: selectedSupplierId, top: FORECAST_FETCH_LIMIT }),
-      getInventoryAlerts({ storeId: selectedStoreId, supplierId: selectedSupplierId }),
-      getRebalanceSuggestions({ fromStoreId: selectedStoreId, supplierId: selectedSupplierId, top: REBALANCE_FETCH_LIMIT }),
+      getForecast({ storeId: selectedStoreId, supplierId: selectedSupplierId, top: FORECAST_FETCH_LIMIT, signal }),
+      getInventoryAlerts({ storeId: selectedStoreId, supplierId: selectedSupplierId, signal }),
+      getRebalanceSuggestions({ fromStoreId: selectedStoreId, supplierId: selectedSupplierId, top: REBALANCE_FETCH_LIMIT, signal }),
     ]);
     const failed = results.find((result) => result.status === "rejected");
     if (failed?.status === "rejected") throw failed.reason;
@@ -638,12 +641,14 @@ export default function InventoryPage() {
       return;
     }
     let cancelled = false;
+    const controller = new AbortController();
     setDetailLoading(true);
     setDetailError(null);
     void getInventoryItemDetail(detailRow.id, {
       storeId: selectedStoreId ?? detailRow.idObjekat,
       supplierId: selectedSupplierId ?? detailRow.idDobavljac,
       dataScope: inventoryDataScope,
+      signal: controller.signal,
       ...inventorySignalWindow,
     })
       .then((nextDetail) => {
@@ -663,7 +668,10 @@ export default function InventoryPage() {
       .finally(() => {
         if (!cancelled) setDetailLoading(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
   }, [detailRow, inventoryDataScope, inventorySignalWindow, selectedStoreId, selectedSupplierId]);
 
   useEffect(() => {
@@ -673,8 +681,13 @@ export default function InventoryPage() {
       return;
     }
     let cancelled = false;
+    const controller = new AbortController();
     setDetailSizeCurveLoading(true);
-    void getSizeCurve({ skuId: detailRow.id, storeId: detailRow.idObjekat ?? selectedStoreId ?? undefined })
+    void getSizeCurve({
+      skuId: detailRow.id,
+      storeId: detailRow.idObjekat ?? selectedStoreId ?? undefined,
+      signal: controller.signal,
+    })
       .then((nextCurve) => {
         if (!cancelled) setDetailSizeCurve(nextCurve);
       })
@@ -684,7 +697,10 @@ export default function InventoryPage() {
       .finally(() => {
         if (!cancelled) setDetailSizeCurveLoading(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
   }, [detailRow, detailTab, selectedStoreId]);
 
   useEffect(() => {
@@ -694,9 +710,10 @@ export default function InventoryPage() {
       return;
     }
     let cancelled = false;
+    const controller = new AbortController();
     setSizeCurveLoading(true);
     setSizeCurveError(null);
-    void getSizeCurve({ skuId: sizeCurveSkuId, storeId: selectedStoreId })
+    void getSizeCurve({ skuId: sizeCurveSkuId, storeId: selectedStoreId, signal: controller.signal })
       .then((data) => {
         if (!cancelled) setSizeCurve(data);
       })
@@ -709,7 +726,10 @@ export default function InventoryPage() {
       .finally(() => {
         if (!cancelled) setSizeCurveLoading(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
   }, [sizeCurveSkuId, selectedStoreId]);
 
   const rows = useMemo(() => (pageData?.items ?? []).map((item) => buildInventoryRow(item, stores, suppliers)), [pageData, stores, suppliers]);

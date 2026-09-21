@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import InventoryPage from "../InventoryPage";
+import { setDataScope } from "../../utils/dataScope";
 
 const getAnalyticsActionSourceStatusesMock = vi.fn();
 const getStoresMock = vi.fn();
@@ -216,5 +217,35 @@ describe("InventoryPage off-page SKU detail", () => {
 
     expect(screen.queryByText(/0\s*RSD/)).not.toBeInTheDocument();
     expect(screen.queryByText("Bez zaliha")).not.toBeInTheDocument();
+  });
+
+  it("aborts the detail request when the active data scope changes", async () => {
+    getInventoryItemDetailMock.mockImplementation(
+      () => new Promise(() => {
+        /* keep loading until the scope changes */
+      }),
+    );
+
+    render(
+      <MemoryRouter>
+        <InventoryPage />
+      </MemoryRouter>,
+    );
+
+    const alertButton = await screen.findByRole("button", { name: /Otvori detalj artikla za alert Off-page alert artikal/i });
+    fireEvent.click(alertButton);
+
+    await waitFor(() => {
+      expect(getInventoryItemDetailMock).toHaveBeenCalled();
+    });
+    const detailSignal = getInventoryItemDetailMock.mock.calls.at(-1)?.[1]?.signal as AbortSignal;
+    expect(detailSignal).toBeInstanceOf(AbortSignal);
+
+    setDataScope("existing");
+    fireEvent(window, new Event("trendplus:data-scope-changed"));
+
+    await waitFor(() => {
+      expect(detailSignal.aborted).toBe(true);
+    });
   });
 });

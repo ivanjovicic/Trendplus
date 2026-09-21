@@ -158,9 +158,10 @@ async function fetchJsonWithRetry<T>(
   errorMessage?: string,
   onResponse?: FetchJsonResponseHandler<T>,
   schema?: ZodType<unknown>,
+  signal?: AbortSignal,
 ): Promise<T> {
   if (isApiFailoverLayerActive()) {
-    const res = await fetchAnalyticsResponse(url, undefined, timeoutMs);
+    const res = await fetchAnalyticsResponse(url, signal ? { signal } : undefined, timeoutMs);
     if (!res.ok) {
       throw new Error(await parseApiError(res, errorMessage));
     }
@@ -175,7 +176,7 @@ async function fetchJsonWithRetry<T>(
   const { firstAttemptTimeoutMs, totalTimeoutMs } = getRetryTimeouts(timeoutMs);
   
   try {
-    const res = await fetchAnalyticsResponse(url, undefined, firstAttemptTimeoutMs);
+    const res = await fetchAnalyticsResponse(url, signal ? { signal } : undefined, firstAttemptTimeoutMs);
     if (!res.ok) {
       throw new Error(await parseApiError(res, errorMessage));
     }
@@ -192,7 +193,7 @@ async function fetchJsonWithRetry<T>(
     }
 
     // First attempt timed out - retry with longer timeout
-  const res = await fetchAnalyticsResponse(url, undefined, totalTimeoutMs);
+  const res = await fetchAnalyticsResponse(url, signal ? { signal } : undefined, totalTimeoutMs);
     if (!res.ok) {
       throw new Error(await parseApiError(res, errorMessage));
     }
@@ -211,6 +212,7 @@ async function fetchJson<T>(
   errorMessage?: string,
   onResponse?: FetchJsonResponseHandler<T>,
   schema?: ZodType<unknown>,
+  signal?: AbortSignal,
 ): Promise<T> {
   const finalParams = params ? new URLSearchParams(params.toString()) : undefined;
   const url = makeUrl(path, finalParams);
@@ -222,7 +224,7 @@ async function fetchJson<T>(
       return cached.value as T;
     }
 
-    const existingRequest = inFlightRequests.get(url);
+    const existingRequest = signal ? undefined : inFlightRequests.get(url);
     if (existingRequest) {
       return existingRequest as Promise<T>;
     }
@@ -236,6 +238,7 @@ async function fetchJson<T>(
       errorMessage,
       onResponse,
       schema,
+      signal,
     );
     if (cacheTtlMs > 0 && requestGeneration === clientCacheGeneration) {
       responseCache.set(url, { expiresAt: Date.now() + cacheTtlMs, value: data });
@@ -263,9 +266,10 @@ async function fetchJsonWithCachedFallback<T>(
   params?: URLSearchParams,
   errorMessage?: string,
   schema?: ZodType<unknown>,
+  signal?: AbortSignal,
 ): Promise<T> {
   try {
-    return await fetchJson<T>(cachedPath, params, errorMessage, undefined, schema);
+    return await fetchJson<T>(cachedPath, params, errorMessage, undefined, schema, signal);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const normalized = message.toLowerCase();
@@ -273,7 +277,7 @@ async function fetchJsonWithCachedFallback<T>(
       throw error;
     }
 
-    return fetchJson<T>(fallbackPath, params, errorMessage, undefined, schema);
+    return fetchJson<T>(fallbackPath, params, errorMessage, undefined, schema, signal);
   }
 }
 
@@ -1203,6 +1207,7 @@ export async function getInventoryBalance(
   storeId?: number | null,
   supplierId?: number | null,
   dataScope?: string | null,
+  signal?: AbortSignal,
 ): Promise<import("../types/analytics").InventoryBalance> {
   const params = new URLSearchParams();
   if (storeId != null) params.append("storeId", String(storeId));
@@ -1215,6 +1220,7 @@ export async function getInventoryBalance(
     "Greska pri ucitavanju bilansa zaliha",
     undefined,
     inventoryBalanceResponseSchema,
+    signal,
   );
 }
 
@@ -1264,6 +1270,7 @@ export async function getInventoryList(
     "Greska pri ucitavanju liste zaliha",
     undefined,
     inventoryPagedResponseSchema,
+    options?.signal,
   );
 }
 
@@ -1273,6 +1280,7 @@ export async function getInventoryInsights(options?: {
   supplierId?: number | null;
   sortBy?: string | null;
   dataScope?: string | null;
+  signal?: AbortSignal;
 }): Promise<InventoryInsights> {
   const params = new URLSearchParams();
   if (options?.search) params.append("search", options.search);
@@ -1287,6 +1295,7 @@ export async function getInventoryInsights(options?: {
     params,
     "Greska pri ucitavanju inventory uvida",
     inventoryInsightsResponseSchema,
+    options?.signal,
   );
 }
 
@@ -1298,6 +1307,7 @@ export async function getInventoryItemDetail(
     fromDate?: string | null;
     toDate?: string | null;
     dataScope?: string | null;
+    signal?: AbortSignal;
   }
 ): Promise<InventoryItemDetail> {
   const params = new URLSearchParams();
@@ -1310,6 +1320,7 @@ export async function getInventoryItemDetail(
     "Greska pri ucitavanju detalja artikla",
     undefined,
     inventoryDetailResponseSchema,
+    options?.signal,
   );
 }
 
@@ -1401,6 +1412,7 @@ export async function getInventoryStoreComparison(options?: {
   supplierId?: number | null;
   search?: string;
   dataScope?: string | null;
+  signal?: AbortSignal;
 }): Promise<InventoryStoreComparison> {
   const params = new URLSearchParams();
   for (const storeId of options?.compareStoreIds ?? []) {
@@ -1414,7 +1426,9 @@ export async function getInventoryStoreComparison(options?: {
     "/api/analytics/cached/inventory/store-comparison",
     "/api/analytics/inventory/store-comparison",
     params,
-    "Greska pri ucitavanju poredenja prodavnica"
+    "Greska pri ucitavanju poredenja prodavnica",
+    undefined,
+    options?.signal,
   );
 }
 
@@ -1423,6 +1437,7 @@ export async function getInventoryActionSuggestions(options?: {
   supplierId?: number | null;
   search?: string;
   dataScope?: string | null;
+  signal?: AbortSignal;
 }): Promise<InventoryActionWorkflow> {
   const params = new URLSearchParams();
   if (options?.storeId != null) params.append("storeId", String(options.storeId));
@@ -1433,7 +1448,10 @@ export async function getInventoryActionSuggestions(options?: {
   return fetchJson(
     "/api/analytics/inventory/action-suggestions",
     params,
-    "Greska pri ucitavanju predloga akcije"
+    "Greska pri ucitavanju predloga akcije",
+    undefined,
+    undefined,
+    options?.signal,
   );
 }
 
@@ -1657,6 +1675,7 @@ export async function getForecast(options?: {
   skuId?: number | null;
   sizeCode?: string;
   top?: number;
+  signal?: AbortSignal;
 }): Promise<ForecastDto> {
   const params = new URLSearchParams();
   if (options?.storeId != null) params.append("storeId", String(options.storeId));
@@ -1667,7 +1686,10 @@ export async function getForecast(options?: {
   return fetchJson(
     "/api/analytics/cached/inventory/forecast",
     params,
-    "Greska pri ucitavanju forecast podataka"
+    "Greska pri ucitavanju forecast podataka",
+    undefined,
+    undefined,
+    options?.signal,
   );
 }
 
@@ -1675,6 +1697,7 @@ export async function getForecastBaselineBacktest(options?: {
   storeId?: number | null;
   supplierId?: number | null;
   horizonDays?: number;
+  signal?: AbortSignal;
 }): Promise<ForecastBaselineBacktestDto> {
   const params = new URLSearchParams();
   if (options?.storeId != null) params.append("storeId", String(options.storeId));
@@ -1684,7 +1707,10 @@ export async function getForecastBaselineBacktest(options?: {
   return fetchJson(
     "/api/analytics/cached/inventory/forecast/backtest",
     params,
-    "Evaluacija trend modela trenutno nije dostupna"
+    "Evaluacija trend modela trenutno nije dostupna",
+    undefined,
+    undefined,
+    options?.signal,
   );
 }
 
@@ -1695,6 +1721,7 @@ export async function getSizeCurve(options?: {
   supplierId?: number | null;
   skuId?: number | null;
   top?: number;
+  signal?: AbortSignal;
 }): Promise<SizeCurveDto> {
   const params = new URLSearchParams();
   if (options?.storeId != null) params.append("storeId", String(options.storeId));
@@ -1704,7 +1731,10 @@ export async function getSizeCurve(options?: {
   return fetchJson(
     "/api/analytics/cached/inventory/size-curve",
     params,
-    "Greska pri ucitavanju size curve"
+    "Greska pri ucitavanju size curve",
+    undefined,
+    undefined,
+    options?.signal,
   );
 }
 
@@ -1716,6 +1746,7 @@ export async function getRebalanceSuggestions(options?: {
   supplierId?: number | null;
   urgency?: string;
   top?: number;
+  signal?: AbortSignal;
 }): Promise<RebalanceListDto> {
   const params = new URLSearchParams();
   if (options?.fromStoreId != null) params.append("fromStoreId", String(options.fromStoreId));
@@ -1726,7 +1757,10 @@ export async function getRebalanceSuggestions(options?: {
   return fetchJson(
     "/api/analytics/cached/inventory/rebalance-suggestions",
     params,
-    "Greska pri ucitavanju predloga za redistribuciju"
+    "Greska pri ucitavanju predloga za redistribuciju",
+    undefined,
+    undefined,
+    options?.signal,
   );
 }
 
@@ -1737,6 +1771,7 @@ export async function getInventoryAlerts(options?: {
   supplierId?: number | null;
   severity?: string;
   top?: number;
+  signal?: AbortSignal;
 }): Promise<InventoryAlertListDto> {
   const params = new URLSearchParams();
   if (options?.storeId != null) params.append("storeId", String(options.storeId));
@@ -1746,7 +1781,10 @@ export async function getInventoryAlerts(options?: {
   return fetchJson(
     "/api/analytics/cached/inventory/alerts",
     params,
-    "Greska pri ucitavanju inventory alertova"
+    "Greska pri ucitavanju inventory alertova",
+    undefined,
+    undefined,
+    options?.signal,
   );
 }
 

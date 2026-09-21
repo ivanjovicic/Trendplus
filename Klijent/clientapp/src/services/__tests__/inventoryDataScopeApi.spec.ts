@@ -62,4 +62,18 @@ describe("Inventory data-scope API contract", () => {
       expect(new URL(url, window.location.origin).searchParams.get("dataScope")).toBe("imported");
     }
   });
+
+  it("propagates abort signals through cached Inventory requests", async () => {
+    const controller = new AbortController();
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((_input: RequestInfo | URL, init?: RequestInit) => (
+      new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(init.signal?.reason), { once: true });
+      })
+    )));
+
+    const request = getInventoryInsights({ dataScope: "abort-check", signal: controller.signal });
+    controller.abort();
+
+    await expect(request).rejects.toMatchObject({ name: "AbortError" });
+  });
 });

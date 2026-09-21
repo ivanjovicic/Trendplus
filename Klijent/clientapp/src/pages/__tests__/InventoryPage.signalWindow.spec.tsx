@@ -223,6 +223,45 @@ describe("InventoryPage signal window refresh", () => {
     });
   });
 
+  it("passes one lifecycle signal to every secondary request and aborts it on scope refresh", async () => {
+    render(
+      <MemoryRouter>
+        <InventoryPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(getInventoryListMock).toHaveBeenCalled();
+      expect(getInventoryInsightsMock).toHaveBeenCalled();
+      expect(getInventoryStoreComparisonMock).toHaveBeenCalled();
+      expect(getInventoryActionSuggestionsMock).toHaveBeenCalled();
+      expect(getForecastMock).toHaveBeenCalled();
+      expect(getInventoryAlertsMock).toHaveBeenCalled();
+      expect(getRebalanceSuggestionsMock).toHaveBeenCalled();
+    });
+
+    const lifecycleSignal = getInventoryListMock.mock.calls.at(-1)?.[0]?.signal as AbortSignal;
+    expect(lifecycleSignal).toBeInstanceOf(AbortSignal);
+    expect(getInventoryBalanceMock.mock.calls.at(-1)?.[4]).toBe(lifecycleSignal);
+    expect(getInventoryInsightsMock.mock.calls.at(-1)?.[0]?.signal).toBe(lifecycleSignal);
+    expect(getInventoryStoreComparisonMock.mock.calls.at(-1)?.[0]?.signal).toBe(lifecycleSignal);
+    expect(getInventoryActionSuggestionsMock.mock.calls.at(-1)?.[0]?.signal).toBe(lifecycleSignal);
+    expect(getForecastMock.mock.calls.at(-1)?.[0]?.signal).toBe(lifecycleSignal);
+    expect(getInventoryAlertsMock.mock.calls.at(-1)?.[0]?.signal).toBe(lifecycleSignal);
+    expect(getRebalanceSuggestionsMock.mock.calls.at(-1)?.[0]?.signal).toBe(lifecycleSignal);
+
+    setDataScope("existing");
+    act(() => {
+      window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+    });
+
+    await waitFor(() => {
+      const nextSignal = getInventoryListMock.mock.calls.at(-1)?.[0]?.signal as AbortSignal;
+      expect(nextSignal).not.toBe(lifecycleSignal);
+      expect(lifecycleSignal.aborted).toBe(true);
+    });
+  });
+
   it("restores Inventory pagination, search, page size, and compare stores from URL", async () => {
     render(
       <MemoryRouter initialEntries={["/analytics/inventory?page=3&pageSize=100&search=patika&compareStores=1,2"]}>

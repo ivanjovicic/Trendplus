@@ -2,7 +2,11 @@
 
 Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ370
+
+Owner promotion 2026-09-21: under the user's explicit instruction to claim the next prompt, `RQ370` moved from `WAITING` to `READY` as the P2 Inventory secondary/detail cancellation follow-up after `RQ369`.
+
+Owner claim 2026-09-21: `RQ370` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ370-cursor.lock.md`.
 
 Owner promotion 2026-09-21: under the user's explicit instruction to claim the next prompt, `RQ369` moved from `WAITING` to `READY` as the P1 Inventory inline-error-safety follow-up after `RQ368`.
 
@@ -1333,7 +1337,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ367 | DONE | analytics-generated-validation-evidence | Generate machine-readable validation evidence before Markdown summaries |
 | RQ368 | DONE | operations-inline-error-safety | Sanitize inline Pre/Post partial-failure messages without hiding degraded state |
 | RQ369 | DONE | inventory-inline-error-safety | Sanitize Inventory detail/export/scheduler error messages |
-| RQ370 | WAITING | inventory-secondary-request-cancellation | Abort Inventory secondary and detail requests on scope changes |
+| RQ370 | IN_PROGRESS | inventory-secondary-request-cancellation | Abort Inventory secondary and detail requests on scope changes |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -19787,7 +19791,7 @@ Several Inventory error paths bypass the shared `AnalyticsErrorState` safety map
 
 ## RQ370 - Abort Inventory secondary and detail requests on scope changes
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P2
 Type: frontend/performance/tests
 Feature family: inventory-secondary-request-cancellation

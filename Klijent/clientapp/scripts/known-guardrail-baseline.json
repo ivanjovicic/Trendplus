@@ -137,7 +137,7 @@
     {
       "file": "src/pages/InventoryPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 716,
+      "line": 736,
       "reason": "Existing inventory page-count fallback requires a reviewed backend-total exception."
     },
     {
@@ -263,7 +263,7 @@
     {
       "file": "src/services/analyticsApi.ts",
       "rule": "swallowed_fetch_failure",
-      "line": 434,
+      "line": 438,
       "reason": "Existing API fallback wrapper requires a reviewed compatibility exception."
     },
     {
