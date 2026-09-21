@@ -19774,10 +19774,10 @@ Several Inventory error paths bypass the shared `AnalyticsErrorState` safety map
 - Checks run: focused Inventory error-surface suite 14/14; `npm run check:analytics-guardrails` baseline-only with 51 known violations and typecheck pass; `node scripts/check-prompt-queues.mjs`; `node scripts/check-planning-architecture.mjs`; `git diff --check`
 - Checks not run: full frontend suite, live browser, backend tests and CI; local `dotnet` unavailable.
 - Run log: `.ai/runs/2026-09-21-RQ369-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `cb8caa03fad27b3b06ff63bdf8036acf34cf74a7`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `cb8caa03fad27b3b06ff63bdf8036acf34cf74a7`
 - Missed: none known in RQ369 scope.
 - Follow-up: promote `RQ370` after RQ369 main delivery.
 - Residual risk: Inventory secondary/detail request cancellation remains covered by RQ370.
