@@ -16292,8 +16292,10 @@ Reproduction: break lazy import or redirect for an Operacije route and run App s
 - Checks run: App analytics route smoke 20/20; `npm run check:analytics-guardrails` baseline-only with 51 known violations and typecheck pass; `git diff --check`
 - Checks not run: full frontend suite, live browser, backend tests and CI; local `dotnet` unavailable.
 - Run log: `.ai/runs/2026-09-21-RQ302-evidence.md`
-- Evidence state: pending main-delivery synchronization
+- Evidence state: synchronized
 - Delivery mode: direct-main after branch transport
+- Main commit SHA: `3fa18ff5e6359675cb9641dfe839d8c867e7d1e4`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `3fa18ff5e6359675cb9641dfe839d8c867e7d1e4`
 - Missed: none known in RQ302 scope.
 - Follow-up: return to the remaining Operacije WAITING backlog.
 - Residual risk: route smoke confirms mapping/render/redirect resolution, not browser refresh or live API behavior.
