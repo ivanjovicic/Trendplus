@@ -34,6 +34,7 @@ import type { StoreOption } from "../types/analytics";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
 import { fmtNumber, fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
+import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { resolvePresetFilterRange } from "../utils/analyticsPeriodPresets";
 import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescriptions";
 import {
@@ -163,6 +164,15 @@ const STATUS_PRIORITY: Record<DecisionStatus, number> = {
 };
 const MEDIUM_SIGNAL_RELIABILITY_PCT = 40;
 const VENDOR_NIVELACIJA_MAX_ROWS = 50_000;
+const PRE_POST_INLINE_ERROR_FALLBACK = "Podaci trenutno nisu dostupni. Proverite kvalitet podataka i pokušajte ponovo.";
+
+function getSafePrePostInlineErrorMessage(reason: unknown): string {
+  return getSafeAnalyticsErrorMessage(
+    reason instanceof Error ? reason.message : String(reason),
+    undefined,
+    PRE_POST_INLINE_ERROR_FALLBACK,
+  );
+}
 const CHART_GRID_STROKE = "var(--dashboard-grid, var(--border-default))";
 const CHART_AXIS_TICK = { fill: "var(--dashboard-chart-axis, var(--text-secondary))", fontSize: 12, fontWeight: 600 };
 const CHART_CURSOR_STYLE = { fill: "var(--dashboard-chart-hover, var(--accent-soft))" };
@@ -552,7 +562,7 @@ export default function ProdajaPrePostNivelacijePage() {
       setVendorLoadError(null);
     } catch (reason) {
       setVendorLoadError(
-        reason instanceof Error ? reason.message : "Greška pri učitavanju liste dobavljača.",
+        getSafePrePostInlineErrorMessage(reason),
       );
       // Preserve the last known vendor list on transient failures instead of faking an empty filter set.
     }
@@ -607,9 +617,7 @@ export default function ProdajaPrePostNivelacijePage() {
       current: currentResult.value,
       previous: previousResult.status === "fulfilled" ? previousResult.value : null,
       previousError: previousResult.status === "rejected"
-        ? previousResult.reason instanceof Error
-          ? previousResult.reason.message
-          : "Zahtev za prethodni uporedivi period nije uspeo."
+        ? getSafePrePostInlineErrorMessage(previousResult.reason)
         : null,
     };
   }, [activeFilters, dataScope]);

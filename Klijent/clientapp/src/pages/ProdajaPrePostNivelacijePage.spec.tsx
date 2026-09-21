@@ -403,6 +403,21 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(screen.queryByText("Nova baza")).not.toBeInTheDocument();
   });
 
+  it("sanitizes technical previous-period errors while preserving the partial warning", async () => {
+    vi.mocked(getVendorSalesNivelacija)
+      .mockResolvedValueOnce(response())
+      .mockRejectedValueOnce(new Error("NpgsqlException: connection refused at SqlCommand.Execute"));
+
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+
+    const warning = await screen.findByTestId("previous-comparison-warning");
+    expect(warning).toHaveTextContent("Podaci trenutno nisu dostupni");
+    expect(warning).not.toHaveTextContent("NpgsqlException");
+    expect(warning).not.toHaveTextContent("SqlCommand.Execute");
+    expect(screen.getByText("Vendor A")).toBeInTheDocument();
+  });
+
   it("does not treat missing reliability as a weak Nisko signal", async () => {
     vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
       response({
@@ -992,6 +1007,18 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     const vendorSelect = screen.getByLabelText("Dobavljač");
     expect(within(vendorSelect).getAllByRole("option")).toHaveLength(1);
     expect(within(vendorSelect).getByRole("option", { name: "Svi" })).toBeInTheDocument();
+  });
+
+  it("sanitizes technical vendor-load errors without hiding the retry path", async () => {
+    vi.mocked(getDobavljaci).mockRejectedValue(new Error("System.InvalidOperationException: provider failure"));
+
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+
+    const warning = await screen.findByTestId("vendor-load-warning");
+    expect(warning).toHaveTextContent("Podaci trenutno nisu dostupni");
+    expect(warning).not.toHaveTextContent("InvalidOperationException");
+    expect(screen.getByRole("button", { name: "Pokušaj ponovo" })).toBeInTheDocument();
   });
 
   it("recovers the vendor dropdown after a failed load via retry", async () => {

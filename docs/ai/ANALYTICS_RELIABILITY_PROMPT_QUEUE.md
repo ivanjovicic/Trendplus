@@ -2,7 +2,11 @@
 
 Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ368
+
+Owner promotion 2026-09-21: under the user's explicit instruction to claim the next prompt, `RQ368` moved from `WAITING` to `READY` as the first safe P1 follow-up from the second Operacije audit.
+
+Owner claim 2026-09-21: `RQ368` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ368-cursor.lock.md`.
 
 Owner promotion 2026-09-20: after RQ364 reached DONE, `RQ365` moved from `WAITING` to `READY` as the PostgreSQL migration/bootstrap lifecycle smoke follow-up.
 
@@ -1319,7 +1323,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ365 | DONE | analytics-migration-bootstrap-smoke | Prove fresh and repeat PostgreSQL migration/bootstrap lifecycle |
 | RQ366 | DONE | analytics-guardrail-baseline | Prevent guardrail debt from growing while shrinking the baseline |
 | RQ367 | DONE | analytics-generated-validation-evidence | Generate machine-readable validation evidence before Markdown summaries |
-| RQ368 | WAITING | operations-inline-error-safety | Sanitize inline Pre/Post partial-failure messages without hiding degraded state |
+| RQ368 | IN_PROGRESS | operations-inline-error-safety | Sanitize inline Pre/Post partial-failure messages without hiding degraded state |
 | RQ369 | WAITING | inventory-inline-error-safety | Sanitize Inventory detail/export/scheduler error messages |
 | RQ370 | WAITING | inventory-secondary-request-cancellation | Abort Inventory secondary and detail requests on scope changes |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
