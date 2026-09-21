@@ -2,7 +2,11 @@
 
 Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ369
+
+Owner promotion 2026-09-21: under the user's explicit instruction to claim the next prompt, `RQ369` moved from `WAITING` to `READY` as the P1 Inventory inline-error-safety follow-up after `RQ368`.
+
+Owner claim 2026-09-21: `RQ369` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ369-cursor.lock.md`.
 
 Owner promotion 2026-09-21: under the user's explicit instruction to claim the next prompt, `RQ368` moved from `WAITING` to `READY` as the first safe P1 follow-up from the second Operacije audit.
 
@@ -1326,7 +1330,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ366 | DONE | analytics-guardrail-baseline | Prevent guardrail debt from growing while shrinking the baseline |
 | RQ367 | DONE | analytics-generated-validation-evidence | Generate machine-readable validation evidence before Markdown summaries |
 | RQ368 | DONE | operations-inline-error-safety | Sanitize inline Pre/Post partial-failure messages without hiding degraded state |
-| RQ369 | WAITING | inventory-inline-error-safety | Sanitize Inventory detail/export/scheduler error messages |
+| RQ369 | IN_PROGRESS | inventory-inline-error-safety | Sanitize Inventory detail/export/scheduler error messages |
 | RQ370 | WAITING | inventory-secondary-request-cancellation | Abort Inventory secondary and detail requests on scope changes |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
@@ -19695,7 +19699,7 @@ The Pre/Post page correctly preserves current-period data when the previous comp
 
 ## RQ369 - Sanitize Inventory detail/export/scheduler error messages
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend/trust/tests
 Feature family: inventory-inline-error-safety

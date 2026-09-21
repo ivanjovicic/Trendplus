@@ -24,13 +24,13 @@ const sizeCurveItem = {
   reasonCodes: [],
 };
 
-function renderPanel(sizeCurve: SizeCurveDto | null) {
+function renderPanel(sizeCurve: SizeCurveDto | null, sizeCurveError: string | null = null) {
   return render(
     <SizeCurvePanel
       sizeCurveSkuId={101}
       sizeCurve={sizeCurve}
       sizeCurveLoading={false}
-      sizeCurveError={null}
+      sizeCurveError={sizeCurveError}
       onChangeSkuId={vi.fn()}
     />,
   );
@@ -91,5 +91,12 @@ describe("SizeCurvePanel evidence states", () => {
 
     expect(screen.getByTestId("size-curve-visualization")).toHaveTextContent("1 size curve redova");
     expect(screen.queryByText(/delimične ili nepotpune/i)).not.toBeInTheDocument();
+  });
+
+  it("sanitizes technical size curve errors", () => {
+    renderPanel(null, "System.InvalidOperationException: provider failure");
+
+    expect(screen.getByText("Podaci trenutno nisu dostupni. Proverite kvalitet podataka i pokušajte ponovo.")).toBeInTheDocument();
+    expect(screen.queryByText(/InvalidOperationException/)).not.toBeInTheDocument();
   });
 });

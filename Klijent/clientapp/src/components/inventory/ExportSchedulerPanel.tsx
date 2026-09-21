@@ -2,6 +2,7 @@ import { ChevronDown, Download, FileSpreadsheet, FileText, MailIcon, Printer, Re
 import { useState } from "react";
 import type { InventoryReportSchedule, InventoryReportScheduleInput } from "../../types/analytics";
 import { inventoryScheduleFormatLabel, inventoryScheduleFrequencyLabel } from "./inventoryUtils";
+import { getSafeAnalyticsErrorMessage } from "../../utils/analyticsErrorMessages";
 
 type ExportSchedulerPanelProps = {
   isOpen?: boolean;
@@ -55,6 +56,12 @@ export function ExportSchedulerPanel({
   contractNote,
 }: ExportSchedulerPanelProps) {
   const [isOpen, setIsOpen] = useState(initialOpen ?? false);
+  const safeSchedulerMessage = schedulerMessage
+    ? getSafeAnalyticsErrorMessage(schedulerMessage, undefined, "Rasporedi izveštaja trenutno nisu dostupni.")
+    : null;
+  const safeExportStatus = exportStatus
+    ? getSafeAnalyticsErrorMessage(exportStatus, undefined, "Operacija izvoza trenutno nije uspela.")
+    : null;
 
   return (
     <section className="rounded-[28px] border border-border bg-surface p-5 shadow-lg">
@@ -180,9 +187,9 @@ export function ExportSchedulerPanel({
               </button>
             </div>
 
-            {exportStatus ? (
+            {safeExportStatus ? (
               <div className="mt-2 rounded-2xl border border-info bg-surface-darker px-3 py-2 text-xs text-info">
-                {exportStatus}
+                {safeExportStatus}
               </div>
             ) : null}
           </div>
@@ -193,9 +200,9 @@ export function ExportSchedulerPanel({
               <MailIcon size={14} /> Raspored izveštaja
             </h3>
 
-            {schedulerMessage ? (
+            {safeSchedulerMessage ? (
               <div className="mb-3 rounded-2xl border border-warning bg-surface-darker px-3 py-2 text-xs text-warning">
-                {schedulerMessage}
+                {safeSchedulerMessage}
               </div>
             ) : null}
 

@@ -58,4 +58,37 @@ describe("ExportSchedulerPanel schedule labels", () => {
     expect(screen.queryByText(/future_frequency/)).not.toBeInTheDocument();
     expect(screen.queryByText(/future_format/)).not.toBeInTheDocument();
   });
+
+  it("sanitizes technical export and scheduler messages", () => {
+    const noop = vi.fn();
+    render(
+      <ExportSchedulerPanel
+        isOpen
+        printOrientation="landscape"
+        onPrintOrientationChange={noop}
+        onPrintPreview={noop}
+        onPrintBlank={noop}
+        onExportCsv={noop}
+        onExportCsvFiltered={noop}
+        onExportExcel={noop}
+        onExportPdf={noop}
+        onRefresh={noop}
+        schedules={[]}
+        scheduleDraft={createScheduleDraft()}
+        setScheduleDraft={noop}
+        schedulerBusy={false}
+        schedulerMessage="NpgsqlException: scheduler provider failure"
+        onCopyCurrentFilters={noop}
+        onSaveSchedule={noop}
+        onRunScheduleNow={noop}
+        exportBusy={false}
+        totalCount={1}
+        rowsLength={1}
+        exportStatus="System.InvalidOperationException: export provider failure"
+      />,
+    );
+
+    expect(screen.getAllByText("Podaci trenutno nisu dostupni. Proverite kvalitet podataka i pokušajte ponovo.")).toHaveLength(2);
+    expect(screen.queryByText(/NpgsqlException|InvalidOperationException/)).not.toBeInTheDocument();
+  });
 });

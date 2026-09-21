@@ -30,6 +30,7 @@ import { getDataScope } from "../utils/dataScope";
 import type { InventoryRow } from "../components/inventory/types";
 import { fmtNumber, formatDateTime } from "../utils/analyticsFormatters";
 import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
+import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { getAnalyticsMetaMessage, isAnalyticsMetaInsufficient, isAnalyticsMetaWarning, shouldShowAnalyticsEmptyState } from "../utils/analyticsResponseMeta";
 import {
   resolveSupplierFilterFallbackState,
@@ -112,6 +113,11 @@ function toInventoryPageError(reason: unknown, fallback: string): InventoryPageE
   }
 
   return { message: fallback };
+}
+
+function toSafeInventoryInlineError(reason: unknown, fallback: string): string {
+  const pageError = toInventoryPageError(reason, fallback);
+  return getSafeAnalyticsErrorMessage(pageError.message, pageError.errorCode, fallback);
 }
 
 function createInventorySignalWindow() {
@@ -488,7 +494,7 @@ export default function InventoryPage() {
         if (!cancelled) setSchedules(nextSchedules);
       })
       .catch((reason) => {
-        if (!cancelled) setSchedulerMessage(reason instanceof Error ? reason.message : String(reason));
+        if (!cancelled) setSchedulerMessage(toSafeInventoryInlineError(reason, "Rasporedi izveštaja trenutno nisu dostupni."));
       });
     return () => { cancelled = true; };
   }, []);
@@ -646,7 +652,7 @@ export default function InventoryPage() {
       .catch((reason) => {
         if (!cancelled) {
           setDetailData(null);
-          setDetailError(reason instanceof Error ? reason.message : String(reason));
+          setDetailError(toSafeInventoryInlineError(reason, "Detalj artikla trenutno nije dostupan."));
           setDetailRow((current) =>
             current?.contextStatus === "loadingContext"
               ? { ...current, contextStatus: "contextMissing" }
@@ -697,7 +703,7 @@ export default function InventoryPage() {
       .catch((reason) => {
         if (!cancelled) {
           setSizeCurve(null);
-          setSizeCurveError(toInventoryPageError(reason, "Size-curve signal trenutno nije dostupan.").message);
+          setSizeCurveError(toSafeInventoryInlineError(reason, "Size-curve signal trenutno nije dostupan."));
         }
       })
       .finally(() => {
@@ -907,7 +913,7 @@ export default function InventoryPage() {
         setExportStatus("Eksport je preuzet.");
       }
     } catch (reason) {
-      setExportStatus(reason instanceof Error ? reason.message : "Eksport nije uspeo.");
+      setExportStatus(toSafeInventoryInlineError(reason, "Eksport nije uspeo."));
     } finally {
       setExportBusy(false);
     }
@@ -921,7 +927,7 @@ export default function InventoryPage() {
       if (result.printUrl) window.open(resolveApiUrl(result.printUrl), "_blank", "noopener");
       setExportStatus("Prazan obrazac je otvoren u novom tabu.");
     } catch (reason) {
-      setExportStatus(reason instanceof Error ? reason.message : "Priprema praznog obrasca nije uspela.");
+      setExportStatus(toSafeInventoryInlineError(reason, "Priprema praznog obrasca nije uspela."));
     } finally {
       setExportBusy(false);
     }
@@ -951,7 +957,7 @@ export default function InventoryPage() {
       await saveInventoryActionDecision(item.suggestionKey, { actionType: item.actionType, status, note: item.note ?? "" });
       await refreshOperations();
     } catch (reason) {
-      setExportStatus(reason instanceof Error ? reason.message : "Cuvanje odluke nije uspelo.");
+      setExportStatus(toSafeInventoryInlineError(reason, "Čuvanje odluke nije uspelo."));
     } finally {
       setWorkflowBusyKey(null);
     }
@@ -1007,7 +1013,7 @@ export default function InventoryPage() {
       setScheduleDraft(createScheduleDraft());
       setSchedulerMessage("Raspored je sacuvan.");
     } catch (reason) {
-      setSchedulerMessage(reason instanceof Error ? reason.message : "Cuvanje rasporeda nije uspelo.");
+      setSchedulerMessage(toSafeInventoryInlineError(reason, "Čuvanje rasporeda nije uspelo."));
     } finally {
       setSchedulerBusy(false);
     }
@@ -1020,7 +1026,7 @@ export default function InventoryPage() {
       await refreshSchedules();
       setSchedulerMessage(result.message);
     } catch (reason) {
-      setSchedulerMessage(reason instanceof Error ? reason.message : "Rucno pokretanje nije uspelo.");
+      setSchedulerMessage(toSafeInventoryInlineError(reason, "Ručno pokretanje nije uspelo."));
     } finally {
       setSchedulerBusy(false);
     }

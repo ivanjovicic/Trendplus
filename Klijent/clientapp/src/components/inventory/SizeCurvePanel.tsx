@@ -2,6 +2,7 @@
 import { LoadingSkeleton } from "../LoadingSkeleton";
 import type { SizeCurveDto } from "../../types/analytics";
 import { SizeCurveVisualization } from "./SizeCurveVisualization";
+import { getSafeAnalyticsErrorMessage } from "../../utils/analyticsErrorMessages";
 
 type SizeCurvePanelProps = {
   sizeCurveSkuId: number | null;
@@ -39,6 +40,9 @@ export function SizeCurvePanel({
 }: SizeCurvePanelProps) {
   const items = sizeCurve?.items ?? [];
   const warningLabel = getSizeCurveWarningLabel(sizeCurve?.warning);
+  const safeSizeCurveError = sizeCurveError
+    ? getSafeAnalyticsErrorMessage(sizeCurveError, undefined, "Size-curve signal trenutno nije dostupan.")
+    : null;
 
   return (
     <section className="rounded-[28px] border border-[var(--border-default)] bg-[var(--surface-elevated)] p-5">
@@ -71,9 +75,9 @@ export function SizeCurvePanel({
         <div className="mt-4 rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">
           Upiši ID artikla u polje iznad da prikažeš size curve analizu.
         </div>
-      ) : sizeCurveError ? (
+      ) : safeSizeCurveError ? (
         <div className="mt-4 rounded-2xl border border-[var(--error)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--error)]">
-          {sizeCurveError}
+          {safeSizeCurveError}
         </div>
       ) : sizeCurveLoading ? (
         <div className="mt-4 rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] p-4 text-center text-sm text-[var(--text-primary)]"><div className="mb-4">Učitavam size curve za SKU #{sizeCurveSkuId}...</div><LoadingSkeleton type="messages" count={1} /></div>

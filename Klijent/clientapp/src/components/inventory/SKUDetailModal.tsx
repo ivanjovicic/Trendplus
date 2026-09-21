@@ -4,6 +4,7 @@ import { InventoryExplainabilitySnapshot } from "./InventoryExplainabilitySnapsh
 import { formatCurrency, formatDateTime, formatNumber, getAgingTone, getHistoryDirection, getRecommendation, getStockState, getAbcTone } from "./inventoryUtils";
 import { SizeCurveVisualization } from "./SizeCurveVisualization";
 import type { InventoryRow } from "./types";
+import { getSafeAnalyticsErrorMessage } from "../../utils/analyticsErrorMessages";
 
 type SKUDetailModalProps = {
   detailRow: InventoryRow | null;
@@ -30,6 +31,9 @@ export function SKUDetailModal({
   onRetry,
   onTabChange,
 }: SKUDetailModalProps) {
+  const safeDetailError = detailError
+    ? getSafeAnalyticsErrorMessage(detailError, undefined, "Detalj artikla trenutno nije dostupan.")
+    : null;
   const hasPlaceholderContext = detailRow?.contextStatus != null;
   const showPlaceholderValues = hasPlaceholderContext && detailData == null;
   const detailQuantity = detailData?.kolicina ?? (showPlaceholderValues ? null : detailRow?.quantity ?? null);
@@ -41,7 +45,7 @@ export function SKUDetailModal({
   const resolvedStockState = detailQuantity != null && detailMinimum != null ? getStockState(detailQuantity, detailMinimum) : null;
   const showContextBanner = hasPlaceholderContext && detailData == null;
   const contextBannerText = detailRow?.contextStatus === "loadingContext"
-    ? (detailError ? "Kontekst artikla nije pronađen. Prikazuju se samo ograničeni podaci." : "Učitavam kontekst artikla...")
+    ? (safeDetailError ? "Kontekst artikla nije pronađen. Prikazuju se samo ograničeni podaci." : "Učitavam kontekst artikla...")
     : detailRow?.contextStatus === "contextMissing"
       ? "Kontekst artikla nije pronađen."
       : null;
@@ -111,7 +115,7 @@ export function SKUDetailModal({
           ) : null}
 
           {detailLoading ? <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-3 text-sm text-[var(--text-primary)]">Ucitavam istoriju kretanja i dodatne detalje artikla...</div> : null}
-          {detailError ? <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-3 text-sm text-[var(--text-primary)]"><div>{detailError}</div><button type="button" aria-label="Pokusaj ponovo ucitavanje detalja artikla" onClick={onRetry} className="mt-3 rounded-lg border border-[var(--border-default)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)]">Pokusaj ponovo</button></div> : null}
+          {safeDetailError ? <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-3 text-sm text-[var(--text-primary)]"><div>{safeDetailError}</div><button type="button" aria-label="Pokusaj ponovo ucitavanje detalja artikla" onClick={onRetry} className="mt-3 rounded-lg border border-[var(--border-default)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)]">Pokusaj ponovo</button></div> : null}
 
           <div className="grid gap-4 md:grid-cols-2">
             {[

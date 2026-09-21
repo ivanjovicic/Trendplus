@@ -85,6 +85,27 @@ describe("SKUDetailModal placeholder context", () => {
     expect(screen.getAllByText("Nije dostupno").length).toBeGreaterThan(0);
   });
 
+  it("sanitizes technical detail errors while keeping retry available", () => {
+    render(
+      <SKUDetailModal
+        detailRow={buildPlaceholderRow()}
+        detailData={null}
+        detailLoading={false}
+        detailError="NpgsqlException: provider failure at SqlCommand.Execute"
+        detailTab="overview"
+        detailSizeCurve={null}
+        detailSizeCurveLoading={false}
+        onClose={vi.fn()}
+        onRetry={vi.fn()}
+        onTabChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Podaci trenutno nisu dostupni. Proverite kvalitet podataka i pokušajte ponovo.")).toBeInTheDocument();
+    expect(screen.queryByText(/NpgsqlException|SqlCommand\.Execute/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pokusaj ponovo ucitavanje detalja artikla" })).toBeInTheDocument();
+  });
+
   it("renders the inventory explainability snapshot when backend signal fields are present", () => {
     render(
       <SKUDetailModal
