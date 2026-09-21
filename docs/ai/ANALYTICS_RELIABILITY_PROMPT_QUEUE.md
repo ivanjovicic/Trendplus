@@ -2,7 +2,7 @@
 
 Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ370
+Current READY prompt: none
 
 Owner promotion 2026-09-21: under the user's explicit instruction to claim the next prompt, `RQ370` moved from `WAITING` to `READY` as the P2 Inventory secondary/detail cancellation follow-up after `RQ369`.
 
@@ -1337,7 +1337,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ367 | DONE | analytics-generated-validation-evidence | Generate machine-readable validation evidence before Markdown summaries |
 | RQ368 | DONE | operations-inline-error-safety | Sanitize inline Pre/Post partial-failure messages without hiding degraded state |
 | RQ369 | DONE | inventory-inline-error-safety | Sanitize Inventory detail/export/scheduler error messages |
-| RQ370 | IN_PROGRESS | inventory-secondary-request-cancellation | Abort Inventory secondary and detail requests on scope changes |
+| RQ370 | DONE | inventory-secondary-request-cancellation | Abort Inventory secondary and detail requests on scope changes |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -13173,7 +13173,7 @@ The shared `AnalyticsEmptyState` prints the `emptyReason` prop verbatim. Several
 
 ## RQ261 - Preserve refresh duration unknown state and safe operational messaging
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/contract/frontend/tests
 Feature family: refresh-status-duration-message-truth
@@ -19847,4 +19847,20 @@ Inventory's lifecycle query accepts an `AbortSignal` but passes it only to the p
 
 - `RQ342` is DONE and owns primary Operacije list race protection.
 - `RQ359` is DONE and owns the shared query lifecycle.
+
+### Completion note
+
+- Date: 2026-09-21
+- Status: DONE
+- Completion: Inventory lifecycle balance, insights, store comparison, action suggestions, forecast, alerts and rebalance reads now receive the shared lifecycle `AbortSignal`; detail and size-curve effects own and abort per-effect controllers on superseding scope, row or tab changes. Cached/fallback API helpers propagate signals and avoid sharing a cancellable in-flight request with an unrelated caller.
+- Changed files: `Klijent/clientapp/src/services/analyticsApi.ts`, `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.signalWindow.spec.tsx`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.offPageDetail.spec.tsx`, `Klijent/clientapp/src/services/__tests__/inventoryDataScopeApi.spec.ts`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-21-RQ370-evidence.md`
+- Checks run: focused cancellation/API suite 11/11; existing Inventory reliability regressions 13/13; `npm run check:analytics-guardrails` baseline-only with 51 known violations and typecheck pass; `git diff --check`
+- Checks not run: full frontend suite, live browser, backend tests and CI; local `dotnet` unavailable.
+- Run log: `.ai/runs/2026-09-21-RQ370-evidence.md`
+- Evidence state: pending main-delivery synchronization
+- Delivery mode: direct-main after branch transport
+- Missed: none known in RQ370 scope.
+- Follow-up: return to the remaining Operacije WAITING backlog.
+- Residual risk: cancellation is covered at Inventory page/API-client boundaries; unrelated fixed-lifetime filter/scheduler startup reads remain unchanged by scope.
+- Prompt defect / scope repair: existing guardrail baseline line locations were refreshed after source movement; no new baseline entry was added.
 - No backend, migration, tenant or production-data change.
