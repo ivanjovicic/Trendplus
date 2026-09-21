@@ -17,18 +17,18 @@ function getSizeCurveWarningLabel(warning?: string | null): string | null {
   if (!normalized) return null;
 
   if (normalized.includes("nema redova") || normalized.includes("empty") || normalized.includes("no_rows")) {
-    return "Size curve snapshot nema redove za izabrani opseg.";
+    return "Snimak raspodele veličina nema redove za izabrani opseg.";
   }
 
   if (normalized.includes("nepotpun") || normalized.includes("partial") || normalized.includes("incomplete")) {
-    return "Size curve snapshot sadrži delimične ili nepotpune podatke.";
+    return "Snimak raspodele veličina sadrži delimične ili nepotpune podatke.";
   }
 
   if (normalized.includes("nije dostupan") || normalized.includes("missing") || normalized.includes("unavailable")) {
-    return "Size curve snapshot trenutno nije dostupan.";
+    return "Snimak raspodele veličina trenutno nije dostupan.";
   }
 
-  return "Size curve snapshot ima ograničenje kvaliteta podataka.";
+  return "Snimak raspodele veličina ima ograničenje kvaliteta podataka.";
 }
 
 export function SizeCurvePanel({
@@ -41,31 +41,31 @@ export function SizeCurvePanel({
   const items = sizeCurve?.items ?? [];
   const warningLabel = getSizeCurveWarningLabel(sizeCurve?.warning);
   const safeSizeCurveError = sizeCurveError
-    ? getSafeAnalyticsErrorMessage(sizeCurveError, undefined, "Size-curve signal trenutno nije dostupan.")
+    ? getSafeAnalyticsErrorMessage(sizeCurveError, undefined, "Signal raspodele veličina trenutno nije dostupan.")
     : null;
 
   return (
     <section className="rounded-[28px] border border-[var(--border-default)] bg-[var(--surface-elevated)] p-5">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Size curve analiza</h2>
-          <p className="text-sm text-[var(--text-primary)]">Upiši ID artikla da vidiš distribuciju veličina u odnosu na idealnu krivu. Detektuje broken-run, dead size i core size.</p>
+          <h2 className="text-lg font-semibold text-foreground">Analiza raspodele veličina</h2>
+          <p className="text-sm text-[var(--text-primary)]">Upiši ID artikla da vidiš distribuciju veličina u odnosu na idealnu krivu. Detektuje prekinuti niz, nedostajuću i ključnu veličinu.</p>
         </div>
         <div className="flex items-center gap-2">
           <label className="flex items-center gap-2 rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2">
             <Search size={14} className="shrink-0 text-[var(--text-primary)]" />
             <input
               type="number"
-              aria-label="Unos SKU ID za size curve"
-              placeholder="ArtikelID"
+              aria-label="Unos SKU ID za raspodelu veličina"
+              placeholder="ID artikla"
               value={sizeCurveSkuId ?? ""}
               onChange={(event) => onChangeSkuId(event.target.value ? Number(event.target.value) : null)}
               className="w-28 bg-transparent text-sm text-foreground outline-none placeholder:text-[var(--text-primary)]"
             />
           </label>
           {sizeCurveSkuId != null ? (
-            <button type="button" aria-label="Poništi size curve izbor artikla" onClick={() => onChangeSkuId(null)} className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">
-              Poništi
+            <button type="button" aria-label="Poništi izbor raspodele veličina artikla" onClick={() => onChangeSkuId(null)} className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">
+              Poništi izbor
             </button>
           ) : null}
         </div>
@@ -73,22 +73,22 @@ export function SizeCurvePanel({
 
       {sizeCurveSkuId == null ? (
         <div className="mt-4 rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">
-          Upiši ID artikla u polje iznad da prikažeš size curve analizu.
+          Upiši ID artikla u polje iznad da prikažeš analizu raspodele veličina.
         </div>
       ) : safeSizeCurveError ? (
         <div className="mt-4 rounded-2xl border border-[var(--error)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--error)]">
           {safeSizeCurveError}
         </div>
       ) : sizeCurveLoading ? (
-        <div className="mt-4 rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] p-4 text-center text-sm text-[var(--text-primary)]"><div className="mb-4">Učitavam size curve za SKU #{sizeCurveSkuId}...</div><LoadingSkeleton type="messages" count={1} /></div>
+          <div className="mt-4 rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] p-4 text-center text-sm text-[var(--text-primary)]"><div className="mb-4">Učitavam raspodelu veličina za SKU #{sizeCurveSkuId}...</div><LoadingSkeleton type="messages" count={1} /></div>
       ) : !sizeCurve?.snapshotAvailable ? (
         <div className="mt-4 rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">
-          <div>Size curve nije dostupna za SKU #{sizeCurveSkuId}.</div>
+          <div>Raspodela veličina nije dostupna za SKU #{sizeCurveSkuId}.</div>
           {warningLabel ? <div className="mt-2 text-xs text-warning">{warningLabel}</div> : null}
         </div>
       ) : items.length === 0 ? (
         <div className="mt-4 rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">
-          <div>Size curve snapshot je dostupan, ali nema podataka za SKU #{sizeCurveSkuId} u izabranom opsegu.</div>
+          <div>Snimak raspodele veličina je dostupan, ali nema podataka za SKU #{sizeCurveSkuId} u izabranom opsegu.</div>
           {warningLabel ? <div className="mt-2 text-xs text-warning">{warningLabel}</div> : null}
         </div>
       ) : (

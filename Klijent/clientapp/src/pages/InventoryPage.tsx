@@ -284,7 +284,7 @@ export function buildInventorySignalActionSpec(row: InventoryRow): {
       title: `Proveri signal zalihe: ${row.naziv}`,
       recommendationStatus: "SIGNAL_REVIEW",
       priority: "P2",
-      description: `Signal nije dovoljan za finalnu akciju. Stock cover: ${row.stockCoverStatusLabel}. Sell-through: ${row.sellThroughStatusLabel}.`,
+      description: `Signal nije dovoljan za finalnu akciju. Pokrivenost zalihe: ${row.stockCoverStatusLabel}. Prodajni obrt: ${row.sellThroughStatusLabel}.`,
       dueAtUtc,
       // Exposure may exist on the row, but a review action must not claim confirmed expected impact.
       expectedImpactRsd: null,
@@ -298,7 +298,7 @@ export function buildInventorySignalActionSpec(row: InventoryRow): {
       title: `Dopuni artikal: ${row.naziv}`,
       recommendationStatus: "REPLENISH",
       priority: isCritical ? "P1" : "P2",
-      description: `${row.signalText}. Stock cover: ${row.stockCoverStatusLabel}. Sell-through: ${row.sellThroughStatusLabel}.`,
+      description: `${row.signalText}. Pokrivenost zalihe: ${row.stockCoverStatusLabel}. Prodajni obrt: ${row.sellThroughStatusLabel}.`,
       dueAtUtc,
       // Stock exposure exists on the row, but inventory has no authoritative expected-impact source.
       expectedImpactRsd: null,
@@ -322,7 +322,7 @@ export function buildInventorySignalActionSpec(row: InventoryRow): {
     title: `Proveri signal zalihe: ${row.naziv}`,
     recommendationStatus: "SIGNAL_REVIEW",
     priority: "P2",
-    description: `Signal nije dovoljan za finalnu akciju. Stock cover: ${row.stockCoverStatusLabel}. Sell-through: ${row.sellThroughStatusLabel}.`,
+    description: `Signal nije dovoljan za finalnu akciju. Pokrivenost zalihe: ${row.stockCoverStatusLabel}. Prodajni obrt: ${row.sellThroughStatusLabel}.`,
     dueAtUtc,
     expectedImpactRsd: null,
   };
@@ -597,7 +597,7 @@ export default function InventoryPage() {
   } = useReliableAnalyticsQuery<InventoryLifecycleSnapshot>({
     query: inventoryQuery,
     getErrorMessage: useCallback(
-      (reason: unknown) => toInventoryPageError(reason, "Inventory podaci trenutno nisu dostupni.").message,
+      (reason: unknown) => toInventoryPageError(reason, "Podaci o zalihama trenutno nisu dostupni.").message,
       [],
     ),
   });
@@ -626,7 +626,7 @@ export default function InventoryPage() {
   const inventoryError = queryError || staleWarning
     ? toInventoryPageError(
       errorReason ?? staleReason ?? queryError ?? staleWarning,
-      "Inventory podaci trenutno nisu dostupni.",
+      "Podaci o zalihama trenutno nisu dostupni.",
     )
     : null;
   const error = inventoryError;
@@ -720,7 +720,7 @@ export default function InventoryPage() {
       .catch((reason) => {
         if (!cancelled) {
           setSizeCurve(null);
-          setSizeCurveError(toSafeInventoryInlineError(reason, "Size-curve signal trenutno nije dostupan."));
+          setSizeCurveError(toSafeInventoryInlineError(reason, "Signal raspodele veličina trenutno nije dostupan."));
         }
       })
       .finally(() => {
@@ -1099,7 +1099,7 @@ export default function InventoryPage() {
     }
 
     if (detailRow?.id === item.skuId && detailLoading) {
-      setExportStatus("Sačekajte učitavanje aging detalja pre dodavanja forecast predloga.");
+      setExportStatus("Sačekajte učitavanje detalja zastarelosti pre dodavanja predloga prognoze.");
       return;
     }
 
@@ -1119,7 +1119,7 @@ export default function InventoryPage() {
         items: [suggestion, ...base.items],
       };
     });
-    setExportStatus("Forecast signal je dodat u workflow kao signalni predlog dopune.");
+    setExportStatus("Signal prognoze je dodat u tok akcija kao predlog dopune.");
     scrollToSection(ACTION_WORKFLOW_SECTION_ID);
   }
 
@@ -1177,7 +1177,7 @@ export default function InventoryPage() {
     setReloadNonce((current) => current + 1);
   }
 
-  if (loading && !pageData && !balance) return <div className="rounded-3xl border border-muted surface-light p-8 text-center text-muted">Učitavanje bilansa stanja...</div>;
+  if (loading && !pageData && !balance) return <div className="rounded-3xl border border-muted surface-light p-8 text-center text-muted">Učitavanje bilansa zaliha...</div>;
   if (error && (!pageData || !balance)) {
     return (
       <AnalyticsErrorState
@@ -1198,8 +1198,8 @@ export default function InventoryPage() {
       <AnalyticsEmptyState
         variant={showInsufficientEmptyState ? "insufficient_data" : (showFilteredEmptyState ? "filtered_out" : "no_data")}
         message={inventoryMetaMessage ?? (showInsufficientEmptyState
-          ? "Nema dovoljno signala za pouzdan inventory prikaz."
-          : "Nema inventory podataka za izabrani opseg.")}
+          ? "Nema dovoljno signala za pouzdan prikaz zaliha."
+          : "Nema podataka o zalihama za izabrani opseg.")}
         reasons={[
           showInsufficientEmptyState
             ? "Podaci jos nisu dovoljno kompletni za odluku."
@@ -1220,16 +1220,16 @@ export default function InventoryPage() {
     <ErrorBoundary fallback={<div className="rounded-3xl border border-[var(--error)] bg-[var(--surface-darker)] p-8 text-center text-[var(--error)]">Bilans stanja trenutno nije mogao da se prikaže. Osveži stranicu ili pokušaj ponovo za nekoliko trenutaka.</div>}>
       <div className="space-y-6">
       <AnalyticsTrustHeader
-        title="Inventory analytics"
-        description="Decision cockpit za zalihe: dopuna, OOS rizik, višak zalihe, transferi i workflow odluka. Trust status objedinjuje listu artikala, bilans i insights."
+        title="Analitika zaliha"
+        description="Operativni pregled zaliha: dopuna, rizik nestanka, višak, transferi i tok odluka. Status poverenja objedinjuje listu artikala, bilans i uvide."
         periodFrom={null}
         periodTo={null}
         lastRefreshAt={primaryRefreshAt}
-        dataSource="Inventory analytics snapshot"
+        dataSource="Snimak analitike zaliha"
         dataQualityStatus={primaryMeta?.dataQualityStatus ?? null}
         mode="recommendation"
         isPartial={isAnalyticsMetaWarning(primaryMeta)}
-        recommendationNote="Workflow akcije su korisnički vođene; backend recommendation payload ostaje izvor istine."
+        recommendationNote="Tok akcija vode korisnici; preporučeni podaci sa servera ostaju izvor istine."
         emptyStateReason={showEmptyState ? (inventoryMetaMessage ?? null) : null}
         methodologyHref="/analytics/data-quality"
         dataQualityHref="/analytics/data-quality"
@@ -1254,13 +1254,13 @@ export default function InventoryPage() {
       ) : null}
       <section className="rounded-[24px] border border-muted surface-light p-4">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-secondary">Kako se računaju ključni inventory signali:</span>
+          <span className="text-sm text-secondary">Kako se računaju ključni signali zaliha:</span>
           <KpiExplainButton metricKey="stockAtRisk" ariaLabel="Kako je izračunat lager u riziku" />
           <KpiExplainButton metricKey="slowStockCapital" ariaLabel="Kako je izračunat kapital u sporoj zalihi" />
           <KpiExplainButton metricKey="outOfStockRisk" ariaLabel="Kako je izračunat rizik nestanka zalihe" />
           <KpiExplainButton metricKey="lostSalesEstimate" ariaLabel="Kako je izračunata procena izgubljene prodaje" />
           <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunata pokrivenost zalihe" />
-          <KpiExplainButton metricKey="sellThrough" ariaLabel="Kako je izračunat sell-through" />
+          <KpiExplainButton metricKey="sellThrough" ariaLabel="Kako je izračunat prodajni obrt" />
         </div>
       </section>
       {signalKpis.scope === "page" ? (
@@ -1270,22 +1270,22 @@ export default function InventoryPage() {
       ) : null}
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <article className="rounded-2xl border border-muted bg-[var(--surface-darker)] p-4">
-          <div className="text-xs uppercase tracking-[0.2em] text-muted">Stock cover risk</div>
+          <div className="text-xs uppercase tracking-[0.2em] text-muted">Rizik pokrivenosti zalihe</div>
           <div className="mt-2 text-2xl font-semibold text-contrast">{fmtNumber(signalKpis.stockCoverRiskCount, 0, "0")}</div>
           <div className="mt-2 text-sm text-secondary">SKU sa niskom pokrivenošću, OOS rizikom ili nedovoljnim signalom.</div>
         </article>
         <article className="rounded-2xl border border-muted bg-[var(--surface-darker)] p-4">
-          <div className="text-xs uppercase tracking-[0.2em] text-muted">Low cover SKU</div>
+          <div className="text-xs uppercase tracking-[0.2em] text-muted">Niska pokrivenost artikala</div>
           <div className="mt-2 text-2xl font-semibold text-contrast">{fmtNumber(signalKpis.lowCoverSkus, 0, "0")}</div>
           <div className="mt-2 text-sm text-secondary">Prioritet za dopunu i zaštitu od rasprodaje.</div>
         </article>
         <article className="rounded-2xl border border-muted bg-[var(--surface-darker)] p-4">
-          <div className="text-xs uppercase tracking-[0.2em] text-muted">Slow stock SKU</div>
+          <div className="text-xs uppercase tracking-[0.2em] text-muted">Spor obrt artikala</div>
           <div className="mt-2 text-2xl font-semibold text-contrast">{fmtNumber(signalKpis.slowStockSkus, 0, "0")}</div>
           <div className="mt-2 text-sm text-secondary">Artikli sa sporim obrtom ili bez rotacije.</div>
         </article>
         <article className="rounded-2xl border border-muted bg-[var(--surface-darker)] p-4">
-          <div className="text-xs uppercase tracking-[0.2em] text-muted">Good sell-through SKU</div>
+          <div className="text-xs uppercase tracking-[0.2em] text-muted">Dobar prodajni obrt</div>
           <div className="mt-2 text-2xl font-semibold text-contrast">{fmtNumber(signalKpis.goodSellThroughSkus, 0, "0")}</div>
           <div className="mt-2 text-sm text-secondary">SKU sa zdravim tempom izlaza robe.</div>
         </article>
@@ -1294,7 +1294,7 @@ export default function InventoryPage() {
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-[760px]">
             <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-muted bg-[var(--surface-darker)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-[var(--info)]"><Warehouse size={14} />Bilans stanja</div>
-            <h3 className="text-2xl font-semibold tracking-tight text-contrast md:text-3xl">Decision cockpit za zalihe: dopuna, OOS rizik, višak zalihe, transferi i workflow odluka.</h3>
+            <h3 className="text-2xl font-semibold tracking-tight text-contrast md:text-3xl">Operativni pregled zaliha: dopuna, rizik nestanka, višak, transferi i tok odluka.</h3>
             <p className="mt-3 max-w-[640px] text-sm leading-6 text-secondary md:text-base">Pregled vodi od prioriteta i signala ka dubinskoj analizi i operativnom izvozu bez promene poslovne logike.</p>
           </div>
           <div className="grid min-w-[280px] gap-3 sm:grid-cols-2">
@@ -1455,7 +1455,7 @@ export default function InventoryPage() {
 
       <div className="space-y-1">
         <h2 className="text-xl font-semibold text-contrast">1. Odluke sada</h2>
-        <p className="text-sm text-muted">Najbitniji prioriteti i workflow koraci koje treba doneti odmah.</p>
+        <p className="text-sm text-muted">Najbitniji prioriteti i koraci odluke koje treba doneti odmah.</p>
       </div>
 
       <DecisionSummaryBar
@@ -1468,8 +1468,8 @@ export default function InventoryPage() {
         loading={loading && !balance && !effectiveActionWorkflow}
       />
 
-      {/* Decision-Critical Workflow Panel */}
-      <ErrorBoundary fallback={<div className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">Workflow panel nije mogao da se prikaže. Osveži stranicu.</div>}>
+      {/* Panel za kritične odluke i tok akcija */}
+      <ErrorBoundary fallback={<div className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">Panel toka akcija nije mogao da se prikaže. Osveži stranicu.</div>}>
         <ActionWorkflowPanel
           sectionId={ACTION_WORKFLOW_SECTION_ID}
           actionWorkflow={effectiveActionWorkflow}
@@ -1499,8 +1499,8 @@ export default function InventoryPage() {
         </ErrorBoundary>
       </div>
 
-      {/* Rebalancing & Transfer Suggestions */}
-      <ErrorBoundary fallback={<div className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">Rebalancing sugestije nisu dostupne. Osveži stranicu.</div>}>
+      {/* Predlozi za preraspodelu i transfer */}
+      <ErrorBoundary fallback={<div className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">Predlozi preraspodele nisu dostupni. Osveži stranicu.</div>}>
         <RebalancingTable rebalance={rebalance} rebalanceLoading={rebalanceLoading} rebalanceError={rebalanceError} rows={rows} stores={stores} displayCount={REBALANCE_DISPLAY_COUNT} scopeLabel={rebalanceScopeLabel} onCompareStores={compareStoresFromRebalance} />
       </ErrorBoundary>
 

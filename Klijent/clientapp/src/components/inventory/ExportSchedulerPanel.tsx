@@ -84,7 +84,7 @@ export function ExportSchedulerPanel({
 
       {isOpen && (
         <div className="mt-5 space-y-4 border-t border-border pt-4">
-          {/* Print & Export Section */}
+          {/* Štampa i izvoz */}
           <div>
             <h3 className="text-sm font-semibold text-foreground mb-3">Štampa i izvoz</h3>
             {contractNote ? (
@@ -118,13 +118,13 @@ export function ExportSchedulerPanel({
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
               <button
                 type="button"
-                aria-label="Otvori print preview filtriranog izvestaja"
+                aria-label="Otvori pregled štampe filtriranog izveštaja"
                 onClick={onPrintPreview}
                 disabled={exportBusy || totalCount === 0}
                 className="inline-flex items-center justify-center gap-1 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-foreground transition-all duration-200 hover:border-info hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Printer size={13} />
-                <span className="hidden sm:inline">Preview</span>
+                <span className="hidden sm:inline">Pregled</span>
               </button>
               <button
                 type="button"
@@ -154,7 +154,7 @@ export function ExportSchedulerPanel({
                 className="inline-flex items-center justify-center gap-1 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-info transition-all duration-200 hover:border-info hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Download size={13} />
-                <span className="hidden sm:inline">CSV fil</span>
+                <span className="hidden sm:inline">CSV po filterima</span>
               </button>
               <button
                 type="button"
@@ -194,7 +194,7 @@ export function ExportSchedulerPanel({
             ) : null}
           </div>
 
-          {/* Scheduler Section */}
+          {/* Raspored izveštaja */}
           <div className="border-t border-border pt-4">
             <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
               <MailIcon size={14} /> Raspored izveštaja

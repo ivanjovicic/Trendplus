@@ -211,11 +211,11 @@ export function stockCoverStatusLabel(status: string): string {
 export function sellThroughStatusLabel(status: string): string {
   switch ((status ?? "").trim().toLowerCase()) {
     case "good":
-      return "Dobar sell-through";
+      return "Dobar prodajni obrt";
     case "warning":
       return "Sell-through upozorenje";
     case "critical":
-      return "Kritičan sell-through";
+      return "Kritičan prodajni obrt";
     default:
       return "Nedovoljno podataka";
   }
@@ -484,7 +484,7 @@ export function buildForecastRestockSuggestion(
     costMissing,
     daysSinceMovement,
     note: daysSinceMovement == null
-      ? `Automatski dodat iz forecast sekcije za velicinu ${signal.sizeCode} kao signal prognozirane potraznje. Dana bez kretanja: nedostupno (detalj nije učitan ili nema aging evidencije).`
+      ? `Automatski dodat iz sekcije prognoze za veličinu ${signal.sizeCode} kao signal prognozirane potražnje. Dana bez kretanja: nedostupno (detalj nije učitan ili nema evidencije zastarelosti).`
       : `Automatski dodat iz forecast sekcije za velicinu ${signal.sizeCode} kao signal prognozirane potraznje. Dana bez kretanja: ${daysSinceMovement} dana.`,
     updatedAtUtc: new Date().toISOString(),
   };
@@ -556,7 +556,7 @@ export function inventoryDataScopeLabel(scope: DataScope): string {
 }
 
 export function buildInventoryServerExportContractNote(dataScope: DataScope): string {
-  return `Server izvoz i print koriste snapshot trenutnog stanja zaliha za opseg „${inventoryDataScopeLabel(dataScope)}“. Aktivni filteri (prodavnica, dobavljač, pretraga, sort) se prenose u dokument; signali stock cover/sell-through sa tabele (30-dnevni period prodaje) nisu deo server dokumenta.`;
+  return `Serverski izvoz i štampa koriste snimak trenutnog stanja zaliha za opseg „${inventoryDataScopeLabel(dataScope)}“. Aktivni filteri (prodavnica, dobavljač, pretraga, sortiranje) se prenose u dokument; signali pokrivenosti zalihe/prodajnog obrta sa tabele (30-dnevni period prodaje) nisu deo serverskog dokumenta.`;
 }
 
 export function createScheduleDraft(): InventoryReportScheduleInput {

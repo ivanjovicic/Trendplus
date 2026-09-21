@@ -5,7 +5,7 @@ import { SizeCurvePanel } from "./SizeCurvePanel";
 
 vi.mock("./SizeCurveVisualization", () => ({
   SizeCurveVisualization: ({ items }: { items: unknown[] }) => (
-    <div data-testid="size-curve-visualization">{items.length} size curve redova</div>
+    <div data-testid="size-curve-visualization">{items.length} redova raspodele veličina</div>
   ),
 }));
 
@@ -46,10 +46,10 @@ describe("SizeCurvePanel evidence states", () => {
       items: [],
     });
 
-    expect(screen.getByText("Size curve nije dostupna za SKU #101.")).toBeInTheDocument();
-    expect(screen.getByText("Size curve snapshot trenutno nije dostupan.")).toBeInTheDocument();
+    expect(screen.getByText("Raspodela veličina nije dostupna za SKU #101.")).toBeInTheDocument();
+    expect(screen.getByText("Snimak raspodele veličina trenutno nije dostupan.")).toBeInTheDocument();
     expect(screen.queryByText(/size_curve_snapshot_missing_relation/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Nema size curve podataka/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Nema podataka o raspodeli veličina/i)).not.toBeInTheDocument();
   });
 
   it("keeps a successful empty snapshot as an empty state", () => {
@@ -61,8 +61,8 @@ describe("SizeCurvePanel evidence states", () => {
       items: [],
     });
 
-    expect(screen.getByText("Size curve snapshot je dostupan, ali nema podataka za SKU #101 u izabranom opsegu.")).toBeInTheDocument();
-    expect(screen.getByText("Size curve snapshot nema redove za izabrani opseg.")).toBeInTheDocument();
+    expect(screen.getByText("Snimak raspodele veličina je dostupan, ali nema podataka za SKU #101 u izabranom opsegu.")).toBeInTheDocument();
+    expect(screen.getByText("Snimak raspodele veličina nema redove za izabrani opseg.")).toBeInTheDocument();
     expect(screen.queryByText(/nije dostupna/i)).not.toBeInTheDocument();
   });
 
@@ -75,8 +75,8 @@ describe("SizeCurvePanel evidence states", () => {
       items: [sizeCurveItem],
     });
 
-    expect(screen.getByText("Size curve snapshot sadrži delimične ili nepotpune podatke.")).toBeInTheDocument();
-    expect(screen.getByTestId("size-curve-visualization")).toHaveTextContent("1 size curve redova");
+    expect(screen.getByText("Snimak raspodele veličina sadrži delimične ili nepotpune podatke.")).toBeInTheDocument();
+    expect(screen.getByTestId("size-curve-visualization")).toHaveTextContent("1 redova raspodele veličina");
     expect(screen.queryByText(/sadrzi redove sa nepotpunom signalnom evidencijom/i)).not.toBeInTheDocument();
   });
 
@@ -89,7 +89,7 @@ describe("SizeCurvePanel evidence states", () => {
       items: [sizeCurveItem],
     });
 
-    expect(screen.getByTestId("size-curve-visualization")).toHaveTextContent("1 size curve redova");
+    expect(screen.getByTestId("size-curve-visualization")).toHaveTextContent("1 redova raspodele veličina");
     expect(screen.queryByText(/delimične ili nepotpune/i)).not.toBeInTheDocument();
   });
 

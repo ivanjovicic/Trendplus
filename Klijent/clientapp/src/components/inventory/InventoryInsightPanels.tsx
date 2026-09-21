@@ -20,8 +20,8 @@ function formatAgingBadgeLabel(
   insightsError: string | null | undefined,
   staleItemCount: number | null | undefined,
 ): string {
-  if (insightsLoading) return "Učitavanje aging analitike...";
-  if (insightsError) return "Aging analitika trenutno nije dostupna";
+  if (insightsLoading) return "Učitavanje analitike zastarelosti...";
+  if (insightsError) return "Analitika zastarelosti trenutno nije dostupna";
   if (staleItemCount == null) return "Broj artikala u 90+ danima nije dostupan";
   return `${formatNumber(staleItemCount)} artikala je u 90+ dana`;
 }
@@ -62,7 +62,7 @@ export function InventoryInsightPanels({
       <div className="rounded-[28px] border border-[var(--border-default)] bg-[var(--surface-elevated)] p-5">
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-white">Aging i obrt fonda robe <InfoTip text="Grupisanje artikala po broju dana bez kretanja zalihe (poslednja prodaja ili prijem). 0–30 d: aktivan fond. 30–60 d: prati. 60–90 d: upozorenje. 90+ d: visok rizik zastarevanja — kandidati za akciju ili otpis." /></h2>
+            <h2 className="text-lg font-semibold text-white">Zastarelost i obrt zalihe <InfoTip text="Grupisanje artikala po broju dana bez kretanja zalihe (poslednja prodaja ili prijem). 0–30 d: aktivan fond. 30–60 d: prati. 60–90 d: upozorenje. 90+ d: visok rizik zastarevanja — kandidati za akciju ili otpis." /></h2>
             <p className="text-sm text-[var(--text-primary)]">Dani bez kretanja su računati po poslednjem movement-u, uz fallback na poslednje ažuriranje artikla.</p>
           </div>
           <div className="rounded-full border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-1 text-xs font-semibold text-[var(--text-primary)]">
@@ -78,11 +78,11 @@ export function InventoryInsightPanels({
 
         <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {insightsLoading ? (
-            <div className="col-span-full rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Učitavanje aging analitike...</div>
+            <div className="col-span-full rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Učitavanje analitike zastarelosti...</div>
           ) : insightsError ? (
-            <div className="col-span-full rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Aging analitika trenutno nije dostupna.</div>
+            <div className="col-span-full rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Analitika zastarelosti trenutno nije dostupna.</div>
           ) : agingBuckets.length === 0 ? (
-            <div className="col-span-full rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Aging analitika nije dostupna za trenutne filtere.</div>
+            <div className="col-span-full rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Analitika zastarelosti nije dostupna za trenutne filtere.</div>
           ) : agingBuckets.map((bucket) => (
             <article key={bucket.bucketKey} className={`rounded-2xl border bg-[var(--surface-elevated)] p-4${bucket.bucketKey === "90+" ? " border-[var(--accent-danger,#f87171)] ring-1 ring-[var(--accent-danger,#f87171)/30]" : " border-[var(--border-default)]"}`} data-stale={bucket.bucketKey === "90+" || undefined}>
               <div className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getAgingTone(bucket.bucketKey)}`}>{bucket.label}</div>
@@ -98,14 +98,14 @@ export function InventoryInsightPanels({
             Najstariji artikli u filtriranom skupu
           </div>
           <div className="mt-3 space-y-3">
-            {agedItems.length === 0 ? <div className="text-sm text-[var(--text-primary)]">Nema artikala za aging ranking.</div> : agedItems.map((item) => {
+            {agedItems.length === 0 ? <div className="text-sm text-[var(--text-primary)]">Nema artikala za rangiranje po zastarelosti.</div> : agedItems.map((item) => {
               const resolvedRow = resolveInsightRow(item, rows, stores, suppliers);
 
               return (
               <button key={`aged-${item.id}`} type="button" onClick={() => onOpenDetail(resolvedRow)} className="flex w-full flex-col gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-3 text-left transition hover:border-[var(--border-default)]">
                 <div className="min-w-0">
                   <div className="truncate text-sm font-semibold text-white">{item.naziv}</div>
-                  <div className="truncate text-xs text-[var(--text-primary)]">{item.plu ?? "Bez PLU"} | {item.supplierName ?? "Nerasporedjen dobavljac"}</div>
+                  <div className="truncate text-xs text-[var(--text-primary)]">{item.plu ?? "Bez PLU"} | {item.supplierName ?? "Neraspoređeni dobavljač"}</div>
                 </div>
                 <div className="flex items-end justify-between gap-3">
                   <div className="text-sm font-semibold text-[var(--text-primary)]">{formatNumber(item.daysSinceMovement)} dana</div>
@@ -113,7 +113,7 @@ export function InventoryInsightPanels({
                 </div>
                 <InventoryExplainabilitySnapshot
                   compact
-                  title="Snapshot"
+                  title="Snimak"
                   stockCoverDays={resolvedRow.stockCoverDays}
                   stockCoverStatus={resolvedRow.stockCoverStatus}
                   stockCoverStatusLabel={resolvedRow.stockCoverStatusLabel}

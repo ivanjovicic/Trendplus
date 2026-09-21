@@ -104,7 +104,7 @@ describe("InventoryInsightPanels", () => {
       />,
     );
 
-    expect(screen.getByText("Aging analitika trenutno nije dostupna")).toBeInTheDocument();
+    expect(screen.getByText("Analitika zastarelosti trenutno nije dostupna")).toBeInTheDocument();
     expect(screen.queryByText(/0 artikala je u 90\+ dana/)).not.toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent("Inventory uvidi trenutno nisu dostupni.");
   });
@@ -139,7 +139,7 @@ describe("InventoryInsightPanels", () => {
       />,
     );
 
-    expect(screen.getByRole("region", { name: "Snapshot" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Snimak" })).toBeInTheDocument();
     expect(screen.getByText("82%")).toBeInTheDocument();
     expect(screen.getByText("Dozvoljena")).toBeInTheDocument();
     expect(screen.getByText("replenish_needed")).toBeInTheDocument();

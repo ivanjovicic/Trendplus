@@ -2,7 +2,11 @@
 
 Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ301
+
+Owner promotion 2026-09-21: under the user's explicit instruction to claim the next prompt, `RQ301` moved from `WAITING` to `READY` as the next P1 Operacije Inventory localization slice after `RQ370`.
+
+Owner claim 2026-09-21: `RQ301` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ301-cursor.lock.md`.
 
 Owner promotion 2026-09-21: under the user's explicit instruction to claim the next prompt, `RQ370` moved from `WAITING` to `READY` as the P2 Inventory secondary/detail cancellation follow-up after `RQ369`.
 
@@ -1268,7 +1272,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ298 | DONE | pre-nivelacija-reliability-export | Align reliability styling and percent export metadata |
 | RQ299 | DONE | pre-nivelacija-url-state | Preserve filters and focus in refresh/back/deep-link URLs |
 | RQ300 | DONE | pre-nivelacija-numeric-robustness | Keep malformed/null numeric payloads from crashing or sorting falsely |
-| RQ301 | WAITING | operations-inventory-serbian-copy | Replace English inventory cockpit copy with Serbian product language |
+| RQ301 | IN_PROGRESS | operations-inventory-serbian-copy | Replace English inventory cockpit copy with Serbian product language |
 | RQ302 | WAITING | operations-route-smoke | Add missing Operacije routes to core App analytics smoke matrix |
 | RQ303 | WAITING | daily-sales-localization | Replace English mismatch badge and mixed QA copy on Daily Sales |
 | RQ304 | WAITING | color-sales-detail-label-parity | Align Color detail score label with table/export Serbian copy |
@@ -5179,7 +5183,7 @@ Commit suggestion: `feat(analytics): expose metric evidence and decision tiers`
 
 ## RQ148 - Prove the gross/net/return/cost basis of sales and margin KPIs
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P0
 Type: audit/backend/EF-SQL/contract/export/report/tests
 Feature family: sales-margin-returns-measurement-basis

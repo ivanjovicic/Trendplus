@@ -61,7 +61,7 @@ vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({
         data-quality={props.dataQualityStatus ?? ""}
         data-partial={String(Boolean(props.isPartial))}
       >
-        <h1>Inventory analytics</h1>
+        <h1>Analitika zaliha</h1>
       </div>
     );
   },
@@ -152,7 +152,7 @@ describe("InventoryPage freshness lineage", () => {
     expect(capturedTrustHeaderProps?.lastRefreshAt).toBeNull();
     expect(screen.getByTestId("trust-header")).toHaveAttribute("data-last-refresh", "");
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
-    expect(screen.getByRole("heading", { level: 1, name: "Inventory analytics" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Analitika zaliha" })).toBeInTheDocument();
   });
 
   it("uses explicit proven snapshot freshness when available", async () => {

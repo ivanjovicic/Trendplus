@@ -30,8 +30,8 @@ export function MailSchedulerPanel({
       <div className="rounded-[28px] border border-[var(--border-default)] bg-[var(--surface-elevated)] p-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-white">Mail scheduler za dnevni i nedeljni report</h2>
-            <p className="text-sm text-[var(--text-primary)]">Zakazi PDF/Excel/CSV bilans stanja, sa lokalnim vremenom, filterima i rucnim pokretanjem.</p>
+            <h2 className="text-lg font-semibold text-white">Slanje dnevnog i nedeljnog izveštaja</h2>
+            <p className="text-sm text-[var(--text-primary)]">Zakaži PDF/Excel/CSV bilans stanja, sa lokalnim vremenom, filterima i ručnim pokretanjem.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={onCopyCurrentFilters} className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">
@@ -40,7 +40,7 @@ export function MailSchedulerPanel({
             </button>
             <button type="button" onClick={onSaveSchedule} disabled={schedulerBusy || Boolean(validationMessage)} className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-60">
               <Mail size={14} />
-              Sacuvaj raspored
+              Sačuvaj raspored
             </button>
           </div>
         </div>
@@ -88,7 +88,7 @@ export function MailSchedulerPanel({
           </label>
           <label className="flex items-center gap-3 rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-3 text-sm text-[var(--text-primary)]">
             <input type="checkbox" checked={scheduleDraft.isEnabled} onChange={(event) => setScheduleDraft((current) => ({ ...current, isEnabled: event.target.checked }))} />
-            <span>Raspored je aktivan odmah po cuvanju</span>
+            <span>Raspored je aktivan odmah po čuvanju</span>
           </label>
         </div>
 
@@ -96,7 +96,7 @@ export function MailSchedulerPanel({
         {validationMessage ? <div role="alert" className="mt-4 rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-3 text-sm text-[var(--text-primary)]">{validationMessage}</div> : null}
 
         <div className="mt-5 space-y-3">
-          {schedules.length === 0 ? <div className="rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Jos nema sacuvanih rasporeda za Bilans stanja.</div> : schedules.map((schedule) => (
+          {schedules.length === 0 ? <div className="rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Još nema sačuvanih rasporeda za bilans stanja.</div> : schedules.map((schedule) => (
             <div key={schedule.id} className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4">
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div>
@@ -125,16 +125,16 @@ export function MailSchedulerPanel({
         <div className="flex items-start gap-3">
           <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-3 text-[var(--text-primary)]"><Mail size={18} /></div>
           <div>
-            <h2 className="text-lg font-semibold text-white">Sta scheduler sada pokriva</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--text-primary)]">Scheduler koristi isti server-side export kao rucni PDF/Excel, pa menadzment dobija isti izgled i iste filtere kao operativa na ekranu.</p>
+            <h2 className="text-lg font-semibold text-white">Šta raspored izveštaja pokriva</h2>
+            <p className="mt-2 text-sm leading-6 text-[var(--text-primary)]">Raspored koristi isti serverski izvoz kao ručni PDF/Excel, pa menadžment dobija isti izgled i iste filtere kao operativa na ekranu.</p>
           </div>
         </div>
         <div className="mt-5 grid gap-3">
           {[
-            "Dnevni ili nedeljni PDF/Excel/CSV report za izabrani store, dobavljaca ili pretragu.",
-            "Rucni 'run now' za proveru pre nego sto raspored pustis timu.",
-            "Fail-safe ponasanje: ako SMTP nije ukljucen, dokument se i dalje generise i scheduler ne pada.",
-            "Subject, filter scope i lokalno vreme se cuvaju uz svaki raspored.",
+            "Dnevni ili nedeljni PDF/Excel/CSV izveštaj za izabranu prodavnicu, dobavljača ili pretragu.",
+            "Ručno pokretanje za proveru pre nego što raspored pošalješ timu.",
+            "Bezbedno ponašanje: ako SMTP nije uključen, dokument se i dalje generiše i raspored ne pada.",
+            "Predmet, opseg filtera i lokalno vreme čuvaju se uz svaki raspored.",
           ].map((line) => (
             <div key={line} className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-3 text-sm text-[var(--text-primary)]">{line}</div>
           ))}

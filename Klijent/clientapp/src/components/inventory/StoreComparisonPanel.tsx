@@ -27,10 +27,10 @@ export function StoreComparisonPanel({
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-white">Drill-down po prodavnici</h2>
-          <p className="text-sm text-[var(--text-primary)]">Uporedi do tri lokacije po zdravlju zalihe, vezanom kapitalu i zajednickim rizicima.</p>
+          <p className="text-sm text-[var(--text-primary)]">Uporedi do tri lokacije po stanju zalihe, vezanom kapitalu i zajedničkim rizicima.</p>
         </div>
         <div className="rounded-full border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-1 text-xs font-semibold text-[var(--text-primary)]">
-          {comparisonStores.length} lokacije u poredjenju
+          {comparisonStores.length} lokacije u poređenju
         </div>
       </div>
 
@@ -46,7 +46,7 @@ export function StoreComparisonPanel({
       </div>
 
       <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {operationsLoading && comparisonStores.length === 0 ? <div className="col-span-full rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Ucitavam poredjenje lokacija...</div> : comparisonStores.map((store) => (
+        {operationsLoading && comparisonStores.length === 0 ? <div className="col-span-full rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Učitavam poređenje lokacija...</div> : comparisonStores.map((store) => (
           <article key={store.storeId} className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -56,9 +56,9 @@ export function StoreComparisonPanel({
               <GitCompareArrows size={16} className="text-[var(--text-primary)]" />
             </div>
             <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-              <div className="rounded-2xl bg-[var(--surface-elevated)] p-3"><div className="text-xs uppercase tracking-[0.18em] text-[var(--text-primary)]">Healthy</div><div className="mt-2 text-lg font-semibold text-white">{formatPercent(store.healthySharePct)}</div></div>
-              <div className="rounded-2xl bg-[var(--surface-elevated)] p-3"><div className="text-xs uppercase tracking-[0.18em] text-[var(--text-primary)]">Low stock</div><div className="mt-2 text-lg font-semibold text-white">{formatNumber(store.lowStockCount)}</div></div>
-              <div className="rounded-2xl bg-[var(--surface-elevated)] p-3"><div className="text-xs uppercase tracking-[0.18em] text-[var(--text-primary)]">Critical</div><div className="mt-2 text-lg font-semibold text-white">{formatNumber(store.criticalCount)}</div></div>
+              <div className="rounded-2xl bg-[var(--surface-elevated)] p-3"><div className="text-xs uppercase tracking-[0.18em] text-[var(--text-primary)]">Zdravo</div><div className="mt-2 text-lg font-semibold text-white">{formatPercent(store.healthySharePct)}</div></div>
+              <div className="rounded-2xl bg-[var(--surface-elevated)] p-3"><div className="text-xs uppercase tracking-[0.18em] text-[var(--text-primary)]">Niska zaliha</div><div className="mt-2 text-lg font-semibold text-white">{formatNumber(store.lowStockCount)}</div></div>
+              <div className="rounded-2xl bg-[var(--surface-elevated)] p-3"><div className="text-xs uppercase tracking-[0.18em] text-[var(--text-primary)]">Kritično</div><div className="mt-2 text-lg font-semibold text-white">{formatNumber(store.criticalCount)}</div></div>
               <div className="rounded-2xl bg-[var(--surface-elevated)] p-3"><div className="text-xs uppercase tracking-[0.18em] text-[var(--text-primary)]">90+ dana</div><div className="mt-2 text-lg font-semibold text-white">{formatNumber(store.stale90PlusCount)}</div></div>
             </div>
           </article>
@@ -66,10 +66,10 @@ export function StoreComparisonPanel({
       </div>
 
       <div className="mt-5 rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4">
-        <div className="text-sm font-semibold text-white">Zakljucak poredjenja</div>
+        <div className="text-sm font-semibold text-white">Zaključak poređenja</div>
         <div className="mt-2 text-sm leading-6 text-[var(--text-primary)]">{comparison?.summary ?? "Nema dovoljno podataka za zakljucak."}</div>
         <div className="mt-4 space-y-3">
-          {comparisonRisks.length === 0 ? <div className="text-sm text-[var(--text-primary)]">Za izabrane lokacije nema zajednickih low-stock rizika.</div> : comparisonRisks.map((risk) => (
+          {comparisonRisks.length === 0 ? <div className="text-sm text-[var(--text-primary)]">Za izabrane lokacije nema zajedničkih rizika niske zalihe.</div> : comparisonRisks.map((risk) => (
             <div key={risk.skuKey} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-3">
               <div>
                 <div className="text-sm font-semibold text-white">{risk.label}</div>

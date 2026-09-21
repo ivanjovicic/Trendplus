@@ -103,7 +103,7 @@ describe("SKUDetailModal placeholder context", () => {
 
     expect(screen.getByText("Podaci trenutno nisu dostupni. Proverite kvalitet podataka i pokušajte ponovo.")).toBeInTheDocument();
     expect(screen.queryByText(/NpgsqlException|SqlCommand\.Execute/)).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Pokusaj ponovo ucitavanje detalja artikla" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pokušaj ponovo učitavanje detalja artikla" })).toBeInTheDocument();
   });
 
   it("renders the inventory explainability snapshot when backend signal fields are present", () => {

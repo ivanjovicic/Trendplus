@@ -98,7 +98,7 @@ export function InventoryState({
     <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center">
       {tone === "warning" ? (
         <div className="mb-3 flex justify-center">
-          <UltraSpinner size="sm" label="Loading data" />
+          <UltraSpinner size="sm" label="Učitavanje podataka" />
         </div>
       ) : null}
       <p className={`text-sm ${toneClass}`}>{message}</p>

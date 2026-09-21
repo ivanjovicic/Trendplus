@@ -41,7 +41,7 @@ describe("ActionWorkflowPanel cost trust", () => {
     );
 
     expect(screen.getByText("Procena troška predloga: Nije dostupno (nedostaje nabavna cena)")).toBeInTheDocument();
-    expect(screen.getByText("Qty: 2")).toBeInTheDocument();
+    expect(screen.getByText("Količina: 2")).toBeInTheDocument();
     expect(screen.getByText("Predlozena dopuna")).toBeInTheDocument();
   });
 
@@ -83,9 +83,9 @@ describe("ActionWorkflowPanel cost trust", () => {
       />,
     );
 
-    expect(screen.getByText("Forecast demand qty: 2")).toBeInTheDocument();
+    expect(screen.getByText("Prognozirana tražnja (kol.): 2")).toBeInTheDocument();
     expect(screen.getByText(/Procena troška predloga:.*1\.000.*RSD/)).toBeInTheDocument();
-    expect(screen.queryByText("Qty: 2")).not.toBeInTheDocument();
+    expect(screen.queryByText("Količina: 2")).not.toBeInTheDocument();
   });
 
   it("uses safe Serbian labels for known and unknown workflow tokens", () => {

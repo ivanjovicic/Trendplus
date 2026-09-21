@@ -65,12 +65,12 @@ export function SKUDetailModal({
       {detailRow ? (
         <div className="space-y-5 text-[var(--text-primary)]">
           <div className="flex flex-wrap gap-2">
-            <button type="button" aria-label="Prikazi pregled artikla" onClick={() => onTabChange("overview")} className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${detailTab === "overview" ? "border-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)]" : "border-[var(--border-default)] bg-white text-[var(--text-primary)]"}`}>Pregled</button>
-            <button type="button" aria-label="Prikazi size curve artikla" onClick={() => onTabChange("sizeCurve")} className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${detailTab === "sizeCurve" ? "border-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)]" : "border-[var(--border-default)] bg-white text-[var(--text-primary)]"}`}>Size Curve</button>
+            <button type="button" aria-label="Prikaži pregled artikla" onClick={() => onTabChange("overview")} className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${detailTab === "overview" ? "border-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)]" : "border-[var(--border-default)] bg-white text-[var(--text-primary)]"}`}>Pregled</button>
+            <button type="button" aria-label="Prikaži raspodelu veličina artikla" onClick={() => onTabChange("sizeCurve")} className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${detailTab === "sizeCurve" ? "border-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)]" : "border-[var(--border-default)] bg-white text-[var(--text-primary)]"}`}>Raspodela veličina</button>
           </div>
 
           {detailTab === "sizeCurve" ? (
-            detailSizeCurveLoading ? <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Ucitavam size curve za SKU #{detailRow.id}...</div> : !detailSizeCurve?.snapshotAvailable || (detailSizeCurve.items ?? []).length === 0 ? <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Nema size curve podataka za ovaj artikal.</div> : <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4"><SizeCurveVisualization items={detailSizeCurve.items} cardLimit={6} /></div>
+            detailSizeCurveLoading ? <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Učitavam raspodelu veličina za SKU #{detailRow.id}...</div> : !detailSizeCurve?.snapshotAvailable || (detailSizeCurve.items ?? []).length === 0 ? <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Nema podataka o raspodeli veličina za ovaj artikal.</div> : <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4"><SizeCurveVisualization items={detailSizeCurve.items} cardLimit={6} /></div>
           ) : (
             <>
           {showContextBanner && contextBannerText ? (
@@ -93,7 +93,7 @@ export function SKUDetailModal({
                 <div className={`text-xs uppercase tracking-[0.2em] ${resolvedStockState ? "text-white/70" : "text-[var(--text-primary)]"}`}>Procena vrednosti</div>
                 <div className={`mt-2 text-xl font-semibold ${resolvedStockState ? "text-white" : "text-[var(--text-primary)]"}`}>{detailEstimatedValue == null ? "Nije dostupno" : formatCurrency(detailEstimatedValue)}</div>
                 <div className={`mt-2 text-xs ${resolvedStockState ? "text-white/75" : "text-[var(--text-primary)]"}`}>
-                  {detailData ? `${formatNumber(detailData.daysSinceMovement)} dana bez kretanja` : "Ucitavam aging detalj..."}
+                  {detailData ? `${formatNumber(detailData.daysSinceMovement)} dana bez kretanja` : "Učitavam detalj zastarelosti..."}
                 </div>
               </div>
             </div>
@@ -114,8 +114,8 @@ export function SKUDetailModal({
             />
           ) : null}
 
-          {detailLoading ? <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-3 text-sm text-[var(--text-primary)]">Ucitavam istoriju kretanja i dodatne detalje artikla...</div> : null}
-          {safeDetailError ? <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-3 text-sm text-[var(--text-primary)]"><div>{safeDetailError}</div><button type="button" aria-label="Pokusaj ponovo ucitavanje detalja artikla" onClick={onRetry} className="mt-3 rounded-lg border border-[var(--border-default)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)]">Pokusaj ponovo</button></div> : null}
+          {detailLoading ? <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-3 text-sm text-[var(--text-primary)]">Učitavam istoriju kretanja i dodatne detalje artikla...</div> : null}
+          {safeDetailError ? <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-3 text-sm text-[var(--text-primary)]"><div>{safeDetailError}</div><button type="button" aria-label="Pokušaj ponovo učitavanje detalja artikla" onClick={onRetry} className="mt-3 rounded-lg border border-[var(--border-default)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)]">Pokušaj ponovo</button></div> : null}
 
           <div className="grid gap-4 md:grid-cols-2">
             {[
@@ -128,8 +128,8 @@ export function SKUDetailModal({
               ["Nabavna cena", detailUnitCost == null ? "Nije dostupno" : formatCurrency(detailUnitCost)],
               ["Pokrice minimuma", detailCoverageRatio == null ? "Nije dostupno" : `${detailCoverageRatio.toFixed(2)}x`],
               ["Poslednje kretanje", formatDateTime(detailData?.lastMovementAt)],
-              ["Dana bez kretanja", detailData ? formatNumber(detailData.daysSinceMovement) : "Ucitavanje..."],
-              ["Kretanja u izabranom periodu", detailData ? formatNumber(detailData.movementCount) : "Ucitavanje..."],
+              ["Dana bez kretanja", detailData ? formatNumber(detailData.daysSinceMovement) : "Učitavanje..."],
+              ["Kretanja u izabranom periodu", detailData ? formatNumber(detailData.movementCount) : "Učitavanje..."],
               ["Kategorija", detailData?.kategorija ?? "Nije upisano"],
               ["Pol", detailData?.pol ?? "Nije upisano"],
               ["Materijal", detailData?.materijal ?? "Nije upisano"],
@@ -141,8 +141,8 @@ export function SKUDetailModal({
             <div className="text-xs uppercase tracking-[0.18em] text-[var(--text-primary)]">Predlog akcije</div>
             <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-[var(--text-primary)]">
               <li>{getRecommendation(detailRow)}</li>
-              <li>{detailRow.stockState === "critical" ? "Proveriti da li postoji zamenski artikal ili redistribucija iz druge lokacije." : detailRow.stockState === "warning" ? "Dopunu povezati sa sledecom nabavkom dobavljaca i prioritet dati artiklima sa najvecom traznjom." : "Ako je prodaja sporija od plana, razmotriti akcijsku cenu ili preraspodelu izmedju lokacija."}</li>
-              <li>{detailData?.abcClass === "A" ? "Klasa A: proveri da li je vezani kapital u skladu sa planom prodaje i sezonom." : detailData?.abcClass === "C" ? "Klasa C: artikli nose manji deo kapitala, ali aging lako postaje signal za ciscenje zalihe." : "Klasa B: balansirati dopunu i obrt bez prevelikog vezivanja kapitala."}</li>
+              <li>{detailRow.stockState === "critical" ? "Proveriti da li postoji zamenski artikal ili redistribucija iz druge lokacije." : detailRow.stockState === "warning" ? "Dopunu povezati sa sledećom nabavkom dobavljača i prioritet dati artiklima sa najvećom tražnjom." : "Ako je prodaja sporija od plana, razmotriti akcijsku cenu ili preraspodelu između lokacija."}</li>
+              <li>{detailData?.abcClass === "A" ? "Klasa A: proveri da li je vezani kapital u skladu sa planom prodaje i sezonom." : detailData?.abcClass === "C" ? "Klasa C: artikli nose manji deo kapitala, ali zastarelost lako postaje signal za čišćenje zalihe." : "Klasa B: balansirati dopunu i obrt bez prevelikog vezivanja kapitala."}</li>
               <li>Za deljenje sa timom koristi PDF ili Excel filtrirani izvoz iz vrha stranice.</li>
             </ul>
           </div>

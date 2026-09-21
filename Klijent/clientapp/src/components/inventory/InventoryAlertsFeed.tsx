@@ -34,8 +34,8 @@ export function InventoryAlertsFeed({
             <AlertTriangle size={18} />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-foreground">Inventory upozorenja</h2>
-            <p className="text-sm text-muted">AI-generisani kritični signali iz zaliha. Osvežava se automatski.</p>
+            <h2 className="text-lg font-semibold text-foreground">Upozorenja zaliha</h2>
+            <p className="text-sm text-muted">Kritični signali iz zaliha. Osvežavaju se automatski.</p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -43,7 +43,7 @@ export function InventoryAlertsFeed({
             <button
               key={severity || "all"}
               type="button"
-              aria-label={severity === "" ? "Prikazi sve inventory alertove" : `Filtriraj alertove po nivou ${severity}`}
+              aria-label={severity === "" ? "Prikaži sva upozorenja zaliha" : `Filtriraj upozorenja po nivou ${severity}`}
               onClick={() => onSeverityFilterChange(severity)}
               className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${alertSeverityFilter === severity ? "border-info bg-surface-elevated text-info" : "border-border bg-surface text-muted"}`}
             >
@@ -87,8 +87,8 @@ export function InventoryAlertsFeed({
                 <button type="button" aria-label={`Otvori detalj artikla za alert ${alert.title}`} onClick={(event) => { event.stopPropagation(); onOpenDetail(alert.skuId, alert.storeId, alert.title); }} className="text-muted transition hover:text-foreground">
                   Detalj artikla -&gt;
                 </button>
-                <button type="button" aria-label={`Otvori size curve za SKU ${alert.skuId}`} onClick={(event) => { event.stopPropagation(); onOpenSizeCurve(alert.skuId); }} className="text-info transition hover:text-info/80">
-                  Size curve -&gt;
+                <button type="button" aria-label={`Otvori raspodelu veličina za SKU ${alert.skuId}`} onClick={(event) => { event.stopPropagation(); onOpenSizeCurve(alert.skuId); }} className="text-info transition hover:text-info/80">
+                  Raspodela veličina -&gt;
                 </button>
               </div>
             </article>

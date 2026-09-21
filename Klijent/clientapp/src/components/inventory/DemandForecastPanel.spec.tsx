@@ -27,8 +27,8 @@ describe("DemandForecastPanel forecast qty copy", () => {
       />,
     );
 
-    expect(screen.getByText("Predlozi dopune su procene zasnovane na forecast signalu, ne finalna narudžbina. Potvrdite stock baseline i operativni kontekst pre naručivanja.")).toBeInTheDocument();
-    expect(screen.getByText(/Bounded signal: materializer\/owner nije dokazan/i)).toBeInTheDocument();
+    expect(screen.getByText("Predlozi dopune su procene zasnovane na signalu prognoze, ne finalna narudžbina. Potvrdite osnovu zalihe i operativni kontekst pre naručivanja.")).toBeInTheDocument();
+    expect(screen.getByText(/Ograničeni signal: izvor podataka nije dokazan/i)).toBeInTheDocument();
   });
 
   it("labels missing relation as unavailable without claiming a materializer", () => {
