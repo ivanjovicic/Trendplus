@@ -17,7 +17,7 @@ Audit all eight screens reachable from the `Operacije` menu, identify confirmed 
 - Owning program: analytics reliability queue.
 - Frontend sources: Inventory, Supplier redirects, Shoe Type, Daily Sales, Pre/Post, Color, Pre-Nivelacija and Supplier Footwear/canonical Supplier surfaces.
 - Shared error source: `Klijent/clientapp/src/utils/analyticsErrorMessages.ts`.
-- Confirmed new runtime finding: Pre/Post inline previous-period and vendor-load warnings interpolate raw technical `Error.message` values. Documented as `RQ368` P1.
+- Confirmed new runtime findings: Pre/Post inline previous-period/vendor-load warnings interpolate raw technical `Error.message` values (`RQ368` P1); Inventory detail/size-curve/export/scheduler inline surfaces bypass safe error mapping (`RQ369` P1); Inventory aborts only its list request while secondary/detail reads continue after superseding changes (`RQ370` P2).
 - Confirmed governance finding: queue table rows for completed `RQ362`-`RQ364` were stale `WAITING`; reconciled to `DONE` using completion notes and `MASTER_ROADMAP.md`.
 
 ## Files changed
@@ -43,9 +43,10 @@ Audit all eight screens reachable from the `Operacije` menu, identify confirmed 
 
 - Existing `WAITING` prompts RQ301-RQ330 remain the prioritized backlog; completed RQ331-RQ358 are not duplicated or reopened.
 - RQ368 is intentionally `WAITING`; this planning/audit request does not promote or claim a runtime prompt.
+- RQ369 and RQ370 are also intentionally `WAITING`; they are separate from RQ322/RQ324/RQ342 and do not reopen completed work.
 - No frontend runtime fix is included in this audit delivery.
 
 ## Residual risk and next step
 
-- RQ368 remains unimplemented until the queue owner explicitly promotes it.
-- The raw inline error text finding should be addressed before relying on Pre/Post partial-failure messaging in pilot demonstrations.
+- RQ368-RQ370 remain unimplemented until the queue owner explicitly promotes one of them.
+- Inline technical error text and uncancelled Inventory reads should be addressed before relying on these operational surfaces in pilot demonstrations.

@@ -28,6 +28,7 @@ Promptovi su već u canonical queue-u i ostaju `WAITING`; ovaj audit ih ne promo
 - `RQ303` — Daily Sales mixed QA/mismatch copy.
 - `RQ304` — Color detail score label parity.
 - `RQ368` — inline partial-failure poruke u Pre/Post prikazuju sirovu tehničku grešku.
+- `RQ369` — Inventory detail/size-curve/export/scheduler inline poruke zaobilaze sigurnu error mapu.
 
 ### P2 — period, filteri, fallback i jasnoća toka
 
@@ -39,6 +40,7 @@ Promptovi su već u canonical queue-u i ostaju `WAITING`; ovaj audit ih ne promo
 
 - `RQ309`–`RQ311` — sidebar ikone, production-route test fixture-i i guardrail cleanup.
 - `RQ324`, `RQ326`–`RQ330` — Inventory detail error, Pre-Nivelacija/Daily sort URL, Pre/Post expansion/focus context i Shoe truncation label.
+- `RQ370` — Inventory sekundarni paneli i detail fetches nemaju potpunu abort/cancellation granicu.
 
 `RQ312`–`RQ358` koji su već `DONE` nisu ponovo otvoreni; audit ih tretira kao prethodno zatvorene nalaze, ne kao novi backlog.
 
@@ -54,6 +56,12 @@ Governance repair: queue tabela je imala zastarele `WAITING` redove za `RQ362`�
 **Rizik:** PostgreSQL/HTTP/stack detalji mogu postati korisnički tekst; korisnik dobija tehnički i potencijalno nestabilan opis umesto lokalizovane instrukcije, dok je delimični rezultat inače pravilno zadržan.
 
 **Spremnost za rad:** Prompt `RQ368` sadrži Problem, Evidence, Scope, Read first, Do, Tests, Acceptance i Dependencies. Predviđen je frontend-only patch bez promene backend ugovora: zadržati current-period podatke i vendor listu, ali sanitizovati inline partial-failure poruke i dodati regresije za tehnički `Error`.
+
+### RQ369/RQ370 — dodatni Inventory nalazi
+
+- **RQ369 P1:** `InventoryPage.tsx` prosleđuje `detailError`, `sizeCurveError`, `exportStatus` i `schedulerMessage` u inline komponente koje direktno renderuju tekst. Ti putevi koriste `reason.message`/`String(reason)`, za razliku od glavnog `AnalyticsErrorState` koji koristi `getSafeAnalyticsErrorMessage`.
+- **RQ370 P2:** `inventoryQuery` prima `AbortSignal`, ali ga prosleđuje samo `getInventoryList` pozivu. Balance, insights, store comparison, action suggestions, forecast, alerts, rebalance, kao i `getInventoryItemDetail`/`getSizeCurve`, ostaju bez cancellation signala; lifecycle hook može odbaciti rezultat, ali ne prekida nepotreban request.
+- Oba nalaza su odvojena od postojećih RQ322–RQ324 i RQ342: postojeći promptovi pokrivaju vidljivost store/detail-size-curve greške i primarne list race-eve, ali ne pokrivaju bezbedno mapiranje svih inline poruka niti cancellation sekundarnih Inventory poziva.
 
 ## Šta nije dokazano u ovom auditu
 

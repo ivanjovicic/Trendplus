@@ -16,7 +16,7 @@ Owner claim 2026-09-21: `RQ367` transitioned `READY -> IN_PROGRESS`; local runti
 
 Owner completion 2026-09-21: `RQ367` delivered plan-driven JSON validation evidence, generated Markdown rendering, explicit frontend guardrail execution, truthful exit/skip/timeout/environment outcomes and exact-tip/ancestor `origin/main` verification. The named backend build/test remains explicitly environment-blocked because `dotnet` is unavailable locally; no backend PASS is inferred. The RQ reliability queue is complete.
 
-Owner audit 2026-09-21: a fresh static review of all eight Operacije menu surfaces confirmed the existing WAITING backlog and found one new P1 inline-error-safety gap (`RQ368`). The status table was reconciled so completed `RQ362`-`RQ364` are `DONE`, matching their completion notes and `MASTER_ROADMAP.md`; no prompt was promoted.
+Owner audit 2026-09-21: a second static review of all eight Operacije menu surfaces confirmed the existing WAITING backlog and found three new gaps: P1 Pre/Post inline error safety (`RQ368`), P1 Inventory inline error safety (`RQ369`) and P2 Inventory secondary/detail cancellation (`RQ370`). The status table was reconciled so completed `RQ362`-`RQ364` are `DONE`, matching their completion notes and `MASTER_ROADMAP.md`; no prompt was promoted.
 
 Owner promotion 2026-09-20: after RQ363 reached DONE, `RQ364` moved from `WAITING` to `READY` as the dataset-projection semantics follow-up.
 
@@ -1320,6 +1320,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ366 | DONE | analytics-guardrail-baseline | Prevent guardrail debt from growing while shrinking the baseline |
 | RQ367 | DONE | analytics-generated-validation-evidence | Generate machine-readable validation evidence before Markdown summaries |
 | RQ368 | WAITING | operations-inline-error-safety | Sanitize inline Pre/Post partial-failure messages without hiding degraded state |
+| RQ369 | WAITING | inventory-inline-error-safety | Sanitize Inventory detail/export/scheduler error messages |
+| RQ370 | WAITING | inventory-secondary-request-cancellation | Abort Inventory secondary and detail requests on scope changes |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -19664,3 +19666,133 @@ The Pre/Post page correctly preserves current-period data when the previous comp
 - `RQ359` is DONE and owns the shared async lifecycle; do not create a second query owner.
 - `getSafeAnalyticsErrorMessage` remains the frontend error-message source of truth.
 - No tenant, migration, production-data or backend dependency.
+
+---
+
+## RQ369 - Sanitize Inventory detail/export/scheduler error messages
+
+Status: WAITING
+Priority: P1
+Type: frontend/trust/tests
+Feature family: inventory-inline-error-safety
+Parallel-safe: no
+Owner: Analytics Frontend / Inventory
+Commit suggestion: `fix(analytics): sanitize inventory inline errors`
+
+### Problem
+
+Several Inventory error paths bypass the shared `AnalyticsErrorState` safety mapping. Technical `Error.message` or `String(reason)` values can be rendered directly inside the SKU detail modal, size-curve panel, export/print status and scheduler status.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/InventoryPage.tsx` stores raw detail and size-curve errors and raw export/scheduler failures.
+- `Klijent/clientapp/src/components/inventory/SKUDetailModal.tsx` directly renders `detailError`.
+- `Klijent/clientapp/src/components/inventory/SizeCurvePanel.tsx` directly renders `sizeCurveError`.
+- `Klijent/clientapp/src/components/inventory/ExportSchedulerPanel.tsx` renders the export/scheduler status supplied by `InventoryPage`.
+- `Klijent/clientapp/src/components/analytics/AnalyticsErrorState.tsx` and `Klijent/clientapp/src/utils/analyticsErrorMessages.ts` already define the safe-message owner, but these inline paths do not use it.
+
+### Scope
+
+- Inventory detail, size-curve, export/print and scheduler inline error projection.
+- Shared safe error-message helper and nearest Inventory component/page tests.
+- Preserve retry controls, failed-operation visibility and existing action-write error mapping.
+
+### Read first
+
+- `Klijent/clientapp/src/pages/InventoryPage.tsx`
+- `Klijent/clientapp/src/components/inventory/SKUDetailModal.tsx`
+- `Klijent/clientapp/src/components/inventory/SizeCurvePanel.tsx`
+- `Klijent/clientapp/src/components/inventory/ExportSchedulerPanel.tsx`
+- `Klijent/clientapp/src/utils/analyticsErrorMessages.ts`
+- `RQ322`, `RQ324` and `RQ368`
+
+### Do
+
+1. Normalize technical detail/size-curve/export/scheduler failures through `getSafeAnalyticsErrorMessage` or a focused Inventory adapter using that shared owner.
+2. Keep localized actionable fallback text and preserve retry/failed-operation state; do not turn an error into empty, success or zero.
+3. Preserve safe backend/user guidance when it is not classified as technical.
+4. Add component/page regressions for provider, HTTP and stack-shaped error messages.
+
+### Tests
+
+- `SKUDetailModal.spec.tsx` with a technical detail error.
+- `SizeCurvePanel.spec.tsx` with a technical size-curve error.
+- Inventory page/export scheduler regression for technical operation errors.
+- Assert raw technical text is absent, safe guidance is visible and retry/status affordances remain available.
+- Re-run Inventory-focused specs, frontend analytics guardrails/typecheck and `git diff --check`.
+
+### Acceptance
+
+- No SQL/provider/exception/stack text is rendered in Inventory inline error surfaces.
+- Detail and size-curve retry paths remain available.
+- Export/scheduler failures remain visibly failed and retryable.
+- Valid zero values and successful statuses are unchanged.
+- No backend DTO, endpoint or tenant behavior changes.
+
+### Dependencies
+
+- `getSafeAnalyticsErrorMessage` is the shared frontend error-message source of truth.
+- `RQ322` and `RQ324` remain owners of store-bootstrap and size-curve visibility.
+- `RQ368` is the parallel pattern for Pre/Post inline partial failures.
+
+---
+
+## RQ370 - Abort Inventory secondary and detail requests on scope changes
+
+Status: WAITING
+Priority: P2
+Type: frontend/performance/tests
+Feature family: inventory-secondary-request-cancellation
+Parallel-safe: no
+Owner: Analytics Frontend / Inventory
+Commit suggestion: `fix(analytics): abort inventory secondary requests`
+
+### Problem
+
+Inventory's lifecycle query accepts an `AbortSignal` but passes it only to the paged list request. Balance, insights, store comparison, action suggestions, forecast, alerts and rebalance requests continue after a filter/data-scope change; detail and size-curve requests also rely on a local cancelled flag rather than aborting the network request. The shared hook can suppress stale commits, but it cannot cancel this unnecessary work.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/InventoryPage.tsx` calls eight lifecycle APIs in one `Promise.allSettled`, while only `getInventoryList` receives the hook signal.
+- `getInventoryItemDetail` and `getSizeCurve` calls are guarded by `cancelled` flags but receive no `AbortSignal`.
+- `Klijent/clientapp/src/services/analyticsApi.ts` exposes no signal option for the affected Inventory read functions.
+
+### Scope
+
+- Inventory lifecycle secondary reads and detail/size-curve reads.
+- API-client signal options and the existing `useReliableAnalyticsQuery` generation/abort owner.
+- No endpoint shape or business metric changes.
+
+### Read first
+
+- `Klijent/clientapp/src/pages/InventoryPage.tsx`
+- `Klijent/clientapp/src/services/analyticsApi.ts`
+- `Klijent/clientapp/src/hooks/useReliableAnalyticsQuery.ts`
+- `RQ342` and `RQ359`
+
+### Do
+
+1. Add optional `AbortSignal` parameters to the affected read-client functions and pass them through the existing fetch helpers.
+2. Pass the lifecycle signal to every Inventory secondary request and a per-effect signal to detail/size-curve requests.
+3. Treat abort as a normal lifecycle transition; preserve the current stale snapshot contract and do not show abort as a user error.
+4. Add focused request-abort tests for rapid filter/data-scope changes and rapid detail-tab/row changes.
+
+### Tests
+
+- Inventory page race/cancellation spec proving every affected request receives abort on a superseding query.
+- Detail and size-curve request cleanup spec.
+- Existing Inventory reliable-query/stale-refetch suites.
+- Frontend analytics guardrails/typecheck and `git diff --check`.
+
+### Acceptance
+
+- Superseded Inventory lifecycle and detail requests are aborted, not merely ignored after completion.
+- Only the latest filter/data-scope/detail request can update visible state.
+- Aborted requests do not become error banners or clear a valid stale snapshot.
+- API response and backend contracts remain backward-compatible.
+
+### Dependencies
+
+- `RQ342` is DONE and owns primary Operacije list race protection.
+- `RQ359` is DONE and owns the shared query lifecycle.
+- No backend, migration, tenant or production-data change.
