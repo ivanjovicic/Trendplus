@@ -2,11 +2,13 @@
 
 Date: 2026-09-20
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ369
+Current READY prompt: none
 
 Owner promotion 2026-09-21: under the user's explicit instruction to claim the next prompt, `RQ369` moved from `WAITING` to `READY` as the P1 Inventory inline-error-safety follow-up after `RQ368`.
 
 Owner claim 2026-09-21: `RQ369` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ369-cursor.lock.md`.
+
+Owner completion 2026-09-21: `RQ369` delivered safe Inventory detail, size-curve, export/print and scheduler inline error projections with component/page regressions. Follow-up: promote `RQ370`.
 
 Owner promotion 2026-09-21: under the user's explicit instruction to claim the next prompt, `RQ368` moved from `WAITING` to `READY` as the first safe P1 follow-up from the second Operacije audit.
 
@@ -1330,7 +1332,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ366 | DONE | analytics-guardrail-baseline | Prevent guardrail debt from growing while shrinking the baseline |
 | RQ367 | DONE | analytics-generated-validation-evidence | Generate machine-readable validation evidence before Markdown summaries |
 | RQ368 | DONE | operations-inline-error-safety | Sanitize inline Pre/Post partial-failure messages without hiding degraded state |
-| RQ369 | IN_PROGRESS | inventory-inline-error-safety | Sanitize Inventory detail/export/scheduler error messages |
+| RQ369 | DONE | inventory-inline-error-safety | Sanitize Inventory detail/export/scheduler error messages |
 | RQ370 | WAITING | inventory-secondary-request-cancellation | Abort Inventory secondary and detail requests on scope changes |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
@@ -19699,7 +19701,7 @@ The Pre/Post page correctly preserves current-period data when the previous comp
 
 ## RQ369 - Sanitize Inventory detail/export/scheduler error messages
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: frontend/trust/tests
 Feature family: inventory-inline-error-safety
@@ -19762,6 +19764,24 @@ Several Inventory error paths bypass the shared `AnalyticsErrorState` safety map
 - `getSafeAnalyticsErrorMessage` is the shared frontend error-message source of truth.
 - `RQ322` and `RQ324` remain owners of store-bootstrap and size-curve visibility.
 - `RQ368` is the parallel pattern for Pre/Post inline partial failures.
+
+### Completion note
+
+- Date: 2026-09-21
+- Status: DONE
+- Completion: Inventory detail, size-curve, export/print and scheduler inline errors now reuse the shared safe analytics error mapper at page and component boundaries; technical provider/exception text fails closed while retry/status affordances remain visible.
+- Changed files: `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/components/inventory/SKUDetailModal.tsx`, `Klijent/clientapp/src/components/inventory/SizeCurvePanel.tsx`, `Klijent/clientapp/src/components/inventory/ExportSchedulerPanel.tsx`, their focused specs, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-21-RQ369-evidence.md`
+- Checks run: focused Inventory error-surface suite 14/14; `npm run check:analytics-guardrails` baseline-only with 51 known violations and typecheck pass; `node scripts/check-prompt-queues.mjs`; `node scripts/check-planning-architecture.mjs`; `git diff --check`
+- Checks not run: full frontend suite, live browser, backend tests and CI; local `dotnet` unavailable.
+- Run log: `.ai/runs/2026-09-21-RQ369-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: none known in RQ369 scope.
+- Follow-up: promote `RQ370` after RQ369 main delivery.
+- Residual risk: Inventory secondary/detail request cancellation remains covered by RQ370.
+- Prompt defect / scope repair: existing guardrail baseline line locations were refreshed after source movement; no new baseline entry was added.
 
 ---
 
