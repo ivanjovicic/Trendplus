@@ -137,7 +137,7 @@
     {
       "file": "src/pages/InventoryPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 710,
+      "line": 716,
       "reason": "Existing inventory page-count fallback requires a reviewed backend-total exception."
     },
     {
@@ -245,7 +245,7 @@
     {
       "file": "src/components/inventory/SKUDetailModal.tsx",
       "rule": "fake_zero_fallback",
-      "line": 161,
+      "line": 165,
       "reason": "Existing SKU detail fallback requires a reviewed unavailable-value exception."
     },
     {
