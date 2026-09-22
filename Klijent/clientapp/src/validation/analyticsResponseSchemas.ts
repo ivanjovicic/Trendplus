@@ -80,6 +80,34 @@ const salesStatSchema = {
   recommendation: recommendationSchema.optional(),
 };
 
+const colorSalesStatSchema = {
+  preNivelacijePromet: finiteNumber,
+  preNivelacijeKolicina: finiteNumber,
+  posleNivelacijePromet: finiteNumber,
+  posleNivelacijeKolicina: finiteNumber,
+  ukupanPromet: finiteNumber,
+  ukupnaKolicina: finiteNumber,
+  previousPeriodRevenue: nullableNumber,
+  previousPeriodUnits: nullableNumber,
+  brojArtikalaSaNivelacijom: nonNegativeInteger,
+  brojArtikalaUkupno: nonNegativeInteger,
+  revenueWithCost: finiteNumber,
+  estimatedCostRevenue: finiteNumber,
+  marginContribution: finiteNumber,
+  marginDataCoveragePct: nullableNonNegativePercentage,
+  fallbackCostCoveragePct: nullableNonNegativePercentage,
+  marginPct: nullablePercentage,
+  revenueWithNivelacijaSplit: finiteNumber,
+  popRevenueChangePct: nullableNumber,
+  popUnitsChangePct: nullableNumber,
+  prePostNivelacijaRevenueImpactPct: nullableNumber,
+  prePostNivelacijaUnitsImpactPct: nullableNumber,
+  prePostNivelacijaRevenueCoveragePct: nullableNonNegativePercentage,
+  sharePct: nullableNonNegativePercentage.optional(),
+  reliabilityPct: nullableNonNegativePercentage.optional(),
+  recommendation: recommendationSchema.optional(),
+};
+
 const costTotalsSchema = {
   ukupanPromet: nonNegativeNumber,
   ukupanMarzniDoprinos: finiteNumber,
@@ -96,21 +124,40 @@ const costTotalsSchema = {
   prePostNivelacijaUnitsImpactPct: nullableNumber,
 };
 
+const colorCostTotalsSchema = {
+  ...costTotalsSchema,
+  ukupanPromet: finiteNumber,
+  prePromet: finiteNumber,
+  poslePromet: finiteNumber,
+  ukupnaKolicina: finiteNumber,
+  preKolicina: finiteNumber,
+  posleKolicina: finiteNumber,
+};
+
 const colorDataQualitySchema = z.object({
-  missingCostRevenue: nonNegativeNumber,
+  missingCostRevenue: finiteNumber,
   missingCostRevenueSharePct: nullableNonNegativePercentage,
-  unknownColorRevenue: nonNegativeNumber,
+  estimatedCostRevenue: finiteNumber.optional(),
+  estimatedCostRevenueSharePct: nullableNonNegativePercentage.optional(),
+  unknownColorRevenue: finiteNumber,
   unknownColorRevenueSharePct: nullableNonNegativePercentage,
-  revenueWithNivelacijaSplit: nonNegativeNumber,
+  revenueWithNivelacijaSplit: finiteNumber,
   revenueWithNivelacijaSplitSharePct: nullableNonNegativePercentage,
+  signedRevenuePolicy: z.string().optional(),
+  signedQuantityPolicy: z.string().optional(),
+  costQualityDenominatorStatus: z.string().optional(),
 }).passthrough();
 
-const shoeDataQualitySchema = colorDataQualitySchema
-  .omit({ unknownColorRevenue: true, unknownColorRevenueSharePct: true })
-  .extend({
-    unknownTypeRevenue: nonNegativeNumber,
-    unknownTypeRevenueSharePct: nullableNonNegativePercentage,
-  });
+const shoeDataQualitySchema = z.object({
+  missingCostRevenue: nonNegativeNumber,
+  missingCostRevenueSharePct: nullableNonNegativePercentage,
+  estimatedCostRevenue: nonNegativeNumber.optional(),
+  estimatedCostRevenueSharePct: nullableNonNegativePercentage.optional(),
+  revenueWithNivelacijaSplit: nonNegativeNumber,
+  revenueWithNivelacijaSplitSharePct: nullableNonNegativePercentage,
+  unknownTypeRevenue: nonNegativeNumber,
+  unknownTypeRevenueSharePct: nullableNonNegativePercentage,
+}).passthrough();
 
 const seasonSchema = z.object({
   id: nonNegativeInteger,
@@ -141,9 +188,9 @@ export const colorSalesStatsResponseSchema = z.object({
   }).nullable().optional(),
   colors: z.array(z.object({
     boja: z.string(),
-    ...salesStatSchema,
+    ...colorSalesStatSchema,
   }).passthrough()),
-  totals: z.object(costTotalsSchema).passthrough(),
+  totals: z.object(colorCostTotalsSchema).passthrough(),
   dataQuality: colorDataQualitySchema,
   sezone: z.array(seasonSchema),
 }).passthrough();

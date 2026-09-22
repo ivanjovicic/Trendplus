@@ -185,7 +185,7 @@ type StatusTooltipData = {
   status: CanonicalRecommendationStatus;
   statusReason: string;
   sharePct: number | null;
-  marginPct: number;
+  marginPct: number | null;
   popRevenueChangePct: number | null;
   prePostNivelacijaRevenueImpactPct: number | null;
   previousPeriodRevenue: number | null;
@@ -534,6 +534,7 @@ export default function ColorSalesStatsPage() {
     const missingCostShare = resolveColorPercentValue(data.dataQuality.missingCostRevenueSharePct);
     const knownCostShare = resolveColorComplementPercent(missingCostShare);
     const unknownShare = resolveColorPercentValue(data.dataQuality.unknownColorRevenueSharePct);
+    const costQualityDenominatorStatus = data.dataQuality.costQualityDenominatorStatus;
 
     if (splitCoverage != null && splitCoverage < 60) {
       notes.push(`Pre/post nivelacija trenutno pokriva ${fmtPct(splitCoverage, 1)} ukupnog prometa, pa taj signal treba čitati kao delimičan.`);
@@ -545,6 +546,10 @@ export default function ColorSalesStatsPage() {
 
     if (unknownShare != null && unknownShare > 0) {
       notes.push(`Nepoznate boje učestvuju sa ${fmtPct(unknownShare, 1)} ukupnog prometa.`);
+    }
+
+    if (costQualityDenominatorStatus === "unavailable_non_positive_net_revenue") {
+      notes.push("Neto promet nije pozitivan, pa coverage troška i automatska preporuka nisu merljivi; signed iznosi ostaju prikazani.");
     }
 
     return notes;
@@ -570,6 +575,8 @@ export default function ColorSalesStatsPage() {
       { key: "bojaCount", label: "Broj boja", value: fmtNumber(resolveColorCountValue(data?.totals.brojBoja)) },
       { key: "marginCoverage", label: "Promet sa nabavnom cenom", value: fmtPct(resolveColorComplementPercent(data?.dataQuality.missingCostRevenueSharePct), 1) },
       { key: "splitCoverage", label: "Pre/post pokriće", value: fmtPct(resolveColorPercentValue(data?.dataQuality.revenueWithNivelacijaSplitSharePct), 1) },
+      { key: "signedEvidence", label: "Neto dokaz", value: data?.dataQuality.signedRevenuePolicy === "signed_net_revenue_preserved" ? "Neto promet i količina" : "Nije dostupno" },
+      { key: "costDenominator", label: "Imenilac coverage", value: data?.dataQuality.costQualityDenominatorStatus === "measured_positive_net_revenue" ? "Pozitivan neto promet" : "Nije merljivo" },
       { key: "increaseFocus", label: recommendationStatusLabel("increase_focus"), value: counts.increaseFocus },
       { key: "maintain", label: recommendationStatusLabel("maintain"), value: counts.maintain },
       { key: "review", label: recommendationStatusLabel("review"), value: counts.review },
@@ -583,7 +590,9 @@ export default function ColorSalesStatsPage() {
       counts.maintain,
       counts.review,
       data?.dataQuality.missingCostRevenueSharePct,
+      data?.dataQuality.costQualityDenominatorStatus,
       data?.dataQuality.revenueWithNivelacijaSplitSharePct,
+      data?.dataQuality.signedRevenuePolicy,
       data?.dataScope,
       data?.generatedAt,
       data?.lineage,

@@ -2901,7 +2901,25 @@ public static class AllEndpoints
                             sale => sale.DatumProdaje,
                             sale => sale.Prihod,
                             sale => sale.Kolicina);
-                        var marginQuality = MarginQualityClassifier.ClassifyFromSnapshot(marginSnapshot, totalRevenue);
+                        var rowMarginPct = marginSnapshot.RevenueWithCost > 0m
+                            ? (double?)marginSnapshot.MarginPct
+                            : null;
+                        var rowMarginCoveragePct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(
+                            marginSnapshot.RevenueWithCost,
+                            totalRevenue);
+                        var rowHistoricalCoveragePct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(
+                            marginSnapshot.HistoricalCostRevenue,
+                            totalRevenue);
+                        var rowEstimatedCoveragePct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(
+                            marginSnapshot.EstimatedCostRevenue,
+                            totalRevenue);
+                        var rowNoCostCoveragePct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(
+                            totalRevenue - marginSnapshot.RevenueWithCost,
+                            totalRevenue);
+                        var rowSplitCoveragePct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(
+                            splitSnapshot.ComparableRevenueWithSplit,
+                            totalRevenue);
+                        var marginQuality = ColorSignedEvidencePolicy.ClassifyCostQuality(marginSnapshot, totalRevenue);
 
                         return new
                         {
@@ -2917,18 +2935,16 @@ public static class AllEndpoints
                             revenueWithCost = marginSnapshot.HistoricalCostRevenue,
                             estimatedCostRevenue = marginSnapshot.EstimatedCostRevenue,
                             marginContribution = marginSnapshot.MarginContribution,
-                            marginDataCoveragePct = marginSnapshot.HistoricalMarginCoveragePct,
-                            fallbackCostCoveragePct = marginSnapshot.FallbackCostCoveragePct,
-                            marginPct = marginSnapshot.MarginPct,
+                            marginDataCoveragePct = rowMarginCoveragePct,
+                            fallbackCostCoveragePct = rowEstimatedCoveragePct,
+                            marginPct = rowMarginPct,
                             // Cost quality breakdown
                             totalCost = marginSnapshot.TotalCost,
                             historicalCostRevenue = marginSnapshot.HistoricalCostRevenue,
-                            historicalCostCoveragePct = marginSnapshot.HistoricalMarginCoveragePct ?? 0d,
-                            estimatedCostCoveragePct = marginSnapshot.FallbackCostCoveragePct ?? 0d,
+                            historicalCostCoveragePct = rowHistoricalCoveragePct,
+                            estimatedCostCoveragePct = rowEstimatedCoveragePct,
                             noCostRevenue = Math.Round(totalRevenue - marginSnapshot.RevenueWithCost, 2),
-                            noCostCoveragePct = totalRevenue > 0m
-                                ? Math.Round((double)((totalRevenue - marginSnapshot.RevenueWithCost) / totalRevenue * 100m), 2)
-                                : 0d,
+                            noCostCoveragePct = rowNoCostCoveragePct,
                             isEstimatedMargin = (marginSnapshot.FallbackCostCoveragePct ?? 0) > (marginSnapshot.HistoricalMarginCoveragePct ?? 0),
                             marginQualityLabel = marginQuality.Label,
                             marginQualityTier = marginQuality.Tier,
@@ -2950,7 +2966,7 @@ public static class AllEndpoints
                                 : (double?)null,
                             prePostNivelacijaRevenueImpactPct = splitSnapshot.RevenueImpactPct,
                             prePostNivelacijaUnitsImpactPct = splitSnapshot.UnitsImpactPct,
-                            prePostNivelacijaRevenueCoveragePct = splitSnapshot.ComparableRevenueCoveragePct,
+                            prePostNivelacijaRevenueCoveragePct = rowSplitCoveragePct,
                             prePostSignalNote = splitSnapshot.SignalNote,
                             prePostComparableArticleCount = splitSnapshot.ComparableArticleCount,
                             // Legacy compatibility aliases (pre/post impact metric in old response shape)
@@ -2975,21 +2991,18 @@ public static class AllEndpoints
                 var dataQuality = new
                 {
                     missingCostRevenue = Math.Round(missingCostRevenue, 2),
-                    missingCostRevenueSharePct = totalRevenue > 0m
-                        ? Math.Round((double)(missingCostRevenue / totalRevenue * 100m), 2)
-                        : (double?)null,
+                    missingCostRevenueSharePct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(missingCostRevenue, totalRevenue),
                     estimatedCostRevenue = Math.Round(estimatedCostRevenue, 2),
-                    estimatedCostRevenueSharePct = totalRevenue > 0m
-                        ? Math.Round((double)(estimatedCostRevenue / totalRevenue * 100m), 2)
-                        : (double?)null,
+                    estimatedCostRevenueSharePct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(estimatedCostRevenue, totalRevenue),
                     unknownColorRevenue = Math.Round(unknownColorRevenue, 2),
-                    unknownColorRevenueSharePct = totalRevenue > 0m
-                        ? Math.Round((double)(unknownColorRevenue / totalRevenue * 100m), 2)
-                        : (double?)null,
+                    unknownColorRevenueSharePct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(unknownColorRevenue, totalRevenue),
                     revenueWithNivelacijaSplit = Math.Round(comparableRevenueWithNivelacijaSplit, 2),
-                    revenueWithNivelacijaSplitSharePct = totalRevenue > 0m
-                        ? Math.Round((double)(comparableRevenueWithNivelacijaSplit / totalRevenue * 100m), 2)
-                        : (double?)null,
+                    revenueWithNivelacijaSplitSharePct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(comparableRevenueWithNivelacijaSplit, totalRevenue),
+                    signedRevenuePolicy = ColorSignedEvidencePolicy.SignedRevenuePolicy,
+                    signedQuantityPolicy = ColorSignedEvidencePolicy.SignedQuantityPolicy,
+                    costQualityDenominatorStatus = totalRevenue > 0m
+                        ? ColorSignedEvidencePolicy.PositiveNetRevenueDenominator
+                        : ColorSignedEvidencePolicy.NonPositiveNetRevenueDenominator,
                     nivelacijaEventCount = nivelacije.Count,
                     nivelacijaEventArticleCount = prvaNivelacijaPoArtiklu.Count,
                     salesArticleCount = salesArticleIds.Count,
@@ -2998,20 +3011,19 @@ public static class AllEndpoints
 
                 var knownColorMarginValues = colors
                     .Where(row => !string.Equals(row.boja, "Nepoznato", StringComparison.OrdinalIgnoreCase))
-                    .Select(row => row.marginPct)
+                    .Where(row => row.marginPct.HasValue)
+                    .Select(row => row.marginPct!.Value)
                     .ToList();
                 var averageMarginPct = knownColorMarginValues.Count > 0
                     ? knownColorMarginValues.Average()
                     : (double?)null;
-                var unknownColorSharePct = dataQuality.unknownColorRevenueSharePct ?? 0d;
+                var unknownColorSharePct = dataQuality.unknownColorRevenueSharePct;
 
                 var colorsWithRecommendation = colors
                     .Select(row =>
                     {
-                        var sharePctForDecision = totalRevenue > 0m
-                            ? Math.Round((double)(row.ukupanPromet / totalRevenue * 100m), 2)
-                            : 0d;
-                        double? sharePct = totalRevenue > 0m ? sharePctForDecision : null;
+                        var sharePct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(row.ukupanPromet, totalRevenue);
+                        var sharePctForDecision = sharePct ?? 0d;
                         var hasPreviousPeriodWindow = row.previousPeriodRevenue is not null;
                         var isNewColor = hasPreviousPeriodWindow
                             && row.previousPeriodRevenue <= 0m
@@ -3024,7 +3036,7 @@ public static class AllEndpoints
                             TotalUnits: row.ukupnaKolicina,
                             ItemCount: row.brojArtikalaUkupno,
                             SharePct: sharePctForDecision,
-                            MarginPct: row.marginPct,
+                            MarginPct: row.marginPct ?? 0d,
                             MarginCoveragePct: row.marginDataCoveragePct,
                             SplitCoveragePct: row.prePostNivelacijaRevenueCoveragePct,
                             PopRevenueChangePct: row.popRevenueChangePct,
@@ -3033,11 +3045,37 @@ public static class AllEndpoints
                             PreviousPeriodUnits: row.previousPeriodUnits,
                             HasPreviousPeriodWindow: hasPreviousPeriodWindow,
                             IsNewEntity: isNewColor,
-                            UnknownBucketSharePct: unknownColorSharePct),
+                            UnknownBucketSharePct: unknownColorSharePct ?? 0d),
                             averageMarginPct);
                         var hasComparableNivelacijaSignal = row.prePostNivelacijaRevenueImpactPct.HasValue
                             && row.prePostNivelacijaUnitsImpactPct.HasValue;
-                        var recommendationAllowed = recommendation.RecommendationAllowed && hasComparableNivelacijaSignal;
+                        var hasMeasurableEvidence = ColorSignedEvidencePolicy.HasMeasurableRecommendationEvidence(
+                            row.ukupanPromet,
+                            row.marginPct,
+                            row.marginDataCoveragePct,
+                            unknownColorSharePct);
+                        var recommendationAllowed = recommendation.RecommendationAllowed
+                            && hasComparableNivelacijaSignal
+                            && hasMeasurableEvidence;
+                        var exposedRecommendationBlocked = !hasMeasurableEvidence;
+                        var exposedRecommendationStatus = exposedRecommendationBlocked
+                            ? "insufficient_data"
+                            : recommendation.Status;
+                        var exposedRecommendationLabel = exposedRecommendationBlocked
+                            ? "Insufficient data"
+                            : recommendation.Label;
+                        var exposedRecommendationSummary = exposedRecommendationBlocked
+                            ? "Signed promet nema pozitivan ili potpun imenilac za pouzdanu preporuku."
+                            : recommendation.Summary;
+                        var exposedRecommendationDataQualityStatus = exposedRecommendationBlocked
+                            ? "insufficient_data"
+                            : recommendation.DataQualityStatus;
+                        var exposedReasonCodes = exposedRecommendationBlocked
+                            ? recommendation.ReasonCodes
+                                .Append("signed_denominator_unavailable")
+                                .Distinct(StringComparer.Ordinal)
+                                .ToArray()
+                            : recommendation.ReasonCodes;
 
                         return new
                         {
@@ -3080,14 +3118,14 @@ public static class AllEndpoints
                             reliabilityPct = recommendationAllowed ? (double?)recommendation.ReliabilityPct : null,
                             recommendation = new
                             {
-                                recommendation.Status,
-                                recommendation.Label,
-                                recommendation.Summary,
+                                Status = exposedRecommendationStatus,
+                                Label = exposedRecommendationLabel,
+                                Summary = exposedRecommendationSummary,
                                 ConfidencePct = recommendationAllowed ? (double?)recommendation.ConfidencePct : null,
                                 ReliabilityPct = recommendationAllowed ? (double?)recommendation.ReliabilityPct : null,
-                                recommendation.DataQualityStatus,
+                                DataQualityStatus = exposedRecommendationDataQualityStatus,
                                 RecommendationAllowed = recommendationAllowed,
-                                reasonCodes = recommendation.ReasonCodes
+                                reasonCodes = exposedReasonCodes
                             },
                             // Legacy compatibility aliases (deprecated)
                             row.promenaPrometa,
@@ -3096,16 +3134,16 @@ public static class AllEndpoints
                     })
                     .ToList();
 
-                var totalHistPct = totalRevenue > 0m
-                    ? Math.Round((double)(colors.Sum(r => r.historicalCostRevenue) / totalRevenue * 100m), 2)
-                    : 0d;
-                var totalEstPct = totalRevenue > 0m
-                    ? Math.Round((double)(colors.Sum(r => r.estimatedCostRevenue) / totalRevenue * 100m), 2)
-                    : 0d;
-                var totalNoCostPct = totalRevenue > 0m
-                    ? Math.Round((double)((totalRevenue - colors.Sum(r => r.historicalCostRevenue) - colors.Sum(r => r.estimatedCostRevenue)) / totalRevenue * 100m), 2)
-                    : 0d;
-                var totalMarginQuality = MarginQualityClassifier.Classify(totalHistPct, totalEstPct, totalNoCostPct, totalHistPct + totalEstPct);
+                var totalHistoricalCostRevenue = colors.Sum(r => r.historicalCostRevenue);
+                var totalEstimatedCostRevenue = colors.Sum(r => r.estimatedCostRevenue);
+                var totalHistPct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(totalHistoricalCostRevenue, totalRevenue);
+                var totalEstPct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(totalEstimatedCostRevenue, totalRevenue);
+                var totalNoCostPct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(
+                    totalRevenue - totalHistoricalCostRevenue - totalEstimatedCostRevenue,
+                    totalRevenue);
+                var totalMarginQuality = totalHistPct.HasValue && totalEstPct.HasValue && totalNoCostPct.HasValue
+                    ? MarginQualityClassifier.Classify(totalHistPct.Value, totalEstPct.Value, totalNoCostPct.Value, totalHistPct.Value + totalEstPct.Value)
+                    : ColorSignedEvidencePolicy.UnavailableCostQuality("Ukupan signed promet nema validan pozitivan imenilac za coverage.");
 
                 var totals = new
                 {

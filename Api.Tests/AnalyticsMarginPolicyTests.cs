@@ -134,4 +134,47 @@ public sealed class AnalyticsMarginPolicyTests
         Assert.Equal(50d, snapshot.HistoricalMarginCoveragePct);
         Assert.Equal(30d, snapshot.FallbackCostCoveragePct);
     }
+
+    [Fact]
+    public void ColorSignedEvidencePolicy_PreservesSignedAmounts_AndNullsInvalidCoverage()
+    {
+        Assert.Equal(50d, ColorSignedEvidencePolicy.ResolveNonNegativePercentage(50m, 100m));
+        Assert.Null(ColorSignedEvidencePolicy.ResolveNonNegativePercentage(-50m, 100m));
+        Assert.Null(ColorSignedEvidencePolicy.ResolveNonNegativePercentage(50m, 0m));
+        Assert.Null(ColorSignedEvidencePolicy.ResolveNonNegativePercentage(150m, 100m));
+    }
+
+    [Fact]
+    public void ColorSignedEvidencePolicy_BlocksRecommendationAndQualityForNonPositiveNetRevenue()
+    {
+        var accumulator = new MarginAccumulator();
+        accumulator.Add(revenue: -100m, quantity: -1m, unitCost: 50m);
+        var snapshot = accumulator.Build(totalRevenue: -100m);
+
+        var quality = ColorSignedEvidencePolicy.ClassifyCostQuality(snapshot, -100m);
+
+        Assert.Equal("unavailable", quality.Tier);
+        Assert.Null(ColorSignedEvidencePolicy.ResolveNonNegativePercentage(snapshot.RevenueWithCost, -100m));
+        Assert.False(ColorSignedEvidencePolicy.HasMeasurableRecommendationEvidence(
+            totalRevenue: -100m,
+            marginPct: snapshot.MarginPct,
+            marginCoveragePct: snapshot.MarginDataCoveragePct,
+            unknownColorSharePct: 0d));
+    }
+
+    [Fact]
+    public void ColorSignedEvidencePolicy_AllowsMeasuredNegativeMarginWithPositiveDenominator()
+    {
+        var accumulator = new MarginAccumulator();
+        accumulator.Add(revenue: 100m, quantity: 1m, unitCost: 150m);
+        var snapshot = accumulator.Build(totalRevenue: 100m);
+
+        Assert.Equal(-50d, snapshot.MarginPct);
+        Assert.Equal("confirmed", ColorSignedEvidencePolicy.ClassifyCostQuality(snapshot, 100m).Tier);
+        Assert.True(ColorSignedEvidencePolicy.HasMeasurableRecommendationEvidence(
+            totalRevenue: 100m,
+            marginPct: snapshot.MarginPct,
+            marginCoveragePct: 100d,
+            unknownColorSharePct: 0d));
+    }
 }

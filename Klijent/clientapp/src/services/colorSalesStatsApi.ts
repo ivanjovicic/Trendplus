@@ -30,15 +30,15 @@ export interface ColorSalesStat {
   marginContribution: number;
   marginDataCoveragePct: number | null;
   fallbackCostCoveragePct: number | null;
-  marginPct: number;
+  marginPct: number | null;
   // TODO(backend-dto): keep ColorSalesStat aligned with the color-sales-stats endpoint quality payload.
   // Margin quality / cost coverage context must come from backend DTOs, not from frontend derivation.
   totalCost?: number;
   historicalCostRevenue?: number;
-  historicalCostCoveragePct?: number;
-  estimatedCostCoveragePct?: number;
+  historicalCostCoveragePct?: number | null;
+  estimatedCostCoveragePct?: number | null;
   noCostRevenue?: number;
-  noCostCoveragePct?: number;
+  noCostCoveragePct?: number | null;
   snapshotCostRevenue?: number;
   snapshotCostCoveragePct?: number;
   isEstimatedMargin?: boolean;
@@ -69,9 +69,9 @@ export interface ColorSalesTotals {
   ukupanMarzniDoprinos: number;
   ukupanTrosak?: number;
   prosecnaMarza?: number | null;
-  historicalCostCoveragePct?: number;
-  estimatedCostCoveragePct?: number;
-  noCostCoveragePct?: number;
+  historicalCostCoveragePct?: number | null;
+  estimatedCostCoveragePct?: number | null;
+  noCostCoveragePct?: number | null;
   snapshotCostRevenue?: number;
   snapshotCostCoveragePct?: number;
   isSnapshotActive?: boolean;
@@ -117,6 +117,9 @@ export interface ColorSalesDataQuality {
   nivelacijaEventArticleCount?: number;
   salesArticleCount?: number;
   salesArticlesWithMatchingNivelacija?: number;
+  signedRevenuePolicy?: string;
+  signedQuantityPolicy?: string;
+  costQualityDenominatorStatus?: string;
 }
 
 export interface ColorSalesLineage {

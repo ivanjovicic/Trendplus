@@ -144,9 +144,57 @@ describe("analytics response schemas", () => {
     }).success).toBe(false);
   });
 
+  it("accepts signed Color revenue, quantity and cost evidence while keeping counters and percentages bounded", () => {
+    const result = colorSalesStatsResponseSchema.safeParse({
+      ...validColorResponse,
+      colors: [{
+        ...colorRow,
+        preNivelacijePromet: -25,
+        preNivelacijeKolicina: -2,
+        posleNivelacijePromet: 5,
+        posleNivelacijeKolicina: 1,
+        ukupanPromet: -20,
+        ukupnaKolicina: -1,
+        revenueWithCost: -20,
+        estimatedCostRevenue: -5,
+        marginContribution: -15,
+        marginDataCoveragePct: null,
+        fallbackCostCoveragePct: null,
+        marginPct: -75,
+        revenueWithNivelacijaSplit: -20,
+        sharePct: null,
+      }],
+      totals: {
+        ...validColorResponse.totals,
+        ukupanPromet: -20,
+        ukupanMarzniDoprinos: -15,
+        prePromet: -25,
+        poslePromet: 5,
+        ukupnaKolicina: -1,
+        preKolicina: -2,
+        posleKolicina: 1,
+      },
+      dataQuality: {
+        ...validColorResponse.dataQuality,
+        missingCostRevenue: 0,
+        estimatedCostRevenue: -5,
+        unknownColorRevenue: -20,
+        revenueWithNivelacijaSplit: -20,
+        missingCostRevenueSharePct: null,
+        estimatedCostRevenueSharePct: null,
+        unknownColorRevenueSharePct: null,
+        revenueWithNivelacijaSplitSharePct: null,
+        costQualityDenominatorStatus: "unavailable_non_positive_net_revenue",
+      },
+    });
+
+    expect(result.success).toBe(true);
+  });
+
   it.each([
-    ["negative count", { ...colorRow, ukupnaKolicina: -1 }],
+    ["negative count", { ...colorRow, brojArtikalaUkupno: -1 }],
     ["percentage above 100", { ...colorRow, sharePct: 101 }],
+    ["margin percentage above 100", { ...colorRow, marginPct: 101 }],
     ["NaN", { ...colorRow, marginContribution: Number.NaN }],
     ["Infinity", { ...colorRow, marginContribution: Number.POSITIVE_INFINITY }],
   ])("rejects %s instead of repairing it", (_caseName, invalidRow) => {
@@ -342,7 +390,7 @@ describe("analytics response schemas", () => {
 
   it("raises a controlled validation error without producing fake zero values", () => {
     expect(() => validateAnalyticsResponse(
-      { ...validColorResponse, colors: [{ ...colorRow, ukupnaKolicina: -1 }] },
+      { ...validColorResponse, colors: [{ ...colorRow, brojArtikalaUkupno: -1 }] },
       colorSalesStatsResponseSchema,
       "Color sales",
     )).toThrow(AnalyticsResponseValidationError);
