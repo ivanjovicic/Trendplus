@@ -20612,7 +20612,7 @@ Supplier row-level pre/post impact/recommendation uses comparable split-policy e
 
 ## RQ381 - Align Daily Sales signed quantity/revenue contract and reconciliation
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend-contract/frontend-runtime-validation/tests
 Feature family: daily-sales-signed-numeric-contract
@@ -20672,6 +20672,26 @@ Reproduction: return a valid Daily Sales payload with negative `totalItemsInRang
 
 - `RQ289` owns authoritative supplier ordering and `RQ290` owns partial shift semantics; preserve both.
 - `RQ382` owns data-scope parity and `RQ383` owns shift-assignment provenance; do not fold those contracts into this numeric fix.
+
+### Completion note
+
+- Date: 2026-09-22
+- Status: DONE
+- Completion: Daily Sales now accepts legitimate signed quantity/revenue aggregates from returns and corrections, preserves negative supplier and `Ostali` evidence, distinguishes net-zero evidence from an empty period, and exposes validation issue paths in the UI.
+- Changed files: `Api/Services/DailySalesStatsService.cs`, `Api.Tests/DailySalesStatsServiceTests.cs`, `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.numericState.spec.ts`, `Klijent/clientapp/src/utils/dailyShiftSummary.ts`, `Klijent/clientapp/src/utils/__tests__/dailyShiftSummary.spec.ts`, `Klijent/clientapp/src/validation/analyticsResponseSchemas.ts`, `Klijent/clientapp/src/validation/__tests__/analyticsResponseSchemas.spec.ts`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`
+- Contract/runtime behavior changed: signed quantity/revenue fields use finite signed validators; true counters remain non-negative; top-N and remainder calculations no longer erase signed evidence.
+- Checks run: focused Vitest 3 files/28 tests; `npm run check:analytics-guardrails`; `npm run build`; `git diff --check`.
+- Checks not run: backend .NET tests/build because the .NET SDK is unavailable in this environment.
+- Run log: `.ai/runs/2026-09-22-rq381-signed-contract-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: fast-forwarded to `main`
+- Main commit SHA: `f9971836b5803919e4b9ac3358f069cb447884d3`
+- Main verification: `origin/main` contains `f9971836b5803919e4b9ac3358f069cb447884d3`
+- Missed: backend runtime proof requires a .NET-capable environment.
+- Follow-up: none for RQ381; RQ382/RQ383 remain separate owner prompts.
+- Residual risk: remote CI and backend tests remain uninspected/unrun locally.
+- Next: `RQ385` remains the current RQ READY prompt.
+- Prompt defect / scope repair: guardrail baseline line reference moved from 731 to 745 with the existing reviewed finding; no new violation was introduced.
 
 ---
 
