@@ -2,7 +2,7 @@
 
 Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ376; RQ375, RQ385, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE.
+Current READY prompt: none; RQ375, RQ376, RQ385, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE.
 
 Owner completion 2026-09-22: under the user's direct last-commits audit, `RQ393` was delivered directly to `main` in `3b635fe813e0e55f843236d55025c52c030e853d`; Color recommendations now use a covered-revenue-weighted margin baseline, unknown-share evidence remains nullable, historical/fallback/no-cost coverage is separated, and the affected screens use Serbian decision labels. Run log: `.ai/runs/2026-09-22-direct-last-commits-audit-evidence.md`.
 
@@ -28,6 +28,7 @@ Owner claim 2026-09-22: `RQ375` transitioned `READY -> IN_PROGRESS` in this work
 Owner completion 2026-09-22: `RQ375` delivered directly to `main` in `74091cd2479abafd068e4d92e719ccbaed2716d3`; Shoe Type margin is now a covered-revenue-weighted backend baseline, source coverage and no-cost semantics are separated, decision-critical runtime validation is fail-closed, and frontend simple-average fallback/English labels were removed. Run log: `.ai/runs/2026-09-22-RQ375-evidence.md`. Evidence state: synchronized. Next: promote RQ376 after dependency and collision refresh.
 Owner promotion 2026-09-22: after `RQ375` reached DONE and its delivery/evidence were verified, `RQ376` moved `WAITING -> READY` as the next dependency-complete P1 Shoe Type comparable pre/post aggregate prompt; `RQ377` remains WAITING behind the aggregate contract.
 Owner claim 2026-09-22: `RQ376` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ376-codex.lock.md`.
+Owner completion 2026-09-22: `RQ376` delivered directly to `main` in `3d59324f47e1779226ee470d87a65c4a2fa2311d`; Shoe Type totals and impact now use the comparable pre/post article cohort, while broader observed evidence is preserved explicitly and the row/totals/frontend runtime contract carries comparable revenue, quantity, count and coverage. Run log: `.ai/runs/2026-09-22-RQ376-evidence.md`. Evidence state: synchronized. Next: promote RQ377 after dependency and collision refresh.
 Owner claim 2026-09-22: `RQ385` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ385-codex.lock.md`.
 Owner completion 2026-09-22: `RQ385` delivered directly to `main` with implementation `bb6158f003bfd535a3211430970b30abbc761644`; current `origin/main` contains this SHA and the synchronized closure commits. Scoped Pre/Post fact queries, scope-isolated main/options caches, backend provenance and frontend fail-closed validation are delivered. Run log: `.ai/runs/2026-09-22-RQ385-evidence.md`. Evidence state: synchronized.
 Owner claim 2026-09-22: `RQ388` transitioned `READY -> IN_PROGRESS` in this workspace after dependency and collision checks; local runtime lock `.ai/task-locks/RQ388-codex.lock.md`.
@@ -1405,7 +1406,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ373 | WAITING | supplier-sales-visible-scope-parity | Separate Supplier display population from decision reference cohort and align KPI/chart/table/export scope |
 | RQ374 | WAITING | supplier-sales-detail-trust-contract | Align Supplier detail with display scope, decision benchmark, trust and provenance |
 | RQ375 | DONE | shoe-type-margin-quality-contract | Align Shoe Type weighted margin baseline, cost-source semantics and runtime validation |
-| RQ376 | READY | shoe-type-prepost-aggregate-parity | Align Shoe Type pre/post totals with comparable evidence cohort |
+| RQ376 | DONE | shoe-type-prepost-aggregate-parity | Align Shoe Type pre/post totals with comparable evidence cohort |
 | RQ377 | WAITING | shoe-type-detail-trust-contract | Align Shoe Type detail route with row recommendation, trust and unknown identity |
 | RQ378 | WAITING | supplier-sales-margin-quality-contract | Align Supplier weighted margin benchmark and cost-source semantics |
 | RQ379 | WAITING | supplier-sales-runtime-schema | Add fail-closed runtime validation for Supplier Sales decision payload |
@@ -20403,7 +20404,7 @@ Reproduction: return two known types with very different cost-covered revenues a
 
 ## RQ376 - Align Shoe Type pre/post totals with comparable evidence cohort
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend-contract/frontend/tests
 Feature family: shoe-type-prepost-aggregate-parity
