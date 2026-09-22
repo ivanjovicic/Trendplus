@@ -8348,7 +8348,7 @@ When prior 7-day rolling units = 0 and current > 0, `demand_acceleration` is fix
 
 ## RQ190 - Forecast provenance freshness aggregated optimistically
 
-Status: DONE
+Status: WAITING
 Priority: P1
 Type: backend/contract/tests
 Feature family: forecast-snapshot-freshness-aggregation
@@ -21785,7 +21785,7 @@ Color uses the shared runtime schema path, but the schema leaves decision-critic
 
 ## RQ396 - Align Color cache invalidation and freshness metadata
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend/cache/refresh-contract/tests
 Feature family: color-cache-freshness-lineage
