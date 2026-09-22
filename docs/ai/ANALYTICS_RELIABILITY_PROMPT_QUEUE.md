@@ -7,6 +7,7 @@ Current READY prompts: RQ385, RQ388 and RQ389 (independent Pre/Post, Pre-Nivelac
 Owner audit 2026-09-22: under the user's direct Daily Sales by Shift screen/backend audit request, `RQ375` returned to `WAITING`, `RQ381` moved to `READY` as the current signed-quantity/revenue contract prompt, and `RQ382`-`RQ384` were added as later `WAITING` scope, shift-provenance and safe-error follow-ups. Daily Sales ASCII Serbian copy remains routed to `RQ306`; residual English/technical UI copy remains routed to `RQ325`.
 Owner audit 2026-09-22: under the user's direct Pre/Post Nivelacija screen/backend audit request, `RQ385` became the primary `READY` prompt for request-scope/cache lineage, while `RQ386` and `RQ387` were added as `WAITING` cohort/denominator and runtime-payload/error-contract follow-ups. The existing Daily Sales `RQ381` remains independently `READY`; Pre/Post ASCII Serbian and residual English/technical copy are routed to `RQ306`/`RQ325`.
 Owner audit 2026-09-22: under the user's direct Prioriteti nivelacije and Prodaja po boji artikla screen/backend audit request, `RQ388` became the primary `READY` prompt for Pre-Nivelacija page/global population parity and `RQ389` became the primary `READY` prompt for Color store/data-origin event lineage. `RQ390`-`RQ391` and `RQ392`-`RQ395` were added as later `WAITING` scoring, runtime-contract, signed-numeric, weighted-margin, comparable-cohort and safe-error follow-ups. Shared Serbian/English copy remains routed to `RQ306`/`RQ325`; no duplicate copy prompt was created.
+Follow-up audit 2026-09-22: the Color review also confirmed cache invalidation/freshness, generic-detail trust, canonical color identity, source provenance and missing authoritative decision-score follow-ups. `RQ396`-`RQ400` were added as `WAITING` prompts; they do not change the `READY` owner lanes.
 Owner promotion 2026-09-22: under the user's direct Inventory audit request, `RQ308` moved from `WAITING` to `READY` as the current Inventory period-selection and snapshot-provenance prompt. `RQ371` and `RQ372` were added as later `WAITING` follow-ups.
 Owner promotion 2026-09-22: under the user's direct Sales by Supplier audit request, `RQ308` returned to `WAITING`, `RQ373` moved to `READY` as the current supplier visible-scope/KPI parity prompt, and `RQ374` was added as a later `WAITING` supplier detail trust-contract follow-up. Existing localization findings remain routed to `RQ306` and `RQ325`.
 Owner promotion 2026-09-22: under the user's direct Shoe Type Sales screen/backend audit request, `RQ373` returned to `WAITING`, `RQ375` moved to `READY` as the current Shoe Type aggregate margin/cost-quality contract prompt, and `RQ376`/`RQ377` were added as later `WAITING` pre/post aggregate and detail-trust follow-ups. Shoe Type English/ASCII copy remains routed to `RQ306`/`RQ325`, and the existing dead truncation label remains `RQ329`. The Supplier lane remains WAITING because its high-value endpoint work overlaps the same backend owner/file and has explicit dependencies, not because only one READY is allowed.
@@ -1377,6 +1378,11 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ393 | WAITING | color-margin-quality-contract | Align Color recommendation margin baseline with weighted cost evidence |
 | RQ394 | WAITING | color-prepost-aggregate-parity | Align Color pre/post totals with the comparable evidence cohort |
 | RQ395 | WAITING | color-runtime-safe-errors | Harden Color runtime validation and safe traceable endpoint errors |
+| RQ396 | WAITING | color-cache-freshness-lineage | Align Color cache invalidation and freshness metadata |
+| RQ397 | WAITING | color-detail-trust-projection | Align Color generic detail with row trust and provenance |
+| RQ398 | WAITING | color-identity-canonicalization | Canonicalize Color identity and collision-safe detail keys |
+| RQ399 | WAITING | color-source-provenance | Correct Color source and metric provenance |
+| RQ400 | WAITING | color-decision-score-contract | Define an authoritative Color decision-score contract |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -21513,3 +21519,251 @@ Color uses the shared runtime schema path, but the schema leaves decision-critic
 
 - Reuse `RQ363`/`RQ368` shared validation and safe-error conventions.
 - `RQ325` remains the owner of residual Color/Pre-Nivelacija English copy; this prompt owns only the contract paths that make failures visible.
+
+---
+
+## RQ396 - Align Color cache invalidation and freshness metadata
+
+Status: WAITING
+Priority: P1
+Type: backend/cache/refresh-contract/tests
+Feature family: color-cache-freshness-lineage
+Parallel-safe: no
+Owner: Analytics Reliability / Color Sales
+Commit suggestion: `fix(analytics): align color cache freshness`
+
+### Problem
+
+Color Sales uses a raw `IMemoryCache` key with a five-minute TTL instead of the shared analytics cache policy. Imports clear registered analytics families, but Color is not registered in that family list, so post-import Color data can remain stale without a stale/degraded metadata signal. The response also uses generated time while leaving `LastRefreshAtUtc` unset, so the trust header cannot distinguish cache age from source freshness.
+
+### Evidence
+
+- `Api/Endpoints/AllEndpoints.cs:2682,3129` uses a raw cache key and `TimeSpan.FromMinutes(5)`.
+- `Infrastructure/Services/Caching/AnalyticsCachePolicy.cs:11-26` does not register Color as a core family, while `AccessImportService.cs:2503,3654` clears only registered families.
+- `AllEndpoints.cs:6671-6733` builds Color trust metadata without `LastRefreshAtUtc` or cache/source freshness lineage.
+- `ColorSalesStatsPage.tsx:600-610,810-829` projects freshness and source from metadata, so missing invalidation is visible as apparently current analytics.
+
+### Scope
+
+- Color cache key/policy, import invalidation, generated/refresh metadata, stale warning and focused cache/endpoint/page tests.
+
+### Do
+
+1. Move Color into the canonical analytics cache policy or document an equivalent invalidation owner.
+2. Invalidate Color data after relevant imports/refreshes, including scope/store variants.
+3. Return source freshness, cache generation and stale/degraded state distinctly; never label cache generation as source refresh.
+
+### Tests
+
+- cache separation by period/store/season/scope;
+- import invalidation removes Color entries;
+- stale/fresh metadata and page trust-header behavior;
+- focused backend/frontend tests and `git diff --check`.
+
+### Acceptance
+
+- Imported changes cannot leave Color Sales silently stale.
+- Trust metadata distinguishes generated, cached and last successful source refresh times.
+
+### Dependencies
+
+- Reuse `RQ187`, `RQ205`, `RQ266` and shared cache policy conventions.
+- Coordinate with `RQ389` so cache lineage includes the effective event/sales scope.
+
+---
+
+## RQ397 - Align Color generic detail with row trust and provenance
+
+Status: WAITING
+Priority: P1
+Type: backend/frontend/detail-contract/tests
+Feature family: color-detail-trust-projection
+Parallel-safe: no
+Owner: Analytics Reliability / Color Sales
+Commit suggestion: `fix(analytics): align color detail trust projection`
+
+### Problem
+
+Color row snapshots contain recommendation status, score, confidence/reliability, pre/post comparability, PoP context and scope metadata, but “Otvori puni detalj” relies on an independent generic detail aggregation. That projection omits the row recommendation/trust contract and comparison fields, so the full detail can contradict or weaken the originating decision artifact and depends on a session snapshot for context.
+
+### Evidence
+
+- `ColorSalesStatsPage.tsx:640-665` saves a snapshot with decision columns and scope metadata, then navigates to the generic detail route.
+- `AnalyticsDetailReadService.cs:180-190,550-580` independently aggregates Color detail and omits recommendation status/reason, confidence, reliability, actionability and PoP/pre-post comparison context.
+- `RQ286` covers raw Color pre/post field-level availability only; it does not make generic detail authoritative.
+- No focused test compares Color row, inline detail, generic detail and export trust/provenance fields.
+
+### Scope
+
+- Color detail route/snapshot identity, `AnalyticsDetailReadService` projection, generic detail consumer as required and focused tests.
+- Preserve period, store, season, data scope, freshness, cost source, pre/post cohort and recommendation semantics.
+
+### Do
+
+1. Choose one authoritative detail source or explicitly mark the snapshot as read-only/non-shareable.
+2. Preserve backend recommendation status, reason codes, confidence/reliability, actionability and data-quality state.
+3. Carry requested/effective period, scope, source/cache freshness and comparable cohort metadata.
+4. Keep row, inline detail, generic detail, snapshot and export null/zero/degraded semantics aligned.
+
+### Tests
+
+- known color, unknown color, duplicate/case variants and missing identity;
+- row versus inline/generic detail/snapshot/export parity;
+- direct deep link, fresh session, stale/cache, empty and error states.
+
+### Acceptance
+
+- Full Color detail cannot present a different recommendation or trust basis from the clicked row.
+- Shared/deep-linked details preserve identity, period, scope and evidence limitations.
+
+### Dependencies
+
+- Depends on `RQ389`, `RQ392`-`RQ395` for scope, numeric, recommendation and error contracts.
+- `RQ286` remains the raw pre/post display owner.
+
+---
+
+## RQ398 - Canonicalize Color identity and collision-safe detail keys
+
+Status: WAITING
+Priority: P2
+Type: backend/frontend/identity/tests
+Feature family: color-identity-canonicalization
+Parallel-safe: no
+Owner: Analytics Reliability / Color Sales
+Commit suggestion: `fix(analytics): canonicalize color identity`
+
+### Problem
+
+Color grouping trims names but preserves case, while the frontend derives an upper-cased row key. `Crna` and `crna` can therefore remain separate backend rows while sharing a React/detail identity, causing duplicate keys, ambiguous expansion and non-deterministic detail lookup.
+
+### Evidence
+
+- `AllEndpoints.cs:2614-2617,2755-2795` normalizes only whitespace and groups colors case-sensitively.
+- `ColorSalesStatsPage.tsx:280,430-445` uses a normalized frontend key for expansion while selecting the row from differently cased backend values.
+- `AnalyticsDetailReadService.cs:187-190` performs detail matching without the same canonicalization.
+- No Color identity regression covers casing, whitespace, diacritics or unknown-color collisions.
+
+### Scope
+
+- Color canonical grouping/display identity, row/detail/URL keys and focused backend/frontend tests.
+- Preserve display labels and Serbian diacritics; do not merge genuinely distinct business color codes without a declared canonical rule.
+
+### Do
+
+1. Define a canonical comparison key separately from the display label.
+2. Apply it consistently to backend grouping, previous-period joins, frontend row keys, expansion and generic detail lookup.
+3. Handle blank/unknown and diacritic variants explicitly and keep collisions visible if they cannot be safely merged.
+
+### Tests
+
+- case-only variants, surrounding whitespace, diacritics, blank/unknown values and URL encoding;
+- row sorting, expansion, detail navigation, snapshot and previous-period parity.
+
+### Acceptance
+
+- Every Color row has a stable collision-safe identity across API, page, detail and export.
+- Canonicalization never silently merges values without a documented comparison policy.
+
+### Dependencies
+
+- Coordinate with `RQ282`/`RQ293` identity patterns; neither owns Color casing.
+- `RQ397` consumes the stable detail identity.
+
+---
+
+## RQ399 - Correct Color source and metric provenance
+
+Status: WAITING
+Priority: P2
+Type: backend/frontend/provenance/tests
+Feature family: color-source-provenance
+Parallel-safe: yes
+Owner: Analytics Reliability / Color Sales
+Commit suggestion: `fix(analytics): correct color source provenance`
+
+### Problem
+
+The Color trust header labels the source as a “materialized view”, but the endpoint currently queries `ProdajaZaglavlja`, `ProdajaStavke`, `Artikli` and `DnevnikPromena` directly. This makes the displayed source and methodology misleading and prevents users from knowing which source/fallback/cost population produced the metrics.
+
+### Evidence
+
+- `ColorSalesStatsPage.tsx:820` renders `Color sales stats materialized view`.
+- `AllEndpoints.cs:2689-2795` reads relational sales/article/event tables directly; no Color materialized-view query is used in this endpoint.
+- `AllEndpoints.cs:2847-2888,3038-3060` mixes historical/fallback cost, broad/comparable pre/post and derived totals without a complete source/denominator projection.
+
+### Scope
+
+- Color response provenance/meta, trust header, methodology/help, export metadata and focused contract tests.
+- No source migration unless explicitly justified by the backend owner; first correct the declared source and metric basis.
+
+### Do
+
+1. Report the actual source family and query/effective population, or implement the named view before using that label.
+2. Expose cost source, pre/post cohort, scope, freshness and denominator metadata consumed by trust/detail/export.
+3. Keep source labels Serbian and distinguish observed, derived and modeled metrics.
+
+### Tests
+
+- source label matches endpoint path;
+- store/scope/cost/pre-post denominator metadata round-trips through trust header/detail/export;
+- fallback and unavailable source states do not render as authoritative.
+
+### Acceptance
+
+- Users see the actual Color source and evidence basis, not a stale or invented materialized-view claim.
+- Every decision-critical metric has an inspectable provenance and denominator.
+
+### Dependencies
+
+- Reuse `RQ362` provenance conventions and coordinate with `RQ396` freshness lineage.
+- `RQ389`, `RQ393` and `RQ394` own detailed scope/economic/cohort semantics.
+
+---
+
+## RQ400 - Define an authoritative Color decision-score contract
+
+Status: WAITING
+Priority: P2
+Type: backend-contract/frontend/tests
+Feature family: color-decision-score-contract
+Parallel-safe: no
+Owner: Analytics Reliability / Color Sales
+Commit suggestion: `fix(analytics): define color decision score contract`
+
+### Problem
+
+The Color UI and export define a decision-score field, but the backend response currently does not emit an authoritative `decisionScore`; the frontend consequently renders `N/A` while recommendation status and actionability remain present. This is safe only if the contract explicitly says the score is unavailable. Otherwise the screen presents a named decision metric with no source or unit.
+
+### Evidence
+
+- `ColorSalesStatsPage.tsx:1129-1133` renders `Decision score`/`N/A`; `colorSalesStatsApi.ts:54-59` types an optional `decisionScore`.
+- `AllEndpoints.cs:3000-3018` projects recommendation fields but no `decisionScore`.
+- Existing `RQ349` corrected the frontend mapping to use an authoritative field when present, but records the backend-missing field as residual risk.
+
+### Scope
+
+- Color decision-score DTO/schema/provenance, page/detail/export label and focused contract tests.
+- Do not recreate backend scoring in the frontend.
+
+### Do
+
+1. Either expose a backend-owned finite score with unit, denominator, gate and provenance, or remove/rename the UI field to an honest unavailable informational state.
+2. Keep score/actionability separate and fail closed when recommendation permission/evidence is absent.
+3. Align row, totals, detail, export and runtime schema behavior.
+
+### Tests
+
+- score present and differs from confidence;
+- score missing, zero, non-finite, blocked and insufficient recommendation;
+- row/detail/export label and actionability parity.
+
+### Acceptance
+
+- Color never presents confidence as decision score or implies a score exists without backend evidence.
+- The score contract is explicit, runtime-validated and consistent across all output surfaces.
+
+### Dependencies
+
+- `RQ349` owns the completed frontend projection correction; this prompt owns the unresolved backend/contract decision.
+- Coordinate with `RQ393` and `RQ395`.

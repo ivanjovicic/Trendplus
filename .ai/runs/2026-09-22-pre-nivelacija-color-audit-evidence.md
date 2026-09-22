@@ -14,6 +14,7 @@ Evidence state: synchronized
 - Audited the Prioriteti pre-nivelacije and Prodaja po boji artikla screen/backend ownership paths on fresh `main`.
 - Confirmed and queued Pre-Nivelacija global/page population parity and Color store/data-origin nivelacija event lineage as independent `READY` prompts.
 - Added bounded `WAITING` follow-ups for Pre-Nivelacija scoring-window/runtime-schema and Color signed-numeric, weighted-margin, comparable-cohort and runtime-safe-error contracts.
+- Follow-up review added Color cache/freshness, generic-detail trust, identity, source-provenance and authoritative decision-score prompts (`RQ396`-`RQ400`) without changing the `READY` lanes.
 - Routed residual English/technical copy to the existing shared `RQ306`/`RQ325` owners and extended `RQ325` evidence without creating a duplicate localization prompt.
 
 ## Files changed
@@ -30,6 +31,10 @@ Evidence state: synchronized
 - `node scripts/check-analytics-lineage-matrix.mjs` -> pass.
 - `git diff --check` -> pass.
 - `npm run check:encoding` in `Klijent/clientapp` -> pass.
+- Follow-up `node scripts/check-prompt-queues.mjs` -> pass (539 tasks).
+- Follow-up `node scripts/check-planning-architecture.mjs` -> pass.
+- Follow-up `git diff --check` -> pass.
+- Follow-up `npm run check:encoding` in `Klijent/clientapp` -> pass.
 
 ## Validation not run
 - Product code tests/builds -> not run; this is a queue/audit documentation change with no implementation change.
