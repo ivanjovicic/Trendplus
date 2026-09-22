@@ -336,6 +336,13 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.Contains("capabilities.HasDecisionScoreCacheForWindow(windowDays)", endpoint);
         Assert.Contains("to_regclass('public.mv_supplier_decision_score_cache_90d')", endpoint);
         Assert.Contains("to_regclass('public.mv_supplier_decision_score_cache_180d')", endpoint);
+        Assert.Contains("to_regclass('public.vw_supplier_ml_latest_predictions')", endpoint);
+        Assert.Contains("ml_latest_predictions_view_has_required_columns", endpoint);
+        Assert.Contains("table_name = 'vw_supplier_ml_latest_predictions'", endpoint);
+        Assert.Contains("'top_feature_1'", endpoint);
+        Assert.Contains("'top_feature_2'", endpoint);
+        Assert.Contains("'top_feature_3'", endpoint);
+        Assert.Contains("'explanation_text'", endpoint);
         Assert.Contains("table_name = 'mv_supplier_decision_score_cache_90d'", endpoint);
         Assert.Contains("table_name = 'mv_supplier_decision_score_cache_180d'", endpoint);
         Assert.Contains("'post_signal_coverage'", endpoint);

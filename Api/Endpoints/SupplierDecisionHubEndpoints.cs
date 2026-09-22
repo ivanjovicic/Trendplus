@@ -2491,6 +2491,19 @@ SELECT
     to_regclass('public.vw_supplier_ml_latest_predictions') IS NOT NULL AS has_ml_latest_predictions_view,
     to_regclass('public.supplier_ml_predictions') IS NOT NULL AS has_supplier_ml_predictions_table,
     to_regclass('public.model_version') IS NOT NULL AS has_model_version_table,
+    (
+        SELECT COUNT(DISTINCT column_name)
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'vw_supplier_ml_latest_predictions'
+          AND column_name = ANY(ARRAY[
+              'supplier_id',
+              'top_feature_1',
+              'top_feature_2',
+              'top_feature_3',
+              'explanation_text'
+          ])
+    ) = 5 AS ml_latest_predictions_view_has_required_columns,
     EXISTS (
         SELECT 1
         FROM information_schema.columns
@@ -2557,6 +2570,7 @@ SELECT
             GetBoolean(reader, "has_decision_score_cache_180d"),
             GetBoolean(reader, "has_markdown_dependency_cache"),
             GetBoolean(reader, "has_ml_latest_predictions_view")
+                && GetBoolean(reader, "ml_latest_predictions_view_has_required_columns")
                 && GetBoolean(reader, "has_supplier_ml_predictions_table")
                 && GetBoolean(reader, "has_model_version_table"),
             GetBoolean(reader, "decision_score_cache_has_ml_supplier_score"),
