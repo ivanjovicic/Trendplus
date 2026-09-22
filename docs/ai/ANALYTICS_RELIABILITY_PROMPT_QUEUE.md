@@ -2,7 +2,7 @@
 
 Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none; RQ385, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ401, RQ402, RQ403 and RQ404 are DONE.
+Current READY prompt: RQ405; RQ385, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ401, RQ402, RQ403 and RQ404 are DONE.
 
 Owner completion 2026-09-22: under the user's direct last-commits audit, `RQ393` was delivered directly to `main` in `3b635fe813e0e55f843236d55025c52c030e853d`; Color recommendations now use a covered-revenue-weighted margin baseline, unknown-share evidence remains nullable, historical/fallback/no-cost coverage is separated, and the affected screens use Serbian decision labels. Run log: `.ai/runs/2026-09-22-direct-last-commits-audit-evidence.md`.
 
@@ -20,6 +20,7 @@ Owner completion 2026-09-22: `RQ403` delivered directly to `main` in `f87dd49c0e
 Owner promotion 2026-09-22: after `RQ403` reached DONE, `RQ404` moved `WAITING -> READY` because `RQ401`/`RQ402` are DONE and its declared effective-period dependency is satisfied; `RQ405` remains WAITING behind the exclusive Supplier Decision feature family.
 Owner claim 2026-09-22: `RQ404` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ404-codex.lock.md`.
 Owner completion 2026-09-22: `RQ404` delivered directly to `main` in `015e394d`; requested, effective and observed periods are now explicit on the Supplier Decision screen, trust header, explainability snapshot, rich detail, report/export payload and action rationale. Backend response metadata carries the same period lineage, while action links preserve the complete requested filter scope. Run log: `.ai/runs/2026-09-22-RQ404-evidence.md`. Evidence state: synchronized. `RQ405` remains WAITING in the same exclusive Supplier Decision feature family; no next prompt was promoted in this run.
+Owner promotion 2026-09-22: after `RQ404` reached DONE and the declared `RQ405` dependency was satisfied, `RQ405` moved `WAITING -> READY` as the next dependency-complete Supplier Decision localization prompt; collision checks are clear.
 Owner claim 2026-09-22: `RQ385` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ385-codex.lock.md`.
 Owner completion 2026-09-22: `RQ385` delivered directly to `main` with implementation `bb6158f003bfd535a3211430970b30abbc761644`; current `origin/main` contains this SHA and the synchronized closure commits. Scoped Pre/Post fact queries, scope-isolated main/options caches, backend provenance and frontend fail-closed validation are delivered. Run log: `.ai/runs/2026-09-22-RQ385-evidence.md`. Evidence state: synchronized.
 Owner claim 2026-09-22: `RQ388` transitioned `READY -> IN_PROGRESS` in this workspace after dependency and collision checks; local runtime lock `.ai/task-locks/RQ388-codex.lock.md`.
@@ -1419,7 +1420,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ402 | DONE | supplier-decision-detail-source-parity | Connect rich supplier decision details to the canonical screen |
 | RQ403 | DONE | supplier-decision-filter-parity | Align backend-supported supplier filters with the canonical screen and report |
 | RQ404 | DONE | supplier-decision-effective-period-semantics | Make requested/effective supplier periods consistent across metrics and actions |
-| RQ405 | WAITING | supplier-decision-localization | Finish Serbian terminology on supplier decision surfaces and backend-safe messages |
+| RQ405 | READY | supplier-decision-localization | Finish Serbian terminology on supplier decision surfaces and backend-safe messages |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -22189,7 +22190,7 @@ Requested/effective/observed labels and consistent semantics across screen, deta
 
 ## RQ405 - Finish Serbian terminology on supplier decision surfaces and backend-safe messages
 
-Status: WAITING
+Status: READY
 Priority: P3
 Type: frontend/backend/text-safety/tests
 Feature family: supplier-decision-localization
