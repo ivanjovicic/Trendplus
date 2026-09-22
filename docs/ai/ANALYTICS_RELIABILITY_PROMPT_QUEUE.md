@@ -2,7 +2,9 @@
 
 Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none; RQ385, RQ388, RQ389, RQ390, RQ391 and RQ392 are DONE.
+Current READY prompt: none; RQ385, RQ388, RQ389, RQ390, RQ391, RQ392 and RQ393 are DONE.
+
+Owner completion 2026-09-22: under the user's direct last-commits audit, `RQ393` was delivered directly to `main` in `3b635fe813e0e55f843236d55025c52c030e853d`; Color recommendations now use a covered-revenue-weighted margin baseline, unknown-share evidence remains nullable, historical/fallback/no-cost coverage is separated, and the affected screens use Serbian decision labels. Run log: `.ai/runs/2026-09-22-direct-last-commits-audit-evidence.md`.
 
 Owner audit 2026-09-22: under the user's direct Supplier Decision Hub screen/backend audit request, `RQ401` became the current Supplier Decision READY prompt for cache-schema/effective-period compatibility. `RQ402`-`RQ405` were added as WAITING detail, filter-parity, effective-period and localization follow-ups. Existing RQ READY lanes remain independently runnable under the current queue governance.
 Owner claim 2026-09-22: `RQ401` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ401-codex.lock.md`.
@@ -1394,7 +1396,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ390 | DONE | pre-nivelacija-scoring-window | Bound Pre-Nivelacija scoring history and signed-sales denominator semantics |
 | RQ391 | DONE | pre-nivelacija-runtime-schema | Validate the complete Pre-Nivelacija decision payload at runtime |
 | RQ392 | DONE | color-signed-numeric-contract | Preserve signed Color sales and cost-quality evidence |
-| RQ393 | WAITING | color-margin-quality-contract | Align Color recommendation margin baseline with weighted cost evidence |
+| RQ393 | DONE | color-margin-quality-contract | Align Color recommendation margin baseline with weighted cost evidence |
 | RQ394 | WAITING | color-prepost-aggregate-parity | Align Color pre/post totals with the comparable evidence cohort |
 | RQ395 | WAITING | color-runtime-safe-errors | Harden Color runtime validation and safe traceable endpoint errors |
 | RQ396 | WAITING | color-cache-freshness-lineage | Align Color cache invalidation and freshness metadata |
@@ -21506,7 +21508,7 @@ Color sales and quantity are summed directly from signed sale lines, so returns/
 
 ## RQ393 - Align Color recommendation margin baseline with weighted cost evidence
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend-contract/frontend/tests
 Feature family: color-margin-quality-contract
@@ -21553,6 +21555,23 @@ The Color endpoint computes `averageMarginPct` as a simple mean of row margin pe
 
 - Coordinate with `RQ375`/`RQ378` weighted margin patterns without creating a second shared owner.
 - `RQ288` owns Color percentage/count presentation; this prompt owns backend economic baseline semantics.
+
+### Completion note
+
+- Date: 2026-09-22
+- Status: DONE
+- Completion: Delivered directly to `main` in `3b635fe813e0e55f843236d55025c52c030e853d`; weighted covered-revenue margin is the backend recommendation baseline, the same baseline and denominator are exposed in Color metadata/totals, unknown-color share stays nullable, and historical/fallback/no-cost coverage is separated.
+- Changed files: `Application/Analytics/AnalyticsDecisionRecommendationEngine.cs`, `Application/Analytics/ColorSignedEvidencePolicy.cs`, `Api/Endpoints/AllEndpoints.cs`, focused backend tests, Color frontend schema/types/page/tests, guardrail baseline, queue and roadmap.
+- Validation: focused backend tests 23/23; focused frontend tests 73/73; analytics guardrails, encoding and typecheck passed; `git diff --check` passed.
+- Checks run: focused backend/frontend tests, `npm run check:analytics-guardrails`, encoding, typecheck, governance validators and `git diff --check`.
+- Checks not run: full backend/frontend suites, live API/provider/database proof and remote CI inspection.
+- Run log: `.ai/runs/2026-09-22-direct-last-commits-audit-evidence.md`
+- Delivery mode: direct-main
+- Main commit SHA: `3b635fe813e0e55f843236d55025c52c030e853d`
+- Main verification: local `main` and `origin/main` resolve to the implementation SHA.
+- Missed: no live dataset replay; shared localization backlog remains owned by `RQ306`/`RQ325`.
+- Residual risk: RQ394-RQ400 and shared localization follow-ups remain WAITING; full suites, live API/provider/database proof and remote CI were not inspected.
+- Follow-up: RQ394 is the next Color follow-up for comparable-cohort parity; RQ395-RQ400 remain waiting under their named dependencies.
 
 ---
 
