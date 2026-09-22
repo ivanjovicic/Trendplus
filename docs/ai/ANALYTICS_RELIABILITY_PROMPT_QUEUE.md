@@ -2,12 +2,13 @@
 
 Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none; RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE.
+Current READY prompt: none; RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE.
 
 Owner completion 2026-09-22: under the user's direct last-commits audit, `RQ393` was delivered directly to `main` in `3b635fe813e0e55f843236d55025c52c030e853d`; Color recommendations now use a covered-revenue-weighted margin baseline, unknown-share evidence remains nullable, historical/fallback/no-cost coverage is separated, and the affected screens use Serbian decision labels. Run log: `.ai/runs/2026-09-22-direct-last-commits-audit-evidence.md`.
 Owner promotion 2026-09-22: after `RQ393` reached DONE and `RQ389`/`RQ392`/`RQ393` comparable-cohort dependencies were verified on current `main`, `RQ394` moved `WAITING -> READY` as the next dependency-complete P1 Color aggregate-cohort prompt; collision checks are clear.
 Owner claim 2026-09-22: `RQ394` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ394-codex.lock.md`.
 Owner completion 2026-09-22: `RQ394` was delivered directly to `main` in `e487033c6063078f0c41b747663483db32bae0d7`; Color pre/post totals and impacts now use the comparable article cohort, broad observed evidence is explicit, aggregate cohort metadata/provenance is exposed, and trust/recommendation permission fails closed when the cohort is insufficient. Run log: `.ai/runs/2026-09-22-RQ394-evidence.md`. Evidence state: synchronized. `RQ395`-`RQ400` remain WAITING; no next prompt was promoted in this run.
+Owner completion 2026-09-22: direct latest-commits audit closed the confirmed `RQ395` Color runtime/schema and safe-error gap; the implementation was delivered directly to `main` in `77288107da00658db33f37231157ae61512dd652`. Color now rejects incomplete decision payloads before page derivation and returns safe traceable errors. Run log: `.ai/runs/2026-09-22-direct-latest-commits-audit-evidence.md`. Evidence state: synchronized. `RQ396`-`RQ400` remain WAITING for their independent cache/detail/identity/provenance/score contracts.
 
 Owner audit 2026-09-22: under the user's direct Supplier Decision Hub screen/backend audit request, `RQ401` became the current Supplier Decision READY prompt for cache-schema/effective-period compatibility. `RQ402`-`RQ405` were added as WAITING detail, filter-parity, effective-period and localization follow-ups. Existing RQ READY lanes remain independently runnable under the current queue governance.
 Owner claim 2026-09-22: `RQ401` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ401-codex.lock.md`.
@@ -1432,7 +1433,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ392 | DONE | color-signed-numeric-contract | Preserve signed Color sales and cost-quality evidence |
 | RQ393 | DONE | color-margin-quality-contract | Align Color recommendation margin baseline with weighted cost evidence |
 | RQ394 | DONE | color-prepost-aggregate-parity | Align Color pre/post totals with the comparable evidence cohort |
-| RQ395 | WAITING | color-runtime-safe-errors | Harden Color runtime validation and safe traceable endpoint errors |
+| RQ395 | DONE | color-runtime-safe-errors | Harden Color runtime validation and safe traceable endpoint errors |
 | RQ396 | WAITING | color-cache-freshness-lineage | Align Color cache invalidation and freshness metadata |
 | RQ397 | WAITING | color-detail-trust-projection | Align Color generic detail with row trust and provenance |
 | RQ398 | WAITING | color-identity-canonicalization | Canonicalize Color identity and collision-safe detail keys |
@@ -21715,7 +21716,7 @@ Color row recommendation actionability requires both revenue and quantity pre/po
 
 ## RQ395 - Harden Color runtime validation and safe traceable endpoint errors
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend-contract/frontend-runtime-validation/tests
 Feature family: color-runtime-safe-errors
@@ -21756,6 +21757,23 @@ Color uses the shared runtime schema path, but the schema leaves decision-critic
 
 - Every normal Color response satisfies the decision contract before sorting, recommendation display, detail or export.
 - Color failures are safe for users and traceable for support without raw exception leakage or fake successful zero/empty state.
+
+### Completion note
+
+- Date: 2026-09-22
+- Status: DONE
+- Completion: Delivered directly to `main` in `77288107da00658db33f37231157ae61512dd652`; Color now requires the backend recommendation/trust contract before page derivation and maps cancellation, database and unexpected endpoint failures to safe traceable problem responses.
+- Changed files: Color endpoint error contract, Color API/schema boundary and focused backend/frontend regression tests.
+- Checks run: focused backend safe-error tests 2/2; focused frontend Color/schema tests 46/46; backend build; frontend typecheck; analytics guardrails; frontend build; `git diff --check` passed.
+- Checks not run: full backend/frontend suites, live API/provider/database replay, browser smoke and remote CI inspection.
+- Missed: live mixed-provider and deployed runtime replay were not available in this run; cache/freshness, generic detail, identity, source provenance and authoritative decision-score follow-ups remain RQ396-RQ400.
+- Run log: `.ai/runs/2026-09-22-direct-latest-commits-audit-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `77288107da00658db33f37231157ae61512dd652`
+- Main verification: local `main` and `origin/main` resolve to the implementation SHA.
+- Residual risk: existing analyzer and bundle-size warnings remain; RQ396-RQ400 are not included in this patch.
+- Follow-up: separately audit and implement the next collision-safe Color cache/detail/identity/provenance contract.
 
 ### Dependencies
 
