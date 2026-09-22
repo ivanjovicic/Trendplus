@@ -4,9 +4,9 @@ Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: RQ375
 
-Owner promotion 2026-09-22: under the user's direct Inventory audit request, `RQ308` moved from `WAITING` to `READY` as the current Inventory period-selection and snapshot-provenance prompt. `RQ371` and `RQ372` were added as later `WAITING` follow-ups; the queue keeps one canonical READY prompt per program.
-Owner promotion 2026-09-22: under the user's direct Sales by Supplier audit request, `RQ308` returned to `WAITING`, `RQ373` moved to `READY` as the current supplier visible-scope/KPI parity prompt, and `RQ374` was added as a later `WAITING` supplier detail trust-contract follow-up. Existing localization findings remain routed to `RQ306` and `RQ325`; the queue keeps one canonical READY prompt per program.
-Owner promotion 2026-09-22: under the user's direct Shoe Type Sales screen/backend audit request, `RQ373` returned to `WAITING`, `RQ375` moved to `READY` as the current Shoe Type aggregate margin/cost-quality contract prompt, and `RQ376`/`RQ377` were added as later `WAITING` pre/post aggregate and detail-trust follow-ups. Shoe Type English/ASCII copy remains routed to `RQ306`/`RQ325`, and the existing dead truncation label remains `RQ329`; the queue keeps one canonical READY prompt per program.
+Owner promotion 2026-09-22: under the user's direct Inventory audit request, `RQ308` moved from `WAITING` to `READY` as the current Inventory period-selection and snapshot-provenance prompt. `RQ371` and `RQ372` were added as later `WAITING` follow-ups.
+Owner promotion 2026-09-22: under the user's direct Sales by Supplier audit request, `RQ308` returned to `WAITING`, `RQ373` moved to `READY` as the current supplier visible-scope/KPI parity prompt, and `RQ374` was added as a later `WAITING` supplier detail trust-contract follow-up. Existing localization findings remain routed to `RQ306` and `RQ325`.
+Owner promotion 2026-09-22: under the user's direct Shoe Type Sales screen/backend audit request, `RQ373` returned to `WAITING`, `RQ375` moved to `READY` as the current Shoe Type aggregate margin/cost-quality contract prompt, and `RQ376`/`RQ377` were added as later `WAITING` pre/post aggregate and detail-trust follow-ups. Shoe Type English/ASCII copy remains routed to `RQ306`/`RQ325`, and the existing dead truncation label remains `RQ329`. The Supplier lane remains WAITING because its high-value endpoint work overlaps the same backend owner/file and has explicit dependencies, not because only one READY is allowed.
 
 Owner promotion 2026-09-21: under the user's explicit instruction to claim the next prompt, `RQ303` moved from `WAITING` to `READY` as the next P1 Daily Sales localization slice after `RQ302`.
 
@@ -1358,11 +1358,14 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ370 | DONE | inventory-secondary-request-cancellation | Abort Inventory secondary and detail requests on scope changes |
 | RQ371 | WAITING | inventory-signal-period-scope-parity | Keep Inventory signal period and data-scope contracts aligned |
 | RQ372 | WAITING | inventory-alert-filter-contract | Keep Inventory alert filtering, counts and URL state consistent |
-| RQ373 | WAITING | supplier-sales-visible-scope-parity | Align Supplier Sales visible filters with KPI, chart, table, export and recommendation scope |
-| RQ374 | WAITING | supplier-sales-detail-trust-contract | Align Supplier Sales detail route with recommendation, trust and localized provenance contract |
-| RQ375 | READY | shoe-type-margin-quality-contract | Align Shoe Type weighted margin baseline and cost-quality semantics |
+| RQ373 | WAITING | supplier-sales-visible-scope-parity | Separate Supplier display population from decision reference cohort and align KPI/chart/table/export scope |
+| RQ374 | WAITING | supplier-sales-detail-trust-contract | Align Supplier detail with display scope, decision benchmark, trust and provenance |
+| RQ375 | READY | shoe-type-margin-quality-contract | Align Shoe Type weighted margin baseline, cost-source semantics and runtime validation |
 | RQ376 | WAITING | shoe-type-prepost-aggregate-parity | Align Shoe Type pre/post totals with comparable evidence cohort |
 | RQ377 | WAITING | shoe-type-detail-trust-contract | Align Shoe Type detail route with row recommendation, trust and unknown identity |
+| RQ378 | WAITING | supplier-sales-margin-quality-contract | Align Supplier weighted margin benchmark and cost-source semantics |
+| RQ379 | WAITING | supplier-sales-runtime-schema | Add fail-closed runtime validation for Supplier Sales decision payload |
+| RQ380 | WAITING | supplier-sales-prepost-comparable-aggregate | Align Supplier total pre/post impact with the comparable cohort |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -20126,6 +20129,8 @@ Commit suggestion: `fix(analytics): align supplier sales visible scope`
 
 This makes a user-selected supplier or “hide unknown” filter look applied while the decision surface still mixes populations. The issue is not a duplicate of `RQ233`: that prompt owns only the top-five concentration numerator/denominator; this prompt owns the complete visible-scope contract.
 
+A second subtlety is equally important: **display population is not automatically the same as the decision reference cohort**. When the user focuses one supplier, visible KPIs/table/export should reflect that focus, but the backend recommendation benchmark must not silently collapse to comparing that supplier with itself. The response must explicitly distinguish the population being displayed from the peer/reference cohort used for recommendation baselines.
+
 ### Evidence
 
 - `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx:888-894` derives `visibleSuppliers` locally from `includeUnknown` and `activeSupplierId`, without refetching or projecting a scoped response.
@@ -20153,22 +20158,26 @@ Reproduction: load a response containing known and unknown suppliers, select one
 
 ### Do
 
-1. Choose one backend-owned or explicitly named visible-population contract. A focused supplier and the unknown-supplier toggle must either request scoped aggregates or clearly label every global metric as global.
-2. Align totals, shares, PoP, quality coverage, recommendation counts/status gates, concentration/comparison charts, table rows, detail metadata and export/print metadata to the same population; preserve intentional global-versus-visible distinctions only with explicit labels.
-3. Keep unknown, empty, valid zero, missing and non-finite denominator states distinct. Never calculate a filtered numerator against a global denominator or turn a hidden population into a trusted zero.
-4. Keep backend recommendation/status/confidence/reliability ownership authoritative; the frontend may filter/project but must not recreate decision scoring.
+1. Define an explicit **display population** contract. A focused supplier and the unknown-supplier toggle must either request scoped aggregates or clearly label every global metric as global.
+2. Define a separate backend-owned **decision reference cohort** contract for recommendation baselines. Focusing one supplier must not silently turn the benchmark into that same single supplier; expose enough metadata to explain which peer population powered the recommendation.
+3. Align totals, shares, PoP, quality coverage, recommendation counts/status gates, concentration/comparison charts, table rows, detail metadata and export/print metadata to the declared display population; preserve intentional global-versus-visible distinctions only with explicit labels.
+4. Carry both display scope and decision-reference metadata into detail/export so a shared artifact says what was shown and what benchmark powered the recommendation.
+5. Keep unknown, empty, valid zero, missing and non-finite denominator states distinct. Never calculate a filtered numerator against a global denominator or turn a hidden population into a trusted zero.
+6. Keep backend recommendation/status/confidence/reliability ownership authoritative; the frontend may filter/project but must not recreate decision scoring.
 
 ### Tests
 
 - all suppliers, `includeUnknown=false`, unknown-only, focused supplier and focused supplier with no matching row;
-- KPI/table/chart/share/PoP/quality/recommendation/export/detail population parity;
+- KPI/table/chart/share/PoP/quality/recommendation/export/detail display-population parity;
+- focused supplier keeps the declared peer/reference benchmark and never becomes a self-only recommendation baseline;
 - valid zero versus null/missing/non-finite denominators and partial response metadata;
 - URL/deep-link and embedded canonical Supplier page parity;
 - focused frontend/API/contract tests, analytics guardrails, typecheck/build as selected by the validation selector, and `git diff --check`.
 
 ### Acceptance
 
-- Every visible value is either computed from the same declared population as the visible table or explicitly marked as whole-response/global.
+- Every visible value is either computed from the same declared display population as the visible table or explicitly marked as whole-response/global.
+- Recommendation metadata explicitly identifies/preserves its decision reference cohort; a focused supplier cannot silently change that benchmark to itself.
 - No filtered numerator, chart share, recommendation count, export metadata or quality note silently uses an incompatible denominator.
 - Empty, unknown, partial and unavailable evidence stays distinct from measured zero and no recommendation becomes more actionable through client filtering.
 - Canonical standalone/embedded Supplier surfaces and detail/export links preserve the same period, data scope, supplier focus and unknown-supplier semantics.
@@ -20178,7 +20187,9 @@ Reproduction: load a response containing known and unknown suppliers, select one
 - `RQ233` remains the completed top-five concentration-scope correction; do not reopen it.
 - `RQ278` remains the supplier-filter data-scope contract owner, and `RQ281` the embedded freshness owner.
 - `RQ145`/`RQ364` remain broad parity and dataset-projection owners; this prompt is the concrete Supplier Sales reproduction.
-- No dependency on `RQ308`; the Inventory READY prompt was returned to WAITING only to keep the one-READY-per-program invariant while this user-directed supplier audit is current.
+- No dependency on `RQ308`.
+- `RQ378` owns weighted supplier margin/cost benchmark correctness; final recommendation-baseline acceptance here depends on that truth.
+- `RQ380` owns supplier total pre/post comparable-cohort semantics.
 
 ---
 
@@ -20221,7 +20232,7 @@ Reproduction: open a supplier row, compare inline detail with `Puni detalj`, the
 
 ### Do
 
-1. Define whether the detail is a read-only projection of the row response or a server-authoritative aggregate; use one source of truth and expose its requested/effective period, supplier/data scope, freshness, quality, snapshot/fallback and provenance.
+1. Define whether the detail is a read-only projection of the row response or a server-authoritative aggregate; use one source of truth and expose its requested/effective period, supplier/data scope, **display population**, **decision reference cohort**, freshness, quality, snapshot/fallback and provenance.
 2. Carry backend-owned recommendation status, reason/reason codes, confidence/reliability and `recommendationAllowed` consistently, or explicitly label the detail as non-decision evidence and remove the overpromising AI/action wording.
 3. Keep row, inline detail, generic detail, table/detail snapshot and export values aligned for valid zero, unavailable, partial, stale and non-finite evidence.
 4. Localize the owned detail labels, tooltips and error/empty copy to Serbian with correct diacritics; retain raw technical identifiers only in an explicit technical channel.
@@ -20245,7 +20256,8 @@ Reproduction: open a supplier row, compare inline detail with `Puni detalj`, the
 - `RQ112`/`RQ145`/`RQ264` provide broad summary/detail/output parity rules; this prompt owns the Supplier Sales detail reproduction.
 - `RQ257` owns finite numeric boundary behavior; `RQ282` owns collision-safe supplier identities.
 - `RQ306` and `RQ325` own the broader Operacije diacritics/residual-English passes; coordinate wording and do not duplicate their whole-file sweeps.
-- `RQ373` should establish the visible population contract first so detail scope cannot diverge from the table.
+- `RQ373` should establish the display-population/reference-cohort contract first so detail scope and recommendation benchmark cannot diverge from the originating row.
+- `RQ378` supplies the corrected supplier margin/cost benchmark semantics.
 
 ---
 
@@ -20289,10 +20301,12 @@ Reproduction: return two known types with very different cost-covered revenues a
 
 ### Do
 
-1. Define the authoritative overall margin denominator. Use a weighted aggregate over the declared cost-covered revenue population, or return unavailable when that denominator is not measurable; do not use a simple mean of row percentages.
-2. Feed the same backend-owned weighted baseline into recommendation evaluation, with explicit treatment of unknown-type revenue.
+1. Define the authoritative overall margin as aggregate margin contribution divided by aggregate `RevenueWithCost` (equivalently aggregate covered revenue minus aggregate cost over aggregate covered revenue), or return unavailable when that denominator is not measurable; do not use a simple mean of row percentages.
+2. Feed the exact same backend-owned weighted baseline into recommendation evaluation, with explicit treatment of unknown-type revenue.
 3. Separate direct historical-cost absence from true no-cost revenue and preserve snapshot/product-fallback coverage as distinct source fields; map each field to the matching UI label and trust state.
-4. Keep `null`, valid zero, negative/invalid and non-finite evidence distinct across totals, row, toolbar, detail and export projections.
+4. Extend `shoeTypeSalesStatsResponseSchema` to validate the exact margin/cost-quality and recommendation fields consumed by the screen, including finite/range checks, recommendation status and `recommendationAllowed`; do not rely on `.passthrough()` for decision-critical values.
+5. Remove the frontend fallback that recomputes a simple row-average margin when the backend aggregate is missing; missing authoritative aggregate stays unavailable.
+6. Keep `null`, valid zero, negative/invalid and non-finite evidence distinct across totals, row, toolbar, detail and export projections.
 
 ### Tests
 
@@ -20300,6 +20314,7 @@ Reproduction: return two known types with very different cost-covered revenues a
 - known and unknown type denominator fixtures, no covered revenue, valid zero margin and negative margin;
 - historical, snapshot, product-fallback and no-cost source partitions summing without overlap;
 - recommendation baseline/actionability parity and frontend KPI/toolbar/detail/export labels;
+- malformed/out-of-range runtime payload for decision-critical margin/cost/recommendation fields fails closed instead of passing through as a normal response;
 - focused backend/frontend tests, analytics guardrails/typecheck/build as selected, and `git diff --check`.
 
 ### Acceptance
@@ -20308,6 +20323,7 @@ Reproduction: return two known types with very different cost-covered revenues a
 - Recommendation baseline and displayed overall margin use the same declared population and unit.
 - “Promet bez nabavne cene” contains only genuinely unavailable cost; direct, snapshot and product-fallback coverage remain distinguishable.
 - Missing, zero, negative, partial and non-finite cost/margin evidence never becomes a trusted green or actionable recommendation.
+- Runtime validation covers every decision-critical Shoe Type field actually consumed by the page; malformed payloads cannot silently survive TypeScript typing.
 
 ### Dependencies
 
@@ -20445,3 +20461,141 @@ Reproduction: open a known and an unknown Shoe Type row, compare inline detail w
 - `RQ375` and `RQ376` establish aggregate metric semantics before detail projection is finalized.
 - `RQ112`/`RQ145`/`RQ264` provide broad summary/detail/output parity rules.
 - `RQ306`/`RQ325` own the broader Operacije copy passes; coordinate wording rather than duplicating whole-file cleanup.
+
+
+---
+
+## RQ378 - Align Supplier Sales weighted margin benchmark and cost-source quality semantics
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/frontend/tests
+Feature family: supplier-sales-margin-quality-contract
+Parallel-safe: no
+Owner: Analytics Reliability / Supplier Analytics
+Commit suggestion: `fix(analytics): align supplier margin benchmark truth`
+
+### Problem
+
+Supplier Sales has the same high-impact arithmetic defect as Shoe Type: `averageKnownMarginPct` is a simple average of supplier margin percentages and is both published as `totals.prosecnaMarza` and passed into the recommendation engine. A tiny high-margin supplier therefore influences the benchmark as much as a dominant supplier. Cost-quality wording also conflates “not historical direct cost” with “no usable cost” even when snapshot/product fallback is available.
+
+### Evidence
+
+- Supplier endpoint builds `averageKnownMarginPct = knownSupplierMarginValues.Average()`.
+- The same value is passed to `AnalyticsDecisionRecommendationEngine.Evaluate(..., averageKnownMarginPct)`.
+- `AnalyticsMarginPolicy.Build` already provides aggregate `RevenueWithCost`, `TotalCost` and `MarginContribution`, so the economically weighted benchmark is available.
+- Supplier totals already partition historical/snapshot/estimated/no-cost coverage, while toolbar metadata derives “Promet bez nabavne cene %” from the broader historical-missing field.
+
+### Scope
+
+- Supplier endpoint aggregate margin and recommendation baseline, Supplier page cost-quality labels and nearest tests.
+- No new recommendation algorithm; use existing margin policy and recommendation engine.
+
+### Do
+
+1. Replace arithmetic mean with aggregate `MarginContribution / RevenueWithCost`; return unavailable when covered revenue is unavailable/zero.
+2. Use the same benchmark for `totals.prosecnaMarza` and recommendation evaluation.
+3. Partition historical, snapshot, product-fallback and truly unavailable cost without overlap or misleading names.
+4. Expose benchmark/cost-source basis so RQ373 can report the decision reference cohort honestly.
+5. Preserve valid zero, negative margin contribution, partial coverage and missing denominator states without fake zero/good/actionable fallbacks.
+
+### Tests
+
+- dominant low-margin supplier + tiny high-margin supplier proves arithmetic/weighted divergence;
+- historical-only, snapshot-only, product-fallback-only, mixed and no-cost fixtures;
+- zero covered revenue, valid zero margin and negative contribution;
+- displayed total margin equals recommendation baseline basis.
+
+### Acceptance
+
+- Supplier margin benchmark reflects economic weight rather than supplier count.
+- Displayed aggregate margin and recommendation baseline cannot diverge in denominator/basis.
+- “No cost” means truly unavailable cost; historical/snapshot/fallback remain distinguishable.
+
+### Dependencies
+
+- RQ373 consumes this as decision-reference truth.
+- Coordinate shared helper extraction with RQ375 only when it reduces duplication without coupling endpoint ownership.
+
+---
+
+## RQ379 - Add fail-closed runtime validation for Supplier Sales decision payload
+
+Status: WAITING
+Priority: P1
+Type: frontend-runtime-validation/tests
+Feature family: supplier-sales-runtime-schema
+Parallel-safe: yes
+Owner: Analytics Reliability / Supplier Analytics
+Commit suggestion: `fix(analytics): validate supplier sales runtime payload`
+
+### Problem
+
+`getSupplierSalesStats` trusts TypeScript generics only and passes no runtime schema to `fetchAnalyticsJson`. Malformed production JSON can therefore enter Supplier arithmetic, sorting, recommendation display and export metadata as if it were valid. Shoe Type already has a Zod boundary, so this asymmetry is avoidable.
+
+### Do
+
+1. Add `supplierSalesStatsResponseSchema` covering dates, ids, totals, data-quality, supplier rows, footwear breakdown and every recommendation/trust/cost field consumed by the page.
+2. Validate finite/range/nullability semantics, recommendation status, reason codes, confidence/reliability and `recommendationAllowed`.
+3. Preserve valid negative margin contribution where business semantics allow it; do not over-constrain legitimate data.
+4. Pass the schema to `fetchAnalyticsJson` and fail closed through existing safe analytics error handling.
+5. Validation failure must not become empty rows, zero KPIs, stale-success or an exportable normal state.
+
+### Tests
+
+- wrong types, invalid dates, missing required fields, out-of-range percentages and malformed recommendation fields;
+- valid zero/null/negative-margin cases remain accepted where contract permits;
+- page shows safe error for invalid payload and retains no fake recommendation/export.
+
+### Acceptance
+
+- Supplier Sales no longer relies on compile-time typing for runtime decision data.
+- Every decision-critical consumed field has an explicit runtime contract.
+- Malformed payloads cannot render as normal analytics.
+
+### Dependencies
+
+- Final schema field set must match RQ373/RQ378 corrected semantics.
+- Parallel-safe only when it does not edit the same queue/client files as another active Supplier task.
+
+---
+
+## RQ380 - Align Supplier Sales pre/post totals with the comparable evidence cohort
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/frontend/tests
+Feature family: supplier-sales-prepost-comparable-aggregate
+Parallel-safe: no
+Owner: Analytics Reliability / Supplier Analytics
+Commit suggestion: `fix(analytics): align supplier comparable pre post aggregate`
+
+### Problem
+
+Supplier row-level pre/post impact/recommendation uses comparable split-policy evidence, but endpoint totals calculate `prePostNivelacijaRevenueImpactPct` and units impact from summed broad `preNivelacije*`/`posleNivelacije*` values. One-sided pre-only/post-only activity can therefore influence a total impact that looks measured even though recommendation actionability requires a comparable cohort.
+
+### Do
+
+1. Build aggregate comparable pre/post revenue and units from the same `AnalyticsNivelacijaSplitPolicy` eligibility as row signals.
+2. Compute total impact only from that comparable cohort; expose broader observational totals separately if useful and clearly labelled.
+3. Couple total impact with comparable article count and coverage.
+4. Align toolbar/export/detail and RQ373 display-population semantics.
+5. Keep the metric descriptive; never label it causal uplift.
+
+### Tests
+
+- comparable + pre-only + post-only activity in one fixture;
+- zero pre baseline, empty cohort, low coverage, valid zero change, positive/negative change;
+- revenue/units parity and focused display-scope interaction;
+- detail/export metadata uses the same cohort.
+
+### Acceptance
+
+- Supplier total pre/post impact and coverage describe the same eligible population.
+- Non-comparable activity cannot create a normal-looking total impact.
+- Display filtering cannot silently change methodology or denominator.
+
+### Dependencies
+
+- RQ373 owns display/reference population.
+- Reuse the shared split policy; do not create a frontend formula.
