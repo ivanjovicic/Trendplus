@@ -2,7 +2,7 @@
 
 Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ390 (IN_PROGRESS in this workspace); RQ385, RQ388 and RQ389 are DONE.
+Current READY prompt: RQ391; RQ385, RQ388, RQ389 and RQ390 are DONE.
 
 Owner audit 2026-09-22: under the user's direct Supplier Decision Hub screen/backend audit request, `RQ401` became the current Supplier Decision READY prompt for cache-schema/effective-period compatibility. `RQ402`-`RQ405` were added as WAITING detail, filter-parity, effective-period and localization follow-ups. Existing RQ READY lanes remain independently runnable under the current queue governance.
 Owner claim 2026-09-22: `RQ401` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ401-codex.lock.md`.
@@ -15,6 +15,8 @@ Owner claim 2026-09-22: `RQ389` transitioned `READY -> IN_PROGRESS` in this work
 Owner completion 2026-09-22: `RQ389` delivered directly to `main` in `e706cc44`; Color nivelacija events now inherit exact selected store and data-origin scope, lineage counts/policies are returned and carried into trust/detail/export metadata, and unmatched scoped event cohorts fail closed for recommendations. Run log: `.ai/runs/2026-09-22-RQ389-evidence.md`. Evidence state: synchronized. Follow-up: promote `RQ390` as the next dependency-complete Pre-Nivelacija scoring-window prompt.
 Owner promotion 2026-09-22: `RQ390` moved `WAITING -> READY` after `RQ388` reached DONE and dependency checks passed; it is the next P1 Pre-Nivelacija scoring-window prompt.
 Owner claim 2026-09-22: `RQ390` transitioned `READY -> IN_PROGRESS` in this workspace after dependency and collision checks; local runtime lock `.ai/task-locks/RQ390-codex.lock.md`.
+Owner completion 2026-09-22: `RQ390` delivered directly to `main` in `c84a05fa838784db56e9ad78daf72d65cd804381`; Pre-Nivelacija sales and nivelacija evidence is bounded to the UTC effective window, signed returns/corrections remain visible, non-positive net and previous-week denominators fail closed, and cache/meta/decision payloads expose the same provenance. Run log: `.ai/runs/2026-09-22-RQ390-evidence.md`. Evidence state: synchronized. Follow-up: promote `RQ391` as the next dependency-complete runtime-schema prompt.
+Owner promotion 2026-09-22: `RQ391` moved `WAITING -> READY` after its `RQ363` and `RQ300` dependencies were verified DONE on current `main`; it is the next parallel-safe Pre-Nivelacija runtime-schema prompt.
 
 Owner audit 2026-09-22: under the user's direct Daily Sales by Shift screen/backend audit request, `RQ375` returned to `WAITING`, `RQ381` moved to `READY` as the current signed-quantity/revenue contract prompt, and `RQ382`-`RQ384` were added as later `WAITING` scope, shift-provenance and safe-error follow-ups. Daily Sales ASCII Serbian copy remains routed to `RQ306`; residual English/technical UI copy remains routed to `RQ325`.
 Owner audit 2026-09-22: under the user's direct Pre/Post Nivelacija screen/backend audit request, `RQ385` became the primary `READY` prompt for request-scope/cache lineage, while `RQ386` and `RQ387` were added as `WAITING` cohort/denominator and runtime-payload/error-contract follow-ups. The existing Daily Sales `RQ381` remains independently `READY`; Pre/Post ASCII Serbian and residual English/technical copy are routed to `RQ306`/`RQ325`.
@@ -1384,8 +1386,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ380 | WAITING | supplier-sales-prepost-comparable-aggregate | Align Supplier total pre/post impact with the comparable cohort |
 | RQ388 | DONE | pre-nivelacija-population-parity | Align Pre-Nivelacija global KPIs with the full candidate population |
 | RQ389 | DONE | color-scope-event-lineage | Align Color store/data-origin scope with nivelacija event lineage |
-| RQ390 | IN_PROGRESS | pre-nivelacija-scoring-window | Bound Pre-Nivelacija scoring history and signed-sales denominator semantics |
-| RQ391 | WAITING | pre-nivelacija-runtime-schema | Validate the complete Pre-Nivelacija decision payload at runtime |
+| RQ390 | DONE | pre-nivelacija-scoring-window | Bound Pre-Nivelacija scoring history and signed-sales denominator semantics |
+| RQ391 | READY | pre-nivelacija-runtime-schema | Validate the complete Pre-Nivelacija decision payload at runtime |
 | RQ392 | WAITING | color-signed-numeric-contract | Preserve signed Color sales and cost-quality evidence |
 | RQ393 | WAITING | color-margin-quality-contract | Align Color recommendation margin baseline with weighted cost evidence |
 | RQ394 | WAITING | color-prepost-aggregate-parity | Align Color pre/post totals with the comparable evidence cohort |
@@ -21285,7 +21287,7 @@ Reproduction: use the same article in two stores or origins, give it different n
 
 ## RQ390 - Bound Pre-Nivelacija scoring history and signed-sales denominator semantics
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend-contract/scoring/tests
 Feature family: pre-nivelacija-scoring-window
@@ -21336,11 +21338,29 @@ Pre-Nivelacija defines a 180-day sales window but only applies the lower bound. 
 - `RQ388` owns page/global population parity; this prompt owns score-input evidence.
 - `RQ381` owns the Daily Sales signed contract pattern; reuse its distinction between signed aggregates and non-negative counters.
 
+### Completion note
+
+- Date: 2026-09-22
+- Status: DONE
+- Completion: Sales and nivelacija queries now use a bounded UTC effective window; signed positive/negative quantities are preserved; returns, corrections, zero/negative net sales and missing evidence block healthy recommendations with explicit reason codes; supplier week-over-week risk is unavailable when the previous denominator is non-positive; cache keys, response meta and frontend trust metadata expose the same period and policies.
+- Changed files: `Api/Endpoints/PreNivelacijaPriorityEndpoints.cs`, `Api/Models/PreNivelacijaPriorityModels.cs`, `Api/Services/PreNivelacijaScoringService.cs`, `Infrastructure/Services/Caching/IAnalyticsCacheService.cs`, focused `Api.Tests` coverage, `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`, Pre-Nivelacija types/schemas/tests, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, `MASTER_ROADMAP.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`.
+- Checks run: focused backend tests 42/42; focused frontend tests 55/55; `npm run check:analytics-guardrails` including encoding, guardrails and typecheck; `git diff --check`; implementation pushed to `origin/main`.
+- Checks not run: full backend/frontend suites, live database/cache integration, browser/provider proof and remote CI inspection.
+- Run log: `.ai/runs/2026-09-22-RQ390-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `c84a05fa838784db56e9ad78daf72d65cd804381`
+- Main verification: passed - local `main` and `origin/main` resolve to `c84a05fa838784db56e9ad78daf72d65cd804381`, and the implementation SHA is an ancestor of `origin/main`.
+- Missed: no live fixture was available to replay future-dated or return-heavy records through the database query; the bounded predicates and pure denominator/evidence tests cover the owned contract.
+- Follow-up: `RQ391` is READY for complete Pre-Nivelacija runtime payload validation.
+- Residual risk: full suites and live cache invalidation remain uninspected; shared localization backlog remains owned by `RQ306`/`RQ325`.
+- Prompt defect / scope repair: the requested denominator semantics were clear; the existing approved frontend guardrail exception moved with the evidence metadata insertion and its baseline line was updated without changing the exception or decision ownership.
+
 ---
 
 ## RQ391 - Validate the complete Pre-Nivelacija decision payload at runtime
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: frontend-runtime-validation/tests
 Feature family: pre-nivelacija-runtime-schema
