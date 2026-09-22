@@ -2769,12 +2769,14 @@ public static class AllEndpoints
                     ? DateTime.SpecifyKind(dataWindow.toDate.Value, DateTimeKind.Utc)
                     : null;
 
-                var nivelacije = await db.DnevnikPromena.AsNoTracking()
+                var nivelacijeQuery = db.DnevnikPromena.AsNoTracking()
                     .Where(d =>
                         (d.TipPromene == TipPromeneConstants.Nivelacija || d.TipPromene == TipPromeneConstants.NivelacijaCena) &&
                         d.ArtikalId.HasValue &&
-                        (!toUtc.HasValue || d.Datum <= toUtc.Value) &&
-                        (!storeId.HasValue || !d.IDObjekat.HasValue || d.IDObjekat == storeId.Value))
+                        (!toUtc.HasValue || d.Datum <= toUtc.Value));
+                nivelacijeQuery = ApplyColorNivelacijaEventScope(nivelacijeQuery, storeId, normalizedDataScope);
+
+                var nivelacije = await nivelacijeQuery
                     .Select(d => new
                     {
                         ArtikalId = d.ArtikalId!.Value,
@@ -2852,6 +2854,12 @@ public static class AllEndpoints
                         DatumProdaje = g.Key.DatumProdaje
                     })
                     .ToListAsync(ct);
+
+                var salesArticleIds = stavke
+                    .Select(s => s.ArtikalId)
+                    .ToHashSet();
+                var salesArticlesWithMatchingNivelacija = salesArticleIds
+                    .Count(prvaNivelacijaPoArtiklu.ContainsKey);
 
                 var colors = stavke
                     .GroupBy(s => NormalizeColor(s.Boja))
@@ -2981,7 +2989,11 @@ public static class AllEndpoints
                     revenueWithNivelacijaSplit = Math.Round(comparableRevenueWithNivelacijaSplit, 2),
                     revenueWithNivelacijaSplitSharePct = totalRevenue > 0m
                         ? Math.Round((double)(comparableRevenueWithNivelacijaSplit / totalRevenue * 100m), 2)
-                        : (double?)null
+                        : (double?)null,
+                    nivelacijaEventCount = nivelacije.Count,
+                    nivelacijaEventArticleCount = prvaNivelacijaPoArtiklu.Count,
+                    salesArticleCount = salesArticleIds.Count,
+                    salesArticlesWithMatchingNivelacija
                 };
 
                 var knownColorMarginValues = colors
@@ -3164,6 +3176,31 @@ public static class AllEndpoints
                     .ToList();
 
                 var generatedAtUtc = DateTime.UtcNow;
+                var trustMeta = BuildStatsTrustMeta(
+                    colors.Count,
+                    "no_color_sales",
+                    "Nema podataka za prodaju po boji artikla.",
+                    dataQuality.missingCostRevenueSharePct,
+                    dataQuality.unknownColorRevenueSharePct,
+                    dataQuality.revenueWithNivelacijaSplitSharePct,
+                    generatedAtUtc);
+
+                if (salesArticleIds.Count > 0 && salesArticlesWithMatchingNivelacija == 0)
+                {
+                    const string lineageWarning = "Nije potvrđen događaj nivelacije za istu populaciju prodaje; pre/post signal nije dostupan.";
+                    trustMeta.WarningCode = "COLOR_NIVELACIJA_LINEAGE_UNAVAILABLE";
+                    trustMeta.WarningMessage = lineageWarning;
+                    trustMeta.Message = lineageWarning;
+                    trustMeta.IsPartial = true;
+                    if (!string.Equals(trustMeta.DataQualityStatus, "critical", StringComparison.OrdinalIgnoreCase))
+                    {
+                        trustMeta.DataQualityStatus = "insufficient_data";
+                    }
+
+                    trustMeta.GeneratedAtUtc = generatedAtUtc;
+                    trustMeta.RecommendationAllowed = false;
+                }
+
                 var response = new
                 {
                     generatedAt = generatedAtUtc,
@@ -3174,17 +3211,25 @@ public static class AllEndpoints
                     sezonaId,
                     storeId,
                     dataScope = normalizedDataScope,
+                    lineage = new
+                    {
+                        storeId,
+                        dataScope = normalizedDataScope,
+                        eventCount = nivelacije.Count,
+                        eventArticleCount = prvaNivelacijaPoArtiklu.Count,
+                        salesArticleCount = salesArticleIds.Count,
+                        salesArticlesWithMatchingNivelacija,
+                        storePolicy = storeId.HasValue ? "exact_store_only_unknown_store_excluded" : "all_stores_allowed",
+                        originPolicy = normalizedDataScope == "imported"
+                            ? "event_origin_access_only"
+                            : normalizedDataScope == "existing"
+                                ? "event_origin_existing_only_unknown_origin_excluded"
+                                : "all_origins_allowed"
+                    },
                     colors = colorsWithRecommendation,
                     totals,
                     dataQuality,
-                    meta = BuildStatsTrustMeta(
-                        colors.Count,
-                        "no_color_sales",
-                        "Nema podataka za prodaju po boji artikla.",
-                        dataQuality.missingCostRevenueSharePct,
-                        dataQuality.unknownColorRevenueSharePct,
-                        dataQuality.revenueWithNivelacijaSplitSharePct,
-                        generatedAtUtc),
+                    meta = trustMeta,
                     sezone
                 };
 
@@ -6927,6 +6972,29 @@ public static class AllEndpoints
         successMeta.GeneratedAtUtc = generatedAtUtc;
         successMeta.RecommendationAllowed = true;
         return successMeta;
+    }
+
+    internal static IQueryable<DnevnikPromena> ApplyColorNivelacijaEventScope(
+        IQueryable<DnevnikPromena> query,
+        int? storeId,
+        string normalizedDataScope)
+    {
+        if (storeId.HasValue)
+        {
+            query = query.Where(d => d.IDObjekat == storeId.Value);
+        }
+
+        if (string.Equals(normalizedDataScope, "imported", StringComparison.OrdinalIgnoreCase))
+        {
+            return query.Where(d => d.DataOrigin == "access");
+        }
+
+        if (string.Equals(normalizedDataScope, "existing", StringComparison.OrdinalIgnoreCase))
+        {
+            return query.Where(d => d.DataOrigin == "existing");
+        }
+
+        return query;
     }
 
     private static AnalyticsResponseMetaDto CloneAnalyticsResponseMeta(AnalyticsResponseMetaDto meta)

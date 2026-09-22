@@ -113,6 +113,21 @@ export interface ColorSalesDataQuality {
   unknownColorRevenueSharePct: number | null;
   revenueWithNivelacijaSplit: number;
   revenueWithNivelacijaSplitSharePct: number | null;
+  nivelacijaEventCount?: number;
+  nivelacijaEventArticleCount?: number;
+  salesArticleCount?: number;
+  salesArticlesWithMatchingNivelacija?: number;
+}
+
+export interface ColorSalesLineage {
+  storeId: number | null;
+  dataScope: string;
+  eventCount: number;
+  eventArticleCount: number;
+  salesArticleCount: number;
+  salesArticlesWithMatchingNivelacija: number;
+  storePolicy: string;
+  originPolicy: string;
 }
 
 export interface SezonaOption {
@@ -132,6 +147,7 @@ export interface ColorSalesStatsResponse {
   sezonaId: number | null;
   storeId: number | null;
   dataScope?: string | null;
+  lineage?: ColorSalesLineage | null;
   colors: ColorSalesStat[];
   totals: ColorSalesTotals;
   dataQuality: ColorSalesDataQuality;

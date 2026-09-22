@@ -565,6 +565,8 @@ export default function ColorSalesStatsPage() {
     () => [
       { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
       { key: "dataScope", label: "Opseg podataka", value: data?.dataScope ?? dataScope },
+      { key: "lineageBasis", label: "Osnova događaja nivelacije", value: data?.lineage ? `${data.lineage.salesArticlesWithMatchingNivelacija}/${data.lineage.salesArticleCount} artikala ima potvrđen događaj u istom opsegu` : "Nije dostupno" },
+      { key: "nivelacijaEventCount", label: "Događaji nivelacije", value: data?.lineage?.eventCount ?? null },
       { key: "bojaCount", label: "Broj boja", value: fmtNumber(resolveColorCountValue(data?.totals.brojBoja)) },
       { key: "marginCoverage", label: "Promet sa nabavnom cenom", value: fmtPct(resolveColorComplementPercent(data?.dataQuality.missingCostRevenueSharePct), 1) },
       { key: "splitCoverage", label: "Pre/post pokriće", value: fmtPct(resolveColorPercentValue(data?.dataQuality.revenueWithNivelacijaSplitSharePct), 1) },
@@ -584,6 +586,7 @@ export default function ColorSalesStatsPage() {
       data?.dataQuality.revenueWithNivelacijaSplitSharePct,
       data?.dataScope,
       data?.generatedAt,
+      data?.lineage,
       data?.totals.brojBoja,
       dataScope,
     ]
@@ -606,6 +609,20 @@ export default function ColorSalesStatsPage() {
   const trustIsPartial = responseMeta?.isPartial ?? false;
   const trustDataFreshnessStatus = getAnalyticsDataFreshnessStatus(responseMeta);
   const trustEmptyStateReason = responseMeta?.message ?? emptyStateHint;
+  const lineageBasis = useMemo(() => {
+    if (!data?.lineage) return null;
+    const scopeLabel = data.lineage.dataScope === "imported"
+      ? "uvezeni podaci"
+      : data.lineage.dataScope === "existing"
+        ? "postojeći podaci"
+        : "svi izvori podataka";
+    const storeLabel = data.lineage.storeId == null ? "svi objekti" : `objekat ${data.lineage.storeId}`;
+    const matchedLabel = `${data.lineage.salesArticlesWithMatchingNivelacija}/${data.lineage.salesArticleCount} artikala sa potvrđenim događajem nivelacije`;
+    const storePolicyLabel = data.lineage.storeId == null
+      ? "događaji sa svih objekata"
+      : "samo tačan objekat; događaji bez objekta su izuzeti";
+    return `${scopeLabel}; ${storeLabel}; ${matchedLabel}; ${storePolicyLabel}`;
+  }, [data?.lineage]);
   const showBlockingError = Boolean(queryError && !data);
   const showStaleError = Boolean(staleWarning && data);
 
@@ -654,17 +671,17 @@ export default function ColorSalesStatsPage() {
         table: "color-sales-stats",
         recordId,
         title: row.boja,
-        subtitle: "Color decision detail",
+        subtitle: "Detalj odluke po boji",
         columns: decisionColumns,
         row,
-        metadata: toolbarFilters,
+        metadata: [...toolbarFilters, ...toolbarMetadata],
       })
     );
 
     navigate(`/analitika/color-sales-stats/${recordId}?${params.toString()}`, {
       state: { backgroundLocation: location },
     });
-  }, [activeFilters.fromDate, activeFilters.sezonaId, activeFilters.storeId, activeFilters.toDate, dataScope, location, navigate, toolbarFilters]);
+  }, [activeFilters.fromDate, activeFilters.sezonaId, activeFilters.storeId, activeFilters.toDate, dataScope, location, navigate, toolbarFilters, toolbarMetadata]);
 
   function applyPreset(preset: PeriodPreset) {
     setPeriodPreset(preset);
@@ -812,12 +829,13 @@ export default function ColorSalesStatsPage() {
     <div className="color-decision-page">
       <AnalyticsTrustHeader
         title="Prodaja po boji artikla"
-        description="Decision-support pogled za izbor boja koje treba pojačati u nabavci."
+        description="Podrška za odluku o bojama koje treba pojačati u nabavci."
         periodFrom={data?.fromDate ?? activeFilters.fromDate}
         periodTo={data?.toDate ?? activeFilters.toDate}
         lastRefreshAt={trustLastRefreshAt}
         dataFreshnessStatus={trustDataFreshnessStatus}
-        dataSource={`Color sales stats materialized view (scope: ${data?.dataScope ?? dataScope})`}
+        dataSource={`Prodaja po boji artikla (opseg: ${data?.dataScope ?? dataScope})`}
+        provenanceBasis={lineageBasis}
         dataQualityStatus={trustDataQualityStatus}
         mode="recommendation"
         isPartial={trustIsPartial}

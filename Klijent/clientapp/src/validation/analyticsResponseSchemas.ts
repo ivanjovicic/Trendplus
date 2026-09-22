@@ -129,6 +129,16 @@ export const colorSalesStatsResponseSchema = z.object({
   sezonaId: nonNegativeInteger.nullable(),
   storeId: nonNegativeInteger.nullable(),
   dataScope: z.string().nullable().optional(),
+  lineage: z.object({
+    storeId: nonNegativeInteger.nullable(),
+    dataScope: z.string(),
+    eventCount: nonNegativeInteger,
+    eventArticleCount: nonNegativeInteger,
+    salesArticleCount: nonNegativeInteger,
+    salesArticlesWithMatchingNivelacija: nonNegativeInteger,
+    storePolicy: z.string(),
+    originPolicy: z.string(),
+  }).nullable().optional(),
   colors: z.array(z.object({
     boja: z.string(),
     ...salesStatSchema,

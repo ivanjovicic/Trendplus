@@ -315,6 +315,30 @@ describe("ColorSalesStatsPage", () => {
     expect(snapshot?.metadata.some((field) => field.key === "dataScope" && field.value === "existing")).toBe(true);
   });
 
+  it("keeps nivelacija lineage visible in the detail snapshot", async () => {
+    vi.mocked(getColorSalesStats).mockResolvedValueOnce(response({
+      lineage: {
+        storeId: 7,
+        dataScope: "imported",
+        eventCount: 3,
+        eventArticleCount: 2,
+        salesArticleCount: 4,
+        salesArticlesWithMatchingNivelacija: 2,
+        storePolicy: "exact_store_only_unknown_store_excluded",
+        originPolicy: "event_origin_access_only",
+      },
+    }));
+
+    renderPage();
+    await screen.findByText("Prioritetna lista boja");
+    fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
+    fireEvent.click(await screen.findByRole("button", { name: "Otvori puni detalj" }));
+
+    expect(await screen.findByText("Color detail route")).toBeInTheDocument();
+    const snapshot = getAnalyticsDetailSnapshot("color-sales-stats", encodeURIComponent("Crna"));
+    expect(snapshot?.metadata.some((field) => field.key === "lineageBasis" && field.value === "2/4 artikala ima potvrđen događaj u istom opsegu")).toBe(true);
+  });
+
   it("blocks invalid date ranges before issuing a new analytics request", async () => {
     renderPage();
     await screen.findByText("Prioritetna lista boja");
