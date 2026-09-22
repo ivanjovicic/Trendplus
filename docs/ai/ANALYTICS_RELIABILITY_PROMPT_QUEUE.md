@@ -2,10 +2,11 @@
 
 Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompts: RQ385, RQ388 and RQ389 (independent Pre/Post, Pre-Nivelacija and Color owner lanes); RQ401 is IN_PROGRESS in this workspace.
+Current READY prompts: RQ385, RQ388 and RQ389 (independent Pre/Post, Pre-Nivelacija and Color owner lanes).
 
 Owner audit 2026-09-22: under the user's direct Supplier Decision Hub screen/backend audit request, `RQ401` became the current Supplier Decision READY prompt for cache-schema/effective-period compatibility. `RQ402`-`RQ405` were added as WAITING detail, filter-parity, effective-period and localization follow-ups. Existing RQ READY lanes remain independently runnable under the current queue governance.
 Owner claim 2026-09-22: `RQ401` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ401-codex.lock.md`.
+Owner completion 2026-09-22: `RQ401` delivered directly to `main` in `da55fc1680a1a6c80e7f20c75770e1e1fc9ed47b` with per-window cache capability gates, required projection-column validation, conservative post-signal coverage handling, all-time evidence-column parity and accurate unavailable effective-period error reporting. Follow-up: `RQ402` and `RQ404` remain `WAITING` on this contract.
 
 Owner audit 2026-09-22: under the user's direct Daily Sales by Shift screen/backend audit request, `RQ375` returned to `WAITING`, `RQ381` moved to `READY` as the current signed-quantity/revenue contract prompt, and `RQ382`-`RQ384` were added as later `WAITING` scope, shift-provenance and safe-error follow-ups. Daily Sales ASCII Serbian copy remains routed to `RQ306`; residual English/technical UI copy remains routed to `RQ325`.
 Owner audit 2026-09-22: under the user's direct Pre/Post Nivelacija screen/backend audit request, `RQ385` became the primary `READY` prompt for request-scope/cache lineage, while `RQ386` and `RQ387` were added as `WAITING` cohort/denominator and runtime-payload/error-contract follow-ups. The existing Daily Sales `RQ381` remains independently `READY`; Pre/Post ASCII Serbian and residual English/technical copy are routed to `RQ306`/`RQ325`.
@@ -21780,7 +21781,7 @@ The Color UI and export define a decision-score field, but the backend response 
 
 ## RQ401 - Align Supplier Decision cache schema and effective-period lineage
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/analytics/contract/tests
 Feature family: supplier-decision-cache-schema-provenance
@@ -21834,6 +21835,25 @@ Supplier Decision backend capability/projection contract and focused tests. Do n
 
 - This is the Supplier Decision audit's current READY prompt.
 - `RQ402` and `RQ404` depend on this cache/provenance contract.
+
+### Completion note
+
+- Date: 2026-09-22
+- Status: DONE
+- Completion: Delivered the Supplier Decision cache/provenance contract and focused backend regressions.
+- Changed files: `Api/Endpoints/SupplierDecisionHubEndpoints.cs`; `Api.Tests/SupplierDecisionHubContractTests.cs`; `Api.Tests/SupplierDecisionSchemaSqlTests.cs`; `Database/Analytics/015_AddSupplierMlRanking.sql`; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-22-RQ401-evidence.md`.
+- Contract/runtime behavior changed: SQL is generated only after the selected all-time/90d/180d relation and required columns are proven; missing coverage never becomes full coverage; schema failures return an explicit unavailable state; stale refresh blocks recommendation; error reports preserve requested dataset and do not fabricate an effective dataset.
+- Checks run: focused `SupplierDecisionSchemaSqlTests` + `SupplierDecisionHubContractTests` passed 51/51; queue, agent-instruction and planning validators passed; `git diff --check` passed.
+- Checks not run: full repository test suite, live PostgreSQL execution and remote CI were not run/inspected; see run log.
+- Run log: `.ai/runs/2026-09-22-RQ401-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `da55fc1680a1a6c80e7f20c75770e1e1fc9ed47b`
+- Main verification: passed - pushed `main` and verified `origin/main` contains `da55fc1680a1a6c80e7f20c75770e1e1fc9ed47b`.
+- Missed: no known RQ401 scope omission; live database and full-suite proof remain residual validation only.
+- Follow-up: `RQ402` rich supplier details and `RQ404` effective-period/filter follow-up remain `WAITING`; `RQ405` remains localization follow-up.
+- Residual risk: deployed legacy caches without the required projection remain intentionally unavailable until repaired/refreshed.
+- Prompt defect / scope repair: existing stale-refresh assertion expected a recommendation despite the established stale-data gate; the focused contract test was corrected to assert blocked recommendation. No owner boundary was crossed.
 
 ---
 
