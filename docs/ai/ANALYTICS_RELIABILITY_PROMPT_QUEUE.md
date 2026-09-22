@@ -2,7 +2,7 @@
 
 Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none; RQ385, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE.
+Current READY prompt: RQ375; RQ385, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE.
 
 Owner completion 2026-09-22: under the user's direct last-commits audit, `RQ393` was delivered directly to `main` in `3b635fe813e0e55f843236d55025c52c030e853d`; Color recommendations now use a covered-revenue-weighted margin baseline, unknown-share evidence remains nullable, historical/fallback/no-cost coverage is separated, and the affected screens use Serbian decision labels. Run log: `.ai/runs/2026-09-22-direct-last-commits-audit-evidence.md`.
 
@@ -23,6 +23,7 @@ Owner completion 2026-09-22: `RQ404` delivered directly to `main` in `015e394d`;
 Owner promotion 2026-09-22: after `RQ404` reached DONE and the declared `RQ405` dependency was satisfied, `RQ405` moved `WAITING -> READY` as the next dependency-complete Supplier Decision localization prompt; collision checks are clear.
 Owner claim 2026-09-22: `RQ405` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ405-codex.lock.md`.
 Owner completion 2026-09-22: `RQ405` was delivered directly to `main` in `9bf8af87c11c0b8feb0efcd0f632d10d27f819ac`; Supplier Decision screen, report, export/print, explainability, empty/degraded/error branches and backend-safe messages now use Serbian user-facing terminology with preserved diacritics, while reason codes and technical identifiers remain compatible. Run log: `.ai/runs/2026-09-22-RQ405-evidence.md`. Evidence state: synchronized. No next prompt was promoted in this run.
+Owner promotion 2026-09-22: after `RQ405` reached DONE, `RQ375` moved `WAITING -> READY` as the first dependency-complete P1 Shoe Type aggregate/cost-quality prompt; `RQ376`-`RQ377` remain WAITING behind its metric contract and `RQ378`-`RQ380` remain WAITING behind Supplier Sales ownership dependencies.
 Owner claim 2026-09-22: `RQ385` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ385-codex.lock.md`.
 Owner completion 2026-09-22: `RQ385` delivered directly to `main` with implementation `bb6158f003bfd535a3211430970b30abbc761644`; current `origin/main` contains this SHA and the synchronized closure commits. Scoped Pre/Post fact queries, scope-isolated main/options caches, backend provenance and frontend fail-closed validation are delivered. Run log: `.ai/runs/2026-09-22-RQ385-evidence.md`. Evidence state: synchronized.
 Owner claim 2026-09-22: `RQ388` transitioned `READY -> IN_PROGRESS` in this workspace after dependency and collision checks; local runtime lock `.ai/task-locks/RQ388-codex.lock.md`.
@@ -1399,7 +1400,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ372 | WAITING | inventory-alert-filter-contract | Keep Inventory alert filtering, counts and URL state consistent |
 | RQ373 | WAITING | supplier-sales-visible-scope-parity | Separate Supplier display population from decision reference cohort and align KPI/chart/table/export scope |
 | RQ374 | WAITING | supplier-sales-detail-trust-contract | Align Supplier detail with display scope, decision benchmark, trust and provenance |
-| RQ375 | WAITING | shoe-type-margin-quality-contract | Align Shoe Type weighted margin baseline, cost-source semantics and runtime validation |
+| RQ375 | READY | shoe-type-margin-quality-contract | Align Shoe Type weighted margin baseline, cost-source semantics and runtime validation |
 | RQ376 | WAITING | shoe-type-prepost-aggregate-parity | Align Shoe Type pre/post totals with comparable evidence cohort |
 | RQ377 | WAITING | shoe-type-detail-trust-contract | Align Shoe Type detail route with row recommendation, trust and unknown identity |
 | RQ378 | WAITING | supplier-sales-margin-quality-contract | Align Supplier weighted margin benchmark and cost-source semantics |
@@ -20326,7 +20327,7 @@ Reproduction: open a supplier row, compare inline detail with `Puni detalj`, the
 
 ## RQ375 - Align Shoe Type weighted margin baseline and cost-quality semantics
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: backend-contract/frontend/tests
 Feature family: shoe-type-margin-quality-contract
