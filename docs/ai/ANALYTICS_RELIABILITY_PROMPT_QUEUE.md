@@ -2,7 +2,7 @@
 
 Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ403; RQ385, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ401 and RQ402 are DONE.
+Current READY prompt: none; RQ385, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ401, RQ402 and RQ403 are DONE.
 
 Owner completion 2026-09-22: under the user's direct last-commits audit, `RQ393` was delivered directly to `main` in `3b635fe813e0e55f843236d55025c52c030e853d`; Color recommendations now use a covered-revenue-weighted margin baseline, unknown-share evidence remains nullable, historical/fallback/no-cost coverage is separated, and the affected screens use Serbian decision labels. Run log: `.ai/runs/2026-09-22-direct-last-commits-audit-evidence.md`.
 
@@ -15,6 +15,8 @@ Owner claim 2026-09-22: `RQ402` transitioned `READY -> IN_PROGRESS` in this work
 Owner completion 2026-09-22: `RQ402` delivered directly to `main` in `99617cacb0b26ab52fcf39c52ae71bc5ea9a8ad2`; the canonical Supplier Decision screen now opens the rich backend detail contract, carries active filters and requested/effective trust metadata, preserves error/empty/degraded states, and prevents stale detail responses after supplier/filter changes. Run log: `.ai/runs/2026-09-22-RQ402-evidence.md`. Evidence state: synchronized. Follow-up: `RQ403`-`RQ405` remain WAITING.
 Routing correction 2026-09-22: `RQ132` was `IN_PROGRESS` without an owner/lock while its declared `STAB16` dependency remains BLOCKED; it is now `BLOCKED` and is not a runnable claim.
 Owner promotion 2026-09-22: after `RQ402` reached DONE and `RQ401` was already DONE, `RQ403` moved `WAITING -> READY` as the next dependency-complete Supplier Decision filter-parity prompt. `RQ404` and `RQ405` remain WAITING behind their declared sequencing and owner boundaries.
+Owner claim 2026-09-22: `RQ403` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ403-codex.lock.md`.
+Owner completion 2026-09-22: `RQ403` delivered directly to `main` in `f87dd49c0ef7a43051178111510d9d5b190f43bd`; canonical URL state, scorecard controls, API/cache/detail/action/report parity and invalid-filter clearing are verified. Run log: `.ai/runs/2026-09-22-RQ403-evidence.md`. Evidence state: synchronized. Follow-up: `RQ404` and `RQ405` remain WAITING.
 Owner claim 2026-09-22: `RQ385` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ385-codex.lock.md`.
 Owner completion 2026-09-22: `RQ385` delivered directly to `main` with implementation `bb6158f003bfd535a3211430970b30abbc761644`; current `origin/main` contains this SHA and the synchronized closure commits. Scoped Pre/Post fact queries, scope-isolated main/options caches, backend provenance and frontend fail-closed validation are delivered. Run log: `.ai/runs/2026-09-22-RQ385-evidence.md`. Evidence state: synchronized.
 Owner claim 2026-09-22: `RQ388` transitioned `READY -> IN_PROGRESS` in this workspace after dependency and collision checks; local runtime lock `.ai/task-locks/RQ388-codex.lock.md`.
@@ -1192,7 +1194,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ135 | DONE | data-quality-trust-propagation-after-snapshot | Refresh trust-bearing analytics caches after data-quality snapshot |
 | RQ128 | WAITING | pdc-actionability-deploy-parity | Prove the PDC/Decision Board actionability gate on the exact production deployment |
 | RQ129 | DONE | decision-board-non-product-confidence-normalization | Remove non-product fake confidence from blocked and insufficient Decision Board cards |
-| RQ132 | WAITING | dashboard-support-signal-explainability | Explain the exact block reason, evidence state and next safe operator step for Dashboard support signals |
+| RQ132 | BLOCKED | dashboard-support-signal-explainability | Explain the exact block reason, evidence state and next safe operator step for Dashboard support signals |
 | RQ137 | PARTIAL | analytics-period-lineage-parity | Align requested, effective and observed period truth across dashboard, pilot readiness and supplier reports |
 | RQ138 | OBSOLETE | trend-model-evaluation-contract | Excluded: standalone Trend Models evaluation is outside the current analytics-surface scope |
 | RQ139 | PARTIAL | analytics-denominator-null-zero-contract | Core trend/Data Quality false-zero fixes are delivered; derived intelligence, full pre/post contract and cross-surface parity still require follow-up |
@@ -1410,9 +1412,9 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ398 | WAITING | color-identity-canonicalization | Canonicalize Color identity and collision-safe detail keys |
 | RQ399 | WAITING | color-source-provenance | Correct Color source and metric provenance |
 | RQ400 | WAITING | color-decision-score-contract | Define an authoritative Color decision-score contract |
-| RQ401 | IN_PROGRESS | supplier-decision-cache-schema-provenance | Align Supplier Decision cache capabilities, schema projections and effective-period lineage |
-| RQ402 | WAITING | supplier-decision-detail-source-parity | Connect rich supplier decision details to the canonical screen |
-| RQ403 | WAITING | supplier-decision-filter-parity | Align backend-supported supplier filters with the canonical screen and report |
+| RQ401 | DONE | supplier-decision-cache-schema-provenance | Align Supplier Decision cache capabilities, schema projections and effective-period lineage |
+| RQ402 | DONE | supplier-decision-detail-source-parity | Connect rich supplier decision details to the canonical screen |
+| RQ403 | DONE | supplier-decision-filter-parity | Align backend-supported supplier filters with the canonical screen and report |
 | RQ404 | WAITING | supplier-decision-effective-period-semantics | Make requested/effective supplier periods consistent across metrics and actions |
 | RQ405 | WAITING | supplier-decision-localization | Finish Serbian terminology on supplier decision surfaces and backend-safe messages |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
@@ -22082,7 +22084,7 @@ Choose one canonical detail drawer/route, connect it to the backend details cont
 
 ## RQ403 - Align backend-supported supplier filters with the canonical screen
 
-Status: READY
+Status: DONE
 Priority: P2
 Type: frontend/backend/contract/tests
 Feature family: supplier-decision-filter-parity
