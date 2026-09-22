@@ -145,6 +145,22 @@ public sealed class AnalyticsMarginPolicyTests
     }
 
     [Fact]
+    public void ColorSignedEvidencePolicy_UsesCoveredRevenueWeightedMarginBaseline()
+    {
+        var weighted = ColorSignedEvidencePolicy.ResolveWeightedMarginPct(new[]
+        {
+            (RevenueWithCost: 900m, MarginContribution: 90m),
+            (RevenueWithCost: 100m, MarginContribution: 50m),
+        });
+
+        Assert.Equal(14d, weighted);
+        Assert.Null(ColorSignedEvidencePolicy.ResolveWeightedMarginPct(new[]
+        {
+            (RevenueWithCost: 0m, MarginContribution: 10m),
+        }));
+    }
+
+    [Fact]
     public void ColorSignedEvidencePolicy_BlocksRecommendationAndQualityForNonPositiveNetRevenue()
     {
         var accumulator = new MarginAccumulator();

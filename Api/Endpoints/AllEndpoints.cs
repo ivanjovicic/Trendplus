@@ -2983,10 +2983,16 @@ public static class AllEndpoints
                 var comparableRevenueWithNivelacijaSplit = colors.Sum(r => r.comparableRevenueWithNivelacijaSplit);
                 var totalRevenueWithHistoricalCost = colors.Sum(r => r.revenueWithCost);
                 var estimatedCostRevenue = colors.Sum(r => r.estimatedCostRevenue);
-                var missingCostRevenue = totalRevenue - totalRevenueWithHistoricalCost;
+                var missingCostRevenue = totalRevenue - totalRevenueWithHistoricalCost - estimatedCostRevenue;
                 var unknownColorRevenue = colors
                     .Where(r => string.Equals(r.boja, "Nepoznato", StringComparison.OrdinalIgnoreCase))
                     .Sum(r => r.ukupanPromet);
+                var knownColorCostEvidence = colors
+                    .Where(row => !string.Equals(row.boja, "Nepoznato", StringComparison.OrdinalIgnoreCase))
+                    .Select(row => (row.revenueWithCost, row.marginContribution))
+                    .ToList();
+                var weightedKnownMarginPct = ColorSignedEvidencePolicy.ResolveWeightedMarginPct(knownColorCostEvidence);
+                var weightedKnownMarginRevenue = knownColorCostEvidence.Sum(row => row.revenueWithCost);
 
                 var dataQuality = new
                 {
@@ -3003,20 +3009,14 @@ public static class AllEndpoints
                     costQualityDenominatorStatus = totalRevenue > 0m
                         ? ColorSignedEvidencePolicy.PositiveNetRevenueDenominator
                         : ColorSignedEvidencePolicy.NonPositiveNetRevenueDenominator,
+                    weightedKnownMarginPct,
+                    weightedKnownMarginRevenue = Math.Round(weightedKnownMarginRevenue, 2),
                     nivelacijaEventCount = nivelacije.Count,
                     nivelacijaEventArticleCount = prvaNivelacijaPoArtiklu.Count,
                     salesArticleCount = salesArticleIds.Count,
                     salesArticlesWithMatchingNivelacija
                 };
 
-                var knownColorMarginValues = colors
-                    .Where(row => !string.Equals(row.boja, "Nepoznato", StringComparison.OrdinalIgnoreCase))
-                    .Where(row => row.marginPct.HasValue)
-                    .Select(row => row.marginPct!.Value)
-                    .ToList();
-                var averageMarginPct = knownColorMarginValues.Count > 0
-                    ? knownColorMarginValues.Average()
-                    : (double?)null;
                 var unknownColorSharePct = dataQuality.unknownColorRevenueSharePct;
 
                 var colorsWithRecommendation = colors
@@ -3045,8 +3045,8 @@ public static class AllEndpoints
                             PreviousPeriodUnits: row.previousPeriodUnits,
                             HasPreviousPeriodWindow: hasPreviousPeriodWindow,
                             IsNewEntity: isNewColor,
-                            UnknownBucketSharePct: unknownColorSharePct ?? 0d),
-                            averageMarginPct);
+                            UnknownBucketSharePct: unknownColorSharePct),
+                            weightedKnownMarginPct);
                         var hasComparableNivelacijaSignal = row.prePostNivelacijaRevenueImpactPct.HasValue
                             && row.prePostNivelacijaUnitsImpactPct.HasValue;
                         var hasMeasurableEvidence = ColorSignedEvidencePolicy.HasMeasurableRecommendationEvidence(
@@ -3150,6 +3150,8 @@ public static class AllEndpoints
                     ukupanPromet = totalRevenue,
                     ukupanMarzniDoprinos = colors.Sum(r => r.marginContribution),
                     ukupanTrosak = colors.Sum(r => r.totalCost),
+                    weightedKnownMarginPct,
+                    weightedKnownMarginRevenue = Math.Round(weightedKnownMarginRevenue, 2),
                     historicalCostCoveragePct = totalHistPct,
                     estimatedCostCoveragePct = totalEstPct,
                     noCostCoveragePct = totalNoCostPct,

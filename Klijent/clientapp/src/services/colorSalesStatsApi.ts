@@ -68,6 +68,8 @@ export interface ColorSalesTotals {
   ukupanPromet: number;
   ukupanMarzniDoprinos: number;
   ukupanTrosak?: number;
+  weightedKnownMarginPct: number | null;
+  weightedKnownMarginRevenue: number;
   prosecnaMarza?: number | null;
   historicalCostCoveragePct?: number | null;
   estimatedCostCoveragePct?: number | null;
@@ -120,6 +122,8 @@ export interface ColorSalesDataQuality {
   signedRevenuePolicy?: string;
   signedQuantityPolicy?: string;
   costQualityDenominatorStatus?: string;
+  weightedKnownMarginPct: number | null;
+  weightedKnownMarginRevenue: number;
 }
 
 export interface ColorSalesLineage {

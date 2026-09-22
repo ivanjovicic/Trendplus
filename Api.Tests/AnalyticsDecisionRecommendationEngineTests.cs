@@ -317,4 +317,32 @@ public class AnalyticsDecisionRecommendationEngineTests
         Assert.Equal("critical", res.DataQualityStatus);
         Assert.True(res.Status is "do_not_trust" or "insufficient_data");
     }
+
+    [Fact(DisplayName = "Null unknown-entity share fails closed instead of becoming zero")]
+    public void NullUnknownEntityShare_FailsClosed()
+    {
+        var input = new AnalyticsDecisionRecommendationEngine.RecommendationInput(
+            IsUnknownEntity: false,
+            TotalRevenue: 200000m,
+            TotalUnits: 500,
+            ItemCount: 50,
+            SharePct: 5d,
+            MarginPct: 25d,
+            MarginCoveragePct: 95d,
+            SplitCoveragePct: 90d,
+            PopRevenueChangePct: 15d,
+            PopUnitsChangePct: 10d,
+            PreviousPeriodRevenue: 170000m,
+            PreviousPeriodUnits: 450,
+            HasPreviousPeriodWindow: true,
+            IsNewEntity: false,
+            UnknownBucketSharePct: null);
+
+        var result = AnalyticsDecisionRecommendationEngine.Evaluate(input, averageMarginPct: 20d);
+
+        Assert.Equal("insufficient_data", result.Status);
+        Assert.False(result.RecommendationAllowed);
+        Assert.Equal("critical", result.DataQualityStatus);
+        Assert.Contains("unknown_bucket_share_unavailable", result.ReasonCodes);
+    }
 }

@@ -46,6 +46,8 @@ const validColorResponse = {
   totals: {
     ukupanPromet: 10,
     ukupanMarzniDoprinos: 10,
+    weightedKnownMarginPct: 100,
+    weightedKnownMarginRevenue: 10,
     prePromet: 0,
     poslePromet: 10,
     ukupnaKolicina: 1,
@@ -65,6 +67,8 @@ const validColorResponse = {
     unknownColorRevenueSharePct: null,
     revenueWithNivelacijaSplit: 10,
     revenueWithNivelacijaSplitSharePct: 100,
+    weightedKnownMarginPct: 100,
+    weightedKnownMarginRevenue: 10,
   },
   sezone: [],
 };

@@ -102,7 +102,7 @@ const decisionColumns: AnalyticsTableColumn<DecisionColor>[] = [
   { key: "sharePct", header: "Udeo %", dataType: "percent" },
   { key: "marginContribution", header: "Maržni doprinos", dataType: "currency" },
   { key: "popRevenueChangePct", header: "PoP trend %", dataType: "percent" },
-  { key: "prePostNivelacijaRevenueImpactPct", header: "Nivelacija impact %", dataType: "percent" },
+  { key: "prePostNivelacijaRevenueImpactPct", header: "Uticaj nivelacije %", dataType: "percent" },
   {
     key: "preNivelacijePromet",
     header: "Pre nivelacije promet",
@@ -204,7 +204,7 @@ function buildStatusTooltip(data: StatusTooltipData): string {
     ? fmtSignedPct(data.prePostNivelacijaRevenueImpactPct, 1)
     : "N/A";
   const reliabilityText = data.reliabilityAvailable ? fmtPct(data.reliabilityPct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
-  return `${recommendationStatusLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Udeo ${fmtPct(data.sharePct, 1)} | Marža ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Nivelacija impact ${impactText} | Split pokriće ${fmtPct(data.splitCoveragePct, 1)} | Pouzdanost ${reliabilityText}`;
+  return `${recommendationStatusLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Udeo ${fmtPct(data.sharePct, 1)} | Marža ${fmtPct(data.marginPct, 1)} | Trend ${popText} | Uticaj nivelacije ${impactText} | Pokriće podele ${fmtPct(data.splitCoveragePct, 1)} | Pouzdanost ${reliabilityText}`;
 }
 
 export function describePopMetric(item: ColorSalesStat): { label: string; title: string; className: string } {
@@ -576,7 +576,8 @@ export default function ColorSalesStatsPage() {
       { key: "marginCoverage", label: "Promet sa nabavnom cenom", value: fmtPct(resolveColorComplementPercent(data?.dataQuality.missingCostRevenueSharePct), 1) },
       { key: "splitCoverage", label: "Pre/post pokriće", value: fmtPct(resolveColorPercentValue(data?.dataQuality.revenueWithNivelacijaSplitSharePct), 1) },
       { key: "signedEvidence", label: "Neto dokaz", value: data?.dataQuality.signedRevenuePolicy === "signed_net_revenue_preserved" ? "Neto promet i količina" : "Nije dostupno" },
-      { key: "costDenominator", label: "Imenilac coverage", value: data?.dataQuality.costQualityDenominatorStatus === "measured_positive_net_revenue" ? "Pozitivan neto promet" : "Nije merljivo" },
+      { key: "costDenominator", label: "Imenilac pokrića", value: data?.dataQuality.costQualityDenominatorStatus === "measured_positive_net_revenue" ? "Pozitivan neto promet" : "Nije merljivo" },
+      { key: "weightedMargin", label: "Ponderisana poznata marža", value: fmtPct(data?.dataQuality.weightedKnownMarginPct, 1) },
       { key: "increaseFocus", label: recommendationStatusLabel("increase_focus"), value: counts.increaseFocus },
       { key: "maintain", label: recommendationStatusLabel("maintain"), value: counts.maintain },
       { key: "review", label: recommendationStatusLabel("review"), value: counts.review },
@@ -593,6 +594,7 @@ export default function ColorSalesStatsPage() {
       data?.dataQuality.costQualityDenominatorStatus,
       data?.dataQuality.revenueWithNivelacijaSplitSharePct,
       data?.dataQuality.signedRevenuePolicy,
+      data?.dataQuality.weightedKnownMarginPct,
       data?.dataScope,
       data?.generatedAt,
       data?.lineage,
@@ -979,7 +981,7 @@ export default function ColorSalesStatsPage() {
                     {recommendationStatusLabel("increase_focus")}: {counts.increaseFocus} | {recommendationStatusLabel("maintain")}: {counts.maintain} | {recommendationStatusLabel("review")}: {counts.review} | {recommendationStatusLabel("do_not_trust")}: {counts.doNotTrust} | {recommendationStatusLabel("insufficient_data")}: {counts.insufficientData}
                   </p>
                   <p className="color-decision-metric-note">
-                    PoP trend = promena prometa prema prethodnom uporedivom periodu. Nivelacija impact = pre/post promena unutar prometa sa poznatim prvim datumom nivelacije.
+                    Trend = promena prometa prema prethodnom uporedivom periodu. Uticaj nivelacije = pre/post promena unutar prometa sa poznatim prvim datumom nivelacije.
                   </p>
                 </div>
               </div>
@@ -1028,7 +1030,7 @@ export default function ColorSalesStatsPage() {
                       </th>
                       <th className={`analytics-data-table__numeric${isSortActive("prePostNivelacijaRevenueImpactPct", sortField) ? " is-sorted" : ""}`}>
                         <button type="button" onClick={() => handleSort("prePostNivelacijaRevenueImpactPct")}>
-                          Nivelacija impact{sortMarker("prePostNivelacijaRevenueImpactPct", sortField, sortDir)} <InfoTip text="Pre/post promena prometa unutar artikala sa poznatim prvim datumom nivelacije. Nije isto što i PoP trend." />
+                          Uticaj nivelacije{sortMarker("prePostNivelacijaRevenueImpactPct", sortField, sortDir)} <InfoTip text="Pre/post promena prometa unutar artikala sa poznatim prvim datumom nivelacije. Nije isto što i trend prema prethodnom periodu." />
                         </button>
                       </th>
                       <th>
@@ -1112,7 +1114,7 @@ export default function ColorSalesStatsPage() {
                   <strong>{selectedRow.previousPeriodRevenue != null ? fmtRsd(selectedRow.previousPeriodRevenue) : "N/A"}</strong>
                 </article>
                 <article>
-                  <span>Nivelacija impact prometa</span>
+                  <span>Uticaj nivelacije na promet</span>
                   <strong className={describeNivelacijaImpactMetric(selectedRow).className} title={describeNivelacijaImpactMetric(selectedRow).title}>
                     {describeNivelacijaImpactMetric(selectedRow).label}
                   </strong>
@@ -1154,7 +1156,7 @@ export default function ColorSalesStatsPage() {
                   <strong>{fmtSignedPct(selectedRow.marginPct, 2)}</strong>
                 </article>
                 <article>
-                  <span>Decision score</span>
+                  <span>Ocena odluke</span>
                   <strong>{selectedRow.decisionScore == null ? "N/A" : fmtNumber(selectedRow.decisionScore, 0)}</strong>
                 </article>
               </div>

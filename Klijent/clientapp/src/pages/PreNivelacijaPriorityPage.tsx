@@ -1447,20 +1447,20 @@ export default function PreNivelacijaPriorityPage() {
               ))}
               {(!selectedRow.reliabilityAvailable || !selectedRow.confidenceAvailable || selectedRow.dataQualityStatus !== "good") ? (
                 <p className="pnp-decision-reason pnp-decision-reason--warning">
-                  <strong>Kvalitet podataka:</strong> Otvori <Link to="/analytics/data-quality">Data Quality</Link> da proveriš i ispraviš signal.
+                  <strong>Kvalitet podataka:</strong> Otvori <Link to="/analytics/data-quality">stranicu za kvalitet podataka</Link> da proveriš i ispraviš signal.
                 </p>
               ) : null}
 
               {selectedRow.scoreBreakdown ? (
                 <div className="pnp-score-breakdown">
-                  <h4>Komponente score-a</h4>
+                  <h4>Komponente skora</h4>
                   <div className="pnp-score-grid">
                     {[
                       { label: "Pritisak zalihe", value: selectedRow.scoreBreakdown.stockPressure },
                       { label: "Rizik brzine prodaje", value: selectedRow.scoreBreakdown.velocityRisk },
                       { label: "Rizik starosti prodaje", value: selectedRow.scoreBreakdown.recencyRisk },
-                      { label: "Markdown signal", value: selectedRow.scoreBreakdown.markdownOpportunity },
-                      { label: "Margin potencijal", value: selectedRow.scoreBreakdown.marginPotential },
+                      { label: "Signal za sniženje", value: selectedRow.scoreBreakdown.markdownOpportunity },
+                      { label: "Potencijal marže", value: selectedRow.scoreBreakdown.marginPotential },
                       { label: "Sezonski boost", value: selectedRow.scoreBreakdown.seasonRecencyBoost },
                     ].map((c) => (
                       <div key={c.label} className="pnp-score-component">

@@ -132,6 +132,8 @@ const colorCostTotalsSchema = {
   ukupnaKolicina: finiteNumber,
   preKolicina: finiteNumber,
   posleKolicina: finiteNumber,
+  weightedKnownMarginPct: nullableNumber,
+  weightedKnownMarginRevenue: finiteNumber,
 };
 
 const colorDataQualitySchema = z.object({
@@ -146,6 +148,8 @@ const colorDataQualitySchema = z.object({
   signedRevenuePolicy: z.string().optional(),
   signedQuantityPolicy: z.string().optional(),
   costQualityDenominatorStatus: z.string().optional(),
+  weightedKnownMarginPct: nullableNumber,
+  weightedKnownMarginRevenue: finiteNumber,
 }).passthrough();
 
 const shoeDataQualitySchema = z.object({
