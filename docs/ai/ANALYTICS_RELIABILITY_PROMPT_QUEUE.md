@@ -21841,7 +21841,7 @@ Supplier Decision backend capability/projection contract and focused tests. Do n
 - Date: 2026-09-22
 - Status: DONE
 - Completion: Delivered the Supplier Decision cache/provenance contract and focused backend regressions.
-- Changed files: `Api/Endpoints/SupplierDecisionHubEndpoints.cs`; `Api.Tests/SupplierDecisionHubContractTests.cs`; `Api.Tests/SupplierDecisionSchemaSqlTests.cs`; `Database/Analytics/015_AddSupplierMlRanking.sql`; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-22-RQ401-evidence.md`.
+- Changed files: `Api/Endpoints/SupplierDecisionHubEndpoints.cs`; `Api.Tests/SupplierDecisionHubContractTests.cs`; `Api.Tests/SupplierDecisionSchemaSqlTests.cs`; `Database/Analytics/015_AddSupplierMlRanking.sql`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-22-RQ401-evidence.md`.
 - Contract/runtime behavior changed: SQL is generated only after the selected all-time/90d/180d relation and required columns are proven; missing coverage never becomes full coverage; schema failures return an explicit unavailable state; stale refresh blocks recommendation; error reports preserve requested dataset and do not fabricate an effective dataset.
 - Checks run: focused `SupplierDecisionSchemaSqlTests` + `SupplierDecisionHubContractTests` passed 51/51; queue, agent-instruction and planning validators passed; `git diff --check` passed.
 - Checks not run: full repository test suite, live PostgreSQL execution and remote CI were not run/inspected; see run log.
