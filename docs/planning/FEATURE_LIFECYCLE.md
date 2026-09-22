@@ -1,6 +1,6 @@
 # Trendplus Feature Lifecycle
 
-Updated: 2026-08-15
+Updated: 2026-09-22
 Status: canonical planning lifecycle
 
 Every meaningful Trendplus feature follows this lifecycle:
@@ -54,15 +54,16 @@ The queue turns one roadmap milestone into bounded executable prompts.
 
 Rules:
 
-- at most one READY prompt per program;
-- all later prompts WAITING until dependencies are satisfied;
+- one `Current READY` primary/default pointer per program keeps simple routing deterministic; multiple READY prompts are allowed when they are independently runnable;
+- dependent, overlapping or gated prompts stay WAITING; an independent prompt does not stay WAITING merely because another feature family is READY;
 - every prompt contains: Problem, Evidence, Scope, Read first, Do, Tests, Acceptance, Dependencies;
 - do not duplicate another queue's feature family;
 - do not make a task READY just because it is high priority;
-- current READY must be explicitly declared near the queue top.
+- current READY must be explicitly declared near the queue top; it is a routing pointer, not a global mutex.
+- when multiple READY/IN_PROGRESS prompts share a feature family, every active task in that family must explicitly be `Parallel-safe: yes`; `Parallel-safe: no` is family/surface exclusivity, not program-wide serialization.
 - analytics prompts must name the authoritative data contract and prove that observed, reconstructed, estimated and unavailable inputs cannot be confused.
 
-Exit condition: the first safe, evidence-backed task is READY and the queue validator passes.
+Exit condition: at least one safe, evidence-backed task is READY when executable work exists, all additional READY tasks are collision-safe, and the queue validator passes.
 
 ## 4. Implementation
 
@@ -156,5 +157,5 @@ Before adding any new prompt:
 2. Search the owner roadmap/queue for the same feature family.
 3. If it exists, extend it; do not create a competing queue.
 4. If it does not exist, add roadmap ownership first.
-5. Keep only the first unblocked task READY.
+5. Keep one primary/default `Current READY` pointer; mark other dependency-complete prompts READY only when their feature-family/path/gate boundaries make concurrent claims safe.
 6. Run both planning and queue validators.

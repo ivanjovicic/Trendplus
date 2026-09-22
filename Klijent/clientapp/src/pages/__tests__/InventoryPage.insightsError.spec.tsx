@@ -133,7 +133,7 @@ describe("InventoryPage insights error handling", () => {
 
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent("insights unavailable");
-      expect(screen.getByText("Aging analitika trenutno nije dostupna")).toBeInTheDocument();
+      expect(screen.getByText("Analitika zastarelosti trenutno nije dostupna")).toBeInTheDocument();
       expect(screen.queryByText("7 artikala je u 90+ dana")).not.toBeInTheDocument();
       expect(screen.queryByText(/0 artikala je u 90\+ dana/)).not.toBeInTheDocument();
     });

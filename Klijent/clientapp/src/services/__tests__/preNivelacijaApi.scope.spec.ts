@@ -2,7 +2,28 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getPreNivelacijaPrioriteti, PreNivelacijaApiError } from "../preNivelacijaApi";
 import { getDataScopeStorageKey } from "../../utils/dataScope";
 
-const responseBody = JSON.stringify({ meta: { success: true, dataQualityStatus: "good" } });
+const responseBody = JSON.stringify({
+  generatedAtUtc: "2026-07-01T08:00:00Z",
+  formulaVersion: "test",
+  formulaDescription: "Test empty response",
+  summary: {
+    supplierCount: 0,
+    candidatesCount: 0,
+    highPriorityCount: 0,
+    totalStockAtRisk: 0,
+    estimatedAvoidableMarkdownLoss: 0,
+    expectedHighlightRevenueUplift: 0,
+    averagePreNivelacijaScore: 0,
+  },
+  supplierLeaderboard: [],
+  candidates: [],
+  queues: { highlightNow: [], monitor: [], likelyMarkdownSoon: [] },
+  alerts: [],
+  page: 1,
+  pageSize: 20,
+  totalCandidates: 0,
+  meta: { success: true, dataQualityStatus: "good" },
+});
 
 describe("pre-nivelacija API scope contract", () => {
   beforeEach(() => {

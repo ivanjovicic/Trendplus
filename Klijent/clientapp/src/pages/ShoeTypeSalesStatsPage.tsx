@@ -72,7 +72,9 @@ import {
 import { resolveShoeTypeCoveragePct } from "../utils/shoeTypeSalesCoverage";
 import { buildShoeTypeRecommendationProjection } from "../utils/shoeTypeStatusIdentity";
 import { getAnalyticsDataFreshnessStatus } from "../utils/analyticsResponseMeta";
+import { formatMetricDisplayValue } from "../utils/analyticsMetricValue";
 import { readAnalyticsTableSort, writeAnalyticsTableSort } from "../utils/analyticsTableSortUrl";
+import { useReliableAnalyticsQuery } from "../hooks/useReliableAnalyticsQuery";
 import "./ShoeTypeSalesStatsPage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
@@ -361,7 +363,6 @@ export default function ShoeTypeSalesStatsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const requestIdRef = useRef(0);
   const detailSectionRef = useRef<HTMLElement>(null);
 
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("30d");
@@ -380,9 +381,6 @@ export default function ShoeTypeSalesStatsPage() {
   });
 
   const [stores, setStores] = useState<StoreOption[]>([]);
-  const [data, setData] = useState<ShoeTypeSalesStatsResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [dataScope, setDataScopeValue] = useState<DataScope>(() => getDataScope());
   const [sortField, setSortField] = useState<SortField>(() => readAnalyticsTableSort(searchParams, SHOE_SORT_FIELDS, "status", "desc").field);
   const [sortDir, setSortDir] = useState<SortDir>(() => readAnalyticsTableSort(searchParams, SHOE_SORT_FIELDS, "status", "desc").dir);
@@ -422,41 +420,31 @@ export default function ShoeTypeSalesStatsPage() {
     void loadStores();
   }, []);
 
-  const load = useCallback(async (filters: ActiveFilters, scope: DataScope, signal?: AbortSignal) => {
-    const requestId = ++requestIdRef.current;
-    setLoading(true);
-    setError(null);
-
-    try {
-      const currentRange = toUtcRange(filters.fromDate, filters.toDate);
-      const result = await getShoeTypeSalesStats({
-        ...currentRange,
-        sezonaId: filters.sezonaId,
-        storeId: filters.storeId,
-        dataScope: scope,
-        signal,
-      });
-
-      if (requestId !== requestIdRef.current) return;
-      setData(result);
-    } catch (reason) {
-      if (reason instanceof DOMException && reason.name === "AbortError") {
-        return;
-      }
-      if (requestId !== requestIdRef.current) return;
-      setError(reason instanceof Error ? reason.message : "Greška pri učitavanju podataka po tipu obuće.");
-    } finally {
-      if (requestId === requestIdRef.current) {
-        setLoading(false);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    void load(activeFilters, dataScope, controller.signal);
-    return () => controller.abort();
-  }, [activeFilters, dataScope, load]);
+  const shoeTypeQuery = useCallback((signal: AbortSignal) => {
+    const currentRange = toUtcRange(activeFilters.fromDate, activeFilters.toDate);
+    return getShoeTypeSalesStats({
+      ...currentRange,
+      sezonaId: activeFilters.sezonaId,
+      storeId: activeFilters.storeId,
+      dataScope,
+      signal,
+    });
+  }, [activeFilters, dataScope]);
+  const {
+    data,
+    initialLoading,
+    refetching,
+    error: queryError,
+    staleWarning,
+    refetch,
+  } = useReliableAnalyticsQuery<ShoeTypeSalesStatsResponse>({
+    query: shoeTypeQuery,
+    getErrorMessage: useCallback((reason: unknown) => reason instanceof Error
+      ? reason.message
+      : "Greška pri učitavanju podataka po tipu obuće.", []),
+  });
+  const loading = initialLoading || refetching;
+  const error = queryError;
 
   const decisionRows = useMemo<DecisionShoeType[]>(() => {
     const rows = data?.shoeTypes ?? [];
@@ -700,8 +688,8 @@ export default function ShoeTypeSalesStatsPage() {
   const trustDataFreshnessStatus = getAnalyticsDataFreshnessStatus(responseMeta);
   const trustEmptyStateReason = responseMeta?.message ?? emptyStateHint;
 
-  const showBlockingError = Boolean(error && !data);
-  const showStaleError = Boolean(error && data);
+  const showBlockingError = Boolean(queryError && !data);
+  const showStaleError = Boolean(staleWarning && data);
   const emptyStateVariant = useMemo<"no_data" | "insufficient_data" | "filtered_out" | null>(() => {
     if (!data || sortedRows.length > 0) return null;
     if (headerDataQualityStatus === "insufficient_data") return "insufficient_data";
@@ -724,7 +712,7 @@ export default function ShoeTypeSalesStatsPage() {
     () => [
       { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
       { key: "dataScope", label: "Opseg podataka", value: data?.dataScope ?? dataScope },
-      { key: "tipova", label: "Tipova", value: data?.totals.brojTipovaObuce ?? 0 },
+      { key: "tipova", label: "Tipova", value: formatMetricDisplayValue({ value: data?.totals.brojTipovaObuce, kind: "number", fallback: "N/A" }) },
       { key: "marginCoverage", label: "Pokrice direktnom nabavnom %", value: fmtPct(resolveShoeTypeComplementPercent(data?.dataQuality.missingCostRevenueSharePct), 1) },
       { key: "fallbackCoverage", label: "Promet sa procenjenom nabavnom %", value: fmtPct(resolveShoeTypePercentValue(data?.dataQuality.estimatedCostRevenueSharePct), 1) },
       { key: "noCostCoverage", label: "Promet bez nabavne cene %", value: fmtPct(resolveShoeTypePercentValue(data?.dataQuality.missingCostRevenueSharePct), 1) },
@@ -1011,7 +999,7 @@ export default function ShoeTypeSalesStatsPage() {
         <AnalyticsErrorState
           title="Podaci trenutno nisu dostupni"
           message="Ne prikazujemo nule jer nije potvrdjeno da je period stvarno prazan."
-          onRetry={() => void load(activeFilters, dataScope)}
+          onRetry={refetch}
           helpHref="/analytics/data-quality"
         />
       ) : null}
@@ -1048,7 +1036,7 @@ export default function ShoeTypeSalesStatsPage() {
           dataQualityHref="/analytics/data-quality"
           refreshStatusHref="/admin/configuration?panel=workers"
           emptyReason={responseMeta?.emptyReason ?? null}
-          onRetry={() => void load(activeFilters, dataScope)}
+          onRetry={refetch}
         />
       ) : null}
 

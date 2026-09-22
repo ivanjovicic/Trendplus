@@ -2,9 +2,193 @@
 
 Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ368
+Current READY prompts: RQ385, RQ388, RQ389 and RQ401 (independent Pre/Post, Pre-Nivelacija, Color and Supplier Decision owner lanes)
 
-Owner promotion 2026-09-22: direct user audit of the Supplier Decision Hub promoted `RQ368` to `READY` as the single current prompt. `RQ369`-`RQ372` remain `WAITING` behind the canonical one-READY rule.
+Owner audit 2026-09-22: under the user's direct Supplier Decision Hub screen/backend audit request, `RQ401` became the current Supplier Decision READY prompt for cache-schema/effective-period compatibility. `RQ402`-`RQ405` were added as WAITING detail, filter-parity, effective-period and localization follow-ups. Existing RQ READY lanes remain independently runnable under the current queue governance.
+
+Owner audit 2026-09-22: under the user's direct Daily Sales by Shift screen/backend audit request, `RQ375` returned to `WAITING`, `RQ381` moved to `READY` as the current signed-quantity/revenue contract prompt, and `RQ382`-`RQ384` were added as later `WAITING` scope, shift-provenance and safe-error follow-ups. Daily Sales ASCII Serbian copy remains routed to `RQ306`; residual English/technical UI copy remains routed to `RQ325`.
+Owner audit 2026-09-22: under the user's direct Pre/Post Nivelacija screen/backend audit request, `RQ385` became the primary `READY` prompt for request-scope/cache lineage, while `RQ386` and `RQ387` were added as `WAITING` cohort/denominator and runtime-payload/error-contract follow-ups. The existing Daily Sales `RQ381` remains independently `READY`; Pre/Post ASCII Serbian and residual English/technical copy are routed to `RQ306`/`RQ325`.
+Owner audit 2026-09-22: under the user's direct Prioriteti nivelacije and Prodaja po boji artikla screen/backend audit request, `RQ388` became the primary `READY` prompt for Pre-Nivelacija page/global population parity and `RQ389` became the primary `READY` prompt for Color store/data-origin event lineage. `RQ390`-`RQ391` and `RQ392`-`RQ395` were added as later `WAITING` scoring, runtime-contract, signed-numeric, weighted-margin, comparable-cohort and safe-error follow-ups. Shared Serbian/English copy remains routed to `RQ306`/`RQ325`; no duplicate copy prompt was created.
+Follow-up audit 2026-09-22: the Color review also confirmed cache invalidation/freshness, generic-detail trust, canonical color identity, source provenance and missing authoritative decision-score follow-ups. `RQ396`-`RQ400` were added as `WAITING` prompts; they do not change the `READY` owner lanes.
+Owner promotion 2026-09-22: under the user's direct Inventory audit request, `RQ308` moved from `WAITING` to `READY` as the current Inventory period-selection and snapshot-provenance prompt. `RQ371` and `RQ372` were added as later `WAITING` follow-ups.
+Owner promotion 2026-09-22: under the user's direct Sales by Supplier audit request, `RQ308` returned to `WAITING`, `RQ373` moved to `READY` as the current supplier visible-scope/KPI parity prompt, and `RQ374` was added as a later `WAITING` supplier detail trust-contract follow-up. Existing localization findings remain routed to `RQ306` and `RQ325`.
+Owner promotion 2026-09-22: under the user's direct Shoe Type Sales screen/backend audit request, `RQ373` returned to `WAITING`, `RQ375` moved to `READY` as the current Shoe Type aggregate margin/cost-quality contract prompt, and `RQ376`/`RQ377` were added as later `WAITING` pre/post aggregate and detail-trust follow-ups. Shoe Type English/ASCII copy remains routed to `RQ306`/`RQ325`, and the existing dead truncation label remains `RQ329`. The Supplier lane remains WAITING because its high-value endpoint work overlaps the same backend owner/file and has explicit dependencies, not because only one READY is allowed.
+
+Owner promotion 2026-09-21: under the user's explicit instruction to claim the next prompt, `RQ303` moved from `WAITING` to `READY` as the next P1 Daily Sales localization slice after `RQ302`.
+
+Owner claim 2026-09-21: `RQ303` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ303-cursor.lock.md`.
+
+Owner completion 2026-09-21: `RQ303` delivered Serbian mismatch indicators, accessible status/tooltip text, localized Daily Sales quality copy and diacritics-safe API fallback handling.
+
+Owner promotion 2026-09-21: under the user's explicit instruction to claim the next prompt, `RQ302` moved from `WAITING` to `READY` as the next P1 Operacije route-smoke coverage slice after `RQ301`.
+
+Owner claim 2026-09-21: `RQ302` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ302-cursor.lock.md`.
+
+Owner promotion 2026-09-21: under the user's explicit instruction to claim the next prompt, `RQ301` moved from `WAITING` to `READY` as the next P1 Operacije Inventory localization slice after `RQ370`.
+
+Owner claim 2026-09-21: `RQ301` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ301-cursor.lock.md`.
+
+Owner promotion 2026-09-21: under the user's explicit instruction to claim the next prompt, `RQ370` moved from `WAITING` to `READY` as the P2 Inventory secondary/detail cancellation follow-up after `RQ369`.
+
+Owner claim 2026-09-21: `RQ370` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ370-cursor.lock.md`.
+
+Owner promotion 2026-09-21: under the user's explicit instruction to claim the next prompt, `RQ369` moved from `WAITING` to `READY` as the P1 Inventory inline-error-safety follow-up after `RQ368`.
+
+Owner claim 2026-09-21: `RQ369` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ369-cursor.lock.md`.
+
+Owner completion 2026-09-21: `RQ369` delivered safe Inventory detail, size-curve, export/print and scheduler inline error projections with component/page regressions. Follow-up: promote `RQ370`.
+
+Owner promotion 2026-09-21: under the user's explicit instruction to claim the next prompt, `RQ368` moved from `WAITING` to `READY` as the first safe P1 follow-up from the second Operacije audit.
+
+Owner claim 2026-09-21: `RQ368` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ368-cursor.lock.md`.
+
+Owner completion 2026-09-21: `RQ368` delivered shared safe-message mapping for Pre/Post previous-period and vendor-load inline warnings, including provider-exception detection and focused regressions. Follow-up: promote `RQ369`.
+
+Owner promotion 2026-09-20: after RQ364 reached DONE, `RQ365` moved from `WAITING` to `READY` as the PostgreSQL migration/bootstrap lifecycle smoke follow-up.
+
+Owner claim 2026-09-20: `RQ365` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ365-cursor.lock.md`.
+
+Owner completion 2026-09-21: `RQ365` delivered the PostgreSQL migration/bootstrap lifecycle smoke, explicit pgvector fixture dependency, serialized extension creation and fresh/repeat/restart assertions. CI remains pending/failed on the latest remote run and is recorded as residual risk per user instruction not to wait for CI. Follow-up: promote `RQ367`.
+
+Owner promotion 2026-09-21: after `RQ365` reached DONE by direct-main delivery with residual CI risk recorded, `RQ367` moved from `WAITING` to `READY`.
+
+Owner claim 2026-09-21: `RQ367` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ367-cursor.lock.md`.
+
+Owner completion 2026-09-21: `RQ367` delivered plan-driven JSON validation evidence, generated Markdown rendering, explicit frontend guardrail execution, truthful exit/skip/timeout/environment outcomes and exact-tip/ancestor `origin/main` verification. The named backend build/test remains explicitly environment-blocked because `dotnet` is unavailable locally; no backend PASS is inferred. The RQ reliability queue is complete.
+
+Owner audit 2026-09-21: a second static review of all eight Operacije menu surfaces confirmed the existing WAITING backlog and found three new gaps: P1 Pre/Post inline error safety (`RQ368`), P1 Inventory inline error safety (`RQ369`) and P2 Inventory secondary/detail cancellation (`RQ370`). The status table was reconciled so completed `RQ362`-`RQ364` are `DONE`, matching their completion notes and `MASTER_ROADMAP.md`; no prompt was promoted.
+
+Owner promotion 2026-09-20: after RQ363 reached DONE, `RQ364` moved from `WAITING` to `READY` as the dataset-projection semantics follow-up.
+
+Owner claim 2026-09-20: `RQ364` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ364-cursor.lock.md`.
+Owner completion 2026-09-20: `RQ364` delivered explicit dataset projections for Daily Sales and Pre-Nivelacija, separating table/filter/detail/page/chart/export consumers from backend global totals/facets. Follow-up: promote `RQ365` after RQ364 main delivery.
+
+Owner promotion 2026-09-20: after RQ362 reached DONE, `RQ363` moved from `WAITING` to `READY` as the critical analytics response runtime-validation follow-up.
+
+Owner claim 2026-09-20: `RQ363` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ363-cursor.lock.md`.
+Owner completion 2026-09-20: `RQ363` delivered runtime validation for critical analytics responses with fail-closed error propagation and preserved zero/empty/degraded semantics. Follow-up: promote `RQ364` after RQ363 main delivery.
+
+Owner promotion 2026-09-20: after RQ361 reached DONE, `RQ362` moved from `WAITING` to `READY` as the authoritative-versus-derived metric provenance contract follow-up.
+
+Owner claim 2026-09-20: `RQ362` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ362-cursor.lock.md`.
+Owner completion 2026-09-20: `RQ362` delivered the optional backend/frontend metric provenance contract for revenue share, margin, confidence/reliability and counts, including unit/denominator metadata, fail-closed mapping and cross-surface parity tests. Follow-up: promote `RQ363` after RQ362 main delivery.
+
+Owner promotion 2026-09-20: after RQ366 reached DONE, `RQ361` moved from `WAITING` to `READY` as the guardrail detection expansion downstream of the baseline contract.
+
+Owner claim 2026-09-20: `RQ361` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ361-cursor.lock.md`.
+
+Owner promotion 2026-09-20: after RQ359 reached DONE, `RQ360` moved from `WAITING` to `READY` as the reusable analytics reliability contract test-kit follow-up.
+
+Owner claim 2026-09-20: `RQ360` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ360-cursor.lock.md`.
+
+Owner promotion 2026-09-20: under user instruction to claim the next prompt, `RQ359` moved from `WAITING` to `READY` as the first systemic analytics reliability candidate after RQ358.
+
+Owner claim 2026-09-20: `RQ359` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ359-cursor.lock.md`.
+
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ358` moved from `WAITING` to `READY` as P3 trust follow-up (Shoe Type toolbar metadata fake zero).
+
+Owner claim 2026-09-20: `RQ358` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ358-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Shoe Type toolbar/export metadata now formats an unavailable backend shoe-type count as `N/A` instead of `0`.
+- Changed files: `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/ShoeTypeSalesStatsPage.premium.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: Shoe Type focused specs 37/37; `git diff --check`
+- Checks not run: full client suite, CI, live browser; analytics guardrails fail on 12 existing violations outside this metadata scope
+- Run log: `.ai/runs/2026-09-20-RQ358-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `ec08be4d`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `ec08be4d`
+- Follow-up: promote `RQ359` or `RQ321` (Operacije store-filter load failure)
+- Residual risk: none known in owned Shoe Type toolbar metadata scope
+- Prompt defect / scope repair: none
+
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ357` moved from `WAITING` to `READY` as P3 trust follow-up (Inventory URL pagination/search/compare state).
+
+Owner claim 2026-09-20: `RQ357` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ357-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Inventory now round-trips search, store/supplier filters, sort, pagination, page size and compare-store selection through URL parameters, preserving unrelated query parameters.
+- Changed files: `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.signalWindow.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: Inventory URL-state focused specs 4/4; `git diff --check`
+- Checks not run: full client suite, CI, live browser; analytics guardrails fail on 12 existing violations outside this URL-state scope
+- Run log: `.ai/runs/2026-09-20-RQ357-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `7213a705`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `7213a705`
+- Follow-up: promote `RQ358` or `RQ321` (Operacije store-filter load failure)
+- Residual risk: none known in owned Inventory URL-state scope
+- Prompt defect / scope repair: none
+
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ356` moved from `WAITING` to `READY` as P3 trust follow-up (Pre/Post advanced signal labels).
+
+Owner claim 2026-09-20: `RQ356` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ356-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Pre/Post advanced signal cards now use Serbian product labels and hints for momentum, elasticity, DiD and lost-sales signals while retaining methodology tooltips.
+- Changed files: `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`, `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: Pre/Post focused spec 33/33; `git diff --check`
+- Checks not run: full client suite, CI, live browser; analytics guardrails fail on 12 existing violations outside this localization scope
+- Run log: `.ai/runs/2026-09-20-RQ356-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `0d95013c`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `0d95013c`
+- Follow-up: promote `RQ357` or `RQ321` (Operacije store-filter load failure)
+- Residual risk: none known in owned Pre/Post signal-card scope
+- Prompt defect / scope repair: none
+
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ355` moved from `WAITING` to `READY` as P3 trust follow-up (Color empty-state quality conflation).
+
+Owner claim 2026-09-20: `RQ355` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ355-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Color empty-state variant now follows empty row count and backend `emptyReason`; quality notes render separately and cannot relabel an empty dataset as insufficient data.
+- Changed files: `Klijent/clientapp/src/pages/ColorSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/ColorSalesStatsPage.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: Color focused specs 32/32; `git diff --check`
+- Checks not run: full client suite, CI, live browser; analytics guardrails fail on 12 existing violations outside this empty-state scope
+- Run log: `.ai/runs/2026-09-20-RQ355-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `15c4d441`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `15c4d441`
+- Follow-up: promote `RQ356` or `RQ321` (Operacije store-filter load failure)
+- Residual risk: none known in owned Color empty-state scope
+- Prompt defect / scope repair: none
+
+Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ354` moved from `WAITING` to `READY` as P3 trust follow-up (Supplier Sales toolbar metadata fake zero).
+
+Owner claim 2026-09-20: `RQ354` transitioned `READY -> IN_PROGRESS`; local runtime lock `.ai/task-locks/RQ354-cursor.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Supplier Sales toolbar/export metadata now renders an unavailable backend supplier count as `N/A` instead of `0`.
+- Changed files: `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: Supplier Sales focused specs 24/24; `git diff --check`
+- Checks not run: full client suite, CI, live browser; analytics guardrails fail on 12 existing violations outside this metadata scope
+- Run log: `.ai/runs/2026-09-20-RQ354-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `ec53151b`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `ec53151b`
+- Follow-up: promote `RQ355` or `RQ321` (Operacije store-filter load failure)
+- Residual risk: none known in owned toolbar metadata scope
+- Prompt defect / scope repair: none
 
 Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ353` moved from `WAITING` to `READY` as P3 trust follow-up (Inventory insight unit-cost fake zero).
 
@@ -715,8 +899,8 @@ Operations audit intake 2026-09-18 (round 2): `RQ312`-`RQ330` were added from a 
 
 Operations audit intake 2026-09-18 (round 3): `RQ331`-`RQ358` were added from a third post-`RQ330` Operacije review (page-local KPIs, fake zeros, chart sort bug, stale refetch, abort races, filter facet bias, supplier redirect trust); `RQ331`-`RQ344` are `DONE` on `main`, `RQ345`-`RQ358` remain `WAITING`, and the queue has no current READY prompt.
 
-System reliability architecture intake 2026-09-20: `RQ359`-`RQ367` were added from the user's Reliability Contract Layer proposal (shared async lifecycle, invariant tests, guardrails, provenance, runtime validation, dataset projections, migration smoke, baseline debt and generated evidence); all nine are `WAITING`; the queue has no current READY prompt.
-System reliability dependency order 2026-09-20: `RQ359` is the first systemic candidate; `RQ360 READY AFTER RQ359 DONE`; `RQ366 READY AFTER RQ360 DONE`; `RQ361 READY AFTER RQ366 DONE`; `RQ362 READY AFTER RQ361 DONE`; `RQ363 READY AFTER RQ362 DONE`; `RQ364 READY AFTER RQ363 DONE`; `RQ365` is an independent database-reliability branch; `RQ367 READY AFTER RQ361 + RQ363 + RQ364 + RQ365 DONE` (RQ361 transitively includes RQ366). Do not promote or claim any of these while the current READY pointer is `none`.
+System reliability architecture intake 2026-09-20: `RQ359`-`RQ367` were added from the user's Reliability Contract Layer proposal (shared async lifecycle, invariant tests, guardrails, provenance, runtime validation, dataset projections, migration smoke, baseline debt and generated evidence); `RQ359`, `RQ360`, `RQ361` and `RQ366` are DONE, while `RQ362`-`RQ365`, `RQ367` remain `WAITING`.
+System reliability dependency order 2026-09-20: `RQ359`, `RQ360`, `RQ361` and `RQ366` are DONE; `RQ362 READY AFTER RQ361 DONE`; `RQ363 READY AFTER RQ362 DONE`; `RQ364 READY AFTER RQ363 DONE`; `RQ365` is an independent database-reliability branch; `RQ367 READY AFTER RQ361 + RQ363 + RQ364 + RQ365 DONE` (RQ361 transitively includes RQ366).
 
 Owner promotion 2026-09-15: `RQ270` was explicitly promoted from `WAITING` to `READY` because the RQ queue had no current READY prompt after `RQ264` completion; it is the single current RQ prompt for confirmed Inventory scope-change reload gaps and will be claimed in this workspace.
 
@@ -1108,14 +1292,14 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ298 | DONE | pre-nivelacija-reliability-export | Align reliability styling and percent export metadata |
 | RQ299 | DONE | pre-nivelacija-url-state | Preserve filters and focus in refresh/back/deep-link URLs |
 | RQ300 | DONE | pre-nivelacija-numeric-robustness | Keep malformed/null numeric payloads from crashing or sorting falsely |
-| RQ301 | WAITING | operations-inventory-serbian-copy | Replace English inventory cockpit copy with Serbian product language |
-| RQ302 | WAITING | operations-route-smoke | Add missing Operacije routes to core App analytics smoke matrix |
-| RQ303 | WAITING | daily-sales-localization | Replace English mismatch badge and mixed QA copy on Daily Sales |
+| RQ301 | DONE | operations-inventory-serbian-copy | Replace English inventory cockpit copy with Serbian product language |
+| RQ302 | DONE | operations-route-smoke | Add missing Operacije routes to core App analytics smoke matrix |
+| RQ303 | IN_PROGRESS | daily-sales-localization | Replace English mismatch badge and mixed QA copy on Daily Sales |
 | RQ304 | WAITING | color-sales-detail-label-parity | Align Color detail score label with table/export Serbian copy |
 | RQ305 | WAITING | operations-supplier-ia-clarity | Clarify Operacije menu entries that redirect into canonical Supplier tabs |
 | RQ306 | WAITING | operations-diacritics-pass | Fix missing Serbian diacritics across Operacije user-facing copy |
 | RQ307 | WAITING | shoe-type-impact-label | Replace English nivelacija impact label on Shoe Type surface |
-| RQ308 | WAITING | inventory-period-provenance | Make Inventory trust header period/snapshot semantics explicit |
+| RQ308 | WAITING | inventory-period-provenance | Add Inventory period control and make snapshot/signal semantics explicit |
 | RQ309 | WAITING | operations-nav-icons | Differentiate duplicate Operacije sidebar icons |
 | RQ310 | WAITING | operations-test-route-alignment | Align Operacije page tests with production `/analytics/...` routes |
 | RQ311 | WAITING | operations-guardrail-cleanup | Resolve Operacije guardrail violations for score/reliability mapping |
@@ -1161,20 +1345,51 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ351 | DONE | inventory-hard-reload-refresh | Replace Inventory full page reload refresh with scoped refetch |
 | RQ352 | DONE | daily-sales-filtered-empty-confusion | Distinguish Daily Sales store-empty from filter-no-match empty state |
 | RQ353 | DONE | inventory-insight-detail-fake-zero-cost | Guard unit cost fake zero on insight-to-detail navigation path |
-| RQ354 | WAITING | supplier-toolbar-metadata-fake-zero | Fail closed on null supplier count in toolbar export metadata |
-| RQ355 | WAITING | color-empty-quality-conflation | Base Color empty state on row count and meta, not quality notes alone |
-| RQ356 | WAITING | pre-post-english-signal-labels | Serbian labels for Pre/Post advanced signal cards |
-| RQ357 | WAITING | inventory-url-pagination-search | URL-sync Inventory pagination, page size, search and compare stores |
-| RQ358 | WAITING | shoe-type-toolbar-metadata-fake-zero | Fail closed on null shoe type count in toolbar metadata export |
-| RQ359 | WAITING | analytics-reliable-query-lifecycle | Centralize abort/latest-request/stale-refetch semantics in one hook |
-| RQ360 | WAITING | analytics-invariant-test-kit | Reuse one invariant matrix across critical analytics screens |
-| RQ361 | WAITING | analytics-guardrail-expansion | Detect fake-zero, silent-catch, frontend-aggregate and pagination anti-patterns |
-| RQ362 | WAITING | analytics-authoritative-provenance | Formalize authoritative versus derived metric provenance |
-| RQ363 | WAITING | analytics-response-runtime-validation | Fail closed on invalid analytics DTOs at the API boundary |
-| RQ364 | WAITING | analytics-dataset-projections | Separate canonical, filtered, table, chart, export and detail datasets |
-| RQ365 | WAITING | analytics-migration-bootstrap-smoke | Prove fresh and repeat PostgreSQL migration/bootstrap lifecycle |
-| RQ366 | WAITING | analytics-guardrail-baseline | Prevent guardrail debt from growing while shrinking the baseline |
-| RQ367 | WAITING | analytics-generated-validation-evidence | Generate machine-readable validation evidence before Markdown summaries |
+| RQ354 | DONE | supplier-toolbar-metadata-fake-zero | Fail closed on null supplier count in toolbar export metadata |
+| RQ355 | DONE | color-empty-quality-conflation | Base Color empty state on row count and meta, not quality notes alone |
+| RQ356 | DONE | pre-post-english-signal-labels | Serbian labels for Pre/Post advanced signal cards |
+| RQ357 | DONE | inventory-url-pagination-search | URL-sync Inventory pagination, page size, search and compare stores |
+| RQ358 | DONE | shoe-type-toolbar-metadata-fake-zero | Fail closed on null shoe type count in toolbar metadata export |
+| RQ359 | DONE | analytics-reliable-query-lifecycle | Centralize abort/latest-request/stale-refetch semantics in one hook |
+| RQ360 | DONE | analytics-invariant-test-kit | Reuse one invariant matrix across critical analytics screens |
+| RQ361 | DONE | analytics-guardrail-expansion | Detect fake-zero, silent-catch, frontend-aggregate and pagination anti-patterns |
+| RQ362 | DONE | analytics-authoritative-provenance | Formalize authoritative versus derived metric provenance |
+| RQ363 | DONE | analytics-response-runtime-validation | Fail closed on invalid analytics DTOs at the API boundary |
+| RQ364 | DONE | analytics-dataset-projections | Separate canonical, filtered, table, chart, export and detail datasets |
+| RQ365 | DONE | analytics-migration-bootstrap-smoke | Prove fresh and repeat PostgreSQL migration/bootstrap lifecycle |
+| RQ366 | DONE | analytics-guardrail-baseline | Prevent guardrail debt from growing while shrinking the baseline |
+| RQ367 | DONE | analytics-generated-validation-evidence | Generate machine-readable validation evidence before Markdown summaries |
+| RQ368 | DONE | operations-inline-error-safety | Sanitize inline Pre/Post partial-failure messages without hiding degraded state |
+| RQ369 | DONE | inventory-inline-error-safety | Sanitize Inventory detail/export/scheduler error messages |
+| RQ370 | DONE | inventory-secondary-request-cancellation | Abort Inventory secondary and detail requests on scope changes |
+| RQ371 | WAITING | inventory-signal-period-scope-parity | Keep Inventory signal period and data-scope contracts aligned |
+| RQ372 | WAITING | inventory-alert-filter-contract | Keep Inventory alert filtering, counts and URL state consistent |
+| RQ373 | WAITING | supplier-sales-visible-scope-parity | Separate Supplier display population from decision reference cohort and align KPI/chart/table/export scope |
+| RQ374 | WAITING | supplier-sales-detail-trust-contract | Align Supplier detail with display scope, decision benchmark, trust and provenance |
+| RQ375 | READY | shoe-type-margin-quality-contract | Align Shoe Type weighted margin baseline, cost-source semantics and runtime validation |
+| RQ376 | WAITING | shoe-type-prepost-aggregate-parity | Align Shoe Type pre/post totals with comparable evidence cohort |
+| RQ377 | WAITING | shoe-type-detail-trust-contract | Align Shoe Type detail route with row recommendation, trust and unknown identity |
+| RQ378 | WAITING | supplier-sales-margin-quality-contract | Align Supplier weighted margin benchmark and cost-source semantics |
+| RQ379 | WAITING | supplier-sales-runtime-schema | Add fail-closed runtime validation for Supplier Sales decision payload |
+| RQ380 | WAITING | supplier-sales-prepost-comparable-aggregate | Align Supplier total pre/post impact with the comparable cohort |
+| RQ388 | READY | pre-nivelacija-population-parity | Align Pre-Nivelacija global KPIs with the full candidate population |
+| RQ389 | READY | color-scope-event-lineage | Align Color store/data-origin scope with nivelacija event lineage |
+| RQ390 | WAITING | pre-nivelacija-scoring-window | Bound Pre-Nivelacija scoring history and signed-sales denominator semantics |
+| RQ391 | WAITING | pre-nivelacija-runtime-schema | Validate the complete Pre-Nivelacija decision payload at runtime |
+| RQ392 | WAITING | color-signed-numeric-contract | Preserve signed Color sales and cost-quality evidence |
+| RQ393 | WAITING | color-margin-quality-contract | Align Color recommendation margin baseline with weighted cost evidence |
+| RQ394 | WAITING | color-prepost-aggregate-parity | Align Color pre/post totals with the comparable evidence cohort |
+| RQ395 | WAITING | color-runtime-safe-errors | Harden Color runtime validation and safe traceable endpoint errors |
+| RQ396 | WAITING | color-cache-freshness-lineage | Align Color cache invalidation and freshness metadata |
+| RQ397 | WAITING | color-detail-trust-projection | Align Color generic detail with row trust and provenance |
+| RQ398 | WAITING | color-identity-canonicalization | Canonicalize Color identity and collision-safe detail keys |
+| RQ399 | WAITING | color-source-provenance | Correct Color source and metric provenance |
+| RQ400 | WAITING | color-decision-score-contract | Define an authoritative Color decision-score contract |
+| RQ401 | READY | supplier-decision-cache-schema-provenance | Align Supplier Decision cache capabilities, schema projections and effective-period lineage |
+| RQ402 | WAITING | supplier-decision-detail-source-parity | Connect rich supplier decision details to the canonical screen |
+| RQ403 | WAITING | supplier-decision-filter-parity | Align backend-supported supplier filters with the canonical screen and report |
+| RQ404 | WAITING | supplier-decision-effective-period-semantics | Make requested/effective supplier periods consistent across metrics and actions |
+| RQ405 | WAITING | supplier-decision-localization | Finish Serbian terminology on supplier decision surfaces and backend-safe messages |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -1182,295 +1397,6 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ180 | DONE | pre-post-aggregate-owner-parity | Remove frontend reconstruction of backend-owned pre/post aggregate denominators |
 | RQ181 | DONE | decision-board-blocked-action-cta | Do not expose an executable action CTA for blocked Decision Board cards |
 | RQ182 | DONE | pre-post-coverage-backend-null-state | Preserve unknown pre/post coverage in backend DTOs and aggregate calculations |
-
----
-
-## RQ368 - Uskladiti Supplier Decision Hub cache shemu i efektivni period
-
-Status: READY
-Priority: P1
-Type: backend/analytics/contract/tests
-Feature family: supplier-decision-cache-schema-provenance
-Parallel-safe: no
-Owner: Supplier Analytics Backend / Analytics Reliability
-Commit suggestion: `fix(analytics): align supplier decision cache capabilities and period lineage`
-
-### Problem
-
-Supplier Decision Hub bira 90d/180d/all-time materijalizovani skup prema zahtevanom periodu, ali proverava samo deo capabilities ugovora. SQL zatim može da čita nepostojeći prozorski prikaz ili kolonu `post_signal_coverage` koju all-time cache definicija ne izlaže. Kratak zahtev može dobiti širi efektivni skup, dok metrike ostaju agregirane za taj širi skup; to mora biti eksplicitno i dosledno, bez lažno uspešnog signala.
-
-### Evidence
-
-- `Api/Endpoints/SupplierDecisionHubEndpoints.cs` — `GetSupplierRowsCached`/`QuerySupplierRows`, `GetPrecomputedQueryCapabilitiesAsync`, `BuildPrecomputedSupplierRowsSql` (capability izbor, 90d/180d/all-time SQL i `post_signal_coverage`).
-- `Database/Analytics/015_AddSupplierMlRanking.sql` — all-time view/cache projection.
-- `Database/Migrations/029_AddSupplierDecisionWindowedViews.sql` — windowed cache projections.
-- `Api.Tests/SupplierDecisionHubContractTests.cs` — postojeći ugovor za meta, fallback i unavailable ponašanje.
-
-### Scope
-
-Backend capability/projection ugovor i fokusirani testovi za Supplier Decision Hub. Ne menjati opštu refresh arhitekturu, druge analytics porodice ili produkcione podatke.
-
-### Read first
-
-- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
-- `docs/ai/VALIDATION_SELECTOR.md`
-- `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`
-- `Api/Endpoints/SupplierDecisionHubEndpoints.cs`
-- `Database/Analytics/015_AddSupplierMlRanking.sql`
-- `Database/Migrations/029_AddSupplierDecisionWindowedViews.sql`
-- `Api.Tests/SupplierDecisionHubContractTests.cs`
-
-### Do
-
-1. Proveriti svaki izabrani cache/view i obavezne kolone pre generisanja SQL-a; capability provera mora odgovarati stvarnom dataset-u.
-2. Uskladiti `post_signal_coverage`, confidence/reliability jedinice i nullable ponašanje za all-time, 90d i 180d projekcije; ne izmišljati punu pokrivenost kada kolona nije dostupna.
-3. Za nedostajući windowed/all-time skup izabrati eksplicitno fail-closed ili dokumentovan pomoćni put, uz tačan requested/effective dataset, period, kvalitet i blokadu preporuke.
-4. Sačuvati razliku između greške, praznog rezultata, pomoćnog skupa i delimičnih podataka.
-
-### Tests
-
-- Contract tests za nedostajuću all-time kolonu, nedostajući 90d/180d view, kompletne projekcije, 30d helper semantics i SQL/schema mismatch.
-- Provera da nema `undefined column`/generic unavailable bez tačnog meta razloga i da se preporuka ne dozvoljava na neuporedivom skupu.
-
-### Acceptance
-
-- Endpoint ne generiše SQL nad neproverenim view-om ili kolonom.
-- Requested/effective dataset i period su tačni na success, empty, degraded i error putanjama.
-- Nema lažnih nula, lažno „dobrog“ signala ili tihe promene perioda.
-- Relevantni backend build i fokusirani Supplier Decision Hub testovi prolaze.
-
-### Dependencies
-
-- Ovo je trenutni jedini `READY` prompt.
-- `RQ369` i `RQ371` zavise od stabilnog cache/provenance ugovora iz ovog prompta.
-
----
-
-## RQ369 - Povezati bogati detalj dobavljača sa aktuelnim ekranom
-
-Status: WAITING
-Priority: P1
-Type: frontend/backend/contract/tests
-Feature family: supplier-decision-detail-source-parity
-Parallel-safe: no
-Owner: Supplier Analytics Frontend + Backend
-Commit suggestion: `fix(analytics): connect supplier decision details to the canonical screen`
-
-### Problem
-
-Kanonski ekran trenutno učitava summary/ranking, dok backend `/details`, `getSupplierDecisionDetails` i `SupplierDetailDrawer` postoje, ali nisu povezani sa glavnim putem. Dugme „Otvori puni detalj“ čuva generički analytics snapshot i otvara generički detalj, pa korisnik ne dobija isti bogati backend ugovor kao na ekranu.
-
-### Evidence
-
-- `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx` — ranking load i `openSupplierDetail`.
-- `Klijent/clientapp/src/services/supplierDecisionHubApi.ts` — details client postoji, ali nije deo aktuelnog load puta.
-- `Klijent/clientapp/src/components/supplierDecisionHub/SupplierDetailDrawer.tsx` — postojeći, uglavnom neiskorišćen bogati prikaz.
-- `Api/Endpoints/SupplierDecisionHubEndpoints.cs` — supplier decision details endpoint.
-
-### Scope
-
-Ujednačiti detalj u kanonskom ekranu sa backend details ugovorom: drawer ili stabilna ruta, uz isti period, filtere, trust/meta i selected supplier. Ako se postojeći endpoint namerno uklanja, ukloniti i mrtvi frontend ugovor/testove u istom owner scope-u.
-
-### Read first
-
-- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
-- `docs/ai/VALIDATION_SELECTOR.md`
-- `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx`
-- `Klijent/clientapp/src/services/supplierDecisionHubApi.ts`
-- `Klijent/clientapp/src/components/supplierDecisionHub/SupplierDetailDrawer.tsx`
-- `Api/Endpoints/SupplierDecisionHubEndpoints.cs`
-
-### Do
-
-1. Izabrati jedan canonical detail path i ukloniti generički snapshot kao zamenu za puni detalj.
-2. Preneti aktivne period/filter/dataset parametre i zadržati backend status, reason, confidence/reliability, data quality i fallback meta.
-3. Pokriti loading, error, empty, stale/degraded i supplier-change stanje.
-
-### Tests
-
-- Frontend focused specs za open/close, filter parity, error/empty/degraded detail i bez stale detalja nakon promene dobavljača.
-- Backend/client contract spec za details payload i meta.
-
-### Acceptance
-
-- „Otvori puni detalj“ otvara podatke iz istog supplier-decision backend ugovora.
-- Nema generičkog snapshot-a koji se predstavlja kao puni detalj.
-- Period, dataset, kvalitet i blokada preporuke ostaju vidljivi i tačni.
-
-### Dependencies
-
-- READY AFTER: RQ368 DONE.
-
----
-
-## RQ370 - Uvesti sve backend filtere u kanonski ekran Odluke o dobavljačima
-
-Status: WAITING
-Priority: P2
-Type: frontend/backend/contract/tests
-Feature family: supplier-decision-filter-parity
-Parallel-safe: no
-Owner: Supplier Analytics Frontend + Backend
-Commit suggestion: `feat(analytics): align supplier decision filter parity`
-
-### Problem
-
-Backend podržava category, gender, season, minRevenue, onlyHighConfidence i excludeOosBeforeMarkdown, ali kanonski ekran `/analytics/supplier` izlaže samo period, datum, scope, objekat i dobavljača. Postojeći `SupplierDecisionFilters` je odvojen/dead put, pa UI i backend ne nude isti skup filtera.
-
-### Evidence
-
-- `Api/Endpoints/SupplierDecisionHubEndpoints.cs` — filter DTO i binding.
-- `Klijent/clientapp/src/components/supplierDecisionHub/SupplierDecisionFilters.tsx` — postojeći odvojeni filter UI.
-- `Klijent/clientapp/src/pages/SupplierConsolidatedPage.tsx` — stvarni kanonski filter bar.
-- `Klijent/clientapp/src/pages/useSupplierCanonicalState.ts` — URL/canonical state.
-
-### Scope
-
-Kanonska URL serializacija, UI kontrole, API parametri, cache ključevi, ranking/summary/details/report/action parity. Ne uvoditi novi drugi filter owner.
-
-### Read first
-
-- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
-- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
-- `Klijent/clientapp/src/pages/useSupplierCanonicalState.ts`
-- `Klijent/clientapp/src/pages/SupplierConsolidatedPage.tsx`
-- `Api/Endpoints/SupplierDecisionHubEndpoints.cs`
-
-### Do
-
-1. Svaki podržani filter učiniti vidljivim ili eksplicitno ukloniti iz backend ugovora uz dokumentovan razlog.
-2. Obezbediti round-trip kroz URL, refresh, ranking, summary, details i report link.
-3. Invalid/stale filter tretirati fail-closed ili bezbedno očistiti; ne prikazivati podatke iz drugog skupa.
-
-### Tests
-
-- URL round-trip i invalid-filter specs.
-- API request parity za summary/ranking/details/report.
-- Provera da filter menja rezultat, trust meta i action source key.
-
-### Acceptance
-
-- Kanonski ekran i backend imaju isti aktivni filter set.
-- Nema tihog gubitka filtera pri promeni taba, reload-u ili otvaranju detalja/report-a.
-
-### Dependencies
-
-- READY AFTER: RQ368 DONE.
-
----
-
-## RQ371 - Uskladiti efektivni period i pomoćni skup sa metrikama i predlozima
-
-Status: WAITING
-Priority: P2
-Type: backend/frontend/report/contract/tests
-Feature family: supplier-decision-effective-period-semantics
-Parallel-safe: no
-Owner: Supplier Analytics Backend + Frontend
-Commit suggestion: `fix(analytics): expose supplier decision effective period semantics`
-
-### Problem
-
-Za kratke zahteve endpoint koristi 90d/180d materialized skup, a za duže zahteve all-time; SQL filtrira presek redova, ali ne mora ponovo izračunati metrike za proizvoljni zahtevani period. Trust metadata blokira konačnu preporuku, ali KPI/tooltips/report mogu delovati kao da su za izabrani period.
-
-### Evidence
-
-- `Api/Endpoints/SupplierDecisionHubEndpoints.cs` — `GetDecisionScoreWindowDays`, `BuildPrecomputedSupplierRowsSql`, `BuildScorecardTrustMetadata`.
-- `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx` — KPI/tooltips, helper warning i action detail.
-- `Klijent/clientapp/src/components/analytics/SupplierDecisionReport.tsx` — requested/effective period rendering.
-- `Database/Migrations/029_AddSupplierDecisionWindowedViews.sql` — window semantics.
-
-### Scope
-
-Uvesti jednoznačne requested/effective/observed oznake na ekran, detalj, report i export ili promeniti backend query da zaista računa zahtevani period. Ne dozvoliti tihi widening perioda.
-
-### Read first
-
-- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
-- `docs/ai/VALIDATION_SELECTOR.md`
-- `Api/Endpoints/SupplierDecisionHubEndpoints.cs`
-- `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx`
-- `Klijent/clientapp/src/components/analytics/SupplierDecisionReport.tsx`
-
-### Do
-
-1. Definisati i prikazati razliku između traženog, efektivnog i posmatranog perioda.
-2. Pomoćne metrike i signale jasno označiti; recommendationAllowed ostaje false dok skup nije uporediv.
-3. Uskladiti screen/detail/report/export i action rationale.
-
-### Tests
-
-- 30d, 90d, 180d i custom >180d period specs.
-- Report/detail lineage i recommendation gating specs.
-- Empty/degraded/fallback regression bez fake KPI vrednosti.
-
-### Acceptance
-
-- Korisnik na svakoj odluka-surface vidi za koji period i skup važi signal.
-- Nema predstavljanja 90d/180d agregata kao tačno 30d metrike.
-- Konačna preporuka i akcije koriste isti provenance ugovor.
-
-### Dependencies
-
-- READY AFTER: RQ368 DONE; koordinacija sa RQ369 za detalj.
-
----
-
-## RQ372 - Završiti srpsku terminologiju na supplier ekranu, report-u i backend porukama
-
-Status: WAITING
-Priority: P3
-Type: frontend/backend/text-safety/tests
-Feature family: supplier-decision-localization
-Parallel-safe: no
-Owner: Supplier Analytics Frontend + Backend
-Commit suggestion: `chore(analytics): localize supplier decision user-facing terminology`
-
-### Problem
-
-Supplier Decision ekran je delimično lokalizovan, ali report, export/action poruke i backend-safe tekst još mogu prikazati `fallback`, `dataset`, `Data Quality`, `Scorecard`, `confidence`, `backend`, `snapshot`, `OOS false negative`, `stock-risk` ili tehničke nazive. Korisnički tekst mora biti srpski, dok interni reason kodovi ostaju stabilni.
-
-### Evidence
-
-- `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx`
-- `Klijent/clientapp/src/pages/SupplierConsolidatedPage.tsx`
-- `Klijent/clientapp/src/pages/SupplierDecisionReportPage.tsx`
-- `Klijent/clientapp/src/components/analytics/SupplierDecisionReport.tsx`
-- `Klijent/clientapp/src/components/analytics/SupplierDecisionReportActions.tsx`
-- `Api/Endpoints/SupplierDecisionHubEndpoints.cs`
-- `Api.Tests/SupplierDecisionHubContractTests.cs`
-
-### Scope
-
-Samo user-facing Serbian copy, mappings i test očekivanja u Supplier Decision Hub/Scorecard/report površinama. Ne menjati API reason kodove, SQL nazive, telemetry ključeve ili legitimne tehničke identifikatore u developer-only tekstu.
-
-### Read first
-
-- `docs/ai/ENCODING_AND_TEXT_SAFETY.md`
-- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
-- `Klijent/clientapp/src/components/analytics/AnalyticsTrustHeader.tsx`
-- `Api/Endpoints/SupplierDecisionHubEndpoints.cs`
-
-### Do
-
-1. Popisati preostale vidljive engleske izraze kroz screen/report/export/error/empty/degraded grane.
-2. Dodati centralne Serbian mappings tamo gde već postoji mapping owner; ne duplirati formatere ili reason-code logiku.
-3. Očuvati UTF-8/diakritike i proveriti da tehnički kodovi nisu procurili u UI.
-
-### Tests
-
-- Focused component/page tests za svaku promenjenu poruku.
-- Encoding/guardrail check i backend contract test za safe error/fallback poruke.
-
-### Acceptance
-
-- Korisničke površine Supplier Decision Hub-a i report-a nemaju navedene engleske termine osim legitimnih identifikatora.
-- Reason kodovi i backend ugovori ostaju kompatibilni.
-- Nema regresije u error/empty/degraded/fallback trust stanjima.
-
-### Dependencies
-
-- READY AFTER: RQ368 DONE.
 
 ---
 
@@ -5305,7 +5231,7 @@ Commit suggestion: `feat(analytics): expose metric evidence and decision tiers`
 
 ## RQ148 - Prove the gross/net/return/cost basis of sales and margin KPIs
 
-Status: WAITING
+Status: DONE
 Priority: P0
 Type: audit/backend/EF-SQL/contract/export/report/tests
 Feature family: sales-margin-returns-measurement-basis
@@ -5370,7 +5296,7 @@ Revenue is currently described as a sales-line sum and margin contribution as re
 
 ## RQ149 - Establish inventory economic evidence before GMROI or demand-value claims
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend/EF-SQL/contract/frontend/export/report/tests
 Feature family: inventory-economic-metric-evidence
@@ -8014,10 +7940,10 @@ Sales are counted over `UtcNow.AddDays(-30)`, but `avgDailySalesUnits` always di
 - Checks run: focused and inventory-list integration tests 13/13 passed; Release API build passed with 0 errors; agent-instruction, prompt-queue and planning-architecture validators passed; `git diff --check` passed.
 - Checks not run: full repository suite, live database/refresh/browser/deployed proof and remote CI; not required for this bounded backend calculation and remain external/runtime evidence.
 - Run log: `.ai/runs/2026-09-08-RQ184-velocity-divisor-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: 544f34dfb94e9ed83f3738d99415427c9aa50b04
+- Main verification: passed - fresh `origin/main` contains implementation SHA `544f34dfb94e9ed83f3738d99415427c9aa50b04`
 - Missed: no live provider proof or broader active-selling-days semantic change; those remain outside RQ184.
 - Follow-up: RQ185 remains WAITING for the separate calendar-days versus active-selling-days contract.
 - Residual risk: existing unrelated analyzer warnings and other velocity producers remain outside the cached inventory-list scope.
@@ -8292,8 +8218,8 @@ SQL view encodes `WHEN pp.list_price <= 0 THEN 0::numeric` for `discount_depth`.
 - Run log: `.ai/runs/2026-09-08-RQ188-price-intelligence-validity-evidence.md`
 - Evidence state: pending
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: 4c942869f929267774c75f6457d4aa29a4551a20
+- Main verification: passed - fresh `origin/main` contains implementation SHA `4c942869f929267774c75f6457d4aa29a4551a20`
 - Missed: none within the narrowed analytics consumer scope; RQ189 remains WAITING.
 - Follow-up: none for RQ188.
 - Residual risk: normal cache refresh is required after the SQL view is applied; no production mutation was performed.
@@ -12878,7 +12804,7 @@ Product Decision Center maps nullable article quantity and minimum stock to zero
 
 ## RQ256 - Keep Product Decision margin coverage unavailable without sales evidence
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/contract/frontend/tests
 Feature family: pdc-margin-coverage-denominator
@@ -13299,7 +13225,7 @@ The shared `AnalyticsEmptyState` prints the `emptyReason` prop verbatim. Several
 
 ## RQ261 - Preserve refresh duration unknown state and safe operational messaging
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/contract/frontend/tests
 Feature family: refresh-status-duration-message-truth
@@ -13388,7 +13314,7 @@ The refresh-status service aggregates missing job durations through `DefaultIfEm
 
 ## RQ262 - Keep executive KPI availability and visual tone consistent
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: frontend/contract/tests
 Feature family: executive-kpi-value-tone-parity
@@ -16330,6 +16256,24 @@ Reproduction: open `/analytics/inventory` and scan trust header, KPI cards, work
 - `RQ267` owns page-level heading hierarchy; this prompt owns copy/localization only.
 - Coordinate wording with `RQ306` if both touch the same string in one pass.
 
+### Completion note
+
+- Date: 2026-09-21
+- Status: DONE
+- Completion: Inventory's primary decision surface and child panels now use Serbian product language with preserved metric keys, backend contracts and data-quality semantics. English cockpit/KPI, workflow, forecast, alert, size-distribution, detail, store-comparison, table, export and scheduler copy was replaced with Serbian wording and correct diacritics.
+- Changed files: Inventory page and child components under `Klijent/clientapp/src/components/inventory/`, focused Inventory/page specs, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-21-RQ301-evidence.md`
+- Checks run: full Inventory-focused suite 22 files / 85 tests; `npm run check:analytics-guardrails` baseline-only with 51 known violations and typecheck pass; `git diff --check`
+- Checks not run: full frontend suite, live browser, backend tests and CI; local `dotnet` unavailable.
+- Run log: `.ai/runs/2026-09-21-RQ301-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main after branch transport
+- Main commit SHA: `fa8043107f52e7026762459ce762b29c12cd56e3`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `fa8043107f52e7026762459ce762b29c12cd56e3`
+- Missed: no known English primary labels in the owned Inventory surfaces; technical identifiers such as SKU/OOS and API enum values remain intentionally unchanged.
+- Follow-up: return to the remaining Operacije WAITING backlog.
+- Residual risk: deployed-browser visual review and full repository suite remain unrun.
+- Prompt defect / scope repair: none; existing metric keys and backend response contracts were preserved.
+
 ---
 
 ## RQ302 - Add missing Operacije routes to core App analytics smoke matrix
@@ -16383,11 +16327,29 @@ Reproduction: break lazy import or redirect for an Operacije route and run App s
 
 - `RQ268` owns legacy redirect semantics; this prompt only asserts they remain routable.
 
+### Completion note
+
+- Date: 2026-09-21
+- Status: DONE
+- Completion: The canonical analytics route smoke matrix now covers all eight Operacije targets: inventory, Shoe Type, Daily Sales, Pre/Post, Color, Pre-Nivelacija and both supplier legacy redirect entries. Supplier legacy routes are asserted through the canonical `/analytics/supplier` shell without changing redirect runtime behavior.
+- Changed files: `Klijent/clientapp/src/routes/analyticsRouteDefinitions.ts`, `Klijent/clientapp/src/__tests__/AppAnalyticsRoutes.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-21-RQ302-evidence.md`
+- Checks run: App analytics route smoke 20/20; `npm run check:analytics-guardrails` baseline-only with 51 known violations and typecheck pass; `git diff --check`
+- Checks not run: full frontend suite, live browser, backend tests and CI; local `dotnet` unavailable.
+- Run log: `.ai/runs/2026-09-21-RQ302-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main after branch transport
+- Main commit SHA: `3fa18ff5e6359675cb9641dfe839d8c867e7d1e4`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `3fa18ff5e6359675cb9641dfe839d8c867e7d1e4`
+- Missed: none known in RQ302 scope.
+- Follow-up: return to the remaining Operacije WAITING backlog.
+- Residual risk: route smoke confirms mapping/render/redirect resolution, not browser refresh or live API behavior.
+- Prompt defect / scope repair: none; App lazy/Suspense runtime routing and legacy redirect semantics were preserved.
+
 ---
 
 ## RQ303 - Replace English mismatch badge and mixed QA copy on Daily Sales
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/copy/tests
 Feature family: daily-sales-localization
@@ -16436,6 +16398,26 @@ Reproduction: load Daily Sales with rows where supplier totals disagree with dai
 ### Dependencies
 
 - `RQ290` owns shift partial semantics; this prompt is presentation-only.
+
+### Completion note
+
+- Date: 2026-09-21
+- Status: DONE
+- Completion: Replaced the English `Check` mismatch badge with `Neusklađeno`, added status/tooltip context, localized mismatch quality descriptions and footnotes, corrected related reconciliation copy and fixed the Daily Sales API fallback diacritics. Mismatch detection and row highlighting remain unchanged.
+- Changed files: `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`, `Klijent/clientapp/src/services/dailySalesStatsApi.ts`, `Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.premium.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-21-RQ303-evidence.md`
+- Contract/runtime behavior changed: presentation copy and accessibility metadata only; mismatch calculation, zero/partial semantics and API shape unchanged.
+- Checks run: Daily Sales focused suite 2 files / 22 tests; `npm run check:analytics-guardrails` passed with 51 known violations and 0 new; agent-instructions, prompt-queue and planning-architecture governance validators passed; `git diff --check`
+- Checks not run: full frontend suite, live browser, backend tests and CI; local `dotnet` is unavailable and the prompt is frontend-only.
+- Run log: `.ai/runs/2026-09-21-RQ303-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: fast-forward from `cursor/rq303-daily-sales-localization-2e7b` / PR #55 to `main`
+- Main commit SHA: `4a337cc0f5cd187fabf7e8610e31e11de1c879af`
+- Main verification: passed — `origin/main` contains `4a337cc0f5cd187fabf7e8610e31e11de1c879af`
+- Missed: none known in RQ303 scope.
+- Follow-up: RQ304 is the next P1 Operacije localization/parity candidate.
+- Residual risk: live browser and full-suite proof remain unrun; no backend or business-semantic change was made.
+- Next: promote RQ304 only under a new explicit queue instruction.
+- Prompt defect / scope repair: current READY pointer was repaired from `none` to RQ303 under the user's explicit “claim next prompt” instruction; the prompt's acceptance and owner remained unchanged.
 
 ---
 
@@ -16567,8 +16549,14 @@ Commit suggestion: `fix(analytics): restore operacije diacritics`
 Representative files:
 
 - Pages: `DailySalesStatsPage.tsx`, `ColorSalesStatsPage.tsx`, `ShoeTypeSalesStatsPage.tsx`, `ProdajaPrePostNivelacijePage.tsx`, `InventoryPage.tsx`, `SupplierFootwearAnalyticsPage.tsx`
+- Supplier Sales: `SupplierSalesStatsPage.tsx` and its focused page spec.
 - Components: `ActionWorkflowPanel.tsx`, `StoreComparisonPanel.tsx`, `SKUDetailModal.tsx`, `MailSchedulerPanel.tsx`, `InventoryPriorityPanels.tsx`
 - Services: `dailySalesStatsApi.ts`, `colorSalesStatsApi.ts`, `shoeTypeSalesStatsApi.ts`, `supplierSalesStatsApi.ts`
+- Shoe Type concrete residuals: `ShoeTypeSalesStatsPage.tsx:667,716-719,1000-1015,1528,1580-1649` and `shoeTypeSalesStatsApi.ts:162` contain `trosak`, `pokrice`, `registrovnom`, `prodanih`, `rucne`, `potvrdjeno`, `ucitane`, `prosirite`, `ne moze`, `ispravis` and `Greska ... obuce`.
+- Generic Shoe Type detail concrete residuals: `AnalyticsDetailReadService.cs:175-176,550-590` emits `Tip obuce`, `kolicina`, `pokrice`, `impact`, `marzni`, `trosak`, `sacuvana` and `koriscen` without Serbian diacritics.
+- Daily Sales concrete residuals: `DailySalesStatsPage.tsx:1084-1165,1197-1200,1237,1579,1670-1694,1935-1938` contains ASCII Serbian (`dobavljac`, `racuna`, `nenumerickim`, `provjeriti`, `kratkorocne`, `odvojis`) and technical `N/A`/`problem` wording; `DailySalesStatsPage.tsx:1579` exposes `Daily sales analytics (scope: ...)`.
+- Daily Sales backend warnings: `DailySalesStatsService.cs:272-314,437,484,489,498` contain ASCII Serbian (`racuna`, `iskljucena`, `oznaceni`, `dobavljaci`, `kolicine`, `smena`, `mapirana`).
+- Pre/Post concrete residuals: `ProdajaPrePostNivelacijePage.tsx:332-380,634-635,780-785,1008-1048,1365-1367,1498-1506,1858-1883` contains ASCII Serbian (`ucitavanju`, `Najjaca`, `kolicina`, `Najcesci`, `proveris`) alongside technical mixed labels; `VendorSalesNivelacijaModels.cs:10-190` contains user-visible defaults such as `N/A`, `Insufficient data` and `Fallback mode`.
 
 Reproduction: scan Operacije screens for missing `č/ć/š/đ/ž`. Risk: inconsistent pilot polish and reduced trust vs other localized surfaces.
 
@@ -16651,54 +16639,70 @@ Reproduction: open Shoe Type sales with rows lacking nivelacija impact percent b
 
 ---
 
-## RQ308 - Make Inventory trust header period/snapshot semantics explicit
+## RQ308 - Add Inventory period control and make snapshot/signal semantics explicit
 
 Status: WAITING
-Priority: P2
+Priority: P1
 Type: frontend/contract/tests
 Feature family: inventory-period-provenance
 Parallel-safe: no
 Owner: Analytics Frontend / Inventory
-Commit suggestion: `fix(analytics): explain inventory period provenance`
+Commit suggestion: `feat(analytics): add inventory period control`
 
 ### Problem
 
-Inventory is the only Operacije screen without an explicit period in `AnalyticsTrustHeader` (`periodFrom={null}`, `periodTo={null}`) while other Operacije analytics screens expose requested/effective period lineage. Users cannot tell whether inventory is timeless, snapshot-only, or filtered by the 30-day signal window used elsewhere on the page.
+Inventory is the only Operacije screen without a selectable analysis period. Its `AnalyticsTrustHeader` receives `periodFrom={null}` and `periodTo={null}`, while the page silently sends a rolling 30-day window to the list/detail signal endpoints. Users cannot tell which date range drives replenishment and OOS signals, whether the balance is current-snapshot-only, or why different panels can represent different evidence windows.
 
 ### Evidence
 
-- `InventoryPage.tsx:1259-1260` — null period props.
-- `InventoryPage.tsx:89-93` — `createInventorySignalWindow()` defines a 30-day signal window for actions.
-- `RQ273` clarified export/print snapshot semantics vs on-screen signal window.
+- `Klijent/clientapp/src/pages/InventoryPage.tsx` passes `periodFrom={null}` and `periodTo={null}` to `AnalyticsTrustHeader`, and the control bar has no period field.
+- `InventoryPage.tsx` defines `createInventorySignalWindow()` with a hidden rolling 30-day window for list/detail signals.
+- `Api/Endpoints/InventoryEndpoints.cs` defaults missing `fromDate`/`toDate` to the last 30 days for list/detail, while balance, insights, workflow and store comparison remain current-state/snapshot reads.
+- `RQ273` explicitly documents current-stock export semantics versus the on-screen 30-day signal window.
 
-Reproduction: open inventory, compare trust header to Daily/Shoe Type headers; inspect export contract note. Risk: period/trust mismatch during pilot reviews.
+Reproduction: open `/analytics/inventory`, look for a period selector, then compare the trust header and signal explanation with Daily/Shoe Type. No selector exists and the header says `Period nije definisan`. Risk: a pilot user cannot reproduce or correctly interpret a replenishment decision.
 
 ### Scope
 
-- Inventory trust header props, explanatory copy, export/scheduler metadata if already owned by inventory page.
-- Do not invent backend period fields without contract evidence.
+- Inventory period selector, validated URL state and trust-header/provenance presentation.
+- Existing inventory period helpers, signal-window request wiring and snapshot-only copy where those are already owned by the page.
+- Focused Inventory tests and copy assertions.
+- Do not invent a new business formula or hide current-state snapshot limitations behind a selected period.
 
 ### Read first
 
-- `InventoryPage.tsx`, `RQ273` completion, `AnalyticsTrustHeader.tsx`
+- `Klijent/clientapp/src/pages/InventoryPage.tsx`
+- `Klijent/clientapp/src/components/analytics/AnalyticsTrustHeader.tsx`
+- `Klijent/clientapp/src/utils/analyticsPeriodPresets.ts`
+- `RQ273` and `RQ337` completion notes
+- `RQ371` for the backend/secondary-signal parity follow-up
 
 ### Do
 
-1. Identify authoritative period semantics (snapshot-only, signal window, or mixed) from existing contracts/meta.
-2. Pass explicit period labels into trust header **or** show deliberate „Snapshot bez period filtera“ copy with methodology link.
-3. Align export/scheduler notes if they reference a different window.
+1. Add a visible period control with supported presets and a validated custom range, persisted in the Inventory URL.
+2. Define and display which Inventory surfaces follow the selected period and which remain current-stock snapshots; do not present a mixed page as one homogeneous period.
+3. Pass the selected range into the existing signal/detail request contract where supported, and show an explicit unavailable/unsupported state until `RQ371` aligns the remaining secondary signal endpoints.
+4. Update trust-header, methodology, empty-state and export/scheduler explanatory copy with Serbian, diacritics-safe wording.
+5. Preserve refresh, data-scope, filter, pagination and back/forward behavior without introducing a second period owner.
 
 ### Tests
 
-- Extend `InventoryPage.freshnessLineage.spec.tsx` or adjacent inventory trust tests.
+- `InventoryPage.freshnessLineage.spec.tsx` and adjacent focused Inventory specs for initial preset, custom range, invalid URL values, URL round-trip and trust-header metadata.
+- Assert snapshot-only cards are explicitly labelled and do not claim the selected period.
+- Assert selected period is sent to every currently supported period-dependent request.
+- `npm run check:analytics-guardrails`, frontend typecheck and `git diff --check`.
 
 ### Acceptance
 
-- Trust header never leaves period ambiguous: either shows authoritative range or explicit snapshot-only explanation.
+- Inventory has a visible, Serbian period selector; the initial value is deterministic and the URL reproduces it.
+- Trust header never says only `Period nije definisan` on the normal page: it shows the selected signal period plus an explicit current-snapshot explanation for balance-only surfaces.
+- A user can distinguish selected-period replenishment/OOS evidence from current-stock snapshot values, including empty, stale and insufficient-data states.
+- No unsupported period is silently ignored, broadened or converted to a fake all-time/zero result.
 
 ### Dependencies
 
-- `RQ273` owns export window parity; this prompt owns on-screen trust provenance only.
+- `RQ273` owns export window parity; this prompt owns the selector and on-screen trust provenance.
+- `RQ371` owns period/data-scope parity for cached secondary signal routes and must follow with its declared backend contract.
 
 ---
 
@@ -17477,17 +17481,23 @@ Commit suggestion: `fix(analytics): localize residual operations english copy`
 
 ### Problem
 
-English remains in Operacije trust/snapshot/export strings beyond RQ301/303/304/307 scope.
+English remains in Operacije trust/snapshot/export strings beyond RQ301/303/304/307 scope. The Inventory pass also needs to remove visible English words that survived the primary-copy delivery, while preserving technical identifiers where they are part of the backend contract.
 
 ### Evidence
 
-- `ColorSalesStatsPage.tsx:657`, `816`, `821`, `94`; `ProdajaPrePostNivelacijePage.tsx:1266`, `1583`; `InventoryAlertsFeed.tsx:37-38`.
+- `ColorSalesStatsPage.tsx:657`, `816`, `821`, `94`, `988-1008`, `1129`; `PreNivelacijaPriorityPage.tsx:748`, `781`, `1106`, `1397-1404`, `1428-1462`; `ProdajaPrePostNivelacijePage.tsx:1266`, `1583`.
+- Pre/Post concrete residuals: `ProdajaPrePostNivelacijePage.tsx:332-380,950-975,1498-1506,1624-1625,1853-1883` exposes `Rolling`, `view`, `Difference-in-Differences`, `OOS`, `Mix`, `price-direction`, `Decision support`, `Event-window`, `metric reason`, `Data quality`, `Lost sales`, `N/A` and `store`/`scope` mixed into Serbian copy; `VendorSalesNivelacijaModels.cs:55-64,678-690` exposes `Insufficient data`, `N/A` and `Fallback mode` in user-visible payloads.
+- `SupplierSalesStatsPage.tsx:369`, `410`, `484`, `1107`, `1236`, `1490`, `2038`, `2175` still expose English/technical copy such as `Low signal`, `Supplier sales stats`, `canonical`, `Supplier decision detail`, `AI`, `historija`, `snapshot` and `detalj`.
+- `ShoeTypeSalesStatsPage.tsx:314,667,713-721,963-964,1214,1339,1522,1649` exposes `Low signal`, `Sales facts analytics`, `snapshot`, `impact` and `Data quality`; `AnalyticsDetailReadService.cs:566-620` exposes `impact`, `fallback`, `snapshot` and `Data scope` in the Shoe Type detail projection.
+- `DailySalesStatsPage.tsx:242,1197-1200,1579,1693,1935-1938` exposes `N/A`, English `problem` inflection, `Daily sales analytics (scope: ...)`, technical `MA7`/`Top N` context and analyst-oriented mixed copy.
+- `DailySalesStatsService.cs:329,491-493,567` contains English-only log messages (`Daily-sales`, `fallback applied`, `Daily-sales generated`); keep logs technically searchable but ensure no equivalent English leaks into user-facing metadata, and localize the warnings named by `RQ306`.
+- Inventory residuals include `InventoryPage.tsx` fallback headings/copy such as `Alerts`, `Forecast` and `snapshot`, `DemandForecastPanel.tsx` labels such as `OOS`/`SKU`/`Status`, `InventoryAlertsFeed.tsx` `Info`/`N/A`, `inventoryUtils.ts` `Sell-through`/`Snapshot`, and export metadata such as `Aging 90+`.
 
 Reproduction: open color detail snapshot, trust subtitles, inventory alerts — English visible in Serbian UI.
 
 ### Scope
 
-- Operacije-only strings listed above.
+- Operacije-only strings listed above, including the current Inventory and Sales by Supplier residual lists.
 
 ### Read first
 
@@ -17495,8 +17505,9 @@ Reproduction: open color detail snapshot, trust subtitles, inventory alerts — 
 
 ### Do
 
-1. Replace residual English with Serbian equivalents.
-2. Update specs asserting old English strings.
+1. Replace user-facing English words with Serbian equivalents and correct diacritics; retain unavoidable technical identifiers only when they are explicitly labelled as codes/abbreviations.
+2. Keep user-visible copy consistent between page, child panels, empty/error states, export metadata and accessibility labels.
+3. Update specs asserting old English strings.
 
 ### Tests
 
@@ -17504,7 +17515,7 @@ Reproduction: open color detail snapshot, trust subtitles, inventory alerts — 
 
 ### Acceptance
 
-- No user-facing English in listed Operacije surfaces.
+- No user-facing English remains in the listed Operacije surfaces, apart from explicitly justified technical identifiers such as backend enum/code values.
 
 ### Dependencies
 
@@ -18811,7 +18822,7 @@ Insight click builds row with `nabavnaCena: 0` in edge cases; detail may show 0 
 
 ## RQ354 - Fail closed on null supplier count in toolbar export metadata
 
-Status: WAITING
+Status: DONE
 Priority: P3
 Type: frontend/trust/tests
 Feature family: supplier-toolbar-metadata-fake-zero
@@ -18856,7 +18867,7 @@ Toolbar metadata `brojDobavljaca ?? 0` exports 0 when totals missing.
 
 ## RQ355 - Base Color empty state on row count and meta, not quality notes alone
 
-Status: WAITING
+Status: DONE
 Priority: P3
 Type: frontend/trust/tests
 Feature family: color-empty-quality-conflation
@@ -18901,7 +18912,7 @@ When rows empty, `emptyStateVariant` becomes `insufficient_data` if `qualityNote
 
 ## RQ356 - Serbian labels for Pre/Post advanced signal cards
 
-Status: WAITING
+Status: DONE
 Priority: P3
 Type: frontend/trust/tests
 Feature family: pre-post-english-signal-labels
@@ -18947,7 +18958,7 @@ Advanced signal cards use English abbreviations (DID, Lost sales OOS, avg rev).
 
 ## RQ357 - URL-sync Inventory pagination, page size, search and compare stores
 
-Status: WAITING
+Status: DONE
 Priority: P3
 Type: frontend/trust/tests
 Feature family: inventory-url-pagination-search
@@ -18993,7 +19004,7 @@ Pagination, page size, search, compare-store selection not URL-synced.
 
 ## RQ358 - Fail closed on null shoe type count in toolbar metadata export
 
-Status: WAITING
+Status: DONE
 Priority: P3
 Type: frontend/trust/tests
 Feature family: shoe-type-toolbar-metadata-fake-zero
@@ -19038,13 +19049,31 @@ Toolbar metadata `brojTipovaObuce ?? 0` writes 0 when totals absent.
 
 ## RQ359 - Centralize analytics async loading in `useReliableAnalyticsQuery`
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/architecture/tests
 Feature family: analytics-reliable-query-lifecycle
 Parallel-safe: no
 Owner: Analytics Frontend Foundations
 Commit suggestion: `feat(analytics): centralize reliable query lifecycle`
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Added the typed `useReliableAnalyticsQuery` lifecycle owner and migrated Shoe Type, Color, Pre/Post, Inventory and Pre-Nivelacija list flows without changing API parameters or backend decision/meta contracts.
+- Changed files: `Klijent/clientapp/src/hooks/useReliableAnalyticsQuery.ts`, `Klijent/clientapp/src/hooks/useReliableAnalyticsQuery.spec.ts`, five named analytics pages, `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: hook contract tests 8/8; migrated page suites 146/146; `npm run typecheck`; `git diff --check`; encoding check passed
+- Checks not run: full client suite, live browser, CI; analytics guardrails report 12 pre-existing violations in wider decision/provenance paths and does not complete its chained typecheck step
+- Run log: `.ai/runs/2026-09-20-RQ359-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: pull-request
+- Main commit SHA: `94955728`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `94955728`
+- Missed: no known RQ359 scope omissions
+- Follow-up: promote `RQ360` after RQ359 main delivery
+- Residual risk: Inventory now uses a conservative aggregate query snapshot; an optional panel failure preserves the previous full snapshot and surfaces the shared stale warning.
+- Prompt defect / scope repair: the queue's systemic intake explicitly said not to promote while the READY pointer was none; the current user instruction explicitly authorized promotion, so RQ359 was promoted and claimed.
 
 ### Problem
 
@@ -19101,13 +19130,31 @@ Shoe Type, Color, Pre/Post, Inventory and Pre-Nivelacija each implement their ow
 
 ## RQ360 - Build a reusable Analytics Reliability Contract test kit
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/tests/architecture
 Feature family: analytics-invariant-test-kit
 Parallel-safe: no
 Owner: Analytics Frontend Foundations
 Commit suggestion: `test(analytics): add reliability contract test kit`
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Added a reusable declarative analytics reliability contract suite and registered adapters for Pre/Post, Shoe Type, Color, Daily Sales and Inventory.
+- Changed files: `Klijent/clientapp/src/testing/analyticsReliabilityContract.ts`, `Klijent/clientapp/src/testing/analyticsReliabilityContract.spec.ts`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: contract suite 70/70; five adopter page suites 114/114; `npm run typecheck`; `npm run check:encoding`; `git diff --check`
+- Checks not run: full client suite, live browser, CI; analytics guardrails report 12 existing violations outside this test-kit scope and stop before their chained typecheck step
+- Run log: `.ai/runs/2026-09-20-RQ360-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: pull-request
+- Main commit SHA: `5769041f`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `5769041f`
+- Missed: no known RQ360 scope omissions
+- Follow-up: promote `RQ366` after RQ360 main delivery; it is the next dependency-unblocked reliability prompt
+- Residual risk: the adapters provide response factories and selectors; page-specific lifecycle behavior remains owned by RQ359 and existing page specs.
+- Prompt defect / scope repair: helper was renamed from `.test.ts` to `.ts` after Vitest correctly identified an empty standalone test file; no contract scope changed.
 
 ### Problem
 
@@ -19162,13 +19209,31 @@ The repository adds one regression at a time, but critical pages repeatedly redi
 
 ## RQ361 - Expand `check-analytics-guardrails` beyond decisionScore
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: tooling/guardrails/tests
 Feature family: analytics-guardrail-expansion
 Parallel-safe: no
 Owner: Analytics Reliability Tooling
 Commit suggestion: `feat(analytics): expand reliability guardrails`
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Expanded the guardrail scanner with scoped fake-zero, swallowed-failure, refetch-clear, percentage-formula, page-KPI, sorted-row and paginated-total detections, plus reviewed narrow allowlist validation.
+- Changed files: `Klijent/clientapp/scripts/check-analytics-guardrails.mjs`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: `npm run check:analytics-guardrails` passed with explicit `baseline-only` output for 51 confirmed violations; self-test covers every new rule and exit semantics; `git diff --check`
+- Checks not run: full frontend suite, live browser, CI; this is tooling/guardrail scope
+- Run log: `.ai/runs/2026-09-20-RQ361-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: pull-request
+- Main commit SHA: `d1ea2635`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `d1ea2635`
+- Missed: no known RQ361 scope omissions
+- Follow-up: promote `RQ362` after RQ361 main delivery
+- Residual risk: 51 confirmed findings remain explicit baseline debt; future source movement or newly introduced matches fail unless separately reviewed.
+- Prompt defect / scope repair: fake-zero detection was narrowed to analytics metric names and page/component scopes after the initial broad scan surfaced unrelated service/utility false positives; all newly confirmed findings were then baselined with exact identities and reasons.
 
 ### Problem
 
@@ -19222,7 +19287,7 @@ The current static guardrail catches some local decision-field reconstruction bu
 
 ## RQ362 - Formalize authoritative versus derived analytics metric provenance
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend/frontend/contract/tests
 Feature family: analytics-authoritative-provenance
@@ -19278,11 +19343,29 @@ RQ333, RQ345 and RQ346 expose the same ambiguity: a browser-derived value can lo
 - RQ180 DONE; coordinate with RQ345 and RQ346 before claiming overlapping paths.
 - RQ363 may consume this vocabulary but is not required to define it.
 
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Added optional backend/frontend provenance metadata for critical metrics, with explicit authority, actionability, unit and denominator semantics plus fail-closed frontend mapping.
+- Changed files: `Api/Dtos/AnalyticsMetricProvenanceDto.cs`, `Api/Dtos/AnalyticsResponseMetaDto.cs`, `Api/Dtos/AnalyticsResponseMetaFactory.cs`, `Api.Tests/AnalyticsMetricProvenanceContractTests.cs`, `Klijent/clientapp/src/types/analytics.ts`, `Klijent/clientapp/src/utils/analyticsMetricProvenance.ts`, `Klijent/clientapp/src/utils/__tests__/analyticsMetricProvenance.spec.ts`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: frontend provenance contract 4/4; shared analytics meta regression 21/21; `npm run check:analytics-guardrails`; `npm run check:encoding`; `npm run typecheck`; `git diff --check`
+- Checks not run: backend focused test - `dotnet` is unavailable in the VM; full frontend suite and CI not run.
+- Run log: `.ai/runs/2026-09-20-RQ362-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: 02ff18bbc3539868703ee6046d02392f3d54af35
+- Main verification: passed - fresh `origin/main` contains implementation SHA `02ff18bbc3539868703ee6046d02392f3d54af35`
+- Missed: backend runtime test execution due to unavailable `dotnet`; no known implementation scope omission.
+- Follow-up: promote `RQ363` after RQ362 main delivery.
+- Residual risk: backend DTO tests require a .NET-capable environment; provenance remains optional until consuming endpoints populate metric keys.
+- Prompt defect / scope repair: none.
+
 ---
 
 ## RQ363 - Validate critical analytics responses at the frontend API boundary
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/api-contract/tests
 Feature family: analytics-response-runtime-validation
@@ -19337,11 +19420,29 @@ Malformed runtime values such as `NaN`, `Infinity`, negative counts or percentag
 - RQ362 provenance vocabulary for fields that need authority metadata.
 - Existing page contracts remain backward-compatible during rollout.
 
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Added shared Zod schemas and API-boundary validation for Daily Sales, Color, Shoe Type, Inventory and Pre-Nivelacija responses; invalid values fail closed without zero normalization.
+- Changed files: `Klijent/clientapp/src/validation/analyticsResponseSchemas.ts`, `Klijent/clientapp/src/validation/analyticsResponseValidation.ts`, `Klijent/clientapp/src/validation/__tests__/analyticsResponseSchemas.spec.ts`, `Klijent/clientapp/src/services/analyticsHttp.ts`, `Klijent/clientapp/src/services/analyticsApi.ts`, `Klijent/clientapp/src/services/colorSalesStatsApi.ts`, `Klijent/clientapp/src/services/shoeTypeSalesStatsApi.ts`, `Klijent/clientapp/src/services/dailySalesStatsApi.ts`, `Klijent/clientapp/src/services/preNivelacijaApi.ts`, `Klijent/clientapp/src/services/__tests__/analyticsApi.contract.spec.ts`, `Klijent/clientapp/src/services/__tests__/preNivelacijaApi.scope.spec.ts`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: focused API/schema suite 20/20; `npm run check:analytics-guardrails`; `npm run check:encoding`; `npm run typecheck`; `git diff --check`
+- Checks not run: full frontend suite, live browser validation and CI not run; backend test not applicable to frontend-only scope.
+- Run log: `.ai/runs/2026-09-20-RQ363-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: no known implementation scope omission.
+- Follow-up: promote `RQ364` after RQ363 main delivery.
+- Residual risk: schemas are rolled out for selected surfaces; remaining analytics endpoints await later contract-validation prompts.
+- Prompt defect / scope repair: refreshed two line-based guardrail baseline entries after validation code moved existing reviewed patterns.
+
 ---
 
 ## RQ364 - Separate analytics datasets by purpose
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/architecture/tests
 Feature family: analytics-dataset-projections
@@ -19397,11 +19498,29 @@ Generic `rows`/`sortedRows` pipelines let table sorting change chart order, page
 - RQ336 and RQ344 DONE.
 - Coordinate with RQ359 so query lifecycle and dataset projection ownership do not overlap.
 
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Added typed projection vocabulary/helper and migrated Daily Sales and Pre-Nivelacija to explicit canonical, filtered, table, chronological chart, export, detail, page and global-total/facet projections.
+- Changed files: `Klijent/clientapp/src/utils/analyticsDatasetProjections.ts`, `Klijent/clientapp/src/utils/__tests__/analyticsDatasetProjections.spec.ts`, `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`, `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: projection/page regressions 56/56; Daily Sales page spec 2/2; `npm run check:analytics-guardrails`; `npm run typecheck`; `git diff --check`
+- Checks not run: full frontend suite, live browser validation and CI not run.
+- Run log: `.ai/runs/2026-09-20-RQ364-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: no known implementation scope omission.
+- Follow-up: promote `RQ365` after RQ364 main delivery.
+- Residual risk: Pre-Nivelacija candidate rows remain page-scoped by backend contract; global summary/facets are kept from response metadata rather than recomputed from page rows.
+- Prompt defect / scope repair: refreshed four line-based guardrail baseline entries after projection code moved existing reviewed patterns.
+
 ---
 
 ## RQ365 - Add a PostgreSQL migration/bootstrap lifecycle smoke scenario
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend/infrastructure/tests/CI
 Feature family: analytics-migration-bootstrap-smoke
@@ -19460,17 +19579,53 @@ Fresh and repeat startup paths have exposed non-idempotent indexes, duplicate ob
 - `ae661d57` and `4d7206a5` are on `main`.
 - BCI owns generic workflow health; this prompt owns the analytics database/bootstrap contract.
 
+### Completion note
+
+- Date: 2026-09-21
+- Status: DONE
+- Completion: Added fresh/repeat/restart PostgreSQL bootstrap smoke coverage, pgvector Testcontainers support, serialized extension creation before deferred tasks, diagnostics, and the PostgreSQL `COUNT(*)` scalar correction.
+- Changed files: `Api.Tests/DatabaseMigrationBootstrapLifecycleSmokeTests.cs`, `Api.Tests/DatabaseInitializerP0IntegrationTests.cs`, `Infrastructure/Seed/DatabaseInitializer.cs`, `.github/workflows/analytics-tests.yml`, `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.queueStatus.spec.tsx`, `Klijent/clientapp/src/services/__tests__/inventoryDataScopeApi.spec.ts`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, `.ai/runs/2026-09-20-RQ365-evidence.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: focused inventory Vitest regressions; `npm run check:analytics-guardrails`; `git diff --check`; frontend encoding and typecheck.
+- Checks not run: local `dotnet test` because `dotnet` is unavailable in the VM. Remote CI remains pending/failed on the latest run and was not awaited per user instruction.
+- Run log: `.ai/runs/2026-09-20-RQ365-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: `7253e29f54feaabfc3ac05e2d89d4d890174bfb1`
+- Main verification: passed - `origin/main` contains implementation SHA `7253e29f54feaabfc3ac05e2d89d4d890174bfb1`; closure/claim metadata is delivered at `c1c85b5b`.
+- Missed: remote backend smoke is not green yet; latest failure was the test's Int64/Int32 scalar cast, corrected in `7253e29f`.
+- Follow-up: `RQ367` is promoted and claimed.
+- Residual risk: CI must still confirm the corrected bootstrap smoke; Vercel and frontend checks are not blockers for the backend contract.
+- Prompt defect / scope repair: full bootstrap requires pgvector despite the original prompt's optional-dependency wording; the test now uses the supported pgvector image and asserts the dependency explicitly.
+
 ---
 
 ## RQ366 - Enforce a non-growing analytics guardrail baseline
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: tooling/governance/tests
 Feature family: analytics-guardrail-baseline
 Parallel-safe: no
 Owner: Analytics Reliability Tooling
 Commit suggestion: `chore(analytics): add non-growing guardrail baseline`
+
+### Completion note
+
+- Date: 2026-09-20
+- Status: DONE
+- Completion: Added an exact reviewed guardrail baseline, stable file/rule/line identities, baseline-only output, new-violation failure and self-tests for unchanged, removed, new, wildcard and exit-code behavior.
+- Changed files: `Klijent/clientapp/scripts/check-analytics-guardrails.mjs`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, `Klijent/clientapp/package.json`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: `npm run check:analytics-guardrails` passed with explicit `baseline-only` output for 12 known violations; baseline self-test passed; `git diff --check`
+- Checks not run: full frontend suite, live browser, CI; no production analytics runtime changed
+- Run log: `.ai/runs/2026-09-20-RQ366-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: pull-request
+- Main commit SHA: `1fb160bd`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `1fb160bd`
+- Missed: no known RQ366 scope omissions
+- Follow-up: promote `RQ361` after RQ366 main delivery
+- Residual risk: baseline entries use exact line locations; intentional source movement will surface as one removed baseline entry plus one new violation for review.
+- Prompt defect / scope repair: no scope repair; existing 12 violations were captured with reviewed reasons and wildcard suppression is rejected.
 
 ### Problem
 
@@ -19523,7 +19678,7 @@ A recurring “pre-existing guardrail violation” exception normalizes red qual
 
 ## RQ367 - Generate machine-readable validation evidence before Markdown
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: tooling/governance/tests
 Feature family: analytics-generated-validation-evidence
@@ -19582,4 +19737,2305 @@ Evidence logs currently rely on an agent to transcribe whether commands passed. 
 
 - Sentry/OpenTelemetry/browser telemetry is intentionally outside this prompt; if runtime telemetry is later approved, route it through `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` rather than expanding this analytics queue.
 
+### Completion note
+
+- Date: 2026-09-21
+- Status: DONE
+- Completion: Added a plan-driven validation runner and JSON schema with command, exit code, status, timeout, skipped/environment-blocked outcome, timestamp, commit, captured summary and environment fields; added generated Markdown rendering and main-ref exact-tip/ancestor verification.
+- Changed files: `scripts/run-task-validation.mjs`, `scripts/render-task-validation-evidence.mjs`, `scripts/run-task-validation.test.mjs`, `package.json`, `.ai/runs/2026-09-21-RQ367-validation-plan.json`, `.ai/runs/2026-09-21-RQ367-validation.json`, `.ai/runs/2026-09-21-RQ367-validation.md`, `.ai/runs/2026-09-21-RQ367-evidence.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Checks run: `npm run test:validation-evidence` (4/4); generated validation plan (tests/guardrails/build pass, backend skipped truthfully); `node scripts/check-prompt-queues.mjs`; `git diff --check`; `origin/main` exact-tip verification.
+- Checks not run: full frontend/backend suites; local `dotnet` validation unavailable and intentionally recorded as skipped.
+- Run log: `.ai/runs/2026-09-21-RQ367-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `a90d626a6c122fefff117bb7c8860aec7121019e`
+- Main verification: passed - `origin/main` contains implementation SHA `a90d626a6c122fefff117bb7c8860aec7121019e`; generated validation snapshot verified that SHA as the exact tip before final evidence synchronization.
+- Missed: none known within RQ367 scope.
+- Follow-up: none; RQ359-RQ367 reliability sequence is complete.
+- Residual risk: backend/full-suite proof remains CI-owned; the generated evidence records that omission as skipped rather than pass.
+- Prompt defect / scope repair: none.
+
 ---
+
+## RQ368 - Sanitize inline Pre/Post partial-failure messages without hiding degraded state
+
+Status: IN_PROGRESS
+Priority: P1
+Type: frontend/trust/tests
+Feature family: operations-inline-error-safety
+Parallel-safe: no
+Owner: Analytics Frontend / Pre-Post
+Commit suggestion: `fix(analytics): sanitize operations inline error messages`
+
+### Problem
+
+The Pre/Post page correctly preserves current-period data when the previous comparison period or vendor options fail, but its inline warning text renders raw `Error.message` values. Technical backend/HTTP/stack details can therefore appear in user-facing partial-failure copy even though the shared blocking `AnalyticsErrorState` sanitizes its message.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx` builds `previousError` from `reason.message` in the `Promise.allSettled` previous-period branch and renders `previousComparisonError` directly in the partial warning.
+- The same page stores `vendorLoadError` from `reason.message` and interpolates it into the vendor-load warning.
+- `Klijent/clientapp/src/utils/analyticsErrorMessages.ts` already owns technical-message detection through `getSafeAnalyticsErrorMessage`, but these inline paths do not use it.
+
+### Scope
+
+- Pre/Post previous-period and vendor-option inline warning projection.
+- Existing shared safe analytics error-message helper and focused Pre/Post tests.
+- Preserve current-period data, last-known vendor options and the distinction between partial comparison failure and primary query failure.
+
+### Read first
+
+- `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`
+- `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.spec.tsx`
+- `Klijent/clientapp/src/utils/analyticsErrorMessages.ts`
+- `Klijent/clientapp/src/components/analytics/AnalyticsErrorState.tsx`
+- `RQ335`, `RQ338` and `RQ359`
+
+### Do
+
+1. Map technical previous-period and vendor-load failures through the shared safe error-message owner before storing/rendering inline warning text.
+2. Keep a localized actionable fallback for sanitized technical failures; do not hide the warning, clear the valid current snapshot or turn the partial result into a successful/empty state.
+3. Preserve user-safe backend guidance when it is not classified as technical, and avoid exposing raw error codes, SQL/provider names or stack fragments.
+4. Add focused regressions for technical `Error` values in both inline paths and for the preserved current-period/vendor-list behavior.
+
+### Tests
+
+- `ProdajaPrePostNivelacijePage.spec.tsx` inline previous-period partial-failure case with a technical error message.
+- `ProdajaPrePostNivelacijePage.spec.tsx` vendor-load failure case with a technical error message.
+- Assert the warning remains visible, contains the safe localized fallback, and excludes the raw technical text.
+- Re-run the focused Pre/Post suite, frontend analytics guardrails/typecheck and `git diff --check`.
+
+### Acceptance
+
+- No technical exception/provider/stack text is rendered by the Pre/Post inline partial-failure warnings.
+- Current-period data remains visible when only the previous comparison request fails.
+- The last known vendor list remains usable when a refresh fails, while the load warning remains visible.
+- User-safe non-technical guidance is preserved.
+- No backend DTO, endpoint, recommendation, confidence or data-quality semantics are changed.
+
+### Dependencies
+
+- `RQ335` and `RQ338` are DONE and define previous-period/vendor-load degraded-state behavior.
+- `RQ359` is DONE and owns the shared async lifecycle; do not create a second query owner.
+- `getSafeAnalyticsErrorMessage` remains the frontend error-message source of truth.
+- No tenant, migration, production-data or backend dependency.
+
+### Completion note
+
+- Date: 2026-09-21
+- Status: DONE
+- Completion: Pre/Post previous-period and vendor-load inline warnings now reuse the shared safe analytics error mapper; provider exception variants such as `NpgsqlException` fail closed to localized guidance while valid current data, vendor options and retry behavior remain visible.
+- Changed files: `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`, `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.spec.tsx`, `Klijent/clientapp/src/utils/analyticsErrorMessages.ts`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-21-RQ368-evidence.md`
+- Checks run: Pre/Post focused suite 36/36; `npm run check:analytics-guardrails` baseline-only with 51 known violations and typecheck pass; `node scripts/check-prompt-queues.mjs`; `node scripts/check-planning-architecture.mjs`; `git diff --check`
+- Checks not run: full frontend suite, live browser, backend tests and CI; local `dotnet` unavailable.
+- Run log: `.ai/runs/2026-09-21-RQ368-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `e23448a0c215abb81521ac42d97cd118ea2d5547`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `e23448a0c215abb81521ac42d97cd118ea2d5547`
+- Missed: none known in RQ368 scope.
+- Follow-up: promote `RQ369` after RQ368 main delivery.
+- Residual risk: other Inventory inline error paths remain covered by RQ369.
+- Prompt defect / scope repair: existing `reliabilityPct_assign` baseline line moved due to the import/helper patch; baseline was refreshed without changing the reviewed exception.
+
+---
+
+## RQ369 - Sanitize Inventory detail/export/scheduler error messages
+
+Status: DONE
+Priority: P1
+Type: frontend/trust/tests
+Feature family: inventory-inline-error-safety
+Parallel-safe: no
+Owner: Analytics Frontend / Inventory
+Commit suggestion: `fix(analytics): sanitize inventory inline errors`
+
+### Problem
+
+Several Inventory error paths bypass the shared `AnalyticsErrorState` safety mapping. Technical `Error.message` or `String(reason)` values can be rendered directly inside the SKU detail modal, size-curve panel, export/print status and scheduler status.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/InventoryPage.tsx` stores raw detail and size-curve errors and raw export/scheduler failures.
+- `Klijent/clientapp/src/components/inventory/SKUDetailModal.tsx` directly renders `detailError`.
+- `Klijent/clientapp/src/components/inventory/SizeCurvePanel.tsx` directly renders `sizeCurveError`.
+- `Klijent/clientapp/src/components/inventory/ExportSchedulerPanel.tsx` renders the export/scheduler status supplied by `InventoryPage`.
+- `Klijent/clientapp/src/components/analytics/AnalyticsErrorState.tsx` and `Klijent/clientapp/src/utils/analyticsErrorMessages.ts` already define the safe-message owner, but these inline paths do not use it.
+
+### Scope
+
+- Inventory detail, size-curve, export/print and scheduler inline error projection.
+- Shared safe error-message helper and nearest Inventory component/page tests.
+- Preserve retry controls, failed-operation visibility and existing action-write error mapping.
+
+### Read first
+
+- `Klijent/clientapp/src/pages/InventoryPage.tsx`
+- `Klijent/clientapp/src/components/inventory/SKUDetailModal.tsx`
+- `Klijent/clientapp/src/components/inventory/SizeCurvePanel.tsx`
+- `Klijent/clientapp/src/components/inventory/ExportSchedulerPanel.tsx`
+- `Klijent/clientapp/src/utils/analyticsErrorMessages.ts`
+- `RQ322`, `RQ324` and `RQ368`
+
+### Do
+
+1. Normalize technical detail/size-curve/export/scheduler failures through `getSafeAnalyticsErrorMessage` or a focused Inventory adapter using that shared owner.
+2. Keep localized actionable fallback text and preserve retry/failed-operation state; do not turn an error into empty, success or zero.
+3. Preserve safe backend/user guidance when it is not classified as technical.
+4. Add component/page regressions for provider, HTTP and stack-shaped error messages.
+
+### Tests
+
+- `SKUDetailModal.spec.tsx` with a technical detail error.
+- `SizeCurvePanel.spec.tsx` with a technical size-curve error.
+- Inventory page/export scheduler regression for technical operation errors.
+- Assert raw technical text is absent, safe guidance is visible and retry/status affordances remain available.
+- Re-run Inventory-focused specs, frontend analytics guardrails/typecheck and `git diff --check`.
+
+### Acceptance
+
+- No SQL/provider/exception/stack text is rendered in Inventory inline error surfaces.
+- Detail and size-curve retry paths remain available.
+- Export/scheduler failures remain visibly failed and retryable.
+- Valid zero values and successful statuses are unchanged.
+- No backend DTO, endpoint or tenant behavior changes.
+
+### Dependencies
+
+- `getSafeAnalyticsErrorMessage` is the shared frontend error-message source of truth.
+- `RQ322` and `RQ324` remain owners of store-bootstrap and size-curve visibility.
+- `RQ368` is the parallel pattern for Pre/Post inline partial failures.
+
+### Completion note
+
+- Date: 2026-09-21
+- Status: DONE
+- Completion: Inventory detail, size-curve, export/print and scheduler inline errors now reuse the shared safe analytics error mapper at page and component boundaries; technical provider/exception text fails closed while retry/status affordances remain visible.
+- Changed files: `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/components/inventory/SKUDetailModal.tsx`, `Klijent/clientapp/src/components/inventory/SizeCurvePanel.tsx`, `Klijent/clientapp/src/components/inventory/ExportSchedulerPanel.tsx`, their focused specs, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-21-RQ369-evidence.md`
+- Checks run: focused Inventory error-surface suite 14/14; `npm run check:analytics-guardrails` baseline-only with 51 known violations and typecheck pass; `node scripts/check-prompt-queues.mjs`; `node scripts/check-planning-architecture.mjs`; `git diff --check`
+- Checks not run: full frontend suite, live browser, backend tests and CI; local `dotnet` unavailable.
+- Run log: `.ai/runs/2026-09-21-RQ369-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `cb8caa03fad27b3b06ff63bdf8036acf34cf74a7`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `cb8caa03fad27b3b06ff63bdf8036acf34cf74a7`
+- Missed: none known in RQ369 scope.
+- Follow-up: promote `RQ370` after RQ369 main delivery.
+- Residual risk: Inventory secondary/detail request cancellation remains covered by RQ370.
+- Prompt defect / scope repair: existing guardrail baseline line locations were refreshed after source movement; no new baseline entry was added.
+
+---
+
+## RQ370 - Abort Inventory secondary and detail requests on scope changes
+
+Status: IN_PROGRESS
+Priority: P2
+Type: frontend/performance/tests
+Feature family: inventory-secondary-request-cancellation
+Parallel-safe: no
+Owner: Analytics Frontend / Inventory
+Commit suggestion: `fix(analytics): abort inventory secondary requests`
+
+### Problem
+
+Inventory's lifecycle query accepts an `AbortSignal` but passes it only to the paged list request. Balance, insights, store comparison, action suggestions, forecast, alerts and rebalance requests continue after a filter/data-scope change; detail and size-curve requests also rely on a local cancelled flag rather than aborting the network request. The shared hook can suppress stale commits, but it cannot cancel this unnecessary work.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/InventoryPage.tsx` calls eight lifecycle APIs in one `Promise.allSettled`, while only `getInventoryList` receives the hook signal.
+- `getInventoryItemDetail` and `getSizeCurve` calls are guarded by `cancelled` flags but receive no `AbortSignal`.
+- `Klijent/clientapp/src/services/analyticsApi.ts` exposes no signal option for the affected Inventory read functions.
+
+### Scope
+
+- Inventory lifecycle secondary reads and detail/size-curve reads.
+- API-client signal options and the existing `useReliableAnalyticsQuery` generation/abort owner.
+- No endpoint shape or business metric changes.
+
+### Read first
+
+- `Klijent/clientapp/src/pages/InventoryPage.tsx`
+- `Klijent/clientapp/src/services/analyticsApi.ts`
+- `Klijent/clientapp/src/hooks/useReliableAnalyticsQuery.ts`
+- `RQ342` and `RQ359`
+
+### Do
+
+1. Add optional `AbortSignal` parameters to the affected read-client functions and pass them through the existing fetch helpers.
+2. Pass the lifecycle signal to every Inventory secondary request and a per-effect signal to detail/size-curve requests.
+3. Treat abort as a normal lifecycle transition; preserve the current stale snapshot contract and do not show abort as a user error.
+4. Add focused request-abort tests for rapid filter/data-scope changes and rapid detail-tab/row changes.
+
+### Tests
+
+- Inventory page race/cancellation spec proving every affected request receives abort on a superseding query.
+- Detail and size-curve request cleanup spec.
+- Existing Inventory reliable-query/stale-refetch suites.
+- Frontend analytics guardrails/typecheck and `git diff --check`.
+
+### Acceptance
+
+- Superseded Inventory lifecycle and detail requests are aborted, not merely ignored after completion.
+- Only the latest filter/data-scope/detail request can update visible state.
+- Aborted requests do not become error banners or clear a valid stale snapshot.
+- API response and backend contracts remain backward-compatible.
+
+### Dependencies
+
+- `RQ342` is DONE and owns primary Operacije list race protection.
+- `RQ359` is DONE and owns the shared query lifecycle.
+
+### Completion note
+
+- Date: 2026-09-21
+- Status: DONE
+- Completion: Inventory lifecycle balance, insights, store comparison, action suggestions, forecast, alerts and rebalance reads now receive the shared lifecycle `AbortSignal`; detail and size-curve effects own and abort per-effect controllers on superseding scope, row or tab changes. Cached/fallback API helpers propagate signals and avoid sharing a cancellable in-flight request with an unrelated caller. A follow-up audit corrected the missing `inventoryDataScope` dependencies on both size-curve effects, so scope changes now execute their cleanup and abort the active size-curve request.
+- Changed files: `Klijent/clientapp/src/services/analyticsApi.ts`, `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.signalWindow.spec.tsx`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.offPageDetail.spec.tsx`, `Klijent/clientapp/src/services/__tests__/inventoryDataScopeApi.spec.ts`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-21-RQ370-evidence.md`, `.ai/runs/2026-09-21-RQ370-followup-evidence.md`
+- Checks run: follow-up size-curve regression 5/5; focused cancellation/API suite 3 files / 12 tests; existing Inventory reliability regressions 13 files / 48 tests; `npm run check:analytics-guardrails` baseline-only with 51 known violations and typecheck pass; `git diff --check`
+- Checks not run: full frontend suite, live browser, backend tests and CI; local `dotnet` unavailable.
+- Run log: `.ai/runs/2026-09-21-RQ370-evidence.md`
+- Follow-up run log: `.ai/runs/2026-09-21-RQ370-followup-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main after branch transport
+- Main commit SHA: `ff2e563fcde0238d80bf7a83abd99ada1a4292f8`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `ff2e563fcde0238d80bf7a83abd99ada1a4292f8`
+- Missed: the initial implementation omitted `inventoryDataScope` from the two size-curve effect dependency arrays; the follow-up audit corrected this and added a regression test.
+- Follow-up: return to the remaining Operacije WAITING backlog.
+- Residual risk: cancellation is covered at Inventory page/API-client boundaries; unrelated fixed-lifetime filter/scheduler startup reads remain unchanged by scope.
+- Prompt defect / scope repair: existing guardrail baseline line locations were refreshed after source movement; no new baseline entry was added. Follow-up scope repair stayed within RQ370 ownership and changed no endpoint or business metric contract.
+- No backend, migration, tenant or production-data change.
+
+---
+
+## RQ371 - Keep Inventory signal period and data-scope contracts aligned
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/frontend/tests
+Feature family: inventory-signal-period-scope-parity
+Parallel-safe: no
+Owner: Analytics Reliability / Inventory
+Commit suggestion: `fix(inventory): align signal period and data scope`
+
+### Problem
+
+The Inventory page combines period-dependent list/detail evidence with cached forecast, alerts, rebalance and size-curve signals that have no period or explicit data-scope field in their endpoint/query contracts. The frontend URL helper appends the persisted global `dataScope`, but the cached signal endpoints and handlers do not accept or apply it. A visible period selector would therefore otherwise create a misleading mixed-scope page.
+
+### Evidence
+
+- `Klijent/clientapp/src/services/analyticsApi.ts` auto-appends `dataScope` to analytics URLs, but `getForecast`, `getInventoryAlerts`, `getRebalanceSuggestions` and `getSizeCurve` do not expose period options.
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs` route signatures for `/inventory/forecast`, `/inventory/alerts`, `/inventory/rebalance-suggestions` and `/inventory/size-curve` omit `dataScope`, `fromDate` and `toDate`.
+- `GetInventoryForecastQuery`, `GetInventoryAlertsQuery`, `GetRebalanceSuggestionsQuery` and `GetInventorySizeCurveQuery` have no corresponding period/scope fields; their handlers query snapshot tables with store/supplier/limit filters only.
+- `InventoryPage.tsx` calls these secondary APIs for the same screen while the list/detail path uses a hidden 30-day signal window.
+
+Reproduction: change the global data scope or select a non-default analysis period, reload `/analytics/inventory`, and compare the list/detail requests with forecast/alerts/rebalance/size-curve requests and cache keys. Risk: displayed replenishment and OOS evidence can come from a different dataset/window than the visible trust context.
+
+### Scope
+
+- Cached Inventory secondary signal route signatures, MediatR query contracts, handlers and cache keys.
+- Inventory API client/page request wiring and additive response provenance where needed.
+- Focused backend/frontend contract tests for period, data-scope, cache-key and snapshot-only behavior.
+- Preserve backward compatibility for callers that omit optional period/scope values.
+
+### Read first
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+- `Infrastructure/Services/Caching/IAnalyticsCacheService.cs`
+- `Application/Analytics/Queries/GetInventoryForecast/*`
+- `Application/Analytics/Queries/GetInventoryAlerts/*`
+- `Application/Analytics/Queries/GetRebalanceSuggestions/*`
+- `Application/Analytics/Queries/GetInventorySizeCurve/*`
+- `Klijent/clientapp/src/services/analyticsApi.ts`
+- `RQ308`, `RQ273`, `RQ278` and `RQ370`
+
+### Do
+
+1. Decide and document which secondary signals are genuinely period-dependent, which are immutable current snapshots, and which cannot be made authoritative yet.
+2. For period-dependent signals, thread validated half-open date semantics and canonical data scope through endpoint, query, handler, cache key and page client.
+3. For snapshot-only signals, expose explicit provenance/snapshot scope and keep them visibly separate from selected-period evidence; never silently reuse a wider or all-time dataset.
+4. Add response/meta evidence for requested/effective period, scope, freshness and unavailable/owner-unknown states where the existing contract supports it.
+5. Preserve true zero, empty, missing, stale and unsupported states; do not coalesce missing data into zero or healthy signal.
+
+### Tests
+
+- Focused backend contract tests for each affected secondary signal route, including period boundary, data-scope separation and cache-key isolation.
+- Focused frontend request/provenance tests proving all visible panels agree with the selected period/scope or explicitly identify current-snapshot semantics.
+- `dotnet test Api.Tests/Api.Tests.csproj --filter "FullyQualifiedName~Inventory"`
+- Exact touched frontend specs, `npm run check:analytics-guardrails`, typecheck and `git diff --check`.
+
+### Acceptance
+
+- A period/data-scope selection cannot silently affect only the list while leaving secondary decision signals on another dataset or window.
+- Cached secondary routes either honor the canonical requested period/scope or clearly identify themselves as current snapshots with no implied selected-period meaning.
+- Cache keys include every dimension that changes the result.
+- Table, detail, signal panels and action suggestions preserve honest empty, missing, stale and degraded semantics without fake zeros.
+
+### Dependencies
+
+- `RQ308` defines the visible period selector and user-facing provenance.
+- `RQ273` defines current-stock export semantics.
+- `RQ359` and `RQ370` own request lifecycle/cancellation; do not add a second async owner.
+- Do not promote before `RQ308` has established the selected-period UI contract.
+
+---
+
+## RQ372 - Keep Inventory alert filtering, counts and URL state consistent
+
+Status: WAITING
+Priority: P2
+Type: frontend/contract/tests
+Feature family: inventory-alert-filter-contract
+Parallel-safe: yes
+Owner: Analytics Frontend / Inventory
+Commit suggestion: `fix(analytics): align inventory alert filters`
+
+### Problem
+
+Inventory alert severity is filtered only in the browser after the page fetches an unfiltered, top-limited result. The visible list can therefore show fewer alerts than the badge reports, omit matching alerts that fell outside the unfiltered top limit, and lose the selected severity on refresh/share. The API already exposes `severity`, but `InventoryPage` never sends the selected value.
+
+### Evidence
+
+- `InventoryPage.tsx` owns `alertSeverityFilter` but calls `getInventoryAlerts({ storeId, supplierId, signal })` without `severity`.
+- `InventoryAlertsFeed.tsx` filters `alerts.items` locally and displays `returnedCount`/`totalMatchingCount` from the unfiltered response.
+- `analyticsApi.ts` exposes `severity` in `getInventoryAlerts` and the backend route accepts it, so the current split is a contract mismatch rather than a missing capability.
+- `alertSeverityFilter` is not serialized in the Inventory URL, unlike the page/search/store/supplier/pagination state.
+
+Reproduction: load more than one alert severity, select `Kritično`, then compare the badge with visible cards and refresh/copy the URL. Risk: the user sees an incomplete critical-alert list and an unrelated total count.
+
+### Scope
+
+- `InventoryPage.tsx`, `InventoryAlertsFeed.tsx`, `analyticsApi.ts` and focused Inventory tests.
+- Preserve existing snapshot/meta/error/empty semantics and the backend severity vocabulary.
+- No new client-side alert ranking or severity policy.
+
+### Read first
+
+- `Klijent/clientapp/src/pages/InventoryPage.tsx`
+- `Klijent/clientapp/src/components/inventory/InventoryAlertsFeed.tsx`
+- `Klijent/clientapp/src/services/analyticsApi.ts`
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+- `RQ357`, `RQ360`, `RQ364` and `RQ370`
+
+### Do
+
+1. Choose the backend-filtered path as the source of truth: send severity with the current store/supplier/period/scope context and use returned/total counts for that filtered result.
+2. Persist only validated severity values in the Inventory URL and restore them on back/forward/deep-link navigation.
+3. Keep “all” distinct from a selected severity and preserve snapshot-unavailable, empty, warning and error states.
+4. Label displayed versus total matching alerts honestly when the server truncates results.
+
+### Tests
+
+- Focused page/API tests for all, critical, warning, info, invalid URL value, URL round-trip, request parameters and count/badge parity.
+- Regression with a top-limited mixed-severity response proving a selected severity is not filtered from an already-truncated unfiltered list.
+- `npm run test -- --run src/pages/__tests__/InventoryPage.queueStatus.spec.tsx`
+- `npm run check:analytics-guardrails`, frontend typecheck and `git diff --check`.
+
+### Acceptance
+
+- The alert request, visible cards, badge counts and URL all describe the same severity scope.
+- A selected severity cannot hide matching server rows merely because an unfiltered top limit was reached.
+- Unknown/invalid severity values fail safely to “Sve” without changing backend semantics.
+
+### Dependencies
+
+- `RQ308`/`RQ371` own period and data-scope provenance; this prompt owns severity filter state and count parity.
+- `RQ360` owns the reusable analytics invariant matrix; reuse it rather than adding local trust rules.
+
+---
+
+## RQ373 - Align Supplier Sales visible filters with KPI, chart, table, export and recommendation scope
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/frontend/tests
+Feature family: supplier-sales-visible-scope-parity
+Parallel-safe: no
+Owner: Analytics Reliability / Supplier Analytics
+Commit suggestion: `fix(analytics): align supplier sales visible scope`
+
+### Problem
+
+`SupplierSalesStatsPage` applies `includeUnknown=false` and `supplierId` focus only to the browser-visible rows. The KPI cards, backend-provided totals, PoP trend, data-quality notes, recommendation payloads and several share fields still describe the unfiltered response. The concentration KPI was repaired by `RQ233`, but the remaining page can still show a focused/filtered table next to global totals and chart percentages whose denominator includes hidden suppliers. Export metadata also reports response-global supplier counts while its rows are locally filtered.
+
+This makes a user-selected supplier or “hide unknown” filter look applied while the decision surface still mixes populations. The issue is not a duplicate of `RQ233`: that prompt owns only the top-five concentration numerator/denominator; this prompt owns the complete visible-scope contract.
+
+A second subtlety is equally important: **display population is not automatically the same as the decision reference cohort**. When the user focuses one supplier, visible KPIs/table/export should reflect that focus, but the backend recommendation benchmark must not silently collapse to comparing that supplier with itself. The response must explicitly distinguish the population being displayed from the peer/reference cohort used for recommendation baselines.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx:888-894` derives `visibleSuppliers` locally from `includeUnknown` and `activeSupplierId`, without refetching or projecting a scoped response.
+- `:943-964` recalculates concentration from visible known rows, but `:759-830` and `:955-960` retain backend-global totals, margin contribution and total PoP.
+- `:969-984` renders comparison bars from visible rows while using backend `sharePct` and `shareOfMarginContribution`, which are calculated against all response suppliers at `Api/Endpoints/AllEndpoints.cs:1638-1651`.
+- `:1130-1176` sends filtered rows to the table/export toolbar while metadata such as `brojDobavljaca`, unknown counts and quality shares can describe the broader response.
+- `:1748-1754` explains recommendations for the visible list, while recommendation status/confidence is computed by the backend for the unfiltered supplier response.
+- `SupplierConsolidatedPage.tsx:330-350` has a canonical supplier filter, while the overview page also has an independent `includeUnknown` filter; the two scopes are not represented as one backend-owned dataset contract.
+
+Reproduction: load a response containing known and unknown suppliers, select one supplier or uncheck “Prikaži nepoznate”, then compare the visible table, KPI cards, comparison chart, toolbar metadata and recommendation chips. The table becomes narrower while global totals and some percentage fields remain unchanged.
+
+### Scope
+
+- `SupplierSalesStatsPage.tsx`, `supplierSalesStatsApi.ts`, the supplier-sales response/endpoint contract only where needed, and nearest focused page/API tests.
+- One explicit population contract for all visible KPI, chart, table, detail, toolbar/export metadata and recommendation projections.
+- Requested/effective period and `dataScope` must remain unchanged; no new frontend recommendation formula or unrelated Supplier Decision Hub redesign.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ141`, `RQ143`, `RQ145`, `RQ233`, `RQ257`, `RQ264`, `RQ364`
+- `SupplierSalesStatsPage.tsx`, `supplierSalesStatsApi.ts`, `AllEndpoints.cs` and `SupplierSalesStatsPage.premium.spec.tsx`
+
+### Do
+
+1. Define an explicit **display population** contract. A focused supplier and the unknown-supplier toggle must either request scoped aggregates or clearly label every global metric as global.
+2. Define a separate backend-owned **decision reference cohort** contract for recommendation baselines. Focusing one supplier must not silently turn the benchmark into that same single supplier; expose enough metadata to explain which peer population powered the recommendation.
+3. Align totals, shares, PoP, quality coverage, recommendation counts/status gates, concentration/comparison charts, table rows, detail metadata and export/print metadata to the declared display population; preserve intentional global-versus-visible distinctions only with explicit labels.
+4. Carry both display scope and decision-reference metadata into detail/export so a shared artifact says what was shown and what benchmark powered the recommendation.
+5. Keep unknown, empty, valid zero, missing and non-finite denominator states distinct. Never calculate a filtered numerator against a global denominator or turn a hidden population into a trusted zero.
+6. Keep backend recommendation/status/confidence/reliability ownership authoritative; the frontend may filter/project but must not recreate decision scoring.
+
+### Tests
+
+- all suppliers, `includeUnknown=false`, unknown-only, focused supplier and focused supplier with no matching row;
+- KPI/table/chart/share/PoP/quality/recommendation/export/detail display-population parity;
+- focused supplier keeps the declared peer/reference benchmark and never becomes a self-only recommendation baseline;
+- valid zero versus null/missing/non-finite denominators and partial response metadata;
+- URL/deep-link and embedded canonical Supplier page parity;
+- focused frontend/API/contract tests, analytics guardrails, typecheck/build as selected by the validation selector, and `git diff --check`.
+
+### Acceptance
+
+- Every visible value is either computed from the same declared display population as the visible table or explicitly marked as whole-response/global.
+- Recommendation metadata explicitly identifies/preserves its decision reference cohort; a focused supplier cannot silently change that benchmark to itself.
+- No filtered numerator, chart share, recommendation count, export metadata or quality note silently uses an incompatible denominator.
+- Empty, unknown, partial and unavailable evidence stays distinct from measured zero and no recommendation becomes more actionable through client filtering.
+- Canonical standalone/embedded Supplier surfaces and detail/export links preserve the same period, data scope, supplier focus and unknown-supplier semantics.
+
+### Dependencies
+
+- `RQ233` remains the completed top-five concentration-scope correction; do not reopen it.
+- `RQ278` remains the supplier-filter data-scope contract owner, and `RQ281` the embedded freshness owner.
+- `RQ145`/`RQ364` remain broad parity and dataset-projection owners; this prompt is the concrete Supplier Sales reproduction.
+- No dependency on `RQ308`.
+- `RQ378` owns weighted supplier margin/cost benchmark correctness; final recommendation-baseline acceptance here depends on that truth.
+- `RQ380` owns supplier total pre/post comparable-cohort semantics.
+
+---
+
+## RQ374 - Align Supplier Sales detail route with recommendation, trust and localized provenance contract
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/frontend/copy/tests
+Feature family: supplier-sales-detail-trust-contract
+Parallel-safe: no
+Owner: Analytics Reliability / Supplier Analytics
+Commit suggestion: `fix(analytics): align supplier sales detail trust contract`
+
+### Problem
+
+The inline Supplier Sales detail contains status reason, recommendation gate, confidence/reliability and data-quality context, but `Puni detalj` navigates to the generic `/analitika/supplier-sales-stats/:id` route. That route recomputes an aggregate through `AnalyticsDetailReadService` and returns fields plus filter metadata, without the page's backend recommendation object, actionability gate, freshness/provenance basis, effective data window or the complete unknown/data-quality explanation. The detail can therefore look like a stronger or different decision artifact than the row that opened it. Its server labels also contain ASCII Serbian and technical English (`Data scope`, `fallback`, `snapshot`, `impact`).
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx:2036-2042` labels the generic route as a full “AI” detail with history and article analysis, although the route renders `AnalyticsDetailView` fields/metadata rather than that promised decision contract.
+- `:1216-1243` stores a snapshot with `decisionColumns` and toolbar filters, but the server detail is independently recomputed and does not receive the row recommendation/trust payload.
+- `Api/Services/AnalyticsDetailReadService.cs:133-163` builds supplier detail from raw sales rows and `BuildAggregatedDetail`; `:547-620` exposes metrics and filter metadata but no recommendation status, reason, confidence, reliability, `recommendationAllowed`, generated/refresh time, `dataWindow` or provenance basis.
+- `Api/Services/AnalyticsDetailReadService.cs:566-592` emits `impact`, `fallback`, `snapshot` and ASCII copy such as `pokrice`, `trosak` and `marza`; `:620` emits `Data scope`.
+- `Api/Endpoints/AnalyticsTableEndpoints.cs:27-50` has a separate timeout/error contract, while `AnalyticsDetailView.tsx:120-159` renders a generic detail/`Metadata` surface and only falls back to the client snapshot on 404/error.
+
+Reproduction: open a supplier row, compare inline detail with `Puni detalj`, then change the period/scope or load a partial/snapshot-cost response. The two surfaces do not expose the same recommendation/trust state and the route introduces mixed English/ASCII copy.
+
+### Scope
+
+- Supplier Sales detail navigation/snapshot, `AnalyticsDetailReadService` supplier detail DTO projection, generic detail consumer only as required for the contract, user-facing Serbian labels and nearest backend/frontend tests.
+- Preserve the established supplier-sales period, season, store, supplier, unknown and `dataScope` filters; no new recommendation algorithm and no generic detail redesign outside this screen contract.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ112`, `RQ145`, `RQ233`, `RQ257`, `RQ264`, `RQ282`, `RQ306`, `RQ325`
+- `SupplierSalesStatsPage.tsx`, `analyticsTableState.ts`, `AnalyticsDetailView.tsx`, `AnalyticsDetailReadService.cs`, `AnalyticsTableEndpoints.cs` and nearest tests
+
+### Do
+
+1. Define whether the detail is a read-only projection of the row response or a server-authoritative aggregate; use one source of truth and expose its requested/effective period, supplier/data scope, **display population**, **decision reference cohort**, freshness, quality, snapshot/fallback and provenance.
+2. Carry backend-owned recommendation status, reason/reason codes, confidence/reliability and `recommendationAllowed` consistently, or explicitly label the detail as non-decision evidence and remove the overpromising AI/action wording.
+3. Keep row, inline detail, generic detail, table/detail snapshot and export values aligned for valid zero, unavailable, partial, stale and non-finite evidence.
+4. Localize the owned detail labels, tooltips and error/empty copy to Serbian with correct diacritics; retain raw technical identifiers only in an explicit technical channel.
+
+### Tests
+
+- focused route/detail tests for known and unknown suppliers, period/season/store/data-scope/focus round trips and 404/timeout/fallback behavior;
+- parity fixture for row versus inline detail versus generic detail/snapshot/export, including recommendation gate and trust metadata;
+- empty, partial, stale, snapshot-cost, missing-cost, valid-zero and unavailable metrics;
+- no raw English/ASCII technical labels in the user-facing detail; backend/frontend focused tests, encoding/analytics guardrails and `git diff --check`.
+
+### Acceptance
+
+- “Puni detalj” no longer promises a decision/history surface that omits the row’s recommendation and trust contract.
+- Detail and row values preserve the same supplier identity, period, scope, quality, provenance and actionability semantics.
+- Unknown, partial, stale and unavailable detail evidence never becomes a trusted zero, fresh state or actionable recommendation.
+- User-facing Supplier Sales detail copy is Serbian and diacritics-safe across API, page, fallback and export/snapshot paths.
+
+### Dependencies
+
+- `RQ112`/`RQ145`/`RQ264` provide broad summary/detail/output parity rules; this prompt owns the Supplier Sales detail reproduction.
+- `RQ257` owns finite numeric boundary behavior; `RQ282` owns collision-safe supplier identities.
+- `RQ306` and `RQ325` own the broader Operacije diacritics/residual-English passes; coordinate wording and do not duplicate their whole-file sweeps.
+- `RQ373` should establish the display-population/reference-cohort contract first so detail scope and recommendation benchmark cannot diverge from the originating row.
+- `RQ378` supplies the corrected supplier margin/cost benchmark semantics.
+
+---
+
+## RQ375 - Align Shoe Type weighted margin baseline and cost-quality semantics
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/frontend/tests
+Feature family: shoe-type-margin-quality-contract
+Parallel-safe: no
+Owner: Analytics Reliability / Shoe Type Sales
+Commit suggestion: `fix(analytics): align shoe type margin quality contract`
+
+### Problem
+
+The Shoe Type endpoint publishes `totals.prosecnaMarza` as a simple average of row-level margin percentages, even though each row has a different cost-covered revenue denominator. The same value is presented as an authoritative overall margin and is passed into the backend recommendation engine as its baseline. In parallel, `dataQuality.missingCostRevenueSharePct` means “not historical direct cost” while the page presents it as “promet bez nabavne cene”; snapshot and product fallback coverage can therefore be labelled as no-cost even when a usable estimate exists.
+
+### Evidence
+
+- `Api/Endpoints/AllEndpoints.cs:2346-2352` computes `averageMarginPct` with `.Average()` over row `marginPct`; `:2369-2384` passes it into `AnalyticsDecisionRecommendationEngine.Evaluate`; `:2463-2472` exposes it as `totals.prosecnaMarza`.
+- `Application/Analytics/AnalyticsMarginPolicy.cs:114-133` distinguishes historical, product-fallback and snapshot revenue, while `:322-331` separately computes no-cost coverage from `RevenueWithCost`.
+- `Api/Endpoints/AllEndpoints.cs:2320-2340` defines `missingCostRevenue` as total revenue minus historical-cost revenue, not total revenue minus all usable-cost revenue.
+- `ShoeTypeSalesStatsPage.tsx:584-597` treats the backend aggregate as authoritative; `:716-720` maps `missingCostRevenueSharePct` to both direct-cost coverage and “Promet bez nabavne cene %”; `:667` describes snapshot coverage as an estimate.
+- `Api.Tests/AnalyticsShoeTypeSalesIntegrationTests.cs:140-157` only checks field presence and does not prove weighted aggregate, cost-source partition or recommendation-baseline semantics.
+
+Reproduction: return two known types with very different cost-covered revenues and margins, plus fallback/snapshot-cost rows. The endpoint’s overall margin and recommendation baseline become the unweighted row mean, while the UI’s no-cost percentage includes rows that have fallback or snapshot cost.
+
+### Scope
+
+- Shoe Type endpoint response/totals/data-quality contract, recommendation baseline input, frontend KPI/toolbar labels and nearest backend/frontend tests.
+- Explicit revenue denominator and source partition for historical, snapshot, product fallback and truly unavailable cost.
+- No new recommendation algorithm, accounting ledger or cross-screen refactor; preserve valid zero, unknown and unavailable semantics.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ148`, `RQ168`, `RQ283`, `RQ284`, `RQ346`, `RQ362`, `RQ363`
+- `AllEndpoints.cs`, `AnalyticsMarginPolicy.cs`, `shoeTypeSalesStatsApi.ts`, `ShoeTypeSalesStatsPage.tsx` and nearest Shoe Type/API tests
+
+### Do
+
+1. Define the authoritative overall margin as aggregate margin contribution divided by aggregate `RevenueWithCost` (equivalently aggregate covered revenue minus aggregate cost over aggregate covered revenue), or return unavailable when that denominator is not measurable; do not use a simple mean of row percentages.
+2. Feed the exact same backend-owned weighted baseline into recommendation evaluation, with explicit treatment of unknown-type revenue.
+3. Separate direct historical-cost absence from true no-cost revenue and preserve snapshot/product-fallback coverage as distinct source fields; map each field to the matching UI label and trust state.
+4. Extend `shoeTypeSalesStatsResponseSchema` to validate the exact margin/cost-quality and recommendation fields consumed by the screen, including finite/range checks, recommendation status and `recommendationAllowed`; do not rely on `.passthrough()` for decision-critical values.
+5. Remove the frontend fallback that recomputes a simple row-average margin when the backend aggregate is missing; missing authoritative aggregate stays unavailable.
+6. Keep `null`, valid zero, negative/invalid and non-finite evidence distinct across totals, row, toolbar, detail and export projections.
+
+### Tests
+
+- two rows with unequal covered-revenue denominators proving weighted versus simple-mean divergence;
+- known and unknown type denominator fixtures, no covered revenue, valid zero margin and negative margin;
+- historical, snapshot, product-fallback and no-cost source partitions summing without overlap;
+- recommendation baseline/actionability parity and frontend KPI/toolbar/detail/export labels;
+- malformed/out-of-range runtime payload for decision-critical margin/cost/recommendation fields fails closed instead of passing through as a normal response;
+- focused backend/frontend tests, analytics guardrails/typecheck/build as selected, and `git diff --check`.
+
+### Acceptance
+
+- `prosecnaMarza` has one documented weighted denominator and no longer silently represents a simple row mean.
+- Recommendation baseline and displayed overall margin use the same declared population and unit.
+- “Promet bez nabavne cene” contains only genuinely unavailable cost; direct, snapshot and product-fallback coverage remain distinguishable.
+- Missing, zero, negative, partial and non-finite cost/margin evidence never becomes a trusted green or actionable recommendation.
+- Runtime validation covers every decision-critical Shoe Type field actually consumed by the page; malformed payloads cannot silently survive TypeScript typing.
+
+### Dependencies
+
+- `RQ148` owns broad sales/margin measurement-basis policy; this prompt is the concrete Shoe Type aggregate/cost-quality reproduction.
+- `RQ168` owns confirmed margin-ranking evidence; do not create a second ranking contract.
+- `RQ346` remains the completed frontend fallback/label correction; this prompt validates the backend aggregate it now consumes.
+
+---
+
+## RQ376 - Align Shoe Type pre/post totals with comparable evidence cohort
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/frontend/tests
+Feature family: shoe-type-prepost-aggregate-parity
+Parallel-safe: no
+Owner: Analytics Reliability / Shoe Type Sales
+Commit suggestion: `fix(analytics): align shoe type prepost aggregates`
+
+### Problem
+
+Shoe Type row-level pre/post impact and recommendation actionability use the comparable article cohort: each article must have sales both before and after its first nivelacija and pass the shared signal policy. The response totals instead sum `preNivelacijePromet`/`posleNivelacijePromet` for every article with any nivelacija, then calculate `totals.prePostNivelacijaRevenueImpactPct` and units impact from that broader population. A total-level change can therefore look measurable while the rows that support it are non-comparable or actionability is blocked.
+
+### Evidence
+
+- `Api/Endpoints/AllEndpoints.cs:2242-2309` builds each row through `AnalyticsNivelacijaSplitPolicy`, exposing both broad pre/post values and comparable coverage/impact.
+- `:2314-2318` sums `sumPreRevenue`/`sumPostRevenue` from the broad row values; `:2495-2508` uses those sums for totals impact instead of the comparable cohort fields.
+- `:2384-2387` gates each row recommendation on both revenue and quantity comparable impacts, so row actionability and totals currently use different populations.
+- `ShoeTypeSalesStatsPage.tsx:300-347,1213-1215,1520-1550` labels and displays impact/coverage without an explicit total-level comparable-population contract.
+- `Api.Tests/AnalyticsShoeTypeSalesIntegrationTests.cs:158-176` checks field presence but does not assert total-vs-row cohort parity.
+
+Reproduction: seed one article with only pre-nivelacija sales and another with comparable pre/post sales. The endpoint total impact includes the first article’s one-sided revenue, while row recommendation eligibility excludes it.
+
+### Scope
+
+- Shoe Type endpoint totals and additive comparable-cohort metadata, frontend total/quality presentation if the field is shown or exported, and focused tests.
+- Reuse `AnalyticsNivelacijaSplitPolicy`; do not duplicate the split algorithm or change established row semantics.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ140`, `RQ182`, `RQ238`, `RQ286`, `RQ360`
+- `AnalyticsNivelacijaSplitPolicy.cs`, Shoe Type branch in `AllEndpoints.cs`, Shoe Type page/API and pre/post tests
+
+### Do
+
+1. Choose one explicit total-level population: preferably the same comparable cohort used for impact/recommendation, or expose broad observational totals separately with unambiguous labels.
+2. Preserve measured zero, missing baseline, insufficient cohort, partial coverage and unavailable impact as distinct states.
+3. Carry comparable article count, pre/post quantities/revenue and coverage metadata through totals/detail/export where consumers use the aggregate.
+4. Keep recommendation/status/confidence backend-owned; the frontend must not recompute a substitute total impact.
+
+### Tests
+
+- all-comparable, one-sided-only, no comparable article, valid zero change and negative/positive change fixtures;
+- row versus totals impact, units, coverage, recommendation gate and export/detail parity;
+- insufficient/partial response metadata and cache repeat determinism;
+- focused backend/frontend tests, analytics guardrails/typecheck/build as selected, and `git diff --check`.
+
+### Acceptance
+
+- Total pre/post impact and units use the same declared cohort as the comparable signal or are explicitly labelled as a broader observation.
+- One-sided or insufficient evidence cannot appear as a measured total impact or actionable recommendation.
+- Row, total, detail and export surfaces preserve the same period, cohort, unit and limitation semantics.
+
+### Dependencies
+
+- `RQ140` and `AnalyticsNivelacijaSplitPolicy` remain the shared pre/post comparability owners.
+- `RQ182` owns backend null/unknown coverage preservation; this prompt owns Shoe Type total-population parity.
+- `RQ375` owns margin/cost semantics; do not combine unrelated financial denominator changes here.
+
+---
+
+## RQ377 - Align Shoe Type detail route with row recommendation, trust and unknown identity
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/frontend/tests
+Feature family: shoe-type-detail-trust-contract
+Parallel-safe: no
+Owner: Analytics Reliability / Shoe Type Sales
+Commit suggestion: `fix(analytics): align shoe type detail trust contract`
+
+### Problem
+
+The inline Shoe Type detail is built from the authoritative stats response and includes PoP, recommendation gate/reason, confidence/reliability, quality and snapshot context. “Otvori puni detalj” navigates to the generic detail route, where `AnalyticsDetailReadService` independently re-aggregates raw sales, omits the comparison metrics and recommendation/trust contract, and exposes a different set of ASCII/English labels. Unknown types use an `unknown-...` record ID that the server detail parser rejects, so a copied/deep-linked unknown detail depends on a session snapshot and is not independently resolvable.
+
+### Evidence
+
+- `ShoeTypeSalesStatsPage.tsx:747-770` creates numeric IDs for known types and `unknown-...` IDs for unknown types, then stores a client snapshot before navigating to `/analitika/shoe-type-sales-stats/:id`.
+- `Api/Services/AnalyticsDetailReadService.cs:166-176` accepts only `int` IDs for Shoe Type and returns no detail for unknown IDs; it also calls `BuildAggregatedDetail` without comparison metrics.
+- `Api/Services/AnalyticsDetailReadService.cs:520-620` returns raw aggregate/pre-post/margin fields and filter metadata but no recommendation status/reason/confidence/reliability/actionability, freshness, data window or provenance basis; `:550-570` omits the row’s PoP fields.
+- `AnalyticsDetailPage.tsx:6-24` and the generic `AnalyticsDetailView` consumer render the route without a Shoe Type-specific trust contract; the page fallback depends on the session snapshot.
+- `AnalyticsDetailReadService.cs:566-620` emits `impact`, `fallback`, `snapshot`, `Data scope` and ASCII Serbian labels.
+
+Reproduction: open a known and an unknown Shoe Type row, compare inline detail with “Otvori puni detalj”, then open the copied unknown URL in a fresh session. The known detail loses recommendation/PoP/trust context and the unknown detail cannot be independently fetched.
+
+### Scope
+
+- Shoe Type detail navigation/snapshot identity, `AnalyticsDetailReadService` projection, generic detail consumer only as required, localization and nearest backend/frontend tests.
+- Preserve period, season, store and `dataScope` filters; no generic analytics-detail redesign outside this contract.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ112`, `RQ145`, `RQ182`, `RQ238`, `RQ264`, `RQ306`, `RQ325`, `RQ375`, `RQ376`
+- `ShoeTypeSalesStatsPage.tsx`, `analyticsTableState.ts`, `AnalyticsDetailView.tsx`, `AnalyticsDetailReadService.cs`, `AnalyticsTableEndpoints.cs` and nearest tests
+
+### Do
+
+1. Choose one source of truth: a server-authoritative Shoe Type detail projection or an explicitly read-only row snapshot. Expose requested/effective period, season/store/scope, freshness, quality, snapshot/fallback and provenance.
+2. Preserve backend-owned recommendation status, reason/reason codes, confidence/reliability and `recommendationAllowed`, or remove overpromising decision wording from the generic detail.
+3. Make known and unknown identities collision-safe and independently resolvable, or clearly mark a session-only snapshot as non-shareable and prevent a misleading deep link.
+4. Align valid zero, unavailable, partial, stale, non-finite, PoP and comparable pre/post values across row, inline detail, generic detail, snapshot and export.
+
+### Tests
+
+- known, unknown and missing Shoe Type identity; direct/deep-link/fresh-session/404/timeout/fallback behavior;
+- row versus inline versus generic detail/snapshot/export parity for PoP, recommendation gate, trust metadata and source labels;
+- period/season/store/data-scope round trips, empty/partial/stale/snapshot-cost and valid-zero/unavailable metrics;
+- no raw English/ASCII user-facing detail labels; focused backend/frontend tests, encoding/analytics guardrails and `git diff --check`.
+
+### Acceptance
+
+- “Otvori puni detalj” preserves or honestly limits the row’s recommendation, PoP and trust contract.
+- Known and unknown Shoe Type details keep the same identity, period, scope, quality, provenance and actionability semantics.
+- Unknown, partial, stale and unavailable evidence never becomes a trusted zero, fresh state or actionable recommendation.
+- User-facing Shoe Type detail copy is Serbian and diacritics-safe across API, page, fallback and export/snapshot paths.
+
+### Dependencies
+
+- `RQ375` and `RQ376` establish aggregate metric semantics before detail projection is finalized.
+- `RQ112`/`RQ145`/`RQ264` provide broad summary/detail/output parity rules.
+- `RQ306`/`RQ325` own the broader Operacije copy passes; coordinate wording rather than duplicating whole-file cleanup.
+
+
+---
+
+## RQ378 - Align Supplier Sales weighted margin benchmark and cost-source quality semantics
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/frontend/tests
+Feature family: supplier-sales-margin-quality-contract
+Parallel-safe: no
+Owner: Analytics Reliability / Supplier Analytics
+Commit suggestion: `fix(analytics): align supplier margin benchmark truth`
+
+### Problem
+
+Supplier Sales has the same high-impact arithmetic defect as Shoe Type: `averageKnownMarginPct` is a simple average of supplier margin percentages and is both published as `totals.prosecnaMarza` and passed into the recommendation engine. A tiny high-margin supplier therefore influences the benchmark as much as a dominant supplier. Cost-quality wording also conflates “not historical direct cost” with “no usable cost” even when snapshot/product fallback is available.
+
+### Evidence
+
+- Supplier endpoint builds `averageKnownMarginPct = knownSupplierMarginValues.Average()`.
+- The same value is passed to `AnalyticsDecisionRecommendationEngine.Evaluate(..., averageKnownMarginPct)`.
+- `AnalyticsMarginPolicy.Build` already provides aggregate `RevenueWithCost`, `TotalCost` and `MarginContribution`, so the economically weighted benchmark is available.
+- Supplier totals already partition historical/snapshot/estimated/no-cost coverage, while toolbar metadata derives “Promet bez nabavne cene %” from the broader historical-missing field.
+
+### Scope
+
+- Supplier endpoint aggregate margin and recommendation baseline, Supplier page cost-quality labels and nearest tests.
+- No new recommendation algorithm; use existing margin policy and recommendation engine.
+
+### Do
+
+1. Replace arithmetic mean with aggregate `MarginContribution / RevenueWithCost`; return unavailable when covered revenue is unavailable/zero.
+2. Use the same benchmark for `totals.prosecnaMarza` and recommendation evaluation.
+3. Partition historical, snapshot, product-fallback and truly unavailable cost without overlap or misleading names.
+4. Expose benchmark/cost-source basis so RQ373 can report the decision reference cohort honestly.
+5. Preserve valid zero, negative margin contribution, partial coverage and missing denominator states without fake zero/good/actionable fallbacks.
+
+### Tests
+
+- dominant low-margin supplier + tiny high-margin supplier proves arithmetic/weighted divergence;
+- historical-only, snapshot-only, product-fallback-only, mixed and no-cost fixtures;
+- zero covered revenue, valid zero margin and negative contribution;
+- displayed total margin equals recommendation baseline basis.
+
+### Acceptance
+
+- Supplier margin benchmark reflects economic weight rather than supplier count.
+- Displayed aggregate margin and recommendation baseline cannot diverge in denominator/basis.
+- “No cost” means truly unavailable cost; historical/snapshot/fallback remain distinguishable.
+
+### Dependencies
+
+- RQ373 consumes this as decision-reference truth.
+- Coordinate shared helper extraction with RQ375 only when it reduces duplication without coupling endpoint ownership.
+
+---
+
+## RQ379 - Add fail-closed runtime validation for Supplier Sales decision payload
+
+Status: WAITING
+Priority: P1
+Type: frontend-runtime-validation/tests
+Feature family: supplier-sales-runtime-schema
+Parallel-safe: yes
+Owner: Analytics Reliability / Supplier Analytics
+Commit suggestion: `fix(analytics): validate supplier sales runtime payload`
+
+### Problem
+
+`getSupplierSalesStats` trusts TypeScript generics only and passes no runtime schema to `fetchAnalyticsJson`. Malformed production JSON can therefore enter Supplier arithmetic, sorting, recommendation display and export metadata as if it were valid. Shoe Type already has a Zod boundary, so this asymmetry is avoidable.
+
+### Do
+
+1. Add `supplierSalesStatsResponseSchema` covering dates, ids, totals, data-quality, supplier rows, footwear breakdown and every recommendation/trust/cost field consumed by the page.
+2. Validate finite/range/nullability semantics, recommendation status, reason codes, confidence/reliability and `recommendationAllowed`.
+3. Preserve valid negative margin contribution where business semantics allow it; do not over-constrain legitimate data.
+4. Pass the schema to `fetchAnalyticsJson` and fail closed through existing safe analytics error handling.
+5. Validation failure must not become empty rows, zero KPIs, stale-success or an exportable normal state.
+
+### Tests
+
+- wrong types, invalid dates, missing required fields, out-of-range percentages and malformed recommendation fields;
+- valid zero/null/negative-margin cases remain accepted where contract permits;
+- page shows safe error for invalid payload and retains no fake recommendation/export.
+
+### Acceptance
+
+- Supplier Sales no longer relies on compile-time typing for runtime decision data.
+- Every decision-critical consumed field has an explicit runtime contract.
+- Malformed payloads cannot render as normal analytics.
+
+### Dependencies
+
+- Final schema field set must match RQ373/RQ378 corrected semantics.
+- Parallel-safe only when it does not edit the same queue/client files as another active Supplier task.
+
+---
+
+## RQ380 - Align Supplier Sales pre/post totals with the comparable evidence cohort
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/frontend/tests
+Feature family: supplier-sales-prepost-comparable-aggregate
+Parallel-safe: no
+Owner: Analytics Reliability / Supplier Analytics
+Commit suggestion: `fix(analytics): align supplier comparable pre post aggregate`
+
+### Problem
+
+Supplier row-level pre/post impact/recommendation uses comparable split-policy evidence, but endpoint totals calculate `prePostNivelacijaRevenueImpactPct` and units impact from summed broad `preNivelacije*`/`posleNivelacije*` values. One-sided pre-only/post-only activity can therefore influence a total impact that looks measured even though recommendation actionability requires a comparable cohort.
+
+### Do
+
+1. Build aggregate comparable pre/post revenue and units from the same `AnalyticsNivelacijaSplitPolicy` eligibility as row signals.
+2. Compute total impact only from that comparable cohort; expose broader observational totals separately if useful and clearly labelled.
+3. Couple total impact with comparable article count and coverage.
+4. Align toolbar/export/detail and RQ373 display-population semantics.
+5. Keep the metric descriptive; never label it causal uplift.
+
+### Tests
+
+- comparable + pre-only + post-only activity in one fixture;
+- zero pre baseline, empty cohort, low coverage, valid zero change, positive/negative change;
+- revenue/units parity and focused display-scope interaction;
+- detail/export metadata uses the same cohort.
+
+### Acceptance
+
+- Supplier total pre/post impact and coverage describe the same eligible population.
+- Non-comparable activity cannot create a normal-looking total impact.
+- Display filtering cannot silently change methodology or denominator.
+
+### Dependencies
+
+- RQ373 owns display/reference population.
+- Reuse the shared split policy; do not create a frontend formula.
+
+---
+
+## RQ381 - Align Daily Sales signed quantity/revenue contract and reconciliation
+
+Status: DONE
+Priority: P1
+Type: backend-contract/frontend-runtime-validation/tests
+Feature family: daily-sales-signed-numeric-contract
+Parallel-safe: no
+Owner: Analytics Reliability / Daily Sales
+Commit suggestion: `fix(analytics): preserve daily sales signed evidence`
+
+### Problem
+
+Daily Sales aggregates `ProdajaStavka.Kolicina` and `Kolicina * Cena` as signed evidence, so returns, storno and corrections can legitimately produce negative row quantities or revenue. The frontend runtime schema still requires several metadata values to be non-negative, which rejects a valid backend response as “response nije u očekivanom formatu”. The backend and UI also hide the same signed evidence: supplier ranking drops suppliers with non-positive net quantity, `Ostali` clamps a negative remainder to zero, and tests assert non-negative sales values as if returns were impossible.
+
+### Evidence
+
+- `Klijent/clientapp/src/validation/analyticsResponseSchemas.ts:173-189` applies non-negative validators to `unknownSupplierItems`, `offShiftItems`, `offShiftRevenue`, `totalItemsInRange`, `nonStandardReceiptRevenue` and `debtReceiptRevenue`, while the service sums signed quantity/revenue.
+- `Api/Services/DailySalesStatsService.cs:224-255,340-390` aggregates signed `Kolicina` and `Kolicina * Cena`; `:396-407` keeps only suppliers with `TotalQty > 0`; `:454-458` calculates `Ostali` with `Math.Max(0, totalItems - sumTop)`.
+- `Api.Tests/DailySalesStatsIntegrationTests.cs:180-230` currently asserts supplier revenue, shift counts and total quantity are non-negative instead of covering return/storno evidence.
+- `DailySalesStatsPage.tsx:377-410,1089-1102` treats signed quality values as positive-only and can mark a negative off-shift amount as healthy.
+
+Reproduction: return a valid Daily Sales payload with negative `totalItemsInRange` or `offShiftRevenue` from a return/correction. The Zod boundary rejects it before rendering. With mixed positive and negative supplier quantities, the current top-N/`Ostali` projection no longer partitions the signed total.
+
+### Scope
+
+- Daily Sales DTO/API schema, signed aggregation and top-supplier/`Ostali` reconciliation, page numeric/quality projections and nearest backend/frontend tests.
+- Preserve true zero, signed measured value, unavailable value, empty response and data-quality warning as distinct states.
+- Do not invent a separate return accounting model; use the existing signed sales facts and document units/denominators.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ257`, `RQ289`, `RQ290`, `RQ352`, `RQ363`, `RQ364`
+- `DailySalesStatsService.cs`, `DailySalesStatsDto.cs`, `analyticsResponseSchemas.ts`, `DailySalesStatsPage.tsx` and Daily Sales focused tests
+
+### Do
+
+1. Declare which fields are signed aggregates (quantity/revenue) and which remain non-negative counts or percentages; align DTOs, Zod validators and labels to that contract.
+2. Preserve negative/zero/positive supplier and row evidence through top-N selection and `Ostali`, or explicitly expose an unavailable reconciliation state when a signed top-N partition cannot be represented by the current columns.
+3. Remove positive-only quality tests/tones that turn negative but measured return values into fake “good” or invalid payloads.
+4. Keep frontend calculations derived from authoritative backend fields and fail closed on non-finite values.
+
+### Tests
+
+- valid negative return/storno quantity and revenue payload passes runtime validation;
+- mixed positive/negative suppliers preserve or explicitly mark row/period reconciliation and do not clamp signed evidence to zero;
+- true zero, unavailable/null, empty and warning states remain distinct;
+- focused Daily Sales backend/frontend specs, analytics guardrails/typecheck/build as selected and `git diff --check`.
+
+### Acceptance
+
+- A valid signed Daily Sales response no longer fails runtime validation because a signed aggregate is negative.
+- Returns/corrections remain visible as measured signed evidence; no `Math.Max`/positive-only ranking silently erases them.
+- Row, metadata, KPI, quality and export values declare consistent units and denominators.
+- No signed error/unknown value becomes a trusted zero or healthy state.
+
+### Dependencies
+
+- `RQ289` owns authoritative supplier ordering and `RQ290` owns partial shift semantics; preserve both.
+- `RQ382` owns data-scope parity and `RQ383` owns shift-assignment provenance; do not fold those contracts into this numeric fix.
+
+### Completion note
+
+- Date: 2026-09-22
+- Status: DONE
+- Completion: Daily Sales now accepts legitimate signed quantity/revenue aggregates from returns and corrections, preserves negative supplier and `Ostali` evidence, distinguishes net-zero evidence from an empty period, and exposes validation issue paths in the UI.
+- Changed files: `Api/Services/DailySalesStatsService.cs`, `Api.Tests/DailySalesStatsServiceTests.cs`, `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.numericState.spec.ts`, `Klijent/clientapp/src/utils/dailyShiftSummary.ts`, `Klijent/clientapp/src/utils/__tests__/dailyShiftSummary.spec.ts`, `Klijent/clientapp/src/validation/analyticsResponseSchemas.ts`, `Klijent/clientapp/src/validation/__tests__/analyticsResponseSchemas.spec.ts`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`
+- Contract/runtime behavior changed: signed quantity/revenue fields use finite signed validators; true counters remain non-negative; top-N and remainder calculations no longer erase signed evidence.
+- Checks run: focused Vitest 3 files/28 tests; `npm run check:analytics-guardrails`; `npm run build`; `git diff --check`.
+- Checks not run: backend .NET tests/build because the .NET SDK is unavailable in this environment.
+- Run log: `.ai/runs/2026-09-22-rq381-signed-contract-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: fast-forwarded to `main`
+- Main commit SHA: `f9971836b5803919e4b9ac3358f069cb447884d3`
+- Main verification: `origin/main` contains `f9971836b5803919e4b9ac3358f069cb447884d3`
+- Missed: backend runtime proof requires a .NET-capable environment.
+- Follow-up: none for RQ381; RQ382/RQ383 remain separate owner prompts.
+- Residual risk: remote CI and backend tests remain uninspected/unrun locally.
+- Next: `RQ385` remains the current RQ READY prompt.
+- Prompt defect / scope repair: guardrail baseline line reference moved from 731 to 745 with the existing reviewed finding; no new violation was introduced.
+
+---
+
+## RQ382 - Align Daily Sales data-scope diagnostics and visible denominators
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/frontend/tests
+Feature family: daily-sales-scope-quality-parity
+Parallel-safe: no
+Owner: Analytics Reliability / Daily Sales
+Commit suggestion: `fix(analytics): align daily sales scope diagnostics`
+
+### Problem
+
+The main Daily Sales aggregation applies `dataScope` through the article's `DataOrigin`, but duplicate-receipt, line-vs-dnevnik mismatch, non-standard-document and excluded-document diagnostics are queried without the same scope. When `existing` or `imported` is selected, warnings and quality counts can describe rows excluded from the table. The no-data availability query also ignores `dataScope` and excluded documents, so the empty-state “available range” can point to data the selected scope cannot display. The page then combines these mixed populations in trust metadata, KPI explanations and supplier concentration denominators.
+
+### Evidence
+
+- `Api/Services/DailySalesStatsService.cs:54-220` builds receipt and reconciliation diagnostics without `DataOrigin` scope predicates; `:224-257` applies `importedOnly`/`existingOnly` only to the item aggregation.
+- `:500-523` computes `minAvailableDate`/`maxAvailableDate` from all receipt headers, not the selected scope or the same exclusion rules.
+- `DailySalesStatsPage.tsx:545-577,880-890` mixes metadata totals and date-row totals, while `:371-410` uses the metadata total as concentration denominator.
+- Existing `DailySalesStatsServiceTests.GetDailySalesAsync_RespectsDataScopeImported` proves the row filter but not scope parity for warnings, diagnostics or availability.
+
+Reproduction: select `dataScope=imported` for a period containing existing-only duplicate/mismatch records and no imported sales. The response can be empty for the table while still reporting unrelated warnings and an all-scope available date range.
+
+### Scope
+
+- Daily Sales service diagnostics/availability queries, response provenance/denominators, page trust/empty/KPI metadata and focused tests.
+- Keep the existing `all`/`existing`/`imported` values and cache-key behavior; do not redesign global data-scope infrastructure.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ278`, `RQ289`, `RQ352`, `RQ364`
+- `DailySalesStatsService.cs`, `DailySalesStatsPage.tsx`, `dailySalesStatsApi.ts` and integration tests
+
+### Do
+
+1. Define one scoped population for rows, totals, quality diagnostics and empty availability, including document exclusions and article-origin semantics.
+2. Apply that population consistently to receipt/mismatch/non-standard/debt diagnostics and min/max available dates, or label an intentionally broader diagnostic as a separate population.
+3. Expose the denominator/provenance needed by the page so “Ukupno komada”, supplier concentration, `Ostali`, warnings and empty-state recovery cannot silently mix scoped and all-scope values.
+4. Add a scope/period/store matrix proving no unrelated warning or availability range leaks into the selected response.
+
+### Tests
+
+- existing-only and imported-only fixtures with out-of-scope diagnostics;
+- scoped empty period versus all-scope populated period;
+- store + scope + exclusion combinations and cache-repeat determinism;
+- page trust header, empty state, concentration and export metadata preserve selected scope;
+- focused backend/frontend tests, analytics guardrails/typecheck/build as selected and `git diff --check`.
+
+### Acceptance
+
+- Every user-visible Daily Sales metric and warning either uses the selected scope or explicitly declares a different scope.
+- Empty-state available dates refer to data recoverable under the selected scope and store.
+- Concentration, total/visible item labels and exports use one documented denominator.
+- Scope changes cannot present stale or unrelated quality evidence as current truth.
+
+### Dependencies
+
+- `RQ381` owns signed numeric semantics; this prompt owns population/scope parity.
+- `RQ289` remains the owner of supplier ordering, not this prompt.
+
+---
+
+## RQ383 - Make Daily Sales off-shift and no-time fallback provenance explicit
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/frontend/tests
+Feature family: daily-sales-shift-provenance
+Parallel-safe: no
+Owner: Analytics Reliability / Daily Sales
+Commit suggestion: `fix(analytics): expose daily sales shift provenance`
+
+### Problem
+
+When no row has a classifiable hour, `DailySalesStatsService` maps all rows to the first shift. The response does not expose how many items/revenue were mapped by this fallback, and `offShiftItems`/`offShiftRevenue` remain zero in that branch. The frontend therefore sees complete numeric first/second-shift values and can render a real first-shift share even though the source only proves daily totals, not shift assignment. In the mixed-hour branch, off-shift values are also remapped to the first shift and the UI does not distinguish those values from measured first-shift sales.
+
+### Evidence
+
+- `Api/Services/DailySalesStatsService.cs:317-369` enables `useNoTimeDataFallback`, remaps every unclassified row to shift 1 and counts fallback values only in local variables.
+- `:487-499` emits only a free-text warning; no DTO field carries fallback count, revenue or assignment status.
+- `Klijent/clientapp/src/utils/dailyShiftSummary.ts:20-49` classifies non-null fallback-filled shift values as complete; `DailySalesStatsPage.tsx:548-571,1683-1690,1970-2010` calculates/render shares and charts from them.
+- `Api.Tests/DailySalesStatsServiceTests.cs:142-228` explicitly accepts fallback rows as first-shift sales and asserts `OffShiftItems == 0`, proving the unsafe contract is locked in.
+
+Reproduction: load an imported dataset whose timestamps are all midnight or 02:00. The table shows all items in “Prva smena”, while the only reliable fact is the day-level quantity/revenue.
+
+### Scope
+
+- Shift assignment metadata and backend classification, frontend shift evidence/chart/KPI/export states and focused tests.
+- Preserve the declared boundaries 06:00–13:59 and 14:00–21:59; decide explicitly whether unassigned values remain unallocated or are shown as a visibly labelled fallback.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`
+- `RQ290`, `RQ335`, `RQ352`, `RQ381`
+- `DailySalesStatsService.cs`, `DailySalesStatsDto.cs`, `dailyShiftSummary.ts`, `DailySalesStatsPage.tsx` and shift tests
+
+### Do
+
+1. Add explicit provenance/state for measured, partial, off-shift and no-time fallback assignments, including mapped quantity/revenue where applicable.
+2. Stop presenting fallback-mapped values as measured first-shift values or as a trusted shift share; preserve daily totals separately.
+3. Align table, chart, KPI, quality panel, export and tooltips with the same assignment state and denominator.
+4. Keep warning/meta semantics distinct from successful empty and true measured zero responses.
+
+### Tests
+
+- measured boundary-hour rows (06:00, 13:59, 14:00, 21:59, 22:00);
+- all-unclassified timestamps and mixed classified/off-shift timestamps;
+- valid zero versus unavailable shift evidence, signed quantities and fallback metadata;
+- page/chart/export never labels fallback as complete first shift;
+- focused backend/frontend tests, analytics guardrails/typecheck/build as selected and `git diff --check`.
+
+### Acceptance
+
+- A shift share is measured only when its numerator and denominator have declared shift-assignment evidence.
+- No-time/off-shift fallback remains visible and cannot become a fake first-shift result or fake green quality state.
+- Daily revenue/quantity totals remain available independently of shift allocation.
+
+### Dependencies
+
+- `RQ290` owns generic partial-shift classification; this prompt supplies the backend provenance needed by that helper.
+- `RQ381` owns signed quantity/revenue treatment; do not reintroduce non-negative assumptions here.
+
+---
+
+## RQ384 - Make Daily Sales endpoint errors safe and traceable
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/frontend/tests
+Feature family: daily-sales-safe-error-contract
+Parallel-safe: no
+Owner: Analytics Reliability / Daily Sales
+Commit suggestion: `fix(analytics): sanitize daily sales error responses`
+
+### Problem
+
+The Daily Sales endpoint returns `ex.Message` in the generic 500 `Problem` detail and does not consistently attach the existing correlation identifier/meta contract. The frontend displays that detail directly and validates successful payloads through a strict schema, so database/provider or implementation exceptions can become technical or schema-invalid user messages instead of a safe, traceable analytics error. The reported “response nije u očekivanom formatu” path currently gives the operator no reliable correlation ID to support investigation.
+
+### Evidence
+
+- `Api/Endpoints/DailySalesStatsEndpoints.cs:74-104` returns generic problem responses for cancellation/database/unknown exceptions; `:99-103` exposes `ex.Message` and does not resolve/apply a correlation ID.
+- `Api/Dtos/AnalyticsResponseMetaDto.cs:11-16` and `AnalyticsResponseMetaFactory.Error` already define `CorrelationId` and safe error fields used by other analytics endpoints.
+- `Klijent/clientapp/src/services/analyticsHttp.ts:59-80,120-200` parses arbitrary problem details and surfaces them directly; a non-2xx problem shape has no `meta` contract.
+
+Reproduction: force a provider/serialization failure or return a malformed Daily Sales payload. The page shows an implementation/provider detail or generic response-format failure without a stable correlation reference.
+
+### Scope
+
+- Daily Sales endpoint error mapping/logging, correlation/meta response contract, frontend safe-message mapping and nearest endpoint/page tests.
+- Preserve HTTP status semantics, cancellation behavior and existing successful/empty/warning payloads; do not expose secrets or provider internals.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `AnalyticsResponseMetaFactory.cs`, `DataQualityEndpoints.cs`, `analyticsHttp.ts`, `AnalyticsErrorState.tsx` and Daily Sales tests
+
+### Do
+
+1. Resolve a correlation ID at the endpoint boundary and return a safe, stable error contract for database, timeout, cancellation and unexpected failures.
+2. Keep full exception details in logs/handled-error persistence only; never return raw `ex.Message` to the user.
+3. Ensure frontend error parsing preserves safe Serbian fallback text and shows correlation ID when available without treating problem JSON as a successful analytics payload.
+4. Add regression coverage for timeout/provider/unknown errors, malformed success payloads and retry/abort behavior.
+
+### Tests
+
+- endpoint error responses have safe detail, status/code and correlation ID;
+- raw exception/provider/secret text is not returned;
+- frontend renders a controlled error for non-2xx and schema-invalid responses, with no fake KPI zero;
+- focused backend/frontend tests, analytics guardrails/typecheck/build as selected and `git diff --check`.
+
+### Acceptance
+
+- Daily Sales failures are safe for users, diagnosable by support and consistent with the analytics error/meta contract.
+- A backend error or malformed payload cannot appear as a successful empty/zero/healthy screen.
+- Correlation IDs survive endpoint-to-error-state handling when available.
+
+### Dependencies
+
+- Reuse the shared analytics error/meta conventions; do not create a Daily Sales-only error format.
+- `RQ325` owns residual English/technical user-facing copy, including `Daily sales analytics` and `N/A`; this prompt owns failure semantics and traceability.
+
+---
+
+## RQ385 - Align Pre/Post request scope, cache lineage and visible provenance
+
+Status: READY
+Priority: P1
+Type: backend-contract/frontend/cache/tests
+Feature family: pre-post-scope-cache-lineage
+Parallel-safe: no
+Owner: Analytics Reliability / Pre-Post Nivelacija
+Commit suggestion: `fix(analytics): align pre-post scope and cache lineage`
+
+### Problem
+
+The Pre/Post page sends `storeId` and the persisted `dataScope` for both the selected period and the previous comparison period, and renders those values in the trust header and export metadata. The main endpoint does not bind either query parameter, the SQL view has no store/origin scope input, and the cache key omits both values. A request for one store or data origin can therefore receive the global result or a cache entry created for another scope while the UI claims the selected scope was applied. The options endpoint and its cache have the same contract gap.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx:586-609` sends `storeId` and `dataScope` to current and previous requests; `:1050-1100,1320-1327` presents them as active provenance.
+- `Klijent/clientapp/src/services/vendorSalesNivelacijaApi.ts:179-222,240-260` serializes the parameters, but this only proves client forwarding.
+- `Api/Endpoints/AllEndpoints.cs:3152-3205` binds `vendorId`, dates, category, `includeInactive` and `maxRows`, but not `storeId` or `dataScope`; `:3300-3495` applies no origin/store predicate.
+- `Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql:76-84,132-145` aggregates all sales without store or data-origin lineage.
+- `Infrastructure/Services/Caching/IAnalyticsCacheService.cs:315-326` builds the v3 main/options keys without store or scope.
+- `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.spec.tsx:232-269` verifies that React sends the values, but has no backend/cache isolation proof.
+
+Reproduction: select `imported`/`existing` or a specific store, compare the response and cache key with `all`/all stores, and observe that only the label/request changes while the server contract remains global.
+
+### Scope
+
+- Main and options endpoint binding/normalization, SQL/view or fact-query scope predicates, response provenance/meta and cache keys.
+- Current/previous period requests, vendor/category options, trust header, export metadata and focused backend/frontend contract tests.
+- Preserve the existing event-window and recommendation semantics; do not silently fall back to global data when a requested scope cannot be applied.
+
+### Read first
+
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ364` completion note, `vendorSalesNivelacijaApi.ts`, `AllEndpoints.cs`, `014_CreateVendorSalesNivelacijaViews.sql`, `AnalyticsCacheKeys` and the Pre/Post page spec
+
+### Do
+
+1. Define the authoritative store and data-origin scope for the Pre/Post event and sales facts, then bind and normalize it consistently on main/options requests.
+2. Include every effective scope component in cache keys, logs, response metadata and current/previous comparison lineage.
+3. Either make the SQL/fact layer scope-aware or fail closed with explicit unavailable metadata; never return global numbers under a scoped label.
+4. Add cross-scope, cross-store, cache-separation and current/previous-period regression coverage.
+
+### Tests
+
+- endpoint/service tests prove store and data-scope predicates affect both event rows and sales windows;
+- cache-key tests prove scope isolation for main and options responses;
+- frontend tests prove trust/export metadata matches the effective server scope and scoped failure is visible;
+- focused backend/frontend tests, analytics guardrails/build as selected and `git diff --check`.
+
+### Acceptance
+
+- A scoped Pre/Post request cannot reuse or present an unscoped response.
+- Main, previous-period, options, table, chart, detail and export metadata agree on effective store/data scope.
+- If the runtime cannot provide scoped evidence, the page shows a safe degraded/unavailable state rather than a falsely scoped KPI.
+
+### Dependencies
+
+- Independent of Daily Sales `RQ381`-`RQ384`; coordinate with the delivered dataset-projection conventions from `RQ364`.
+- Pre/Post copy findings remain owned by `RQ306`/`RQ325`.
+
+---
+
+## RQ386 - Reconcile Pre/Post event cohort, cap and denominator semantics
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/frontend/trust/tests
+Feature family: pre-post-cohort-denominators
+Parallel-safe: no
+Owner: Analytics Reliability / Pre-Post Nivelacija
+Commit suggestion: `fix(analytics): reconcile pre-post cohorts and denominators`
+
+### Problem
+
+The endpoint counts all matching view rows as `rawRows`, then applies `LIMIT maxRows` before building `dedupRows`, totals, vendor/category/price-direction aggregates and recommendations. `DuplicateRowsRemoved` is calculated as `rawRows - deduplicatedRows`, so a row cap is presented as duplicate removal; the resulting KPIs are page-capped while the UI presents them as period totals. Separately, the SQL view gives every nivelacija event its own 30-day pre/post window, so overlapping events for the same article can count the same sale multiple times. Finally, `HasComparableSalesWindow` is derived with `All(...)`, making one non-comparable row suppress otherwise valid comparable evidence for a vendor or the whole total without exposing the cohort denominator.
+
+### Evidence
+
+- `Api/Endpoints/AllEndpoints.cs:3258-3304` counts `rawRows`, while `:3348-3495` applies `LIMIT @maxRows`; `:3633-3755` derives data-quality counts, totals, averages and `HasComparableSalesWindow` from the capped/analyzed list.
+- `Api/Endpoints/AllEndpoints.cs:3789-3929` groups capped rows into vendor recommendations and uses `g.All(x => x.HasComparableSalesWindow)`; `:3933-3986` does the same for category and price-direction aggregates.
+- `Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql:39-64,76-120,132-176,207-262` creates per-event windows and joins article-level daily sales separately for each event; deduplication is only by event/article/price identity.
+- `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx:760-930,981-1000,1550-1608` treats response totals, concentration and trust percentages as authoritative while only exposing a generic cap warning.
+- `Api.Tests/SupplierDecisionSchemaSqlTests.cs:102-116` locks the current all-row comparable semantics but has no counterexample for a partially comparable/capped cohort.
+
+Reproduction: request more matching events than `maxRows`, or include one new/no-baseline article beside valid comparable articles; inspect duplicate-removal quality, total KPIs, recommendation availability and concentration denominator.
+
+### Scope
+
+- Backend event/cohort definition, uncapped canonical aggregates versus capped detail rows, comparable-row counts and data-quality metadata.
+- Vendor/category/price-direction totals, recommendation gating, frontend KPI/chart/table/detail/export projections and focused counterexample tests.
+- Preserve true zero versus unavailable evidence and make any intentional event-overlap policy explicit.
+
+### Read first
+
+- `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ140` partial comparability evidence, `RQ314`, `RQ333`, `RQ347`, `RQ364`, `014_CreateVendorSalesNivelacijaViews.sql` and `SupplierDecisionSchemaSqlTests.cs`
+
+### Do
+
+1. Separate raw, deduplicated, retrieved/capped and analyzed denominators; never report truncation as duplicate removal.
+2. Define whether the product measures event-level windows or one article-level nivelacija cohort, then prevent unintended overlapping-sale double counting and expose the effective event/cohort basis.
+3. Calculate totals and recommendation evidence from an explicit comparable cohort, while preserving row-level unavailable states for non-comparable articles.
+4. Keep canonical aggregate totals independent of detail pagination/caps, or visibly mark every capped metric as partial and exclude it from actionability.
+5. Add tests for cap boundaries, partial comparability, overlapping events, negative/zero revenue and all-rows versus visible-row reconciliation.
+
+### Tests
+
+- SQL/backend regression tests for event deduplication, overlap policy, denominator fields and aggregate/detail reconciliation;
+- frontend tests for partial/capped/insufficient trust states and KPI/chart/table/detail/export parity;
+- focused backend/frontend tests, analytics guardrails/build as selected and `git diff --check`.
+
+### Acceptance
+
+- A row cap cannot masquerade as duplicates removed or as a complete period KPI.
+- Valid comparable rows remain visible and actionable when unrelated rows are unavailable, with the cohort basis shown.
+- Pre/post totals, vendor concentration, recommendation gating, detail and export use the same declared event/cohort denominator.
+
+### Dependencies
+
+- Depends on the scope/provenance decisions in `RQ385` when store/data origin changes the cohort.
+- Coordinate with the broader partial `RQ140` causal-comparability evidence; do not silently broaden this into the Supplier Sales `RQ380` owner.
+
+---
+
+## RQ387 - Add Pre/Post runtime payload validation and safe traceable errors
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/frontend-validation/tests
+Feature family: pre-post-runtime-safe-contract
+Parallel-safe: no
+Owner: Analytics Reliability / Pre-Post Nivelacija
+Commit suggestion: `fix(analytics): validate pre-post payloads safely`
+
+### Problem
+
+`vendorSalesNivelacijaApi.ts` performs a direct `fetchWithTimeout`, casts JSON to a TypeScript interface and only checks the optional meta success flag. It does not use the shared `fetchAnalyticsJson` runtime schema path, and no Pre/Post Zod response schema exists. A malformed, missing or non-finite field can therefore reach sorting, derived summaries or export/detail snapshots without a runtime contract. On the backend, the generic fallback stores `ex.Message`/SQL details in `Insights.Details`, options failures return raw response text, and reversed dates/missing connection errors use English/raw `Problem` details without a consistent correlation/meta contract.
+
+### Evidence
+
+- `Klijent/clientapp/src/services/vendorSalesNivelacijaApi.ts:1-260` uses direct fetch, `as VendorSalesNivelacijaResponse`, and raw `response.text()` error construction.
+- `Klijent/clientapp/src/services/analyticsHttp.ts:35-55,120-205` is the shared runtime validation/error path, but the Pre/Post service bypasses it; `Klijent/clientapp/src/validation/analyticsResponseSchemas.ts` has no Vendor Sales Nivelacija schema.
+- `Api/Endpoints/AllEndpoints.cs:3170-3190` returns English/raw invalid-range and missing-connection details; `:4103-4148` puts provider/schema exception text into the fallback response; `:6756-6790` serializes that reason in a user-visible insight.
+- `Api/Endpoints/AllEndpoints.cs:994-1009` returns raw options exception detail; `Api/Models/VendorSalesNivelacijaModels.cs:10-190` uses user-facing English defaults such as `N/A`, `Insufficient data` and `Fallback mode`.
+- Current coverage is primarily source/DTO/meta static assertions in `Api.Tests/SupplierDecisionSchemaSqlTests.cs:38-166` and `Api.Tests/AnalyticsResponseMetaContractTests.cs:358-475`; there is no equivalent malformed-payload/API-service regression for this direct client path.
+
+Reproduction: return malformed JSON, non-finite numeric values, a non-2xx provider body or a database exception; verify that the page cannot show technical text, fake healthy/empty state or an unhandled render/sort failure.
+
+### Scope
+
+- Pre/Post response Zod/runtime validation, finite/null/date/array semantics, direct service error mapping and `meta`/correlation handling.
+- Main/options endpoint safe problem responses, fallback logging versus user payload, DTO defaults and nearest page/detail/export consumers.
+- Preserve HTTP status/cancellation semantics and the shared analytics error/empty/warning distinction.
+
+### Read first
+
+- `RQ363` completion note, `RQ368`, `RQ384`, `analyticsHttp.ts`, `analyticsResponseSchemas.ts`, `AnalyticsResponseMetaFactory`, `AllEndpoints.cs` and the Pre/Post page/service tests
+
+### Do
+
+1. Add a schema/adapter at the API boundary or route the service through the shared validated fetch helper; reject malformed/non-finite payloads before page derivation.
+2. Return safe Serbian user messages plus correlation IDs in error/meta responses; keep exception details only in logs/diagnostics.
+3. Make fallback, empty, warning and successful states distinct for both main and options calls, without converting missing metrics to zero or healthy `N/A`.
+4. Replace residual user-facing English defaults with canonical localized labels, coordinating copy-only changes through `RQ306`/`RQ325`.
+5. Add malformed success, non-2xx, timeout, provider exception, reversed-period and retry/abort regressions.
+
+### Tests
+
+- Pre/Post API service/schema tests for malformed, non-finite, empty, warning and error payloads;
+- endpoint tests prove safe detail, status/meta, correlation and no raw exception leakage;
+- page tests prove controlled error/empty/degraded rendering and no fake KPI zero;
+- focused backend/frontend tests, analytics guardrails/build as selected and `git diff --check`.
+
+### Acceptance
+
+- Invalid Pre/Post payloads fail closed before sorting, charts, detail or export.
+- Users see safe localized guidance; support can trace failures by correlation ID without provider/SQL details in the response.
+- Error, empty, warning and unavailable metric states remain distinct and consistent across main/options/page/detail/export.
+
+### Dependencies
+
+- Reuse the shared runtime validation and safe-error conventions from `RQ363`/`RQ368`; do not create a Pre/Post-only contract.
+- `Q83` owns the live SQL/view revenue-baseline contract; this prompt must preserve a safe correlated error when that prerequisite is absent rather than treating quantity change as revenue change.
+- `RQ306`/`RQ325` own the broader Operacije diacritics and residual-English pass; this prompt owns the contract paths that currently make those labels user-visible.
+
+---
+
+## RQ388 - Align Pre-Nivelacija global KPIs with the full candidate population
+
+Status: READY
+Priority: P1
+Type: backend-contract/frontend/dataset-projection/tests
+Feature family: pre-nivelacija-population-parity
+Parallel-safe: no
+Owner: Analytics Reliability / Pre-Nivelacija
+Commit suggestion: `fix(analytics): align pre-nivelacija global kpis`
+
+### Problem
+
+The Pre-Nivelacija endpoint computes `summary` and `supplierLeaderboard` from the complete filtered candidate universe, but the page derives its status/high-priority counts from the current `data.candidates` page slice. The “Visok prioritet” KPI and attention notices therefore change when the user turns the page, while “Kandidati”, stock-at-risk and supplier concentration describe all candidates. The frontend also excludes `insufficient_data` rows from its high-priority count, while the backend summary counts every `PriorityBand == "high"` row.
+
+### Evidence
+
+- `Api/Endpoints/PreNivelacijaPriorityEndpoints.cs:380-438` sorts all candidates, builds the supplier leaderboard and summary, including `HighPriorityCount`, before returning the paged `Candidates`.
+- `PreNivelacijaPriorityPage.tsx:550-590,624-633` builds `candidateCounts` only from `data.candidates`, and `:1084-1091` renders the page-local `highPriority` count beside global summary values.
+- `PreNivelacijaPriorityPage.tsx:669-687,1128-1150` mixes all-candidate supplier concentration/focus context with current-page status counts.
+- `isHighPriorityCandidate` at `PreNivelacijaPriorityPage.tsx:309-311` excludes `insufficient_data`, whereas the backend summary at `PreNivelacijaPriorityEndpoints.cs:423-438` counts the high priority band without that status gate.
+- Existing `RQ364` introduced typed dataset projections but does not prove this page’s KPI/count population parity; current Pre-Nivelacija tests do not paginate a fixture and compare global summary counts with page/UI counts.
+
+Reproduction: return more than one page of candidates with high-priority rows on page 2, open page 1 and page 2, and compare the “Visok prioritet” KPI, notices, tabs and supplier chart. The KPI is not stable and can disagree with the response summary.
+
+### Scope
+
+- Pre-Nivelacija summary/KPI/status-count population, supplier concentration labels, page/global projections and focused backend/frontend tests.
+- Preserve backend-owned scoring, recommendation status and pagination; do not recompute business scores in the frontend.
+
+### Read first
+
+- `RQ364`, `RQ297`, `RQ300`, `RQ344`
+- `PreNivelacijaPriorityEndpoints.cs`, `PreNivelacijaPriorityPage.tsx`, `analyticsDatasetProjections.ts`, `preNivelacijaDecision.ts` and focused page/API tests
+
+### Do
+
+1. Declare which fields are global filtered-universe totals and which are visible-page/focus counts.
+2. Render global KPI and trust counts from authoritative summary/recommendation metadata, or add explicit backend facet/count fields; never infer global counts from the page slice.
+3. Make the high-priority definition identical between backend and frontend, including insufficient-data/actionability treatment.
+4. Label page-local counts as visible rows where they are intentionally page-local, and keep table, chart, KPI, focus tabs, export and detail metadata consistent.
+
+### Tests
+
+- high-priority rows split across pages;
+- high-priority plus insufficient-data rows proving status/band semantics;
+- page navigation, focus filtering, empty page and export/detail projections;
+- focused backend/frontend tests, analytics guardrails/typecheck/build as selected and `git diff --check`.
+
+### Acceptance
+
+- Global Pre-Nivelacija KPIs and recommendation counts do not change merely because pagination changes.
+- Backend and frontend use one documented high-priority population and do not silently mix page, filtered and global denominators.
+- Focus/table/chart/export/detail surfaces declare their population and preserve valid zero versus unavailable evidence.
+
+### Dependencies
+
+- `RQ364` owns the shared dataset-projection conventions; this prompt owns the Pre-Nivelacija population mapping.
+- `RQ297` owns recommendation/actionability gating; do not weaken blocked-row semantics while correcting counts.
+
+---
+
+## RQ389 - Align Color store/data-origin scope with nivelacija event lineage
+
+Status: READY
+Priority: P1
+Type: backend-contract/cache/frontend-provenance/tests
+Feature family: color-scope-event-lineage
+Parallel-safe: no
+Owner: Analytics Reliability / Color Sales
+Commit suggestion: `fix(analytics): align color nivelacija scope lineage`
+
+### Problem
+
+Color sales rows and previous-period metrics apply store and article data-origin filters, but the `DnevnikPromena` query that supplies the first nivelacija date does not apply the selected data-origin scope and treats a nivelacija with no store as valid for every selected store. The shared split policy then classifies store/scope-filtered sales using an event from a different population. The cache key includes the requested scope, so it can preserve a consistently wrong scoped result rather than correcting the lineage. The response/page consequently present scoped pre/post impact without proving that the event and sales populations match.
+
+### Evidence
+
+- `Api/Endpoints/AllEndpoints.cs:2710-2722` builds `prvaNivelacijaPoArtiklu` with only event type, article and `Datum <= toUtc`; it has no `importedOnly`/`existingOnly` predicate and uses `!d.IDObjekat.HasValue || d.IDObjekat == storeId`.
+- `Api/Endpoints/AllEndpoints.cs:2689-2700,2733-2759,2760-2771` applies store/data-origin scope to sales and previous-period rows, creating a different population from the event map.
+- `Api/Endpoints/AllEndpoints.cs:2825-2888` feeds that event map into `AnalyticsNivelacijaSplitPolicy` and exposes the resulting split/coverage as Color row evidence.
+- `ColorSalesStatsPage.tsx:640-660,810-829` carries store/data scope into the detail URL and trust header, so the mismatch is user-visible provenance, not only an internal query detail.
+- `Api.Tests` has no Color endpoint regression proving that an event from another store/origin cannot change the selected Color pre/post split.
+
+Reproduction: use the same article in two stores or origins, give it different nivelacija events, select one store/scope and compare the pre/post split against the globally scoped result. The selected request can use an event outside the selected sales population.
+
+### Scope
+
+- Color event/sales scope contract, first-nivelacija selection, cache/response provenance and focused backend/frontend tests.
+- Preserve the shared split policy and current all/existing/imported vocabulary; do not silently fall back to global event evidence.
+
+### Read first
+
+- `RQ278`, `RQ286`, `RQ288`, `RQ333`, `RQ364`
+- `AllEndpoints.cs`, `AnalyticsNivelacijaSplitPolicy.cs`, Color API/page, cache key code and nearest analytics tests
+
+### Do
+
+1. Define whether nivelacija events inherit article origin and store scope, and define the explicit policy for events with unknown store/origin.
+2. Apply the same effective population to event selection, current/previous sales, split coverage, recommendation gating, `dataWindow` and response metadata.
+3. Keep cache keys, generated metadata, trust header, detail URL/snapshot and export metadata aligned with the effective scope.
+4. Fail closed or expose an explicit degraded/unavailable state when the requested scope cannot prove a matching event cohort.
+
+### Tests
+
+- all/existing/imported scope with event-origin counterexamples;
+- selected store, unknown-store event and cross-store event fixtures;
+- current/previous period, cache repeat/isolation and detail/export provenance;
+- focused backend/frontend tests, analytics guardrails/typecheck/build as selected and `git diff --check`.
+
+### Acceptance
+
+- A scoped Color response cannot use an unscoped or cross-store nivelacija event while presenting scoped pre/post evidence.
+- Row, totals, trust header, detail, chart and export state the same effective store/data-origin basis.
+- Unknown event scope remains visibly unknown/degraded, never a silently valid pre/post zero or impact.
+
+### Dependencies
+
+- `RQ278` owns the shared data-scope vocabulary; `RQ364` owns dataset projection conventions.
+- `RQ286` owns Color raw pre/post field-level display parity; this prompt owns the backend event cohort.
+
+---
+
+## RQ390 - Bound Pre-Nivelacija scoring history and signed-sales denominator semantics
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/scoring/tests
+Feature family: pre-nivelacija-scoring-window
+Parallel-safe: no
+Owner: Analytics Reliability / Pre-Nivelacija
+Commit suggestion: `fix(analytics): bound pre-nivelacija scoring evidence`
+
+### Problem
+
+Pre-Nivelacija defines a 180-day sales window but only applies the lower bound. Future-dated sales can enter velocity/last-sale calculations, while all historical and future `DnevnikPromena` rows can affect markdown event count and average markdown percentage. Negative return/correction quantities are retained in `Units180` but are converted to zero velocity, and supplier week-over-week risk collapses every non-positive previous window to zero. The score and action ranking therefore mix unbounded event history with an implicit unsigned denominator policy.
+
+### Evidence
+
+- `PreNivelacijaPriorityEndpoints.cs:86-90,170-200` bounds sales only with `DatumProdaje >= from180Utc`; there is no upper `todayUtc` bound before `Units180`, `LastSale` and weekly sums are calculated.
+- `PreNivelacijaPriorityEndpoints.cs:210-239` queries `DnevnikPromena` without a 180-day or current-date bound, so old/future nivelacija events alter `MarkdownEvents` and `AvgMarkdownPct`.
+- `PreNivelacijaPriorityEndpoints.cs:264-267` converts `units180 <= 0` to zero velocity, while `:397-407` converts `prev7 <= 0` to a zero week-over-week risk delta.
+- `PreNivelacijaScoringService.cs:118-139,220-236` models scenario demand from the resulting values without exposing whether the input is signed returns, zero evidence or unavailable evidence.
+- Existing scoring tests cover determinism and missing cost, but no test covers future events, stale markdown history, negative returns or zero/negative comparison denominators.
+
+### Scope
+
+- Pre-Nivelacija sales/event windows, signed quantity and week-over-week denominator semantics, score evidence metadata and focused backend tests.
+- Preserve the existing formula ownership; do not invent a second return-accounting model.
+
+### Do
+
+1. Bound sales and markdown evidence to the declared window and current effective date, with an explicit timezone rule.
+2. Define how returns/corrections affect velocity, recency, scenario demand and supplier risk; preserve measured signed evidence or mark the affected score unavailable/degraded.
+3. Keep zero, negative, missing and non-positive denominators distinct and visible in recommendation reason codes.
+4. Include effective window/provenance in cache/meta so a cached score is not mistaken for a timeless fact.
+
+### Tests
+
+- future-dated sale/event excluded;
+- event older than 180 days excluded;
+- positive, zero, negative and missing previous-week denominators;
+- return-heavy article and mixed sale/return fixtures;
+- cache repeat determinism and focused backend scoring tests.
+
+### Acceptance
+
+- Pre-Nivelacija scores use only the declared effective evidence window.
+- Returns/corrections cannot become a healthy zero or silently disappear from velocity/risk ranking.
+- Supplier risk, item score, recommendation reason and cache/meta expose one consistent denominator and period.
+
+### Dependencies
+
+- `RQ388` owns page/global population parity; this prompt owns score-input evidence.
+- `RQ381` owns the Daily Sales signed contract pattern; reuse its distinction between signed aggregates and non-negative counters.
+
+---
+
+## RQ391 - Validate the complete Pre-Nivelacija decision payload at runtime
+
+Status: WAITING
+Priority: P1
+Type: frontend-runtime-validation/tests
+Feature family: pre-nivelacija-runtime-schema
+Parallel-safe: yes
+Owner: Analytics Reliability / Pre-Nivelacija
+Commit suggestion: `fix(analytics): validate pre-nivelacija decision payload`
+
+### Problem
+
+The Pre-Nivelacija Zod boundary validates only a subset of the decision payload. `recommendation.status`, label, summary and `recommendationAllowed` are not required, while queues and alerts are `z.unknown()` arrays. The page immediately uses those fields for status priority, actionability, tooltips, notices, detail and exports. A malformed successful response can therefore pass runtime validation and still render an unknown status or incomplete action contract.
+
+### Evidence
+
+- `analyticsResponseSchemas.ts:217-255` validates candidate numerics but does not require the recommendation status/summary/label/actionability fields consumed by `PreNivelacijaPriorityPage.tsx`.
+- `analyticsResponseSchemas.ts:280-288` accepts queue items and alerts as unknown objects; `PreNivelacijaPriorityPage.tsx:1424-1480` renders their identifiers, bands and dates as if typed.
+- `PreNivelacijaPriorityPage.tsx:550-590,624-650,1248-1389` consumes status, reason, recommendation gating and nested evidence after only the incomplete schema check.
+- `PreNivelacijaPriorityPage.spec.tsx` uses well-formed fixtures but has no malformed recommendation/queue/alert counterexample.
+
+### Scope
+
+- Pre-Nivelacija response schema/adapter, finite/range/nullability/status semantics and nearest API/page/export tests.
+- Preserve valid zero and blocked/insufficient states; do not turn validation failure into an empty successful list.
+
+### Do
+
+1. Require every decision-critical field consumed by the page and validate canonical statuses, reason codes, actionability and nested numeric/date units.
+2. Type queues/alerts explicitly and reject malformed/non-finite values before sorting, charts, detail or export.
+3. Route failures through the shared safe analytics error path with issue-path context, while keeping raw backend codes out of user copy.
+
+### Tests
+
+- missing/unknown status, missing actionability, malformed reason codes;
+- malformed queue/alert item, invalid date, non-finite/out-of-range score and valid zero/null fixtures;
+- page shows controlled error and no fake empty/zero recommendation state.
+
+### Acceptance
+
+- A payload that passes the Pre-Nivelacija runtime boundary is complete enough for every page projection.
+- Invalid decision data cannot render as a normal status, queue item, KPI, detail or export row.
+
+### Dependencies
+
+- Reuse `RQ363` shared runtime-validation conventions and `RQ300` numeric presentation behavior.
+- `RQ325` owns the copy-only localization of remaining raw English fields.
+
+---
+
+## RQ392 - Preserve signed Color sales and cost-quality evidence
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/frontend-runtime-validation/tests
+Feature family: color-signed-numeric-contract
+Parallel-safe: no
+Owner: Analytics Reliability / Color Sales
+Commit suggestion: `fix(analytics): preserve color signed sales evidence`
+
+### Problem
+
+Color sales and quantity are summed directly from signed sale lines, so returns/storno/corrections can produce negative row or total values. The frontend schema currently requires Color revenues, quantities, cost-quality amounts and split amounts to be non-negative. The backend also converts non-positive total-revenue denominators to numeric zero in cost-quality and pre/post totals. A valid signed payload can therefore be rejected or represented as a healthy zero instead of measured signed/unavailable evidence.
+
+### Evidence
+
+- `AllEndpoints.cs:2780-2888` sums signed `Kolicina` and `Kolicina * Cena` into Color row revenue, quantity, pre/post and cost fields.
+- `AllEndpoints.cs:2900-2927,3020-3070` uses `totalRevenue > 0`/`sumPreRevenue > 0` guards and emits `0d` for unavailable percentage coverage/impact paths.
+- `analyticsResponseSchemas.ts:54-106` uses `nonNegativeNumber` for Color row revenue/quantity, cost-quality amounts, totals and data-quality amounts.
+- `ColorSalesStatsPage.tsx:370-430,900-1140` sorts/renders these fields as trusted evidence without a signed-contract regression.
+- Existing Color specs use positive-only fixtures and do not prove returns, net-zero evidence, negative margin contribution or negative/unknown coverage behavior.
+
+### Scope
+
+- Color DTO/endpoint aggregation, Zod schema, page numeric/quality projections and nearest backend/frontend tests.
+- Preserve true zero, signed measured values, unavailable denominators and empty response as distinct states; do not clamp returns away.
+
+### Do
+
+1. Classify signed revenue/quantity/cost aggregates separately from non-negative counts and percentages.
+2. Replace non-positive-denominator zero fallbacks with nullable/degraded metadata where evidence is not measurable.
+3. Keep row, totals, data-quality, recommendation and export units/denominators consistent.
+
+### Tests
+
+- negative return/storno row and totals;
+- mixed positive/negative colors, net zero, negative margin contribution and null denominator;
+- schema accepts valid signed aggregates but rejects negative counters/invalid percentages;
+- no fake zero/green/actionable result for missing or non-finite evidence.
+
+### Acceptance
+
+- Valid signed Color sales are not rejected as malformed.
+- Returns, corrections and unavailable denominators remain visible as measured/degraded evidence, never as fake zero or healthy quality.
+
+### Dependencies
+
+- `RQ381` is the signed Daily Sales reference; this prompt owns the Color contract.
+- `RQ288` owns Color percentage/count fallback behavior; preserve its valid-zero distinction.
+
+---
+
+## RQ393 - Align Color recommendation margin baseline with weighted cost evidence
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/frontend/tests
+Feature family: color-margin-quality-contract
+Parallel-safe: no
+Owner: Analytics Reliability / Color Sales
+Commit suggestion: `fix(analytics): align color margin decision baseline`
+
+### Problem
+
+The Color endpoint computes `averageMarginPct` as a simple mean of row margin percentages and passes that value as the recommendation engine’s aggregate margin baseline. A low-revenue color therefore has the same influence as the dominant color. The endpoint already has aggregate margin contribution and cost-covered revenue, but does not expose or use a weighted benchmark for this decision path. It also defaults a missing unknown-color share to zero before recommendation evaluation.
+
+### Evidence
+
+- `AllEndpoints.cs:2925-2938` builds `knownColorMarginValues.Average()` and converts missing `unknownColorRevenueSharePct` to `0d`.
+- `AllEndpoints.cs:2944-2965` passes the simple average and fallback unknown share into `AnalyticsDecisionRecommendationEngine.Evaluate`.
+- `AllEndpoints.cs:3038-3060` exposes aggregate contribution/cost coverage, but no authoritative weighted Color margin baseline.
+- `AnalyticsMarginPolicy` already distinguishes covered revenue, fallback cost and no-cost evidence; Color tests do not prove unequal-covered-revenue weighted versus simple-mean behavior.
+
+### Scope
+
+- Color recommendation baseline, aggregate margin/cost-source provenance, frontend trust/toolbar/detail labels if the benchmark is exposed, and focused tests.
+- No new recommendation algorithm; use the existing margin policy and engine.
+
+### Do
+
+1. Define the aggregate baseline as covered-revenue-weighted margin contribution, or return it unavailable when its denominator is not measurable.
+2. Use the same backend-owned baseline for recommendation evaluation and any displayed aggregate.
+3. Keep unknown-color share null when its denominator is unknown; do not convert missing evidence to zero.
+4. Separate historical, fallback and truly unavailable cost coverage in labels and metadata.
+
+### Tests
+
+- dominant low-margin color plus tiny high-margin color;
+- historical/fallback/no-cost cost-source partitions;
+- null/zero/negative contribution and unknown-color denominator;
+- recommendation baseline equals displayed/reference cohort and remains blocked when unavailable.
+
+### Acceptance
+
+- Color recommendations cannot be driven by an unweighted row average or a fake unknown-share zero.
+- Aggregate margin, cost quality, recommendation gate and export metadata use one declared population and denominator.
+
+### Dependencies
+
+- Coordinate with `RQ375`/`RQ378` weighted margin patterns without creating a second shared owner.
+- `RQ288` owns Color percentage/count presentation; this prompt owns backend economic baseline semantics.
+
+---
+
+## RQ394 - Align Color pre/post totals with the comparable evidence cohort
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/frontend/tests
+Feature family: color-prepost-aggregate-parity
+Parallel-safe: no
+Owner: Analytics Reliability / Color Sales
+Commit suggestion: `fix(analytics): align color prepost aggregate cohort`
+
+### Problem
+
+Color row recommendation actionability requires both revenue and quantity pre/post signals from the comparable article cohort, but Color totals calculate impact from all rows’ broad pre/post sums. One-sided articles can therefore change the total impact while row recommendations correctly remain blocked. The page presents the total/row metrics together without exposing the aggregate comparable article count and denominator.
+
+### Evidence
+
+- `AllEndpoints.cs:2825-2888` builds broad and comparable split fields per Color row, including `ComparableRevenueWithSplit`, coverage and comparable article count.
+- `AllEndpoints.cs:2894-2900,3050-3070` computes total pre/post impact from `colors.Sum(r => preNivelacije...)`, not from comparable fields.
+- `AllEndpoints.cs:2960-2968` gates row recommendations on comparable revenue and quantity impacts.
+- `ColorSalesStatsPage.tsx:950-1000,1070-1135` presents row impact/coverage and totals/KPIs without declaring one shared aggregate cohort.
+- No Color backend test proves total impact parity with mixed comparable and one-sided articles.
+
+### Scope
+
+- Color aggregate pre/post totals, comparable cohort metadata, recommendation gating and frontend KPI/detail/export presentation.
+- Reuse `AnalyticsNivelacijaSplitPolicy`; do not duplicate formulas in the frontend.
+
+### Do
+
+1. Compute total impact/units from the same comparable cohort as row actionability, or expose broad observational totals under an explicitly different label.
+2. Carry comparable article count, pre/post quantities/revenue and coverage through totals/meta/export where consumed.
+3. Keep missing baseline, valid zero, partial coverage and negative/positive change distinct.
+
+### Tests
+
+- all-comparable, pre-only, post-only and mixed fixtures;
+- zero/negative/positive changes, low coverage and no comparable article;
+- row-versus-total impact, recommendation gate and table/detail/export parity.
+
+### Acceptance
+
+- One-sided Color activity cannot create a normal-looking actionable total impact.
+- Total, row, detail, trust and export surfaces use the same declared cohort, period and denominator.
+
+### Dependencies
+
+- `RQ389` establishes event/scope lineage; `RQ286` owns raw Color detail field-level availability.
+- Reuse the shared comparability policy from `RQ140`/`RQ182`.
+
+---
+
+## RQ395 - Harden Color runtime validation and safe traceable endpoint errors
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/frontend-runtime-validation/tests
+Feature family: color-runtime-safe-errors
+Parallel-safe: yes
+Owner: Analytics Reliability / Color Sales
+Commit suggestion: `fix(analytics): harden color runtime error contract`
+
+### Problem
+
+Color uses the shared runtime schema path, but the schema leaves decision-critical row/totals fields optional through `.passthrough()` and does not require the recommendation contract consumed by the page. The endpoint catch path returns raw `ex.Message` and no stable correlation/meta contract. A malformed or failed response can therefore become either a generic format failure without issue-path context or a technical/provider detail shown to the operator.
+
+### Evidence
+
+- `colorSalesStatsApi.ts:160-164` passes `colorSalesStatsResponseSchema`, but `analyticsResponseSchemas.ts:54-139` validates only a shallow subset and makes `recommendation` optional while allowing decision fields through `.passthrough()`.
+- `ColorSalesStatsPage.tsx:370-430,950-1140` consumes recommendation status, actionability, reliability, margin, pre/post, totals and data-quality fields after that incomplete boundary.
+- `AllEndpoints.cs:3132-3148` logs the exception but returns `detail: ex.Message` with a generic 500 response and no resolved correlation ID.
+- `ColorSalesStatsPage.tsx:864-899` distinguishes blocking/stale/empty UI states, but no focused test proves provider/serialization failures cannot leak raw text or become normal empty data.
+
+### Scope
+
+- Complete Color response schema/adapter, endpoint error mapping/correlation, safe Serbian error projection and nearest API/page tests.
+- Preserve HTTP/cancellation semantics and shared success/empty/warning/error distinctions.
+
+### Do
+
+1. Require and range-check every decision-critical field actually consumed by Color, including recommendation status/reason/actionability and nested cost/pre/post metadata.
+2. Return safe localized error detail plus correlation ID; keep provider/SQL exception text in logs only.
+3. Surface schema issue paths through the existing analytics error state without substituting empty rows or zero KPIs.
+4. Keep copy-only residual English routed through `RQ306`/`RQ325`.
+
+### Tests
+
+- missing/wrong/non-finite/out-of-range row, totals, quality and recommendation fields;
+- malformed JSON, non-2xx, timeout/provider exception, correlation ID and retry/refetch;
+- assert raw exception/HTML/technical codes are absent from visible copy and empty/error/stale states remain distinct.
+
+### Acceptance
+
+- Every normal Color response satisfies the decision contract before sorting, recommendation display, detail or export.
+- Color failures are safe for users and traceable for support without raw exception leakage or fake successful zero/empty state.
+
+### Dependencies
+
+- Reuse `RQ363`/`RQ368` shared validation and safe-error conventions.
+- `RQ325` remains the owner of residual Color/Pre-Nivelacija English copy; this prompt owns only the contract paths that make failures visible.
+
+---
+
+## RQ396 - Align Color cache invalidation and freshness metadata
+
+Status: WAITING
+Priority: P1
+Type: backend/cache/refresh-contract/tests
+Feature family: color-cache-freshness-lineage
+Parallel-safe: no
+Owner: Analytics Reliability / Color Sales
+Commit suggestion: `fix(analytics): align color cache freshness`
+
+### Problem
+
+Color Sales uses a raw `IMemoryCache` key with a five-minute TTL instead of the shared analytics cache policy. Imports clear registered analytics families, but Color is not registered in that family list, so post-import Color data can remain stale without a stale/degraded metadata signal. The response also uses generated time while leaving `LastRefreshAtUtc` unset, so the trust header cannot distinguish cache age from source freshness.
+
+### Evidence
+
+- `Api/Endpoints/AllEndpoints.cs:2682,3129` uses a raw cache key and `TimeSpan.FromMinutes(5)`.
+- `Infrastructure/Services/Caching/AnalyticsCachePolicy.cs:11-26` does not register Color as a core family, while `AccessImportService.cs:2503,3654` clears only registered families.
+- `AllEndpoints.cs:6671-6733` builds Color trust metadata without `LastRefreshAtUtc` or cache/source freshness lineage.
+- `ColorSalesStatsPage.tsx:600-610,810-829` projects freshness and source from metadata, so missing invalidation is visible as apparently current analytics.
+
+### Scope
+
+- Color cache key/policy, import invalidation, generated/refresh metadata, stale warning and focused cache/endpoint/page tests.
+
+### Do
+
+1. Move Color into the canonical analytics cache policy or document an equivalent invalidation owner.
+2. Invalidate Color data after relevant imports/refreshes, including scope/store variants.
+3. Return source freshness, cache generation and stale/degraded state distinctly; never label cache generation as source refresh.
+
+### Tests
+
+- cache separation by period/store/season/scope;
+- import invalidation removes Color entries;
+- stale/fresh metadata and page trust-header behavior;
+- focused backend/frontend tests and `git diff --check`.
+
+### Acceptance
+
+- Imported changes cannot leave Color Sales silently stale.
+- Trust metadata distinguishes generated, cached and last successful source refresh times.
+
+### Dependencies
+
+- Reuse `RQ187`, `RQ205`, `RQ266` and shared cache policy conventions.
+- Coordinate with `RQ389` so cache lineage includes the effective event/sales scope.
+
+---
+
+## RQ397 - Align Color generic detail with row trust and provenance
+
+Status: WAITING
+Priority: P1
+Type: backend/frontend/detail-contract/tests
+Feature family: color-detail-trust-projection
+Parallel-safe: no
+Owner: Analytics Reliability / Color Sales
+Commit suggestion: `fix(analytics): align color detail trust projection`
+
+### Problem
+
+Color row snapshots contain recommendation status, score, confidence/reliability, pre/post comparability, PoP context and scope metadata, but “Otvori puni detalj” relies on an independent generic detail aggregation. That projection omits the row recommendation/trust contract and comparison fields, so the full detail can contradict or weaken the originating decision artifact and depends on a session snapshot for context.
+
+### Evidence
+
+- `ColorSalesStatsPage.tsx:640-665` saves a snapshot with decision columns and scope metadata, then navigates to the generic detail route.
+- `AnalyticsDetailReadService.cs:180-190,550-580` independently aggregates Color detail and omits recommendation status/reason, confidence, reliability, actionability and PoP/pre-post comparison context.
+- `RQ286` covers raw Color pre/post field-level availability only; it does not make generic detail authoritative.
+- No focused test compares Color row, inline detail, generic detail and export trust/provenance fields.
+
+### Scope
+
+- Color detail route/snapshot identity, `AnalyticsDetailReadService` projection, generic detail consumer as required and focused tests.
+- Preserve period, store, season, data scope, freshness, cost source, pre/post cohort and recommendation semantics.
+
+### Do
+
+1. Choose one authoritative detail source or explicitly mark the snapshot as read-only/non-shareable.
+2. Preserve backend recommendation status, reason codes, confidence/reliability, actionability and data-quality state.
+3. Carry requested/effective period, scope, source/cache freshness and comparable cohort metadata.
+4. Keep row, inline detail, generic detail, snapshot and export null/zero/degraded semantics aligned.
+
+### Tests
+
+- known color, unknown color, duplicate/case variants and missing identity;
+- row versus inline/generic detail/snapshot/export parity;
+- direct deep link, fresh session, stale/cache, empty and error states.
+
+### Acceptance
+
+- Full Color detail cannot present a different recommendation or trust basis from the clicked row.
+- Shared/deep-linked details preserve identity, period, scope and evidence limitations.
+
+### Dependencies
+
+- Depends on `RQ389`, `RQ392`-`RQ395` for scope, numeric, recommendation and error contracts.
+- `RQ286` remains the raw pre/post display owner.
+
+---
+
+## RQ398 - Canonicalize Color identity and collision-safe detail keys
+
+Status: WAITING
+Priority: P2
+Type: backend/frontend/identity/tests
+Feature family: color-identity-canonicalization
+Parallel-safe: no
+Owner: Analytics Reliability / Color Sales
+Commit suggestion: `fix(analytics): canonicalize color identity`
+
+### Problem
+
+Color grouping trims names but preserves case, while the frontend derives an upper-cased row key. `Crna` and `crna` can therefore remain separate backend rows while sharing a React/detail identity, causing duplicate keys, ambiguous expansion and non-deterministic detail lookup.
+
+### Evidence
+
+- `AllEndpoints.cs:2614-2617,2755-2795` normalizes only whitespace and groups colors case-sensitively.
+- `ColorSalesStatsPage.tsx:280,430-445` uses a normalized frontend key for expansion while selecting the row from differently cased backend values.
+- `AnalyticsDetailReadService.cs:187-190` performs detail matching without the same canonicalization.
+- No Color identity regression covers casing, whitespace, diacritics or unknown-color collisions.
+
+### Scope
+
+- Color canonical grouping/display identity, row/detail/URL keys and focused backend/frontend tests.
+- Preserve display labels and Serbian diacritics; do not merge genuinely distinct business color codes without a declared canonical rule.
+
+### Do
+
+1. Define a canonical comparison key separately from the display label.
+2. Apply it consistently to backend grouping, previous-period joins, frontend row keys, expansion and generic detail lookup.
+3. Handle blank/unknown and diacritic variants explicitly and keep collisions visible if they cannot be safely merged.
+
+### Tests
+
+- case-only variants, surrounding whitespace, diacritics, blank/unknown values and URL encoding;
+- row sorting, expansion, detail navigation, snapshot and previous-period parity.
+
+### Acceptance
+
+- Every Color row has a stable collision-safe identity across API, page, detail and export.
+- Canonicalization never silently merges values without a documented comparison policy.
+
+### Dependencies
+
+- Coordinate with `RQ282`/`RQ293` identity patterns; neither owns Color casing.
+- `RQ397` consumes the stable detail identity.
+
+---
+
+## RQ399 - Correct Color source and metric provenance
+
+Status: WAITING
+Priority: P2
+Type: backend/frontend/provenance/tests
+Feature family: color-source-provenance
+Parallel-safe: yes
+Owner: Analytics Reliability / Color Sales
+Commit suggestion: `fix(analytics): correct color source provenance`
+
+### Problem
+
+The Color trust header labels the source as a “materialized view”, but the endpoint currently queries `ProdajaZaglavlja`, `ProdajaStavke`, `Artikli` and `DnevnikPromena` directly. This makes the displayed source and methodology misleading and prevents users from knowing which source/fallback/cost population produced the metrics.
+
+### Evidence
+
+- `ColorSalesStatsPage.tsx:820` renders `Color sales stats materialized view`.
+- `AllEndpoints.cs:2689-2795` reads relational sales/article/event tables directly; no Color materialized-view query is used in this endpoint.
+- `AllEndpoints.cs:2847-2888,3038-3060` mixes historical/fallback cost, broad/comparable pre/post and derived totals without a complete source/denominator projection.
+
+### Scope
+
+- Color response provenance/meta, trust header, methodology/help, export metadata and focused contract tests.
+- No source migration unless explicitly justified by the backend owner; first correct the declared source and metric basis.
+
+### Do
+
+1. Report the actual source family and query/effective population, or implement the named view before using that label.
+2. Expose cost source, pre/post cohort, scope, freshness and denominator metadata consumed by trust/detail/export.
+3. Keep source labels Serbian and distinguish observed, derived and modeled metrics.
+
+### Tests
+
+- source label matches endpoint path;
+- store/scope/cost/pre-post denominator metadata round-trips through trust header/detail/export;
+- fallback and unavailable source states do not render as authoritative.
+
+### Acceptance
+
+- Users see the actual Color source and evidence basis, not a stale or invented materialized-view claim.
+- Every decision-critical metric has an inspectable provenance and denominator.
+
+### Dependencies
+
+- Reuse `RQ362` provenance conventions and coordinate with `RQ396` freshness lineage.
+- `RQ389`, `RQ393` and `RQ394` own detailed scope/economic/cohort semantics.
+
+---
+
+## RQ400 - Define an authoritative Color decision-score contract
+
+Status: WAITING
+Priority: P2
+Type: backend-contract/frontend/tests
+Feature family: color-decision-score-contract
+Parallel-safe: no
+Owner: Analytics Reliability / Color Sales
+Commit suggestion: `fix(analytics): define color decision score contract`
+
+### Problem
+
+The Color UI and export define a decision-score field, but the backend response currently does not emit an authoritative `decisionScore`; the frontend consequently renders `N/A` while recommendation status and actionability remain present. This is safe only if the contract explicitly says the score is unavailable. Otherwise the screen presents a named decision metric with no source or unit.
+
+### Evidence
+
+- `ColorSalesStatsPage.tsx:1129-1133` renders `Decision score`/`N/A`; `colorSalesStatsApi.ts:54-59` types an optional `decisionScore`.
+- `AllEndpoints.cs:3000-3018` projects recommendation fields but no `decisionScore`.
+- Existing `RQ349` corrected the frontend mapping to use an authoritative field when present, but records the backend-missing field as residual risk.
+
+### Scope
+
+- Color decision-score DTO/schema/provenance, page/detail/export label and focused contract tests.
+- Do not recreate backend scoring in the frontend.
+
+### Do
+
+1. Either expose a backend-owned finite score with unit, denominator, gate and provenance, or remove/rename the UI field to an honest unavailable informational state.
+2. Keep score/actionability separate and fail closed when recommendation permission/evidence is absent.
+3. Align row, totals, detail, export and runtime schema behavior.
+
+### Tests
+
+- score present and differs from confidence;
+- score missing, zero, non-finite, blocked and insufficient recommendation;
+- row/detail/export label and actionability parity.
+
+### Acceptance
+
+- Color never presents confidence as decision score or implies a score exists without backend evidence.
+- The score contract is explicit, runtime-validated and consistent across all output surfaces.
+
+### Dependencies
+
+- `RQ349` owns the completed frontend projection correction; this prompt owns the unresolved backend/contract decision.
+- Coordinate with `RQ393` and `RQ395`.
+
+---
+
+## RQ401 - Align Supplier Decision cache schema and effective-period lineage
+
+Status: READY
+Priority: P1
+Type: backend/analytics/contract/tests
+Feature family: supplier-decision-cache-schema-provenance
+Parallel-safe: no
+Owner: Supplier Analytics Backend / Analytics Reliability
+Commit suggestion: `fix(analytics): align supplier decision cache capabilities and period lineage`
+
+### Problem
+
+Supplier Decision Hub chooses 90d/180d/all-time materialized data based on the requested period, but capability checks do not fully prove that the selected view and columns exist. The generated SQL can reference a missing windowed view or `post_signal_coverage` absent from the all-time projection. Short/custom requests can also receive wider effective aggregates; this must be explicit and recommendation-gated.
+
+### Evidence
+
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs` — `GetPrecomputedQueryCapabilitiesAsync`, `BuildPrecomputedSupplierRowsSql`, window selection and trust metadata.
+- `Database/Analytics/015_AddSupplierMlRanking.sql` — all-time view/cache projection.
+- `Database/Migrations/029_AddSupplierDecisionWindowedViews.sql` — 90d/180d projections.
+- `Api.Tests/SupplierDecisionHubContractTests.cs` — current trust, fallback and report contracts.
+
+### Scope
+
+Supplier Decision backend capability/projection contract and focused tests. Do not change general refresh architecture or unrelated analytics families.
+
+### Read first
+
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs`
+- `Database/Analytics/015_AddSupplierMlRanking.sql`
+- `Database/Migrations/029_AddSupplierDecisionWindowedViews.sql`
+
+### Do
+
+1. Validate the selected cache/view and required columns for each all-time/90d/180d path before generating SQL.
+2. Align nullable `post_signal_coverage`, confidence/reliability units and projection columns; never invent full coverage.
+3. For a missing projection, fail closed or use a documented helper path with accurate requested/effective period and blocked recommendation.
+4. Preserve distinct error, empty, degraded and helper-dataset states.
+
+### Tests
+
+- Missing all-time column, missing 90d/180d view, complete projection, 30d helper and schema-mismatch contract cases.
+- No undefined-column surprise, fake zero or false-green recommendation state.
+
+### Acceptance
+
+- SQL is generated only for capability-proven views/columns.
+- Requested/effective dataset and period are accurate on success, empty, degraded and error paths.
+- Focused backend build/tests pass without weakening trust semantics.
+
+### Dependencies
+
+- This is the Supplier Decision audit's current READY prompt.
+- `RQ402` and `RQ404` depend on this cache/provenance contract.
+
+---
+
+## RQ402 - Connect rich supplier decision details to the canonical screen
+
+Status: WAITING
+Priority: P1
+Type: frontend/backend/contract/tests
+Feature family: supplier-decision-detail-source-parity
+Parallel-safe: no
+Owner: Supplier Analytics Frontend + Backend
+Commit suggestion: `fix(analytics): connect supplier decision details to canonical screen`
+
+### Problem
+
+The canonical screen loads summary/ranking while the rich details endpoint, client method and `SupplierDetailDrawer` are not the active full-detail path. “Otvori puni detalj” currently saves a generic analytics snapshot, which can masquerade as the backend supplier detail contract.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx`
+- `Klijent/clientapp/src/services/supplierDecisionHubApi.ts`
+- `Klijent/clientapp/src/components/supplierDecisionHub/SupplierDetailDrawer.tsx`
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs`
+
+### Scope
+
+Choose one canonical detail drawer/route, connect it to the backend details contract, and preserve active filters, trust/meta, error/empty/degraded states. Remove dead alternatives only within this owner scope.
+
+### Read first
+
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- the four evidence files above
+
+### Do
+
+1. Replace the generic snapshot-as-detail path with the rich backend detail path.
+2. Keep period, dataset, quality, reason, confidence/reliability and recommendation gating visible.
+3. Prevent stale detail after supplier/filter changes.
+
+### Tests
+
+- Focused open/close, loading, error, empty, degraded, filter-parity and stale-selection specs.
+- Backend/client details payload contract coverage.
+
+### Acceptance
+
+- Full detail is sourced from the supplier decision details contract and cannot silently show a generic snapshot instead.
+
+### Dependencies
+
+- READY AFTER: RQ401 DONE.
+
+---
+
+## RQ403 - Align backend-supported supplier filters with the canonical screen
+
+Status: WAITING
+Priority: P2
+Type: frontend/backend/contract/tests
+Feature family: supplier-decision-filter-parity
+Parallel-safe: no
+Owner: Supplier Analytics Frontend + Backend
+Commit suggestion: `feat(analytics): align supplier decision filter parity`
+
+### Problem
+
+The backend supports category, gender, season, minimum revenue, high confidence and OOS-before-markdown filters, while the canonical consolidated screen exposes only period, dates, scope, store and supplier. The separate filter component is not the active owner.
+
+### Evidence
+
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs`
+- `Klijent/clientapp/src/components/supplierDecisionHub/SupplierDecisionFilters.tsx`
+- `Klijent/clientapp/src/pages/SupplierConsolidatedPage.tsx`
+- `Klijent/clientapp/src/pages/useSupplierCanonicalState.ts`
+
+### Scope
+
+Canonical URL state, filter controls, API/cache keys, summary/ranking/details/report/action parity and invalid-filter handling. Do not create a second filter owner.
+
+### Read first
+
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- the four evidence files above
+
+### Do
+
+1. Expose every supported filter or explicitly retire it with a documented contract decision.
+2. Preserve filters through URL round-trip, tab changes, reload, details and report.
+3. Fail closed or safely clear invalid/stale filters.
+
+### Tests
+
+- URL round-trip, invalid-filter, request-parity and result/trust-meta regression specs.
+
+### Acceptance
+
+- Canonical screen and backend use the same active filter set without silent filter loss.
+
+### Dependencies
+
+- READY AFTER: RQ401 DONE.
+
+---
+
+## RQ404 - Make requested/effective supplier periods consistent across metrics and actions
+
+Status: WAITING
+Priority: P2
+Type: backend/frontend/report/contract/tests
+Feature family: supplier-decision-effective-period-semantics
+Parallel-safe: no
+Owner: Supplier Analytics Backend + Frontend
+Commit suggestion: `fix(analytics): expose supplier decision effective-period semantics`
+
+### Problem
+
+Short/custom requests can use wider 90d/180d/all-time materialized aggregates, while KPI, tooltip, detail, report and action text can look like they describe only the requested dates. Trust metadata blocks the final recommendation, but the metric lineage must still be unambiguous.
+
+### Evidence
+
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs` — window selection, precomputed SQL and trust metadata.
+- `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx`
+- `Klijent/clientapp/src/components/analytics/SupplierDecisionReport.tsx`
+- `Database/Migrations/029_AddSupplierDecisionWindowedViews.sql`
+
+### Scope
+
+Requested/effective/observed labels and consistent semantics across screen, detail, report, export and action rationale, or a backend query that truly recomputes the requested period. No silent widening.
+
+### Read first
+
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- the four evidence files above
+
+### Do
+
+1. Define requested, effective and observed period fields and show them on every decision surface.
+2. Mark helper metrics as helper metrics and keep recommendations blocked while evidence is not comparable.
+3. Align detail/report/export/action provenance.
+
+### Tests
+
+- 30d, 90d, 180d and custom >180d period cases, including empty/degraded/fallback states.
+
+### Acceptance
+
+- No wider aggregate is presented as an exact requested-period KPI or recommendation.
+
+### Dependencies
+
+- READY AFTER: RQ401 DONE; coordinate with RQ402.
+
+---
+
+## RQ405 - Finish Serbian terminology on supplier decision surfaces and backend-safe messages
+
+Status: WAITING
+Priority: P3
+Type: frontend/backend/text-safety/tests
+Feature family: supplier-decision-localization
+Parallel-safe: no
+Owner: Supplier Analytics Frontend + Backend
+Commit suggestion: `chore(analytics): localize supplier decision user-facing terminology`
+
+### Problem
+
+Supplier Decision Hub/report/backend-safe user text still has potential visible terms such as `fallback`, `dataset`, `Data Quality`, `Scorecard`, `confidence`, `snapshot`, `OOS false negative` and `stock-risk`. Internal reason codes and technical identifiers must remain stable, but user-facing text must be Serbian and diacritics-safe.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx`
+- `Klijent/clientapp/src/pages/SupplierDecisionReportPage.tsx`
+- `Klijent/clientapp/src/components/analytics/SupplierDecisionReport.tsx`
+- `Klijent/clientapp/src/components/analytics/SupplierDecisionReportActions.tsx`
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs`
+
+### Scope
+
+User-facing copy and existing mappings only; do not rename API reason codes, SQL identifiers, telemetry keys or developer-only text.
+
+### Read first
+
+- `docs/ai/ENCODING_AND_TEXT_SAFETY.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- the evidence files above
+
+### Do
+
+1. Audit screen/report/export/error/empty/degraded branches for remaining English or ASCII Serbian.
+2. Reuse central mappings and preserve safe technical-code redaction.
+3. Add focused copy and encoding regressions.
+
+### Tests
+
+- Focused component/page tests plus encoding and analytics guardrails.
+
+### Acceptance
+
+- Supplier Decision user surfaces are Serbian without leaking technical backend tokens; contracts and reason codes remain compatible.
+
+### Dependencies
+
+- READY AFTER: RQ401 DONE.

@@ -16,7 +16,7 @@ Detailed audit and bounded repair of the Supplier Decision Hub/Scorecard screen,
 - Fixed recommendation presentation so an allowed `ASSORTMENT_REDUCE` signal renders “Smanjiti nabavku” instead of being treated as “Povećati saradnju”.
 - Localized active Supplier Decision Hub, trust header, report and action/empty/degraded copy; preserved internal API/reason identifiers.
 - Added/updated focused frontend regression expectations for recommendation-code mapping, Serbian copy and trust/fallback messaging.
-- Added queue prompts `RQ368`-`RQ372`; promoted only `RQ368` to `READY` and kept `RQ369`-`RQ372` `WAITING` under the one-READY rule.
+- Added queue prompts `RQ401`-`RQ405`; promoted `RQ401` to `READY` and kept `RQ402`-`RQ405` `WAITING` behind their dependencies. Existing independent READY lanes remain intact.
 - Synchronized `MASTER_ROADMAP.md` with the new current READY truth.
 
 ## Confirmed findings not implemented in this bounded repair
@@ -49,7 +49,7 @@ Detailed audit and bounded repair of the Supplier Decision Hub/Scorecard screen,
 
 ## Documentation impact
 
-- Queue and roadmap now identify `RQ368` as the current READY prompt and `RQ369`-`RQ372` as WAITING supplier decision follow-ups.
+- Queue and roadmap now identify `RQ401` as the Supplier Decision READY prompt and `RQ402`-`RQ405` as WAITING supplier decision follow-ups.
 - No queue prompt was claimed or put IN_PROGRESS; this was direct user work plus planning intake.
 
 ## Delivery evidence
@@ -60,6 +60,6 @@ Detailed audit and bounded repair of the Supplier Decision Hub/Scorecard screen,
 
 ## Residual risks and next step
 
-- Backend cache schema/provenance compatibility remains unresolved until `RQ368` is claimed and implemented.
-- The focused backend contract failure remains open and should be triaged with the RQ368 backend work rather than hidden by changing the test expectation.
-- Next owner: execute `RQ368`, then promote one dependent prompt only after its acceptance proof.
+- Backend cache schema/provenance compatibility remains unresolved until `RQ401` is claimed and implemented.
+- The focused backend contract failure remains open and should be triaged with the RQ401 backend work rather than hidden by changing the test expectation.
+- Next owner: execute `RQ401`, then promote a dependent supplier prompt only after its acceptance proof.

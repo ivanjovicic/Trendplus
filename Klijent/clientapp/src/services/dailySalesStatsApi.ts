@@ -1,5 +1,6 @@
 import { fetchAnalyticsJson } from "./analyticsHttp";
 import type { AnalyticsResponseMeta } from "../types/analytics";
+import { dailySalesTableResponseSchema } from "../validation/analyticsResponseSchemas";
 
 export type DailySalesNumeric = number | null | undefined;
 
@@ -77,7 +78,7 @@ export async function getDailySalesStats(query: DailySalesQuery = {}): Promise<D
   return fetchAnalyticsJson<DailySalesTableResponse>(
     "/api/analytics/daily-sales",
     params,
-    "Greska pri ucitavanju dnevne prodaje po smenama i dobavljacima",
-    { signal: query.signal }
+    "Greška pri učitavanju dnevne prodaje po smenama i dobavljačima",
+    { signal: query.signal, schema: dailySalesTableResponseSchema }
   );
 }

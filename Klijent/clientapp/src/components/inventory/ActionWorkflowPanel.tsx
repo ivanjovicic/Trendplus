@@ -27,8 +27,8 @@ export function ActionWorkflowPanel({
     <section id={sectionId} className="rounded-[28px] border border-border bg-surface p-5">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Predlog akcije workflow</h2>
-          <p className="text-sm text-muted">Dopuna, transfer, markdown i clearance predlozi sa statusom obrade i brzim odlukama.</p>
+          <h2 className="text-lg font-semibold text-foreground">Tok predloga akcija</h2>
+          <p className="text-sm text-muted">Predlozi dopune, transfera, sniženja i rasprodaje sa statusom obrade i brzim odlukama.</p>
         </div>
         <div className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-semibold text-muted">
           {workflowItems.length} aktivnih predloga
@@ -43,7 +43,7 @@ export function ActionWorkflowPanel({
       </div>
 
       <div className="mt-5 space-y-3">
-        {operationsLoading && workflowItems.length === 0 ? <div className="rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">Ucitavam workflow predloge...</div> : workflowItems.length === 0 ? <div className="rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">Za trenutne filtere nema otvorenih predloga akcije.</div> : workflowItems.map((item) => (
+        {operationsLoading && workflowItems.length === 0 ? <div className="rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">Učitavam predloge akcija...</div> : workflowItems.length === 0 ? <div className="rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">Za trenutne filtere nema otvorenih predloga akcije.</div> : workflowItems.map((item) => (
           <div key={item.suggestionKey} className="rounded-2xl border border-border bg-surface p-4">
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div className="min-w-0">
@@ -62,8 +62,8 @@ export function ActionWorkflowPanel({
                   {item.fromStoreName ? <span>Iz: {item.fromStoreName}</span> : null}
                   {item.toStoreName ? <span>U: {item.toStoreName}</span> : null}
                   {item.forecastDemandQty != null
-                    ? <span>Forecast demand qty: {formatNumber(item.forecastDemandQty)}</span>
-                    : <span>Qty: {formatNumber(item.suggestedQty)}</span>}
+                    ? <span>Prognozirana tražnja (kol.): {formatNumber(item.forecastDemandQty)}</span>
+                    : <span>Količina: {formatNumber(item.suggestedQty)}</span>}
                   <span>
                     {item.estimatedValueBasis === "suggested_action_cost" ? "Procena troška predloga" : "Vrednost zalihe"}:{" "}
                     {item.costMissing ? "Nije dostupno (nedostaje nabavna cena)" : formatCurrency(item.estimatedValue)}
@@ -73,7 +73,7 @@ export function ActionWorkflowPanel({
               </div>
               <div className="flex flex-wrap gap-2">
                 <button type="button" onClick={() => onUpdateWorkflowStatus(item, "approved")} disabled={workflowBusyKey === item.suggestionKey} className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold text-success disabled:cursor-not-allowed disabled:opacity-60"><CheckCircle2 size={14} />Odobri</button>
-                <button type="button" onClick={() => onUpdateWorkflowStatus(item, "deferred")} disabled={workflowBusyKey === item.suggestionKey} className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold text-muted disabled:cursor-not-allowed disabled:opacity-60"><Clock3 size={14} />Odlozi</button>
+                <button type="button" onClick={() => onUpdateWorkflowStatus(item, "deferred")} disabled={workflowBusyKey === item.suggestionKey} className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold text-muted disabled:cursor-not-allowed disabled:opacity-60"><Clock3 size={14} />Odloži</button>
                 <button type="button" onClick={() => onUpdateWorkflowStatus(item, "closed")} disabled={workflowBusyKey === item.suggestionKey} className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold text-warning disabled:cursor-not-allowed disabled:opacity-60"><XCircle size={14} />Zatvori</button>
               </div>
             </div>

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { DecisionSummaryBar } from "./DecisionSummaryBar";
 
 describe("DecisionSummaryBar", () => {
-  it("shows a data quality warning state with a Data Quality link", () => {
+  it("shows a data quality warning state with a quality link", () => {
     render(
       <MemoryRouter>
         <DecisionSummaryBar
@@ -19,7 +19,7 @@ describe("DecisionSummaryBar", () => {
     expect(screen.getByText("Kvalitet podataka traži proveru")).toBeInTheDocument();
     expect(screen.queryByText("podaci OK")).not.toBeInTheDocument();
 
-    const link = screen.getByRole("link", { name: "Otvori Data Quality" });
+    const link = screen.getByRole("link", { name: "Otvori kvalitet podataka" });
     expect(link).toHaveAttribute("href", "/analytics/data-quality");
   });
 

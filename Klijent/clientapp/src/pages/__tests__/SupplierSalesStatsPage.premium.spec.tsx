@@ -30,6 +30,14 @@ vi.mock("../../services/supplierSalesStatsApi", () => ({
   getSupplierSalesStats: vi.fn(),
 }));
 
+vi.mock("../../components/analytics/AnalyticsTableToolbar", () => ({
+  default: ({ metadata = [] }: { metadata?: Array<{ label: string; value: unknown }> }) => (
+    <div data-testid="analytics-table-toolbar">
+      {metadata.map((item) => <span key={item.label}>{item.label}: {String(item.value)}</span>)}
+    </div>
+  ),
+}));
+
 describe("SupplierSalesStatsPage premium controls", () => {
   it("uses the same visible known-supplier population for concentration KPI and chart", () => {
     const rows = [
@@ -163,6 +171,18 @@ describe("SupplierSalesStatsPage premium controls", () => {
 
     expect(screen.getByText("Alfa")).toBeInTheDocument();
     expect(screen.getByText("Prioritetna lista dobavljača")).toBeInTheDocument();
+  });
+
+  it("exports unavailable supplier count instead of fake zero", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage />
+      </MemoryRouter>,
+    );
+
+    const toolbar = await screen.findByTestId("analytics-table-toolbar");
+    expect(toolbar).toHaveTextContent("Dobavljača: N/A");
+    expect(toolbar).not.toHaveTextContent("Dobavljača: 0");
   });
 
   it("forwards supplier trust lineage and effective period into the shared trust header", async () => {

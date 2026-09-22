@@ -94,10 +94,10 @@ describe("Inventory signal presentation", () => {
     });
 
     expect(screen.getByRole("heading", { name: "Tabela artikala" })).toBeInTheDocument();
-    expect(screen.getByText("Inventory analytics")).toBeInTheDocument();
+    expect(screen.getByText("Analitika zaliha")).toBeInTheDocument();
     expect(screen.getByText("7")).toBeInTheDocument();
     expect(screen.getByLabelText("Kako je izračunata pokrivenost zalihe")).toBeInTheDocument();
-    expect(screen.getByLabelText("Kako je izračunat sell-through signal")).toBeInTheDocument();
+    expect(screen.getByLabelText("Kako je izračunat signal prodajnog obrta")).toBeInTheDocument();
     expect(screen.getAllByText("Nedovoljno podataka").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Dodaj u akcije" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Pregledaj sporu zalihu" })).not.toBeInTheDocument();

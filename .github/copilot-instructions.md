@@ -28,6 +28,14 @@ Ako izmena ne poboljšava poverenje, jasnoću, stabilnost, performanse ili onboa
 
 Radi u malim, ciljanim izmenama.
 
+### Paralelni queue rad
+
+- `Current READY` je **primary/default** kandidat za jednostavan `next` tok, a ne globalni lock.
+- Više READY promptova može postojati u istom programu kada su nezavisni po feature-family/path/dependency granicama.
+- Jedan agent/workspace i dalje claim-uje jedan prompt odjednom; drugi agenti/alati mogu paralelno claim-ovati druge collision-safe READY promptove.
+- Više aktivnih promptova iz iste feature family dozvoljeno je samo kada svi eksplicitno imaju `Parallel-safe: yes`.
+- `Parallel-safe: no` znači ekskluzivnost te feature family/owned surface, ne zabranu rada svih drugih agenata u celom programu.
+
 Pre nego što kreneš:
 1. Pronađi postojeći shared helper/component.
 2. Pročitaj samo relevantne fajlove.

@@ -8,7 +8,7 @@ Ovaj dokument je za agente koji rade sa ograničenim kontekstom/tokenima.
 
 Bolje je završiti mali ispravan patch nego započeti veliki rewrite.
 
-Podrazumevana topologija rada je **jedan glavni agent, bez subagenata**. Subagent je izuzetak za jasno ograničen audit, izolaciju velikog istraživačkog izlaza ili nezavisnu verifikaciju — nije podrazumevani način implementacije.
+Podrazumevana topologija **jednog taska/workspace-a** je **jedan glavni agent, bez subagenata**. Subagent je izuzetak za jasno ograničen audit, izolaciju velikog istraživačkog izlaza ili nezavisnu verifikaciju — nije podrazumevani način implementacije. Ovo ograničenje ne serializuje nezavisne top-level alate/agente: oni mogu paralelno raditi na različitim collision-safe `READY` promptovima po queue protokolu.
 
 Cursor-specifična always-applied verzija ovog pravila nalazi se u `.cursor/rules/agent-execution-efficiency.mdc`.
 
@@ -39,7 +39,7 @@ Jedan subagent je opravdan samo kada ima **nezavisno i konačno pitanje/read set
 - nezavisni verifier proverava već završenu implementaciju bez ponavljanja istog istraživanja;
 - konačan audit ima zaseban scope, a parent može da nastavi drugi nepoklapajući posao.
 
-Podrazumevano: **najviše jedan subagent u trenutku**.
+Podrazumevano: **najviše jedan subagent u trenutku unutar jednog parent taska/workspace-a**. Nezavisni top-level agenti nisu subagenti jedan drugom i mogu raditi na odvojenim READY feature-family granama.
 
 Više paralelnih subagenata je dozvoljeno samo kada dodeljeni prompt eksplicitno definiše nezavisne, nepoklapajuće workstreamove i parent zabeleži zašto dodatni token/context trošak ima smisla.
 

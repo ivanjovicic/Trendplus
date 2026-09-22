@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Bar,
@@ -34,6 +34,7 @@ import type { StoreOption } from "../types/analytics";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
 import { fmtNumber, fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
+import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { resolvePresetFilterRange } from "../utils/analyticsPeriodPresets";
 import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescriptions";
 import {
@@ -77,6 +78,7 @@ import {
 } from "../utils/supplierVendorIdentity";
 import { projectVendorSalesDataQuality } from "../utils/vendorSalesDataQuality";
 import { readAnalyticsTableSort, writeAnalyticsTableSort } from "../utils/analyticsTableSortUrl";
+import { useReliableAnalyticsQuery } from "../hooks/useReliableAnalyticsQuery";
 import "./ProdajaPrePostNivelacijePage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
@@ -102,6 +104,12 @@ type ActiveFilters = {
   vendorId: number | null;
   category: string;
   storeId: number | null;
+};
+
+type PrePostQuerySnapshot = {
+  current: VendorSalesNivelacijaResponse;
+  previous: VendorSalesNivelacijaResponse | null;
+  previousError: string | null;
 };
 
 type DecisionVendor = VendorSalesNivelacijaVendorStat & {
@@ -156,6 +164,15 @@ const STATUS_PRIORITY: Record<DecisionStatus, number> = {
 };
 const MEDIUM_SIGNAL_RELIABILITY_PCT = 40;
 const VENDOR_NIVELACIJA_MAX_ROWS = 50_000;
+const PRE_POST_INLINE_ERROR_FALLBACK = "Podaci trenutno nisu dostupni. Proverite kvalitet podataka i pokušajte ponovo.";
+
+function getSafePrePostInlineErrorMessage(reason: unknown): string {
+  return getSafeAnalyticsErrorMessage(
+    reason instanceof Error ? reason.message : String(reason),
+    undefined,
+    PRE_POST_INLINE_ERROR_FALLBACK,
+  );
+}
 const CHART_GRID_STROKE = "var(--dashboard-grid, var(--border-default))";
 const CHART_AXIS_TICK = { fill: "var(--dashboard-chart-axis, var(--text-secondary))", fontSize: 12, fontWeight: 600 };
 const CHART_CURSOR_STYLE = { fill: "var(--dashboard-chart-hover, var(--accent-soft))" };
@@ -489,8 +506,6 @@ export default function ProdajaPrePostNivelacijePage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const requestIdRef = useRef(0);
-
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("30d");
   const [fromDate, setFromDate] = useState(() => getPresetRange("30d").fromDate);
   const [toDate, setToDate] = useState(() => getPresetRange("30d").toDate);
@@ -511,12 +526,6 @@ export default function ProdajaPrePostNivelacijePage() {
   const [vendors, setVendors] = useState<Dobavljac[]>([]);
   const [vendorLoadError, setVendorLoadError] = useState<string | null>(null);
   const [stores, setStores] = useState<StoreOption[]>([]);
-  const [data, setData] = useState<VendorSalesNivelacijaResponse | null>(null);
-  const [previousData, setPreviousData] = useState<VendorSalesNivelacijaResponse | null>(null);
-  const [previousRevenue, setPreviousRevenue] = useState<number | null>(null);
-  const [previousComparisonError, setPreviousComparisonError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [dataScope, setDataScopeValue] = useState<DataScope>(() => getDataScope());
   const [sortField, setSortField] = useState<SortField>(() => readAnalyticsTableSort(searchParams, PRE_POST_SORT_FIELDS, "status", "desc").field);
   const [sortDir, setSortDir] = useState<SortDir>(() => readAnalyticsTableSort(searchParams, PRE_POST_SORT_FIELDS, "status", "desc").dir);
@@ -553,7 +562,7 @@ export default function ProdajaPrePostNivelacijePage() {
       setVendorLoadError(null);
     } catch (reason) {
       setVendorLoadError(
-        reason instanceof Error ? reason.message : "Greška pri učitavanju liste dobavljača.",
+        getSafePrePostInlineErrorMessage(reason),
       );
       // Preserve the last known vendor list on transient failures instead of faking an empty filter set.
     }
@@ -574,87 +583,70 @@ export default function ProdajaPrePostNivelacijePage() {
     void loadStores();
   }, []);
 
-  const load = useCallback(async (filters: ActiveFilters, scope: DataScope, signal?: AbortSignal) => {
-    const requestId = ++requestIdRef.current;
-    setLoading(true);
-    setError(null);
-    setPreviousComparisonError(null);
+  const prePostQuery = useCallback(async (signal: AbortSignal): Promise<PrePostQuerySnapshot> => {
+    const currentRange = toUtcRange(activeFilters.fromDate, activeFilters.toDate);
+    const previousRange = buildPreviousRange(activeFilters.fromDate, activeFilters.toDate);
+    const [currentResult, previousResult] = await Promise.allSettled([
+      getVendorSalesNivelacija({
+        ...currentRange,
+        vendorId: activeFilters.vendorId,
+        category: activeFilters.category || null,
+        includeInactive: false,
+        maxRows: VENDOR_NIVELACIJA_MAX_ROWS,
+        storeId: activeFilters.storeId,
+        dataScope,
+        signal,
+      }),
+      getVendorSalesNivelacija({
+        ...previousRange,
+        vendorId: activeFilters.vendorId,
+        category: activeFilters.category || null,
+        includeInactive: false,
+        maxRows: VENDOR_NIVELACIJA_MAX_ROWS,
+        storeId: activeFilters.storeId,
+        dataScope,
+        signal,
+      }),
+    ]);
 
-    try {
-      const currentRange = toUtcRange(filters.fromDate, filters.toDate);
-      const previousRange = buildPreviousRange(filters.fromDate, filters.toDate);
-
-      const [currentResult, previousResult] = await Promise.allSettled([
-        getVendorSalesNivelacija({
-          ...currentRange,
-          vendorId: filters.vendorId,
-          category: filters.category || null,
-          includeInactive: false,
-          maxRows: VENDOR_NIVELACIJA_MAX_ROWS,
-          storeId: filters.storeId,
-          dataScope: scope,
-          signal,
-        }),
-        getVendorSalesNivelacija({
-          ...previousRange,
-          vendorId: filters.vendorId,
-          category: filters.category || null,
-          includeInactive: false,
-          maxRows: VENDOR_NIVELACIJA_MAX_ROWS,
-          storeId: filters.storeId,
-          dataScope: scope,
-          signal,
-        }),
-      ]);
-
-      if (requestId !== requestIdRef.current) return;
-
-      if (currentResult.status === "rejected") {
-        throw currentResult.reason;
-      }
-
-      setData(currentResult.value);
-      setExpandedVendorKey(null);
-
-      if (previousResult.status === "fulfilled") {
-        setPreviousData(previousResult.value);
-        setPreviousRevenue(comparablePrePostTotal(
-          previousResult.value.totals.postRevenue,
-          previousResult.value.totals.hasComparableSalesWindow,
-        ));
-        setPreviousComparisonError(null);
-      } else {
-        setPreviousData(null);
-        setPreviousRevenue(null);
-        const reason = previousResult.reason;
-        setPreviousComparisonError(
-          reason instanceof Error
-            ? reason.message
-            : "Zahtev za prethodni uporedivi period nije uspeo."
-        );
-      }
-    } catch (reason) {
-      if (reason instanceof DOMException && reason.name === "AbortError") {
-        return;
-      }
-      if (requestId !== requestIdRef.current) return;
-      setData(null);
-      setPreviousData(null);
-      setPreviousRevenue(null);
-      setPreviousComparisonError(null);
-      setError(reason instanceof Error ? reason.message : "Greška pri ucitavanju pre/post analitike.");
-    } finally {
-      if (requestId === requestIdRef.current) {
-        setLoading(false);
-      }
+    if (currentResult.status === "rejected") {
+      throw currentResult.reason;
     }
-  }, []);
 
+    return {
+      current: currentResult.value,
+      previous: previousResult.status === "fulfilled" ? previousResult.value : null,
+      previousError: previousResult.status === "rejected"
+        ? getSafePrePostInlineErrorMessage(previousResult.reason)
+        : null,
+    };
+  }, [activeFilters, dataScope]);
+  const {
+    data: querySnapshot,
+    initialLoading,
+    refetching,
+    error: queryError,
+    staleWarning,
+    refetch,
+  } = useReliableAnalyticsQuery<PrePostQuerySnapshot>({
+    query: prePostQuery,
+    getErrorMessage: useCallback((reason: unknown) => reason instanceof Error
+      ? reason.message
+      : "Greška pri ucitavanju pre/post analitike.", []),
+  });
+  const data = querySnapshot?.current ?? null;
+  const previousData = querySnapshot?.previous ?? null;
+  const previousComparisonError = querySnapshot?.previousError ?? null;
+  const previousRevenue = useMemo(
+    () => previousData
+      ? comparablePrePostTotal(previousData.totals.postRevenue, previousData.totals.hasComparableSalesWindow)
+      : null,
+    [previousData],
+  );
+  const loading = initialLoading || refetching;
   useEffect(() => {
-    const controller = new AbortController();
-    void load(activeFilters, dataScope, controller.signal);
-    return () => controller.abort();
-  }, [activeFilters, dataScope, load]);
+    if (data) setExpandedVendorKey(null);
+  }, [data]);
 
   const previousRevenueByVendorKey = useMemo(() => {
     const rows = previousData?.vendorStats ?? [];
@@ -822,9 +814,9 @@ export default function ProdajaPrePostNivelacijePage() {
   );
   const dataMeta = data?.meta ?? null;
   const dataMetaMessage = getAnalyticsMetaMessage(dataMeta);
-  const showMetaWarning = !loading && !error && isAnalyticsMetaWarning(dataMeta);
-  const showFilteredOutState = !loading && !error && Boolean(data) && decisionRows.length > 0 && focusedRows.length === 0;
-  const showEmptyState = !loading && !error && Boolean(data) && (decisionRows.length === 0 || showFilteredOutState);
+  const showMetaWarning = !loading && !queryError && isAnalyticsMetaWarning(dataMeta);
+  const showFilteredOutState = !loading && !queryError && Boolean(data) && decisionRows.length > 0 && focusedRows.length === 0;
+  const showEmptyState = !loading && !queryError && Boolean(data) && (decisionRows.length === 0 || showFilteredOutState);
   const showInsufficientEmptyState = shouldShowAnalyticsEmptyState(dataMeta, decisionRows.length) && isAnalyticsMetaInsufficient(dataMeta);
   const emptyStateVariant: "no_data" | "insufficient_data" | "filtered_out" =
     showInsufficientEmptyState
@@ -956,28 +948,28 @@ export default function ProdajaPrePostNivelacijePage() {
 const advancedSignals = useMemo(
     () => [
       {
-        label: "Momentum",
+        label: "Momentum prodaje",
         value: fmtRsd(data?.avgMomentumRevenue),
-        hint: "avg rev",
+        hint: "prosečan prihod",
         tip: "Prosečan prihod od ubrzanja prodaje (momentum signal). Pokazuje da li prodajni trend dobija na brzini pre/posle nivelacije. Nedostupno ako vw_sales_momentum view nije kreiran u bazi.",
       },
       {
-        label: "Elasticnost",
+        label: "Elastičnost cene",
         value: fmtNumber(data?.avgElasticity, 2),
-        hint: "avg",
+        hint: "prosek",
         tip: "Prosečna cenovna elastičnost po artiklima dobavljača. Vrednost < 0 znači da rast cene smanjuje prodaju. Računa se kao %Δqty / %Δcena za svaki artikal.",
       },
       {
-        label: "DID",
+        label: "Efekat razlike u razlikama (DiD)",
         value: fmtRsd(data?.avgDidRevenue),
-        hint: "avg rev",
+        hint: "prosečan prihod",
         tip: "Difference-in-Differences procena uzročnog efekta nivelacije. Poredi promenu prodaje sa kontrolnom grupom (artikli bez nivelacije). Nedostupno ako vw_nivelacija_did nije kreiran.",
       },
       {
-        label: "Lost sales OOS",
+        label: "Izgubljena prodaja zbog nestašice",
         value: fmtRsd(data?.avgLostSalesOOS),
-        hint: "avg",
-        tip: "Procena prihoda izgubljenog zbog iscrpljenosti zalihe (Out of Stock). Izračunava se iz vw_stock_red_zone podataka. Nedostupno dok taj view nije kreiran u bazi.",
+        hint: "prosek",
+        tip: "Procena prihoda izgubljenog zbog iscrpljenosti zalihe (nestašica, OOS). Izračunava se iz vw_stock_red_zone podataka. Nedostupno dok taj view nije kreiran u bazi.",
       },
     ],
     [data?.avgDidRevenue, data?.avgElasticity, data?.avgLostSalesOOS, data?.avgMomentumRevenue]
@@ -1381,13 +1373,18 @@ const advancedSignals = useMemo(
       </header>
 
       {invalidRange ? <div className="ppn-decision-message error">Datum 'od' ne može biti posle datuma 'do'.</div> : null}
-      {error ? (
+      {queryError ? (
         <AnalyticsErrorState
           title="Podaci trenutno nisu dostupni"
-          message={error || "Ne prikazujemo nule jer nije potvrđeno da je period stvarno prazan."}
-          onRetry={() => void load(activeFilters, dataScope)}
+          message={queryError || "Ne prikazujemo nule jer nije potvrđeno da je period stvarno prazan."}
+          onRetry={refetch}
           helpHref="/analytics/data-quality"
         />
+      ) : null}
+      {staleWarning && data ? (
+        <div className="ppn-decision-message info" role="status" data-testid="ppn-stale-refetch-warning">
+          Prikazujemo prethodno učitane podatke. Novi upit nije uspeo.
+        </div>
       ) : null}
       {showMetaWarning ? (
         <div className="ppn-decision-message warning" role="status">
@@ -1429,7 +1426,7 @@ const advancedSignals = useMemo(
           dataQualityHref="/analytics/data-quality"
           refreshStatusHref="/admin/configuration?panel=workers"
           emptyReason={dataMeta?.emptyReason ?? dataMetaMessage ?? null}
-          onRetry={() => void load(activeFilters, dataScope)}
+          onRetry={refetch}
         />
       ) : null}
       {loading ? <div className="ppn-decision-message loading">Učitavam pre/post signal po dobavljačima...</div> : null}

@@ -13,14 +13,26 @@ import os from "node:os";
 import path from "node:path";
 
 const REQUIRED_SNIPPETS = new Map([
-  ["AGENTS.md", ["direct repository request", "MASTER_ROADMAP.md", "historical ledger", "VALIDATION_SELECTOR.md"]],
-  [".github/copilot-instructions.md", ["AGENT_START_HERE.md", "VALIDATION_SELECTOR.md", "najužu proveru"]],
-  ["docs/ai/REPO_AI_README.md", ["Authority order when docs conflict", "Canonical owners by topic", "VALIDATION_SELECTOR.md"]],
-  ["docs/ai/AGENT_START_HERE.md", ["Direct task workflow", "Queue task workflow", "VALIDATION_SELECTOR.md", "historical ledger"]],
-  ["docs/ai/PROMPT_QUEUE_PROTOCOL.md", ["Mechanical prompt conflicts", "same-owner", "VALIDATION_SELECTOR.md"]],
+  ["AGENTS.md", ["direct repository request", "MASTER_ROADMAP.md", "historical ledger", "VALIDATION_SELECTOR.md", "per agent/workspace"]],
+  [".github/copilot-instructions.md", ["AGENT_START_HERE.md", "VALIDATION_SELECTOR.md", "najužu proveru", "Više READY"]],
+  ["MASTER_ROADMAP.md", ["primary/default READY", "additional READY", "Parallel-safe"]],
+  ["docs/planning/FEATURE_LIFECYCLE.md", ["multiple READY", "Parallel-safe", "Current READY"]],
+  ["docs/ai/REPO_AI_README.md", ["Authority order when docs conflict", "Canonical owners by topic", "VALIDATION_SELECTOR.md", "primary READY"]],
+  ["docs/ai/AGENT_START_HERE.md", ["Direct task workflow", "Queue task workflow", "VALIDATION_SELECTOR.md", "historical ledger", "Multiple READY"]],
+  ["docs/ai/PROMPT_QUEUE_PROTOCOL.md", ["Mechanical prompt conflicts", "same-owner", "VALIDATION_SELECTOR.md", "primary/default"]],
+  ["docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md", ["Current READY", "primary/default", "Additional READY", "Parallel-safe"]],
+  ["docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md", ["Current READY", "primary/default", "Additional READY", "Parallel-safe"]],
   ["docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md", ["exact delivered SHA", "Main commit SHA", "Main verification", "RUN_LOG_TEMPLATE.md"]],
   [".ai/RUN_LOG_TEMPLATE.md", ["What was done", "What was missed", "Risks", "Next"]],
   ["docs/ai/VALIDATION_SELECTOR.md", ["React and analytics UI", ".NET API, application and infrastructure", "Workers, refresh and scheduled jobs", "Queue and planning changes"]],
+]);
+
+const FORBIDDEN_QUEUE_SERIALIZATION_PHRASES = new Map([
+  ["MASTER_ROADMAP.md", ["expose at most one READY prompt per program"]],
+  ["docs/planning/FEATURE_LIFECYCLE.md", ["at most one READY prompt per program", "Keep only the first unblocked task READY"]],
+  ["docs/ai/PROMPT_QUEUE_PROTOCOL.md", ["A program may have zero or one READY prompt"]],
+  ["docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md", ["Only one prompt per program may be READY"]],
+  ["docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md", ["Only one prompt per program may be READY"]],
 ]);
 
 const INVALID_LIVE_STATUS_RE = /^Status:\s*`?(TODO|OPEN|COMPLETE|COMPLETED)`?\s*$/gim;
@@ -77,6 +89,12 @@ function validate(root) {
 
     if (content.includes("NEXT_PROMPT_QUEUE.md") && !content.toLowerCase().includes("historical ledger")) {
       errors.push(`${relative}: references NEXT_PROMPT_QUEUE.md without declaring it a historical ledger`);
+    }
+
+    for (const phrase of FORBIDDEN_QUEUE_SERIALIZATION_PHRASES.get(relative) ?? []) {
+      if (content.toLowerCase().includes(phrase.toLowerCase())) {
+        errors.push(`${relative}: contains stale program-wide queue serialization rule '${phrase}'`);
+      }
     }
 
     errors.push(...validateLinks(root, relative, content));

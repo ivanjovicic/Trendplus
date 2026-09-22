@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import InventoryPage from "../InventoryPage";
+import { setDataScope } from "../../utils/dataScope";
 
 const getAnalyticsActionSourceStatusesMock = vi.fn();
 const getStoresMock = vi.fn();
@@ -17,6 +18,7 @@ const getInventoryAlertsMock = vi.fn();
 const getRebalanceSuggestionsMock = vi.fn();
 const getInventoryReportSchedulesMock = vi.fn();
 const getInventoryItemDetailMock = vi.fn();
+const getSizeCurveMock = vi.fn();
 
 vi.mock("../../services/analyticsApi", () => ({
   AnalyticsMetaError: class extends Error {},
@@ -35,7 +37,7 @@ vi.mock("../../services/analyticsApi", () => ({
   createInventoryReportSchedule: vi.fn(),
   exportInventoryReport: vi.fn(),
   getInventoryItemDetail: (...args: unknown[]) => getInventoryItemDetailMock(...args),
-  getSizeCurve: vi.fn(),
+  getSizeCurve: (...args: unknown[]) => getSizeCurveMock(...args),
   previewInventoryReport: vi.fn(),
   printBlankInventoryForm: vi.fn(),
   runInventoryReportScheduleNow: vi.fn(),
@@ -137,7 +139,9 @@ function seedInventoryMocks() {
 describe("InventoryPage off-page SKU detail", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    setDataScope("all");
     seedInventoryMocks();
+    getSizeCurveMock.mockResolvedValue({ items: [], snapshotAvailable: true });
   });
 
   it("opens alert detail without fake zero quantity or value while context loads", async () => {
@@ -216,5 +220,65 @@ describe("InventoryPage off-page SKU detail", () => {
 
     expect(screen.queryByText(/0\s*RSD/)).not.toBeInTheDocument();
     expect(screen.queryByText("Bez zaliha")).not.toBeInTheDocument();
+  });
+
+  it("aborts the detail request when the active data scope changes", async () => {
+    getInventoryItemDetailMock.mockImplementation(
+      () => new Promise(() => {
+        /* keep loading until the scope changes */
+      }),
+    );
+
+    render(
+      <MemoryRouter>
+        <InventoryPage />
+      </MemoryRouter>,
+    );
+
+    const alertButton = await screen.findByRole("button", { name: /Otvori detalj artikla za alert Off-page alert artikal/i });
+    fireEvent.click(alertButton);
+
+    await waitFor(() => {
+      expect(getInventoryItemDetailMock).toHaveBeenCalled();
+    });
+    const detailSignal = getInventoryItemDetailMock.mock.calls.at(-1)?.[1]?.signal as AbortSignal;
+    expect(detailSignal).toBeInstanceOf(AbortSignal);
+
+    setDataScope("existing");
+    fireEvent(window, new Event("trendplus:data-scope-changed"));
+
+    await waitFor(() => {
+      expect(detailSignal.aborted).toBe(true);
+    });
+  });
+
+  it("aborts the size-curve request when the active data scope changes", async () => {
+    getSizeCurveMock.mockImplementation(
+      () => new Promise(() => {
+        /* keep loading until the scope changes */
+      }),
+    );
+
+    render(
+      <MemoryRouter>
+        <InventoryPage />
+      </MemoryRouter>,
+    );
+
+    const sizeCurveButton = await screen.findByRole("button", { name: /Otvori raspodelu veličina za SKU 9999/i });
+    fireEvent.click(sizeCurveButton);
+
+    await waitFor(() => {
+      expect(getSizeCurveMock).toHaveBeenCalled();
+    });
+    const sizeCurveSignal = getSizeCurveMock.mock.calls.at(-1)?.[0]?.signal as AbortSignal;
+    expect(sizeCurveSignal).toBeInstanceOf(AbortSignal);
+
+    setDataScope("existing");
+    fireEvent(window, new Event("trendplus:data-scope-changed"));
+
+    await waitFor(() => {
+      expect(sizeCurveSignal.aborted).toBe(true);
+    });
   });
 });

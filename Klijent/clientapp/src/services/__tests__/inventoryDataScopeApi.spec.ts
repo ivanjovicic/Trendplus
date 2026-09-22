@@ -20,7 +20,31 @@ describe("Inventory data-scope API contract", () => {
       urls.push(String(input));
       return {
         ok: true,
-        json: async () => ({}),
+        json: async () => ({
+          totalSku: 0,
+          totalOnHand: 0,
+          lowStockCount: 0,
+          outOfStockCount: 0,
+          items: [],
+          totalCount: 0,
+          pageNumber: 1,
+          pageSize: 50,
+          id: 42,
+          estimatedValue: 0,
+          updatedAt: "2026-05-26T12:00:00Z",
+          movementCount: 0,
+          daysSinceMovement: 0,
+          signalConfidencePct: 0,
+          recommendationAllowed: false,
+          history: [],
+          totalItems: 0,
+          totalEstimatedValue: 0,
+          aging: [],
+          abc: [],
+          topAgedItems: [],
+          topCapitalLockedItems: [],
+          meta: { success: true, dataQualityStatus: "insufficient_evidence" },
+        }),
       };
     }));
 
@@ -37,5 +61,19 @@ describe("Inventory data-scope API contract", () => {
     for (const url of urls) {
       expect(new URL(url, window.location.origin).searchParams.get("dataScope")).toBe("imported");
     }
+  });
+
+  it("propagates abort signals through cached Inventory requests", async () => {
+    const controller = new AbortController();
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((_input: RequestInfo | URL, init?: RequestInit) => (
+      new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(init.signal?.reason), { once: true });
+      })
+    )));
+
+    const request = getInventoryInsights({ dataScope: "abort-check", signal: controller.signal });
+    controller.abort();
+
+    await expect(request).rejects.toMatchObject({ name: "AbortError" });
   });
 });

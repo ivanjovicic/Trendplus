@@ -1,0 +1,312 @@
+{
+  "version": 1,
+  "maxEntries": 51,
+  "entries": [
+    {
+      "file": "src/pages/ColorSalesStatsPage.tsx",
+      "rule": "decisionScore_assign",
+      "line": 1131,
+      "reason": "Existing backend-owned decision-score projection requires a reviewed authority exception."
+    },
+    {
+      "file": "src/pages/ExecutiveDecisionBoardPage.tsx",
+      "rule": "recommendationStatus_assign",
+      "line": 436,
+      "reason": "Existing backend status mapping requires a reviewed authority exception."
+    },
+    {
+      "file": "src/pages/PreNivelacijaPriorityPage.tsx",
+      "rule": "decisionScore_assign",
+      "line": 563,
+      "reason": "Existing backend-owned decision-score projection requires a reviewed authority exception."
+    },
+    {
+      "file": "src/pages/PreNivelacijaPriorityPage.tsx",
+      "rule": "reliabilityPct_assign",
+      "line": 288,
+      "reason": "Existing backend reliability projection requires a reviewed authority exception."
+    },
+    {
+      "file": "src/pages/ProdajaPrePostNivelacijePage.tsx",
+      "rule": "reliabilityPct_assign",
+      "line": 411,
+      "reason": "Existing backend reliability projection requires a reviewed authority exception."
+    },
+    {
+      "file": "src/pages/ProductDecisionCenterPage.tsx",
+      "rule": "recommendationStatus_assign",
+      "line": 1800,
+      "reason": "Existing backend status mapping requires a reviewed authority exception."
+    },
+    {
+      "file": "src/pages/SupplierDecisionHubPage.tsx",
+      "rule": "confidencePct_assign",
+      "line": 977,
+      "reason": "Existing backend confidence projection requires a reviewed authority exception."
+    },
+    {
+      "file": "src/pages/SupplierDecisionHubPage.tsx",
+      "rule": "reliabilityPct_assign",
+      "line": 978,
+      "reason": "Existing backend reliability projection requires a reviewed authority exception."
+    },
+    {
+      "file": "src/components/analytics/SupplierDecisionReport.tsx",
+      "rule": "confidencePct_assign",
+      "line": 179,
+      "reason": "Existing report confidence projection requires a reviewed authority exception."
+    },
+    {
+      "file": "src/components/analytics/SupplierDecisionReport.tsx",
+      "rule": "reliabilityPct_assign",
+      "line": 180,
+      "reason": "Existing report reliability projection requires a reviewed authority exception."
+    },
+    {
+      "file": "src/components/supplierDecisionHub/SupplierExplainabilitySnapshot.tsx",
+      "rule": "confidencePct_assign",
+      "line": 110,
+      "reason": "Existing explainability confidence projection requires a reviewed authority exception."
+    },
+    {
+      "file": "src/components/supplierDecisionHub/SupplierExplainabilitySnapshot.tsx",
+      "rule": "reliabilityPct_assign",
+      "line": 115,
+      "reason": "Existing explainability reliability projection requires a reviewed authority exception."
+    },
+    {
+      "file": "src/pages/AnalyticsActionsPage.tsx",
+      "rule": "fake_zero_fallback",
+      "line": 276,
+      "reason": "Existing action metadata fallback requires a reviewed trust-contract exception."
+    },
+    {
+      "file": "src/pages/AnalyticsDashboard.tsx",
+      "rule": "fake_zero_fallback",
+      "line": 1414,
+      "reason": "Existing dashboard fallback requires a reviewed empty/error-state exception."
+    },
+    {
+      "file": "src/pages/AnalyticsDashboard.tsx",
+      "rule": "page_reduce_kpi",
+      "line": 157,
+      "reason": "Existing dashboard aggregation predates the backend KPI ownership contract."
+    },
+    {
+      "file": "src/pages/ArtikliListPage.tsx",
+      "rule": "fake_zero_fallback",
+      "line": 189,
+      "reason": "Existing article-list fallback requires a reviewed unavailable-value exception."
+    },
+    {
+      "file": "src/pages/DailySalesStatsPage.tsx",
+      "rule": "refetch_setData_null",
+      "line": 745,
+      "reason": "Existing daily-sales refetch transition predates the shared reliable-query lifecycle."
+    },
+    {
+      "file": "src/pages/DataQualityPage.tsx",
+      "rule": "fake_zero_fallback",
+      "line": 407,
+      "reason": "Existing data-quality fallback requires a reviewed unavailable-value exception."
+    },
+    {
+      "file": "src/pages/DataQualityPage.tsx",
+      "rule": "refetch_setData_null",
+      "line": 520,
+      "reason": "Existing data-quality refetch transition predates the shared reliable-query lifecycle."
+    },
+    {
+      "file": "src/pages/DnevnikPromenaPage.tsx",
+      "rule": "fake_zero_fallback",
+      "line": 172,
+      "reason": "Existing change-log fallback requires a reviewed unavailable-value exception."
+    },
+    {
+      "file": "src/pages/ExecutiveDecisionBoardPage.tsx",
+      "rule": "fake_zero_fallback",
+      "line": 1046,
+      "reason": "Existing decision-board fallback requires a reviewed trust-contract exception."
+    },
+    {
+      "file": "src/pages/GlobalTrendsPage.tsx",
+      "rule": "swallowed_fetch_failure",
+      "line": 147,
+      "reason": "Existing optional global-trends fallback requires a reviewed error-state exception."
+    },
+    {
+      "file": "src/pages/InventoryPage.tsx",
+      "rule": "fake_zero_fallback",
+      "line": 736,
+      "reason": "Existing inventory page-count fallback requires a reviewed backend-total exception."
+    },
+    {
+      "file": "src/pages/PilotReadinessPage.tsx",
+      "rule": "fake_zero_fallback",
+      "line": 485,
+      "reason": "Existing pilot-readiness count fallback requires a reviewed unavailable-value exception."
+    },
+    {
+      "file": "src/pages/PovracajPage.tsx",
+      "rule": "fake_zero_fallback",
+      "line": 28,
+      "reason": "Existing returns-page fallback requires a reviewed unavailable-value exception."
+    },
+    {
+      "file": "src/pages/SupplierDecisionHubPage.tsx",
+      "rule": "fake_zero_fallback",
+      "line": 513,
+      "reason": "Existing supplier decision fallback requires a reviewed backend-authority exception."
+    },
+    {
+      "file": "src/pages/SupplierDecisionHubPage.tsx",
+      "rule": "page_percentage_formula",
+      "line": 129,
+      "reason": "Existing supplier-share projection requires a reviewed backend-authority exception."
+    },
+    {
+      "file": "src/pages/SupplierDecisionHubPage.tsx",
+      "rule": "page_reduce_kpi",
+      "line": 449,
+      "reason": "Existing supplier aggregation predates the backend KPI ownership contract."
+    },
+    {
+      "file": "src/pages/SupplierDecisionHubPage.tsx",
+      "rule": "sorted_rows_kpi_reduce",
+      "line": 504,
+      "reason": "Existing sorted supplier aggregation requires a reviewed KPI ownership exception."
+    },
+    {
+      "file": "src/pages/SupplierFootwearAnalyticsPage.tsx",
+      "rule": "refetch_setData_null",
+      "line": 398,
+      "reason": "Existing supplier-footwear refetch transition predates the shared reliable-query lifecycle."
+    },
+    {
+      "file": "src/pages/SupplierFootwearAnalyticsPage.tsx",
+      "rule": "page_percentage_formula",
+      "line": 433,
+      "reason": "Existing supplier-footwear percentage projection requires a reviewed authority exception."
+    },
+    {
+      "file": "src/pages/SupplierFootwearAnalyticsPage.tsx",
+      "rule": "page_reduce_kpi",
+      "line": 423,
+      "reason": "Existing supplier-footwear aggregation predates the backend KPI ownership contract."
+    },
+    {
+      "file": "src/pages/SupplierSalesStatsPage.tsx",
+      "rule": "fake_zero_fallback",
+      "line": 1627,
+      "reason": "Existing supplier KPI fallback requires a reviewed unavailable-value exception."
+    },
+    {
+      "file": "src/pages/SupplierSalesStatsPage.tsx",
+      "rule": "refetch_setData_null",
+      "line": 743,
+      "reason": "Existing supplier refetch transition predates the shared reliable-query lifecycle."
+    },
+    {
+      "file": "src/pages/SupplierSalesStatsPage.tsx",
+      "rule": "page_reduce_kpi",
+      "line": 200,
+      "reason": "Existing supplier aggregation predates the backend KPI ownership contract."
+    },
+    {
+      "file": "src/pages/TransferPage.tsx",
+      "rule": "fake_zero_fallback",
+      "line": 134,
+      "reason": "Existing transfer fallback requires a reviewed unavailable-value exception."
+    },
+    {
+      "file": "src/pages/ZalandoProducts.tsx",
+      "rule": "swallowed_fetch_failure",
+      "line": 27,
+      "reason": "Existing optional Zalando fallback requires a reviewed error-state exception."
+    },
+    {
+      "file": "src/components/WorkersPanel.tsx",
+      "rule": "swallowed_fetch_failure",
+      "line": 83,
+      "reason": "Existing worker-panel fallback requires a reviewed operational-state exception."
+    },
+    {
+      "file": "src/components/dashboard/IntelligenceSnapshotPanel.tsx",
+      "rule": "fake_zero_fallback",
+      "line": 273,
+      "reason": "Existing intelligence snapshot fallback requires a reviewed unavailable-value exception."
+    },
+    {
+      "file": "src/components/inventory/InventoryPriorityPanels.tsx",
+      "rule": "fake_zero_fallback",
+      "line": 80,
+      "reason": "Existing inventory priority fallback requires a reviewed unavailable-value exception."
+    },
+    {
+      "file": "src/components/inventory/SKUDetailModal.tsx",
+      "rule": "fake_zero_fallback",
+      "line": 165,
+      "reason": "Existing SKU detail fallback requires a reviewed unavailable-value exception."
+    },
+    {
+      "file": "src/components/inventory/inventoryUtils.ts",
+      "rule": "fake_zero_fallback",
+      "line": 533,
+      "reason": "Existing inventory utility fallback requires a reviewed unknown-value exception."
+    },
+    {
+      "file": "src/components/povracaj/PovracajWizard.tsx",
+      "rule": "fake_zero_fallback",
+      "line": 146,
+      "reason": "Existing returns workflow fallback requires a reviewed unavailable-value exception."
+    },
+    {
+      "file": "src/services/analyticsApi.ts",
+      "rule": "swallowed_fetch_failure",
+      "line": 438,
+      "reason": "Existing API fallback wrapper requires a reviewed compatibility exception."
+    },
+    {
+      "file": "src/services/analyticsHttp.ts",
+      "rule": "swallowed_fetch_failure",
+      "line": 63,
+      "reason": "Existing analytics HTTP fallback wrapper requires a reviewed compatibility exception."
+    },
+    {
+      "file": "src/services/artikliApi.ts",
+      "rule": "swallowed_fetch_failure",
+      "line": 58,
+      "reason": "Existing article API fallback wrapper requires a reviewed compatibility exception."
+    },
+    {
+      "file": "src/services/dnevnikPromenaApi.ts",
+      "rule": "swallowed_fetch_failure",
+      "line": 36,
+      "reason": "Existing change-log API fallback wrapper requires a reviewed compatibility exception."
+    },
+    {
+      "file": "src/services/exportApi.ts",
+      "rule": "swallowed_fetch_failure",
+      "line": 125,
+      "reason": "Existing export polling fallback wrapper requires a reviewed compatibility exception."
+    },
+    {
+      "file": "src/services/prodajaApi.ts",
+      "rule": "swallowed_fetch_failure",
+      "line": 42,
+      "reason": "Existing sales API fallback wrapper requires a reviewed compatibility exception."
+    },
+    {
+      "file": "src/services/scraperHttp.ts",
+      "rule": "swallowed_fetch_failure",
+      "line": 104,
+      "reason": "Existing scraper HTTP fallback wrapper requires a reviewed compatibility exception."
+    },
+    {
+      "file": "src/services/sezoneApi.ts",
+      "rule": "swallowed_fetch_failure",
+      "line": 60,
+      "reason": "Existing season API fallback wrapper requires a reviewed compatibility exception."
+    }
+  ]
+}

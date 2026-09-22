@@ -311,6 +311,33 @@ describe("DailySalesStatsPage premium controls", () => {
     expect(screen.getByText("Tabela po danima")).toBeInTheDocument();
   });
 
+  it("localizes and exposes the daily supplier-total mismatch warning", async () => {
+    vi.mocked(getDailySalesStats).mockResolvedValue(
+      response({
+        dateRows: [{
+          ...response().dateRows[0],
+          othersCount: 6,
+          totalItemsSold: 17,
+        }],
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/daily-sales"]}>
+        <Routes>
+          <Route path="/analytics/daily-sales" element={<DailySalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Neusklađeno")).toHaveAttribute(
+      "aria-label",
+      "Red ima neusklađen ukupan broj komada",
+    );
+    expect(screen.getByTitle(/zbir najvećih dobavljača i ostalih ne odgovara/i)).toBeInTheDocument();
+    expect(screen.getByText(/ima neusklađenost između ukupne kolone/i)).toBeInTheDocument();
+  });
+
   it("does not report fresh data when the authoritative refresh timestamp is missing", async () => {
     vi.mocked(getDailySalesStats).mockResolvedValue(response({
       meta: {

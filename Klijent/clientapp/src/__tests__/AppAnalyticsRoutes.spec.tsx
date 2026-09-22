@@ -32,6 +32,26 @@ vi.mock("../pages/InventoryPage", () => ({
   default: () => <div data-testid="route-analytics-inventory">inventory</div>,
 }));
 
+vi.mock("../pages/ShoeTypeSalesStatsPage", () => ({
+  default: () => <div data-testid="route-analytics-shoe-type">shoe-type</div>,
+}));
+
+vi.mock("../pages/DailySalesStatsPage", () => ({
+  default: () => <div data-testid="route-analytics-daily-sales">daily-sales</div>,
+}));
+
+vi.mock("../pages/ProdajaPrePostNivelacijePage", () => ({
+  default: () => <div data-testid="route-analytics-pre-post">pre-post</div>,
+}));
+
+vi.mock("../pages/ColorSalesStatsPage", () => ({
+  default: () => <div data-testid="route-analytics-color">color</div>,
+}));
+
+vi.mock("../pages/PreNivelacijaPriorityPage", () => ({
+  default: () => <div data-testid="route-analytics-pre-nivelacija">pre-nivelacija</div>,
+}));
+
 vi.mock("../pages/DataQualityPage", () => ({
   default: () => <div data-testid="route-analytics-data-quality">data-quality</div>,
 }));
@@ -58,6 +78,13 @@ const testIdByPath: Record<string, string> = {
   "/analytics/products": "route-analytics-products",
   "/analytics/supplier": "route-analytics-supplier",
   "/analytics/inventory": "route-analytics-inventory",
+  "/analytics/shoe-type-sales-stats": "route-analytics-shoe-type",
+  "/analytics/daily-sales": "route-analytics-daily-sales",
+  "/analytics/nivelacije-pre-post": "route-analytics-pre-post",
+  "/analytics/color-sales-stats": "route-analytics-color",
+  "/analytics/pre-nivelacija-prioriteti": "route-analytics-pre-nivelacija",
+  "/analytics/supplier-sales-stats": "route-analytics-supplier",
+  "/analytics/dobavljaci-tipovi-obuce": "route-analytics-supplier",
   "/analytics/data-quality": "route-analytics-data-quality",
   "/analytics/actions": "route-analytics-actions",
   "/analytics/decision-board": "route-analytics-decision-board",

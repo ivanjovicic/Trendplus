@@ -69,8 +69,10 @@ Do not continue blind.
 ## Queue task checklist
 
 - [ ] If this is a queue-driven task, I updated the queue status appropriately.
+- [ ] I treated `Current READY` as the primary/default pointer, not as proof that every other READY task is blocked.
+- [ ] If multiple READY tasks exist, I selected one whose dependency, feature-family, path, owner and gate collision checks are clear; this agent/workspace still owns only one claimed prompt at a time.
 - [ ] I added evidence: date, files changed, checks, risks, next step.
-- [ ] I did not execute the next queue task unless explicitly instructed.
+- [ ] I did not execute an additional queue task unless explicitly instructed.
 
 ## Commands
 

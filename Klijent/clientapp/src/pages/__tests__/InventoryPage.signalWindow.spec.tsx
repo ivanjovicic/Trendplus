@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import InventoryPage from "../InventoryPage";
 import { setDataScope } from "../../utils/dataScope";
 
@@ -54,7 +54,18 @@ vi.mock("../../components/inventory/ExportSchedulerPanel", () => ({ ExportSchedu
 vi.mock("../../components/inventory/InventoryAlertsFeed", () => ({ InventoryAlertsFeed: () => null }));
 vi.mock("../../components/inventory/InventoryInsightPanels", () => ({ InventoryInsightPanels: () => null }));
 vi.mock("../../components/inventory/InventoryItemsTable", () => ({
-  InventoryItemsTable: () => <div data-testid="inventory-items-table" />,
+  InventoryItemsTable: ({
+    pageNumber,
+    onNextPage,
+  }: {
+    pageNumber: number;
+    onNextPage: () => void;
+  }) => (
+    <div data-testid="inventory-items-table">
+      <span>{`page=${pageNumber}`}</span>
+      <button type="button" onClick={onNextPage}>Sledeća strana</button>
+    </div>
+  ),
 }));
 vi.mock("../../components/inventory/InventoryKPICards", () => ({ InventoryKPICards: () => null }));
 vi.mock("../../components/inventory/InventoryPriorityPanels", () => ({ InventoryPriorityPanels: () => null }));
@@ -62,7 +73,20 @@ vi.mock("../../components/inventory/MailSchedulerPanel", () => ({ MailSchedulerP
 vi.mock("../../components/inventory/RebalancingTable", () => ({ RebalancingTable: () => null }));
 vi.mock("../../components/inventory/SKUDetailModal", () => ({ SKUDetailModal: () => null }));
 vi.mock("../../components/inventory/SizeCurvePanel", () => ({ SizeCurvePanel: () => null }));
-vi.mock("../../components/inventory/StoreComparisonPanel", () => ({ StoreComparisonPanel: () => null }));
+vi.mock("../../components/inventory/StoreComparisonPanel", () => ({
+  StoreComparisonPanel: ({
+    compareStoreIds,
+    onToggleStore,
+  }: {
+    compareStoreIds: number[];
+    onToggleStore: (storeId: number) => void;
+  }) => (
+    <div data-testid="store-comparison-panel">
+      <span>{compareStoreIds.join(",")}</span>
+      <button type="button" onClick={() => onToggleStore(1)}>Toggle store 1</button>
+    </div>
+  ),
+}));
 vi.mock("../../components/ErrorBoundary", () => ({ ErrorBoundary: ({ children }: { children: ReactNode }) => <>{children}</> }));
 
 function seedInventoryMocks() {
@@ -115,6 +139,11 @@ function seedInventoryMocks() {
   getForecastMock.mockResolvedValue({ items: [], generatedAtUtc: "2026-05-26T12:00:00Z" });
   getInventoryAlertsMock.mockResolvedValue({ items: [] });
   getRebalanceSuggestionsMock.mockResolvedValue({ items: [] });
+}
+
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="location-search">{location.search}</output>;
 }
 
 describe("InventoryPage signal window refresh", () => {
@@ -192,6 +221,71 @@ describe("InventoryPage signal window refresh", () => {
     await waitFor(() => {
       expect(getInventoryListMock.mock.calls.length).toBeGreaterThan(initialCallCount);
     });
+  });
+
+  it("passes one lifecycle signal to every secondary request and aborts it on scope refresh", async () => {
+    render(
+      <MemoryRouter>
+        <InventoryPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(getInventoryListMock).toHaveBeenCalled();
+      expect(getInventoryInsightsMock).toHaveBeenCalled();
+      expect(getInventoryStoreComparisonMock).toHaveBeenCalled();
+      expect(getInventoryActionSuggestionsMock).toHaveBeenCalled();
+      expect(getForecastMock).toHaveBeenCalled();
+      expect(getInventoryAlertsMock).toHaveBeenCalled();
+      expect(getRebalanceSuggestionsMock).toHaveBeenCalled();
+    });
+
+    const lifecycleSignal = getInventoryListMock.mock.calls.at(-1)?.[0]?.signal as AbortSignal;
+    expect(lifecycleSignal).toBeInstanceOf(AbortSignal);
+    expect(getInventoryBalanceMock.mock.calls.at(-1)?.[4]).toBe(lifecycleSignal);
+    expect(getInventoryInsightsMock.mock.calls.at(-1)?.[0]?.signal).toBe(lifecycleSignal);
+    expect(getInventoryStoreComparisonMock.mock.calls.at(-1)?.[0]?.signal).toBe(lifecycleSignal);
+    expect(getInventoryActionSuggestionsMock.mock.calls.at(-1)?.[0]?.signal).toBe(lifecycleSignal);
+    expect(getForecastMock.mock.calls.at(-1)?.[0]?.signal).toBe(lifecycleSignal);
+    expect(getInventoryAlertsMock.mock.calls.at(-1)?.[0]?.signal).toBe(lifecycleSignal);
+    expect(getRebalanceSuggestionsMock.mock.calls.at(-1)?.[0]?.signal).toBe(lifecycleSignal);
+
+    setDataScope("existing");
+    act(() => {
+      window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+    });
+
+    await waitFor(() => {
+      const nextSignal = getInventoryListMock.mock.calls.at(-1)?.[0]?.signal as AbortSignal;
+      expect(nextSignal).not.toBe(lifecycleSignal);
+      expect(lifecycleSignal.aborted).toBe(true);
+    });
+  });
+
+  it("restores Inventory pagination, search, page size, and compare stores from URL", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/inventory?page=3&pageSize=100&search=patika&compareStores=1,2"]}>
+        <LocationProbe />
+        <InventoryPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(getInventoryListMock).toHaveBeenCalledWith(expect.objectContaining({
+        pageNumber: 3,
+        pageSize: 100,
+        search: "patika",
+      }));
+      expect(getInventoryStoreComparisonMock).toHaveBeenCalledWith(expect.objectContaining({
+        compareStoreIds: [1, 2],
+      }));
+    });
+
+    expect(screen.getByRole("searchbox", { name: "Pretraga artikala" })).toHaveValue("patika");
+    expect(screen.getByTestId("inventory-items-table")).toHaveTextContent("page=3");
+    expect(screen.getByLabelText("Veličina strane tabele artikala")).toHaveValue("100");
+    expect(screen.getByTestId("store-comparison-panel")).toHaveTextContent("1,2");
+    expect(screen.getByTestId("location-search")).toHaveTextContent("page=3");
   });
 
   it("recomputes the signal window when data scope changes", async () => {

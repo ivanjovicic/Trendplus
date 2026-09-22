@@ -640,6 +640,28 @@ describe("ColorSalesStatsPage", () => {
     expect(screen.queryByText("Ukupan marzni doprinos")).not.toBeInTheDocument();
   });
 
+  it("keeps empty color data as no-data even when quality notes exist", async () => {
+    vi.mocked(getColorSalesStats).mockResolvedValue(response({
+      colors: [],
+      dataQuality: {
+        missingCostRevenue: 0,
+        missingCostRevenueSharePct: 0,
+        estimatedCostRevenue: 0,
+        estimatedCostRevenueSharePct: 0,
+        unknownColorRevenue: 2500,
+        unknownColorRevenueSharePct: 25,
+        revenueWithNivelacijaSplit: 0,
+        revenueWithNivelacijaSplitSharePct: 0,
+      },
+    }));
+
+    renderPage();
+
+    expect(await screen.findByRole("heading", { name: "Nema podataka za izabrani period." })).toBeInTheDocument();
+    expect(screen.getByText(/Nepoznate boje učestvuju sa 25,0%/i)).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Nema dovoljno podataka za pouzdanu analizu." })).not.toBeInTheDocument();
+  });
+
   it("mounts the real AnalyticsTrustHeader, not a mocked placeholder", async () => {
     renderPage();
 

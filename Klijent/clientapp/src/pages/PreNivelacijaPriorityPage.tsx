@@ -26,6 +26,8 @@ import { fmtNumber, fmtPct, fmtRsd } from "../utils/analyticsFormatters";
 import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescriptions";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { getDataScope, normalizeDataScope, type DataScope } from "../utils/dataScope";
+import { createAnalyticsDatasetProjections } from "../utils/analyticsDatasetProjections";
+import { useReliableAnalyticsQuery } from "../hooks/useReliableAnalyticsQuery";
 import {
   getAnalyticsMetaMessage,
   isAnalyticsMetaInsufficient,
@@ -65,6 +67,32 @@ type ActiveFilters = {
   minScore: number;
   noSaleDaysMin: number;
 };
+
+function getPreNivelacijaErrorDetails(reason: unknown): {
+  message: string;
+  errorCode: string | null;
+  correlationId: string | null;
+} {
+  const preNivelacijaError = reason instanceof PreNivelacijaApiError ? reason : null;
+  const maybeError = reason as { message?: unknown; errorCode?: unknown; correlationId?: unknown };
+  const errorCode = preNivelacijaError?.errorCode
+    ?? (typeof maybeError.errorCode === "string" ? maybeError.errorCode : null);
+  const correlationId = preNivelacijaError?.correlationId
+    ?? (typeof maybeError.correlationId === "string" ? maybeError.correlationId : null);
+  const fallbackMessage = "Pre-nivelacija prioriteti trenutno nisu dostupni. Proverite status osvežavanja i pokušajte ponovo.";
+  const rawMessage = preNivelacijaError?.message
+    ?? (typeof maybeError.message === "string" ? maybeError.message : null);
+
+  return {
+    message: getSafeAnalyticsErrorMessage(
+      preNivelacijaError ? rawMessage : null,
+      errorCode,
+      fallbackMessage,
+    ),
+    errorCode,
+    correlationId,
+  };
+}
 
 const DEFAULT_MIN_SCORE = 40;
 const DEFAULT_NO_SALE_DAYS_MIN = 14;
@@ -375,7 +403,6 @@ export default function PreNivelacijaPriorityPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const requestIdRef = useRef(0);
   const queryDataScope = normalizeDataScope(searchParams.get("dataScope") ?? getDataScope());
   const queryFilters = useMemo<ActiveFilters>(() => ({
     supplierId: parseOptionalPositiveInteger(searchParams.get("supplierId")),
@@ -395,9 +422,6 @@ export default function PreNivelacijaPriorityPage() {
   const [activeFilters, setActiveFilters] = useState<ActiveFilters>(queryFilters);
 
   const [page, setPage] = useState(queryPage);
-  const [data, setData] = useState<PreNivelacijaPriorityResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<{ message: string; errorCode?: string | null; correlationId?: string | null } | null>(null);
   const [sortField, setSortField] = useState<SortField>("status");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expandedArtikalId, setExpandedArtikalId] = useState<number | null>(null);
@@ -445,69 +469,44 @@ export default function PreNivelacijaPriorityPage() {
     return () => window.removeEventListener("trendplus:data-scope-changed", handleScopeChange);
   }, [setSearchParams]);
 
-  const load = useCallback(async (filters: ActiveFilters, nextPage: number, scope: DataScope, signal?: AbortSignal) => {
-    const requestId = ++requestIdRef.current;
-    setLoading(true);
-    setError(null);
-
-    try {
-      const result = await getPreNivelacijaPrioriteti({
-        supplierId: filters.supplierId ?? undefined,
-        seasonId: filters.seasonId ?? undefined,
-        footwearTypeId: filters.footwearTypeId ?? undefined,
-        minScore: filters.minScore,
-        noSaleDaysMin: filters.noSaleDaysMin,
-        page: nextPage,
-        pageSize: 60,
-        dataScope: scope,
-        signal,
-      });
-
-      if (requestId !== requestIdRef.current) return;
-      setData(result);
-      setExpandedArtikalId((current) => {
-        if (current == null) return null;
-        const stillPresent = result.candidates.some((candidate) => candidate.artikalId === current);
-        return stillPresent ? current : null;
-      });
-    } catch (reason) {
-      if (reason instanceof DOMException && reason.name === "AbortError") {
-        return;
+  const preNivelacijaQuery = useCallback((signal: AbortSignal) => getPreNivelacijaPrioriteti({
+    supplierId: activeFilters.supplierId ?? undefined,
+    seasonId: activeFilters.seasonId ?? undefined,
+    footwearTypeId: activeFilters.footwearTypeId ?? undefined,
+    minScore: activeFilters.minScore,
+    noSaleDaysMin: activeFilters.noSaleDaysMin,
+    page,
+    pageSize: 60,
+    dataScope,
+    signal,
+  }), [activeFilters, dataScope, page]);
+  const {
+    data,
+    initialLoading,
+    refetching,
+    error: queryError,
+    errorReason,
+    staleWarning,
+    refetch,
+  } = useReliableAnalyticsQuery<PreNivelacijaPriorityResponse>({
+    query: preNivelacijaQuery,
+    getErrorMessage: useCallback((reason: unknown) => getPreNivelacijaErrorDetails(reason).message, []),
+  });
+  const loading = initialLoading || refetching;
+  const queryErrorDetails = errorReason ? getPreNivelacijaErrorDetails(errorReason) : null;
+  const error = queryError
+    ? {
+        message: queryError,
+        errorCode: queryErrorDetails?.errorCode ?? null,
+        correlationId: queryErrorDetails?.correlationId ?? null,
       }
-      if (requestId !== requestIdRef.current) return;
-      setData(null);
-      const preNivelacijaError = reason instanceof PreNivelacijaApiError
-        ? reason
-        : null;
-      const maybeError = reason as { message?: unknown; errorCode?: unknown; correlationId?: unknown };
-      const errorCode = preNivelacijaError?.errorCode
-        ?? (typeof maybeError.errorCode === "string" ? maybeError.errorCode : null);
-      const correlationId = preNivelacijaError?.correlationId
-        ?? (typeof maybeError.correlationId === "string" ? maybeError.correlationId : null);
-      const fallbackMessage = "Pre-nivelacija prioriteti trenutno nisu dostupni. Proverite status osvežavanja i pokušajte ponovo.";
-      const rawMessage = preNivelacijaError?.message
-        ?? (typeof maybeError.message === "string" ? maybeError.message : null);
-      setError({
-        message: getSafeAnalyticsErrorMessage(
-          preNivelacijaError ? rawMessage : null,
-          errorCode,
-          fallbackMessage,
-        ),
-        errorCode,
-        correlationId,
-      });
-    } finally {
-      if (requestId === requestIdRef.current) {
-        setLoading(false);
-      }
-    }
-  }, []);
-
+    : null;
   useEffect(() => {
-    const controller = new AbortController();
-    void load(activeFilters, page, dataScope, controller.signal);
-    return () => controller.abort();
-  }, [activeFilters, dataScope, load, page]);
+    if (!data) return;
+    setExpandedArtikalId((current) => current == null || data.candidates.some((candidate) => candidate.artikalId === current)
+      ? current
+      : null);
+  }, [data]);
 
   const supplierOptions = useMemo(
     () => (data?.supplierLeaderboard ?? []).filter((item) => item.supplierId != null),
@@ -596,7 +595,7 @@ export default function PreNivelacijaPriorityPage() {
     });
   }, [data?.candidates]);
 
-  const sortedRows = useMemo(() => {
+  const tableRows = useMemo(() => {
     const rows = [...decisionRows];
     return rows.sort((a, b) => {
       let compare = 0;
@@ -623,25 +622,40 @@ export default function PreNivelacijaPriorityPage() {
   }, [decisionRows, sortDir, sortField]);
 
   const candidateCounts = useMemo(() => {
-    const increaseFocus = sortedRows.filter((row) => row.status === "increase_focus").length;
-    const maintain = sortedRows.filter((row) => row.status === "maintain").length;
-    const review = sortedRows.filter((row) => row.status === "review").length;
-    const doNotTrust = sortedRows.filter((row) => row.status === "do_not_trust").length;
-    const insufficientData = sortedRows.filter((row) => row.status === "insufficient_data").length;
-    const highPriority = sortedRows.filter(isHighPriorityCandidate).length;
+    const increaseFocus = tableRows.filter((row) => row.status === "increase_focus").length;
+    const maintain = tableRows.filter((row) => row.status === "maintain").length;
+    const review = tableRows.filter((row) => row.status === "review").length;
+    const doNotTrust = tableRows.filter((row) => row.status === "do_not_trust").length;
+    const insufficientData = tableRows.filter((row) => row.status === "insufficient_data").length;
+    const highPriority = tableRows.filter(isHighPriorityCandidate).length;
     return { increaseFocus, maintain, review, doNotTrust, insufficientData, highPriority };
-  }, [sortedRows]);
+  }, [tableRows]);
 
-  const filteredRows = useMemo(() => {
-    if (focusFilter === "all") return sortedRows;
-    if (focusFilter === "increaseFocus") return sortedRows.filter((row) => row.status === "increase_focus");
-    if (focusFilter === "maintain") return sortedRows.filter((row) => row.status === "maintain");
-    if (focusFilter === "review") return sortedRows.filter((row) => row.status === "review");
-    if (focusFilter === "doNotTrust") return sortedRows.filter((row) => row.status === "do_not_trust");
-    if (focusFilter === "insufficientData") return sortedRows.filter((row) => row.status === "insufficient_data");
-    if (focusFilter === "highPriority") return sortedRows.filter(isHighPriorityCandidate);
-    return sortedRows;
-  }, [focusFilter, sortedRows]);
+  const filteredTableRows = useMemo(() => {
+    if (focusFilter === "all") return tableRows;
+    if (focusFilter === "increaseFocus") return tableRows.filter((row) => row.status === "increase_focus");
+    if (focusFilter === "maintain") return tableRows.filter((row) => row.status === "maintain");
+    if (focusFilter === "review") return tableRows.filter((row) => row.status === "review");
+    if (focusFilter === "doNotTrust") return tableRows.filter((row) => row.status === "do_not_trust");
+    if (focusFilter === "insufficientData") return tableRows.filter((row) => row.status === "insufficient_data");
+    if (focusFilter === "highPriority") return tableRows.filter(isHighPriorityCandidate);
+    return tableRows;
+  }, [focusFilter, tableRows]);
+
+  const preNivelacijaProjections = useMemo(
+    () => createAnalyticsDatasetProjections({
+      canonicalRows: decisionRows,
+      filteredRows: filteredTableRows,
+      tableRows,
+      chronologicalChartRows: decisionRows,
+      exportRows: filteredTableRows,
+      detailRows: filteredTableRows,
+      pageRows: decisionRows,
+      globalTotals: data?.summary ?? null,
+      globalFacets: data?.filterFacets ?? null,
+    }),
+    [data?.filterFacets, data?.summary, decisionRows, filteredTableRows, tableRows],
+  );
 
   const isDirty =
     supplierId !== activeFilters.supplierId ||
@@ -671,8 +685,8 @@ export default function PreNivelacijaPriorityPage() {
 
   const selectedRow = useMemo(() => {
     if (expandedArtikalId == null) return null;
-    return filteredRows.find((row) => row.artikalId === expandedArtikalId) ?? null;
-  }, [expandedArtikalId, filteredRows]);
+    return preNivelacijaProjections.detailRows.find((row) => row.artikalId === expandedArtikalId) ?? null;
+  }, [expandedArtikalId, preNivelacijaProjections.detailRows]);
 
   const canGoPrev = page > 1;
   const pageSize = data ? normalizePositiveInteger(data.pageSize) : null;
@@ -681,7 +695,7 @@ export default function PreNivelacijaPriorityPage() {
   const dataMeta = data?.meta ?? null;
   const dataMetaMessage = getAnalyticsMetaMessage(dataMeta);
   const showMetaWarning = !loading && !error && isAnalyticsMetaWarning(dataMeta);
-  const showFilteredOutState = !loading && !error && Boolean(data) && decisionRows.length > 0 && filteredRows.length === 0;
+  const showFilteredOutState = !loading && !error && Boolean(data) && decisionRows.length > 0 && preNivelacijaProjections.filteredRows.length === 0;
   const showEmptyState = !loading && !error && Boolean(data) && (decisionRows.length === 0 || showFilteredOutState);
   const showInsufficientEmptyState = shouldShowAnalyticsEmptyState(dataMeta, decisionRows.length) && isAnalyticsMetaInsufficient(dataMeta);
   const emptyStateVariant: "no_data" | "insufficient_data" | "filtered_out" =
@@ -1000,9 +1014,14 @@ export default function PreNivelacijaPriorityPage() {
           message={error.message}
           errorCode={error.errorCode}
           correlationId={error.correlationId}
-          onRetry={() => void load(activeFilters, page, dataScope)}
+          onRetry={refetch}
           helpHref="/analytics/data-quality"
         />
+      ) : null}
+      {staleWarning && data ? (
+        <div className="pnp-decision-message info" role="status" data-testid="pnp-stale-refetch-warning">
+          Prikazujemo prethodno učitane podatke. Novi upit nije uspeo.
+        </div>
       ) : null}
       {showMetaWarning ? (
         <div className="pnp-decision-message warning" role="status">
@@ -1023,7 +1042,7 @@ export default function PreNivelacijaPriorityPage() {
           dataQualityHref="/analytics/data-quality"
           refreshStatusHref="/admin/configuration?panel=workers"
           emptyReason={safeEmptyStateReason}
-          onRetry={() => void load(activeFilters, page, dataScope)}
+          onRetry={refetch}
         />
       ) : null}
       {loading ? <div className="pnp-decision-message loading">Učitavam prioritete pre-nivelacije...</div> : null}
@@ -1115,7 +1134,7 @@ export default function PreNivelacijaPriorityPage() {
               <div className="pnp-focus-tabs" role="tablist">
                 {(["all", "increaseFocus", "maintain", "review", "doNotTrust", "insufficientData", "highPriority"] as FocusFilter[]).map((f) => {
                   const count =
-                    f === "all" ? sortedRows.length
+                    f === "all" ? preNivelacijaProjections.tableRows.length
                     : f === "increaseFocus" ? candidateCounts.increaseFocus
                     : f === "maintain" ? candidateCounts.maintain
                     : f === "review" ? candidateCounts.review
@@ -1140,7 +1159,7 @@ export default function PreNivelacijaPriorityPage() {
 
               <AnalyticsDataTable
                 testId="pre-nivelacija-prioriteti-data-table"
-                rowCount={filteredRows.length}
+                rowCount={preNivelacijaProjections.filteredRows.length}
                 truncationLabel={focusFilter !== "all" ? `Fokus: ${FOCUS_LABELS[focusFilter]}` : undefined}
                 toolbar={(
                   <div className="pnp-table-toolbar">
@@ -1153,7 +1172,7 @@ export default function PreNivelacijaPriorityPage() {
                       tableKey="pre-nivelacija-prioriteti"
                       tableTitle="Podrška za odluku pre nivelacije"
                       columns={decisionColumns}
-                      rows={filteredRows}
+                      rows={[...preNivelacijaProjections.exportRows]}
                       filters={toolbarFilters}
                       metadata={toolbarMetadata}
                       defaultOrientation="landscape"
@@ -1198,12 +1217,12 @@ export default function PreNivelacijaPriorityPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredRows.length === 0 ? (
+                    {preNivelacijaProjections.filteredRows.length === 0 ? (
                       <tr>
                         <td colSpan={9} className="pnp-decision-empty-row">Nema podataka za izabrane filtere.</td>
                       </tr>
                     ) : (
-                      filteredRows.map((row) => {
+                      preNivelacijaProjections.filteredRows.map((row) => {
                         const expanded = expandedArtikalId === row.artikalId;
                         const reliability = reliabilitySignalDisplay(row);
                         return (

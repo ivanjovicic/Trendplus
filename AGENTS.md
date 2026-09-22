@@ -111,10 +111,11 @@ Do not introduce a new status, claim mechanism, local lock format or selector fa
 ## 6. Queue work
 
 For formal queue work:
+- treat `Current READY` as the primary/default routing pointer, not as a global mutex or exclusive allowlist; additional `READY` prompts may be claimed when the queue protocol proves them independent;
 - resolve the owner/program using the canonical router/roadmap rules;
 - select/claim through the supported queue mechanism instead of manually grepping and repeatedly attempting direct claims;
 - use the ownership/lock semantics defined by the queue protocol rather than inventing a second coordination layer;
-- work one claimed prompt at a time unless the prompt explicitly authorizes a bounded consolidation;
+- work one claimed prompt at a time **per agent/workspace** unless the prompt explicitly authorizes a bounded consolidation; independent agents/workspaces may claim separate collision-safe `READY` prompts concurrently;
 - update status/evidence only through the canonical protocol;
 - do not stop merely because one queue is exhausted if the canonical router defines another safe route;
 - stop or hand off when required proof cannot be produced, authority is materially unclear, or the work crosses a genuine program boundary.

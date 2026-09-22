@@ -5,7 +5,7 @@ export const ANALYTICS_EMPTY_ERROR_FALLBACK_MESSAGE =
   "Ne prikazujemo nule jer nije potvrđeno da je period stvarno prazan.";
 
 const TECHNICAL_ERROR_PATTERNS = [
-  /\b(?:system|microsoft|npgsql|postgres(?:ql)?|sql(?:server|state|exception)?|exception|stack\s*trace)\b/i,
+  /\b(?:system|microsoft|npgsql(?:exception)?|postgres(?:ql)?|sql(?:server|state|exception)?|exception|stack\s*trace)\b/i,
   /\b(?:error|typeerror|rangeerror|referenceerror|syntaxerror|urierror|evalerror|aggregateerror)\b\s*:/i,
   /\b(?:http|status)\s*[:=]?\s*[45]\d{2}\b/i,
   /(?:^|\s)at\s+(?:[\w$]+\.)+[\w$]+\s*\(/i,

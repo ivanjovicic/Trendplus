@@ -134,11 +134,11 @@ export function InventoryExplainabilitySnapshot({
       {!compact && stockCoverStatusLabel && sellThroughStatusLabel ? (
         <div className="mt-4 grid gap-2 md:grid-cols-2">
           <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-darker)] p-3 text-sm text-[var(--text-primary)]">
-            <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-primary)]">Stock cover status</div>
+            <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-primary)]">Status pokrivenosti zalihe</div>
             <div className="mt-1 font-semibold">{stockCoverStatusLabel}</div>
           </div>
           <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-darker)] p-3 text-sm text-[var(--text-primary)]">
-            <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-primary)]">Sell-through status</div>
+            <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-primary)]">Status prodajnog obrta</div>
             <div className="mt-1 font-semibold">{sellThroughStatusLabel}</div>
           </div>
         </div>

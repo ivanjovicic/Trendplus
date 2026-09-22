@@ -1,0 +1,32 @@
+{
+  "taskId": "RQ367",
+  "commands": [
+    {
+      "name": "validation evidence fixtures",
+      "category": "tests",
+      "command": "npm run test:validation-evidence"
+    },
+    {
+      "name": "prompt queue validator",
+      "category": "guardrails",
+      "command": "node scripts/check-prompt-queues.mjs"
+    },
+    {
+      "name": "frontend analytics guardrails",
+      "category": "guardrails",
+      "command": "npm run check:analytics-guardrails",
+      "cwd": "Klijent/clientapp"
+    },
+    {
+      "name": "diff check",
+      "category": "build",
+      "command": "git diff --check"
+    },
+    {
+      "name": "backend build and test",
+      "category": "build",
+      "command": "dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release",
+      "environmentBlockedReason": "dotnet is unavailable in the VM; backend proof remains CI-only"
+    }
+  ]
+}

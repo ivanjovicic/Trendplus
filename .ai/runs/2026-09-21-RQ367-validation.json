@@ -1,0 +1,170 @@
+{
+  "schemaVersion": 1,
+  "taskId": "RQ367",
+  "commit": "b419dad3baac0d8c6afbf3780ea8150e714f9860",
+  "timestamp": "2026-09-21T15:44:30.266Z",
+  "environment": {
+    "cwd": "/workspace",
+    "node": "v22.14.0",
+    "platform": "linux",
+    "arch": "x64",
+    "hostname": "cursor"
+  },
+  "tests": {
+    "status": "pass",
+    "results": [
+      {
+        "name": "validation evidence fixtures",
+        "category": "tests",
+        "command": "npm run test:validation-evidence",
+        "status": "pass",
+        "exitCode": 0,
+        "signal": null,
+        "startedAt": "2026-09-21T15:44:15.330Z",
+        "finishedAt": "2026-09-21T15:44:16.636Z",
+        "durationMs": 1306,
+        "summary": "  ...\n# Subtest: main verification distinguishes exact tip and ancestor commits\nok 3 - main verification distinguishes exact tip and ancestor commits\n  ---\n  duration_ms: 90.768166\n  ...\n# Subtest: CLI writes JSON evidence and exits non-zero for a failed command\nok 4 - CLI writes JSON evidence and exits non-zero for a failed command\n  ---\n  duration_ms: 43.359752\n  ...\n1..4\n# tests 4\n# suites 0\n# pass 4\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 1211.034096",
+        "output": "\n> test:validation-evidence\n> node --test scripts/run-task-validation.test.mjs\n\nTAP version 13\n# Subtest: validation plan preserves pass, fail, timeout, skipped and environment-blocked outcomes\nok 1 - validation plan preserves pass, fail, timeout, skipped and environment-blocked outcomes\n  ---\n  duration_ms: 1037.7578\n  ...\n# Subtest: renderer never turns a non-zero command into PASS\nok 2 - renderer never turns a non-zero command into PASS\n  ---\n  duration_ms: 0.442091\n  ...\n# Subtest: main verification distinguishes exact tip and ancestor commits\nok 3 - main verification distinguishes exact tip and ancestor commits\n  ---\n  duration_ms: 90.768166\n  ...\n# Subtest: CLI writes JSON evidence and exits non-zero for a failed command\nok 4 - CLI writes JSON evidence and exits non-zero for a failed command\n  ---\n  duration_ms: 43.359752\n  ...\n1..4\n# tests 4\n# suites 0\n# pass 4\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 1211.034096\n"
+      }
+    ]
+  },
+  "guardrails": {
+    "status": "pass",
+    "results": [
+      {
+        "name": "prompt queue validator",
+        "category": "guardrails",
+        "command": "node scripts/check-prompt-queues.mjs",
+        "status": "pass",
+        "exitCode": 0,
+        "signal": null,
+        "startedAt": "2026-09-21T15:44:16.636Z",
+        "finishedAt": "2026-09-21T15:44:16.703Z",
+        "durationMs": 67,
+        "summary": "OK: prompt-queue governance checks passed (506 tasks).",
+        "output": "OK: prompt-queue governance checks passed (506 tasks).\n"
+      },
+      {
+        "name": "frontend analytics guardrails",
+        "category": "guardrails",
+        "command": "npm run check:analytics-guardrails",
+        "status": "pass",
+        "exitCode": 0,
+        "signal": null,
+        "startedAt": "2026-09-21T15:44:16.703Z",
+        "finishedAt": "2026-09-21T15:44:30.248Z",
+        "durationMs": 13545,
+        "summary": "> clientapp@0.0.0 check:analytics-guardrails\n> npm run check:encoding && npm run check:analytics-guardrails:self-test && node ./scripts/check-analytics-guardrails.mjs && npm run typecheck\n> clientapp@0.0.0 check:encoding\n> node ./scripts/check-encoding.mjs\nOK: No mojibake detected in maintained docs/frontend/backend analytics surfaces.\n> clientapp@0.0.0 check:analytics-guardrails:self-test\n> node ./scripts/check-analytics-guardrails.mjs --self-test\nOK: Guardrail baseline self-test passed.\nOK: Guardrails baseline-only (51 known violation(s), 0 removed).\n> clientapp@0.0.0 typecheck\n> tsc -b",
+        "output": "\n> clientapp@0.0.0 check:analytics-guardrails\n> npm run check:encoding && npm run check:analytics-guardrails:self-test && node ./scripts/check-analytics-guardrails.mjs && npm run typecheck\n\n\n> clientapp@0.0.0 check:encoding\n> node ./scripts/check-encoding.mjs\n\nOK: No mojibake detected in maintained docs/frontend/backend analytics surfaces.\n\n> clientapp@0.0.0 check:analytics-guardrails:self-test\n> node ./scripts/check-analytics-guardrails.mjs --self-test\n\nOK: Guardrail baseline self-test passed.\nOK: Guardrails baseline-only (51 known violation(s), 0 removed).\n\n> clientapp@0.0.0 typecheck\n> tsc -b\n\n"
+      }
+    ]
+  },
+  "build": {
+    "status": "environment-blocked",
+    "results": [
+      {
+        "name": "diff check",
+        "category": "build",
+        "command": "git diff --check",
+        "status": "pass",
+        "exitCode": 0,
+        "signal": null,
+        "startedAt": "2026-09-21T15:44:30.248Z",
+        "finishedAt": "2026-09-21T15:44:30.264Z",
+        "durationMs": 16,
+        "summary": "",
+        "output": ""
+      },
+      {
+        "name": "backend build and test",
+        "category": "build",
+        "command": "dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release",
+        "status": "environment-blocked",
+        "exitCode": null,
+        "signal": null,
+        "summary": "dotnet is unavailable in the VM; backend proof remains CI-only",
+        "output": ""
+      }
+    ]
+  },
+  "results": [
+    {
+      "name": "validation evidence fixtures",
+      "category": "tests",
+      "command": "npm run test:validation-evidence",
+      "status": "pass",
+      "exitCode": 0,
+      "signal": null,
+      "startedAt": "2026-09-21T15:44:15.330Z",
+      "finishedAt": "2026-09-21T15:44:16.636Z",
+      "durationMs": 1306,
+      "summary": "  ...\n# Subtest: main verification distinguishes exact tip and ancestor commits\nok 3 - main verification distinguishes exact tip and ancestor commits\n  ---\n  duration_ms: 90.768166\n  ...\n# Subtest: CLI writes JSON evidence and exits non-zero for a failed command\nok 4 - CLI writes JSON evidence and exits non-zero for a failed command\n  ---\n  duration_ms: 43.359752\n  ...\n1..4\n# tests 4\n# suites 0\n# pass 4\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 1211.034096",
+      "output": "\n> test:validation-evidence\n> node --test scripts/run-task-validation.test.mjs\n\nTAP version 13\n# Subtest: validation plan preserves pass, fail, timeout, skipped and environment-blocked outcomes\nok 1 - validation plan preserves pass, fail, timeout, skipped and environment-blocked outcomes\n  ---\n  duration_ms: 1037.7578\n  ...\n# Subtest: renderer never turns a non-zero command into PASS\nok 2 - renderer never turns a non-zero command into PASS\n  ---\n  duration_ms: 0.442091\n  ...\n# Subtest: main verification distinguishes exact tip and ancestor commits\nok 3 - main verification distinguishes exact tip and ancestor commits\n  ---\n  duration_ms: 90.768166\n  ...\n# Subtest: CLI writes JSON evidence and exits non-zero for a failed command\nok 4 - CLI writes JSON evidence and exits non-zero for a failed command\n  ---\n  duration_ms: 43.359752\n  ...\n1..4\n# tests 4\n# suites 0\n# pass 4\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 1211.034096\n"
+    },
+    {
+      "name": "prompt queue validator",
+      "category": "guardrails",
+      "command": "node scripts/check-prompt-queues.mjs",
+      "status": "pass",
+      "exitCode": 0,
+      "signal": null,
+      "startedAt": "2026-09-21T15:44:16.636Z",
+      "finishedAt": "2026-09-21T15:44:16.703Z",
+      "durationMs": 67,
+      "summary": "OK: prompt-queue governance checks passed (506 tasks).",
+      "output": "OK: prompt-queue governance checks passed (506 tasks).\n"
+    },
+    {
+      "name": "frontend analytics guardrails",
+      "category": "guardrails",
+      "command": "npm run check:analytics-guardrails",
+      "status": "pass",
+      "exitCode": 0,
+      "signal": null,
+      "startedAt": "2026-09-21T15:44:16.703Z",
+      "finishedAt": "2026-09-21T15:44:30.248Z",
+      "durationMs": 13545,
+      "summary": "> clientapp@0.0.0 check:analytics-guardrails\n> npm run check:encoding && npm run check:analytics-guardrails:self-test && node ./scripts/check-analytics-guardrails.mjs && npm run typecheck\n> clientapp@0.0.0 check:encoding\n> node ./scripts/check-encoding.mjs\nOK: No mojibake detected in maintained docs/frontend/backend analytics surfaces.\n> clientapp@0.0.0 check:analytics-guardrails:self-test\n> node ./scripts/check-analytics-guardrails.mjs --self-test\nOK: Guardrail baseline self-test passed.\nOK: Guardrails baseline-only (51 known violation(s), 0 removed).\n> clientapp@0.0.0 typecheck\n> tsc -b",
+      "output": "\n> clientapp@0.0.0 check:analytics-guardrails\n> npm run check:encoding && npm run check:analytics-guardrails:self-test && node ./scripts/check-analytics-guardrails.mjs && npm run typecheck\n\n\n> clientapp@0.0.0 check:encoding\n> node ./scripts/check-encoding.mjs\n\nOK: No mojibake detected in maintained docs/frontend/backend analytics surfaces.\n\n> clientapp@0.0.0 check:analytics-guardrails:self-test\n> node ./scripts/check-analytics-guardrails.mjs --self-test\n\nOK: Guardrail baseline self-test passed.\nOK: Guardrails baseline-only (51 known violation(s), 0 removed).\n\n> clientapp@0.0.0 typecheck\n> tsc -b\n\n"
+    },
+    {
+      "name": "diff check",
+      "category": "build",
+      "command": "git diff --check",
+      "status": "pass",
+      "exitCode": 0,
+      "signal": null,
+      "startedAt": "2026-09-21T15:44:30.248Z",
+      "finishedAt": "2026-09-21T15:44:30.264Z",
+      "durationMs": 16,
+      "summary": "",
+      "output": ""
+    },
+    {
+      "name": "backend build and test",
+      "category": "build",
+      "command": "dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release",
+      "status": "environment-blocked",
+      "exitCode": null,
+      "signal": null,
+      "summary": "dotnet is unavailable in the VM; backend proof remains CI-only",
+      "output": ""
+    }
+  ],
+  "exitCodes": {
+    "validation evidence fixtures": 0,
+    "prompt queue validator": 0,
+    "frontend analytics guardrails": 0,
+    "diff check": 0,
+    "backend build and test": null
+  },
+  "skipped": [],
+  "mainVerification": {
+    "status": "exact-tip",
+    "commit": "b419dad3baac0d8c6afbf3780ea8150e714f9860",
+    "mainRef": "origin/main",
+    "mainSha": "b419dad3baac0d8c6afbf3780ea8150e714f9860",
+    "containsCommit": true,
+    "exactTip": true
+  }
+}

@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace Trendplus2.Dtos;
 
 /// <summary>
@@ -11,7 +13,8 @@ public static class AnalyticsResponseMetaFactory
         DateTime? lastRefreshAtUtc = null,
         bool isPartial = false,
         string? warningCode = null,
-        string? warningMessage = null)
+        string? warningMessage = null,
+        IReadOnlyDictionary<string, AnalyticsMetricProvenanceDto>? metricProvenance = null)
         => new()
         {
             Success = true,
@@ -20,6 +23,7 @@ public static class AnalyticsResponseMetaFactory
             IsPartial = isPartial,
             WarningCode = warningCode,
             WarningMessage = warningMessage,
+            MetricProvenance = metricProvenance,
             Message = warningMessage,
             GeneratedAtUtc = DateTime.UtcNow
         };

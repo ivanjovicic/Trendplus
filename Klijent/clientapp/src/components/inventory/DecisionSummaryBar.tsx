@@ -87,7 +87,7 @@ export function DecisionSummaryBar({
         <div className={`rounded-2xl border-2 p-3 transition-colors ${p2DeadStock > 0 ? "border-warning bg-[var(--surface-darker)]" : "border-border bg-surface"}`}>
           <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] font-semibold">
             <TrendingDown size={12} className={p2DeadStock > 0 ? "text-warning" : "text-muted"} />
-            <span className={p2DeadStock > 0 ? "text-warning" : "text-muted"}>P2 Dead stock</span>
+            <span className={p2DeadStock > 0 ? "text-warning" : "text-muted"}>P2 Mrtva zaliha</span>
           </div>
           <div className={`mt-2 text-lg font-bold ${p2DeadStock > 0 ? "text-warning" : "text-foreground"}`}>{formatNumber(p2DeadStock)}</div>
           <div className="mt-1 text-[10px] text-muted">mrtva zaliha / sniženje</div>
@@ -97,7 +97,7 @@ export function DecisionSummaryBar({
         <div className={`rounded-2xl border-2 p-3 transition-colors ${workflowPending > 0 ? "border-focus bg-[var(--surface-darker)]" : "border-border bg-surface"}`}>
           <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] font-semibold">
             <Workflow size={12} className={workflowPending > 0 ? "text-focus" : "text-muted"} />
-            <span className={workflowPending > 0 ? "text-focus" : "text-muted"}>Workflow</span>
+            <span className={workflowPending > 0 ? "text-focus" : "text-muted"}>Tok akcija</span>
           </div>
           <div className={`mt-2 text-lg font-bold ${workflowPending > 0 ? "text-focus" : "text-foreground"}`}>{formatNumber(workflowPending)}</div>
           <div className="mt-1 text-[10px] text-muted">čeka odluku</div>
@@ -115,7 +115,7 @@ export function DecisionSummaryBar({
           </div>
           {dataQualityWarning && dataQualityHref ? (
             <Link to={dataQualityHref} className="mt-2 inline-flex text-[10px] font-medium text-error underline decoration-dotted underline-offset-2">
-              Otvori Data Quality
+              Otvori kvalitet podataka
             </Link>
           ) : null}
         </div>

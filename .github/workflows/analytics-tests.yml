@@ -64,6 +64,15 @@ jobs:
         id: build
         run: dotnet build Api.Tests/Api.Tests.csproj --no-restore --configuration Release
 
+      - name: Run migration and bootstrap lifecycle smoke
+        id: migration_bootstrap_smoke
+        run: >-
+          dotnet test Api.Tests/Api.Tests.csproj
+          --no-build
+          --configuration Release
+          --verbosity normal
+          --filter FullyQualifiedName~DatabaseMigrationBootstrapLifecycleSmokeTests
+
       - name: Run all backend tests with coverage
         id: test
         run: >-

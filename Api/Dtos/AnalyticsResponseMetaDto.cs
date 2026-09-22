@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace Trendplus2.Dtos;
 
@@ -24,4 +25,8 @@ public class AnalyticsResponseMetaDto
     public string? DataQualityStatus { get; set; }
     public bool? RecommendationAllowed { get; set; }
     public bool IsPartial { get; set; }
+    /// <summary>
+    /// Optional provenance by stable metric key. Existing clients may omit this field.
+    /// </summary>
+    public IReadOnlyDictionary<string, AnalyticsMetricProvenanceDto>? MetricProvenance { get; set; }
 }

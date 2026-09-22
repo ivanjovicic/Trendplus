@@ -1,6 +1,6 @@
 # Agent Start Here
 
-Updated: 2026-08-13
+Updated: 2026-09-22
 
 Read this after `AGENTS.md` and `.github/copilot-instructions.md`.
 
@@ -55,7 +55,7 @@ Useful standards:
 
 ## Program ownership
 
-Use `MASTER_ROADMAP.md` for current READY/blocked/parallel-safe truth. The owner families are:
+Use `MASTER_ROADMAP.md` for the primary `Current READY` pointer, blocked truth and cross-program priority; use the owner queue's task statuses for the complete READY set and parallel-safety truth. The owner families are:
 
 - Backend CI Repair -> `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
 - Stabilization / Release / current pilot Security -> `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md`
@@ -75,12 +75,14 @@ Preserve the existing program priority declared in `MASTER_ROADMAP.md`. A local 
 
 Premium UI is a supplemental presentation lane. It may run when path-safe, but it must not displace the main BCI/STAB/RQ/QDB/MT/GAI priority chain or implement business truth in frontend code.
 
-A task may run in parallel only when:
+Multiple READY tasks are allowed. Concurrent execution is safe only when:
 
-- its queue explicitly marks it parallel-safe;
-- it does not overlap the higher-priority task's paths/feature family;
-- it does not weaken or bypass the higher-priority gate;
-- it is not using planning READY as permission for runtime implementation.
+- each selected task is already READY and dependency-complete;
+- selected tasks do not overlap paths, owner boundaries or exclusive feature families;
+- if two active tasks share a feature family, **both/all** explicitly say `Parallel-safe: yes`;
+- `Parallel-safe: no` is exclusive for that feature family/owned surface, not a program-wide lock;
+- the work does not weaken or bypass a higher-priority gate;
+- planning READY is not being used as permission for unauthorized runtime implementation.
 
 If a higher-priority program has no current READY task, do not resurrect an old DONE/PARTIAL task or infer readiness from historical prose. Follow that program's documented blocker/promotion rule.
 
@@ -175,8 +177,8 @@ If a line cannot be answered, do not guess the runtime contract.
 ## Queue task workflow
 
 1. Resolve owner program from `MASTER_ROADMAP.md`.
-2. Verify the current READY pointer in that owner queue.
-3. Confirm no other program owns the same feature family.
+2. Verify the owner queue's `Current READY` primary pointer **and all READY candidates**; for a simple `next`, prefer the primary candidate, otherwise choose any collision-safe READY task that satisfies the user's scope.
+3. Confirm no other active task/program owns a conflicting feature family/path; an unrelated READY task is not a blocker.
 4. Identify source-of-truth service/DTO/endpoint/context.
 5. Find shared helpers/contracts before creating new ones.
 6. Find existing tests and route/surface coverage.

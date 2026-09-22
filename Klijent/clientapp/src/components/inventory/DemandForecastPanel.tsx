@@ -77,17 +77,17 @@ export function DemandForecastPanel({
         <div className="mt-4 rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">
           {forecastLoading
             ? "Učitavam prognozu..."
-            : provenanceStatus === "missing_relation"
-              ? "Prognoza nije dostupna — forecast snapshot relacija nedostaje (missing_relation). Ovo nije production forecasting proizvod."
-              : "Prognoza trenutno nije dostupna. Snapshot relacija nije učitana ili nije dostupna."}
+              : provenanceStatus === "missing_relation"
+              ? "Prognoza nije dostupna — nedostaje veza sa snimkom prognoze (missing_relation). Ovo nije proizvod za automatsko predviđanje."
+              : "Prognoza trenutno nije dostupna. Veza sa snimkom nije učitana ili nije dostupna."}
           {warningText ? <div className="mt-2 text-xs text-warning">{warningText}</div> : null}
         </div>
       ) : (
         <>
           {showUnprovenBanner ? (
             <div className="mt-4 rounded-2xl border border-warning/40 bg-surface-elevated px-4 py-3 text-sm text-warning">
-              Bounded signal: materializer/owner nije dokazan
-              {provenanceStatus ? ` (${provenanceStatus})` : ""}. Ne tretirati kao production forecasting proizvod.
+              Ograničeni signal: izvor podataka nije dokazan
+              {provenanceStatus ? ` (${provenanceStatus})` : ""}. Ne tretirati kao proizvod za automatsko predviđanje.
               {warningText ? <div className="mt-1 text-xs text-muted">{warningText}</div> : null}
             </div>
           ) : null}
@@ -181,7 +181,7 @@ export function DemandForecastPanel({
       )}
         </>
       )}
-      <p className="mt-3 text-xs text-muted">Predlozi dopune su procene zasnovane na forecast signalu, ne finalna narudžbina. Potvrdite stock baseline i operativni kontekst pre naručivanja.</p>
+      <p className="mt-3 text-xs text-muted">Predlozi dopune su procene zasnovane na signalu prognoze, ne finalna narudžbina. Potvrdite osnovu zalihe i operativni kontekst pre naručivanja.</p>
       {warningText && !showUnprovenBanner ? <p className="mt-3 text-xs text-warning">Napomena: {warningText}</p> : null}
     </section>
   );

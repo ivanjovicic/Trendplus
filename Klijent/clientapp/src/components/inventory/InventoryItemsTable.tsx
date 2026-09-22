@@ -67,7 +67,7 @@ export function InventoryItemsTable({
     <section className="rounded-[30px] border border-[var(--border-default)] bg-[linear-gradient(180deg,var(--surface-elevated)_0%,var(--surface-default)_100%)] p-5 shadow-[0_24px_70px_-56px_rgba(0,0,0,0.9)]">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="mb-1 text-[11px] font-extrabold uppercase tracking-[0.16em] text-muted">Inventory analytics</p>
+          <p className="mb-1 text-[11px] font-extrabold uppercase tracking-[0.16em] text-muted">Analitika zaliha</p>
           <h2 className="text-xl font-semibold tracking-[-0.03em] text-contrast">Tabela artikala</h2>
           <p className="text-sm leading-relaxed text-secondary">Klik na red otvara detalj sa preporukom akcije, zalihom, prodavnicom i operativnim kontekstom.</p>
         </div>
@@ -87,7 +87,7 @@ export function InventoryItemsTable({
                 <th className="px-4 py-3 text-right text-xs font-black uppercase tracking-[0.08em]">Minimum</th>
                 <th className="px-4 py-3 text-right text-xs font-black uppercase tracking-[0.08em]">Gap</th>
                 <th className="px-4 py-3 text-xs font-black uppercase tracking-[0.08em]">Pokrivenost zalihe</th>
-                <th className="px-4 py-3 text-xs font-black uppercase tracking-[0.08em]">Sell-through</th>
+                <th className="px-4 py-3 text-xs font-black uppercase tracking-[0.08em]">Prodajni obrt</th>
                 <th className="px-4 py-3 text-xs font-black uppercase tracking-[0.08em]">Signal</th>
                 <th className="px-4 py-3 text-right text-xs font-black uppercase tracking-[0.08em]">Nabavna</th>
                 <th className="px-4 py-3 text-right text-xs font-black uppercase tracking-[0.08em]">Vrednost</th>
@@ -100,7 +100,7 @@ export function InventoryItemsTable({
                   <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunata pokrivenost zalihe" />
                 </th>
                 <th className="px-4 py-2">
-                  <KpiExplainButton metricKey="sellThrough" ariaLabel="Kako je izračunat sell-through signal" />
+                  <KpiExplainButton metricKey="sellThrough" ariaLabel="Kako je izračunat signal prodajnog obrta" />
                 </th>
                 <th className="px-4 py-2"></th>
                 <th className="px-4 py-2" colSpan={4}></th>

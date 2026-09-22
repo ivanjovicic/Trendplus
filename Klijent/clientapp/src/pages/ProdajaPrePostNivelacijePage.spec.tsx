@@ -271,6 +271,45 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("store: 2");
   });
 
+  it("keeps the previous snapshot visible when a later query fails", async () => {
+    vi.mocked(getVendorSalesNivelacija)
+      .mockResolvedValueOnce(response())
+      .mockResolvedValueOnce(response())
+      .mockRejectedValueOnce(new Error("Current period unavailable"))
+      .mockRejectedValueOnce(new Error("Previous period unavailable"));
+
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+
+    localStorage.setItem("trendplus:dataScope", "imported");
+    window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("ppn-stale-refetch-warning")).toBeInTheDocument();
+    });
+    expect(screen.getByTitle("Vendor A")).toBeInTheDocument();
+    expect(screen.queryByText("Podaci trenutno nisu dostupni")).not.toBeInTheDocument();
+  });
+
+  it("uses Serbian labels for advanced Pre/Post signal cards", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(response({
+      avgMomentumRevenue: 1200,
+      avgElasticity: -0.42,
+      avgDidRevenue: 800,
+      avgLostSalesOOS: 500,
+    }));
+
+    renderPage();
+
+    expect(await screen.findByText("Dodatni analitički signali")).toBeInTheDocument();
+    expect(screen.getByText("Momentum prodaje")).toBeInTheDocument();
+    expect(screen.getByText("Elastičnost cene")).toBeInTheDocument();
+    expect(screen.getByText("Efekat razlike u razlikama (DiD)")).toBeInTheDocument();
+    expect(screen.getByText("Izgubljena prodaja zbog nestašice")).toBeInTheDocument();
+    expect(screen.queryByText("avg rev")).not.toBeInTheDocument();
+    expect(screen.queryByText("Lost sales OOS")).not.toBeInTheDocument();
+  });
+
   it("keeps the trust header as the only page-level h1", async () => {
     renderPage();
 
@@ -362,6 +401,22 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(warning).toHaveTextContent("greške zahteva");
     expect(screen.getAllByText("Nedostupno").length).toBeGreaterThanOrEqual(2);
     expect(screen.queryByText("Nova baza")).not.toBeInTheDocument();
+  });
+
+  it("sanitizes technical previous-period errors while preserving the partial warning", async () => {
+    vi.mocked(getVendorSalesNivelacija)
+      .mockResolvedValueOnce(response())
+      .mockRejectedValueOnce(new Error("NpgsqlException: connection refused at SqlCommand.Execute"));
+
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+
+    const warning = await screen.findByTestId("previous-comparison-warning");
+    expect(warning).toHaveTextContent("Podaci trenutno nisu dostupni");
+    expect(warning).not.toHaveTextContent("NpgsqlException");
+    expect(warning).not.toHaveTextContent("SqlCommand.Execute");
+    const table = await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
+    expect(within(table).getByText("Vendor A")).toBeInTheDocument();
   });
 
   it("does not treat missing reliability as a weak Nisko signal", async () => {
@@ -953,6 +1008,18 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     const vendorSelect = screen.getByLabelText("Dobavljač");
     expect(within(vendorSelect).getAllByRole("option")).toHaveLength(1);
     expect(within(vendorSelect).getByRole("option", { name: "Svi" })).toBeInTheDocument();
+  });
+
+  it("sanitizes technical vendor-load errors without hiding the retry path", async () => {
+    vi.mocked(getDobavljaci).mockRejectedValue(new Error("System.InvalidOperationException: provider failure"));
+
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+
+    const warning = await screen.findByTestId("vendor-load-warning");
+    expect(warning).toHaveTextContent("Podaci trenutno nisu dostupni");
+    expect(warning).not.toHaveTextContent("InvalidOperationException");
+    expect(screen.getByRole("button", { name: "Pokušaj ponovo" })).toBeInTheDocument();
   });
 
   it("recovers the vendor dropdown after a failed load via retry", async () => {

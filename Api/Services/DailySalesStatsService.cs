@@ -316,6 +316,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
 
         var hasClassifiedShiftRows = aggregates.Any(x => ResolveShift(x.HourOfDay) is 1 or 2);
         var hasAnyRows = aggregates.Any(x => x.Qty != 0);
+        var hasSalesEvidence = aggregates.Count > 0;
         var useNoTimeDataFallback = !hasClassifiedShiftRows && hasAnyRows;
 
         if (useNoTimeDataFallback && aggregates.Count > 0)
@@ -399,7 +400,6 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                 Key = x.Key,
                 Supplier = x.Value
             })
-            .Where(x => x.Supplier.TotalQty > 0)
             .OrderByDescending(x => x.Supplier.TotalQty)
             .ThenByDescending(x => x.Supplier.TotalRevenue)
             .ThenBy(x => x.Supplier.SupplierName, StringComparer.OrdinalIgnoreCase)
@@ -453,11 +453,9 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             }
 
             var totalItems = day?.TotalItems ?? 0;
-            var othersCount = Math.Max(0, totalItems - sumTop);
-            if (sumTop > totalItems)
-            {
-                warnings.Add($"Detektovana nekonzistentnost top/others sabiranja za datum {dateKey:yyyy-MM-dd}.");
-            }
+            // The remainder is a signed net quantity. It can be negative when
+            // returns/corrections outside top-N outweigh the omitted sales.
+            var othersCount = totalItems - sumTop;
 
             rows.Add(new DailySalesRowDto
             {
@@ -493,7 +491,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                 fallbackMappedRevenue);
         }
 
-        if (offShiftItems > 0)
+        if (offShiftItems != 0)
         {
             warnings.Add($"Prodaja van smena (06-14 / 14-22) mapirana u prvu smenu: {offShiftItems} kom, {offShiftRevenue:N2} RSD.");
         }
@@ -502,7 +500,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
         // frontend can show a helpful "data available from X to Y" message.
         DateTime? minAvailableDate = null;
         DateTime? maxAvailableDate = null;
-        if (totalItemsInRange == 0)
+        if (!hasSalesEvidence)
         {
             var availabilityQuery = _db.ProdajaZaglavlja.AsNoTracking();
             if (storeId.HasValue)
@@ -540,7 +538,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             Metadata = new DailySalesMetadata
             {
                 TotalDays = rows.Count,
-                UniqueSuppliersInRange = supplierTotals.Values.Count(x => x.TotalQty > 0),
+                UniqueSuppliersInRange = supplierTotals.Count,
                 UnknownSupplierPct = unknownSupplierPct,
                 UnknownSupplierItems = unknownSupplierItems,
                 OffShiftItems = offShiftItems,
@@ -558,7 +556,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                 MaxAvailableDate = maxAvailableDate,
                 Warnings = warnings
             },
-            Meta = BuildDailySalesMeta(totalItemsInRange, warnings, generatedAtUtc)
+            Meta = BuildDailySalesMeta(hasSalesEvidence, warnings, generatedAtUtc)
         };
 
         if (_logger.IsEnabled(LogLevel.Information))
@@ -578,11 +576,11 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
     }
 
     private static AnalyticsResponseMetaDto BuildDailySalesMeta(
-        int totalItemsInRange,
+        bool hasSalesEvidence,
         IReadOnlyCollection<string> warnings,
         DateTime generatedAtUtc)
     {
-        if (totalItemsInRange == 0)
+        if (!hasSalesEvidence)
         {
             var emptyMeta = AnalyticsResponseMetaFactory.Empty("no_data_in_period", "Nema prodaje za izabrani period.");
             emptyMeta.GeneratedAtUtc = generatedAtUtc;

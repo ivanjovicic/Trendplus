@@ -69,7 +69,7 @@ export function RebalancingTable({
                   <th className="px-4 py-3">U</th>
                   <th className="px-4 py-3">SKU</th>
                   <th className="px-4 py-3">Vel.</th>
-                  <th className="px-4 py-3 text-right">Qty</th>
+                  <th className="px-4 py-3 text-right">Količina</th>
                   <th className="px-4 py-3 text-right">Sačuvana prodaja</th>
                   <th className="px-4 py-3">Razlog</th>
                   <th className="px-4 py-3 text-right">Akcija</th>

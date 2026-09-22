@@ -1054,6 +1054,16 @@ The vendor nivelacija endpoint has compatibility SQL that coalesces missing pre/
 - `Api/Endpoints/AllEndpoints.cs:3510-3517` reads missing numeric columns as zero and determines `HasSalesWindow` from those values, losing the distinction between missing relation data and a measured empty sales window.
 - Existing Q69/Q70/Q71/Q76/Q77 work covered earlier SQL trust cases, but this raw endpoint compatibility branch is not yet proven with a missing-column/nullability matrix.
 
+Latest runtime evidence (2026-09-22): the Pre/Post endpoint returned
+`vendor_sales_nivelacija_contract_missing` with
+`Pre/post nivelacija nema potvrđen ugovor za prihodnu promenu.` and correlation
+`00-ba1c4211c93625c8d6519ee9b60244ac-0e574f4effb924d6-00`. This confirms the
+fail-closed branch is active because the live
+`vw_vendor_sales_nivelacija.change_percent_revenue_semantic` contract is not
+visible to the API connection; the repository SQL already declares the column,
+so the remaining proof/fix is applying and verifying the view/migration on the
+live analytics database.
+
 ### Scope only
 
 - `Api/Endpoints/AllEndpoints.cs` vendor-sales-nivelacija raw SQL and reader mapping
