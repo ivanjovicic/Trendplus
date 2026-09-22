@@ -1,8 +1,10 @@
 # Analytics Reliability Prompt Queue
 
-Date: 2026-09-20
+Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ308
+
+Owner promotion 2026-09-22: under the user's direct Inventory audit request, `RQ308` moved from `WAITING` to `READY` as the current Inventory period-selection and snapshot-provenance prompt. `RQ371` and `RQ372` were added as later `WAITING` follow-ups; the queue keeps one canonical READY prompt per program.
 
 Owner promotion 2026-09-21: under the user's explicit instruction to claim the next prompt, `RQ303` moved from `WAITING` to `READY` as the next P1 Daily Sales localization slice after `RQ302`.
 
@@ -1289,7 +1291,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ305 | WAITING | operations-supplier-ia-clarity | Clarify Operacije menu entries that redirect into canonical Supplier tabs |
 | RQ306 | WAITING | operations-diacritics-pass | Fix missing Serbian diacritics across Operacije user-facing copy |
 | RQ307 | WAITING | shoe-type-impact-label | Replace English nivelacija impact label on Shoe Type surface |
-| RQ308 | WAITING | inventory-period-provenance | Make Inventory trust header period/snapshot semantics explicit |
+| RQ308 | READY | inventory-period-provenance | Add Inventory period control and make snapshot/signal semantics explicit |
 | RQ309 | WAITING | operations-nav-icons | Differentiate duplicate Operacije sidebar icons |
 | RQ310 | WAITING | operations-test-route-alignment | Align Operacije page tests with production `/analytics/...` routes |
 | RQ311 | WAITING | operations-guardrail-cleanup | Resolve Operacije guardrail violations for score/reliability mapping |
@@ -1352,6 +1354,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ368 | DONE | operations-inline-error-safety | Sanitize inline Pre/Post partial-failure messages without hiding degraded state |
 | RQ369 | DONE | inventory-inline-error-safety | Sanitize Inventory detail/export/scheduler error messages |
 | RQ370 | DONE | inventory-secondary-request-cancellation | Abort Inventory secondary and detail requests on scope changes |
+| RQ371 | WAITING | inventory-signal-period-scope-parity | Keep Inventory signal period and data-scope contracts aligned |
+| RQ372 | WAITING | inventory-alert-filter-contract | Keep Inventory alert filtering, counts and URL state consistent |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -16595,54 +16599,70 @@ Reproduction: open Shoe Type sales with rows lacking nivelacija impact percent b
 
 ---
 
-## RQ308 - Make Inventory trust header period/snapshot semantics explicit
+## RQ308 - Add Inventory period control and make snapshot/signal semantics explicit
 
-Status: WAITING
-Priority: P2
+Status: READY
+Priority: P1
 Type: frontend/contract/tests
 Feature family: inventory-period-provenance
 Parallel-safe: no
 Owner: Analytics Frontend / Inventory
-Commit suggestion: `fix(analytics): explain inventory period provenance`
+Commit suggestion: `feat(analytics): add inventory period control`
 
 ### Problem
 
-Inventory is the only Operacije screen without an explicit period in `AnalyticsTrustHeader` (`periodFrom={null}`, `periodTo={null}`) while other Operacije analytics screens expose requested/effective period lineage. Users cannot tell whether inventory is timeless, snapshot-only, or filtered by the 30-day signal window used elsewhere on the page.
+Inventory is the only Operacije screen without a selectable analysis period. Its `AnalyticsTrustHeader` receives `periodFrom={null}` and `periodTo={null}`, while the page silently sends a rolling 30-day window to the list/detail signal endpoints. Users cannot tell which date range drives replenishment and OOS signals, whether the balance is current-snapshot-only, or why different panels can represent different evidence windows.
 
 ### Evidence
 
-- `InventoryPage.tsx:1259-1260` — null period props.
-- `InventoryPage.tsx:89-93` — `createInventorySignalWindow()` defines a 30-day signal window for actions.
-- `RQ273` clarified export/print snapshot semantics vs on-screen signal window.
+- `Klijent/clientapp/src/pages/InventoryPage.tsx` passes `periodFrom={null}` and `periodTo={null}` to `AnalyticsTrustHeader`, and the control bar has no period field.
+- `InventoryPage.tsx` defines `createInventorySignalWindow()` with a hidden rolling 30-day window for list/detail signals.
+- `Api/Endpoints/InventoryEndpoints.cs` defaults missing `fromDate`/`toDate` to the last 30 days for list/detail, while balance, insights, workflow and store comparison remain current-state/snapshot reads.
+- `RQ273` explicitly documents current-stock export semantics versus the on-screen 30-day signal window.
 
-Reproduction: open inventory, compare trust header to Daily/Shoe Type headers; inspect export contract note. Risk: period/trust mismatch during pilot reviews.
+Reproduction: open `/analytics/inventory`, look for a period selector, then compare the trust header and signal explanation with Daily/Shoe Type. No selector exists and the header says `Period nije definisan`. Risk: a pilot user cannot reproduce or correctly interpret a replenishment decision.
 
 ### Scope
 
-- Inventory trust header props, explanatory copy, export/scheduler metadata if already owned by inventory page.
-- Do not invent backend period fields without contract evidence.
+- Inventory period selector, validated URL state and trust-header/provenance presentation.
+- Existing inventory period helpers, signal-window request wiring and snapshot-only copy where those are already owned by the page.
+- Focused Inventory tests and copy assertions.
+- Do not invent a new business formula or hide current-state snapshot limitations behind a selected period.
 
 ### Read first
 
-- `InventoryPage.tsx`, `RQ273` completion, `AnalyticsTrustHeader.tsx`
+- `Klijent/clientapp/src/pages/InventoryPage.tsx`
+- `Klijent/clientapp/src/components/analytics/AnalyticsTrustHeader.tsx`
+- `Klijent/clientapp/src/utils/analyticsPeriodPresets.ts`
+- `RQ273` and `RQ337` completion notes
+- `RQ371` for the backend/secondary-signal parity follow-up
 
 ### Do
 
-1. Identify authoritative period semantics (snapshot-only, signal window, or mixed) from existing contracts/meta.
-2. Pass explicit period labels into trust header **or** show deliberate „Snapshot bez period filtera“ copy with methodology link.
-3. Align export/scheduler notes if they reference a different window.
+1. Add a visible period control with supported presets and a validated custom range, persisted in the Inventory URL.
+2. Define and display which Inventory surfaces follow the selected period and which remain current-stock snapshots; do not present a mixed page as one homogeneous period.
+3. Pass the selected range into the existing signal/detail request contract where supported, and show an explicit unavailable/unsupported state until `RQ371` aligns the remaining secondary signal endpoints.
+4. Update trust-header, methodology, empty-state and export/scheduler explanatory copy with Serbian, diacritics-safe wording.
+5. Preserve refresh, data-scope, filter, pagination and back/forward behavior without introducing a second period owner.
 
 ### Tests
 
-- Extend `InventoryPage.freshnessLineage.spec.tsx` or adjacent inventory trust tests.
+- `InventoryPage.freshnessLineage.spec.tsx` and adjacent focused Inventory specs for initial preset, custom range, invalid URL values, URL round-trip and trust-header metadata.
+- Assert snapshot-only cards are explicitly labelled and do not claim the selected period.
+- Assert selected period is sent to every currently supported period-dependent request.
+- `npm run check:analytics-guardrails`, frontend typecheck and `git diff --check`.
 
 ### Acceptance
 
-- Trust header never leaves period ambiguous: either shows authoritative range or explicit snapshot-only explanation.
+- Inventory has a visible, Serbian period selector; the initial value is deterministic and the URL reproduces it.
+- Trust header never says only `Period nije definisan` on the normal page: it shows the selected signal period plus an explicit current-snapshot explanation for balance-only surfaces.
+- A user can distinguish selected-period replenishment/OOS evidence from current-stock snapshot values, including empty, stale and insufficient-data states.
+- No unsupported period is silently ignored, broadened or converted to a fake all-time/zero result.
 
 ### Dependencies
 
-- `RQ273` owns export window parity; this prompt owns on-screen trust provenance only.
+- `RQ273` owns export window parity; this prompt owns the selector and on-screen trust provenance.
+- `RQ371` owns period/data-scope parity for cached secondary signal routes and must follow with its declared backend contract.
 
 ---
 
@@ -17421,17 +17441,18 @@ Commit suggestion: `fix(analytics): localize residual operations english copy`
 
 ### Problem
 
-English remains in Operacije trust/snapshot/export strings beyond RQ301/303/304/307 scope.
+English remains in Operacije trust/snapshot/export strings beyond RQ301/303/304/307 scope. The Inventory pass also needs to remove visible English words that survived the primary-copy delivery, while preserving technical identifiers where they are part of the backend contract.
 
 ### Evidence
 
-- `ColorSalesStatsPage.tsx:657`, `816`, `821`, `94`; `ProdajaPrePostNivelacijePage.tsx:1266`, `1583`; `InventoryAlertsFeed.tsx:37-38`.
+- `ColorSalesStatsPage.tsx:657`, `816`, `821`, `94`; `ProdajaPrePostNivelacijePage.tsx:1266`, `1583`.
+- Inventory residuals include `InventoryPage.tsx` fallback headings/copy such as `Alerts`, `Forecast` and `snapshot`, `DemandForecastPanel.tsx` labels such as `OOS`/`SKU`/`Status`, `InventoryAlertsFeed.tsx` `Info`/`N/A`, `inventoryUtils.ts` `Sell-through`/`Snapshot`, and export metadata such as `Aging 90+`.
 
 Reproduction: open color detail snapshot, trust subtitles, inventory alerts — English visible in Serbian UI.
 
 ### Scope
 
-- Operacije-only strings listed above.
+- Operacije-only strings listed above, including the current Inventory residual list.
 
 ### Read first
 
@@ -17439,8 +17460,9 @@ Reproduction: open color detail snapshot, trust subtitles, inventory alerts — 
 
 ### Do
 
-1. Replace residual English with Serbian equivalents.
-2. Update specs asserting old English strings.
+1. Replace user-facing English words with Serbian equivalents and correct diacritics; retain unavoidable technical identifiers only when they are explicitly labelled as codes/abbreviations.
+2. Keep user-visible copy consistent between page, child panels, empty/error states, export metadata and accessibility labels.
+3. Update specs asserting old English strings.
 
 ### Tests
 
@@ -17448,7 +17470,7 @@ Reproduction: open color detail snapshot, trust subtitles, inventory alerts — 
 
 ### Acceptance
 
-- No user-facing English in listed Operacije surfaces.
+- No user-facing English remains in the listed Operacije surfaces, apart from explicitly justified technical identifiers such as backend enum/code values.
 
 ### Dependencies
 
@@ -19937,3 +19959,139 @@ Inventory's lifecycle query accepts an `AbortSignal` but passes it only to the p
 - Residual risk: cancellation is covered at Inventory page/API-client boundaries; unrelated fixed-lifetime filter/scheduler startup reads remain unchanged by scope.
 - Prompt defect / scope repair: existing guardrail baseline line locations were refreshed after source movement; no new baseline entry was added. Follow-up scope repair stayed within RQ370 ownership and changed no endpoint or business metric contract.
 - No backend, migration, tenant or production-data change.
+
+---
+
+## RQ371 - Keep Inventory signal period and data-scope contracts aligned
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/frontend/tests
+Feature family: inventory-signal-period-scope-parity
+Parallel-safe: no
+Owner: Analytics Reliability / Inventory
+Commit suggestion: `fix(inventory): align signal period and data scope`
+
+### Problem
+
+The Inventory page combines period-dependent list/detail evidence with cached forecast, alerts, rebalance and size-curve signals that have no period or explicit data-scope field in their endpoint/query contracts. The frontend URL helper appends the persisted global `dataScope`, but the cached signal endpoints and handlers do not accept or apply it. A visible period selector would therefore otherwise create a misleading mixed-scope page.
+
+### Evidence
+
+- `Klijent/clientapp/src/services/analyticsApi.ts` auto-appends `dataScope` to analytics URLs, but `getForecast`, `getInventoryAlerts`, `getRebalanceSuggestions` and `getSizeCurve` do not expose period options.
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs` route signatures for `/inventory/forecast`, `/inventory/alerts`, `/inventory/rebalance-suggestions` and `/inventory/size-curve` omit `dataScope`, `fromDate` and `toDate`.
+- `GetInventoryForecastQuery`, `GetInventoryAlertsQuery`, `GetRebalanceSuggestionsQuery` and `GetInventorySizeCurveQuery` have no corresponding period/scope fields; their handlers query snapshot tables with store/supplier/limit filters only.
+- `InventoryPage.tsx` calls these secondary APIs for the same screen while the list/detail path uses a hidden 30-day signal window.
+
+Reproduction: change the global data scope or select a non-default analysis period, reload `/analytics/inventory`, and compare the list/detail requests with forecast/alerts/rebalance/size-curve requests and cache keys. Risk: displayed replenishment and OOS evidence can come from a different dataset/window than the visible trust context.
+
+### Scope
+
+- Cached Inventory secondary signal route signatures, MediatR query contracts, handlers and cache keys.
+- Inventory API client/page request wiring and additive response provenance where needed.
+- Focused backend/frontend contract tests for period, data-scope, cache-key and snapshot-only behavior.
+- Preserve backward compatibility for callers that omit optional period/scope values.
+
+### Read first
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+- `Infrastructure/Services/Caching/IAnalyticsCacheService.cs`
+- `Application/Analytics/Queries/GetInventoryForecast/*`
+- `Application/Analytics/Queries/GetInventoryAlerts/*`
+- `Application/Analytics/Queries/GetRebalanceSuggestions/*`
+- `Application/Analytics/Queries/GetInventorySizeCurve/*`
+- `Klijent/clientapp/src/services/analyticsApi.ts`
+- `RQ308`, `RQ273`, `RQ278` and `RQ370`
+
+### Do
+
+1. Decide and document which secondary signals are genuinely period-dependent, which are immutable current snapshots, and which cannot be made authoritative yet.
+2. For period-dependent signals, thread validated half-open date semantics and canonical data scope through endpoint, query, handler, cache key and page client.
+3. For snapshot-only signals, expose explicit provenance/snapshot scope and keep them visibly separate from selected-period evidence; never silently reuse a wider or all-time dataset.
+4. Add response/meta evidence for requested/effective period, scope, freshness and unavailable/owner-unknown states where the existing contract supports it.
+5. Preserve true zero, empty, missing, stale and unsupported states; do not coalesce missing data into zero or healthy signal.
+
+### Tests
+
+- Focused backend contract tests for each affected secondary signal route, including period boundary, data-scope separation and cache-key isolation.
+- Focused frontend request/provenance tests proving all visible panels agree with the selected period/scope or explicitly identify current-snapshot semantics.
+- `dotnet test Api.Tests/Api.Tests.csproj --filter "FullyQualifiedName~Inventory"`
+- Exact touched frontend specs, `npm run check:analytics-guardrails`, typecheck and `git diff --check`.
+
+### Acceptance
+
+- A period/data-scope selection cannot silently affect only the list while leaving secondary decision signals on another dataset or window.
+- Cached secondary routes either honor the canonical requested period/scope or clearly identify themselves as current snapshots with no implied selected-period meaning.
+- Cache keys include every dimension that changes the result.
+- Table, detail, signal panels and action suggestions preserve honest empty, missing, stale and degraded semantics without fake zeros.
+
+### Dependencies
+
+- `RQ308` defines the visible period selector and user-facing provenance.
+- `RQ273` defines current-stock export semantics.
+- `RQ359` and `RQ370` own request lifecycle/cancellation; do not add a second async owner.
+- Do not promote before `RQ308` has established the selected-period UI contract.
+
+---
+
+## RQ372 - Keep Inventory alert filtering, counts and URL state consistent
+
+Status: WAITING
+Priority: P2
+Type: frontend/contract/tests
+Feature family: inventory-alert-filter-contract
+Parallel-safe: yes
+Owner: Analytics Frontend / Inventory
+Commit suggestion: `fix(analytics): align inventory alert filters`
+
+### Problem
+
+Inventory alert severity is filtered only in the browser after the page fetches an unfiltered, top-limited result. The visible list can therefore show fewer alerts than the badge reports, omit matching alerts that fell outside the unfiltered top limit, and lose the selected severity on refresh/share. The API already exposes `severity`, but `InventoryPage` never sends the selected value.
+
+### Evidence
+
+- `InventoryPage.tsx` owns `alertSeverityFilter` but calls `getInventoryAlerts({ storeId, supplierId, signal })` without `severity`.
+- `InventoryAlertsFeed.tsx` filters `alerts.items` locally and displays `returnedCount`/`totalMatchingCount` from the unfiltered response.
+- `analyticsApi.ts` exposes `severity` in `getInventoryAlerts` and the backend route accepts it, so the current split is a contract mismatch rather than a missing capability.
+- `alertSeverityFilter` is not serialized in the Inventory URL, unlike the page/search/store/supplier/pagination state.
+
+Reproduction: load more than one alert severity, select `Kritično`, then compare the badge with visible cards and refresh/copy the URL. Risk: the user sees an incomplete critical-alert list and an unrelated total count.
+
+### Scope
+
+- `InventoryPage.tsx`, `InventoryAlertsFeed.tsx`, `analyticsApi.ts` and focused Inventory tests.
+- Preserve existing snapshot/meta/error/empty semantics and the backend severity vocabulary.
+- No new client-side alert ranking or severity policy.
+
+### Read first
+
+- `Klijent/clientapp/src/pages/InventoryPage.tsx`
+- `Klijent/clientapp/src/components/inventory/InventoryAlertsFeed.tsx`
+- `Klijent/clientapp/src/services/analyticsApi.ts`
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+- `RQ357`, `RQ360`, `RQ364` and `RQ370`
+
+### Do
+
+1. Choose the backend-filtered path as the source of truth: send severity with the current store/supplier/period/scope context and use returned/total counts for that filtered result.
+2. Persist only validated severity values in the Inventory URL and restore them on back/forward/deep-link navigation.
+3. Keep “all” distinct from a selected severity and preserve snapshot-unavailable, empty, warning and error states.
+4. Label displayed versus total matching alerts honestly when the server truncates results.
+
+### Tests
+
+- Focused page/API tests for all, critical, warning, info, invalid URL value, URL round-trip, request parameters and count/badge parity.
+- Regression with a top-limited mixed-severity response proving a selected severity is not filtered from an already-truncated unfiltered list.
+- `npm run test -- --run src/pages/__tests__/InventoryPage.queueStatus.spec.tsx`
+- `npm run check:analytics-guardrails`, frontend typecheck and `git diff --check`.
+
+### Acceptance
+
+- The alert request, visible cards, badge counts and URL all describe the same severity scope.
+- A selected severity cannot hide matching server rows merely because an unfiltered top limit was reached.
+- Unknown/invalid severity values fail safely to “Sve” without changing backend semantics.
+
+### Dependencies
+
+- `RQ308`/`RQ371` own period and data-scope provenance; this prompt owns severity filter state and count parity.
+- `RQ360` owns the reusable analytics invariant matrix; reuse it rather than adding local trust rules.
