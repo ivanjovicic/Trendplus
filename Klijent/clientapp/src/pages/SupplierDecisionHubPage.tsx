@@ -27,7 +27,7 @@ import {
   calculateSupplierMarginContribution,
   classifySupplierMarginContributionEvidence,
 } from "../services/supplierDecisionMargin";
-import { buildSupplierDecisionReportHref } from "../services/supplierDecisionReportQuery";
+import { buildSupplierDecisionReportHref, buildSupplierDecisionScorecardHref } from "../services/supplierDecisionReportQuery";
 import {
   getAllSupplierDecisionRanking,
   getSupplierDecisionDetails,
@@ -232,6 +232,11 @@ function mapSupplierActionPriority(row: DecisionRow, recommendationAllowed: bool
 function buildSupplierActionSourceKey(row: DecisionRow, filters: ActiveFilters, recommendationAllowed: boolean): string {
   const actionKind = recommendationAllowed ? "negotiation" : "signal_check";
   return `supplier:${actionKind}:${row.supplierId}:${filters.fromDate}:${filters.toDate}:${filters.category ?? "all"}:${filters.gender ?? "all"}:${filters.seasonId ?? "all"}:${filters.minRevenue ?? "all"}:${filters.onlyHighConfidence}:${filters.excludeOosBeforeMarkdown}:${filters.storeId ?? "all"}:${filters.dataScope ?? "all"}`;
+}
+
+function formatSupplierPeriodRange(from: string | null | undefined, to: string | null | undefined): string {
+  if (!from || !to) return "nije dostupno";
+  return `${formatDate(from)} - ${formatDate(to)}`;
 }
 
 export default function SupplierDecisionHubPage({ embedded = false, sharedFilters, onTrustMetadataChange }: SupplierEmbeddedPageProps = {}) {
@@ -491,6 +496,12 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       "Dodatni razlog pomoćnog skupa nije naveden.",
     )
     : null;
+  const requestedPeriodFrom = trustMetadata?.requestedPeriodFrom ?? trustMetadata?.requestedFrom ?? activeFilters.fromDate;
+  const requestedPeriodTo = trustMetadata?.requestedPeriodTo ?? trustMetadata?.requestedTo ?? activeFilters.toDate;
+  const effectivePeriodFrom = trustMetadata?.effectiveFrom ?? summary?.from ?? null;
+  const effectivePeriodTo = trustMetadata?.effectiveTo ?? summary?.to ?? null;
+  const observedPeriodFrom = summary?.from ?? null;
+  const observedPeriodTo = summary?.to ?? null;
 
   const decisionRows = useMemo<DecisionRow[]>(() => {
     const rows = ranking?.items ?? [];
@@ -645,6 +656,8 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       onTrustMetadataChange({
         periodFrom: activeFilters.fromDate,
         periodTo: activeFilters.toDate,
+        requestedPeriodFrom: activeFilters.fromDate,
+        requestedPeriodTo: activeFilters.toDate,
         lastRefreshAt: resolvedLastRefreshAt,
         dataFreshnessStatus: refreshStatus?.dataFreshnessStatus ?? "unknown",
         refreshIsRunning: refreshStatus?.isRunning ?? false,
@@ -667,8 +680,14 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     }
 
     onTrustMetadataChange({
-      periodFrom: trustMetadata?.effectiveFrom ?? summary?.from ?? activeFilters.fromDate,
-      periodTo: trustMetadata?.effectiveTo ?? summary?.to ?? activeFilters.toDate,
+      periodFrom: requestedPeriodFrom,
+      periodTo: requestedPeriodTo,
+      requestedPeriodFrom,
+      requestedPeriodTo,
+      effectivePeriodFrom,
+      effectivePeriodTo,
+      observedPeriodFrom,
+      observedPeriodTo,
       lastRefreshAt: resolvedLastRefreshAt,
       dataFreshnessStatus: refreshStatus?.dataFreshnessStatus ?? "unknown",
       refreshIsRunning: refreshStatus?.isRunning ?? false,
@@ -710,6 +729,12 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     refreshStatus?.dataFreshnessStatus,
     refreshStatus?.isRunning,
     resolvedLastRefreshAt,
+    effectivePeriodFrom,
+    effectivePeriodTo,
+    observedPeriodFrom,
+    observedPeriodTo,
+    requestedPeriodFrom,
+    requestedPeriodTo,
     showBlockingError,
     sortedRows.length,
     summary?.from,
@@ -764,9 +789,15 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(() => [
     { key: "summaryFrom", label: "Sažetak od", value: summary?.from ?? "" },
     { key: "summaryTo", label: "Sažetak do", value: summary?.to ?? "" },
+    { key: "requestedPeriodFrom", label: "Traženi period od", value: requestedPeriodFrom },
+    { key: "requestedPeriodTo", label: "Traženi period do", value: requestedPeriodTo },
+    { key: "effectivePeriodFrom", label: "Efektivni period od", value: effectivePeriodFrom ?? "" },
+    { key: "effectivePeriodTo", label: "Efektivni period do", value: effectivePeriodTo ?? "" },
+    { key: "observedPeriodFrom", label: "Posmatrani period od", value: observedPeriodFrom ?? "" },
+    { key: "observedPeriodTo", label: "Posmatrani period do", value: observedPeriodTo ?? "" },
     { key: "supplierCount", label: "Dobavljača", value: summary?.supplierCount ?? null },
     { key: "capitalAtRisk", label: "Kapital u riziku", value: summary?.capitalAtRisk ?? null },
-  ], [summary?.capitalAtRisk, summary?.from, summary?.supplierCount, summary?.to]);
+  ], [effectivePeriodFrom, effectivePeriodTo, observedPeriodFrom, observedPeriodTo, requestedPeriodFrom, requestedPeriodTo, summary?.capitalAtRisk, summary?.from, summary?.supplierCount, summary?.to]);
 
   const resolvedDecisionColumns = useMemo<AnalyticsTableColumn<DecisionRow>[]>(() => (
     decisionColumns.map((column) => (
@@ -968,9 +999,8 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     const title = recommendationAllowed
       ? `Pripremi razgovor sa dobavljačem: ${row.supplierName}`
       : `Proveri signal dobavljača: ${row.supplierName}`;
-    const description = recommendationAllowed
-      ? row.statusReason
-      : "Finalna preporuka nije dozvoljena za traženi period; akcija je signalnog karaktera i zahteva proveru.";
+    const provenanceDescription = `Traženi period: ${formatSupplierPeriodRange(requestedPeriodFrom, requestedPeriodTo)}. Efektivni period: ${trustMetadata?.effectivePeriodLabel ?? formatSupplierPeriodRange(effectivePeriodFrom, effectivePeriodTo)}. Posmatrani podaci: ${formatSupplierPeriodRange(observedPeriodFrom, observedPeriodTo)}.`;
+    const description = `${recommendationAllowed ? row.statusReason : "Finalna preporuka nije dozvoljena za traženi period; akcija je signalnog karaktera i zahteva proveru."} ${provenanceDescription}`;
 
     try {
       const action = await upsertAnalyticsAction({
@@ -985,7 +1015,19 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
         confidencePct: row.confidenceAvailable && row.normalizedConfidence != null ? Math.round(row.normalizedConfidence) : undefined,
         reliabilityPct: row.reliabilityAvailable && row.reliabilityPct != null ? Math.round(row.reliabilityPct) : undefined,
         dataQualityStatus: toActionDataQualityStatus(row.dataQualityStatus),
-        actionUrl: `/analytics/supplier?tab=scorecard&supplierId=${row.supplierId}`,
+        actionUrl: buildSupplierDecisionScorecardHref({
+          supplierId: row.supplierId,
+          fromDate: activeFilters.fromDate,
+          toDate: activeFilters.toDate,
+          category: activeFilters.category,
+          gender: activeFilters.gender,
+          seasonId: activeFilters.seasonId,
+          minRevenue: activeFilters.minRevenue,
+          onlyHighConfidence: activeFilters.onlyHighConfidence,
+          excludeOosBeforeMarkdown: activeFilters.excludeOosBeforeMarkdown,
+          storeId: activeFilters.storeId,
+          dataScope: activeFilters.dataScope,
+        }),
         metadataJson: JSON.stringify({
           supplierId: row.supplierId,
           supplierName: row.supplierName,
@@ -994,6 +1036,20 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
           reasonCodes: row.reasonCodes,
           periodFrom: activeFilters.fromDate,
           periodTo: activeFilters.toDate,
+          requestedPeriodFrom,
+          requestedPeriodTo,
+          effectivePeriodFrom,
+          effectivePeriodTo,
+          observedPeriodFrom,
+          observedPeriodTo,
+          effectivePeriodLabel: trustMetadata?.effectivePeriodLabel ?? null,
+          requestedDataset: trustMetadata?.requestedDataset ?? null,
+          effectiveDataset: trustMetadata?.effectiveDataset ?? null,
+          usedFallback: trustMetadata?.usedFallback ?? false,
+          fallbackReason: trustMetadata?.fallbackReason ?? null,
+          fallbackReasonCode: trustMetadata?.fallbackReasonCode ?? null,
+          dataCoverageStatus: trustMetadata?.dataCoverageStatus ?? null,
+          provenanceBasis: trustMetadata?.provenanceBasis ?? null,
           category: activeFilters.category ?? "all",
           gender: activeFilters.gender ?? "all",
           seasonId: activeFilters.seasonId ?? "all",
@@ -1018,7 +1074,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     } finally {
       setQueueBusyKey(null);
     }
-  }, [activeFilters, queuedActionKeys, recommendationAllowed]);
+  }, [activeFilters, effectivePeriodFrom, effectivePeriodTo, observedPeriodFrom, observedPeriodTo, queuedActionKeys, recommendationAllowed, requestedPeriodFrom, requestedPeriodTo, trustMetadata]);
 
   return (
     <div
@@ -1055,8 +1111,14 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
         <AnalyticsTrustHeader
           title="Skorkarta dobavljača — pomoćni signal"
           description="Skorkarta poredi dobavljače po signalu skorkarte. Koristi se za proveru i objašnjenje, dok je konačna poslovna preporuka u tabu Pregled."
-          periodFrom={trustMetadata?.effectiveFrom ?? summary?.from ?? activeFilters.fromDate}
-          periodTo={trustMetadata?.effectiveTo ?? summary?.to ?? activeFilters.toDate}
+          periodFrom={requestedPeriodFrom}
+          periodTo={requestedPeriodTo}
+          requestedPeriodFrom={requestedPeriodFrom}
+          requestedPeriodTo={requestedPeriodTo}
+          effectivePeriodFrom={effectivePeriodFrom}
+          effectivePeriodTo={effectivePeriodTo}
+          observedPeriodFrom={observedPeriodFrom}
+          observedPeriodTo={observedPeriodTo}
           lastRefreshAt={resolvedLastRefreshAt}
           dataFreshnessStatus={refreshStatus?.dataFreshnessStatus ?? "unknown"}
           refreshIsRunning={refreshStatus?.isRunning ?? false}
@@ -1096,6 +1158,12 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
             subjectLabel={snapshotRow.supplierName}
             recommendationCode={snapshotRow.recommendationCode}
             periodLabel={snapshotPeriodLabel}
+            requestedPeriodFrom={requestedPeriodFrom}
+            requestedPeriodTo={requestedPeriodTo}
+            effectivePeriodFrom={effectivePeriodFrom}
+            effectivePeriodTo={effectivePeriodTo}
+            observedPeriodFrom={observedPeriodFrom}
+            observedPeriodTo={observedPeriodTo}
             lastRefreshAt={trustMetadata?.lastRefreshAtUtc ?? resolvedLastRefreshAt}
             requestedDataset={trustMetadata?.requestedDataset ?? null}
             effectiveDataset={trustMetadata?.effectiveDataset ?? null}
@@ -1507,6 +1575,12 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                 subjectLabel={selectedRow.supplierName}
                 recommendationCode={selectedRow.recommendationCode}
                 periodLabel={snapshotPeriodLabel}
+                requestedPeriodFrom={requestedPeriodFrom}
+                requestedPeriodTo={requestedPeriodTo}
+                effectivePeriodFrom={effectivePeriodFrom}
+                effectivePeriodTo={effectivePeriodTo}
+                observedPeriodFrom={observedPeriodFrom}
+                observedPeriodTo={observedPeriodTo}
                 lastRefreshAt={trustMetadata?.lastRefreshAtUtc ?? resolvedLastRefreshAt}
                 requestedDataset={trustMetadata?.requestedDataset ?? null}
                 effectiveDataset={trustMetadata?.effectiveDataset ?? null}

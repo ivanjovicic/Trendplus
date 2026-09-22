@@ -474,7 +474,24 @@ describe("SupplierDecisionHubPage", () => {
     });
     const postBody = JSON.parse(String((postCall?.[1] as RequestInit).body));
     expect(postBody).toMatchObject({ recommendationStatus: "increase_focus" });
-    expect(JSON.parse(postBody.metadataJson)).toMatchObject({ recommendationAllowed: true });
+    const actionUrl = new URL(postBody.actionUrl, "http://localhost");
+    expect(actionUrl.pathname).toBe("/analytics/supplier");
+    expect(actionUrl.searchParams.get("tab")).toBe("scorecard");
+    expect(actionUrl.searchParams.get("supplierId")).toBe("1");
+    expect(actionUrl.searchParams.get("fromDate")).toBeTruthy();
+    expect(actionUrl.searchParams.get("toDate")).toBeTruthy();
+    expect(actionUrl.searchParams.get("onlyHighConfidence")).toBe("false");
+    expect(actionUrl.searchParams.get("excludeOosBeforeMarkdown")).toBe("false");
+    expect(JSON.parse(postBody.metadataJson)).toMatchObject({
+      recommendationAllowed: true,
+      requestedPeriodFrom: "2026-05-01T00:00:00Z",
+      requestedPeriodTo: "2026-05-12T00:00:00Z",
+      effectivePeriodFrom: "2026-05-01T00:00:00Z",
+      effectivePeriodTo: "2026-05-12T00:00:00Z",
+      observedPeriodFrom: summaryResponse.from,
+      observedPeriodTo: summaryResponse.to,
+      effectiveDataset: "30d",
+    });
   });
   it("keeps missing supplier confidence unavailable instead of inventing a 0% value", async () => {
     installFetchMock((url) => ({

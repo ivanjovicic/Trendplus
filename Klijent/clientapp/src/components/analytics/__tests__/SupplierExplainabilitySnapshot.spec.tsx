@@ -31,6 +31,12 @@ function buildPayload() {
       { key: "requestedDataset", label: "Traženi dataset", value: "30d" },
       { key: "effectiveDataset", label: "Efektivni dataset", value: "90d" },
       { key: "effectivePeriodLabel", label: "Efektivni period", value: "Poslednjih 90 dana" },
+      { key: "requestedPeriodFromUtc", label: "Traženi period od", value: "2026-04-01T00:00:00Z" },
+      { key: "requestedPeriodToUtc", label: "Traženi period do", value: "2026-06-30T23:59:59Z" },
+      { key: "effectivePeriodFromUtc", label: "Efektivni period od", value: "2026-03-01T00:00:00Z" },
+      { key: "effectivePeriodToUtc", label: "Efektivni period do", value: "2026-05-31T23:59:59Z" },
+      { key: "observedPeriodFromUtc", label: "Posmatrani period od", value: "2026-04-01T00:00:00Z" },
+      { key: "observedPeriodToUtc", label: "Posmatrani period do", value: "2026-05-31T23:59:59Z" },
       { key: "provenanceBasis", label: "Osnova generisanja", value: "mv_supplier_decision_score_cache_90d" },
       { key: "usedFallback", label: "Korišćen fallback", value: true },
       { key: "fallbackReason", label: "Razlog fallback-a", value: "Nedovoljno transakcija u 30d opsegu" },
@@ -58,6 +64,9 @@ describe("SupplierExplainabilitySnapshot", () => {
     expect(within(snapshot).getByText("Sažetak objašnjenja signala")).toBeInTheDocument();
     expect(within(snapshot).getByText(/Alpha/)).toBeInTheDocument();
     expect(within(snapshot).getByText("Poslednjih 90 dana")).toBeInTheDocument();
+    expect(within(snapshot).getByText("Traženi period")).toBeInTheDocument();
+    expect(within(snapshot).getByText("Efektivni period")).toBeInTheDocument();
+    expect(within(snapshot).getByText("Posmatrani period")).toBeInTheDocument();
     expect(within(snapshot).getByText("mv_supplier_decision_score_cache_90d")).toBeInTheDocument();
   });
 

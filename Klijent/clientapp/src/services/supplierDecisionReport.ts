@@ -26,6 +26,8 @@ type ScorecardTrustMetadata = {
   requestedPeriodTo?: string | null;
   requestedFrom?: string | null;
   requestedTo?: string | null;
+  effectiveFrom?: string | null;
+  effectiveTo?: string | null;
   requestedDataset?: string | null;
   effectiveDataset?: string | null;
   effectivePeriodLabel?: string | null;
@@ -214,8 +216,8 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
   const observedToUtc = input.summary?.to ?? null;
   const requestedFromUtc = trust?.requestedPeriodFrom ?? trust?.requestedFrom ?? `${input.fromDate}T00:00:00Z`;
   const requestedToUtc = trust?.requestedPeriodTo ?? trust?.requestedTo ?? `${input.toDate}T00:00:00Z`;
-  const effectiveFromUtc = input.summary?.from ?? null;
-  const effectiveToUtc = input.summary?.to ?? null;
+  const effectiveFromUtc = trust?.effectiveFrom ?? input.summary?.from ?? null;
+  const effectiveToUtc = trust?.effectiveTo ?? input.summary?.to ?? null;
   const periodLineageLabel = buildPeriodLineageLabel({
     effectivePeriodLabel: trust?.effectivePeriodLabel ?? input.periodLabel,
     effectiveFromUtc,
@@ -232,7 +234,7 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     buildSectionRow("Header", "Datum izveštaja", safeDate(nowUtc), "", ""),
     buildSectionRow("Header", "Poslednje osveženje", safeDate(input.lastRefreshAtUtc ?? trust?.lastRefreshAtUtc), normalizeFreshnessLabel(input.freshnessStatus), ""),
     buildSectionRow("Header", "Kvalitet podataka", dataQualityStatusLabel(meta?.dataQualityStatus), trust?.dataCoverageStatus ?? "", ""),
-    buildSectionRow("Header", "Traženi period", `${safeDate(trust?.requestedPeriodFrom ?? trust?.requestedFrom)} - ${safeDate(trust?.requestedPeriodTo ?? trust?.requestedTo)}`, trust?.requestedDataset ?? "nije dostupno", ""),
+    buildSectionRow("Header", "Traženi period", `${safeDate(requestedFromUtc)} - ${safeDate(requestedToUtc)}`, trust?.requestedDataset ?? "nije dostupno", ""),
     buildSectionRow("Header", "Efektivni dataset", trust?.effectiveDataset ?? "nije dostupno", trust?.effectivePeriodLabel ?? "", ""),
     buildSectionRow("Header", "Posmatrani period", periodLineageLabel ?? "nije dostupno", "", ""),
     buildSectionRow("Header", "Korišćen fallback", trust?.usedFallback ? "Da" : "Ne", trust?.fallbackReason ?? "", ""),

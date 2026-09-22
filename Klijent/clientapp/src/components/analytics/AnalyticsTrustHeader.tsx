@@ -8,6 +8,12 @@ type AnalyticsTrustHeaderProps = {
   description: string;
   periodFrom?: string | null;
   periodTo?: string | null;
+  requestedPeriodFrom?: string | null;
+  requestedPeriodTo?: string | null;
+  effectivePeriodFrom?: string | null;
+  effectivePeriodTo?: string | null;
+  observedPeriodFrom?: string | null;
+  observedPeriodTo?: string | null;
   lastRefreshAt?: string | null;
   dataFreshnessStatus?: "fresh" | "stale" | "critical" | "unknown" | string | null;
   refreshIsRunning?: boolean;
@@ -160,6 +166,12 @@ export default function AnalyticsTrustHeader({
   description,
   periodFrom,
   periodTo,
+  requestedPeriodFrom,
+  requestedPeriodTo,
+  effectivePeriodFrom,
+  effectivePeriodTo,
+  observedPeriodFrom,
+  observedPeriodTo,
   lastRefreshAt,
   dataFreshnessStatus,
   refreshIsRunning,
@@ -191,7 +203,15 @@ export default function AnalyticsTrustHeader({
   const freshness = normalizeFreshness(dataFreshnessStatus);
   const safePeriodFrom = typeof periodFrom === "string" ? periodFrom.trim() : null;
   const safePeriodTo = typeof periodTo === "string" ? periodTo.trim() : null;
-  const hasPeriod = Boolean(safePeriodFrom && safePeriodTo);
+  const safeRequestedFrom = typeof requestedPeriodFrom === "string" ? requestedPeriodFrom.trim() : safePeriodFrom;
+  const safeRequestedTo = typeof requestedPeriodTo === "string" ? requestedPeriodTo.trim() : safePeriodTo;
+  const safeEffectiveFrom = typeof effectivePeriodFrom === "string" ? effectivePeriodFrom.trim() : null;
+  const safeEffectiveTo = typeof effectivePeriodTo === "string" ? effectivePeriodTo.trim() : null;
+  const safeObservedFrom = typeof observedPeriodFrom === "string" ? observedPeriodFrom.trim() : null;
+  const safeObservedTo = typeof observedPeriodTo === "string" ? observedPeriodTo.trim() : null;
+  const hasPeriod = Boolean(safeRequestedFrom && safeRequestedTo);
+  const hasEffectivePeriod = Boolean(safeEffectiveFrom && safeEffectiveTo);
+  const hasObservedPeriod = Boolean(safeObservedFrom && safeObservedTo);
   const hasSummary = hasSummaryValues(dataQualitySummary);
   const normalizedRequestedDataset = typeof requestedDataset === "string" ? requestedDataset.trim() || null : null;
   const normalizedEffectiveDataset = typeof effectiveDataset === "string" ? effectiveDataset.trim() || null : null;
@@ -235,9 +255,22 @@ export default function AnalyticsTrustHeader({
         <div className="ath-meta-item">
           <span className="ath-meta-key">Period</span>
           <strong className="ath-meta-value">
-            {hasPeriod ? `${formatDate(safePeriodFrom)} - ${formatDate(safePeriodTo)}` : "Period nije definisan"}
+            {hasPeriod ? `${formatDate(safeRequestedFrom)} - ${formatDate(safeRequestedTo)}` : "Period nije definisan"}
           </strong>
         </div>
+        {hasEffectivePeriod ? (
+          <div className="ath-meta-item">
+            <span className="ath-meta-key">Efektivni period</span>
+            <strong className="ath-meta-value">{formatDate(safeEffectiveFrom)} - {formatDate(safeEffectiveTo)}</strong>
+            {effectiveLabel ? <span className="ath-meta-subtle">{effectiveLabel}</span> : null}
+          </div>
+        ) : null}
+        {hasObservedPeriod ? (
+          <div className="ath-meta-item">
+            <span className="ath-meta-key">Posmatrani period</span>
+            <strong className="ath-meta-value">{formatDate(safeObservedFrom)} - {formatDate(safeObservedTo)}</strong>
+          </div>
+        ) : null}
         <div className="ath-meta-item">
           <span className="ath-meta-key">Poslednje osveženje</span>
           <strong className="ath-meta-value">

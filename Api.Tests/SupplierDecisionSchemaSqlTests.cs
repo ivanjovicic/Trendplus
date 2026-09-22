@@ -545,6 +545,9 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.Contains("ResolveRequestedDataset", endpoint);
         Assert.Contains("BuildEffectivePeriodLabel", endpoint);
         Assert.Contains("dataCoverageStatus", endpoint);
+        Assert.Contains("meta.RequestedPeriodFromUtc = trustMetadata?.RequestedFrom", endpoint);
+        Assert.Contains("meta.EffectivePeriodFromUtc = trustMetadata?.EffectiveFrom", endpoint);
+        Assert.Contains("meta.ObservedPeriodFromUtc = rows.Count > 0 ? rows.Min(row => row.PeriodFrom) : null", endpoint);
     }
 
     [Fact]

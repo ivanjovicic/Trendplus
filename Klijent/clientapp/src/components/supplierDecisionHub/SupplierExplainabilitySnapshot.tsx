@@ -1,4 +1,4 @@
-import { fmtPct, formatDateTime } from "../../utils/analyticsFormatters";
+import { fmtPct, formatDate, formatDateTime } from "../../utils/analyticsFormatters";
 import type { RecommendationCode } from "../../services/supplierDecisionHubApi";
 import { getRecommendationMeta } from "./utils";
 
@@ -8,6 +8,12 @@ type SupplierExplainabilitySnapshotProps = {
   recommendationCode?: RecommendationCode | string | null;
   compact?: boolean;
   periodLabel?: string | null;
+  requestedPeriodFrom?: string | null;
+  requestedPeriodTo?: string | null;
+  effectivePeriodFrom?: string | null;
+  effectivePeriodTo?: string | null;
+  observedPeriodFrom?: string | null;
+  observedPeriodTo?: string | null;
   lastRefreshAt?: string | null;
   requestedDataset?: string | null;
   effectiveDataset?: string | null;
@@ -80,6 +86,12 @@ export default function SupplierExplainabilitySnapshot({
   recommendationCode,
   compact = false,
   periodLabel,
+  requestedPeriodFrom,
+  requestedPeriodTo,
+  effectivePeriodFrom,
+  effectivePeriodTo,
+  observedPeriodFrom,
+  observedPeriodTo,
   lastRefreshAt,
   requestedDataset,
   effectiveDataset,
@@ -106,6 +118,12 @@ export default function SupplierExplainabilitySnapshot({
     ? `${requestedLabel} → ${effectiveLabel}`
     : (effectiveLabel ?? requestedLabel);
   const periodText = periodLabel?.trim() || "Nedostupan";
+  const formatRange = (from?: string | null, to?: string | null) => from && to
+    ? `${formatDate(from, "Nedostupno")} - ${formatDate(to, "Nedostupno")}`
+    : null;
+  const requestedPeriodText = formatRange(requestedPeriodFrom, requestedPeriodTo) ?? periodText;
+  const effectivePeriodText = formatRange(effectivePeriodFrom, effectivePeriodTo);
+  const observedPeriodText = formatRange(observedPeriodFrom, observedPeriodTo);
   const provenanceText = provenanceBasis?.trim() || null;
   const qualityLabel = normalizeQualityLabel(dataQualityStatus);
 
@@ -145,8 +163,10 @@ export default function SupplierExplainabilitySnapshot({
   ] as const;
 
   const metaCards = [
-    { label: "Period", value: periodText },
-    { label: "Skup podataka", value: datasetLabel ?? "Nedostupan", secondary: effectivePeriodLabel?.trim() || null },
+    { label: "Traženi period", value: requestedPeriodText },
+    { label: "Efektivni period", value: effectivePeriodText ?? effectivePeriodLabel?.trim() ?? "Nedostupan", secondary: effectivePeriodText && effectivePeriodLabel?.trim() ? effectivePeriodLabel.trim() : null },
+    { label: "Posmatrani period", value: observedPeriodText ?? "Nedostupan" },
+    { label: "Skup podataka", value: datasetLabel ?? "Nedostupan" },
     { label: "Osveženje", value: lastRefreshAt ? formatDateTime(lastRefreshAt, "Nedostupno") : "Nedostupno" },
     { label: "Osnova generisanja", value: provenanceText ?? "Nedostupna" },
   ];

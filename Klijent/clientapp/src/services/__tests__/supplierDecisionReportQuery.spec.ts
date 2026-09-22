@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSupplierDecisionReportHref } from "../supplierDecisionReportQuery";
+import { buildSupplierDecisionReportHref, buildSupplierDecisionScorecardHref } from "../supplierDecisionReportQuery";
 
 describe("supplier decision report query contract", () => {
   it("round-trips every material filter and preserves zero, false and explicit empty values", () => {
@@ -41,5 +41,28 @@ describe("supplier decision report query contract", () => {
     expect(explicitEmpty.has("category")).toBe(true);
     expect(explicitEmpty.get("category")).toBe("");
     expect(absent.has("category")).toBe(false);
+  });
+
+  it("builds a scorecard action link with the complete requested scope", () => {
+    const query = new URL(buildSupplierDecisionScorecardHref({
+      supplierId: 7,
+      fromDate: "2026-05-01",
+      toDate: "2026-05-31",
+      category: "Patike",
+      storeId: 3,
+      dataScope: "imported",
+      onlyHighConfidence: false,
+      excludeOosBeforeMarkdown: true,
+    }), "http://localhost").searchParams;
+
+    expect(query.get("tab")).toBe("scorecard");
+    expect(query.get("supplierId")).toBe("7");
+    expect(query.get("fromDate")).toBe("2026-05-01");
+    expect(query.get("toDate")).toBe("2026-05-31");
+    expect(query.get("category")).toBe("Patike");
+    expect(query.get("storeId")).toBe("3");
+    expect(query.get("dataScope")).toBe("imported");
+    expect(query.get("onlyHighConfidence")).toBe("false");
+    expect(query.get("excludeOosBeforeMarkdown")).toBe("true");
   });
 });

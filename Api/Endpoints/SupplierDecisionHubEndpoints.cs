@@ -1942,9 +1942,10 @@ public static class SupplierDecisionHubEndpoints
             ? $"Za izabrani period nema dovoljno podataka. Koriscen je dataset {trustMetadata.EffectivePeriodLabel} kao pomocni signal."
             : null;
 
+        AnalyticsResponseMetaDto meta;
         if (rows.Count == 0)
         {
-            return new AnalyticsResponseMetaDto
+            meta = new AnalyticsResponseMetaDto
             {
                 Success = true,
                 EmptyReason = "no_data_in_period",
@@ -1958,27 +1959,37 @@ public static class SupplierDecisionHubEndpoints
                 GeneratedAtUtc = DateTime.UtcNow
             };
         }
-
-        var recommendationGated = !IsSupplierDecisionRecommendationAllowed(trustMetadata);
-        var warningCode = trustMetadata?.UsedFallback == true
-            ? "FALLBACK_DATASET_USED"
-            : (recommendationGated ? "RECOMMENDATION_GATED" : null);
-        var warningMessage = trustMetadata?.UsedFallback == true
-            ? fallbackWarningMessage
-            : (recommendationGated ? "Preporuka je onemogucena zbog nedovoljne pouzdanosti podataka." : null);
-
-        return new AnalyticsResponseMetaDto
+        else
         {
-            Success = true,
-            DataQualityStatus = trustMetadata?.DataCoverageStatus
-                ?? (recommendationGated ? "insufficient_data" : "good"),
-            RecommendationAllowed = !recommendationGated,
-            IsPartial = trustMetadata?.UsedFallback == true || recommendationGated,
-            WarningCode = warningCode,
-            WarningMessage = warningMessage,
-            LastRefreshAtUtc = trustMetadata?.LastRefreshAtUtc,
-            GeneratedAtUtc = DateTime.UtcNow
-        };
+            var recommendationGated = !IsSupplierDecisionRecommendationAllowed(trustMetadata);
+            var warningCode = trustMetadata?.UsedFallback == true
+                ? "FALLBACK_DATASET_USED"
+                : (recommendationGated ? "RECOMMENDATION_GATED" : null);
+            var warningMessage = trustMetadata?.UsedFallback == true
+                ? fallbackWarningMessage
+                : (recommendationGated ? "Preporuka je onemogucena zbog nedovoljne pouzdanosti podataka." : null);
+
+            meta = new AnalyticsResponseMetaDto
+            {
+                Success = true,
+                DataQualityStatus = trustMetadata?.DataCoverageStatus
+                    ?? (recommendationGated ? "insufficient_data" : "good"),
+                RecommendationAllowed = !recommendationGated,
+                IsPartial = trustMetadata?.UsedFallback == true || recommendationGated,
+                WarningCode = warningCode,
+                WarningMessage = warningMessage,
+                LastRefreshAtUtc = trustMetadata?.LastRefreshAtUtc,
+                GeneratedAtUtc = DateTime.UtcNow
+            };
+        }
+
+        meta.RequestedPeriodFromUtc = trustMetadata?.RequestedFrom;
+        meta.RequestedPeriodToUtc = trustMetadata?.RequestedTo;
+        meta.EffectivePeriodFromUtc = trustMetadata?.EffectiveFrom;
+        meta.EffectivePeriodToUtc = trustMetadata?.EffectiveTo;
+        meta.ObservedPeriodFromUtc = rows.Count > 0 ? rows.Min(row => row.PeriodFrom) : null;
+        meta.ObservedPeriodToUtc = rows.Count > 0 ? rows.Max(row => row.PeriodTo) : null;
+        return meta;
     }
 
     private static AnalyticsResponseMetaDto BuildErrorMeta(string errorCode, string message, string correlationId)

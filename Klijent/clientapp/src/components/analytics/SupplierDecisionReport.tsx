@@ -184,6 +184,12 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
     .filter(Boolean) ?? [];
   const effectiveDatasetRow = rowEntry(payload, "Header", "Efektivni dataset");
   const effectivePeriodLabel = scalarText(effectiveDatasetRow?.secondary) || metaValue(payload, "effectivePeriodLabel");
+  const requestedPeriodFrom = metaValue(payload, "requestedPeriodFromUtc");
+  const requestedPeriodTo = metaValue(payload, "requestedPeriodToUtc");
+  const effectivePeriodFrom = metaValue(payload, "effectivePeriodFromUtc");
+  const effectivePeriodTo = metaValue(payload, "effectivePeriodToUtc");
+  const observedPeriodFrom = metaValue(payload, "observedPeriodFromUtc");
+  const observedPeriodTo = metaValue(payload, "observedPeriodToUtc");
   const observedPeriodLabel = rowValue(payload, "Header", "Posmatrani period") ?? buildPeriodLineageLabel({
     effectivePeriodLabel,
     effectiveFromUtc: metaValue(payload, "effectivePeriodFromUtc"),
@@ -251,7 +257,9 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
           <div className="sdr-meta-item"><span>Opseg podataka</span><strong>{dataScope}</strong></div>
           <div className="sdr-meta-item"><span>Datum izveštaja</span><strong>{reportDate}</strong></div>
           <div className="sdr-meta-item"><span>Poslednje osveženje</span><strong>{lastRefresh}</strong></div>
-          {observedPeriodLabel ? <div className="sdr-meta-item"><span>Efektivni i posmatrani period</span><strong>{observedPeriodLabel}</strong></div> : null}
+          {requestedPeriodFrom && requestedPeriodTo ? <div className="sdr-meta-item"><span>Traženi period</span><strong>{requestedPeriodFrom} – {requestedPeriodTo}</strong></div> : null}
+          {effectivePeriodFrom && effectivePeriodTo ? <div className="sdr-meta-item"><span>Efektivni period</span><strong>{effectivePeriodFrom} – {effectivePeriodTo}</strong>{effectivePeriodLabel ? <small>{effectivePeriodLabel}</small> : null}</div> : null}
+          {observedPeriodLabel ? <div className="sdr-meta-item"><span>Posmatrani podaci</span><strong>{observedPeriodLabel}</strong></div> : null}
         </div>
         {renderMetaChips(payload.filters, "sdr-chip-row")}
       </section>
@@ -261,6 +269,12 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
           title="Sažetak objašnjenja signala"
           subjectLabel={supplierLabel}
           periodLabel={period}
+          requestedPeriodFrom={requestedPeriodFrom}
+          requestedPeriodTo={requestedPeriodTo}
+          effectivePeriodFrom={effectivePeriodFrom}
+          effectivePeriodTo={effectivePeriodTo}
+          observedPeriodFrom={observedPeriodFrom}
+          observedPeriodTo={observedPeriodTo}
           lastRefreshAt={metaValue(payload, "lastRefreshAtUtc")}
           requestedDataset={metaValue(payload, "requestedDataset")}
           effectiveDataset={metaValue(payload, "effectiveDataset") ?? scalarText(effectiveDatasetRow?.value)}

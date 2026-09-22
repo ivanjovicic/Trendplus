@@ -161,6 +161,8 @@ export default function SupplierDetailDrawer({
                   </span>
                   <span>Skup podataka: {trustMetadata?.effectiveDataset ?? "Nije dostupno"}</span>
                   <span>Efektivni period: {trustMetadata?.effectivePeriodLabel ?? "Nije dostupan"}</span>
+                  <span>Efektivni opseg: {formatDateRange(trustMetadata?.effectiveFrom, trustMetadata?.effectiveTo)}</span>
+                  <span>Posmatrani podaci: {formatDateRange(details.supplierHeader.periodFrom, details.supplierHeader.periodTo)}</span>
                 </div>
               </div>
               {trustMetadata?.recommendationAllowed === false ? (

@@ -28,6 +28,12 @@ export type SupplierEmbeddedPageProps = {
 export type SupplierTrustHeaderPayload = {
   periodFrom?: string | null;
   periodTo?: string | null;
+  requestedPeriodFrom?: string | null;
+  requestedPeriodTo?: string | null;
+  effectivePeriodFrom?: string | null;
+  effectivePeriodTo?: string | null;
+  observedPeriodFrom?: string | null;
+  observedPeriodTo?: string | null;
   lastRefreshAt?: string | null;
   dataFreshnessStatus?: "fresh" | "stale" | "critical" | "unknown" | string | null;
   refreshIsRunning?: boolean;
