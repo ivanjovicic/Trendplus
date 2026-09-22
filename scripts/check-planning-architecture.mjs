@@ -99,6 +99,9 @@ function parseNewTasks(content, file) {
         line: index + 1,
         status: null,
         owner: null,
+        featureFamily: null,
+        parallelSafe: false,
+        parallelSafeDeclared: false,
         sections: new Set(),
       };
       continue;
@@ -110,6 +113,15 @@ function parseNewTasks(content, file) {
 
     const owner = line.match(/^Owner:\s*(.+)$/i);
     if (owner && current.owner == null) current.owner = owner[1].trim();
+
+    const family = line.match(/^Feature family:\s*(.+)$/i);
+    if (family && current.featureFamily == null) current.featureFamily = family[1].trim();
+
+    const parallelSafe = line.match(/^Parallel-safe:\s*(.+)$/i);
+    if (parallelSafe) {
+      current.parallelSafeDeclared = true;
+      current.parallelSafe = /^yes\b/i.test(parallelSafe[1].trim());
+    }
 
     const section = line.match(/^###\s+(.+?)\s*$/);
     if (section) current.sections.add(section[1].trim());
@@ -196,13 +208,35 @@ function validate(root) {
       continue;
     }
 
-    const ready = programTasks.filter((task) => task.status === "READY");
-    if (ready.length > 1) {
-      errors.push(`${program}: expected at most one READY prompt, found ${ready.length}`);
-      continue;
+    const active = programTasks.filter((task) => task.status === "READY" || task.status === "IN_PROGRESS");
+
+    if (active.length > 1) {
+      for (const task of active) {
+        if (!task.featureFamily) {
+          errors.push(`${task.file}:${task.line}: ${task.id} requires Feature family metadata when multiple tasks are active in ${program}`);
+        }
+        if (!task.parallelSafeDeclared) {
+          errors.push(`${task.file}:${task.line}: ${task.id} requires Parallel-safe metadata when multiple tasks are active in ${program}`);
+        }
+      }
     }
 
-    if (ready.length === 0) {
+    const activeByFamily = new Map();
+    for (const task of active) {
+      const family = task.featureFamily || `unspecified:${task.id}`;
+      if (!activeByFamily.has(family)) activeByFamily.set(family, []);
+      activeByFamily.get(family).push(task);
+    }
+    for (const [family, familyTasks] of activeByFamily) {
+      if (familyTasks.length <= 1) continue;
+      if (familyTasks.some((task) => !task.parallelSafe)) {
+        errors.push(
+          `${program}: multiple READY/IN_PROGRESS tasks in feature family '${family}' require Parallel-safe: yes on every active task (${familyTasks.map((task) => `${task.id}:${task.status}`).join(", ")})`,
+        );
+      }
+    }
+
+    if (active.length === 0) {
       const mapping = PROGRAM_OWNERSHIP.find((entry) => entry.program === program);
       const queuePointer = mapping && exists(root, mapping.queue)
         ? ownerQueueCurrentReady(read(root, mapping.queue), program)
@@ -211,7 +245,7 @@ function validate(root) {
 
       if (!isNonePointer(queuePointer) || !isNonePointer(masterPointer)) {
         errors.push(
-          `${program}: no READY prompt requires explicit Current READY 'none' in both owner queue and MASTER_ROADMAP.md ` +
+          `${program}: no READY/IN_PROGRESS prompt requires explicit Current READY 'none' in both owner queue and MASTER_ROADMAP.md ` +
           `(queue=${queuePointer ?? "missing"}, master=${masterPointer ?? "missing"})`,
         );
       }
@@ -250,7 +284,7 @@ function write(root, relative, content = "# fixture\n") {
 }
 
 function fixtureQueue(programs) {
-  return programs.map((program) => `## ${program}01 - First\n\nStatus: READY\nOwner: unassigned\n\n### Problem\nX\n\n### Evidence\nX\n\n### Scope\nX\n\n### Read first\nX\n\n### Do\nX\n\n### Tests\nX\n\n### Acceptance\nX\n\n### Dependencies\nX\n\n## ${program}02 - Later\n\nStatus: WAITING\nOwner: unassigned\n\n### Problem\nX\n\n### Evidence\nX\n\n### Scope\nX\n\n### Read first\nX\n\n### Do\nX\n\n### Tests\nX\n\n### Acceptance\nX\n\n### Dependencies\nX\n`).join("\n");
+  return programs.map((program) => `## ${program}01 - First\n\nStatus: READY\nOwner: unassigned\nFeature family: ${program.toLowerCase()}-primary\nParallel-safe: no\n\n### Problem\nX\n\n### Evidence\nX\n\n### Scope\nX\n\n### Read first\nX\n\n### Do\nX\n\n### Tests\nX\n\n### Acceptance\nX\n\n### Dependencies\nX\n\n## ${program}02 - Later\n\nStatus: WAITING\nOwner: unassigned\nFeature family: ${program.toLowerCase()}-secondary\nParallel-safe: no\n\n### Problem\nX\n\n### Evidence\nX\n\n### Scope\nX\n\n### Read first\nX\n\n### Do\nX\n\n### Tests\nX\n\n### Acceptance\nX\n\n### Dependencies\nX\n`).join("\n");
 }
 
 function runSelfTest() {
@@ -287,11 +321,25 @@ function runSelfTest() {
     }
 
     write(root, "MASTER_ROADMAP.md", validMaster);
-    const badQueue = fixtureQueue(["DEX", "RL", "DT"]).replace("Status: WAITING", "Status: READY");
-    write(root, "docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md", badQueue);
-    const duplicateReady = validate(root);
-    if (!duplicateReady.errors.some((error) => error.includes("DEX: expected at most one READY"))) {
-      throw new Error("expected duplicate READY failure");
+    const independentReadyQueue = fixtureQueue(["DEX", "RL", "DT"]).replace("Status: WAITING", "Status: READY");
+    write(root, "docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md", independentReadyQueue);
+    const independentReady = validate(root);
+    if (independentReady.errors.length > 0) {
+      throw new Error(`independent multi-READY fixture failed:\n${independentReady.errors.join("\n")}`);
+    }
+
+    const conflictingReadyQueue = independentReadyQueue.replace("Feature family: dex-secondary", "Feature family: dex-primary");
+    write(root, "docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md", conflictingReadyQueue);
+    const conflictingReady = validate(root);
+    if (!conflictingReady.errors.some((error) => error.includes("DEX: multiple READY/IN_PROGRESS tasks in feature family 'dex-primary' require Parallel-safe: yes"))) {
+      throw new Error("expected same-family multi-READY collision failure");
+    }
+
+    const parallelSameFamilyQueue = conflictingReadyQueue.replaceAll("Parallel-safe: no", "Parallel-safe: yes");
+    write(root, "docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md", parallelSameFamilyQueue);
+    const parallelSameFamily = validate(root);
+    if (parallelSameFamily.errors.some((error) => error.includes("multiple READY/IN_PROGRESS tasks in feature family"))) {
+      throw new Error(`parallel-safe same-family fixture failed:\n${parallelSameFamily.errors.join("\n")}`);
     }
 
     console.log("planning architecture validator self-test: PASS");

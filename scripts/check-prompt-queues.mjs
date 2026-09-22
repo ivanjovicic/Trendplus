@@ -5,7 +5,7 @@
  * Validates active docs/ai queue files for:
  * - unsupported statuses (OPEN, TODO, …)
  * - duplicate task IDs inside one file
- * - more than one exclusive READY task in the same feature family
+ * - unsafe READY/IN_PROGRESS collisions inside one feature family while allowing independent parallel lanes
  * - Current READY prompt that is missing or not READY
  * - GenAI marked READY while earlier P0 STAB gates remain unresolved
  *
@@ -123,6 +123,7 @@ function parseTasks(content, filePath) {
         statusLine: null,
         featureFamily: null,
         parallelSafe: false,
+        parallelSafeDeclared: false,
         priority: null,
       };
       continue;
@@ -146,6 +147,7 @@ function parseTasks(content, filePath) {
     const parallelMatch = line.match(/^Parallel-safe:\s*(.+)$/i);
     if (parallelMatch) {
       current.parallelSafe = isParallelSafe(parallelMatch[1]);
+      current.parallelSafeDeclared = true;
       continue;
     }
 
@@ -247,20 +249,32 @@ function validateQueueFile(filePath, content) {
     }
   }
 
-  const readyByFamily = new Map();
-  for (const task of tasks) {
-    if (task.status !== "READY") continue;
-    const family = task.featureFamily || `unspecified:${task.id}`;
-    if (!readyByFamily.has(family)) readyByFamily.set(family, []);
-    readyByFamily.get(family).push(task);
+  const activeTasks = tasks.filter((task) => task.status === "READY" || task.status === "IN_PROGRESS");
+
+  if (activeTasks.length > 1) {
+    for (const task of activeTasks) {
+      if (!task.featureFamily) {
+        errors.push(`${filePath}:${task.statusLine ?? task.headerLine}: multiple active queue tasks require explicit 'Feature family:' metadata ('${task.id}')`);
+      }
+      if (!task.parallelSafeDeclared) {
+        errors.push(`${filePath}:${task.statusLine ?? task.headerLine}: multiple active queue tasks require explicit 'Parallel-safe:' metadata ('${task.id}')`);
+      }
+    }
   }
-  for (const [family, list] of readyByFamily) {
+
+  const activeByFamily = new Map();
+  for (const task of activeTasks) {
+    const family = task.featureFamily || `unspecified:${task.id}`;
+    if (!activeByFamily.has(family)) activeByFamily.set(family, []);
+    activeByFamily.get(family).push(task);
+  }
+
+  for (const [family, list] of activeByFamily) {
     if (list.length <= 1) continue;
-    const exclusive = list.filter((task) => !task.parallelSafe);
-    if (exclusive.length > 1) {
-      for (const task of exclusive) {
+    if (list.some((task) => !task.parallelSafe)) {
+      for (const task of list) {
         errors.push(
-          `${filePath}:${task.statusLine ?? task.headerLine}: multiple exclusive READY tasks in feature family '${family}' (${exclusive.map((t) => t.id).join(", ")})`,
+          `${filePath}:${task.statusLine ?? task.headerLine}: multiple READY/IN_PROGRESS tasks in feature family '${family}' require Parallel-safe: yes on every active task (${list.map((t) => `${t.id}:${t.status}`).join(", ")})`,
         );
       }
     }
@@ -405,8 +419,8 @@ function runSelfTest() {
       `# UI\nCurrent READY prompt: P-UI-05\n\n## P-UI-05 - A\n\nStatus: READY\nFeature family: same-family\nParallel-safe: no\n\n## P-UI-06 - B\n\nStatus: READY\nFeature family: same-family\nParallel-safe: no\n`,
     );
     const dupReady = validateRoot(tmpRoot);
-    if (!dupReady.errors.some((error) => error.includes("multiple exclusive READY"))) {
-      failures.push("expected duplicate exclusive READY failure");
+    if (!dupReady.errors.some((error) => error.includes("multiple READY/IN_PROGRESS tasks in feature family 'same-family' require Parallel-safe: yes"))) {
+      failures.push("expected same-family exclusive READY collision failure");
     }
 
     writeFixture(
@@ -415,8 +429,18 @@ function runSelfTest() {
       `# UI\nCurrent READY prompt: P-UI-05\n\n## P-UI-05 - A\n\nStatus: READY\nFeature family: same-family\nParallel-safe: yes\n\n## P-UI-06 - B\n\nStatus: READY\nFeature family: same-family\nParallel-safe: yes\n`,
     );
     const parallelOk = validateRoot(tmpRoot);
-    if (parallelOk.errors.some((error) => error.includes("multiple exclusive READY"))) {
+    if (parallelOk.errors.some((error) => error.includes("multiple READY/IN_PROGRESS tasks in feature family"))) {
       failures.push("parallel-safe READY pair should pass");
+    }
+
+    writeFixture(
+      tmpRoot,
+      "docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md",
+      `# UI\nCurrent READY prompt: P-UI-05\n\n## P-UI-05 - A\n\nStatus: READY\nFeature family: family-a\nParallel-safe: no\n\n## P-UI-06 - B\n\nStatus: READY\nFeature family: family-b\nParallel-safe: no\n`,
+    );
+    const independentReady = validateRoot(tmpRoot);
+    if (independentReady.errors.some((error) => error.includes("multiple READY/IN_PROGRESS tasks in feature family"))) {
+      failures.push("independent feature-family READY pair should pass even when each family is exclusive");
     }
 
     writeFixture(
