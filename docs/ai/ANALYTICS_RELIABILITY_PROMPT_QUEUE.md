@@ -2,7 +2,7 @@
 
 Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ405; RQ385, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ401, RQ402, RQ403 and RQ404 are DONE.
+Current READY prompt: none; RQ385, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE.
 
 Owner completion 2026-09-22: under the user's direct last-commits audit, `RQ393` was delivered directly to `main` in `3b635fe813e0e55f843236d55025c52c030e853d`; Color recommendations now use a covered-revenue-weighted margin baseline, unknown-share evidence remains nullable, historical/fallback/no-cost coverage is separated, and the affected screens use Serbian decision labels. Run log: `.ai/runs/2026-09-22-direct-last-commits-audit-evidence.md`.
 
@@ -21,6 +21,8 @@ Owner promotion 2026-09-22: after `RQ403` reached DONE, `RQ404` moved `WAITING -
 Owner claim 2026-09-22: `RQ404` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ404-codex.lock.md`.
 Owner completion 2026-09-22: `RQ404` delivered directly to `main` in `015e394d`; requested, effective and observed periods are now explicit on the Supplier Decision screen, trust header, explainability snapshot, rich detail, report/export payload and action rationale. Backend response metadata carries the same period lineage, while action links preserve the complete requested filter scope. Run log: `.ai/runs/2026-09-22-RQ404-evidence.md`. Evidence state: synchronized. `RQ405` remains WAITING in the same exclusive Supplier Decision feature family; no next prompt was promoted in this run.
 Owner promotion 2026-09-22: after `RQ404` reached DONE and the declared `RQ405` dependency was satisfied, `RQ405` moved `WAITING -> READY` as the next dependency-complete Supplier Decision localization prompt; collision checks are clear.
+Owner claim 2026-09-22: `RQ405` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ405-codex.lock.md`.
+Owner completion 2026-09-22: `RQ405` was delivered directly to `main` in `9bf8af87c11c0b8feb0efcd0f632d10d27f819ac`; Supplier Decision screen, report, export/print, explainability, empty/degraded/error branches and backend-safe messages now use Serbian user-facing terminology with preserved diacritics, while reason codes and technical identifiers remain compatible. Run log: `.ai/runs/2026-09-22-RQ405-evidence.md`. Evidence state: synchronized. No next prompt was promoted in this run.
 Owner claim 2026-09-22: `RQ385` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ385-codex.lock.md`.
 Owner completion 2026-09-22: `RQ385` delivered directly to `main` with implementation `bb6158f003bfd535a3211430970b30abbc761644`; current `origin/main` contains this SHA and the synchronized closure commits. Scoped Pre/Post fact queries, scope-isolated main/options caches, backend provenance and frontend fail-closed validation are delivered. Run log: `.ai/runs/2026-09-22-RQ385-evidence.md`. Evidence state: synchronized.
 Owner claim 2026-09-22: `RQ388` transitioned `READY -> IN_PROGRESS` in this workspace after dependency and collision checks; local runtime lock `.ai/task-locks/RQ388-codex.lock.md`.
@@ -1420,7 +1422,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ402 | DONE | supplier-decision-detail-source-parity | Connect rich supplier decision details to the canonical screen |
 | RQ403 | DONE | supplier-decision-filter-parity | Align backend-supported supplier filters with the canonical screen and report |
 | RQ404 | DONE | supplier-decision-effective-period-semantics | Make requested/effective supplier periods consistent across metrics and actions |
-| RQ405 | READY | supplier-decision-localization | Finish Serbian terminology on supplier decision surfaces and backend-safe messages |
+| RQ405 | DONE | supplier-decision-localization | Finish Serbian terminology on supplier decision surfaces and backend-safe messages |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -22190,7 +22192,7 @@ Requested/effective/observed labels and consistent semantics across screen, deta
 
 ## RQ405 - Finish Serbian terminology on supplier decision surfaces and backend-safe messages
 
-Status: READY
+Status: DONE
 Priority: P3
 Type: frontend/backend/text-safety/tests
 Feature family: supplier-decision-localization
@@ -22237,3 +22239,21 @@ User-facing copy and existing mappings only; do not rename API reason codes, SQL
 ### Dependencies
 
 - READY AFTER: RQ401 DONE.
+
+### Completion note
+
+- Date: 2026-09-22
+- Status: DONE
+- Completion: Delivered Serbian terminology and safe user-facing mappings across Supplier Decision screen/report/export/error/empty/degraded surfaces without renaming contracts or internal reason codes.
+- Changed files: `Api/Endpoints/SupplierDecisionHubEndpoints.cs`; `Api.Tests/SupplierDecisionHubContractTests.cs`; Supplier Decision frontend/report components, pages, mappings and focused tests; `Klijent/clientapp/scripts/known-guardrail-baseline.json`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-22-RQ405-evidence.md`.
+- Checks run: focused frontend tests 41/41; `npm run check:encoding`; `npm run check:analytics-guardrails`; `npm run typecheck`; `npm run build`; focused `SupplierDecisionHubContractTests` 17/17; `git diff --check`.
+- Checks not run: full repository suites, live PostgreSQL/browser/deployed verification and remote CI were not run/inspected.
+- Run log: `.ai/runs/2026-09-22-RQ405-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `9bf8af87c11c0b8feb0efcd0f632d10d27f819ac`
+- Main verification: passed - fresh fetch confirmed `main` and `origin/main` at `9bf8af87c11c0b8feb0efcd0f632d10d27f819ac`.
+- Missed: none known within the RQ405 scope; internal technical identifiers intentionally remain unchanged.
+- Follow-up: no next prompt was promoted in this run; follow the canonical router for the next safe prompt.
+- Residual risk: remote CI, live data and real-browser export rendering remain uninspected; existing compiler and bundle-size warnings remain.
+- Prompt defect / scope repair: the backend test expected the technical `30d` token after the user-facing message was localized to `30 dana`; the focused assertion was corrected. The guardrail baseline received only mechanical line-shift updates from scoped helper additions; no semantic suppression was added.
