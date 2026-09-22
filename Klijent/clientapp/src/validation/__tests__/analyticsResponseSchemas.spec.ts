@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   colorSalesStatsResponseSchema,
   dailySalesTableResponseSchema,
+  preNivelacijaPriorityResponseSchema,
 } from "../analyticsResponseSchemas";
 import { AnalyticsResponseValidationError, validateAnalyticsResponse } from "../analyticsResponseValidation";
 
@@ -154,6 +155,97 @@ describe("analytics response schemas", () => {
       colors: [invalidRow],
     });
     expect(result.success).toBe(false);
+  });
+
+  it("accepts signed Pre-Nivelacija sales evidence and explicit window provenance", () => {
+    const result = preNivelacijaPriorityResponseSchema.safeParse({
+      generatedAtUtc: "2026-07-01T08:00:00Z",
+      formulaVersion: "pre_nivelacija_v3",
+      formulaDescription: "Potpisani neto signal",
+      summary: {
+        supplierCount: 1,
+        candidatesCount: 1,
+        highPriorityCount: 1,
+        increaseFocusCount: 0,
+        maintainCount: 0,
+        reviewCount: 0,
+        doNotTrustCount: 0,
+        insufficientDataCount: 1,
+        totalStockAtRisk: 10,
+        estimatedAvoidableMarkdownLoss: 0,
+        expectedHighlightRevenueUplift: 0,
+        averagePreNivelacijaScore: 75,
+      },
+      supplierLeaderboard: [{
+        highPrioritySkuCount: 1,
+        candidateSkuCount: 1,
+        stockUnitsAtRisk: 10,
+        estimatedAvoidableMarkdownLoss: 0,
+        expectedHighlightRevenueUplift: 0,
+        actionScore: 10,
+        weekOverWeekRiskDeltaPct: null,
+      }],
+      candidates: [{
+        artikalId: 1,
+        sku: "SKU-1",
+        stockUnits: 10,
+        units180: -2,
+        positiveUnits180: 3,
+        negativeUnits180: -5,
+        velocity180: -0.0111,
+        daysSinceLastSale: 5,
+        markdownEvents: 1,
+        avgMarkdownPct: 10,
+        grossMarginPctEst: 35,
+        seasonRecencyBoost: 20,
+        preNivelacijaScore: 75,
+        scoreBreakdown: {
+          stockPressure: 80,
+          velocityRisk: 100,
+          recencyRisk: 5,
+          markdownOpportunity: 70,
+          marginPotential: 58,
+          seasonRecencyBoost: 20,
+        },
+        scenarioHighlightNow: { expectedUnits30d: 0, expectedRevenue30d: 0, expectedMargin30d: 0, effectivePrice: 1000 },
+        scenarioMarkdownNow: { expectedUnits30d: 0, expectedRevenue30d: 0, expectedMargin30d: 0, effectivePrice: 900 },
+        marginDeltaHighlightVsMarkdown: 0,
+        revenueDeltaHighlightVsMarkdown: 0,
+        reliabilityPct: 35,
+        decisionScore: 50,
+        salesEvidenceStatus: "non_positive_net_with_returns",
+        salesEvidenceReason: "signed_sales_non_positive",
+        recommendation: {
+          confidencePct: 20,
+          reliabilityPct: 35,
+          dataQualityStatus: "insufficient_data",
+          reasonCodes: ["signed_sales_non_positive"],
+        },
+      }],
+      queues: { highlightNow: [], monitor: [], likelyMarkdownSoon: [] },
+      alerts: [],
+      page: 1,
+      pageSize: 20,
+      totalCandidates: 1,
+      recommendationAllowed: false,
+      evidenceWindow: {
+        salesWindowFromUtc: "2026-01-02T08:00:00Z",
+        salesWindowToUtc: "2026-07-01T08:00:00Z",
+        markdownWindowFromUtc: "2026-01-02T08:00:00Z",
+        markdownWindowToUtc: "2026-07-01T08:00:00Z",
+        timezone: "UTC",
+        salesQuantityPolicy: "signed_net_quantity_preserved",
+        nonPositiveNetPolicy: "recommendation_unavailable",
+        previousWeekDenominatorPolicy: "unavailable_when_non_positive",
+        candidatesWithReturns: 1,
+        candidatesWithNonPositiveNetSales: 1,
+        candidatesWithoutSalesInWindow: 0,
+        suppliersWithUnavailablePreviousWeekDenominator: 1,
+      },
+      meta: { success: true, dataQualityStatus: "insufficient_data" },
+    });
+
+    expect(result.success).toBe(true);
   });
 
   it("rejects malformed dates and missing required response sections", () => {

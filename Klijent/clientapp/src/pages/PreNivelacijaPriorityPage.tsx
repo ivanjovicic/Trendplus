@@ -373,7 +373,11 @@ function hasMissingCostSignal(reasonCodes: string[]): boolean {
 }
 
 function hasSparseSalesSignal(reasonCodes: string[]): boolean {
-  return hasReasonCode(reasonCodes, ["sparse_sales", "tiny_sample", "insufficient_history"]);
+  return hasReasonCode(reasonCodes, ["sparse_sales", "tiny_sample", "insufficient_history", "no_sales_in_window", "zero_net_sales"]);
+}
+
+function hasSignedSalesSignal(reasonCodes: string[]): boolean {
+  return hasReasonCode(reasonCodes, ["signed_adjustment", "signed_sales_adjustment", "signed_sales_non_positive", "negative_net_sales"]);
 }
 
 function canShowMarkdownMarginSignal(row: DecisionCandidate): boolean {
@@ -393,7 +397,8 @@ function hasLimitedMarkdownSignal(row: DecisionCandidate): boolean {
     || row.dataQualityStatus !== "good"
     || row.status === "insufficient_data"
     || hasMissingCostSignal(row.reasonCodes)
-    || hasSparseSalesSignal(row.reasonCodes);
+    || hasSparseSalesSignal(row.reasonCodes)
+    || hasSignedSalesSignal(row.reasonCodes);
 }
 
 function getMarkdownSignalLimitMessage(row: DecisionCandidate): string {
@@ -402,6 +407,9 @@ function getMarkdownSignalLimitMessage(row: DecisionCandidate): string {
   }
   if (hasSparseSalesSignal(row.reasonCodes)) {
     return "Signal ima mali ili redak prodajni uzorak, pa scenario treba potvrditi pre poslovne odluke.";
+  }
+  if (hasSignedSalesSignal(row.reasonCodes)) {
+    return "Prodajni signal sadrži povrate ili korekcije; preporuka je blokirana dok se ne potvrdi potpisani neto saldo.";
   }
   if (!row.reliabilityAvailable || !row.confidenceAvailable || row.dataQualityStatus !== "good" || row.status === "insufficient_data") {
     return "Proveri pouzdanost, sigurnost preporuke i kvalitet podataka pre jače intervencije.";
@@ -576,8 +584,8 @@ export default function PreNivelacijaPriorityPage() {
       return {
         ...item,
         stockUnits: normalizeNonNegativeNumber(item.stockUnits),
-        units180: normalizeNonNegativeNumber(item.units180),
-        velocity180: normalizeNonNegativeNumber(item.velocity180),
+        units180: normalizeFiniteNumber(item.units180),
+        velocity180: normalizeFiniteNumber(item.velocity180),
         daysSinceLastSale: normalizeNonNegativeNumber(item.daysSinceLastSale),
         markdownEvents: normalizeNonNegativeNumber(item.markdownEvents),
         avgMarkdownPct: normalizePercentage(item.avgMarkdownPct),
@@ -812,9 +820,22 @@ export default function PreNivelacijaPriorityPage() {
       { key: "globalHighPriority", label: "Visok prioritet (globalno)", value: data ? normalizeNonNegativeNumber(data.summary.highPriorityCount) : null },
       { key: "visiblePageCandidates", label: "Kandidati (vidljiva strana)", value: decisionRows.length },
       { key: "visiblePageHighPriority", label: "Visok prioritet (vidljiva strana)", value: candidateCounts.highPriority },
+      { key: "salesWindowFromUtc", label: "Prodajni prozor od (UTC)", value: data?.evidenceWindow?.salesWindowFromUtc ?? null },
+      { key: "salesWindowToUtc", label: "Prodajni prozor do (UTC)", value: data?.evidenceWindow?.salesWindowToUtc ?? null },
+      { key: "salesQuantityPolicy", label: "Politika količine", value: data?.evidenceWindow?.salesQuantityPolicy === "signed_net_quantity_preserved" ? "Potpisana neto količina; povrati i korekcije ostaju vidljivi" : data?.evidenceWindow?.salesQuantityPolicy ?? null },
+      { key: "nonPositiveNetPolicy", label: "Nevažeći neto signal", value: data?.evidenceWindow?.nonPositiveNetPolicy === "recommendation_unavailable" ? "Preporuka nedostupna" : data?.evidenceWindow?.nonPositiveNetPolicy ?? null },
+      { key: "candidatesWithReturns", label: "Kandidati sa povratima/korekcijama", value: data?.evidenceWindow?.candidatesWithReturns ?? null },
+      { key: "candidatesWithoutSalesInWindow", label: "Bez prodaje u prozoru", value: data?.evidenceWindow?.candidatesWithoutSalesInWindow ?? null },
+      { key: "suppliersWithUnavailablePreviousWeekDenominator", label: "Dobavljači bez validnog prethodnog prozora", value: data?.evidenceWindow?.suppliersWithUnavailablePreviousWeekDenominator ?? null },
     ],
     [candidateCounts.highPriority, data, decisionRows.length]
   );
+
+  const evidenceBasis = useMemo(() => {
+    const window = data?.evidenceWindow;
+    if (!window) return null;
+    return `UTC prozor ${window.salesWindowFromUtc} – ${window.salesWindowToUtc}; količine su potpisane neto vrednosti; nepozitivan neto i nepozitivan prethodni prozor ostaju nedostupni za preporuku.`;
+  }, [data?.evidenceWindow]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -989,10 +1010,11 @@ export default function PreNivelacijaPriorityPage() {
         <AnalyticsTrustHeader
         title="Prioriteti pre-nivelacije"
         description="Operativna podrška za odluke po SKU pre faze sniženja."
-        periodFrom={null}
-        periodTo={null}
+        periodFrom={data?.evidenceWindow?.salesWindowFromUtc ?? null}
+        periodTo={data?.evidenceWindow?.salesWindowToUtc ?? null}
         lastRefreshAt={dataMeta?.lastRefreshAtUtc ?? null}
-        dataSource={`Nivelacija analytics (scope: ${dataScope})`}
+        dataSource={`Analitika pre-nivelacije (opseg: ${dataScope})`}
+        provenanceBasis={evidenceBasis}
         mode={data?.recommendationAllowed === true ? "recommendation" : "signal"}
         recommendationAllowed={data?.recommendationAllowed ?? null}
         dataQualityStatus={dataMeta?.dataQualityStatus ?? null}

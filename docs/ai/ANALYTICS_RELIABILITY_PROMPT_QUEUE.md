@@ -2,7 +2,7 @@
 
 Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ390; RQ385, RQ388 and RQ389 are DONE.
+Current READY prompt: RQ390 (IN_PROGRESS in this workspace); RQ385, RQ388 and RQ389 are DONE.
 
 Owner audit 2026-09-22: under the user's direct Supplier Decision Hub screen/backend audit request, `RQ401` became the current Supplier Decision READY prompt for cache-schema/effective-period compatibility. `RQ402`-`RQ405` were added as WAITING detail, filter-parity, effective-period and localization follow-ups. Existing RQ READY lanes remain independently runnable under the current queue governance.
 Owner claim 2026-09-22: `RQ401` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ401-codex.lock.md`.
@@ -14,6 +14,7 @@ Owner completion 2026-09-22: `RQ388` delivered directly to `main` in `a9fb58a6ce
 Owner claim 2026-09-22: `RQ389` transitioned `READY -> IN_PROGRESS` in this workspace after dependency and collision checks; local runtime lock `.ai/task-locks/RQ389-codex.lock.md`.
 Owner completion 2026-09-22: `RQ389` delivered directly to `main` in `e706cc44`; Color nivelacija events now inherit exact selected store and data-origin scope, lineage counts/policies are returned and carried into trust/detail/export metadata, and unmatched scoped event cohorts fail closed for recommendations. Run log: `.ai/runs/2026-09-22-RQ389-evidence.md`. Evidence state: synchronized. Follow-up: promote `RQ390` as the next dependency-complete Pre-Nivelacija scoring-window prompt.
 Owner promotion 2026-09-22: `RQ390` moved `WAITING -> READY` after `RQ388` reached DONE and dependency checks passed; it is the next P1 Pre-Nivelacija scoring-window prompt.
+Owner claim 2026-09-22: `RQ390` transitioned `READY -> IN_PROGRESS` in this workspace after dependency and collision checks; local runtime lock `.ai/task-locks/RQ390-codex.lock.md`.
 
 Owner audit 2026-09-22: under the user's direct Daily Sales by Shift screen/backend audit request, `RQ375` returned to `WAITING`, `RQ381` moved to `READY` as the current signed-quantity/revenue contract prompt, and `RQ382`-`RQ384` were added as later `WAITING` scope, shift-provenance and safe-error follow-ups. Daily Sales ASCII Serbian copy remains routed to `RQ306`; residual English/technical UI copy remains routed to `RQ325`.
 Owner audit 2026-09-22: under the user's direct Pre/Post Nivelacija screen/backend audit request, `RQ385` became the primary `READY` prompt for request-scope/cache lineage, while `RQ386` and `RQ387` were added as `WAITING` cohort/denominator and runtime-payload/error-contract follow-ups. The existing Daily Sales `RQ381` remains independently `READY`; Pre/Post ASCII Serbian and residual English/technical copy are routed to `RQ306`/`RQ325`.
@@ -1383,7 +1384,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ380 | WAITING | supplier-sales-prepost-comparable-aggregate | Align Supplier total pre/post impact with the comparable cohort |
 | RQ388 | DONE | pre-nivelacija-population-parity | Align Pre-Nivelacija global KPIs with the full candidate population |
 | RQ389 | DONE | color-scope-event-lineage | Align Color store/data-origin scope with nivelacija event lineage |
-| RQ390 | READY | pre-nivelacija-scoring-window | Bound Pre-Nivelacija scoring history and signed-sales denominator semantics |
+| RQ390 | IN_PROGRESS | pre-nivelacija-scoring-window | Bound Pre-Nivelacija scoring history and signed-sales denominator semantics |
 | RQ391 | WAITING | pre-nivelacija-runtime-schema | Validate the complete Pre-Nivelacija decision payload at runtime |
 | RQ392 | WAITING | color-signed-numeric-contract | Preserve signed Color sales and cost-quality evidence |
 | RQ393 | WAITING | color-margin-quality-contract | Align Color recommendation margin baseline with weighted cost evidence |
@@ -21284,7 +21285,7 @@ Reproduction: use the same article in two stores or origins, give it different n
 
 ## RQ390 - Bound Pre-Nivelacija scoring history and signed-sales denominator semantics
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1
 Type: backend-contract/scoring/tests
 Feature family: pre-nivelacija-scoring-window

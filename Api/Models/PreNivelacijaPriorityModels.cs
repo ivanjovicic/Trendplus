@@ -17,7 +17,24 @@ public sealed class PreNivelacijaPriorityResponseDto
     public int PageSize { get; set; } = 20;
     public int TotalCandidates { get; set; }
     public bool RecommendationAllowed { get; set; }
+    public PreNivelacijaEvidenceWindowDto EvidenceWindow { get; set; } = new();
     public AnalyticsResponseMetaDto? Meta { get; set; }
+}
+
+public sealed class PreNivelacijaEvidenceWindowDto
+{
+    public DateTime SalesWindowFromUtc { get; set; }
+    public DateTime SalesWindowToUtc { get; set; }
+    public DateTime MarkdownWindowFromUtc { get; set; }
+    public DateTime MarkdownWindowToUtc { get; set; }
+    public string Timezone { get; set; } = "UTC";
+    public string SalesQuantityPolicy { get; set; } = "signed_net_quantity_preserved";
+    public string NonPositiveNetPolicy { get; set; } = "recommendation_unavailable";
+    public string PreviousWeekDenominatorPolicy { get; set; } = "unavailable_when_non_positive";
+    public int CandidatesWithReturns { get; set; }
+    public int CandidatesWithNonPositiveNetSales { get; set; }
+    public int CandidatesWithoutSalesInWindow { get; set; }
+    public int SuppliersWithUnavailablePreviousWeekDenominator { get; set; }
 }
 
 public sealed class PreNivelacijaFilterFacetsDto
@@ -61,7 +78,8 @@ public sealed class PreNivelacijaSupplierActionDto
     public decimal EstimatedAvoidableMarkdownLoss { get; set; }
     public decimal ExpectedHighlightRevenueUplift { get; set; }
     public decimal ActionScore { get; set; }
-    public decimal WeekOverWeekRiskDeltaPct { get; set; }
+    public decimal? WeekOverWeekRiskDeltaPct { get; set; }
+    public string WeekOverWeekEvidenceStatus { get; set; } = "unavailable_non_positive_denominator";
 }
 
 public sealed class PreNivelacijaQueuesDto
@@ -105,6 +123,8 @@ public sealed class PreNivelacijaSkuCandidateDto
     public string Season { get; set; } = "N/A";
     public int StockUnits { get; set; }
     public int Units180 { get; set; }
+    public int PositiveUnits180 { get; set; }
+    public int NegativeUnits180 { get; set; }
     public decimal Velocity180 { get; set; }
     public int DaysSinceLastSale { get; set; }
     public int MarkdownEvents { get; set; }
@@ -120,6 +140,8 @@ public sealed class PreNivelacijaSkuCandidateDto
     public decimal RevenueDeltaHighlightVsMarkdown { get; set; }
     public bool HasCompleteEvidence { get; set; }
     public string? EvidenceReason { get; set; }
+    public string SalesEvidenceStatus { get; set; } = "no_sales_in_window";
+    public string? SalesEvidenceReason { get; set; }
     public string Confidence { get; set; } = "Low";
     public double ReliabilityPct { get; set; }
     public int DecisionScore { get; set; }

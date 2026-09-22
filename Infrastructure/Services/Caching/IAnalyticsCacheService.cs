@@ -468,8 +468,9 @@ public static class AnalyticsCacheKeys
         int? noSaleDaysMin,
         decimal? minScore,
         decimal? marginFloor,
-        string? dataScope = null) =>
-        $"{Prefix}pre-nivelacija-priority:v2:supplier:{FormatNullable(supplierId)}:season:{FormatNullable(seasonId)}:footwear:{FormatNullable(footwearTypeId)}:stock-min:{FormatNullable(stockMin)}:stock-max:{FormatNullable(stockMax)}:no-sale:{FormatNullable(noSaleDaysMin)}:min-score:{FormatNullable(minScore)}:margin-floor:{FormatNullable(marginFloor)}:scope:{NormalizeDataScope(dataScope)}";
+        string? dataScope = null,
+        DateTime? effectiveToUtc = null) =>
+        $"{Prefix}pre-nivelacija-priority:v3:supplier:{FormatNullable(supplierId)}:season:{FormatNullable(seasonId)}:footwear:{FormatNullable(footwearTypeId)}:stock-min:{FormatNullable(stockMin)}:stock-max:{FormatNullable(stockMax)}:no-sale:{FormatNullable(noSaleDaysMin)}:min-score:{FormatNullable(minScore)}:margin-floor:{FormatNullable(marginFloor)}:scope:{NormalizeDataScope(dataScope)}:effective-to:{FormatInstant(effectiveToUtc)}";
 }
 
 /// <summary>

@@ -39,6 +39,8 @@ export interface PreNivelacijaSkuCandidate {
   season: string;
   stockUnits: number;
   units180: number;
+  positiveUnits180?: number;
+  negativeUnits180?: number;
   velocity180: number;
   daysSinceLastSale: number;
   markdownEvents: number;
@@ -54,6 +56,8 @@ export interface PreNivelacijaSkuCandidate {
   revenueDeltaHighlightVsMarkdown: number;
   hasCompleteEvidence?: boolean;
   evidenceReason?: string | null;
+  salesEvidenceStatus?: string;
+  salesEvidenceReason?: string | null;
   confidence: "High" | "Medium" | "Low" | string;
   reliabilityPct: number | null;
   decisionScore: number;
@@ -69,7 +73,23 @@ export interface PreNivelacijaSupplierAction {
   estimatedAvoidableMarkdownLoss: number;
   expectedHighlightRevenueUplift: number;
   actionScore: number;
-  weekOverWeekRiskDeltaPct: number;
+  weekOverWeekRiskDeltaPct: number | null;
+  weekOverWeekEvidenceStatus?: string;
+}
+
+export interface PreNivelacijaEvidenceWindow {
+  salesWindowFromUtc: string;
+  salesWindowToUtc: string;
+  markdownWindowFromUtc: string;
+  markdownWindowToUtc: string;
+  timezone: string;
+  salesQuantityPolicy: string;
+  nonPositiveNetPolicy: string;
+  previousWeekDenominatorPolicy: string;
+  candidatesWithReturns: number;
+  candidatesWithNonPositiveNetSales: number;
+  candidatesWithoutSalesInWindow: number;
+  suppliersWithUnavailablePreviousWeekDenominator: number;
 }
 
 export interface PreNivelacijaQueueItem {
@@ -136,5 +156,6 @@ export interface PreNivelacijaPriorityResponse {
   pageSize: number;
   totalCandidates: number;
   recommendationAllowed?: boolean | null;
+  evidenceWindow?: PreNivelacijaEvidenceWindow | null;
   meta?: AnalyticsResponseMeta | null;
 }

@@ -188,6 +188,18 @@ public sealed class AnalyticsScreenCacheKeyContractTests
     }
 
     [Fact]
+    public void PreNivelacijaPriority_SeparatesEffectiveUtcWindowDays()
+    {
+        var firstDay = AnalyticsCacheKeys.PreNivelacijaPriorityBase(
+            null, null, null, null, null, null, null, null, "all", new DateTime(2026, 9, 22, 0, 0, 0, DateTimeKind.Utc));
+        var nextDay = AnalyticsCacheKeys.PreNivelacijaPriorityBase(
+            null, null, null, null, null, null, null, null, "all", new DateTime(2026, 9, 23, 0, 0, 0, DateTimeKind.Utc));
+
+        Assert.NotEqual(firstDay, nextDay);
+        Assert.Contains("effective-to:", firstDay, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void VendorSalesNivelacija_SeparatesStoreAndDataScopeCacheEntries()
     {
         var baseline = AnalyticsCacheKeys.VendorSalesNivelacija(

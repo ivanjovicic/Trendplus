@@ -27,6 +27,20 @@ const responseBody = JSON.stringify({
   page: 1,
   pageSize: 20,
   totalCandidates: 0,
+  evidenceWindow: {
+    salesWindowFromUtc: "2026-01-02T08:00:00Z",
+    salesWindowToUtc: "2026-07-01T08:00:00Z",
+    markdownWindowFromUtc: "2026-01-02T08:00:00Z",
+    markdownWindowToUtc: "2026-07-01T08:00:00Z",
+    timezone: "UTC",
+    salesQuantityPolicy: "signed_net_quantity_preserved",
+    nonPositiveNetPolicy: "recommendation_unavailable",
+    previousWeekDenominatorPolicy: "unavailable_when_non_positive",
+    candidatesWithReturns: 0,
+    candidatesWithNonPositiveNetSales: 0,
+    candidatesWithoutSalesInWindow: 0,
+    suppliersWithUnavailablePreviousWeekDenominator: 0,
+  },
   meta: { success: true, dataQualityStatus: "good" },
 });
 

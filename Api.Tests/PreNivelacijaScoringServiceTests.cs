@@ -93,6 +93,29 @@ public sealed class PreNivelacijaScoringServiceTests
     }
 
     [Fact]
+    public void EvaluateRecommendation_WithSignedSalesAdjustment_BlocksActionAndKeepsReason()
+    {
+        var service = new PreNivelacijaScoringService();
+
+        var result = service.EvaluateRecommendation(new IPreNivelacijaScoringService.RecommendationInput(
+            PreNivelacijaScore: 82m,
+            RevenueDelta: 120m,
+            MinRevenueDelta: -20m,
+            MaxRevenueDelta: 180m,
+            DaysSinceLastSale: 70,
+            PriorityBand: "high",
+            Confidence: "High",
+            Units180: 40,
+            StockUnits: 10,
+            HasCompleteEvidence: false,
+            SalesEvidenceStatus: "signed_adjustment"));
+
+        Assert.False(result.Recommendation.RecommendationAllowed);
+        Assert.Equal("insufficient_data", result.Recommendation.Status);
+        Assert.Contains("signed_adjustment", result.Recommendation.ReasonCodes);
+    }
+
+    [Fact]
     public void SimulateScenarios_WithoutReliableCost_DoesNotInventFullMargin()
     {
         var service = new PreNivelacijaScoringService();

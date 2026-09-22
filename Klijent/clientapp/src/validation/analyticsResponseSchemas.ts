@@ -234,8 +234,10 @@ const preNivelacijaCandidateSchema = z.object({
   artikalId: nonNegativeInteger,
   sku: z.string(),
   stockUnits: nonNegativeNumber,
-  units180: nonNegativeNumber,
-  velocity180: nonNegativeNumber,
+  units180: finiteNumber,
+  positiveUnits180: nonNegativeNumber.optional(),
+  negativeUnits180: finiteNumber.optional(),
+  velocity180: finiteNumber,
   daysSinceLastSale: nonNegativeNumber,
   markdownEvents: nonNegativeInteger,
   avgMarkdownPct: nonNegativePercentage,
@@ -262,6 +264,8 @@ const preNivelacijaCandidateSchema = z.object({
     dataQualityStatus: z.string(),
     reasonCodes: z.array(z.string()),
   }).passthrough(),
+  salesEvidenceStatus: z.string().optional(),
+  salesEvidenceReason: z.string().nullable().optional(),
 }).passthrough();
 
 export const preNivelacijaPriorityResponseSchema = z.object({
@@ -302,6 +306,20 @@ export const preNivelacijaPriorityResponseSchema = z.object({
   pageSize: nonNegativeInteger,
   totalCandidates: nonNegativeInteger,
   recommendationAllowed: z.boolean().nullable().optional(),
+  evidenceWindow: z.object({
+    salesWindowFromUtc: validDate,
+    salesWindowToUtc: validDate,
+    markdownWindowFromUtc: validDate,
+    markdownWindowToUtc: validDate,
+    timezone: z.string(),
+    salesQuantityPolicy: z.string(),
+    nonPositiveNetPolicy: z.string(),
+    previousWeekDenominatorPolicy: z.string(),
+    candidatesWithReturns: nonNegativeInteger,
+    candidatesWithNonPositiveNetSales: nonNegativeInteger,
+    candidatesWithoutSalesInWindow: nonNegativeInteger,
+    suppliersWithUnavailablePreviousWeekDenominator: nonNegativeInteger,
+  }).nullable().optional(),
   meta: optionalMeta,
 }).passthrough();
 
