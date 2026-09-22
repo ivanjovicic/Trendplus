@@ -2,7 +2,9 @@
 
 Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompts: RQ385, RQ388 and RQ389 (independent Pre/Post, Pre-Nivelacija and Color owner lanes)
+Current READY prompts: RQ385, RQ388, RQ389 and RQ401 (independent Pre/Post, Pre-Nivelacija, Color and Supplier Decision Hub owner lanes)
+
+Owner audit 2026-09-22: under the user's direct Odluke o dobavljačima screen/backend audit request, `RQ401` became the primary `READY` prompt for Supplier Decision Hub requested-period versus cached metric-window parity. `RQ402`-`RQ405` were added as `WAITING` signal-identity, KPI/report parity, unreachable scorecard filters and Serbian-copy follow-ups. No existing READY lane was demoted: `RQ385`, `RQ388` and `RQ389` stay independently READY because they do not share this hub's feature family or owner files. Supplier Sales `RQ373`-`RQ380` stay `WAITING`. Hub ASCII/English copy is owned by `RQ405` and references `RQ306`/`RQ325` instead of duplicating an Operacije copy prompt. The summary index row for `RQ375` was corrected from `READY` to `WAITING` to match its prompt body, and missing `RQ381`-`RQ387` index rows were inserted with their existing body statuses.
 
 Owner audit 2026-09-22: under the user's direct Daily Sales by Shift screen/backend audit request, `RQ375` returned to `WAITING`, `RQ381` moved to `READY` as the current signed-quantity/revenue contract prompt, and `RQ382`-`RQ384` were added as later `WAITING` scope, shift-provenance and safe-error follow-ups. Daily Sales ASCII Serbian copy remains routed to `RQ306`; residual English/technical UI copy remains routed to `RQ325`.
 Owner audit 2026-09-22: under the user's direct Pre/Post Nivelacija screen/backend audit request, `RQ385` became the primary `READY` prompt for request-scope/cache lineage, while `RQ386` and `RQ387` were added as `WAITING` cohort/denominator and runtime-payload/error-contract follow-ups. The existing Daily Sales `RQ381` remains independently `READY`; Pre/Post ASCII Serbian and residual English/technical copy are routed to `RQ306`/`RQ325`.
@@ -1364,12 +1366,19 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ372 | WAITING | inventory-alert-filter-contract | Keep Inventory alert filtering, counts and URL state consistent |
 | RQ373 | WAITING | supplier-sales-visible-scope-parity | Separate Supplier display population from decision reference cohort and align KPI/chart/table/export scope |
 | RQ374 | WAITING | supplier-sales-detail-trust-contract | Align Supplier detail with display scope, decision benchmark, trust and provenance |
-| RQ375 | READY | shoe-type-margin-quality-contract | Align Shoe Type weighted margin baseline, cost-source semantics and runtime validation |
+| RQ375 | WAITING | shoe-type-margin-quality-contract | Align Shoe Type weighted margin baseline, cost-source semantics and runtime validation |
 | RQ376 | WAITING | shoe-type-prepost-aggregate-parity | Align Shoe Type pre/post totals with comparable evidence cohort |
 | RQ377 | WAITING | shoe-type-detail-trust-contract | Align Shoe Type detail route with row recommendation, trust and unknown identity |
 | RQ378 | WAITING | supplier-sales-margin-quality-contract | Align Supplier weighted margin benchmark and cost-source semantics |
 | RQ379 | WAITING | supplier-sales-runtime-schema | Add fail-closed runtime validation for Supplier Sales decision payload |
 | RQ380 | WAITING | supplier-sales-prepost-comparable-aggregate | Align Supplier total pre/post impact with the comparable cohort |
+| RQ381 | DONE | daily-sales-signed-numeric-contract | Align Daily Sales signed quantity/revenue contract and reconciliation |
+| RQ382 | WAITING | daily-sales-scope-quality-parity | Align Daily Sales data-scope diagnostics and visible denominators |
+| RQ383 | WAITING | daily-sales-shift-provenance | Make Daily Sales off-shift and no-time fallback provenance explicit |
+| RQ384 | WAITING | daily-sales-safe-error-contract | Make Daily Sales endpoint errors safe and traceable |
+| RQ385 | READY | pre-post-scope-cache-lineage | Align Pre/Post request scope, cache lineage and visible provenance |
+| RQ386 | WAITING | pre-post-cohort-denominators | Reconcile Pre/Post event cohort, cap and denominator semantics |
+| RQ387 | WAITING | pre-post-runtime-safe-contract | Add Pre/Post runtime payload validation and safe traceable errors |
 | RQ388 | READY | pre-nivelacija-population-parity | Align Pre-Nivelacija global KPIs with the full candidate population |
 | RQ389 | READY | color-scope-event-lineage | Align Color store/data-origin scope with nivelacija event lineage |
 | RQ390 | WAITING | pre-nivelacija-scoring-window | Bound Pre-Nivelacija scoring history and signed-sales denominator semantics |
@@ -1383,6 +1392,11 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ398 | WAITING | color-identity-canonicalization | Canonicalize Color identity and collision-safe detail keys |
 | RQ399 | WAITING | color-source-provenance | Correct Color source and metric provenance |
 | RQ400 | WAITING | color-decision-score-contract | Define an authoritative Color decision-score contract |
+| RQ401 | READY | supplier-decision-hub-period-window | Align Supplier Decision Hub requested period with the cached metric window |
+| RQ402 | WAITING | supplier-decision-hub-signal-identity | Keep per-supplier scorecard signals distinct from the page actionability gate |
+| RQ403 | WAITING | supplier-decision-hub-kpi-parity | Stop hub KPI, chart and report totals from diverging from the summary contract |
+| RQ404 | WAITING | supplier-decision-hub-filter-reachability | Restore or remove scorecard filters that production navigation cannot set |
+| RQ405 | WAITING | supplier-decision-hub-serbian-copy | Replace Supplier Decision Hub English and ASCII copy with exact Serbian strings |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
