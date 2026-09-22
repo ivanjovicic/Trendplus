@@ -21069,4 +21069,5 @@ Reproduction: return malformed JSON, non-finite numeric values, a non-2xx provid
 ### Dependencies
 
 - Reuse the shared runtime validation and safe-error conventions from `RQ363`/`RQ368`; do not create a Pre/Post-only contract.
+- `Q83` owns the live SQL/view revenue-baseline contract; this prompt must preserve a safe correlated error when that prerequisite is absent rather than treating quantity change as revenue change.
 - `RQ306`/`RQ325` own the broader Operacije diacritics and residual-English pass; this prompt owns the contract paths that currently make those labels user-visible.
