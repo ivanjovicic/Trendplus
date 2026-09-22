@@ -4,9 +4,9 @@ Date: 2026-09-22
 Agent/tool: GPT-5.6 Luna / Cloud Agent
 Delivery target: main
 Working branch / PR: cursor/daily-sales-audit-prompts-52eb / PR #59
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: 372758c262037f4d6bd4bf610e2ffc1524074b92
+Main verification: pass - fresh `origin/main` contains 372758c262037f4d6bd4bf610e2ffc1524074b92
+Evidence state: synchronized
 
 ## What was done
 - Audited the `Prodaja po smeni` frontend, API service/endpoint/DTO, runtime Zod schema and focused tests.
