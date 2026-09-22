@@ -2,10 +2,11 @@
 
 Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ385
+Current READY prompts: RQ385, RQ388 and RQ389 (independent Pre/Post, Pre-Nivelacija and Color owner lanes)
 
 Owner audit 2026-09-22: under the user's direct Daily Sales by Shift screen/backend audit request, `RQ375` returned to `WAITING`, `RQ381` moved to `READY` as the current signed-quantity/revenue contract prompt, and `RQ382`-`RQ384` were added as later `WAITING` scope, shift-provenance and safe-error follow-ups. Daily Sales ASCII Serbian copy remains routed to `RQ306`; residual English/technical UI copy remains routed to `RQ325`.
 Owner audit 2026-09-22: under the user's direct Pre/Post Nivelacija screen/backend audit request, `RQ385` became the primary `READY` prompt for request-scope/cache lineage, while `RQ386` and `RQ387` were added as `WAITING` cohort/denominator and runtime-payload/error-contract follow-ups. The existing Daily Sales `RQ381` remains independently `READY`; Pre/Post ASCII Serbian and residual English/technical copy are routed to `RQ306`/`RQ325`.
+Owner audit 2026-09-22: under the user's direct Prioriteti nivelacije and Prodaja po boji artikla screen/backend audit request, `RQ388` became the primary `READY` prompt for Pre-Nivelacija page/global population parity and `RQ389` became the primary `READY` prompt for Color store/data-origin event lineage. `RQ390`-`RQ391` and `RQ392`-`RQ395` were added as later `WAITING` scoring, runtime-contract, signed-numeric, weighted-margin, comparable-cohort and safe-error follow-ups. Shared Serbian/English copy remains routed to `RQ306`/`RQ325`; no duplicate copy prompt was created.
 Owner promotion 2026-09-22: under the user's direct Inventory audit request, `RQ308` moved from `WAITING` to `READY` as the current Inventory period-selection and snapshot-provenance prompt. `RQ371` and `RQ372` were added as later `WAITING` follow-ups.
 Owner promotion 2026-09-22: under the user's direct Sales by Supplier audit request, `RQ308` returned to `WAITING`, `RQ373` moved to `READY` as the current supplier visible-scope/KPI parity prompt, and `RQ374` was added as a later `WAITING` supplier detail trust-contract follow-up. Existing localization findings remain routed to `RQ306` and `RQ325`.
 Owner promotion 2026-09-22: under the user's direct Shoe Type Sales screen/backend audit request, `RQ373` returned to `WAITING`, `RQ375` moved to `READY` as the current Shoe Type aggregate margin/cost-quality contract prompt, and `RQ376`/`RQ377` were added as later `WAITING` pre/post aggregate and detail-trust follow-ups. Shoe Type English/ASCII copy remains routed to `RQ306`/`RQ325`, and the existing dead truncation label remains `RQ329`. The Supplier lane remains WAITING because its high-value endpoint work overlaps the same backend owner/file and has explicit dependencies, not because only one READY is allowed.
@@ -1368,6 +1369,14 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ378 | WAITING | supplier-sales-margin-quality-contract | Align Supplier weighted margin benchmark and cost-source semantics |
 | RQ379 | WAITING | supplier-sales-runtime-schema | Add fail-closed runtime validation for Supplier Sales decision payload |
 | RQ380 | WAITING | supplier-sales-prepost-comparable-aggregate | Align Supplier total pre/post impact with the comparable cohort |
+| RQ388 | READY | pre-nivelacija-population-parity | Align Pre-Nivelacija global KPIs with the full candidate population |
+| RQ389 | READY | color-scope-event-lineage | Align Color store/data-origin scope with nivelacija event lineage |
+| RQ390 | WAITING | pre-nivelacija-scoring-window | Bound Pre-Nivelacija scoring history and signed-sales denominator semantics |
+| RQ391 | WAITING | pre-nivelacija-runtime-schema | Validate the complete Pre-Nivelacija decision payload at runtime |
+| RQ392 | WAITING | color-signed-numeric-contract | Preserve signed Color sales and cost-quality evidence |
+| RQ393 | WAITING | color-margin-quality-contract | Align Color recommendation margin baseline with weighted cost evidence |
+| RQ394 | WAITING | color-prepost-aggregate-parity | Align Color pre/post totals with the comparable evidence cohort |
+| RQ395 | WAITING | color-runtime-safe-errors | Harden Color runtime validation and safe traceable endpoint errors |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -17463,7 +17472,7 @@ English remains in Operacije trust/snapshot/export strings beyond RQ301/303/304/
 
 ### Evidence
 
-- `ColorSalesStatsPage.tsx:657`, `816`, `821`, `94`; `ProdajaPrePostNivelacijePage.tsx:1266`, `1583`.
+- `ColorSalesStatsPage.tsx:657`, `816`, `821`, `94`, `988-1008`, `1129`; `PreNivelacijaPriorityPage.tsx:748`, `781`, `1106`, `1397-1404`, `1428-1462`; `ProdajaPrePostNivelacijePage.tsx:1266`, `1583`.
 - Pre/Post concrete residuals: `ProdajaPrePostNivelacijePage.tsx:332-380,950-975,1498-1506,1624-1625,1853-1883` exposes `Rolling`, `view`, `Difference-in-Differences`, `OOS`, `Mix`, `price-direction`, `Decision support`, `Event-window`, `metric reason`, `Data quality`, `Lost sales`, `N/A` and `store`/`scope` mixed into Serbian copy; `VendorSalesNivelacijaModels.cs:55-64,678-690` exposes `Insufficient data`, `N/A` and `Fallback mode` in user-visible payloads.
 - `SupplierSalesStatsPage.tsx:369`, `410`, `484`, `1107`, `1236`, `1490`, `2038`, `2175` still expose English/technical copy such as `Low signal`, `Supplier sales stats`, `canonical`, `Supplier decision detail`, `AI`, `historija`, `snapshot` and `detalj`.
 - `ShoeTypeSalesStatsPage.tsx:314,667,713-721,963-964,1214,1339,1522,1649` exposes `Low signal`, `Sales facts analytics`, `snapshot`, `impact` and `Data quality`; `AnalyticsDetailReadService.cs:566-620` exposes `impact`, `fallback`, `snapshot` and `Data scope` in the Shoe Type detail projection.
@@ -21071,3 +21080,436 @@ Reproduction: return malformed JSON, non-finite numeric values, a non-2xx provid
 - Reuse the shared runtime validation and safe-error conventions from `RQ363`/`RQ368`; do not create a Pre/Post-only contract.
 - `Q83` owns the live SQL/view revenue-baseline contract; this prompt must preserve a safe correlated error when that prerequisite is absent rather than treating quantity change as revenue change.
 - `RQ306`/`RQ325` own the broader Operacije diacritics and residual-English pass; this prompt owns the contract paths that currently make those labels user-visible.
+
+---
+
+## RQ388 - Align Pre-Nivelacija global KPIs with the full candidate population
+
+Status: READY
+Priority: P1
+Type: backend-contract/frontend/dataset-projection/tests
+Feature family: pre-nivelacija-population-parity
+Parallel-safe: no
+Owner: Analytics Reliability / Pre-Nivelacija
+Commit suggestion: `fix(analytics): align pre-nivelacija global kpis`
+
+### Problem
+
+The Pre-Nivelacija endpoint computes `summary` and `supplierLeaderboard` from the complete filtered candidate universe, but the page derives its status/high-priority counts from the current `data.candidates` page slice. The “Visok prioritet” KPI and attention notices therefore change when the user turns the page, while “Kandidati”, stock-at-risk and supplier concentration describe all candidates. The frontend also excludes `insufficient_data` rows from its high-priority count, while the backend summary counts every `PriorityBand == "high"` row.
+
+### Evidence
+
+- `Api/Endpoints/PreNivelacijaPriorityEndpoints.cs:380-438` sorts all candidates, builds the supplier leaderboard and summary, including `HighPriorityCount`, before returning the paged `Candidates`.
+- `PreNivelacijaPriorityPage.tsx:550-590,624-633` builds `candidateCounts` only from `data.candidates`, and `:1084-1091` renders the page-local `highPriority` count beside global summary values.
+- `PreNivelacijaPriorityPage.tsx:669-687,1128-1150` mixes all-candidate supplier concentration/focus context with current-page status counts.
+- `isHighPriorityCandidate` at `PreNivelacijaPriorityPage.tsx:309-311` excludes `insufficient_data`, whereas the backend summary at `PreNivelacijaPriorityEndpoints.cs:423-438` counts the high priority band without that status gate.
+- Existing `RQ364` introduced typed dataset projections but does not prove this page’s KPI/count population parity; current Pre-Nivelacija tests do not paginate a fixture and compare global summary counts with page/UI counts.
+
+Reproduction: return more than one page of candidates with high-priority rows on page 2, open page 1 and page 2, and compare the “Visok prioritet” KPI, notices, tabs and supplier chart. The KPI is not stable and can disagree with the response summary.
+
+### Scope
+
+- Pre-Nivelacija summary/KPI/status-count population, supplier concentration labels, page/global projections and focused backend/frontend tests.
+- Preserve backend-owned scoring, recommendation status and pagination; do not recompute business scores in the frontend.
+
+### Read first
+
+- `RQ364`, `RQ297`, `RQ300`, `RQ344`
+- `PreNivelacijaPriorityEndpoints.cs`, `PreNivelacijaPriorityPage.tsx`, `analyticsDatasetProjections.ts`, `preNivelacijaDecision.ts` and focused page/API tests
+
+### Do
+
+1. Declare which fields are global filtered-universe totals and which are visible-page/focus counts.
+2. Render global KPI and trust counts from authoritative summary/recommendation metadata, or add explicit backend facet/count fields; never infer global counts from the page slice.
+3. Make the high-priority definition identical between backend and frontend, including insufficient-data/actionability treatment.
+4. Label page-local counts as visible rows where they are intentionally page-local, and keep table, chart, KPI, focus tabs, export and detail metadata consistent.
+
+### Tests
+
+- high-priority rows split across pages;
+- high-priority plus insufficient-data rows proving status/band semantics;
+- page navigation, focus filtering, empty page and export/detail projections;
+- focused backend/frontend tests, analytics guardrails/typecheck/build as selected and `git diff --check`.
+
+### Acceptance
+
+- Global Pre-Nivelacija KPIs and recommendation counts do not change merely because pagination changes.
+- Backend and frontend use one documented high-priority population and do not silently mix page, filtered and global denominators.
+- Focus/table/chart/export/detail surfaces declare their population and preserve valid zero versus unavailable evidence.
+
+### Dependencies
+
+- `RQ364` owns the shared dataset-projection conventions; this prompt owns the Pre-Nivelacija population mapping.
+- `RQ297` owns recommendation/actionability gating; do not weaken blocked-row semantics while correcting counts.
+
+---
+
+## RQ389 - Align Color store/data-origin scope with nivelacija event lineage
+
+Status: READY
+Priority: P1
+Type: backend-contract/cache/frontend-provenance/tests
+Feature family: color-scope-event-lineage
+Parallel-safe: no
+Owner: Analytics Reliability / Color Sales
+Commit suggestion: `fix(analytics): align color nivelacija scope lineage`
+
+### Problem
+
+Color sales rows and previous-period metrics apply store and article data-origin filters, but the `DnevnikPromena` query that supplies the first nivelacija date does not apply the selected data-origin scope and treats a nivelacija with no store as valid for every selected store. The shared split policy then classifies store/scope-filtered sales using an event from a different population. The cache key includes the requested scope, so it can preserve a consistently wrong scoped result rather than correcting the lineage. The response/page consequently present scoped pre/post impact without proving that the event and sales populations match.
+
+### Evidence
+
+- `Api/Endpoints/AllEndpoints.cs:2710-2722` builds `prvaNivelacijaPoArtiklu` with only event type, article and `Datum <= toUtc`; it has no `importedOnly`/`existingOnly` predicate and uses `!d.IDObjekat.HasValue || d.IDObjekat == storeId`.
+- `Api/Endpoints/AllEndpoints.cs:2689-2700,2733-2759,2760-2771` applies store/data-origin scope to sales and previous-period rows, creating a different population from the event map.
+- `Api/Endpoints/AllEndpoints.cs:2825-2888` feeds that event map into `AnalyticsNivelacijaSplitPolicy` and exposes the resulting split/coverage as Color row evidence.
+- `ColorSalesStatsPage.tsx:640-660,810-829` carries store/data scope into the detail URL and trust header, so the mismatch is user-visible provenance, not only an internal query detail.
+- `Api.Tests` has no Color endpoint regression proving that an event from another store/origin cannot change the selected Color pre/post split.
+
+Reproduction: use the same article in two stores or origins, give it different nivelacija events, select one store/scope and compare the pre/post split against the globally scoped result. The selected request can use an event outside the selected sales population.
+
+### Scope
+
+- Color event/sales scope contract, first-nivelacija selection, cache/response provenance and focused backend/frontend tests.
+- Preserve the shared split policy and current all/existing/imported vocabulary; do not silently fall back to global event evidence.
+
+### Read first
+
+- `RQ278`, `RQ286`, `RQ288`, `RQ333`, `RQ364`
+- `AllEndpoints.cs`, `AnalyticsNivelacijaSplitPolicy.cs`, Color API/page, cache key code and nearest analytics tests
+
+### Do
+
+1. Define whether nivelacija events inherit article origin and store scope, and define the explicit policy for events with unknown store/origin.
+2. Apply the same effective population to event selection, current/previous sales, split coverage, recommendation gating, `dataWindow` and response metadata.
+3. Keep cache keys, generated metadata, trust header, detail URL/snapshot and export metadata aligned with the effective scope.
+4. Fail closed or expose an explicit degraded/unavailable state when the requested scope cannot prove a matching event cohort.
+
+### Tests
+
+- all/existing/imported scope with event-origin counterexamples;
+- selected store, unknown-store event and cross-store event fixtures;
+- current/previous period, cache repeat/isolation and detail/export provenance;
+- focused backend/frontend tests, analytics guardrails/typecheck/build as selected and `git diff --check`.
+
+### Acceptance
+
+- A scoped Color response cannot use an unscoped or cross-store nivelacija event while presenting scoped pre/post evidence.
+- Row, totals, trust header, detail, chart and export state the same effective store/data-origin basis.
+- Unknown event scope remains visibly unknown/degraded, never a silently valid pre/post zero or impact.
+
+### Dependencies
+
+- `RQ278` owns the shared data-scope vocabulary; `RQ364` owns dataset projection conventions.
+- `RQ286` owns Color raw pre/post field-level display parity; this prompt owns the backend event cohort.
+
+---
+
+## RQ390 - Bound Pre-Nivelacija scoring history and signed-sales denominator semantics
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/scoring/tests
+Feature family: pre-nivelacija-scoring-window
+Parallel-safe: no
+Owner: Analytics Reliability / Pre-Nivelacija
+Commit suggestion: `fix(analytics): bound pre-nivelacija scoring evidence`
+
+### Problem
+
+Pre-Nivelacija defines a 180-day sales window but only applies the lower bound. Future-dated sales can enter velocity/last-sale calculations, while all historical and future `DnevnikPromena` rows can affect markdown event count and average markdown percentage. Negative return/correction quantities are retained in `Units180` but are converted to zero velocity, and supplier week-over-week risk collapses every non-positive previous window to zero. The score and action ranking therefore mix unbounded event history with an implicit unsigned denominator policy.
+
+### Evidence
+
+- `PreNivelacijaPriorityEndpoints.cs:86-90,170-200` bounds sales only with `DatumProdaje >= from180Utc`; there is no upper `todayUtc` bound before `Units180`, `LastSale` and weekly sums are calculated.
+- `PreNivelacijaPriorityEndpoints.cs:210-239` queries `DnevnikPromena` without a 180-day or current-date bound, so old/future nivelacija events alter `MarkdownEvents` and `AvgMarkdownPct`.
+- `PreNivelacijaPriorityEndpoints.cs:264-267` converts `units180 <= 0` to zero velocity, while `:397-407` converts `prev7 <= 0` to a zero week-over-week risk delta.
+- `PreNivelacijaScoringService.cs:118-139,220-236` models scenario demand from the resulting values without exposing whether the input is signed returns, zero evidence or unavailable evidence.
+- Existing scoring tests cover determinism and missing cost, but no test covers future events, stale markdown history, negative returns or zero/negative comparison denominators.
+
+### Scope
+
+- Pre-Nivelacija sales/event windows, signed quantity and week-over-week denominator semantics, score evidence metadata and focused backend tests.
+- Preserve the existing formula ownership; do not invent a second return-accounting model.
+
+### Do
+
+1. Bound sales and markdown evidence to the declared window and current effective date, with an explicit timezone rule.
+2. Define how returns/corrections affect velocity, recency, scenario demand and supplier risk; preserve measured signed evidence or mark the affected score unavailable/degraded.
+3. Keep zero, negative, missing and non-positive denominators distinct and visible in recommendation reason codes.
+4. Include effective window/provenance in cache/meta so a cached score is not mistaken for a timeless fact.
+
+### Tests
+
+- future-dated sale/event excluded;
+- event older than 180 days excluded;
+- positive, zero, negative and missing previous-week denominators;
+- return-heavy article and mixed sale/return fixtures;
+- cache repeat determinism and focused backend scoring tests.
+
+### Acceptance
+
+- Pre-Nivelacija scores use only the declared effective evidence window.
+- Returns/corrections cannot become a healthy zero or silently disappear from velocity/risk ranking.
+- Supplier risk, item score, recommendation reason and cache/meta expose one consistent denominator and period.
+
+### Dependencies
+
+- `RQ388` owns page/global population parity; this prompt owns score-input evidence.
+- `RQ381` owns the Daily Sales signed contract pattern; reuse its distinction between signed aggregates and non-negative counters.
+
+---
+
+## RQ391 - Validate the complete Pre-Nivelacija decision payload at runtime
+
+Status: WAITING
+Priority: P1
+Type: frontend-runtime-validation/tests
+Feature family: pre-nivelacija-runtime-schema
+Parallel-safe: yes
+Owner: Analytics Reliability / Pre-Nivelacija
+Commit suggestion: `fix(analytics): validate pre-nivelacija decision payload`
+
+### Problem
+
+The Pre-Nivelacija Zod boundary validates only a subset of the decision payload. `recommendation.status`, label, summary and `recommendationAllowed` are not required, while queues and alerts are `z.unknown()` arrays. The page immediately uses those fields for status priority, actionability, tooltips, notices, detail and exports. A malformed successful response can therefore pass runtime validation and still render an unknown status or incomplete action contract.
+
+### Evidence
+
+- `analyticsResponseSchemas.ts:217-255` validates candidate numerics but does not require the recommendation status/summary/label/actionability fields consumed by `PreNivelacijaPriorityPage.tsx`.
+- `analyticsResponseSchemas.ts:280-288` accepts queue items and alerts as unknown objects; `PreNivelacijaPriorityPage.tsx:1424-1480` renders their identifiers, bands and dates as if typed.
+- `PreNivelacijaPriorityPage.tsx:550-590,624-650,1248-1389` consumes status, reason, recommendation gating and nested evidence after only the incomplete schema check.
+- `PreNivelacijaPriorityPage.spec.tsx` uses well-formed fixtures but has no malformed recommendation/queue/alert counterexample.
+
+### Scope
+
+- Pre-Nivelacija response schema/adapter, finite/range/nullability/status semantics and nearest API/page/export tests.
+- Preserve valid zero and blocked/insufficient states; do not turn validation failure into an empty successful list.
+
+### Do
+
+1. Require every decision-critical field consumed by the page and validate canonical statuses, reason codes, actionability and nested numeric/date units.
+2. Type queues/alerts explicitly and reject malformed/non-finite values before sorting, charts, detail or export.
+3. Route failures through the shared safe analytics error path with issue-path context, while keeping raw backend codes out of user copy.
+
+### Tests
+
+- missing/unknown status, missing actionability, malformed reason codes;
+- malformed queue/alert item, invalid date, non-finite/out-of-range score and valid zero/null fixtures;
+- page shows controlled error and no fake empty/zero recommendation state.
+
+### Acceptance
+
+- A payload that passes the Pre-Nivelacija runtime boundary is complete enough for every page projection.
+- Invalid decision data cannot render as a normal status, queue item, KPI, detail or export row.
+
+### Dependencies
+
+- Reuse `RQ363` shared runtime-validation conventions and `RQ300` numeric presentation behavior.
+- `RQ325` owns the copy-only localization of remaining raw English fields.
+
+---
+
+## RQ392 - Preserve signed Color sales and cost-quality evidence
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/frontend-runtime-validation/tests
+Feature family: color-signed-numeric-contract
+Parallel-safe: no
+Owner: Analytics Reliability / Color Sales
+Commit suggestion: `fix(analytics): preserve color signed sales evidence`
+
+### Problem
+
+Color sales and quantity are summed directly from signed sale lines, so returns/storno/corrections can produce negative row or total values. The frontend schema currently requires Color revenues, quantities, cost-quality amounts and split amounts to be non-negative. The backend also converts non-positive total-revenue denominators to numeric zero in cost-quality and pre/post totals. A valid signed payload can therefore be rejected or represented as a healthy zero instead of measured signed/unavailable evidence.
+
+### Evidence
+
+- `AllEndpoints.cs:2780-2888` sums signed `Kolicina` and `Kolicina * Cena` into Color row revenue, quantity, pre/post and cost fields.
+- `AllEndpoints.cs:2900-2927,3020-3070` uses `totalRevenue > 0`/`sumPreRevenue > 0` guards and emits `0d` for unavailable percentage coverage/impact paths.
+- `analyticsResponseSchemas.ts:54-106` uses `nonNegativeNumber` for Color row revenue/quantity, cost-quality amounts, totals and data-quality amounts.
+- `ColorSalesStatsPage.tsx:370-430,900-1140` sorts/renders these fields as trusted evidence without a signed-contract regression.
+- Existing Color specs use positive-only fixtures and do not prove returns, net-zero evidence, negative margin contribution or negative/unknown coverage behavior.
+
+### Scope
+
+- Color DTO/endpoint aggregation, Zod schema, page numeric/quality projections and nearest backend/frontend tests.
+- Preserve true zero, signed measured values, unavailable denominators and empty response as distinct states; do not clamp returns away.
+
+### Do
+
+1. Classify signed revenue/quantity/cost aggregates separately from non-negative counts and percentages.
+2. Replace non-positive-denominator zero fallbacks with nullable/degraded metadata where evidence is not measurable.
+3. Keep row, totals, data-quality, recommendation and export units/denominators consistent.
+
+### Tests
+
+- negative return/storno row and totals;
+- mixed positive/negative colors, net zero, negative margin contribution and null denominator;
+- schema accepts valid signed aggregates but rejects negative counters/invalid percentages;
+- no fake zero/green/actionable result for missing or non-finite evidence.
+
+### Acceptance
+
+- Valid signed Color sales are not rejected as malformed.
+- Returns, corrections and unavailable denominators remain visible as measured/degraded evidence, never as fake zero or healthy quality.
+
+### Dependencies
+
+- `RQ381` is the signed Daily Sales reference; this prompt owns the Color contract.
+- `RQ288` owns Color percentage/count fallback behavior; preserve its valid-zero distinction.
+
+---
+
+## RQ393 - Align Color recommendation margin baseline with weighted cost evidence
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/frontend/tests
+Feature family: color-margin-quality-contract
+Parallel-safe: no
+Owner: Analytics Reliability / Color Sales
+Commit suggestion: `fix(analytics): align color margin decision baseline`
+
+### Problem
+
+The Color endpoint computes `averageMarginPct` as a simple mean of row margin percentages and passes that value as the recommendation engine’s aggregate margin baseline. A low-revenue color therefore has the same influence as the dominant color. The endpoint already has aggregate margin contribution and cost-covered revenue, but does not expose or use a weighted benchmark for this decision path. It also defaults a missing unknown-color share to zero before recommendation evaluation.
+
+### Evidence
+
+- `AllEndpoints.cs:2925-2938` builds `knownColorMarginValues.Average()` and converts missing `unknownColorRevenueSharePct` to `0d`.
+- `AllEndpoints.cs:2944-2965` passes the simple average and fallback unknown share into `AnalyticsDecisionRecommendationEngine.Evaluate`.
+- `AllEndpoints.cs:3038-3060` exposes aggregate contribution/cost coverage, but no authoritative weighted Color margin baseline.
+- `AnalyticsMarginPolicy` already distinguishes covered revenue, fallback cost and no-cost evidence; Color tests do not prove unequal-covered-revenue weighted versus simple-mean behavior.
+
+### Scope
+
+- Color recommendation baseline, aggregate margin/cost-source provenance, frontend trust/toolbar/detail labels if the benchmark is exposed, and focused tests.
+- No new recommendation algorithm; use the existing margin policy and engine.
+
+### Do
+
+1. Define the aggregate baseline as covered-revenue-weighted margin contribution, or return it unavailable when its denominator is not measurable.
+2. Use the same backend-owned baseline for recommendation evaluation and any displayed aggregate.
+3. Keep unknown-color share null when its denominator is unknown; do not convert missing evidence to zero.
+4. Separate historical, fallback and truly unavailable cost coverage in labels and metadata.
+
+### Tests
+
+- dominant low-margin color plus tiny high-margin color;
+- historical/fallback/no-cost cost-source partitions;
+- null/zero/negative contribution and unknown-color denominator;
+- recommendation baseline equals displayed/reference cohort and remains blocked when unavailable.
+
+### Acceptance
+
+- Color recommendations cannot be driven by an unweighted row average or a fake unknown-share zero.
+- Aggregate margin, cost quality, recommendation gate and export metadata use one declared population and denominator.
+
+### Dependencies
+
+- Coordinate with `RQ375`/`RQ378` weighted margin patterns without creating a second shared owner.
+- `RQ288` owns Color percentage/count presentation; this prompt owns backend economic baseline semantics.
+
+---
+
+## RQ394 - Align Color pre/post totals with the comparable evidence cohort
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/frontend/tests
+Feature family: color-prepost-aggregate-parity
+Parallel-safe: no
+Owner: Analytics Reliability / Color Sales
+Commit suggestion: `fix(analytics): align color prepost aggregate cohort`
+
+### Problem
+
+Color row recommendation actionability requires both revenue and quantity pre/post signals from the comparable article cohort, but Color totals calculate impact from all rows’ broad pre/post sums. One-sided articles can therefore change the total impact while row recommendations correctly remain blocked. The page presents the total/row metrics together without exposing the aggregate comparable article count and denominator.
+
+### Evidence
+
+- `AllEndpoints.cs:2825-2888` builds broad and comparable split fields per Color row, including `ComparableRevenueWithSplit`, coverage and comparable article count.
+- `AllEndpoints.cs:2894-2900,3050-3070` computes total pre/post impact from `colors.Sum(r => preNivelacije...)`, not from comparable fields.
+- `AllEndpoints.cs:2960-2968` gates row recommendations on comparable revenue and quantity impacts.
+- `ColorSalesStatsPage.tsx:950-1000,1070-1135` presents row impact/coverage and totals/KPIs without declaring one shared aggregate cohort.
+- No Color backend test proves total impact parity with mixed comparable and one-sided articles.
+
+### Scope
+
+- Color aggregate pre/post totals, comparable cohort metadata, recommendation gating and frontend KPI/detail/export presentation.
+- Reuse `AnalyticsNivelacijaSplitPolicy`; do not duplicate formulas in the frontend.
+
+### Do
+
+1. Compute total impact/units from the same comparable cohort as row actionability, or expose broad observational totals under an explicitly different label.
+2. Carry comparable article count, pre/post quantities/revenue and coverage through totals/meta/export where consumed.
+3. Keep missing baseline, valid zero, partial coverage and negative/positive change distinct.
+
+### Tests
+
+- all-comparable, pre-only, post-only and mixed fixtures;
+- zero/negative/positive changes, low coverage and no comparable article;
+- row-versus-total impact, recommendation gate and table/detail/export parity.
+
+### Acceptance
+
+- One-sided Color activity cannot create a normal-looking actionable total impact.
+- Total, row, detail, trust and export surfaces use the same declared cohort, period and denominator.
+
+### Dependencies
+
+- `RQ389` establishes event/scope lineage; `RQ286` owns raw Color detail field-level availability.
+- Reuse the shared comparability policy from `RQ140`/`RQ182`.
+
+---
+
+## RQ395 - Harden Color runtime validation and safe traceable endpoint errors
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/frontend-runtime-validation/tests
+Feature family: color-runtime-safe-errors
+Parallel-safe: yes
+Owner: Analytics Reliability / Color Sales
+Commit suggestion: `fix(analytics): harden color runtime error contract`
+
+### Problem
+
+Color uses the shared runtime schema path, but the schema leaves decision-critical row/totals fields optional through `.passthrough()` and does not require the recommendation contract consumed by the page. The endpoint catch path returns raw `ex.Message` and no stable correlation/meta contract. A malformed or failed response can therefore become either a generic format failure without issue-path context or a technical/provider detail shown to the operator.
+
+### Evidence
+
+- `colorSalesStatsApi.ts:160-164` passes `colorSalesStatsResponseSchema`, but `analyticsResponseSchemas.ts:54-139` validates only a shallow subset and makes `recommendation` optional while allowing decision fields through `.passthrough()`.
+- `ColorSalesStatsPage.tsx:370-430,950-1140` consumes recommendation status, actionability, reliability, margin, pre/post, totals and data-quality fields after that incomplete boundary.
+- `AllEndpoints.cs:3132-3148` logs the exception but returns `detail: ex.Message` with a generic 500 response and no resolved correlation ID.
+- `ColorSalesStatsPage.tsx:864-899` distinguishes blocking/stale/empty UI states, but no focused test proves provider/serialization failures cannot leak raw text or become normal empty data.
+
+### Scope
+
+- Complete Color response schema/adapter, endpoint error mapping/correlation, safe Serbian error projection and nearest API/page tests.
+- Preserve HTTP/cancellation semantics and shared success/empty/warning/error distinctions.
+
+### Do
+
+1. Require and range-check every decision-critical field actually consumed by Color, including recommendation status/reason/actionability and nested cost/pre/post metadata.
+2. Return safe localized error detail plus correlation ID; keep provider/SQL exception text in logs only.
+3. Surface schema issue paths through the existing analytics error state without substituting empty rows or zero KPIs.
+4. Keep copy-only residual English routed through `RQ306`/`RQ325`.
+
+### Tests
+
+- missing/wrong/non-finite/out-of-range row, totals, quality and recommendation fields;
+- malformed JSON, non-2xx, timeout/provider exception, correlation ID and retry/refetch;
+- assert raw exception/HTML/technical codes are absent from visible copy and empty/error/stale states remain distinct.
+
+### Acceptance
+
+- Every normal Color response satisfies the decision contract before sorting, recommendation display, detail or export.
+- Color failures are safe for users and traceable for support without raw exception leakage or fake successful zero/empty state.
+
+### Dependencies
+
+- Reuse `RQ363`/`RQ368` shared validation and safe-error conventions.
+- `RQ325` remains the owner of residual Color/Pre-Nivelacija English copy; this prompt owns only the contract paths that make failures visible.
