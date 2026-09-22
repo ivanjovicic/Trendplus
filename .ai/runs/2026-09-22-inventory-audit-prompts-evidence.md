@@ -3,7 +3,7 @@ Queue: direct-user-request
 Date: 2026-09-22
 Agent/tool: GPT-5.6 Luna
 Delivery target: main
-Working branch / PR: cursor/inventory-audit-prompts-52eb / pending
+Working branch / PR: cursor/inventory-audit-prompts-52eb / https://github.com/ivanjovicic/Trendplus/pull/56
 Main commit SHA: pending
 Main verification: pending
 Evidence state: pending
@@ -22,6 +22,12 @@ Evidence state: pending
 
 ## Validation run
 - `git diff --check` -> pass
+- `node scripts/check-agent-instructions.mjs --self-test` -> pass
+- `node scripts/check-agent-instructions.mjs` -> pass
+- `node scripts/check-prompt-queues.mjs --self-test` -> pass
+- `node scripts/check-prompt-queues.mjs` -> pass (511 tasks)
+- `node scripts/check-planning-architecture.mjs --self-test` -> pass
+- `node scripts/check-planning-architecture.mjs` -> pass (78 planning tasks)
 
 ## Validation not run
 - Governance validators -> run after commit/push.
