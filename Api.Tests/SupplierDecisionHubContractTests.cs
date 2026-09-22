@@ -255,7 +255,7 @@ public sealed class SupplierDecisionHubContractTests
         Assert.Equal("no_mv_30d", response.TrustMetadata.FallbackReasonCode);
         Assert.False(response.TrustMetadata.RecommendationAllowed);
         Assert.Equal("warning", response.TrustMetadata.DataCoverageStatus);
-        Assert.Contains("30d", response.DataNote ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("30 dana", response.DataNote ?? string.Empty, StringComparison.OrdinalIgnoreCase);
         Assert.True(response.Meta!.IsPartial);
         Assert.Equal("FALLBACK_DATASET_USED", response.Meta.WarningCode);
     }

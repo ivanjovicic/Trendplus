@@ -46,6 +46,7 @@ import { formatDate, fmtNumber, fmtPct, fmtRsd, fmtSignedPct, getPresetRange } f
 import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { formatMetricDisplayValue, isFiniteMetricNumber } from "../utils/analyticsMetricValue";
+import { supplierDecisionDatasetLabel, supplierDecisionReasonText } from "../utils/supplierDecisionLabels";
 import {
   getAnalyticsMetaMessage,
   isAnalyticsMetaInsufficient,
@@ -59,13 +60,10 @@ import {
   RECOMMENDATION_SIGNAL_UNAVAILABLE,
   normalizeRecommendationPct,
   normalizeRecommendationQualityStatus,
-  recommendationQualityLabel,
   recommendationQualityStyle,
   recommendationReasonLabel,
   recommendationReasonHints,
-  recommendationStatusLabel,
   recommendationStatusTone,
-  recommendationStatusTooltipBrief,
   type CanonicalRecommendationStatus,
   type RecommendationQualityStatus,
 } from "../utils/canonicalRecommendationSemantics";
@@ -176,7 +174,26 @@ function statusClass(status: DecisionStatus): string {
   return "sdh-decision-status status-keep";
 }
 function statusDisplayLabel(status: DecisionStatus): string {
-  return recommendationStatusLabel(status);
+  if (status === "increase_focus") return "Pojačaj";
+  if (status === "maintain") return "Zadrži";
+  if (status === "review") return "Pregledaj";
+  if (status === "do_not_trust") return "Ne veruj";
+  return "Nedovoljno podataka";
+}
+
+function statusTooltip(status: DecisionStatus): string {
+  if (status === "increase_focus") return "Pozitivan signal; povećati fokus uz standardnu kontrolu rizika.";
+  if (status === "maintain") return "Stabilan signal; zadržati trenutni nivo fokusa.";
+  if (status === "review") return "Mešovit signal; potreban ručni pregled pre promene fokusa.";
+  if (status === "do_not_trust") return "Signal je nepouzdan za akciju; ne donositi odluku bez dodatne provere.";
+  return "Nedovoljno podataka za pouzdanu preporuku.";
+}
+
+function supplierDecisionQualityLabel(status: RecommendationQualityStatus): string {
+  if (status === "good") return "Dobar kvalitet podataka";
+  if (status === "warning") return "Upozorenje kvaliteta podataka";
+  if (status === "critical") return "Kritičan kvalitet podataka";
+  return "Nedovoljno podataka";
 }
 export function trendClass(value: number | null | undefined): string {
   if (value == null || !Number.isFinite(value)) return "trend-neutral";
@@ -210,9 +227,11 @@ function buildStatusTooltip(row: DecisionRow): string {
     : RECOMMENDATION_SIGNAL_UNAVAILABLE;
   const shareText = formatMetricDisplayValue({ value: row.sharePct, kind: "percent", digits: 1 });
   const marginText = formatMetricDisplayValue({ value: toSupplierDecisionMarginPercentUnits(row.preMarkdownMarginPct), kind: "percent", digits: 1 });
-  const qualityText = recommendationQualityLabel(row.dataQualityStatus);
-  const hintText = recommendationReasonHints(row.reasonCodes).join(" | ");
-  return `${statusDisplayLabel(row.status)}: ${recommendationStatusTooltipBrief(row.status)} | ${row.statusReason} | Udeo ${shareText} | Marza ${marginText} | Trend pune cene ${fmtSignedPct(row.qualityTrendPct, 1)} | Sigurnost ${confidenceText} | Pouzdanost ${reliabilityText} | Kvalitet podataka ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
+  const qualityText = supplierDecisionQualityLabel(row.dataQualityStatus);
+  const hintText = recommendationReasonHints(row.reasonCodes)
+    .map((hint) => hint.replace("Marza", "Marža").replace("potvrdjen", "potvrđen").replace("poredjenje", "poređenje"))
+    .join(" | ");
+  return `${statusDisplayLabel(row.status)}: ${statusTooltip(row.status)} | ${row.statusReason} | Udeo ${shareText} | Marža ${marginText} | Trend pune cene ${fmtSignedPct(row.qualityTrendPct, 1)} | Sigurnost ${confidenceText} | Pouzdanost ${reliabilityText} | Kvalitet podataka ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
 }
 
 function toActionDataQualityStatus(value: RecommendationQualityStatus): AnalyticsActionDataQualityStatus {
@@ -476,12 +495,8 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
   );
   const showMetaWarning = !loading && !showBlockingError && isAnalyticsMetaWarning(scorecardMeta);
   const resolvedLastRefreshAt = refreshStatus?.lastSuccessfulRefreshAtUtc ?? trustMetadata?.lastRefreshAtUtc ?? null;
-  const requestedDatasetLabel = typeof trustMetadata?.requestedDataset === "string"
-    ? trustMetadata.requestedDataset.trim() || null
-    : null;
-  const effectiveDatasetLabel = typeof trustMetadata?.effectiveDataset === "string"
-    ? trustMetadata.effectiveDataset.trim() || null
-    : null;
+  const requestedDatasetLabel = supplierDecisionDatasetLabel(trustMetadata?.requestedDataset);
+  const effectiveDatasetLabel = supplierDecisionDatasetLabel(trustMetadata?.effectiveDataset);
   const effectivePeriodLabel = typeof trustMetadata?.effectivePeriodLabel === "string"
     ? trustMetadata.effectivePeriodLabel.trim() || null
     : null;
@@ -490,11 +505,11 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     || (requestedDatasetLabel && effectiveDatasetLabel && requestedDatasetLabel !== effectiveDatasetLabel),
   );
   const fallbackReasonText = trustMetadata?.fallbackReason
-    ? getSafeAnalyticsErrorMessage(
+    ? supplierDecisionReasonText(getSafeAnalyticsErrorMessage(
       trustMetadata.fallbackReason,
       trustMetadata.fallbackReasonCode,
       "Dodatni razlog pomoćnog skupa nije naveden.",
-    )
+    ))
     : null;
   const requestedPeriodFrom = trustMetadata?.requestedPeriodFrom ?? trustMetadata?.requestedFrom ?? activeFilters.fromDate;
   const requestedPeriodTo = trustMetadata?.requestedPeriodTo ?? trustMetadata?.requestedTo ?? activeFilters.toDate;
@@ -520,7 +535,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
         : "insufficient_data";
       const statusReason = recommendationAllowed
           ? (typeof item.statusReason === "string" ? item.statusReason.trim() : "")
-            || "Backend nije dostavio obrazloženje za ovaj signal skorkarte."
+            || "Server nije dostavio obrazloženje za ovaj signal skorkarte."
         : (trustMetadata?.usedFallback
           ? "Za izabrani period nema dovoljno podataka; prikaz je pomoćni signal iz šireg skupa podataka."
           : "Nedovoljno podataka u izabranom periodu; signal skorkarte je pomoćnog karaktera.");
@@ -692,7 +707,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       dataFreshnessStatus: refreshStatus?.dataFreshnessStatus ?? "unknown",
       refreshIsRunning: refreshStatus?.isRunning ?? false,
       refreshCurrentStep: refreshStatus?.currentStep ?? null,
-      dataSource: `Serverska skorkarta dobavljača (traženo: ${trustMetadata?.requestedDataset ?? "nije dostupno"}, efektivno: ${trustMetadata?.effectiveDataset ?? trustMetadata?.coverage ?? "nije poznato"}, opseg: ${trustMetadata?.dataScope ?? activeFilters.dataScope ?? "svi"})`,
+      dataSource: `Serverska skorkarta dobavljača (traženo: ${requestedDatasetLabel ?? "nije dostupno"}, efektivno: ${effectiveDatasetLabel ?? trustMetadata?.coverage ?? "nije poznato"}, opseg: ${trustMetadata?.dataScope ?? activeFilters.dataScope ?? "svi"})`,
       provenanceBasis: trustMetadata?.provenanceBasis ?? null,
       dataQualityStatus: trustMetadata?.dataCoverageStatus ?? (trustMetadata?.recommendationAllowed ? "good" : "insufficient_data"),
       dataQualitySummary: {
@@ -802,7 +817,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
   const resolvedDecisionColumns = useMemo<AnalyticsTableColumn<DecisionRow>[]>(() => (
     decisionColumns.map((column) => (
       column.key === "status"
-        ? { ...column, header: recommendationAllowed ? "Scorecard signal" : "Pomoćni signal" }
+        ? { ...column, header: recommendationAllowed ? "Signal skorkarte" : "Pomoćni signal" }
         : column
     ))
   ), [recommendationAllowed]);
@@ -1221,14 +1236,14 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
         <label className="sdh-decision-field">
           <span>
             Od
-            <InfoTip text="Početak scorecard perioda. Uključuju se dobavljači čiji artikli imaju prvu nivelaciju od ovog datuma." />
+            <InfoTip text="Početak perioda skorkarte. Uključuju se dobavljači čiji artikli imaju prvu nivelaciju od ovog datuma." />
           </span>
           <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
         </label>
         <label className="sdh-decision-field">
           <span>
             Do
-            <InfoTip text="Kraj scorecard perioda. Analiza uključuje signale do kraja ovog dana." />
+            <InfoTip text="Kraj perioda skorkarte. Analiza uključuje signale do kraja ovog dana." />
           </span>
           <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
         </label>
@@ -1338,7 +1353,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
           reasons={[
             "U traženom periodu nema prodaje ili signala skorkarte.",
             "Filteri su suzili skup dobavljača na prazan rezultat.",
-            "Dobavljači nisu povezani, refresh je u toku ili je period previše uzak.",
+            "Dobavljači nisu povezani, osvežavanje je u toku ili je period previše uzak.",
           ]}
           actions={[
             { label: "Proširite period na 90d ili 180d." },
@@ -1366,7 +1381,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
             <article className="sdh-decision-kpi">
               <span>
                 Ukupan prihod
-                <InfoTip text="Zbir prihoda za sve učitane scorecard dobavljače. Osnova su artikli sa prvom nivelacijom u periodu, pa se može razlikovati od ukupnog prometa u tabu Pregled." />
+                <InfoTip text="Zbir prihoda za sve učitane dobavljače u skorkarti. Osnova su artikli sa prvom nivelacijom u periodu, pa se može razlikovati od ukupnog prometa u tabu Pregled." />
               </span>
               <strong>{formatMetricDisplayValue({ value: totalRevenue, kind: "currency" })}</strong>
               <KpiExplainButton metricKey="revenue" ariaLabel="Kako je izračunat ukupan prihod" />
@@ -1374,7 +1389,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
             <article className="sdh-decision-kpi">
               <span>
                 Udeo top 5 dobavljača
-                <InfoTip text="Udeo prihoda koji donosi pet najvećih dobavljača u scorecard skupu. Veća vrednost znači veću koncentraciju i veći rizik oslanjanja na nekoliko partnera." />
+                <InfoTip text="Udeo prihoda koji donosi pet najvećih dobavljača u skupu skorkarte. Veća vrednost znači veću koncentraciju i veći rizik oslanjanja na nekoliko partnera." />
               </span>
               <strong>{formatMetricDisplayValue({ value: top5SharePct, kind: "percent" })}</strong>
               <KpiExplainButton metricKey="topSupplierRevenueShare" />
@@ -1407,7 +1422,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
 
           <section className="sdh-decision-panels">
             <article className="sdh-decision-card">
-              <h2>Koncentracija prihoda</h2><p>Grafikon pokazuje koliko prihoda u scorecard skupu nose najveći dobavljači. Visoka koncentracija znači da promena uslova ili kvaliteta kod jednog dobavljača može jače uticati na rezultat.</p>
+              <h2>Koncentracija prihoda</h2><p>Grafikon pokazuje koliko prihoda u skupu skorkarte nose najveći dobavljači. Visoka koncentracija znači da promena uslova ili kvaliteta kod jednog dobavljača može jače uticati na rezultat.</p>
               {concentrationData.length > 0 ? (
                 <div className="sdh-decision-chart-wrap">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
@@ -1473,21 +1488,21 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                       <th className="analytics-data-table__numeric">
                         <button type="button" onClick={() => handleSort("revenue")}>
                           Prihod
-                          <InfoTip text="Prihod dobavljača u scorecard skupu za izabrani period." />
+                          <InfoTip text="Prihod dobavljača u skupu skorkarte za izabrani period." />
                           {sortMarker("revenue", sortField, sortDir)}
                         </button>
                       </th>
                       <th className="analytics-data-table__numeric">
                         <button type="button" onClick={() => handleSort("sharePct")}>
                           Udeo %
-                          <InfoTip text="Udeo ovog dobavljača u ukupnom scorecard prihodu. Veći udeo znači veći uticaj na ukupne KPI-jeve." />
+                          <InfoTip text="Udeo ovog dobavljača u ukupnom prihodu skorkarte. Veći udeo znači veći uticaj na ukupne pokazatelje." />
                           {sortMarker("sharePct", sortField, sortDir)}
                         </button>
                       </th>
                       <th className="analytics-data-table__numeric">
                         <button type="button" onClick={() => handleSort("preMarkdownMarginPct")}>
                           Marža %
-                          <InfoTip text="Pre-markdown marža: procenat zarade pre prvog sniženja. Viša marža je bolji signal, osim ako dolazi uz visok stock rizik." />
+                          <InfoTip text="Marža pre prvog sniženja: procenat zarade pre nivelacije. Viša marža je bolji signal, osim ako dolazi uz visok rizik zaliha." />
                           {sortMarker("preMarkdownMarginPct", sortField, sortDir)}
                         </button>
                       </th>
@@ -1641,7 +1656,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                 </article>
                 <article>
                   <span>Status kvaliteta signala</span>
-                  <strong style={recommendationQualityStyle(selectedRow.dataQualityStatus)}>{recommendationQualityLabel(selectedRow.dataQualityStatus)}</strong>
+                  <strong style={recommendationQualityStyle(selectedRow.dataQualityStatus)}>{supplierDecisionQualityLabel(selectedRow.dataQualityStatus)}</strong>
                 </article>
               </div>
               <p className="sdh-decision-reason">

@@ -168,7 +168,7 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
 
       if (type === "print") {
         await openSupplierDecisionPrintPreview(payload);
-        setStatus("Print preview je otvoren u novom tabu.");
+        setStatus("Pregled štampe je otvoren u novoj kartici.");
         return;
       }
 
@@ -280,7 +280,7 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
             onClick={() => void run("preview")}
             disabled={actionDisabled}
           >
-            {busy === "preview" ? "Otvaram..." : "Privremeni browser preview"}
+            {busy === "preview" ? "Otvaram..." : "Privremeni pregled u pregledaču"}
           </button>
           <button
             type="button"
@@ -295,7 +295,7 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
             className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
             onClick={() => void run("copy")}
             disabled={actionDisabled}
-            title="Kopira executive sažetak izveštaja"
+            title="Kopira izvršni sažetak izveštaja"
           >
             {busy === "copy" ? "Kopiram..." : "Kopiraj sažetak"}
           </button>

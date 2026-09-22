@@ -127,7 +127,7 @@ export default function SupplierDecisionReportPage() {
     ].filter((key): key is string => Boolean(key));
 
     if (invalid.length === 0) return null;
-    return `Neispravan filter u report linku (${Array.from(new Set(invalid)).join(", ")}). Report nije učitan da se podaci ne bi proširili na drugi skup.`;
+    return `Neispravan filter u linku izveštaja (${Array.from(new Set(invalid)).join(", ")}). Izveštaj nije učitan da se podaci ne bi proširili na drugi skup.`;
   }, [category, dataScope, excludeOosBeforeMarkdown, fromDate, gender, minRevenue, onlyHighConfidence, scope, seasonId, storeId, supplierId, toDate]);
 
   const [backendPayload, setBackendPayload] = useState<ResolvedAnalyticsTablePayload | null>(null);
@@ -225,7 +225,7 @@ export default function SupplierDecisionReportPage() {
           });
         } else {
           setBackendError({
-            message: reason instanceof Error ? reason.message : "Report trenutno nije dostupan.",
+            message: reason instanceof Error ? reason.message : "Izveštaj trenutno nije dostupan.",
           });
         }
 
@@ -344,13 +344,13 @@ export default function SupplierDecisionReportPage() {
       <div className="supplier-decision-report-page">
         <AnalyticsEmptyState
           title="Pregled izveštaja je istekao"
-          message="Pregled izveštaja je istekao jer se čuva privremeno u browseru."
+          message="Pregled izveštaja je istekao jer se čuva privremeno u pregledaču."
           reasons={[
-            "Za trajni dokument koristite Excel/Print ili ponovo generišite report.",
+            "Za trajni dokument koristite Excel, štampu ili ponovo generišite izveštaj.",
           ]}
           actions={[
             { label: "Vrati se na dobavljače", href: "/analytics/supplier" },
-            { label: "Ponovo generiši report", href: "/analytics/supplier" },
+            { label: "Ponovo generiši izveštaj", href: "/analytics/supplier" },
             { label: "Otvori skorkartu", href: "/analytics/supplier?tab=scorecard" },
           ]}
           refreshStatusHref="/admin/configuration?panel=workers"
@@ -366,8 +366,8 @@ export default function SupplierDecisionReportPage() {
       <div className="supplier-decision-report-page">
         <AnalyticsEmptyState
           title="Trajni izveštaj nema podatke"
-          message="Backend nije vratio podatke za traženi kontekst izveštaja."
-          reasons={["Proverite period i aktivne filtere, pa ponovo učitajte report."]}
+          message="Server nije vratio podatke za traženi kontekst izveštaja."
+          reasons={["Proverite period i aktivne filtere, pa ponovo učitajte izveštaj."]}
           actions={[
             { label: "Vrati se na dobavljače", href: "/analytics/supplier" },
             { label: "Otvori skorkartu", href: "/analytics/supplier?tab=scorecard" },
@@ -405,13 +405,13 @@ export default function SupplierDecisionReportPage() {
 
       {isBrowserPreview ? (
         <div className="sdrp-local-preview-banner" role="status" data-testid="local-preview-banner">
-          <strong className="sdrp-local-preview-badge">LOKALNI BROWSER PREVIEW</strong>
+          <strong className="sdrp-local-preview-badge">LOKALNI PREGLED U PREGLEDAČU</strong>
           <p>
-            Ovo nije trajni backend izveštaj. Snapshot je sačuvan u browseru
+            Ovo nije trajni serverski izveštaj. Sažetak je sačuvan u pregledaču
              {previewSavedAtLabel ? <> u <time dateTime={browserPreviewSnapshot!.savedAtUtc}>{previewSavedAtLabel}</time></> : null}
-            {" "}(TTL {previewTtlLabel}
+            {" "}(rok važenja {previewTtlLabel}
             {previewExpiresAtLabel ? <>, ističe {previewExpiresAtLabel}</> : null}).
-            Izvoz i štampa su onemogućeni dok ne otvorite trajni report.
+            Izvoz i štampa su onemogućeni dok ne otvorite trajni izveštaj.
           </p>
         </div>
       ) : null}
@@ -422,7 +422,7 @@ export default function SupplierDecisionReportPage() {
           <p>
             {isBrowserPreview
               ? "Privremeni sažetak u pregledaču — nije potvrđen kao trenutni serverski izveštaj."
-              : "Pregled izveštaja u HTML formi spremnoj za štampu i izvoz. Trajni backend payload se ponovo učitava pri svakom otvaranju."}
+              : "Pregled izveštaja u HTML formi spremnoj za štampu i izvoz. Trajni sadržaj sa servera se ponovo učitava pri svakom otvaranju."}
           </p>
           {isBrowserPreview && previewSavedAtLabel ? (
             <p className="sdrp-preview-meta" data-testid="local-preview-meta">
@@ -433,11 +433,11 @@ export default function SupplierDecisionReportPage() {
         </div>
         <div className="sdrp-actions">
           <Link to="/analytics/supplier" className="sdrp-back">Vrati se na dobavljače</Link>
-          <Link to="/analytics/supplier" className="sdrp-back">Ponovo generiši report</Link>
+          <Link to="/analytics/supplier" className="sdrp-back">Ponovo generiši izveštaj</Link>
           <Link to="/analytics/supplier?tab=scorecard" className="sdrp-back">Otvori skorkartu</Link>
           {isBrowserPreview ? (
             <p className="sdrp-export-disabled" data-testid="local-preview-export-disabled">
-              Izvoz/štampa onemogućeni za lokalni pregled. Otvorite trajni izveštaj preko akcija skorkarte.
+              Izvoz i štampa su onemogućeni za lokalni pregled. Otvorite trajni izveštaj preko akcija skorkarte.
             </p>
           ) : (
             <>

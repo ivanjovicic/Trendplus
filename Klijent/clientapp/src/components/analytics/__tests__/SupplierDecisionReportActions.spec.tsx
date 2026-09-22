@@ -161,7 +161,7 @@ describe("SupplierDecisionReportActions", () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Privremeni browser preview" }));
+    fireEvent.click(screen.getByRole("button", { name: "Privremeni pregled u pregledaču" }));
 
     await waitFor(() => {
       expect(screen.getByTestId("location")).toHaveTextContent("/analytics/supplier/report?preview=browser&stateKey=browser-preview-key");

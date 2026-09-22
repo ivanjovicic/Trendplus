@@ -232,7 +232,7 @@ describe("SupplierDecisionHubPage", () => {
 
     expect(await screen.findByText("Dobavljač 1")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Dobavljač 1").closest("tr")!.querySelector("button")!);
-    expect(screen.getAllByText(/Backend nije dostavio obrazloženje za ovaj signal skorkarte/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Server nije dostavio obrazloženje za ovaj signal skorkarte/i).length).toBeGreaterThan(0);
   });
 
   it("shows explicit no-silent-fallback empty state when trust metadata says requested range has no rows", async () => {
@@ -374,7 +374,7 @@ describe("SupplierDecisionHubPage", () => {
     expect(await screen.findByText(/Prikazan je pomoćni skup podataka: Poslednjih 90 dana. Konačna preporuka je blokirana./i)).toBeInTheDocument();
     expect(screen.queryByText(/no_data_30d/i)).not.toBeInTheDocument();
     expect(screen.getAllByText("Pomoćni signal").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("mv_supplier_decision_score_cache_90d").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("keš signala odluke dobavljača").length).toBeGreaterThan(0);
 
     fireEvent.click((await screen.findByText("Dobavljač 1")).closest("tr")!.querySelector("button")!);
 
@@ -514,7 +514,7 @@ describe("SupplierDecisionHubPage", () => {
     });
     fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
 
-    expect((await screen.findAllByText(/backend nije dostavio confidence\/reliability signal/i)).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/server nije dostavio signal sigurnosti\/pouzdanosti/i)).length).toBeGreaterThan(0);
   });
 
   it("keeps missing share and reliability unavailable across KPI, chart, table, tooltip, and details", async () => {

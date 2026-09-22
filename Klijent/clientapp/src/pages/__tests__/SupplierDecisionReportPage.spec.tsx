@@ -126,7 +126,7 @@ describe("SupplierDecisionReportPage", () => {
   it("fails closed for an explicit empty numeric filter instead of dropping it", () => {
     renderPage("/analytics/supplier/report?fromDate=2026-04-01&toDate=2026-06-30&minRevenue=");
 
-    expect(screen.getByText(/Neispravan filter u report linku \(minRevenue\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Neispravan filter u linku izveštaja \(minRevenue\)/i)).toBeInTheDocument();
     expect(getSupplierDecisionDurableReportMock).not.toHaveBeenCalled();
   });
 
@@ -135,7 +135,7 @@ describe("SupplierDecisionReportPage", () => {
 
     expect(screen.getByRole("heading", { name: "Pregled izveštaja je istekao" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Vrati se na dobavljače" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Ponovo generiši report" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ponovo generiši izveštaj" })).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Otvori skorkartu" }).length).toBeGreaterThan(0);
   });
 
@@ -145,8 +145,8 @@ describe("SupplierDecisionReportPage", () => {
     renderPage("/analytics/supplier/report?preview=browser&stateKey=test");
 
     expect(await screen.findByTestId("local-preview-banner")).toBeInTheDocument();
-    expect(screen.getByText(/LOKALNI BROWSER PREVIEW/i)).toBeInTheDocument();
-    expect(screen.getByTestId("local-preview-meta")).toHaveTextContent(/TTL/i);
+    expect(screen.getByText(/LOKALNI PREGLED U PREGLEDAČU/i)).toBeInTheDocument();
+    expect(screen.getByTestId("local-preview-meta")).toHaveTextContent(/Rok važenja|Ističe/i);
     expect(screen.getByTestId("local-preview-export-disabled")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "trigger-export-error" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Štampaj iz pregleda" })).not.toBeInTheDocument();

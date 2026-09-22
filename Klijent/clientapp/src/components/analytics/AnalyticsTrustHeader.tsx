@@ -1,6 +1,7 @@
 ﻿import { Link } from "react-router-dom";
 import { formatDate, formatDateTime } from "../../utils/analyticsFormatters";
 import { getSafeAnalyticsErrorMessage } from "../../utils/analyticsErrorMessages";
+import { supplierDecisionDatasetLabel, supplierDecisionProvenanceLabel, supplierDecisionReasonText } from "../../utils/supplierDecisionLabels";
 import "./AnalyticsTrustHeader.css";
 
 type AnalyticsTrustHeaderProps = {
@@ -213,21 +214,21 @@ export default function AnalyticsTrustHeader({
   const hasEffectivePeriod = Boolean(safeEffectiveFrom && safeEffectiveTo);
   const hasObservedPeriod = Boolean(safeObservedFrom && safeObservedTo);
   const hasSummary = hasSummaryValues(dataQualitySummary);
-  const normalizedRequestedDataset = typeof requestedDataset === "string" ? requestedDataset.trim() || null : null;
-  const normalizedEffectiveDataset = typeof effectiveDataset === "string" ? effectiveDataset.trim() || null : null;
+  const normalizedRequestedDataset = supplierDecisionDatasetLabel(requestedDataset);
+  const normalizedEffectiveDataset = supplierDecisionDatasetLabel(effectiveDataset);
   const hasDataset = Boolean(normalizedRequestedDataset || normalizedEffectiveDataset);
   const datasetValue = normalizedRequestedDataset && normalizedEffectiveDataset
     ? `${normalizedRequestedDataset} -> ${normalizedEffectiveDataset}`
     : (normalizedEffectiveDataset ?? normalizedRequestedDataset);
   const effectiveLabel = typeof effectivePeriodLabel === "string" ? effectivePeriodLabel.trim() || null : null;
-  const provenanceLabel = typeof provenanceBasis === "string" ? provenanceBasis.trim() || null : null;
+  const provenanceLabel = supplierDecisionProvenanceLabel(provenanceBasis);
   const dataSourceLabel = typeof dataSource === "string" ? dataSource.trim() || null : null;
   const recommendationNoteText = typeof recommendationNote === "string" ? recommendationNote.trim() || null : null;
   const emptyStateReasonText = typeof emptyStateReason === "string" ? emptyStateReason.trim() || null : null;
   const refreshStepLabel = safeRefreshStepLabel(refreshCurrentStep);
   const fallbackReasonLabel = safeFallbackReasonLabel(fallbackReasonCode);
   const fallbackReasonText = fallbackReason
-    ? getSafeAnalyticsErrorMessage(fallbackReason, fallbackReasonCode, "Dodatni razlog pomoćnog skupa nije naveden.")
+    ? supplierDecisionReasonText(getSafeAnalyticsErrorMessage(fallbackReason, fallbackReasonCode, "Dodatni razlog pomoćnog skupa nije naveden."))
     : null;
   const showFallbackBanner = Boolean(usedFallback);
   const showGatedBanner = mode === "recommendation" && recommendationAllowed !== true && !showFallbackBanner;

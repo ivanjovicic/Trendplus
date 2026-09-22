@@ -45,15 +45,15 @@ function buildPayload() {
     metadata: [
       { key: "dataQualityStatus", label: "Kvalitet podataka", value: "good" },
       { key: "lastRefreshAtUtc", label: "Poslednje osveženje", value: "2026-07-31T05:30:00Z" },
-      { key: "requestedDataset", label: "Traženi dataset", value: "90d" },
-      { key: "effectiveDataset", label: "Efektivni dataset", value: "90d" },
+      { key: "requestedDataset", label: "Traženi skup podataka", value: "90d" },
+      { key: "effectiveDataset", label: "Efektivni skup podataka", value: "90d" },
       { key: "effectivePeriodLabel", label: "Efektivni period", value: "Poslednjih 90 dana" },
       { key: "effectivePeriodFromUtc", label: "Efektivni period od", value: "2026-04-01T00:00:00Z" },
       { key: "effectivePeriodToUtc", label: "Efektivni period do", value: "2026-06-30T00:00:00Z" },
       { key: "observedPeriodFromUtc", label: "Posmatrani period od", value: "2026-01-10T00:00:00Z" },
       { key: "observedPeriodToUtc", label: "Posmatrani period do", value: "2026-06-29T00:00:00Z" },
       { key: "provenanceBasis", label: "Osnova generisanja", value: "mv_supplier_decision_score_cache_90d" },
-      { key: "usedFallback", label: "Korišćen fallback", value: false },
+      { key: "usedFallback", label: "Korišćen pomoćni skup", value: false },
       { key: "recommendationAllowed", label: "Preporuka dozvoljena", value: true },
       { key: "confidencePct", label: "Sigurnost signala", value: 83 },
       { key: "reliabilityPct", label: "Pouzdanost signala", value: 79 },
@@ -72,10 +72,10 @@ describe("SupplierDecisionReport", () => {
     render(<SupplierDecisionReport payload={buildPayload()} />);
 
     expect(screen.getByRole("heading", { name: "Paket za razgovor sa dobavljačem" })).toBeInTheDocument();
-    expect(screen.getByText("Korišćen fallback dataset")).toBeInTheDocument();
-    expect(screen.getByText("usedFallback=true")).toBeInTheDocument();
+    expect(screen.getByText("Korišćen pomoćni skup podataka")).toBeInTheDocument();
+    expect(screen.getAllByText("Dodatno objašnjenje je dostupno").length).toBeGreaterThan(0);
     expect(screen.getByText("Finalni savet")).toBeInTheDocument();
-    expect(screen.getByText("mv_supplier_decision_score_cache_90d")).toBeInTheDocument();
+    expect(screen.getByText("keš signala odluke dobavljača")).toBeInTheDocument();
   });
 
   it("copies meeting summary with requested button label", async () => {
@@ -119,8 +119,8 @@ describe("SupplierDecisionReport", () => {
     expect(screen.getByText("2026-08-26T10:00:00Z")).toBeInTheDocument();
     expect(screen.getByText("Poslednje osveženje")).toBeInTheDocument();
     expect(screen.getByText("2026-07-31T05:30:00Z")).toBeInTheDocument();
-    expect(screen.getByText("Svežina podataka: stale")).toBeInTheDocument();
-    expect(screen.getByText("Efektivni i posmatrani period")).toBeInTheDocument();
+    expect(screen.getByText("Svežina podataka: Zastarelo")).toBeInTheDocument();
+    expect(screen.getAllByText("Efektivni period").length).toBeGreaterThan(0);
     expect(screen.getByText(/Posmatrani podaci:/)).toBeInTheDocument();
   });
 

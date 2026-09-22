@@ -1,6 +1,8 @@
 import { fmtPct, formatDate, formatDateTime } from "../../utils/analyticsFormatters";
 import type { RecommendationCode } from "../../services/supplierDecisionHubApi";
 import { getRecommendationMeta } from "./utils";
+import { recommendationReasonLabel } from "../../utils/canonicalRecommendationSemantics";
+import { supplierDecisionDatasetLabel, supplierDecisionProvenanceLabel, supplierDecisionReasonText } from "../../utils/supplierDecisionLabels";
 
 type SupplierExplainabilitySnapshotProps = {
   title?: string;
@@ -37,7 +39,7 @@ function normalizeQualityLabel(value?: string | null): string {
     case "warning":
       return "Upozorenje";
     case "critical":
-      return "Kriticno";
+      return "Kritično";
     case "insufficient_data":
       return "Nedovoljno podataka";
     default:
@@ -112,8 +114,8 @@ export default function SupplierExplainabilitySnapshot({
     : null;
   const reasonPreview = (reasonCodes ?? []).filter(Boolean).slice(0, compact ? 4 : 8);
   const hasReasonCodes = reasonPreview.length > 0;
-  const requestedLabel = requestedDataset?.trim() || null;
-  const effectiveLabel = effectiveDataset?.trim() || null;
+  const requestedLabel = supplierDecisionDatasetLabel(requestedDataset);
+  const effectiveLabel = supplierDecisionDatasetLabel(effectiveDataset);
   const datasetLabel = requestedLabel && effectiveLabel
     ? `${requestedLabel} → ${effectiveLabel}`
     : (effectiveLabel ?? requestedLabel);
@@ -124,7 +126,7 @@ export default function SupplierExplainabilitySnapshot({
   const requestedPeriodText = formatRange(requestedPeriodFrom, requestedPeriodTo) ?? periodText;
   const effectivePeriodText = formatRange(effectivePeriodFrom, effectivePeriodTo);
   const observedPeriodText = formatRange(observedPeriodFrom, observedPeriodTo);
-  const provenanceText = provenanceBasis?.trim() || null;
+  const provenanceText = supplierDecisionProvenanceLabel(provenanceBasis);
   const qualityLabel = normalizeQualityLabel(dataQualityStatus);
 
   const cards = [
@@ -236,7 +238,7 @@ export default function SupplierExplainabilitySnapshot({
         <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-primary)]">Šifre razloga</div>
         <div className="mt-2 flex flex-wrap gap-2">
           {hasReasonCodes ? (
-            reasonPreview.map((reason, index) => tonePill(reason, "neutral", `${reason}-${index}`))
+            reasonPreview.map((reason, index) => tonePill(recommendationReasonLabel(reason), "neutral", `${reason}-${index}`))
           ) : (
             <span className="text-sm text-[var(--text-primary)]">
               {usedFallback ? "Pomoćni signal bez dodatnih razloga" : "Nema dodatnih razloga"}
@@ -250,11 +252,11 @@ export default function SupplierExplainabilitySnapshot({
         <div className="mt-4 grid gap-2 md:grid-cols-2">
           <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-light)] p-3 text-sm text-[var(--text-primary)]">
             <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-primary)]">Razlog pomoćnog skupa</div>
-            <div className="mt-1 font-semibold">{fallbackReason ?? "Nije aktivan"}</div>
+            <div className="mt-1 font-semibold">{supplierDecisionReasonText(fallbackReason) ?? "Nije aktivan"}</div>
           </div>
           <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-light)] p-3 text-sm text-[var(--text-primary)]">
             <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-primary)]">Kod pomoćnog skupa</div>
-            <div className="mt-1 font-semibold">{fallbackReasonCode ?? "Nije aktivan"}</div>
+            <div className="mt-1 font-semibold">{fallbackReasonCode ? "Dodatno objašnjenje je dostupno" : "Nije aktivan"}</div>
           </div>
         </div>
       ) : null}

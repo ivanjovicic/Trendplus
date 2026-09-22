@@ -6,6 +6,7 @@ import { findAnalyticsMetricKeyByLabel } from "../../utils/analyticsMetricDefini
 import KpiExplainButton from "./KpiExplainButton";
 import MetricMethodologyPanel from "./MetricMethodologyPanel";
 import SupplierExplainabilitySnapshot from "../supplierDecisionHub/SupplierExplainabilitySnapshot";
+import { supplierDecisionDatasetLabel, supplierDecisionFreshnessLabel, supplierDecisionProvenanceLabel } from "../../utils/supplierDecisionLabels";
 import "./SupplierDecisionReport.css";
 
 type SupplierDecisionReportProps = {
@@ -19,6 +20,36 @@ type ReportRow = {
   secondary?: string;
   note?: string;
 };
+
+function localizeReportText(value: unknown): string {
+  const text = String(value ?? "").trim();
+  if (!text) return "";
+  const normalized = text.toLowerCase();
+  if (normalized === "good") return "Dobro";
+  if (normalized === "warning") return "Oprez";
+  if (normalized === "critical") return "Kritično";
+  if (normalized === "insufficient_data") return "Nedovoljno podataka";
+  if (normalized === "fresh") return "Sveže";
+  if (normalized === "stale") return "Zastarelo";
+  if (normalized === "unknown") return "Nije poznato";
+  if (/^usedfallback=/i.test(text) || /^[a-z][a-z0-9]*(?:_[a-z0-9]+)+$/i.test(text)) {
+    return "Dodatno objašnjenje je dostupno";
+  }
+
+  return text
+    .replace(/\bfallback dataset\b/gi, "pomoćni skup podataka")
+    .replace(/\bfallback\b/gi, "pomoćni skup")
+    .replace(/\bdataset\b/gi, "skup podataka")
+    .replace(/\bdata quality\b/gi, "kvalitet podataka")
+    .replace(/\bscorecard\b/gi, "skorkarta")
+    .replace(/\bstock[- ]risk signal\b/gi, "signal rizika zaliha")
+    .replace(/\bstock[- ]risk\b/gi, "rizik zaliha")
+    .replace(/\bOOS false negative\b/gi, "signal nedostatka zaliha")
+    .replace(/\bMarkdown dependency\b/gi, "zavisnost od sniženja")
+    .replace(/\bbackend\b/gi, "server")
+    .replace(/\bReport\b/g, "izveštaj")
+    .replace(/\bsnapshot\b/gi, "sažetak");
+}
 
 function rowValue(payload: ResolvedAnalyticsTablePayload, section: string, item: string): string | null {
   const found = payload.rows.find((row) => String(row.section) === section && String(row.item) === item);
@@ -46,10 +77,10 @@ function groupRows(payload: ResolvedAnalyticsTablePayload): Map<string, ReportRo
     if (!section) continue;
     const entry: ReportRow = {
       section,
-      item: String(raw.item ?? ""),
-      value: String(raw.value ?? ""),
-      secondary: raw.secondary == null ? "" : String(raw.secondary),
-      note: raw.note == null ? "" : String(raw.note),
+      item: localizeReportText(raw.item),
+      value: localizeReportText(raw.value),
+      secondary: raw.secondary == null ? "" : localizeReportText(raw.secondary),
+      note: raw.note == null ? "" : localizeReportText(raw.note),
     };
     const list = grouped.get(section) ?? [];
     list.push(entry);
@@ -157,11 +188,11 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
   const reportTitle = rowValueAny(payload, [
     { section: "Header", item: "Naziv izveštaja" },
     { section: "Header", item: "Naziv izvestaja" },
-    { section: "Header", item: "Report" },
+    { section: "Header", item: "Izveštaj" },
   ]) ?? payload.tableTitle ?? "Trendplus izveštaj dobavljača";
   const dataScope = rowValueAny(payload, [
     { section: "Header", item: "Opseg podataka" },
-    { section: "Header", item: "Data scope" },
+    { section: "Header", item: "Opseg podataka" },
   ]) ?? filterValue(payload, "dataScope") ?? "-";
   const reportDate = rowValueAny(payload, [
     { section: "Header", item: "Datum izveštaja" },
@@ -169,10 +200,10 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
   ]) ?? metaValue(payload, "generatedAtUtc") ?? "-";
   const lastRefresh = rowValueAny(payload, [
     { section: "Header", item: "Poslednje osveženje" },
-    { section: "Header", item: "Poslednji refresh" },
+    { section: "Header", item: "Poslednje osveženje" },
   ]) ?? metaValue(payload, "lastRefreshAtUtc") ?? "-";
 
-  const freshnessLabel = metaValue(payload, "dataFreshness");
+  const freshnessLabel = supplierDecisionFreshnessLabel(metaValue(payload, "dataFreshness"));
   const metaDQ = metaValue(payload, "dataQualityStatus");
   const normalizedDQ = normalizeDataQualityStatus(metaValue(payload, "dataQualityStatus"));
   const recommendationAllowed = metaValue(payload, "recommendationAllowed");
@@ -182,7 +213,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
     ?.split(" | ")
     .map((reason) => reason.trim())
     .filter(Boolean) ?? [];
-  const effectiveDatasetRow = rowEntry(payload, "Header", "Efektivni dataset");
+  const effectiveDatasetRow = rowEntry(payload, "Header", "Efektivni skup podataka") ?? rowEntry(payload, "Header", "Efektivni dataset");
   const effectivePeriodLabel = scalarText(effectiveDatasetRow?.secondary) || metaValue(payload, "effectivePeriodLabel");
   const requestedPeriodFrom = metaValue(payload, "requestedPeriodFromUtc");
   const requestedPeriodTo = metaValue(payload, "requestedPeriodToUtc");
@@ -199,7 +230,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
   });
   const provenanceBasis = metaValue(payload, "provenanceBasis");
   const usedFallback = metaBoolean(payload, "usedFallback");
-  const fallbackRow = rowEntry(payload, "Header", "Korišćen fallback");
+  const fallbackRow = rowEntry(payload, "Header", "Korišćen pomoćni skup") ?? rowEntry(payload, "Header", "Korišćen fallback");
 
   const warnings = groupRowsAny(grouped, ["Upozorenje"]);
   const kpi = grouped.get("KPI") ?? [];
@@ -209,7 +240,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
   const boost = groupRowsAny(grouped, ["Pojačaj", "Pojacaj"]);
   const reduce = groupRowsAny(grouped, ["Smanji"]);
   const negotiationPack = groupRowsAny(grouped, ["supplier_negotiation_pack", "Paket za razgovor sa dobavljačem"]);
-  const dataQuality = groupRowsAny(grouped, ["Kvalitet podataka", "Data quality"]);
+  const dataQuality = groupRowsAny(grouped, ["Kvalitet podataka"]);
   const methodology = groupRowsAny(grouped, ["Metodologija", "Methodology"]);
 
   const methodologyMetricKeys = useMemo(
@@ -276,10 +307,10 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
           observedPeriodFrom={observedPeriodFrom}
           observedPeriodTo={observedPeriodTo}
           lastRefreshAt={metaValue(payload, "lastRefreshAtUtc")}
-          requestedDataset={metaValue(payload, "requestedDataset")}
-          effectiveDataset={metaValue(payload, "effectiveDataset") ?? scalarText(effectiveDatasetRow?.value)}
+          requestedDataset={supplierDecisionDatasetLabel(metaValue(payload, "requestedDataset"))}
+          effectiveDataset={supplierDecisionDatasetLabel(metaValue(payload, "effectiveDataset") ?? scalarText(effectiveDatasetRow?.value))}
           effectivePeriodLabel={effectivePeriodLabel}
-          provenanceBasis={provenanceBasis}
+          provenanceBasis={supplierDecisionProvenanceLabel(provenanceBasis)}
           dataQualityStatus={metaDQ}
           recommendationAllowed={metaBoolean(payload, "recommendationAllowed")}
           usedFallback={usedFallback}

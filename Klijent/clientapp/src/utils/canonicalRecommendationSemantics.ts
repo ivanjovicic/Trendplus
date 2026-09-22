@@ -24,13 +24,13 @@ export const RECOMMENDATION_STATUS_PRIORITY: Record<CanonicalRecommendationStatu
 export const RECOMMENDATION_RELIABILITY_LABEL = "Pouzdanost signala %";
 export const RECOMMENDATION_CONFIDENCE_LABEL = "Sigurnost preporuke %";
 export const RECOMMENDATION_SIGNAL_UNAVAILABLE =
-  "Pouzdanost nije dostupna (backend nije dostavio confidence/reliability signal).";
+  "Pouzdanost nije dostupna (server nije dostavio signal sigurnosti/pouzdanosti).";
 
 export const RECOMMENDATION_RELIABILITY_TOOLTIP =
   "Pouzdanost signala % pokazuje koliko je ulazni signal stabilan i podatkovno pokriven. Nije garancija ishoda.";
 
 export const RECOMMENDATION_CONFIDENCE_TOOLTIP =
-  "Sigurnost preporuke % pokazuje koliko je backend preporuka upotrebljiva za odluku. Nije garancija poslovnog ishoda.";
+  "Sigurnost preporuke % pokazuje koliko je serverska preporuka upotrebljiva za odluku. Nije garancija poslovnog ishoda.";
 
 const RECOMMENDATION_REASON_LABELS: Record<string, string> = {
   high_velocity: "Artikal se brzo prodaje.",
