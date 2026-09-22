@@ -2,7 +2,7 @@
 
 Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ387; RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE.
+Current READY prompt: none; RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE.
 
 Owner completion 2026-09-22: under the user's direct last-commits audit, `RQ393` was delivered directly to `main` in `3b635fe813e0e55f843236d55025c52c030e853d`; Color recommendations now use a covered-revenue-weighted margin baseline, unknown-share evidence remains nullable, historical/fallback/no-cost coverage is separated, and the affected screens use Serbian decision labels. Run log: `.ai/runs/2026-09-22-direct-last-commits-audit-evidence.md`.
 
@@ -39,6 +39,7 @@ Owner claim 2026-09-22: `RQ386` transitioned `READY -> IN_PROGRESS` in this work
 Owner completion 2026-09-22: `RQ386` delivered directly to `main` in `81ba56eae4090b144d07dbb0617b6679fe7dd678`; Pre/Post now separates raw/event-deduplicated/article-cohort/returned-detail denominators, uses the latest-event-per-article cohort for comparable aggregate and recommendation evidence, and exposes explicit cohort/truncation provenance. Run log: `.ai/runs/2026-09-22-RQ386-evidence.md`. Evidence state: synchronized. `RQ387` remains sequenced behind the runtime-safe contract work; no next prompt was promoted in this run.
 Owner promotion 2026-09-22: after `RQ386` reached DONE and its declared `RQ363`/`RQ368`/`RQ384` runtime-safe dependencies were verified on current `main`, `RQ387` moved `WAITING -> READY` as the next dependency-complete P1 Pre/Post runtime-payload/error-contract prompt; collision checks are clear.
 Owner claim 2026-09-22: `RQ387` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ387-codex.lock.md`.
+Owner completion 2026-09-22: `RQ387` was delivered directly to `main` in `5b53324e2356091c62aea00b53c20b3593c182d`; the Pre/Post and options services now use shared runtime schemas and safe HTTP/meta mapping, backend responses preserve correlation IDs without provider/SQL leakage, and fallback/empty/warning/error states remain distinct. Run log: `.ai/runs/2026-09-22-RQ387-evidence.md`. Evidence state: synchronized. No next prompt was promoted in this run.
 Owner claim 2026-09-22: `RQ388` transitioned `READY -> IN_PROGRESS` in this workspace after dependency and collision checks; local runtime lock `.ai/task-locks/RQ388-codex.lock.md`.
 Owner completion 2026-09-22: `RQ388` delivered directly to `main` in `a9fb58a6ce555ce1b4568dfefb5de497a5c7dfac`; global Pre-Nivelacija status/high-priority counts now come from the full filtered candidate universe, the high-priority band includes insufficient-data rows consistently, and visible-page counts are explicitly labelled in table/export/detail metadata. Run log: `.ai/runs/2026-09-22-RQ388-evidence.md`. Evidence state: synchronized. Follow-up: continue with `RQ389`.
 Owner claim 2026-09-22: `RQ389` transitioned `READY -> IN_PROGRESS` in this workspace after dependency and collision checks; local runtime lock `.ai/task-locks/RQ389-codex.lock.md`.
@@ -1420,7 +1421,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ379 | WAITING | supplier-sales-runtime-schema | Add fail-closed runtime validation for Supplier Sales decision payload |
 | RQ380 | WAITING | supplier-sales-prepost-comparable-aggregate | Align Supplier total pre/post impact with the comparable cohort |
 | RQ386 | DONE | pre-post-cohort-denominators | Reconcile Pre/Post event cohort, cap and denominator semantics |
-| RQ387 | IN_PROGRESS | pre-post-runtime-safe-contract | Add Pre/Post runtime payload validation and safe traceable errors |
+| RQ387 | DONE | pre-post-runtime-safe-contract | Add Pre/Post runtime payload validation and safe traceable errors |
 | RQ388 | DONE | pre-nivelacija-population-parity | Align Pre-Nivelacija global KPIs with the full candidate population |
 | RQ389 | DONE | color-scope-event-lineage | Align Color store/data-origin scope with nivelacija event lineage |
 | RQ390 | DONE | pre-nivelacija-scoring-window | Bound Pre-Nivelacija scoring history and signed-sales denominator semantics |
@@ -21138,7 +21139,7 @@ Reproduction: request more matching events than `maxRows`, or include one new/no
 
 ## RQ387 - Add Pre/Post runtime payload validation and safe traceable errors
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend-contract/frontend-validation/tests
 Feature family: pre-post-runtime-safe-contract
