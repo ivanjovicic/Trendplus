@@ -4,12 +4,12 @@ import { colorSalesStatsResponseSchema } from "../validation/analyticsResponseSc
 
 export interface AnalyticsRecommendation {
   status: "increase_focus" | "maintain" | "review" | "do_not_trust" | "insufficient_data";
-  label: "Increase focus" | "Maintain" | "Review" | "Do not trust" | "Insufficient data";
+  label: string;
   summary: string;
   confidencePct: number | null;
   reliabilityPct: number | null;
-  dataQualityStatus: "good" | "warning" | "critical";
-  recommendationAllowed?: boolean | null;
+  dataQualityStatus: "good" | "warning" | "critical" | "insufficient_data";
+  recommendationAllowed: boolean;
   reasonCodes: string[];
 }
 
@@ -62,7 +62,7 @@ export interface ColorSalesStat {
   decisionScore?: number | null;
   reliabilityPct?: number | null;
   isUnknown?: boolean;
-  recommendation?: AnalyticsRecommendation;
+  recommendation: AnalyticsRecommendation;
   // Legacy compatibility aliases (deprecated)
   promenaPrometa?: number | null;
   promenaKolicine?: number | null;
@@ -110,7 +110,7 @@ export interface ColorSalesTotals {
   popUnitsChangePct: number | null;
   prePostNivelacijaRevenueImpactPct: number | null;
   prePostNivelacijaUnitsImpactPct: number | null;
-  recommendationSummary?: {
+  recommendationSummary: {
     increaseFocus: number;
     maintain: number;
     review: number;
@@ -163,15 +163,15 @@ export interface SezonaOption {
 
 export interface ColorSalesStatsResponse {
   generatedAt: string;
-  meta?: AnalyticsResponseMeta;
+  meta: AnalyticsResponseMeta;
   fromDate: string | null;
   toDate: string | null;
   dataWindowFrom: string | null;
   dataWindowTo: string | null;
   sezonaId: number | null;
   storeId: number | null;
-  dataScope?: string | null;
-  lineage?: ColorSalesLineage | null;
+  dataScope: "all" | "existing" | "imported";
+  lineage: ColorSalesLineage;
   colors: ColorSalesStat[];
   totals: ColorSalesTotals;
   dataQuality: ColorSalesDataQuality;

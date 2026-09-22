@@ -52,6 +52,17 @@ const recommendationSchema = z.object({
   reasonCodes: z.array(z.string()),
 }).passthrough();
 
+const colorRecommendationSchema = z.object({
+  status: z.enum(["increase_focus", "maintain", "review", "do_not_trust", "insufficient_data"]),
+  label: z.string().trim().min(1),
+  summary: z.string().trim().min(1),
+  confidencePct: nullableNonNegativePercentage,
+  reliabilityPct: nullableNonNegativePercentage,
+  dataQualityStatus: z.string().trim().min(1),
+  recommendationAllowed: z.boolean(),
+  reasonCodes: z.array(z.string().trim().min(1)),
+}).passthrough();
+
 const salesStatSchema = {
   preNivelacijePromet: nonNegativeNumber,
   preNivelacijeKolicina: nonNegativeNumber,
@@ -111,7 +122,7 @@ const colorSalesStatSchema = {
   prePostComparableArticleCount: nonNegativeInteger,
   sharePct: nullableNonNegativePercentage.optional(),
   reliabilityPct: nullableNonNegativePercentage.optional(),
-  recommendation: recommendationSchema.optional(),
+  recommendation: colorRecommendationSchema,
 };
 
 const costTotalsSchema = {
@@ -151,6 +162,13 @@ const colorCostTotalsSchema = {
   observedPostQuantity: finiteNumber,
   weightedKnownMarginPct: nullableNumber,
   weightedKnownMarginRevenue: finiteNumber,
+  recommendationSummary: z.object({
+    increaseFocus: nonNegativeInteger,
+    maintain: nonNegativeInteger,
+    review: nonNegativeInteger,
+    doNotTrust: nonNegativeInteger,
+    insufficientData: nonNegativeInteger,
+  }),
 };
 
 const colorDataQualitySchema = z.object({
@@ -210,14 +228,14 @@ const seasonSchema = z.object({
 
 export const colorSalesStatsResponseSchema = z.object({
   generatedAt: validDate,
-  meta: optionalMeta,
+  meta: analyticsResponseMetaSchema,
   fromDate: validDate.nullable(),
   toDate: validDate.nullable(),
   dataWindowFrom: validDate.nullable(),
   dataWindowTo: validDate.nullable(),
   sezonaId: nonNegativeInteger.nullable(),
   storeId: nonNegativeInteger.nullable(),
-  dataScope: z.string().nullable().optional(),
+  dataScope: z.enum(["all", "existing", "imported"]),
   lineage: z.object({
     storeId: nonNegativeInteger.nullable(),
     dataScope: z.string(),
@@ -227,7 +245,7 @@ export const colorSalesStatsResponseSchema = z.object({
     salesArticlesWithMatchingNivelacija: nonNegativeInteger,
     storePolicy: z.string(),
     originPolicy: z.string(),
-  }).nullable().optional(),
+  }),
   colors: z.array(z.object({
     boja: z.string(),
     ...colorSalesStatSchema,

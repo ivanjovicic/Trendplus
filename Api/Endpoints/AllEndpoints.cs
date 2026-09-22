@@ -2719,6 +2719,7 @@ public static class AllEndpoints
             TrendplusDbContext db,
             IMemoryCache cache,
             ILogger<Program> logger,
+            HttpContext httpContext,
             int? sezonaId = null,
             DateTime? fromDate = null,
             DateTime? toDate = null,
@@ -3419,6 +3420,39 @@ public static class AllEndpoints
                 cache.Set(cacheKey, response, TimeSpan.FromMinutes(5));
                 return Results.Ok(response);
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                logger.LogInformation(
+                    "Color-sales-stats cancelled. StoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}",
+                    storeId,
+                    sezonaId,
+                    fromUtc,
+                    toUtc);
+
+                return CreateColorSalesStatsProblem(
+                    "Zahtev je otkazan",
+                    "Zahtev je otkazan zbog prekida ili isteka vremena. Pokušajte ponovo.",
+                    StatusCodes.Status503ServiceUnavailable,
+                    "color_sales_stats_cancelled",
+                    ResolveAnalyticsCorrelationId(httpContext));
+            }
+            catch (NpgsqlException ex)
+            {
+                logger.LogError(
+                    ex,
+                    "Color-sales-stats database error. StoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}",
+                    storeId,
+                    sezonaId,
+                    fromUtc,
+                    toUtc);
+
+                return CreateColorSalesStatsProblem(
+                    "Greška pri učitavanju statistike prodaje po boji artikla",
+                    "Problem pri povezivanju sa bazom podataka. Molimo pokušajte ponovo kasnije.",
+                    StatusCodes.Status503ServiceUnavailable,
+                    "color_sales_stats_database_unavailable",
+                    ResolveAnalyticsCorrelationId(httpContext));
+            }
             catch (Exception ex)
             {
                 logger.LogError(
@@ -3429,10 +3463,12 @@ public static class AllEndpoints
                     fromUtc,
                     toUtc);
 
-                return Results.Problem(
-                    title: "Greska pri ucitavanju statistike prodaje po boji artikla",
-                    detail: ex.Message,
-                    statusCode: 500);
+                return CreateColorSalesStatsProblem(
+                    "Greška pri učitavanju statistike prodaje po boji artikla",
+                    "Statistika prodaje po boji artikla trenutno nije dostupna. Pokušajte ponovo.",
+                    StatusCodes.Status500InternalServerError,
+                    "color_sales_stats_unavailable",
+                    ResolveAnalyticsCorrelationId(httpContext));
             }
         })
         .WithName("GetColorSalesStats")
@@ -7237,6 +7273,24 @@ public static class AllEndpoints
     }
 
     private static IResult CreateVendorSalesNivelacijaProblem(
+        string title,
+        string detail,
+        int statusCode,
+        string errorCode,
+        string correlationId)
+    {
+        return Results.Problem(
+            title: title,
+            detail: $"{detail} Referentni ID: {correlationId}.",
+            statusCode: statusCode,
+            extensions: new Dictionary<string, object?>
+            {
+                ["errorCode"] = errorCode,
+                ["correlationId"] = correlationId
+            });
+    }
+
+    private static IResult CreateColorSalesStatsProblem(
         string title,
         string detail,
         int statusCode,

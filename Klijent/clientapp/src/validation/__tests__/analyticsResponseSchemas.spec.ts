@@ -39,6 +39,16 @@ const colorRow = {
   prePostComparableArticleCount: 0,
   sharePct: 100,
   reliabilityPct: null,
+  recommendation: {
+    status: "insufficient_data",
+    label: "Nedovoljno podataka",
+    summary: "Nema dovoljno potvrđenih podataka za preporuku.",
+    confidencePct: null,
+    reliabilityPct: null,
+    dataQualityStatus: "insufficient_data",
+    recommendationAllowed: false,
+    reasonCodes: ["prepost_comparable_cohort_unavailable"],
+  },
 };
 
 const validColorResponse = {
@@ -49,6 +59,17 @@ const validColorResponse = {
   dataWindowTo: "2026-07-01T00:00:00Z",
   sezonaId: null,
   storeId: null,
+  dataScope: "all",
+  lineage: {
+    storeId: null,
+    dataScope: "all",
+    eventCount: 0,
+    eventArticleCount: 0,
+    salesArticleCount: 1,
+    salesArticlesWithMatchingNivelacija: 0,
+    storePolicy: "all_stores_allowed",
+    originPolicy: "all_origins_allowed",
+  },
   colors: [colorRow],
   totals: {
     ukupanPromet: 10,
@@ -77,6 +98,13 @@ const validColorResponse = {
     popUnitsChangePct: null,
     prePostNivelacijaRevenueImpactPct: null,
     prePostNivelacijaUnitsImpactPct: null,
+    recommendationSummary: {
+      increaseFocus: 0,
+      maintain: 0,
+      review: 0,
+      doNotTrust: 0,
+      insufficientData: 1,
+    },
   },
   dataQuality: {
     missingCostRevenue: 0,
@@ -91,6 +119,12 @@ const validColorResponse = {
     weightedKnownMarginRevenue: 10,
   },
   sezone: [],
+  meta: {
+    success: true,
+    generatedAtUtc: "2026-07-01T08:00:00Z",
+    dataQualityStatus: "insufficient_data",
+    recommendationAllowed: false,
+  },
 };
 
 const validShoeResponse = {
@@ -559,6 +593,28 @@ describe("analytics response schemas", () => {
     expect(colorSalesStatsResponseSchema.safeParse({
       ...validColorResponse,
       totals: undefined,
+    }).success).toBe(false);
+  });
+
+  it("requires the backend recommendation and trust context before page derivation", () => {
+    expect(colorSalesStatsResponseSchema.safeParse({
+      ...validColorResponse,
+      colors: [{ ...colorRow, recommendation: undefined }],
+    }).success).toBe(false);
+    expect(colorSalesStatsResponseSchema.safeParse({
+      ...validColorResponse,
+      colors: [{
+        ...colorRow,
+        recommendation: { ...colorRow.recommendation, recommendationAllowed: "false" },
+      }],
+    }).success).toBe(false);
+    expect(colorSalesStatsResponseSchema.safeParse({
+      ...validColorResponse,
+      meta: undefined,
+    }).success).toBe(false);
+    expect(colorSalesStatsResponseSchema.safeParse({
+      ...validColorResponse,
+      lineage: { ...validColorResponse.lineage, salesArticleCount: -1 },
     }).success).toBe(false);
   });
 
