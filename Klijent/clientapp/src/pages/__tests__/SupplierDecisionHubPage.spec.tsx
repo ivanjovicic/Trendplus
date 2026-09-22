@@ -98,7 +98,7 @@ function installFetchMock(rankingHandler?: (url: URL) => unknown) {
     }
 
     if (url.pathname === "/api/sezone") {
-      return jsonResponse([]);
+      return jsonResponse([{ id: 7, naziv: "Proleće 2026", datumOd: "2026-03-01", datumDo: "2026-05-31" }]);
     }
 
     return jsonResponse({ message: `Unhandled test request: ${url.pathname}` }, 404);
@@ -165,6 +165,32 @@ describe("SupplierDecisionHubPage", () => {
     expect(screen.queryByRole("button", { name: "Primeni" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Poništi filtere" })).not.toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Skorkarta dobavljača" })).toBeInTheDocument();
+  });
+
+  it("sends every supported decision filter when the standalone form is applied", async () => {
+    const fetchMock = installFetchMock();
+
+    renderPage();
+    await screen.findByTestId("supplier-decision-hub-data-table");
+
+    fireEvent.change(screen.getByLabelText("Kategorija"), { target: { value: "Patike" } });
+    fireEvent.change(screen.getByLabelText("Pol"), { target: { value: "Muško" } });
+    fireEvent.change(screen.getByLabelText("Sezona"), { target: { value: "7" } });
+    fireEvent.change(screen.getByLabelText("Min prihod"), { target: { value: "5000" } });
+    fireEvent.click(screen.getByRole("checkbox", { name: /Samo visoka pouzdanost/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /bez zaliha pre sniženja/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Primeni" }));
+
+    await waitFor(() => {
+      const requestUrls = fetchMock.mock.calls.map(([input]) => requestUrl(input));
+      const decisionRequest = requestUrls.find((url) => url.pathname.endsWith("/decision-hub/summary") && url.searchParams.get("category") === "Patike");
+      expect(decisionRequest?.searchParams.get("category")).toBe("Patike");
+      expect(decisionRequest?.searchParams.get("gender")).toBe("Muško");
+      expect(decisionRequest?.searchParams.get("seasonId")).toBe("7");
+      expect(decisionRequest?.searchParams.get("minRevenue")).toBe("5000");
+      expect(decisionRequest?.searchParams.get("onlyHighConfidence")).toBe("true");
+      expect(decisionRequest?.searchParams.get("excludeOosBeforeMarkdown")).toBe("true");
+    });
   });
 
   it("loads every ranking page before deriving table and KPI data", async () => {

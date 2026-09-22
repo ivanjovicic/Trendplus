@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getStores, getSupplierFilters } from "../services/analyticsApi";
+import { getSezone } from "../services/sezoneApi";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import type { StoreOption, SupplierFilterOption } from "../types/analytics";
+import type { Sezona } from "../types/Sezona";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { getAnalyticsMetaMessage } from "../utils/analyticsResponseMeta";
 import {
@@ -80,6 +82,7 @@ export default function SupplierConsolidatedPage() {
   const [searchParams] = useSearchParams();
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierFilterOption[]>([]);
+  const [seasons, setSeasons] = useState<Sezona[]>([]);
   const [supplierFiltersWarning, setSupplierFiltersWarning] = useState<string | null>(null);
   const [supplierFiltersStale, setSupplierFiltersStale] = useState(false);
   const suppliersRef = useRef(suppliers);
@@ -96,6 +99,12 @@ export default function SupplierConsolidatedPage() {
     setDataScope,
     setStore,
     setSupplier,
+    setCategory,
+    setGender,
+    setSeason,
+    setMinRevenue,
+    setOnlyHighConfidence,
+    setExcludeOosBeforeMarkdown,
     resetFilters,
   } = useSupplierCanonicalState();
 
@@ -165,6 +174,19 @@ export default function SupplierConsolidatedPage() {
     : "Pouzdanost nije potvrđena";
 
   useEffect(() => {
+    if (currentTab !== "scorecard") return;
+    let cancelled = false;
+    getSezone()
+      .then((items) => {
+        if (!cancelled) setSeasons(items);
+      })
+      .catch(() => {
+        if (!cancelled) setSeasons([]);
+      });
+    return () => { cancelled = true; };
+  }, [currentTab]);
+
+  useEffect(() => {
     let cancelled = false;
     getStores(true)
       .then((items) => { if (!cancelled) setStores(items); })
@@ -230,7 +252,7 @@ export default function SupplierConsolidatedPage() {
     }
 
     setTrustPayload(null);
-  }, [currentTab, canonicalFilters.fromDate, canonicalFilters.toDate, canonicalFilters.storeId, canonicalFilters.supplierId, canonicalFilters.dataScope]);
+  }, [currentTab, canonicalFilters.category, canonicalFilters.dataScope, canonicalFilters.excludeOosBeforeMarkdown, canonicalFilters.fromDate, canonicalFilters.gender, canonicalFilters.minRevenue, canonicalFilters.onlyHighConfidence, canonicalFilters.seasonId, canonicalFilters.storeId, canonicalFilters.supplierId, canonicalFilters.toDate]);
 
   return (
     <div className="supplier-consolidated-page">
@@ -361,6 +383,70 @@ export default function SupplierConsolidatedPage() {
             </span>
           ) : null}
         </label>
+
+        {currentTab === "scorecard" ? (
+          <>
+            <label className="supplier-consolidated-field">
+              <span>Kategorija skorkarte</span>
+              <input
+                type="text"
+                value={canonicalFilters.category ?? ""}
+                placeholder="npr. Patike"
+                onChange={(event) => setCategory(event.target.value)}
+              />
+            </label>
+
+            <label className="supplier-consolidated-field">
+              <span>Pol skorkarte</span>
+              <select value={canonicalFilters.gender ?? ""} onChange={(event) => setGender(event.target.value)}>
+                <option value="">Svi polovi</option>
+                <option value="Žensko">Žensko</option>
+                <option value="Muško">Muško</option>
+                <option value="Unisex">Unisex</option>
+                <option value="Dečije">Dečije</option>
+              </select>
+            </label>
+
+            <label className="supplier-consolidated-field">
+              <span>Sezona skorkarte</span>
+              <select value={canonicalFilters.seasonId ?? ""} onChange={(event) => setSeason(event.target.value)}>
+                <option value="">Sve sezone</option>
+                {seasons.map((season) => (
+                  <option key={season.id} value={season.id}>{season.naziv}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="supplier-consolidated-field">
+              <span>Minimalni prihod skorkarte</span>
+              <input
+                type="number"
+                min="0"
+                step="1000"
+                value={canonicalFilters.minRevenue ?? ""}
+                onChange={(event) => setMinRevenue(event.target.value)}
+              />
+            </label>
+
+            <label className="supplier-consolidated-check">
+              <input
+                type="checkbox"
+                checked={canonicalFilters.onlyHighConfidence === true}
+                onChange={(event) => setOnlyHighConfidence(event.target.checked)}
+              />
+              <span>Samo visoka pouzdanost skorkarte</span>
+            </label>
+
+            <label className="supplier-consolidated-check">
+              <input
+                type="checkbox"
+                checked={canonicalFilters.excludeOosBeforeMarkdown === true}
+                onChange={(event) => setExcludeOosBeforeMarkdown(event.target.checked)}
+              />
+              <span>Isključi artikle bez zaliha pre sniženja iz skorkarte</span>
+            </label>
+          </>
+        ) : null}
 
         <div className="supplier-consolidated-actions">
           <button type="button" className="secondary" onClick={resetFilters}>Reset</button>

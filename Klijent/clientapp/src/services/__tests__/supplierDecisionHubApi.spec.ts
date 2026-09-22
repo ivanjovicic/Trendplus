@@ -65,22 +65,38 @@ describe("supplierDecisionHubApi trust metadata mapping", () => {
       },
     };
 
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(() =>
+    const fetchMock = vi.fn(() =>
         Promise.resolve(
           new Response(JSON.stringify(payload), {
             status: 200,
             headers: { "Content-Type": "application/json" },
           })
         )
-      )
     );
+    vi.stubGlobal("fetch", fetchMock);
 
     const result = await getSupplierDecisionSummary({
       fromDate: "2026-05-01",
       toDate: "2026-05-30",
+      category: "Patike",
+      gender: "Muško",
+      seasonId: 7,
+      minRevenue: 5000,
+      onlyHighConfidence: true,
+      excludeOosBeforeMarkdown: true,
+      storeId: 3,
+      dataScope: "existing",
     });
+
+    const requestUrl = new URL(String(fetchMock.mock.calls[0]?.[0]), "http://localhost");
+    expect(requestUrl.searchParams.get("category")).toBe("Patike");
+    expect(requestUrl.searchParams.get("gender")).toBe("Muško");
+    expect(requestUrl.searchParams.get("seasonId")).toBe("7");
+    expect(requestUrl.searchParams.get("minRevenue")).toBe("5000");
+    expect(requestUrl.searchParams.get("onlyHighConfidence")).toBe("true");
+    expect(requestUrl.searchParams.get("excludeOosBeforeMarkdown")).toBe("true");
+    expect(requestUrl.searchParams.get("storeId")).toBe("3");
+    expect(requestUrl.searchParams.get("dataScope")).toBe("existing");
 
     expect(result.trustMetadata).toBeTruthy();
     expect(result.trustMetadata?.requestedFrom).toBe("2026-05-01T00:00:00Z");

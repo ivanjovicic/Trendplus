@@ -143,6 +143,22 @@
   padding: 0.45rem 0.65rem;
 }
 
+.supplier-consolidated-check {
+  display: flex;
+  align-items: center;
+  align-self: end;
+  gap: 0.5rem;
+  min-height: 2.4rem;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.supplier-consolidated-check input {
+  accent-color: var(--accent-primary, #2563eb);
+  flex: 0 0 auto;
+}
+
 .supplier-consolidated-actions {
   display: flex;
   justify-content: flex-end;

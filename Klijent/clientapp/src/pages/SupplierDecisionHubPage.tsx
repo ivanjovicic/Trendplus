@@ -80,9 +80,12 @@ type DecisionStatus = CanonicalRecommendationStatus;
 type ActiveFilters = {
   fromDate: string;
   toDate: string;
+  category: string | null;
+  gender: string | null;
   seasonId: number | null;
   minRevenue: number | null;
   onlyHighConfidence: boolean;
+  excludeOosBeforeMarkdown: boolean;
   supplierId: number | null;
   storeId: number | null;
   dataScope: string | null;
@@ -228,7 +231,7 @@ function mapSupplierActionPriority(row: DecisionRow, recommendationAllowed: bool
 
 function buildSupplierActionSourceKey(row: DecisionRow, filters: ActiveFilters, recommendationAllowed: boolean): string {
   const actionKind = recommendationAllowed ? "negotiation" : "signal_check";
-  return `supplier:${actionKind}:${row.supplierId}:${filters.fromDate}:${filters.toDate}:${filters.storeId ?? "all"}:${filters.dataScope ?? "all"}`;
+  return `supplier:${actionKind}:${row.supplierId}:${filters.fromDate}:${filters.toDate}:${filters.category ?? "all"}:${filters.gender ?? "all"}:${filters.seasonId ?? "all"}:${filters.minRevenue ?? "all"}:${filters.onlyHighConfidence}:${filters.excludeOosBeforeMarkdown}:${filters.storeId ?? "all"}:${filters.dataScope ?? "all"}`;
 }
 
 export default function SupplierDecisionHubPage({ embedded = false, sharedFilters, onTrustMetadataChange }: SupplierEmbeddedPageProps = {}) {
@@ -242,15 +245,21 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>(sharedFilters?.periodPreset ?? "30d");
   const [fromDate, setFromDate] = useState(sharedFilters?.fromDate ?? initialRange.fromDate);
   const [toDate, setToDate] = useState(sharedFilters?.toDate ?? initialRange.toDate);
-  const [seasonId, setSeasonId] = useState<number | null>(null);
-  const [minRevenue, setMinRevenue] = useState<number | null>(null);
-  const [onlyHighConfidence, setOnlyHighConfidence] = useState(false);
+  const [category, setCategory] = useState(sharedFilters?.category ?? "");
+  const [gender, setGender] = useState(sharedFilters?.gender ?? "");
+  const [seasonId, setSeasonId] = useState<number | null>(sharedFilters?.seasonId ?? null);
+  const [minRevenue, setMinRevenue] = useState<number | null>(sharedFilters?.minRevenue ?? null);
+  const [onlyHighConfidence, setOnlyHighConfidence] = useState(sharedFilters?.onlyHighConfidence === true);
+  const [excludeOosBeforeMarkdown, setExcludeOosBeforeMarkdown] = useState(sharedFilters?.excludeOosBeforeMarkdown === true);
   const [activeFilters, setActiveFilters] = useState<ActiveFilters>({
     fromDate: sharedFilters?.fromDate ?? initialRange.fromDate,
     toDate: sharedFilters?.toDate ?? initialRange.toDate,
-    seasonId: null,
-    minRevenue: null,
-    onlyHighConfidence: false,
+    category: sharedFilters?.category ?? null,
+    gender: sharedFilters?.gender ?? null,
+    seasonId: sharedFilters?.seasonId ?? null,
+    minRevenue: sharedFilters?.minRevenue ?? null,
+    onlyHighConfidence: sharedFilters?.onlyHighConfidence === true,
+    excludeOosBeforeMarkdown: sharedFilters?.excludeOosBeforeMarkdown === true,
     supplierId: sharedFilters?.supplierId ?? null,
     storeId: sharedFilters?.storeId ?? null,
     dataScope: sharedFilters?.dataScope ?? null,
@@ -282,17 +291,35 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     setPeriodPreset(sharedFilters.periodPreset);
     setFromDate(sharedFilters.fromDate);
     setToDate(sharedFilters.toDate);
+    setCategory(sharedFilters.category ?? "");
+    setGender(sharedFilters.gender ?? "");
+    setSeasonId(sharedFilters.seasonId ?? null);
+    setMinRevenue(sharedFilters.minRevenue ?? null);
+    setOnlyHighConfidence(sharedFilters.onlyHighConfidence === true);
+    setExcludeOosBeforeMarkdown(sharedFilters.excludeOosBeforeMarkdown === true);
     setActiveFilters((current) => {
       const next = {
         ...current,
         fromDate: sharedFilters.fromDate,
         toDate: sharedFilters.toDate,
+        category: sharedFilters.category ?? null,
+        gender: sharedFilters.gender ?? null,
+        seasonId: sharedFilters.seasonId ?? null,
+        minRevenue: sharedFilters.minRevenue ?? null,
+        onlyHighConfidence: sharedFilters.onlyHighConfidence === true,
+        excludeOosBeforeMarkdown: sharedFilters.excludeOosBeforeMarkdown === true,
         supplierId: sharedFilters.supplierId,
         storeId: sharedFilters.storeId,
         dataScope: sharedFilters.dataScope,
       };
       return current.fromDate === next.fromDate
         && current.toDate === next.toDate
+        && current.category === next.category
+        && current.gender === next.gender
+        && current.seasonId === next.seasonId
+        && current.minRevenue === next.minRevenue
+        && current.onlyHighConfidence === next.onlyHighConfidence
+        && current.excludeOosBeforeMarkdown === next.excludeOosBeforeMarkdown
         && current.supplierId === next.supplierId
         && current.storeId === next.storeId
         && current.dataScope === next.dataScope
@@ -334,9 +361,12 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       const baseFilters: SupplierDecisionHubFilters = {
         fromDate: filters.fromDate,
         toDate: filters.toDate,
+        category: filters.category ?? undefined,
+        gender: filters.gender ?? undefined,
         seasonId: filters.seasonId ?? undefined,
         minRevenue: filters.minRevenue ?? undefined,
         onlyHighConfidence: filters.onlyHighConfidence,
+        excludeOosBeforeMarkdown: filters.excludeOosBeforeMarkdown,
         supplierId: filters.supplierId ?? undefined,
         storeId: filters.storeId,
         dataScope: filters.dataScope,
@@ -578,14 +608,27 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       return "insufficient_data";
     }
 
-    const hasNarrowFilters = Boolean(activeFilters.supplierId || activeFilters.storeId || activeFilters.minRevenue || activeFilters.seasonId);
+    const hasNarrowFilters = Boolean(
+      activeFilters.supplierId
+      || activeFilters.storeId
+      || activeFilters.category
+      || activeFilters.gender
+      || activeFilters.minRevenue
+      || activeFilters.seasonId
+      || activeFilters.onlyHighConfidence
+      || activeFilters.excludeOosBeforeMarkdown,
+    );
     if (hasNarrowFilters) {
       return "filtered_out";
     }
 
     return "no_data";
   }, [
+    activeFilters.category,
+    activeFilters.excludeOosBeforeMarkdown,
+    activeFilters.gender,
     activeFilters.minRevenue,
+    activeFilters.onlyHighConfidence,
     activeFilters.seasonId,
     activeFilters.storeId,
     activeFilters.supplierId,
@@ -650,8 +693,14 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       emptyStateReason: !loading && sortedRows.length === 0 ? zeroStateExplanation : null,
     });
   }, [
+    activeFilters.category,
     activeFilters.dataScope,
+    activeFilters.excludeOosBeforeMarkdown,
     activeFilters.fromDate,
+    activeFilters.gender,
+    activeFilters.minRevenue,
+    activeFilters.onlyHighConfidence,
+    activeFilters.seasonId,
     activeFilters.toDate,
     embedded,
     error?.message,
@@ -701,13 +750,16 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     { key: "periodPreset", label: "Period", value: periodPreset },
     { key: "fromDate", label: "Od", value: activeFilters.fromDate },
     { key: "toDate", label: "Do", value: activeFilters.toDate },
+    { key: "category", label: "Kategorija", value: activeFilters.category ?? "" },
+    { key: "gender", label: "Pol", value: activeFilters.gender ?? "" },
     { key: "seasonId", label: "Sezona", value: activeFilters.seasonId ?? "" },
     { key: "minRevenue", label: "Min prihod", value: activeFilters.minRevenue ?? "" },
     { key: "onlyHighConfidence", label: "Samo visoka pouzdanost", value: activeFilters.onlyHighConfidence },
+    { key: "excludeOosBeforeMarkdown", label: "Isključi artikle bez zaliha pre sniženja", value: activeFilters.excludeOosBeforeMarkdown },
     { key: "supplierId", label: "Dobavljač", value: activeFilters.supplierId ?? "" },
     { key: "storeId", label: "Objekat", value: activeFilters.storeId ?? "" },
     { key: "dataScope", label: "Opseg podataka", value: activeFilters.dataScope ?? "" },
-  ], [activeFilters.dataScope, activeFilters.fromDate, activeFilters.minRevenue, activeFilters.onlyHighConfidence, activeFilters.seasonId, activeFilters.storeId, activeFilters.supplierId, activeFilters.toDate, periodPreset]);
+  ], [activeFilters.category, activeFilters.dataScope, activeFilters.excludeOosBeforeMarkdown, activeFilters.fromDate, activeFilters.gender, activeFilters.minRevenue, activeFilters.onlyHighConfidence, activeFilters.seasonId, activeFilters.storeId, activeFilters.supplierId, activeFilters.toDate, periodPreset]);
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(() => [
     { key: "summaryFrom", label: "Sažetak od", value: summary?.from ?? "" },
@@ -744,6 +796,12 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       toDate: activeFilters.toDate,
       supplierLabel,
       dataScopeLabel: activeFilters.dataScope ?? "all",
+      category: activeFilters.category,
+      gender: activeFilters.gender,
+      seasonId: activeFilters.seasonId,
+      minRevenue: activeFilters.minRevenue,
+      onlyHighConfidence: activeFilters.onlyHighConfidence,
+      excludeOosBeforeMarkdown: activeFilters.excludeOosBeforeMarkdown,
       freshnessStatus: refreshStatus?.dataFreshnessStatus ?? "unknown",
       lastRefreshAtUtc: resolvedLastRefreshAt,
       summary,
@@ -757,7 +815,13 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     });
   }, [
     activeFilters.dataScope,
+    activeFilters.category,
+    activeFilters.excludeOosBeforeMarkdown,
     activeFilters.fromDate,
+    activeFilters.gender,
+    activeFilters.minRevenue,
+    activeFilters.onlyHighConfidence,
+    activeFilters.seasonId,
     activeFilters.toDate,
     periodPreset,
     ranking,
@@ -778,15 +842,17 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     return buildSupplierDecisionReportHref({
       fromDate: activeFilters.fromDate,
       toDate: activeFilters.toDate,
+      category: activeFilters.category,
+      gender: activeFilters.gender,
       scope: activeFilters.dataScope ?? "all",
       seasonId: activeFilters.seasonId,
       minRevenue: activeFilters.minRevenue,
       onlyHighConfidence: activeFilters.onlyHighConfidence,
-      excludeOosBeforeMarkdown: false,
+      excludeOosBeforeMarkdown: activeFilters.excludeOosBeforeMarkdown,
       supplierId: activeFilters.supplierId,
       storeId: activeFilters.storeId,
     });
-  }, [activeFilters.dataScope, activeFilters.fromDate, activeFilters.minRevenue, activeFilters.onlyHighConfidence, activeFilters.seasonId, activeFilters.storeId, activeFilters.supplierId, activeFilters.toDate]);
+  }, [activeFilters.category, activeFilters.dataScope, activeFilters.excludeOosBeforeMarkdown, activeFilters.fromDate, activeFilters.gender, activeFilters.minRevenue, activeFilters.onlyHighConfidence, activeFilters.seasonId, activeFilters.storeId, activeFilters.supplierId, activeFilters.toDate]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) { setSortDir((current) => (current === "asc" ? "desc" : "asc")); return; }
@@ -805,9 +871,12 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       setActiveFilters({
         fromDate,
         toDate,
+        category: category.trim() || null,
+        gender: gender || null,
         seasonId,
         minRevenue,
         onlyHighConfidence,
+        excludeOosBeforeMarkdown,
         supplierId: sharedFilters?.supplierId ?? null,
         storeId: sharedFilters?.storeId ?? null,
         dataScope: sharedFilters?.dataScope ?? null,
@@ -819,15 +888,21 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     setPeriodPreset("30d");
     setFromDate(range.fromDate);
     setToDate(range.toDate);
+    setCategory("");
+    setGender("");
     setSeasonId(null);
     setMinRevenue(null);
     setOnlyHighConfidence(false);
+    setExcludeOosBeforeMarkdown(false);
     setActiveFilters({
       fromDate: sharedFilters?.fromDate ?? range.fromDate,
       toDate: sharedFilters?.toDate ?? range.toDate,
+      category: sharedFilters?.category ?? null,
+      gender: sharedFilters?.gender ?? null,
       seasonId: null,
       minRevenue: null,
       onlyHighConfidence: false,
+      excludeOosBeforeMarkdown: false,
       supplierId: sharedFilters?.supplierId ?? null,
       storeId: sharedFilters?.storeId ?? null,
       dataScope: sharedFilters?.dataScope ?? null,
@@ -850,9 +925,12 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       {
         fromDate: activeFilters.fromDate,
         toDate: activeFilters.toDate,
+        category: activeFilters.category ?? undefined,
+        gender: activeFilters.gender ?? undefined,
         seasonId: activeFilters.seasonId ?? undefined,
         minRevenue: activeFilters.minRevenue ?? undefined,
         onlyHighConfidence: activeFilters.onlyHighConfidence,
+        excludeOosBeforeMarkdown: activeFilters.excludeOosBeforeMarkdown,
         storeId: activeFilters.storeId,
         dataScope: activeFilters.dataScope,
       },
@@ -873,7 +951,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
         setSupplierDetailLoading(false);
       }
     });
-  }, [activeFilters.dataScope, activeFilters.fromDate, activeFilters.minRevenue, activeFilters.onlyHighConfidence, activeFilters.seasonId, activeFilters.storeId, activeFilters.toDate]);
+  }, [activeFilters.category, activeFilters.dataScope, activeFilters.excludeOosBeforeMarkdown, activeFilters.fromDate, activeFilters.gender, activeFilters.minRevenue, activeFilters.onlyHighConfidence, activeFilters.seasonId, activeFilters.storeId, activeFilters.toDate]);
 
   const addSupplierSignalToQueue = useCallback(async (row: DecisionRow) => {
     if (recommendationAllowed !== true) {
@@ -916,6 +994,12 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
           reasonCodes: row.reasonCodes,
           periodFrom: activeFilters.fromDate,
           periodTo: activeFilters.toDate,
+          category: activeFilters.category ?? "all",
+          gender: activeFilters.gender ?? "all",
+          seasonId: activeFilters.seasonId ?? "all",
+          minRevenue: activeFilters.minRevenue ?? "all",
+          onlyHighConfidence: activeFilters.onlyHighConfidence,
+          excludeOosBeforeMarkdown: activeFilters.excludeOosBeforeMarkdown,
           storeId: activeFilters.storeId ?? "all",
           dataScope: activeFilters.dataScope ?? "all",
           recommendationAllowed,
@@ -1082,6 +1166,26 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
         </label>
         <label className="sdh-decision-field">
           <span>
+            Kategorija
+            <InfoTip text="Ograniči skorkartu na izabranu kategoriju." />
+          </span>
+          <input type="text" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="npr. Patike" />
+        </label>
+        <label className="sdh-decision-field">
+          <span>
+            Pol
+            <InfoTip text="Ograniči skorkartu na izabrani pol." />
+          </span>
+          <select value={gender} onChange={(e) => setGender(e.target.value)}>
+            <option value="">Svi polovi</option>
+            <option value="Žensko">Žensko</option>
+            <option value="Muško">Muško</option>
+            <option value="Unisex">Unisex</option>
+            <option value="Dečije">Dečije</option>
+          </select>
+        </label>
+        <label className="sdh-decision-field">
+          <span>
             Sezona
             <InfoTip text="Ograniči analizu na određenu sezonu ako su podaci povezani sa sezonom." />
           </span>
@@ -1103,6 +1207,13 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
             <InfoTip text="Sakriva dobavljače sa slabim ili nepotpunim signalom, na primer malo artikala, malo prodaje ili nedostajuće nabavne cene." />
           </span>
           <input type="checkbox" checked={onlyHighConfidence} onChange={(e) => setOnlyHighConfidence(e.target.checked)} />
+        </label>
+        <label className="sdh-decision-field check">
+          <span>
+            Isključi artikle bez zaliha pre sniženja
+            <InfoTip text="Izostavi artikle koji su bili bez zaliha pre sniženja iz skorkarte." />
+          </span>
+          <input type="checkbox" checked={excludeOosBeforeMarkdown} onChange={(e) => setExcludeOosBeforeMarkdown(e.target.checked)} />
         </label>
         <div className="sdh-decision-actions">
           <button type="button" onClick={handleApplyFilters} disabled={loading || invalidRange}>Primeni</button>

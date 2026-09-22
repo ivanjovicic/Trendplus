@@ -11,6 +11,12 @@ export type SupplierCanonicalFilters = {
   dataScope: string;
   storeId: number | null;
   supplierId: number | null;
+  category?: string | null;
+  gender?: string | null;
+  seasonId?: number | null;
+  minRevenue?: number | null;
+  onlyHighConfidence?: boolean;
+  excludeOosBeforeMarkdown?: boolean;
 };
 
 export type SupplierEmbeddedPageProps = {
