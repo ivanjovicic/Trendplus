@@ -410,7 +410,7 @@ public static class SupplierDecisionHubEndpoints
                             return new SupplierDecisionHubDetailsCacheEntry(false, null);
                         }
 
-                        var details = await BuildDetailsResponseAsync(analyticsConnectionString, activeFilters, supplier, ct);
+                        var details = await BuildDetailsResponseAsync(analyticsConnectionString, activeFilters, dataset, supplier, ct);
                         return new SupplierDecisionHubDetailsCacheEntry(true, details);
                     },
                     CacheExpiration.HeavyAnalytics,
@@ -433,6 +433,14 @@ public static class SupplierDecisionHubEndpoints
             {
                 return Results.NotFound(new { message = $"Supplier {supplierId} not found for the selected filter set." });
             }
+
+            response = response with
+            {
+                Response = response.Response with
+                {
+                    Meta = ApplyCorrelationId(response.Response.Meta, ResolveCorrelationId(httpContext))
+                }
+            };
 
             return Results.Ok(response.Response);
         });
@@ -1045,7 +1053,7 @@ public static class SupplierDecisionHubEndpoints
         var supplier = dataset.Rows.Count > 0 ? dataset.Rows[0] : null;
         return supplier is null
             ? null
-            : await BuildDetailsResponseAsync(analyticsConnectionString, filters, supplier, ct);
+            : await BuildDetailsResponseAsync(analyticsConnectionString, filters, dataset, supplier, ct);
     }
 
     private static ReportRefreshInfo? ResolveReportRefreshInfo(
@@ -3424,6 +3432,7 @@ FROM final_suppliers;
     private static async Task<SupplierDecisionDetailsResponse> BuildDetailsResponseAsync(
         string analyticsConnectionString,
         SupplierDecisionHubFilters filters,
+        SupplierRowsDataset dataset,
         SupplierScoreRow supplier,
         CancellationToken ct)
     {
@@ -3432,6 +3441,7 @@ FROM final_suppliers;
         var markdownDependentArticles = await QueryArticleDecisionsAsync(analyticsConnectionString, filters, "markdown", ct);
         var blockedByOosArticles = await QueryArticleDecisionsAsync(analyticsConnectionString, filters, "oos", ct);
         var recommendationHistory = await QueryRecommendationHistoryAsync(analyticsConnectionString, filters, ct);
+        var trustMetadata = BuildScorecardTrustMetadata(dataset, filters);
 
         return new SupplierDecisionDetailsResponse(
             new SupplierHeaderDto(
@@ -3466,7 +3476,10 @@ FROM final_suppliers;
             winningArticles,
             markdownDependentArticles,
             blockedByOosArticles,
-            recommendationHistory);
+            recommendationHistory,
+            trustMetadata,
+            BuildDecisionScoreDataNote(filters),
+            BuildResponseMeta(dataset.Rows, trustMetadata));
     }
 
     private static async Task<List<CategoryBreakdownItem>> QueryCategoryBreakdownAsync(
@@ -4014,7 +4027,10 @@ public sealed record SupplierDecisionDetailsResponse(
     IReadOnlyList<ArticleDecisionItem> WinningArticles,
     IReadOnlyList<ArticleDecisionItem> MarkdownDependentArticles,
     IReadOnlyList<ArticleDecisionItem> BlockedByOosArticles,
-    IReadOnlyList<RecommendationHistoryItem> RecommendationHistory);
+    IReadOnlyList<RecommendationHistoryItem> RecommendationHistory,
+    ScorecardTrustMetadata? TrustMetadata = null,
+    string? DataNote = null,
+    AnalyticsResponseMetaDto? Meta = null);
 
 public sealed record SupplierDecisionReportResponse(
     string ReportId,

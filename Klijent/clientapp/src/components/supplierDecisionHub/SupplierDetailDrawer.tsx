@@ -112,6 +112,7 @@ export default function SupplierDetailDrawer({
   const recommendation = details
     ? getRecommendationMeta(details.supplierHeader.recommendationCode)
     : getRecommendationMeta("HOLD");
+  const trustMetadata = details?.trustMetadata ?? null;
 
   return (
     <div className="supplier-decision-drawer-backdrop" onClick={onClose}>
@@ -155,8 +156,21 @@ export default function SupplierDetailDrawer({
                   <span>Pouzdanost: {confidenceLabel(details.supplierHeader.confidenceScore)}</span>
                   <span>Pouzdanost signala: {formatReliability(details.supplierHeader.reliabilityPct, 0)}</span>
                   <span>Kvalitet podataka: {dataQualityStatusLabel(details.supplierHeader.dataQualityStatus)}</span>
+                  <span>
+                    Traženi period: {formatDateRange(trustMetadata?.requestedPeriodFrom ?? trustMetadata?.requestedFrom, trustMetadata?.requestedPeriodTo ?? trustMetadata?.requestedTo)}
+                  </span>
+                  <span>Skup podataka: {trustMetadata?.effectiveDataset ?? "Nije dostupno"}</span>
+                  <span>Efektivni period: {trustMetadata?.effectivePeriodLabel ?? "Nije dostupan"}</span>
                 </div>
               </div>
+              {trustMetadata?.recommendationAllowed === false ? (
+                <p className="supplier-decision-error" role="status">
+                  Konačna preporuka nije dozvoljena za ovaj period i kvalitet podataka; prikazan je pomoćni signal za proveru.
+                </p>
+              ) : null}
+              {details.dataNote ? (
+                <p className="supplier-decision-muted">{details.dataNote}</p>
+              ) : null}
               {details.supplierHeader.aiExplanation ? (
                 <p className="supplier-decision-muted">
                   AI signal: {details.supplierHeader.aiExplanation}

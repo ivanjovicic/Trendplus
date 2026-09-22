@@ -1,5 +1,5 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   Bar,
   BarChart,
@@ -18,10 +18,10 @@ import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar
 import KpiExplainButton from "../components/analytics/KpiExplainButton";
 import InfoTip from "../components/ui/InfoTip";
 import SupplierExplainabilitySnapshot from "../components/supplierDecisionHub/SupplierExplainabilitySnapshot";
+import SupplierDetailDrawer from "../components/supplierDecisionHub/SupplierDetailDrawer";
 import { getSezone } from "../services/sezoneApi";
 import { getAnalyticsActions, getAnalyticsRefreshStatus, upsertAnalyticsAction } from "../services/analyticsApi";
 import type { AnalyticsActionDataQualityStatus, AnalyticsActionStatus, AnalyticsRefreshStatus } from "../types/analytics";
-import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import { buildSupplierDecisionReportPayload } from "../services/supplierDecisionReport";
 import {
   calculateSupplierMarginContribution,
@@ -30,11 +30,13 @@ import {
 import { buildSupplierDecisionReportHref } from "../services/supplierDecisionReportQuery";
 import {
   getAllSupplierDecisionRanking,
+  getSupplierDecisionDetails,
   getSupplierDecisionSummary,
   type RecommendationCode,
   type RankingItem,
   type RankingResponse,
   type SummaryResponse,
+  type SupplierDecisionDetailsResponse,
   SupplierDecisionApiError,
   type SupplierDecisionHubFilters,
 } from "../services/supplierDecisionHubApi";
@@ -230,9 +232,9 @@ function buildSupplierActionSourceKey(row: DecisionRow, filters: ActiveFilters, 
 }
 
 export default function SupplierDecisionHubPage({ embedded = false, sharedFilters, onTrustMetadataChange }: SupplierEmbeddedPageProps = {}) {
-  const navigate = useNavigate();
-  const location = useLocation();
   const requestIdRef = useRef(0);
+  const detailRequestIdRef = useRef(0);
+  const detailAbortRef = useRef<AbortController | null>(null);
   const hasSummaryRef = useRef(false);
   const hasRankingRef = useRef(false);
   const initialRange = useMemo(() => getPresetRange("30d"), []);
@@ -264,6 +266,10 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
   const [sortField, setSortField] = useState<SortField>("status");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expandedSupplierId, setExpandedSupplierId] = useState<number | null>(null);
+  const [detailSupplierId, setDetailSupplierId] = useState<number | null>(null);
+  const [supplierDetails, setSupplierDetails] = useState<SupplierDecisionDetailsResponse | null>(null);
+  const [supplierDetailLoading, setSupplierDetailLoading] = useState(false);
+  const [supplierDetailError, setSupplierDetailError] = useState<string | null>(null);
   const [refreshStatus, setRefreshStatus] = useState<AnalyticsRefreshStatus | null>(null);
   const [queuedActionKeys, setQueuedActionKeys] = useState<Set<string>>(new Set());
   const [queueBusyKey, setQueueBusyKey] = useState<string | null>(null);
@@ -306,8 +312,21 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     void loadSeasons();
   }, []);
 
+  const closeSupplierDetail = useCallback(() => {
+    detailAbortRef.current?.abort();
+    detailAbortRef.current = null;
+    detailRequestIdRef.current += 1;
+    setDetailSupplierId(null);
+    setSupplierDetails(null);
+    setSupplierDetailError(null);
+    setSupplierDetailLoading(false);
+  }, []);
+
+  useEffect(() => () => closeSupplierDetail(), [closeSupplierDetail]);
+
   const load = useCallback(async (filters: ActiveFilters) => {
     const requestId = ++requestIdRef.current;
+    closeSupplierDetail();
     setLoading(true);
     setError(null);
     setStaleWarning(null);
@@ -374,7 +393,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     } finally {
       if (requestId === requestIdRef.current) setLoading(false);
     }
-  }, []);
+  }, [closeSupplierDetail]);
 
   useEffect(() => { void load(activeFilters); }, [activeFilters, load]);
 
@@ -815,18 +834,46 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     });
   };
 
-  const openSupplierDetail = (row: DecisionRow) => {
-    saveAnalyticsDetailSnapshot(buildAnalyticsDetailSnapshot({
-      table: "supplier-decision-hub",
-      recordId: String(row.supplierId),
-      title: row.supplierName,
-      subtitle: "Podrška odluci za dobavljače",
-      columns: resolvedDecisionColumns,
-      row,
-      metadata: [...toolbarFilters, ...toolbarMetadata],
-    }));
-    navigate(`/analitika/supplier-decision-hub/${row.supplierId}`, { state: { backgroundLocation: location } });
-  };
+  const openSupplierDetail = useCallback((row: DecisionRow) => {
+    detailAbortRef.current?.abort();
+    const controller = new AbortController();
+    detailAbortRef.current = controller;
+    const detailRequestId = ++detailRequestIdRef.current;
+
+    setDetailSupplierId(row.supplierId);
+    setSupplierDetails(null);
+    setSupplierDetailError(null);
+    setSupplierDetailLoading(true);
+
+    void getSupplierDecisionDetails(
+      row.supplierId,
+      {
+        fromDate: activeFilters.fromDate,
+        toDate: activeFilters.toDate,
+        seasonId: activeFilters.seasonId ?? undefined,
+        minRevenue: activeFilters.minRevenue ?? undefined,
+        onlyHighConfidence: activeFilters.onlyHighConfidence,
+        storeId: activeFilters.storeId,
+        dataScope: activeFilters.dataScope,
+      },
+      controller.signal,
+    ).then((details) => {
+      if (detailRequestId !== detailRequestIdRef.current || controller.signal.aborted) return;
+      setSupplierDetails(details);
+    }).catch((reason: unknown) => {
+      if (detailRequestId !== detailRequestIdRef.current || controller.signal.aborted) return;
+      const apiError = reason instanceof SupplierDecisionApiError ? reason : null;
+      setSupplierDetailError(getSafeAnalyticsErrorMessage(
+        apiError?.message ?? (reason instanceof Error ? reason.message : null),
+        apiError?.errorCode,
+        "Detalj dobavljača trenutno nije dostupan. Proverite kvalitet podataka i pokušajte ponovo.",
+      ));
+    }).finally(() => {
+      if (detailRequestId === detailRequestIdRef.current && !controller.signal.aborted) {
+        setSupplierDetailLoading(false);
+      }
+    });
+  }, [activeFilters.dataScope, activeFilters.fromDate, activeFilters.minRevenue, activeFilters.onlyHighConfidence, activeFilters.seasonId, activeFilters.storeId, activeFilters.toDate]);
 
   const addSupplierSignalToQueue = useCallback(async (row: DecisionRow) => {
     if (recommendationAllowed !== true) {
@@ -1434,6 +1481,13 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
           ) : null}
         </>
       ) : null}
+      <SupplierDetailDrawer
+        open={detailSupplierId !== null}
+        loading={supplierDetailLoading}
+        error={supplierDetailError}
+        details={supplierDetails}
+        onClose={closeSupplierDetail}
+      />
     </div>
   );
 }

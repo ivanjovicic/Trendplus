@@ -534,6 +534,112 @@ describe("SupplierDecisionHubPage", () => {
     expect(screen.getByText("Sažetak objašnjenja signala")).toBeInTheDocument();
   });
 
+  it("opens rich backend details with the active filter and trust provenance", async () => {
+    const detailUrls: URL[] = [];
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = requestUrl(input);
+
+      if (url.pathname === "/api/analytics/suppliers/decision-hub/summary") {
+        return jsonResponse(summaryResponse);
+      }
+
+      if (url.pathname === "/api/analytics/suppliers/decision-hub/ranking") {
+        return jsonResponse({
+          page: 1,
+          pageSize: 100,
+          totalCount: 2,
+          items: [rankingItem(1), rankingItem(2, 80_000)],
+          dataNote: summaryResponse.dataNote,
+        });
+      }
+
+      if (url.pathname === "/api/analytics/suppliers/decision-hub/1/details") {
+        detailUrls.push(url);
+        return jsonResponse({
+          supplierHeader: {
+            supplierId: 1,
+            supplierName: "Dobavljač 1",
+            periodFrom: "2026-04-13T00:00:00Z",
+            periodTo: "2026-05-12T00:00:00Z",
+            mlSupplierScore: 68,
+            aiExplanation: "Stabilan signal.",
+            topFeature1: "margin",
+            topFeature2: "sellthrough",
+            topFeature3: "stock",
+            supplierQualityIndex: 72,
+            recommendationCode: "EXPAND_SELECTIVELY",
+            confidenceScore: 74,
+            reliabilityPct: 78,
+            dataQualityStatus: "warning",
+            statusReason: "Signal zahteva proveru pokrivenosti.",
+            reasonCodes: ["coverage_gap"],
+          },
+          kpis: {
+            revenue: 100000,
+            units: 120,
+            fullPriceRevenueShare: 0.62,
+            fullPriceSellthrough: 0.48,
+            markdownRevenueShare: 0.24,
+            preMarkdownMarginPct: 0.34,
+            deadStockRate: 0.08,
+            unsoldStockValue: 12000,
+            repeatWinnerRate: 0.42,
+            capitalAtRisk: 12000,
+          },
+          categoryBreakdown: [],
+          winningArticles: [],
+          markdownDependentArticles: [],
+          blockedByOosArticles: [],
+          recommendationHistory: [],
+          trustMetadata: {
+            requestedFrom: "2026-05-01T00:00:00Z",
+            requestedTo: "2026-05-12T00:00:00Z",
+            requestedPeriodFrom: "2026-05-01T00:00:00Z",
+            requestedPeriodTo: "2026-05-12T00:00:00Z",
+            requestedDataset: "30d",
+            effectiveDataset: "90d",
+            effectivePeriodLabel: "Poslednjih 90 dana",
+            recommendationAllowed: false,
+            dataCoverageStatus: "warning",
+            usedFallback: true,
+          },
+          dataNote: "Koristi se pomoćni skup podataka.",
+          meta: {
+            success: true,
+            recommendationAllowed: false,
+            isPartial: true,
+            dataQualityStatus: "warning",
+          },
+        });
+      }
+
+      if (url.pathname === "/api/sezone") {
+        return jsonResponse([]);
+      }
+
+      return jsonResponse({ message: `Unhandled test request: ${url.pathname}` }, 404);
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+    renderPage();
+
+    const row = (await screen.findByText("Dobavljač 1")).closest("tr");
+    expect(row).not.toBeNull();
+    fireEvent.click(within(row!).getByRole("button", { name: "Detalji" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Otvori puni detalj" }));
+
+    expect(await screen.findByRole("heading", { name: "Dobavljač 1" })).toBeInTheDocument();
+    const drawer = screen.getByRole("complementary", { name: "Detalji dobavljača" });
+    expect(within(drawer).getByText("Skup podataka: 90d")).toBeInTheDocument();
+    expect(within(drawer).getByText("Traženi period: 01.05.2026. - 12.05.2026.")).toBeInTheDocument();
+    expect(within(drawer).getByText("Efektivni period: Poslednjih 90 dana")).toBeInTheDocument();
+    expect(within(drawer).getByText(/Konačna preporuka nije dozvoljena/i)).toBeInTheDocument();
+    expect(detailUrls).toHaveLength(1);
+    expect(detailUrls[0].searchParams.get("fromDate")).toBeTruthy();
+    expect(detailUrls[0].searchParams.get("toDate")).toBeTruthy();
+    expect(detailUrls[0].searchParams.get("dataScope")).toBe("all");
+  });
+
   it("shows error state instead of zero KPIs when scorecard meta fails", async () => {
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
       const url = requestUrl(input);

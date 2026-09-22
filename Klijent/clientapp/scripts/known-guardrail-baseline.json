@@ -41,13 +41,13 @@
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "confidencePct_assign",
-      "line": 978,
+      "line": 1025,
       "reason": "Existing backend confidence projection requires a reviewed authority exception."
     },
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "reliabilityPct_assign",
-      "line": 979,
+      "line": 1026,
       "reason": "Existing backend reliability projection requires a reviewed authority exception."
     },
     {
@@ -155,25 +155,25 @@
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 513,
+      "line": 532,
       "reason": "Existing supplier decision fallback requires a reviewed backend-authority exception."
     },
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "page_percentage_formula",
-      "line": 129,
+      "line": 131,
       "reason": "Existing supplier-share projection requires a reviewed backend-authority exception."
     },
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "page_reduce_kpi",
-      "line": 449,
+      "line": 468,
       "reason": "Existing supplier aggregation predates the backend KPI ownership contract."
     },
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "sorted_rows_kpi_reduce",
-      "line": 504,
+      "line": 523,
       "reason": "Existing sorted supplier aggregation requires a reviewed KPI ownership exception."
     },
     {

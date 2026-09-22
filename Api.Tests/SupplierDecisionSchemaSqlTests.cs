@@ -563,6 +563,20 @@ public sealed class SupplierDecisionSchemaSqlTests
     }
 
     [Fact]
+    public void SupplierDecisionRichDetailsReuseCanonicalTrustMetadataAndResponseMeta()
+    {
+        var endpoint = ReadRepoFile("Api/Endpoints/SupplierDecisionHubEndpoints.cs");
+
+        Assert.Contains("BuildDetailsResponseAsync(analyticsConnectionString, activeFilters, dataset, supplier, ct)", endpoint);
+        Assert.Contains("var trustMetadata = BuildScorecardTrustMetadata(dataset, filters);", endpoint);
+        Assert.Contains("BuildResponseMeta(dataset.Rows, trustMetadata)", endpoint);
+        Assert.Contains("Meta = ApplyCorrelationId(response.Response.Meta, ResolveCorrelationId(httpContext))", endpoint);
+        Assert.Contains("ScorecardTrustMetadata? TrustMetadata = null", endpoint);
+        Assert.Contains("string? DataNote = null", endpoint);
+        Assert.Contains("AnalyticsResponseMetaDto? Meta = null", endpoint);
+    }
+
+    [Fact]
     public void SupplierDecisionReaderNullabilityContractKeepsHighRiskFieldsExplicit()
     {
         var endpoint = ReadRepoFile("Api/Endpoints/SupplierDecisionHubEndpoints.cs");
