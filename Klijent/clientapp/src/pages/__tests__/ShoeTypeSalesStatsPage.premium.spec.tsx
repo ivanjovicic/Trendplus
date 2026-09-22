@@ -234,7 +234,7 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     expect(card).not.toHaveTextContent("redni prosek");
   });
 
-  it("labels the row average as non-authoritative when the backend aggregate is unavailable", async () => {
+  it("does not reconstruct a margin average when the backend aggregate is unavailable", async () => {
     const baseResponse = response();
     vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
       shoeTypes: [
@@ -256,11 +256,11 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
       </MemoryRouter>,
     );
 
-    const value = await screen.findByText("30,0%");
-    const card = value.closest("article");
-    expect(card).not.toBeNull();
-    expect(card).toHaveTextContent("Prosečna marža (redni prosek)");
-    expect(card).toHaveAttribute("data-note", "Neautoritativni redni prosek marže po tipovima obuće.");
+    const card = await screen.findByText("Prosečna marža");
+    const cardArticle = card.closest("article");
+    expect(cardArticle).not.toBeNull();
+    expect(cardArticle).toHaveTextContent("N/A");
+    expect(cardArticle).not.toHaveTextContent("redni prosek");
   });
 
   it.each([
@@ -717,7 +717,7 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     const detailPanel = detailHeading.closest("section");
     expect(detailPanel).not.toBeNull();
     expect(within(detailPanel!).getByText("Udeo u prometu").parentElement).toHaveTextContent("N/A");
-    expect(within(detailPanel!).getByText("Pre/post pokrice prometa").parentElement).toHaveTextContent("N/A");
+    expect(within(detailPanel!).getByText("Pre/post pokriće prometa").parentElement).toHaveTextContent("N/A");
   });
 
   it("does not recompute share when the backend omits it", async () => {
@@ -825,7 +825,7 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     expect(within(detailPanel!).getByText("Posle nivelacije promet").parentElement).toHaveTextContent(/30\.000/);
     expect(within(detailPanel!).getByText("Pre nivo količina").parentElement).toHaveTextContent(/9.*kom/);
     expect(within(detailPanel!).getByText("Posle nivo količina").parentElement).toHaveTextContent(/3.*kom/);
-    expect(within(detailPanel!).getByText("Nivelacija impact prometa").parentElement).toHaveTextContent("N/A");
+    expect(within(detailPanel!).getByText("Uticaj nivelacije na promet").parentElement).toHaveTextContent("N/A");
   });
 
   it("keeps concentration chart from inventing invalid Ostali share percentages", async () => {
@@ -916,7 +916,7 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     const detailPanel = detailHeading.closest("section");
     expect(detailPanel).not.toBeNull();
     expect(within(detailPanel!).getByText("Udeo u količini").parentElement).toHaveTextContent("0,00%");
-    expect(within(detailPanel!).getByText("Pre/post pokrice prometa").parentElement).toHaveTextContent("0,0%");
+    expect(within(detailPanel!).getByText("Pre/post pokriće prometa").parentElement).toHaveTextContent("0,0%");
   });
 
   it("refreshes the default 30d preset window on reset after calendar rollover", async () => {

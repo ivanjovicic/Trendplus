@@ -152,8 +152,28 @@ public class AnalyticsShoeTypeSalesIntegrationTests : IClassFixture<WebApplicati
             var firstItem = shoeTypes[0];
             Assert.True(firstItem.TryGetProperty("marginPct", out _), "Missing 'marginPct' field");
             Assert.True(firstItem.TryGetProperty("marginContribution", out _), "Missing 'marginContribution' field");
+            Assert.True(firstItem.TryGetProperty("costCoveredRevenue", out _), "Missing 'costCoveredRevenue' field");
+            Assert.True(firstItem.TryGetProperty("costCoveredRevenueSharePct", out _), "Missing 'costCoveredRevenueSharePct' field");
+            Assert.True(firstItem.TryGetProperty("historicalCostCoveragePct", out _), "Missing 'historicalCostCoveragePct' field");
+            Assert.True(firstItem.TryGetProperty("noCostCoveragePct", out _), "Missing 'noCostCoveragePct' field");
             Assert.True(firstItem.TryGetProperty("sharePct", out _), "Missing 'sharePct' field");
+
+            var recommendation = firstItem.GetProperty("recommendation");
+            Assert.True(recommendation.TryGetProperty("status", out _), "Missing recommendation 'status' field");
+            Assert.True(recommendation.TryGetProperty("label", out _), "Missing recommendation 'label' field");
+            Assert.True(recommendation.TryGetProperty("summary", out _), "Missing recommendation 'summary' field");
+            Assert.True(recommendation.TryGetProperty("recommendationAllowed", out _), "Missing recommendation 'recommendationAllowed' field");
+            Assert.True(recommendation.TryGetProperty("reasonCodes", out _), "Missing recommendation 'reasonCodes' field");
         }
+
+        var totals = root.GetProperty("totals");
+        Assert.True(totals.TryGetProperty("prosecnaMarza", out _), "Missing authoritative 'prosecnaMarza' field");
+        Assert.True(totals.TryGetProperty("weightedMarginRevenue", out _), "Missing 'weightedMarginRevenue' field");
+
+        var dataQuality = root.GetProperty("dataQuality");
+        Assert.True(dataQuality.TryGetProperty("costCoveredRevenue", out _), "Missing 'costCoveredRevenue' quality field");
+        Assert.True(dataQuality.TryGetProperty("historicalCostRevenueSharePct", out _), "Missing historical cost quality field");
+        Assert.True(dataQuality.TryGetProperty("noCostRevenueSharePct", out _), "Missing no-cost quality field");
     }
 
     [Fact(DisplayName = "ShoeType endpoint includes Nivelacija split metrics")]

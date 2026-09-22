@@ -136,6 +136,20 @@ public sealed class MarginAccumulator
 
 public static class AnalyticsMarginPolicy
 {
+    public static double? ResolveWeightedMarginPct(
+        IEnumerable<(decimal RevenueWithCost, decimal MarginContribution)> evidence)
+    {
+        var rows = evidence.ToList();
+        var coveredRevenue = rows.Sum(row => row.RevenueWithCost);
+        if (coveredRevenue <= 0m)
+        {
+            return null;
+        }
+
+        var marginPct = (double)(rows.Sum(row => row.MarginContribution) / coveredRevenue * 100m);
+        return double.IsFinite(marginPct) ? Math.Round(marginPct, 2) : null;
+    }
+
     public static ResolvedUnitCost ResolveUnitCostWithSource(
         decimal? saleLineCost,
         decimal? productCostRsd,

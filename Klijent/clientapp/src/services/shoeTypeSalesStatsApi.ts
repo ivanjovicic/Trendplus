@@ -27,11 +27,13 @@ export interface ShoeTypeSalesStat {
   brojArtikalaSaNivelacijom: number;
   brojArtikalaUkupno: number;
   revenueWithCost: number;
+  costCoveredRevenue?: number;
+  costCoveredRevenueSharePct?: number | null;
   estimatedCostRevenue: number;
   marginContribution: number;
   marginDataCoveragePct: number | null;
   fallbackCostCoveragePct: number | null;
-  marginPct: number;
+  marginPct: number | null;
   // Cost quality breakdown
   totalCost?: number | null;
   historicalCostRevenue?: number;
@@ -68,6 +70,7 @@ export interface ShoeTypeSalesTotals {
   ukupanMarzniDoprinos: number;
   ukupanTrosak?: number;
   prosecnaMarza?: number | null;
+  weightedMarginRevenue?: number | null;
   historicalCostCoveragePct?: number;
   estimatedCostCoveragePct?: number;
   noCostCoveragePct?: number;
@@ -104,8 +107,16 @@ export interface ShoeTypeSalesTotals {
 }
 
 export interface ShoeTypeSalesDataQuality {
+  costCoveredRevenue?: number;
+  costCoveredRevenueSharePct?: number | null;
   missingCostRevenue: number;
   missingCostRevenueSharePct: number | null;
+  noCostRevenue?: number;
+  noCostRevenueSharePct?: number | null;
+  historicalCostRevenue?: number;
+  historicalCostRevenueSharePct?: number | null;
+  snapshotCostRevenue?: number;
+  snapshotCostRevenueSharePct?: number | null;
   estimatedCostRevenue?: number;
   estimatedCostRevenueSharePct?: number | null;
   unknownTypeRevenue: number;

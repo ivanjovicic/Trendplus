@@ -2325,23 +2325,27 @@ public static class AllEndpoints
                             ukupnaKolicina = totalQty,
                             brojArtikalaSaNivelacijom = splitSnapshot.ArticleCountWithNivelacija,
                             brojArtikalaUkupno = articleIds.Count,
-                            revenueWithCost = marginSnapshot.HistoricalCostRevenue,
+                            revenueWithCost = marginSnapshot.RevenueWithCost,
+                            costCoveredRevenue = marginSnapshot.RevenueWithCost,
+                            costCoveredRevenueSharePct = marginSnapshot.MarginDataCoveragePct,
                             estimatedCostRevenue = marginSnapshot.EstimatedCostRevenue,
                             marginContribution = marginSnapshot.MarginContribution,
-                            marginDataCoveragePct = marginSnapshot.HistoricalMarginCoveragePct,
+                            marginDataCoveragePct = marginSnapshot.MarginDataCoveragePct,
                             fallbackCostCoveragePct = marginSnapshot.FallbackCostCoveragePct,
-                            marginPct = marginSnapshot.MarginPct,
+                            marginPct = marginSnapshot.RevenueWithCost > 0m
+                                ? (double?)marginSnapshot.MarginPct
+                                : null,
                             // Cost quality breakdown
                             totalCost = marginSnapshot.TotalCost,
                             historicalCostRevenue = marginSnapshot.HistoricalCostRevenue,
-                            historicalCostCoveragePct = marginSnapshot.HistoricalMarginCoveragePct ?? 0d,
-                            estimatedCostCoveragePct = marginSnapshot.FallbackCostCoveragePct ?? 0d,
+                            historicalCostCoveragePct = marginSnapshot.HistoricalMarginCoveragePct,
+                            estimatedCostCoveragePct = marginSnapshot.FallbackCostCoveragePct,
                             snapshotCostRevenue = marginSnapshot.SnapshotCostRevenue,
-                            snapshotCostCoveragePct = marginSnapshot.SnapshotCostCoveragePct ?? 0d,
+                            snapshotCostCoveragePct = marginSnapshot.SnapshotCostCoveragePct,
                             noCostRevenue = Math.Round(totalRevenue - marginSnapshot.RevenueWithCost, 2),
                             noCostCoveragePct = totalRevenue > 0m
                                 ? Math.Round((double)((totalRevenue - marginSnapshot.RevenueWithCost) / totalRevenue * 100m), 2)
-                                : 0d,
+                                : (double?)null,
                             isEstimatedMargin = (marginSnapshot.FallbackCostCoveragePct ?? 0) > (marginSnapshot.HistoricalMarginCoveragePct ?? 0),
                             marginQualityLabel = marginQuality.Label,
                             marginQualityTier = marginQuality.Tier,
@@ -2378,18 +2382,36 @@ public static class AllEndpoints
                 var sumPostRevenue = shoeTypes.Sum(r => r.posleNivelacijePromet);
                 var totalRevenue = shoeTypes.Sum(r => r.ukupanPromet);
                 var comparableRevenueWithNivelacijaSplit = shoeTypes.Sum(r => r.comparableRevenueWithNivelacijaSplit);
-                var totalRevenueWithHistoricalCost = shoeTypes.Sum(r => r.revenueWithCost);
+                var totalCostCoveredRevenue = shoeTypes.Sum(r => r.costCoveredRevenue);
+                var historicalCostRevenue = shoeTypes.Sum(r => r.historicalCostRevenue);
+                var snapshotCostRevenue = shoeTypes.Sum(r => r.snapshotCostRevenue);
                 var estimatedCostRevenue = shoeTypes.Sum(r => r.estimatedCostRevenue);
-                var missingCostRevenue = totalRevenue - totalRevenueWithHistoricalCost;
+                var missingCostRevenue = totalRevenue - totalCostCoveredRevenue;
                 var unknownTypeRevenue = shoeTypes
                     .Where(r => string.Equals(r.tipObuceNaziv, "Nepoznato", StringComparison.OrdinalIgnoreCase))
                     .Sum(r => r.ukupanPromet);
 
                 var dataQuality = new
                 {
+                    costCoveredRevenue = Math.Round(totalCostCoveredRevenue, 2),
+                    costCoveredRevenueSharePct = totalRevenue > 0m
+                        ? Math.Round((double)(totalCostCoveredRevenue / totalRevenue * 100m), 2)
+                        : (double?)null,
                     missingCostRevenue = Math.Round(missingCostRevenue, 2),
                     missingCostRevenueSharePct = totalRevenue > 0m
                         ? Math.Round((double)(missingCostRevenue / totalRevenue * 100m), 2)
+                        : (double?)null,
+                    noCostRevenue = Math.Round(missingCostRevenue, 2),
+                    noCostRevenueSharePct = totalRevenue > 0m
+                        ? Math.Round((double)(missingCostRevenue / totalRevenue * 100m), 2)
+                        : (double?)null,
+                    historicalCostRevenue = Math.Round(historicalCostRevenue, 2),
+                    historicalCostRevenueSharePct = totalRevenue > 0m
+                        ? Math.Round((double)(historicalCostRevenue / totalRevenue * 100m), 2)
+                        : (double?)null,
+                    snapshotCostRevenue = Math.Round(snapshotCostRevenue, 2),
+                    snapshotCostRevenueSharePct = totalRevenue > 0m
+                        ? Math.Round((double)(snapshotCostRevenue / totalRevenue * 100m), 2)
                         : (double?)null,
                     estimatedCostRevenue = Math.Round(estimatedCostRevenue, 2),
                     estimatedCostRevenueSharePct = totalRevenue > 0m
@@ -2407,11 +2429,10 @@ public static class AllEndpoints
 
                 var knownShoeTypeMarginValues = shoeTypes
                     .Where(row => !string.Equals(row.tipObuceNaziv, "Nepoznato", StringComparison.OrdinalIgnoreCase))
-                    .Select(row => row.marginPct)
+                    .Select(row => (row.costCoveredRevenue, row.marginContribution))
                     .ToList();
-                var averageMarginPct = knownShoeTypeMarginValues.Count > 0
-                    ? knownShoeTypeMarginValues.Average()
-                    : (double?)null;
+                var averageMarginPct = AnalyticsMarginPolicy.ResolveWeightedMarginPct(knownShoeTypeMarginValues);
+                var weightedMarginRevenue = knownShoeTypeMarginValues.Sum(row => row.costCoveredRevenue);
                 var unknownTypeSharePct = dataQuality.unknownTypeRevenueSharePct ?? 0d;
 
                 var shoeTypesWithRecommendation = shoeTypes
@@ -2433,8 +2454,8 @@ public static class AllEndpoints
                             TotalUnits: row.ukupnaKolicina,
                             ItemCount: row.brojArtikalaUkupno,
                             SharePct: sharePctForDecision,
-                            MarginPct: row.marginPct,
-                            MarginCoveragePct: row.marginDataCoveragePct,
+                            MarginPct: row.marginPct ?? 0d,
+                            MarginCoveragePct: row.costCoveredRevenueSharePct,
                             SplitCoveragePct: row.prePostNivelacijaRevenueCoveragePct,
                             PopRevenueChangePct: row.popRevenueChangePct,
                             PopUnitsChangePct: row.popUnitsChangePct,
@@ -2462,6 +2483,8 @@ public static class AllEndpoints
                             row.brojArtikalaSaNivelacijom,
                             row.brojArtikalaUkupno,
                             row.revenueWithCost,
+                            row.costCoveredRevenue,
+                            row.costCoveredRevenueSharePct,
                             row.estimatedCostRevenue,
                             row.marginContribution,
                             row.marginDataCoveragePct,
@@ -2510,17 +2533,21 @@ public static class AllEndpoints
 
                 var totalHistPct = totalRevenue > 0m
                     ? Math.Round((double)(shoeTypes.Sum(r => r.historicalCostRevenue) / totalRevenue * 100m), 2)
-                    : 0d;
+                    : (double?)null;
                 var totalSnapshotPct2 = totalRevenue > 0m
                     ? Math.Round((double)(shoeTypes.Sum(r => r.snapshotCostRevenue) / totalRevenue * 100m), 2)
-                    : 0d;
+                    : (double?)null;
                 var totalEstPct = totalRevenue > 0m
                     ? Math.Round((double)(shoeTypes.Sum(r => r.estimatedCostRevenue) / totalRevenue * 100m), 2)
-                    : 0d;
+                    : (double?)null;
                 var totalNoCostPct = totalRevenue > 0m
                     ? Math.Round((double)((totalRevenue - shoeTypes.Sum(r => r.historicalCostRevenue) - shoeTypes.Sum(r => r.snapshotCostRevenue) - shoeTypes.Sum(r => r.estimatedCostRevenue)) / totalRevenue * 100m), 2)
-                    : 0d;
-                var totalMarginQuality = MarginQualityClassifier.Classify(totalHistPct, totalEstPct + totalSnapshotPct2, totalNoCostPct, totalHistPct + totalEstPct + totalSnapshotPct2);
+                    : (double?)null;
+                var totalMarginQuality = MarginQualityClassifier.Classify(
+                    totalHistPct ?? 0d,
+                    (totalEstPct ?? 0d) + (totalSnapshotPct2 ?? 0d),
+                    totalNoCostPct ?? 0d,
+                    (totalHistPct ?? 0d) + (totalEstPct ?? 0d) + (totalSnapshotPct2 ?? 0d));
 
                 var totals = new
                 {
@@ -2528,6 +2555,7 @@ public static class AllEndpoints
                     ukupanMarzniDoprinos = shoeTypes.Sum(r => r.marginContribution),
                     ukupanTrosak = shoeTypes.Sum(r => r.totalCost),
                     prosecnaMarza = averageMarginPct.HasValue ? Math.Round(averageMarginPct.Value, 2) : (double?)null,
+                    weightedMarginRevenue = Math.Round(weightedMarginRevenue, 2),
                     historicalCostCoveragePct = totalHistPct,
                     estimatedCostCoveragePct = totalEstPct,
                     noCostCoveragePct = totalNoCostPct,

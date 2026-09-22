@@ -136,6 +136,23 @@ public sealed class AnalyticsMarginPolicyTests
     }
 
     [Fact]
+    public void WeightedMarginBaseline_UsesCoveredRevenueInsteadOfSimpleRowAverage()
+    {
+        var weighted = AnalyticsMarginPolicy.ResolveWeightedMarginPct(new[]
+        {
+            (RevenueWithCost: 900m, MarginContribution: 90m),
+            (RevenueWithCost: 100m, MarginContribution: 50m),
+        });
+
+        Assert.Equal(14d, weighted);
+        Assert.NotEqual(50d, weighted);
+        Assert.Null(AnalyticsMarginPolicy.ResolveWeightedMarginPct(new[]
+        {
+            (RevenueWithCost: 0m, MarginContribution: 10m),
+        }));
+    }
+
+    [Fact]
     public void ColorSignedEvidencePolicy_PreservesSignedAmounts_AndNullsInvalidCoverage()
     {
         Assert.Equal(50d, ColorSignedEvidencePolicy.ResolveNonNegativePercentage(50m, 100m));
