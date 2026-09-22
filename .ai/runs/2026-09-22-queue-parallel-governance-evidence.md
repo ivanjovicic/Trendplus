@@ -6,8 +6,8 @@ Date: 2026-09-22
 Agent/tool: ChatGPT GPT-5.6 Sol via GitHub connector
 Delivery target: main
 Working branch / PR: direct collision-safe main delivery; no PR
-Main commit SHA: ecbe35576cabbdfc1aaf16276dd10ee90db7c0e7
-Main verification: passed — origin/main is exactly ecbe35576cabbdfc1aaf16276dd10ee90db7c0e7
+Main commit SHA: 093c063e6b8d0714d908989e6f4fe6f3bc3714ff
+Main verification: passed — origin/main was exactly 093c063e6b8d0714d908989e6f4fe6f3bc3714ff before this evidence-only synchronization commit
 Evidence state: synchronized
 
 ## Interpreted outcome
@@ -46,8 +46,10 @@ Replace the accidental repository-wide “one READY per program” serialization
 
 - Atomic non-force delivery to `main` succeeded for documentation commit `61fcdc24d32f6f776bb13b5e4cb7b2187755926d`.
 - Atomic non-force delivery to `main` succeeded for validator commit `ecbe35576cabbdfc1aaf16276dd10ee90db7c0e7`.
-- Fresh GitHub ref/compare verification confirmed that current `origin/main` contains the validator implementation commit.
-- GitHub Actions Planning Governance run `35703594509` was created for `ecbe35576cabbdfc1aaf16276dd10ee90db7c0e7`; at evidence-write time its validation job was still queued, so it is not claimed green here.
+- Initial Planning Governance run `35703594509` exposed one stale self-test assertion after the validator wording changed; no production or queue-state failure was involved.
+- Correction commit `093c063e6b8d0714d908989e6f4fe6f3bc3714ff` aligned that self-test with the new zero-active (`READY/IN_PROGRESS`) wording.
+- Planning Governance run `35703806597` then passed completely: agent instruction self-test and live check, prompt-queue self-test and live check, planning-architecture self-test and live check.
+- Final remote outputs: 12 canonical instruction files checked; 516 prompt-queue tasks checked; 78 planning tasks checked.
 
 ## Validation not run
 
@@ -57,7 +59,7 @@ Replace the accidental repository-wide “one READY per program” serialization
 ## Risks
 
 - The new model intentionally permits more concurrency, so task authors must keep `Feature family`, `Parallel-safe`, dependencies and path ownership accurate.
-- A queued remote governance job may still expose an implementation mistake; if it turns red, treat the failing validator output as the next correction target rather than reverting to one-READY serialization.
+- Governance is green after the self-test correction. Future failures should be treated as specific metadata/collision defects rather than a reason to restore program-wide one-READY serialization.
 
 ## Next
 
