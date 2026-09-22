@@ -2,13 +2,14 @@
 
 Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none; RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE.
+Current READY prompt: none; RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE.
 
 Owner completion 2026-09-22: under the user's direct last-commits audit, `RQ393` was delivered directly to `main` in `3b635fe813e0e55f843236d55025c52c030e853d`; Color recommendations now use a covered-revenue-weighted margin baseline, unknown-share evidence remains nullable, historical/fallback/no-cost coverage is separated, and the affected screens use Serbian decision labels. Run log: `.ai/runs/2026-09-22-direct-last-commits-audit-evidence.md`.
 Owner promotion 2026-09-22: after `RQ393` reached DONE and `RQ389`/`RQ392`/`RQ393` comparable-cohort dependencies were verified on current `main`, `RQ394` moved `WAITING -> READY` as the next dependency-complete P1 Color aggregate-cohort prompt; collision checks are clear.
 Owner claim 2026-09-22: `RQ394` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ394-codex.lock.md`.
 Owner completion 2026-09-22: `RQ394` was delivered directly to `main` in `e487033c6063078f0c41b747663483db32bae0d7`; Color pre/post totals and impacts now use the comparable article cohort, broad observed evidence is explicit, aggregate cohort metadata/provenance is exposed, and trust/recommendation permission fails closed when the cohort is insufficient. Run log: `.ai/runs/2026-09-22-RQ394-evidence.md`. Evidence state: synchronized. `RQ395`-`RQ400` remain WAITING; no next prompt was promoted in this run.
 Owner completion 2026-09-22: direct latest-commits audit closed the confirmed `RQ395` Color runtime/schema and safe-error gap; the implementation was delivered directly to `main` in `77288107da00658db33f37231157ae61512dd652`. Color now rejects incomplete decision payloads before page derivation and returns safe traceable errors. Run log: `.ai/runs/2026-09-22-direct-latest-commits-audit-evidence.md`. Evidence state: synchronized. `RQ396`-`RQ400` remain WAITING for their independent cache/detail/identity/provenance/score contracts.
+Owner completion 2026-09-22: direct risk audit closed `RQ396`'s Color cache/freshness gap; the implementation was delivered directly to `main` in `d30822d9110ce1afba23453e9683264ddafd928d`. Color now uses the canonical cache policy/key, import and data-quality refresh invalidation, source-refresh/cache-generation metadata and fail-closed stale warnings. Run log: `.ai/runs/2026-09-22-direct-risk-audit-rq396-evidence.md`. Evidence state: synchronized. `RQ397`-`RQ400` remain WAITING for their independent detail/identity/provenance/score contracts.
 
 Owner audit 2026-09-22: under the user's direct Supplier Decision Hub screen/backend audit request, `RQ401` became the current Supplier Decision READY prompt for cache-schema/effective-period compatibility. `RQ402`-`RQ405` were added as WAITING detail, filter-parity, effective-period and localization follow-ups. Existing RQ READY lanes remain independently runnable under the current queue governance.
 Owner claim 2026-09-22: `RQ401` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ401-codex.lock.md`.
@@ -8347,7 +8348,7 @@ When prior 7-day rolling units = 0 and current > 0, `demand_acceleration` is fix
 
 ## RQ190 - Forecast provenance freshness aggregated optimistically
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend/contract/tests
 Feature family: forecast-snapshot-freshness-aggregation
@@ -21829,6 +21830,23 @@ Color Sales uses a raw `IMemoryCache` key with a five-minute TTL instead of the 
 
 - Reuse `RQ187`, `RQ205`, `RQ266` and shared cache policy conventions.
 - Coordinate with `RQ389` so cache lineage includes the effective event/sales scope.
+
+### Completion note
+
+- Date: 2026-09-22
+- Status: DONE
+- Completion: Delivered directly to `main` in `d30822d9110ce1afba23453e9683264ddafd928d`; Color now uses the shared analytics cache policy and canonical dimensions, invalidates on imports and data-quality refreshes, preserves source-refresh/cache-generation lineage and marks stale or metadata-missing payloads as degraded instead of fresh.
+- Changed files: `Api/Endpoints/AllEndpoints.cs`, `Api/Models/ColorSalesStatsCacheEntry.cs`, `Infrastructure/Services/Caching/AnalyticsCachePolicy.cs`, `Infrastructure/Services/Caching/IAnalyticsCacheService.cs`, `Workers/AnalyticsDataQualityHealthWorker.cs`, focused backend/frontend contract tests.
+- Checks run: focused backend tests 26/26; focused frontend Color/API tests 28/28; `dotnet build .\\Api\\Api.csproj --no-restore -v:q`; `npm run check:analytics-guardrails`; `git diff --check`.
+- Checks not run: full backend/frontend suites, live API/provider/database replay, browser smoke and remote CI inspection.
+- Missed: generic Color detail trust, canonical identity, source/metric provenance and authoritative decision score remain in `RQ397`-`RQ400`; shared localization remains routed to `RQ306`/`RQ325`.
+- Run log: `.ai/runs/2026-09-22-direct-risk-audit-rq396-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `d30822d9110ce1afba23453e9683264ddafd928d`
+- Main verification: passed - local `main` and `origin/main` resolve to the same SHA and `origin/main` contains the implementation.
+- Residual risk: existing analyzer warnings remain; live/deployed and remote CI proof are not inspected.
+- Follow-up: `RQ397`-`RQ400` remain WAITING under their declared owner/dependency boundaries; no new READY prompt was promoted in this run.
 
 ---
 
