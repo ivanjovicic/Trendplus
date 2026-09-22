@@ -2,7 +2,7 @@
 
 Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none; RQ375, RQ376, RQ377, RQ385, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE.
+Current READY prompt: none; RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE.
 
 Owner completion 2026-09-22: under the user's direct last-commits audit, `RQ393` was delivered directly to `main` in `3b635fe813e0e55f843236d55025c52c030e853d`; Color recommendations now use a covered-revenue-weighted margin baseline, unknown-share evidence remains nullable, historical/fallback/no-cost coverage is separated, and the affected screens use Serbian decision labels. Run log: `.ai/runs/2026-09-22-direct-last-commits-audit-evidence.md`.
 
@@ -34,6 +34,9 @@ Owner claim 2026-09-22: `RQ377` transitioned `READY -> IN_PROGRESS` in this work
 Owner completion 2026-09-22: `RQ377` delivered directly to `main` in `c97c3dac10256f20d422d4cb27765c805b00e5b6`; Shoe Type generic detail now preserves PoP, backend recommendation/trust gate/reasons, quality, requested/effective period, scope and snapshot/fallback provenance, while canonical unknown identity resolves server-side and invalid unknown IDs return 404. Run log: `.ai/runs/2026-09-22-RQ377-evidence.md`. Evidence state: synchronized. No next prompt was promoted in this run.
 Owner claim 2026-09-22: `RQ385` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ385-codex.lock.md`.
 Owner completion 2026-09-22: `RQ385` delivered directly to `main` with implementation `bb6158f003bfd535a3211430970b30abbc761644`; current `origin/main` contains this SHA and the synchronized closure commits. Scoped Pre/Post fact queries, scope-isolated main/options caches, backend provenance and frontend fail-closed validation are delivered. Run log: `.ai/runs/2026-09-22-RQ385-evidence.md`. Evidence state: synchronized.
+Owner promotion 2026-09-22: after `RQ385` reached DONE and its scope/provenance dependency was verified, `RQ386` moved `WAITING -> READY` as the next dependency-complete P1 Pre/Post cohort/denominator prompt; `RQ387` remains sequenced behind the runtime-safe contract work.
+Owner claim 2026-09-22: `RQ386` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ386-codex.lock.md`.
+Owner completion 2026-09-22: `RQ386` delivered directly to `main` in `81ba56eae4090b144d07dbb0617b6679fe7dd678`; Pre/Post now separates raw/event-deduplicated/article-cohort/returned-detail denominators, uses the latest-event-per-article cohort for comparable aggregate and recommendation evidence, and exposes explicit cohort/truncation provenance. Run log: `.ai/runs/2026-09-22-RQ386-evidence.md`. Evidence state: synchronized. `RQ387` remains sequenced behind the runtime-safe contract work; no next prompt was promoted in this run.
 Owner claim 2026-09-22: `RQ388` transitioned `READY -> IN_PROGRESS` in this workspace after dependency and collision checks; local runtime lock `.ai/task-locks/RQ388-codex.lock.md`.
 Owner completion 2026-09-22: `RQ388` delivered directly to `main` in `a9fb58a6ce555ce1b4568dfefb5de497a5c7dfac`; global Pre-Nivelacija status/high-priority counts now come from the full filtered candidate universe, the high-priority band includes insufficient-data rows consistently, and visible-page counts are explicitly labelled in table/export/detail metadata. Run log: `.ai/runs/2026-09-22-RQ388-evidence.md`. Evidence state: synchronized. Follow-up: continue with `RQ389`.
 Owner claim 2026-09-22: `RQ389` transitioned `READY -> IN_PROGRESS` in this workspace after dependency and collision checks; local runtime lock `.ai/task-locks/RQ389-codex.lock.md`.
@@ -1414,6 +1417,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ378 | WAITING | supplier-sales-margin-quality-contract | Align Supplier weighted margin benchmark and cost-source semantics |
 | RQ379 | WAITING | supplier-sales-runtime-schema | Add fail-closed runtime validation for Supplier Sales decision payload |
 | RQ380 | WAITING | supplier-sales-prepost-comparable-aggregate | Align Supplier total pre/post impact with the comparable cohort |
+| RQ386 | DONE | pre-post-cohort-denominators | Reconcile Pre/Post event cohort, cap and denominator semantics |
 | RQ388 | DONE | pre-nivelacija-population-parity | Align Pre-Nivelacija global KPIs with the full candidate population |
 | RQ389 | DONE | color-scope-event-lineage | Align Color store/data-origin scope with nivelacija event lineage |
 | RQ390 | DONE | pre-nivelacija-scoring-window | Bound Pre-Nivelacija scoring history and signed-sales denominator semantics |
@@ -21050,7 +21054,7 @@ Reproduction: select `imported`/`existing` or a specific store, compare the resp
 
 ## RQ386 - Reconcile Pre/Post event cohort, cap and denominator semantics
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend-contract/frontend/trust/tests
 Feature family: pre-post-cohort-denominators
@@ -21108,6 +21112,24 @@ Reproduction: request more matching events than `maxRows`, or include one new/no
 
 - Depends on the scope/provenance decisions in `RQ385` when store/data origin changes the cohort.
 - Coordinate with the broader partial `RQ140` causal-comparability evidence; do not silently broaden this into the Supplier Sales `RQ380` owner.
+
+### Completion note
+
+- Date: 2026-09-22
+- Status: DONE
+- Completion: Delivered the canonical `latest_event_per_article` cohort, removed pre-aggregation detail caps, separated raw/event-deduplicated/cohort/returned/truncated/comparable denominators, and aligned Pre/Post totals, vendor/category/price-direction aggregates and recommendation evidence to the full comparable cohort.
+- Changed files: `Api/Endpoints/AllEndpoints.cs`; `Api/Models/VendorSalesNivelacijaModels.cs`; `Api/Services/VendorSalesNivelacijaCohortPolicy.cs`; `Api.Tests/SupplierDecisionSchemaSqlTests.cs`; `Api.Tests/VendorSalesNivelacijaCohortPolicyTests.cs`; `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`; `Klijent/clientapp/src/services/vendorSalesNivelacijaApi.ts`; `Klijent/clientapp/src/utils/vendorSalesDataQuality.ts`; `Klijent/clientapp/src/utils/__tests__/vendorSalesDataQuality.spec.ts`.
+- Checks run: API build; targeted backend tests 37/37; frontend utility tests 12/12; analytics guardrails/encoding/typecheck; Vite production build; `git diff --check`.
+- Checks not run: live PostgreSQL/provider/browser/export proof, full repository suites and remote CI because the live integration environment was not enabled and focused proof was sufficient for the scoped change.
+- Run log: `.ai/runs/2026-09-22-RQ386-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `81ba56eae4090b144d07dbb0617b6679fe7dd678`
+- Main verification: passed - `origin/main` contains `81ba56eae4090b144d07dbb0617b6679fe7dd678`
+- Missed: no known scoped omission; live data and browser verification remain unavailable.
+- Follow-up: `RQ387` remains sequenced behind the runtime-safe contract work; no next prompt was promoted in this run.
+- Residual risk: uncapped source loading may require production-volume profiling; existing project warnings and the frontend chunk-size warning remain.
+- Prompt defect / scope repair: the original endpoint used one capped list for both detail and aggregate semantics; the implementation preserves the existing response shape while adding explicit cohort/truncation metadata and a same-owner policy helper instead of widening into RQ387 error-contract work.
 
 ---
 
