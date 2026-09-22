@@ -8,7 +8,7 @@ Owner audit 2026-09-22: under the user's direct Supplier Decision Hub screen/bac
 Owner claim 2026-09-22: `RQ401` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ401-codex.lock.md`.
 Owner completion 2026-09-22: `RQ401` delivered directly to `main` in `da55fc1625d7f5db58fea56806f1e9613f57cb77` with per-window cache capability gates, required projection-column validation, conservative post-signal coverage handling, all-time evidence-column parity and accurate unavailable effective-period error reporting. Follow-up: `RQ402` and `RQ404` remain `WAITING` on this contract.
 Owner claim 2026-09-22: `RQ385` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ385-codex.lock.md`.
-Owner completion 2026-09-22: `RQ385` delivered directly to `main` in `bb6158f04f3c89c2c496f12c9105ea35a90f7464` with scoped Pre/Post fact queries, scope-isolated main/options caches, backend provenance and frontend fail-closed validation. Run log: `.ai/runs/2026-09-22-RQ385-evidence.md`. Evidence state: synchronized.
+Owner completion 2026-09-22: `RQ385` delivered directly to `main` in `81cfdcedef4eb20812d84a8757233dbb1721e8ea` (implementation `bb6158f003bfd535a3211430970b30abbc761644`) with scoped Pre/Post fact queries, scope-isolated main/options caches, backend provenance and frontend fail-closed validation. Run log: `.ai/runs/2026-09-22-RQ385-evidence.md`. Evidence state: synchronized.
 
 Owner audit 2026-09-22: under the user's direct Daily Sales by Shift screen/backend audit request, `RQ375` returned to `WAITING`, `RQ381` moved to `READY` as the current signed-quantity/revenue contract prompt, and `RQ382`-`RQ384` were added as later `WAITING` scope, shift-provenance and safe-error follow-ups. Daily Sales ASCII Serbian copy remains routed to `RQ306`; residual English/technical UI copy remains routed to `RQ325`.
 Owner audit 2026-09-22: under the user's direct Pre/Post Nivelacija screen/backend audit request, `RQ385` became the primary `READY` prompt for request-scope/cache lineage, while `RQ386` and `RQ387` were added as `WAITING` cohort/denominator and runtime-payload/error-contract follow-ups. The existing Daily Sales `RQ381` remains independently `READY`; Pre/Post ASCII Serbian and residual English/technical copy are routed to `RQ306`/`RQ325`.
@@ -20983,8 +20983,8 @@ Reproduction: select `imported`/`existing` or a specific store, compare the resp
 - Run log: `.ai/runs/2026-09-22-RQ385-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: `bb6158f04f3c89c2c496f12c9105ea35a90f7464`
-- Main verification: pending final push verification.
+- Main commit SHA: `81cfdcedef4eb20812d84a8757233dbb1721e8ea`
+- Main verification: fresh `git fetch origin main` and `git rev-parse origin/main` match `81cfdcedef4eb20812d84a8757233dbb1721e8ea`; implementation `bb6158f003bfd535a3211430970b30abbc761644` is an ancestor.
 - Missed: no live database execution proof; frontend analytics guardrail has four unrelated existing Supplier Decision baseline violations.
 - Follow-up: RQ388 / RQ389 remain the independent READY lanes; RQ306/RQ325 own remaining Pre/Post copy cleanup.
 - Residual risk: scoped CTE query-plan performance and live compatibility-view availability remain environment-specific.
