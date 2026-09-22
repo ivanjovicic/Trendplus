@@ -2,11 +2,12 @@
 
 Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ394; RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE.
+Current READY prompt: none; RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE.
 
 Owner completion 2026-09-22: under the user's direct last-commits audit, `RQ393` was delivered directly to `main` in `3b635fe813e0e55f843236d55025c52c030e853d`; Color recommendations now use a covered-revenue-weighted margin baseline, unknown-share evidence remains nullable, historical/fallback/no-cost coverage is separated, and the affected screens use Serbian decision labels. Run log: `.ai/runs/2026-09-22-direct-last-commits-audit-evidence.md`.
 Owner promotion 2026-09-22: after `RQ393` reached DONE and `RQ389`/`RQ392`/`RQ393` comparable-cohort dependencies were verified on current `main`, `RQ394` moved `WAITING -> READY` as the next dependency-complete P1 Color aggregate-cohort prompt; collision checks are clear.
 Owner claim 2026-09-22: `RQ394` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ394-codex.lock.md`.
+Owner completion 2026-09-22: `RQ394` was delivered directly to `main` in `e487033c6063078f0c41b747663483db32bae0d7`; Color pre/post totals and impacts now use the comparable article cohort, broad observed evidence is explicit, aggregate cohort metadata/provenance is exposed, and trust/recommendation permission fails closed when the cohort is insufficient. Run log: `.ai/runs/2026-09-22-RQ394-evidence.md`. Evidence state: synchronized. `RQ395`-`RQ400` remain WAITING; no next prompt was promoted in this run.
 
 Owner audit 2026-09-22: under the user's direct Supplier Decision Hub screen/backend audit request, `RQ401` became the current Supplier Decision READY prompt for cache-schema/effective-period compatibility. `RQ402`-`RQ405` were added as WAITING detail, filter-parity, effective-period and localization follow-ups. Existing RQ READY lanes remain independently runnable under the current queue governance.
 Owner claim 2026-09-22: `RQ401` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ401-codex.lock.md`.
@@ -1430,7 +1431,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ391 | DONE | pre-nivelacija-runtime-schema | Validate the complete Pre-Nivelacija decision payload at runtime |
 | RQ392 | DONE | color-signed-numeric-contract | Preserve signed Color sales and cost-quality evidence |
 | RQ393 | DONE | color-margin-quality-contract | Align Color recommendation margin baseline with weighted cost evidence |
-| RQ394 | IN_PROGRESS | color-prepost-aggregate-parity | Align Color pre/post totals with the comparable evidence cohort |
+| RQ394 | DONE | color-prepost-aggregate-parity | Align Color pre/post totals with the comparable evidence cohort |
 | RQ395 | WAITING | color-runtime-safe-errors | Harden Color runtime validation and safe traceable endpoint errors |
 | RQ396 | WAITING | color-cache-freshness-lineage | Align Color cache invalidation and freshness metadata |
 | RQ397 | WAITING | color-detail-trust-projection | Align Color generic detail with row trust and provenance |
@@ -21646,7 +21647,7 @@ The Color endpoint computes `averageMarginPct` as a simple mean of row margin pe
 
 ## RQ394 - Align Color pre/post totals with the comparable evidence cohort
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend-contract/frontend/tests
 Feature family: color-prepost-aggregate-parity
@@ -21687,6 +21688,23 @@ Color row recommendation actionability requires both revenue and quantity pre/po
 
 - One-sided Color activity cannot create a normal-looking actionable total impact.
 - Total, row, detail, trust and export surfaces use the same declared cohort, period and denominator.
+
+### Completion note
+
+- Date: 2026-09-22
+- Status: DONE
+- Completion: Delivered directly to `main` in `e487033c6063078f0c41b747663483db32bae0d7`; Color aggregate pre/post metrics now use the comparable article cohort and expose explicit comparable/observed denominators, provenance and fail-closed trust metadata.
+- Changed files: backend Color endpoint and shared split policy, focused backend tests, Color frontend service/schema/page/tests, guardrail baseline, queue and roadmap.
+- Checks run: focused backend tests 5/5; focused frontend tests 45/45; backend build, frontend guardrails/typecheck, frontend build, governance validators and `git diff --check` passed.
+- Checks not run: full suites, live API/provider/database replay, browser smoke and remote CI inspection.
+- Missed: full suites, live API/provider/database replay, browser smoke and remote CI inspection were not run.
+- Run log: `.ai/runs/2026-09-22-RQ394-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `e487033c6063078f0c41b747663483db32bae0d7`
+- Main verification: local `main` and `origin/main` resolve to the implementation SHA.
+- Residual risk: `RQ395`-`RQ400` and shared localization follow-ups remain waiting; existing analyzer and bundle-size warnings remain.
+- Follow-up: refresh dependencies and promote the next collision-safe Color prompt.
 
 ### Dependencies
 
