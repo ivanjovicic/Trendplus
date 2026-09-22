@@ -2,7 +2,7 @@
 
 Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none; RQ375, RQ376, RQ385, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE.
+Current READY prompt: none; RQ375, RQ376, RQ377, RQ385, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE.
 
 Owner completion 2026-09-22: under the user's direct last-commits audit, `RQ393` was delivered directly to `main` in `3b635fe813e0e55f843236d55025c52c030e853d`; Color recommendations now use a covered-revenue-weighted margin baseline, unknown-share evidence remains nullable, historical/fallback/no-cost coverage is separated, and the affected screens use Serbian decision labels. Run log: `.ai/runs/2026-09-22-direct-last-commits-audit-evidence.md`.
 
@@ -29,6 +29,9 @@ Owner completion 2026-09-22: `RQ375` delivered directly to `main` in `74091cd247
 Owner promotion 2026-09-22: after `RQ375` reached DONE and its delivery/evidence were verified, `RQ376` moved `WAITING -> READY` as the next dependency-complete P1 Shoe Type comparable pre/post aggregate prompt; `RQ377` remains WAITING behind the aggregate contract.
 Owner claim 2026-09-22: `RQ376` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ376-codex.lock.md`.
 Owner completion 2026-09-22: `RQ376` delivered directly to `main` in `3d59324f47e1779226ee470d87a65c4a2fa2311d`; Shoe Type totals and impact now use the comparable pre/post article cohort, while broader observed evidence is preserved explicitly and the row/totals/frontend runtime contract carries comparable revenue, quantity, count and coverage. Run log: `.ai/runs/2026-09-22-RQ376-evidence.md`. Evidence state: synchronized. Next: promote RQ377 after dependency and collision refresh.
+Owner promotion 2026-09-22: after `RQ376` reached DONE and its delivery/evidence were verified, `RQ377` moved `WAITING -> READY` as the next dependency-complete P1 Shoe Type detail trust/identity prompt.
+Owner claim 2026-09-22: `RQ377` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ377-codex.lock.md`.
+Owner completion 2026-09-22: `RQ377` delivered directly to `main` in `c97c3dac10256f20d422d4cb27765c805b00e5b6`; Shoe Type generic detail now preserves PoP, backend recommendation/trust gate/reasons, quality, requested/effective period, scope and snapshot/fallback provenance, while canonical unknown identity resolves server-side and invalid unknown IDs return 404. Run log: `.ai/runs/2026-09-22-RQ377-evidence.md`. Evidence state: synchronized. No next prompt was promoted in this run.
 Owner claim 2026-09-22: `RQ385` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ385-codex.lock.md`.
 Owner completion 2026-09-22: `RQ385` delivered directly to `main` with implementation `bb6158f003bfd535a3211430970b30abbc761644`; current `origin/main` contains this SHA and the synchronized closure commits. Scoped Pre/Post fact queries, scope-isolated main/options caches, backend provenance and frontend fail-closed validation are delivered. Run log: `.ai/runs/2026-09-22-RQ385-evidence.md`. Evidence state: synchronized.
 Owner claim 2026-09-22: `RQ388` transitioned `READY -> IN_PROGRESS` in this workspace after dependency and collision checks; local runtime lock `.ai/task-locks/RQ388-codex.lock.md`.
@@ -1407,7 +1410,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ374 | WAITING | supplier-sales-detail-trust-contract | Align Supplier detail with display scope, decision benchmark, trust and provenance |
 | RQ375 | DONE | shoe-type-margin-quality-contract | Align Shoe Type weighted margin baseline, cost-source semantics and runtime validation |
 | RQ376 | DONE | shoe-type-prepost-aggregate-parity | Align Shoe Type pre/post totals with comparable evidence cohort |
-| RQ377 | WAITING | shoe-type-detail-trust-contract | Align Shoe Type detail route with row recommendation, trust and unknown identity |
+| RQ377 | DONE | shoe-type-detail-trust-contract | Align Shoe Type detail route with row recommendation, trust and unknown identity |
 | RQ378 | WAITING | supplier-sales-margin-quality-contract | Align Supplier weighted margin benchmark and cost-source semantics |
 | RQ379 | WAITING | supplier-sales-runtime-schema | Add fail-closed runtime validation for Supplier Sales decision payload |
 | RQ380 | WAITING | supplier-sales-prepost-comparable-aggregate | Align Supplier total pre/post impact with the comparable cohort |
@@ -20469,7 +20472,7 @@ Reproduction: seed one article with only pre-nivelacija sales and another with c
 
 ## RQ377 - Align Shoe Type detail route with row recommendation, trust and unknown identity
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend-contract/frontend/tests
 Feature family: shoe-type-detail-trust-contract
@@ -20530,6 +20533,24 @@ Reproduction: open a known and an unknown Shoe Type row, compare inline detail w
 - `RQ375` and `RQ376` establish aggregate metric semantics before detail projection is finalized.
 - `RQ112`/`RQ145`/`RQ264` provide broad summary/detail/output parity rules.
 - `RQ306`/`RQ325` own the broader Operacije copy passes; coordinate wording rather than duplicating whole-file cleanup.
+
+### Completion note
+
+- Date: 2026-09-22
+- Status: DONE
+- Completion: Delivered a server-authoritative Shoe Type detail projection with row-aligned PoP, recommendation gate/reasons, confidence/reliability, quality and requested/effective/scope provenance; canonical unknown identity is independently resolvable and invalid unknown identifiers return 404.
+- Changed files: `Api/Models/AnalyticsDetailDto.cs`; `Api/Services/AnalyticsDetailReadService.cs`; `Api/Endpoints/AnalyticsTableEndpoints.cs`; `Api.Tests/AnalyticsShoeTypeSalesIntegrationTests.cs`; `Klijent/clientapp/src/types/analyticsTable.ts`; `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx`; `Klijent/clientapp/src/services/analyticsDetailApi.ts`; `Klijent/clientapp/src/components/analytics/AnalyticsDetailView.tsx`; `Klijent/clientapp/src/components/analytics/__tests__/AnalyticsDetailView.spec.tsx`.
+- Checks run: targeted backend tests 12/12; targeted frontend tests 38/38; `dotnet build Api/Api.csproj --no-restore`; `npm run check:analytics-guardrails`; `npm run build`; governance validators; `git diff --check`.
+- Checks not run: live PostgreSQL/provider integration, full repository suites, browser deep-link proof and remote CI because the live integration environment was not enabled and focused proof was sufficient for the scoped change.
+- Run log: `.ai/runs/2026-09-22-RQ377-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `c97c3dac10256f20d422d4cb27765c805b00e5b6`
+- Main verification: passed - `origin/main` contains `c97c3dac10256f20d422d4cb27765c805b00e5b6`
+- Missed: no known scoped omission; live data/browser verification remains unavailable in this environment.
+- Follow-up: no next prompt was promoted in this run; follow the canonical router for the next safe prompt.
+- Residual risk: provider-specific live behavior, existing project warnings and the frontend chunk-size warning remain uninspected or unrelated.
+- Prompt defect / scope repair: the prompt described the generic detail as a separate raw-sales aggregation path; the implementation keeps the existing route but adds an explicit Shoe Type projection so the backend remains the decision source of truth without a generic analytics-detail redesign.
 
 
 ---
