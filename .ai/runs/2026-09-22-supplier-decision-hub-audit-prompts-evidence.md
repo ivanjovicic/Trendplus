@@ -3,7 +3,7 @@ Queue: direct-user-request
 Date: 2026-09-22
 Agent/tool: Cursor Cloud Agent
 Delivery target: main
-Working branch / PR: cursor/supplier-decision-hub-audit-444b / pending
+Working branch / PR: cursor/supplier-decision-hub-audit-444b / pending PR
 Main commit SHA: pending
 Main verification: pending — will verify after PR merge / push to main
 Evidence state: synchronized
@@ -24,13 +24,13 @@ Evidence state: synchronized
 - `.ai/runs/2026-09-22-supplier-decision-hub-audit-prompts-evidence.md`
 
 ## Validation run
-- `git diff --check` -> pending until final commit
-- `node scripts/check-agent-instructions.mjs --self-test` -> pending
-- `node scripts/check-agent-instructions.mjs` -> pending
-- `node scripts/check-prompt-queues.mjs --self-test` -> pending
-- `node scripts/check-prompt-queues.mjs` -> pending
-- `node scripts/check-planning-architecture.mjs --self-test` -> pending
-- `node scripts/check-planning-architecture.mjs` -> pending
+- `git diff --check` -> pass
+- `node scripts/check-agent-instructions.mjs --self-test` -> pass
+- `node scripts/check-agent-instructions.mjs` -> pass
+- `node scripts/check-prompt-queues.mjs --self-test` -> pass
+- `node scripts/check-prompt-queues.mjs` -> pass
+- `node scripts/check-planning-architecture.mjs --self-test` -> pass
+- `node scripts/check-planning-architecture.mjs` -> pass (`78` new planning tasks)
 
 ## Validation not run
 - Frontend/backend runtime tests and builds -> not run; this iteration changes only audit, queue, roadmap and evidence documentation.

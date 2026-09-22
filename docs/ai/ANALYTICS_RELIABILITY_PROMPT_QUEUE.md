@@ -21781,3 +21781,325 @@ The Color UI and export define a decision-score field, but the backend response 
 
 - `RQ349` owns the completed frontend projection correction; this prompt owns the unresolved backend/contract decision.
 - Coordinate with `RQ393` and `RQ395`.
+
+---
+
+## RQ401 - Align Supplier Decision Hub requested period with the cached metric window
+
+Status: READY
+Priority: P1
+Type: backend-contract/frontend/trust/tests
+Feature family: supplier-decision-hub-period-window
+Parallel-safe: no
+Owner: Analytics Reliability / Supplier Decision Hub
+Commit suggestion: `fix(analytics): align supplier decision hub period window`
+
+### Problem
+
+The default Supplier Decision Hub period is last 30 days, but the backend has no 30-day scorecard cache. Requests of 1-90 days are served from `mv_supplier_decision_score_cache_90d`, and trust metadata marks that as an explicit fallback that blocks final recommendation. The precomputed path also joins `mv_supplier_markdown_dependency_cache`, which is all-history (not windowed), so markdown dependency, dead-stock rate and capital-at-risk can mix all-time evidence into a labeled 30d/90d period. Effective From/To shown in the trust header are min/max `period_from`/`period_to` from overlapping cache rows, not the selected calendar range. Contracts currently lock the 30d->90d fallback behavior instead of proving period/window truth.
+
+### Evidence
+
+- `useSupplierCanonicalState.ts` / `SupplierDecisionHubPage.tsx:238-254` default to `getPresetRange("30d")`.
+- `SupplierDecisionHubEndpoints.cs:2556-2564` maps any requested range <=90 days to the 90d MV; `:2585-2587` still labels requested dataset `30d` when days <= 30.
+- `SupplierDecisionHubEndpoints.cs:2687-2692` and `Api.Tests/SupplierDecisionHubContractTests.cs:239-260` assert `UsedFallback=true`, `no_mv_30d` and blocked recommendation for a 30-day request.
+- `SupplierDecisionHubEndpoints.cs:2749-2765` joins `mv_supplier_markdown_dependency_cache` without a window predicate; migration `018` creates that MV as all-history, while `029` only windowed the score caches.
+- `SupplierDecisionHubEndpoints.cs:2656-2657` sets `EffectiveFrom`/`EffectiveTo` from row period bounds; the UI trust header prefers those over the requested range (`SupplierDecisionHubPage.tsx:927-928`).
+- `Database/Migrations/029_AddSupplierDecisionWindowedViews.sql:26-27,304-305` builds 90d rows from rolling `first_markdown_date` and per-event +/-30 day sales windows, then the precomputed query only overlap-filters (`period_to >= @fromDate AND period_from <= @toDate` at `:2801`).
+
+Reproduction: open Odluke / Skorkarta with the default 30d filter, compare trust requested vs effective dataset, capital-at-risk and markdown KPI against a true 30-day live recomputation.
+
+### Scope
+
+- Supplier Decision Hub summary/ranking/report/detail period selection, MV selection, overlap filter vs recomputation, markdown-dependency window parity and trust/provenance fields.
+- Canonical supplier shared 30d default only insofar as it drives this hub; do not rewrite Supplier Sales (`RQ373+`) in this prompt.
+- Preserve no-fake-zero and recommendation gating; do not invent a silent global fallback.
+
+### Read first
+
+- `docs/ai/SUPPLIER_DECISION_HUB_AUDIT_PROMPTS_2026-09-22.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`, `docs/ai/VALIDATION_SELECTOR.md`
+- `SupplierDecisionHubEndpoints.cs`, `SupplierDecisionHubContractTests.cs`, `SupplierDecisionSchemaSqlTests.cs`, migrations `018`/`029`, `SupplierDecisionHubPage.tsx`, `useSupplierCanonicalState.ts`
+
+### Do
+
+1. Define one authoritative contract for requested calendar period versus scorecard evidence window, including whether a dedicated 30d MV is required or the UI must stop defaulting to 30d.
+2. Stop mixing all-history markdown-dependency/capital-at-risk evidence into windowed scorecard responses, or mark those metrics as unavailable/degraded with explicit provenance.
+3. Make trust header requested/effective period and dataset labels describe the same window the KPIs were computed from.
+4. Replace or update the contract tests that currently treat 30d->90d helper fallback as the desired product behavior once the new truth is chosen.
+5. Keep store/`dataScope` live-query paths aligned with the same period semantics.
+
+### Tests
+
+- 30d, 90d, 180d and custom-range requests with overlapping cache rows;
+- markdown-dependency / capital-at-risk window isolation or explicit unavailable state;
+- trust metadata requested vs effective period/dataset parity;
+- focused `SupplierDecisionHubContractTests`, schema SQL tests, hub page trust specs, `git diff --check`.
+
+### Acceptance
+
+- A labeled 30-day (or other) request cannot present unmarked 90d/all-history metrics as if they were measured for that calendar period.
+- Trust header, summary, ranking, report and detail agree on the effective evidence window.
+- Recommendation gating remains fail-closed when the evidence window is helper/fallback or incomplete.
+
+### Dependencies
+
+- Independent of Pre/Post `RQ385`, Pre-Nivelacija `RQ388` and Color `RQ389`.
+- Do not absorb Supplier Sales scope work from `RQ373`-`RQ380`.
+- Copy-only follow-ups remain in `RQ405` / `RQ306` / `RQ325`.
+
+---
+
+## RQ402 - Keep per-supplier scorecard signals distinct from the page actionability gate
+
+Status: WAITING
+Priority: P1
+Type: frontend-contract/backend-contract/tests
+Feature family: supplier-decision-hub-signal-identity
+Parallel-safe: no
+Owner: Analytics Reliability / Supplier Decision Hub
+Commit suggestion: `fix(analytics): preserve supplier scorecard signal identity`
+
+### Problem
+
+When page-level `recommendationAllowed` is false, every ranking row is forced to status `insufficient_data`, so EXPAND / HOLD / PRICE_NEGOTIATE / ASSORTMENT_REDUCE distinctions disappear from the table, counts, chart concentration helpers and report payload. Separately, when the gate is true, `PRICE_NEGOTIATE` and `ASSORTMENT_REDUCE` both map to canonical `do_not_trust` ("Ne veruj"), collapsing a price-negotiation signal into a do-not-trust action. The explainability snapshot also invents EXPAND vs ASSORTMENT_REDUCE labels from the boolean gate instead of the selected supplier's backend code.
+
+### Evidence
+
+- `SupplierDecisionHubPage.tsx:458-466` overwrites row status/reason whenever `recommendationAllowed` is false.
+- `SupplierDecisionHubPage.tsx:191-196` maps both `ASSORTMENT_REDUCE` and `PRICE_NEGOTIATE` to `do_not_trust`.
+- `SupplierDecisionHubPage.tsx:519-524` and report payload counts are derived from the collapsed statuses.
+- `SupplierExplainabilitySnapshot.tsx:95` uses `getRecommendationMeta(recommendationAllowed ? "EXPAND" : "ASSORTMENT_REDUCE")`.
+- Existing `RQ249` closed action CTA gating, but page specs do not assert per-row code retention under a blocked gate.
+
+### Scope
+
+- Hub ranking row status projection, count chips, detail/report/export status identity and snapshot recommendation label.
+- Preserve page-level actionability gate and blocked action CTA behavior from `RQ249`.
+
+### Read first
+
+- `docs/ai/SUPPLIER_DECISION_HUB_AUDIT_PROMPTS_2026-09-22.md`
+- `RQ249` completion note, `canonicalRecommendationSemantics.ts`, hub page/report/snapshot components and specs
+
+### Do
+
+1. Keep backend `recommendationCode` / reason / reliability visible as a review signal when the page gate is blocked; only disable executable actions.
+2. Stop mapping price-negotiate into do-not-trust, or introduce an explicit distinct review/negotiate presentation owned by backend semantics.
+3. Derive snapshot recommendation labels from the selected row (or omit invented codes), never from the boolean gate alone.
+4. Align table counts, detail, report and export with the same identity rules.
+
+### Tests
+
+- blocked-gate fixture with mixed EXPAND/HOLD/PRICE_NEGOTIATE/ASSORTMENT_REDUCE rows;
+- allowed-gate price-negotiate vs assortment-reduce presentation;
+- snapshot/detail/report status parity;
+- focused hub page/report/snapshot specs and `git diff --check`.
+
+### Acceptance
+
+- Blocked recommendation permission cannot erase distinct supplier signals from the scorecard table.
+- Price negotiation is not labeled as "Ne veruj" unless the backend actually emits that meaning.
+- Snapshot never claims EXPAND/ASSORTMENT_REDUCE solely because the page gate flipped.
+
+### Dependencies
+
+- Prefer landing after or alongside `RQ401` so period/fallback truth and signal identity are not patched against a still-wrong evidence window.
+- Do not reopen Supplier Sales status mapping owned by `RQ373`/`RQ374`.
+
+---
+
+## RQ403 - Stop hub KPI, chart and report totals from diverging from the summary contract
+
+Status: WAITING
+Priority: P1
+Type: frontend-contract/backend-contract/tests
+Feature family: supplier-decision-hub-kpi-parity
+Parallel-safe: no
+Owner: Analytics Reliability / Supplier Decision Hub
+Commit suggestion: `fix(analytics): align supplier decision hub kpi parity`
+
+### Problem
+
+The hub page recomputes total revenue, top-5 share, margin contribution and concentration chart shares from the fetched ranking rows / client helpers, while `summary` already owns authoritative aggregate fields such as `capitalAtRisk`, weighted full-price share and pre-markdown margin. The client also derives previous-period "full price share change" by subtracting previous summary full-price share from current full-price share through `calculateSupplierQualityTrendPct`, which is the same helper used for row-level full-price-minus-markdown trend. Those are different business meanings under one formula. Report payload then exports the client-derived totals, so print/PDF can disagree with summary KPIs.
+
+### Evidence
+
+- `SupplierDecisionHubPage.tsx:446-514` builds `sharePct`, `totalRevenue`, `top5SharePct` and `totalMarginContribution` from ranking rows.
+- Backend `BuildSummaryResponse` at `SupplierDecisionHubEndpoints.cs:739-818` already computes revenue-weighted summary ratios and capital-at-risk from the dataset.
+- `SupplierDecisionHubPage.tsx:515-518` feeds two full-price-share values into `calculateSupplierQualityTrendPct`, whose definition at `:115-121` is full-price share minus markdown share.
+- `buildSupplierDecisionReportPayload` receives those client totals (`SupplierDecisionHubPage.tsx:717-738`).
+- `supplierDecisionMargin.ts` remains a client calculator; `RQ250` closed weighting parity for contribution math but not page-vs-summary ownership.
+
+### Scope
+
+- Hub KPI cards, concentration chart denominator, report/export totals and previous-period delta semantics.
+- Prefer backend-owned summary fields or an explicit derived-metric provenance label; do not invent new scoring.
+
+### Read first
+
+- `RQ250`, `RQ362`, `supplierDecisionMargin.ts`, hub page/report services and focused specs
+
+### Do
+
+1. Declare which KPI values are authoritative summary fields versus visible-row projections.
+2. Stop using the markdown-trend helper for period-over-period full-price share change, or rename/split the metrics so units and meaning cannot collide.
+3. Make report/export/detail metadata use the same totals as the on-screen KPI cards.
+4. Keep missing/partial margin evidence fail-closed (`null` / unavailable), never as trusted zero.
+
+### Tests
+
+- summary vs ranking divergence fixture;
+- previous-period full-price delta vs row quality-trend isolation;
+- report/PDF payload parity;
+- focused frontend/backend contract tests and `git diff --check`.
+
+### Acceptance
+
+- KPI cards, concentration chart, table shares and report totals describe one declared population.
+- Period-over-period full-price change cannot be mistaken for row markdown-dependency trend.
+- Partial/missing margin evidence stays unavailable.
+
+### Dependencies
+
+- Depends on the population/window truth from `RQ401` when summary and ranking can still represent different evidence windows.
+- Coordinate with signal identity from `RQ402` only where counts/status chips share the same projection.
+
+---
+
+## RQ404 - Restore or remove scorecard filters that production navigation cannot set
+
+Status: WAITING
+Priority: P2
+Type: frontend/ux-contract/tests
+Feature family: supplier-decision-hub-filter-reachability
+Parallel-safe: no
+Owner: Analytics Reliability / Supplier Decision Hub
+Commit suggestion: `fix(analytics): restore supplier scorecard filter reachability`
+
+### Problem
+
+Production navigation sends `/analytics/supplier-decision-hub` through `SupplierDecisionHubRedirect` into the consolidated supplier scorecard tab. In embedded mode the hub hides its local season / min-revenue / high-confidence controls, and the parent `SupplierCanonicalFilters` contract has no fields for those filters. The API and durable report links still accept them, so the only reachable production path cannot express filters the backend and report contract advertise. Standalone hub route tests still mount the page without the redirect, hiding the gap.
+
+### Evidence
+
+- `App.tsx:121` and `SupplierRedirects.tsx:19-20` redirect hub to `/analytics/supplier?tab=scorecard`.
+- `SupplierDecisionHubPage.tsx:1006-1064` renders season/minRevenue/onlyHighConfidence only when `!embedded`.
+- `supplierSharedState.ts:6-14` defines canonical filters without season/minRevenue/onlyHighConfidence.
+- `SupplierDecisionHubPage.tsx:758-769` and backend report URL builders still serialize those filters when present.
+- Hub specs mount `SupplierDecisionHubPage` directly on `/analytics/supplier-decision-hub`, bypassing the redirect.
+
+### Scope
+
+- Embedded scorecard filter IA, canonical filter/URL state and report deep-link parity for season/minRevenue/onlyHighConfidence.
+- Do not remove API support without an explicit product decision; either expose the controls or stop advertising them in hub UX/help text.
+
+### Read first
+
+- `RQ234`, `RQ305`, `SupplierConsolidatedPage.tsx`, `useSupplierCanonicalState.ts`, hub page specs/smoke tests
+
+### Do
+
+1. Decide whether season/min revenue/high-confidence belong on the canonical supplier filter bar or are retired from the scorecard UX.
+2. If kept, add URL/state wiring through the consolidated page and preserve them in durable report links.
+3. If retired, remove/disable unreachable controls and update help/report metadata so users are not promised unavailable filters.
+4. Add a route test that follows the real redirect into the embedded scorecard.
+
+### Tests
+
+- redirect -> embedded scorecard filter visibility;
+- URL round-trip for any restored filters;
+- report href parity;
+- focused page/smoke specs and `git diff --check`.
+
+### Acceptance
+
+- Every filter shown or documented on the production scorecard path is settable and preserved across refresh/share.
+- No production path promises season/min-revenue/high-confidence filtering it cannot apply.
+
+### Dependencies
+
+- Independent of metric-window math in `RQ401`, but avoid conflicting URL param ownership with concurrent supplier consolidated edits.
+- `RQ305` owns Operacije alias IA; this prompt owns scorecard filter reachability after redirect.
+
+---
+
+## RQ405 - Replace Supplier Decision Hub English and ASCII copy with exact Serbian strings
+
+Status: WAITING
+Priority: P2
+Type: frontend/copy/tests
+Feature family: supplier-decision-hub-serbian-copy
+Parallel-safe: yes
+Owner: Analytics Frontend / Supplier Decision Hub
+Commit suggestion: `fix(analytics): localize supplier decision hub copy`
+
+### Problem
+
+The Odluke o dobavljačima / Skorkarta surface still shows English product language and ASCII Serbian in trust headers, snapshots, tables, helpers and shared recommendation labels. Some strings are hub-owned; others come from shared helper modules used by this surface. This prompt owns the hub-visible replacements and records them for the shared Operacije passes instead of opening a duplicate global copy queue item.
+
+### Evidence
+
+Exact strings found on this surface and intended Serbian replacements:
+
+- `Supplier decision scorecard (...)` -> `Skorkarta dobavljača (...)` in hub trust `dataSource`
+- `Supplier decision materialized view` -> `Materijalizovani prikaz skorkarte dobavljača` in standalone trust header
+- `Supplier explainability snapshot` -> `Pregled objašnjenja signala` as snapshot title
+- `Scorecard signal` -> `Signal skorkarte` in table column/help
+- `Detalj scorecard signala` -> `Detalj signala skorkarte` in detail heading
+- `Confidence signala` -> `Sigurnost signala` (keep one term consistently) in detail label
+- `Data quality` / `Data Quality` -> `Kvalitet podataka` in detail/empty actions
+- `canonical decision surface` -> `glavni ekran odluke` in context copy
+- `Supplier analytics` -> `Analitika dobavljača` in `SupplierDecisionTable.tsx`
+- `Supplier Decision Hub - rangiranje dobavljača` -> `Skorkarta dobavljača — rang lista` in export title
+- `Sell-through pre sniženja` / `Sell-through bez sniženja` -> `Prodaja pre sniženja` / `Udeo prodaje pre sniženja`
+- `Dead stock` -> `Neaktivna zaliha`
+- `Trust signala` -> `Pouzdanost signala`
+- `Fallback` -> `Pomoćni izvor`
+- `Dataset` -> `Skup podataka`
+- `Otvori Scorecard` -> `Otvori skorkartu`
+- `Povecati saradnju` -> `Povećati saradnju`
+- `Povecati selektivno` -> `Povećati selektivno`
+- `Zadrzati stanje` -> `Zadržati stanje`
+- `Kriticno` -> `Kritično`
+- `Pojacaj` / `Zadrzi` -> `Pojačaj` / `Zadrži` in shared semantics (coordinate with RQ306)
+- backend notes `Neograniceno` / `Trazeni` / `izracunate` / `pomocni` -> `Neograničeno` / `Traženi` / `izračunate` / `pomoćni`
+- `Full-price prihod × pre-markdown marža (procena)` -> `Prihod po punoj ceni × marža pre sniženja (procena)`
+- shared formatter `N/A` when shown here -> `Nije dostupno`
+
+Also route residual Operacije-wide English/ASCII cleanup through existing `RQ306` and `RQ325`; do not create another global copy prompt.
+
+### Scope
+
+- User-facing hub/report/snapshot/table/rail/drawer strings listed above, plus focused specs asserting old English/ASCII.
+- Preserve backend enum/code values (`EXPAND`, `HOLD`, reason codes) when shown as codes; translate labels only.
+
+### Read first
+
+- `docs/ai/ENCODING_AND_TEXT_SAFETY.md`
+- `RQ306`, `RQ325`
+- hub/report components and specs named in Evidence
+
+### Do
+
+1. Replace the listed user-facing strings with the Serbian equivalents and correct diacritics.
+2. Keep terminology consistent across trust header, snapshot, table, detail, report and export metadata.
+3. Update specs that assert the old English/ASCII copy.
+4. If a shared helper (`canonicalRecommendationSemantics`, formatters) must change, coordinate with `RQ306`/`RQ325` and keep the diff minimal.
+
+### Tests
+
+- focused hub/report/snapshot/table specs for the replaced strings;
+- `npm run check:encoding` when shared copy files change;
+- `git diff --check`.
+
+### Acceptance
+
+- No user-facing English remains on the Supplier Decision Hub / report path except explicitly labelled technical codes.
+- ASCII Serbian on this surface is corrected to proper diacritics.
+- Shared Operacije copy ownership stays with `RQ306`/`RQ325` for leftovers outside this list.
+
+### Dependencies
+
+- Copy-only; may run in parallel with unrelated READY lanes.
+- Prefer after `RQ402` if status labels are still being renamed by signal-identity work.
