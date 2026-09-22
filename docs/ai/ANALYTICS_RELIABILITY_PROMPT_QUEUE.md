@@ -2,7 +2,7 @@
 
 Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ392 (IN_PROGRESS in this workspace); RQ385, RQ388, RQ389, RQ390 and RQ391 are DONE.
+Current READY prompt: RQ375; RQ385, RQ388, RQ389, RQ390, RQ391 and RQ392 are DONE.
 
 Owner audit 2026-09-22: under the user's direct Supplier Decision Hub screen/backend audit request, `RQ401` became the current Supplier Decision READY prompt for cache-schema/effective-period compatibility. `RQ402`-`RQ405` were added as WAITING detail, filter-parity, effective-period and localization follow-ups. Existing RQ READY lanes remain independently runnable under the current queue governance.
 Owner claim 2026-09-22: `RQ401` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ401-codex.lock.md`.
@@ -21,6 +21,7 @@ Owner claim 2026-09-22: `RQ391` transitioned `READY -> IN_PROGRESS` in this work
 Owner completion 2026-09-22: `RQ391` delivered directly to `main` in `d54da8aa77267faf2ad48878a1be9ee0934dd8a1` with a complete fail-closed Pre-Nivelacija runtime schema for candidates, recommendations, queues, alerts, filters and evidence provenance; malformed decision payloads now reach the safe analytics error state before page rendering. Run log: `.ai/runs/2026-09-22-RQ391-evidence.md`. Evidence state: synchronized. Follow-up: promote `RQ392` as the next dependency-complete Color signed-numeric prompt.
 Owner promotion 2026-09-22: `RQ392` moved `WAITING -> READY` after `RQ381` and `RQ288` were verified DONE on current `main`; it is the next P1 Color signed-sales/cost-quality contract prompt.
 Owner claim 2026-09-22: `RQ392` transitioned `READY -> IN_PROGRESS` in this workspace after dependency and collision checks; local runtime lock `.ai/task-locks/RQ392-codex.lock.md`.
+Owner completion 2026-09-22: `RQ392` delivered directly to `main` in `7389d4b1896473e26c1fbf1abcb86e2fe89aa8ba`; signed Color amounts remain visible, invalid/non-positive ratio denominators are nullable and degraded, and recommendation output fails closed. Run log: `.ai/runs/2026-09-22-RQ392-evidence.md`. Evidence state: synchronized. Follow-up: `RQ393` remains WAITING on its weighted-margin owner dependencies; `RQ375` is the next current READY lane.
 
 Owner audit 2026-09-22: under the user's direct Daily Sales by Shift screen/backend audit request, `RQ375` returned to `WAITING`, `RQ381` moved to `READY` as the current signed-quantity/revenue contract prompt, and `RQ382`-`RQ384` were added as later `WAITING` scope, shift-provenance and safe-error follow-ups. Daily Sales ASCII Serbian copy remains routed to `RQ306`; residual English/technical UI copy remains routed to `RQ325`.
 Owner audit 2026-09-22: under the user's direct Pre/Post Nivelacija screen/backend audit request, `RQ385` became the primary `READY` prompt for request-scope/cache lineage, while `RQ386` and `RQ387` were added as `WAITING` cohort/denominator and runtime-payload/error-contract follow-ups. The existing Daily Sales `RQ381` remains independently `READY`; Pre/Post ASCII Serbian and residual English/technical copy are routed to `RQ306`/`RQ325`.
@@ -1392,7 +1393,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ389 | DONE | color-scope-event-lineage | Align Color store/data-origin scope with nivelacija event lineage |
 | RQ390 | DONE | pre-nivelacija-scoring-window | Bound Pre-Nivelacija scoring history and signed-sales denominator semantics |
 | RQ391 | DONE | pre-nivelacija-runtime-schema | Validate the complete Pre-Nivelacija decision payload at runtime |
-| RQ392 | IN_PROGRESS | color-signed-numeric-contract | Preserve signed Color sales and cost-quality evidence |
+| RQ392 | DONE | color-signed-numeric-contract | Preserve signed Color sales and cost-quality evidence |
 | RQ393 | WAITING | color-margin-quality-contract | Align Color recommendation margin baseline with weighted cost evidence |
 | RQ394 | WAITING | color-prepost-aggregate-parity | Align Color pre/post totals with the comparable evidence cohort |
 | RQ395 | WAITING | color-runtime-safe-errors | Harden Color runtime validation and safe traceable endpoint errors |
@@ -21434,7 +21435,7 @@ The Pre-Nivelacija Zod boundary validates only a subset of the decision payload.
 
 ## RQ392 - Preserve signed Color sales and cost-quality evidence
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend-contract/frontend-runtime-validation/tests
 Feature family: color-signed-numeric-contract
@@ -21481,6 +21482,22 @@ Color sales and quantity are summed directly from signed sale lines, so returns/
 
 - `RQ381` is the signed Daily Sales reference; this prompt owns the Color contract.
 - `RQ288` owns Color percentage/count fallback behavior; preserve its valid-zero distinction.
+
+### Completion note
+
+- Date: 2026-09-22
+- Status: DONE
+- Completion: Delivered to `main` in `7389d4b1896473e26c1fbf1abcb86e2fe89aa8ba`; Color signed revenue/quantity/cost evidence is preserved, coverage denominators fail closed to `null` with explicit degraded metadata, and non-measurable rows cannot expose actionable or healthy recommendations.
+- Changed files: `Application/Analytics/ColorSignedEvidencePolicy.cs`, `Api/Endpoints/AllEndpoints.cs`, `Api.Tests/AnalyticsMarginPolicyTests.cs`, Color frontend schema/types/page/tests, guardrail baseline, queue, roadmap and run log.
+- Contract/runtime behavior changed: Color amount fields accept finite signed values; counters remain non-negative; percentages remain bounded or nullable; positive-denominator coverage remains measured; non-positive/net-zero evidence remains visible and recommendation-blocked.
+- Validation: focused backend test 10/10; focused frontend test 44/44; frontend build, analytics guardrails, encoding, typecheck, governance validators and planning validator passed.
+- Missed: no live deployed API replay; remote CI not inspected.
+- Run log: `.ai/runs/2026-09-22-RQ392-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `7389d4b1896473e26c1fbf1abcb86e2fe89aa8ba`
+- Main verification: passed - local `main` and `origin/main` resolve to the same SHA and `origin/main` contains the implementation.
+- Follow-up: `RQ393` remains WAITING on weighted-margin dependencies; `RQ375` is the next current READY lane.
 
 ---
 
