@@ -104,33 +104,34 @@ const decisionColumns: AnalyticsTableColumn<DecisionColor>[] = [
   { key: "popRevenueChangePct", header: "PoP trend %", dataType: "percent" },
   { key: "prePostNivelacijaRevenueImpactPct", header: "Uticaj nivelacije %", dataType: "percent" },
   {
-    key: "preNivelacijePromet",
-    header: "Pre nivelacije promet",
-    detailLabel: "Pre nivelacije promet",
+    key: "comparablePreRevenue",
+    header: "Uporedivo pre nivelacije",
+    detailLabel: "Uporedivo pre nivelacije promet",
     dataType: "text",
-    getValue: (row) => formatCategoryPrePostRevenueMetric(row.preNivelacijePromet),
+    getValue: (row) => formatCategoryPrePostRevenueMetric(row.comparablePreRevenue),
   },
   {
-    key: "posleNivelacijePromet",
-    header: "Posle nivelacije promet",
-    detailLabel: "Posle nivelacije promet",
+    key: "comparablePostRevenue",
+    header: "Uporedivo posle nivelacije",
+    detailLabel: "Uporedivo posle nivelacije promet",
     dataType: "text",
-    getValue: (row) => formatCategoryPrePostRevenueMetric(row.posleNivelacijePromet),
+    getValue: (row) => formatCategoryPrePostRevenueMetric(row.comparablePostRevenue),
   },
   {
-    key: "preNivelacijeKolicina",
-    header: "Pre nivo kolicina",
-    detailLabel: "Pre nivo kolicina",
+    key: "comparablePreQuantity",
+    header: "Uporedivo pre nivelacije kom",
+    detailLabel: "Uporedivo pre nivelacije količina",
     dataType: "text",
-    getValue: (row) => formatCategoryPrePostQuantityMetric(row.preNivelacijeKolicina),
+    getValue: (row) => formatCategoryPrePostQuantityMetric(row.comparablePreQuantity),
   },
   {
-    key: "posleNivelacijeKolicina",
-    header: "Posle nivo kolicina",
-    detailLabel: "Posle nivo kolicina",
+    key: "comparablePostQuantity",
+    header: "Uporedivo posle nivelacije kom",
+    detailLabel: "Uporedivo posle nivelacije količina",
     dataType: "text",
-    getValue: (row) => formatCategoryPrePostQuantityMetric(row.posleNivelacijeKolicina),
+    getValue: (row) => formatCategoryPrePostQuantityMetric(row.comparablePostQuantity),
   },
+  { key: "prePostComparableArticleCount", header: "Artikli u uporedivoj kohorti", dataType: "number" },
   { key: "status", header: "Preporuka", dataType: "text", getValue: (row) => recommendationStatusLabel(row.status) },
   { key: "decisionScore", header: "Skor odluke", dataType: "number" },
 ];
@@ -235,7 +236,7 @@ export function describeNivelacijaImpactMetric(item: ColorSalesStat): { label: s
   if (Number.isFinite(item.prePostNivelacijaRevenueImpactPct)) {
     return {
       label: fmtSignedPct(item.prePostNivelacijaRevenueImpactPct, 2),
-      title: `Pre/post nivelacija impact meri promenu prometa unutar artikala sa poznatim prvim datumom nivelacije. Pokriće: ${fmtPct(resolveColorPercentValue(item.prePostNivelacijaRevenueCoveragePct), 1)} prometa.`,
+      title: `Pre/post uticaj meri promenu prometa unutar uporedive kohorte artikala sa prodajom pre i posle prve nivelacije. Pokriće: ${fmtPct(resolveColorPercentValue(item.prePostNivelacijaRevenueCoveragePct), 1)} prometa.`,
       className: trendClass(item.prePostNivelacijaRevenueImpactPct),
     };
   }
@@ -252,22 +253,22 @@ export function describeNivelacijaImpactMetric(item: ColorSalesStat): { label: s
   if (coverage === 0) {
     return {
       label: "0% pokriće",
-      title: "Pre/post pokriće je izmereno kao 0%; nema artikala sa poznatom istorijom nivelacije, pa impact nije merljiv.",
+      title: "Pre/post pokriće je izmereno kao 0%; nema artikala sa prodajom i pre i posle nivelacije, pa uticaj nije merljiv.",
       className: "trend-neutral",
     };
   }
 
-  if (item.preNivelacijePromet <= 0 && item.posleNivelacijePromet > 0) {
+  if (item.comparablePreRevenue <= 0 && item.comparablePostRevenue > 0) {
     return {
       label: "Bez baze",
-      title: "Postoji promet posle prve nivelacije, ali nema pre-nivelacija baze za smislen procenat promene.",
+      title: "Postoji uporediv promet posle prve nivelacije, ali nema uporedive pre-nivelacija baze za smislen procenat promene.",
       className: "trend-neutral",
     };
   }
 
   return {
     label: "N/A",
-    title: "Pre/post nivelacija impact nije dostupan za izabrani skup podataka.",
+    title: "Pre/post uticaj nivelacije nije dostupan za izabrani skup podataka.",
     className: "trend-neutral",
   };
 }
@@ -578,6 +579,15 @@ export default function ColorSalesStatsPage() {
       { key: "signedEvidence", label: "Neto dokaz", value: data?.dataQuality.signedRevenuePolicy === "signed_net_revenue_preserved" ? "Neto promet i količina" : "Nije dostupno" },
       { key: "costDenominator", label: "Imenilac pokrića", value: data?.dataQuality.costQualityDenominatorStatus === "measured_positive_net_revenue" ? "Pozitivan neto promet" : "Nije merljivo" },
       { key: "weightedMargin", label: "Ponderisana poznata marža", value: fmtPct(data?.dataQuality.weightedKnownMarginPct, 1) },
+      { key: "comparableArticleCount", label: "Artikli u uporedivoj kohorti", value: data?.totals.comparableArticleCount ?? null },
+      { key: "comparablePreRevenue", label: "Uporediv promet pre nivelacije", value: fmtRsd(data?.totals.comparablePreRevenue) },
+      { key: "comparablePostRevenue", label: "Uporediv promet posle nivelacije", value: fmtRsd(data?.totals.comparablePostRevenue) },
+      { key: "comparablePreQuantity", label: "Uporediva količina pre nivelacije", value: fmtQty(data?.totals.comparablePreQuantity) },
+      { key: "comparablePostQuantity", label: "Uporediva količina posle nivelacije", value: fmtQty(data?.totals.comparablePostQuantity) },
+      { key: "comparableRevenueCoveragePct", label: "Pokriće uporedive kohorte", value: fmtPct(data?.totals.comparableRevenueCoveragePct, 1) },
+      { key: "prePostSignalNote", label: "Napomena uporedive kohorte", value: data?.totals.prePostSignalNote ?? "Nema napomene" },
+      { key: "observedPreRevenue", label: "Posmatrani promet pre nivelacije", value: fmtRsd(data?.totals.observedPreRevenue) },
+      { key: "observedPostRevenue", label: "Posmatrani promet posle nivelacije", value: fmtRsd(data?.totals.observedPostRevenue) },
       { key: "increaseFocus", label: recommendationStatusLabel("increase_focus"), value: counts.increaseFocus },
       { key: "maintain", label: recommendationStatusLabel("maintain"), value: counts.maintain },
       { key: "review", label: recommendationStatusLabel("review"), value: counts.review },
@@ -598,6 +608,15 @@ export default function ColorSalesStatsPage() {
       data?.dataScope,
       data?.generatedAt,
       data?.lineage,
+      data?.totals.comparableArticleCount,
+      data?.totals.comparablePostQuantity,
+      data?.totals.comparablePostRevenue,
+      data?.totals.comparablePreQuantity,
+      data?.totals.comparablePreRevenue,
+      data?.totals.comparableRevenueCoveragePct,
+      data?.totals.observedPostRevenue,
+      data?.totals.observedPreRevenue,
+      data?.totals.prePostSignalNote,
       data?.totals.brojBoja,
       dataScope,
     ]
@@ -949,6 +968,11 @@ export default function ColorSalesStatsPage() {
                 <span>Rast/PAD vs prethodni period</span>
                 <strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong>
               </article>
+              <article className="color-decision-kpi">
+                <span>Uporediva kohorta pre/post</span>
+                <strong>{fmtRsd(data.totals.comparablePreRevenue)} → {fmtRsd(data.totals.comparablePostRevenue)}</strong>
+                <small>{fmtNumber(data.totals.comparableArticleCount)} artikala · {fmtPct(data.totals.comparableRevenueCoveragePct, 1)} prometa</small>
+              </article>
             </section>
           ) : null}
 
@@ -1030,7 +1054,7 @@ export default function ColorSalesStatsPage() {
                       </th>
                       <th className={`analytics-data-table__numeric${isSortActive("prePostNivelacijaRevenueImpactPct", sortField) ? " is-sorted" : ""}`}>
                         <button type="button" onClick={() => handleSort("prePostNivelacijaRevenueImpactPct")}>
-                          Uticaj nivelacije{sortMarker("prePostNivelacijaRevenueImpactPct", sortField, sortDir)} <InfoTip text="Pre/post promena prometa unutar artikala sa poznatim prvim datumom nivelacije. Nije isto što i trend prema prethodnom periodu." />
+                          Uticaj nivelacije{sortMarker("prePostNivelacijaRevenueImpactPct", sortField, sortDir)} <InfoTip text="Pre/post promena prometa unutar uporedive kohorte artikala sa prodajom i pre i posle nivelacije. Nije isto što i trend prema prethodnom periodu." />
                         </button>
                       </th>
                       <th>
@@ -1120,24 +1144,32 @@ export default function ColorSalesStatsPage() {
                   </strong>
                 </article>
                 <article>
-                  <span>Pre/post pokrice prometa</span>
+                  <span>Pre/post pokriće uporedive kohorte</span>
                   <strong>{fmtPct(resolveColorPercentValue(selectedRow.prePostNivelacijaRevenueCoveragePct), 1)}</strong>
                 </article>
                 <article>
-                  <span>Pre nivelacije promet</span>
-                  <strong>{formatCategoryPrePostRevenueMetric(selectedRow.preNivelacijePromet)}</strong>
+                  <span>Uporedivo pre nivelacije promet</span>
+                  <strong>{formatCategoryPrePostRevenueMetric(selectedRow.comparablePreRevenue)}</strong>
                 </article>
                 <article>
-                  <span>Posle nivelacije promet</span>
-                  <strong>{formatCategoryPrePostRevenueMetric(selectedRow.posleNivelacijePromet)}</strong>
+                  <span>Uporedivo posle nivelacije promet</span>
+                  <strong>{formatCategoryPrePostRevenueMetric(selectedRow.comparablePostRevenue)}</strong>
                 </article>
                 <article>
-                  <span>Pre nivo kolicina</span>
-                  <strong>{formatCategoryPrePostQuantityMetric(selectedRow.preNivelacijeKolicina)}</strong>
+                  <span>Uporedivo pre nivelacije količina</span>
+                  <strong>{formatCategoryPrePostQuantityMetric(selectedRow.comparablePreQuantity)}</strong>
                 </article>
                 <article>
-                  <span>Posle nivo kolicina</span>
-                  <strong>{formatCategoryPrePostQuantityMetric(selectedRow.posleNivelacijeKolicina)}</strong>
+                  <span>Uporedivo posle nivelacije količina</span>
+                  <strong>{formatCategoryPrePostQuantityMetric(selectedRow.comparablePostQuantity)}</strong>
+                </article>
+                <article>
+                  <span>Artikli u uporedivoj kohorti</span>
+                  <strong>{fmtNumber(selectedRow.prePostComparableArticleCount)}</strong>
+                </article>
+                <article>
+                  <span>Posmatrani pre/posle promet</span>
+                  <strong>{formatCategoryPrePostRevenueMetric(selectedRow.preNivelacijePromet)} / {formatCategoryPrePostRevenueMetric(selectedRow.posleNivelacijePromet)}</strong>
                 </article>
                 <article>
                   <span>Artikli sa nivelacijom</span>

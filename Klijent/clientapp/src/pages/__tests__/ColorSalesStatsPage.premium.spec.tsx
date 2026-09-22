@@ -97,6 +97,10 @@ function color(overrides: Partial<ColorSalesStat> = {}): ColorSalesStat {
     marginQualityShortLabel: "Good",
     marginQualityTooltip: "Većina prometa ima poznatu nabavnu cenu.",
     revenueWithNivelacijaSplit: 100000,
+    comparablePreRevenue: 90000,
+    comparablePostRevenue: 30000,
+    comparablePreQuantity: 9,
+    comparablePostQuantity: 3,
     popRevenueChangePct: 50,
     popUnitsChangePct: 20,
     prePostNivelacijaRevenueImpactPct: -12.5,
@@ -185,6 +189,17 @@ function response(overrides: Partial<ColorSalesStatsResponse> = {}): ColorSalesS
       ukupnaKolicina: 17,
       preKolicina: 12,
       posleKolicina: 5,
+      comparablePreRevenue: 120000,
+      comparablePostRevenue: 45000,
+      comparablePreQuantity: 12,
+      comparablePostQuantity: 5,
+      comparableArticleCount: 10,
+      comparableRevenueCoveragePct: 75,
+      prePostSignalNote: null,
+      observedPreRevenue: 120000,
+      observedPostRevenue: 45000,
+      observedPreQuantity: 12,
+      observedPostQuantity: 5,
       previousPeriodRevenue: 110000,
       previousPeriodUnits: 11,
       brojBoja: colors.length,
@@ -309,11 +324,11 @@ describe("ColorSalesStatsPage premium controls", () => {
     const detailHeading = await screen.findByRole("heading", { name: "Detalj odluke: Crna" });
     const detailPanel = detailHeading.closest("section");
     expect(detailPanel).not.toBeNull();
-    expect(within(detailPanel!).getByText("Pre nivelacije promet").parentElement).toHaveTextContent(/90\.000/);
-    expect(within(detailPanel!).getByText("Posle nivelacije promet").parentElement).toHaveTextContent(/30\.000/);
-    expect(within(detailPanel!).getByText("Pre nivo kolicina").parentElement).toHaveTextContent(/9.*kom/);
-    expect(within(detailPanel!).getByText("Posle nivo kolicina").parentElement).toHaveTextContent(/3.*kom/);
-    expect(within(detailPanel!).getByText("Nivelacija impact prometa").parentElement).toHaveTextContent("N/A");
+    expect(within(detailPanel!).getByText("Uporedivo pre nivelacije promet").parentElement).toHaveTextContent(/90\.000/);
+    expect(within(detailPanel!).getByText("Uporedivo posle nivelacije promet").parentElement).toHaveTextContent(/30\.000/);
+    expect(within(detailPanel!).getByText("Uporedivo pre nivelacije količina").parentElement).toHaveTextContent(/9.*kom/);
+    expect(within(detailPanel!).getByText("Uporedivo posle nivelacije količina").parentElement).toHaveTextContent(/3.*kom/);
+    expect(within(detailPanel!).getByText("Uticaj nivelacije na promet").parentElement).toHaveTextContent("N/A");
   });
 
   it("keeps raw pre/post detail metrics independently unavailable when individual evidence is missing", async () => {
@@ -325,6 +340,10 @@ describe("ColorSalesStatsPage premium controls", () => {
           posleNivelacijePromet: Number.NaN,
           preNivelacijeKolicina: 5,
           posleNivelacijeKolicina: Number.POSITIVE_INFINITY,
+          comparablePreRevenue: 50000,
+          comparablePostRevenue: Number.NaN,
+          comparablePreQuantity: 5,
+          comparablePostQuantity: Number.POSITIVE_INFINITY,
           prePostNivelacijaRevenueImpactPct: -8,
         }),
       ],
@@ -346,11 +365,11 @@ describe("ColorSalesStatsPage premium controls", () => {
     const detailHeading = await screen.findByRole("heading", { name: "Detalj odluke: Teget" });
     const detailPanel = detailHeading.closest("section");
     expect(detailPanel).not.toBeNull();
-    expect(within(detailPanel!).getByText("Pre nivelacije promet").parentElement).toHaveTextContent(/50\.000/);
-    expect(within(detailPanel!).getByText("Posle nivelacije promet").parentElement).toHaveTextContent("Nije dostupno");
-    expect(within(detailPanel!).getByText("Pre nivo kolicina").parentElement).toHaveTextContent(/5.*kom/);
-    expect(within(detailPanel!).getByText("Posle nivo kolicina").parentElement).toHaveTextContent("Nije dostupno");
-    expect(within(detailPanel!).getByText("Nivelacija impact prometa").parentElement).toHaveTextContent(/-8,00%/);
+    expect(within(detailPanel!).getByText("Uporedivo pre nivelacije promet").parentElement).toHaveTextContent(/50\.000/);
+    expect(within(detailPanel!).getByText("Uporedivo posle nivelacije promet").parentElement).toHaveTextContent("Nije dostupno");
+    expect(within(detailPanel!).getByText("Uporedivo pre nivelacije količina").parentElement).toHaveTextContent(/5.*kom/);
+    expect(within(detailPanel!).getByText("Uporedivo posle nivelacije količina").parentElement).toHaveTextContent("Nije dostupno");
+    expect(within(detailPanel!).getByText("Uticaj nivelacije na promet").parentElement).toHaveTextContent(/-8,00%/);
   });
 
   it("keeps measured zero pre/post evidence visible when impact percent is unavailable", async () => {
@@ -362,6 +381,10 @@ describe("ColorSalesStatsPage premium controls", () => {
           posleNivelacijePromet: 25000,
           preNivelacijeKolicina: 0,
           posleNivelacijeKolicina: 4,
+          comparablePreRevenue: 0,
+          comparablePostRevenue: 25000,
+          comparablePreQuantity: 0,
+          comparablePostQuantity: 4,
           prePostNivelacijaRevenueImpactPct: null,
           prePostNivelacijaUnitsImpactPct: null,
           prePostNivelacijaRevenueCoveragePct: 75,
@@ -385,9 +408,9 @@ describe("ColorSalesStatsPage premium controls", () => {
     const detailHeading = await screen.findByRole("heading", { name: "Detalj odluke: Bordo" });
     const detailPanel = detailHeading.closest("section");
     expect(detailPanel).not.toBeNull();
-    expect(within(detailPanel!).getByText("Pre nivelacije promet").parentElement).toHaveTextContent(/0.*RSD/);
-    expect(within(detailPanel!).getByText("Posle nivelacije promet").parentElement).toHaveTextContent(/25\.000/);
-    expect(within(detailPanel!).getByText("Nivelacija impact prometa").parentElement).toHaveTextContent("Bez baze");
+    expect(within(detailPanel!).getByText("Uporedivo pre nivelacije promet").parentElement).toHaveTextContent(/0.*RSD/);
+    expect(within(detailPanel!).getByText("Uporedivo posle nivelacije promet").parentElement).toHaveTextContent(/25\.000/);
+    expect(within(detailPanel!).getByText("Uticaj nivelacije na promet").parentElement).toHaveTextContent("Bez baze");
   });
 
   it("preserves gated color status identity across row, KPI and detail surfaces", async () => {
@@ -598,7 +621,7 @@ describe("ColorSalesStatsPage premium controls", () => {
     const detailPanel = detailHeading.closest("section");
     expect(detailPanel).not.toBeNull();
     expect(within(detailPanel!).getByText("Pokrice marze").parentElement).toHaveTextContent("0,0%");
-    expect(within(detailPanel!).getByText("Pre/post pokrice prometa").parentElement).toHaveTextContent("0,0%");
+    expect(within(detailPanel!).getByText("Pre/post pokriće uporedive kohorte").parentElement).toHaveTextContent("0,0%");
   });
 
   it("does not recompute share when the backend omits it", async () => {

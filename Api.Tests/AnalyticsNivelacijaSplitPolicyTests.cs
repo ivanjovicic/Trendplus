@@ -110,4 +110,36 @@ public sealed class AnalyticsNivelacijaSplitPolicyTests
         Assert.Equal(0d, validZero.RevenueImpactPct);
         Assert.Equal(0d, validZero.UnitsImpactPct);
     }
+
+    [Fact]
+    public void EvaluateComparableSignal_IgnoresOneSidedRowsInAggregateImpact()
+    {
+        var signal = AnalyticsNivelacijaSplitPolicy.EvaluateComparableSignal(
+            comparablePreRevenue: 500m,
+            comparablePostRevenue: 750m,
+            comparablePreQuantity: 5,
+            comparablePostQuantity: 6,
+            comparableArticleCount: 1,
+            totalRevenue: 1_550m);
+
+        Assert.Equal(50d, signal.RevenueImpactPct);
+        Assert.Equal(20d, signal.UnitsImpactPct);
+        Assert.Null(signal.SignalNote);
+    }
+
+    [Fact]
+    public void EvaluateComparableSignal_BlocksAggregateImpactWhenCohortIsInsufficient()
+    {
+        var signal = AnalyticsNivelacijaSplitPolicy.EvaluateComparableSignal(
+            comparablePreRevenue: 100m,
+            comparablePostRevenue: 600m,
+            comparablePreQuantity: 1,
+            comparablePostQuantity: 6,
+            comparableArticleCount: 1,
+            totalRevenue: 1_000m);
+
+        Assert.Null(signal.RevenueImpactPct);
+        Assert.Null(signal.UnitsImpactPct);
+        Assert.Contains("premala", signal.SignalNote ?? string.Empty);
+    }
 }

@@ -3019,6 +3019,10 @@ public static class AllEndpoints
                             marginQualityTooltip = marginQuality.Tooltip,
                             revenueWithNivelacijaSplit = splitSnapshot.RevenueWithSplit,
                             comparableRevenueWithNivelacijaSplit = splitSnapshot.ComparableRevenueWithSplit,
+                            comparablePreRevenue = splitSnapshot.ComparablePreRevenue,
+                            comparablePostRevenue = splitSnapshot.ComparablePostRevenue,
+                            comparablePreQuantity = splitSnapshot.ComparablePreQuantity,
+                            comparablePostQuantity = splitSnapshot.ComparablePostQuantity,
                             previousPeriodRevenue = hasPreviousComparablePeriod
                                 ? Math.Round(previousRevenueRaw, 2)
                                 : (decimal?)null,
@@ -3046,8 +3050,21 @@ public static class AllEndpoints
 
                 var sumPreRevenue = colors.Sum(r => r.preNivelacijePromet);
                 var sumPostRevenue = colors.Sum(r => r.posleNivelacijePromet);
+                var comparablePreRevenue = colors.Sum(r => r.comparablePreRevenue);
+                var comparablePostRevenue = colors.Sum(r => r.comparablePostRevenue);
+                var comparablePreQuantity = colors.Sum(r => r.comparablePreQuantity);
+                var comparablePostQuantity = colors.Sum(r => r.comparablePostQuantity);
+                var comparableArticleCount = colors.Sum(r => r.prePostComparableArticleCount);
                 var totalRevenue = colors.Sum(r => r.ukupanPromet);
                 var comparableRevenueWithNivelacijaSplit = colors.Sum(r => r.comparableRevenueWithNivelacijaSplit);
+                var observedRevenueWithNivelacijaSplit = colors.Sum(r => r.revenueWithNivelacijaSplit);
+                var comparableSignal = AnalyticsNivelacijaSplitPolicy.EvaluateComparableSignal(
+                    comparablePreRevenue,
+                    comparablePostRevenue,
+                    comparablePreQuantity,
+                    comparablePostQuantity,
+                    comparableArticleCount,
+                    totalRevenue);
                 var totalRevenueWithHistoricalCost = colors.Sum(r => r.revenueWithCost);
                 var estimatedCostRevenue = colors.Sum(r => r.estimatedCostRevenue);
                 var missingCostRevenue = totalRevenue - totalRevenueWithHistoricalCost - estimatedCostRevenue;
@@ -3071,6 +3088,8 @@ public static class AllEndpoints
                     unknownColorRevenueSharePct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(unknownColorRevenue, totalRevenue),
                     revenueWithNivelacijaSplit = Math.Round(comparableRevenueWithNivelacijaSplit, 2),
                     revenueWithNivelacijaSplitSharePct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(comparableRevenueWithNivelacijaSplit, totalRevenue),
+                    observedRevenueWithNivelacijaSplit = Math.Round(observedRevenueWithNivelacijaSplit, 2),
+                    observedRevenueWithNivelacijaSplitSharePct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(observedRevenueWithNivelacijaSplit, totalRevenue),
                     signedRevenuePolicy = ColorSignedEvidencePolicy.SignedRevenuePolicy,
                     signedQuantityPolicy = ColorSignedEvidencePolicy.SignedQuantityPolicy,
                     costQualityDenominatorStatus = totalRevenue > 0m
@@ -3227,11 +3246,25 @@ public static class AllEndpoints
                     marginQualityTier = totalMarginQuality.Tier,
                     marginQualityShortLabel = totalMarginQuality.ShortLabel,
                     marginQualityTooltip = totalMarginQuality.Tooltip,
-                    prePromet = sumPreRevenue,
-                    poslePromet = sumPostRevenue,
+                    // Comparable cohort is authoritative for pre/post decision metrics.
+                    prePromet = comparablePreRevenue,
+                    poslePromet = comparablePostRevenue,
                     ukupnaKolicina = colors.Sum(r => r.ukupnaKolicina),
-                    preKolicina = colors.Sum(r => r.preNivelacijeKolicina),
-                    posleKolicina = colors.Sum(r => r.posleNivelacijeKolicina),
+                    preKolicina = comparablePreQuantity,
+                    posleKolicina = comparablePostQuantity,
+                    comparablePreRevenue = Math.Round(comparablePreRevenue, 2),
+                    comparablePostRevenue = Math.Round(comparablePostRevenue, 2),
+                    comparablePreQuantity,
+                    comparablePostQuantity,
+                    comparableArticleCount,
+                    comparableRevenueCoveragePct = totalRevenue > 0m
+                        ? Math.Round((double)((comparablePreRevenue + comparablePostRevenue) / totalRevenue * 100m), 2)
+                        : (double?)null,
+                    prePostSignalNote = comparableSignal.SignalNote,
+                    observedPreRevenue = Math.Round(sumPreRevenue, 2),
+                    observedPostRevenue = Math.Round(sumPostRevenue, 2),
+                    observedPreQuantity = colors.Sum(r => r.preNivelacijeKolicina),
+                    observedPostQuantity = colors.Sum(r => r.posleNivelacijeKolicina),
                     brojBoja = colors.Count,
                     previousPeriodRevenue = previousPeriodRevenue.HasValue
                         ? Math.Round(previousPeriodRevenue.Value, 2)
@@ -3243,12 +3276,8 @@ public static class AllEndpoints
                     popUnitsChangePct = previousPeriodUnits.HasValue && previousPeriodUnits.Value > 0
                         ? Math.Round((colors.Sum(r => r.ukupnaKolicina) - previousPeriodUnits.Value) / (double)previousPeriodUnits.Value * 100d, 2)
                         : (double?)null,
-                    prePostNivelacijaRevenueImpactPct = sumPreRevenue > 0m
-                        ? Math.Round((double)((sumPostRevenue - sumPreRevenue) / sumPreRevenue * 100m), 2)
-                        : (double?)null,
-                    prePostNivelacijaUnitsImpactPct = colors.Sum(r => r.preNivelacijeKolicina) > 0
-                        ? Math.Round((colors.Sum(r => r.posleNivelacijeKolicina) - colors.Sum(r => r.preNivelacijeKolicina)) / (double)colors.Sum(r => r.preNivelacijeKolicina) * 100d, 2)
-                        : (double?)null,
+                    prePostNivelacijaRevenueImpactPct = comparableSignal.RevenueImpactPct,
+                    prePostNivelacijaUnitsImpactPct = comparableSignal.UnitsImpactPct,
                     recommendationSummary = new
                     {
                         increaseFocus = colorsWithRecommendation.Count(x => x.recommendation.Status == "increase_focus"),
@@ -3258,9 +3287,7 @@ public static class AllEndpoints
                         insufficientData = colorsWithRecommendation.Count(x => x.recommendation.Status == "insufficient_data")
                     },
                     // Legacy compatibility alias (pre/post impact metric in old response shape)
-                    promenaPrometaPct = sumPreRevenue > 0m
-                        ? Math.Round((double)((sumPostRevenue - sumPreRevenue) / sumPreRevenue * 100m), 2)
-                        : (double?)null
+                    promenaPrometaPct = comparableSignal.RevenueImpactPct
                 };
 
                 var sezone = (await db.Sezone.AsNoTracking()
@@ -3291,6 +3318,55 @@ public static class AllEndpoints
                     dataQuality.unknownColorRevenueSharePct,
                     dataQuality.revenueWithNivelacijaSplitSharePct,
                     generatedAtUtc);
+
+                trustMeta.MetricProvenance = new Dictionary<string, AnalyticsMetricProvenanceDto>
+                {
+                    ["prePostNivelacijaRevenueImpactPct"] = new()
+                    {
+                        Kind = AnalyticsMetricProvenanceKinds.AuthoritativeBackendAggregate,
+                        Authority = AnalyticsMetricAuthority.Authoritative,
+                        Actionability = comparableSignal.RevenueImpactPct.HasValue
+                            ? AnalyticsMetricActionability.Actionable
+                            : AnalyticsMetricActionability.Blocked,
+                        Unit = "percent",
+                        Denominator = "uporediva kohorta boja; samo artikli sa prodajom pre i posle nivelacije"
+                    },
+                    ["prePostNivelacijaUnitsImpactPct"] = new()
+                    {
+                        Kind = AnalyticsMetricProvenanceKinds.AuthoritativeBackendAggregate,
+                        Authority = AnalyticsMetricAuthority.Authoritative,
+                        Actionability = comparableSignal.UnitsImpactPct.HasValue
+                            ? AnalyticsMetricActionability.Actionable
+                            : AnalyticsMetricActionability.Blocked,
+                        Unit = "percent",
+                        Denominator = "uporediva kohorta boja; samo artikli sa prodajom pre i posle nivelacije"
+                    },
+                    ["prePostComparableArticleCount"] = new()
+                    {
+                        Kind = AnalyticsMetricProvenanceKinds.AuthoritativeBackendAggregate,
+                        Authority = AnalyticsMetricAuthority.Authoritative,
+                        Actionability = AnalyticsMetricActionability.Informational,
+                        Unit = "articles",
+                        Denominator = "uporediva kohorta boja"
+                    }
+                };
+
+                if (colors.Count > 0
+                    && (!comparableSignal.RevenueImpactPct.HasValue || !comparableSignal.UnitsImpactPct.HasValue))
+                {
+                    const string aggregateCohortWarningCode = "COLOR_PREPOST_COHORT_INSUFFICIENT";
+                    var aggregateCohortWarning = comparableSignal.SignalNote
+                        ?? "Uporediva kohorta nema dovoljno dokaza za pouzdan zbirni pre/post signal.";
+                    trustMeta.WarningCode = aggregateCohortWarningCode;
+                    trustMeta.WarningMessage = aggregateCohortWarning;
+                    trustMeta.Message = aggregateCohortWarning;
+                    trustMeta.IsPartial = true;
+                    trustMeta.RecommendationAllowed = false;
+                    if (string.Equals(trustMeta.DataQualityStatus, "good", StringComparison.OrdinalIgnoreCase))
+                    {
+                        trustMeta.DataQualityStatus = "insufficient_data";
+                    }
+                }
 
                 if (salesArticleIds.Count > 0 && salesArticlesWithMatchingNivelacija == 0)
                 {

@@ -89,6 +89,10 @@ function color(overrides: Partial<ColorSalesStat> = {}): ColorSalesStat {
     marginQualityShortLabel: "Good",
     marginQualityTooltip: "Većina prometa ima poznatu nabavnu cenu.",
     revenueWithNivelacijaSplit: 100000,
+    comparablePreRevenue: 90000,
+    comparablePostRevenue: 30000,
+    comparablePreQuantity: 9,
+    comparablePostQuantity: 3,
     popRevenueChangePct: 50,
     popUnitsChangePct: 20,
     prePostNivelacijaRevenueImpactPct: -12.5,
@@ -184,6 +188,17 @@ function response(overrides: Partial<ColorSalesStatsResponse> = {}): ColorSalesS
       ukupnaKolicina: 17,
       preKolicina: 12,
       posleKolicina: 5,
+      comparablePreRevenue: 120000,
+      comparablePostRevenue: 45000,
+      comparablePreQuantity: 12,
+      comparablePostQuantity: 5,
+      comparableArticleCount: 10,
+      comparableRevenueCoveragePct: 75,
+      prePostSignalNote: null,
+      observedPreRevenue: 120000,
+      observedPostRevenue: 45000,
+      observedPreQuantity: 12,
+      observedPostQuantity: 5,
       previousPeriodRevenue: 110000,
       previousPeriodUnits: 11,
       brojBoja: colors.length,
@@ -828,10 +843,10 @@ describe("ColorSalesStatsPage", () => {
 
     expect(await screen.findByText("Color detail route")).toBeInTheDocument();
     const snapshot = getAnalyticsDetailSnapshot("color-sales-stats", encodeURIComponent("Crna"));
-    expect(snapshot?.fields.some((field) => field.key === "preNivelacijePromet" && field.value === "90.000 RSD")).toBe(true);
-    expect(snapshot?.fields.some((field) => field.key === "posleNivelacijePromet" && field.value === "30.000 RSD")).toBe(true);
-    expect(snapshot?.fields.some((field) => field.key === "preNivelacijeKolicina" && field.value === "9 kom")).toBe(true);
-    expect(snapshot?.fields.some((field) => field.key === "posleNivelacijeKolicina" && field.value === "3 kom")).toBe(true);
+    expect(snapshot?.fields.some((field) => field.key === "comparablePreRevenue" && field.value === "90.000 RSD")).toBe(true);
+    expect(snapshot?.fields.some((field) => field.key === "comparablePostRevenue" && field.value === "30.000 RSD")).toBe(true);
+    expect(snapshot?.fields.some((field) => field.key === "comparablePreQuantity" && field.value === "9 kom")).toBe(true);
+    expect(snapshot?.fields.some((field) => field.key === "comparablePostQuantity" && field.value === "3 kom")).toBe(true);
     expect(snapshot?.fields.some((field) => field.key === "prePostNivelacijaRevenueImpactPct" && field.value === "N/A")).toBe(true);
   });
 });

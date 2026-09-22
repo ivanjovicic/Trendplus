@@ -2,9 +2,11 @@
 
 Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none; RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE.
+Current READY prompt: RQ394; RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE.
 
 Owner completion 2026-09-22: under the user's direct last-commits audit, `RQ393` was delivered directly to `main` in `3b635fe813e0e55f843236d55025c52c030e853d`; Color recommendations now use a covered-revenue-weighted margin baseline, unknown-share evidence remains nullable, historical/fallback/no-cost coverage is separated, and the affected screens use Serbian decision labels. Run log: `.ai/runs/2026-09-22-direct-last-commits-audit-evidence.md`.
+Owner promotion 2026-09-22: after `RQ393` reached DONE and `RQ389`/`RQ392`/`RQ393` comparable-cohort dependencies were verified on current `main`, `RQ394` moved `WAITING -> READY` as the next dependency-complete P1 Color aggregate-cohort prompt; collision checks are clear.
+Owner claim 2026-09-22: `RQ394` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ394-codex.lock.md`.
 
 Owner audit 2026-09-22: under the user's direct Supplier Decision Hub screen/backend audit request, `RQ401` became the current Supplier Decision READY prompt for cache-schema/effective-period compatibility. `RQ402`-`RQ405` were added as WAITING detail, filter-parity, effective-period and localization follow-ups. Existing RQ READY lanes remain independently runnable under the current queue governance.
 Owner claim 2026-09-22: `RQ401` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ401-codex.lock.md`.
@@ -1428,7 +1430,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ391 | DONE | pre-nivelacija-runtime-schema | Validate the complete Pre-Nivelacija decision payload at runtime |
 | RQ392 | DONE | color-signed-numeric-contract | Preserve signed Color sales and cost-quality evidence |
 | RQ393 | DONE | color-margin-quality-contract | Align Color recommendation margin baseline with weighted cost evidence |
-| RQ394 | WAITING | color-prepost-aggregate-parity | Align Color pre/post totals with the comparable evidence cohort |
+| RQ394 | IN_PROGRESS | color-prepost-aggregate-parity | Align Color pre/post totals with the comparable evidence cohort |
 | RQ395 | WAITING | color-runtime-safe-errors | Harden Color runtime validation and safe traceable endpoint errors |
 | RQ396 | WAITING | color-cache-freshness-lineage | Align Color cache invalidation and freshness metadata |
 | RQ397 | WAITING | color-detail-trust-projection | Align Color generic detail with row trust and provenance |
@@ -21644,7 +21646,7 @@ The Color endpoint computes `averageMarginPct` as a simple mean of row margin pe
 
 ## RQ394 - Align Color pre/post totals with the comparable evidence cohort
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: backend-contract/frontend/tests
 Feature family: color-prepost-aggregate-parity
