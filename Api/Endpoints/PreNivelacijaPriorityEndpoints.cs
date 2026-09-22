@@ -389,9 +389,9 @@ public static class PreNivelacijaPriorityEndpoints
                         .GroupBy(x => new { x.SupplierId, x.SupplierName })
                         .Select(g =>
                         {
-                            var highCount = g.Count(x => x.PriorityBand == "high");
+                            var highCount = g.Count(IsHighPriorityCandidate);
                             var candidateCount = g.Count();
-                            var stockAtRisk = g.Where(x => x.PriorityBand == "high").Sum(x => x.StockUnits);
+                            var stockAtRisk = g.Where(IsHighPriorityCandidate).Sum(x => x.StockUnits);
                             var avoidableLoss = g.Where(x => x.MarginDeltaHighlightVsMarkdown > 0m).Sum(x => x.MarginDeltaHighlightVsMarkdown);
                             var expectedUplift = g.Where(x => x.RevenueDeltaHighlightVsMarkdown > 0m).Sum(x => x.RevenueDeltaHighlightVsMarkdown);
 
@@ -424,22 +424,12 @@ public static class PreNivelacijaPriorityEndpoints
                         .OrderByDescending(x => x.ActionScore)
                         .ToList();
 
-                    var highPriority = allCandidates.Where(x => x.PriorityBand == "high").ToList();
-                    var summary = new PreNivelacijaSummaryDto
-                    {
-                        SupplierCount = supplierLeaderboard.Count,
-                        CandidatesCount = totalCandidates,
-                        HighPriorityCount = highPriority.Count,
-                        TotalStockAtRisk = highPriority.Sum(x => x.StockUnits),
-                        EstimatedAvoidableMarkdownLoss = decimal.Round(allCandidates.Where(x => x.MarginDeltaHighlightVsMarkdown > 0m).Sum(x => x.MarginDeltaHighlightVsMarkdown), 2),
-                        ExpectedHighlightRevenueUplift = decimal.Round(allCandidates.Where(x => x.RevenueDeltaHighlightVsMarkdown > 0m).Sum(x => x.RevenueDeltaHighlightVsMarkdown), 2),
-                        AveragePreNivelacijaScore = totalCandidates == 0 ? 0m : decimal.Round(allCandidates.Average(x => x.PreNivelacijaScore), 2)
-                    };
+                    var summary = BuildSummary(allCandidates, supplierLeaderboard);
 
                     var queues = new PreNivelacijaQueuesDto
                     {
                         HighlightNow = allCandidates
-                            .Where(x => x.PriorityBand == "high" && x.Recommendation.RecommendationAllowed)
+                            .Where(x => IsHighPriorityCandidate(x) && x.Recommendation.RecommendationAllowed)
                             .Take(30)
                             .Select(x => ToQueueItem(x, nowUtc.AddDays(2)))
                             .ToList(),
@@ -503,6 +493,34 @@ public static class PreNivelacijaPriorityEndpoints
     private static string BuildFormulaDescription()
     {
         return "Pre-Nivelacija Score = 0.30*StockPressure + 0.25*VelocityRisk + 0.20*RecencyRisk + 0.10*MarkdownOpportunity + 0.10*MarginPotential + 0.05*SeasonRecencyBoost; Recommendation = 0.50*Score + 0.20*ScenarioDelta + 0.15*StaleRisk + 0.15*Reliability";
+    }
+
+    internal static bool IsHighPriorityCandidate(PreNivelacijaSkuCandidateDto candidate)
+    {
+        return string.Equals(candidate.PriorityBand, "high", StringComparison.OrdinalIgnoreCase);
+    }
+
+    internal static PreNivelacijaSummaryDto BuildSummary(
+        IReadOnlyList<PreNivelacijaSkuCandidateDto> candidates,
+        IReadOnlyList<PreNivelacijaSupplierActionDto> supplierLeaderboard)
+    {
+        var highPriority = candidates.Where(IsHighPriorityCandidate).ToList();
+
+        return new PreNivelacijaSummaryDto
+        {
+            SupplierCount = supplierLeaderboard.Count,
+            CandidatesCount = candidates.Count,
+            HighPriorityCount = highPriority.Count,
+            IncreaseFocusCount = candidates.Count(x => string.Equals(x.Recommendation.Status, "increase_focus", StringComparison.OrdinalIgnoreCase)),
+            MaintainCount = candidates.Count(x => string.Equals(x.Recommendation.Status, "maintain", StringComparison.OrdinalIgnoreCase)),
+            ReviewCount = candidates.Count(x => string.Equals(x.Recommendation.Status, "review", StringComparison.OrdinalIgnoreCase)),
+            DoNotTrustCount = candidates.Count(x => string.Equals(x.Recommendation.Status, "do_not_trust", StringComparison.OrdinalIgnoreCase)),
+            InsufficientDataCount = candidates.Count(x => string.Equals(x.Recommendation.Status, "insufficient_data", StringComparison.OrdinalIgnoreCase)),
+            TotalStockAtRisk = highPriority.Sum(x => x.StockUnits),
+            EstimatedAvoidableMarkdownLoss = decimal.Round(candidates.Where(x => x.MarginDeltaHighlightVsMarkdown > 0m).Sum(x => x.MarginDeltaHighlightVsMarkdown), 2),
+            ExpectedHighlightRevenueUplift = decimal.Round(candidates.Where(x => x.RevenueDeltaHighlightVsMarkdown > 0m).Sum(x => x.RevenueDeltaHighlightVsMarkdown), 2),
+            AveragePreNivelacijaScore = candidates.Count == 0 ? 0m : decimal.Round(candidates.Average(x => x.PreNivelacijaScore), 2)
+        };
     }
 
     internal static string NormalizeDataScope(string? rawScope)

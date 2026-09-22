@@ -37,6 +37,14 @@ public sealed class PreNivelacijaSummaryDto
     public int SupplierCount { get; set; }
     public int CandidatesCount { get; set; }
     public int HighPriorityCount { get; set; }
+    /// <summary>
+    /// Counts are calculated over the complete filtered candidate universe, not the requested page.
+    /// </summary>
+    public int IncreaseFocusCount { get; set; }
+    public int MaintainCount { get; set; }
+    public int ReviewCount { get; set; }
+    public int DoNotTrustCount { get; set; }
+    public int InsufficientDataCount { get; set; }
     public int TotalStockAtRisk { get; set; }
     public decimal EstimatedAvoidableMarkdownLoss { get; set; }
     public decimal ExpectedHighlightRevenueUplift { get; set; }

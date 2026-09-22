@@ -150,7 +150,12 @@ function makeResponse(candidates = [makeCandidate(), makeCandidate({
     summary: {
       supplierCount: 1,
       candidatesCount: candidates.length,
-      highPriorityCount: 1,
+      highPriorityCount: candidates.filter((candidate) => candidate.priorityBand.toLowerCase() === "high").length,
+      increaseFocusCount: candidates.filter((candidate) => candidate.recommendation.status === "increase_focus").length,
+      maintainCount: candidates.filter((candidate) => candidate.recommendation.status === "maintain").length,
+      reviewCount: candidates.filter((candidate) => candidate.recommendation.status === "review").length,
+      doNotTrustCount: candidates.filter((candidate) => candidate.recommendation.status === "do_not_trust").length,
+      insufficientDataCount: candidates.filter((candidate) => candidate.recommendation.status === "insufficient_data").length,
       totalStockAtRisk: 12,
       estimatedAvoidableMarkdownLoss: 12500,
       expectedHighlightRevenueUplift: 18000,
@@ -220,24 +225,20 @@ describe("PreNivelacijaPriorityPage", () => {
     getPreNivelacijaPrioritetiMock.mockResolvedValue(makeResponse());
   });
 
-  it("does not rank insufficient_data candidates as high priority", async () => {
+  it("keeps the high-priority band stable even when the recommendation is insufficient_data", async () => {
     render(
       <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
         <PreNivelacijaPriorityPage />
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole("tab", { name: /Visok prioritet \(0\)/i })).toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: /Visok prioritet \(1\)/i })).toBeInTheDocument();
     expect(screen.queryByText(/SKU traži brzu proveru/i)).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("tab", { name: /Visok prioritet \(0\)/i }));
+    fireEvent.click(screen.getByRole("tab", { name: /Visok prioritet \(1\)/i }));
 
-    expect(await screen.findByRole("heading", { name: "Nema rezultata za trenutne filtere." })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Vrati prikaz svih prioriteta." })).toBeInTheDocument();
-    expect(screen.queryByText("SKU-101")).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Vrati prikaz svih prioriteta." }));
     expect((await screen.findAllByText("SKU-101")).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("heading", { name: "Nema rezultata za trenutne filtere." })).not.toBeInTheDocument();
   });
 
   it("renders shared control bar and data table chrome", async () => {
@@ -1021,6 +1022,52 @@ describe("PreNivelacijaPriorityPage", () => {
 
     await waitFor(() => expect(getPreNivelacijaPrioritetiMock).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 })));
     expect(await screen.findByText("Detalj odluke: SKU-101")).toBeInTheDocument();
+  });
+
+  it("keeps the global high-priority KPI stable across pages while tabs stay page-local", async () => {
+    const pageOneCandidate = makeCandidate({ artikalId: 301, sku: "SKU-PAGE-1" });
+    const pageTwoCandidate = makeCandidate({ artikalId: 302, sku: "SKU-PAGE-2" });
+    const globalSummary = {
+      increaseFocusCount: 0,
+      maintainCount: 0,
+      reviewCount: 0,
+      doNotTrustCount: 0,
+      insufficientDataCount: 2,
+      highPriorityCount: 2,
+      candidatesCount: 2,
+    };
+
+    getPreNivelacijaPrioritetiMock
+      .mockResolvedValueOnce({
+        ...makeResponse([pageOneCandidate]),
+        summary: { ...makeResponse([pageOneCandidate]).summary, ...globalSummary },
+        page: 1,
+        pageSize: 1,
+        totalCandidates: 2,
+      })
+      .mockResolvedValueOnce({
+        ...makeResponse([pageTwoCandidate]),
+        summary: { ...makeResponse([pageTwoCandidate]).summary, ...globalSummary },
+        page: 2,
+        pageSize: 1,
+        totalCandidates: 2,
+      });
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    const firstKpi = await screen.findByText("Visok prioritet");
+    expect(firstKpi.parentElement).toHaveTextContent("2");
+    expect(screen.getByRole("tab", { name: /Visok prioritet \(1\)/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Sledeća" }));
+
+    await waitFor(() => expect(getPreNivelacijaPrioritetiMock).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 })));
+    expect(screen.getByText("Visok prioritet").parentElement).toHaveTextContent("2");
+    expect(screen.getByRole("tab", { name: /Visok prioritet \(1\)/i })).toBeInTheDocument();
   });
 
   it("hides inline detail when the active focus filter excludes the selected row", async () => {

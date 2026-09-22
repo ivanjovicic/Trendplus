@@ -17,7 +17,7 @@
     {
       "file": "src/pages/PreNivelacijaPriorityPage.tsx",
       "rule": "decisionScore_assign",
-      "line": 563,
+      "line": 574,
       "reason": "Existing backend-owned decision-score projection requires a reviewed authority exception."
     },
     {
@@ -41,13 +41,13 @@
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "confidencePct_assign",
-      "line": 977,
+      "line": 978,
       "reason": "Existing backend confidence projection requires a reviewed authority exception."
     },
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "reliabilityPct_assign",
-      "line": 978,
+      "line": 979,
       "reason": "Existing backend reliability projection requires a reviewed authority exception."
     },
     {
@@ -65,13 +65,13 @@
     {
       "file": "src/components/supplierDecisionHub/SupplierExplainabilitySnapshot.tsx",
       "rule": "confidencePct_assign",
-      "line": 110,
+      "line": 115,
       "reason": "Existing explainability confidence projection requires a reviewed authority exception."
     },
     {
       "file": "src/components/supplierDecisionHub/SupplierExplainabilitySnapshot.tsx",
       "rule": "reliabilityPct_assign",
-      "line": 115,
+      "line": 120,
       "reason": "Existing explainability reliability projection requires a reviewed authority exception."
     },
     {

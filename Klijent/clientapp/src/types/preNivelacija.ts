@@ -111,6 +111,11 @@ export interface PreNivelacijaSummary {
   supplierCount: number;
   candidatesCount: number;
   highPriorityCount: number;
+  increaseFocusCount: number;
+  maintainCount: number;
+  reviewCount: number;
+  doNotTrustCount: number;
+  insufficientDataCount: number;
   totalStockAtRisk: number;
   estimatedAvoidableMarkdownLoss: number;
   expectedHighlightRevenueUplift: number;

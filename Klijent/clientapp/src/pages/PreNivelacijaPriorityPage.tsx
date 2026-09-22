@@ -307,7 +307,18 @@ function reliabilitySignalDisplay(row: DecisionCandidate): { label: string; clas
 }
 
 function isHighPriorityCandidate(row: DecisionCandidate): boolean {
-  return (row.priorityBand ?? "").toLowerCase() === "high" && row.status !== "insufficient_data";
+  // Priority band is the backend-owned risk population. Recommendation status
+  // separately tells us whether the signal is actionable; insufficient data is
+  // therefore still high priority, but must not be presented as an allowed action.
+  return (row.priorityBand ?? "").toLowerCase() === "high";
+}
+
+function priorityBandLabel(value: string): string {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "high") return "Visok";
+  if (normalized === "medium") return "Srednji";
+  if (normalized === "low") return "Nizak";
+  return "Nije klasifikovano";
 }
 
 type StatusTooltipData = {
@@ -631,6 +642,22 @@ export default function PreNivelacijaPriorityPage() {
     return { increaseFocus, maintain, review, doNotTrust, insufficientData, highPriority };
   }, [tableRows]);
 
+  const globalStatusCounts = useMemo(() => {
+    const summary = data?.summary;
+    if (!summary) {
+      return null;
+    }
+
+    return {
+      increaseFocus: summary.increaseFocusCount,
+      maintain: summary.maintainCount,
+      review: summary.reviewCount,
+      doNotTrust: summary.doNotTrustCount,
+      insufficientData: summary.insufficientDataCount,
+      highPriority: summary.highPriorityCount,
+    };
+  }, [data?.summary]);
+
   const filteredTableRows = useMemo(() => {
     if (focusFilter === "all") return tableRows;
     if (focusFilter === "increaseFocus") return tableRows.filter((row) => row.status === "increase_focus");
@@ -722,17 +749,19 @@ export default function PreNivelacijaPriorityPage() {
   const attentionNotices = useMemo(() => {
     const notices: Array<{ key: string; title: string; detail: string; tone: "info" | "warning" | "critical" }> = [];
 
-    if (candidateCounts.highPriority > 0) {
+    if (globalStatusCounts && globalStatusCounts.highPriority > 0) {
       notices.push({
         key: "high-priority",
-        title: `${candidateCounts.highPriority} SKU traži brzu proveru`,
-        detail: "Visok prioritet znači da je signal dovoljno jak da odmah pregledaš izlaganje, zalihu i sledeći korak.",
+        title: `${globalStatusCounts.highPriority} SKU je u visokoj prioritetnoj bandi`,
+        detail: "Visoka prioritetna banda je globalni rizik cele filtrirane populacije. Proveri akcioni status i kvalitet podataka pre odluke.",
         tone: "info",
       });
     }
 
-    const limitedSignalCount = candidateCounts.doNotTrust + candidateCounts.insufficientData;
-    if (limitedSignalCount > 0) {
+    const limitedSignalCount = globalStatusCounts
+      ? globalStatusCounts.doNotTrust + globalStatusCounts.insufficientData
+      : null;
+    if (limitedSignalCount != null && limitedSignalCount > 0) {
       notices.push({
         key: "limited-signal",
         title: `${limitedSignalCount} SKU ima ograničen signal`,
@@ -748,17 +777,17 @@ export default function PreNivelacijaPriorityPage() {
         detail: dataMetaMessage ?? "Proverite analytics refresh status i data quality signal pre jačih odluka.",
         tone: "critical",
       });
-    } else if (candidateCounts.review > 0) {
+    } else if (globalStatusCounts && globalStatusCounts.review > 0) {
       notices.push({
         key: "review",
-        title: `${candidateCounts.review} SKU je za ručni pregled`,
+        title: `${globalStatusCounts.review} SKU je za ručni pregled`,
         detail: "Pregledaj razlog preporuke i sledeći korak pre nego što artikal pojačaš ili spustiš iz fokusa.",
         tone: "warning",
       });
     }
 
     return notices.slice(0, 3);
-  }, [candidateCounts.doNotTrust, candidateCounts.highPriority, candidateCounts.insufficientData, candidateCounts.review, dataMetaMessage, showMetaWarning]);
+  }, [dataMetaMessage, globalStatusCounts, showMetaWarning]);
 
   const toolbarFilters = useMemo<AnalyticsNamedValue[]>(
     () => [
@@ -778,9 +807,13 @@ export default function PreNivelacijaPriorityPage() {
     () => [
       { key: "generatedAtUtc", label: "Generisano", value: data?.generatedAtUtc ?? "" },
       { key: "formulaVersion", label: "Formula", value: data?.formulaVersion ?? "" },
-      { key: "totalCandidates", label: "Total", value: data ? normalizeNonNegativeNumber(data.totalCandidates) : null },
+      { key: "populationBasis", label: "Osnova brojanja", value: "Globalno = cela filtrirana populacija; strana = trenutno učitani redovi" },
+      { key: "totalCandidates", label: "Ukupno kandidata (globalno)", value: data ? normalizeNonNegativeNumber(data.totalCandidates) : null },
+      { key: "globalHighPriority", label: "Visok prioritet (globalno)", value: data ? normalizeNonNegativeNumber(data.summary.highPriorityCount) : null },
+      { key: "visiblePageCandidates", label: "Kandidati (vidljiva strana)", value: decisionRows.length },
+      { key: "visiblePageHighPriority", label: "Visok prioritet (vidljiva strana)", value: candidateCounts.highPriority },
     ],
-    [data]
+    [candidateCounts.highPriority, data, decisionRows.length]
   );
 
   const handleSort = (field: SortField) => {
@@ -864,18 +897,20 @@ export default function PreNivelacijaPriorityPage() {
       },
       {
         key: "high-priority",
-        label: "Visok prioritet",
-        value: candidateCounts.highPriority.toLocaleString("sr-RS"),
+        label: "Visok prioritet (globalno)",
+        value: data?.summary.highPriorityCount.toLocaleString("sr-RS") ?? RECOMMENDATION_SIGNAL_UNAVAILABLE,
         tone: "success",
       },
       {
         key: "limited-signal",
-        label: "Ograničen signal",
-        value: (candidateCounts.doNotTrust + candidateCounts.insufficientData).toLocaleString("sr-RS"),
+        label: "Ograničen signal (globalno)",
+        value: globalStatusCounts
+          ? (globalStatusCounts.doNotTrust + globalStatusCounts.insufficientData).toLocaleString("sr-RS")
+          : RECOMMENDATION_SIGNAL_UNAVAILABLE,
         tone: "warning",
       },
     ];
-  }, [candidateCounts.doNotTrust, candidateCounts.highPriority, candidateCounts.insufficientData, footwearTypeId, footwearTypeOptions, seasonId, seasonOptions, supplierId, supplierOptions]);
+  }, [data?.summary.highPriorityCount, footwearTypeId, footwearTypeOptions, globalStatusCounts, seasonId, seasonOptions, supplierId, supplierOptions]);
 
   const controlBarFields = useMemo<AnalyticsControlBarField[]>(() => [
     {
@@ -1082,8 +1117,8 @@ export default function PreNivelacijaPriorityPage() {
               <strong>{formatNonNegativeNumber(data.summary.candidatesCount)}</strong>
             </article>
             <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Kandidati sa najjačim signalom za brzu intervenciju.">
-              <span>Visok prioritet <InfoTip text="SKU u prioritetnoj bandi 'high' – imaju najjači kompozitni signal (visok skor zalihe + stagnacija prodaje). Ovo su artikli gde je intervencija pre nivelacije najhitnija." /></span>
-              <strong>{formatNonNegativeNumber(candidateCounts.highPriority)}</strong>
+              <span>Visok prioritet <InfoTip text="Globalni broj SKU u visokoj prioritetnoj bandi u celoj filtriranoj populaciji. Status preporuke i kvalitet podataka odvojeno određuju da li je akcija dozvoljena." /></span>
+              <strong>{formatNonNegativeNumber(data.summary.highPriorityCount)}</strong>
             </article>
             <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Ukupna zaliha kod SKU koji nose operativni rizik.">
               <span>Zaliha pod rizikom <InfoTip text="Ukupna zaliha u komadima svih prikazanih kandidatskih SKU (u skladu sa filterima). Iskazano u komadima, ne u RSD vrednosti. Veća zaliha bez prodaje = veći operativni rizik." /></span>
@@ -1103,7 +1138,7 @@ export default function PreNivelacijaPriorityPage() {
           <section className="pnp-decision-panels">
             <article className="pnp-decision-card analytics-surface-panel">
               <h2>Koncentracija akcije po dobavljačima</h2>
-              <p>Top dobavljači po action score u aktuelnom prioritetnom setu.</p>
+              <p>Top dobavljači po skoru akcije u celoj filtriranoj prioritetnoj populaciji.</p>
               {supplierActionShare.length > 0 ? (
                 <div className="pnp-decision-chart-wrap">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
@@ -1126,7 +1161,7 @@ export default function PreNivelacijaPriorityPage() {
                 <div>
                   <h2>Prioritetna lista SKU kandidata</h2>
                   <p>
-                    {recommendationStatusLabel("increase_focus")}: {candidateCounts.increaseFocus} | {recommendationStatusLabel("maintain")}: {candidateCounts.maintain} | {recommendationStatusLabel("review")}: {candidateCounts.review} | {recommendationStatusLabel("do_not_trust")}: {candidateCounts.doNotTrust} | {recommendationStatusLabel("insufficient_data")}: {candidateCounts.insufficientData} | Visok prioritet: {candidateCounts.highPriority}
+                    Vidljiva strana: {recommendationStatusLabel("increase_focus")}: {candidateCounts.increaseFocus} | {recommendationStatusLabel("maintain")}: {candidateCounts.maintain} | {recommendationStatusLabel("review")}: {candidateCounts.review} | {recommendationStatusLabel("do_not_trust")}: {candidateCounts.doNotTrust} | {recommendationStatusLabel("insufficient_data")}: {candidateCounts.insufficientData} | Visok prioritet: {candidateCounts.highPriority}
                   </p>
                 </div>
               </div>
@@ -1298,7 +1333,7 @@ export default function PreNivelacijaPriorityPage() {
                 </article>
                 <article>
                   <span>Prioritetna kategorija</span>
-                  <strong>{selectedRow.priorityBand}</strong>
+                  <strong>{priorityBandLabel(selectedRow.priorityBand)}</strong>
                 </article>
                 <article>
                   <span>Scenario isticanje (30d procena prihoda)</span>
