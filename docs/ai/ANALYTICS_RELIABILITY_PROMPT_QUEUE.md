@@ -2,10 +2,11 @@
 
 Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ373
+Current READY prompt: RQ375
 
 Owner promotion 2026-09-22: under the user's direct Inventory audit request, `RQ308` moved from `WAITING` to `READY` as the current Inventory period-selection and snapshot-provenance prompt. `RQ371` and `RQ372` were added as later `WAITING` follow-ups; the queue keeps one canonical READY prompt per program.
 Owner promotion 2026-09-22: under the user's direct Sales by Supplier audit request, `RQ308` returned to `WAITING`, `RQ373` moved to `READY` as the current supplier visible-scope/KPI parity prompt, and `RQ374` was added as a later `WAITING` supplier detail trust-contract follow-up. Existing localization findings remain routed to `RQ306` and `RQ325`; the queue keeps one canonical READY prompt per program.
+Owner promotion 2026-09-22: under the user's direct Shoe Type Sales screen/backend audit request, `RQ373` returned to `WAITING`, `RQ375` moved to `READY` as the current Shoe Type aggregate margin/cost-quality contract prompt, and `RQ376`/`RQ377` were added as later `WAITING` pre/post aggregate and detail-trust follow-ups. Shoe Type English/ASCII copy remains routed to `RQ306`/`RQ325`, and the existing dead truncation label remains `RQ329`; the queue keeps one canonical READY prompt per program.
 
 Owner promotion 2026-09-21: under the user's explicit instruction to claim the next prompt, `RQ303` moved from `WAITING` to `READY` as the next P1 Daily Sales localization slice after `RQ302`.
 
@@ -1357,8 +1358,11 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ370 | DONE | inventory-secondary-request-cancellation | Abort Inventory secondary and detail requests on scope changes |
 | RQ371 | WAITING | inventory-signal-period-scope-parity | Keep Inventory signal period and data-scope contracts aligned |
 | RQ372 | WAITING | inventory-alert-filter-contract | Keep Inventory alert filtering, counts and URL state consistent |
-| RQ373 | READY | supplier-sales-visible-scope-parity | Align Supplier Sales visible filters with KPI, chart, table, export and recommendation scope |
+| RQ373 | WAITING | supplier-sales-visible-scope-parity | Align Supplier Sales visible filters with KPI, chart, table, export and recommendation scope |
 | RQ374 | WAITING | supplier-sales-detail-trust-contract | Align Supplier Sales detail route with recommendation, trust and localized provenance contract |
+| RQ375 | READY | shoe-type-margin-quality-contract | Align Shoe Type weighted margin baseline and cost-quality semantics |
+| RQ376 | WAITING | shoe-type-prepost-aggregate-parity | Align Shoe Type pre/post totals with comparable evidence cohort |
+| RQ377 | WAITING | shoe-type-detail-trust-contract | Align Shoe Type detail route with row recommendation, trust and unknown identity |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -16521,6 +16525,8 @@ Representative files:
 - Supplier Sales: `SupplierSalesStatsPage.tsx` and its focused page spec.
 - Components: `ActionWorkflowPanel.tsx`, `StoreComparisonPanel.tsx`, `SKUDetailModal.tsx`, `MailSchedulerPanel.tsx`, `InventoryPriorityPanels.tsx`
 - Services: `dailySalesStatsApi.ts`, `colorSalesStatsApi.ts`, `shoeTypeSalesStatsApi.ts`, `supplierSalesStatsApi.ts`
+- Shoe Type concrete residuals: `ShoeTypeSalesStatsPage.tsx:667,716-719,1000-1015,1528,1580-1649` and `shoeTypeSalesStatsApi.ts:162` contain `trosak`, `pokrice`, `registrovnom`, `prodanih`, `rucne`, `potvrdjeno`, `ucitane`, `prosirite`, `ne moze`, `ispravis` and `Greska ... obuce`.
+- Generic Shoe Type detail concrete residuals: `AnalyticsDetailReadService.cs:175-176,550-590` emits `Tip obuce`, `kolicina`, `pokrice`, `impact`, `marzni`, `trosak`, `sacuvana` and `koriscen` without Serbian diacritics.
 
 Reproduction: scan Operacije screens for missing `č/ć/š/đ/ž`. Risk: inconsistent pilot polish and reduced trust vs other localized surfaces.
 
@@ -17451,6 +17457,7 @@ English remains in Operacije trust/snapshot/export strings beyond RQ301/303/304/
 
 - `ColorSalesStatsPage.tsx:657`, `816`, `821`, `94`; `ProdajaPrePostNivelacijePage.tsx:1266`, `1583`.
 - `SupplierSalesStatsPage.tsx:369`, `410`, `484`, `1107`, `1236`, `1490`, `2038`, `2175` still expose English/technical copy such as `Low signal`, `Supplier sales stats`, `canonical`, `Supplier decision detail`, `AI`, `historija`, `snapshot` and `detalj`.
+- `ShoeTypeSalesStatsPage.tsx:314,667,713-721,963-964,1214,1339,1522,1649` exposes `Low signal`, `Sales facts analytics`, `snapshot`, `impact` and `Data quality`; `AnalyticsDetailReadService.cs:566-620` exposes `impact`, `fallback`, `snapshot` and `Data scope` in the Shoe Type detail projection.
 - Inventory residuals include `InventoryPage.tsx` fallback headings/copy such as `Alerts`, `Forecast` and `snapshot`, `DemandForecastPanel.tsx` labels such as `OOS`/`SKU`/`Status`, `InventoryAlertsFeed.tsx` `Info`/`N/A`, `inventoryUtils.ts` `Sell-through`/`Snapshot`, and export metadata such as `Aging 90+`.
 
 Reproduction: open color detail snapshot, trust subtitles, inventory alerts — English visible in Serbian UI.
@@ -20105,7 +20112,7 @@ Reproduction: load more than one alert severity, select `Kritično`, then compar
 
 ## RQ373 - Align Supplier Sales visible filters with KPI, chart, table, export and recommendation scope
 
-Status: READY
+Status: WAITING
 Priority: P1
 Type: backend-contract/frontend/tests
 Feature family: supplier-sales-visible-scope-parity
@@ -20239,3 +20246,202 @@ Reproduction: open a supplier row, compare inline detail with `Puni detalj`, the
 - `RQ257` owns finite numeric boundary behavior; `RQ282` owns collision-safe supplier identities.
 - `RQ306` and `RQ325` own the broader Operacije diacritics/residual-English passes; coordinate wording and do not duplicate their whole-file sweeps.
 - `RQ373` should establish the visible population contract first so detail scope cannot diverge from the table.
+
+---
+
+## RQ375 - Align Shoe Type weighted margin baseline and cost-quality semantics
+
+Status: READY
+Priority: P1
+Type: backend-contract/frontend/tests
+Feature family: shoe-type-margin-quality-contract
+Parallel-safe: no
+Owner: Analytics Reliability / Shoe Type Sales
+Commit suggestion: `fix(analytics): align shoe type margin quality contract`
+
+### Problem
+
+The Shoe Type endpoint publishes `totals.prosecnaMarza` as a simple average of row-level margin percentages, even though each row has a different cost-covered revenue denominator. The same value is presented as an authoritative overall margin and is passed into the backend recommendation engine as its baseline. In parallel, `dataQuality.missingCostRevenueSharePct` means “not historical direct cost” while the page presents it as “promet bez nabavne cene”; snapshot and product fallback coverage can therefore be labelled as no-cost even when a usable estimate exists.
+
+### Evidence
+
+- `Api/Endpoints/AllEndpoints.cs:2346-2352` computes `averageMarginPct` with `.Average()` over row `marginPct`; `:2369-2384` passes it into `AnalyticsDecisionRecommendationEngine.Evaluate`; `:2463-2472` exposes it as `totals.prosecnaMarza`.
+- `Application/Analytics/AnalyticsMarginPolicy.cs:114-133` distinguishes historical, product-fallback and snapshot revenue, while `:322-331` separately computes no-cost coverage from `RevenueWithCost`.
+- `Api/Endpoints/AllEndpoints.cs:2320-2340` defines `missingCostRevenue` as total revenue minus historical-cost revenue, not total revenue minus all usable-cost revenue.
+- `ShoeTypeSalesStatsPage.tsx:584-597` treats the backend aggregate as authoritative; `:716-720` maps `missingCostRevenueSharePct` to both direct-cost coverage and “Promet bez nabavne cene %”; `:667` describes snapshot coverage as an estimate.
+- `Api.Tests/AnalyticsShoeTypeSalesIntegrationTests.cs:140-157` only checks field presence and does not prove weighted aggregate, cost-source partition or recommendation-baseline semantics.
+
+Reproduction: return two known types with very different cost-covered revenues and margins, plus fallback/snapshot-cost rows. The endpoint’s overall margin and recommendation baseline become the unweighted row mean, while the UI’s no-cost percentage includes rows that have fallback or snapshot cost.
+
+### Scope
+
+- Shoe Type endpoint response/totals/data-quality contract, recommendation baseline input, frontend KPI/toolbar labels and nearest backend/frontend tests.
+- Explicit revenue denominator and source partition for historical, snapshot, product fallback and truly unavailable cost.
+- No new recommendation algorithm, accounting ledger or cross-screen refactor; preserve valid zero, unknown and unavailable semantics.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ148`, `RQ168`, `RQ283`, `RQ284`, `RQ346`, `RQ362`, `RQ363`
+- `AllEndpoints.cs`, `AnalyticsMarginPolicy.cs`, `shoeTypeSalesStatsApi.ts`, `ShoeTypeSalesStatsPage.tsx` and nearest Shoe Type/API tests
+
+### Do
+
+1. Define the authoritative overall margin denominator. Use a weighted aggregate over the declared cost-covered revenue population, or return unavailable when that denominator is not measurable; do not use a simple mean of row percentages.
+2. Feed the same backend-owned weighted baseline into recommendation evaluation, with explicit treatment of unknown-type revenue.
+3. Separate direct historical-cost absence from true no-cost revenue and preserve snapshot/product-fallback coverage as distinct source fields; map each field to the matching UI label and trust state.
+4. Keep `null`, valid zero, negative/invalid and non-finite evidence distinct across totals, row, toolbar, detail and export projections.
+
+### Tests
+
+- two rows with unequal covered-revenue denominators proving weighted versus simple-mean divergence;
+- known and unknown type denominator fixtures, no covered revenue, valid zero margin and negative margin;
+- historical, snapshot, product-fallback and no-cost source partitions summing without overlap;
+- recommendation baseline/actionability parity and frontend KPI/toolbar/detail/export labels;
+- focused backend/frontend tests, analytics guardrails/typecheck/build as selected, and `git diff --check`.
+
+### Acceptance
+
+- `prosecnaMarza` has one documented weighted denominator and no longer silently represents a simple row mean.
+- Recommendation baseline and displayed overall margin use the same declared population and unit.
+- “Promet bez nabavne cene” contains only genuinely unavailable cost; direct, snapshot and product-fallback coverage remain distinguishable.
+- Missing, zero, negative, partial and non-finite cost/margin evidence never becomes a trusted green or actionable recommendation.
+
+### Dependencies
+
+- `RQ148` owns broad sales/margin measurement-basis policy; this prompt is the concrete Shoe Type aggregate/cost-quality reproduction.
+- `RQ168` owns confirmed margin-ranking evidence; do not create a second ranking contract.
+- `RQ346` remains the completed frontend fallback/label correction; this prompt validates the backend aggregate it now consumes.
+
+---
+
+## RQ376 - Align Shoe Type pre/post totals with comparable evidence cohort
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/frontend/tests
+Feature family: shoe-type-prepost-aggregate-parity
+Parallel-safe: no
+Owner: Analytics Reliability / Shoe Type Sales
+Commit suggestion: `fix(analytics): align shoe type prepost aggregates`
+
+### Problem
+
+Shoe Type row-level pre/post impact and recommendation actionability use the comparable article cohort: each article must have sales both before and after its first nivelacija and pass the shared signal policy. The response totals instead sum `preNivelacijePromet`/`posleNivelacijePromet` for every article with any nivelacija, then calculate `totals.prePostNivelacijaRevenueImpactPct` and units impact from that broader population. A total-level change can therefore look measurable while the rows that support it are non-comparable or actionability is blocked.
+
+### Evidence
+
+- `Api/Endpoints/AllEndpoints.cs:2242-2309` builds each row through `AnalyticsNivelacijaSplitPolicy`, exposing both broad pre/post values and comparable coverage/impact.
+- `:2314-2318` sums `sumPreRevenue`/`sumPostRevenue` from the broad row values; `:2495-2508` uses those sums for totals impact instead of the comparable cohort fields.
+- `:2384-2387` gates each row recommendation on both revenue and quantity comparable impacts, so row actionability and totals currently use different populations.
+- `ShoeTypeSalesStatsPage.tsx:300-347,1213-1215,1520-1550` labels and displays impact/coverage without an explicit total-level comparable-population contract.
+- `Api.Tests/AnalyticsShoeTypeSalesIntegrationTests.cs:158-176` checks field presence but does not assert total-vs-row cohort parity.
+
+Reproduction: seed one article with only pre-nivelacija sales and another with comparable pre/post sales. The endpoint total impact includes the first article’s one-sided revenue, while row recommendation eligibility excludes it.
+
+### Scope
+
+- Shoe Type endpoint totals and additive comparable-cohort metadata, frontend total/quality presentation if the field is shown or exported, and focused tests.
+- Reuse `AnalyticsNivelacijaSplitPolicy`; do not duplicate the split algorithm or change established row semantics.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ140`, `RQ182`, `RQ238`, `RQ286`, `RQ360`
+- `AnalyticsNivelacijaSplitPolicy.cs`, Shoe Type branch in `AllEndpoints.cs`, Shoe Type page/API and pre/post tests
+
+### Do
+
+1. Choose one explicit total-level population: preferably the same comparable cohort used for impact/recommendation, or expose broad observational totals separately with unambiguous labels.
+2. Preserve measured zero, missing baseline, insufficient cohort, partial coverage and unavailable impact as distinct states.
+3. Carry comparable article count, pre/post quantities/revenue and coverage metadata through totals/detail/export where consumers use the aggregate.
+4. Keep recommendation/status/confidence backend-owned; the frontend must not recompute a substitute total impact.
+
+### Tests
+
+- all-comparable, one-sided-only, no comparable article, valid zero change and negative/positive change fixtures;
+- row versus totals impact, units, coverage, recommendation gate and export/detail parity;
+- insufficient/partial response metadata and cache repeat determinism;
+- focused backend/frontend tests, analytics guardrails/typecheck/build as selected, and `git diff --check`.
+
+### Acceptance
+
+- Total pre/post impact and units use the same declared cohort as the comparable signal or are explicitly labelled as a broader observation.
+- One-sided or insufficient evidence cannot appear as a measured total impact or actionable recommendation.
+- Row, total, detail and export surfaces preserve the same period, cohort, unit and limitation semantics.
+
+### Dependencies
+
+- `RQ140` and `AnalyticsNivelacijaSplitPolicy` remain the shared pre/post comparability owners.
+- `RQ182` owns backend null/unknown coverage preservation; this prompt owns Shoe Type total-population parity.
+- `RQ375` owns margin/cost semantics; do not combine unrelated financial denominator changes here.
+
+---
+
+## RQ377 - Align Shoe Type detail route with row recommendation, trust and unknown identity
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/frontend/tests
+Feature family: shoe-type-detail-trust-contract
+Parallel-safe: no
+Owner: Analytics Reliability / Shoe Type Sales
+Commit suggestion: `fix(analytics): align shoe type detail trust contract`
+
+### Problem
+
+The inline Shoe Type detail is built from the authoritative stats response and includes PoP, recommendation gate/reason, confidence/reliability, quality and snapshot context. “Otvori puni detalj” navigates to the generic detail route, where `AnalyticsDetailReadService` independently re-aggregates raw sales, omits the comparison metrics and recommendation/trust contract, and exposes a different set of ASCII/English labels. Unknown types use an `unknown-...` record ID that the server detail parser rejects, so a copied/deep-linked unknown detail depends on a session snapshot and is not independently resolvable.
+
+### Evidence
+
+- `ShoeTypeSalesStatsPage.tsx:747-770` creates numeric IDs for known types and `unknown-...` IDs for unknown types, then stores a client snapshot before navigating to `/analitika/shoe-type-sales-stats/:id`.
+- `Api/Services/AnalyticsDetailReadService.cs:166-176` accepts only `int` IDs for Shoe Type and returns no detail for unknown IDs; it also calls `BuildAggregatedDetail` without comparison metrics.
+- `Api/Services/AnalyticsDetailReadService.cs:520-620` returns raw aggregate/pre-post/margin fields and filter metadata but no recommendation status/reason/confidence/reliability/actionability, freshness, data window or provenance basis; `:550-570` omits the row’s PoP fields.
+- `AnalyticsDetailPage.tsx:6-24` and the generic `AnalyticsDetailView` consumer render the route without a Shoe Type-specific trust contract; the page fallback depends on the session snapshot.
+- `AnalyticsDetailReadService.cs:566-620` emits `impact`, `fallback`, `snapshot`, `Data scope` and ASCII Serbian labels.
+
+Reproduction: open a known and an unknown Shoe Type row, compare inline detail with “Otvori puni detalj”, then open the copied unknown URL in a fresh session. The known detail loses recommendation/PoP/trust context and the unknown detail cannot be independently fetched.
+
+### Scope
+
+- Shoe Type detail navigation/snapshot identity, `AnalyticsDetailReadService` projection, generic detail consumer only as required, localization and nearest backend/frontend tests.
+- Preserve period, season, store and `dataScope` filters; no generic analytics-detail redesign outside this contract.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ112`, `RQ145`, `RQ182`, `RQ238`, `RQ264`, `RQ306`, `RQ325`, `RQ375`, `RQ376`
+- `ShoeTypeSalesStatsPage.tsx`, `analyticsTableState.ts`, `AnalyticsDetailView.tsx`, `AnalyticsDetailReadService.cs`, `AnalyticsTableEndpoints.cs` and nearest tests
+
+### Do
+
+1. Choose one source of truth: a server-authoritative Shoe Type detail projection or an explicitly read-only row snapshot. Expose requested/effective period, season/store/scope, freshness, quality, snapshot/fallback and provenance.
+2. Preserve backend-owned recommendation status, reason/reason codes, confidence/reliability and `recommendationAllowed`, or remove overpromising decision wording from the generic detail.
+3. Make known and unknown identities collision-safe and independently resolvable, or clearly mark a session-only snapshot as non-shareable and prevent a misleading deep link.
+4. Align valid zero, unavailable, partial, stale, non-finite, PoP and comparable pre/post values across row, inline detail, generic detail, snapshot and export.
+
+### Tests
+
+- known, unknown and missing Shoe Type identity; direct/deep-link/fresh-session/404/timeout/fallback behavior;
+- row versus inline versus generic detail/snapshot/export parity for PoP, recommendation gate, trust metadata and source labels;
+- period/season/store/data-scope round trips, empty/partial/stale/snapshot-cost and valid-zero/unavailable metrics;
+- no raw English/ASCII user-facing detail labels; focused backend/frontend tests, encoding/analytics guardrails and `git diff --check`.
+
+### Acceptance
+
+- “Otvori puni detalj” preserves or honestly limits the row’s recommendation, PoP and trust contract.
+- Known and unknown Shoe Type details keep the same identity, period, scope, quality, provenance and actionability semantics.
+- Unknown, partial, stale and unavailable evidence never becomes a trusted zero, fresh state or actionable recommendation.
+- User-facing Shoe Type detail copy is Serbian and diacritics-safe across API, page, fallback and export/snapshot paths.
+
+### Dependencies
+
+- `RQ375` and `RQ376` establish aggregate metric semantics before detail projection is finalized.
+- `RQ112`/`RQ145`/`RQ264` provide broad summary/detail/output parity rules.
+- `RQ306`/`RQ325` own the broader Operacije copy passes; coordinate wording rather than duplicating whole-file cleanup.
