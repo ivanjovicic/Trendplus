@@ -40,6 +40,18 @@ describe("dailyShiftSummary", () => {
     expect(resolveShiftChartValue(row({ totalItemsSold: 12, firstShiftTotalItems: null, secondShiftTotalItems: 4 }), "first")).toBeNull();
   });
 
+  it("keeps negative return quantities as measured signed shift evidence", () => {
+    const returns = row({
+      firstShiftTotalItems: -3,
+      secondShiftTotalItems: -2,
+      totalItemsSold: -5,
+    });
+
+    expect(classifyDailyShiftSummary(returns)).toBe("complete");
+    expect(resolveShiftChartValue(returns, "first")).toBe(-3);
+    expect(summarizeShiftItems([returns], "second")).toEqual({ value: -2, state: "complete" });
+  });
+
   it("sums available shift values while marking partial period evidence", () => {
     const rows = [
       row({ totalItemsSold: 10, firstShiftTotalItems: 4, secondShiftTotalItems: 6 }),

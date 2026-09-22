@@ -39,6 +39,7 @@ import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "../utils/chartTo
 import { fmtPct, fmtRsd, fmtRsdShort, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { getAnalyticsDataFreshnessStatus } from "../utils/analyticsResponseMeta";
+import { AnalyticsResponseValidationError } from "../validation/analyticsResponseValidation";
 import {
   DAILY_SALES_PREVIOUS_PERIOD_FAILURE_NOTE,
   formatDailySalesComparisonDelta,
@@ -353,6 +354,25 @@ export function safeDivide(value: DailySalesNumeric, total: DailySalesNumeric): 
   return Number.isFinite(result) ? result : null;
 }
 
+export function formatDailySalesError(
+  reason: unknown,
+  fallback = "Dnevna prodaja trenutno nije dostupna. Proverite kvalitet podataka i pokušajte ponovo.",
+): string {
+  const message = getSafeAnalyticsErrorMessage(
+    reason instanceof Error ? reason.message : String(reason),
+    undefined,
+    fallback,
+  );
+
+  if (!(reason instanceof AnalyticsResponseValidationError) || reason.issuePaths.length === 0) {
+    return message;
+  }
+
+  const visiblePaths = reason.issuePaths.slice(0, 5).join(", ");
+  const suffix = reason.issuePaths.length > 5 ? ", ..." : "";
+  return `${message} Neispravna polja: ${visiblePaths}${suffix}.`;
+}
+
 export function buildSupplierConcentration(
   data: DailySalesTableResponse | null,
   periodRevenue: DailySalesNumeric,
@@ -374,20 +394,18 @@ export function buildSupplierConcentration(
   const supplierTotalsRevenue = sum(orderedSuppliers.map((supplier) => supplier.totalRevenue));
   const metadataQty = finiteOrNull(data.metadata.totalItemsInRange);
   const normalizedPeriodRevenue = finiteOrNull(periodRevenue);
-  const quantityMismatch = metadataQty != null && supplierTotalsQty != null && supplierTotalsQty > metadataQty;
-  const revenueMismatch = normalizedPeriodRevenue != null && supplierTotalsRevenue != null && supplierTotalsRevenue > normalizedPeriodRevenue;
-  const supplierQtyBasis = !quantityMismatch && metadataQty != null && supplierTotalsQty != null
+  const supplierQtyBasis = metadataQty != null && supplierTotalsQty != null
     ? metadataQty
     : null;
-  const supplierRevenueBasis = !revenueMismatch && normalizedPeriodRevenue != null && supplierTotalsRevenue != null
+  const supplierRevenueBasis = normalizedPeriodRevenue != null && supplierTotalsRevenue != null
     ? normalizedPeriodRevenue
     : null;
   const warnings = [
     orderResolution.warning,
-    quantityMismatch ? "Top dobavljači imaju više komada nego autoritativni period total." : null,
-    revenueMismatch ? "Top dobavljači imaju veći prihod nego autoritativni period total." : null,
-    supplierQtyBasis == null && !quantityMismatch ? "Nedostaje validan denominator količine za koncentraciju dobavljača." : null,
-    supplierRevenueBasis == null && !revenueMismatch ? "Nedostaje validan prihodovni denominator za koncentraciju dobavljača." : null,
+    supplierQtyBasis == null ? "Nedostaje validan denominator količine za koncentraciju dobavljača." : null,
+    supplierRevenueBasis == null ? "Nedostaje validan prihodovni denominator za koncentraciju dobavljača." : null,
+    supplierQtyBasis === 0 ? "Neto količinski denominator je nula; udeo dobavljača nije izračunljiv." : null,
+    supplierRevenueBasis === 0 ? "Neto prihodovni denominator je nula; udeo dobavljača nije izračunljiv." : null,
   ].filter((warning): warning is string => warning != null);
 
   const baseRows = orderedSuppliers.map((supplier) => ({
@@ -403,14 +421,14 @@ export function buildSupplierConcentration(
   const topSupplierQty = sum(baseRows.map((row) => row.totalQty));
   const topSupplierRevenue = sum(baseRows.map((row) => row.totalRevenue));
   const othersQty = supplierQtyBasis != null && topSupplierQty != null
-    ? Math.max(0, supplierQtyBasis - topSupplierQty)
+    ? supplierQtyBasis - topSupplierQty
     : null;
   const othersRevenue = supplierRevenueBasis != null && topSupplierRevenue != null
-    ? Math.max(0, supplierRevenueBasis - topSupplierRevenue)
+    ? supplierRevenueBasis - topSupplierRevenue
     : null;
 
   const allRows = [...baseRows];
-  if (othersQty != null && othersQty > 0) {
+  if ((othersQty != null && othersQty !== 0) || (othersRevenue != null && othersRevenue !== 0)) {
     allRows.push({
       supplierName: "Ostali",
       displayName: "Ostali",
@@ -711,11 +729,7 @@ export default function DailySalesStatsPage() {
 
       const previousComparison = resolveDailySalesPreviousPeriodComparison(
         previousResult,
-        (reason) => getSafeAnalyticsErrorMessage(
-          reason instanceof Error ? reason.message : String(reason),
-          undefined,
-          DAILY_SALES_PREVIOUS_PERIOD_FAILURE_NOTE,
-        ),
+        (reason) => formatDailySalesError(reason, DAILY_SALES_PREVIOUS_PERIOD_FAILURE_NOTE),
       );
 
       setData(currentResult.value);
@@ -733,7 +747,7 @@ export default function DailySalesStatsPage() {
       setPreviousPeriodState("empty");
       setPreviousPeriodWarning(null);
       setPreviousPeriodEmptyNote(null);
-      setError(reason instanceof Error ? reason.message : "Greška pri učitavanju dnevne prodaje.");
+      setError(formatDailySalesError(reason));
     } finally {
       if (requestId === requestIdRef.current) {
         setLoading(false);
@@ -1084,21 +1098,21 @@ export default function DailySalesStatsPage() {
       key: "unknown",
       label: "Nepoznati dobavljac",
       value: fmtPct(unknownSupplierPct, 1, "Nije dostupno"),
-      tone: unknownSupplierPct == null ? "info" : unknownSupplierPct >= 5 ? "danger" : unknownSupplierPct > 0 ? "warning" : "good",
+      tone: unknownSupplierPct == null ? "info" : Math.abs(unknownSupplierPct) >= 5 ? "danger" : unknownSupplierPct !== 0 ? "warning" : "good",
       description: "Udeo prodaje bez mapiranog dobavljača.",
     },
     {
       key: "offShiftItems",
       label: "Van smene (kom.)",
       value: fmtNumber(offShiftItems),
-      tone: offShiftItems == null ? "info" : offShiftItems > 0 ? "warning" : "good",
+      tone: offShiftItems == null ? "info" : offShiftItems !== 0 ? "warning" : "good",
       description: "Prodaja sa satnicom van definisanih smena.",
     },
     {
       key: "offShiftRevenue",
       label: "Van smene (RSD)",
       value: fmtRsdShort(offShiftRevenue),
-      tone: offShiftRevenue == null ? "info" : offShiftRevenue > 0 ? "warning" : "good",
+      tone: offShiftRevenue == null ? "info" : offShiftRevenue !== 0 ? "warning" : "good",
       description: "Prihod evidentiran van operativnih smena.",
     },
     {
@@ -1161,7 +1175,7 @@ export default function DailySalesStatsPage() {
       key: "nonStandardRevenue",
       label: "Nestandardni RSD",
       value: fmtRsdShort(nonStandardRevenue),
-      tone: nonStandardRevenue == null ? "info" : nonStandardRevenue > 0 ? "warning" : "good",
+      tone: nonStandardRevenue == null ? "info" : nonStandardRevenue !== 0 ? "warning" : "good",
       description: "Promet ostvaren kroz nestandardne prodajne dokumente.",
     },
     {
@@ -1248,7 +1262,7 @@ export default function DailySalesStatsPage() {
       });
     }
 
-    if ((data?.metadata.unknownSupplierPct != null && data.metadata.unknownSupplierPct >= 5) || mismatchCount > 0 || incompleteShiftCount > 0 || incompleteDailyAggregateCount > 0) {
+    if ((data?.metadata.unknownSupplierPct != null && Math.abs(data.metadata.unknownSupplierPct) >= 5) || mismatchCount > 0 || incompleteShiftCount > 0 || incompleteDailyAggregateCount > 0) {
       insights.push({
         title: "Upozorenje: podaci zahtevaju pažnju",
         detail: `Udeo nepoznatih dobavljača je ${fmtPct(data?.metadata.unknownSupplierPct, 1, "nije dostupan")}, neusklađenih dana ${fmtNumber(mismatchCount)}, nepotpuna satnica ${fmtNumber(incompleteShiftCount)} (delimična ${fmtNumber(partialShiftCount)}), nepotpuni dnevni zbirovi ${fmtNumber(incompleteDailyAggregateCount)}.`,
@@ -1272,7 +1286,7 @@ export default function DailySalesStatsPage() {
       });
     }
 
-    if (offShiftItems != null && offShiftItems > 0) {
+    if (offShiftItems != null && offShiftItems !== 0) {
       insights.push({
         title: "Ima prodaje van smene",
         detail: `${fmtNumber(offShiftItems)} komada i ${fmtRsdShort(data?.metadata.offShiftRevenue)} evidentirano je van standardne satnice.`,

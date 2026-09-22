@@ -355,6 +355,95 @@ public sealed class DailySalesStatsServiceTests
         Assert.Contains(result.Metadata.Warnings, x => x.Contains("iskljucena", StringComparison.OrdinalIgnoreCase));
     }
 
+    [Fact]
+    public async Task GetDailySalesAsync_PreservesSignedReturnsInMetadataSuppliersAndOthers()
+    {
+        await using var db = CreateDbContext();
+        SeedSuppliersAndArticles(db);
+
+        db.ProdajaZaglavlja.AddRange(
+            new ProdajaZaglavlje
+            {
+                Id = 500,
+                BrojRacuna = "500",
+                DatumProdaje = new DateTime(2026, 5, 5, 9, 0, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "existing"
+            },
+            new ProdajaZaglavlje
+            {
+                Id = 501,
+                BrojRacuna = "501",
+                DatumProdaje = new DateTime(2026, 5, 5, 10, 0, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "existing"
+            },
+            new ProdajaZaglavlje
+            {
+                Id = 502,
+                BrojRacuna = "502",
+                DatumProdaje = new DateTime(2026, 5, 5, 11, 0, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "existing"
+            },
+            new ProdajaZaglavlje
+            {
+                Id = 503,
+                BrojRacuna = "503",
+                DatumProdaje = new DateTime(2026, 5, 5, 2, 0, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "existing"
+            },
+            new ProdajaZaglavlje
+            {
+                Id = 504,
+                BrojRacuna = "DUG",
+                DatumProdaje = new DateTime(2026, 5, 5, 12, 0, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "existing"
+            },
+            new ProdajaZaglavlje
+            {
+                Id = 505,
+                BrojRacuna = "ABC",
+                DatumProdaje = new DateTime(2026, 5, 5, 13, 0, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "existing"
+            });
+
+        db.ProdajaStavke.AddRange(
+            new ProdajaStavka { Id = 500, IdProdaja = 500, IdArtikal = 101, Kolicina = 5, Cena = 100m },
+            new ProdajaStavka { Id = 501, IdProdaja = 501, IdArtikal = 102, Kolicina = -7, Cena = 100m },
+            new ProdajaStavka { Id = 502, IdProdaja = 502, IdArtikal = 103, Kolicina = -20, Cena = 50m },
+            new ProdajaStavka { Id = 503, IdProdaja = 503, IdArtikal = 102, Kolicina = -3, Cena = 100m },
+            new ProdajaStavka { Id = 504, IdProdaja = 504, IdArtikal = 101, Kolicina = -2, Cena = 100m },
+            new ProdajaStavka { Id = 505, IdProdaja = 505, IdArtikal = 101, Kolicina = -1, Cena = 50m });
+
+        await db.SaveChangesAsync();
+
+        var service = new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance);
+        var result = await service.GetDailySalesAsync(
+            requestedFromUtc: new DateTime(2026, 5, 5, 0, 0, 0, DateTimeKind.Utc),
+            requestedToUtc: new DateTime(2026, 5, 5, 0, 0, 0, DateTimeKind.Utc),
+            storeId: 1,
+            topN: 2,
+            dataScope: "all",
+            ct: CancellationToken.None);
+
+        var row = Assert.Single(result.DateRows);
+        Assert.Equal(-26, row.TotalItemsSold);
+        Assert.Equal(-20, row.OthersCount);
+        Assert.Equal(row.TotalItemsSold, row.OthersCount + row.TopSupplierCounts.Sum());
+        Assert.Equal(-26, result.Metadata.TotalItemsInRange);
+        Assert.Equal(-20, result.Metadata.UnknownSupplierItems);
+        Assert.Equal(-3, result.Metadata.OffShiftItems);
+        Assert.Equal(-300m, result.Metadata.OffShiftRevenue);
+        Assert.Equal(-50m, result.Metadata.NonStandardReceiptRevenue);
+        Assert.Equal(-200m, result.Metadata.DebtReceiptRevenue);
+        Assert.Contains(result.TopSuppliers, supplier => supplier.SupplierName == "Dobavljac B" && supplier.TotalQty == -10);
+        Assert.NotEqual("no_data_in_period", result.Meta.EmptyReason);
+    }
+
     private static TrendplusDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<TrendplusDbContext>()

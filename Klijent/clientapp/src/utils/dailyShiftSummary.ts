@@ -22,7 +22,7 @@ export function classifyDailyShiftSummary(row: DailySalesRow): DailyShiftSummary
   const firstAbsent = isShiftValueAbsent(row.firstShiftTotalItems);
   const secondAbsent = isShiftValueAbsent(row.secondShiftTotalItems);
 
-  if (total == null || total < 0) return "unavailable";
+  if (total == null) return "unavailable";
 
   if (total === 0) {
     if (firstAbsent && secondAbsent) return "unavailable";

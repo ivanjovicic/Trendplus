@@ -4,11 +4,13 @@ import {
   calculateAnomalyDeviation,
   calculateDeltaPct,
   buildSupplierConcentration,
+  formatDailySalesError,
   safeDivide,
   sortDailySalesRows,
   summarizePeriod,
 } from "../DailySalesStatsPage";
 import type { DailySalesRow, DailySalesTableResponse } from "../../services/dailySalesStatsApi";
+import { AnalyticsResponseValidationError } from "../../validation/analyticsResponseValidation";
 
 function row(overrides: Partial<DailySalesRow> = {}): DailySalesRow {
   return {
@@ -65,6 +67,17 @@ describe("Daily Sales numeric evidence states", () => {
     expect(summary.totalVisibleItems).toBeNull();
     expect(summary.avgRevenuePerDay).toBeNull();
     expect(summary.avgRevenuePerItem).toBeNull();
+  });
+
+  it("surfaces validation issue paths instead of hiding them behind a generic format error", () => {
+    const error = new AnalyticsResponseValidationError(
+      "Dnevna prodaja",
+      ["metadata.offShiftRevenue", "metadata.totalItemsInRange"],
+    );
+
+    expect(formatDailySalesError(error)).toContain(
+      "Neispravna polja: metadata.offShiftRevenue, metadata.totalItemsInRange.",
+    );
   });
 
   it("provides one stable sort order for table and chart rows", () => {
@@ -203,7 +216,7 @@ describe("Daily Sales numeric evidence states", () => {
     });
   });
 
-  it("keeps supplier concentration unavailable when top totals contradict the period totals", () => {
+  it("preserves a signed negative remainder when omitted suppliers contain returns", () => {
     const inconsistent = response({
       topSuppliers: [{
         supplierId: 1,
@@ -219,12 +232,12 @@ describe("Daily Sales numeric evidence states", () => {
 
     const concentration = buildSupplierConcentration(inconsistent, 9000);
 
-    expect(concentration.warning).toContain("više komada");
-    expect(concentration.top3QtySharePct).toBeNull();
-    expect(concentration.top5QtySharePct).toBeNull();
-    expect(concentration.suppliersTo80Pct).toBeNull();
-    expect(concentration.chartData[0]?.qtySharePct).toBeNull();
-    expect(concentration.chartData.find((item) => item.supplierName === "Ostali")).toBeUndefined();
+    expect(concentration.warning).toBeNull();
+    expect(concentration.top3QtySharePct).toBeCloseTo((25 / 18) * 100, 5);
+    expect(concentration.chartData.find((item) => item.supplierName === "Ostali")).toMatchObject({
+      totalQty: -7,
+      totalRevenue: -3000,
+    });
   });
 
   it("uses topSuppliersOrder for concentration ranking instead of response array order", () => {

@@ -102,6 +102,47 @@ describe("analytics response schemas", () => {
     }).success).toBe(true);
   });
 
+  it("accepts signed Daily Sales quantities and revenues while keeping counters non-negative", () => {
+    const result = dailySalesTableResponseSchema.safeParse({
+      requestedFrom: "2026-06-01",
+      requestedTo: "2026-07-01",
+      storeId: null,
+      topN: 15,
+      dataScope: "all",
+      topSuppliers: [],
+      topSuppliersOrder: [],
+      dateRows: [],
+      metadata: {
+        totalDays: 1,
+        uniqueSuppliersInRange: 2,
+        unknownSupplierPct: -25,
+        unknownSupplierItems: -3,
+        offShiftItems: -2,
+        offShiftRevenue: -200,
+        totalItemsInRange: -5,
+        duplicateReceiptGroupCount: 0,
+        duplicateReceiptHeaderCount: 0,
+        receiptAmountMismatchCount: 0,
+        receiptAmountMismatchRevenue: 0,
+        nonStandardReceiptCount: 1,
+        nonStandardReceiptRevenue: -50,
+        debtReceiptCount: 1,
+        debtReceiptRevenue: -150,
+        minAvailableDate: null,
+        maxAvailableDate: null,
+      },
+    });
+
+    expect(result.success).toBe(true);
+    expect(dailySalesTableResponseSchema.safeParse({
+      ...result.success ? result.data : {},
+      metadata: {
+        ...(result.success ? result.data.metadata : {}),
+        totalDays: -1,
+      },
+    }).success).toBe(false);
+  });
+
   it.each([
     ["negative count", { ...colorRow, ukupnaKolicina: -1 }],
     ["percentage above 100", { ...colorRow, sharePct: 101 }],

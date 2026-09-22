@@ -7,6 +7,7 @@ const percentage = finiteNumber.min(-100).max(100);
 const nonNegativePercentage = finiteNumber.min(0).max(100);
 const validDate = z.string().min(1).refine((value) => Number.isFinite(Date.parse(value)), "Must be a valid date.");
 const nullableNumber = finiteNumber.nullable();
+const nullableSignedInteger = finiteNumber.int().nullable();
 const nullableNonNegativeNumber = nonNegativeNumber.nullable();
 const nullableNonNegativeInteger = nonNegativeInteger.nullable();
 const nullablePercentage = percentage.nullable();
@@ -173,19 +174,21 @@ const dailySalesRowSchema = z.object({
 const dailySalesMetadataSchema = z.object({
   totalDays: nullableNonNegativeInteger,
   uniqueSuppliersInRange: nullableNonNegativeInteger,
-  unknownSupplierPct: nullableNonNegativePercentage,
-  unknownSupplierItems: nullableNonNegativeNumber,
-  offShiftItems: nullableNonNegativeNumber,
-  offShiftRevenue: nullableNonNegativeNumber,
-  totalItemsInRange: nullableNonNegativeNumber,
+  // Quantities and derived ratios use net signed sales evidence: returns and
+  // corrections can legitimately make these values negative.
+  unknownSupplierPct: nullableNumber,
+  unknownSupplierItems: nullableSignedInteger,
+  offShiftItems: nullableSignedInteger,
+  offShiftRevenue: nullableNumber,
+  totalItemsInRange: nullableSignedInteger,
   duplicateReceiptGroupCount: nullableNonNegativeInteger,
   duplicateReceiptHeaderCount: nullableNonNegativeInteger,
   receiptAmountMismatchCount: nullableNonNegativeInteger,
   receiptAmountMismatchRevenue: nullableNonNegativeNumber,
   nonStandardReceiptCount: nullableNonNegativeInteger,
-  nonStandardReceiptRevenue: nullableNonNegativeNumber,
+  nonStandardReceiptRevenue: nullableNumber,
   debtReceiptCount: nullableNonNegativeInteger,
-  debtReceiptRevenue: nullableNonNegativeNumber,
+  debtReceiptRevenue: nullableNumber,
   minAvailableDate: validDate.nullable(),
   maxAvailableDate: validDate.nullable(),
   warnings: z.array(z.string()).optional(),

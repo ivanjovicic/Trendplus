@@ -20612,7 +20612,7 @@ Supplier row-level pre/post impact/recommendation uses comparable split-policy e
 
 ## RQ381 - Align Daily Sales signed quantity/revenue contract and reconciliation
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1
 Type: backend-contract/frontend-runtime-validation/tests
 Feature family: daily-sales-signed-numeric-contract
