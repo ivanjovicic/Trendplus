@@ -40,6 +40,7 @@ export interface VendorSalesNivelacijaVendorStat {
     decreasedPriceArticlesCount: number;
     reliabilityPct: number | null;
     recommendation?: VendorSalesNivelacijaRecommendation | null;
+    comparableArticleCount?: number;
 }
 
 export interface VendorSalesNivelacijaArticleStat {
@@ -101,12 +102,23 @@ export interface VendorSalesNivelacijaTotals {
     avgCoveragePre30: number | null;
     avgCoveragePost30: number | null;
     hasComparableSalesWindow?: boolean;
+    comparableRows?: number;
+    comparableArticlesCount?: number;
+    comparableVendorsCount?: number;
 }
 
 export interface VendorSalesNivelacijaDataQuality {
     rawRows: number | null;
     deduplicatedRows: number | null;
     duplicateRowsRemoved: number | null;
+    cohortRows?: number | null;
+    cohortRowsExcluded?: number | null;
+    returnedRows?: number | null;
+    truncatedRows?: number | null;
+    comparableRows?: number | null;
+    comparableSharePercent?: number | null;
+    isDetailTruncated?: boolean | null;
+    cohortPolicy?: string | null;
     inactiveRows: number | null;
     unchangedPriceRows: number | null;
     analyzedRows: number | null;
@@ -128,6 +140,7 @@ export interface VendorSalesNivelacijaCategoryStat {
     changeRevenue: number;
     changePercent: number;
     hasComparableSalesWindow?: boolean;
+    comparableArticleCount?: number;
 }
 
 export interface VendorSalesNivelacijaPriceDirectionStat {
@@ -138,6 +151,7 @@ export interface VendorSalesNivelacijaPriceDirectionStat {
     changeRevenue: number;
     changePercent: number;
     hasComparableSalesWindow?: boolean;
+    comparableArticleCount?: number;
 }
 
 export interface VendorSalesNivelacijaInsight {

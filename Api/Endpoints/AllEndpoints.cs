@@ -3664,8 +3664,7 @@ public static class AllEndpoints
                             change_percent_revenue_semantic
                         FROM ranked
                         WHERE rn = 1
-                        ORDER BY vendor_name, ABS(change_revenue) DESC, article_name
-                        LIMIT @maxRows::int;
+                        ORDER BY vendor_name, ABS(change_revenue) DESC, article_name;
                         """
                     : hasPriceColumns
                     ? $"""
@@ -3740,8 +3739,7 @@ public static class AllEndpoints
                             change_percent_revenue_semantic
                         FROM ranked
                         WHERE rn = 1
-                        ORDER BY vendor_name, ABS(change_revenue) DESC, article_name
-                        LIMIT @maxRows;
+                        ORDER BY vendor_name, ABS(change_revenue) DESC, article_name;
                         """
                     : $"""
                         WITH ranked AS (
@@ -3813,8 +3811,7 @@ public static class AllEndpoints
                             change_percent_revenue_semantic
                         FROM ranked
                         WHERE rn = 1
-                        ORDER BY vendor_name, ABS(change_revenue) DESC, article_name
-                        LIMIT @maxRows;
+                        ORDER BY vendor_name, ABS(change_revenue) DESC, article_name;
                         """;
 
                 var dedupRows = new List<VendorSalesNivelacijaArticleStatDto>();
@@ -3858,15 +3855,10 @@ public static class AllEndpoints
                     {
                         AddVendorSalesNivelacijaScopeParameters(cmd, storeId, normalizedDataScope);
                     }
-                    cmd.Parameters.Add(new NpgsqlParameter("maxRows", NpgsqlTypes.NpgsqlDbType.Integer)
-                    {
-                        Value = maxRows
-                    });
-
                     await using var reader = await cmd.ExecuteReaderAsync(ct);
                     while (await reader.ReadAsync(ct))
                     {
-                        _ = reader.GetInt64(0); // price_event_id (not returned)
+                        var priceEventId = reader.GetInt64(0);
                         var evDate = DateTime.SpecifyKind(reader.GetDateTime(1), DateTimeKind.Utc);
                         var vId = reader.IsDBNull(2) ? (int?)null : reader.GetInt32(2);
                         var vName = reader.IsDBNull(3) ? "N/A" : reader.GetString(3);
@@ -3922,6 +3914,7 @@ public static class AllEndpoints
 
                         var dto = new VendorSalesNivelacijaArticleStatDto
                         {
+                            PriceEventId = priceEventId,
                             EventDate = evDate,
                             VendorId = vId,
                             VendorName = vName,
@@ -3959,24 +3952,30 @@ public static class AllEndpoints
                 }
 
                 var deduplicatedRows = dedupRows.Count;
+                var cohortRows = VendorSalesNivelacijaCohortPolicy
+                    .SelectLatestEventPerArticle(dedupRows)
+                    .ToList();
+                var cohortRowsExcluded = Math.Max(0, deduplicatedRows - cohortRows.Count);
 
-                // Analyze rows: remove unchanged-price rows, and optionally remove inactive rows.
-                var analyzed = dedupRows
+                // Analyze one latest price-event cohort per article. This keeps overlapping
+                // event windows from double-counting the same article sales while preserving
+                // event-level duplicate and cohort denominators separately.
+                var analyzed = cohortRows
                     .Where(x => !(x.OldPrice.HasValue && x.NewPrice.HasValue && x.OldPrice.Value == x.NewPrice.Value))
                     .Where(x => includeInactive || x.HasSalesWindow)
                     .ToList();
 
                 var analyzedRows = analyzed.Count;
 
-                var analyzedSharePercent = deduplicatedRows == 0
+                var analyzedSharePercent = cohortRows.Count == 0
                     ? 0m
-                    : Math.Round(((decimal)analyzedRows / deduplicatedRows) * 100m, 2);
+                    : Math.Round(((decimal)analyzedRows / cohortRows.Count) * 100m, 2);
 
                 // Advanced metrics (best-effort, non-fatal).
                 var globalWarnings = new List<string>();
-                if (deduplicatedRows >= maxRows)
+                if (analyzedRows > maxRows)
                 {
-                    globalWarnings.Add($"Article stats capped to {maxRows.ToString(CultureInfo.InvariantCulture)} rows");
+                    globalWarnings.Add($"Article detail limited to {maxRows.ToString(CultureInfo.InvariantCulture)} rows; aggregate metrics use the full canonical cohort");
                 }
 
                 try
@@ -4008,13 +4007,20 @@ public static class AllEndpoints
                 MapElasticityAndLostSalesToNivelacijaArticles(analyzed);
                 MapMetricReasons(analyzed, globalWarnings);
 
+                var comparableRows = analyzed
+                    .Where(x => x.HasComparableSalesWindow)
+                    .ToList();
+                var articleStats = analyzed
+                    .Take(maxRows)
+                    .ToList();
+
                 // Totals
-                var totalPreQty = analyzed.Sum(x => x.PreQty);
-                var totalPostQty = analyzed.Sum(x => x.PostQty);
-                var totalPreRevenue = analyzed.Sum(x => x.PreRevenue);
-                var totalPostRevenue = analyzed.Sum(x => x.PostRevenue);
-                var totalChangeQty = analyzed.Sum(x => x.ChangeQty);
-                var totalChangeRevenue = analyzed.Sum(x => x.ChangeRevenue);
+                var totalPreQty = comparableRows.Sum(x => x.PreQty);
+                var totalPostQty = comparableRows.Sum(x => x.PostQty);
+                var totalPreRevenue = comparableRows.Sum(x => x.PreRevenue);
+                var totalPostRevenue = comparableRows.Sum(x => x.PostRevenue);
+                var totalChangeQty = comparableRows.Sum(x => x.ChangeQty);
+                var totalChangeRevenue = comparableRows.Sum(x => x.ChangeRevenue);
 
                 static decimal Pct(decimal pre, decimal post)
                 {
@@ -4032,13 +4038,13 @@ public static class AllEndpoints
                     return known.Length == 0 ? null : Math.Round(known.Average(), 4);
                 }
 
-                var vendorsCount = analyzed.Select(x => x.VendorId).Distinct().Count();
-                var articlesCount = analyzed
+                var vendorsCount = comparableRows.Select(x => x.VendorId).Distinct().Count();
+                var articlesCount = comparableRows
                     .Select(x => x.Sku)
                     .Where(s => !string.IsNullOrWhiteSpace(s))
                     .Distinct(StringComparer.Ordinal)
                     .Count();
-                var activeArticlesCount = analyzed
+                var activeArticlesCount = comparableRows
                     .Where(x => x.HasSalesWindow && !string.IsNullOrWhiteSpace(x.Sku))
                     .Select(x => x.Sku)
                     .Distinct(StringComparer.Ordinal)
@@ -4047,14 +4053,14 @@ public static class AllEndpoints
                 var avgRevenuePerArticlePre = activeArticlesCount == 0 ? 0m : Math.Round(totalPreRevenue / activeArticlesCount, 2);
                 var avgRevenuePerArticlePost = activeArticlesCount == 0 ? 0m : Math.Round(totalPostRevenue / activeArticlesCount, 2);
 
-                var avgPriceChangePercent = analyzed
+                var avgPriceChangePercent = comparableRows
                     .Where(x => x.PriceChangePercent.HasValue)
                     .Select(x => x.PriceChangePercent!.Value)
                     .DefaultIfEmpty()
                     .Average();
 
-                var avgCoveragePre30 = AverageKnownCoverage(analyzed.Select(x => x.CoveragePre30));
-                var avgCoveragePost30 = AverageKnownCoverage(analyzed.Select(x => x.CoveragePost30));
+                var avgCoveragePre30 = AverageKnownCoverage(comparableRows.Select(x => x.CoveragePre30));
+                var avgCoveragePost30 = AverageKnownCoverage(comparableRows.Select(x => x.CoveragePost30));
                 var lowPostCoverageRows = analyzed.Count(x => x.CoveragePost30.HasValue && x.CoveragePost30.Value < 0.2m);
 
                 var totals = new VendorSalesNivelacijaTotalsDto
@@ -4075,7 +4081,10 @@ public static class AllEndpoints
                     AbsoluteChangeRevenue = 0m,
                     AvgCoveragePre30 = avgCoveragePre30,
                     AvgCoveragePost30 = avgCoveragePost30,
-                    HasComparableSalesWindow = analyzedRows > 0 && analyzed.All(x => x.HasComparableSalesWindow)
+                    HasComparableSalesWindow = comparableRows.Count > 0,
+                    ComparableRows = comparableRows.Count,
+                    ComparableArticlesCount = articlesCount,
+                    ComparableVendorsCount = vendorsCount
                 };
 
                 var productCostsByArticleId = new Dictionary<int, (decimal? ProductCostRsd, decimal? ProductCostLegacy)>();
@@ -4115,15 +4124,16 @@ public static class AllEndpoints
                     .GroupBy(x => new { x.VendorId, x.VendorName })
                     .Select(g =>
                     {
-                        var preRev = g.Sum(x => x.PreRevenue);
-                        var postRev = g.Sum(x => x.PostRevenue);
-                        var preQty = g.Sum(x => x.PreQty);
-                        var postQty = g.Sum(x => x.PostQty);
-                        var increased = g.Count(x => x.PriceChangePercent.HasValue && x.PriceChangePercent.Value > 0m);
-                        var decreased = g.Count(x => x.PriceChangePercent.HasValue && x.PriceChangePercent.Value < 0m);
+                        var comparable = g.Where(x => x.HasComparableSalesWindow).ToList();
+                        var preRev = comparable.Sum(x => x.PreRevenue);
+                        var postRev = comparable.Sum(x => x.PostRevenue);
+                        var preQty = comparable.Sum(x => x.PreQty);
+                        var postQty = comparable.Sum(x => x.PostQty);
+                        var increased = comparable.Count(x => x.PriceChangePercent.HasValue && x.PriceChangePercent.Value > 0m);
+                        var decreased = comparable.Count(x => x.PriceChangePercent.HasValue && x.PriceChangePercent.Value < 0m);
 
                         var margin = new MarginAccumulator();
-                        foreach (var row in g)
+                        foreach (var row in comparable)
                         {
                             if (!productCostsByArticleId.TryGetValue(row.ArticleId, out var costs))
                             {
@@ -4139,7 +4149,7 @@ public static class AllEndpoints
                             : g.Key.VendorName.Trim();
                         var isUnknownVendor = !g.Key.VendorId.HasValue
                             || string.Equals(normalizedVendorName, "Nepoznato", StringComparison.OrdinalIgnoreCase);
-                        var splitCoverage = AverageKnownCoverage(g.Select(x =>
+                        var splitCoverage = AverageKnownCoverage(comparable.Select(x =>
                             x.CoveragePre30.HasValue && x.CoveragePost30.HasValue
                                 ? Math.Min(x.CoveragePre30.Value, x.CoveragePost30.Value)
                                 : (decimal?)null));
@@ -4163,21 +4173,26 @@ public static class AllEndpoints
                                 AbsoluteChangeRevenue = Math.Abs(g.Sum(x => x.ChangeRevenue)),
                                 ChangeSharePercent = 0m,
                                 PostRevenueSharePercent = 0m,
-                                AvgCoveragePre30 = AverageKnownCoverage(g.Select(x => x.CoveragePre30)),
-                                AvgCoveragePost30 = AverageKnownCoverage(g.Select(x => x.CoveragePost30)),
-                                ArticleCount = g
+                                AvgCoveragePre30 = AverageKnownCoverage(comparable.Select(x => x.CoveragePre30)),
+                                AvgCoveragePost30 = AverageKnownCoverage(comparable.Select(x => x.CoveragePost30)),
+                                ArticleCount = comparable
                                     .Select(x => x.Sku)
                                     .Where(s => !string.IsNullOrWhiteSpace(s))
                                     .Distinct(StringComparer.Ordinal)
                                     .Count(),
-                                ActiveArticlesCount = g
+                                ActiveArticlesCount = comparable
                                     .Where(x => x.HasSalesWindow && !string.IsNullOrWhiteSpace(x.Sku))
                                     .Select(x => x.Sku)
                                     .Distinct(StringComparer.Ordinal)
                                     .Count(),
                                 IncreasedPriceArticlesCount = increased,
                                 DecreasedPriceArticlesCount = decreased,
-                                HasComparableSalesWindow = g.Any() && g.All(x => x.HasComparableSalesWindow)
+                                HasComparableSalesWindow = comparable.Count > 0,
+                                ComparableArticleCount = comparable
+                                    .Select(x => x.Sku)
+                                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                                    .Distinct(StringComparer.Ordinal)
+                                    .Count()
                             },
                             IsUnknownVendor = isUnknownVendor,
                             SplitCoveragePct = splitCoveragePct,
@@ -4260,21 +4275,23 @@ public static class AllEndpoints
                     .GroupBy(x => x.Category ?? "N/A")
                     .Select(g =>
                     {
-                        var preRev = g.Sum(x => x.PreRevenue);
-                        var postRev = g.Sum(x => x.PostRevenue);
+                        var comparable = g.Where(x => x.HasComparableSalesWindow).ToList();
+                        var preRev = comparable.Sum(x => x.PreRevenue);
+                        var postRev = comparable.Sum(x => x.PostRevenue);
                         return new VendorSalesNivelacijaCategoryStatDto
                         {
                             Category = g.Key,
-                            ArticlesCount = g.Select(x => x.Sku).Distinct(StringComparer.Ordinal).Count(),
-                            VendorsCount = g.Select(x => x.VendorId).Distinct().Count(),
-                            PreQty = g.Sum(x => x.PreQty),
+                            ArticlesCount = comparable.Select(x => x.Sku).Distinct(StringComparer.Ordinal).Count(),
+                            VendorsCount = comparable.Select(x => x.VendorId).Distinct().Count(),
+                            PreQty = comparable.Sum(x => x.PreQty),
                             PreRevenue = preRev,
-                            PostQty = g.Sum(x => x.PostQty),
+                            PostQty = comparable.Sum(x => x.PostQty),
                             PostRevenue = postRev,
-                            ChangeQty = g.Sum(x => x.ChangeQty),
-                            ChangeRevenue = g.Sum(x => x.ChangeRevenue),
+                            ChangeQty = comparable.Sum(x => x.ChangeQty),
+                            ChangeRevenue = comparable.Sum(x => x.ChangeRevenue),
                             ChangePercent = Pct(preRev, postRev),
-                            HasComparableSalesWindow = g.Any() && g.All(x => x.HasComparableSalesWindow)
+                            HasComparableSalesWindow = comparable.Count > 0,
+                            ComparableArticleCount = comparable.Select(x => x.Sku).Distinct(StringComparer.Ordinal).Count()
                         };
                     })
                     .OrderByDescending(x => Math.Abs(x.ChangeRevenue))
@@ -4293,18 +4310,20 @@ public static class AllEndpoints
                     .GroupBy(SegmentFor)
                     .Select(g =>
                     {
-                        var preRev = g.Sum(x => x.PreRevenue);
-                        var postRev = g.Sum(x => x.PostRevenue);
-                        var avgPct = g.Where(x => x.PriceChangePercent.HasValue).Select(x => x.PriceChangePercent!.Value).DefaultIfEmpty().Average();
+                        var comparable = g.Where(x => x.HasComparableSalesWindow).ToList();
+                        var preRev = comparable.Sum(x => x.PreRevenue);
+                        var postRev = comparable.Sum(x => x.PostRevenue);
+                        var avgPct = comparable.Where(x => x.PriceChangePercent.HasValue).Select(x => x.PriceChangePercent!.Value).DefaultIfEmpty().Average();
                         return new VendorSalesNivelacijaPriceDirectionStatDto
                         {
                             Segment = g.Key,
-                            ArticlesCount = g.Select(x => x.Sku).Distinct(StringComparer.Ordinal).Count(),
-                            VendorsCount = g.Select(x => x.VendorId).Distinct().Count(),
+                            ArticlesCount = comparable.Select(x => x.Sku).Distinct(StringComparer.Ordinal).Count(),
+                            VendorsCount = comparable.Select(x => x.VendorId).Distinct().Count(),
                             AvgPriceChangePercent = Math.Round(avgPct, 2),
-                            ChangeRevenue = g.Sum(x => x.ChangeRevenue),
+                            ChangeRevenue = comparable.Sum(x => x.ChangeRevenue),
                             ChangePercent = Pct(preRev, postRev),
-                            HasComparableSalesWindow = g.Any() && g.All(x => x.HasComparableSalesWindow)
+                            HasComparableSalesWindow = comparable.Count > 0,
+                            ComparableArticleCount = comparable.Select(x => x.Sku).Distinct(StringComparer.Ordinal).Count()
                         };
                     })
                     .OrderByDescending(x => x.ArticlesCount)
@@ -4361,11 +4380,11 @@ public static class AllEndpoints
                     return count == 0 ? null : sum / count;
                 }
 
-                var avgMomentumRevenue = AverageOrNull(analyzed.Select(x => x.MomentumRevenue));
-                var avgElasticity = AverageOrNull(analyzed.Select(x => x.PriceElasticity));
-                var avgDidRevenue = AverageOrNull(analyzed.Select(x => x.DidRevenue));
-                var avgLostSalesOos = AverageOrNull(analyzed.Select(x => x.LostSalesOOS));
-                var avgOosRate = AverageOrNull(analyzed.Select(x => x.OOSRate));
+                var avgMomentumRevenue = AverageOrNull(comparableRows.Select(x => x.MomentumRevenue));
+                var avgElasticity = AverageOrNull(comparableRows.Select(x => x.PriceElasticity));
+                var avgDidRevenue = AverageOrNull(comparableRows.Select(x => x.DidRevenue));
+                var avgLostSalesOos = AverageOrNull(comparableRows.Select(x => x.LostSalesOOS));
+                var avgOosRate = AverageOrNull(comparableRows.Select(x => x.OOSRate));
 
                 var response = new VendorSalesNivelacijaResponseDto
                 {
@@ -4382,13 +4401,23 @@ public static class AllEndpoints
                     ScopeApplied = true,
                     Categories = categories,
                     VendorStats = vendorStats,
-                    ArticleStats = analyzed,
+                    ArticleStats = articleStats,
                     Totals = totals,
                     DataQuality = new VendorSalesNivelacijaDataQualityDto
                     {
                         RawRows = rawRows,
                         DeduplicatedRows = deduplicatedRows,
                         DuplicateRowsRemoved = Math.Max(0, rawRows - deduplicatedRows),
+                        CohortRows = cohortRows.Count,
+                        CohortRowsExcluded = cohortRowsExcluded,
+                        ReturnedRows = articleStats.Count,
+                        TruncatedRows = Math.Max(0, analyzedRows - articleStats.Count),
+                        ComparableRows = comparableRows.Count,
+                        ComparableSharePercent = analyzedRows == 0
+                            ? null
+                            : Math.Round((decimal)comparableRows.Count / analyzedRows * 100m, 2),
+                        IsDetailTruncated = articleStats.Count < analyzedRows,
+                        CohortPolicy = "latest_event_per_article",
                         InactiveRows = inactiveRows,
                         UnchangedPriceRows = unchangedPriceRows,
                         AnalyzedRows = analyzedRows,

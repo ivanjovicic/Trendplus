@@ -363,12 +363,12 @@ const METRIC_WARNING_META: Record<string, MetricWarningMeta> = {
       "vw_nivelacija_did view nije kreiran. Difference-in-Differences procena nije uključena.",
     isExpected: true,
   },
-  "Article stats capped": {
-    label: "Podaci ograničeni (cap)",
-    severity: "watch",
+  "Article detail limited": {
+    label: "Detaljna lista je skraćena",
+    severity: "info",
     explanation:
-      "Broj article redova je ograničen zbog veličine upita. Neke stavke možda nisu vidljive, pa suzite filter.",
-    isExpected: false,
+      "Prikazana lista artikala je ograničena, ali zbirni KPI-jevi i preporuke koriste ceo kanonski kohort.",
+    isExpected: true,
   },
   "OOS/DiD mapping failed": {
     label: "OOS/DiD mapiranje neuspešno",
@@ -831,6 +831,7 @@ export default function ProdajaPrePostNivelacijePage() {
     const {
       analyzedSharePercent: analyzedShare,
       duplicateRowsRemoved: duplicateRows,
+      cohortRows,
       inactiveRows,
       analyzedRows,
       deduplicatedRows,
@@ -845,11 +846,21 @@ export default function ProdajaPrePostNivelacijePage() {
       };
     }
 
-    const countDetail = deduplicatedRows != null && deduplicatedRows > 0
-      ? `${analyzedRows} od ${deduplicatedRows} nivelacija redova (${fmtPct(analyzedShare, 0)})`
+    const denominatorRows = cohortRows ?? deduplicatedRows;
+    const countDetail = denominatorRows != null && denominatorRows > 0
+      ? `${analyzedRows} od ${denominatorRows} kanonskih redova (${fmtPct(analyzedShare, 0)})`
       : `${fmtPct(analyzedShare, 0)} redova`;
 
-    const details = `Analizirano: ${countDetail} | bez prodajnog prozora: ${inactiveRows} | nepromenjene cene: ${unchangedPriceRows} | duplikati uklonjeni: ${duplicateRows}`;
+    const cohortDetail = dataQualityProjection.cohortRows != null
+      ? ` | kohort artikala: ${dataQualityProjection.cohortRows}`
+      : "";
+    const comparableDetail = dataQualityProjection.comparableRows != null
+      ? ` | uporedivi redovi: ${dataQualityProjection.comparableRows} (${fmtPct(dataQualityProjection.comparableSharePercent, 0)})`
+      : "";
+    const truncationDetail = dataQualityProjection.isDetailTruncated
+      ? ` | detaljna lista ograničena za ${dataQualityProjection.truncatedRows ?? "nepoznat"} redova; zbirni KPI-jevi koriste ceo kohort`
+      : "";
+    const details = `Analizirano: ${countDetail}${cohortDetail}${comparableDetail}${truncationDetail} | bez prodajnog prozora: ${inactiveRows} | nepromenjene cene: ${unchangedPriceRows} | duplikati događaja uklonjeni: ${duplicateRows}`;
 
     const hasUnexpectedWarnings = dataQualityWarnings.some((warning) => !getMetricWarningMeta(warning).isExpected);
 
@@ -1098,7 +1109,12 @@ const advancedSignals = useMemo(
       },
       { key: "dataTrust", label: "Poverenje", value: dataTrustSummary.label },
       { key: "analyzedShare", label: "Analizirani redovi", value: fmtPct(dataQualityProjection.isComplete ? dataQualityProjection.analyzedSharePercent : null, 0, "Nije dostupno") },
-      { key: "duplicateRowsRemoved", label: "Duplicati uklonjeni", value: dataQualityProjection.isComplete ? dataQualityProjection.duplicateRowsRemoved : null },
+      { key: "cohortPolicy", label: "Kohort", value: dataQualityProjection.cohortPolicy === "latest_event_per_article" ? "Najnoviji događaj po artiklu" : dataQualityProjection.cohortPolicy },
+      { key: "cohortRowsExcluded", label: "Isključeno iz kohorta", value: dataQualityProjection.cohortRowsExcluded },
+      { key: "comparableRows", label: "Uporedivi redovi", value: dataQualityProjection.comparableRows },
+      { key: "returnedRows", label: "Vraćenih detaljnih redova", value: dataQualityProjection.returnedRows },
+      { key: "truncatedRows", label: "Sakrivenih detaljnih redova", value: dataQualityProjection.truncatedRows },
+      { key: "duplicateRowsRemoved", label: "Duplikati događaja uklonjeni", value: dataQualityProjection.isComplete ? dataQualityProjection.duplicateRowsRemoved : null },
       { key: "inactiveRows", label: "Neaktivni redovi", value: dataQualityProjection.isComplete ? dataQualityProjection.inactiveRows : null },
       { key: "metricsStatus", label: "Status metrika", value: resolveToolbarMetricsStatus(data?.metricsStatus) },
     ],

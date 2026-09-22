@@ -123,12 +123,19 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.DoesNotContain("ChangePercent = changePercentRevenue ?? 0m", source);
         Assert.Contains("ConfidencePct = row.Vendor.HasComparableSalesWindow ? recommendation.ConfidencePct : null", source);
         Assert.Contains("ReliabilityPct = row.Vendor.HasComparableSalesWindow ? recommendation.ReliabilityPct : null", source);
-        Assert.Contains("HasComparableSalesWindow = analyzedRows > 0 && analyzed.All(x => x.HasComparableSalesWindow)", source);
+        Assert.Contains("var comparableRows = analyzed", source);
+        Assert.Contains("HasComparableSalesWindow = comparableRows.Count > 0", source);
+        Assert.DoesNotContain("HasComparableSalesWindow = analyzedRows > 0 && analyzed.All(x => x.HasComparableSalesWindow)", source);
+        Assert.Contains("VendorSalesNivelacijaCohortPolicy", source);
+        Assert.Contains("SelectLatestEventPerArticle(dedupRows)", source);
+        Assert.Contains("ArticleStats = articleStats", source);
+        Assert.Contains("CohortPolicy = \"latest_event_per_article\"", source);
+        Assert.DoesNotContain("LIMIT @maxRows", source);
         Assert.Contains("var totalAbsoluteChangeRevenue = vendorStats.Sum(x => x.AbsoluteChangeRevenue);", source);
         Assert.Contains("totals.AbsoluteChangeRevenue = totalAbsoluteChangeRevenue;", source);
         Assert.Contains("vendor.ChangeSharePercent = totalAbsoluteChangeRevenue == 0m", source);
         Assert.Equal(3, source.Split("var hasComparableNivelacijaSignal =", StringSplitOptions.None).Length - 1);
-        Assert.Equal(3, source.Split("recommendationAllowed = recommendation.RecommendationAllowed && hasComparableNivelacijaSignal", StringSplitOptions.None).Length - 1);
+        Assert.Equal(2, source.Split("recommendationAllowed = recommendation.RecommendationAllowed && hasComparableNivelacijaSignal", StringSplitOptions.None).Length - 1);
     }
 
     [Fact]
@@ -158,6 +165,11 @@ public sealed class SupplierDecisionSchemaSqlTests
         AssertNullableIntProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.RawRows));
         AssertNullableIntProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.DeduplicatedRows));
         AssertNullableIntProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.DuplicateRowsRemoved));
+        AssertNullableIntProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.CohortRows));
+        AssertNullableIntProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.CohortRowsExcluded));
+        AssertNullableIntProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.ReturnedRows));
+        AssertNullableIntProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.TruncatedRows));
+        AssertNullableIntProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.ComparableRows));
         AssertNullableIntProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.InactiveRows));
         AssertNullableIntProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.UnchangedPriceRows));
         AssertNullableIntProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.AnalyzedRows));

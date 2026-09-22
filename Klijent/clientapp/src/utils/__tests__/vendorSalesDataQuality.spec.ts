@@ -55,4 +55,28 @@ describe("projectVendorSalesDataQuality", () => {
     expect(projection.avgCoveragePre30).toBeNull();
     expect(projection.avgCoveragePost30).toBeNull();
   });
+
+  it("keeps cohort and detail truncation provenance separate from duplicate removal", () => {
+    const projection = projectVendorSalesDataQuality({
+      ...completeQuality,
+      cohortRows: 8,
+      cohortRowsExcluded: 2,
+      returnedRows: 4,
+      truncatedRows: 4,
+      comparableRows: 6,
+      comparableSharePercent: 75,
+      isDetailTruncated: true,
+      cohortPolicy: "latest_event_per_article",
+    });
+
+    expect(projection.duplicateRowsRemoved).toBe(0);
+    expect(projection.cohortRows).toBe(8);
+    expect(projection.cohortRowsExcluded).toBe(2);
+    expect(projection.returnedRows).toBe(4);
+    expect(projection.truncatedRows).toBe(4);
+    expect(projection.comparableRows).toBe(6);
+    expect(projection.comparableSharePercent).toBe(75);
+    expect(projection.isDetailTruncated).toBe(true);
+    expect(projection.cohortPolicy).toBe("latest_event_per_article");
+  });
 });
