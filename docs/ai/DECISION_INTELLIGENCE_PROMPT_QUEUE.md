@@ -54,7 +54,7 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 
 
 
-Only one prompt per program may be READY. A READY prompt in this file does not outrank the existing BCI/STAB/RQ/QDB/MT/GAI execution priority from `MASTER_ROADMAP.md` and does not authorize broad runtime implementation.
+`Current READY` is the primary/default pointer, not a one-task allowlist. Additional READY prompts in a program are allowed when dependency-complete and collision-safe; multiple active prompts in the same feature family require `Parallel-safe: yes` on every active task. A READY prompt in this file does not outrank the existing BCI/STAB/RQ/QDB/MT/GAI execution priority from `MASTER_ROADMAP.md` and does not authorize broad runtime implementation.
 
 
 

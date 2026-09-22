@@ -16,7 +16,7 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 | OBS - Observability | none | `OBS10` DONE; `OBS11` DONE |
 | SEC - Security Evolution | none | `SEC08` DONE; SEC05 remains WAITING on MT09 |
 
-Only one prompt per program may be READY. These planning tasks never outrank higher-priority runtime gates in `MASTER_ROADMAP.md`.
+`Current READY` is the primary/default pointer, not a one-task allowlist. Additional READY prompts in a program are allowed when dependency-complete and collision-safe; multiple active prompts in the same feature family require `Parallel-safe: yes` on every active task. These planning tasks never outrank higher-priority runtime gates in `MASTER_ROADMAP.md`.
 
 No additional SEC candidate is promoted.
 

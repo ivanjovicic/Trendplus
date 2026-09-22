@@ -1,6 +1,6 @@
 # Prompt Queue Protocol
 
-Updated: 2026-08-15
+Updated: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
 
 This protocol defines live prompt-queue governance. Cross-program routing lives in `MASTER_ROADMAP.md`; feature/product lifecycle lives in `docs/planning/FEATURE_LIFECYCLE.md`.
@@ -27,10 +27,10 @@ Future planning programs:
 ## Canonical selection rule
 
 1. Read `MASTER_ROADMAP.md`.
-2. Resolve the owning program and its current READY pointer.
+2. Resolve the owning program, its `Current READY` primary/default pointer, and the full set of READY candidates in that program.
 3. Preserve the existing global priority before considering lower-priority programs.
 4. Treat `P-UI` as a supplemental presentation lane: it may run only when path-safe and it must not displace BCI/STAB/RQ/QDB/MT/GAI priority or repair analytics correctness through frontend invention.
-5. Start only a prompt whose status is READY and whose dependencies are satisfied.
+5. Start only a prompt whose status is READY, whose dependencies are satisfied, and whose feature-family/path/owner/gate collision checks are clear. Prefer the `Current READY` pointer for a simple `next` request, but do not serialize unrelated READY lanes behind it.
 6. Do not resurrect a DONE/PARTIAL/WAITING prompt because an older addendum says it was once next.
 7. A future planning READY (`DEX/RL/DT/PERF/OBS/SEC`) authorizes only its documented planning/contract scope. It does not authorize runtime implementation or outrank higher-priority gates.
 
@@ -38,10 +38,11 @@ Future planning programs:
 
 If an owner queue header says `Current READY prompt: none`:
 
-1. Do not claim a later `WAITING` prompt from that queue.
-2. Check whether the blocker is only a same-owner routing repair, such as a stale current-ready pointer, a missing completion note, or a mechanical status mismatch.
-3. If the blocker is a same-owner routing repair, make the smallest canonical metadata fix, record it in the queue completion note and durable run log, and keep the real blocked/waiting state visible.
-4. If the blocker is a real dependency, approval, tenant/security decision, or migration gate, stop and report the blocker instead of inventing readiness.
+1. Confirm there is no other task already marked `READY` or `IN_PROGRESS` in that queue. `none` means there is no active primary pointer, not permission to auto-promote an arbitrary WAITING task.
+2. Do not claim a later `WAITING` prompt from that queue.
+3. Check whether the blocker is only a same-owner routing repair, such as a stale current-ready pointer, a missing completion note, or a mechanical status mismatch.
+4. If the blocker is a same-owner routing repair, make the smallest canonical metadata fix and keep the real blocked/waiting state visible.
+5. If the blocker is a real dependency, approval, tenant/security decision, or migration gate, stop and report it instead of inventing readiness.
 
 ## Status model
 
@@ -49,9 +50,9 @@ Use these statuses exactly:
 
 | Status | Meaning | Agent may start? |
 |---|---|---|
-| READY | Current runnable prompt in its program. | Yes, subject to master priority/dependencies |
-| WAITING | Valid later prompt. | No |
-| IN_PROGRESS | Claimed by current owner/workspace. | Only same owner continues |
+| READY | Runnable, unclaimed prompt. A program may have multiple READY prompts when they are independently safe. | Yes, subject to master priority/dependencies/collision checks |
+| WAITING | Valid prompt that is dependency-blocked, collision-prone, owner-gated or intentionally deferred. | No |
+| IN_PROGRESS | Claimed by one owner/workspace. Multiple independent IN_PROGRESS prompts may coexist. | Only the claiming owner/workspace continues that prompt |
 | BLOCKED | Missing dependency/decision/evidence that prevents safe progress. | No |
 | PARTIAL | Useful work exists but acceptance/proof/delivery is incomplete. | No unless an explicit follow-up says so |
 | DONE | Acceptance met with synchronized evidence and delivery truth. | No |
@@ -69,13 +70,15 @@ If implementation is useful but evidence/delivery verification is incomplete, us
 
 ## READY invariants
 
-- A program may have zero or one READY prompt; more than one READY in the same program is invalid.
-- Zero READY is valid only when the owner queue/current-READY table and `MASTER_ROADMAP.md` explicitly declare `none` (or the equivalent named blocked/complete current truth). Do not infer a valid zero merely because no task happens to be marked READY.
-- Multiple programs may each have one READY prompt; global execution priority still comes from `MASTER_ROADMAP.md`.
-- Parallel-safe means path/feature-family parallelism is allowed; it never means dependency gates can be skipped.
-- Current READY (or explicit `none`) must be declared near the queue top or in the queue's per-program current-READY table.
-- All later prompts remain WAITING until dependencies are met or the current pointer is explicitly advanced.
-- A follow-up/evidence addendum belongs to the same program as its parent queue; it does not create a second READY allowance.
+- A program may have zero, one or multiple READY prompts. Multiple READY prompts are valid only when each is dependency-complete and the active set is collision-safe.
+- `Current READY` is the **primary/default** routing pointer for deterministic `next` behavior. It is not a global mutex and does not make other READY tasks unclaimable.
+- Zero READY/IN_PROGRESS is valid only when the owner queue/current-READY table and `MASTER_ROADMAP.md` explicitly declare `none` (or the equivalent named blocked/complete current truth).
+- Multiple programs and multiple independent feature families inside one program may be active concurrently; global program priority still comes from `MASTER_ROADMAP.md`.
+- `Parallel-safe: no` makes that feature family/owned surface exclusive; it does **not** serialize unrelated feature families. Multiple READY/IN_PROGRESS tasks in the same feature family require `Parallel-safe: yes` on every active task in that family.
+- Parallel-safe never means dependency, owner, release, security, tenant or production gates can be skipped.
+- Current READY (or explicit `none`) must be declared near the queue top or in the queue's per-program current-READY table. When the primary task is IN_PROGRESS, the pointer may continue to name it while other independent READY tasks remain claimable.
+- Dependent, overlapping or owner-gated prompts remain WAITING. Do not keep an otherwise independent prompt WAITING solely to satisfy a one-READY convention.
+- A follow-up/evidence addendum belongs to the same program as its parent queue and shares the same collision domain.
 
 ## Required prompt sections
 
@@ -130,9 +133,9 @@ Exclusive area: <paths/contract>
 
 1. Refresh current `main`/remote state.
 2. Read `AGENTS.md`, `.github/copilot-instructions.md`, `docs/ai/AGENT_START_HERE.md`, `MASTER_ROADMAP.md`, this protocol and the target prompt.
-3. Verify the queue still declares the task READY.
+3. Verify the queue still declares the selected task READY. The selected task may be the primary pointer or another READY candidate.
 4. Verify dependencies and global priority.
-5. Confirm no lock/branch/PR owns the same feature family/paths where that evidence is available.
+5. Confirm no active READY/IN_PROGRESS task, lock, branch or PR owns a conflicting feature family/path where that evidence is available.
 6. Create local lock for implementation work.
 7. Work only inside Scope.
 8. If extra scope crosses an owner/program boundary, stop as PARTIAL/BLOCKED and create a separate follow-up plan. A smallest same-owner mechanical repair allowed above is recorded and may continue.

@@ -190,6 +190,10 @@ This file is the single routing entry point for Trendplus planning. It does not 
 
 If an older queue addendum, audit, status report, or completion note conflicts with this file and the current owner queue header, treat the older statement as historical evidence, not current routing.
 
+### Parallel READY semantics
+
+`Current READY` is the **primary/default READY** pointer used by a simple `next` selector. It is not an exclusive allowlist. A program may expose additional READY tasks when they are dependency-complete and collision-safe. Multiple active tasks in the same feature family require `Parallel-safe: yes` on every active task in that family; different feature families still must pass path, owner, lock and release-gate checks before concurrent claims.
+
 ## Existing program priority
 
 The existing execution priority is preserved:
@@ -342,8 +346,8 @@ When a feature is proposed:
 1. map it to an existing program first;
 2. create a new program only when ownership is genuinely different;
 3. update the roadmap before creating implementation work;
-4. expose at most one READY prompt per program;
-5. keep all later prompts WAITING until dependencies are met;
+4. expose one `Current READY` primary/default pointer per program for deterministic routing, while allowing additional READY prompts that are independently runnable;
+5. keep dependent or collision-prone prompts WAITING; independent prompts may also be READY when feature-family, path, dependency and gate checks prove that concurrent claims are safe;
 6. update this file only when ownership, current READY, blocking relationship, or next milestone changes.
 
 Do not copy implementation detail into this file. The owner queue is the implementation contract.
