@@ -7,14 +7,14 @@ public sealed class VendorSalesNivelacijaArticleStatDto
 {
     public DateTime EventDate { get; set; }
     public int? VendorId { get; set; }
-    public string VendorName { get; set; } = "N/A";
+    public string VendorName { get; set; } = "Nepoznato";
     [JsonIgnore]
     public int ArticleId { get; set; }
     [JsonIgnore]
     public long PriceEventId { get; set; }
     public string Sku { get; set; } = string.Empty;
     public string ArticleName { get; set; } = string.Empty;
-    public string Category { get; set; } = "N/A";
+    public string Category { get; set; } = "Nepoznato";
     public decimal? OldPrice { get; set; }
     public decimal? NewPrice { get; set; }
     public int PreQty { get; set; }
@@ -56,7 +56,7 @@ public sealed class VendorSalesNivelacijaArticleStatDto
 public sealed class VendorSalesNivelacijaRecommendationDto
 {
     public string Status { get; set; } = "insufficient_data";
-    public string Label { get; set; } = "Insufficient data";
+    public string Label { get; set; } = "Nedovoljno podataka";
     public string Summary { get; set; } = string.Empty;
     public double? ConfidencePct { get; set; }
     public double? ReliabilityPct { get; set; }
@@ -68,7 +68,7 @@ public sealed class VendorSalesNivelacijaRecommendationDto
 public sealed class VendorSalesNivelacijaVendorStatDto
 {
     public int? VendorId { get; set; }
-    public string VendorName { get; set; } = "N/A";
+    public string VendorName { get; set; } = "Nepoznato";
     public int PreQty { get; set; }
     public decimal PreRevenue { get; set; }
     public int PostQty { get; set; }
@@ -139,7 +139,7 @@ public sealed class VendorSalesNivelacijaDataQualityDto
 
 public sealed class VendorSalesNivelacijaCategoryStatDto
 {
-    public string Category { get; set; } = "N/A";
+    public string Category { get; set; } = "Nepoznato";
     public int ArticlesCount { get; set; }
     public int VendorsCount { get; set; }
     public int PreQty { get; set; }

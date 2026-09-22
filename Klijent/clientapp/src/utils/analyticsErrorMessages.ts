@@ -28,7 +28,7 @@ export function getSafeAnalyticsErrorMessage(
   }
 
   if (TECHNICAL_ERROR_PATTERNS.some((pattern) => pattern.test(normalizedMessage))) {
-    return ANALYTICS_ERROR_FALLBACK_MESSAGE;
+    return fallback;
   }
 
   return normalizedMessage;

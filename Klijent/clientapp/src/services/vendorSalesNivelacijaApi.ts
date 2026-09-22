@@ -1,7 +1,9 @@
-import { fetchWithTimeout } from "../utils/fetchWithTimeout";
-import { apiUrl } from "../utils/apiUrl";
+import { fetchAnalyticsJson } from "./analyticsHttp";
 import type { AnalyticsResponseMeta } from "../types/analytics";
-import { assertAnalyticsMetaSuccess } from "../utils/analyticsResponseMeta";
+import {
+    vendorSalesNivelacijaOptionsSchema,
+    vendorSalesNivelacijaResponseSchema,
+} from "../validation/analyticsResponseSchemas";
 
 const REQUEST_TIMEOUT_MS = 60_000;
 
@@ -241,22 +243,15 @@ export async function getVendorSalesNivelacija(
     if (query.storeId != null) params.set("storeId", String(query.storeId));
     if (query.dataScope) params.set("dataScope", query.dataScope);
 
-    const baseUrl = apiUrl("/api/analytics/vendor-sales-nivelacija");
-    const url = params.toString()
-        ? `${baseUrl}?${params.toString()}`
-        : baseUrl;
-
-    const response = await fetchWithTimeout(url, { signal: query.signal }, REQUEST_TIMEOUT_MS);
-    if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`Neuspesno ucitavanje pre/post nivelacija analitike: ${text}`);
-    }
-
-    const payload = (await response.json()) as VendorSalesNivelacijaResponse;
-    const result = assertAnalyticsMetaSuccess(
-        payload,
-        (result) => result.meta,
-        "Pre/post nivelacija podaci trenutno nisu dostupni."
+    const result = await fetchAnalyticsJson<VendorSalesNivelacijaResponse>(
+        "/api/analytics/vendor-sales-nivelacija",
+        params,
+        "Pre/post nivelacija podaci trenutno nisu dostupni.",
+        {
+            signal: query.signal,
+            timeoutMs: REQUEST_TIMEOUT_MS,
+            schema: vendorSalesNivelacijaResponseSchema,
+        },
     );
 
     const expectedStoreId = query.storeId ?? null;
@@ -280,16 +275,13 @@ export async function getVendorSalesNivelacijaOptions(
     if (query.storeId != null) params.set("storeId", String(query.storeId));
     if (query.dataScope) params.set("dataScope", query.dataScope);
 
-    const baseUrl = apiUrl("/api/analytics/vendor-sales-nivelacija/options");
-    const url = params.toString()
-        ? `${baseUrl}?${params.toString()}`
-        : baseUrl;
-
-    const response = await fetchWithTimeout(url, undefined, REQUEST_TIMEOUT_MS);
-    if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`Neuspesno ucitavanje nivo opcija: ${text}`);
-    }
-
-    return response.json() as Promise<VendorSalesNivelacijaOption[]>;
+    return fetchAnalyticsJson<VendorSalesNivelacijaOption[]>(
+        "/api/analytics/vendor-sales-nivelacija/options",
+        params,
+        "Opcije pre/post nivelacija trenutno nisu dostupne.",
+        {
+            timeoutMs: REQUEST_TIMEOUT_MS,
+            schema: vendorSalesNivelacijaOptionsSchema,
+        },
+    );
 }

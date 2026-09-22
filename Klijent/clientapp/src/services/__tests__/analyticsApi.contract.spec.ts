@@ -126,6 +126,8 @@ describe("analytics API contract requests", () => {
           totals: {
             ukupanPromet: 0,
             ukupanMarzniDoprinos: 0,
+            weightedKnownMarginPct: null,
+            weightedKnownMarginRevenue: 0,
             prePromet: 0,
             poslePromet: 0,
             ukupnaKolicina: 0,
@@ -142,6 +144,8 @@ describe("analytics API contract requests", () => {
           dataQuality: {
             missingCostRevenue: 0,
             missingCostRevenueSharePct: null,
+            weightedKnownMarginPct: null,
+            weightedKnownMarginRevenue: 0,
             unknownColorRevenue: 0,
             unknownColorRevenueSharePct: null,
             revenueWithNivelacijaSplit: 0,

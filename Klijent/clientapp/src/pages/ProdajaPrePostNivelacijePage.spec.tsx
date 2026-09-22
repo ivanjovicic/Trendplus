@@ -836,7 +836,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(snapshot?.metadata).toEqual(expect.arrayContaining([
       expect.objectContaining({ key: "dataTrust", label: "Poverenje", value: "Nepoznato" }),
       expect.objectContaining({ key: "analyzedShare", label: "Analizirani redovi", value: "Nije dostupno" }),
-      expect.objectContaining({ key: "duplicateRowsRemoved", label: "Duplicati uklonjeni", value: "N/A" }),
+      expect.objectContaining({ key: "duplicateRowsRemoved", label: "Duplikati događaja uklonjeni", value: "N/A" }),
       expect.objectContaining({ key: "inactiveRows", label: "Neaktivni redovi", value: "N/A" }),
     ]));
   });
@@ -889,7 +889,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(snapshot?.metadata).toEqual(expect.arrayContaining([
       expect.objectContaining({ key: "dataTrust", label: "Poverenje", value: "Nepoznato" }),
       expect.objectContaining({ key: "analyzedShare", label: "Analizirani redovi", value: "Nije dostupno" }),
-      expect.objectContaining({ key: "duplicateRowsRemoved", label: "Duplicati uklonjeni", value: "N/A" }),
+      expect.objectContaining({ key: "duplicateRowsRemoved", label: "Duplikati događaja uklonjeni", value: "N/A" }),
     ]));
   });
 

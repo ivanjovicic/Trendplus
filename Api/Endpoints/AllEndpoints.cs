@@ -808,6 +808,7 @@ public static class AllEndpoints
             TrendplusDbContext trendplusDb,
             ILogger<Program> logger,
             IAnalyticsCacheService cache,
+            HttpContext httpContext,
             int? vendorId = null,
             string? category = null,
             int take = 200,
@@ -820,10 +821,12 @@ public static class AllEndpoints
                 var connectionString = trendplusDb.Database.GetConnectionString();
                 if (string.IsNullOrWhiteSpace(connectionString))
                 {
-                    return Results.Problem(
-                        title: "Missing database connection",
-                        detail: "Trendplus connection string is missing.",
-                        statusCode: 500);
+                    return CreateVendorSalesNivelacijaProblem(
+                        "Opcije pre/post nivelacija nisu dostupne.",
+                        "Povezivanje sa bazom trenutno nije dostupno.",
+                        503,
+                        "vendor_sales_nivelacija_options_unavailable",
+                        ResolveAnalyticsCorrelationId(httpContext));
                 }
 
                 take = Math.Clamp(take, 10, 1000);
@@ -1060,15 +1063,25 @@ public static class AllEndpoints
                     "Vendor sales nivelacija options fallback due to database/schema issue. SqlState={SqlState}",
                     ex.SqlState);
 
-                // Return an empty options set instead of hard-failing the screen.
-                return Results.Ok(new List<VendorSalesNivelacijaOptionDto>());
+                return CreateVendorSalesNivelacijaProblem(
+                    "Opcije pre/post nivelacija nisu dostupne.",
+                    "Opcije trenutno nije moguće učitati. Pokušajte ponovo ili prosledite referentni ID podršci.",
+                    503,
+                    "vendor_sales_nivelacija_options_unavailable",
+                    ResolveAnalyticsCorrelationId(httpContext));
             }
             catch (Exception ex)
             {
+                logger.LogError(ex, "Vendor sales nivelacija options failed unexpectedly.");
                 return Results.Problem(
-                    title: "Failed to load nivelacija options",
-                    detail: ex.Message,
-                    statusCode: 500);
+                    title: "Opcije pre/post nivelacija nisu dostupne.",
+                    detail: $"Opcije trenutno nije moguće učitati. Referentni ID: {ResolveAnalyticsCorrelationId(httpContext)}.",
+                    statusCode: 500,
+                    extensions: new Dictionary<string, object?>
+                    {
+                        ["errorCode"] = "vendor_sales_nivelacija_options_unavailable",
+                        ["correlationId"] = ResolveAnalyticsCorrelationId(httpContext)
+                    });
             }
         })
         .WithName("GetVendorSalesNivelacijaOptions")
@@ -3372,10 +3385,12 @@ public static class AllEndpoints
                 var connectionString = trendplusDb.Database.GetConnectionString();
                 if (string.IsNullOrWhiteSpace(connectionString))
                 {
-                    return Results.Problem(
-                        title: "Missing database connection",
-                        detail: "Trendplus connection string is missing.",
-                        statusCode: 500);
+                    return CreateVendorSalesNivelacijaProblem(
+                        "Pre/post nivelacija nije dostupna.",
+                        "Povezivanje sa bazom trenutno nije dostupno.",
+                        503,
+                        "vendor_sales_nivelacija_unavailable",
+                        correlationId);
                 }
 
                 var eventDateOnly = eventDate?.Date;
@@ -3384,12 +3399,12 @@ public static class AllEndpoints
 
                 if (fromDateOnly.HasValue && toDateOnly.HasValue && fromDateOnly.Value > toDateOnly.Value)
                 {
-                    return Results.BadRequest(new
-                    {
-                        message = "Invalid date range: from must be <= to",
-                        from = fromDateOnly.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                        to = toDateOnly.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
-                    });
+                    return CreateVendorSalesNivelacijaProblem(
+                        "Neispravan period.",
+                        "Početak perioda mora biti pre ili jednak kraju perioda.",
+                        400,
+                        "vendor_sales_nivelacija_invalid_period",
+                        correlationId);
                 }
 
                 var categoryTrimmed = string.IsNullOrWhiteSpace(category) ? null : category.Trim();
@@ -3535,22 +3550,22 @@ public static class AllEndpoints
                 var categoriesSql = useScopedFactQuery
                     ? $"""
                     {BuildVendorSalesNivelacijaScopedSourceSql()}
-                    SELECT DISTINCT COALESCE(NULLIF(category, ''), 'N/A') AS category
+                    SELECT DISTINCT COALESCE(NULLIF(category, ''), 'Nepoznato') AS category
                     FROM scoped_vendor_sales_nivelacija
                     WHERE (@vendorId IS NULL OR vendor_id = @vendorId)
                       AND (@eventDate IS NULL OR event_date::date = @eventDate)
                       AND (@fromDate IS NULL OR event_date::date >= @fromDate)
                       AND (@toDate IS NULL OR event_date::date <= @toDate)
-                    ORDER BY COALESCE(NULLIF(category, ''), 'N/A');
+                    ORDER BY COALESCE(NULLIF(category, ''), 'Nepoznato');
                     """
                     : """
-                    SELECT DISTINCT COALESCE(NULLIF(category, ''), 'N/A') AS category
+                    SELECT DISTINCT COALESCE(NULLIF(category, ''), 'Nepoznato') AS category
                     FROM "vw_vendor_sales_nivelacija"
                     WHERE (@vendorId IS NULL OR vendor_id = @vendorId)
                       AND (@eventDate IS NULL OR event_date::date = @eventDate)
                       AND (@fromDate IS NULL OR event_date::date >= @fromDate)
                       AND (@toDate IS NULL OR event_date::date <= @toDate)
-                    ORDER BY COALESCE(NULLIF(category, ''), 'N/A');
+                    ORDER BY COALESCE(NULLIF(category, ''), 'Nepoznato');
                     """;
 
                 await using (var cmd = new NpgsqlCommand(categoriesSql, connection))
@@ -3598,11 +3613,11 @@ public static class AllEndpoints
                                 price_event_id,
                                 event_date::date AS event_date,
                                 vendor_id,
-                                COALESCE(vendor_name, 'N/A') AS vendor_name,
+                                COALESCE(vendor_name, 'Nepoznato') AS vendor_name,
                                 article_id,
                                 COALESCE(NULLIF(sku, ''), article_id::text) AS sku,
                                 COALESCE(article_name, '') AS article_name,
-                                COALESCE(NULLIF(category, ''), 'N/A') AS category,
+                                COALESCE(NULLIF(category, ''), 'Nepoznato') AS category,
                                 old_price,
                                 new_price,
                                 pre_qty::numeric AS pre_qty,
@@ -3673,11 +3688,11 @@ public static class AllEndpoints
                                 price_event_id,
                                 event_date::date AS event_date,
                                 vendor_id,
-                                COALESCE(vendor_name, 'N/A') AS vendor_name,
+                                COALESCE(vendor_name, 'Nepoznato') AS vendor_name,
                                 article_id,
                                 COALESCE(NULLIF(sku, ''), article_id::text) AS sku,
                                 COALESCE(article_name, '') AS article_name,
-                                COALESCE(NULLIF(category, ''), 'N/A') AS category,
+                                COALESCE(NULLIF(category, ''), 'Nepoznato') AS category,
                                 old_price,
                                 new_price,
                                 pre_qty::numeric AS pre_qty,
@@ -3747,11 +3762,11 @@ public static class AllEndpoints
                                 price_event_id,
                                 event_date::date AS event_date,
                                 vendor_id,
-                                COALESCE(vendor_name, 'N/A') AS vendor_name,
+                                COALESCE(vendor_name, 'Nepoznato') AS vendor_name,
                                 article_id,
                                 COALESCE(NULLIF(sku, ''), article_id::text) AS sku,
                                 COALESCE(article_name, '') AS article_name,
-                                COALESCE(NULLIF(category, ''), 'N/A') AS category,
+                                COALESCE(NULLIF(category, ''), 'Nepoznato') AS category,
                                 NULL::numeric AS old_price,
                                 NULL::numeric AS new_price,
                                 pre_qty::numeric AS pre_qty,
@@ -3861,11 +3876,11 @@ public static class AllEndpoints
                         var priceEventId = reader.GetInt64(0);
                         var evDate = DateTime.SpecifyKind(reader.GetDateTime(1), DateTimeKind.Utc);
                         var vId = reader.IsDBNull(2) ? (int?)null : reader.GetInt32(2);
-                        var vName = reader.IsDBNull(3) ? "N/A" : reader.GetString(3);
+                        var vName = reader.IsDBNull(3) ? "Nepoznato" : reader.GetString(3);
                         _ = reader.GetInt32(4); // article_id (used by metrics queries, not returned)
                         var sku = reader.IsDBNull(5) ? string.Empty : reader.GetString(5);
                         var articleName = reader.IsDBNull(6) ? string.Empty : reader.GetString(6);
-                        var cat = reader.IsDBNull(7) ? "N/A" : reader.GetString(7);
+                        var cat = reader.IsDBNull(7) ? "Nepoznato" : reader.GetString(7);
                         var oldPrice = reader.IsDBNull(8) ? (decimal?)null : reader.GetDecimal(8);
                         var newPrice = reader.IsDBNull(9) ? (decimal?)null : reader.GetDecimal(9);
 
@@ -3921,7 +3936,7 @@ public static class AllEndpoints
                             ArticleId = reader.GetInt32(4),
                             Sku = sku,
                             ArticleName = articleName,
-                            Category = string.IsNullOrWhiteSpace(cat) ? "N/A" : cat,
+                            Category = string.IsNullOrWhiteSpace(cat) ? "Nepoznato" : cat,
                             OldPrice = oldPrice,
                             NewPrice = newPrice,
                             PreQty = preQty,
@@ -3990,7 +4005,7 @@ public static class AllEndpoints
                 }
                 catch
                 {
-                    globalWarnings.Add("Metrics mapping failed");
+                    globalWarnings.Add("Mapiranje naprednih metrika nije uspelo");
                 }
 
                 try
@@ -4001,7 +4016,7 @@ public static class AllEndpoints
                 }
                 catch
                 {
-                    globalWarnings.Add("OOS/DiD mapping failed");
+                    globalWarnings.Add("Mapiranje metrika nestanka zaliha i razlike u razlikama nije uspelo");
                 }
 
                 MapElasticityAndLostSalesToNivelacijaArticles(analyzed);
@@ -4272,7 +4287,7 @@ public static class AllEndpoints
 
                 // Category stats (top 50)
                 var categoryStats = analyzed
-                    .GroupBy(x => x.Category ?? "N/A")
+                    .GroupBy(x => x.Category ?? "Nepoznato")
                     .Select(g =>
                     {
                         var comparable = g.Where(x => x.HasComparableSalesWindow).ToList();
@@ -4300,7 +4315,7 @@ public static class AllEndpoints
                 // Price direction stats
                 string SegmentFor(VendorSalesNivelacijaArticleStatDto x)
                 {
-                    if (!x.PriceChangePercent.HasValue) return "Cena N/A";
+                    if (!x.PriceChangePercent.HasValue) return "Cena nije dostupna";
                     if (x.PriceChangePercent.Value > 0m) return "Cena ↑";
                     if (x.PriceChangePercent.Value < 0m) return "Cena ↓";
                     return "Cena =";
@@ -4462,14 +4477,12 @@ public static class AllEndpoints
             }
             catch (PostgresException ex)
             {
-                var reason =
-                    "Vendor sales nivelacija analytics fallback: view/schema mismatch or database issue. " +
-                    $"SqlState={ex.SqlState ?? "unknown"}.";
-
                 logger.LogWarning(
                     ex,
                     "Vendor sales nivelacija fallback due to database/schema issue. SqlState={SqlState}",
                     ex.SqlState);
+
+                var reason = $"Pre/post nivelacija trenutno nije dostupna. Referentni ID: {correlationId}.";
 
                 // Keep the UI operational with an empty payload when DB schema is behind.
                 var fallback = CreateVendorSalesNivelacijaFallbackResponse(
@@ -4502,7 +4515,7 @@ public static class AllEndpoints
                     includeInactive,
                     storeId,
                     NormalizeVendorSalesNivelacijaDataScope(dataScope),
-                    ex.Message,
+                    $"Pre/post nivelacija trenutno nije dostupna. Referentni ID: {correlationId}.",
                     AnalyticsResponseMetaFactory.Error(
                         "vendor_sales_nivelacija_error",
                         "Pre/post nivelacija nije dostupna.",
@@ -6933,17 +6946,17 @@ public static class AllEndpoints
                 reasons.AddRange(globalWarnings);
 
             if (!row.Rolling7dPreRevenue.HasValue && !row.Rolling7dPostRevenue.HasValue)
-                reasons.Add("No rolling data");
+                reasons.Add("Nema podataka za klizni period");
             if (!row.MomentumRevenue.HasValue)
-                reasons.Add("No momentum data");
+                reasons.Add("Nema podataka za zamah prodaje");
             if (!row.OOSRate.HasValue)
-                reasons.Add("No OOS data");
+                reasons.Add("Nema podataka o nestanku zaliha");
             if (!row.DidRevenue.HasValue && !row.DidQty.HasValue)
-                reasons.Add("No DiD data");
+                reasons.Add("Nema podataka za razliku u razlikama");
             if (!row.PriceElasticity.HasValue)
-                reasons.Add("No elasticity data");
+                reasons.Add("Nema podataka o elastičnosti cene");
             if (!row.LostSalesOOS.HasValue)
-                reasons.Add("No lost sales data");
+                reasons.Add("Nema podataka o izgubljenoj prodaji zbog nestanka zaliha");
 
             row.MetricReason = reasons.Count == 0
                 ? null
@@ -6972,7 +6985,8 @@ public static class AllEndpoints
         }
 
         var hasFallbackInsight = response.Insights.Any(insight =>
-            string.Equals(insight.Value, "Fallback mode", StringComparison.OrdinalIgnoreCase)
+            (string.Equals(insight.Value, "Fallback mode", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(insight.Value, "Rezervni režim", StringComparison.OrdinalIgnoreCase))
             || string.Equals(insight.Title, "Podaci privremeno nedostupni", StringComparison.OrdinalIgnoreCase));
 
         AnalyticsResponseMetaDto meta;
@@ -7144,6 +7158,24 @@ public static class AllEndpoints
     {
         var normalized = (rawScope ?? "all").Trim().ToLowerInvariant();
         return normalized is "existing" or "imported" ? normalized : "all";
+    }
+
+    private static IResult CreateVendorSalesNivelacijaProblem(
+        string title,
+        string detail,
+        int statusCode,
+        string errorCode,
+        string correlationId)
+    {
+        return Results.Problem(
+            title: title,
+            detail: $"{detail} Referentni ID: {correlationId}.",
+            statusCode: statusCode,
+            extensions: new Dictionary<string, object?>
+            {
+                ["errorCode"] = errorCode,
+                ["correlationId"] = correlationId
+            });
     }
 
     private static void AddVendorSalesNivelacijaScopeParameters(
@@ -7375,7 +7407,7 @@ public static class AllEndpoints
                 new()
                 {
                     Title = "Podaci privremeno nedostupni",
-                    Value = "Fallback mode",
+                    Value = "Rezervni režim",
                     Details = reason,
                     Tone = "warning"
                 }

@@ -365,17 +365,27 @@ export default function SupplierFootwearAnalyticsPage({
 
       const stillNoRows = currentData.vendorStats.length === 0 && currentData.articleStats.length === 0;
       if (stillNoRows) {
-        const options = await getVendorSalesNivelacijaOptions({
-          vendorId: filters.vendorId,
-          category: filters.category || undefined,
-          storeId: filters.storeId,
-          dataScope: filters.dataScope,
-          take: 60,
-        }).catch(() => [] as VendorSalesNivelacijaOption[]);
+        let options: VendorSalesNivelacijaOption[] | null = null;
+        try {
+          options = await getVendorSalesNivelacijaOptions({
+            vendorId: filters.vendorId,
+            category: filters.category || undefined,
+            storeId: filters.storeId,
+            dataScope: filters.dataScope,
+            take: 60,
+          });
+        } catch (reason) {
+          const safeReason = getSafeAnalyticsErrorMessage(
+            reason instanceof Error ? reason.message : null,
+            undefined,
+            "Opcije za predlog perioda trenutno nisu dostupne.",
+          );
+          setDataHint(`Nema analiziranih redova za izabrani period. ${safeReason}`);
+        }
 
         if (requestId !== requestIdRef.current) return;
 
-        const suggested = options.find((item) => item.hasSalesWindow) ?? options[0];
+        const suggested = options?.find((item) => item.hasSalesWindow) ?? options?.[0];
         if (suggested) {
           const day = toDateOnly(suggested.eventDate);
           setSuggestedRange({
@@ -384,6 +394,9 @@ export default function SupplierFootwearAnalyticsPage({
             label: suggested.label,
           });
           setDataHint("Za izabrani period nema analiziranih redova. Predlozen je datum gde postoje nivelacije i/ili prodaja.");
+        } else if (options === null) {
+          // Keep options-unavailable visibly degraded; do not relabel it as a
+          // successful no-match period.
         } else if (likelyFilteredOutByInactive) {
           setDataHint("U periodu postoje nivelacije, ali bez prodaje u pre/post prozoru. Ukljuci siri period ili proveri opciju sa neaktivnim artiklima.");
         } else {
