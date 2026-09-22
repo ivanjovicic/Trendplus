@@ -67,7 +67,7 @@ function ArticleSection({ title, emptyMessage, items }: ArticleSectionProps) {
                   <strong>{formatCurrency(item.postRevenue30d)}</strong>
                 </div>
                 <div>
-                  <span>Sell-through pre sniženja</span>
+                  <span>Prodajna realizacija pre sniženja</span>
                   <strong>{formatRatioPercent(item.preSellthrough30d)}</strong>
                 </div>
                 <div>
@@ -153,7 +153,7 @@ export default function SupplierDetailDrawer({
                   <span>AI procena dobavljača: {formatScore(details.supplierHeader.mlSupplierScore)}</span>
                   <span>Indeks kvaliteta: {formatScore(details.supplierHeader.supplierQualityIndex)}</span>
                   <span>Pouzdanost: {confidenceLabel(details.supplierHeader.confidenceScore)}</span>
-                  <span>Trust signala: {formatReliability(details.supplierHeader.reliabilityPct, 0)}</span>
+                  <span>Pouzdanost signala: {formatReliability(details.supplierHeader.reliabilityPct, 0)}</span>
                   <span>Kvalitet podataka: {dataQualityStatusLabel(details.supplierHeader.dataQualityStatus)}</span>
                 </div>
               </div>
@@ -186,7 +186,7 @@ export default function SupplierDetailDrawer({
                   <strong>{formatRatioPercent(details.kpis.fullPriceRevenueShare)}</strong>
                 </article>
                 <article>
-                  <span>Sell-through bez sniženja</span>
+                  <span>Prodajna realizacija bez sniženja</span>
                   <strong>{formatRatioPercent(details.kpis.fullPriceSellthrough)}</strong>
                 </article>
                 <article>
@@ -210,9 +210,9 @@ export default function SupplierDetailDrawer({
                       <th>Prihod</th>
                       <th>Komadi</th>
                       <th>Udeo bez sniženja</th>
-                      <th>Sell-through pre sniženja</th>
+                      <th>Prodajna realizacija pre sniženja</th>
                       <th>Udeo sniženja</th>
-                      <th>Dead stock</th>
+                      <th>Neaktivna zaliha</th>
                       <th>Pobednički artikli</th>
                     </tr>
                   </thead>

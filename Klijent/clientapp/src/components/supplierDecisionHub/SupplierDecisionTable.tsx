@@ -40,11 +40,11 @@ const sortableColumns: Array<{
   { key: "revenue", label: "Prihod", numeric: true },
   { key: "units", label: "Komadi", numeric: true },
   { key: "fullPriceRevenueShare", label: "Udeo bez sniženja", numeric: true },
-  { key: "fullPriceSellthrough", label: "Sell-through pre sniženja", numeric: true },
+  { key: "fullPriceSellthrough", label: "Prodajna realizacija pre sniženja", numeric: true },
   { key: "preMarkdownMarginPct", label: "Marža", numeric: true },
   { key: "markdownRevenueShare", label: "Udeo sniženja", numeric: true },
-  { key: "deadStockRate", label: "Dead stock", numeric: true },
-  { key: "mlSupplierScore", label: "AI procena dobavljača", numeric: true },
+  { key: "deadStockRate", label: "Neaktivna zaliha", numeric: true },
+  { key: "mlSupplierScore", label: "Procena modela dobavljača", numeric: true },
   { key: "supplierQualityIndex", label: "Indeks kvaliteta", numeric: true },
   { key: "confidenceScore", label: "Pouzdanost", numeric: true },
 ];
@@ -96,7 +96,7 @@ export default function SupplierDecisionTable({
           toolbar={(
             <AnalyticsTableToolbar
               tableKey="supplier-decision-hub"
-              tableTitle="Supplier Decision Hub - rangiranje dobavljača"
+              tableTitle="Odluke o dobavljačima - rangiranje"
               columns={columns}
               rows={items}
               filters={analyticsFilters}

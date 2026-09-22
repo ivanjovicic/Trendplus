@@ -136,7 +136,7 @@ describe("SupplierDecisionReportPage", () => {
     expect(screen.getByRole("heading", { name: "Pregled izveštaja je istekao" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Vrati se na dobavljače" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Ponovo generiši report" })).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: "Otvori Scorecard" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: "Otvori skorkartu" }).length).toBeGreaterThan(0);
   });
 
   it("uses browser state only for an explicitly requested preview", async () => {

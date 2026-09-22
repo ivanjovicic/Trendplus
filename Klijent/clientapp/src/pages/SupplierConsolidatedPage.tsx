@@ -28,13 +28,13 @@ const tabLabels: Record<SupplierTab, string> = {
 const tabHints: Record<SupplierTab, string> = {
   overview: "Finalna preporuka",
   scorecard: "Poređenje dobavljača",
-  assortment: "Struktura i drilldown",
+  assortment: "Struktura i detaljna razrada",
 };
 
 const tabDescriptions: Record<SupplierTab, string> = {
   overview: "Pregled: glavna preporuka za dobavljača i centralni ekran za poslovnu odluku.",
-  scorecard: "Skorkarta dobavljača — pomoćni signal. Koristi se za poređenje i objašnjenje, dok je finalna poslovna preporuka u tabu Pregled.",
-  assortment: "Asortiman: drilldown strukture prometa po tipu obuće, bez posebne finalne preporuke.",
+  scorecard: "Skorkarta dobavljača — pomoćni signal. Koristi se za poređenje i objašnjenje, dok je konačna poslovna preporuka u tabu Pregled.",
+  assortment: "Asortiman: detaljna razrada strukture prometa po tipu obuće, bez posebne konačne preporuke.",
 };
 
 const dataScopeLabels: Record<string, string> = {
@@ -62,13 +62,13 @@ const tabTakeaways: Record<SupplierTab, { title: string; description: string }> 
   },
   assortment: {
     title: "Asortiman objašnjava strukturu",
-    description: "Ovde gledaš koji tipovi obuće nose promet i gde treba dodatni drilldown bez finalne preporuke.",
+    description: "Ovde gledaš koji tipovi obuće nose promet i gde je potrebna dodatna razrada bez konačne preporuke.",
   },
 };
 
 const legacyContextMessages: Record<string, string> = {
-  "operations-supplier-sales": "Kompatibilna veza iz Operacija otvorila je canonical Pregled dobavljača, tab Pregled. Aktivna navigacija prati ovaj canonical ekran.",
-  "operations-supplier-footwear": "Kompatibilna veza iz Operacija otvorila je canonical Pregled dobavljača, tab Asortiman. Aktivna navigacija prati ovaj canonical ekran.",
+  "operations-supplier-sales": "Kompatibilna veza iz Operacija otvorila je glavni Pregled dobavljača, tab Pregled. Aktivna navigacija prati ovaj glavni ekran.",
+  "operations-supplier-footwear": "Kompatibilna veza iz Operacija otvorila je glavni Pregled dobavljača, tab Asortiman. Aktivna navigacija prati ovaj glavni ekran.",
 };
 
 function buildStoreLabel(store: StoreOption): string {
@@ -121,21 +121,21 @@ export default function SupplierConsolidatedPage() {
     : `${canonicalFilters.fromDate} — ${canonicalFilters.toDate}`;
   const datasetLabel = effectiveDataset
     || requestedDataset
-    || "Aktivni dataset nije posebno označen";
+    || "Aktivni skup podataka nije posebno označen";
   const trustHeadline = trustPayload?.usedFallback
-    ? "Fallback ili sužen dataset je aktivan"
+    ? "Pomoćni ili suženi skup podataka je aktivan"
     : trustPayload?.recommendationAllowed !== true
       ? "Signal je informativan i traži proveru"
       : currentTab === "overview"
         ? "Pregled je glavni izvor preporuke"
         : currentTab === "scorecard"
           ? "Skorkarta je pomoćni signal"
-          : "Asortiman je objašnjenje i drilldown";
+    : "Asortiman je objašnjenje i detaljna razrada";
   const fallbackReasonText = trustPayload?.usedFallback
     ? getSafeAnalyticsErrorMessage(
       trustPayload.fallbackReason,
       trustPayload.fallbackReasonCode,
-      "Pre konačnog zaključka proveri effective period i dataset u trust headeru.",
+      "Pre konačnog zaključka proveri efektivni period i skup podataka u zaglavlju pouzdanosti.",
     )
     : null;
   const recommendationNoteText = typeof trustPayload?.recommendationNote === "string"
@@ -243,7 +243,7 @@ export default function SupplierConsolidatedPage() {
         dataFreshnessStatus={trustPayload?.dataFreshnessStatus ?? "unknown"}
         refreshIsRunning={trustPayload?.refreshIsRunning ?? false}
         refreshCurrentStep={trustPayload?.refreshCurrentStep ?? null}
-        dataSource={trustPayload?.dataSource ?? "Supplier decision materialized view"}
+        dataSource={trustPayload?.dataSource ?? "Materijalizovani prikaz skorkarte dobavljača"}
         provenanceBasis={trustPayload?.provenanceBasis ?? null}
         dataQualityStatus={trustPayload?.dataQualityStatus ?? null}
         dataQualitySummary={trustPayload?.dataQualitySummary}
@@ -264,9 +264,9 @@ export default function SupplierConsolidatedPage() {
         recommendationNote={recommendationNoteText ?? (
           currentTab === "scorecard"
             ? (trustPayload?.recommendationAllowed === true
-              ? "Skorkarta je signalni sloj uz aktivnu finalnu preporuku."
-              : "Ovo je analitički signal. Finalna preporuka je u tabu Pregled.")
-            : (currentTab !== "assortment" ? "Pregled je finalna preporuka; asortiman i skorkarta su signalni slojevi." : undefined)
+              ? "Skorkarta je signalni sloj uz aktivnu konačnu preporuku."
+              : "Ovo je analitički signal. Konačna preporuka je u tabu Pregled.")
+            : (currentTab !== "assortment" ? "Pregled je konačna preporuka; asortiman i skorkarta su signalni slojevi." : undefined)
         )}
         emptyStateReason={trustPayload?.emptyStateReason ?? null}
         methodologyHref="/analytics/data-quality"
@@ -289,7 +289,7 @@ export default function SupplierConsolidatedPage() {
         </div>
       </header>
 
-      <section className="supplier-consolidated-filters" aria-label="Supplier filteri">
+      <section className="supplier-consolidated-filters" aria-label="Filteri dobavljača">
         <label className="supplier-consolidated-field">
           <span>Period</span>
           <select value={canonicalFilters.periodPreset} onChange={(event) => setPreset(event.target.value as SupplierPeriodPreset)}>
@@ -369,7 +369,7 @@ export default function SupplierConsolidatedPage() {
 
       {invalidRange ? <div className="supplier-consolidated-message error" role="alert">Datum od ne može biti posle datuma do.</div> : null}
 
-      <nav className="supplier-consolidated-tabs" aria-label="Supplier analytics tabovi">
+      <nav className="supplier-consolidated-tabs" aria-label="Kartice analitike dobavljača">
         {SUPPLIER_TABS.map((tab) => (
           <button
             key={tab}
@@ -402,7 +402,7 @@ export default function SupplierConsolidatedPage() {
         <article className={`supplier-consolidated-context-card supplier-consolidated-context-card--${trustToneClass}`}>
           <span className="supplier-context-kicker">Trust i poređenje</span>
           <strong>{trustHeadline}</strong>
-          <p>{`${trustDescription} Kvalitet: ${trustStatusLabel}. Dataset: ${datasetLabel}.`}</p>
+          <p>{`${trustDescription} Kvalitet: ${trustStatusLabel}. Skup podataka: ${datasetLabel}.`}</p>
         </article>
       </section>
 

@@ -81,7 +81,7 @@ describe("AnalyticsTrustHeader", () => {
     expect(screen.getByText("requested_window -> all_time")).toBeInTheDocument();
     expect(screen.getByText("All-time fallback")).toBeInTheDocument();
     expect(screen.getByText("mv_supplier_decision_score_cache_90d")).toBeInTheDocument();
-    expect(screen.getByText(/Fallback aktiviran\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Pomoćni skup je aktivan\./i)).toBeInTheDocument();
     expect(screen.getByText(/Nema dovoljno zapisa u traženom periodu/i)).toBeInTheDocument();
     expect(screen.queryByText(/NO_WINDOW_ROWS/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Preporuka je gated/i)).not.toBeInTheDocument();
@@ -106,7 +106,7 @@ describe("AnalyticsTrustHeader", () => {
     expect(screen.getByText("Detaljan kvalitet podataka nije dostupan za ovaj ekran.")).toBeInTheDocument();
     expect(screen.getByText("Ne prikazuj konačnu preporuku bez jačeg signala.")).toBeInTheDocument();
     expect(screen.getByText("Nema dovoljno podataka za izabrani period.")).toBeInTheDocument();
-    expect(screen.queryByText("Dataset")).not.toBeInTheDocument();
+    expect(screen.queryByText("Skup podataka")).not.toBeInTheDocument();
   });
 
   it.each([
@@ -158,7 +158,7 @@ describe("AnalyticsTrustHeader", () => {
 
     expect(screen.getByText("Zastarelo")).toBeInTheDocument();
     expect(screen.getByText(/Osvežavanje je u toku \(Obrada podataka\)/)).toBeInTheDocument();
-    expect(screen.getByText(/Dodatni razlog fallback-a nije naveden/i)).toBeInTheDocument();
+    expect(screen.getByText(/Dodatni razlog pomoćnog skupa nije naveden/i)).toBeInTheDocument();
     expect(screen.queryByText(/internal_secret/i)).not.toBeInTheDocument();
     expect(screen.queryByText("NaN")).not.toBeInTheDocument();
     expect(screen.queryByText("Infinity")).not.toBeInTheDocument();
@@ -174,7 +174,7 @@ describe("AnalyticsTrustHeader", () => {
     });
 
     expect(screen.queryByText(/sql_timeout_v2|internal_table|internal_secret_fallback/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/Dodatni razlog fallback-a nije naveden/i)).toBeInTheDocument();
+    expect(screen.getByText(/Dodatni razlog pomoćnog skupa nije naveden/i)).toBeInTheDocument();
   });
 
   it("does not crash on malformed optional text fields", () => {

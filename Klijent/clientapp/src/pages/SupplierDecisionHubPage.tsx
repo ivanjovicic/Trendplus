@@ -103,7 +103,7 @@ export type DecisionRow = RankingItem & {
 const OPEN_ACTION_STATUSES: AnalyticsActionStatus[] = ["new", "accepted", "deferred"];
 
 /**
- * Scorecard `preMarkdownMarginPct` is a 0–1 ratio from the API.
+ * Vrednost `preMarkdownMarginPct` skorkarte stiže iz API-ja kao odnos od 0 do 1.
  * Compact table / export / detail percent columns use percent units (35 = 35%).
  * `sharePct` and `qualityTrendPct` on DecisionRow are already percent units.
  */
@@ -159,7 +159,7 @@ export const decisionColumns: AnalyticsTableColumn<DecisionRow>[] = [
     getValue: (row) => toSupplierDecisionMarginPercentUnits(row.preMarkdownMarginPct),
   },
   { key: "qualityTrendPct", header: "Trend pune cene %", dataType: "percent" },
-  { key: "status", header: "Scorecard signal", dataType: "text" },
+  { key: "status", header: "Signal skorkarte", dataType: "text" },
 ];
 
 function clamp(value: number, min: number, max: number): number { return Math.max(min, Math.min(max, value)); }
@@ -207,7 +207,7 @@ function buildStatusTooltip(row: DecisionRow): string {
   const marginText = formatMetricDisplayValue({ value: toSupplierDecisionMarginPercentUnits(row.preMarkdownMarginPct), kind: "percent", digits: 1 });
   const qualityText = recommendationQualityLabel(row.dataQualityStatus);
   const hintText = recommendationReasonHints(row.reasonCodes).join(" | ");
-  return `${statusDisplayLabel(row.status)}: ${recommendationStatusTooltipBrief(row.status)} | ${row.statusReason} | Udeo ${shareText} | Marza ${marginText} | Trend pune cene ${fmtSignedPct(row.qualityTrendPct, 1)} | Sigurnost ${confidenceText} | Pouzdanost ${reliabilityText} | Data quality ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
+  return `${statusDisplayLabel(row.status)}: ${recommendationStatusTooltipBrief(row.status)} | ${row.statusReason} | Udeo ${shareText} | Marza ${marginText} | Trend pune cene ${fmtSignedPct(row.qualityTrendPct, 1)} | Sigurnost ${confidenceText} | Pouzdanost ${reliabilityText} | Kvalitet podataka ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
 }
 
 function toActionDataQualityStatus(value: RecommendationQualityStatus): AnalyticsActionDataQualityStatus {
@@ -439,7 +439,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     ? getSafeAnalyticsErrorMessage(
       trustMetadata.fallbackReason,
       trustMetadata.fallbackReasonCode,
-      "Dodatni razlog fallback-a nije naveden.",
+      "Dodatni razlog pomoćnog skupa nije naveden.",
     )
     : null;
 
@@ -460,10 +460,10 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
         : "insufficient_data";
       const statusReason = recommendationAllowed
           ? (typeof item.statusReason === "string" ? item.statusReason.trim() : "")
-            || "Backend nije dostavio obrazloženje za ovaj scorecard signal."
+            || "Backend nije dostavio obrazloženje za ovaj signal skorkarte."
         : (trustMetadata?.usedFallback
-          ? "Za izabrani period nema dovoljno podataka; prikaz je pomoćni signal iz šireg dataseta."
-          : "Nedovoljno podataka u izabranom periodu; scorecard signal je pomoćnog karaktera.");
+          ? "Za izabrani period nema dovoljno podataka; prikaz je pomoćni signal iz šireg skupa podataka."
+          : "Nedovoljno podataka u izabranom periodu; signal skorkarte je pomoćnog karaktera.");
       const reliabilityPctValue = normalizeRecommendationPct(item.reliabilityPct);
       const reasonCodes = Array.isArray(item.reasonCodes)
         ? item.reasonCodes.filter((code): code is string => typeof code === "string")
@@ -527,11 +527,11 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     if (!summary || !ranking) return null;
 
     if (!trustMetadata?.hasData && trustMetadata?.hasExplicitDateRange && !trustMetadata?.usedFallback) {
-      return "Za traženi period nema scorecard zapisa za dobavljače. Sistem nije koristio širi period kao fallback, pa je rezultat eksplicitno prazan za ovaj opseg.";
+      return "Za traženi period nema zapisa skorkarte za dobavljače. Sistem nije koristio širi period kao pomoćni skup podataka, pa je rezultat eksplicitno prazan za ovaj opseg.";
     }
 
     if (!trustMetadata?.hasData && trustMetadata?.hasExplicitDateRange && trustMetadata?.usedFallback) {
-      return `Za izabrani period nema dovoljno podataka. Korišćen je dataset ${trustMetadata.effectivePeriodLabel} kao pomoćni signal, ali ni on nema dovoljno scorecard zapisa za prikaz.`;
+      return `Za izabrani period nema dovoljno podataka. Korišćen je skup podataka ${trustMetadata.effectivePeriodLabel} kao pomoćni signal, ali ni on nema dovoljno zapisa skorkarte za prikaz.`;
     }
 
     const allKeyMetricsZero =
@@ -543,10 +543,10 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     if (!allKeyMetricsZero) return null;
 
     if (ranking.totalCount === 0 || summary.supplierCount === 0) {
-      return "Skorkarta se puni iz dobavljača koji imaju artikle sa prvom nivelacijom u izabranom periodu. Ako takvih zapisa nema, scorecard KPI-jevi ostaju na nuli iako Pregled može imati promet, jer Pregled koristi širi prodajni skup.";
+      return "Skorkarta se puni iz dobavljača koji imaju artikle sa prvom nivelacijom u izabranom periodu. Ako takvih zapisa nema, pokazatelji skorkarte ostaju na nuli iako Pregled može imati promet, jer Pregled koristi širi prodajni skup.";
     }
 
-    return "Postoje zapisi za Skorkartu, ali su ključni pokazatelji trenutno 0. Proveri period, objekat, dobavljača i minimalni prihod; ako Pregled ima promet, a Skorkarta ostaje na nuli, potreban je refresh analytics scorecard podataka.";
+    return "Postoje zapisi za skorkartu, ali su ključni pokazatelji trenutno 0. Proveri period, objekat, dobavljača i minimalni prihod; ako Pregled ima promet, a skorkarta ostaje na nuli, potrebno je osvežiti analitiku skorkarte.";
   }, [ranking, summary, top5SharePct, totalMarginContribution, totalRevenue, trustMetadata?.hasData, trustMetadata?.hasExplicitDateRange]);
 
   const emptyStateVariant = useMemo<"no_data" | "insufficient_data" | "filtered_out">(() => {
@@ -587,7 +587,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
         dataFreshnessStatus: refreshStatus?.dataFreshnessStatus ?? "unknown",
         refreshIsRunning: refreshStatus?.isRunning ?? false,
         refreshCurrentStep: refreshStatus?.currentStep ?? null,
-        dataSource: "Supplier decision scorecard",
+        dataSource: "Serverska skorkarta dobavljača",
         dataQualityStatus: "critical",
         recommendationAllowed: false,
         recommendationNote: getSafeAnalyticsErrorMessage(
@@ -611,7 +611,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       dataFreshnessStatus: refreshStatus?.dataFreshnessStatus ?? "unknown",
       refreshIsRunning: refreshStatus?.isRunning ?? false,
       refreshCurrentStep: refreshStatus?.currentStep ?? null,
-      dataSource: `Supplier decision scorecard (request: ${trustMetadata?.requestedDataset ?? "n/a"}, effective: ${trustMetadata?.effectiveDataset ?? trustMetadata?.coverage ?? "unknown"}, scope: ${trustMetadata?.dataScope ?? activeFilters.dataScope ?? "all"})`,
+      dataSource: `Serverska skorkarta dobavljača (traženo: ${trustMetadata?.requestedDataset ?? "nije dostupno"}, efektivno: ${trustMetadata?.effectiveDataset ?? trustMetadata?.coverage ?? "nije poznato"}, opseg: ${trustMetadata?.dataScope ?? activeFilters.dataScope ?? "svi"})`,
       provenanceBasis: trustMetadata?.provenanceBasis ?? null,
       dataQualityStatus: trustMetadata?.dataCoverageStatus ?? (trustMetadata?.recommendationAllowed ? "good" : "insufficient_data"),
       dataQualitySummary: {
@@ -830,7 +830,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
 
   const addSupplierSignalToQueue = useCallback(async (row: DecisionRow) => {
     if (recommendationAllowed !== true) {
-      setQueueMessage("Finalna preporuka nije dozvoljena za ovaj signal. Proverite Data Quality pre bilo kakve akcije.");
+      setQueueMessage("Konačna preporuka nije dozvoljena za ovaj signal. Proverite kvalitet podataka pre bilo kakve akcije.");
       return;
     }
 
@@ -901,8 +901,8 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
           <details className="sdh-decision-help">
             <summary>Kako se čita ovaj ekran?</summary>
             <div className="sdh-decision-help-content">
-              <p><strong>Šta prikazuje:</strong> Skorkarta ne meri sav promet dobavljača. Ona meri dobavljače kroz scorecard skup: artikle koji imaju prvu nivelaciju u izabranom periodu, uz prodaju pre/posle, maržu, zalihu i pouzdanost signala.</p>
-              <p><strong>Kako se tumači:</strong> Viši prihod i marža su dobri, ali samo ako ne dolaze uz preveliku zavisnost od sniženja i neaktivnu zalihu. Niske ili prazne vrednosti mogu značiti da u periodu nema dovoljno scorecard signala, ne nužno da dobavljač nema promet.</p>
+              <p><strong>Šta prikazuje:</strong> Skorkarta ne meri sav promet dobavljača. Ona meri dobavljače kroz skup skorkarte: artikle koji imaju prvu nivelaciju u izabranom periodu, uz prodaju pre/posle, maržu, zalihu i pouzdanost signala.</p>
+              <p><strong>Kako se tumači:</strong> Viši prihod i marža su dobri, ali samo ako ne dolaze uz preveliku zavisnost od sniženja i neaktivnu zalihu. Niske ili prazne vrednosti mogu značiti da u periodu nema dovoljno signala skorkarte, ne nužno da dobavljač nema promet.</p>
               <p><strong>Važno:</strong> Tab „Pregled” koristi širi prodajni skup. Zato Pregled može imati promet dok je Skorkarta prazna ili niža, posebno za kratke periode bez novih nivelacija.</p>
               <p><strong>Šta znače kolone:</strong></p>
               <ul>
@@ -910,7 +910,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                 <li><strong>Udeo:</strong> Koliki deo ukupnog prihoda dolazi od tog dobavljača.</li>
                 <li><strong>Marža:</strong> Razlika između prodajne i nabavne cene kao procenat.</li>
                 <li><strong>Trend pune cene:</strong> Pozitivan = veći udeo prodaje po punoj ceni od udela nivelacija; negativan = veća zavisnost od sniženja.</li>
-                <li><strong>Scorecard signal:</strong> Pojačaj, Zadrži, Oprez, Smanji / Ne veruj ili Nedovoljno podataka. Ovo nije finalna preporuka.</li>
+                <li><strong>Signal skorkarte:</strong> Pojačaj, Zadrži, Oprez, Smanji / Ne veruj ili Nedovoljno podataka. Ovo nije konačna preporuka.</li>
               </ul>
               <p><strong>Zašto nema podataka?</strong> Najčešći razlozi: nema nivelacija u izabranom periodu, filteri su uski (kratak period ili specifična prodavnica), dobavljači nisu pravilno povezani sa artiklima, ili analitika nije osvežena (pokreni u Konfiguracija → Radnici).</p>
               <p><strong>Kako koristiti:</strong> Uporedi 30, 90 i 180 dana. Kraći period pokazuje svež signal, a duži stabilniju sliku. Grafikon pokazuje koncentraciju prihoda, a tabela objašnjava akciju po dobavljaču.</p>
@@ -923,14 +923,14 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       {!embedded ? (
         <AnalyticsTrustHeader
           title="Skorkarta dobavljača — pomoćni signal"
-          description="Skorkarta poredi dobavljače po scorecard signalu. Koristi se za proveru i objašnjenje, dok je finalna poslovna preporuka u tabu Pregled."
+          description="Skorkarta poredi dobavljače po signalu skorkarte. Koristi se za proveru i objašnjenje, dok je konačna poslovna preporuka u tabu Pregled."
           periodFrom={trustMetadata?.effectiveFrom ?? summary?.from ?? activeFilters.fromDate}
           periodTo={trustMetadata?.effectiveTo ?? summary?.to ?? activeFilters.toDate}
           lastRefreshAt={resolvedLastRefreshAt}
           dataFreshnessStatus={refreshStatus?.dataFreshnessStatus ?? "unknown"}
           refreshIsRunning={refreshStatus?.isRunning ?? false}
           refreshCurrentStep={refreshStatus?.currentStep ?? null}
-          dataSource="Supplier decision materialized view"
+          dataSource="Materijalizovani prikaz skorkarte dobavljača"
           provenanceBasis={trustMetadata?.provenanceBasis ?? null}
           dataQualityStatus={trustMetadata?.dataCoverageStatus ?? (trustMetadata?.recommendationAllowed ? "good" : "insufficient_data")}
           dataQualitySummary={{
@@ -947,8 +947,8 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
           mode={recommendationAllowed ? "recommendation" : "signal"}
           isPartial={showMetaWarning}
           recommendationNote={recommendationAllowed
-            ? "Skorkarta je signalni sloj uz aktivnu finalnu preporuku."
-            : "Ovo je analitički signal. Finalna preporuka je u tabu Pregled."}
+            ? "Skorkarta je signalni sloj uz aktivnu konačnu preporuku."
+            : "Ovo je analitički signal. Konačna preporuka je u tabu Pregled."}
           emptyStateReason={!loading && !showBlockingError && sortedRows.length === 0 ? zeroStateExplanation : null}
           methodologyHref="/analytics/data-quality"
           dataQualityHref="/analytics/data-quality"
@@ -961,8 +961,9 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
         <section className="sdh-decision-snapshot">
           <SupplierExplainabilitySnapshot
             compact
-            title="Supplier explainability snapshot"
+            title="Sažetak objašnjenja signala"
             subjectLabel={snapshotRow.supplierName}
+            recommendationCode={snapshotRow.recommendationCode}
             periodLabel={snapshotPeriodLabel}
             lastRefreshAt={trustMetadata?.lastRefreshAtUtc ?? resolvedLastRefreshAt}
             requestedDataset={trustMetadata?.requestedDataset ?? null}
@@ -978,8 +979,8 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
             reliabilityPct={snapshotRow.reliabilityAvailable ? snapshotRow.reliabilityPct : null}
             reasonCodes={snapshotRow.reasonCodes}
             note={recommendationAllowed
-              ? "Kompaktni snapshot prikazuje backend-led signal iz scorecard skupa."
-              : "Kompaktni snapshot prikazuje pomoćni signal jer je finalna preporuka blokirana."}
+              ? "Kompaktni sažetak prikazuje serverski signal iz skupa skorkarte."
+              : "Kompaktni sažetak prikazuje pomoćni signal jer je konačna preporuka blokirana."}
           />
         </section>
       ) : null}
@@ -987,19 +988,19 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       <section className="sdh-decision-context" aria-label="Objašnjenje skorkarte">
         <div>
           <strong>Kako čitati skorkartu dobavljača?</strong>
-          <span>Skorkarta poredi dobavljače po prometu, maržnom doprinosu, zavisnosti od nivelacija, riziku zaliha i pouzdanosti signala. Ovo je pomoćni signal; finalna preporuka je u tabu Pregled.</span>
+          <span>Skorkarta poredi dobavljače po prometu, maržnom doprinosu, zavisnosti od nivelacija, riziku zaliha i pouzdanosti signala. Ovo je pomoćni signal; konačna preporuka je u tabu Pregled.</span>
         </div>
         <div>
           <strong>Šta meri Skorkarta?</strong>
-          <span>Scorecard skup dobavljača: artikli sa prvom nivelacijom u izabranom periodu, uz prihod, maržu, punu cenu, zalihu i pouzdanost signala.</span>
+          <span>Skup skorkarte dobavljača: artikli sa prvom nivelacijom u izabranom periodu, uz prihod, maržu, punu cenu, zalihu i pouzdanost signala.</span>
         </div>
         <div>
           <strong>Kako čitati niske vrednosti?</strong>
-          <span>Niska ili prazna Skorkarta ne znači automatski da dobavljač nema promet; može značiti da u periodu nema dovoljno nivelacija za procenu.</span>
+          <span>Niska ili prazna skorkarta ne znači automatski da dobavljač nema promet; može značiti da u periodu nema dovoljno nivelacija za procenu.</span>
         </div>
         <div>
           <strong>Odnos sa tabom Pregled</strong>
-          <span>Pregled je canonical decision surface za finalnu preporuku. Skorkarta ovde služi kao dodatni signal za proveru.</span>
+          <span>Pregled je glavni ekran za konačnu preporuku. Skorkarta ovde služi kao dodatni signal za proveru.</span>
         </div>
       </section>
 
@@ -1083,7 +1084,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
 
       {showMetaWarning ? (
         <div className="sdh-decision-message warning" role="note">
-          Prikazani podaci su delimični ili fallback. {scorecardMetaMessage ?? "Proverite analytics refresh status."}
+          Prikazani podaci su delimični ili potiču iz pomoćnog skupa. {scorecardMetaMessage ?? "Proverite status osvežavanja analitike."}
         </div>
       ) : null}
 
@@ -1093,7 +1094,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
 
       {!loading && !showBlockingError && hasDatasetFallback ? (
         <div className="sdh-decision-message warning" role="note">
-          Prikazan je pomoćni dataset: {effectivePeriodLabel ?? effectiveDatasetLabel ?? "nije dostupno"}. Finalna preporuka je blokirana.
+          Prikazan je pomoćni skup podataka: {effectivePeriodLabel ?? effectiveDatasetLabel ?? "nije dostupno"}. Konačna preporuka je blokirana.
           {fallbackReasonText ? ` ${fallbackReasonText}` : ""}
         </div>
       ) : null}
@@ -1109,14 +1110,14 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                 : (scorecardMetaMessage ?? "Nije bilo prodaje u izabranom periodu.")
           }
           reasons={[
-            "U traženom periodu nema prodaje ili scorecard signala.",
+            "U traženom periodu nema prodaje ili signala skorkarte.",
             "Filteri su suzili skup dobavljača na prazan rezultat.",
             "Dobavljači nisu povezani, refresh je u toku ili je period previše uzak.",
           ]}
           actions={[
             { label: "Proširite period na 90d ili 180d." },
             { label: "Uklonite uske filtere (objekat/dobavljač)." },
-            { label: "Otvorite Data Quality radi provere blokera.", href: "/analytics/data-quality" },
+            { label: "Otvorite kvalitet podataka radi provere blokera.", href: "/analytics/data-quality" },
           ]}
           dataQualityHref="/analytics/data-quality"
           refreshStatusHref="/admin/configuration?panel=workers"
@@ -1132,7 +1133,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
         <>
           {(trustMetadata?.dataNote ?? summary.dataNote ?? ranking.dataNote) ? (
             <div className="sdh-decision-message info" role="note">
-              <strong>Obuhvat podataka:</strong> {trustMetadata?.dataNote ?? summary.dataNote ?? ranking.dataNote}
+            <strong>Obuhvat podataka:</strong> {trustMetadata?.dataNote ?? summary.dataNote ?? ranking.dataNote}
             </div>
           ) : null}
           <section className="sdh-decision-kpis">
@@ -1209,9 +1210,9 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                   {recommendationAllowed ? (
                     <p>Pojačaj: <strong>{supplierCounts.boost}</strong> | Zadrži: <strong>{supplierCounts.keep}</strong> | Oprez: <strong>{supplierCounts.caution}</strong> | Smanji / Ne veruj: <strong>{supplierCounts.reduce}</strong> | Nedovoljno podataka: <strong>{supplierCounts.insufficient}</strong></p>
                   ) : (
-                    <p>Pomoćni signal: <strong>{supplierCounts.insufficient}</strong> | Finalna preporuka je u tabu Pregled.</p>
+                    <p>Pomoćni signal: <strong>{supplierCounts.insufficient}</strong> | Konačna preporuka je u tabu Pregled.</p>
                   )}
-                  <p className="sdh-decision-table-subtitle">Lista koristi backend scorecard signal i backend confidence/reliability payload bez lokalnog izračunavanja finalnog statusa.</p>
+                  <p className="sdh-decision-table-subtitle">Lista koristi serverski signal skorkarte i serverske vrednosti sigurnosti/pouzdanosti, bez lokalnog izračunavanja konačnog statusa.</p>
                 </div>
               </div>
               <AnalyticsDataTable
@@ -1273,10 +1274,10 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                       </th>
                       <th>
                         <button type="button" onClick={() => handleSort("status")}>
-                          {recommendationAllowed ? "Scorecard signal" : "Pomoćni signal"}
+                          {recommendationAllowed ? "Signal skorkarte" : "Pomoćni signal"}
                           <InfoTip text={recommendationAllowed
-                            ? "Dodatni scorecard signal (Pojačaj, Zadrži, Oprez, Smanji / Ne veruj, Nedovoljno podataka). Nije finalna preporuka."
-                            : "Pomoćni signal zbog fallback/nedovoljnog uzorka. Finalna preporuka je u tabu Pregled."}
+                            ? "Dodatni signal skorkarte (Pojačaj, Zadrži, Oprez, Smanji / Ne veruj, Nedovoljno podataka). Nije konačna preporuka."
+                            : "Pomoćni signal zbog pomoćnog skupa/nedovoljnog uzorka. Konačna preporuka je u tabu Pregled."}
                           />
                           {sortMarker("status", sortField, sortDir)}
                         </button>
@@ -1290,7 +1291,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                         <td colSpan={7} className="py-12 text-center text-secondary">
                           <div>
                             <p>Nema pronađenih dobavljača za izabrane filtere.</p>
-                            <p className="sdh-decision-table-helper">Ako Pregled ima promet, proširi period ili ukloni uske filtere. Skorkarta koristi uži scorecard skup zasnovan na prvim nivelacijama.</p>
+                            <p className="sdh-decision-table-helper">Ako Pregled ima promet, proširi period ili ukloni uske filtere. Skorkarta koristi uži skup skorkarte zasnovan na prvim nivelacijama.</p>
                           </div>
                         </td>
                       </tr>
@@ -1322,7 +1323,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
           {selectedRow ? (
             <section className="sdh-decision-detail">
               <div className="sdh-decision-detail-head">
-                <h3>Detalj scorecard signala: {selectedRow.supplierName}</h3>
+                <h3>Detalj signala skorkarte: {selectedRow.supplierName}</h3>
                 <div className="inline-flex items-center gap-2">
                   <button type="button" onClick={() => openSupplierDetail(selectedRow)}>Otvori puni detalj</button>
                   {recommendationAllowed === true ? (
@@ -1339,13 +1340,14 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                     </button>
                   ) : (
                     <p className="sdh-decision-reason" role="note">
-                      Akcija nije dostupna: finalna preporuka nije dozvoljena. <Link to="/analytics/data-quality">Proveri Data Quality</Link>
+                      Akcija nije dostupna: konačna preporuka nije dozvoljena. <Link to="/analytics/data-quality">Proveri kvalitet podataka</Link>
                     </p>
                   )}
                 </div>
               </div>
               <SupplierExplainabilitySnapshot
                 subjectLabel={selectedRow.supplierName}
+                recommendationCode={selectedRow.recommendationCode}
                 periodLabel={snapshotPeriodLabel}
                 lastRefreshAt={trustMetadata?.lastRefreshAtUtc ?? resolvedLastRefreshAt}
                 requestedDataset={trustMetadata?.requestedDataset ?? null}
@@ -1396,7 +1398,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                   <strong>{fmtNumber(selectedRow.mlSupplierScore, 1, RECOMMENDATION_SIGNAL_UNAVAILABLE)} / {fmtNumber(selectedRow.supplierQualityIndex, 1, RECOMMENDATION_SIGNAL_UNAVAILABLE)}</strong>
                 </article>
                 <article>
-                  <span>Confidence signala <InfoTip text="Backend confidence signal za scorecard signal. Ovo nije isto što i lokalni heuristic score." /></span>
+                  <span>Sigurnost signala <InfoTip text="Serverski signal sigurnosti za signal skorkarte. Ovo nije isto što i lokalni heuristički skor." /></span>
                   <strong>{selectedRow.confidenceAvailable ? formatMetricDisplayValue({ value: selectedRow.normalizedConfidence, kind: "percent", digits: 1 }) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
                   <KpiExplainButton metricKey="confidencePct" ariaLabel="Kako je izračunata sigurnost preporuke" />
                 </article>
@@ -1411,7 +1413,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                 </article>
               </div>
               <p className="sdh-decision-reason">
-                <strong>Razlog scorecard signala:</strong> {selectedRow.statusReason}
+                <strong>Razlog signala skorkarte:</strong> {selectedRow.statusReason}
               </p>
               {selectedRow.reasonCodes.length > 0 ? (
                 <p className="sdh-decision-reason">
@@ -1425,7 +1427,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
               ))}
               {(!selectedRow.reliabilityAvailable || selectedRow.dataQualityStatus !== "good") ? (
                 <p className="sdh-decision-reason">
-                  <strong>Data quality:</strong> Otvori <Link to="/analytics/data-quality">Data Quality</Link> da proveriš popravljive probleme.
+                  <strong>Kvalitet podataka:</strong> Otvori <Link to="/analytics/data-quality">Kvalitet podataka</Link> da proveriš popravljive probleme.
                 </p>
               ) : null}
             </section>

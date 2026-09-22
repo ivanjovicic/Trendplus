@@ -26,7 +26,7 @@ describe("SupplierRecommendationRail trust rendering", () => {
       />
     );
 
-    expect(screen.getByText("Trust signala")).toBeInTheDocument();
+    expect(screen.getByText("Pouzdanost signala")).toBeInTheDocument();
     expect(screen.getByText("Pouzdanost: 82% · Kvalitet: Oprez")).toBeInTheDocument();
     expect(screen.getByText("Signal je dobar, ali uz upozorenje na pokrivenost.")).toBeInTheDocument();
   });

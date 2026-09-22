@@ -107,7 +107,7 @@ function safeRefreshStepLabel(value: string | null | undefined): string | null {
 function safeFallbackReasonLabel(value: string | null | undefined): string | null {
   const normalized = normalizeToken(value);
   if (!normalized) return null;
-  return FALLBACK_REASON_LABELS[normalized] ?? "Dodatni razlog fallback-a nije naveden.";
+  return FALLBACK_REASON_LABELS[normalized] ?? "Dodatni razlog pomoćnog skupa nije naveden.";
 }
 
 function normalizeStatus(value: string | null | undefined): "good" | "warning" | "critical" | "insufficient_data" | null {
@@ -207,7 +207,7 @@ export default function AnalyticsTrustHeader({
   const refreshStepLabel = safeRefreshStepLabel(refreshCurrentStep);
   const fallbackReasonLabel = safeFallbackReasonLabel(fallbackReasonCode);
   const fallbackReasonText = fallbackReason
-    ? getSafeAnalyticsErrorMessage(fallbackReason, fallbackReasonCode, "Dodatni razlog fallback-a nije naveden.")
+    ? getSafeAnalyticsErrorMessage(fallbackReason, fallbackReasonCode, "Dodatni razlog pomoćnog skupa nije naveden.")
     : null;
   const showFallbackBanner = Boolean(usedFallback);
   const showGatedBanner = mode === "recommendation" && recommendationAllowed !== true && !showFallbackBanner;
@@ -261,7 +261,7 @@ export default function AnalyticsTrustHeader({
         ) : null}
         {hasDataset ? (
           <div className="ath-meta-item">
-            <span className="ath-meta-key">Dataset</span>
+            <span className="ath-meta-key">Skup podataka</span>
             <strong className="ath-meta-value">{datasetValue ?? "-"}</strong>
             {effectiveLabel ? <span className="ath-meta-subtle">{effectiveLabel}</span> : null}
           </div>
@@ -270,8 +270,8 @@ export default function AnalyticsTrustHeader({
 
       {showFallbackBanner ? (
         <div className="ath-banner ath-banner-warning" role="note">
-          <strong>Fallback aktiviran.</strong>{" "}
-          Za traženi period nema dovoljno podataka. Korišćen je dataset {effectiveLabel ?? normalizedEffectiveDataset ?? "n/a"} kao pomoćni signal.
+          <strong>Pomoćni skup je aktivan.</strong>{" "}
+          Za traženi period nema dovoljno podataka. Korišćen je skup podataka {effectiveLabel ?? normalizedEffectiveDataset ?? "n/a"} kao pomoćni signal.
           {fallbackReasonText ? ` ${fallbackReasonText}` : null}
           {fallbackReasonLabel ? <span className="ath-banner-code"> ({fallbackReasonLabel})</span> : null}
         </div>

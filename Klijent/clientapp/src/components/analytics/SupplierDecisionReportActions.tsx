@@ -180,7 +180,7 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
 
       if (type === "queue") {
         if (recommendationAllowed !== true) {
-          setStatus("Akcija nije dostupna: finalna preporuka nije dozvoljena. Proverite Data Quality pre bilo kakve akcije.");
+          setStatus("Akcija nije dostupna: konačna preporuka nije dozvoljena. Proverite kvalitet podataka pre bilo kakve akcije.");
           return;
         }
 
@@ -190,7 +190,7 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
           : "Proveri signal dobavljača";
         const nextRecommendationStatus = recommendationAllowed ? "NEGOTIATE_SUPPLIER" : "SIGNAL_REVIEW";
         const description = recommendationAllowed
-          ? "Pripremiti argumente i uslove za pregovor na osnovu scorecard signala."
+          ? "Pripremiti argumente i uslove za pregovor na osnovu signala skorkarte."
           : "Finalna preporuka nije dozvoljena za ovaj izveštaj; potrebna je provera signala pre odluke.";
         const dueAtUtc = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -271,7 +271,7 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
             </button>
           ) : (
             <span role="note" className="inline-flex items-center gap-2 text-xs text-muted">
-              Akcija nije dostupna: finalna preporuka nije dozvoljena. <Link to="/analytics/data-quality">Proveri Data Quality</Link>
+              Akcija nije dostupna: konačna preporuka nije dozvoljena. <Link to="/analytics/data-quality">Proveri kvalitet podataka</Link>
             </span>
           )}
           <button

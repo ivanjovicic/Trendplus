@@ -197,7 +197,7 @@ describe("SupplierDecisionReportActions", () => {
     );
 
     expect(screen.queryByRole("button", { name: "Dodaj u akcije" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Proveri Data Quality" })).toHaveAttribute("href", "/analytics/data-quality");
+    expect(screen.getByRole("link", { name: "Proveri kvalitet podataka" })).toHaveAttribute("href", "/analytics/data-quality");
     expect(upsertAnalyticsActionWithResultMock).not.toHaveBeenCalled();
   });
 

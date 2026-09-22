@@ -1,8 +1,10 @@
 # Analytics Reliability Prompt Queue
 
-Date: 2026-09-20
+Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ368
+
+Owner promotion 2026-09-22: direct user audit of the Supplier Decision Hub promoted `RQ368` to `READY` as the single current prompt. `RQ369`-`RQ372` remain `WAITING` behind the canonical one-READY rule.
 
 Owner promotion 2026-09-20: under user instruction to claim next prompt, `RQ353` moved from `WAITING` to `READY` as P3 trust follow-up (Inventory insight unit-cost fake zero).
 
@@ -1180,6 +1182,295 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ180 | DONE | pre-post-aggregate-owner-parity | Remove frontend reconstruction of backend-owned pre/post aggregate denominators |
 | RQ181 | DONE | decision-board-blocked-action-cta | Do not expose an executable action CTA for blocked Decision Board cards |
 | RQ182 | DONE | pre-post-coverage-backend-null-state | Preserve unknown pre/post coverage in backend DTOs and aggregate calculations |
+
+---
+
+## RQ368 - Uskladiti Supplier Decision Hub cache shemu i efektivni period
+
+Status: READY
+Priority: P1
+Type: backend/analytics/contract/tests
+Feature family: supplier-decision-cache-schema-provenance
+Parallel-safe: no
+Owner: Supplier Analytics Backend / Analytics Reliability
+Commit suggestion: `fix(analytics): align supplier decision cache capabilities and period lineage`
+
+### Problem
+
+Supplier Decision Hub bira 90d/180d/all-time materijalizovani skup prema zahtevanom periodu, ali proverava samo deo capabilities ugovora. SQL zatim može da čita nepostojeći prozorski prikaz ili kolonu `post_signal_coverage` koju all-time cache definicija ne izlaže. Kratak zahtev može dobiti širi efektivni skup, dok metrike ostaju agregirane za taj širi skup; to mora biti eksplicitno i dosledno, bez lažno uspešnog signala.
+
+### Evidence
+
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs` — `GetSupplierRowsCached`/`QuerySupplierRows`, `GetPrecomputedQueryCapabilitiesAsync`, `BuildPrecomputedSupplierRowsSql` (capability izbor, 90d/180d/all-time SQL i `post_signal_coverage`).
+- `Database/Analytics/015_AddSupplierMlRanking.sql` — all-time view/cache projection.
+- `Database/Migrations/029_AddSupplierDecisionWindowedViews.sql` — windowed cache projections.
+- `Api.Tests/SupplierDecisionHubContractTests.cs` — postojeći ugovor za meta, fallback i unavailable ponašanje.
+
+### Scope
+
+Backend capability/projection ugovor i fokusirani testovi za Supplier Decision Hub. Ne menjati opštu refresh arhitekturu, druge analytics porodice ili produkcione podatke.
+
+### Read first
+
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs`
+- `Database/Analytics/015_AddSupplierMlRanking.sql`
+- `Database/Migrations/029_AddSupplierDecisionWindowedViews.sql`
+- `Api.Tests/SupplierDecisionHubContractTests.cs`
+
+### Do
+
+1. Proveriti svaki izabrani cache/view i obavezne kolone pre generisanja SQL-a; capability provera mora odgovarati stvarnom dataset-u.
+2. Uskladiti `post_signal_coverage`, confidence/reliability jedinice i nullable ponašanje za all-time, 90d i 180d projekcije; ne izmišljati punu pokrivenost kada kolona nije dostupna.
+3. Za nedostajući windowed/all-time skup izabrati eksplicitno fail-closed ili dokumentovan pomoćni put, uz tačan requested/effective dataset, period, kvalitet i blokadu preporuke.
+4. Sačuvati razliku između greške, praznog rezultata, pomoćnog skupa i delimičnih podataka.
+
+### Tests
+
+- Contract tests za nedostajuću all-time kolonu, nedostajući 90d/180d view, kompletne projekcije, 30d helper semantics i SQL/schema mismatch.
+- Provera da nema `undefined column`/generic unavailable bez tačnog meta razloga i da se preporuka ne dozvoljava na neuporedivom skupu.
+
+### Acceptance
+
+- Endpoint ne generiše SQL nad neproverenim view-om ili kolonom.
+- Requested/effective dataset i period su tačni na success, empty, degraded i error putanjama.
+- Nema lažnih nula, lažno „dobrog“ signala ili tihe promene perioda.
+- Relevantni backend build i fokusirani Supplier Decision Hub testovi prolaze.
+
+### Dependencies
+
+- Ovo je trenutni jedini `READY` prompt.
+- `RQ369` i `RQ371` zavise od stabilnog cache/provenance ugovora iz ovog prompta.
+
+---
+
+## RQ369 - Povezati bogati detalj dobavljača sa aktuelnim ekranom
+
+Status: WAITING
+Priority: P1
+Type: frontend/backend/contract/tests
+Feature family: supplier-decision-detail-source-parity
+Parallel-safe: no
+Owner: Supplier Analytics Frontend + Backend
+Commit suggestion: `fix(analytics): connect supplier decision details to the canonical screen`
+
+### Problem
+
+Kanonski ekran trenutno učitava summary/ranking, dok backend `/details`, `getSupplierDecisionDetails` i `SupplierDetailDrawer` postoje, ali nisu povezani sa glavnim putem. Dugme „Otvori puni detalj“ čuva generički analytics snapshot i otvara generički detalj, pa korisnik ne dobija isti bogati backend ugovor kao na ekranu.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx` — ranking load i `openSupplierDetail`.
+- `Klijent/clientapp/src/services/supplierDecisionHubApi.ts` — details client postoji, ali nije deo aktuelnog load puta.
+- `Klijent/clientapp/src/components/supplierDecisionHub/SupplierDetailDrawer.tsx` — postojeći, uglavnom neiskorišćen bogati prikaz.
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs` — supplier decision details endpoint.
+
+### Scope
+
+Ujednačiti detalj u kanonskom ekranu sa backend details ugovorom: drawer ili stabilna ruta, uz isti period, filtere, trust/meta i selected supplier. Ako se postojeći endpoint namerno uklanja, ukloniti i mrtvi frontend ugovor/testove u istom owner scope-u.
+
+### Read first
+
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx`
+- `Klijent/clientapp/src/services/supplierDecisionHubApi.ts`
+- `Klijent/clientapp/src/components/supplierDecisionHub/SupplierDetailDrawer.tsx`
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs`
+
+### Do
+
+1. Izabrati jedan canonical detail path i ukloniti generički snapshot kao zamenu za puni detalj.
+2. Preneti aktivne period/filter/dataset parametre i zadržati backend status, reason, confidence/reliability, data quality i fallback meta.
+3. Pokriti loading, error, empty, stale/degraded i supplier-change stanje.
+
+### Tests
+
+- Frontend focused specs za open/close, filter parity, error/empty/degraded detail i bez stale detalja nakon promene dobavljača.
+- Backend/client contract spec za details payload i meta.
+
+### Acceptance
+
+- „Otvori puni detalj“ otvara podatke iz istog supplier-decision backend ugovora.
+- Nema generičkog snapshot-a koji se predstavlja kao puni detalj.
+- Period, dataset, kvalitet i blokada preporuke ostaju vidljivi i tačni.
+
+### Dependencies
+
+- READY AFTER: RQ368 DONE.
+
+---
+
+## RQ370 - Uvesti sve backend filtere u kanonski ekran Odluke o dobavljačima
+
+Status: WAITING
+Priority: P2
+Type: frontend/backend/contract/tests
+Feature family: supplier-decision-filter-parity
+Parallel-safe: no
+Owner: Supplier Analytics Frontend + Backend
+Commit suggestion: `feat(analytics): align supplier decision filter parity`
+
+### Problem
+
+Backend podržava category, gender, season, minRevenue, onlyHighConfidence i excludeOosBeforeMarkdown, ali kanonski ekran `/analytics/supplier` izlaže samo period, datum, scope, objekat i dobavljača. Postojeći `SupplierDecisionFilters` je odvojen/dead put, pa UI i backend ne nude isti skup filtera.
+
+### Evidence
+
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs` — filter DTO i binding.
+- `Klijent/clientapp/src/components/supplierDecisionHub/SupplierDecisionFilters.tsx` — postojeći odvojeni filter UI.
+- `Klijent/clientapp/src/pages/SupplierConsolidatedPage.tsx` — stvarni kanonski filter bar.
+- `Klijent/clientapp/src/pages/useSupplierCanonicalState.ts` — URL/canonical state.
+
+### Scope
+
+Kanonska URL serializacija, UI kontrole, API parametri, cache ključevi, ranking/summary/details/report/action parity. Ne uvoditi novi drugi filter owner.
+
+### Read first
+
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `Klijent/clientapp/src/pages/useSupplierCanonicalState.ts`
+- `Klijent/clientapp/src/pages/SupplierConsolidatedPage.tsx`
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs`
+
+### Do
+
+1. Svaki podržani filter učiniti vidljivim ili eksplicitno ukloniti iz backend ugovora uz dokumentovan razlog.
+2. Obezbediti round-trip kroz URL, refresh, ranking, summary, details i report link.
+3. Invalid/stale filter tretirati fail-closed ili bezbedno očistiti; ne prikazivati podatke iz drugog skupa.
+
+### Tests
+
+- URL round-trip i invalid-filter specs.
+- API request parity za summary/ranking/details/report.
+- Provera da filter menja rezultat, trust meta i action source key.
+
+### Acceptance
+
+- Kanonski ekran i backend imaju isti aktivni filter set.
+- Nema tihog gubitka filtera pri promeni taba, reload-u ili otvaranju detalja/report-a.
+
+### Dependencies
+
+- READY AFTER: RQ368 DONE.
+
+---
+
+## RQ371 - Uskladiti efektivni period i pomoćni skup sa metrikama i predlozima
+
+Status: WAITING
+Priority: P2
+Type: backend/frontend/report/contract/tests
+Feature family: supplier-decision-effective-period-semantics
+Parallel-safe: no
+Owner: Supplier Analytics Backend + Frontend
+Commit suggestion: `fix(analytics): expose supplier decision effective period semantics`
+
+### Problem
+
+Za kratke zahteve endpoint koristi 90d/180d materialized skup, a za duže zahteve all-time; SQL filtrira presek redova, ali ne mora ponovo izračunati metrike za proizvoljni zahtevani period. Trust metadata blokira konačnu preporuku, ali KPI/tooltips/report mogu delovati kao da su za izabrani period.
+
+### Evidence
+
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs` — `GetDecisionScoreWindowDays`, `BuildPrecomputedSupplierRowsSql`, `BuildScorecardTrustMetadata`.
+- `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx` — KPI/tooltips, helper warning i action detail.
+- `Klijent/clientapp/src/components/analytics/SupplierDecisionReport.tsx` — requested/effective period rendering.
+- `Database/Migrations/029_AddSupplierDecisionWindowedViews.sql` — window semantics.
+
+### Scope
+
+Uvesti jednoznačne requested/effective/observed oznake na ekran, detalj, report i export ili promeniti backend query da zaista računa zahtevani period. Ne dozvoliti tihi widening perioda.
+
+### Read first
+
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs`
+- `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx`
+- `Klijent/clientapp/src/components/analytics/SupplierDecisionReport.tsx`
+
+### Do
+
+1. Definisati i prikazati razliku između traženog, efektivnog i posmatranog perioda.
+2. Pomoćne metrike i signale jasno označiti; recommendationAllowed ostaje false dok skup nije uporediv.
+3. Uskladiti screen/detail/report/export i action rationale.
+
+### Tests
+
+- 30d, 90d, 180d i custom >180d period specs.
+- Report/detail lineage i recommendation gating specs.
+- Empty/degraded/fallback regression bez fake KPI vrednosti.
+
+### Acceptance
+
+- Korisnik na svakoj odluka-surface vidi za koji period i skup važi signal.
+- Nema predstavljanja 90d/180d agregata kao tačno 30d metrike.
+- Konačna preporuka i akcije koriste isti provenance ugovor.
+
+### Dependencies
+
+- READY AFTER: RQ368 DONE; koordinacija sa RQ369 za detalj.
+
+---
+
+## RQ372 - Završiti srpsku terminologiju na supplier ekranu, report-u i backend porukama
+
+Status: WAITING
+Priority: P3
+Type: frontend/backend/text-safety/tests
+Feature family: supplier-decision-localization
+Parallel-safe: no
+Owner: Supplier Analytics Frontend + Backend
+Commit suggestion: `chore(analytics): localize supplier decision user-facing terminology`
+
+### Problem
+
+Supplier Decision ekran je delimično lokalizovan, ali report, export/action poruke i backend-safe tekst još mogu prikazati `fallback`, `dataset`, `Data Quality`, `Scorecard`, `confidence`, `backend`, `snapshot`, `OOS false negative`, `stock-risk` ili tehničke nazive. Korisnički tekst mora biti srpski, dok interni reason kodovi ostaju stabilni.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx`
+- `Klijent/clientapp/src/pages/SupplierConsolidatedPage.tsx`
+- `Klijent/clientapp/src/pages/SupplierDecisionReportPage.tsx`
+- `Klijent/clientapp/src/components/analytics/SupplierDecisionReport.tsx`
+- `Klijent/clientapp/src/components/analytics/SupplierDecisionReportActions.tsx`
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs`
+- `Api.Tests/SupplierDecisionHubContractTests.cs`
+
+### Scope
+
+Samo user-facing Serbian copy, mappings i test očekivanja u Supplier Decision Hub/Scorecard/report površinama. Ne menjati API reason kodove, SQL nazive, telemetry ključeve ili legitimne tehničke identifikatore u developer-only tekstu.
+
+### Read first
+
+- `docs/ai/ENCODING_AND_TEXT_SAFETY.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `Klijent/clientapp/src/components/analytics/AnalyticsTrustHeader.tsx`
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs`
+
+### Do
+
+1. Popisati preostale vidljive engleske izraze kroz screen/report/export/error/empty/degraded grane.
+2. Dodati centralne Serbian mappings tamo gde već postoji mapping owner; ne duplirati formatere ili reason-code logiku.
+3. Očuvati UTF-8/diakritike i proveriti da tehnički kodovi nisu procurili u UI.
+
+### Tests
+
+- Focused component/page tests za svaku promenjenu poruku.
+- Encoding/guardrail check i backend contract test za safe error/fallback poruke.
+
+### Acceptance
+
+- Korisničke površine Supplier Decision Hub-a i report-a nemaju navedene engleske termine osim legitimnih identifikatora.
+- Reason kodovi i backend ugovori ostaju kompatibilni.
+- Nema regresije u error/empty/degraded/fallback trust stanjima.
+
+### Dependencies
+
+- READY AFTER: RQ368 DONE.
 
 ---
 

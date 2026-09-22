@@ -329,7 +329,7 @@ export default function SupplierDecisionReportPage() {
           correlationId={backendError.correlationId}
           suggestions={[
             "Proverite period.",
-            "Proverite refresh status.",
+            "Proverite status osvežavanja.",
             "Otvorite kvalitet podataka.",
           ]}
           onRetry={() => setReloadTick((prev) => prev + 1)}
@@ -351,7 +351,7 @@ export default function SupplierDecisionReportPage() {
           actions={[
             { label: "Vrati se na dobavljače", href: "/analytics/supplier" },
             { label: "Ponovo generiši report", href: "/analytics/supplier" },
-            { label: "Otvori Scorecard", href: "/analytics/supplier?tab=scorecard" },
+            { label: "Otvori skorkartu", href: "/analytics/supplier?tab=scorecard" },
           ]}
           refreshStatusHref="/admin/configuration?panel=workers"
           dataQualityHref="/analytics/data-quality"
@@ -370,7 +370,7 @@ export default function SupplierDecisionReportPage() {
           reasons={["Proverite period i aktivne filtere, pa ponovo učitajte report."]}
           actions={[
             { label: "Vrati se na dobavljače", href: "/analytics/supplier" },
-            { label: "Otvori Scorecard", href: "/analytics/supplier?tab=scorecard" },
+            { label: "Otvori skorkartu", href: "/analytics/supplier?tab=scorecard" },
           ]}
           refreshStatusHref="/admin/configuration?panel=workers"
           dataQualityHref="/analytics/data-quality"
@@ -395,7 +395,7 @@ export default function SupplierDecisionReportPage() {
           title="Izvoz izveštaja nije uspeo"
           message={exportError}
           suggestions={[
-            "Proverite refresh status.",
+            "Proverite status osvežavanja.",
             "Proverite kvalitet podataka.",
             "Pokušajte ponovo.",
           ]}
@@ -421,7 +421,7 @@ export default function SupplierDecisionReportPage() {
           <h1>Trendplus izveštaj dobavljača</h1>
           <p>
             {isBrowserPreview
-              ? "Privremeni browser snapshot — nije potvrđen kao trenutni backend izveštaj."
+              ? "Privremeni sažetak u pregledaču — nije potvrđen kao trenutni serverski izveštaj."
               : "Pregled izveštaja u HTML formi spremnoj za štampu i izvoz. Trajni backend payload se ponovo učitava pri svakom otvaranju."}
           </p>
           {isBrowserPreview && previewSavedAtLabel ? (
@@ -434,10 +434,10 @@ export default function SupplierDecisionReportPage() {
         <div className="sdrp-actions">
           <Link to="/analytics/supplier" className="sdrp-back">Vrati se na dobavljače</Link>
           <Link to="/analytics/supplier" className="sdrp-back">Ponovo generiši report</Link>
-          <Link to="/analytics/supplier?tab=scorecard" className="sdrp-back">Otvori Scorecard</Link>
+          <Link to="/analytics/supplier?tab=scorecard" className="sdrp-back">Otvori skorkartu</Link>
           {isBrowserPreview ? (
             <p className="sdrp-export-disabled" data-testid="local-preview-export-disabled">
-              Izvoz/štampa onemogućeni za lokalni preview. Otvorite trajni report preko Scorecard akcija.
+              Izvoz/štampa onemogućeni za lokalni pregled. Otvorite trajni izveštaj preko akcija skorkarte.
             </p>
           ) : (
             <>

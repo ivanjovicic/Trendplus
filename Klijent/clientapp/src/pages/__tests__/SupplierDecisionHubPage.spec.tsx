@@ -206,7 +206,7 @@ describe("SupplierDecisionHubPage", () => {
 
     expect(await screen.findByText("Dobavljač 1")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Dobavljač 1").closest("tr")!.querySelector("button")!);
-    expect(screen.getAllByText(/Backend nije dostavio obrazloženje za ovaj scorecard signal/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Backend nije dostavio obrazloženje za ovaj signal skorkarte/i).length).toBeGreaterThan(0);
   });
 
   it("shows explicit no-silent-fallback empty state when trust metadata says requested range has no rows", async () => {
@@ -274,7 +274,7 @@ describe("SupplierDecisionHubPage", () => {
 
     renderPage();
 
-    const messages = await screen.findAllByText(/Sistem nije koristio širi period kao fallback/i);
+    const messages = await screen.findAllByText(/Sistem nije koristio širi period kao pomoćni skup podataka/i);
     expect(messages.length).toBeGreaterThan(0);
     expect(screen.getByText(/Proširite period na 90d ili 180d/i)).toBeInTheDocument();
   });
@@ -345,18 +345,18 @@ describe("SupplierDecisionHubPage", () => {
 
     renderPage();
 
-    expect(await screen.findByText(/Prikazan je pomoćni dataset: Poslednjih 90 dana. Finalna preporuka je blokirana./i)).toBeInTheDocument();
+    expect(await screen.findByText(/Prikazan je pomoćni skup podataka: Poslednjih 90 dana. Konačna preporuka je blokirana./i)).toBeInTheDocument();
     expect(screen.queryByText(/no_data_30d/i)).not.toBeInTheDocument();
     expect(screen.getAllByText("Pomoćni signal").length).toBeGreaterThan(0);
     expect(screen.getAllByText("mv_supplier_decision_score_cache_90d").length).toBeGreaterThan(0);
 
     fireEvent.click((await screen.findByText("Dobavljač 1")).closest("tr")!.querySelector("button")!);
 
-    const detail = screen.getByRole("heading", { name: /Detalj scorecard signala/i }).closest("section");
+    const detail = screen.getByRole("heading", { name: /Detalj signala skorkarte/i }).closest("section");
     expect(detail).not.toBeNull();
-    expect(within(detail!).getByText(/Akcija nije dostupna: finalna preporuka nije dozvoljena/i)).toBeInTheDocument();
+    expect(within(detail!).getByText(/Akcija nije dostupna: konačna preporuka nije dozvoljena/i)).toBeInTheDocument();
     expect(within(detail!).queryByRole("button", { name: "Dodaj u akcije" })).not.toBeInTheDocument();
-    expect(within(detail!).getByRole("link", { name: "Proveri Data Quality" })).toHaveAttribute("href", "/analytics/data-quality");
+    expect(within(detail!).getByRole("link", { name: "Kvalitet podataka" })).toHaveAttribute("href", "/analytics/data-quality");
     const postBodies = fetchMock.mock.calls
       .filter((call) => (call[1] as RequestInit | undefined)?.method === "POST")
       .map((call) => JSON.parse(String((call[1] as RequestInit).body)));
@@ -433,7 +433,7 @@ describe("SupplierDecisionHubPage", () => {
     renderPage();
 
     fireEvent.click((await screen.findByText("Dobavljač 1")).closest("tr")!.querySelector("button")!);
-    const detail = screen.getByRole("heading", { name: /Detalj scorecard signala/i }).closest("section");
+    const detail = screen.getByRole("heading", { name: /Detalj signala skorkarte/i }).closest("section");
     expect(detail).not.toBeNull();
     const actionButton = within(detail!).getByRole("button", { name: "Dodaj u akcije" });
     fireEvent.click(actionButton);
@@ -504,7 +504,7 @@ describe("SupplierDecisionHubPage", () => {
 
     fireEvent.click(within(supplierRow!).getByRole("button", { name: "Detalji" }));
 
-    const confidenceArticle = (await screen.findByText("Confidence signala")).closest("article");
+    const confidenceArticle = (await screen.findByText("Sigurnost signala")).closest("article");
     const reliabilityArticle = screen.getByText("Pouzdanost signala").closest("article");
     expect(confidenceArticle).not.toBeNull();
     expect(reliabilityArticle).not.toBeNull();
@@ -531,7 +531,7 @@ describe("SupplierDecisionHubPage", () => {
     renderPage();
 
     expect(await screen.findAllByTestId("supplier-explainability-snapshot")).toHaveLength(1);
-    expect(screen.getByText("Supplier explainability snapshot")).toBeInTheDocument();
+    expect(screen.getByText("Sažetak objašnjenja signala")).toBeInTheDocument();
   });
 
   it("shows error state instead of zero KPIs when scorecard meta fails", async () => {

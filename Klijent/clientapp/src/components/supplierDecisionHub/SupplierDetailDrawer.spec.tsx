@@ -54,7 +54,7 @@ describe("SupplierDetailDrawer trust rendering", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Dobavljač 42" })).toBeInTheDocument();
-    expect(screen.getByText("Trust signala: 82%")).toBeInTheDocument();
+    expect(screen.getByText("Pouzdanost signala: 82%")).toBeInTheDocument();
     expect(screen.getByText("Kvalitet podataka: Oprez")).toBeInTheDocument();
     expect(screen.getByText("Razlog signala: Signal je dobar, ali uz upozorenje na pokrivenost.")).toBeInTheDocument();
   });

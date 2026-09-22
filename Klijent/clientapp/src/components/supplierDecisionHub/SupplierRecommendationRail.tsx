@@ -65,7 +65,7 @@ function SupplierColumn({
                   <p>{recommendation.razlog}</p>
                 </div>
                 <div className="supplier-decision-reco-copy">
-                  <div className="supplier-decision-reco-label">Trust signala</div>
+          <div className="supplier-decision-reco-label">Pouzdanost signala</div>
                   <p>
                     Pouzdanost: {formatReliability(item.reliabilityPct, 0)} · Kvalitet:{" "}
                     {dataQualityStatusLabel(item.dataQualityStatus)}

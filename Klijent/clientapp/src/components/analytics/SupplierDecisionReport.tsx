@@ -258,7 +258,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
 
       <section className="sdr-section">
         <SupplierExplainabilitySnapshot
-          title="Supplier explainability snapshot"
+          title="Sažetak objašnjenja signala"
           subjectLabel={supplierLabel}
           periodLabel={period}
           lastRefreshAt={metaValue(payload, "lastRefreshAtUtc")}
@@ -274,7 +274,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
           confidencePct={confidencePct}
           reliabilityPct={reliabilityPct}
           reasonCodes={reasonCodesPreview}
-          note="Report koristi isti backend-led explainability snapshot kao i hub, bez lokalnih decision-tree derivacija."
+          note="Izveštaj koristi isti serverski sažetak objašnjenja kao i skorkarta, bez lokalnog stabla odluke."
         />
       </section>
 
@@ -465,7 +465,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
       <section className="sdr-section">
         <h2>Kvalitet podataka</h2>
         {dataQuality.length === 0 ? (
-          <p className="sdr-empty">Detaljan sažetak kvaliteta podataka nije dostupan u ovom report payload-u. Otvorite Data Quality ekran za detalje.</p>
+          <p className="sdr-empty">Detaljan sažetak kvaliteta podataka nije dostupan u ovom sadržaju izveštaja. Otvorite ekran Kvalitet podataka za detalje.</p>
         ) : (
           <div className="sdr-dq-grid">
             {dataQuality.map((row, idx) => (

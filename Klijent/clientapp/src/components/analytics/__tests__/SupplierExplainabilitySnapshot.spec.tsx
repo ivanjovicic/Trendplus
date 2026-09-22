@@ -1,6 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import SupplierDecisionReport from "../SupplierDecisionReport";
+import SupplierExplainabilitySnapshot from "../../supplierDecisionHub/SupplierExplainabilitySnapshot";
 
 vi.mock("../KpiExplainButton", () => ({
   default: () => null,
@@ -54,9 +55,23 @@ describe("SupplierExplainabilitySnapshot", () => {
     const snapshot = screen.getByTestId("supplier-explainability-snapshot");
 
     expect(snapshot).toBeInTheDocument();
-    expect(within(snapshot).getByText("Supplier explainability snapshot")).toBeInTheDocument();
+    expect(within(snapshot).getByText("Sažetak objašnjenja signala")).toBeInTheDocument();
     expect(within(snapshot).getByText(/Alpha/)).toBeInTheDocument();
     expect(within(snapshot).getByText("Poslednjih 90 dana")).toBeInTheDocument();
     expect(within(snapshot).getByText("mv_supplier_decision_score_cache_90d")).toBeInTheDocument();
+  });
+
+  it("uses the backend recommendation code instead of treating every allowed signal as expand", () => {
+    render(
+      <SupplierExplainabilitySnapshot
+        subjectLabel="Risk dobavljač"
+        recommendationAllowed
+        recommendationCode="ASSORTMENT_REDUCE"
+        dataQualityStatus="good"
+      />,
+    );
+
+    expect(screen.getByText(/Smanjiti nabavku/)).toBeInTheDocument();
+    expect(screen.queryByText(/Povećati saradnju/)).not.toBeInTheDocument();
   });
 });
