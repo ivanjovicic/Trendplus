@@ -2,7 +2,7 @@
 
 Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none; RQ385, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ401, RQ402 and RQ403 are DONE.
+Current READY prompt: RQ404; RQ385, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ401, RQ402 and RQ403 are DONE.
 
 Owner completion 2026-09-22: under the user's direct last-commits audit, `RQ393` was delivered directly to `main` in `3b635fe813e0e55f843236d55025c52c030e853d`; Color recommendations now use a covered-revenue-weighted margin baseline, unknown-share evidence remains nullable, historical/fallback/no-cost coverage is separated, and the affected screens use Serbian decision labels. Run log: `.ai/runs/2026-09-22-direct-last-commits-audit-evidence.md`.
 
@@ -17,6 +17,7 @@ Routing correction 2026-09-22: `RQ132` was `IN_PROGRESS` without an owner/lock w
 Owner promotion 2026-09-22: after `RQ402` reached DONE and `RQ401` was already DONE, `RQ403` moved `WAITING -> READY` as the next dependency-complete Supplier Decision filter-parity prompt. `RQ404` and `RQ405` remain WAITING behind their declared sequencing and owner boundaries.
 Owner claim 2026-09-22: `RQ403` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ403-codex.lock.md`.
 Owner completion 2026-09-22: `RQ403` delivered directly to `main` in `f87dd49c0ef7a43051178111510d9d5b190f43bd`; canonical URL state, scorecard controls, API/cache/detail/action/report parity and invalid-filter clearing are verified. Run log: `.ai/runs/2026-09-22-RQ403-evidence.md`. Evidence state: synchronized. Follow-up: `RQ404` and `RQ405` remain WAITING.
+Owner promotion 2026-09-22: after `RQ403` reached DONE, `RQ404` moved `WAITING -> READY` because `RQ401`/`RQ402` are DONE and its declared effective-period dependency is satisfied; `RQ405` remains WAITING behind the exclusive Supplier Decision feature family.
 Owner claim 2026-09-22: `RQ385` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ385-codex.lock.md`.
 Owner completion 2026-09-22: `RQ385` delivered directly to `main` with implementation `bb6158f003bfd535a3211430970b30abbc761644`; current `origin/main` contains this SHA and the synchronized closure commits. Scoped Pre/Post fact queries, scope-isolated main/options caches, backend provenance and frontend fail-closed validation are delivered. Run log: `.ai/runs/2026-09-22-RQ385-evidence.md`. Evidence state: synchronized.
 Owner claim 2026-09-22: `RQ388` transitioned `READY -> IN_PROGRESS` in this workspace after dependency and collision checks; local runtime lock `.ai/task-locks/RQ388-codex.lock.md`.
@@ -1415,7 +1416,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ401 | DONE | supplier-decision-cache-schema-provenance | Align Supplier Decision cache capabilities, schema projections and effective-period lineage |
 | RQ402 | DONE | supplier-decision-detail-source-parity | Connect rich supplier decision details to the canonical screen |
 | RQ403 | DONE | supplier-decision-filter-parity | Align backend-supported supplier filters with the canonical screen and report |
-| RQ404 | WAITING | supplier-decision-effective-period-semantics | Make requested/effective supplier periods consistent across metrics and actions |
+| RQ404 | READY | supplier-decision-effective-period-semantics | Make requested/effective supplier periods consistent across metrics and actions |
 | RQ405 | WAITING | supplier-decision-localization | Finish Serbian terminology on supplier decision surfaces and backend-safe messages |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
@@ -22135,7 +22136,7 @@ Canonical URL state, filter controls, API/cache keys, summary/ranking/details/re
 
 ## RQ404 - Make requested/effective supplier periods consistent across metrics and actions
 
-Status: WAITING
+Status: READY
 Priority: P2
 Type: backend/frontend/report/contract/tests
 Feature family: supplier-decision-effective-period-semantics
