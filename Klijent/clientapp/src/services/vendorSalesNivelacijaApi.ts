@@ -156,6 +156,9 @@ export interface VendorSalesNivelacijaResponse {
     to: string | null;
     category: string | null;
     includeInactive: boolean;
+    storeId: number | null;
+    dataScope: "all" | "existing" | "imported" | string;
+    scopeApplied: boolean;
     categories: string[];
     vendorStats: VendorSalesNivelacijaVendorStat[];
     articleStats: VendorSalesNivelacijaArticleStat[];
@@ -205,6 +208,11 @@ export interface VendorSalesNivelacijaOptionsQuery {
     dataScope?: string | null;
 }
 
+function normalizeDataScope(dataScope: string | null | undefined): "all" | "existing" | "imported" {
+    const normalized = (dataScope ?? "all").trim().toLowerCase();
+    return normalized === "existing" || normalized === "imported" ? normalized : "all";
+}
+
 export async function getVendorSalesNivelacija(
     query: VendorSalesNivelacijaQuery
 ): Promise<VendorSalesNivelacijaResponse> {
@@ -231,11 +239,21 @@ export async function getVendorSalesNivelacija(
     }
 
     const payload = (await response.json()) as VendorSalesNivelacijaResponse;
-    return assertAnalyticsMetaSuccess(
+    const result = assertAnalyticsMetaSuccess(
         payload,
         (result) => result.meta,
         "Pre/post nivelacija podaci trenutno nisu dostupni."
     );
+
+    const expectedStoreId = query.storeId ?? null;
+    const expectedDataScope = normalizeDataScope(query.dataScope);
+    if (result.scopeApplied !== true
+        || result.storeId !== expectedStoreId
+        || result.dataScope !== expectedDataScope) {
+        throw new Error("Pre/post nivelacija nije potvrdila traženi objekat i opseg podataka.");
+    }
+
+    return result;
 }
 
 export async function getVendorSalesNivelacijaOptions(

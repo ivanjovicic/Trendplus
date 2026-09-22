@@ -88,6 +88,20 @@ public sealed class SupplierDecisionSchemaSqlTests
     }
 
     [Fact]
+    public void VendorSalesNivelacijaScopedFactQueryBindsStoreAndDataOriginForEventsAndSales()
+    {
+        var source = ReadRepoFile("Api/Endpoints/AllEndpoints.cs");
+
+        Assert.Contains("BuildVendorSalesNivelacijaScopedSourceSql", source);
+        Assert.Contains("@storeId IS NULL OR d.\"IDObjekat\" = @storeId::int", source);
+        Assert.Contains("@storeId IS NULL OR pz.id_objekat = @storeId::int", source);
+        Assert.Contains("@dataScope::text = 'all'", source);
+        Assert.Contains("d.\"DataOrigin\" = 'access'", source);
+        Assert.Contains("pz.data_origin = 'access'", source);
+        Assert.Contains("var useScopedFactQuery = storeId.HasValue || normalizedDataScope != \"all\";", source);
+    }
+
+    [Fact]
     public void VendorSalesNivelacijaViewPreservesMissingWindowAsNullAndLabelsBaselineReason()
     {
         var sql = ReadRepoFile("Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql");

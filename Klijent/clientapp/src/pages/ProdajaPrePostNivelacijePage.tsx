@@ -813,6 +813,8 @@ export default function ProdajaPrePostNivelacijePage() {
     [data?.dataQuality],
   );
   const dataMeta = data?.meta ?? null;
+  const effectiveDataScope = data?.dataScope ?? dataScope;
+  const effectiveStoreId = data?.storeId ?? activeFilters.storeId;
   const dataMetaMessage = getAnalyticsMetaMessage(dataMeta);
   const showMetaWarning = !loading && !queryError && isAnalyticsMetaWarning(dataMeta);
   const showFilteredOutState = !loading && !queryError && Boolean(data) && decisionRows.length > 0 && focusedRows.length === 0;
@@ -1078,8 +1080,8 @@ const advancedSignals = useMemo(
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(
     () => [
       { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
-      { key: "dataScope", label: "Opseg podataka", value: dataScope },
-      { key: "storeId", label: "Objekat", value: activeFilters.storeId ?? "Svi objekti" },
+      { key: "dataScope", label: "Opseg podataka", value: effectiveDataScope },
+      { key: "storeId", label: "Objekat", value: effectiveStoreId ?? "Svi objekti" },
       {
         key: "previousComparison",
         label: "Uporedni period",
@@ -1108,7 +1110,8 @@ const advancedSignals = useMemo(
       data?.totals.articlesCount,
       data?.totals.vendorsCount,
       data?.windowDays,
-      dataScope,
+      effectiveDataScope,
+      effectiveStoreId,
       dataTrustSummary.label,
       focusedRows.length,
       previousComparisonError,
@@ -1291,7 +1294,7 @@ const advancedSignals = useMemo(
         table: "nivelacije-pre-post",
         recordId: buildSupplierVendorDetailRecordId(row, row.vendorRowKey),
         title: row.vendorName,
-        subtitle: "Decision support po dobavljaču",
+        subtitle: "Podrška odlučivanju po dobavljaču",
         columns: decisionColumns,
         row,
         metadata: [...toolbarFilters, ...toolbarMetadata],
@@ -1318,11 +1321,11 @@ const advancedSignals = useMemo(
     <div className="ppn-decision-page">
       <AnalyticsTrustHeader
         title="Prodaja pre/posle nivelacije"
-        description="Event-window analiza: poredi 30 dana pre i 30 dana posle svake nivelacije, pa sabira signal po dobavljaču."
+        description="Analiza prozora događaja: poredi 30 dana pre i 30 dana posle svake nivelacije, pa sabira signal po dobavljaču."
         periodFrom={activeFilters.fromDate}
         periodTo={activeFilters.toDate}
         lastRefreshAt={dataMeta?.lastRefreshAtUtc ?? null}
-        dataSource={`Nivelacija analytics (scope: ${dataScope}${activeFilters.storeId != null ? `, store: ${activeFilters.storeId}` : ""})`}
+        dataSource={`Nivelacija analitika (opseg: ${effectiveDataScope}${effectiveStoreId != null ? `, objekat: ${effectiveStoreId}` : ""})`}
         mode="report"
         dataQualityStatus={dataMeta?.dataQualityStatus ?? null}
         isPartial={showMetaWarning}
@@ -1334,7 +1337,7 @@ const advancedSignals = useMemo(
       />
       <AnalyticsControlBar
         title="Kontrole i opseg"
-        description="Period, dobavljač, kategorija i objekat ostaju ovde; tabela ispod ostaje fokusirana na pre/post signal po dobavljaču."
+        description="Period, dobavljač, kategorija i objekat ostaju ovde; tabela ispod ostaje fokusirana na signal pre/post po dobavljaču."
         chips={controlBarChips}
         primaryAction={{
           key: "apply",

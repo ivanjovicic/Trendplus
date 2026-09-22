@@ -811,6 +811,8 @@ public static class AllEndpoints
             int? vendorId = null,
             string? category = null,
             int take = 200,
+            int? storeId = null,
+            string? dataScope = null,
             CancellationToken ct = default) =>
         {
             try
@@ -826,15 +828,23 @@ public static class AllEndpoints
 
                 take = Math.Clamp(take, 10, 1000);
                 var categoryTrimmed = string.IsNullOrWhiteSpace(category) ? null : category.Trim();
+                var normalizedDataScope = NormalizeVendorSalesNivelacijaDataScope(dataScope);
                 var stopwatch = Stopwatch.StartNew();
-                var cacheKey = AnalyticsCacheKeys.VendorSalesNivelacijaOptions(vendorId, categoryTrimmed, take);
+                var cacheKey = AnalyticsCacheKeys.VendorSalesNivelacijaOptions(
+                    vendorId,
+                    categoryTrimmed,
+                    take,
+                    storeId,
+                    normalizedDataScope);
 
                 var cachedOptions = await cache.GetAsync<List<VendorSalesNivelacijaOptionDto>>(cacheKey, ct);
                 if (cachedOptions is not null)
                 {
                     logger.LogInformation(
-                        "Vendor sales nivelacija options cache hit. VendorId={VendorId}, CategorySet={CategorySet}, Take={Take}, ElapsedMs={ElapsedMs}",
+                        "Vendor sales nivelacija options cache hit. VendorId={VendorId}, StoreId={StoreId}, DataScope={DataScope}, CategorySet={CategorySet}, Take={Take}, ElapsedMs={ElapsedMs}",
                         vendorId,
+                        storeId,
+                        normalizedDataScope,
                         categoryTrimmed is not null,
                         take,
                         stopwatch.ElapsedMilliseconds);
@@ -850,8 +860,53 @@ public static class AllEndpoints
                 var hasOldPrice = await RelationHasColumnAsync(connection, "vw_vendor_sales_nivelacija", "old_price", ct);
                 var hasNewPrice = await RelationHasColumnAsync(connection, "vw_vendor_sales_nivelacija", "new_price", ct);
                 var hasPriceColumns = hasOldPrice && hasNewPrice;
+                var useScopedFactQuery = storeId.HasValue || normalizedDataScope != "all";
 
-                var sql = hasPriceColumns
+                var sql = useScopedFactQuery
+                    ? $"""
+                        {BuildVendorSalesNivelacijaScopedSourceSql()}
+                        , ranked AS (
+                            SELECT
+                                event_date,
+                                vendor_id,
+                                article_id,
+                                old_price,
+                                new_price,
+                                pre_qty,
+                                pre_revenue,
+                                post_qty,
+                                post_revenue,
+                                ROW_NUMBER() OVER (
+                                    PARTITION BY
+                                        event_date::date,
+                                        COALESCE(vendor_id, -1),
+                                        article_id,
+                                        old_price,
+                                        new_price
+                                    ORDER BY price_event_id DESC
+                                ) AS rn
+                            FROM scoped_vendor_sales_nivelacija
+                            WHERE (@vendorId IS NULL OR vendor_id = @vendorId::int)
+                              AND (@category IS NULL OR category ILIKE @categoryPattern::text)
+                        )
+                        SELECT
+                            event_date,
+                            COUNT(*)::INT AS events_count,
+                            COUNT(DISTINCT vendor_id)::INT AS vendors_count,
+                            COUNT(DISTINCT article_id)::INT AS articles_count,
+                            COUNT(*) FILTER (
+                                WHERE pre_qty <> 0
+                                   OR post_qty <> 0
+                                   OR pre_revenue <> 0
+                                   OR post_revenue <> 0
+                            )::INT AS active_articles_count
+                        FROM ranked
+                        WHERE rn = 1
+                        GROUP BY event_date
+                        ORDER BY event_date DESC
+                        LIMIT @take::int;
+                        """
+                    : hasPriceColumns
                     ? """
                         WITH ranked AS (
                             SELECT
@@ -958,6 +1013,11 @@ public static class AllEndpoints
                 };
                 command.Parameters.Add(categoryPatternParam);
 
+                if (useScopedFactQuery)
+                {
+                    AddVendorSalesNivelacijaScopeParameters(command, storeId, normalizedDataScope);
+                }
+
                 var takeParam = new NpgsqlParameter("take", NpgsqlTypes.NpgsqlDbType.Integer)
                 {
                     Value = take
@@ -981,8 +1041,10 @@ public static class AllEndpoints
 
                 await cache.SetAsync(cacheKey, options, CacheExpiration.HeavyAnalytics, ct);
                 logger.LogInformation(
-                    "Vendor sales nivelacija options computed and cached. VendorId={VendorId}, CategorySet={CategorySet}, Take={Take}, Count={Count}, ElapsedMs={ElapsedMs}, CacheTtlMinutes={CacheTtlMinutes}",
+                    "Vendor sales nivelacija options computed and cached. VendorId={VendorId}, StoreId={StoreId}, DataScope={DataScope}, CategorySet={CategorySet}, Take={Take}, Count={Count}, ElapsedMs={ElapsedMs}, CacheTtlMinutes={CacheTtlMinutes}",
                     vendorId,
+                    storeId,
+                    normalizedDataScope,
                     categoryTrimmed is not null,
                     take,
                     options.Count,
@@ -3161,6 +3223,8 @@ public static class AllEndpoints
             string? category = null,
             bool includeInactive = false,
             int maxRows = 5000,
+            int? storeId = null,
+            string? dataScope = null,
             CancellationToken ct = default) =>
         {
             var correlationId = ResolveAnalyticsCorrelationId(httpContext);
@@ -3191,6 +3255,8 @@ public static class AllEndpoints
 
                 var categoryTrimmed = string.IsNullOrWhiteSpace(category) ? null : category.Trim();
                 var categoryPattern = string.IsNullOrWhiteSpace(categoryTrimmed) ? null : $"%{categoryTrimmed}%";
+                var normalizedDataScope = NormalizeVendorSalesNivelacijaDataScope(dataScope);
+                var useScopedFactQuery = storeId.HasValue || normalizedDataScope != "all";
                 maxRows = Math.Clamp(maxRows, 100, 50_000);
 
                 var endpointStopwatch = Stopwatch.StartNew();
@@ -3201,14 +3267,18 @@ public static class AllEndpoints
                     to,
                     categoryTrimmed,
                     includeInactive,
-                    maxRows);
+                    maxRows,
+                    storeId,
+                    normalizedDataScope);
 
                 var cachedResponse = await cache.GetAsync<VendorSalesNivelacijaResponseDto>(cacheKey, ct);
                 if (cachedResponse is not null)
                 {
                     logger.LogInformation(
-                        "Vendor sales nivelacija cache hit. VendorId={VendorId}, EventDate={EventDate}, From={From}, To={To}, CategorySet={CategorySet}, IncludeInactive={IncludeInactive}, MaxRows={MaxRows}, ElapsedMs={ElapsedMs}",
+                        "Vendor sales nivelacija cache hit. VendorId={VendorId}, StoreId={StoreId}, DataScope={DataScope}, EventDate={EventDate}, From={From}, To={To}, CategorySet={CategorySet}, IncludeInactive={IncludeInactive}, MaxRows={MaxRows}, ElapsedMs={ElapsedMs}",
                         vendorId,
+                        storeId,
+                        normalizedDataScope,
                         eventDateOnly,
                         fromDateOnly,
                         toDateOnly,
@@ -3221,8 +3291,10 @@ public static class AllEndpoints
                 }
 
                 logger.LogInformation(
-                    "Vendor sales nivelacija cache miss. VendorId={VendorId}, EventDate={EventDate}, From={From}, To={To}, CategorySet={CategorySet}, IncludeInactive={IncludeInactive}, MaxRows={MaxRows}",
+                    "Vendor sales nivelacija cache miss. VendorId={VendorId}, StoreId={StoreId}, DataScope={DataScope}, EventDate={EventDate}, From={From}, To={To}, CategorySet={CategorySet}, IncludeInactive={IncludeInactive}, MaxRows={MaxRows}",
                     vendorId,
+                    storeId,
+                    normalizedDataScope,
                     eventDateOnly,
                     fromDateOnly,
                     toDateOnly,
@@ -3247,6 +3319,8 @@ public static class AllEndpoints
                         to,
                         categoryTrimmed,
                         includeInactive,
+                        storeId,
+                        normalizedDataScope,
                         "Missing semantic revenue baseline contract.",
                         AnalyticsResponseMetaFactory.Error(
                             "vendor_sales_nivelacija_contract_missing",
@@ -3255,7 +3329,18 @@ public static class AllEndpoints
                     return Results.Ok(ApplyVendorSalesNivelacijaMeta(missingContract, correlationId));
                 }
 
-                const string rawCountSql = """
+                var rawCountSql = useScopedFactQuery
+                    ? $"""
+                    {BuildVendorSalesNivelacijaScopedSourceSql()}
+                    SELECT COUNT(*)::INT
+                    FROM scoped_vendor_sales_nivelacija
+                    WHERE (@vendorId IS NULL OR vendor_id = @vendorId::int)
+                      AND (@eventDate IS NULL OR event_date::date = @eventDate::date)
+                      AND (@fromDate IS NULL OR event_date::date >= @fromDate::date)
+                      AND (@toDate IS NULL OR event_date::date <= @toDate::date)
+                      AND (@category IS NULL OR category ILIKE @categoryPattern::text);
+                    """
+                    : """
                     SELECT COUNT(*)::INT
                     FROM "vw_vendor_sales_nivelacija"
                     WHERE (@vendorId IS NULL OR vendor_id = @vendorId::int)
@@ -3299,11 +3384,27 @@ public static class AllEndpoints
                         Value = (object?)categoryPattern ?? DBNull.Value
                     });
 
+                    if (useScopedFactQuery)
+                    {
+                        AddVendorSalesNivelacijaScopeParameters(cmd, storeId, normalizedDataScope);
+                    }
+
                     rawRows = Convert.ToInt32(await cmd.ExecuteScalarAsync(ct), CultureInfo.InvariantCulture);
                 }
 
                 var categories = new List<string>();
-                const string categoriesSql = """
+                var categoriesSql = useScopedFactQuery
+                    ? $"""
+                    {BuildVendorSalesNivelacijaScopedSourceSql()}
+                    SELECT DISTINCT COALESCE(NULLIF(category, ''), 'N/A') AS category
+                    FROM scoped_vendor_sales_nivelacija
+                    WHERE (@vendorId IS NULL OR vendor_id = @vendorId)
+                      AND (@eventDate IS NULL OR event_date::date = @eventDate)
+                      AND (@fromDate IS NULL OR event_date::date >= @fromDate)
+                      AND (@toDate IS NULL OR event_date::date <= @toDate)
+                    ORDER BY COALESCE(NULLIF(category, ''), 'N/A');
+                    """
+                    : """
                     SELECT DISTINCT COALESCE(NULLIF(category, ''), 'N/A') AS category
                     FROM "vw_vendor_sales_nivelacija"
                     WHERE (@vendorId IS NULL OR vendor_id = @vendorId)
@@ -3336,6 +3437,11 @@ public static class AllEndpoints
                         Value = (object?)toDateOnly ?? DBNull.Value
                     });
 
+                    if (useScopedFactQuery)
+                    {
+                        AddVendorSalesNivelacijaScopeParameters(cmd, storeId, normalizedDataScope);
+                    }
+
                     await using var reader = await cmd.ExecuteReaderAsync(ct);
                     while (await reader.ReadAsync(ct))
                     {
@@ -3345,7 +3451,84 @@ public static class AllEndpoints
                     }
                 }
 
-                var rowsSql = hasPriceColumns
+                var rowsSql = useScopedFactQuery
+                    ? $"""
+                        {BuildVendorSalesNivelacijaScopedSourceSql()}
+                        , ranked AS (
+                            SELECT
+                                price_event_id,
+                                event_date::date AS event_date,
+                                vendor_id,
+                                COALESCE(vendor_name, 'N/A') AS vendor_name,
+                                article_id,
+                                COALESCE(NULLIF(sku, ''), article_id::text) AS sku,
+                                COALESCE(article_name, '') AS article_name,
+                                COALESCE(NULLIF(category, ''), 'N/A') AS category,
+                                old_price,
+                                new_price,
+                                pre_qty::numeric AS pre_qty,
+                                pre_revenue::numeric AS pre_revenue,
+                                post_qty::numeric AS post_qty,
+                                post_revenue::numeric AS post_revenue,
+                                coverage_pre30::numeric AS coverage_pre30,
+                                coverage_post30::numeric AS coverage_post30,
+                                change_qty::numeric AS change_qty,
+                                change_revenue::numeric AS change_revenue,
+                                change_percent_revenue_semantic::numeric AS change_percent,
+                                has_qty_baseline,
+                                qty_baseline_reason,
+                                change_percent_qty_semantic::numeric AS change_percent_qty_semantic,
+                                has_revenue_baseline,
+                                revenue_baseline_reason,
+                                change_percent_revenue_semantic::numeric AS change_percent_revenue_semantic,
+                                ROW_NUMBER() OVER (
+                                    PARTITION BY
+                                        event_date::date,
+                                        COALESCE(vendor_id, -1),
+                                        article_id,
+                                        old_price,
+                                        new_price
+                                    ORDER BY price_event_id DESC
+                                ) AS rn
+                            FROM scoped_vendor_sales_nivelacija
+                            WHERE (@vendorId IS NULL OR vendor_id = @vendorId::int)
+                              AND (@eventDate IS NULL OR event_date::date = @eventDate::date)
+                              AND (@fromDate IS NULL OR event_date::date >= @fromDate::date)
+                              AND (@toDate IS NULL OR event_date::date <= @toDate::date)
+                              AND (@category IS NULL OR category ILIKE @categoryPattern::text)
+                        )
+                        SELECT
+                            price_event_id,
+                            event_date,
+                            vendor_id,
+                            vendor_name,
+                            article_id,
+                            sku,
+                            article_name,
+                            category,
+                            old_price,
+                            new_price,
+                            pre_qty,
+                            pre_revenue,
+                            post_qty,
+                            post_revenue,
+                            coverage_pre30,
+                            coverage_post30,
+                            change_qty,
+                            change_revenue,
+                            change_percent,
+                            has_qty_baseline,
+                            qty_baseline_reason,
+                            change_percent_qty_semantic,
+                            has_revenue_baseline,
+                            revenue_baseline_reason,
+                            change_percent_revenue_semantic
+                        FROM ranked
+                        WHERE rn = 1
+                        ORDER BY vendor_name, ABS(change_revenue) DESC, article_name
+                        LIMIT @maxRows::int;
+                        """
+                    : hasPriceColumns
                     ? $"""
                         WITH ranked AS (
                             SELECT
@@ -3532,6 +3715,10 @@ public static class AllEndpoints
                     {
                         Value = (object?)categoryPattern ?? DBNull.Value
                     });
+                    if (useScopedFactQuery)
+                    {
+                        AddVendorSalesNivelacijaScopeParameters(cmd, storeId, normalizedDataScope);
+                    }
                     cmd.Parameters.Add(new NpgsqlParameter("maxRows", NpgsqlTypes.NpgsqlDbType.Integer)
                     {
                         Value = maxRows
@@ -4051,6 +4238,9 @@ public static class AllEndpoints
                     To = to,
                     Category = categoryTrimmed,
                     IncludeInactive = includeInactive,
+                    StoreId = storeId,
+                    DataScope = normalizedDataScope,
+                    ScopeApplied = true,
                     Categories = categories,
                     VendorStats = vendorStats,
                     ArticleStats = analyzed,
@@ -4086,8 +4276,10 @@ public static class AllEndpoints
                 await cache.SetAsync(cacheKey, response, CacheExpiration.HeavyAnalytics, ct);
 
                 logger.LogInformation(
-                    "Vendor sales nivelacija computed and cached. VendorId={VendorId}, EventDate={EventDate}, From={From}, To={To}, RawRows={RawRows}, AnalyzedRows={AnalyzedRows}, Vendors={Vendors}, Articles={Articles}, ElapsedMs={ElapsedMs}, CacheTtlMinutes={CacheTtlMinutes}",
+                    "Vendor sales nivelacija computed and cached. VendorId={VendorId}, StoreId={StoreId}, DataScope={DataScope}, EventDate={EventDate}, From={From}, To={To}, RawRows={RawRows}, AnalyzedRows={AnalyzedRows}, Vendors={Vendors}, Articles={Articles}, ElapsedMs={ElapsedMs}, CacheTtlMinutes={CacheTtlMinutes}",
                     vendorId,
+                    storeId,
+                    normalizedDataScope,
                     eventDateOnly,
                     fromDateOnly,
                     toDateOnly,
@@ -4119,6 +4311,8 @@ public static class AllEndpoints
                     to,
                     string.IsNullOrWhiteSpace(category) ? null : category.Trim(),
                     includeInactive,
+                    storeId,
+                    NormalizeVendorSalesNivelacijaDataScope(dataScope),
                     reason,
                     AnalyticsResponseMetaFactory.Error(
                         "vendor_sales_nivelacija_error",
@@ -4138,6 +4332,8 @@ public static class AllEndpoints
                     to,
                     string.IsNullOrWhiteSpace(category) ? null : category.Trim(),
                     includeInactive,
+                    storeId,
+                    NormalizeVendorSalesNivelacijaDataScope(dataScope),
                     ex.Message,
                     AnalyticsResponseMetaFactory.Error(
                         "vendor_sales_nivelacija_error",
@@ -6753,6 +6949,204 @@ public static class AllEndpoints
         };
     }
 
+    private static string NormalizeVendorSalesNivelacijaDataScope(string? rawScope)
+    {
+        var normalized = (rawScope ?? "all").Trim().ToLowerInvariant();
+        return normalized is "existing" or "imported" ? normalized : "all";
+    }
+
+    private static void AddVendorSalesNivelacijaScopeParameters(
+        NpgsqlCommand command,
+        int? storeId,
+        string normalizedDataScope)
+    {
+        command.Parameters.Add(new NpgsqlParameter("storeId", NpgsqlDbType.Integer)
+        {
+            Value = (object?)storeId ?? DBNull.Value
+        });
+        command.Parameters.Add(new NpgsqlParameter("dataScope", NpgsqlDbType.Text)
+        {
+            Value = normalizedDataScope
+        });
+    }
+
+    private static string BuildVendorSalesNivelacijaScopedSourceSql() => """
+        WITH nivelacija_events AS (
+            SELECT *
+            FROM (
+                SELECT
+                    d."Id"::bigint AS price_event_id,
+                    COALESCE(src."Datum", d."Datum")::date AS event_date,
+                    a."Id" AS article_id,
+                    COALESCE(NULLIF(a."PLU", ''), a."Id"::text) AS sku,
+                    a."Naziv" AS article_name,
+                    a."Kategorija" AS category,
+                    COALESCE(d."DobavljacId", a."IDDobavljac") AS vendor_id,
+                    dob."Naziv" AS vendor_name,
+                    d."StaraProdajnaCena"::numeric(18,4) AS old_price,
+                    d."NovaProdajnaCena"::numeric(18,4) AS new_price,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY a."Id",
+                                     COALESCE(src."Datum", d."Datum"),
+                                     d."StaraProdajnaCena",
+                                     d."NovaProdajnaCena",
+                                     COALESCE(d."IDObjekat", -1),
+                                     COALESCE(NULLIF(d."DataOrigin", ''), 'existing')
+                        ORDER BY d."Id" DESC
+                    ) AS rn
+                FROM "DnevnikPromena" d
+                JOIN "Artikli" a ON a."Id" = d."ArtikalId"
+                LEFT JOIN "Dobavljaci" dob
+                    ON dob."Id" = COALESCE(d."DobavljacId", a."IDDobavljac")
+                LEFT JOIN "DnevnikPromena" src
+                    ON src."Id" = CASE
+                        WHEN d."BrojRacuna" ~ '^[0-9]+$'
+                        THEN d."BrojRacuna"::integer
+                    END
+                WHERE d."TipPromene" IN ('Nivelacija', 'Nivelacija cena')
+                  AND d."ArtikalId" IS NOT NULL
+                  AND COALESCE(src."Datum", d."Datum") IS NOT NULL
+                  AND (@storeId IS NULL OR d."IDObjekat" = @storeId::int)
+                  AND (
+                        @dataScope::text = 'all'
+                        OR (@dataScope::text = 'imported' AND d."DataOrigin" = 'access')
+                        OR (@dataScope::text = 'existing' AND (d."DataOrigin" = 'existing' OR d."DataOrigin" IS NULL OR d."DataOrigin" = ''))
+                  )
+            ) ranked_events
+            WHERE rn = 1
+        ),
+        sales_daily AS (
+            SELECT
+                ps.id_artikal AS article_id,
+                pz.datum_prodaje::date AS day,
+                SUM(ps.kolicina)::numeric AS units,
+                SUM(ps.kolicina * ps.cena)::numeric(18,2) AS revenue
+            FROM prodaja_stavke ps
+            JOIN prodaja_zaglavlje pz
+              ON pz.id = ps.id_prodaja
+            WHERE (@storeId IS NULL OR pz.id_objekat = @storeId::int)
+              AND (
+                    @dataScope::text = 'all'
+                    OR (@dataScope::text = 'imported' AND pz.data_origin = 'access')
+                    OR (@dataScope::text = 'existing' AND (pz.data_origin = 'existing' OR pz.data_origin IS NULL OR pz.data_origin = ''))
+              )
+            GROUP BY ps.id_artikal, pz.datum_prodaje::date
+        ),
+        pre_window AS (
+            SELECT
+                e.price_event_id,
+                e.event_date,
+                e.article_id,
+                e.sku,
+                e.article_name,
+                e.category,
+                e.vendor_id,
+                e.vendor_name,
+                e.old_price,
+                e.new_price,
+                SUM(s.units) AS pre_qty,
+                SUM(s.revenue) AS pre_revenue,
+                CASE WHEN COUNT(DISTINCT s.day) = 0 THEN NULL
+                     ELSE LEAST(COUNT(DISTINCT s.day) / 30.0, 1)
+                END AS coverage_pre30,
+                COUNT(DISTINCT s.day) AS valid_days_pre30,
+                (
+                    COUNT(DISTINCT s.day) < 7
+                    OR COALESCE(SUM(s.units), 0) < 3
+                    OR COALESCE(SUM(s.revenue), 0) < 100
+                ) AS is_low_signal
+            FROM nivelacija_events e
+            LEFT JOIN sales_daily s
+              ON s.article_id = e.article_id
+             AND s.day >= e.event_date - INTERVAL '30 days'
+             AND s.day < e.event_date
+            GROUP BY
+                e.price_event_id,
+                e.event_date,
+                e.article_id,
+                e.sku,
+                e.article_name,
+                e.category,
+                e.vendor_id,
+                e.vendor_name,
+                e.old_price,
+                e.new_price
+        ),
+        post_window AS (
+            SELECT
+                e.price_event_id,
+                SUM(s.units) AS post_qty,
+                SUM(s.revenue) AS post_revenue,
+                CASE WHEN COUNT(DISTINCT s.day) = 0 THEN NULL
+                     ELSE LEAST(COUNT(DISTINCT s.day) / 30.0, 1)
+                END AS coverage_post30,
+                COUNT(DISTINCT s.day) AS valid_days_post30
+            FROM nivelacija_events e
+            LEFT JOIN sales_daily s
+              ON s.article_id = e.article_id
+             AND s.day >= e.event_date
+             AND s.day < e.event_date + INTERVAL '30 days'
+            GROUP BY e.price_event_id
+        ),
+        scoped_vendor_sales_nivelacija AS (
+            SELECT
+                pre.price_event_id,
+                pre.event_date,
+                pre.vendor_id,
+                pre.vendor_name,
+                pre.article_id,
+                pre.sku,
+                pre.article_name,
+                pre.category,
+                pre.old_price,
+                pre.new_price,
+                pre.pre_qty::numeric AS pre_qty,
+                post.post_qty::numeric AS post_qty,
+                pre.pre_revenue::numeric(18,2) AS pre_revenue,
+                post.post_revenue::numeric(18,2) AS post_revenue,
+                pre.coverage_pre30,
+                post.coverage_post30,
+                (post.post_qty - pre.pre_qty) AS change_qty,
+                (post.post_revenue - pre.pre_revenue) AS change_revenue,
+                CASE
+                    WHEN pre.pre_qty = 0 AND post.post_qty > 0 THEN 100
+                    WHEN pre.pre_qty = 0 THEN 0
+                    ELSE ROUND(((post.post_qty - pre.pre_qty) / NULLIF(pre.pre_qty, 0)) * 100, 2)
+                END AS change_percent_qty,
+                CASE
+                    WHEN pre.pre_revenue = 0 AND post.post_revenue > 0 THEN 100
+                    WHEN pre.pre_revenue = 0 THEN 0
+                    ELSE ROUND(((post.post_revenue - pre.pre_revenue) / NULLIF(pre.pre_revenue, 0)) * 100, 2)
+                END AS change_percent_revenue,
+                (pre.is_low_signal OR post.coverage_post30 < 0.2) AS is_low_signal,
+                COALESCE(pre.pre_qty > 0, FALSE) AS has_qty_baseline,
+                CASE
+                    WHEN pre.pre_qty IS NULL THEN 'missing_pre_qty_window'
+                    WHEN pre.pre_qty = 0 AND post.post_qty > 0 THEN 'no_pre_qty_baseline_uplift'
+                    WHEN pre.pre_qty = 0 AND post.post_qty = 0 THEN 'no_pre_qty_baseline_flat'
+                    ELSE NULL
+                END AS qty_baseline_reason,
+                CASE
+                    WHEN pre.pre_qty = 0 THEN NULL
+                    ELSE ROUND(((post.post_qty - pre.pre_qty) / NULLIF(pre.pre_qty, 0)) * 100, 2)
+                END AS change_percent_qty_semantic,
+                COALESCE(pre.pre_revenue > 0, FALSE) AS has_revenue_baseline,
+                CASE
+                    WHEN pre.pre_revenue IS NULL THEN 'missing_pre_revenue_window'
+                    WHEN pre.pre_revenue = 0 AND post.post_revenue > 0 THEN 'no_pre_revenue_baseline_uplift'
+                    WHEN pre.pre_revenue = 0 AND post.post_revenue = 0 THEN 'no_pre_revenue_baseline_flat'
+                    ELSE NULL
+                END AS revenue_baseline_reason,
+                CASE
+                    WHEN pre.pre_revenue = 0 THEN NULL
+                    ELSE ROUND(((post.post_revenue - pre.pre_revenue) / NULLIF(pre.pre_revenue, 0)) * 100, 2)
+                END AS change_percent_revenue_semantic
+            FROM pre_window pre
+            LEFT JOIN post_window post
+              ON pre.price_event_id = post.price_event_id
+        )
+        """;
+
     private static VendorSalesNivelacijaResponseDto CreateVendorSalesNivelacijaFallbackResponse(
         int? vendorId,
         DateTime? eventDate,
@@ -6760,6 +7154,8 @@ public static class AllEndpoints
         DateTime? to,
         string? category,
         bool includeInactive,
+        int? storeId,
+        string dataScope,
         string reason,
         AnalyticsResponseMetaDto? meta = null)
     {
@@ -6773,6 +7169,9 @@ public static class AllEndpoints
             To = to,
             Category = category,
             IncludeInactive = includeInactive,
+            StoreId = storeId,
+            DataScope = dataScope,
+            ScopeApplied = false,
             Categories = [],
             VendorStats = [],
             ArticleStats = [],

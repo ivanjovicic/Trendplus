@@ -131,6 +131,9 @@ function response(overrides: Partial<VendorSalesNivelacijaResponse> = {}): Vendo
     to: "2026-06-30T23:59:59Z",
     category: null,
     includeInactive: false,
+    storeId: null,
+    dataScope: "all",
+    scopeApplied: true,
     categories: ["Obuca"],
     vendorStats: [vendor()],
     articleStats: [],
@@ -231,10 +234,14 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
 
   it("passes dataScope and storeId to current and previous period requests", async () => {
     localStorage.setItem("trendplus:dataScope", "imported");
+    vi.mocked(getVendorSalesNivelacija).mockImplementation(async (query) => response({
+      dataScope: query.dataScope ?? "all",
+      storeId: query.storeId ?? null,
+    }));
     renderPage();
 
     await screen.findByText("Prioritetna lista dobavljača");
-    expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("scope: imported");
+    expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("opseg: imported");
 
     const controlBar = await screen.findByTestId("analytics-control-bar");
     expect(within(controlBar).getByRole("heading", { name: "Kontrole i opseg" })).toBeInTheDocument();
@@ -268,7 +275,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
       expect(latestCalls.every((query) => query.storeId === 2 && query.dataScope === "imported")).toBe(true);
     });
 
-    expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("store: 2");
+    expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("objekat: 2");
   });
 
   it("keeps the previous snapshot visible when a later query fails", async () => {

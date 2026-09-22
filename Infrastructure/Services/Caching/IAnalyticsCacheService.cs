@@ -319,11 +319,18 @@ public static class AnalyticsCacheKeys
         DateTime? to,
         string? category,
         bool includeInactive,
-        int maxRows) =>
-        $"{Prefix}vendor-sales-nivelacija:v3:vendor:{FormatNullable(vendorId)}:event:{FormatInstant(eventDate)}:from:{FormatInstant(from)}:to:{FormatInstant(to)}:category:{HashPart(category)}:inactive:{includeInactive}:max:{maxRows}";
+        int maxRows,
+        int? storeId = null,
+        string? dataScope = null) =>
+        $"{Prefix}vendor-sales-nivelacija:v4:vendor:{FormatNullable(vendorId)}:event:{FormatInstant(eventDate)}:from:{FormatInstant(from)}:to:{FormatInstant(to)}:category:{HashPart(category)}:inactive:{includeInactive}:max:{maxRows}:store:{FormatNullable(storeId)}:scope:{NormalizeDataScope(dataScope)}";
 
-    public static string VendorSalesNivelacijaOptions(int? vendorId, string? category, int take) =>
-        $"{Prefix}vendor-sales-nivelacija-options:v1:vendor:{FormatNullable(vendorId)}:category:{HashPart(category)}:take:{take}";
+    public static string VendorSalesNivelacijaOptions(
+        int? vendorId,
+        string? category,
+        int take,
+        int? storeId = null,
+        string? dataScope = null) =>
+        $"{Prefix}vendor-sales-nivelacija-options:v2:vendor:{FormatNullable(vendorId)}:category:{HashPart(category)}:take:{take}:store:{FormatNullable(storeId)}:scope:{NormalizeDataScope(dataScope)}";
 
     private static string SupplierDecisionHubFilters(
         DateTime? from,

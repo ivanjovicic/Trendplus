@@ -188,6 +188,45 @@ public sealed class AnalyticsScreenCacheKeyContractTests
     }
 
     [Fact]
+    public void VendorSalesNivelacija_SeparatesStoreAndDataScopeCacheEntries()
+    {
+        var baseline = AnalyticsCacheKeys.VendorSalesNivelacija(
+            vendorId: 7,
+            eventDate: FromUtc,
+            from: FromUtc,
+            to: ToUtc,
+            category: "Patike",
+            includeInactive: false,
+            maxRows: 5000,
+            storeId: 1,
+            dataScope: "existing");
+
+        var differentStore = AnalyticsCacheKeys.VendorSalesNivelacija(
+            7, FromUtc, FromUtc, ToUtc, "Patike", false, 5000, 2, "existing");
+        var differentScope = AnalyticsCacheKeys.VendorSalesNivelacija(
+            7, FromUtc, FromUtc, ToUtc, "Patike", false, 5000, 1, "imported");
+        var allStores = AnalyticsCacheKeys.VendorSalesNivelacija(
+            7, FromUtc, FromUtc, ToUtc, "Patike", false, 5000, null, "all");
+
+        Assert.NotEqual(baseline, differentStore);
+        Assert.NotEqual(baseline, differentScope);
+        Assert.NotEqual(baseline, allStores);
+        Assert.Contains("store:1", baseline, StringComparison.Ordinal);
+        Assert.Contains("scope:existing", baseline, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void VendorSalesNivelacijaOptions_SeparatesStoreAndDataScopeCacheEntries()
+    {
+        var all = AnalyticsCacheKeys.VendorSalesNivelacijaOptions(7, "Patike", 200, null, "all");
+        var scoped = AnalyticsCacheKeys.VendorSalesNivelacijaOptions(7, "Patike", 200, 1, "existing");
+
+        Assert.NotEqual(all, scoped);
+        Assert.Contains("store:1", scoped, StringComparison.Ordinal);
+        Assert.Contains("scope:existing", scoped, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void SafeKeyFingerprint_IsStableShortAndDoesNotExposeRawKey()
     {
         const string key = "analytics:supplier-decision-hub:ranking:secret-filter-value";

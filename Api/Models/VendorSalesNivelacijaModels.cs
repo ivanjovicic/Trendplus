@@ -167,6 +167,9 @@ public sealed class VendorSalesNivelacijaResponseDto
     public DateTime? To { get; set; }
     public string? Category { get; set; }
     public bool IncludeInactive { get; set; }
+    public int? StoreId { get; set; }
+    public string DataScope { get; set; } = "all";
+    public bool ScopeApplied { get; set; }
     public List<string> Categories { get; set; } = [];
     public List<VendorSalesNivelacijaVendorStatDto> VendorStats { get; set; } = [];
     public List<VendorSalesNivelacijaArticleStatDto> ArticleStats { get; set; } = [];
