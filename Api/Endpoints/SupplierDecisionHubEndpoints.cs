@@ -903,19 +903,20 @@ public static class SupplierDecisionHubEndpoints
         string correlationId)
     {
         var generatedAtUtc = DateTime.UtcNow;
+        var requestedDataset = ResolveRequestedDataset(filters);
         var methodology = BuildSupplierDecisionMethodology(filters, null, false);
         var period = new AnalyticsReportPeriodDto(
             filters.FromDate,
             filters.ToDate,
-            BuildEffectivePeriodLabel(filters, ResolveRequestedDataset(filters)),
-            ResolveRequestedDataset(filters),
-            ResolveRequestedDataset(filters),
-            BuildEffectivePeriodLabel(filters, ResolveRequestedDataset(filters)),
+            BuildEffectivePeriodLabel(filters, requestedDataset),
+            requestedDataset,
+            EffectiveDataset: null,
+            EffectivePeriodLabel: null,
             filters.DataScope,
             RequestedFromUtc: filters.FromDate,
             RequestedToUtc: filters.ToDate,
-            EffectiveFromUtc: filters.FromDate,
-            EffectiveToUtc: filters.ToDate);
+            EffectiveFromUtc: null,
+            EffectiveToUtc: null);
         var rows = new List<AnalyticsLegacyReportRowDto>
         {
             new("Status", "Greška", message, errorCode, null),
@@ -2124,11 +2125,12 @@ public static class SupplierDecisionHubEndpoints
         if (CanUsePrecomputedSupplierRows(filters))
         {
             var capabilities = await GetPrecomputedQueryCapabilitiesAsync(analyticsConnectionString, ct);
-            if (!capabilities.HasDecisionScoreCache)
+            var windowDays = GetDecisionScoreWindowDays(filters);
+            if (!capabilities.HasDecisionScoreCacheForWindow(windowDays))
             {
                 throw new SupplierDecisionUnavailableException(
-                    "MISSING_TABLE",
-                    "Supplier decision cache nije dostupan. Pokušajte ponovo nakon osvežavanja analitike.");
+                    "MISSING_SCHEMA",
+                    $"Supplier decision dataset {ResolveEffectiveDataset(windowDays)} nije spreman za traženi period. Pokušajte ponovo nakon osvežavanja analitike.");
             }
 
             var (precomputedSql, precomputedParameters) = BuildPrecomputedSupplierRowsSql(filters, capabilities);
@@ -2264,9 +2266,10 @@ public static class SupplierDecisionHubEndpoints
                 var supplierName = NormalizeSupplierName(supplierId, sourceSupplierName);
                 var recommendationCode = GetString(reader, "recommendation_code");
                 var confidenceScore = GetDecimal(reader, "confidence_score");
-                var postSignalCoverage = HasColumn(reader, "post_signal_coverage")
-                    ? GetDecimal(reader, "post_signal_coverage")
-                    : 1m;
+                // Capability validation guarantees this column exists for every precomputed
+                // dataset. A NULL value is read conservatively as 0 by GetDecimal; never
+                // treat a missing/unknown coverage signal as complete evidence.
+                var postSignalCoverage = GetDecimal(reader, "post_signal_coverage");
                 var recommendationSignal = BuildRecommendationSignal(recommendationCode, confidenceScore, postSignalCoverage);
 
                 results.Add(new SupplierScoreRow(
@@ -2440,9 +2443,22 @@ public static class SupplierDecisionHubEndpoints
 
     private sealed record PrecomputedQueryCapabilities(
         bool HasDecisionScoreCache,
+        bool HasDecisionScoreCache90d,
+        bool HasDecisionScoreCache180d,
         bool HasMarkdownDependencyCache,
         bool HasMlLatestPredictionsView,
-        bool DecisionScoreCacheHasMlSupplierScore);
+        bool DecisionScoreCacheHasMlSupplierScore,
+        bool DecisionScoreCacheHasRequiredColumns,
+        bool DecisionScoreCache90dHasRequiredColumns,
+        bool DecisionScoreCache180dHasRequiredColumns)
+    {
+        public bool HasDecisionScoreCacheForWindow(int windowDays) => windowDays switch
+        {
+            90 => HasDecisionScoreCache90d && DecisionScoreCache90dHasRequiredColumns,
+            180 => HasDecisionScoreCache180d && DecisionScoreCache180dHasRequiredColumns,
+            _ => HasDecisionScoreCache && DecisionScoreCacheHasRequiredColumns
+        };
+    }
 
     private sealed record SupplierMlQueryCapabilities(
         bool HasSupplierMlPredictionsTable,
@@ -2469,6 +2485,8 @@ public static class SupplierDecisionHubEndpoints
         const string sql = """
 SELECT
     to_regclass('public.mv_supplier_decision_score_cache') IS NOT NULL AS has_decision_score_cache,
+    to_regclass('public.mv_supplier_decision_score_cache_90d') IS NOT NULL AS has_decision_score_cache_90d,
+    to_regclass('public.mv_supplier_decision_score_cache_180d') IS NOT NULL AS has_decision_score_cache_180d,
     to_regclass('public.mv_supplier_markdown_dependency_cache') IS NOT NULL AS has_markdown_dependency_cache,
     to_regclass('public.vw_supplier_ml_latest_predictions') IS NOT NULL AS has_ml_latest_predictions_view,
     to_regclass('public.supplier_ml_predictions') IS NOT NULL AS has_supplier_ml_predictions_table,
@@ -2479,7 +2497,49 @@ SELECT
         WHERE table_schema = 'public'
           AND table_name = 'mv_supplier_decision_score_cache'
           AND column_name = 'ml_supplier_score'
-    ) AS decision_score_cache_has_ml_supplier_score;
+    ) AS decision_score_cache_has_ml_supplier_score,
+    (
+        SELECT COUNT(DISTINCT column_name)
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'mv_supplier_decision_score_cache'
+          AND column_name = ANY(ARRAY[
+              'supplier_id', 'supplier_name', 'period_from', 'period_to',
+              'revenue', 'units', 'fullprice_revenue_share', 'fullprice_sellthrough',
+              'pre_markdown_margin_pct', 'repeat_winner_rate',
+              'markdown_dependency_score', 'stock_risk_score', 'return_rate',
+              'category_focus_score', 'supplier_quality_index', 'recommendation_code',
+              'confidence_score', 'post_signal_coverage'
+          ])
+    ) = 18 AS decision_score_cache_has_required_columns,
+    (
+        SELECT COUNT(DISTINCT column_name)
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'mv_supplier_decision_score_cache_90d'
+          AND column_name = ANY(ARRAY[
+              'supplier_id', 'supplier_name', 'period_from', 'period_to',
+              'revenue', 'units', 'fullprice_revenue_share', 'fullprice_sellthrough',
+              'pre_markdown_margin_pct', 'repeat_winner_rate',
+              'markdown_dependency_score', 'stock_risk_score', 'return_rate',
+              'category_focus_score', 'supplier_quality_index', 'recommendation_code',
+              'confidence_score', 'post_signal_coverage'
+          ])
+    ) = 18 AS decision_score_cache_90d_has_required_columns,
+    (
+        SELECT COUNT(DISTINCT column_name)
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'mv_supplier_decision_score_cache_180d'
+          AND column_name = ANY(ARRAY[
+              'supplier_id', 'supplier_name', 'period_from', 'period_to',
+              'revenue', 'units', 'fullprice_revenue_share', 'fullprice_sellthrough',
+              'pre_markdown_margin_pct', 'repeat_winner_rate',
+              'markdown_dependency_score', 'stock_risk_score', 'return_rate',
+              'category_focus_score', 'supplier_quality_index', 'recommendation_code',
+              'confidence_score', 'post_signal_coverage'
+          ])
+    ) = 18 AS decision_score_cache_180d_has_required_columns;
 """;
 
         await using var connection = await OpenConnectionAsync(analyticsConnectionString, ct);
@@ -2488,16 +2548,21 @@ SELECT
 
         if (!await reader.ReadAsync(ct))
         {
-            return new PrecomputedQueryCapabilities(false, false, false, false);
+            return new PrecomputedQueryCapabilities(false, false, false, false, false, false, false, false, false);
         }
 
         return new PrecomputedQueryCapabilities(
             GetBoolean(reader, "has_decision_score_cache"),
+            GetBoolean(reader, "has_decision_score_cache_90d"),
+            GetBoolean(reader, "has_decision_score_cache_180d"),
             GetBoolean(reader, "has_markdown_dependency_cache"),
             GetBoolean(reader, "has_ml_latest_predictions_view")
                 && GetBoolean(reader, "has_supplier_ml_predictions_table")
                 && GetBoolean(reader, "has_model_version_table"),
-            GetBoolean(reader, "decision_score_cache_has_ml_supplier_score"));
+            GetBoolean(reader, "decision_score_cache_has_ml_supplier_score"),
+            GetBoolean(reader, "decision_score_cache_has_required_columns"),
+            GetBoolean(reader, "decision_score_cache_90d_has_required_columns"),
+            GetBoolean(reader, "decision_score_cache_180d_has_required_columns"));
     }
 
     private static async Task<SupplierMlQueryCapabilities> GetSupplierMlQueryCapabilitiesAsync(
@@ -2743,6 +2808,13 @@ SELECT
         bool applyDateRangeFilter = true)
     {
         var windowDays = windowOverride ?? GetDecisionScoreWindowDays(filters);
+        if (!capabilities.HasDecisionScoreCacheForWindow(windowDays))
+        {
+            throw new SupplierDecisionUnavailableException(
+                "MISSING_SCHEMA",
+                $"Supplier decision dataset {ResolveEffectiveDataset(windowDays)} nije spreman za traženi period.");
+        }
+
         var mvName = SelectDecisionScoreMv(windowDays);
         var parameters = new List<NpgsqlParameter>();
         var where = new StringBuilder("WHERE 1 = 1");

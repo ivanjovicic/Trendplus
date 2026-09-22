@@ -342,7 +342,7 @@ public sealed class SupplierDecisionHubContractTests
         Assert.Contains("supplierId=7", report.StableQueryUrl, StringComparison.Ordinal);
         Assert.Contains("storeId=3", report.StableQueryUrl, StringComparison.Ordinal);
         Assert.Contains("scope=existing", report.StableQueryUrl, StringComparison.Ordinal);
-        Assert.True(report.RecommendationAllowed);
+        Assert.False(report.RecommendationAllowed);
         Assert.False(report.UsedFallback);
         Assert.Equal("stale", report.DataFreshnessStatus);
         Assert.Contains("Supplier agregati kasne.", report.Warnings);
@@ -430,6 +430,11 @@ public sealed class SupplierDecisionHubContractTests
 
         Assert.False(report.RecommendationAllowed);
         Assert.False(report.UsedFallback);
+        Assert.Equal("90d", report.Period.RequestedDataset);
+        Assert.Null(report.Period.EffectiveDataset);
+        Assert.Null(report.Period.EffectivePeriodLabel);
+        Assert.Null(report.Period.EffectiveFromUtc);
+        Assert.Null(report.Period.EffectiveToUtc);
         Assert.Empty(report.Kpis);
         Assert.Empty(report.RecommendedActions);
         Assert.Single(report.Sections);

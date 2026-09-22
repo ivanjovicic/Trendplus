@@ -2,9 +2,10 @@
 
 Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompts: RQ385, RQ388, RQ389 and RQ401 (independent Pre/Post, Pre-Nivelacija, Color and Supplier Decision owner lanes)
+Current READY prompts: RQ385, RQ388 and RQ389 (independent Pre/Post, Pre-Nivelacija and Color owner lanes); RQ401 is IN_PROGRESS in this workspace.
 
 Owner audit 2026-09-22: under the user's direct Supplier Decision Hub screen/backend audit request, `RQ401` became the current Supplier Decision READY prompt for cache-schema/effective-period compatibility. `RQ402`-`RQ405` were added as WAITING detail, filter-parity, effective-period and localization follow-ups. Existing RQ READY lanes remain independently runnable under the current queue governance.
+Owner claim 2026-09-22: `RQ401` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ401-codex.lock.md`.
 
 Owner audit 2026-09-22: under the user's direct Daily Sales by Shift screen/backend audit request, `RQ375` returned to `WAITING`, `RQ381` moved to `READY` as the current signed-quantity/revenue contract prompt, and `RQ382`-`RQ384` were added as later `WAITING` scope, shift-provenance and safe-error follow-ups. Daily Sales ASCII Serbian copy remains routed to `RQ306`; residual English/technical UI copy remains routed to `RQ325`.
 Owner audit 2026-09-22: under the user's direct Pre/Post Nivelacija screen/backend audit request, `RQ385` became the primary `READY` prompt for request-scope/cache lineage, while `RQ386` and `RQ387` were added as `WAITING` cohort/denominator and runtime-payload/error-contract follow-ups. The existing Daily Sales `RQ381` remains independently `READY`; Pre/Post ASCII Serbian and residual English/technical copy are routed to `RQ306`/`RQ325`.
@@ -1385,7 +1386,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ398 | WAITING | color-identity-canonicalization | Canonicalize Color identity and collision-safe detail keys |
 | RQ399 | WAITING | color-source-provenance | Correct Color source and metric provenance |
 | RQ400 | WAITING | color-decision-score-contract | Define an authoritative Color decision-score contract |
-| RQ401 | READY | supplier-decision-cache-schema-provenance | Align Supplier Decision cache capabilities, schema projections and effective-period lineage |
+| RQ401 | IN_PROGRESS | supplier-decision-cache-schema-provenance | Align Supplier Decision cache capabilities, schema projections and effective-period lineage |
 | RQ402 | WAITING | supplier-decision-detail-source-parity | Connect rich supplier decision details to the canonical screen |
 | RQ403 | WAITING | supplier-decision-filter-parity | Align backend-supported supplier filters with the canonical screen and report |
 | RQ404 | WAITING | supplier-decision-effective-period-semantics | Make requested/effective supplier periods consistent across metrics and actions |
@@ -21779,7 +21780,7 @@ The Color UI and export define a decision-score field, but the backend response 
 
 ## RQ401 - Align Supplier Decision cache schema and effective-period lineage
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1
 Type: backend/analytics/contract/tests
 Feature family: supplier-decision-cache-schema-provenance

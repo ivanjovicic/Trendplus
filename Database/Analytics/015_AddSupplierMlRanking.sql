@@ -531,7 +531,12 @@ SELECT
     ml_supplier_score,
     blended_score AS supplier_quality_index,
     recommendation_code,
-    confidence_score
+    confidence_score,
+    ROUND(COALESCE(post_signal_coverage, 0), 4) AS post_signal_coverage,
+    ROUND(COALESCE(did_signal_coverage, 0), 4) AS did_signal_coverage,
+    ROUND(COALESCE(cost_signal_coverage, 0), 4) AS cost_signal_coverage,
+    evidence_quality_status,
+    return_rate_missing_evidence_reason
 FROM recommendation_logic;
 
 COMMENT ON VIEW vw_supplier_decision_score IS

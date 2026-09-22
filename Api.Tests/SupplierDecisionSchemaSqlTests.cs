@@ -314,6 +314,40 @@ public sealed class SupplierDecisionSchemaSqlTests
     }
 
     [Fact]
+    public void SupplierDecisionPrecomputedCapabilitiesGateEachSelectedWindowAndRequiredColumns()
+    {
+        var endpoint = ReadRepoFile("Api/Endpoints/SupplierDecisionHubEndpoints.cs");
+
+        Assert.Contains("var windowDays = GetDecisionScoreWindowDays(filters);", endpoint);
+        Assert.Contains("capabilities.HasDecisionScoreCacheForWindow(windowDays)", endpoint);
+        Assert.Contains("to_regclass('public.mv_supplier_decision_score_cache_90d')", endpoint);
+        Assert.Contains("to_regclass('public.mv_supplier_decision_score_cache_180d')", endpoint);
+        Assert.Contains("table_name = 'mv_supplier_decision_score_cache_90d'", endpoint);
+        Assert.Contains("table_name = 'mv_supplier_decision_score_cache_180d'", endpoint);
+        Assert.Contains("'post_signal_coverage'", endpoint);
+        Assert.Contains("'confidence_score'", endpoint);
+        Assert.Contains("'recommendation_code'", endpoint);
+        Assert.Contains("throw new SupplierDecisionUnavailableException(\n                \"MISSING_SCHEMA\"", endpoint);
+        Assert.DoesNotContain("? GetDecimal(reader, \"post_signal_coverage\")\n                    : 1m", endpoint);
+    }
+
+    [Fact]
+    public void SupplierDecisionAllTimeMlProjectionCarriesTheSameEvidenceContract()
+    {
+        var sql = ReadRepoFile("Database/Analytics/015_AddSupplierMlRanking.sql");
+
+        Assert.Contains("ROUND(COALESCE(post_signal_coverage, 0), 4) AS post_signal_coverage", sql);
+        Assert.Contains("ROUND(COALESCE(did_signal_coverage, 0), 4) AS did_signal_coverage", sql);
+        Assert.Contains("ROUND(COALESCE(cost_signal_coverage, 0), 4) AS cost_signal_coverage", sql);
+        Assert.Contains("evidence_quality_status", sql);
+        Assert.Contains("return_rate_missing_evidence_reason", sql);
+        AssertInOrder(
+            sql,
+            "confidence_score,\n    ROUND(COALESCE(post_signal_coverage, 0), 4) AS post_signal_coverage",
+            "CREATE MATERIALIZED VIEW IF NOT EXISTS mv_supplier_decision_score_cache AS");
+    }
+
+    [Fact]
     public void SupplierDecisionWindowedMvAudit_Confirms90d180dAndAllTimeContract()
     {
         var sql = ReadRepoFile("Database/Migrations/029_AddSupplierDecisionWindowedViews.sql");
