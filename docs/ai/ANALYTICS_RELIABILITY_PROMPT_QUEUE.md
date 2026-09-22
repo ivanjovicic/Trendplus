@@ -2,8 +2,9 @@
 
 Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ375
+Current READY prompt: RQ381
 
+Owner audit 2026-09-22: under the user's direct Daily Sales by Shift screen/backend audit request, `RQ375` returned to `WAITING`, `RQ381` moved to `READY` as the current signed-quantity/revenue contract prompt, and `RQ382`-`RQ384` were added as later `WAITING` scope, shift-provenance and safe-error follow-ups. Daily Sales ASCII Serbian copy remains routed to `RQ306`; residual English/technical UI copy remains routed to `RQ325`.
 Owner promotion 2026-09-22: under the user's direct Inventory audit request, `RQ308` moved from `WAITING` to `READY` as the current Inventory period-selection and snapshot-provenance prompt. `RQ371` and `RQ372` were added as later `WAITING` follow-ups.
 Owner promotion 2026-09-22: under the user's direct Sales by Supplier audit request, `RQ308` returned to `WAITING`, `RQ373` moved to `READY` as the current supplier visible-scope/KPI parity prompt, and `RQ374` was added as a later `WAITING` supplier detail trust-contract follow-up. Existing localization findings remain routed to `RQ306` and `RQ325`.
 Owner promotion 2026-09-22: under the user's direct Shoe Type Sales screen/backend audit request, `RQ373` returned to `WAITING`, `RQ375` moved to `READY` as the current Shoe Type aggregate margin/cost-quality contract prompt, and `RQ376`/`RQ377` were added as later `WAITING` pre/post aggregate and detail-trust follow-ups. Shoe Type English/ASCII copy remains routed to `RQ306`/`RQ325`, and the existing dead truncation label remains `RQ329`. The Supplier lane remains WAITING because its high-value endpoint work overlaps the same backend owner/file and has explicit dependencies, not because only one READY is allowed.
@@ -16530,6 +16531,8 @@ Representative files:
 - Services: `dailySalesStatsApi.ts`, `colorSalesStatsApi.ts`, `shoeTypeSalesStatsApi.ts`, `supplierSalesStatsApi.ts`
 - Shoe Type concrete residuals: `ShoeTypeSalesStatsPage.tsx:667,716-719,1000-1015,1528,1580-1649` and `shoeTypeSalesStatsApi.ts:162` contain `trosak`, `pokrice`, `registrovnom`, `prodanih`, `rucne`, `potvrdjeno`, `ucitane`, `prosirite`, `ne moze`, `ispravis` and `Greska ... obuce`.
 - Generic Shoe Type detail concrete residuals: `AnalyticsDetailReadService.cs:175-176,550-590` emits `Tip obuce`, `kolicina`, `pokrice`, `impact`, `marzni`, `trosak`, `sacuvana` and `koriscen` without Serbian diacritics.
+- Daily Sales concrete residuals: `DailySalesStatsPage.tsx:1084-1165,1197-1200,1237,1579,1670-1694,1935-1938` contains ASCII Serbian (`dobavljac`, `racuna`, `nenumerickim`, `provjeriti`, `kratkorocne`, `odvojis`) and technical `N/A`/`problem` wording; `DailySalesStatsPage.tsx:1579` exposes `Daily sales analytics (scope: ...)`.
+- Daily Sales backend warnings: `DailySalesStatsService.cs:272-314,437,484,489,498` contain ASCII Serbian (`racuna`, `iskljucena`, `oznaceni`, `dobavljaci`, `kolicine`, `smena`, `mapirana`).
 
 Reproduction: scan Operacije screens for missing `č/ć/š/đ/ž`. Risk: inconsistent pilot polish and reduced trust vs other localized surfaces.
 
@@ -17461,6 +17464,8 @@ English remains in Operacije trust/snapshot/export strings beyond RQ301/303/304/
 - `ColorSalesStatsPage.tsx:657`, `816`, `821`, `94`; `ProdajaPrePostNivelacijePage.tsx:1266`, `1583`.
 - `SupplierSalesStatsPage.tsx:369`, `410`, `484`, `1107`, `1236`, `1490`, `2038`, `2175` still expose English/technical copy such as `Low signal`, `Supplier sales stats`, `canonical`, `Supplier decision detail`, `AI`, `historija`, `snapshot` and `detalj`.
 - `ShoeTypeSalesStatsPage.tsx:314,667,713-721,963-964,1214,1339,1522,1649` exposes `Low signal`, `Sales facts analytics`, `snapshot`, `impact` and `Data quality`; `AnalyticsDetailReadService.cs:566-620` exposes `impact`, `fallback`, `snapshot` and `Data scope` in the Shoe Type detail projection.
+- `DailySalesStatsPage.tsx:242,1197-1200,1579,1693,1935-1938` exposes `N/A`, English `problem` inflection, `Daily sales analytics (scope: ...)`, technical `MA7`/`Top N` context and analyst-oriented mixed copy.
+- `DailySalesStatsService.cs:329,491-493,567` contains English-only log messages (`Daily-sales`, `fallback applied`, `Daily-sales generated`); keep logs technically searchable but ensure no equivalent English leaks into user-facing metadata, and localize the warnings named by `RQ306`.
 - Inventory residuals include `InventoryPage.tsx` fallback headings/copy such as `Alerts`, `Forecast` and `snapshot`, `DemandForecastPanel.tsx` labels such as `OOS`/`SKU`/`Status`, `InventoryAlertsFeed.tsx` `Info`/`N/A`, `inventoryUtils.ts` `Sell-through`/`Snapshot`, and export metadata such as `Aging 90+`.
 
 Reproduction: open color detail snapshot, trust subtitles, inventory alerts — English visible in Serbian UI.
@@ -20263,7 +20268,7 @@ Reproduction: open a supplier row, compare inline detail with `Puni detalj`, the
 
 ## RQ375 - Align Shoe Type weighted margin baseline and cost-quality semantics
 
-Status: READY
+Status: WAITING
 Priority: P1
 Type: backend-contract/frontend/tests
 Feature family: shoe-type-margin-quality-contract
@@ -20599,3 +20604,257 @@ Supplier row-level pre/post impact/recommendation uses comparable split-policy e
 
 - RQ373 owns display/reference population.
 - Reuse the shared split policy; do not create a frontend formula.
+
+---
+
+## RQ381 - Align Daily Sales signed quantity/revenue contract and reconciliation
+
+Status: READY
+Priority: P1
+Type: backend-contract/frontend-runtime-validation/tests
+Feature family: daily-sales-signed-numeric-contract
+Parallel-safe: no
+Owner: Analytics Reliability / Daily Sales
+Commit suggestion: `fix(analytics): preserve daily sales signed evidence`
+
+### Problem
+
+Daily Sales aggregates `ProdajaStavka.Kolicina` and `Kolicina * Cena` as signed evidence, so returns, storno and corrections can legitimately produce negative row quantities or revenue. The frontend runtime schema still requires several metadata values to be non-negative, which rejects a valid backend response as “response nije u očekivanom formatu”. The backend and UI also hide the same signed evidence: supplier ranking drops suppliers with non-positive net quantity, `Ostali` clamps a negative remainder to zero, and tests assert non-negative sales values as if returns were impossible.
+
+### Evidence
+
+- `Klijent/clientapp/src/validation/analyticsResponseSchemas.ts:173-189` applies non-negative validators to `unknownSupplierItems`, `offShiftItems`, `offShiftRevenue`, `totalItemsInRange`, `nonStandardReceiptRevenue` and `debtReceiptRevenue`, while the service sums signed quantity/revenue.
+- `Api/Services/DailySalesStatsService.cs:224-255,340-390` aggregates signed `Kolicina` and `Kolicina * Cena`; `:396-407` keeps only suppliers with `TotalQty > 0`; `:454-458` calculates `Ostali` with `Math.Max(0, totalItems - sumTop)`.
+- `Api.Tests/DailySalesStatsIntegrationTests.cs:180-230` currently asserts supplier revenue, shift counts and total quantity are non-negative instead of covering return/storno evidence.
+- `DailySalesStatsPage.tsx:377-410,1089-1102` treats signed quality values as positive-only and can mark a negative off-shift amount as healthy.
+
+Reproduction: return a valid Daily Sales payload with negative `totalItemsInRange` or `offShiftRevenue` from a return/correction. The Zod boundary rejects it before rendering. With mixed positive and negative supplier quantities, the current top-N/`Ostali` projection no longer partitions the signed total.
+
+### Scope
+
+- Daily Sales DTO/API schema, signed aggregation and top-supplier/`Ostali` reconciliation, page numeric/quality projections and nearest backend/frontend tests.
+- Preserve true zero, signed measured value, unavailable value, empty response and data-quality warning as distinct states.
+- Do not invent a separate return accounting model; use the existing signed sales facts and document units/denominators.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ257`, `RQ289`, `RQ290`, `RQ352`, `RQ363`, `RQ364`
+- `DailySalesStatsService.cs`, `DailySalesStatsDto.cs`, `analyticsResponseSchemas.ts`, `DailySalesStatsPage.tsx` and Daily Sales focused tests
+
+### Do
+
+1. Declare which fields are signed aggregates (quantity/revenue) and which remain non-negative counts or percentages; align DTOs, Zod validators and labels to that contract.
+2. Preserve negative/zero/positive supplier and row evidence through top-N selection and `Ostali`, or explicitly expose an unavailable reconciliation state when a signed top-N partition cannot be represented by the current columns.
+3. Remove positive-only quality tests/tones that turn negative but measured return values into fake “good” or invalid payloads.
+4. Keep frontend calculations derived from authoritative backend fields and fail closed on non-finite values.
+
+### Tests
+
+- valid negative return/storno quantity and revenue payload passes runtime validation;
+- mixed positive/negative suppliers preserve or explicitly mark row/period reconciliation and do not clamp signed evidence to zero;
+- true zero, unavailable/null, empty and warning states remain distinct;
+- focused Daily Sales backend/frontend specs, analytics guardrails/typecheck/build as selected and `git diff --check`.
+
+### Acceptance
+
+- A valid signed Daily Sales response no longer fails runtime validation because a signed aggregate is negative.
+- Returns/corrections remain visible as measured signed evidence; no `Math.Max`/positive-only ranking silently erases them.
+- Row, metadata, KPI, quality and export values declare consistent units and denominators.
+- No signed error/unknown value becomes a trusted zero or healthy state.
+
+### Dependencies
+
+- `RQ289` owns authoritative supplier ordering and `RQ290` owns partial shift semantics; preserve both.
+- `RQ382` owns data-scope parity and `RQ383` owns shift-assignment provenance; do not fold those contracts into this numeric fix.
+
+---
+
+## RQ382 - Align Daily Sales data-scope diagnostics and visible denominators
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/frontend/tests
+Feature family: daily-sales-scope-quality-parity
+Parallel-safe: no
+Owner: Analytics Reliability / Daily Sales
+Commit suggestion: `fix(analytics): align daily sales scope diagnostics`
+
+### Problem
+
+The main Daily Sales aggregation applies `dataScope` through the article's `DataOrigin`, but duplicate-receipt, line-vs-dnevnik mismatch, non-standard-document and excluded-document diagnostics are queried without the same scope. When `existing` or `imported` is selected, warnings and quality counts can describe rows excluded from the table. The no-data availability query also ignores `dataScope` and excluded documents, so the empty-state “available range” can point to data the selected scope cannot display. The page then combines these mixed populations in trust metadata, KPI explanations and supplier concentration denominators.
+
+### Evidence
+
+- `Api/Services/DailySalesStatsService.cs:54-220` builds receipt and reconciliation diagnostics without `DataOrigin` scope predicates; `:224-257` applies `importedOnly`/`existingOnly` only to the item aggregation.
+- `:500-523` computes `minAvailableDate`/`maxAvailableDate` from all receipt headers, not the selected scope or the same exclusion rules.
+- `DailySalesStatsPage.tsx:545-577,880-890` mixes metadata totals and date-row totals, while `:371-410` uses the metadata total as concentration denominator.
+- Existing `DailySalesStatsServiceTests.GetDailySalesAsync_RespectsDataScopeImported` proves the row filter but not scope parity for warnings, diagnostics or availability.
+
+Reproduction: select `dataScope=imported` for a period containing existing-only duplicate/mismatch records and no imported sales. The response can be empty for the table while still reporting unrelated warnings and an all-scope available date range.
+
+### Scope
+
+- Daily Sales service diagnostics/availability queries, response provenance/denominators, page trust/empty/KPI metadata and focused tests.
+- Keep the existing `all`/`existing`/`imported` values and cache-key behavior; do not redesign global data-scope infrastructure.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ278`, `RQ289`, `RQ352`, `RQ364`
+- `DailySalesStatsService.cs`, `DailySalesStatsPage.tsx`, `dailySalesStatsApi.ts` and integration tests
+
+### Do
+
+1. Define one scoped population for rows, totals, quality diagnostics and empty availability, including document exclusions and article-origin semantics.
+2. Apply that population consistently to receipt/mismatch/non-standard/debt diagnostics and min/max available dates, or label an intentionally broader diagnostic as a separate population.
+3. Expose the denominator/provenance needed by the page so “Ukupno komada”, supplier concentration, `Ostali`, warnings and empty-state recovery cannot silently mix scoped and all-scope values.
+4. Add a scope/period/store matrix proving no unrelated warning or availability range leaks into the selected response.
+
+### Tests
+
+- existing-only and imported-only fixtures with out-of-scope diagnostics;
+- scoped empty period versus all-scope populated period;
+- store + scope + exclusion combinations and cache-repeat determinism;
+- page trust header, empty state, concentration and export metadata preserve selected scope;
+- focused backend/frontend tests, analytics guardrails/typecheck/build as selected and `git diff --check`.
+
+### Acceptance
+
+- Every user-visible Daily Sales metric and warning either uses the selected scope or explicitly declares a different scope.
+- Empty-state available dates refer to data recoverable under the selected scope and store.
+- Concentration, total/visible item labels and exports use one documented denominator.
+- Scope changes cannot present stale or unrelated quality evidence as current truth.
+
+### Dependencies
+
+- `RQ381` owns signed numeric semantics; this prompt owns population/scope parity.
+- `RQ289` remains the owner of supplier ordering, not this prompt.
+
+---
+
+## RQ383 - Make Daily Sales off-shift and no-time fallback provenance explicit
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/frontend/tests
+Feature family: daily-sales-shift-provenance
+Parallel-safe: no
+Owner: Analytics Reliability / Daily Sales
+Commit suggestion: `fix(analytics): expose daily sales shift provenance`
+
+### Problem
+
+When no row has a classifiable hour, `DailySalesStatsService` maps all rows to the first shift. The response does not expose how many items/revenue were mapped by this fallback, and `offShiftItems`/`offShiftRevenue` remain zero in that branch. The frontend therefore sees complete numeric first/second-shift values and can render a real first-shift share even though the source only proves daily totals, not shift assignment. In the mixed-hour branch, off-shift values are also remapped to the first shift and the UI does not distinguish those values from measured first-shift sales.
+
+### Evidence
+
+- `Api/Services/DailySalesStatsService.cs:317-369` enables `useNoTimeDataFallback`, remaps every unclassified row to shift 1 and counts fallback values only in local variables.
+- `:487-499` emits only a free-text warning; no DTO field carries fallback count, revenue or assignment status.
+- `Klijent/clientapp/src/utils/dailyShiftSummary.ts:20-49` classifies non-null fallback-filled shift values as complete; `DailySalesStatsPage.tsx:548-571,1683-1690,1970-2010` calculates/render shares and charts from them.
+- `Api.Tests/DailySalesStatsServiceTests.cs:142-228` explicitly accepts fallback rows as first-shift sales and asserts `OffShiftItems == 0`, proving the unsafe contract is locked in.
+
+Reproduction: load an imported dataset whose timestamps are all midnight or 02:00. The table shows all items in “Prva smena”, while the only reliable fact is the day-level quantity/revenue.
+
+### Scope
+
+- Shift assignment metadata and backend classification, frontend shift evidence/chart/KPI/export states and focused tests.
+- Preserve the declared boundaries 06:00–13:59 and 14:00–21:59; decide explicitly whether unassigned values remain unallocated or are shown as a visibly labelled fallback.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`
+- `RQ290`, `RQ335`, `RQ352`, `RQ381`
+- `DailySalesStatsService.cs`, `DailySalesStatsDto.cs`, `dailyShiftSummary.ts`, `DailySalesStatsPage.tsx` and shift tests
+
+### Do
+
+1. Add explicit provenance/state for measured, partial, off-shift and no-time fallback assignments, including mapped quantity/revenue where applicable.
+2. Stop presenting fallback-mapped values as measured first-shift values or as a trusted shift share; preserve daily totals separately.
+3. Align table, chart, KPI, quality panel, export and tooltips with the same assignment state and denominator.
+4. Keep warning/meta semantics distinct from successful empty and true measured zero responses.
+
+### Tests
+
+- measured boundary-hour rows (06:00, 13:59, 14:00, 21:59, 22:00);
+- all-unclassified timestamps and mixed classified/off-shift timestamps;
+- valid zero versus unavailable shift evidence, signed quantities and fallback metadata;
+- page/chart/export never labels fallback as complete first shift;
+- focused backend/frontend tests, analytics guardrails/typecheck/build as selected and `git diff --check`.
+
+### Acceptance
+
+- A shift share is measured only when its numerator and denominator have declared shift-assignment evidence.
+- No-time/off-shift fallback remains visible and cannot become a fake first-shift result or fake green quality state.
+- Daily revenue/quantity totals remain available independently of shift allocation.
+
+### Dependencies
+
+- `RQ290` owns generic partial-shift classification; this prompt supplies the backend provenance needed by that helper.
+- `RQ381` owns signed quantity/revenue treatment; do not reintroduce non-negative assumptions here.
+
+---
+
+## RQ384 - Make Daily Sales endpoint errors safe and traceable
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/frontend/tests
+Feature family: daily-sales-safe-error-contract
+Parallel-safe: no
+Owner: Analytics Reliability / Daily Sales
+Commit suggestion: `fix(analytics): sanitize daily sales error responses`
+
+### Problem
+
+The Daily Sales endpoint returns `ex.Message` in the generic 500 `Problem` detail and does not consistently attach the existing correlation identifier/meta contract. The frontend displays that detail directly and validates successful payloads through a strict schema, so database/provider or implementation exceptions can become technical or schema-invalid user messages instead of a safe, traceable analytics error. The reported “response nije u očekivanom formatu” path currently gives the operator no reliable correlation ID to support investigation.
+
+### Evidence
+
+- `Api/Endpoints/DailySalesStatsEndpoints.cs:74-104` returns generic problem responses for cancellation/database/unknown exceptions; `:99-103` exposes `ex.Message` and does not resolve/apply a correlation ID.
+- `Api/Dtos/AnalyticsResponseMetaDto.cs:11-16` and `AnalyticsResponseMetaFactory.Error` already define `CorrelationId` and safe error fields used by other analytics endpoints.
+- `Klijent/clientapp/src/services/analyticsHttp.ts:59-80,120-200` parses arbitrary problem details and surfaces them directly; a non-2xx problem shape has no `meta` contract.
+
+Reproduction: force a provider/serialization failure or return a malformed Daily Sales payload. The page shows an implementation/provider detail or generic response-format failure without a stable correlation reference.
+
+### Scope
+
+- Daily Sales endpoint error mapping/logging, correlation/meta response contract, frontend safe-message mapping and nearest endpoint/page tests.
+- Preserve HTTP status semantics, cancellation behavior and existing successful/empty/warning payloads; do not expose secrets or provider internals.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `AnalyticsResponseMetaFactory.cs`, `DataQualityEndpoints.cs`, `analyticsHttp.ts`, `AnalyticsErrorState.tsx` and Daily Sales tests
+
+### Do
+
+1. Resolve a correlation ID at the endpoint boundary and return a safe, stable error contract for database, timeout, cancellation and unexpected failures.
+2. Keep full exception details in logs/handled-error persistence only; never return raw `ex.Message` to the user.
+3. Ensure frontend error parsing preserves safe Serbian fallback text and shows correlation ID when available without treating problem JSON as a successful analytics payload.
+4. Add regression coverage for timeout/provider/unknown errors, malformed success payloads and retry/abort behavior.
+
+### Tests
+
+- endpoint error responses have safe detail, status/code and correlation ID;
+- raw exception/provider/secret text is not returned;
+- frontend renders a controlled error for non-2xx and schema-invalid responses, with no fake KPI zero;
+- focused backend/frontend tests, analytics guardrails/typecheck/build as selected and `git diff --check`.
+
+### Acceptance
+
+- Daily Sales failures are safe for users, diagnosable by support and consistent with the analytics error/meta contract.
+- A backend error or malformed payload cannot appear as a successful empty/zero/healthy screen.
+- Correlation IDs survive endpoint-to-error-state handling when available.
+
+### Dependencies
+
+- Reuse the shared analytics error/meta conventions; do not create a Daily Sales-only error format.
+- `RQ325` owns residual English/technical user-facing copy, including `Daily sales analytics` and `N/A`; this prompt owns failure semantics and traceability.
