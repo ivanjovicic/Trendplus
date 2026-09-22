@@ -23,13 +23,17 @@ Evidence state: synchronized
 - Klijent/clientapp/src/utils/__tests__/dailyShiftSummary.spec.ts
 - Klijent/clientapp/src/validation/analyticsResponseSchemas.ts
 - Klijent/clientapp/src/validation/__tests__/analyticsResponseSchemas.spec.ts
+- Klijent/clientapp/scripts/known-guardrail-baseline.json
 - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md
+- MASTER_ROADMAP.md
+- .ai/runs/2026-09-22-rq381-signed-contract-evidence.md
 
 ## Validation run
 - `git diff --check` -> pass
 - Focused frontend Vitest (`src/validation/__tests__/analyticsResponseSchemas.spec.ts`, `src/utils/__tests__/dailyShiftSummary.spec.ts`, `src/pages/__tests__/DailySalesStatsPage.numericState.spec.ts`) -> pass, 3 files / 28 tests
 - `npm run check:analytics-guardrails` -> pass: encoding, guardrail self-test, baseline-only scan, and TypeScript build
 - `npm run build` -> pass
+- `node scripts/check-prompt-queues.mjs` -> pass, 526 tasks
 - Focused backend .NET test -> blocked before execution: `dotnet` unavailable
 
 ## Validation not run
@@ -37,7 +41,7 @@ Evidence state: synchronized
 - Remote CI -> not inspected; it is residual risk and was not an acceptance blocker.
 
 ## Documentation impact
-- RQ381 is marked `IN_PROGRESS` in the owning analytics reliability queue; the roadmap records the claim.
+- RQ381 is marked `DONE` in the owning analytics reliability queue with a completion note; `MASTER_ROADMAP.md` records delivery and keeps RQ385 as the current READY pointer.
 - The frontend guardrail baseline line reference was updated from 731 to 745 because the existing reviewed `setData(null)` finding moved with the added error formatter.
 
 ## What was missed
