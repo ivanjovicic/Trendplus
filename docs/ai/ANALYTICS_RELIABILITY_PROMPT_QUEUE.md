@@ -2,9 +2,10 @@
 
 Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ308
+Current READY prompt: RQ373
 
 Owner promotion 2026-09-22: under the user's direct Inventory audit request, `RQ308` moved from `WAITING` to `READY` as the current Inventory period-selection and snapshot-provenance prompt. `RQ371` and `RQ372` were added as later `WAITING` follow-ups; the queue keeps one canonical READY prompt per program.
+Owner promotion 2026-09-22: under the user's direct Sales by Supplier audit request, `RQ308` returned to `WAITING`, `RQ373` moved to `READY` as the current supplier visible-scope/KPI parity prompt, and `RQ374` was added as a later `WAITING` supplier detail trust-contract follow-up. Existing localization findings remain routed to `RQ306` and `RQ325`; the queue keeps one canonical READY prompt per program.
 
 Owner promotion 2026-09-21: under the user's explicit instruction to claim the next prompt, `RQ303` moved from `WAITING` to `READY` as the next P1 Daily Sales localization slice after `RQ302`.
 
@@ -1291,7 +1292,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ305 | WAITING | operations-supplier-ia-clarity | Clarify Operacije menu entries that redirect into canonical Supplier tabs |
 | RQ306 | WAITING | operations-diacritics-pass | Fix missing Serbian diacritics across Operacije user-facing copy |
 | RQ307 | WAITING | shoe-type-impact-label | Replace English nivelacija impact label on Shoe Type surface |
-| RQ308 | READY | inventory-period-provenance | Add Inventory period control and make snapshot/signal semantics explicit |
+| RQ308 | WAITING | inventory-period-provenance | Add Inventory period control and make snapshot/signal semantics explicit |
 | RQ309 | WAITING | operations-nav-icons | Differentiate duplicate Operacije sidebar icons |
 | RQ310 | WAITING | operations-test-route-alignment | Align Operacije page tests with production `/analytics/...` routes |
 | RQ311 | WAITING | operations-guardrail-cleanup | Resolve Operacije guardrail violations for score/reliability mapping |
@@ -1356,6 +1357,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ370 | DONE | inventory-secondary-request-cancellation | Abort Inventory secondary and detail requests on scope changes |
 | RQ371 | WAITING | inventory-signal-period-scope-parity | Keep Inventory signal period and data-scope contracts aligned |
 | RQ372 | WAITING | inventory-alert-filter-contract | Keep Inventory alert filtering, counts and URL state consistent |
+| RQ373 | READY | supplier-sales-visible-scope-parity | Align Supplier Sales visible filters with KPI, chart, table, export and recommendation scope |
+| RQ374 | WAITING | supplier-sales-detail-trust-contract | Align Supplier Sales detail route with recommendation, trust and localized provenance contract |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -16515,6 +16518,7 @@ Commit suggestion: `fix(analytics): restore operacije diacritics`
 Representative files:
 
 - Pages: `DailySalesStatsPage.tsx`, `ColorSalesStatsPage.tsx`, `ShoeTypeSalesStatsPage.tsx`, `ProdajaPrePostNivelacijePage.tsx`, `InventoryPage.tsx`, `SupplierFootwearAnalyticsPage.tsx`
+- Supplier Sales: `SupplierSalesStatsPage.tsx` and its focused page spec.
 - Components: `ActionWorkflowPanel.tsx`, `StoreComparisonPanel.tsx`, `SKUDetailModal.tsx`, `MailSchedulerPanel.tsx`, `InventoryPriorityPanels.tsx`
 - Services: `dailySalesStatsApi.ts`, `colorSalesStatsApi.ts`, `shoeTypeSalesStatsApi.ts`, `supplierSalesStatsApi.ts`
 
@@ -16601,7 +16605,7 @@ Reproduction: open Shoe Type sales with rows lacking nivelacija impact percent b
 
 ## RQ308 - Add Inventory period control and make snapshot/signal semantics explicit
 
-Status: READY
+Status: WAITING
 Priority: P1
 Type: frontend/contract/tests
 Feature family: inventory-period-provenance
@@ -17446,13 +17450,14 @@ English remains in Operacije trust/snapshot/export strings beyond RQ301/303/304/
 ### Evidence
 
 - `ColorSalesStatsPage.tsx:657`, `816`, `821`, `94`; `ProdajaPrePostNivelacijePage.tsx:1266`, `1583`.
+- `SupplierSalesStatsPage.tsx:369`, `410`, `484`, `1107`, `1236`, `1490`, `2038`, `2175` still expose English/technical copy such as `Low signal`, `Supplier sales stats`, `canonical`, `Supplier decision detail`, `AI`, `historija`, `snapshot` and `detalj`.
 - Inventory residuals include `InventoryPage.tsx` fallback headings/copy such as `Alerts`, `Forecast` and `snapshot`, `DemandForecastPanel.tsx` labels such as `OOS`/`SKU`/`Status`, `InventoryAlertsFeed.tsx` `Info`/`N/A`, `inventoryUtils.ts` `Sell-through`/`Snapshot`, and export metadata such as `Aging 90+`.
 
 Reproduction: open color detail snapshot, trust subtitles, inventory alerts — English visible in Serbian UI.
 
 ### Scope
 
-- Operacije-only strings listed above, including the current Inventory residual list.
+- Operacije-only strings listed above, including the current Inventory and Sales by Supplier residual lists.
 
 ### Read first
 
@@ -20095,3 +20100,142 @@ Reproduction: load more than one alert severity, select `Kritično`, then compar
 
 - `RQ308`/`RQ371` own period and data-scope provenance; this prompt owns severity filter state and count parity.
 - `RQ360` owns the reusable analytics invariant matrix; reuse it rather than adding local trust rules.
+
+---
+
+## RQ373 - Align Supplier Sales visible filters with KPI, chart, table, export and recommendation scope
+
+Status: READY
+Priority: P1
+Type: backend-contract/frontend/tests
+Feature family: supplier-sales-visible-scope-parity
+Parallel-safe: no
+Owner: Analytics Reliability / Supplier Analytics
+Commit suggestion: `fix(analytics): align supplier sales visible scope`
+
+### Problem
+
+`SupplierSalesStatsPage` applies `includeUnknown=false` and `supplierId` focus only to the browser-visible rows. The KPI cards, backend-provided totals, PoP trend, data-quality notes, recommendation payloads and several share fields still describe the unfiltered response. The concentration KPI was repaired by `RQ233`, but the remaining page can still show a focused/filtered table next to global totals and chart percentages whose denominator includes hidden suppliers. Export metadata also reports response-global supplier counts while its rows are locally filtered.
+
+This makes a user-selected supplier or “hide unknown” filter look applied while the decision surface still mixes populations. The issue is not a duplicate of `RQ233`: that prompt owns only the top-five concentration numerator/denominator; this prompt owns the complete visible-scope contract.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx:888-894` derives `visibleSuppliers` locally from `includeUnknown` and `activeSupplierId`, without refetching or projecting a scoped response.
+- `:943-964` recalculates concentration from visible known rows, but `:759-830` and `:955-960` retain backend-global totals, margin contribution and total PoP.
+- `:969-984` renders comparison bars from visible rows while using backend `sharePct` and `shareOfMarginContribution`, which are calculated against all response suppliers at `Api/Endpoints/AllEndpoints.cs:1638-1651`.
+- `:1130-1176` sends filtered rows to the table/export toolbar while metadata such as `brojDobavljaca`, unknown counts and quality shares can describe the broader response.
+- `:1748-1754` explains recommendations for the visible list, while recommendation status/confidence is computed by the backend for the unfiltered supplier response.
+- `SupplierConsolidatedPage.tsx:330-350` has a canonical supplier filter, while the overview page also has an independent `includeUnknown` filter; the two scopes are not represented as one backend-owned dataset contract.
+
+Reproduction: load a response containing known and unknown suppliers, select one supplier or uncheck “Prikaži nepoznate”, then compare the visible table, KPI cards, comparison chart, toolbar metadata and recommendation chips. The table becomes narrower while global totals and some percentage fields remain unchanged.
+
+### Scope
+
+- `SupplierSalesStatsPage.tsx`, `supplierSalesStatsApi.ts`, the supplier-sales response/endpoint contract only where needed, and nearest focused page/API tests.
+- One explicit population contract for all visible KPI, chart, table, detail, toolbar/export metadata and recommendation projections.
+- Requested/effective period and `dataScope` must remain unchanged; no new frontend recommendation formula or unrelated Supplier Decision Hub redesign.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ141`, `RQ143`, `RQ145`, `RQ233`, `RQ257`, `RQ264`, `RQ364`
+- `SupplierSalesStatsPage.tsx`, `supplierSalesStatsApi.ts`, `AllEndpoints.cs` and `SupplierSalesStatsPage.premium.spec.tsx`
+
+### Do
+
+1. Choose one backend-owned or explicitly named visible-population contract. A focused supplier and the unknown-supplier toggle must either request scoped aggregates or clearly label every global metric as global.
+2. Align totals, shares, PoP, quality coverage, recommendation counts/status gates, concentration/comparison charts, table rows, detail metadata and export/print metadata to the same population; preserve intentional global-versus-visible distinctions only with explicit labels.
+3. Keep unknown, empty, valid zero, missing and non-finite denominator states distinct. Never calculate a filtered numerator against a global denominator or turn a hidden population into a trusted zero.
+4. Keep backend recommendation/status/confidence/reliability ownership authoritative; the frontend may filter/project but must not recreate decision scoring.
+
+### Tests
+
+- all suppliers, `includeUnknown=false`, unknown-only, focused supplier and focused supplier with no matching row;
+- KPI/table/chart/share/PoP/quality/recommendation/export/detail population parity;
+- valid zero versus null/missing/non-finite denominators and partial response metadata;
+- URL/deep-link and embedded canonical Supplier page parity;
+- focused frontend/API/contract tests, analytics guardrails, typecheck/build as selected by the validation selector, and `git diff --check`.
+
+### Acceptance
+
+- Every visible value is either computed from the same declared population as the visible table or explicitly marked as whole-response/global.
+- No filtered numerator, chart share, recommendation count, export metadata or quality note silently uses an incompatible denominator.
+- Empty, unknown, partial and unavailable evidence stays distinct from measured zero and no recommendation becomes more actionable through client filtering.
+- Canonical standalone/embedded Supplier surfaces and detail/export links preserve the same period, data scope, supplier focus and unknown-supplier semantics.
+
+### Dependencies
+
+- `RQ233` remains the completed top-five concentration-scope correction; do not reopen it.
+- `RQ278` remains the supplier-filter data-scope contract owner, and `RQ281` the embedded freshness owner.
+- `RQ145`/`RQ364` remain broad parity and dataset-projection owners; this prompt is the concrete Supplier Sales reproduction.
+- No dependency on `RQ308`; the Inventory READY prompt was returned to WAITING only to keep the one-READY-per-program invariant while this user-directed supplier audit is current.
+
+---
+
+## RQ374 - Align Supplier Sales detail route with recommendation, trust and localized provenance contract
+
+Status: WAITING
+Priority: P1
+Type: backend-contract/frontend/copy/tests
+Feature family: supplier-sales-detail-trust-contract
+Parallel-safe: no
+Owner: Analytics Reliability / Supplier Analytics
+Commit suggestion: `fix(analytics): align supplier sales detail trust contract`
+
+### Problem
+
+The inline Supplier Sales detail contains status reason, recommendation gate, confidence/reliability and data-quality context, but `Puni detalj` navigates to the generic `/analitika/supplier-sales-stats/:id` route. That route recomputes an aggregate through `AnalyticsDetailReadService` and returns fields plus filter metadata, without the page's backend recommendation object, actionability gate, freshness/provenance basis, effective data window or the complete unknown/data-quality explanation. The detail can therefore look like a stronger or different decision artifact than the row that opened it. Its server labels also contain ASCII Serbian and technical English (`Data scope`, `fallback`, `snapshot`, `impact`).
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx:2036-2042` labels the generic route as a full “AI” detail with history and article analysis, although the route renders `AnalyticsDetailView` fields/metadata rather than that promised decision contract.
+- `:1216-1243` stores a snapshot with `decisionColumns` and toolbar filters, but the server detail is independently recomputed and does not receive the row recommendation/trust payload.
+- `Api/Services/AnalyticsDetailReadService.cs:133-163` builds supplier detail from raw sales rows and `BuildAggregatedDetail`; `:547-620` exposes metrics and filter metadata but no recommendation status, reason, confidence, reliability, `recommendationAllowed`, generated/refresh time, `dataWindow` or provenance basis.
+- `Api/Services/AnalyticsDetailReadService.cs:566-592` emits `impact`, `fallback`, `snapshot` and ASCII copy such as `pokrice`, `trosak` and `marza`; `:620` emits `Data scope`.
+- `Api/Endpoints/AnalyticsTableEndpoints.cs:27-50` has a separate timeout/error contract, while `AnalyticsDetailView.tsx:120-159` renders a generic detail/`Metadata` surface and only falls back to the client snapshot on 404/error.
+
+Reproduction: open a supplier row, compare inline detail with `Puni detalj`, then change the period/scope or load a partial/snapshot-cost response. The two surfaces do not expose the same recommendation/trust state and the route introduces mixed English/ASCII copy.
+
+### Scope
+
+- Supplier Sales detail navigation/snapshot, `AnalyticsDetailReadService` supplier detail DTO projection, generic detail consumer only as required for the contract, user-facing Serbian labels and nearest backend/frontend tests.
+- Preserve the established supplier-sales period, season, store, supplier, unknown and `dataScope` filters; no new recommendation algorithm and no generic detail redesign outside this screen contract.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ112`, `RQ145`, `RQ233`, `RQ257`, `RQ264`, `RQ282`, `RQ306`, `RQ325`
+- `SupplierSalesStatsPage.tsx`, `analyticsTableState.ts`, `AnalyticsDetailView.tsx`, `AnalyticsDetailReadService.cs`, `AnalyticsTableEndpoints.cs` and nearest tests
+
+### Do
+
+1. Define whether the detail is a read-only projection of the row response or a server-authoritative aggregate; use one source of truth and expose its requested/effective period, supplier/data scope, freshness, quality, snapshot/fallback and provenance.
+2. Carry backend-owned recommendation status, reason/reason codes, confidence/reliability and `recommendationAllowed` consistently, or explicitly label the detail as non-decision evidence and remove the overpromising AI/action wording.
+3. Keep row, inline detail, generic detail, table/detail snapshot and export values aligned for valid zero, unavailable, partial, stale and non-finite evidence.
+4. Localize the owned detail labels, tooltips and error/empty copy to Serbian with correct diacritics; retain raw technical identifiers only in an explicit technical channel.
+
+### Tests
+
+- focused route/detail tests for known and unknown suppliers, period/season/store/data-scope/focus round trips and 404/timeout/fallback behavior;
+- parity fixture for row versus inline detail versus generic detail/snapshot/export, including recommendation gate and trust metadata;
+- empty, partial, stale, snapshot-cost, missing-cost, valid-zero and unavailable metrics;
+- no raw English/ASCII technical labels in the user-facing detail; backend/frontend focused tests, encoding/analytics guardrails and `git diff --check`.
+
+### Acceptance
+
+- “Puni detalj” no longer promises a decision/history surface that omits the row’s recommendation and trust contract.
+- Detail and row values preserve the same supplier identity, period, scope, quality, provenance and actionability semantics.
+- Unknown, partial, stale and unavailable detail evidence never becomes a trusted zero, fresh state or actionable recommendation.
+- User-facing Supplier Sales detail copy is Serbian and diacritics-safe across API, page, fallback and export/snapshot paths.
+
+### Dependencies
+
+- `RQ112`/`RQ145`/`RQ264` provide broad summary/detail/output parity rules; this prompt owns the Supplier Sales detail reproduction.
+- `RQ257` owns finite numeric boundary behavior; `RQ282` owns collision-safe supplier identities.
+- `RQ306` and `RQ325` own the broader Operacije diacritics/residual-English passes; coordinate wording and do not duplicate their whole-file sweeps.
+- `RQ373` should establish the visible population contract first so detail scope cannot diverge from the table.
