@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import PreNivelacijaPriorityPage from "../PreNivelacijaPriorityPage";
 import { decisionColumns } from "../preNivelacijaDecision";
 import { PreNivelacijaApiError } from "../../services/preNivelacijaApi";
+import { AnalyticsResponseValidationError } from "../../validation/analyticsResponseValidation";
 
 vi.mock("recharts", () => ({
   BarChart: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
@@ -741,6 +742,23 @@ describe("PreNivelacijaPriorityPage", () => {
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Pre-nivelacija prioriteti trenutno nisu dostupni. Proverite status osvežavanja i pokušajte ponovo.");
     expect(alert).not.toHaveTextContent("ECONNREFUSED");
+  });
+
+  it("shows controlled guidance when the decision payload fails runtime validation", async () => {
+    getPreNivelacijaPrioritetiMock.mockRejectedValueOnce(
+      new AnalyticsResponseValidationError("Pre-nivelacija prioriteti", ["queues.highlightNow.sku"]),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Pre-nivelacija prioriteti trenutno nisu dostupni. Proverite status osvežavanja i pokušajte ponovo.");
+    expect(alert).not.toHaveTextContent("queues.highlightNow.sku");
+    expect(document.querySelector(".pnp-decision-kpis")).toBeNull();
   });
 
   it("restores validated filters, focus, page and scope from a shared URL", async () => {
