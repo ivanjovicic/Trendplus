@@ -2,7 +2,7 @@
 
 Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ402; RQ385, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393 and RQ401 are DONE.
+Current READY prompt: none; RQ385, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ401 and RQ402 are DONE.
 
 Owner completion 2026-09-22: under the user's direct last-commits audit, `RQ393` was delivered directly to `main` in `3b635fe813e0e55f843236d55025c52c030e853d`; Color recommendations now use a covered-revenue-weighted margin baseline, unknown-share evidence remains nullable, historical/fallback/no-cost coverage is separated, and the affected screens use Serbian decision labels. Run log: `.ai/runs/2026-09-22-direct-last-commits-audit-evidence.md`.
 
@@ -11,6 +11,8 @@ Owner claim 2026-09-22: `RQ401` transitioned `READY -> IN_PROGRESS` in this work
 Owner completion 2026-09-22: `RQ401` delivered directly to `main` in `da55fc1625d7f5db58fea56806f1e9613f57cb77` with per-window cache capability gates, required projection-column validation, conservative post-signal coverage handling, all-time evidence-column parity and accurate unavailable effective-period error reporting. Follow-up: `RQ402` and `RQ404` remain `WAITING` on this contract.
 Follow-up audit correction 2026-09-22: the RQ401 capability probe also now validates the five columns consumed from `vw_supplier_ml_latest_predictions`; an existing view with an incomplete projection no longer activates the optional ML join and cannot turn schema drift into a runtime SQL error. Delivered directly to `main` in `07760b749b5b6c2b4d26aff78f7137d6c85becf9`. Run log: `.ai/runs/2026-09-22-direct-other-latest-commits-audit-evidence.md`. Evidence state: synchronized.
 Owner promotion 2026-09-22: after `RQ401` reached DONE and its follow-up correction was delivered, `RQ402` moved `WAITING -> READY` as the next dependency-complete Supplier Decision detail-source prompt. `RQ403`-`RQ405` remain WAITING behind their declared sequencing and owner boundaries.
+Owner claim 2026-09-22: `RQ402` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ402-codex.lock.md`.
+Owner completion 2026-09-22: `RQ402` delivered directly to `main` in `99617cacb0b26ab52fcf39c52ae71bc5ea9a8ad2`; the canonical Supplier Decision screen now opens the rich backend detail contract, carries active filters and requested/effective trust metadata, preserves error/empty/degraded states, and prevents stale detail responses after supplier/filter changes. Run log: `.ai/runs/2026-09-22-RQ402-evidence.md`. Evidence state: synchronized. Follow-up: `RQ403`-`RQ405` remain WAITING.
 Owner claim 2026-09-22: `RQ385` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ385-codex.lock.md`.
 Owner completion 2026-09-22: `RQ385` delivered directly to `main` with implementation `bb6158f003bfd535a3211430970b30abbc761644`; current `origin/main` contains this SHA and the synchronized closure commits. Scoped Pre/Post fact queries, scope-isolated main/options caches, backend provenance and frontend fail-closed validation are delivered. Run log: `.ai/runs/2026-09-22-RQ385-evidence.md`. Evidence state: synchronized.
 Owner claim 2026-09-22: `RQ388` transitioned `READY -> IN_PROGRESS` in this workspace after dependency and collision checks; local runtime lock `.ai/task-locks/RQ388-codex.lock.md`.
@@ -3827,7 +3829,7 @@ Commit suggestion: `fix(analytics): refresh trust caches after data quality snap
 
 ## RQ132 - Explain Dashboard support-signal limits and the next safe operator step
 
-Status: READY
+Status: IN_PROGRESS
 Ready after: `STAB16` is DONE and the canonical production API has a healthy runtime/refresh-status proof
 Priority: P1
 Type: backend-frontend-contract/tests
@@ -22007,7 +22009,7 @@ Supplier Decision backend capability/projection contract and focused tests. Do n
 
 ## RQ402 - Connect rich supplier decision details to the canonical screen
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: frontend/backend/contract/tests
 Feature family: supplier-decision-detail-source-parity
@@ -22054,6 +22056,25 @@ Choose one canonical detail drawer/route, connect it to the backend details cont
 ### Dependencies
 
 - READY AFTER: RQ401 DONE.
+
+### Completion note
+
+- Date: 2026-09-22
+- Status: DONE
+- Completion: The canonical Supplier Decision screen now uses the rich supplier details endpoint and drawer instead of saving a generic analytics snapshot. Detail requests carry the active period, dataset, store, supplier, revenue, confidence and data-scope filters; backend details return canonical trust metadata, data note and response meta; the drawer shows requested/effective period, dataset, quality and recommendation gating. Abort/request-id guards prevent stale supplier or filter responses from replacing current detail state.
+- Changed files: `Api/Endpoints/SupplierDecisionHubEndpoints.cs`; `Api.Tests/SupplierDecisionSchemaSqlTests.cs`; `Klijent/clientapp/src/services/supplierDecisionHubApi.ts`; `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx`; `Klijent/clientapp/src/components/supplierDecisionHub/SupplierDetailDrawer.tsx`; `Klijent/clientapp/src/pages/__tests__/SupplierDecisionHubPage.spec.tsx`; `Klijent/clientapp/scripts/known-guardrail-baseline.json`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-22-RQ402-evidence.md`.
+- Contract/runtime behavior changed: rich detail responses now reuse the canonical dataset trust/meta contract and correlation ID; generic snapshot navigation is no longer the full-detail path; loading, error, empty and degraded states remain distinct.
+- Checks run: focused Supplier Decision page/drawer tests 14/14 passed; RQ402 backend contract test passed 1/1; client `typecheck` passed; `check:analytics-guardrails` passed with 51 reviewed baseline findings and no new findings; client build passed; `git diff --check` passed; queue/agent-instruction/planning validators passed after documentation closure.
+- Checks not run: full client suite, full backend suite, live PostgreSQL/browser proof and remote CI were not run/inspected; the broader filtered backend run had 52 passed and one pre-existing unrelated stale assertion failure in `VendorSalesNivelacijaEndpointFailsClosedForMissingComparabilityEvidence` (expected 3 occurrences, current source has 2).
+- Run log: `.ai/runs/2026-09-22-RQ402-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `99617cacb0b26ab52fcf39c52ae71bc5ea9a8ad2`
+- Main verification: passed - pushed `main` and verified `origin/main` contains `99617cacb0b26ab52fcf39c52ae71bc5ea9a8ad2`.
+- Missed: no known RQ402 runtime omission; an explicit adversarial stale-response UI test remains a useful follow-up, although abort and request-id guards are implemented and the focused rich-detail flow is covered.
+- Follow-up: `RQ403` filter parity, `RQ404` effective-period contract and `RQ405` localization remain WAITING.
+- Residual risk: full suite, live database execution and remote CI remain uninspected; the unrelated stale Nivelacija assertion should be reconciled by its owning prompt.
+- Prompt defect / scope repair: the prompt required visible requested/effective provenance while the existing details DTO had no trust/meta fields; additive optional fields were added to preserve compatibility. No owner boundary was crossed.
 
 ---
 
