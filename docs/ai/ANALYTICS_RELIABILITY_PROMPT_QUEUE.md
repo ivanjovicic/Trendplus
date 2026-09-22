@@ -2,7 +2,7 @@
 
 Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none; RQ385, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ401 and RQ402 are DONE.
+Current READY prompt: RQ403; RQ385, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ401 and RQ402 are DONE.
 
 Owner completion 2026-09-22: under the user's direct last-commits audit, `RQ393` was delivered directly to `main` in `3b635fe813e0e55f843236d55025c52c030e853d`; Color recommendations now use a covered-revenue-weighted margin baseline, unknown-share evidence remains nullable, historical/fallback/no-cost coverage is separated, and the affected screens use Serbian decision labels. Run log: `.ai/runs/2026-09-22-direct-last-commits-audit-evidence.md`.
 
@@ -13,6 +13,8 @@ Follow-up audit correction 2026-09-22: the RQ401 capability probe also now valid
 Owner promotion 2026-09-22: after `RQ401` reached DONE and its follow-up correction was delivered, `RQ402` moved `WAITING -> READY` as the next dependency-complete Supplier Decision detail-source prompt. `RQ403`-`RQ405` remain WAITING behind their declared sequencing and owner boundaries.
 Owner claim 2026-09-22: `RQ402` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ402-codex.lock.md`.
 Owner completion 2026-09-22: `RQ402` delivered directly to `main` in `99617cacb0b26ab52fcf39c52ae71bc5ea9a8ad2`; the canonical Supplier Decision screen now opens the rich backend detail contract, carries active filters and requested/effective trust metadata, preserves error/empty/degraded states, and prevents stale detail responses after supplier/filter changes. Run log: `.ai/runs/2026-09-22-RQ402-evidence.md`. Evidence state: synchronized. Follow-up: `RQ403`-`RQ405` remain WAITING.
+Routing correction 2026-09-22: `RQ132` was `IN_PROGRESS` without an owner/lock while its declared `STAB16` dependency remains BLOCKED; it is now `BLOCKED` and is not a runnable claim.
+Owner promotion 2026-09-22: after `RQ402` reached DONE and `RQ401` was already DONE, `RQ403` moved `WAITING -> READY` as the next dependency-complete Supplier Decision filter-parity prompt. `RQ404` and `RQ405` remain WAITING behind their declared sequencing and owner boundaries.
 Owner claim 2026-09-22: `RQ385` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ385-codex.lock.md`.
 Owner completion 2026-09-22: `RQ385` delivered directly to `main` with implementation `bb6158f003bfd535a3211430970b30abbc761644`; current `origin/main` contains this SHA and the synchronized closure commits. Scoped Pre/Post fact queries, scope-isolated main/options caches, backend provenance and frontend fail-closed validation are delivered. Run log: `.ai/runs/2026-09-22-RQ385-evidence.md`. Evidence state: synchronized.
 Owner claim 2026-09-22: `RQ388` transitioned `READY -> IN_PROGRESS` in this workspace after dependency and collision checks; local runtime lock `.ai/task-locks/RQ388-codex.lock.md`.
@@ -3829,7 +3831,7 @@ Commit suggestion: `fix(analytics): refresh trust caches after data quality snap
 
 ## RQ132 - Explain Dashboard support-signal limits and the next safe operator step
 
-Status: IN_PROGRESS
+Status: BLOCKED
 Ready after: `STAB16` is DONE and the canonical production API has a healthy runtime/refresh-status proof
 Priority: P1
 Type: backend-frontend-contract/tests
@@ -22080,7 +22082,7 @@ Choose one canonical detail drawer/route, connect it to the backend details cont
 
 ## RQ403 - Align backend-supported supplier filters with the canonical screen
 
-Status: WAITING
+Status: READY
 Priority: P2
 Type: frontend/backend/contract/tests
 Feature family: supplier-decision-filter-parity
