@@ -2,7 +2,7 @@
 
 Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ391; RQ385, RQ388, RQ389 and RQ390 are DONE.
+Current READY prompt: RQ392; RQ385, RQ388, RQ389, RQ390 and RQ391 are DONE.
 
 Owner audit 2026-09-22: under the user's direct Supplier Decision Hub screen/backend audit request, `RQ401` became the current Supplier Decision READY prompt for cache-schema/effective-period compatibility. `RQ402`-`RQ405` were added as WAITING detail, filter-parity, effective-period and localization follow-ups. Existing RQ READY lanes remain independently runnable under the current queue governance.
 Owner claim 2026-09-22: `RQ401` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ401-codex.lock.md`.
@@ -17,6 +17,9 @@ Owner promotion 2026-09-22: `RQ390` moved `WAITING -> READY` after `RQ388` reach
 Owner claim 2026-09-22: `RQ390` transitioned `READY -> IN_PROGRESS` in this workspace after dependency and collision checks; local runtime lock `.ai/task-locks/RQ390-codex.lock.md`.
 Owner completion 2026-09-22: `RQ390` delivered directly to `main` in `c84a05fa838784db56e9ad78daf72d65cd804381`; Pre-Nivelacija sales and nivelacija evidence is bounded to the UTC effective window, signed returns/corrections remain visible, non-positive net and previous-week denominators fail closed, and cache/meta/decision payloads expose the same provenance. Run log: `.ai/runs/2026-09-22-RQ390-evidence.md`. Evidence state: synchronized. Follow-up: promote `RQ391` as the next dependency-complete runtime-schema prompt.
 Owner promotion 2026-09-22: `RQ391` moved `WAITING -> READY` after its `RQ363` and `RQ300` dependencies were verified DONE on current `main`; it is the next parallel-safe Pre-Nivelacija runtime-schema prompt.
+Owner claim 2026-09-22: `RQ391` transitioned `READY -> IN_PROGRESS` in this workspace after dependency and collision checks; local runtime lock `.ai/task-locks/RQ391-codex.lock.md`.
+Owner completion 2026-09-22: `RQ391` delivered directly to `main` in `d54da8aa77267faf2ad48878a1be9ee0934dd8a1` with a complete fail-closed Pre-Nivelacija runtime schema for candidates, recommendations, queues, alerts, filters and evidence provenance; malformed decision payloads now reach the safe analytics error state before page rendering. Run log: `.ai/runs/2026-09-22-RQ391-evidence.md`. Evidence state: synchronized. Follow-up: promote `RQ392` as the next dependency-complete Color signed-numeric prompt.
+Owner promotion 2026-09-22: `RQ392` moved `WAITING -> READY` after `RQ381` and `RQ288` were verified DONE on current `main`; it is the next P1 Color signed-sales/cost-quality contract prompt.
 
 Owner audit 2026-09-22: under the user's direct Daily Sales by Shift screen/backend audit request, `RQ375` returned to `WAITING`, `RQ381` moved to `READY` as the current signed-quantity/revenue contract prompt, and `RQ382`-`RQ384` were added as later `WAITING` scope, shift-provenance and safe-error follow-ups. Daily Sales ASCII Serbian copy remains routed to `RQ306`; residual English/technical UI copy remains routed to `RQ325`.
 Owner audit 2026-09-22: under the user's direct Pre/Post Nivelacija screen/backend audit request, `RQ385` became the primary `READY` prompt for request-scope/cache lineage, while `RQ386` and `RQ387` were added as `WAITING` cohort/denominator and runtime-payload/error-contract follow-ups. The existing Daily Sales `RQ381` remains independently `READY`; Pre/Post ASCII Serbian and residual English/technical copy are routed to `RQ306`/`RQ325`.
@@ -1387,8 +1390,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ388 | DONE | pre-nivelacija-population-parity | Align Pre-Nivelacija global KPIs with the full candidate population |
 | RQ389 | DONE | color-scope-event-lineage | Align Color store/data-origin scope with nivelacija event lineage |
 | RQ390 | DONE | pre-nivelacija-scoring-window | Bound Pre-Nivelacija scoring history and signed-sales denominator semantics |
-| RQ391 | READY | pre-nivelacija-runtime-schema | Validate the complete Pre-Nivelacija decision payload at runtime |
-| RQ392 | WAITING | color-signed-numeric-contract | Preserve signed Color sales and cost-quality evidence |
+| RQ391 | DONE | pre-nivelacija-runtime-schema | Validate the complete Pre-Nivelacija decision payload at runtime |
+| RQ392 | READY | color-signed-numeric-contract | Preserve signed Color sales and cost-quality evidence |
 | RQ393 | WAITING | color-margin-quality-contract | Align Color recommendation margin baseline with weighted cost evidence |
 | RQ394 | WAITING | color-prepost-aggregate-parity | Align Color pre/post totals with the comparable evidence cohort |
 | RQ395 | WAITING | color-runtime-safe-errors | Harden Color runtime validation and safe traceable endpoint errors |
@@ -21360,7 +21363,7 @@ Pre-Nivelacija defines a 180-day sales window but only applies the lower bound. 
 
 ## RQ391 - Validate the complete Pre-Nivelacija decision payload at runtime
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: frontend-runtime-validation/tests
 Feature family: pre-nivelacija-runtime-schema
@@ -21406,11 +21409,31 @@ The Pre-Nivelacija Zod boundary validates only a subset of the decision payload.
 - Reuse `RQ363` shared runtime-validation conventions and `RQ300` numeric presentation behavior.
 - `RQ325` owns the copy-only localization of remaining raw English fields.
 
+### Completion note
+
+- Date: 2026-09-22
+- Status: DONE
+- Completion: The Pre-Nivelacija API boundary now requires and validates every decision-critical field consumed by the page: canonical recommendation status, label, summary, actionability, quality and reason codes; signed-sales evidence; supplier projections; filter facets; typed queues and alerts; and valid date/range/nullability semantics. Invalid payloads fail before sorting, detail, export or KPI rendering and reach the shared safe analytics error state.
+- Changed files: `Klijent/clientapp/src/validation/analyticsResponseSchemas.ts`, `Klijent/clientapp/src/types/preNivelacija.ts`, `Klijent/clientapp/src/services/__tests__/preNivelacijaApi.scope.spec.ts`, `Klijent/clientapp/src/validation/__tests__/analyticsResponseSchemas.spec.ts`, `Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`.
+- Contract/runtime behavior changed: incomplete or malformed Pre-Nivelacija decision payloads are rejected with issue-path context; valid zero/null values remain accepted where the backend contract permits them; queues/alerts are no longer `unknown` arrays.
+- Checks run: focused frontend/API/schema/page tests 57/57; `npm run check:analytics-guardrails` including encoding, guardrails and typecheck; `npm run build`; `git diff --check`; implementation pushed to `origin/main`.
+- Checks not run: full backend/frontend suites, live browser/provider/database proof and remote CI inspection.
+- Run log: `.ai/runs/2026-09-22-RQ391-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `d54da8aa77267faf2ad48878a1be9ee0934dd8a1`
+- Main verification: passed - local `main` and `origin/main` resolve to `d54da8aa77267faf2ad48878a1be9ee0934dd8a1`, and both implementation commits are ancestors of `origin/main`.
+- Missed: no live malformed response was replayed against a deployed API; the API boundary, schema counterexamples and page error-state test cover the owned runtime contract.
+- Follow-up: `RQ392` is READY for signed Color sales and cost-quality evidence.
+- Residual risk: full suites, live deployment and remote CI remain uninspected; shared residual localization remains owned by `RQ306`/`RQ325`.
+- Next: Execute `RQ392` after claim/collision verification.
+- Prompt defect / scope repair: the prompt was executable as written; the existing compatibility types were tightened to match the now-required backend payload without changing backend recommendation semantics.
+
 ---
 
 ## RQ392 - Preserve signed Color sales and cost-quality evidence
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: backend-contract/frontend-runtime-validation/tests
 Feature family: color-signed-numeric-contract
