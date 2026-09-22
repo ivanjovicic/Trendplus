@@ -2,7 +2,7 @@
 
 Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompts: RQ388 (IN_PROGRESS in this workspace) and RQ389 (independent Color owner lane); RQ385 is DONE.
+Current READY prompt: RQ389 (independent Color owner lane); RQ385 and RQ388 are DONE.
 
 Owner audit 2026-09-22: under the user's direct Supplier Decision Hub screen/backend audit request, `RQ401` became the current Supplier Decision READY prompt for cache-schema/effective-period compatibility. `RQ402`-`RQ405` were added as WAITING detail, filter-parity, effective-period and localization follow-ups. Existing RQ READY lanes remain independently runnable under the current queue governance.
 Owner claim 2026-09-22: `RQ401` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ401-codex.lock.md`.
@@ -10,6 +10,7 @@ Owner completion 2026-09-22: `RQ401` delivered directly to `main` in `da55fc1625
 Owner claim 2026-09-22: `RQ385` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ385-codex.lock.md`.
 Owner completion 2026-09-22: `RQ385` delivered directly to `main` with implementation `bb6158f003bfd535a3211430970b30abbc761644`; current `origin/main` contains this SHA and the synchronized closure commits. Scoped Pre/Post fact queries, scope-isolated main/options caches, backend provenance and frontend fail-closed validation are delivered. Run log: `.ai/runs/2026-09-22-RQ385-evidence.md`. Evidence state: synchronized.
 Owner claim 2026-09-22: `RQ388` transitioned `READY -> IN_PROGRESS` in this workspace after dependency and collision checks; local runtime lock `.ai/task-locks/RQ388-codex.lock.md`.
+Owner completion 2026-09-22: `RQ388` delivered directly to `main` in `a9fb58a6ce555ce1b4568dfefb5de497a5c7dfac`; global Pre-Nivelacija status/high-priority counts now come from the full filtered candidate universe, the high-priority band includes insufficient-data rows consistently, and visible-page counts are explicitly labelled in table/export/detail metadata. Run log: `.ai/runs/2026-09-22-RQ388-evidence.md`. Evidence state: synchronized. Follow-up: continue with `RQ389`.
 
 Owner audit 2026-09-22: under the user's direct Daily Sales by Shift screen/backend audit request, `RQ375` returned to `WAITING`, `RQ381` moved to `READY` as the current signed-quantity/revenue contract prompt, and `RQ382`-`RQ384` were added as later `WAITING` scope, shift-provenance and safe-error follow-ups. Daily Sales ASCII Serbian copy remains routed to `RQ306`; residual English/technical UI copy remains routed to `RQ325`.
 Owner audit 2026-09-22: under the user's direct Pre/Post Nivelacija screen/backend audit request, `RQ385` became the primary `READY` prompt for request-scope/cache lineage, while `RQ386` and `RQ387` were added as `WAITING` cohort/denominator and runtime-payload/error-contract follow-ups. The existing Daily Sales `RQ381` remains independently `READY`; Pre/Post ASCII Serbian and residual English/technical copy are routed to `RQ306`/`RQ325`.
@@ -1377,7 +1378,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ378 | WAITING | supplier-sales-margin-quality-contract | Align Supplier weighted margin benchmark and cost-source semantics |
 | RQ379 | WAITING | supplier-sales-runtime-schema | Add fail-closed runtime validation for Supplier Sales decision payload |
 | RQ380 | WAITING | supplier-sales-prepost-comparable-aggregate | Align Supplier total pre/post impact with the comparable cohort |
-| RQ388 | READY | pre-nivelacija-population-parity | Align Pre-Nivelacija global KPIs with the full candidate population |
+| RQ388 | DONE | pre-nivelacija-population-parity | Align Pre-Nivelacija global KPIs with the full candidate population |
 | RQ389 | READY | color-scope-event-lineage | Align Color store/data-origin scope with nivelacija event lineage |
 | RQ390 | WAITING | pre-nivelacija-scoring-window | Bound Pre-Nivelacija scoring history and signed-sales denominator semantics |
 | RQ391 | WAITING | pre-nivelacija-runtime-schema | Validate the complete Pre-Nivelacija decision payload at runtime |
@@ -21121,7 +21122,7 @@ Reproduction: return malformed JSON, non-finite numeric values, a non-2xx provid
 
 ## RQ388 - Align Pre-Nivelacija global KPIs with the full candidate population
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend-contract/frontend/dataset-projection/tests
 Feature family: pre-nivelacija-population-parity
@@ -21177,6 +21178,24 @@ Reproduction: return more than one page of candidates with high-priority rows on
 
 - `RQ364` owns the shared dataset-projection conventions; this prompt owns the Pre-Nivelacija population mapping.
 - `RQ297` owns recommendation/actionability gating; do not weaken blocked-row semantics while correcting counts.
+
+### Completion note
+
+- Date: 2026-09-22
+- Status: DONE
+- Completion: Added backend global recommendation-status counts and one case-insensitive high-priority-band helper; updated the frontend KPI/notices/control chips to use global filtered-universe metadata; labelled visible-page focus/table/export/detail populations; localized residual page wording such as `Total`, `action score` and raw priority-band labels.
+- Changed files: `Api/Endpoints/PreNivelacijaPriorityEndpoints.cs`, `Api/Models/PreNivelacijaPriorityModels.cs`, `Api.Tests/PreNivelacijaPopulationTests.cs`, `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`, focused Pre-Nivelacija page/API tests, response types/schema, guardrail baseline, `MASTER_ROADMAP.md`.
+- Contract/runtime behavior changed: `summary` now includes global counts for `increase_focus`, `maintain`, `review`, `do_not_trust` and `insufficient_data`; `HighPriorityCount` and supplier high-priority counts use the same `PriorityBand == high` population regardless of recommendation actionability. The page uses global counts for global surfaces and visible page rows for focus/table surfaces.
+- Checks run: focused backend tests 4/4 passed; Pre-Nivelacija page/API tests 46/46 passed; `npm run check:analytics-guardrails` passed; `npm run typecheck` passed; queue/instruction/planning validators passed; `git diff --check` passed; `origin/main` verified at `a9fb58a6ce555ce1b4568dfefb5de497a5c7dfac`.
+- Run log: `.ai/runs/2026-09-22-RQ388-evidence.md`
+- Evidence state: synchronized
+- Checks not run: full `dotnet test`, `npm run build` and remote CI inspection; focused proof and typecheck passed, and repository policy does not require CI completion before main delivery.
+- Delivery mode: direct-main
+- Main commit SHA: `a9fb58a6ce555ce1b4568dfefb5de497a5c7dfac`
+- Main verification: `origin/main` contains `a9fb58a6ce555ce1b4568dfefb5de497a5c7dfac`; `git merge-base --is-ancestor` passed.
+- Missed: no live database pagination fixture; broader Pre-Nivelacija localization remains with RQ306/RQ325.
+- Follow-up: RQ389 - Align Color store/data-origin scope with nivelacija event lineage.
+- Residual risk: remote CI and live database integration remain uninspected; additive summary fields intentionally fail closed until refreshed payloads are available.
 
 ---
 
