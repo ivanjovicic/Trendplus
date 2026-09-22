@@ -3,7 +3,7 @@ Queue: docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md
 Date: 2026-09-22
 Agent/tool: Cursor Cloud Agent
 Delivery target: main
-Working branch / PR: cursor/prepost-revenue-contract-52eb / pending
+Working branch / PR: cursor/prepost-revenue-contract-52eb / https://github.com/ivanjovicic/Trendplus/pull/62
 Main commit SHA: pending
 Main verification: pending
 Evidence state: pending
@@ -20,8 +20,8 @@ Evidence state: pending
 - .ai/runs/2026-09-22-q83-prepost-revenue-contract-evidence.md
 
 ## Validation run
-- `git diff --check` -> pending before delivery
-- `node scripts/check-prompt-queues.mjs` -> pending before delivery
+- `git diff origin/main...HEAD --check` -> pass
+- `node scripts/check-prompt-queues.mjs` -> pass, 526 tasks
 - Static source/view inspection -> pass: endpoint guard, SQL column declaration and existing schema assertions agree
 
 ## Validation not run
