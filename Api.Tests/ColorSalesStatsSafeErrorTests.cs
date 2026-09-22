@@ -20,6 +20,7 @@ public sealed class ColorSalesStatsSafeErrorTests
         Assert.Contains("color_sales_stats_database_unavailable", endpoint);
         Assert.Contains("color_sales_stats_unavailable", endpoint);
         Assert.Contains("ResolveAnalyticsCorrelationId(httpContext)", endpoint);
+        Assert.Contains("JsonSerializer.Serialize(response, ColorSalesCacheJsonOptions)", endpoint);
         Assert.Contains("StatusCodes.Status503ServiceUnavailable", endpoint);
         Assert.DoesNotContain("detail: ex.Message", endpoint);
         Assert.DoesNotContain("title: \"Greska pri ucitavanju statistike prodaje po boji artikla\"", endpoint);

@@ -36,14 +36,17 @@ using Application.TrendShoes;
 using System.Globalization;
 using System.Diagnostics;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Serilog.Context;
 using Trendplus2.Dtos;
+using AnalyticsCacheMetadata = Infrastructure.Services.Caching.AnalyticsCacheEntryMetadata;
 
 namespace Trendplus2.Endpoints;
 
 public static class AllEndpoints
 {
     private static readonly string[] AllowedImageExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+    private static readonly JsonSerializerOptions ColorSalesCacheJsonOptions = new(JsonSerializerDefaults.Web);
     private const int VendorSalesNivelacijaCommandTimeoutSeconds = 45;
     private const int OptionalNivelacijaMetricCommandTimeoutSeconds = 5;
 
@@ -2717,9 +2720,10 @@ public static class AllEndpoints
 
         app.MapGet("/api/analytics/color-sales-stats", async (
             TrendplusDbContext db,
-            IMemoryCache cache,
+            IAnalyticsCacheService cache,
             ILogger<Program> logger,
             HttpContext httpContext,
+            AnalyticsRefreshStatusService refreshStatusService,
             int? sezonaId = null,
             DateTime? fromDate = null,
             DateTime? toDate = null,
@@ -2809,10 +2813,28 @@ public static class AllEndpoints
                     });
                 }
 
-                var cacheKey = $"color-sales-stats:{fromUtc?.Ticks}:{toUtc?.Ticks}:{storeId}:{sezonaId}:{normalizedDataScope}";
-                if (cache.TryGetValue(cacheKey, out object? cachedResponse) && cachedResponse is not null)
+                var cacheKey = AnalyticsCacheKeys.ColorSalesStats(
+                    fromUtc,
+                    toUtc,
+                    storeId,
+                    sezonaId,
+                    normalizedDataScope);
+                var cachePolicy = AnalyticsCachePolicy.ColorSalesStats;
+                var cachedResponse = await cache.GetAsync<ColorSalesStatsCacheEntry>(cacheKey, ct);
+                if (cachedResponse is not null && !string.IsNullOrWhiteSpace(cachedResponse.JsonPayload))
                 {
-                    return Results.Ok(cachedResponse);
+                    var cachedMetadata = await cache.GetAsync<AnalyticsCacheMetadata>(
+                        AnalyticsCacheKeys.Metadata(cacheKey),
+                        ct) ?? new AnalyticsCacheMetadata
+                        {
+                            CreatedAtUtc = DateTime.UnixEpoch,
+                            Family = AnalyticsCachePolicy.ColorSalesFamily,
+                            Provider = ResolveAnalyticsCacheProvider(cache)
+                        };
+
+                    return Results.Content(
+                        ApplyColorSalesCacheMetadata(cachedResponse.JsonPayload, cachedMetadata, cachePolicy),
+                        "application/json");
                 }
 
                 var dataWindow = await (
@@ -3320,6 +3342,16 @@ public static class AllEndpoints
                     dataQuality.revenueWithNivelacijaSplitSharePct,
                     generatedAtUtc);
 
+                DateTime? lastRefreshAtUtc = null;
+                try
+                {
+                    lastRefreshAtUtc = (await refreshStatusService.GetStatusAsync(ct)).LastSuccessfulRefreshAtUtc;
+                }
+                catch (Exception refreshEx) when (refreshEx is not OperationCanceledException)
+                {
+                    logger.LogWarning(refreshEx, "Color-sales-stats could not resolve the last successful source refresh timestamp.");
+                }
+
                 trustMeta.MetricProvenance = new Dictionary<string, AnalyticsMetricProvenanceDto>
                 {
                     ["prePostNivelacijaRevenueImpactPct"] = new()
@@ -3417,8 +3449,31 @@ public static class AllEndpoints
                     sezone
                 };
 
-                cache.Set(cacheKey, response, TimeSpan.FromMinutes(5));
-                return Results.Ok(response);
+                var cacheMetadata = new AnalyticsCacheMetadata
+                {
+                    CreatedAtUtc = DateTime.UtcNow,
+                    DataRefreshAtUtc = lastRefreshAtUtc,
+                    Family = AnalyticsCachePolicy.ColorSalesFamily,
+                    Provider = ResolveAnalyticsCacheProvider(cache)
+                };
+                trustMeta.CacheCreatedAtUtc = cacheMetadata.CreatedAtUtc;
+                trustMeta.LastRefreshAtUtc = cacheMetadata.DataRefreshAtUtc;
+
+                var responseJson = JsonSerializer.Serialize(response, ColorSalesCacheJsonOptions);
+                await cache.SetAsync(
+                    cacheKey,
+                    new ColorSalesStatsCacheEntry { JsonPayload = responseJson },
+                    cachePolicy.Ttl,
+                    ct);
+                await cache.SetAsync(
+                    AnalyticsCacheKeys.Metadata(cacheKey),
+                    cacheMetadata,
+                    cachePolicy.Ttl,
+                    ct);
+
+                return Results.Content(
+                    ApplyColorSalesCacheMetadata(responseJson, cacheMetadata, cachePolicy),
+                    "application/json");
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -7307,6 +7362,44 @@ public static class AllEndpoints
                 ["correlationId"] = correlationId
             });
     }
+
+    internal static string ApplyColorSalesCacheMetadata(
+        string jsonPayload,
+        AnalyticsCacheMetadata metadata,
+        AnalyticsCachePolicyEntry policy)
+    {
+        var root = JsonNode.Parse(jsonPayload)?.AsObject()
+            ?? throw new InvalidOperationException("Color cache payload is not a JSON object.");
+        var meta = root["meta"] as JsonObject
+            ?? throw new InvalidOperationException("Color cache payload is missing the analytics metadata object.");
+
+        meta["cacheCreatedAtUtc"] = metadata.CreatedAtUtc;
+        meta["lastRefreshAtUtc"] = metadata.DataRefreshAtUtc;
+
+        var freshnessAnchor = metadata.DataRefreshAtUtc ?? metadata.CreatedAtUtc;
+        if (DateTime.UtcNow - freshnessAnchor > policy.StaleAfter)
+        {
+            var staleWarning = AnalyticsResponseMetaFactory.StaleCacheWarning(
+                "Prikazani su keširani podaci. Pokrenite osvežavanje ako su potrebni najnoviji rezultati.");
+            meta["isPartial"] = true;
+            meta["warningCode"] = staleWarning.WarningCode;
+            meta["warningMessage"] = staleWarning.WarningMessage;
+            meta["message"] = staleWarning.Message;
+            var hasDataQualityStatus = meta["dataQualityStatus"] is JsonValue dataQualityValue
+                && dataQualityValue.TryGetValue<string>(out var dataQualityStatus)
+                && !string.IsNullOrWhiteSpace(dataQualityStatus);
+            if (!hasDataQualityStatus)
+            {
+                meta["dataQualityStatus"] = staleWarning.DataQualityStatus;
+            }
+        }
+
+        root["meta"] = meta;
+        return root.ToJsonString();
+    }
+
+    private static string ResolveAnalyticsCacheProvider(IAnalyticsCacheService cache) =>
+        cache.IsRedisEnabled && cache.IsRedisAvailable ? "redis" : "memory";
 
     private static void AddVendorSalesNivelacijaScopeParameters(
         NpgsqlCommand command,

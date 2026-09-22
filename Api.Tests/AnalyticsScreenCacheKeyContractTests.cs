@@ -10,6 +10,40 @@ public sealed class AnalyticsScreenCacheKeyContractTests
     private static readonly DateTime ToUtc = new(2026, 6, 30, 23, 59, 0, DateTimeKind.Utc);
 
     [Fact]
+    public void ColorSalesStats_EveryBusinessDimensionChangesCacheIdentity()
+    {
+        var baseline = AnalyticsCacheKeys.ColorSalesStats(FromUtc, ToUtc, storeId: 1, sezonaId: 2, dataScope: "existing");
+
+        var variants = new[]
+        {
+            AnalyticsCacheKeys.ColorSalesStats(FromUtc.AddDays(1), ToUtc, 1, 2, "existing"),
+            AnalyticsCacheKeys.ColorSalesStats(FromUtc, ToUtc.AddDays(1), 1, 2, "existing"),
+            AnalyticsCacheKeys.ColorSalesStats(FromUtc, ToUtc, 9, 2, "existing"),
+            AnalyticsCacheKeys.ColorSalesStats(FromUtc, ToUtc, 1, 9, "existing"),
+            AnalyticsCacheKeys.ColorSalesStats(FromUtc, ToUtc, 1, 2, "imported")
+        };
+
+        Assert.All(variants, key => Assert.NotEqual(baseline, key));
+        Assert.Equal(variants.Length, variants.Distinct(StringComparer.Ordinal).Count());
+        Assert.Contains("color-sales-stats:", baseline, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ColorSalesFamily_UsesCanonicalPrefixAndCoreInvalidation()
+    {
+        Assert.Contains(AnalyticsCachePolicy.ColorSalesFamily, AnalyticsCachePolicy.CoreFamilies);
+        Assert.Equal(
+            "analytics:color-sales",
+            AnalyticsCachePolicy.ResolveFamilyPrefix(AnalyticsCachePolicy.ColorSalesFamily));
+        Assert.Equal(
+            AnalyticsCachePolicy.ColorSalesStats,
+            AnalyticsCachePolicy.ResolveByFamily(AnalyticsCachePolicy.ColorSalesFamily));
+        Assert.Equal(
+            "analytics:color-sales",
+            AnalyticsCachePolicy.ResolveFamilyPrefix("color-sales-stats"));
+    }
+
+    [Fact]
     public void ProductDecisionCenter_EveryBusinessDimensionChangesCacheIdentity()
     {
         var baseline = AnalyticsCacheKeys.ProductDecisionCenter(FromUtc, ToUtc, storeId: 1, supplierId: 2, top: 100, dataScope: "existing");

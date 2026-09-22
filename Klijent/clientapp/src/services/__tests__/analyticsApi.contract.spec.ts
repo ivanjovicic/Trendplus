@@ -115,6 +115,7 @@ describe("analytics API contract requests", () => {
         receivedUrl = req.url;
         return res(ctx.status(200), ctx.json({
           generatedAt: "2026-07-01T08:00:00Z",
+          meta: { success: true },
           fromDate: "2026-06-01T00:00:00Z",
           toDate: "2026-07-01T00:00:00Z",
           dataWindowFrom: "2024-01-01T00:00:00Z",
@@ -122,6 +123,16 @@ describe("analytics API contract requests", () => {
           sezonaId: 3,
           storeId: 2,
           dataScope: "imported",
+          lineage: {
+            storeId: 2,
+            dataScope: "imported",
+            eventCount: 0,
+            eventArticleCount: 0,
+            salesArticleCount: 0,
+            salesArticlesWithMatchingNivelacija: 0,
+            storePolicy: "selected_store",
+            originPolicy: "imported_only",
+          },
           colors: [],
           totals: {
             ukupanPromet: 0,
@@ -140,6 +151,24 @@ describe("analytics API contract requests", () => {
             popUnitsChangePct: null,
             prePostNivelacijaRevenueImpactPct: null,
             prePostNivelacijaUnitsImpactPct: null,
+            comparablePreRevenue: 0,
+            comparablePostRevenue: 0,
+            comparablePreQuantity: 0,
+            comparablePostQuantity: 0,
+            comparableArticleCount: 0,
+            comparableRevenueCoveragePct: null,
+            prePostSignalNote: null,
+            observedPreRevenue: 0,
+            observedPostRevenue: 0,
+            observedPreQuantity: 0,
+            observedPostQuantity: 0,
+            recommendationSummary: {
+              increaseFocus: 0,
+              maintain: 0,
+              review: 0,
+              doNotTrust: 0,
+              insufficientData: 0,
+            },
           },
           dataQuality: {
             missingCostRevenue: 0,
@@ -150,6 +179,8 @@ describe("analytics API contract requests", () => {
             unknownColorRevenueSharePct: null,
             revenueWithNivelacijaSplit: 0,
             revenueWithNivelacijaSplitSharePct: null,
+            observedRevenueWithNivelacijaSplit: 0,
+            observedRevenueWithNivelacijaSplitSharePct: null,
           },
           sezone: [],
         }));

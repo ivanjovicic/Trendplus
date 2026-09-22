@@ -206,6 +206,7 @@ public sealed class AnalyticsDataQualityHealthWorker : BackgroundService
                     AnalyticsCachePolicy.SupplierDecisionHubFamily,
                     AnalyticsCachePolicy.InventoryFamily,
                     AnalyticsCachePolicy.DataQualityFamily,
+                    AnalyticsCachePolicy.ColorSalesFamily,
                     AnalyticsCachePolicy.ReportsFamily
                 ];
 

@@ -12,6 +12,7 @@ public static class AnalyticsCachePolicy
     public const string DataQualityFamily = "data-quality";
     public const string PrePostFamily = "pre-post";
     public const string PreNivelacijaPrioritetiFamily = "pre-nivelacija-prioriteti";
+    public const string ColorSalesFamily = "color-sales";
     public const string ReportsFamily = "reports";
 
     public static readonly string[] CoreFamilies =
@@ -23,6 +24,7 @@ public static class AnalyticsCachePolicy
         DataQualityFamily,
         PrePostFamily,
         PreNivelacijaPrioritetiFamily,
+        ColorSalesFamily,
         ReportsFamily
     ];
 
@@ -50,6 +52,10 @@ public static class AnalyticsCachePolicy
         Ttl: TimeSpan.FromMinutes(5),
         StaleAfter: TimeSpan.FromMinutes(3));
 
+    public static readonly AnalyticsCachePolicyEntry ColorSalesStats = new(
+        Ttl: TimeSpan.FromMinutes(5),
+        StaleAfter: TimeSpan.FromMinutes(3));
+
     public static AnalyticsCachePolicyEntry ResolveByFamily(string family)
     {
         var normalized = (family ?? string.Empty).Trim().ToLowerInvariant();
@@ -61,6 +67,7 @@ public static class AnalyticsCachePolicy
             InventoryFamily => Inventory,
             DataQualityFamily => DataQuality,
             PrePostFamily or "pre-nivelacija" or PreNivelacijaPrioritetiFamily => PrePost,
+            ColorSalesFamily or "color-sales-stats" => ColorSalesStats,
             ReportsFamily => CacheExpiration.Long.WithStaleAfter(TimeSpan.FromMinutes(10)),
             _ => CacheExpiration.Medium.WithStaleAfter(TimeSpan.FromMinutes(2))
         };
@@ -78,6 +85,7 @@ public static class AnalyticsCachePolicy
             DataQualityFamily => "analytics:data-quality",
             PrePostFamily => "analytics:pre-post",
             "pre-nivelacija" or PreNivelacijaPrioritetiFamily => "analytics:pre-nivelacija-prioriteti",
+            ColorSalesFamily or "color-sales-stats" => "analytics:color-sales",
             ReportsFamily => AnalyticsCacheKeys.ReportNamespace,
             _ => AnalyticsCacheKeys.Prefix
         };
