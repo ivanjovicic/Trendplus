@@ -6,9 +6,9 @@ Date: 2026-09-22
 Agent/tool: GPT-5.6 Luna
 Delivery target: main
 Working branch / PR: main / none
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: 30096e2d
+Main verification: passed - fresh `git fetch origin main` and `git merge-base --is-ancestor 30096e2d origin/main` succeeded.
+Evidence state: synchronized
 
 ## What was done
 - Audited the Prioriteti pre-nivelacije and Prodaja po boji artikla screen/backend ownership paths on fresh `main`.
@@ -48,4 +48,4 @@ Evidence state: pending
 - Existing shared localization prompt remains cross-surface and may require sequencing with other Operacije copy work.
 
 ## Next
-- Commit and push the queue audit to `main`, then verify `origin/main` contains the delivery SHA.
+- Queue audit is delivered; next owner is the selected `READY` prompt lane (`RQ388` or `RQ389`).
