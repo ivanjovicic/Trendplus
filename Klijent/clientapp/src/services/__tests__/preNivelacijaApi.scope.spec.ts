@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getPreNivelacijaPrioriteti, PreNivelacijaApiError } from "../preNivelacijaApi";
 import { getDataScopeStorageKey } from "../../utils/dataScope";
+import { AnalyticsResponseValidationError } from "../../validation/analyticsResponseValidation";
 
 const responseBody = JSON.stringify({
   generatedAtUtc: "2026-07-01T08:00:00Z",
@@ -21,12 +22,14 @@ const responseBody = JSON.stringify({
     averagePreNivelacijaScore: 0,
   },
   supplierLeaderboard: [],
+  filterFacets: { seasons: [], footwearTypes: [] },
   candidates: [],
   queues: { highlightNow: [], monitor: [], likelyMarkdownSoon: [] },
   alerts: [],
   page: 1,
   pageSize: 20,
   totalCandidates: 0,
+  recommendationAllowed: false,
   evidenceWindow: {
     salesWindowFromUtc: "2026-01-02T08:00:00Z",
     salesWindowToUtc: "2026-07-01T08:00:00Z",
@@ -121,5 +124,17 @@ describe("pre-nivelacija API scope contract", () => {
     await expect(getPreNivelacijaPrioriteti({})).rejects.toMatchObject({
       message: "Pre-nivelacija prioriteti trenutno nisu dostupni. Proverite status osvežavanja i pokušajte ponovo.",
     });
+  });
+
+  it("rejects an incomplete decision payload before it can render as an empty success", async () => {
+    const malformedPayload = JSON.parse(responseBody) as Record<string, unknown>;
+    malformedPayload.queues = {
+      highlightNow: [{ artikalId: 1, sku: "SKU-1" }],
+      monitor: [],
+      likelyMarkdownSoon: [],
+    };
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify(malformedPayload), { status: 200 }))));
+
+    await expect(getPreNivelacijaPrioriteti({})).rejects.toBeInstanceOf(AnalyticsResponseValidationError);
   });
 });

@@ -177,6 +177,8 @@ describe("analytics response schemas", () => {
         averagePreNivelacijaScore: 75,
       },
       supplierLeaderboard: [{
+        supplierId: 1,
+        supplierName: "Dobavljač 1",
         highPrioritySkuCount: 1,
         candidateSkuCount: 1,
         stockUnitsAtRisk: 10,
@@ -184,10 +186,22 @@ describe("analytics response schemas", () => {
         expectedHighlightRevenueUplift: 0,
         actionScore: 10,
         weekOverWeekRiskDeltaPct: null,
+        weekOverWeekEvidenceStatus: "unavailable_non_positive_denominator",
       }],
+      filterFacets: {
+        seasons: [{ id: 1, label: "Leto" }],
+        footwearTypes: [{ id: 2, label: "Patike" }],
+      },
       candidates: [{
         artikalId: 1,
         sku: "SKU-1",
+        supplierId: 1,
+        seasonId: 1,
+        footwearTypeId: 2,
+        supplierName: "Dobavljač 1",
+        category: "Obuća",
+        footwearType: "Patike",
+        season: "Leto",
         stockUnits: 10,
         units180: -2,
         positiveUnits180: 3,
@@ -211,14 +225,23 @@ describe("analytics response schemas", () => {
         scenarioMarkdownNow: { expectedUnits30d: 0, expectedRevenue30d: 0, expectedMargin30d: 0, effectivePrice: 900 },
         marginDeltaHighlightVsMarkdown: 0,
         revenueDeltaHighlightVsMarkdown: 0,
+        hasCompleteEvidence: false,
+        evidenceReason: "signed_sales_non_positive",
         reliabilityPct: 35,
         decisionScore: 50,
+        priorityBand: "high",
+        confidence: "Low",
+        recommendationAllowed: false,
         salesEvidenceStatus: "non_positive_net_with_returns",
         salesEvidenceReason: "signed_sales_non_positive",
         recommendation: {
+          status: "insufficient_data",
+          label: "Nedovoljno podataka",
+          summary: "Signal nije dovoljno jak za pouzdanu preporuku.",
           confidencePct: 20,
           reliabilityPct: 35,
           dataQualityStatus: "insufficient_data",
+          recommendationAllowed: false,
           reasonCodes: ["signed_sales_non_positive"],
         },
       }],
@@ -246,6 +269,64 @@ describe("analytics response schemas", () => {
     });
 
     expect(result.success).toBe(true);
+
+    expect(preNivelacijaPriorityResponseSchema.safeParse({
+      ...result.success ? result.data : {},
+      candidates: result.success
+        ? [{
+            ...result.data.candidates[0],
+            recommendation: { ...result.data.candidates[0].recommendation, status: "unknown" },
+          }]
+        : [],
+    }).success).toBe(false);
+
+    expect(preNivelacijaPriorityResponseSchema.safeParse({
+      ...result.success ? result.data : {},
+      candidates: result.success
+        ? [{
+            ...result.data.candidates[0],
+            recommendation: { ...result.data.candidates[0].recommendation, recommendationAllowed: undefined },
+          }]
+        : [],
+    }).success).toBe(false);
+
+    expect(preNivelacijaPriorityResponseSchema.safeParse({
+      ...result.success ? result.data : {},
+      candidates: result.success
+        ? [{ ...result.data.candidates[0], preNivelacijaScore: 101 }]
+        : [],
+    }).success).toBe(false);
+
+    expect(preNivelacijaPriorityResponseSchema.safeParse({
+      ...result.success ? result.data : {},
+      candidates: result.success
+        ? [{
+            ...result.data.candidates[0],
+            recommendation: { ...result.data.candidates[0].recommendation, reasonCodes: [null] },
+          }]
+        : [],
+    }).success).toBe(false);
+
+    expect(preNivelacijaPriorityResponseSchema.safeParse({
+      ...result.success ? result.data : {},
+      queues: {
+        highlightNow: [{ artikalId: 1, sku: "SKU-1" }],
+        monitor: [],
+        likelyMarkdownSoon: [],
+      },
+    }).success).toBe(false);
+
+    expect(preNivelacijaPriorityResponseSchema.safeParse({
+      ...result.success ? result.data : {},
+      alerts: [{ type: "bad", severity: "warning", message: "", supplierName: null, artikalId: null }],
+    }).success).toBe(false);
+
+    expect(preNivelacijaPriorityResponseSchema.safeParse({
+      ...result.success ? result.data : {},
+      evidenceWindow: result.success
+        ? { ...result.data.evidenceWindow, salesWindowFromUtc: "not-a-date" }
+        : null,
+    }).success).toBe(false);
   });
 
   it("rejects malformed dates and missing required response sections", () => {

@@ -224,48 +224,130 @@ export const dailySalesTableResponseSchema = z.object({
 }).passthrough();
 
 const preNivelacijaScenarioSchema = z.object({
-  expectedUnits30d: nonNegativeNumber,
+  expectedUnits30d: nonNegativeInteger,
   expectedRevenue30d: nonNegativeNumber,
   expectedMargin30d: finiteNumber,
   effectivePrice: nonNegativeNumber,
 }).passthrough();
 
+const preNivelacijaRecommendationStatusSchema = z.enum([
+  "increase_focus",
+  "maintain",
+  "review",
+  "do_not_trust",
+  "insufficient_data",
+]);
+
+const preNivelacijaQualityStatusSchema = z.enum(["good", "warning", "critical", "insufficient_data"]);
+const preNivelacijaReasonCodeSchema = z.string().trim().min(1);
+const preNivelacijaPriorityBandSchema = z.enum(["high", "medium", "low"]);
+const preNivelacijaSalesEvidenceStatusSchema = z.enum([
+  "positive_net_sales",
+  "no_sales_in_window",
+  "zero_net_sales",
+  "negative_net_sales",
+  "signed_adjustment",
+  "non_positive_net_with_returns",
+]);
+const preNivelacijaSalesEvidenceReasonSchema = z.enum([
+  "no_sales_in_window",
+  "zero_net_sales",
+  "negative_net_sales",
+  "signed_sales_adjustment",
+  "signed_sales_non_positive",
+]).nullable();
+
+const preNivelacijaRecommendationSchema = z.object({
+  status: preNivelacijaRecommendationStatusSchema,
+  label: z.string().trim().min(1),
+  summary: z.string().trim().min(1),
+  confidencePct: nonNegativePercentage,
+  reliabilityPct: nullableNonNegativePercentage,
+  dataQualityStatus: preNivelacijaQualityStatusSchema,
+  recommendationAllowed: z.boolean(),
+  reasonCodes: z.array(preNivelacijaReasonCodeSchema),
+}).passthrough();
+
 const preNivelacijaCandidateSchema = z.object({
   artikalId: nonNegativeInteger,
-  sku: z.string(),
+  sku: z.string().trim().min(1),
+  supplierId: nonNegativeInteger.nullable(),
+  seasonId: nonNegativeInteger.nullable(),
+  footwearTypeId: nonNegativeInteger.nullable(),
+  supplierName: z.string().trim().min(1),
+  category: z.string().trim().min(1),
+  footwearType: z.string().trim().min(1),
+  season: z.string().trim().min(1),
   stockUnits: nonNegativeNumber,
   units180: finiteNumber,
-  positiveUnits180: nonNegativeNumber.optional(),
-  negativeUnits180: finiteNumber.optional(),
+  positiveUnits180: nonNegativeInteger,
+  negativeUnits180: finiteNumber.int(),
   velocity180: finiteNumber,
-  daysSinceLastSale: nonNegativeNumber,
+  daysSinceLastSale: nonNegativeInteger,
   markdownEvents: nonNegativeInteger,
   avgMarkdownPct: nonNegativePercentage,
   grossMarginPctEst: percentage,
-  seasonRecencyBoost: finiteNumber,
-  preNivelacijaScore: finiteNumber,
+  seasonRecencyBoost: percentage,
+  preNivelacijaScore: nonNegativePercentage,
+  priorityBand: preNivelacijaPriorityBandSchema,
   scoreBreakdown: z.object({
-    stockPressure: finiteNumber,
-    velocityRisk: finiteNumber,
-    recencyRisk: finiteNumber,
-    markdownOpportunity: finiteNumber,
-    marginPotential: finiteNumber,
-    seasonRecencyBoost: finiteNumber,
+    stockPressure: nonNegativePercentage,
+    velocityRisk: nonNegativePercentage,
+    recencyRisk: nonNegativePercentage,
+    markdownOpportunity: nonNegativePercentage,
+    marginPotential: nonNegativePercentage,
+    seasonRecencyBoost: nonNegativePercentage,
   }).passthrough(),
   scenarioHighlightNow: preNivelacijaScenarioSchema,
   scenarioMarkdownNow: preNivelacijaScenarioSchema,
   marginDeltaHighlightVsMarkdown: finiteNumber,
   revenueDeltaHighlightVsMarkdown: finiteNumber,
-  reliabilityPct: nullableNonNegativePercentage,
-  decisionScore: finiteNumber,
-  recommendation: z.object({
-    confidencePct: nonNegativePercentage,
-    reliabilityPct: nullableNonNegativePercentage,
-    dataQualityStatus: z.string(),
-    reasonCodes: z.array(z.string()),
-  }).passthrough(),
-  salesEvidenceStatus: z.string().optional(),
-  salesEvidenceReason: z.string().nullable().optional(),
+  hasCompleteEvidence: z.boolean(),
+  evidenceReason: z.string().nullable(),
+  salesEvidenceStatus: preNivelacijaSalesEvidenceStatusSchema,
+  salesEvidenceReason: preNivelacijaSalesEvidenceReasonSchema,
+  confidence: z.string().trim().min(1),
+  reliabilityPct: nonNegativePercentage,
+  decisionScore: nonNegativePercentage,
+  recommendationAllowed: z.boolean(),
+  recommendation: preNivelacijaRecommendationSchema,
+}).passthrough();
+
+const preNivelacijaSupplierSchema = z.object({
+  supplierId: nonNegativeInteger.nullable(),
+  supplierName: z.string().trim().min(1),
+  highPrioritySkuCount: nonNegativeInteger,
+  candidateSkuCount: nonNegativeInteger,
+  stockUnitsAtRisk: nonNegativeInteger,
+  estimatedAvoidableMarkdownLoss: finiteNumber,
+  expectedHighlightRevenueUplift: finiteNumber,
+  actionScore: finiteNumber,
+  weekOverWeekRiskDeltaPct: nullableNumber,
+  weekOverWeekEvidenceStatus: z.enum(["measured", "unavailable_non_positive_denominator"]),
+}).passthrough();
+
+const preNivelacijaQueueItemSchema = z.object({
+  artikalId: nonNegativeInteger,
+  sku: z.string().trim().min(1),
+  supplierName: z.string().trim().min(1),
+  preNivelacijaScore: nonNegativePercentage,
+  priorityBand: preNivelacijaPriorityBandSchema,
+  owner: z.string().trim().min(1),
+  status: z.string().trim().min(1),
+  dueDateUtc: validDate,
+}).passthrough();
+
+const preNivelacijaAlertSchema = z.object({
+  type: z.string().trim().min(1),
+  severity: z.enum(["critical", "warning", "info"]),
+  message: z.string().trim().min(1),
+  supplierName: z.string().trim().min(1).nullable(),
+  artikalId: nonNegativeInteger.nullable(),
+}).passthrough();
+
+const preNivelacijaFilterOptionSchema = z.object({
+  id: nonNegativeInteger,
+  label: z.string().trim().min(1),
 }).passthrough();
 
 export const preNivelacijaPriorityResponseSchema = z.object({
@@ -286,26 +368,22 @@ export const preNivelacijaPriorityResponseSchema = z.object({
     expectedHighlightRevenueUplift: finiteNumber,
     averagePreNivelacijaScore: finiteNumber,
   }).passthrough(),
-  supplierLeaderboard: z.array(z.object({
-    highPrioritySkuCount: nonNegativeInteger,
-    candidateSkuCount: nonNegativeInteger,
-    stockUnitsAtRisk: nonNegativeNumber,
-    estimatedAvoidableMarkdownLoss: finiteNumber,
-    expectedHighlightRevenueUplift: finiteNumber,
-    actionScore: finiteNumber,
-    weekOverWeekRiskDeltaPct: nullableNumber,
-  }).passthrough()),
+  supplierLeaderboard: z.array(preNivelacijaSupplierSchema),
+  filterFacets: z.object({
+    seasons: z.array(preNivelacijaFilterOptionSchema),
+    footwearTypes: z.array(preNivelacijaFilterOptionSchema),
+  }).passthrough(),
   candidates: z.array(preNivelacijaCandidateSchema),
   queues: z.object({
-    highlightNow: z.array(z.unknown()),
-    monitor: z.array(z.unknown()),
-    likelyMarkdownSoon: z.array(z.unknown()),
+    highlightNow: z.array(preNivelacijaQueueItemSchema),
+    monitor: z.array(preNivelacijaQueueItemSchema),
+    likelyMarkdownSoon: z.array(preNivelacijaQueueItemSchema),
   }).passthrough(),
-  alerts: z.array(z.unknown()),
+  alerts: z.array(preNivelacijaAlertSchema),
   page: nonNegativeInteger,
   pageSize: nonNegativeInteger,
   totalCandidates: nonNegativeInteger,
-  recommendationAllowed: z.boolean().nullable().optional(),
+  recommendationAllowed: z.boolean(),
   evidenceWindow: z.object({
     salesWindowFromUtc: validDate,
     salesWindowToUtc: validDate,
@@ -319,7 +397,7 @@ export const preNivelacijaPriorityResponseSchema = z.object({
     candidatesWithNonPositiveNetSales: nonNegativeInteger,
     candidatesWithoutSalesInWindow: nonNegativeInteger,
     suppliersWithUnavailablePreviousWeekDenominator: nonNegativeInteger,
-  }).nullable().optional(),
+  }).nullable(),
   meta: optionalMeta,
 }).passthrough();
 

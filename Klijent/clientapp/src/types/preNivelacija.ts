@@ -24,23 +24,23 @@ export interface PreNivelacijaRecommendation {
   reliabilityPct: number | null;
   dataQualityStatus: "good" | "warning" | "critical" | string;
   reasonCodes: string[];
-  recommendationAllowed?: boolean | null;
+  recommendationAllowed: boolean;
 }
 
 export interface PreNivelacijaSkuCandidate {
   artikalId: number;
   sku: string;
-  supplierId?: number | null;
-  seasonId?: number | null;
-  footwearTypeId?: number | null;
+  supplierId: number | null;
+  seasonId: number | null;
+  footwearTypeId: number | null;
   supplierName: string;
   category: string;
   footwearType: string;
   season: string;
   stockUnits: number;
   units180: number;
-  positiveUnits180?: number;
-  negativeUnits180?: number;
+  positiveUnits180: number;
+  negativeUnits180: number;
   velocity180: number;
   daysSinceLastSale: number;
   markdownEvents: number;
@@ -54,18 +54,19 @@ export interface PreNivelacijaSkuCandidate {
   scenarioMarkdownNow: PreNivelacijaScenario;
   marginDeltaHighlightVsMarkdown: number;
   revenueDeltaHighlightVsMarkdown: number;
-  hasCompleteEvidence?: boolean;
-  evidenceReason?: string | null;
-  salesEvidenceStatus?: string;
-  salesEvidenceReason?: string | null;
+  hasCompleteEvidence: boolean;
+  evidenceReason: string | null;
+  salesEvidenceStatus: string;
+  salesEvidenceReason: string | null;
   confidence: "High" | "Medium" | "Low" | string;
   reliabilityPct: number | null;
   decisionScore: number;
+  recommendationAllowed: boolean;
   recommendation: PreNivelacijaRecommendation;
 }
 
 export interface PreNivelacijaSupplierAction {
-  supplierId?: number | null;
+  supplierId: number | null;
   supplierName: string;
   highPrioritySkuCount: number;
   candidateSkuCount: number;
@@ -74,7 +75,7 @@ export interface PreNivelacijaSupplierAction {
   expectedHighlightRevenueUplift: number;
   actionScore: number;
   weekOverWeekRiskDeltaPct: number | null;
-  weekOverWeekEvidenceStatus?: string;
+  weekOverWeekEvidenceStatus: string;
 }
 
 export interface PreNivelacijaEvidenceWindow {
@@ -113,8 +114,8 @@ export interface PreNivelacijaAlert {
   type: string;
   severity: "critical" | "warning" | "info" | string;
   message: string;
-  supplierName?: string;
-  artikalId?: number;
+  supplierName: string | null;
+  artikalId: number | null;
 }
 
 export interface PreNivelacijaFilterOption {
@@ -148,14 +149,14 @@ export interface PreNivelacijaPriorityResponse {
   formulaDescription: string;
   summary: PreNivelacijaSummary;
   supplierLeaderboard: PreNivelacijaSupplierAction[];
-  filterFacets?: PreNivelacijaFilterFacets | null;
+  filterFacets: PreNivelacijaFilterFacets;
   candidates: PreNivelacijaSkuCandidate[];
   queues: PreNivelacijaQueues;
   alerts: PreNivelacijaAlert[];
   page: number;
   pageSize: number;
   totalCandidates: number;
-  recommendationAllowed?: boolean | null;
-  evidenceWindow?: PreNivelacijaEvidenceWindow | null;
+  recommendationAllowed: boolean;
+  evidenceWindow: PreNivelacijaEvidenceWindow;
   meta?: AnalyticsResponseMeta | null;
 }
