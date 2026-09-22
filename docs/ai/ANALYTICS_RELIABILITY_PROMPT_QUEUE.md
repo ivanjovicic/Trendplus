@@ -2,7 +2,7 @@
 
 Date: 2026-09-22
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none; RQ385, RQ388, RQ389, RQ390, RQ391, RQ392 and RQ393 are DONE.
+Current READY prompt: RQ402; RQ385, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393 and RQ401 are DONE.
 
 Owner completion 2026-09-22: under the user's direct last-commits audit, `RQ393` was delivered directly to `main` in `3b635fe813e0e55f843236d55025c52c030e853d`; Color recommendations now use a covered-revenue-weighted margin baseline, unknown-share evidence remains nullable, historical/fallback/no-cost coverage is separated, and the affected screens use Serbian decision labels. Run log: `.ai/runs/2026-09-22-direct-last-commits-audit-evidence.md`.
 
@@ -10,6 +10,7 @@ Owner audit 2026-09-22: under the user's direct Supplier Decision Hub screen/bac
 Owner claim 2026-09-22: `RQ401` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ401-codex.lock.md`.
 Owner completion 2026-09-22: `RQ401` delivered directly to `main` in `da55fc1625d7f5db58fea56806f1e9613f57cb77` with per-window cache capability gates, required projection-column validation, conservative post-signal coverage handling, all-time evidence-column parity and accurate unavailable effective-period error reporting. Follow-up: `RQ402` and `RQ404` remain `WAITING` on this contract.
 Follow-up audit correction 2026-09-22: the RQ401 capability probe also now validates the five columns consumed from `vw_supplier_ml_latest_predictions`; an existing view with an incomplete projection no longer activates the optional ML join and cannot turn schema drift into a runtime SQL error. Delivered directly to `main` in `07760b749b5b6c2b4d26aff78f7137d6c85becf9`. Run log: `.ai/runs/2026-09-22-direct-other-latest-commits-audit-evidence.md`. Evidence state: synchronized.
+Owner promotion 2026-09-22: after `RQ401` reached DONE and its follow-up correction was delivered, `RQ402` moved `WAITING -> READY` as the next dependency-complete Supplier Decision detail-source prompt. `RQ403`-`RQ405` remain WAITING behind their declared sequencing and owner boundaries.
 Owner claim 2026-09-22: `RQ385` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ385-codex.lock.md`.
 Owner completion 2026-09-22: `RQ385` delivered directly to `main` with implementation `bb6158f003bfd535a3211430970b30abbc761644`; current `origin/main` contains this SHA and the synchronized closure commits. Scoped Pre/Post fact queries, scope-isolated main/options caches, backend provenance and frontend fail-closed validation are delivered. Run log: `.ai/runs/2026-09-22-RQ385-evidence.md`. Evidence state: synchronized.
 Owner claim 2026-09-22: `RQ388` transitioned `READY -> IN_PROGRESS` in this workspace after dependency and collision checks; local runtime lock `.ai/task-locks/RQ388-codex.lock.md`.
@@ -19779,7 +19780,7 @@ Evidence logs currently rely on an agent to transcribe whether commands passed. 
 
 ## RQ368 - Sanitize inline Pre/Post partial-failure messages without hiding degraded state
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: frontend/trust/tests
 Feature family: operations-inline-error-safety
@@ -19948,7 +19949,7 @@ Several Inventory error paths bypass the shared `AnalyticsErrorState` safety map
 
 ## RQ370 - Abort Inventory secondary and detail requests on scope changes
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P2
 Type: frontend/performance/tests
 Feature family: inventory-secondary-request-cancellation
@@ -22006,7 +22007,7 @@ Supplier Decision backend capability/projection contract and focused tests. Do n
 
 ## RQ402 - Connect rich supplier decision details to the canonical screen
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: frontend/backend/contract/tests
 Feature family: supplier-decision-detail-source-parity
