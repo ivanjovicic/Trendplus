@@ -2353,6 +2353,10 @@ public static class AllEndpoints
                             marginQualityTooltip = marginQuality.Tooltip,
                             revenueWithNivelacijaSplit = splitSnapshot.RevenueWithSplit,
                             comparableRevenueWithNivelacijaSplit = splitSnapshot.ComparableRevenueWithSplit,
+                            comparablePreRevenue = splitSnapshot.ComparablePreRevenue,
+                            comparablePostRevenue = splitSnapshot.ComparablePostRevenue,
+                            comparablePreQuantity = splitSnapshot.ComparablePreQuantity,
+                            comparablePostQuantity = splitSnapshot.ComparablePostQuantity,
                             previousPeriodRevenue = hasPreviousComparablePeriod
                                 ? Math.Round(previousRevenueRaw, 2)
                                 : (decimal?)null,
@@ -2380,6 +2384,11 @@ public static class AllEndpoints
 
                 var sumPreRevenue = shoeTypes.Sum(r => r.preNivelacijePromet);
                 var sumPostRevenue = shoeTypes.Sum(r => r.posleNivelacijePromet);
+                var comparablePreRevenue = shoeTypes.Sum(r => r.comparablePreRevenue);
+                var comparablePostRevenue = shoeTypes.Sum(r => r.comparablePostRevenue);
+                var comparablePreQuantity = shoeTypes.Sum(r => r.comparablePreQuantity);
+                var comparablePostQuantity = shoeTypes.Sum(r => r.comparablePostQuantity);
+                var comparableArticleCount = shoeTypes.Sum(r => r.prePostComparableArticleCount);
                 var totalRevenue = shoeTypes.Sum(r => r.ukupanPromet);
                 var comparableRevenueWithNivelacijaSplit = shoeTypes.Sum(r => r.comparableRevenueWithNivelacijaSplit);
                 var totalCostCoveredRevenue = shoeTypes.Sum(r => r.costCoveredRevenue);
@@ -2509,6 +2518,10 @@ public static class AllEndpoints
                             row.prePostNivelacijaRevenueImpactPct,
                             row.prePostNivelacijaUnitsImpactPct,
                             row.prePostNivelacijaRevenueCoveragePct,
+                            row.comparablePreRevenue,
+                            row.comparablePostRevenue,
+                            row.comparablePreQuantity,
+                            row.comparablePostQuantity,
                             row.prePostSignalNote,
                             row.prePostComparableArticleCount,
                             sharePct,
@@ -2568,11 +2581,24 @@ public static class AllEndpoints
                     marginQualityTier = totalMarginQuality.Tier,
                     marginQualityShortLabel = totalMarginQuality.ShortLabel,
                     marginQualityTooltip = totalMarginQuality.Tooltip,
-                    prePromet = sumPreRevenue,
-                    poslePromet = sumPostRevenue,
+                    // Existing totals are the authoritative comparable cohort.
+                    prePromet = comparablePreRevenue,
+                    poslePromet = comparablePostRevenue,
                     ukupnaKolicina = shoeTypes.Sum(r => r.ukupnaKolicina),
-                    preKolicina = shoeTypes.Sum(r => r.preNivelacijeKolicina),
-                    posleKolicina = shoeTypes.Sum(r => r.posleNivelacijeKolicina),
+                    preKolicina = comparablePreQuantity,
+                    posleKolicina = comparablePostQuantity,
+                    comparablePreRevenue = Math.Round(comparablePreRevenue, 2),
+                    comparablePostRevenue = Math.Round(comparablePostRevenue, 2),
+                    comparablePreQuantity,
+                    comparablePostQuantity,
+                    comparableArticleCount,
+                    comparableRevenueCoveragePct = totalRevenue > 0m
+                        ? Math.Round((double)((comparablePreRevenue + comparablePostRevenue) / totalRevenue * 100m), 2)
+                        : (double?)null,
+                    observedPreRevenue = Math.Round(sumPreRevenue, 2),
+                    observedPostRevenue = Math.Round(sumPostRevenue, 2),
+                    observedPreQuantity = shoeTypes.Sum(r => r.preNivelacijeKolicina),
+                    observedPostQuantity = shoeTypes.Sum(r => r.posleNivelacijeKolicina),
                     brojTipovaObuce = shoeTypes.Count,
                     previousPeriodRevenue = previousPeriodRevenue.HasValue
                         ? Math.Round(previousPeriodRevenue.Value, 2)
@@ -2584,11 +2610,11 @@ public static class AllEndpoints
                     popUnitsChangePct = previousPeriodUnits.HasValue && previousPeriodUnits.Value > 0
                         ? Math.Round((shoeTypes.Sum(r => r.ukupnaKolicina) - previousPeriodUnits.Value) / (double)previousPeriodUnits.Value * 100d, 2)
                         : (double?)null,
-                    prePostNivelacijaRevenueImpactPct = sumPreRevenue > 0m
-                        ? Math.Round((double)((sumPostRevenue - sumPreRevenue) / sumPreRevenue * 100m), 2)
+                    prePostNivelacijaRevenueImpactPct = comparablePreRevenue > 0m
+                        ? Math.Round((double)((comparablePostRevenue - comparablePreRevenue) / comparablePreRevenue * 100m), 2)
                         : (double?)null,
-                    prePostNivelacijaUnitsImpactPct = shoeTypes.Sum(r => r.preNivelacijeKolicina) > 0
-                        ? Math.Round((shoeTypes.Sum(r => r.posleNivelacijeKolicina) - shoeTypes.Sum(r => r.preNivelacijeKolicina)) / (double)shoeTypes.Sum(r => r.preNivelacijeKolicina) * 100d, 2)
+                    prePostNivelacijaUnitsImpactPct = comparablePreQuantity > 0
+                        ? Math.Round((comparablePostQuantity - comparablePreQuantity) / (double)comparablePreQuantity * 100d, 2)
                         : (double?)null,
                     recommendationSummary = new
                     {
@@ -2599,8 +2625,8 @@ public static class AllEndpoints
                         insufficientData = shoeTypesWithRecommendation.Count(x => x.recommendation.Status == "insufficient_data")
                     },
                     // Legacy compatibility alias (pre/post impact metric in old response shape)
-                    promenaPrometaPct = sumPreRevenue > 0m
-                        ? Math.Round((double)((sumPostRevenue - sumPreRevenue) / sumPreRevenue * 100m), 2)
+                    promenaPrometaPct = comparablePreRevenue > 0m
+                        ? Math.Round((double)((comparablePostRevenue - comparablePreRevenue) / comparablePreRevenue * 100m), 2)
                         : (double?)null
                 };
 

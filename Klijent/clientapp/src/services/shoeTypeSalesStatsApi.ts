@@ -54,6 +54,10 @@ export interface ShoeTypeSalesStat {
   prePostNivelacijaRevenueImpactPct: number | null;
   prePostNivelacijaUnitsImpactPct: number | null;
   prePostNivelacijaRevenueCoveragePct: number | null;
+  comparablePreRevenue?: number;
+  comparablePostRevenue?: number;
+  comparablePreQuantity?: number;
+  comparablePostQuantity?: number;
   prePostSignalNote?: string | null;
   prePostComparableArticleCount?: number;
   sharePct?: number | null;
@@ -88,6 +92,16 @@ export interface ShoeTypeSalesTotals {
   ukupnaKolicina: number;
   preKolicina: number;
   posleKolicina: number;
+  comparablePreRevenue?: number;
+  comparablePostRevenue?: number;
+  comparablePreQuantity?: number;
+  comparablePostQuantity?: number;
+  comparableArticleCount?: number;
+  comparableRevenueCoveragePct?: number | null;
+  observedPreRevenue?: number;
+  observedPostRevenue?: number;
+  observedPreQuantity?: number;
+  observedPostQuantity?: number;
   previousPeriodRevenue: number | null;
   previousPeriodUnits: number | null;
   brojTipovaObuce: number;

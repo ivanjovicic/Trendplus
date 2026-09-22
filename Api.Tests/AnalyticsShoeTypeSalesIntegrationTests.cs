@@ -189,9 +189,22 @@ public class AnalyticsShoeTypeSalesIntegrationTests : IClassFixture<WebApplicati
             var firstItem = shoeTypes[0];
             Assert.True(firstItem.TryGetProperty("preNivelacijePromet", out _), "Missing 'preNivelacijePromet' field");
             Assert.True(firstItem.TryGetProperty("posleNivelacijePromet", out _), "Missing 'posleNivelacijePromet' field");
+            Assert.True(firstItem.TryGetProperty("comparablePreRevenue", out _), "Missing 'comparablePreRevenue' field");
+            Assert.True(firstItem.TryGetProperty("comparablePostRevenue", out _), "Missing 'comparablePostRevenue' field");
+            Assert.True(firstItem.TryGetProperty("comparablePreQuantity", out _), "Missing 'comparablePreQuantity' field");
+            Assert.True(firstItem.TryGetProperty("comparablePostQuantity", out _), "Missing 'comparablePostQuantity' field");
             Assert.True(firstItem.TryGetProperty("brojArtikalaSaNivelacijom", out _), "Missing 'brojArtikalaSaNivelacijom' field");
             Assert.True(firstItem.TryGetProperty("recommendation", out _), "Missing 'recommendation' field");
         }
+
+        var totals = root.GetProperty("totals");
+        Assert.True(totals.TryGetProperty("comparablePreRevenue", out _), "Missing comparable total pre revenue");
+        Assert.True(totals.TryGetProperty("comparablePostRevenue", out _), "Missing comparable total post revenue");
+        Assert.True(totals.TryGetProperty("comparablePreQuantity", out _), "Missing comparable total pre quantity");
+        Assert.True(totals.TryGetProperty("comparablePostQuantity", out _), "Missing comparable total post quantity");
+        Assert.True(totals.TryGetProperty("comparableArticleCount", out _), "Missing comparable total article count");
+        Assert.True(totals.TryGetProperty("observedPreRevenue", out _), "Missing observed total pre revenue");
+        Assert.True(totals.TryGetProperty("observedPostRevenue", out _), "Missing observed total post revenue");
     }
 
     [Fact(DisplayName = "Data scope filters imported and existing rows")]

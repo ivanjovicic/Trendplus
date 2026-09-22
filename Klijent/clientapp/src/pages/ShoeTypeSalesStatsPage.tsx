@@ -711,6 +711,8 @@ export default function ShoeTypeSalesStatsPage() {
       { key: "fallbackCoverage", label: "Promet sa procenjenom nabavnom %", value: fmtPct(resolveShoeTypePercentValue(data?.dataQuality.estimatedCostRevenueSharePct), 1) },
       { key: "noCostCoverage", label: "Promet bez nabavne cene %", value: fmtPct(resolveShoeTypePercentValue(data?.dataQuality.noCostRevenueSharePct ?? data?.dataQuality.missingCostRevenueSharePct), 1) },
       { key: "splitCoverage", label: "Uporedivo pre/post pokriće", value: fmtPct(resolveShoeTypePercentValue(data?.dataQuality.revenueWithNivelacijaSplitSharePct), 1) },
+      { key: "comparableArticleCount", label: "Uporedivih artikala", value: formatMetricDisplayValue({ value: data?.totals.comparableArticleCount, kind: "number", fallback: "N/A" }) },
+      { key: "comparableImpact", label: "Ukupni uticaj nivelacije (uporediva kohorta)", value: fmtSignedPct(data?.totals.prePostNivelacijaRevenueImpactPct) },
       { key: "snapshotCoverage", label: "Pokrivenost troškom iz snimka %", value: fmtPct(resolveShoeTypePercentValue(data?.totals.snapshotCostCoveragePct), 1) },
       { key: "isSnapshotActive", label: "Snimak aktivan", value: data?.totals.isSnapshotActive ? "da" : "ne" },
       { key: "increaseFocus", label: recommendationStatusLabel("increase_focus"), value: counts.increaseFocus },
@@ -732,6 +734,8 @@ export default function ShoeTypeSalesStatsPage() {
       data?.dataQuality.revenueWithNivelacijaSplitSharePct,
       data?.dataScope,
       data?.generatedAt,
+      data?.totals.comparableArticleCount,
+      data?.totals.prePostNivelacijaRevenueImpactPct,
       data?.totals.brojTipovaObuce,
       data?.totals.snapshotCostCoveragePct,
       data?.totals.isSnapshotActive,
@@ -1535,12 +1539,28 @@ export default function ShoeTypeSalesStatsPage() {
                   <strong>{formatCategoryPrePostRevenueMetric(selectedRow.posleNivelacijePromet)}</strong>
                 </article>
                 <article>
+                  <span>Uporedivi promet pre nivelacije <InfoTip text="Promet samo artikala koji imaju prodaju i pre i posle prve nivelacije; ova kohorta je izvor ukupnog pre/post uticaja." /></span>
+                  <strong>{formatCategoryPrePostRevenueMetric(selectedRow.comparablePreRevenue)}</strong>
+                </article>
+                <article>
+                  <span>Uporedivi promet posle nivelacije <InfoTip text="Promet samo artikala koji imaju prodaju i pre i posle prve nivelacije; ova kohorta je izvor ukupnog pre/post uticaja." /></span>
+                  <strong>{formatCategoryPrePostRevenueMetric(selectedRow.comparablePostRevenue)}</strong>
+                </article>
+                <article>
                   <span>Pre nivo količina <InfoTip text="Ukupan broj prodanih komada pre prvog datuma nivelacije." /></span>
                   <strong>{formatCategoryPrePostQuantityMetric(selectedRow.preNivelacijeKolicina)}</strong>
                 </article>
                 <article>
                   <span>Posle nivo količina <InfoTip text="Ukupan broj prodanih komada od prvog datuma nivelacije nadalje." /></span>
                   <strong>{formatCategoryPrePostQuantityMetric(selectedRow.posleNivelacijeKolicina)}</strong>
+                </article>
+                <article>
+                  <span>Uporedive količine pre nivelacije <InfoTip text="Količina samo artikala sa prodajom i pre i posle prve nivelacije; koristi se za ukupni pre/post uticaj." /></span>
+                  <strong>{formatCategoryPrePostQuantityMetric(selectedRow.comparablePreQuantity)}</strong>
+                </article>
+                <article>
+                  <span>Uporedive količine posle nivelacije <InfoTip text="Količina samo artikala sa prodajom i pre i posle prve nivelacije; koristi se za ukupni pre/post uticaj." /></span>
+                  <strong>{formatCategoryPrePostQuantityMetric(selectedRow.comparablePostQuantity)}</strong>
                 </article>
                 <article>
                   <span>Artikli sa nivelacijom <InfoTip text="Broj artikala sa registrovnom nivelacijom / ukupan broj artikala ovog tipa." /></span>

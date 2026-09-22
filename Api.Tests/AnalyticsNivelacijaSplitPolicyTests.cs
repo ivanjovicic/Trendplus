@@ -66,6 +66,10 @@ public sealed class AnalyticsNivelacijaSplitPolicyTests
         Assert.Equal(2, snapshot.ArticleCountWithNivelacija);
         Assert.Equal(1, snapshot.ComparableArticleCount);
         Assert.Equal(1_250m, snapshot.ComparableRevenueWithSplit);
+        Assert.Equal(500m, snapshot.ComparablePreRevenue);
+        Assert.Equal(750m, snapshot.ComparablePostRevenue);
+        Assert.Equal(5, snapshot.ComparablePreQuantity);
+        Assert.Equal(6, snapshot.ComparablePostQuantity);
         Assert.Equal(50d, snapshot.RevenueImpactPct);
         Assert.Equal(20d, snapshot.UnitsImpactPct);
         Assert.True(snapshot.HasComparableSignal);
