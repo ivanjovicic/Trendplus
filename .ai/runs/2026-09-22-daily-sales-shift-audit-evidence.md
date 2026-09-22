@@ -3,7 +3,7 @@ Queue: docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md
 Date: 2026-09-22
 Agent/tool: GPT-5.6 Luna / Cloud Agent
 Delivery target: main
-Working branch / PR: cursor/daily-sales-audit-prompts-52eb / pending
+Working branch / PR: cursor/daily-sales-audit-prompts-52eb / PR #59
 Main commit SHA: pending
 Main verification: pending
 Evidence state: pending
@@ -21,8 +21,13 @@ Evidence state: pending
 
 ## Validation run
 - Source/contract inspection of DailySalesStatsPage.tsx, dailySalesStatsApi.ts, analyticsResponseSchemas.ts, DailySalesStatsService.cs, DailySalesStatsEndpoints.cs, DailySalesStatsDto.cs and focused tests -> pass
-- `git diff --check` -> pending
-- Queue/instruction/planning validators -> pending
+- `git diff --check` -> pass
+- `node scripts/check-agent-instructions.mjs --self-test` -> pass
+- `node scripts/check-agent-instructions.mjs` -> pass
+- `node scripts/check-prompt-queues.mjs --self-test` -> pass
+- `node scripts/check-prompt-queues.mjs` -> pass (523 tasks)
+- `node scripts/check-planning-architecture.mjs --self-test` -> pass
+- `node scripts/check-planning-architecture.mjs` -> pass (78 planning tasks)
 
 ## Validation not run
 - Runtime frontend/backend tests -> not run - this task records audit prompts only; no runtime implementation was made.
