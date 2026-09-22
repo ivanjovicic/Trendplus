@@ -5,6 +5,7 @@ import { getAnalyticsDetail } from "../../services/analyticsDetailApi";
 import { getAnalyticsDetailSnapshot } from "../../services/analyticsTableState";
 import type { AnalyticsDetailResponse } from "../../types/analyticsTable";
 import { InventoryState } from "../inventory/InventoryPageShell";
+import { normalizeRecommendationPct } from "../../utils/canonicalRecommendationSemantics";
 
 function DetailSkeleton() {
   return (
@@ -35,6 +36,29 @@ function DetailRow(props: { label: string; value?: string | null; highlight?: bo
       </div>
     </div>
   );
+}
+
+function formatDetailReasonCode(code: string): string {
+  const labels: Record<string, string> = {
+    unknown_entity: "Nepoznat identitet",
+    new_entity: "Novi tip u odnosu na prethodni period",
+    previous_period_missing: "Nedostaje prethodni uporediv period",
+    no_previous_baseline: "Nema prethodne osnove",
+    missing_known_margin_baseline: "Nedostaje osnova poznate marže",
+    unknown_bucket_share_unavailable: "Nedostaje udeo nepoznatih podataka",
+    missing_cost_coverage: "Nedovoljno pokriće troškom",
+    missing_split_coverage: "Nedostaje uporediv signal nivelacije",
+    limited_nivelacija_coverage: "Ograničeno pokriće nivelacije",
+    unknown_heavy_dataset: "Veliki udeo nepoznatih podataka",
+    tiny_sample: "Premali uzorak",
+    unstable_margin: "Nestabilan signal marže",
+    pop_unavailable: "PoP poređenje nije dostupno",
+  };
+  return labels[code] ?? "Dodatno ograničenje procene";
+}
+
+function formatDataQualityStatus(value: string): string {
+  return value === "good" ? "Dobro" : value === "warning" ? "Upozorenje" : "Kritično";
 }
 
 async function copyValue(value: string) {
@@ -79,7 +103,7 @@ export default function AnalyticsDetailView(props: {
         return;
       }
 
-      setError(reason instanceof Error ? reason.message : "Greska pri ucitavanju detalja.");
+      setError(reason instanceof Error ? reason.message : "Greška pri učitavanju detalja.");
       setDetail(null);
     } finally {
       setLoading(false);
@@ -116,6 +140,13 @@ export default function AnalyticsDetailView(props: {
     return <InventoryState message="Detalj nije pronadjen za izabrani zapis." tone="neutral" />;
   }
 
+  const recommendationReliability = detail.recommendation
+    ? normalizeRecommendationPct(detail.recommendation.reliabilityPct)
+    : null;
+  const recommendationConfidence = detail.recommendation
+    ? normalizeRecommendationPct(detail.recommendation.confidencePct)
+    : null;
+
   return (
     <div className="space-y-5 text-sm">
       <section className="rounded-2xl border border-muted bg-surface-elevated p-4">
@@ -126,7 +157,7 @@ export default function AnalyticsDetailView(props: {
             {detail.subtitle ? <div className="mt-1 text-sm text-muted">{detail.subtitle}</div> : null}
             {usedSnapshot ? (
               <div className="mt-2 text-xs text-warning">
-                Prikazan je sačuvani snapshot reda jer backend detalj nije dostupan za ovu tabelu.
+                Prikazan je sačuvani snimak reda jer detalj sa servera nije dostupan za ovu tabelu.
               </div>
             ) : null}
           </div>
@@ -142,6 +173,35 @@ export default function AnalyticsDetailView(props: {
         </div>
       </section>
 
+      {detail.recommendation ? (
+        <section className="rounded-2xl border border-muted bg-surface-elevated p-4">
+          <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">Preporuka i pouzdanost</h3>
+          <DetailRow label="Preporuka" value={detail.recommendation.label} highlight={detail.recommendation.recommendationAllowed} />
+          <DetailRow label="Obrazloženje" value={detail.recommendation.summary} />
+          <DetailRow label="Preporuka dozvoljena" value={detail.recommendation.recommendationAllowed ? "Da" : "Ne"} />
+          <DetailRow label="Pouzdanost" value={recommendationReliability == null ? "Nije dostupno" : `${recommendationReliability.toLocaleString("sr-RS")} %`} />
+          <DetailRow label="Sigurnost preporuke" value={recommendationConfidence == null ? "Nije dostupno" : `${recommendationConfidence.toLocaleString("sr-RS")} %`} />
+          <DetailRow label="Kvalitet podataka" value={formatDataQualityStatus(detail.recommendation.dataQualityStatus)} />
+          {detail.recommendation.reasonCodes.length > 0 ? (
+            <DetailRow label="Razlozi" value={detail.recommendation.reasonCodes.map(formatDetailReasonCode).join(", ")} />
+          ) : null}
+        </section>
+      ) : null}
+
+      {detail.provenance ? (
+        <section className="rounded-2xl border border-muted bg-surface-elevated p-4">
+          <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">Poreklo i kvalitet podataka</h3>
+          <DetailRow label="Traženi period" value={`${detail.provenance.requestedFromUtc ?? "Nije navedeno"} – ${detail.provenance.requestedToUtc ?? "Nije navedeno"}`} />
+          <DetailRow label="Efektivni period" value={`${detail.provenance.effectiveFromUtc ?? "Nije navedeno"} – ${detail.provenance.effectiveToUtc ?? "Nije navedeno"}`} />
+          <DetailRow label="Sezona" value={detail.provenance.season} />
+          <DetailRow label="Objekat" value={detail.provenance.storeId == null ? "Svi objekti" : String(detail.provenance.storeId)} />
+          <DetailRow label="Opseg podataka" value={detail.provenance.dataScope === "imported" ? "Uvezeni podaci" : detail.provenance.dataScope === "existing" ? "Postojeći podaci" : "Svi podaci"} />
+          <DetailRow label="Svežina" value={detail.provenance.freshness === "fresh" ? "Sveže" : detail.provenance.freshness} />
+          <DetailRow label="Snimljeni trošak" value={detail.provenance.snapshotActive ? "Aktivan" : "Nije aktivan"} />
+          <DetailRow label="Procena troška" value={detail.provenance.fallbackApplied ? "Korišćena" : "Nije korišćena"} />
+        </section>
+      ) : null}
+
       <section className="rounded-2xl border border-muted bg-surface-elevated p-4">
         <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">Polja</h3>
         {detail.fields.map((field) => (
@@ -151,7 +211,7 @@ export default function AnalyticsDetailView(props: {
 
       {detail.metadata.length > 0 ? (
         <section className="rounded-2xl border border-muted bg-surface-elevated p-4">
-          <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">Metadata</h3>
+          <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">Metapodaci</h3>
           {detail.metadata.map((field) => (
             <DetailRow key={field.key} label={field.label} value={field.value} />
           ))}

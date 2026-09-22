@@ -20,6 +20,8 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
     private sealed class AnalyticsFilters
     {
         public int? SezonaId { get; init; }
+        public DateTime? RequestedFromUtc { get; init; }
+        public DateTime? RequestedToUtc { get; init; }
         public DateTime? FromUtc { get; init; }
         public DateTime? ToUtc { get; init; }
         public int? StoreId { get; init; }
@@ -165,15 +167,42 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
 
     private async Task<AnalyticsDetailResponseDto?> GetShoeTypeSalesDetailAsync(string id, IQueryCollection query, CancellationToken ct)
     {
-        if (!int.TryParse(id, out var shoeTypeId))
+        var context = await BuildAnalyticsContextAsync(query, ct);
+        var isUnknown = IsUnknownShoeTypeId(id);
+        var knownId = int.TryParse(id, out var shoeTypeId) ? shoeTypeId : (int?)null;
+        if (!knownId.HasValue && !isUnknown)
         {
             return null;
         }
 
-        var context = await BuildAnalyticsContextAsync(query, ct);
-        var rows = context.SalesRows.Where(x => x.TipObuceId == shoeTypeId).ToList();
-        var title = rows.FirstOrDefault()?.TipObuceNaziv ?? $"Tip obuce {id}";
-        return BuildAggregatedDetail("shoe-type-sales-stats", id, title, "Prodaja po tipu obuce", rows, context);
+        var rows = isUnknown
+            ? context.SalesRows
+                .Where(x => !x.TipObuceId.HasValue || string.Equals(x.TipObuceNaziv, "Nepoznato", StringComparison.OrdinalIgnoreCase))
+                .ToList()
+            : context.SalesRows.Where(x => x.TipObuceId == knownId!.Value).ToList();
+        if (rows.Count == 0)
+        {
+            return null;
+        }
+
+        var title = isUnknown
+            ? "Nepoznato"
+            : rows.FirstOrDefault()?.TipObuceNaziv ?? $"Tip obuće {knownId!.Value}";
+        var comparison = await GetShoeTypeComparisonMetricsAsync(
+            id ?? string.Empty,
+            context,
+            rows.Sum(x => x.Prihod),
+            rows.Sum(x => x.Kolicina),
+            ct);
+        var aggregate = BuildAggregatedDetail(
+            "shoe-type-sales-stats",
+            id ?? string.Empty,
+            title,
+            "Prodaja po tipu obuće",
+            rows,
+            context,
+            comparison);
+        return aggregate is null ? null : BuildShoeTypeDetailProjection(aggregate, rows, context, comparison, isUnknown);
     }
 
     private async Task<AnalyticsDetailResponseDto?> GetColorSalesDetailAsync(string id, IQueryCollection query, CancellationToken ct)
@@ -423,11 +452,97 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         };
     }
 
+    private async Task<ComparisonMetrics?> GetShoeTypeComparisonMetricsAsync(
+        string? id,
+        AnalyticsContext context,
+        decimal currentRevenue,
+        int currentUnits,
+        CancellationToken ct)
+    {
+        var (previousFromUtc, previousToUtc) = BuildComparablePreviousRange(context.Filters.FromUtc, context.Filters.ToUtc);
+        if (!previousFromUtc.HasValue || !previousToUtc.HasValue)
+        {
+            return null;
+        }
+
+        var importedOnly = string.Equals(context.Filters.DataScope, "imported", StringComparison.OrdinalIgnoreCase);
+        var existingOnly = string.Equals(context.Filters.DataScope, "existing", StringComparison.OrdinalIgnoreCase);
+        decimal previousRevenue;
+        int previousUnits;
+
+        if (int.TryParse(id, out var shoeTypeId))
+        {
+            var aggregate = await (
+                from ps in _db.ProdajaStavke.AsNoTracking()
+                join pz in _db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+                join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                where pz.DatumProdaje >= previousFromUtc.Value
+                   && pz.DatumProdaje <= previousToUtc.Value
+                   && (!context.Filters.StoreId.HasValue || pz.IDObjekat == context.Filters.StoreId.Value)
+                   && a.IDTipObuce == shoeTypeId
+                   && (!importedOnly || a.DataOrigin == "access")
+                   && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+                group ps by 1 into g
+                select new
+                {
+                    Revenue = g.Sum(x => x.Kolicina * x.Cena),
+                    Units = g.Sum(x => x.Kolicina)
+                })
+                .FirstOrDefaultAsync(ct);
+
+            previousRevenue = aggregate?.Revenue ?? 0m;
+            previousUnits = aggregate?.Units ?? 0;
+        }
+        else if (IsUnknownShoeTypeId(id))
+        {
+            var aggregate = await (
+                from ps in _db.ProdajaStavke.AsNoTracking()
+                join pz in _db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+                join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                join t in _db.TipoviObuce.AsNoTracking() on a.IDTipObuce equals t.Id into tj
+                from t in tj.DefaultIfEmpty()
+                where pz.DatumProdaje >= previousFromUtc.Value
+                   && pz.DatumProdaje <= previousToUtc.Value
+                   && (!context.Filters.StoreId.HasValue || pz.IDObjekat == context.Filters.StoreId.Value)
+                   && (!a.IDTipObuce.HasValue || t == null || t.Naziv == null || t.Naziv.Trim() == "")
+                   && (!importedOnly || a.DataOrigin == "access")
+                   && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+                group ps by 1 into g
+                select new
+                {
+                    Revenue = g.Sum(x => x.Kolicina * x.Cena),
+                    Units = g.Sum(x => x.Kolicina)
+                })
+                .FirstOrDefaultAsync(ct);
+
+            previousRevenue = aggregate?.Revenue ?? 0m;
+            previousUnits = aggregate?.Units ?? 0;
+        }
+        else
+        {
+            return null;
+        }
+
+        return new ComparisonMetrics
+        {
+            PreviousPeriodRevenue = Math.Round(previousRevenue, 2),
+            PreviousPeriodUnits = previousUnits,
+            PopRevenueChangePct = previousRevenue > 0m
+                ? Math.Round((double)((currentRevenue - previousRevenue) / previousRevenue * 100m), 2)
+                : (double?)null,
+            PopUnitsChangePct = previousUnits > 0
+                ? Math.Round((currentUnits - previousUnits) / (double)previousUnits * 100d, 2)
+                : (double?)null
+        };
+    }
+
     private async Task<AnalyticsFilters> ParseFiltersAsync(IQueryCollection query, CancellationToken ct)
     {
         var sezonaId = TryParseInt(query["sezonaId"]);
-        var fromUtc = NormalizeUtc(TryParseDateTime(query["fromDate"]));
-        var toUtc = NormalizeUtc(TryParseDateTime(query["toDate"]));
+        var requestedFromUtc = NormalizeUtc(TryParseDateTime(query["fromDate"]));
+        var requestedToUtc = NormalizeUtc(TryParseDateTime(query["toDate"]));
+        var fromUtc = requestedFromUtc;
+        var toUtc = requestedToUtc;
         var storeId = TryParseInt(query["storeId"]);
         var supplierId = TryParseInt(query["supplierId"]);
         var dataScope = NormalizeDataScope(query["dataScope"]);
@@ -458,6 +573,8 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         return new AnalyticsFilters
         {
             SezonaId = sezonaId,
+            RequestedFromUtc = requestedFromUtc,
+            RequestedToUtc = requestedToUtc,
             FromUtc = fromUtc,
             ToUtc = toUtc,
             StoreId = storeId,
@@ -485,6 +602,286 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         var previousToUtc = new DateTime(currentFromUtc.Value.Ticks - 1, DateTimeKind.Utc);
         var previousFromUtc = new DateTime(previousToUtc.Ticks - inclusiveDurationTicks + 1, DateTimeKind.Utc);
         return (previousFromUtc, previousToUtc);
+    }
+
+    private static AnalyticsDetailResponseDto BuildShoeTypeDetailProjection(
+        AnalyticsDetailResponseDto aggregate,
+        List<SalesRow> rows,
+        AnalyticsContext context,
+        ComparisonMetrics? comparison,
+        bool isUnknown)
+    {
+        var totalRevenue = rows.Sum(x => x.Prihod);
+        var totalUnits = rows.Sum(x => x.Kolicina);
+        var marginSnapshot = BuildMarginSnapshot(rows, context, totalRevenue);
+        var splitSnapshot = BuildSplitSnapshot(rows, context);
+
+        var knownMarginEvidence = context.SalesRows
+            .GroupBy(x => x.TipObuceId)
+            .Where(group => !string.Equals(group.First().TipObuceNaziv, "Nepoznato", StringComparison.OrdinalIgnoreCase))
+            .Select(group =>
+            {
+                var revenue = group.Sum(x => x.Prihod);
+                var margin = BuildMarginSnapshot(group.ToList(), context, revenue);
+                return (RevenueWithCost: margin.RevenueWithCost, MarginContribution: margin.MarginContribution);
+            })
+            .ToList();
+        var averageMarginPct = AnalyticsMarginPolicy.ResolveWeightedMarginPct(knownMarginEvidence);
+        var unknownRevenue = context.SalesRows
+            .Where(x => string.Equals(x.TipObuceNaziv, "Nepoznato", StringComparison.OrdinalIgnoreCase))
+            .Sum(x => x.Prihod);
+        var unknownSharePct = totalRevenue > 0m
+            ? Math.Round((double)(unknownRevenue / context.SalesRows.Sum(x => x.Prihod) * 100m), 2)
+            : 0d;
+        var sharePct = context.SalesRows.Sum(x => x.Prihod) > 0m
+            ? Math.Round((double)(totalRevenue / context.SalesRows.Sum(x => x.Prihod) * 100m), 2)
+            : 0d;
+        var hasPreviousPeriodWindow = comparison?.PreviousPeriodRevenue is not null;
+        var isNewEntity = hasPreviousPeriodWindow
+            && comparison!.PreviousPeriodRevenue <= 0m
+            && totalRevenue > 0m;
+        var recommendation = AnalyticsDecisionRecommendationEngine.Evaluate(
+            new AnalyticsDecisionRecommendationEngine.RecommendationInput(
+                IsUnknownEntity: isUnknown,
+                TotalRevenue: totalRevenue,
+                TotalUnits: totalUnits,
+                ItemCount: rows.Select(x => x.ArtikalId).Distinct().Count(),
+                SharePct: sharePct,
+                MarginPct: marginSnapshot.RevenueWithCost > 0m ? marginSnapshot.MarginPct : 0d,
+                MarginCoveragePct: marginSnapshot.MarginDataCoveragePct,
+                SplitCoveragePct: splitSnapshot.ComparableRevenueCoveragePct,
+                PopRevenueChangePct: comparison?.PopRevenueChangePct,
+                PopUnitsChangePct: comparison?.PopUnitsChangePct,
+                PreviousPeriodRevenue: comparison?.PreviousPeriodRevenue,
+                PreviousPeriodUnits: comparison?.PreviousPeriodUnits,
+                HasPreviousPeriodWindow: hasPreviousPeriodWindow,
+                IsNewEntity: isNewEntity,
+                UnknownBucketSharePct: unknownSharePct),
+            averageMarginPct);
+        var recommendationAllowed = recommendation.RecommendationAllowed && splitSnapshot.HasComparableSignal;
+        var marginQuality = MarginQualityClassifier.ClassifyFromSnapshot(marginSnapshot, totalRevenue);
+        var localizedFields = aggregate.Fields
+            .Select(field => LocalizeShoeTypeField(field, marginSnapshot, context))
+            .ToList();
+
+        return new AnalyticsDetailResponseDto
+        {
+            Table = aggregate.Table,
+            RecordId = aggregate.RecordId,
+            Title = aggregate.Title,
+            Subtitle = aggregate.Subtitle,
+            Fields = localizedFields,
+            Metadata = BuildShoeTypeMetadata(context, marginQuality, recommendationAllowed),
+            Recommendation = new AnalyticsDetailRecommendationDto
+            {
+                Status = recommendation.Status,
+                Label = ToSerbianRecommendationLabel(recommendation.Status),
+                Summary = ToSerbianRecommendationSummary(recommendation.Status, recommendation.ReasonCodes, recommendation.ReliabilityPct),
+                ConfidencePct = recommendationAllowed ? recommendation.ConfidencePct : null,
+                ReliabilityPct = recommendationAllowed ? recommendation.ReliabilityPct : null,
+                DataQualityStatus = recommendation.DataQualityStatus,
+                RecommendationAllowed = recommendationAllowed,
+                ReasonCodes = recommendation.ReasonCodes
+            },
+            Provenance = new AnalyticsDetailProvenanceDto
+            {
+                RequestedFromUtc = context.Filters.RequestedFromUtc,
+                RequestedToUtc = context.Filters.RequestedToUtc,
+                EffectiveFromUtc = context.Filters.FromUtc,
+                EffectiveToUtc = context.Filters.ToUtc,
+                Season = context.Filters.SezonaNaziv ?? context.Filters.SezonaId?.ToString(CultureInfo.InvariantCulture),
+                StoreId = context.Filters.StoreId,
+                DataScope = context.Filters.DataScope,
+                GeneratedAtUtc = DateTime.UtcNow,
+                Freshness = "fresh",
+                DataQualityStatus = recommendation.DataQualityStatus,
+                SnapshotActive = context.IsSnapshotActive,
+                SnapshotGeneratedAtUtc = context.SnapshotGeneratedAtUtc,
+                FallbackApplied = marginSnapshot.SnapshotCostRevenue > 0m || marginSnapshot.EstimatedCostRevenue > 0m,
+                RecommendationAllowed = recommendationAllowed
+            }
+        };
+    }
+
+    private static MarginSnapshot BuildMarginSnapshot(List<SalesRow> rows, AnalyticsContext context, decimal totalRevenue)
+    {
+        var margin = new MarginAccumulator();
+        foreach (var row in rows)
+        {
+            decimal? snapshotCost = null;
+            if (row.SaleLineCost is null && context.ArticleSnapshotCosts.TryGetValue(row.ArtikalId, out var resolvedSnapshotCost))
+            {
+                snapshotCost = resolvedSnapshotCost;
+            }
+
+            margin.Add(row.Prihod, row.Kolicina, row.SaleLineCost, snapshotCost, row.ProductCostRsd, row.ProductCostLegacy);
+        }
+
+        return margin.Build(totalRevenue);
+    }
+
+    private static NivelacijaSplitSnapshot BuildSplitSnapshot(List<SalesRow> rows, AnalyticsContext context)
+        => AnalyticsNivelacijaSplitPolicy.Build(
+            rows,
+            context.PrvaNivelacijaPoArtiklu,
+            row => row.ArtikalId,
+            row => row.DatumProdaje,
+            row => row.Prihod,
+            row => row.Kolicina);
+
+    private static AnalyticsDetailFieldDto LocalizeShoeTypeField(
+        AnalyticsDetailFieldDto field,
+        MarginSnapshot marginSnapshot,
+        AnalyticsContext context)
+    {
+        var labels = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["ukupanPromet"] = "Ukupan promet",
+            ["ukupnaKolicina"] = "Ukupna količina",
+            ["previousPeriodRevenue"] = "Promet prethodnog perioda",
+            ["previousPeriodUnits"] = "Količina prethodnog perioda",
+            ["popRevenueChangePct"] = "PoP promena prometa (%)",
+            ["popUnitsChangePct"] = "PoP promena količine (%)",
+            ["preNivelacijePromet"] = "Promet pre nivelacije",
+            ["preNivelacijeKolicina"] = "Količina pre nivelacije",
+            ["posleNivelacijePromet"] = "Promet posle nivelacije",
+            ["posleNivelacijeKolicina"] = "Količina posle nivelacije",
+            ["prePostNivelacijaRevenueCoveragePct"] = "Uporedivo pokriće prometa pre/posle (%)",
+            ["prePostNivelacijaRevenueImpactPct"] = "Uticaj nivelacije na promet (%)",
+            ["prePostNivelacijaUnitsImpactPct"] = "Uticaj nivelacije na količinu (%)",
+            ["prePostComparableArticleCount"] = "Artikli sa uporedivim signalom pre/posle",
+            ["marginContribution"] = "Maržni doprinos",
+            ["marginPct"] = "Marža (%)",
+            ["marginDataCoveragePct"] = "Pokriće troška (%)",
+            ["fallbackCostCoveragePct"] = "Promet procenjen iz troška artikla (%)",
+            ["snapshotCostRevenue"] = "Promet pokriven snimljenim troškom",
+            ["snapshotCostCoveragePct"] = "Pokriće snimljenim troškom (%)",
+            ["revenueWithCost"] = "Promet sa pokrićem troška",
+            ["estimatedCostRevenue"] = "Promet procenjen iz troška artikla",
+            ["brojArtikalaSaNivelacijom"] = "Artikli sa nivelacijom",
+            ["brojArtikalaUkupno"] = "Ukupan broj artikala",
+            ["prePostSignalNote"] = "Napomena za pre/post signal",
+            ["marginEstimationNote"] = "Napomena o proceni marže"
+        };
+        var value = field.Value;
+        if (field.Key == "marginPct" && marginSnapshot.RevenueWithCost <= 0m)
+        {
+            value = null;
+        }
+        else if (field.Key == "marginContribution" && marginSnapshot.RevenueWithCost <= 0m)
+        {
+            value = null;
+        }
+        else if (field.Key == "marginEstimationNote")
+        {
+            var fallbackShare = marginSnapshot.FallbackCostCoveragePct?.ToString("0.##", CultureInfo.InvariantCulture) ?? "0";
+            var snapshotShare = marginSnapshot.SnapshotCostCoveragePct?.ToString("0.##", CultureInfo.InvariantCulture) ?? "0";
+            value = context.IsSnapshotActive && marginSnapshot.SnapshotCostRevenue > 0m
+                ? $"Istorijska nabavna cena nije sačuvana za deo prometa; korišćen je snimljeni trošak ({snapshotShare}%) i trošak artikla ({fallbackShare}%)."
+                : $"Istorijska nabavna cena nije sačuvana za {fallbackShare}% prometa, pa je taj deo marže procenjen iz troška artikla.";
+        }
+
+        return new AnalyticsDetailFieldDto
+        {
+            Key = field.Key,
+            Label = labels.TryGetValue(field.Key, out var label) ? label : field.Label,
+            Value = value,
+            DataType = field.DataType,
+            Highlight = field.Highlight
+        };
+    }
+
+    private static IReadOnlyList<AnalyticsDetailFieldDto> BuildShoeTypeMetadata(
+        AnalyticsContext context,
+        MarginQualityClassifier.MarginQualityResult marginQuality,
+        bool recommendationAllowed)
+    {
+        var filters = context.Filters;
+        return
+        [
+            Field("requestedFromDate", "Traženi period od", filters.RequestedFromUtc?.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture), "date"),
+            Field("requestedToDate", "Traženi period do", filters.RequestedToUtc?.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture), "date"),
+            Field("effectiveFromDate", "Efektivni period od", filters.FromUtc?.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture), "date"),
+            Field("effectiveToDate", "Efektivni period do", filters.ToUtc?.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture), "date"),
+            Field("sezona", "Sezona", filters.SezonaNaziv ?? filters.SezonaId?.ToString(CultureInfo.InvariantCulture), "text"),
+            Field("storeId", "Objekat", filters.StoreId?.ToString(CultureInfo.InvariantCulture), "number"),
+            Field("dataScope", "Opseg podataka", ToSerbianDataScope(filters.DataScope), "text"),
+            Field("generatedAt", "Generisano", DateTime.UtcNow.ToString("dd.MM.yyyy HH:mm:ss 'UTC'", CultureInfo.InvariantCulture), "datetime"),
+            Field("freshness", "Svežina podataka", "Sveže", "text"),
+            Field("marginQuality", "Kvalitet marže", marginQuality.Label, "text"),
+            Field("snapshotStatus", "Snimljeni trošak", context.IsSnapshotActive ? "Aktivan" : "Nije aktivan", "text"),
+            Field("snapshotGeneratedAt", "Vreme snimka troška", context.SnapshotGeneratedAtUtc?.ToString("dd.MM.yyyy HH:mm:ss 'UTC'", CultureInfo.InvariantCulture), "datetime"),
+            Field("recommendationAllowed", "Preporuka dozvoljena", recommendationAllowed ? "Da" : "Ne", "text")
+        ];
+    }
+
+    private static bool IsUnknownShoeTypeId(string? id)
+    {
+        if (string.Equals(id, "unknown-nepoznato", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (!(id ?? string.Empty).StartsWith("unknown-", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var suffix = Uri.UnescapeDataString(id!["unknown-".Length..]);
+        return string.Equals(suffix.Trim(), "Nepoznato", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string ToSerbianDataScope(string scope)
+        => scope.ToLowerInvariant() switch
+        {
+            "imported" => "Uvezeni podaci",
+            "existing" => "Postojeći podaci",
+            _ => "Svi podaci"
+        };
+
+    private static string ToSerbianRecommendationLabel(string status)
+        => status switch
+        {
+            "increase_focus" => "Povećati fokus",
+            "maintain" => "Održati",
+            "review" => "Proveriti",
+            "do_not_trust" => "Ne verovati preporuci",
+            _ => "Nedovoljno podataka"
+        };
+
+    private static string ToSerbianRecommendationSummary(
+        string status,
+        IReadOnlyCollection<string> reasonCodes,
+        double reliabilityPct)
+    {
+        if (reasonCodes.Contains("unknown_entity"))
+        {
+            return "Identitet tipa obuće nije poznat; preporuka nije bezbedna za poslovnu odluku.";
+        }
+
+        if (reasonCodes.Contains("missing_known_margin_baseline"))
+        {
+            return "Nedostaje uporediva osnova poznate marže; nema dovoljno dokaza za pouzdanu preporuku.";
+        }
+
+        if (reasonCodes.Contains("missing_split_coverage"))
+        {
+            return "Nedostaje uporediv signal pre i posle nivelacije; preporuka nije potvrđena.";
+        }
+
+        if (reasonCodes.Contains("tiny_sample"))
+        {
+            return "Uzorak je premali po prometu, količini ili broju artikala za pouzdanu preporuku.";
+        }
+
+        return status switch
+        {
+            "increase_focus" => $"Trend i marža podržavaju povećanje fokusa uz pouzdanost od {reliabilityPct:0.#}%.",
+            "maintain" => $"Signal je stabilan bez snažnog rasta ili pada; pouzdanost je {reliabilityPct:0.#}%.",
+            "review" => "Signali su pomešani; proveriti podatke pre promene fokusa nabavke.",
+            "do_not_trust" => "Kvalitet podataka ili signal marže je prenizak za automatsku odluku.",
+            _ => "Nema dovoljno dokaza za automatsku preporuku."
+        };
     }
 
     private static AnalyticsDetailResponseDto? BuildAggregatedDetail(

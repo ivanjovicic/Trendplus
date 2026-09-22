@@ -52,4 +52,34 @@ export interface AnalyticsDetailResponse {
   subtitle?: string | null;
   fields: AnalyticsDetailField[];
   metadata: AnalyticsDetailField[];
+  recommendation?: AnalyticsDetailRecommendation | null;
+  provenance?: AnalyticsDetailProvenance | null;
+}
+
+export interface AnalyticsDetailRecommendation {
+  status: string;
+  label: string;
+  summary: string;
+  confidencePct?: number | null;
+  reliabilityPct?: number | null;
+  dataQualityStatus: string;
+  recommendationAllowed: boolean;
+  reasonCodes: string[];
+}
+
+export interface AnalyticsDetailProvenance {
+  requestedFromUtc?: string | null;
+  requestedToUtc?: string | null;
+  effectiveFromUtc?: string | null;
+  effectiveToUtc?: string | null;
+  season?: string | null;
+  storeId?: number | null;
+  dataScope: string;
+  generatedAtUtc: string;
+  freshness: string;
+  dataQualityStatus: string;
+  snapshotActive: boolean;
+  snapshotGeneratedAtUtc?: string | null;
+  fallbackApplied: boolean;
+  recommendationAllowed: boolean;
 }

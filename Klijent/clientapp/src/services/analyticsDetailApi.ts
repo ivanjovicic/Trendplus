@@ -16,7 +16,7 @@ export async function getAnalyticsDetail(
     return await fetchAnalyticsJson<AnalyticsDetailResponse>(
       `/api/analitika/${encodeURIComponent(table)}/${encodeURIComponent(id)}`,
       params,
-      "Greska pri ucitavanju analytics detalja",
+      "Greška pri učitavanju detalja analitike",
       { signal, dedupe: false }
     );
   } catch (error) {

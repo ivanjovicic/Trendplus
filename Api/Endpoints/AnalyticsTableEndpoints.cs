@@ -50,7 +50,7 @@ public static class AnalyticsTableEndpoints
             {
                 sw.Stop();
                 logger.LogError(ex, "Failed to fetch analytics detail for {Table}/{Id} after {Elapsed}ms", table, id, sw.ElapsedMilliseconds);
-                return Results.Problem(detail: "Greska pri ucitavanju detalja analitike.");
+                return Results.Problem(detail: "Greška pri učitavanju detalja analitike.");
             }
         })
         .WithTags("Analytics")

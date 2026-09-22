@@ -746,7 +746,7 @@ export default function ShoeTypeSalesStatsPage() {
   const openDetail = useCallback((row: DecisionShoeType) => {
     const recordId = row.tipObuceId != null
       ? String(row.tipObuceId)
-      : `unknown-${encodeURIComponent(row.tipObuceNaziv)}`;
+      : "unknown-nepoznato";
 
     const params = new URLSearchParams();
     params.set("fromDate", `${activeFilters.fromDate}T00:00:00Z`);

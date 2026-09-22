@@ -207,6 +207,47 @@ public class AnalyticsShoeTypeSalesIntegrationTests : IClassFixture<WebApplicati
         Assert.True(totals.TryGetProperty("observedPostRevenue", out _), "Missing observed total post revenue");
     }
 
+    [Fact(DisplayName = "ShoeType detail preserves recommendation, provenance and canonical unknown identity")]
+    public async Task ShoeTypeDetail_PreservesDecisionTrustAndUnknownIdentity()
+    {
+        if (!_integrationEnabled) return;
+
+        var root = await GetJsonRootAsync("/api/analytics/shoe-type-sales-stats?fromDate=2026-01-01&toDate=2026-12-31");
+        var rows = root.GetProperty("shoeTypes").EnumerateArray().ToList();
+        var known = rows.FirstOrDefault(row => row.GetProperty("tipObuceId").ValueKind == JsonValueKind.Number);
+        Assert.NotEqual(JsonValueKind.Undefined, known.ValueKind);
+
+        var client = _factory.CreateClient();
+        var knownId = known.GetProperty("tipObuceId").GetInt32();
+        var knownResponse = await client.GetAsync($"/api/analitika/shoe-type-sales-stats/{knownId}?fromDate=2026-01-01&toDate=2026-12-31&dataScope=all");
+        Assert.True(knownResponse.IsSuccessStatusCode);
+        using var knownDocument = JsonDocument.Parse(await knownResponse.Content.ReadAsStringAsync());
+        var knownDetail = knownDocument.RootElement;
+        Assert.True(knownDetail.TryGetProperty("recommendation", out var recommendation));
+        Assert.True(recommendation.TryGetProperty("recommendationAllowed", out _));
+        Assert.True(recommendation.TryGetProperty("reasonCodes", out _));
+        Assert.True(knownDetail.TryGetProperty("provenance", out var provenance));
+        Assert.Equal("all", provenance.GetProperty("dataScope").GetString());
+        Assert.True(provenance.TryGetProperty("effectiveFromUtc", out _));
+        Assert.True(provenance.TryGetProperty("generatedAtUtc", out _));
+        Assert.Contains(knownDetail.GetProperty("metadata").EnumerateArray(), field => field.GetProperty("label").GetString() == "Opseg podataka");
+        Assert.DoesNotContain(knownDetail.GetProperty("fields").EnumerateArray(), field =>
+            (field.GetProperty("label").GetString() ?? string.Empty).Contains("impact", StringComparison.OrdinalIgnoreCase));
+
+        var unknown = rows.FirstOrDefault(row => string.Equals(row.GetProperty("tipObuceNaziv").GetString(), "Nepoznato", StringComparison.OrdinalIgnoreCase));
+        if (unknown.ValueKind == JsonValueKind.Object)
+        {
+            var unknownResponse = await client.GetAsync("/api/analitika/shoe-type-sales-stats/unknown-nepoznato?fromDate=2026-01-01&toDate=2026-12-31&dataScope=all");
+            Assert.True(unknownResponse.IsSuccessStatusCode);
+            using var unknownDocument = JsonDocument.Parse(await unknownResponse.Content.ReadAsStringAsync());
+            Assert.Equal("Nepoznato", unknownDocument.RootElement.GetProperty("title").GetString());
+            Assert.False(unknownDocument.RootElement.GetProperty("recommendation").GetProperty("recommendationAllowed").GetBoolean());
+
+            var collidingUnknownResponse = await client.GetAsync("/api/analitika/shoe-type-sales-stats/unknown-drugi-tip?fromDate=2026-01-01&toDate=2026-12-31&dataScope=all");
+            Assert.Equal(System.Net.HttpStatusCode.NotFound, collidingUnknownResponse.StatusCode);
+        }
+    }
+
     [Fact(DisplayName = "Data scope filters imported and existing rows")]
     public async Task ShoeTypeSalesStats_DataScopeFiltersRows()
     {
