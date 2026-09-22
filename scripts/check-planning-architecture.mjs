@@ -316,7 +316,7 @@ function runSelfTest() {
 
     write(root, "MASTER_ROADMAP.md", validMaster);
     const missingZeroDeclaration = validate(root);
-    if (!missingZeroDeclaration.errors.some((error) => error.includes("no READY prompt requires explicit Current READY 'none'"))) {
+    if (!missingZeroDeclaration.errors.some((error) => error.includes("no READY/IN_PROGRESS prompt requires explicit Current READY 'none'"))) {
       throw new Error("expected missing explicit zero-READY declaration failure");
     }
 
