@@ -55,7 +55,8 @@ Detailed audit and bounded repair of the Supplier Decision Hub/Scorecard screen,
 ## Delivery evidence
 
 - Branch at audit start: `main`.
-- Main commit SHA and `origin/main` verification: pending final commit/push.
+- Main commit SHA: `c84051e69cf0a2d8cb6dd9d53ec491e5a1209bfa`.
+- Main verification: passed — fresh `origin/main` resolves to and contains `c84051e69cf0a2d8cb6dd9d53ec491e5a1209bfa`.
 - Untracked `.codex-remote-attachments/` was pre-existing and intentionally untouched.
 
 ## Residual risks and next step
