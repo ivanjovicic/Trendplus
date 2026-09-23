@@ -4,6 +4,8 @@ Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none; RQ172, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ398, RQ399, RQ400, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE.
 
+Routing repair 2026-09-23: aligned stale legacy status metadata: RQ190's detailed block now matches its table status `OBSOLETE`, and RQ303's table row now matches its recorded completion `DONE`. No WAITING prompt was promoted because the active queue has no dependency-complete READY candidate.
+
 Routing correction 2026-09-23: `RQ172` was already `READY` and dependency-complete, but the current-ready pointer was stale at `none`; the pointer was repaired before claim after collision and ownership checks.
 Owner claim 2026-09-23: `RQ172` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ172-codex.lock.md`.
 Owner completion 2026-09-23: `RQ172` was delivered directly to `main` in `c9331e8cd0c8e4ac5b7eb956104777bba60854ad`; similarity queries now use typed `Pgvector.Vector` parameters, Trendplus runtime registrations enable `UseVector()`, and deterministic pgvector integration coverage is in place. Run log: `.ai/runs/2026-09-23-RQ172-evidence.md`. Evidence state: synchronized. The integration fixture was not executable locally because Docker Desktop was unavailable; CI remains the execution follow-up.
@@ -1364,7 +1366,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ300 | DONE | pre-nivelacija-numeric-robustness | Keep malformed/null numeric payloads from crashing or sorting falsely |
 | RQ301 | DONE | operations-inventory-serbian-copy | Replace English inventory cockpit copy with Serbian product language |
 | RQ302 | DONE | operations-route-smoke | Add missing Operacije routes to core App analytics smoke matrix |
-| RQ303 | IN_PROGRESS | daily-sales-localization | Replace English mismatch badge and mixed QA copy on Daily Sales |
+| RQ303 | DONE | daily-sales-localization | Replace English mismatch badge and mixed QA copy on Daily Sales |
 | RQ304 | WAITING | color-sales-detail-label-parity | Align Color detail score label with table/export Serbian copy |
 | RQ305 | WAITING | operations-supplier-ia-clarity | Clarify Operacije menu entries that redirect into canonical Supplier tabs |
 | RQ306 | WAITING | operations-diacritics-pass | Fix missing Serbian diacritics across Operacije user-facing copy |
@@ -8383,7 +8385,7 @@ When prior 7-day rolling units = 0 and current > 0, `demand_acceleration` is fix
 
 ## RQ190 - Forecast provenance freshness aggregated optimistically
 
-Status: READY
+Status: OBSOLETE
 Priority: P1
 Type: backend/contract/tests
 Feature family: forecast-snapshot-freshness-aggregation
