@@ -22605,10 +22605,10 @@ Finding catalogue from the second pass:
 
 - **OP2-01 — date boundary mismatch:** Supplier/Shoe Type/Color and related pages construct an inclusive-looking `T23:59:59Z` end value while Daily Sales uses date-only half-open semantics; prove whether the last second is excluded, double-counted or inconsistently represented across endpoints.
 - **OP2-02 — scope-change propagation gap:** Supplier Sales has no visible `trendplus:data-scope-changed` listener and derives scope from shared filters, URL or local storage; prove whether changing the global scope while the page is open leaves stale data or stale trust metadata. Also verify standalone Supplier Footwear behavior when `sharedFilters` is absent.
-- **OP2-03 — mixed source-origin semantics:** Inventory article rows are filtered by `Artikli.DataOrigin`, while cached inventory sales velocity and other signals may use `ProdajaZaglavlja.DataOrigin` differently or not at all; reconcile the meaning of `all`, `existing` and `imported` for every joined source.
+- **OP2-03 — mixed source-origin semantics:** Inventory article rows are filtered by `Artikli.DataOrigin`, while cached inventory sales velocity and other signals may use `ProdajaZaglavlja.DataOrigin` differently or not at all; reconcile the meaning of `all`, `existing` and `imported` for every joined source. Historical Supplier/Shoe Type dimension attribution is separately owned by `RQ411`.
 - **OP2-04 — route/canonical-surface divergence:** The legacy Supplier Sales route, canonical Supplier overview and Supplier Footwear/assortment route may expose different filters, detail identifiers, denominators or trust metadata; prove that a menu redirect cannot silently change the requested/effective dataset.
 - **OP2-05 — frontend quality heuristics versus backend truth:** Supplier Sales, Shoe Type and Color still contain local thresholds/quality projections in addition to backend `meta.dataQualityStatus`; find cases where a missing or contradictory backend field causes the header, row state and recommendation gate to disagree.
-- **OP2-06 — live proof gap:** Existing route smoke and contract/unit tests do not prove numeric equality on one live or deterministic source across all eight menu families; coordinate with `RQ407` instead of creating another proof-pack owner.
+- **OP2-06 — live proof gap:** Existing route smoke and contract/unit tests do not prove numeric equality on one live or deterministic source across all eight menu families; coordinate with `RQ407`, the independent Supplier/Shoe Type oracle `RQ412` and ongoing drift guard `RQ413` instead of creating another proof-pack owner.
 
 #### Supplier Sales / Prodaja po dobavljačima
 
@@ -22684,12 +22684,13 @@ This prompt is analysis and queue decomposition only. The downstream owner must 
 - `docs/ai/VALIDATION_SELECTOR.md`
 - `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, especially `RQ371`-`RQ407`
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md`, especially `RQ411`-`RQ413`
 - `docs/ai/OPERATIONS_AUDIT_PROMPTS_2026-09-23.md`
 
 ### Do
 
 1. Create a finding matrix for `OP2-01` through `OP2-49` with: status (`confirmed`, `potential`, `not reproduced`, `duplicate`), exact evidence, source-of-truth owner, affected route/API, business impact, minimal reproducer and existing-RQ reference where applicable.
-2. For each confirmed independent issue, append one small precise WAITING follow-up prompt with the standard eight sections. Do not merge unrelated findings into one implementation prompt and do not create duplicates of `RQ371`-`RQ407`.
+2. For each confirmed independent issue, append one small precise WAITING follow-up prompt with the standard eight sections. Do not merge unrelated findings into one implementation prompt and do not create duplicates of `RQ371`-`RQ413`.
 3. For each duplicate, update only the parent prompt's evidence/dependency note if needed; do not reopen a DONE prompt without a new failing proof.
 4. Separate static code smell from demonstrated wrong output. “Needs live verification” is not a confirmation and must not be presented as a passing test.
 5. Preserve current queue truth: `Current READY prompt: none`; leave `RQ408` and any new decomposition prompts `WAITING` unless a later owner explicitly performs the canonical promotion and collision/dependency check.
@@ -22707,12 +22708,12 @@ This prompt is analysis and queue decomposition only. The downstream owner must 
 
 - Every `OP2-*` item has an evidence-backed classification; no candidate is silently omitted.
 - Every confirmed independent defect has one deduplicated follow-up prompt with a named owner, exact scope, source of truth, denominator/unit semantics, negative/empty/error/degraded cases, focused proof and dependency state.
-- Existing owners `RQ371`-`RQ407` remain authoritative where overlap exists; no duplicate implementation lane is introduced.
+- Existing owners `RQ371`-`RQ413` remain authoritative where overlap exists; no duplicate implementation lane is introduced.
 - No product code is changed by this analysis prompt, no production data is touched and no prompt is promoted to READY.
 - Queue/planning/instruction validators pass and the downstream evidence log records what was and was not proven.
 
 ### Dependencies
 
-- `RQ407` owns the shared eight-route deterministic proof pack; this prompt may consume its manifest but must not create a competing proof system.
+- `RQ407` owns the shared eight-route deterministic proof pack; `RQ411`-`RQ413` own the deconflicted historical-attribution, independent-oracle and drift-guard follow-ups. This prompt may consume their evidence but must not create a competing proof system.
 - Coordinate with `RQ371`/`RQ372`, `RQ373`/`RQ374`, `RQ378`-`RQ380`, `RQ381`-`RQ384`, `RQ385`-`RQ400` and `RQ406`; these owners remain authoritative for overlapping contracts.
 - `RQ408` itself remains `WAITING` until the owner confirms the decomposition boundary and collision-safe queue placement.
