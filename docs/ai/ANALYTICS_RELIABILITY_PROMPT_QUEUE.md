@@ -2,9 +2,9 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none; RQ172, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ398, RQ399, RQ400, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE. RQ406 and RQ407 are WAITING.
+Current READY prompt: none; RQ172, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ398, RQ399, RQ400, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE. RQ406, RQ407 and RQ408 are WAITING.
 
-Owner audit 2026-09-23: under the user's direct Operacije menu data-flow audit, RQ406 was added for Supplier Footwear derived metrics over truncated article detail, and RQ407 was added for deterministic cross-screen reconciliation across all eight Operacije routes. No prompt was promoted; the current READY pointer remains `none`.
+Owner audit 2026-09-23: under the user's direct Operacije menu data-flow audit, RQ406 was added for Supplier Footwear derived metrics over truncated article detail, RQ407 was added for deterministic cross-screen reconciliation across all eight Operacije routes, and RQ408 was added as a second-pass finding catalogue/decomposition prompt. No prompt was promoted; the current READY pointer remains `none`.
 
 Routing repair 2026-09-23: aligned stale legacy status metadata: RQ190's detailed block now matches its table status `OBSOLETE`, and RQ303's table row now matches its recorded completion `DONE`. No WAITING prompt was promoted because the active queue has no dependency-complete READY candidate.
 
@@ -1468,6 +1468,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ405 | DONE | supplier-decision-localization | Finish Serbian terminology on supplier decision surfaces and backend-safe messages |
 | RQ406 | WAITING | supplier-assortment-truncated-derived-metrics | Prevent truncated article detail from producing authoritative Supplier Footwear type insights |
 | RQ407 | WAITING | operations-cross-screen-reconciliation | Prove the eight Operacije routes against one deterministic source and expected-output manifest |
+| RQ408 | WAITING | operations-second-pass-finding-decomposition | Classify and decompose the second-pass Operacije bug/finding catalogue into precise follow-up prompts |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -22573,3 +22574,145 @@ Extend the existing `pilot-analytics-proof-pack-v1` with an Operations-specific 
 - `RQ114` DONE; reuse its deterministic proof-pack owner and manifest conventions.
 - Coordinate with, but do not replace, `RQ371`/`RQ372`, `RQ373`/`RQ374`, `RQ378`-`RQ380`, `RQ381`-`RQ384` and `RQ385`-`RQ406`.
 - Do not promote this prompt to READY until the owner confirms collision-safe test-host scope and the current no-READY routing state is intentionally changed.
+
+---
+
+## RQ408 - Classify and decompose the second-pass Operacije finding catalogue
+
+Status: WAITING
+Ready after: `RQ407` has an agreed ownership boundary for cross-screen proof; this prompt is an analysis/decomposition lane and must not be promoted automatically
+Priority: P1
+Type: backend/frontend/contract/tests/docs
+Feature family: operations-second-pass-finding-decomposition
+Parallel-safe: no
+Owner: Analytics Backend + Frontend + QA/Test Infrastructure
+Commit suggestion: `docs(analytics): decompose second-pass Operacije findings`
+
+### Problem
+
+The second static pass over the eight screens in the Operacije menu found a broad set of concrete defects and plausible bugs in request scope, period boundaries, cache keys, backend denominators, frontend projections, partial/error handling, identity, pagination and action lineage. The list below is an investigation catalogue, not a claim that every item is already proven. A downstream agent must analyse every item separately, classify it, deduplicate it against existing queue ownership and create a precise follow-up prompt only for a confirmed independent problem. This prompt must not implement product fixes and must not turn every static smell into a READY task.
+
+### Evidence
+
+Menu and route surface:
+
+- `Klijent/clientapp/src/layout/navConfig.ts:151-169` — the eight Operacije menu entries.
+- `Klijent/clientapp/src/routes/analyticsRouteDefinitions.ts:40-82` and `Klijent/clientapp/src/App.tsx:105-120` — route targets and canonical supplier redirects.
+
+Finding catalogue from the second pass:
+
+#### Cross-screen and contract risks
+
+- **OP2-01 — date boundary mismatch:** Supplier/Shoe Type/Color and related pages construct an inclusive-looking `T23:59:59Z` end value while Daily Sales uses date-only half-open semantics; prove whether the last second is excluded, double-counted or inconsistently represented across endpoints.
+- **OP2-02 — scope-change propagation gap:** Supplier Sales has no visible `trendplus:data-scope-changed` listener and derives scope from shared filters, URL or local storage; prove whether changing the global scope while the page is open leaves stale data or stale trust metadata. Also verify standalone Supplier Footwear behavior when `sharedFilters` is absent.
+- **OP2-03 — mixed source-origin semantics:** Inventory article rows are filtered by `Artikli.DataOrigin`, while cached inventory sales velocity and other signals may use `ProdajaZaglavlja.DataOrigin` differently or not at all; reconcile the meaning of `all`, `existing` and `imported` for every joined source.
+- **OP2-04 — route/canonical-surface divergence:** The legacy Supplier Sales route, canonical Supplier overview and Supplier Footwear/assortment route may expose different filters, detail identifiers, denominators or trust metadata; prove that a menu redirect cannot silently change the requested/effective dataset.
+- **OP2-05 — frontend quality heuristics versus backend truth:** Supplier Sales, Shoe Type and Color still contain local thresholds/quality projections in addition to backend `meta.dataQualityStatus`; find cases where a missing or contradictory backend field causes the header, row state and recommendation gate to disagree.
+- **OP2-06 — live proof gap:** Existing route smoke and contract/unit tests do not prove numeric equality on one live or deterministic source across all eight menu families; coordinate with `RQ407` instead of creating another proof-pack owner.
+
+#### Supplier Sales / Prodaja po dobavljačima
+
+- **OP2-07 — missing runtime schema:** `Klijent/clientapp/src/services/supplierSalesStatsApi.ts:188-204` calls `fetchAnalyticsJson` without a response schema, unlike newer analytics services; this is already related to `RQ379`, so confirm the remaining gap and do not duplicate it.
+- **OP2-08 — stale derived memo:** `SupplierSalesStatsPage.tsx:755-839` memoizes `decisionSuppliers` while reading several totals beyond `ukupanPromet`; prove whether changes to margin/unit totals can leave share-of-margin/share-of-units/cost projections stale.
+- **OP2-09 — visible-scope denominator drift:** `SupplierSalesStatsPage.tsx:888-1000` derives concentration, top-5 share, margin totals and status counts from `visibleSuppliers`/`knownSuppliers`, while headline totals come from the full response; coordinate with `RQ373` and prove focus supplier, unknown-supplier and export/chart behavior.
+- **OP2-10 — unknown denominator policy:** Local top-5 and concentration helpers exclude unknown suppliers even when the response total includes their revenue; prove whether the displayed share is a share of all revenue, known suppliers only or the focused subset, and whether the label states that denominator.
+- **OP2-11 — blocked status projection:** `SupplierSalesStatsPage.tsx:781-804` replaces every backend status with `insufficient_data` when `recommendationAllowed` is false; verify whether this hides a meaningful backend `do_not_trust`/`review` status and whether counts/details/export then contradict the backend decision.
+- **OP2-12 — cost-quality label inversion:** `SupplierSalesStatsPage.tsx:1035-1065` derives “historical cost share” as `100 - missingCostRevenueSharePct` even when estimated or snapshot cost is present; coordinate with `RQ378` and prove the semantics of historical, estimated and snapshot cost in user-facing labels.
+- **OP2-13 — supplier detail identity:** Supplier Sales builds detail identifiers from numeric IDs or encoded unknown names and stores generic snapshots; coordinate with `RQ374` to prove collision, invalid-ID and stale-snapshot behavior for unknown and duplicate display names.
+- **OP2-14 — response-window empty hint:** `SupplierSalesStatsPage.tsx:1005-1027` compares selected whole-day bounds to `dataWindowFrom/dataWindowTo`; prove whether timezone/last-second conversions can report “outside available range” for an overlapping day or miss a filtered-out explanation.
+
+#### Inventory / Zalihe i dopuna
+
+- **OP2-15 — secondary scope/period omission:** `InventoryPage.tsx:535-568` sends scope/period to balance/list/insights/store/action calls but not forecast, alerts or rebalance; `analyticsApi.ts:1672-1788` lacks matching parameters. Coordinate with `RQ371`/`RQ372`, including size-curve reads.
+- **OP2-16 — local severity filter after capped fetch:** `InventoryAlertsFeed.tsx:23-31,74-91` filters only the returned alert page after the server has applied its top cap; prove false-empty states, wrong counts and whether server-side severity must be used. Coordinate with `RQ372`.
+- **OP2-17 — all-or-nothing lifecycle:** `InventoryPage.tsx:535-579` uses `Promise.allSettled` but throws if any secondary request rejects, then maps the same query error/loading state to all panels; reconcile this with the per-panel error-boundary intent and `RQ369` partial-failure coverage.
+- **OP2-18 — shared loading state:** `InventoryPage.tsx:588-620` exposes one global `loading` value as `insightsLoading`, `operationsLoading`, `forecastLoading`, `alertsLoading` and `rebalanceLoading`; prove whether an unrelated slow panel masks usable data or mislabels stale data as loading.
+- **OP2-19 — freshness timestamp lineage:** `resolveSecondarySnapshotFreshness` chooses the latest timestamp while status uses the worst source; a stale source plus a fresh source can render “stale” with the fresh timestamp. Define whether the UI needs oldest/worst-source lineage instead.
+- **OP2-20 — missing-cost fake zero:** `CachedAnalyticsEndpoints.cs:637,748-857` converts missing `NabavnaCena` to `0` in inventory estimated value; `inventoryUtils.ts:300-342` then treats any non-null estimate as measured capital. Prove whether positive stock with unknown cost can appear as `0 RSD`, and coordinate with existing no-fake-zero ownership.
+- **OP2-21 — inventory velocity scope mismatch:** `CachedAnalyticsEndpoints.cs:772-790` filters article origin but the `soldUnitsByArticle` query does not visibly apply the same sale-header origin filter; prove mixed-source sell-through under `imported`/`existing`.
+- **OP2-22 — unstable inventory pagination:** `CachedAnalyticsEndpoints.cs:744-752` uses quantity/default ordering without a unique tie-breaker; prove duplicate/missing rows between pages when equal quantities or concurrent updates occur.
+- **OP2-23 — insight-to-row identity collision:** `InventoryInsightPanels.tsx:37-40` resolves by SKU/article ID only, ignoring store; `inventoryUtils.ts:347-371` reconstructs store/supplier IDs by display-name matching and derives a unit cost from aggregate estimated value. Prove wrong-store detail opening, name collisions and invented cost evidence.
+- **OP2-24 — size-specific alert opens aggregate curve:** `InventoryAlertsFeed.tsx:90-93` passes only `skuId` to `onOpenSizeCurve`, dropping `sizeCode` and store context; prove that a size alert opens the wrong aggregate curve or wrong store.
+- **OP2-25 — action idempotency lacks dataset context:** `buildInventorySignalActionSpec` and queue lookup use a source key based on SKU/store but not data scope, period or snapshot generation; prove that an action created for one dataset is treated as already queued for another.
+- **OP2-26 — client-generated due date:** `inventoryUtils.ts:240-277` computes action `dueAtUtc` from `Date.now()` during render; prove whether repeated renders mutate action payloads and whether due dates should come from the backend workflow contract.
+- **OP2-27 — cache churn from moving signal window:** `InventoryPage.tsx:380` creates the signal window from `reloadNonce` and current scope; prove whether a new timestamp on every reload defeats cache reuse and causes non-reproducible values.
+- **OP2-28 — page-only risk/KPI semantics:** local OOS/overstock sorting and signal KPIs operate on the current page while some labels and surrounding panels are population-level; prove that scope warnings survive every sort, export and action path. Coordinate with existing inventory risk/KPI owners.
+- **OP2-29 — forecast row aggregation:** `forecastMetricsByRowKey` takes the maximum risk across matching forecast rows/sizes; prove whether this overstates a SKU/store risk when multiple size-level rows should be weighted or represented separately.
+
+#### Supplier Footwear / Dobavljači i tipovi obuće
+
+- **OP2-30 — standalone data-scope default:** `SupplierFootwearAnalyticsPage.tsx:220-342` initializes `activeFilters.dataScope` from `sharedFilters` or `null`; prove whether a standalone route can silently fall back to `all` despite a global `existing`/`imported` selection.
+- **OP2-31 — top-eight denominator:** `buildTypeInsights` at `SupplierFootwearAnalyticsPage.tsx:149-190` calculates global type shares after slicing to eight categories, so displayed shares can sum to 100% of the top eight rather than the full comparable cohort; prove label and denominator semantics.
+- **OP2-32 — unweighted elasticity:** The same helper computes a simple average elasticity for the dominant type without revenue/units weighting and from article detail rows; prove whether the business contract requires weighted evidence and whether sparse rows dominate.
+- **OP2-33 — vendor share versus headline total:** `SupplierFootwearAnalyticsPage.tsx:431-470` builds vendor shares from comparable vendor rows while the headline total uses the response total only when the comparable window is trusted; prove any mismatch between row shares, top-5 KPI and displayed total.
+- **OP2-34 — truncation/completeness status:** `getDataQualityStatus` does not independently gate all article-derived insights on `isDetailTruncated`; coordinate with `RQ406` and prove whether warning text still leaves dominant type, elasticity or export values looking authoritative.
+
+#### Shoe Type / Prodaja po tipu obuće and Color / Prodaja po boji
+
+- **OP2-35 — null-identity collisions:** `shoeTypeKey` and any remaining normalized fallback identity for null type IDs can collapse blank/unknown/duplicate display names; prove row expansion, detail URL and snapshot collisions. Check Color separately against the already completed `RQ398` contract.
+- **OP2-36 — local concentration reconstruction:** Shoe Type and Color build chart concentration from sorted row shares while totals/decision scores are backend-owned; prove unknown-row, negative/net-zero, rounding and incomplete-population cases, and deduplicate against `RQ376`, `RQ394` and `RQ400`.
+- **OP2-37 — duplicate trust/status projection:** Shoe Type and Color keep local header-quality heuristics and backend `meta`/recommendation status in parallel; construct payloads with missing, warning, critical and blocked states and prove whether header, row counts, detail and CTA agree.
+- **OP2-38 — snapshot/detail/export parity:** Confirm that row expansion, generic detail, saved snapshot and export preserve the same requested/effective period, scope, recommendation gate and unavailable metrics; coordinate with `RQ377` and `RQ397` rather than reopening completed contracts without a failing case.
+
+#### Daily Sales / Prodaja po smeni i dobavljačima
+
+- **OP2-39 — top-N concentration denominator:** `buildSupplierConcentration` at `DailySalesStatsPage.tsx:376-475` infers “Ostali” from top-N supplier rows and period metadata; prove negative/signed quantity, incomplete top-supplier payload and unknown-supplier cases.
+- **OP2-40 — daily total versus metadata total:** `summarizePeriod` at `DailySalesStatsPage.tsx:559-595` sums returned `dateRows` rather than an authoritative total field if one exists; prove pagination/truncation/partial-day behavior and reconcile with `RQ381`/`RQ384`.
+- **OP2-41 — shift/off-shift denominator:** Shift shares use only accounted first/second-shift items while off-shift evidence is reported separately; prove that labels never imply a full-day share and that revenue/quantity totals reconcile when off-shift rows are negative or partial. Coordinate with `RQ382`/`RQ383`.
+- **OP2-42 — mismatch precision and evidence state:** `mismatchCount` compares supplier-plus-other quantities to total quantities with direct equality; prove integer/signed/unknown handling and whether partial evidence is incorrectly classified as a hard mismatch.
+- **OP2-43 — previous-period boundary:** `getPreviousPeriodRange` uses inclusive local date arithmetic while API requests use date-only ranges; prove DST/UTC and adjacent-period overlap/gap behavior.
+
+#### Pre/Post Nivelacija / Pre-Nivelacija Prioriteti
+
+- **OP2-44 — Pre/Post detail-derived metrics under cap:** `ProdajaPrePostNivelacijePage.tsx:1020-1063` builds selected vendor driver summaries from returned `articleStats`; coordinate with completed `RQ386` and prove that truncation/returned-detail limits cannot make partial detail look like a full vendor explanation.
+- **OP2-45 — focused concentration denominator:** `ProdajaPrePostNivelacijePage.tsx:991-1013` computes top vendor concentration from `focusedRows`; when a focus filter is active, “Ostali” may include rows excluded by the focus rather than the rest of the full population. Prove the intended denominator and label.
+- **OP2-46 — Pre-Nivelacija focus is page-local:** `PreNivelacijaPriorityPage.tsx:669-678` filters `tableRows` locally, while the API query at `470-502` does not send `focus`; prove that selecting a status/high-priority focus only filters the current page and can hide matching candidates on later pages.
+- **OP2-47 — action-share top-seven denominator:** `PreNivelacijaPriorityPage.tsx:702-720` normalizes supplier action share over only the top seven leaderboard rows; prove whether the chart claims a full-population share and whether “Ostali” is required.
+- **OP2-48 — ambiguous percentage normalization:** `normalizePercentage` treats any value `<= 1` as a ratio and larger values as percentage points; prove the backend contract for exact `1`, `0.5`, `100` and malformed values so valid `1%` is not shown as `100%`.
+- **OP2-49 — global versus returned-page population:** Pre-Nivelacija combines global `summary/totalCandidates` with page-local `candidateCounts`, focus rows, detail and export projections; prove every label and count is explicit about page versus filtered population and that URL/page changes do not stale the focus state.
+
+### Scope
+
+This prompt is analysis and queue decomposition only. The downstream owner must inspect the cited frontend, service, backend/cache, DTO/schema and nearest focused tests for every `OP2-*` item, reproduce or falsify the behavior, identify the single source of truth and compare it with existing RQ ownership. No runtime fix, schema migration, production-data mutation, broad refactor or READY promotion is authorized by this prompt. A confirmed independent issue gets its own precise follow-up queue prompt; a duplicate points to the existing RQ; a disproven candidate is recorded as such with evidence.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/AGENT_START_HERE.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, especially `RQ371`-`RQ407`
+- `docs/ai/OPERATIONS_AUDIT_PROMPTS_2026-09-23.md`
+
+### Do
+
+1. Create a finding matrix for `OP2-01` through `OP2-49` with: status (`confirmed`, `potential`, `not reproduced`, `duplicate`), exact evidence, source-of-truth owner, affected route/API, business impact, minimal reproducer and existing-RQ reference where applicable.
+2. For each confirmed independent issue, append one small precise WAITING follow-up prompt with the standard eight sections. Do not merge unrelated findings into one implementation prompt and do not create duplicates of `RQ371`-`RQ407`.
+3. For each duplicate, update only the parent prompt's evidence/dependency note if needed; do not reopen a DONE prompt without a new failing proof.
+4. Separate static code smell from demonstrated wrong output. “Needs live verification” is not a confirmation and must not be presented as a passing test.
+5. Preserve current queue truth: `Current READY prompt: none`; leave `RQ408` and any new decomposition prompts `WAITING` unless a later owner explicitly performs the canonical promotion and collision/dependency check.
+
+### Tests
+
+- Run the smallest static/source and focused contract or page test needed to classify each finding; do not implement fixes in this task.
+- Where a runtime repro is unavailable, record the exact missing fixture, live database or deployment dependency.
+- Run `node scripts/check-agent-instructions.mjs --self-test` and `node scripts/check-agent-instructions.mjs`.
+- Run `node scripts/check-prompt-queues.mjs --self-test` and `node scripts/check-prompt-queues.mjs`.
+- Run `node scripts/check-planning-architecture.mjs --self-test` and `node scripts/check-planning-architecture.mjs`.
+- Run `git diff --check`.
+
+### Acceptance
+
+- Every `OP2-*` item has an evidence-backed classification; no candidate is silently omitted.
+- Every confirmed independent defect has one deduplicated follow-up prompt with a named owner, exact scope, source of truth, denominator/unit semantics, negative/empty/error/degraded cases, focused proof and dependency state.
+- Existing owners `RQ371`-`RQ407` remain authoritative where overlap exists; no duplicate implementation lane is introduced.
+- No product code is changed by this analysis prompt, no production data is touched and no prompt is promoted to READY.
+- Queue/planning/instruction validators pass and the downstream evidence log records what was and was not proven.
+
+### Dependencies
+
+- `RQ407` owns the shared eight-route deterministic proof pack; this prompt may consume its manifest but must not create a competing proof system.
+- Coordinate with `RQ371`/`RQ372`, `RQ373`/`RQ374`, `RQ378`-`RQ380`, `RQ381`-`RQ384`, `RQ385`-`RQ400` and `RQ406`; these owners remain authoritative for overlapping contracts.
+- `RQ408` itself remains `WAITING` until the owner confirms the decomposition boundary and collision-safe queue placement.
