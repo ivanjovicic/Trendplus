@@ -4,9 +4,9 @@ Date: 2026-09-23
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct delivery
-Main commit SHA: f1b4e588
-Main verification: pending - final delivery commit created locally; remote verification follows after push
-Evidence state: pending
+Main commit SHA: f1b4e588159850418c93b7692d56eab278864509
+Main verification: passed - `origin/main` contains f1b4e588159850418c93b7692d56eab278864509; current remote tip is 0985fa49ce85d4438adc763d70c4cb578b7332c8
+Evidence state: synchronized
 
 ## What was done
 
