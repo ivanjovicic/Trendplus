@@ -2,8 +2,8 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ418
-Main RQ current READY prompt: RQ418 (inventory action idempotency)
+Current READY prompt: none
+Main RQ current READY prompt: none
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -24,7 +24,7 @@ Canonical queue work already present on current `main` must be preserved:
 - `RQ375`-`RQ377` — Shoe Type weighted margin, comparable cohort and detail trust/identity;
 - `RQ381`, `RQ385`-`RQ400` — Daily Sales, Pre/Post, Pre-Nivelacija and Color correctness contracts.
 
-All prompts below are `WAITING`. Do not claim or auto-promote them without dependency/collision checks.
+All remaining prompts below are `WAITING`. Do not claim or auto-promote them without dependency/collision checks.
 
 ## New audit facts
 
@@ -42,9 +42,9 @@ All prompts below are `WAITING`. Do not claim or auto-promote them without depen
 | RQ413 | WAITING | P1 | operations-runtime-drift-guard | Continuously detect post-import/cache/source drift and fail closed for decision signals |
 | RQ414 | WAITING | P1 | inventory-sales-origin-parity | Keep Inventory list sell-through on the same data-origin population as article rows |
 | RQ415 | DONE | P2 | inventory-deterministic-pagination | Make Inventory list ordering stable under ties and concurrent changes |
-| RQ416 | IN_PROGRESS | P1 | inventory-insight-identity-provenance | Preserve store/supplier identity and cost provenance from Inventory insights to detail |
+| RQ416 | DONE | P1 | inventory-insight-identity-provenance | Preserve store/supplier identity and cost provenance from Inventory insights to detail |
 | RQ417 | DONE | P1 | inventory-size-alert-identity | Preserve SKU, size and store context when an Inventory alert opens size curve |
-| RQ418 | READY | P1 | inventory-action-dataset-idempotency | Prevent Inventory action deduplication from crossing period/scope/snapshot datasets |
+| RQ418 | DONE | P1 | inventory-action-dataset-idempotency | Prevent Inventory action deduplication from crossing period/scope/snapshot datasets |
 | RQ419 | WAITING | P1 | supplier-sales-scope-event-lineage | Reload Supplier Sales when global data scope changes and keep trust metadata aligned |
 | RQ420 | WAITING | P2 | supplier-sales-derived-projection-freshness | Prevent stale Supplier Sales derived shares and cost projections after total changes |
 | RQ421 | WAITING | P1 | supplier-sales-status-identity | Preserve backend Supplier Sales status when recommendation actionability is blocked |
@@ -606,7 +606,7 @@ Completion 2026-09-23:
 
 ## RQ418 - Inventory action idempotency must include dataset context
 
-Status: READY
+Status: DONE
 Ready after: `RQ275` is DONE; coordinate period semantics with `RQ308`/`RQ371`
 Priority: P1
 Type: frontend/backend/workflow/tests
@@ -659,6 +659,25 @@ Do not change action lifecycle states, user permissions or general action priori
 - An action is idempotent only within its declared dataset context.
 - Changing Inventory scope/period cannot inherit a stale queued state from another dataset.
 - `RQ275` empty/reset behavior still passes.
+
+### Completion note
+
+- Date: 2026-09-23
+- Status: DONE
+- Completion: Delivered a canonical versioned Inventory action key with data scope, signal window, snapshot/unknown provenance, size and transfer-store context. Equal-context clicks remain idempotent; different contexts and legacy keys remain distinct. Queue metadata/workflow DTOs now carry the source context, and Decision Board uses the same canonical key without adding a second prefix.
+- Changed files: `Application/Inventory/Models/InventoryActionSourceKey.cs`, `Api/Dtos/InventoryExperienceDtos.cs`, `Api/Endpoints/InventoryEndpoints.cs`, `Api/Endpoints/DecisionBoardEndpoints.cs`, `Api.Tests/InventoryActionSourceKeyTests.cs`, `Api.Tests/DecisionBoardEndpointsTests.cs`, `Klijent/clientapp/src/types/analytics.ts`, `Klijent/clientapp/src/components/inventory/inventoryUtils.ts`, `Klijent/clientapp/src/components/inventory/__tests__/inventoryActionSourceKey.spec.ts`, `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, this queue, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-23-RQ418-evidence.md`.
+- Contract/runtime behavior changed: v2 keys cannot inherit queued state across scope, period or snapshot contexts; unavailable snapshot generation is explicit `unknown`; legacy opaque keys remain readable/writable but are never used as v2 fallbacks.
+- Checks run: focused backend 43/43; focused frontend 30/30; frontend typecheck; frontend build; analytics guardrails (50 reviewed findings, 0 new); prompt-queue validator; planning-architecture validator; `git diff --check`.
+- Checks not run: full repository suite, live provider/database deployment, browser proof and remote CI.
+- Run log: `.ai/runs/2026-09-23-RQ418-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `097ad3e9f4a42da519b477f12c2025dd09c08009`
+- Main verification: `origin/main` equals and contains `097ad3e9f4a42da519b477f12c2025dd09c08009`
+- Missed: no automated database migration of historical legacy keys; they remain explicitly separated from v2.
+- Follow-up: `RQ308`/`RQ371` retain period/scope semantics; `RQ407` retains cross-screen reconciliation ownership.
+- Residual risk: current dirty worktree API build is blocked by an unrelated uncommitted `AnalyticsMarginPolicy.cs` compile error; focused RQ418 backend proof and the delivered main SHA are green.
+- Prompt defect / scope repair: re-anchored the reviewed line-based guardrail baseline after legitimate line movement and removed one baseline entry whose finding no longer exists; no analytics violation was waived.
 
 ### Dependencies
 
