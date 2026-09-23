@@ -64,4 +64,49 @@ describe("AnalyticsDetailView decision trust projection", () => {
     expect(screen.getByText("Efektivni period")).toBeInTheDocument();
     expect(screen.getAllByText("Svi podaci")).toHaveLength(2);
   });
+
+  it("renders the Color detail trust contract instead of falling back to a bare aggregate", async () => {
+    vi.mocked(getAnalyticsDetail).mockResolvedValue({
+      table: "color-sales-stats",
+      recordId: "Crna",
+      title: "Crna",
+      subtitle: "Prodaja po boji artikla",
+      fields: [{ key: "ukupanPromet", label: "Ukupan promet", value: "260.00", dataType: "currency" }],
+      metadata: [{ key: "dataScope", label: "Opseg podataka", value: "all" }],
+      recommendation: {
+        status: "insufficient_data",
+        label: "Insufficient data",
+        summary: "Signed promet nema pozitivan ili potpun imenilac za pouzdanu preporuku.",
+        confidencePct: null,
+        reliabilityPct: null,
+        dataQualityStatus: "insufficient_data",
+        recommendationAllowed: false,
+        reasonCodes: ["signed_denominator_unavailable"],
+      },
+      provenance: {
+        requestedFromUtc: "2026-09-10T00:00:00Z",
+        requestedToUtc: "2026-09-10T00:00:00Z",
+        effectiveFromUtc: "2026-09-10T00:00:00Z",
+        effectiveToUtc: "2026-09-10T23:59:59Z",
+        season: null,
+        storeId: null,
+        dataScope: "all",
+        generatedAtUtc: "2026-09-23T10:00:00Z",
+        freshness: "fresh",
+        dataQualityStatus: "insufficient_data",
+        snapshotActive: false,
+        snapshotGeneratedAtUtc: null,
+        fallbackApplied: false,
+        recommendationAllowed: false,
+      },
+    });
+
+    render(<AnalyticsDetailView table="color-sales-stats" recordId="Crna" queryString="?dataScope=all" />);
+
+    expect(await screen.findByText("Insufficient data")).toBeInTheDocument();
+    expect(screen.getByText("Signed promet nema pozitivan ili potpun imenilac za pouzdanu preporuku.")).toBeInTheDocument();
+    expect(screen.getByText("Poreklo i kvalitet podataka")).toBeInTheDocument();
+    expect(screen.getAllByText("Nije aktivan")).toHaveLength(1);
+    expect(screen.getByText("260.00")).toBeInTheDocument();
+  });
 });

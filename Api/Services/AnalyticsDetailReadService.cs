@@ -216,7 +216,22 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         var normalizedColor = NormalizeColor(colorKey);
         var context = await BuildAnalyticsContextAsync(query, ct);
         var rows = context.SalesRows.Where(x => NormalizeColor(x.Boja) == normalizedColor).ToList();
-        return BuildAggregatedDetail("color-sales-stats", id ?? string.Empty, normalizedColor, "Prodaja po boji artikla", rows, context);
+        var comparison = await GetColorComparisonMetricsAsync(
+            normalizedColor,
+            context,
+            rows.Sum(x => x.Prihod),
+            rows.Sum(x => x.Kolicina),
+            ct);
+        var aggregate = BuildAggregatedDetail(
+            "color-sales-stats",
+            id ?? string.Empty,
+            normalizedColor,
+            "Prodaja po boji artikla",
+            rows,
+            context,
+            comparison,
+            includeSnapshotCost: false);
+        return aggregate is null ? null : BuildColorDetailProjection(aggregate, rows, context, comparison, normalizedColor);
     }
 
     private async Task<AnalyticsDetailResponseDto?> GetTopProductDetailAsync(string id, IQueryCollection query, CancellationToken ct)
@@ -536,13 +551,65 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         };
     }
 
+    private async Task<ComparisonMetrics?> GetColorComparisonMetricsAsync(
+        string normalizedColor,
+        AnalyticsContext context,
+        decimal currentRevenue,
+        int currentUnits,
+        CancellationToken ct)
+    {
+        var (previousFromUtc, previousToUtc) = BuildComparablePreviousRange(context.Filters.FromUtc, context.Filters.ToUtc);
+        if (!previousFromUtc.HasValue || !previousToUtc.HasValue)
+        {
+            return null;
+        }
+
+        var importedOnly = string.Equals(context.Filters.DataScope, "imported", StringComparison.OrdinalIgnoreCase);
+        var existingOnly = string.Equals(context.Filters.DataScope, "existing", StringComparison.OrdinalIgnoreCase);
+        var previousRows = await (
+            from ps in _db.ProdajaStavke.AsNoTracking()
+            join pz in _db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+            join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+            where pz.DatumProdaje >= previousFromUtc.Value
+               && pz.DatumProdaje <= previousToUtc.Value
+               && (!context.Filters.StoreId.HasValue || pz.IDObjekat == context.Filters.StoreId.Value)
+               && (!context.Filters.SupplierId.HasValue || a.IDDobavljac == context.Filters.SupplierId.Value)
+               && (!importedOnly || a.DataOrigin == "access")
+               && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+            select new
+            {
+                Color = a.Boja,
+                Revenue = ps.Kolicina * ps.Cena,
+                Units = ps.Kolicina
+            })
+            .ToListAsync(ct);
+
+        var matchingRows = previousRows
+            .Where(x => NormalizeColor(x.Color) == normalizedColor)
+            .ToList();
+        var previousRevenue = matchingRows.Sum(x => x.Revenue);
+        var previousUnits = matchingRows.Sum(x => x.Units);
+
+        return new ComparisonMetrics
+        {
+            PreviousPeriodRevenue = Math.Round(previousRevenue, 2),
+            PreviousPeriodUnits = previousUnits,
+            PopRevenueChangePct = previousRevenue > 0m
+                ? Math.Round((double)((currentRevenue - previousRevenue) / previousRevenue * 100m), 2)
+                : null,
+            PopUnitsChangePct = previousUnits > 0
+                ? Math.Round((currentUnits - previousUnits) / (double)previousUnits * 100d, 2)
+                : null
+        };
+    }
+
     private async Task<AnalyticsFilters> ParseFiltersAsync(IQueryCollection query, CancellationToken ct)
     {
         var sezonaId = TryParseInt(query["sezonaId"]);
         var requestedFromUtc = NormalizeUtc(TryParseDateTime(query["fromDate"]));
         var requestedToUtc = NormalizeUtc(TryParseDateTime(query["toDate"]));
         var fromUtc = requestedFromUtc;
-        var toUtc = requestedToUtc;
+        var toUtc = ExpandInclusiveDateEnd(requestedToUtc);
         var storeId = TryParseInt(query["storeId"]);
         var supplierId = TryParseInt(query["supplierId"]);
         var dataScope = NormalizeDataScope(query["dataScope"]);
@@ -703,13 +770,131 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         };
     }
 
-    private static MarginSnapshot BuildMarginSnapshot(List<SalesRow> rows, AnalyticsContext context, decimal totalRevenue)
+    private static AnalyticsDetailResponseDto BuildColorDetailProjection(
+        AnalyticsDetailResponseDto aggregate,
+        List<SalesRow> rows,
+        AnalyticsContext context,
+        ComparisonMetrics? comparison,
+        string normalizedColor)
+    {
+        var totalRevenue = rows.Sum(x => x.Prihod);
+        var totalUnits = rows.Sum(x => x.Kolicina);
+        var marginSnapshot = BuildMarginSnapshot(rows, context, totalRevenue, includeSnapshotCost: false);
+        var splitSnapshot = BuildSplitSnapshot(rows, context);
+        var totalDatasetRevenue = context.SalesRows.Sum(x => x.Prihod);
+
+        var knownMarginEvidence = context.SalesRows
+            .GroupBy(x => NormalizeColor(x.Boja), StringComparer.Ordinal)
+            .Where(group => !string.Equals(group.Key, "Nepoznato", StringComparison.OrdinalIgnoreCase))
+            .Select(group =>
+            {
+                var revenue = group.Sum(x => x.Prihod);
+                var margin = BuildMarginSnapshot(group.ToList(), context, revenue, includeSnapshotCost: false);
+                return (RevenueWithCost: margin.RevenueWithCost, MarginContribution: margin.MarginContribution);
+            })
+            .ToList();
+        var averageMarginPct = ColorSignedEvidencePolicy.ResolveWeightedMarginPct(knownMarginEvidence);
+        var unknownRevenue = context.SalesRows
+            .Where(x => string.Equals(NormalizeColor(x.Boja), "Nepoznato", StringComparison.OrdinalIgnoreCase))
+            .Sum(x => x.Prihod);
+        var unknownSharePct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(unknownRevenue, totalDatasetRevenue);
+        var sharePct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(totalRevenue, totalDatasetRevenue);
+        var hasPreviousPeriodWindow = comparison?.PreviousPeriodRevenue is not null;
+        var isNewColor = hasPreviousPeriodWindow
+            && comparison!.PreviousPeriodRevenue <= 0m
+            && totalRevenue > 0m;
+        var recommendation = AnalyticsDecisionRecommendationEngine.Evaluate(
+            new AnalyticsDecisionRecommendationEngine.RecommendationInput(
+                IsUnknownEntity: string.Equals(normalizedColor, "Nepoznato", StringComparison.OrdinalIgnoreCase),
+                TotalRevenue: totalRevenue,
+                TotalUnits: totalUnits,
+                ItemCount: rows.Select(x => x.ArtikalId).Distinct().Count(),
+                SharePct: sharePct ?? 0d,
+                MarginPct: marginSnapshot.RevenueWithCost > 0m ? marginSnapshot.MarginPct : 0d,
+                MarginCoveragePct: marginSnapshot.MarginDataCoveragePct,
+                SplitCoveragePct: splitSnapshot.ComparableRevenueCoveragePct,
+                PopRevenueChangePct: comparison?.PopRevenueChangePct,
+                PopUnitsChangePct: comparison?.PopUnitsChangePct,
+                PreviousPeriodRevenue: comparison?.PreviousPeriodRevenue,
+                PreviousPeriodUnits: comparison?.PreviousPeriodUnits,
+                HasPreviousPeriodWindow: hasPreviousPeriodWindow,
+                IsNewEntity: isNewColor,
+                UnknownBucketSharePct: unknownSharePct),
+            averageMarginPct);
+        var hasComparableNivelacijaSignal = splitSnapshot.RevenueImpactPct.HasValue && splitSnapshot.UnitsImpactPct.HasValue;
+        var hasMeasurableEvidence = ColorSignedEvidencePolicy.HasMeasurableRecommendationEvidence(
+            totalRevenue,
+            marginSnapshot.RevenueWithCost > 0m ? marginSnapshot.MarginPct : null,
+            marginSnapshot.MarginDataCoveragePct,
+            unknownSharePct);
+        var recommendationAllowed = recommendation.RecommendationAllowed
+            && hasComparableNivelacijaSignal
+            && hasMeasurableEvidence;
+        var exposedRecommendationBlocked = !hasMeasurableEvidence;
+        var exposedRecommendationStatus = exposedRecommendationBlocked ? "insufficient_data" : recommendation.Status;
+        var exposedRecommendationLabel = exposedRecommendationBlocked ? "Insufficient data" : recommendation.Label;
+        var exposedRecommendationSummary = exposedRecommendationBlocked
+            ? "Signed promet nema pozitivan ili potpun imenilac za pouzdanu preporuku."
+            : recommendation.Summary;
+        var exposedRecommendationDataQualityStatus = exposedRecommendationBlocked
+            ? "insufficient_data"
+            : recommendation.DataQualityStatus;
+        var exposedReasonCodes = exposedRecommendationBlocked
+            ? recommendation.ReasonCodes.Append("signed_denominator_unavailable").Distinct(StringComparer.Ordinal).ToArray()
+            : recommendation.ReasonCodes;
+
+        return new AnalyticsDetailResponseDto
+        {
+            Table = aggregate.Table,
+            RecordId = aggregate.RecordId,
+            Title = aggregate.Title,
+            Subtitle = aggregate.Subtitle,
+            Fields = aggregate.Fields,
+            Metadata = aggregate.Metadata,
+            Recommendation = new AnalyticsDetailRecommendationDto
+            {
+                Status = exposedRecommendationStatus,
+                Label = exposedRecommendationLabel,
+                Summary = exposedRecommendationSummary,
+                ConfidencePct = recommendationAllowed ? recommendation.ConfidencePct : null,
+                ReliabilityPct = recommendationAllowed ? recommendation.ReliabilityPct : null,
+                DataQualityStatus = exposedRecommendationDataQualityStatus,
+                RecommendationAllowed = recommendationAllowed,
+                ReasonCodes = exposedReasonCodes
+            },
+            Provenance = new AnalyticsDetailProvenanceDto
+            {
+                RequestedFromUtc = context.Filters.RequestedFromUtc,
+                RequestedToUtc = context.Filters.RequestedToUtc,
+                EffectiveFromUtc = context.Filters.FromUtc,
+                EffectiveToUtc = context.Filters.ToUtc,
+                Season = context.Filters.SezonaNaziv ?? context.Filters.SezonaId?.ToString(CultureInfo.InvariantCulture),
+                StoreId = context.Filters.StoreId,
+                DataScope = context.Filters.DataScope,
+                GeneratedAtUtc = DateTime.UtcNow,
+                Freshness = "fresh",
+                DataQualityStatus = exposedRecommendationDataQualityStatus,
+                SnapshotActive = false,
+                SnapshotGeneratedAtUtc = null,
+                FallbackApplied = marginSnapshot.EstimatedCostRevenue > 0m,
+                RecommendationAllowed = recommendationAllowed
+            }
+        };
+    }
+
+    private static MarginSnapshot BuildMarginSnapshot(
+        List<SalesRow> rows,
+        AnalyticsContext context,
+        decimal totalRevenue,
+        bool includeSnapshotCost = true)
     {
         var margin = new MarginAccumulator();
         foreach (var row in rows)
         {
             decimal? snapshotCost = null;
-            if (row.SaleLineCost is null && context.ArticleSnapshotCosts.TryGetValue(row.ArtikalId, out var resolvedSnapshotCost))
+            if (includeSnapshotCost
+                && row.SaleLineCost is null
+                && context.ArticleSnapshotCosts.TryGetValue(row.ArtikalId, out var resolvedSnapshotCost))
             {
                 snapshotCost = resolvedSnapshotCost;
             }
@@ -891,7 +1076,8 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         string subtitle,
         List<SalesRow> rows,
         AnalyticsContext context,
-        ComparisonMetrics? comparison = null)
+        ComparisonMetrics? comparison = null,
+        bool includeSnapshotCost = true)
     {
         if (rows.Count == 0)
         {
@@ -910,7 +1096,9 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             totalQty += row.Kolicina;
             articleIds.Add(row.ArtikalId);
             decimal? snapshotCost = null;
-            if (row.SaleLineCost is null && context.ArticleSnapshotCosts.TryGetValue(row.ArtikalId, out var sc))
+            if (includeSnapshotCost
+                && row.SaleLineCost is null
+                && context.ArticleSnapshotCosts.TryGetValue(row.ArtikalId, out var sc))
                 snapshotCost = sc;
             margin.Add(
                 row.Prihod,
@@ -1041,6 +1229,19 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         return date.Kind == DateTimeKind.Unspecified
             ? DateTime.SpecifyKind(date, DateTimeKind.Utc)
             : date.ToUniversalTime();
+    }
+
+    private static DateTime? ExpandInclusiveDateEnd(DateTime? value)
+    {
+        if (!value.HasValue)
+        {
+            return null;
+        }
+
+        var date = value.Value;
+        return date.TimeOfDay == TimeSpan.Zero
+            ? date.Date.AddDays(1).AddTicks(-1)
+            : date;
     }
 
     private static string NormalizeDataScope(string? rawScope)
