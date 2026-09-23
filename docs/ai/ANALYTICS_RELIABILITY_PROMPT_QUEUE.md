@@ -2,12 +2,13 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ406; RQ172, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ398, RQ399, RQ400, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE. RQ406 is IN_PROGRESS; RQ407 and RQ408 remain WAITING.
+Current READY prompt: none; RQ172, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ398, RQ399, RQ400, RQ401, RQ402, RQ403, RQ404, RQ405 and RQ406 are DONE. RQ407 and RQ408 remain WAITING.
 
 Owner audit 2026-09-23: under the user's direct Operacije menu data-flow audit, RQ406 was added for Supplier Footwear derived metrics over truncated article detail, RQ407 was added for deterministic cross-screen reconciliation across all eight Operacije routes, and RQ408 was added as a second-pass finding catalogue/decomposition prompt. No prompt was promoted; the current READY pointer remains `none`.
 
 Owner promotion 2026-09-23: under the user's instruction to resolve the RQ406 dependency gate, RQ406 moved `WAITING -> READY` after confirming that RQ374 and RQ380 remain separate Supplier Sales owners. RQ406 is limited to the `/api/analytics/vendor-sales-nivelacija` contract and Supplier Footwear route; it adds no Supplier Sales detail or aggregate semantics. RQ407 and RQ408 remain WAITING.
 Owner claim 2026-09-23: `RQ406` transitioned `READY -> IN_PROGRESS` in this workspace after confirming the non-overlap boundary and focused validation scope; local runtime lock `.ai/task-locks/RQ406-codex.lock.md`.
+Owner completion 2026-09-23: `RQ406` was delivered directly to `main` in `fe4bd70d032b0f7735a933ccdf8e4bbf4d0d6515`; Supplier Footwear type insights now use backend full-comparable-cohort aggregates with explicit source/denominator metadata, while truncated detail cannot produce authoritative type shares or elasticity. Run log: `.ai/runs/2026-09-23-RQ406-evidence.md`. Evidence state: synchronized. Main verification: `origin/main` equals and contains the implementation SHA. RQ374/RQ380 remain separate Supplier Sales owners; RQ407/RQ408 remain WAITING.
 
 Routing repair 2026-09-23: aligned stale legacy status metadata: RQ190's detailed block now matches its table status `OBSOLETE`, and RQ303's table row now matches its recorded completion `DONE`. No WAITING prompt was promoted because the active queue has no dependency-complete READY candidate.
 
@@ -1469,7 +1470,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ403 | DONE | supplier-decision-filter-parity | Align backend-supported supplier filters with the canonical screen and report |
 | RQ404 | DONE | supplier-decision-effective-period-semantics | Make requested/effective supplier periods consistent across metrics and actions |
 | RQ405 | DONE | supplier-decision-localization | Finish Serbian terminology on supplier decision surfaces and backend-safe messages |
-| RQ406 | WAITING | supplier-assortment-truncated-derived-metrics | Prevent truncated article detail from producing authoritative Supplier Footwear type insights |
+| RQ406 | DONE | supplier-assortment-truncated-derived-metrics | Prevent truncated article detail from producing authoritative Supplier Footwear type insights |
 | RQ407 | WAITING | operations-cross-screen-reconciliation | Prove the eight Operacije routes against one deterministic source and expected-output manifest |
 | RQ408 | WAITING | operations-second-pass-finding-decomposition | Classify and decompose the second-pass Operacije bug/finding catalogue into precise follow-up prompts |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
@@ -22510,6 +22511,11 @@ Make Supplier Footwear type insights authoritative only when their denominator i
 - `RQ386` DONE for canonical cohort/denominator metadata.
 - Coordinate with `RQ374` and `RQ380`; do not duplicate their generic Supplier detail-trust or Supplier Sales aggregate work.
 - Keep this prompt limited to the Supplier Footwear assortment route reached from Operacije; unrelated supplier decision surfaces remain with their existing owners.
+
+Completion 2026-09-23: backend full-cohort type aggregates, vendor type/elasticity fields, response provenance, runtime schema, frontend fail-closed projections, cache versioning and focused regression tests are delivered. Truncated detail now shows its returned/analyzed denominator and cannot make partial type insights appear exact. The unrelated stale Supplier Sales source-contract assertion remains a known red baseline test and was not expanded into RQ406.
+- Changed files: `Api/Endpoints/AllEndpoints.cs`; `Api/Models/VendorSalesNivelacijaModels.cs`; `Api/Services/VendorSalesNivelacijaTypeInsightPolicy.cs`; `Api.Tests/VendorSalesNivelacijaTypeInsightPolicyTests.cs`; `Infrastructure/Services/Caching/IAnalyticsCacheService.cs`; `Klijent/clientapp/scripts/known-guardrail-baseline.json`; `Klijent/clientapp/src/pages/SupplierFootwearAnalyticsPage.tsx`; `Klijent/clientapp/src/pages/__tests__/SupplierFootwearAnalyticsPage.spec.tsx`; `Klijent/clientapp/src/services/vendorSalesNivelacijaApi.ts`; `Klijent/clientapp/src/validation/analyticsResponseSchemas.ts`; this queue; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-23-RQ406-evidence.md`.
+- Checks: Supplier Footwear frontend/schema tests 36/36; type-insight policy tests 2/2; analytics guardrails and production build pass; queue/planning/instruction validators pass; `origin/main` equals `fe4bd70d032b0f7735a933ccdf8e4bbf4d0d6515`.
+- Residual: full `VendorSalesNivelacija` group is 17/18 because `SupplierDecisionSchemaSqlTests` contains a stale textual expectation already absent on baseline `HEAD`; live/deployed database proof and remote CI were not run.
 
 ---
 
