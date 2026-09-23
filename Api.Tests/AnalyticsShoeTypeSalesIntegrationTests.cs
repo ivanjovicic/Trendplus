@@ -24,21 +24,14 @@ namespace Trendplus2.Tests;
 public class AnalyticsShoeTypeSalesIntegrationTests : IClassFixture<WebApplicationFactory<global::Program>>
 {
     private readonly WebApplicationFactory<global::Program> _factory;
-    private readonly bool _integrationEnabled;
-
     public AnalyticsShoeTypeSalesIntegrationTests(WebApplicationFactory<global::Program> factory)
     {
         _factory = factory;
-        _integrationEnabled = string.Equals(
-            Environment.GetEnvironmentVariable("TRENDPLUS_RUN_INTEGRATION_TESTS"),
-            "true",
-            StringComparison.OrdinalIgnoreCase);
     }
 
-    [Fact(DisplayName = "ShoeType endpoint returns valid JSON structure")]
+    [OperationsIntegrationFact(DisplayName = "ShoeType endpoint returns valid JSON structure")]
     public async Task ShoeTypeSalesStats_ReturnsValidJsonStructure()
     {
-        if (!_integrationEnabled) return;
 
         var root = await GetJsonRootAsync("/api/analytics/shoe-type-sales-stats?fromDate=2026-01-01&toDate=2026-12-31");
 
@@ -60,19 +53,17 @@ public class AnalyticsShoeTypeSalesIntegrationTests : IClassFixture<WebApplicati
         }
     }
 
-    [Fact(DisplayName = "ShoeType endpoint matches golden snapshot")]
+    [OperationsIntegrationFact(DisplayName = "ShoeType endpoint matches golden snapshot")]
     public async Task ShoeTypeSalesStats_MatchesGoldenSnapshot()
     {
-        if (!_integrationEnabled) return;
 
         var root = await GetJsonRootAsync("/api/analytics/shoe-type-sales-stats?fromDate=2026-06-01&toDate=2026-08-31");
         GoldenSnapshotAssert.Matches("shoe-type-sales-stats.contract.json", ProjectSnapshot(root));
     }
 
-    [Fact(DisplayName = "Invalid season returns not found")]
+    [OperationsIntegrationFact(DisplayName = "Invalid season returns not found")]
     public async Task ShoeTypeSalesStats_InvalidSeason_ReturnsNotFound()
     {
-        if (!_integrationEnabled) return;
 
         var client = _factory.CreateClient();
         var response = await client.GetAsync("/api/analytics/shoe-type-sales-stats?sezonaId=999999");
@@ -80,10 +71,9 @@ public class AnalyticsShoeTypeSalesIntegrationTests : IClassFixture<WebApplicati
         Assert.Equal(System.Net.HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    [Fact(DisplayName = "Invalid date range returns bad request")]
+    [OperationsIntegrationFact(DisplayName = "Invalid date range returns bad request")]
     public async Task ShoeTypeSalesStats_InvalidPeriod_ReturnsBadRequest()
     {
-        if (!_integrationEnabled) return;
 
         var client = _factory.CreateClient();
         var response = await client.GetAsync("/api/analytics/shoe-type-sales-stats?fromDate=2026-07-01&toDate=2026-06-01");
@@ -109,10 +99,9 @@ public class AnalyticsShoeTypeSalesIntegrationTests : IClassFixture<WebApplicati
             && success.ValueKind == JsonValueKind.True);
     }
 
-    [Fact(DisplayName = "ShoeType endpoint correctly aggregates 'Nepoznato' for null/empty types")]
+    [OperationsIntegrationFact(DisplayName = "ShoeType endpoint correctly aggregates 'Nepoznato' for null/empty types")]
     public async Task ShoeTypeSalesStats_AggregatesUnknownTypes()
     {
-        if (!_integrationEnabled) return;
 
         var root = await GetJsonRootAsync("/api/analytics/shoe-type-sales-stats?fromDate=2026-01-01&toDate=2026-12-31");
         var items = root.GetProperty("shoeTypes").EnumerateArray().ToList();
@@ -123,10 +112,9 @@ public class AnalyticsShoeTypeSalesIntegrationTests : IClassFixture<WebApplicati
         Assert.True(unknownItems[0].GetProperty("ukupanPromet").GetDecimal() > 0m);
     }
 
-    [Fact(DisplayName = "ShoeType endpoint filters by storeId correctly")]
+    [OperationsIntegrationFact(DisplayName = "ShoeType endpoint filters by storeId correctly")]
     public async Task ShoeTypeSalesStats_FiltersByStoreId()
     {
-        if (!_integrationEnabled) return;
 
         var client = _factory.CreateClient();
         var response = await client.GetAsync("/api/analytics/shoe-type-sales-stats?storeId=2&fromDate=2026-01-01&toDate=2026-12-31");
@@ -139,10 +127,9 @@ public class AnalyticsShoeTypeSalesIntegrationTests : IClassFixture<WebApplicati
         Assert.Equal(0, root.GetProperty("shoeTypes").GetArrayLength());
     }
 
-    [Fact(DisplayName = "ShoeType endpoint includes Margin metrics")]
+    [OperationsIntegrationFact(DisplayName = "ShoeType endpoint includes Margin metrics")]
     public async Task ShoeTypeSalesStats_IncludesMarginMetrics()
     {
-        if (!_integrationEnabled) return;
 
         var root = await GetJsonRootAsync("/api/analytics/shoe-type-sales-stats?fromDate=2026-01-01&toDate=2026-12-31");
         var shoeTypes = root.GetProperty("shoeTypes");
@@ -176,10 +163,9 @@ public class AnalyticsShoeTypeSalesIntegrationTests : IClassFixture<WebApplicati
         Assert.True(dataQuality.TryGetProperty("noCostRevenueSharePct", out _), "Missing no-cost quality field");
     }
 
-    [Fact(DisplayName = "ShoeType endpoint includes Nivelacija split metrics")]
+    [OperationsIntegrationFact(DisplayName = "ShoeType endpoint includes Nivelacija split metrics")]
     public async Task ShoeTypeSalesStats_IncludesNivelacijaSplitMetrics()
     {
-        if (!_integrationEnabled) return;
 
         var root = await GetJsonRootAsync("/api/analytics/shoe-type-sales-stats?fromDate=2026-01-01&toDate=2026-12-31");
         var shoeTypes = root.GetProperty("shoeTypes");
@@ -207,10 +193,9 @@ public class AnalyticsShoeTypeSalesIntegrationTests : IClassFixture<WebApplicati
         Assert.True(totals.TryGetProperty("observedPostRevenue", out _), "Missing observed total post revenue");
     }
 
-    [Fact(DisplayName = "ShoeType detail preserves recommendation, provenance and canonical unknown identity")]
+    [OperationsIntegrationFact(DisplayName = "ShoeType detail preserves recommendation, provenance and canonical unknown identity")]
     public async Task ShoeTypeDetail_PreservesDecisionTrustAndUnknownIdentity()
     {
-        if (!_integrationEnabled) return;
 
         var root = await GetJsonRootAsync("/api/analytics/shoe-type-sales-stats?fromDate=2026-01-01&toDate=2026-12-31");
         var rows = root.GetProperty("shoeTypes").EnumerateArray().ToList();
@@ -248,10 +233,9 @@ public class AnalyticsShoeTypeSalesIntegrationTests : IClassFixture<WebApplicati
         }
     }
 
-    [Fact(DisplayName = "Data scope filters imported and existing rows")]
+    [OperationsIntegrationFact(DisplayName = "Data scope filters imported and existing rows")]
     public async Task ShoeTypeSalesStats_DataScopeFiltersRows()
     {
-        if (!_integrationEnabled) return;
 
         var allRoot = await GetJsonRootAsync("/api/analytics/shoe-type-sales-stats?fromDate=2026-01-01&toDate=2026-12-31&dataScope=all");
         var existingRoot = await GetJsonRootAsync("/api/analytics/shoe-type-sales-stats?fromDate=2026-01-01&toDate=2026-12-31&dataScope=existing");
@@ -266,10 +250,9 @@ public class AnalyticsShoeTypeSalesIntegrationTests : IClassFixture<WebApplicati
         Assert.DoesNotContain(existingRoot.GetProperty("shoeTypes").EnumerateArray(), item => item.GetProperty("tipObuceNaziv").GetString() == "Sandale");
     }
 
-    [Fact(DisplayName = "Endpoint is deterministic for same inputs")]
+    [OperationsIntegrationFact(DisplayName = "Endpoint is deterministic for same inputs")]
     public async Task ShoeTypeSalesStats_ProducesDeterministicJson()
     {
-        if (!_integrationEnabled) return;
 
         var client = _factory.CreateClient();
         var url = "/api/analytics/shoe-type-sales-stats?fromDate=2026-01-01&toDate=2026-12-31";

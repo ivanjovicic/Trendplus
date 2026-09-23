@@ -21,6 +21,27 @@ This manifest names the reusable deterministic proof basis that later analytics 
 | Decision Board | `Api.Tests/DecisionBoardEndpointsTests.CreateProductRow` plus the product-decision seed pack | `2026-06-19` snapshot | `expectedImpactRsd` stays authoritative when present; blocked statuses keep lost sales off impact; insufficient data stays a truthful empty-style board state | section-level no-signals, honest blocker/warning, explicit unavailable aggregate state |
 | Pilot Intake / Readiness | `Api.Tests/AnalyticsReportsContractTests.CreatePilotIntakeReport` | pilot intake report window used by the readiness page | ready datasets stay success and populate KPIs; below-threshold readiness disables recommendation but stays visible; no-import stays an explicit empty success | explicit empty success, `insufficient_data`, warning/degraded report state |
 
+## Operations extension — RQ407
+
+Fixture ID: `operations-analytics-v1` (part of `pilot-analytics-proof-pack-v1`)
+
+The Operations extension is defined by `Api.Tests/PilotAnalyticsSeedPack.OperationsFixture` and is intentionally one signed fact set rather than eight cloned fixtures:
+
+| Family | Menu path | Canonical path | Endpoint family | Existing owner |
+|---|---|---|---|---|
+| Inventory | `/analytics/inventory` | `/analytics/inventory` | `/api/analytics/inventory/*` | RQ371/RQ372 |
+| Supplier Sales | `/analytics/supplier-sales-stats` | `/analytics/supplier` | `/api/analytics/supplier-sales-stats` | RQ373/RQ374 |
+| Shoe Type | `/analytics/shoe-type-sales-stats` | `/analytics/shoe-type-sales-stats` | `/api/analytics/shoe-type-sales-stats` | RQ378 |
+| Daily Sales | `/analytics/daily-sales` | `/analytics/daily-sales` | `/api/analytics/daily-sales` | RQ381/RQ384 |
+| Pre/Post Nivelacija | `/analytics/nivelacije-pre-post` | `/analytics/nivelacije-pre-post` | `/api/analytics/vendor-sales-nivelacija` | RQ385/RQ387 |
+| Color | `/analytics/color-sales-stats` | `/analytics/color-sales-stats` | `/api/analytics/color-sales-stats` | RQ389/RQ400 |
+| Pre-Nivelacija | `/analytics/pre-nivelacija-prioriteti` | `/analytics/pre-nivelacija-prioriteti` | `/api/analytics/pre-nivelacija-prioriteti` | RQ388/RQ391 |
+| Supplier Footwear | `/analytics/dobavljaci-tipovi-obuce` | `/analytics/supplier` | `/api/analytics/vendor-sales-nivelacija` | RQ406 |
+
+The fixed signed facts include a positive sale, a negative return/correction, an imported sale, an unknown supplier/type/color row, two stores, missing cost evidence, morning/afternoon/off-shift rows, one price event with comparable pre/post values, and OOS/insufficient-data inventory states. The expected all-scope totals are `quantity=5`, `revenue=540 RSD`; existing scope is `3 / 280 RSD`; imported scope is `2 / 260 RSD`. Supplier, shoe-type and color dimensions each reconcile to `Dobavljac A/Patike/Crna = 2 units / 200 RSD / 37.037037%`, `Dobavljac C/Cipele/Plava = 2 / 260 RSD / 48.148148%`, and `Nepoznato = 1 / 80 RSD / 14.814815%`. Daily totals are `2026-07-01 = 2 / 200 RSD`, `2026-07-02 = 2 / 260 RSD`, and `2026-07-03 = 1 / 80 RSD`. The comparable price-event denominator is `1 article`, `pre=2 units / 200 RSD`, `post=3 units / 270 RSD`, with `+35%` revenue change; the Pre-Nivelacija candidate population is `1`. Inventory population is `2`, of which `1` is an alert and `1` allows recommendation.
+
+The deterministic unit proof is `Api.Tests/OperationsAnalyticsProofPackTests.cs`. Live endpoint reconciliation remains an explicit integration gate: Supplier Sales and Shoe Type integration tests now use `OperationsIntegrationFactAttribute` to report skipped/unavailable when `TRENDPLUS_RUN_INTEGRATION_TESTS` is not enabled instead of silently passing by returning early. A skipped live proof is not a numeric pass.
+
 ## Notes
 
 - The pack is deterministic: it uses fixed dates and stable IDs instead of `DateTime.UtcNow` or other environment-dependent values.

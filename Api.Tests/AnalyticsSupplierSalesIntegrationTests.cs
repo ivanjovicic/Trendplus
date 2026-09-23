@@ -23,21 +23,14 @@ namespace Trendplus2.Tests;
 public class AnalyticsSupplierSalesIntegrationTests : IClassFixture<WebApplicationFactory<global::Program>>
 {
     private readonly WebApplicationFactory<global::Program> _factory;
-    private readonly bool _integrationEnabled;
-
     public AnalyticsSupplierSalesIntegrationTests(WebApplicationFactory<global::Program> factory)
     {
         _factory = factory;
-        _integrationEnabled = string.Equals(
-            Environment.GetEnvironmentVariable("TRENDPLUS_RUN_INTEGRATION_TESTS"),
-            "true",
-            StringComparison.OrdinalIgnoreCase);
     }
 
-    [Fact(DisplayName = "Endpoint returns valid JSON with required fields")]
+    [OperationsIntegrationFact(DisplayName = "Endpoint returns valid JSON with required fields")]
     public async Task SupplierSalesStats_ReturnsValidJsonWithAllFields()
     {
-        if (!_integrationEnabled) return;
 
         var root = await GetJsonRootAsync("/api/analytics/supplier-sales-stats?sezonaId=1");
 
@@ -49,19 +42,17 @@ public class AnalyticsSupplierSalesIntegrationTests : IClassFixture<WebApplicati
         Assert.Equal(JsonValueKind.Object, root.GetProperty("totals").ValueKind);
     }
 
-    [Fact(DisplayName = "Supplier endpoint matches golden snapshot")]
+    [OperationsIntegrationFact(DisplayName = "Supplier endpoint matches golden snapshot")]
     public async Task SupplierSalesStats_MatchesGoldenSnapshot()
     {
-        if (!_integrationEnabled) return;
 
         var root = await GetJsonRootAsync("/api/analytics/supplier-sales-stats?sezonaId=1");
         GoldenSnapshotAssert.Matches("supplier-sales-stats.contract.json", ProjectSnapshot(root));
     }
 
-    [Fact(DisplayName = "Invalid season returns not found")]
+    [OperationsIntegrationFact(DisplayName = "Invalid season returns not found")]
     public async Task SupplierSalesStats_InvalidSeason_ReturnsNotFound()
     {
-        if (!_integrationEnabled) return;
 
         var client = _factory.CreateClient();
         var response = await client.GetAsync("/api/analytics/supplier-sales-stats?sezonaId=999999");
@@ -69,10 +60,9 @@ public class AnalyticsSupplierSalesIntegrationTests : IClassFixture<WebApplicati
         Assert.Equal(System.Net.HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    [Fact(DisplayName = "Supplier metrics calculate correctly against fixture")]
+    [OperationsIntegrationFact(DisplayName = "Supplier metrics calculate correctly against fixture")]
     public async Task SupplierSalesStats_MetricsMatchFixtureValues()
     {
-        if (!_integrationEnabled) return;
 
         var root = await GetJsonRootAsync("/api/analytics/supplier-sales-stats?sezonaId=1");
         var suppliers = root.GetProperty("suppliers").EnumerateArray().ToList();
@@ -86,10 +76,9 @@ public class AnalyticsSupplierSalesIntegrationTests : IClassFixture<WebApplicati
         Assert.True(supplierA.GetProperty("sharePct").GetDouble() > 0d);
     }
 
-    [Fact(DisplayName = "Supplier margin quality and uncovered revenue are explicit and non-negative")]
+    [OperationsIntegrationFact(DisplayName = "Supplier margin quality and uncovered revenue are explicit and non-negative")]
     public async Task SupplierSalesStats_ExposesMarginQualityAndNonNegativeNoCost()
     {
-        if (!_integrationEnabled) return;
 
         var root = await GetJsonRootAsync("/api/analytics/supplier-sales-stats?sezonaId=1");
         var suppliers = root.GetProperty("suppliers").EnumerateArray().ToList();
@@ -107,10 +96,9 @@ public class AnalyticsSupplierSalesIntegrationTests : IClassFixture<WebApplicati
         }
     }
 
-    [Fact(DisplayName = "Data scope filters existing and imported rows")]
+    [OperationsIntegrationFact(DisplayName = "Data scope filters existing and imported rows")]
     public async Task SupplierSalesStats_DataScopeFiltersRows()
     {
-        if (!_integrationEnabled) return;
 
         var allRoot = await GetJsonRootAsync("/api/analytics/supplier-sales-stats?sezonaId=1&dataScope=all");
         var existingRoot = await GetJsonRootAsync("/api/analytics/supplier-sales-stats?sezonaId=1&dataScope=existing");
@@ -131,10 +119,9 @@ public class AnalyticsSupplierSalesIntegrationTests : IClassFixture<WebApplicati
             importedRoot.GetProperty("totals").GetProperty("ukupanPromet").GetDecimal());
     }
 
-    [Fact(DisplayName = "Invalid period returns bad request")]
+    [OperationsIntegrationFact(DisplayName = "Invalid period returns bad request")]
     public async Task SupplierSalesStats_InvalidPeriod_ReturnsBadRequest()
     {
-        if (!_integrationEnabled) return;
 
         var client = _factory.CreateClient();
         var response = await client.GetAsync("/api/analytics/supplier-sales-stats?fromDate=2026-03-10&toDate=2026-03-01");
@@ -160,10 +147,9 @@ public class AnalyticsSupplierSalesIntegrationTests : IClassFixture<WebApplicati
             && success.ValueKind == JsonValueKind.True);
     }
 
-    [Fact(DisplayName = "Supplier SharePct invariant: all shares sum to 100%")]
+    [OperationsIntegrationFact(DisplayName = "Supplier SharePct invariant: all shares sum to 100%")]
     public async Task SupplierSalesStats_SharesSumTo100()
     {
-        if (!_integrationEnabled) return;
 
         var root = await GetJsonRootAsync("/api/analytics/supplier-sales-stats?sezonaId=1");
         var suppliers = root.GetProperty("suppliers").EnumerateArray();
@@ -179,10 +165,9 @@ public class AnalyticsSupplierSalesIntegrationTests : IClassFixture<WebApplicati
         Assert.InRange(totalShare, 99.9, 100.1);
     }
 
-    [Fact(DisplayName = "Endpoint produces deterministic output for same inputs")]
+    [OperationsIntegrationFact(DisplayName = "Endpoint produces deterministic output for same inputs")]
     public async Task SupplierSalesStats_ProducesDeterministicJson()
     {
-        if (!_integrationEnabled) return;
 
         var client = _factory.CreateClient();
         var url = "/api/analytics/supplier-sales-stats?sezonaId=1";
@@ -201,10 +186,9 @@ public class AnalyticsSupplierSalesIntegrationTests : IClassFixture<WebApplicati
         Assert.Equal(json1, json2);
     }
 
-    [Fact(DisplayName = "Supplier sum invariant: components equal totals")]
+    [OperationsIntegrationFact(DisplayName = "Supplier sum invariant: components equal totals")]
     public async Task SupplierSalesStats_SupplierSumEqualsTotal()
     {
-        if (!_integrationEnabled) return;
 
         var root = await GetJsonRootAsync("/api/analytics/supplier-sales-stats?sezonaId=1");
         var suppliersElement = root.GetProperty("suppliers");
@@ -229,10 +213,9 @@ public class AnalyticsSupplierSalesIntegrationTests : IClassFixture<WebApplicati
         }
     }
 
-    [Fact(DisplayName = "Unknown suppliers map to 'Nepoznato'")]
+    [OperationsIntegrationFact(DisplayName = "Unknown suppliers map to 'Nepoznato'")]
     public async Task SupplierSalesStats_UnknownSuppliersNormalized()
     {
-        if (!_integrationEnabled) return;
 
         var root = await GetJsonRootAsync("/api/analytics/supplier-sales-stats?sezonaId=1");
         var suppliers = root.GetProperty("suppliers").EnumerateArray().ToList();
@@ -245,10 +228,9 @@ public class AnalyticsSupplierSalesIntegrationTests : IClassFixture<WebApplicati
         Assert.True(unknownSuppliers[0].GetProperty("ukupanPromet").GetDecimal() > 0m);
     }
 
-    [Fact(DisplayName = "Data quality reports missing cost metadata")]
+    [OperationsIntegrationFact(DisplayName = "Data quality reports missing cost metadata")]
     public async Task SupplierSalesStats_DataQualityIncludesMissingCostInfo()
     {
-        if (!_integrationEnabled) return;
 
         var root = await GetJsonRootAsync("/api/analytics/supplier-sales-stats?sezonaId=1");
         var dataQuality = root.GetProperty("dataQuality");
@@ -259,10 +241,9 @@ public class AnalyticsSupplierSalesIntegrationTests : IClassFixture<WebApplicati
         Assert.True(unknownShareEl.GetDouble() > 0d);
     }
 
-    [Fact(DisplayName = "Endpoint responds within acceptable time")]
+    [OperationsIntegrationFact(DisplayName = "Endpoint responds within acceptable time")]
     public async Task SupplierSalesStats_PerformanceWithinThreshold()
     {
-        if (!_integrationEnabled) return;
 
         var client = _factory.CreateClient();
         var watch = System.Diagnostics.Stopwatch.StartNew();
@@ -275,10 +256,9 @@ public class AnalyticsSupplierSalesIntegrationTests : IClassFixture<WebApplicati
         Assert.True(elapsedMs < 10000, $"Endpoint took {elapsedMs}ms, expected < 10000ms");
     }
 
-    [Fact(DisplayName = "Endpoint handles gracefully when schema is incomplete")]
+    [OperationsIntegrationFact(DisplayName = "Endpoint handles gracefully when schema is incomplete")]
     public async Task SupplierSalesStats_HandlesMissingSchemaGracefully()
     {
-        if (!_integrationEnabled) return;
 
         var client = _factory.CreateClient();
         var response = await client.GetAsync("/api/analytics/supplier-sales-stats?sezonaId=999");
