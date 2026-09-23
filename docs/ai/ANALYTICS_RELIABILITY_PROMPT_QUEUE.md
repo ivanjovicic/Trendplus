@@ -2,11 +2,15 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none; RQ172, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE.
+Current READY prompt: RQ398; RQ172, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE.
 
 Routing correction 2026-09-23: `RQ172` was already `READY` and dependency-complete, but the current-ready pointer was stale at `none`; the pointer was repaired before claim after collision and ownership checks.
 Owner claim 2026-09-23: `RQ172` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ172-codex.lock.md`.
 Owner completion 2026-09-23: `RQ172` was delivered directly to `main` in `c9331e8cd0c8e4ac5b7eb956104777bba60854ad`; similarity queries now use typed `Pgvector.Vector` parameters, Trendplus runtime registrations enable `UseVector()`, and deterministic pgvector integration coverage is in place. Run log: `.ai/runs/2026-09-23-RQ172-evidence.md`. Evidence state: synchronized. The integration fixture was not executable locally because Docker Desktop was unavailable; CI remains the execution follow-up.
+Owner promotion 2026-09-23: after `RQ172` reached DONE and `RQ389`, `RQ392`, `RQ393`, `RQ394` and `RQ395` were verified DONE, `RQ397` moved `WAITING -> READY` as the next dependency-complete P1 Color generic-detail trust/provenance prompt; collision checks are clear.
+Owner claim 2026-09-23: `RQ397` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ397-codex.lock.md`.
+Owner completion 2026-09-23: `RQ397` was delivered directly to `main` in `0d0b80cd`; Color generic detail now projects the backend recommendation/trust contract and requested/effective period provenance, computes the comparable Color period correctly, and does not silently apply snapshot cost where the row endpoint does not. Focused backend/frontend regression coverage is present. Run log: `.ai/runs/2026-09-23-RQ397-evidence.md`. Evidence state: synchronized.
+Owner promotion 2026-09-23: after `RQ397` reached DONE and its implementation/evidence were verified, `RQ398` moved `WAITING -> READY` as the next dependency-complete Color identity/collision-safe detail-key prompt; `RQ399` and `RQ400` remain WAITING under their independent provenance and score contracts.
 
 Owner completion 2026-09-22: under the user's direct last-commits audit, `RQ393` was delivered directly to `main` in `3b635fe813e0e55f843236d55025c52c030e853d`; Color recommendations now use a covered-revenue-weighted margin baseline, unknown-share evidence remains nullable, historical/fallback/no-cost coverage is separated, and the affected screens use Serbian decision labels. Run log: `.ai/runs/2026-09-22-direct-last-commits-audit-evidence.md`.
 Owner promotion 2026-09-22: after `RQ393` reached DONE and `RQ389`/`RQ392`/`RQ393` comparable-cohort dependencies were verified on current `main`, `RQ394` moved `WAITING -> READY` as the next dependency-complete P1 Color aggregate-cohort prompt; collision checks are clear.
@@ -8370,7 +8374,7 @@ When prior 7-day rolling units = 0 and current > 0, `demand_acceleration` is fix
 
 ## RQ190 - Forecast provenance freshness aggregated optimistically
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: backend/contract/tests
 Feature family: forecast-snapshot-freshness-aggregation
@@ -21874,7 +21878,7 @@ Color Sales uses a raw `IMemoryCache` key with a five-minute TTL instead of the 
 
 ## RQ397 - Align Color generic detail with row trust and provenance
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend/frontend/detail-contract/tests
 Feature family: color-detail-trust-projection
@@ -21921,11 +21925,29 @@ Color row snapshots contain recommendation status, score, confidence/reliability
 - Depends on `RQ389`, `RQ392`-`RQ395` for scope, numeric, recommendation and error contracts.
 - `RQ286` remains the raw pre/post display owner.
 
+### Completion note
+
+- Date: 2026-09-23
+- Status: DONE
+- Completion: Color generic detail now preserves row-level recommendation/trust semantics, comparable-period context and requested/effective provenance without applying a cost source that the list endpoint does not use.
+- Changed files: `Api/Services/AnalyticsDetailReadService.cs`, `Api.Tests/AnalyticsDetailReadServiceColorTests.cs`, `Klijent/clientapp/src/components/analytics/__tests__/AnalyticsDetailView.spec.tsx`
+- Checks run: `dotnet build Api/Api.csproj --no-restore`; focused `dotnet test` for `AnalyticsDetailReadServiceColorTests`; focused Vitest for `AnalyticsDetailView.spec.tsx`; `npm run check:analytics-guardrails`; `git diff --check`; queue and planning validators.
+- Checks not run: full .NET suite, full frontend suite, live/deployed provider replay and remote CI; they were not required by the focused acceptance and remain residual verification.
+- Run log: `.ai/runs/2026-09-23-RQ397-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `0d0b80cd`
+- Main verification: current `main` and `origin/main` contain implementation `0d0b80cd`; exact ancestor verification recorded in the run log.
+- Missed: canonical case/diacritic Color identity remains RQ398; source-label provenance remains RQ399; authoritative decision score remains RQ400; shared English terminology remains routed to RQ306/RQ325.
+- Follow-up: RQ398 - Canonicalize Color identity and collision-safe detail keys.
+- Residual risk: existing analyzer warnings and uninspected remote/live runtime remain; Color recommendation labels outside the unavailable-data path still follow the existing contract until shared localization ownership runs.
+- Prompt defect / scope repair: fixed the same-owner date-only end-boundary defect exposed by the focused comparable-period test; did not absorb RQ398 identity canonicalization.
+
 ---
 
 ## RQ398 - Canonicalize Color identity and collision-safe detail keys
 
-Status: WAITING
+Status: READY
 Priority: P2
 Type: backend/frontend/identity/tests
 Feature family: color-identity-canonicalization
