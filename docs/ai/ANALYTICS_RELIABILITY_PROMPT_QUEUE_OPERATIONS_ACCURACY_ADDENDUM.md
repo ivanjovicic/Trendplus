@@ -2,8 +2,8 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ416
-Main RQ current READY prompt: RQ416 (operations accuracy addendum)
+Current READY prompt: none
+Main RQ current READY prompt: none
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -445,7 +445,7 @@ Do not change the meaning of totals, risk sorting, export order or secondary pan
 
 ## RQ416 - Inventory insight-to-detail mapping must preserve identity and cost provenance
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: `RQ369` is DONE; coordinate cost-state behavior with `RQ353`
 Priority: P1
 Type: backend/frontend/contract/tests
@@ -505,6 +505,21 @@ Do not redesign Inventory signal formulas, store comparison or cost snapshots.
 
 - Coordinate `RQ353`, `RQ369`, `RQ371` and `RQ407`.
 - If the existing endpoint cannot provide identity/cost provenance, extend it backward-compatibly and record the missing-data state rather than guessing.
+
+Completion 2026-09-23:
+
+- Date: 2026-09-23
+- Status: DONE
+- Completion: Inventory insight payloads now preserve article/store/supplier identity and backend-owned cost provenance; insight navigation requires the composite identity and no longer derives unit cost from aggregate value/quantity.
+- Changed files: `Api/Dtos/InventoryExperienceDtos.cs`, `Api/Endpoints/InventoryEndpoints.cs`, `Api.Tests/InventoryListEndpointIntegrationTests.cs`, `Klijent/clientapp/src/types/analytics.ts`, `Klijent/clientapp/src/validation/analyticsResponseSchemas.ts`, `Klijent/clientapp/src/components/inventory/inventoryUtils.ts`, `Klijent/clientapp/src/components/inventory/InventoryInsightPanels.tsx`, `Klijent/clientapp/src/components/inventory/InventoryInsightPanels.spec.tsx`, `Klijent/clientapp/src/pages/__tests__/ExecutiveDecisionBoardPage.spec.ts`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, this queue, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-23-RQ416-evidence.md`.
+- Contract/runtime behavior changed: missing positive-quantity cost is explicit and nullable, valid zero cost remains distinguishable, and duplicate store/supplier names cannot redirect insight detail navigation.
+- Checks run: focused backend 24/24; focused frontend 24/24; frontend build; analytics guardrails; `git diff --check`; agent-instruction, prompt-queue and planning-architecture validators.
+- Checks not run: full repository suite, live provider/database deployment, browser proof and remote CI.
+- Run log: `.ai/runs/2026-09-23-RQ416-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `f1eae0a3`
+- Main verification: `origin/main` contains `f1eae0a3`
 
 ---
 
