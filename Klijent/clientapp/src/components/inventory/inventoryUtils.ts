@@ -1,4 +1,4 @@
-import type { InventoryActionSuggestion, InventoryInsightItem, InventoryListItem, InventoryReportScheduleInput, InventorySnapshotRowState, StoreOption, SupplierFilterOption } from "../../types/analytics";
+import type { InventoryActionDatasetContext, InventoryActionSuggestion, InventoryInsightItem, InventoryListItem, InventoryReportScheduleInput, InventorySnapshotRowState, StoreOption, SupplierFilterOption } from "../../types/analytics";
 import type { DataScope } from "../../utils/dataScope";
 import type { InventoryRow } from "./types";
 import { TONE, resolveTone } from "./toneMap";
@@ -28,6 +28,54 @@ export const WEEKDAY_OPTIONS = [
   { value: 6, label: "Subota" },
   { value: 0, label: "Nedelja" },
 ];
+
+export const INVENTORY_ACTION_SOURCE_KEY_SCHEMA_VERSION = "v2";
+
+export function inventoryActionSourceKeySchemaVersion(sourceKey: string | null | undefined): "v2" | "legacy" {
+  return sourceKey?.startsWith(`inventory|${INVENTORY_ACTION_SOURCE_KEY_SCHEMA_VERSION}|`) ? "v2" : "legacy";
+}
+
+function encodeInventoryActionKeyPart(value: string): string {
+  return encodeURIComponent(value.trim().toLowerCase());
+}
+
+function encodeInventoryActionContextPart(value: string | null | undefined): string {
+  return encodeInventoryActionKeyPart(value?.trim() || "unknown");
+}
+
+function formatInventoryActionStore(value: number | null | undefined): string {
+  return value != null && Number.isInteger(value) && value > 0 ? String(value) : "all";
+}
+
+/**
+ * Canonical Inventory action identity. Keep the field order in sync with
+ * Application.Inventory.Models.InventoryActionSourceKey; equality is the
+ * idempotency contract, not the display label.
+ */
+export function buildInventoryActionSourceKey(
+  actionKind: string,
+  articleId: number,
+  context: InventoryActionDatasetContext = {},
+): string {
+  if (!Number.isInteger(articleId) || articleId <= 0) {
+    throw new Error("Inventory action source key requires a positive article id.");
+  }
+
+  return [
+    "inventory",
+    INVENTORY_ACTION_SOURCE_KEY_SCHEMA_VERSION,
+    `kind=${encodeInventoryActionKeyPart(actionKind)}`,
+    `article=${articleId}`,
+    `store=${formatInventoryActionStore(context.storeId)}`,
+    `size=${context.sizeCode?.trim() ? encodeInventoryActionKeyPart(context.sizeCode) : "all"}`,
+    `fromStore=${formatInventoryActionStore(context.fromStoreId)}`,
+    `toStore=${formatInventoryActionStore(context.toStoreId)}`,
+    `scope=${encodeInventoryActionContextPart(context.dataScope)}`,
+    `periodFrom=${encodeInventoryActionContextPart(context.periodFrom)}`,
+    `periodTo=${encodeInventoryActionContextPart(context.periodTo)}`,
+    `snapshot=${encodeInventoryActionContextPart(context.snapshotGeneration)}`,
+  ].join("|");
+}
 
 export function formatNumber(value: number | null | undefined, digits = 0) {
   if (value == null || Number.isNaN(value)) return "Nije dostupno";
@@ -411,6 +459,7 @@ export function resolveInventoryExposureRsdFromRow(row: InventoryRow): number | 
 
 export function buildInventoryWorkflowCentralQueueMetadata(
   item: InventoryActionSuggestion,
+  context: InventoryActionDatasetContext = {},
 ): Record<string, unknown> {
   const estimatedValue = resolveInventoryExposureRsd(item.estimatedValue, item.costMissing);
   const valueMetadata = item.estimatedValueBasis === "suggested_action_cost"
@@ -425,6 +474,9 @@ export function buildInventoryWorkflowCentralQueueMetadata(
 
   return {
     suggestionKey: item.suggestionKey,
+    sourceKeySchemaVersion: inventoryActionSourceKeySchemaVersion(item.suggestionKey),
+    legacySourceKey: inventoryActionSourceKeySchemaVersion(item.suggestionKey) === "legacy" ? item.suggestionKey : null,
+    datasetContext: item.datasetContext ?? context,
     actionType: item.actionType,
     suggestedQty: item.suggestedQty,
     forecastDemandQty: item.forecastDemandQty ?? item.suggestedQty,
@@ -466,6 +518,7 @@ export function buildForecastRestockSuggestion(
   signal: ForecastRestockSignal,
   stores: StoreOption[],
   daysSinceMovement: number | null = null,
+  datasetContext: InventoryActionDatasetContext = {},
 ): InventoryActionSuggestion {
   const forecast7d = signal.forecast7d ?? 0;
   const probabilityOfOOSIn7d = signal.probabilityOfOOSIn7d ?? 0;
@@ -474,7 +527,11 @@ export function buildForecastRestockSuggestion(
   const costMissing = row.unitCost == null || row.unitCost <= 0;
 
   return {
-    suggestionKey: `forecast-${signal.skuId}-${signal.storeId}-${signal.sizeCode}`,
+    suggestionKey: buildInventoryActionSourceKey("dopuna", signal.skuId, {
+      ...datasetContext,
+      storeId: signal.storeId,
+      sizeCode: signal.sizeCode,
+    }),
     actionType: "dopuna",
     priority: probabilityOfOOSIn7d > 0.7 ? "critical" : "high",
     label: `Predlozena dopuna za ${row.naziv}`,
@@ -491,6 +548,11 @@ export function buildForecastRestockSuggestion(
     estimatedValueBasis: "suggested_action_cost",
     costMissing,
     daysSinceMovement,
+    datasetContext: {
+      ...datasetContext,
+      storeId: signal.storeId,
+      sizeCode: signal.sizeCode,
+    },
     note: daysSinceMovement == null
       ? `Automatski dodat iz sekcije prognoze za veličinu ${signal.sizeCode} kao signal prognozirane potražnje. Dana bez kretanja: nedostupno (detalj nije učitan ili nema evidencije zastarelosti).`
       : `Automatski dodat iz forecast sekcije za velicinu ${signal.sizeCode} kao signal prognozirane potraznje. Dana bez kretanja: ${daysSinceMovement} dana.`,

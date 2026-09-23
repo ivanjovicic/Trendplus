@@ -3,7 +3,7 @@ import { Warehouse } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { AnalyticsMetaError, createInventoryReportSchedule, exportInventoryReport, getAnalyticsActionSourceStatuses, getForecast, getInventoryActionSuggestions, getInventoryAlerts, getInventoryBalance, getInventoryInsights, getInventoryItemDetail, getInventoryList, getInventoryReportSchedules, getInventoryStoreComparison, getRebalanceSuggestions, getSizeCurve, getStores, getSupplierFilters, previewInventoryReport, printBlankInventoryForm, runInventoryReportScheduleNow, saveInventoryActionDecision, upsertAnalyticsActionWithResult } from "../services/analyticsApi";
 import { downloadExport, resolveApiUrl, waitForExport } from "../services/exportApi";
-import type { AnalyticsActionDataQualityStatus, AnalyticsResponseMeta, ForecastDto, InventoryActionSuggestion, InventoryActionWorkflow, InventoryAlertListDto, InventoryBalance, InventoryInsights, InventoryItemDetail, InventoryPagedResponse, InventoryReportSchedule, InventoryReportScheduleInput, InventoryStoreComparison, RebalanceListDto, SizeCurveDto, StoreOption, SupplierFilterOption } from "../types/analytics";
+import type { AnalyticsActionDataQualityStatus, AnalyticsResponseMeta, ForecastDto, InventoryActionDatasetContext, InventoryActionSuggestion, InventoryActionWorkflow, InventoryAlertListDto, InventoryBalance, InventoryInsights, InventoryItemDetail, InventoryPagedResponse, InventoryReportSchedule, InventoryReportScheduleInput, InventoryStoreComparison, RebalanceListDto, SizeCurveDto, StoreOption, SupplierFilterOption } from "../types/analytics";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsControlBar from "../components/analytics/AnalyticsControlBar";
@@ -25,7 +25,7 @@ import { SizeCurvePanel } from "../components/inventory/SizeCurvePanel";
 import { StoreComparisonPanel } from "../components/inventory/StoreComparisonPanel";
 import KpiExplainButton from "../components/analytics/KpiExplainButton";
 import { computeInventorySignalKpis, INVENTORY_SIGNAL_KPI_PAGE_SCOPE_NOTE } from "../components/inventory/inventorySignalKpis";
-import { buildForecastRestockSuggestion, buildInventoryRow, buildInventoryScreenCsvFilename, buildInventoryScreenCsvLines, buildInventoryServerExportContractNote, buildInventoryWorkflowCentralQueueMetadata, buildOffPageDetailPlaceholderRow, buildSupplierChart, createScheduleDraft, formatPercent, INVENTORY_EXPOSURE_BASIS, inventoryRiskSortScopeWarning, isInventoryPageLocalRiskSort, resolveForecastRestockDaysSinceMovement, resolveInventoryExposureRsdFromRow, validateScheduleDraft } from "../components/inventory/inventoryUtils";
+import { buildForecastRestockSuggestion, buildInventoryActionSourceKey, buildInventoryRow, buildInventoryScreenCsvFilename, buildInventoryScreenCsvLines, buildInventoryServerExportContractNote, buildInventoryWorkflowCentralQueueMetadata, buildOffPageDetailPlaceholderRow, buildSupplierChart, createScheduleDraft, formatPercent, INVENTORY_EXPOSURE_BASIS, inventoryRiskSortScopeWarning, isInventoryPageLocalRiskSort, resolveForecastRestockDaysSinceMovement, resolveInventoryExposureRsdFromRow, validateScheduleDraft } from "../components/inventory/inventoryUtils";
 import { getDataScope } from "../utils/dataScope";
 import type { InventoryRow } from "../components/inventory/types";
 import { fmtNumber, formatDateTime } from "../utils/analyticsFormatters";
@@ -265,7 +265,10 @@ function snapshotFreshnessLabel(status: SecondarySnapshotFreshness["status"]): s
   return "nepoznat";
 }
 
-export function buildInventorySignalActionSpec(row: InventoryRow): {
+export function buildInventorySignalActionSpec(
+  row: InventoryRow,
+  datasetContext: InventoryActionDatasetContext = {},
+): {
   sourceKey: string;
   title: string;
   recommendationStatus: string;
@@ -273,14 +276,20 @@ export function buildInventorySignalActionSpec(row: InventoryRow): {
   description: string;
   dueAtUtc: string;
   expectedImpactRsd?: number | null;
+  datasetContext: InventoryActionDatasetContext;
 } {
   const dueAtUtc = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  const actionContext: InventoryActionDatasetContext = {
+    ...datasetContext,
+    storeId: row.idObjekat,
+    sizeCode: "all",
+  };
   const normalizedCover = (row.stockCoverStatus ?? "").trim().toLowerCase();
   const normalizedSellThrough = (row.sellThroughStatus ?? "").trim().toLowerCase();
 
   if (row.recommendationAllowed !== true || normalizedCover === "insufficient_data" || normalizedSellThrough === "insufficient_data") {
     return {
-      sourceKey: `inventory:signal_check:${row.id}:${row.idObjekat ?? "all"}`,
+      sourceKey: buildInventoryActionSourceKey("signal_check", row.id, actionContext),
       title: `Proveri signal zalihe: ${row.naziv}`,
       recommendationStatus: "SIGNAL_REVIEW",
       priority: "P2",
@@ -288,13 +297,14 @@ export function buildInventorySignalActionSpec(row: InventoryRow): {
       dueAtUtc,
       // Exposure may exist on the row, but a review action must not claim confirmed expected impact.
       expectedImpactRsd: null,
+      datasetContext: actionContext,
     };
   }
 
   if (normalizedCover === "out_of_stock_risk" || normalizedCover === "low_cover" || normalizedCover === "low") {
     const isCritical = normalizedCover === "out_of_stock_risk";
     return {
-      sourceKey: `inventory:replenish:${row.id}:${row.idObjekat ?? "all"}`,
+      sourceKey: buildInventoryActionSourceKey("replenish", row.id, actionContext),
       title: `Dopuni artikal: ${row.naziv}`,
       recommendationStatus: "REPLENISH",
       priority: isCritical ? "P1" : "P2",
@@ -302,29 +312,32 @@ export function buildInventorySignalActionSpec(row: InventoryRow): {
       dueAtUtc,
       // Stock exposure exists on the row, but inventory has no authoritative expected-impact source.
       expectedImpactRsd: null,
+      datasetContext: actionContext,
     };
   }
 
   if (normalizedCover === "slow_stock" || normalizedCover === "slow" || normalizedCover === "no_velocity") {
     return {
-      sourceKey: `inventory:slow_stock_review:${row.id}:${row.idObjekat ?? "all"}`,
+      sourceKey: buildInventoryActionSourceKey("slow_stock_review", row.id, actionContext),
       title: `Proveri sporu zalihu: ${row.naziv}`,
       recommendationStatus: "SLOW_STOCK_REVIEW",
       priority: normalizedCover === "slow_stock" || normalizedCover === "slow" ? "P2" : "P3",
       description: `${row.signalText}. Artikal zahteva proveru sporog obrta i odluke o markdown/transfer akciji.`,
       dueAtUtc,
       expectedImpactRsd: null,
+      datasetContext: actionContext,
     };
   }
 
   return {
-    sourceKey: `inventory:signal_check:${row.id}:${row.idObjekat ?? "all"}`,
+    sourceKey: buildInventoryActionSourceKey("signal_check", row.id, actionContext),
     title: `Proveri signal zalihe: ${row.naziv}`,
     recommendationStatus: "SIGNAL_REVIEW",
     priority: "P2",
     description: `Signal nije dovoljan za finalnu akciju. Pokrivenost zalihe: ${row.stockCoverStatusLabel}. Prodajni obrt: ${row.sellThroughStatusLabel}.`,
     dueAtUtc,
     expectedImpactRsd: null,
+    datasetContext: actionContext,
   };
 }
 
@@ -632,6 +645,20 @@ export default function InventoryPage() {
     )
     : null;
   const error = inventoryError;
+  const inventoryActionDatasetContext = useMemo<InventoryActionDatasetContext>(() => ({
+    dataScope: inventoryDataScope,
+    periodFrom: inventorySignalWindow.fromDate,
+    periodTo: inventorySignalWindow.toDate,
+    // cacheCreatedAtUtc is the strongest available generation marker here;
+    // response time alone must not be presented as snapshot freshness.
+    snapshotGeneration: pageData?.meta?.cacheCreatedAtUtc ?? "unknown",
+  }), [inventoryDataScope, inventorySignalWindow.fromDate, inventorySignalWindow.toDate, pageData?.meta?.cacheCreatedAtUtc]);
+  const inventoryWorkflowActionContext = useMemo<InventoryActionDatasetContext>(() => ({
+    dataScope: inventoryDataScope,
+    periodFrom: "rolling-30d",
+    periodTo: "rolling-30d",
+    snapshotGeneration: "unknown",
+  }), [inventoryDataScope]);
 
   useEffect(() => {
     if (!detailRow) {
@@ -794,7 +821,7 @@ export default function InventoryPage() {
   useEffect(() => {
     let cancelled = false;
 
-    const signalKeys = displayedRows.map((row) => buildInventorySignalActionSpec(row).sourceKey);
+    const signalKeys = displayedRows.map((row) => buildInventorySignalActionSpec(row, inventoryActionDatasetContext).sourceKey);
     const workflowKeys = (effectiveActionWorkflow?.items ?? [])
       .map((item) => item.suggestionKey)
       .filter((key) => Boolean(key));
@@ -833,7 +860,7 @@ export default function InventoryPage() {
     return () => {
       cancelled = true;
     };
-  }, [displayedRows, effectiveActionWorkflow]);
+  }, [displayedRows, effectiveActionWorkflow, inventoryActionDatasetContext]);
 
   const signalKpis = useMemo(
     () => computeInventorySignalKpis(rows, totalCount, pageSize),
@@ -1010,7 +1037,7 @@ export default function InventoryPage() {
         recommendationStatus: item.actionType,
         priority: mapWorkflowPriorityToQueuePriority(item.priority),
         actionUrl: "/analytics/inventory",
-        metadataJson: JSON.stringify(buildInventoryWorkflowCentralQueueMetadata(item)),
+        metadataJson: JSON.stringify(buildInventoryWorkflowCentralQueueMetadata(item, inventoryWorkflowActionContext)),
       });
       setQueuedSuggestionKeys((current) => (
         current.includes(item.suggestionKey) ? current : [...current, item.suggestionKey]
@@ -1128,7 +1155,12 @@ export default function InventoryPage() {
       detailData,
       detailLoading,
     );
-    const suggestion = buildForecastRestockSuggestion(row, item, stores, daysSinceMovement);
+    const suggestion = buildForecastRestockSuggestion(row, item, stores, daysSinceMovement, {
+      dataScope: inventoryDataScope,
+      periodFrom: "forecast-7d",
+      periodTo: "forecast-7d",
+      snapshotGeneration: forecast?.snapshotFreshnessUtc ?? "unknown",
+    });
     setWorkflowOverride((current) => {
       const base = current ?? effectiveActionWorkflow ?? { generatedAtUtc: "", pendingCount: 0, approvedCount: 0, deferredCount: 0, closedCount: 0, items: [] };
       if (base.items.some((entry) => entry.suggestionKey === suggestion.suggestionKey)) return base;
@@ -1148,7 +1180,7 @@ export default function InventoryPage() {
   }
 
   async function addSignalRowToCentralQueue(row: InventoryRow) {
-    const actionSpec = buildInventorySignalActionSpec(row);
+    const actionSpec = buildInventorySignalActionSpec(row, inventoryActionDatasetContext);
     setQueueBusyKey(actionSpec.sourceKey);
     try {
       const result = await upsertAnalyticsActionWithResult({
@@ -1164,6 +1196,8 @@ export default function InventoryPage() {
         dataQualityStatus: toActionDataQualityStatus(row.dataQualityStatus),
         actionUrl: "/analytics/inventory",
         metadataJson: JSON.stringify({
+          sourceKeySchemaVersion: "v2",
+          datasetContext: actionSpec.datasetContext,
           actionKind: actionSpec.recommendationStatus,
           stockCoverStatus: row.stockCoverStatus,
           sellThroughStatus: row.sellThroughStatus,
@@ -1538,7 +1572,7 @@ export default function InventoryPage() {
       </div>
 
       {/* Detail Table - scrollable inventory list */}
-      <InventoryItemsTable rows={displayedRows} loading={loading} totalCount={totalCount} pageNumber={pageNumber} totalPages={totalPages} onOpenDetail={openDetail} onPreviousPage={() => setPageNumber((current) => Math.max(1, current - 1))} onNextPage={() => setPageNumber((current) => Math.min(totalPages, current + 1))} onAddToActions={(row) => void addSignalRowToCentralQueue(row)} onReviewSlowStock={reviewSlowStock} isRowQueued={(row) => queuedSuggestionKeys.includes(buildInventorySignalActionSpec(row).sourceKey)} isRowQueueBusy={(row) => queueBusyKey === buildInventorySignalActionSpec(row).sourceKey} />
+      <InventoryItemsTable rows={displayedRows} loading={loading} totalCount={totalCount} pageNumber={pageNumber} totalPages={totalPages} onOpenDetail={openDetail} onPreviousPage={() => setPageNumber((current) => Math.max(1, current - 1))} onNextPage={() => setPageNumber((current) => Math.min(totalPages, current + 1))} onAddToActions={(row) => void addSignalRowToCentralQueue(row)} onReviewSlowStock={reviewSlowStock} isRowQueued={(row) => queuedSuggestionKeys.includes(buildInventorySignalActionSpec(row, inventoryActionDatasetContext).sourceKey)} isRowQueueBusy={(row) => queueBusyKey === buildInventorySignalActionSpec(row, inventoryActionDatasetContext).sourceKey} />
 
       <div className="space-y-1">
         <h2 className="text-xl font-semibold text-contrast">4. Izvoz i raspored izveštaja</h2>

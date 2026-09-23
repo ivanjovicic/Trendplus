@@ -1621,6 +1621,18 @@ export interface InventoryActionSuggestion {
   daysSinceMovement: number | null;
   note?: string | null;
   updatedAtUtc?: string | null;
+  datasetContext?: InventoryActionDatasetContext | null;
+}
+
+export interface InventoryActionDatasetContext {
+  dataScope?: string | null;
+  periodFrom?: string | null;
+  periodTo?: string | null;
+  snapshotGeneration?: string | null;
+  storeId?: number | null;
+  sizeCode?: string | null;
+  fromStoreId?: number | null;
+  toStoreId?: number | null;
 }
 
 export interface InventoryActionWorkflow {

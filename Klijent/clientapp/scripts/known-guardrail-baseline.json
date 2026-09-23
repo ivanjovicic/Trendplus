@@ -3,12 +3,6 @@
   "maxEntries": 51,
   "entries": [
     {
-      "file": "src/pages/ColorSalesStatsPage.tsx",
-      "rule": "decisionScore_assign",
-      "line": 1208,
-      "reason": "Existing backend-owned decision-score projection requires a reviewed authority exception."
-    },
-    {
       "file": "src/pages/ExecutiveDecisionBoardPage.tsx",
       "rule": "recommendationStatus_assign",
       "line": 436,
@@ -41,13 +35,13 @@
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "confidencePct_assign",
-      "line": 1192,
+      "line": 1193,
       "reason": "Existing backend confidence projection requires a reviewed authority exception."
     },
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "reliabilityPct_assign",
-      "line": 1193,
+      "line": 1194,
       "reason": "Existing backend reliability projection requires a reviewed authority exception."
     },
     {
@@ -137,7 +131,7 @@
     {
       "file": "src/pages/InventoryPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 743,
+      "line": 770,
       "reason": "Existing inventory page-count fallback requires a reviewed backend-total exception."
     },
     {
@@ -155,7 +149,7 @@
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 588,
+      "line": 589,
       "reason": "Existing supplier decision fallback requires a reviewed backend-authority exception."
     },
     {
@@ -173,7 +167,7 @@
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "sorted_rows_kpi_reduce",
-      "line": 579,
+      "line": 580,
       "reason": "Existing sorted supplier aggregation requires a reviewed KPI ownership exception."
     },
     {
@@ -251,7 +245,7 @@
     {
       "file": "src/components/inventory/inventoryUtils.ts",
       "rule": "fake_zero_fallback",
-      "line": 541,
+      "line": 603,
       "reason": "Existing inventory utility fallback requires a reviewed unknown-value exception."
     },
     {

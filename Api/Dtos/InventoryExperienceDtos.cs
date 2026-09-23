@@ -153,6 +153,17 @@ public sealed record InventoryStoreComparisonDto(
     AnalyticsResponseMetaDto? Meta = null
 );
 
+public sealed record InventoryActionDatasetContextDto(
+    string? DataScope,
+    string? PeriodFrom,
+    string? PeriodTo,
+    string? SnapshotGeneration,
+    int? StoreId,
+    string? SizeCode,
+    int? FromStoreId,
+    int? ToStoreId
+);
+
 public sealed record InventoryActionSuggestionDto(
     string SuggestionKey,
     string ActionType,
@@ -175,7 +186,8 @@ public sealed record InventoryActionSuggestionDto(
     string? SignalDataQualityStatus = null,
     IReadOnlyList<string>? SignalReasonCodes = null,
     bool CostMissing = false,
-    string EstimatedValueBasis = "current_stock_value"
+    string EstimatedValueBasis = "current_stock_value",
+    InventoryActionDatasetContextDto? DatasetContext = null
 );
 
 public sealed record InventoryActionWorkflowDto(
