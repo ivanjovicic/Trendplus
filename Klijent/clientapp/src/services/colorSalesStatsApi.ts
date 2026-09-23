@@ -146,6 +146,13 @@ export interface ColorSalesDataQuality {
 export interface ColorSalesLineage {
   storeId: number | null;
   dataScope: string;
+  sourceFamily?: string;
+  sourceLabel?: string;
+  sourceTables?: string;
+  observedPopulation?: string;
+  costPolicy?: string;
+  prePostPolicy?: string;
+  unknownPolicy?: string;
   eventCount: number;
   eventArticleCount: number;
   salesArticleCount: number;

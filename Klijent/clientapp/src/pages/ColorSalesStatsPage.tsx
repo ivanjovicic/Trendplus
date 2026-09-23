@@ -568,6 +568,12 @@ export default function ColorSalesStatsPage() {
     () => [
       { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
       { key: "dataScope", label: "Opseg podataka", value: data?.dataScope ?? dataScope },
+      { key: "sourceLabel", label: "Izvor podataka", value: data?.lineage?.sourceLabel ?? "Nije dostupno" },
+      { key: "sourceTables", label: "Izvorne tabele", value: data?.lineage?.sourceTables ?? "Nije dostupno" },
+      { key: "observedPopulation", label: "Posmatrana populacija", value: data?.lineage?.observedPopulation ?? "Nije dostupno" },
+      { key: "costPolicy", label: "Politika troška", value: data?.lineage?.costPolicy ?? "Nije dostupno" },
+      { key: "prePostPolicy", label: "Politika pre/post kohorte", value: data?.lineage?.prePostPolicy ?? "Nije dostupno" },
+      { key: "unknownPolicy", label: "Politika nepoznate boje", value: data?.lineage?.unknownPolicy ?? "Nije dostupno" },
       { key: "lineageBasis", label: "Osnova događaja nivelacije", value: data?.lineage ? `${data.lineage.salesArticlesWithMatchingNivelacija}/${data.lineage.salesArticleCount} artikala ima potvrđen događaj u istom opsegu` : "Nije dostupno" },
       { key: "nivelacijaEventCount", label: "Događaji nivelacije", value: data?.lineage?.eventCount ?? null },
       { key: "bojaCount", label: "Broj boja", value: fmtNumber(resolveColorCountValue(data?.totals.brojBoja)) },
@@ -575,6 +581,11 @@ export default function ColorSalesStatsPage() {
       { key: "splitCoverage", label: "Pre/post pokriće", value: fmtPct(resolveColorPercentValue(data?.dataQuality.revenueWithNivelacijaSplitSharePct), 1) },
       { key: "signedEvidence", label: "Neto dokaz", value: data?.dataQuality.signedRevenuePolicy === "signed_net_revenue_preserved" ? "Neto promet i količina" : "Nije dostupno" },
       { key: "costDenominator", label: "Imenilac pokrića", value: data?.dataQuality.costQualityDenominatorStatus === "measured_positive_net_revenue" ? "Pozitivan neto promet" : "Nije merljivo" },
+      { key: "metricMarginDenominator", label: "Imenilac marže", value: data?.meta?.metricProvenance?.margin?.denominator ?? "Nije dostupno" },
+      { key: "metricRevenueShareDenominator", label: "Imenilac udela prometa", value: data?.meta?.metricProvenance?.revenueShare?.denominator ?? "Nije dostupno" },
+      { key: "metricConfidenceDenominator", label: "Imenilac sigurnosti", value: data?.meta?.metricProvenance?.confidence?.denominator ?? "Nije dostupno" },
+      { key: "metricReliabilityDenominator", label: "Imenilac pouzdanosti", value: data?.meta?.metricProvenance?.reliability?.denominator ?? "Nije dostupno" },
+      { key: "metricCountsDenominator", label: "Osnova brojanja artikala", value: data?.meta?.metricProvenance?.counts?.denominator ?? "Nije dostupno" },
       { key: "weightedMargin", label: "Ponderisana poznata marža", value: fmtPct(data?.dataQuality.weightedKnownMarginPct, 1) },
       { key: "comparableArticleCount", label: "Artikli u uporedivoj kohorti", value: data?.totals.comparableArticleCount ?? null },
       { key: "comparablePreRevenue", label: "Uporediv promet pre nivelacije", value: fmtRsd(data?.totals.comparablePreRevenue) },
@@ -859,10 +870,18 @@ export default function ColorSalesStatsPage() {
         description="Podrška za odluku o bojama koje treba pojačati u nabavci."
         periodFrom={data?.fromDate ?? activeFilters.fromDate}
         periodTo={data?.toDate ?? activeFilters.toDate}
+        requestedPeriodFrom={responseMeta?.requestedPeriodFromUtc}
+        requestedPeriodTo={responseMeta?.requestedPeriodToUtc}
+        effectivePeriodFrom={responseMeta?.effectivePeriodFromUtc ?? data?.fromDate}
+        effectivePeriodTo={responseMeta?.effectivePeriodToUtc ?? data?.toDate}
+        observedPeriodFrom={responseMeta?.observedPeriodFromUtc}
+        observedPeriodTo={responseMeta?.observedPeriodToUtc}
         lastRefreshAt={trustLastRefreshAt}
         dataFreshnessStatus={trustDataFreshnessStatus}
-        dataSource={`Prodaja po boji artikla (opseg: ${data?.dataScope ?? dataScope})`}
-        provenanceBasis={lineageBasis}
+        dataSource={data?.lineage?.sourceLabel ?? `Prodaja po boji artikla (opseg: ${data?.dataScope ?? dataScope})`}
+        provenanceBasis={data?.lineage?.observedPopulation && data?.lineage?.prePostPolicy
+          ? `${data.lineage.observedPopulation}; ${data.lineage.prePostPolicy}`
+          : lineageBasis}
         dataQualityStatus={trustDataQualityStatus}
         mode="recommendation"
         isPartial={trustIsPartial}

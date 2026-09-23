@@ -37,6 +37,12 @@ public sealed class AnalyticsDetailProvenanceDto
     public DateTime? SnapshotGeneratedAtUtc { get; init; }
     public bool FallbackApplied { get; init; }
     public bool RecommendationAllowed { get; init; }
+    public string? SourceFamily { get; init; }
+    public string? SourceLabel { get; init; }
+    public string? SourceTables { get; init; }
+    public string? ObservedPopulation { get; init; }
+    public string? CostPolicy { get; init; }
+    public string? PrePostPolicy { get; init; }
 }
 
 public sealed class AnalyticsDetailResponseDto

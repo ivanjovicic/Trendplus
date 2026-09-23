@@ -239,6 +239,13 @@ export const colorSalesStatsResponseSchema = z.object({
   lineage: z.object({
     storeId: nonNegativeInteger.nullable(),
     dataScope: z.string(),
+    sourceFamily: z.string().trim().min(1).optional(),
+    sourceLabel: z.string().trim().min(1).optional(),
+    sourceTables: z.string().trim().min(1).optional(),
+    observedPopulation: z.string().trim().min(1).optional(),
+    costPolicy: z.string().trim().min(1).optional(),
+    prePostPolicy: z.string().trim().min(1).optional(),
+    unknownPolicy: z.string().trim().min(1).optional(),
     eventCount: nonNegativeInteger,
     eventArticleCount: nonNegativeInteger,
     salesArticleCount: nonNegativeInteger,

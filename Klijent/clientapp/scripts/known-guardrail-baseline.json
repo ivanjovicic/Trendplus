@@ -5,7 +5,7 @@
     {
       "file": "src/pages/ColorSalesStatsPage.tsx",
       "rule": "decisionScore_assign",
-      "line": 1189,
+      "line": 1208,
       "reason": "Existing backend-owned decision-score projection requires a reviewed authority exception."
     },
     {

@@ -196,6 +196,11 @@ export default function AnalyticsDetailView(props: {
           <DetailRow label="Sezona" value={detail.provenance.season} />
           <DetailRow label="Objekat" value={detail.provenance.storeId == null ? "Svi objekti" : String(detail.provenance.storeId)} />
           <DetailRow label="Opseg podataka" value={detail.provenance.dataScope === "imported" ? "Uvezeni podaci" : detail.provenance.dataScope === "existing" ? "Postojeći podaci" : "Svi podaci"} />
+          <DetailRow label="Izvor podataka" value={detail.provenance.sourceLabel} />
+          <DetailRow label="Izvorne tabele" value={detail.provenance.sourceTables} />
+          <DetailRow label="Posmatrana populacija" value={detail.provenance.observedPopulation} />
+          <DetailRow label="Politika troška" value={detail.provenance.costPolicy} />
+          <DetailRow label="Politika pre/post kohorte" value={detail.provenance.prePostPolicy} />
           <DetailRow label="Svežina" value={detail.provenance.freshness === "fresh" ? "Sveže" : detail.provenance.freshness} />
           <DetailRow label="Snimljeni trošak" value={detail.provenance.snapshotActive ? "Aktivan" : "Nije aktivan"} />
           <DetailRow label="Procena troška" value={detail.provenance.fallbackApplied ? "Korišćena" : "Nije korišćena"} />

@@ -165,6 +165,35 @@ function response(overrides: Partial<ColorSalesStatsResponse> = {}): ColorSalesS
     sezonaId: null,
     storeId: null,
     dataScope: "all",
+    meta: {
+      success: true,
+      requestedPeriodFromUtc: "2026-06-01T00:00:00Z",
+      requestedPeriodToUtc: "2026-06-30T23:59:59Z",
+      effectivePeriodFromUtc: "2026-06-01T00:00:00Z",
+      effectivePeriodToUtc: "2026-06-30T23:59:59Z",
+      observedPeriodFromUtc: "2026-06-02T00:00:00Z",
+      observedPeriodToUtc: "2026-06-29T00:00:00Z",
+      metricProvenance: {
+        margin: { kind: "authoritative_backend_aggregate", authority: "authoritative", actionability: "actionable", denominator: "Istorijski trošak prodajne stavke" },
+      },
+    },
+    lineage: {
+      storeId: null,
+      dataScope: "all",
+      sourceFamily: "live_relational_sales_facts",
+      sourceLabel: "Živi podaci prodaje, artikala i nivelacija",
+      sourceTables: "ProdajaZaglavlja, ProdajaStavke, Artikli i DnevnikPromena",
+      observedPopulation: "Sve filtrirane prodajne stavke u traženom periodu",
+      costPolicy: "Istorijski trošak prodajne stavke; fallback nabavna cena artikla; nepokriveni promet ostaje izdvojen",
+      prePostPolicy: "Uporediva kohorta artikala sa prodajom pre i posle prve nivelacije; posmatrani pre/post ostaje odvojen",
+      unknownPolicy: "Prazne ili nepoznate boje grupisane su u Nepoznato",
+      eventCount: 3,
+      eventArticleCount: 2,
+      salesArticleCount: 4,
+      salesArticlesWithMatchingNivelacija: 2,
+      storePolicy: "all_stores_allowed",
+      originPolicy: "all_origins_allowed",
+    },
     colors,
     totals: {
       ukupanPromet: colors.reduce((sum, item) => sum + item.ukupanPromet, 0),
@@ -335,6 +364,13 @@ describe("ColorSalesStatsPage", () => {
       lineage: {
         storeId: 7,
         dataScope: "imported",
+        sourceFamily: "live_relational_sales_facts",
+        sourceLabel: "Živi podaci prodaje, artikala i nivelacija",
+        sourceTables: "ProdajaZaglavlja, ProdajaStavke, Artikli i DnevnikPromena",
+        observedPopulation: "Sve filtrirane prodajne stavke u traženom periodu",
+        costPolicy: "Istorijski trošak prodajne stavke; fallback nabavna cena artikla; nepokriveni promet ostaje izdvojen",
+        prePostPolicy: "Uporediva kohorta artikala sa prodajom pre i posle prve nivelacije; posmatrani pre/post ostaje odvojen",
+        unknownPolicy: "Prazne ili nepoznate boje grupisane su u Nepoznato",
         eventCount: 3,
         eventArticleCount: 2,
         salesArticleCount: 4,
@@ -352,6 +388,8 @@ describe("ColorSalesStatsPage", () => {
     expect(await screen.findByText("Color detail route")).toBeInTheDocument();
     const snapshot = getAnalyticsDetailSnapshot("color-sales-stats", encodeURIComponent("CRNA"));
     expect(snapshot?.metadata.some((field) => field.key === "lineageBasis" && field.value === "2/4 artikala ima potvrđen događaj u istom opsegu")).toBe(true);
+    expect(snapshot?.metadata.some((field) => field.key === "sourceLabel" && field.value === "Živi podaci prodaje, artikala i nivelacija")).toBe(true);
+    expect(snapshot?.metadata.some((field) => field.key === "costPolicy" && field.value?.includes("fallback nabavna cena artikla"))).toBe(true);
   });
 
   it("blocks invalid date ranges before issuing a new analytics request", async () => {

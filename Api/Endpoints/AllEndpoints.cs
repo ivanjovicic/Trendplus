@@ -2733,6 +2733,16 @@ public static class AllEndpoints
         {
             DateTime? fromUtc = null;
             DateTime? toUtc = null;
+            DateTime? requestedFromUtc = fromDate.HasValue
+                ? fromDate.Value.Kind == DateTimeKind.Unspecified
+                    ? DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc)
+                    : fromDate.Value.ToUniversalTime()
+                : null;
+            DateTime? requestedToUtc = toDate.HasValue
+                ? toDate.Value.Kind == DateTimeKind.Unspecified
+                    ? DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc)
+                    : toDate.Value.ToUniversalTime()
+                : null;
 
             try
             {
@@ -3342,6 +3352,16 @@ public static class AllEndpoints
                     dataQuality.unknownColorRevenueSharePct,
                     dataQuality.revenueWithNivelacijaSplitSharePct,
                     generatedAtUtc);
+                trustMeta.RequestedPeriodFromUtc = requestedFromUtc;
+                trustMeta.RequestedPeriodToUtc = requestedToUtc;
+                trustMeta.EffectivePeriodFromUtc = fromUtc;
+                trustMeta.EffectivePeriodToUtc = toUtc;
+                trustMeta.ObservedPeriodFromUtc = stavke.Count > 0
+                    ? DateTime.SpecifyKind(stavke.Min(s => s.DatumProdaje), DateTimeKind.Utc)
+                    : null;
+                trustMeta.ObservedPeriodToUtc = stavke.Count > 0
+                    ? DateTime.SpecifyKind(stavke.Max(s => s.DatumProdaje), DateTimeKind.Utc)
+                    : null;
 
                 DateTime? lastRefreshAtUtc = null;
                 try
@@ -3355,6 +3375,54 @@ public static class AllEndpoints
 
                 trustMeta.MetricProvenance = new Dictionary<string, AnalyticsMetricProvenanceDto>
                 {
+                    ["revenueShare"] = new()
+                    {
+                        Kind = AnalyticsMetricProvenanceKinds.AuthoritativeBackendAggregate,
+                        Authority = AnalyticsMetricAuthority.Authoritative,
+                        Actionability = totalRevenue > 0m
+                            ? AnalyticsMetricActionability.Actionable
+                            : AnalyticsMetricActionability.Blocked,
+                        Unit = "percent",
+                        Denominator = "ukupan pozitivan neto promet iz filtriranih prodajnih stavki"
+                    },
+                    ["margin"] = new()
+                    {
+                        Kind = AnalyticsMetricProvenanceKinds.AuthoritativeBackendAggregate,
+                        Authority = AnalyticsMetricAuthority.Authoritative,
+                        Actionability = totalRevenueWithHistoricalCost > 0m
+                            ? AnalyticsMetricActionability.Actionable
+                            : AnalyticsMetricActionability.Blocked,
+                        Unit = "RSD",
+                        Denominator = ColorSalesProvenance.CostPolicy
+                    },
+                    ["confidence"] = new()
+                    {
+                        Kind = AnalyticsMetricProvenanceKinds.AuthoritativeBackendAggregate,
+                        Authority = AnalyticsMetricAuthority.Authoritative,
+                        Actionability = trustMeta.RecommendationAllowed == true
+                            ? AnalyticsMetricActionability.Actionable
+                            : AnalyticsMetricActionability.Blocked,
+                        Unit = "percent",
+                        Denominator = "Dozvola preporuke i potpuna evidencija troška, uporedive kohorte i nepoznatih boja"
+                    },
+                    ["reliability"] = new()
+                    {
+                        Kind = AnalyticsMetricProvenanceKinds.AuthoritativeBackendAggregate,
+                        Authority = AnalyticsMetricAuthority.Authoritative,
+                        Actionability = trustMeta.RecommendationAllowed == true
+                            ? AnalyticsMetricActionability.Actionable
+                            : AnalyticsMetricActionability.Blocked,
+                        Unit = "percent",
+                        Denominator = "Dozvola preporuke i potpuna evidencija troška, uporedive kohorte i nepoznatih boja"
+                    },
+                    ["counts"] = new()
+                    {
+                        Kind = AnalyticsMetricProvenanceKinds.AuthoritativeBackendAggregate,
+                        Authority = AnalyticsMetricAuthority.Authoritative,
+                        Actionability = AnalyticsMetricActionability.Informational,
+                        Unit = "articles",
+                        Denominator = ColorSalesProvenance.PrePostPolicy
+                    },
                     ["prePostNivelacijaRevenueImpactPct"] = new()
                     {
                         Kind = AnalyticsMetricProvenanceKinds.AuthoritativeBackendAggregate,
@@ -3363,7 +3431,7 @@ public static class AllEndpoints
                             ? AnalyticsMetricActionability.Actionable
                             : AnalyticsMetricActionability.Blocked,
                         Unit = "percent",
-                        Denominator = "uporediva kohorta boja; samo artikli sa prodajom pre i posle nivelacije"
+                        Denominator = ColorSalesProvenance.PrePostPolicy
                     },
                     ["prePostNivelacijaUnitsImpactPct"] = new()
                     {
@@ -3373,7 +3441,7 @@ public static class AllEndpoints
                             ? AnalyticsMetricActionability.Actionable
                             : AnalyticsMetricActionability.Blocked,
                         Unit = "percent",
-                        Denominator = "uporediva kohorta boja; samo artikli sa prodajom pre i posle nivelacije"
+                        Denominator = ColorSalesProvenance.PrePostPolicy
                     },
                     ["prePostComparableArticleCount"] = new()
                     {
@@ -3381,7 +3449,7 @@ public static class AllEndpoints
                         Authority = AnalyticsMetricAuthority.Authoritative,
                         Actionability = AnalyticsMetricActionability.Informational,
                         Unit = "articles",
-                        Denominator = "uporediva kohorta boja"
+                        Denominator = ColorSalesProvenance.PrePostPolicy
                     }
                 };
 
@@ -3432,6 +3500,13 @@ public static class AllEndpoints
                     {
                         storeId,
                         dataScope = normalizedDataScope,
+                        sourceFamily = ColorSalesProvenance.SourceFamily,
+                        sourceLabel = ColorSalesProvenance.SourceLabel,
+                        sourceTables = ColorSalesProvenance.SourceTables,
+                        observedPopulation = ColorSalesProvenance.ObservedPopulation,
+                        costPolicy = ColorSalesProvenance.CostPolicy,
+                        prePostPolicy = ColorSalesProvenance.PrePostPolicy,
+                        unknownPolicy = ColorSalesProvenance.UnknownPolicy,
                         eventCount = nivelacije.Count,
                         eventArticleCount = prvaNivelacijaPoArtiklu.Count,
                         salesArticleCount = salesArticleIds.Count,

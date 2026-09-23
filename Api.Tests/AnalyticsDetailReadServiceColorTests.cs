@@ -77,6 +77,13 @@ public sealed class AnalyticsDetailReadServiceColorTests
         Assert.Equal("all", result.Provenance!.DataScope);
         Assert.Equal(new DateTime(2026, 9, 10, 0, 0, 0, DateTimeKind.Utc), result.Provenance.EffectiveFromUtc);
         Assert.False(result.Provenance.SnapshotActive);
+        Assert.Equal("live_relational_sales_facts", result.Provenance.SourceFamily);
+        Assert.Equal("Živi podaci prodaje, artikala i nivelacija", result.Provenance.SourceLabel);
+        Assert.Contains("ProdajaZaglavlja", result.Provenance.SourceTables);
+        Assert.Contains("fallback nabavna cena artikla", result.Provenance.CostPolicy);
+        Assert.Contains("Uporediva kohorta artikala", result.Provenance.PrePostPolicy);
+        Assert.Equal("Živi podaci prodaje, artikala i nivelacija", result.Metadata.Single(field => field.Key == "sourceLabel").Value);
+        Assert.Equal("0.00", result.Metadata.Single(field => field.Key == "noCostRevenue").Value);
     }
 
     private sealed class StubDnevnikPromenaReadService : IDnevnikPromenaReadService

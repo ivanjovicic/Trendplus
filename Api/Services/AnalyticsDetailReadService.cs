@@ -856,7 +856,12 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             Title = aggregate.Title,
             Subtitle = aggregate.Subtitle,
             Fields = aggregate.Fields,
-            Metadata = aggregate.Metadata,
+            Metadata = BuildColorMetadata(
+                context,
+                marginSnapshot,
+                splitSnapshot,
+                totalRevenue,
+                recommendationAllowed),
             Recommendation = new AnalyticsDetailRecommendationDto
             {
                 Status = exposedRecommendationStatus,
@@ -883,9 +888,42 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 SnapshotActive = false,
                 SnapshotGeneratedAtUtc = null,
                 FallbackApplied = marginSnapshot.EstimatedCostRevenue > 0m,
-                RecommendationAllowed = recommendationAllowed
+                RecommendationAllowed = recommendationAllowed,
+                SourceFamily = ColorSalesProvenance.SourceFamily,
+                SourceLabel = ColorSalesProvenance.SourceLabel,
+                SourceTables = ColorSalesProvenance.SourceTables,
+                ObservedPopulation = ColorSalesProvenance.ObservedPopulation,
+                CostPolicy = ColorSalesProvenance.CostPolicy,
+                PrePostPolicy = ColorSalesProvenance.PrePostPolicy
             }
         };
+    }
+
+    private static IReadOnlyList<AnalyticsDetailFieldDto> BuildColorMetadata(
+        AnalyticsContext context,
+        MarginSnapshot marginSnapshot,
+        NivelacijaSplitSnapshot splitSnapshot,
+        decimal totalRevenue,
+        bool recommendationAllowed)
+    {
+        var metadata = BuildFilterMetadata(context.Filters).ToList();
+        var noCostRevenue = totalRevenue - marginSnapshot.RevenueWithCost;
+        metadata.AddRange(
+        [
+            Field("sourceFamily", "Izvorna porodica", ColorSalesProvenance.SourceFamily, "text"),
+            Field("sourceLabel", "Izvor podataka", ColorSalesProvenance.SourceLabel, "text"),
+            Field("sourceTables", "Izvorne tabele", ColorSalesProvenance.SourceTables, "text"),
+            Field("observedPopulation", "Posmatrana populacija", ColorSalesProvenance.ObservedPopulation, "text"),
+            Field("costPolicy", "Politika troška", ColorSalesProvenance.CostPolicy, "text"),
+            Field("prePostPolicy", "Politika pre/post kohorte", ColorSalesProvenance.PrePostPolicy, "text"),
+            Field("unknownPolicy", "Politika nepoznate boje", ColorSalesProvenance.UnknownPolicy, "text"),
+            Field("historicalCostRevenue", "Promet sa istorijskim troškom", marginSnapshot.HistoricalCostRevenue.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
+            Field("fallbackCostRevenue", "Promet sa fallback troškom", marginSnapshot.EstimatedCostRevenue.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
+            Field("noCostRevenue", "Nepokriveni promet bez troška", noCostRevenue.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
+            Field("prePostComparableArticleCount", "Artikli u uporedivoj kohorti", splitSnapshot.ComparableArticleCount.ToString(CultureInfo.InvariantCulture), "number"),
+            Field("recommendationAllowed", "Preporuka dozvoljena", recommendationAllowed ? "Da" : "Ne", "text")
+        ]);
+        return metadata;
     }
 
     private static MarginSnapshot BuildMarginSnapshot(

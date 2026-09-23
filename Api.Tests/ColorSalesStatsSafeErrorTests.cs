@@ -45,6 +45,30 @@ public sealed class ColorSalesStatsSafeErrorTests
     }
 
     [Fact]
+    public void ColorEndpointExposesRelationalSourceAndMetricDenominators()
+    {
+        var source = ReadRepoFile("Api/Endpoints/AllEndpoints.cs");
+        var start = source.IndexOf("app.MapGet(\"/api/analytics/color-sales-stats\",", StringComparison.Ordinal);
+        var end = source.IndexOf(".WithName(\"GetColorSalesStats\")", start, StringComparison.Ordinal);
+
+        Assert.True(start >= 0);
+        Assert.True(end > start);
+
+        var endpoint = source[start..end];
+        Assert.Contains("ColorSalesProvenance.SourceFamily", endpoint);
+        Assert.Contains("ColorSalesProvenance.SourceLabel", endpoint);
+        Assert.Contains("ColorSalesProvenance.SourceTables", endpoint);
+        Assert.Contains("ColorSalesProvenance.ObservedPopulation", endpoint);
+        Assert.Contains("ColorSalesProvenance.CostPolicy", endpoint);
+        Assert.Contains("ColorSalesProvenance.PrePostPolicy", endpoint);
+        Assert.Contains("trustMeta.RequestedPeriodFromUtc", endpoint);
+        Assert.Contains("trustMeta.ObservedPeriodFromUtc", endpoint);
+        Assert.Contains("[\"margin\"]", endpoint);
+        Assert.Contains("[\"confidence\"]", endpoint);
+        Assert.DoesNotContain("materialized view", endpoint, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void ColorProblemHelperPersistsOnlySafeDetailAndTraceId()
     {
         var source = ReadRepoFile("Api/Endpoints/AllEndpoints.cs");

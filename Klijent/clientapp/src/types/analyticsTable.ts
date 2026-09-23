@@ -82,4 +82,10 @@ export interface AnalyticsDetailProvenance {
   snapshotGeneratedAtUtc?: string | null;
   fallbackApplied: boolean;
   recommendationAllowed: boolean;
+  sourceFamily?: string | null;
+  sourceLabel?: string | null;
+  sourceTables?: string | null;
+  observedPopulation?: string | null;
+  costPolicy?: string | null;
+  prePostPolicy?: string | null;
 }
