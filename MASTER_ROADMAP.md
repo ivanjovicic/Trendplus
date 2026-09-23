@@ -317,6 +317,8 @@ Owner refill 2026-08-13 sequential backlog of 15 prompts is complete. Owner refi
 | 14 | `OBS09` | DONE | OBS |
 | 15 | `SEC07` | DONE | SEC |
 
+Owner follow-up audit 2026-09-23: after the canonical Operacije audit landed `RQ406` (Supplier Footwear truncated-detail/type-insight correctness) and `RQ407` (deterministic eight-route Operations reconciliation), the deeper Supplier/Shoe Type truth review was deconflicted into `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md` as `RQ411`-`RQ413`, all WAITING. `RQ411` owns immutable/provenance-bearing historical supplier/type attribution because current analytics joins old sale lines to current `Artikli.IDDobavljac` / `Artikli.IDTipObuce`; `RQ412` adds an implementation-independent raw-fact oracle on top of `RQ407`; `RQ413` adds continuous post-import/cache/materialized-source drift guards. No RQ prompt was promoted or claimed; existing `RQ371`/`RQ372`, `RQ373`/`RQ378`-`RQ380` and canonical `RQ406`/`RQ407` ownership remain intact. Durable evidence: `.ai/runs/2026-09-23-operations-data-accuracy-audit-evidence.md`.
+
 ## Product and process documents
 
 - Product direction: `docs/product/PRODUCT_VISION.md`
