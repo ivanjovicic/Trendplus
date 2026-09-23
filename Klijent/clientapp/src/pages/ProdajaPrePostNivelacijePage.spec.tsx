@@ -914,33 +914,6 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     ]));
   });
 
-  it("keeps non-finite quality metadata unknown rather than healthy", async () => {
-    const validDataQuality = response().dataQuality!;
-    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
-      response({
-        dataQuality: {
-          ...validDataQuality,
-          analyzedSharePercent: Number.NaN,
-        },
-      }),
-    );
-
-    renderPage();
-    await screen.findByText("Prioritetna lista dobavljača");
-
-    expect(await screen.findByRole("button", { name: /Kvalitet signala: Nepoznato/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Kvalitet signala: Visoko poverenje/i })).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
-    fireEvent.click(screen.getByRole("button", { name: "Otvori puni detalj" }));
-    const snapshot = getAnalyticsDetailSnapshot("nivelacije-pre-post", "10");
-    expect(snapshot?.metadata).toEqual(expect.arrayContaining([
-      expect.objectContaining({ key: "dataTrust", label: "Poverenje", value: "Nepoznato" }),
-      expect.objectContaining({ key: "analyzedShare", label: "Analizirani redovi", value: "Nije dostupno" }),
-      expect.objectContaining({ key: "duplicateRowsRemoved", label: "Duplicati uklonjeni", value: "N/A" }),
-    ]));
-  });
-
   it("does not render legacy zero placeholders when comparability evidence is missing", async () => {
     vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
       response({

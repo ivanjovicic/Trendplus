@@ -135,7 +135,8 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.Contains("totals.AbsoluteChangeRevenue = totalAbsoluteChangeRevenue;", source);
         Assert.Contains("vendor.ChangeSharePercent = totalAbsoluteChangeRevenue == 0m", source);
         Assert.Equal(3, source.Split("var hasComparableNivelacijaSignal =", StringSplitOptions.None).Length - 1);
-        Assert.Equal(2, source.Split("recommendationAllowed = recommendation.RecommendationAllowed && hasComparableNivelacijaSignal", StringSplitOptions.None).Length - 1);
+        Assert.Equal(3, source.Split("var exposedRecommendation = AnalyticsDecisionRecommendationEngine.ApplyComparableSignalGate(", StringSplitOptions.None).Length - 1);
+        Assert.Contains("var recommendationAllowed = exposedRecommendation.RecommendationAllowed;", source);
     }
 
     [Fact]
