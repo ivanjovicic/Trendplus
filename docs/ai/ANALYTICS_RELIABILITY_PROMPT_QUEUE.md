@@ -2,7 +2,7 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ398; RQ172, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE.
+Current READY prompt: RQ399; RQ172, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ398, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE.
 
 Routing correction 2026-09-23: `RQ172` was already `READY` and dependency-complete, but the current-ready pointer was stale at `none`; the pointer was repaired before claim after collision and ownership checks.
 Owner claim 2026-09-23: `RQ172` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ172-codex.lock.md`.
@@ -11,6 +11,9 @@ Owner promotion 2026-09-23: after `RQ172` reached DONE and `RQ389`, `RQ392`, `RQ
 Owner claim 2026-09-23: `RQ397` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ397-codex.lock.md`.
 Owner completion 2026-09-23: `RQ397` was delivered directly to `main` in `0d0b80cd`; Color generic detail now projects the backend recommendation/trust contract and requested/effective period provenance, computes the comparable Color period correctly, and does not silently apply snapshot cost where the row endpoint does not. Focused backend/frontend regression coverage is present. Run log: `.ai/runs/2026-09-23-RQ397-evidence.md`. Evidence state: synchronized.
 Owner promotion 2026-09-23: after `RQ397` reached DONE and its implementation/evidence were verified, `RQ398` moved `WAITING -> READY` as the next dependency-complete Color identity/collision-safe detail-key prompt; `RQ399` and `RQ400` remain WAITING under their independent provenance and score contracts.
+Owner claim 2026-09-23: `RQ398` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ398-codex.lock.md`.
+Owner completion 2026-09-23: `RQ398` was delivered directly to `main` in `15b8bc14`; Color grouping, previous-period joins, generic detail lookup, frontend row/expansion identity and URL/snapshot keys now share one documented trim + NFC + invariant-uppercase policy, while display labels and Serbian diacritics are preserved. Blank and `Nepoznato` values use one explicit unknown bucket, internal spacing remains meaningful, and the Color cache key was versioned to prevent stale pre-canonical payloads. Focused backend/frontend identity, detail, cache and guardrail regressions pass. Run log: `.ai/runs/2026-09-23-RQ398-evidence.md`. Evidence state: synchronized. Delivery mode: direct-main. Main commit SHA: `15b8bc14`. Main verification: current `main` and `origin/main` contain the implementation SHA. Missed: source/metric provenance remains RQ399; authoritative decision score remains RQ400. Follow-up: RQ399.
+Owner promotion 2026-09-23: after `RQ398` reached DONE and its implementation/evidence were verified, `RQ399` moved `WAITING -> READY` as the next independent Color provenance prompt; collision checks are clear.
 
 Owner completion 2026-09-22: under the user's direct last-commits audit, `RQ393` was delivered directly to `main` in `3b635fe813e0e55f843236d55025c52c030e853d`; Color recommendations now use a covered-revenue-weighted margin baseline, unknown-share evidence remains nullable, historical/fallback/no-cost coverage is separated, and the affected screens use Serbian decision labels. Run log: `.ai/runs/2026-09-22-direct-last-commits-audit-evidence.md`.
 Owner promotion 2026-09-22: after `RQ393` reached DONE and `RQ389`/`RQ392`/`RQ393` comparable-cohort dependencies were verified on current `main`, `RQ394` moved `WAITING -> READY` as the next dependency-complete P1 Color aggregate-cohort prompt; collision checks are clear.
@@ -1443,10 +1446,10 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ393 | DONE | color-margin-quality-contract | Align Color recommendation margin baseline with weighted cost evidence |
 | RQ394 | DONE | color-prepost-aggregate-parity | Align Color pre/post totals with the comparable evidence cohort |
 | RQ395 | DONE | color-runtime-safe-errors | Harden Color runtime validation and safe traceable endpoint errors |
-| RQ396 | WAITING | color-cache-freshness-lineage | Align Color cache invalidation and freshness metadata |
-| RQ397 | WAITING | color-detail-trust-projection | Align Color generic detail with row trust and provenance |
-| RQ398 | WAITING | color-identity-canonicalization | Canonicalize Color identity and collision-safe detail keys |
-| RQ399 | WAITING | color-source-provenance | Correct Color source and metric provenance |
+| RQ396 | DONE | color-cache-freshness-lineage | Align Color cache invalidation and freshness metadata |
+| RQ397 | DONE | color-detail-trust-projection | Align Color generic detail with row trust and provenance |
+| RQ398 | DONE | color-identity-canonicalization | Canonicalize Color identity and collision-safe detail keys |
+| RQ399 | READY | color-source-provenance | Correct Color source and metric provenance |
 | RQ400 | WAITING | color-decision-score-contract | Define an authoritative Color decision-score contract |
 | RQ401 | DONE | supplier-decision-cache-schema-provenance | Align Supplier Decision cache capabilities, schema projections and effective-period lineage |
 | RQ402 | DONE | supplier-decision-detail-source-parity | Connect rich supplier decision details to the canonical screen |
@@ -21947,7 +21950,7 @@ Color row snapshots contain recommendation status, score, confidence/reliability
 
 ## RQ398 - Canonicalize Color identity and collision-safe detail keys
 
-Status: READY
+Status: DONE
 Priority: P2
 Type: backend/frontend/identity/tests
 Feature family: color-identity-canonicalization
@@ -21992,11 +21995,30 @@ Color grouping trims names but preserves case, while the frontend derives an upp
 - Coordinate with `RQ282`/`RQ293` identity patterns; neither owns Color casing.
 - `RQ397` consumes the stable detail identity.
 
+### Completion note
+
+- Date: 2026-09-23
+- Status: DONE
+- Completion: Backend, detail and frontend Color identity now share trim + Unicode NFC + invariant-uppercase comparison semantics, with deterministic display labels, explicit unknown handling and canonical URL/snapshot keys.
+- Changed files: `Application/Analytics/ColorIdentityPolicy.cs`; `Api/Endpoints/AllEndpoints.cs`; `Api/Services/AnalyticsDetailReadService.cs`; `Infrastructure/Services/Caching/IAnalyticsCacheService.cs`; `Api.Tests/ColorIdentityPolicyTests.cs`; `Api.Tests/AnalyticsDetailReadServiceColorTests.cs`; `Api.Tests/ColorSalesStatsSafeErrorTests.cs`; `Api.Tests/AnalyticsScreenCacheKeyContractTests.cs`; `Klijent/clientapp/src/utils/colorIdentity.ts`; `Klijent/clientapp/src/utils/__tests__/colorIdentity.spec.ts`; `Klijent/clientapp/src/pages/ColorSalesStatsPage.tsx`; related frontend tests and guardrail baseline.
+- Contract/runtime behavior changed: case-only and Unicode-equivalent color labels collapse to one comparison identity; display labels retain diacritics; blank and `Nepoznato` share the explicit unknown bucket; cache v2 prevents old payload identity collisions.
+- Checks run: focused backend `dotnet test` passed 23/23; focused frontend Vitest passed 27/27; `npm run check:analytics-guardrails` passed; `git diff --check` passed.
+- Checks not run: full .NET suite, full frontend suite, live/deployed provider replay and remote CI; not required by focused acceptance.
+- Run log: `.ai/runs/2026-09-23-RQ398-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `15b8bc14`
+- Main verification: current `main` and `origin/main` contain the implementation SHA; exact ancestor verification is recorded in the run log.
+- Missed: Color source/metric provenance remains RQ399; authoritative decision score remains RQ400.
+- Follow-up: RQ399 - Correct Color source and metric provenance.
+- Residual risk: existing analyzer warnings, live/remote runtime not inspected, and genuinely distinct business color codes remain distinct only where their normalized text differs.
+- Prompt defect / scope repair: cache-key versioning and guardrail baseline line synchronization were same-owner compatibility repairs required to prevent stale pre-canonical payloads and false guardrail failures.
+
 ---
 
 ## RQ399 - Correct Color source and metric provenance
 
-Status: WAITING
+Status: READY
 Priority: P2
 Type: backend/frontend/provenance/tests
 Feature family: color-source-provenance
