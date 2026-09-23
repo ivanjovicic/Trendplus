@@ -88,4 +88,8 @@ export interface AnalyticsDetailProvenance {
   observedPopulation?: string | null;
   costPolicy?: string | null;
   prePostPolicy?: string | null;
+  decisionScore?: number | null;
+  decisionScoreUnit?: string | null;
+  decisionScoreDenominator?: string | null;
+  decisionScoreActionability?: string | null;
 }

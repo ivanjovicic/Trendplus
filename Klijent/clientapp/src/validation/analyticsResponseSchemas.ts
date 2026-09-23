@@ -121,6 +121,7 @@ const colorSalesStatSchema = {
   prePostSignalNote: z.string().nullable(),
   prePostComparableArticleCount: nonNegativeInteger,
   sharePct: nullableNonNegativePercentage.optional(),
+  decisionScore: nullableNonNegativePercentage.optional(),
   reliabilityPct: nullableNonNegativePercentage.optional(),
   recommendation: colorRecommendationSchema,
 };
@@ -162,6 +163,7 @@ const colorCostTotalsSchema = {
   observedPostQuantity: finiteNumber,
   weightedKnownMarginPct: nullableNumber,
   weightedKnownMarginRevenue: finiteNumber,
+  decisionScore: nullableNonNegativePercentage.optional(),
   recommendationSummary: z.object({
     increaseFocus: nonNegativeInteger,
     maintain: nonNegativeInteger,

@@ -134,7 +134,7 @@ const decisionColumns: AnalyticsTableColumn<DecisionColor>[] = [
   },
   { key: "prePostComparableArticleCount", header: "Artikli u uporedivoj kohorti", dataType: "number" },
   { key: "status", header: "Preporuka", dataType: "text", getValue: (row) => recommendationStatusLabel(row.status) },
-  { key: "decisionScore", header: "Skor odluke", dataType: "number" },
+  { key: "decisionScore", header: "Skor odluke (0–100)", dataType: "number" },
 ];
 
 function toUtcRange(fromDate: string, toDate: string): { fromDate: string; toDate: string } {
@@ -433,6 +433,7 @@ export default function ColorSalesStatsPage() {
     () => sortedRows.find((row) => colorKey(row) === expandedColorKey) ?? null,
     [expandedColorKey, sortedRows]
   );
+  const selectedDecisionScore = selectedRow?.decisionScore ?? null;
 
   useEffect(() => {
     if (!selectedRow && sortedRows.length > 0 && expandedColorKey != null) {
@@ -581,6 +582,9 @@ export default function ColorSalesStatsPage() {
       { key: "splitCoverage", label: "Pre/post pokriće", value: fmtPct(resolveColorPercentValue(data?.dataQuality.revenueWithNivelacijaSplitSharePct), 1) },
       { key: "signedEvidence", label: "Neto dokaz", value: data?.dataQuality.signedRevenuePolicy === "signed_net_revenue_preserved" ? "Neto promet i količina" : "Nije dostupno" },
       { key: "costDenominator", label: "Imenilac pokrića", value: data?.dataQuality.costQualityDenominatorStatus === "measured_positive_net_revenue" ? "Pozitivan neto promet" : "Nije merljivo" },
+      { key: "decisionScore", label: "Skor odluke (0–100)", value: fmtPct(data?.totals.decisionScore, 2) },
+      { key: "decisionScoreDenominator", label: "Imenilac skora odluke", value: data?.meta?.metricProvenance?.decisionScore?.denominator ?? "Nije dostupno" },
+      { key: "decisionScoreActionability", label: "Akcionalnost skora odluke", value: data?.meta?.metricProvenance?.decisionScore?.actionability === "actionable" ? "Dozvoljeno" : data?.meta?.metricProvenance?.decisionScore?.actionability === "blocked" ? "Blokirano" : "Nije dostupno" },
       { key: "metricMarginDenominator", label: "Imenilac marže", value: data?.meta?.metricProvenance?.margin?.denominator ?? "Nije dostupno" },
       { key: "metricRevenueShareDenominator", label: "Imenilac udela prometa", value: data?.meta?.metricProvenance?.revenueShare?.denominator ?? "Nije dostupno" },
       { key: "metricConfidenceDenominator", label: "Imenilac sigurnosti", value: data?.meta?.metricProvenance?.confidence?.denominator ?? "Nije dostupno" },
@@ -1204,8 +1208,8 @@ export default function ColorSalesStatsPage() {
                   <strong>{fmtSignedPct(selectedRow.marginPct, 2)}</strong>
                 </article>
                 <article>
-                  <span>Ocena odluke</span>
-                  <strong>{selectedRow.decisionScore == null ? "N/A" : fmtNumber(selectedRow.decisionScore, 0)}</strong>
+                  <span>Skor odluke (0–100)</span>
+                  <strong>{selectedDecisionScore == null ? "N/A" : fmtNumber(selectedDecisionScore, 0)}</strong>
                 </article>
               </div>
 

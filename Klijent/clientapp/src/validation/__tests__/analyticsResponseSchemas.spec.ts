@@ -292,6 +292,25 @@ describe("analytics response schemas", () => {
     }).success).toBe(true);
   });
 
+  it("validates Color decision scores as finite percentages on rows and totals", () => {
+    expect(colorSalesStatsResponseSchema.safeParse({
+      ...validColorResponse,
+      colors: [{ ...colorRow, decisionScore: 42.5 }],
+      totals: { ...validColorResponse.totals, decisionScore: 42.5 },
+    }).success).toBe(true);
+
+    for (const invalidScore of [-1, 101, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(colorSalesStatsResponseSchema.safeParse({
+        ...validColorResponse,
+        colors: [{ ...colorRow, decisionScore: invalidScore }],
+      }).success).toBe(false);
+      expect(colorSalesStatsResponseSchema.safeParse({
+        ...validColorResponse,
+        totals: { ...validColorResponse.totals, decisionScore: invalidScore },
+      }).success).toBe(false);
+    }
+  });
+
   it("accepts signed Daily Sales quantities and revenues while keeping counters non-negative", () => {
     const result = dailySalesTableResponseSchema.safeParse({
       requestedFrom: "2026-06-01",

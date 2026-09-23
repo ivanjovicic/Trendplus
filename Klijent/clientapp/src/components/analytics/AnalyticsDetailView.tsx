@@ -146,6 +146,7 @@ export default function AnalyticsDetailView(props: {
   const recommendationConfidence = detail.recommendation
     ? normalizeRecommendationPct(detail.recommendation.confidencePct)
     : null;
+  const decisionScoreValue = detail.provenance?.decisionScore ?? null;
 
   return (
     <div className="space-y-5 text-sm">
@@ -201,6 +202,14 @@ export default function AnalyticsDetailView(props: {
           <DetailRow label="Posmatrana populacija" value={detail.provenance.observedPopulation} />
           <DetailRow label="Politika troška" value={detail.provenance.costPolicy} />
           <DetailRow label="Politika pre/post kohorte" value={detail.provenance.prePostPolicy} />
+          {detail.table === "color-sales-stats" ? (
+            <>
+              <DetailRow label="Skor odluke (0–100)" value={decisionScoreValue == null ? "Nije dostupno" : `${decisionScoreValue.toLocaleString("sr-RS")} %`} />
+              <DetailRow label="Jedinica skora odluke" value={detail.provenance.decisionScoreUnit} />
+              <DetailRow label="Imenilac skora odluke" value={detail.provenance.decisionScoreDenominator} />
+              <DetailRow label="Akcionalnost skora odluke" value={detail.provenance.decisionScoreActionability === "actionable" ? "Dozvoljeno" : detail.provenance.decisionScoreActionability === "blocked" ? "Blokirano" : "Nije dostupno"} />
+            </>
+          ) : null}
           <DetailRow label="Svežina" value={detail.provenance.freshness === "fresh" ? "Sveže" : detail.provenance.freshness} />
           <DetailRow label="Snimljeni trošak" value={detail.provenance.snapshotActive ? "Aktivan" : "Nije aktivan"} />
           <DetailRow label="Procena troška" value={detail.provenance.fallbackApplied ? "Korišćena" : "Nije korišćena"} />

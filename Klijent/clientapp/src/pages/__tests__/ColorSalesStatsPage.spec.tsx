@@ -775,9 +775,9 @@ describe("ColorSalesStatsPage", () => {
     await screen.findByText("Prioritetna lista boja");
 
     fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
-    const decisionScore = await screen.findByText("Ocena odluke");
+    const decisionScore = await screen.findByText("Skor odluke (0–100)");
     expect(decisionScore.closest("article")).toHaveTextContent("N/A");
-    expect(decisionScore.closest("article")).not.toHaveTextContent(/Decision score\s*0/);
+    expect(decisionScore.closest("article")).not.toHaveTextContent(/Skor odluke \(0–100\)\s*0/);
 
     const reliability = screen.getByText("Pouzdanost podataka");
     expect(reliability.closest("article")).toHaveTextContent(RECOMMENDATION_SIGNAL_UNAVAILABLE);
@@ -806,7 +806,7 @@ describe("ColorSalesStatsPage", () => {
     await screen.findByText("Prioritetna lista boja");
 
     fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
-    const decisionScore = await screen.findByText("Ocena odluke");
+    const decisionScore = await screen.findByText("Skor odluke (0–100)");
     expect(decisionScore.closest("article")).toHaveTextContent("42");
     expect(decisionScore.closest("article")).not.toHaveTextContent("88");
   });
@@ -833,7 +833,7 @@ describe("ColorSalesStatsPage", () => {
     await screen.findByText("Prioritetna lista boja");
 
     fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
-    const decisionScore = await screen.findByText("Ocena odluke");
+    const decisionScore = await screen.findByText("Skor odluke (0–100)");
     expect(decisionScore.closest("article")).toHaveTextContent("N/A");
     expect(decisionScore.closest("article")).not.toHaveTextContent("42");
   });

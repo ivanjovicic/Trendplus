@@ -82,6 +82,11 @@ public sealed class AnalyticsDetailReadServiceColorTests
         Assert.Contains("ProdajaZaglavlja", result.Provenance.SourceTables);
         Assert.Contains("fallback nabavna cena artikla", result.Provenance.CostPolicy);
         Assert.Contains("Uporediva kohorta artikala", result.Provenance.PrePostPolicy);
+        Assert.Null(result.Provenance.DecisionScore);
+        Assert.Equal("percent", result.Provenance.DecisionScoreUnit);
+        Assert.Contains("55% sigurnost", result.Provenance.DecisionScoreDenominator);
+        Assert.Equal("blocked", result.Provenance.DecisionScoreActionability);
+        Assert.Equal("Nije dostupno", result.Metadata.Single(field => field.Key == "decisionScore").Value);
         Assert.Equal("Živi podaci prodaje, artikala i nivelacija", result.Metadata.Single(field => field.Key == "sourceLabel").Value);
         Assert.Equal("0.00", result.Metadata.Single(field => field.Key == "noCostRevenue").Value);
     }

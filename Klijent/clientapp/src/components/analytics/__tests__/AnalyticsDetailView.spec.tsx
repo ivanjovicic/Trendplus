@@ -98,6 +98,10 @@ describe("AnalyticsDetailView decision trust projection", () => {
         snapshotGeneratedAtUtc: null,
         fallbackApplied: false,
         recommendationAllowed: false,
+        decisionScore: null,
+        decisionScoreUnit: "percent",
+        decisionScoreDenominator: "Red: 55% sigurnost preporuke",
+        decisionScoreActionability: "blocked",
       },
     });
 
@@ -106,6 +110,8 @@ describe("AnalyticsDetailView decision trust projection", () => {
     expect(await screen.findByText("Insufficient data")).toBeInTheDocument();
     expect(screen.getByText("Signed promet nema pozitivan ili potpun imenilac za pouzdanu preporuku.")).toBeInTheDocument();
     expect(screen.getByText("Poreklo i kvalitet podataka")).toBeInTheDocument();
+    expect(screen.getByText("Skor odluke (0–100)")).toBeInTheDocument();
+    expect(screen.getByText("Blokirano")).toBeInTheDocument();
     expect(screen.getAllByText("Nije aktivan")).toHaveLength(1);
     expect(screen.getByText("260.00")).toBeInTheDocument();
   });

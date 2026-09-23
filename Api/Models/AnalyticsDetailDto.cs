@@ -43,6 +43,10 @@ public sealed class AnalyticsDetailProvenanceDto
     public string? ObservedPopulation { get; init; }
     public string? CostPolicy { get; init; }
     public string? PrePostPolicy { get; init; }
+    public double? DecisionScore { get; init; }
+    public string? DecisionScoreUnit { get; init; }
+    public string? DecisionScoreDenominator { get; init; }
+    public string? DecisionScoreActionability { get; init; }
 }
 
 public sealed class AnalyticsDetailResponseDto

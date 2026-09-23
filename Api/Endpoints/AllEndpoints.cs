@@ -3177,6 +3177,15 @@ public static class AllEndpoints
                         var recommendationAllowed = recommendation.RecommendationAllowed
                             && hasComparableNivelacijaSignal
                             && hasMeasurableEvidence;
+                        var evidenceCoveragePct = row.marginDataCoveragePct.HasValue
+                            && row.prePostNivelacijaRevenueCoveragePct.HasValue
+                            ? (row.marginDataCoveragePct.Value + row.prePostNivelacijaRevenueCoveragePct.Value) / 2d
+                            : (double?)null;
+                        var decisionScore = ColorDecisionScorePolicy.Resolve(
+                            recommendation.ConfidencePct,
+                            recommendation.ReliabilityPct,
+                            evidenceCoveragePct,
+                            recommendationAllowed);
                         var exposedRecommendationBlocked = !hasMeasurableEvidence;
                         var exposedRecommendationStatus = exposedRecommendationBlocked
                             ? "insufficient_data"
@@ -3235,6 +3244,7 @@ public static class AllEndpoints
                             row.prePostSignalNote,
                             row.prePostComparableArticleCount,
                             sharePct,
+                            decisionScore,
                             reliabilityPct = recommendationAllowed ? (double?)recommendation.ReliabilityPct : null,
                             recommendation = new
                             {
@@ -3253,6 +3263,16 @@ public static class AllEndpoints
                         };
                     })
                     .ToList();
+
+                var decisionScoreRows = colorsWithRecommendation
+                    .Where(row => row.decisionScore.HasValue && row.ukupanPromet > 0m)
+                    .ToList();
+                var totalDecisionScore = decisionScoreRows.Count > 0
+                    ? Math.Round(
+                        (double)(decisionScoreRows.Sum(row => row.ukupanPromet * (decimal)row.decisionScore!.Value)
+                            / decisionScoreRows.Sum(row => row.ukupanPromet)),
+                        2)
+                    : (double?)null;
 
                 var totalHistoricalCostRevenue = colors.Sum(r => r.historicalCostRevenue);
                 var totalEstimatedCostRevenue = colors.Sum(r => r.estimatedCostRevenue);
@@ -3280,6 +3300,7 @@ public static class AllEndpoints
                     marginQualityTier = totalMarginQuality.Tier,
                     marginQualityShortLabel = totalMarginQuality.ShortLabel,
                     marginQualityTooltip = totalMarginQuality.Tooltip,
+                    decisionScore = totalDecisionScore,
                     // Comparable cohort is authoritative for pre/post decision metrics.
                     prePromet = comparablePreRevenue,
                     poslePromet = comparablePostRevenue,
@@ -3375,6 +3396,16 @@ public static class AllEndpoints
 
                 trustMeta.MetricProvenance = new Dictionary<string, AnalyticsMetricProvenanceDto>
                 {
+                    ["decisionScore"] = new()
+                    {
+                        Kind = AnalyticsMetricProvenanceKinds.AuthoritativeBackendAggregate,
+                        Authority = AnalyticsMetricAuthority.Authoritative,
+                        Actionability = totalDecisionScore.HasValue
+                            ? AnalyticsMetricActionability.Actionable
+                            : AnalyticsMetricActionability.Blocked,
+                        Unit = ColorDecisionScorePolicy.Unit,
+                        Denominator = ColorDecisionScorePolicy.Denominator
+                    },
                     ["revenueShare"] = new()
                     {
                         Kind = AnalyticsMetricProvenanceKinds.AuthoritativeBackendAggregate,

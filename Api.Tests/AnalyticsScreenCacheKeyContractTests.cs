@@ -26,7 +26,7 @@ public sealed class AnalyticsScreenCacheKeyContractTests
         Assert.All(variants, key => Assert.NotEqual(baseline, key));
         Assert.Equal(variants.Length, variants.Distinct(StringComparer.Ordinal).Count());
         Assert.Contains("color-sales-stats:", baseline, StringComparison.Ordinal);
-        Assert.Contains("color-sales-stats:v2:", baseline, StringComparison.Ordinal);
+        Assert.Contains("color-sales-stats:v3:", baseline, StringComparison.Ordinal);
     }
 
     [Fact]

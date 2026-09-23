@@ -12,6 +12,7 @@ export const ANALYTICS_CRITICAL_METRIC_KEYS = [
   "confidence",
   "reliability",
   "counts",
+  "decisionScore",
 ] as const;
 
 export type AnalyticsCriticalMetricKey = typeof ANALYTICS_CRITICAL_METRIC_KEYS[number];

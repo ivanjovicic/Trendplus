@@ -836,6 +836,15 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         var recommendationAllowed = recommendation.RecommendationAllowed
             && hasComparableNivelacijaSignal
             && hasMeasurableEvidence;
+        var evidenceCoveragePct = marginSnapshot.MarginDataCoveragePct.HasValue
+            && splitSnapshot.ComparableRevenueCoveragePct.HasValue
+            ? (marginSnapshot.MarginDataCoveragePct.Value + splitSnapshot.ComparableRevenueCoveragePct.Value) / 2d
+            : (double?)null;
+        var decisionScore = ColorDecisionScorePolicy.Resolve(
+            recommendation.ConfidencePct,
+            recommendation.ReliabilityPct,
+            evidenceCoveragePct,
+            recommendationAllowed);
         var exposedRecommendationBlocked = !hasMeasurableEvidence;
         var exposedRecommendationStatus = exposedRecommendationBlocked ? "insufficient_data" : recommendation.Status;
         var exposedRecommendationLabel = exposedRecommendationBlocked ? "Insufficient data" : recommendation.Label;
@@ -855,13 +864,21 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             RecordId = aggregate.RecordId,
             Title = aggregate.Title,
             Subtitle = aggregate.Subtitle,
-            Fields = aggregate.Fields,
+            Fields = aggregate.Fields
+                .Append(Field(
+                    "decisionScore",
+                    "Skor odluke (0–100)",
+                    decisionScore?.ToString("0.00", CultureInfo.InvariantCulture),
+                    "percent",
+                    decisionScore.HasValue))
+                .ToList(),
             Metadata = BuildColorMetadata(
                 context,
                 marginSnapshot,
                 splitSnapshot,
                 totalRevenue,
-                recommendationAllowed),
+                recommendationAllowed,
+                decisionScore),
             Recommendation = new AnalyticsDetailRecommendationDto
             {
                 Status = exposedRecommendationStatus,
@@ -894,7 +911,11 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 SourceTables = ColorSalesProvenance.SourceTables,
                 ObservedPopulation = ColorSalesProvenance.ObservedPopulation,
                 CostPolicy = ColorSalesProvenance.CostPolicy,
-                PrePostPolicy = ColorSalesProvenance.PrePostPolicy
+                PrePostPolicy = ColorSalesProvenance.PrePostPolicy,
+                DecisionScore = decisionScore,
+                DecisionScoreUnit = ColorDecisionScorePolicy.Unit,
+                DecisionScoreDenominator = ColorDecisionScorePolicy.Denominator,
+                DecisionScoreActionability = decisionScore.HasValue ? "actionable" : "blocked"
             }
         };
     }
@@ -904,7 +925,8 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         MarginSnapshot marginSnapshot,
         NivelacijaSplitSnapshot splitSnapshot,
         decimal totalRevenue,
-        bool recommendationAllowed)
+        bool recommendationAllowed,
+        double? decisionScore)
     {
         var metadata = BuildFilterMetadata(context.Filters).ToList();
         var noCostRevenue = totalRevenue - marginSnapshot.RevenueWithCost;
@@ -921,6 +943,9 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             Field("fallbackCostRevenue", "Promet sa fallback troškom", marginSnapshot.EstimatedCostRevenue.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
             Field("noCostRevenue", "Nepokriveni promet bez troška", noCostRevenue.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
             Field("prePostComparableArticleCount", "Artikli u uporedivoj kohorti", splitSnapshot.ComparableArticleCount.ToString(CultureInfo.InvariantCulture), "number"),
+            Field("decisionScore", "Skor odluke (0–100)", decisionScore?.ToString("0.00", CultureInfo.InvariantCulture) ?? "Nije dostupno", "percent", decisionScore.HasValue),
+            Field("decisionScoreUnit", "Jedinica skora odluke", ColorDecisionScorePolicy.Unit, "text"),
+            Field("decisionScoreDenominator", "Imenilac skora odluke", ColorDecisionScorePolicy.Denominator, "text"),
             Field("recommendationAllowed", "Preporuka dozvoljena", recommendationAllowed ? "Da" : "Ne", "text")
         ]);
         return metadata;

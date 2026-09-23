@@ -71,6 +71,7 @@ export interface ColorSalesStat {
 export interface ColorSalesTotals {
   ukupanPromet: number;
   ukupanMarzniDoprinos: number;
+  decisionScore?: number | null;
   ukupanTrosak?: number;
   weightedKnownMarginPct: number | null;
   weightedKnownMarginRevenue: number;

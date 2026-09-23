@@ -65,6 +65,10 @@ public sealed class ColorSalesStatsSafeErrorTests
         Assert.Contains("trustMeta.ObservedPeriodFromUtc", endpoint);
         Assert.Contains("[\"margin\"]", endpoint);
         Assert.Contains("[\"confidence\"]", endpoint);
+        Assert.Contains("ColorDecisionScorePolicy.Resolve", endpoint);
+        Assert.Contains("[\"decisionScore\"]", endpoint);
+        Assert.Contains("decisionScore = totalDecisionScore", endpoint);
+        Assert.DoesNotContain("decisionScore = recommendation.ConfidencePct", endpoint);
         Assert.DoesNotContain("materialized view", endpoint, StringComparison.OrdinalIgnoreCase);
     }
 
