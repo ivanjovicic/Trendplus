@@ -317,6 +317,8 @@ Owner refill 2026-08-13 sequential backlog of 15 prompts is complete. Owner refi
 | 14 | `OBS09` | DONE | OBS |
 | 15 | `SEC07` | DONE | SEC |
 
+Owner audit 2026-09-23: the direct Operacije data-accuracy audit added `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md` with `RQ406`-`RQ410` as WAITING follow-ups. The audit confirmed a remaining P0 historical-dimension risk: Supplier/Shoe Type sales attribution is derived from current `Artikli.IDDobavljac` / `Artikli.IDTipObuce`, so historical rows can be reclassified unless attribution is frozen or provenance-qualified. It also records that focused/golden/runtime-schema tests are not equivalent to an independent raw-fact or live PostgreSQL proof. `RQ406` owns immutable/provenance-bearing sale-time dimension attribution; `RQ407` owns independent Supplier/Shoe Type raw-fact reconciliation; `RQ408` owns the cross-Operacije invariant matrix; `RQ409` owns non-false-green PostgreSQL proof; `RQ410` owns continuous drift/cache/freshness guardrails. No RQ prompt was promoted or claimed; existing RQ373/RQ378-RQ380 and RQ371/RQ372 ownership/dependencies remain intact. Durable evidence: `.ai/runs/2026-09-23-operations-data-accuracy-audit-evidence.md`.
+
 ## Product and process documents
 
 - Product direction: `docs/product/PRODUCT_VISION.md`
