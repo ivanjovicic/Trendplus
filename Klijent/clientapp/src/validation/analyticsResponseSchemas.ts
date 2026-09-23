@@ -197,7 +197,7 @@ const shoeTypeRecommendationSchema = z.object({
   summary: z.string().trim().min(1),
   confidencePct: nullableNonNegativePercentage,
   reliabilityPct: nullableNonNegativePercentage,
-  dataQualityStatus: z.enum(["good", "warning", "critical"]),
+  dataQualityStatus: z.enum(["good", "warning", "critical", "insufficient_data"]),
   recommendationAllowed: z.boolean(),
   reasonCodes: z.array(z.string().trim().min(1)),
 });

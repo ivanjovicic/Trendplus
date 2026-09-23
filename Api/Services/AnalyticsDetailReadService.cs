@@ -731,7 +731,10 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 IsNewEntity: isNewEntity,
                 UnknownBucketSharePct: unknownSharePct),
             averageMarginPct);
-        var recommendationAllowed = recommendation.RecommendationAllowed && splitSnapshot.HasComparableSignal;
+        var exposedRecommendation = AnalyticsDecisionRecommendationEngine.ApplyComparableSignalGate(
+            recommendation,
+            splitSnapshot.HasComparableSignal);
+        var recommendationAllowed = exposedRecommendation.RecommendationAllowed;
         var marginQuality = MarginQualityClassifier.ClassifyFromSnapshot(marginSnapshot, totalRevenue);
         var localizedFields = aggregate.Fields
             .Select(field => LocalizeShoeTypeField(field, marginSnapshot, context))
@@ -747,14 +750,14 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             Metadata = BuildShoeTypeMetadata(context, marginQuality, recommendationAllowed),
             Recommendation = new AnalyticsDetailRecommendationDto
             {
-                Status = recommendation.Status,
-                Label = ToSerbianRecommendationLabel(recommendation.Status),
-                Summary = ToSerbianRecommendationSummary(recommendation.Status, recommendation.ReasonCodes, recommendation.ReliabilityPct),
-                ConfidencePct = recommendationAllowed ? recommendation.ConfidencePct : null,
-                ReliabilityPct = recommendationAllowed ? recommendation.ReliabilityPct : null,
-                DataQualityStatus = recommendation.DataQualityStatus,
+                Status = exposedRecommendation.Status,
+                Label = ToSerbianRecommendationLabel(exposedRecommendation.Status),
+                Summary = ToSerbianRecommendationSummary(exposedRecommendation.Status, exposedRecommendation.ReasonCodes, exposedRecommendation.ReliabilityPct),
+                ConfidencePct = recommendationAllowed ? exposedRecommendation.ConfidencePct : null,
+                ReliabilityPct = recommendationAllowed ? exposedRecommendation.ReliabilityPct : null,
+                DataQualityStatus = exposedRecommendation.DataQualityStatus,
                 RecommendationAllowed = recommendationAllowed,
-                ReasonCodes = recommendation.ReasonCodes
+                ReasonCodes = exposedRecommendation.ReasonCodes
             },
             Provenance = new AnalyticsDetailProvenanceDto
             {
@@ -833,7 +836,10 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             marginSnapshot.RevenueWithCost > 0m ? marginSnapshot.MarginPct : null,
             marginSnapshot.MarginDataCoveragePct,
             unknownSharePct);
-        var recommendationAllowed = recommendation.RecommendationAllowed
+        var comparableRecommendation = AnalyticsDecisionRecommendationEngine.ApplyComparableSignalGate(
+            recommendation,
+            hasComparableNivelacijaSignal);
+        var recommendationAllowed = comparableRecommendation.RecommendationAllowed
             && hasComparableNivelacijaSignal
             && hasMeasurableEvidence;
         var evidenceCoveragePct = marginSnapshot.MarginDataCoveragePct.HasValue
@@ -841,22 +847,22 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             ? (marginSnapshot.MarginDataCoveragePct.Value + splitSnapshot.ComparableRevenueCoveragePct.Value) / 2d
             : (double?)null;
         var decisionScore = ColorDecisionScorePolicy.Resolve(
-            recommendation.ConfidencePct,
-            recommendation.ReliabilityPct,
+            comparableRecommendation.ConfidencePct,
+            comparableRecommendation.ReliabilityPct,
             evidenceCoveragePct,
             recommendationAllowed);
         var exposedRecommendationBlocked = !hasMeasurableEvidence;
-        var exposedRecommendationStatus = exposedRecommendationBlocked ? "insufficient_data" : recommendation.Status;
-        var exposedRecommendationLabel = exposedRecommendationBlocked ? "Insufficient data" : recommendation.Label;
-        var exposedRecommendationSummary = exposedRecommendationBlocked
-            ? "Signed promet nema pozitivan ili potpun imenilac za pouzdanu preporuku."
-            : recommendation.Summary;
-        var exposedRecommendationDataQualityStatus = exposedRecommendationBlocked
-            ? "insufficient_data"
-            : recommendation.DataQualityStatus;
-        var exposedReasonCodes = exposedRecommendationBlocked
-            ? recommendation.ReasonCodes.Append("signed_denominator_unavailable").Distinct(StringComparer.Ordinal).ToArray()
-            : recommendation.ReasonCodes;
+        var exposedRecommendation = exposedRecommendationBlocked
+            ? comparableRecommendation with
+            {
+                Status = "insufficient_data",
+                Label = "Insufficient data",
+                Summary = "Signed promet nema pozitivan ili potpun imenilac za pouzdanu preporuku.",
+                DataQualityStatus = "insufficient_data",
+                RecommendationAllowed = false,
+                ReasonCodes = comparableRecommendation.ReasonCodes.Append("signed_denominator_unavailable").Distinct(StringComparer.Ordinal).ToArray()
+            }
+            : comparableRecommendation;
 
         return new AnalyticsDetailResponseDto
         {
@@ -881,14 +887,14 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 decisionScore),
             Recommendation = new AnalyticsDetailRecommendationDto
             {
-                Status = exposedRecommendationStatus,
-                Label = exposedRecommendationLabel,
-                Summary = exposedRecommendationSummary,
-                ConfidencePct = recommendationAllowed ? recommendation.ConfidencePct : null,
-                ReliabilityPct = recommendationAllowed ? recommendation.ReliabilityPct : null,
-                DataQualityStatus = exposedRecommendationDataQualityStatus,
+                Status = exposedRecommendation.Status,
+                Label = exposedRecommendation.Label,
+                Summary = exposedRecommendation.Summary,
+                ConfidencePct = recommendationAllowed ? exposedRecommendation.ConfidencePct : null,
+                ReliabilityPct = recommendationAllowed ? exposedRecommendation.ReliabilityPct : null,
+                DataQualityStatus = exposedRecommendation.DataQualityStatus,
                 RecommendationAllowed = recommendationAllowed,
-                ReasonCodes = exposedReasonCodes
+                ReasonCodes = exposedRecommendation.ReasonCodes
             },
             Provenance = new AnalyticsDetailProvenanceDto
             {
@@ -901,7 +907,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 DataScope = context.Filters.DataScope,
                 GeneratedAtUtc = DateTime.UtcNow,
                 Freshness = "fresh",
-                DataQualityStatus = exposedRecommendationDataQualityStatus,
+                DataQualityStatus = exposedRecommendation.DataQualityStatus,
                 SnapshotActive = false,
                 SnapshotGeneratedAtUtc = null,
                 FallbackApplied = marginSnapshot.EstimatedCostRevenue > 0m,
@@ -1123,6 +1129,11 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             return "Nedostaje uporediv signal pre i posle nivelacije; preporuka nije potvrđena.";
         }
 
+        if (reasonCodes.Contains("missing_comparable_signal"))
+        {
+            return "Nedostaje uporediv signal pre i posle nivelacije; nema dovoljno dokaza za pouzdanu preporuku.";
+        }
+
         if (reasonCodes.Contains("tiny_sample"))
         {
             return "Uzorak je premali po prometu, količini ili broju artikala za pouzdanu preporuku.";
@@ -1251,6 +1262,52 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 "text"));
         }
 
+        var knownMarginEvidence = context.SalesRows
+            .GroupBy(x => x.DobavljacId)
+            .Where(group => group.Key.HasValue)
+            .Select(group =>
+            {
+                var revenue = group.Sum(x => x.Prihod);
+                var groupMargin = BuildMarginSnapshot(group.ToList(), context, revenue);
+                return (RevenueWithCost: groupMargin.RevenueWithCost, MarginContribution: groupMargin.MarginContribution);
+            })
+            .ToList();
+        var averageMarginPct = AnalyticsMarginPolicy.ResolveWeightedMarginPct(knownMarginEvidence);
+        var contextRevenue = context.SalesRows.Sum(x => x.Prihod);
+        var unknownRevenue = context.SalesRows
+            .Where(x => !x.DobavljacId.HasValue || string.Equals(x.DobavljacNaziv, "Nepoznato", StringComparison.OrdinalIgnoreCase))
+            .Sum(x => x.Prihod);
+        var unknownSharePct = contextRevenue > 0m
+            ? Math.Round((double)(unknownRevenue / contextRevenue * 100m), 2)
+            : 0d;
+        var hasPreviousPeriodWindow = comparison?.PreviousPeriodRevenue is not null;
+        var isNewSupplier = hasPreviousPeriodWindow
+            && comparison!.PreviousPeriodRevenue <= 0m
+            && totalRevenue > 0m;
+        var isUnknownSupplier = rows.All(x => !x.DobavljacId.HasValue);
+        var recommendation = AnalyticsDecisionRecommendationEngine.Evaluate(
+            new AnalyticsDecisionRecommendationEngine.RecommendationInput(
+                IsUnknownEntity: isUnknownSupplier,
+                TotalRevenue: totalRevenue,
+                TotalUnits: totalQty,
+                ItemCount: articleIds.Count,
+                SharePct: contextRevenue > 0m ? (double)(totalRevenue / contextRevenue * 100m) : 0d,
+                MarginPct: marginSnapshot.RevenueWithCost > 0m ? marginSnapshot.MarginPct : 0d,
+                MarginCoveragePct: marginSnapshot.MarginDataCoveragePct,
+                SplitCoveragePct: splitSnapshot.ComparableRevenueCoveragePct,
+                PopRevenueChangePct: comparison?.PopRevenueChangePct,
+                PopUnitsChangePct: comparison?.PopUnitsChangePct,
+                PreviousPeriodRevenue: comparison?.PreviousPeriodRevenue,
+                PreviousPeriodUnits: comparison?.PreviousPeriodUnits,
+                HasPreviousPeriodWindow: hasPreviousPeriodWindow,
+                IsNewEntity: isNewSupplier,
+                UnknownBucketSharePct: unknownSharePct),
+            averageMarginPct);
+        var exposedRecommendation = AnalyticsDecisionRecommendationEngine.ApplyComparableSignalGate(
+            recommendation,
+            splitSnapshot.HasComparableSignal);
+        var recommendationAllowed = exposedRecommendation.RecommendationAllowed;
+
         return new AnalyticsDetailResponseDto
         {
             Table = table,
@@ -1258,7 +1315,18 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             Title = title,
             Subtitle = subtitle,
             Fields = fields,
-            Metadata = BuildFilterMetadata(context.Filters)
+            Metadata = BuildFilterMetadata(context.Filters),
+            Recommendation = new AnalyticsDetailRecommendationDto
+            {
+                Status = exposedRecommendation.Status,
+                Label = ToSerbianRecommendationLabel(exposedRecommendation.Status),
+                Summary = ToSerbianRecommendationSummary(exposedRecommendation.Status, exposedRecommendation.ReasonCodes, exposedRecommendation.ReliabilityPct),
+                ConfidencePct = recommendationAllowed ? exposedRecommendation.ConfidencePct : null,
+                ReliabilityPct = recommendationAllowed ? exposedRecommendation.ReliabilityPct : null,
+                DataQualityStatus = exposedRecommendation.DataQualityStatus,
+                RecommendationAllowed = recommendationAllowed,
+                ReasonCodes = exposedRecommendation.ReasonCodes
+            }
         };
     }
 

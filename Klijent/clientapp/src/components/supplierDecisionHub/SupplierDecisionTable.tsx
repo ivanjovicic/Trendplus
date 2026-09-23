@@ -165,9 +165,16 @@ export default function SupplierDecisionTable({
                       <td className="analytics-data-table__numeric text-secondary">{formatScore(item.supplierQualityIndex)}</td>
                       <td className="analytics-data-table__numeric text-secondary">{confidenceLabel(item.confidenceScore)}</td>
                       <td>
-                        <span className={`supplier-decision-pill tone-${recommendation.ton} inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold`}>
-                          {recommendation.label}
-                        </span>
+                        <div className="flex max-w-[280px] flex-col items-start gap-1">
+                          <span className={`supplier-decision-pill tone-${recommendation.ton} inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold`}>
+                            {recommendation.label}
+                          </span>
+                          {item.statusReason ? (
+                            <span className="text-xs leading-5 text-secondary" title={item.statusReason}>
+                              <strong>Razlog:</strong> {item.statusReason}
+                            </span>
+                          ) : null}
+                        </div>
                       </td>
                     </tr>
                   );

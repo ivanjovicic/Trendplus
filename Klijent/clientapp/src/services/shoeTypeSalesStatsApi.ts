@@ -8,7 +8,7 @@ export interface AnalyticsRecommendation {
   summary: string;
   confidencePct: number | null;
   reliabilityPct: number | null;
-  dataQualityStatus: "good" | "warning" | "critical";
+  dataQualityStatus: "good" | "warning" | "critical" | "insufficient_data";
   recommendationAllowed?: boolean | null;
   reasonCodes: string[];
 }

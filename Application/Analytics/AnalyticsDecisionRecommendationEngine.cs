@@ -29,6 +29,31 @@ public static class AnalyticsDecisionRecommendationEngine
         bool RecommendationAllowed,
         IReadOnlyList<string> ReasonCodes);
 
+    public static RecommendationResult ApplyComparableSignalGate(
+        RecommendationResult recommendation,
+        bool hasComparableSignal)
+    {
+        if (hasComparableSignal)
+        {
+            return recommendation;
+        }
+
+        var reasonCodes = recommendation.ReasonCodes
+            .Append("missing_comparable_signal")
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        return recommendation with
+        {
+            Status = "insufficient_data",
+            Label = "Insufficient data",
+            Summary = "Nedostaje uporediv signal pre i posle nivelacije; nema dovoljno dokaza za pouzdanu preporuku.",
+            DataQualityStatus = "insufficient_data",
+            RecommendationAllowed = false,
+            ReasonCodes = reasonCodes
+        };
+    }
+
     public static RecommendationResult Evaluate(RecommendationInput input, double? averageMarginPct)
     {
         var reasons = new List<string>();

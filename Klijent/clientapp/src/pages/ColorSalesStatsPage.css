@@ -457,6 +457,8 @@
   font-weight: 700;
   gap: 4px;
   line-height: 1.2;
+  max-width: 280px;
+  white-space: normal;
 }
 
 .color-decision-detail-btn {

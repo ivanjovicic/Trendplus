@@ -533,12 +533,13 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       const status = recommendationAllowed
         ? recommendationToStatus(item.recommendationCode)
         : "insufficient_data";
-      const statusReason = recommendationAllowed
-          ? (typeof item.statusReason === "string" ? item.statusReason.trim() : "")
-            || "Server nije dostavio obrazloženje za ovaj signal skorkarte."
-        : (trustMetadata?.usedFallback
-          ? "Za izabrani period nema dovoljno podataka; prikaz je pomoćni signal iz šireg skupa podataka."
-          : "Nedovoljno podataka u izabranom periodu; signal skorkarte je pomoćnog karaktera.");
+      const backendStatusReason = typeof item.statusReason === "string" ? item.statusReason.trim() : "";
+      const statusReason = backendStatusReason
+        || (recommendationAllowed
+          ? "Server nije dostavio obrazloženje za ovaj signal skorkarte."
+          : (trustMetadata?.usedFallback
+            ? "Za izabrani period nema dovoljno podataka; prikaz je pomoćni signal iz šireg skupa podataka."
+            : "Nedovoljno podataka u izabranom periodu; signal skorkarte je pomoćnog karaktera."));
       const reliabilityPctValue = normalizeRecommendationPct(item.reliabilityPct);
       const reasonCodes = Array.isArray(item.reasonCodes)
         ? item.reasonCodes.filter((code): code is string => typeof code === "string")
@@ -1549,7 +1550,16 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                             <td className="analytics-data-table__numeric text-secondary">{formatMetricDisplayValue({ value: row.sharePct, kind: "percent", digits: 2 })}</td>
                             <td className="analytics-data-table__numeric text-secondary">{fmtPct(toSupplierDecisionMarginPercentUnits(row.preMarkdownMarginPct), 2)}</td>
                             <td className={`analytics-data-table__numeric text-secondary ${trendClass(row.qualityTrendPct)}`}>{fmtSignedPct(row.qualityTrendPct, 2)}</td>
-                            <td><span className={statusClass(row.status)} title={buildStatusTooltip(row)} aria-label={buildStatusTooltip(row)}>{displayedStatusLabel}</span></td>
+                            <td>
+                              <div className="sdh-decision-status-stack">
+                                <span className={statusClass(row.status)} title={buildStatusTooltip(row)} aria-label={buildStatusTooltip(row)}>{displayedStatusLabel}</span>
+                                {row.statusReason ? (
+                                  <span className="sdh-decision-status-reason" title={row.statusReason}>
+                                    <strong>Razlog:</strong> {row.statusReason}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </td>
                             <td className="text-center"><button type="button" className="sdh-decision-detail-btn" onClick={() => setExpandedSupplierId(expanded ? null : row.supplierId)}>{expanded ? "Sakrij" : "Detalji"}</button></td>
                           </tr>
                         );

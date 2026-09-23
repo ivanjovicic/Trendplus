@@ -780,7 +780,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       const recommended = supplier.recommendation;
       const recommendationAllowed = recommended?.recommendationAllowed === true;
       const backendStatus = (recommended?.status ?? (supplier.isUnknown ? "do_not_trust" : "insufficient_data")) as DecisionStatus;
-      const status = recommendationAllowed ? backendStatus : "insufficient_data" as DecisionStatus;
+      const status = backendStatus;
       const fallbackStatusReason = supplier.isUnknown
         ? "Dobavljač je nepoznat u master podacima; signal nije pouzdan za odluku."
         : "Nedovoljno podataka za pouzdanu preporuku.";
@@ -1982,7 +1982,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                                 </span>
                                 {supplier.statusReason ? (
                                   <span className="supplier-status-reason-chip" title={supplier.statusReason}>
-                                    Razlog <InfoTip text={supplier.statusReason} />
+                                    <strong>Razlog:</strong> {supplier.statusReason} <InfoTip text={supplier.statusReason} />
                                   </span>
                                 ) : null}
                               </div>

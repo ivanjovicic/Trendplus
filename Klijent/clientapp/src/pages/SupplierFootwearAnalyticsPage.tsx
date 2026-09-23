@@ -882,7 +882,16 @@ export default function SupplierFootwearAnalyticsPage({
                             <td className="align-right">{formatMetricDisplayValue({ value: row.sharePct, kind: "percent", digits: 2 })}</td>
                             <td><strong>{row.topFootwearType}</strong><div className="sf-mini-note">{formatMetricDisplayValue({ value: row.topFootwearTypeSharePct, kind: "percent" })} udela kod dobavljača</div></td>
                             <td className={`align-right ${trendClass(row.trendPct)}`}>{fmtSignedPct(row.trendPct, 2)}</td>
-                            <td><span className={statusClass(row.status)} title={buildStatusTooltip(row)} aria-label={buildStatusTooltip(row)}>{statusDisplayLabel(row.status)}</span></td>
+                            <td>
+                              <div className="sf-status-stack">
+                                <span className={statusClass(row.status)} title={buildStatusTooltip(row)} aria-label={buildStatusTooltip(row)}>{statusDisplayLabel(row.status)}</span>
+                                {row.statusReason ? (
+                                  <span className="sf-status-reason" title={row.statusReason}>
+                                    <strong>Razlog:</strong> {row.statusReason}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </td>
                             <td className="align-center"><button type="button" className="sf-decision-detail-btn" onClick={() => setExpandedVendorKey(expanded ? null : rowId)}>{expanded ? "Sakrij" : "Detalji"}</button></td>
                           </tr>
                         );

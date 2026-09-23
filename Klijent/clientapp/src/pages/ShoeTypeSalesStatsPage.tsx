@@ -1410,7 +1410,7 @@ export default function ShoeTypeSalesStatsPage() {
                                   {displayStatusLabel(row.status)}
                                 </span>
                                 <span className="shoetype-status-reason-chip" title={row.statusReason}>
-                                  {row.recommendationAllowed ? "Razlog" : "Akcija blokirana"} <InfoTip text={row.statusReason} />
+                                  <strong>{row.recommendationAllowed ? "Razlog" : "Akcija blokirana"}</strong>: {row.statusReason} <InfoTip text={row.statusReason} />
                                 </span>
                               </div>
                             </td>

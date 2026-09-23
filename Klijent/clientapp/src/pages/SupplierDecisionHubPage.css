@@ -370,6 +370,21 @@
   text-transform: uppercase;
 }
 
+.sdh-decision-status-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 180px;
+}
+
+.sdh-decision-status-reason {
+  color: var(--text-secondary, var(--theme-color-cbd5e1, #cbd5e1));
+  font-size: 11px;
+  line-height: 1.35;
+  max-width: 280px;
+  white-space: normal;
+}
+
 .sdh-decision-status.status-boost {
   background: var(--success-soft, var(--theme-color-rgba-52-211-153-0p15, rgba(52, 211, 153, 0.15)));
   border: 1px solid var(--success-border, var(--theme-color-rgba-52-211-153-0p45, rgba(52, 211, 153, 0.45)));

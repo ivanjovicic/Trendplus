@@ -48,6 +48,7 @@ function formatDetailReasonCode(code: string): string {
     unknown_bucket_share_unavailable: "Nedostaje udeo nepoznatih podataka",
     missing_cost_coverage: "Nedovoljno pokriće troškom",
     missing_split_coverage: "Nedostaje uporediv signal nivelacije",
+    missing_comparable_signal: "Nedostaje uporediv signal pre i posle nivelacije",
     limited_nivelacija_coverage: "Ograničeno pokriće nivelacije",
     unknown_heavy_dataset: "Veliki udeo nepoznatih podataka",
     tiny_sample: "Premali uzorak",
@@ -58,7 +59,10 @@ function formatDetailReasonCode(code: string): string {
 }
 
 function formatDataQualityStatus(value: string): string {
-  return value === "good" ? "Dobro" : value === "warning" ? "Upozorenje" : "Kritično";
+  if (value === "good") return "Dobro";
+  if (value === "warning") return "Upozorenje";
+  if (value === "insufficient_data") return "Nedovoljno podataka";
+  return "Kritično";
 }
 
 async function copyValue(value: string) {
