@@ -25,4 +25,28 @@ describe("MetricMethodologyPanel", () => {
 
     expect(screen.getByText(/Metodologija za ovu metriku.*nije dokumentovana/i)).toBeInTheDocument();
   });
+
+  it("documents every Supplier overview KPI methodology", () => {
+    render(
+      <MemoryRouter>
+        <MetricMethodologyPanel
+          metricKeys={[
+            "revenue",
+            "unitsSold",
+            "totalCost",
+            "marginContribution",
+            "supplierAverageMarginPct",
+            "topSupplierRevenueShare",
+            "popRevenueChangePct",
+          ]}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Nabavna vrednost")).toBeInTheDocument();
+    expect(screen.getByText("PoP promena prometa")).toBeInTheDocument();
+    expect(screen.getByText("Prosečna marža dobavljača")).toBeInTheDocument();
+    expect(screen.getByText("Udeo top 5 dobavljača")).toBeInTheDocument();
+    expect(screen.queryByText(/Metodologija za ovu metriku.*nije dokumentovana/i)).not.toBeInTheDocument();
+  });
 });

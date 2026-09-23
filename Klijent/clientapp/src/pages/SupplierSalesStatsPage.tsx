@@ -1636,7 +1636,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
               <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Signal kvaliteta miks marže kroz dobavljače.">
                 <span>Prosečna marža <InfoTip text="Prosečan procenat maržnog doprinosa po dobavljaču. Formula po dobavljaču: maržni doprinos / promet sa dostupnim troškom × 100. Prikazana vrednost je aritmetički prosek po dobavljačima — nije ponderisana prometom." /></span>
                 <strong>{fmtPct(data.totals.prosecnaMarza ?? null, 1)}</strong>
-                <KpiExplainButton metricKey="grossMarginPct" ariaLabel="Kako je izračunata prosečna marža" />
+                <KpiExplainButton metricKey="supplierAverageMarginPct" ariaLabel="Kako je izračunata prosečna marža" />
               </article>
               <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Koncentracija prometa na najjacim partnerima.">
                 <span>Udeo top 5 dobavljača <InfoTip text="Procenat prometa vidljivih poznatih dobavljača koji dolazi od pet dobavljača sa najvećim prometom. Formula: promet top 5 / promet vidljivih poznatih dobavljača x 100." /></span>
