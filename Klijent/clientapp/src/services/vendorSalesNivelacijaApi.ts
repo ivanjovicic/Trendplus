@@ -43,6 +43,10 @@ export interface VendorSalesNivelacijaVendorStat {
     reliabilityPct: number | null;
     recommendation?: VendorSalesNivelacijaRecommendation | null;
     comparableArticleCount?: number;
+    primaryFootwearType?: string | null;
+    primaryFootwearTypeSharePercent?: number | null;
+    primaryFootwearTypeAvgElasticity?: number | null;
+    typeInsightsAuthoritative?: boolean;
 }
 
 export interface VendorSalesNivelacijaArticleStat {
@@ -143,6 +147,8 @@ export interface VendorSalesNivelacijaCategoryStat {
     changePercent: number;
     hasComparableSalesWindow?: boolean;
     comparableArticleCount?: number;
+    postRevenueSharePercent?: number | null;
+    avgElasticity?: number | null;
 }
 
 export interface VendorSalesNivelacijaPriceDirectionStat {
@@ -181,6 +187,9 @@ export interface VendorSalesNivelacijaResponse {
     totals: VendorSalesNivelacijaTotals;
     dataQuality?: VendorSalesNivelacijaDataQuality | null;
     categoryStats: VendorSalesNivelacijaCategoryStat[];
+    typeInsightsAuthoritative?: boolean;
+    typeInsightsSource?: string | null;
+    typeInsightsDenominator?: string | null;
     priceDirectionStats: VendorSalesNivelacijaPriceDirectionStat[];
     insights: VendorSalesNivelacijaInsight[];
     avgMomentumRevenue?: number | null;

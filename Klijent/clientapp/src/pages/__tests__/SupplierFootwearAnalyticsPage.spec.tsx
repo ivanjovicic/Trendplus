@@ -198,6 +198,110 @@ describe("SupplierFootwearAnalyticsPage", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Dobavljači i tipovi obuće" })).toBeInTheDocument();
   });
 
+  it("does not derive type insights from truncated article detail", async () => {
+    const baseResponse = await getVendorSalesNivelacija({});
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValueOnce({
+      ...baseResponse,
+      typeInsightsAuthoritative: false,
+      categoryStats: [{
+        category: "Cipele",
+        articlesCount: 1,
+        vendorsCount: 1,
+        preQty: 1,
+        preRevenue: 10,
+        postQty: 2,
+        postRevenue: 100,
+        changeQty: 1,
+        changeRevenue: 90,
+        changePercent: 900,
+        hasComparableSalesWindow: true,
+        comparableArticleCount: 1,
+        postRevenueSharePercent: 90.91,
+        avgElasticity: -1.2,
+      }],
+      dataQuality: {
+        ...baseResponse.dataQuality!,
+        returnedRows: 1,
+        analyzedRows: 2,
+        truncatedRows: 1,
+        isDetailTruncated: true,
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <SupplierFootwearAnalyticsPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/Detalj prikazuje 1 od 2 analiziranih redova/)).toBeInTheDocument();
+    expect(screen.getByText("Nema podataka za grafikon tipova obuce.")).toBeInTheDocument();
+    const tableSurface = await screen.findByTestId("supplier-footwear-analytics-data-table");
+    expect(within(tableSurface).getAllByText("N/A").length).toBeGreaterThan(0);
+  });
+
+  it("uses backend full-cohort type insights in row, detail and export metadata", async () => {
+    const baseResponse = await getVendorSalesNivelacija({});
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValueOnce({
+      ...baseResponse,
+      typeInsightsAuthoritative: true,
+      typeInsightsSource: "full_comparable_cohort",
+      typeInsightsDenominator: "comparable_post_revenue",
+      vendorStats: [{
+        ...baseResponse.vendorStats[0],
+        primaryFootwearType: "Cipele",
+        primaryFootwearTypeSharePercent: 90.91,
+        primaryFootwearTypeAvgElasticity: -1.2,
+        typeInsightsAuthoritative: true,
+      }],
+      categoryStats: [{
+        category: "Cipele",
+        articlesCount: 2,
+        vendorsCount: 1,
+        preQty: 10,
+        preRevenue: 100,
+        postQty: 12,
+        postRevenue: 1_000,
+        changeQty: 2,
+        changeRevenue: 900,
+        changePercent: 900,
+        hasComparableSalesWindow: true,
+        comparableArticleCount: 2,
+        postRevenueSharePercent: 90.91,
+        avgElasticity: -1.2,
+      }],
+      dataQuality: {
+        ...baseResponse.dataQuality!,
+        returnedRows: 2,
+        analyzedRows: 2,
+        isDetailTruncated: false,
+      },
+    });
+
+    const saveSpy = vi.spyOn(analyticsTableState, "saveAnalyticsDetailSnapshot");
+    render(
+      <MemoryRouter>
+        <SupplierFootwearAnalyticsPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/Cipele \(90,9%\)/)).toBeInTheDocument();
+    const tableSurface = await screen.findByTestId("supplier-footwear-analytics-data-table");
+    expect(within(tableSurface).getByText("Cipele")).toBeInTheDocument();
+    within(tableSurface).getByRole("button", { name: "Detalji" }).click();
+    const detailPanel = (await screen.findByText("Glavni tip obuće")).closest("section");
+    expect(detailPanel).not.toBeNull();
+    expect(detailPanel).toHaveTextContent("Cipele (90,9%)");
+    expect(within(detailPanel!).getByText("-1,20")).toBeInTheDocument();
+    within(detailPanel!).getByRole("button", { name: "Otvori puni detalj" }).click();
+    expect(saveSpy).toHaveBeenCalledWith(expect.objectContaining({
+      metadata: expect.arrayContaining([
+        expect.objectContaining({ key: "typeInsightDenominator", value: "comparable_post_revenue" }),
+      ]),
+    }));
+    saveSpy.mockRestore();
+  });
+
   it("does not infer fresh supplier footwear data from response generated time", async () => {
     const generatedOnlyResponse = await getVendorSalesNivelacija({});
     vi.mocked(getVendorSalesNivelacija).mockResolvedValueOnce({

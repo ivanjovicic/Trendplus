@@ -4418,6 +4418,8 @@ public static class AllEndpoints
                     .Select(g =>
                     {
                         var comparable = g.Where(x => x.HasComparableSalesWindow).ToList();
+                        var typeInsights = VendorSalesNivelacijaTypeInsightPolicy.Build(comparable);
+                        var primaryType = typeInsights.FirstOrDefault();
                         var preRev = comparable.Sum(x => x.PreRevenue);
                         var postRev = comparable.Sum(x => x.PostRevenue);
                         var preQty = comparable.Sum(x => x.PreQty);
@@ -4485,7 +4487,11 @@ public static class AllEndpoints
                                     .Select(x => x.Sku)
                                     .Where(s => !string.IsNullOrWhiteSpace(s))
                                     .Distinct(StringComparer.Ordinal)
-                                    .Count()
+                                    .Count(),
+                                PrimaryFootwearType = primaryType?.Category,
+                                PrimaryFootwearTypeSharePercent = primaryType?.PostRevenueSharePercent,
+                                PrimaryFootwearTypeAvgElasticity = primaryType?.AvgElasticity,
+                                TypeInsightsAuthoritative = primaryType?.PostRevenueSharePercent.HasValue == true
                             },
                             IsUnknownVendor = isUnknownVendor,
                             SplitCoveragePct = splitCoveragePct,
@@ -4540,8 +4546,8 @@ public static class AllEndpoints
                             Status = exposedRecommendation.Status,
                             Label = exposedRecommendation.Label,
                             Summary = exposedRecommendation.Summary,
-                            ConfidencePct = row.Vendor.HasComparableSalesWindow ? exposedRecommendation.ConfidencePct : null,
-                            ReliabilityPct = row.Vendor.HasComparableSalesWindow ? exposedRecommendation.ReliabilityPct : null,
+                            ConfidencePct = row.Vendor.HasComparableSalesWindow ? recommendation.ConfidencePct : null,
+                            ReliabilityPct = row.Vendor.HasComparableSalesWindow ? recommendation.ReliabilityPct : null,
                             DataQualityStatus = exposedRecommendation.DataQualityStatus,
                             RecommendationAllowed = exposedRecommendation.RecommendationAllowed,
                             ReasonCodes = exposedRecommendation.ReasonCodes
@@ -4566,29 +4572,28 @@ public static class AllEndpoints
                         : Math.Round((vendor.PostRevenue / totalPostRevenue) * 100m, 2);
                 }
 
-                // Category stats (top 50)
-                var categoryStats = analyzed
-                    .GroupBy(x => x.Category ?? "Nepoznato")
-                    .Select(g =>
+                // Category stats are full-cohort type insights. They must not be
+                // rebuilt from articleStats, which is intentionally capped by maxRows.
+                var typeInsightAggregates = VendorSalesNivelacijaTypeInsightPolicy.Build(comparableRows);
+                var typeInsightsAuthoritative = typeInsightAggregates.Count > 0
+                    && totalPostRevenue > 0m;
+                var categoryStats = typeInsightAggregates
+                    .Select(aggregate => new VendorSalesNivelacijaCategoryStatDto
                     {
-                        var comparable = g.Where(x => x.HasComparableSalesWindow).ToList();
-                        var preRev = comparable.Sum(x => x.PreRevenue);
-                        var postRev = comparable.Sum(x => x.PostRevenue);
-                        return new VendorSalesNivelacijaCategoryStatDto
-                        {
-                            Category = g.Key,
-                            ArticlesCount = comparable.Select(x => x.Sku).Distinct(StringComparer.Ordinal).Count(),
-                            VendorsCount = comparable.Select(x => x.VendorId).Distinct().Count(),
-                            PreQty = comparable.Sum(x => x.PreQty),
-                            PreRevenue = preRev,
-                            PostQty = comparable.Sum(x => x.PostQty),
-                            PostRevenue = postRev,
-                            ChangeQty = comparable.Sum(x => x.ChangeQty),
-                            ChangeRevenue = comparable.Sum(x => x.ChangeRevenue),
-                            ChangePercent = Pct(preRev, postRev),
-                            HasComparableSalesWindow = comparable.Count > 0,
-                            ComparableArticleCount = comparable.Select(x => x.Sku).Distinct(StringComparer.Ordinal).Count()
-                        };
+                        Category = aggregate.Category,
+                        ArticlesCount = aggregate.ArticlesCount,
+                        VendorsCount = aggregate.VendorsCount,
+                        PreQty = aggregate.PreQty,
+                        PreRevenue = aggregate.PreRevenue,
+                        PostQty = aggregate.PostQty,
+                        PostRevenue = aggregate.PostRevenue,
+                        ChangeQty = aggregate.ChangeQty,
+                        ChangeRevenue = aggregate.ChangeRevenue,
+                        ChangePercent = aggregate.ChangePercent,
+                        HasComparableSalesWindow = true,
+                        ComparableArticleCount = aggregate.ComparableArticleCount,
+                        PostRevenueSharePercent = aggregate.PostRevenueSharePercent,
+                        AvgElasticity = aggregate.AvgElasticity
                     })
                     .OrderByDescending(x => Math.Abs(x.ChangeRevenue))
                     .ToList();
@@ -4723,6 +4728,13 @@ public static class AllEndpoints
                         AvgCoveragePost30 = avgCoveragePost30
                     },
                     CategoryStats = categoryStats,
+                    TypeInsightsAuthoritative = typeInsightsAuthoritative,
+                    TypeInsightsSource = typeInsightsAuthoritative
+                        ? VendorSalesNivelacijaTypeInsightPolicy.Source
+                        : null,
+                    TypeInsightsDenominator = typeInsightsAuthoritative
+                        ? VendorSalesNivelacijaTypeInsightPolicy.Denominator
+                        : null,
                     PriceDirectionStats = priceDirectionStats,
                     Insights = insights,
                     AvgMomentumRevenue = avgMomentumRevenue,

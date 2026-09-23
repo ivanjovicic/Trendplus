@@ -88,6 +88,10 @@ public sealed class VendorSalesNivelacijaVendorStatDto
     public double? ReliabilityPct { get; set; }
     public bool HasComparableSalesWindow { get; set; }
     public int ComparableArticleCount { get; set; }
+    public string? PrimaryFootwearType { get; set; }
+    public decimal? PrimaryFootwearTypeSharePercent { get; set; }
+    public decimal? PrimaryFootwearTypeAvgElasticity { get; set; }
+    public bool TypeInsightsAuthoritative { get; set; }
     public VendorSalesNivelacijaRecommendationDto? Recommendation { get; set; }
 }
 
@@ -151,6 +155,8 @@ public sealed class VendorSalesNivelacijaCategoryStatDto
     public decimal ChangePercent { get; set; }
     public bool HasComparableSalesWindow { get; set; }
     public int ComparableArticleCount { get; set; }
+    public decimal? PostRevenueSharePercent { get; set; }
+    public decimal? AvgElasticity { get; set; }
 }
 
 public sealed class VendorSalesNivelacijaPriceDirectionStatDto
@@ -192,6 +198,9 @@ public sealed class VendorSalesNivelacijaResponseDto
     public VendorSalesNivelacijaTotalsDto Totals { get; set; } = new();
     public VendorSalesNivelacijaDataQualityDto? DataQuality { get; set; }
     public List<VendorSalesNivelacijaCategoryStatDto> CategoryStats { get; set; } = [];
+    public bool TypeInsightsAuthoritative { get; set; }
+    public string? TypeInsightsSource { get; set; }
+    public string? TypeInsightsDenominator { get; set; }
     public List<VendorSalesNivelacijaPriceDirectionStatDto> PriceDirectionStats { get; set; } = [];
     public List<VendorSalesNivelacijaInsightDto> Insights { get; set; } = [];
 

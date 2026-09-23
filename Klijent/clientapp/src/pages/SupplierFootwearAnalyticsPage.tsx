@@ -11,7 +11,6 @@ import {
   getVendorSalesNivelacija,
   getVendorSalesNivelacijaOptions,
   type VendorSalesNivelacijaOption,
-  type VendorSalesNivelacijaArticleStat,
   type VendorSalesNivelacijaRecommendation,
   type VendorSalesNivelacijaResponse,
   type VendorSalesNivelacijaVendorStat,
@@ -34,7 +33,6 @@ import { projectVendorSalesDataQuality } from "../utils/vendorSalesDataQuality";
 import {
   buildSupplierVendorDetailRecordId,
   buildSupplierVendorKeys,
-  resolveSupplierArticleVendorKey,
 } from "../utils/supplierVendorIdentity";
 import type { SupplierEmbeddedPageProps } from "./supplierSharedState";
 import "./SupplierFootwearAnalyticsPage.css";
@@ -146,49 +144,19 @@ function buildStatusTooltip(data: StatusTooltipData): string {
     : " | Pouzdanost Nije dostupno | Poverenje Nije dostupno";
   return `${statusDisplayLabel(data.status)}: ${data.statusReason} | Udeo ${formatMetricDisplayValue({ value: data.sharePct, kind: "percent" })} | Trend ${fmtSignedPct(data.trendPct, 1)} | Tip ${data.topFootwearType} (${formatMetricDisplayValue({ value: data.topFootwearTypeSharePct, kind: "percent" })})${trust}`;
 }
-function buildTypeInsights(
-  articleStats: VendorSalesNivelacijaArticleStat[],
-  vendorStats: VendorSalesNivelacijaVendorStat[],
-) {
-  const vendorKeys = buildSupplierVendorKeys(vendorStats);
-  const vendorCategoryRevenue = new Map<string, Map<string, number>>();
-  const vendorCategoryElasticities = new Map<string, Map<string, number[]>>();
-  const globalCategoryRevenue = new Map<string, number>();
+function buildTypeInsights(data: VendorSalesNivelacijaResponse | null) {
+  if (data?.typeInsightsAuthoritative !== true) return { globalTypeShare: [] };
 
-  articleStats.forEach((row, articleIndex) => {
-    if (!hasComparablePrePostEvidence(row)) return;
-    const vKey = resolveSupplierArticleVendorKey(row, articleIndex, vendorStats, vendorKeys);
-    const category = (row.category ?? "").trim() || "N/A";
-    const revenue = normalizeMetricNumber(row.postRevenue);
-    if (revenue == null) return;
-    if (!vendorCategoryRevenue.has(vKey)) vendorCategoryRevenue.set(vKey, new Map());
-    const categoryMap = vendorCategoryRevenue.get(vKey)!;
-    categoryMap.set(category, (categoryMap.get(category) ?? 0) + revenue);
-    if (!vendorCategoryElasticities.has(vKey)) vendorCategoryElasticities.set(vKey, new Map());
-    const elasticityMap = vendorCategoryElasticities.get(vKey)!;
-    if (!elasticityMap.has(category)) elasticityMap.set(category, []);
-    if (row.priceElasticity != null && Number.isFinite(Number(row.priceElasticity))) elasticityMap.get(category)!.push(Number(row.priceElasticity));
-    globalCategoryRevenue.set(category, (globalCategoryRevenue.get(category) ?? 0) + revenue);
-  });
+  const globalTypeShare = (data.categoryStats ?? [])
+    .map((item) => ({
+      name: item.category.trim() || "Nepoznato",
+      sharePct: normalizeMetricNumber(item.postRevenueSharePercent),
+    }))
+    .filter((item): item is { name: string; sharePct: number } => item.sharePct != null)
+    .sort((a, b) => b.sharePct - a.sharePct || a.name.localeCompare(b.name, "sr"))
+    .slice(0, 8);
 
-  const byVendor = new Map<string, { topType: string; topTypeSharePct: number | null; avgElasticity: number | null }>();
-  vendorCategoryRevenue.forEach((categoryMap, key) => {
-    let total = 0;
-    let topType = "N/A";
-    let topRevenue = 0;
-    categoryMap.forEach((value, category) => { total += value; if (value > topRevenue) { topRevenue = value; topType = category; } });
-    const topTypeSharePct = total > 0 ? (topRevenue / total) * 100 : null;
-    const categoryElasticities = vendorCategoryElasticities.get(key)?.get(topType) ?? [];
-    const avgElasticity = categoryElasticities.length > 0 ? categoryElasticities.reduce((sum, value) => sum + value, 0) / categoryElasticities.length : null;
-    byVendor.set(key, { topType, topTypeSharePct, avgElasticity });
-  });
-
-  const globalTopTypes = [...globalCategoryRevenue.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
-  const globalTotal = globalTopTypes.reduce((sum, item) => sum + item[1], 0);
-  const globalTypeShare = globalTotal > 0
-    ? globalTopTypes.map(([name, revenue]) => ({ name, sharePct: (revenue / globalTotal) * 100 }))
-    : [];
-  return { byVendor, globalTypeShare };
+  return { globalTypeShare };
 }
 
 function normalizeDataQualityStatus(value: string | null | undefined): DataQualityStatus {
@@ -424,8 +392,8 @@ export default function SupplierFootwearAnalyticsPage({
   useEffect(() => { void load(activeFilters); }, [activeFilters, load]);
 
   const typeInsights = useMemo(
-    () => buildTypeInsights(data?.articleStats ?? [], data?.vendorStats ?? []),
-    [data?.articleStats, data?.vendorStats],
+    () => buildTypeInsights(data),
+    [data],
   );
 
   const decisionRows = useMemo<DecisionVendor[]>(() => {
@@ -440,16 +408,16 @@ export default function SupplierFootwearAnalyticsPage({
       if (!recommendation) return [];
 
       const vendorRowKey = vendorRowKeys[rowIndex];
-      const typeInsight = typeInsights.byVendor.get(vendorRowKey);
       const hasComparableEvidence = rowHasComparableEvidence(item);
       const postRevenue = comparableMetric(item.postRevenue, hasComparableEvidence);
       const sharePct = postRevenue != null && totalRevenue > 0 ? (postRevenue / totalRevenue) * 100 : null;
       const trendPct = comparableMetric(item.semanticChangePercentRevenue ?? item.changePercent, hasComparableEvidence);
       const recommendationAllowed = recommendation.recommendationAllowed === true;
 
-      const topFootwearType = typeInsight?.topType ?? "N/A";
-      const topFootwearTypeSharePct = typeInsight?.topTypeSharePct ?? null;
-      const avgElasticity = typeInsight?.avgElasticity ?? null;
+      const typeInsightsAvailable = data?.typeInsightsAuthoritative === true && item.typeInsightsAuthoritative === true;
+      const topFootwearType = typeInsightsAvailable ? item.primaryFootwearType ?? "N/A" : "N/A";
+      const topFootwearTypeSharePct = typeInsightsAvailable ? normalizeMetricNumber(item.primaryFootwearTypeSharePercent) : null;
+      const avgElasticity = typeInsightsAvailable ? normalizeMetricNumber(item.primaryFootwearTypeAvgElasticity) : null;
 
       return [{
         ...item,
@@ -465,7 +433,7 @@ export default function SupplierFootwearAnalyticsPage({
         statusReason: recommendation.summary,
       }];
     });
-  }, [data?.vendorStats, typeInsights.byVendor]);
+  }, [data?.typeInsightsAuthoritative, data?.vendorStats]);
 
   const sortedRows = useMemo(() => {
     const rows = [...decisionRows];
@@ -529,11 +497,17 @@ export default function SupplierFootwearAnalyticsPage({
   const selectedRow = useMemo(() => (!expandedVendorKey ? null : sortedRows.find((row) => row.vendorRowKey === expandedVendorKey) ?? null), [expandedVendorKey, sortedRows]);
   const dataMeta = data?.meta ?? null;
   const dataMetaMessage = getAnalyticsMetaMessage(dataMeta);
-  const showMetaWarning = !loading && !error && isAnalyticsMetaWarning(dataMeta);
-  const showEmptyState = !loading && !error && ((data?.vendorStats.length ?? 0) === 0 && (data?.articleStats.length ?? 0) === 0);
   const dataQualityProjection = useMemo(() => projectVendorSalesDataQuality(data?.dataQuality), [data?.dataQuality]);
+  const hasTruncatedDetail = dataQualityProjection.isDetailTruncated === true;
+  const showMetaWarning = !loading && !error && (isAnalyticsMetaWarning(dataMeta) || hasTruncatedDetail);
+  const showEmptyState = !loading && !error && ((data?.vendorStats.length ?? 0) === 0 && (data?.articleStats.length ?? 0) === 0);
   const dataQualityStatus = useMemo(() => getDataQualityStatus(data), [data]);
   const recommendationAllowed = data?.recommendationAllowed === true;
+  const typeInsightWarning = hasTruncatedDetail
+    ? `Detalj prikazuje ${dataQualityProjection.returnedRows ?? "N/A"} od ${dataQualityProjection.analyzedRows ?? "N/A"} analiziranih redova. Tipovi obuće i elastičnost računaju se iz pune uporedive kohorte.`
+    : data?.typeInsightsAuthoritative !== true && (dataQualityProjection.analyzedRows ?? 0) > 0
+      ? "Tipovi obuće i elastičnost nisu potvrđeni punom uporedivom kohortom i prikazani su kao nedostupni."
+      : null;
   const controlBarChips = useMemo<AnalyticsControlBarChip[]>(() => [
     {
       key: "period",
@@ -641,7 +615,10 @@ export default function SupplierFootwearAnalyticsPage({
     { key: "vendorsCount", label: "Dobavljača", value: formatMetricDisplayValue({ value: normalizeMetricNumber(data?.totals.vendorsCount), kind: "number", fallback: "N/A" }) },
     { key: "articlesCount", label: "Artikala", value: formatMetricDisplayValue({ value: normalizeMetricNumber(data?.totals.articlesCount), kind: "number", fallback: "N/A" }) },
     { key: "windowDays", label: "Prozor (dani)", value: formatMetricDisplayValue({ value: normalizeMetricNumber(data?.windowDays), kind: "number", fallback: "N/A" }) },
-  ], [data?.generatedAt, data?.totals.articlesCount, data?.totals.vendorsCount, data?.windowDays]);
+    { key: "detailDenominator", label: "Detalj / analiza", value: data?.dataQuality?.returnedRows != null && data?.dataQuality?.analyzedRows != null ? `${data.dataQuality.returnedRows} / ${data.dataQuality.analyzedRows}` : "N/A" },
+    { key: "typeInsightSource", label: "Izvor tipova", value: data?.typeInsightsSource ?? "Nije dostupno" },
+    { key: "typeInsightDenominator", label: "Imenilac tipova", value: data?.typeInsightsDenominator ?? "Nije dostupno" },
+  ], [data?.dataQuality?.analyzedRows, data?.dataQuality?.returnedRows, data?.generatedAt, data?.totals.articlesCount, data?.totals.vendorsCount, data?.typeInsightsDenominator, data?.typeInsightsSource, data?.windowDays]);
 
   useEffect(() => {
     if (!embedded || !onTrustMetadataChange) return;
@@ -796,6 +773,7 @@ export default function SupplierFootwearAnalyticsPage({
       {!loading && !error && !previousPeriodWarning && previousPeriodEmptyNote ? (
         <div className="sf-decision-message info" role="status" aria-live="polite">{previousPeriodEmptyNote}</div>
       ) : null}
+      {!loading && !error && typeInsightWarning ? <div className="sf-decision-message warning" role="status" aria-live="polite">{typeInsightWarning}</div> : null}
       {!loading && !error && dataHint ? <div className="sf-decision-message info" role="status" aria-live="polite">{dataHint}</div> : null}
       {!embedded && !loading && !error && suggestedRange ? (
         <div className="sf-decision-message suggestion">

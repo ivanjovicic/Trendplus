@@ -173,19 +173,19 @@
     {
       "file": "src/pages/SupplierFootwearAnalyticsPage.tsx",
       "rule": "refetch_setData_null",
-      "line": 411,
+      "line": 379,
       "reason": "Existing supplier-footwear refetch transition predates the shared reliable-query lifecycle."
     },
     {
       "file": "src/pages/SupplierFootwearAnalyticsPage.tsx",
       "rule": "page_percentage_formula",
-      "line": 446,
+      "line": 413,
       "reason": "Existing supplier-footwear percentage projection requires a reviewed authority exception."
     },
     {
       "file": "src/pages/SupplierFootwearAnalyticsPage.tsx",
       "rule": "page_reduce_kpi",
-      "line": 436,
+      "line": 404,
       "reason": "Existing supplier-footwear aggregation predates the backend KPI ownership contract."
     },
     {

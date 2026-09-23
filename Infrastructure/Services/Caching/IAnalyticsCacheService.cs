@@ -325,7 +325,7 @@ public static class AnalyticsCacheKeys
         int maxRows,
         int? storeId = null,
         string? dataScope = null) =>
-        $"{Prefix}vendor-sales-nivelacija:v4:vendor:{FormatNullable(vendorId)}:event:{FormatInstant(eventDate)}:from:{FormatInstant(from)}:to:{FormatInstant(to)}:category:{HashPart(category)}:inactive:{includeInactive}:max:{maxRows}:store:{FormatNullable(storeId)}:scope:{NormalizeDataScope(dataScope)}";
+        $"{Prefix}vendor-sales-nivelacija:v5:vendor:{FormatNullable(vendorId)}:event:{FormatInstant(eventDate)}:from:{FormatInstant(from)}:to:{FormatInstant(to)}:category:{HashPart(category)}:inactive:{includeInactive}:max:{maxRows}:store:{FormatNullable(storeId)}:scope:{NormalizeDataScope(dataScope)}";
 
     public static string VendorSalesNivelacijaOptions(
         int? vendorId,

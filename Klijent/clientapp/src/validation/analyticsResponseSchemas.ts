@@ -375,6 +375,10 @@ const vendorSalesNivelacijaVendorSchema = z.object({
   reliabilityPct: nullableNonNegativePercentage,
   recommendation: vendorSalesNivelacijaRecommendationSchema.nullable().optional(),
   comparableArticleCount: nonNegativeInteger.optional(),
+  primaryFootwearType: z.string().nullable().optional(),
+  primaryFootwearTypeSharePercent: nullableNonNegativePercentage.optional(),
+  primaryFootwearTypeAvgElasticity: nullableNumber.optional(),
+  typeInsightsAuthoritative: z.boolean().optional(),
 }).passthrough();
 
 const vendorSalesNivelacijaArticleSchema = z.object({
@@ -475,6 +479,8 @@ const vendorSalesNivelacijaCategorySchema = z.object({
   changePercent: finiteNumber,
   hasComparableSalesWindow: z.boolean(),
   comparableArticleCount: nonNegativeInteger,
+  postRevenueSharePercent: nullableNonNegativePercentage.optional(),
+  avgElasticity: nullableNumber.optional(),
 }).passthrough();
 
 const vendorSalesNivelacijaPriceDirectionSchema = z.object({
@@ -513,6 +519,9 @@ export const vendorSalesNivelacijaResponseSchema = z.object({
   totals: vendorSalesNivelacijaTotalsSchema,
   dataQuality: vendorSalesNivelacijaDataQualitySchema.nullable().optional(),
   categoryStats: z.array(vendorSalesNivelacijaCategorySchema),
+  typeInsightsAuthoritative: z.boolean().optional(),
+  typeInsightsSource: z.string().nullable().optional(),
+  typeInsightsDenominator: z.string().nullable().optional(),
   priceDirectionStats: z.array(vendorSalesNivelacijaPriceDirectionSchema),
   insights: z.array(vendorSalesNivelacijaInsightSchema),
   avgMomentumRevenue: nullableNumber.optional(),

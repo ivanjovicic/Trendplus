@@ -2,9 +2,12 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none; RQ172, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ398, RQ399, RQ400, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE. RQ406, RQ407 and RQ408 are WAITING.
+Current READY prompt: RQ406; RQ172, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ398, RQ399, RQ400, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE. RQ406 is IN_PROGRESS; RQ407 and RQ408 remain WAITING.
 
 Owner audit 2026-09-23: under the user's direct Operacije menu data-flow audit, RQ406 was added for Supplier Footwear derived metrics over truncated article detail, RQ407 was added for deterministic cross-screen reconciliation across all eight Operacije routes, and RQ408 was added as a second-pass finding catalogue/decomposition prompt. No prompt was promoted; the current READY pointer remains `none`.
+
+Owner promotion 2026-09-23: under the user's instruction to resolve the RQ406 dependency gate, RQ406 moved `WAITING -> READY` after confirming that RQ374 and RQ380 remain separate Supplier Sales owners. RQ406 is limited to the `/api/analytics/vendor-sales-nivelacija` contract and Supplier Footwear route; it adds no Supplier Sales detail or aggregate semantics. RQ407 and RQ408 remain WAITING.
+Owner claim 2026-09-23: `RQ406` transitioned `READY -> IN_PROGRESS` in this workspace after confirming the non-overlap boundary and focused validation scope; local runtime lock `.ai/task-locks/RQ406-codex.lock.md`.
 
 Routing repair 2026-09-23: aligned stale legacy status metadata: RQ190's detailed block now matches its table status `OBSOLETE`, and RQ303's table row now matches its recorded completion `DONE`. No WAITING prompt was promoted because the active queue has no dependency-complete READY candidate.
 
@@ -22450,8 +22453,8 @@ User-facing copy and existing mappings only; do not rename API reason codes, SQL
 
 ## RQ406 - Prevent truncated Supplier Footwear detail from driving authoritative type insights
 
-Status: WAITING
-Ready after: `RQ386` is DONE; coordinate with `RQ374` and `RQ380` before promotion
+Status: IN_PROGRESS
+Ready after: `RQ386` is DONE; coordination with `RQ374` and `RQ380` is resolved by an explicit non-overlap boundary: this prompt owns only the Supplier Footwear `/api/analytics/vendor-sales-nivelacija` aggregate/detail contract and route presentation.
 Priority: P1
 Type: frontend/backend/contract/tests
 Feature family: supplier-assortment-truncated-derived-metrics
