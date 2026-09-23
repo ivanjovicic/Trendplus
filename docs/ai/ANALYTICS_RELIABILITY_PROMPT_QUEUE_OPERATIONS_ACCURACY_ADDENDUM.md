@@ -427,8 +427,8 @@ Do not change the meaning of totals, risk sorting, export order or secondary pan
 - Run log: `.ai/runs/2026-09-23-RQ415-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: 2e43a6456a68bb51011cbc4e7233cb401d0d9180
+- Main verification: `origin/main` contains 2e43a6456a68bb51011cbc4e7233cb401d0d9180
 - Missed: no business ranking, KPI population or export semantics were changed; only server list ordering was hardened.
 - Follow-up: `RQ414` remains blocked behind `RQ371`; no successor was promoted automatically.
 - Residual risk: live-provider pagination under concurrent production writes remains outside this local deterministic proof.
