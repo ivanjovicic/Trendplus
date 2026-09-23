@@ -21936,7 +21936,7 @@ Color row snapshots contain recommendation status, score, confidence/reliability
 - Run log: `.ai/runs/2026-09-23-RQ397-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: `0d0b80cd`
+- Main commit SHA: `0d0b80cd4785683b9eeec6cbcf274e3c5418fb19`
 - Main verification: current `main` and `origin/main` contain implementation `0d0b80cd`; exact ancestor verification recorded in the run log.
 - Missed: canonical case/diacritic Color identity remains RQ398; source-label provenance remains RQ399; authoritative decision score remains RQ400; shared English terminology remains routed to RQ306/RQ325.
 - Follow-up: RQ398 - Canonicalize Color identity and collision-safe detail keys.
