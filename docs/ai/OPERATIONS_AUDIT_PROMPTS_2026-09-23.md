@@ -84,9 +84,6 @@ Supplier i Shoe Type integration testovi sadrže guard `TRENDPLUS_RUN_INTEGRATIO
 
 ## Queue odluka
 
-Dodati su samo novi promptovi koji nisu već pokriveni postojećim vlasništvom:
+`RQ406` i `RQ407` ostaju osnovni promptovi za parcijalni Supplier Footwear detail i zajednički deterministic proof za svih osam Operacije ruta. Dublji drugi prolaz je prvo katalogizovan u `RQ408`, a zatim je na osnovu ponovnog čitanja aktuelnog `main` stanja razložen u `RQ414`-`RQ426` u `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md`.
 
-- `RQ406` — parcijalni Supplier Footwear detail i izvedene type metrike;
-- `RQ407` — zajednički deterministic proof za svih osam Operacije ruta.
-
-Oba su ostavljena u statusu `WAITING`; current READY pointer ostaje `none` dok owner ne izvrši zasebnu promociju i collision/dependency proveru.
+Svi novi promptovi su ostavljeni u statusu `WAITING`; current READY pointer ostaje `none` dok owner za svaki pojedinačni prompt ne izvrši zasebnu promociju, dependency proveru i collision proveru. `OP2` nalazi koji su već pokriveni `RQ371`-`RQ413` nisu ponovo otvoreni.

@@ -32,6 +32,19 @@ All prompts below are `WAITING`. Do not claim or auto-promote them without depen
 | RQ411 | WAITING | P0 | operations-sale-dimension-attribution | Freeze or provenance-qualify supplier/type attribution for historical sale lines |
 | RQ412 | WAITING | P0 | supplier-shoetype-independent-oracle | Independently reconcile Supplier/Shoe Type to raw facts after canonical RQ407 proof |
 | RQ413 | WAITING | P1 | operations-runtime-drift-guard | Continuously detect post-import/cache/source drift and fail closed for decision signals |
+| RQ414 | WAITING | P1 | inventory-sales-origin-parity | Keep Inventory list sell-through on the same data-origin population as article rows |
+| RQ415 | WAITING | P2 | inventory-deterministic-pagination | Make Inventory list ordering stable under ties and concurrent changes |
+| RQ416 | WAITING | P1 | inventory-insight-identity-provenance | Preserve store/supplier identity and cost provenance from Inventory insights to detail |
+| RQ417 | WAITING | P1 | inventory-size-alert-identity | Preserve SKU, size and store context when an Inventory alert opens size curve |
+| RQ418 | WAITING | P1 | inventory-action-dataset-idempotency | Prevent Inventory action deduplication from crossing period/scope/snapshot datasets |
+| RQ419 | WAITING | P1 | supplier-sales-scope-event-lineage | Reload Supplier Sales when global data scope changes and keep trust metadata aligned |
+| RQ420 | WAITING | P2 | supplier-sales-derived-projection-freshness | Prevent stale Supplier Sales derived shares and cost projections after total changes |
+| RQ421 | WAITING | P1 | supplier-sales-status-identity | Preserve backend Supplier Sales status when recommendation actionability is blocked |
+| RQ422 | WAITING | P1 | supplier-footwear-type-insight-denominator | Make Supplier Footwear type share and elasticity metrics full-cohort and provenance-safe |
+| RQ423 | WAITING | P1 | pre-nivelacija-focus-population-parity | Make Pre-Nivelacija focus filtering population-aware across pages and projections |
+| RQ424 | WAITING | P1 | pre-nivelacija-leaderboard-denominator | Define Pre-Nivelacija action-share and percentage normalization semantics |
+| RQ425 | WAITING | P1 | supplier-footwear-scope-default | Prevent standalone Supplier Footwear from silently falling back to all data |
+| RQ426 | WAITING | P1 | inventory-forecast-risk-aggregation | Prove and correct Inventory forecast risk aggregation across sizes and stores |
 
 ---
 
@@ -271,3 +284,817 @@ Do not run full-table reconciliation synchronously on normal user requests.
 - `RQ407`, `RQ412`.
 - Coordinate existing cache/freshness owners, especially RQ396 and Supplier/Inventory paths.
 - Keep probes bounded/read-only; remediation remains a separate owner action.
+
+---
+
+## RQ414 - Inventory list sell-through must honor the selected data-origin scope
+
+Status: WAITING
+Ready after: `RQ371` scope/period boundary is recorded; this prompt owns only `/inventory/list` joined sales velocity
+Priority: P1
+Type: backend/contract/tests
+Feature family: inventory-sales-origin-parity
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ414-<agent>.lock.md`
+Commit suggestion: `fix(analytics): align inventory list sales scope`
+
+### Problem
+
+The Inventory list filters article master rows by `Artikli.DataOrigin`, but its `soldUnitsByArticle` query does not apply the same `dataScope` predicate to `ProdajaZaglavlja.DataOrigin`. Imported/existing list rows can therefore receive sell-through and stock-cover signals calculated from a mixed sales population.
+
+### Evidence
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs:731-742` applies `normalizedDataScope` to `Artikli`.
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs:772-786` joins sale headers and lines for velocity but filters only article IDs, period and store; no sale-header origin predicate is present.
+- `:788-795` passes `normalizedDataScope` to journal movement statistics, so two inputs of the same signal already use different scope behavior.
+- `RQ408` finding `OP2-21` records the same source-population mismatch; `RQ371` owns the broader Inventory signal period/scope contract.
+
+### Scope
+
+- `/api/analytics/inventory/list` velocity query, DTO metadata and focused backend tests.
+- The exact mapping of `all`, `imported` (`access`) and `existing` (`existing`, null or empty) for sale headers.
+- Reconciliation of `soldUnits30d`, average daily sales, sell-through, stock-cover and reason codes for this list endpoint only.
+
+Do not redesign journal movement semantics, forecast/alerts/rebalance contracts or the cross-screen proof pack.
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+- `Api/Endpoints/InventoryEndpoints.cs`
+- `RQ371`, `RQ407` and `RQ408/OP2-03, OP2-21`
+- `InventorySignalCalculator` and the nearest Inventory endpoint tests
+
+### Do
+
+1. Define one backend-owned origin predicate for the list velocity population and use it for `all`, `imported` and `existing`.
+2. Reconcile article-origin and sale-header-origin mismatch behavior. If the contract cannot prove a joined row belongs to the requested scope, keep the signal warning/unknown rather than silently mixing it.
+3. Keep the half-open UTC sales window and existing signed quantity semantics explicit.
+4. Include scope/provenance in the response metadata or evidence used by the list signal so a stale/mixed result cannot look fully trusted.
+5. Preserve cache-key scope isolation and do not duplicate the broader `RQ371` secondary-panel work.
+
+### Tests
+
+- One article with imported and existing sale headers: `imported`, `existing` and `all` return distinct expected units.
+- Article origin and sale-header origin disagree: response is either excluded by the declared contract or marked degraded/unknown; it is never silently counted in the wrong scope.
+- Empty, zero-velocity, negative/return quantity and exact start/end boundary cases.
+- Journal movement and sale velocity use the same scope in the returned signal evidence.
+- Cache reads for the three scopes do not reuse one another's result.
+
+### Acceptance
+
+- Inventory list sell-through and stock-cover never combine article rows from one data origin with sales from another without explicit provenance.
+- `all`/`existing`/`imported` behavior is documented and tested at the joined-query boundary.
+- Valid zero remains zero; unavailable/mixed-source evidence remains unavailable or degraded, never a trusted zero.
+- `RQ371` and `RQ407` remain the owners of their broader contracts.
+
+### Dependencies
+
+- Coordinate `RQ371`, `RQ407`, `RQ408/OP2-03` and `RQ413`.
+- If historical origin attribution is unavailable, record the limitation and use the established warning/fallback contract; do not infer it from the current article row.
+
+---
+
+## RQ415 - Inventory list pagination must have deterministic ordering
+
+Status: WAITING
+Ready after: no runtime dependency; coordinate with Inventory list owner and `RQ371`
+Priority: P2
+Type: backend/tests
+Feature family: inventory-deterministic-pagination
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ415-<agent>.lock.md`
+Commit suggestion: `fix(analytics): stabilize inventory list pagination`
+
+### Problem
+
+Inventory list paging uses non-unique sort expressions for quantity/default/name and only partially unique expressions for value/update. Equal sort values leave database row order unspecified, so the same SKU can move between pages, be duplicated or disappear after a refetch.
+
+### Evidence
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs:744-752` orders quantity/default by quantity only, name by name only, and value/update by a non-unique secondary name.
+- `:753-768` applies `Skip`/`Take` after that ordering.
+- `RQ408/OP2-22` identifies the same pagination risk; this prompt is limited to the list ordering proof, not Inventory KPI population semantics.
+
+### Scope
+
+- Inventory list server ordering and its page/size/sort tests.
+- All supported `sortBy` values and null-value ordering.
+- Only the immutable article identity tie-breaker and the documented null ordering.
+
+Do not change the meaning of totals, risk sorting, export order or secondary panels.
+
+### Read first
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+- Inventory list DTO/service tests
+- `RQ357`, `RQ371`, `RQ408/OP2-22`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+
+### Do
+
+1. Define a total order for every server sort, ending in a unique immutable article key.
+2. Declare null quantity/value/update behavior and preserve the current user-facing direction.
+3. Prove that page boundaries are stable across repeated reads with ties and during unrelated row updates.
+4. Keep cache keys and total counts unchanged except where the deterministic order must be represented.
+
+### Tests
+
+- Equal quantities on pages 1/2; equal names; equal estimated values; equal update timestamps.
+- Null versus zero values and duplicate display names.
+- Repeated identical request returns identical ordered IDs.
+- Updating a non-key sort field does not duplicate or lose unaffected rows across adjacent pages.
+
+### Acceptance
+
+- Every Inventory list sort has a deterministic total order.
+- Adjacent pages have no duplicate/missing IDs under ties.
+- Sorting remains display-contract compatible and does not invent business ranking.
+
+### Dependencies
+
+- Coordinate `RQ371`, `RQ357` and `RQ407` only for proof fixtures.
+- If runtime data cannot be loaded, retain a deterministic database/query test rather than calling static inspection a pass.
+
+---
+
+## RQ416 - Inventory insight-to-detail mapping must preserve identity and cost provenance
+
+Status: WAITING
+Ready after: `RQ369` is DONE; coordinate cost-state behavior with `RQ353`
+Priority: P1
+Type: backend/frontend/contract/tests
+Feature family: inventory-insight-identity-provenance
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ416-<agent>.lock.md`
+Commit suggestion: `fix(analytics): preserve inventory insight identity provenance`
+
+### Problem
+
+The Inventory insight-to-row adapter resolves store and supplier IDs by matching display names and derives unit cost as `estimatedValue / quantity`. Duplicate store/supplier names can open the wrong context, while the derived unit cost can look like a measured cost even when the aggregate estimate is incomplete or unavailable.
+
+### Evidence
+
+- `Klijent/clientapp/src/components/inventory/inventoryUtils.ts:347-368` maps IDs by display-name equality and derives `nabavnaCena` from aggregate value/quantity.
+- `Klijent/clientapp/src/components/inventory/InventoryInsightPanels.tsx:37-40` resolves rows by article ID without a store discriminator.
+- `RQ408/OP2-23` records wrong-store/name-collision/invented-cost scenarios; `RQ353` remains the no-fake-zero cost owner.
+
+### Scope
+
+- Inventory insight DTO/service projection, row adapter and insight/detail navigation.
+- Canonical article ID plus store ID and supplier ID provenance.
+- Explicit unit-cost source/missing state; no change to Inventory cost policy itself.
+
+Do not redesign Inventory signal formulas, store comparison or cost snapshots.
+
+### Read first
+
+- `Klijent/clientapp/src/components/inventory/inventoryUtils.ts`
+- `Klijent/clientapp/src/components/inventory/InventoryInsightPanels.tsx`
+- Inventory insight endpoint/DTO and `SKUDetailModal`
+- `RQ353`, `RQ369`, `RQ408/OP2-23`
+
+### Do
+
+1. Carry canonical `storeId`, `supplierId` and any required identity key in the insight payload.
+2. Resolve detail rows by IDs, never by display-name matching; preserve unknown/null identity explicitly.
+3. Carry backend-owned `unitCost`, cost source and missing-cost state, or render unit cost unavailable. Do not infer it by dividing an aggregate estimated value.
+4. Make article/store row keys collision-safe in panels, snapshots and navigation.
+
+### Tests
+
+- Same SKU in two stores with same/different display names opens the selected store.
+- Duplicate supplier/store names do not change IDs or detail target.
+- Positive quantity with null/partial estimated value keeps unit cost unavailable.
+- Valid zero cost/value remains distinguishable from missing cost.
+- Insight row and detail preserve the same signal status, scope and provenance.
+
+### Acceptance
+
+- Insight clicks cannot silently open another store or supplier context.
+- No aggregate-derived unit cost is presented as measured cost.
+- Unknown identity/cost remains explicit and compatible with `RQ353`.
+
+### Dependencies
+
+- Coordinate `RQ353`, `RQ369`, `RQ371` and `RQ407`.
+- If the existing endpoint cannot provide identity/cost provenance, extend it backward-compatibly and record the missing-data state rather than guessing.
+
+---
+
+## RQ417 - Inventory size alerts must retain size and store context
+
+Status: WAITING
+Ready after: `RQ324` remains the size-curve error owner; this prompt owns only navigation identity
+Priority: P1
+Type: frontend/contract/tests
+Feature family: inventory-size-alert-identity
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ417-<agent>.lock.md`
+Commit suggestion: `fix(analytics): preserve inventory alert size context`
+
+### Problem
+
+An Inventory alert can contain `sizeCode` and `storeId`, but the size-curve callback receives only `skuId`. A size-specific alert can therefore open an aggregate or wrong-store size curve.
+
+### Evidence
+
+- `Klijent/clientapp/src/components/inventory/InventoryAlertsFeed.tsx:86-91` displays `alert.sizeCode` and `alert.storeId` for other actions but calls `onOpenSizeCurve(alert.skuId)` without either context.
+- `RQ408/OP2-24` identifies the dropped size/store identity; `RQ324` covers error presentation, not target identity.
+
+### Scope
+
+- Inventory alert DTO-to-component mapping, callback contract and size-curve request/navigation.
+- SKU, `sizeCode` and store identity through alert, URL/request, panel and export/detail context where applicable.
+
+Do not change alert severity filtering or size-curve error copy.
+
+### Read first
+
+- `InventoryAlertsFeed.tsx`
+- `InventoryPage.tsx` size-curve state and open handlers
+- `analyticsApi.ts` size-curve request
+- `RQ324`, `RQ372`, `RQ408/OP2-24`
+
+### Do
+
+1. Extend the callback/request with nullable `sizeCode` and `storeId` where the backend supports them.
+2. Define aggregate behavior when no size is present; do not substitute a different size silently.
+3. Keep URL/detail identity collision-safe for the same SKU across stores.
+4. Preserve explicit empty/error/degraded size-curve states.
+
+### Tests
+
+- Same SKU, two stores, same size: each alert opens its own store curve.
+- Same SKU/store, two sizes: each alert opens its own size curve.
+- Aggregate alert without size opens only the documented aggregate view.
+- Missing/invalid context fails closed with a visible unavailable state.
+
+### Acceptance
+
+- An alert click preserves the full available SKU/size/store identity.
+- No size-specific alert opens the wrong aggregate or store curve.
+- `RQ324` error/empty semantics remain unchanged.
+
+### Dependencies
+
+- Coordinate `RQ324`, `RQ372`, `RQ407` and size-curve backend owner.
+- If size/store filtering is not supported server-side, expose that limitation rather than displaying an unqualified curve.
+
+---
+
+## RQ418 - Inventory action idempotency must include dataset context
+
+Status: WAITING
+Ready after: `RQ275` is DONE; coordinate period semantics with `RQ308`/`RQ371`
+Priority: P1
+Type: frontend/backend/workflow/tests
+Feature family: inventory-action-dataset-idempotency
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ418-<agent>.lock.md`
+Commit suggestion: `fix(analytics): scope inventory action idempotency keys`
+
+### Problem
+
+Inventory action queue lookup and creation use a source key composed of signal type, article ID and store, but not the selected data scope, signal period or snapshot generation. The same article can therefore appear already queued, or reuse an action, when the user changes dataset context.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/InventoryPage.tsx:268-321` builds `sourceKey` from action kind, `row.id` and `row.idObjekat` only.
+- `:790-820` uses those keys for queue-state lookup; `:1132-1159` sends the same key when creating the action.
+- `RQ408/OP2-25` records the missing dataset context; `RQ275` owns stale queue reset but cannot distinguish two contexts sharing one key.
+
+### Scope
+
+- Inventory signal action source-key contract, queue lookup/create payloads and matching action-state projections.
+- Data scope, requested signal window and backend snapshot/fact generation where available.
+
+Do not change action lifecycle states, user permissions or general action prioritization.
+
+### Read first
+
+- `InventoryPage.tsx` action helpers and queue effects
+- `analyticsApi.ts` action lookup/create contracts
+- backend action source-key persistence and `RQ275` evidence
+- `RQ308`, `RQ371`, `RQ408/OP2-25`
+
+### Do
+
+1. Define a canonical versioned source-key schema containing article/store, action kind and the dataset context needed to make idempotency meaningful.
+2. Keep equal-context repeated clicks idempotent while different scope/period/snapshot contexts remain distinguishable.
+3. Make old keys backward-compatible or explicitly migrate/expire them; never silently merge old and new contexts.
+4. Show the action's source context in detail/audit metadata where users could otherwise confuse datasets.
+
+### Tests
+
+- Same SKU/store/action and same scope/period/snapshot deduplicates.
+- Same SKU/store/action with `all` vs `existing`, different periods or snapshot generations does not deduplicate.
+- Legacy key read/write behavior is explicit.
+- Queue-state lookup, create, refresh and Decision Board projections use the same canonical key.
+
+### Acceptance
+
+- An action is idempotent only within its declared dataset context.
+- Changing Inventory scope/period cannot inherit a stale queued state from another dataset.
+- `RQ275` empty/reset behavior still passes.
+
+### Dependencies
+
+- Coordinate `RQ275`, `RQ308`, `RQ371`, `RQ407` and the shared action ledger owner.
+- If backend snapshot generation is unavailable, use an explicit unknown context and fail closed rather than inventing equivalence.
+
+---
+
+## RQ419 - Supplier Sales must reload and relabel on global data-scope changes
+
+Status: WAITING
+Ready after: coordinate with canonical Supplier parent filter owner; do not run with another Supplier Sales scope owner
+Priority: P1
+Type: frontend/tests
+Feature family: supplier-sales-scope-event-lineage
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ419-<agent>.lock.md`
+Commit suggestion: `fix(analytics): propagate supplier sales data scope`
+
+### Problem
+
+Supplier Sales reads `dataScope` from shared filters, URL or local storage, but the page itself has no visible `trendplus:data-scope-changed` listener. When used outside the canonical parent, a global scope change can leave old values and trust metadata on screen.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx:652-655` derives `activeDataScope` from shared filters, URL or `getDataScope()`.
+- `:718-747` sends the captured scope and reloads only when the callback dependency changes.
+- The file contains period/filter synchronization but no corresponding scope-change event listener; `RQ408/OP2-02` records the risk.
+- `RQ269`, `RQ270` and `RQ294` establish the existing event-lineage pattern for other Operations surfaces.
+
+### Scope
+
+- Supplier Sales standalone and canonical/embedded composition scope propagation, request cancellation and trust header/metadata refresh.
+- Precedence between shared parent state, URL state and persisted global scope.
+
+Do not change Supplier Sales denominators, margin policy or runtime schema (`RQ373`, `RQ378`, `RQ379`).
+
+### Read first
+
+- `SupplierSalesStatsPage.tsx`
+- canonical Supplier parent filters/composition
+- `RQ269`, `RQ270`, `RQ278`, `RQ373`, `RQ379`, `RQ408/OP2-02`
+
+### Do
+
+1. Define the authoritative scope source for embedded and standalone modes.
+2. Subscribe to the existing global scope event where the page owns standalone state, or prove the parent always supplies the new scope before render.
+3. Abort/ignore old requests and clear or mark stale data while the new scope is loading.
+4. Keep URL, API request, response metadata, trust header, table, chart, detail and export on one scope.
+
+### Tests
+
+- Open page with `existing`, switch to `imported` and assert a new request and no old-scope trust state.
+- Switch during an in-flight request; late old response cannot overwrite the new scope.
+- Standalone and embedded modes follow their declared precedence.
+- Scope event failure/invalid value remains explicit and does not fall back to trusted `all` silently.
+
+### Acceptance
+
+- A global scope change cannot leave Supplier Sales showing values or trust metadata from the previous scope.
+- Standalone/canonical behavior is documented and tested.
+- Existing Supplier metric and status semantics remain owned by their current prompts.
+
+### Dependencies
+
+- Coordinate `RQ278`, `RQ373`, `RQ379`, `RQ407` and the canonical Supplier filter owner.
+
+---
+
+## RQ420 - Supplier Sales derived projections must track every total they read
+
+Status: WAITING
+Ready after: `RQ373`/`RQ378`/`RQ379` owners confirm the response fields are stable
+Priority: P2
+Type: frontend/tests
+Feature family: supplier-sales-derived-projection-freshness
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ420-<agent>.lock.md`
+Commit suggestion: `fix(analytics): refresh supplier sales derived projections`
+
+### Problem
+
+The `decisionSuppliers` memo reads revenue, margin and unit totals plus recommendation fields, but its dependency list includes only suppliers and total revenue. A response update that changes margin/unit totals while retaining supplier references can leave share-of-margin, share-of-units and cost projections stale.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx:755-840` reads `ukupanPromet`, `ukupanMarzniDoprinos`, `ukupnaKolicina`, supplier margin/cost/recommendation fields and derives fallback shares.
+- `:841` lists only `data?.suppliers` and `data?.totals.ukupanPromet` as dependencies.
+- `RQ408/OP2-08` records this stale-derived-memo risk.
+
+### Scope
+
+- Supplier Sales `decisionSuppliers` derived projection and its table/chart/detail/export consumers.
+- React dependency correctness and authoritative-versus-derived field policy.
+
+Do not recalculate backend business metrics beyond the existing fallback contract; do not change weighted margin formulas.
+
+### Read first
+
+- `SupplierSalesStatsPage.tsx`
+- Supplier Sales DTO/schema and `RQ373`, `RQ378`, `RQ379`
+- `RQ362`, `RQ364`, `RQ408/OP2-08`
+
+### Do
+
+1. Make the projection recompute whenever any input it reads changes, or remove the local fallback when backend fields are authoritative.
+2. Preserve valid zero, null/missing and non-finite semantics.
+3. Prove that all consumers receive the same current projection after a response refresh, scope change or partial response.
+
+### Tests
+
+- Change only total margin; share-of-margin updates.
+- Change only total units; share-of-units updates.
+- Change cost coverage/recommendation fields with same supplier array; dependent status/projection updates.
+- Null/zero totals remain unavailable or valid zero as declared.
+
+### Acceptance
+
+- Supplier Sales never shows a projection calculated from an older total alongside newer rows.
+- No frontend formula becomes a second owner for backend-authoritative values.
+- Focus, chart, table, detail and export use the same current state.
+
+### Dependencies
+
+- Coordinate `RQ373`, `RQ378`, `RQ379`, `RQ407` and the shared projection contract from `RQ362`/`RQ364`.
+
+---
+
+## RQ421 - Supplier Sales must preserve backend status identity when actionability is blocked
+
+Status: WAITING
+Ready after: `RQ379` runtime schema and `RQ373` status/count ownership are aligned
+Priority: P1
+Type: frontend/contract/tests
+Feature family: supplier-sales-status-identity
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ421-<agent>.lock.md`
+Commit suggestion: `fix(analytics): preserve supplier sales status identity`
+
+### Problem
+
+Supplier Sales replaces every backend recommendation status with `insufficient_data` whenever `recommendationAllowed` is false. This can hide meaningful `review` or `do_not_trust` states and make header, counts, detail or export disagree with the backend decision.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx:780-792` computes `backendStatus`, then sets `status = recommendationAllowed ? backendStatus : "insufficient_data"`.
+- `RQ408/OP2-11` records the status identity risk; existing `RQ284` is Shoe Type-specific and does not own Supplier Sales.
+- Backend status, actionability and reason are already distinct fields in the Supplier response contract.
+
+### Scope
+
+- Supplier Sales row status, header summary, counts, detail and export projections.
+- Mapping of backend status versus `recommendationAllowed`, confidence/reliability and reason.
+
+Do not recreate recommendation scoring or weaken the actionability gate.
+
+### Read first
+
+- `SupplierSalesStatsPage.tsx`
+- Supplier Sales DTO/schema and backend recommendation projection
+- `RQ284`, `RQ373`, `RQ379`, `RQ408/OP2-11`
+
+### Do
+
+1. Keep backend `status` as the status identity even when actionability is false or unknown.
+2. Render actionability as a separate gate/affordance; blocked status must remain visible with safe reason text.
+3. Define null/omitted/invalid status behavior as unknown or insufficient only when the backend status itself is unavailable.
+4. Reconcile row, count, header, detail, export and action CTA projections.
+
+### Tests
+
+- `review`, `do_not_trust`, `insufficient_data` and `increase_focus` with `recommendationAllowed=false`.
+- Missing/invalid status with blocked/unknown actionability.
+- Allowed status preserves existing action behavior.
+- Counts, table, detail and export use the same status identity.
+
+### Acceptance
+
+- A blocked recommendation cannot become a different backend status merely because it is not actionable.
+- Users see both the status meaning and the actionability gate.
+- No score/confidence/recommendation logic is reconstructed in the frontend.
+
+### Dependencies
+
+- Coordinate `RQ373`, `RQ374`, `RQ379`, `RQ407` and the shared decision-status contract.
+
+---
+
+## RQ422 - Supplier Footwear type insights must use an explicit full-cohort denominator
+
+Status: WAITING
+Ready after: `RQ406` and `RQ411` attribution/completeness rules are agreed
+Priority: P1
+Type: backend/frontend/contract/tests
+Feature family: supplier-footwear-type-insight-denominator
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ422-<agent>.lock.md`
+Commit suggestion: `fix(analytics): align supplier footwear type insight denominator`
+
+### Problem
+
+Supplier Footwear derives global type shares from only the top eight categories and computes dominant-type elasticity as a simple article average. The chart can therefore normalize the visible top eight to 100% of a partial denominator, while sparse articles can dominate elasticity. If `articleStats` is truncated, these metrics are also incomplete.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/SupplierFootwearAnalyticsPage.tsx:149-190` aggregates `articleStats`, slices `globalCategoryRevenue` to eight entries, divides by the top-eight total and averages elasticities arithmetically.
+- `:158-172` uses only returned comparable article rows; `RQ406` proves that the detail payload can be truncated.
+- `RQ408/OP2-31, OP2-32` record top-eight denominator and unweighted-elasticity risks.
+
+### Scope
+
+- Backend-owned full comparable-cohort type aggregates or explicit completeness metadata.
+- Supplier Footwear global type chart, vendor top-type share, dominant-type elasticity and export/detail projections.
+
+Do not change the Supplier Footwear recommendation formula, historical attribution contract or presentation top-eight limit without declaring the denominator.
+
+### Read first
+
+- `SupplierFootwearAnalyticsPage.tsx`
+- `Api/Endpoints/AllEndpoints.cs` Vendor Sales Nivelacija payload builder
+- `RQ406`, `RQ411`, `RQ412`, `RQ408/OP2-31, OP2-32`
+
+### Do
+
+1. Define whether type share is over the full comparable cohort, the displayed top eight or another named population.
+2. Supply full-cohort type totals and weighted/coverage-aware elasticity evidence, or mark the derived metric partial/unavailable when only capped rows exist.
+3. Keep top-eight display trimming separate from business denominator calculations and surface excluded/unknown share.
+4. Preserve valid zero and missing/insufficient evidence semantics.
+
+### Tests
+
+- Nine or more categories where displayed top eight must not silently sum to a full-population 100%.
+- Capped article detail with a ninth category/dominant type outside the returned rows.
+- Equal and sparse elasticity rows; compare declared weighted and unweighted behavior.
+- Full cohort, partial cohort, unknown type and empty cohort states across chart/table/export.
+
+### Acceptance
+
+- Type shares have one explicit denominator and do not present top-eight normalization as full-cohort truth.
+- Elasticity is either backend-owned with declared weighting/evidence or visibly unavailable/partial.
+- Truncation cannot leave a dominant type or elasticity looking authoritative.
+
+### Dependencies
+
+- Coordinate `RQ406`, `RQ411`, `RQ412`, `RQ413` and existing Supplier Footwear route ownership.
+
+---
+
+## RQ423 - Pre-Nivelacija focus must be population-aware across pages and projections
+
+Status: WAITING
+Ready after: `RQ388` is DONE; coordinate current Pre-Nivelacija API/pagination owner
+Priority: P1
+Type: backend/frontend/contract/tests
+Feature family: pre-nivelacija-focus-population-parity
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ423-<agent>.lock.md`
+Commit suggestion: `fix(analytics): align pre-nivelacija focus population`
+
+### Problem
+
+Pre-Nivelacija sends page and page size to the API but applies `focus` only to the current `tableRows` page. A focus such as high priority or `review` can hide matching candidates that exist on later pages, while summary/total candidates remain global. Detail/export projections then mix page-local filtered rows with global totals.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx:491-501` does not send `focus` in `getPreNivelacijaPrioriteti`.
+- `:669-678` filters only the returned `tableRows` locally.
+- `:680-692` passes global summary alongside page-local `filteredRows`, `detailRows` and export rows.
+- `RQ408/OP2-46, OP2-49` identify the page-local focus and mixed population contract; `RQ388` owns the completed global KPI population baseline.
+
+### Scope
+
+- Pre-Nivelacija focus query contract, pagination, row counts, empty state, detail and export projections.
+- Explicit page, filtered-population and global-population metadata/labels.
+
+Do not change the backend scoring window or recommendation gate (`RQ390`, `RQ297`).
+
+### Read first
+
+- `PreNivelacijaPriorityPage.tsx`
+- `getPreNivelacijaPrioriteti` service and backend endpoint/DTO
+- `RQ388`, `RQ390`, `RQ391`, `RQ299`, `RQ408/OP2-46, OP2-49`
+
+### Do
+
+1. Decide whether focus is a server-side population filter or a deliberately page-local display filter; the UI must not imply the other.
+2. Prefer server-side focus filtering before pagination when the user expects to browse all matching candidates.
+3. Recompute `totalCandidates`, page navigation, empty state, row counts, detail and export against the declared filtered population.
+4. Keep global KPI summary separate and visibly labelled when it is not focus-filtered.
+5. Preserve URL focus/page state and reset page deterministically when focus changes.
+
+### Tests
+
+- Matching focus row exists only on page 2: focus view finds it and counts it under the declared contract.
+- Focus with no matches, page beyond filtered total and scope change.
+- Global summary versus filtered counts remain explicitly distinct.
+- Detail/export contain only the declared filtered population and preserve status/reason/provenance.
+
+### Acceptance
+
+- Focus cannot silently hide matching candidates because they are outside the current page.
+- Every count/label identifies global, filtered or current-page population.
+- URL, pagination, table, detail and export use one focus contract.
+
+### Dependencies
+
+- Coordinate `RQ388`, `RQ299`, `RQ326`, `RQ330`, `RQ391` and `RQ407`.
+
+---
+
+## RQ424 - Pre-Nivelacija action-share and percentage normalization need one explicit contract
+
+Status: WAITING
+Ready after: `RQ390`/`RQ391` remain authoritative for scoring-window and payload validation
+Priority: P1
+Type: backend/frontend/contract/tests
+Feature family: pre-nivelacija-leaderboard-denominator
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ424-<agent>.lock.md`
+Commit suggestion: `fix(analytics): define pre-nivelacija percentage denominators`
+
+### Problem
+
+The Pre-Nivelacija supplier action-share helper normalizes only the top seven leaderboard rows to 100%, while the generic percentage normalizer treats every numeric value `<= 1` as a ratio. Without an explicit API unit contract, a valid `1%` can display as `100%`, and a top-seven-only chart can look like a full-population share.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx:702-719` sorts, slices seven suppliers and divides by their subtotal without an “Ostali” bucket or denominator label.
+- `:205-210` maps `1` to `100` and `0.5` to `50`, while treating values above one as percentage points.
+- `RQ408/OP2-47, OP2-48` record both risks.
+
+### Scope
+
+- Supplier action-share API unit/denominator metadata and Pre-Nivelacija chart/table/export projections.
+- Exact values `0`, `0.5`, `1`, `1.0`, `100`, null, negative and over-100.
+
+Do not change the scoring formula or priority ranking.
+
+### Read first
+
+- `PreNivelacijaPriorityPage.tsx`
+- Pre-Nivelacija DTO/schema/backend leaderboard projection
+- `RQ390`, `RQ391`, `RQ398`, `RQ408/OP2-47, OP2-48`
+
+### Do
+
+1. Declare whether each percentage field is a ratio `[0,1]` or percentage points `[0,100]`; do not infer units from magnitude.
+2. Define the action-share denominator: full leaderboard, all candidates, visible top seven, or top seven plus “Ostali”.
+3. Prefer backend-owned normalized values and denominator metadata; fail closed on ambiguous/malformed units.
+4. Keep chart, tooltip, table, export and empty/zero-denominator states consistent.
+
+### Tests
+
+- Exact `1` under the declared unit contract, plus `0.5`, `100`, null, negative and `101`.
+- Seven suppliers versus eight suppliers with a non-zero eighth action score.
+- Zero total, unknown supplier and partial leaderboard states.
+- Export/chart labels state the same denominator and unit.
+
+### Acceptance
+
+- `1%` cannot be silently rendered as `100%`, and ratio/percentage units are machine-readable.
+- Top-seven values cannot be labelled as full-population share without an explicit denominator or “Ostali”.
+- Invalid or ambiguous values remain unavailable, not plausible.
+
+### Dependencies
+
+- Coordinate `RQ390`, `RQ391`, `RQ388`, `RQ407` and shared percentage-formatting contracts.
+
+---
+
+## RQ425 - Supplier Footwear standalone scope must not default silently to all data
+
+Status: WAITING
+Ready after: canonical Supplier parent/embedded scope owner confirms standalone precedence
+Priority: P1
+Type: frontend/contract/tests
+Feature family: supplier-footwear-scope-default
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ425-<agent>.lock.md`
+Commit suggestion: `fix(analytics): preserve supplier footwear data scope`
+
+### Problem
+
+Supplier Footwear initializes `activeFilters.dataScope` to `sharedFilters?.dataScope ?? null`. In standalone mode, `null` can be normalized by the request layer as `all`, even when the user's global scope is `existing` or `imported`.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/SupplierFootwearAnalyticsPage.tsx:259-266` stores `dataScope` as `null` when no shared parent is present.
+- `:326-340` sends `filters.dataScope` to both current and previous period calls.
+- `RQ408/OP2-30` records the standalone default risk; `RQ389` is Color-specific and does not prove this Supplier Footwear path.
+
+### Scope
+
+- Supplier Footwear standalone route initialization, global-scope read, URL state and current/previous period requests.
+- Scope lineage in trust metadata and comparable cohort calculations.
+
+Do not change Supplier Footwear type metrics (`RQ422`) or Supplier Sales scope event handling (`RQ419`).
+
+### Read first
+
+- `SupplierFootwearAnalyticsPage.tsx`
+- shared scope hook/storage and canonical Supplier parent filters
+- `RQ278`, `RQ389`, `RQ406`, `RQ408/OP2-30`
+
+### Do
+
+1. Define precedence for embedded shared scope, explicit URL scope and standalone global scope.
+2. Normalize the effective scope before the first request; never use null as an implicit trusted `all` without contract evidence.
+3. Keep previous-period/comparable requests on the same effective scope.
+4. Expose requested/effective scope in trust metadata and clear stale data on scope transition.
+
+### Tests
+
+- Standalone route with global `existing` and `imported` loads the selected scope on first request.
+- Explicit URL scope overrides only when the contract says it should.
+- Embedded parent scope and previous-period request remain aligned.
+- Missing/invalid global scope is explicit/unavailable, not silently trusted as `all`.
+
+### Acceptance
+
+- Supplier Footwear cannot silently display all-source data when a narrower global scope is active.
+- Current, previous, comparable and trust metadata share one effective scope.
+- Canonical Supplier composition remains compatible.
+
+### Dependencies
+
+- Coordinate `RQ278`, `RQ389`, `RQ406`, `RQ411`, `RQ419` and canonical Supplier filter ownership.
+
+---
+
+## RQ426 - Inventory forecast risk aggregation must match row granularity
+
+Status: WAITING
+Ready after: `RQ371` forecast scope/period contract is explicit
+Priority: P1
+Type: frontend/backend/contract/tests
+Feature family: inventory-forecast-risk-aggregation
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ426-<agent>.lock.md`
+Commit suggestion: `fix(analytics): align inventory forecast risk aggregation`
+
+### Problem
+
+Inventory maps all matching forecast rows to one SKU/store row and takes the maximum OOS and overstock risk across sizes/forecast records. This may overstate SKU-level risk when the backend rows represent independent sizes or periods, and it can mix records when the selected store is null.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/InventoryPage.tsx:762-770` matches by SKU and optionally store, then reduces `probabilityOfOOSIn7d` and `overstockRisk` with `Math.max`.
+- The same file warns that local risk sorting is page-local, so the aggregated number is used in table sorting and export-facing display paths.
+- `RQ408/OP2-29` records the size-row aggregation risk; `RQ371` owns the wider forecast period/scope contract.
+
+### Scope
+
+- Forecast-to-inventory row identity and aggregation for SKU/store/size granularity.
+- Risk sort, row display, warning metadata and export projections that consume the mapped risk.
+
+Do not change the underlying forecast model or page-local/global sorting policy except to preserve the declared metric meaning.
+
+### Read first
+
+- `InventoryPage.tsx`
+- forecast DTO/service and backend forecast endpoint
+- `DemandForecastPanel.tsx` and inventory export helpers
+- `RQ274`, `RQ371`, `RQ408/OP2-29`
+
+### Do
+
+1. Document forecast row grain and define whether SKU risk is max, weighted probability, independent-size list or another backend-owned aggregate.
+2. Match store identity strictly when a store is selected; do not merge all-store rows into a store row.
+3. Prefer an authoritative backend aggregate; otherwise expose the aggregation basis and partial/unknown state.
+4. Keep valid zero distinct from missing risk and ensure exports use the same value/basis.
+
+### Tests
+
+- Two sizes with different risks: expected SKU aggregate follows the declared policy.
+- Same SKU across two stores with a selected store: no cross-store merge.
+- No matching rows, null risks, zero risks and partial forecast metadata.
+- Table, risk sort, warning and export agree on value and aggregation basis.
+
+### Acceptance
+
+- Inventory risk is not silently overstated by a frontend `max` over rows with a different grain.
+- Store and size scope are explicit and tested.
+- Missing/partial forecast evidence cannot appear as a measured zero or fully trusted risk.
+
+### Dependencies
+
+- Coordinate `RQ274`, `RQ371`, `RQ407`, forecast backend owner and `RQ413` drift/freshness evidence.
