@@ -176,6 +176,50 @@ public sealed class InventoryListEndpointIntegrationTests
         Assert.Equal(2, firstPage.GetProperty("pageSize").GetInt32());
     }
 
+    [Theory]
+    [InlineData("kolicina")]
+    [InlineData("naziv")]
+    [InlineData("vrednost")]
+    [InlineData("azuriranje")]
+    public async Task InventoryList_CachedSortsUseArticleIdAsTieBreaker(string sortBy)
+    {
+        await using var factory = CreateFactory();
+        AddInventoryTieRows(factory.Services);
+
+        var firstPage = await GetJsonAsync(
+            factory,
+            $"/api/analytics/cached/inventory/list?storeId=1&search=Tie&sortBy={sortBy}&page=1&pageSize=1");
+        var secondPage = await GetJsonAsync(
+            factory,
+            $"/api/analytics/cached/inventory/list?storeId=1&search=Tie&sortBy={sortBy}&page=2&pageSize=1");
+
+        Assert.Equal(2, firstPage.GetProperty("totalCount").GetInt32());
+        Assert.Equal(105, firstPage.GetProperty("items")[0].GetProperty("id").GetInt32());
+        Assert.Equal(106, secondPage.GetProperty("items")[0].GetProperty("id").GetInt32());
+    }
+
+    [Theory]
+    [InlineData("naziv")]
+    [InlineData("vrednost")]
+    [InlineData("azuriranje")]
+    [InlineData("kolicina")]
+    public async Task InventoryList_UncachedSortsUseArticleIdAsTieBreaker(string sortBy)
+    {
+        await using var factory = CreateFactory();
+        AddInventoryTieRows(factory.Services);
+
+        var firstPage = await GetJsonAsync(
+            factory,
+            $"/api/analytics/inventory/list?storeId=1&search=Tie&sortBy={sortBy}&page=1&pageSize=1");
+        var secondPage = await GetJsonAsync(
+            factory,
+            $"/api/analytics/inventory/list?storeId=1&search=Tie&sortBy={sortBy}&page=2&pageSize=1");
+
+        Assert.Equal(2, firstPage.GetProperty("totalCount").GetInt32());
+        Assert.Equal(105, firstPage.GetProperty("items")[0].GetProperty("id").GetInt32());
+        Assert.Equal(106, secondPage.GetProperty("items")[0].GetProperty("id").GetInt32());
+    }
+
     [Fact]
     public async Task InventoryList_EmptyFilterReturnsExplicitEmptySuccessMeta()
     {
@@ -244,6 +288,41 @@ public sealed class InventoryListEndpointIntegrationTests
         db.Database.EnsureDeleted();
         db.Database.EnsureCreated();
         PilotAnalyticsSeedPack.SeedInventory(db);
+        db.SaveChanges();
+    }
+
+    private static void AddInventoryTieRows(IServiceProvider services)
+    {
+        using var scope = services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
+        var tieTimestamp = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        db.Artikli.AddRange(
+            new Artikli
+            {
+                Id = 105,
+                PLU = "TIE-105",
+                Naziv = "Tie article",
+                IDObjekat = 1,
+                IDDobavljac = 1,
+                Kolicina = 7,
+                MinimalnaKolicina = 1,
+                NabavnaCena = 100m,
+                DataOrigin = "existing",
+                UpdatedAt = tieTimestamp
+            },
+            new Artikli
+            {
+                Id = 106,
+                PLU = "TIE-106",
+                Naziv = "Tie article",
+                IDObjekat = 1,
+                IDDobavljac = 1,
+                Kolicina = 7,
+                MinimalnaKolicina = 1,
+                NabavnaCena = 100m,
+                DataOrigin = "existing",
+                UpdatedAt = tieTimestamp
+            });
         db.SaveChanges();
     }
 

@@ -909,9 +909,9 @@ public static class InventoryEndpoints
         return sortBy?.Trim().ToLowerInvariant() switch
         {
             "naziv" => query.OrderBy(a => a.Naziv).ThenBy(a => a.Id),
-            "vrednost" => query.OrderByDescending(a => (a.NabavnaCena ?? 0m) * ((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0)).ThenBy(a => a.Naziv),
-            "azuriranje" => query.OrderByDescending(a => a.UpdatedAt).ThenBy(a => a.Naziv),
-            _ => query.OrderByDescending(a => a.Kolicina ?? 0).ThenBy(a => a.Naziv)
+            "vrednost" => query.OrderByDescending(a => (a.NabavnaCena ?? 0m) * ((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0)).ThenBy(a => a.Naziv).ThenBy(a => a.Id),
+            "azuriranje" => query.OrderByDescending(a => a.UpdatedAt).ThenBy(a => a.Naziv).ThenBy(a => a.Id),
+            _ => query.OrderByDescending(a => a.Kolicina ?? 0).ThenBy(a => a.Naziv).ThenBy(a => a.Id)
         };
     }
 

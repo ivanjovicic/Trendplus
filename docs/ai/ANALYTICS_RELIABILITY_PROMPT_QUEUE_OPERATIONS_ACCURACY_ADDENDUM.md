@@ -9,6 +9,8 @@ Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
 Purpose: add only the **remaining, non-duplicative** Operations correctness work discovered by the 2026-09-23 data-flow audit, with first priority on **Prodaja po dobavljačima** and **Prodaja po tipu obuće**.
 
+Owner promotion/claim/completion 2026-09-23: under the user's instruction to claim the next prompt, dependency/collision review found `RQ414` blocked behind the broader `RQ371` scope contract, while `RQ415` was independently runnable and owned only deterministic Inventory list ordering. `RQ415` moved `WAITING -> READY -> IN_PROGRESS -> DONE`; no successor was promoted because the remaining addendum prompts are dependency/collision gated.
+
 Canonical queue work already present on current `main` must be preserved:
 - `RQ406` — Supplier Footwear derived type metrics must not become authoritative when `articleStats` is truncated;
 - `RQ407` — deterministic cross-screen proof pack/reconciliation for all eight Operacije routes;
@@ -33,7 +35,7 @@ All prompts below are `WAITING`. Do not claim or auto-promote them without depen
 | RQ412 | WAITING | P0 | supplier-shoetype-independent-oracle | Independently reconcile Supplier/Shoe Type to raw facts after canonical RQ407 proof |
 | RQ413 | WAITING | P1 | operations-runtime-drift-guard | Continuously detect post-import/cache/source drift and fail closed for decision signals |
 | RQ414 | WAITING | P1 | inventory-sales-origin-parity | Keep Inventory list sell-through on the same data-origin population as article rows |
-| RQ415 | WAITING | P2 | inventory-deterministic-pagination | Make Inventory list ordering stable under ties and concurrent changes |
+| RQ415 | DONE | P2 | inventory-deterministic-pagination | Make Inventory list ordering stable under ties and concurrent changes |
 | RQ416 | WAITING | P1 | inventory-insight-identity-provenance | Preserve store/supplier identity and cost provenance from Inventory insights to detail |
 | RQ417 | WAITING | P1 | inventory-size-alert-identity | Preserve SKU, size and store context when an Inventory alert opens size curve |
 | RQ418 | WAITING | P1 | inventory-action-dataset-idempotency | Prevent Inventory action deduplication from crossing period/scope/snapshot datasets |
@@ -358,13 +360,13 @@ Do not redesign journal movement semantics, forecast/alerts/rebalance contracts 
 
 ## RQ415 - Inventory list pagination must have deterministic ordering
 
-Status: WAITING
+Status: DONE
 Ready after: no runtime dependency; coordinate with Inventory list owner and `RQ371`
 Priority: P2
 Type: backend/tests
 Feature family: inventory-deterministic-pagination
 Parallel-safe: no
-Owner: unassigned
+Owner: Codex
 Local lock: `.ai/task-locks/RQ415-<agent>.lock.md`
 Commit suggestion: `fix(analytics): stabilize inventory list pagination`
 
@@ -412,6 +414,25 @@ Do not change the meaning of totals, risk sorting, export order or secondary pan
 - Every Inventory list sort has a deterministic total order.
 - Adjacent pages have no duplicate/missing IDs under ties.
 - Sorting remains display-contract compatible and does not invent business ranking.
+
+### Completion note
+
+- Date: 2026-09-23
+- Status: DONE
+- Completion: Added immutable article-ID tie-breakers to every Inventory list server sort in cached and uncached endpoints; added equal-value pagination regressions for all supported sorts.
+- Changed files: `Api/Endpoints/CachedAnalyticsEndpoints.cs`, `Api/Endpoints/InventoryEndpoints.cs`, `Api.Tests/InventoryListEndpointIntegrationTests.cs`, this queue, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-23-RQ415-evidence.md`.
+- Contract/runtime behavior changed: Inventory list page boundaries are now deterministic under equal quantity, name, value or update timestamp while preserving current primary sort direction and total counts.
+- Checks run: focused `InventoryListEndpointIntegrationTests` 19/19; `git diff --check`; queue/planning validators after delivery.
+- Checks not run: full repository suite, live database/deployment/browser proof and remote CI.
+- Run log: `.ai/runs/2026-09-23-RQ415-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: no business ranking, KPI population or export semantics were changed; only server list ordering was hardened.
+- Follow-up: `RQ414` remains blocked behind `RQ371`; no successor was promoted automatically.
+- Residual risk: live-provider pagination under concurrent production writes remains outside this local deterministic proof.
+- Prompt defect / scope repair: expanded the prompt's Inventory list scope to include the existing uncached route because it shared the same non-unique ordering contract and menu surface.
 
 ### Dependencies
 
