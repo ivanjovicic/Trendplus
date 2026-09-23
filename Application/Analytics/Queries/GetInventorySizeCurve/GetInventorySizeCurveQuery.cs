@@ -6,6 +6,7 @@ public sealed record GetInventorySizeCurveQuery(
     int? StoreId = null,
     int? SupplierId = null,
     int? SkuId = null,
+    string? SizeCode = null,
     int Top = 200
 ) : IRequest<InventorySizeCurveListDto>;
 

@@ -259,8 +259,8 @@ public static class AnalyticsCacheKeys
     public static string InventoryForecastBacktest(int? storeId = null, int? supplierId = null, int horizonDays = 14) =>
         $"{Prefix}inventory-forecast-backtest:{FilterSuffix(storeId, supplierId)}:horizon:{horizonDays}";
 
-    public static string InventorySizeCurve(int? storeId = null, int? supplierId = null, int? skuId = null, int top = 200) =>
-        $"{Prefix}inventory-size-curve:{FilterSuffix(storeId, supplierId)}:sku:{(skuId.HasValue ? skuId.Value.ToString() : "all")}:top:{top}";
+    public static string InventorySizeCurve(int? storeId = null, int? supplierId = null, int? skuId = null, string? sizeCode = null, int top = 200) =>
+        $"{Prefix}inventory-size-curve:{FilterSuffix(storeId, supplierId)}:sku:{(skuId.HasValue ? skuId.Value.ToString() : "all")}:size:{(string.IsNullOrWhiteSpace(sizeCode) ? "all" : sizeCode.Trim())}:top:{top}";
 
     public static string RebalanceSuggestions(int? fromStoreId = null, int? toStoreId = null, int? supplierId = null, string? urgency = null, int top = 100) =>
         $"{Prefix}rebalance-suggestions:from:{(fromStoreId.HasValue ? fromStoreId.Value.ToString() : "all")}:to:{(toStoreId.HasValue ? toStoreId.Value.ToString() : "all")}:supplier:{(supplierId.HasValue ? supplierId.Value.ToString() : "all")}:urgency:{(string.IsNullOrWhiteSpace(urgency) ? "all" : urgency)}:top:{top}";

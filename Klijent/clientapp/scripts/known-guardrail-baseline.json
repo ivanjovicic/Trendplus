@@ -137,7 +137,7 @@
     {
       "file": "src/pages/InventoryPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 736,
+      "line": 743,
       "reason": "Existing inventory page-count fallback requires a reviewed backend-total exception."
     },
     {

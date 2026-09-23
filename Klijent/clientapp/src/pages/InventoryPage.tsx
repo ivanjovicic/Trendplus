@@ -373,6 +373,8 @@ export default function InventoryPage() {
   const [sizeCurveLoading, setSizeCurveLoading] = useState(false);
   const [sizeCurveError, setSizeCurveError] = useState<string | null>(null);
   const [sizeCurveSkuId, setSizeCurveSkuId] = useState<number | null>(null);
+  const [sizeCurveStoreId, setSizeCurveStoreId] = useState<number | null>(null);
+  const [sizeCurveSizeCode, setSizeCurveSizeCode] = useState<string | null>(null);
   const [reloadNonce, setReloadNonce] = useState(0);
   const [inventoryDataScope, setInventoryDataScope] = useState(() => getDataScope());
   const deferredSearch = useDeferredValue(searchInput);
@@ -713,7 +715,12 @@ export default function InventoryPage() {
     const controller = new AbortController();
     setSizeCurveLoading(true);
     setSizeCurveError(null);
-    void getSizeCurve({ skuId: sizeCurveSkuId, storeId: selectedStoreId, signal: controller.signal })
+    void getSizeCurve({
+      skuId: sizeCurveSkuId,
+      storeId: sizeCurveStoreId ?? selectedStoreId,
+      sizeCode: sizeCurveSizeCode,
+      signal: controller.signal,
+    })
       .then((data) => {
         if (!cancelled) setSizeCurve(data);
       })
@@ -730,7 +737,7 @@ export default function InventoryPage() {
       cancelled = true;
       controller.abort();
     };
-  }, [inventoryDataScope, selectedStoreId, sizeCurveSkuId]);
+  }, [inventoryDataScope, selectedStoreId, sizeCurveSizeCode, sizeCurveSkuId, sizeCurveStoreId]);
 
   const rows = useMemo(() => (pageData?.items ?? []).map((item) => buildInventoryRow(item, stores, suppliers)), [pageData, stores, suppliers]);
   const totalCount = pageData?.totalCount ?? 0;
@@ -1077,6 +1084,18 @@ export default function InventoryPage() {
       return;
     }
     openDetail(buildOffPageDetailPlaceholderRow(skuId, stores, suppliers, { storeId, label }));
+  }
+
+  function openSizeCurveFromAlert(skuId: number, storeId: number, sizeCode?: string | null) {
+    setSizeCurveStoreId(storeId);
+    setSizeCurveSizeCode(sizeCode ?? null);
+    setSizeCurveSkuId(skuId);
+  }
+
+  function openSizeCurveFromPanel(skuId: number | null) {
+    setSizeCurveStoreId(null);
+    setSizeCurveSizeCode(null);
+    setSizeCurveSkuId(skuId);
   }
 
   function retryDetailFetch() {
@@ -1492,7 +1511,7 @@ export default function InventoryPage() {
 
       <div className="grid gap-5 xl:grid-cols-2">
         <ErrorBoundary fallback={<div className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">Alerts nisu dostupni. Osveži stranicu.</div>}>
-          <InventoryAlertsFeed alerts={alerts} alertsLoading={alertsLoading} alertsError={alertsError} alertSeverityFilter={alertSeverityFilter} onSeverityFilterChange={setAlertSeverityFilter} displayCount={ALERTS_DISPLAY_COUNT} onOpenSizeCurve={setSizeCurveSkuId} onOpenDetail={openDetailBySku} />
+          <InventoryAlertsFeed alerts={alerts} alertsLoading={alertsLoading} alertsError={alertsError} alertSeverityFilter={alertSeverityFilter} onSeverityFilterChange={setAlertSeverityFilter} displayCount={ALERTS_DISPLAY_COUNT} onOpenSizeCurve={openSizeCurveFromAlert} onOpenDetail={openDetailBySku} />
         </ErrorBoundary>
         <ErrorBoundary fallback={<div className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">Forecast nije dostupan. Osveži stranicu.</div>}>
           <DemandForecastPanel forecast={forecast} forecastLoading={forecastLoading} forecastError={forecastError} rows={rows} stores={stores} oosThreshold={OOS_RISK_THRESHOLD} overstockThreshold={OVERSTOCK_RISK_THRESHOLD} oosDisplayCount={FORECAST_OOS_DISPLAY} overstockDisplayCount={FORECAST_OVERSTOCK_DISPLAY} onSuggestRestock={queueForecastRestock} />
@@ -1515,7 +1534,7 @@ export default function InventoryPage() {
 
       <div className="grid gap-5 xl:grid-cols-2">
         <StoreComparisonPanel sectionId={STORE_COMPARISON_SECTION_ID} stores={stores} compareStoreIds={compareStoreIds} comparison={storeComparison} operationsLoading={operationsLoading} onToggleStore={toggleCompareStore} />
-        <SizeCurvePanel sizeCurveSkuId={sizeCurveSkuId} sizeCurve={sizeCurve} sizeCurveLoading={sizeCurveLoading} sizeCurveError={sizeCurveError} onChangeSkuId={setSizeCurveSkuId} />
+        <SizeCurvePanel sizeCurveSkuId={sizeCurveSkuId} sizeCurve={sizeCurve} sizeCurveLoading={sizeCurveLoading} sizeCurveError={sizeCurveError} onChangeSkuId={openSizeCurveFromPanel} />
       </div>
 
       {/* Detail Table - scrollable inventory list */}

@@ -158,6 +158,17 @@ public sealed class AnalyticsScreenCacheKeyContractTests
     }
 
     [Fact]
+    public void InventorySizeCurve_SizeFilterCannotShareCacheEntryWithAggregateCurve()
+    {
+        var aggregate = AnalyticsCacheKeys.InventorySizeCurve(storeId: 7, skuId: 101, sizeCode: null, top: 200);
+        var size42 = AnalyticsCacheKeys.InventorySizeCurve(storeId: 7, skuId: 101, sizeCode: "42", top: 200);
+        var normalizedSize42 = AnalyticsCacheKeys.InventorySizeCurve(storeId: 7, skuId: 101, sizeCode: " 42 ", top: 200);
+
+        Assert.NotEqual(aggregate, size42);
+        Assert.Equal(size42, normalizedSize42);
+    }
+
+    [Fact]
     public void ReportCacheVersion_InvalidatesSupplierAndPilotReports()
     {
         var supplierV1 = SupplierReportKey(reportCacheVersion: 1);

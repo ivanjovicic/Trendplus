@@ -1039,14 +1039,15 @@ public static class CachedAnalyticsEndpoints
             int? storeId = null,
             int? supplierId = null,
             int? skuId = null,
+            string? sizeCode = null,
             int top = 200,
             CancellationToken ct = default) =>
         {
             top = Math.Clamp(top, 1, 500);
-            var cacheKey = AnalyticsCacheKeys.InventorySizeCurve(storeId, supplierId, skuId, top);
+            var cacheKey = AnalyticsCacheKeys.InventorySizeCurve(storeId, supplierId, skuId, sizeCode, top);
             var result = await cache.GetOrSetAsync(
                 cacheKey,
-                async () => await mediator.Send(new GetInventorySizeCurveQuery(storeId, supplierId, skuId, top), ct),
+                async () => await mediator.Send(new GetInventorySizeCurveQuery(storeId, supplierId, skuId, sizeCode, top), ct),
                 AnalyticsCachePolicy.Inventory.Ttl,
                 ct);
 

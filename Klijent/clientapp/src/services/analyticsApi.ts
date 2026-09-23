@@ -1720,6 +1720,7 @@ export async function getSizeCurve(options?: {
   storeId?: number | null;
   supplierId?: number | null;
   skuId?: number | null;
+  sizeCode?: string | null;
   top?: number;
   signal?: AbortSignal;
 }): Promise<SizeCurveDto> {
@@ -1727,6 +1728,7 @@ export async function getSizeCurve(options?: {
   if (options?.storeId != null) params.append("storeId", String(options.storeId));
   if (options?.supplierId != null) params.append("supplierId", String(options.supplierId));
   if (options?.skuId != null) params.append("skuId", String(options.skuId));
+  if (options?.sizeCode != null && options.sizeCode.trim() !== "") params.append("sizeCode", options.sizeCode.trim());
   if (options?.top != null) params.append("top", String(options.top));
   return fetchJson(
     "/api/analytics/cached/inventory/size-curve",

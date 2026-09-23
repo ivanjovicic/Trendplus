@@ -10,7 +10,7 @@ type InventoryAlertsFeedProps = {
   alertSeverityFilter: "" | "critical" | "warning" | "info";
   onSeverityFilterChange: (value: "" | "critical" | "warning" | "info") => void;
   displayCount: number;
-  onOpenSizeCurve: (skuId: number) => void;
+  onOpenSizeCurve: (skuId: number, storeId: number, sizeCode?: string | null) => void;
   onOpenDetail: (skuId: number, storeId: number, label?: string) => void;
 };
 
@@ -87,7 +87,7 @@ export function InventoryAlertsFeed({
                 <button type="button" aria-label={`Otvori detalj artikla za alert ${alert.title}`} onClick={(event) => { event.stopPropagation(); onOpenDetail(alert.skuId, alert.storeId, alert.title); }} className="text-muted transition hover:text-foreground">
                   Detalj artikla -&gt;
                 </button>
-                <button type="button" aria-label={`Otvori raspodelu veličina za SKU ${alert.skuId}`} onClick={(event) => { event.stopPropagation(); onOpenSizeCurve(alert.skuId); }} className="text-info transition hover:text-info/80">
+                <button type="button" aria-label={`Otvori raspodelu veličina za SKU ${alert.skuId}${alert.sizeCode ? ` veličinu ${alert.sizeCode}` : ""} u prodavnici ${alert.storeId}`} onClick={(event) => { event.stopPropagation(); onOpenSizeCurve(alert.skuId, alert.storeId, alert.sizeCode); }} className="text-info transition hover:text-info/80">
                   Raspodela veličina -&gt;
                 </button>
               </div>

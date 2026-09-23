@@ -8,6 +8,7 @@ import {
   getDataQualityTopOffenders,
   getDecisionBoardAggregate,
   getDashboardBootstrap,
+  getSizeCurve,
   invalidateAnalyticsCache,
   updateAnalyticsActionOutcome,
 } from "../analyticsApi";
@@ -15,6 +16,34 @@ import { getColorSalesStats } from "../colorSalesStatsApi";
 import { AnalyticsResponseValidationError } from "../../validation/analyticsResponseValidation";
 
 describe("analytics API contract requests", () => {
+  it("preserves alert size-curve SKU, store and size identity in the request", async () => {
+    let receivedUrl: URL | null = null;
+
+    server.use(
+      rest.get("/api/analytics/cached/inventory/size-curve", (req, res, ctx) => {
+        receivedUrl = req.url;
+        return res(ctx.status(200), ctx.json({
+          generatedAtUtc: "2026-09-23T12:00:00Z",
+          totalCount: 0,
+          returnedCount: 0,
+          totalMatchingCount: 0,
+          isTruncated: false,
+          snapshotAvailable: true,
+          snapshotFreshnessUtc: null,
+          snapshotFreshnessStatus: "unknown",
+          warning: "Size curve snapshot postoji, ali nema redova za trazene filtere.",
+          items: [],
+        }));
+      }),
+    );
+
+    await getSizeCurve({ skuId: 101, storeId: 7, sizeCode: " 42 " });
+
+    expect(receivedUrl?.searchParams.get("skuId")).toBe("101");
+    expect(receivedUrl?.searchParams.get("storeId")).toBe("7");
+    expect(receivedUrl?.searchParams.get("sizeCode")).toBe("42");
+  });
+
   it("clears cached dashboard bootstrap responses when invalidated", async () => {
     let requestCount = 0;
 
