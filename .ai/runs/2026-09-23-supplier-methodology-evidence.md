@@ -9,7 +9,7 @@ Main verification: passed - fresh fetch confirms `origin/main` equals `02b22e295
 Evidence state: synchronized
 
 ## What was done
-- Investigated the live Supplier overview URL and confirmed the deployed page currently returns a generic application error, so live numeric data could not be used as proof.
+- Investigated the live Supplier overview URL; after reload it returned live Supplier data, but the deployed bundle still showed the old generic fallback for `popRevenueChangePct`, so the live UI is not yet on the new methodology registry.
 - Traced the Supplier overview KPI methodology actions to `analyticsMetricDefinitions.ts`, the Supplier Sales page and the `/api/analytics/supplier-sales-stats` endpoint.
 - Added documented methodology for PoP revenue change, supplier total cost and supplier-average margin; corrected the top-five supplier share definition; and bound the Supplier average-margin KPI to its specific methodology key.
 - Added a regression test proving all Supplier overview KPI methodology keys render as documented rather than using the generic fallback message.
@@ -28,7 +28,7 @@ Evidence state: synchronized
 - `git diff --check` -> pass
 
 ## Validation not run
-- Live deployed Supplier data verification -> not proven; the supplied Vercel URL returned the generic error state during inspection.
+- Live deployed methodology verification -> fail/residual deployment state; the supplied Vercel URL returned data after reload but the PoP methodology modal still rendered the old `popRevenueChangePct` fallback.
 - Backend integration/live database proof -> not run; this change only updates the frontend methodology registry and its presentation binding.
 
 ## Documentation impact
@@ -36,10 +36,11 @@ Evidence state: synchronized
 - No queue, roadmap or backend contract document was changed because this was a direct UI documentation/projection repair.
 
 ## What was missed
-- The deployed environment was not changed or rechecked after the local fix.
+- The deployed environment was rechecked, but its bundle was still stale; Vercel deployment/update was not performed from this workspace.
 
 ## Risks
 - The displayed `prosecnaMarza` remains the backend's current arithmetic average of known supplier margins; the new wording documents that behavior and does not change its business calculation.
+- Live users will continue to see the old generic PoP methodology until the deployment built from `main` is available.
 - Existing Vite chunk-size warnings remain outside this scope.
 
 ## Next
