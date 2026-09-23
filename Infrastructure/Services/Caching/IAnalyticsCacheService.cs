@@ -240,7 +240,7 @@ public static class AnalyticsCacheKeys
         $"{Prefix}shoe-type-sales-stats:{FormatTicks(from)}:{FormatTicks(to)}:{FormatNullable(storeId)}:{FormatNullable(sezonaId)}:{NormalizeDataScope(dataScope)}:snap:{FormatNullable(activeSnapshotBatchId)}";
 
     public static string ColorSalesStats(DateTime? from, DateTime? to, int? storeId = null, int? sezonaId = null, string? dataScope = null) =>
-        $"{Prefix}color-sales-stats:{FormatTicks(from)}:{FormatTicks(to)}:{FormatNullable(storeId)}:{FormatNullable(sezonaId)}:{NormalizeDataScope(dataScope)}";
+        $"{Prefix}color-sales-stats:v2:{FormatTicks(from)}:{FormatTicks(to)}:{FormatNullable(storeId)}:{FormatNullable(sezonaId)}:{NormalizeDataScope(dataScope)}";
 
     public static string SalesDataWindow(int? storeId = null, string? dataScope = null) =>
         $"{Prefix}data-window:store:{(storeId.HasValue ? storeId.Value.ToString() : "all")}:scope:{NormalizeDataScope(dataScope)}";

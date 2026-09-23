@@ -68,7 +68,7 @@ describe("AnalyticsDetailView decision trust projection", () => {
   it("renders the Color detail trust contract instead of falling back to a bare aggregate", async () => {
     vi.mocked(getAnalyticsDetail).mockResolvedValue({
       table: "color-sales-stats",
-      recordId: "Crna",
+      recordId: "CRNA",
       title: "Crna",
       subtitle: "Prodaja po boji artikla",
       fields: [{ key: "ukupanPromet", label: "Ukupan promet", value: "260.00", dataType: "currency" }],

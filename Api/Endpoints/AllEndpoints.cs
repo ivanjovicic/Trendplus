@@ -2745,9 +2745,6 @@ public static class AllEndpoints
                         : date.ToUniversalTime();
                 }
 
-                static string NormalizeColor(string? value) =>
-                    string.IsNullOrWhiteSpace(value) ? "Nepoznato" : value.Trim();
-
                 static (DateTime? previousFromUtc, DateTime? previousToUtc) BuildComparablePreviousRange(
                     DateTime? currentFromUtc,
                     DateTime? currentToUtc)
@@ -2906,7 +2903,7 @@ public static class AllEndpoints
                     previousPeriodRevenue = previousRowsRaw.Sum(x => x.Revenue);
                     previousPeriodUnits = previousRowsRaw.Sum(x => x.Units);
                     previousColorMetrics = previousRowsRaw
-                        .GroupBy(x => NormalizeColor(x.Boja), StringComparer.Ordinal)
+                        .GroupBy(x => ColorIdentityPolicy.Key(x.Boja), StringComparer.Ordinal)
                         .ToDictionary(
                             g => g.Key,
                             g => (g.Sum(x => x.Revenue), g.Sum(x => x.Units)),
@@ -2952,9 +2949,13 @@ public static class AllEndpoints
                     .Count(prvaNivelacijaPoArtiklu.ContainsKey);
 
                 var colors = stavke
-                    .GroupBy(s => NormalizeColor(s.Boja))
+                    .GroupBy(s => ColorIdentityPolicy.Key(s.Boja), StringComparer.Ordinal)
                     .Select(g =>
                     {
+                        var displayColor = g
+                            .Select(item => ColorIdentityPolicy.DisplayName(item.Boja))
+                            .OrderBy(value => value, StringComparer.Ordinal)
+                            .First();
                         var hasPreviousComparablePeriod = previousFromUtc.HasValue && previousToUtc.HasValue;
                         var previousRevenueRaw = 0m;
                         var previousUnitsRaw = 0;
@@ -3013,7 +3014,7 @@ public static class AllEndpoints
 
                         return new
                         {
-                            boja = g.Key,
+                            boja = displayColor,
                             preNivelacijePromet = splitSnapshot.PreRevenue,
                             preNivelacijeKolicina = splitSnapshot.PreQuantity,
                             posleNivelacijePromet = splitSnapshot.PostRevenue,
@@ -3092,10 +3093,10 @@ public static class AllEndpoints
                 var estimatedCostRevenue = colors.Sum(r => r.estimatedCostRevenue);
                 var missingCostRevenue = totalRevenue - totalRevenueWithHistoricalCost - estimatedCostRevenue;
                 var unknownColorRevenue = colors
-                    .Where(r => string.Equals(r.boja, "Nepoznato", StringComparison.OrdinalIgnoreCase))
+                    .Where(r => ColorIdentityPolicy.IsUnknown(r.boja))
                     .Sum(r => r.ukupanPromet);
                 var knownColorCostEvidence = colors
-                    .Where(row => !string.Equals(row.boja, "Nepoznato", StringComparison.OrdinalIgnoreCase))
+                    .Where(row => !ColorIdentityPolicy.IsUnknown(row.boja))
                     .Select(row => (row.revenueWithCost, row.marginContribution))
                     .ToList();
                 var weightedKnownMarginPct = ColorSignedEvidencePolicy.ResolveWeightedMarginPct(knownColorCostEvidence);

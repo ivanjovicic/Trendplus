@@ -213,25 +213,31 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             return null;
         }
 
-        var normalizedColor = NormalizeColor(colorKey);
+        var colorIdentityKey = ColorIdentityPolicy.Key(colorKey);
         var context = await BuildAnalyticsContextAsync(query, ct);
-        var rows = context.SalesRows.Where(x => NormalizeColor(x.Boja) == normalizedColor).ToList();
+        var rows = context.SalesRows
+            .Where(x => ColorIdentityPolicy.Key(x.Boja) == colorIdentityKey)
+            .ToList();
+        var title = rows
+            .Select(x => x.Boja)
+            .OrderBy(value => value, StringComparer.Ordinal)
+            .FirstOrDefault() ?? ColorIdentityPolicy.DisplayName(colorKey);
         var comparison = await GetColorComparisonMetricsAsync(
-            normalizedColor,
+            colorIdentityKey,
             context,
             rows.Sum(x => x.Prihod),
             rows.Sum(x => x.Kolicina),
             ct);
         var aggregate = BuildAggregatedDetail(
             "color-sales-stats",
-            id ?? string.Empty,
-            normalizedColor,
+            colorIdentityKey,
+            title,
             "Prodaja po boji artikla",
             rows,
             context,
             comparison,
             includeSnapshotCost: false);
-        return aggregate is null ? null : BuildColorDetailProjection(aggregate, rows, context, comparison, normalizedColor);
+        return aggregate is null ? null : BuildColorDetailProjection(aggregate, rows, context, comparison, colorIdentityKey);
     }
 
     private async Task<AnalyticsDetailResponseDto?> GetTopProductDetailAsync(string id, IQueryCollection query, CancellationToken ct)
@@ -277,7 +283,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             Field("artikalId", "Artikal ID", artikalId.ToString(CultureInfo.InvariantCulture), "number"),
             Field("sifra", "SKU", article?.PLU?.Trim() ?? rows[0].SifraArtikla, "text"),
             Field("nazivArtikla", "Naziv artikla", article?.Naziv?.Trim() ?? rows[0].NazivArtikla, "text"),
-            Field("boja", "Boja", NormalizeColor(article?.Boja ?? rows[0].Boja), "text")
+            Field("boja", "Boja", ColorIdentityPolicy.DisplayName(article?.Boja ?? rows[0].Boja), "text")
         };
 
         fields.AddRange(aggregate.Fields);
@@ -345,7 +351,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 DobavljacNaziv = d != null && !string.IsNullOrWhiteSpace(d.Naziv) ? d.Naziv! : "Nepoznato",
                 TipObuceId = t != null ? t.Id : null,
                 TipObuceNaziv = t != null && !string.IsNullOrWhiteSpace(t.Naziv) ? t.Naziv : "Nepoznato",
-                Boja = NormalizeColor(a.Boja)
+                Boja = ColorIdentityPolicy.DisplayName(a.Boja)
             })
             .Where(x => !filters.SupplierId.HasValue || x.DobavljacId == filters.SupplierId.Value)
             .ToListAsync(ct);
@@ -552,7 +558,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
     }
 
     private async Task<ComparisonMetrics?> GetColorComparisonMetricsAsync(
-        string normalizedColor,
+        string colorIdentityKey,
         AnalyticsContext context,
         decimal currentRevenue,
         int currentUnits,
@@ -585,7 +591,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             .ToListAsync(ct);
 
         var matchingRows = previousRows
-            .Where(x => NormalizeColor(x.Color) == normalizedColor)
+            .Where(x => ColorIdentityPolicy.Key(x.Color) == colorIdentityKey)
             .ToList();
         var previousRevenue = matchingRows.Sum(x => x.Revenue);
         var previousUnits = matchingRows.Sum(x => x.Units);
@@ -775,7 +781,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         List<SalesRow> rows,
         AnalyticsContext context,
         ComparisonMetrics? comparison,
-        string normalizedColor)
+        string colorIdentityKey)
     {
         var totalRevenue = rows.Sum(x => x.Prihod);
         var totalUnits = rows.Sum(x => x.Kolicina);
@@ -784,8 +790,8 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         var totalDatasetRevenue = context.SalesRows.Sum(x => x.Prihod);
 
         var knownMarginEvidence = context.SalesRows
-            .GroupBy(x => NormalizeColor(x.Boja), StringComparer.Ordinal)
-            .Where(group => !string.Equals(group.Key, "Nepoznato", StringComparison.OrdinalIgnoreCase))
+            .GroupBy(x => ColorIdentityPolicy.Key(x.Boja), StringComparer.Ordinal)
+            .Where(group => !ColorIdentityPolicy.IsUnknown(group.Key))
             .Select(group =>
             {
                 var revenue = group.Sum(x => x.Prihod);
@@ -795,7 +801,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             .ToList();
         var averageMarginPct = ColorSignedEvidencePolicy.ResolveWeightedMarginPct(knownMarginEvidence);
         var unknownRevenue = context.SalesRows
-            .Where(x => string.Equals(NormalizeColor(x.Boja), "Nepoznato", StringComparison.OrdinalIgnoreCase))
+            .Where(x => ColorIdentityPolicy.IsUnknown(x.Boja))
             .Sum(x => x.Prihod);
         var unknownSharePct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(unknownRevenue, totalDatasetRevenue);
         var sharePct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(totalRevenue, totalDatasetRevenue);
@@ -805,7 +811,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             && totalRevenue > 0m;
         var recommendation = AnalyticsDecisionRecommendationEngine.Evaluate(
             new AnalyticsDecisionRecommendationEngine.RecommendationInput(
-                IsUnknownEntity: string.Equals(normalizedColor, "Nepoznato", StringComparison.OrdinalIgnoreCase),
+                IsUnknownEntity: ColorIdentityPolicy.IsUnknown(colorIdentityKey),
                 TotalRevenue: totalRevenue,
                 TotalUnits: totalUnits,
                 ItemCount: rows.Select(x => x.ArtikalId).Distinct().Count(),
@@ -1250,6 +1256,4 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         return normalized is "existing" or "imported" ? normalized : "all";
     }
 
-    private static string NormalizeColor(string? value)
-        => string.IsNullOrWhiteSpace(value) ? "Nepoznato" : value.Trim();
 }

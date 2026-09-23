@@ -326,7 +326,7 @@ describe("ColorSalesStatsPage", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Otvori puni detalj" }));
 
     expect(await screen.findByText("Color detail route")).toBeInTheDocument();
-    const snapshot = getAnalyticsDetailSnapshot("color-sales-stats", encodeURIComponent("Crna"));
+    const snapshot = getAnalyticsDetailSnapshot("color-sales-stats", encodeURIComponent("CRNA"));
     expect(snapshot?.metadata.some((field) => field.key === "dataScope" && field.value === "existing")).toBe(true);
   });
 
@@ -350,7 +350,7 @@ describe("ColorSalesStatsPage", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Otvori puni detalj" }));
 
     expect(await screen.findByText("Color detail route")).toBeInTheDocument();
-    const snapshot = getAnalyticsDetailSnapshot("color-sales-stats", encodeURIComponent("Crna"));
+    const snapshot = getAnalyticsDetailSnapshot("color-sales-stats", encodeURIComponent("CRNA"));
     expect(snapshot?.metadata.some((field) => field.key === "lineageBasis" && field.value === "2/4 artikala ima potvrđen događaj u istom opsegu")).toBe(true);
   });
 
@@ -811,10 +811,10 @@ describe("ColorSalesStatsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Otvori puni detalj" }));
 
     expect(await screen.findByText("Color detail route")).toBeInTheDocument();
-    const snapshot = getAnalyticsDetailSnapshot("color-sales-stats", encodeURIComponent("Crna"));
+    const snapshot = getAnalyticsDetailSnapshot("color-sales-stats", encodeURIComponent("CRNA"));
     expect(snapshot).toEqual(expect.objectContaining({
       table: "color-sales-stats",
-      recordId: "Crna",
+      recordId: "CRNA",
       title: "Crna",
     }));
     expect(snapshot?.fields.some((field) => field.key === "ukupanPromet" && field.value === "120.000 RSD")).toBe(true);
@@ -842,7 +842,7 @@ describe("ColorSalesStatsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Otvori puni detalj" }));
 
     expect(await screen.findByText("Color detail route")).toBeInTheDocument();
-    const snapshot = getAnalyticsDetailSnapshot("color-sales-stats", encodeURIComponent("Crna"));
+    const snapshot = getAnalyticsDetailSnapshot("color-sales-stats", encodeURIComponent("CRNA"));
     expect(snapshot?.fields.some((field) => field.key === "comparablePreRevenue" && field.value === "90.000 RSD")).toBe(true);
     expect(snapshot?.fields.some((field) => field.key === "comparablePostRevenue" && field.value === "30.000 RSD")).toBe(true);
     expect(snapshot?.fields.some((field) => field.key === "comparablePreQuantity" && field.value === "9 kom")).toBe(true);

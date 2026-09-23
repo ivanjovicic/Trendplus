@@ -30,6 +30,7 @@ import UltraSpinner from "../components/ui/UltraSpinner";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { getDataScope, type DataScope } from "../utils/dataScope";
+import { colorIdentityKey } from "../utils/colorIdentity";
 import { fmtNumber, fmtPct, fmtQty, fmtRsd, fmtSignedPct, formatDate, getPresetRange } from "../utils/analyticsFormatters";
 import { resolvePresetFilterRange } from "../utils/analyticsPeriodPresets";
 import {
@@ -147,10 +148,6 @@ function toDateOnly(value: string): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value.slice(0, 10);
   return parsed.toISOString().slice(0, 10);
-}
-
-function normalizeName(value: string | null | undefined): string {
-  return (value ?? "").trim().toUpperCase();
 }
 
 function sortMarker(field: SortField, activeField: SortField, dir: SortDir): string {
@@ -279,7 +276,7 @@ function buildStoreLabel(store: StoreOption): string {
 }
 
 function colorKey(item: { boja: string }): string {
-  return normalizeName(item.boja);
+  return colorIdentityKey(item.boja);
 }
 
 export default function ColorSalesStatsPage() {
@@ -687,7 +684,7 @@ export default function ColorSalesStatsPage() {
   );
 
   const openDetail = useCallback((row: DecisionColor) => {
-    const recordId = encodeURIComponent(row.boja);
+    const recordId = encodeURIComponent(colorIdentityKey(row.boja));
 
     const params = new URLSearchParams();
     params.set("fromDate", `${activeFilters.fromDate}T00:00:00Z`);

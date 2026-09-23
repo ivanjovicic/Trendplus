@@ -26,7 +26,7 @@ public sealed class AnalyticsDetailReadServiceColorTests
             {
                 Id = 1,
                 Naziv = "Crna 1",
-                Boja = "Crna",
+                Boja = " crna ",
                 NabavnaCenaDin = 40m,
                 DataOrigin = "existing"
             },
@@ -67,6 +67,7 @@ public sealed class AnalyticsDetailReadServiceColorTests
 
         Assert.NotNull(result);
         Assert.Equal("Crna", result.Title);
+        Assert.Equal("CRNA", result.RecordId);
         Assert.Equal("260.00", result.Fields.Single(field => field.Key == "ukupanPromet").Value);
         Assert.Equal("80.00", result.Fields.Single(field => field.Key == "previousPeriodRevenue").Value);
         Assert.NotNull(result.Recommendation);

@@ -27,6 +27,24 @@ public sealed class ColorSalesStatsSafeErrorTests
     }
 
     [Fact]
+    public void ColorEndpointUsesCanonicalIdentityForGroupingAndUnknownEvidence()
+    {
+        var source = ReadRepoFile("Api/Endpoints/AllEndpoints.cs");
+        var start = source.IndexOf("app.MapGet(\"/api/analytics/color-sales-stats\",", StringComparison.Ordinal);
+        var end = source.IndexOf(".WithName(\"GetColorSalesStats\")", start, StringComparison.Ordinal);
+
+        Assert.True(start >= 0);
+        Assert.True(end > start);
+
+        var endpoint = source[start..end];
+        Assert.Contains("ColorIdentityPolicy.Key(x.Boja)", endpoint);
+        Assert.Contains("ColorIdentityPolicy.Key(s.Boja)", endpoint);
+        Assert.Contains("ColorIdentityPolicy.DisplayName(item.Boja)", endpoint);
+        Assert.Contains("ColorIdentityPolicy.IsUnknown(r.boja)", endpoint);
+        Assert.DoesNotContain("static string NormalizeColor", endpoint);
+    }
+
+    [Fact]
     public void ColorProblemHelperPersistsOnlySafeDetailAndTraceId()
     {
         var source = ReadRepoFile("Api/Endpoints/AllEndpoints.cs");
