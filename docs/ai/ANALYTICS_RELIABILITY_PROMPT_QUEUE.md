@@ -2,7 +2,9 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none; RQ172, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ398, RQ399, RQ400, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE.
+Current READY prompt: none; RQ172, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ398, RQ399, RQ400, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE. RQ406 and RQ407 are WAITING.
+
+Owner audit 2026-09-23: under the user's direct Operacije menu data-flow audit, RQ406 was added for Supplier Footwear derived metrics over truncated article detail, and RQ407 was added for deterministic cross-screen reconciliation across all eight Operacije routes. No prompt was promoted; the current READY pointer remains `none`.
 
 Routing repair 2026-09-23: aligned stale legacy status metadata: RQ190's detailed block now matches its table status `OBSOLETE`, and RQ303's table row now matches its recorded completion `DONE`. No WAITING prompt was promoted because the active queue has no dependency-complete READY candidate.
 
@@ -1464,6 +1466,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ403 | DONE | supplier-decision-filter-parity | Align backend-supported supplier filters with the canonical screen and report |
 | RQ404 | DONE | supplier-decision-effective-period-semantics | Make requested/effective supplier periods consistent across metrics and actions |
 | RQ405 | DONE | supplier-decision-localization | Finish Serbian terminology on supplier decision surfaces and backend-safe messages |
+| RQ406 | WAITING | supplier-assortment-truncated-derived-metrics | Prevent truncated article detail from producing authoritative Supplier Footwear type insights |
+| RQ407 | WAITING | operations-cross-screen-reconciliation | Prove the eight Operacije routes against one deterministic source and expected-output manifest |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -22440,3 +22444,132 @@ User-facing copy and existing mappings only; do not rename API reason codes, SQL
 - Follow-up: no next prompt was promoted in this run; follow the canonical router for the next safe prompt.
 - Residual risk: remote CI, live data and real-browser export rendering remain uninspected; existing compiler and bundle-size warnings remain.
 - Prompt defect / scope repair: the backend test expected the technical `30d` token after the user-facing message was localized to `30 dana`; the focused assertion was corrected. The guardrail baseline received only mechanical line-shift updates from scoped helper additions; no semantic suppression was added.
+
+---
+
+## RQ406 - Prevent truncated Supplier Footwear detail from driving authoritative type insights
+
+Status: WAITING
+Ready after: `RQ386` is DONE; coordinate with `RQ374` and `RQ380` before promotion
+Priority: P1
+Type: frontend/backend/contract/tests
+Feature family: supplier-assortment-truncated-derived-metrics
+Parallel-safe: no
+Owner: Supplier Analytics Frontend + Backend
+Commit suggestion: `fix(analytics): guard supplier assortment insights against truncated detail`
+
+### Problem
+
+`/api/analytics/vendor-sales-nivelacija` computes totals and category/vendor aggregates from the full canonical cohort but returns `articleStats.Take(maxRows)` (default `5000`). `SupplierFootwearAnalyticsPage` currently builds the global type-concentration chart, dominant type, per-vendor top type share and average elasticity from `articleStats`. When `dataQuality.isDetailTruncated` is true, those values can describe only the first returned rows while the UI still renders them as current-filter insights. A generic warning is not a sufficient denominator or accuracy contract.
+
+### Evidence
+
+- `Api/Endpoints/AllEndpoints.cs` — full `analyzed` cohort, `articleStats = analyzed.Take(maxRows)`, full-cohort totals/category aggregates and `DataQuality.ReturnedRows/TruncatedRows/IsDetailTruncated`.
+- `Api/Models/VendorSalesNivelacijaModels.cs` — truncation and cohort metadata contract.
+- `Klijent/clientapp/src/pages/SupplierFootwearAnalyticsPage.tsx` — `buildTypeInsights` consumes `articleStats` for dominant/type concentration and elasticity projections.
+- `Klijent/clientapp/src/utils/vendorSalesDataQuality.ts` — current completeness projection does not make detail truncation explicit for these derived projections.
+- `Klijent/clientapp/src/services/vendorSalesNivelacijaApi.ts` and `Klijent/clientapp/src/validation/analyticsResponseSchemas.ts` — client contract and runtime validation.
+
+### Scope
+
+Make Supplier Footwear type insights authoritative only when their denominator is complete. Prefer a backend full-cohort aggregate contract for every displayed type insight; otherwise preserve the existing full-cohort totals and render the affected type/elasticity values as unavailable or explicitly partial. Do not increase `maxRows` as the only fix, do not let the frontend reconstruct decision metrics from a truncated detail array, and do not weaken the existing recommendation/trust gate.
+
+### Read first
+
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` entries `RQ374`, `RQ380` and `RQ386`
+- the evidence files above
+
+### Do
+
+1. Define which type concentration and elasticity fields are full-cohort authoritative metrics and expose them from the backend or mark them unavailable when the returned detail is truncated.
+2. Ensure `dominantTypeSummary`, the global type chart, vendor-row type share, detail drawer and any export/snapshot projection use the same complete denominator and provenance.
+3. Show the returned/analyzed denominator and a clear partial-detail state when `ReturnedRows < AnalyzedRows`; never show a truncated type share as an exact current-filter share.
+4. Keep recommendation status, `recommendationAllowed`, comparable-cohort semantics and existing empty/error/degraded states unchanged unless the evidence is insufficient, in which case fail closed.
+
+### Tests
+
+- Backend contract/integration fixture with more rows than `maxRows`, where the first returned rows have a different top category from the full cohort; assert totals and type aggregates use the full cohort.
+- Frontend page test with `isDetailTruncated=true` and non-empty `articleStats`; assert no authoritative dominant/type share/elasticity is derived from the partial array and the denominator warning is visible.
+- Complete-detail regression with `isDetailTruncated=false`; assert the displayed type insights match the full-cohort expected values.
+- Runtime schema test for the new or existing aggregate/truncation fields and a regression that export/detail cannot silently reintroduce the partial projection.
+
+### Acceptance
+
+- No Supplier Footwear type concentration, dominant type, vendor type share or elasticity value is presented as exact when its evidence is truncated or incomplete.
+- When a value is shown, its backend-owned numerator, denominator, cohort and requested/effective period are traceable and consistent across KPI, chart, table, detail and export.
+- A fixture that exceeds the detail limit fails before the fix and passes only with an explicit full-cohort or unavailable/partial result after the fix.
+
+### Dependencies
+
+- `RQ386` DONE for canonical cohort/denominator metadata.
+- Coordinate with `RQ374` and `RQ380`; do not duplicate their generic Supplier detail-trust or Supplier Sales aggregate work.
+- Keep this prompt limited to the Supplier Footwear assortment route reached from Operacije; unrelated supplier decision surfaces remain with their existing owners.
+
+---
+
+## RQ407 - Prove the eight Operacije routes against one deterministic source and expected-output manifest
+
+Status: WAITING
+Ready after: `RQ114` is DONE; promote only after the owner confirms the shared fixture can cover the named Operations families
+Priority: P1
+Type: backend/frontend/tests/docs
+Feature family: operations-cross-screen-reconciliation
+Parallel-safe: no
+Owner: Analytics Backend + Frontend + QA/Test Infrastructure
+Commit suggestion: `test(analytics): reconcile Operacije screen families against one proof pack`
+
+### Problem
+
+The Operacije menu has eight route targets, but the current proof is split between route smoke tests, page/component tests, endpoint contracts and several opt-in integration fixtures. There is no single deterministic assertion that one known set of sales lines, returns/corrections, price events, inventory rows, unknown dimensions, costs and data-origin/store scopes produces the expected results across Inventory, Supplier Sales, Shoe Type, Daily Sales, Pre/Post Nivelacija, Color, Pre-Nivelacija and Supplier Footwear. Therefore route availability and individual contracts are partly proven, while cross-screen numerical correctness and scope/period consistency are not.
+
+### Evidence
+
+- `Klijent/clientapp/src/layout/navConfig.ts` and `Klijent/clientapp/src/routes/analyticsRouteDefinitions.ts` — the eight Operacije menu routes.
+- `Klijent/clientapp/src/App.tsx` and `Klijent/clientapp/src/pages/__tests__/AppAnalyticsRoutes.spec.tsx` — route/redirect coverage, not numeric reconciliation.
+- `docs/qa/ANALYTICS_PILOT_DETERMINISTIC_SEED_PACK_2026-08-24.md` and `Api.Tests/PilotAnalyticsSeedPack.cs` — reusable proof pack exists, but it does not yet cover all eight Operations families.
+- `Api.Tests/AnalyticsSupplierSalesIntegrationTests.cs` and `Api.Tests/AnalyticsShoeTypeSalesIntegrationTests.cs` — several supplier/shoe integration checks return immediately unless `TRENDPLUS_RUN_INTEGRATION_TESTS=true`.
+- `Klijent/clientapp/src/pages/InventoryPage.tsx` and `Klijent/clientapp/src/services/analyticsApi.ts` — Inventory invokes balance/list/insights/store/action plus forecast/alerts/rebalance with different period/scope contracts; the existing ownership is `RQ371`/`RQ372`.
+- Existing queue ownership: `RQ371`/`RQ372`, `RQ373`/`RQ374`, `RQ378`-`RQ380`, `RQ381`-`RQ384`, `RQ385`-`RQ400`.
+
+### Scope
+
+Extend the existing `pilot-analytics-proof-pack-v1` with an Operations-specific deterministic fixture and expected-output manifest, then add focused endpoint/page projection reconciliation for all eight routes. The proof must compare authoritative backend totals and metadata with table/chart/detail/export projections without requiring every screen to expose the same metric. Do not replace existing owner prompts or turn this into a general test-framework refactor.
+
+### Read first
+
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`
+- `docs/qa/ANALYTICS_PILOT_DETERMINISTIC_SEED_PACK_2026-08-24.md`
+- the current queue entries listed in Evidence
+
+### Do
+
+1. Add one named Operations fixture/manifest covering at least: positive sale, return or correction, price-change event with pre/post window, missing cost, unknown supplier/type/color, multiple stores, `all`/`existing`/`imported` data scopes, daily shift and off-shift evidence, and inventory stock/alert facts.
+2. Define expected authoritative outputs once for the fixture: signed quantity/revenue, supplier/type/color totals and shares, daily shift reconciliation, comparable pre/post denominators, Pre-Nivelacija candidate/KPI population and scoped inventory population/alerts.
+3. Exercise all eight menu routes and their canonical supplier redirects with the same requested period/store/scope matrix; assert requested/effective/observed period, freshness, data quality, empty/error/degraded and recommendation gates are preserved.
+4. Assert valid zero, empty success, unavailable/error and partial data remain distinct. A missing live dependency or unavailable fixture must be reported as skipped/unavailable with evidence, not silently treated as a passing numeric proof.
+5. Reuse `pilot-analytics-proof-pack-v1` helpers and add only the smallest Operations-specific host/page adapters. Record any known owner-prompt failures as expected red tests or explicit dependencies; do not mask them in the fixture.
+
+### Tests
+
+- Focused deterministic seed/manifest tests for the new Operations fixture.
+- Backend endpoint integration tests for all eight route families, including all three data scopes where supported and invalid-period/empty/error cases.
+- Frontend service/page projection tests for KPI, chart/table, detail and export/report metadata parity on the same fixture.
+- Route smoke test confirming the two supplier menu entries reach the intended canonical overview/assortment pages.
+- Run the required queue, planning, instruction and `git diff --check` validators; record any Docker/live-DB/remote-CI limitation explicitly.
+
+### Acceptance
+
+- One committed manifest names the Operations fixture, authoritative source rows, expected outputs and allowed empty/degraded states for all eight menu routes.
+- The same seeded facts reconcile across every applicable backend endpoint and frontend projection; any intentional semantic difference has an explicit denominator/period/scope explanation.
+- The proof is executable in the supported integration environment and cannot pass by silently returning from the supplier/shoe integration tests or by converting unavailable data into zero.
+- The resulting evidence clearly separates what is proven by deterministic integration, what is proven only by contract/unit tests and what still requires live/deployed verification.
+
+### Dependencies
+
+- `RQ114` DONE; reuse its deterministic proof-pack owner and manifest conventions.
+- Coordinate with, but do not replace, `RQ371`/`RQ372`, `RQ373`/`RQ374`, `RQ378`-`RQ380`, `RQ381`-`RQ384` and `RQ385`-`RQ406`.
+- Do not promote this prompt to READY until the owner confirms collision-safe test-host scope and the current no-READY routing state is intentionally changed.
