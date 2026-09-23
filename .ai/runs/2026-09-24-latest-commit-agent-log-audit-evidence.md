@@ -4,9 +4,9 @@ Date: 2026-09-24
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct delivery
-Main commit SHA: bd4fca7c
-Main verification: pending - implementation is local and will be pushed after final focused validation
-Evidence state: pending
+Main commit SHA: 3b526c76
+Main verification: passed - current origin/main contains 3b526c76 after push; the consumed local branch was deleted after its valid changes were incorporated
+Evidence state: synchronized
 
 ## What was done
 - Reviewed the latest `main` commits, the RQ406/RQ407 run logs, queue/roadmap delivery notes and local branch inventory.
@@ -24,6 +24,7 @@ Evidence state: pending
 - `dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~VendorSalesNivelacijaEndpointFailsClosedForMissingComparabilityEvidence --no-restore -v:q` -> pass, 1/1.
 - `dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~SupplierDecisionSchemaSqlTests --no-build -v:q` -> pass, 36/36.
 - Local branch review confirmed the unmerged branch contained only the Pre/Post test commit; its valid changes were incorporated and its duplicate/stale assertion was removed.
+- `git ls-remote --heads origin codex/rq291-local-duplicate` -> no remote branch; local `codex/rq291-local-duplicate` was deleted after incorporation.
 
 ## Validation not run
 - Full backend/frontend suites and remote CI -> not run; this was a focused test-maintenance repair.
@@ -43,4 +44,4 @@ Evidence state: pending
 - The merged Pre/Post additions are frontend test coverage only; no production behavior was changed.
 
 ## Next
-- Push the focused audit repair to `main`, verify the implementation SHA is present on `origin/main`, then delete only the now-consumed local `codex/rq291-local-duplicate` branch.
+- No further local branch cleanup is justified; unrelated remote branches were retained because shared ownership and retention purpose are not proven.
