@@ -65,10 +65,15 @@ function buildInsights(): InventoryInsights {
         naziv: "Model A",
         supplierName: "Dobavljač A",
         storeName: "Prodavnica 1",
+        supplierId: 1,
+        storeId: 1,
         quantity: 0,
         minimum: 5,
         reorderGap: 5,
         estimatedValue: 100,
+        unitCost: null,
+        costSource: "missing",
+        costMissing: true,
         daysSinceMovement: 120,
         agingBucket: "90+",
         agingLabel: "90+",
@@ -145,7 +150,7 @@ describe("InventoryInsightPanels", () => {
     expect(screen.getByText("replenish_needed")).toBeInTheDocument();
   });
 
-  it("keeps insight detail unit cost unavailable when it cannot be derived", () => {
+  it("keeps insight detail unit cost unavailable when backend cost evidence is missing", () => {
     const onOpenDetail = vi.fn();
 
     render(
@@ -164,9 +169,18 @@ describe("InventoryInsightPanels", () => {
     expect(onOpenDetail).toHaveBeenCalledWith(expect.objectContaining({ unitCost: null, nabavnaCena: null }));
   });
 
-  it("derives insight detail unit cost only from positive measured value and quantity", () => {
+  it("uses backend unit cost and identity instead of deriving or name-matching them", () => {
     const insights = buildInsights();
-    insights.topAgedItems[0] = { ...insights.topAgedItems[0], quantity: 10, estimatedValue: 2500 };
+    insights.topAgedItems[0] = {
+      ...insights.topAgedItems[0],
+      quantity: 10,
+      estimatedValue: 2500,
+      unitCost: 250,
+      costSource: "article_master",
+      costMissing: false,
+      storeId: 2,
+      supplierId: 2,
+    };
     const onOpenDetail = vi.fn();
 
     render(
@@ -175,13 +189,18 @@ describe("InventoryInsightPanels", () => {
         insightsLoading={false}
         stores={[]}
         suppliers={[]}
-        rows={[]}
+        rows={[{ ...baseRow, idObjekat: 2, idDobavljac: 1, unitCost: 999, nabavnaCena: 999 }]}
         onOpenDetail={onOpenDetail}
       />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: /Model A/ }));
 
-    expect(onOpenDetail).toHaveBeenCalledWith(expect.objectContaining({ unitCost: 250, nabavnaCena: 250 }));
+    expect(onOpenDetail).toHaveBeenCalledWith(expect.objectContaining({
+      idObjekat: 2,
+      idDobavljac: 2,
+      unitCost: 250,
+      nabavnaCena: 250,
+    }));
   });
 });

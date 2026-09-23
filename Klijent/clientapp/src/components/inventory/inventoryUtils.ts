@@ -15,6 +15,8 @@ type InventoryListItemWithSignals = InventoryListItem & {
   dataQualityStatus?: string | null;
   reasonCodes?: string[] | null;
   contextStatus?: "loadingContext" | "contextMissing" | null;
+  supplierName?: string | null;
+  storeName?: string | null;
 };
 
 export const WEEKDAY_OPTIONS = [
@@ -287,8 +289,12 @@ export function buildInventoryRow(item: InventoryListItemWithSignals, stores: St
     item.minimalnaKolicina == null || !Number.isFinite(item.minimalnaKolicina)
       ? null
       : item.minimalnaKolicina;
-  const supplierName = suppliers.find((entry) => entry.supplierId === item.idDobavljac)?.supplierName ?? (item.idDobavljac != null ? `Dobavljac #${item.idDobavljac}` : "Nerasporedjen");
-  const storeName = stores.find((entry) => entry.storeId === item.idObjekat)?.storeName ?? (item.idObjekat != null ? `Objekat #${item.idObjekat}` : "Sve lokacije");
+  const supplierName = suppliers.find((entry) => entry.supplierId === item.idDobavljac)?.supplierName
+    ?? item.supplierName
+    ?? (item.idDobavljac != null ? `Dobavljac #${item.idDobavljac}` : "Nerasporedjen");
+  const storeName = stores.find((entry) => entry.storeId === item.idObjekat)?.storeName
+    ?? item.storeName
+    ?? (item.idObjekat != null ? `Objekat #${item.idObjekat}` : "Sve lokacije");
   const unitCost = item.nabavnaCena ?? null;
   // Missing cost + missing backend estimate must stay unknown (not fake zero capital),
   // except when on-hand quantity is already a measured zero (true zero capital).
@@ -351,10 +357,12 @@ export function buildRowFromInsightItem(item: InventoryInsightItem, stores: Stor
     naziv: item.naziv,
     kolicina: item.quantity,
     minimalnaKolicina: item.minimum,
-    nabavnaCena: item.estimatedValue > 0 && item.quantity > 0 ? item.estimatedValue / item.quantity : null,
+    nabavnaCena: item.unitCost,
     estimatedValue: item.estimatedValue,
-    idObjekat: stores.find((store) => store.storeName === item.storeName)?.storeId ?? null,
-    idDobavljac: suppliers.find((supplier) => supplier.supplierName === item.supplierName)?.supplierId ?? null,
+    idObjekat: item.storeId,
+    idDobavljac: item.supplierId,
+    supplierName: item.supplierName,
+    storeName: item.storeName,
     stockCoverDays: item.stockCoverDays ?? null,
     stockCoverStatus: item.stockCoverStatus,
     stockCoverStatusLabel: item.stockCoverStatusLabel,

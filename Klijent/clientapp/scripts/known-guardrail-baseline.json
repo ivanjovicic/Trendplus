@@ -251,7 +251,7 @@
     {
       "file": "src/components/inventory/inventoryUtils.ts",
       "rule": "fake_zero_fallback",
-      "line": 533,
+      "line": 541,
       "reason": "Existing inventory utility fallback requires a reviewed unknown-value exception."
     },
     {

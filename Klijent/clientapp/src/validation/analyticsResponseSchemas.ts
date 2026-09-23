@@ -799,10 +799,15 @@ export const inventoryPagedResponseSchema = z.object({
 
 const inventoryInsightItemSchema = z.object({
   id: nonNegativeInteger,
+  storeId: z.number().int().nonnegative().nullable(),
+  supplierId: z.number().int().nonnegative().nullable(),
   quantity: nonNegativeNumber,
   minimum: nonNegativeNumber,
   reorderGap: finiteNumber,
   estimatedValue: nullableNumber,
+  unitCost: nullableNumber,
+  costSource: z.string(),
+  costMissing: z.boolean(),
   daysSinceMovement: nonNegativeNumber,
   sellThroughRatio: nullableNonNegativePercentage.optional(),
   signalConfidencePct: nonNegativePercentage,

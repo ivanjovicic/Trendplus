@@ -118,6 +118,11 @@ public sealed class InventoryListEndpointIntegrationTests
 
         var topAged = Assert.Single(root.GetProperty("topAgedItems").EnumerateArray().ToArray());
         Assert.Equal(101, topAged.GetProperty("id").GetInt32());
+        Assert.Equal(1, topAged.GetProperty("storeId").GetInt32());
+        Assert.Equal(1, topAged.GetProperty("supplierId").GetInt32());
+        Assert.Equal(100m, topAged.GetProperty("unitCost").GetDecimal());
+        Assert.Equal("article_master", topAged.GetProperty("costSource").GetString());
+        Assert.False(topAged.GetProperty("costMissing").GetBoolean());
         Assert.Equal(InventorySignalCalculator.StockCoverOutOfStockRisk, topAged.GetProperty("stockCoverStatus").GetString());
         Assert.Equal(InventorySignalCalculator.SellThroughInsufficientData, topAged.GetProperty("sellThroughStatus").GetString());
         Assert.False(topAged.GetProperty("recommendationAllowed").GetBoolean());
@@ -126,11 +131,51 @@ public sealed class InventoryListEndpointIntegrationTests
 
         var topCapital = Assert.Single(root.GetProperty("topCapitalLockedItems").EnumerateArray().ToArray());
         Assert.Equal(101, topCapital.GetProperty("id").GetInt32());
+        Assert.Equal(1, topCapital.GetProperty("storeId").GetInt32());
+        Assert.Equal(1, topCapital.GetProperty("supplierId").GetInt32());
+        Assert.Equal(100m, topCapital.GetProperty("unitCost").GetDecimal());
+        Assert.Equal("article_master", topCapital.GetProperty("costSource").GetString());
+        Assert.False(topCapital.GetProperty("costMissing").GetBoolean());
         Assert.Equal(InventorySignalCalculator.StockCoverOutOfStockRisk, topCapital.GetProperty("stockCoverStatus").GetString());
         Assert.Equal(InventorySignalCalculator.SellThroughInsufficientData, topCapital.GetProperty("sellThroughStatus").GetString());
         Assert.False(topCapital.GetProperty("recommendationAllowed").GetBoolean());
         Assert.Equal(JsonValueKind.Null, topCapital.GetProperty("sellThroughRatio").ValueKind);
         Assert.InRange(topCapital.GetProperty("signalConfidencePct").GetDecimal(), 35m, 45m);
+    }
+
+    [Fact]
+    public async Task InventoryInsights_PreservesIdentityAndMissingCostForPositiveQuantity()
+    {
+        await using var factory = CreateFactory();
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
+            db.Artikli.Add(new Artikli
+            {
+                Id = 107,
+                PLU = "MISSING-107",
+                Naziv = "Missing cost article",
+                IDObjekat = 2,
+                IDDobavljac = 2,
+                Kolicina = 3,
+                MinimalnaKolicina = 1,
+                NabavnaCena = null,
+                DataOrigin = "existing",
+                UpdatedAt = DateTime.UtcNow.AddDays(-120)
+            });
+            db.SaveChanges();
+        }
+
+        var root = await GetJsonAsync(factory, "/api/analytics/inventory/insights?search=MISSING-107");
+        var topAged = Assert.Single(root.GetProperty("topAgedItems").EnumerateArray().ToArray());
+
+        Assert.Equal(107, topAged.GetProperty("id").GetInt32());
+        Assert.Equal(2, topAged.GetProperty("storeId").GetInt32());
+        Assert.Equal(2, topAged.GetProperty("supplierId").GetInt32());
+        Assert.Equal(JsonValueKind.Null, topAged.GetProperty("estimatedValue").ValueKind);
+        Assert.Equal(JsonValueKind.Null, topAged.GetProperty("unitCost").ValueKind);
+        Assert.Equal("missing", topAged.GetProperty("costSource").GetString());
+        Assert.True(topAged.GetProperty("costMissing").GetBoolean());
     }
 
     [Fact]

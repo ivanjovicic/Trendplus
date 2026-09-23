@@ -1356,10 +1356,15 @@ export interface InventoryInsightItem {
   naziv: string;
   supplierName?: string | null;
   storeName?: string | null;
+  supplierId: number | null;
+  storeId: number | null;
   quantity: number;
   minimum: number;
   reorderGap: number;
-  estimatedValue: number;
+  estimatedValue: number | null;
+  unitCost: number | null;
+  costSource: string;
+  costMissing: boolean;
   daysSinceMovement: number;
   agingBucket: string;
   agingLabel: string;
