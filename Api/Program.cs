@@ -304,6 +304,7 @@ try
                 tunedDefaultConnection,
                 npgsql =>
                 {
+                    npgsql.UseVector();
                     npgsql.CommandTimeout(dbCommandTimeoutSeconds);
                     if (enableEfRetryOnFailure)
                     {
@@ -317,6 +318,7 @@ try
                 tunedDefaultConnection,
                 npgsql =>
                 {
+                    npgsql.UseVector();
                     npgsql.CommandTimeout(dbCommandTimeoutSeconds);
                     if (enableEfRetryOnFailure)
                     {
