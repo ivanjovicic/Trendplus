@@ -134,17 +134,20 @@ Several pages can be individually correct according to their own implementation 
 
 Correctness therefore requires an independent oracle plus cross-screen invariants, not more UI snapshots.
 
-## New queue prompts
+## Queue integration and deconfliction
 
-Created `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md` with:
+A concurrent canonical Operacije audit landed on `main` during this analysis and already created:
 
-- `RQ406` P0 — immutable/provenance-bearing supplier and shoe-type attribution for historical sale lines;
-- `RQ407` P0 — independent raw-fact reconciliation for Supplier and Shoe Type;
-- `RQ408` P1 — executable Operacije cross-screen invariant/lineage matrix;
-- `RQ409` P1 — mandatory non-false-green PostgreSQL truth proof and evidence gate;
-- `RQ410` P1 — continuous drift/cache/freshness reconciliation guardrails.
+- `RQ406` — prevent Supplier Footwear dominant-type/type-share/elasticity metrics from being presented as authoritative when `articleStats` is truncated;
+- `RQ407` — deterministic expected-output proof pack/reconciliation for all eight Operacije routes, including explicit handling of integration tests that did not execute.
 
-All new prompts are `WAITING`; none was claimed or promoted.
+Those canonical owners are preserved. The separate addendum `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md` now contains only new non-duplicative follow-ups:
+
+- `RQ411` P0 — immutable/provenance-bearing supplier and shoe-type attribution for historical sale lines;
+- `RQ412` P0 — implementation-independent raw-fact oracle for Supplier/Shoe Type, extending rather than duplicating RQ407;
+- `RQ413` P1 — continuous drift/cache/freshness reconciliation guardrails.
+
+All are `WAITING`; none was claimed or promoted.
 
 ## Validation performed
 
@@ -171,8 +174,11 @@ These are intentionally converted into executable queue acceptance work instead 
 
 ## Delivery
 
-Queue addendum commit: `2f1d19f0dcabc4e6fc6debe05adbb1f270b7d8dd`.
+- Canonical concurrent Operacije queue/audit owner: `7a3330044e610c133ed99634e2a7017e2da31e91` plus synchronized evidence follow-ups.
+- Initial addendum commit: `2f1d19f0dcabc4e6fc6debe05adbb1f270b7d8dd`.
+- Deconflicted addendum commit: `6917fb09dafb6c70b30a520cbcf9cc1a5c792013`.
+- Roadmap synchronization is recorded separately on `main`.
 
 ## Residual risk
 
-Until RQ406/RQ407 are implemented, Supplier/Shoe Type historical dimension classification can remain semantically unstable or only current-master-based, even when endpoint tests are green. Until RQ409 exists, a green integration test count is not sufficient evidence that all database-backed truth checks actually executed.
+Until RQ411/RQ412 are implemented, Supplier/Shoe Type historical dimension classification can remain semantically unstable or current-master-based, and their numerical truth is not independently reconciled to raw facts. Canonical RQ407 owns the deterministic eight-screen proof and must explicitly distinguish executed database proof from tests that were skipped/not run. RQ413 is the durability layer after those proofs.
