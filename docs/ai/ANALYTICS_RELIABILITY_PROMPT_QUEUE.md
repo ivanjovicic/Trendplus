@@ -1,8 +1,12 @@
 # Analytics Reliability Prompt Queue
 
-Date: 2026-09-22
+Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none; RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE.
+Current READY prompt: none; RQ172, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE.
+
+Routing correction 2026-09-23: `RQ172` was already `READY` and dependency-complete, but the current-ready pointer was stale at `none`; the pointer was repaired before claim after collision and ownership checks.
+Owner claim 2026-09-23: `RQ172` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ172-codex.lock.md`.
+Owner completion 2026-09-23: `RQ172` was delivered directly to `main` in `c9331e8cd0c8e4ac5b7eb956104777bba60854ad`; similarity queries now use typed `Pgvector.Vector` parameters, Trendplus runtime registrations enable `UseVector()`, and deterministic pgvector integration coverage is in place. Run log: `.ai/runs/2026-09-23-RQ172-evidence.md`. Evidence state: synchronized. The integration fixture was not executable locally because Docker Desktop was unavailable; CI remains the execution follow-up.
 
 Owner completion 2026-09-22: under the user's direct last-commits audit, `RQ393` was delivered directly to `main` in `3b635fe813e0e55f843236d55025c52c030e853d`; Color recommendations now use a covered-revenue-weighted margin baseline, unknown-share evidence remains nullable, historical/fallback/no-cost coverage is separated, and the affected screens use Serbian decision labels. Run log: `.ai/runs/2026-09-22-direct-last-commits-audit-evidence.md`.
 Owner promotion 2026-09-22: after `RQ393` reached DONE and `RQ389`/`RQ392`/`RQ393` comparable-cohort dependencies were verified on current `main`, `RQ394` moved `WAITING -> READY` as the next dependency-complete P1 Color aggregate-cohort prompt; collision checks are clear.
@@ -7642,7 +7646,7 @@ Repository contains a frontend TODO to add GMROI when the backend exposes a stab
 
 ## RQ172 - Hardening embedding parameterization and DB binding for similarity queries
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1
 Type: backend/security/tests
 Feature family: embedding-service-hardening
@@ -7686,6 +7690,24 @@ Embedding code currently serializes embedding arrays into a string and binds the
 ### Dependencies
 
 - Coordination with DB/infra team for pgvector parameterization guidance.
+
+### Completion note
+
+- Date: 2026-09-23
+- Status: DONE
+- Completion: typed pgvector binding and production mock-selection guard verification delivered
+- Changed files: `Infrastructure/Services/EmbeddingService.cs`, `Api/Program.cs`, `Api.Tests/EmbeddingSimilarityPgvectorIntegrationTests.cs`
+- Checks run: focused policy/integration test command 7/7; API.Tests build; agent-instruction, prompt-queue and planning validators; `git diff --check`; fresh `origin/main` SHA verification
+- Checks not run: Docker-backed pgvector execution locally because Docker Desktop Linux engine was unavailable; remote CI was not inspected
+- Run log: `.ai/runs/2026-09-23-RQ172-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `c9331e8cd0c8e4ac5b7eb956104777bba60854ad`
+- Main verification: fresh `origin/main` equals the implementation SHA and contains it as an ancestor
+- Missed: upload-endpoint embedding persistence remains a separate contract and was not expanded into RQ172
+- Follow-up: execute the pgvector integration fixture on a Docker-enabled CI/validation runner; no next queue prompt
+- Residual risk: actual database execution is deferred to a Docker-enabled runner
+- Prompt defect / scope repair: repaired stale `Current READY prompt: none` pointer before claim; RQ172 was already READY and dependency-complete
 
 ---
 
