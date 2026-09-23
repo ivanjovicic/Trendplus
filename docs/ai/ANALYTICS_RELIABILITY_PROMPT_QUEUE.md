@@ -2,7 +2,7 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ407; RQ172, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ398, RQ399, RQ400, RQ401, RQ402, RQ403, RQ404, RQ405 and RQ406 are DONE. RQ407 is IN_PROGRESS; RQ408 remains WAITING.
+Current READY prompt: none; RQ172, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ398, RQ399, RQ400, RQ401, RQ402, RQ403, RQ404, RQ405 and RQ406 are DONE. RQ407 is BLOCKED; RQ408 remains WAITING.
 
 Owner audit 2026-09-23: under the user's direct Operacije menu data-flow audit, RQ406 was added for Supplier Footwear derived metrics over truncated article detail, RQ407 was added for deterministic cross-screen reconciliation across all eight Operacije routes, and RQ408 was added as a second-pass finding catalogue/decomposition prompt. No prompt was promoted; the current READY pointer remains `none`.
 
@@ -11,6 +11,7 @@ Owner claim 2026-09-23: `RQ406` transitioned `READY -> IN_PROGRESS` in this work
 Owner completion 2026-09-23: `RQ406` was delivered directly to `main` in `fe4bd70d032b0f7735a933ccdf8e4bbf4d0d6515`; Supplier Footwear type insights now use backend full-comparable-cohort aggregates with explicit source/denominator metadata, while truncated detail cannot produce authoritative type shares or elasticity. Run log: `.ai/runs/2026-09-23-RQ406-evidence.md`. Evidence state: synchronized. Main verification: current `origin/main` contains the implementation SHA; the evidence-closure commit is `c2511262`. RQ374/RQ380 remain separate Supplier Sales owners; RQ407/RQ408 remain WAITING.
 Owner promotion 2026-09-23: `RQ114` is DONE and the owner confirmed that `pilot-analytics-proof-pack-v1` is a reusable deterministic host for the named Operations families; `RQ407` moved `WAITING -> READY` as the bounded eight-route reconciliation extension. It must extend, not replace, existing route owners or silently treat unavailable live dependencies as passing proof. `RQ408` remains WAITING.
 Owner claim 2026-09-23: `RQ407` transitioned `READY -> IN_PROGRESS` in this workspace after dependency, owner-boundary and collision checks; local runtime lock `.ai/task-locks/RQ407-codex.lock.md`.
+Owner block 2026-09-24: `RQ407` delivered the deterministic `operations-analytics-v1` fixture/manifest and executable arithmetic/route proof to `main` at `3a24d96136e690de03c3d10565cb6d64c6c17a99`. Focused proof passes, and Supplier Sales/Shoe Type live tests now report explicit skips when the integration dependency is absent. The required eight-route backend endpoint and frontend projection reconciliation remains unproven because the live/deterministic endpoint host was unavailable; status is `BLOCKED`, not `DONE`. Run log: `.ai/runs/2026-09-24-RQ407-evidence.md`. Evidence state: synchronized. Main verification: freshly fetched `origin/main` exactly matches the implementation SHA. RQ408 remains WAITING.
 
 Routing repair 2026-09-23: aligned stale legacy status metadata: RQ190's detailed block now matches its table status `OBSOLETE`, and RQ303's table row now matches its recorded completion `DONE`. No WAITING prompt was promoted because the active queue has no dependency-complete READY candidate.
 
@@ -1473,7 +1474,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ404 | DONE | supplier-decision-effective-period-semantics | Make requested/effective supplier periods consistent across metrics and actions |
 | RQ405 | DONE | supplier-decision-localization | Finish Serbian terminology on supplier decision surfaces and backend-safe messages |
 | RQ406 | DONE | supplier-assortment-truncated-derived-metrics | Prevent truncated article detail from producing authoritative Supplier Footwear type insights |
-| RQ407 | IN_PROGRESS | operations-cross-screen-reconciliation | Prove the eight Operacije routes against one deterministic source and expected-output manifest |
+| RQ407 | BLOCKED | operations-cross-screen-reconciliation | Prove the eight Operacije routes against one deterministic source and expected-output manifest |
 | RQ408 | WAITING | operations-second-pass-finding-decomposition | Classify and decompose the second-pass Operacije bug/finding catalogue into precise follow-up prompts |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
@@ -22523,7 +22524,7 @@ Completion 2026-09-23: backend full-cohort type aggregates, vendor type/elastici
 
 ## RQ407 - Prove the eight Operacije routes against one deterministic source and expected-output manifest
 
-Status: IN_PROGRESS
+Status: BLOCKED
 Ready after: `RQ114` is DONE; promote only after the owner confirms the shared fixture can cover the named Operations families
 Priority: P1
 Type: backend/frontend/tests/docs
@@ -22585,6 +22586,24 @@ Extend the existing `pilot-analytics-proof-pack-v1` with an Operations-specific 
 - `RQ114` DONE; reuse its deterministic proof-pack owner and manifest conventions.
 - Coordinate with, but do not replace, `RQ371`/`RQ372`, `RQ373`/`RQ374`, `RQ378`-`RQ380`, `RQ381`-`RQ384` and `RQ385`-`RQ406`.
 - Do not promote this prompt to READY until the owner confirms collision-safe test-host scope and the current no-READY routing state is intentionally changed.
+
+### Completion note
+
+- Date: 2026-09-24
+- Status: BLOCKED
+- Completion: deterministic Operations fixture/manifest and focused arithmetic/route proof delivered; production endpoint/page reconciliation remains incomplete.
+- Changed files: `Api.Tests/AnalyticsShoeTypeSalesIntegrationTests.cs`; `Api.Tests/AnalyticsSupplierSalesIntegrationTests.cs`; `Api.Tests/OperationsAnalyticsProofPackTests.cs`; `Api.Tests/OperationsIntegrationFactAttribute.cs`; `Api.Tests/PilotAnalyticsSeedPack.cs`; `MASTER_ROADMAP.md`; this queue; `docs/qa/ANALYTICS_PILOT_DETERMINISTIC_SEED_PACK_2026-08-24.md`; `.ai/runs/2026-09-24-RQ407-evidence.md`.
+- Checks run: Operations proof 6/6; route/nav/redirect tests 25/25; Supplier live suite 1 passed/14 skipped; Shoe Type live suite 1 passed/11 skipped; queue/planning/instruction validators pass; fresh `origin/main` matches `3a24d96136e690de03c3d10565cb6d64c6c17a99`.
+- Checks not run: live/deployed eight-route endpoint reconciliation and frontend projection parity because the required integration host/dependency is unavailable; full suite and remote CI were not required for this bounded delivery.
+- Run log: `.ai/runs/2026-09-24-RQ407-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `3a24d96136e690de03c3d10565cb6d64c6c17a99`
+- Main verification: freshly fetched `origin/main` exactly matches the implementation SHA.
+- Missed: actual backend totals/meta and frontend KPI/chart/table/detail/export projections for all eight routes are not yet reconciled against the fixture.
+- Follow-up: Analytics Backend + Frontend + QA/Test Infrastructure to enable the supported integration environment and add the bounded endpoint/page adapters; RQ408 stays WAITING.
+- Residual risk: the manifest proves expected arithmetic and routing metadata, not production endpoint correctness.
+- Prompt defect / scope repair: live dependency was unavailable; supplier/shoe tests were changed from silent early returns to discovery-time explicit skips, and in-memory invalid-period tests remain runnable.
 
 ---
 
