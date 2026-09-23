@@ -2,8 +2,8 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ417
-Main RQ current READY prompt: RQ417 (inventory size-alert identity)
+Current READY prompt: none
+Main RQ current READY prompt: none
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -41,7 +41,7 @@ All prompts below are `WAITING`. Do not claim or auto-promote them without depen
 | RQ414 | WAITING | P1 | inventory-sales-origin-parity | Keep Inventory list sell-through on the same data-origin population as article rows |
 | RQ415 | DONE | P2 | inventory-deterministic-pagination | Make Inventory list ordering stable under ties and concurrent changes |
 | RQ416 | IN_PROGRESS | P1 | inventory-insight-identity-provenance | Preserve store/supplier identity and cost provenance from Inventory insights to detail |
-| RQ417 | IN_PROGRESS | P1 | inventory-size-alert-identity | Preserve SKU, size and store context when an Inventory alert opens size curve |
+| RQ417 | DONE | P1 | inventory-size-alert-identity | Preserve SKU, size and store context when an Inventory alert opens size curve |
 | RQ418 | WAITING | P1 | inventory-action-dataset-idempotency | Prevent Inventory action deduplication from crossing period/scope/snapshot datasets |
 | RQ419 | WAITING | P1 | supplier-sales-scope-event-lineage | Reload Supplier Sales when global data scope changes and keep trust metadata aligned |
 | RQ420 | WAITING | P2 | supplier-sales-derived-projection-freshness | Prevent stale Supplier Sales derived shares and cost projections after total changes |
@@ -527,7 +527,7 @@ Completion 2026-09-23:
 
 ## RQ417 - Inventory size alerts must retain size and store context
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: `RQ324` remains the size-curve error owner; this prompt owns only navigation identity
 Priority: P1
 Type: frontend/contract/tests
@@ -584,6 +584,21 @@ Do not change alert severity filtering or size-curve error copy.
 
 - Coordinate `RQ324`, `RQ372`, `RQ407` and size-curve backend owner.
 - If size/store filtering is not supported server-side, expose that limitation rather than displaying an unqualified curve.
+
+Completion 2026-09-23:
+
+- Date: 2026-09-23
+- Status: DONE
+- Completion: Inventory alert size-curve navigation now preserves SKU, store and nullable size identity through the callback, page state, API request, backend filter and cache key; aggregate alerts remain explicit when no size is present.
+- Changed files: `Api/Endpoints/CachedAnalyticsEndpoints.cs`, `Application/Analytics/Queries/GetInventorySizeCurve/GetInventorySizeCurveQuery.cs`, `Application/Analytics/Queries/GetInventorySizeCurve/GetInventorySizeCurveHandler.cs`, `Infrastructure/Services/Caching/IAnalyticsCacheService.cs`, `Api.Tests/InventorySnapshotContractTests.cs`, `Api.Tests/AnalyticsScreenCacheKeyContractTests.cs`, `Klijent/clientapp/src/components/inventory/InventoryAlertsFeed.tsx`, `Klijent/clientapp/src/components/inventory/InventoryAlertsFeed.spec.tsx`, `Klijent/clientapp/src/components/inventory/SizeCurvePanel.spec.tsx`, `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/services/analyticsApi.ts`, `Klijent/clientapp/src/services/__tests__/analyticsApi.contract.spec.ts`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, this queue, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-23-RQ417-evidence.md`.
+- Contract/runtime behavior changed: a size-specific alert cannot open another store, another size or an aggregate curve; the cache distinguishes size-specific and aggregate responses, and missing size remains nullable rather than guessed.
+- Checks run: focused frontend 15/15; focused backend 50/50; API build; frontend build; analytics guardrails; `git diff --check`; agent-instruction, prompt-queue and planning-architecture validators.
+- Checks not run: full repository suite, live provider/database deployment, browser proof and remote CI.
+- Run log: `.ai/runs/2026-09-23-RQ417-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `1e3b8898`
+- Main verification: `origin/main` contains `1e3b8898`
 
 ---
 
