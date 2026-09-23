@@ -86,6 +86,27 @@ public class AnalyticsSupplierSalesIntegrationTests : IClassFixture<WebApplicati
         Assert.True(supplierA.GetProperty("sharePct").GetDouble() > 0d);
     }
 
+    [Fact(DisplayName = "Supplier margin quality and uncovered revenue are explicit and non-negative")]
+    public async Task SupplierSalesStats_ExposesMarginQualityAndNonNegativeNoCost()
+    {
+        if (!_integrationEnabled) return;
+
+        var root = await GetJsonRootAsync("/api/analytics/supplier-sales-stats?sezonaId=1");
+        var suppliers = root.GetProperty("suppliers").EnumerateArray().ToList();
+        Assert.NotEmpty(suppliers);
+
+        foreach (var supplier in suppliers)
+        {
+            Assert.True(supplier.TryGetProperty("marginQualityTier", out var tier));
+            Assert.False(string.IsNullOrWhiteSpace(tier.GetString()));
+            Assert.True(supplier.TryGetProperty("marginQualityLabel", out var label));
+            Assert.False(string.IsNullOrWhiteSpace(label.GetString()));
+            Assert.True(supplier.GetProperty("noCostRevenue").GetDecimal() >= 0m);
+            var noCostCoverage = supplier.GetProperty("noCostCoveragePct");
+            Assert.True(noCostCoverage.ValueKind == JsonValueKind.Null || noCostCoverage.GetDouble() >= 0d);
+        }
+    }
+
     [Fact(DisplayName = "Data scope filters existing and imported rows")]
     public async Task SupplierSalesStats_DataScopeFiltersRows()
     {

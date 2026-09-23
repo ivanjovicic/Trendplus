@@ -17,6 +17,22 @@ public sealed class AnalyticsMarginPolicyTests
     }
 
     [Fact]
+    public void ResolveNoCostCoverage_DoesNotExposeNegativeRoundingResidue()
+    {
+        Assert.Equal(0m, AnalyticsMarginPolicy.ResolveNoCostRevenue(100m, 100.0001m));
+        Assert.Equal(0d, AnalyticsMarginPolicy.ResolveNoCostCoveragePct(100m, 100.0001m));
+    }
+
+    [Fact]
+    public void ResolveNoCostCoverage_DistinguishesFallbackCoveredRevenueFromUncoveredRevenue()
+    {
+        Assert.Equal(0m, AnalyticsMarginPolicy.ResolveNoCostRevenue(1_000m, 1_000m));
+        Assert.Equal(0d, AnalyticsMarginPolicy.ResolveNoCostCoveragePct(1_000m, 1_000m));
+        Assert.Equal(250m, AnalyticsMarginPolicy.ResolveNoCostRevenue(1_000m, 750m));
+        Assert.Equal(25d, AnalyticsMarginPolicy.ResolveNoCostCoveragePct(1_000m, 750m));
+    }
+
+    [Fact]
     public void ResolveUnitCost_FallsBackToRsdThenLegacy_AndIgnoresInvalidValues()
     {
         var resolvedFromRsd = AnalyticsMarginPolicy.ResolveUnitCost(

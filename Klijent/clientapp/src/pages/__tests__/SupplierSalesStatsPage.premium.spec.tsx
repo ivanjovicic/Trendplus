@@ -113,6 +113,15 @@ describe("SupplierSalesStatsPage premium controls", () => {
           fallbackCostCoveragePct: 0,
           marginPct: 40,
           totalCost: 6000,
+          historicalCostRevenue: 10000,
+          historicalCostCoveragePct: 100,
+          estimatedCostCoveragePct: 0,
+          noCostRevenue: 0,
+          noCostCoveragePct: 0,
+          marginQualityLabel: "Istorijski potvrđena",
+          marginQualityTier: "confirmed",
+          marginQualityShortLabel: "Potvrđena",
+          marginQualityTooltip: "Nabavna cena je preuzeta sa prodajne stavke za 100% prometa. Signal marže je pouzdan.",
           popRevenueChangePct: 25,
           popUnitsChangePct: 25,
           prePostNivelacijaRevenueImpactPct: null,
@@ -137,7 +146,7 @@ describe("SupplierSalesStatsPage premium controls", () => {
         marginPct: 40,
         missingCostRevenueSharePct: 0,
         unknownSupplierRevenueSharePct: 0,
-        marginQualityTier: "good",
+        marginQualityTier: "confirmed",
         isSnapshotActive: false,
         snapshotCostCoveragePct: null,
       },
@@ -183,6 +192,20 @@ describe("SupplierSalesStatsPage premium controls", () => {
     const toolbar = await screen.findByTestId("analytics-table-toolbar");
     expect(toolbar).toHaveTextContent("Dobavljača: N/A");
     expect(toolbar).not.toHaveTextContent("Dobavljača: 0");
+  });
+
+  it("renders confirmed margin quality without a false fallback caveat", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText("Alfa");
+    fireEvent.click(screen.getByRole("button", { name: "Detalji" }));
+
+    expect(await screen.findByText(/Istorijski potvrđena/)).toBeInTheDocument();
+    expect(screen.queryByText(/Deo marže \(0,0% prometa\)/i)).not.toBeInTheDocument();
   });
 
   it("forwards supplier trust lineage and effective period into the shared trust header", async () => {
@@ -519,6 +542,15 @@ describe("SupplierSalesStatsPage premium controls", () => {
           fallbackCostCoveragePct: 0,
           marginPct: 40,
           totalCost: 6000,
+          historicalCostRevenue: 10000,
+          historicalCostCoveragePct: 100,
+          estimatedCostCoveragePct: 0,
+          noCostRevenue: 0,
+          noCostCoveragePct: 0,
+          marginQualityLabel: "Istorijski potvrđena",
+          marginQualityTier: "confirmed",
+          marginQualityShortLabel: "Potvrđena",
+          marginQualityTooltip: "Nabavna cena je preuzeta sa prodajne stavke za 100% prometa. Signal marže je pouzdan.",
           popRevenueChangePct: 25,
           popUnitsChangePct: 25,
           prePostNivelacijaRevenueImpactPct: null,
@@ -543,7 +575,7 @@ describe("SupplierSalesStatsPage premium controls", () => {
         marginPct: 40,
         missingCostRevenueSharePct: 0,
         unknownSupplierRevenueSharePct: 0,
-        marginQualityTier: "good",
+        marginQualityTier: "confirmed",
         isSnapshotActive: false,
         snapshotCostCoveragePct: null,
       },

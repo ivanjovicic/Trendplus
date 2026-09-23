@@ -1550,10 +1550,8 @@ public static class AllEndpoints
                                     estimatedCostCoveragePct = typeMarginSnapshot.FallbackCostCoveragePct,
                                     snapshotCostRevenue = typeMarginSnapshot.SnapshotCostRevenue,
                                     snapshotCostCoveragePct = typeMarginSnapshot.SnapshotCostCoveragePct ?? 0d,
-                                    noCostRevenue = Math.Round(typeRevenue - typeMarginSnapshot.RevenueWithCost, 2),
-                                    noCostCoveragePct = typeRevenue > 0m
-                                        ? Math.Round((double)((typeRevenue - typeMarginSnapshot.RevenueWithCost) / typeRevenue * 100m), 2)
-                                        : (double?)null,
+                                    noCostRevenue = AnalyticsMarginPolicy.ResolveNoCostRevenue(typeRevenue, typeMarginSnapshot.RevenueWithCost),
+                                    noCostCoveragePct = AnalyticsMarginPolicy.ResolveNoCostCoveragePct(typeRevenue, typeMarginSnapshot.RevenueWithCost),
                                     marginQualityLabel = typeMarginQuality.Label,
                                     marginQualityTier = typeMarginQuality.Tier,
                                     marginQualityShortLabel = typeMarginQuality.ShortLabel,
@@ -1576,10 +1574,10 @@ public static class AllEndpoints
                             ukupnaKolicina = totalQty,
                             brojArtikalaSaNivelacijom = splitSnapshot.ArticleCountWithNivelacija,
                             brojArtikalaUkupno = articleIds.Count,
-                            revenueWithCost = marginSnapshot.HistoricalCostRevenue,
+                            revenueWithCost = marginSnapshot.RevenueWithCost,
                             estimatedCostRevenue = marginSnapshot.EstimatedCostRevenue,
                             marginContribution = marginSnapshot.MarginContribution,
-                            marginDataCoveragePct = marginSnapshot.HistoricalMarginCoveragePct,
+                            marginDataCoveragePct = marginSnapshot.MarginDataCoveragePct,
                             fallbackCostCoveragePct = marginSnapshot.FallbackCostCoveragePct,
                             marginPct = marginSnapshot.MarginPct,
                             // Cost quality breakdown
@@ -1589,16 +1587,13 @@ public static class AllEndpoints
                             estimatedCostCoveragePct = marginSnapshot.FallbackCostCoveragePct,
                             snapshotCostRevenue = marginSnapshot.SnapshotCostRevenue,
                             snapshotCostCoveragePct = marginSnapshot.SnapshotCostCoveragePct ?? 0d,
-                            noCostRevenue = Math.Round(totalRevenue - marginSnapshot.RevenueWithCost, 2),
-                            noCostCoveragePct = totalRevenue > 0m
-                                ? Math.Round((double)((totalRevenue - marginSnapshot.RevenueWithCost) / totalRevenue * 100m), 2)
-                                : (double?)null,
+                            noCostRevenue = AnalyticsMarginPolicy.ResolveNoCostRevenue(totalRevenue, marginSnapshot.RevenueWithCost),
+                            noCostCoveragePct = AnalyticsMarginPolicy.ResolveNoCostCoveragePct(totalRevenue, marginSnapshot.RevenueWithCost),
                             isEstimatedMargin = (marginSnapshot.FallbackCostCoveragePct ?? 0) > (marginSnapshot.HistoricalMarginCoveragePct ?? 0),
-                            marginQualityLabel = (marginSnapshot.HistoricalMarginCoveragePct ?? 0) >= 50
-                                ? (string?)null
-                                : (marginSnapshot.MarginDataCoveragePct ?? 0) > 0
-                                    ? "Procenjena iz troška artikla"
-                                    : "Trošak nedostupan",
+                            marginQualityLabel = marginQuality.Label,
+                            marginQualityTier = marginQuality.Tier,
+                            marginQualityShortLabel = marginQuality.ShortLabel,
+                            marginQualityTooltip = marginQuality.Tooltip,
                             revenueWithNivelacijaSplit = splitSnapshot.RevenueWithSplit,
                             comparableRevenueWithNivelacijaSplit = splitSnapshot.ComparableRevenueWithSplit,
                             previousPeriodRevenue = hasPreviousComparablePeriod
@@ -1651,9 +1646,9 @@ public static class AllEndpoints
                 var totalRevenue = suppliers.Sum(r => r.ukupanPromet);
                 var comparableRevenueWithNivelacijaSplit = suppliers.Sum(r => r.comparableRevenueWithNivelacijaSplit);
                 var unknownSupplierRevenue = suppliers.Where(r => r.isUnknown).Sum(r => r.ukupanPromet);
-                var totalRevenueWithHistoricalCost = suppliers.Sum(r => r.revenueWithCost);
+                var totalRevenueWithAnyCost = suppliers.Sum(r => r.revenueWithCost);
                 var estimatedCostRevenue = suppliers.Sum(r => r.estimatedCostRevenue);
-                var missingCostRevenue = totalRevenue - totalRevenueWithHistoricalCost;
+                var missingCostRevenue = AnalyticsMarginPolicy.ResolveNoCostRevenue(totalRevenue, totalRevenueWithAnyCost);
                 var missingCostQty = stavke.Sum(s =>
                     AnalyticsMarginPolicy.IsReliableCost(s.SaleLineCost)
                         ? 0
@@ -1662,10 +1657,8 @@ public static class AllEndpoints
                 var dataQuality = new
                 {
                     missingCostQty,
-                    missingCostRevenue = Math.Round(missingCostRevenue, 2),
-                    missingCostRevenueSharePct = totalRevenue > 0m
-                        ? Math.Round((double)(missingCostRevenue / totalRevenue * 100m), 2)
-                        : (double?)null,
+                    missingCostRevenue,
+                    missingCostRevenueSharePct = AnalyticsMarginPolicy.ResolveNoCostCoveragePct(totalRevenue, totalRevenueWithAnyCost),
                     estimatedCostRevenue = Math.Round(estimatedCostRevenue, 2),
                     estimatedCostRevenueSharePct = totalRevenue > 0m
                         ? Math.Round((double)(estimatedCostRevenue / totalRevenue * 100m), 2)
@@ -1683,7 +1676,7 @@ public static class AllEndpoints
                 if (dataQuality.missingCostRevenueSharePct.HasValue && dataQuality.missingCostRevenueSharePct.Value >= 10d)
                 {
                     logger.LogWarning(
-                        "Supplier-sales-stats margin reliability degraded due to missing historical purchase cost. MissingCostRevenueSharePct={MissingCostRevenueSharePct} BatchStoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}",
+                        "Supplier-sales-stats margin reliability degraded due to revenue without any usable purchase cost. MissingCostRevenueSharePct={MissingCostRevenueSharePct} BatchStoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}",
                         dataQuality.missingCostRevenueSharePct.Value,
                         storeId,
                         sezonaId,
@@ -1784,6 +1777,9 @@ public static class AllEndpoints
                             supplier.noCostCoveragePct,
                             supplier.isEstimatedMargin,
                             supplier.marginQualityLabel,
+                            supplier.marginQualityTier,
+                            supplier.marginQualityShortLabel,
+                            supplier.marginQualityTooltip,
                             supplier.revenueWithNivelacijaSplit,
                             supplier.comparableRevenueWithNivelacijaSplit,
                             supplier.previousPeriodRevenue,
@@ -1831,10 +1827,12 @@ public static class AllEndpoints
                 var totalEstPct = totalRevenue > 0m
                     ? Math.Round((double)(suppliers.Sum(r => r.estimatedCostRevenue) / totalRevenue * 100m), 2)
                     : 0d;
-                var totalNoCostPct = totalRevenue > 0m
-                    ? Math.Round((double)((totalRevenue - suppliers.Sum(r => r.historicalCostRevenue) - suppliers.Sum(r => r.snapshotCostRevenue) - suppliers.Sum(r => r.estimatedCostRevenue)) / totalRevenue * 100m), 2)
+                var totalCostCoveredRevenue = suppliers.Sum(r => r.revenueWithCost);
+                var totalNoCostPct = AnalyticsMarginPolicy.ResolveNoCostCoveragePct(totalRevenue, totalCostCoveredRevenue) ?? 0d;
+                var totalCoveragePct = totalRevenue > 0m
+                    ? Math.Round((double)(totalCostCoveredRevenue / totalRevenue * 100m), 2)
                     : 0d;
-                var totalMarginQuality = MarginQualityClassifier.Classify(totalHistPct, totalEstPct + totalSnapshotPct, totalNoCostPct, totalHistPct + totalEstPct + totalSnapshotPct);
+                var totalMarginQuality = MarginQualityClassifier.Classify(totalHistPct, totalEstPct + totalSnapshotPct, totalNoCostPct, totalCoveragePct);
 
                 var totals = new
                 {
@@ -2361,10 +2359,8 @@ public static class AllEndpoints
                             estimatedCostCoveragePct = marginSnapshot.FallbackCostCoveragePct,
                             snapshotCostRevenue = marginSnapshot.SnapshotCostRevenue,
                             snapshotCostCoveragePct = marginSnapshot.SnapshotCostCoveragePct,
-                            noCostRevenue = Math.Round(totalRevenue - marginSnapshot.RevenueWithCost, 2),
-                            noCostCoveragePct = totalRevenue > 0m
-                                ? Math.Round((double)((totalRevenue - marginSnapshot.RevenueWithCost) / totalRevenue * 100m), 2)
-                                : (double?)null,
+                            noCostRevenue = AnalyticsMarginPolicy.ResolveNoCostRevenue(totalRevenue, marginSnapshot.RevenueWithCost),
+                            noCostCoveragePct = AnalyticsMarginPolicy.ResolveNoCostCoveragePct(totalRevenue, marginSnapshot.RevenueWithCost),
                             isEstimatedMargin = (marginSnapshot.FallbackCostCoveragePct ?? 0) > (marginSnapshot.HistoricalMarginCoveragePct ?? 0),
                             marginQualityLabel = marginQuality.Label,
                             marginQualityTier = marginQuality.Tier,
@@ -2414,7 +2410,7 @@ public static class AllEndpoints
                 var historicalCostRevenue = shoeTypes.Sum(r => r.historicalCostRevenue);
                 var snapshotCostRevenue = shoeTypes.Sum(r => r.snapshotCostRevenue);
                 var estimatedCostRevenue = shoeTypes.Sum(r => r.estimatedCostRevenue);
-                var missingCostRevenue = totalRevenue - totalCostCoveredRevenue;
+                var missingCostRevenue = AnalyticsMarginPolicy.ResolveNoCostRevenue(totalRevenue, totalCostCoveredRevenue);
                 var unknownTypeRevenue = shoeTypes
                     .Where(r => string.Equals(r.tipObuceNaziv, "Nepoznato", StringComparison.OrdinalIgnoreCase))
                     .Sum(r => r.ukupanPromet);
@@ -2425,14 +2421,10 @@ public static class AllEndpoints
                     costCoveredRevenueSharePct = totalRevenue > 0m
                         ? Math.Round((double)(totalCostCoveredRevenue / totalRevenue * 100m), 2)
                         : (double?)null,
-                    missingCostRevenue = Math.Round(missingCostRevenue, 2),
-                    missingCostRevenueSharePct = totalRevenue > 0m
-                        ? Math.Round((double)(missingCostRevenue / totalRevenue * 100m), 2)
-                        : (double?)null,
-                    noCostRevenue = Math.Round(missingCostRevenue, 2),
-                    noCostRevenueSharePct = totalRevenue > 0m
-                        ? Math.Round((double)(missingCostRevenue / totalRevenue * 100m), 2)
-                        : (double?)null,
+                    missingCostRevenue,
+                    missingCostRevenueSharePct = AnalyticsMarginPolicy.ResolveNoCostCoveragePct(totalRevenue, totalCostCoveredRevenue),
+                    noCostRevenue = missingCostRevenue,
+                    noCostRevenueSharePct = AnalyticsMarginPolicy.ResolveNoCostCoveragePct(totalRevenue, totalCostCoveredRevenue),
                     historicalCostRevenue = Math.Round(historicalCostRevenue, 2),
                     historicalCostRevenueSharePct = totalRevenue > 0m
                         ? Math.Round((double)(historicalCostRevenue / totalRevenue * 100m), 2)
@@ -2575,14 +2567,14 @@ public static class AllEndpoints
                 var totalEstPct = totalRevenue > 0m
                     ? Math.Round((double)(shoeTypes.Sum(r => r.estimatedCostRevenue) / totalRevenue * 100m), 2)
                     : (double?)null;
-                var totalNoCostPct = totalRevenue > 0m
-                    ? Math.Round((double)((totalRevenue - shoeTypes.Sum(r => r.historicalCostRevenue) - shoeTypes.Sum(r => r.snapshotCostRevenue) - shoeTypes.Sum(r => r.estimatedCostRevenue)) / totalRevenue * 100m), 2)
-                    : (double?)null;
+                var totalNoCostPct = AnalyticsMarginPolicy.ResolveNoCostCoveragePct(totalRevenue, totalCostCoveredRevenue);
                 var totalMarginQuality = MarginQualityClassifier.Classify(
                     totalHistPct ?? 0d,
                     (totalEstPct ?? 0d) + (totalSnapshotPct2 ?? 0d),
                     totalNoCostPct ?? 0d,
-                    (totalHistPct ?? 0d) + (totalEstPct ?? 0d) + (totalSnapshotPct2 ?? 0d));
+                    totalRevenue > 0m
+                        ? Math.Round((double)(totalCostCoveredRevenue / totalRevenue * 100m), 2)
+                        : 0d);
 
                 var totals = new
                 {

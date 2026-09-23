@@ -136,6 +136,32 @@ public sealed class MarginAccumulator
 
 public static class AnalyticsMarginPolicy
 {
+    public static decimal ResolveNoCostRevenue(decimal totalRevenue, decimal revenueWithCost)
+    {
+        if (totalRevenue <= 0m)
+        {
+            return 0m;
+        }
+
+        // Coverage can differ from total revenue by a sub-cent rounding residue.
+        // "Without cost" is a non-negative amount by definition.
+        return Math.Round(Math.Max(0m, totalRevenue - revenueWithCost), 2);
+    }
+
+    public static double? ResolveNoCostCoveragePct(decimal totalRevenue, decimal revenueWithCost)
+    {
+        if (totalRevenue <= 0m)
+        {
+            return null;
+        }
+
+        var noCostRevenue = ResolveNoCostRevenue(totalRevenue, revenueWithCost);
+        var coveragePct = (double)(noCostRevenue / totalRevenue * 100m);
+        return double.IsFinite(coveragePct)
+            ? Math.Round(coveragePct, 2)
+            : null;
+    }
+
     public static double? ResolveWeightedMarginPct(
         IEnumerable<(decimal RevenueWithCost, decimal MarginContribution)> evidence)
     {
@@ -338,9 +364,7 @@ public static class MarginQualityClassifier
         var historical = snapshot.HistoricalMarginCoveragePct ?? 0d;
         var estimated = (snapshot.FallbackCostCoveragePct ?? 0d) + (snapshot.SnapshotCostCoveragePct ?? 0d);
         var total = snapshot.MarginDataCoveragePct ?? 0d;
-        var noCost = totalRevenue > 0m
-            ? Math.Round((double)((totalRevenue - snapshot.RevenueWithCost) / totalRevenue * 100m), 2)
-            : 0d;
+        var noCost = AnalyticsMarginPolicy.ResolveNoCostCoveragePct(totalRevenue, snapshot.RevenueWithCost) ?? 0d;
 
         return Classify(historical, estimated, noCost, total);
     }
