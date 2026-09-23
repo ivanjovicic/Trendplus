@@ -4,9 +4,9 @@ Date: 2026-09-23
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct-main
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: 02b22e295508d8942e1a5b5e5f2ef82c676896ed
+Main verification: passed - fresh fetch confirms `origin/main` equals `02b22e295508d8942e1a5b5e5f2ef82c676896ed`
+Evidence state: synchronized
 
 ## What was done
 - Investigated the live Supplier overview URL and confirmed the deployed page currently returns a generic application error, so live numeric data could not be used as proof.
@@ -43,4 +43,4 @@ Evidence state: pending
 - Existing Vite chunk-size warnings remain outside this scope.
 
 ## Next
-- Push the validated change to `main`, verify `origin/main`, then recheck the deployed Supplier overview once the deployment is available.
+- Recheck the deployed Supplier overview once the Vercel deployment for `02b22e295508d8942e1a5b5e5f2ef82c676896ed` is available.
