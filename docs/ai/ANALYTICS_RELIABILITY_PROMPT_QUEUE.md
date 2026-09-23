@@ -2,7 +2,7 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ400; RQ172, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ398, RQ399, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE.
+Current READY prompt: none; RQ172, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ398, RQ399, RQ400, RQ401, RQ402, RQ403, RQ404 and RQ405 are DONE.
 
 Routing correction 2026-09-23: `RQ172` was already `READY` and dependency-complete, but the current-ready pointer was stale at `none`; the pointer was repaired before claim after collision and ownership checks.
 Owner claim 2026-09-23: `RQ172` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ172-codex.lock.md`.
@@ -17,6 +17,9 @@ Owner promotion 2026-09-23: after `RQ398` reached DONE and its implementation/ev
 Owner claim 2026-09-23: `RQ399` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ399-codex.lock.md`.
 Owner completion 2026-09-23: `RQ399` was delivered directly to `main` in `7e2cfb3e`; Color now reports its live relational source family, filtered observed population, requested/effective/observed periods, cost policy, comparable pre/post cohort and unknown-color policy through trust metadata, generic detail and export metadata. Metric provenance/denominators are backend-owned and fallback/unavailable evidence remains non-authoritative. Run log: `.ai/runs/2026-09-23-RQ399-evidence.md`. Evidence state: synchronized.
 Owner promotion 2026-09-23: after `RQ399` reached DONE and its implementation/evidence were verified, `RQ400` moved `WAITING -> READY` as the next independent Color decision-score contract prompt; collision checks are clear.
+Owner claim 2026-09-23: `RQ400` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ400-codex.lock.md`.
+Owner completion 2026-09-23: `RQ400` was delivered directly to `main` in `c6b96ce7d0664c510380ae2e778a0082a3575c87`; Color now exposes a finite backend-owned 0–100 decision score with an explicit weighted denominator, recommendation/actionability gate, metric provenance and revenue-weighted actionable-row total. Row, total, detail, snapshot/export labels and runtime validation are aligned; unavailable, zero, non-finite, blocked and insufficient evidence remain honest rather than becoming fake values. The Color cache key moved to `v3` to prevent stale pre-contract payloads. Focused backend/frontend tests and guardrails pass. Run log: `.ai/runs/2026-09-23-RQ400-evidence.md`. Evidence state: synchronized. Main verification: `origin/main` contains the implementation SHA.
+Owner promotion 2026-09-23: after `RQ400` reached DONE and its implementation/evidence were verified, no additional dependency-complete collision-safe primary READY prompt was promoted; the current READY pointer is `none`.
 
 Owner completion 2026-09-22: under the user's direct last-commits audit, `RQ393` was delivered directly to `main` in `3b635fe813e0e55f843236d55025c52c030e853d`; Color recommendations now use a covered-revenue-weighted margin baseline, unknown-share evidence remains nullable, historical/fallback/no-cost coverage is separated, and the affected screens use Serbian decision labels. Run log: `.ai/runs/2026-09-22-direct-last-commits-audit-evidence.md`.
 Owner promotion 2026-09-22: after `RQ393` reached DONE and `RQ389`/`RQ392`/`RQ393` comparable-cohort dependencies were verified on current `main`, `RQ394` moved `WAITING -> READY` as the next dependency-complete P1 Color aggregate-cohort prompt; collision checks are clear.
@@ -1453,7 +1456,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ397 | DONE | color-detail-trust-projection | Align Color generic detail with row trust and provenance |
 | RQ398 | DONE | color-identity-canonicalization | Canonicalize Color identity and collision-safe detail keys |
 | RQ399 | DONE | color-source-provenance | Correct Color source and metric provenance |
-| RQ400 | READY | color-decision-score-contract | Define an authoritative Color decision-score contract |
+| RQ400 | DONE | color-decision-score-contract | Define an authoritative Color decision-score contract |
 | RQ401 | DONE | supplier-decision-cache-schema-provenance | Align Supplier Decision cache capabilities, schema projections and effective-period lineage |
 | RQ402 | DONE | supplier-decision-detail-source-parity | Connect rich supplier decision details to the canonical screen |
 | RQ403 | DONE | supplier-decision-filter-parity | Align backend-supported supplier filters with the canonical screen and report |
@@ -22070,7 +22073,7 @@ The Color trust header labels the source as a “materialized view”, but the e
 
 ## RQ400 - Define an authoritative Color decision-score contract
 
-Status: READY
+Status: DONE
 Priority: P2
 Type: backend-contract/frontend/tests
 Feature family: color-decision-score-contract
