@@ -4,8 +4,8 @@ Date: 2026-09-23
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct delivery
-Main commit SHA: pending
-Main verification: pending - remote accuracy-audit commits were integrated without overwriting them; final push verification follows
+Main commit SHA: f1b4e588
+Main verification: pending - final delivery commit created locally; remote verification follows after push
 Evidence state: pending
 
 ## What was done
