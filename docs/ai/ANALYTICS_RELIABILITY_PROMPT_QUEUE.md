@@ -22454,7 +22454,7 @@ User-facing copy and existing mappings only; do not rename API reason codes, SQL
 
 ## RQ406 - Prevent truncated Supplier Footwear detail from driving authoritative type insights
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: `RQ386` is DONE; coordination with `RQ374` and `RQ380` is resolved by an explicit non-overlap boundary: this prompt owns only the Supplier Footwear `/api/analytics/vendor-sales-nivelacija` aggregate/detail contract and route presentation.
 Priority: P1
 Type: frontend/backend/contract/tests
