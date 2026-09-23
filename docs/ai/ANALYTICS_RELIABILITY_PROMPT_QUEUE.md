@@ -7646,7 +7646,7 @@ Repository contains a frontend TODO to add GMROI when the backend exposes a stab
 
 ## RQ172 - Hardening embedding parameterization and DB binding for similarity queries
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/security/tests
 Feature family: embedding-service-hardening
