@@ -187,13 +187,13 @@ Do not redesign Supplier Decision scoring, weighted-margin formulas, comparable-
 
 ## RQ412 - Independent raw-fact oracle for Supplier and Shoe Type
 
-Status: DONE
+Status: WAITING
 Ready after: RQ407 and RQ411; applicable Supplier Sales semantic prompts are DONE
 Priority: P0
 Type: backend-reference-oracle/integration-tests/evidence
 Feature family: supplier-shoetype-independent-oracle
 Parallel-safe: no
-Owner: Cursor cloud agent
+Owner: unassigned
 Local lock: `.ai/task-locks/RQ412-<agent>.lock.md`
 Commit suggestion: `test(analytics): add independent supplier and shoe type oracle`
 
@@ -342,13 +342,13 @@ Do not run full-table reconciliation synchronously on normal user requests.
 
 ## RQ414 - Inventory list sell-through must honor the selected data-origin scope
 
-Status: WAITING
+Status: DONE
 Ready after: `RQ371` scope/period boundary is recorded; this prompt owns only `/inventory/list` joined sales velocity
 Priority: P1
 Type: backend/contract/tests
 Feature family: inventory-sales-origin-parity
 Parallel-safe: no
-Owner: unassigned
+Owner: Cursor cloud agent
 Local lock: `.ai/task-locks/RQ414-<agent>.lock.md`
 Commit suggestion: `fix(analytics): align inventory list sales scope`
 
