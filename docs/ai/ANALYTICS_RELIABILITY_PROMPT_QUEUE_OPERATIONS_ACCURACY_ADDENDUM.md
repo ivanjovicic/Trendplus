@@ -2,8 +2,10 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
-Main RQ current READY prompt: none
+Current READY prompt: RQ419
+Main RQ current READY prompt: RQ419
+
+Owner promotion 2026-09-24: under the user's instruction to claim the next prompt, dependency/collision review found `RQ419` independently runnable within the Supplier Sales scope-event lane after `RQ421`; the bounded reload/trust-metadata repair does not take `RQ373`/`RQ378`/`RQ379` denominator ownership. It moved `WAITING -> READY` as the current addendum pointer.
 
 Owner promotion 2026-09-24: under the user's instruction to claim the next prompt, dependency/collision review found `RQ421` independently runnable within the Supplier Sales status-identity lane after `RQ420` completion; the bounded frontend mapping/display repair does not take `RQ373`/`RQ378`/`RQ379` denominator ownership. It moved `WAITING -> READY` as the current addendum pointer.
 
@@ -49,7 +51,7 @@ All remaining prompts below are `WAITING`. Do not claim or auto-promote them wit
 | RQ416 | DONE | P1 | inventory-insight-identity-provenance | Preserve store/supplier identity and cost provenance from Inventory insights to detail |
 | RQ417 | DONE | P1 | inventory-size-alert-identity | Preserve SKU, size and store context when an Inventory alert opens size curve |
 | RQ418 | DONE | P1 | inventory-action-dataset-idempotency | Prevent Inventory action deduplication from crossing period/scope/snapshot datasets |
-| RQ419 | WAITING | P1 | supplier-sales-scope-event-lineage | Reload Supplier Sales when global data scope changes and keep trust metadata aligned |
+| RQ419 | READY | P1 | supplier-sales-scope-event-lineage | Reload Supplier Sales when global data scope changes and keep trust metadata aligned |
 | RQ420 | DONE | P2 | supplier-sales-derived-projection-freshness | Prevent stale Supplier Sales derived shares and cost projections after total changes |
 | RQ421 | DONE | P1 | supplier-sales-status-identity | Preserve backend Supplier Sales status when recommendation actionability is blocked |
 | RQ422 | WAITING | P1 | supplier-footwear-type-insight-denominator | Make Supplier Footwear type share and elasticity metrics full-cohort and provenance-safe |
@@ -692,7 +694,7 @@ Do not change action lifecycle states, user permissions or general action priori
 
 ## RQ419 - Supplier Sales must reload and relabel on global data-scope changes
 
-Status: WAITING
+Status: READY
 Ready after: coordinate with canonical Supplier parent filter owner; do not run with another Supplier Sales scope owner
 Priority: P1
 Type: frontend/tests

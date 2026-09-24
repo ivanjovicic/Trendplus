@@ -33,7 +33,7 @@ import InfoTip from "../components/ui/InfoTip";
 import UltraSpinner from "../components/ui/UltraSpinner";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
-import { getDataScope } from "../utils/dataScope";
+import { getDataScope, normalizeDataScope, type DataScope } from "../utils/dataScope";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
 import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange, formatDate } from "../utils/analyticsFormatters";
 import { formatMetricDisplayValue } from "../utils/analyticsMetricValue";
@@ -739,10 +739,31 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
   const [sortField, setSortField] = useState<SortField>("status");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expandedSupplierKey, setExpandedSupplierKey] = useState<string | null>(null);
-  const activeDataScope = useMemo(
-    () => sharedFilters?.dataScope ?? searchParams.get("dataScope") ?? getDataScope(),
-    [searchParams, sharedFilters?.dataScope]
-  );
+  const urlDataScopeParam = searchParams.get("dataScope");
+  const [persistedDataScope, setPersistedDataScope] = useState<DataScope>(() => (
+    normalizeDataScope(urlDataScopeParam ?? getDataScope())
+  ));
+  const activeDataScope = useMemo(() => {
+    if (sharedFilters?.dataScope) return normalizeDataScope(sharedFilters.dataScope);
+    if (urlDataScopeParam) return normalizeDataScope(urlDataScopeParam);
+    return persistedDataScope;
+  }, [persistedDataScope, sharedFilters?.dataScope, urlDataScopeParam]);
+
+  useEffect(() => {
+    if (sharedFilters?.dataScope || urlDataScopeParam) return;
+    const handleScopeChange = () => {
+      setPersistedDataScope(getDataScope());
+    };
+
+    window.addEventListener("trendplus:data-scope-changed", handleScopeChange);
+    return () => window.removeEventListener("trendplus:data-scope-changed", handleScopeChange);
+  }, [sharedFilters?.dataScope, urlDataScopeParam]);
+
+  useEffect(() => {
+    setExpandedSupplierKey(null);
+    setData(null);
+    setError(null);
+  }, [activeDataScope]);
   const includeUnknown = useMemo(
     () => (searchParams.get("includeUnknown") ?? "true").toLowerCase() !== "false",
     [searchParams]

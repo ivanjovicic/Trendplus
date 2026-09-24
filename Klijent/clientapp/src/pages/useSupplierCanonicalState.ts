@@ -77,6 +77,24 @@ export function useSupplierCanonicalState() {
   }, [canonicalFilters.dataScope]);
 
   useEffect(() => {
+    const handleScopeChange = () => {
+      const nextScope = getDataScope();
+      setSearchParams((current) => {
+        const next = new URLSearchParams(current);
+        if (normalizeDataScope(next.get("dataScope")) === nextScope) {
+          return current;
+        }
+        next.set("dataScope", nextScope);
+        next.delete("supplierId");
+        return next;
+      }, { replace: true });
+    };
+
+    window.addEventListener("trendplus:data-scope-changed", handleScopeChange);
+    return () => window.removeEventListener("trendplus:data-scope-changed", handleScopeChange);
+  }, [setSearchParams]);
+
+  useEffect(() => {
     const next = new URLSearchParams(searchParams);
     let changed = false;
     const removeIfInvalid = (key: string, valid: boolean) => {
