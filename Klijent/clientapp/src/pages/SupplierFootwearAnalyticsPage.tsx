@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import AnalyticsControlBar, { type AnalyticsControlBarChip, type AnalyticsControlBarField } from "../components/analytics/AnalyticsControlBar";
 import AnalyticsDataTable from "../components/analytics/AnalyticsDataTable";
@@ -34,6 +34,7 @@ import {
   buildSupplierVendorDetailRecordId,
   buildSupplierVendorKeys,
 } from "../utils/supplierVendorIdentity";
+import { getDataScope, normalizeDataScope, type DataScope } from "../utils/dataScope";
 import type { SupplierEmbeddedPageProps } from "./supplierSharedState";
 import "./SupplierFootwearAnalyticsPage.css";
 
@@ -42,7 +43,7 @@ type SortDir = "asc" | "desc";
 type SortField = "vendorName" | "postRevenue" | "sharePct" | "topFootwearType" | "trendPct" | "status";
 type DecisionStatus = VendorSalesNivelacijaRecommendation["status"];
 
-type ActiveFilters = { fromDate: string; toDate: string; vendorId: number | null; category: string; storeId: number | null; dataScope: string | null };
+type ActiveFilters = { fromDate: string; toDate: string; vendorId: number | null; category: string; storeId: number | null; dataScope: DataScope };
 type SuggestedRange = { fromDate: string; toDate: string; label: string };
 type DataQualityStatus = "good" | "warning" | "critical" | "insufficient_data" | null;
 
@@ -216,8 +217,18 @@ export default function SupplierFootwearAnalyticsPage({
 }: SupplierEmbeddedPageProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const requestIdRef = useRef(0);
   const initialRange = useMemo(() => getPresetRange("30d"), []);
+  const urlDataScopeParam = searchParams.get("dataScope");
+  const [persistedDataScope, setPersistedDataScope] = useState<DataScope>(() => (
+    normalizeDataScope(urlDataScopeParam ?? getDataScope())
+  ));
+  const effectiveDataScope = useMemo(() => {
+    if (sharedFilters?.dataScope) return normalizeDataScope(sharedFilters.dataScope);
+    if (urlDataScopeParam) return normalizeDataScope(urlDataScopeParam);
+    return persistedDataScope;
+  }, [persistedDataScope, sharedFilters?.dataScope, urlDataScopeParam]);
 
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>(sharedFilters?.periodPreset ?? "30d");
   const [fromDate, setFromDate] = useState(sharedFilters?.fromDate ?? initialRange.fromDate);
@@ -230,7 +241,9 @@ export default function SupplierFootwearAnalyticsPage({
     vendorId: sharedFilters?.supplierId ?? null,
     category: "",
     storeId: sharedFilters?.storeId ?? null,
-    dataScope: sharedFilters?.dataScope ?? null,
+    dataScope: sharedFilters?.dataScope
+      ? normalizeDataScope(sharedFilters.dataScope)
+      : normalizeDataScope(urlDataScopeParam ?? getDataScope()),
   });
 
   const [vendors, setVendors] = useState<Dobavljac[]>([]);
@@ -256,6 +269,34 @@ export default function SupplierFootwearAnalyticsPage({
   ), [activeFilters.category, activeFilters.fromDate, activeFilters.toDate, activeFilters.vendorId, category, fromDate, toDate, vendorId]);
 
   useEffect(() => {
+    if (embedded || sharedFilters?.dataScope || urlDataScopeParam) return;
+    const handleScopeChange = () => {
+      setPersistedDataScope(getDataScope());
+    };
+
+    window.addEventListener("trendplus:data-scope-changed", handleScopeChange);
+    return () => window.removeEventListener("trendplus:data-scope-changed", handleScopeChange);
+  }, [embedded, sharedFilters?.dataScope, urlDataScopeParam]);
+
+  useEffect(() => {
+    setActiveFilters((current) => (
+      current.dataScope === effectiveDataScope
+        ? current
+        : { ...current, dataScope: effectiveDataScope }
+    ));
+  }, [effectiveDataScope]);
+
+  useEffect(() => {
+    setData(null);
+    setError(null);
+    setExpandedVendorKey(null);
+    setPreviousRevenue(null);
+    setPreviousPeriodState("empty");
+    setPreviousPeriodWarning(null);
+    setPreviousPeriodEmptyNote(null);
+  }, [effectiveDataScope]);
+
+  useEffect(() => {
     if (!sharedFilters) return;
     setPeriodPreset(sharedFilters.periodPreset);
     setFromDate(sharedFilters.fromDate);
@@ -268,7 +309,7 @@ export default function SupplierFootwearAnalyticsPage({
         toDate: sharedFilters.toDate,
         vendorId: sharedFilters.supplierId,
         storeId: sharedFilters.storeId,
-        dataScope: sharedFilters.dataScope,
+        dataScope: normalizeDataScope(sharedFilters.dataScope),
       };
       return current.fromDate === next.fromDate
         && current.toDate === next.toDate
@@ -607,7 +648,7 @@ export default function SupplierFootwearAnalyticsPage({
       { key: "vendorId", label: "Dobavljač", value: activeFilters.vendorId ?? "" },
     { key: "category", label: "Kategorija", value: activeFilters.category },
     { key: "storeId", label: "Objekat", value: activeFilters.storeId ?? "" },
-    { key: "dataScope", label: "Opseg podataka", value: activeFilters.dataScope ?? "" },
+    { key: "dataScope", label: "Opseg podataka", value: activeFilters.dataScope },
   ], [activeFilters.category, activeFilters.dataScope, activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeFilters.vendorId, periodPreset]);
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(() => [
@@ -618,7 +659,9 @@ export default function SupplierFootwearAnalyticsPage({
     { key: "detailDenominator", label: "Detalj / analiza", value: data?.dataQuality?.returnedRows != null && data?.dataQuality?.analyzedRows != null ? `${data.dataQuality.returnedRows} / ${data.dataQuality.analyzedRows}` : "N/A" },
     { key: "typeInsightSource", label: "Izvor tipova", value: data?.typeInsightsSource ?? "Nije dostupno" },
     { key: "typeInsightDenominator", label: "Imenilac tipova", value: data?.typeInsightsDenominator ?? "Nije dostupno" },
-  ], [data?.dataQuality?.analyzedRows, data?.dataQuality?.returnedRows, data?.generatedAt, data?.totals.articlesCount, data?.totals.vendorsCount, data?.typeInsightsDenominator, data?.typeInsightsSource, data?.windowDays]);
+    { key: "requestedDataScope", label: "Traženi opseg", value: effectiveDataScope },
+    { key: "effectiveDataScope", label: "Efektivni opseg", value: data?.dataScope ?? effectiveDataScope },
+  ], [data?.dataQuality?.analyzedRows, data?.dataQuality?.returnedRows, data?.dataScope, data?.generatedAt, data?.totals.articlesCount, data?.totals.vendorsCount, data?.typeInsightsDenominator, data?.typeInsightsSource, data?.windowDays, effectiveDataScope]);
 
   useEffect(() => {
     if (!embedded || !onTrustMetadataChange) return;
@@ -668,7 +711,18 @@ export default function SupplierFootwearAnalyticsPage({
     setFromDate(range.fromDate);
     setToDate(range.toDate);
   };
-  const handleApplyFilters = () => { if (!invalidRange) setActiveFilters({ fromDate, toDate, vendorId, category, storeId: sharedFilters?.storeId ?? null, dataScope: sharedFilters?.dataScope ?? null }); };
+  const handleApplyFilters = () => {
+    if (!invalidRange) {
+      setActiveFilters({
+        fromDate,
+        toDate,
+        vendorId,
+        category,
+        storeId: sharedFilters?.storeId ?? null,
+        dataScope: effectiveDataScope,
+      });
+    }
+  };
   const handleResetFilters = () => {
     const range = getPresetRange("30d");
     setPeriodPreset("30d");
@@ -682,7 +736,9 @@ export default function SupplierFootwearAnalyticsPage({
       vendorId: sharedFilters?.supplierId ?? null,
       category: "",
       storeId: sharedFilters?.storeId ?? null,
-      dataScope: sharedFilters?.dataScope ?? null,
+      dataScope: sharedFilters?.dataScope
+        ? normalizeDataScope(sharedFilters.dataScope)
+        : effectiveDataScope,
     });
   };
   const handleApplySuggestedRange = () => {

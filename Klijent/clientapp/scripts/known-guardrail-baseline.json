@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "maxEntries": 51,
+  "maxEntries": 52,
   "entries": [
     {
       "file": "src/pages/ExecutiveDecisionBoardPage.tsx",
@@ -173,19 +173,25 @@
     {
       "file": "src/pages/SupplierFootwearAnalyticsPage.tsx",
       "rule": "refetch_setData_null",
-      "line": 379,
+      "line": 290,
+      "reason": "Supplier Footwear must clear stale scope-bound rows and trust metadata before the next scope-bound request completes."
+    },
+    {
+      "file": "src/pages/SupplierFootwearAnalyticsPage.tsx",
+      "rule": "refetch_setData_null",
+      "line": 420,
       "reason": "Existing supplier-footwear refetch transition predates the shared reliable-query lifecycle."
     },
     {
       "file": "src/pages/SupplierFootwearAnalyticsPage.tsx",
       "rule": "page_percentage_formula",
-      "line": 413,
+      "line": 454,
       "reason": "Existing supplier-footwear percentage projection requires a reviewed authority exception."
     },
     {
       "file": "src/pages/SupplierFootwearAnalyticsPage.tsx",
       "rule": "page_reduce_kpi",
-      "line": 404,
+      "line": 445,
       "reason": "Existing supplier-footwear aggregation predates the backend KPI ownership contract."
     },
     {
