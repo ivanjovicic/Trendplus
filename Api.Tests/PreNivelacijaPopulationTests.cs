@@ -36,6 +36,31 @@ public sealed class PreNivelacijaPopulationTests
     }
 
     [Fact]
+    public void BuildSupplierActionShareProjection_UsesFullLeaderboardDenominatorAndOtherBucket()
+    {
+        var leaderboard = Enumerable.Range(1, 8)
+            .Select(index => new PreNivelacijaSupplierActionDto
+            {
+                SupplierId = index,
+                SupplierName = $"Dobavljač {index}",
+                ActionScore = index,
+                WeekOverWeekRiskDeltaPct = 1m,
+            })
+            .ToList();
+
+        var projection = PreNivelacijaPriorityEndpoints.BuildSupplierActionShareProjection(leaderboard);
+
+        Assert.Equal(8, projection.LeaderboardSupplierCount);
+        Assert.Equal(7, projection.VisibleSupplierCount);
+        Assert.Equal(36m, projection.TotalActionScore);
+        Assert.Equal(8, projection.Segments.Count);
+        Assert.True(projection.Segments[^1].IsOther);
+        Assert.Equal("Ostali", projection.Segments[^1].SupplierName);
+        Assert.Equal(2.78m, projection.Segments[^1].ActionSharePct);
+        Assert.Equal(PreNivelacijaPriorityEndpoints.PreNivelacijaPercentagePointsUnit, projection.ShareUnit);
+    }
+
+    [Fact]
     public void FilterCandidatesByFocus_AppliesPopulationFilterBeforePaginationSemantics()
     {
         var candidates = new List<PreNivelacijaSkuCandidateDto>

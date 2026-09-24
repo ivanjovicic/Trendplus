@@ -65,6 +65,29 @@ export interface PreNivelacijaSkuCandidate {
   recommendation: PreNivelacijaRecommendation;
 }
 
+export interface PreNivelacijaSupplierActionShareSegment {
+  supplierId: number | null;
+  supplierName: string;
+  actionSharePct: number;
+  weekOverWeekRiskDeltaPct: number | null;
+  weekOverWeekRiskDeltaUnit: string;
+  isOther: boolean;
+}
+
+export interface PreNivelacijaSupplierActionShareProjection {
+  shareUnit: string;
+  weekOverWeekRiskDeltaUnit: string;
+  denominatorPolicy: string;
+  denominatorLabel: string;
+  leaderboardSupplierCount: number;
+  visibleSupplierCount: number;
+  totalActionScore: number;
+  includedActionScore: number;
+  otherActionScore: number;
+  otherSharePct: number | null;
+  segments: PreNivelacijaSupplierActionShareSegment[];
+}
+
 export interface PreNivelacijaSupplierAction {
   supplierId: number | null;
   supplierName: string;
@@ -149,6 +172,7 @@ export interface PreNivelacijaPriorityResponse {
   formulaDescription: string;
   summary: PreNivelacijaSummary;
   supplierLeaderboard: PreNivelacijaSupplierAction[];
+  supplierActionShare?: PreNivelacijaSupplierActionShareProjection;
   filterFacets: PreNivelacijaFilterFacets;
   candidates: PreNivelacijaSkuCandidate[];
   queues: PreNivelacijaQueues;

@@ -202,11 +202,11 @@ function normalizePositiveInteger(value: unknown): number | null {
   return normalized != null && Number.isInteger(normalized) && normalized > 0 ? normalized : null;
 }
 
-function normalizePercentage(value: unknown): FiniteNumber {
+/** Pre-Nivelacija API percentage fields are always percentage points (1 = 1%). */
+export function normalizePreNivelacijaPercentagePoints(value: unknown): FiniteNumber {
   const normalized = normalizeFiniteNumber(value);
-  if (normalized == null || normalized < 0) return null;
-  const percentage = normalized <= 1 ? normalized * 100 : normalized;
-  return percentage <= 100 ? percentage : null;
+  if (normalized == null || normalized < 0 || normalized > 100) return null;
+  return normalized;
 }
 
 function normalizeScenario(value: unknown): NormalizedScenario {
@@ -577,8 +577,8 @@ export default function PreNivelacijaPriorityPage() {
       const recommendation = item.recommendation;
       const revenueDelta = normalizeFiniteNumber(item.revenueDeltaHighlightVsMarkdown);
       const marginDelta = normalizeFiniteNumber(item.marginDeltaHighlightVsMarkdown);
-      const confidencePctValue = normalizePercentage(recommendation.confidencePct);
-      const reliabilityPctValue = normalizePercentage(recommendation.reliabilityPct ?? item.reliabilityPct);
+      const confidencePctValue = normalizePreNivelacijaPercentagePoints(recommendation.confidencePct);
+      const reliabilityPctValue = normalizePreNivelacijaPercentagePoints(recommendation.reliabilityPct ?? item.reliabilityPct);
       const recommendationAllowed = recommendation.recommendationAllowed === true;
       const decisionScore = recommendationAllowed ? normalizeDecisionScore(item.decisionScore) : null;
 
@@ -589,7 +589,7 @@ export default function PreNivelacijaPriorityPage() {
         velocity180: normalizeFiniteNumber(item.velocity180),
         daysSinceLastSale: normalizeNonNegativeNumber(item.daysSinceLastSale),
         markdownEvents: normalizeNonNegativeNumber(item.markdownEvents),
-        avgMarkdownPct: normalizePercentage(item.avgMarkdownPct),
+        avgMarkdownPct: normalizePreNivelacijaPercentagePoints(item.avgMarkdownPct),
         grossMarginPctEst: normalizeFiniteNumber(item.grossMarginPctEst),
         seasonRecencyBoost: normalizeFiniteNumber(item.seasonRecencyBoost),
         preNivelacijaScore: normalizeBoundedNumber(item.preNivelacijaScore, 0, 100),
@@ -689,24 +689,21 @@ export default function PreNivelacijaPriorityPage() {
     minScore !== activeFilters.minScore ||
     noSaleDaysMin !== activeFilters.noSaleDaysMin;
 
+  const supplierActionShareProjection = data?.supplierActionShare ?? null;
   const supplierActionShare = useMemo(() => {
-    const items = data?.supplierLeaderboard ?? [];
-    if (items.length === 0) return [] as Array<{ name: string; sharePct: number; weekOverWeekRiskDeltaPct: FiniteNumber }>;
+    const segments = supplierActionShareProjection?.segments ?? [];
+    if (segments.length === 0) return [] as Array<{ name: string; sharePct: number; weekOverWeekRiskDeltaPct: FiniteNumber }>;
 
-    const top = items
-      .map((item) => ({ item, actionScore: normalizeNonNegativeNumber(item.actionScore) }))
-      .filter((entry): entry is { item: (typeof items)[number]; actionScore: number } => entry.actionScore != null)
-      .sort((a, b) => b.actionScore - a.actionScore)
-      .slice(0, 7);
-    const total = top.reduce((sum, entry) => sum + entry.actionScore, 0);
-    if (total <= 0) return [];
-
-    return top.map(({ item, actionScore }) => ({
-      name: item.supplierName,
-      sharePct: (actionScore / total) * 100,
-      weekOverWeekRiskDeltaPct: normalizeFiniteNumber(item.weekOverWeekRiskDeltaPct),
-    }));
-  }, [data?.supplierLeaderboard]);
+    return segments.flatMap((segment) => {
+      const sharePct = normalizePreNivelacijaPercentagePoints(segment.actionSharePct);
+      if (sharePct == null) return [];
+      return [{
+        name: segment.supplierName,
+        sharePct,
+        weekOverWeekRiskDeltaPct: normalizePreNivelacijaPercentagePoints(segment.weekOverWeekRiskDeltaPct),
+      }];
+    });
+  }, [supplierActionShareProjection]);
 
   const selectedRow = useMemo(() => {
     if (expandedArtikalId == null) return null;
@@ -1173,7 +1170,7 @@ export default function PreNivelacijaPriorityPage() {
           <section className="pnp-decision-panels">
             <article className="pnp-decision-card analytics-surface-panel">
               <h2>Koncentracija akcije po dobavljačima</h2>
-              <p>Top dobavljači po skoru akcije u celoj filtriranoj prioritetnoj populaciji.</p>
+              <p>{supplierActionShareProjection?.denominatorLabel ?? "Udeo u akciji u odnosu na ukupan action score svih dobavljača u leaderboard-u."}</p>
               {supplierActionShare.length > 0 ? (
                 <div className="pnp-decision-chart-wrap">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>

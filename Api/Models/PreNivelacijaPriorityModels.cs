@@ -9,6 +9,7 @@ public sealed class PreNivelacijaPriorityResponseDto
     public string FormulaDescription { get; set; } = string.Empty;
     public PreNivelacijaSummaryDto Summary { get; set; } = new();
     public List<PreNivelacijaSupplierActionDto> SupplierLeaderboard { get; set; } = [];
+    public PreNivelacijaSupplierActionShareProjectionDto SupplierActionShare { get; set; } = new();
     public PreNivelacijaFilterFacetsDto FilterFacets { get; set; } = new();
     public List<PreNivelacijaSkuCandidateDto> Candidates { get; set; } = [];
     public PreNivelacijaQueuesDto Queues { get; set; } = new();
@@ -66,6 +67,31 @@ public sealed class PreNivelacijaSummaryDto
     public decimal EstimatedAvoidableMarkdownLoss { get; set; }
     public decimal ExpectedHighlightRevenueUplift { get; set; }
     public decimal AveragePreNivelacijaScore { get; set; }
+}
+
+public sealed class PreNivelacijaSupplierActionShareProjectionDto
+{
+    public string ShareUnit { get; set; } = "percentage_points";
+    public string WeekOverWeekRiskDeltaUnit { get; set; } = "percentage_points";
+    public string DenominatorPolicy { get; set; } = "leaderboard_action_score_full_population_top_seven_plus_other";
+    public string DenominatorLabel { get; set; } = string.Empty;
+    public int LeaderboardSupplierCount { get; set; }
+    public int VisibleSupplierCount { get; set; }
+    public decimal TotalActionScore { get; set; }
+    public decimal IncludedActionScore { get; set; }
+    public decimal OtherActionScore { get; set; }
+    public decimal? OtherSharePct { get; set; }
+    public List<PreNivelacijaSupplierActionShareSegmentDto> Segments { get; set; } = [];
+}
+
+public sealed class PreNivelacijaSupplierActionShareSegmentDto
+{
+    public int? SupplierId { get; set; }
+    public string SupplierName { get; set; } = "N/A";
+    public decimal ActionSharePct { get; set; }
+    public decimal? WeekOverWeekRiskDeltaPct { get; set; }
+    public string WeekOverWeekRiskDeltaUnit { get; set; } = "percentage_points";
+    public bool IsOther { get; set; }
 }
 
 public sealed class PreNivelacijaSupplierActionDto

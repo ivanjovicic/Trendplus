@@ -123,6 +123,74 @@ function buildFilterFacetsFromCandidates(candidates: Array<ReturnType<typeof mak
   };
 }
 
+function buildSupplierActionShareFromLeaderboard(
+  suppliers: Array<{
+    supplierId?: number | null;
+    supplierName: string;
+    actionScore: number;
+    weekOverWeekRiskDeltaPct?: number | null;
+  }>,
+) {
+  const scored = [...suppliers]
+    .filter((supplier) => supplier.actionScore > 0)
+    .sort((left, right) => right.actionScore - left.actionScore);
+  const totalActionScore = scored.reduce((sum, supplier) => sum + supplier.actionScore, 0);
+  if (totalActionScore <= 0) {
+    return {
+      shareUnit: "percentage_points",
+      weekOverWeekRiskDeltaUnit: "percentage_points",
+      denominatorPolicy: "leaderboard_action_score_full_population_top_seven_plus_other",
+      denominatorLabel: "Nema pozitivnog action score-a u leaderboard-u; udeo u akciji nije dostupan.",
+      leaderboardSupplierCount: 0,
+      visibleSupplierCount: 0,
+      totalActionScore: 0,
+      includedActionScore: 0,
+      otherActionScore: 0,
+      otherSharePct: null,
+      segments: [],
+    };
+  }
+
+  const visibleSuppliers = scored.slice(0, 7);
+  const includedActionScore = visibleSuppliers.reduce((sum, supplier) => sum + supplier.actionScore, 0);
+  const otherActionScore = totalActionScore - includedActionScore;
+  const segments = visibleSuppliers.map((supplier) => ({
+    supplierId: supplier.supplierId ?? null,
+    supplierName: supplier.supplierName,
+    actionSharePct: Number(((supplier.actionScore / totalActionScore) * 100).toFixed(2)),
+    weekOverWeekRiskDeltaPct: supplier.weekOverWeekRiskDeltaPct ?? null,
+    weekOverWeekRiskDeltaUnit: "percentage_points",
+    isOther: false,
+  }));
+
+  let otherSharePct: number | null = null;
+  if (otherActionScore > 0) {
+    otherSharePct = Number(((otherActionScore / totalActionScore) * 100).toFixed(2));
+    segments.push({
+      supplierId: null,
+      supplierName: "Ostali",
+      actionSharePct: otherSharePct,
+      weekOverWeekRiskDeltaPct: null,
+      weekOverWeekRiskDeltaUnit: "percentage_points",
+      isOther: true,
+    });
+  }
+
+  return {
+    shareUnit: "percentage_points",
+    weekOverWeekRiskDeltaUnit: "percentage_points",
+    denominatorPolicy: "leaderboard_action_score_full_population_top_seven_plus_other",
+    denominatorLabel: "Udeo u akciji u odnosu na ukupan action score svih dobavljača u leaderboard-u; prikaz top 7 plus Ostali kada postoji preostali udeo.",
+    leaderboardSupplierCount: scored.length,
+    visibleSupplierCount: visibleSuppliers.length,
+    totalActionScore,
+    includedActionScore,
+    otherActionScore,
+    otherSharePct,
+    segments,
+  };
+}
+
 function makeResponse(candidates = [makeCandidate(), makeCandidate({
   artikalId: 102,
   sku: "SKU-102",
@@ -144,6 +212,20 @@ function makeResponse(candidates = [makeCandidate(), makeCandidate({
     reasonCodes: ["sparse_sales"],
   },
 })]) {
+  const supplierLeaderboard = [
+    {
+      supplierId: 11,
+      supplierName: "Dobavljac A",
+      highPrioritySkuCount: 1,
+      candidateSkuCount: candidates.length,
+      stockUnitsAtRisk: 12,
+      estimatedAvoidableMarkdownLoss: 12500,
+      expectedHighlightRevenueUplift: 18000,
+      actionScore: 92,
+      weekOverWeekRiskDeltaPct: 4,
+    },
+  ];
+
   return {
     generatedAtUtc: "2026-06-19T10:00:00Z",
     formulaVersion: "1.0",
@@ -162,19 +244,8 @@ function makeResponse(candidates = [makeCandidate(), makeCandidate({
       expectedHighlightRevenueUplift: 18000,
       averagePreNivelacijaScore: 74,
     },
-    supplierLeaderboard: [
-      {
-        supplierId: 11,
-        supplierName: "Dobavljac A",
-        highPrioritySkuCount: 1,
-        candidateSkuCount: candidates.length,
-        stockUnitsAtRisk: 12,
-        estimatedAvoidableMarkdownLoss: 12500,
-        expectedHighlightRevenueUplift: 18000,
-        actionScore: 92,
-        weekOverWeekRiskDeltaPct: 4,
-      },
-    ],
+    supplierLeaderboard,
+    supplierActionShare: buildSupplierActionShareFromLeaderboard(supplierLeaderboard),
     candidates,
     filterFacets: buildFilterFacetsFromCandidates(candidates),
     queues: {
@@ -538,6 +609,35 @@ describe("PreNivelacijaPriorityPage", () => {
     expect(deltaColumn?.getValue?.({ recommendationAllowed: false, revenueDelta: 7000 } as never)).toBeNull();
     expect(scoreColumn?.getValue?.({ recommendationAllowed: true, decisionScoreAvailable: true, decisionScore: 0 } as never)).toBe(0);
     expect(deltaColumn?.getValue?.({ recommendationAllowed: true, revenueDelta: 0 } as never)).toBe(0);
+  });
+
+  it("renders supplier action-share with an explicit Ostali bucket when an eighth supplier exists", async () => {
+    const leaderboard = Array.from({ length: 8 }, (_, index) => ({
+      supplierId: index + 1,
+      supplierName: `Dobavljac ${index + 1}`,
+      highPrioritySkuCount: 1,
+      candidateSkuCount: 1,
+      stockUnitsAtRisk: 1,
+      estimatedAvoidableMarkdownLoss: 100,
+      expectedHighlightRevenueUplift: 100,
+      actionScore: index + 1,
+      weekOverWeekRiskDeltaPct: 1,
+    }));
+
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce({
+      ...makeResponse(),
+      supplierLeaderboard: leaderboard,
+      supplierActionShare: buildSupplierActionShareFromLeaderboard(leaderboard),
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/top 7 plus Ostali/i)).toBeInTheDocument();
+    expect(buildSupplierActionShareFromLeaderboard(leaderboard).segments.some((segment) => segment.isOther)).toBe(true);
   });
 
   it("exports the same focus-filtered rows that the table displays", async () => {

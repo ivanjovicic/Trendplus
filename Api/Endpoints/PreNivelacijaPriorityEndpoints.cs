@@ -722,6 +722,87 @@ public static class PreNivelacijaPriorityEndpoints
         };
     }
 
+    internal const string PreNivelacijaPercentagePointsUnit = "percentage_points";
+    internal const string SupplierActionShareDenominatorPolicy = "leaderboard_action_score_full_population_top_seven_plus_other";
+
+    internal static PreNivelacijaSupplierActionShareProjectionDto BuildSupplierActionShareProjection(
+        IReadOnlyList<PreNivelacijaSupplierActionDto> leaderboard,
+        int visibleSupplierLimit = 7)
+    {
+        var scoredSuppliers = leaderboard
+            .Where(x => x.ActionScore > 0m)
+            .OrderByDescending(x => x.ActionScore)
+            .ToList();
+
+        if (scoredSuppliers.Count == 0)
+        {
+            return new PreNivelacijaSupplierActionShareProjectionDto
+            {
+                ShareUnit = PreNivelacijaPercentagePointsUnit,
+                WeekOverWeekRiskDeltaUnit = PreNivelacijaPercentagePointsUnit,
+                DenominatorPolicy = SupplierActionShareDenominatorPolicy,
+                DenominatorLabel = "Nema pozitivnog action score-a u leaderboard-u; udeo u akciji nije dostupan.",
+            };
+        }
+
+        var totalActionScore = scoredSuppliers.Sum(x => x.ActionScore);
+        if (totalActionScore <= 0m)
+        {
+            return new PreNivelacijaSupplierActionShareProjectionDto
+            {
+                ShareUnit = PreNivelacijaPercentagePointsUnit,
+                WeekOverWeekRiskDeltaUnit = PreNivelacijaPercentagePointsUnit,
+                DenominatorPolicy = SupplierActionShareDenominatorPolicy,
+                DenominatorLabel = "Ukupan action score je nula; udeo u akciji nije dostupan.",
+                LeaderboardSupplierCount = scoredSuppliers.Count,
+            };
+        }
+
+        var visibleSuppliers = scoredSuppliers.Take(visibleSupplierLimit).ToList();
+        var includedActionScore = visibleSuppliers.Sum(x => x.ActionScore);
+        var otherActionScore = decimal.Round(totalActionScore - includedActionScore, 2);
+
+        var segments = visibleSuppliers
+            .Select(supplier => new PreNivelacijaSupplierActionShareSegmentDto
+            {
+                SupplierId = supplier.SupplierId,
+                SupplierName = supplier.SupplierName,
+                ActionSharePct = decimal.Round((supplier.ActionScore / totalActionScore) * 100m, 2),
+                WeekOverWeekRiskDeltaPct = supplier.WeekOverWeekRiskDeltaPct,
+                WeekOverWeekRiskDeltaUnit = PreNivelacijaPercentagePointsUnit,
+                IsOther = false,
+            })
+            .ToList();
+
+        decimal? otherSharePct = null;
+        if (otherActionScore > 0m)
+        {
+            otherSharePct = decimal.Round((otherActionScore / totalActionScore) * 100m, 2);
+            segments.Add(new PreNivelacijaSupplierActionShareSegmentDto
+            {
+                SupplierName = "Ostali",
+                ActionSharePct = otherSharePct.Value,
+                WeekOverWeekRiskDeltaUnit = PreNivelacijaPercentagePointsUnit,
+                IsOther = true,
+            });
+        }
+
+        return new PreNivelacijaSupplierActionShareProjectionDto
+        {
+            ShareUnit = PreNivelacijaPercentagePointsUnit,
+            WeekOverWeekRiskDeltaUnit = PreNivelacijaPercentagePointsUnit,
+            DenominatorPolicy = SupplierActionShareDenominatorPolicy,
+            DenominatorLabel = "Udeo u akciji u odnosu na ukupan action score svih dobavljača u leaderboard-u; prikaz top 7 plus Ostali kada postoji preostali udeo.",
+            LeaderboardSupplierCount = scoredSuppliers.Count,
+            VisibleSupplierCount = visibleSuppliers.Count,
+            TotalActionScore = decimal.Round(totalActionScore, 2),
+            IncludedActionScore = decimal.Round(includedActionScore, 2),
+            OtherActionScore = otherActionScore,
+            OtherSharePct = otherSharePct,
+            Segments = segments,
+        };
+    }
+
     internal static IReadOnlyList<PreNivelacijaSkuCandidateDto> FilterCandidatesByFocus(
         IReadOnlyList<PreNivelacijaSkuCandidateDto> candidates,
         string? focus)
@@ -774,6 +855,7 @@ public static class PreNivelacijaPriorityEndpoints
             FormulaDescription = baseEntry.FormulaDescription,
             Summary = baseEntry.Summary,
             SupplierLeaderboard = baseEntry.SupplierLeaderboard,
+            SupplierActionShare = BuildSupplierActionShareProjection(baseEntry.SupplierLeaderboard),
             FilterFacets = BuildFilterFacets(baseEntry.Candidates),
             Candidates = pagedCandidates,
             Queues = baseEntry.Queues,
