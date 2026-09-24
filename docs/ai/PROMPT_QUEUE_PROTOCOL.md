@@ -41,8 +41,9 @@ Future planning programs:
 ### Recovery order
 
 1. **Refresh routing truth.** Read current `main`, `MASTER_ROADMAP.md`, the owning queue header/addenda and all current `READY` / `IN_PROGRESS` rows. Do not trust an older audit's “next” sentence.
-2. **Finish already-started work first.**
+2. **Finish already-started work and unfinished delivery first.**
    - Resume the agent/workspace's own active claim.
+   - Inspect recent relevant run logs plus known task branch/PR state before selecting new work. If a valid implementation/proof exists on a branch or PR but `main` does not contain it, finish the permitted merge/push to `main`, resolve only in-scope conflicts, verify the delivered SHA, and synchronize evidence before moving on. Do not merge stale/unverified transport work blindly.
    - Do not steal a live claim from another owner.
    - If an `IN_PROGRESS` row is only stale metadata and current `main` plus its run log already prove delivery, reconcile it to the truthful terminal status before selecting new work.
    - A takeover is allowed only when current evidence proves the old claim is abandoned/stale and there is no active conflicting lock/branch/PR/owner. Record the takeover evidence.
