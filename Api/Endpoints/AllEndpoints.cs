@@ -4735,6 +4735,9 @@ public static class AllEndpoints
                     TypeInsightsDenominator = typeInsightsAuthoritative
                         ? VendorSalesNivelacijaTypeInsightPolicy.Denominator
                         : null,
+                    TypeInsightsElasticityWeighting = typeInsightsAuthoritative
+                        ? VendorSalesNivelacijaTypeInsightPolicy.ElasticityWeighting
+                        : null,
                     PriceDirectionStats = priceDirectionStats,
                     Insights = insights,
                     AvgMomentumRevenue = avgMomentumRevenue,

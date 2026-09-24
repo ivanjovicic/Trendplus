@@ -11,6 +11,7 @@ public static class VendorSalesNivelacijaTypeInsightPolicy
 {
     public const string Source = "full_comparable_cohort";
     public const string Denominator = "comparable_post_revenue";
+    public const string ElasticityWeighting = "post_revenue_weighted";
 
     public static IReadOnlyList<VendorSalesNivelacijaTypeInsightAggregate> Build(
         IEnumerable<VendorSalesNivelacijaArticleStatDto> rows)
@@ -49,7 +50,7 @@ public static class VendorSalesNivelacijaTypeInsightPolicy
                         .Where(sku => !string.IsNullOrWhiteSpace(sku))
                         .Distinct(StringComparer.Ordinal)
                         .Count(),
-                    AvgElasticity: AverageFinite(group.Select(row => row.PriceElasticity)),
+                    AvgElasticity: WeightedAverageElasticity(group),
                     PostRevenueSharePercent: totalPostRevenue > 0m
                         ? Math.Round(postRevenue / totalPostRevenue * 100m, 2)
                         : null);
@@ -68,6 +69,30 @@ public static class VendorSalesNivelacijaTypeInsightPolicy
             return postRevenue > 0m ? 100m : 0m;
 
         return Math.Round((postRevenue - preRevenue) / preRevenue * 100m, 2);
+    }
+
+    private static decimal? WeightedAverageElasticity(IEnumerable<VendorSalesNivelacijaArticleStatDto> rows)
+    {
+        decimal weightedSum = 0m;
+        decimal weightTotal = 0m;
+
+        foreach (var row in rows)
+        {
+            if (!row.PriceElasticity.HasValue || row.PostRevenue <= 0m)
+            {
+                continue;
+            }
+
+            weightedSum += row.PriceElasticity.Value * row.PostRevenue;
+            weightTotal += row.PostRevenue;
+        }
+
+        if (weightTotal > 0m)
+        {
+            return Math.Round(weightedSum / weightTotal, 4);
+        }
+
+        return AverageFinite(rows.Select(row => row.PriceElasticity));
     }
 
     private static decimal? AverageFinite(IEnumerable<decimal?> values)

@@ -201,6 +201,7 @@ public sealed class VendorSalesNivelacijaResponseDto
     public bool TypeInsightsAuthoritative { get; set; }
     public string? TypeInsightsSource { get; set; }
     public string? TypeInsightsDenominator { get; set; }
+    public string? TypeInsightsElasticityWeighting { get; set; }
     public List<VendorSalesNivelacijaPriceDirectionStatDto> PriceDirectionStats { get; set; } = [];
     public List<VendorSalesNivelacijaInsightDto> Insights { get; set; } = [];
 

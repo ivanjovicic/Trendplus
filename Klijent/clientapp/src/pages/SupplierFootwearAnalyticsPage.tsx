@@ -145,19 +145,58 @@ function buildStatusTooltip(data: StatusTooltipData): string {
     : " | Pouzdanost Nije dostupno | Poverenje Nije dostupno";
   return `${statusDisplayLabel(data.status)}: ${data.statusReason} | Udeo ${formatMetricDisplayValue({ value: data.sharePct, kind: "percent" })} | Trend ${fmtSignedPct(data.trendPct, 1)} | Tip ${data.topFootwearType} (${formatMetricDisplayValue({ value: data.topFootwearTypeSharePct, kind: "percent" })})${trust}`;
 }
-function buildTypeInsights(data: VendorSalesNivelacijaResponse | null) {
-  if (data?.typeInsightsAuthoritative !== true) return { globalTypeShare: [] };
+const TYPE_INSIGHT_VISIBLE_CATEGORY_LIMIT = 8;
 
-  const globalTypeShare = (data.categoryStats ?? [])
+export function buildTypeInsightChartProjection(
+  data: VendorSalesNivelacijaResponse | null,
+  visibleCategoryLimit = TYPE_INSIGHT_VISIBLE_CATEGORY_LIMIT,
+) {
+  if (data?.typeInsightsAuthoritative !== true) {
+    return {
+      chartRows: [] as Array<{ name: string; sharePct: number }>,
+      excludedSharePct: null as number | null,
+      totalCategoryCount: 0,
+      displayDenominatorLabel: null as string | null,
+    };
+  }
+
+  const rankedCategories = (data.categoryStats ?? [])
     .map((item) => ({
       name: item.category.trim() || "Nepoznato",
       sharePct: normalizeMetricNumber(item.postRevenueSharePercent),
     }))
     .filter((item): item is { name: string; sharePct: number } => item.sharePct != null)
-    .sort((a, b) => b.sharePct - a.sharePct || a.name.localeCompare(b.name, "sr"))
-    .slice(0, 8);
+    .sort((a, b) => b.sharePct - a.sharePct || a.name.localeCompare(b.name, "sr"));
 
-  return { globalTypeShare };
+  const visibleCategories = rankedCategories.slice(0, visibleCategoryLimit);
+  const excludedSharePct = rankedCategories
+    .slice(visibleCategoryLimit)
+    .reduce((sum, item) => sum + item.sharePct, 0);
+
+  const chartRows = [...visibleCategories];
+  if (excludedSharePct > 0) {
+    chartRows.push({
+      name: "Ostali",
+      sharePct: Number(excludedSharePct.toFixed(2)),
+    });
+  }
+
+  const denominator = data.typeInsightsDenominator ?? "comparable_post_revenue";
+  const displayDenominatorLabel = excludedSharePct > 0
+    ? `Udeo u odnosu na punu uporedivu kohortu (${denominator}); prikaz top ${visibleCategoryLimit} plus Ostali.`
+    : `Udeo u odnosu na punu uporedivu kohortu (${denominator}); prikaz top ${Math.min(visibleCategoryLimit, rankedCategories.length)} kategorija.`;
+
+  return {
+    chartRows,
+    excludedSharePct: excludedSharePct > 0 ? Number(excludedSharePct.toFixed(2)) : null,
+    totalCategoryCount: rankedCategories.length,
+    displayDenominatorLabel,
+  };
+}
+
+function buildTypeInsights(data: VendorSalesNivelacijaResponse | null) {
+  const projection = buildTypeInsightChartProjection(data);
+  return { globalTypeShare: projection.chartRows };
 }
 
 function normalizeDataQualityStatus(value: string | null | undefined): DataQualityStatus {
@@ -436,6 +475,10 @@ export default function SupplierFootwearAnalyticsPage({
     () => buildTypeInsights(data),
     [data],
   );
+  const typeInsightChartProjection = useMemo(
+    () => buildTypeInsightChartProjection(data),
+    [data],
+  );
 
   const decisionRows = useMemo<DecisionVendor[]>(() => {
     const rows = data?.vendorStats ?? [];
@@ -659,9 +702,11 @@ export default function SupplierFootwearAnalyticsPage({
     { key: "detailDenominator", label: "Detalj / analiza", value: data?.dataQuality?.returnedRows != null && data?.dataQuality?.analyzedRows != null ? `${data.dataQuality.returnedRows} / ${data.dataQuality.analyzedRows}` : "N/A" },
     { key: "typeInsightSource", label: "Izvor tipova", value: data?.typeInsightsSource ?? "Nije dostupno" },
     { key: "typeInsightDenominator", label: "Imenilac tipova", value: data?.typeInsightsDenominator ?? "Nije dostupno" },
+    { key: "typeInsightElasticityWeighting", label: "Tezina elasticnosti", value: data?.typeInsightsElasticityWeighting ?? "Nije dostupno" },
+    { key: "typeInsightExcludedShare", label: "Udeo van prikaza", value: formatMetricDisplayValue({ value: typeInsightChartProjection.excludedSharePct, kind: "percent", fallback: "N/A" }) },
     { key: "requestedDataScope", label: "Traženi opseg", value: effectiveDataScope },
     { key: "effectiveDataScope", label: "Efektivni opseg", value: data?.dataScope ?? effectiveDataScope },
-  ], [data?.dataQuality?.analyzedRows, data?.dataQuality?.returnedRows, data?.dataScope, data?.generatedAt, data?.totals.articlesCount, data?.totals.vendorsCount, data?.typeInsightsDenominator, data?.typeInsightsSource, data?.windowDays, effectiveDataScope]);
+  ], [data?.dataQuality?.analyzedRows, data?.dataQuality?.returnedRows, data?.dataScope, data?.generatedAt, data?.totals.articlesCount, data?.totals.vendorsCount, data?.typeInsightsDenominator, data?.typeInsightsElasticityWeighting, data?.typeInsightsSource, data?.windowDays, effectiveDataScope, typeInsightChartProjection.excludedSharePct]);
 
   useEffect(() => {
     if (!embedded || !onTrustMetadataChange) return;
@@ -865,7 +910,8 @@ export default function SupplierFootwearAnalyticsPage({
 
           <section className="sf-decision-panels">
             <article className="sf-decision-card analytics-surface-panel">
-              <h2>Koncentracija po tipu obuce</h2><p>Top tipovi obuce po udelu prometa u trenutnom filtru.</p>
+              <h2>Koncentracija po tipu obuce</h2>
+              <p>{typeInsightChartProjection.displayDenominatorLabel ?? "Tipovi obuce nisu potvrđeni punom uporedivom kohortom."}</p>
               {typeInsights.globalTypeShare.length > 0 ? (
                 <div className="sf-decision-chart-wrap">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>

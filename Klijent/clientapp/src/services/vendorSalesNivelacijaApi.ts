@@ -190,6 +190,7 @@ export interface VendorSalesNivelacijaResponse {
     typeInsightsAuthoritative?: boolean;
     typeInsightsSource?: string | null;
     typeInsightsDenominator?: string | null;
+    typeInsightsElasticityWeighting?: string | null;
     priceDirectionStats: VendorSalesNivelacijaPriceDirectionStat[];
     insights: VendorSalesNivelacijaInsight[];
     avgMomentumRevenue?: number | null;

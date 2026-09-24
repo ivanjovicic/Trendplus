@@ -34,6 +34,19 @@ public sealed class VendorSalesNivelacijaTypeInsightPolicyTests
     }
 
     [Fact]
+    public void ElasticityUsesPostRevenueWeightingWithinCategory()
+    {
+        var aggregates = VendorSalesNivelacijaTypeInsightPolicy.Build(
+        [
+            ComparableRow("SKU-LOW", "Patike", 10m, 100m, 0.2m),
+            ComparableRow("SKU-HIGH", "Patike", 10m, 900m, 0.8m),
+        ]);
+
+        Assert.Single(aggregates);
+        Assert.Equal(0.74m, aggregates[0].AvgElasticity);
+    }
+
+    [Fact]
     public void MissingPostRevenueDenominatorRemainsUnavailable()
     {
         var aggregates = VendorSalesNivelacijaTypeInsightPolicy.Build(
