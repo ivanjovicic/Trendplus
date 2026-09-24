@@ -79,6 +79,21 @@ namespace Infrastructure.Repository
             costCmd.Parameters.Add(new NpgsqlParameter { Value = stavkeJson, NpgsqlDbType = NpgsqlDbType.Jsonb });
             await costCmd.ExecuteNonQueryAsync(ct);
 
+            // Capture mutable article dimensions at the POS sale boundary. Later article-master
+            // edits must not reclassify an already recorded sale line.
+            await using var attributionCmd = conn.CreateCommand();
+            attributionCmd.CommandText = @"
+                UPDATE prodaja_stavke ps
+                SET supplier_id_at_sale = a.""IDDobavljac"",
+                    shoe_type_id_at_sale = a.""IDTipObuce"",
+                    attribution_basis = 'sale_snapshot'
+                FROM ""Artikli"" a
+                WHERE ps.id_prodaja = $1
+                  AND ps.id_artikal = a.""Id""
+                  AND (ps.attribution_basis IS NULL OR ps.attribution_basis = 'unknown');";
+            attributionCmd.Parameters.Add(new NpgsqlParameter { Value = prodajaId, NpgsqlDbType = NpgsqlDbType.Integer });
+            await attributionCmd.ExecuteNonQueryAsync(ct);
+
             // Insert into DnevnikPromena for audit trail
             await using var logCmd = conn.CreateCommand();
             logCmd.CommandText = @"

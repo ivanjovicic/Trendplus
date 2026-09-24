@@ -13,6 +13,9 @@ public sealed class ProdajaStavka : IAccessImportSourceLineage
     public int Kolicina { get; set; }
     public decimal Cena { get; set; }
     public decimal? NabavnaCena { get; set; }   // purchase price at time of sale (for GM analytics)
+    public int? SupplierIdAtSale { get; set; }
+    public int? ShoeTypeIdAtSale { get; set; }
+    public string AttributionBasis { get; set; } = SaleDimensionAttribution.Unknown;
     public string? SourceTableKey { get; set; }
     public long? SourceRowId { get; set; }
     public DateTime? SourceUpdatedAtUtc { get; set; }

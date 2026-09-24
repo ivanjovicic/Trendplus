@@ -473,7 +473,7 @@ public sealed class AnalyticsCostSnapshotService
                 ProductCostLegacy = a.NabavnaCena
             } by new
             {
-                SupplierId = a.IDDobavljac,
+                SupplierId = ps.SupplierIdAtSale,
                 ArtikalId = a.Id,
                 SaleLineCost = ps.NabavnaCena,
                 ProductCostRsd = a.NabavnaCenaDin,
@@ -564,7 +564,7 @@ public sealed class AnalyticsCostSnapshotService
                 ProductCostLegacy = a.NabavnaCena
             } by new
             {
-                ShoeTypeId = a.IDTipObuce,
+                ShoeTypeId = ps.ShoeTypeIdAtSale,
                 ArtikalId = a.Id,
                 SaleLineCost = ps.NabavnaCena,
                 ProductCostRsd = a.NabavnaCenaDin,

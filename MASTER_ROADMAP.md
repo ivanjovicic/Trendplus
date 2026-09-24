@@ -4,6 +4,9 @@ Updated: 2026-09-24
 Repository: `ivanjovicic/Trendplus`
 Status: canonical planning entry point
 
+Owner promotion 2026-09-24: under the user's instruction to claim the next prompt, dependency/collision review confirmed `RQ373` is DONE, no active Supplier Sales backend owner overlaps the historical attribution boundary, and `RQ412`/`RQ413` remain correctly sequenced behind this contract. `RQ411` moved `WAITING -> READY`.
+Owner claim 2026-09-24: `RQ411` is now `IN_PROGRESS` in this workspace for immutable/provenance-bearing supplier and shoe-type attribution. Local lock: `.ai/task-locks/RQ411-codex.lock.md`.
+
 Owner promotion 2026-09-24: idle recovery verified that RQ373 is the dependency-complete Supplier Sales visible-population owner. RQ378 and RQ380 depend on its display/reference contract, while RQ379 must consume the stabilized response schema; no conflicting active claim, branch or PR was found. RQ373 moved `WAITING -> READY`.
 Owner claim 2026-09-24: RQ373 is `IN_PROGRESS` in this workspace for the Supplier Sales display-population/reference-cohort contract across KPI, chart, table, detail, export and recommendation projections. Local lock: `.ai/task-locks/RQ373-cursor.lock.md`.
 Owner completion 2026-09-24: RQ373 was delivered directly to `main`. Visible Supplier Sales revenue, units, margin shares and aggregate PoP now use the displayed population, while backend recommendation status and whole-response reference-cohort semantics remain explicit in trust/detail/export metadata. Run log: `.ai/runs/2026-09-24-RQ373-evidence.md`. RQ378/RQ379/RQ380 remain WAITING.

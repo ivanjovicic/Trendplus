@@ -1,6 +1,7 @@
 using Api.Models;
 using Application.Analytics;
 using Domain.Model;
+using Domain.Model.Prodaja;
 using Infrastructure.Configuration;
 using Infrastructure.DbContexts;
 using System.Globalization;
@@ -46,6 +47,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         public int? TipObuceId { get; init; }
         public string TipObuceNaziv { get; init; } = "Nepoznato";
         public string Boja { get; init; } = "Nepoznato";
+        public string AttributionBasis { get; init; } = SaleDimensionAttribution.Unknown;
     }
 
     private sealed class AnalyticsContext
@@ -327,9 +329,9 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             from ps in _db.ProdajaStavke.AsNoTracking()
             join pz in _db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
             join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
-            join d in _db.Dobavljaci.AsNoTracking() on a.IDDobavljac equals d.Id into dj
+            join d in _db.Dobavljaci.AsNoTracking() on ps.SupplierIdAtSale equals d.Id into dj
             from d in dj.DefaultIfEmpty()
-            join t in _db.TipoviObuce.AsNoTracking() on a.IDTipObuce equals t.Id into tj
+            join t in _db.TipoviObuce.AsNoTracking() on ps.ShoeTypeIdAtSale equals t.Id into tj
             from t in tj.DefaultIfEmpty()
             where (!filters.FromUtc.HasValue || pz.DatumProdaje >= filters.FromUtc.Value)
                && (!filters.ToUtc.HasValue || pz.DatumProdaje <= filters.ToUtc.Value)
@@ -351,7 +353,8 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 DobavljacNaziv = d != null && !string.IsNullOrWhiteSpace(d.Naziv) ? d.Naziv! : "Nepoznato",
                 TipObuceId = t != null ? t.Id : null,
                 TipObuceNaziv = t != null && !string.IsNullOrWhiteSpace(t.Naziv) ? t.Naziv : "Nepoznato",
-                Boja = ColorIdentityPolicy.DisplayName(a.Boja)
+                Boja = ColorIdentityPolicy.DisplayName(a.Boja),
+                AttributionBasis = ps.AttributionBasis
             })
             .Where(x => !filters.SupplierId.HasValue || x.DobavljacId == filters.SupplierId.Value)
             .ToListAsync(ct);
@@ -416,7 +419,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 where pz.DatumProdaje >= previousFromUtc.Value
                    && pz.DatumProdaje <= previousToUtc.Value
                    && (!context.Filters.StoreId.HasValue || pz.IDObjekat == context.Filters.StoreId.Value)
-                   && a.IDDobavljac == supplierId
+                   && ps.SupplierIdAtSale == supplierId
                    && (!importedOnly || a.DataOrigin == "access")
                    && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
                 group ps by 1 into g
@@ -436,12 +439,12 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 from ps in _db.ProdajaStavke.AsNoTracking()
                 join pz in _db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
                 join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
-                join d in _db.Dobavljaci.AsNoTracking() on a.IDDobavljac equals d.Id into dj
+                join d in _db.Dobavljaci.AsNoTracking() on ps.SupplierIdAtSale equals d.Id into dj
                 from d in dj.DefaultIfEmpty()
                 where pz.DatumProdaje >= previousFromUtc.Value
                    && pz.DatumProdaje <= previousToUtc.Value
                    && (!context.Filters.StoreId.HasValue || pz.IDObjekat == context.Filters.StoreId.Value)
-                   && (!a.IDDobavljac.HasValue || d == null || d.Naziv == null || d.Naziv.Trim() == "")
+                   && (!ps.SupplierIdAtSale.HasValue || d == null || d.Naziv == null || d.Naziv.Trim() == "")
                    && (!importedOnly || a.DataOrigin == "access")
                    && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
                 group ps by 1 into g
@@ -500,7 +503,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 where pz.DatumProdaje >= previousFromUtc.Value
                    && pz.DatumProdaje <= previousToUtc.Value
                    && (!context.Filters.StoreId.HasValue || pz.IDObjekat == context.Filters.StoreId.Value)
-                   && a.IDTipObuce == shoeTypeId
+                   && ps.ShoeTypeIdAtSale == shoeTypeId
                    && (!importedOnly || a.DataOrigin == "access")
                    && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
                 group ps by 1 into g
@@ -520,12 +523,12 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 from ps in _db.ProdajaStavke.AsNoTracking()
                 join pz in _db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
                 join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
-                join t in _db.TipoviObuce.AsNoTracking() on a.IDTipObuce equals t.Id into tj
+                join t in _db.TipoviObuce.AsNoTracking() on ps.ShoeTypeIdAtSale equals t.Id into tj
                 from t in tj.DefaultIfEmpty()
                 where pz.DatumProdaje >= previousFromUtc.Value
                    && pz.DatumProdaje <= previousToUtc.Value
                    && (!context.Filters.StoreId.HasValue || pz.IDObjekat == context.Filters.StoreId.Value)
-                   && (!a.IDTipObuce.HasValue || t == null || t.Naziv == null || t.Naziv.Trim() == "")
+                   && (!ps.ShoeTypeIdAtSale.HasValue || t == null || t.Naziv == null || t.Naziv.Trim() == "")
                    && (!importedOnly || a.DataOrigin == "access")
                    && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
                 group ps by 1 into g
@@ -579,7 +582,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             where pz.DatumProdaje >= previousFromUtc.Value
                && pz.DatumProdaje <= previousToUtc.Value
                && (!context.Filters.StoreId.HasValue || pz.IDObjekat == context.Filters.StoreId.Value)
-               && (!context.Filters.SupplierId.HasValue || a.IDDobavljac == context.Filters.SupplierId.Value)
+               && (!context.Filters.SupplierId.HasValue || ps.SupplierIdAtSale == context.Filters.SupplierId.Value)
                && (!importedOnly || a.DataOrigin == "access")
                && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
             select new
@@ -747,7 +750,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             Title = aggregate.Title,
             Subtitle = aggregate.Subtitle,
             Fields = localizedFields,
-            Metadata = BuildShoeTypeMetadata(context, marginQuality, recommendationAllowed),
+            Metadata = BuildShoeTypeMetadata(context, rows, marginQuality, recommendationAllowed),
             Recommendation = new AnalyticsDetailRecommendationDto
             {
                 Status = exposedRecommendation.Status,
@@ -1053,12 +1056,13 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
 
     private static IReadOnlyList<AnalyticsDetailFieldDto> BuildShoeTypeMetadata(
         AnalyticsContext context,
+        IReadOnlyCollection<SalesRow> rows,
         MarginQualityClassifier.MarginQualityResult marginQuality,
         bool recommendationAllowed)
     {
         var filters = context.Filters;
-        return
-        [
+        var metadata = new List<AnalyticsDetailFieldDto>
+        {
             Field("requestedFromDate", "Traženi period od", filters.RequestedFromUtc?.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture), "date"),
             Field("requestedToDate", "Traženi period do", filters.RequestedToUtc?.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture), "date"),
             Field("effectiveFromDate", "Efektivni period od", filters.FromUtc?.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture), "date"),
@@ -1072,7 +1076,9 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             Field("snapshotStatus", "Snimljeni trošak", context.IsSnapshotActive ? "Aktivan" : "Nije aktivan", "text"),
             Field("snapshotGeneratedAt", "Vreme snimka troška", context.SnapshotGeneratedAtUtc?.ToString("dd.MM.yyyy HH:mm:ss 'UTC'", CultureInfo.InvariantCulture), "datetime"),
             Field("recommendationAllowed", "Preporuka dozvoljena", recommendationAllowed ? "Da" : "Ne", "text")
-        ];
+        };
+        metadata.AddRange(BuildAttributionMetadata(rows));
+        return metadata;
     }
 
     private static bool IsUnknownShoeTypeId(string? id)
@@ -1308,6 +1314,9 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             splitSnapshot.HasComparableSignal);
         var recommendationAllowed = exposedRecommendation.RecommendationAllowed;
 
+        var metadata = BuildFilterMetadata(context.Filters).ToList();
+        metadata.AddRange(BuildAttributionMetadata(rows));
+
         return new AnalyticsDetailResponseDto
         {
             Table = table,
@@ -1315,7 +1324,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             Title = title,
             Subtitle = subtitle,
             Fields = fields,
-            Metadata = BuildFilterMetadata(context.Filters),
+            Metadata = metadata,
             Recommendation = new AnalyticsDetailRecommendationDto
             {
                 Status = exposedRecommendation.Status,
@@ -1328,6 +1337,22 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 ReasonCodes = exposedRecommendation.ReasonCodes
             }
         };
+    }
+
+    private static IReadOnlyList<AnalyticsDetailFieldDto> BuildAttributionMetadata(IReadOnlyCollection<SalesRow> rows)
+    {
+        var bases = rows
+            .Select(row => string.IsNullOrWhiteSpace(row.AttributionBasis) ? SaleDimensionAttribution.Unknown : row.AttributionBasis)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        var coveragePct = rows.Count == 0
+            ? (double?)null
+            : Math.Round(rows.Count(row => !string.Equals(row.AttributionBasis, SaleDimensionAttribution.Unknown, StringComparison.Ordinal)) * 100d / rows.Count, 2);
+        return
+        [
+            Field("attributionBasis", "Osnov atribucije dobavljača/tipa obuće", bases.Length == 1 ? bases[0] : "mixed", "text"),
+            Field("attributionCoveragePct", "Pokrivenost atribucijom %", coveragePct?.ToString("0.00", CultureInfo.InvariantCulture), "percent")
+        ];
     }
 
     private static IReadOnlyList<AnalyticsDetailFieldDto> BuildFilterMetadata(AnalyticsFilters filters)

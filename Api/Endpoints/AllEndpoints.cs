@@ -15,6 +15,7 @@ using Api.Endpoints;
 using Api.Models;
 using Api.Services;
 using Domain.Model;
+using Domain.Model.Prodaja;
 using Infrastructure.Services;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -1288,11 +1289,11 @@ public static class AllEndpoints
                            && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
                            && (!importedOnly || a.DataOrigin == "access")
                            && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
-                        group ps by new { a.IDDobavljac, a.IDTipObuce } into g
+                        group ps by new { ps.SupplierIdAtSale, ps.ShoeTypeIdAtSale } into g
                         select new
                         {
-                            SupplierId = g.Key.IDDobavljac,
-                            FootwearTypeId = g.Key.IDTipObuce,
+                            SupplierId = g.Key.SupplierIdAtSale,
+                            FootwearTypeId = g.Key.ShoeTypeIdAtSale,
                             Revenue = g.Sum(x => x.Kolicina * x.Cena),
                             Units = g.Sum(x => x.Kolicina)
                         })
@@ -1344,16 +1345,18 @@ public static class AllEndpoints
                         Prihod = ps.Kolicina * ps.Cena,
                         SaleLineCost = ps.NabavnaCena,
                         ProductCostRsd = a.NabavnaCenaDin,
-                        ProductCostLegacy = a.NabavnaCena
+                        ProductCostLegacy = a.NabavnaCena,
+                        AttributionBasis = ps.AttributionBasis
                     } by new
                     {
-                        SupplierId = a.IDDobavljac,
-                        FootwearTypeId = a.IDTipObuce,
+                        SupplierId = ps.SupplierIdAtSale,
+                        FootwearTypeId = ps.ShoeTypeIdAtSale,
                         ArtikalId = a.Id,
                         DatumProdaje = pz.DatumProdaje,
                         SaleLineCost = ps.NabavnaCena,
                         ProductCostRsd = a.NabavnaCenaDin,
-                        ProductCostLegacy = a.NabavnaCena
+                        ProductCostLegacy = a.NabavnaCena,
+                        AttributionBasis = ps.AttributionBasis
                     }
                     into g
                     select new
@@ -1366,10 +1369,16 @@ public static class AllEndpoints
                         Prihod = g.Sum(x => x.Prihod),
                         SaleLineCost = g.Key.SaleLineCost,
                         ProductCostRsd = g.Key.ProductCostRsd,
-                        ProductCostLegacy = g.Key.ProductCostLegacy
+                        ProductCostLegacy = g.Key.ProductCostLegacy,
+                        AttributionBasis = g.Key.AttributionBasis
                     })
                     .ToListAsync(ct);
                 var salesRowCount = stavke.Count;
+                var attributionBases = stavke.Select(s => s.AttributionBasis).Distinct(StringComparer.Ordinal).ToArray();
+                var attributionCoveragePct = salesRowCount == 0
+                    ? (double?)null
+                    : Math.Round(stavke.Count(s => !string.Equals(s.AttributionBasis, SaleDimensionAttribution.Unknown, StringComparison.Ordinal)) * 100d / salesRowCount, 2);
+                var attributionBasis = attributionBases.Length == 1 ? attributionBases[0] : "mixed";
 
                 var sezone = (await db.Sezone.AsNoTracking()
                     .OrderByDescending(s => s.DatumOd)
@@ -1890,6 +1899,16 @@ public static class AllEndpoints
                 };
 
                 var generatedAtUtc = DateTime.UtcNow;
+                var supplierTrustMeta = BuildStatsTrustMeta(
+                    suppliers.Count,
+                    "no_supplier_sales",
+                    "Nema podataka za prodaju po dobavljaču.",
+                    dataQuality.missingCostRevenueSharePct,
+                    dataQuality.unknownSupplierRevenueSharePct,
+                    dataQuality.revenueWithNivelacijaSplitSharePct,
+                    generatedAtUtc);
+                supplierTrustMeta.AttributionBasis = attributionBasis;
+                supplierTrustMeta.AttributionCoveragePct = attributionCoveragePct;
                 var response = new
                 {
                     generatedAt = generatedAtUtc,
@@ -1906,14 +1925,7 @@ public static class AllEndpoints
                     suppliers = suppliersWithRecommendation,
                     totals,
                     dataQuality,
-                    meta = BuildStatsTrustMeta(
-                        suppliers.Count,
-                        "no_supplier_sales",
-                        "Nema podataka za prodaju po dobavljaču.",
-                        dataQuality.missingCostRevenueSharePct,
-                        dataQuality.unknownSupplierRevenueSharePct,
-                        dataQuality.revenueWithNivelacijaSplitSharePct,
-                        generatedAtUtc),
+                    meta = supplierTrustMeta,
                     recommendationAllowed = suppliersWithRecommendation.Count > 0
                         && suppliersWithRecommendation.All(x => x.recommendation.RecommendationAllowed),
                     recommendationReferenceCohort = new
@@ -2209,7 +2221,7 @@ public static class AllEndpoints
                            && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
                            && (!importedOnly || a.DataOrigin == "access")
                            && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
-                        group ps by a.IDTipObuce into g
+                        group ps by ps.ShoeTypeIdAtSale into g
                         select new
                         {
                             TipObuceId = g.Key,
@@ -2241,15 +2253,17 @@ public static class AllEndpoints
                         Prihod = ps.Kolicina * ps.Cena,
                         SaleLineCost = ps.NabavnaCena,
                         ProductCostRsd = a.NabavnaCenaDin,
-                        ProductCostLegacy = a.NabavnaCena
+                        ProductCostLegacy = a.NabavnaCena,
+                        AttributionBasis = ps.AttributionBasis
                     } by new
                     {
-                        TipObuceId = a.IDTipObuce,
+                        TipObuceId = ps.ShoeTypeIdAtSale,
                         ArtikalId = a.Id,
                         DatumProdaje = pz.DatumProdaje,
                         SaleLineCost = ps.NabavnaCena,
                         ProductCostRsd = a.NabavnaCenaDin,
-                        ProductCostLegacy = a.NabavnaCena
+                        ProductCostLegacy = a.NabavnaCena,
+                        AttributionBasis = ps.AttributionBasis
                     }
                     into g
                     select new
@@ -2261,9 +2275,16 @@ public static class AllEndpoints
                         Prihod = g.Sum(x => x.Prihod),
                         SaleLineCost = g.Key.SaleLineCost,
                         ProductCostRsd = g.Key.ProductCostRsd,
-                        ProductCostLegacy = g.Key.ProductCostLegacy
+                        ProductCostLegacy = g.Key.ProductCostLegacy,
+                        AttributionBasis = g.Key.AttributionBasis
                     })
                     .ToListAsync(ct);
+
+                var shoeAttributionBases = stavke.Select(s => s.AttributionBasis).Distinct(StringComparer.Ordinal).ToArray();
+                var shoeAttributionCoveragePct = stavke.Count == 0
+                    ? (double?)null
+                    : Math.Round(stavke.Count(s => !string.Equals(s.AttributionBasis, SaleDimensionAttribution.Unknown, StringComparison.Ordinal)) * 100d / stavke.Count, 2);
+                var shoeAttributionBasis = shoeAttributionBases.Length == 1 ? shoeAttributionBases[0] : "mixed";
 
                 var sezone = (await db.Sezone.AsNoTracking()
                     .OrderByDescending(s => s.DatumOd)
@@ -2332,9 +2353,9 @@ public static class AllEndpoints
                             sale => sale.DatumProdaje,
                             sale => sale.Prihod,
                             sale => sale.Kolicina);
-                        var tipObuceNaziv = g.Key.HasValue && tipObuceNazivMap.TryGetValue(g.Key.Value, out var naziv)
-                            ? naziv
-                            : "Nepoznato";
+                        var tipObuceNaziv = "Nepoznato";
+                        if (g.Key.HasValue && tipObuceNazivMap.TryGetValue(g.Key.Value, out var resolvedTipObuceNaziv))
+                            tipObuceNaziv = resolvedTipObuceNaziv;
                         var marginQuality = MarginQualityClassifier.ClassifyFromSnapshot(marginSnapshot, totalRevenue);
 
                         return new
@@ -2652,6 +2673,16 @@ public static class AllEndpoints
                 };
 
                 var generatedAtUtc = DateTime.UtcNow;
+                var shoeTrustMeta = BuildStatsTrustMeta(
+                    shoeTypes.Count,
+                    "no_shoe_type_sales",
+                    "Nema podataka za prodaju po tipu obuće.",
+                    dataQuality.missingCostRevenueSharePct,
+                    dataQuality.unknownTypeRevenueSharePct,
+                    dataQuality.revenueWithNivelacijaSplitSharePct,
+                    generatedAtUtc);
+                shoeTrustMeta.AttributionBasis = shoeAttributionBasis;
+                shoeTrustMeta.AttributionCoveragePct = shoeAttributionCoveragePct;
                 var response = new
                 {
                     generatedAt = generatedAtUtc,
@@ -2665,14 +2696,7 @@ public static class AllEndpoints
                     shoeTypes = shoeTypesWithRecommendation,
                     totals,
                     dataQuality,
-                    meta = BuildStatsTrustMeta(
-                        shoeTypes.Count,
-                        "no_shoe_type_sales",
-                        "Nema podataka za prodaju po tipu obuće.",
-                        dataQuality.missingCostRevenueSharePct,
-                        dataQuality.unknownTypeRevenueSharePct,
-                        dataQuality.revenueWithNivelacijaSplitSharePct,
-                        generatedAtUtc),
+                    meta = shoeTrustMeta,
                     sezone
                 };
 

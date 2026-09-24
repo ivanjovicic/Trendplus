@@ -1433,6 +1433,11 @@ public static class DatabaseInitializer
             -- Prodaja operational columns (idempotent)
             ALTER TABLE IF EXISTS prodaja_zaglavlje ADD COLUMN IF NOT EXISTS korisnik_ime character varying(200);
             ALTER TABLE IF EXISTS prodaja_stavke    ADD COLUMN IF NOT EXISTS nabavna_cena decimal(18,2);
+            ALTER TABLE IF EXISTS prodaja_stavke    ADD COLUMN IF NOT EXISTS supplier_id_at_sale integer;
+            ALTER TABLE IF EXISTS prodaja_stavke    ADD COLUMN IF NOT EXISTS shoe_type_id_at_sale integer;
+            ALTER TABLE IF EXISTS prodaja_stavke    ADD COLUMN IF NOT EXISTS attribution_basis character varying(64) NOT NULL DEFAULT 'unknown';
+            CREATE INDEX IF NOT EXISTS ix_prodaja_stavke_supplier_id_at_sale ON prodaja_stavke (supplier_id_at_sale);
+            CREATE INDEX IF NOT EXISTS ix_prodaja_stavke_shoe_type_id_at_sale ON prodaja_stavke (shoe_type_id_at_sale);
 
             -- BOOTSTRAP_BATCH_BREAK
             -- Create DnevnikPromena table if it doesn't exist (idempotent bootstrap)

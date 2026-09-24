@@ -12,6 +12,7 @@ using Api.Models;
 using Api.Services.Access;
 using Application.Common.Interfaces;
 using Domain.Model;
+using Domain.Model.Prodaja;
 using Domain.Model.Povracaj;
 using Infrastructure.DbContexts;
 using Infrastructure.Configuration;
@@ -4715,6 +4716,10 @@ using NpgsqlTypes;
     private async Task ImportProdajaStavkeAsync(IAccessDataReaderSession session, string table, string? parentTable, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
     {
         var existing = ToFirstDictionary(_trendDb.ProdajaStavke.AsNoTracking().ToList(), x => x.Id);
+        var attributionByArticleId = await _trendDb.Artikli
+            .AsNoTracking()
+            .Select(a => new { a.Id, a.IDDobavljac, a.IDTipObuce })
+            .ToDictionaryAsync(a => a.Id, a => (a.IDDobavljac, a.IDTipObuce), ct);
         var usedIds = existing.Keys.ToHashSet();
         var nextGeneratedId = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
 
@@ -4844,6 +4849,7 @@ using NpgsqlTypes;
                 e.Cena = cena;
                 if (nabavnaCena.HasValue)
                     e.NabavnaCena = nabavnaCena.Value;
+                ApplyFrozenCurrentMasterAttributionIfUnknown(e, attributionByArticleId);
                 ApplyAccessSourceLineage(e, "prodaja_stavke", row);
                 _trendDb.ProdajaStavke.Update(e);
                 result.ProdajaStavkeUpdated++;
@@ -4875,6 +4881,7 @@ using NpgsqlTypes;
                     Cena = cena,
                     NabavnaCena = nabavnaCena
                 };
+                ApplyFrozenCurrentMasterAttributionIfUnknown(newLine, attributionByArticleId);
                 ApplyAccessSourceLineage(newLine, "prodaja_stavke", row);
                 _trendDb.ProdajaStavke.Add(newLine);
                 existing[newLine.Id] = newLine;
@@ -6146,6 +6153,10 @@ using NpgsqlTypes;
     private void ImportProdajaStavke(OdbcConnection conn, string table, bool overwriteExisting, AccessImportRunResponse result)
     {
         var existing = ToFirstDictionary(_trendDb.ProdajaStavke, x => x.Id);
+        var attributionByArticleId = _trendDb.Artikli
+            .AsNoTracking()
+            .Select(a => new { a.Id, a.IDDobavljac, a.IDTipObuce })
+            .ToDictionary(a => a.Id, a => (a.IDDobavljac, a.IDTipObuce));
         var usedIds = existing.Keys.ToHashSet();
         var nextGeneratedId = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
         var saleIds = _trendDb.ProdajaZaglavlja.Select(x => x.Id).ToHashSet();
@@ -6177,6 +6188,7 @@ using NpgsqlTypes;
                 e.IdArtikal = idArtikal.Value;
                 e.Kolicina = qty;
                 e.Cena = cena;
+                ApplyFrozenCurrentMasterAttributionIfUnknown(e, attributionByArticleId);
                 result.ProdajaStavkeUpdated++;
             }
             else
@@ -6203,12 +6215,32 @@ using NpgsqlTypes;
                     Kolicina = qty,
                     Cena = cena
                 };
+                ApplyFrozenCurrentMasterAttributionIfUnknown(newLine, attributionByArticleId);
                 _trendDb.ProdajaStavke.Add(newLine);
                 existing[newLine.Id] = newLine;
                 existingCompositeKeys[compositeKey] = existingCompositeKeys.GetValueOrDefault(compositeKey) + 1;
                 result.ProdajaStavkeInserted++;
             }
         }
+    }
+
+    private static void ApplyFrozenCurrentMasterAttributionIfUnknown(
+        ProdajaStavka line,
+        IReadOnlyDictionary<int, (int? SupplierId, int? ShoeTypeId)> attributionByArticleId)
+    {
+        if (!string.IsNullOrWhiteSpace(line.AttributionBasis)
+            && !string.Equals(line.AttributionBasis, SaleDimensionAttribution.Unknown, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        if (!attributionByArticleId.TryGetValue(line.IdArtikal, out var attribution))
+        {
+            line.AttributionBasis = SaleDimensionAttribution.Unknown;
+            return;
+        }
+
+        SaleDimensionAttribution.FreezeCurrentMasterBackfill(line, attribution.SupplierId, attribution.ShoeTypeId);
     }
 
     private bool IsProdajaLineTable(OdbcConnection conn, string table)

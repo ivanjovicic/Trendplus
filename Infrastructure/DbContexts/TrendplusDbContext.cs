@@ -254,6 +254,9 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.Kolicina).HasColumnName("kolicina").IsRequired();
                 eb.Property(e => e.Cena).HasColumnName("cena").HasColumnType("decimal(18,2)").IsRequired();
                 eb.Property(e => e.NabavnaCena).HasColumnName("nabavna_cena").HasColumnType("decimal(18,2)");
+                eb.Property(e => e.SupplierIdAtSale).HasColumnName("supplier_id_at_sale");
+                eb.Property(e => e.ShoeTypeIdAtSale).HasColumnName("shoe_type_id_at_sale");
+                eb.Property(e => e.AttributionBasis).HasColumnName("attribution_basis").HasMaxLength(64).IsRequired().HasDefaultValue("unknown");
                 eb.Property(e => e.SourceTableKey).HasColumnName("source_table_key").HasMaxLength(128);
                 eb.Property(e => e.SourceRowId).HasColumnName("source_row_id");
                 eb.Property(e => e.SourceUpdatedAtUtc).HasColumnName("source_updated_at_utc");
@@ -262,6 +265,8 @@ namespace Infrastructure.DbContexts
 
                 eb.HasIndex(e => e.IdArtikal);
                 eb.HasIndex(e => new { e.IdProdaja, e.IdArtikal });
+                eb.HasIndex(e => e.SupplierIdAtSale);
+                eb.HasIndex(e => e.ShoeTypeIdAtSale);
                 eb.HasIndex(e => new { e.SourceTableKey, e.SourceRowId })
                   .IsUnique()
                   .HasFilter("source_table_key IS NOT NULL AND source_row_id IS NOT NULL");

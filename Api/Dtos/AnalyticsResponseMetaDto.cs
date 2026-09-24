@@ -23,6 +23,8 @@ public class AnalyticsResponseMetaDto
     public string? RequestedDataScope { get; set; }
     public string? EffectiveDataScope { get; set; }
     public string? ProvenanceBasis { get; set; }
+    public string? AttributionBasis { get; set; }
+    public double? AttributionCoveragePct { get; set; }
     public DateTime? ObservedPeriodFromUtc { get; set; }
     public DateTime? ObservedPeriodToUtc { get; set; }
     public string? DataQualityStatus { get; set; }
