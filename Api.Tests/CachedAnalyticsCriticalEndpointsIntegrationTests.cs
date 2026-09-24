@@ -532,6 +532,40 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
             existingItem.GetProperty("signalConfidencePct").GetDecimal());
     }
 
+    [Fact]
+    public async Task CachedInventoryList_UsesMatchingSaleHeaderOriginForSellThroughWindow()
+    {
+        await using var factory = CreateFactory();
+        SeedInventorySalesOriginProbeData(factory.Services);
+        var fromDate = Uri.EscapeDataString(new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc).ToString("O", CultureInfo.InvariantCulture));
+        var toDate = Uri.EscapeDataString(new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc).ToString("O", CultureInfo.InvariantCulture));
+
+        var importedRoot = await GetJsonAsync(
+            factory,
+            $"/api/analytics/cached/inventory/list?pageSize=10&search=OriginProbe&dataScope=imported&fromDate={fromDate}&toDate={toDate}");
+        var importedItem = importedRoot.GetProperty("items").EnumerateArray().Single();
+
+        var existingRoot = await GetJsonAsync(
+            factory,
+            $"/api/analytics/cached/inventory/list?pageSize=10&search=OriginProbe&dataScope=existing&fromDate={fromDate}&toDate={toDate}");
+        var existingItem = existingRoot.GetProperty("items").EnumerateArray().Single();
+
+        var allRoot = await GetJsonAsync(
+            factory,
+            $"/api/analytics/cached/inventory/list?pageSize=10&search=OriginProbe&dataScope=all&fromDate={fromDate}&toDate={toDate}");
+        var allItems = allRoot.GetProperty("items").EnumerateArray().ToArray();
+
+        Assert.Equal(904, importedItem.GetProperty("id").GetInt32());
+        Assert.Equal(905, existingItem.GetProperty("id").GetInt32());
+        Assert.Equal(2, allItems.Length);
+        Assert.True(
+            importedItem.GetProperty("stockCoverDays").GetDecimal()
+            > allItems.Single(item => item.GetProperty("id").GetInt32() == 904).GetProperty("stockCoverDays").GetDecimal());
+        Assert.True(
+            existingItem.GetProperty("stockCoverDays").GetDecimal()
+            > allItems.Single(item => item.GetProperty("id").GetInt32() == 905).GetProperty("stockCoverDays").GetDecimal());
+    }
+
     private static CachedAnalyticsFactory CreateFactory()
     {
         var factory = new CachedAnalyticsFactory();
@@ -715,6 +749,53 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
             Kolicina = 4,
             Cena = 100m
         });
+
+        db.SaveChanges();
+    }
+
+    private static void SeedInventorySalesOriginProbeData(IServiceProvider services)
+    {
+        using var scope = services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
+
+        db.Artikli.AddRange(
+            new Artikli
+            {
+                Id = 904,
+                PLU = "ORIGINPROBE-IMPORTED",
+                Naziv = "OriginProbe Imported",
+                IDObjekat = 1,
+                IDDobavljac = 1,
+                Kolicina = 10,
+                MinimalnaKolicina = 5,
+                NabavnaCena = 20m,
+                DataOrigin = "access",
+                UpdatedAt = DateTime.UtcNow
+            },
+            new Artikli
+            {
+                Id = 905,
+                PLU = "ORIGINPROBE-EXISTING",
+                Naziv = "OriginProbe Existing",
+                IDObjekat = 1,
+                IDDobavljac = 1,
+                Kolicina = 10,
+                MinimalnaKolicina = 5,
+                NabavnaCena = 20m,
+                DataOrigin = "existing",
+                UpdatedAt = DateTime.UtcNow
+            });
+
+        db.ProdajaZaglavlja.AddRange(
+            new ProdajaZaglavlje { Id = 9401, DatumProdaje = new DateTime(2026, 8, 15, 12, 0, 0, DateTimeKind.Utc), IDObjekat = 1, DataOrigin = "access" },
+            new ProdajaZaglavlje { Id = 9402, DatumProdaje = new DateTime(2026, 8, 15, 12, 0, 0, DateTimeKind.Utc), IDObjekat = 1, DataOrigin = "existing" },
+            new ProdajaZaglavlje { Id = 9403, DatumProdaje = new DateTime(2026, 8, 15, 12, 0, 0, DateTimeKind.Utc), IDObjekat = 1, DataOrigin = "existing" },
+            new ProdajaZaglavlje { Id = 9404, DatumProdaje = new DateTime(2026, 8, 15, 12, 0, 0, DateTimeKind.Utc), IDObjekat = 1, DataOrigin = "access" });
+        db.ProdajaStavke.AddRange(
+            new ProdajaStavka { Id = 9501, IdProdaja = 9401, IdArtikal = 904, Kolicina = 2, Cena = 100m },
+            new ProdajaStavka { Id = 9502, IdProdaja = 9402, IdArtikal = 904, Kolicina = 20, Cena = 100m },
+            new ProdajaStavka { Id = 9503, IdProdaja = 9403, IdArtikal = 905, Kolicina = 3, Cena = 100m },
+            new ProdajaStavka { Id = 9504, IdProdaja = 9404, IdArtikal = 905, Kolicina = 20, Cena = 100m });
 
         db.SaveChanges();
     }
