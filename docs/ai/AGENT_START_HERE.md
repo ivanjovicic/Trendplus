@@ -1,6 +1,6 @@
 # Agent Start Here
 
-Updated: 2026-09-22
+Updated: 2026-09-24
 
 Read this after `AGENTS.md` and `.github/copilot-instructions.md`.
 
@@ -84,7 +84,7 @@ Multiple READY tasks are allowed. Concurrent execution is safe only when:
 - the work does not weaken or bypass a higher-priority gate;
 - planning READY is not being used as permission for unauthorized runtime implementation.
 
-If a higher-priority program has no current READY task, do not resurrect an old DONE/PARTIAL task or infer readiness from historical prose. Follow that program's documented blocker/promotion rule.
+If a higher-priority program has no current READY task, do not resurrect an old DONE task or infer readiness from historical prose. Run the canonical Idle recovery sequence: re-evaluate current PARTIAL/BLOCKED/WAITING evidence, repair stale dependency truth, and promote only a task that is now genuinely runnable.
 
 ## Historical/current separation
 
@@ -176,17 +176,14 @@ If a line cannot be answered, do not guess the runtime contract.
 
 ## Queue task workflow
 
-1. Resolve owner program from `MASTER_ROADMAP.md`.
-2. Verify the owner queue's `Current READY` primary pointer **and all READY candidates**; for a simple `next`, prefer the primary candidate, otherwise choose any collision-safe READY task that satisfies the user's scope.
-3. Confirm no other active task/program owns a conflicting feature family/path; an unrelated READY task is not a blocker.
-4. Identify source-of-truth service/DTO/endpoint/context.
-5. Find shared helpers/contracts before creating new ones.
-6. Find existing tests and route/surface coverage.
-7. Run tenant/analytics safety gate where relevant.
-8. Make the smallest scoped patch, including a recorded same-owner mechanical prompt repair when required by acceptance.
-9. Select and run exact proof through `docs/ai/VALIDATION_SELECTOR.md`.
-10. Merge/push to `main` when permitted, verify `origin/main` contains the implementation SHA, and record CI separately without waiting on it by default.
-11. Update queue status/evidence and master roadmap only if routing/current READY/blocker/milestone truth changed.
+Queue mechanics live in `docs/ai/PROMPT_QUEUE_PROTOCOL.md`; do not maintain a second selector algorithm here.
+
+1. Resolve the owner program from `MASTER_ROADMAP.md` and use the protocol to select/claim a collision-safe `READY` prompt.
+2. If `Current READY` is `none`, run the protocol's **Idle recovery** sequence before reporting that no work is available. Re-check stale dependencies/statuses, recent run logs, `PARTIAL/BLOCKED/WAITING` prompts and the next eligible program; promote and claim a now-runnable `WAITING` prompt when evidence supports it.
+3. Once claimed, identify the source of truth, nearest shared contract/helper and focused proof; run the tenant/analytics safety gate where relevant.
+4. Implement the smallest owned change and validate it through `docs/ai/VALIDATION_SELECTOR.md`.
+5. Merge/push to `main` when permitted, verify `origin/main` contains the implementation SHA, and record remote CI separately unless the prompt explicitly gates on it.
+6. Close/synchronize queue, evidence and roadmap truth; then, when the user asked to continue executing prompts, re-enter selection/recovery rather than ending merely because the just-finished prompt returned the pointer to `none`.
 
 ## Stop rules
 
