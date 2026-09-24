@@ -528,11 +528,25 @@ export default function InventoryPage() {
       if (mountedRef.current) {
         const nextDataScope = getDataScope();
         if (nextDataScope === inventoryDataScope) {
+          if (periodPreset !== "custom") {
+            const nextRange = getAnalyticsPeriodPresetRange(periodPreset);
+            setPeriodFrom(nextRange.fromDate);
+            setPeriodTo(nextRange.toDate);
+            setDraftPeriodFrom(nextRange.fromDate);
+            setDraftPeriodTo(nextRange.toDate);
+          }
           setReloadNonce((current) => current + 1);
         } else {
           // A supplier selected in the previous dataset must not narrow the next dataset.
           setSelectedSupplierId(null);
           setPageNumber(1);
+          if (periodPreset !== "custom") {
+            const nextRange = getAnalyticsPeriodPresetRange(periodPreset);
+            setPeriodFrom(nextRange.fromDate);
+            setPeriodTo(nextRange.toDate);
+            setDraftPeriodFrom(nextRange.fromDate);
+            setDraftPeriodTo(nextRange.toDate);
+          }
           setInventoryDataScope(nextDataScope);
         }
       }
@@ -540,7 +554,7 @@ export default function InventoryPage() {
 
     window.addEventListener("trendplus:data-scope-changed", handleScopeChange);
     return () => window.removeEventListener("trendplus:data-scope-changed", handleScopeChange);
-  }, [inventoryDataScope]);
+  }, [inventoryDataScope, periodPreset]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1330,6 +1344,13 @@ export default function InventoryPage() {
   }
 
   function retryPageLoad() {
+    if (periodPreset !== "custom") {
+      const nextRange = getAnalyticsPeriodPresetRange(periodPreset);
+      setPeriodFrom(nextRange.fromDate);
+      setPeriodTo(nextRange.toDate);
+      setDraftPeriodFrom(nextRange.fromDate);
+      setDraftPeriodTo(nextRange.toDate);
+    }
     setReloadNonce((current) => current + 1);
   }
 
@@ -1396,7 +1417,7 @@ export default function InventoryPage() {
         {inventoryPeriodLineageNote}
       </div>
       {freshnessLineageNote ? (
-        <div className="rounded-2xl border border-[var(--warning)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--warning)]" role="note">
+        <div className="rounded-2xl border border-[var(--warning)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--warning)]" role="note" data-testid="inventory-secondary-freshness-lineage">
           {freshnessLineageNote}
         </div>
       ) : null}

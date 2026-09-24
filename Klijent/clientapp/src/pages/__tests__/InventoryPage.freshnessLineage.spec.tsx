@@ -140,7 +140,7 @@ describe("InventoryPage freshness lineage", () => {
       </MemoryRouter>,
     );
 
-    const note = await screen.findByRole("note");
+    const note = await screen.findByTestId("inventory-secondary-freshness-lineage");
     expect(note).toHaveTextContent("status svežine „nepoznat“");
     expect(note).toHaveTextContent("Vreme odgovora nije poslednje uspešno osvežavanje");
     expect(note).not.toHaveTextContent(formatDateTime("2026-08-05T10:45:00Z"));
@@ -169,7 +169,7 @@ describe("InventoryPage freshness lineage", () => {
       </MemoryRouter>,
     );
 
-    const note = await screen.findByRole("note");
+    const note = await screen.findByTestId("inventory-secondary-freshness-lineage");
     expect(note).toHaveTextContent(formatDateTime("2026-08-05T11:45:00Z"));
     expect(note).not.toHaveTextContent(formatDateTime("2026-08-05T10:45:00Z"));
   });
