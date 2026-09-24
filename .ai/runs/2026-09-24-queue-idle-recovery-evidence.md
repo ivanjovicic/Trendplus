@@ -4,7 +4,7 @@ Date: 2026-09-24
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct-main
-Main commit SHA: pending
+Main commit SHA: 850b5b297a829c80c63b2494aedb9219a14a4921
 Main verification: pending direct-main delivery
 Evidence state: pending
 
