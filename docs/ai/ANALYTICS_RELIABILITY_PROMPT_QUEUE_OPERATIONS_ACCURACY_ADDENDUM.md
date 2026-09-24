@@ -400,10 +400,10 @@ Do not redesign journal movement semantics, forecast/alerts/rebalance contracts 
 - Status: DONE
 - Delivery mode: direct-main
 - Implementation commits: `f67fc92f`, `71cc714f`
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: 7e2f330746311d694cc843beaac6fdb3f4d2611b
+- Main verification: passed — current `origin/main` contains 7e2f3307
 - Run log: `.ai/runs/2026-09-24-RQ414-evidence.md`
-- Evidence state: pending main delivery
+- Evidence state: synchronized
 - Missed: historical master-data attribution remains outside this list query; mismatched sale headers are excluded by the declared scope predicate
 - Follow-up: RQ413 retains broader runtime drift/freshness evidence; no successor promoted
 - Residual risk: backend integration proof depends on the unavailable local .NET SDK and must run in CI
