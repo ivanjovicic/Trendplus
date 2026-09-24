@@ -114,7 +114,7 @@ Queue mechanics have one owner: `docs/ai/PROMPT_QUEUE_PROTOCOL.md`. Do not dupli
 
 For formal queue work:
 - resolve the owner/program from `MASTER_ROADMAP.md`, then select/claim through the canonical protocol;
-- treat `Current READY` as the primary/default pointer, not as a global mutex; one agent/workspace still executes one claim at a time;
+- treat `Current READY` as the primary/default pointer, not as a global mutex; execute one claimed prompt at a time **per agent/workspace**;
 - when `Current READY` is `none`, run the protocol's **Idle recovery** before reporting no work: re-evaluate stale dependency/status truth, relevant `PARTIAL/BLOCKED/WAITING` prompts and recent run-log `What was missed` / `Risks` / `Next`, then promote and claim only a genuinely runnable candidate;
 - after completing a prompt, re-enter selection/recovery when the user asked to continue/claim-and-execute instead of stopping only because the pointer returned to `none`;
 - stop only for a genuine authority/gate/owner conflict or when the canonical router proves there is no safe repository-local action left.
