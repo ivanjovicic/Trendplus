@@ -601,6 +601,184 @@ describe("SupplierSalesStatsPage premium controls", () => {
     expect(within(articleCard!).queryByText("0")).not.toBeInTheDocument();
   });
 
+  it("preserves gated supplier status identity across row, KPI and detail surfaces", async () => {
+    vi.mocked(getSupplierSalesStats).mockResolvedValue({
+      fromDate: "2026-06-01",
+      toDate: "2026-06-30",
+      generatedAt: "2026-07-01T08:00:00Z",
+      meta: {
+        success: true,
+        lastRefreshAtUtc: "2026-07-01T07:55:00Z",
+        dataQualityStatus: "good",
+        isPartial: false,
+      },
+      provenanceBasis: "live_query",
+      sezone: [],
+      suppliers: [
+        {
+          dobavljacId: 1,
+          dobavljacNaziv: "Dozvoljen Alfa",
+          isUnknown: false,
+          preNivelacijePromet: 0,
+          preNivelacijeKolicina: 0,
+          posleNivelacijePromet: 10000,
+          posleNivelacijeKolicina: 5,
+          ukupanPromet: 10000,
+          ukupnaKolicina: 5,
+          previousPeriodRevenue: 8000,
+          previousPeriodUnits: 4,
+          brojArtikalaSaNivelacijom: 0,
+          brojArtikalaUkupno: 2,
+          revenueWithCost: 10000,
+          estimatedCostRevenue: 0,
+          marginContribution: 4000,
+          marginDataCoveragePct: 100,
+          fallbackCostCoveragePct: 0,
+          marginPct: 40,
+          popRevenueChangePct: 25,
+          popUnitsChangePct: 25,
+          prePostNivelacijaRevenueImpactPct: null,
+          prePostNivelacijaUnitsImpactPct: null,
+          prePostNivelacijaRevenueCoveragePct: null,
+          recommendation: {
+            status: "maintain",
+            label: "Maintain",
+            summary: "Stabilan partner.",
+            confidencePct: 80,
+            reliabilityPct: 75,
+            dataQualityStatus: "good",
+            recommendationAllowed: true,
+            reasonCodes: ["stable_margin"],
+          },
+          footwearBreakdown: [],
+        },
+        {
+          dobavljacId: 2,
+          dobavljacNaziv: "Beta za pregled",
+          isUnknown: false,
+          preNivelacijePromet: 0,
+          preNivelacijeKolicina: 0,
+          posleNivelacijePromet: 5000,
+          posleNivelacijeKolicina: 3,
+          ukupanPromet: 5000,
+          ukupnaKolicina: 3,
+          previousPeriodRevenue: 4000,
+          previousPeriodUnits: 2,
+          brojArtikalaSaNivelacijom: 0,
+          brojArtikalaUkupno: 1,
+          revenueWithCost: 5000,
+          estimatedCostRevenue: 0,
+          marginContribution: 1500,
+          marginDataCoveragePct: 100,
+          fallbackCostCoveragePct: 0,
+          marginPct: 30,
+          popRevenueChangePct: 10,
+          popUnitsChangePct: 10,
+          prePostNivelacijaRevenueImpactPct: null,
+          prePostNivelacijaUnitsImpactPct: null,
+          prePostNivelacijaRevenueCoveragePct: null,
+          recommendation: {
+            status: "review",
+            label: "Review",
+            summary: "Potrebna je rucna provera.",
+            confidencePct: null,
+            reliabilityPct: null,
+            dataQualityStatus: "warning",
+            recommendationAllowed: false,
+            reasonCodes: ["margin_warning"],
+          },
+          footwearBreakdown: [],
+        },
+        {
+          dobavljacId: 3,
+          dobavljacNaziv: "Gamma nepouzdan",
+          isUnknown: false,
+          preNivelacijePromet: 0,
+          preNivelacijeKolicina: 0,
+          posleNivelacijePromet: 3000,
+          posleNivelacijeKolicina: 2,
+          ukupanPromet: 3000,
+          ukupnaKolicina: 2,
+          previousPeriodRevenue: 2500,
+          previousPeriodUnits: 2,
+          brojArtikalaSaNivelacijom: 0,
+          brojArtikalaUkupno: 1,
+          revenueWithCost: 3000,
+          estimatedCostRevenue: 0,
+          marginContribution: 900,
+          marginDataCoveragePct: 100,
+          fallbackCostCoveragePct: 0,
+          marginPct: 30,
+          popRevenueChangePct: 5,
+          popUnitsChangePct: 0,
+          prePostNivelacijaRevenueImpactPct: null,
+          prePostNivelacijaUnitsImpactPct: null,
+          prePostNivelacijaRevenueCoveragePct: null,
+          recommendation: {
+            status: "do_not_trust",
+            label: "Do not trust",
+            summary: "Signal zahteva proveru izvora.",
+            confidencePct: null,
+            reliabilityPct: null,
+            dataQualityStatus: "critical",
+            recommendationAllowed: undefined,
+            reasonCodes: ["unknown_entity"],
+          },
+          footwearBreakdown: [],
+        },
+      ],
+      totals: {
+        ukupanPromet: 18000,
+        ukupnaKolicina: 10,
+        ukupanMarzniDoprinos: 6400,
+        marginContribution: 6400,
+        marginPct: 35,
+        missingCostRevenueSharePct: 0,
+        unknownSupplierRevenueSharePct: 0,
+        marginQualityTier: "confirmed",
+        isSnapshotActive: false,
+        snapshotCostCoveragePct: null,
+        brojDobavljaca: 3,
+      },
+      dataQuality: {
+        missingCostRevenueSharePct: 0,
+        unknownSupplierRevenueSharePct: 0,
+      },
+    } as never);
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage />
+      </MemoryRouter>,
+    );
+
+    const table = await screen.findByTestId("supplier-sales-stats-data-table");
+    const allowedRow = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Dozvoljen Alfa"));
+    const reviewRow = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Beta za pregled"));
+    const doNotTrustRow = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Gamma nepouzdan"));
+    expect(allowedRow).toBeDefined();
+    expect(reviewRow).toBeDefined();
+    expect(doNotTrustRow).toBeDefined();
+    if (!allowedRow || !reviewRow || !doNotTrustRow) throw new Error("Expected recommendation rows were not rendered");
+
+    expect(within(allowedRow).getByText("Zadrži")).toBeInTheDocument();
+    expect(within(allowedRow).queryByText("Akcija blokirana")).not.toBeInTheDocument();
+    expect(within(reviewRow).getByText("Oprez")).toBeInTheDocument();
+    expect(within(reviewRow).getByText("Akcija blokirana")).toBeInTheDocument();
+    expect(within(doNotTrustRow).getByText("Smanji / Ne veruj")).toBeInTheDocument();
+    expect(within(doNotTrustRow).getByText("Akcija blokirana")).toBeInTheDocument();
+
+    expect(screen.getByText("Prioritetna lista dobavljača").parentElement).toHaveTextContent("Pojačaj 0");
+    expect(screen.getByText("Prioritetna lista dobavljača").parentElement).toHaveTextContent("Zadrži 1");
+    expect(screen.getByText("Prioritetna lista dobavljača").parentElement).toHaveTextContent("Oprez 1");
+    expect(screen.getByText("Prioritetna lista dobavljača").parentElement).toHaveTextContent("Smanji / Ne veruj 1");
+    expect(screen.getByText("Prioritetna lista dobavljača").parentElement).toHaveTextContent("Nedovoljno podataka 0");
+
+    fireEvent.click(within(reviewRow).getByRole("button", { name: "Detalji" }));
+    expect(await screen.findByRole("heading", { level: 3, name: "Beta za pregled" })).toBeInTheDocument();
+    expect(screen.getByText("Akcija blokirana:").parentElement).toHaveTextContent("Backend je blokirao izvrsenje preporuke");
+  });
+
   it("empty is not error when supplier sales returns no rows", async () => {
     vi.mocked(getSupplierSalesStats).mockResolvedValue({
       fromDate: "2026-06-01",

@@ -2,8 +2,10 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
-Main RQ current READY prompt: none
+Current READY prompt: RQ421
+Main RQ current READY prompt: RQ421
+
+Owner promotion 2026-09-24: under the user's instruction to claim the next prompt, dependency/collision review found `RQ421` independently runnable within the Supplier Sales status-identity lane after `RQ420` completion; the bounded frontend mapping/display repair does not take `RQ373`/`RQ378`/`RQ379` denominator ownership. It moved `WAITING -> READY` as the current addendum pointer.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -47,7 +49,7 @@ All remaining prompts below are `WAITING`. Do not claim or auto-promote them wit
 | RQ418 | DONE | P1 | inventory-action-dataset-idempotency | Prevent Inventory action deduplication from crossing period/scope/snapshot datasets |
 | RQ419 | WAITING | P1 | supplier-sales-scope-event-lineage | Reload Supplier Sales when global data scope changes and keep trust metadata aligned |
 | RQ420 | DONE | P2 | supplier-sales-derived-projection-freshness | Prevent stale Supplier Sales derived shares and cost projections after total changes |
-| RQ421 | WAITING | P1 | supplier-sales-status-identity | Preserve backend Supplier Sales status when recommendation actionability is blocked |
+| RQ421 | READY | P1 | supplier-sales-status-identity | Preserve backend Supplier Sales status when recommendation actionability is blocked |
 | RQ422 | WAITING | P1 | supplier-footwear-type-insight-denominator | Make Supplier Footwear type share and elasticity metrics full-cohort and provenance-safe |
 | RQ423 | WAITING | P1 | pre-nivelacija-focus-population-parity | Make Pre-Nivelacija focus filtering population-aware across pages and projections |
 | RQ424 | WAITING | P1 | pre-nivelacija-leaderboard-denominator | Define Pre-Nivelacija action-share and percentage normalization semantics |
@@ -830,7 +832,7 @@ Do not recalculate backend business metrics beyond the existing fallback contrac
 
 ## RQ421 - Supplier Sales must preserve backend status identity when actionability is blocked
 
-Status: WAITING
+Status: READY
 Ready after: `RQ379` runtime schema and `RQ373` status/count ownership are aligned
 Priority: P1
 Type: frontend/contract/tests

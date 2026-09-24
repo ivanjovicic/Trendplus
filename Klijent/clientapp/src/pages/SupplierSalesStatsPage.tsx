@@ -593,7 +593,9 @@ export function buildDecisionSuppliers(data: SupplierSalesStatsResponse | null |
       : fallbackStatusReason;
     const statusReason = recommendationAllowed
       ? backendStatusReason
-      : `Automatska preporuka nije dozvoljena: ${backendStatusReason}`;
+      : recommended?.recommendationAllowed === false
+        ? `Backend je blokirao izvrsenje preporuke: ${backendStatusReason}`
+        : `Backend nije potvrdio da je preporuka izvrsna: ${backendStatusReason}`;
     const confidencePctValue = recommendationAllowed
       ? normalizeRecommendationPct(recommended?.confidencePct)
       : null;
@@ -608,7 +610,7 @@ export function buildDecisionSuppliers(data: SupplierSalesStatsResponse | null |
       : [];
     const dataQualityStatus = normalizeRecommendationQualityStatus(recommended?.dataQualityStatus);
     const normalizedReliabilityPct = reliabilityPctValue ?? null;
-    const statusLabel = displaySignalLabel(status, reliabilityAvailable, dataQualityStatus);
+    const statusLabel = displayStatusLabel(status);
     const footwearBreakdown = supplier.footwearBreakdown ?? [];
     const primaryFootwearType = supplier.primaryFootwearType
       ?? footwearBreakdown[0]?.tipObuceNaziv
@@ -1984,7 +1986,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                                 </span>
                                 {supplier.statusReason ? (
                                   <span className="supplier-status-reason-chip" title={supplier.statusReason}>
-                                    <strong>Razlog:</strong> {supplier.statusReason} <InfoTip text={supplier.statusReason} />
+                                    <strong>{supplier.recommendationAllowed ? "Razlog" : "Akcija blokirana"}</strong>: {supplier.statusReason} <InfoTip text={supplier.statusReason} />
                                   </span>
                                 ) : null}
                               </div>
@@ -2056,7 +2058,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
               {/* Sažetak razloga preporuke */}
               {selectedSupplier.statusReason ? (
                 <div className="supplier-detail-reason-banner">
-                  <span className="supplier-detail-reason-label">Razlog preporuke:</span>
+                  <span className="supplier-detail-reason-label">{selectedSupplier.recommendationAllowed ? "Razlog preporuke:" : "Akcija blokirana:"}</span>
                   <span>{selectedSupplier.statusReason}</span>
                   {selectedSupplier.reasonCodes.length > 0 ? (
                     <span className="supplier-detail-reason-codes">

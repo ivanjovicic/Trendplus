@@ -126,8 +126,61 @@ describe("buildDecisionSuppliers", () => {
     expect(baseline[0]?.status).toBe("maintain");
     expect(baseline[0]?.recommendationAllowed).toBe(true);
     expect(updated[0]?.status).toBe("review");
+    expect(updated[0]?.statusLabel).toBe("Oprez");
     expect(updated[0]?.recommendationAllowed).toBe(false);
-    expect(updated[0]?.statusReason).toContain("Automatska preporuka nije dozvoljena");
+    expect(updated[0]?.statusReason).toContain("Backend je blokirao izvrsenje preporuke");
+  });
+
+  it.each([
+    ["increase_focus", "Pojačaj"],
+    ["maintain", "Zadrži"],
+    ["review", "Oprez"],
+    ["do_not_trust", "Smanji / Ne veruj"],
+    ["insufficient_data", "Nedovoljno podataka"],
+  ] as const)("preserves backend %s status when recommendationAllowed is false", (backendStatus, expectedLabel) => {
+    const suppliers = [
+      buildSupplier({
+        recommendation: {
+          status: backendStatus,
+          label: backendStatus,
+          summary: "Test razlog.",
+          confidencePct: null,
+          reliabilityPct: null,
+          dataQualityStatus: "warning",
+          recommendationAllowed: false,
+          reasonCodes: ["margin_warning"],
+        },
+      }),
+    ];
+    const rows = buildDecisionSuppliers(buildResponse(suppliers));
+
+    expect(rows[0]?.status).toBe(backendStatus);
+    expect(rows[0]?.statusLabel).toBe(expectedLabel);
+    expect(rows[0]?.recommendationAllowed).toBe(false);
+    expect(rows[0]?.statusReason).toContain("Backend je blokirao izvrsenje preporuke");
+  });
+
+  it("treats missing recommendationAllowed as blocked actionability without rewriting backend status", () => {
+    const suppliers = [
+      buildSupplier({
+        recommendation: {
+          status: "do_not_trust",
+          label: "Do not trust",
+          summary: "Signal zahteva proveru izvora.",
+          confidencePct: null,
+          reliabilityPct: null,
+          dataQualityStatus: "critical",
+          recommendationAllowed: undefined,
+          reasonCodes: ["unknown_entity"],
+        },
+      }),
+    ];
+    const rows = buildDecisionSuppliers(buildResponse(suppliers));
+
+    expect(rows[0]?.status).toBe("do_not_trust");
+    expect(rows[0]?.statusLabel).toBe("Smanji / Ne veruj");
+    expect(rows[0]?.recommendationAllowed).toBe(false);
+    expect(rows[0]?.statusReason).toContain("Backend nije potvrdio da je preporuka izvrsna");
   });
 
   it("keeps zero totals as valid zero shares instead of unavailable values", () => {
