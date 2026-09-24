@@ -6,6 +6,7 @@ Status: canonical planning entry point
 
 Owner promotion 2026-09-24: after RQ426 delivery, idle recovery verified RQ308 as the dependency-complete Inventory period/provenance owner; RQ273 remains export-window owner and RQ371 remains the subsequent cached-secondary-signal parity owner. RQ308 moved `WAITING -> READY`.
 Owner claim 2026-09-24: RQ308 is `IN_PROGRESS` in this workspace for the visible Inventory period selector, URL state, supported list/detail period requests and explicit current-snapshot labeling. Local lock: `.ai/task-locks/RQ308-cursor.lock.md`.
+Owner completion 2026-09-24: RQ308 was delivered directly to `main` after focused Inventory period/lineage proof. The Inventory trust header now exposes the selected period, list/detail requests receive the validated calendar range, and current-snapshot panels are explicitly separated pending RQ371. Run log: `.ai/runs/2026-09-24-RQ308-evidence.md`. RQ371 remains WAITING.
 
 Routing correction 2026-09-23: `RQ172` was already `READY` and dependency-complete in the active reliability queue, but the primary RQ pointer was stale at `none`; the pointer was repaired after collision and ownership checks.
 Owner claim 2026-09-23: `RQ172` is now `IN_PROGRESS` in this workspace for typed pgvector parameter binding, runtime `UseVector()` registration and pgvector integration proof.
