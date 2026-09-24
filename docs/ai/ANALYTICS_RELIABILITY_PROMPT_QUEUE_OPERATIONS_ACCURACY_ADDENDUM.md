@@ -2,12 +2,14 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ411` (IN_PROGRESS in this workspace)
+Current READY prompt: none
 Main RQ current READY prompt: none
 
 Owner promotion 2026-09-24: under the user's instruction to claim the next prompt, dependency/collision review confirmed `RQ373` is DONE, no active Supplier Sales backend owner overlaps the historical attribution boundary, and `RQ412`/`RQ413` remain correctly sequenced behind this contract. `RQ411` moved `WAITING -> READY`.
 
 Owner claim 2026-09-24: `RQ411` transitioned `READY -> IN_PROGRESS` in this workspace for immutable/provenance-bearing supplier and shoe-type attribution; local runtime lock `.ai/task-locks/RQ411-codex.lock.md`.
+
+Owner completion 2026-09-24: `RQ411` was delivered directly to `main` in `67d5885311a1ad00b24cd84794b1d92e63e7b1c5`. Supplier and Shoe Type now group from immutable sale-line attribution, POS/Access paths preserve or explicitly freeze provenance, and list/detail/snapshot metadata exposes attribution basis and coverage. Run log: `.ai/runs/2026-09-24-RQ411-evidence.md`. Evidence state: synchronized. Main verification: pending push/remote verification; `RQ412` and `RQ413` remain WAITING.
 
 Owner promotion 2026-09-24: idle recovery verified that RQ373 is the dependency-complete Supplier Sales visible-population owner. RQ378 and RQ380 depend on its display/reference contract, while RQ379 must consume the stabilized response schema; no conflicting active claim, branch or PR was found. RQ373 moved `WAITING -> READY`.
 
@@ -100,14 +102,13 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 
 ## RQ411 - Immutable/provenance-bearing supplier and shoe-type attribution
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: Supplier Sales backend owner lane is collision-safe; coordinate RQ373/RQ378-RQ380
 Priority: P0
 Type: backend-data-contract/migration/import/tests
 Feature family: operations-sale-dimension-attribution
 Parallel-safe: no
 Owner: Codex
-Local lock: `.ai/task-locks/RQ411-codex.lock.md`
 Commit suggestion: `fix(analytics): freeze historical supplier and shoe type attribution`
 
 ### Problem
