@@ -4,6 +4,9 @@ Updated: 2026-09-24
 Repository: `ivanjovicic/Trendplus`
 Status: canonical planning entry point
 
+Owner promotion 2026-09-24: after RQ426 delivery, idle recovery verified RQ308 as the dependency-complete Inventory period/provenance owner; RQ273 remains export-window owner and RQ371 remains the subsequent cached-secondary-signal parity owner. RQ308 moved `WAITING -> READY`.
+Owner claim 2026-09-24: RQ308 is `IN_PROGRESS` in this workspace for the visible Inventory period selector, URL state, supported list/detail period requests and explicit current-snapshot labeling. Local lock: `.ai/task-locks/RQ308-cursor.lock.md`.
+
 Routing correction 2026-09-23: `RQ172` was already `READY` and dependency-complete in the active reliability queue, but the primary RQ pointer was stale at `none`; the pointer was repaired after collision and ownership checks.
 Owner claim 2026-09-23: `RQ172` is now `IN_PROGRESS` in this workspace for typed pgvector parameter binding, runtime `UseVector()` registration and pgvector integration proof.
 Owner completion 2026-09-23: `RQ172` was delivered directly to `main` in `c9331e8cd0c8e4ac5b7eb956104777bba60854ad`; typed pgvector binding, runtime registration and deterministic integration coverage are now landed. Run log: `.ai/runs/2026-09-23-RQ172-evidence.md`. The Docker-backed fixture remains a CI follow-up because Docker was unavailable locally.

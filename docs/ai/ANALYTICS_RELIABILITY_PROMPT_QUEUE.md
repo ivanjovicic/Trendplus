@@ -2,7 +2,11 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none; RQ172, RQ372, RQ419, RQ420, RQ421, RQ422, RQ423, RQ424, RQ425, RQ426, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ398, RQ399, RQ400, RQ401, RQ402, RQ403, RQ404, RQ405 and RQ406 are DONE. RQ407 is BLOCKED; RQ408 remains WAITING.
+Current READY prompt: RQ308; RQ172, RQ372, RQ419, RQ420, RQ421, RQ422, RQ423, RQ424, RQ425, RQ426, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ398, RQ399, RQ400, RQ401, RQ402, RQ403, RQ404, RQ405 and RQ406 are DONE. RQ407 is BLOCKED; RQ408 remains WAITING.
+
+Owner promotion 2026-09-24: after RQ426 delivery, idle recovery verified that RQ308 is dependency-complete and collision-safe for the Inventory page period/provenance contract. RQ273 remains the export-window owner and RQ371 remains the subsequent cached-secondary-signal parity owner; RQ308 moved `WAITING -> READY` as the current RQ pointer.
+
+Owner claim 2026-09-24: RQ308 transitioned `READY -> IN_PROGRESS` in this workspace for the visible Inventory period selector, validated URL state, supported list/detail request window and explicit current-snapshot labeling. Local runtime lock: `.ai/task-locks/RQ308-cursor.lock.md`.
 
 Owner idle-recovery promotion 2026-09-24: after RQ372/RQ419/RQ420/RQ421 completion returned the pointer to `none`, current non-DONE status, dependencies and recent run evidence were re-evaluated under the canonical Idle recovery protocol. `RQ423` is dependency-complete and collision-safe for the bounded Pre-Nivelacija focus/pagination population contract, so it moved `WAITING -> READY` as the current RQ pointer. Overlapping `RQ424` remains `WAITING`; `RQ407` remains `BLOCKED` only on its separate integration-host proof.
 
@@ -1406,7 +1410,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ305 | WAITING | operations-supplier-ia-clarity | Clarify Operacije menu entries that redirect into canonical Supplier tabs |
 | RQ306 | WAITING | operations-diacritics-pass | Fix missing Serbian diacritics across Operacije user-facing copy |
 | RQ307 | WAITING | shoe-type-impact-label | Replace English nivelacija impact label on Shoe Type surface |
-| RQ308 | WAITING | inventory-period-provenance | Add Inventory period control and make snapshot/signal semantics explicit |
+| RQ308 | IN_PROGRESS | inventory-period-provenance | Add Inventory period control and make snapshot/signal semantics explicit |
 | RQ309 | WAITING | operations-nav-icons | Differentiate duplicate Operacije sidebar icons |
 | RQ310 | WAITING | operations-test-route-alignment | Align Operacije page tests with production `/analytics/...` routes |
 | RQ311 | WAITING | operations-guardrail-cleanup | Resolve Operacije guardrail violations for score/reliability mapping |

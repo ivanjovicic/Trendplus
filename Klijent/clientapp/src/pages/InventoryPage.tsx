@@ -29,6 +29,12 @@ import { aggregateInventoryForecastRiskForRow, buildForecastRestockSuggestion, b
 import { getDataScope } from "../utils/dataScope";
 import type { InventoryRow } from "../components/inventory/types";
 import { fmtNumber, formatDateTime } from "../utils/analyticsFormatters";
+import {
+  ANALYTICS_PERIOD_PRESET_OPTIONS,
+  getAnalyticsPeriodPresetRange,
+  isAnalyticsPeriodPreset,
+  type AnalyticsPeriodPreset,
+} from "../utils/analyticsPeriodPresets";
 import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { getAnalyticsMetaMessage, isAnalyticsMetaInsufficient, isAnalyticsMetaWarning, shouldShowAnalyticsEmptyState } from "../utils/analyticsResponseMeta";
@@ -72,6 +78,37 @@ function parseInventorySort(value: string | null): string {
     : "kolicina";
 }
 
+type InventoryPeriodState = {
+  preset: AnalyticsPeriodPreset;
+  fromDate: string;
+  toDate: string;
+};
+
+function parseInventoryDate(value: string | null): string | null {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value ? null : value;
+}
+
+function resolveInventoryPeriod(searchParams: URLSearchParams): InventoryPeriodState {
+  const fromDate = parseInventoryDate(searchParams.get("fromDate"));
+  const toDate = parseInventoryDate(searchParams.get("toDate"));
+  const queryPreset = searchParams.get("periodPreset");
+  const preset = queryPreset && isAnalyticsPeriodPreset(queryPreset) ? queryPreset : null;
+
+  if (fromDate && toDate && fromDate <= toDate) {
+    return {
+      preset: preset ?? "custom",
+      fromDate,
+      toDate,
+    };
+  }
+
+  const resolvedPreset = preset && preset !== "custom" ? preset : "30d";
+  const range = getAnalyticsPeriodPresetRange(resolvedPreset);
+  return { preset: resolvedPreset, ...range };
+}
+
 const INVENTORY_ALERT_SEVERITIES = ["critical", "warning", "info"] as const;
 export type InventoryAlertSeverityFilter = "" | (typeof INVENTORY_ALERT_SEVERITIES)[number];
 
@@ -85,7 +122,6 @@ const ALERTS_DISPLAY_COUNT = 12;
 const REBALANCE_DISPLAY_COUNT = 20;
 const REBALANCE_FETCH_LIMIT = 20;
 const FORECAST_FETCH_LIMIT = 50;
-const INVENTORY_SIGNAL_LOOKBACK_DAYS = 30;
 const OOS_RISK_THRESHOLD = 0.25;
 const OVERSTOCK_RISK_THRESHOLD = 0.5;
 const STORE_COMPARISON_SECTION_ID = "inventory-store-comparison";
@@ -128,13 +164,6 @@ function toInventoryPageError(reason: unknown, fallback: string): InventoryPageE
 function toSafeInventoryInlineError(reason: unknown, fallback: string): string {
   const pageError = toInventoryPageError(reason, fallback);
   return getSafeAnalyticsErrorMessage(pageError.message, pageError.errorCode, fallback);
-}
-
-function createInventorySignalWindow() {
-  const toDate = new Date();
-  const fromDate = new Date(toDate);
-  fromDate.setUTCDate(fromDate.getUTCDate() - INVENTORY_SIGNAL_LOOKBACK_DAYS);
-  return { fromDate: fromDate.toISOString(), toDate: toDate.toISOString() };
 }
 
 function toActionDataQualityStatus(value: string | null | undefined): AnalyticsActionDataQualityStatus {
@@ -353,6 +382,7 @@ export function buildInventorySignalActionSpec(
 
 export default function InventoryPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const initialInventoryPeriod = useMemo(() => resolveInventoryPeriod(searchParams), [searchParams]);
   const [schedules, setSchedules] = useState<InventoryReportSchedule[]>([]);
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierFilterOption[]>([]);
@@ -374,6 +404,11 @@ export default function InventoryPage() {
   const [sortBy, setSortBy] = useState(() => parseInventorySort(searchParams.get("sortBy")));
   const [pageNumber, setPageNumber] = useState(() => parseInventoryPositiveInt(searchParams.get("page"), 1));
   const [pageSize, setPageSize] = useState(() => parseInventoryPageSize(searchParams.get("pageSize")));
+  const [periodPreset, setPeriodPreset] = useState<AnalyticsPeriodPreset>(initialInventoryPeriod.preset);
+  const [periodFrom, setPeriodFrom] = useState(initialInventoryPeriod.fromDate);
+  const [periodTo, setPeriodTo] = useState(initialInventoryPeriod.toDate);
+  const [draftPeriodFrom, setDraftPeriodFrom] = useState(initialInventoryPeriod.fromDate);
+  const [draftPeriodTo, setDraftPeriodTo] = useState(initialInventoryPeriod.toDate);
   const [detailRow, setDetailRow] = useState<InventoryRow | null>(null);
   const [detailTab, setDetailTab] = useState<"overview" | "sizeCurve">("overview");
   const [detailData, setDetailData] = useState<InventoryItemDetail | null>(null);
@@ -402,7 +437,11 @@ export default function InventoryPage() {
   const [inventoryDataScope, setInventoryDataScope] = useState(() => getDataScope());
   const deferredSearch = useDeferredValue(searchInput);
   const trimmedSearch = deferredSearch.trim();
-  const inventorySignalWindow = useMemo(createInventorySignalWindow, [reloadNonce, inventoryDataScope]);
+  const inventorySignalWindow = useMemo(
+    () => ({ fromDate: periodFrom, toDate: periodTo }),
+    [periodFrom, periodTo],
+  );
+  const invalidDraftPeriod = draftPeriodFrom > draftPeriodTo;
   const exportContractNote = useMemo(
     () => buildInventoryServerExportContractNote(inventoryDataScope),
     [inventoryDataScope],
@@ -443,6 +482,12 @@ export default function InventoryPage() {
       const next = parseInventoryPageSize(searchParams.get("pageSize"));
       return current === next ? current : next;
     });
+    const nextPeriod = resolveInventoryPeriod(searchParams);
+    setPeriodPreset((current) => current === nextPeriod.preset ? current : nextPeriod.preset);
+    setPeriodFrom((current) => current === nextPeriod.fromDate ? current : nextPeriod.fromDate);
+    setPeriodTo((current) => current === nextPeriod.toDate ? current : nextPeriod.toDate);
+    setDraftPeriodFrom((current) => current === nextPeriod.fromDate ? current : nextPeriod.fromDate);
+    setDraftPeriodTo((current) => current === nextPeriod.toDate ? current : nextPeriod.toDate);
     setAlertSeverityFilter((current) => {
       const next = parseInventoryAlertSeverity(searchParams.get("alertSeverity"));
       return current === next ? current : next;
@@ -463,10 +508,13 @@ export default function InventoryPage() {
       setOrDelete("sortBy", sortBy === "kolicina" ? null : sortBy);
       setOrDelete("page", pageNumber === 1 ? null : String(pageNumber));
       setOrDelete("pageSize", pageSize === DEFAULT_INVENTORY_PAGE_SIZE ? null : String(pageSize));
+      setOrDelete("periodPreset", periodPreset);
+      setOrDelete("fromDate", periodFrom);
+      setOrDelete("toDate", periodTo);
       setOrDelete("alertSeverity", alertSeverityFilter || null);
       return next.toString() === current.toString() ? current : next;
     }, { replace: true });
-  }, [alertSeverityFilter, compareStoreIds, pageNumber, pageSize, searchInput, selectedStoreId, selectedSupplierId, setSearchParams, sortBy]);
+  }, [alertSeverityFilter, compareStoreIds, pageNumber, pageSize, periodFrom, periodPreset, periodTo, searchInput, selectedStoreId, selectedSupplierId, setSearchParams, sortBy]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -955,6 +1003,10 @@ export default function InventoryPage() {
 
     return `Primarni bilans je osvežen ${formatDateTime(primaryRefreshAt)}, a sekundarni snapshoti (${freshnessLabel}) ${formatDateTime(secondaryPanelFreshness.timestamp)}.`;
   }, [primaryRefreshAt, secondaryPanelFreshness, secondaryPanelsSettled]);
+  const inventoryPeriodLineageNote = useMemo(
+    () => `Izabrani period ${periodFrom} → ${periodTo} važi za listu artikala i detalj artikla. Bilans, uvidi, workflow i sekundarni forecast/alert/transfer paneli ostaju trenutni snapshoti dok RQ371 ne uskladi njihove period/scope ugovore.`,
+    [periodFrom, periodTo],
+  );
   const signalSearchLineageNote = searchInput.trim().length > 0
     ? "Napomena: tekst pretraga ne utiče na prognozu, upozorenja i redistribuciju; ti paneli slede samo prodavnicu i dobavljača."
     : null;
@@ -1022,6 +1074,38 @@ export default function InventoryPage() {
       ? ` (redosled: ${sortBy === "oosRisk" ? "OOS rizik" : "Overstock rizik"}, trenutna strana)`
       : "";
     setExportStatus(`CSV za trenutnu stranu${sortNote} je preuzet.`);
+  }
+
+  function applyInventoryPeriodPreset(nextPreset: AnalyticsPeriodPreset) {
+    setPeriodPreset(nextPreset);
+    if (nextPreset === "custom") {
+      setDraftPeriodFrom(periodFrom);
+      setDraftPeriodTo(periodTo);
+      return;
+    }
+
+    const nextRange = getAnalyticsPeriodPresetRange(nextPreset);
+    setPeriodFrom(nextRange.fromDate);
+    setPeriodTo(nextRange.toDate);
+    setDraftPeriodFrom(nextRange.fromDate);
+    setDraftPeriodTo(nextRange.toDate);
+    setPageNumber(1);
+  }
+
+  function updateInventoryCustomPeriod(kind: "from" | "to", value: string) {
+    const nextFrom = kind === "from" ? value : draftPeriodFrom;
+    const nextTo = kind === "to" ? value : draftPeriodTo;
+    if (kind === "from") setDraftPeriodFrom(value);
+    else setDraftPeriodTo(value);
+    setPeriodPreset("custom");
+
+    const parsedFrom = parseInventoryDate(nextFrom);
+    const parsedTo = parseInventoryDate(nextTo);
+    if (!parsedFrom || !parsedTo || parsedFrom > parsedTo) return;
+
+    setPeriodFrom(parsedFrom);
+    setPeriodTo(parsedTo);
+    setPageNumber(1);
   }
 
   async function updateWorkflowStatus(item: InventoryActionSuggestion, status: "approved" | "deferred" | "closed") {
@@ -1293,9 +1377,9 @@ export default function InventoryPage() {
       <div className="space-y-6">
       <AnalyticsTrustHeader
         title="Analitika zaliha"
-        description="Operativni pregled zaliha: dopuna, rizik nestanka, višak, transferi i tok odluka. Status poverenja objedinjuje listu artikala, bilans i uvide."
-        periodFrom={null}
-        periodTo={null}
+        description="Operativni pregled zaliha: dopuna, rizik nestanka, višak, transferi i tok odluka. Izabrani period važi za listu i detalj; snapshot paneli su označeni zasebno."
+        periodFrom={periodFrom}
+        periodTo={periodTo}
         lastRefreshAt={primaryRefreshAt}
         dataSource="Snimak analitike zaliha"
         dataQualityStatus={primaryMeta?.dataQualityStatus ?? null}
@@ -1308,6 +1392,9 @@ export default function InventoryPage() {
         refreshStatusHref="/admin/configuration?panel=workers"
         compact
       />
+      <div className="rounded-2xl border border-[var(--info)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--info)]" role="note" data-testid="inventory-period-lineage">
+        {inventoryPeriodLineageNote}
+      </div>
       {freshnessLineageNote ? (
         <div className="rounded-2xl border border-[var(--warning)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--warning)]" role="note">
           {freshnessLineageNote}
@@ -1424,6 +1511,52 @@ export default function InventoryPage() {
             },
           ]}
           fields={[
+            {
+              key: "period-preset",
+              label: "Period signala",
+              control: (
+                <select
+                  aria-label="Period signala zaliha"
+                  value={periodPreset}
+                  onChange={(event) => applyInventoryPeriodPreset(event.target.value as AnalyticsPeriodPreset)}
+                >
+                  {ANALYTICS_PERIOD_PRESET_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              ),
+            },
+            {
+              key: "period-from",
+              label: "Od",
+              control: (
+                <input
+                  aria-label="Početak perioda signala"
+                  type="date"
+                  value={draftPeriodFrom}
+                  onChange={(event) => updateInventoryCustomPeriod("from", event.target.value)}
+                />
+              ),
+            },
+            {
+              key: "period-to",
+              label: "Do",
+              control: (
+                <div className="space-y-2">
+                  <input
+                    aria-label="Kraj perioda signala"
+                    type="date"
+                    value={draftPeriodTo}
+                    onChange={(event) => updateInventoryCustomPeriod("to", event.target.value)}
+                  />
+                  {invalidDraftPeriod ? (
+                    <p className="text-[11px] font-semibold text-[var(--warning)]" role="alert">
+                      Početak perioda mora biti pre kraja perioda.
+                    </p>
+                  ) : null}
+                </div>
+              ),
+            },
             {
               key: "search",
               label: "Pretraga artikala",
