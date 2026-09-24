@@ -2,9 +2,10 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ423
-Main RQ current READY prompt: RQ423
+Current READY prompt: none
+Main RQ current READY prompt: none
 
+Owner completion 2026-09-24: `RQ423` delivered directly to `main` in `ccd70d30aede4647d5d747438f7b5e453a4dec73`; Pre-Nivelacija focus is now a server-side population filter before pagination, global summary/tab counts stay explicit, and export/detail follow the filtered API contract. Run log: `.ai/runs/2026-09-24-RQ423-evidence.md`. Evidence state: synchronized. Main verification: current `origin/main` contains the implementation SHA. Follow-up: `RQ424` remains WAITING in the same Pre-Nivelacija family; no successor promoted.
 
 Owner idle-recovery promotion 2026-09-24: after `RQ372` and `RQ421` completion returned the RQ pointer to `none`, the non-DONE backlog and recent evidence were re-evaluated instead of stopping. `RQ423` is dependency-complete: `RQ388`, `RQ299`, `RQ326`-`RQ330` and `RQ391` are DONE; `RQ407` is BLOCKED on integration-host proof but has no active conflicting claim and does not own the Pre-Nivelacija focus/pagination implementation path. No open `RQ423` PR was found. `RQ423` therefore moved `WAITING -> READY` as the current RQ/addendum pointer. `RQ424` remains WAITING because it overlaps the same Pre-Nivelacija page/contract family and should not be promoted concurrently.
 
@@ -60,7 +61,7 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 | RQ420 | DONE | P2 | supplier-sales-derived-projection-freshness | Prevent stale Supplier Sales derived shares and cost projections after total changes |
 | RQ421 | DONE | P1 | supplier-sales-status-identity | Preserve backend Supplier Sales status when recommendation actionability is blocked |
 | RQ422 | WAITING | P1 | supplier-footwear-type-insight-denominator | Make Supplier Footwear type share and elasticity metrics full-cohort and provenance-safe |
-| RQ423 | READY | P1 | pre-nivelacija-focus-population-parity | Make Pre-Nivelacija focus filtering population-aware across pages and projections |
+| RQ423 | DONE | P1 | pre-nivelacija-focus-population-parity | Make Pre-Nivelacija focus filtering population-aware across pages and projections |
 | RQ424 | WAITING | P1 | pre-nivelacija-leaderboard-denominator | Define Pre-Nivelacija action-share and percentage normalization semantics |
 | RQ425 | WAITING | P1 | supplier-footwear-scope-default | Prevent standalone Supplier Footwear from silently falling back to all data |
 | RQ426 | WAITING | P1 | inventory-forecast-risk-aggregation | Prove and correct Inventory forecast risk aggregation across sizes and stores |
@@ -1003,7 +1004,7 @@ Do not change the Supplier Footwear recommendation formula, historical attributi
 
 ## RQ423 - Pre-Nivelacija focus must be population-aware across pages and projections
 
-Status: READY
+Status: DONE
 Ready after: `RQ388` is DONE; coordinate current Pre-Nivelacija API/pagination owner
 Priority: P1
 Type: backend/frontend/contract/tests
@@ -1061,6 +1062,26 @@ Do not change the backend scoring window or recommendation gate (`RQ390`, `RQ297
 ### Dependencies
 
 - Coordinate `RQ388`, `RQ299`, `RQ326`, `RQ330`, `RQ391` and `RQ407`.
+
+### Completion note
+
+- Date: 2026-09-24
+- Status: DONE
+- Completion: Added backend `focus` query filtering before pagination; frontend sends focus to the API, removed page-local focus masking, and kept global summary KPIs/tab badges separate from the visible page slice.
+- Changed files: `PreNivelacijaPriorityEndpoints.cs`, `PreNivelacijaPopulationTests.cs`, `PreNivelacijaPriorityPage.tsx`, `preNivelacijaApi.ts`, focused specs, guardrail baseline line repair.
+- Contract/runtime behavior changed: focus browsing uses one server-side filtered population for pagination, table, detail and export; global summary counts remain unfiltered.
+- Checks run: `npm run test -- --run src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx src/services/__tests__/preNivelacijaApi.scope.spec.ts`; `npm run check:analytics-guardrails`.
+- Checks not run: `dotnet test` for `PreNivelacijaPopulationTests` (dotnet unavailable in agent VM); full backend suite.
+- Run log: `.ai/runs/2026-09-24-RQ423-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: ccd70d30aede4647d5d747438f7b5e453a4dec73
+- Main verification: passed — current `origin/main` contains ccd70d30
+- Missed: none known
+- Follow-up: none promoted; `RQ424` remains WAITING
+- Residual risk: Pre-Nivelacija percentage denominator contract remains owned by `RQ424`
+- Next: none
+- Prompt defect / scope repair: updated page-local URL restore test to use a valid focused page-1 contract after server-side pagination semantics
 
 ---
 
