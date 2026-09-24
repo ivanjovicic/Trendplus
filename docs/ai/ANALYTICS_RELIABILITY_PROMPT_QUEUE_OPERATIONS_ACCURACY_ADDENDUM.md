@@ -5,6 +5,10 @@ Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 Main RQ current READY prompt: none
 
+Owner promotion 2026-09-24: after `RQ425` completion returned the pointer to `none`, idle-recovery review found `RQ422` runnable on the remaining Supplier Footwear type-insight display/weighting contract: backend full-cohort aggregates from `RQ406` are DONE and `RQ411` remains a separate P0 attribution owner without blocking this bounded denominator lane. `RQ422` moved `WAITING -> READY` and was claimed.
+
+Owner completion 2026-09-24: `RQ422` delivered directly to `main` in `fb1ced982c085472ba87a97da63c97fdcd7b4314`; Supplier Footwear type chart now keeps full-cohort share percentages, adds an explicit `Ostali` bucket beyond the top eight categories, declares display denominator metadata, and exposes post-revenue-weighted category elasticity. Run log: `.ai/runs/2026-09-24-RQ422-evidence.md`. Evidence state: synchronized. Main verification: current `origin/main` contains the implementation SHA. Follow-up: no successor promoted; `RQ426` remains WAITING behind `RQ371`.
+
 Owner promotion 2026-09-24: after `RQ424` completion returned the pointer to `none`, idle-recovery review found `RQ425` dependency-complete (`RQ419`/`RQ389` scope precedents on current `main`) and collision-safe in the Supplier Footwear standalone scope lane; it moved `WAITING -> READY` and was claimed for bounded scope initialization/reload work. `RQ422` remains WAITING behind Supplier Footwear denominator ownership.
 
 Owner completion 2026-09-24: `RQ425` delivered directly to `main` in `a360fec775d053d04814bdc7be82ed1cc5a3de07`; standalone Supplier Footwear now resolves effective data scope from embedded shared filters, explicit URL scope or global storage before the first request, reloads on `trendplus:data-scope-changed`, and exposes requested/effective scope in export metadata. Run log: `.ai/runs/2026-09-24-RQ425-evidence.md`. Evidence state: synchronized. Main verification: current `origin/main` contains the implementation SHA. Follow-up: no successor promoted; `RQ422` remains WAITING.
@@ -68,7 +72,7 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 | RQ419 | DONE | P1 | supplier-sales-scope-event-lineage | Reload Supplier Sales when global data scope changes and keep trust metadata aligned |
 | RQ420 | DONE | P2 | supplier-sales-derived-projection-freshness | Prevent stale Supplier Sales derived shares and cost projections after total changes |
 | RQ421 | DONE | P1 | supplier-sales-status-identity | Preserve backend Supplier Sales status when recommendation actionability is blocked |
-| RQ422 | WAITING | P1 | supplier-footwear-type-insight-denominator | Make Supplier Footwear type share and elasticity metrics full-cohort and provenance-safe |
+| RQ422 | DONE | P1 | supplier-footwear-type-insight-denominator | Make Supplier Footwear type share and elasticity metrics full-cohort and provenance-safe |
 | RQ423 | DONE | P1 | pre-nivelacija-focus-population-parity | Make Pre-Nivelacija focus filtering population-aware across pages and projections |
 | RQ424 | DONE | P1 | pre-nivelacija-leaderboard-denominator | Define Pre-Nivelacija action-share and percentage normalization semantics |
 | RQ425 | DONE | P1 | supplier-footwear-scope-default | Prevent standalone Supplier Footwear from silently falling back to all data |
@@ -951,7 +955,7 @@ Do not recreate recommendation scoring or weaken the actionability gate.
 
 ## RQ422 - Supplier Footwear type insights must use an explicit full-cohort denominator
 
-Status: WAITING
+Status: DONE
 Ready after: `RQ406` and `RQ411` attribution/completeness rules are agreed
 Priority: P1
 Type: backend/frontend/contract/tests
@@ -1007,6 +1011,26 @@ Do not change the Supplier Footwear recommendation formula, historical attributi
 ### Dependencies
 
 - Coordinate `RQ406`, `RQ411`, `RQ412`, `RQ413` and existing Supplier Footwear route ownership.
+
+### Completion note
+
+- Date: 2026-09-24
+- Status: DONE
+- Completion: Completed the remaining OP2-31/32 display/weighting contract on top of `RQ406`: type chart uses full-cohort shares with top-eight plus `Ostali`, explicit denominator copy, and backend post-revenue-weighted category elasticity metadata.
+- Changed files: `VendorSalesNivelacijaTypeInsightPolicy.cs`, `AllEndpoints.cs`, `VendorSalesNivelacijaModels.cs`, `SupplierFootwearAnalyticsPage.tsx`, focused tests, guardrail baseline line repair.
+- Contract/runtime behavior changed: nine-category fixtures no longer imply a closed 100% top-eight population; excluded share is visible; elasticity weighting is machine-readable.
+- Checks run: Supplier Footwear/type-insight vitest specs; `npm run check:analytics-guardrails`.
+- Checks not run: `dotnet test VendorSalesNivelacijaTypeInsightPolicyTests` (dotnet unavailable in agent VM).
+- Run log: `.ai/runs/2026-09-24-RQ422-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: fb1ced982c085472ba87a97da63c97fdcd7b4314
+- Main verification: passed — current `origin/main` contains fb1ced98
+- Missed: none known
+- Follow-up: none promoted
+- Residual risk: historical sale-line attribution remains owned by `RQ411`
+- Next: none
+- Prompt defect / scope repair: treated `RQ406` as satisfying the backend full-cohort aggregate prerequisite; `RQ422` closed the remaining display denominator and elasticity-weighting gaps
 
 ---
 
