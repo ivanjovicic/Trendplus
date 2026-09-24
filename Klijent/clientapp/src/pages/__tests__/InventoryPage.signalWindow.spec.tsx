@@ -249,6 +249,21 @@ describe("InventoryPage signal window refresh", () => {
     expect(getForecastMock.mock.calls.at(-1)?.[0]?.signal).toBe(lifecycleSignal);
     expect(getInventoryAlertsMock.mock.calls.at(-1)?.[0]?.signal).toBe(lifecycleSignal);
     expect(getRebalanceSuggestionsMock.mock.calls.at(-1)?.[0]?.signal).toBe(lifecycleSignal);
+    expect(getForecastMock.mock.calls.at(-1)?.[0]).toEqual(expect.objectContaining({
+      fromDate: "2026-08-20",
+      toDate: "2026-09-18",
+      dataScope: "all",
+    }));
+    expect(getInventoryAlertsMock.mock.calls.at(-1)?.[0]).toEqual(expect.objectContaining({
+      fromDate: "2026-08-20",
+      toDate: "2026-09-18",
+      dataScope: "all",
+    }));
+    expect(getRebalanceSuggestionsMock.mock.calls.at(-1)?.[0]).toEqual(expect.objectContaining({
+      fromDate: "2026-08-20",
+      toDate: "2026-09-18",
+      dataScope: "all",
+    }));
 
     setDataScope("existing");
     act(() => {

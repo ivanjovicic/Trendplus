@@ -37,11 +37,21 @@ describe("analytics API contract requests", () => {
       }),
     );
 
-    await getSizeCurve({ skuId: 101, storeId: 7, sizeCode: " 42 " });
+    await getSizeCurve({
+      skuId: 101,
+      storeId: 7,
+      sizeCode: " 42 ",
+      fromDate: "2026-01-01",
+      toDate: "2026-01-31",
+      dataScope: "existing",
+    });
 
     expect(receivedUrl?.searchParams.get("skuId")).toBe("101");
     expect(receivedUrl?.searchParams.get("storeId")).toBe("7");
     expect(receivedUrl?.searchParams.get("sizeCode")).toBe("42");
+    expect(receivedUrl?.searchParams.get("fromDate")).toBe("2026-01-01");
+    expect(receivedUrl?.searchParams.get("toDate")).toBe("2026-01-31");
+    expect(receivedUrl?.searchParams.get("dataScope")).toBe("existing");
   });
 
   it("clears cached dashboard bootstrap responses when invalidated", async () => {

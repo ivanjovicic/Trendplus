@@ -169,6 +169,26 @@ public sealed class AnalyticsScreenCacheKeyContractTests
     }
 
     [Fact]
+    public void InventorySecondarySignals_IsolateRequestedPeriodAndScope()
+    {
+        var from = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var to = new DateTime(2026, 1, 31, 0, 0, 0, DateTimeKind.Utc);
+
+        Assert.NotEqual(
+            AnalyticsCacheKeys.InventoryForecast(7, 8, top: 50, fromDate: from, toDate: to, dataScope: "all"),
+            AnalyticsCacheKeys.InventoryForecast(7, 8, top: 50, fromDate: from, toDate: to, dataScope: "existing"));
+        Assert.NotEqual(
+            AnalyticsCacheKeys.InventoryAlerts(7, 8, top: 50, fromDate: from, toDate: to, dataScope: "all"),
+            AnalyticsCacheKeys.InventoryAlerts(7, 8, top: 50, fromDate: from, toDate: to, dataScope: "imported"));
+        Assert.NotEqual(
+            AnalyticsCacheKeys.RebalanceSuggestions(7, supplierId: 8, top: 50, fromDate: from, toDate: to, dataScope: "all"),
+            AnalyticsCacheKeys.RebalanceSuggestions(7, supplierId: 8, top: 50, fromDate: from, toDate: to.AddDays(1), dataScope: "all"));
+        Assert.NotEqual(
+            AnalyticsCacheKeys.InventorySizeCurve(7, 8, 101, top: 50, fromDate: from, toDate: to, dataScope: "all"),
+            AnalyticsCacheKeys.InventorySizeCurve(7, 8, 101, top: 50, fromDate: from.AddDays(1), toDate: to, dataScope: "all"));
+    }
+
+    [Fact]
     public void ReportCacheVersion_InvalidatesSupplierAndPilotReports()
     {
         var supplierV1 = SupplierReportKey(reportCacheVersion: 1);
