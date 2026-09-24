@@ -115,7 +115,11 @@ public sealed class GetRebalanceSuggestionsHandler
                 Warning: items.Count == 0
                     ? "Rebalance snapshot postoji, ali nema predloga za trazene filtere."
                     : hasMissingEvidence ? "Rebalance snapshot sadrzi redove sa nepotpunom signalnom evidencijom." : null,
-                Items: items);
+                Items: items,
+                Provenance: InventorySignalSnapshotProvenance.ForCurrentSnapshot(
+                    request.FromDate,
+                    request.ToDate,
+                    request.DataScope));
         }
         catch (Exception ex) when (IsMissingRelation(ex))
         {
@@ -130,7 +134,11 @@ public sealed class GetRebalanceSuggestionsHandler
                 SnapshotFreshnessUtc: null,
                 SnapshotFreshnessStatus: InventorySnapshotFreshness.Unknown,
                 Warning: "Rebalance snapshot jos nije dostupan.",
-                Items: []);
+                Items: [],
+                Provenance: InventorySignalSnapshotProvenance.ForCurrentSnapshot(
+                    request.FromDate,
+                    request.ToDate,
+                    request.DataScope));
         }
     }
 

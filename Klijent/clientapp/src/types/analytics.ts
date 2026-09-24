@@ -1394,6 +1394,19 @@ export interface InventoryInsights {
 
 // ── Inventory Forecast ────────────────────────────────────────────────────────
 
+export interface InventorySignalSnapshotProvenance {
+  evidenceScope: "current-snapshot" | string;
+  supportsRequestedPeriod: boolean;
+  supportsRequestedDataScope: boolean;
+  requestedPeriodFromUtc?: string | null;
+  requestedPeriodToUtc?: string | null;
+  requestedDataScope?: string | null;
+  effectivePeriodFromUtc?: string | null;
+  effectivePeriodToUtc?: string | null;
+  effectiveDataScope?: string | null;
+  warning?: string | null;
+}
+
 export interface ForecastRowDto {
   skuId: number;
   storeId: number;
@@ -1433,6 +1446,7 @@ export interface ForecastDto {
   riskAggregationPolicy?: string | null;
   /** current-snapshot-not-analysis-period — not tied to Inventory period selection */
   evidenceScope?: string | null;
+  provenance?: InventorySignalSnapshotProvenance | null;
   items: ForecastRowDto[];
 }
 
@@ -1510,6 +1524,7 @@ export interface SizeCurveDto {
   snapshotFreshnessUtc?: string | null;
   snapshotFreshnessStatus?: "fresh" | "stale" | "critical" | "unknown" | string | null;
   warning?: string | null;
+  provenance?: InventorySignalSnapshotProvenance | null;
   items: SizeCurvePointDto[];
 }
 
@@ -1547,6 +1562,7 @@ export interface RebalanceListDto {
   snapshotFreshnessUtc?: string | null;
   snapshotFreshnessStatus?: "fresh" | "stale" | "critical" | "unknown" | string | null;
   warning?: string | null;
+  provenance?: InventorySignalSnapshotProvenance | null;
   items: RebalanceSuggestionDto[];
 }
 
@@ -1575,6 +1591,7 @@ export interface InventoryAlertListDto {
   snapshotFreshnessUtc?: string | null;
   snapshotFreshnessStatus?: "fresh" | "stale" | "critical" | "unknown" | string | null;
   warning?: string | null;
+  provenance?: InventorySignalSnapshotProvenance | null;
   items: InventoryAlertDto[];
 }
 

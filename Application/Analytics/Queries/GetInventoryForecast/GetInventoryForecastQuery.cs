@@ -7,7 +7,10 @@ public sealed record GetInventoryForecastQuery(
     int? SupplierId = null,
     int? SkuId = null,
     string? SizeCode = null,
-    int Top = 200
+    int Top = 200,
+    DateTime? FromDate = null,
+    DateTime? ToDate = null,
+    string? DataScope = null
 ) : IRequest<InventoryForecastListDto>;
 
 public sealed record InventoryForecastDto(
@@ -43,5 +46,6 @@ public sealed record InventoryForecastListDto(
     string RowGrain,
     string RiskAggregationPolicy,
     string EvidenceScope,
-    IReadOnlyList<InventoryForecastDto> Items
+    IReadOnlyList<InventoryForecastDto> Items,
+    InventorySignalSnapshotProvenance? Provenance = null
 );

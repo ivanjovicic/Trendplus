@@ -1675,6 +1675,9 @@ export async function getForecast(options?: {
   skuId?: number | null;
   sizeCode?: string;
   top?: number;
+  fromDate?: string | null;
+  toDate?: string | null;
+  dataScope?: string | null;
   signal?: AbortSignal;
 }): Promise<ForecastDto> {
   const params = new URLSearchParams();
@@ -1683,6 +1686,9 @@ export async function getForecast(options?: {
   if (options?.skuId != null) params.append("skuId", String(options.skuId));
   if (options?.sizeCode) params.append("sizeCode", options.sizeCode);
   if (options?.top != null) params.append("top", String(options.top));
+  if (options?.fromDate) params.append("fromDate", options.fromDate);
+  if (options?.toDate) params.append("toDate", options.toDate);
+  if (options?.dataScope) params.append("dataScope", normalizeDataScope(options.dataScope));
   return fetchJson(
     "/api/analytics/cached/inventory/forecast",
     params,
@@ -1722,6 +1728,9 @@ export async function getSizeCurve(options?: {
   skuId?: number | null;
   sizeCode?: string | null;
   top?: number;
+  fromDate?: string | null;
+  toDate?: string | null;
+  dataScope?: string | null;
   signal?: AbortSignal;
 }): Promise<SizeCurveDto> {
   const params = new URLSearchParams();
@@ -1730,6 +1739,9 @@ export async function getSizeCurve(options?: {
   if (options?.skuId != null) params.append("skuId", String(options.skuId));
   if (options?.sizeCode != null && options.sizeCode.trim() !== "") params.append("sizeCode", options.sizeCode.trim());
   if (options?.top != null) params.append("top", String(options.top));
+  if (options?.fromDate) params.append("fromDate", options.fromDate);
+  if (options?.toDate) params.append("toDate", options.toDate);
+  if (options?.dataScope) params.append("dataScope", normalizeDataScope(options.dataScope));
   return fetchJson(
     "/api/analytics/cached/inventory/size-curve",
     params,
@@ -1748,6 +1760,9 @@ export async function getRebalanceSuggestions(options?: {
   supplierId?: number | null;
   urgency?: string;
   top?: number;
+  fromDate?: string | null;
+  toDate?: string | null;
+  dataScope?: string | null;
   signal?: AbortSignal;
 }): Promise<RebalanceListDto> {
   const params = new URLSearchParams();
@@ -1756,6 +1771,9 @@ export async function getRebalanceSuggestions(options?: {
   if (options?.supplierId != null) params.append("supplierId", String(options.supplierId));
   if (options?.urgency) params.append("urgency", options.urgency);
   if (options?.top != null) params.append("top", String(options.top));
+  if (options?.fromDate) params.append("fromDate", options.fromDate);
+  if (options?.toDate) params.append("toDate", options.toDate);
+  if (options?.dataScope) params.append("dataScope", normalizeDataScope(options.dataScope));
   return fetchJson(
     "/api/analytics/cached/inventory/rebalance-suggestions",
     params,
@@ -1773,6 +1791,9 @@ export async function getInventoryAlerts(options?: {
   supplierId?: number | null;
   severity?: string;
   top?: number;
+  fromDate?: string | null;
+  toDate?: string | null;
+  dataScope?: string | null;
   signal?: AbortSignal;
 }): Promise<InventoryAlertListDto> {
   const params = new URLSearchParams();
@@ -1780,6 +1801,9 @@ export async function getInventoryAlerts(options?: {
   if (options?.supplierId != null) params.append("supplierId", String(options.supplierId));
   if (options?.severity) params.append("severity", options.severity);
   if (options?.top != null) params.append("top", String(options.top));
+  if (options?.fromDate) params.append("fromDate", options.fromDate);
+  if (options?.toDate) params.append("toDate", options.toDate);
+  if (options?.dataScope) params.append("dataScope", normalizeDataScope(options.dataScope));
   return fetchJson(
     "/api/analytics/cached/inventory/alerts",
     params,

@@ -113,7 +113,11 @@ public sealed class GetInventorySizeCurveHandler
                 Warning: items.Count == 0
                     ? "Size curve snapshot postoji, ali nema redova za trazene filtere."
                     : hasMissingEvidence ? "Size curve snapshot sadrzi redove sa nepotpunom signalnom evidencijom." : null,
-                Items: items);
+                Items: items,
+                Provenance: InventorySignalSnapshotProvenance.ForCurrentSnapshot(
+                    request.FromDate,
+                    request.ToDate,
+                    request.DataScope));
         }
         catch (Exception ex) when (IsMissingRelation(ex))
         {
@@ -128,7 +132,11 @@ public sealed class GetInventorySizeCurveHandler
                 SnapshotFreshnessUtc: null,
                 SnapshotFreshnessStatus: InventorySnapshotFreshness.Unknown,
                 Warning: "Size curve snapshot jos nije dostupan.",
-                Items: []);
+                Items: [],
+                Provenance: InventorySignalSnapshotProvenance.ForCurrentSnapshot(
+                    request.FromDate,
+                    request.ToDate,
+                    request.DataScope));
         }
     }
 

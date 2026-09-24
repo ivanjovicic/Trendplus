@@ -8,7 +8,10 @@ public sealed record GetRebalanceSuggestionsQuery(
     int? ToStoreId = null,
     int? SupplierId = null,
     string? Urgency = null,
-    int Top = 100
+    int Top = 100,
+    DateTime? FromDate = null,
+    DateTime? ToDate = null,
+    string? DataScope = null
 ) : IRequest<RebalanceSuggestionListDto>;
 
 public sealed record RebalanceSuggestionDto(
@@ -38,5 +41,6 @@ public sealed record RebalanceSuggestionListDto(
     /// <summary>fresh | stale | critical | unknown.</summary>
     string SnapshotFreshnessStatus,
     string? Warning,
-    IReadOnlyList<RebalanceSuggestionDto> Items
+    IReadOnlyList<RebalanceSuggestionDto> Items,
+    InventorySignalSnapshotProvenance? Provenance = null
 );

@@ -153,7 +153,11 @@ public sealed class GetInventoryForecastHandler
                 RowGrain: InventoryForecastListContract.RowGrain,
                 RiskAggregationPolicy: InventoryForecastListContract.RiskAggregationPolicy,
                 EvidenceScope: InventoryForecastListContract.EvidenceScope,
-                Items: items);
+                Items: items,
+                Provenance: InventorySignalSnapshotProvenance.ForCurrentSnapshot(
+                    request.FromDate,
+                    request.ToDate,
+                    request.DataScope));
         }
         catch (Exception ex) when (IsMissingRelation(ex))
         {
@@ -174,7 +178,11 @@ public sealed class GetInventoryForecastHandler
                 RowGrain: InventoryForecastListContract.RowGrain,
                 RiskAggregationPolicy: InventoryForecastListContract.RiskAggregationPolicy,
                 EvidenceScope: InventoryForecastListContract.EvidenceScope,
-                Items: []);
+                Items: [],
+                Provenance: InventorySignalSnapshotProvenance.ForCurrentSnapshot(
+                    request.FromDate,
+                    request.ToDate,
+                    request.DataScope));
         }
     }
 

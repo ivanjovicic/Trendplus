@@ -253,20 +253,20 @@ public static class AnalyticsCacheKeys
     public static string ProductDecisionCenter(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, int top = 500, string? dataScope = null, string? search = null) =>
         $"{Prefix}product-decision-center:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}:top:{top}:search:{HashPart(search)}";
 
-    public static string InventoryForecast(int? storeId = null, int? supplierId = null, int? skuId = null, string? sizeCode = null, int top = 200) =>
-        $"{Prefix}inventory-forecast:{FilterSuffix(storeId, supplierId)}:sku:{(skuId.HasValue ? skuId.Value.ToString() : "all")}:size:{(string.IsNullOrWhiteSpace(sizeCode) ? "all" : sizeCode)}:top:{top}";
+    public static string InventoryForecast(int? storeId = null, int? supplierId = null, int? skuId = null, string? sizeCode = null, int top = 200, DateTime? fromDate = null, DateTime? toDate = null, string? dataScope = null) =>
+        $"{Prefix}inventory-forecast:{FormatInstant(fromDate)}:{FormatInstant(toDate)}:{FilterSuffix(storeId, supplierId, dataScope)}:sku:{(skuId.HasValue ? skuId.Value.ToString() : "all")}:size:{(string.IsNullOrWhiteSpace(sizeCode) ? "all" : sizeCode)}:top:{top}";
 
     public static string InventoryForecastBacktest(int? storeId = null, int? supplierId = null, int horizonDays = 14) =>
         $"{Prefix}inventory-forecast-backtest:{FilterSuffix(storeId, supplierId)}:horizon:{horizonDays}";
 
-    public static string InventorySizeCurve(int? storeId = null, int? supplierId = null, int? skuId = null, string? sizeCode = null, int top = 200) =>
-        $"{Prefix}inventory-size-curve:{FilterSuffix(storeId, supplierId)}:sku:{(skuId.HasValue ? skuId.Value.ToString() : "all")}:size:{(string.IsNullOrWhiteSpace(sizeCode) ? "all" : sizeCode.Trim())}:top:{top}";
+    public static string InventorySizeCurve(int? storeId = null, int? supplierId = null, int? skuId = null, string? sizeCode = null, int top = 200, DateTime? fromDate = null, DateTime? toDate = null, string? dataScope = null) =>
+        $"{Prefix}inventory-size-curve:{FormatInstant(fromDate)}:{FormatInstant(toDate)}:{FilterSuffix(storeId, supplierId, dataScope)}:sku:{(skuId.HasValue ? skuId.Value.ToString() : "all")}:size:{(string.IsNullOrWhiteSpace(sizeCode) ? "all" : sizeCode.Trim())}:top:{top}";
 
-    public static string RebalanceSuggestions(int? fromStoreId = null, int? toStoreId = null, int? supplierId = null, string? urgency = null, int top = 100) =>
-        $"{Prefix}rebalance-suggestions:from:{(fromStoreId.HasValue ? fromStoreId.Value.ToString() : "all")}:to:{(toStoreId.HasValue ? toStoreId.Value.ToString() : "all")}:supplier:{(supplierId.HasValue ? supplierId.Value.ToString() : "all")}:urgency:{(string.IsNullOrWhiteSpace(urgency) ? "all" : urgency)}:top:{top}";
+    public static string RebalanceSuggestions(int? fromStoreId = null, int? toStoreId = null, int? supplierId = null, string? urgency = null, int top = 100, DateTime? fromDate = null, DateTime? toDate = null, string? dataScope = null) =>
+        $"{Prefix}rebalance-suggestions:{FormatInstant(fromDate)}:{FormatInstant(toDate)}:from:{(fromStoreId.HasValue ? fromStoreId.Value.ToString() : "all")}:to:{(toStoreId.HasValue ? toStoreId.Value.ToString() : "all")}:supplier:{(supplierId.HasValue ? supplierId.Value.ToString() : "all")}:scope:{NormalizeDataScope(dataScope)}:urgency:{(string.IsNullOrWhiteSpace(urgency) ? "all" : urgency)}:top:{top}";
 
-    public static string InventoryAlerts(int? storeId = null, int? supplierId = null, string? severity = null, int top = 100) =>
-        $"{Prefix}inventory-alerts:{FilterSuffix(storeId, supplierId)}:severity:{(string.IsNullOrWhiteSpace(severity) ? "all" : severity)}:top:{top}";
+    public static string InventoryAlerts(int? storeId = null, int? supplierId = null, string? severity = null, int top = 100, DateTime? fromDate = null, DateTime? toDate = null, string? dataScope = null) =>
+        $"{Prefix}inventory-alerts:{FormatInstant(fromDate)}:{FormatInstant(toDate)}:{FilterSuffix(storeId, supplierId, dataScope)}:severity:{(string.IsNullOrWhiteSpace(severity) ? "all" : severity)}:top:{top}";
 
     public static string InventoryInsights(int? storeId = null, int? supplierId = null, string? search = null, string? sortBy = null, string? dataScope = null) =>
         $"{Prefix}inventory-insights:{FilterSuffix(storeId, supplierId, dataScope)}:search:{HashPart(search)}:sort:{HashPart(sortBy)}";

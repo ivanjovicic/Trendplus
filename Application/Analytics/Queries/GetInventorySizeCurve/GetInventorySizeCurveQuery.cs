@@ -7,7 +7,10 @@ public sealed record GetInventorySizeCurveQuery(
     int? SupplierId = null,
     int? SkuId = null,
     string? SizeCode = null,
-    int Top = 200
+    int Top = 200,
+    DateTime? FromDate = null,
+    DateTime? ToDate = null,
+    string? DataScope = null
 ) : IRequest<InventorySizeCurveListDto>;
 
 public sealed record InventorySizeCurveDto(
@@ -38,5 +41,6 @@ public sealed record InventorySizeCurveListDto(
     /// <summary>fresh | stale | critical | unknown.</summary>
     string SnapshotFreshnessStatus,
     string? Warning,
-    IReadOnlyList<InventorySizeCurveDto> Items
+    IReadOnlyList<InventorySizeCurveDto> Items,
+    InventorySignalSnapshotProvenance? Provenance = null
 );

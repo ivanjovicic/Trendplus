@@ -659,14 +659,16 @@ export default function InventoryPage() {
         dataScope: inventoryDataScope,
         signal,
       }),
-      getForecast({ storeId: selectedStoreId, supplierId: selectedSupplierId, top: FORECAST_FETCH_LIMIT, signal }),
+      getForecast({ storeId: selectedStoreId, supplierId: selectedSupplierId, top: FORECAST_FETCH_LIMIT, dataScope: inventoryDataScope, ...inventorySignalWindow, signal }),
       getInventoryAlerts({
         storeId: selectedStoreId,
         supplierId: selectedSupplierId,
         severity: alertSeverityFilter || undefined,
+        dataScope: inventoryDataScope,
+        ...inventorySignalWindow,
         signal,
       }),
-      getRebalanceSuggestions({ fromStoreId: selectedStoreId, supplierId: selectedSupplierId, top: REBALANCE_FETCH_LIMIT, signal }),
+      getRebalanceSuggestions({ fromStoreId: selectedStoreId, supplierId: selectedSupplierId, top: REBALANCE_FETCH_LIMIT, dataScope: inventoryDataScope, ...inventorySignalWindow, signal }),
     ]);
     const failed = results.find((result) => result.status === "rejected");
     if (failed?.status === "rejected") throw failed.reason;
@@ -797,6 +799,8 @@ export default function InventoryPage() {
     void getSizeCurve({
       skuId: detailRow.id,
       storeId: detailRow.idObjekat ?? selectedStoreId ?? undefined,
+      dataScope: inventoryDataScope,
+      ...inventorySignalWindow,
       signal: controller.signal,
     })
       .then((nextCurve) => {
@@ -812,7 +816,7 @@ export default function InventoryPage() {
       cancelled = true;
       controller.abort();
     };
-  }, [detailRow, detailTab, inventoryDataScope, selectedStoreId]);
+  }, [detailRow, detailTab, inventoryDataScope, inventorySignalWindow, selectedStoreId]);
 
   useEffect(() => {
     if (sizeCurveSkuId == null) {
@@ -828,6 +832,8 @@ export default function InventoryPage() {
       skuId: sizeCurveSkuId,
       storeId: sizeCurveStoreId ?? selectedStoreId,
       sizeCode: sizeCurveSizeCode,
+      dataScope: inventoryDataScope,
+      ...inventorySignalWindow,
       signal: controller.signal,
     })
       .then((data) => {
@@ -846,7 +852,7 @@ export default function InventoryPage() {
       cancelled = true;
       controller.abort();
     };
-  }, [inventoryDataScope, selectedStoreId, sizeCurveSizeCode, sizeCurveSkuId, sizeCurveStoreId]);
+  }, [inventoryDataScope, inventorySignalWindow, selectedStoreId, sizeCurveSizeCode, sizeCurveSkuId, sizeCurveStoreId]);
 
   const rows = useMemo(() => (pageData?.items ?? []).map((item) => buildInventoryRow(item, stores, suppliers)), [pageData, stores, suppliers]);
   const totalCount = pageData?.totalCount ?? 0;

@@ -1000,13 +1000,25 @@ public static class CachedAnalyticsEndpoints
             int? skuId = null,
             string? sizeCode = null,
             int top = 200,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            string? dataScope = null,
             CancellationToken ct = default) =>
         {
+            if (fromDate.HasValue != toDate.HasValue
+                || (fromDate.HasValue && fromDate.Value.Date > toDate!.Value.Date))
+            {
+                return Results.BadRequest(new { error = "fromDate i toDate moraju biti kompletan, validan opseg." });
+            }
+
+            var normalizedDataScope = NormalizeDataScope(dataScope);
+            fromDate = fromDate?.Date;
+            toDate = toDate?.Date;
             top = Math.Clamp(top, 1, 500);
-            var cacheKey = AnalyticsCacheKeys.InventoryForecast(storeId, supplierId, skuId, sizeCode, top);
+            var cacheKey = AnalyticsCacheKeys.InventoryForecast(storeId, supplierId, skuId, sizeCode, top, fromDate, toDate, normalizedDataScope);
             var result = await cache.GetOrSetAsync(
                 cacheKey,
-                async () => await mediator.Send(new GetInventoryForecastQuery(storeId, supplierId, skuId, sizeCode, top), ct),
+                async () => await mediator.Send(new GetInventoryForecastQuery(storeId, supplierId, skuId, sizeCode, top, fromDate, toDate, normalizedDataScope), ct),
                 AnalyticsCachePolicy.Inventory.Ttl,
                 ct);
 
@@ -1041,13 +1053,25 @@ public static class CachedAnalyticsEndpoints
             int? skuId = null,
             string? sizeCode = null,
             int top = 200,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            string? dataScope = null,
             CancellationToken ct = default) =>
         {
+            if (fromDate.HasValue != toDate.HasValue
+                || (fromDate.HasValue && fromDate.Value.Date > toDate!.Value.Date))
+            {
+                return Results.BadRequest(new { error = "fromDate i toDate moraju biti kompletan, validan opseg." });
+            }
+
+            var normalizedDataScope = NormalizeDataScope(dataScope);
+            fromDate = fromDate?.Date;
+            toDate = toDate?.Date;
             top = Math.Clamp(top, 1, 500);
-            var cacheKey = AnalyticsCacheKeys.InventorySizeCurve(storeId, supplierId, skuId, sizeCode, top);
+            var cacheKey = AnalyticsCacheKeys.InventorySizeCurve(storeId, supplierId, skuId, sizeCode, top, fromDate, toDate, normalizedDataScope);
             var result = await cache.GetOrSetAsync(
                 cacheKey,
-                async () => await mediator.Send(new GetInventorySizeCurveQuery(storeId, supplierId, skuId, sizeCode, top), ct),
+                async () => await mediator.Send(new GetInventorySizeCurveQuery(storeId, supplierId, skuId, sizeCode, top, fromDate, toDate, normalizedDataScope), ct),
                 AnalyticsCachePolicy.Inventory.Ttl,
                 ct);
 
@@ -1063,13 +1087,25 @@ public static class CachedAnalyticsEndpoints
             int? supplierId = null,
             string? urgency = null,
             int top = 100,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            string? dataScope = null,
             CancellationToken ct = default) =>
         {
+            if (fromDate.HasValue != toDate.HasValue
+                || (fromDate.HasValue && fromDate.Value.Date > toDate!.Value.Date))
+            {
+                return Results.BadRequest(new { error = "fromDate i toDate moraju biti kompletan, validan opseg." });
+            }
+
+            var normalizedDataScope = NormalizeDataScope(dataScope);
+            fromDate = fromDate?.Date;
+            toDate = toDate?.Date;
             top = Math.Clamp(top, 1, 500);
-            var cacheKey = AnalyticsCacheKeys.RebalanceSuggestions(fromStoreId, toStoreId, supplierId, urgency, top);
+            var cacheKey = AnalyticsCacheKeys.RebalanceSuggestions(fromStoreId, toStoreId, supplierId, urgency, top, fromDate, toDate, normalizedDataScope);
             var result = await cache.GetOrSetAsync(
                 cacheKey,
-                async () => await mediator.Send(new GetRebalanceSuggestionsQuery(fromStoreId, toStoreId, supplierId, urgency, top), ct),
+                async () => await mediator.Send(new GetRebalanceSuggestionsQuery(fromStoreId, toStoreId, supplierId, urgency, top, fromDate, toDate, normalizedDataScope), ct),
                 AnalyticsCachePolicy.Inventory.Ttl,
                 ct);
 
@@ -1084,13 +1120,25 @@ public static class CachedAnalyticsEndpoints
             int? supplierId = null,
             string? severity = null,
             int top = 100,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            string? dataScope = null,
             CancellationToken ct = default) =>
         {
+            if (fromDate.HasValue != toDate.HasValue
+                || (fromDate.HasValue && fromDate.Value.Date > toDate!.Value.Date))
+            {
+                return Results.BadRequest(new { error = "fromDate i toDate moraju biti kompletan, validan opseg." });
+            }
+
+            var normalizedDataScope = NormalizeDataScope(dataScope);
+            fromDate = fromDate?.Date;
+            toDate = toDate?.Date;
             top = Math.Clamp(top, 1, 500);
-            var cacheKey = AnalyticsCacheKeys.InventoryAlerts(storeId, supplierId, severity, top);
+            var cacheKey = AnalyticsCacheKeys.InventoryAlerts(storeId, supplierId, severity, top, fromDate, toDate, normalizedDataScope);
             var result = await cache.GetOrSetAsync(
                 cacheKey,
-                async () => await mediator.Send(new GetInventoryAlertsQuery(storeId, supplierId, severity, top), ct),
+                async () => await mediator.Send(new GetInventoryAlertsQuery(storeId, supplierId, severity, top, fromDate, toDate, normalizedDataScope), ct),
                 AnalyticsCachePolicy.Inventory.Ttl,
                 ct);
 
