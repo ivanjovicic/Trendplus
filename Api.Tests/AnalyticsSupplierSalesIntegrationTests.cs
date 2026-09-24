@@ -42,6 +42,18 @@ public class AnalyticsSupplierSalesIntegrationTests : IClassFixture<WebApplicati
         Assert.Equal(JsonValueKind.Object, root.GetProperty("totals").ValueKind);
     }
 
+    [OperationsIntegrationFact(DisplayName = "Supplier endpoint declares the recommendation reference cohort")]
+    public async Task SupplierSalesStats_DeclaresRecommendationReferenceCohort()
+    {
+        var root = await GetJsonRootAsync("/api/analytics/supplier-sales-stats?sezonaId=1");
+
+        var cohort = root.GetProperty("recommendationReferenceCohort");
+        Assert.Equal("all_response_suppliers", cohort.GetProperty("scope").GetString());
+        Assert.Equal(root.GetProperty("suppliers").GetArrayLength(), cohort.GetProperty("supplierCount").GetInt32());
+        Assert.True(cohort.GetProperty("includesUnknown").GetBoolean());
+        Assert.Equal("backend_supplier_response", cohort.GetProperty("basis").GetString());
+    }
+
     [OperationsIntegrationFact(DisplayName = "Supplier endpoint matches golden snapshot")]
     public async Task SupplierSalesStats_MatchesGoldenSnapshot()
     {

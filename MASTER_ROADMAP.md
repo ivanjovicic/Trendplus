@@ -4,6 +4,9 @@ Updated: 2026-09-24
 Repository: `ivanjovicic/Trendplus`
 Status: canonical planning entry point
 
+Owner promotion 2026-09-24: idle recovery verified that RQ373 is the dependency-complete Supplier Sales visible-population owner. RQ378 and RQ380 depend on its display/reference contract, while RQ379 must consume the stabilized response schema; no conflicting active claim, branch or PR was found. RQ373 moved `WAITING -> READY`.
+Owner claim 2026-09-24: RQ373 is `IN_PROGRESS` in this workspace for the Supplier Sales display-population/reference-cohort contract across KPI, chart, table, detail, export and recommendation projections. Local lock: `.ai/task-locks/RQ373-cursor.lock.md`.
+
 Owner promotion 2026-09-24: after RQ426 delivery, idle recovery verified RQ308 as the dependency-complete Inventory period/provenance owner; RQ273 remains export-window owner and RQ371 remains the subsequent cached-secondary-signal parity owner. RQ308 moved `WAITING -> READY`.
 Owner claim 2026-09-24: RQ308 is `IN_PROGRESS` in this workspace for the visible Inventory period selector, URL state, supported list/detail period requests and explicit current-snapshot labeling. Local lock: `.ai/task-locks/RQ308-cursor.lock.md`.
 Owner completion 2026-09-24: RQ308 was delivered directly to `main` after focused Inventory period/lineage proof. The Inventory trust header now exposes the selected period, list/detail requests receive the validated calendar range, and current-snapshot panels are explicitly separated pending RQ371. Run log: `.ai/runs/2026-09-24-RQ308-evidence.md`. RQ371 remains WAITING.

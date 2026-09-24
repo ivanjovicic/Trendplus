@@ -182,7 +182,7 @@ describe("SupplierSalesStatsPage premium controls", () => {
     expect(screen.getByText("Prioritetna lista dobavljača")).toBeInTheDocument();
   });
 
-  it("exports unavailable supplier count instead of fake zero", async () => {
+  it("exports the visible supplier population count", async () => {
     render(
       <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
         <SupplierSalesStatsPage />
@@ -190,8 +190,54 @@ describe("SupplierSalesStatsPage premium controls", () => {
     );
 
     const toolbar = await screen.findByTestId("analytics-table-toolbar");
-    expect(toolbar).toHaveTextContent("Dobavljača: N/A");
-    expect(toolbar).not.toHaveTextContent("Dobavljača: 0");
+    expect(toolbar).toHaveTextContent("Dobavljača (Svi dobavljači): 1");
+    expect(toolbar).not.toHaveTextContent("Dobavljača (Svi dobavljači): 0");
+  });
+
+  it("rebases visible totals and shares when unknown suppliers are hidden", async () => {
+    const baseline = await getSupplierSalesStats();
+    const knownSupplier = baseline.suppliers[0]!;
+    const unknownSupplier = {
+      ...knownSupplier,
+      dobavljacId: null,
+      dobavljacNaziv: "Nepoznato",
+      isUnknown: true,
+      ukupanPromet: 5000,
+      ukupnaKolicina: 2,
+      previousPeriodRevenue: 4000,
+      previousPeriodUnits: 1,
+      marginContribution: 1000,
+      totalCost: 4000,
+      recommendation: undefined,
+    };
+
+    vi.mocked(getSupplierSalesStats).mockResolvedValueOnce({
+      ...baseline,
+      suppliers: [knownSupplier, unknownSupplier],
+      totals: {
+        ...baseline.totals,
+        ukupanPromet: 15000,
+        ukupnaKolicina: 7,
+        ukupanMarzniDoprinos: 5000,
+      },
+      dataQuality: {
+        ...baseline.dataQuality,
+        unknownSupplierRevenueSharePct: 33.33,
+      },
+    } as never);
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats?includeUnknown=false"]}>
+        <SupplierSalesStatsPage />
+      </MemoryRouter>,
+    );
+
+    const toolbar = await screen.findByTestId("analytics-table-toolbar");
+    expect(toolbar).toHaveTextContent("Prikazani skup: Poznati dobavljači (1)");
+    expect(toolbar).toHaveTextContent("Dobavljača (Poznati dobavljači): 1");
+    expect(toolbar).toHaveTextContent("Referentni skup preporuke: Ceo odgovor (2 dobavljača; uključuje nepoznate)");
+    expect(screen.getByText("Alfa")).toBeInTheDocument();
+    expect(screen.queryByText("Nepoznato")).not.toBeInTheDocument();
   });
 
   it("renders confirmed margin quality without a false fallback caveat", async () => {

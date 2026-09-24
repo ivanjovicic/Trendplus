@@ -1916,6 +1916,13 @@ public static class AllEndpoints
                         generatedAtUtc),
                     recommendationAllowed = suppliersWithRecommendation.Count > 0
                         && suppliersWithRecommendation.All(x => x.recommendation.RecommendationAllowed),
+                    recommendationReferenceCohort = new
+                    {
+                        scope = "all_response_suppliers",
+                        supplierCount = suppliersWithRecommendation.Count,
+                        includesUnknown = true,
+                        basis = "backend_supplier_response"
+                    },
                     sezone
                 };
 

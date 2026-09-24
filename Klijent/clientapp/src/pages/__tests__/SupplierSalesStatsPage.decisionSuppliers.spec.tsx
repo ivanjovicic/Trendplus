@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SupplierSalesStat, SupplierSalesStatsResponse } from "../../services/supplierSalesStatsApi";
-import { buildDecisionSuppliers } from "../SupplierSalesStatsPage";
+import { buildDecisionSuppliers, buildSupplierSalesDisplayProjection } from "../SupplierSalesStatsPage";
 
 function buildSupplier(overrides: Partial<SupplierSalesStat> = {}): SupplierSalesStat {
   return {
@@ -88,6 +88,39 @@ function buildResponse(
 }
 
 describe("buildDecisionSuppliers", () => {
+  it("rebases display shares and totals to the visible supplier population", () => {
+    const first = buildSupplier();
+    const second = buildSupplier({
+      dobavljacId: 2,
+      dobavljacNaziv: "Beta",
+      ukupanPromet: 5000,
+      ukupnaKolicina: 5,
+      previousPeriodRevenue: 4000,
+      previousPeriodUnits: 4,
+      marginContribution: 1000,
+      marginPct: 20,
+      totalCost: 4000,
+    });
+    const rows = buildDecisionSuppliers(buildResponse([first, second], {
+      ukupanPromet: 15000,
+      ukupanMarzniDoprinos: 5000,
+      ukupnaKolicina: 15,
+    }));
+
+    const projection = buildSupplierSalesDisplayProjection([rows[0]!]);
+
+    expect(rows[0]?.sharePct).toBeCloseTo(66.6667, 3);
+    expect(projection.totalRevenue).toBe(10000);
+    expect(projection.totalUnits).toBe(10);
+    expect(projection.totalMarginContribution).toBe(4000);
+    expect(projection.previousPeriodRevenue).toBe(8000);
+    expect(projection.periodGrowthPct).toBe(25);
+    expect(projection.rows[0]?.sharePct).toBe(100);
+    expect(projection.rows[0]?.shareOfMarginContribution).toBe(100);
+    expect(projection.rows[0]?.shareOfUnits).toBe(100);
+    expect(projection.rows[0]?.status).toBe("maintain");
+  });
+
   it("recomputes share-of-margin when only the total margin contribution changes", () => {
     const suppliers = [buildSupplier()];
     const baseline = buildDecisionSuppliers(buildResponse(suppliers, { ukupanMarzniDoprinos: 4000 }));

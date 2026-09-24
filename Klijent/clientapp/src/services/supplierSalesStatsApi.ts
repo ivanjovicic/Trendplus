@@ -151,6 +151,13 @@ export interface SupplierSalesDataQuality {
   revenueWithNivelacijaSplitSharePct: number | null;
 }
 
+export interface SupplierSalesRecommendationReferenceCohort {
+  scope: "all_response_suppliers";
+  supplierCount: number;
+  includesUnknown: boolean;
+  basis: string;
+}
+
 export interface SezonaOption {
   id: number;
   naziv: string;
@@ -170,6 +177,7 @@ export interface SupplierSalesStatsResponse {
   dataScope?: string | null;
   provenanceBasis?: string | null;
   recommendationAllowed?: boolean | null;
+  recommendationReferenceCohort?: SupplierSalesRecommendationReferenceCohort | null;
   suppliers: SupplierSalesStat[];
   totals: SupplierSalesTotals;
   dataQuality: SupplierSalesDataQuality;
