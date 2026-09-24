@@ -1024,7 +1024,7 @@ export default function InventoryPage() {
     return `Primarni bilans je osvežen ${formatDateTime(primaryRefreshAt)}, a sekundarni snapshoti (${freshnessLabel}) ${formatDateTime(secondaryPanelFreshness.timestamp)}.`;
   }, [primaryRefreshAt, secondaryPanelFreshness, secondaryPanelsSettled]);
   const inventoryPeriodLineageNote = useMemo(
-    () => `Izabrani period ${periodFrom} → ${periodTo} važi za listu artikala i detalj artikla. Bilans, uvidi, workflow i sekundarni forecast/alert/transfer paneli ostaju trenutni snapshoti dok RQ371 ne uskladi njihove period/scope ugovore.`,
+    () => `Izabrani period ${periodFrom} → ${periodTo} važi za listu artikala i detalj artikla. Bilans, uvidi i workflow ostaju trenutni snapshoti; forecast, alert, transfer i size-curve zahtevi nose period/data scope, ali njihovi snapshot izvori još ne filtriraju po tim dimenzijama.`,
     [periodFrom, periodTo],
   );
   const signalSearchLineageNote = searchInput.trim().length > 0
