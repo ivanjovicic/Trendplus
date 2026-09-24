@@ -7,6 +7,7 @@ Za kanonske detalje posle ovog fajla pogledaj:
 - `docs/ai/ARCHITECTURE_BOUNDARIES.md`
 - `docs/ai/ENCODING_AND_TEXT_SAFETY.md`
 - `docs/ai/COMMON_FAILURES_AND_FIXES.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
 - `docs/ai/VALIDATION_SELECTOR.md`
 
 ## Glavni cilj
@@ -28,13 +29,14 @@ Ako izmena ne poboljšava poverenje, jasnoću, stabilnost, performanse ili onboa
 
 Radi u malim, ciljanim izmenama.
 
-### Paralelni queue rad
+### Queue rad
 
-- `Current READY` je **primary/default** kandidat za jednostavan `next` tok, a ne globalni lock.
-- Više READY promptova može postojati u istom programu kada su nezavisni po feature-family/path/dependency granicama.
-- Jedan agent/workspace i dalje claim-uje jedan prompt odjednom; drugi agenti/alati mogu paralelno claim-ovati druge collision-safe READY promptove.
-- Više aktivnih promptova iz iste feature family dozvoljeno je samo kada svi eksplicitno imaju `Parallel-safe: yes`.
-- `Parallel-safe: no` znači ekskluzivnost te feature family/owned surface, ne zabranu rada svih drugih agenata u celom programu.
+Kanonska selekcija, claim, paralelnost, takeover i **Idle recovery** su u `docs/ai/PROMPT_QUEUE_PROTOCOL.md`; ne dupliraj taj algoritam ovde.
+
+- `Current READY` je primary/default kandidat, ne globalni lock.
+- Jedan agent/workspace radi jedan claim odjednom; drugi agenti mogu raditi nezavisne collision-safe READY promptove po kanonskom protokolu.
+- Ako je pointer `none`, ne završavaj sa “nema prompta”. Proveri stale dependency/status, recent run logs i non-DONE backlog kroz Idle recovery; promoviši i claim-uj samo ono što je dokazano runnable.
+- Posle završenog prompta, ako korisnik traži `continue` ili `claim and execute`, ponovo pokreni selekciju/recovery umesto da staneš zato što se pointer vratio na `none`.
 
 Pre nego što kreneš:
 1. Pronađi postojeći shared helper/component.
