@@ -13,13 +13,13 @@ import os from "node:os";
 import path from "node:path";
 
 const REQUIRED_SNIPPETS = new Map([
-  ["AGENTS.md", ["direct repository request", "MASTER_ROADMAP.md", "historical ledger", "VALIDATION_SELECTOR.md", "per agent/workspace"]],
-  [".github/copilot-instructions.md", ["AGENT_START_HERE.md", "VALIDATION_SELECTOR.md", "najužu proveru", "Više READY"]],
+  ["AGENTS.md", ["direct repository request", "MASTER_ROADMAP.md", "historical ledger", "VALIDATION_SELECTOR.md", "per agent/workspace", "Idle recovery"]],
+  [".github/copilot-instructions.md", ["AGENT_START_HERE.md", "PROMPT_QUEUE_PROTOCOL.md", "VALIDATION_SELECTOR.md", "najužu proveru", "Idle recovery"]],
   ["MASTER_ROADMAP.md", ["primary/default READY", "additional READY", "Parallel-safe"]],
   ["docs/planning/FEATURE_LIFECYCLE.md", ["multiple READY", "Parallel-safe", "Current READY"]],
   ["docs/ai/REPO_AI_README.md", ["Authority order when docs conflict", "Canonical owners by topic", "VALIDATION_SELECTOR.md", "primary READY"]],
-  ["docs/ai/AGENT_START_HERE.md", ["Direct task workflow", "Queue task workflow", "VALIDATION_SELECTOR.md", "historical ledger", "Multiple READY"]],
-  ["docs/ai/PROMPT_QUEUE_PROTOCOL.md", ["Mechanical prompt conflicts", "same-owner", "VALIDATION_SELECTOR.md", "primary/default"]],
+  ["docs/ai/AGENT_START_HERE.md", ["Direct task workflow", "Queue task workflow", "VALIDATION_SELECTOR.md", "historical ledger", "Multiple READY", "Idle recovery"]],
+  ["docs/ai/PROMPT_QUEUE_PROTOCOL.md", ["Mechanical prompt conflicts", "same-owner", "VALIDATION_SELECTOR.md", "primary/default", "Idle recovery", "What was missed", "WAITING -> READY", "no safe claimable task"]],
   ["docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md", ["Current READY", "primary/default", "Additional READY", "Parallel-safe"]],
   ["docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md", ["Current READY", "primary/default", "Additional READY", "Parallel-safe"]],
   ["docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md", ["exact delivered SHA", "Main commit SHA", "Main verification", "RUN_LOG_TEMPLATE.md"]],
@@ -30,7 +30,7 @@ const REQUIRED_SNIPPETS = new Map([
 const FORBIDDEN_QUEUE_SERIALIZATION_PHRASES = new Map([
   ["MASTER_ROADMAP.md", ["expose at most one READY prompt per program"]],
   ["docs/planning/FEATURE_LIFECYCLE.md", ["at most one READY prompt per program", "Keep only the first unblocked task READY"]],
-  ["docs/ai/PROMPT_QUEUE_PROTOCOL.md", ["A program may have zero or one READY prompt"]],
+  ["docs/ai/PROMPT_QUEUE_PROTOCOL.md", ["A program may have zero or one READY prompt", "Do not claim a later `WAITING` prompt from that queue"]],
   ["docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md", ["Only one prompt per program may be READY"]],
   ["docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md", ["Only one prompt per program may be READY"]],
 ]);
