@@ -2,8 +2,11 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
-Main RQ current READY prompt: none
+Current READY prompt: RQ423
+Main RQ current READY prompt: RQ423
+
+
+Owner idle-recovery promotion 2026-09-24: after `RQ372` and `RQ421` completion returned the RQ pointer to `none`, the non-DONE backlog and recent evidence were re-evaluated instead of stopping. `RQ423` is dependency-complete: `RQ388`, `RQ299`, `RQ326`-`RQ330` and `RQ391` are DONE; `RQ407` is BLOCKED on integration-host proof but has no active conflicting claim and does not own the Pre-Nivelacija focus/pagination implementation path. No open `RQ423` PR was found. `RQ423` therefore moved `WAITING -> READY` as the current RQ/addendum pointer. `RQ424` remains WAITING because it overlaps the same Pre-Nivelacija page/contract family and should not be promoted concurrently.
 
 Owner promotion 2026-09-24: under the user's instruction to claim the next prompt, dependency/collision review found `RQ419` independently runnable within the Supplier Sales scope-event lane after `RQ421`; the bounded reload/trust-metadata repair does not take `RQ373`/`RQ378`/`RQ379` denominator ownership. It moved `WAITING -> READY` as the current addendum pointer.
 
@@ -32,7 +35,7 @@ Canonical queue work already present on current `main` must be preserved:
 - `RQ375`-`RQ377` — Shoe Type weighted margin, comparable cohort and detail trust/identity;
 - `RQ381`, `RQ385`-`RQ400` — Daily Sales, Pre/Post, Pre-Nivelacija and Color correctness contracts.
 
-All remaining prompts below are `WAITING`. Do not claim or auto-promote them without dependency/collision checks.
+Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only through the dependency/collision checks in the canonical protocol.
 
 ## New audit facts
 
@@ -57,7 +60,7 @@ All remaining prompts below are `WAITING`. Do not claim or auto-promote them wit
 | RQ420 | DONE | P2 | supplier-sales-derived-projection-freshness | Prevent stale Supplier Sales derived shares and cost projections after total changes |
 | RQ421 | DONE | P1 | supplier-sales-status-identity | Preserve backend Supplier Sales status when recommendation actionability is blocked |
 | RQ422 | WAITING | P1 | supplier-footwear-type-insight-denominator | Make Supplier Footwear type share and elasticity metrics full-cohort and provenance-safe |
-| RQ423 | WAITING | P1 | pre-nivelacija-focus-population-parity | Make Pre-Nivelacija focus filtering population-aware across pages and projections |
+| RQ423 | READY | P1 | pre-nivelacija-focus-population-parity | Make Pre-Nivelacija focus filtering population-aware across pages and projections |
 | RQ424 | WAITING | P1 | pre-nivelacija-leaderboard-denominator | Define Pre-Nivelacija action-share and percentage normalization semantics |
 | RQ425 | WAITING | P1 | supplier-footwear-scope-default | Prevent standalone Supplier Footwear from silently falling back to all data |
 | RQ426 | WAITING | P1 | inventory-forecast-risk-aggregation | Prove and correct Inventory forecast risk aggregation across sizes and stores |
@@ -1000,7 +1003,7 @@ Do not change the Supplier Footwear recommendation formula, historical attributi
 
 ## RQ423 - Pre-Nivelacija focus must be population-aware across pages and projections
 
-Status: WAITING
+Status: READY
 Ready after: `RQ388` is DONE; coordinate current Pre-Nivelacija API/pagination owner
 Priority: P1
 Type: backend/frontend/contract/tests
