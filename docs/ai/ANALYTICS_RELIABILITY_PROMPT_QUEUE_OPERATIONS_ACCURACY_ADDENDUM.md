@@ -5,6 +5,10 @@ Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 Main RQ current READY prompt: none
 
+Owner promotion 2026-09-24: after `RQ424` completion returned the pointer to `none`, idle-recovery review found `RQ425` dependency-complete (`RQ419`/`RQ389` scope precedents on current `main`) and collision-safe in the Supplier Footwear standalone scope lane; it moved `WAITING -> READY` and was claimed for bounded scope initialization/reload work. `RQ422` remains WAITING behind Supplier Footwear denominator ownership.
+
+Owner completion 2026-09-24: `RQ425` delivered directly to `main` in `a360fec775d053d04814bdc7be82ed1cc5a3de07`; standalone Supplier Footwear now resolves effective data scope from embedded shared filters, explicit URL scope or global storage before the first request, reloads on `trendplus:data-scope-changed`, and exposes requested/effective scope in export metadata. Run log: `.ai/runs/2026-09-24-RQ425-evidence.md`. Evidence state: synchronized. Main verification: current `origin/main` contains the implementation SHA. Follow-up: no successor promoted; `RQ422` remains WAITING.
+
 Owner promotion 2026-09-24: after `RQ423` completion returned the pointer to `none`, idle-recovery review found `RQ424` dependency-complete (`RQ390`/`RQ391`/`RQ388` DONE) and collision-safe now that the overlapping Pre-Nivelacija focus prompt is closed; it moved `WAITING -> READY` and was claimed for the bounded leaderboard denominator/percentage-unit contract. `RQ425` remains WAITING in the adjacent Supplier Footwear scope family.
 
 Owner completion 2026-09-24: `RQ424` delivered directly to `main` in `a8e7018eb3113d513c4c2e484a543edcb88edb0c`; Pre-Nivelacija supplier action-share now exposes backend denominator metadata (top 7 + Ostali over full leaderboard action score) and percentage fields use explicit percentage-point units without magnitude inference. Run log: `.ai/runs/2026-09-24-RQ424-evidence.md`. Evidence state: synchronized. Main verification: current `origin/main` contains the implementation SHA. Follow-up: no successor promoted; `RQ425`/`RQ422` remain WAITING behind declared gates.
@@ -67,7 +71,7 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 | RQ422 | WAITING | P1 | supplier-footwear-type-insight-denominator | Make Supplier Footwear type share and elasticity metrics full-cohort and provenance-safe |
 | RQ423 | DONE | P1 | pre-nivelacija-focus-population-parity | Make Pre-Nivelacija focus filtering population-aware across pages and projections |
 | RQ424 | DONE | P1 | pre-nivelacija-leaderboard-denominator | Define Pre-Nivelacija action-share and percentage normalization semantics |
-| RQ425 | WAITING | P1 | supplier-footwear-scope-default | Prevent standalone Supplier Footwear from silently falling back to all data |
+| RQ425 | DONE | P1 | supplier-footwear-scope-default | Prevent standalone Supplier Footwear from silently falling back to all data |
 | RQ426 | WAITING | P1 | inventory-forecast-risk-aggregation | Prove and correct Inventory forecast risk aggregation across sizes and stores |
 
 ---
@@ -1172,7 +1176,7 @@ Do not change the scoring formula or priority ranking.
 
 ## RQ425 - Supplier Footwear standalone scope must not default silently to all data
 
-Status: WAITING
+Status: DONE
 Ready after: canonical Supplier parent/embedded scope owner confirms standalone precedence
 Priority: P1
 Type: frontend/contract/tests
@@ -1228,6 +1232,26 @@ Do not change Supplier Footwear type metrics (`RQ422`) or Supplier Sales scope e
 ### Dependencies
 
 - Coordinate `RQ278`, `RQ389`, `RQ406`, `RQ411`, `RQ419` and canonical Supplier filter ownership.
+
+### Completion note
+
+- Date: 2026-09-24
+- Status: DONE
+- Completion: Standalone Supplier Footwear resolves `effectiveDataScope` from embedded shared filters, URL `dataScope` or global storage; current/previous API calls and export metadata use that scope; scope transitions clear stale rows/trust state and reload.
+- Changed files: `SupplierFootwearAnalyticsPage.tsx`, `SupplierFootwearAnalyticsPage.scope.spec.tsx`, guardrail baseline.
+- Contract/runtime behavior changed: `null` dataScope is no longer sent on standalone first load; global `existing`/`imported` scope is honored before request normalization.
+- Checks run: `npm run test -- --run src/pages/__tests__/SupplierFootwearAnalyticsPage.scope.spec.tsx src/pages/__tests__/SupplierFootwearAnalyticsPage.spec.tsx`; `npm run check:analytics-guardrails`.
+- Checks not run: full backend suite.
+- Run log: `.ai/runs/2026-09-24-RQ425-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: a360fec775d053d04814bdc7be82ed1cc5a3de07
+- Main verification: passed — current `origin/main` contains a360fec7
+- Missed: none known
+- Follow-up: none promoted; `RQ422` remains WAITING
+- Residual risk: Supplier Footwear type-share denominator remains owned by `RQ422`
+- Next: none
+- Prompt defect / scope repair: none
 
 ---
 
