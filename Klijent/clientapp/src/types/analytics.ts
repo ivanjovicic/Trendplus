@@ -1427,6 +1427,12 @@ export interface ForecastDto {
   /** Proven snapshot freshness from materializer; not response GeneratedAtUtc */
   snapshotFreshnessUtc?: string | null;
   warning?: string | null;
+  /** sku-store-size — one forecast item per size row */
+  rowGrain?: string | null;
+  /** max-by-sku-store-across-sizes — SKU display risk is max across matching size rows */
+  riskAggregationPolicy?: string | null;
+  /** current-snapshot-not-analysis-period — not tied to Inventory period selection */
+  evidenceScope?: string | null;
   items: ForecastRowDto[];
 }
 

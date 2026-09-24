@@ -178,12 +178,6 @@
     },
     {
       "file": "src/pages/SupplierFootwearAnalyticsPage.tsx",
-      "rule": "refetch_setData_null",
-      "line": 459,
-      "reason": "Existing supplier-footwear refetch transition predates the shared reliable-query lifecycle."
-    },
-    {
-      "file": "src/pages/SupplierFootwearAnalyticsPage.tsx",
       "rule": "page_percentage_formula",
       "line": 497,
       "reason": "Existing supplier-footwear percentage projection requires a reviewed authority exception."
@@ -205,12 +199,6 @@
       "rule": "refetch_setData_null",
       "line": 764,
       "reason": "Supplier scope changes must clear stale rows and trust metadata before the next scope-bound request completes."
-    },
-    {
-      "file": "src/pages/SupplierSalesStatsPage.tsx",
-      "rule": "refetch_setData_null",
-      "line": 854,
-      "reason": "Existing supplier refetch transition predates the shared reliable-query lifecycle."
     },
     {
       "file": "src/pages/SupplierSalesStatsPage.tsx",

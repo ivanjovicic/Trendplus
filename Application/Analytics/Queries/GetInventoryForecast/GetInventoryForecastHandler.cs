@@ -150,6 +150,9 @@ public sealed class GetInventoryForecastHandler
                 IsAuthoritativeForecast: provenance.IsAuthoritativeForecast,
                 SnapshotFreshnessUtc: provenance.SnapshotFreshnessUtc,
                 Warning: InventoryForecastSnapshotProvenance.ComposeWarning(provenance.ProvenanceStatus, detailWarning),
+                RowGrain: InventoryForecastListContract.RowGrain,
+                RiskAggregationPolicy: InventoryForecastListContract.RiskAggregationPolicy,
+                EvidenceScope: InventoryForecastListContract.EvidenceScope,
                 Items: items);
         }
         catch (Exception ex) when (IsMissingRelation(ex))
@@ -168,6 +171,9 @@ public sealed class GetInventoryForecastHandler
                 IsAuthoritativeForecast: provenance.IsAuthoritativeForecast,
                 SnapshotFreshnessUtc: provenance.SnapshotFreshnessUtc,
                 Warning: InventoryForecastSnapshotProvenance.ComposeWarning(provenance.ProvenanceStatus, null),
+                RowGrain: InventoryForecastListContract.RowGrain,
+                RiskAggregationPolicy: InventoryForecastListContract.RiskAggregationPolicy,
+                EvidenceScope: InventoryForecastListContract.EvidenceScope,
                 Items: []);
         }
     }

@@ -70,6 +70,9 @@ public sealed class InventorySnapshotContractTests
         Assert.False(result.IsAuthoritativeForecast);
         Assert.Null(result.SnapshotFreshnessUtc);
         Assert.NotEqual(InventoryForecastSnapshotProvenance.Trusted, result.ProvenanceStatus);
+        Assert.Equal(InventoryForecastListContract.RowGrain, result.RowGrain);
+        Assert.Equal(InventoryForecastListContract.RiskAggregationPolicy, result.RiskAggregationPolicy);
+        Assert.Equal(InventoryForecastListContract.EvidenceScope, result.EvidenceScope);
         Assert.Equal(1, result.TotalCount);
         Assert.Equal(1, result.ReturnedCount);
         Assert.Equal(2, result.TotalMatchingCount);

@@ -1,4 +1,4 @@
-import type { InventoryActionDatasetContext, InventoryActionSuggestion, InventoryInsightItem, InventoryListItem, InventoryReportScheduleInput, InventorySnapshotRowState, StoreOption, SupplierFilterOption } from "../../types/analytics";
+import type { ForecastRowDto, InventoryActionDatasetContext, InventoryActionSuggestion, InventoryInsightItem, InventoryListItem, InventoryReportScheduleInput, InventorySnapshotRowState, StoreOption, SupplierFilterOption } from "../../types/analytics";
 import type { DataScope } from "../../utils/dataScope";
 import type { InventoryRow } from "./types";
 import { TONE, resolveTone } from "./toneMap";
@@ -804,6 +804,80 @@ export function getAgingTone(bucket: string) {
 
 export function getAbcTone(bucket: string) {
   return resolveTone(TONE.abc, bucket, TONE.abc.C);
+}
+
+export type InventoryForecastRiskAggregateBasis =
+  | "max-across-sizes"
+  | "unavailable-multi-store"
+  | "no-matching-rows"
+  | "partial-missing-risk";
+
+export type InventoryForecastRiskAggregate = {
+  oosRisk: number | null;
+  overstockRisk: number | null;
+  basis: InventoryForecastRiskAggregateBasis;
+  matchedSizeCount: number;
+};
+
+/** Maps sku-store-size forecast rows onto one inventory list row without cross-store max inflation. */
+export function aggregateInventoryForecastRiskForRow(
+  row: { id: number; idObjekat?: number | null },
+  forecastItems: ForecastRowDto[],
+  options?: { selectedStoreId?: number | null },
+): InventoryForecastRiskAggregate {
+  const rowStoreId = row.idObjekat ?? null;
+  let candidates = forecastItems.filter((item) => item.skuId === row.id);
+
+  if (rowStoreId != null) {
+    candidates = candidates.filter((item) => item.storeId === rowStoreId);
+  } else if (options?.selectedStoreId != null) {
+    candidates = candidates.filter((item) => item.storeId === options.selectedStoreId);
+  } else {
+    const distinctStores = new Set(candidates.map((item) => item.storeId));
+    if (distinctStores.size > 1) {
+      return {
+        oosRisk: null,
+        overstockRisk: null,
+        basis: "unavailable-multi-store",
+        matchedSizeCount: candidates.length,
+      };
+    }
+  }
+
+  if (candidates.length === 0) {
+    return {
+      oosRisk: null,
+      overstockRisk: null,
+      basis: "no-matching-rows",
+      matchedSizeCount: 0,
+    };
+  }
+
+  let oosRiskMax = Number.NEGATIVE_INFINITY;
+  let overstockRiskMax = Number.NEGATIVE_INFINITY;
+  let hasOos = false;
+  let hasOverstock = false;
+  for (const item of candidates) {
+    if (item.probabilityOfOOSIn7d != null) {
+      hasOos = true;
+      oosRiskMax = Math.max(oosRiskMax, item.probabilityOfOOSIn7d);
+    }
+    if (item.overstockRisk != null) {
+      hasOverstock = true;
+      overstockRiskMax = Math.max(overstockRiskMax, item.overstockRisk);
+    }
+  }
+
+  const hasPartialMissing = candidates.some(
+    (item) => item.probabilityOfOOSIn7d == null || item.overstockRisk == null,
+  );
+
+  return {
+    oosRisk: hasOos && Number.isFinite(oosRiskMax) ? oosRiskMax : null,
+    overstockRisk: hasOverstock && Number.isFinite(overstockRiskMax) ? overstockRiskMax : null,
+    basis: hasPartialMissing ? "partial-missing-risk" : "max-across-sizes",
+    matchedSizeCount: candidates.length,
+  };
 }
 
 /** OOS/overstock risk sort is applied only to the currently loaded inventory page. */

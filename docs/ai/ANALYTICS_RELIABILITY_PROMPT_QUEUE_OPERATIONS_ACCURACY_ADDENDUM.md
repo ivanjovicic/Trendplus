@@ -9,6 +9,8 @@ Owner promotion 2026-09-24: after `RQ425` completion returned the pointer to `no
 
 Owner completion 2026-09-24: `RQ422` delivered directly to `main` in `fb1ced982c085472ba87a97da63c97fdcd7b4314`; Supplier Footwear type chart now keeps full-cohort share percentages, adds an explicit `Ostali` bucket beyond the top eight categories, declares display denominator metadata, and exposes post-revenue-weighted category elasticity. Run log: `.ai/runs/2026-09-24-RQ422-evidence.md`. Evidence state: synchronized. Main verification: current `origin/main` contains the implementation SHA. Follow-up: no successor promoted; `RQ426` remains WAITING behind `RQ371`.
 
+Owner promotion/completion 2026-09-24: idle-recovery promoted `RQ426` after the forecast list response declared explicit grain/aggregation/evidence-scope metadata; Inventory row risk mapping now maxes only within the same SKU+store (or selected store for all-location rows) and refuses silent cross-store inflation. Run log: `.ai/runs/2026-09-24-RQ426-evidence.md`. Follow-up: `RQ371`/`RQ308` retain broader Inventory period and secondary-signal parity.
+
 Owner promotion 2026-09-24: after `RQ424` completion returned the pointer to `none`, idle-recovery review found `RQ425` dependency-complete (`RQ419`/`RQ389` scope precedents on current `main`) and collision-safe in the Supplier Footwear standalone scope lane; it moved `WAITING -> READY` and was claimed for bounded scope initialization/reload work. `RQ422` remains WAITING behind Supplier Footwear denominator ownership.
 
 Owner completion 2026-09-24: `RQ425` delivered directly to `main` in `a360fec775d053d04814bdc7be82ed1cc5a3de07`; standalone Supplier Footwear now resolves effective data scope from embedded shared filters, explicit URL scope or global storage before the first request, reloads on `trendplus:data-scope-changed`, and exposes requested/effective scope in export metadata. Run log: `.ai/runs/2026-09-24-RQ425-evidence.md`. Evidence state: synchronized. Main verification: current `origin/main` contains the implementation SHA. Follow-up: no successor promoted; `RQ422` remains WAITING.
@@ -76,7 +78,7 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 | RQ423 | DONE | P1 | pre-nivelacija-focus-population-parity | Make Pre-Nivelacija focus filtering population-aware across pages and projections |
 | RQ424 | DONE | P1 | pre-nivelacija-leaderboard-denominator | Define Pre-Nivelacija action-share and percentage normalization semantics |
 | RQ425 | DONE | P1 | supplier-footwear-scope-default | Prevent standalone Supplier Footwear from silently falling back to all data |
-| RQ426 | WAITING | P1 | inventory-forecast-risk-aggregation | Prove and correct Inventory forecast risk aggregation across sizes and stores |
+| RQ426 | DONE | P1 | inventory-forecast-risk-aggregation | Prove and correct Inventory forecast risk aggregation across sizes and stores |
 
 ---
 
@@ -1281,7 +1283,7 @@ Do not change Supplier Footwear type metrics (`RQ422`) or Supplier Sales scope e
 
 ## RQ426 - Inventory forecast risk aggregation must match row granularity
 
-Status: WAITING
+Status: DONE
 Ready after: `RQ371` forecast scope/period contract is explicit
 Priority: P1
 Type: frontend/backend/contract/tests
@@ -1334,6 +1336,20 @@ Do not change the underlying forecast model or page-local/global sorting policy 
 - Inventory risk is not silently overstated by a frontend `max` over rows with a different grain.
 - Store and size scope are explicit and tested.
 - Missing/partial forecast evidence cannot appear as a measured zero or fully trusted risk.
+
+### Completion note
+
+- Date: 2026-09-24
+- Status: DONE
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Run log: `.ai/runs/2026-09-24-RQ426-evidence.md`
+- Evidence state: synchronized
+- Missed: full `RQ371` secondary-signal period/data-scope threading remains a separate owner
+- Follow-up: promote `RQ308`/`RQ371` for Inventory period selector and cached signal parity; `RQ414` remains WAITING on `RQ371`
+- Residual risk: page-local risk sort scope unchanged; global forecast panel still lists per-size rows
+- Next: none promoted
 
 ### Dependencies
 

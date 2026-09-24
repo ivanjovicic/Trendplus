@@ -25,7 +25,7 @@ import { SizeCurvePanel } from "../components/inventory/SizeCurvePanel";
 import { StoreComparisonPanel } from "../components/inventory/StoreComparisonPanel";
 import KpiExplainButton from "../components/analytics/KpiExplainButton";
 import { computeInventorySignalKpis, INVENTORY_SIGNAL_KPI_PAGE_SCOPE_NOTE } from "../components/inventory/inventorySignalKpis";
-import { buildForecastRestockSuggestion, buildInventoryActionSourceKey, buildInventoryRow, buildInventoryScreenCsvFilename, buildInventoryScreenCsvLines, buildInventoryServerExportContractNote, buildInventoryWorkflowCentralQueueMetadata, buildOffPageDetailPlaceholderRow, buildSupplierChart, createScheduleDraft, formatPercent, INVENTORY_EXPOSURE_BASIS, inventoryRiskSortScopeWarning, isInventoryPageLocalRiskSort, resolveForecastRestockDaysSinceMovement, resolveInventoryExposureRsdFromRow, validateScheduleDraft } from "../components/inventory/inventoryUtils";
+import { aggregateInventoryForecastRiskForRow, buildForecastRestockSuggestion, buildInventoryActionSourceKey, buildInventoryRow, buildInventoryScreenCsvFilename, buildInventoryScreenCsvLines, buildInventoryServerExportContractNote, buildInventoryWorkflowCentralQueueMetadata, buildOffPageDetailPlaceholderRow, buildSupplierChart, createScheduleDraft, formatPercent, INVENTORY_EXPOSURE_BASIS, inventoryRiskSortScopeWarning, isInventoryPageLocalRiskSort, resolveForecastRestockDaysSinceMovement, resolveInventoryExposureRsdFromRow, validateScheduleDraft } from "../components/inventory/inventoryUtils";
 import { getDataScope } from "../utils/dataScope";
 import type { InventoryRow } from "../components/inventory/types";
 import { fmtNumber, formatDateTime } from "../utils/analyticsFormatters";
@@ -814,14 +814,13 @@ export default function InventoryPage() {
   );
   const highestValueRows = useMemo(() => rows.slice().sort((left, right) => (right.estimatedValueAmount ?? Number.NEGATIVE_INFINITY) - (left.estimatedValueAmount ?? Number.NEGATIVE_INFINITY)).slice(0, TOP_VALUE_ITEMS), [rows]);
   const forecastMetricsByRowKey = useMemo(() => new Map(rows.map((row) => {
-    const matching = (forecast?.items ?? []).filter((item) => item.skuId === row.id && (row.idObjekat == null || item.storeId === row.idObjekat));
-    const oosRisk = matching.reduce((max, item) => item.probabilityOfOOSIn7d == null ? max : Math.max(max, item.probabilityOfOOSIn7d), Number.NEGATIVE_INFINITY);
-    const overstockRisk = matching.reduce((max, item) => item.overstockRisk == null ? max : Math.max(max, item.overstockRisk), Number.NEGATIVE_INFINITY);
+    const aggregate = aggregateInventoryForecastRiskForRow(row, forecast?.items ?? [], { selectedStoreId });
     return [`${row.id}:${row.idObjekat ?? 0}`, {
-      oosRisk: Number.isFinite(oosRisk) ? oosRisk : null,
-      overstockRisk: Number.isFinite(overstockRisk) ? overstockRisk : null,
+      oosRisk: aggregate.oosRisk,
+      overstockRisk: aggregate.overstockRisk,
+      aggregationBasis: aggregate.basis,
     }];
-  })), [forecast, rows]);
+  })), [forecast, rows, selectedStoreId]);
   const displayedRows = useMemo(() => {
     if (!isInventoryPageLocalRiskSort(sortBy)) return rows;
     return rows.slice().sort((left, right) => {

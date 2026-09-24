@@ -2,7 +2,7 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none; RQ172, RQ372, RQ419, RQ420, RQ421, RQ422, RQ423, RQ424, RQ425, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ398, RQ399, RQ400, RQ401, RQ402, RQ403, RQ404, RQ405 and RQ406 are DONE. RQ407 is BLOCKED; RQ408 remains WAITING.
+Current READY prompt: none; RQ172, RQ372, RQ419, RQ420, RQ421, RQ422, RQ423, RQ424, RQ425, RQ426, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ398, RQ399, RQ400, RQ401, RQ402, RQ403, RQ404, RQ405 and RQ406 are DONE. RQ407 is BLOCKED; RQ408 remains WAITING.
 
 Owner idle-recovery promotion 2026-09-24: after RQ372/RQ419/RQ420/RQ421 completion returned the pointer to `none`, current non-DONE status, dependencies and recent run evidence were re-evaluated under the canonical Idle recovery protocol. `RQ423` is dependency-complete and collision-safe for the bounded Pre-Nivelacija focus/pagination population contract, so it moved `WAITING -> READY` as the current RQ pointer. Overlapping `RQ424` remains `WAITING`; `RQ407` remains `BLOCKED` only on its separate integration-host proof.
 
@@ -13,6 +13,8 @@ Owner promotion/completion 2026-09-24: after `RQ423` completion, idle-recovery p
 Owner promotion/completion 2026-09-24: after `RQ424` completion, idle-recovery promoted `RQ425` (`WAITING -> READY`) for standalone Supplier Footwear scope precedence and delivered it directly to `main` in `a360fec775d053d04814bdc7be82ed1cc5a3de07`. Run log: `.ai/runs/2026-09-24-RQ425-evidence.md`. `RQ422` and `RQ426` remain WAITING behind declared gates.
 
 Owner promotion/completion 2026-09-24: after `RQ425` completion, idle-recovery promoted `RQ422` for the remaining Supplier Footwear type-insight denominator/weighting contract and delivered it directly to `main` in `fb1ced982c085472ba87a97da63c97fdcd7b4314`. Run log: `.ai/runs/2026-09-24-RQ422-evidence.md`. `RQ426` remains WAITING.
+
+Owner promotion/completion 2026-09-24: after `RQ422` closure on `main`, idle-recovery promoted `RQ426` (`WAITING -> READY`) once the forecast list contract exposed explicit row grain, sku-store risk aggregation policy and current-snapshot evidence scope (bounded forecast slice of the `RQ371` gate). It was delivered directly to `main`; run log: `.ai/runs/2026-09-24-RQ426-evidence.md`. `RQ371`/`RQ308` remain WAITING for full Inventory period/secondary-signal parity.
 
 Owner promotion 2026-09-24: under the user's instruction to claim the next prompt, dependency/collision review found `RQ421` independently runnable within the Supplier Sales status-identity lane after `RQ420`; it moved `WAITING -> READY` as the current RQ pointer.
 

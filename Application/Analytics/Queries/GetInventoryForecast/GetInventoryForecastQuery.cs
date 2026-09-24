@@ -40,5 +40,8 @@ public sealed record InventoryForecastListDto(
     bool IsAuthoritativeForecast,
     DateTime? SnapshotFreshnessUtc,
     string? Warning,
+    string RowGrain,
+    string RiskAggregationPolicy,
+    string EvidenceScope,
     IReadOnlyList<InventoryForecastDto> Items
 );
