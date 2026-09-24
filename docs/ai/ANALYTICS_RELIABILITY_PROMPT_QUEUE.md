@@ -20260,8 +20260,8 @@ Reproduction: load more than one alert severity, select `Kritično`, then compar
 - Run log: `.ai/runs/2026-09-24-RQ372-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: 9b44075f
+- Main verification: passed — current `origin/main` contains 9b44075f
 - Missed: none known
 - Follow-up: none promoted; RQ408 and dependency-gated addendum prompts remain WAITING
 - Residual risk: period/data-scope alert parity remains owned by `RQ308`/`RQ371`
