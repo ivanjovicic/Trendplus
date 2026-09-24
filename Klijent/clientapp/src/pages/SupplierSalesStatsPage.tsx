@@ -556,6 +556,94 @@ function buildStoreLabel(store: StoreOption): string {
   return extras ? `${store.storeName} (${extras})` : store.storeName;
 }
 
+export function buildDecisionSuppliers(data: SupplierSalesStatsResponse | null | undefined): DecisionSupplier[] {
+  const suppliers = data?.suppliers ?? [];
+  if (suppliers.length === 0) return [];
+
+  const totalRevenue = data?.totals.ukupanPromet ?? suppliers.reduce((sum, item) => sum + item.ukupanPromet, 0);
+  const totalMarginContribution = data?.totals.ukupanMarzniDoprinos ?? suppliers.reduce((sum, item) => sum + item.marginContribution, 0);
+  const totalUnits = data?.totals.ukupnaKolicina ?? suppliers.reduce((sum, item) => sum + item.ukupnaKolicina, 0);
+
+  return suppliers.map((supplier) => {
+    const sharePct = finiteOrNull(supplier.sharePct)
+      ?? (Number.isFinite(totalRevenue) && totalRevenue > 0 && Number.isFinite(supplier.ukupanPromet)
+        ? finiteOrNull((supplier.ukupanPromet / totalRevenue) * 100)
+        : null);
+    const totalCost = finiteOrNull(supplier.totalCost)
+      ?? finiteOrNull(Math.max(0, supplier.revenueWithCost - supplier.marginContribution));
+    const shareOfMarginContribution = finiteOrNull(supplier.shareOfMarginContribution)
+      ?? finiteOrNull(supplier.shareOfProfit)
+      ?? (Number.isFinite(totalMarginContribution) && totalMarginContribution > 0 && Number.isFinite(supplier.marginContribution)
+        ? finiteOrNull((supplier.marginContribution / totalMarginContribution) * 100)
+        : null);
+    const shareOfUnits = finiteOrNull(supplier.shareOfUnits)
+      ?? (Number.isFinite(totalUnits) && totalUnits > 0 && Number.isFinite(supplier.ukupnaKolicina)
+        ? finiteOrNull((supplier.ukupnaKolicina / totalUnits) * 100)
+        : null);
+    const splitCoveragePct = finiteOrNull(supplier.prePostNivelacijaRevenueCoveragePct);
+    const recommended = supplier.recommendation;
+    const recommendationAllowed = recommended?.recommendationAllowed === true;
+    const backendStatus = (recommended?.status ?? (supplier.isUnknown ? "do_not_trust" : "insufficient_data")) as DecisionStatus;
+    const status = backendStatus;
+    const fallbackStatusReason = supplier.isUnknown
+      ? "Dobavljač je nepoznat u master podacima; signal nije pouzdan za odluku."
+      : "Nedovoljno podataka za pouzdanu preporuku.";
+    const backendStatusReason = typeof recommended?.summary === "string"
+      ? recommended.summary.trim() || fallbackStatusReason
+      : fallbackStatusReason;
+    const statusReason = recommendationAllowed
+      ? backendStatusReason
+      : `Automatska preporuka nije dozvoljena: ${backendStatusReason}`;
+    const confidencePctValue = recommendationAllowed
+      ? normalizeRecommendationPct(recommended?.confidencePct)
+      : null;
+    const reliabilityPctValue = recommendationAllowed
+      ? normalizeRecommendationPct(recommended?.reliabilityPct ?? supplier.reliabilityPct)
+      : null;
+    const confidenceAvailable = confidencePctValue != null;
+    const reliabilityAvailable = reliabilityPctValue != null;
+    const normalizedConfidencePct = confidencePctValue ?? null;
+    const reasonCodes = Array.isArray(recommended?.reasonCodes)
+      ? recommended.reasonCodes.filter((code): code is string => typeof code === "string")
+      : [];
+    const dataQualityStatus = normalizeRecommendationQualityStatus(recommended?.dataQualityStatus);
+    const normalizedReliabilityPct = reliabilityPctValue ?? null;
+    const statusLabel = displaySignalLabel(status, reliabilityAvailable, dataQualityStatus);
+    const footwearBreakdown = supplier.footwearBreakdown ?? [];
+    const primaryFootwearType = supplier.primaryFootwearType
+      ?? footwearBreakdown[0]?.tipObuceNaziv
+      ?? "N/A";
+    const primaryFootwearTypeSharePct = finiteOrNull(supplier.primaryFootwearTypeSharePct)
+      ?? finiteOrNull(footwearBreakdown[0]?.shareOfSupplierRevenuePct);
+    const footwearTypeCount = supplier.footwearTypeCount ?? footwearBreakdown.length;
+
+    return {
+      ...supplier,
+      sharePct,
+      popRevenueChangePct: finiteOrNull(supplier.popRevenueChangePct),
+      popUnitsChangePct: finiteOrNull(supplier.popUnitsChangePct),
+      totalCost,
+      shareOfMarginContribution,
+      shareOfUnits,
+      reliabilityPct: normalizedReliabilityPct,
+      reliabilityAvailable,
+      splitCoveragePct,
+      confidencePct: normalizedConfidencePct,
+      confidenceAvailable,
+      recommendationAllowed,
+      primaryFootwearType,
+      primaryFootwearTypeSharePct,
+      footwearTypeCount,
+      footwearBreakdown,
+      status,
+      statusLabel,
+      statusReason,
+      reasonCodes,
+      dataQualityStatus,
+    };
+  });
+}
+
 function usePositiveChartContainer() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -752,93 +840,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     return () => controller.abort();
   }, [activeFilters, load]);
 
-  const decisionSuppliers = useMemo<DecisionSupplier[]>(() => {
-    const suppliers = data?.suppliers ?? [];
-    if (suppliers.length === 0) return [];
-
-    const totalRevenue = data?.totals.ukupanPromet ?? suppliers.reduce((sum, item) => sum + item.ukupanPromet, 0);
-    const totalMarginContribution = data?.totals.ukupanMarzniDoprinos ?? suppliers.reduce((sum, item) => sum + item.marginContribution, 0);
-    const totalUnits = data?.totals.ukupnaKolicina ?? suppliers.reduce((sum, item) => sum + item.ukupnaKolicina, 0);
-
-    return suppliers.map((supplier) => {
-      const sharePct = finiteOrNull(supplier.sharePct)
-        ?? (Number.isFinite(totalRevenue) && totalRevenue > 0 && Number.isFinite(supplier.ukupanPromet)
-          ? finiteOrNull((supplier.ukupanPromet / totalRevenue) * 100)
-          : null);
-      const totalCost = finiteOrNull(supplier.totalCost)
-        ?? finiteOrNull(Math.max(0, supplier.revenueWithCost - supplier.marginContribution));
-      const shareOfMarginContribution = finiteOrNull(supplier.shareOfMarginContribution)
-        ?? finiteOrNull(supplier.shareOfProfit)
-        ?? (Number.isFinite(totalMarginContribution) && totalMarginContribution > 0 && Number.isFinite(supplier.marginContribution)
-          ? finiteOrNull((supplier.marginContribution / totalMarginContribution) * 100)
-          : null);
-      const shareOfUnits = finiteOrNull(supplier.shareOfUnits)
-        ?? (Number.isFinite(totalUnits) && totalUnits > 0 && Number.isFinite(supplier.ukupnaKolicina)
-          ? finiteOrNull((supplier.ukupnaKolicina / totalUnits) * 100)
-          : null);
-      const splitCoveragePct = finiteOrNull(supplier.prePostNivelacijaRevenueCoveragePct);
-      const recommended = supplier.recommendation;
-      const recommendationAllowed = recommended?.recommendationAllowed === true;
-      const backendStatus = (recommended?.status ?? (supplier.isUnknown ? "do_not_trust" : "insufficient_data")) as DecisionStatus;
-      const status = backendStatus;
-      const fallbackStatusReason = supplier.isUnknown
-        ? "Dobavljač je nepoznat u master podacima; signal nije pouzdan za odluku."
-        : "Nedovoljno podataka za pouzdanu preporuku.";
-      const backendStatusReason = typeof recommended?.summary === "string"
-        ? recommended.summary.trim() || fallbackStatusReason
-        : fallbackStatusReason;
-      const statusReason = recommendationAllowed
-        ? backendStatusReason
-        : `Automatska preporuka nije dozvoljena: ${backendStatusReason}`;
-      const confidencePctValue = recommendationAllowed
-        ? normalizeRecommendationPct(recommended?.confidencePct)
-        : null;
-      const reliabilityPctValue = recommendationAllowed
-        ? normalizeRecommendationPct(recommended?.reliabilityPct ?? supplier.reliabilityPct)
-        : null;
-      const confidenceAvailable = confidencePctValue != null;
-      const reliabilityAvailable = reliabilityPctValue != null;
-      const normalizedConfidencePct = confidencePctValue ?? null;
-      const reasonCodes = Array.isArray(recommended?.reasonCodes)
-        ? recommended.reasonCodes.filter((code): code is string => typeof code === "string")
-        : [];
-      const dataQualityStatus = normalizeRecommendationQualityStatus(recommended?.dataQualityStatus);
-      const normalizedReliabilityPct = reliabilityPctValue ?? null;
-      const statusLabel = displaySignalLabel(status, reliabilityAvailable, dataQualityStatus);
-      const footwearBreakdown = supplier.footwearBreakdown ?? [];
-      const primaryFootwearType = supplier.primaryFootwearType
-        ?? footwearBreakdown[0]?.tipObuceNaziv
-        ?? "N/A";
-      const primaryFootwearTypeSharePct = finiteOrNull(supplier.primaryFootwearTypeSharePct)
-        ?? finiteOrNull(footwearBreakdown[0]?.shareOfSupplierRevenuePct);
-      const footwearTypeCount = supplier.footwearTypeCount ?? footwearBreakdown.length;
-
-      return {
-        ...supplier,
-        sharePct,
-        popRevenueChangePct: finiteOrNull(supplier.popRevenueChangePct),
-        popUnitsChangePct: finiteOrNull(supplier.popUnitsChangePct),
-        totalCost,
-        shareOfMarginContribution,
-        shareOfUnits,
-        reliabilityPct: normalizedReliabilityPct,
-        reliabilityAvailable,
-        splitCoveragePct,
-        confidencePct: normalizedConfidencePct,
-        confidenceAvailable,
-        recommendationAllowed,
-        primaryFootwearType,
-        primaryFootwearTypeSharePct,
-        footwearTypeCount,
-        footwearBreakdown,
-        status,
-        statusLabel,
-        statusReason,
-        reasonCodes,
-        dataQualityStatus,
-      };
-    });
-  }, [data?.suppliers, data?.totals.ukupanPromet]);
+  const decisionSuppliers = useMemo(() => buildDecisionSuppliers(data), [data]);
 
   const sortedSuppliers = useMemo(() => {
     const rows = [...decisionSuppliers];

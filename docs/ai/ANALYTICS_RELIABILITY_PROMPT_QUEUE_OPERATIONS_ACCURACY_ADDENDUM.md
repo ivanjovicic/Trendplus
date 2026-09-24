@@ -46,7 +46,7 @@ All remaining prompts below are `WAITING`. Do not claim or auto-promote them wit
 | RQ417 | DONE | P1 | inventory-size-alert-identity | Preserve SKU, size and store context when an Inventory alert opens size curve |
 | RQ418 | DONE | P1 | inventory-action-dataset-idempotency | Prevent Inventory action deduplication from crossing period/scope/snapshot datasets |
 | RQ419 | WAITING | P1 | supplier-sales-scope-event-lineage | Reload Supplier Sales when global data scope changes and keep trust metadata aligned |
-| RQ420 | WAITING | P2 | supplier-sales-derived-projection-freshness | Prevent stale Supplier Sales derived shares and cost projections after total changes |
+| RQ420 | DONE | P2 | supplier-sales-derived-projection-freshness | Prevent stale Supplier Sales derived shares and cost projections after total changes |
 | RQ421 | WAITING | P1 | supplier-sales-status-identity | Preserve backend Supplier Sales status when recommendation actionability is blocked |
 | RQ422 | WAITING | P1 | supplier-footwear-type-insight-denominator | Make Supplier Footwear type share and elasticity metrics full-cohort and provenance-safe |
 | RQ423 | WAITING | P1 | pre-nivelacija-focus-population-parity | Make Pre-Nivelacija focus filtering population-aware across pages and projections |
@@ -750,7 +750,7 @@ Do not change Supplier Sales denominators, margin policy or runtime schema (`RQ3
 
 ## RQ420 - Supplier Sales derived projections must track every total they read
 
-Status: WAITING
+Status: DONE
 Ready after: `RQ373`/`RQ378`/`RQ379` owners confirm the response fields are stable
 Priority: P2
 Type: frontend/tests
@@ -805,6 +805,26 @@ Do not recalculate backend business metrics beyond the existing fallback contrac
 ### Dependencies
 
 - Coordinate `RQ373`, `RQ378`, `RQ379`, `RQ407` and the shared projection contract from `RQ362`/`RQ364`.
+
+### Completion note
+
+- Date: 2026-09-24
+- Status: DONE
+- Completion: Extracted `buildDecisionSuppliers` and keyed the page projection off the full response object so margin/unit totals and recommendation changes recompute derived shares/status without stale memo dependencies.
+- Changed files: `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`, `SupplierSalesStatsPage.decisionSuppliers.spec.tsx`, guardrail baseline line repair.
+- Contract/runtime behavior changed: derived share-of-margin/share-of-units and recommendation projection now track every response input they read; no backend formula changes.
+- Checks run: `npm run test -- --run src/pages/__tests__/SupplierSalesStatsPage.decisionSuppliers.spec.tsx`; `npm run check:analytics-guardrails`.
+- Checks not run: full Supplier Sales page suite; backend integration tests.
+- Run log: `.ai/runs/2026-09-24-RQ420-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: none known
+- Follow-up: none promoted; `RQ421` remains WAITING behind Supplier status-identity ownership
+- Residual risk: broader visible-scope parity remains owned by `RQ373`
+- Next: none
+- Prompt defect / scope repair: guardrail baseline lines moved after extracting `buildDecisionSuppliers`; no violation waived
 
 ---
 

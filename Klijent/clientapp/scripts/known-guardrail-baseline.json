@@ -191,13 +191,13 @@
     {
       "file": "src/pages/SupplierSalesStatsPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 1627,
+      "line": 1629,
       "reason": "Existing supplier KPI fallback requires a reviewed unavailable-value exception."
     },
     {
       "file": "src/pages/SupplierSalesStatsPage.tsx",
       "rule": "refetch_setData_null",
-      "line": 743,
+      "line": 831,
       "reason": "Existing supplier refetch transition predates the shared reliable-query lifecycle."
     },
     {
