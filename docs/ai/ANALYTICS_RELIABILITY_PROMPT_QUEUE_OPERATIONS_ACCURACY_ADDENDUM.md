@@ -11,6 +11,8 @@ Owner claim 2026-09-24: `RQ411` transitioned `READY -> IN_PROGRESS` in this work
 
 Owner completion 2026-09-24: `RQ411` was delivered directly to `main` in `67d5885399119e8f16d66023e7245bcc456e6c19`. Supplier and Shoe Type now group from immutable sale-line attribution, POS/Access paths preserve or explicitly freeze provenance, and list/detail/snapshot metadata exposes attribution basis and coverage. Run log: `.ai/runs/2026-09-24-RQ411-evidence.md`. Evidence state: synchronized. Main verification: `origin/main` contains the implementation and evidence-closure commits; `RQ412` and `RQ413` remain WAITING.
 
+Routing reconciliation 2026-09-24: `RQ414` already had a synchronized DONE completion note and implementation ancestor on `origin/main` (`7e2f330746311d694cc843beaac6fdb3f4d2611b`), but its live header remained stale at `WAITING`; the header is corrected to `DONE` without reopening or re-running the prompt.
+
 Owner promotion 2026-09-24: idle recovery verified that RQ373 is the dependency-complete Supplier Sales visible-population owner. RQ378 and RQ380 depend on its display/reference contract, while RQ379 must consume the stabilized response schema; no conflicting active claim, branch or PR was found. RQ373 moved `WAITING -> READY`.
 
 Owner claim 2026-09-24: RQ373 transitioned `READY -> IN_PROGRESS` in this workspace for the Supplier Sales display-population/reference-cohort contract across KPI, chart, table, detail, export and recommendation projections. Local runtime lock: `.ai/task-locks/RQ373-cursor.lock.md`.
@@ -185,13 +187,13 @@ Do not redesign Supplier Decision scoring, weighted-margin formulas, comparable-
 
 ## RQ412 - Independent raw-fact oracle for Supplier and Shoe Type
 
-Status: WAITING
+Status: DONE
 Ready after: RQ407 and RQ411; applicable Supplier Sales semantic prompts are DONE
 Priority: P0
 Type: backend-reference-oracle/integration-tests/evidence
 Feature family: supplier-shoetype-independent-oracle
 Parallel-safe: no
-Owner: unassigned
+Owner: Cursor cloud agent
 Local lock: `.ai/task-locks/RQ412-<agent>.lock.md`
 Commit suggestion: `test(analytics): add independent supplier and shoe type oracle`
 
