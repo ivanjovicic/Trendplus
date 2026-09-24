@@ -2,7 +2,9 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none; RQ172, RQ372, RQ419, RQ420, RQ421, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ398, RQ399, RQ400, RQ401, RQ402, RQ403, RQ404, RQ405 and RQ406 are DONE. RQ407 is BLOCKED; RQ408 remains WAITING.
+Current READY prompt: RQ423; RQ172, RQ372, RQ419, RQ420, RQ421, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ398, RQ399, RQ400, RQ401, RQ402, RQ403, RQ404, RQ405 and RQ406 are DONE. RQ407 is BLOCKED; RQ408 remains WAITING.
+
+Owner idle-recovery promotion 2026-09-24: after RQ372/RQ419/RQ420/RQ421 completion returned the pointer to `none`, current non-DONE status, dependencies and recent run evidence were re-evaluated under the canonical Idle recovery protocol. `RQ423` is dependency-complete and collision-safe for the bounded Pre-Nivelacija focus/pagination population contract, so it moved `WAITING -> READY` as the current RQ pointer. Overlapping `RQ424` remains `WAITING`; `RQ407` remains `BLOCKED` only on its separate integration-host proof.
 
 Owner promotion 2026-09-24: under the user's instruction to claim the next prompt, dependency/collision review found `RQ421` independently runnable within the Supplier Sales status-identity lane after `RQ420`; it moved `WAITING -> READY` as the current RQ pointer.
 
