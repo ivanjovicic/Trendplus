@@ -16846,10 +16846,10 @@ Reproduction: open `/analytics/inventory`, look for a period selector, then comp
 - Status: DONE
 - Delivery mode: direct-main
 - Implementation commits: `3724152f`, `37742bbe`
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: ee25da14e4536d2f02a2d084bce36949b5d27e6b
+- Main verification: passed — current `origin/main` contains ee25da14
 - Run log: `.ai/runs/2026-09-24-RQ308-evidence.md`
-- Evidence state: pending main delivery
+- Evidence state: synchronized
 - Missed: cached forecast, alerts, rebalance and size-curve period/data-scope threading remains owned by RQ371
 - Follow-up: idle recovery should evaluate RQ371 next; RQ273 remains the export-window owner
 - Residual risk: current-snapshot panels are intentionally not presented as selected-period evidence
