@@ -63,6 +63,7 @@ public static class PreNivelacijaPriorityEndpoints
             string dataScope = "all",
             int page = 1,
             int pageSize = 20,
+            string? focus = null,
             CancellationToken ct = default) =>
         {
             page = Math.Max(1, page);
@@ -500,7 +501,7 @@ public static class PreNivelacijaPriorityEndpoints
                 CacheExpiration.HeavyAnalytics,
                 ct);
 
-            var response = BuildResponse(baseEntry, page, pageSize);
+            var response = BuildResponse(baseEntry, page, pageSize, focus);
 
                 return Results.Ok(response);
             }
@@ -515,7 +516,7 @@ public static class PreNivelacijaPriorityEndpoints
                         "pre_nivelacija_unavailable",
                         "Pre-nivelacija podaci trenutno nisu dostupni.",
                         null));
-                return Results.Ok(BuildResponse(unavailable, page, pageSize));
+                return Results.Ok(BuildResponse(unavailable, page, pageSize, focus));
             }
         })
         .WithName("GetPreNivelacijaPrioriteti")
@@ -721,12 +722,47 @@ public static class PreNivelacijaPriorityEndpoints
         };
     }
 
+    internal static IReadOnlyList<PreNivelacijaSkuCandidateDto> FilterCandidatesByFocus(
+        IReadOnlyList<PreNivelacijaSkuCandidateDto> candidates,
+        string? focus)
+    {
+        var normalized = (focus ?? "all").Trim();
+        if (normalized.Length == 0 || string.Equals(normalized, "all", StringComparison.OrdinalIgnoreCase))
+        {
+            return candidates;
+        }
+
+        return normalized switch
+        {
+            "increaseFocus" => candidates
+                .Where(x => string.Equals(x.Recommendation.Status, "increase_focus", StringComparison.OrdinalIgnoreCase))
+                .ToList(),
+            "maintain" => candidates
+                .Where(x => string.Equals(x.Recommendation.Status, "maintain", StringComparison.OrdinalIgnoreCase))
+                .ToList(),
+            "review" => candidates
+                .Where(x => string.Equals(x.Recommendation.Status, "review", StringComparison.OrdinalIgnoreCase))
+                .ToList(),
+            "doNotTrust" => candidates
+                .Where(x => string.Equals(x.Recommendation.Status, "do_not_trust", StringComparison.OrdinalIgnoreCase))
+                .ToList(),
+            "insufficientData" => candidates
+                .Where(x => string.Equals(x.Recommendation.Status, "insufficient_data", StringComparison.OrdinalIgnoreCase))
+                .ToList(),
+            "highPriority" => candidates.Where(IsHighPriorityCandidate).ToList(),
+            _ => candidates
+        };
+    }
+
     private static PreNivelacijaPriorityResponseDto BuildResponse(
         PreNivelacijaPriorityBaseCacheEntry baseEntry,
         int page,
-        int pageSize)
+        int pageSize,
+        string? focus = null)
     {
-        var pagedCandidates = baseEntry.Candidates
+        var filteredCandidates = FilterCandidatesByFocus(baseEntry.Candidates, focus);
+        var totalFilteredCandidates = filteredCandidates.Count;
+        var pagedCandidates = filteredCandidates
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToList();
@@ -744,7 +780,7 @@ public static class PreNivelacijaPriorityEndpoints
             Alerts = baseEntry.Alerts,
             Page = page,
             PageSize = pageSize,
-            TotalCandidates = baseEntry.TotalCandidates,
+            TotalCandidates = totalFilteredCandidates,
             RecommendationAllowed = baseEntry.RecommendationAllowed,
             EvidenceWindow = baseEntry.EvidenceWindow,
             Meta = baseEntry.Meta ?? AnalyticsResponseMetaFactory.Success()

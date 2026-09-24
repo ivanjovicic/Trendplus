@@ -11,7 +11,7 @@
     {
       "file": "src/pages/PreNivelacijaPriorityPage.tsx",
       "rule": "decisionScore_assign",
-      "line": 582,
+      "line": 583,
       "reason": "Existing backend-owned decision-score projection requires a reviewed authority exception."
     },
     {

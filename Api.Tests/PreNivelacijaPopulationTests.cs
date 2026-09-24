@@ -35,6 +35,26 @@ public sealed class PreNivelacijaPopulationTests
         Assert.False(PreNivelacijaPriorityEndpoints.IsHighPriorityCandidate(CreateCandidate(2, "medium", "increase_focus", 1)));
     }
 
+    [Fact]
+    public void FilterCandidatesByFocus_AppliesPopulationFilterBeforePaginationSemantics()
+    {
+        var candidates = new List<PreNivelacijaSkuCandidateDto>
+        {
+            CreateCandidate(1, "high", "insufficient_data", 8),
+            CreateCandidate(2, "medium", "review", 12),
+            CreateCandidate(3, "high", "increase_focus", 4),
+        };
+
+        var reviewOnly = PreNivelacijaPriorityEndpoints.FilterCandidatesByFocus(candidates, "review");
+        var highPriorityOnly = PreNivelacijaPriorityEndpoints.FilterCandidatesByFocus(candidates, "highPriority");
+
+        Assert.Single(reviewOnly);
+        Assert.Equal(2, reviewOnly[0].ArtikalId);
+        Assert.Equal(2, highPriorityOnly.Count);
+        Assert.Contains(highPriorityOnly, candidate => candidate.ArtikalId == 1);
+        Assert.Contains(highPriorityOnly, candidate => candidate.ArtikalId == 3);
+    }
+
     private static PreNivelacijaSkuCandidateDto CreateCandidate(
         int artikalId,
         string priorityBand,

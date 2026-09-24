@@ -219,11 +219,54 @@ function HistoryControls() {
   );
 }
 
+function buildPagedFocusResponse(query: { focus?: string; page?: number; pageSize?: number } = {}) {
+  const allCandidates = [
+    makeCandidate(),
+    makeCandidate({
+      artikalId: 102,
+      sku: "SKU-102",
+      supplierName: "Dobavljac B",
+      category: "Sandale",
+      footwearType: "Open Toe",
+      season: "Jesen/Zima",
+      priorityBand: "medium",
+      stockUnits: 20,
+      daysSinceLastSale: 12,
+      preNivelacijaScore: 63,
+      recommendation: {
+        status: "review",
+        label: "Pregled",
+        summary: "Signal trazi rucnu proveru.",
+        confidencePct: 64,
+        reliabilityPct: 61,
+        dataQualityStatus: "warning",
+        reasonCodes: ["sparse_sales"],
+      },
+    }),
+  ];
+  const page = query.page ?? 1;
+  const pageSize = query.pageSize ?? 60;
+  const filteredCandidates = query.focus === "review"
+    ? allCandidates.filter((candidate) => candidate.recommendation.status === "review")
+    : query.focus === "highPriority"
+      ? allCandidates.filter((candidate) => candidate.priorityBand.toLowerCase() === "high")
+      : allCandidates;
+  const pagedCandidates = filteredCandidates.slice((page - 1) * pageSize, page * pageSize);
+
+  return {
+    ...makeResponse(allCandidates),
+    candidates: pagedCandidates,
+    page,
+    pageSize,
+    totalCandidates: filteredCandidates.length,
+  };
+}
+
 describe("PreNivelacijaPriorityPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    getPreNivelacijaPrioritetiMock.mockResolvedValue(makeResponse());
+    getPreNivelacijaPrioritetiMock.mockImplementation(async (query) => buildPagedFocusResponse(query));
   });
 
   it("keeps the high-priority band stable even when the recommendation is insufficient_data", async () => {
@@ -508,7 +551,29 @@ describe("PreNivelacijaPriorityPage", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: /Pregledaj \(1\)/i }));
 
-    await waitFor(() => expect(screen.getByTestId("export-row-skus")).toHaveAttribute("data-skus", "SKU-102"));
+    await waitFor(() => {
+      expect(getPreNivelacijaPrioritetiMock).toHaveBeenLastCalledWith(expect.objectContaining({ focus: "review", page: 1 }));
+      expect(screen.getByTestId("export-row-skus")).toHaveAttribute("data-skus", "SKU-102");
+    });
+  });
+
+  it("requests server-side focus filtering so matching candidates outside the current page are still visible", async () => {
+    getPreNivelacijaPrioritetiMock.mockImplementation(async (query) => buildPagedFocusResponse({ ...query, pageSize: 1 }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti?page=2"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(getPreNivelacijaPrioritetiMock).toHaveBeenCalledWith(expect.objectContaining({ page: 2, pageSize: 60 })));
+
+    fireEvent.click(screen.getByRole("tab", { name: /Pregledaj \(1\)/i }));
+
+    await waitFor(() => {
+      expect(getPreNivelacijaPrioritetiMock).toHaveBeenLastCalledWith(expect.objectContaining({ focus: "review", page: 1, pageSize: 60 }));
+      expect(screen.getByTestId("export-row-skus")).toHaveAttribute("data-skus", "SKU-102");
+    });
   });
 
   it("keeps markdown copy scenario-oriented and blocks margin signal without cost", async () => {
@@ -763,7 +828,7 @@ describe("PreNivelacijaPriorityPage", () => {
 
   it("restores validated filters, focus, page and scope from a shared URL", async () => {
     render(
-      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti?supplierId=11&seasonId=7&footwearTypeId=4&minScore=72&noSaleDaysMin=21&focus=review&page=2&dataScope=imported"]}>
+      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti?supplierId=11&seasonId=7&footwearTypeId=4&minScore=72&noSaleDaysMin=21&focus=review&page=1&dataScope=imported"]}>
         <LocationProbe />
         <PreNivelacijaPriorityPage />
       </MemoryRouter>,
@@ -776,7 +841,8 @@ describe("PreNivelacijaPriorityPage", () => {
       footwearTypeId: 4,
       minScore: 72,
       noSaleDaysMin: 21,
-      page: 2,
+      focus: "review",
+      page: 1,
       dataScope: "imported",
     }));
     expect(screen.getByLabelText("Dobavljač")).toHaveValue("11");
@@ -785,7 +851,7 @@ describe("PreNivelacijaPriorityPage", () => {
     expect(screen.getByLabelText("Min. skor")).toHaveValue(72);
     expect(screen.getByLabelText("Min. dana bez prodaje")).toHaveValue(21);
     expect(screen.getByRole("tab", { name: /Pregledaj/i })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByText("Strana 2")).toBeInTheDocument();
+    expect(screen.getByText("Strana 1")).toBeInTheDocument();
     expect(screen.getByTestId("location-search")).toHaveTextContent("supplierId=11");
     expect(screen.getByTestId("location-search")).toHaveTextContent("focus=review");
   });
@@ -1042,9 +1108,10 @@ describe("PreNivelacijaPriorityPage", () => {
     expect(await screen.findByText("Detalj odluke: SKU-101")).toBeInTheDocument();
   });
 
-  it("keeps the global high-priority KPI stable across pages while tabs stay page-local", async () => {
+  it("keeps global focus tab counts separate from the visible page slice", async () => {
     const pageOneCandidate = makeCandidate({ artikalId: 301, sku: "SKU-PAGE-1" });
     const pageTwoCandidate = makeCandidate({ artikalId: 302, sku: "SKU-PAGE-2" });
+    const allCandidates = [pageOneCandidate, pageTwoCandidate];
     const globalSummary = {
       increaseFocusCount: 0,
       maintainCount: 0,
@@ -1055,21 +1122,19 @@ describe("PreNivelacijaPriorityPage", () => {
       candidatesCount: 2,
     };
 
-    getPreNivelacijaPrioritetiMock
-      .mockResolvedValueOnce({
-        ...makeResponse([pageOneCandidate]),
-        summary: { ...makeResponse([pageOneCandidate]).summary, ...globalSummary },
-        page: 1,
-        pageSize: 1,
-        totalCandidates: 2,
-      })
-      .mockResolvedValueOnce({
-        ...makeResponse([pageTwoCandidate]),
-        summary: { ...makeResponse([pageTwoCandidate]).summary, ...globalSummary },
-        page: 2,
-        pageSize: 1,
-        totalCandidates: 2,
-      });
+    getPreNivelacijaPrioritetiMock.mockImplementation(async (query) => {
+      const pageSize = query.pageSize ?? 60;
+      const page = query.page ?? 1;
+      const pagedCandidates = allCandidates.slice((page - 1) * pageSize, page * pageSize);
+      return {
+        ...makeResponse(allCandidates),
+        summary: { ...makeResponse(allCandidates).summary, ...globalSummary },
+        candidates: pagedCandidates,
+        page,
+        pageSize,
+        totalCandidates: allCandidates.length,
+      };
+    });
 
     render(
       <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti"]}>
@@ -1079,13 +1144,8 @@ describe("PreNivelacijaPriorityPage", () => {
 
     const firstKpi = await screen.findByText("Visok prioritet");
     expect(firstKpi.parentElement).toHaveTextContent("2");
-    expect(screen.getByRole("tab", { name: /Visok prioritet \(1\)/i })).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Sledeća" }));
-
-    await waitFor(() => expect(getPreNivelacijaPrioritetiMock).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 })));
-    expect(screen.getByText("Visok prioritet").parentElement).toHaveTextContent("2");
-    expect(screen.getByRole("tab", { name: /Visok prioritet \(1\)/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Visok prioritet \(2\)/i })).toBeInTheDocument();
+    expect(screen.getByText(/Vidljiva strana:/i)).toHaveTextContent("Visok prioritet: 2");
   });
 
   it("hides inline detail when the active focus filter excludes the selected row", async () => {

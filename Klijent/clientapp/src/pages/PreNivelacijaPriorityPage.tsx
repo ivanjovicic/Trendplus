@@ -496,9 +496,10 @@ export default function PreNivelacijaPriorityPage() {
     noSaleDaysMin: activeFilters.noSaleDaysMin,
     page,
     pageSize: 60,
+    focus: focusFilter !== "all" ? focusFilter : undefined,
     dataScope,
     signal,
-  }), [activeFilters, dataScope, page]);
+  }), [activeFilters, dataScope, focusFilter, page]);
   const {
     data,
     initialLoading,
@@ -666,30 +667,19 @@ export default function PreNivelacijaPriorityPage() {
     };
   }, [data?.summary]);
 
-  const filteredTableRows = useMemo(() => {
-    if (focusFilter === "all") return tableRows;
-    if (focusFilter === "increaseFocus") return tableRows.filter((row) => row.status === "increase_focus");
-    if (focusFilter === "maintain") return tableRows.filter((row) => row.status === "maintain");
-    if (focusFilter === "review") return tableRows.filter((row) => row.status === "review");
-    if (focusFilter === "doNotTrust") return tableRows.filter((row) => row.status === "do_not_trust");
-    if (focusFilter === "insufficientData") return tableRows.filter((row) => row.status === "insufficient_data");
-    if (focusFilter === "highPriority") return tableRows.filter(isHighPriorityCandidate);
-    return tableRows;
-  }, [focusFilter, tableRows]);
-
   const preNivelacijaProjections = useMemo(
     () => createAnalyticsDatasetProjections({
       canonicalRows: decisionRows,
-      filteredRows: filteredTableRows,
+      filteredRows: tableRows,
       tableRows,
       chronologicalChartRows: decisionRows,
-      exportRows: filteredTableRows,
-      detailRows: filteredTableRows,
+      exportRows: tableRows,
+      detailRows: tableRows,
       pageRows: decisionRows,
       globalTotals: data?.summary ?? null,
       globalFacets: data?.filterFacets ?? null,
     }),
-    [data?.filterFacets, data?.summary, decisionRows, filteredTableRows, tableRows],
+    [data?.filterFacets, data?.summary, decisionRows, tableRows],
   );
 
   const isDirty =
@@ -726,11 +716,34 @@ export default function PreNivelacijaPriorityPage() {
   const canGoPrev = page > 1;
   const pageSize = data ? normalizePositiveInteger(data.pageSize) : null;
   const totalCandidates = data ? normalizeNonNegativeNumber(data.totalCandidates) : null;
+  const focusTabCounts = useMemo(() => {
+    if (globalStatusCounts) {
+      return {
+        all: data?.summary?.candidatesCount ?? totalCandidates ?? tableRows.length,
+        increaseFocus: globalStatusCounts.increaseFocus,
+        maintain: globalStatusCounts.maintain,
+        review: globalStatusCounts.review,
+        doNotTrust: globalStatusCounts.doNotTrust,
+        insufficientData: globalStatusCounts.insufficientData,
+        highPriority: globalStatusCounts.highPriority,
+      } satisfies Record<FocusFilter, number>;
+    }
+
+    return {
+      all: tableRows.length,
+      increaseFocus: candidateCounts.increaseFocus,
+      maintain: candidateCounts.maintain,
+      review: candidateCounts.review,
+      doNotTrust: candidateCounts.doNotTrust,
+      insufficientData: candidateCounts.insufficientData,
+      highPriority: candidateCounts.highPriority,
+    } satisfies Record<FocusFilter, number>;
+  }, [candidateCounts, data?.summary?.candidatesCount, globalStatusCounts, tableRows.length, totalCandidates]);
   const canGoNext = pageSize != null && totalCandidates != null ? page * pageSize < totalCandidates : false;
   const dataMeta = data?.meta ?? null;
   const dataMetaMessage = getAnalyticsMetaMessage(dataMeta);
   const showMetaWarning = !loading && !error && isAnalyticsMetaWarning(dataMeta);
-  const showFilteredOutState = !loading && !error && Boolean(data) && decisionRows.length > 0 && preNivelacijaProjections.filteredRows.length === 0;
+  const showFilteredOutState = !loading && !error && Boolean(data) && focusFilter !== "all" && totalCandidates != null && totalCandidates === 0;
   const showEmptyState = !loading && !error && Boolean(data) && (decisionRows.length === 0 || showFilteredOutState);
   const showInsufficientEmptyState = shouldShowAnalyticsEmptyState(dataMeta, decisionRows.length) && isAnalyticsMetaInsufficient(dataMeta);
   const emptyStateVariant: "no_data" | "insufficient_data" | "filtered_out" =
@@ -1190,14 +1203,7 @@ export default function PreNivelacijaPriorityPage() {
 
               <div className="pnp-focus-tabs" role="tablist">
                 {(["all", "increaseFocus", "maintain", "review", "doNotTrust", "insufficientData", "highPriority"] as FocusFilter[]).map((f) => {
-                  const count =
-                    f === "all" ? preNivelacijaProjections.tableRows.length
-                    : f === "increaseFocus" ? candidateCounts.increaseFocus
-                    : f === "maintain" ? candidateCounts.maintain
-                    : f === "review" ? candidateCounts.review
-                    : f === "doNotTrust" ? candidateCounts.doNotTrust
-                    : f === "insufficientData" ? candidateCounts.insufficientData
-                    : candidateCounts.highPriority;
+                  const count = focusTabCounts[f];
                   const tabClass = f === "increaseFocus" ? "tab-boost" : f === "maintain" ? "tab-keep" : f === "review" ? "tab-keep" : f === "doNotTrust" ? "tab-reduce" : f === "insufficientData" ? "tab-reduce" : f === "highPriority" ? "tab-high" : "";
                   return (
                     <button
