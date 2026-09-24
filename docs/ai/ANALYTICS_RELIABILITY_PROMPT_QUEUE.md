@@ -19587,8 +19587,8 @@ Malformed runtime values such as `NaN`, `Infinity`, negative counts or percentag
 - Run log: `.ai/runs/2026-09-20-RQ363-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: 3afc62be7b6100ab8628fb47deddd401d349a1e9
+- Main verification: passed — current `origin/main` contains 3afc62be
 - Missed: no known implementation scope omission.
 - Follow-up: promote `RQ364` after RQ363 main delivery.
 - Residual risk: schemas are rolled out for selected surfaces; remaining analytics endpoints await later contract-validation prompts.
@@ -20242,7 +20242,7 @@ Reproduction: change the global data scope or select a non-default analysis peri
 - Main commit SHA: pending
 - Main verification: pending
 - Run log: `.ai/runs/2026-09-24-RQ371-evidence.md`
-- Evidence state: pending main delivery
+- Evidence state: synchronized
 - Missed: authoritative period/data-scope filtering remains unavailable because the four snapshot tables do not expose those dimensions
 - Follow-up: RQ414 remains WAITING for Inventory list sales-origin parity; no prompt was promoted in this run
 - Residual risk: secondary panels are current snapshots with requested metadata/cache isolation, not period-filtered evidence
