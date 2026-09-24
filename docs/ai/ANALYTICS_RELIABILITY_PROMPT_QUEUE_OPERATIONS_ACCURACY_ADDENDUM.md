@@ -2,10 +2,12 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ421
-Main RQ current READY prompt: RQ421
+Current READY prompt: none
+Main RQ current READY prompt: none
 
 Owner promotion 2026-09-24: under the user's instruction to claim the next prompt, dependency/collision review found `RQ421` independently runnable within the Supplier Sales status-identity lane after `RQ420` completion; the bounded frontend mapping/display repair does not take `RQ373`/`RQ378`/`RQ379` denominator ownership. It moved `WAITING -> READY` as the current addendum pointer.
+
+Owner completion 2026-09-24: `RQ421` delivered directly to `main` in `980a671c5451278b7d806fa3c2e2dfef6bb2af4a`; Supplier Sales now preserves backend recommendation status across row/count/detail/export projections and renders actionability as a separate gate aligned with the Color pattern. Run log: `.ai/runs/2026-09-24-RQ421-evidence.md`. Evidence state: synchronized. Main verification: current `origin/main` contains the implementation SHA. Follow-up: `RQ419` remains WAITING behind Supplier scope-event ownership; no successor promoted.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -49,7 +51,7 @@ All remaining prompts below are `WAITING`. Do not claim or auto-promote them wit
 | RQ418 | DONE | P1 | inventory-action-dataset-idempotency | Prevent Inventory action deduplication from crossing period/scope/snapshot datasets |
 | RQ419 | WAITING | P1 | supplier-sales-scope-event-lineage | Reload Supplier Sales when global data scope changes and keep trust metadata aligned |
 | RQ420 | DONE | P2 | supplier-sales-derived-projection-freshness | Prevent stale Supplier Sales derived shares and cost projections after total changes |
-| RQ421 | READY | P1 | supplier-sales-status-identity | Preserve backend Supplier Sales status when recommendation actionability is blocked |
+| RQ421 | DONE | P1 | supplier-sales-status-identity | Preserve backend Supplier Sales status when recommendation actionability is blocked |
 | RQ422 | WAITING | P1 | supplier-footwear-type-insight-denominator | Make Supplier Footwear type share and elasticity metrics full-cohort and provenance-safe |
 | RQ423 | WAITING | P1 | pre-nivelacija-focus-population-parity | Make Pre-Nivelacija focus filtering population-aware across pages and projections |
 | RQ424 | WAITING | P1 | pre-nivelacija-leaderboard-denominator | Define Pre-Nivelacija action-share and percentage normalization semantics |
@@ -832,7 +834,7 @@ Do not recalculate backend business metrics beyond the existing fallback contrac
 
 ## RQ421 - Supplier Sales must preserve backend status identity when actionability is blocked
 
-Status: READY
+Status: DONE
 Ready after: `RQ379` runtime schema and `RQ373` status/count ownership are aligned
 Priority: P1
 Type: frontend/contract/tests
@@ -888,6 +890,26 @@ Do not recreate recommendation scoring or weaken the actionability gate.
 ### Dependencies
 
 - Coordinate `RQ373`, `RQ374`, `RQ379`, `RQ407` and the shared decision-status contract.
+
+### Completion note
+
+- Date: 2026-09-24
+- Status: DONE
+- Completion: Preserved backend recommendation `status` identity when actionability is blocked; row badges now use `displayStatusLabel(status)`, actionability renders via separate reason chips/detail copy, and header/count/export projections stay keyed to backend status.
+- Changed files: `SupplierSalesStatsPage.tsx`, focused Supplier Sales specs, guardrail baseline line repair, queue routing metadata.
+- Contract/runtime behavior changed: blocked recommendations no longer collapse to `insufficient_data` or `Pomoćni signal`; users see both status meaning and actionability gate.
+- Checks run: `npm run test -- --run src/pages/__tests__/SupplierSalesStatsPage.decisionSuppliers.spec.tsx src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx`; `npm run check:analytics-guardrails`.
+- Checks not run: full Supplier Sales page suite; backend integration tests.
+- Run log: `.ai/runs/2026-09-24-RQ421-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: 980a671c5451278b7d806fa3c2e2dfef6bb2af4a
+- Main verification: passed — current `origin/main` contains 980a671c
+- Missed: none known
+- Follow-up: none promoted; `RQ419` remains WAITING behind Supplier scope-event ownership
+- Residual risk: broader visible-scope parity remains owned by `RQ373`
+- Next: none
+- Prompt defect / scope repair: guardrail baseline lines moved after status-display edits; no violation waived
 
 ---
 
