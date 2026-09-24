@@ -16853,6 +16853,10 @@ Reproduction: open `/analytics/inventory`, look for a period selector, then comp
 
 - Date: 2026-09-24
 - Status: DONE
+- Completion: Delivered Inventory period control and explicit selected-period versus current-snapshot provenance boundary.
+- Changed files: `InventoryPage.tsx`, focused Inventory specs, frontend guardrail baseline, queue and roadmap metadata.
+- Checks run: focused Inventory Vitest, `npm run check:analytics-guardrails`, `git diff --check`.
+- Checks not run: backend `dotnet test` because the .NET SDK is unavailable in the agent VM.
 - Delivery mode: direct-main
 - Implementation commits: `3724152f`, `37742bbe`
 - Main commit SHA: ee25da14e4536d2f02a2d084bce36949b5d27e6b
@@ -20240,10 +20244,14 @@ Reproduction: change the global data scope or select a non-default analysis peri
 
 - Date: 2026-09-24
 - Status: DONE
+- Completion: Delivered cached Inventory secondary-signal period/data-scope request isolation and explicit current-snapshot provenance.
+- Changed files: cached analytics endpoints/queries/handlers, Inventory frontend/API contracts and tests, frontend guardrail baseline, queue and roadmap metadata.
+- Checks run: focused Inventory Vitest, analytics API contract tests, `npm run check:analytics-guardrails`, `git diff --check`.
+- Checks not run: backend `dotnet test` because the .NET SDK is unavailable in the agent VM.
 - Delivery mode: direct-main
 - Implementation commits: `47719218`, `820866d8`
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: 3afc62be7b6100ab8628fb47deddd401d349a1e9
+- Main verification: passed — current `origin/main` contains 3afc62be
 - Run log: `.ai/runs/2026-09-24-RQ371-evidence.md`
 - Evidence state: synchronized
 - Missed: authoritative period/data-scope filtering remains unavailable because the four snapshot tables do not expose those dimensions
