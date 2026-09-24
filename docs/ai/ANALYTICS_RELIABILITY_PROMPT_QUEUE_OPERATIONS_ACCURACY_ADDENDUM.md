@@ -818,8 +818,8 @@ Do not recalculate backend business metrics beyond the existing fallback contrac
 - Run log: `.ai/runs/2026-09-24-RQ420-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: e8cf5cc4
+- Main verification: passed — current `origin/main` contains e8cf5cc4
 - Missed: none known
 - Follow-up: none promoted; `RQ421` remains WAITING behind Supplier status-identity ownership
 - Residual risk: broader visible-scope parity remains owned by `RQ373`
