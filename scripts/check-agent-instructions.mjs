@@ -19,7 +19,7 @@ const REQUIRED_SNIPPETS = new Map([
   ["docs/planning/FEATURE_LIFECYCLE.md", ["multiple READY", "Parallel-safe", "Current READY"]],
   ["docs/ai/REPO_AI_README.md", ["Authority order when docs conflict", "Canonical owners by topic", "VALIDATION_SELECTOR.md", "primary READY"]],
   ["docs/ai/AGENT_START_HERE.md", ["Direct task workflow", "Queue task workflow", "VALIDATION_SELECTOR.md", "historical ledger", "Multiple READY", "Idle recovery"]],
-  ["docs/ai/PROMPT_QUEUE_PROTOCOL.md", ["Mechanical prompt conflicts", "same-owner", "VALIDATION_SELECTOR.md", "primary/default", "Idle recovery", "What was missed", "WAITING -> READY", "no safe claimable task"]],
+  ["docs/ai/PROMPT_QUEUE_PROTOCOL.md", ["Mechanical prompt conflicts", "same-owner", "VALIDATION_SELECTOR.md", "primary/default", "Idle recovery", "unfinished delivery", "What was missed", "WAITING -> READY", "no safe claimable task"]],
   ["docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md", ["Current READY", "primary/default", "Additional READY", "Parallel-safe"]],
   ["docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md", ["Current READY", "primary/default", "Additional READY", "Parallel-safe"]],
   ["docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md", ["exact delivered SHA", "Main commit SHA", "Main verification", "RUN_LOG_TEMPLATE.md"]],
