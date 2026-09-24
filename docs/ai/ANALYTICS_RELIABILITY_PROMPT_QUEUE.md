@@ -2,9 +2,10 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ373
+Current READY prompt: none
 Owner promotion 2026-09-24: idle recovery verified that RQ373 is the dependency-complete Supplier Sales visible-population owner. RQ378 and RQ380 depend on its display/reference contract, while RQ379 must consume the stabilized response schema; no conflicting active claim, branch or PR was found. RQ373 moved `WAITING -> READY`.
 Owner claim 2026-09-24: RQ373 transitioned `READY -> IN_PROGRESS` in this workspace for the Supplier Sales display-population/reference-cohort contract across KPI, chart, table, detail, export and recommendation projections. Local runtime lock: `.ai/task-locks/RQ373-cursor.lock.md`.
+Owner completion 2026-09-24: RQ373 delivered the bounded Supplier Sales display-population/reference-cohort contract directly to `main`. Visible revenue, units, margin shares and PoP now use the same filtered rows as the table; backend recommendation status and whole-response reference semantics remain explicit in trust, detail and export metadata. Run log: `.ai/runs/2026-09-24-RQ373-evidence.md`. RQ378/RQ379/RQ380 remain separate Supplier Sales owners.
 RQ172, RQ308, RQ371, RQ372, RQ414, RQ419, RQ420, RQ421, RQ422, RQ423, RQ424, RQ425, RQ426, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ398, RQ399, RQ400, RQ401, RQ402, RQ403, RQ404, RQ405 and RQ406 are DONE. RQ407 is BLOCKED; RQ408 remains WAITING.
 
 Owner promotion 2026-09-24: after RQ308 delivery and fresh dependency review, RQ371 moved `WAITING -> READY` as the current Inventory secondary-signal period/data-scope owner. RQ273 retains export-window semantics; RQ359/RQ370 retain request lifecycle/cancellation; RQ426 remains limited to forecast row-grain aggregation.
@@ -20346,7 +20347,7 @@ Reproduction: load more than one alert severity, select `Kritično`, then compar
 
 ## RQ373 - Align Supplier Sales visible filters with KPI, chart, table, export and recommendation scope
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend-contract/frontend/tests
 Feature family: supplier-sales-visible-scope-parity
@@ -20421,6 +20422,25 @@ Reproduction: load a response containing known and unknown suppliers, select one
 - No dependency on `RQ308`.
 - `RQ378` owns weighted supplier margin/cost benchmark correctness; final recommendation-baseline acceptance here depends on that truth.
 - `RQ380` owns supplier total pre/post comparable-cohort semantics.
+
+### Completion note
+
+- Date: 2026-09-24
+- Status: DONE
+- Completion: Delivered display-population parity for Supplier Sales while preserving the backend whole-response recommendation reference cohort.
+- Changed files: `AllEndpoints.cs`, `AnalyticsSupplierSalesIntegrationTests.cs`, `supplierSalesStatsApi.ts`, `SupplierSalesStatsPage.tsx`, focused Supplier Sales specs, guardrail baseline, queue/roadmap docs.
+- Contract/runtime behavior changed: visible revenue, units, margin shares and aggregate PoP now use the displayed supplier rows; recommendation status/actionability remains backend-owned and reference-cohort metadata is carried into trust/detail/export projections.
+- Checks run: focused Supplier Sales Vitest (33 tests), analytics guardrails/typecheck, frontend build, queue/instruction/planning validators, `git diff --check`.
+- Checks not run: backend integration test because the .NET SDK is unavailable in the agent VM; live provider/browser proof.
+- Run log: `.ai/runs/2026-09-24-RQ373-evidence.md`
+- Evidence state: pending main delivery
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: server-side supplier focus/include-unknown query was outside the bounded projection scope; RQ378/RQ379/RQ380 remain separate owners.
+- Follow-up: RQ378, RQ379 and RQ380 remain WAITING behind their declared dependency/collision checks.
+- Residual risk: backend integration and live/browser evidence remain CI/provider follow-up.
+- Prompt defect / scope repair: existing frontend projection and backend recommendation contracts were retained; no recommendation scoring was recreated in the frontend.
 
 ---
 

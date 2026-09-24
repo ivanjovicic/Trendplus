@@ -2,12 +2,14 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ373
-Main RQ current READY prompt: RQ373
+Current READY prompt: none
+Main RQ current READY prompt: none
 
 Owner promotion 2026-09-24: idle recovery verified that RQ373 is the dependency-complete Supplier Sales visible-population owner. RQ378 and RQ380 depend on its display/reference contract, while RQ379 must consume the stabilized response schema; no conflicting active claim, branch or PR was found. RQ373 moved `WAITING -> READY`.
 
 Owner claim 2026-09-24: RQ373 transitioned `READY -> IN_PROGRESS` in this workspace for the Supplier Sales display-population/reference-cohort contract across KPI, chart, table, detail, export and recommendation projections. Local runtime lock: `.ai/task-locks/RQ373-cursor.lock.md`.
+
+Owner completion 2026-09-24: RQ373 delivered the bounded Supplier Sales display-population/reference-cohort contract directly to `main`. Visible revenue, units, margin shares and PoP now use the same filtered rows as the table; backend recommendation status and whole-response reference semantics remain explicit in trust, detail and export metadata. Run log: `.ai/runs/2026-09-24-RQ373-evidence.md`. RQ378/RQ379/RQ380 remain separate Supplier Sales owners.
 
 Owner promotion 2026-09-24: after RQ371 completion and fresh scope review, RQ414 moved `WAITING -> READY` as the bounded Inventory list sales-origin parity owner. Its scope is limited to the `/inventory/list` joined velocity query; RQ371, RQ407 and RQ413 retain their broader signal/proof/drift ownership.
 

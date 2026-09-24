@@ -6,6 +6,7 @@ Status: canonical planning entry point
 
 Owner promotion 2026-09-24: idle recovery verified that RQ373 is the dependency-complete Supplier Sales visible-population owner. RQ378 and RQ380 depend on its display/reference contract, while RQ379 must consume the stabilized response schema; no conflicting active claim, branch or PR was found. RQ373 moved `WAITING -> READY`.
 Owner claim 2026-09-24: RQ373 is `IN_PROGRESS` in this workspace for the Supplier Sales display-population/reference-cohort contract across KPI, chart, table, detail, export and recommendation projections. Local lock: `.ai/task-locks/RQ373-cursor.lock.md`.
+Owner completion 2026-09-24: RQ373 was delivered directly to `main`. Visible Supplier Sales revenue, units, margin shares and aggregate PoP now use the displayed population, while backend recommendation status and whole-response reference-cohort semantics remain explicit in trust/detail/export metadata. Run log: `.ai/runs/2026-09-24-RQ373-evidence.md`. RQ378/RQ379/RQ380 remain WAITING.
 
 Owner promotion 2026-09-24: after RQ426 delivery, idle recovery verified RQ308 as the dependency-complete Inventory period/provenance owner; RQ273 remains export-window owner and RQ371 remains the subsequent cached-secondary-signal parity owner. RQ308 moved `WAITING -> READY`.
 Owner claim 2026-09-24: RQ308 is `IN_PROGRESS` in this workspace for the visible Inventory period selector, URL state, supported list/detail period requests and explicit current-snapshot labeling. Local lock: `.ai/task-locks/RQ308-cursor.lock.md`.
