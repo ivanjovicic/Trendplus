@@ -2,10 +2,12 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ419
-Main RQ current READY prompt: RQ419
+Current READY prompt: none
+Main RQ current READY prompt: none
 
 Owner promotion 2026-09-24: under the user's instruction to claim the next prompt, dependency/collision review found `RQ419` independently runnable within the Supplier Sales scope-event lane after `RQ421`; the bounded reload/trust-metadata repair does not take `RQ373`/`RQ378`/`RQ379` denominator ownership. It moved `WAITING -> READY` as the current addendum pointer.
+
+Owner completion 2026-09-24: `RQ419` delivered directly to `main` in `deed107ef1b2f2b8642f19fa794abf8b68dc23ce`; Supplier Sales reloads on global data-scope changes, clears stale scope-bound rows/trust metadata, and canonical Supplier parent URL filters sync through `useSupplierCanonicalState`. Run log: `.ai/runs/2026-09-24-RQ419-evidence.md`. Evidence state: synchronized. Main verification: current `origin/main` contains the implementation SHA. Follow-up: `RQ422` remains WAITING behind Supplier Footwear denominator ownership; no successor promoted.
 
 Owner promotion 2026-09-24: under the user's instruction to claim the next prompt, dependency/collision review found `RQ421` independently runnable within the Supplier Sales status-identity lane after `RQ420` completion; the bounded frontend mapping/display repair does not take `RQ373`/`RQ378`/`RQ379` denominator ownership. It moved `WAITING -> READY` as the current addendum pointer.
 
@@ -51,7 +53,7 @@ All remaining prompts below are `WAITING`. Do not claim or auto-promote them wit
 | RQ416 | DONE | P1 | inventory-insight-identity-provenance | Preserve store/supplier identity and cost provenance from Inventory insights to detail |
 | RQ417 | DONE | P1 | inventory-size-alert-identity | Preserve SKU, size and store context when an Inventory alert opens size curve |
 | RQ418 | DONE | P1 | inventory-action-dataset-idempotency | Prevent Inventory action deduplication from crossing period/scope/snapshot datasets |
-| RQ419 | READY | P1 | supplier-sales-scope-event-lineage | Reload Supplier Sales when global data scope changes and keep trust metadata aligned |
+| RQ419 | DONE | P1 | supplier-sales-scope-event-lineage | Reload Supplier Sales when global data scope changes and keep trust metadata aligned |
 | RQ420 | DONE | P2 | supplier-sales-derived-projection-freshness | Prevent stale Supplier Sales derived shares and cost projections after total changes |
 | RQ421 | DONE | P1 | supplier-sales-status-identity | Preserve backend Supplier Sales status when recommendation actionability is blocked |
 | RQ422 | WAITING | P1 | supplier-footwear-type-insight-denominator | Make Supplier Footwear type share and elasticity metrics full-cohort and provenance-safe |
@@ -694,7 +696,7 @@ Do not change action lifecycle states, user permissions or general action priori
 
 ## RQ419 - Supplier Sales must reload and relabel on global data-scope changes
 
-Status: READY
+Status: DONE
 Ready after: coordinate with canonical Supplier parent filter owner; do not run with another Supplier Sales scope owner
 Priority: P1
 Type: frontend/tests
@@ -751,6 +753,26 @@ Do not change Supplier Sales denominators, margin policy or runtime schema (`RQ3
 ### Dependencies
 
 - Coordinate `RQ278`, `RQ373`, `RQ379`, `RQ407` and the canonical Supplier filter owner.
+
+### Completion note
+
+- Date: 2026-09-24
+- Status: DONE
+- Completion: Standalone Supplier Sales listens for `trendplus:data-scope-changed`, reloads with persisted scope precedence, clears stale scope-bound rows/trust metadata, and canonical Supplier parent URL filters sync via `useSupplierCanonicalState`.
+- Changed files: `SupplierSalesStatsPage.tsx`, `useSupplierCanonicalState.ts`, `SupplierSalesStatsPage.scopeReload.spec.tsx`, guardrail baseline repair, queue routing metadata.
+- Contract/runtime behavior changed: global scope changes cannot leave Supplier Sales on prior-scope values or trust metadata; embedded mode remains parent-authoritative.
+- Checks run: `npm run test -- --run src/pages/__tests__/SupplierSalesStatsPage.scopeReload.spec.tsx`; related Supplier Sales specs; `npm run check:analytics-guardrails`.
+- Checks not run: full Supplier consolidated page suite; backend integration tests.
+- Run log: `.ai/runs/2026-09-24-RQ419-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: deed107ef1b2f2b8642f19fa794abf8b68dc23ce
+- Main verification: passed — current `origin/main` contains deed107e
+- Missed: none known
+- Follow-up: none promoted; `RQ422` remains WAITING
+- Residual risk: broader visible-scope parity remains owned by `RQ373`
+- Next: none
+- Prompt defect / scope repair: guardrail baseline updated for intentional scope-clear `setData(null)`; no violation waived
 
 ---
 
