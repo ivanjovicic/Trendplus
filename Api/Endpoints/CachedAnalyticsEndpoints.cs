@@ -776,6 +776,9 @@ public static class CachedAnalyticsEndpoints
                                   && pz.DatumProdaje >= salesWindowStartUtc
                                   && pz.DatumProdaje < salesWindowEndUtc
                                   && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
+                                  && (normalizedDataScope == "all"
+                                      || (normalizedDataScope == "imported" && pz.DataOrigin == "access")
+                                      || (normalizedDataScope == "existing" && (pz.DataOrigin == "existing" || pz.DataOrigin == null || pz.DataOrigin == "")))
                             group ps by ps.IdArtikal
                             into g
                             select new
@@ -875,6 +878,13 @@ public static class CachedAnalyticsEndpoints
                             ? AnalyticsResponseMetaFactory.Empty("no_inventory_items", "Nema artikala koji odgovaraju filterima.")
                             : AnalyticsResponseMetaFactory.Success();
                         meta.CorrelationId = correlationId;
+                        meta.RequestedPeriodFromUtc = salesWindowStartUtc;
+                        meta.RequestedPeriodToUtc = salesWindowEndUtc;
+                        meta.EffectivePeriodFromUtc = salesWindowStartUtc;
+                        meta.EffectivePeriodToUtc = salesWindowEndUtc;
+                        meta.RequestedDataScope = normalizedDataScope;
+                        meta.EffectiveDataScope = normalizedDataScope;
+                        meta.ProvenanceBasis = "article-and-sale-header-data-origin";
 
                         return new ArtikliPagedResponse<InventoryListItemDto>(items, total, page, pageSize, meta);
                     },

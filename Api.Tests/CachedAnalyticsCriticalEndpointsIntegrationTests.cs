@@ -507,6 +507,10 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
         Assert.False(importedItem.GetProperty("isOpeningStockDerived").GetBoolean());
         Assert.Equal("unknown", importedItem.GetProperty("openingStockConfidence").GetString());
         Assert.Contains("opening_stock_unavailable", importedItem.GetProperty("reasonCodes").EnumerateArray().Select(x => x.GetString()));
+        var importedMeta = importedRoot.GetProperty("meta");
+        Assert.Equal("imported", importedMeta.GetProperty("requestedDataScope").GetString());
+        Assert.Equal("imported", importedMeta.GetProperty("effectiveDataScope").GetString());
+        Assert.Equal("article-and-sale-header-data-origin", importedMeta.GetProperty("provenanceBasis").GetString());
 
         var existingRoot = await GetJsonAsync(
             factory,
@@ -520,6 +524,9 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
         Assert.False(existingItem.GetProperty("isOpeningStockDerived").GetBoolean());
         Assert.Equal("unknown", existingItem.GetProperty("openingStockConfidence").GetString());
         Assert.Contains("opening_stock_unavailable", existingItem.GetProperty("reasonCodes").EnumerateArray().Select(x => x.GetString()));
+        var existingMeta = existingRoot.GetProperty("meta");
+        Assert.Equal("existing", existingMeta.GetProperty("requestedDataScope").GetString());
+        Assert.Equal("existing", existingMeta.GetProperty("effectiveDataScope").GetString());
         Assert.Equal(
             importedItem.GetProperty("signalConfidencePct").GetDecimal(),
             existingItem.GetProperty("signalConfidencePct").GetDecimal());

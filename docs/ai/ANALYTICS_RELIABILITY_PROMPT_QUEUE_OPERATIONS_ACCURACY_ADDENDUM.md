@@ -2,8 +2,12 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ414
 Main RQ current READY prompt: none
+
+Owner promotion 2026-09-24: after RQ371 completion and fresh scope review, RQ414 moved `WAITING -> READY` as the bounded Inventory list sales-origin parity owner. Its scope is limited to the `/inventory/list` joined velocity query; RQ371, RQ407 and RQ413 retain their broader signal/proof/drift ownership.
+
+Owner claim 2026-09-24: RQ414 transitioned `READY -> IN_PROGRESS` in this workspace for the backend-owned sale-header origin predicate, list signal provenance and focused joined-query tests. Local runtime lock: `.ai/task-locks/RQ414-cursor.lock.md`.
 
 Owner promotion 2026-09-24: after `RQ425` completion returned the pointer to `none`, idle-recovery review found `RQ422` runnable on the remaining Supplier Footwear type-insight display/weighting contract: backend full-cohort aggregates from `RQ406` are DONE and `RQ411` remains a separate P0 attribution owner without blocking this bounded denominator lane. `RQ422` moved `WAITING -> READY` and was claimed.
 
@@ -66,7 +70,7 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 | RQ411 | WAITING | P0 | operations-sale-dimension-attribution | Freeze or provenance-qualify supplier/type attribution for historical sale lines |
 | RQ412 | WAITING | P0 | supplier-shoetype-independent-oracle | Independently reconcile Supplier/Shoe Type to raw facts after canonical RQ407 proof |
 | RQ413 | WAITING | P1 | operations-runtime-drift-guard | Continuously detect post-import/cache/source drift and fail closed for decision signals |
-| RQ414 | WAITING | P1 | inventory-sales-origin-parity | Keep Inventory list sell-through on the same data-origin population as article rows |
+| RQ414 | IN_PROGRESS | P1 | inventory-sales-origin-parity | Keep Inventory list sell-through on the same data-origin population as article rows |
 | RQ415 | DONE | P2 | inventory-deterministic-pagination | Make Inventory list ordering stable under ties and concurrent changes |
 | RQ416 | DONE | P1 | inventory-insight-identity-provenance | Preserve store/supplier identity and cost provenance from Inventory insights to detail |
 | RQ417 | DONE | P1 | inventory-size-alert-identity | Preserve SKU, size and store context when an Inventory alert opens size curve |
