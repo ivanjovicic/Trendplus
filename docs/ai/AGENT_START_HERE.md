@@ -59,7 +59,7 @@ Use `MASTER_ROADMAP.md` for the primary `Current READY` pointer, blocked truth a
 
 - Backend CI Repair -> `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
 - Stabilization / Release / current pilot Security -> `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md`
-- Analytics correctness -> `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` and its named source queue
+- Analytics correctness -> `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` + active `ANALYTICS_RELIABILITY_PROMPT_QUEUE_*ADDENDUM.md` files named by current evidence; `ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` is historical review context, not a live selector
 - Premium analytics UI -> `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md` with `docs/roadmaps/ANALYTICS_UI_PREMIUM_ROADMAP.md`
 - Data-source connectors -> `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md`
 - Multi-tenancy/shared SaaS isolation -> `docs/ai/MULTITENANCY_PROMPT_QUEUE.md`
