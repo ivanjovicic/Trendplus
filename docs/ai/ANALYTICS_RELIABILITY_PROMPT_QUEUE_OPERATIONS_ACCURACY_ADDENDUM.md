@@ -9,7 +9,7 @@ Owner promotion 2026-09-24: under the user's instruction to claim the next promp
 
 Owner claim 2026-09-24: `RQ411` transitioned `READY -> IN_PROGRESS` in this workspace for immutable/provenance-bearing supplier and shoe-type attribution; local runtime lock `.ai/task-locks/RQ411-codex.lock.md`.
 
-Owner completion 2026-09-24: `RQ411` was delivered directly to `main` in `67d5885311a1ad00b24cd84794b1d92e63e7b1c5`. Supplier and Shoe Type now group from immutable sale-line attribution, POS/Access paths preserve or explicitly freeze provenance, and list/detail/snapshot metadata exposes attribution basis and coverage. Run log: `.ai/runs/2026-09-24-RQ411-evidence.md`. Evidence state: synchronized. Main verification: pending push/remote verification; `RQ412` and `RQ413` remain WAITING.
+Owner completion 2026-09-24: `RQ411` was delivered directly to `main` in `67d5885311a1ad00b24cd84794b1d92e63e7b1c5`. Supplier and Shoe Type now group from immutable sale-line attribution, POS/Access paths preserve or explicitly freeze provenance, and list/detail/snapshot metadata exposes attribution basis and coverage. Run log: `.ai/runs/2026-09-24-RQ411-evidence.md`. Evidence state: synchronized. Main verification: `origin/main` contains the implementation and evidence-closure commits; `RQ412` and `RQ413` remain WAITING.
 
 Owner promotion 2026-09-24: idle recovery verified that RQ373 is the dependency-complete Supplier Sales visible-population owner. RQ378 and RQ380 depend on its display/reference contract, while RQ379 must consume the stabilized response schema; no conflicting active claim, branch or PR was found. RQ373 moved `WAITING -> READY`.
 
