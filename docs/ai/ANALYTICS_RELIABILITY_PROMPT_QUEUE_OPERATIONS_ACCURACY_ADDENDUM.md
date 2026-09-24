@@ -1342,7 +1342,8 @@ Do not change the underlying forecast model or page-local/global sorting policy 
 - Date: 2026-09-24
 - Status: DONE
 - Delivery mode: direct-main
-- Main commit SHA: 85f0da05e8c8f6b0e8e8c8f6b0e8e8c8f6b0e8e8
+- Main commit SHA: 85f0da051d17b5df04e6725281d99e34a629151d
+- Main verification: passed — current `origin/main` contains 85f0da05
 - Run log: `.ai/runs/2026-09-24-RQ426-evidence.md`
 - Evidence state: synchronized
 - Missed: full `RQ371` secondary-signal period/data-scope threading remains a separate owner
