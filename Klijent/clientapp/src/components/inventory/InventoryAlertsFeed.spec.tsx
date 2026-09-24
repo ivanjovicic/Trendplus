@@ -64,4 +64,15 @@ describe("InventoryAlertsFeed size-curve identity", () => {
 
     expect(onOpenSizeCurve).toHaveBeenCalledWith(101, 8, null);
   });
+
+  it("renders server-filtered alert items and matching count badge", () => {
+    renderFeed({
+      ...buildAlerts("42"),
+      returnedCount: 1,
+      totalMatchingCount: 1,
+    }, vi.fn());
+
+    expect(screen.getByText("Prikazano 1 alerta")).toBeInTheDocument();
+    expect(screen.getByText("Nedostajuća veličina")).toBeInTheDocument();
+  });
 });

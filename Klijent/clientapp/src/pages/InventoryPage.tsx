@@ -71,6 +71,16 @@ function parseInventorySort(value: string | null): string {
     ? value
     : "kolicina";
 }
+
+const INVENTORY_ALERT_SEVERITIES = ["critical", "warning", "info"] as const;
+export type InventoryAlertSeverityFilter = "" | (typeof INVENTORY_ALERT_SEVERITIES)[number];
+
+export function parseInventoryAlertSeverity(value: string | null): InventoryAlertSeverityFilter {
+  return value && INVENTORY_ALERT_SEVERITIES.includes(value as (typeof INVENTORY_ALERT_SEVERITIES)[number])
+    ? value as InventoryAlertSeverityFilter
+    : "";
+}
+
 const ALERTS_DISPLAY_COUNT = 12;
 const REBALANCE_DISPLAY_COUNT = 20;
 const REBALANCE_FETCH_LIMIT = 20;
@@ -381,7 +391,7 @@ export default function InventoryPage() {
   const [schedulerBusy, setSchedulerBusy] = useState(false);
   const [schedulerMessage, setSchedulerMessage] = useState<string | null>(null);
   const [scheduleDraft, setScheduleDraft] = useState<InventoryReportScheduleInput>(createScheduleDraft);
-  const [alertSeverityFilter, setAlertSeverityFilter] = useState<"" | "critical" | "warning" | "info">("");
+  const [alertSeverityFilter, setAlertSeverityFilter] = useState<InventoryAlertSeverityFilter>(() => parseInventoryAlertSeverity(searchParams.get("alertSeverity")));
   const [sizeCurve, setSizeCurve] = useState<SizeCurveDto | null>(null);
   const [sizeCurveLoading, setSizeCurveLoading] = useState(false);
   const [sizeCurveError, setSizeCurveError] = useState<string | null>(null);
@@ -433,6 +443,10 @@ export default function InventoryPage() {
       const next = parseInventoryPageSize(searchParams.get("pageSize"));
       return current === next ? current : next;
     });
+    setAlertSeverityFilter((current) => {
+      const next = parseInventoryAlertSeverity(searchParams.get("alertSeverity"));
+      return current === next ? current : next;
+    });
   }, [searchParams]);
 
   useEffect(() => {
@@ -449,9 +463,10 @@ export default function InventoryPage() {
       setOrDelete("sortBy", sortBy === "kolicina" ? null : sortBy);
       setOrDelete("page", pageNumber === 1 ? null : String(pageNumber));
       setOrDelete("pageSize", pageSize === DEFAULT_INVENTORY_PAGE_SIZE ? null : String(pageSize));
+      setOrDelete("alertSeverity", alertSeverityFilter || null);
       return next.toString() === current.toString() ? current : next;
     }, { replace: true });
-  }, [compareStoreIds, pageNumber, pageSize, searchInput, selectedStoreId, selectedSupplierId, setSearchParams, sortBy]);
+  }, [alertSeverityFilter, compareStoreIds, pageNumber, pageSize, searchInput, selectedStoreId, selectedSupplierId, setSearchParams, sortBy]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -583,7 +598,12 @@ export default function InventoryPage() {
         signal,
       }),
       getForecast({ storeId: selectedStoreId, supplierId: selectedSupplierId, top: FORECAST_FETCH_LIMIT, signal }),
-      getInventoryAlerts({ storeId: selectedStoreId, supplierId: selectedSupplierId, signal }),
+      getInventoryAlerts({
+        storeId: selectedStoreId,
+        supplierId: selectedSupplierId,
+        severity: alertSeverityFilter || undefined,
+        signal,
+      }),
       getRebalanceSuggestions({ fromStoreId: selectedStoreId, supplierId: selectedSupplierId, top: REBALANCE_FETCH_LIMIT, signal }),
     ]);
     const failed = results.find((result) => result.status === "rejected");
@@ -599,7 +619,7 @@ export default function InventoryPage() {
       alerts: (results[6] as PromiseFulfilledResult<InventoryAlertListDto>).value,
       rebalance: (results[7] as PromiseFulfilledResult<RebalanceListDto>).value,
     };
-  }, [compareStoreIds, inventoryDataScope, inventorySignalWindow, pageNumber, pageSize, selectedStoreId, selectedSupplierId, serverSortBy, trimmedSearch]);
+  }, [alertSeverityFilter, compareStoreIds, inventoryDataScope, inventorySignalWindow, pageNumber, pageSize, selectedStoreId, selectedSupplierId, serverSortBy, trimmedSearch]);
   const {
     data: inventorySnapshot,
     initialLoading,

@@ -24,7 +24,7 @@ export function InventoryAlertsFeed({
   onOpenSizeCurve,
   onOpenDetail,
 }: InventoryAlertsFeedProps) {
-  const filteredAlerts = (alerts?.items ?? []).filter((alert) => !alertSeverityFilter || (alert.severity ?? "") === alertSeverityFilter);
+  const visibleAlerts = alerts?.items ?? [];
 
     return (
     <section className="rounded-[28px] border border-border bg-surface p-5">
@@ -67,7 +67,7 @@ export function InventoryAlertsFeed({
         </div>
       ) : (
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {filteredAlerts.slice(0, displayCount).map((alert, index) => (
+          {visibleAlerts.slice(0, displayCount).map((alert, index) => (
             <article key={`${alert.alertType}-${alert.skuId}-${alert.sizeCode ?? "all"}-${index}`} onClick={() => onOpenDetail(alert.skuId, alert.storeId, alert.title)} className={`cursor-pointer rounded-2xl border border-border bg-surface p-4 ${alert.severity === "critical" ? "inventory-alert-critical" : ""}`}>
               <div className="flex items-start justify-between gap-3">
                 <div className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${alert.severity ? getAlertSeverityTone(alert.severity) : "border-dashed border-border bg-surface text-muted"}`}>
@@ -93,8 +93,12 @@ export function InventoryAlertsFeed({
               </div>
             </article>
           ))}
-          {filteredAlerts.length === 0 ? (
-            <div className="col-span-full rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">Nema alertova za izabranu prodavnicu i dobavljača.</div>
+          {visibleAlerts.length === 0 ? (
+            <div className="col-span-full rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">
+              {alertSeverityFilter
+                ? "Nema alertova za izabrani nivo ozbiljnosti, prodavnicu i dobavljača."
+                : "Nema alertova za izabranu prodavnicu i dobavljača."}
+            </div>
           ) : null}
         </div>
       )}

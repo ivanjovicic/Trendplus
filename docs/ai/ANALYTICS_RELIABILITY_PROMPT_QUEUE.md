@@ -2,7 +2,10 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none; RQ172, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ398, RQ399, RQ400, RQ401, RQ402, RQ403, RQ404, RQ405 and RQ406 are DONE. RQ407 is BLOCKED; RQ408 remains WAITING.
+Current READY prompt: none; RQ172, RQ372, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ398, RQ399, RQ400, RQ401, RQ402, RQ403, RQ404, RQ405 and RQ406 are DONE. RQ407 is BLOCKED; RQ408 remains WAITING.
+
+Owner promotion 2026-09-24: under the user's instruction to claim the next prompt, dependency/collision review found `RQ372` independently runnable (`Parallel-safe: yes`) with backend severity support already present; it moved `WAITING -> READY` as the current RQ pointer.
+Owner claim 2026-09-24: `RQ372` transitioned `READY -> IN_PROGRESS` in this workspace after refresh, dependency and collision checks; local runtime lock `.ai/task-locks/RQ372-cursor.lock.md`.
 
 Owner audit 2026-09-23: under the user's direct Operacije menu data-flow audit, RQ406 was added for Supplier Footwear derived metrics over truncated article detail, RQ407 was added for deterministic cross-screen reconciliation across all eight Operacije routes, and RQ408 was added as a second-pass finding catalogue/decomposition prompt. No prompt was promoted; the current READY pointer remains `none`.
 
@@ -1444,7 +1447,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ369 | DONE | inventory-inline-error-safety | Sanitize Inventory detail/export/scheduler error messages |
 | RQ370 | DONE | inventory-secondary-request-cancellation | Abort Inventory secondary and detail requests on scope changes |
 | RQ371 | WAITING | inventory-signal-period-scope-parity | Keep Inventory signal period and data-scope contracts aligned |
-| RQ372 | WAITING | inventory-alert-filter-contract | Keep Inventory alert filtering, counts and URL state consistent |
+| RQ372 | DONE | inventory-alert-filter-contract | Keep Inventory alert filtering, counts and URL state consistent |
 | RQ373 | WAITING | supplier-sales-visible-scope-parity | Separate Supplier display population from decision reference cohort and align KPI/chart/table/export scope |
 | RQ374 | WAITING | supplier-sales-detail-trust-contract | Align Supplier detail with display scope, decision benchmark, trust and provenance |
 | RQ375 | DONE | shoe-type-margin-quality-contract | Align Shoe Type weighted margin baseline, cost-source semantics and runtime validation |
@@ -20185,7 +20188,7 @@ Reproduction: change the global data scope or select a non-default analysis peri
 
 ## RQ372 - Keep Inventory alert filtering, counts and URL state consistent
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/contract/tests
 Feature family: inventory-alert-filter-contract
@@ -20244,6 +20247,26 @@ Reproduction: load more than one alert severity, select `Kritično`, then compar
 
 - `RQ308`/`RQ371` own period and data-scope provenance; this prompt owns severity filter state and count parity.
 - `RQ360` owns the reusable analytics invariant matrix; reuse it rather than adding local trust rules.
+
+### Completion note
+
+- Date: 2026-09-24
+- Status: DONE
+- Completion: Inventory alert severity now uses backend filtering via `getInventoryAlerts({ severity })`, persists in the `alertSeverity` URL param, reloads with the lifecycle query on change, and renders server counts/items without client-side re-filtering.
+- Changed files: `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/components/inventory/InventoryAlertsFeed.tsx`, focused specs, guardrail baseline line repair.
+- Contract/runtime behavior changed: alert request, badge counts and visible cards now share one backend-filtered severity scope; invalid URL values fail closed to all severities.
+- Checks run: `npm run test -- --run src/pages/__tests__/InventoryPage.alertSeverity.spec.tsx src/components/inventory/InventoryAlertsFeed.spec.tsx`; `npm run check:analytics-guardrails`.
+- Checks not run: backend integration tests; full frontend suite.
+- Run log: `.ai/runs/2026-09-24-RQ372-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: none known
+- Follow-up: none promoted; RQ408 and dependency-gated addendum prompts remain WAITING
+- Residual risk: period/data-scope alert parity remains owned by `RQ308`/`RQ371`
+- Next: none
+- Prompt defect / scope repair: guardrail baseline line moved from 770 to 790 after additive Inventory URL/severity wiring; no violation waived
 
 ---
 
