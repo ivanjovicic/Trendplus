@@ -20433,10 +20433,10 @@ Reproduction: load a response containing known and unknown suppliers, select one
 - Checks run: focused Supplier Sales Vitest (33 tests), analytics guardrails/typecheck, frontend build, queue/instruction/planning validators, `git diff --check`.
 - Checks not run: backend integration test because the .NET SDK is unavailable in the agent VM; live provider/browser proof.
 - Run log: `.ai/runs/2026-09-24-RQ373-evidence.md`
-- Evidence state: pending main delivery
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: fc191af35ab9b804eadc78f8fa1e042e3f2e7d37
+- Main verification: passed — current `origin/main` contains fc191af35ab9b804eadc78f8fa1e042e3f2e7d37
 - Missed: server-side supplier focus/include-unknown query was outside the bounded projection scope; RQ378/RQ379/RQ380 remain separate owners.
 - Follow-up: RQ378, RQ379 and RQ380 remain WAITING behind their declared dependency/collision checks.
 - Residual risk: backend integration and live/browser evidence remain CI/provider follow-up.
