@@ -5,6 +5,10 @@ Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 Main RQ current READY prompt: none
 
+Owner promotion 2026-09-24: after `RQ423` completion returned the pointer to `none`, idle-recovery review found `RQ424` dependency-complete (`RQ390`/`RQ391`/`RQ388` DONE) and collision-safe now that the overlapping Pre-Nivelacija focus prompt is closed; it moved `WAITING -> READY` and was claimed for the bounded leaderboard denominator/percentage-unit contract. `RQ425` remains WAITING in the adjacent Supplier Footwear scope family.
+
+Owner completion 2026-09-24: `RQ424` delivered directly to `main` in `a8e7018eb3113d513c4c2e484a543edcb88edb0c`; Pre-Nivelacija supplier action-share now exposes backend denominator metadata (top 7 + Ostali over full leaderboard action score) and percentage fields use explicit percentage-point units without magnitude inference. Run log: `.ai/runs/2026-09-24-RQ424-evidence.md`. Evidence state: synchronized. Main verification: current `origin/main` contains the implementation SHA. Follow-up: no successor promoted; `RQ425`/`RQ422` remain WAITING behind declared gates.
+
 Owner completion 2026-09-24: `RQ423` delivered directly to `main` in `ccd70d30aede4647d5d747438f7b5e453a4dec73`; Pre-Nivelacija focus is now a server-side population filter before pagination, global summary/tab counts stay explicit, and export/detail follow the filtered API contract. Run log: `.ai/runs/2026-09-24-RQ423-evidence.md`. Evidence state: synchronized. Main verification: current `origin/main` contains the implementation SHA. Follow-up: `RQ424` remains WAITING in the same Pre-Nivelacija family; no successor promoted.
 
 Owner idle-recovery promotion 2026-09-24: after `RQ372` and `RQ421` completion returned the RQ pointer to `none`, the non-DONE backlog and recent evidence were re-evaluated instead of stopping. `RQ423` is dependency-complete: `RQ388`, `RQ299`, `RQ326`-`RQ330` and `RQ391` are DONE; `RQ407` is BLOCKED on integration-host proof but has no active conflicting claim and does not own the Pre-Nivelacija focus/pagination implementation path. No open `RQ423` PR was found. `RQ423` therefore moved `WAITING -> READY` as the current RQ/addendum pointer. `RQ424` remains WAITING because it overlaps the same Pre-Nivelacija page/contract family and should not be promoted concurrently.
@@ -62,7 +66,7 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 | RQ421 | DONE | P1 | supplier-sales-status-identity | Preserve backend Supplier Sales status when recommendation actionability is blocked |
 | RQ422 | WAITING | P1 | supplier-footwear-type-insight-denominator | Make Supplier Footwear type share and elasticity metrics full-cohort and provenance-safe |
 | RQ423 | DONE | P1 | pre-nivelacija-focus-population-parity | Make Pre-Nivelacija focus filtering population-aware across pages and projections |
-| RQ424 | WAITING | P1 | pre-nivelacija-leaderboard-denominator | Define Pre-Nivelacija action-share and percentage normalization semantics |
+| RQ424 | DONE | P1 | pre-nivelacija-leaderboard-denominator | Define Pre-Nivelacija action-share and percentage normalization semantics |
 | RQ425 | WAITING | P1 | supplier-footwear-scope-default | Prevent standalone Supplier Footwear from silently falling back to all data |
 | RQ426 | WAITING | P1 | inventory-forecast-risk-aggregation | Prove and correct Inventory forecast risk aggregation across sizes and stores |
 
@@ -1087,7 +1091,7 @@ Do not change the backend scoring window or recommendation gate (`RQ390`, `RQ297
 
 ## RQ424 - Pre-Nivelacija action-share and percentage normalization need one explicit contract
 
-Status: WAITING
+Status: DONE
 Ready after: `RQ390`/`RQ391` remain authoritative for scoring-window and payload validation
 Priority: P1
 Type: backend/frontend/contract/tests
@@ -1143,6 +1147,26 @@ Do not change the scoring formula or priority ranking.
 ### Dependencies
 
 - Coordinate `RQ390`, `RQ391`, `RQ388`, `RQ407` and shared percentage-formatting contracts.
+
+### Completion note
+
+- Date: 2026-09-24
+- Status: DONE
+- Completion: Added backend `supplierActionShare` projection with explicit denominator policy/units and switched the page to percentage-point normalization without magnitude inference.
+- Changed files: `PreNivelacijaPriorityEndpoints.cs`, `PreNivelacijaPriorityModels.cs`, `PreNivelacijaPopulationTests.cs`, `PreNivelacijaPriorityPage.tsx`, types/specs.
+- Contract/runtime behavior changed: action-share chart uses full-leaderboard denominator with top-seven plus `Ostali`; `1` renders as `1%`, not `100%`.
+- Checks run: focused Pre-Nivelacija vitest specs (45 tests); `npm run check:analytics-guardrails`.
+- Checks not run: `dotnet test` (dotnet unavailable in agent VM).
+- Run log: `.ai/runs/2026-09-24-RQ424-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: a8e7018eb3113d513c4c2e484a543edcb88edb0c
+- Main verification: passed — current `origin/main` contains a8e7018e
+- Missed: none known
+- Follow-up: none promoted
+- Residual risk: Supplier Footwear scope default remains owned by `RQ425`
+- Next: none
+- Prompt defect / scope repair: none
 
 ---
 
