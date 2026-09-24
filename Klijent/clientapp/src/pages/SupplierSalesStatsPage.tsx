@@ -652,8 +652,9 @@ function sumFiniteDecisionMetric(
 ): number | null {
   if (rows.length === 0) return null;
   const values = rows.map(selector);
-  if (values.some((value) => value == null || !Number.isFinite(value))) return null;
-  return values.reduce((sum, value) => sum + Number(value), 0);
+  const finiteValues = values.filter((value): value is number => value != null && Number.isFinite(value));
+  if (finiteValues.length !== values.length) return null;
+  return finiteValues.reduce((sum, value) => sum + value, 0);
 }
 
 function calculateDisplayPopChange(current: number | null, previous: number | null): number | null {
