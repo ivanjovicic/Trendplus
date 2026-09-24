@@ -2,7 +2,7 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none; RQ172, RQ308, RQ371, RQ372, RQ419, RQ420, RQ421, RQ422, RQ423, RQ424, RQ425, RQ426, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ398, RQ399, RQ400, RQ401, RQ402, RQ403, RQ404, RQ405 and RQ406 are DONE. RQ407 is BLOCKED; RQ408 remains WAITING.
+Current READY prompt: none; RQ172, RQ308, RQ371, RQ372, RQ414, RQ419, RQ420, RQ421, RQ422, RQ423, RQ424, RQ425, RQ426, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ398, RQ399, RQ400, RQ401, RQ402, RQ403, RQ404, RQ405 and RQ406 are DONE. RQ407 is BLOCKED; RQ408 remains WAITING.
 
 Owner promotion 2026-09-24: after RQ308 delivery and fresh dependency review, RQ371 moved `WAITING -> READY` as the current Inventory secondary-signal period/data-scope owner. RQ273 retains export-window semantics; RQ359/RQ370 retain request lifecycle/cancellation; RQ426 remains limited to forecast row-grain aggregation.
 
