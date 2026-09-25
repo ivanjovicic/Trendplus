@@ -1,5 +1,6 @@
 import type { AnalyticsResponseMeta } from "../types/analytics";
 import { fetchAnalyticsJson } from "./analyticsHttp";
+import { supplierSalesStatsResponseSchema } from "../validation/analyticsResponseSchemas";
 
 export interface AnalyticsRecommendation {
   status: "increase_focus" | "maintain" | "review" | "do_not_trust" | "insufficient_data";
@@ -219,6 +220,6 @@ export async function getSupplierSalesStats(
     "/api/analytics/supplier-sales-stats",
     params,
     "Greska pri ucitavanju statistike dobavljaca",
-    { signal: query.signal }
+    { signal: query.signal, schema: supplierSalesStatsResponseSchema }
   );
 }
