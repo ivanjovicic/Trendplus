@@ -22,6 +22,16 @@ export interface DailySalesRow {
   totalItemsSold: DailySalesNumeric;
 }
 
+export interface DailySalesReceiptReconciliation {
+  status: "verified" | "unavailable" | string;
+  reasonCode?: string | null;
+  matchedReceiptCount: DailySalesNumeric;
+  unmatchedReceiptCount: DailySalesNumeric;
+  unmatchedDnevnikReceiptCount: DailySalesNumeric;
+  mismatchCount: DailySalesNumeric;
+  mismatchAmount: DailySalesNumeric;
+}
+
 export interface DailySalesMetadata {
   totalDays: DailySalesNumeric;
   uniqueSuppliersInRange: DailySalesNumeric;
@@ -34,6 +44,7 @@ export interface DailySalesMetadata {
   duplicateReceiptHeaderCount: DailySalesNumeric;
   receiptAmountMismatchCount: DailySalesNumeric;
   receiptAmountMismatchRevenue: DailySalesNumeric;
+  receiptReconciliation?: DailySalesReceiptReconciliation;
   nonStandardReceiptCount: DailySalesNumeric;
   nonStandardReceiptRevenue: DailySalesNumeric;
   debtReceiptCount: DailySalesNumeric;

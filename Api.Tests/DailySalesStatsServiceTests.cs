@@ -352,7 +352,7 @@ public sealed class DailySalesStatsServiceTests
         Assert.Equal(200m, row.TotalRevenue);
         Assert.Equal(1, result.Metadata.DebtReceiptCount);
         Assert.Equal(150m, result.Metadata.DebtReceiptRevenue);
-        Assert.Contains(result.Metadata.Warnings, x => x.Contains("iskljucena", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(result.Metadata.Warnings, x => x.Contains("isključena", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

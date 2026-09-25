@@ -1088,7 +1088,10 @@ export default function DailySalesStatsPage() {
     const offShiftItems = finiteOrNull(metadata?.offShiftItems);
     const offShiftRevenue = finiteOrNull(metadata?.offShiftRevenue);
     const duplicateReceipts = finiteOrNull(metadata?.duplicateReceiptGroupCount);
-    const receiptMismatch = finiteOrNull(metadata?.receiptAmountMismatchCount);
+    const receiptReconciliationUnavailable = metadata?.receiptReconciliation?.status === "unavailable";
+    const receiptMismatch = receiptReconciliationUnavailable
+      ? null
+      : finiteOrNull(metadata?.receiptAmountMismatchCount);
     const nonStandardReceipts = finiteOrNull(metadata?.nonStandardReceiptCount);
     const nonStandardRevenue = finiteOrNull(metadata?.nonStandardReceiptRevenue);
     const suppliers = finiteOrNull(metadata?.uniqueSuppliersInRange);
@@ -1162,7 +1165,9 @@ export default function DailySalesStatsPage() {
       label: "Neusklađeni računi",
       value: fmtNumber(receiptMismatch),
       tone: receiptMismatch == null ? "info" : receiptMismatch > 0 ? "danger" : "good",
-      description: "Računi gde dnevnik i suma stavki ne daju isti iznos.",
+      description: receiptReconciliationUnavailable
+        ? "Nije dostupno: dnevnik nema pouzdan identitet računa za poređenje; vrednost nije prikazana kao 0."
+        : "Računi gde dnevnik i suma stavki ne daju isti iznos.",
     },
     {
       key: "nonStandardReceipts",
@@ -1193,6 +1198,7 @@ export default function DailySalesStatsPage() {
     data?.metadata.offShiftItems,
     data?.metadata.offShiftRevenue,
     data?.metadata.receiptAmountMismatchCount,
+    data?.metadata.receiptReconciliation?.status,
     data?.metadata.uniqueSuppliersInRange,
     data?.metadata.unknownSupplierPct,
     incompleteDailyAggregateCount,
