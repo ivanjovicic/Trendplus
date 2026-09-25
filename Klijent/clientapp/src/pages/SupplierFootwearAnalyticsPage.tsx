@@ -441,12 +441,12 @@ export default function SupplierFootwearAnalyticsPage({
             toDate: day,
             label: suggested.label,
           });
-          setDataHint("Za izabrani period nema analiziranih redova. Predlozen je datum gde postoje nivelacije i/ili prodaja.");
+          setDataHint("Za izabrani period nema analiziranih redova. Predložen je datum gde postoje nivelacije i/ili prodaja.");
         } else if (options === null) {
           // Keep options-unavailable visibly degraded; do not relabel it as a
           // successful no-match period.
         } else if (likelyFilteredOutByInactive) {
-          setDataHint("U periodu postoje nivelacije, ali bez prodaje u pre/post prozoru. Ukljuci siri period ili proveri opciju sa neaktivnim artiklima.");
+          setDataHint("U periodu postoje nivelacije, ali bez prodaje u pre/post prozoru. Uključi širi period ili proveri opciju sa neaktivnim artiklima.");
         } else {
           setDataHint("U izabranom periodu nema nivelacija za zadate filtere.");
         }
@@ -799,7 +799,7 @@ export default function SupplierFootwearAnalyticsPage({
       table: "dobavljaci-tipovi-obuce",
       recordId: buildSupplierVendorDetailRecordId(row, row.vendorRowKey),
       title: row.vendorName,
-      subtitle: "Podrska odluci po dobavljacu i tipu obuce",
+      subtitle: "Podrška odluci po dobavljaču i tipu obuće",
       columns: decisionColumns,
       row,
       metadata: [...toolbarFilters, ...toolbarMetadata],
@@ -902,16 +902,16 @@ export default function SupplierFootwearAnalyticsPage({
 
           <section className="sf-decision-kpis">
             <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Promet svih dobavljača u izabranom periodu."><span>Ukupan promet</span><strong>{formatMetricDisplayValue({ value: totalRevenue, kind: "currency" })}</strong></article>
-            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Koliki deo prometa drzi pet najjacih dobavljaca."><span>Udeo top 5 dobavljaca</span><strong>{formatMetricDisplayValue({ value: top5SharePct, kind: "percent" })}</strong></article>
+            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Koliki deo prometa drži pet najjačih dobavljača."><span>Udeo top 5 dobavljača</span><strong>{formatMetricDisplayValue({ value: top5SharePct, kind: "percent" })}</strong></article>
             <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-neutral" data-note="Apsolutna promena prometa u odnosu na pre period."><span>Ukupna promena prometa</span><strong className={trendClass(totalChangeRevenue)}>{formatMetricDisplayValue({ value: totalChangeRevenue, kind: "currency" })}</strong></article>
             <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Relativna promena prema prethodnom uporedivom periodu."><span>Rast/pad u odnosu na prethodni period</span><strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong></article>
-            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Tip obuce koji trenutno nosi najveci deo prometa."><span>Dominantan tip obuce</span><strong>{dominantTypeSummary}</strong></article>
+            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Tip obuće koji trenutno nosi najveći deo prometa."><span>Dominantan tip obuće</span><strong>{dominantTypeSummary}</strong></article>
           </section>
 
           <section className="sf-decision-panels">
             <article className="sf-decision-card analytics-surface-panel">
-              <h2>Koncentracija po tipu obuce</h2>
-              <p>{typeInsightChartProjection.displayDenominatorLabel ?? "Tipovi obuce nisu potvrđeni punom uporedivom kohortom."}</p>
+              <h2>Koncentracija po tipu obuće</h2>
+              <p>{typeInsightChartProjection.displayDenominatorLabel ?? "Tipovi obuće nisu potvrđeni punom uporedivom kohortom."}</p>
               {typeInsights.globalTypeShare.length > 0 ? (
                 <div className="sf-decision-chart-wrap">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
@@ -924,7 +924,7 @@ export default function SupplierFootwearAnalyticsPage({
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-              ) : <div className="sf-decision-empty">Nema podataka za grafikon tipova obuce.</div>}
+              ) : <div className="sf-decision-empty">Nema podataka za grafikon tipova obuće.</div>}
             </article>
             <article className="sf-decision-card analytics-surface-panel">
               <AnalyticsDataTable
@@ -990,8 +990,8 @@ export default function SupplierFootwearAnalyticsPage({
               <div className="sf-decision-detail-grid">
                 <article className="analytics-kpi-card analytics-kpi-card--tone-neutral"><span>Pre nivelacije promet</span><strong>{fmtRsd(comparableMetric(selectedRow.preRevenue, rowHasComparableEvidence(selectedRow)))}</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-info"><span>Posle nivelacije promet</span><strong>{fmtRsd(comparableMetric(selectedRow.postRevenue, rowHasComparableEvidence(selectedRow)))}</strong></article>
-                <article className="analytics-kpi-card analytics-kpi-card--tone-neutral"><span>Pre nivo kolicina</span><strong>{fmtQty(comparableMetric(selectedRow.preQty, rowHasComparableEvidence(selectedRow)))}</strong></article>
-                <article className="analytics-kpi-card analytics-kpi-card--tone-success"><span>Posle nivo kolicina</span><strong>{fmtQty(comparableMetric(selectedRow.postQty, rowHasComparableEvidence(selectedRow)))}</strong></article>
+                <article className="analytics-kpi-card analytics-kpi-card--tone-neutral"><span>Pre nivo količina</span><strong>{fmtQty(comparableMetric(selectedRow.preQty, rowHasComparableEvidence(selectedRow)))}</strong></article>
+                <article className="analytics-kpi-card analytics-kpi-card--tone-success"><span>Posle nivo količina</span><strong>{fmtQty(comparableMetric(selectedRow.postQty, rowHasComparableEvidence(selectedRow)))}</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-info"><span>Glavni tip obuće</span><strong>{selectedRow.topFootwearType} ({formatMetricDisplayValue({ value: selectedRow.topFootwearTypeSharePct, kind: "percent" })})</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-warning"><span>Elastičnost glavnog tipa</span><strong>{fmtElasticity(selectedRow.avgElasticity)}</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-neutral"><span>Aktivni artikli</span><strong>{selectedRow.activeArticlesCount} / {selectedRow.articleCount}</strong></article>

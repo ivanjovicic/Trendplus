@@ -993,12 +993,12 @@ export default function ShoeTypeSalesStatsPage() {
       />
 
       {invalidRange ? (
-        <div className="shoetype-decision-message error">Datum od ne moze biti posle datuma do.</div>
+        <div className="shoetype-decision-message error">Datum od ne može biti posle datuma do.</div>
       ) : null}
       {showBlockingError ? (
         <AnalyticsErrorState
           title="Podaci trenutno nisu dostupni"
-          message="Ne prikazujemo nule jer nije potvrdjeno da je period stvarno prazan."
+          message="Ne prikazujemo nule jer nije potvrđeno da je period stvarno prazan."
           onRetry={refetch}
           helpHref="/analytics/data-quality"
         />
@@ -1026,7 +1026,7 @@ export default function ShoeTypeSalesStatsPage() {
             emptyStateVariant === "insufficient_data"
               ? "Ne prikazujemo automatsku preporuku jer signal nije dovoljno jak."
               : emptyStateVariant === "filtered_out"
-                ? "Promenite filtere ili prosirite period."
+                ? "Promenite filtere ili proširite period."
                 : emptyStateHint
           }
           actions={[
@@ -1547,11 +1547,11 @@ export default function ShoeTypeSalesStatsPage() {
                   <strong>{formatCategoryPrePostRevenueMetric(selectedRow.comparablePostRevenue)}</strong>
                 </article>
                 <article>
-                  <span>Pre nivo količina <InfoTip text="Ukupan broj prodanih komada pre prvog datuma nivelacije." /></span>
+                        <span>Pre nivo količina <InfoTip text="Ukupan broj prodatih komada pre prvog datuma nivelacije." /></span>
                   <strong>{formatCategoryPrePostQuantityMetric(selectedRow.preNivelacijeKolicina)}</strong>
                 </article>
                 <article>
-                  <span>Posle nivo količina <InfoTip text="Ukupan broj prodanih komada od prvog datuma nivelacije nadalje." /></span>
+                        <span>Posle nivo količina <InfoTip text="Ukupan broj prodatih komada od prvog datuma nivelacije nadalje." /></span>
                   <strong>{formatCategoryPrePostQuantityMetric(selectedRow.posleNivelacijeKolicina)}</strong>
                 </article>
                 <article>
@@ -1563,7 +1563,7 @@ export default function ShoeTypeSalesStatsPage() {
                   <strong>{formatCategoryPrePostQuantityMetric(selectedRow.comparablePostQuantity)}</strong>
                 </article>
                 <article>
-                  <span>Artikli sa nivelacijom <InfoTip text="Broj artikala sa registrovnom nivelacijom / ukupan broj artikala ovog tipa." /></span>
+                        <span>Artikli sa nivelacijom <InfoTip text="Broj artikala sa registrovanom nivelacijom / ukupan broj artikala ovog tipa." /></span>
                   <strong>{selectedRow.brojArtikalaSaNivelacijom} / {selectedRow.brojArtikalaUkupno}</strong>
                 </article>
               </div>
@@ -1595,7 +1595,7 @@ export default function ShoeTypeSalesStatsPage() {
                   <strong>{fmtPct(selectedRow.estimatedCostCoveragePct ?? selectedRow.fallbackCostCoveragePct, 1)}</strong>
                 </article>
                 <article>
-                  <span>Promet bez nabavne cene % <InfoTip text="Procenat prometa koji nema ni direktni ni procenjeni trosak, pa ne ulazi u obracun marznog doprinosa ni marze %. Formula: promet bez troska / ukupan promet x 100." /></span>
+                        <span>Promet bez nabavne cene % <InfoTip text="Procenat prometa koji nema ni direktni ni procenjeni trošak, pa ne ulazi u obračun maržnog doprinosa ni marže %. Formula: promet bez troška / ukupan promet x 100." /></span>
                   <strong>{fmtPct(selectedRow.noCostCoveragePct, 1)}</strong>
                 </article>
                 {selectedRow.snapshotCostCoveragePct != null && selectedRow.snapshotCostCoveragePct > 0 ? (

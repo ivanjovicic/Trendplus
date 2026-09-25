@@ -213,7 +213,7 @@ describe("buildDecisionSuppliers", () => {
     expect(rows[0]?.status).toBe("do_not_trust");
     expect(rows[0]?.statusLabel).toBe("Smanji / Ne veruj");
     expect(rows[0]?.recommendationAllowed).toBe(false);
-    expect(rows[0]?.statusReason).toContain("Backend nije potvrdio da je preporuka izvrsna");
+    expect(rows[0]?.statusReason).toContain("Backend nije potvrdio da je preporuka izvršna");
   });
 
   it("keeps zero totals as valid zero shares instead of unavailable values", () => {

@@ -184,7 +184,7 @@ export async function getShoeTypeSalesStats(
   return fetchAnalyticsJson<ShoeTypeSalesStatsResponse>(
     "/api/analytics/shoe-type-sales-stats",
     params,
-    "Greska pri ucitavanju statistike tipova obuce",
+    "Greška pri učitavanju statistike tipova obuće",
     { signal: query.signal, schema: shoeTypeSalesStatsResponseSchema }
   );
 }

@@ -208,7 +208,7 @@ export async function getColorSalesStats(
   return fetchAnalyticsJson<ColorSalesStatsResponse>(
     "/api/analytics/color-sales-stats",
     params,
-    "Greska pri ucitavanju statistike boja artikala",
+    "Greška pri učitavanju statistike boja artikala",
     { signal: query.signal, schema: colorSalesStatsResponseSchema }
   );
 }

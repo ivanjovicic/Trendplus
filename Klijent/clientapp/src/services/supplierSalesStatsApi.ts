@@ -234,7 +234,7 @@ export async function getSupplierSalesStats(
   return fetchAnalyticsJson<SupplierSalesStatsResponse>(
     "/api/analytics/supplier-sales-stats",
     params,
-    "Greska pri ucitavanju statistike dobavljaca",
+    "Greška pri učitavanju statistike dobavljača",
     { signal: query.signal, schema: supplierSalesStatsResponseSchema }
   );
 }

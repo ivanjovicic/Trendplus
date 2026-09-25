@@ -17,7 +17,7 @@ describe("ActionWorkflowPanel cost trust", () => {
               suggestionKey: "forecast-1",
               actionType: "dopuna",
               priority: "high",
-              label: "Predlozena dopuna",
+              label: "Predložena dopuna",
               reason: "Forecast signal",
               status: "pending",
               artikalId: 501,
@@ -42,7 +42,7 @@ describe("ActionWorkflowPanel cost trust", () => {
 
     expect(screen.getByText("Procena troška predloga: Nije dostupno (nedostaje nabavna cena)")).toBeInTheDocument();
     expect(screen.getByText("Količina: 2")).toBeInTheDocument();
-    expect(screen.getByText("Predlozena dopuna")).toBeInTheDocument();
+    expect(screen.getByText("Predložena dopuna")).toBeInTheDocument();
   });
 
   it("labels forecast quantity as a demand signal instead of a final reorder qty", () => {
@@ -59,7 +59,7 @@ describe("ActionWorkflowPanel cost trust", () => {
               suggestionKey: "forecast-1",
               actionType: "dopuna",
               priority: "high",
-              label: "Predlozena dopuna",
+              label: "Predložena dopuna",
               reason: "Forecast signal",
               status: "pending",
               artikalId: 501,

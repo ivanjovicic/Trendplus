@@ -366,7 +366,7 @@ function buildStatusTooltip(data: StatusTooltipData): string {
     ? data.reasonCodes.map(formatReasonCode).join(", ")
     : "Nema dodatnih napomena";
   const hintText = reasonHints.length > 0 ? ` | Napomene: ${reasonHints.join(" | ")}` : "";
-  return `${data.statusLabel}: ${data.statusReason} | Udeo ${formatMetricDisplayValue({ value: data.sharePct, kind: "percent", digits: 1 })} | Marža ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Nivelacija impact ${impactText} | Split pokrivanje ${fmtPct(data.splitCoveragePct, 1)} | Pouzdanost ${reliabilityText} | Sigurnost ${confidenceText} | Kvalitet ${qualityText} | Razlozi: ${reasons}${hintText}`;
+  return `${data.statusLabel}: ${data.statusReason} | Udeo ${formatMetricDisplayValue({ value: data.sharePct, kind: "percent", digits: 1 })} | Marža ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Uticaj nivelacije ${impactText} | Split pokrivanje ${fmtPct(data.splitCoveragePct, 1)} | Pouzdanost ${reliabilityText} | Sigurnost ${confidenceText} | Kvalitet ${qualityText} | Razlozi: ${reasons}${hintText}`;
 }
 
 export function describePopMetric(supplier: Pick<DecisionSupplier, "popRevenueChangePct" | "previousPeriodRevenue" | "ukupanPromet">): { label: string; title: string; className: string } {
@@ -425,7 +425,7 @@ export function describeNivelacijaImpactMetric(supplier: Pick<DecisionSupplier, 
   if (coverage === 0) {
     return {
       label: "0% pokriće",
-      title: "Pre/post pokriće je izmereno kao 0%; nema artikala sa prodajom i pre i posle prve nivelacije, pa impact nije merljiv.",
+      title: "Pre/post pokriće je izmereno kao 0%; nema artikala sa prodajom i pre i posle prve nivelacije, pa uticaj nije merljiv.",
       className: "trend-neutral",
     };
   }
@@ -440,7 +440,7 @@ export function describeNivelacijaImpactMetric(supplier: Pick<DecisionSupplier, 
 
   return {
     label: "N/A",
-    title: "Pre/post nivelacija impact nije dostupan za izabrani skup podataka.",
+    title: "Pre/post uticaj nivelacije nije dostupan za izabrani skup podataka.",
     className: "trend-neutral",
   };
 }
@@ -449,7 +449,7 @@ export function describePopUnitsMetric(supplier: Pick<DecisionSupplier, "popUnit
   if (supplier.popUnitsChangePct != null && Number.isFinite(supplier.popUnitsChangePct)) {
     return {
       label: fmtSignedPct(supplier.popUnitsChangePct, 2),
-      title: "Promena prodane kolicine u odnosu na prethodni uporedivi period iste dužine.",
+      title: "Promena prodate količine u odnosu na prethodni uporedivi period iste dužine.",
       className: trendClass(supplier.popUnitsChangePct),
     };
   }
@@ -474,7 +474,7 @@ export function describeNivelacijaUnitsImpactMetric(supplier: Pick<DecisionSuppl
     const noteSuffix = supplier.prePostSignalNote ? ` Napomena: ${supplier.prePostSignalNote}` : "";
     return {
       label: fmtSignedPct(supplier.prePostNivelacijaUnitsImpactPct, 2),
-      title: `Pre/post promena kolicine unutar uporedivih artikala sa prodajom i pre i posle prve nivelacije.${noteSuffix}`,
+      title: `Pre/post promena količine unutar uporedivih artikala sa prodajom i pre i posle prve nivelacije.${noteSuffix}`,
       className: trendClass(supplier.prePostNivelacijaUnitsImpactPct),
     };
   }
@@ -514,7 +514,7 @@ export function describeNivelacijaUnitsImpactMetric(supplier: Pick<DecisionSuppl
 
   return {
     label: "N/A",
-    title: "Pre/post impact kolicine nije dostupan za izabrani skup podataka.",
+    title: "Pre/post uticaj količine nije dostupan za izabrani skup podataka.",
     className: "trend-neutral",
   };
 }
@@ -595,7 +595,7 @@ export function buildDecisionSuppliers(data: SupplierSalesStatsResponse | null |
       ? backendStatusReason
       : recommended?.recommendationAllowed === false
         ? `Backend je blokirao izvrsenje preporuke: ${backendStatusReason}`
-        : `Backend nije potvrdio da je preporuka izvrsna: ${backendStatusReason}`;
+        : `Backend nije potvrdio da je preporuka izvršna: ${backendStatusReason}`;
     const confidencePctValue = recommendationAllowed
       ? normalizeRecommendationPct(recommended?.confidencePct)
       : null;
@@ -1706,7 +1706,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       {showBlockingError ? (
         <AnalyticsErrorState
           title="Podaci trenutno nisu dostupni"
-          message="Ne prikazujemo nule jer nije potvrdjeno da je period stvarno prazan."
+          message="Ne prikazujemo nule jer nije potvrđeno da je period stvarno prazan."
           onRetry={() => {
             void load(activeFilters);
           }}
@@ -1811,7 +1811,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                 <strong>{fmtPct(data.totals.prosecnaMarza ?? null, 1)}</strong>
                 <KpiExplainButton metricKey="supplierAverageMarginPct" ariaLabel="Kako je izračunata prosečna marža" />
               </article>
-              <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Koncentracija prometa na najjacim partnerima.">
+              <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Koncentracija prometa na najjačim partnerima.">
                 <span>Udeo top 5 dobavljača <InfoTip text="Procenat prometa vidljivih poznatih dobavljača koji dolazi od pet dobavljača sa najvećim prometom. Formula: promet top 5 / promet vidljivih poznatih dobavljača x 100." /></span>
                 <strong>{formatMetricDisplayValue({ value: top5SharePct, kind: "percent" })}</strong>
                 <KpiExplainButton metricKey="topSupplierRevenueShare" ariaLabel="Kako je izračunat udeo top 5 dobavljača" />
@@ -2376,7 +2376,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                   <strong>{selectedSupplier.previousPeriodRevenue != null ? fmtRsd(selectedSupplier.previousPeriodRevenue) : "N/A"}</strong>
                 </article>
                 <article>
-                  <span>PoP trend kolicine <InfoTip text="Promena kolicine prodanih komada u odnosu na prethodni uporedivi period iste dužine (%)." /></span>
+                  <span>PoP trend količine <InfoTip text="Promena količine prodatih komada u odnosu na prethodni uporedivi period iste dužine (%)." /></span>
                   <strong className={describePopUnitsMetric(selectedSupplier).className} title={describePopUnitsMetric(selectedSupplier).title}>
                     {describePopUnitsMetric(selectedSupplier).label}
                   </strong>
@@ -2397,7 +2397,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                   </strong>
                 </article>
                 <article>
-                  <span>Uticaj na kolicinu <InfoTip text="Procentualna promena prodane kolicine pre i posle prve nivelacije, merena na artiklima koji su imali prodaju u oba perioda." /></span>
+                  <span>Uticaj na količinu <InfoTip text="Procentualna promena prodate količine pre i posle prve nivelacije, merena na artiklima koji su imali prodaju u oba perioda." /></span>
                   <strong className={describeNivelacijaUnitsImpactMetric(selectedSupplier).className} title={describeNivelacijaUnitsImpactMetric(selectedSupplier).title}>
                     {describeNivelacijaUnitsImpactMetric(selectedSupplier).label}
                   </strong>
@@ -2440,7 +2440,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                   <strong>{selectedSupplier.reliabilityAvailable ? formatMetricDisplayValue({ value: selectedSupplier.reliabilityPct, kind: "percent" }) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
                 </article>
                 <article>
-                  <span>Status kvaliteta podataka <InfoTip text="Good = zeleno i upotrebljivo. Warning = oprez. Critical = ne veruj bez rucne provere. Insufficient data = backend nije dostavio kompletan quality payload." /></span>
+                  <span>Status kvaliteta podataka <InfoTip text="Dobro = zeleno i upotrebljivo. Upozorenje = oprez. Kritično = ne veruj bez ručne provere. Nedovoljno podataka = backend nije dostavio kompletan quality payload." /></span>
                   <strong style={recommendationQualityStyle(selectedSupplier.dataQualityStatus)}>{recommendationQualityLabel(selectedSupplier.dataQualityStatus)}</strong>
                 </article>
                 <article>

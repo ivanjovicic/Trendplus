@@ -235,7 +235,7 @@ describe("SupplierFootwearAnalyticsPage", () => {
     );
 
     expect(await screen.findByText(/Detalj prikazuje 1 od 2 analiziranih redova/)).toBeInTheDocument();
-    expect(screen.getByText("Nema podataka za grafikon tipova obuce.")).toBeInTheDocument();
+    expect(screen.getByText("Nema podataka za grafikon tipova obuće.")).toBeInTheDocument();
     const tableSurface = await screen.findByTestId("supplier-footwear-analytics-data-table");
     expect(within(tableSurface).getAllByText("N/A").length).toBeGreaterThan(0);
   });
@@ -631,11 +631,11 @@ describe("SupplierFootwearAnalyticsPage", () => {
       </MemoryRouter>
     );
 
-    const top5Article = (await screen.findByText("Udeo top 5 dobavljaca")).closest("article");
+    const top5Article = (await screen.findByText("Udeo top 5 dobavljača")).closest("article");
     expect(top5Article).not.toBeNull();
     expect(within(top5Article!).getByText("Nije dostupno")).toBeInTheDocument();
 
-    expect(screen.getByText("Nema podataka za grafikon tipova obuce.")).toBeInTheDocument();
+    expect(screen.getByText("Nema podataka za grafikon tipova obuće.")).toBeInTheDocument();
 
     const tableSurface = await screen.findByTestId("supplier-footwear-analytics-data-table");
     const vendorRow = within(tableSurface).getByText("Dobavljač 1").closest("tr");

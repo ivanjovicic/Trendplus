@@ -632,7 +632,7 @@ export default function ProdajaPrePostNivelacijePage() {
     query: prePostQuery,
     getErrorMessage: useCallback((reason: unknown) => reason instanceof Error
       ? reason.message
-      : "Greška pri ucitavanju pre/post analitike.", []),
+      : "Greška pri učitavanju pre/post analitike.", []),
   });
   const data = querySnapshot?.current ?? null;
   const previousData = querySnapshot?.previous ?? null;
@@ -1500,7 +1500,7 @@ const advancedSignals = useMemo(
           <section className="ppn-decision-signals">
             <article className="ppn-decision-card ppn-signal-card">
               <div className="ppn-card-topline">
-                <h2>Najjaca kategorija</h2>
+                <h2>Najjača kategorija</h2>
                 <span className="ppn-signal-pill signal-neutral">Kategorija</span>
               </div>
               <p>
@@ -1800,11 +1800,11 @@ const advancedSignals = useMemo(
                   <strong>{fmtRsd(trustedMetric(selectedRow.postRevenue, selectedRow))}</strong>
                 </article>
                 <article>
-                  <span>Pre nivo kolicina</span>
+                  <span>Pre nivo količina</span>
                   <strong>{fmtQty(trustedMetric(selectedRow.preQty, selectedRow))}</strong>
                 </article>
                 <article>
-                  <span>Posle nivo kolicina</span>
+                  <span>Posle nivo količina</span>
                   <strong>{fmtQty(trustedMetric(selectedRow.postQty, selectedRow))}</strong>
                 </article>
                 <article>
@@ -1875,7 +1875,7 @@ const advancedSignals = useMemo(
                   </article>
                   <article>
                     <span>
-                      Najcesci metric reason
+                      Najčešći razlog metrike
                       <InfoTip text="Interni razlog zašto neki artikli nemaju sve metrike (rolling, momentum, OOS, DiD). Obično se radi o nedostajućim analytics view-ovima – ne utiče na ispravnost osnovne pre/post analize." />
                     </span>
                     <strong>{selectedDriverSummary.topMetricReasons[0] ? getMetricWarningMeta(selectedDriverSummary.topMetricReasons[0].split(" (")[0]).label : "N/A"}</strong>
@@ -1899,7 +1899,7 @@ const advancedSignals = useMemo(
               ))}
               {(!selectedRow.reliabilityAvailable || !selectedRow.confidenceAvailable || selectedRow.dataQualityStatus !== "good") ? (
                 <p className="ppn-decision-reason">
-                  <strong>Data quality:</strong> Otvori <Link to="/analytics/data-quality">Data Quality</Link> da proveris i ispravis signal.
+                      <strong>Kvalitet podataka:</strong> Otvori <Link to="/analytics/data-quality">Kvalitet podataka</Link> da proveriš i ispraviš signal.
                 </p>
               ) : null}
             </section>

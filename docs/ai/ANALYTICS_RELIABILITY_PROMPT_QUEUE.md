@@ -3,6 +3,9 @@
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+Owner promotion 2026-09-25: idle recovery found RQ306 dependency-complete and collision-safe as a parallel-safe, repository-local Operacije localization lane. RQ307 remains WAITING to avoid overlapping Shoe Type copy edits.
+Owner claim 2026-09-25: RQ306 transitioned READY -> IN_PROGRESS in this workspace for the bounded Serbian-diacritics copy pass across the listed Operacije owner files. Local lock: `.ai/task-locks/RQ306-codex.lock.md`.
+Owner completion 2026-09-25: RQ306 was delivered directly to `main`; Operacije primary, loading, error and inventory decision-surface copy now uses Serbian diacritics in the owned scope. Run log: `.ai/runs/2026-09-25-RQ306-evidence.md`. Evidence state: synchronized. No successor was promoted; the RQ current READY pointer returned to `none`.
 Owner promotion 2026-09-25: idle recovery under the user's claim-and-execute request verified `RQ413` is dependency-complete after `RQ407` and `RQ412`; `RQ413` moved `WAITING -> READY` in the operations-accuracy addendum.
 Owner claim 2026-09-25: `RQ413` transitioned `READY -> IN_PROGRESS` for Operations drift/cache integrity guardrails. Local runtime lock: `.ai/task-locks/RQ413-cursor.lock.md`.
 Owner completion 2026-09-25: `RQ413` was delivered directly to `main` in `76d0194a`. Bounded integrity probes, operator endpoints, cache-clear unverified state and Supplier/Shoe fail-closed recommendation gating are live. Run log: `.ai/runs/2026-09-25-RQ413-evidence.md`. Evidence state: synchronized.
@@ -1455,7 +1458,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ303 | DONE | daily-sales-localization | Replace English mismatch badge and mixed QA copy on Daily Sales |
 | RQ304 | DONE | color-sales-detail-label-parity | Align Color detail score label with table/export Serbian copy |
 | RQ305 | DONE | operations-supplier-ia-clarity | Clarify Operacije menu entries that redirect into canonical Supplier tabs |
-| RQ306 | WAITING | operations-diacritics-pass | Fix missing Serbian diacritics across Operacije user-facing copy |
+| RQ306 | IN_PROGRESS | operations-diacritics-pass | Fix missing Serbian diacritics across Operacije user-facing copy |
 | RQ307 | WAITING | shoe-type-impact-label | Replace English nivelacija impact label on Shoe Type surface |
 | RQ308 | DONE | inventory-period-provenance | Add Inventory period control and make snapshot/signal semantics explicit |
 | RQ309 | WAITING | operations-nav-icons | Differentiate duplicate Operacije sidebar icons |
@@ -8522,7 +8525,7 @@ Row freshness falls back to `issue_time_utc`; list-level freshness uses MAX acro
 
 ## RQ191 - Frontend percent clamp hides negative backend signals
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/tests
 Feature family: frontend-numeric-safety
@@ -16805,6 +16808,23 @@ Reproduction: scan Operacije screens for missing `č/ć/š/đ/ž`. Risk: inconsi
 ### Dependencies
 
 - Overlap with `RQ301`/`RQ303`/`RQ307`; coordinate to avoid duplicate edits in one file where possible.
+
+### Completion note
+
+- Date: 2026-09-25
+- Status: DONE
+- Completion: Delivered the bounded Operacije Serbian-diacritics pass directly to `main`. User-facing page, service, backend warning and Inventory decision-surface copy was corrected without changing business logic; the nearest stale copy assertions were updated to the established localized contract.
+- Changed files: `Api/Services/AnalyticsDetailReadService.cs`, `Api/Services/DailySalesStatsService.cs`, `Klijent/clientapp/src/components/inventory/ActionWorkflowPanel.spec.tsx`, `Klijent/clientapp/src/components/inventory/InventoryInsightPanels.tsx`, `Klijent/clientapp/src/components/inventory/InventoryPriorityPanels.tsx`, `Klijent/clientapp/src/components/inventory/SKUDetailModal.spec.tsx`, `Klijent/clientapp/src/components/inventory/SKUDetailModal.tsx`, `Klijent/clientapp/src/components/inventory/__tests__/inventoryImpactSemantics.spec.ts`, `Klijent/clientapp/src/components/inventory/inventoryUtils.ts`, `Klijent/clientapp/src/pages/ColorSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`, `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`, `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/SupplierFootwearAnalyticsPage.tsx`, `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/SupplierFootwearAnalyticsPage.spec.tsx`, `Klijent/clientapp/src/pages/__tests__/SupplierSalesStatsPage.decisionSuppliers.spec.tsx`, `Klijent/clientapp/src/services/colorSalesStatsApi.ts`, `Klijent/clientapp/src/services/shoeTypeSalesStatsApi.ts`, `Klijent/clientapp/src/services/supplierSalesStatsApi.ts`, queue/roadmap metadata and run log.
+- Checks run: `npm run check:encoding`; `npm run check:analytics-guardrails`; focused Vitest for 8 Operacije/Inventory specs (99/99); `npm run build`; `dotnet build Api/Api.csproj --no-restore --configuration Release`; prompt-queue and planning-architecture validators; `git diff --check`.
+- Checks not run: full backend/frontend suites, live browser/provider/database proof and remote CI inspection.
+- Missed: `VendorSalesNivelacijaModels.cs` required no change because the inspected defaults were already Serbian or technical status values; remaining shared English/copy backlog stays outside this bounded lane.
+- Run log: `.ai/runs/2026-09-25-RQ306-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: recorded in the run log after push verification
+- Main verification: passed - `origin/main` contains the implementation commit
+- Residual risk: build reported existing analyzer warnings; live/deployed UI and remote CI were not inspected.
+- Follow-up: `RQ307` remains WAITING for the separate Shoe Type impact-label owner; no successor was promoted.
 
 ---
 

@@ -1096,7 +1096,7 @@ export default function DailySalesStatsPage() {
     return [
     {
       key: "unknown",
-      label: "Nepoznati dobavljac",
+      label: "Nepoznati dobavljač",
       value: fmtPct(unknownSupplierPct, 1, "Nije dostupno"),
       tone: unknownSupplierPct == null ? "info" : Math.abs(unknownSupplierPct) >= 5 ? "danger" : unknownSupplierPct !== 0 ? "warning" : "good",
       description: "Udeo prodaje bez mapiranog dobavljača.",
@@ -1169,7 +1169,7 @@ export default function DailySalesStatsPage() {
       label: "Nestandardni računi",
       value: fmtNumber(nonStandardReceipts),
       tone: nonStandardReceipts == null ? "info" : nonStandardReceipts > 0 ? "warning" : "good",
-      description: "Dokumenti sa nenumerickim brojem racuna, npr. DUG.",
+      description: "Dokumenti sa nenumeričkim brojem računa, npr. DUG.",
     },
     {
       key: "nonStandardRevenue",
@@ -1249,7 +1249,7 @@ export default function DailySalesStatsPage() {
     } else if (shiftGap != null && shiftGap <= -10) {
       insights.push({
         title: "Prva smena dominira",
-        detail: `Prva smena drži ${fmtPct(currentSummary.firstShiftSharePct, 1)} vidljivih komada. Vredi provjeriti raspored osoblja i dopunu ujutru.`,
+        detail: `Prva smena drži ${fmtPct(currentSummary.firstShiftSharePct, 1)} vidljivih komada. Vredi proveriti raspored osoblja i dopunu ujutru.`,
         tone: "info",
       });
     }
@@ -1679,7 +1679,7 @@ export default function DailySalesStatsPage() {
               <small>{fmtRsdShort(currentSummary.avgRevenuePerDay)} / dan</small>
             </article>
             <article>
-              <span>Ukupno komada <InfoTip text="Ukupan broj prodatih komada vidljivih u tabeli. Moze biti manji od baze ako je primenjen filter na prodavnicu ili top-N dobavljaca." /></span>
+              <span>Ukupno komada <InfoTip text="Ukupan broj prodatih komada vidljivih u tabeli. Može biti manji od baze ako je primenjen filter na prodavnicu ili top-N dobavljača." /></span>
               <strong>{fmtNumber(currentSummary.totalVisibleItems)}</strong>
               <small>{fmtNumber(currentSummary.avgItemsPerDay == null ? null : Math.round(currentSummary.avgItemsPerDay))} / dan</small>
             </article>
@@ -1694,7 +1694,7 @@ export default function DailySalesStatsPage() {
               <small>Na osnovu vidljivih komada u tabeli</small>
             </article>
             <article>
-              <span>Prva smena <InfoTip text="Udeo komada prodatih u prvoj smeni (06:00–13:59) u odnosu na ukupne smenske komade (prva + druga). Dani bez razdvajanja po smenama nisu ukljuceni u ovaj procenat." /></span>
+              <span>Prva smena <InfoTip text="Udeo komada prodatih u prvoj smeni (06:00–13:59) u odnosu na ukupne smenske komade (prva + druga). Dani bez razdvajanja po smenama nisu uključeni u ovaj procenat." /></span>
               <strong>{fmtPct(currentSummary.firstShiftSharePct, 1)}</strong>
               <small>{shiftSummaryText(currentSummary.firstShiftItems, currentSummary.firstShiftEvidenceState)} komada</small>
             </article>
@@ -1704,7 +1704,7 @@ export default function DailySalesStatsPage() {
               <small>{shiftSummaryText(currentSummary.secondShiftItems, currentSummary.secondShiftEvidenceState)} komada</small>
             </article>
             <article>
-              <span>Udeo top 3 dob. <InfoTip text="Procenat komada koje nose tri dobavljaca sa najvecim prometom u opsegu. Formula: (top 3 dobavljaci) / ukupni komadi × 100. Visoka vrednost = visoka zavisnost od malog broja dobavljaca." /></span>
+              <span>Udeo top 3 dob. <InfoTip text="Procenat komada koje nose tri dobavljača sa najvećim prometom u opsegu. Formula: (top 3 dobavljača) / ukupni komadi × 100. Visoka vrednost = visoka zavisnost od malog broja dobavljača." /></span>
               <strong>{fmtPct(supplierConcentration.top3QtySharePct, 1)}</strong>
               <small>Udeo top 3 dobavljača po komadima</small>
             </article>
@@ -1947,9 +1947,9 @@ export default function DailySalesStatsPage() {
               <div>
                 <h2 className="with-tip">
                   <span>Trend prihoda i komada</span>
-                  <InfoTip text="Dnevni trend sa 7-dnevnim pokretnim prosekom (MA7) za prihod i komade. Pokretni prosek gladi kratkorocne oscilacije i otkriva stvarni pravac kretanja. Dobar za detekciju pozitivnog ili negativnog momenta i nestabilnosti prodaje." />
+                  <InfoTip text="Dnevni trend sa 7-dnevnim pokretnim prosekom (MA7) za prihod i komade. Pokretni prosek ublažava kratkoročne oscilacije i otkriva stvarni pravac kretanja. Dobar za detekciju pozitivnog ili negativnog momenta i nestabilnosti prodaje." />
                 </h2>
-                <p>Koristi 7d prosek da odvojis stvarni trend od dnevnog suma.</p>
+                <p>Koristi 7d prosek da odvojiš stvarni trend od dnevnog šuma.</p>
               </div>
             </div>
 

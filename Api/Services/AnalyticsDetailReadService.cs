@@ -121,11 +121,11 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 Field("datum", "Datum", detail.Datum.ToLocalTime().ToString("dd.MM.yyyy HH:mm", CultureInfo.InvariantCulture), "datetime"),
                 Field("artikalId", "Artikal ID", detail.ArtikalId?.ToString(CultureInfo.InvariantCulture), "number"),
                 Field("nazivArtikla", "Naziv artikla", detail.NazivArtikla, "text"),
-                Field("kolicina", "Kolicina", detail.Kolicina?.ToString(CultureInfo.InvariantCulture), "number"),
+                Field("kolicina", "Količina", detail.Kolicina?.ToString(CultureInfo.InvariantCulture), "number"),
                 Field("staraCena", "Stara cena", detail.StaraCena?.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
                 Field("novaCena", "Nova cena", detail.NovaCena?.ToString("0.00", CultureInfo.InvariantCulture), "currency", detail.StaraCena != detail.NovaCena),
                 Field("iznos", "Iznos", detail.Iznos.ToString("0.00", CultureInfo.InvariantCulture), "currency", true),
-                Field("brojRacuna", "Broj racuna", detail.BrojRacuna, "text"),
+                Field("brojRacuna", "Broj računa", detail.BrojRacuna, "text"),
                 Field("korisnikIme", "Korisnik", detail.KorisnikIme, "text"),
                 Field("komentar", "Komentar", detail.Komentar, "text"),
                 Field("dataOrigin", "Data origin", detail.DataOrigin, "text"),
@@ -1315,39 +1315,39 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         var fields = new List<AnalyticsDetailFieldDto>
         {
             Field("ukupanPromet", "Ukupan promet", Math.Round(totalRevenue, 2).ToString("0.00", CultureInfo.InvariantCulture), "currency", true),
-            Field("ukupnaKolicina", "Ukupna kolicina", totalQty.ToString(CultureInfo.InvariantCulture), "number")
+            Field("ukupnaKolicina", "Ukupna količina", totalQty.ToString(CultureInfo.InvariantCulture), "number")
         };
 
         if (comparison is not null)
         {
             fields.Add(Field("previousPeriodRevenue", "Prethodni period promet", comparison.PreviousPeriodRevenue?.ToString("0.00", CultureInfo.InvariantCulture), "currency"));
-            fields.Add(Field("previousPeriodUnits", "Prethodni period kolicina", comparison.PreviousPeriodUnits?.ToString(CultureInfo.InvariantCulture), "number"));
+            fields.Add(Field("previousPeriodUnits", "Prethodni period — količina", comparison.PreviousPeriodUnits?.ToString(CultureInfo.InvariantCulture), "number"));
             fields.Add(Field("popRevenueChangePct", "PoP trend prometa %", popRevenueLabel, "percent", comparison.PopRevenueChangePct.HasValue));
-            fields.Add(Field("popUnitsChangePct", "PoP trend kolicine %", popUnitsLabel, "percent", comparison.PopUnitsChangePct.HasValue));
+            fields.Add(Field("popUnitsChangePct", "PoP trend količine %", popUnitsLabel, "percent", comparison.PopUnitsChangePct.HasValue));
         }
 
         fields.AddRange(
         [
             Field("preNivelacijePromet", "Posmatrani promet pre nivelacije", splitSnapshot.PreRevenue.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
-            Field("preNivelacijeKolicina", "Posmatrana kolicina pre nivelacije", splitSnapshot.PreQuantity.ToString(CultureInfo.InvariantCulture), "number"),
+            Field("preNivelacijeKolicina", "Posmatrana količina pre nivelacije", splitSnapshot.PreQuantity.ToString(CultureInfo.InvariantCulture), "number"),
             Field("posleNivelacijePromet", "Posmatrani promet posle nivelacije", splitSnapshot.PostRevenue.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
-            Field("posleNivelacijeKolicina", "Posmatrana kolicina posle nivelacije", splitSnapshot.PostQuantity.ToString(CultureInfo.InvariantCulture), "number"),
+            Field("posleNivelacijeKolicina", "Posmatrana količina posle nivelacije", splitSnapshot.PostQuantity.ToString(CultureInfo.InvariantCulture), "number"),
             Field("comparablePreNivelacijePromet", "Uporedivi promet pre nivelacije", splitSnapshot.ComparablePreRevenue.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
             Field("comparablePostNivelacijePromet", "Uporedivi promet posle nivelacije", splitSnapshot.ComparablePostRevenue.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
-            Field("comparablePreNivelacijeKolicina", "Uporediva kolicina pre nivelacije", splitSnapshot.ComparablePreQuantity.ToString(CultureInfo.InvariantCulture), "number"),
-            Field("comparablePostNivelacijeKolicina", "Uporediva kolicina posle nivelacije", splitSnapshot.ComparablePostQuantity.ToString(CultureInfo.InvariantCulture), "number"),
-            Field("prePostNivelacijaRevenueCoveragePct", "Pre/post uporedivo pokrice prometa %", splitSnapshot.ComparableRevenueCoveragePct?.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
+            Field("comparablePreNivelacijeKolicina", "Uporediva količina pre nivelacije", splitSnapshot.ComparablePreQuantity.ToString(CultureInfo.InvariantCulture), "number"),
+            Field("comparablePostNivelacijeKolicina", "Uporediva količina posle nivelacije", splitSnapshot.ComparablePostQuantity.ToString(CultureInfo.InvariantCulture), "number"),
+            Field("prePostNivelacijaRevenueCoveragePct", "Pre/post uporedivo pokriće prometa %", splitSnapshot.ComparableRevenueCoveragePct?.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
             Field("prePostNivelacijaRevenueImpactPct", "Pre/post nivelacija impact %", splitSnapshot.RevenueImpactPct?.ToString("0.00", CultureInfo.InvariantCulture), "percent", splitSnapshot.RevenueImpactPct.HasValue),
-            Field("prePostNivelacijaUnitsImpactPct", "Pre/post nivelacija impact kolicine %", splitSnapshot.UnitsImpactPct?.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
+            Field("prePostNivelacijaUnitsImpactPct", "Pre/post nivelacija — uticaj količine %", splitSnapshot.UnitsImpactPct?.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
             Field("prePostComparableArticleCount", "Artikli sa uporedivim pre/post signalom", splitSnapshot.ComparableArticleCount.ToString(CultureInfo.InvariantCulture), "number"),
-            Field("marginContribution", estimatedMargin ? "Procenjeni marzni doprinos" : "Marzni doprinos", marginSnapshot.MarginContribution.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
+            Field("marginContribution", estimatedMargin ? "Procenjeni maržni doprinos" : "Maržni doprinos", marginSnapshot.MarginContribution.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
             Field("marginPct", estimatedMargin ? "Procenjena marza %" : "Marza %", marginSnapshot.MarginPct.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
-            Field("marginDataCoveragePct", "Pokrice istorijskog troska %", marginSnapshot.HistoricalMarginCoveragePct?.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
-            Field("fallbackCostCoveragePct", "Promet procenjen iz fallback troska %", marginSnapshot.FallbackCostCoveragePct?.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
+            Field("marginDataCoveragePct", "Pokriće istorijskog troška %", marginSnapshot.HistoricalMarginCoveragePct?.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
+            Field("fallbackCostCoveragePct", "Promet procenjen iz fallback troška %", marginSnapshot.FallbackCostCoveragePct?.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
             Field("snapshotCostRevenue", "Promet pokriven snapshot troskom", marginSnapshot.SnapshotCostRevenue.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
-            Field("snapshotCostCoveragePct", "Pokrivenost snapshot troskom %", marginSnapshot.SnapshotCostCoveragePct?.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
-            Field("revenueWithCost", "Promet sa istorijskim troskom", marginSnapshot.HistoricalCostRevenue.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
-            Field("estimatedCostRevenue", "Promet procenjen iz fallback troska", marginSnapshot.EstimatedCostRevenue.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
+            Field("snapshotCostCoveragePct", "Pokrivenost snapshot troškom %", marginSnapshot.SnapshotCostCoveragePct?.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
+            Field("revenueWithCost", "Promet sa istorijskim troškom", marginSnapshot.HistoricalCostRevenue.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
+            Field("estimatedCostRevenue", "Promet procenjen iz fallback troška", marginSnapshot.EstimatedCostRevenue.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
             Field("brojArtikalaSaNivelacijom", "Artikli sa nivelacijom", splitSnapshot.ArticleCountWithNivelacija.ToString(CultureInfo.InvariantCulture), "number"),
             Field("brojArtikalaUkupno", "Ukupan broj artikala", articleIds.Count.ToString(CultureInfo.InvariantCulture), "number")
         ]);
@@ -1362,8 +1362,8 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             var fallbackShare = marginSnapshot.FallbackCostCoveragePct?.ToString("0.##", CultureInfo.InvariantCulture) ?? "0";
             var snapshotShare = marginSnapshot.SnapshotCostCoveragePct?.ToString("0.##", CultureInfo.InvariantCulture) ?? "0";
             var noteText = context.IsSnapshotActive && marginSnapshot.SnapshotCostRevenue > 0m
-                ? $"Istorijska nabavna cena nije sacuvana na prodajnim stavkama za deo prometa; koriscen je snapshot trosak ({snapshotShare}%) i fallback trosak artikla ({fallbackShare}%)."
-                : $"Istorijska nabavna cena nije sacuvana na prodajnim stavkama za {fallbackShare}% prometa, pa je marza za taj deo procenjena iz fallback troska artikla.";
+                ? $"Istorijska nabavna cena nije sačuvana na prodajnim stavkama za deo prometa; korišćen je snapshot trošak ({snapshotShare}%) i fallback trošak artikla ({fallbackShare}%)."
+                : $"Istorijska nabavna cena nije sačuvana na prodajnim stavkama za {fallbackShare}% prometa, pa je marža za taj deo procenjena iz fallback troška artikla.";
             fields.Add(Field(
                 "marginEstimationNote",
                 "Napomena za marzu",

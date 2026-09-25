@@ -361,7 +361,7 @@ export default function ColorSalesStatsPage() {
     query: colorQuery,
     getErrorMessage: useCallback((reason: unknown) => reason instanceof Error
       ? reason.message
-      : "Greska pri ucitavanju podataka po boji.", []),
+      : "Greška pri učitavanju podataka po boji.", []),
   });
   const loading = initialLoading || refetching;
   const error = queryError;
@@ -981,7 +981,7 @@ export default function ColorSalesStatsPage() {
                 <strong>{fmtPct(top5SharePct)}</strong>
               </article>
               <article className="color-decision-kpi">
-                <span>Ukupan marzni doprinos</span>
+                  <span>Ukupan maržni doprinos</span>
                 <strong>{fmtRsd(totalMarginContribution)}</strong>
               </article>
               <article className="color-decision-kpi">
@@ -1200,7 +1200,7 @@ export default function ColorSalesStatsPage() {
                   <strong>{selectedRow.reliabilityAvailable ? fmtPct(selectedRow.reliabilityPct, 1) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
                 </article>
                 <article>
-                  <span>Pokrice marze</span>
+                  <span>Pokriće marže</span>
                   <strong>{fmtPct(resolveColorPercentValue(selectedRow.marginDataCoveragePct), 1)}</strong>
                 </article>
                 <article>

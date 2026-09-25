@@ -1067,7 +1067,7 @@ export default function InventoryPage() {
   async function runBlankPrint() {
     try {
       setExportBusy(true);
-      setExportStatus("Pripremam prazan obrazac za stampu...");
+      setExportStatus("Pripremam prazan obrazac za štampu...");
       const result = await printBlankInventoryForm({ orientation: printOrientation });
       if (result.printUrl) window.open(resolveApiUrl(result.printUrl), "_blank", "noopener");
       setExportStatus("Prazan obrazac je otvoren u novom tabu.");
@@ -1652,7 +1652,7 @@ export default function InventoryPage() {
                   >
                     <option value="kolicina">Količina opadajuće</option>
                     <option value="naziv">Naziv A-Z</option>
-                    <option value="vrednost">Vrednost opadajuce</option>
+                    <option value="vrednost">Vrednost opadajuće</option>
                     <option value="azuriranje">Poslednje ažuriranje</option>
                     <option value="oosRisk">OOS rizik opadajuce (samo trenutna strana)</option>
                     <option value="overstockRisk">Overstock rizik opadajuce (samo trenutna strana)</option>
@@ -1738,7 +1738,7 @@ export default function InventoryPage() {
 
       <div className="space-y-1">
         <h2 className="text-xl font-semibold text-contrast">3. Detaljna analiza zaliha</h2>
-        <p className="text-sm text-muted">KPI, prioriteti, poredjenje prodavnica i lista artikala za dublji pregled.</p>
+        <p className="text-sm text-muted">KPI, poređenje prodavnica i lista artikala za dublji pregled prioriteta.</p>
       </div>
 
       <InventoryKPICards totalSku={balance?.totalSku} totalOnHand={balance?.totalOnHand} lowStockCount={balance?.lowStockCount} lowStockShare={lowStockShare} avgUnitsPerSku={avgUnitsPerSku} totalValue={totalValue} />
@@ -1755,7 +1755,7 @@ export default function InventoryPage() {
 
       <div className="space-y-1">
         <h2 className="text-xl font-semibold text-contrast">4. Izvoz i raspored izveštaja</h2>
-        <p className="text-sm text-muted">Operativne opcije za stampu, eksport i scheduler su dostupne po potrebi.</p>
+        <p className="text-sm text-muted">Operativne opcije za štampu, eksport i scheduler su dostupne po potrebi.</p>
       </div>
 
       <section className="rounded-[28px] border border-muted surface-light p-5 shadow-lg">

@@ -269,7 +269,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                     .Select(x => $"{x.BrojRacuna}/{x.IDObjekat ?? 0} ({x.HeaderCount}x)"));
             var suffix = duplicateReceiptGroups.Count > 3 ? " ..." : string.Empty;
             warnings.Add(
-                $"Detektovano je {duplicateReceiptGroups.Count} grupa dupliranih racuna za isti datum/objekat. Primeri: {sample}{suffix}.");
+                $"Detektovano je {duplicateReceiptGroups.Count} grupa dupliranih računa za isti datum/objekat. Primeri: {sample}{suffix}.");
         }
 
         if (excludedReceiptHeaders.Count > 0)
@@ -281,7 +281,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                     .Select(x => $"{(string.IsNullOrWhiteSpace(x.BrojRacuna) ? "(prazno)" : x.BrojRacuna)}/{x.IDObjekat ?? 0}"));
             var suffix = excludedReceiptHeaders.Count > 3 ? " ..." : string.Empty;
             warnings.Add(
-                $"Iz dnevne prodaje su iskljucena {excludedReceiptHeaders.Count} dokumenta tipa DUG/korekcija u ukupnom iznosu od {decimal.Round(excludedReceiptHeaders.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero):0.##} RSD. Primeri: {sample}{suffix}.");
+                $"Iz dnevne prodaje su isključena {excludedReceiptHeaders.Count} dokumenta tipa DUG/korekcija u ukupnom iznosu od {decimal.Round(excludedReceiptHeaders.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero):0.##} RSD. Primeri: {sample}{suffix}.");
         }
 
         if (receiptAmountMismatches.Count > 0)
@@ -293,7 +293,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                     .Select(x => $"{x.BrojRacuna ?? x.SaleId.ToString(CultureInfo.InvariantCulture)} ({x.LineTotal:0.##} vs {x.DnevnikTotal:0.##})"));
             var suffix = receiptAmountMismatches.Count > 3 ? " ..." : string.Empty;
             warnings.Add(
-                $"Detektovano je {receiptAmountMismatches.Count} racuna gde zbir stavki ne odgovara dnevniku prodaje. Primeri: {sample}{suffix}.");
+                $"Detektovano je {receiptAmountMismatches.Count} računa gde zbir stavki ne odgovara dnevniku prodaje. Primeri: {sample}{suffix}.");
         }
 
         if (nonStandardReceiptHeaders.Count > 0)
@@ -305,13 +305,13 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                     .Select(x => $"{(string.IsNullOrWhiteSpace(x.BrojRacuna) ? "(prazno)" : x.BrojRacuna)}/{x.IDObjekat ?? 0}"));
             var suffix = nonStandardReceiptHeaders.Count > 3 ? " ..." : string.Empty;
             warnings.Add(
-                $"Detektovano je {nonStandardReceiptHeaders.Count} prodajnih dokumenata sa nestandardnim brojem racuna. Promet tih dokumenata je {decimal.Round(nonStandardReceiptHeaders.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero):0.##} RSD. Primeri: {sample}{suffix}.");
+                $"Detektovano je {nonStandardReceiptHeaders.Count} prodajnih dokumenata sa nestandardnim brojem računa. Promet tih dokumenata je {decimal.Round(nonStandardReceiptHeaders.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero):0.##} RSD. Primeri: {sample}{suffix}.");
         }
 
         if (excludedDebtReceiptHeaders.Count > 0)
         {
             warnings.Add(
-            $"Dokumenti oznaceni kao DUG su iskljuceni iz dnevne prodaje {excludedDebtReceiptHeaders.Count} put(a) sa ukupno {decimal.Round(excludedDebtReceiptHeaders.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero):0.##} RSD.");
+            $"Dokumenti označeni kao DUG su isključeni iz dnevne prodaje {excludedDebtReceiptHeaders.Count} put(a) sa ukupno {decimal.Round(excludedDebtReceiptHeaders.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero):0.##} RSD.");
         }
 
         var hasClassifiedShiftRows = aggregates.Any(x => ResolveShift(x.HourOfDay) is 1 or 2);
@@ -434,7 +434,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
 
         if (duplicateNameLookup.Values.Any(x => x))
         {
-            warnings.Add("Neki dobavljaci imaju isti naziv; zaglavlja su razdvojena pomocu ID oznake.");
+            warnings.Add("Neki dobavljači imaju isti naziv; zaglavlja su razdvojena pomoću ID oznake.");
         }
 
         var rows = new List<DailySalesRowDto>();
@@ -479,12 +479,12 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
 
         if (unknownSupplierPct is >= 20m)
         {
-            warnings.Add("Veliki udeo prodaje ima nepoznatog dobavljaca (20%+).");
+            warnings.Add("Veliki udeo prodaje ima nepoznatog dobavljača (20%+).");
         }
 
         if (useNoTimeDataFallback)
         {
-            warnings.Add("Satnica prodaje nije dostupna; kolicine su mapirane u prvu smenu.");
+            warnings.Add("Satnica prodaje nije dostupna; količine su mapirane u prvu smenu.");
             _logger.LogWarning(
                 "Daily-sales fallback applied: midnight-only timestamps mapped to first shift. MappedItems={MappedItems} MappedRevenue={MappedRevenue}",
                 fallbackMappedItems,

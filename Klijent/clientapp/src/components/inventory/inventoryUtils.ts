@@ -339,7 +339,7 @@ export function buildInventoryRow(item: InventoryListItemWithSignals, stores: St
       : item.minimalnaKolicina;
   const supplierName = suppliers.find((entry) => entry.supplierId === item.idDobavljac)?.supplierName
     ?? item.supplierName
-    ?? (item.idDobavljac != null ? `Dobavljac #${item.idDobavljac}` : "Nerasporedjen");
+    ?? (item.idDobavljac != null ? `Dobavljač #${item.idDobavljac}` : "Neraspoređen");
   const storeName = stores.find((entry) => entry.storeId === item.idObjekat)?.storeName
     ?? item.storeName
     ?? (item.idObjekat != null ? `Objekat #${item.idObjekat}` : "Sve lokacije");
@@ -534,7 +534,7 @@ export function buildForecastRestockSuggestion(
     }),
     actionType: "dopuna",
     priority: probabilityOfOOSIn7d > 0.7 ? "critical" : "high",
-    label: `Predlozena dopuna za ${row.naziv}`,
+    label: `Predložena dopuna za ${row.naziv}`,
     reason: `Forecast 7d je ${forecast7d.toFixed(1)} kom, a OOS rizik ${Math.round(probabilityOfOOSIn7d * 100)}%.`,
     status: "pending",
     artikalId: signal.skuId,
@@ -594,7 +594,7 @@ export function getRecommendation(row: InventoryRow) {
     return `Planirati dopunu od najmanje ${formatNumber(Math.max(row.reorderGap ?? 0, 1))} komada.`;
   }
   if (row.quantity >= Math.max(row.minimum * 3, 15)) {
-    return "Zaliha je komforna; proveri da li je kapital previse vezan u robi.";
+    return "Zaliha je komforna; proveri da li je kapital previše vezan u robi.";
   }
   return "Zaliha je stabilna i ne zahteva hitnu akciju.";
 }
