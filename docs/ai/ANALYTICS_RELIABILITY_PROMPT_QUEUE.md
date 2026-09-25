@@ -5,6 +5,7 @@ Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 Owner completion 2026-09-25: RQ434 was delivered directly to `main` after signed WoW normalization, draft filter validation with visible feedback, Serbian band labels, queue totals before the `.Take(30)` cap, warning tones for high-priority risk, named export filters and `aria-sort` markers. Run log: `.ai/runs/2026-09-25-RQ434-evidence.md`. Evidence state: synchronized. No successor was promoted; `RQ436` and `RQ437` remain other-owner IN_PROGRESS.
 Owner claim 2026-09-25: RQ436 transitioned `READY -> IN_PROGRESS` in this workspace for dead/frontend-derived Operacije KPI cleanup and lifecycle safety. Local lock: `.ai/task-locks/RQ436-codex.lock.md`.
+Owner completion 2026-09-25: RQ436 was delivered directly to `main` after removing always-unavailable Top 5 and undeclared Pre/Post frontend-derived KPIs, the dead Shoe Type empty branch, raw store-ID metadata and the Color scroll-timeout leak. Run log: `.ai/runs/2026-09-25-RQ436-evidence.md`. Evidence state: synchronized. `RQ437` remains active in another owner workspace.
 Owner claim 2026-09-25: RQ437 transitioned READY -> IN_PROGRESS in this workspace (grok) for the stale Operacije test repair. Local lock: `.ai/task-locks/RQ437-grok.lock.md`.
 Owner completion 2026-09-25: RQ433 was delivered directly to `main` after leave-one-out Pre-Nivelacija supplier/season/type facets with counts and page binding to facets instead of the filtered leaderboard. Run log: `.ai/runs/2026-09-25-RQ433-evidence.md`. Evidence state: synchronized. `RQ434` moved `WAITING -> READY`. Remaining claimable READY lanes: `RQ434`, `RQ437` (`RQ435` remains other-owner IN_PROGRESS).
 Owner claim 2026-09-25: RQ435 was selected as the next independent READY prompt because RQ427 and RQ433 are actively locked by other owners and RQ437 owns its named stale-test files. RQ435 transitioned READY -> IN_PROGRESS for the safe traceable analytics error contract. Local lock: `.ai/task-locks/RQ435-codex.lock.md`.
@@ -1581,7 +1582,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ433 | DONE | pre-nivelacija-facet-universe | Build Pre-Nivelacija supplier, season and type options from the filter universe |
 | RQ434 | DONE | pre-nivelacija-display-polish | Fix Pre-Nivelacija signed WoW, filter validation, labels, counts and tones |
 | RQ435 | DONE | operations-safe-error-messages | Return safe traceable Shoe Type errors and allowlist frontend error display |
-| RQ436 | IN_PROGRESS | operations-derived-kpi-cleanup | Remove dead or frontend-derived Operacije KPIs and small lifecycle leaks |
+| RQ436 | DONE | operations-derived-kpi-cleanup | Remove dead or frontend-derived Operacije KPIs and small lifecycle leaks |
 | RQ437 | IN_PROGRESS | operations-stale-test-hygiene | Repair stale Operacije tests that hide regressions |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
@@ -23168,7 +23169,7 @@ Reproduction: open Inventory, search for a value with no match (or make the list
 
 ## RQ428 - Join Daily Sales receipt-mismatch diagnostics on real receipt identity
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P2
 Type: backend/contract/tests
 Feature family: daily-sales-receipt-reconciliation-key
@@ -23624,6 +23625,8 @@ Feature family: operations-derived-kpi-cleanup
 Parallel-safe: no
 Owner: Analytics Frontend / Shoe Type, Color, Pre/Post
 Commit suggestion: `fix(analytics): remove dead and frontend-derived operations kpis`
+
+Completion note 2026-09-25: The three Operacije pages no longer render always-N/A Top 5 or undeclared Pre/Post period-growth KPIs; object metadata uses names/explicit unknown fallback, Shoe Type's unreachable `filtered_out` branch is gone, and Color detail scrolling cleans up its timeout. Run log: `.ai/runs/2026-09-25-RQ436-evidence.md`. Evidence state: synchronized.
 
 ### Problem
 
