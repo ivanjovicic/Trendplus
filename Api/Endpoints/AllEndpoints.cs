@@ -1811,13 +1811,13 @@ public static class AllEndpoints
                             reliabilityPct = recommendationAllowed ? (double?)exposedRecommendation.ReliabilityPct : null,
                             recommendation = new
                             {
-                                exposedRecommendation.Status,
-                                exposedRecommendation.Label,
-                                exposedRecommendation.Summary,
-                                ConfidencePct = recommendationAllowed ? (double?)exposedRecommendation.ConfidencePct : null,
-                                ReliabilityPct = recommendationAllowed ? (double?)exposedRecommendation.ReliabilityPct : null,
-                                exposedRecommendation.DataQualityStatus,
-                                RecommendationAllowed = recommendationAllowed,
+                                status = exposedRecommendation.Status,
+                                label = exposedRecommendation.Label,
+                                summary = exposedRecommendation.Summary,
+                                confidencePct = recommendationAllowed ? (double?)exposedRecommendation.ConfidencePct : null,
+                                reliabilityPct = recommendationAllowed ? (double?)exposedRecommendation.ReliabilityPct : null,
+                                dataQualityStatus = exposedRecommendation.DataQualityStatus,
+                                recommendationAllowed,
                                 reasonCodes = exposedRecommendation.ReasonCodes
                             },
                             // Legacy compatibility aliases (deprecated)
@@ -1886,11 +1886,11 @@ public static class AllEndpoints
                         : (double?)null,
                     recommendationSummary = new
                     {
-                        increaseFocus = suppliersWithRecommendation.Count(x => x.recommendation.Status == "increase_focus"),
-                        maintain = suppliersWithRecommendation.Count(x => x.recommendation.Status == "maintain"),
-                        review = suppliersWithRecommendation.Count(x => x.recommendation.Status == "review"),
-                        doNotTrust = suppliersWithRecommendation.Count(x => x.recommendation.Status == "do_not_trust"),
-                        insufficientData = suppliersWithRecommendation.Count(x => x.recommendation.Status == "insufficient_data")
+                        increaseFocus = suppliersWithRecommendation.Count(x => x.recommendation.status == "increase_focus"),
+                        maintain = suppliersWithRecommendation.Count(x => x.recommendation.status == "maintain"),
+                        review = suppliersWithRecommendation.Count(x => x.recommendation.status == "review"),
+                        doNotTrust = suppliersWithRecommendation.Count(x => x.recommendation.status == "do_not_trust"),
+                        insufficientData = suppliersWithRecommendation.Count(x => x.recommendation.status == "insufficient_data")
                     },
                     // Legacy compatibility alias (pre/post impact metric in old response shape)
                     promenaPrometaPct = sumPreRevenue > 0m
@@ -1927,7 +1927,7 @@ public static class AllEndpoints
                     dataQuality,
                     meta = supplierTrustMeta,
                     recommendationAllowed = suppliersWithRecommendation.Count > 0
-                        && suppliersWithRecommendation.All(x => x.recommendation.RecommendationAllowed),
+                        && suppliersWithRecommendation.All(x => x.recommendation.recommendationAllowed),
                     recommendationReferenceCohort = new
                     {
                         scope = "all_response_suppliers",
@@ -2570,13 +2570,13 @@ public static class AllEndpoints
                             reliabilityPct = recommendationAllowed ? (double?)exposedRecommendation.ReliabilityPct : null,
                             recommendation = new
                             {
-                                exposedRecommendation.Status,
-                                exposedRecommendation.Label,
-                                exposedRecommendation.Summary,
-                                ConfidencePct = recommendationAllowed ? (double?)exposedRecommendation.ConfidencePct : null,
-                                ReliabilityPct = recommendationAllowed ? (double?)exposedRecommendation.ReliabilityPct : null,
-                                exposedRecommendation.DataQualityStatus,
-                                RecommendationAllowed = recommendationAllowed,
+                                status = exposedRecommendation.Status,
+                                label = exposedRecommendation.Label,
+                                summary = exposedRecommendation.Summary,
+                                confidencePct = recommendationAllowed ? (double?)exposedRecommendation.ConfidencePct : null,
+                                reliabilityPct = recommendationAllowed ? (double?)exposedRecommendation.ReliabilityPct : null,
+                                dataQualityStatus = exposedRecommendation.DataQualityStatus,
+                                recommendationAllowed,
                                 reasonCodes = exposedRecommendation.ReasonCodes
                             },
                             // Legacy compatibility aliases (deprecated)
@@ -2660,11 +2660,11 @@ public static class AllEndpoints
                         : (double?)null,
                     recommendationSummary = new
                     {
-                        increaseFocus = shoeTypesWithRecommendation.Count(x => x.recommendation.Status == "increase_focus"),
-                        maintain = shoeTypesWithRecommendation.Count(x => x.recommendation.Status == "maintain"),
-                        review = shoeTypesWithRecommendation.Count(x => x.recommendation.Status == "review"),
-                        doNotTrust = shoeTypesWithRecommendation.Count(x => x.recommendation.Status == "do_not_trust"),
-                        insufficientData = shoeTypesWithRecommendation.Count(x => x.recommendation.Status == "insufficient_data")
+                        increaseFocus = shoeTypesWithRecommendation.Count(x => x.recommendation.status == "increase_focus"),
+                        maintain = shoeTypesWithRecommendation.Count(x => x.recommendation.status == "maintain"),
+                        review = shoeTypesWithRecommendation.Count(x => x.recommendation.status == "review"),
+                        doNotTrust = shoeTypesWithRecommendation.Count(x => x.recommendation.status == "do_not_trust"),
+                        insufficientData = shoeTypesWithRecommendation.Count(x => x.recommendation.status == "insufficient_data")
                     },
                     // Legacy compatibility alias (pre/post impact metric in old response shape)
                     promenaPrometaPct = comparablePreRevenue > 0m

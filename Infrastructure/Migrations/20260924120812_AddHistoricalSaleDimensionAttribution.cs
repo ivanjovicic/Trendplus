@@ -10,25 +10,16 @@ namespace Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "attribution_basis",
-                table: "prodaja_stavke",
-                type: "character varying(64)",
-                maxLength: 64,
-                nullable: false,
-                defaultValue: "unknown");
-
-            migrationBuilder.AddColumn<int>(
-                name: "shoe_type_id_at_sale",
-                table: "prodaja_stavke",
-                type: "integer",
-                nullable: true);
-
-            migrationBuilder.AddColumn<int>(
-                name: "supplier_id_at_sale",
-                table: "prodaja_stavke",
-                type: "integer",
-                nullable: true);
+            // DatabaseInitializer creates these compatibility columns before EF
+            // migrations run. Keep the migration safe for both a raw EF database
+            // and the production bootstrap path.
+            migrationBuilder.Sql(
+                """
+                ALTER TABLE prodaja_stavke
+                    ADD COLUMN IF NOT EXISTS attribution_basis character varying(64) NOT NULL DEFAULT 'unknown',
+                    ADD COLUMN IF NOT EXISTS shoe_type_id_at_sale integer,
+                    ADD COLUMN IF NOT EXISTS supplier_id_at_sale integer;
+                """);
 
             // Legacy rows are frozen from the current article master only once. This is
             // explicitly estimated provenance, never a claim of sale-time truth.
@@ -43,15 +34,13 @@ namespace Infrastructure.Migrations
                   AND COALESCE(ps.attribution_basis, 'unknown') = 'unknown';
                 """);
 
-            migrationBuilder.CreateIndex(
-                name: "IX_prodaja_stavke_shoe_type_id_at_sale",
-                table: "prodaja_stavke",
-                column: "shoe_type_id_at_sale");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_prodaja_stavke_supplier_id_at_sale",
-                table: "prodaja_stavke",
-                column: "supplier_id_at_sale");
+            migrationBuilder.Sql(
+                """
+                CREATE INDEX IF NOT EXISTS "IX_prodaja_stavke_shoe_type_id_at_sale"
+                    ON prodaja_stavke (shoe_type_id_at_sale);
+                CREATE INDEX IF NOT EXISTS "IX_prodaja_stavke_supplier_id_at_sale"
+                    ON prodaja_stavke (supplier_id_at_sale);
+                """);
         }
 
         /// <inheritdoc />

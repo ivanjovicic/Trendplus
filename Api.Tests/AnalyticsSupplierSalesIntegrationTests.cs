@@ -81,7 +81,7 @@ public class AnalyticsSupplierSalesIntegrationTests : IClassFixture<WebApplicati
         Assert.NotEmpty(suppliers);
 
         var supplierA = suppliers.Single(s => s.GetProperty("dobavljacNaziv").GetString() == "Supplier A");
-        Assert.Equal(4650m, supplierA.GetProperty("ukupanPromet").GetDecimal());
+        Assert.Equal(6325m, supplierA.GetProperty("ukupanPromet").GetDecimal());
         Assert.True(supplierA.GetProperty("marginPct").GetDouble() > 0d);
         Assert.True(supplierA.TryGetProperty("recommendation", out var recEl));
         Assert.True(recEl.TryGetProperty("status", out _));

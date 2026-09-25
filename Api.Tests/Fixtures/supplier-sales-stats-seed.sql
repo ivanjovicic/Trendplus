@@ -6,11 +6,8 @@
 -- ============================================================================
 
 -- Clear existing data (safe for test DB only)
-TRUNCATE TABLE "ProdajaStavke" CASCADE;
-TRUNCATE TABLE "ProdajaZaglavlja" CASCADE;
-TRUNCATE TABLE "Artikli" CASCADE;
-TRUNCATE TABLE "Dobavljaci" CASCADE;
-TRUNCATE TABLE "Sezone" CASCADE;
+TRUNCATE TABLE prodaja_stavke, prodaja_zaglavlje, "Artikli", "Dobavljaci", "Sezone"
+  RESTART IDENTITY CASCADE;
 
 -- Insert seasons
 INSERT INTO "Sezone" ("Naziv", "DatumOd", "DatumDo")
@@ -36,47 +33,48 @@ VALUES
   ('ART001', 'Article 1 - Supplier A', 1, 50.00, 50.00, 'existing'),
   ('ART002', 'Article 2 - Supplier A', 1, 60.00, 60.00, 'existing'),
   ('ART003', 'Article 3 - Supplier B', 2, 100.00, 100.00, 'existing'),
-  ('ART004', 'Article 4 - Supplier B', 2, NULL, 80.00, 'existing'),  -- Null cost
-  ('ART005', 'Article 5 - Supplier C', 3, 25.00, 25.00, 'imported'),
+  ('ART004', 'Article 4 - Supplier B', 2, NULL, NULL, 'existing'),  -- Missing cost
+  ('ART005', 'Article 5 - Supplier C', 3, 25.00, 25.00, 'access'),
   ('ART006', 'Article 6 - Unknown (Null Supplier)', NULL, 40.00, 40.00, 'existing')
 RETURNING "Id";
 
 -- Assume article IDs: 1-6 (adjust if needed)
 
 -- Insert sales declarations (ProdajaZaglavlja)
-INSERT INTO "ProdajaZaglavlja" ("DatumProdaje", "IDObjekat")
+INSERT INTO prodaja_zaglavlje (datum_prodaje, id_objekat, data_origin)
 VALUES
-  ('2026-02-15', 1),
-  ('2026-02-16', 1),
-  ('2026-02-20', 1),
-  ('2026-03-01', 1),
-  ('2026-03-15', 1)
-RETURNING "Id";
+  ('2026-02-15', 1, 'existing'),
+  ('2026-02-16', 1, 'existing'),
+  ('2026-02-20', 1, 'imported'),
+  ('2026-03-01', 1, 'existing'),
+  ('2026-03-15', 1, 'existing')
+RETURNING id;
 
 -- Assume sale IDs: 1-5 (adjust if needed)
 
 -- Insert sales line items (ProdajaStavke)
 -- Test Date: 2026-02-15
-INSERT INTO "ProdajaStavke" ("IdProdaja", "IdArtikal", "Kolicina", "Cena", "NabavnaCena")
+INSERT INTO prodaja_stavke
+  (id_prodaja, id_artikal, kolicina, cena, nabavna_cena, supplier_id_at_sale, attribution_basis)
 VALUES
-  (1, 1, 10, 100.00, 50.00),  -- Supplier A, Article 1
-  (1, 3, 5, 200.00, 100.00),  -- Supplier B, Article 3
+  (1, 1, 10, 100.00, 50.00, 1, 'sale_snapshot'),  -- Supplier A, Article 1
+  (1, 3, 5, 200.00, 100.00, 2, 'sale_snapshot'),  -- Supplier B, Article 3
 
 -- Test Date: 2026-02-16
-  (2, 2, 15, 120.00, 60.00),  -- Supplier A, Article 2
-  (2, 4, 8, 180.00, NULL),    -- Supplier B, Article 4 (missing cost)
+  (2, 2, 15, 120.00, 60.00, 1, 'sale_snapshot'),  -- Supplier A, Article 2
+  (2, 4, 8, 180.00, NULL, 2, 'sale_snapshot'),    -- Supplier B, Article 4 (missing cost)
 
 -- Test Date: 2026-02-20
-  (3, 5, 20, 50.00, 25.00),   -- Supplier C, Article 5
-  (3, 6, 12, 80.00, 40.00),   -- Unknown supplier, Article 6
+  (3, 5, 20, 50.00, 25.00, 3, 'sale_snapshot'),   -- Supplier C, Article 5
+  (3, 6, 12, 80.00, 40.00, NULL, 'sale_snapshot'),   -- Unknown supplier, Article 6
 
 -- Test Date: 2026-03-01
-  (4, 1, 5, 105.00, 50.00),   -- Supplier A, Article 1 (price change)
-  (4, 3, 3, 210.00, 100.00),  -- Supplier B, Article 3
+  (4, 1, 5, 105.00, 50.00, 1, 'sale_snapshot'),   -- Supplier A, Article 1 (price change)
+  (4, 3, 3, 210.00, 100.00, 2, 'sale_snapshot'),  -- Supplier B, Article 3
 
 -- Test Date: 2026-03-15
-  (5, 2, 25, 120.00, 60.00),  -- Supplier A, Article 2 (high volume)
-  (5, 5, 10, 52.00, 25.00);   -- Supplier C, Article 5 (price change)
+  (5, 2, 25, 120.00, 60.00, 1, 'sale_snapshot'),  -- Supplier A, Article 2 (high volume)
+  (5, 5, 10, 52.00, 25.00, 3, 'sale_snapshot');   -- Supplier C, Article 5 (price change)
 
 -- Insert reference price history (DnevnikPromena) for nivelacija tracking
 -- This fixture assumes no explicit nivelacija events; they can be added on demand.

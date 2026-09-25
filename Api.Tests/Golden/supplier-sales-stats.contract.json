@@ -2,43 +2,43 @@
   "suppliers": [
     {
       "dobavljacNaziv": "Supplier A",
-      "ukupanPromet": 6325,
+      "ukupanPromet": 6325.00,
       "ukupnaKolicina": 55,
       "sharePct": 53.26,
       "isUnknown": false
     },
     {
       "dobavljacNaziv": "Supplier B",
-      "ukupanPromet": 3070,
+      "ukupanPromet": 3070.00,
       "ukupnaKolicina": 16,
       "sharePct": 25.85,
       "isUnknown": false
     },
     {
       "dobavljacNaziv": "Supplier C",
-      "ukupanPromet": 1520,
+      "ukupanPromet": 1520.00,
       "ukupnaKolicina": 30,
       "sharePct": 12.8,
       "isUnknown": false
     },
     {
       "dobavljacNaziv": "Nepoznato",
-      "ukupanPromet": 960,
+      "ukupanPromet": 960.00,
       "ukupnaKolicina": 12,
       "sharePct": 8.08,
       "isUnknown": true
     }
   ],
   "totals": {
-    "ukupanPromet": 11875,
+    "ukupanPromet": 11875.00,
     "ukupnaKolicina": 113,
     "brojDobavljaca": 4,
     "recommendationSummary": {
       "increaseFocus": 0,
       "maintain": 0,
       "review": 0,
-      "doNotTrust": 1,
-      "insufficientData": 3
+      "doNotTrust": 0,
+      "insufficientData": 4
     }
   },
   "dataQuality": {
