@@ -1155,8 +1155,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     }
     const splitCoverage = data.dataQuality.revenueWithNivelacijaSplitSharePct;
     const missingCostShare = data.dataQuality.noCostRevenueSharePct ?? data.dataQuality.missingCostRevenueSharePct;
-    const historicalCostShare = data.dataQuality.historicalCostRevenueSharePct
-      ?? (missingCostShare == null ? null : Math.max(0, 100 - missingCostShare));
+    const historicalCostShare = data.dataQuality.historicalCostRevenueSharePct ?? (missingCostShare == null ? null : Math.max(0, 100 - missingCostShare));
     const estimatedCostShare = data.dataQuality.estimatedCostRevenueSharePct;
     const unknownShare = data.dataQuality.unknownSupplierRevenueSharePct;
 
@@ -1282,9 +1281,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       { key: "insufficientData", label: "Nedovoljno podataka", value: supplierCounts.insufficientData },
     ],
     [
-      data?.dataQuality.historicalCostRevenueSharePct,
-      data?.dataQuality.missingCostRevenueSharePct,
-      data?.dataQuality.noCostRevenueSharePct,
+      data?.dataQuality,
       data?.dataQuality.revenueWithNivelacijaSplitSharePct,
       data?.generatedAt,
       data?.totals.prePostNivelacijaRevenueImpactPct,

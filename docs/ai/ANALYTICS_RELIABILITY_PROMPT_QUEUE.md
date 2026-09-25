@@ -20747,7 +20747,7 @@ Reproduction: open a known and an unknown Shoe Type row, compare inline detail w
 
 ## RQ378 - Align Supplier Sales weighted margin benchmark and cost-source quality semantics
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: backend-contract/frontend/tests
 Feature family: supplier-sales-margin-quality-contract
