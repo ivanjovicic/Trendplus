@@ -20978,7 +20978,7 @@ Supplier row-level pre/post impact/recommendation uses comparable split-policy e
 - Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `88b596a2229ba34f8f244a53838893cb670ecca7`
-- Main verification: passed - fresh `origin/main` equals `88b596a2229ba34f8f244a53838893cb670ecca7`
+- Main verification: passed - fresh `origin/main` contains implementation SHA `88b596a2229ba34f8f244a53838893cb670ecca7`; current `main` also contains evidence-closure commit `fbca6a14`
 - Missed: live PostgreSQL and .NET runtime proof remain unavailable.
 - Follow-up: re-enter RQ idle recovery; no successor prompt claimed in this run.
 - Residual risk: backend compilation/integration and remote CI remain uninspected in this environment.
