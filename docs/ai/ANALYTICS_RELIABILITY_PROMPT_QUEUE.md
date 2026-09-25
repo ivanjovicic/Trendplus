@@ -5,6 +5,7 @@ Repo: `ivanjovicic/Trendplus`
 Current READY prompt: RQ440
 Owner claim 2026-09-25 (Shoe Type audit, grok): the audit of „Prodaja po tipu obuće“ (`/analytics/shoe-type-sales-stats`) added and claimed `RQ445` (trust header period ends one day late in UTC+ zones) and `RQ446` (raw `sharePct` series label, average-margin tooltip population), both `IN_PROGRESS` in this workspace. Local locks: `.ai/task-locks/RQ445-grok.lock.md`, `.ai/task-locks/RQ446-grok.lock.md`. `Current READY prompt` stays `RQ440`. Run log: `.ai/runs/2026-09-25-shoe-type-sales-audit-evidence.md`.
 Owner completion 2026-09-25: RQ445 was implemented and committed directly on local `main` (`fix(analytics): show the Shoe Type trust period as calendar dates (RQ445)`); status `PARTIAL` until `origin/main` contains it (local-only delivery). Run log: `.ai/runs/2026-09-25-RQ445-evidence.md`.
+Owner completion 2026-09-25: RQ446 was implemented and committed directly on local `main` (`fix(analytics): name the Shoe Type share series and average-margin basis (RQ446)`); status `PARTIAL` until `origin/main` contains it (local-only delivery). Run log: `.ai/runs/2026-09-25-RQ446-evidence.md`.
 Owner claim 2026-09-25 (Supplier overview audit, grok): the audit of „Prodaja po dobavljačima“ (`/analytics/supplier?tab=overview`, legacy `operations-supplier-sales`) added and claimed `RQ443` (total PoP trend must include suppliers without current sales; the unfocused subset of the unregistered `PS11`/C16 in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-25.md`) and `RQ444` (sticky legacy `sezonaId`, data window shown as the period, +1-day header end date), both `READY -> IN_PROGRESS` in this workspace. Local locks: `.ai/task-locks/RQ443-grok.lock.md`, `.ai/task-locks/RQ444-grok.lock.md`. `Current READY prompt` stays `RQ440`. Other findings route to `RQ442`, `RQ441`, `RQ325` and the unregistered `PS06`/`PS11`/`PS12`/`PS16`/`PS17`/`PS18`. Run log: `.ai/runs/2026-09-25-supplier-sales-overview-audit-evidence.md`.
 Owner completion 2026-09-25: RQ443 was implemented and committed directly on local `main` (`fix(analytics): base supplier total PoP on the full previous period (RQ443)`, parent `77371907`); status `PARTIAL` until `origin/main` contains it (local-only delivery). Run log: `.ai/runs/2026-09-25-RQ443-evidence.md`.
 Owner completion 2026-09-25: RQ444 was implemented and committed directly on local `main` (`fix(analytics): keep supplier overview period metadata truthful (RQ444)`); status `PARTIAL` until `origin/main` contains it (local-only delivery). Run log: `.ai/runs/2026-09-25-RQ444-evidence.md`.
@@ -1605,7 +1606,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ443 | PARTIAL | supplier-overview-total-pop | Keep the Supplier overview total PoP trend on the full previous-period population |
 | RQ444 | PARTIAL | supplier-overview-period-truth | Supplier overview period truth: drop the sticky legacy season and show the analyzed period |
 | RQ445 | PARTIAL | shoe-type-period-truth | Shoe Type trust header shows the selected calendar period |
-| RQ446 | IN_PROGRESS | shoe-type-overview-label-truth | Shoe Type overview labels describe what is plotted and computed |
+| RQ446 | PARTIAL | shoe-type-overview-label-truth | Shoe Type overview labels describe what is plotted and computed |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -24385,7 +24386,7 @@ The „Prodaja po tipu obuće“ trust header receives the raw response `fromDat
 
 ## RQ446 - Shoe Type overview labels describe what is plotted and computed
 
-Status: IN_PROGRESS
+Status: PARTIAL
 Priority: P3
 Type: frontend/tests
 Feature family: shoe-type-overview-label-truth
@@ -24430,3 +24431,23 @@ Commit suggestion: `fix(analytics): name the Shoe Type concentration series and 
 
 - None blocking. Whether the KPI should instead show the all-rows margin is a product question recorded in `RQ449`.
 - Reliability contract: copy only; values, denominators and backend contracts unchanged.
+
+### Completion note
+
+- Date: 2026-09-25
+- Status: PARTIAL
+- Completion: the concentration series is named „Udeo u prometu %“ (no raw `sharePct` in legend/tooltip), and the „Prosečna marža“ tooltip states that it covers known shoe types and excludes the „Nepoznato“ row.
+- Changed files: `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/ShoeTypeSalesStatsPage.labelTruth.spec.tsx` (new), `.ai/runs/2026-09-25-RQ446-evidence.md`, this queue, `MASTER_ROADMAP.md`
+- Contract/runtime behavior changed: copy/props only; no value, denominator or API change.
+- Checks run: new spec 2 failing before, passing after; focused Shoe Type set 104/104; `npx tsc -b` pass; `npm run check:analytics-guardrails` pass; six queue validators and `git diff --check` pass.
+- Checks not run: live API/DB proof, CI, `dotnet test` (no backend change).
+- Run log: `.ai/runs/2026-09-25-RQ446-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending - local `main` commit `fix(analytics): name the Shoe Type share series and average-margin basis (RQ446)`; recorded by the DONE sync
+- Main verification: pending - not pushed (owner instruction: local commits only)
+- Missed: none in owned scope.
+- Follow-up: KPI population choice → `RQ449` (owner decision).
+- Residual risk: other English copy on the page stays with `RQ325`.
+- Next: DONE sync after `origin/main` contains the commit.
+- Prompt defect / scope repair: none.

@@ -1096,7 +1096,7 @@ export default function ShoeTypeSalesStatsPage() {
                 ) : null}
               </article>
               <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Autoritativni backend agregat prosečne marže; bez merljivog denominatora prikazuje se kao nedostupno.">
-                <span>Prosečna marža <InfoTip text="Ponderisana prosečna marža koju vraća backend. Računa se iz ukupnog maržnog doprinosa i prometa sa pouzdano rešenim troškom; frontend je ne izvodi iz redova." /></span>
+                <span>Prosečna marža <InfoTip text="Ponderisana prosečna marža koju vraća backend. Računa se iz maržnog doprinosa i prometa sa pouzdano rešenim troškom poznatih tipova obuće; red „Nepoznato“ nije uključen, pa se može razlikovati od odnosa ukupnog maržnog doprinosa i prometa sa troškom. Frontend je ne izvodi iz redova." /></span>
                 <strong>{fmtPct(avgMarginPct, 1)}</strong>
               </article>
               <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Promena prometa prema prethodnom uporedivom periodu.">
@@ -1131,7 +1131,7 @@ export default function ShoeTypeSalesStatsPage() {
                       <YAxis type="category" dataKey="name" width={180} tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} />
                       <Tooltip contentStyle={COMMAND_TOOLTIP_STYLE} labelStyle={COMMAND_TOOLTIP_LABEL_STYLE} cursor={CHART_CURSOR_STYLE} formatter={(value: number | string | undefined) => value == null ? "N/A" : fmtPct(Number(value), 2)} />
                       <Legend wrapperStyle={CHART_LEGEND_STYLE} iconType="circle" iconSize={8} />
-                      <Bar dataKey="sharePct" fill="url(#shoeShareGradient)" radius={[0, 10, 10, 0]} />
+                      <Bar dataKey="sharePct" fill="url(#shoeShareGradient)" radius={[0, 10, 10, 0]} name="Udeo u prometu %" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
