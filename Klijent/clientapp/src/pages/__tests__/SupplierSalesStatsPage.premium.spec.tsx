@@ -5,6 +5,7 @@ import SupplierSalesStatsPage, {
   buildSupplierConcentrationData,
   buildSupplierEmbeddedPeriod,
   calculateTopSupplierRevenueShare,
+  buildSupplierSalesDisplayProjection,
   describePopMetric,
   describePopUnitsMetric,
 } from "../SupplierSalesStatsPage";
@@ -70,6 +71,41 @@ describe("SupplierSalesStatsPage premium controls", () => {
   ])("keeps unavailable concentration evidence distinct for %j", (rows) => {
     expect(calculateTopSupplierRevenueShare(rows)).toBeNull();
     expect(buildSupplierConcentrationData(rows)).toEqual([]);
+  });
+
+  it("uses the visible population and excludes negative net revenue from positive concentration", () => {
+    const rows = [
+      { dobavljacNaziv: "Alfa", ukupanPromet: 100 },
+      { dobavljacNaziv: "Beta", ukupanPromet: 50 },
+      { dobavljacNaziv: "Gamma", ukupanPromet: 25 },
+      { dobavljacNaziv: "Delta", ukupanPromet: 10 },
+      { dobavljacNaziv: "Epsilon", ukupanPromet: 5 },
+      { dobavljacNaziv: "Zeta", ukupanPromet: 10 },
+      { dobavljacNaziv: "Nepoznato", ukupanPromet: 50 },
+      { dobavljacNaziv: "Samo povraćaji", ukupanPromet: -100 },
+    ];
+
+    expect(calculateTopSupplierRevenueShare(rows)).toBe(94);
+    expect(buildSupplierConcentrationData(rows)).toEqual([
+      { name: "Alfa", sharePct: 40 },
+      { name: "Beta", sharePct: 20 },
+      { name: "Nepoznato", sharePct: 20 },
+      { name: "Gamma", sharePct: 10 },
+      { name: "Delta", sharePct: 4 },
+      { name: "Zeta", sharePct: 4 },
+      { name: "Ostali", sharePct: 2 },
+    ]);
+    expect(buildSupplierConcentrationData(rows).some((row) => row.name === "Samo povraćaji")).toBe(false);
+  });
+
+  it("keeps a negative supplier visible but makes its derived share unavailable", () => {
+    const projected = buildSupplierSalesDisplayProjection([
+      { ukupanPromet: 100, isUnknown: false },
+      { ukupanPromet: -20, isUnknown: false },
+    ] as never);
+
+    expect(projected.rows[0]?.sharePct).toBe(100);
+    expect(projected.rows[1]?.sharePct).toBeNull();
   });
 
   it("keeps non-finite PoP revenue and units unavailable while preserving zero", () => {

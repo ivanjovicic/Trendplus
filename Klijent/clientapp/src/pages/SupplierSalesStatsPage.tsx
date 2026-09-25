@@ -194,18 +194,28 @@ function toDateOnly(value: string): string {
 
 type SupplierRevenueRow = Pick<SupplierSalesStat, "dobavljacNaziv" | "ukupanPromet">;
 
+function sumPositiveRevenue(rows: readonly SupplierRevenueRow[]): number | null {
+  const positiveRevenue = rows
+    .map((row) => row.ukupanPromet)
+    .filter((value): value is number => Number.isFinite(value) && value > 0)
+    .reduce((sum, value) => sum + value, 0);
+
+  return Number.isFinite(positiveRevenue) && positiveRevenue > 0 ? positiveRevenue : null;
+}
+
 export function calculateTopSupplierRevenueShare(rows: readonly SupplierRevenueRow[]): number | null {
   if (rows.length === 0 || rows.some((row) => !Number.isFinite(row.ukupanPromet))) return null;
 
-  const totalRevenue = rows.reduce((sum, row) => sum + row.ukupanPromet, 0);
-  if (!Number.isFinite(totalRevenue) || totalRevenue <= 0) return null;
+  const positiveRevenue = rows.filter((row) => row.ukupanPromet > 0);
+  const positiveRevenueBase = sumPositiveRevenue(rows);
+  if (positiveRevenue.length === 0 || positiveRevenueBase == null) return null;
 
-  const top5Revenue = [...rows]
+  const top5Revenue = [...positiveRevenue]
     .sort((a, b) => b.ukupanPromet - a.ukupanPromet)
     .slice(0, 5)
     .reduce((sum, row) => sum + row.ukupanPromet, 0);
 
-  return Number.isFinite(top5Revenue) ? (top5Revenue / totalRevenue) * 100 : null;
+  return Number.isFinite(top5Revenue) ? (top5Revenue / positiveRevenueBase) * 100 : null;
 }
 
 export function buildSupplierConcentrationData(
@@ -213,15 +223,17 @@ export function buildSupplierConcentrationData(
 ): Array<{ name: string; sharePct: number }> {
   if (rows.length === 0 || rows.some((row) => !Number.isFinite(row.ukupanPromet))) return [];
 
-  const totalRevenue = rows.reduce((sum, row) => sum + row.ukupanPromet, 0);
-  if (!Number.isFinite(totalRevenue) || totalRevenue <= 0) return [];
+  const positiveRevenueBase = sumPositiveRevenue(rows);
+  if (positiveRevenueBase == null) return [];
 
-  const ranked = [...rows].sort((a, b) => b.ukupanPromet - a.ukupanPromet);
+  const ranked = rows
+    .filter((row) => row.ukupanPromet > 0)
+    .sort((a, b) => b.ukupanPromet - a.ukupanPromet);
   const topRows = ranked.slice(0, 6).map((row) => ({
     name: row.dobavljacNaziv,
-    sharePct: Number(((row.ukupanPromet / totalRevenue) * 100).toFixed(2)),
+    sharePct: Number(((row.ukupanPromet / positiveRevenueBase) * 100).toFixed(2)),
   }));
-  const remaining = ranked.slice(6).reduce((sum, row) => sum + (row.ukupanPromet / totalRevenue) * 100, 0);
+  const remaining = ranked.slice(6).reduce((sum, row) => sum + (row.ukupanPromet / positiveRevenueBase) * 100, 0);
 
   if (remaining > 0.1) {
     topRows.push({ name: "Ostali", sharePct: Number(remaining.toFixed(2)) });
@@ -747,7 +759,9 @@ export function buildSupplierSalesDisplayProjection(
     : previousPeriodSource.basis === "visible_rows"
       ? sumFiniteDecisionMetric(rows, (row) => row.previousPeriodRevenue)
       : null;
-  const totalRevenueDenominator = totalRevenue != null && totalRevenue > 0 ? totalRevenue : null;
+  const totalRevenueDenominator = rows.every((row) => Number.isFinite(row.ukupanPromet))
+    ? sumPositiveRevenue(rows)
+    : null;
   const totalMarginDenominator = totalMarginContribution != null && totalMarginContribution > 0
     ? totalMarginContribution
     : null;
@@ -755,7 +769,7 @@ export function buildSupplierSalesDisplayProjection(
 
   const displayRows = rows.map((row) => ({
     ...row,
-    sharePct: totalRevenueDenominator != null && Number.isFinite(row.ukupanPromet)
+    sharePct: totalRevenueDenominator != null && Number.isFinite(row.ukupanPromet) && row.ukupanPromet >= 0
       ? finiteOrNull((row.ukupanPromet / totalRevenueDenominator) * 100)
       : null,
     shareOfMarginContribution: totalMarginDenominator != null && Number.isFinite(row.marginContribution)
@@ -1123,9 +1137,14 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     [visibleSuppliers]
   );
 
+  const concentrationRows = useMemo(
+    () => activeSupplierId == null ? visibleSuppliers : [],
+    [activeSupplierId, visibleSuppliers],
+  );
+
   const top5SharePct = useMemo(
-    () => calculateTopSupplierRevenueShare(knownSuppliers),
-    [knownSuppliers]
+    () => calculateTopSupplierRevenueShare(concentrationRows),
+    [concentrationRows]
   );
 
   const totalMarginContribution = displayProjection.totalMarginContribution;
@@ -1148,8 +1167,8 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     : "Backend referentni skup";
 
   const concentrationData = useMemo(
-    () => buildSupplierConcentrationData(knownSuppliers),
-    [knownSuppliers]
+    () => buildSupplierConcentrationData(concentrationRows),
+    [concentrationRows]
   );
 
   const comparisonData = useMemo(() => {
@@ -1893,8 +1912,8 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                 <strong>{fmtPct(data.totals.prosecnaMarza ?? null, 1)}</strong>
                 <KpiExplainButton metricKey="supplierAverageMarginPct" ariaLabel="Kako je izračunata prosečna marža" />
               </article>
-              <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Koncentracija prometa na najjačim partnerima.">
-                <span>Udeo top 5 dobavljača <InfoTip text="Procenat prometa vidljivih poznatih dobavljača koji dolazi od pet dobavljača sa najvećim prometom. Formula: promet top 5 / promet vidljivih poznatih dobavljača x 100." /></span>
+              <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Koncentracija pozitivnog neto prometa na najjačim partnerima.">
+                <span>Udeo top 5 dobavljača <InfoTip text="Procenat pozitivnog neto prometa prikazane populacije koji dolazi od pet dobavljača sa najvećim pozitivnim prometom. Uključuje Nepoznato kada je prikazano; negativni redovi su izuzeti iz ovog izvedenog pokazatelja." /></span>
                 <strong>{formatMetricDisplayValue({ value: top5SharePct, kind: "percent" })}</strong>
                 <KpiExplainButton metricKey="topSupplierRevenueShare" ariaLabel="Kako je izračunat udeo top 5 dobavljača" />
               </article>
@@ -1924,8 +1943,8 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
 
           <section className="supplier-decision-panels">
             <article className="supplier-decision-card supplier-decision-card--chart analytics-surface-panel">
-              <h2>Koncentracija prometa <InfoTip text="Grafikon prikazuje koliki udeo ukupnog prometa nose najveći dobavljači. Koristi samo promet, bez tumačenja profita ili neto marže." /></h2>
-              <p>Top udeo prometa za brzu procenu gde je biznis koncentrisan.</p>
+              <h2>Koncentracija prometa <InfoTip text="Grafikon prikazuje koliki udeo pozitivnog neto prometa prikazane populacije nose najveći dobavljači. Uključuje Nepoznato kada je prikazano; negativni redovi nisu deo pozitivne koncentracije." /></h2>
+              <p>Top udeo pozitivnog neto prometa za brzu procenu gde je biznis koncentrisan.</p>
               {concentrationData.length > 0 ? (
                 <div ref={concentrationChart.containerRef} className="supplier-decision-chart-wrap" aria-busy={!concentrationChart.ready}>
                   {concentrationChart.ready ? <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={260}>
@@ -1946,7 +1965,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                         formatter={(value: number | string | undefined) => formatMetricDisplayValue({ value: typeof value === "number" ? value : Number(value), kind: "percent", digits: 2 })}
                       />
                       <Legend wrapperStyle={CHART_LEGEND_STYLE} iconType="circle" iconSize={8} />
-                      <Bar dataKey="sharePct" fill="url(#supplierShareGradient)" radius={[0, 10, 10, 0]} name="Udeo u prometu %" />
+                      <Bar dataKey="sharePct" fill="url(#supplierShareGradient)" radius={[0, 10, 10, 0]} name="Udeo pozitivnog prometa %" />
                     </BarChart>
                   </ResponsiveContainer> : <div className="supplier-decision-chart-placeholder" role="status">Grafikon se priprema…</div>}
                 </div>
@@ -2086,7 +2105,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                           data-sort-dir={isSortActive("sharePct", sortField) ? sortDir : "none"}
                           onClick={() => handleSort("sharePct")}
                         >
-                          Udeo u prometu <span className="sort-indicator" aria-hidden="true">{sortMarker("sharePct", sortField, sortDir)}</span> <InfoTip text="Koliki procenat ukupnog prometa čini ovaj dobavljač. Formula: promet dobavljača / ukupan promet svih prikazanih dobavljača x 100." />
+                          Udeo pozitivnog prometa <span className="sort-indicator" aria-hidden="true">{sortMarker("sharePct", sortField, sortDir)}</span> <InfoTip text="Koliki procenat pozitivnog neto prometa prikazane populacije čini ovaj dobavljač. Formula: max(promet dobavljača, 0) / suma pozitivnog prometa prikazane populacije x 100. Negativan neto promet ostaje vidljiv u tabeli, ali nema pozitivan udeo." />
                         </button>
                       </th>
                       <th className={`analytics-data-table__numeric${isSortActive("marginContribution", sortField) ? " is-sorted" : ""}`}>
@@ -2347,7 +2366,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                   </strong>
                 </article>
                 <article>
-                  <span>Udeo u prometu <InfoTip text="Koliki deo ukupnog prometa čini ovaj dobavljač. Formula: promet dobavljača / ukupan promet svih prikazanih dobavljača x 100." /></span>
+                  <span>Udeo pozitivnog prometa <InfoTip text="Koliki deo pozitivnog neto prometa prikazane populacije čini ovaj dobavljač. Formula: max(promet dobavljača, 0) / suma pozitivnog prometa prikazane populacije x 100. Negativan neto promet nema pozitivan udeo." /></span>
                   <strong>{fmtPct(selectedSupplier.sharePct, 1)}</strong>
                 </article>
                 <article>
