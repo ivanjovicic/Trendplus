@@ -20514,7 +20514,7 @@ Reproduction: load a response containing known and unknown suppliers, select one
 
 ## RQ374 - Align Supplier Sales detail route with recommendation, trust and localized provenance contract
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend-contract/frontend/copy/tests
 Feature family: supplier-sales-detail-trust-contract
