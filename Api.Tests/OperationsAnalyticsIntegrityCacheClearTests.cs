@@ -1,3 +1,4 @@
+using Api.Services;
 using Application.Analytics;
 using Infrastructure.Services;
 using Infrastructure.Services.Caching;
