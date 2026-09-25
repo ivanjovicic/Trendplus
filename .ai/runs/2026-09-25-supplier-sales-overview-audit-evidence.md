@@ -60,10 +60,26 @@ Not possible read-only: the public Vercel app serves the SPA shell for `/api/*`;
 
 ## Fixes
 
-- `RQ443` — see `.ai/runs/2026-09-25-RQ443-evidence.md`.
-- `RQ444` — see `.ai/runs/2026-09-25-RQ444-evidence.md`.
+- `RQ443` — `2150944b` `fix(analytics): base supplier total PoP on the full previous period (RQ443)`; run log `.ai/runs/2026-09-25-RQ443-evidence.md`.
+- `RQ444` — `53f66cfa` `fix(analytics): keep supplier overview period metadata truthful (RQ444)`; run log `.ai/runs/2026-09-25-RQ444-evidence.md`.
+- Queue: `77371907` (claim), RQ437 DONE sync `883b10e7`; routing of the remaining findings to `RQ325` (addendum) and the `PS` note addendum in the commit that adds this line.
 
 ## Validation baseline
 
 - Full frontend suite before the fixes (`883b10e7`, clean `git archive` export): 10 failed / 1314 passed (1324). Failures: the nine `RQ440` cases plus `DailySalesStatsPage.numericState.spec.ts` „preserves a signed negative remainder …“ (not in this scope).
 - Focused Supplier specs before: 45/46 (only the pre-existing `RQ440` case in `SupplierConsolidatedPage.spec.tsx`).
+
+## Validation after the fixes (`53f66cfa`, clean `git archive` export)
+
+- Full frontend suite: 10 failed / 1323 passed (1333) — +9 new tests, the same 10 pre-existing failures (nine `RQ440` cases and `DailySalesStatsPage.numericState.spec.ts`).
+- `npm run check:analytics-guardrails`: pass (no mojibake, self-test, baseline-only 50 known / 0 removed, `tsc -b`).
+- Focused Supplier/route specs: 74/75 (pre-existing `RQ440` case).
+- Queue validators `check-agent-instructions`, `check-prompt-queues`, `check-planning-architecture` with and without `--self-test`: pass on every commit; `git diff --check`: clean.
+- `dotnet test`: not run — no backend file changed.
+
+## Owner decisions
+
+1. Concentration denominator: known suppliers only (current KPI/chart) or all visible rows including unknown (current table/comparison chart), and how negative-revenue suppliers enter Top 5 / „Ostali“ (`PS11` addendum).
+2. Known-only and focused PoP: add a backend-scoped previous total that includes previous-only suppliers (`PS11` step 3), or keep N/A for the known-only view.
+3. Registration of `PS01`-`PS18` into the canonical queue (still pending in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-25.md`).
+4. Push: `RQ443`/`RQ444` stay `PARTIAL` until `main` is pushed and a DONE sync verifies `origin/main`.

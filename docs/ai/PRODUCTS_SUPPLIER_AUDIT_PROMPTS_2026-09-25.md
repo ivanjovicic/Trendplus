@@ -1136,3 +1136,15 @@ Commit suggestion: `fix(analytics): supplier overview sort and badge hygiene`
 | `PS16` | `READY` | P3 | oba | lokalni datumi i srpski format |
 | `PS17` | `READY` | P3 | oba | srpski copy, labele, izvoz |
 | `PS18` | `READY` | P3 | Pregled dobavljača | sortiranje, mrtav kod, rank bedževi |
+
+---
+
+## Dodatak 2026-09-25 — audit „Prodaja po dobavljačima“ (grok)
+
+Izvor: `.ai/runs/2026-09-25-supplier-sales-overview-audit-evidence.md` (tabela svih pokazatelja sa file:line dokazima). Brojevi linija se odnose na `main` @ `53f66cfa`. Ovaj dodatak ne menja postojeće `PS` sekcije; registrar ga uzima u obzir pri prepisu u kanonski queue.
+
+- `RQ443` (registrovan u queue-u, `PARTIAL`, lokalni commit `2150944b`) isporučio je deo `PS11` koraka 3: nefokusirani „Ukupan PoP trend“ koristi backend `totals.previousPeriodRevenue`, a prikaz samo poznatih dobavljača je N/A. Pri registraciji `PS11` zadržati korake 1-2 i drugi deo koraka 3 (backend prethodni zbir za fokusiran/poznat skup, uključujući dobavljače bez prodaje u tekućem periodu), bez ponavljanja isporučenog dela.
+- `PS11` dopuna (odluka vlasnika): grafikon „Koncentracija prometa“ i KPI „Udeo top 5 dobavljača“ dele promet vidljivih **poznatih** dobavljača (`SupplierSalesStatsPage.tsx:197-225`, `:1126`, `:1150`), a kolona „Udeo u prometu“ i grafikon poređenja dele sve vidljive redove uključujući nepoznate (`:1155`, `:1980`), pod istom legendom „Udeo u prometu %“; InfoTip grafikona (`:1927`) kaže „ukupnog prometa“. Dobavljač sa negativnim neto prometom (samo povraćaji) može podići Top 5 iznad 100% i sakriti „Ostale“. Potrebno: jedan imenilac sa jasnom labelom i pravilo za negativne redove.
+- `PS11`/`PS17` dopuna: InfoTip „Ukupan promet“ (`:1858`) kaže „svih dobavljača“, a bedž kvaliteta marže (`:1877`, `data.totals.marginQuality*`) opisuje ceo odgovor i kada je prikazan fokusirani dobavljač.
+- `RQ444` (registrovan, `PARTIAL`, lokalni commit `53f66cfa`) pokriva lepljivi legacy `sezonaId`, prikaz prozora podataka kao perioda u kartici „Period i filteri“ i +1 dan krajnjeg datuma u zaglavlju; to nije deo `PS12` ni `PS16`.
+- Preostali ASCII/engleski copy ovog ekrana dodat je u `RQ325` (dodatak 2026-09-25, Supplier overview); `PS17` ga ne treba ponavljati.
