@@ -204,12 +204,7 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
     }
 
     private (DateTime FromUtc, DateTime ToUtc) ResolveProbeWindow(DateTime checkedAtUtc)
-    {
-        var lookbackDays = Math.Max(1, _options.ProbeLookbackDays);
-        var toUtc = DateTime.SpecifyKind(checkedAtUtc.Date, DateTimeKind.Utc);
-        var fromUtc = toUtc.AddDays(-(lookbackDays - 1));
-        return (fromUtc, toUtc);
-    }
+        => OperationsAnalyticsIntegrityProbeWindow.Resolve(checkedAtUtc, _options.ProbeLookbackDays);
 
     private static string BuildEvidenceId(string trigger)
         => $"{trigger}-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid():N}"[..40];

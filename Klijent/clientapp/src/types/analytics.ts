@@ -72,6 +72,9 @@ export interface AnalyticsResponseMeta {
   recommendationAllowed?: boolean | null;
   isPartial?: boolean;
   metricProvenance?: AnalyticsMetricProvenanceMap | null;
+  operationsIntegrityStatus?: "verified" | "unverified" | "degraded" | "drift_detected" | string | null;
+  operationsIntegrityCheckedAtUtc?: string | null;
+  operationsIntegrityEvidenceId?: string | null;
 }
 
 export type AnalyticsFreshnessStatus = "fresh" | "stale" | "critical" | "unknown";

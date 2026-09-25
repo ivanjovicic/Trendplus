@@ -27,6 +27,22 @@ public sealed class OperationsAnalyticsIntegrityCacheClearTests
         Assert.False(OperationsAnalyticsIntegrityMeta.ShouldBlockDecisionSignals(registry));
     }
 
+    [Fact]
+    public async Task ClearFamiliesAsync_MarksOperationsIntegrityUnverified_WhenAnalyticsFamiliesIncluded()
+    {
+        var cache = new StubAnalyticsCacheService();
+        var registry = new OperationsAnalyticsIntegrityRegistry();
+        var admin = new AnalyticsCacheAdminService(
+            cache,
+            distributedCache: null,
+            NullLogger<AnalyticsCacheAdminService>.Instance,
+            registry);
+
+        await admin.ClearFamiliesAsync(new[] { "supplier-sales", "reports" });
+
+        Assert.Equal(OperationsAnalyticsIntegrityStates.Unverified, registry.Current.Status);
+    }
+
     private sealed class StubAnalyticsCacheService : IAnalyticsCacheService
     {
         public bool IsRedisAvailable => false;

@@ -16,6 +16,7 @@ public sealed class WorkerRegistryService
     private readonly NightlyAnalyticsRefreshOptions _nightlyOptions;
     private readonly OpenTrainingModelTrainingOptions _openTrainingOptions;
     private readonly AnalyticsDataQualityHealthOptions _qualityHealthOptions;
+    private readonly OperationsAnalyticsIntegrityOptions _operationsIntegrityOptions;
 
     public WorkerRegistryService(
         IConfiguration configuration,
@@ -26,7 +27,8 @@ public sealed class WorkerRegistryService
         IOptions<TrendIngestionOptions> trendIngestionOptions,
         IOptions<NightlyAnalyticsRefreshOptions> nightlyOptions,
         IOptions<OpenTrainingModelTrainingOptions> openTrainingOptions,
-        IOptions<AnalyticsDataQualityHealthOptions> qualityHealthOptions)
+        IOptions<AnalyticsDataQualityHealthOptions> qualityHealthOptions,
+        IOptions<OperationsAnalyticsIntegrityOptions> operationsIntegrityOptions)
     {
         _configuration = configuration;
         _workerConfigurationService = workerConfigurationService;
@@ -37,6 +39,7 @@ public sealed class WorkerRegistryService
         _nightlyOptions = nightlyOptions.Value;
         _openTrainingOptions = openTrainingOptions.Value;
         _qualityHealthOptions = qualityHealthOptions.Value;
+        _operationsIntegrityOptions = operationsIntegrityOptions.Value;
     }
 
     public async Task<WorkerConfigurationResponseDto> GetConfigurationAsync(CancellationToken ct = default)
@@ -158,6 +161,7 @@ public sealed class WorkerRegistryService
             "OutboxProcessorWorker" => nowUtc.AddSeconds(30),
             "AnalyticsAggregationWorker" => nowUtc.AddMinutes(5),
             "AnalyticsDataQualityHealthWorker" => nowUtc.AddMinutes(Math.Max(5, _qualityHealthOptions.PollIntervalMinutes)),
+            "OperationsAnalyticsIntegrityWorker" => nowUtc.AddMinutes(Math.Max(5, _operationsIntegrityOptions.PollIntervalMinutes)),
             "NightlyAnalyticsRefreshWorker" => ResolveNextNightlyRun(nowUtc, _nightlyOptions.RunAtUtc),
             "OpenTrainingModelTrainingWorker" => nowUtc.AddSeconds(Math.Max(1, _openTrainingOptions.PollSeconds)),
             "TrendIngestionWorker" => ResolveNextDailyRunAtHour(nowUtc, _trendIngestionOptions.RunAtHourUtc),

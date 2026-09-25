@@ -21,7 +21,7 @@ Date: 2026-09-25
 
 ## Triggers
 
-- Analytics cache clear (`AnalyticsCacheAdminService`) → `unverified`
+- Analytics cache clear (`AnalyticsCacheAdminService`, single- or multi-family) → `unverified` + optional background bounded probe
 - Access import with analytics cache invalidation → `unverified`
 - Web host startup (`OperationsAnalyticsIntegrityStartupHostedService`) → one bounded probe
 - Worker interval (`OperationsAnalyticsIntegrityWorker`) → periodic bounded probe
