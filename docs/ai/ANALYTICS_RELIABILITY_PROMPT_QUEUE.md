@@ -1,6 +1,6 @@
 # Analytics Reliability Prompt Queue
 
-Date: 2026-09-23
+Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 Owner promotion 2026-09-24: idle recovery verified that RQ373 is the dependency-complete Supplier Sales visible-population owner. RQ378 and RQ380 depend on its display/reference contract, while RQ379 must consume the stabilized response schema; no conflicting active claim, branch or PR was found. RQ373 moved `WAITING -> READY`.
@@ -22849,7 +22849,7 @@ This prompt is analysis and queue decomposition only. The downstream owner must 
 2. For each confirmed independent issue, append one small precise WAITING follow-up prompt with the standard eight sections. Do not merge unrelated findings into one implementation prompt and do not create duplicates of `RQ371`-`RQ413`.
 3. For each duplicate, update only the parent prompt's evidence/dependency note if needed; do not reopen a DONE prompt without a new failing proof.
 4. Separate static code smell from demonstrated wrong output. “Needs live verification” is not a confirmation and must not be presented as a passing test.
-5. Preserve current queue truth: `Current READY prompt: none`; leave `RQ408` and any new decomposition prompts `WAITING` unless a later owner explicitly performs the canonical promotion and collision/dependency check.
+5. Preserve current queue truth: `Current READY prompt: none` after completion; any new decomposition prompts remain `WAITING` unless a later owner explicitly performs the canonical promotion and collision/dependency check. The current owner explicitly promoted and claimed RQ408 under the user's request.
 
 ### Tests
 
@@ -22865,7 +22865,7 @@ This prompt is analysis and queue decomposition only. The downstream owner must 
 - Every `OP2-*` item has an evidence-backed classification; no candidate is silently omitted.
 - Every confirmed independent defect has one deduplicated follow-up prompt with a named owner, exact scope, source of truth, denominator/unit semantics, negative/empty/error/degraded cases, focused proof and dependency state.
 - Existing owners `RQ371`-`RQ413` remain authoritative where overlap exists; no duplicate implementation lane is introduced.
-- No product code is changed by this analysis prompt, no production data is touched and no prompt is promoted to READY.
+- No product code is changed by this analysis prompt and no production data is touched. RQ408's promotion was explicitly authorized by the user; any new decomposition prompt remains WAITING.
 - Queue/planning/instruction validators pass and the downstream evidence log records what was and was not proven.
 
 ### Dependencies
