@@ -2,7 +2,8 @@
 
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ427
+Owner audit 2026-09-25: under the user's direct local-only Operacije menu audit (no remote, no cloud agent), `RQ427`-`RQ437` were added after deduplication against `RQ301`-`RQ426` and the `OP2-*` classification. Evidence-based promotions (dependency-complete, distinct feature families, no overlapping owned paths with each other or any active prompt): `RQ427` Inventory retry/controls (P1, primary Current READY), `RQ428` Daily Sales receipt-reconciliation key (backend service only), `RQ432` Pre-Nivelacija KPI definitions, `RQ435` Shoe Type safe errors plus allowlisted frontend error display, and `RQ437` stale-test hygiene (five named test files only). `RQ429`/`RQ430` wait behind `RQ428` on the Daily Sales page, `RQ433`/`RQ434` behind `RQ432` on Pre-Nivelacija files, `RQ436` behind `RQ435` on Shoe Type/Color/Pre-Post pages, and `RQ431` is owner-gated on the RQ242 versus RQ381 concentration contract. New residual English/ASCII strings were appended to `RQ325`; `RQ306` is DONE and was not reopened. Mechanical same-owner repair: section `Status:` lines of `RQ301`, `RQ302`, `RQ306`, `RQ308` and `RQ371`, and the summary rows of `RQ306`/`RQ307`, were aligned to their synchronized DONE completion notes. Audit: `docs/ai/OPERATIONS_AUDIT_PROMPTS_2026-09-25.md`. Run log: `.ai/runs/2026-09-25-operations-audit-prompts-evidence.md` (local-only, uncommitted per user request).
 Owner promotion 2026-09-25: idle recovery found RQ307 dependency-complete after RQ306 delivery; its Shoe Type impact-label owner is now collision-safe and no active RQ307 lock, branch or PR exists. RQ307 moved WAITING -> READY.
 Owner claim 2026-09-25: RQ307 transitioned READY -> IN_PROGRESS in this workspace for verification of the Shoe Type nivelacija impact label and focused regression proof. Local lock: `.ai/task-locks/RQ307-codex.lock.md`.
 Owner completion 2026-09-25: RQ307 was already satisfied on current `main` by `74091cd2`; verification completed with the required focused Shoe Type proof and no product-code change was needed. Run log: `.ai/runs/2026-09-25-RQ307-evidence.md`. Evidence state: synchronized. No successor was promoted; the RQ current READY pointer returned to `none`.
@@ -1461,8 +1462,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ303 | DONE | daily-sales-localization | Replace English mismatch badge and mixed QA copy on Daily Sales |
 | RQ304 | DONE | color-sales-detail-label-parity | Align Color detail score label with table/export Serbian copy |
 | RQ305 | DONE | operations-supplier-ia-clarity | Clarify Operacije menu entries that redirect into canonical Supplier tabs |
-| RQ306 | IN_PROGRESS | operations-diacritics-pass | Fix missing Serbian diacritics across Operacije user-facing copy |
-| RQ307 | WAITING | shoe-type-impact-label | Replace English nivelacija impact label on Shoe Type surface |
+| RQ306 | DONE | operations-diacritics-pass | Fix missing Serbian diacritics across Operacije user-facing copy |
+| RQ307 | DONE | shoe-type-impact-label | Replace English nivelacija impact label on Shoe Type surface |
 | RQ308 | DONE | inventory-period-provenance | Add Inventory period control and make snapshot/signal semantics explicit |
 | RQ309 | WAITING | operations-nav-icons | Differentiate duplicate Operacije sidebar icons |
 | RQ310 | WAITING | operations-test-route-alignment | Align Operacije page tests with production `/analytics/...` routes |
@@ -1559,6 +1560,17 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ406 | DONE | supplier-assortment-truncated-derived-metrics | Prevent truncated article detail from producing authoritative Supplier Footwear type insights |
 | RQ407 | DONE | operations-cross-screen-reconciliation | Prove the eight Operacije routes against one deterministic source and expected-output manifest |
 | RQ408 | DONE | operations-second-pass-finding-decomposition | Classify and decompose the second-pass Operacije bug/finding catalogue into precise follow-up prompts |
+| RQ427 | READY | inventory-retry-recovery | Make Inventory retry refetch and keep controls on error/empty states |
+| RQ428 | READY | daily-sales-receipt-reconciliation-key | Join Daily Sales receipt-mismatch diagnostics on real receipt identity |
+| RQ429 | WAITING | daily-sales-empty-state-metric-consistency | Make Daily Sales empty state, incomplete-shift counts and MA7 baseline truthful |
+| RQ430 | WAITING | daily-sales-page-polish | Fix Daily Sales sort toggle, print-form columns and store identity in export |
+| RQ431 | WAITING | daily-sales-concentration-contract | Decide the Daily Sales supplier-concentration over-total contract |
+| RQ432 | READY | pre-nivelacija-kpi-definition-parity | Align Pre-Nivelacija KPI definitions with backend sums, tooltips and table gating |
+| RQ433 | WAITING | pre-nivelacija-facet-universe | Build Pre-Nivelacija supplier, season and type options from the filter universe |
+| RQ434 | WAITING | pre-nivelacija-display-polish | Fix Pre-Nivelacija signed WoW, filter validation, labels, counts and tones |
+| RQ435 | READY | operations-safe-error-messages | Return safe traceable Shoe Type errors and allowlist frontend error display |
+| RQ436 | WAITING | operations-derived-kpi-cleanup | Remove dead or frontend-derived Operacije KPIs and small lifecycle leaks |
+| RQ437 | READY | operations-stale-test-hygiene | Repair stale Operacije tests that hide regressions |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -16388,7 +16400,7 @@ Reproduction: inject null, numeric string, empty string, NaN, Infinity, negative
 
 ## RQ301 - Replace English inventory cockpit copy with Serbian product language
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/copy/tests
 Feature family: operations-inventory-serbian-copy
@@ -16465,7 +16477,7 @@ Reproduction: open `/analytics/inventory` and scan trust header, KPI cards, work
 
 ## RQ302 - Add missing Operacije routes to core App analytics smoke matrix
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/routing/tests
 Feature family: operations-route-smoke
@@ -16755,7 +16767,7 @@ Reproduction: click each Operacije supplier item, compare menu label vs page tit
 
 ## RQ306 - Fix missing Serbian diacritics across Operacije user-facing copy
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/copy/tests
 Feature family: operations-diacritics-pass
@@ -16829,6 +16841,8 @@ Reproduction: scan Operacije screens for missing `č/ć/š/đ/ž`. Risk: inconsi
 - Residual risk: build reported existing analyzer warnings; live/deployed UI and remote CI were not inspected.
 - Follow-up: `RQ307` remains WAITING for the separate Shoe Type impact-label owner; no successor was promoted.
 
+Residual routing 2026-09-25 (post-completion note, not a reopen): the local-only Operacije audit found remaining ASCII Serbian after `1a1219eb` (for example `DailySalesStatsPage.tsx:196`, `1692`, `1917`, `2091`, `2102`, `2149`, `2150`, `2175`, `2179` and `InventoryPage.tsx:1388`). Because this prompt is DONE, those residuals are owned by the `RQ325` addendum dated 2026-09-25; the Shoe Type backend error title is owned by `RQ435`.
+
 ---
 
 ## RQ307 - Replace English nivelacija impact label on Shoe Type surface
@@ -16898,7 +16912,7 @@ Reproduction: open Shoe Type sales with rows lacking nivelacija impact percent b
 
 ## RQ308 - Add Inventory period control and make snapshot/signal semantics explicit
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/contract/tests
 Feature family: inventory-period-provenance
@@ -17768,11 +17782,19 @@ English remains in Operacije trust/snapshot/export strings beyond RQ301/303/304/
 - `DailySalesStatsService.cs:329,491-493,567` contains English-only log messages (`Daily-sales`, `fallback applied`, `Daily-sales generated`); keep logs technically searchable but ensure no equivalent English leaks into user-facing metadata, and localize the warnings named by `RQ306`.
 - Inventory residuals include `InventoryPage.tsx` fallback headings/copy such as `Alerts`, `Forecast` and `snapshot`, `DemandForecastPanel.tsx` labels such as `OOS`/`SKU`/`Status`, `InventoryAlertsFeed.tsx` `Info`/`N/A`, `inventoryUtils.ts` `Sell-through`/`Snapshot`, and export metadata such as `Aging 90+`.
 
+Addendum 2026-09-25 (local-only Operacije audit, `docs/ai/OPERATIONS_AUDIT_PROMPTS_2026-09-25.md`; line numbers at `00accd93`). Residual English/technical copy with suggested Serbian:
+
+- `DailySalesStatsPage.tsx:2083`, `2087` `Top 3 share`/`Top 5 share` → „Udeo top 3“/„Udeo top 5“; `2124`, `2129`, `2130` `Avg prihod`/`Avg komadi` → „Prosečan prihod“/„Prosečno komada“; `2150` `recommendation status model` → „model statusa preporuke“; `1300` `weekday obrazac` → „obrazac po danima u nedelji“; `1992` `Stacked bar … staffing` → „Složeni stubičasti grafikon … raspored osoblja“; `1130` `period total-a` → „ukupnog zbira perioda“; `1859` `PoP kartice` → „kartice poređenja sa prethodnim periodom“; `1492` `Top N` → „Top dobavljača“; `1618` `Reset filtera` → „Poništi filtere“; `2105`, `2106`, `2168-2180` `N/A` → „Nije dostupno“; `1593` `Daily sales analytics (scope: …)` (already listed) remains.
+- Raw data-scope codes `all`/`existing`/`imported` shown to users: Daily Sales chip `1475`, trust `1593`, export `891`; Shoe Type `836`, `963`; Pre-Nivelacija export `818`, trust `1026`; Pre/Post trust `1344`. Use one shared label mapping („Svi podaci“, „Postojeći“, „Uvezeni“).
+- Developer/technical copy on `PreNivelacijaPriorityPage.tsx:1274` („Backend je izvor istine… frontend više ne računa“), `1487` („backend recommendation statusu“), `795` („analytics refresh status i data quality signal“), `794` („fallback“), `773` („SKU… prioritetnoj bandi“), `1527` („markdown“ → „sniženje“); `ProdajaPrePostNivelacijePage.tsx:677` („Backend recommendation payload nije dostupan… frontend ne računa…“); `InventoryPage.tsx:1390` („refresh status i data quality signal“ → „status osvežavanja i signal kvaliteta podataka“). Replace with business wording.
+- Post-`RQ306` ASCII Serbian residuals (RQ306 is DONE; owned here): `DailySalesStatsPage.tsx:196` `Cet` → „Čet“; `1692` `Prosecna` → „Prosečna“; `1917` `Dijagnosticki` → „Dijagnostički“; `2091` `Dobavljaca za 80%` → „Dobavljača za 80%“; `2102` `Prosecan` → „Prosečan“; `2149` `Heuristicki signali` → „Heuristički signali“; `2150` `najvise` → „najviše“; `2175`, `2179` `Najveci skok/pad` → „Najveći skok/pad“; `InventoryPage.tsx:1388` `Podaci jos nisu` → „Podaci još nisu“.
+- Not owned here: Shoe Type backend error title (`AllEndpoints.cs:2811`) → `RQ435`; Pre-Nivelacija raw band codes and sort markers → `RQ434`; Daily Sales store-name export label → `RQ430`.
+
 Reproduction: open color detail snapshot, trust subtitles, inventory alerts — English visible in Serbian UI.
 
 ### Scope
 
-- Operacije-only strings listed above, including the current Inventory and Sales by Supplier residual lists.
+- Operacije-only strings listed above, including the current Inventory and Sales by Supplier residual lists and the 2026-09-25 addendum (residual English, raw data-scope codes, developer copy and post-RQ306 ASCII residuals).
 
 ### Read first
 
@@ -17795,6 +17817,7 @@ Reproduction: open color detail snapshot, trust subtitles, inventory alerts — 
 ### Dependencies
 
 - Coordinate with `RQ301`/`RQ306`.
+- `RQ306` is DONE; its post-completion ASCII residuals are owned here (addendum 2026-09-25). Shoe Type backend error title belongs to `RQ435`, Pre-Nivelacija band codes/sort markers to `RQ434`, Daily Sales store-name export label to `RQ430`.
 
 ---
 
@@ -20284,7 +20307,7 @@ Inventory's lifecycle query accepts an `AbortSignal` but passes it only to the p
 
 ## RQ371 - Keep Inventory signal period and data-scope contracts aligned
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend-contract/frontend/tests
 Feature family: inventory-signal-period-scope-parity
@@ -23047,3 +23070,589 @@ This prompt is analysis and queue decomposition only. The downstream owner must 
 - Follow-up: future owner may promote `RQ412`/`RQ413` under their declared dependency gates; re-open only a potential OP2 item with a new failing proof.
 - Residual risk: browser/deployed behavior and remote CI were not inspected; the local API showed the seeded Inventory route response successfully.
 - Prompt defect / scope repair: explicit user instruction authorized promotion/claim despite the prompt's default “must not be promoted automatically” guard; no product code was changed.
+
+---
+
+## RQ427 - Make Inventory retry refetch and keep controls on error/empty states
+
+Status: READY
+Priority: P1
+Type: frontend/lifecycle/tests
+Feature family: inventory-retry-recovery
+Parallel-safe: no
+Owner: Analytics Frontend / Inventory
+Commit suggestion: `fix(analytics): make inventory retry refetch and keep controls visible`
+
+### Problem
+
+On `/analytics/inventory` the „Ponovi učitavanje“ button in the blocking-error and empty states does not start a new request. `retryPageLoad()` and the same-scope handler only increment `reloadNonce`, but no query identity or effect reads that value. Both states also `return` before the main layout, so search, store/supplier filters, period and sort controls disappear. A search with no match therefore leaves the user in a dead end whose only action is a no-op retry.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/InventoryPage.tsx:436` declares `reloadNonce`; it is set at `538` (same-scope handler `526-538`) and `1360` (`retryPageLoad`, `1352-1361`) but never read. The `inventoryQuery` dependency list at `686` omits it and the hook's `refetch` is not used by these handlers.
+- `InventoryPage.tsx:1363-1377` (blocking error) and `1379-1400` (empty state) return before the main page at `1402+`. The empty copy at `1391` asks the user to widen the range or remove filters although no control is rendered.
+- Failing focused test on `00accd93`: `src/pages/__tests__/InventoryPage.queueStatus.spec.tsx:331` („clears queued marker when inventory source keys disappear“) — after the empty-state retry the table never reappears.
+- Regression next to `RQ351` (DONE, scoped refetch instead of full page reload).
+
+Reproduction: open Inventory, search for a value with no match (or make the list request fail), press „Ponovi učitavanje“ — no new request is sent and the controls are gone.
+
+### Scope
+
+- `InventoryPage.tsx` retry/refetch wiring and the error/empty rendering branches.
+- Nearest Inventory page specs (`InventoryPage.queueStatus.spec.tsx` plus one focused retry/empty-state spec).
+- No backend, API contract, recommendation, export or secondary-panel semantics change.
+
+### Read first
+
+- `RQ351`, `RQ359` (`useReliableAnalyticsQuery`), `RQ369`, `RQ370`, `RQ308`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md` reliability rules
+
+### Do
+
+1. Make retry re-run the primary Inventory request through one mechanism: call the reliable-query `refetch()` or include the nonce in the query identity. Remove the unused state if `refetch` is chosen; do not issue duplicate requests.
+2. Keep the control bar (search, store, supplier, period, sort, page size) mounted in error and empty states; render the error/empty panel inside the main layout instead of an early `return`.
+3. Distinguish a filter/search no-match from no data in the selected scope, and offer a visible filter reset when filters are active.
+4. Preserve RQ370 cancellation of superseded requests and RQ351 scoped refetch (no full page reload).
+
+### Tests
+
+- `npm run test:run -- src/pages/__tests__/InventoryPage.queueStatus.spec.tsx` — the `:331` case must pass without weakening its intent.
+- New focused cases: retry after an error issues exactly one new list request and recovers the table; controls remain visible in error and empty states; clearing the search from the empty state reloads data.
+- `npm run typecheck`; `npm run check:analytics-guardrails`.
+
+### Acceptance
+
+- Retry triggers exactly one new primary request and the table recovers when data returns.
+- Error and empty states never hide filter, search, period or sort controls.
+- No full page reload; superseded requests are still aborted.
+- Focused Inventory specs pass, including `InventoryPage.queueStatus.spec.tsx:331`.
+
+### Dependencies
+
+- No blocking dependency. `RQ322`, `RQ323` and `RQ324` (WAITING) touch the same page and must not run concurrently with this prompt.
+- Reliability contract: the backend list response remains the source of truth; an empty or failed response must not become zero KPIs or stale data presented as fresh.
+
+---
+
+## RQ428 - Join Daily Sales receipt-mismatch diagnostics on real receipt identity
+
+Status: READY
+Priority: P2
+Type: backend/contract/tests
+Feature family: daily-sales-receipt-reconciliation-key
+Parallel-safe: no
+Owner: Analytics Backend / Daily Sales
+Commit suggestion: `fix(analytics): reconcile daily receipts on real receipt identity`
+
+### Problem
+
+The Daily Sales „Neusklađeni računi“ diagnostic compares DnevnikPromena totals grouped by the dnevnik row's own primary key with sale-line totals keyed by the `ProdajaZaglavlje` primary key. The two identifiers are unrelated, so the mismatch count, amount, danger tone and the „Prodaja traži rekonsilijaciju“ insight are not evidence of a real reconciliation problem.
+
+### Evidence
+
+- `Api/Services/DailySalesStatsService.cs:120-165` groups DnevnikPromena by `SaleId = d.Id` and matches it against `receiptLineTotals` keyed by `pz.Id`; `287-297` turns the result into the „računa gde zbir stavki ne odgovara dnevniku prodaje“ warning.
+- `Domain/Model/DnevnikPromena.cs` has no foreign key to `ProdajaZaglavlje`; the table carries `BrojRacuna`, `Datum` and `Iznos` (`Infrastructure/Seed/DatabaseInitializer.cs:1444-1450`), and the Access import assigns its own identifiers.
+- `Api.Tests/DailySalesStatsServiceTests.cs` seeds no DnevnikPromena rows, so the path is untested.
+- `RQ382` (WAITING) owns data-scope parity of the same diagnostics, not the join key.
+
+### Scope
+
+- `DailySalesStatsService.cs` receipt-mismatch diagnostic and its response metadata.
+- New focused backend test class.
+- Minimal Daily Sales page change only if an explicit `unavailable` diagnostic state must be rendered.
+
+### Read first
+
+- `RQ303`, `RQ381`, `RQ382`, `RQ384`
+- `Domain/Model/DnevnikPromena.cs` and the Access import mapping of DnevnikPromena and ProdajaZaglavlje
+
+### Do
+
+1. Establish and document the authoritative link between a dnevnik sale entry and a receipt (for example normalized `BrojRacuna` + store + calendar day). If no reliable link exists, return the diagnostic as unavailable (null count/amount plus a reason code) instead of a mismatch count.
+2. Compare signed totals under the RQ381 contract, using the same store/period filter as the headline totals. Broader data-scope parity remains `RQ382`.
+3. Expose explicit metadata: matched receipts, unmatched receipts on each side, mismatch count and amount, or `unavailable` with reason.
+4. Ensure the page shows „nije dostupno“ rather than a danger tone or `0` when the diagnostic is unavailable.
+
+### Tests
+
+- New `Api.Tests/DailySalesReceiptReconciliationTests.cs`: matching receipt without mismatch; amount difference flagged; dnevnik entry without receipt; receipt without dnevnik entry; coincident unrelated IDs not matched; unavailable path.
+- `dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~DailySales`.
+- Focused Daily Sales page spec only if the page is touched.
+
+### Acceptance
+
+- Coincident primary keys can neither create nor hide a mismatch.
+- The join key is documented in code and run evidence.
+- Unavailable evidence is never rendered as `0` or as a mismatch.
+
+### Dependencies
+
+- No blocking dependency. `RQ382` stays WAITING and should follow this prompt for the same diagnostics block; `RQ429` waits for this prompt because it edits the same quality card.
+- Reliability contract: source of truth is signed `ProdajaStavke` line totals per receipt versus DnevnikPromena `Iznos`; unit RSD; numerator = matched receipts whose absolute difference exceeds 0.01 RSD; denominator = matched receipts; a missing link is unavailable, never zero.
+
+---
+
+## RQ429 - Make Daily Sales empty state, incomplete-shift counts and MA7 baseline truthful
+
+Status: WAITING
+Ready after: `RQ428` is DONE (same quality-card region of `DailySalesStatsPage.tsx`)
+Priority: P2
+Type: frontend/contract/tests
+Feature family: daily-sales-empty-state-metric-consistency
+Parallel-safe: no
+Owner: Analytics Frontend / Daily Sales
+Commit suggestion: `fix(analytics): truthful daily sales empty state and metric labels`
+
+### Problem
+
+The backend always returns one row per calendar day, so the page never reaches its empty state. A period without sales shows 30 zero rows, zero KPIs and the „Stabilan pregled“ insight while the trust header reports no data. The same label „Dani sa nepotpunom satnicom“ shows two different numbers, the anomaly/MA7 baseline includes the current day and partial first windows are still labelled MA7, and one KPI tooltip describes a top-N effect that does not apply.
+
+### Evidence
+
+- `Api/Services/DailySalesStatsService.cs:440-470` emits one row per day; `583-588` sets meta `no_data_in_period`.
+- `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx:819-857` (`emptyStateHint`/`emptyStateVariant`) depends on an empty `tableRows`, which never occurs; the „Prikaži dostupne podatke“ action (`1661-1668`, `1417-1429`) is unreachable; `1297-1303` renders „Stabilan pregled“ for an all-zero period. `RQ352` (DONE) therefore has no effect here.
+- `DailySalesStatsPage.tsx:2037` mini-stat shows `missingShiftCount`, while `1135` quality card with the same label shows `incompleteShiftCount` (missing + partial).
+- `buildRollingAverage` (`549-557`) includes the current day and feeds `anomalyRows` (`1067-1083`) and the chart „MA7“; day 1 deviation is always 0.
+- `DailySalesStatsPage.tsx:1682` tooltip says the item count can shrink because of top-N, but `totalItemsSold` includes „Ostali“.
+
+### Scope
+
+- `DailySalesStatsPage.tsx` empty-state detection, KPI/insight suppression, incomplete-shift labels, rolling baseline and the named tooltip.
+- Nearest Daily Sales page specs. No backend change unless an explicit no-data flag is missing from the typed response.
+
+### Read first
+
+- `RQ335`, `RQ336`, `RQ352`, `RQ364`, `RQ381`
+
+### Do
+
+1. Detect no data from backend meta (`no_data_in_period`) or an explicit zero-sales-day count, not from row count. Render the RQ352 empty variants and suppress zero KPIs, insights and charts; true zero days inside a period with sales remain `0`.
+2. Give each metric one label and definition: e.g. „Dani bez satnice“ (missing) versus „Dani sa nepotpunom satnicom“ (missing + partial), with the definition in the tooltip.
+3. Compute the baseline from the previous seven days excluding the current day; days with fewer than seven prior days show „nedovoljno istorije“ and are excluded from anomaly flags.
+4. Correct the `1682` tooltip to say the total includes „Ostali“.
+
+### Tests
+
+- Focused Daily Sales page specs: no-sales period shows the empty state and no „Stabilan pregled“; mixed period keeps real zero days; the same label always shows the same number; baseline excludes the current day; the first six days raise no anomaly.
+- `npm run typecheck`; `npm run check:analytics-guardrails`.
+
+### Acceptance
+
+- A no-sales period is visibly empty and consistent with the trust header.
+- No two surfaces show different numbers under the same label.
+- MA7/anomaly semantics are stated and exclude the current day.
+
+### Dependencies
+
+- `RQ428` (same page region). Coordinate with `RQ382`/`RQ383` for scope and off-shift semantics; do not change their contracts here.
+- Reliability contract: backend meta is the source of truth for no-data; missing history is „nedovoljno istorije“, never `0`.
+
+---
+
+## RQ430 - Fix Daily Sales sort toggle, print-form columns and store identity in export
+
+Status: WAITING
+Ready after: `RQ429` is DONE (same page file)
+Priority: P3
+Type: frontend/tests
+Feature family: daily-sales-page-polish
+Parallel-safe: no
+Owner: Analytics Frontend / Daily Sales
+Commit suggestion: `fix(analytics): daily sales sort, print form and export store label`
+
+### Problem
+
+`handleSort` calls `setSortDir` inside the `setSortKey` updater, so under React StrictMode the direction toggles twice; a ternary returns `"desc"` on both branches. The blank print form pairs keys and headers incorrectly. Export filter metadata shows the raw store ID instead of the store name.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx:1351-1360` — side effect inside a state updater; `field === "date" ? "desc" : "desc"` is a no-op. StrictMode is enabled in `Klijent/clientapp/src/main.tsx:20`.
+- `DailySalesStatsPage.tsx:1438-1446` — key `others` has header „Uk. sm.“, key `revenue` has header „Ost.“.
+- `DailySalesStatsPage.tsx:889` — export filter „Objekat“ prints the raw store ID.
+
+### Scope
+
+- `DailySalesStatsPage.tsx` sort handler, print-form column definitions and export store label; nearest specs.
+- Raw data-scope code labels are owned by the `RQ325` addendum; URL persistence of sort is `RQ327`.
+
+### Read first
+
+- `RQ327`, `RQ336`, `RQ325`
+
+### Do
+
+1. Compute the next key and direction outside state updaters (single update, idempotent under StrictMode) and choose an intentional default direction per field.
+2. Align print-form keys and headers.
+3. Resolve the store name for export metadata; fall back to „Nepoznat objekat (ID n)“ only when the name is unavailable.
+
+### Tests
+
+- Page spec rendered under `React.StrictMode`: one click toggles direction exactly once.
+- Print-form header/key mapping assertion; export metadata shows the store name.
+
+### Acceptance
+
+- Sorting behaves identically in dev (StrictMode) and production builds.
+- Print form columns and export store label are correct.
+
+### Dependencies
+
+- `RQ429` (same file). If `RQ327` runs first, the sort handler fix moves into that change; do not implement both independently.
+
+---
+
+## RQ431 - Decide the Daily Sales supplier-concentration over-total contract
+
+Status: WAITING
+Ready after: owner decision recorded on the RQ242 versus RQ381 concentration contract
+Priority: P2
+Type: contract/decision/tests
+Feature family: daily-sales-concentration-contract
+Parallel-safe: no
+Owner: Analytics Product + Frontend / Daily Sales
+Commit suggestion: `fix(analytics): settle daily sales concentration over-total contract`
+
+### Problem
+
+A focused Daily Sales spec expects a `supplier-concentration-warning` when the top supplier quantity (25) exceeds the period total (18), matching the RQ242 rule „do not fabricate supplier shares from inconsistent totals“. `buildSupplierConcentration` no longer has an over-total guard after the RQ381 signed quantity/revenue contract. Either the guard regressed or the contract changed without updating the test. The same spec also still expects pre-RQ306 ASCII headings.
+
+### Evidence
+
+- Failing test on `00accd93`: `Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.premium.spec.tsx:605-644` („does not reconcile contradictory supplier totals…“).
+- `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx:376-484` — `buildSupplierConcentration` has no over-total check.
+- `RQ242` (DONE) contract versus `RQ381` (DONE) signed semantics; `OP2-39` was classified as a duplicate of RQ381/RQ384 in `docs/ai/OPERATIONS_SECOND_PASS_CLASSIFICATION_2026-09-25.md`.
+
+### Scope
+
+- Decision record, `buildSupplierConcentration` guard (if kept) and the named spec only.
+
+### Read first
+
+- `RQ242`, `RQ381`, `RQ384`, `RQ306`
+
+### Do
+
+1. Record the owner decision: under signed semantics (returns can make the net total smaller than a supplier's gross quantity), when is „top supplier > total“ a contradiction that must block shares?
+2. Implement the decided guard or update the test to the decided contract, with the denominator named in the label.
+3. Update ASCII heading expectations to the delivered Serbian diacritics.
+
+### Tests
+
+- `npm run test:run -- src/pages/__tests__/DailySalesStatsPage.premium.spec.tsx`
+- Cases: positive totals over-total; signed returns with a smaller net total; unknown supplier.
+
+### Acceptance
+
+- The spec passes and asserts the decided contract; no share is shown over a contradictory or non-positive denominator unless the decision explicitly allows it and the label says so.
+
+### Dependencies
+
+- Owner decision (business contract). `RQ382`/`RQ384` remain separate owners.
+- Reliability contract: numerator = supplier signed quantity; denominator = the period total named in the decision; non-positive or contradictory denominator → share unavailable, not 0% or 100%.
+
+---
+
+## RQ432 - Align Pre-Nivelacija KPI definitions with backend sums, tooltips and table gating
+
+Status: READY
+Priority: P2
+Type: backend/frontend/contract/tests
+Feature family: pre-nivelacija-kpi-definition-parity
+Parallel-safe: no
+Owner: Analytics Backend + Frontend / Pre-Nivelacija
+Commit suggestion: `fix(analytics): align pre-nivelacija kpi definitions`
+
+### Problem
+
+Three Pre-Nivelacija KPIs sum a different population than their tooltips describe and than the table exposes. „Zaliha pod rizikom“ says all shown candidates but sums only high priority. „Procena povećanja prihoda“ says „Pojačaj“ candidates but sums positive revenue deltas of all candidates, including blocked recommendations whose deltas the table hides. „Izbegljiv gubitak“ includes rows without cost while the detail says the value is unavailable without cost, and its tooltip calls a margin value lost revenue.
+
+### Evidence
+
+- `Api/Endpoints/PreNivelacijaPriorityEndpoints.cs:567` — `TotalStockAtRisk` sums only high-priority candidates; tooltip at `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx:1156` says all shown candidates.
+- `PreNivelacijaPriorityEndpoints.cs:569` — positive revenue delta over all candidates; tooltip at page `1161` says „Pojačaj“ candidates; table hides blocked deltas via `formatGatedRsd` (`239-241`, `1306`).
+- `PreNivelacijaPriorityEndpoints.cs:568` — margin deltas include missing-cost rows; detail shows „Nije dostupno bez troška“ (page `1378-1382`).
+
+### Scope
+
+- Summary computation in `PreNivelacijaPriorityEndpoints.cs`, typed response and runtime schema in `preNivelacijaApi.ts`, KPI block and tooltips in `PreNivelacijaPriorityPage.tsx`, focused backend and page tests.
+
+### Read first
+
+- `RQ388`, `RQ390`, `RQ391`, `RQ423`, `RQ424`
+
+### Do
+
+1. Define each KPI population in the backend: stock at risk (high priority or all shown — decide and label), revenue uplift (only allowed „Pojačaj“ recommendations), avoidable margin loss (only rows with known cost).
+2. Expose coverage for each KPI („n od m kandidata“) and return null when no eligible row exists.
+3. Make tooltips, table gating and the KPI use the same definition; label margin as margin.
+
+### Tests
+
+- New backend test class (for example `Api.Tests/PreNivelacijaKpiDefinitionTests.cs`): blocked rows excluded from uplift; missing-cost rows excluded from avoidable loss with coverage; stock at risk matches the stated population; no eligible rows → null.
+- `dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~PreNivelacija`; focused Pre-Nivelacija page spec for tooltip text and null rendering.
+
+### Acceptance
+
+- KPI values, tooltips and table gating describe the same population; blocked or missing-cost evidence never inflates a KPI.
+
+### Dependencies
+
+- No blocking dependency. `RQ433` and `RQ434` wait for this prompt (same endpoint and page files); `RQ326` remains separate.
+- Reliability contract: source of truth is backend candidate evidence; unit RSD or pairs; no eligible rows → null, not 0; coverage is explicit.
+
+---
+
+## RQ433 - Build Pre-Nivelacija supplier, season and type options from the filter universe
+
+Status: WAITING
+Ready after: `RQ432` is DONE (same endpoint and page files)
+Priority: P2
+Type: backend/frontend/contract/tests
+Feature family: pre-nivelacija-facet-universe
+Parallel-safe: no
+Owner: Analytics Backend + Frontend / Pre-Nivelacija
+Commit suggestion: `fix(analytics): pre-nivelacija facets from filter universe`
+
+### Problem
+
+After a supplier is selected, the supplier dropdown shrinks to that supplier because options come from the supplier leaderboard built from already-filtered candidates. Season and type facets narrow the same way. The user cannot switch directly to another supplier or season. `RQ344` (DONE) fixed only page bias, so this is a partial regression.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx:531-534` — supplier options from `data.supplierLeaderboard`.
+- `Api/Endpoints/PreNivelacijaPriorityEndpoints.cs:129-142` filters candidates by supplier/season/type/minScore/noSaleDays; `429-467` builds the leaderboard from those filtered candidates.
+- `PreNivelacijaPriorityEndpoints.cs:873`, `895` — `BuildFilterFacets(baseEntry.Candidates)` is equally self-narrowing.
+
+### Scope
+
+- Facet computation in the endpoint and typed response; option binding on the page; focused tests. The leaderboard remains a filtered analytics view.
+
+### Read first
+
+- `RQ344`, `RQ403` (filter-parity precedent), `RQ423`
+
+### Do
+
+1. Compute each facet from the universe filtered by all other active dimensions except its own (or the full universe), with counts.
+2. Bind dropdowns to facets, not to the leaderboard; keep a selected option visible even if its count is zero.
+
+### Tests
+
+- Backend: selecting supplier A still returns supplier B in the supplier facet; the same for season and type.
+- Page spec: switching directly from supplier A to B without clearing works.
+
+### Acceptance
+
+- Every dropdown lets the user switch directly to any valid value in the current universe.
+
+### Dependencies
+
+- `RQ432` (same files). `RQ318`/`RQ319` remain separate URL/apply owners.
+
+---
+
+## RQ434 - Fix Pre-Nivelacija signed WoW, filter validation, labels, counts and tones
+
+Status: WAITING
+Ready after: `RQ433` is DONE (same page file)
+Priority: P3
+Type: frontend/contract/tests
+Feature family: pre-nivelacija-display-polish
+Parallel-safe: no
+Owner: Analytics Frontend / Pre-Nivelacija
+Commit suggestion: `fix(analytics): pre-nivelacija display polish`
+
+### Problem
+
+Negative week-over-week changes are clamped away, invalid filter values silently revert with a double fetch, queue badges show raw backend codes, queue counts show the capped list length, a risk count uses a success tone, and export metadata shows raw identifiers.
+
+### Evidence
+
+- WoW: `Api/Endpoints/PreNivelacijaPriorityEndpoints.cs:643-651` returns `(prev-last)/prev·100` in `(-∞, 100]`; `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx:703` passes it through `normalizePreNivelacijaPercentagePoints` (`206-210`, 0..100), so decreases become null; the tooltip branch at `174-176` is dead. Side effect of the `RQ424` (DONE) unit contract.
+- Filters: inputs at `987` and `994` accept values over 100, negatives and decimals; `parseBoundedInteger`/`^\d+$` (`117-127`, `430-431`) replaces them with defaults 40/14 and the sync effects (`451-466`) revert and refetch.
+- Queue badges render `item.priorityBand` (`1502`, `1520`, `1537`) although `priorityBandLabel` exists (`316-322`).
+- Queue counts use the list length after backend `.Take(30)` (endpoint `475`, `480`, `488`).
+- „Visok prioritet“ KPI and chip use the success tone (`1151`, `933`).
+- Export filters show raw supplier/season/type IDs, focus code and scope (`812-818`); sort marker is `" ^"`/`" v"` (`271`).
+
+### Scope
+
+- `PreNivelacijaPriorityPage.tsx` and, only for total counts, the typed response of the endpoint; focused specs. Developer/English copy is in the `RQ325` addendum.
+
+### Read first
+
+- `RQ424`, `RQ326`, `RQ325`
+
+### Do
+
+1. Use a signed percentage normalizer for WoW and show decreases.
+2. Validate filter inputs at entry with visible feedback (integer ranges), so the applied value never silently differs from the typed value.
+3. Render Serbian band labels; show „prikazano 30 od N“ or the backend total for capped queues; use a warning/danger tone for high-priority risk.
+4. Export names instead of IDs/codes; replace text sort markers with accessible sort indicators (`aria-sort`).
+
+### Tests
+
+- Page specs: negative WoW shown; invalid input feedback without refetch loops; band labels; capped count copy; tone; export metadata names.
+
+### Acceptance
+
+- All listed display defects are fixed without changing recommendation logic.
+
+### Dependencies
+
+- `RQ433` (same file). Coordinate with `RQ326` for sort URL state.
+
+---
+
+## RQ435 - Return safe traceable Shoe Type errors and allowlist frontend error display
+
+Status: READY
+Priority: P2
+Type: backend/frontend/tests
+Feature family: operations-safe-error-messages
+Parallel-safe: no
+Owner: Analytics Backend + Frontend / Shoe Type, Pre/Post, Color
+Commit suggestion: `fix(analytics): safe traceable shoe type errors and allowlisted error display`
+
+### Problem
+
+The Shoe Type endpoint returns the raw exception message as problem detail with an ASCII title. The frontend safe-error helper is a blacklist, and the Shoe Type, Pre/Post and Color pages display `reason.message`, so technical .NET text such as „Object reference not set to an instance of an object.“ can reach users.
+
+### Evidence
+
+- `Api/Endpoints/AllEndpoints.cs:2810-2813` — `Results.Problem(title: "Greska pri ucitavanju statistike prodaje po tipu obuce", detail: ex.Message, statusCode: 500)`.
+- `Klijent/clientapp/src/utils/analyticsErrorMessages.ts:7-35` — blacklist-based `getSafeAnalyticsErrorMessage`.
+- `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx:441-443`, `ProdajaPrePostNivelacijePage.tsx:633-635`, `ColorSalesStatsPage.tsx:362-364` — `getErrorMessage` returns `reason.message`.
+- Precedents: `RQ395` (Color backend, DONE), `RQ387` (Pre/Post backend, DONE); Daily Sales backend is `RQ384` (WAITING).
+
+### Scope
+
+- Shoe Type endpoint catch block; `analyticsErrorMessages.ts`; the three pages' error mapping; focused backend and frontend tests. Daily Sales endpoint stays with `RQ384`.
+
+### Read first
+
+- `RQ384`, `RQ387`, `RQ395`, `RQ369`
+
+### Do
+
+1. Log the exception with a trace ID; return a Serbian safe title/detail with diacritics plus the trace ID (same pattern as RQ395).
+2. Change the helper to an allowlist of known safe backend messages/codes with a per-screen fallback; route the three pages through it.
+3. Keep error states distinct from empty/degraded states.
+
+### Tests
+
+- Backend: forced exception in the Shoe Type endpoint returns no exception text and includes a trace ID.
+- `analyticsErrorMessages` spec: raw .NET messages map to the fallback; known safe messages pass.
+- Shoe/Pre-Post/Color error-state specs. Put Color assertions in a new spec file; `ColorSalesStatsPage.premium.spec.tsx` is owned by `RQ437`.
+
+### Acceptance
+
+- No raw exception text reaches Shoe Type, Pre/Post or Color users; problem responses carry a trace ID.
+
+### Dependencies
+
+- No blocking dependency. `RQ436` waits for this prompt (same pages). `RQ384` must reuse the helper when it runs.
+
+---
+
+## RQ436 - Remove dead or frontend-derived Operacije KPIs and small lifecycle leaks
+
+Status: WAITING
+Ready after: `RQ435` is DONE (same page files)
+Priority: P3
+Type: frontend/contract/tests
+Feature family: operations-derived-kpi-cleanup
+Parallel-safe: no
+Owner: Analytics Frontend / Shoe Type, Color, Pre/Post
+Commit suggestion: `fix(analytics): remove dead and frontend-derived operations kpis`
+
+### Problem
+
+Shoe Type and Color show a „Udeo top 5“ KPI that is always „N/A“, Shoe Type has an unreachable `filtered_out` branch, Pre/Post computes „Top 5 udeo u promeni“ and period growth in the frontend against the backend-owned aggregate policy, raw store IDs appear in export/trust metadata, and Color schedules a scroll timeout without cleanup.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx:543` (`top5SharePct = null`), `1090-1092`; `ColorSalesStatsPage.tsx:457`, `980-981`.
+- `ShoeTypeSalesStatsPage.tsx:690` unreachable `filtered_out`; `699` export „Objekat“ raw store ID.
+- `ProdajaPrePostNivelacijePage.tsx:765-773`, `1572-1574` (frontend Top 5 share), `776-779` (`periodGrowthPct`), `1344` („objekat: N“).
+- `ColorSalesStatsPage.tsx:444-454` — `setTimeout` scroll without cleanup.
+- Related: `RQ180` (DONE, backend-owned Pre/Post aggregates), `RQ329` (WAITING, Shoe Type dead truncation label).
+
+### Scope
+
+- The three pages and nearest specs; backend only if a top-5 share or growth field is added to an existing typed response.
+
+### Read first
+
+- `RQ180`, `RQ329`, `RQ376`, `RQ394`
+
+### Do
+
+1. Either source „Udeo top 5“ from the backend with a named denominator or remove the KPI (Shoe Type and Color).
+2. Remove the dead `filtered_out` branch or wire the real signal.
+3. Replace Pre/Post frontend aggregates with backend fields, or label them as derived with the denominator named.
+4. Show store names instead of IDs; clear the Color timeout on unmount/change.
+
+### Tests
+
+- Page specs for the KPI replacement/removal, Pre/Post aggregate source and store labels; a timer cleanup test for Color.
+
+### Acceptance
+
+- No always-N/A KPI; no undeclared frontend aggregate; no raw store ID in user-facing metadata.
+
+### Dependencies
+
+- `RQ435` (same pages). Coordinate with `RQ329`.
+
+---
+
+## RQ437 - Repair stale Operacije tests that hide regressions
+
+Status: READY
+Priority: P2
+Type: tests
+Feature family: operations-stale-test-hygiene
+Parallel-safe: no
+Owner: QA/Test Infrastructure + Analytics
+Commit suggestion: `test(analytics): repair stale operacije assertions`
+
+### Problem
+
+Five focused tests fail on `00accd93` because assertions drifted behind delivered contracts (diacritics, safe fallbacks, gated recommendation source, sale-time attribution). A red suite hides real regressions such as the Inventory retry bug in `RQ427`.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/__tests__/ColorSalesStatsPage.premium.spec.tsx:623` expects „Pokrice marze“; product is „Pokriće marže“ (`ColorSalesStatsPage.tsx:1203`).
+- `Klijent/clientapp/src/components/inventory/ExportSchedulerPanel.spec.tsx:91` expects the generic fallback; `ExportSchedulerPanel.tsx:59-63` passes „Rasporedi izveštaja trenutno nisu dostupni.“ and „Operacija izvoza trenutno nije uspela.“.
+- `Api.Tests/DailySalesStatsServiceTests.cs:355` expects `iskljucena`; `DailySalesStatsService.cs:284` now says „isključena“ (RQ306, `1a1219eb`).
+- `Api.Tests/SupplierDecisionSchemaSqlTests.cs:139` asserts the source text `var recommendationAllowed = exposedRecommendation.RecommendationAllowed;`; `AllEndpoints.cs:1804` is now `... && !blockOperationsDecisionSignals;` (later Operations decision-signal gating).
+- `Api.Tests/AnalyticsCostSnapshotServiceTests.cs:138` expects 2 entities and gets 1: the fixture seeds only `Artikli.IDTipObuce` (`173`, `183`) while grouping uses `ProdajaStavka.ShoeTypeIdAtSale` since RQ411 (`AnalyticsCostSnapshotService.cs:567`).
+
+### Scope
+
+- The five named test files only. No product code change.
+- Excluded: `InventoryPage.queueStatus.spec.tsx:331` (real bug, `RQ427`), `DailySalesStatsPage.premium.spec.tsx:605-644` (contract decision, `RQ431`), and `CachedAnalyticsCriticalEndpointsIntegrationTests` failures that require a PostgreSQL host (environment, 28P01 authentication), not assertion edits.
+
+### Read first
+
+- `RQ306`, `RQ369`, `RQ411`, `RQ413`
+
+### Do
+
+1. Update each assertion to the delivered contract; prefer behavior assertions over brittle source-text tokens where the test intent allows.
+2. Seed sale-time attribution (`ShoeTypeIdAtSale`, `AttributionBasis`) in the snapshot comparison fixture.
+3. If any test turns out to reveal a product regression rather than drift, stop and record a follow-up instead of weakening the test.
+
+### Tests
+
+- `npm run test:run -- src/pages/__tests__/ColorSalesStatsPage.premium.spec.tsx src/components/inventory/ExportSchedulerPanel.spec.tsx`
+- `dotnet test Api.Tests/Api.Tests.csproj --filter "FullyQualifiedName~DailySalesStatsServiceTests|FullyQualifiedName~SupplierDecisionSchemaSqlTests|FullyQualifiedName~AnalyticsCostSnapshotServiceTests"`
+
+### Acceptance
+
+- The five named tests pass with intent preserved; no product file changes.
+
+### Dependencies
+
+- No blocking dependency. `RQ427`, `RQ428` and `RQ435` must not edit these five test files.
