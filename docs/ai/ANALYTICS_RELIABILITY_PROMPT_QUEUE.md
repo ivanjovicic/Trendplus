@@ -3,6 +3,7 @@
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: RQ440
+Owner audit follow-up 2026-09-25: the Operacije calculation audit added `RQ441` (WAITING behind Daily Sales scope/receipt owners) for Daily Sales frozen supplier attribution parity and `RQ442` (READY, independent date-range contract) for half-open whole-day semantics across Supplier, Shoe Type and Color. The bounded concentration fail-closed guard was applied directly; the full denominator contract remains owned by `RQ431`. Scope diagnostics remain owned by existing `RQ382`; no duplicate prompt was added. Audit: `docs/qa/OPERATIONS_UNDOCUMENTED_FINDINGS_2026-09-25.md`; run log: `.ai/runs/2026-09-25-operations-audit-fix-evidence.md`.
 Routing repair 2026-09-25 (same-day review of today's commits, local-only; no task reopened): the `RQ436` section `Status:` line was corrected `IN_PROGRESS -> DONE` to match its summary row and synchronized delivery (`3dde5583`/`ec91dbcf`); `RQ428`, `RQ432`, `RQ433`, `RQ435` and `RQ436` received protocol completion notes (`Evidence state`, `Delivery mode`, `Main commit SHA`, `Main verification`) from their run logs. The `RQ427`-`RQ437` audit evidence was synchronized in `1c3899c8`, and the Pre/Post page-spec drift left by `RQ435`/`RQ436` was repaired test-only in `cc47d418`. Follow-ups: `RQ438` (WAITING behind `RQ429`: remaining `DnevnikPromena.Id`/`ProdajaZaglavlje.Id` joins and the journal `Iznos` sign proof), `RQ439` (WAITING, owner-gated triage of unmerged PR #63) and `RQ440` (READY, nine unowned failing shared analytics specs). Run log: `.ai/runs/2026-09-25-todays-commits-review-evidence.md`.
 Owner promotion 2026-09-25 (same-day review follow-up): `RQ429` is DONE (`ded7efce`, closure `bc248ede`), so `RQ438` moved `WAITING -> READY` on its explicit `Ready after` gate; it is backend-only and must still not edit `RQ437`-owned files while `RQ437` is PARTIAL. `Current READY prompt` now names `RQ440` (no live-data dependency); `RQ438` stays an independent READY lane.
 Owner promotion 2026-09-25: idle recovery verified `RQ428` is DONE on `main`; `RQ429` is dependency-complete and its Daily Sales frontend scope is collision-safe with active RQ437 backend/test ownership. RQ429 moved `WAITING -> READY`; the older RQ352 lock is stale because RQ352 is already DONE.
@@ -1593,6 +1594,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ438 | READY | daily-sales-receipt-identity-residuals | Finish Daily Sales receipt-identity joins and prove the journal amount sign |
 | RQ439 | WAITING | supplier-decision-hub-pr63-triage | Triage unmerged PR #63 Supplier Decision Hub findings against current main |
 | RQ440 | READY | analytics-shared-spec-drift | Triage nine unowned failing shared analytics specs |
+| RQ441 | WAITING | daily-sales-frozen-supplier-attribution | Align Daily Sales supplier buckets with sale-time attribution used by canonical Supplier Sales |
+| RQ442 | READY | operations-whole-day-half-open-ranges | Make Supplier, Shoe Type and Color whole-day filters half-open and boundary-safe |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -24014,3 +24017,136 @@ Full `npx vitest run` at `aaf51c2c` and a focused rerun at `ed0b0eca` (before `R
 
 - No blocking dependency; must not edit `RQ437`-owned files while `RQ437` is active.
 - Reliability contract: tests must keep asserting that missing evidence is never rendered as zero, healthy or fresh, and that technical identifiers are not shown to users unless a trust/lineage contract explicitly requires them.
+
+---
+
+## RQ441 - Align Daily Sales supplier buckets with sale-time attribution
+
+Status: WAITING
+Ready after: `RQ438` and `RQ382` are DONE, and `RQ437` is DONE or its owned test files are released
+Priority: P1
+Type: backend/contract/tests
+Feature family: daily-sales-frozen-supplier-attribution
+Parallel-safe: no
+Owner: Analytics Reliability / Daily Sales
+Commit suggestion: `fix(analytics): preserve daily supplier sale-time attribution`
+
+### Problem
+
+Daily Sales currently groups historical sale lines through the current article-master supplier (`Artikli.IDDobavljac`), while the canonical Supplier Sales route groups through the sale-line attribution (`ProdajaStavke.SupplierIdAtSale`). A later master edit can therefore move old sales between supplier buckets on the Daily screen while the canonical Supplier screen remains stable. Total revenue can still reconcile, hiding the bucket-level drift.
+
+### Evidence
+
+- `Api/Services/DailySalesStatsService.cs:224-244` joins `ProdajaStavke` to `Artikli` and assigns `SupplierId = a.IDDobavljac`.
+- `Api/Endpoints/AllEndpoints.cs:1333-1360` groups the canonical Supplier/Shoe Type path by `ps.SupplierIdAtSale` and `ps.ShoeTypeIdAtSale`.
+- `RQ412` proves master mutation stability for the canonical Supplier/Shoe Type oracle, but `RQ407` only checks Daily aggregate revenue and not its supplier bucket identity.
+- Required counterexample: one sale attributed to supplier A, mutate the current article master to supplier B, then compare Daily top suppliers, canonical Supplier rows, concentration and export/detail values.
+
+### Scope
+
+- Daily Sales supplier aggregation and its focused/integration tests.
+- Cross-route reconciliation for supplier identity, quantity, revenue, unknown bucket and top-N ordering.
+- No new attribution schema or migration without a separately approved source-of-truth decision; first reuse the existing sale-line attribution fields and expose coverage/basis honestly.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `RQ411`, `RQ412`, `RQ382`, `RQ438`
+- `Api/Services/DailySalesStatsService.cs`
+- `Api/Endpoints/AllEndpoints.cs`
+- `Api.Tests/OperationsAnalyticsAllRoutesIntegrationTests.cs`
+
+### Do
+
+1. Replace current-master supplier grouping with the canonical sale-time attribution or stop with an explicit missing-attribution contract if the field is absent for a row.
+2. Preserve `all`/`existing`/`imported`, store filtering, signed quantity/revenue and receipt exclusions.
+3. Add a mutation regression proving that changing `Artikli.IDDobavljac` after a sale cannot change the frozen Daily supplier bucket.
+4. Reconcile Daily and canonical Supplier results for total quantity, revenue, supplier identity, unknown share and top-N order.
+5. Carry attribution basis/coverage into the Daily trust metadata when the result mixes frozen, reconstructed or unknown facts.
+
+### Tests
+
+- Focused `DailySalesStatsService` tests for sale-time supplier identity and unknown attribution.
+- RQ407-style PostgreSQL fixture with master mutation and cross-route assertions.
+- Existing Daily Sales suite plus canonical Supplier Sales tests.
+- `dotnet test Api.Tests/Api.Tests.csproj --filter "FullyQualifiedName~DailySales|FullyQualifiedName~OperationsAnalyticsAllRoutes|FullyQualifiedName~AnalyticsSupplierSales"`.
+
+### Acceptance
+
+- Current article-master edits cannot silently reclassify historical Daily supplier totals.
+- Daily and canonical Supplier screens agree on supplier buckets for the same period/scope/store fixture.
+- Missing or estimated attribution is explicit and never presented as confirmed historical fact.
+- Table, chart, concentration, detail and export preserve one attribution basis.
+
+### Dependencies
+
+- `RQ438` owns the remaining Daily receipt-identity backend paths.
+- `RQ382` owns Daily scope/diagnostic population parity.
+- `RQ437` owns stale Daily test files until its remote delivery is synchronized.
+- Do not duplicate `RQ411`'s Supplier/Shoe Type attribution contract; this prompt covers the missing Daily consumer parity.
+
+---
+
+## RQ442 - Make Operations whole-day ranges half-open and boundary-safe
+
+Status: READY
+Priority: P1
+Type: backend/frontend/contract/tests
+Feature family: operations-whole-day-half-open-ranges
+Parallel-safe: no
+Owner: Analytics Reliability / Operations cross-surface
+Commit suggestion: `fix(analytics): use half-open operations date ranges`
+
+### Problem
+
+Supplier Sales, Shoe Type Sales and Color Sales send a selected date's end as `23:59:59Z`, and their backend queries use an inclusive `<= toUtc` predicate. Rows with fractional-second timestamps after exactly `23:59:59` are excluded, while Daily Sales uses the correct `< nextDay` interval. This can make same-period revenue, quantity, margin and PoP differ across Operations screens.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx:182-185`, `ShoeTypeSalesStatsPage.tsx:178-182` and `ColorSalesStatsPage.tsx:147-150` serialize the selected end date as `T23:59:59Z`.
+- `Api/Endpoints/AllEndpoints.cs:1338`, `:2310` and `:3031` use inclusive `<= toUtc` predicates.
+- `Api/Services/DailySalesStatsService.cs:48-57` uses a half-open `[fromDate, toDate + 1 day)` range.
+- Counterexample: a PostgreSQL sale at `23:59:59.001Z` is visible in Daily Sales but absent from Supplier/Shoe Type/Color for the same displayed date.
+
+### Scope
+
+- Supplier Sales, Shoe Type Sales and Color Sales request/endpoint date contracts, previous-period range builders, cache keys/provenance and focused tests.
+- Preserve date-only UI semantics, UTC normalization, store/data-scope filtering and no-baseline behavior.
+- Do not change Pre/Post event-date semantics, which intentionally use calendar dates.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ337`, `RQ378`, `RQ379`, `RQ380`, `RQ397`
+- The three frontend `toUtcRange` helpers and the matching endpoint sections in `Api/Endpoints/AllEndpoints.cs`.
+
+### Do
+
+1. Define one explicit half-open contract for whole-day requests: `fromDate at 00:00:00Z` inclusive and the day after `toDate at 00:00:00Z` exclusive.
+2. Apply it consistently to current and comparable previous-period queries in all three endpoint families.
+3. Keep requested/effective period metadata and cache keys aligned with the new contract.
+4. Add fractional-second boundary fixtures and adjacent-day non-overlap assertions.
+5. Verify table, chart, detail and export totals use the same period population.
+
+### Tests
+
+- Backend tests for `23:59:59.001Z`, exact midnight next day, adjacent-day windows and previous-period parity.
+- Frontend API request tests asserting exclusive next-day serialization.
+- Supplier, Shoe Type and Color focused specs; guardrails, typecheck and build.
+- `git diff --check` and the applicable backend filtered test set.
+
+### Acceptance
+
+- Every selected whole day includes all timestamps on that UTC calendar day, including fractional seconds.
+- Adjacent day ranges do not overlap.
+- Supplier, Shoe Type, Color and Daily totals reconcile on the same fixture.
+- Requested/effective period metadata, cache identity, detail and export use the same half-open population.
+
+### Dependencies
+
+- No blocking runtime dependency; `RQ440`-owned shared specs must not be edited unless a named case proves a real regression.
+- `RQ382` remains the owner of Daily scope diagnostics; this prompt owns the non-Daily whole-day boundary contract.
+- Pre/Post remains out of scope unless a separate date contract defect is proven.
