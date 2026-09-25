@@ -433,7 +433,6 @@ export default function InventoryPage() {
   const [sizeCurveSkuId, setSizeCurveSkuId] = useState<number | null>(null);
   const [sizeCurveStoreId, setSizeCurveStoreId] = useState<number | null>(null);
   const [sizeCurveSizeCode, setSizeCurveSizeCode] = useState<string | null>(null);
-  const [reloadNonce, setReloadNonce] = useState(0);
   const [inventoryDataScope, setInventoryDataScope] = useState(() => getDataScope());
   const deferredSearch = useDeferredValue(searchInput);
   const trimmedSearch = deferredSearch.trim();
@@ -522,39 +521,6 @@ export default function InventoryPage() {
       mountedRef.current = false;
     };
   }, []);
-
-  useEffect(() => {
-    const handleScopeChange = () => {
-      if (mountedRef.current) {
-        const nextDataScope = getDataScope();
-        if (nextDataScope === inventoryDataScope) {
-          if (periodPreset !== "custom") {
-            const nextRange = getAnalyticsPeriodPresetRange(periodPreset);
-            setPeriodFrom(nextRange.fromDate);
-            setPeriodTo(nextRange.toDate);
-            setDraftPeriodFrom(nextRange.fromDate);
-            setDraftPeriodTo(nextRange.toDate);
-          }
-          setReloadNonce((current) => current + 1);
-        } else {
-          // A supplier selected in the previous dataset must not narrow the next dataset.
-          setSelectedSupplierId(null);
-          setPageNumber(1);
-          if (periodPreset !== "custom") {
-            const nextRange = getAnalyticsPeriodPresetRange(periodPreset);
-            setPeriodFrom(nextRange.fromDate);
-            setPeriodTo(nextRange.toDate);
-            setDraftPeriodFrom(nextRange.fromDate);
-            setDraftPeriodTo(nextRange.toDate);
-          }
-          setInventoryDataScope(nextDataScope);
-        }
-      }
-    };
-
-    window.addEventListener("trendplus:data-scope-changed", handleScopeChange);
-    return () => window.removeEventListener("trendplus:data-scope-changed", handleScopeChange);
-  }, [inventoryDataScope, periodPreset]);
 
   useEffect(() => {
     let cancelled = false;
@@ -700,6 +666,40 @@ export default function InventoryPage() {
       [],
     ),
   });
+  // Declared after useReliableAnalyticsQuery so the same-scope branch can use its stable refetch().
+  useEffect(() => {
+    const handleScopeChange = () => {
+      if (mountedRef.current) {
+        const nextDataScope = getDataScope();
+        if (nextDataScope === inventoryDataScope) {
+          if (periodPreset !== "custom") {
+            const nextRange = getAnalyticsPeriodPresetRange(periodPreset);
+            setPeriodFrom(nextRange.fromDate);
+            setPeriodTo(nextRange.toDate);
+            setDraftPeriodFrom(nextRange.fromDate);
+            setDraftPeriodTo(nextRange.toDate);
+          }
+          // Same dataset: re-run the primary inventory request through the query hook.
+          refetch();
+        } else {
+          // A supplier selected in the previous dataset must not narrow the next dataset.
+          setSelectedSupplierId(null);
+          setPageNumber(1);
+          if (periodPreset !== "custom") {
+            const nextRange = getAnalyticsPeriodPresetRange(periodPreset);
+            setPeriodFrom(nextRange.fromDate);
+            setPeriodTo(nextRange.toDate);
+            setDraftPeriodFrom(nextRange.fromDate);
+            setDraftPeriodTo(nextRange.toDate);
+          }
+          setInventoryDataScope(nextDataScope);
+        }
+      }
+    };
+
+    window.addEventListener("trendplus:data-scope-changed", handleScopeChange);
+    return () => window.removeEventListener("trendplus:data-scope-changed", handleScopeChange);
+  }, [inventoryDataScope, periodPreset, refetch]);
   const balance = inventorySnapshot?.balance ?? null;
   const pageData = inventorySnapshot?.pageData ?? null;
   const insights = inventorySnapshot?.insights ?? null;
@@ -1349,6 +1349,13 @@ export default function InventoryPage() {
     setExportStatus(`Otvoren detalj za sporu zalihu: ${row.naziv}.`);
   }
 
+  // Becomes true after the first primary load settles (data or error); from then on the controls stay mounted,
+  // including while a retry or filter change reloads the page from an error/empty state.
+  const [primaryLoadSettled, setPrimaryLoadSettled] = useState(false);
+  useEffect(() => {
+    if (!primaryLoadSettled && (inventorySnapshot != null || error != null)) setPrimaryLoadSettled(true);
+  }, [error, inventorySnapshot, primaryLoadSettled]);
+
   function retryPageLoad() {
     if (periodPreset !== "custom") {
       const nextRange = getAnalyticsPeriodPresetRange(periodPreset);
@@ -1357,153 +1364,26 @@ export default function InventoryPage() {
       setDraftPeriodFrom(nextRange.fromDate);
       setDraftPeriodTo(nextRange.toDate);
     }
-    setReloadNonce((current) => current + 1);
+    // Single retry mechanism: refetch() bumps the query hook's reload version. Any preset-range
+    // update above is batched into the same render, so the hook issues exactly one new request.
+    refetch();
   }
 
-  if (loading && !pageData && !balance) return <div className="rounded-3xl border border-muted surface-light p-8 text-center text-muted">Učitavanje bilansa zaliha...</div>;
-  if (error && (!pageData || !balance)) {
-    return (
-      <AnalyticsErrorState
-        title="Podaci trenutno nisu dostupni"
-        message={error.message || "Ne prikazujemo nule jer nije potvrđeno da je period stvarno prazan."}
-        errorCode={error.errorCode ?? undefined}
-        correlationId={error.correlationId ?? undefined}
-        onRetry={() => {
-          retryPageLoad();
-        }}
-        helpHref="/analytics/data-quality"
-      />
-    );
+  function resetInventoryFilters() {
+    setSearchInput("");
+    setSelectedStoreId(null);
+    setSelectedSupplierId(null);
+    setPageNumber(1);
   }
 
-  if (showEmptyState) {
-    return (
-      <AnalyticsEmptyState
-        variant={showInsufficientEmptyState ? "insufficient_data" : (showFilteredEmptyState ? "filtered_out" : "no_data")}
-        message={inventoryMetaMessage ?? (showInsufficientEmptyState
-          ? "Nema dovoljno signala za pouzdan prikaz zaliha."
-          : "Nema podataka o zalihama za izabrani opseg.")}
-        reasons={[
-          showInsufficientEmptyState
-            ? "Podaci jos nisu dovoljno kompletni za odluku."
-            : "Izabrani filteri suzavaju rezultat na prazan skup.",
-          "Proverite refresh status i data quality signal.",
-          "Proširite opseg ili uklonite deo filtera.",
-        ]}
-        dataQualityHref="/analytics/data-quality"
-        refreshStatusHref="/admin/configuration?panel=workers"
-        onRetry={() => {
-          retryPageLoad();
-        }}
-      />
-    );
-  }
-
-  return (
-    <ErrorBoundary fallback={<div className="rounded-3xl border border-[var(--error)] bg-[var(--surface-darker)] p-8 text-center text-[var(--error)]">Bilans stanja trenutno nije mogao da se prikaže. Osveži stranicu ili pokušaj ponovo za nekoliko trenutaka.</div>}>
-      <div className="space-y-6">
-      <AnalyticsTrustHeader
-        title="Analitika zaliha"
-        description="Operativni pregled zaliha: dopuna, rizik nestanka, višak, transferi i tok odluka. Izabrani period važi za listu i detalj; snapshot paneli su označeni zasebno."
-        periodFrom={periodFrom}
-        periodTo={periodTo}
-        lastRefreshAt={primaryRefreshAt}
-        dataSource="Snimak analitike zaliha"
-        dataQualityStatus={primaryMeta?.dataQualityStatus ?? null}
-        mode="recommendation"
-        isPartial={isAnalyticsMetaWarning(primaryMeta)}
-        recommendationNote="Tok akcija vode korisnici; preporučeni podaci sa servera ostaju izvor istine."
-        emptyStateReason={showEmptyState ? (inventoryMetaMessage ?? null) : null}
-        methodologyHref="/analytics/data-quality"
-        dataQualityHref="/analytics/data-quality"
-        refreshStatusHref="/admin/configuration?panel=workers"
-        compact
-      />
-      <div className="rounded-2xl border border-[var(--info)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--info)]" role="note" data-testid="inventory-period-lineage">
-        {inventoryPeriodLineageNote}
-      </div>
-      {freshnessLineageNote ? (
-        <div className="rounded-2xl border border-[var(--warning)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--warning)]" role="note" data-testid="inventory-secondary-freshness-lineage">
-          {freshnessLineageNote}
-        </div>
-      ) : null}
-      {showMetaWarning ? (
-        <div className="rounded-2xl border border-[var(--warning)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--warning)]" role="status">
-          Prikazani podaci su delimični ili fallback. {inventoryMetaMessage ?? "Proverite status osvežavanja i data quality signal."}
-          {primaryInventoryTrust.degradedSourceLabels.length > 0 ? ` Izvor(i) sa ograničenjem: ${primaryInventoryTrust.degradedSourceLabels.join(", ")}.` : ""}
-        </div>
-      ) : null}
-      {staleWarning && inventorySnapshot ? (
-        <div className="rounded-2xl border border-[var(--warning)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--warning)]" role="status" data-testid="inventory-stale-refetch-warning">
-          Prikazujemo prethodno učitane inventory podatke. Novi upit nije uspeo.
-        </div>
-      ) : null}
-      <section className="rounded-[24px] border border-muted surface-light p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-secondary">Kako se računaju ključni signali zaliha:</span>
-          <KpiExplainButton metricKey="stockAtRisk" ariaLabel="Kako je izračunat lager u riziku" />
-          <KpiExplainButton metricKey="slowStockCapital" ariaLabel="Kako je izračunat kapital u sporoj zalihi" />
-          <KpiExplainButton metricKey="outOfStockRisk" ariaLabel="Kako je izračunat rizik nestanka zalihe" />
-          <KpiExplainButton metricKey="lostSalesEstimate" ariaLabel="Kako je izračunata procena izgubljene prodaje" />
-          <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunata pokrivenost zalihe" />
-          <KpiExplainButton metricKey="sellThrough" ariaLabel="Kako je izračunat prodajni obrt" />
-        </div>
-      </section>
-      {signalKpis.scope === "page" ? (
-        <div className="rounded-2xl border border-[var(--warning)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--warning)]" role="status" data-testid="inventory-signal-kpi-scope-note">
-          {INVENTORY_SIGNAL_KPI_PAGE_SCOPE_NOTE} ({fmtNumber(rows.length, 0, "0")} od {fmtNumber(totalCount, 0, "0")} artikala).
-        </div>
-      ) : null}
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <article className="rounded-2xl border border-muted bg-[var(--surface-darker)] p-4">
-          <div className="text-xs uppercase tracking-[0.2em] text-muted">Rizik pokrivenosti zalihe</div>
-          <div className="mt-2 text-2xl font-semibold text-contrast">{fmtNumber(signalKpis.stockCoverRiskCount, 0, "0")}</div>
-          <div className="mt-2 text-sm text-secondary">SKU sa niskom pokrivenošću, OOS rizikom ili nedovoljnim signalom.</div>
-        </article>
-        <article className="rounded-2xl border border-muted bg-[var(--surface-darker)] p-4">
-          <div className="text-xs uppercase tracking-[0.2em] text-muted">Niska pokrivenost artikala</div>
-          <div className="mt-2 text-2xl font-semibold text-contrast">{fmtNumber(signalKpis.lowCoverSkus, 0, "0")}</div>
-          <div className="mt-2 text-sm text-secondary">Prioritet za dopunu i zaštitu od rasprodaje.</div>
-        </article>
-        <article className="rounded-2xl border border-muted bg-[var(--surface-darker)] p-4">
-          <div className="text-xs uppercase tracking-[0.2em] text-muted">Spor obrt artikala</div>
-          <div className="mt-2 text-2xl font-semibold text-contrast">{fmtNumber(signalKpis.slowStockSkus, 0, "0")}</div>
-          <div className="mt-2 text-sm text-secondary">Artikli sa sporim obrtom ili bez rotacije.</div>
-        </article>
-        <article className="rounded-2xl border border-muted bg-[var(--surface-darker)] p-4">
-          <div className="text-xs uppercase tracking-[0.2em] text-muted">Dobar prodajni obrt</div>
-          <div className="mt-2 text-2xl font-semibold text-contrast">{fmtNumber(signalKpis.goodSellThroughSkus, 0, "0")}</div>
-          <div className="mt-2 text-sm text-secondary">SKU sa zdravim tempom izlaza robe.</div>
-        </article>
-      </section>
-      <section className="overflow-hidden rounded-[30px] border border-muted bg-[radial-gradient(circle_at_top_left,var(--theme-color-rgba-68-208-255-0p1, rgba(68,208,255,0.1)),transparent_32%),var(--surface-elevated)] p-6 shadow-xl">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-          <div className="max-w-[760px]">
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-muted bg-[var(--surface-darker)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-[var(--info)]"><Warehouse size={14} />Bilans stanja</div>
-            <h3 className="text-2xl font-semibold tracking-tight text-contrast md:text-3xl">Operativni pregled zaliha: dopuna, rizik nestanka, višak, transferi i tok odluka.</h3>
-            <p className="mt-3 max-w-[640px] text-sm leading-6 text-secondary md:text-base">Pregled vodi od prioriteta i signala ka dubinskoj analizi i operativnom izvozu bez promene poslovne logike.</p>
-          </div>
-          <div className="grid min-w-[280px] gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-muted bg-[var(--surface-darker)] p-4">
-              <div className="text-xs uppercase tracking-[0.22em] text-[var(--warning)]">Aktivni SKU</div>
-              <div className="mt-2 text-3xl font-semibold text-contrast">{formatPercent(activeSkuShare)}</div>
-              <div className="mt-2 text-sm text-secondary">Udeo artikala koji nisu bez zaliha.</div>
-              <KpiExplainButton metricKey="activeSkuShare" ariaLabel="Kako je izračunato: Aktivni SKU" />
-            </div>
-            <div className="rounded-2xl border border-muted bg-[var(--surface-darker)] p-4">
-              <div className="text-xs uppercase tracking-[0.22em] text-[var(--text-primary)]">Stanje fonda</div>
-              <div data-testid="inventory-health-snapshot-only" className="mt-2 text-lg font-semibold text-contrast">Istorijska serija nije dostupna</div>
-              <div className="mt-2 text-sm text-secondary">Trenutni snapshot ne daje backend-obranjeni health score ni istorijski trend. Za ovaj prikaz nisu dostupni period, izvor, svežina i kvalitet istorijskih opažanja.</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
+  // Filters and controls stay visible in error and empty states (and in reloads after the first settled load)
+  // so the user can recover in place.
+  const renderInventoryControls = (showDataSummary: boolean) => (
       <section className="rounded-[28px] border border-muted surface-light p-5 shadow-lg">
         <AnalyticsControlBar
           title="Filteri i akcije"
           description="Pretraži bilans, suzi lokaciju i ostavi operativne akcije sekundarnim u odnosu na pregled odluka."
-          chips={[
+          chips={showDataSummary ? [
             {
               key: "rows",
               label: "Prikazano",
@@ -1523,7 +1403,7 @@ export default function InventoryPage() {
                   tone: "warning" as const,
                 }]
               : []),
-          ]}
+          ] : []}
           primaryAction={{
             key: "queue",
             label: "Otvori centralni red akcija",
@@ -1682,8 +1562,167 @@ export default function InventoryPage() {
         />
 
         {exportStatus ? <div className="mt-3 rounded-2xl border border-[var(--info)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--info)]">{exportStatus}</div> : null}
-        {error ? <div className="mt-3 rounded-2xl border border-[var(--error)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--error)]">{error.message}</div> : null}
+        {showDataSummary && error ? <div className="mt-3 rounded-2xl border border-[var(--error)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--error)]">{error.message}</div> : null}
       </section>
+  );
+
+  const blockingState = loading && !pageData && !balance
+    ? <div className="rounded-3xl border border-muted surface-light p-8 text-center text-muted">Učitavanje bilansa zaliha...</div>
+    : error && (!pageData || !balance)
+      ? (
+          <AnalyticsErrorState
+            title="Podaci trenutno nisu dostupni"
+            message={error.message || "Ne prikazujemo nule jer nije potvrđeno da je period stvarno prazan."}
+            errorCode={error.errorCode ?? undefined}
+            correlationId={error.correlationId ?? undefined}
+            onRetry={() => {
+              retryPageLoad();
+            }}
+            helpHref="/analytics/data-quality"
+          />
+      )
+      : showEmptyState
+        ? (
+            <AnalyticsEmptyState
+              variant={showInsufficientEmptyState ? "insufficient_data" : (showFilteredEmptyState ? "filtered_out" : "no_data")}
+              message={inventoryMetaMessage ?? (showInsufficientEmptyState
+                ? "Nema dovoljno signala za pouzdan prikaz zaliha."
+                : "Nema podataka o zalihama za izabrani opseg.")}
+              reasons={[
+                showInsufficientEmptyState
+                  ? "Podaci jos nisu dovoljno kompletni za odluku."
+                  : "Izabrani filteri suzavaju rezultat na prazan skup.",
+                "Proverite refresh status i data quality signal.",
+                "Proširite opseg ili uklonite deo filtera.",
+              ]}
+              dataQualityHref="/analytics/data-quality"
+              refreshStatusHref="/admin/configuration?panel=workers"
+              onRetry={() => {
+                retryPageLoad();
+              }}
+              actions={hasActivePrimaryFilters
+                ? [
+                    { label: "Poništi filtere", onClick: resetInventoryFilters },
+                    { label: "Pokušaj ponovo", onClick: retryPageLoad },
+                  ]
+                : undefined}
+            />
+        )
+        : null;
+
+  const showInventoryControls = primaryLoadSettled || !blockingState;
+
+  return (
+    <ErrorBoundary fallback={<div className="rounded-3xl border border-[var(--error)] bg-[var(--surface-darker)] p-8 text-center text-[var(--error)]">Bilans stanja trenutno nije mogao da se prikaže. Osveži stranicu ili pokušaj ponovo za nekoliko trenutaka.</div>}>
+      <div className="space-y-6">
+      {/* Stable child slots: [page header | null], [controls], [page body | blocking state]. The controls keep
+          their position across loading, error, empty and data states, so inputs are not remounted. */}
+      {blockingState ? null : (
+      <>
+      <AnalyticsTrustHeader
+        title="Analitika zaliha"
+        description="Operativni pregled zaliha: dopuna, rizik nestanka, višak, transferi i tok odluka. Izabrani period važi za listu i detalj; snapshot paneli su označeni zasebno."
+        periodFrom={periodFrom}
+        periodTo={periodTo}
+        lastRefreshAt={primaryRefreshAt}
+        dataSource="Snimak analitike zaliha"
+        dataQualityStatus={primaryMeta?.dataQualityStatus ?? null}
+        mode="recommendation"
+        isPartial={isAnalyticsMetaWarning(primaryMeta)}
+        recommendationNote="Tok akcija vode korisnici; preporučeni podaci sa servera ostaju izvor istine."
+        emptyStateReason={showEmptyState ? (inventoryMetaMessage ?? null) : null}
+        methodologyHref="/analytics/data-quality"
+        dataQualityHref="/analytics/data-quality"
+        refreshStatusHref="/admin/configuration?panel=workers"
+        compact
+      />
+      <div className="rounded-2xl border border-[var(--info)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--info)]" role="note" data-testid="inventory-period-lineage">
+        {inventoryPeriodLineageNote}
+      </div>
+      {freshnessLineageNote ? (
+        <div className="rounded-2xl border border-[var(--warning)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--warning)]" role="note" data-testid="inventory-secondary-freshness-lineage">
+          {freshnessLineageNote}
+        </div>
+      ) : null}
+      {showMetaWarning ? (
+        <div className="rounded-2xl border border-[var(--warning)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--warning)]" role="status">
+          Prikazani podaci su delimični ili fallback. {inventoryMetaMessage ?? "Proverite status osvežavanja i data quality signal."}
+          {primaryInventoryTrust.degradedSourceLabels.length > 0 ? ` Izvor(i) sa ograničenjem: ${primaryInventoryTrust.degradedSourceLabels.join(", ")}.` : ""}
+        </div>
+      ) : null}
+      {staleWarning && inventorySnapshot ? (
+        <div className="rounded-2xl border border-[var(--warning)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--warning)]" role="status" data-testid="inventory-stale-refetch-warning">
+          Prikazujemo prethodno učitane inventory podatke. Novi upit nije uspeo.
+        </div>
+      ) : null}
+      <section className="rounded-[24px] border border-muted surface-light p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm text-secondary">Kako se računaju ključni signali zaliha:</span>
+          <KpiExplainButton metricKey="stockAtRisk" ariaLabel="Kako je izračunat lager u riziku" />
+          <KpiExplainButton metricKey="slowStockCapital" ariaLabel="Kako je izračunat kapital u sporoj zalihi" />
+          <KpiExplainButton metricKey="outOfStockRisk" ariaLabel="Kako je izračunat rizik nestanka zalihe" />
+          <KpiExplainButton metricKey="lostSalesEstimate" ariaLabel="Kako je izračunata procena izgubljene prodaje" />
+          <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunata pokrivenost zalihe" />
+          <KpiExplainButton metricKey="sellThrough" ariaLabel="Kako je izračunat prodajni obrt" />
+        </div>
+      </section>
+      {signalKpis.scope === "page" ? (
+        <div className="rounded-2xl border border-[var(--warning)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--warning)]" role="status" data-testid="inventory-signal-kpi-scope-note">
+          {INVENTORY_SIGNAL_KPI_PAGE_SCOPE_NOTE} ({fmtNumber(rows.length, 0, "0")} od {fmtNumber(totalCount, 0, "0")} artikala).
+        </div>
+      ) : null}
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <article className="rounded-2xl border border-muted bg-[var(--surface-darker)] p-4">
+          <div className="text-xs uppercase tracking-[0.2em] text-muted">Rizik pokrivenosti zalihe</div>
+          <div className="mt-2 text-2xl font-semibold text-contrast">{fmtNumber(signalKpis.stockCoverRiskCount, 0, "0")}</div>
+          <div className="mt-2 text-sm text-secondary">SKU sa niskom pokrivenošću, OOS rizikom ili nedovoljnim signalom.</div>
+        </article>
+        <article className="rounded-2xl border border-muted bg-[var(--surface-darker)] p-4">
+          <div className="text-xs uppercase tracking-[0.2em] text-muted">Niska pokrivenost artikala</div>
+          <div className="mt-2 text-2xl font-semibold text-contrast">{fmtNumber(signalKpis.lowCoverSkus, 0, "0")}</div>
+          <div className="mt-2 text-sm text-secondary">Prioritet za dopunu i zaštitu od rasprodaje.</div>
+        </article>
+        <article className="rounded-2xl border border-muted bg-[var(--surface-darker)] p-4">
+          <div className="text-xs uppercase tracking-[0.2em] text-muted">Spor obrt artikala</div>
+          <div className="mt-2 text-2xl font-semibold text-contrast">{fmtNumber(signalKpis.slowStockSkus, 0, "0")}</div>
+          <div className="mt-2 text-sm text-secondary">Artikli sa sporim obrtom ili bez rotacije.</div>
+        </article>
+        <article className="rounded-2xl border border-muted bg-[var(--surface-darker)] p-4">
+          <div className="text-xs uppercase tracking-[0.2em] text-muted">Dobar prodajni obrt</div>
+          <div className="mt-2 text-2xl font-semibold text-contrast">{fmtNumber(signalKpis.goodSellThroughSkus, 0, "0")}</div>
+          <div className="mt-2 text-sm text-secondary">SKU sa zdravim tempom izlaza robe.</div>
+        </article>
+      </section>
+      <section className="overflow-hidden rounded-[30px] border border-muted bg-[radial-gradient(circle_at_top_left,var(--theme-color-rgba-68-208-255-0p1, rgba(68,208,255,0.1)),transparent_32%),var(--surface-elevated)] p-6 shadow-xl">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-[760px]">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-muted bg-[var(--surface-darker)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-[var(--info)]"><Warehouse size={14} />Bilans stanja</div>
+            <h3 className="text-2xl font-semibold tracking-tight text-contrast md:text-3xl">Operativni pregled zaliha: dopuna, rizik nestanka, višak, transferi i tok odluka.</h3>
+            <p className="mt-3 max-w-[640px] text-sm leading-6 text-secondary md:text-base">Pregled vodi od prioriteta i signala ka dubinskoj analizi i operativnom izvozu bez promene poslovne logike.</p>
+          </div>
+          <div className="grid min-w-[280px] gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-muted bg-[var(--surface-darker)] p-4">
+              <div className="text-xs uppercase tracking-[0.22em] text-[var(--warning)]">Aktivni SKU</div>
+              <div className="mt-2 text-3xl font-semibold text-contrast">{formatPercent(activeSkuShare)}</div>
+              <div className="mt-2 text-sm text-secondary">Udeo artikala koji nisu bez zaliha.</div>
+              <KpiExplainButton metricKey="activeSkuShare" ariaLabel="Kako je izračunato: Aktivni SKU" />
+            </div>
+            <div className="rounded-2xl border border-muted bg-[var(--surface-darker)] p-4">
+              <div className="text-xs uppercase tracking-[0.22em] text-[var(--text-primary)]">Stanje fonda</div>
+              <div data-testid="inventory-health-snapshot-only" className="mt-2 text-lg font-semibold text-contrast">Istorijska serija nije dostupna</div>
+              <div className="mt-2 text-sm text-secondary">Trenutni snapshot ne daje backend-obranjeni health score ni istorijski trend. Za ovaj prikaz nisu dostupni period, izvor, svežina i kvalitet istorijskih opažanja.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      </>
+      )}
+
+      {showInventoryControls ? renderInventoryControls(!blockingState) : null}
+
+      {blockingState ?? (
+      <>
 
       <div className="space-y-1">
         <h2 className="text-xl font-semibold text-contrast">1. Odluke sada</h2>
@@ -1792,6 +1831,8 @@ export default function InventoryPage() {
 
       {/* Detail Modal */}
       <SKUDetailModal detailRow={detailRow} detailData={detailData} detailLoading={detailLoading} detailError={detailError} detailTab={detailTab} detailSizeCurve={detailSizeCurve} detailSizeCurveLoading={detailSizeCurveLoading} onRetry={retryDetailFetch} onTabChange={setDetailTab} onClose={() => setDetailRow(null)} />
+      </>
+      )}
       </div>
     </ErrorBoundary>
   );

@@ -3,10 +3,7 @@
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: RQ428
-Owner completion 2026-09-25: RQ432 was delivered directly to `main` after aligning Pre-Nivelacija KPI populations, nullable empty evidence, coverage labels and tooltips. Run log: `.ai/runs/2026-09-25-RQ432-evidence.md`. Evidence state: synchronized. `RQ433` moved `WAITING -> READY`; `RQ434` remains WAITING. Remaining claimable READY lanes: `RQ433`, `RQ435`, `RQ437` (`RQ428` remains other-owner IN_PROGRESS; `RQ427` is PARTIAL pending push).
 Owner local completion 2026-09-25: RQ427 was implemented, verified and committed locally on `main` (retry now calls the reliable-query `refetch()`, controls stay mounted in error/empty states, filtered-empty reset). It stays PARTIAL until an owner-approved push and `origin/main` verification; `RQ427-grok.lock.md` keeps ownership until then. Current READY pointer moved RQ427 -> RQ428 (next READY prompt in queue order).
-Owner claim 2026-09-25: RQ427 and RQ428 remain actively owned (`RQ427-grok.lock.md`, `RQ428-codex.lock.md`). Under the canonical priority/collision rules, RQ432 was selected as the next independent READY prompt and transitioned READY -> IN_PROGRESS for Pre-Nivelacija KPI definition parity. Local lock: `.ai/task-locks/RQ432-cursor.lock.md`.
-Owner claim 2026-09-25: RQ427 is actively owned by `RQ427-grok.lock.md` with uncommitted Inventory changes, so this workspace did not take it over. Under the canonical priority/collision rules, RQ428 was selected as the next independent READY prompt and transitioned READY -> IN_PROGRESS for the Daily Sales receipt-reconciliation key contract. Local lock: `.ai/task-locks/RQ428-codex.lock.md`.
 Owner audit 2026-09-25: under the user's direct local-only Operacije menu audit (no remote, no cloud agent), `RQ427`-`RQ437` were added after deduplication against `RQ301`-`RQ426` and the `OP2-*` classification. Evidence-based promotions (dependency-complete, distinct feature families, no overlapping owned paths with each other or any active prompt): `RQ427` Inventory retry/controls (P1, primary Current READY), `RQ428` Daily Sales receipt-reconciliation key (backend service only), `RQ432` Pre-Nivelacija KPI definitions, `RQ435` Shoe Type safe errors plus allowlisted frontend error display, and `RQ437` stale-test hygiene (five named test files only). `RQ429`/`RQ430` wait behind `RQ428` on the Daily Sales page, `RQ433`/`RQ434` behind `RQ432` on Pre-Nivelacija files, `RQ436` behind `RQ435` on Shoe Type/Color/Pre-Post pages, and `RQ431` is owner-gated on the RQ242 versus RQ381 concentration contract. New residual English/ASCII strings were appended to `RQ325`; `RQ306` is DONE and was not reopened. Mechanical same-owner repair: section `Status:` lines of `RQ301`, `RQ302`, `RQ306`, `RQ308` and `RQ371`, and the summary rows of `RQ306`/`RQ307`, were aligned to their synchronized DONE completion notes. Audit: `docs/ai/OPERATIONS_AUDIT_PROMPTS_2026-09-25.md`. Run log: `.ai/runs/2026-09-25-operations-audit-prompts-evidence.md` (local-only, uncommitted per user request).
 Owner promotion 2026-09-25: idle recovery found RQ307 dependency-complete after RQ306 delivery; its Shoe Type impact-label owner is now collision-safe and no active RQ307 lock, branch or PR exists. RQ307 moved WAITING -> READY.
 Owner claim 2026-09-25: RQ307 transitioned READY -> IN_PROGRESS in this workspace for verification of the Shoe Type nivelacija impact label and focused regression proof. Local lock: `.ai/task-locks/RQ307-codex.lock.md`.
@@ -1565,12 +1562,12 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ407 | DONE | operations-cross-screen-reconciliation | Prove the eight Operacije routes against one deterministic source and expected-output manifest |
 | RQ408 | DONE | operations-second-pass-finding-decomposition | Classify and decompose the second-pass Operacije bug/finding catalogue into precise follow-up prompts |
 | RQ427 | PARTIAL | inventory-retry-recovery | Make Inventory retry refetch and keep controls on error/empty states |
-| RQ428 | IN_PROGRESS | daily-sales-receipt-reconciliation-key | Join Daily Sales receipt-mismatch diagnostics on real receipt identity |
+| RQ428 | READY | daily-sales-receipt-reconciliation-key | Join Daily Sales receipt-mismatch diagnostics on real receipt identity |
 | RQ429 | WAITING | daily-sales-empty-state-metric-consistency | Make Daily Sales empty state, incomplete-shift counts and MA7 baseline truthful |
 | RQ430 | WAITING | daily-sales-page-polish | Fix Daily Sales sort toggle, print-form columns and store identity in export |
 | RQ431 | WAITING | daily-sales-concentration-contract | Decide the Daily Sales supplier-concentration over-total contract |
-| RQ432 | DONE | pre-nivelacija-kpi-definition-parity | Align Pre-Nivelacija KPI definitions with backend sums, tooltips and table gating |
-| RQ433 | READY | pre-nivelacija-facet-universe | Build Pre-Nivelacija supplier, season and type options from the filter universe |
+| RQ432 | READY | pre-nivelacija-kpi-definition-parity | Align Pre-Nivelacija KPI definitions with backend sums, tooltips and table gating |
+| RQ433 | WAITING | pre-nivelacija-facet-universe | Build Pre-Nivelacija supplier, season and type options from the filter universe |
 | RQ434 | WAITING | pre-nivelacija-display-polish | Fix Pre-Nivelacija signed WoW, filter validation, labels, counts and tones |
 | RQ435 | READY | operations-safe-error-messages | Return safe traceable Shoe Type errors and allowlist frontend error display |
 | RQ436 | WAITING | operations-derived-kpi-cleanup | Remove dead or frontend-derived Operacije KPIs and small lifecycle leaks |
@@ -23149,7 +23146,7 @@ Reproduction: open Inventory, search for a value with no match (or make the list
 - Evidence state: pending - local commit on `main`; push and `origin/main` verification await owner approval
 - Delivery mode: local commit on `main` (no branch, no PR, not pushed)
 - Main commit SHA: pending (the local commit SHA is recorded in `.ai/task-locks/RQ427-grok.lock.md` and the owner report; it becomes the main SHA after an approved push)
-- Main verification: skipped - push not approved; the local commit sits on top of `720a785a`
+- Main verification: skipped - push not approved; this fix commit sits on the audit docs commit `fb956bac`, on top of `origin/main` `720a785a`
 - Missed: none in owned scope; the ASCII residual „jos“ in the Inventory empty-state reasons stays with `RQ325`.
 - Follow-up: owner-approved push of the local RQ427 commits to `main`, verify `origin/main` contains them, then record Main commit SHA/verification and set DONE. Until then `.ai/task-locks/RQ427-grok.lock.md` keeps ownership; other workspaces must not rework the Inventory files.
 - Residual risk: the page's pre-existing URL/state sync (react-router v7 transition navigation) can drop input typed in the first render cycles after mount, so controls stay hidden until the first primary load settles and the new tests wait for mount effects; nine deterministic non-Inventory frontend failures on local HEAD (analytics component, DecisionPulse, SupplierConsolidated, SupplierExplainabilitySnapshot specs) are outside RQ427 and not triaged here.; the commits are on local `main`, so any push of local `main` (including one made by another workspace) would publish them.
@@ -23160,7 +23157,7 @@ Reproduction: open Inventory, search for a value with no match (or make the list
 
 ## RQ428 - Join Daily Sales receipt-mismatch diagnostics on real receipt identity
 
-Status: IN_PROGRESS
+Status: READY
 Priority: P2
 Type: backend/contract/tests
 Feature family: daily-sales-receipt-reconciliation-key
@@ -23378,15 +23375,13 @@ A focused Daily Sales spec expects a `supplier-concentration-warning` when the t
 
 ## RQ432 - Align Pre-Nivelacija KPI definitions with backend sums, tooltips and table gating
 
-Status: DONE
+Status: READY
 Priority: P2
 Type: backend/frontend/contract/tests
 Feature family: pre-nivelacija-kpi-definition-parity
 Parallel-safe: no
 Owner: Analytics Backend + Frontend / Pre-Nivelacija
 Commit suggestion: `fix(analytics): align pre-nivelacija kpi definitions`
-
-Completion note 2026-09-25: Summary KPI populations, coverage and tooltips are aligned. Stock-at-risk is high-priority-only; revenue uplift is allowed Pojačaj-only; avoidable loss is complete-cost margin-only and null when no eligible row exists. Supplier leaderboard action inputs use the same eligibility. Cache/formula moved to v4. Focused Pre-Nivelacija backend proof `39/39` and page/schema/api proof `67/67` pass; guardrails/typecheck pass. Run log: `.ai/runs/2026-09-25-RQ432-evidence.md`. Evidence state: synchronized.
 
 ### Problem
 
@@ -23430,7 +23425,7 @@ Three Pre-Nivelacija KPIs sum a different population than their tooltips describ
 
 ## RQ433 - Build Pre-Nivelacija supplier, season and type options from the filter universe
 
-Status: READY
+Status: WAITING
 Ready after: `RQ432` is DONE (same endpoint and page files)
 Priority: P2
 Type: backend/frontend/contract/tests
