@@ -55,6 +55,15 @@ public static class WorkerRegistryCatalog
             RegistersInWorkerProcess: true,
             RegistersInWebProcess: false),
         new(
+            WorkerName: "OperationsAnalyticsIntegrityWorker",
+            DisplayName: "Operations Integrity Probe",
+            Description: "Runs bounded Supplier/Shoe Type drift and cache-lane integrity probes.",
+            WorkerType: "maintenance",
+            IsRuntimeControllable: true,
+            IsScheduleControllable: true,
+            RegistersInWorkerProcess: true,
+            RegistersInWebProcess: false),
+        new(
             WorkerName: "NightlyAnalyticsRefreshWorker",
             DisplayName: "Nightly Analytics Refresh",
             Description: "Nightly materialized view refresh and maintenance.",

@@ -147,6 +147,9 @@ public static class WorkerRuntimeConfig
             case "AnalyticsDataQualityHealthWorker":
                 services.AddHostedService<Workers.AnalyticsDataQualityHealthWorker>();
                 return;
+            case "OperationsAnalyticsIntegrityWorker":
+                services.AddHostedService<Workers.OperationsAnalyticsIntegrityWorker>();
+                return;
             case "NightlyAnalyticsRefreshWorker":
                 services.AddHostedService<Workers.NightlyAnalyticsRefreshWorker>();
                 return;

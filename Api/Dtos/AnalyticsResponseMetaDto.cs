@@ -34,4 +34,7 @@ public class AnalyticsResponseMetaDto
     /// Optional provenance by stable metric key. Existing clients may omit this field.
     /// </summary>
     public IReadOnlyDictionary<string, AnalyticsMetricProvenanceDto>? MetricProvenance { get; set; }
+    public string? OperationsIntegrityStatus { get; set; }
+    public DateTime? OperationsIntegrityCheckedAtUtc { get; set; }
+    public string? OperationsIntegrityEvidenceId { get; set; }
 }
