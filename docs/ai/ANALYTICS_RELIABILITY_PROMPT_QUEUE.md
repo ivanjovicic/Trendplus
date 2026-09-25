@@ -5,6 +5,7 @@ Repo: `ivanjovicic/Trendplus`
 Current READY prompt: RQ434
 Owner completion 2026-09-25: RQ433 was delivered directly to `main` after leave-one-out Pre-Nivelacija supplier/season/type facets with counts and page binding to facets instead of the filtered leaderboard. Run log: `.ai/runs/2026-09-25-RQ433-evidence.md`. Evidence state: synchronized. `RQ434` moved `WAITING -> READY`. Remaining claimable READY lanes: `RQ434`, `RQ437` (`RQ435` remains other-owner IN_PROGRESS).
 Owner claim 2026-09-25: RQ435 was selected as the next independent READY prompt because RQ427 and RQ433 are actively locked by other owners and RQ437 owns its named stale-test files. RQ435 transitioned READY -> IN_PROGRESS for the safe traceable analytics error contract. Local lock: `.ai/task-locks/RQ435-codex.lock.md`.
+Owner completion 2026-09-25: RQ435 was delivered directly to `main` with the Shoe Type safe traceable problem contract and explicit frontend allowlists for Shoe Type, Pre/Post and Color. Run log: `.ai/runs/2026-09-25-RQ435-evidence.md`. Evidence state: synchronized. `RQ434` remains the active READY/other-owner lane; `RQ437` remains independently claimable.
 Owner claim 2026-09-25: RQ428 remains other-owner IN_PROGRESS (`RQ428-codex.lock.md`). Under the canonical priority/collision rules, RQ433 was selected as the next independent READY prompt and transitioned READY -> IN_PROGRESS for Pre-Nivelacija facet-universe options. Local lock: `.ai/task-locks/RQ433-cursor.lock.md`.
 Owner completion 2026-09-25: RQ432 was delivered directly to `main` after aligning Pre-Nivelacija KPI populations, nullable empty evidence, coverage labels and tooltips. Run log: `.ai/runs/2026-09-25-RQ432-evidence.md`. Evidence state: synchronized. `RQ433` moved `WAITING -> READY`; `RQ434` remains WAITING. Remaining claimable READY lanes: `RQ433`, `RQ435`, `RQ437` (`RQ428` remains other-owner IN_PROGRESS; `RQ427` is PARTIAL pending push).
 Owner completion 2026-09-25: RQ427 is DONE: the Inventory retry fix is on `main` in `9e91817f` (landed via the RQ432 evidence-sync commit, recorded in `70bfb997`); its audit prompts are in `fb956bac`. Run log: `.ai/runs/2026-09-25-RQ427-evidence.md`. Evidence state: synchronized. The local lock `RQ427-grok.lock.md` was removed.
@@ -23540,13 +23541,15 @@ Negative week-over-week changes are clamped away, invalid filter values silently
 
 ## RQ435 - Return safe traceable Shoe Type errors and allowlist frontend error display
 
-Status: READY
+Status: DONE
 Priority: P2
 Type: backend/frontend/tests
 Feature family: operations-safe-error-messages
 Parallel-safe: no
 Owner: Analytics Backend + Frontend / Shoe Type, Pre/Post, Color
 Commit suggestion: `fix(analytics): safe traceable shoe type errors and allowlisted error display`
+
+Completion note 2026-09-25: Shoe Type failures now log and return a safe Serbian problem with `errorCode` and `correlationId`; the shared frontend helper supports closed per-screen allowlists, and Shoe Type, Pre/Post and Color route errors through their safe message sets. Run log: `.ai/runs/2026-09-25-RQ435-evidence.md`. Evidence state: synchronized.
 
 ### Problem
 
