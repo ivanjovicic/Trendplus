@@ -4,9 +4,9 @@ Date: 2026-09-25
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct-main
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: 7f281064659dd56af76b8de82abb19f05fc82d9e
+Main verification: passed - `origin/main` contains 7f281064659dd56af76b8de82abb19f05fc82d9e
+Evidence state: synchronized
 
 ## What was done
 - Refreshed `origin/main` and confirmed the previously started RQ407/RQ408 work is already delivered.
