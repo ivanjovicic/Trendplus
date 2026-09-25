@@ -4,9 +4,9 @@ Date: 2026-09-25
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / none
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: 404e4255
+Main verification: passed - origin/main contains 404e4255 after push.
+Evidence state: synchronized
 
 ## What was done
 - Changed Supplier Sales visible share, Top 5 and concentration calculations to use the same visible population and a positive net-revenue denominator.
