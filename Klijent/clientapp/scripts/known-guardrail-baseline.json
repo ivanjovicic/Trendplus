@@ -11,13 +11,13 @@
     {
       "file": "src/pages/PreNivelacijaPriorityPage.tsx",
       "rule": "decisionScore_assign",
-      "line": 583,
+      "line": 598,
       "reason": "Existing backend-owned decision-score projection requires a reviewed authority exception."
     },
     {
       "file": "src/pages/PreNivelacijaPriorityPage.tsx",
       "rule": "reliabilityPct_assign",
-      "line": 288,
+      "line": 303,
       "reason": "Existing backend reliability projection requires a reviewed authority exception."
     },
     {

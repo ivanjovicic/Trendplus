@@ -32,7 +32,7 @@ public static class PreNivelacijaPriorityEndpoints
     private sealed class PreNivelacijaPriorityBaseCacheEntry
     {
         public DateTime GeneratedAtUtc { get; init; }
-        public string FormulaVersion { get; init; } = "pre_nivelacija_v3";
+        public string FormulaVersion { get; init; } = "pre_nivelacija_v4";
         public string FormulaDescription { get; init; } = string.Empty;
         public PreNivelacijaSummaryDto Summary { get; init; } = new();
         public List<PreNivelacijaSupplierActionDto> SupplierLeaderboard { get; init; } = [];
@@ -433,8 +433,8 @@ public static class PreNivelacijaPriorityEndpoints
                             var highCount = g.Count(IsHighPriorityCandidate);
                             var candidateCount = g.Count();
                             var stockAtRisk = g.Where(IsHighPriorityCandidate).Sum(x => x.StockUnits);
-                            var avoidableLoss = g.Where(x => x.MarginDeltaHighlightVsMarkdown > 0m).Sum(x => x.MarginDeltaHighlightVsMarkdown);
-                            var expectedUplift = g.Where(x => x.RevenueDeltaHighlightVsMarkdown > 0m).Sum(x => x.RevenueDeltaHighlightVsMarkdown);
+                            var avoidableLoss = g.Where(IsAvoidableMarginLossEligible).Sum(x => x.MarginDeltaHighlightVsMarkdown);
+                            var expectedUplift = g.Where(IsRevenueUpliftEligible).Sum(x => x.RevenueDeltaHighlightVsMarkdown);
 
                             var last7 = g.Sum(x => salesByArtikal.TryGetValue(x.ArtikalId, out var salesLite) ? salesLite.Units7 : 0);
                             var prev7 = g.Sum(x => salesByArtikal.TryGetValue(x.ArtikalId, out var salesLite) ? salesLite.UnitsPrev7 : 0);
@@ -500,7 +500,7 @@ public static class PreNivelacijaPriorityEndpoints
                     return new PreNivelacijaPriorityBaseCacheEntry
                     {
                         GeneratedAtUtc = nowUtc,
-                        FormulaVersion = "pre_nivelacija_v3",
+                        FormulaVersion = "pre_nivelacija_v4",
                         FormulaDescription = BuildFormulaDescription(),
                         Summary = summary,
                         SupplierLeaderboard = supplierLeaderboard,
@@ -548,26 +548,60 @@ public static class PreNivelacijaPriorityEndpoints
         return string.Equals(candidate.PriorityBand, "high", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Revenue-uplift KPI includes only allowed increase_focus ("Pojačaj") rows with a positive revenue delta.
+    /// Blocked recommendations stay out so the KPI matches table gating.
+    /// </summary>
+    internal static bool IsRevenueUpliftEligible(PreNivelacijaSkuCandidateDto candidate)
+    {
+        return string.Equals(candidate.Recommendation.Status, "increase_focus", StringComparison.OrdinalIgnoreCase)
+            && candidate.Recommendation.RecommendationAllowed
+            && candidate.RevenueDeltaHighlightVsMarkdown > 0m;
+    }
+
+    /// <summary>
+    /// Avoidable markdown-loss KPI includes only complete cost/sales evidence with a positive margin delta.
+    /// Missing-cost rows must not inflate this margin KPI.
+    /// </summary>
+    internal static bool IsAvoidableMarginLossEligible(PreNivelacijaSkuCandidateDto candidate)
+    {
+        return candidate.HasCompleteEvidence
+            && candidate.MarginDeltaHighlightVsMarkdown > 0m;
+    }
+
     internal static PreNivelacijaSummaryDto BuildSummary(
         IReadOnlyList<PreNivelacijaSkuCandidateDto> candidates,
         IReadOnlyList<PreNivelacijaSupplierActionDto> supplierLeaderboard)
     {
         var highPriority = candidates.Where(IsHighPriorityCandidate).ToList();
+        var revenueUpliftEligible = candidates.Where(IsRevenueUpliftEligible).ToList();
+        var avoidableLossEligible = candidates.Where(IsAvoidableMarginLossEligible).ToList();
+        var totalCandidates = candidates.Count;
 
         return new PreNivelacijaSummaryDto
         {
             SupplierCount = supplierLeaderboard.Count,
-            CandidatesCount = candidates.Count,
+            CandidatesCount = totalCandidates,
             HighPriorityCount = highPriority.Count,
             IncreaseFocusCount = candidates.Count(x => string.Equals(x.Recommendation.Status, "increase_focus", StringComparison.OrdinalIgnoreCase)),
             MaintainCount = candidates.Count(x => string.Equals(x.Recommendation.Status, "maintain", StringComparison.OrdinalIgnoreCase)),
             ReviewCount = candidates.Count(x => string.Equals(x.Recommendation.Status, "review", StringComparison.OrdinalIgnoreCase)),
             DoNotTrustCount = candidates.Count(x => string.Equals(x.Recommendation.Status, "do_not_trust", StringComparison.OrdinalIgnoreCase)),
             InsufficientDataCount = candidates.Count(x => string.Equals(x.Recommendation.Status, "insufficient_data", StringComparison.OrdinalIgnoreCase)),
-            TotalStockAtRisk = highPriority.Sum(x => x.StockUnits),
-            EstimatedAvoidableMarkdownLoss = decimal.Round(candidates.Where(x => x.MarginDeltaHighlightVsMarkdown > 0m).Sum(x => x.MarginDeltaHighlightVsMarkdown), 2),
-            ExpectedHighlightRevenueUplift = decimal.Round(candidates.Where(x => x.RevenueDeltaHighlightVsMarkdown > 0m).Sum(x => x.RevenueDeltaHighlightVsMarkdown), 2),
-            AveragePreNivelacijaScore = candidates.Count == 0 ? 0m : decimal.Round(candidates.Average(x => x.PreNivelacijaScore), 2)
+            TotalStockAtRisk = highPriority.Count == 0 ? null : highPriority.Sum(x => x.StockUnits),
+            TotalStockAtRiskCoverageEligible = highPriority.Count,
+            TotalStockAtRiskCoverageTotal = totalCandidates,
+            EstimatedAvoidableMarkdownLoss = avoidableLossEligible.Count == 0
+                ? null
+                : decimal.Round(avoidableLossEligible.Sum(x => x.MarginDeltaHighlightVsMarkdown), 2),
+            EstimatedAvoidableMarkdownLossCoverageEligible = avoidableLossEligible.Count,
+            EstimatedAvoidableMarkdownLossCoverageTotal = totalCandidates,
+            ExpectedHighlightRevenueUplift = revenueUpliftEligible.Count == 0
+                ? null
+                : decimal.Round(revenueUpliftEligible.Sum(x => x.RevenueDeltaHighlightVsMarkdown), 2),
+            ExpectedHighlightRevenueUpliftCoverageEligible = revenueUpliftEligible.Count,
+            ExpectedHighlightRevenueUpliftCoverageTotal = totalCandidates,
+            AveragePreNivelacijaScore = totalCandidates == 0 ? 0m : decimal.Round(candidates.Average(x => x.PreNivelacijaScore), 2)
         };
     }
 
@@ -712,16 +746,22 @@ public static class PreNivelacijaPriorityEndpoints
         return new PreNivelacijaPriorityBaseCacheEntry
         {
             GeneratedAtUtc = nowUtc,
-            FormulaVersion = "pre_nivelacija_v3",
+            FormulaVersion = "pre_nivelacija_v4",
             FormulaDescription = BuildFormulaDescription(),
             Summary = new PreNivelacijaSummaryDto
             {
                 SupplierCount = 0,
                 CandidatesCount = 0,
                 HighPriorityCount = 0,
-                TotalStockAtRisk = 0,
-                EstimatedAvoidableMarkdownLoss = 0,
-                ExpectedHighlightRevenueUplift = 0,
+                TotalStockAtRisk = null,
+                TotalStockAtRiskCoverageEligible = 0,
+                TotalStockAtRiskCoverageTotal = 0,
+                EstimatedAvoidableMarkdownLoss = null,
+                EstimatedAvoidableMarkdownLossCoverageEligible = 0,
+                EstimatedAvoidableMarkdownLossCoverageTotal = 0,
+                ExpectedHighlightRevenueUplift = null,
+                ExpectedHighlightRevenueUpliftCoverageEligible = 0,
+                ExpectedHighlightRevenueUpliftCoverageTotal = 0,
                 AveragePreNivelacijaScore = 0
             },
             SupplierLeaderboard = [],

@@ -254,6 +254,21 @@ function formatNonNegativeNumber(value: unknown, digits = 0): string {
   return normalized == null ? RECOMMENDATION_SIGNAL_UNAVAILABLE : fmtNumber(normalized, digits, RECOMMENDATION_SIGNAL_UNAVAILABLE);
 }
 
+function formatKpiCoverage(eligible: number | null | undefined, total: number | null | undefined): string {
+  const eligibleCount = normalizeNonNegativeNumber(eligible);
+  const totalCount = normalizeNonNegativeNumber(total);
+  if (eligibleCount == null || totalCount == null) {
+    return "Pokrivenost nije dostupna";
+  }
+
+  return `${fmtNumber(eligibleCount, 0)} od ${fmtNumber(totalCount, 0)} kandidata`;
+}
+
+function formatNullableKpiRsd(value: unknown): string {
+  const normalized = normalizeFiniteNumber(value);
+  return normalized == null ? "Nije dostupno" : fmtRsd(normalized, 0, "Nije dostupno");
+}
+
 function normalizeDecisionScore(value: unknown): number | null {
   return normalizeBoundedNumber(value, 0, 100);
 }
@@ -1152,18 +1167,20 @@ export default function PreNivelacijaPriorityPage() {
               <span>Visok prioritet <InfoTip text="Globalni broj SKU u visokoj prioritetnoj bandi u celoj filtriranoj populaciji. Status preporuke i kvalitet podataka odvojeno određuju da li je akcija dozvoljena." /></span>
               <strong>{formatNonNegativeNumber(data.summary.highPriorityCount)}</strong>
             </article>
-            <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Ukupna zaliha kod SKU koji nose operativni rizik.">
-              <span>Zaliha pod rizikom <InfoTip text="Ukupna zaliha u komadima svih prikazanih kandidatskih SKU (u skladu sa filterima). Iskazano u komadima, ne u RSD vrednosti. Veća zaliha bez prodaje = veći operativni rizik." /></span>
-              <strong>{formatNonNegativeNumber(data.summary.totalStockAtRisk)}</strong>
-              <em>kom ukupno</em>
+            <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Ukupna zaliha kod SKU u visokoj prioritetnoj bandi.">
+              <span>Zaliha pod rizikom <InfoTip text="Ukupna zaliha u komadima kandidata u visokoj prioritetnoj bandi (u skladu sa filterima). Iskazano u komadima, ne u RSD vrednosti. Veća zaliha bez prodaje = veći operativni rizik. Ako nema visokoprioritetnih kandidata, vrednost nije dostupna." /></span>
+              <strong>{data.summary.totalStockAtRisk == null ? "Nije dostupno" : formatNonNegativeNumber(data.summary.totalStockAtRisk)}</strong>
+              <em>{formatKpiCoverage(data.summary.totalStockAtRiskCoverageEligible, data.summary.totalStockAtRiskCoverageTotal)}</em>
             </article>
-            <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Procena prihoda ako se kandidati istaknu umesto da se sniže.">
-              <span>Procena povećanja prihoda <InfoTip text="Procenjeni prihod: scenario isticanja minus scenario sniženja za sve 'Pojačaj' kandidate. PROCENA – bazirana na scenariju sa istorijskim podacima prodaje, nije garantovani prihod. Tretirati kao relativni signal, ne kao apsolutnu predikciju." /></span>
-              <strong>{fmtRsd(normalizeFiniteNumber(data.summary.expectedHighlightRevenueUplift))}</strong>
+            <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Procena prihoda ako se dozvoljeni Pojačaj kandidati istaknu umesto da se sniže.">
+              <span>Procena povećanja prihoda <InfoTip text="Procenjeni prihod: scenario isticanja minus scenario sniženja samo za dozvoljene 'Pojačaj' kandidate. Blokirane preporuke i drugi statusi nisu uključeni, u skladu sa tabelarnim gatingom. PROCENA – bazirana na scenariju sa istorijskim podacima prodaje, nije garantovani prihod." /></span>
+              <strong>{formatNullableKpiRsd(data.summary.expectedHighlightRevenueUplift)}</strong>
+              <em>{formatKpiCoverage(data.summary.expectedHighlightRevenueUpliftCoverageEligible, data.summary.expectedHighlightRevenueUpliftCoverageTotal)}</em>
             </article>
-            <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Procena gubitka koji može da se izbegne pre nivelacije.">
-              <span>Procena izbegljivog gubitka od sniženja <InfoTip text="Procenjeni gubitak prihoda koji se može izbeći pravovremenom intervencijom pre nivelacije. PROCENA bazirana na scenario modelu (isticanje vs. sniženje u 30-dnevnom prozoru). Apsolutni iznos je okvirna procena – relativni odnos između SKU-ova je relevantniji." /></span>
-              <strong className="trend-down">{fmtRsd(normalizeFiniteNumber(data.summary.estimatedAvoidableMarkdownLoss))}</strong>
+            <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Procena izbegljivog gubitka marže koji može da se izbegne pre nivelacije.">
+              <span>Procena izbegljivog gubitka marže <InfoTip text="Procenjeni gubitak marže (ne prihoda) koji se može izbeći pravovremenom intervencijom pre nivelacije. Uključuje samo kandidate sa kompletnim dokazom o trošku i pozitivnom delta marže. Redovi bez troška ne ulaze u zbir. PROCENA bazirana na scenario modelu (isticanje vs. sniženje u 30-dnevnom prozoru)." /></span>
+              <strong className={data.summary.estimatedAvoidableMarkdownLoss == null ? "" : "trend-down"}>{formatNullableKpiRsd(data.summary.estimatedAvoidableMarkdownLoss)}</strong>
+              <em>{formatKpiCoverage(data.summary.estimatedAvoidableMarkdownLossCoverageEligible, data.summary.estimatedAvoidableMarkdownLossCoverageTotal)}</em>
             </article>
           </section>
 

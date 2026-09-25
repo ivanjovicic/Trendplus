@@ -63,9 +63,26 @@ public sealed class PreNivelacijaSummaryDto
     public int ReviewCount { get; set; }
     public int DoNotTrustCount { get; set; }
     public int InsufficientDataCount { get; set; }
-    public int TotalStockAtRisk { get; set; }
-    public decimal EstimatedAvoidableMarkdownLoss { get; set; }
-    public decimal ExpectedHighlightRevenueUplift { get; set; }
+    /// <summary>
+    /// Stock units on high-priority candidates only. Null when no high-priority row exists.
+    /// </summary>
+    public int? TotalStockAtRisk { get; set; }
+    public int TotalStockAtRiskCoverageEligible { get; set; }
+    public int TotalStockAtRiskCoverageTotal { get; set; }
+    /// <summary>
+    /// Positive highlight-vs-markdown margin delta for candidates with complete cost/sales evidence.
+    /// Null when no eligible row exists. Unit: RSD margin, not revenue.
+    /// </summary>
+    public decimal? EstimatedAvoidableMarkdownLoss { get; set; }
+    public int EstimatedAvoidableMarkdownLossCoverageEligible { get; set; }
+    public int EstimatedAvoidableMarkdownLossCoverageTotal { get; set; }
+    /// <summary>
+    /// Positive revenue uplift for allowed increase_focus ("Pojačaj") recommendations only.
+    /// Null when no eligible row exists.
+    /// </summary>
+    public decimal? ExpectedHighlightRevenueUplift { get; set; }
+    public int ExpectedHighlightRevenueUpliftCoverageEligible { get; set; }
+    public int ExpectedHighlightRevenueUpliftCoverageTotal { get; set; }
     public decimal AveragePreNivelacijaScore { get; set; }
 }
 

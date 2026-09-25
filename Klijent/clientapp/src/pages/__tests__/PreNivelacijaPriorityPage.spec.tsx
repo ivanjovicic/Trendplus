@@ -240,8 +240,14 @@ function makeResponse(candidates = [makeCandidate(), makeCandidate({
       doNotTrustCount: candidates.filter((candidate) => candidate.recommendation.status === "do_not_trust").length,
       insufficientDataCount: candidates.filter((candidate) => candidate.recommendation.status === "insufficient_data").length,
       totalStockAtRisk: 12,
+      totalStockAtRiskCoverageEligible: candidates.filter((candidate) => candidate.priorityBand.toLowerCase() === "high").length,
+      totalStockAtRiskCoverageTotal: candidates.length,
       estimatedAvoidableMarkdownLoss: 12500,
+      estimatedAvoidableMarkdownLossCoverageEligible: 1,
+      estimatedAvoidableMarkdownLossCoverageTotal: candidates.length,
       expectedHighlightRevenueUplift: 18000,
+      expectedHighlightRevenueUpliftCoverageEligible: 1,
+      expectedHighlightRevenueUpliftCoverageTotal: candidates.length,
       averagePreNivelacijaScore: 74,
     },
     supplierLeaderboard,
@@ -1309,5 +1315,54 @@ describe("PreNivelacijaPriorityPage", () => {
     const sortedRows = table.querySelectorAll("tbody tr");
     expect(sortedRows[0]).toHaveTextContent("SKU-ALLOWED");
     expect(sortedRows[1]).toHaveTextContent("SKU-BLOCKED");
+  });
+
+  it("renders KPI definitions with coverage and null when no eligible population exists", async () => {
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce({
+      ...makeResponse([
+        makeCandidate({
+          artikalId: 901,
+          sku: "SKU-901",
+          priorityBand: "medium",
+          recommendation: {
+            status: "review",
+            label: "Pregled",
+            summary: "Bez Pojačaj/visokog prioriteta.",
+            confidencePct: 60,
+            reliabilityPct: 55,
+            dataQualityStatus: "warning",
+            recommendationAllowed: true,
+            reasonCodes: ["review_signal"],
+          },
+        }),
+      ]),
+      summary: {
+        ...makeResponse().summary,
+        candidatesCount: 1,
+        highPriorityCount: 0,
+        increaseFocusCount: 0,
+        totalStockAtRisk: null,
+        totalStockAtRiskCoverageEligible: 0,
+        totalStockAtRiskCoverageTotal: 1,
+        estimatedAvoidableMarkdownLoss: null,
+        estimatedAvoidableMarkdownLossCoverageEligible: 0,
+        estimatedAvoidableMarkdownLossCoverageTotal: 1,
+        expectedHighlightRevenueUplift: null,
+        expectedHighlightRevenueUpliftCoverageEligible: 0,
+        expectedHighlightRevenueUpliftCoverageTotal: 1,
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Zaliha pod rizikom")).toBeInTheDocument();
+    expect(screen.getByText("Procena povećanja prihoda")).toBeInTheDocument();
+    expect(screen.getByText("Procena izbegljivog gubitka marže")).toBeInTheDocument();
+    expect(screen.getAllByText("Nije dostupno").length).toBeGreaterThanOrEqual(3);
+    expect(screen.getAllByText("0 od 1 kandidata")).toHaveLength(3);
   });
 });

@@ -160,9 +160,15 @@ export interface PreNivelacijaSummary {
   reviewCount: number;
   doNotTrustCount: number;
   insufficientDataCount: number;
-  totalStockAtRisk: number;
-  estimatedAvoidableMarkdownLoss: number;
-  expectedHighlightRevenueUplift: number;
+  totalStockAtRisk: number | null;
+  totalStockAtRiskCoverageEligible: number;
+  totalStockAtRiskCoverageTotal: number;
+  estimatedAvoidableMarkdownLoss: number | null;
+  estimatedAvoidableMarkdownLossCoverageEligible: number;
+  estimatedAvoidableMarkdownLossCoverageTotal: number;
+  expectedHighlightRevenueUplift: number | null;
+  expectedHighlightRevenueUpliftCoverageEligible: number;
+  expectedHighlightRevenueUpliftCoverageTotal: number;
   averagePreNivelacijaScore: number;
 }
 

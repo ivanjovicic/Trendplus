@@ -95,7 +95,12 @@ public sealed class PreNivelacijaPopulationTests
             PreNivelacijaScore = 80,
             MarginDeltaHighlightVsMarkdown = 100,
             RevenueDeltaHighlightVsMarkdown = 200,
-            Recommendation = new PreNivelacijaRecommendationDto { Status = status }
+            HasCompleteEvidence = true,
+            Recommendation = new PreNivelacijaRecommendationDto
+            {
+                Status = status,
+                RecommendationAllowed = string.Equals(status, "increase_focus", StringComparison.OrdinalIgnoreCase),
+            }
         };
     }
 }
