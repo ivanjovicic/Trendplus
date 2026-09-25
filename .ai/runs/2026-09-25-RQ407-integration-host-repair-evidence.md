@@ -4,9 +4,9 @@ Date: 2026-09-25
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct-main
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: 034f4bfa464572b964b2a9f324e6dd1b93ef38eb
+Main verification: passed - fresh `origin/main` resolves to 034f4bfa464572b964b2a9f324e6dd1b93ef38eb and contains the implementation SHA
+Evidence state: synchronized
 
 ## What was done
 - Removed the Docker integration-host blocker by validating a fresh PostgreSQL 15 host on `127.0.0.1:55432`.
