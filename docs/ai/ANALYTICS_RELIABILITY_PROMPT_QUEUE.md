@@ -10,6 +10,7 @@ Owner audit follow-up 2026-09-25 (Shoe Type audit, grok): routed the remaining �
 Owner claim 2026-09-25 (Supplier overview audit, grok): the audit of „Prodaja po dobavljačima“ (`/analytics/supplier?tab=overview`, legacy `operations-supplier-sales`) added and claimed `RQ443` (total PoP trend must include suppliers without current sales; the unfocused subset of the unregistered `PS11`/C16 in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-25.md`) and `RQ444` (sticky legacy `sezonaId`, data window shown as the period, +1-day header end date), both `READY -> IN_PROGRESS` in this workspace. Local locks: `.ai/task-locks/RQ443-grok.lock.md`, `.ai/task-locks/RQ444-grok.lock.md`. `Current READY prompt` stays `RQ440`. Other findings route to `RQ442`, `RQ441`, `RQ325` and the unregistered `PS06`/`PS11`/`PS12`/`PS16`/`PS17`/`PS18`. Run log: `.ai/runs/2026-09-25-supplier-sales-overview-audit-evidence.md`.
 Owner completion 2026-09-25: RQ443 was implemented and committed directly on local `main` (`fix(analytics): base supplier total PoP on the full previous period (RQ443)`, parent `77371907`); status `PARTIAL` until `origin/main` contains it (local-only delivery). Run log: `.ai/runs/2026-09-25-RQ443-evidence.md`.
 Owner completion 2026-09-25: RQ444 was implemented and committed directly on local `main` (`fix(analytics): keep supplier overview period metadata truthful (RQ444)`); status `PARTIAL` until `origin/main` contains it (local-only delivery). Run log: `.ai/runs/2026-09-25-RQ444-evidence.md`.
+Owner completion 2026-09-25 (RQ443/RQ444 DONE sync): `origin/main` contains the RQ443 implementation `2150944b` and the RQ444 implementation `53f66cfa` (`git merge-base --is-ancestor` passed for both; they reached `origin/main` together with `404e4255`/`644b7aa8`), so both moved `PARTIAL -> DONE` with `Evidence state: synchronized`. The later `404e4255` (supplier concentration denominator) edits the same page; the RQ443/RQ444 specs stay green on `644b7aa8` (full frontend suite, see `.ai/runs/2026-09-25-shoe-type-sales-audit-evidence.md`). Run logs: `.ai/runs/2026-09-25-RQ443-evidence.md`, `.ai/runs/2026-09-25-RQ444-evidence.md`.
 Owner audit follow-up 2026-09-25: the Operacije calculation audit added `RQ441` (WAITING behind Daily Sales scope/receipt owners) for Daily Sales frozen supplier attribution parity and `RQ442` (READY, independent date-range contract) for half-open whole-day semantics across Supplier, Shoe Type and Color. The bounded concentration fail-closed guard was applied directly; the full denominator contract remains owned by `RQ431`. Scope diagnostics remain owned by existing `RQ382`; no duplicate prompt was added. Audit: `docs/qa/OPERATIONS_UNDOCUMENTED_FINDINGS_2026-09-25.md`; run log: `.ai/runs/2026-09-25-operations-audit-fix-evidence.md`.
 Routing repair 2026-09-25 (same-day review of today's commits, local-only; no task reopened): the `RQ436` section `Status:` line was corrected `IN_PROGRESS -> DONE` to match its summary row and synchronized delivery (`3dde5583`/`ec91dbcf`); `RQ428`, `RQ432`, `RQ433`, `RQ435` and `RQ436` received protocol completion notes (`Evidence state`, `Delivery mode`, `Main commit SHA`, `Main verification`) from their run logs. The `RQ427`-`RQ437` audit evidence was synchronized in `1c3899c8`, and the Pre/Post page-spec drift left by `RQ435`/`RQ436` was repaired test-only in `cc47d418`. Follow-ups: `RQ438` (WAITING behind `RQ429`: remaining `DnevnikPromena.Id`/`ProdajaZaglavlje.Id` joins and the journal `Iznos` sign proof), `RQ439` (WAITING, owner-gated triage of unmerged PR #63) and `RQ440` (READY, nine unowned failing shared analytics specs). Run log: `.ai/runs/2026-09-25-todays-commits-review-evidence.md`.
 Owner promotion 2026-09-25 (same-day review follow-up): `RQ429` is DONE (`ded7efce`, closure `bc248ede`), so `RQ438` moved `WAITING -> READY` on its explicit `Ready after` gate; it is backend-only and must still not edit `RQ437`-owned files while `RQ437` is PARTIAL. `Current READY prompt` now names `RQ440` (no live-data dependency); `RQ438` stays an independent READY lane.
@@ -1604,8 +1605,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ440 | READY | analytics-shared-spec-drift | Triage nine unowned failing shared analytics specs |
 | RQ441 | WAITING | daily-sales-frozen-supplier-attribution | Align Daily Sales supplier buckets with sale-time attribution used by canonical Supplier Sales |
 | RQ442 | READY | operations-whole-day-half-open-ranges | Make Supplier, Shoe Type and Color whole-day filters half-open and boundary-safe |
-| RQ443 | PARTIAL | supplier-overview-total-pop | Keep the Supplier overview total PoP trend on the full previous-period population |
-| RQ444 | PARTIAL | supplier-overview-period-truth | Supplier overview period truth: drop the sticky legacy season and show the analyzed period |
+| RQ443 | DONE | supplier-overview-total-pop | Keep the Supplier overview total PoP trend on the full previous-period population |
+| RQ444 | DONE | supplier-overview-period-truth | Supplier overview period truth: drop the sticky legacy season and show the analyzed period |
 | RQ445 | PARTIAL | shoe-type-period-truth | Shoe Type trust header shows the selected calendar period |
 | RQ446 | PARTIAL | shoe-type-overview-label-truth | Shoe Type overview labels describe what is plotted and computed |
 | RQ447 | WAITING | operations-receipt-exclusion-parity | Decide receipt-exclusion parity between Daily Sales and Supplier / Shoe Type / Color |
@@ -24179,7 +24180,7 @@ Supplier Sales, Shoe Type Sales and Color Sales send a selected date's end as `2
 
 ## RQ443 - Keep the Supplier overview total PoP trend on the full previous-period population
 
-Status: PARTIAL
+Status: DONE
 Priority: P2
 Type: frontend/tests
 Feature family: supplier-overview-total-pop
@@ -24232,28 +24233,28 @@ Commit suggestion: `fix(analytics): base supplier total PoP on the full previous
 ### Completion note
 
 - Date: 2026-09-25
-- Status: PARTIAL
+- Status: DONE
 - Completion: „Ukupan PoP trend“ (KPI and toolbar) now uses the backend `totals.previousPeriodRevenue` for the unfiltered population, so suppliers with previous-period sales and no current row count in the base; a focused supplier keeps its row base, and the known-only view fails closed to N/A with an explanatory tooltip.
 - Changed files: `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/SupplierSalesStatsPage.decisionSuppliers.spec.tsx`, `Klijent/clientapp/src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx`, `Klijent/clientapp/scripts/known-guardrail-baseline.json` (line shifts only), `.ai/runs/2026-09-25-RQ443-evidence.md`, this queue, `MASTER_ROADMAP.md`
 - Contract/runtime behavior changed: frontend only; `buildSupplierSalesDisplayProjection` gains an optional previous-period source (default unchanged); no API change.
 - Checks run: new tests 4 failing on the old page, passing after; focused Supplier specs 45/46 → 49/50 (remaining failure is the pre-existing `RQ440` case); `npx tsc -b` pass; `npm run check:analytics-guardrails` pass with baseline line shifts; six queue validators and `git diff --check` pass.
 - Checks not run: live API/DB proof (API hosts 503, no local DB), CI, `dotnet test` (no backend change).
 - Run log: `.ai/runs/2026-09-25-RQ443-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending - local `main` commit `fix(analytics): base supplier total PoP on the full previous period (RQ443)`; recorded by the DONE sync
-- Main verification: pending - not pushed (owner instruction: local commits only)
+- Main commit SHA: `2150944b9715e61cede3c0b218dd1f954d2ed364`
+- Main verification: passed - `git merge-base --is-ancestor 2150944b origin/main` succeeded on 2026-09-25 (DONE sync); the later `404e4255` edits the same page and the RQ443 specs stay green on `644b7aa8`.
 - Missed: none in owned scope.
 - Follow-up: `PS11` (unregistered) keeps share denominators and backend-scoped previous totals for focused/known-only views.
 - Residual risk: the known-only view shows N/A until a backend known-only previous total exists; previous-period boundaries still follow the inclusive `23:59:59Z` end owned by `RQ442`.
-- Next: DONE sync after `origin/main` contains the commit.
+- Next: none; continue the queue's Current READY prompt.
 - Prompt defect / scope repair: none.
 
 ---
 
 ## RQ444 - Supplier overview period truth: drop the sticky legacy season and show the analyzed period
 
-Status: PARTIAL
+Status: DONE
 Priority: P2
 Type: frontend/tests
 Feature family: supplier-overview-period-truth
@@ -24310,21 +24311,21 @@ On „Prodaja po dobavljačima“ the period shown can differ from the period co
 ### Completion note
 
 - Date: 2026-09-25
-- Status: PARTIAL
+- Status: DONE
 - Completion: consolidated Period/Od/Do now drop the legacy `sezonaId`, so an explicit period wins over an old season link; the embedded overview sends calendar-date `periodFrom`/`periodTo` and labels „Period i filteri“ with the analyzed period (data window only as a „dostupni podaci“ suffix), removing the +1-day end date in UTC+ zones.
 - Changed files: `Klijent/clientapp/src/pages/useSupplierCanonicalState.ts`, `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/useSupplierCanonicalState.spec.tsx` (new), `Klijent/clientapp/src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx`, `Klijent/clientapp/scripts/known-guardrail-baseline.json` (line shifts only), `.ai/runs/2026-09-25-RQ444-evidence.md`, this queue, `MASTER_ROADMAP.md`
 - Contract/runtime behavior changed: frontend only; embedded trust metadata period fields are calendar dates and the label is the analyzed period; URL state drops `sezonaId` on period changes. No API or numeric KPI change.
 - Checks run: new tests 4 failing before, passing after; focused Supplier/route specs 74/75 (pre-existing `RQ440` case); `npx tsc -b` pass; `npm run check:analytics-guardrails` pass with baseline line shifts; six queue validators and `git diff --check` pass.
 - Checks not run: live API/DB proof (API hosts 503), CI, `dotnet test` (no backend change).
 - Run log: `.ai/runs/2026-09-25-RQ444-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending - local `main` commit `fix(analytics): keep supplier overview period metadata truthful (RQ444)`; recorded by the DONE sync
-- Main verification: pending - not pushed (owner instruction: local commits only)
+- Main commit SHA: `53f66cfa2c2d5ca226da4242ccb68d0add69c889`
+- Main verification: passed - `git merge-base --is-ancestor 53f66cfa origin/main` succeeded on 2026-09-25 (DONE sync); the later `404e4255` edits the same page and the RQ444 specs stay green on `644b7aa8`.
 - Missed: none in owned scope.
 - Follow-up: none new; `RQ442` must keep the calendar-date display when it moves to an exclusive end.
 - Residual risk: Data Quality return links keep `sezonaId` until the period is changed; trust-header staleness on supplier switch remains with `PS12`.
-- Next: DONE sync after `origin/main` contains the commit.
+- Next: none; continue the queue's Current READY prompt.
 - Prompt defect / scope repair: none.
 
 ---
