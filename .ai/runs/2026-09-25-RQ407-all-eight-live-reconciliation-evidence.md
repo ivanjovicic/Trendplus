@@ -5,7 +5,7 @@ Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct-main
 Main commit SHA: 0a10a78d
-Main verification: implementation pushed to origin/main; final evidence/queue closure is in the following direct-main commit
+Main verification: passed - fresh `origin/main` resolves to `65a8775cb004ca7d0cac4705296957f2f65894ec` and contains implementation `0a10a78d`
 Evidence state: synchronized
 
 ## Interpreted outcome and owner
@@ -45,4 +45,4 @@ RQ407 required one deterministic Operations fact set to reconcile Inventory, Sup
 ## Delivery
 
 - Implementation commit: `0a10a78d` (`test(analytics): reconcile all Operations routes on one fixture`), pushed to `origin/main`.
-- Queue and evidence closure are being delivered directly to `main`; the final verification will assert that `origin/main` contains `0a10a78d`.
+- Queue and evidence closure delivered directly to `main` in `65a8775cb004ca7d0cac4705296957f2f65894ec`; fresh `origin/main` verification contains implementation `0a10a78d`.
