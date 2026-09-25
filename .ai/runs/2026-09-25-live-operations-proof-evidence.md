@@ -22,9 +22,10 @@ Evidence state: synchronized
 
 ## Validation run
 - `dotnet ef database update --project .\Infrastructure\Infrastructure.csproj --startup-project .\Api\Api.csproj --context TrendplusDbContext --connection <local Docker trendplus connection>` -> pass; local migration applied.
+- `dotnet build Api.Tests/Api.Tests.csproj -c Release --no-restore` -> pass (0 errors; existing analyzer warnings only).
 - `dotnet test Api.Tests/Api.Tests.csproj -c Release --filter FullyQualifiedName~SupplierShoeTypeIndependentOracleIntegrationTests` with `TRENDPLUS_RUN_INTEGRATION_TESTS=true` -> pass (`4/4`).
 - `dotnet test Api.Tests/Api.Tests.csproj -c Release --filter FullyQualifiedName~OperationsAnalyticsAllRoutesIntegrationTests` with `TRENDPLUS_RUN_INTEGRATION_TESTS=true` -> pass (`1/1`, all eight route families).
-- `POST http://127.0.0.1:8080/api/analytics/operations-integrity/probe` -> HTTP 200, `verified`, `blocksDecisionSignals=false`, revenue/units deltas zero.
+- `POST http://127.0.0.1:8080/api/analytics/operations-integrity/probe` -> HTTP 200, `verified`, evidence `probe-20260925143551-4f3fab1dd9a0486486d`, `blocksDecisionSignals=false`, revenue/units deltas zero.
 - `GET http://127.0.0.1:8080/api/analytics/operations-integrity` -> same verified evidence and zero deltas.
 - `git diff --check` -> pass.
 
