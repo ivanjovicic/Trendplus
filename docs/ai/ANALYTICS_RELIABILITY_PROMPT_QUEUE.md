@@ -5,6 +5,7 @@ Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 Owner promotion 2026-09-25: idle recovery verified `RQ428` is DONE on `main`; `RQ429` is dependency-complete and its Daily Sales frontend scope is collision-safe with active RQ437 backend/test ownership. RQ429 moved `WAITING -> READY`; the older RQ352 lock is stale because RQ352 is already DONE.
 Owner claim 2026-09-25: RQ429 transitioned `READY -> IN_PROGRESS` in this workspace for truthful Daily Sales empty-state, incomplete-shift and MA7 semantics. Local lock: `.ai/task-locks/RQ429-codex.lock.md`.
+Owner completion 2026-09-25: RQ429 was delivered directly to `main` in `ded7efce`. Daily Sales now honors backend no-data metadata, keeps true zero days, aligns missing/partial shift counts, excludes the current day from the seven-day baseline and states insufficient history. Run log: `.ai/runs/2026-09-25-RQ429-evidence.md`. Evidence state: synchronized. `RQ430` remains WAITING and `RQ437` remains active in another owner workspace.
 Owner completion 2026-09-25: RQ434 was delivered directly to `main` after signed WoW normalization, draft filter validation with visible feedback, Serbian band labels, queue totals before the `.Take(30)` cap, warning tones for high-priority risk, named export filters and `aria-sort` markers. Run log: `.ai/runs/2026-09-25-RQ434-evidence.md`. Evidence state: synchronized. No successor was promoted; `RQ436` and `RQ437` remain other-owner IN_PROGRESS.
 Owner claim 2026-09-25: RQ436 transitioned `READY -> IN_PROGRESS` in this workspace for dead/frontend-derived Operacije KPI cleanup and lifecycle safety. Local lock: `.ai/task-locks/RQ436-codex.lock.md`.
 Owner completion 2026-09-25: RQ436 was delivered directly to `main` after removing always-unavailable Top 5 and undeclared Pre/Post frontend-derived KPIs, the dead Shoe Type empty branch, raw store-ID metadata and the Color scroll-timeout leak. Run log: `.ai/runs/2026-09-25-RQ436-evidence.md`. Evidence state: synchronized. `RQ437` remains active in another owner workspace.
@@ -1577,7 +1578,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ408 | DONE | operations-second-pass-finding-decomposition | Classify and decompose the second-pass Operacije bug/finding catalogue into precise follow-up prompts |
 | RQ427 | DONE | inventory-retry-recovery | Make Inventory retry refetch and keep controls on error/empty states |
 | RQ428 | DONE | daily-sales-receipt-reconciliation-key | Join Daily Sales receipt-mismatch diagnostics on real receipt identity |
-| RQ429 | IN_PROGRESS | daily-sales-empty-state-metric-consistency | Make Daily Sales empty state, incomplete-shift counts and MA7 baseline truthful |
+| RQ429 | DONE | daily-sales-empty-state-metric-consistency | Make Daily Sales empty state, incomplete-shift counts and MA7 baseline truthful |
 | RQ430 | WAITING | daily-sales-page-polish | Fix Daily Sales sort toggle, print-form columns and store identity in export |
 | RQ431 | WAITING | daily-sales-concentration-contract | Decide the Daily Sales supplier-concentration over-total contract |
 | RQ432 | DONE | pre-nivelacija-kpi-definition-parity | Align Pre-Nivelacija KPI definitions with backend sums, tooltips and table gating |
@@ -23231,7 +23232,7 @@ The Daily Sales „Neusklađeni računi“ diagnostic compares DnevnikPromena to
 
 ## RQ429 - Make Daily Sales empty state, incomplete-shift counts and MA7 baseline truthful
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: `RQ428` is DONE (same quality-card region of `DailySalesStatsPage.tsx`)
 Priority: P2
 Type: frontend/contract/tests
