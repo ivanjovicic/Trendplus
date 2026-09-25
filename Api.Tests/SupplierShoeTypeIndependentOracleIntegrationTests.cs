@@ -115,9 +115,9 @@ public sealed class SupplierShoeTypeIndependentOracleIntegrationTests
         decimal oracleTotalRevenue)
     {
         var oracleById = oracleBuckets.ToDictionary(
-            b => b.DimensionId,
+            b => b.DimensionId?.ToString() ?? "unknown",
             b => b,
-            EqualityComparer<int?>.Default);
+            StringComparer.Ordinal);
 
         var endpointRevenue = 0m;
         var endpointUnits = 0;
@@ -131,7 +131,8 @@ public sealed class SupplierShoeTypeIndependentOracleIntegrationTests
             if (isUnknown)
                 supplierId = null;
 
-            Assert.True(oracleById.TryGetValue(supplierId, out var oracleBucket), $"Unexpected supplier row id={supplierId?.ToString() ?? "unknown"}");
+            var supplierKey = supplierId?.ToString() ?? "unknown";
+            Assert.True(oracleById.TryGetValue(supplierKey, out var oracleBucket), $"Unexpected supplier row id={supplierKey}");
             var rowRevenue = row.GetProperty("ukupanPromet").GetDecimal();
             var rowUnits = row.GetProperty("ukupnaKolicina").GetInt32();
             Assert.Equal(oracleBucket.Revenue, rowRevenue);
@@ -158,9 +159,9 @@ public sealed class SupplierShoeTypeIndependentOracleIntegrationTests
         decimal oracleTotalRevenue)
     {
         var oracleById = oracleBuckets.ToDictionary(
-            b => b.DimensionId,
+            b => b.DimensionId?.ToString() ?? "unknown",
             b => b,
-            EqualityComparer<int?>.Default);
+            StringComparer.Ordinal);
 
         var endpointRevenue = 0m;
         var endpointUnits = 0;
@@ -174,7 +175,8 @@ public sealed class SupplierShoeTypeIndependentOracleIntegrationTests
             if (isUnknown)
                 shoeTypeId = null;
 
-            Assert.True(oracleById.TryGetValue(shoeTypeId, out var oracleBucket), $"Unexpected shoe type row id={shoeTypeId?.ToString() ?? "unknown"}");
+            var shoeTypeKey = shoeTypeId?.ToString() ?? "unknown";
+            Assert.True(oracleById.TryGetValue(shoeTypeKey, out var oracleBucket), $"Unexpected shoe type row id={shoeTypeKey}");
             var rowRevenue = row.GetProperty("ukupanPromet").GetDecimal();
             var rowUnits = row.GetProperty("ukupnaKolicina").GetInt32();
             Assert.Equal(oracleBucket.Revenue, rowRevenue);

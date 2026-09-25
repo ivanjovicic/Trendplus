@@ -60,7 +60,9 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
         var vendorNivelacija = await GetJsonAsync(
             client,
             $"/api/analytics/vendor-sales-nivelacija?eventDate={Uri.EscapeDataString(NivelacijaEventDate)}&dataScope=all");
-        Assert.True(vendorNivelacija.GetProperty("meta").GetProperty("success").GetBoolean());
+        Assert.True(
+            vendorNivelacija.GetProperty("meta").GetProperty("success").GetBoolean(),
+            vendorNivelacija.GetRawText());
         Assert.Equal(200m, vendorNivelacija.GetProperty("totals").GetProperty("preRevenue").GetDecimal());
         Assert.Equal(270m, vendorNivelacija.GetProperty("totals").GetProperty("postRevenue").GetDecimal());
         Assert.Equal(35m, vendorNivelacija.GetProperty("totals").GetProperty("changePercent").GetDecimal());
