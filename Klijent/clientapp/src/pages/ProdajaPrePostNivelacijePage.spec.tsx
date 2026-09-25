@@ -404,9 +404,11 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     await screen.findByText("Prioritetna lista dobavljača");
 
     const warning = await screen.findByTestId("previous-comparison-warning");
-    expect(warning).toHaveTextContent("Previous period timeout");
+    expect(warning).toHaveTextContent("Podaci trenutno nisu dostupni");
+    expect(warning).not.toHaveTextContent("Previous period timeout");
     expect(warning).toHaveTextContent("greške zahteva");
-    expect(screen.getAllByText("Nedostupno").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText("Nedostupno").length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText("Rast/pad vs prethodni event-opseg")).not.toBeInTheDocument();
     expect(screen.queryByText("Nova baza")).not.toBeInTheDocument();
   });
 
@@ -762,7 +764,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(vendorRow).not.toBeNull();
     expect(within(vendorRow!).getByText("Nije dostupno")).toBeInTheDocument();
     expect(within(vendorRow!).queryByText("100,00%")).not.toBeInTheDocument();
-    expect(screen.getByText("Top 5 udeo u promeni").parentElement).toHaveTextContent("N/A");
+    expect(screen.queryByText("Top 5 udeo u promeni")).not.toBeInTheDocument();
   });
 
   it("shows backend reliability percent instead of a local Visoko band", async () => {
@@ -938,7 +940,8 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     renderPage();
 
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Vendor sales API timeout");
+    expect(alert).toHaveTextContent("Greška pri učitavanju pre/post analitike.");
+    expect(alert).not.toHaveTextContent("Vendor sales API timeout");
     expect(document.querySelector(".ppn-decision-kpis")).toBeNull();
     expect(screen.queryByText(/Nisko signal/)).not.toBeInTheDocument();
     expect(screen.queryByText("Post-window promet posle nivelacije")).not.toBeInTheDocument();
@@ -1032,7 +1035,8 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     renderPage();
     await screen.findByText("Prioritetna lista dobavljača");
 
-    expect(screen.getByTestId("vendor-load-warning")).toHaveTextContent("Vendor API unavailable");
+    expect(screen.getByTestId("vendor-load-warning")).toHaveTextContent("Podaci trenutno nisu dostupni");
+    expect(screen.getByTestId("vendor-load-warning")).not.toHaveTextContent("Vendor API unavailable");
     const vendorSelect = screen.getByLabelText("Dobavljač");
     expect(within(vendorSelect).getAllByRole("option")).toHaveLength(1);
     expect(within(vendorSelect).getByRole("option", { name: "Svi" })).toBeInTheDocument();
@@ -1059,7 +1063,8 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     await screen.findByText("Prioritetna lista dobavljača");
 
     await waitFor(() => {
-      expect(screen.getByTestId("vendor-load-warning")).toHaveTextContent("Temporary outage");
+      expect(screen.getByTestId("vendor-load-warning")).toHaveTextContent("Podaci trenutno nisu dostupni");
+      expect(screen.getByTestId("vendor-load-warning")).not.toHaveTextContent("Temporary outage");
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Pokušaj ponovo" }));
