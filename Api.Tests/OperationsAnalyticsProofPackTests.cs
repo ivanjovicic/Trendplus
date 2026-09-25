@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Xunit;
 
@@ -28,6 +29,32 @@ public sealed class OperationsAnalyticsProofPackTests
         var supplierFootwear = Assert.Single(routes, route => route.Family == "supplier-footwear");
         Assert.Equal("/analytics/supplier", supplierSales.CanonicalPath);
         Assert.Equal(supplierSales.CanonicalPath, supplierFootwear.CanonicalPath);
+    }
+
+    [Fact]
+    public void OperationsManifestDeclaresExecutableFrontendProjectionProofForEveryFamily()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+
+        Assert.All(PilotAnalyticsSeedPack.OperationsRoutes, route =>
+        {
+            var pagePath = ResolveRepositoryPath(repositoryRoot, route.FrontendPage);
+            var proofPath = ResolveRepositoryPath(repositoryRoot, route.FrontendProofFile);
+            Assert.True(File.Exists(pagePath), $"Missing frontend page adapter for {route.Family}: {route.FrontendPage}");
+            Assert.True(File.Exists(proofPath), $"Missing frontend proof adapter for {route.Family}: {route.FrontendProofFile}");
+
+            var pageSource = File.ReadAllText(pagePath);
+            var proofSource = File.ReadAllText(proofPath);
+            foreach (var token in route.FrontendPageTokens)
+            {
+                Assert.Contains(token, pageSource, StringComparison.Ordinal);
+            }
+
+            foreach (var token in route.FrontendProofTokens)
+            {
+                Assert.Contains(token, proofSource, StringComparison.Ordinal);
+            }
+        });
     }
 
     [Fact]
@@ -163,5 +190,22 @@ public sealed class OperationsAnalyticsProofPackTests
 
         Assert.Equal(expected.OrderBy(row => row.Key, StringComparer.Ordinal), actual);
         Assert.Equal(100m, Math.Round(actual.Sum(row => row.RevenueSharePercent), 6));
+    }
+
+    private static string ResolveRepositoryPath(string repositoryRoot, string relativePath) =>
+        Path.Combine(repositoryRoot, relativePath.Replace('/', Path.DirectorySeparatorChar));
+
+    private static string FindRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "AGENTS.md")))
+                return directory.FullName;
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Could not locate repository root from test base directory.");
     }
 }

@@ -20,7 +20,7 @@ Owner claim 2026-09-24: RQ308 transitioned `READY -> IN_PROGRESS` in this worksp
 
 Owner completion 2026-09-24: RQ308 was delivered directly to `main` after focused Inventory period/lineage proof. Inventory now persists validated period preset/date state in the URL, sends the selected calendar range to list/detail requests, refreshes relative presets on reload/scope changes, and clearly separates period-dependent list/detail evidence from current snapshot panels. Run log: `.ai/runs/2026-09-24-RQ308-evidence.md`. RQ371 remains WAITING as the next owner for cached secondary-signal period/data-scope parity.
 
-Owner idle-recovery promotion 2026-09-24: after RQ372/RQ419/RQ420/RQ421 completion returned the pointer to `none`, current non-DONE status, dependencies and recent run evidence were re-evaluated under the canonical Idle recovery protocol. `RQ423` is dependency-complete and collision-safe for the bounded Pre-Nivelacija focus/pagination population contract, so it moved `WAITING -> READY` as the current RQ pointer. Overlapping `RQ424` remains `WAITING`; `RQ407` remains `BLOCKED` only on its separate integration-host proof.
+Owner idle-recovery promotion 2026-09-24: after RQ372/RQ419/RQ420/RQ421 completion returned the pointer to `none`, current non-DONE status, dependencies and recent run evidence were re-evaluated under the canonical Idle recovery protocol. `RQ423` is dependency-complete and collision-safe for the bounded Pre-Nivelacija focus/pagination population contract, so it moved `WAITING -> READY` as the current RQ pointer. Overlapping `RQ424` remains `WAITING`; `RQ407` was previously `BLOCKED` only on its separate integration-host proof and is now resumed under its explicit continuation claim.
 
 Owner completion 2026-09-24: `RQ423` was delivered directly to `main` in `ccd70d30aede4647d5d747438f7b5e453a4dec73`; Pre-Nivelacija focus filtering is server-side before pagination with explicit global versus filtered population labelling. Run log: `.ai/runs/2026-09-24-RQ423-evidence.md`. Evidence state: synchronized. Main verification: current `origin/main` contains the implementation SHA. `RQ424`-`RQ426` and `RQ422` remain WAITING behind declared dependency/collision checks.
 
@@ -56,6 +56,9 @@ Owner claim 2026-09-23: `RQ407` transitioned `READY -> IN_PROGRESS` in this work
 Owner block 2026-09-24: `RQ407` delivered the deterministic `operations-analytics-v1` fixture/manifest and executable arithmetic/route proof to `main` at `3a24d96136e690de03c3d10565cb6d64c6c17a99`. Focused proof passes, and Supplier Sales/Shoe Type live tests now report explicit skips when the integration dependency is absent. The required eight-route backend endpoint and frontend projection reconciliation remains unproven because the live/deterministic endpoint host was unavailable; status is `BLOCKED`, not `DONE`. Run log: `.ai/runs/2026-09-24-RQ407-evidence.md`. Evidence state: synchronized. Main verification: current `origin/main` contains the implementation SHA; closure evidence was delivered in `7fdbc58e`. RQ408 remains WAITING.
 Owner block 2026-09-24: `RQ407` delivered the deterministic `operations-analytics-v1` fixture/manifest and executable arithmetic/route proof to `main` at `3a24d96136e690de03c3d10565cb6d64c6c17a99`. Focused proof passes, and Supplier Sales/Shoe Type live tests now report explicit skips when the integration dependency is absent. The required eight-route backend endpoint and frontend projection reconciliation remains unproven because the live/deterministic endpoint host was unavailable; status is `BLOCKED`, not `DONE`. Run log: `.ai/runs/2026-09-24-RQ407-evidence.md`. Evidence state: synchronized. Main verification: current `origin/main` contains the implementation SHA; closure evidence was delivered in `7fdbc58e`. RQ408 remains WAITING.
 Owner progress 2026-09-25: the Docker integration host blocker is removed. A fresh PostgreSQL 15 host on `127.0.0.1:55432` passes the database bootstrap smoke, Supplier Sales live suite (`16/16`) and Shoe Type live suite (`12/12`) when the mutually exclusive fixtures are run sequentially. The compatibility migration, live fixtures and Supplier/Shoe recommendation projections were repaired and delivered as a bounded RQ407 unblock. RQ407 remains `PARTIAL`, not `DONE`: the all-eight-route backend reconciliation and frontend projection parity are still unproven. Run log: `.ai/runs/2026-09-25-RQ407-integration-host-repair-evidence.md`.
+Owner progress 2026-09-25: the Docker integration host blocker is removed. A fresh PostgreSQL 15 host on `127.0.0.1:55432` passes the database bootstrap smoke, Supplier Sales live suite (`16/16`) and Shoe Type live suite (`12/12`) when the mutually exclusive fixtures are run sequentially. The compatibility migration, live fixtures and Supplier/Shoe recommendation projections were repaired and delivered as a bounded RQ407 unblock. RQ407 remains `PARTIAL`, not `DONE`: the all-eight-route backend reconciliation and frontend projection parity are still unproven. Run log: `.ai/runs/2026-09-25-RQ407-integration-host-repair-evidence.md`.
+Owner claim 2026-09-25: at the user's explicit continuation request, RQ407 resumed `PARTIAL -> IN_PROGRESS` in this workspace. The Docker host is available and no conflicting RQ407 lock/branch/PR was found. Scope is limited to extending the existing Operations proof pack with endpoint adapters and frontend projection parity; existing route owners remain authoritative. Local runtime lock: `.ai/task-locks/RQ407-codex.lock.md`.
+Owner progress 2026-09-25: the shared manifest now verifies page/proof adapters and contract tokens for all eight Operations families; backend route-registration smoke is `12/12`, deterministic proof-pack coverage is `7/7`, and selected frontend page proof is `134/134`. RQ407 remains `PARTIAL`, not `DONE`: one shared database seed still needs to drive all eight backend endpoint families and browser/live frontend projections. Run log: `.ai/runs/2026-09-25-RQ407-cross-screen-proof-adapters-evidence.md`.
 
 Routing repair 2026-09-23: aligned stale legacy status metadata: RQ190's detailed block now matches its table status `OBSOLETE`, and RQ303's table row now matches its recorded completion `DONE`. No WAITING prompt was promoted because the active queue has no dependency-complete READY candidate.
 
@@ -1518,7 +1521,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ404 | DONE | supplier-decision-effective-period-semantics | Make requested/effective supplier periods consistent across metrics and actions |
 | RQ405 | DONE | supplier-decision-localization | Finish Serbian terminology on supplier decision surfaces and backend-safe messages |
 | RQ406 | DONE | supplier-assortment-truncated-derived-metrics | Prevent truncated article detail from producing authoritative Supplier Footwear type insights |
-| RQ407 | BLOCKED | operations-cross-screen-reconciliation | Prove the eight Operacije routes against one deterministic source and expected-output manifest |
+| RQ407 | PARTIAL | operations-cross-screen-reconciliation | Prove the eight Operacije routes against one deterministic source and expected-output manifest |
 | RQ408 | WAITING | operations-second-pass-finding-decomposition | Classify and decompose the second-pass Operacije bug/finding catalogue into precise follow-up prompts |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
@@ -3936,7 +3939,7 @@ Commit suggestion: `fix(analytics): refresh trust caches after data quality snap
 
 ## RQ132 - Explain Dashboard support-signal limits and the next safe operator step
 
-Status: BLOCKED
+Status: PARTIAL
 Ready after: `STAB16` is DONE and the canonical production API has a healthy runtime/refresh-status proof
 Priority: P1
 Type: backend-frontend-contract/tests
@@ -22643,7 +22646,7 @@ Completion 2026-09-23: backend full-cohort type aggregates, vendor type/elastici
 
 ## RQ407 - Prove the eight Operacije routes against one deterministic source and expected-output manifest
 
-Status: BLOCKED
+Status: PARTIAL
 Ready after: `RQ114` is DONE; promote only after the owner confirms the shared fixture can cover the named Operations families
 Priority: P1
 Type: backend/frontend/tests/docs

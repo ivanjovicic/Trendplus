@@ -16,14 +16,14 @@ internal static class PilotAnalyticsSeedPack
 
     public static readonly IReadOnlyList<PilotOperationsRouteSpec> OperationsRoutes =
     [
-        new("inventory", "/analytics/inventory", "/analytics/inventory", "/api/analytics/inventory/*", "RQ371/RQ372"),
-        new("supplier-sales", "/analytics/supplier-sales-stats", "/analytics/supplier", "/api/analytics/supplier-sales-stats", "RQ373/RQ374"),
-        new("shoe-type-sales", "/analytics/shoe-type-sales-stats", "/analytics/shoe-type-sales-stats", "/api/analytics/shoe-type-sales-stats", "RQ378"),
-        new("daily-sales", "/analytics/daily-sales", "/analytics/daily-sales", "/api/analytics/daily-sales", "RQ381/RQ384"),
-        new("pre-post-nivelacija", "/analytics/nivelacije-pre-post", "/analytics/nivelacije-pre-post", "/api/analytics/vendor-sales-nivelacija", "RQ385/RQ387"),
-        new("color-sales", "/analytics/color-sales-stats", "/analytics/color-sales-stats", "/api/analytics/color-sales-stats", "RQ389/RQ400"),
-        new("pre-nivelacija-priorities", "/analytics/pre-nivelacija-prioriteti", "/analytics/pre-nivelacija-prioriteti", "/api/analytics/pre-nivelacija-prioriteti", "RQ388/RQ391"),
-        new("supplier-footwear", "/analytics/dobavljaci-tipovi-obuce", "/analytics/supplier", "/api/analytics/vendor-sales-nivelacija", "RQ406")
+        new("inventory", "/analytics/inventory", "/analytics/inventory", "/api/analytics/inventory/*", "RQ371/RQ372", "Klijent/clientapp/src/pages/InventoryPage.tsx", "Klijent/clientapp/src/pages/__tests__/InventoryPage.signalKpis.spec.tsx", ["getInventoryList", "getInventoryInsights", "meta"], ["getInventoryList", "getInventoryInsights", "meta"]),
+        new("supplier-sales", "/analytics/supplier-sales-stats", "/analytics/supplier", "/api/analytics/supplier-sales-stats", "RQ373/RQ374", "Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx", "Klijent/clientapp/src/pages/__tests__/SupplierSalesStatsPage.decisionSuppliers.spec.tsx", ["getSupplierSalesStats", "buildSupplierSalesDisplayProjection", "recommendation"], ["buildSupplierSalesDisplayProjection", "buildDecisionSuppliers"]),
+        new("shoe-type-sales", "/analytics/shoe-type-sales-stats", "/analytics/shoe-type-sales-stats", "/api/analytics/shoe-type-sales-stats", "RQ378", "Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx", "Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.spec.tsx", ["getShoeTypeSalesStats", "recommendation", "AnalyticsTrustHeader"], ["getShoeTypeSalesStats", "recommendation"]),
+        new("daily-sales", "/analytics/daily-sales", "/analytics/daily-sales", "/api/analytics/daily-sales", "RQ381/RQ384", "Klijent/clientapp/src/pages/DailySalesStatsPage.tsx", "Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.numericState.spec.ts", ["getDailySalesStats", "summarizePeriod", "AnalyticsTrustHeader"], ["summarizePeriod", "safeDivide"]),
+        new("pre-post-nivelacija", "/analytics/nivelacije-pre-post", "/analytics/nivelacije-pre-post", "/api/analytics/vendor-sales-nivelacija", "RQ385/RQ387", "Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx", "Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.spec.tsx", ["getVendorSalesNivelacija", "recommendation", "AnalyticsTrustHeader"], ["getVendorSalesNivelacija", "recommendation"]),
+        new("color-sales", "/analytics/color-sales-stats", "/analytics/color-sales-stats", "/api/analytics/color-sales-stats", "RQ389/RQ400", "Klijent/clientapp/src/pages/ColorSalesStatsPage.tsx", "Klijent/clientapp/src/pages/__tests__/ColorSalesStatsPage.spec.tsx", ["getColorSalesStats", "recommendation", "AnalyticsTrustHeader"], ["getColorSalesStats", "recommendation"]),
+        new("pre-nivelacija-priorities", "/analytics/pre-nivelacija-prioriteti", "/analytics/pre-nivelacija-prioriteti", "/api/analytics/pre-nivelacija-prioriteti", "RQ388/RQ391", "Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx", "Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx", ["getPreNivelacijaPrioriteti", "recommendationAllowed", "AnalyticsTrustHeader"], ["getPreNivelacijaPrioriteti", "recommendationAllowed"]),
+        new("supplier-footwear", "/analytics/dobavljaci-tipovi-obuce", "/analytics/supplier", "/api/analytics/vendor-sales-nivelacija", "RQ406", "Klijent/clientapp/src/pages/SupplierFootwearAnalyticsPage.tsx", "Klijent/clientapp/src/pages/__tests__/SupplierFootwearAnalyticsPage.typeInsight.spec.ts", ["getVendorSalesNivelacija", "buildTypeInsightChartProjection", "recommendationAllowed"], ["buildTypeInsightChartProjection"])
     ];
 
     public static readonly PilotOperationsFixtureSpec OperationsFixture = new(
@@ -516,7 +516,11 @@ internal sealed record PilotOperationsRouteSpec(
     string MenuPath,
     string CanonicalPath,
     string EndpointFamily,
-    string ExistingOwner);
+    string ExistingOwner,
+    string FrontendPage,
+    string FrontendProofFile,
+    IReadOnlyList<string> FrontendPageTokens,
+    IReadOnlyList<string> FrontendProofTokens);
 
 internal sealed record PilotOperationsFixtureSpec(
     string FixtureId,
