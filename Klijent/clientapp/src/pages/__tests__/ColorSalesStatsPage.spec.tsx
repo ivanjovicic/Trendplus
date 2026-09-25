@@ -612,7 +612,8 @@ describe("ColorSalesStatsPage", () => {
     renderPage();
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/Boje trenutno nisu dostupne/i);
-    expect(screen.getByRole("alert")).toHaveTextContent("backend down");
+    expect(screen.getByRole("alert")).toHaveTextContent("Greška pri učitavanju podataka po boji.");
+    expect(screen.getByRole("alert")).not.toHaveTextContent("backend down");
     expect(screen.queryByText("Ukupan promet")).not.toBeInTheDocument();
     expect(screen.queryByText("Prioritetna lista boja")).not.toBeInTheDocument();
   });

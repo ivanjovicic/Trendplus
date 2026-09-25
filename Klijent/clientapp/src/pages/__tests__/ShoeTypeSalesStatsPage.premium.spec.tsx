@@ -708,9 +708,7 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     expect(patikeRow).toHaveTextContent("N/A");
     expect(cizmeRow).toHaveTextContent("N/A");
 
-    const top5Kpi = screen.getByText("Udeo top 5 tipova").closest("article");
-    expect(top5Kpi).not.toBeNull();
-    expect(top5Kpi).toHaveTextContent("N/A");
+    expect(screen.queryByText("Udeo top 5 tipova")).not.toBeInTheDocument();
 
     fireEvent.click(within(patikeRow!).getByRole("button", { name: "Detalji" }));
     const detailHeading = await screen.findByRole("heading", { name: "Detalj odluke: Patike" });

@@ -646,12 +646,6 @@ export default function ProdajaPrePostNivelacijePage() {
   const data = querySnapshot?.current ?? null;
   const previousData = querySnapshot?.previous ?? null;
   const previousComparisonError = querySnapshot?.previousError ?? null;
-  const previousRevenue = useMemo(
-    () => previousData
-      ? comparablePrePostTotal(previousData.totals.postRevenue, previousData.totals.hasComparableSalesWindow)
-      : null,
-    [previousData],
-  );
   const loading = initialLoading || refetching;
   useEffect(() => {
     if (data) setExpandedVendorKey(null);
@@ -771,28 +765,7 @@ export default function ProdajaPrePostNivelacijePage() {
     data?.totals.absoluteChangeRevenue,
     data?.totals.hasComparableSalesWindow,
   );
-  const top5SharePct = useMemo<number | null>(() => {
-    if (sortedRows.length === 0 || totalAbsoluteChangeRevenue == null || totalAbsoluteChangeRevenue <= 0) return null;
-    const top5 = [...sortedRows]
-      .filter((item): item is typeof item & { sharePct: number } => item.sharePct != null && Number.isFinite(item.sharePct))
-      .sort((a, b) => b.sharePct - a.sharePct)
-      .slice(0, 5)
-      .reduce((sum, item) => sum + item.sharePct, 0);
-    return top5;
-  }, [sortedRows, totalAbsoluteChangeRevenue]);
-
   const totalChangeRevenue = comparablePrePostTotal(data?.totals.changeRevenue, data?.totals.hasComparableSalesWindow);
-  const periodGrowthPct = useMemo(() => {
-    if (previousRevenue == null || previousRevenue <= 0 || totalRevenue == null) return null;
-    return ((totalRevenue - previousRevenue) / previousRevenue) * 100;
-  }, [previousRevenue, totalRevenue]);
-
-  const periodGrowthDisplay = useMemo(() => {
-    if (previousComparisonError) return "Nedostupno";
-    if (previousRevenue == null) return "N/A";
-    if (previousRevenue <= 0) return totalRevenue != null && totalRevenue > 0 ? "Nova baza" : "Bez baze";
-    return fmtSignedPct(periodGrowthPct);
-  }, [periodGrowthPct, previousComparisonError, previousRevenue, totalRevenue]);
 
   const vendorCounts = useMemo(() => {
     const increaseFocus = sortedRows.filter((row) => row.status === "increase_focus").length;
@@ -824,6 +797,10 @@ export default function ProdajaPrePostNivelacijePage() {
   const dataMeta = data?.meta ?? null;
   const effectiveDataScope = data?.dataScope ?? dataScope;
   const effectiveStoreId = data?.storeId ?? activeFilters.storeId;
+  const effectiveStoreLabel = effectiveStoreId == null
+    ? "Svi objekti"
+    : stores.find((store) => store.storeId === effectiveStoreId)?.storeName
+      ?? `Nepoznat objekat (ID ${effectiveStoreId})`;
   const dataMetaMessage = getAnalyticsMetaMessage(dataMeta);
   const showMetaWarning = !loading && !queryError && isAnalyticsMetaWarning(dataMeta);
   const showFilteredOutState = !loading && !queryError && Boolean(data) && decisionRows.length > 0 && focusedRows.length === 0;
@@ -1087,9 +1064,10 @@ const advancedSignals = useMemo(
       {
         key: "storeId",
         label: "Objekat",
-        value: activeFilters.storeId != null
-          ? stores.find((store) => store.storeId === activeFilters.storeId)?.storeName ?? activeFilters.storeId
-          : "Svi objekti",
+       value: activeFilters.storeId != null
+           ? stores.find((store) => store.storeId === activeFilters.storeId)?.storeName
+             ?? `Nepoznat objekat (ID ${activeFilters.storeId})`
+           : "Svi objekti",
       },
       { key: "dataScope", label: "Opseg podataka", value: dataScope },
       { key: "focusFilter", label: "Brzi fokus", value: focusFilterLabel(focusFilter) },
@@ -1101,7 +1079,7 @@ const advancedSignals = useMemo(
     () => [
       { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
       { key: "dataScope", label: "Opseg podataka", value: effectiveDataScope },
-      { key: "storeId", label: "Objekat", value: effectiveStoreId ?? "Svi objekti" },
+       { key: "storeId", label: "Objekat", value: effectiveStoreLabel },
       {
         key: "previousComparison",
         label: "Uporedni period",
@@ -1578,17 +1556,9 @@ const advancedSignals = useMemo(
               <span>Post-window promet posle nivelacije</span>
               <strong>{fmtRsd(totalRevenue)}</strong>
             </article>
-            <article className="ppn-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Koliko top 5 dobavljača nosi ukupnu promenu signala.">
-              <span>Top 5 udeo u promeni</span>
-              <strong>{fmtPct(top5SharePct)}</strong>
-            </article>
             <article className="ppn-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Apsolutna promena prometa pre i posle nivelacije.">
               <span>Ukupna promena prometa</span>
               <strong className={trendClass(totalChangeRevenue)}>{fmtRsd(totalChangeRevenue)}</strong>
-            </article>
-            <article className="ppn-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Trend prema prethodnom uporedivom event-opsegu.">
-              <span>Rast/pad vs prethodni event-opseg</span>
-              <strong className={trendClass(periodGrowthPct)}>{periodGrowthDisplay}</strong>
             </article>
           </section>
 

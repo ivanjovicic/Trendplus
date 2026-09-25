@@ -552,8 +552,6 @@ export default function ShoeTypeSalesStatsPage() {
   }, [selectedRow]);
 
   const totalRevenue = data ? data.totals.ukupanPromet : null;
-  const top5SharePct = null;
-
   const totalMarginContribution = useMemo(
     () => data ? data.totals.ukupanMarzniDoprinos : null,
     [data?.totals.ukupanMarzniDoprinos]
@@ -606,6 +604,11 @@ export default function ShoeTypeSalesStatsPage() {
     if (activeFilters.sezonaId == null) return "Sve sezone";
     return data?.sezone.find((item) => item.id === activeFilters.sezonaId)?.naziv ?? String(activeFilters.sezonaId);
   }, [activeFilters.sezonaId, data?.sezone]);
+  const activeStoreLabel = activeFilters.storeId == null
+    ? "Svi objekti"
+    : stores.find((store) => store.storeId === activeFilters.storeId)
+      ? buildStoreLabel(stores.find((store) => store.storeId === activeFilters.storeId)!)
+      : `Nepoznat objekat (ID ${activeFilters.storeId})`;
 
   const emptyStateHint = useMemo(() => {
     if (!data || sortedRows.length > 0) return null;
@@ -696,22 +699,21 @@ export default function ShoeTypeSalesStatsPage() {
 
   const showBlockingError = Boolean(queryError && !data);
   const showStaleError = Boolean(staleWarning && data);
-  const emptyStateVariant = useMemo<"no_data" | "insufficient_data" | "filtered_out" | null>(() => {
+  const emptyStateVariant = useMemo<"no_data" | "insufficient_data" | null>(() => {
     if (!data || sortedRows.length > 0) return null;
     if (headerDataQualityStatus === "insufficient_data") return "insufficient_data";
-    if (decisionRows.length > 0) return "filtered_out";
     return "no_data";
-  }, [data, decisionRows.length, headerDataQualityStatus, sortedRows.length]);
+  }, [data, headerDataQualityStatus, sortedRows.length]);
 
   const toolbarFilters = useMemo<AnalyticsNamedValue[]>(
     () => [
       { key: "fromDate", label: "Od", value: activeFilters.fromDate },
       { key: "toDate", label: "Do", value: activeFilters.toDate },
       { key: "sezonaId", label: "Sezona", value: activeSezonaLabel },
-      { key: "storeId", label: "Objekat", value: activeFilters.storeId ?? "Svi objekti" },
+       { key: "storeId", label: "Objekat", value: activeStoreLabel },
       { key: "dataScope", label: "Opseg podataka", value: dataScope },
     ],
-    [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeSezonaLabel, dataScope]
+     [activeFilters.fromDate, activeStoreLabel, activeFilters.toDate, activeSezonaLabel, dataScope]
   );
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(
@@ -1034,11 +1036,9 @@ export default function ShoeTypeSalesStatsPage() {
       {!loading && !showBlockingError && emptyStateHint ? (
         <AnalyticsEmptyState
           variant={emptyStateVariant ?? "no_data"}
-          message={
-            emptyStateVariant === "insufficient_data"
-              ? "Ne prikazujemo automatsku preporuku jer signal nije dovoljno jak."
-              : emptyStateVariant === "filtered_out"
-                ? "Promenite filtere ili proširite period."
+            message={
+              emptyStateVariant === "insufficient_data"
+                ? "Ne prikazujemo automatsku preporuku jer signal nije dovoljno jak."
                 : emptyStateHint
           }
           actions={[
@@ -1098,10 +1098,6 @@ export default function ShoeTypeSalesStatsPage() {
               <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Autoritativni backend agregat prosečne marže; bez merljivog denominatora prikazuje se kao nedostupno.">
                 <span>Prosečna marža <InfoTip text="Ponderisana prosečna marža koju vraća backend. Računa se iz ukupnog maržnog doprinosa i prometa sa pouzdano rešenim troškom; frontend je ne izvodi iz redova." /></span>
                 <strong>{fmtPct(avgMarginPct, 1)}</strong>
-              </article>
-              <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Koliko je promet koncentrisan na top 5 tipova.">
-                <span>Udeo top 5 tipova <InfoTip text="N/A dok backend ne vrati autoritativni udeo top 5 tipova; frontend ne računa ovaj procenat iz redova." /></span>
-                <strong>{fmtPct(top5SharePct)}</strong>
               </article>
               <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Promena prometa prema prethodnom uporedivom periodu.">
                 <span>PoP trend prometa <InfoTip text="Promena ukupnog prometa u odnosu na prethodni uporedivi period iste dužine. Formula: (trenutni promet – prethodni promet) / prethodni promet × 100. N/A ako prethodni period nije dostupan." /></span>

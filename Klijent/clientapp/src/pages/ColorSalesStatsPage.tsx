@@ -454,19 +454,17 @@ export default function ColorSalesStatsPage() {
   }, [expandedColorKey, selectedRow, sortedRows.length]);
 
   useEffect(() => {
-    if (selectedRow && detailSectionRef.current) {
-      const delay = 100;
-      setTimeout(() => {
-        detailSectionRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      }, delay);
-    }
+    if (!selectedRow || !detailSectionRef.current) return;
+    const timeoutId = window.setTimeout(() => {
+      detailSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 100);
+    return () => window.clearTimeout(timeoutId);
   }, [selectedRow]);
 
   const totalRevenue = data ? data.totals.ukupanPromet : null;
-  const top5SharePct = null;
 
   const totalMarginContribution = useMemo(
     () => data ? data.totals.ukupanMarzniDoprinos : null,
@@ -571,7 +569,15 @@ export default function ColorSalesStatsPage() {
       { key: "fromDate", label: "Od", value: activeFilters.fromDate },
       { key: "toDate", label: "Do", value: activeFilters.toDate },
       { key: "sezonaId", label: "Sezona", value: activeSezonaLabel },
-      { key: "storeId", label: "Objekat", value: activeFilters.storeId ?? "Svi objekti" },
+      {
+        key: "storeId",
+        label: "Objekat",
+        value: activeFilters.storeId == null
+          ? "Svi objekti"
+          : stores.find((store) => store.storeId === activeFilters.storeId)
+            ? buildStoreLabel(stores.find((store) => store.storeId === activeFilters.storeId)!)
+            : `Nepoznat objekat (ID ${activeFilters.storeId})`,
+      },
       { key: "dataScope", label: "Opseg podataka", value: dataScope },
     ],
     [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeSezonaLabel, dataScope]
@@ -670,13 +676,17 @@ export default function ColorSalesStatsPage() {
       : data.lineage.dataScope === "existing"
         ? "postojeći podaci"
         : "svi izvori podataka";
-    const storeLabel = data.lineage.storeId == null ? "svi objekti" : `objekat ${data.lineage.storeId}`;
+    const storeLabel = data.lineage.storeId == null
+      ? "svi objekti"
+      : stores.find((store) => store.storeId === data.lineage?.storeId)
+        ? buildStoreLabel(stores.find((store) => store.storeId === data.lineage?.storeId)!)
+        : `nepoznat objekat (ID ${data.lineage.storeId})`;
     const matchedLabel = `${data.lineage.salesArticlesWithMatchingNivelacija}/${data.lineage.salesArticleCount} artikala sa potvrđenim događajem nivelacije`;
     const storePolicyLabel = data.lineage.storeId == null
       ? "događaji sa svih objekata"
       : "samo tačan objekat; događaji bez objekta su izuzeti";
     return `${scopeLabel}; ${storeLabel}; ${matchedLabel}; ${storePolicyLabel}`;
-  }, [data?.lineage]);
+  }, [data?.lineage, stores]);
   const showBlockingError = Boolean(queryError && !data);
   const showStaleError = Boolean(staleWarning && data);
 
@@ -987,10 +997,6 @@ export default function ColorSalesStatsPage() {
               <article className="color-decision-kpi">
                 <span>Ukupan promet</span>
                 <strong>{fmtRsd(totalRevenue)}</strong>
-              </article>
-              <article className="color-decision-kpi">
-                <span>Udeo top 5 boja <InfoTip text="N/A dok backend ne vrati autoritativni udeo top 5 boja; frontend ne računa ovaj procenat iz redova." /></span>
-                <strong>{fmtPct(top5SharePct)}</strong>
               </article>
               <article className="color-decision-kpi">
                   <span>Ukupan maržni doprinos</span>
