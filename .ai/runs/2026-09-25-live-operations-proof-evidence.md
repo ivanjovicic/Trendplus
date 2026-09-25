@@ -4,9 +4,9 @@ Date: 2026-09-25
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct-main
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: ad0f395fa565ed46c64c4cb45174bdf0a89ccffd
+Main verification: passed — origin/main contains ad0f395fa565ed46c64c4cb45174bdf0a89ccffd
+Evidence state: synchronized
 
 ## What was done
 - Enabled the local PostgreSQL integration path with `TRENDPLUS_RUN_INTEGRATION_TESTS=true`.
@@ -26,7 +26,7 @@ Evidence state: pending
 - `dotnet test Api.Tests/Api.Tests.csproj -c Release --filter FullyQualifiedName~OperationsAnalyticsAllRoutesIntegrationTests` with `TRENDPLUS_RUN_INTEGRATION_TESTS=true` -> pass (`1/1`, all eight route families).
 - `POST http://127.0.0.1:8080/api/analytics/operations-integrity/probe` -> HTTP 200, `verified`, `blocksDecisionSignals=false`, revenue/units deltas zero.
 - `GET http://127.0.0.1:8080/api/analytics/operations-integrity` -> same verified evidence and zero deltas.
-- `git diff --check` -> pending final delivery check.
+- `git diff --check` -> pass.
 
 ## Validation not run
 - STAB16 / production live proof -> not run; external production gate and credentials/provider access are not available in this local workspace.
