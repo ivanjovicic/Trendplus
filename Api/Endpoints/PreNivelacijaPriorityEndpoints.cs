@@ -221,7 +221,11 @@ public static class PreNivelacijaPriorityEndpoints
                     var markdownQueryFailed = false;
                     try
                     {
-                        var markdown = await db.DnevnikPromena
+                        // Keep the relational query simple and perform the small
+                        // markdown-per-article reduction in memory. PostgreSQL
+                        // providers do not translate the nested DefaultIfEmpty /
+                        // Average expression consistently across supported hosts.
+                        var markdownRows = await db.DnevnikPromena
                             .AsNoTracking()
                             .Where(dp => dp.ArtikalId.HasValue
                                          && artikalIds.Contains(dp.ArtikalId.Value)
@@ -231,26 +235,36 @@ public static class PreNivelacijaPriorityEndpoints
                                          && dp.Datum >= from180Utc
                                          && dp.Datum <= nowUtc
                                          && (dp.TipPromene == "Nivelacija" || dp.TipPromene == "Nivelacija cena"))
-                            .GroupBy(dp => dp.ArtikalId!.Value)
-                            .Select(g => new
+                            .Select(dp => new
                             {
-                                ArtikalId = g.Key,
-                                MarkdownEvents = g.Count(),
-                                AvgMarkdownPct = g
-                                    .Where(dp => dp.StaraProdajnaCena.HasValue
-                                                 && dp.NovaProdajnaCena.HasValue
-                                                 && dp.StaraProdajnaCena.Value > 0m
-                                                 && dp.NovaProdajnaCena.Value < dp.StaraProdajnaCena.Value)
-                                    .Select(dp => ((dp.StaraProdajnaCena!.Value - dp.NovaProdajnaCena!.Value) / dp.StaraProdajnaCena!.Value) * 100m)
-                                    .DefaultIfEmpty(0m)
-                                    .Average()
+                                ArtikalId = dp.ArtikalId!.Value,
+                                dp.StaraProdajnaCena,
+                                dp.NovaProdajnaCena
                             })
                             .ToListAsync(ct);
 
-                        markdownByArtikal = markdown.ToDictionary(x => x.ArtikalId, x => (x.MarkdownEvents, decimal.Round(x.AvgMarkdownPct, 2)));
+                        markdownByArtikal = markdownRows
+                            .GroupBy(x => x.ArtikalId)
+                            .ToDictionary(
+                                g => g.Key,
+                                g =>
+                                (
+                                    MarkdownEvents: g.Count(),
+                                    AvgMarkdownPct: decimal.Round(
+                                        g
+                                            .Where(x => x.StaraProdajnaCena.HasValue
+                                                        && x.NovaProdajnaCena.HasValue
+                                                        && x.StaraProdajnaCena.Value > 0m
+                                                        && x.NovaProdajnaCena.Value < x.StaraProdajnaCena.Value)
+                                            .Select(x => ((x.StaraProdajnaCena!.Value - x.NovaProdajnaCena!.Value) / x.StaraProdajnaCena!.Value) * 100m)
+                                            .DefaultIfEmpty(0m)
+                                            .Average(),
+                                        2)));
                     }
-                    catch
+                    catch (Exception ex)
                     {
+                        loggerFactory.CreateLogger("PreNivelacijaPriorityEndpoints")
+                            .LogWarning(ex, "Pre-nivelacija markdown evidence query failed.");
                         markdownQueryFailed = true;
                         markdownByArtikal = new Dictionary<int, (int MarkdownEvents, decimal AvgMarkdownPct)>();
                     }
