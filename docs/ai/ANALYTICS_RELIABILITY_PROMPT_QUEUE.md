@@ -3,6 +3,9 @@
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+Owner promotion 2026-09-25: idle recovery verified that RQ378 is the next dependency-complete P1 Supplier Sales correctness owner. RQ373 and RQ411 are delivered on `main`, and no conflicting Supplier Sales margin-quality lock/branch/PR exists. RQ379 consumes the corrected response semantics and RQ380 remains a separate comparable-cohort owner; RQ378 moved `WAITING -> READY`.
+Owner claim 2026-09-25: RQ378 transitioned `READY -> IN_PROGRESS` in this workspace for the weighted Supplier Sales margin benchmark, recommendation baseline and cost-source quality contract. Local runtime lock: `.ai/task-locks/RQ378-cursor.lock.md`.
+Owner completion 2026-09-25: RQ378 was delivered directly to `main` in `5ece51a0a442b0433a69822a1dc642431c2be1e9`. Supplier Sales now uses a covered-revenue-weighted known-supplier margin benchmark for both totals and recommendation evaluation, and explicitly separates historical, snapshot, product-fallback and unavailable cost coverage. Run log: `.ai/runs/2026-09-25-RQ378-evidence.md`. Evidence state: synchronized. RQ379 and RQ380 remain WAITING.
 Owner promotion 2026-09-24: idle recovery verified that RQ373 is the dependency-complete Supplier Sales visible-population owner. RQ378 and RQ380 depend on its display/reference contract, while RQ379 must consume the stabilized response schema; no conflicting active claim, branch or PR was found. RQ373 moved `WAITING -> READY`.
 Owner claim 2026-09-24: RQ373 transitioned `READY -> IN_PROGRESS` in this workspace for the Supplier Sales display-population/reference-cohort contract across KPI, chart, table, detail, export and recommendation projections. Local runtime lock: `.ai/task-locks/RQ373-cursor.lock.md`.
 Owner completion 2026-09-24: RQ373 delivered the bounded Supplier Sales display-population/reference-cohort contract directly to `main`. Visible revenue, units, margin shares and PoP now use the same filtered rows as the table; backend recommendation status and whole-response reference semantics remain explicit in trust, detail and export metadata. Run log: `.ai/runs/2026-09-24-RQ373-evidence.md`. RQ378/RQ379/RQ380 remain separate Supplier Sales owners.
@@ -1508,7 +1511,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ375 | DONE | shoe-type-margin-quality-contract | Align Shoe Type weighted margin baseline, cost-source semantics and runtime validation |
 | RQ376 | DONE | shoe-type-prepost-aggregate-parity | Align Shoe Type pre/post totals with comparable evidence cohort |
 | RQ377 | DONE | shoe-type-detail-trust-contract | Align Shoe Type detail route with row recommendation, trust and unknown identity |
-| RQ378 | WAITING | supplier-sales-margin-quality-contract | Align Supplier weighted margin benchmark and cost-source semantics |
+| RQ378 | DONE | supplier-sales-margin-quality-contract | Align Supplier weighted margin benchmark and cost-source semantics |
 | RQ379 | WAITING | supplier-sales-runtime-schema | Add fail-closed runtime validation for Supplier Sales decision payload |
 | RQ380 | WAITING | supplier-sales-prepost-comparable-aggregate | Align Supplier total pre/post impact with the comparable cohort |
 | RQ386 | DONE | pre-post-cohort-denominators | Reconcile Pre/Post event cohort, cap and denominator semantics |
@@ -20788,7 +20791,7 @@ Reproduction: open a known and an unknown Shoe Type row, compare inline detail w
 
 ## RQ378 - Align Supplier Sales weighted margin benchmark and cost-source quality semantics
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend-contract/frontend/tests
 Feature family: supplier-sales-margin-quality-contract
@@ -20837,6 +20840,24 @@ Supplier Sales has the same high-impact arithmetic defect as Shoe Type: `average
 
 - RQ373 consumes this as decision-reference truth.
 - Coordinate shared helper extraction with RQ375 only when it reduces duplication without coupling endpoint ownership.
+
+### Completion note
+
+- Date: 2026-09-25
+- Status: DONE
+- Completion: Replaced the arithmetic known-supplier margin average with a covered-revenue-weighted benchmark shared by `totals.prosecnaMarza` and recommendation evaluation; exposed weighted benchmark and cost-source basis metadata; corrected historical versus fallback/unavailable cost labels.
+- Changed files: `Api/Endpoints/AllEndpoints.cs`; `Api.Tests/AnalyticsSupplierSalesIntegrationTests.cs`; `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`; `Klijent/clientapp/src/services/supplierSalesStatsApi.ts`; `MASTER_ROADMAP.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`.
+- Checks run: focused Supplier Sales frontend tests 33/33; frontend analytics guardrails and typecheck; frontend build; queue, instruction and planning validators; `git diff --check`.
+- Checks not run: backend test/build because `dotnet` is unavailable in the VM; live database/provider integration, full suites, browser smoke and remote CI.
+- Run log: `.ai/runs/2026-09-25-RQ378-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main after fast-forward plus merge of concurrent remote-main documentation commits
+- Main commit SHA: `5ece51a0a442b0433a69822a1dc642431c2be1e9`
+- Main verification: passed - `origin/main` contains the implementation and equals local `HEAD`
+- Missed: backend runtime execution against PostgreSQL/provider remains unavailable.
+- Follow-up: RQ379 runtime schema validation and RQ380 comparable pre/post aggregate remain separate owners.
+- Residual risk: response metadata consumers should be covered by RQ379's runtime schema contract.
+- Prompt defect / scope repair: the prompt's cost-quality wording was repaired within scope by adding explicit coverage fields and changing the page to use historical and truly unavailable denominators separately.
 
 ---
 

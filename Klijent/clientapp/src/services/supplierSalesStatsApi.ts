@@ -103,6 +103,9 @@ export interface SupplierSalesTotals {
   ukupanMarzniDoprinos: number;
   ukupanTrosak?: number;
   prosecnaMarza: number | null;
+  weightedMarginRevenue?: number;
+  weightedMarginContribution?: number;
+  marginBenchmarkBasis?: string | null;
   historicalCostCoveragePct?: number;
   estimatedCostCoveragePct?: number;
   noCostCoveragePct?: number;
@@ -143,8 +146,17 @@ export interface SupplierSalesDataQuality {
   missingCostQty: number;
   missingCostRevenue: number;
   missingCostRevenueSharePct: number | null;
+  noCostRevenue?: number;
+  noCostRevenueSharePct?: number | null;
+  costCoveredRevenue?: number;
+  costCoveredRevenueSharePct?: number | null;
+  historicalCostRevenue?: number;
+  historicalCostRevenueSharePct?: number | null;
+  snapshotCostRevenue?: number;
+  snapshotCostRevenueSharePct?: number | null;
   estimatedCostRevenue?: number;
   estimatedCostRevenueSharePct?: number | null;
+  costSourceBasis?: string | null;
   unknownSupplierRevenue: number;
   unknownSupplierRevenueSharePct: number | null;
   revenueWithNivelacijaSplit: number;

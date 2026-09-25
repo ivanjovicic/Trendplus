@@ -108,6 +108,41 @@ public class AnalyticsSupplierSalesIntegrationTests : IClassFixture<WebApplicati
         }
     }
 
+    [OperationsIntegrationFact(DisplayName = "Supplier benchmark uses covered revenue weighting and exposes cost-source basis")]
+    public async Task SupplierSalesStats_UsesWeightedMarginBenchmark()
+    {
+        var root = await GetJsonRootAsync("/api/analytics/supplier-sales-stats?sezonaId=1");
+        var suppliers = root.GetProperty("suppliers").EnumerateArray()
+            .Where(s => !s.GetProperty("isUnknown").GetBoolean())
+            .ToList();
+        var weightedRevenue = suppliers.Sum(s => s.GetProperty("revenueWithCost").GetDecimal());
+        var weightedContribution = suppliers.Sum(s => s.GetProperty("marginContribution").GetDecimal());
+        var totals = root.GetProperty("totals");
+        var expectedMargin = weightedRevenue > 0m
+            ? Math.Round((double)(weightedContribution / weightedRevenue * 100m), 2)
+            : (double?)null;
+
+        Assert.Equal(weightedRevenue, totals.GetProperty("weightedMarginRevenue").GetDecimal());
+        Assert.Equal(weightedContribution, totals.GetProperty("weightedMarginContribution").GetDecimal());
+        Assert.Equal("known_supplier_covered_revenue_weighted", totals.GetProperty("marginBenchmarkBasis").GetString());
+        if (expectedMargin.HasValue)
+        {
+            Assert.Equal(expectedMargin.Value, totals.GetProperty("prosecnaMarza").GetDouble());
+        }
+        else
+        {
+            Assert.Equal(JsonValueKind.Null, totals.GetProperty("prosecnaMarza").ValueKind);
+        }
+
+        var quality = root.GetProperty("dataQuality");
+        Assert.Equal(
+            "historical_sale_line_then_snapshot_then_product_fallback_then_unavailable",
+            quality.GetProperty("costSourceBasis").GetString());
+        Assert.Equal(
+            quality.GetProperty("missingCostRevenueSharePct").GetDouble(),
+            quality.GetProperty("noCostRevenueSharePct").GetDouble());
+    }
+
     [OperationsIntegrationFact(DisplayName = "Data scope filters existing and imported rows")]
     public async Task SupplierSalesStats_DataScopeFiltersRows()
     {
