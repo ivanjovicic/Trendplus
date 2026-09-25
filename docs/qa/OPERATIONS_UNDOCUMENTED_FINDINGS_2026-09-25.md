@@ -49,3 +49,16 @@ This is intentionally a bounded repair. It does not decide the wider signed-retu
 - `RQ441`: implement frozen supplier attribution parity after `RQ438`/`RQ382` and test ownership are clear.
 - `RQ442`: normalize all whole-day Operations ranges to `[from, nextDay)` and prove fractional-second and adjacent-day behavior.
 - Do not reopen or duplicate `RQ382`, `RQ431`, `RQ397` or `RQ438`; they remain the owners of their existing contracts.
+
+## Addendum 2026-09-25 — Shoe Type screen audit (grok)
+
+Detailed per-indicator audit of „Prodaja po tipu obuće“: `.ai/runs/2026-09-25-shoe-type-sales-audit-evidence.md`. Verified by code and tests only (no reachable API/DB).
+
+| Finding | Classification | Action |
+|---|---|---|
+| With the `T23:59:59Z` end, `BuildComparablePreviousRange` starts the previous window at `00:00:00.9999999` of its first day, so midnight-stamped (date-only, Access-imported) sales of that day are excluded; Supplier, Shoe Type, Color and the detail service share the builder | Extends the `RQ442` boundary row above; larger impact than fractional seconds (30-day PoP compares 30 with 29 days) | `RQ442` addendum |
+| Daily Sales excludes `DUG`/`KOREKCIJA` receipts; Supplier, Shoe Type and Color include them | New cross-screen reconciliation defect | `RQ447`, WAITING (owner decision) |
+| Shoe Type trust header period end renders +1 day in UTC+ zones | Fixed | `RQ445` |
+| Raw `sharePct` chart series label; „Prosečna marža“ tooltip omits the known-types basis | Fixed | `RQ446` |
+| Rank badges follow the current sort; null/unknown ordering; „Novo“ for a negative base; signed vs unsigned Marža % | Display semantics | `RQ448`, READY |
+| Margin-contribution share with a negative total; previous-only types invisible; name-based unknown identity; KPI population choice | Needs owner decision | `RQ449`, WAITING |

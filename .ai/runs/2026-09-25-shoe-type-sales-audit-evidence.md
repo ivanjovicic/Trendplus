@@ -83,4 +83,21 @@ Not available. `https://trendplus.vercel.app/api/analytics/shoe-type-sales-stats
 
 ## Validation
 
-See the `RQ445`/`RQ446` run logs and completion notes. Focused baseline before changes: 5 files / 80 tests passed.
+- Focused baseline before changes (`e49628db`): five Shoe Type specs, 80/80 passed.
+- New specs on the old page: `periodTruth` 2/2 and `labelTruth` 2/2 failed; after `RQ445` + `RQ446` both pass. The premium assertion that encoded the raw timestamps was updated in `RQ445`.
+- Focused Shoe Type set after the fixes (base, premium, `periodTruth`, `labelTruth`, `utils/__tests__/shoeTypeMarginComparison|shoeTypePercentRange|shoeTypeStatusIdentity`, `AppAnalyticsRoutes.spec.tsx`): 104/104.
+- Full frontend suite on clean `git archive` exports: `644b7aa8` (before) 10 failed / 1325 passed (1335); `21f82662` (after `RQ446`) 10 failed / 1329 passed (1339). The same 10 pre-existing failures both times (nine `RQ440` cases and `DailySalesStatsPage.numericState.spec.ts` „preserves a signed negative remainder“); +4 new tests.
+- `npx tsc -b`: pass. `npm run check:analytics-guardrails`: pass (no mojibake, self-test, baseline-only 50 known / 0 removed, typecheck); no baseline shifts needed (line counts unchanged).
+- Queue validators `check-agent-instructions`, `check-prompt-queues`, `check-planning-architecture` with and without `--self-test`, and `git diff --check`: pass on every commit.
+- `dotnet build`/`dotnet test`: not run — no backend file changed.
+
+## Commits (local `main`, not pushed)
+
+- `5bfc305a` claim `RQ445`/`RQ446` + this run log; `1e2502e8` `RQ445`; `21f82662` `RQ446`; routing (`RQ442` addendum, `RQ447`-`RQ449`, `RQ325` addendum, `docs/qa/OPERATIONS_UNDOCUMENTED_FINDINGS_2026-09-25.md` addendum) in the commit that adds this section.
+
+## Owner decisions
+
+1. `RQ447`: should `DUG`/`KOREKCIJA` receipts count in Supplier/Shoe Type/Color revenue (as today) or be excluded everywhere like Daily Sales?
+2. `RQ449`: margin-contribution share when the total is negative; showing previous-only („nestali“) types; unknown keyed by missing id vs name; average-margin KPI population.
+3. `RQ442`: prioritize — H1 biases every whole-day PoP on Supplier, Shoe Type and Color for date-only sales.
+4. Push: `RQ445`/`RQ446` stay `PARTIAL` until `main` is pushed and a DONE sync verifies `origin/main`.
