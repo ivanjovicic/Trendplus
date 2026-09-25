@@ -47,8 +47,8 @@ The audit also routed the unowned cross-screen findings:
 
 - Delivery mode: direct-main
 - Implementation commit: `8f5097be` (`fix(analytics): fail closed on impossible supplier concentration`)
-- Documentation/queue synchronization commit: pending at evidence creation; must be recorded before final closure.
-- Main verification: pending push; verify fresh `origin/main` contains the implementation and documentation commits.
+- Documentation/queue synchronization commit: `a486d4e8` (`docs(analytics): route Operations audit follow-ups`).
+- Main verification: fresh `git rev-parse origin/main` returned `a486d4e8`; it contains implementation `8f5097be` and the documentation/queue synchronization commit.
 
 ## Residual risk and follow-up
 
@@ -57,4 +57,4 @@ The audit also routed the unowned cross-screen findings:
 - `RQ431` remains owner of the complete signed-return and denominator contract for Daily concentration.
 - The untracked `.codex-remote-attachments/` directory was intentionally preserved and is not part of the repository delivery.
 
-- Evidence state: pending until documentation commit and fresh `origin/main` verification.
+- Evidence state: synchronized.
