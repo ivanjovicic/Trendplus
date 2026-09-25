@@ -986,23 +986,33 @@ public static class PreNivelacijaPriorityEndpoints
         IReadOnlyList<PreNivelacijaSkuCandidateDto> candidates,
         DateTime nowUtc)
     {
+        var highlightNow = candidates
+            .Where(x => IsHighPriorityCandidate(x) && x.Recommendation.RecommendationAllowed)
+            .ToList();
+        var monitor = candidates
+            .Where(x => x.PriorityBand == "medium" && x.Recommendation.RecommendationAllowed)
+            .ToList();
+        var likelyMarkdownSoon = candidates
+            .Where(x => x.Recommendation.RecommendationAllowed
+                && (x.DaysSinceLastSale >= 60 || x.MarkdownEvents >= 2 || x.AvgMarkdownPct >= 25m))
+            .OrderByDescending(x => x.DaysSinceLastSale)
+            .ThenByDescending(x => x.StockUnits)
+            .ToList();
+
         return new PreNivelacijaQueuesDto
         {
-            HighlightNow = candidates
-                .Where(x => IsHighPriorityCandidate(x) && x.Recommendation.RecommendationAllowed)
+            HighlightNowTotal = highlightNow.Count,
+            HighlightNow = highlightNow
                 .Take(30)
                 .Select(x => ToQueueItem(x, nowUtc.AddDays(2)))
                 .ToList(),
-            Monitor = candidates
-                .Where(x => x.PriorityBand == "medium" && x.Recommendation.RecommendationAllowed)
+            MonitorTotal = monitor.Count,
+            Monitor = monitor
                 .Take(30)
                 .Select(x => ToQueueItem(x, nowUtc.AddDays(7)))
                 .ToList(),
-            LikelyMarkdownSoon = candidates
-                .Where(x => x.Recommendation.RecommendationAllowed
-                    && (x.DaysSinceLastSale >= 60 || x.MarkdownEvents >= 2 || x.AvgMarkdownPct >= 25m))
-                .OrderByDescending(x => x.DaysSinceLastSale)
-                .ThenByDescending(x => x.StockUnits)
+            LikelyMarkdownSoonTotal = likelyMarkdownSoon.Count,
+            LikelyMarkdownSoon = likelyMarkdownSoon
                 .Take(30)
                 .Select(x => ToQueueItem(x, nowUtc.AddDays(3)))
                 .ToList()

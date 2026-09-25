@@ -960,8 +960,11 @@ export const preNivelacijaPriorityResponseSchema = z.object({
   candidates: z.array(preNivelacijaCandidateSchema),
   queues: z.object({
     highlightNow: z.array(preNivelacijaQueueItemSchema),
+    highlightNowTotal: nonNegativeInteger.optional().nullable(),
     monitor: z.array(preNivelacijaQueueItemSchema),
+    monitorTotal: nonNegativeInteger.optional().nullable(),
     likelyMarkdownSoon: z.array(preNivelacijaQueueItemSchema),
+    likelyMarkdownSoonTotal: nonNegativeInteger.optional().nullable(),
   }).passthrough(),
   alerts: z.array(preNivelacijaAlertSchema),
   page: nonNegativeInteger,

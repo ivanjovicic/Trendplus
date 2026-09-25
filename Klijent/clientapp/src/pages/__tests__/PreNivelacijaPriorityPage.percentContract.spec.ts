@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { normalizePreNivelacijaPercentagePoints } from "../PreNivelacijaPriorityPage";
+import {
+  normalizePreNivelacijaPercentagePoints,
+  normalizePreNivelacijaSignedPercentagePoints,
+} from "../PreNivelacijaPriorityPage";
 import { fmtPct } from "../../utils/analyticsFormatters";
 
 describe("Pre-Nivelacija percentage contract", () => {
@@ -16,5 +19,14 @@ describe("Pre-Nivelacija percentage contract", () => {
     expect(normalizePreNivelacijaPercentagePoints(null)).toBeNull();
     expect(normalizePreNivelacijaPercentagePoints(-1)).toBeNull();
     expect(normalizePreNivelacijaPercentagePoints(101)).toBeNull();
+  });
+
+  it("keeps signed WoW percentage-point decreases instead of clamping them away", () => {
+    expect(normalizePreNivelacijaSignedPercentagePoints(-12.5)).toBe(-12.5);
+    expect(normalizePreNivelacijaSignedPercentagePoints(0)).toBe(0);
+    expect(normalizePreNivelacijaSignedPercentagePoints(4)).toBe(4);
+    expect(normalizePreNivelacijaSignedPercentagePoints(null)).toBeNull();
+    expect(normalizePreNivelacijaSignedPercentagePoints(Number.NaN)).toBeNull();
+    expect(fmtPct(normalizePreNivelacijaSignedPercentagePoints(-12.5), 1)).toBe(fmtPct(-12.5, 1));
   });
 });

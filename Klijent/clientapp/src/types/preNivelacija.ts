@@ -129,8 +129,11 @@ export interface PreNivelacijaQueueItem {
 
 export interface PreNivelacijaQueues {
   highlightNow: PreNivelacijaQueueItem[];
+  highlightNowTotal?: number | null;
   monitor: PreNivelacijaQueueItem[];
+  monitorTotal?: number | null;
   likelyMarkdownSoon: PreNivelacijaQueueItem[];
+  likelyMarkdownSoonTotal?: number | null;
 }
 
 export interface PreNivelacijaAlert {

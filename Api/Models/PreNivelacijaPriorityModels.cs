@@ -130,8 +130,11 @@ public sealed class PreNivelacijaSupplierActionDto
 public sealed class PreNivelacijaQueuesDto
 {
     public List<PreNivelacijaQueueItemDto> HighlightNow { get; set; } = [];
+    public int HighlightNowTotal { get; set; }
     public List<PreNivelacijaQueueItemDto> Monitor { get; set; } = [];
+    public int MonitorTotal { get; set; }
     public List<PreNivelacijaQueueItemDto> LikelyMarkdownSoon { get; set; } = [];
+    public int LikelyMarkdownSoonTotal { get; set; }
 }
 
 public sealed class PreNivelacijaQueueItemDto

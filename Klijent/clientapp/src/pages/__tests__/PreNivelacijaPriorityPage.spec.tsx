@@ -8,7 +8,17 @@ import { PreNivelacijaApiError } from "../../services/preNivelacijaApi";
 import { AnalyticsResponseValidationError } from "../../validation/analyticsResponseValidation";
 
 vi.mock("recharts", () => ({
-  BarChart: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  BarChart: ({
+    children,
+    data,
+  }: {
+    children?: ReactNode;
+    data?: Array<{ weekOverWeekRiskDeltaPct?: number | null }>;
+  }) => (
+    <div data-testid="supplier-action-chart" data-wow={JSON.stringify((data ?? []).map((row) => row.weekOverWeekRiskDeltaPct ?? null))}>
+      {children}
+    </div>
+  ),
   ResponsiveContainer: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   CartesianGrid: () => <div />,
   XAxis: () => <div />,
@@ -21,8 +31,20 @@ vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({
   default: ({ title }: { title: string }) => <h1 data-testid="analytics-trust-header">{title}</h1>,
 }));
 vi.mock("../../components/analytics/AnalyticsTableToolbar", () => ({
-  default: ({ rows }: { rows: Array<{ sku: string }> }) => (
-    <output data-testid="export-row-skus" data-skus={rows.map((row) => row.sku).join(",")} />
+  default: ({
+    rows,
+    filters,
+  }: {
+    rows: Array<{ sku: string }>;
+    filters?: Array<{ key: string; label: string; value: string | number | boolean | null | undefined }>;
+  }) => (
+    <>
+      <output data-testid="export-row-skus" data-skus={rows.map((row) => row.sku).join(",")} />
+      <output
+        data-testid="export-filters"
+        data-filters={JSON.stringify(filters ?? [])}
+      />
+    </>
   ),
 }));
 vi.mock("../../components/analytics/AnalyticsErrorState", () => ({
@@ -284,8 +306,11 @@ function makeResponse(candidates = [makeCandidate(), makeCandidate({
           dueDateUtc: "2026-06-20T00:00:00Z",
         },
       ],
+      highlightNowTotal: 1,
       monitor: [],
+      monitorTotal: 0,
       likelyMarkdownSoon: [],
+      likelyMarkdownSoonTotal: 0,
     },
     alerts: [],
     page: 1,
@@ -1026,9 +1051,14 @@ describe("PreNivelacijaPriorityPage", () => {
       metadata?: Array<{ key: string; value: string }>;
     } | null;
     expect(snapshot?.metadata).toEqual(expect.arrayContaining([
-      expect.objectContaining({ key: "focus", value: "review" }),
+      expect.objectContaining({ key: "focus", value: "Pregledaj" }),
       expect.objectContaining({ key: "minScore", value: "72" }),
+      expect.objectContaining({ key: "dataScope", value: "Uvezeni podaci" }),
+      expect.objectContaining({ key: "supplierId", value: expect.any(String) }),
     ]));
+    expect(snapshot?.metadata?.find((item) => item.key === "supplierId")?.value).not.toBe("11");
+    expect(snapshot?.metadata?.find((item) => item.key === "focus")?.value).not.toBe("review");
+    expect(snapshot?.metadata?.find((item) => item.key === "dataScope")?.value).not.toBe("imported");
   });
 
   it("uses a direct URL scope and normalizes an invalid scope to all", async () => {
@@ -1431,5 +1461,109 @@ describe("PreNivelacijaPriorityPage", () => {
         expect.objectContaining({ supplierId: 22 }),
       );
     });
+  });
+
+  it("shows negative WoW risk deltas instead of dropping them", async () => {
+    const response = makeResponse([makeCandidate()]);
+    response.supplierLeaderboard = [
+      {
+        supplierId: 11,
+        supplierName: "Dobavljac A",
+        highPrioritySkuCount: 1,
+        candidateSkuCount: 1,
+        stockUnitsAtRisk: 12,
+        estimatedAvoidableMarkdownLoss: 12500,
+        expectedHighlightRevenueUplift: 18000,
+        actionScore: 92,
+        weekOverWeekRiskDeltaPct: -18.4,
+      },
+    ];
+    response.supplierActionShare = buildSupplierActionShareFromLeaderboard(response.supplierLeaderboard);
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce(response);
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    const chart = await screen.findByTestId("supplier-action-chart");
+    expect(chart).toHaveAttribute("data-wow", "[-18.4]");
+  });
+
+  it("keeps invalid score drafts visible and blocks apply without refetching defaults", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti?minScore=40&noSaleDaysMin=14"]}>
+        <LocationProbe />
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId("pre-nivelacija-prioriteti-data-table")).toBeInTheDocument();
+    const initialCalls = getPreNivelacijaPrioritetiMock.mock.calls.length;
+
+    const minScoreInput = screen.getByLabelText("Min. skor");
+    fireEvent.change(minScoreInput, { target: { value: "101" } });
+
+    expect(minScoreInput).toHaveValue(101);
+    expect(screen.getByText(/Min\. skor: unesite ceo broj od 0 do 100/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Primeni filtere/i })).toBeDisabled();
+    expect(getPreNivelacijaPrioritetiMock.mock.calls.length).toBe(initialCalls);
+    expect(screen.getByTestId("location-search")).toHaveTextContent("minScore=40");
+  });
+
+  it("renders Serbian band labels, capped queue totals, warning tone and named export filters", async () => {
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce({
+      ...makeResponse([makeCandidate()]),
+      queues: {
+        highlightNow: Array.from({ length: 30 }, (_, index) => ({
+          artikalId: 1000 + index,
+          sku: `SKU-Q-${index}`,
+          supplierName: "Dobavljac A",
+          preNivelacijaScore: 80,
+          priorityBand: "high",
+          owner: "Ana",
+          status: "increase_focus",
+          dueDateUtc: "2026-06-20T00:00:00Z",
+        })),
+        highlightNowTotal: 41,
+        monitor: [],
+        monitorTotal: 0,
+        likelyMarkdownSoon: [],
+        likelyMarkdownSoonTotal: 0,
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti?supplierId=11&focus=review&dataScope=imported"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("heading", { name: /Odmah istaknuti \(prikazano 30 od 41\)/i })).toBeInTheDocument();
+    expect(screen.getAllByText("Visok").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/^high$/i)).not.toBeInTheDocument();
+
+    const highPriorityKpi = screen.getByText("Visok prioritet").closest("article");
+    expect(highPriorityKpi).toHaveClass("analytics-kpi-card--tone-warning");
+
+    const exportFilters = JSON.parse(screen.getByTestId("export-filters").getAttribute("data-filters") ?? "[]") as Array<{
+      key: string;
+      value: string | number;
+    }>;
+    expect(exportFilters).toEqual(expect.arrayContaining([
+      expect.objectContaining({ key: "supplierId", value: "Dobavljac A" }),
+      expect.objectContaining({ key: "focus", value: "Pregledaj" }),
+      expect.objectContaining({ key: "dataScope", value: "Uvezeni podaci" }),
+    ]));
+    expect(exportFilters.find((item) => item.key === "supplierId")?.value).not.toBe(11);
+    expect(exportFilters.find((item) => item.key === "focus")?.value).not.toBe("review");
+
+    const scoreHeader = screen.getByRole("columnheader", { name: /Skor/i });
+    expect(scoreHeader).toHaveAttribute("aria-sort", "none");
+    fireEvent.click(screen.getByRole("button", { name: /Skor/i }));
+    expect(scoreHeader).toHaveAttribute("aria-sort", "descending");
+    expect(scoreHeader.textContent).toContain("▼");
+    expect(scoreHeader.textContent).not.toMatch(/\s\^|\sv/);
   });
 });

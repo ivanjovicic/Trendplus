@@ -2,7 +2,10 @@
 
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ434
+Current READY prompt: none
+Owner completion 2026-09-25: RQ434 was delivered directly to `main` after signed WoW normalization, draft filter validation with visible feedback, Serbian band labels, queue totals before the `.Take(30)` cap, warning tones for high-priority risk, named export filters and `aria-sort` markers. Run log: `.ai/runs/2026-09-25-RQ434-evidence.md`. Evidence state: synchronized. No successor was promoted; `RQ436` and `RQ437` remain other-owner IN_PROGRESS.
+Owner claim 2026-09-25: RQ436 transitioned `READY -> IN_PROGRESS` in this workspace for dead/frontend-derived Operacije KPI cleanup and lifecycle safety. Local lock: `.ai/task-locks/RQ436-codex.lock.md`.
+Owner claim 2026-09-25: RQ437 transitioned READY -> IN_PROGRESS in this workspace (grok) for the stale Operacije test repair. Local lock: `.ai/task-locks/RQ437-grok.lock.md`.
 Owner completion 2026-09-25: RQ433 was delivered directly to `main` after leave-one-out Pre-Nivelacija supplier/season/type facets with counts and page binding to facets instead of the filtered leaderboard. Run log: `.ai/runs/2026-09-25-RQ433-evidence.md`. Evidence state: synchronized. `RQ434` moved `WAITING -> READY`. Remaining claimable READY lanes: `RQ434`, `RQ437` (`RQ435` remains other-owner IN_PROGRESS).
 Owner claim 2026-09-25: RQ435 was selected as the next independent READY prompt because RQ427 and RQ433 are actively locked by other owners and RQ437 owns its named stale-test files. RQ435 transitioned READY -> IN_PROGRESS for the safe traceable analytics error contract. Local lock: `.ai/task-locks/RQ435-codex.lock.md`.
 Owner completion 2026-09-25: RQ435 was delivered directly to `main` with the Shoe Type safe traceable problem contract and explicit frontend allowlists for Shoe Type, Pre/Post and Color. Run log: `.ai/runs/2026-09-25-RQ435-evidence.md`. Evidence state: synchronized. `RQ434` remains the active READY/other-owner lane; `RQ437` remains independently claimable.
@@ -1576,10 +1579,10 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ431 | WAITING | daily-sales-concentration-contract | Decide the Daily Sales supplier-concentration over-total contract |
 | RQ432 | DONE | pre-nivelacija-kpi-definition-parity | Align Pre-Nivelacija KPI definitions with backend sums, tooltips and table gating |
 | RQ433 | DONE | pre-nivelacija-facet-universe | Build Pre-Nivelacija supplier, season and type options from the filter universe |
-| RQ434 | READY | pre-nivelacija-display-polish | Fix Pre-Nivelacija signed WoW, filter validation, labels, counts and tones |
+| RQ434 | DONE | pre-nivelacija-display-polish | Fix Pre-Nivelacija signed WoW, filter validation, labels, counts and tones |
 | RQ435 | DONE | operations-safe-error-messages | Return safe traceable Shoe Type errors and allowlist frontend error display |
-| RQ436 | WAITING | operations-derived-kpi-cleanup | Remove dead or frontend-derived Operacije KPIs and small lifecycle leaks |
-| RQ437 | READY | operations-stale-test-hygiene | Repair stale Operacije tests that hide regressions |
+| RQ436 | IN_PROGRESS | operations-derived-kpi-cleanup | Remove dead or frontend-derived Operacije KPIs and small lifecycle leaks |
+| RQ437 | IN_PROGRESS | operations-stale-test-hygiene | Repair stale Operacije tests that hide regressions |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -23488,7 +23491,7 @@ After a supplier is selected, the supplier dropdown shrinks to that supplier bec
 
 ## RQ434 - Fix Pre-Nivelacija signed WoW, filter validation, labels, counts and tones
 
-Status: READY
+Status: DONE
 Ready after: `RQ433` is DONE (same page file)
 Priority: P3
 Type: frontend/contract/tests
@@ -23497,8 +23500,27 @@ Parallel-safe: no
 Owner: Analytics Frontend / Pre-Nivelacija
 Commit suggestion: `fix(analytics): pre-nivelacija display polish`
 
-### Problem
+### Completion note
 
+- Date: 2026-09-25
+- Status: DONE
+- Completion: Signed WoW values render, invalid score/day drafts show visible feedback without silent URL revert, queues use Serbian band labels and `prikazano X od N` totals, high-priority risk uses warning tone, export filters use names, and sort headers expose `aria-sort` indicators.
+- Changed files: `Api/Endpoints/PreNivelacijaPriorityEndpoints.cs`; `Api/Models/PreNivelacijaPriorityModels.cs`; `Api.Tests/PreNivelacijaQueuesTests.cs`; `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`; `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.css`; `Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx`; `Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.percentContract.spec.ts`; `Klijent/clientapp/src/types/preNivelacija.ts`; `Klijent/clientapp/src/validation/analyticsResponseSchemas.ts`; `Klijent/clientapp/scripts/known-guardrail-baseline.json`; queue/roadmap/evidence
+- Contract/runtime behavior changed: yes — WoW signed percentage contract; optional queue total fields; draft filter validation UX; display/export labels and tones
+- Checks run: `dotnet test --filter PreNivelacijaQueuesTests|PreNivelacijaFilterFacetsTests|PreNivelacijaKpiDefinitionTests` (10/10); Vitest PreNivelacija page + percentContract (51/51); `npm run check:analytics-guardrails` (pass)
+- Checks not run: full frontend/backend suites; production smoke
+- Run log: `.ai/runs/2026-09-25-RQ434-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-to-main
+- Main commit SHA: pending-until-push
+- Main verification: pending-until-push
+- Missed: none known
+- Follow-up: none for this owner; `RQ326` remains separate for sort URL state
+- Residual risk: CI not inspected before main delivery
+- Next: no READY successor; `RQ436`/`RQ437` remain other-owner IN_PROGRESS
+- Prompt defect / scope repair: none
+
+### Problem
 Negative week-over-week changes are clamped away, invalid filter values silently revert with a double fetch, queue badges show raw backend codes, queue counts show the capped list length, a risk count uses a success tone, and export metadata shows raw identifiers.
 
 ### Evidence
@@ -23594,7 +23616,7 @@ The Shoe Type endpoint returns the raw exception message as problem detail with 
 
 ## RQ436 - Remove dead or frontend-derived Operacije KPIs and small lifecycle leaks
 
-Status: WAITING
+Status: IN_PROGRESS
 Ready after: `RQ435` is DONE (same page files)
 Priority: P3
 Type: frontend/contract/tests
@@ -23646,7 +23668,7 @@ Shoe Type and Color show a „Udeo top 5“ KPI that is always „N/A“, Shoe T
 
 ## RQ437 - Repair stale Operacije tests that hide regressions
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P2
 Type: tests
 Feature family: operations-stale-test-hygiene

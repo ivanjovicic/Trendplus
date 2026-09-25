@@ -4,6 +4,8 @@ Updated: 2026-09-25
 Repository: `ivanjovicic/Trendplus`
 Status: canonical planning entry point
 
+Owner completion 2026-09-25: `RQ434` was delivered directly to `main` after Pre-Nivelacija signed WoW, draft filter validation, Serbian band labels, queue totals, warning tones, named export filters and accessible sort markers. Run log: `.ai/runs/2026-09-25-RQ434-evidence.md`. Evidence state: synchronized. Current READY returned to `none` while `RQ436` and `RQ437` remain other-owner IN_PROGRESS.
+Owner claim 2026-09-25: `RQ434` transitioned `READY -> IN_PROGRESS` for Pre-Nivelacija signed WoW, filter validation, labels, counts and tones. Local lock: `.ai/task-locks/RQ434-cursor.lock.md`. `RQ435` remains other-owner IN_PROGRESS; `RQ437` remains independently claimable.
 Owner completion 2026-09-25: `RQ433` was delivered directly to `main` with leave-one-out Pre-Nivelacija supplier/season/type facets, counts and page binding to facets. Run log: `.ai/runs/2026-09-25-RQ433-evidence.md`. Evidence state: synchronized. `RQ434` moved `WAITING -> READY`; remaining claimable READY lanes: `RQ434`, `RQ435`, `RQ437`.
 Owner claim 2026-09-25: `RQ428` remains other-owner IN_PROGRESS; this workspace claimed `RQ433` (`READY -> IN_PROGRESS`) for Pre-Nivelacija facet-universe options. Local lock: `.ai/task-locks/RQ433-cursor.lock.md`. Remaining independently claimable READY lanes: `RQ435`, `RQ437`.
 Owner completion 2026-09-25: `RQ427` is DONE: the Inventory retry fix (retry refetch, persistent controls on error/empty states, filtered-empty reset) is on `main` in `9e91817f`, landed via the RQ432 evidence-sync commit and recorded in `70bfb997`. Evidence state: synchronized.
