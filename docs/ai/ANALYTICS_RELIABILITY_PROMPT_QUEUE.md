@@ -23512,8 +23512,8 @@ Commit suggestion: `fix(analytics): pre-nivelacija display polish`
 - Run log: `.ai/runs/2026-09-25-RQ434-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-to-main
-- Main commit SHA: pending-until-push
-- Main verification: pending-until-push
+- Main commit SHA: da6454e2e213d9013eb7dbfcbc6b3e7a3df61754
+- Main verification: passed - origin/main contains da6454e2e213d9013eb7dbfcbc6b3e7a3df61754
 - Missed: none known
 - Follow-up: none for this owner; `RQ326` remains separate for sort URL state
 - Residual risk: CI not inspected before main delivery
