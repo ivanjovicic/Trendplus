@@ -398,7 +398,7 @@ const supplierSalesStatSchema = {
   marginContribution: finiteNumber,
   marginDataCoveragePct: nullableNumber,
   fallbackCostCoveragePct: nullableNumber,
-  marginPct: percentage,
+  marginPct: finiteNumber,
   totalCost: finiteNumber,
   historicalCostRevenue: finiteNumber,
   historicalCostCoveragePct: nullableNumber,
