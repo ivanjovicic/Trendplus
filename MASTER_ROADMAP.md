@@ -4,6 +4,9 @@ Updated: 2026-09-25
 Repository: `ivanjovicic/Trendplus`
 Status: canonical planning entry point
 
+Owner promotion 2026-09-25: idle recovery found `RQ307` dependency-complete after `RQ306` delivery; no active Shoe Type impact-label lock, branch or PR exists. `RQ307` moved `WAITING -> READY`.
+Owner claim 2026-09-25: `RQ307` transitioned `READY -> IN_PROGRESS` for verification of the existing Serbian Shoe Type nivelacija impact label and focused regression proof. Local lock: `.ai/task-locks/RQ307-codex.lock.md`.
+Owner completion 2026-09-25: `RQ307` was already satisfied on `main` by `74091cd2`; focused Shoe Type proof passed `37/37`, guardrails/typecheck passed, and no duplicate product edit was needed. Run log: `.ai/runs/2026-09-25-RQ307-evidence.md`. The RQ current READY pointer returned to `none`.
 Owner promotion/claim 2026-09-25: after RQ current READY returned to `none` and higher-priority live-only work remained gated by STAB16, idle recovery promoted and claimed `RQ306` as the parallel-safe repository-local Operacije Serbian-diacritics pass. `RQ307` remains WAITING to avoid overlapping Shoe Type copy edits.
 Owner completion 2026-09-25: `RQ306` was delivered directly to `main` in `1a1219eb99b44defe9cdd24dacade08f834cc44e`; Operacije user-facing Serbian diacritics and the nearest focused assertions are synchronized, with no business-logic changes. Run log: `.ai/runs/2026-09-25-RQ306-evidence.md`. The RQ current READY pointer returned to `none`; `RQ307` remains WAITING.
 Owner promotion 2026-09-25: idle recovery verified that `RQ378` is the next dependency-complete P1 Supplier Sales correctness owner after `RQ373` and `RQ411` delivery. No conflicting Supplier Sales margin-quality lock/branch/PR exists; `RQ379` consumes the corrected response semantics and `RQ380` remains a separate comparable-cohort owner. `RQ378` moved `WAITING -> READY`.

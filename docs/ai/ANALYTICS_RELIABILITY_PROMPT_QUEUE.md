@@ -3,6 +3,9 @@
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+Owner promotion 2026-09-25: idle recovery found RQ307 dependency-complete after RQ306 delivery; its Shoe Type impact-label owner is now collision-safe and no active RQ307 lock, branch or PR exists. RQ307 moved WAITING -> READY.
+Owner claim 2026-09-25: RQ307 transitioned READY -> IN_PROGRESS in this workspace for verification of the Shoe Type nivelacija impact label and focused regression proof. Local lock: `.ai/task-locks/RQ307-codex.lock.md`.
+Owner completion 2026-09-25: RQ307 was already satisfied on current `main` by `74091cd2`; verification completed with the required focused Shoe Type proof and no product-code change was needed. Run log: `.ai/runs/2026-09-25-RQ307-evidence.md`. Evidence state: synchronized. No successor was promoted; the RQ current READY pointer returned to `none`.
 Owner promotion 2026-09-25: idle recovery found RQ306 dependency-complete and collision-safe as a parallel-safe, repository-local Operacije localization lane. RQ307 remains WAITING to avoid overlapping Shoe Type copy edits.
 Owner claim 2026-09-25: RQ306 transitioned READY -> IN_PROGRESS in this workspace for the bounded Serbian-diacritics copy pass across the listed Operacije owner files. Local lock: `.ai/task-locks/RQ306-codex.lock.md`.
 Owner completion 2026-09-25: RQ306 was delivered directly to `main` in `1a1219eb99b44defe9cdd24dacade08f834cc44e`; Operacije primary, loading, error and inventory decision-surface copy now uses Serbian diacritics in the owned scope. Run log: `.ai/runs/2026-09-25-RQ306-evidence.md`. Evidence state: synchronized. No successor was promoted; the RQ current READY pointer returned to `none`.
@@ -8571,7 +8574,7 @@ Commit suggestion: `fix(frontend): render unavailable for out-of-bounds confiden
 
 ## RQ192 - Supplier ML return rate coalesces missing to 0%
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P2
 Type: backend/tests
 Feature family: ml-feature-missing-encoding
@@ -16830,7 +16833,7 @@ Reproduction: scan Operacije screens for missing `č/ć/š/đ/ž`. Risk: inconsi
 
 ## RQ307 - Replace English nivelacija impact label on Shoe Type surface
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/copy/tests
 Feature family: shoe-type-impact-label
@@ -16873,6 +16876,23 @@ Reproduction: open Shoe Type sales with rows lacking nivelacija impact percent b
 ### Dependencies
 
 - `RQ306` may touch nearby copy; keep changes localized to impact helper.
+
+### Completion note
+
+- Date: 2026-09-25
+- Status: DONE
+- Completion: Verification found the requested `Low signal` -> `Slab signal` correction already present on `main` from `74091cd2`. The nearest premium Shoe Type regression suite confirms the localized label path; no duplicate product edit was introduced.
+- Changed files: queue/roadmap metadata and `.ai/runs/2026-09-25-RQ307-evidence.md`; no product source or test file required a change.
+- Checks run: `npm run test -- --run src/pages/__tests__/ShoeTypeSalesStatsPage.premium.spec.tsx` (37/37); `npm run check:analytics-guardrails` (pass); static search for `Low signal` (pass); `git diff --check` (pass).
+- Checks not run: full backend/frontend suites, live browser/provider/database proof and remote CI inspection.
+- Missed: none known for the bounded label acceptance; the prompt was stale because its implementation had already landed.
+- Run log: `.ai/runs/2026-09-25-RQ307-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main verification; no new product commit
+- Main commit SHA: `031ee3a59337fa4513f307ff3a612887da5d6e1a`
+- Main verification: passed - current `main` and `origin/main` contain the implementation commit `74091cd2`.
+- Residual risk: full suites, live/deployed UI and remote CI were not inspected.
+- Follow-up: no successor was promoted; next selection should use canonical idle recovery.
 
 ---
 
