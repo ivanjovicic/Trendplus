@@ -3,13 +3,14 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import SupplierSalesStatsPage, {
   buildSupplierConcentrationData,
+  buildSupplierEmbeddedPeriod,
   calculateTopSupplierRevenueShare,
   describePopMetric,
   describePopUnitsMetric,
 } from "../SupplierSalesStatsPage";
 import { getStores } from "../../services/analyticsApi";
 import { getSupplierSalesStats } from "../../services/supplierSalesStatsApi";
-import { fmtPct } from "../../utils/analyticsFormatters";
+import { fmtPct, formatDate } from "../../utils/analyticsFormatters";
 
 const AnalyticsTrustHeaderMock = vi.hoisted(() =>
   vi.fn((props: { title: string }) => <div data-testid="analytics-trust-header">{props.title}</div>)
@@ -507,6 +508,57 @@ describe("SupplierSalesStatsPage premium controls", () => {
         lastRefreshAt: standaloneTrustHeaderProps.lastRefreshAt,
       }));
     });
+  });
+
+  it("forwards the analyzed calendar period, not the sales data window, to the embedded shell", async () => {
+    const baseline = await getSupplierSalesStats();
+    vi.mocked(getSupplierSalesStats).mockResolvedValue({
+      ...baseline,
+      fromDate: "2026-06-01T00:00:00Z",
+      toDate: "2026-06-30T23:59:59Z",
+      dataWindowFrom: "2024-01-05T08:00:00Z",
+      dataWindowTo: "2026-06-30T18:00:00Z",
+    } as never);
+    const onTrustMetadataChange = vi.fn();
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier?tab=overview"]}>
+        <SupplierSalesStatsPage embedded onTrustMetadataChange={onTrustMetadataChange} />
+      </MemoryRouter>,
+    );
+
+    const analyzedLabel = `${formatDate(new Date(2026, 5, 1))} - ${formatDate(new Date(2026, 5, 30))}`;
+    await waitFor(() => {
+      expect(onTrustMetadataChange).toHaveBeenCalledWith(expect.objectContaining({
+        periodFrom: "2026-06-01",
+        periodTo: "2026-06-30",
+      }));
+    });
+    const payload = onTrustMetadataChange.mock.calls.filter(([value]) => value != null).at(-1)?.[0] as {
+      effectivePeriodLabel: string;
+    };
+    expect(payload.effectivePeriodLabel.startsWith(analyzedLabel)).toBe(true);
+    expect(payload.effectivePeriodLabel).toContain("dostupni podaci:");
+    expect(payload.effectivePeriodLabel).toContain("2024");
+  });
+
+  it("builds embedded period metadata from calendar dates with a requested-range fallback", () => {
+    expect(buildSupplierEmbeddedPeriod({
+      responseFromDate: "2026-06-01T00:00:00Z",
+      responseToDate: "2026-06-30T23:59:59.9999999Z",
+      requestedFromDate: "2026-05-01",
+      requestedToDate: "2026-05-31",
+    })).toEqual({
+      periodFrom: "2026-06-01",
+      periodTo: "2026-06-30",
+      effectivePeriodLabel: `${formatDate(new Date(2026, 5, 1))} - ${formatDate(new Date(2026, 5, 30))}`,
+    });
+    expect(buildSupplierEmbeddedPeriod({
+      responseFromDate: null,
+      responseToDate: undefined,
+      requestedFromDate: "2026-05-01",
+      requestedToDate: "2026-05-31",
+    })).toMatchObject({ periodFrom: "2026-05-01", periodTo: "2026-05-31" });
   });
 
   it("hides standalone trust header and filter surface when embedded", async () => {

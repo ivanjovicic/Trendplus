@@ -314,6 +314,47 @@ function formatEffectivePeriodLabel(fromDate?: string | null, toDate?: string | 
   return `${formatDate(fromDate)} - ${formatDate(toDate)}`;
 }
 
+function toCalendarDate(value: string | null | undefined): string | null {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed) return null;
+  // Date-only values and UTC/unzoned timestamps carry the calendar date in their first 10 characters;
+  // `2026-06-30T23:59:59Z` must stay 30.06., not become 01.07. in a UTC+ browser.
+  if (/^\d{4}-\d{2}-\d{2}(?:[T ][0-9:.]*Z?)?$/i.test(trimmed)) return trimmed.slice(0, 10);
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10);
+}
+
+function formatCalendarDate(value: string): string {
+  const [year, month, day] = value.split("-").map(Number);
+  return formatDate(new Date(year, month - 1, day));
+}
+
+/**
+ * Period metadata the embedded overview hands to the consolidated supplier shell.
+ * The analyzed period is the backend's effective range (after any season override); the
+ * whole-history sales data window is only a suffix, never the period itself.
+ */
+export function buildSupplierEmbeddedPeriod(input: {
+  responseFromDate: string | null | undefined;
+  responseToDate: string | null | undefined;
+  requestedFromDate: string;
+  requestedToDate: string;
+  dataWindowFrom?: string | null;
+  dataWindowTo?: string | null;
+}): { periodFrom: string; periodTo: string; effectivePeriodLabel: string } {
+  const periodFrom = toCalendarDate(input.responseFromDate) ?? input.requestedFromDate;
+  const periodTo = toCalendarDate(input.responseToDate) ?? input.requestedToDate;
+  const periodLabel = /^\d{4}-\d{2}-\d{2}$/.test(periodFrom) && /^\d{4}-\d{2}-\d{2}$/.test(periodTo)
+    ? `${formatCalendarDate(periodFrom)} - ${formatCalendarDate(periodTo)}`
+    : `${periodFrom} - ${periodTo}`;
+  const windowLabel = formatEffectivePeriodLabel(input.dataWindowFrom, input.dataWindowTo);
+  return {
+    periodFrom,
+    periodTo,
+    effectivePeriodLabel: windowLabel ? `${periodLabel} (dostupni podaci: ${windowLabel})` : periodLabel,
+  };
+}
+
 function formatSupplierDataScopeLabel(scope: string | null | undefined): string {
   if (!scope) return "Svi podaci";
   return SUPPLIER_DATA_SCOPE_LABELS[scope] ?? scope;
@@ -1248,9 +1289,18 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       return;
     }
 
+    const embeddedPeriod = buildSupplierEmbeddedPeriod({
+      responseFromDate: data.fromDate,
+      responseToDate: data.toDate,
+      requestedFromDate: activeFilters.fromDate,
+      requestedToDate: activeFilters.toDate,
+      dataWindowFrom: data.dataWindowFrom,
+      dataWindowTo: data.dataWindowTo,
+    });
+
     onTrustMetadataChange({
-      periodFrom: data.fromDate ?? activeFilters.fromDate,
-      periodTo: data.toDate ?? activeFilters.toDate,
+      periodFrom: embeddedPeriod.periodFrom,
+      periodTo: embeddedPeriod.periodTo,
       lastRefreshAt: trustLastRefreshAt,
       dataFreshnessStatus: trustDataFreshnessStatus,
       dataSource: `Supplier sales stats (scope: ${formatSupplierDataScopeLabel(activeDataScope)})`,
@@ -1258,7 +1308,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       dataQualityStatus: trustDataQualityStatus,
       requestedDataset: formatSupplierDataScopeLabel(activeDataScope),
       effectiveDataset: formatSupplierDataScopeLabel(data.dataScope ?? activeDataScope),
-      effectivePeriodLabel: formatEffectivePeriodLabel(data.dataWindowFrom, data.dataWindowTo),
+      effectivePeriodLabel: embeddedPeriod.effectivePeriodLabel,
       recommendationAllowed: data.recommendationAllowed === true,
       recommendationNote: `Prikazani skup: ${displayPopulationLabel}. Referentni skup preporuke: ${recommendationReferenceLabel}. Preporuke dolaze iz backenda.`,
       emptyStateReason: trustEmptyStateReason,

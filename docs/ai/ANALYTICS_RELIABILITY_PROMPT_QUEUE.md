@@ -5,6 +5,7 @@ Repo: `ivanjovicic/Trendplus`
 Current READY prompt: RQ440
 Owner claim 2026-09-25 (Supplier overview audit, grok): the audit of „Prodaja po dobavljačima“ (`/analytics/supplier?tab=overview`, legacy `operations-supplier-sales`) added and claimed `RQ443` (total PoP trend must include suppliers without current sales; the unfocused subset of the unregistered `PS11`/C16 in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-25.md`) and `RQ444` (sticky legacy `sezonaId`, data window shown as the period, +1-day header end date), both `READY -> IN_PROGRESS` in this workspace. Local locks: `.ai/task-locks/RQ443-grok.lock.md`, `.ai/task-locks/RQ444-grok.lock.md`. `Current READY prompt` stays `RQ440`. Other findings route to `RQ442`, `RQ441`, `RQ325` and the unregistered `PS06`/`PS11`/`PS12`/`PS16`/`PS17`/`PS18`. Run log: `.ai/runs/2026-09-25-supplier-sales-overview-audit-evidence.md`.
 Owner completion 2026-09-25: RQ443 was implemented and committed directly on local `main` (`fix(analytics): base supplier total PoP on the full previous period (RQ443)`, parent `77371907`); status `PARTIAL` until `origin/main` contains it (local-only delivery). Run log: `.ai/runs/2026-09-25-RQ443-evidence.md`.
+Owner completion 2026-09-25: RQ444 was implemented and committed directly on local `main` (`fix(analytics): keep supplier overview period metadata truthful (RQ444)`); status `PARTIAL` until `origin/main` contains it (local-only delivery). Run log: `.ai/runs/2026-09-25-RQ444-evidence.md`.
 Owner audit follow-up 2026-09-25: the Operacije calculation audit added `RQ441` (WAITING behind Daily Sales scope/receipt owners) for Daily Sales frozen supplier attribution parity and `RQ442` (READY, independent date-range contract) for half-open whole-day semantics across Supplier, Shoe Type and Color. The bounded concentration fail-closed guard was applied directly; the full denominator contract remains owned by `RQ431`. Scope diagnostics remain owned by existing `RQ382`; no duplicate prompt was added. Audit: `docs/qa/OPERATIONS_UNDOCUMENTED_FINDINGS_2026-09-25.md`; run log: `.ai/runs/2026-09-25-operations-audit-fix-evidence.md`.
 Routing repair 2026-09-25 (same-day review of today's commits, local-only; no task reopened): the `RQ436` section `Status:` line was corrected `IN_PROGRESS -> DONE` to match its summary row and synchronized delivery (`3dde5583`/`ec91dbcf`); `RQ428`, `RQ432`, `RQ433`, `RQ435` and `RQ436` received protocol completion notes (`Evidence state`, `Delivery mode`, `Main commit SHA`, `Main verification`) from their run logs. The `RQ427`-`RQ437` audit evidence was synchronized in `1c3899c8`, and the Pre/Post page-spec drift left by `RQ435`/`RQ436` was repaired test-only in `cc47d418`. Follow-ups: `RQ438` (WAITING behind `RQ429`: remaining `DnevnikPromena.Id`/`ProdajaZaglavlje.Id` joins and the journal `Iznos` sign proof), `RQ439` (WAITING, owner-gated triage of unmerged PR #63) and `RQ440` (READY, nine unowned failing shared analytics specs). Run log: `.ai/runs/2026-09-25-todays-commits-review-evidence.md`.
 Owner promotion 2026-09-25 (same-day review follow-up): `RQ429` is DONE (`ded7efce`, closure `bc248ede`), so `RQ438` moved `WAITING -> READY` on its explicit `Ready after` gate; it is backend-only and must still not edit `RQ437`-owned files while `RQ437` is PARTIAL. `Current READY prompt` now names `RQ440` (no live-data dependency); `RQ438` stays an independent READY lane.
@@ -1600,7 +1601,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ441 | WAITING | daily-sales-frozen-supplier-attribution | Align Daily Sales supplier buckets with sale-time attribution used by canonical Supplier Sales |
 | RQ442 | READY | operations-whole-day-half-open-ranges | Make Supplier, Shoe Type and Color whole-day filters half-open and boundary-safe |
 | RQ443 | PARTIAL | supplier-overview-total-pop | Keep the Supplier overview total PoP trend on the full previous-period population |
-| RQ444 | IN_PROGRESS | supplier-overview-period-truth | Supplier overview period truth: drop the sticky legacy season and show the analyzed period |
+| RQ444 | PARTIAL | supplier-overview-period-truth | Supplier overview period truth: drop the sticky legacy season and show the analyzed period |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -24234,7 +24235,7 @@ Commit suggestion: `fix(analytics): base supplier total PoP on the full previous
 
 ## RQ444 - Supplier overview period truth: drop the sticky legacy season and show the analyzed period
 
-Status: IN_PROGRESS
+Status: PARTIAL
 Priority: P2
 Type: frontend/tests
 Feature family: supplier-overview-period-truth
@@ -24287,3 +24288,23 @@ On „Prodaja po dobavljačima“ the period shown can differ from the period co
 
 - None blocking. Same file as `RQ443` and unregistered `PS11`/`PS12`/`PS18`; `RQ442` will later move the request end to an exclusive next-day bound and must keep this calendar-date display.
 - Reliability contract: source of truth is the response `fromDate`/`toDate` (effective range after any season override); unit calendar date; missing → requested filter dates; the data window must never be presented as the analyzed period; no numeric KPI changes.
+
+### Completion note
+
+- Date: 2026-09-25
+- Status: PARTIAL
+- Completion: consolidated Period/Od/Do now drop the legacy `sezonaId`, so an explicit period wins over an old season link; the embedded overview sends calendar-date `periodFrom`/`periodTo` and labels „Period i filteri“ with the analyzed period (data window only as a „dostupni podaci“ suffix), removing the +1-day end date in UTC+ zones.
+- Changed files: `Klijent/clientapp/src/pages/useSupplierCanonicalState.ts`, `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/useSupplierCanonicalState.spec.tsx` (new), `Klijent/clientapp/src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx`, `Klijent/clientapp/scripts/known-guardrail-baseline.json` (line shifts only), `.ai/runs/2026-09-25-RQ444-evidence.md`, this queue, `MASTER_ROADMAP.md`
+- Contract/runtime behavior changed: frontend only; embedded trust metadata period fields are calendar dates and the label is the analyzed period; URL state drops `sezonaId` on period changes. No API or numeric KPI change.
+- Checks run: new tests 4 failing before, passing after; focused Supplier/route specs 74/75 (pre-existing `RQ440` case); `npx tsc -b` pass; `npm run check:analytics-guardrails` pass with baseline line shifts; six queue validators and `git diff --check` pass.
+- Checks not run: live API/DB proof (API hosts 503), CI, `dotnet test` (no backend change).
+- Run log: `.ai/runs/2026-09-25-RQ444-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending - local `main` commit `fix(analytics): keep supplier overview period metadata truthful (RQ444)`; recorded by the DONE sync
+- Main verification: pending - not pushed (owner instruction: local commits only)
+- Missed: none in owned scope.
+- Follow-up: none new; `RQ442` must keep the calendar-date display when it moves to an exclusive end.
+- Residual risk: Data Quality return links keep `sezonaId` until the period is changed; trust-header staleness on supplier switch remains with `PS12`.
+- Next: DONE sync after `origin/main` contains the commit.
+- Prompt defect / scope repair: none.

@@ -125,8 +125,11 @@ export function useSupplierCanonicalState() {
     updateParams((next) => { next.set("tab", tab); });
   };
 
+  // Legacy `sezonaId` (old Supplier Sales links, Data Quality return links) makes the backend replace
+  // fromDate/toDate with the season range; an explicit period choice must win, so drop it here.
   const setPreset = (preset: SupplierPeriodPreset) => {
     updateParams((next) => {
+      next.delete("sezonaId");
       next.set("periodPreset", preset);
       if (preset !== "custom") {
         const range = getPresetRange(preset);
@@ -138,6 +141,7 @@ export function useSupplierCanonicalState() {
 
   const setDate = (key: "fromDate" | "toDate", value: string) => {
     updateParams((next) => {
+      next.delete("sezonaId");
       next.set(key, value);
       next.set("periodPreset", "custom");
     });
