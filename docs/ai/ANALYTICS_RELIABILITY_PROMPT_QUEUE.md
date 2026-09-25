@@ -7,7 +7,7 @@ Owner completion 2026-09-25: RQ433 was delivered directly to `main` after leave-
 Owner claim 2026-09-25: RQ435 was selected as the next independent READY prompt because RQ427 and RQ433 are actively locked by other owners and RQ437 owns its named stale-test files. RQ435 transitioned READY -> IN_PROGRESS for the safe traceable analytics error contract. Local lock: `.ai/task-locks/RQ435-codex.lock.md`.
 Owner claim 2026-09-25: RQ428 remains other-owner IN_PROGRESS (`RQ428-codex.lock.md`). Under the canonical priority/collision rules, RQ433 was selected as the next independent READY prompt and transitioned READY -> IN_PROGRESS for Pre-Nivelacija facet-universe options. Local lock: `.ai/task-locks/RQ433-cursor.lock.md`.
 Owner completion 2026-09-25: RQ432 was delivered directly to `main` after aligning Pre-Nivelacija KPI populations, nullable empty evidence, coverage labels and tooltips. Run log: `.ai/runs/2026-09-25-RQ432-evidence.md`. Evidence state: synchronized. `RQ433` moved `WAITING -> READY`; `RQ434` remains WAITING. Remaining claimable READY lanes: `RQ433`, `RQ435`, `RQ437` (`RQ428` remains other-owner IN_PROGRESS; `RQ427` is PARTIAL pending push).
-Owner local completion 2026-09-25: RQ427 was implemented, verified and committed locally on `main` (retry now calls the reliable-query `refetch()`, controls stay mounted in error/empty states, filtered-empty reset). It stays PARTIAL until an owner-approved push and `origin/main` verification; `RQ427-grok.lock.md` keeps ownership until then. Current READY pointer moved RQ427 -> RQ428 (next READY prompt in queue order).
+Owner completion 2026-09-25: RQ427 is DONE: the Inventory retry fix is on `main` in `9e91817f` (landed via the RQ432 evidence-sync commit, recorded in `70bfb997`); its audit prompts are in `fb956bac`. Run log: `.ai/runs/2026-09-25-RQ427-evidence.md`. Evidence state: synchronized. The local lock `RQ427-grok.lock.md` was removed.
 Owner claim 2026-09-25: RQ427 and RQ428 remain actively owned (`RQ427-grok.lock.md`, `RQ428-codex.lock.md`). Under the canonical priority/collision rules, RQ432 was selected as the next independent READY prompt and transitioned READY -> IN_PROGRESS for Pre-Nivelacija KPI definition parity. Local lock: `.ai/task-locks/RQ432-cursor.lock.md`.
 Owner claim 2026-09-25: RQ427 is actively owned by `RQ427-grok.lock.md` with uncommitted Inventory changes, so this workspace did not take it over. Under the canonical priority/collision rules, RQ428 was selected as the next independent READY prompt and transitioned READY -> IN_PROGRESS for the Daily Sales receipt-reconciliation key contract. Local lock: `.ai/task-locks/RQ428-codex.lock.md`.
 Owner completion 2026-09-25: RQ428 delivered to `main` at `4d90ece6`. Receipt reconciliation now uses normalized receipt number + UTC calendar day + store, signed totals, explicit matched/unmatched counts and fail-closed unavailable metadata. Focused backend proof: 33/33; frontend guardrails/typecheck pass. Evidence: `.ai/runs/2026-09-25-RQ428-evidence.md`. `RQ433` remains the active next queue owner.
@@ -1568,7 +1568,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ406 | DONE | supplier-assortment-truncated-derived-metrics | Prevent truncated article detail from producing authoritative Supplier Footwear type insights |
 | RQ407 | DONE | operations-cross-screen-reconciliation | Prove the eight Operacije routes against one deterministic source and expected-output manifest |
 | RQ408 | DONE | operations-second-pass-finding-decomposition | Classify and decompose the second-pass Operacije bug/finding catalogue into precise follow-up prompts |
-| RQ427 | PARTIAL | inventory-retry-recovery | Make Inventory retry refetch and keep controls on error/empty states |
+| RQ427 | DONE | inventory-retry-recovery | Make Inventory retry refetch and keep controls on error/empty states |
 | RQ428 | DONE | daily-sales-receipt-reconciliation-key | Join Daily Sales receipt-mismatch diagnostics on real receipt identity |
 | RQ429 | WAITING | daily-sales-empty-state-metric-consistency | Make Daily Sales empty state, incomplete-shift counts and MA7 baseline truthful |
 | RQ430 | WAITING | daily-sales-page-polish | Fix Daily Sales sort toggle, print-form columns and store identity in export |
@@ -23083,7 +23083,7 @@ This prompt is analysis and queue decomposition only. The downstream owner must 
 
 ## RQ427 - Make Inventory retry refetch and keep controls on error/empty states
 
-Status: PARTIAL
+Status: DONE
 Priority: P1
 Type: frontend/lifecycle/tests
 Feature family: inventory-retry-recovery
@@ -23143,21 +23143,21 @@ Reproduction: open Inventory, search for a value with no match (or make the list
 ### Completion note
 
 - Date: 2026-09-25
-- Status: PARTIAL
-- Completion: Implemented, verified and committed locally on `main` (not pushed); not yet delivered to `origin/main`. Root cause: `retryPageLoad()` and the same-scope data-scope handler only incremented `reloadNonce`, which no query identity or effect read, so for non-custom presets retry re-set identical period values and sent no request; the blocking-error and empty branches also returned before the main layout, unmounting the control bar. Retry (error and empty states), the control-bar „Osveži“ action, the scheduler refresh and the same-scope handler now call the reliable-query `refetch()` as the single mechanism; a preset-range update is batched into the same render, so exactly one new primary request is issued, with RQ370 abort-on-supersede and RQ351 scoped refetch unchanged. The dead `reloadNonce` state was removed and the scope handler moved below the hook so it depends on the stable `refetch`. Loading/error/empty panels now render inside the main layout in a stable child slot after the control bar, so search, store, supplier, period, sort and page-size controls stay mounted (same DOM node) across error -> reload -> data and in empty states; data-derived chips and the inline error line are suppressed while blocking, so no fake zero counts are shown. A filtered empty result (`filtered_out`) offers „Poništi filtere“ (clears search/store/supplier, page 1) plus retry; an unfiltered empty result keeps `no_data` without a reset. Before the first primary load settles the page still shows only the loading panel (unchanged startup).
-- Changed files: `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.retryRecovery.spec.tsx` (new, 6 cases), `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-25-RQ427-evidence.md` (new)
-- Contract/runtime behavior changed: frontend only; Inventory retry/refresh re-requests the primary snapshot, controls stay visible in error/empty states, filtered-empty reset action. No backend, API, export or recommendation change.
-- Checks run: `npm run typecheck` pass; Inventory page specs 17 files / 81 tests pass (before: `InventoryPage.queueStatus.spec.tsx` 7/8 with `:331` failing), repeat run of `queueStatus` + new spec 14/14; `npm run check:analytics-guardrails` pass (encoding OK, self-test OK, 50 baseline, 0 new, typecheck); ESLint on `InventoryPage.tsx` 5 -> 4 problems (unused `reloadNonce` warning removed, pre-existing issues unchanged); `npm run test:analytics` 129 files / 890 tests -> 878 pass, 12 fail; full `npm run test:run` 179 files / 1312 tests -> 1299 pass, 13 fail, none of them an Inventory page spec (details in run log); queue validators `check-agent-instructions`, `check-prompt-queues`, `check-planning-architecture` (each with and without `--self-test`) pass; `git diff --check` pass; before commit the staged state was re-validated in an exported index copy (queue validators with and without `--self-test`, `git diff --cached --check`, `npm run typecheck`, Inventory specs).
-- Checks not run: live browser/manual smoke, CI, backend tests (no backend change); no pre-change full-suite baseline was captured (the earlier 537/4 baseline was a targeted 74-file run).
+- Status: DONE
+- Completion: Inventory retry now re-runs the primary request through the reliable-query `refetch()` (exactly one new request; RQ370 abort-on-supersede and RQ351 scoped refetch preserved) for the error retry, the empty-state retry, the control-bar „Osveži“ action, the scheduler refresh and the same-scope data-scope handler. The dead `reloadNonce` state is removed. Search, store, supplier, period, sort and page-size controls stay mounted in error and empty states and in reloads after the first settled load; data-derived chips are suppressed while blocking. A filtered empty result offers „Poništi filtere“. Root cause: `reloadNonce` was written but never read, and the error/empty branches returned before the main layout.
+- Changed files: `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.retryRecovery.spec.tsx` (new, 6 cases), `.ai/runs/2026-09-25-RQ427-evidence.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`
+- Contract/runtime behavior changed: frontend only; retry/refresh re-requests the primary snapshot, controls persist on error/empty states, filtered-empty reset. No backend, API, export or recommendation change.
+- Checks run: `npm run typecheck` pass; Inventory page specs 17 files / 81 tests pass (before: `InventoryPage.queueStatus.spec.tsx:331` failing); `npm run check:analytics-guardrails` pass (50 baseline, 0 new); queue validators `check-agent-instructions`, `check-prompt-queues`, `check-planning-architecture` (with and without `--self-test`) pass; `git diff --check` pass. Full `npm run test:run` (1312 tests) had 13 failures, none in Inventory specs (unrelated, see run log).
+- Checks not run: live browser smoke, CI, backend tests (no backend change).
 - Run log: `.ai/runs/2026-09-25-RQ427-evidence.md`
-- Evidence state: pending - local commit on `main`; push and `origin/main` verification await owner approval
-- Delivery mode: local commit on `main` (no branch, no PR, not pushed)
-- Main commit SHA: pending (the local commit SHA is recorded in `.ai/task-locks/RQ427-grok.lock.md` and the owner report; it becomes the main SHA after an approved push)
-- Main verification: skipped - push not approved; this fix commit sits on the audit docs commit `fb956bac`, on top of `origin/main` `720a785a`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `9e91817f`
+- Main verification: passed - `origin/main` contains `9e91817f`; the implementation landed via the RQ432 evidence-sync commit (recorded in `70bfb997`), and the audit prompts are in `fb956bac`
 - Missed: none in owned scope; the ASCII residual „jos“ in the Inventory empty-state reasons stays with `RQ325`.
-- Follow-up: owner-approved push of the local RQ427 commits to `main`, verify `origin/main` contains them, then record Main commit SHA/verification and set DONE. Until then `.ai/task-locks/RQ427-grok.lock.md` keeps ownership; other workspaces must not rework the Inventory files.
-- Residual risk: the page's pre-existing URL/state sync (react-router v7 transition navigation) can drop input typed in the first render cycles after mount, so controls stay hidden until the first primary load settles and the new tests wait for mount effects; nine deterministic non-Inventory frontend failures on local HEAD (analytics component, DecisionPulse, SupplierConsolidated, SupplierExplainabilitySnapshot specs) are outside RQ427 and not triaged here.; the commits are on local `main`, so any push of local `main` (including one made by another workspace) would publish them.
-- Next: owner decision on push for `RQ427`; queue pointer moved to `RQ428` (next READY prompt).
+- Follow-up: none for RQ427.
+- Residual risk: the page's pre-existing URL/state sync can drop input typed in the first render cycles after mount, so controls stay hidden until the first primary load settles; unrelated non-Inventory frontend failures on `main` are outside RQ427.
+- Next: continue the queue's Current READY prompt.
 - Prompt defect / scope repair: none; controls are hidden only during the initial pre-first-settle load, which the prompt did not require.
 
 ---
