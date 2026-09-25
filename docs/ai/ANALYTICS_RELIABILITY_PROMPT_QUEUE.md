@@ -6,7 +6,10 @@ Current READY prompt: none
 Owner promotion 2026-09-24: idle recovery verified that RQ373 is the dependency-complete Supplier Sales visible-population owner. RQ378 and RQ380 depend on its display/reference contract, while RQ379 must consume the stabilized response schema; no conflicting active claim, branch or PR was found. RQ373 moved `WAITING -> READY`.
 Owner claim 2026-09-24: RQ373 transitioned `READY -> IN_PROGRESS` in this workspace for the Supplier Sales display-population/reference-cohort contract across KPI, chart, table, detail, export and recommendation projections. Local runtime lock: `.ai/task-locks/RQ373-cursor.lock.md`.
 Owner completion 2026-09-24: RQ373 delivered the bounded Supplier Sales display-population/reference-cohort contract directly to `main`. Visible revenue, units, margin shares and PoP now use the same filtered rows as the table; backend recommendation status and whole-response reference semantics remain explicit in trust, detail and export metadata. Run log: `.ai/runs/2026-09-24-RQ373-evidence.md`. RQ378/RQ379/RQ380 remain separate Supplier Sales owners.
-RQ172, RQ308, RQ371, RQ372, RQ414, RQ419, RQ420, RQ421, RQ422, RQ423, RQ424, RQ425, RQ426, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ398, RQ399, RQ400, RQ401, RQ402, RQ403, RQ404, RQ405 and RQ406 are DONE. RQ407 is PARTIAL; RQ408 remains WAITING.
+RQ172, RQ308, RQ371, RQ372, RQ414, RQ419, RQ420, RQ421, RQ422, RQ423, RQ424, RQ425, RQ426, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ398, RQ399, RQ400, RQ401, RQ402, RQ403, RQ404, RQ405, RQ406, RQ407 and RQ408 are DONE. The RQ current READY pointer is none.
+
+Owner promotion 2026-09-25: after RQ407 reached DONE with live PostgreSQL all-eight reconciliation, the user's explicit request to claim and execute the next prompt made RQ408 dependency-complete. Collision review found no active RQ408 lock or competing operations-second-pass owner; RQ408 moved `WAITING -> READY` and became the current RQ pointer.
+Owner claim 2026-09-25: RQ408 transitioned `READY -> IN_PROGRESS` in this workspace for static/runtime classification of OP2-01 through OP2-49 and collision-safe follow-up decomposition. Local runtime lock: `.ai/task-locks/RQ408-codex.lock.md`.
 
 Owner promotion 2026-09-24: after RQ308 delivery and fresh dependency review, RQ371 moved `WAITING -> READY` as the current Inventory secondary-signal period/data-scope owner. RQ273 retains export-window semantics; RQ359/RQ370 retain request lifecycle/cancellation; RQ426 remains limited to forecast row-grain aggregation.
 
@@ -1523,7 +1526,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ405 | DONE | supplier-decision-localization | Finish Serbian terminology on supplier decision surfaces and backend-safe messages |
 | RQ406 | DONE | supplier-assortment-truncated-derived-metrics | Prevent truncated article detail from producing authoritative Supplier Footwear type insights |
 | RQ407 | DONE | operations-cross-screen-reconciliation | Prove the eight Operacije routes against one deterministic source and expected-output manifest |
-| RQ408 | WAITING | operations-second-pass-finding-decomposition | Classify and decompose the second-pass Operacije bug/finding catalogue into precise follow-up prompts |
+| RQ408 | DONE | operations-second-pass-finding-decomposition | Classify and decompose the second-pass Operacije bug/finding catalogue into precise follow-up prompts |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -22723,6 +22726,8 @@ Extend the existing `pilot-analytics-proof-pack-v1` with an Operations-specific 
 - Delivery mode: direct-main
 - Main commit SHA: `0a10a78d`
 - Main verification: current `origin/main` contains implementation `0a10a78d` and the queue/evidence closure commits `65a8775c` and `e7dcf48d`.
+- Missed: browser/deployed frontend capture and remote CI; neither was required for the committed local contract proof.
+- Follow-up: RQ408 second-pass finding classification; RQ412/RQ413 remain behind their declared gates.
 - Residual risk: the plain `postgres:15` host still reports the optional `vector` extension unavailable during non-strict analytics initialization; the eight route proof does not depend on that extension.
 - Prompt defect / scope repair: PostgreSQL did not reliably translate the nested markdown `DefaultIfEmpty/Average` reduction; the route now fetches bounded evidence rows and performs the equivalent reduction in memory without changing the scoring formula.
 
@@ -22730,7 +22735,7 @@ Extend the existing `pilot-analytics-proof-pack-v1` with an Operations-specific 
 
 ## RQ408 - Classify and decompose the second-pass Operacije finding catalogue
 
-Status: WAITING
+Status: DONE
 Ready after: `RQ407` has an agreed ownership boundary for cross-screen proof; this prompt is an analysis/decomposition lane and must not be promoted automatically
 Priority: P1
 Type: backend/frontend/contract/tests/docs
@@ -22867,4 +22872,22 @@ This prompt is analysis and queue decomposition only. The downstream owner must 
 
 - `RQ407` owns the shared eight-route deterministic proof pack; `RQ411`-`RQ413` own the deconflicted historical-attribution, independent-oracle and drift-guard follow-ups. This prompt may consume their evidence but must not create a competing proof system.
 - Coordinate with `RQ371`/`RQ372`, `RQ373`/`RQ374`, `RQ378`-`RQ380`, `RQ381`-`RQ384`, `RQ385`-`RQ400` and `RQ406`; these owners remain authoritative for overlapping contracts.
-- `RQ408` itself remains `WAITING` until the owner confirms the decomposition boundary and collision-safe queue placement.
+- `RQ408` was promoted and claimed under the user's explicit continuation request; its decomposition boundary is now recorded in the completion matrix and the current READY pointer has returned to `none`.
+
+### Completion note
+
+- Date: 2026-09-25
+- Status: DONE
+- Completion: Classified all `OP2-01` through `OP2-49`; nine remain potential pending a focused runtime reproducer and forty are duplicates of completed/active owners. No confirmed independent defect remains and no new follow-up prompt was created.
+- Changed files: `docs/ai/OPERATIONS_SECOND_PASS_CLASSIFICATION_2026-09-25.md`, this queue, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-25-RQ408-evidence.md`.
+- Checks run: local API smoke (`/` 200, Swagger 200, Inventory list endpoint 200); governance validators and `git diff --check` recorded in the evidence log.
+- Checks not run: browser/deployed capture because the local `computer-use` runtime failed to initialize; no product runtime fix was in scope.
+- Run log: `.ai/runs/2026-09-25-RQ408-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending until the documentation delivery commit is pushed
+- Missed: no confirmed independent OP2 defect; potential items require a focused fixture/runtime proof before a new prompt.
+- Follow-up: future owner may promote `RQ412`/`RQ413` under their declared dependency gates; re-open only a potential OP2 item with a new failing proof.
+- Residual risk: browser/deployed behavior and remote CI were not inspected; the local API showed the seeded Inventory route response successfully.
+- Prompt defect / scope repair: explicit user instruction authorized promotion/claim despite the prompt's default “must not be promoted automatically” guard; no product code was changed.
