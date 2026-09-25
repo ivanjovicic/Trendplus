@@ -16722,7 +16722,7 @@ Reproduction: click each Operacije supplier item, compare menu label vs page tit
 - Run log: `.ai/runs/2026-09-25-RQ305-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Implementation commit SHA: `b64b9f72`; main delivery merge SHA: `0b875a58`
+- Main commit SHA: implementation `b64b9f72`; main delivery merge `0b875a58`
 - Main verification: current `origin/main` contains `0b875a58`, whose first parent contains the implementation commit `b64b9f72`
 - Missed: full SupplierConsolidatedPage suite has one pre-existing period-label assertion mismatch (`30d -> 90d` versus full localized labels); the RQ305 legacy-source scenario passes and this is outside the alias scope.
 - Follow-up: idle recovery for the next dependency-complete main-queue prompt.
