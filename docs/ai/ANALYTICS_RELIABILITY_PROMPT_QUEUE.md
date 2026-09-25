@@ -8,6 +8,9 @@ Owner claim 2026-09-24: RQ373 transitioned `READY -> IN_PROGRESS` in this worksp
 Owner completion 2026-09-24: RQ373 delivered the bounded Supplier Sales display-population/reference-cohort contract directly to `main`. Visible revenue, units, margin shares and PoP now use the same filtered rows as the table; backend recommendation status and whole-response reference semantics remain explicit in trust, detail and export metadata. Run log: `.ai/runs/2026-09-24-RQ373-evidence.md`. RQ378/RQ379/RQ380 remain separate Supplier Sales owners.
 RQ172, RQ308, RQ371, RQ372, RQ414, RQ419, RQ420, RQ421, RQ422, RQ423, RQ424, RQ425, RQ426, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ398, RQ399, RQ400, RQ401, RQ402, RQ403, RQ404, RQ405, RQ406, RQ407 and RQ408 are DONE. The RQ current READY pointer is none.
 Owner completion 2026-09-25: RQ304 is DONE. The Color detail/table/export label is `Skor odluke (0–100)`, backend `decisionScore` remains the source of truth, focused Color tests pass `33/33`, and no live Color page guardrail violation remains. The implementation was already delivered through RQ400; this claim added verification and synchronized the stale queue status. Run log: `.ai/runs/2026-09-25-RQ304-evidence.md`. The RQ current READY pointer returned to `none`.
+Owner completion 2026-09-25: RQ305 is DONE. Operations supplier aliases now show a visible `Alias` badge and tooltip naming the canonical Supplier tab before navigation; legacy redirects, query preservation and canonical active-state behavior remain intact. Relevant proof passes `6/6`; guardrails, typecheck and build pass. Run log: `.ai/runs/2026-09-25-RQ305-evidence.md`. The RQ current READY pointer remains `none`.
+Owner promotion 2026-09-25: idle recovery found `RQ305` as the first dependency-complete P2 candidate in the main queue. `RQ268` compatibility redirect ownership is DONE; no active navigation claim or lock overlaps this bounded alias-clarity task. RQ305 moved `WAITING -> READY` and became the current RQ pointer.
+Owner claim 2026-09-25: RQ305 transitioned `READY -> IN_PROGRESS` in this workspace for Operations supplier alias clarity and canonical-tab navigation proof. Local runtime lock: `.ai/task-locks/RQ305-codex.lock.md`.
 
 Owner promotion 2026-09-25: idle recovery found `RQ304` as the first dependency-complete P1 candidate in the main queue. `RQ286`/`RQ287` and the authoritative Color score contract are DONE; no active Color frontend claim or lock overlaps this bounded label/guardrail task. RQ304 moved `WAITING -> READY` and became the current RQ pointer.
 Owner claim 2026-09-25: RQ304 transitioned `READY -> IN_PROGRESS` in this workspace for Color detail/table/export score-label parity and guardrail proof. Local runtime lock: `.ai/task-locks/RQ304-codex.lock.md`.
@@ -1432,7 +1435,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ302 | DONE | operations-route-smoke | Add missing Operacije routes to core App analytics smoke matrix |
 | RQ303 | DONE | daily-sales-localization | Replace English mismatch badge and mixed QA copy on Daily Sales |
 | RQ304 | DONE | color-sales-detail-label-parity | Align Color detail score label with table/export Serbian copy |
-| RQ305 | WAITING | operations-supplier-ia-clarity | Clarify Operacije menu entries that redirect into canonical Supplier tabs |
+| RQ305 | DONE | operations-supplier-ia-clarity | Clarify Operacije menu entries that redirect into canonical Supplier tabs |
 | RQ306 | WAITING | operations-diacritics-pass | Fix missing Serbian diacritics across Operacije user-facing copy |
 | RQ307 | WAITING | shoe-type-impact-label | Replace English nivelacija impact label on Shoe Type surface |
 | RQ308 | DONE | inventory-period-provenance | Add Inventory period control and make snapshot/signal semantics explicit |
@@ -16654,7 +16657,7 @@ Reproduction: open Color Sales, click row detail, compare table header vs detail
 
 ## RQ305 - Clarify Operacije menu entries that redirect into canonical Supplier tabs
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/navigation/ux
 Feature family: operations-supplier-ia-clarity
@@ -16704,6 +16707,24 @@ Reproduction: click each Operacije supplier item, compare menu label vs page tit
 
 - `RQ268` delivered redirect compatibility; this is follow-up IA clarity, not a redirect rewrite.
 - Requires lightweight product choice between badge/tooltip vs standalone restoration.
+
+### Completion note
+
+- Date: 2026-09-25
+- Status: DONE
+- Completion: Chose the reversible badge/tooltip IA pattern. Both Operations supplier aliases identify the canonical Supplier destination and tab before click; legacy routes remain preserved.
+- Changed files: `Klijent/clientapp/src/layout/navConfig.ts`, `Klijent/clientapp/src/layout/components/__tests__/Sidebar.spec.tsx`, this queue, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-25-RQ305-evidence.md`.
+- Checks run: Sidebar + SupplierRedirects `5/5`; SupplierConsolidated legacy-source scenario `1/1`; `npm run check:analytics-guardrails`; `npm run build`; `git diff --check`.
+- Checks not run: browser/deployed capture, full frontend/backend suites and remote CI.
+- Run log: `.ai/runs/2026-09-25-RQ305-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending until the delivery commit is pushed
+- Missed: full SupplierConsolidatedPage suite has one pre-existing period-label assertion mismatch (`30d -> 90d` versus full localized labels); the RQ305 legacy-source scenario passes and this is outside the alias scope.
+- Follow-up: idle recovery for the next dependency-complete main-queue prompt.
+- Residual risk: visual/browser tooltip rendering and remote CI were not inspected.
+- Prompt defect / scope repair: selected badge/tooltip over standalone route restoration as the smaller reversible option; no legacy route was removed.
 
 ---
 
