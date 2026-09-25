@@ -7,6 +7,10 @@ Owner promotion 2026-09-24: idle recovery verified that RQ373 is the dependency-
 Owner claim 2026-09-24: RQ373 transitioned `READY -> IN_PROGRESS` in this workspace for the Supplier Sales display-population/reference-cohort contract across KPI, chart, table, detail, export and recommendation projections. Local runtime lock: `.ai/task-locks/RQ373-cursor.lock.md`.
 Owner completion 2026-09-24: RQ373 delivered the bounded Supplier Sales display-population/reference-cohort contract directly to `main`. Visible revenue, units, margin shares and PoP now use the same filtered rows as the table; backend recommendation status and whole-response reference semantics remain explicit in trust, detail and export metadata. Run log: `.ai/runs/2026-09-24-RQ373-evidence.md`. RQ378/RQ379/RQ380 remain separate Supplier Sales owners.
 RQ172, RQ308, RQ371, RQ372, RQ414, RQ419, RQ420, RQ421, RQ422, RQ423, RQ424, RQ425, RQ426, RQ375, RQ376, RQ377, RQ381, RQ385, RQ386, RQ387, RQ388, RQ389, RQ390, RQ391, RQ392, RQ393, RQ394, RQ395, RQ396, RQ397, RQ398, RQ399, RQ400, RQ401, RQ402, RQ403, RQ404, RQ405, RQ406, RQ407 and RQ408 are DONE. The RQ current READY pointer is none.
+Owner completion 2026-09-25: RQ304 is DONE. The Color detail/table/export label is `Skor odluke (0–100)`, backend `decisionScore` remains the source of truth, focused Color tests pass `33/33`, and no live Color page guardrail violation remains. The implementation was already delivered through RQ400; this claim added verification and synchronized the stale queue status. Run log: `.ai/runs/2026-09-25-RQ304-evidence.md`. The RQ current READY pointer returned to `none`.
+
+Owner promotion 2026-09-25: idle recovery found `RQ304` as the first dependency-complete P1 candidate in the main queue. `RQ286`/`RQ287` and the authoritative Color score contract are DONE; no active Color frontend claim or lock overlaps this bounded label/guardrail task. RQ304 moved `WAITING -> READY` and became the current RQ pointer.
+Owner claim 2026-09-25: RQ304 transitioned `READY -> IN_PROGRESS` in this workspace for Color detail/table/export score-label parity and guardrail proof. Local runtime lock: `.ai/task-locks/RQ304-codex.lock.md`.
 
 Owner promotion 2026-09-25: after RQ407 reached DONE with live PostgreSQL all-eight reconciliation, the user's explicit request to claim and execute the next prompt made RQ408 dependency-complete. Collision review found no active RQ408 lock or competing operations-second-pass owner; RQ408 moved `WAITING -> READY` and became the current RQ pointer.
 Owner claim 2026-09-25: RQ408 transitioned `READY -> IN_PROGRESS` in this workspace for static/runtime classification of OP2-01 through OP2-49 and collision-safe follow-up decomposition. Local runtime lock: `.ai/task-locks/RQ408-codex.lock.md`.
@@ -1427,7 +1431,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ301 | DONE | operations-inventory-serbian-copy | Replace English inventory cockpit copy with Serbian product language |
 | RQ302 | DONE | operations-route-smoke | Add missing Operacije routes to core App analytics smoke matrix |
 | RQ303 | DONE | daily-sales-localization | Replace English mismatch badge and mixed QA copy on Daily Sales |
-| RQ304 | WAITING | color-sales-detail-label-parity | Align Color detail score label with table/export Serbian copy |
+| RQ304 | DONE | color-sales-detail-label-parity | Align Color detail score label with table/export Serbian copy |
 | RQ305 | WAITING | operations-supplier-ia-clarity | Clarify Operacije menu entries that redirect into canonical Supplier tabs |
 | RQ306 | WAITING | operations-diacritics-pass | Fix missing Serbian diacritics across Operacije user-facing copy |
 | RQ307 | WAITING | shoe-type-impact-label | Replace English nivelacija impact label on Shoe Type surface |
@@ -16578,7 +16582,7 @@ Reproduction: load Daily Sales with rows where supplier totals disagree with dai
 
 ## RQ304 - Align Color detail score label with table/export Serbian copy
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: frontend/copy/tests
 Feature family: color-sales-detail-label-parity
@@ -16627,6 +16631,24 @@ Reproduction: open Color Sales, click row detail, compare table header vs detail
 ### Dependencies
 
 - `RQ287`/`RQ286` own color status/pre-post parity; this prompt is label/contract clarity only.
+
+### Completion note
+
+- Date: 2026-09-25
+- Status: DONE
+- Completion: Verified the contract is already satisfied by the RQ400 Color decision-score delivery; no duplicate product patch was required.
+- Changed files: queue metadata, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-25-RQ304-evidence.md`.
+- Checks run: Color page focused specs `33/33`; `npm run check:analytics-guardrails`; encoding check; guardrail self-test; TypeScript typecheck; `git diff --check`.
+- Checks not run: full frontend/backend suites, browser/deployed capture and remote CI; outside this narrow verification scope.
+- Run log: `.ai/runs/2026-09-25-RQ304-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending until queue/evidence closure is pushed
+- Missed: no known RQ304 issue; backend recommendation ownership remains in RQ400.
+- Follow-up: idle recovery for the next dependency-complete main-queue prompt.
+- Residual risk: historical queue sections contain older snapshots; active RQ304 status and pointer are synchronized.
+- Prompt defect / scope repair: stale WAITING status was repaired from current RQ400 implementation and focused proof; no runtime code change was needed.
 
 ---
 
