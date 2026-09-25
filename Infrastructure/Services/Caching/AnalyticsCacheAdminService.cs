@@ -12,6 +12,7 @@ public sealed class AnalyticsCacheAdminService
     private readonly IAnalyticsCacheService _cache;
     private readonly ILogger<AnalyticsCacheAdminService> _logger;
     private readonly IDistributedCache? _distributedCache;
+    private readonly OperationsAnalyticsIntegrityRegistry? _integrityRegistry;
 
     private DateTime? _lastClearAtUtc;
     private string? _lastClearFamily;
@@ -22,11 +23,13 @@ public sealed class AnalyticsCacheAdminService
     public AnalyticsCacheAdminService(
         IAnalyticsCacheService cache,
         IDistributedCache? distributedCache,
-        ILogger<AnalyticsCacheAdminService> logger)
+        ILogger<AnalyticsCacheAdminService> logger,
+        OperationsAnalyticsIntegrityRegistry? integrityRegistry = null)
     {
         _cache = cache;
         _distributedCache = distributedCache;
         _logger = logger;
+        _integrityRegistry = integrityRegistry;
     }
 
     public async Task<AnalyticsCacheClearState> GetStateAsync(CancellationToken ct = default)
@@ -169,6 +172,10 @@ public sealed class AnalyticsCacheAdminService
             state.IsShared,
             state.Storage,
             state.ReportCacheVersion);
+
+        _integrityRegistry?.MarkUnverified(
+            "cache_clear",
+            $"Analytics cache family '{normalizedFamily}' cleared; bounded Operations integrity probe required before decision signals.");
 
         return state;
     }

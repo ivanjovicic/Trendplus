@@ -1758,6 +1758,8 @@ public static class AllEndpoints
                 var totalMarginContribution = suppliers.Sum(row => row.marginContribution);
                 var totalUnits = suppliers.Sum(row => row.ukupnaKolicina);
                 var unknownSupplierSharePct = dataQuality.unknownSupplierRevenueSharePct ?? 0d;
+                var operationsIntegrityRegistry = httpContext.RequestServices.GetService<OperationsAnalyticsIntegrityRegistry>();
+                var blockOperationsDecisionSignals = OperationsAnalyticsIntegrityMeta.ShouldBlockDecisionSignals(operationsIntegrityRegistry);
 
                 var suppliersWithRecommendation = suppliers
                     .Select(supplier =>
@@ -1799,7 +1801,7 @@ public static class AllEndpoints
                         var exposedRecommendation = AnalyticsDecisionRecommendationEngine.ApplyComparableSignalGate(
                             recommendation,
                             hasComparableNivelacijaSignal);
-                        var recommendationAllowed = exposedRecommendation.RecommendationAllowed;
+                        var recommendationAllowed = exposedRecommendation.RecommendationAllowed && !blockOperationsDecisionSignals;
 
                         return new
                         {
@@ -1969,6 +1971,7 @@ public static class AllEndpoints
                     generatedAtUtc);
                 supplierTrustMeta.AttributionBasis = attributionBasis;
                 supplierTrustMeta.AttributionCoveragePct = attributionCoveragePct;
+                supplierTrustMeta = OperationsAnalyticsIntegrityMeta.ApplyIntegrityState(supplierTrustMeta, operationsIntegrityRegistry);
                 var response = new
                 {
                     generatedAt = generatedAtUtc,
@@ -1986,7 +1989,8 @@ public static class AllEndpoints
                     totals,
                     dataQuality,
                     meta = supplierTrustMeta,
-                    recommendationAllowed = suppliersWithRecommendation.Count > 0
+                    recommendationAllowed = !blockOperationsDecisionSignals
+                        && suppliersWithRecommendation.Count > 0
                         && suppliersWithRecommendation.All(x => x.recommendation.recommendationAllowed),
                     recommendationReferenceCohort = new
                     {
@@ -2542,6 +2546,8 @@ public static class AllEndpoints
                 var averageMarginPct = AnalyticsMarginPolicy.ResolveWeightedMarginPct(knownShoeTypeMarginValues);
                 var weightedMarginRevenue = knownShoeTypeMarginValues.Sum(row => row.costCoveredRevenue);
                 var unknownTypeSharePct = dataQuality.unknownTypeRevenueSharePct ?? 0d;
+                var shoeIntegrityRegistry = httpContext.RequestServices.GetService<OperationsAnalyticsIntegrityRegistry>();
+                var blockShoeOperationsDecisions = OperationsAnalyticsIntegrityMeta.ShouldBlockDecisionSignals(shoeIntegrityRegistry);
 
                 var shoeTypesWithRecommendation = shoeTypes
                     .Select(row =>
@@ -2578,7 +2584,7 @@ public static class AllEndpoints
                         var exposedRecommendation = AnalyticsDecisionRecommendationEngine.ApplyComparableSignalGate(
                             recommendation,
                             hasComparableNivelacijaSignal);
-                        var recommendationAllowed = exposedRecommendation.RecommendationAllowed;
+                        var recommendationAllowed = exposedRecommendation.RecommendationAllowed && !blockShoeOperationsDecisions;
 
                         return new
                         {
@@ -2743,6 +2749,7 @@ public static class AllEndpoints
                     generatedAtUtc);
                 shoeTrustMeta.AttributionBasis = shoeAttributionBasis;
                 shoeTrustMeta.AttributionCoveragePct = shoeAttributionCoveragePct;
+                shoeTrustMeta = OperationsAnalyticsIntegrityMeta.ApplyIntegrityState(shoeTrustMeta, shoeIntegrityRegistry);
                 var response = new
                 {
                     generatedAt = generatedAtUtc,
@@ -2757,6 +2764,9 @@ public static class AllEndpoints
                     totals,
                     dataQuality,
                     meta = shoeTrustMeta,
+                    recommendationAllowed = !blockShoeOperationsDecisions
+                        && shoeTypesWithRecommendation.Count > 0
+                        && shoeTypesWithRecommendation.All(x => x.recommendation.recommendationAllowed),
                     sezone
                 };
 

@@ -169,6 +169,8 @@ try
     builder.Services.Configure<DataSourceOptions>(builder.Configuration.GetSection(DataSourceOptions.Section));
     builder.Services.Configure<Infrastructure.Configuration.AnalyticsDataQualityHealthOptions>(
         builder.Configuration.GetSection(Infrastructure.Configuration.AnalyticsDataQualityHealthOptions.Section));
+    builder.Services.Configure<Infrastructure.Configuration.OperationsAnalyticsIntegrityOptions>(
+        builder.Configuration.GetSection(Infrastructure.Configuration.OperationsAnalyticsIntegrityOptions.Section));
     builder.Services.AddOptions<Infrastructure.Configuration.NightlyAnalyticsRefreshOptions>()
         .Bind(builder.Configuration.GetSection(Infrastructure.Configuration.NightlyAnalyticsRefreshOptions.Section))
         .ValidateOnStart();
@@ -430,6 +432,8 @@ builder.Services.AddScoped<IAnalyticsDetailReadService, AnalyticsDetailReadServi
 builder.Services.AddScoped<IDailySalesStatsService, DailySalesStatsService>();
 builder.Services.AddScoped<AnalyticsDataQualityHealthService>();
 builder.Services.AddScoped<AnalyticsDataQualityHistoryService>();
+builder.Services.AddSingleton<Infrastructure.Services.OperationsAnalyticsIntegrityRegistry>();
+builder.Services.AddScoped<Infrastructure.Services.IOperationsAnalyticsIntegrityService, Infrastructure.Services.OperationsAnalyticsIntegrityService>();
 builder.Services.AddScoped<AnalyticsRefreshRunRecorder>();
 builder.Services.AddScoped<Api.Services.AnalyticsCostSnapshotService>();
 builder.Services.AddScoped<Infrastructure.Services.Analytics.AnalyticsActionItemService>();
@@ -1213,6 +1217,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     app.MapWorkerConfigurationEndpoints();
     app.MapAnalyticsTableEndpoints();
     app.MapDataQualityEndpoints();
+    app.MapOperationsAnalyticsIntegrityEndpoints();
     app.MapDailySalesStatsEndpoints();
     app.MapAnalyticsSnapshotEndpoints();
     app.MapDocumentEndpoints();
