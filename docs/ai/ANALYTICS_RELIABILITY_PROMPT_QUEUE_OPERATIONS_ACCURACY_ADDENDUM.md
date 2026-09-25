@@ -5,6 +5,8 @@ Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 Main RQ current READY prompt: none
 
+Certification-layer review 2026-09-25: current main confirms the existing Supplier/Shoe Type semantic owners and bounded integrity runtime, but not a defensible certification claim across contract, adversarial fixture, live execution, browser/render/export, durable evidence, import-trigger freshness, UI evidence, certificate, CI, production or customer acceptance. Added RQ445-RQ455 below as WAITING, collision-safe follow-ups. These prompts do not reopen RQ407, RQ411-RQ413, RQ373-RQ380 or RQ375-RQ377; they consume their outputs and record the remaining evidence gaps.
+
 Owner promotion 2026-09-25: idle recovery under the user's claim-and-execute request verified `RQ413` is dependency-complete after `RQ407` and `RQ412` delivery. No active drift-guard lock or overlapping cache/freshness owner was found; `RQ413` moved `WAITING -> READY`.
 
 Owner claim 2026-09-25: `RQ413` transitioned `READY -> IN_PROGRESS` in this workspace for bounded Operations drift/cache integrity probes and fail-closed decision gating. Local runtime lock: `.ai/task-locks/RQ413-cursor.lock.md`.
@@ -113,6 +115,17 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 | RQ424 | DONE | P1 | pre-nivelacija-leaderboard-denominator | Define Pre-Nivelacija action-share and percentage normalization semantics |
 | RQ425 | DONE | P1 | supplier-footwear-scope-default | Prevent standalone Supplier Footwear from silently falling back to all data |
 | RQ426 | DONE | P1 | inventory-forecast-risk-aggregation | Prove and correct Inventory forecast risk aggregation across sizes and stores |
+| RQ445 | WAITING | P0 | supplier-shoetype-accuracy-contract | Canonical accuracy contract for Supplier/Shoe Type metrics, populations, provenance and claim language |
+| RQ446 | WAITING | P0 | supplier-shoetype-adversarial-golden | Extend the shared fixture with adversarial Supplier/Shoe Type cases and immutable expected outputs |
+| RQ447 | WAITING | P0 | supplier-shoetype-live-oracle-reproducers | Execute the four live RQ412 oracle cases and close OP2-01/04/05/14 with runtime reproducers |
+| RQ448 | WAITING | P0 | supplier-shoetype-browser-reconciliation | Reconcile raw facts through API, browser-rendered KPI/table/detail and export |
+| RQ449 | WAITING | P1 | operations-integrity-evidence-history | Persist immutable integrity evidence/history beyond the process snapshot |
+| RQ450 | WAITING | P1 | operations-post-import-probe | Run a bounded Supplier/Shoe integrity probe immediately after Access import |
+| RQ451 | WAITING | P1 | supplier-shoetype-verified-evidence-ui | Expose Verified status and inspectable evidence on both customer-facing screens |
+| RQ452 | WAITING | P1 | supplier-shoetype-accuracy-certificate | Generate a truthful evidence-backed Supplier/Shoe Type accuracy certificate |
+| RQ453 | WAITING | P0 | analytics-certification-ci-gate | Add a non-skippable certification CI gate with executed-versus-skipped accounting |
+| RQ454 | WAITING | P0 | supplier-shoetype-production-reconciliation | Produce read-only production reconciliation evidence for certified windows |
+| RQ455 | WAITING | P1 | supplier-shoetype-customer-acceptance | Capture customer-side reconciliation and acceptance evidence |
 
 ---
 
@@ -1401,3 +1414,419 @@ Do not change the underlying forecast model or page-local/global sorting policy 
 ### Dependencies
 
 - Coordinate `RQ274`, `RQ371`, `RQ407`, forecast backend owner and `RQ413` drift/freshness evidence.
+
+---
+
+## RQ445 - Define the canonical Supplier/Shoe Type accuracy contract
+
+Status: WAITING
+Ready after: current certification queue review confirms no competing contract owner
+Priority: P0
+Type: docs/contract/tests
+Feature family: supplier-shoetype-accuracy-contract
+Parallel-safe: yes for documentation; coordinate before changing shared DTO names
+Owner: Analytics Reliability / Supplier + Shoe Type
+Commit suggestion: docs(analytics): define Supplier and Shoe Type accuracy contract
+
+### Problem
+
+RQ411, RQ412 and the existing golden manifests define important attribution and arithmetic facts, but there is no single canonical contract that binds formulas, population, period, store, scope, unknown handling, provenance, cost coverage, trust status, freshness and the permitted customer-facing accuracy claim across Supplier and Shoe Type. Without that contract, separate proofs can all pass while describing different populations.
+
+### Evidence
+
+- The Supplier/Shoe Type independent oracle manifest covers RQ412 raw-fact semantics but not the full API-to-screen/export/certificate contract.
+- RQ407 proves shared fixture route arithmetic; RQ411-RQ413 provide attribution and bounded runtime integrity semantics.
+- Current evidence distinguishes numeric proof from browser, live and durable certification proof.
+
+### Scope
+
+- One canonical contract document linked from the Operations accuracy addendum and roadmap.
+- Supplier and Shoe Type revenue, signed quantity, shares, unknown buckets, period/store/scope, attribution basis, cost coverage, trust states and certificate claim language.
+- Explicit distinction between reconciled sales facts and qualified or estimated margin evidence.
+
+Do not redefine the RQ411 attribution source, RQ412 oracle SQL or RQ442 date implementation.
+
+### Tests
+
+- Contract examples for all/imported/existing, store filter, returns, unknown buckets, zero/negative totals, missing cost and comparable pre/post populations.
+- Validator or lint check that every certification artifact names contract version, source population and evidence id.
+
+### Acceptance
+
+- A reviewer can determine one authoritative formula and denominator for every certified metric.
+- The contract states when Supplier/Shoe Type may be marked VERIFIED and when it must be unverified, degraded or unavailable.
+- The contract explicitly forbids an unqualified 100% accurate claim for incomplete cost or unknown attribution evidence.
+
+### Dependencies
+
+- Consume RQ373-RQ380, RQ375-RQ377, RQ407, RQ411-RQ413 and RQ442; do not duplicate their implementation ownership.
+
+---
+
+## RQ446 - Build the adversarial Supplier/Shoe Type golden dataset
+
+Status: WAITING
+Ready after: RQ445 contract version is approved
+Priority: P0
+Type: fixture/tests/docs
+Feature family: supplier-shoetype-adversarial-golden
+Parallel-safe: no with RQ407/RQ412 fixture files
+Owner: Analytics Reliability / Test Infrastructure
+Commit suggestion: test(analytics): add adversarial Supplier and Shoe Type golden cases
+
+### Problem
+
+The shared RQ407 seed proves core arithmetic, but it does not yet provide the complete adversarial certification corpus needed to defend the two target screens against boundary, duplication, mutation and evidence-quality failures.
+
+### Scope
+
+Extend the existing RQ407 fixture and RQ412 manifest; do not create a second seed system. Include returns and negative net revenue, null supplier/type, two stores, Access and POS scope, exact lower and upper date boundaries including fractional seconds, post-sale master mutation, duplicate-import attempt, missing and mixed cost coverage, top-N with unknown and cache-before/after-import states. Store expected totals, buckets, denominators and evidence classifications as immutable JSON or Markdown.
+
+### Tests
+
+- Raw SQL oracle and API expectations for every case, with Supplier and Shoe Type bucket, total, share and line-count assertions.
+- Mutation and duplicate-import invariants; adjacent whole-day non-overlap; known versus unknown and cost coverage semantics.
+- Deterministic manifest hash and reviewable diff when a fixture changes.
+
+### Acceptance
+
+- Every listed adversarial case has an explicit expected result and a named proof owner.
+- The fixture remains the shared RQ407/RQ412 source; no production aggregation helper is reused as the oracle.
+- A changed current Artikli master cannot change frozen historical bucket expectations.
+
+### Dependencies
+
+- RQ445, RQ407, RQ411, RQ412 and RQ442. Coordinate file ownership before implementation.
+
+---
+
+## RQ447 - Execute the live oracle and close the OP2 runtime seams
+
+Status: WAITING
+Ready after: PostgreSQL integration host and the RQ446 fixture are available
+Priority: P0
+Type: integration-tests/evidence
+Feature family: supplier-shoetype-live-oracle-reproducers
+Parallel-safe: no with RQ412 integration host/test files
+Owner: Analytics Reliability / QA
+Commit suggestion: test(analytics): execute Supplier Shoe Type oracle and seam reproducers
+
+### Problem
+
+RQ412 implementation exists, but its four PostgreSQL integration cases were not executed in the recorded run. OP2-01, OP2-04, OP2-05 and OP2-14 remain potential only; static classification is not certification evidence.
+
+### Scope
+
+Run the four SupplierShoeTypeIndependentOracleIntegrationTests cases on PostgreSQL and add focused runtime reproducers for OP2-01 date boundaries, OP2-04 legacy/canonical route parity, OP2-05 backend status-to-UI projection parity and OP2-14 requested versus effective period. This is a proof/triage lane: implement a minimal fix only if a reproducer fails and assign the failure to the correct existing or new owner.
+
+### Tests
+
+- Exact executed/pass/skip counts for all four RQ412 cases; no opt-in skip accepted for the certification run.
+- OP2-01/04/05/14 each has a reproducible fixture, observed result, owner decision and evidence link.
+- Supplier and Shoe Type totals, buckets, shares, unknown rows, store/scope/period metadata and detail-level result are compared, not only headline totals.
+
+### Acceptance
+
+- RQ412 is recorded as executed on PostgreSQL with unexpectedDeltaCount=0 or a classified, reproducible variance.
+- Each OP2 seam is either closed by a passing runtime proof or becomes one minimal owner-linked defect; no speculative duplicate prompt is created.
+- Evidence explicitly distinguishes skipped, unavailable and passed tests.
+
+### Dependencies
+
+- RQ412, RQ445, RQ446, RQ442 and the existing OP2 classification. Do not reopen potential findings without a failing reproducer.
+
+---
+
+## RQ448 - Reconcile raw facts through API, browser render and export
+
+Status: WAITING
+Ready after: RQ447 has a runnable fixture and authenticated test browser/API environment
+Priority: P0
+Type: e2e/browser/export/tests
+Feature family: supplier-shoetype-browser-reconciliation
+Parallel-safe: no with Supplier/Shoe Type page and export owners
+Owner: Analytics Reliability / Frontend QA
+Commit suggestion: test(analytics): reconcile Supplier and Shoe Type from DB to export
+
+### Problem
+
+RQ407 live PostgreSQL proof and focused frontend tests do not prove the deployed request-to-render chain. The missing chain is raw facts -> independent oracle -> API -> frontend model -> rendered KPI/table -> detail -> CSV/XLSX export.
+
+### Scope
+
+For both Supplier and Shoe Type, seed the certified fixture, execute the independent oracle, open the actual route in a browser, apply period/store/scope, capture request/response and rendered KPI/table/detail values, and export the same population. Include legacy Supplier route redirect parity where applicable.
+
+### Tests
+
+- Browser assertions for requested/effective period, store, data scope, trust state and every visible row.
+- Detail and export assertions use the same evidence id, population and totals as the page.
+- Capture a trace or screenshot plus machine-readable reconciliation artifact; static bundle fetch does not count as render proof.
+
+### Acceptance
+
+- DB oracle, API, rendered screen, detail and export have zero unexplained quantity/revenue/bucket/denominator deltas.
+- A failed, stale or partial evidence state is rendered truthfully and cannot receive a Verified result.
+- Artifact records deployed/app commit, schema, route, filters, evidence id and executed test counts.
+
+### Dependencies
+
+- RQ445-RQ447, RQ442, RQ413, browser test account and deployment access. Do not duplicate route business logic owners.
+
+---
+
+## RQ449 - Persist integrity evidence history
+
+Status: WAITING
+Ready after: RQ445 contract and RQ413 runtime states are stable
+Priority: P1
+Type: backend/data-contract/migration/tests
+Feature family: operations-integrity-evidence-history
+Parallel-safe: no with RQ413 integrity persistence paths
+Owner: Analytics Reliability / Operations
+Commit suggestion: feat(analytics): persist integrity evidence history
+
+### Problem
+
+RQ413 keeps a process-wide integrity snapshot and evidence id, but a restart does not provide a durable history of what was checked. A customer-facing claim needs immutable, queryable evidence records rather than only the latest in-memory state.
+
+### Scope
+
+Add a durable, append-only integrity evidence record for the certified Supplier/Shoe Type run. Record tenant/store, database fingerprint, app commit, schema/migration version, contract/fixture version, requested/effective period, scope, raw/API totals, bucket deltas, unknown/attribution/cost coverage, cache version, status, timestamps and failure classification. Keep secrets and raw customer data out of the record.
+
+### Tests
+
+- Append/retrieve/restart persistence, idempotency for one evidence id and concurrent-run behavior.
+- Tenant/store/scope isolation and redaction tests.
+- Status transitions preserve history; a later drift does not rewrite a previously verified run.
+
+### Acceptance
+
+- Evidence survives process restart and can be retrieved by evidence id.
+- Stored data is sufficient to reproduce the claim without storing credentials or unrestricted sale-line payloads.
+- RQ413 live status remains authoritative; this prompt adds history, not a second probe formula.
+
+### Dependencies
+
+- RQ413, RQ445, existing migration/bootstrap conventions and approved data-retention policy.
+
+---
+
+## RQ450 - Probe immediately after Access import
+
+Status: WAITING
+Ready after: RQ413 and RQ449 evidence lifecycle are available
+Priority: P1
+Type: backend/import/worker/tests
+Feature family: operations-post-import-probe
+Parallel-safe: no with Access import and integrity trigger paths
+Owner: Analytics Reliability / Import Operations
+Commit suggestion: feat(analytics): probe integrity after Access import
+
+### Problem
+
+RQ413 marks analytics unverified on cache clear and has worker or on-demand probes, but the recorded evidence does not prove an immediate post-import Supplier/Shoe Type probe. A fresh import can therefore leave the UI ambiguous until a later worker tick.
+
+### Scope
+
+Wire successful Access-import completion to invalidate caches, persist an unverified transition, run one bounded Supplier/Shoe Type integrity probe against the imported dataset, then publish verified/degraded/drift_detected with evidence id. Failure must remain visible and fail closed; import success must not be rewritten as analytics verification.
+
+### Tests
+
+- Successful import triggers exactly one bounded probe after commit; failed or rolled-back import triggers none.
+- Probe failure, timeout and drift preserve unverified/degraded/drift_detected state and recommendation gating.
+- Import retry/idempotency does not duplicate evidence or race the previous dataset.
+
+### Acceptance
+
+- After import, Supplier/Shoe Type cannot show Verified before the corresponding probe finishes successfully.
+- Probe is bounded, observable and linked to the import batch and evidence id.
+- Existing RQ413 cache-clear and worker behavior remains compatible; no duplicate drift algorithm is introduced.
+
+### Dependencies
+
+- RQ413, RQ449, Access import transaction boundary and worker/DI configuration.
+
+---
+
+## RQ451 - Show Verified status and inspectable evidence in both screens
+
+Status: WAITING
+Ready after: RQ445, RQ448 and RQ449 expose stable evidence fields
+Priority: P1
+Type: frontend/contract/tests
+Feature family: supplier-shoetype-verified-evidence-ui
+Parallel-safe: no with Supplier/Shoe Type page trust surfaces
+Owner: Analytics Reliability / Frontend QA
+Commit suggestion: feat(analytics): expose Supplier and Shoe Type verification evidence
+
+### Problem
+
+Backend already exposes operationsIntegrity status, checked time and evidence id, but the current Supplier and Shoe Type screens do not present a complete, inspectable proof surface to the customer.
+
+### Scope
+
+Add a shared evidence/status surface to both screens with status, checked-at, evidence id, reconciled line count, quantity and revenue deltas, attribution and unknown coverage and cost coverage. Keep requested versus effective period and data scope visible; do not hide warning, degraded or unknown states behind a green badge.
+
+### Tests
+
+- Verified, unverified, degraded and drift_detected fixtures for header, table/detail context and recommendation gate.
+- Evidence link or drawer shows the same id and metrics as the API; loading/error/empty states remain explicit.
+- Browser/accessibility proof covers both canonical and legacy Supplier entry points.
+
+### Acceptance
+
+- Verified appears only when current evidence is fresh, contract-compatible and has zero unexplained deltas.
+- Users can inspect what was checked, when, for which period/store/scope and with which evidence id.
+- Unknown attribution and incomplete cost coverage remain visible and qualified.
+
+### Dependencies
+
+- RQ445, RQ448, RQ449, RQ450, RQ421, RQ413 and existing trust-header ownership.
+
+---
+
+## RQ452 - Generate an evidence-backed accuracy certificate
+
+Status: WAITING
+Ready after: RQ449 and RQ451 are DONE
+Priority: P1
+Type: backend/frontend/export/docs/tests
+Feature family: supplier-shoetype-accuracy-certificate
+Parallel-safe: no with evidence/export surfaces
+Owner: Analytics Reliability / Customer Readiness
+Commit suggestion: feat(analytics): generate Supplier Shoe Type accuracy certificate
+
+### Problem
+
+Trendplus has no customer-facing certificate that binds a Supplier/Shoe Type claim to a specific evidence id, build, schema, period and source reconciliation result.
+
+### Scope
+
+Generate a PDF or HTML certificate from immutable evidence, with tenant/store, requested/effective period, scope, app commit, schema, contract version, verification time, Supplier and Shoe Type raw/API/render/export totals and deltas, unknown/attribution/cost coverage, status and limitations. Qualify margin and cost estimates instead of presenting them as raw-sales certainty.
+
+### Tests
+
+- Verified, degraded, drift, unavailable and stale evidence cannot generate a green certificate.
+- Repeated generation for one evidence id is deterministic and includes the same metrics as the evidence record.
+- PDF or HTML text and download metadata preserve evidence id and contract version.
+
+### Acceptance
+
+- Every certificate is traceable to one immutable evidence id and exact build/schema/contract versions.
+- A certificate never claims zero unexplained deltas when a required layer was skipped or unavailable.
+- Document is suitable for customer review and states the boundary between reconciled sales facts and estimated margin.
+
+### Dependencies
+
+- RQ445, RQ448, RQ449, RQ451 and existing document export contracts.
+
+---
+
+## RQ453 - Make analytics certification CI non-skippable
+
+Status: WAITING
+Ready after: RQ446 and RQ447 define the executable certification set
+Priority: P0
+Type: CI/tests/release-gate
+Feature family: analytics-certification-ci-gate
+Parallel-safe: yes for workflow/docs; coordinate test resource ownership
+Owner: Analytics Reliability / CI
+Commit suggestion: ci(analytics): add non-skippable Supplier Shoe Type certification gate
+
+### Problem
+
+RQ412 integration tests are opt-in and the recorded run explicitly skipped them when PostgreSQL was unavailable. A release cannot carry a Verified analytics claim when certification tests were not executed.
+
+### Scope
+
+Add a dedicated certification job with PostgreSQL, adversarial fixture, independent oracle, API tests, browser/render/export proof where available, schema and migration smoke and exact executed/passed/skipped accounting. The job fails on missing service, test skip, missing artifact, non-zero delta or stale/unverified evidence.
+
+### Tests
+
+- Forced missing database, skipped test, failed oracle, failed browser reconciliation and missing artifact each fail the job.
+- Successful run reports expected=executed=passed for the required set and publishes machine-readable evidence.
+- Normal developer CI may retain opt-in tests, but certification job may not.
+
+### Acceptance
+
+- No release or certificate path can treat skipped certification tests as pass.
+- Gate runs on the exact commit being released and records app/schema/contract/fixture versions.
+- Failed or unavailable certification blocks the Verified release claim while preserving diagnostic evidence.
+
+### Dependencies
+
+- RQ445-RQ448, RQ452, repository CI conventions and deployment credentials only through existing secret mechanisms.
+
+---
+
+## RQ454 - Run read-only production reconciliation for certified windows
+
+Status: WAITING
+Ready after: STAB16 grants approved read-only production connection and exact deployed commit proof
+Priority: P0
+Type: operations/read-only/reconciliation/evidence
+Feature family: supplier-shoetype-production-reconciliation
+Parallel-safe: no with production audit connection
+Owner: Operations / Analytics Reliability
+Commit suggestion: docs(analytics): record Supplier Shoe Type production reconciliation
+
+### Problem
+
+Existing STAB16 and older production audits identify missing read-only database and browser proof, but there is no Supplier/Shoe Type-specific production reconciliation artifact. Fixture correctness alone does not prove the customer deployed data path.
+
+### Scope
+
+Against an approved read-only production or replica connection, compare raw sale-line facts and the independent oracle with Supplier and Shoe Type API results for yesterday, 7-day, 30-day, year-to-date or full-year, each store and each supported data scope, plus a documented random sample. Record deployed SHA, schema, query and contract versions, counts, totals, bucket deltas, unknown and cost coverage and every variance. Never mutate source data, caches or production state.
+
+### Tests
+
+- Connection is read-only and runner fails before any write attempt.
+- Each window, store and scope records executed counts and exact or approved variance classification.
+- Any unexplained delta blocks the production certificate; timeouts or missing access are recorded as not-run, never pass.
+
+### Acceptance
+
+- Dated, reviewable artifact proves production Supplier/Shoe Type reconciliation or clearly records why certification is blocked.
+- Zero unexplained deltas is required for a VERIFIED production claim; tolerances are explicit and never silently applied.
+- Result is bound to deployed build and database/schema fingerprint.
+
+### Dependencies
+
+- STAB16, RQ445-RQ448, RQ453 and approved read-only credentials. Do not duplicate STAB16 deployment or worker ownership.
+
+---
+
+## RQ455 - Capture customer acceptance evidence
+
+Status: WAITING
+Ready after: RQ452 and at least one approved production or pilot reconciliation run
+Priority: P1
+Type: docs/acceptance/evidence
+Feature family: supplier-shoetype-customer-acceptance
+Parallel-safe: yes after the certificate/evidence schema is fixed
+Owner: Customer Readiness / Analytics Reliability
+Commit suggestion: docs(analytics): add Supplier Shoe Type customer acceptance pack
+
+### Problem
+
+Technical tests and internal reconciliation do not show that a customer recognizes the same source totals and understands qualified, unknown and cost-limited metrics. There is no customer acceptance artifact for these two screens.
+
+### Scope
+
+Create a reusable acceptance pack and one pilot execution template covering the customer's locked source window, store and scope; total revenue and quantity, returns, each Supplier bucket and each Shoe Type bucket; unknown, attribution and cost coverage; every variance and explanation; Trendplus build, schema and evidence id; customer reviewer and date. Keep credentials, raw personal data and unrestricted sale-line exports out of the repository.
+
+### Tests
+
+- Template validation requires source extract id/window, Trendplus evidence id, metric units, denominator, variance classification and reviewer approval.
+- Missing approval, skipped reconciliation or unexplained variance cannot produce an accepted status.
+- Redaction review confirms no secrets or unnecessary customer-level raw data are committed.
+
+### Acceptance
+
+- A customer can sign off a fixed period with zero unexplained discrepancies, or the pack remains pending with every variance classified.
+- Acceptance is traceable to the same certificate/evidence id and contract version used by the product.
+- Artifact distinguishes sales-fact reconciliation from qualified margin and cost evidence and never broadens the claim beyond the tested window.
+
+### Dependencies
+
+- RQ445, RQ448, RQ452, RQ454 and customer-provided source report plus named reviewer.

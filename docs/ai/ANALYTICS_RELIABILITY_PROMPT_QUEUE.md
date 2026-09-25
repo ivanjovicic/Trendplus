@@ -3,6 +3,7 @@
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: RQ440
+Owner certification follow-up 2026-09-25: a current-main review of the Supplier/Shoe Type accuracy claim found the existing RQ407/RQ411-RQ413/RQ373-RQ380/RQ375-RQ377 work materially complete but still missing certification-layer evidence. Added non-duplicative WAITING prompts RQ445-RQ455 in the Operations accuracy addendum for the formal contract, adversarial golden cases, live oracle/reproducer closure, browser/render/export reconciliation, durable evidence history, post-import probe, Verified UI, certificate, non-skippable CI, production read-only proof and customer acceptance. Existing owners remain authoritative; no product code is changed by this planning update. Plan: docs/qa/SUPPLIER_SHOETYPE_ACCURACY_CERTIFICATION_PLAN_2026-09-25.md.
 Owner claim 2026-09-25 (Supplier overview audit, grok): the audit of „Prodaja po dobavljačima“ (`/analytics/supplier?tab=overview`, legacy `operations-supplier-sales`) added and claimed `RQ443` (total PoP trend must include suppliers without current sales; the unfocused subset of the unregistered `PS11`/C16 in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-25.md`) and `RQ444` (sticky legacy `sezonaId`, data window shown as the period, +1-day header end date), both `READY -> IN_PROGRESS` in this workspace. Local locks: `.ai/task-locks/RQ443-grok.lock.md`, `.ai/task-locks/RQ444-grok.lock.md`. `Current READY prompt` stays `RQ440`. Other findings route to `RQ442`, `RQ441`, `RQ325` and the unregistered `PS06`/`PS11`/`PS12`/`PS16`/`PS17`/`PS18`. Run log: `.ai/runs/2026-09-25-supplier-sales-overview-audit-evidence.md`.
 Owner completion 2026-09-25: RQ443 was implemented and committed directly on local `main` (`fix(analytics): base supplier total PoP on the full previous period (RQ443)`, parent `77371907`); status `PARTIAL` until `origin/main` contains it (local-only delivery). Run log: `.ai/runs/2026-09-25-RQ443-evidence.md`.
 Owner completion 2026-09-25: RQ444 was implemented and committed directly on local `main` (`fix(analytics): keep supplier overview period metadata truthful (RQ444)`); status `PARTIAL` until `origin/main` contains it (local-only delivery). Run log: `.ai/runs/2026-09-25-RQ444-evidence.md`.
@@ -1602,6 +1603,17 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ442 | READY | operations-whole-day-half-open-ranges | Make Supplier, Shoe Type and Color whole-day filters half-open and boundary-safe |
 | RQ443 | PARTIAL | supplier-overview-total-pop | Keep the Supplier overview total PoP trend on the full previous-period population |
 | RQ444 | PARTIAL | supplier-overview-period-truth | Supplier overview period truth: drop the sticky legacy season and show the analyzed period |
+| RQ445 | WAITING | supplier-shoetype-accuracy-contract | Canonical accuracy contract for Supplier/Shoe Type metrics, populations, provenance and claim language |
+| RQ446 | WAITING | supplier-shoetype-adversarial-golden | Extend the shared fixture with adversarial Supplier/Shoe Type cases and immutable expected outputs |
+| RQ447 | WAITING | supplier-shoetype-live-oracle-reproducers | Execute the four live RQ412 oracle cases and close OP2-01/04/05/14 with runtime reproducers |
+| RQ448 | WAITING | supplier-shoetype-browser-reconciliation | Reconcile raw facts through API, browser-rendered KPI/table/detail and export |
+| RQ449 | WAITING | operations-integrity-evidence-history | Persist immutable integrity evidence/history beyond the process snapshot |
+| RQ450 | WAITING | operations-post-import-probe | Run a bounded Supplier/Shoe integrity probe immediately after Access import |
+| RQ451 | WAITING | supplier-shoetype-verified-evidence-ui | Expose Verified status and inspectable evidence on both customer-facing screens |
+| RQ452 | WAITING | supplier-shoetype-accuracy-certificate | Generate a truthful evidence-backed Supplier/Shoe Type accuracy certificate |
+| RQ453 | WAITING | analytics-certification-ci-gate | Add a non-skippable certification CI gate with executed-versus-skipped accounting |
+| RQ454 | WAITING | supplier-shoetype-production-reconciliation | Produce read-only production reconciliation evidence for certified windows |
+| RQ455 | WAITING | supplier-shoetype-customer-acceptance | Capture customer-side reconciliation and acceptance evidence |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
