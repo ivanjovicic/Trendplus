@@ -5,6 +5,14 @@ Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 Main RQ current READY prompt: none
 
+Owner promotion 2026-09-25: idle recovery verified `RQ407`, `RQ411` and applicable Supplier Sales semantic prompts (`RQ373`-`RQ374`, `RQ378`-`RQ380`) are DONE on current `main`. No active independent-oracle lock or overlapping backend claim was found; `RQ412` moved `WAITING -> READY` as the operations-accuracy pointer.
+
+Owner claim 2026-09-25: `RQ412` transitioned `READY -> IN_PROGRESS` in this workspace for the implementation-independent Supplier/Shoe Type raw-fact oracle extending the RQ407 fixture. Local runtime lock: `.ai/task-locks/RQ412-cursor.lock.md`.
+
+Owner completion 2026-09-25: `RQ412` was delivered directly to `main` in `cb755cae`. Supplier and Shoe Type list totals, bucket sums, share percentages and master-mutation invariants are reconciled against raw SQL on `supplier_id_at_sale` / `shoe_type_id_at_sale` via `Api.Tests/Analytics/SupplierShoeTypeRawFactOracle.cs` and `Api.Tests/SupplierShoeTypeIndependentOracleIntegrationTests.cs`. Manifest: `docs/qa/SUPPLIER_SHOETYPE_INDEPENDENT_ORACLE_MANIFEST_2026-09-25.md`. Run log: `.ai/runs/2026-09-25-RQ412-evidence.md`. Evidence state: synchronized. `RQ413` remains WAITING behind this owner.
+
+Routing reconciliation 2026-09-25: `RQ411` summary row corrected from stale `WAITING` to `DONE` without reopening the delivered attribution contract.
+
 Owner promotion 2026-09-24: under the user's instruction to claim the next prompt, dependency/collision review confirmed `RQ373` is DONE, no active Supplier Sales backend owner overlaps the historical attribution boundary, and `RQ412`/`RQ413` remain correctly sequenced behind this contract. `RQ411` moved `WAITING -> READY`.
 
 Owner claim 2026-09-24: `RQ411` transitioned `READY -> IN_PROGRESS` in this workspace for immutable/provenance-bearing supplier and shoe-type attribution; local runtime lock `.ai/task-locks/RQ411-codex.lock.md`.
@@ -83,8 +91,8 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 
 | Task | Status | Priority | Feature family | Purpose |
 |---|---|---:|---|---|
-| RQ411 | WAITING | P0 | operations-sale-dimension-attribution | Freeze or provenance-qualify supplier/type attribution for historical sale lines |
-| RQ412 | WAITING | P0 | supplier-shoetype-independent-oracle | Independently reconcile Supplier/Shoe Type to raw facts after canonical RQ407 proof |
+| RQ411 | DONE | P0 | operations-sale-dimension-attribution | Freeze or provenance-qualify supplier/type attribution for historical sale lines |
+| RQ412 | DONE | P0 | supplier-shoetype-independent-oracle | Independently reconcile Supplier/Shoe Type to raw facts after canonical RQ407 proof |
 | RQ413 | WAITING | P1 | operations-runtime-drift-guard | Continuously detect post-import/cache/source drift and fail closed for decision signals |
 | RQ414 | DONE | P1 | inventory-sales-origin-parity | Keep Inventory list sell-through on the same data-origin population as article rows |
 | RQ415 | DONE | P2 | inventory-deterministic-pagination | Make Inventory list ordering stable under ties and concurrent changes |
@@ -187,7 +195,7 @@ Do not redesign Supplier Decision scoring, weighted-margin formulas, comparable-
 
 ## RQ412 - Independent raw-fact oracle for Supplier and Shoe Type
 
-Status: WAITING
+Status: DONE
 Ready after: RQ407 and RQ411; applicable Supplier Sales semantic prompts are DONE
 Priority: P0
 Type: backend-reference-oracle/integration-tests/evidence

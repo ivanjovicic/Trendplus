@@ -3,6 +3,9 @@
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+Owner promotion 2026-09-25: idle recovery under the user's claim-and-execute request verified `RQ412` is dependency-complete in the operations-accuracy addendum (`RQ407`, `RQ411`, Supplier Sales semantic owners DONE). No active oracle lock or overlapping backend claim was found; `RQ412` moved `WAITING -> READY` in the addendum pointer lane.
+Owner claim 2026-09-25: `RQ412` transitioned `READY -> IN_PROGRESS` in this workspace for the independent Supplier/Shoe Type raw-fact oracle. Local runtime lock: `.ai/task-locks/RQ412-cursor.lock.md`.
+Owner completion 2026-09-25: `RQ412` was delivered directly to `main` in `cb755cae`. Supplier and Shoe Type endpoints reconcile to raw sale-line attribution SQL on the shared RQ407 fixture; master mutation does not rewrite frozen totals. Run log: `.ai/runs/2026-09-25-RQ412-evidence.md`. Evidence state: synchronized. `RQ413` remains WAITING.
 Owner promotion 2026-09-25: idle recovery verified that RQ380 is dependency-complete after RQ373, RQ378 and RQ379 delivery. The Supplier Sales backend comparable-cohort path is collision-safe, and no conflicting RQ380 lock/branch/PR exists; RQ380 moved `WAITING -> READY`.
 Owner claim 2026-09-25: RQ380 transitioned `READY -> IN_PROGRESS` in this workspace for Supplier Sales comparable pre/post aggregate, coverage and row/detail/export provenance. Local runtime lock: `.ai/task-locks/RQ380-cursor.lock.md`.
 Owner completion 2026-09-25: RQ380 was delivered directly to `main` in `88b596a2229ba34f8f244a53838893cb670ecca7`. Supplier Sales totals now use the shared comparable pre/post cohort for impact and expose observed versus comparable revenue/quantity, coverage, article count and signal provenance across row, detail, toolbar/export and runtime schema surfaces. Run log: `.ai/runs/2026-09-25-RQ380-evidence.md`. Evidence state: synchronized.
