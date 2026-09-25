@@ -3,6 +3,7 @@
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: RQ440
+Owner claim 2026-09-25 (Supplier overview audit, grok): the audit of „Prodaja po dobavljačima“ (`/analytics/supplier?tab=overview`, legacy `operations-supplier-sales`) added and claimed `RQ443` (total PoP trend must include suppliers without current sales; the unfocused subset of the unregistered `PS11`/C16 in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-25.md`) and `RQ444` (sticky legacy `sezonaId`, data window shown as the period, +1-day header end date), both `READY -> IN_PROGRESS` in this workspace. Local locks: `.ai/task-locks/RQ443-grok.lock.md`, `.ai/task-locks/RQ444-grok.lock.md`. `Current READY prompt` stays `RQ440`. Other findings route to `RQ442`, `RQ441`, `RQ325` and the unregistered `PS06`/`PS11`/`PS12`/`PS16`/`PS17`/`PS18`. Run log: `.ai/runs/2026-09-25-supplier-sales-overview-audit-evidence.md`.
 Owner audit follow-up 2026-09-25: the Operacije calculation audit added `RQ441` (WAITING behind Daily Sales scope/receipt owners) for Daily Sales frozen supplier attribution parity and `RQ442` (READY, independent date-range contract) for half-open whole-day semantics across Supplier, Shoe Type and Color. The bounded concentration fail-closed guard was applied directly; the full denominator contract remains owned by `RQ431`. Scope diagnostics remain owned by existing `RQ382`; no duplicate prompt was added. Audit: `docs/qa/OPERATIONS_UNDOCUMENTED_FINDINGS_2026-09-25.md`; run log: `.ai/runs/2026-09-25-operations-audit-fix-evidence.md`.
 Routing repair 2026-09-25 (same-day review of today's commits, local-only; no task reopened): the `RQ436` section `Status:` line was corrected `IN_PROGRESS -> DONE` to match its summary row and synchronized delivery (`3dde5583`/`ec91dbcf`); `RQ428`, `RQ432`, `RQ433`, `RQ435` and `RQ436` received protocol completion notes (`Evidence state`, `Delivery mode`, `Main commit SHA`, `Main verification`) from their run logs. The `RQ427`-`RQ437` audit evidence was synchronized in `1c3899c8`, and the Pre/Post page-spec drift left by `RQ435`/`RQ436` was repaired test-only in `cc47d418`. Follow-ups: `RQ438` (WAITING behind `RQ429`: remaining `DnevnikPromena.Id`/`ProdajaZaglavlje.Id` joins and the journal `Iznos` sign proof), `RQ439` (WAITING, owner-gated triage of unmerged PR #63) and `RQ440` (READY, nine unowned failing shared analytics specs). Run log: `.ai/runs/2026-09-25-todays-commits-review-evidence.md`.
 Owner promotion 2026-09-25 (same-day review follow-up): `RQ429` is DONE (`ded7efce`, closure `bc248ede`), so `RQ438` moved `WAITING -> READY` on its explicit `Ready after` gate; it is backend-only and must still not edit `RQ437`-owned files while `RQ437` is PARTIAL. `Current READY prompt` now names `RQ440` (no live-data dependency); `RQ438` stays an independent READY lane.
@@ -1597,6 +1598,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ440 | READY | analytics-shared-spec-drift | Triage nine unowned failing shared analytics specs |
 | RQ441 | WAITING | daily-sales-frozen-supplier-attribution | Align Daily Sales supplier buckets with sale-time attribution used by canonical Supplier Sales |
 | RQ442 | READY | operations-whole-day-half-open-ranges | Make Supplier, Shoe Type and Color whole-day filters half-open and boundary-safe |
+| RQ443 | IN_PROGRESS | supplier-overview-total-pop | Keep the Supplier overview total PoP trend on the full previous-period population |
+| RQ444 | IN_PROGRESS | supplier-overview-period-truth | Supplier overview period truth: drop the sticky legacy season and show the analyzed period |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -24151,3 +24154,115 @@ Supplier Sales, Shoe Type Sales and Color Sales send a selected date's end as `2
 - No blocking runtime dependency; `RQ440`-owned shared specs must not be edited unless a named case proves a real regression.
 - `RQ382` remains the owner of Daily scope diagnostics; this prompt owns the non-Daily whole-day boundary contract.
 - Pre/Post remains out of scope unless a separate date contract defect is proven.
+
+---
+
+## RQ443 - Keep the Supplier overview total PoP trend on the full previous-period population
+
+Status: IN_PROGRESS
+Priority: P2
+Type: frontend/tests
+Feature family: supplier-overview-total-pop
+Parallel-safe: no
+Owner: Analytics Reliability / Supplier
+Commit suggestion: `fix(analytics): base supplier total PoP on the full previous period`
+
+### Problem
+
+„Ukupan PoP trend“ (KPI card and toolbar) on „Prodaja po dobavljačima“ is computed in the page from the visible rows' `previousPeriodRevenue`. The backend builds supplier rows only from current-period sale lines, so a supplier (or unknown bucket) that sold in the previous period but not in the current one adds nothing to the previous base. The trend is therefore biased upward: current 10 000 RSD and previous 12 500 RSD, of which 4 500 RSD came from a supplier without current sales, shows +25,0% instead of -20,0%.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx:688` sums `row.previousPeriodRevenue`; `:715` computes the change; toolbar `:1272`, KPI `:1821`.
+- `Api/Endpoints/AllEndpoints.cs:1281-1317` sums the previous period over all sale lines (`previousPeriodRevenue`), while supplier rows come from current-period lines only (`:1430` onward); `totals.previousPeriodRevenue`/`popRevenueChangePct` are returned but unused by this KPI.
+- Same finding as C16 / `PS11` Do step 3 in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-25.md` (not yet registered in this queue); this prompt delivers only the unfocused subset. Audit: `.ai/runs/2026-09-25-supplier-sales-overview-audit-evidence.md`.
+
+### Scope
+
+- `SupplierSalesStatsPage.tsx` (`buildSupplierSalesDisplayProjection`, its caller, the PoP KPI tooltip), `SupplierSalesStatsPage.decisionSuppliers.spec.tsx`, `SupplierSalesStatsPage.premium.spec.tsx`, `scripts/known-guardrail-baseline.json` line shifts only.
+- Excluded: share denominators and focus-mode share (`PS11` steps 1-2), backend-scoped previous totals for known-only/focused views (`PS11` step 3, second half), whole-day boundaries (`RQ442`), backend changes.
+
+### Read first
+
+- `AGENTS.md`, `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `RQ373` (display-population contract), `PS11`
+
+### Do
+
+1. „Svi dobavljači“ (no supplier focus, unknown included): previous base = backend `totals.previousPeriodRevenue`.
+2. Focused supplier: previous base = the row's previous revenue (identical to the backend row).
+3. „Poznati dobavljači“ (unknown hidden): no complete known-only previous total exists, so show N/A and explain it in the tooltip.
+4. Keep N/A for a missing, zero or negative previous base.
+
+### Tests
+
+- Unit: response-total basis with a churned supplier gives -20%; unavailable basis and missing/zero base give null; the default row basis is unchanged.
+- Page: toolbar „Ukupan PoP trend“ uses the backend previous total; N/A with `includeUnknown=false`.
+- `npm run typecheck`, `npm run check:analytics-guardrails`, focused Supplier vitest specs.
+
+### Acceptance
+
+- Unfiltered: KPI = (Σ visible current revenue − `totals.previousPeriodRevenue`) / `totals.previousPeriodRevenue` × 100; known-only shows N/A instead of an upward-biased value; focused supplier matches its row PoP.
+
+### Dependencies
+
+- None blocking. Same file as `PS11`, `PS12`, `PS18` (unregistered) and `RQ444`; sequence commits, do not interleave.
+- Reliability contract: source of truth `GET /api/analytics/supplier-sales-stats` `totals.previousPeriodRevenue` (RSD, Σ `Kolicina*Cena`, same store/data-scope filters, comparable previous range of equal length); unit percent with one decimal; numerator current visible revenue − previous base; denominator previous base; true zero change shows 0,0%; missing, zero or negative base → N/A (never 0 or +100%); no freshness change; surfaces: KPI card and table toolbar only.
+
+---
+
+## RQ444 - Supplier overview period truth: drop the sticky legacy season and show the analyzed period
+
+Status: IN_PROGRESS
+Priority: P2
+Type: frontend/tests
+Feature family: supplier-overview-period-truth
+Parallel-safe: no
+Owner: Analytics Reliability / Supplier
+Commit suggestion: `fix(analytics): keep supplier overview period metadata truthful`
+
+### Problem
+
+On „Prodaja po dobavljačima“ the period shown can differ from the period computed:
+
+1. The embedded overview still reads the legacy `sezonaId` URL parameter (old Supplier Sales links, Data Quality return links). The backend then replaces `fromDate`/`toDate` with the season range, but the consolidated Period/Od/Do controls never clear `sezonaId`, so changing the period does not change the KPIs while the controls show the new dates. Only „Resetuj“ clears it.
+2. The „Period i filteri“ context card renders `effectivePeriodLabel`, which the overview fills with the whole-history sales data window (`dataWindowFrom`–`dataWindowTo`), not the analyzed period.
+3. The embedded trust payload forwards `toDate` as `YYYY-MM-DDT23:59:59Z`; local `formatDate` renders it as the next calendar day in Europe/Belgrade.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/useSupplierCanonicalState.ts:128-144` (`setPreset`/`setDate` keep `sezonaId`; `resetFilters` `:222` deletes it).
+- `SupplierSalesStatsPage.tsx:783`, `:856` read `sezonaId` in embedded mode; `:1325-1328` put it into Data Quality links; `Api/Endpoints/AllEndpoints.cs:1161-1175` season override.
+- `SupplierSalesStatsPage.tsx:1219-1229` (payload `periodFrom/periodTo` = raw response timestamps, `effectivePeriodLabel` = data window); `SupplierConsolidatedPage.tsx:119-130` uses it as the period; `utils/analyticsFormatters.ts:61-70` formats in local time; `AllEndpoints.cs:7911` `GetSalesDataWindowAsync` returns whole-history min/max per store/scope.
+- Audit: `.ai/runs/2026-09-25-supplier-sales-overview-audit-evidence.md`. Not covered by `PS12` (trust header staleness) or `PS16` (date input locale).
+
+### Scope
+
+- `useSupplierCanonicalState.ts`, the embedded trust payload in `SupplierSalesStatsPage.tsx`, a new `useSupplierCanonicalState.spec.tsx`, `SupplierSalesStatsPage.premium.spec.tsx`, `scripts/known-guardrail-baseline.json` line shifts only.
+- Keep the standalone header's data-window label (existing premium spec). Excluded: half-open end (`RQ442`), trust-header staleness on supplier switch (`PS12`), date input format (`PS16`), backend changes.
+
+### Read first
+
+- `AGENTS.md`, `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `RQ268`/`RQ305` (legacy redirect owners), `RQ442`, `PS12`, `PS16`
+
+### Do
+
+1. `setPreset`/`setDate` delete the legacy `sezonaId` so an explicit period choice wins; other filters keep it.
+2. Embedded `periodFrom`/`periodTo` are calendar dates (`YYYY-MM-DD`) of the backend effective range, falling back to the requested dates.
+3. Embedded `effectivePeriodLabel` = analyzed period, with the sales data window only as a „dostupni podaci: …“ suffix.
+
+### Tests
+
+- Hook: `setPreset` and `setDate` remove `sezonaId` and keep store/legacy params; `setSupplier` keeps it.
+- Page: embedded payload sends `2026-06-01`/`2026-06-30` for `…T00:00:00Z`/`…T23:59:59Z`, and the label starts with the analyzed period; unit test for the fallback.
+- `npm run typecheck`, `npm run check:analytics-guardrails`, focused Supplier specs including `SupplierRedirects.spec.tsx` and `AppAnalyticsRoutes.spec.tsx`.
+
+### Acceptance
+
+- Changing Period/Od/Do after a legacy season link changes the request (no `sezonaId`); the context card shows the analyzed period; the header end date equals the selected end date in UTC+ zones.
+
+### Dependencies
+
+- None blocking. Same file as `RQ443` and unregistered `PS11`/`PS12`/`PS18`; `RQ442` will later move the request end to an exclusive next-day bound and must keep this calendar-date display.
+- Reliability contract: source of truth is the response `fromDate`/`toDate` (effective range after any season override); unit calendar date; missing → requested filter dates; the data window must never be presented as the analyzed period; no numeric KPI changes.
