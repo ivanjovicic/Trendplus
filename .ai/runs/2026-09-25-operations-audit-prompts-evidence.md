@@ -2,11 +2,11 @@ Task ID: operations-audit-prompts-2026-09-25
 Queue: direct-user-request
 Date: 2026-09-25
 Agent/tool: Grok Bot (executor subagent, local machine via Shell/Read; no cloud agent)
-Delivery target: none
-Working branch / PR: local `main` docs commit; no branch, no PR, no push per user request
-Main commit SHA: pending
-Main verification: skipped — committed locally on `main` (on top of `720a785a`), not pushed per user request; audit base `00accd93`
-Evidence state: pending - local commit on `main`; push not approved
+Delivery target: main (direct-main docs commit)
+Working branch / PR: `main`, commit `fb956bac`; no branch or PR; this agent did not push (concurrent agents' pushes of `main` published it)
+Main commit SHA: fb956bac61aa9f10da598ddc49df34b5178e2234
+Main verification: passed - `git merge-base --is-ancestor fb956bac origin/main` exits 0 (verified 2026-09-25 during the same-day review of today's commits); audit base `00accd93`
+Evidence state: synchronized
 
 ## What was done
 - Audited the eight Operacije menu screens (Inventory, Supplier Sales alias, Shoe Type, Daily Sales, Pre/Post, Color, Pre-Nivelacija Priority, Supplier Footwear alias) from page to API client, endpoint and handler/SQL, and ran focused frontend/backend checks.
@@ -50,10 +50,10 @@ Evidence state: pending - local commit on `main`; push not approved
 - Supplier hub (canonical `/analytics/supplier`) was not re-audited in depth.
 
 ## Risks
-- Changes are committed locally on `main` but not pushed; another agent reading `origin/main` will not see the new prompts until the user approves a push.
+- Changes were committed locally on `main` (`fb956bac`); concurrent agents' pushes of `main` published them to `origin/main`, and other workspaces claimed `RQ427`-`RQ436` the same afternoon.
 - `RQ431` requires a business decision on the signed concentration contract before implementation.
 - Line numbers in prompts refer to `00accd93`; implementers must re-verify after intervening commits.
 
 ## Next
 - Implement `RQ427` from the Current READY pointer; `RQ428`, `RQ432`, `RQ435` and `RQ437` are independently claimable.
-- Commit this docs change when the user approves (one docs commit), then synchronize `Main commit SHA`/`Evidence state`.
+- Done: committed as `fb956bac`; `Main commit SHA`/`Evidence state` were synchronized by the same-day review of today's commits.
