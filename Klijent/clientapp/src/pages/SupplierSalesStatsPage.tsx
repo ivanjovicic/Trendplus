@@ -1154,8 +1154,9 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       notes.push(`Prikazani skup (${displayPopulationLabel}) je filtriran iz backend odgovora; kvalitet, snapshot i pre/post napomene ispod odnose se na ceo odgovor.`);
     }
     const splitCoverage = data.dataQuality.revenueWithNivelacijaSplitSharePct;
-    const missingCostShare = data.dataQuality.missingCostRevenueSharePct;
-    const historicalCostShare = missingCostShare == null ? null : Math.max(0, 100 - missingCostShare);
+    const missingCostShare = data.dataQuality.noCostRevenueSharePct ?? data.dataQuality.missingCostRevenueSharePct;
+    const historicalCostShare = data.dataQuality.historicalCostRevenueSharePct
+      ?? (missingCostShare == null ? null : Math.max(0, 100 - missingCostShare));
     const estimatedCostShare = data.dataQuality.estimatedCostRevenueSharePct;
     const unknownShare = data.dataQuality.unknownSupplierRevenueSharePct;
 
@@ -1186,7 +1187,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
   const headerDataQualityStatus = useMemo(() => {
     if (!data) return null;
     if ((data.suppliers ?? []).length === 0) return "insufficient_data";
-    const missingCostShare = data.dataQuality.missingCostRevenueSharePct;
+    const missingCostShare = data.dataQuality.noCostRevenueSharePct ?? data.dataQuality.missingCostRevenueSharePct;
     const unknownShare = data.dataQuality.unknownSupplierRevenueSharePct;
     if (missingCostShare == null || unknownShare == null) return "insufficient_data";
     if (missingCostShare >= 50 || unknownShare >= 20) return "critical";
@@ -1266,9 +1267,9 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       { key: "referenceCohort", label: "Referentni skup preporuke", value: recommendationReferenceLabel },
       { key: "suppliers", label: `Dobavljača (${displayPopulationLabel})`, value: formatMetricDisplayValue({ value: displayProjection.displaySupplierCount, kind: "number", fallback: "N/A" }) },
       { key: "unknownSuppliers", label: `Nepoznato/N-A (${displayPopulationLabel})`, value: displayProjection.unknownSupplierCount },
-      { key: "marginCoverage", label: `${displayPopulationIsFiltered ? "Pokriće istorijskog troška % (ceo odgovor)" : "Pokriće istorijskog troška %"}`, value: fmtPct(data?.dataQuality.missingCostRevenueSharePct == null ? null : 100 - data.dataQuality.missingCostRevenueSharePct, 1) },
+      { key: "marginCoverage", label: `${displayPopulationIsFiltered ? "Pokriće istorijskog troška % (ceo odgovor)" : "Pokriće istorijskog troška %"}`, value: fmtPct(data?.dataQuality.historicalCostRevenueSharePct, 1) },
       { key: "fallbackCoverage", label: `${displayPopulationIsFiltered ? "Promet sa procenjenom nabavnom % (ceo odgovor)" : "Promet sa procenjenom nabavnom %"}`, value: fmtPct(data?.dataQuality.estimatedCostRevenueSharePct, 1) },
-      { key: "noCostCoverage", label: `${displayPopulationIsFiltered ? "Promet bez nabavne cene % (ceo odgovor)" : "Promet bez nabavne cene %"}`, value: fmtPct(data?.dataQuality.missingCostRevenueSharePct, 1) },
+      { key: "noCostCoverage", label: `${displayPopulationIsFiltered ? "Promet bez nabavne cene % (ceo odgovor)" : "Promet bez nabavne cene %"}`, value: fmtPct(data?.dataQuality.noCostRevenueSharePct ?? data?.dataQuality.missingCostRevenueSharePct, 1) },
       { key: "totalsPopTrend", label: "Ukupan PoP trend", value: fmtPct(periodGrowthPct, 1) },
       { key: "totalsPrePostImpact", label: `${displayPopulationIsFiltered ? "Ukupan nivelacija uticaj (ceo odgovor)" : "Ukupan nivelacija uticaj"}`, value: fmtPct(data?.totals.prePostNivelacijaRevenueImpactPct, 1) },
       { key: "splitCoverage", label: `${displayPopulationIsFiltered ? "Uporedivo pre/post pokrivanje (ceo odgovor)" : "Uporedivo pre/post pokrivanje"}`, value: fmtPct(data?.dataQuality.revenueWithNivelacijaSplitSharePct, 1) },
@@ -1281,7 +1282,9 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       { key: "insufficientData", label: "Nedovoljno podataka", value: supplierCounts.insufficientData },
     ],
     [
+      data?.dataQuality.historicalCostRevenueSharePct,
       data?.dataQuality.missingCostRevenueSharePct,
+      data?.dataQuality.noCostRevenueSharePct,
       data?.dataQuality.revenueWithNivelacijaSplitSharePct,
       data?.generatedAt,
       data?.totals.prePostNivelacijaRevenueImpactPct,
@@ -1759,7 +1762,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                 ) : null}
               </article>
               <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Signal kvaliteta miks marže kroz dobavljače.">
-                <span>{displayPopulationIsFiltered ? "Prosečna marža (ceo odgovor)" : "Prosečna marža"} <InfoTip text="Ovaj benchmark ostaje vezan za ceo backend odgovor jer ga koristi engine preporuka; prikazana vrednost nije rebazirana na filtrirani skup." /></span>
+                <span>{displayPopulationIsFiltered ? "Ponderisana marža (ceo odgovor)" : "Ponderisana marža"} <InfoTip text="Benchmark je ponderisan pokrivenim prometom poznatih dobavljača: maržni doprinos / promet sa dostupnim troškom. Engine preporuka koristi istu vrednost; nije rebaziran na filtrirani prikaz." /></span>
                 <strong>{fmtPct(data.totals.prosecnaMarza ?? null, 1)}</strong>
                 <KpiExplainButton metricKey="supplierAverageMarginPct" ariaLabel="Kako je izračunata prosečna marža" />
               </article>

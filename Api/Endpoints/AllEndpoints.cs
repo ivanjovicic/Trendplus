@@ -1659,19 +1659,45 @@ public static class AllEndpoints
                 var estimatedCostRevenue = suppliers.Sum(r => r.estimatedCostRevenue);
                 var missingCostRevenue = AnalyticsMarginPolicy.ResolveNoCostRevenue(totalRevenue, totalRevenueWithAnyCost);
                 var missingCostQty = stavke.Sum(s =>
-                    AnalyticsMarginPolicy.IsReliableCost(s.SaleLineCost)
+                {
+                    var snapshotCost = s.SaleLineCost is null
+                        && snapshotCostByArtikalId.TryGetValue(s.ArtikalId, out var resolvedSnapshotCost)
+                        ? resolvedSnapshotCost
+                        : (decimal?)null;
+                    var resolvedCost = AnalyticsMarginPolicy.ResolveUnitCostWithSnapshot(
+                        s.SaleLineCost,
+                        snapshotCost,
+                        s.ProductCostRsd,
+                        s.ProductCostLegacy);
+                    return AnalyticsMarginPolicy.IsReliableCost(resolvedCost.UnitCost)
                         ? 0
-                        : s.Kolicina);
+                        : s.Kolicina;
+                });
 
                 var dataQuality = new
                 {
                     missingCostQty,
                     missingCostRevenue,
                     missingCostRevenueSharePct = AnalyticsMarginPolicy.ResolveNoCostCoveragePct(totalRevenue, totalRevenueWithAnyCost),
+                    noCostRevenue = missingCostRevenue,
+                    noCostRevenueSharePct = AnalyticsMarginPolicy.ResolveNoCostCoveragePct(totalRevenue, totalRevenueWithAnyCost),
+                    costCoveredRevenue = Math.Round(totalRevenueWithAnyCost, 2),
+                    costCoveredRevenueSharePct = totalRevenue > 0m
+                        ? Math.Round((double)(totalRevenueWithAnyCost / totalRevenue * 100m), 2)
+                        : (double?)null,
+                    historicalCostRevenue = Math.Round(suppliers.Sum(r => r.historicalCostRevenue), 2),
+                    historicalCostRevenueSharePct = totalRevenue > 0m
+                        ? Math.Round((double)(suppliers.Sum(r => r.historicalCostRevenue) / totalRevenue * 100m), 2)
+                        : (double?)null,
+                    snapshotCostRevenue = Math.Round(suppliers.Sum(r => r.snapshotCostRevenue), 2),
+                    snapshotCostRevenueSharePct = totalRevenue > 0m
+                        ? Math.Round((double)(suppliers.Sum(r => r.snapshotCostRevenue) / totalRevenue * 100m), 2)
+                        : (double?)null,
                     estimatedCostRevenue = Math.Round(estimatedCostRevenue, 2),
                     estimatedCostRevenueSharePct = totalRevenue > 0m
                         ? Math.Round((double)(estimatedCostRevenue / totalRevenue * 100m), 2)
                         : (double?)null,
+                    costSourceBasis = "historical_sale_line_then_snapshot_then_product_fallback_then_unavailable",
                     unknownSupplierRevenue = Math.Round(unknownSupplierRevenue, 2),
                     unknownSupplierRevenueSharePct = totalRevenue > 0m
                         ? Math.Round((double)(unknownSupplierRevenue / totalRevenue * 100m), 2)
@@ -1704,13 +1730,15 @@ public static class AllEndpoints
                         toUtc);
                 }
 
-                var knownSupplierMarginValues = suppliers
+                var knownSupplierMarginEvidence = suppliers
                     .Where(row => !row.isUnknown)
-                    .Select(row => row.marginPct)
+                    .Select(row => (
+                        RevenueWithCost: row.revenueWithCost,
+                        MarginContribution: row.marginContribution))
                     .ToList();
-                var averageKnownMarginPct = knownSupplierMarginValues.Count > 0
-                    ? knownSupplierMarginValues.Average()
-                    : (double?)null;
+                var weightedMarginPct = AnalyticsMarginPolicy.ResolveWeightedMarginPct(knownSupplierMarginEvidence);
+                var weightedMarginRevenue = knownSupplierMarginEvidence.Sum(row => row.RevenueWithCost);
+                var weightedMarginContribution = knownSupplierMarginEvidence.Sum(row => row.MarginContribution);
                 var totalMarginContribution = suppliers.Sum(row => row.marginContribution);
                 var totalUnits = suppliers.Sum(row => row.ukupnaKolicina);
                 var unknownSupplierSharePct = dataQuality.unknownSupplierRevenueSharePct ?? 0d;
@@ -1749,7 +1777,7 @@ public static class AllEndpoints
                             HasPreviousPeriodWindow: hasPreviousPeriodWindow,
                             IsNewEntity: isNewSupplier,
                             UnknownBucketSharePct: unknownSupplierSharePct),
-                            averageKnownMarginPct);
+                            weightedMarginPct);
                         var hasComparableNivelacijaSignal = supplier.prePostNivelacijaRevenueImpactPct.HasValue
                             && supplier.prePostNivelacijaUnitsImpactPct.HasValue;
                         var exposedRecommendation = AnalyticsDecisionRecommendationEngine.ApplyComparableSignalGate(
@@ -1848,7 +1876,10 @@ public static class AllEndpoints
                     ukupanPromet = totalRevenue,
                     ukupanMarzniDoprinos = suppliers.Sum(r => r.marginContribution),
                     ukupanTrosak = suppliers.Sum(r => r.totalCost),
-                    prosecnaMarza = averageKnownMarginPct.HasValue ? Math.Round(averageKnownMarginPct.Value, 2) : (double?)null,
+                    prosecnaMarza = weightedMarginPct,
+                    weightedMarginRevenue = Math.Round(weightedMarginRevenue, 2),
+                    weightedMarginContribution = Math.Round(weightedMarginContribution, 2),
+                    marginBenchmarkBasis = "known_supplier_covered_revenue_weighted",
                     historicalCostCoveragePct = totalHistPct,
                     estimatedCostCoveragePct = totalEstPct,
                     noCostCoveragePct = totalNoCostPct,
