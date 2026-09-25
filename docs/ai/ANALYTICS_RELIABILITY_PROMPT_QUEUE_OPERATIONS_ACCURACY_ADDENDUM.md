@@ -5,6 +5,12 @@ Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 Main RQ current READY prompt: none
 
+Owner promotion 2026-09-25: idle recovery under the user's claim-and-execute request verified `RQ413` is dependency-complete after `RQ407` and `RQ412` delivery. No active drift-guard lock or overlapping cache/freshness owner was found; `RQ413` moved `WAITING -> READY`.
+
+Owner claim 2026-09-25: `RQ413` transitioned `READY -> IN_PROGRESS` in this workspace for bounded Operations drift/cache integrity probes and fail-closed decision gating. Local runtime lock: `.ai/task-locks/RQ413-cursor.lock.md`.
+
+Owner completion 2026-09-25: `RQ413` was delivered directly to `main` in `76d0194a`. Operations integrity now exposes `verified/unverified/degraded/drift_detected` snapshots, runs bounded Supplier/Shoe Type probes (raw-fact oracle + cache lane), marks `unverified` on analytics cache clear, blocks Supplier/Shoe recommendations when integrity is not verified, and registers `OperationsAnalyticsIntegrityWorker`. Run log: `.ai/runs/2026-09-25-RQ413-evidence.md`. Evidence state: synchronized.
+
 Owner promotion 2026-09-25: idle recovery verified `RQ407`, `RQ411` and applicable Supplier Sales semantic prompts (`RQ373`-`RQ374`, `RQ378`-`RQ380`) are DONE on current `main`. No active independent-oracle lock or overlapping backend claim was found; `RQ412` moved `WAITING -> READY` as the operations-accuracy pointer.
 
 Owner claim 2026-09-25: `RQ412` transitioned `READY -> IN_PROGRESS` in this workspace for the implementation-independent Supplier/Shoe Type raw-fact oracle extending the RQ407 fixture. Local runtime lock: `.ai/task-locks/RQ412-cursor.lock.md`.
@@ -93,7 +99,7 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 |---|---|---:|---|---|
 | RQ411 | DONE | P0 | operations-sale-dimension-attribution | Freeze or provenance-qualify supplier/type attribution for historical sale lines |
 | RQ412 | DONE | P0 | supplier-shoetype-independent-oracle | Independently reconcile Supplier/Shoe Type to raw facts after canonical RQ407 proof |
-| RQ413 | WAITING | P1 | operations-runtime-drift-guard | Continuously detect post-import/cache/source drift and fail closed for decision signals |
+| RQ413 | DONE | P1 | operations-runtime-drift-guard | Continuously detect post-import/cache/source drift and fail closed for decision signals |
 | RQ414 | DONE | P1 | inventory-sales-origin-parity | Keep Inventory list sell-through on the same data-origin population as article rows |
 | RQ415 | DONE | P2 | inventory-deterministic-pagination | Make Inventory list ordering stable under ties and concurrent changes |
 | RQ416 | DONE | P1 | inventory-insight-identity-provenance | Preserve store/supplier identity and cost provenance from Inventory insights to detail |
@@ -276,7 +282,7 @@ Do not reuse production aggregation helpers in the oracle.
 
 ## RQ413 - Continuous Operations drift/cache/freshness guardrails
 
-Status: WAITING
+Status: DONE
 Ready after: RQ407 and RQ412
 Priority: P1
 Type: backend-observability/cache-invalidation/tests

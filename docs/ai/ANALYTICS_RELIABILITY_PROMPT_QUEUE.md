@@ -3,6 +3,9 @@
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+Owner promotion 2026-09-25: idle recovery under the user's claim-and-execute request verified `RQ413` is dependency-complete after `RQ407` and `RQ412`; `RQ413` moved `WAITING -> READY` in the operations-accuracy addendum.
+Owner claim 2026-09-25: `RQ413` transitioned `READY -> IN_PROGRESS` for Operations drift/cache integrity guardrails. Local runtime lock: `.ai/task-locks/RQ413-cursor.lock.md`.
+Owner completion 2026-09-25: `RQ413` was delivered directly to `main` in `76d0194a`. Bounded integrity probes, operator endpoints, cache-clear unverified state and Supplier/Shoe fail-closed recommendation gating are live. Run log: `.ai/runs/2026-09-25-RQ413-evidence.md`. Evidence state: synchronized.
 Owner promotion 2026-09-25: idle recovery under the user's claim-and-execute request verified `RQ412` is dependency-complete in the operations-accuracy addendum (`RQ407`, `RQ411`, Supplier Sales semantic owners DONE). No active oracle lock or overlapping backend claim was found; `RQ412` moved `WAITING -> READY` in the addendum pointer lane.
 Owner claim 2026-09-25: `RQ412` transitioned `READY -> IN_PROGRESS` in this workspace for the independent Supplier/Shoe Type raw-fact oracle. Local runtime lock: `.ai/task-locks/RQ412-cursor.lock.md`.
 Owner completion 2026-09-25: `RQ412` was delivered directly to `main` in `cb755cae`. Supplier and Shoe Type endpoints reconcile to raw sale-line attribution SQL on the shared RQ407 fixture; master mutation does not rewrite frozen totals. Run log: `.ai/runs/2026-09-25-RQ412-evidence.md`. Evidence state: synchronized. `RQ413` remains WAITING.
