@@ -1577,7 +1577,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ432 | DONE | pre-nivelacija-kpi-definition-parity | Align Pre-Nivelacija KPI definitions with backend sums, tooltips and table gating |
 | RQ433 | DONE | pre-nivelacija-facet-universe | Build Pre-Nivelacija supplier, season and type options from the filter universe |
 | RQ434 | READY | pre-nivelacija-display-polish | Fix Pre-Nivelacija signed WoW, filter validation, labels, counts and tones |
-| RQ435 | IN_PROGRESS | operations-safe-error-messages | Return safe traceable Shoe Type errors and allowlist frontend error display |
+| RQ435 | DONE | operations-safe-error-messages | Return safe traceable Shoe Type errors and allowlist frontend error display |
 | RQ436 | WAITING | operations-derived-kpi-cleanup | Remove dead or frontend-derived Operacije KPIs and small lifecycle leaks |
 | RQ437 | READY | operations-stale-test-hygiene | Repair stale Operacije tests that hide regressions |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
