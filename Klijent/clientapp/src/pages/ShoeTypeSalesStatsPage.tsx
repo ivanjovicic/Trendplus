@@ -32,6 +32,7 @@ import UltraSpinner from "../components/ui/UltraSpinner";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { getDataScope, type DataScope } from "../utils/dataScope";
+import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
 import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange, formatDate } from "../utils/analyticsFormatters";
 import {
@@ -77,6 +78,12 @@ import { useReliableAnalyticsQuery } from "../hooks/useReliableAnalyticsQuery";
 import "./ShoeTypeSalesStatsPage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
+const SHOE_TYPE_ERROR_FALLBACK = "Greška pri učitavanju podataka po tipu obuće.";
+const SHOE_TYPE_SAFE_ERROR_MESSAGES = [
+  SHOE_TYPE_ERROR_FALLBACK,
+  "Statistika prodaje po tipu obuće trenutno nije dostupna.",
+  "Podaci trenutno nisu dostupni.",
+] as const;
 type SortDir = "asc" | "desc";
 type SortField =
   | "tipObuceNaziv"
@@ -438,12 +445,17 @@ export default function ShoeTypeSalesStatsPage() {
     refetch,
   } = useReliableAnalyticsQuery<ShoeTypeSalesStatsResponse>({
     query: shoeTypeQuery,
-    getErrorMessage: useCallback((reason: unknown) => reason instanceof Error
-      ? reason.message
-      : "Greška pri učitavanju podataka po tipu obuće.", []),
+    getErrorMessage: useCallback((reason: unknown) => getSafeAnalyticsErrorMessage(
+      reason instanceof Error ? reason.message : null,
+      null,
+      SHOE_TYPE_ERROR_FALLBACK,
+      SHOE_TYPE_SAFE_ERROR_MESSAGES,
+    ), []),
   });
   const loading = initialLoading || refetching;
-  const error = queryError;
+  const error = queryError
+    ? getSafeAnalyticsErrorMessage(queryError, null, SHOE_TYPE_ERROR_FALLBACK, SHOE_TYPE_SAFE_ERROR_MESSAGES)
+    : null;
 
   const decisionRows = useMemo<DecisionShoeType[]>(() => {
     const rows = data?.shoeTypes ?? [];

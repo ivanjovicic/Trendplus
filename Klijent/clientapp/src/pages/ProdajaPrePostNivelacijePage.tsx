@@ -170,7 +170,7 @@ function getSafePrePostInlineErrorMessage(reason: unknown): string {
   return getSafeAnalyticsErrorMessage(
     reason instanceof Error ? reason.message : String(reason),
     undefined,
-    PRE_POST_INLINE_ERROR_FALLBACK,
+    PRE_POST_INLINE_ERROR_FALLBACK, PRE_POST_SAFE_ERROR_MESSAGES,
   );
 }
 const CHART_GRID_STROKE = "var(--dashboard-grid, var(--border-default))";
@@ -421,6 +421,12 @@ function buildConfidenceMeta(
   return { label: fmtPct(reliabilityPct, 0), tone };
 }
 
+const PRE_POST_SAFE_ERROR_MESSAGES = [
+  PRE_POST_INLINE_ERROR_FALLBACK,
+  "Greška pri učitavanju pre/post analitike.",
+  "Pre/post nivelacija nije dostupna.",
+] as const;
+
 function buildVolatilityMeta(currentRevenue: number | null, previousRevenue: number | null): {
   pct: number | null;
   label: string;
@@ -630,9 +636,12 @@ export default function ProdajaPrePostNivelacijePage() {
     refetch,
   } = useReliableAnalyticsQuery<PrePostQuerySnapshot>({
     query: prePostQuery,
-    getErrorMessage: useCallback((reason: unknown) => reason instanceof Error
-      ? reason.message
-      : "Greška pri učitavanju pre/post analitike.", []),
+    getErrorMessage: useCallback((reason: unknown) => getSafeAnalyticsErrorMessage(
+      reason instanceof Error ? reason.message : null,
+      null,
+      "Greška pri učitavanju pre/post analitike.",
+      PRE_POST_SAFE_ERROR_MESSAGES,
+    ), []),
   });
   const data = querySnapshot?.current ?? null;
   const previousData = querySnapshot?.previous ?? null;

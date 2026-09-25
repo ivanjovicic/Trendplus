@@ -2798,19 +2798,23 @@ public static class AllEndpoints
             catch (Exception ex)
             {
                 requestStopwatch.Stop();
+                var correlationId = ResolveAnalyticsCorrelationId(httpContext);
                 logger.LogError(
                     ex,
-                    "Shoe-type-sales-stats failed after {ElapsedMs}ms. StoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}",
+                    "Shoe-type-sales-stats failed after {ElapsedMs}ms. CorrelationId={CorrelationId} StoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}",
                     requestStopwatch.ElapsedMilliseconds,
+                    correlationId,
                     storeId,
                     sezonaId,
                     fromUtc,
                     toUtc);
 
-                return Results.Problem(
-                    title: "Greska pri ucitavanju statistike prodaje po tipu obuce",
-                    detail: ex.Message,
-                    statusCode: 500);
+                return CreateShoeTypeSalesStatsProblem(
+                    "Greška pri učitavanju statistike prodaje po tipu obuće",
+                    "Statistika prodaje po tipu obuće trenutno nije dostupna. Pokušajte ponovo.",
+                    StatusCodes.Status500InternalServerError,
+                    "shoe_type_sales_stats_unavailable",
+                    correlationId);
             }
         })
         .WithName("GetShoeTypeSalesStats")
@@ -7576,6 +7580,24 @@ public static class AllEndpoints
     }
 
     private static IResult CreateColorSalesStatsProblem(
+        string title,
+        string detail,
+        int statusCode,
+        string errorCode,
+        string correlationId)
+    {
+        return Results.Problem(
+            title: title,
+            detail: $"{detail} Referentni ID: {correlationId}.",
+            statusCode: statusCode,
+            extensions: new Dictionary<string, object?>
+            {
+                ["errorCode"] = errorCode,
+                ["correlationId"] = correlationId
+            });
+    }
+
+    private static IResult CreateShoeTypeSalesStatsProblem(
         string title,
         string detail,
         int statusCode,

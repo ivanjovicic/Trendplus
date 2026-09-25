@@ -14,10 +14,17 @@ const TECHNICAL_ERROR_PATTERNS = [
   /\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/,
 ];
 
+export type AnalyticsSafeMessageAllowlist = readonly string[];
+
+function matchesAllowlistedMessage(message: string, allowlist?: AnalyticsSafeMessageAllowlist): boolean {
+  return Boolean(allowlist?.some((prefix) => message === prefix || message.startsWith(prefix)));
+}
+
 export function getSafeAnalyticsErrorMessage(
   message: string | null | undefined,
   errorCode?: string | null,
   fallback = ANALYTICS_ERROR_FALLBACK_MESSAGE,
+  allowlist?: AnalyticsSafeMessageAllowlist,
 ): string {
   const normalizedMessage = typeof message === "string" ? message.trim() : null;
   if (!normalizedMessage) return fallback;
@@ -25,6 +32,10 @@ export function getSafeAnalyticsErrorMessage(
   const normalizedCode = typeof errorCode === "string" ? errorCode.trim().toLocaleLowerCase() : null;
   if (normalizedCode && normalizedMessage.toLocaleLowerCase().includes(normalizedCode)) {
     return ANALYTICS_ERROR_FALLBACK_MESSAGE;
+  }
+
+  if (allowlist) {
+    return matchesAllowlistedMessage(normalizedMessage, allowlist) ? normalizedMessage : fallback;
   }
 
   if (TECHNICAL_ERROR_PATTERNS.some((pattern) => pattern.test(normalizedMessage))) {

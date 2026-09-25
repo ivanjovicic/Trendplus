@@ -54,11 +54,18 @@ import {
 import { resolveColorCoveragePct } from "../utils/colorSalesCoverage";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
 import { getAnalyticsDataFreshnessStatus } from "../utils/analyticsResponseMeta";
+import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { readAnalyticsTableSort, writeAnalyticsTableSort } from "../utils/analyticsTableSortUrl";
 import { useReliableAnalyticsQuery } from "../hooks/useReliableAnalyticsQuery";
 import "./ColorSalesStatsPage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
+const COLOR_ERROR_FALLBACK = "Greška pri učitavanju podataka po boji.";
+const COLOR_SAFE_ERROR_MESSAGES = [
+  COLOR_ERROR_FALLBACK,
+  "Statistika prodaje po boji artikla trenutno nije dostupna.",
+  "Podaci trenutno nisu dostupni.",
+] as const;
 type SortDir = "asc" | "desc";
 type SortField =
   | "boja"
@@ -359,12 +366,17 @@ export default function ColorSalesStatsPage() {
     refetch,
   } = useReliableAnalyticsQuery<ColorSalesStatsResponse>({
     query: colorQuery,
-    getErrorMessage: useCallback((reason: unknown) => reason instanceof Error
-      ? reason.message
-      : "Greška pri učitavanju podataka po boji.", []),
+    getErrorMessage: useCallback((reason: unknown) => getSafeAnalyticsErrorMessage(
+      reason instanceof Error ? reason.message : null,
+      null,
+      COLOR_ERROR_FALLBACK,
+      COLOR_SAFE_ERROR_MESSAGES,
+    ), []),
   });
   const loading = initialLoading || refetching;
-  const error = queryError;
+  const error = queryError
+    ? getSafeAnalyticsErrorMessage(queryError, null, COLOR_ERROR_FALLBACK, COLOR_SAFE_ERROR_MESSAGES)
+    : null;
 
   const decisionRows = useMemo<DecisionColor[]>(() => {
     const rows = data?.colors ?? [];
