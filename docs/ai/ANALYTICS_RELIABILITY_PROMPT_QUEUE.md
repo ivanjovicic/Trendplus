@@ -2,7 +2,9 @@
 
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ378
+Owner promotion 2026-09-25: idle recovery verified that RQ378 is the next dependency-complete P1 Supplier Sales correctness owner. RQ373 and RQ411 are delivered on `main`, and no conflicting Supplier Sales margin-quality lock/branch/PR exists. RQ379 consumes the corrected response semantics and RQ380 remains a separate comparable-cohort owner; RQ378 moved `WAITING -> READY`.
+Owner claim 2026-09-25: RQ378 transitioned `READY -> IN_PROGRESS` in this workspace for the weighted Supplier Sales margin benchmark, recommendation baseline and cost-source quality contract. Local runtime lock: `.ai/task-locks/RQ378-cursor.lock.md`.
 Owner promotion 2026-09-24: idle recovery verified that RQ373 is the dependency-complete Supplier Sales visible-population owner. RQ378 and RQ380 depend on its display/reference contract, while RQ379 must consume the stabilized response schema; no conflicting active claim, branch or PR was found. RQ373 moved `WAITING -> READY`.
 Owner claim 2026-09-24: RQ373 transitioned `READY -> IN_PROGRESS` in this workspace for the Supplier Sales display-population/reference-cohort contract across KPI, chart, table, detail, export and recommendation projections. Local runtime lock: `.ai/task-locks/RQ373-cursor.lock.md`.
 Owner completion 2026-09-24: RQ373 delivered the bounded Supplier Sales display-population/reference-cohort contract directly to `main`. Visible revenue, units, margin shares and PoP now use the same filtered rows as the table; backend recommendation status and whole-response reference semantics remain explicit in trust, detail and export metadata. Run log: `.ai/runs/2026-09-24-RQ373-evidence.md`. RQ378/RQ379/RQ380 remain separate Supplier Sales owners.
@@ -1501,7 +1503,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ375 | DONE | shoe-type-margin-quality-contract | Align Shoe Type weighted margin baseline, cost-source semantics and runtime validation |
 | RQ376 | DONE | shoe-type-prepost-aggregate-parity | Align Shoe Type pre/post totals with comparable evidence cohort |
 | RQ377 | DONE | shoe-type-detail-trust-contract | Align Shoe Type detail route with row recommendation, trust and unknown identity |
-| RQ378 | WAITING | supplier-sales-margin-quality-contract | Align Supplier weighted margin benchmark and cost-source semantics |
+| RQ378 | IN_PROGRESS | supplier-sales-margin-quality-contract | Align Supplier weighted margin benchmark and cost-source semantics |
 | RQ379 | WAITING | supplier-sales-runtime-schema | Add fail-closed runtime validation for Supplier Sales decision payload |
 | RQ380 | WAITING | supplier-sales-prepost-comparable-aggregate | Align Supplier total pre/post impact with the comparable cohort |
 | RQ386 | DONE | pre-post-cohort-denominators | Reconcile Pre/Post event cohort, cap and denominator semantics |
