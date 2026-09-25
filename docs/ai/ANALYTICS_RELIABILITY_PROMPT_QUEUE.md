@@ -22647,7 +22647,7 @@ Completion 2026-09-23: backend full-cohort type aggregates, vendor type/elastici
 
 ## RQ407 - Prove the eight Operacije routes against one deterministic source and expected-output manifest
 
-Status: PARTIAL
+Status: DONE
 Ready after: `RQ114` is DONE; promote only after the owner confirms the shared fixture can cover the named Operations families
 Priority: P1
 Type: backend/frontend/tests/docs
@@ -22722,7 +22722,7 @@ Extend the existing `pilot-analytics-proof-pack-v1` with an Operations-specific 
 - Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `0a10a78d`
-- Main verification: current `origin/main` contains the implementation SHA; final queue/evidence closure follows in the next direct-main commit.
+- Main verification: current `origin/main` contains implementation `0a10a78d` and the queue/evidence closure commits `65a8775c` and `e7dcf48d`.
 - Residual risk: the plain `postgres:15` host still reports the optional `vector` extension unavailable during non-strict analytics initialization; the eight route proof does not depend on that extension.
 - Prompt defect / scope repair: PostgreSQL did not reliably translate the nested markdown `DefaultIfEmpty/Average` reduction; the route now fetches bounded evidence rows and performs the equivalent reduction in memory without changing the scoring formula.
 
