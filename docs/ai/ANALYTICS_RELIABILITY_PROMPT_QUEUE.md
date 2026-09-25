@@ -5,7 +5,7 @@ Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 Owner promotion 2026-09-25: idle recovery found RQ306 dependency-complete and collision-safe as a parallel-safe, repository-local Operacije localization lane. RQ307 remains WAITING to avoid overlapping Shoe Type copy edits.
 Owner claim 2026-09-25: RQ306 transitioned READY -> IN_PROGRESS in this workspace for the bounded Serbian-diacritics copy pass across the listed Operacije owner files. Local lock: `.ai/task-locks/RQ306-codex.lock.md`.
-Owner completion 2026-09-25: RQ306 was delivered directly to `main`; Operacije primary, loading, error and inventory decision-surface copy now uses Serbian diacritics in the owned scope. Run log: `.ai/runs/2026-09-25-RQ306-evidence.md`. Evidence state: synchronized. No successor was promoted; the RQ current READY pointer returned to `none`.
+Owner completion 2026-09-25: RQ306 was delivered directly to `main` in `1a1219eb99b44defe9cdd24dacade08f834cc44e`; Operacije primary, loading, error and inventory decision-surface copy now uses Serbian diacritics in the owned scope. Run log: `.ai/runs/2026-09-25-RQ306-evidence.md`. Evidence state: synchronized. No successor was promoted; the RQ current READY pointer returned to `none`.
 Owner promotion 2026-09-25: idle recovery under the user's claim-and-execute request verified `RQ413` is dependency-complete after `RQ407` and `RQ412`; `RQ413` moved `WAITING -> READY` in the operations-accuracy addendum.
 Owner claim 2026-09-25: `RQ413` transitioned `READY -> IN_PROGRESS` for Operations drift/cache integrity guardrails. Local runtime lock: `.ai/task-locks/RQ413-cursor.lock.md`.
 Owner completion 2026-09-25: `RQ413` was delivered directly to `main` in `76d0194a`. Bounded integrity probes, operator endpoints, cache-clear unverified state and Supplier/Shoe fail-closed recommendation gating are live. Run log: `.ai/runs/2026-09-25-RQ413-evidence.md`. Evidence state: synchronized.
@@ -16821,8 +16821,8 @@ Reproduction: scan Operacije screens for missing `č/ć/š/đ/ž`. Risk: inconsi
 - Run log: `.ai/runs/2026-09-25-RQ306-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: recorded in the run log after push verification
-- Main verification: passed - `origin/main` contains the implementation commit
+- Main commit SHA: `1a1219eb99b44defe9cdd24dacade08f834cc44e`
+- Main verification: passed - local `main` and `origin/main` resolve to the implementation SHA, and it is an ancestor of `origin/main`
 - Residual risk: build reported existing analyzer warnings; live/deployed UI and remote CI were not inspected.
 - Follow-up: `RQ307` remains WAITING for the separate Shoe Type impact-label owner; no successor was promoted.
 
