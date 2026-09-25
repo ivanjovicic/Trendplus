@@ -9,6 +9,7 @@ import SupplierSalesStatsPage, {
 } from "../SupplierSalesStatsPage";
 import { getStores } from "../../services/analyticsApi";
 import { getSupplierSalesStats } from "../../services/supplierSalesStatsApi";
+import { fmtPct } from "../../utils/analyticsFormatters";
 
 const AnalyticsTrustHeaderMock = vi.hoisted(() =>
   vi.fn((props: { title: string }) => <div data-testid="analytics-trust-header">{props.title}</div>)
@@ -238,6 +239,53 @@ describe("SupplierSalesStatsPage premium controls", () => {
     expect(toolbar).toHaveTextContent("Referentni skup preporuke: Ceo odgovor (2 dobavljača; uključuje nepoznate)");
     expect(screen.getByText("Alfa")).toBeInTheDocument();
     expect(screen.queryByText("Nepoznato")).not.toBeInTheDocument();
+  });
+
+  it("keeps suppliers without current sales in the total PoP trend", async () => {
+    const baseline = await getSupplierSalesStats();
+    vi.mocked(getSupplierSalesStats).mockResolvedValueOnce({
+      ...baseline,
+      totals: {
+        ...baseline.totals,
+        previousPeriodRevenue: 12500,
+        popRevenueChangePct: -20,
+      },
+    } as never);
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage />
+      </MemoryRouter>,
+    );
+
+    const toolbar = await screen.findByTestId("analytics-table-toolbar");
+    await waitFor(() => {
+      expect(toolbar).toHaveTextContent(`Ukupan PoP trend: ${fmtPct(-20, 1)}`);
+    });
+    expect(toolbar).not.toHaveTextContent(`Ukupan PoP trend: ${fmtPct(25, 1)}`);
+  });
+
+  it("shows the total PoP trend as unavailable for the known-only population", async () => {
+    const baseline = await getSupplierSalesStats();
+    vi.mocked(getSupplierSalesStats).mockResolvedValueOnce({
+      ...baseline,
+      totals: {
+        ...baseline.totals,
+        previousPeriodRevenue: 12500,
+      },
+    } as never);
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats?includeUnknown=false"]}>
+        <SupplierSalesStatsPage />
+      </MemoryRouter>,
+    );
+
+    const toolbar = await screen.findByTestId("analytics-table-toolbar");
+    await waitFor(() => {
+      expect(toolbar).toHaveTextContent("Prikazani skup: Poznati dobavljači (1)");
+    });
+    expect(toolbar).toHaveTextContent("Ukupan PoP trend: N/A");
   });
 
   it("renders confirmed margin quality without a false fallback caveat", async () => {

@@ -665,6 +665,20 @@ function calculateDisplayPopChange(current: number | null, previous: number | nu
   return Number((((current - previous) / previous) * 100).toFixed(2));
 }
 
+/**
+ * Where the previous-period revenue behind "Ukupan PoP trend" comes from.
+ * - response_totals: backend `totals.previousPeriodRevenue`; it covers every supplier bucket,
+ *   including suppliers that sold only in the previous period and therefore have no current row.
+ * - visible_rows: sum of the visible rows (correct for a single focused supplier).
+ * - unavailable: no comparable previous total exists for the shown population (known-only view).
+ */
+export type SupplierSalesPreviousPeriodBasis = "response_totals" | "visible_rows" | "unavailable";
+
+export interface SupplierSalesPreviousPeriodSource {
+  basis: SupplierSalesPreviousPeriodBasis;
+  responsePreviousPeriodRevenue?: number | null;
+}
+
 export interface SupplierSalesDisplayProjection {
   rows: DecisionSupplier[];
   totalRevenue: number | null;
@@ -672,6 +686,7 @@ export interface SupplierSalesDisplayProjection {
   totalCost: number | null;
   totalMarginContribution: number | null;
   previousPeriodRevenue: number | null;
+  previousPeriodBasis: SupplierSalesPreviousPeriodBasis;
   periodGrowthPct: number | null;
   displaySupplierCount: number;
   knownSupplierCount: number;
@@ -680,12 +695,17 @@ export interface SupplierSalesDisplayProjection {
 
 export function buildSupplierSalesDisplayProjection(
   rows: readonly DecisionSupplier[],
+  previousPeriodSource: SupplierSalesPreviousPeriodSource = { basis: "visible_rows" },
 ): SupplierSalesDisplayProjection {
   const totalRevenue = sumFiniteDecisionMetric(rows, (row) => row.ukupanPromet);
   const totalUnits = sumFiniteDecisionMetric(rows, (row) => row.ukupnaKolicina);
   const totalCost = sumFiniteDecisionMetric(rows, (row) => row.totalCost);
   const totalMarginContribution = sumFiniteDecisionMetric(rows, (row) => row.marginContribution);
-  const previousPeriodRevenue = sumFiniteDecisionMetric(rows, (row) => row.previousPeriodRevenue);
+  const previousPeriodRevenue = previousPeriodSource.basis === "response_totals"
+    ? finiteOrNull(previousPeriodSource.responsePreviousPeriodRevenue)
+    : previousPeriodSource.basis === "visible_rows"
+      ? sumFiniteDecisionMetric(rows, (row) => row.previousPeriodRevenue)
+      : null;
   const totalRevenueDenominator = totalRevenue != null && totalRevenue > 0 ? totalRevenue : null;
   const totalMarginDenominator = totalMarginContribution != null && totalMarginContribution > 0
     ? totalMarginContribution
@@ -712,6 +732,7 @@ export function buildSupplierSalesDisplayProjection(
     totalCost,
     totalMarginContribution,
     previousPeriodRevenue,
+    previousPeriodBasis: previousPeriodSource.basis,
     periodGrowthPct: calculateDisplayPopChange(totalRevenue, previousPeriodRevenue),
     displaySupplierCount: displayRows.length,
     knownSupplierCount: displayRows.filter((row) => !row.isUnknown).length,
@@ -992,9 +1013,20 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     [activeSupplierId, includeUnknown, sortedSuppliers]
   );
 
+  // Supplier rows exist only for suppliers with current-period sales, so the full previous-period
+  // total must come from the backend; a known-only view has no such total and fails closed.
+  const previousPeriodBasis: SupplierSalesPreviousPeriodBasis = activeSupplierId != null
+    ? "visible_rows"
+    : includeUnknown
+      ? "response_totals"
+      : "unavailable";
+  const responsePreviousPeriodRevenue = data?.totals?.previousPeriodRevenue ?? null;
   const displayProjection = useMemo(
-    () => buildSupplierSalesDisplayProjection(filteredSuppliers),
-    [filteredSuppliers],
+    () => buildSupplierSalesDisplayProjection(filteredSuppliers, {
+      basis: previousPeriodBasis,
+      responsePreviousPeriodRevenue,
+    }),
+    [filteredSuppliers, previousPeriodBasis, responsePreviousPeriodRevenue],
   );
   const visibleSuppliers = displayProjection.rows;
 
@@ -1817,7 +1849,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                 <KpiExplainButton metricKey="topSupplierRevenueShare" ariaLabel="Kako je izračunat udeo top 5 dobavljača" />
               </article>
               <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Momentum prema prethodnom uporedivom periodu.">
-                <span>Ukupan PoP trend <InfoTip text="Promena ukupnog prometa u odnosu na prethodni uporedivi period iste dužine. Formula: (trenutni promet – prethodni promet) / prethodni promet × 100. N/A ako prethodni period nije dostupan." /></span>
+                <span>Ukupan PoP trend <InfoTip text="Promena ukupnog prometa u odnosu na prethodni uporedivi period iste dužine. Formula: (trenutni promet – prethodni promet) / prethodni promet × 100. Prethodni promet obuhvata i dobavljače koji u tekućem periodu nemaju prodaju. N/A ako prethodni period nije dostupan ili ako su prikazani samo poznati dobavljači, jer za taj skup ne postoji potpun prethodni zbir." /></span>
                 <strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong>
                 <KpiExplainButton metricKey="popRevenueChangePct" ariaLabel="Kako je izračunat Ukupan PoP trend" />
               </article>

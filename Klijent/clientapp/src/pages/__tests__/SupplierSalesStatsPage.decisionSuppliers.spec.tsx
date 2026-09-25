@@ -228,4 +228,46 @@ describe("buildDecisionSuppliers", () => {
     expect(rows[0]?.shareOfMarginContribution).toBeNull();
     expect(rows[0]?.shareOfUnits).toBeNull();
   });
+
+  it("bases the total PoP trend on the backend previous total so churned suppliers count", () => {
+    // Beta sold 4 500 only in the previous period, so it has no current row; the backend
+    // previous total (12 500) still contains it.
+    const rows = buildDecisionSuppliers(buildResponse([buildSupplier()], {
+      ukupanPromet: 10000,
+      previousPeriodRevenue: 12500,
+    }));
+
+    const rowBased = buildSupplierSalesDisplayProjection(rows);
+    const responseBased = buildSupplierSalesDisplayProjection(rows, {
+      basis: "response_totals",
+      responsePreviousPeriodRevenue: 12500,
+    });
+
+    expect(rowBased.previousPeriodBasis).toBe("visible_rows");
+    expect(rowBased.periodGrowthPct).toBe(25);
+    expect(responseBased.previousPeriodBasis).toBe("response_totals");
+    expect(responseBased.previousPeriodRevenue).toBe(12500);
+    expect(responseBased.periodGrowthPct).toBe(-20);
+  });
+
+  it("fails the total PoP trend closed when no complete previous total exists", () => {
+    const rows = buildDecisionSuppliers(buildResponse([buildSupplier()]));
+
+    const knownOnly = buildSupplierSalesDisplayProjection(rows, { basis: "unavailable" });
+    const missingBackendTotal = buildSupplierSalesDisplayProjection(rows, {
+      basis: "response_totals",
+      responsePreviousPeriodRevenue: null,
+    });
+    const zeroBase = buildSupplierSalesDisplayProjection(rows, {
+      basis: "response_totals",
+      responsePreviousPeriodRevenue: 0,
+    });
+
+    expect(knownOnly.previousPeriodRevenue).toBeNull();
+    expect(knownOnly.periodGrowthPct).toBeNull();
+    expect(missingBackendTotal.periodGrowthPct).toBeNull();
+    expect(zeroBase.previousPeriodRevenue).toBe(0);
+    expect(zeroBase.periodGrowthPct).toBeNull();
+    expect(knownOnly.totalRevenue).toBe(10000);
+  });
 });
