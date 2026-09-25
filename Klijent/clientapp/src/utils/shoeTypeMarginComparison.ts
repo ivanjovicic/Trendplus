@@ -40,8 +40,11 @@ export function resolveShoeTypeMarginContributionSharePct(
     return null;
   }
 
-  if (totalMarginContribution === 0) {
-    return marginContribution === 0 ? 0 : null;
+  // A contribution share is only meaningful with a strictly positive
+  // denominator. Zero or negative aggregate contribution can otherwise
+  // turn losses into apparently positive "shares" (or fake 0/0 = 0%).
+  if (totalMarginContribution <= 0) {
+    return null;
   }
 
   const sharePct = (marginContribution / totalMarginContribution) * 100;
