@@ -420,6 +420,26 @@ export function buildSupplierConcentration(
 
   const topSupplierQty = sum(baseRows.map((row) => row.totalQty));
   const topSupplierRevenue = sum(baseRows.map((row) => row.totalRevenue));
+  const hasImpossibleQtyTotal = supplierQtyBasis != null
+    && supplierQtyBasis > 0
+    && topSupplierQty != null
+    && topSupplierQty > supplierQtyBasis;
+  const hasImpossibleRevenueTotal = supplierRevenueBasis != null
+    && supplierRevenueBasis > 0
+    && topSupplierRevenue != null
+    && topSupplierRevenue > supplierRevenueBasis;
+
+  if (hasImpossibleQtyTotal) {
+    warnings.push("Zbir dobavljačkih količina prelazi ukupan period total.");
+  }
+  if (hasImpossibleRevenueTotal) {
+    warnings.push("Zbir dobavljačkog prihoda prelazi ukupan period total.");
+  }
+
+  const concentrationIsInvalid = hasImpossibleQtyTotal || hasImpossibleRevenueTotal;
+  const concentrationRows = concentrationIsInvalid
+    ? baseRows.map((row) => ({ ...row, qtySharePct: null, revenueSharePct: null }))
+    : baseRows;
   const othersQty = supplierQtyBasis != null && topSupplierQty != null
     ? supplierQtyBasis - topSupplierQty
     : null;
@@ -427,8 +447,8 @@ export function buildSupplierConcentration(
     ? supplierRevenueBasis - topSupplierRevenue
     : null;
 
-  const allRows = [...baseRows];
-  if ((othersQty != null && othersQty !== 0) || (othersRevenue != null && othersRevenue !== 0)) {
+  const allRows = [...concentrationRows];
+  if (!concentrationIsInvalid && ((othersQty != null && othersQty !== 0) || (othersRevenue != null && othersRevenue !== 0))) {
     allRows.push({
       supplierName: "Ostali",
       displayName: "Ostali",
@@ -449,17 +469,21 @@ export function buildSupplierConcentration(
     };
   });
 
-  const top3QtySharePct = percent(safeDivide(sum(baseRows.slice(0, 3).map((row) => row.totalQty)), supplierQtyBasis));
-  const top5QtySharePct = percent(safeDivide(sum(baseRows.slice(0, 5).map((row) => row.totalQty)), supplierQtyBasis));
+  const top3QtySharePct = concentrationIsInvalid
+    ? null
+    : percent(safeDivide(sum(concentrationRows.slice(0, 3).map((row) => row.totalQty)), supplierQtyBasis));
+  const top5QtySharePct = concentrationIsInvalid
+    ? null
+    : percent(safeDivide(sum(concentrationRows.slice(0, 5).map((row) => row.totalQty)), supplierQtyBasis));
 
   let cumulative: number | null = 0;
   let suppliersTo80Pct: number | null = null;
-  for (let index = 0; index < baseRows.length; index += 1) {
-    const current = baseRows[index];
+  for (let index = 0; index < concentrationRows.length; index += 1) {
+    const current = concentrationRows[index];
     cumulative = cumulative == null || current?.qtySharePct == null
       ? null
       : cumulative + current.qtySharePct;
-    if (cumulative != null && cumulative >= 80) {
+    if (!concentrationIsInvalid && cumulative != null && cumulative >= 80) {
       suppliersTo80Pct = index + 1;
       break;
     }
