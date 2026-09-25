@@ -54,6 +54,36 @@ public class AnalyticsSupplierSalesIntegrationTests : IClassFixture<WebApplicati
         Assert.Equal("backend_supplier_response", cohort.GetProperty("basis").GetString());
     }
 
+    [OperationsIntegrationFact(DisplayName = "Supplier totals expose comparable pre/post cohort separately from observed totals")]
+    public async Task SupplierSalesStats_ComparablePrePostTotalsMatchSupplierRows()
+    {
+        var root = await GetJsonRootAsync("/api/analytics/supplier-sales-stats?sezonaId=1");
+        var suppliers = root.GetProperty("suppliers").EnumerateArray().ToList();
+        var totals = root.GetProperty("totals");
+
+        Assert.Equal(
+            suppliers.Sum(s => s.GetProperty("comparablePreNivelacijePromet").GetDecimal()),
+            totals.GetProperty("comparablePrePromet").GetDecimal());
+        Assert.Equal(
+            suppliers.Sum(s => s.GetProperty("comparablePostNivelacijePromet").GetDecimal()),
+            totals.GetProperty("comparablePoslePromet").GetDecimal());
+        Assert.Equal(
+            suppliers.Sum(s => s.GetProperty("comparablePreNivelacijeKolicina").GetInt32()),
+            totals.GetProperty("comparablePreKolicina").GetInt32());
+        Assert.Equal(
+            suppliers.Sum(s => s.GetProperty("comparablePostNivelacijeKolicina").GetInt32()),
+            totals.GetProperty("comparablePosleKolicina").GetInt32());
+        Assert.Equal(
+            suppliers.Sum(s => s.GetProperty("prePostComparableArticleCount").GetInt32()),
+            totals.GetProperty("prePostComparableArticleCount").GetInt32());
+        Assert.Equal(
+            totals.GetProperty("prePromet").GetDecimal(),
+            totals.GetProperty("observedPrePromet").GetDecimal());
+        Assert.Equal(
+            totals.GetProperty("poslePromet").GetDecimal(),
+            totals.GetProperty("observedPoslePromet").GetDecimal());
+    }
+
     [OperationsIntegrationFact(DisplayName = "Supplier endpoint matches golden snapshot")]
     public async Task SupplierSalesStats_MatchesGoldenSnapshot()
     {

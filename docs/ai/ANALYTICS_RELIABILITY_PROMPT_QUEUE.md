@@ -3,9 +3,12 @@
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
-Owner promotion 2026-09-25: idle recovery confirmed that RQ373 and RQ378 are DONE on current `main`, so RQ379's final runtime schema field set is dependency-complete. No active Supplier Sales runtime-schema claim, lock, branch or PR overlap was found; RQ379 moved `WAITING -> READY` and became the current RQ pointer.
-Owner claim 2026-09-25: RQ379 transitioned `READY -> IN_PROGRESS` in this workspace for fail-closed Supplier Sales decision-payload validation. Local runtime lock: `.ai/task-locks/RQ379-codex.lock.md`.
-Owner completion 2026-09-25: RQ379 is DONE. Supplier Sales now validates the full decision payload at the fetch boundary, preserving valid negative margin contributions while rejecting missing totals and invalid recommendation percentages before page derivation. Focused runtime/schema proof passes `55/55`; guardrails, typecheck and build pass. Main commit SHA is pending delivery; run log: `.ai/runs/2026-09-25-RQ379-evidence.md`.
+Owner promotion 2026-09-25: idle recovery verified that RQ380 is dependency-complete after RQ373, RQ378 and RQ379 delivery. The Supplier Sales backend comparable-cohort path is collision-safe, and no conflicting RQ380 lock/branch/PR exists; RQ380 moved `WAITING -> READY`.
+Owner claim 2026-09-25: RQ380 transitioned `READY -> IN_PROGRESS` in this workspace for Supplier Sales comparable pre/post aggregate, coverage and row/detail/export provenance. Local runtime lock: `.ai/task-locks/RQ380-cursor.lock.md`.
+Owner completion 2026-09-25: RQ380 was delivered directly to `main` in `88b596a2229ba34f8f244a53838893cb670ecca7`. Supplier Sales totals now use the shared comparable pre/post cohort for impact and expose observed versus comparable revenue/quantity, coverage, article count and signal provenance across row, detail, toolbar/export and runtime schema surfaces. Run log: `.ai/runs/2026-09-25-RQ380-evidence.md`. Evidence state: synchronized.
+Owner promotion 2026-09-25: idle recovery verified that RQ379 is dependency-complete after RQ373 and RQ378 delivery. Its frontend runtime-schema path is separate from RQ380's backend comparable-cohort owner, and no conflicting Supplier Sales schema lock/branch/PR exists; RQ379 moved `WAITING -> READY`.
+Owner claim 2026-09-25: RQ379 transitioned `READY -> IN_PROGRESS` in this workspace for fail-closed Supplier Sales response validation and malformed-payload regression tests. Local runtime lock: `.ai/task-locks/RQ379-cursor.lock.md`.
+Owner completion 2026-09-25: RQ379 was delivered directly to `main` in `61881675b1774578b7e826e4151ec14b0fe43dbb`. Supplier Sales now validates decision-critical runtime payloads fail-closed, while preserving valid signed and nullable margin evidence. Run log: `.ai/runs/2026-09-25-RQ379-evidence.md`. Evidence state: synchronized. RQ380 remains WAITING.
 Owner promotion 2026-09-25: idle recovery verified that RQ378 is the next dependency-complete P1 Supplier Sales correctness owner. RQ373 and RQ411 are delivered on `main`, and no conflicting Supplier Sales margin-quality lock/branch/PR exists. RQ379 consumes the corrected response semantics and RQ380 remains a separate comparable-cohort owner; RQ378 moved `WAITING -> READY`.
 Owner claim 2026-09-25: RQ378 transitioned `READY -> IN_PROGRESS` in this workspace for the weighted Supplier Sales margin benchmark, recommendation baseline and cost-source quality contract. Local runtime lock: `.ai/task-locks/RQ378-cursor.lock.md`.
 Owner completion 2026-09-25: RQ378 was delivered directly to `main` in `5ece51a0a442b0433a69822a1dc642431c2be1e9`. Supplier Sales now uses a covered-revenue-weighted known-supplier margin benchmark for both totals and recommendation evaluation, and explicitly separates historical, snapshot, product-fallback and unavailable cost coverage. Run log: `.ai/runs/2026-09-25-RQ378-evidence.md`. Evidence state: synchronized. RQ379 and RQ380 remain WAITING.
@@ -1516,7 +1519,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ377 | DONE | shoe-type-detail-trust-contract | Align Shoe Type detail route with row recommendation, trust and unknown identity |
 | RQ378 | DONE | supplier-sales-margin-quality-contract | Align Supplier weighted margin benchmark and cost-source semantics |
 | RQ379 | DONE | supplier-sales-runtime-schema | Add fail-closed runtime validation for Supplier Sales decision payload |
-| RQ380 | WAITING | supplier-sales-prepost-comparable-aggregate | Align Supplier total pre/post impact with the comparable cohort |
+| RQ380 | DONE | supplier-sales-prepost-comparable-aggregate | Align Supplier total pre/post impact with the comparable cohort |
 | RQ386 | DONE | pre-post-cohort-denominators | Reconcile Pre/Post event cohort, cap and denominator semantics |
 | RQ387 | DONE | pre-post-runtime-safe-contract | Add Pre/Post runtime payload validation and safe traceable errors |
 | RQ388 | DONE | pre-nivelacija-population-parity | Align Pre-Nivelacija global KPIs with the full candidate population |
@@ -20907,25 +20910,24 @@ Commit suggestion: `fix(analytics): validate supplier sales runtime payload`
 
 - Date: 2026-09-25
 - Status: DONE
-- Completion: Added a Zod runtime contract for the Supplier Sales response and passed it to `fetchAnalyticsJson`. The contract covers trust metadata, recommendation fields, cost-quality coverage, supplier rows, footwear breakdown, totals and season options; finite measured values preserve valid negative margin contributions while bounded percentages and required decision fields fail closed.
-- Changed files: `Klijent/clientapp/src/validation/analyticsResponseSchemas.ts`, `Klijent/clientapp/src/services/supplierSalesStatsApi.ts`, `Klijent/clientapp/src/services/__tests__/supplierSalesStatsApi.contract.spec.ts`, this queue, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-25-RQ379-evidence.md`.
-- Checks run: Supplier runtime/schema/page proof `55/55`; `npm run check:analytics-guardrails`; `npm run build`; `git diff --check`.
-- Checks not run: full frontend/backend suites, browser/deployed capture, remote CI and backend provider execution.
+- Completion: Added the Supplier Sales Zod response schema at the fetch boundary, covering decision-critical totals, cost quality, supplier/footwear rows and recommendation fields; malformed payloads now fail closed while valid signed/nullable evidence remains accepted.
+- Changed files: `Klijent/clientapp/src/validation/analyticsResponseSchemas.ts`; `Klijent/clientapp/src/validation/__tests__/analyticsResponseSchemas.spec.ts`; `Klijent/clientapp/src/services/supplierSalesStatsApi.ts`; `Klijent/clientapp/src/services/__tests__/supplierSalesStatsApi.contract.spec.ts`; `MASTER_ROADMAP.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`.
+- Checks run: focused schema/API/UI tests 49/49; frontend analytics guardrails and typecheck; frontend build; queue, instruction and planning validators; `git diff --check`.
+- Checks not run: backend tests/build because this is a frontend-owned schema change and `dotnet` is unavailable; live API/database/browser smoke and remote CI.
 - Run log: `.ai/runs/2026-09-25-RQ379-evidence.md`
-- Evidence state: synchronized pending final SHA closure
-- Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending until delivery commit is pushed
-- Missed: no backend runtime code changed; the frontend boundary now rejects malformed success payloads before page arithmetic, recommendation or export derivation.
-- Follow-up: RQ380 remains WAITING as the separate comparable-cohort aggregate owner; RQ306/RQ325 remain broader localization owners.
-- Residual risk: full backend/provider and browser proof remain uninspected; the existing build chunk-size warning remains.
-- Prompt defect / scope repair: none; implementation stayed within the Supplier Sales client schema/API/test owner.
+- Evidence state: synchronized
+- Delivery mode: direct-main after fast-forward plus merge of concurrent remote-main commits
+- Main commit SHA: `61881675b1774578b7e826e4151ec14b0fe43dbb`
+- Main verification: passed - `origin/main` contains the implementation and equals local `HEAD`
+- Missed: live production payload variation remains unproven.
+- Follow-up: RQ380 comparable pre/post aggregate remains the next separate Supplier Sales backend owner.
+- Residual risk: schema updates must stay synchronized with future backend decision fields.
 
 ---
 
 ## RQ380 - Align Supplier Sales pre/post totals with the comparable evidence cohort
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend-contract/frontend/tests
 Feature family: supplier-sales-prepost-comparable-aggregate
@@ -20962,6 +20964,25 @@ Supplier row-level pre/post impact/recommendation uses comparable split-policy e
 
 - RQ373 owns display/reference population.
 - Reuse the shared split policy; do not create a frontend formula.
+
+### Completion note
+
+- Date: 2026-09-25
+- Status: DONE
+- Completion: Supplier totals now calculate pre/post impact from the shared comparable cohort, preserve observed broad totals separately, and expose comparable coverage, article count, signal note and row/detail/export provenance.
+- Changed files: `Api/Endpoints/AllEndpoints.cs`, `Api/Services/AnalyticsDetailReadService.cs`, `Api.Tests/AnalyticsNivelacijaSplitPolicyTests.cs`, `Api.Tests/AnalyticsSupplierSalesIntegrationTests.cs`, `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`, `Klijent/clientapp/src/services/supplierSalesStatsApi.ts`, `Klijent/clientapp/src/validation/analyticsResponseSchemas.ts`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, queue/roadmap and run log.
+- Contract/runtime behavior changed: non-comparable pre-only/post-only activity no longer contributes to a normal-looking Supplier total impact; observed and comparable populations are explicitly separated.
+- Checks run: focused Vitest 3 files/48 tests; `npm run check:analytics-guardrails`; frontend production build; `git diff --check`; fresh `origin/main` SHA verification.
+- Checks not run: .NET backend tests/build because the SDK is unavailable; live PostgreSQL endpoint/detail/export execution; remote CI/browser smoke.
+- Run log: `.ai/runs/2026-09-25-RQ380-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `88b596a2229ba34f8f244a53838893cb670ecca7`
+- Main verification: passed - fresh `origin/main` contains implementation SHA `88b596a2229ba34f8f244a53838893cb670ecca7`; current `main` also contains evidence-closure commit `fbca6a14`
+- Missed: live PostgreSQL and .NET runtime proof remain unavailable.
+- Follow-up: re-enter RQ idle recovery; no successor prompt claimed in this run.
+- Residual risk: backend compilation/integration and remote CI remain uninspected in this environment.
+- Prompt defect / scope repair: updated the existing Supplier KPI guardrail baseline line reference after scoped metadata insertion moved the reviewed finding; no new runtime exception was introduced.
 
 ---
 

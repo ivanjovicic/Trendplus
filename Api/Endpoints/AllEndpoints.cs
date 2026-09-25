@@ -1579,6 +1579,10 @@ public static class AllEndpoints
                             preNivelacijeKolicina = splitSnapshot.PreQuantity,
                             posleNivelacijePromet = splitSnapshot.PostRevenue,
                             posleNivelacijeKolicina = splitSnapshot.PostQuantity,
+                            comparablePreNivelacijePromet = splitSnapshot.ComparablePreRevenue,
+                            comparablePostNivelacijePromet = splitSnapshot.ComparablePostRevenue,
+                            comparablePreNivelacijeKolicina = splitSnapshot.ComparablePreQuantity,
+                            comparablePostNivelacijeKolicina = splitSnapshot.ComparablePostQuantity,
                             ukupanPromet = Math.Round(totalRevenue, 2),
                             ukupnaKolicina = totalQty,
                             brojArtikalaSaNivelacijom = splitSnapshot.ArticleCountWithNivelacija,
@@ -1652,7 +1656,19 @@ public static class AllEndpoints
 
                 var sumPreRevenue = suppliers.Sum(r => r.preNivelacijePromet);
                 var sumPostRevenue = suppliers.Sum(r => r.posleNivelacijePromet);
+                var comparablePreRevenue = suppliers.Sum(r => r.comparablePreNivelacijePromet);
+                var comparablePostRevenue = suppliers.Sum(r => r.comparablePostNivelacijePromet);
+                var comparablePreQuantity = suppliers.Sum(r => r.comparablePreNivelacijeKolicina);
+                var comparablePostQuantity = suppliers.Sum(r => r.comparablePostNivelacijeKolicina);
+                var comparableArticleCount = suppliers.Sum(r => r.prePostComparableArticleCount);
                 var totalRevenue = suppliers.Sum(r => r.ukupanPromet);
+                var comparableSignal = AnalyticsNivelacijaSplitPolicy.EvaluateComparableSignal(
+                    comparablePreRevenue,
+                    comparablePostRevenue,
+                    comparablePreQuantity,
+                    comparablePostQuantity,
+                    comparableArticleCount,
+                    totalRevenue);
                 var comparableRevenueWithNivelacijaSplit = suppliers.Sum(r => r.comparableRevenueWithNivelacijaSplit);
                 var unknownSupplierRevenue = suppliers.Where(r => r.isUnknown).Sum(r => r.ukupanPromet);
                 var totalRevenueWithAnyCost = suppliers.Sum(r => r.revenueWithCost);
@@ -1794,6 +1810,10 @@ public static class AllEndpoints
                             supplier.preNivelacijeKolicina,
                             supplier.posleNivelacijePromet,
                             supplier.posleNivelacijeKolicina,
+                            supplier.comparablePreNivelacijePromet,
+                            supplier.comparablePostNivelacijePromet,
+                            supplier.comparablePreNivelacijeKolicina,
+                            supplier.comparablePostNivelacijeKolicina,
                             supplier.ukupanPromet,
                             supplier.ukupnaKolicina,
                             supplier.brojArtikalaSaNivelacijom,
@@ -1897,6 +1917,19 @@ public static class AllEndpoints
                     ukupnaKolicina = suppliers.Sum(r => r.ukupnaKolicina),
                     preKolicina = suppliers.Sum(r => r.preNivelacijeKolicina),
                     posleKolicina = suppliers.Sum(r => r.posleNivelacijeKolicina),
+                    observedPrePromet = sumPreRevenue,
+                    observedPoslePromet = sumPostRevenue,
+                    observedPreKolicina = suppliers.Sum(r => r.preNivelacijeKolicina),
+                    observedPosleKolicina = suppliers.Sum(r => r.posleNivelacijeKolicina),
+                    comparablePrePromet = Math.Round(comparablePreRevenue, 2),
+                    comparablePoslePromet = Math.Round(comparablePostRevenue, 2),
+                    comparablePreKolicina = comparablePreQuantity,
+                    comparablePosleKolicina = comparablePostQuantity,
+                    prePostComparableArticleCount = comparableArticleCount,
+                    prePostNivelacijaRevenueCoveragePct = totalRevenue > 0m
+                        ? Math.Round((double)((comparablePreRevenue + comparablePostRevenue) / totalRevenue * 100m), 2)
+                        : (double?)null,
+                    prePostSignalNote = comparableSignal.SignalNote,
                     previousPeriodRevenue = previousPeriodRevenue.HasValue
                         ? Math.Round(previousPeriodRevenue.Value, 2)
                         : (decimal?)null,
@@ -1909,12 +1942,8 @@ public static class AllEndpoints
                     popUnitsChangePct = previousPeriodUnits.HasValue && previousPeriodUnits.Value > 0
                         ? Math.Round((suppliers.Sum(r => r.ukupnaKolicina) - previousPeriodUnits.Value) / (double)previousPeriodUnits.Value * 100d, 2)
                         : (double?)null,
-                    prePostNivelacijaRevenueImpactPct = sumPreRevenue > 0m
-                        ? Math.Round((double)((sumPostRevenue - sumPreRevenue) / sumPreRevenue * 100m), 2)
-                        : (double?)null,
-                    prePostNivelacijaUnitsImpactPct = suppliers.Sum(r => r.preNivelacijeKolicina) > 0
-                        ? Math.Round((suppliers.Sum(r => r.posleNivelacijeKolicina) - suppliers.Sum(r => r.preNivelacijeKolicina)) / (double)suppliers.Sum(r => r.preNivelacijeKolicina) * 100d, 2)
-                        : (double?)null,
+                    prePostNivelacijaRevenueImpactPct = comparableSignal.RevenueImpactPct,
+                    prePostNivelacijaUnitsImpactPct = comparableSignal.UnitsImpactPct,
                     recommendationSummary = new
                     {
                         increaseFocus = suppliersWithRecommendation.Count(x => x.recommendation.status == "increase_focus"),

@@ -1272,6 +1272,10 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       { key: "totalsPopTrend", label: "Ukupan PoP trend", value: fmtPct(periodGrowthPct, 1) },
       { key: "totalsPrePostImpact", label: `${displayPopulationIsFiltered ? "Ukupan nivelacija uticaj (ceo odgovor)" : "Ukupan nivelacija uticaj"}`, value: fmtPct(data?.totals.prePostNivelacijaRevenueImpactPct, 1) },
       { key: "splitCoverage", label: `${displayPopulationIsFiltered ? "Uporedivo pre/post pokrivanje (ceo odgovor)" : "Uporedivo pre/post pokrivanje"}`, value: fmtPct(data?.dataQuality.revenueWithNivelacijaSplitSharePct, 1) },
+      { key: "observedPrePostRevenue", label: "Posmatrani promet pre / posle nivelacije", value: `${fmtRsd(data?.totals.observedPrePromet ?? data?.totals.prePromet)} / ${fmtRsd(data?.totals.observedPoslePromet ?? data?.totals.poslePromet)}` },
+      { key: "comparablePrePostRevenue", label: "Uporedivi promet pre / posle nivelacije", value: `${fmtRsd(data?.totals.comparablePrePromet)} / ${fmtRsd(data?.totals.comparablePoslePromet)}` },
+      { key: "comparablePrePostArticles", label: "Artikli u uporedivoj pre/post kohorti", value: formatMetricDisplayValue({ value: data?.totals.prePostComparableArticleCount ?? null, kind: "number", fallback: "N/A" }) },
+      { key: "prePostSignalNote", label: "Napomena za pre/post signal", value: data?.totals.prePostSignalNote ?? "Nema napomene" },
       { key: "snapshotCoverage", label: `${displayPopulationIsFiltered ? "Zamrznuta procena (snapshot) % (ceo odgovor)" : "Zamrznuta procena (snapshot) %"}`, value: fmtPct(data?.totals.snapshotCostCoveragePct, 1) },
       { key: "isSnapshotActive", label: `${displayPopulationIsFiltered ? "Snapshot aktivan (ceo odgovor)" : "Snapshot aktivan"}`, value: data?.totals.isSnapshotActive ? "da" : "ne" },
       { key: "increaseFocus", label: "Pojačaj fokus", value: supplierCounts.increaseFocus },
@@ -2361,6 +2365,14 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                 <article>
                   <span>Pre/post pokrivanje <InfoTip text="Udeo prometa koji se može pratiti kroz pre/post nivelacija analizu — samo artikli sa prodajom u oba perioda ulaze u ovu metriku." /></span>
                   <strong>{fmtPct(selectedSupplier.prePostNivelacijaRevenueCoveragePct, 1)}</strong>
+                </article>
+                <article>
+                  <span>Uporedivi promet pre / posle <InfoTip text="Promet iz iste uporedive kohorte koja se koristi za pre/post uticaj. Posmatrani pre/post promet može sadržati jednostranu aktivnost i zato je odvojen." /></span>
+                  <strong>{fmtRsd(selectedSupplier.comparablePreNivelacijePromet)} / {fmtRsd(selectedSupplier.comparablePostNivelacijePromet)}</strong>
+                </article>
+                <article>
+                  <span>Uporediva količina pre / posle</span>
+                  <strong>{fmtQty(selectedSupplier.comparablePreNivelacijeKolicina)} / {fmtQty(selectedSupplier.comparablePostNivelacijeKolicina)}</strong>
                 </article>
                 <article>
                   <span>Uporedivi artikli <InfoTip text="Broj artikala koji su imali prodaju i pre i posle nivelacije — jedini koji daju merodavan signal o uticaju promene cene." /></span>
