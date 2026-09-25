@@ -3,6 +3,7 @@
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+Routing repair 2026-09-25 (same-day review of today's commits, local-only; no task reopened): the `RQ436` section `Status:` line was corrected `IN_PROGRESS -> DONE` to match its summary row and synchronized delivery (`3dde5583`/`ec91dbcf`); `RQ428`, `RQ432`, `RQ433`, `RQ435` and `RQ436` received protocol completion notes (`Evidence state`, `Delivery mode`, `Main commit SHA`, `Main verification`) from their run logs. The `RQ427`-`RQ437` audit evidence was synchronized in `1c3899c8`, and the Pre/Post page-spec drift left by `RQ435`/`RQ436` was repaired test-only in `cc47d418`. Follow-ups: `RQ438` (WAITING behind `RQ429`: remaining `DnevnikPromena.Id`/`ProdajaZaglavlje.Id` joins and the journal `Iznos` sign proof), `RQ439` (WAITING, owner-gated triage of unmerged PR #63) and `RQ440` (READY, nine unowned failing shared analytics specs). Run log: `.ai/runs/2026-09-25-todays-commits-review-evidence.md`.
 Owner promotion 2026-09-25: idle recovery verified `RQ428` is DONE on `main`; `RQ429` is dependency-complete and its Daily Sales frontend scope is collision-safe with active RQ437 backend/test ownership. RQ429 moved `WAITING -> READY`; the older RQ352 lock is stale because RQ352 is already DONE.
 Owner claim 2026-09-25: RQ429 transitioned `READY -> IN_PROGRESS` in this workspace for truthful Daily Sales empty-state, incomplete-shift and MA7 semantics. Local lock: `.ai/task-locks/RQ429-codex.lock.md`.
 Owner completion 2026-09-25: RQ429 was delivered directly to `main` in `ded7efce`. Daily Sales now honors backend no-data metadata, keeps true zero days, aligns missing/partial shift counts, excludes the current day from the seven-day baseline and states insufficient history. Run log: `.ai/runs/2026-09-25-RQ429-evidence.md`. Evidence state: synchronized. `RQ430` remains WAITING and `RQ437` remains active in another owner workspace.
@@ -20,7 +21,7 @@ Owner completion 2026-09-25: RQ427 is DONE: the Inventory retry fix is on `main`
 Owner claim 2026-09-25: RQ427 and RQ428 remain actively owned (`RQ427-grok.lock.md`, `RQ428-codex.lock.md`). Under the canonical priority/collision rules, RQ432 was selected as the next independent READY prompt and transitioned READY -> IN_PROGRESS for Pre-Nivelacija KPI definition parity. Local lock: `.ai/task-locks/RQ432-cursor.lock.md`.
 Owner claim 2026-09-25: RQ427 is actively owned by `RQ427-grok.lock.md` with uncommitted Inventory changes, so this workspace did not take it over. Under the canonical priority/collision rules, RQ428 was selected as the next independent READY prompt and transitioned READY -> IN_PROGRESS for the Daily Sales receipt-reconciliation key contract. Local lock: `.ai/task-locks/RQ428-codex.lock.md`.
 Owner completion 2026-09-25: RQ428 delivered to `main` at `4d90ece6`. Receipt reconciliation now uses normalized receipt number + UTC calendar day + store, signed totals, explicit matched/unmatched counts and fail-closed unavailable metadata. Focused backend proof: 33/33; frontend guardrails/typecheck pass. Evidence: `.ai/runs/2026-09-25-RQ428-evidence.md`. `RQ433` remains the active next queue owner.
-Owner audit 2026-09-25: under the user's direct local-only Operacije menu audit (no remote, no cloud agent), `RQ427`-`RQ437` were added after deduplication against `RQ301`-`RQ426` and the `OP2-*` classification. Evidence-based promotions (dependency-complete, distinct feature families, no overlapping owned paths with each other or any active prompt): `RQ427` Inventory retry/controls (P1, primary Current READY), `RQ428` Daily Sales receipt-reconciliation key (backend service only), `RQ432` Pre-Nivelacija KPI definitions, `RQ435` Shoe Type safe errors plus allowlisted frontend error display, and `RQ437` stale-test hygiene (five named test files only). `RQ429`/`RQ430` wait behind `RQ428` on the Daily Sales page, `RQ433`/`RQ434` behind `RQ432` on Pre-Nivelacija files, `RQ436` behind `RQ435` on Shoe Type/Color/Pre-Post pages, and `RQ431` is owner-gated on the RQ242 versus RQ381 concentration contract. New residual English/ASCII strings were appended to `RQ325`; `RQ306` is DONE and was not reopened. Mechanical same-owner repair: section `Status:` lines of `RQ301`, `RQ302`, `RQ306`, `RQ308` and `RQ371`, and the summary rows of `RQ306`/`RQ307`, were aligned to their synchronized DONE completion notes. Audit: `docs/ai/OPERATIONS_AUDIT_PROMPTS_2026-09-25.md`. Run log: `.ai/runs/2026-09-25-operations-audit-prompts-evidence.md` (local-only, uncommitted per user request).
+Owner audit 2026-09-25: under the user's direct local-only Operacije menu audit (no remote, no cloud agent), `RQ427`-`RQ437` were added after deduplication against `RQ301`-`RQ426` and the `OP2-*` classification. Evidence-based promotions (dependency-complete, distinct feature families, no overlapping owned paths with each other or any active prompt): `RQ427` Inventory retry/controls (P1, primary Current READY), `RQ428` Daily Sales receipt-reconciliation key (backend service only), `RQ432` Pre-Nivelacija KPI definitions, `RQ435` Shoe Type safe errors plus allowlisted frontend error display, and `RQ437` stale-test hygiene (five named test files only). `RQ429`/`RQ430` wait behind `RQ428` on the Daily Sales page, `RQ433`/`RQ434` behind `RQ432` on Pre-Nivelacija files, `RQ436` behind `RQ435` on Shoe Type/Color/Pre-Post pages, and `RQ431` is owner-gated on the RQ242 versus RQ381 concentration contract. New residual English/ASCII strings were appended to `RQ325`; `RQ306` is DONE and was not reopened. Mechanical same-owner repair: section `Status:` lines of `RQ301`, `RQ302`, `RQ306`, `RQ308` and `RQ371`, and the summary rows of `RQ306`/`RQ307`, were aligned to their synchronized DONE completion notes. Audit: `docs/ai/OPERATIONS_AUDIT_PROMPTS_2026-09-25.md`. Run log: `.ai/runs/2026-09-25-operations-audit-prompts-evidence.md` (committed on `main` in `fb956bac`; evidence synchronized in `1c3899c8`).
 Owner promotion 2026-09-25: idle recovery found RQ307 dependency-complete after RQ306 delivery; its Shoe Type impact-label owner is now collision-safe and no active RQ307 lock, branch or PR exists. RQ307 moved WAITING -> READY.
 Owner claim 2026-09-25: RQ307 transitioned READY -> IN_PROGRESS in this workspace for verification of the Shoe Type nivelacija impact label and focused regression proof. Local lock: `.ai/task-locks/RQ307-codex.lock.md`.
 Owner completion 2026-09-25: RQ307 was already satisfied on current `main` by `74091cd2`; verification completed with the required focused Shoe Type proof and no product-code change was needed. Run log: `.ai/runs/2026-09-25-RQ307-evidence.md`. Evidence state: synchronized. No successor was promoted; the RQ current READY pointer returned to `none`.
@@ -1588,6 +1589,9 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ435 | DONE | operations-safe-error-messages | Return safe traceable Shoe Type errors and allowlist frontend error display |
 | RQ436 | DONE | operations-derived-kpi-cleanup | Remove dead or frontend-derived Operacije KPIs and small lifecycle leaks |
 | RQ437 | PARTIAL | operations-stale-test-hygiene | Repair stale Operacije tests that hide regressions |
+| RQ438 | WAITING | daily-sales-receipt-identity-residuals | Finish Daily Sales receipt-identity joins and prove the journal amount sign |
+| RQ439 | WAITING | supplier-decision-hub-pr63-triage | Triage unmerged PR #63 Supplier Decision Hub findings against current main |
+| RQ440 | READY | analytics-shared-spec-drift | Triage nine unowned failing shared analytics specs |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -23229,6 +23233,26 @@ The Daily Sales „Neusklađeni računi“ diagnostic compares DnevnikPromena to
 - No blocking dependency. `RQ382` stays WAITING and should follow this prompt for the same diagnostics block; `RQ429` waits for this prompt because it edits the same quality card.
 - Reliability contract: source of truth is signed `ProdajaStavke` line totals per receipt versus DnevnikPromena `Iznos`; unit RSD; numerator = matched receipts whose absolute difference exceeds 0.01 RSD; denominator = matched receipts; a missing link is unavailable, never zero.
 
+### Completion note
+
+- Date: 2026-09-25
+- Status: DONE
+- Completion: receipt-mismatch diagnostics join on normalized `BrojRacuna` + UTC calendar day + `IDObjekat`, compare signed totals, expose matched/unmatched counts and return `unavailable` with `dnevnik_receipt_identity_missing` (null count/amount, never `0`) when a journal sale row has no receipt number. Normalized on 2026-09-25 by the same-day review from the inline note above and the run log; no scope change.
+- Changed files: `Api/Services/DailySalesStatsService.cs`, `Api/Models/DailySalesStatsDto.cs`, `Api.Tests/DailySalesReceiptReconciliationTests.cs`, `Api.Tests/DailySalesStatsServiceTests.cs`, `Klijent/clientapp/src/services/dailySalesStatsApi.ts`, `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx` (implementation); `.ai/runs/2026-09-25-RQ428-evidence.md` and this queue (closure `9d3e2da4`)
+- Contract/runtime behavior changed: `ReceiptAmountMismatchCount`/`ReceiptAmountMismatchRevenue` are nullable; new `receiptReconciliation` metadata block; the page shows the mismatch card as unavailable instead of `0`.
+- Checks run: `dotnet test --filter FullyQualifiedName~DailySales` 33/33; `DailySalesReceiptReconciliationTests` 6/6; `npm run check:analytics-guardrails` pass; Daily Sales page specs 21/22 (pre-existing `RQ431` case); `git diff --check` pass (per run log).
+- Checks not run: live PostgreSQL/Access data proof, including the sign convention of journal sale `Iznos`.
+- Run log: `.ai/runs/2026-09-25-RQ428-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `4d90ece6119cb9290868cf03126fc84b618b99bc`
+- Main verification: passed - `git merge-base --is-ancestor` confirms `origin/main` contains implementation `4d90ece6` and closure `9d3e2da4` (re-verified 2026-09-25 by the review).
+- Missed: the non-standard/debt receipt revenue fallback in `DailySalesStatsService.cs` (`dnevnikTotalsBySaleId`) and the Access import reconciliation warnings in `AccessImportService.cs` still join `DnevnikPromena.Id` to `ProdajaZaglavlje.Id`; the change also edited `Api.Tests/DailySalesStatsServiceTests.cs` (`isključena` assertion), one of the five files reserved for `RQ437`.
+- Follow-up: `RQ438`.
+- Residual risk: the journal side switched from absolute to signed `Iznos`; if Access stores sale rows with negative `Iznos`, every matched receipt becomes a mismatch. The fixture seeds only positive journal amounts.
+- Next: `RQ429` (Daily Sales page) then `RQ438`.
+- Prompt defect / scope repair: none.
+
 ---
 
 ## RQ429 - Make Daily Sales empty state, incomplete-shift counts and MA7 baseline truthful
@@ -23441,6 +23465,26 @@ Three Pre-Nivelacija KPIs sum a different population than their tooltips describ
 - No blocking dependency. `RQ433` and `RQ434` wait for this prompt (same endpoint and page files); `RQ326` remains separate.
 - Reliability contract: source of truth is backend candidate evidence; unit RSD or pairs; no eligible rows → null, not 0; coverage is explicit.
 
+### Completion note
+
+- Date: 2026-09-25
+- Status: DONE
+- Completion: as in the inline completion note above (KPI populations, coverage, null empty evidence and tooltips aligned; cache/formula v4). Normalized by the same-day review; no scope change.
+- Changed files: see `.ai/runs/2026-09-25-RQ432-evidence.md`
+- Contract/runtime behavior changed: Pre-Nivelacija summary KPIs use explicit populations with coverage and return null when no eligible row exists.
+- Checks run: focused Pre-Nivelacija backend 39/39; page/schema/api 67/67; guardrails and typecheck pass (per run log).
+- Checks not run: live browser smoke and CI (per run log).
+- Run log: `.ai/runs/2026-09-25-RQ432-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `f7df40b86dd2d6b32395ed2fe7d9bee3c8c2817d`
+- Main verification: passed - `origin/main` contains `f7df40b8` and its evidence sync `9e91817f`/`70bfb997` (re-verified 2026-09-25 by the review).
+- Missed: the evidence-sync commit `9e91817f` also swept in staged RQ427 Inventory files and a stale queue/roadmap copy that temporarily reverted RQ432/RQ433/RQ428 states; later commits restored them.
+- Follow-up: none.
+- Residual risk: as recorded in the run log.
+- Next: none.
+- Prompt defect / scope repair: none.
+
 ---
 
 ## RQ433 - Build Pre-Nivelacija supplier, season and type options from the filter universe
@@ -23491,6 +23535,26 @@ After a supplier is selected, the supplier dropdown shrinks to that supplier bec
 ### Dependencies
 
 - `RQ432` (same files). `RQ318`/`RQ319` remain separate URL/apply owners.
+
+### Completion note
+
+- Date: 2026-09-25
+- Status: DONE
+- Completion: as in the inline completion note above (leave-one-out facets with counts; dropdowns bound to facets; cache/formula v5). Normalized by the same-day review; no scope change.
+- Changed files: see `.ai/runs/2026-09-25-RQ433-evidence.md`
+- Contract/runtime behavior changed: supplier/season/type facets come from the filter universe instead of the filtered leaderboard.
+- Checks run: as recorded in the run log.
+- Checks not run: as recorded in the run log.
+- Run log: `.ai/runs/2026-09-25-RQ433-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `3342aba9a7103f818a0912a705d04b8774cd455b`
+- Main verification: passed - `origin/main` contains `3342aba9` and evidence sync `171cd8bd` (re-verified 2026-09-25 by the review).
+- Missed: none found by the review.
+- Follow-up: none.
+- Residual risk: as recorded in the run log.
+- Next: none.
+- Prompt defect / scope repair: none.
 
 ---
 
@@ -23617,11 +23681,31 @@ The Shoe Type endpoint returns the raw exception message as problem detail with 
 
 - No blocking dependency. `RQ436` waits for this prompt (same pages). `RQ384` must reuse the helper when it runs.
 
+### Completion note
+
+- Date: 2026-09-25
+- Status: DONE
+- Completion: as in the inline completion note above (Shoe Type safe traceable problem with `errorCode`/`correlationId`; closed per-screen allowlists for Shoe Type, Pre/Post and Color). Normalized by the same-day review; no scope change.
+- Changed files: see `.ai/runs/2026-09-25-RQ435-evidence.md`
+- Contract/runtime behavior changed: only allowlisted safe messages reach users on the three pages; everything else shows the per-screen fallback.
+- Checks run: as recorded in the run log (focused specs, guardrails, typecheck).
+- Checks not run: full frontend suite; forced live exception.
+- Run log: `.ai/runs/2026-09-25-RQ435-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `ee87b9266137c63d0720b1d8d00b85a24e1afc45`
+- Main verification: passed - `origin/main` contains `ee87b926` and closure `02f0c4b3` (re-verified 2026-09-25 by the review).
+- Missed: four `ProdajaPrePostNivelacijePage.spec.tsx` cases still expected raw error text and failed from `ee87b926` (repaired test-only in `cc47d418`); `ColorSalesStatsPage.spec.tsx` "error hides KPI zeros" failed from `ee87b926` until `RQ436` (`3dde5583`), although the run log recorded that spec as 21/21.
+- Follow-up: none open; see the review run log.
+- Residual risk: the allowlist matches by prefix, so an allowlisted sentence followed by appended text is shown verbatim; backend safe details currently end with `Referentni ID: <id>.`, which relies on that prefix match.
+- Next: none.
+- Prompt defect / scope repair: none.
+
 ---
 
 ## RQ436 - Remove dead or frontend-derived Operacije KPIs and small lifecycle leaks
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: `RQ435` is DONE (same page files)
 Priority: P3
 Type: frontend/contract/tests
@@ -23670,6 +23754,26 @@ Shoe Type and Color show a „Udeo top 5“ KPI that is always „N/A“, Shoe T
 ### Dependencies
 
 - `RQ435` (same pages). Coordinate with `RQ329`.
+
+### Completion note
+
+- Date: 2026-09-25
+- Status: DONE
+- Completion: as in the inline completion note above (always-N/A Top 5 and undeclared Pre/Post period-growth KPIs removed; store names in metadata; dead Shoe Type branch removed; Color scroll timeout cleaned up). Normalized by the same-day review; no scope change.
+- Changed files: see `.ai/runs/2026-09-25-RQ436-evidence.md`
+- Contract/runtime behavior changed: Shoe Type, Color and Pre/Post no longer render frontend-derived Top 5/growth KPIs.
+- Checks run: as recorded in the run log (focused specs, guardrails, typecheck).
+- Checks not run: `ProdajaPrePostNivelacijePage.spec.tsx` and the full frontend suite.
+- Run log: `.ai/runs/2026-09-25-RQ436-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `3dde5583d52ea3a5bc1555ab27b75d760d9801aa`
+- Main verification: passed - `origin/main` contains `3dde5583` and closure `ec91dbcf` (re-verified 2026-09-25 by the review).
+- Missed: two `ProdajaPrePostNivelacijePage.spec.tsx` cases still expected the removed Top 5 and period-growth KPIs; repaired test-only in `cc47d418`.
+- Follow-up: none.
+- Residual risk: as recorded in the run log.
+- Next: none.
+- Prompt defect / scope repair: section `Status:` was left `IN_PROGRESS` while the summary row and header said DONE; corrected mechanically by the review.
 
 ---
 
@@ -23742,3 +23846,170 @@ Five focused tests fail on `00accd93` because assertions drifted behind delivere
 - Residual risk: the environment-dependent backend integration failures remain outside RQ437 and still mask regressions in those classes.
 - Next: DONE sync after `origin/main` verification, then continue the queue's Current READY prompt.
 - Prompt defect / scope repair: the multi-line source fragments in `SupplierDecisionSchemaSqlTests` hard-coded LF and failed on a clean Windows CRLF checkout; the file's private `ReadRepoFile` helper now normalizes line endings (smallest same-owner mechanical repair inside an owned file). All `DoesNotContain` guards still pass after normalization.
+
+---
+
+## RQ438 - Finish Daily Sales receipt-identity joins and prove the journal amount sign
+
+Status: WAITING
+Ready after: `RQ429` is DONE (same Daily Sales feature area; `RQ429` may touch the typed Daily Sales response)
+Priority: P2
+Type: backend/contract/tests
+Feature family: daily-sales-receipt-identity-residuals
+Parallel-safe: no
+Owner: Analytics Backend / Daily Sales + Access import
+Commit suggestion: `fix(analytics): remove remaining dnevnik id joins from receipt diagnostics`
+
+### Problem
+
+`RQ428` moved the „Neusklađeni računi“ diagnostic to the real receipt identity, but two sibling paths still join `DnevnikPromena.Id` to `ProdajaZaglavlje.Id`, which are unrelated identifiers: the Daily Sales non-standard/debt receipt revenue fallback and the Access import reconciliation warnings. `RQ428` also switched the journal total from absolute to signed `Iznos` without proving the sign of imported sale rows, and makes the whole diagnostic unavailable when a single journal sale row has no receipt number.
+
+### Evidence
+
+- `Api/Services/DailySalesStatsService.cs:151-155` builds `dnevnikTotalsBySaleId` keyed by `DnevnikPromena.Id`; `197-213` uses it as the revenue fallback for `nonStandardReceiptHeaders` keyed by `ProdajaZaglavlje.Id`, which feeds `NonStandardReceiptRevenue`, `DebtReceiptRevenue` and their warnings.
+- `Api/Services/AccessImportService.cs:1257-1267` filters `DnevnikPromena` by `importedSaleIds.Contains(x.Id)` (IDs of imported `ProdajaZaglavlje` rows) and sums absolute `Iznos`; `1301-1340` turns that join into „Import rekonsilijacija … mismatch“ warnings (ASCII copy).
+- `DailySalesStatsService.cs:140` now carries signed `Iznos` into `BuildReceiptReconciliation`; before `4d90ece6` the journal side used `x.Iznos < 0 ? -x.Iznos : x.Iznos`, and `AccessImportService.cs:1264` still does. The Access mapping copies `Iznos` unchanged (`AccessImportService.cs:5022`), so the sale-row sign is not established in code.
+- `BuildReceiptReconciliation` returns `unavailable` for the whole period when any journal sale row lacks `BrojRacuna`.
+- `Api.Tests/DailySalesReceiptReconciliationTests.cs` seeds only positive journal amounts.
+
+### Scope
+
+- `DailySalesStatsService.cs` non-standard/debt receipt revenue fallback and, if the sign proof requires it, the journal sign normalization used by `BuildReceiptReconciliation`.
+- `AccessImportService.AppendImportedSalesDiagnosticsAsync` receipt reconciliation and its warning copy.
+- Focused backend tests in `Api.Tests/DailySalesReceiptReconciliationTests.cs` and a new import-diagnostics test class. Do not edit `Api.Tests/DailySalesStatsServiceTests.cs` while `RQ437` is active.
+
+### Read first
+
+- `RQ428` (completion note and run log), `RQ381`, `RQ382`, `RQ303`
+- Access import mapping of `DnevnikPromena` (`TipPromene` sale types, `Iznos`)
+
+### Do
+
+1. Establish the sale-row `Iznos` sign convention from the Access import mapping plus one live or representative fixture sample; record it in code and evidence and normalize the journal side once, shared by the Daily Sales and import diagnostics.
+2. Replace the ID-keyed journal revenue fallback for non-standard/debt receipts with the `RQ428` receipt identity, or drop the fallback and report the revenue as unavailable when no line total exists; never `0` for a missing total.
+3. Move the import reconciliation to the same identity helper (shared, not copied) and localize its warning copy with diacritics.
+4. Decide and document whether journal rows without `BrojRacuna` make the whole diagnostic unavailable or yield a verified result over identity-bearing rows with explicit coverage (`n od m`), then implement the decision.
+
+### Tests
+
+- Journal sale rows stored with the proven sign reconcile against equal receipt totals (no false mismatch); return rows with the opposite sign reconcile.
+- Non-standard/debt receipt without line totals: revenue comes from the identity match or is unavailable; coincident IDs never contribute.
+- Import diagnostics: coincident `DnevnikPromena.Id`/`ProdajaZaglavlje.Id` with different receipts produce no mismatch; a real identity mismatch is reported.
+- `dotnet test Api.Tests/Api.Tests.csproj --filter "FullyQualifiedName~DailySales|FullyQualifiedName~AccessImport"`.
+
+### Acceptance
+
+- No receipt diagnostic, revenue fallback or import warning joins `DnevnikPromena.Id` to `ProdajaZaglavlje.Id`.
+- The journal sign rule is proven, documented and shared; a correct receipt never shows as a mismatch because of sign.
+- Missing identity or totals are unavailable with a reason, never `0` or a mismatch.
+
+### Dependencies
+
+- `RQ428` DONE; `RQ429` (IN_PROGRESS) shares the Daily Sales feature area. `RQ437` owns `Api.Tests/DailySalesStatsServiceTests.cs`; `RQ382` (WAITING) keeps data-scope parity of the same diagnostics.
+- Reliability contract: source of truth is signed `ProdajaStavke` line totals per receipt versus `DnevnikPromena.Iznos` normalized under the proven sign rule; unit RSD; mismatch numerator = matched receipts whose absolute difference exceeds 0.01 RSD, denominator = matched receipts; missing identity or totals → unavailable with reason, never zero; no-baseline and freshness semantics follow the existing Daily Sales metadata.
+
+---
+
+## RQ439 - Triage unmerged PR #63 Supplier Decision Hub findings against current main
+
+Status: WAITING
+Ready after: owner decision on whether the unmerged PR #63 audit (`origin/cursor/supplier-decision-hub-audit-444b`) should be salvaged
+Priority: P3
+Type: docs/triage
+Feature family: supplier-decision-hub-pr63-triage
+Parallel-safe: yes
+Owner: Queue owner / Analytics Supplier Decision
+Commit suggestion: `docs(queue): triage PR #63 supplier hub findings`
+
+### Problem
+
+PR #63 (2026-09-22, branch `cursor/supplier-decision-hub-audit-444b`, four docs commits, 255 commits behind `main`) queued five Supplier Decision Hub findings as `RQ401`-`RQ405`. `main` independently used `RQ401`-`RQ405` for different Supplier Decision prompts that are now DONE, so the branch cannot be merged without duplicate IDs. Three findings map to delivered owners; two may still be uncovered.
+
+### Evidence
+
+- Branch-only files: `docs/ai/SUPPLIER_DECISION_HUB_AUDIT_PROMPTS_2026-09-22.md`, `.ai/runs/2026-09-22-supplier-decision-hub-audit-prompts-evidence.md`; `git merge-tree` conflicts in this queue and `MASTER_ROADMAP.md`.
+- Branch `RQ401` (requested period vs cached metric window), `RQ404` (filter reachability after redirect) and `RQ405` (hub Serbian copy) overlap `main` `RQ401`/`RQ404`, `RQ403` and `RQ405` (DONE).
+- Branch `RQ402` (per-supplier signal identity when the page gate blocks; `PRICE_NEGOTIATE` shown as „Ne veruj“) and branch `RQ403` (hub KPI/chart/report totals versus the summary contract; PoP delta semantics) have no obvious owner on `main`.
+
+### Scope
+
+- Read-only verification of the two candidate findings on current `main`; queue and audit-doc updates only. No product code.
+
+### Read first
+
+- `RQ249`, `main` `RQ401`-`RQ405`, the PR #63 audit document on the branch.
+
+### Do
+
+1. Re-check branch findings `RQ402`/`RQ403` against current code with file:line evidence.
+2. Re-queue each still-valid finding under a fresh ID (never reuse `RQ401`-`RQ405`); map the rest to the owning DONE prompt.
+3. Record the outcome so the branch can be closed as superseded; do not merge it.
+
+### Tests
+
+- Queue validators with and without `--self-test`; `git diff --check`.
+
+### Acceptance
+
+- Every PR #63 finding is mapped to a DONE owner or re-queued under a unique ID; no duplicate RQ IDs.
+
+### Dependencies
+
+- Owner decision only; no runtime dependency.
+- Reliability contract: any re-queued finding must state source of truth, units, numerator/denominator and missing-evidence behavior per the protocol.
+
+---
+
+## RQ440 - Triage nine unowned failing shared analytics specs
+
+Status: READY
+Priority: P2
+Type: tests
+Feature family: analytics-shared-spec-drift
+Parallel-safe: no
+Owner: QA/Test Infrastructure + Analytics Frontend
+Commit suggestion: `test(analytics): repair drifted shared analytics specs`
+
+### Problem
+
+Nine frontend tests in seven files fail on `main` and no queue prompt owns them (`RQ437` owns five other files, `RQ431` the Daily Sales concentration case). A persistently red suite hid two same-day regressions (`RQ435`/`RQ436` Pre/Post spec drift). Most failures look like copy/contract drift toward page-specific safe messages, but some may be real regressions (for example lost dataset lineage in trust headers).
+
+### Evidence
+
+Full `npx vitest run` at `aaf51c2c` and a focused rerun at `ed0b0eca` (before `RQ435`):
+
+- `src/components/analytics/__tests__/AnalyticsEmptyState.spec.tsx` „sanitizes technical empty-state messages“ — generic fallback copy not found.
+- `src/components/analytics/__tests__/AnalyticsErrorState.spec.tsx` (2 cases) — expects „Podaci trenutno nisu dostupni. Proverite kvalitet podataka i pokušajte ponovo.“, renders „Analitika nije dostupna … Ne prikazujemo nule …“.
+- `src/components/analytics/__tests__/AnalyticsTableToolbar.spec.tsx` „keeps failed export visible …“ — expects the generic fallback, renders „Eksport nije uspeo. Pokušajte ponovo.“.
+- `src/components/analytics/__tests__/AnalyticsTrustHeader.spec.tsx` (2 cases) — `requested_window -> all_time` lineage not found; duplicate „Dodatni razlog pomoćnog skupa nije naveden“ elements.
+- `src/components/analytics/__tests__/SupplierExplainabilitySnapshot.spec.tsx` — `mv_supplier_decision_score_cache_90d` not rendered.
+- `src/pages/__tests__/DecisionPulsePage.spec.tsx` „sanitizes a rejected request error“ — renders „Decision Pulse nije dostupan …“ instead of the generic fallback.
+- `src/pages/__tests__/SupplierConsolidatedPage.spec.tsx` — `30d → 90d` window lineage not found.
+
+### Scope
+
+- The seven named spec files; product files only when a case proves a real regression, and then only the smallest fix in the owning component.
+- Excluded: `RQ437` files, `DailySalesStatsPage.premium.spec.tsx` (`RQ431`).
+
+### Read first
+
+- `RQ369`, `RQ395`, `RQ413`, `RQ435`, `docs/ai/PROMPT_QUEUE_PROTOCOL.md` reliability rules
+
+### Do
+
+1. For each case, identify the commit that turned it red (`git log -S`/bisect) and classify it as copy/contract drift or product regression.
+2. Update drifted assertions to the delivered contract, keeping the test intent (no raw technical text, no fake zero, lineage visible where the contract requires it).
+3. Fix real regressions minimally, or stop and add a follow-up prompt when the fix crosses an owner boundary.
+
+### Tests
+
+- `npm run test:run -- <the seven files>`; full `npm run test:run` to confirm no new failures; `npm run typecheck`; `npm run check:analytics-guardrails`.
+
+### Acceptance
+
+- The nine cases pass with intent preserved, and each has a recorded drift/regression classification in the run log.
+
+### Dependencies
+
+- No blocking dependency; must not edit `RQ437`-owned files while `RQ437` is active.
+- Reliability contract: tests must keep asserting that missing evidence is never rendered as zero, healthy or fresh, and that technical identifiers are not shown to users unless a trust/lineage contract explicitly requires them.
