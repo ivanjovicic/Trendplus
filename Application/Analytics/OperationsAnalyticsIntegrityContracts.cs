@@ -8,9 +8,7 @@ public static class OperationsAnalyticsIntegrityStates
     public const string DriftDetected = "drift_detected";
 
     public static bool BlocksDecisionSignals(string? status)
-        => string.Equals(status, DriftDetected, StringComparison.Ordinal)
-           || string.Equals(status, Unverified, StringComparison.Ordinal)
-           || string.Equals(status, Degraded, StringComparison.Ordinal);
+        => string.Equals(status, DriftDetected, StringComparison.Ordinal);
 }
 
 public sealed record OperationsAnalyticsIntegrityProbeDelta(
@@ -41,7 +39,7 @@ public sealed record OperationsAnalyticsIntegritySnapshot(
             trigger,
             summary,
             Array.Empty<OperationsAnalyticsIntegrityProbeDelta>(),
-            BlocksDecisionSignals: true);
+            BlocksDecisionSignals: false);
 
     public static OperationsAnalyticsIntegritySnapshot Degraded(string evidenceId, string trigger, string summary)
         => new(
@@ -52,5 +50,5 @@ public sealed record OperationsAnalyticsIntegritySnapshot(
             trigger,
             summary,
             Array.Empty<OperationsAnalyticsIntegrityProbeDelta>(),
-            BlocksDecisionSignals: true);
+            BlocksDecisionSignals: false);
 }

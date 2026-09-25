@@ -7,9 +7,9 @@ Date: 2026-09-25
 | State | Meaning | Decision signals |
 | --- | --- | --- |
 | `verified` | Bounded probe reconciled live aggregate, raw-fact oracle and optional cache lane | Allowed (subject to existing trust meta) |
-| `unverified` | Import/cache invalidation or bootstrap; probe not yet completed | Blocked (fail-closed) |
-| `degraded` | Probe disabled or failed | Blocked |
-| `drift_detected` | Non-zero revenue/qty delta beyond tolerance | Blocked |
+| `unverified` | Import/cache invalidation or bootstrap; probe not yet completed | Warning in meta; recommendations follow existing trust meta |
+| `degraded` | Probe disabled or failed | Warning in meta; recommendations follow existing trust meta |
+| `drift_detected` | Non-zero revenue/qty delta beyond tolerance | Blocked (fail-closed) |
 
 ## Surfaces
 
@@ -22,6 +22,9 @@ Date: 2026-09-25
 ## Triggers
 
 - Analytics cache clear (`AnalyticsCacheAdminService`) → `unverified`
+- Access import with analytics cache invalidation → `unverified`
+- Web host startup (`OperationsAnalyticsIntegrityStartupHostedService`) → one bounded probe
+- Worker interval (`OperationsAnalyticsIntegrityWorker`) → periodic bounded probe
 - Successful bounded probe → `verified` or `drift_detected`
 
 ## Oracle reuse

@@ -333,6 +333,7 @@ using NpgsqlTypes;
     private readonly AnalyticsDbContext _analyticsDb;
     private readonly IAnalyticsCacheService? _analyticsCache;
     private readonly AnalyticsCacheAdminService? _cacheAdmin;
+    private readonly OperationsAnalyticsIntegrityRegistry? _operationsIntegrityRegistry;
     private readonly ILogger<AccessImportService> _logger;
     private readonly AccessImportOptions _options;
     private readonly IServiceScopeFactory? _serviceScopeFactory;
@@ -378,6 +379,7 @@ using NpgsqlTypes;
         IOptions<AccessImportOptions>? options = null,
         IAnalyticsCacheService? analyticsCache = null,
         AnalyticsCacheAdminService? cacheAdmin = null,
+        OperationsAnalyticsIntegrityRegistry? operationsIntegrityRegistry = null,
         IServiceScopeFactory? serviceScopeFactory = null,
         IAccessImportJobQueue? jobQueue = null,
         IAccessImportCursorRepository? cursorRepository = null,
@@ -391,6 +393,7 @@ using NpgsqlTypes;
         _options = options?.Value ?? new AccessImportOptions();
         _analyticsCache = analyticsCache;
         _cacheAdmin = cacheAdmin;
+        _operationsIntegrityRegistry = operationsIntegrityRegistry;
         _serviceScopeFactory = serviceScopeFactory;
         _jobQueue = jobQueue;
         _cursorRepository = cursorRepository;
@@ -2509,6 +2512,10 @@ using NpgsqlTypes;
                         {
                             _logger.LogWarning(cacheEx, "Analytics cache invalidation failed after Access import. BatchId: {BatchId}.", batch.Id);
                         }
+
+                        _operationsIntegrityRegistry?.MarkUnverified(
+                            "access_import",
+                            "Access import completed and analytics cache was invalidated; bounded integrity probe is required.");
                     }
 
                     result.Status = "completed";

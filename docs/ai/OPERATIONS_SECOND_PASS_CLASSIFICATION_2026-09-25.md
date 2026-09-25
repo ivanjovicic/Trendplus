@@ -65,4 +65,4 @@ The catalogue contains nine still-potential findings and forty findings already 
 - Confirmed independent findings: none after the current `main` evidence and owner matrix.
 - New follow-up prompts: none; creating another prompt would duplicate `RQ414`–`RQ426` or reopen an owner without a new failing proof.
 - Potential findings retained for a future owner only if a focused runtime reproducer demonstrates wrong output: `OP2-01`, `OP2-04`, `OP2-05`, `OP2-14`, `OP2-18`, `OP2-19`, `OP2-26`, `OP2-27` and `OP2-33`.
-- `RQ407` is consumed as completed shared proof; `RQ412`/`RQ413` remain independent future oracle/drift owners and are not folded into this prompt.
+- `RQ407` is consumed as completed shared proof; `RQ412`/`RQ413` are DONE as independent oracle/drift owners and are not folded into this prompt.

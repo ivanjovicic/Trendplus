@@ -410,6 +410,7 @@ try
         builder.Services.AddHostedService<SupplierDecisionSchemaRepairHostedService>();
         builder.Services.AddHostedService<AnalyticsConnectionDiagnosticsHostedService>();
         builder.Services.AddHostedService<AnalyticsCachePrewarmHostedService>();
+        builder.Services.AddHostedService<OperationsAnalyticsIntegrityStartupHostedService>();
     }
     builder.Services.Configure<ForwardedHeadersOptions>(options =>
     {

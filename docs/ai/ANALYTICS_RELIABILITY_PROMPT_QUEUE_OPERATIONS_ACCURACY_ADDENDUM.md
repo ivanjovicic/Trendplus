@@ -15,7 +15,7 @@ Owner promotion 2026-09-25: idle recovery verified `RQ407`, `RQ411` and applicab
 
 Owner claim 2026-09-25: `RQ412` transitioned `READY -> IN_PROGRESS` in this workspace for the implementation-independent Supplier/Shoe Type raw-fact oracle extending the RQ407 fixture. Local runtime lock: `.ai/task-locks/RQ412-cursor.lock.md`.
 
-Owner completion 2026-09-25: `RQ412` was delivered directly to `main` in `cb755cae`. Supplier and Shoe Type list totals, bucket sums, share percentages and master-mutation invariants are reconciled against raw SQL on `supplier_id_at_sale` / `shoe_type_id_at_sale` via `Api.Tests/Analytics/SupplierShoeTypeRawFactOracle.cs` and `Api.Tests/SupplierShoeTypeIndependentOracleIntegrationTests.cs`. Manifest: `docs/qa/SUPPLIER_SHOETYPE_INDEPENDENT_ORACLE_MANIFEST_2026-09-25.md`. Run log: `.ai/runs/2026-09-25-RQ412-evidence.md`. Evidence state: synchronized. `RQ413` remains WAITING behind this owner.
+Owner completion 2026-09-25: `RQ412` was delivered directly to `main` in `cb755cae`. Supplier and Shoe Type list totals, bucket sums, share percentages and master-mutation invariants are reconciled against raw SQL on `supplier_id_at_sale` / `shoe_type_id_at_sale` via `Api.Tests/Analytics/SupplierShoeTypeRawFactOracle.cs` and `Api.Tests/SupplierShoeTypeIndependentOracleIntegrationTests.cs`. Manifest: `docs/qa/SUPPLIER_SHOETYPE_INDEPENDENT_ORACLE_MANIFEST_2026-09-25.md`. Run log: `.ai/runs/2026-09-25-RQ412-evidence.md`. Evidence state: synchronized. Successor `RQ413` was sequenced separately.
 
 Routing reconciliation 2026-09-25: `RQ411` summary row corrected from stale `WAITING` to `DONE` without reopening the delivered attribution contract.
 

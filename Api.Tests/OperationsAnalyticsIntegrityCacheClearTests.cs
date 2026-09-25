@@ -22,7 +22,8 @@ public sealed class OperationsAnalyticsIntegrityCacheClearTests
         await admin.ClearAsync("supplier-sales");
 
         Assert.Equal(OperationsAnalyticsIntegrityStates.Unverified, registry.Current.Status);
-        Assert.True(registry.Current.BlocksDecisionSignals);
+        Assert.False(registry.Current.BlocksDecisionSignals);
+        Assert.False(OperationsAnalyticsIntegrityMeta.ShouldBlockDecisionSignals(registry));
     }
 
     private sealed class StubAnalyticsCacheService : IAnalyticsCacheService

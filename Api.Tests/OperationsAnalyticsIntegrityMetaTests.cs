@@ -33,6 +33,22 @@ public sealed class OperationsAnalyticsIntegrityMetaTests
     }
 
     [Fact]
+    public void ApplyIntegrityState_UnverifiedWarnsWithoutBlockingRecommendations()
+    {
+        var registry = new OperationsAnalyticsIntegrityRegistry();
+        registry.MarkUnverified("cache_clear", "Cache cleared.");
+
+        var meta = OperationsAnalyticsIntegrityMeta.ApplyIntegrityState(
+            AnalyticsResponseMetaFactory.Success("good"),
+            registry);
+
+        Assert.Equal(OperationsAnalyticsIntegrityStates.Unverified, meta.OperationsIntegrityStatus);
+        Assert.Equal("OPERATIONS_INTEGRITY_UNVERIFIED", meta.WarningCode);
+        Assert.Null(meta.RecommendationAllowed);
+        Assert.False(OperationsAnalyticsIntegrityMeta.ShouldBlockDecisionSignals(registry));
+    }
+
+    [Fact]
     public void ShouldBlockDecisionSignals_ReturnsFalseWhenVerified()
     {
         var registry = new OperationsAnalyticsIntegrityRegistry();

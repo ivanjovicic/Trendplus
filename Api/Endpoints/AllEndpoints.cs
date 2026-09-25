@@ -1210,7 +1210,7 @@ public static class AllEndpoints
                 var isPrewarmRequest = IsPrewarmRequest(httpContext);
                 var cacheKey = AnalyticsCacheKeys.SupplierSalesStats(fromUtc, toUtc, storeId, sezonaId, normalizedDataScope, activeBatchId);
                 var cacheMetadataKey = AnalyticsCacheKeys.Metadata(cacheKey);
-                var cachedResponse = await cache.GetAsync<AnalyticsJsonCacheEntry>(cacheKey, ct);
+                var cachedResponse = await cache.GetAsync<AnalyticsJsonCachePayload>(cacheKey, ct);
                 if (cachedResponse is not null)
                 {
                     var cacheMetadata = await cache.GetAsync<AnalyticsCacheEntryMetadata>(cacheMetadataKey, ct);
@@ -2004,7 +2004,7 @@ public static class AllEndpoints
 
                 processingStopwatch.Stop();
                 var responseJson = JsonSerializer.Serialize(response);
-                await cache.SetAsync(cacheKey, new AnalyticsJsonCacheEntry(responseJson), CacheExpiration.HeavyAnalytics, ct);
+                await cache.SetAsync(cacheKey, new AnalyticsJsonCachePayload { Json = responseJson }, CacheExpiration.HeavyAnalytics, ct);
                 await cache.SetAsync(cacheMetadataKey, new AnalyticsCacheEntryMetadata(isPrewarmRequest, DateTime.UtcNow), CacheExpiration.HeavyAnalytics, ct);
                 requestStopwatch.Stop();
                 logger.LogInformation(
@@ -7879,7 +7879,6 @@ public static class AllEndpoints
 
     private sealed record SalesDataWindowResult(DateTime? FromDate, DateTime? ToDate, bool CacheHit, long ElapsedMs);
 
-    private sealed record AnalyticsJsonCacheEntry(string Json);
 
     private sealed record AnalyticsCacheEntryMetadata(bool CreatedByPrewarm, DateTime CreatedAtUtc);
 

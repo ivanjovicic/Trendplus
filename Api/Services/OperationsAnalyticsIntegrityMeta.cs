@@ -7,7 +7,8 @@ namespace Api.Services;
 public static class OperationsAnalyticsIntegrityMeta
 {
     public static bool ShouldBlockDecisionSignals(OperationsAnalyticsIntegrityRegistry? registry)
-        => registry is not null && registry.Current.BlocksDecisionSignals;
+        => registry is not null
+           && OperationsAnalyticsIntegrityStates.BlocksDecisionSignals(registry.Current.Status);
 
     public static AnalyticsResponseMetaDto ApplyIntegrityState(
         AnalyticsResponseMetaDto meta,
@@ -21,24 +22,25 @@ public static class OperationsAnalyticsIntegrityMeta
         meta.OperationsIntegrityCheckedAtUtc = snapshot.CheckedAtUtc;
         meta.OperationsIntegrityEvidenceId = snapshot.EvidenceId;
 
-        if (!snapshot.BlocksDecisionSignals)
-            return meta;
-
         if (string.Equals(snapshot.Status, OperationsAnalyticsIntegrityStates.DriftDetected, StringComparison.Ordinal))
         {
             meta.WarningCode = "OPERATIONS_DRIFT_DETECTED";
             meta.WarningMessage = snapshot.Summary ?? "Potvrđeno odstupanje Operacije podataka; preporuke su blokirane.";
             meta.DataQualityStatus = "critical";
-        }
-        else
-        {
-            meta.WarningCode ??= "OPERATIONS_INTEGRITY_UNVERIFIED";
-            meta.WarningMessage ??= snapshot.Summary ?? "Integritet Operacije podataka nije potvrđen; preporuke su privremeno blokirane.";
-            meta.DataQualityStatus ??= "warning";
+            meta.RecommendationAllowed = false;
+            meta.IsPartial = true;
+            return meta;
         }
 
-        meta.RecommendationAllowed = false;
-        meta.IsPartial = true;
+        if (string.Equals(snapshot.Status, OperationsAnalyticsIntegrityStates.Unverified, StringComparison.Ordinal)
+            || string.Equals(snapshot.Status, OperationsAnalyticsIntegrityStates.Degraded, StringComparison.Ordinal))
+        {
+            meta.WarningCode ??= "OPERATIONS_INTEGRITY_UNVERIFIED";
+            meta.WarningMessage ??= snapshot.Summary ?? "Integritet Operacije podataka još nije potvrđen bounded probom.";
+            meta.DataQualityStatus ??= "warning";
+            meta.IsPartial = true;
+        }
+
         return meta;
     }
 }
