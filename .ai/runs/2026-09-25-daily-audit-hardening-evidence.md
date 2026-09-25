@@ -4,8 +4,8 @@ Date: 2026-09-25
 Agent/tool: Cursor Cloud Agent
 Delivery target: main
 Working branch / PR: main / direct-main
-Main commit SHA: pending
-Main verification: pending
+Main commit SHA: 9bb93359
+Main verification: passed — `origin/main` at `9bb93359c9c687531c94cd095920af095d991154`
 Evidence state: synchronized
 
 ## What was done
