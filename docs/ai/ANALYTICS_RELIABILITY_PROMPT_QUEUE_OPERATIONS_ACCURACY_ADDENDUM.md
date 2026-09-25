@@ -5,7 +5,7 @@ Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 Main RQ current READY prompt: none
 
-Certification-layer review 2026-09-25: current main confirms the existing Supplier/Shoe Type semantic owners and bounded integrity runtime, but not a defensible certification claim across contract, adversarial fixture, live execution, browser/render/export, durable evidence, import-trigger freshness, UI evidence, certificate, CI, production or customer acceptance. Added RQ445-RQ455 below as WAITING, collision-safe follow-ups. These prompts do not reopen RQ407, RQ411-RQ413, RQ373-RQ380 or RQ375-RQ377; they consume their outputs and record the remaining evidence gaps.
+Certification-layer review 2026-09-25: current main confirms the existing Supplier/Shoe Type semantic owners and bounded integrity runtime, but not a defensible certification claim across contract, adversarial fixture, live execution, browser/render/export, durable evidence, import-trigger freshness, UI evidence, certificate, CI, production or customer acceptance. Added RQ445-RQ455 below as WAITING, collision-safe follow-ups. Semantic closure review later the same day added RQ456-RQ457 for the two remaining source/population and Shoe Type identity/comparison contracts; existing RQ447/RQ449 IDs retain their certification meanings and are not repurposed. These prompts do not reopen RQ407, RQ411-RQ413, RQ373-RQ380 or RQ375-RQ377; they consume their outputs and record the remaining evidence gaps.
 
 Owner promotion 2026-09-25: idle recovery under the user's claim-and-execute request verified `RQ413` is dependency-complete after `RQ407` and `RQ412` delivery. No active drift-guard lock or overlapping cache/freshness owner was found; `RQ413` moved `WAITING -> READY`.
 
@@ -1442,6 +1442,11 @@ RQ411, RQ412 and the existing golden manifests define important attribution and 
 
 - One canonical contract document linked from the Operations accuracy addendum and roadmap.
 - Supplier and Shoe Type revenue, signed quantity, shares, unknown buckets, period/store/scope, attribution basis, cost coverage, trust states and certificate claim language.
+- Canonical retail-sales document population: `BrojRacuna` values `DUG` and `KOREKCIJA` (trimmed, case-insensitive) are non-standard adjustment/debt documents and are excluded from certified retail turnover on Daily Sales, Supplier, Shoe Type and Color; if needed commercially they must be surfaced separately, never silently mixed into retail sales.
+- Shoe Type identity is ID-based: `tipObuceId == null` is the unknown bucket; a non-null ID with a blank or `Nepoznato` display label remains a known identity and is a label-quality issue.
+- Margin contribution share is available only when the aggregate margin-contribution denominator is strictly positive; zero/negative totals render the share unavailable and absolute RSD contribution remains the truthful fallback.
+- Shoe Type row-level PoP population is the union of current and previous-period identities so a previous-only type receives a current-zero row and can expose a truthful `-100%` change when its previous denominator is positive.
+- The headline `Prosečna marža` card is a covered-revenue-weighted aggregate over the full current response sales population (`sum(marginContribution) / sum(costCoveredRevenue)`); recommendation benchmarking may separately use the known-identity cohort and must be named/provenanced separately.
 - Explicit distinction between reconciled sales facts and qualified or estimated margin evidence.
 
 Do not redefine the RQ411 attribution source, RQ412 oracle SQL or RQ442 date implementation.
@@ -1480,7 +1485,7 @@ The shared RQ407 seed proves core arithmetic, but it does not yet provide the co
 
 ### Scope
 
-Extend the existing RQ407 fixture and RQ412 manifest; do not create a second seed system. Include returns and negative net revenue, null supplier/type, two stores, Access and POS scope, exact lower and upper date boundaries including fractional seconds, post-sale master mutation, duplicate-import attempt, missing and mixed cost coverage, top-N with unknown and cache-before/after-import states. Store expected totals, buckets, denominators and evidence classifications as immutable JSON or Markdown.
+Extend the existing RQ407 fixture and RQ412 manifest; do not create a second seed system. Include returns and negative net revenue, null supplier/type, a non-null Shoe Type whose label is literally `Nepoznato`, a non-null Shoe Type with blank name, previous-period-only Shoe Type, `DUG`/`KOREKCIJA` mixed-case/whitespace documents, two stores, Access and POS scope, exact lower and upper date boundaries including fractional seconds, post-sale master mutation, duplicate-import attempt, missing and mixed cost coverage, zero/negative total margin contribution, top-N with unknown and cache-before/after-import states. Store expected totals, buckets, denominators and evidence classifications as immutable JSON or Markdown.
 
 ### Tests
 
@@ -1503,7 +1508,7 @@ Extend the existing RQ407 fixture and RQ412 manifest; do not create a second see
 ## RQ447 - Execute the live oracle and close the OP2 runtime seams
 
 Status: WAITING
-Ready after: PostgreSQL integration host and the RQ446 fixture are available
+Ready after: PostgreSQL integration host is available and RQ446, RQ456 and RQ457 are DONE
 Priority: P0
 Type: integration-tests/evidence
 Feature family: supplier-shoetype-live-oracle-reproducers
@@ -1533,7 +1538,7 @@ Run the four SupplierShoeTypeIndependentOracleIntegrationTests cases on PostgreS
 
 ### Dependencies
 
-- RQ412, RQ445, RQ446, RQ442 and the existing OP2 classification. Do not reopen potential findings without a failing reproducer.
+- RQ412, RQ445, RQ446, RQ456, RQ457, RQ442 and the existing OP2 classification. Do not execute certification against the superseded receipt/identity/PoP semantics and do not reopen potential findings without a failing reproducer.
 
 ---
 
@@ -1830,3 +1835,105 @@ Create a reusable acceptance pack and one pilot execution template covering the 
 ### Dependencies
 
 - RQ445, RQ448, RQ452, RQ454 and customer-provided source report plus named reviewer.
+
+
+---
+
+## RQ456 - Canonicalize retail-sales receipt population
+
+Status: WAITING
+Ready after: RQ445 accuracy contract records the exclusion policy
+Priority: P0
+Type: backend/data-contract/oracle/detail/export/tests
+Feature family: operations-retail-sales-receipt-population
+Parallel-safe: no with Supplier/Shoe/Color aggregation or RQ412/RQ446 oracle fixture files
+Owner: Analytics Reliability / Sales Population
+Commit suggestion: fix(analytics): unify non-retail receipt exclusions
+
+### Problem
+
+Daily Sales explicitly excludes receipt numbers `DUG` and `KOREKCIJA` (trimmed/case-insensitive) and reports them as non-standard debt/correction documents. Supplier Sales, Shoe Type Sales and Color Sales currently join the same sale headers/lines without the same `BrojRacuna` population predicate. The screens can therefore report different retail turnover for the same period/store/scope and cannot be certified against one source population.
+
+### Canonical decision
+
+- `DUG` and `KOREKCIJA` are excluded from the certified retail-sales population everywhere, using trim + case-insensitive comparison.
+- Their values remain auditable as excluded/non-standard documents; they are not deleted and may later receive a separate adjustments/debt surface.
+- Returns represented as signed retail sale lines remain included; exclusion is document identity, not a rule that removes negative quantities.
+
+### Scope
+
+Centralize a reusable sales-receipt population policy and apply it consistently to Daily Sales, Supplier, Shoe Type and Color current-period, previous-period, data-window, detail and export paths. Apply the identical rule to RQ412 independent oracle SQL and RQ407/RQ446 certification fixtures/expectations. Avoid four endpoint-local string lists.
+
+### Tests
+
+- Exact/mixed-case/leading-trailing-space `DUG` and `KOREKCIJA` are excluded on all four sales surfaces.
+- Standard receipts and signed return lines remain included.
+- Same period/store/dataScope yields equal authoritative revenue/quantity populations before dimension grouping.
+- Detail/export/oracle do not reintroduce excluded headers.
+- Evidence records excluded document count/revenue where useful without adding it to retail turnover.
+
+### Acceptance
+
+- Daily/Supplier/Shoe Type/Color reconcile to one receipt population contract.
+- No certified path silently counts DUG/KOREKCIJA after another certified path excludes them.
+- RQ412 raw-fact oracle and RQ447 certification run use the same declared exclusion semantics without reusing production aggregation code.
+
+### Dependencies
+
+- RQ445, RQ407, RQ412, RQ446 and Daily Sales forensic evidence. Complete before RQ447 certification execution.
+
+---
+
+## RQ457 - Harden Shoe Type identity, PoP union and margin semantics
+
+Status: WAITING
+Ready after: RQ445 records the canonical semantics; coordinate with RQ456 population work
+Priority: P0
+Type: backend/frontend/detail/export/tests
+Feature family: shoetype-identity-pop-margin-semantics
+Parallel-safe: no with Shoe Type endpoint/detail/page owners
+Owner: Analytics Reliability / Shoe Type
+Commit suggestion: fix(analytics): close Shoe Type identity and comparison semantics
+
+### Problem
+
+Current Shoe Type code has three residual certification defects:
+
+1. Some backend/detail paths infer unknown identity from the display text `"Nepoznato"` instead of `tipObuceId == null`, so a legitimate non-null type with that/blank label can be merged into or excluded as unknown.
+2. The response rows are created only from current-period sale lines; a type sold only in the previous comparison period contributes to total previous-period revenue but has no row, hiding a real -100% row-level change.
+3. The top-level weighted margin code currently excludes unknown types by display label. The KPI needs a direct full-population weighted aggregate, while recommendation benchmarking may use a separate known-ID cohort.
+
+The frontend margin-share helper was immediately hardened on 2026-09-25 so any total margin contribution <= 0 returns unavailable instead of a percentage; this prompt makes backend/detail/export semantics match that rule.
+
+### Canonical decision
+
+- Unknown Shoe Type identity means `tipObuceId == null` only. Display names never define identity.
+- Row-level PoP population is the union of current and previous-period IDs. Previous-only rows have current revenue/units = 0, previous values preserved and -100% change when the previous denominator is positive.
+- A previous-only row must not invent current-period cost, margin, pre/post or recommendation evidence; unavailable fields remain null/qualified and actionability is fail-closed.
+- `Udeo u maržnom doprinosu` is N/A whenever total margin contribution <= 0; show absolute RSD contribution instead.
+- Headline `Prosečna marža` = full current-response covered-revenue-weighted margin. A known-ID recommendation benchmark is separate metadata/field and must not masquerade as the headline KPI.
+
+### Scope
+
+Replace name-based Shoe Type unknown predicates in `AllEndpoints.cs`, `AnalyticsDetailReadService.cs`, integration/snapshot helpers and related frontend identity consumers with ID/null semantics. Build the current/previous identity union server-side and keep detail/export parity. Separate headline weighted-margin aggregate from known-ID recommendation benchmark with explicit DTO/provenance names. Preserve sale-time `ShoeTypeIdAtSale` from RQ411.
+
+### Tests
+
+- Non-null type named exactly `Nepoznato` remains known; blank name with non-null ID remains known and addressable by ID.
+- Null ID is the only unknown bucket across list/detail/export/oracle.
+- Current-only, both-period and previous-only types reconcile; previous-only row shows current 0 and previous > 0 without invented current evidence.
+- Total/current/previous sums reconcile across rows and totals.
+- Margin share is null/N/A for zero and negative aggregate contribution and percentage mode only for strictly positive aggregate contribution.
+- Headline weighted margin equals `sum(current marginContribution) / sum(current costCoveredRevenue)` over the full response population; known-ID recommendation benchmark has its own proof.
+- Detail and frontend rendered values preserve these semantics.
+
+### Acceptance
+
+- Shoe Type identity cannot change because of display-name text.
+- Row-level PoP no longer drops previous-only types.
+- The headline margin KPI, row/detail margin shares and recommendation benchmark have explicit non-conflicting denominators.
+- RQ447/RQ448 can reconcile these semantics without special-case UI inference.
+
+### Dependencies
+
+- RQ375-RQ377, RQ411, RQ412, RQ285, RQ346, RQ445, RQ446 and RQ456 population contract. Complete before RQ447 certification execution.
