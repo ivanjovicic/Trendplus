@@ -24,6 +24,7 @@ Evidence state: synchronized
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
 
 ## Validation run
+- Initial adapter-contract test attempt -> fail (`1/7`) because page and proof token sets were conflated; the same-owner test contract was corrected before delivery.
 - `dotnet test Api.Tests/Api.Tests.csproj --configuration Release --filter FullyQualifiedName~OperationsAnalyticsProofPackTests --no-restore --verbosity minimal` -> pass (`7/7`).
 - `dotnet test Api.Tests/Api.Tests.csproj --configuration Release --filter FullyQualifiedName~AnalyticsFrontendRouteSmokeTests --no-restore --verbosity minimal` -> pass (`12/12`).
 - Selected frontend Operations page tests for Inventory, Supplier Sales, Shoe Type, Daily Sales, Pre/Post, Color, Pre-Nivelacija and Supplier Footwear -> pass (`8` files, `134/134`).
