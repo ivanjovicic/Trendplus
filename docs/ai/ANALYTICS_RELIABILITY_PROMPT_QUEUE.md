@@ -16643,8 +16643,8 @@ Reproduction: open Color Sales, click row detail, compare table header vs detail
 - Run log: `.ai/runs/2026-09-25-RQ304-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending until queue/evidence closure is pushed
+- Main commit SHA: `a7f995576e0edc7914b7d55c25563b3f7d0840ec`
+- Main verification: current `origin/main` contains the queue/evidence delivery commit; the final evidence synchronization follows.
 - Missed: no known RQ304 issue; backend recommendation ownership remains in RQ400.
 - Follow-up: idle recovery for the next dependency-complete main-queue prompt.
 - Residual risk: historical queue sections contain older snapshots; active RQ304 status and pointer are synchronized.
