@@ -64,7 +64,7 @@ No branch was merged. Every remote branch with commits not on `main` is obsolete
 
 ## Documentation impact
 
-- Queue: completion records normalized; `RQ438` (WAITING), `RQ439` (WAITING), `RQ440` (READY) added; `Current READY prompt` left `none` because other workspaces hold `RQ429` and `RQ437` and the pointer is owned by the claim protocol.
+- Queue: completion records normalized; `RQ438` (WAITING), `RQ439` (WAITING), `RQ440` (READY) added; `Current READY prompt` was left `none` in `3afe056b`; after `RQ429` closed (`ded7efce`/`bc248ede`) a follow-up commit promoted `RQ438` `WAITING -> READY` on its `Ready after` gate and pointed `Current READY` at `RQ440`.
 - Roadmap: RQ program row synchronized with the queue.
 
 ## What was missed
@@ -78,4 +78,4 @@ No branch was merged. Every remote branch with commits not on `main` is obsolete
 
 ## Next
 
-- Finish `RQ429`/`RQ437` (other workspaces), claim `RQ440`, then `RQ438`; owner decisions on `RQ431`, `RQ439` and the `setup-dev-environment` branch.
+- `RQ437` DONE sync after its commit reaches `origin/main` (other workspace); claim `RQ440` and `RQ438`; owner decisions on `RQ431`, `RQ439` and the `setup-dev-environment` branch.

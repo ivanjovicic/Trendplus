@@ -2,8 +2,9 @@
 
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ440
 Routing repair 2026-09-25 (same-day review of today's commits, local-only; no task reopened): the `RQ436` section `Status:` line was corrected `IN_PROGRESS -> DONE` to match its summary row and synchronized delivery (`3dde5583`/`ec91dbcf`); `RQ428`, `RQ432`, `RQ433`, `RQ435` and `RQ436` received protocol completion notes (`Evidence state`, `Delivery mode`, `Main commit SHA`, `Main verification`) from their run logs. The `RQ427`-`RQ437` audit evidence was synchronized in `1c3899c8`, and the Pre/Post page-spec drift left by `RQ435`/`RQ436` was repaired test-only in `cc47d418`. Follow-ups: `RQ438` (WAITING behind `RQ429`: remaining `DnevnikPromena.Id`/`ProdajaZaglavlje.Id` joins and the journal `Iznos` sign proof), `RQ439` (WAITING, owner-gated triage of unmerged PR #63) and `RQ440` (READY, nine unowned failing shared analytics specs). Run log: `.ai/runs/2026-09-25-todays-commits-review-evidence.md`.
+Owner promotion 2026-09-25 (same-day review follow-up): `RQ429` is DONE (`ded7efce`, closure `bc248ede`), so `RQ438` moved `WAITING -> READY` on its explicit `Ready after` gate; it is backend-only and must still not edit `RQ437`-owned files while `RQ437` is PARTIAL. `Current READY prompt` now names `RQ440` (no live-data dependency); `RQ438` stays an independent READY lane.
 Owner promotion 2026-09-25: idle recovery verified `RQ428` is DONE on `main`; `RQ429` is dependency-complete and its Daily Sales frontend scope is collision-safe with active RQ437 backend/test ownership. RQ429 moved `WAITING -> READY`; the older RQ352 lock is stale because RQ352 is already DONE.
 Owner claim 2026-09-25: RQ429 transitioned `READY -> IN_PROGRESS` in this workspace for truthful Daily Sales empty-state, incomplete-shift and MA7 semantics. Local lock: `.ai/task-locks/RQ429-codex.lock.md`.
 Owner completion 2026-09-25: RQ429 was delivered directly to `main` in `ded7efce`. Daily Sales now honors backend no-data metadata, keeps true zero days, aligns missing/partial shift counts, excludes the current day from the seven-day baseline and states insufficient history. Run log: `.ai/runs/2026-09-25-RQ429-evidence.md`. Evidence state: synchronized. `RQ430` remains WAITING and `RQ437` remains active in another owner workspace.
@@ -1589,7 +1590,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ435 | DONE | operations-safe-error-messages | Return safe traceable Shoe Type errors and allowlist frontend error display |
 | RQ436 | DONE | operations-derived-kpi-cleanup | Remove dead or frontend-derived Operacije KPIs and small lifecycle leaks |
 | RQ437 | PARTIAL | operations-stale-test-hygiene | Repair stale Operacije tests that hide regressions |
-| RQ438 | WAITING | daily-sales-receipt-identity-residuals | Finish Daily Sales receipt-identity joins and prove the journal amount sign |
+| RQ438 | READY | daily-sales-receipt-identity-residuals | Finish Daily Sales receipt-identity joins and prove the journal amount sign |
 | RQ439 | WAITING | supplier-decision-hub-pr63-triage | Triage unmerged PR #63 Supplier Decision Hub findings against current main |
 | RQ440 | READY | analytics-shared-spec-drift | Triage nine unowned failing shared analytics specs |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
@@ -23851,7 +23852,7 @@ Five focused tests fail on `00accd93` because assertions drifted behind delivere
 
 ## RQ438 - Finish Daily Sales receipt-identity joins and prove the journal amount sign
 
-Status: WAITING
+Status: READY
 Ready after: `RQ429` is DONE (same Daily Sales feature area; `RQ429` may touch the typed Daily Sales response)
 Priority: P2
 Type: backend/contract/tests
