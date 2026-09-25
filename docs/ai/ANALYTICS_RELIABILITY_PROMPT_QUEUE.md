@@ -22885,8 +22885,8 @@ This prompt is analysis and queue decomposition only. The downstream owner must 
 - Run log: `.ai/runs/2026-09-25-RQ408-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending until the documentation delivery commit is pushed
+- Main commit SHA: `7b31adc97e546b22fb54c4c20fc296fc3316fb6a`
+- Main verification: implementation/evidence commit prepared locally; fresh `origin/main` verification follows push.
 - Missed: no confirmed independent OP2 defect; potential items require a focused fixture/runtime proof before a new prompt.
 - Follow-up: future owner may promote `RQ412`/`RQ413` under their declared dependency gates; re-open only a potential OP2 item with a new failing proof.
 - Residual risk: browser/deployed behavior and remote CI were not inspected; the local API showed the seeded Inventory route response successfully.
