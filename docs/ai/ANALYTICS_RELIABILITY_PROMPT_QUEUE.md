@@ -58,7 +58,8 @@ Owner block 2026-09-24: `RQ407` delivered the deterministic `operations-analytic
 Owner progress 2026-09-25: the Docker integration host blocker is removed. A fresh PostgreSQL 15 host on `127.0.0.1:55432` passes the database bootstrap smoke, Supplier Sales live suite (`16/16`) and Shoe Type live suite (`12/12`) when the mutually exclusive fixtures are run sequentially. The compatibility migration, live fixtures and Supplier/Shoe recommendation projections were repaired and delivered as a bounded RQ407 unblock. RQ407 remains `PARTIAL`, not `DONE`: the all-eight-route backend reconciliation and frontend projection parity are still unproven. Run log: `.ai/runs/2026-09-25-RQ407-integration-host-repair-evidence.md`.
 Owner progress 2026-09-25: the Docker integration host blocker is removed. A fresh PostgreSQL 15 host on `127.0.0.1:55432` passes the database bootstrap smoke, Supplier Sales live suite (`16/16`) and Shoe Type live suite (`12/12`) when the mutually exclusive fixtures are run sequentially. The compatibility migration, live fixtures and Supplier/Shoe recommendation projections were repaired and delivered as a bounded RQ407 unblock. RQ407 remains `PARTIAL`, not `DONE`: the all-eight-route backend reconciliation and frontend projection parity are still unproven. Run log: `.ai/runs/2026-09-25-RQ407-integration-host-repair-evidence.md`.
 Owner claim 2026-09-25: at the user's explicit continuation request, RQ407 resumed `PARTIAL -> IN_PROGRESS` in this workspace. The Docker host is available and no conflicting RQ407 lock/branch/PR was found. Scope is limited to extending the existing Operations proof pack with endpoint adapters and frontend projection parity; existing route owners remain authoritative. Local runtime lock: `.ai/task-locks/RQ407-codex.lock.md`.
-Owner progress 2026-09-25: the shared manifest now verifies page/proof adapters and contract tokens for all eight Operations families; backend route-registration smoke is `12/12`, deterministic proof-pack coverage is `7/7`, and selected frontend page proof is `134/134`. RQ407 remains `PARTIAL`, not `DONE`: one shared database seed still needs to drive all eight backend endpoint families and browser/live frontend projections. Run log: `.ai/runs/2026-09-25-RQ407-cross-screen-proof-adapters-evidence.md`.
+Owner progress 2026-09-25: the shared manifest now verifies page/proof adapters and contract tokens for all eight Operations families; backend route-registration smoke is `12/12`, deterministic proof-pack coverage is `7/7`, and selected frontend page proof is `134/134`. The live PostgreSQL adapter now reconciles all eight endpoint families from one seed; RQ407 is ready for closure. Run log: `.ai/runs/2026-09-25-RQ407-all-eight-live-reconciliation-evidence.md`.
+Owner completion 2026-09-25: RQ407 is `DONE`. Commit `0a10a78d` adds the shared all-eight PostgreSQL fixture and executable integration test, and makes Pre-Nivelacija's markdown evidence reduction safe on PostgreSQL by materializing the simple evidence rows before the in-memory aggregate. Live proof passes `1/1`: signed sales `5 / 540 RSD`, Pre-Nivelacija `1` candidate, comparable Pre/Post `200 -> 270 RSD` and `35%`, inventory OOS/blocked signals, Color `3` buckets, and Supplier Footwear type-insight projection. Static proof is `7/7`, route smoke `12/12`, and selected frontend projection proof `134/134`. Browser/deployed frontend capture and remote CI were not inspected; the evidence log separates those residual checks from the committed local proof. Run log: `.ai/runs/2026-09-25-RQ407-all-eight-live-reconciliation-evidence.md`. Evidence state: synchronized. RQ408 remains WAITING.
 
 Routing repair 2026-09-23: aligned stale legacy status metadata: RQ190's detailed block now matches its table status `OBSOLETE`, and RQ303's table row now matches its recorded completion `DONE`. No WAITING prompt was promoted because the active queue has no dependency-complete READY candidate.
 
@@ -1521,7 +1522,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ404 | DONE | supplier-decision-effective-period-semantics | Make requested/effective supplier periods consistent across metrics and actions |
 | RQ405 | DONE | supplier-decision-localization | Finish Serbian terminology on supplier decision surfaces and backend-safe messages |
 | RQ406 | DONE | supplier-assortment-truncated-derived-metrics | Prevent truncated article detail from producing authoritative Supplier Footwear type insights |
-| RQ407 | PARTIAL | operations-cross-screen-reconciliation | Prove the eight Operacije routes against one deterministic source and expected-output manifest |
+| RQ407 | DONE | operations-cross-screen-reconciliation | Prove the eight Operacije routes against one deterministic source and expected-output manifest |
 | RQ408 | WAITING | operations-second-pass-finding-decomposition | Classify and decompose the second-pass Operacije bug/finding catalogue into precise follow-up prompts |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
@@ -3939,7 +3940,7 @@ Commit suggestion: `fix(analytics): refresh trust caches after data quality snap
 
 ## RQ132 - Explain Dashboard support-signal limits and the next safe operator step
 
-Status: PARTIAL
+Status: DONE
 Ready after: `STAB16` is DONE and the canonical production API has a healthy runtime/refresh-status proof
 Priority: P1
 Type: backend-frontend-contract/tests
@@ -22711,21 +22712,19 @@ Extend the existing `pilot-analytics-proof-pack-v1` with an Operations-specific 
 
 ### Completion note
 
-- Date: 2026-09-24
-- Status: BLOCKED
-- Completion: deterministic Operations fixture/manifest and focused arithmetic/route proof delivered; production endpoint/page reconciliation remains incomplete.
-- Changed files: `Api.Tests/AnalyticsShoeTypeSalesIntegrationTests.cs`; `Api.Tests/AnalyticsSupplierSalesIntegrationTests.cs`; `Api.Tests/OperationsAnalyticsProofPackTests.cs`; `Api.Tests/OperationsIntegrationFactAttribute.cs`; `Api.Tests/PilotAnalyticsSeedPack.cs`; `MASTER_ROADMAP.md`; this queue; `docs/qa/ANALYTICS_PILOT_DETERMINISTIC_SEED_PACK_2026-08-24.md`; `.ai/runs/2026-09-24-RQ407-evidence.md`.
-- Checks run: Operations proof 6/6; route/nav/redirect tests 25/25; Supplier live suite 1 passed/14 skipped; Shoe Type live suite 1 passed/11 skipped; queue/planning/instruction validators pass; fresh `origin/main` matches `3a24d96136e690de03c3d10565cb6d64c6c17a99`.
-- Checks not run: live/deployed eight-route endpoint reconciliation and frontend projection parity because the required integration host/dependency is unavailable; full suite and remote CI were not required for this bounded delivery.
-- Run log: `.ai/runs/2026-09-24-RQ407-evidence.md`
+- Date: 2026-09-25
+- Status: DONE
+- Completion: one PostgreSQL seed now drives and numerically reconciles all eight Operations endpoint families; frontend route/projection adapters and focused page proofs remain aligned.
+- Changed files: `Api/Endpoints/PreNivelacijaPriorityEndpoints.cs`; `Api.Tests/Fixtures/operations-analytics-all-routes-seed.sql`; `Api.Tests/OperationsAnalyticsAllRoutesIntegrationTests.cs`; `docs/qa/ANALYTICS_PILOT_DETERMINISTIC_SEED_PACK_2026-08-24.md`; `MASTER_ROADMAP.md`; this queue; `.ai/runs/2026-09-25-RQ407-all-eight-live-reconciliation-evidence.md`.
+- Checks run: live all-eight integration `1/1`; Operations proof `7/7`; route smoke `12/12`; Pre-Nivelacija error-contract tests `2/2`; selected frontend page proof `134/134`; API Release build passed; `git diff --check` passed.
+- Checks not run: browser/deployed request-to-render capture and remote CI; neither was required to prove the committed local contract and both are recorded as residual verification.
+- Run log: `.ai/runs/2026-09-25-RQ407-all-eight-live-reconciliation-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: `3a24d96136e690de03c3d10565cb6d64c6c17a99`
-- Main verification: current `origin/main` contains the implementation SHA; closure evidence was delivered in `7fdbc58e`.
-- Missed: actual backend totals/meta and frontend KPI/chart/table/detail/export projections for all eight routes are not yet reconciled against the fixture.
-- Follow-up: Analytics Backend + Frontend + QA/Test Infrastructure to enable the supported integration environment and add the bounded endpoint/page adapters; RQ408 stays WAITING.
-- Residual risk: the manifest proves expected arithmetic and routing metadata, not production endpoint correctness.
-- Prompt defect / scope repair: live dependency was unavailable; supplier/shoe tests were changed from silent early returns to discovery-time explicit skips, and in-memory invalid-period tests remain runnable.
+- Main commit SHA: `0a10a78d`
+- Main verification: current `origin/main` contains the implementation SHA; final queue/evidence closure follows in the next direct-main commit.
+- Residual risk: the plain `postgres:15` host still reports the optional `vector` extension unavailable during non-strict analytics initialization; the eight route proof does not depend on that extension.
+- Prompt defect / scope repair: PostgreSQL did not reliably translate the nested markdown `DefaultIfEmpty/Average` reduction; the route now fetches bounded evidence rows and performs the equivalent reduction in memory without changing the scoring formula.
 
 ---
 
