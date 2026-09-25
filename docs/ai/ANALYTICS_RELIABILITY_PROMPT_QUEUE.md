@@ -2,7 +2,9 @@
 
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ428
+Current READY prompt: RQ433
+Owner claim 2026-09-25: RQ427 is actively owned by `RQ427-grok.lock.md` with uncommitted Inventory changes, so this workspace did not take it over. Under the canonical priority/collision rules, RQ428 was selected as the next independent READY prompt and transitioned READY -> IN_PROGRESS for the Daily Sales receipt-reconciliation key contract. Local lock: `.ai/task-locks/RQ428-codex.lock.md`.
+Owner completion 2026-09-25: RQ428 delivered to `main` at `4d90ece6`. Receipt reconciliation now uses normalized receipt number + UTC calendar day + store, signed totals, explicit matched/unmatched counts and fail-closed unavailable metadata. Focused backend proof: 33/33; frontend guardrails/typecheck pass. Evidence: `.ai/runs/2026-09-25-RQ428-evidence.md`. `RQ433` remains the active next queue owner.
 Owner local completion 2026-09-25: RQ427 was implemented, verified and committed locally on `main` (retry now calls the reliable-query `refetch()`, controls stay mounted in error/empty states, filtered-empty reset). It stays PARTIAL until an owner-approved push and `origin/main` verification; `RQ427-grok.lock.md` keeps ownership until then. Current READY pointer moved RQ427 -> RQ428 (next READY prompt in queue order).
 Owner audit 2026-09-25: under the user's direct local-only Operacije menu audit (no remote, no cloud agent), `RQ427`-`RQ437` were added after deduplication against `RQ301`-`RQ426` and the `OP2-*` classification. Evidence-based promotions (dependency-complete, distinct feature families, no overlapping owned paths with each other or any active prompt): `RQ427` Inventory retry/controls (P1, primary Current READY), `RQ428` Daily Sales receipt-reconciliation key (backend service only), `RQ432` Pre-Nivelacija KPI definitions, `RQ435` Shoe Type safe errors plus allowlisted frontend error display, and `RQ437` stale-test hygiene (five named test files only). `RQ429`/`RQ430` wait behind `RQ428` on the Daily Sales page, `RQ433`/`RQ434` behind `RQ432` on Pre-Nivelacija files, `RQ436` behind `RQ435` on Shoe Type/Color/Pre-Post pages, and `RQ431` is owner-gated on the RQ242 versus RQ381 concentration contract. New residual English/ASCII strings were appended to `RQ325`; `RQ306` is DONE and was not reopened. Mechanical same-owner repair: section `Status:` lines of `RQ301`, `RQ302`, `RQ306`, `RQ308` and `RQ371`, and the summary rows of `RQ306`/`RQ307`, were aligned to their synchronized DONE completion notes. Audit: `docs/ai/OPERATIONS_AUDIT_PROMPTS_2026-09-25.md`. Run log: `.ai/runs/2026-09-25-operations-audit-prompts-evidence.md` (local-only, uncommitted per user request).
 Owner promotion 2026-09-25: idle recovery found RQ307 dependency-complete after RQ306 delivery; its Shoe Type impact-label owner is now collision-safe and no active RQ307 lock, branch or PR exists. RQ307 moved WAITING -> READY.
@@ -1562,7 +1564,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ407 | DONE | operations-cross-screen-reconciliation | Prove the eight Operacije routes against one deterministic source and expected-output manifest |
 | RQ408 | DONE | operations-second-pass-finding-decomposition | Classify and decompose the second-pass Operacije bug/finding catalogue into precise follow-up prompts |
 | RQ427 | PARTIAL | inventory-retry-recovery | Make Inventory retry refetch and keep controls on error/empty states |
-| RQ428 | READY | daily-sales-receipt-reconciliation-key | Join Daily Sales receipt-mismatch diagnostics on real receipt identity |
+| RQ428 | DONE | daily-sales-receipt-reconciliation-key | Join Daily Sales receipt-mismatch diagnostics on real receipt identity |
 | RQ429 | WAITING | daily-sales-empty-state-metric-consistency | Make Daily Sales empty state, incomplete-shift counts and MA7 baseline truthful |
 | RQ430 | WAITING | daily-sales-page-polish | Fix Daily Sales sort toggle, print-form columns and store identity in export |
 | RQ431 | WAITING | daily-sales-concentration-contract | Decide the Daily Sales supplier-concentration over-total contract |
@@ -23157,13 +23159,15 @@ Reproduction: open Inventory, search for a value with no match (or make the list
 
 ## RQ428 - Join Daily Sales receipt-mismatch diagnostics on real receipt identity
 
-Status: READY
+Status: DONE
 Priority: P2
 Type: backend/contract/tests
 Feature family: daily-sales-receipt-reconciliation-key
 Parallel-safe: no
 Owner: Analytics Backend / Daily Sales
 Commit suggestion: `fix(analytics): reconcile daily receipts on real receipt identity`
+Completion note 2026-09-25: Delivered on `main` at `4d90ece6`. The diagnostic joins normalized receipt number + UTC calendar day + store, compares signed totals, reports matched/unmatched sides and leaves mismatch values null with `dnevnik_receipt_identity_missing` when journal identity is absent. Focused backend proof `33/33`; guardrails and typecheck pass. Run log: `.ai/runs/2026-09-25-RQ428-evidence.md`.
+
 
 ### Problem
 
