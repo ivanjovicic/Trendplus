@@ -131,11 +131,31 @@ describe("Daily Sales numeric evidence states", () => {
 
     expect(safeDivide(0, 10)).toBe(0);
     expect(safeDivide(0, 0)).toBeNull();
-    expect(buildRollingAverage(rows, 0, (item) => item.totalRevenue)).toBe(0);
+    expect(buildRollingAverage(rows, 0, (item) => item.totalRevenue)).toBeNull();
     expect(calculateDeltaPct(0, 0)).toBe(0);
     expect(summary.totalRevenue).toBe(0);
     expect(summary.totalVisibleItems).toBe(0);
     expect(summary.avgRevenuePerItem).toBeNull();
+  });
+
+  it("uses seven complete prior days for MA7 and excludes the current day", () => {
+    const rows = Array.from({ length: 8 }, (_, index) => row({
+      date: `2026-07-${String(index + 1).padStart(2, "0")}`,
+      totalRevenue: index + 1,
+      totalItemsSold: index + 1,
+    }));
+
+    expect(rows.slice(0, 7).map((_, index) => buildRollingAverage(rows, index, (item) => item.totalRevenue))).toEqual([
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+    ]);
+    expect(buildRollingAverage(rows, 7, (item) => item.totalRevenue)).toBe(4);
+    expect(buildRollingAverage(rows, 7, (item) => item.totalItemsSold)).toBe(4);
   });
 
   it("keeps a valid zero shift visible while marking the partial shift pair unavailable for shares", () => {

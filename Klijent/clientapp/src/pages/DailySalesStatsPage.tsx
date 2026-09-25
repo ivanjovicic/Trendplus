@@ -547,13 +547,17 @@ function truncateLabel(value: string, maxLength = 18): string {
 }
 
 export function buildRollingAverage(rows: DailySalesRow[], index: number, accessor: (row: DailySalesRow) => DailySalesNumeric, windowSize = 7): number | null {
-  const start = Math.max(0, index - (windowSize - 1));
-  const slice = rows.slice(start, index + 1);
-  if (slice.length === 0) return null;
+  const start = Math.max(0, index - windowSize);
+  const slice = rows.slice(start, index);
+  if (slice.length < windowSize) return null;
   const values = slice.map((row) => finiteOrNull(accessor(row)));
   if (!values.every((value): value is number => value != null)) return null;
   const result = values.reduce((acc, value) => acc + value, 0) / values.length;
   return Number.isFinite(result) ? result : null;
+}
+
+export function isDailySalesNoDataInPeriod(response: DailySalesTableResponse | null): boolean {
+  return response?.meta?.emptyReason === "no_data_in_period";
 }
 
 export function summarizePeriod(response: DailySalesTableResponse | null): PeriodSummary {
@@ -782,6 +786,7 @@ export default function DailySalesStatsPage() {
 
   const chronologicalChartRows = dailyProjections.chronologicalChartRows;
   const tableRows = dailyProjections.tableRows;
+  const noDataInPeriod = isDailySalesNoDataInPeriod(data);
 
   const mismatchCount = useMemo(
     () =>
@@ -817,7 +822,22 @@ export default function DailySalesStatsPage() {
   const previousSummary = useMemo(() => summarizePeriod(previousData), [previousData]);
 
   const emptyStateHint = useMemo(() => {
-    if (!data || tableRows.length > 0) return null;
+    if (!data || (tableRows.length > 0 && !noDataInPeriod)) return null;
+    if (noDataInPeriod) {
+      const noDataMessage = data.meta?.message ?? "Nema prodaje za izabrani period.";
+      const min = data.metadata.minAvailableDate;
+      const max = data.metadata.maxAvailableDate;
+      if (min && max) {
+        const selectedFrom = activeFilters.fromDate;
+        const selectedTo = activeFilters.toDate;
+        const dataFrom = min.slice(0, 10);
+        const dataTo = max.slice(0, 10);
+        if (selectedTo < dataFrom || selectedFrom > dataTo) {
+          return `${noDataMessage} Izabrani period je van dostupnog raspona prodaje (${fmtDate(min)} - ${fmtDate(max)}).`;
+        }
+      }
+      return noDataMessage;
+    }
     const min = data.metadata.minAvailableDate;
     const max = data.metadata.maxAvailableDate;
     if (!min || !max) {
@@ -837,7 +857,7 @@ export default function DailySalesStatsPage() {
     }
 
     return "Nema podataka za izabrane filtere.";
-  }, [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, data, tableRows.length]);
+  }, [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, data, noDataInPeriod, tableRows.length]);
 
   const responseMeta = data?.meta ?? null;
   const trustLastRefreshAt = responseMeta?.lastRefreshAtUtc ?? null;
@@ -849,12 +869,13 @@ export default function DailySalesStatsPage() {
     : emptyStateHint;
 
   const emptyStateVariant = useMemo<"no_data" | "insufficient_data" | "filtered_out" | null>(() => {
-    if (!data || loading || error || tableRows.length > 0) return null;
-    if (data.meta?.emptyReason) return "no_data";
+    if (!data || loading || error) return null;
+    if (noDataInPeriod) return "no_data";
+    if (tableRows.length > 0) return null;
     if (activeFilters.storeId != null) return "filtered_out";
     if ((data.metadata.warnings?.length ?? 0) > 0) return "insufficient_data";
     return "no_data";
-  }, [activeFilters.storeId, data, error, loading, tableRows.length]);
+  }, [activeFilters.storeId, data, error, loading, noDataInPeriod, tableRows.length]);
 
   const toolbarColumns = useMemo<AnalyticsTableColumn<DailySalesRow>[]>(() => {
     const baseColumns: AnalyticsTableColumn<DailySalesRow>[] = [
@@ -917,6 +938,11 @@ export default function DailySalesStatsPage() {
   ), [chronologicalChartRows]);
 
   const trendData = chronologicalTrendData;
+
+  const ma7InsufficientHistoryCount = useMemo(
+    () => trendData.filter((point) => point.ma7Revenue == null || point.ma7Items == null).length,
+    [trendData],
+  );
 
   const shiftMixData = useMemo<ShiftMixPoint[]>(() => (
     chronologicalChartRows.map((row) => ({
@@ -1134,10 +1160,17 @@ export default function DailySalesStatsPage() {
     },
     {
       key: "missingShift",
+      label: "Dani bez satnice",
+      value: fmtNumber(missingShiftCount),
+      tone: missingShiftCount > 0 ? "warning" : "good",
+      description: "Nedostaju podaci za obe smene ili su obe smene nepouzdane; delimično evidentirani dani se broje odvojeno.",
+    },
+    {
+      key: "incompleteShift",
       label: "Dani sa nepotpunom satnicom",
       value: fmtNumber(incompleteShiftCount),
       tone: incompleteShiftCount > 0 ? "warning" : "good",
-      description: "Nedostaje makar jedna smena ili je promet bez pouzdanog razdvajanja po smenama.",
+      description: "Ukupan broj dana bez kompletne smenske evidencije: dani bez satnice plus dani sa delimično evidentiranom satnicom.",
     },
     {
       key: "partialShift",
@@ -1676,7 +1709,7 @@ export default function DailySalesStatsPage() {
         />
       ) : null}
 
-      {!loading && !error && data ? (
+      {!loading && !error && data && !noDataInPeriod ? (
         <>
           <section className="daily-sales-kpis">
             <article>
@@ -1685,7 +1718,7 @@ export default function DailySalesStatsPage() {
               <small>{fmtRsdShort(currentSummary.avgRevenuePerDay)} / dan</small>
             </article>
             <article>
-              <span>Ukupno komada <InfoTip text="Ukupan broj prodatih komada vidljivih u tabeli. Može biti manji od baze ako je primenjen filter na prodavnicu ili top-N dobavljača." /></span>
+              <span>Ukupno komada <InfoTip text="Ukupan broj prodatih komada vidljivih u tabeli; ukupan zbir uključuje i kolonu „Ostali“. Može biti manji od baze ako je primenjen filter na prodavnicu ili top-N dobavljača." /></span>
               <strong>{fmtNumber(currentSummary.totalVisibleItems)}</strong>
               <small>{fmtNumber(currentSummary.avgItemsPerDay == null ? null : Math.round(currentSummary.avgItemsPerDay))} / dan</small>
             </article>
@@ -1955,7 +1988,7 @@ export default function DailySalesStatsPage() {
                   <span>Trend prihoda i komada</span>
                   <InfoTip text="Dnevni trend sa 7-dnevnim pokretnim prosekom (MA7) za prihod i komade. Pokretni prosek ublažava kratkoročne oscilacije i otkriva stvarni pravac kretanja. Dobar za detekciju pozitivnog ili negativnog momenta i nestabilnosti prodaje." />
                 </h2>
-                <p>Koristi 7d prosek da odvojiš stvarni trend od dnevnog šuma.</p>
+                <p>Koristi prethodnih 7 dana, bez tekućeg dana, da odvojiš stvarni trend od dnevnog šuma. {ma7InsufficientHistoryCount > 0 ? `${ma7InsufficientHistoryCount} dana: nedovoljno istorije.` : "Istorija je dovoljna za sve dane."}</p>
               </div>
             </div>
 
@@ -2039,8 +2072,12 @@ export default function DailySalesStatsPage() {
                   <strong>{fmtPct(currentSummary.secondShiftSharePct, 1)}</strong>
                 </div>
                 <div>
-                  <span>Dani sa nepotpunom satnicom</span>
+                  <span>Dani bez satnice <InfoTip text="Dan sa nedostajućim podacima za obe smene ili bez pouzdanog smenskog razdvajanja." /></span>
                   <strong>{fmtNumber(missingShiftCount)}</strong>
+                </div>
+                <div>
+                  <span>Dani sa nepotpunom satnicom <InfoTip text="Ukupan broj dana bez kompletne smenske evidencije: dani bez satnice plus dani sa delimično evidentiranom satnicom." /></span>
+                  <strong>{fmtNumber(incompleteShiftCount)}</strong>
                 </div>
               </div>
             </article>
