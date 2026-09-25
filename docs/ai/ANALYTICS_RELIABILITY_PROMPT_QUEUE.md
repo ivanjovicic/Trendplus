@@ -10,6 +10,7 @@ Owner completion 2026-09-25: RQ434 was delivered directly to `main` after signed
 Owner claim 2026-09-25: RQ436 transitioned `READY -> IN_PROGRESS` in this workspace for dead/frontend-derived Operacije KPI cleanup and lifecycle safety. Local lock: `.ai/task-locks/RQ436-codex.lock.md`.
 Owner completion 2026-09-25: RQ436 was delivered directly to `main` after removing always-unavailable Top 5 and undeclared Pre/Post frontend-derived KPIs, the dead Shoe Type empty branch, raw store-ID metadata and the Color scroll-timeout leak. Run log: `.ai/runs/2026-09-25-RQ436-evidence.md`. Evidence state: synchronized. `RQ437` remains active in another owner workspace.
 Owner claim 2026-09-25: RQ437 transitioned READY -> IN_PROGRESS in this workspace (grok) for the stale Operacije test repair. Local lock: `.ai/task-locks/RQ437-grok.lock.md`.
+Owner completion 2026-09-25: RQ437 stale Operacije tests were repaired test-only and committed directly on local `main` (`test(analytics): repair stale Operacije tests (RQ437)`, parent `bc248ede`); status stays PARTIAL until `origin/main` contains the commit, then a DONE sync follows. Run log: `.ai/runs/2026-09-25-RQ437-evidence.md`. Evidence state: pending.
 Owner completion 2026-09-25: RQ433 was delivered directly to `main` after leave-one-out Pre-Nivelacija supplier/season/type facets with counts and page binding to facets instead of the filtered leaderboard. Run log: `.ai/runs/2026-09-25-RQ433-evidence.md`. Evidence state: synchronized. `RQ434` moved `WAITING -> READY`. Remaining claimable READY lanes: `RQ434`, `RQ437` (`RQ435` remains other-owner IN_PROGRESS).
 Owner claim 2026-09-25: RQ435 was selected as the next independent READY prompt because RQ427 and RQ433 are actively locked by other owners and RQ437 owns its named stale-test files. RQ435 transitioned READY -> IN_PROGRESS for the safe traceable analytics error contract. Local lock: `.ai/task-locks/RQ435-codex.lock.md`.
 Owner completion 2026-09-25: RQ435 was delivered directly to `main` with the Shoe Type safe traceable problem contract and explicit frontend allowlists for Shoe Type, Pre/Post and Color. Run log: `.ai/runs/2026-09-25-RQ435-evidence.md`. Evidence state: synchronized. `RQ434` remains the active READY/other-owner lane; `RQ437` remains independently claimable.
@@ -1586,7 +1587,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ434 | DONE | pre-nivelacija-display-polish | Fix Pre-Nivelacija signed WoW, filter validation, labels, counts and tones |
 | RQ435 | DONE | operations-safe-error-messages | Return safe traceable Shoe Type errors and allowlist frontend error display |
 | RQ436 | DONE | operations-derived-kpi-cleanup | Remove dead or frontend-derived Operacije KPIs and small lifecycle leaks |
-| RQ437 | IN_PROGRESS | operations-stale-test-hygiene | Repair stale Operacije tests that hide regressions |
+| RQ437 | PARTIAL | operations-stale-test-hygiene | Repair stale Operacije tests that hide regressions |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -23674,7 +23675,7 @@ Shoe Type and Color show a „Udeo top 5“ KPI that is always „N/A“, Shoe T
 
 ## RQ437 - Repair stale Operacije tests that hide regressions
 
-Status: IN_PROGRESS
+Status: PARTIAL
 Priority: P2
 Type: tests
 Feature family: operations-stale-test-hygiene
@@ -23721,3 +23722,23 @@ Five focused tests fail on `00accd93` because assertions drifted behind delivere
 ### Dependencies
 
 - No blocking dependency. `RQ427`, `RQ428` and `RQ435` must not edit these five test files.
+
+### Completion note
+
+- Date: 2026-09-25
+- Status: PARTIAL
+- Completion: The five named Operacije tests are green again without product changes. Root causes were assertion drift behind delivered contracts: the Color detail label is „Pokriće marže“ (not ASCII); `ExportSchedulerPanel` maps technical errors to its own per-surface safe fallbacks („Rasporedi izveštaja trenutno nisu dostupni.“ / „Operacija izvoza trenutno nije uspela.“), with the raw-exception-hidden assertion kept; the supplier recommendation gate is now `exposedRecommendation.RecommendationAllowed && !blockOperationsDecisionSignals` (the test also asserts the ungated form is gone); the cost-comparison fixture now carries sale-time attribution (`SupplierIdAtSale`/`ShoeTypeIdAtSale`, `SaleDimensionAttribution.SaleSnapshot`) that supplier/shoe-type compare groups by. `DailySalesStatsServiceTests` already passed (fixed by RQ428 `4d90ece6`) and was not changed.
+- Changed files: `Klijent/clientapp/src/pages/__tests__/ColorSalesStatsPage.premium.spec.tsx`, `Klijent/clientapp/src/components/inventory/ExportSchedulerPanel.spec.tsx`, `Api.Tests/SupplierDecisionSchemaSqlTests.cs`, `Api.Tests/AnalyticsCostSnapshotServiceTests.cs`, `.ai/runs/2026-09-25-RQ437-evidence.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- Contract/runtime behavior changed: none (tests, evidence and queue only).
+- Checks run: the two named vitest specs 14/14 pass (before 12/14); `dotnet test` filtered to `DailySalesStatsServiceTests|SupplierDecisionSchemaSqlTests|AnalyticsCostSnapshotServiceTests` 47/47 pass (before 42/47); `npm run check:analytics-guardrails` pass (no mojibake, 50 baseline, 0 new) including `tsc -b`; queue validators `check-agent-instructions`, `check-prompt-queues`, `check-planning-architecture` with and without `--self-test` pass; `git diff --check` pass. Re-run on `cc47d418`; later `main` commits up to parent `bc248ede` touch no RQ437 file.
+- Checks not run: CI, live smoke. Full `dotnet test Api.Tests` (1372 pass / 43 fail / 34 skip) has failures only outside RQ437 classes (Docker/Testcontainers unavailable, local Postgres credentials and other pre-existing classes; see run log).
+- Run log: `.ai/runs/2026-09-25-RQ437-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending - the local `main` commit `test(analytics): repair stale Operacije tests (RQ437)` (parent `bc248ede`); SHA is recorded by the DONE sync
+- Main verification: pending - committed on local `main`; this workspace does not push, so `origin/main` containment is not verified yet
+- Missed: none in owned scope.
+- Follow-up: DONE sync once `origin/main` contains the RQ437 commit.
+- Residual risk: the environment-dependent backend integration failures remain outside RQ437 and still mask regressions in those classes.
+- Next: DONE sync after `origin/main` verification, then continue the queue's Current READY prompt.
+- Prompt defect / scope repair: the multi-line source fragments in `SupplierDecisionSchemaSqlTests` hard-coded LF and failed on a clean Windows CRLF checkout; the file's private `ReadRepoFile` helper now normalizes line endings (smallest same-owner mechanical repair inside an owned file). All `DoesNotContain` guards still pass after normalization.

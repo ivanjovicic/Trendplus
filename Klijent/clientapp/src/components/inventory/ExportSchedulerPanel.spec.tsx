@@ -88,7 +88,9 @@ describe("ExportSchedulerPanel schedule labels", () => {
       />,
     );
 
-    expect(screen.getAllByText("Podaci trenutno nisu dostupni. Proverite kvalitet podataka i pokušajte ponovo.")).toHaveLength(2);
+    // Each surface uses its own safe, user-facing fallback instead of the raw technical message.
+    expect(screen.getByText("Rasporedi izveštaja trenutno nisu dostupni.")).toBeInTheDocument();
+    expect(screen.getByText("Operacija izvoza trenutno nije uspela.")).toBeInTheDocument();
     expect(screen.queryByText(/NpgsqlException|InvalidOperationException/)).not.toBeInTheDocument();
   });
 });

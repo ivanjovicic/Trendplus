@@ -620,7 +620,7 @@ describe("ColorSalesStatsPage premium controls", () => {
     const detailHeading = await screen.findByRole("heading", { name: "Detalj odluke: Crvena" });
     const detailPanel = detailHeading.closest("section");
     expect(detailPanel).not.toBeNull();
-    expect(within(detailPanel!).getByText("Pokrice marze").parentElement).toHaveTextContent("0,0%");
+    expect(within(detailPanel!).getByText("Pokriće marže").parentElement).toHaveTextContent("0,0%");
     expect(within(detailPanel!).getByText("Pre/post pokriće uporedive kohorte").parentElement).toHaveTextContent("0,0%");
   });
 

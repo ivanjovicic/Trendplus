@@ -136,7 +136,9 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.Contains("vendor.ChangeSharePercent = totalAbsoluteChangeRevenue == 0m", source);
         Assert.Equal(3, source.Split("var hasComparableNivelacijaSignal =", StringSplitOptions.None).Length - 1);
         Assert.Equal(3, source.Split("var exposedRecommendation = AnalyticsDecisionRecommendationEngine.ApplyComparableSignalGate(", StringSplitOptions.None).Length - 1);
-        Assert.Contains("var recommendationAllowed = exposedRecommendation.RecommendationAllowed;", source);
+        // The comparable-signal gate still drives the decision; Operations integrity gating can only block it further.
+        Assert.Contains("var recommendationAllowed = exposedRecommendation.RecommendationAllowed && !blockOperationsDecisionSignals;", source);
+        Assert.DoesNotContain("var recommendationAllowed = exposedRecommendation.RecommendationAllowed;", source);
     }
 
     [Fact]
@@ -673,7 +675,8 @@ public sealed class SupplierDecisionSchemaSqlTests
     private static string ReadRepoFile(string relativePath)
     {
         var repoRoot = FindRepoRoot();
-        return File.ReadAllText(Path.Combine(repoRoot, relativePath));
+        // Normalize line endings so multi-line source fragments match on CRLF (Windows autocrlf) and LF checkouts alike.
+        return File.ReadAllText(Path.Combine(repoRoot, relativePath)).ReplaceLineEndings("\n");
     }
 
     private static string FindRepoRoot()
