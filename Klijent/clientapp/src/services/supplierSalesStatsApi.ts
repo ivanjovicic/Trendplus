@@ -50,6 +50,10 @@ export interface SupplierSalesStat {
   preNivelacijeKolicina: number;
   posleNivelacijePromet: number;
   posleNivelacijeKolicina: number;
+  comparablePreNivelacijePromet?: number;
+  comparablePostNivelacijePromet?: number;
+  comparablePreNivelacijeKolicina?: number;
+  comparablePostNivelacijeKolicina?: number;
   ukupanPromet: number;
   ukupnaKolicina: number;
   previousPeriodRevenue: number | null;
@@ -124,6 +128,17 @@ export interface SupplierSalesTotals {
   ukupnaKolicina: number;
   preKolicina: number;
   posleKolicina: number;
+  observedPrePromet?: number;
+  observedPoslePromet?: number;
+  observedPreKolicina?: number;
+  observedPosleKolicina?: number;
+  comparablePrePromet?: number;
+  comparablePoslePromet?: number;
+  comparablePreKolicina?: number;
+  comparablePosleKolicina?: number;
+  prePostComparableArticleCount?: number;
+  prePostNivelacijaRevenueCoveragePct?: number | null;
+  prePostSignalNote?: string | null;
   previousPeriodRevenue: number | null;
   previousPeriodUnits: number | null;
   brojDobavljaca: number;

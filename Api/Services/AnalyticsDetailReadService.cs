@@ -1229,10 +1229,14 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
 
         fields.AddRange(
         [
-            Field("preNivelacijePromet", "Pre nivelacije promet", splitSnapshot.PreRevenue.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
-            Field("preNivelacijeKolicina", "Pre nivelacije kolicina", splitSnapshot.PreQuantity.ToString(CultureInfo.InvariantCulture), "number"),
-            Field("posleNivelacijePromet", "Posle nivelacije promet", splitSnapshot.PostRevenue.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
-            Field("posleNivelacijeKolicina", "Posle nivelacije kolicina", splitSnapshot.PostQuantity.ToString(CultureInfo.InvariantCulture), "number"),
+            Field("preNivelacijePromet", "Posmatrani promet pre nivelacije", splitSnapshot.PreRevenue.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
+            Field("preNivelacijeKolicina", "Posmatrana kolicina pre nivelacije", splitSnapshot.PreQuantity.ToString(CultureInfo.InvariantCulture), "number"),
+            Field("posleNivelacijePromet", "Posmatrani promet posle nivelacije", splitSnapshot.PostRevenue.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
+            Field("posleNivelacijeKolicina", "Posmatrana kolicina posle nivelacije", splitSnapshot.PostQuantity.ToString(CultureInfo.InvariantCulture), "number"),
+            Field("comparablePreNivelacijePromet", "Uporedivi promet pre nivelacije", splitSnapshot.ComparablePreRevenue.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
+            Field("comparablePostNivelacijePromet", "Uporedivi promet posle nivelacije", splitSnapshot.ComparablePostRevenue.ToString("0.00", CultureInfo.InvariantCulture), "currency"),
+            Field("comparablePreNivelacijeKolicina", "Uporediva kolicina pre nivelacije", splitSnapshot.ComparablePreQuantity.ToString(CultureInfo.InvariantCulture), "number"),
+            Field("comparablePostNivelacijeKolicina", "Uporediva kolicina posle nivelacije", splitSnapshot.ComparablePostQuantity.ToString(CultureInfo.InvariantCulture), "number"),
             Field("prePostNivelacijaRevenueCoveragePct", "Pre/post uporedivo pokrice prometa %", splitSnapshot.ComparableRevenueCoveragePct?.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
             Field("prePostNivelacijaRevenueImpactPct", "Pre/post nivelacija impact %", splitSnapshot.RevenueImpactPct?.ToString("0.00", CultureInfo.InvariantCulture), "percent", splitSnapshot.RevenueImpactPct.HasValue),
             Field("prePostNivelacijaUnitsImpactPct", "Pre/post nivelacija impact kolicine %", splitSnapshot.UnitsImpactPct?.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
