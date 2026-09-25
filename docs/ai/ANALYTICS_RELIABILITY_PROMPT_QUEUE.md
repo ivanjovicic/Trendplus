@@ -4,6 +4,7 @@ Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: RQ440
 Owner claim 2026-09-25 (Shoe Type audit, grok): the audit of „Prodaja po tipu obuće“ (`/analytics/shoe-type-sales-stats`) added and claimed `RQ445` (trust header period ends one day late in UTC+ zones) and `RQ446` (raw `sharePct` series label, average-margin tooltip population), both `IN_PROGRESS` in this workspace. Local locks: `.ai/task-locks/RQ445-grok.lock.md`, `.ai/task-locks/RQ446-grok.lock.md`. `Current READY prompt` stays `RQ440`. Run log: `.ai/runs/2026-09-25-shoe-type-sales-audit-evidence.md`.
+Owner completion 2026-09-25: RQ445 was implemented and committed directly on local `main` (`fix(analytics): show the Shoe Type trust period as calendar dates (RQ445)`); status `PARTIAL` until `origin/main` contains it (local-only delivery). Run log: `.ai/runs/2026-09-25-RQ445-evidence.md`.
 Owner claim 2026-09-25 (Supplier overview audit, grok): the audit of „Prodaja po dobavljačima“ (`/analytics/supplier?tab=overview`, legacy `operations-supplier-sales`) added and claimed `RQ443` (total PoP trend must include suppliers without current sales; the unfocused subset of the unregistered `PS11`/C16 in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-25.md`) and `RQ444` (sticky legacy `sezonaId`, data window shown as the period, +1-day header end date), both `READY -> IN_PROGRESS` in this workspace. Local locks: `.ai/task-locks/RQ443-grok.lock.md`, `.ai/task-locks/RQ444-grok.lock.md`. `Current READY prompt` stays `RQ440`. Other findings route to `RQ442`, `RQ441`, `RQ325` and the unregistered `PS06`/`PS11`/`PS12`/`PS16`/`PS17`/`PS18`. Run log: `.ai/runs/2026-09-25-supplier-sales-overview-audit-evidence.md`.
 Owner completion 2026-09-25: RQ443 was implemented and committed directly on local `main` (`fix(analytics): base supplier total PoP on the full previous period (RQ443)`, parent `77371907`); status `PARTIAL` until `origin/main` contains it (local-only delivery). Run log: `.ai/runs/2026-09-25-RQ443-evidence.md`.
 Owner completion 2026-09-25: RQ444 was implemented and committed directly on local `main` (`fix(analytics): keep supplier overview period metadata truthful (RQ444)`); status `PARTIAL` until `origin/main` contains it (local-only delivery). Run log: `.ai/runs/2026-09-25-RQ444-evidence.md`.
@@ -1603,7 +1604,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ442 | READY | operations-whole-day-half-open-ranges | Make Supplier, Shoe Type and Color whole-day filters half-open and boundary-safe |
 | RQ443 | PARTIAL | supplier-overview-total-pop | Keep the Supplier overview total PoP trend on the full previous-period population |
 | RQ444 | PARTIAL | supplier-overview-period-truth | Supplier overview period truth: drop the sticky legacy season and show the analyzed period |
-| RQ445 | IN_PROGRESS | shoe-type-period-truth | Shoe Type trust header shows the selected calendar period |
+| RQ445 | PARTIAL | shoe-type-period-truth | Shoe Type trust header shows the selected calendar period |
 | RQ446 | IN_PROGRESS | shoe-type-overview-label-truth | Shoe Type overview labels describe what is plotted and computed |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
@@ -24317,7 +24318,7 @@ On „Prodaja po dobavljačima“ the period shown can differ from the period co
 
 ## RQ445 - Shoe Type trust header shows the selected calendar period
 
-Status: IN_PROGRESS
+Status: PARTIAL
 Priority: P2
 Type: frontend/tests
 Feature family: shoe-type-period-truth
@@ -24359,6 +24360,26 @@ The „Prodaja po tipu obuće“ trust header receives the raw response `fromDat
 
 - None blocking. `RQ442` must keep calendar-date display when it moves to an exclusive next-day end.
 - Reliability contract: source of truth is the response effective range (after any season override); unit calendar date in UTC; missing response → requested filter dates; no numeric change.
+
+### Completion note
+
+- Date: 2026-09-25
+- Status: PARTIAL
+- Completion: the „Prodaja po tipu obuće“ trust header now receives the UTC calendar dates of the response effective range (fallback: requested filter dates), so the period end no longer renders one day late in Europe/Belgrade.
+- Changed files: `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/ShoeTypeSalesStatsPage.periodTruth.spec.tsx` (new), `Klijent/clientapp/src/pages/__tests__/ShoeTypeSalesStatsPage.premium.spec.tsx`, `.ai/runs/2026-09-25-RQ445-evidence.md`, this queue, `MASTER_ROADMAP.md`
+- Contract/runtime behavior changed: frontend only; trust-header period props are calendar dates. No request, KPI, export or API change.
+- Checks run: new spec 2 failing on the old page, passing after; premium assertion updated from raw timestamps to calendar dates; focused Shoe Type set 104/104 (with `RQ446`); `npx tsc -b` pass; `npm run check:analytics-guardrails` pass; six queue validators and `git diff --check` pass.
+- Checks not run: live API/DB proof (no reachable API/DB), CI, `dotnet test` (no backend change).
+- Run log: `.ai/runs/2026-09-25-RQ445-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending - local `main` commit `fix(analytics): show the Shoe Type trust period as calendar dates (RQ445)`; recorded by the DONE sync
+- Main verification: pending - not pushed (owner instruction: local commits only)
+- Missed: none in owned scope.
+- Follow-up: none new; `RQ442` must keep calendar-date display when it moves to an exclusive end.
+- Residual risk: the out-of-window empty-state hint still formats the sales data window timestamps in local time (actual sale timestamps, not a request bound).
+- Next: DONE sync after `origin/main` contains the commit.
+- Prompt defect / scope repair: the existing premium spec asserted the raw timestamps; updated as part of the contract change.
 
 ---
 

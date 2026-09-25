@@ -324,8 +324,9 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-mode", "signal");
     expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-recommendation-allowed", "");
     await waitFor(() => {
-      expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-period-from", "2026-06-01T00:00:00Z");
-      expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-period-to", "2026-06-30T23:59:59Z");
+      // RQ445: calendar dates of the effective range, not raw UTC timestamps (+1 day in UTC+ zones).
+      expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-period-from", "2026-06-01");
+      expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-period-to", "2026-06-30");
       expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-last-refresh-at", "2026-07-01T08:30:00Z");
       expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-freshness", "fresh");
     });

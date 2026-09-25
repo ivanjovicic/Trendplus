@@ -970,8 +970,8 @@ export default function ShoeTypeSalesStatsPage() {
       <AnalyticsTrustHeader
         title="Prodaja po tipu obuće"
         description="Podrška odluci sa asortimanskim fokusom po tipu obuće."
-        periodFrom={data?.fromDate ?? activeFilters.fromDate}
-        periodTo={data?.toDate ?? activeFilters.toDate}
+        periodFrom={data?.fromDate ? toDateOnly(data.fromDate) : activeFilters.fromDate}
+        periodTo={data?.toDate ? toDateOnly(data.toDate) : activeFilters.toDate}
         lastRefreshAt={trustLastRefreshAt}
         dataFreshnessStatus={trustDataFreshnessStatus}
         dataSource={`Sales facts analytics (scope: ${data?.dataScope ?? dataScope})`}
