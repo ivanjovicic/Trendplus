@@ -173,6 +173,8 @@ export function buildAnalyticsDetailSnapshot<Row>(input: {
   columns: AnalyticsTableColumn<Row>[];
   row: Row;
   metadata?: AnalyticsNamedValue[];
+  recommendation?: AnalyticsDetailResponse["recommendation"];
+  provenance?: AnalyticsDetailResponse["provenance"];
 }): AnalyticsDetailResponse {
   const fields: AnalyticsDetailField[] = input.columns.map((column) => {
     const rawValue = column.getValue
@@ -201,6 +203,8 @@ export function buildAnalyticsDetailSnapshot<Row>(input: {
       dataType: "text",
       highlight: false,
     })),
+    recommendation: input.recommendation ?? null,
+    provenance: input.provenance ?? null,
   };
 }
 

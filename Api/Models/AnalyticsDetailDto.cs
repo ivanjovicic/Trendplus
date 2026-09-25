@@ -41,6 +41,11 @@ public sealed class AnalyticsDetailProvenanceDto
     public string? SourceLabel { get; init; }
     public string? SourceTables { get; init; }
     public string? ObservedPopulation { get; init; }
+    public string? DisplayPopulation { get; init; }
+    public string? DecisionReferenceCohort { get; init; }
+    public string? ProvenanceBasis { get; init; }
+    public DateTime? DataWindowFromUtc { get; init; }
+    public DateTime? DataWindowToUtc { get; init; }
     public string? CostPolicy { get; init; }
     public string? PrePostPolicy { get; init; }
     public double? DecisionScore { get; init; }

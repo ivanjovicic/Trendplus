@@ -2,10 +2,13 @@
 
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ374
 Owner promotion 2026-09-25: idle recovery verified that RQ380 is dependency-complete after RQ373, RQ378 and RQ379 delivery. The Supplier Sales backend comparable-cohort path is collision-safe, and no conflicting RQ380 lock/branch/PR exists; RQ380 moved `WAITING -> READY`.
 Owner claim 2026-09-25: RQ380 transitioned `READY -> IN_PROGRESS` in this workspace for Supplier Sales comparable pre/post aggregate, coverage and row/detail/export provenance. Local runtime lock: `.ai/task-locks/RQ380-cursor.lock.md`.
 Owner completion 2026-09-25: RQ380 was delivered directly to `main` in `88b596a2229ba34f8f244a53838893cb670ecca7`. Supplier Sales totals now use the shared comparable pre/post cohort for impact and expose observed versus comparable revenue/quantity, coverage, article count and signal provenance across row, detail, toolbar/export and runtime schema surfaces. Run log: `.ai/runs/2026-09-25-RQ380-evidence.md`. Evidence state: synchronized.
+Routing reconciliation 2026-09-25: RQ373's synchronized completion note and run log already prove `DONE`; its stale summary row was corrected from `WAITING` to `DONE` without reopening the completed prompt.
+Owner promotion 2026-09-25: idle recovery verified RQ374 is dependency-complete after RQ373, RQ378 and RQ380 delivery. Its Supplier Sales generic-detail trust/provenance path is collision-safe, with no active RQ374 lock, branch or PR; RQ374 moved `WAITING -> READY`.
+Owner claim 2026-09-25: RQ374 transitioned `READY -> IN_PROGRESS` in this workspace for Supplier Sales detail recommendation, trust, provenance and localized contract parity. Local runtime lock: `.ai/task-locks/RQ374-cursor.lock.md`.
 Owner promotion 2026-09-25: idle recovery verified that RQ379 is dependency-complete after RQ373 and RQ378 delivery. Its frontend runtime-schema path is separate from RQ380's backend comparable-cohort owner, and no conflicting Supplier Sales schema lock/branch/PR exists; RQ379 moved `WAITING -> READY`.
 Owner claim 2026-09-25: RQ379 transitioned `READY -> IN_PROGRESS` in this workspace for fail-closed Supplier Sales response validation and malformed-payload regression tests. Local runtime lock: `.ai/task-locks/RQ379-cursor.lock.md`.
 Owner completion 2026-09-25: RQ379 was delivered directly to `main` in `61881675b1774578b7e826e4151ec14b0fe43dbb`. Supplier Sales now validates decision-critical runtime payloads fail-closed, while preserving valid signed and nullable margin evidence. Run log: `.ai/runs/2026-09-25-RQ379-evidence.md`. Evidence state: synchronized. RQ380 remains WAITING.
@@ -1512,8 +1515,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ370 | DONE | inventory-secondary-request-cancellation | Abort Inventory secondary and detail requests on scope changes |
 | RQ371 | DONE | inventory-signal-period-scope-parity | Keep Inventory signal period and data-scope contracts aligned |
 | RQ372 | DONE | inventory-alert-filter-contract | Keep Inventory alert filtering, counts and URL state consistent |
-| RQ373 | WAITING | supplier-sales-visible-scope-parity | Separate Supplier display population from decision reference cohort and align KPI/chart/table/export scope |
-| RQ374 | WAITING | supplier-sales-detail-trust-contract | Align Supplier detail with display scope, decision benchmark, trust and provenance |
+| RQ373 | DONE | supplier-sales-visible-scope-parity | Separate Supplier display population from decision reference cohort and align KPI/chart/table/export scope |
+| RQ374 | IN_PROGRESS | supplier-sales-detail-trust-contract | Align Supplier detail with display scope, decision benchmark, trust and provenance |
 | RQ375 | DONE | shoe-type-margin-quality-contract | Align Shoe Type weighted margin baseline, cost-source semantics and runtime validation |
 | RQ376 | DONE | shoe-type-prepost-aggregate-parity | Align Shoe Type pre/post totals with comparable evidence cohort |
 | RQ377 | DONE | shoe-type-detail-trust-contract | Align Shoe Type detail route with row recommendation, trust and unknown identity |
@@ -20507,7 +20510,7 @@ Reproduction: load a response containing known and unknown suppliers, select one
 
 ## RQ374 - Align Supplier Sales detail route with recommendation, trust and localized provenance contract
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: backend-contract/frontend/copy/tests
 Feature family: supplier-sales-detail-trust-contract

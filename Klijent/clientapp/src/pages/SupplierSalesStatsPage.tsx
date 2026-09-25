@@ -1361,10 +1361,49 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
         table: "supplier-sales-stats",
         recordId,
         title: supplier.dobavljacNaziv,
-        subtitle: "Supplier decision detail",
+        subtitle: "Detalj odluke dobavljača",
         columns: decisionColumns,
         row: supplier,
         metadata: [...toolbarFilters, ...toolbarMetadata],
+        recommendation: supplier.recommendation
+          ? {
+              status: supplier.recommendation.status,
+              label: supplier.recommendation.label,
+              summary: supplier.recommendation.summary,
+              confidencePct: supplier.recommendation.recommendationAllowed === true
+                ? supplier.recommendation.confidencePct
+                : null,
+              reliabilityPct: supplier.recommendation.recommendationAllowed === true
+                ? supplier.recommendation.reliabilityPct
+                : null,
+              dataQualityStatus: supplier.recommendation.dataQualityStatus,
+              recommendationAllowed: supplier.recommendation.recommendationAllowed === true,
+              reasonCodes: supplier.recommendation.reasonCodes,
+            }
+          : null,
+        provenance: {
+          requestedFromUtc: data?.meta?.requestedPeriodFromUtc ?? `${activeFilters.fromDate}T00:00:00Z`,
+          requestedToUtc: data?.meta?.requestedPeriodToUtc ?? `${activeFilters.toDate}T23:59:59Z`,
+          effectiveFromUtc: data?.meta?.effectivePeriodFromUtc ?? data?.dataWindowFrom ?? null,
+          effectiveToUtc: data?.meta?.effectivePeriodToUtc ?? data?.dataWindowTo ?? null,
+          season: activeSezonaLabel,
+          storeId: data?.storeId ?? activeFilters.storeId,
+          dataScope: data?.dataScope ?? activeDataScope,
+          generatedAtUtc: data?.meta?.generatedAtUtc ?? data?.generatedAt ?? new Date().toISOString(),
+          freshness: trustDataFreshnessStatus,
+          dataQualityStatus: supplier.dataQualityStatus,
+          snapshotActive: data?.totals.isSnapshotActive === true,
+          snapshotGeneratedAtUtc: data?.totals.snapshotGeneratedAtUtc ?? null,
+          fallbackApplied: supplier.isEstimatedMargin === true
+            || (supplier.estimatedCostRevenue ?? 0) > 0
+            || (supplier.snapshotCostRevenue ?? 0) > 0,
+          recommendationAllowed: supplier.recommendationAllowed,
+          provenanceBasis: data?.provenanceBasis ?? data?.meta?.provenanceBasis ?? null,
+          displayPopulation: `${supplier.dobavljacNaziv} (${displayPopulationLabel})`,
+          decisionReferenceCohort: recommendationReferenceLabel,
+          dataWindowFromUtc: data?.dataWindowFrom ?? null,
+          dataWindowToUtc: data?.dataWindowTo ?? null,
+        },
       })
     );
 
@@ -1377,10 +1416,15 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     activeFilters.sezonaId,
     activeFilters.storeId,
     activeFilters.toDate,
+    activeSezonaLabel,
+    data,
+    displayPopulationLabel,
     focus,
     includeUnknown,
     location,
     navigate,
+    recommendationReferenceLabel,
+    trustDataFreshnessStatus,
     toolbarFilters,
     toolbarMetadata,
   ]);
@@ -2164,7 +2208,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                     type="button"
                     className="supplier-detail-open-btn"
                     onClick={() => openSupplierDetail(selectedSupplier)}
-                    title="Otvori puni AI detalj sa preporukom, historijom i analizom artikala"
+                    title="Otvori puni detalj odluke sa preporukom, periodom i poreklom podataka"
                   >
                     Puni detalj →
                   </button>

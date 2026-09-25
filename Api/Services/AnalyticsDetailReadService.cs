@@ -136,7 +136,10 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
 
     private async Task<AnalyticsDetailResponseDto?> GetSupplierSalesDetailAsync(string id, IQueryCollection query, CancellationToken ct)
     {
-        var context = await BuildAnalyticsContextAsync(query, ct);
+        // The supplier id identifies the detail row, not the recommendation benchmark.
+        // Keep the full filtered response cohort in context so aggregate recommendation
+        // and margin evidence are not silently rebased to the selected supplier.
+        var context = await BuildAnalyticsContextAsync(query, ct, applySupplierFilter: false);
         List<SalesRow> rows;
         string title;
 
@@ -164,7 +167,15 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             rows.Sum(x => x.Kolicina),
             ct);
 
-        return BuildAggregatedDetail("supplier-sales-stats", id ?? string.Empty, title, "Prodaja po dobavljacima", rows, context, comparison);
+        var aggregate = BuildAggregatedDetail(
+            "supplier-sales-stats",
+            id ?? string.Empty,
+            title,
+            "Prodaja po dobavljaču",
+            rows,
+            context,
+            comparison);
+        return aggregate is null ? null : BuildSupplierDetailProjection(aggregate, rows, context);
     }
 
     private async Task<AnalyticsDetailResponseDto?> GetShoeTypeSalesDetailAsync(string id, IQueryCollection query, CancellationToken ct)
@@ -301,7 +312,10 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         };
     }
 
-    private async Task<AnalyticsContext> BuildAnalyticsContextAsync(IQueryCollection query, CancellationToken ct)
+    private async Task<AnalyticsContext> BuildAnalyticsContextAsync(
+        IQueryCollection query,
+        CancellationToken ct,
+        bool applySupplierFilter = true)
     {
         var filters = await ParseFiltersAsync(query, ct);
 
@@ -356,7 +370,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 Boja = ColorIdentityPolicy.DisplayName(a.Boja),
                 AttributionBasis = ps.AttributionBasis
             })
-            .Where(x => !filters.SupplierId.HasValue || x.DobavljacId == filters.SupplierId.Value)
+            .Where(x => !applySupplierFilter || !filters.SupplierId.HasValue || x.DobavljacId == filters.SupplierId.Value)
             .ToListAsync(ct);
 
         long? activeBatchId = null;
@@ -680,6 +694,91 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         return (previousFromUtc, previousToUtc);
     }
 
+    private static AnalyticsDetailResponseDto BuildSupplierDetailProjection(
+        AnalyticsDetailResponseDto aggregate,
+        List<SalesRow> rows,
+        AnalyticsContext context)
+    {
+        var totalRevenue = rows.Sum(x => x.Prihod);
+        var marginSnapshot = BuildMarginSnapshot(rows, context, totalRevenue);
+        var recommendation = aggregate.Recommendation;
+        var recommendationAllowed = recommendation?.RecommendationAllowed == true;
+        var referenceRows = context.SalesRows;
+        var referenceSupplierCount = referenceRows
+            .Select(x => x.DobavljacId.HasValue ? $"known:{x.DobavljacId.Value}" : "unknown")
+            .Distinct(StringComparer.Ordinal)
+            .Count();
+        var includesUnknown = referenceRows.Any(IsUnknownSupplierRow);
+        var displayPopulation = $"{aggregate.Title} ({rows.Count.ToString(CultureInfo.InvariantCulture)} prodajnih stavki)";
+        var decisionReferenceCohort = $"{referenceSupplierCount.ToString(CultureInfo.InvariantCulture)} dobavljača u celom filtriranom odgovoru"
+            + (includesUnknown ? ", uključuje nepoznate" : ", bez nepoznatih");
+        var generatedAtUtc = DateTime.UtcNow;
+        var fallbackApplied = marginSnapshot.EstimatedCostRevenue > 0m || marginSnapshot.SnapshotCostRevenue > 0m;
+
+        var metadata = BuildFilterMetadata(context.Filters).ToList();
+        metadata.AddRange(
+        [
+            Field("displayPopulation", "Prikazani skup", displayPopulation, "text"),
+            Field("decisionReferenceCohort", "Referentni skup odluke", decisionReferenceCohort, "text"),
+            Field("provenanceBasis", "Osnova generisanja", "live_query/supplier_sales_stats", "text"),
+            Field("dataWindowFrom", "Efektivni prozor od", context.Filters.FromUtc?.ToString("dd.MM.yyyy HH:mm 'UTC'", CultureInfo.InvariantCulture), "datetime"),
+            Field("dataWindowTo", "Efektivni prozor do", context.Filters.ToUtc?.ToString("dd.MM.yyyy HH:mm 'UTC'", CultureInfo.InvariantCulture), "datetime"),
+            Field("sourceFamily", "Izvorna porodica", SupplierSalesProvenance.SourceFamily, "text"),
+            Field("sourceLabel", "Izvor podataka", SupplierSalesProvenance.SourceLabel, "text"),
+            Field("sourceTables", "Izvorne tabele", SupplierSalesProvenance.SourceTables, "text"),
+            Field("observedPopulation", "Posmatrana populacija", SupplierSalesProvenance.ObservedPopulation, "text"),
+            Field("costPolicy", "Politika troška", SupplierSalesProvenance.CostPolicy, "text"),
+            Field("prePostPolicy", "Politika pre/post kohorte", SupplierSalesProvenance.PrePostPolicy, "text"),
+            Field("recommendationAllowed", "Preporuka dozvoljena", recommendationAllowed ? "Da" : "Ne", "text")
+        ]);
+        metadata.AddRange(BuildAttributionMetadata(rows));
+
+        return new AnalyticsDetailResponseDto
+        {
+            Table = aggregate.Table,
+            RecordId = aggregate.RecordId,
+            Title = aggregate.Title,
+            Subtitle = aggregate.Subtitle,
+            Fields = aggregate.Fields
+                .Select(field => LocalizeSupplierOrShoeTypeField(field, marginSnapshot, context))
+                .ToList(),
+            Metadata = metadata,
+            Recommendation = recommendation,
+            Provenance = new AnalyticsDetailProvenanceDto
+            {
+                RequestedFromUtc = context.Filters.RequestedFromUtc,
+                RequestedToUtc = context.Filters.RequestedToUtc,
+                EffectiveFromUtc = context.Filters.FromUtc,
+                EffectiveToUtc = context.Filters.ToUtc,
+                Season = context.Filters.SezonaNaziv ?? context.Filters.SezonaId?.ToString(CultureInfo.InvariantCulture),
+                StoreId = context.Filters.StoreId,
+                DataScope = context.Filters.DataScope,
+                GeneratedAtUtc = generatedAtUtc,
+                Freshness = "fresh",
+                DataQualityStatus = recommendation?.DataQualityStatus ?? "insufficient_data",
+                SnapshotActive = context.IsSnapshotActive,
+                SnapshotGeneratedAtUtc = context.SnapshotGeneratedAtUtc,
+                FallbackApplied = fallbackApplied,
+                RecommendationAllowed = recommendationAllowed,
+                SourceFamily = SupplierSalesProvenance.SourceFamily,
+                SourceLabel = SupplierSalesProvenance.SourceLabel,
+                SourceTables = SupplierSalesProvenance.SourceTables,
+                ObservedPopulation = SupplierSalesProvenance.ObservedPopulation,
+                DisplayPopulation = displayPopulation,
+                DecisionReferenceCohort = decisionReferenceCohort,
+                ProvenanceBasis = "live_query/supplier_sales_stats",
+                DataWindowFromUtc = context.Filters.FromUtc,
+                DataWindowToUtc = context.Filters.ToUtc,
+                CostPolicy = SupplierSalesProvenance.CostPolicy,
+                PrePostPolicy = SupplierSalesProvenance.PrePostPolicy
+            }
+        };
+    }
+
+    private static bool IsUnknownSupplierRow(SalesRow row)
+        => !row.DobavljacId.HasValue
+            || string.Equals(row.DobavljacNaziv, "Nepoznato", StringComparison.OrdinalIgnoreCase);
+
     private static AnalyticsDetailResponseDto BuildShoeTypeDetailProjection(
         AnalyticsDetailResponseDto aggregate,
         List<SalesRow> rows,
@@ -740,7 +839,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         var recommendationAllowed = exposedRecommendation.RecommendationAllowed;
         var marginQuality = MarginQualityClassifier.ClassifyFromSnapshot(marginSnapshot, totalRevenue);
         var localizedFields = aggregate.Fields
-            .Select(field => LocalizeShoeTypeField(field, marginSnapshot, context))
+            .Select(field => LocalizeSupplierOrShoeTypeField(field, marginSnapshot, context))
             .ToList();
 
         return new AnalyticsDetailResponseDto
@@ -992,7 +1091,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             row => row.Prihod,
             row => row.Kolicina);
 
-    private static AnalyticsDetailFieldDto LocalizeShoeTypeField(
+    private static AnalyticsDetailFieldDto LocalizeSupplierOrShoeTypeField(
         AnalyticsDetailFieldDto field,
         MarginSnapshot marginSnapshot,
         AnalyticsContext context)
@@ -1294,7 +1393,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         var isNewSupplier = hasPreviousPeriodWindow
             && comparison!.PreviousPeriodRevenue <= 0m
             && totalRevenue > 0m;
-        var isUnknownSupplier = rows.All(x => !x.DobavljacId.HasValue);
+        var isUnknownSupplier = rows.All(IsUnknownSupplierRow);
         var recommendation = AnalyticsDecisionRecommendationEngine.Evaluate(
             new AnalyticsDecisionRecommendationEngine.RecommendationInput(
                 IsUnknownEntity: isUnknownSupplier,
@@ -1367,8 +1466,8 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             Field("fromDate", "Od", filters.FromUtc?.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture), "date"),
             Field("toDate", "Do", filters.ToUtc?.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture), "date"),
             Field("storeId", "Objekat", filters.StoreId?.ToString(CultureInfo.InvariantCulture), "number"),
-            Field("supplierId", "Dobavljac", filters.SupplierId?.ToString(CultureInfo.InvariantCulture), "number"),
-            Field("dataScope", "Data scope", filters.DataScope, "text")
+            Field("supplierId", "Dobavljač", filters.SupplierId?.ToString(CultureInfo.InvariantCulture), "number"),
+            Field("dataScope", "Opseg podataka", ToSerbianDataScope(filters.DataScope), "text")
         ];
     }
 

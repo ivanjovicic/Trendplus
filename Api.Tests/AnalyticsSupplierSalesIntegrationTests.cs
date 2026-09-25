@@ -118,6 +118,31 @@ public class AnalyticsSupplierSalesIntegrationTests : IClassFixture<WebApplicati
         Assert.True(supplierA.GetProperty("sharePct").GetDouble() > 0d);
     }
 
+    [OperationsIntegrationFact(DisplayName = "Supplier detail preserves recommendation and trust provenance")]
+    public async Task SupplierSalesDetail_ExposesRecommendationTrustAndReferenceCohort()
+    {
+        var root = await GetJsonRootAsync("/api/analitika/supplier-sales-stats/1?sezonaId=1");
+
+        var recommendation = root.GetProperty("recommendation");
+        Assert.False(string.IsNullOrWhiteSpace(recommendation.GetProperty("status").GetString()));
+        Assert.True(recommendation.TryGetProperty("recommendationAllowed", out _));
+
+        var provenance = root.GetProperty("provenance");
+        Assert.Equal("live_query/supplier_sales_stats", provenance.GetProperty("provenanceBasis").GetString());
+        Assert.False(string.IsNullOrWhiteSpace(provenance.GetProperty("displayPopulation").GetString()));
+        Assert.Contains("dobavljača", provenance.GetProperty("decisionReferenceCohort").GetString());
+        Assert.Equal("all", provenance.GetProperty("dataScope").GetString());
+        Assert.False(string.IsNullOrWhiteSpace(provenance.GetProperty("sourceLabel").GetString()));
+
+        var fields = root.GetProperty("fields").EnumerateArray().ToList();
+        Assert.Contains(fields, field => field.GetProperty("label").GetString() == "Ukupna količina");
+        Assert.Contains(fields, field => field.GetProperty("label").GetString() == "Marža (%)");
+
+        var metadata = root.GetProperty("metadata").EnumerateArray().ToList();
+        Assert.Contains(metadata, field => field.GetProperty("key").GetString() == "displayPopulation");
+        Assert.Contains(metadata, field => field.GetProperty("key").GetString() == "decisionReferenceCohort");
+    }
+
     [OperationsIntegrationFact(DisplayName = "Supplier margin quality and uncovered revenue are explicit and non-negative")]
     public async Task SupplierSalesStats_ExposesMarginQualityAndNonNegativeNoCost()
     {

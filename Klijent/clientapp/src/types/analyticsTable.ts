@@ -86,6 +86,11 @@ export interface AnalyticsDetailProvenance {
   sourceLabel?: string | null;
   sourceTables?: string | null;
   observedPopulation?: string | null;
+  displayPopulation?: string | null;
+  decisionReferenceCohort?: string | null;
+  provenanceBasis?: string | null;
+  dataWindowFromUtc?: string | null;
+  dataWindowToUtc?: string | null;
   costPolicy?: string | null;
   prePostPolicy?: string | null;
   decisionScore?: number | null;

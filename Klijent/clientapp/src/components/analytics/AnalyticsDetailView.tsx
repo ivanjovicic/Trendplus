@@ -204,6 +204,10 @@ export default function AnalyticsDetailView(props: {
           <DetailRow label="Izvor podataka" value={detail.provenance.sourceLabel} />
           <DetailRow label="Izvorne tabele" value={detail.provenance.sourceTables} />
           <DetailRow label="Posmatrana populacija" value={detail.provenance.observedPopulation} />
+          <DetailRow label="Prikazani skup" value={detail.provenance.displayPopulation} />
+          <DetailRow label="Referentni skup odluke" value={detail.provenance.decisionReferenceCohort} />
+          <DetailRow label="Osnova generisanja" value={detail.provenance.provenanceBasis} />
+          <DetailRow label="Efektivni prozor" value={`${detail.provenance.dataWindowFromUtc ?? "Nije navedeno"} – ${detail.provenance.dataWindowToUtc ?? "Nije navedeno"}`} />
           <DetailRow label="Politika troška" value={detail.provenance.costPolicy} />
           <DetailRow label="Politika pre/post kohorte" value={detail.provenance.prePostPolicy} />
           {detail.table === "color-sales-stats" ? (
