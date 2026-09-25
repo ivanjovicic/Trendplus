@@ -40,6 +40,7 @@ public sealed class PreNivelacijaEvidenceWindowDto
 
 public sealed class PreNivelacijaFilterFacetsDto
 {
+    public List<PreNivelacijaFilterOptionDto> Suppliers { get; set; } = [];
     public List<PreNivelacijaFilterOptionDto> Seasons { get; set; } = [];
     public List<PreNivelacijaFilterOptionDto> FootwearTypes { get; set; } = [];
 }
@@ -48,6 +49,7 @@ public sealed class PreNivelacijaFilterOptionDto
 {
     public int Id { get; set; }
     public string Label { get; set; } = string.Empty;
+    public int Count { get; set; }
 }
 
 public sealed class PreNivelacijaSummaryDto
@@ -190,6 +192,14 @@ public sealed class PreNivelacijaSkuCandidateDto
     public int DecisionScore { get; set; }
     public PreNivelacijaRecommendationDto Recommendation { get; set; } = new();
     public bool RecommendationAllowed => Recommendation.RecommendationAllowed;
+
+    /// <summary>Cached sales window inputs used to rebuild supplier WoW after facet filtering.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public int Units7 { get; set; }
+
+    /// <summary>Cached sales window inputs used to rebuild supplier WoW after facet filtering.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public int UnitsPrev7 { get; set; }
 }
 
 public sealed class PreNivelacijaRecommendationDto

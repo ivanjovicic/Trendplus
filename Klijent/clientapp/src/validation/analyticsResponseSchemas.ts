@@ -924,6 +924,7 @@ const preNivelacijaAlertSchema = z.object({
 const preNivelacijaFilterOptionSchema = z.object({
   id: nonNegativeInteger,
   label: z.string().trim().min(1),
+  count: nonNegativeInteger.optional(),
 }).passthrough();
 
 export const preNivelacijaPriorityResponseSchema = z.object({
@@ -952,6 +953,7 @@ export const preNivelacijaPriorityResponseSchema = z.object({
   }).passthrough(),
   supplierLeaderboard: z.array(preNivelacijaSupplierSchema),
   filterFacets: z.object({
+    suppliers: z.array(preNivelacijaFilterOptionSchema).optional(),
     seasons: z.array(preNivelacijaFilterOptionSchema),
     footwearTypes: z.array(preNivelacijaFilterOptionSchema),
   }).passthrough(),

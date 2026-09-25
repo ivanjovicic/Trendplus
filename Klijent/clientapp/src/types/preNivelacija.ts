@@ -144,9 +144,11 @@ export interface PreNivelacijaAlert {
 export interface PreNivelacijaFilterOption {
   id: number;
   label: string;
+  count?: number | null;
 }
 
 export interface PreNivelacijaFilterFacets {
+  suppliers?: PreNivelacijaFilterOption[];
   seasons: PreNivelacijaFilterOption[];
   footwearTypes: PreNivelacijaFilterOption[];
 }

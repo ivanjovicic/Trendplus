@@ -543,46 +543,51 @@ export default function PreNivelacijaPriorityPage() {
       : null);
   }, [data]);
 
-  const supplierOptions = useMemo(
-    () => (data?.supplierLeaderboard ?? []).filter((item) => item.supplierId != null),
-    [data?.supplierLeaderboard]
-  );
+  const supplierOptions = useMemo(() => {
+    const facetSuppliers = [...(data?.filterFacets?.suppliers ?? [])]
+      .sort((a, b) => a.label.localeCompare(b.label, "sr"));
+
+    if (supplierId != null && !facetSuppliers.some((item) => item.id === supplierId)) {
+      const selectedFromLeaderboard = (data?.supplierLeaderboard ?? []).find((item) => item.supplierId === supplierId);
+      facetSuppliers.unshift({
+        id: supplierId,
+        label: selectedFromLeaderboard?.supplierName?.trim() || `Nepoznata vrednost (${supplierId})`,
+        count: 0,
+      });
+    }
+
+    return facetSuppliers;
+  }, [data?.filterFacets?.suppliers, data?.supplierLeaderboard, supplierId]);
 
   const seasonOptions = useMemo(() => {
-    const facetSeasons = data?.filterFacets?.seasons ?? [];
-    if (facetSeasons.length > 0) {
-      return [...facetSeasons].sort((a, b) => a.label.localeCompare(b.label, "sr"));
+    const facetSeasons = [...(data?.filterFacets?.seasons ?? [])]
+      .sort((a, b) => a.label.localeCompare(b.label, "sr"));
+
+    if (seasonId != null && !facetSeasons.some((item) => item.id === seasonId)) {
+      facetSeasons.unshift({
+        id: seasonId,
+        label: `Nepoznata vrednost (${seasonId})`,
+        count: 0,
+      });
     }
 
-    const map = new Map<number, string>();
-    (data?.candidates ?? []).forEach((item) => {
-      if (item.seasonId != null && item.season && item.season !== "N/A") {
-        map.set(item.seasonId, item.season);
-      }
-    });
-
-    return [...map.entries()]
-      .map(([id, label]) => ({ id, label }))
-      .sort((a, b) => a.label.localeCompare(b.label, "sr"));
-  }, [data?.candidates, data?.filterFacets?.seasons]);
+    return facetSeasons;
+  }, [data?.filterFacets?.seasons, seasonId]);
 
   const footwearTypeOptions = useMemo(() => {
-    const facetFootwearTypes = data?.filterFacets?.footwearTypes ?? [];
-    if (facetFootwearTypes.length > 0) {
-      return [...facetFootwearTypes].sort((a, b) => a.label.localeCompare(b.label, "sr"));
+    const facetFootwearTypes = [...(data?.filterFacets?.footwearTypes ?? [])]
+      .sort((a, b) => a.label.localeCompare(b.label, "sr"));
+
+    if (footwearTypeId != null && !facetFootwearTypes.some((item) => item.id === footwearTypeId)) {
+      facetFootwearTypes.unshift({
+        id: footwearTypeId,
+        label: `Nepoznata vrednost (${footwearTypeId})`,
+        count: 0,
+      });
     }
 
-    const map = new Map<number, string>();
-    (data?.candidates ?? []).forEach((item) => {
-      if (item.footwearTypeId != null && item.footwearType && item.footwearType !== "N/A") {
-        map.set(item.footwearTypeId, item.footwearType);
-      }
-    });
-
-    return [...map.entries()]
-      .map(([id, label]) => ({ id, label }))
-      .sort((a, b) => a.label.localeCompare(b.label, "sr"));
-  }, [data?.candidates, data?.filterFacets?.footwearTypes]);
+    return facetFootwearTypes;
+  }, [data?.filterFacets?.footwearTypes, footwearTypeId]);
 
   const decisionRows = useMemo<DecisionCandidate[]>(() => {
     const rows = data?.candidates ?? [];
@@ -921,7 +926,7 @@ export default function PreNivelacijaPriorityPage() {
   };
 
   const controlBarChips = useMemo<AnalyticsControlBarChip[]>(() => {
-    const selectedSupplier = supplierOptions.find((item) => item.supplierId === supplierId);
+    const selectedSupplier = supplierOptions.find((item) => item.id === supplierId);
     const selectedSeason = seasonOptions.find((item) => item.id === seasonId);
     const selectedFootwearType = footwearTypeOptions.find((item) => item.id === footwearTypeId);
 
@@ -929,7 +934,7 @@ export default function PreNivelacijaPriorityPage() {
       {
         key: "supplier",
         label: "Dobavljač",
-        value: selectedSupplier?.supplierName ?? "Svi",
+        value: selectedSupplier?.label ?? "Svi",
       },
       {
         key: "season",
@@ -966,7 +971,9 @@ export default function PreNivelacijaPriorityPage() {
         <select value={supplierId ?? ""} onChange={(e) => setSupplierId(e.target.value ? Number(e.target.value) : null)}>
           <option value="">Svi</option>
           {supplierOptions.map((item) => (
-            <option key={item.supplierId ?? item.supplierName} value={item.supplierId ?? ""}>{item.supplierName}</option>
+            <option key={item.id} value={item.id}>
+              {item.count == null ? item.label : `${item.label} (${item.count})`}
+            </option>
           ))}
         </select>
       ),
@@ -978,7 +985,9 @@ export default function PreNivelacijaPriorityPage() {
         <select value={seasonId ?? ""} onChange={(e) => setSeasonId(e.target.value ? Number(e.target.value) : null)}>
           <option value="">Sve</option>
           {seasonOptions.map((item) => (
-            <option key={item.id} value={item.id}>{item.label}</option>
+            <option key={item.id} value={item.id}>
+              {item.count == null ? item.label : `${item.label} (${item.count})`}
+            </option>
           ))}
         </select>
       ),
@@ -990,7 +999,9 @@ export default function PreNivelacijaPriorityPage() {
         <select value={footwearTypeId ?? ""} onChange={(e) => setFootwearTypeId(e.target.value ? Number(e.target.value) : null)}>
           <option value="">Svi</option>
           {footwearTypeOptions.map((item) => (
-            <option key={item.id} value={item.id}>{item.label}</option>
+            <option key={item.id} value={item.id}>
+              {item.count == null ? item.label : `${item.label} (${item.count})`}
+            </option>
           ))}
         </select>
       ),

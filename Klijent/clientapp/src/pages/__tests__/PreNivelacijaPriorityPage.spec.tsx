@@ -105,21 +105,38 @@ function makeCandidate(overrides: Record<string, unknown> = {}) {
 }
 
 function buildFilterFacetsFromCandidates(candidates: Array<ReturnType<typeof makeCandidate>>) {
-  const seasons = new Map<number, string>();
-  const footwearTypes = new Map<number, string>();
+  const suppliers = new Map<number, { label: string; count: number }>();
+  const seasons = new Map<number, { label: string; count: number }>();
+  const footwearTypes = new Map<number, { label: string; count: number }>();
 
   candidates.forEach((candidate) => {
+    if (candidate.supplierId != null && candidate.supplierName && candidate.supplierName !== "N/A") {
+      const existing = suppliers.get(candidate.supplierId);
+      suppliers.set(candidate.supplierId, {
+        label: candidate.supplierName,
+        count: (existing?.count ?? 0) + 1,
+      });
+    }
     if (candidate.seasonId != null && candidate.season && candidate.season !== "N/A") {
-      seasons.set(candidate.seasonId, candidate.season);
+      const existing = seasons.get(candidate.seasonId);
+      seasons.set(candidate.seasonId, {
+        label: candidate.season,
+        count: (existing?.count ?? 0) + 1,
+      });
     }
     if (candidate.footwearTypeId != null && candidate.footwearType && candidate.footwearType !== "N/A") {
-      footwearTypes.set(candidate.footwearTypeId, candidate.footwearType);
+      const existing = footwearTypes.get(candidate.footwearTypeId);
+      footwearTypes.set(candidate.footwearTypeId, {
+        label: candidate.footwearType,
+        count: (existing?.count ?? 0) + 1,
+      });
     }
   });
 
   return {
-    seasons: [...seasons.entries()].map(([id, label]) => ({ id, label })).sort((a, b) => a.label.localeCompare(b.label, "sr")),
-    footwearTypes: [...footwearTypes.entries()].map(([id, label]) => ({ id, label })).sort((a, b) => a.label.localeCompare(b.label, "sr")),
+    suppliers: [...suppliers.entries()].map(([id, value]) => ({ id, label: value.label, count: value.count })).sort((a, b) => a.label.localeCompare(b.label, "sr")),
+    seasons: [...seasons.entries()].map(([id, value]) => ({ id, label: value.label, count: value.count })).sort((a, b) => a.label.localeCompare(b.label, "sr")),
+    footwearTypes: [...footwearTypes.entries()].map(([id, value]) => ({ id, label: value.label, count: value.count })).sort((a, b) => a.label.localeCompare(b.label, "sr")),
   };
 }
 
@@ -1171,12 +1188,12 @@ describe("PreNivelacijaPriorityPage", () => {
     );
 
     const seasonSelect = await screen.findByLabelText("Sezona");
-    expect(within(seasonSelect).getByRole("option", { name: "Jesen/Zima" })).toBeInTheDocument();
-    expect(within(seasonSelect).getByRole("option", { name: "Prolece/Leto" })).toBeInTheDocument();
+    expect(within(seasonSelect).getByRole("option", { name: /Jesen\/Zima/ })).toBeInTheDocument();
+    expect(within(seasonSelect).getByRole("option", { name: /Prolece\/Leto/ })).toBeInTheDocument();
 
     const footwearSelect = screen.getByLabelText("Tip obuće");
-    expect(within(footwearSelect).getByRole("option", { name: "Boot" })).toBeInTheDocument();
-    expect(within(footwearSelect).getByRole("option", { name: "Sneaker" })).toBeInTheDocument();
+    expect(within(footwearSelect).getByRole("option", { name: /Boot/ })).toBeInTheDocument();
+    expect(within(footwearSelect).getByRole("option", { name: /Sneaker/ })).toBeInTheDocument();
   });
 
   it("keeps expanded detail visible across pagination when the same artikal remains in results", async () => {
@@ -1364,5 +1381,55 @@ describe("PreNivelacijaPriorityPage", () => {
     expect(screen.getByText("Procena izbegljivog gubitka marže")).toBeInTheDocument();
     expect(screen.getAllByText("Nije dostupno").length).toBeGreaterThanOrEqual(3);
     expect(screen.getAllByText("0 od 1 kandidata")).toHaveLength(3);
+  });
+
+  it("keeps other suppliers selectable from facets without clearing the current supplier", async () => {
+    const candidateA = makeCandidate({
+      artikalId: 1001,
+      sku: "SKU-A",
+      supplierId: 11,
+      supplierName: "Dobavljac A",
+      seasonId: 7,
+      season: "Prolece/Leto",
+    });
+    const candidateB = makeCandidate({
+      artikalId: 1002,
+      sku: "SKU-B",
+      supplierId: 22,
+      supplierName: "Dobavljac B",
+      seasonId: 7,
+      season: "Prolece/Leto",
+    });
+
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce({
+      ...makeResponse([candidateA]),
+      filterFacets: {
+        suppliers: [
+          { id: 11, label: "Dobavljac A", count: 1 },
+          { id: 22, label: "Dobavljac B", count: 1 },
+        ],
+        seasons: [{ id: 7, label: "Prolece/Leto", count: 1 }],
+        footwearTypes: [{ id: 4, label: "Patike", count: 1 }],
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti?supplierId=11"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    const supplierSelect = await screen.findByLabelText("Dobavljač");
+    expect(supplierSelect).toHaveValue("11");
+    expect(within(supplierSelect as HTMLElement).getByRole("option", { name: /Dobavljac B/ })).toBeInTheDocument();
+
+    fireEvent.change(supplierSelect, { target: { value: "22" } });
+    fireEvent.click(screen.getByRole("button", { name: /Primeni filtere/i }));
+
+    await waitFor(() => {
+      expect(getPreNivelacijaPrioritetiMock).toHaveBeenCalledWith(
+        expect.objectContaining({ supplierId: 22 }),
+      );
+    });
   });
 });
