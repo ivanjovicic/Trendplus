@@ -37,4 +37,17 @@ describe("Sidebar", () => {
     expect(activeLinks[0]).toHaveAttribute("href", "/analytics/supplier");
     expect(activeLinks[0]).toHaveTextContent("Pregled dobavljača");
   });
+
+  it("explains Operations supplier aliases before navigation", () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/inventory"]}>
+        <Sidebar mobileOpen={false} onCloseMobile={() => {}} collapsed={false} onToggleCollapse={() => {}} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("link", { name: /Prodaja po dobavljačima/ })).toBeInTheDocument();
+    expect(screen.getByTitle("Kompatibilna veza: otvara Pregled dobavljača, tab Pregled")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Dobavljači i tipovi obuće/ })).toBeInTheDocument();
+    expect(screen.getByTitle("Kompatibilna veza: otvara Pregled dobavljača, tab Asortiman")).toBeInTheDocument();
+  });
 });
