@@ -85,3 +85,11 @@ Evidence state: synchronized for findings below; current CI classified separatel
 - Do not merge the stale divergent runtime-drift branch wholesale.
 - If the final frontend Quality Gate is red, inspect the exact current-main failure before further code changes.
 - The broad backend 20-test failure set should be handled as focused BCI/backend repair work with reproduction/classification per family.
+
+## Final CI follow-up
+
+- Quality Gate `36276493721` on `e175de5e` reduced the frontend suite to one remaining failure: the new Daily store-failure regression did not hit its 503 handler because `getStores(true)` retains a five-minute client cache populated by earlier tests in the same file.
+- Added explicit `invalidateAnalyticsCache()` test isolation in `DailySalesStatsPage.spec.tsx`: `e7bf02720fac050f2a0a60cafd60654dbe185479`.
+- Final frontend code candidate: `e7bf02720fac050f2a0a60cafd60654dbe185479`; Quality Gate run `36276826377` was triggered for that SHA.
+- Compared broad backend failures from `36275934187` with older run `36258925829`. The key failing families (Access Import FK, AnalyticsDataQuality/aggregation invalidation, ColorSales cache identity, SQL Server source/session discovery, LostSales scope, Outbox concurrency, cached Inventory data-scope) were already red in the older run. They are therefore pre-existing backend backlog, not regressions introduced by this audit.
+
