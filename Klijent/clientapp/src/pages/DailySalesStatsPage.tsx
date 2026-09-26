@@ -989,8 +989,10 @@ export default function DailySalesStatsPage() {
     { key: "incompleteDailyAggregates", label: "Nepotpuni dnevni zbirovi", value: incompleteDailyAggregateCount },
     { key: "diagnosticsDataScope", label: "Opseg dijagnostike", value: data?.metadata.diagnosticsDataScope ?? data?.dataScope ?? "" },
     { key: "availabilityDataScope", label: "Opseg dostupnosti", value: data?.metadata.availabilityDataScope ?? data?.dataScope ?? "" },
+    { key: "supplierAttributionBasis", label: "Osnov atribucije dobavljača", value: data?.meta?.attributionBasis ?? "nije dostupno" },
+    { key: "supplierAttributionCoveragePct", label: "Pokrivenost atribucijom %", value: data?.meta?.attributionCoveragePct ?? null },
     { key: "warnings", label: "Upozorenja", value: data?.metadata.warnings?.join(" | ") ?? "" },
-  ], [data?.dataScope, data?.metadata.availabilityDataScope, data?.metadata.diagnosticsDataScope, data?.metadata.totalDays, data?.metadata.unknownSupplierPct, data?.metadata.warnings, data?.requestedFrom, data?.requestedTo, incompleteDailyAggregateCount, incompleteShiftCount]);
+  ], [data?.dataScope, data?.meta?.attributionBasis, data?.meta?.attributionCoveragePct, data?.metadata.availabilityDataScope, data?.metadata.diagnosticsDataScope, data?.metadata.totalDays, data?.metadata.unknownSupplierPct, data?.metadata.warnings, data?.requestedFrom, data?.requestedTo, incompleteDailyAggregateCount, incompleteShiftCount]);
 
 
   const chronologicalTrendData = useMemo<TrendPoint[]>(() => (

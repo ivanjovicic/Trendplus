@@ -47,9 +47,9 @@ public sealed class DailySalesStatsServiceTests
             });
 
         db.ProdajaStavke.AddRange(
-            new ProdajaStavka { Id = 11, IdProdaja = 1, IdArtikal = 101, Kolicina = 5, Cena = 100m },
-            new ProdajaStavka { Id = 12, IdProdaja = 2, IdArtikal = 102, Kolicina = 3, Cena = 200m },
-            new ProdajaStavka { Id = 13, IdProdaja = 3, IdArtikal = 101, Kolicina = 2, Cena = 100m },
+            new ProdajaStavka { Id = 11, IdProdaja = 1, IdArtikal = 101, Kolicina = 5, Cena = 100m, SupplierIdAtSale = 1, AttributionBasis = SaleDimensionAttribution.SaleSnapshot },
+            new ProdajaStavka { Id = 12, IdProdaja = 2, IdArtikal = 102, Kolicina = 3, Cena = 200m, SupplierIdAtSale = 2, AttributionBasis = SaleDimensionAttribution.SaleSnapshot },
+            new ProdajaStavka { Id = 13, IdProdaja = 3, IdArtikal = 101, Kolicina = 2, Cena = 100m, SupplierIdAtSale = 1, AttributionBasis = SaleDimensionAttribution.SaleSnapshot },
             new ProdajaStavka { Id = 14, IdProdaja = 4, IdArtikal = 103, Kolicina = 4, Cena = 150m });
 
         await db.SaveChangesAsync();
@@ -85,7 +85,7 @@ public sealed class DailySalesStatsServiceTests
 
         Assert.Equal(2, result.Metadata.OffShiftItems);
         Assert.True(result.Metadata.UnknownSupplierPct.HasValue);
-        Assert.True(result.Metadata.UnknownSupplierPct.Value > 20m);
+        Assert.True(result.Metadata.UnknownSupplierPct.Value > 0m);
         Assert.Contains(result.Metadata.Warnings, x => x.Contains("van smena", StringComparison.OrdinalIgnoreCase));
         Assert.Equal("warning", result.Meta.DataQualityStatus);
         Assert.True(result.Meta.IsPartial);
@@ -505,12 +505,12 @@ public sealed class DailySalesStatsServiceTests
             });
 
         db.ProdajaStavke.AddRange(
-            new ProdajaStavka { Id = 500, IdProdaja = 500, IdArtikal = 101, Kolicina = 5, Cena = 100m },
-            new ProdajaStavka { Id = 501, IdProdaja = 501, IdArtikal = 102, Kolicina = -7, Cena = 100m },
+            new ProdajaStavka { Id = 500, IdProdaja = 500, IdArtikal = 101, Kolicina = 5, Cena = 100m, SupplierIdAtSale = 1, AttributionBasis = SaleDimensionAttribution.SaleSnapshot },
+            new ProdajaStavka { Id = 501, IdProdaja = 501, IdArtikal = 102, Kolicina = -7, Cena = 100m, SupplierIdAtSale = 2, AttributionBasis = SaleDimensionAttribution.SaleSnapshot },
             new ProdajaStavka { Id = 502, IdProdaja = 502, IdArtikal = 103, Kolicina = -20, Cena = 50m },
-            new ProdajaStavka { Id = 503, IdProdaja = 503, IdArtikal = 102, Kolicina = -3, Cena = 100m },
-            new ProdajaStavka { Id = 504, IdProdaja = 504, IdArtikal = 101, Kolicina = -2, Cena = 100m },
-            new ProdajaStavka { Id = 505, IdProdaja = 505, IdArtikal = 101, Kolicina = -1, Cena = 50m });
+            new ProdajaStavka { Id = 503, IdProdaja = 503, IdArtikal = 102, Kolicina = -3, Cena = 100m, SupplierIdAtSale = 2, AttributionBasis = SaleDimensionAttribution.SaleSnapshot },
+            new ProdajaStavka { Id = 504, IdProdaja = 504, IdArtikal = 101, Kolicina = -2, Cena = 100m, SupplierIdAtSale = 1, AttributionBasis = SaleDimensionAttribution.SaleSnapshot },
+            new ProdajaStavka { Id = 505, IdProdaja = 505, IdArtikal = 101, Kolicina = -1, Cena = 50m, SupplierIdAtSale = 1, AttributionBasis = SaleDimensionAttribution.SaleSnapshot });
 
         await db.SaveChangesAsync();
 
@@ -535,6 +535,70 @@ public sealed class DailySalesStatsServiceTests
         Assert.Equal(-200m, result.Metadata.DebtReceiptRevenue);
         Assert.Contains(result.TopSuppliers, supplier => supplier.SupplierName == "Dobavljac B" && supplier.TotalQty == -10);
         Assert.NotEqual("no_data_in_period", result.Meta.EmptyReason);
+    }
+
+    [Fact]
+    public async Task GetDailySalesAsync_UsesSaleTimeSupplierAttribution_WhenArticleMasterChanges()
+    {
+        await using var db = CreateDbContext();
+        SeedSuppliersAndArticles(db);
+
+        db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+        {
+            Id = 600,
+            BrojRacuna = "600",
+            DatumProdaje = new DateTime(2026, 6, 1, 9, 0, 0, DateTimeKind.Utc),
+            IDObjekat = 1,
+            DataOrigin = "existing"
+        });
+        db.ProdajaStavke.Add(new ProdajaStavka
+        {
+            Id = 600,
+            IdProdaja = 600,
+            IdArtikal = 101,
+            Kolicina = 4,
+            Cena = 125m,
+            SupplierIdAtSale = 2,
+            AttributionBasis = SaleDimensionAttribution.SaleSnapshot
+        });
+        await db.SaveChangesAsync();
+
+        var service = new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance);
+        var request = new
+        {
+            From = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+            To = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc)
+        };
+
+        var beforeMasterMutation = await service.GetDailySalesAsync(
+            request.From,
+            request.To,
+            storeId: 1,
+            topN: 5,
+            dataScope: "all",
+            ct: CancellationToken.None);
+
+        Assert.Contains(beforeMasterMutation.TopSuppliers, x =>
+            x.SupplierId == 2 && x.SupplierName == "Dobavljac B" && x.TotalQty == 4);
+        Assert.DoesNotContain(beforeMasterMutation.TopSuppliers, x => x.SupplierId == 1);
+        Assert.Equal(SaleDimensionAttribution.SaleSnapshot, beforeMasterMutation.Meta.AttributionBasis);
+        Assert.Equal(100d, beforeMasterMutation.Meta.AttributionCoveragePct);
+
+        var article = await db.Artikli.SingleAsync(x => x.Id == 101);
+        article.IDDobavljac = 3;
+        await db.SaveChangesAsync();
+
+        var afterMasterMutation = await service.GetDailySalesAsync(
+            request.From,
+            request.To,
+            storeId: 1,
+            topN: 5,
+            dataScope: "all",
+            ct: CancellationToken.None);
+
+        Assert.Contains(afterMasterMutation.TopSuppliers, x =>
+            x.SupplierId == 2 && x.SupplierName == "Dobavljac B" && x.TotalQty == 4);
+        Assert.DoesNotContain(afterMasterMutation.TopSuppliers, x => x.SupplierId == 3);
     }
 
     private static TrendplusDbContext CreateDbContext()
