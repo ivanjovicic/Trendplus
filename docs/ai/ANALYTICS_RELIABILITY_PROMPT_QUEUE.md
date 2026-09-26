@@ -2,7 +2,8 @@
 
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ322 (IN_PROGRESS in this workspace)
+Owner promotion/claim 2026-09-27: idle recovery confirmed RQ321 DONE on current origin/main, no active Inventory bootstrap owner or conflicting lock, and RQ322 has no remaining dependency. RQ322 moved WAITING -> READY -> IN_PROGRESS; local lock .ai/task-locks/RQ322-codex.lock.md.
 Owner completion 2026-09-27: RQ321 was delivered directly to main in 95632a21. Four Operacije pages now surface store-filter load failures with a retry action, clear failed options and disable unconfirmed individual-store selection; Inventory remains owned by RQ322. Focused proof is 4/4, analytics guardrails/typecheck/build and diff checks pass. Run log: .ai/runs/2026-09-26-RQ321-evidence.md. Evidence state: synchronized.
 Owner promotion/claim 2026-09-26: idle recovery verified the higher-priority RQ P0 lanes remain externally gated or owned elsewhere, while RQ321 is an independent P2 shared-UX error contract with no dependency, conflicting lock or active store-filter owner. `RQ321` moved `WAITING -> READY -> IN_PROGRESS`; local lock `.ai/task-locks/RQ321-codex.lock.md`.
 Owner completion 2026-09-26: `RQ315` is DONE; Pre-Nivelacija trust header renders backend `evidenceWindow` period fields and the focused regression passes 49/49. Run log: `.ai/runs/2026-09-26-RQ315-evidence.md`. Evidence state: synchronized.
@@ -17939,7 +17940,7 @@ Reproduction: block stores endpoint — pages load with empty store select and n
 
 ## RQ322 - Replace Inventory store bootstrap console-only error
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P2
 Type: frontend/error-handling/tests
 Feature family: inventory-store-bootstrap-error

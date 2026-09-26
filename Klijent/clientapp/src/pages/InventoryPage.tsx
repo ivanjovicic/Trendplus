@@ -7,6 +7,7 @@ import type { AnalyticsActionDataQualityStatus, AnalyticsResponseMeta, ForecastD
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsControlBar from "../components/analytics/AnalyticsControlBar";
+import AnalyticsFilterLoadNotice from "../components/analytics/AnalyticsFilterLoadNotice";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import { ActionWorkflowPanel } from "../components/inventory/ActionWorkflowPanel";
 import { DecisionSummaryBar } from "../components/inventory/DecisionSummaryBar";
@@ -391,6 +392,8 @@ export default function InventoryPage() {
   const suppliersRef = useRef(suppliers);
   suppliersRef.current = suppliers;
   const [filtersLoading, setFiltersLoading] = useState(true);
+  const [storesLoadError, setStoresLoadError] = useState(false);
+  const [storesReloadNonce, setStoresReloadNonce] = useState(0);
   const [searchInput, setSearchInput] = useState(() => searchParams.get("search") ?? "");
   const [selectedStoreId, setSelectedStoreId] = useState<number | null>(() => {
     const parsed = parseInventoryPositiveInt(searchParams.get("storeId"), 0);
@@ -524,9 +527,11 @@ export default function InventoryPage() {
 
   useEffect(() => {
     let cancelled = false;
+    setFiltersLoading(true);
     void getStores(true)
       .then((nextStores) => {
         if (cancelled) return;
+        setStoresLoadError(false);
         setStores(nextStores);
         setCompareStoreIds((current) => {
           const next = current.length > 0
@@ -538,12 +543,18 @@ export default function InventoryPage() {
           return next;
         });
       })
-      .catch(console.error)
+      .catch(() => {
+        if (cancelled) return;
+        setStores([]);
+        setCompareStoreIds([]);
+        setSelectedStoreId(null);
+        setStoresLoadError(true);
+      })
       .finally(() => {
         if (!cancelled) setFiltersLoading(false);
       });
     return () => { cancelled = true; };
-  }, []);
+  }, [storesReloadNonce]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1380,6 +1391,9 @@ export default function InventoryPage() {
   // so the user can recover in place.
   const renderInventoryControls = (showDataSummary: boolean) => (
       <section className="rounded-[28px] border border-muted surface-light p-5 shadow-lg">
+        {storesLoadError ? (
+          <AnalyticsFilterLoadNotice onRetry={() => setStoresReloadNonce((value) => value + 1)} />
+        ) : null}
         <AnalyticsControlBar
           title="Filteri i akcije"
           description="Pretraži bilans, suzi lokaciju i ostavi operativne akcije sekundarnim u odnosu na pregled odluka."
@@ -1486,6 +1500,7 @@ export default function InventoryPage() {
                   aria-label="Filter po prodavnici"
                   value={selectedStoreId ?? ""}
                   onChange={(event) => { setSelectedStoreId(event.target.value ? Number(event.target.value) : null); setSelectedSupplierId(null); setPageNumber(1); }}
+                  disabled={storesLoadError}
                 >
                   <option value="">Sve prodavnice</option>
                   {stores.map((store) => <option key={store.storeId} value={store.storeId}>{store.storeName}</option>)}
@@ -1785,7 +1800,13 @@ export default function InventoryPage() {
       <InventoryPriorityPanels rows={rows} topRiskRows={topRiskRows} highestValueRows={highestValueRows} chartData={chartData} balance={balance} lowStockShare={lowStockShare} totalCount={totalCount} onOpenDetail={openDetail} />
 
       <div className="grid gap-5 xl:grid-cols-2">
-        <StoreComparisonPanel sectionId={STORE_COMPARISON_SECTION_ID} stores={stores} compareStoreIds={compareStoreIds} comparison={storeComparison} operationsLoading={operationsLoading} onToggleStore={toggleCompareStore} />
+        {storesLoadError ? (
+          <div data-testid="inventory-store-comparison-unavailable" className="rounded-[28px] border border-muted surface-light p-5 text-sm text-muted">
+            Poređenje prodavnica nije dostupno dok se lista prodavnica ne učita.
+          </div>
+        ) : (
+          <StoreComparisonPanel sectionId={STORE_COMPARISON_SECTION_ID} stores={stores} compareStoreIds={compareStoreIds} comparison={storeComparison} operationsLoading={operationsLoading} onToggleStore={toggleCompareStore} />
+        )}
         <SizeCurvePanel sizeCurveSkuId={sizeCurveSkuId} sizeCurve={sizeCurve} sizeCurveLoading={sizeCurveLoading} sizeCurveError={sizeCurveError} onChangeSkuId={openSizeCurveFromPanel} />
       </div>
 

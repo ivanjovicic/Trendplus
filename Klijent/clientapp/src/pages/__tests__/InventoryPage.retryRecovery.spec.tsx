@@ -301,4 +301,23 @@ describe("InventoryPage retry recovery and persistent controls (RQ427)", () => {
     expect(getInventoryListMock.mock.calls.length - callsBeforeRefresh).toBe(1);
     expect(screen.getByTestId("inventory-items-table")).toBeInTheDocument();
   });
+
+  it("surfaces store bootstrap failure, blocks comparison and retries the store request", async () => {
+    getStoresMock
+      .mockRejectedValueOnce(new Error("stores unavailable"))
+      .mockResolvedValueOnce([{ storeId: 1, storeName: "Prodavnica 1" }]);
+
+    renderPage();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Filter prodavnice nije dostupan.");
+    expect(screen.getByLabelText("Filter po prodavnici")).toBeDisabled();
+    expect(screen.getByTestId("inventory-store-comparison-unavailable")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Pokušaj ponovo" }));
+
+    await waitFor(() => expect(getStoresMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
+    expect(screen.getByLabelText("Filter po prodavnici")).not.toBeDisabled();
+    expect(screen.queryByTestId("inventory-store-comparison-unavailable")).not.toBeInTheDocument();
+  });
 });
