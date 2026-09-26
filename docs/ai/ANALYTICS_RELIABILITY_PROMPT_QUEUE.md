@@ -1721,11 +1721,11 @@ The current Supplier Decision Hub still replaces every row status with `insuffic
 - Run log: `.ai/runs/2026-09-26-RQ458-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct main fast-forward (PR #74 transport)
-- Main commit SHA: `85133744`
-- Main verification: `origin/main` contains `85133744`; the implementation merge `aeeb0b34` and concurrent Daily Sales commit `7a01087d` were preserved.
+- Main commit SHA: `1cc5f646`
+- Main verification: `origin/main` contains `1cc5f646`; the implementation merge `aeeb0b34`, unknown-signal safety fallback and concurrent Daily Sales commit `7a01087d` were preserved.
 - Missed: RQ459 KPI/chart/report population parity remains separate and unfixed.
 - Follow-up: promote RQ459 only after a fresh collision review.
-- Residual risk: unknown future recommendation codes remain unavailable until explicitly mapped.
+- Residual risk: RQ459 KPI/chart/report population parity remains a separate WAITING follow-up.
 
 ---
 
