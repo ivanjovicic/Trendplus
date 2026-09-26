@@ -256,7 +256,6 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f Database/Migrations/002_CreatePerformanceLogsTable.sql
           psql -v ON_ERROR_STOP=1 -f Database/Migrations/012_AddAccessImportSupport.sql
           psql -v ON_ERROR_STOP=1 -f Database/Migrations/017_CreateNightlyAnalyticsMaterializedViews.sql
-          psql -v ON_ERROR_STOP=1 -f Database/Migrations/019_AddAnalyticsDashboardIndexes.sql
 
       - name: Run RQ447 oracle cases
         id: oracle
