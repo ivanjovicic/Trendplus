@@ -294,7 +294,10 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             from ps in _db.ProdajaStavke.AsNoTracking()
             join pz in _db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
             join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
-            join d in _db.Dobavljaci.AsNoTracking() on a.IDDobavljac equals d.Id into supplierJoin
+            // Supplier identity is frozen on the sale line. The article join remains
+            // the source for data-origin scoping, but current article master edits must
+            // never reclassify historical Daily Sales buckets.
+            join d in _db.Dobavljaci.AsNoTracking() on ps.SupplierIdAtSale equals d.Id into supplierJoin
             from supplier in supplierJoin.DefaultIfEmpty()
             where pz.DatumProdaje >= fromDateUtc
                && pz.DatumProdaje < toDateExclusiveUtc
@@ -310,8 +313,9 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             {
                 SaleDate = pz.DatumProdaje.Date,
                 HourOfDay = pz.DatumProdaje.Hour,
-                SupplierId = a.IDDobavljac,
-                SupplierName = supplier != null ? supplier.Naziv : null
+                SupplierId = ps.SupplierIdAtSale,
+                SupplierName = supplier != null ? supplier.Naziv : null,
+                AttributionBasis = ps.AttributionBasis
             }
             into g
             select new SalesAggregateRow
@@ -320,10 +324,32 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                 HourOfDay = g.Key.HourOfDay,
                 SupplierId = g.Key.SupplierId,
                 SupplierName = g.Key.SupplierName,
+                AttributionBasis = g.Key.AttributionBasis,
+                LineCount = g.Count(),
                 Qty = g.Sum(x => x.Kolicina),
                 Revenue = g.Sum(x => x.Revenue)
             })
             .ToListAsync(ct);
+
+        var attributionBases = aggregates
+            .Select(x => string.IsNullOrWhiteSpace(x.AttributionBasis)
+                ? SaleDimensionAttribution.Unknown
+                : x.AttributionBasis!)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        var attributionLineCount = aggregates.Sum(x => x.LineCount);
+        var attributedLineCount = aggregates
+            .Where(x => !string.Equals(
+                string.IsNullOrWhiteSpace(x.AttributionBasis) ? SaleDimensionAttribution.Unknown : x.AttributionBasis,
+                SaleDimensionAttribution.Unknown,
+                StringComparison.Ordinal))
+            .Sum(x => x.LineCount);
+        var attributionCoveragePct = attributionLineCount == 0
+            ? (double?)null
+            : Math.Round(attributedLineCount * 100d / attributionLineCount, 2);
+        var attributionBasis = attributionBases.Length == 0
+            ? null
+            : attributionBases.Length == 1 ? attributionBases[0] : "mixed";
 
         var dayAccumulators = new Dictionary<DateTime, DayAccumulator>();
         var supplierTotals = new Dictionary<string, SupplierAccumulator>(StringComparer.Ordinal);
@@ -610,6 +636,10 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
         }
 
         var generatedAtUtc = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+        var responseMeta = BuildDailySalesMeta(hasSalesEvidence, warnings, generatedAtUtc);
+        responseMeta.AttributionBasis = attributionBasis;
+        responseMeta.AttributionCoveragePct = attributionCoveragePct;
+
         var response = new DailySalesTableResponse
         {
             RequestedFrom = fromDateUtc,
@@ -655,7 +685,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                 MaxAvailableDate = maxAvailableDate,
                 Warnings = warnings
             },
-            Meta = BuildDailySalesMeta(hasSalesEvidence, warnings, generatedAtUtc)
+            Meta = responseMeta
         };
 
         if (_logger.IsEnabled(LogLevel.Information))
@@ -867,6 +897,8 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
         public int HourOfDay { get; init; }
         public int? SupplierId { get; init; }
         public string? SupplierName { get; init; }
+        public string? AttributionBasis { get; init; }
+        public int LineCount { get; init; }
         public int Qty { get; init; }
         public decimal Revenue { get; init; }
     }

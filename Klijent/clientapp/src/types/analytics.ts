@@ -66,6 +66,8 @@ export interface AnalyticsResponseMeta {
   requestedDataScope?: string | null;
   effectiveDataScope?: string | null;
   provenanceBasis?: string | null;
+  attributionBasis?: string | null;
+  attributionCoveragePct?: number | null;
   observedPeriodFromUtc?: string | null;
   observedPeriodToUtc?: string | null;
   dataQualityStatus?: "good" | "warning" | "critical" | "insufficient_data" | string | null;

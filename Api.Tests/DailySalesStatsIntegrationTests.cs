@@ -305,12 +305,12 @@ public sealed class DailySalesStatsIntegrationTests
             new ProdajaZaglavlje { Id = 6, DatumProdaje = new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc), IDObjekat = 2, DataOrigin = "existing" });
 
         db.ProdajaStavke.AddRange(
-            new ProdajaStavka { Id = 11, IdProdaja = 1, IdArtikal = 101, Kolicina = 5, Cena = 100m },
-            new ProdajaStavka { Id = 12, IdProdaja = 2, IdArtikal = 102, Kolicina = 3, Cena = 200m },
-            new ProdajaStavka { Id = 13, IdProdaja = 3, IdArtikal = 101, Kolicina = 2, Cena = 100m },
+            new ProdajaStavka { Id = 11, IdProdaja = 1, IdArtikal = 101, Kolicina = 5, Cena = 100m, SupplierIdAtSale = 1, AttributionBasis = SaleDimensionAttribution.SaleSnapshot },
+            new ProdajaStavka { Id = 12, IdProdaja = 2, IdArtikal = 102, Kolicina = 3, Cena = 200m, SupplierIdAtSale = 2, AttributionBasis = SaleDimensionAttribution.SaleSnapshot },
+            new ProdajaStavka { Id = 13, IdProdaja = 3, IdArtikal = 101, Kolicina = 2, Cena = 100m, SupplierIdAtSale = 1, AttributionBasis = SaleDimensionAttribution.SaleSnapshot },
             new ProdajaStavka { Id = 14, IdProdaja = 4, IdArtikal = 103, Kolicina = 5, Cena = 150m },
-            new ProdajaStavka { Id = 15, IdProdaja = 5, IdArtikal = 104, Kolicina = 7, Cena = 50m },
-            new ProdajaStavka { Id = 16, IdProdaja = 6, IdArtikal = 101, Kolicina = 99, Cena = 1000m });
+            new ProdajaStavka { Id = 15, IdProdaja = 5, IdArtikal = 104, Kolicina = 7, Cena = 50m, SupplierIdAtSale = 3, AttributionBasis = SaleDimensionAttribution.SaleSnapshot },
+            new ProdajaStavka { Id = 16, IdProdaja = 6, IdArtikal = 101, Kolicina = 99, Cena = 1000m, SupplierIdAtSale = 1, AttributionBasis = SaleDimensionAttribution.SaleSnapshot });
 
         db.SaveChanges();
     }
