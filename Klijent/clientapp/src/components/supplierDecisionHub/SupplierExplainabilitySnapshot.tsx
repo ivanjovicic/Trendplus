@@ -82,6 +82,16 @@ function resolveFallbackTone(value?: boolean | null): "good" | "warning" | "crit
   return value ? "warning" : "good";
 }
 
+function isKnownRecommendationCode(value?: string | null): value is RecommendationCode {
+  return value === "EXPAND"
+    || value === "EXPAND_SELECTIVELY"
+    || value === "HOLD"
+    || value === "PRICE_NEGOTIATE"
+    || value === "ASSORTMENT_REDUCE"
+    || value === "OOS_FALSE_NEGATIVE"
+    || value === "REVIEW_QUALITY";
+}
+
 export default function SupplierExplainabilitySnapshot({
   title = "Sažetak objašnjenja signala",
   subjectLabel,
@@ -109,9 +119,10 @@ export default function SupplierExplainabilitySnapshot({
   reasonCodes,
   note,
 }: SupplierExplainabilitySnapshotProps) {
-  const recommendationMeta = recommendationAllowed === true && recommendationCode
+  const signalMeta = isKnownRecommendationCode(recommendationCode)
     ? getRecommendationMeta(recommendationCode)
     : null;
+  const recommendationMeta = recommendationAllowed === true ? signalMeta : null;
   const reasonPreview = (reasonCodes ?? []).filter(Boolean).slice(0, compact ? 4 : 8);
   const hasReasonCodes = reasonPreview.length > 0;
   const requestedLabel = supplierDecisionDatasetLabel(requestedDataset);
@@ -205,6 +216,10 @@ export default function SupplierExplainabilitySnapshot({
                   : "border-[var(--border-default)] text-[var(--text-primary)]"
           }`}>
             {recommendationMeta.label}: {recommendationAllowed == null ? "preporuka nedostupna" : recommendationAllowed ? "preporuka dozvoljena" : "preporuka blokirana"}
+          </span>
+        ) : recommendationAllowed === false && signalMeta ? (
+          <span className="inline-flex rounded-full border border-[var(--warning)] px-3 py-1 text-xs font-semibold text-[var(--warning)]">
+            Signal: {signalMeta.label}; preporuka blokirana
           </span>
         ) : null}
       </div>

@@ -2,7 +2,8 @@
 
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ458
+Owner promotion/claim 2026-09-26: idle recovery verified `RQ382` DONE on current `main`, no active Supplier Decision Hub signal-identity lock/branch owner, and `RQ458` dependencies are satisfied. `RQ458` moved `WAITING -> IN_PROGRESS` in this workspace; local lock `.ai/task-locks/RQ458-cursor.lock.md`. `RQ459` remains WAITING because the feature family is exclusive.
 Owner promotion/claim 2026-09-26: under the user's direct “claim i izvrši sledeći prompt” request, the owner decision gate for `RQ439` was satisfied. `RQ439` transitioned `WAITING -> IN_PROGRESS` in this workspace for read-only triage of unmerged PR #63 against current `main`; local lock `.ai/task-locks/RQ439-cursor.lock.md`. No runtime product code is in scope.
 Owner completion 2026-09-26: `RQ439` confirmed that PR #63 findings `RQ401`, `RQ404` and `RQ405` map to delivered current-main owners; the remaining signal-identity and KPI/report-parity findings were re-queued as fresh `RQ458` and `RQ459` WAITING prompts. PR #63 remains superseded and must not be merged.
 Owner promotion 2026-09-26: idle recovery verified `RQ381` and `RQ289` DONE, no active Daily Sales scope-quality lock or competing owner, and `RQ382` is dependency-complete. `RQ382` moved `WAITING -> READY` as the next collision-safe P1 Daily Sales scope/diagnostics parity prompt.
@@ -1628,7 +1629,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ453 | WAITING | analytics-certification-ci-gate | Add a non-skippable certification CI gate with executed-versus-skipped accounting |
 | RQ454 | WAITING | supplier-shoetype-production-reconciliation | Produce read-only production reconciliation evidence for certified windows |
 | RQ455 | WAITING | supplier-shoetype-customer-acceptance | Capture customer-side reconciliation and acceptance evidence |
-| RQ458 | WAITING | supplier-decision-signal-identity | Preserve per-supplier signal identity when recommendation actionability is blocked |
+| RQ458 | IN_PROGRESS | supplier-decision-signal-identity | Preserve per-supplier signal identity when recommendation actionability is blocked |
 | RQ459 | WAITING | supplier-decision-kpi-report-parity | Align Supplier Decision Hub KPI, chart and report totals and delta semantics |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
@@ -1642,7 +1643,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 
 ## RQ458 - Preserve per-supplier signal identity when recommendation actionability is blocked
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend-contract/tests
 Feature family: supplier-decision-signal-identity

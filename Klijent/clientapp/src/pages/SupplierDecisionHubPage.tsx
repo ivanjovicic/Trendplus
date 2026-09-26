@@ -218,6 +218,20 @@ function recommendationToStatus(code: RecommendationCode): DecisionStatus {
   return "insufficient_data";
 }
 
+const RECOMMENDATION_SIGNAL_LABELS: Record<RecommendationCode, string> = {
+  EXPAND: "Povećati saradnju",
+  EXPAND_SELECTIVELY: "Povećati selektivno",
+  HOLD: "Zadržati stanje",
+  PRICE_NEGOTIATE: "Pregovarati o ceni",
+  ASSORTMENT_REDUCE: "Smanjiti nabavku",
+  OOS_FALSE_NEGATIVE: "Proveriti zalihe",
+  REVIEW_QUALITY: "Proveriti kvalitet",
+};
+
+function recommendationSignalLabel(code: RecommendationCode): string {
+  return RECOMMENDATION_SIGNAL_LABELS[code];
+}
+
 function buildStatusTooltip(row: DecisionRow): string {
   const confidenceText = row.confidenceAvailable
     ? formatMetricDisplayValue({ value: row.normalizedConfidence, kind: "percent", digits: 0 })
@@ -530,16 +544,14 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       const confidencePctValue = normalizeRecommendationPct(item.confidenceScore);
       const normalizedConfidence = confidencePctValue ?? null;
 
-      const status = recommendationAllowed
-        ? recommendationToStatus(item.recommendationCode)
-        : "insufficient_data";
+      const status = recommendationToStatus(item.recommendationCode);
       const backendStatusReason = typeof item.statusReason === "string" ? item.statusReason.trim() : "";
       const statusReason = backendStatusReason
         || (recommendationAllowed
           ? "Server nije dostavio obrazloženje za ovaj signal skorkarte."
-          : (trustMetadata?.usedFallback
+          : `Signal: ${recommendationSignalLabel(item.recommendationCode)}. ${trustMetadata?.usedFallback
             ? "Za izabrani period nema dovoljno podataka; prikaz je pomoćni signal iz šireg skupa podataka."
-            : "Nedovoljno podataka u izabranom periodu; signal skorkarte je pomoćnog karaktera."));
+            : "Nedovoljno podataka u izabranom periodu; signal je pomoćnog karaktera."}`);
       const reliabilityPctValue = normalizeRecommendationPct(item.reliabilityPct);
       const reasonCodes = Array.isArray(item.reasonCodes)
         ? item.reasonCodes.filter((code): code is string => typeof code === "string")
@@ -1553,6 +1565,11 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                             <td>
                               <div className="sdh-decision-status-stack">
                                 <span className={statusClass(row.status)} title={buildStatusTooltip(row)} aria-label={buildStatusTooltip(row)}>{displayedStatusLabel}</span>
+                                {!recommendationAllowed ? (
+                                  <span className="sdh-decision-status-reason" title={recommendationSignalLabel(row.recommendationCode)}>
+                                    <strong>Signal:</strong> {recommendationSignalLabel(row.recommendationCode)}
+                                  </span>
+                                ) : null}
                                 {row.statusReason ? (
                                   <span className="sdh-decision-status-reason" title={row.statusReason}>
                                     <strong>Razlog:</strong> {row.statusReason}

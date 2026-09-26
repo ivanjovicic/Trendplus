@@ -389,6 +389,46 @@ describe("SupplierDecisionHubPage", () => {
     expect(postBodies.some((body) => body.title || body.recommendationStatus)).toBe(false);
   });
 
+  it("preserves distinct backend signals while the final recommendation is gated", async () => {
+    const trustMetadata = {
+      ...summaryResponse,
+      recommendationAllowed: false,
+      usedFallback: true,
+      dataCoverageStatus: "warning",
+      requestedDataset: "30d",
+      effectiveDataset: "90d",
+      effectivePeriodLabel: "Poslednjih 90 dana",
+    };
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = requestUrl(input);
+      if (url.pathname === "/api/analytics/suppliers/decision-hub/summary") {
+        return jsonResponse({ ...summaryResponse, supplierCount: 2, trustMetadata });
+      }
+      if (url.pathname === "/api/analytics/suppliers/decision-hub/ranking") {
+        return jsonResponse({
+          page: 1,
+          pageSize: 100,
+          totalCount: 2,
+          items: [
+            rankingItemWithOverrides(1, 100_000, { recommendationCode: "PRICE_NEGOTIATE" }),
+            rankingItemWithOverrides(2, 80_000, { recommendationCode: "ASSORTMENT_REDUCE" }),
+          ],
+          dataNote: summaryResponse.dataNote,
+          trustMetadata,
+        });
+      }
+      if (url.pathname === "/api/sezone") return jsonResponse([]);
+      return jsonResponse({ message: `Unhandled test request: ${url.pathname}` }, 404);
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+    renderPage();
+
+    expect(await screen.findByText("Signal: Pregovarati o ceni")).toBeInTheDocument();
+    expect(screen.getByText("Signal: Smanjiti nabavku")).toBeInTheDocument();
+    expect(screen.getAllByText("Pomoćni signal")).toHaveLength(2);
+  });
+
   it("keeps the action CTA and write path only for an explicitly allowed recommendation", async () => {
     const trustMetadata = {
       requestedFrom: "2026-05-01T00:00:00Z",

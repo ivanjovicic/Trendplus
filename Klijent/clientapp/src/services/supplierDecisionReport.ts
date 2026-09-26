@@ -9,7 +9,7 @@ import {
 import { resolveAnalyticsTablePayload } from "./analyticsTableState";
 import type { AnalyticsNamedValue, ResolvedAnalyticsTablePayload } from "../types/analyticsTable";
 import type { AnalyticsFreshnessStatus, AnalyticsResponseMeta } from "../types/analytics";
-import type { SummaryResponse } from "./supplierDecisionHubApi";
+import type { RecommendationCode, SummaryResponse } from "./supplierDecisionHubApi";
 import { dataQualityStatusLabel, normalizeDataQualityStatus } from "../utils/analyticsQuality";
 import { fmtPct, fmtRsd } from "../utils/analyticsFormatters";
 import { buildPeriodLineageLabel } from "../utils/analyticsPeriodLineage";
@@ -46,6 +46,7 @@ type ScorecardTrustMetadata = {
 export type SupplierDecisionReportRow = {
   supplierId: number;
   supplierName: string;
+  recommendationCode?: RecommendationCode | string;
   revenue: number;
   units?: number;
   sharePct: number | null;
@@ -292,7 +293,12 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
   }
 
   for (const row of reduceRows) {
-    detailRows.push(buildSectionRow("Smanji", row.supplierName, fmtRsd(row.revenue), `Sigurnost ${row.confidenceAvailable ? formatMetricDisplayValue({ value: row.normalizedConfidence, kind: "percent", digits: 0, fallback: "nije dostupno" }) : "nije dostupno"}`, row.statusReason));
+    const signalLabel = row.recommendationCode === "PRICE_NEGOTIATE"
+      ? "Pregovarati o ceni"
+      : row.recommendationCode === "ASSORTMENT_REDUCE"
+        ? "Smanjiti nabavku"
+        : "Signal za smanjenje";
+    detailRows.push(buildSectionRow("Smanji", row.supplierName, fmtRsd(row.revenue), signalLabel, row.statusReason));
   }
 
   const topMarginRows = [...input.rows]
