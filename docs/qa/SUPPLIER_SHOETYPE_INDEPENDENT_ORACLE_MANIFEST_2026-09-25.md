@@ -50,3 +50,16 @@ Integration proof: `Api.Tests/SupplierShoeTypeIndependentOracleIntegrationTests.
 ## Mutation invariant
 
 After updating `"Artikli"."IDDobavljac"` / `"IDTipObuce"` for `OPS-101`, endpoint totals must still match the oracle (attribution frozen on sale lines).
+
+## RQ446 adversarial appendix
+
+The shared fixture now contains an out-of-window adversarial appendix for
+Supplier/Shoe Type certification. The immutable expected-output corpus is
+[`SUPPLIER_SHOETYPE_ADVERSARIAL_GOLDEN_MANIFEST_2026-09-26.json`](SUPPLIER_SHOETYPE_ADVERSARIAL_GOLDEN_MANIFEST_2026-09-26.json);
+its SHA-256 sidecar is
+[`SUPPLIER_SHOETYPE_ADVERSARIAL_GOLDEN_MANIFEST_2026-09-26.sha256`](SUPPLIER_SHOETYPE_ADVERSARIAL_GOLDEN_MANIFEST_2026-09-26.sha256).
+The original July RQ407 totals above remain unchanged. RQ446 cases explicitly
+cover fractional boundaries, signed returns, mixed-case/whitespace
+`DUG`/`KOREKCIJA`, store/origin scope, known labels versus null identity,
+previous-only Shoe Type rows, cost coverage, top-N unknown, master mutation,
+duplicate replay and cache evidence states.

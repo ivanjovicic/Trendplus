@@ -1,0 +1,287 @@
+{
+  "manifestId": "supplier-shoetype-adversarial-golden-2026-09-26",
+  "contractVersion": "SST-ACCURACY-1.0",
+  "fixture": "Api.Tests/Fixtures/operations-analytics-all-routes-seed.sql",
+  "sharedFixtureOwners": [
+    "RQ407",
+    "RQ412",
+    "RQ446"
+  ],
+  "periodPolicy": "[fromUtc, toUtc)",
+  "metricPolicy": {
+    "quantity": "sum(sale_line.quantity)",
+    "revenueRsd": "sum(sale_line.quantity * sale_line.unit_price)",
+    "marginContributionRsd": "sum(signed_revenue - signed_quantity * qualified_unit_cost)",
+    "unknownIdentity": "only null sale-line attribution; labels do not define identity",
+    "shareDenominator": "the complete eligible population for the named case",
+    "nonPositiveMarginShare": "unavailable; retain absolute RSD contribution"
+  },
+  "evidenceClassifications": [
+    "verified_fixture_expectation",
+    "excluded_non_standard_document",
+    "unverified_cache_before_import",
+    "verified_cache_after_import",
+    "not_materialized_duplicate_replay",
+    "unavailable_non_positive_margin_share",
+    "pending_live_api_execution"
+  ],
+  "cases": [
+    {
+      "id": "boundary-fractional-and-signed",
+      "description": "Lower midnight and upper fractional-second rows, including a signed retail return and a non-standard DUG document.",
+      "filter": {
+        "fromUtc": "2026-09-01T00:00:00Z",
+        "toUtc": "2026-09-02T00:00:00Z",
+        "storeId": null,
+        "dataScope": "all"
+      },
+      "expected": {
+        "rawSource": {
+          "lineCount": 10,
+          "units": 10,
+          "revenueRsd": 990
+        },
+        "certifiedRetail": {
+          "lineCount": 9,
+          "units": 6,
+          "revenueRsd": 590,
+          "excludedLineCount": 1,
+          "excludedRevenueRsd": 400,
+          "supplierBuckets": {
+            "1": { "lineCount": 2, "units": -1, "revenueRsd": -100 },
+            "2": { "lineCount": 1, "units": 1, "revenueRsd": 150 },
+            "3": { "lineCount": 1, "units": 1, "revenueRsd": 90 },
+            "4": { "lineCount": 1, "units": 1, "revenueRsd": 80 },
+            "5": { "lineCount": 1, "units": 1, "revenueRsd": 70 },
+            "6": { "lineCount": 1, "units": 1, "revenueRsd": 60 },
+            "7": { "lineCount": 1, "units": 1, "revenueRsd": 40 },
+            "null": { "lineCount": 1, "units": 1, "revenueRsd": 200 }
+          },
+          "shoeTypeBuckets": {
+            "1": { "lineCount": 6, "units": 3, "revenueRsd": 150 },
+            "3": { "lineCount": 1, "units": 1, "revenueRsd": 150, "label": "Nepoznato", "identity": "known" },
+            "4": { "lineCount": 1, "units": 1, "revenueRsd": 90, "label": "", "identity": "known" },
+            "null": { "lineCount": 1, "units": 1, "revenueRsd": 200, "identity": "unknown" }
+          },
+          "margin": {
+            "coveredRevenueRsd": 440,
+            "uncoveredRevenueRsd": 150,
+            "marginContributionRsd": 215,
+            "coveredRevenueSharePct": 74.576271
+          }
+        },
+        "api": {
+          "expectedPopulation": "certifiedRetail",
+          "expectedTrust": "pending_live_api_execution"
+        }
+      },
+      "evidenceClassification": "verified_fixture_expectation",
+      "proofOwner": "RQ447 / SupplierShoeTypeIndependentOracleIntegrationTests"
+    },
+    {
+      "id": "adjacent-day-boundary",
+      "description": "The exact next-day midnight belongs to the next half-open interval and is not double-counted.",
+      "filter": {
+        "fromUtc": "2026-09-02T00:00:00Z",
+        "toUtc": "2026-09-03T00:00:00Z",
+        "storeId": null,
+        "dataScope": "all"
+      },
+      "expected": {
+        "rawSource": { "lineCount": 2, "units": 0, "revenueRsd": -30 },
+        "certifiedRetail": {
+          "lineCount": 1,
+          "units": 1,
+          "revenueRsd": 120,
+          "excludedLineCount": 1,
+          "excludedRevenueRsd": -150
+        },
+        "excludedDocuments": [
+          { "receipt": " KoReKcIjA ", "normalized": "KOREKCIJA", "revenueRsd": -150 }
+        ]
+      },
+      "evidenceClassification": "excluded_non_standard_document",
+      "proofOwner": "RQ456 / cross-surface receipt population owner"
+    },
+    {
+      "id": "store-and-origin-scope",
+      "description": "Access-origin rows in store 2 remain distinct from POS/existing rows and filter before aggregation.",
+      "filter": {
+        "fromUtc": "2026-09-01T00:00:00Z",
+        "toUtc": "2026-09-02T00:00:00Z",
+        "storeId": 2,
+        "dataScope": "imported"
+      },
+      "expected": {
+        "lineCount": 2,
+        "units": 2,
+        "revenueRsd": 240,
+        "supplierBuckets": {
+          "2": { "lineCount": 1, "units": 1, "revenueRsd": 150 },
+          "3": { "lineCount": 1, "units": 1, "revenueRsd": 90 }
+        },
+        "shoeTypeBuckets": {
+          "3": { "lineCount": 1, "units": 1, "revenueRsd": 150 },
+          "4": { "lineCount": 1, "units": 1, "revenueRsd": 90 }
+        }
+      },
+      "evidenceClassification": "verified_fixture_expectation",
+      "proofOwner": "RQ447 / raw-fact oracle and API scope assertions"
+    },
+    {
+      "id": "previous-only-shoe-type",
+      "description": "A type present only in the previous interval remains in the comparison union with a truthful current zero.",
+      "filter": {
+        "previousFromUtc": "2026-08-31T00:00:00Z",
+        "previousToUtc": "2026-09-01T00:00:00Z",
+        "currentFromUtc": "2026-09-01T00:00:00Z",
+        "currentToUtc": "2026-09-02T00:00:00Z",
+        "storeId": null,
+        "dataScope": "all"
+      },
+      "expected": {
+        "shoeTypeId": 5,
+        "label": "Cizme",
+        "previous": { "lineCount": 1, "units": 2, "revenueRsd": 180 },
+        "current": { "lineCount": 0, "units": 0, "revenueRsd": 0 },
+        "revenuePoPPct": -100,
+        "currentMargin": "unavailable"
+      },
+      "evidenceClassification": "verified_fixture_expectation",
+      "proofOwner": "RQ457 / Shoe Type identity and PoP owner"
+    },
+    {
+      "id": "known-labels-versus-null-identity",
+      "description": "A non-null type named Nepoznato and a non-null blank type are known IDs; only null attribution is unknown.",
+      "filter": {
+        "fromUtc": "2026-09-01T00:00:00Z",
+        "toUtc": "2026-09-02T00:00:00Z",
+        "storeId": null,
+        "dataScope": "all"
+      },
+      "expected": {
+        "knownNepoznato": { "shoeTypeId": 3, "label": "Nepoznato", "lineCount": 1, "revenueRsd": 150, "isUnknown": false },
+        "knownBlank": { "shoeTypeId": 4, "label": "", "lineCount": 1, "revenueRsd": 90, "isUnknown": false },
+        "unknown": { "shoeTypeId": null, "lineCount": 1, "revenueRsd": 200, "isUnknown": true }
+      },
+      "evidenceClassification": "verified_fixture_expectation",
+      "proofOwner": "RQ457 / Shoe Type identity owner"
+    },
+    {
+      "id": "frozen-attribution-after-master-mutation",
+      "description": "Changing the current article master for ADV-MUTATION must not move its historical supplier/type bucket.",
+      "mutation": {
+        "articlePlu": "ADV-MUTATION",
+        "currentMasterBefore": { "supplierId": 2, "shoeTypeId": 2 },
+        "currentMasterAfter": { "supplierId": 7, "shoeTypeId": 5 }
+      },
+      "expected": {
+        "saleLineAttribution": { "supplierId": 1, "shoeTypeId": 1, "lineCount": 2, "units": -1, "revenueRsd": -100 },
+        "currentMasterGroupingMustNotContain": { "supplierId": 2, "shoeTypeId": 2 },
+        "historicalBucketStable": true
+      },
+      "evidenceClassification": "verified_fixture_expectation",
+      "proofOwner": "RQ412 / SupplierShoeTypeIndependentOracleIntegrationTests"
+    },
+    {
+      "id": "duplicate-import-replay",
+      "description": "Replaying the same Access batch is an idempotency attempt, not a second logical retail sale.",
+      "replay": {
+        "origin": "access",
+        "receipt": "RQ446-UPPER-FRACTION",
+        "sourceBatch": "RQ446-ACCESS-01",
+        "attempt": 2
+      },
+      "expected": {
+        "lineDelta": 0,
+        "revenueDeltaRsd": 0,
+        "duplicateLogicalSaleCreated": false,
+        "attributionChanged": false
+      },
+      "evidenceClassification": "not_materialized_duplicate_replay",
+      "proofOwner": "RQ447 / Access import integration proof"
+    },
+    {
+      "id": "mixed-cost-coverage",
+      "description": "Known cost, missing cost and signed negative contribution remain visible instead of becoming fake zero margin.",
+      "filter": {
+        "fromUtc": "2026-09-01T00:00:00Z",
+        "toUtc": "2026-09-02T00:00:00Z",
+        "storeId": null,
+        "dataScope": "all"
+      },
+      "expected": {
+        "revenueRsd": 590,
+        "coveredRevenueRsd": 440,
+        "uncoveredRevenueRsd": 150,
+        "coveredLineCount": 8,
+        "uncoveredLineCount": 1,
+        "marginContributionRsd": 215,
+        "costCoveragePct": 74.576271,
+        "missingCostMustNotRenderAs": 0
+      },
+      "evidenceClassification": "verified_fixture_expectation",
+      "proofOwner": "RQ447 / Supplier and Shoe Type cost assertions"
+    },
+    {
+      "id": "non-positive-margin-denominator",
+      "description": "Zero and negative aggregate margin contribution make percentage share unavailable while absolute RSD remains available.",
+      "filter": {
+        "fromUtc": "2026-09-04T00:00:00Z",
+        "toUtc": "2026-09-05T00:00:00Z",
+        "storeId": null,
+        "dataScope": "all"
+      },
+      "expected": {
+        "lineCount": 2,
+        "units": 2,
+        "revenueRsd": 180,
+        "coveredRevenueRsd": 180,
+        "marginContributionRsd": -20,
+        "marginContributionShare": "unavailable",
+        "absoluteContributionRsd": { "zeroMarginLine": 0, "negativeMarginLine": -20 }
+      },
+      "evidenceClassification": "unavailable_non_positive_margin_share",
+      "proofOwner": "RQ457 / margin denominator owner"
+    },
+    {
+      "id": "top-n-includes-unknown",
+      "description": "Top-N ranking keeps unknown as an explicit bucket and uses the declared signed-revenue denominator.",
+      "filter": {
+        "fromUtc": "2026-09-01T00:00:00Z",
+        "toUtc": "2026-09-02T00:00:00Z",
+        "storeId": null,
+        "dataScope": "all"
+      },
+      "expected": {
+        "totalRevenueRsd": 590,
+        "topN": 5,
+        "rankedSupplierIds": [null, 2, 3, 4, 5],
+        "rankedRevenueRsd": [200, 150, 90, 80, 70],
+        "unknownIncluded": true,
+        "denominator": "all certified supplier buckets including null"
+      },
+      "evidenceClassification": "verified_fixture_expectation",
+      "proofOwner": "RQ431 / concentration denominator owner"
+    },
+    {
+      "id": "cache-before-after-import",
+      "description": "Cache state is evidence-qualified before and after an import; a successful HTTP response alone is not verification.",
+      "expected": {
+        "beforeImport": {
+          "cacheState": "stale",
+          "integrity": "unverified",
+          "evidenceClassification": "unverified_cache_before_import"
+        },
+        "afterImport": {
+          "cacheState": "refreshed",
+          "integrity": "verified",
+          "evidenceClassification": "verified_cache_after_import",
+          "sourceEvidenceIdChanges": true
+        }
+      },
+      "evidenceClassification": "pending_live_api_execution",
+      "proofOwner": "RQ450 / post-import probe and RQ413 integrity owner"
+    }
+  ]
+}
