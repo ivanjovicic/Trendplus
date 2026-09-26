@@ -4,9 +4,9 @@ Date: 2026-09-26
 Agent/tool: Cursor
 Delivery target: main
 Working branch / PR: main
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: 9834b58001868737445e67a68552cab859f480f4
+Main verification: passed - `origin/main` contains 9834b58001868737445e67a68552cab859f480f4
+Evidence state: synchronized
 
 ## What was done
 - Changed all Render Blueprint services to `autoDeployTrigger: off`.
