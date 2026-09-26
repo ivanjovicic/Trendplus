@@ -3,7 +3,7 @@
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
-Owner revalidation 2026-09-26: RQ447 is PARTIAL, not DONE, after dedicated run `36262400467`: oracle 4/4 passed, but all-eight-routes failed and OP2/frontend gates did not execute. Do not promote RQ448 or certify RQ447 until the route failure is fixed and a fresh artifact passes.
+Owner revalidation 2026-09-26: RQ447 is PARTIAL, not DONE, after dedicated run `36262400467`: oracle 4/4 passed, but all-eight-routes failed on the explicit startup `db_warmup` 503 and OP2/frontend gates did not execute. A bounded exact-signal retry was added to the route proof; do not promote RQ448 or certify RQ447 until a fresh artifact passes.
 Owner completion 2026-09-26: `RQ450` delivered post-Access-import integrity probe on `main`. Run log: `.ai/runs/2026-09-26-RQ450-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-26: idle recovery after RQ447/RQ449 DONE. Claimed P1 `RQ450` (Access import post-commit integrity probe); local lock `.ai/task-locks/RQ450-cursor.lock.md`.
 Owner promotion/claim 2026-09-26: after RQ446/RQ456/RQ457 completion, this workspace claimed RQ447 to add the canonical pgvector GitHub Actions certification host with non-skippable 4/4 oracle and 1/1 all-eight-routes evidence. Local lock: `.ai/task-locks/RQ447-codex.lock.md`.
