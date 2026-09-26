@@ -17888,7 +17888,7 @@ Status: DONE
 - Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: 95632a21
-- Main verification: pending final push verification
+- Main verification: passed - fresh origin/main contains implementation 95632a21; closure evidence is on e5a6df2a
 - Missed: Inventory-specific bootstrap remains RQ322; live blocked-endpoint browser/MSW smoke remains unrun.
 - Follow-up: RQ322
 - Residual risk: individual-store filtering stays unavailable until the store list request succeeds.
