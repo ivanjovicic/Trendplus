@@ -1559,7 +1559,7 @@ Extend the existing RQ407 fixture and RQ412 manifest; do not create a second see
 
 ## RQ447 - Execute the live oracle and close the OP2 runtime seams
 
-Status: PARTIAL
+Status: DONE
 Ready after: PostgreSQL integration host is available and RQ446, RQ456 and RQ457 are DONE
 Priority: P0
 Type: integration-tests/evidence
@@ -1567,6 +1567,10 @@ Feature family: supplier-shoetype-live-oracle-reproducers
 Parallel-safe: no with RQ412 integration host/test files
 Owner: Analytics Reliability / QA
 Commit suggestion: test(analytics): execute Supplier Shoe Type oracle and seam reproducers
+
+Owner continuation claim 2026-09-26: RQ447's fresh dedicated certification job `36262787853` on current `origin/main` completed its RQ447 job successfully after the bounded startup-warmup retry landed. This workspace resumed the PARTIAL prompt to synchronize the executed certification evidence and close the prompt; local lock `.ai/task-locks/RQ447-cursor.lock.md`.
+
+Fresh certification closure 2026-09-26: run `36262787853` on `f8a2695e7f4805aff2d6c9de3005c34f8c01889a9` passed the dedicated RQ447 job with oracle `4/4`, all-eight-routes `1/1`, OP2 `4/4`, zero skips and frontend seam proof `3 passed` across 2 targeted files. Artifact `rq447-certification-f8a2695e7f4805aff2d6c9de3005c34f8c01889a9` (`10912912940`) is available. The separate broad backend suite remains outside this dedicated acceptance gate.
 
 Owner promotion/claim 2026-09-26: RQ446, RQ456 and RQ457 are DONE on current `origin/main`; this workspace claimed RQ447 to make GitHub Actions the canonical pgvector integration host. Local lock: `.ai/task-locks/RQ447-codex.lock.md`.
 
