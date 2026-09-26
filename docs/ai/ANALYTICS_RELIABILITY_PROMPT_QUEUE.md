@@ -3,6 +3,7 @@
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+Owner promotion/claim 2026-09-26: after concurrent RQ456 DONE on main, this workspace claimed addendum P0 `RQ457` (Shoe Type identity/PoP/margin). Local lock `.ai/task-locks/RQ457-cursor.lock.md`. Main READY stays none because RQ457 is addendum-owned.
 Owner promotion/claim 2026-09-26: idle recovery confirmed `RQ445`/`RQ446` DONE on current `origin/main`, no active receipt-population owner and RQ456's accuracy-contract dependency satisfied. `RQ456` moved `WAITING -> READY -> IN_PROGRESS` in the Operations accuracy addendum; local lock `.ai/task-locks/RQ456-codex.lock.md`. `RQ457` remains WAITING behind the population owner.
 Owner completion 2026-09-26: `RQ456` was delivered to `main` in `74a12194c25bf140cd7438bfe97a2b83a857c7fc`; `origin/main` contains it through merge `54a465254d53a2e71474877d1828a1c9f97f4195`. Focused receipt-population proof is 24/24. Run log: `.ai/runs/2026-09-26-RQ456-evidence.md`. Evidence state: synchronized.
 Owner completion 2026-09-26: `RQ446` was delivered directly to `main` in `5979ef65`; the adversarial Supplier/Shoe Type fixture, immutable expected-output manifest and exact-byte SHA-256 guard are synchronized. Focused manifest guard proof is `2/2`; runtime PostgreSQL/API execution remains RQ447. Run log: `.ai/runs/2026-09-26-RQ446-evidence.md`. Evidence state: synchronized.

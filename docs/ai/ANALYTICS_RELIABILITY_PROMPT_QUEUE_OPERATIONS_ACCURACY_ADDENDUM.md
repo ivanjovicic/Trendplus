@@ -2,8 +2,11 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ456
+Current READY prompt: RQ457
 Main RQ current READY prompt: none
+
+Owner promotion/claim 2026-09-26: idle recovery found RQ456 DONE on `origin/main` (`74a12194`) with stale Current READY/summary still naming RQ456; repaired those to DONE/none routing and claimed P0 `RQ457` for Shoe Type identity/PoP/margin. Also repaired residual RQ456 Infrastructure oracle exclusion gap. Local lock: `.ai/task-locks/RQ457-cursor.lock.md`.
+
 
 Owner promotion/claim 2026-09-26: idle recovery confirmed `RQ445` is the first dependency-complete P0 certification prompt, with no competing Supplier/Shoe Type accuracy-contract owner or active lock. `RQ445` moved `WAITING -> READY -> IN_PROGRESS` in this workspace; local lock `.ai/task-locks/RQ445-codex.lock.md`.
 
@@ -136,8 +139,8 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 | RQ453 | WAITING | P0 | analytics-certification-ci-gate | Add a non-skippable certification CI gate with executed-versus-skipped accounting |
 | RQ454 | WAITING | P0 | supplier-shoetype-production-reconciliation | Produce read-only production reconciliation evidence for certified windows |
 | RQ455 | WAITING | P1 | supplier-shoetype-customer-acceptance | Capture customer-side reconciliation and acceptance evidence |
-| RQ456 | IN_PROGRESS | P0 | operations-retail-sales-receipt-population | Canonicalize DUG/KOREKCIJA receipt exclusions across retail-sales populations |
-| RQ457 | WAITING | P0 | shoetype-identity-pop-margin-semantics | Harden Shoe Type identity, PoP union and margin semantics after receipt population work |
+| RQ456 | DONE | P0 | operations-retail-sales-receipt-population | Canonicalize DUG/KOREKCIJA receipt exclusions across retail-sales populations |
+| RQ457 | IN_PROGRESS | P0 | shoetype-identity-pop-margin-semantics | Harden Shoe Type identity, PoP union and margin semantics after receipt population work |
 
 ---
 
@@ -1954,7 +1957,7 @@ Centralize a reusable sales-receipt population policy and apply it consistently 
 
 ## RQ457 - Harden Shoe Type identity, PoP union and margin semantics
 
-Status: WAITING
+Status: IN_PROGRESS
 Ready after: RQ445 records the canonical semantics; coordinate with RQ456 population work
 Priority: P0
 Type: backend/frontend/detail/export/tests

@@ -1097,7 +1097,7 @@ export default function ShoeTypeSalesStatsPage() {
                 ) : null}
               </article>
               <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Autoritativni backend agregat prosečne marže; bez merljivog denominatora prikazuje se kao nedostupno.">
-                <span>Prosečna marža <InfoTip text="Ponderisana prosečna marža koju vraća backend. Računa se iz maržnog doprinosa i prometa sa pouzdano rešenim troškom poznatih tipova obuće; red „Nepoznato“ nije uključen, pa se može razlikovati od odnosa ukupnog maržnog doprinosa i prometa sa troškom. Frontend je ne izvodi iz redova." /></span>
+                <span>Prosečna marža <InfoTip text="Ponderisana prosečna marža koju vraća backend. Ponderisana prosečna marža nad celom trenutnom populacijom odgovora (uključujući nepoznati ID). Poseban known-ID benchmark na backendu služi samo preporukama i ne zamenjuje ovaj KPI. Frontend je ne izvodi iz redova." /></span>
                 <strong>{fmtPct(avgMarginPct, 1)}</strong>
               </article>
               <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Promena prometa prema prethodnom uporedivom periodu.">

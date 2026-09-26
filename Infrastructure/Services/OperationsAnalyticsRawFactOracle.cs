@@ -1,3 +1,4 @@
+using Application.Analytics;
 using Npgsql;
 using NpgsqlTypes;
 
@@ -27,7 +28,7 @@ public static class OperationsAnalyticsRawFactOracle
         Filters filters,
         CancellationToken ct = default)
     {
-        const string sql = """
+        var sql = $"""
             SELECT
                 COUNT(*)::int AS sale_line_count,
                 COALESCE(SUM(ps.kolicina), 0)::int AS total_units,
@@ -43,6 +44,7 @@ public static class OperationsAnalyticsRawFactOracle
                     OR (@dataScope = 'imported' AND a."DataOrigin" = 'access')
                     OR (@dataScope = 'existing' AND (a."DataOrigin" = 'existing' OR a."DataOrigin" IS NULL OR a."DataOrigin" = ''))
                   )
+              AND {RetailSalesReceiptPopulation.SqlExclusionPredicate}
             """;
 
         await using var command = new NpgsqlCommand(sql, connection);

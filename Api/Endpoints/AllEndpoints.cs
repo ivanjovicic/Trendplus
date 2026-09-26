@@ -2081,7 +2081,7 @@ public static class AllEndpoints
             try
             {
                 static string BuildShoeTypeBucketKey(int? shoeTypeId)
-                    => shoeTypeId.HasValue ? $"id:{shoeTypeId.Value}" : "unknown";
+                    => ShoeTypeIdentityPolicy.BucketKey(shoeTypeId);
 
                 static string NormalizeDataScope(string? rawScope)
                 {
@@ -2314,11 +2314,21 @@ public static class AllEndpoints
                 dbStopwatch.Stop();
                 var processingStopwatch = Stopwatch.StartNew();
 
-                var shoeTypes = stavke
-                    .GroupBy(s => s.TipObuceId)
-                    .Select(g =>
+                var currentShoeTypeGroups = stavke
+                    .GroupBy(s => BuildShoeTypeBucketKey(s.TipObuceId))
+                    .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.Ordinal);
+                var previousOnlyKeys = previousShoeTypeMetrics.Keys
+                    .Where(key => !currentShoeTypeGroups.ContainsKey(key))
+                    .ToList();
+                var shoeTypeBucketKeys = currentShoeTypeGroups.Keys
+                    .Concat(previousOnlyKeys)
+                    .Distinct(StringComparer.Ordinal)
+                    .ToList();
+
+                var shoeTypes = shoeTypeBucketKeys
+                    .Select(shoeTypeBucketKey =>
                     {
-                        var shoeTypeBucketKey = BuildShoeTypeBucketKey(g.Key);
+                        var tipObuceId = ShoeTypeIdentityPolicy.TryParseBucketKey(shoeTypeBucketKey);
                         var hasPreviousComparablePeriod = previousFromUtc.HasValue && previousToUtc.HasValue;
                         var previousRevenueRaw = 0m;
                         var previousUnitsRaw = 0;
@@ -2328,13 +2338,16 @@ public static class AllEndpoints
                             previousUnitsRaw = previousMetrics.Units;
                         }
 
+                        currentShoeTypeGroups.TryGetValue(shoeTypeBucketKey, out var groupRows);
+                        groupRows ??= [];
+                        var isPreviousOnly = groupRows.Count == 0;
+
                         decimal totalRevenue = 0m;
                         int totalQty = 0;
                         var margin = new MarginAccumulator();
-
                         var articleIds = new HashSet<int>();
 
-                        foreach (var s in g)
+                        foreach (var s in groupRows)
                         {
                             totalRevenue += s.Prihod;
                             totalQty += s.Kolicina;
@@ -2353,20 +2366,27 @@ public static class AllEndpoints
 
                         var marginSnapshot = margin.Build(totalRevenue);
                         var splitSnapshot = AnalyticsNivelacijaSplitPolicy.Build(
-                            g,
+                            groupRows,
                             prvaNivelacijaPoArtiklu,
                             sale => sale.ArtikalId,
                             sale => sale.DatumProdaje,
                             sale => sale.Prihod,
                             sale => sale.Kolicina);
-                        var tipObuceNaziv = "Nepoznato";
-                        if (g.Key.HasValue && tipObuceNazivMap.TryGetValue(g.Key.Value, out var resolvedTipObuceNaziv))
-                            tipObuceNaziv = resolvedTipObuceNaziv;
+                        var tipObuceNaziv = ShoeTypeIdentityPolicy.DisplayName(
+                            tipObuceId,
+                            tipObuceId.HasValue && tipObuceNazivMap.TryGetValue(tipObuceId.Value, out var resolvedTipObuceNaziv)
+                                ? resolvedTipObuceNaziv
+                                : null);
+                        if (tipObuceId.HasValue && string.IsNullOrEmpty(tipObuceNaziv))
+                        {
+                            // Non-null ID with blank master name remains known and addressable by ID.
+                            tipObuceNaziv = string.Empty;
+                        }
                         var marginQuality = MarginQualityClassifier.ClassifyFromSnapshot(marginSnapshot, totalRevenue);
 
                         return new
                         {
-                            tipObuceId = g.Key,
+                            tipObuceId = tipObuceId,
                             tipObuceNaziv = tipObuceNaziv,
                             preNivelacijePromet = splitSnapshot.PreRevenue,
                             preNivelacijeKolicina = splitSnapshot.PreQuantity,
@@ -2383,10 +2403,9 @@ public static class AllEndpoints
                             marginContribution = marginSnapshot.MarginContribution,
                             marginDataCoveragePct = marginSnapshot.MarginDataCoveragePct,
                             fallbackCostCoveragePct = marginSnapshot.FallbackCostCoveragePct,
-                            marginPct = marginSnapshot.RevenueWithCost > 0m
+                            marginPct = !isPreviousOnly && marginSnapshot.RevenueWithCost > 0m
                                 ? (double?)marginSnapshot.MarginPct
                                 : null,
-                            // Cost quality breakdown
                             totalCost = marginSnapshot.TotalCost,
                             historicalCostRevenue = marginSnapshot.HistoricalCostRevenue,
                             historicalCostCoveragePct = marginSnapshot.HistoricalMarginCoveragePct,
@@ -2418,17 +2437,18 @@ public static class AllEndpoints
                             popUnitsChangePct = hasPreviousComparablePeriod && previousUnitsRaw > 0
                                 ? Math.Round((totalQty - previousUnitsRaw) / (double)previousUnitsRaw * 100d, 2)
                                 : (double?)null,
-                            prePostNivelacijaRevenueImpactPct = splitSnapshot.RevenueImpactPct,
-                            prePostNivelacijaUnitsImpactPct = splitSnapshot.UnitsImpactPct,
-                            prePostNivelacijaRevenueCoveragePct = splitSnapshot.ComparableRevenueCoveragePct,
-                            prePostSignalNote = splitSnapshot.SignalNote,
+                            prePostNivelacijaRevenueImpactPct = isPreviousOnly ? (double?)null : splitSnapshot.RevenueImpactPct,
+                            prePostNivelacijaUnitsImpactPct = isPreviousOnly ? (double?)null : splitSnapshot.UnitsImpactPct,
+                            prePostNivelacijaRevenueCoveragePct = isPreviousOnly ? (double?)null : splitSnapshot.ComparableRevenueCoveragePct,
+                            prePostSignalNote = isPreviousOnly ? "previous_period_only" : splitSnapshot.SignalNote,
                             prePostComparableArticleCount = splitSnapshot.ComparableArticleCount,
-                            // Legacy compatibility aliases (pre/post impact metric in old response shape)
-                            promenaPrometa = splitSnapshot.RevenueImpactPct,
-                            promenaKolicine = splitSnapshot.UnitsImpactPct
+                            isPreviousPeriodOnly = isPreviousOnly,
+                            promenaPrometa = isPreviousOnly ? (double?)null : splitSnapshot.RevenueImpactPct,
+                            promenaKolicine = isPreviousOnly ? (double?)null : splitSnapshot.UnitsImpactPct
                         };
                     })
                     .OrderByDescending(x => x.ukupanPromet)
+                    .ThenByDescending(x => x.previousPeriodRevenue ?? 0m)
                     .ToList();
 
                 var sumPreRevenue = shoeTypes.Sum(r => r.preNivelacijePromet);
@@ -2446,7 +2466,7 @@ public static class AllEndpoints
                 var estimatedCostRevenue = shoeTypes.Sum(r => r.estimatedCostRevenue);
                 var missingCostRevenue = AnalyticsMarginPolicy.ResolveNoCostRevenue(totalRevenue, totalCostCoveredRevenue);
                 var unknownTypeRevenue = shoeTypes
-                    .Where(r => string.Equals(r.tipObuceNaziv, "Nepoznato", StringComparison.OrdinalIgnoreCase))
+                    .Where(r => ShoeTypeIdentityPolicy.IsUnknownId(r.tipObuceId))
                     .Sum(r => r.ukupanPromet);
 
                 var dataQuality = new
@@ -2481,12 +2501,16 @@ public static class AllEndpoints
                         : (double?)null
                 };
 
-                var knownShoeTypeMarginValues = shoeTypes
-                    .Where(row => !string.Equals(row.tipObuceNaziv, "Nepoznato", StringComparison.OrdinalIgnoreCase))
+                var fullPopulationMarginValues = shoeTypes
                     .Select(row => (row.costCoveredRevenue, row.marginContribution))
                     .ToList();
-                var averageMarginPct = AnalyticsMarginPolicy.ResolveWeightedMarginPct(knownShoeTypeMarginValues);
-                var weightedMarginRevenue = knownShoeTypeMarginValues.Sum(row => row.costCoveredRevenue);
+                var knownIdRecommendationMarginValues = shoeTypes
+                    .Where(row => !ShoeTypeIdentityPolicy.IsUnknownId(row.tipObuceId))
+                    .Select(row => (row.costCoveredRevenue, row.marginContribution))
+                    .ToList();
+                var averageMarginPct = AnalyticsMarginPolicy.ResolveWeightedMarginPct(fullPopulationMarginValues);
+                var knownIdRecommendationMarginPct = AnalyticsMarginPolicy.ResolveWeightedMarginPct(knownIdRecommendationMarginValues);
+                var weightedMarginRevenue = fullPopulationMarginValues.Sum(row => row.costCoveredRevenue);
                 var unknownTypeSharePct = dataQuality.unknownTypeRevenueSharePct ?? 0d;
                 var shoeIntegrityRegistry = httpContext.RequestServices.GetService<OperationsAnalyticsIntegrityRegistry>();
                 var blockShoeOperationsDecisions = OperationsAnalyticsIntegrityMeta.ShouldBlockDecisionSignals(shoeIntegrityRegistry);
@@ -2502,10 +2526,11 @@ public static class AllEndpoints
                         var isNewType = hasPreviousPeriodWindow
                             && row.previousPeriodRevenue <= 0m
                             && row.ukupanPromet > 0m;
-                        var isUnknownType = string.Equals(row.tipObuceNaziv, "Nepoznato", StringComparison.OrdinalIgnoreCase);
+                        var isUnknownType = ShoeTypeIdentityPolicy.IsUnknownId(row.tipObuceId);
+                        var isPreviousPeriodOnly = row.isPreviousPeriodOnly;
 
                         var recommendation = AnalyticsDecisionRecommendationEngine.Evaluate(new AnalyticsDecisionRecommendationEngine.RecommendationInput(
-                            IsUnknownEntity: isUnknownType,
+                            IsUnknownEntity: isUnknownType || isPreviousPeriodOnly,
                             TotalRevenue: row.ukupanPromet,
                             TotalUnits: row.ukupnaKolicina,
                             ItemCount: row.brojArtikalaUkupno,
@@ -2520,13 +2545,16 @@ public static class AllEndpoints
                             HasPreviousPeriodWindow: hasPreviousPeriodWindow,
                             IsNewEntity: isNewType,
                             UnknownBucketSharePct: unknownTypeSharePct),
-                            averageMarginPct);
-                        var hasComparableNivelacijaSignal = row.prePostNivelacijaRevenueImpactPct.HasValue
+                            knownIdRecommendationMarginPct);
+                        var hasComparableNivelacijaSignal = !isPreviousPeriodOnly
+                            && row.prePostNivelacijaRevenueImpactPct.HasValue
                             && row.prePostNivelacijaUnitsImpactPct.HasValue;
                         var exposedRecommendation = AnalyticsDecisionRecommendationEngine.ApplyComparableSignalGate(
                             recommendation,
                             hasComparableNivelacijaSignal);
-                        var recommendationAllowed = exposedRecommendation.RecommendationAllowed && !blockShoeOperationsDecisions;
+                        var recommendationAllowed = exposedRecommendation.RecommendationAllowed
+                            && !blockShoeOperationsDecisions
+                            && !isPreviousPeriodOnly;
 
                         return new
                         {
@@ -2618,6 +2646,7 @@ public static class AllEndpoints
                     ukupanMarzniDoprinos = shoeTypes.Sum(r => r.marginContribution),
                     ukupanTrosak = shoeTypes.Sum(r => r.totalCost),
                     prosecnaMarza = averageMarginPct.HasValue ? Math.Round(averageMarginPct.Value, 2) : (double?)null,
+                    knownIdRecommendationMarginPct = knownIdRecommendationMarginPct.HasValue ? Math.Round(knownIdRecommendationMarginPct.Value, 2) : (double?)null,
                     weightedMarginRevenue = Math.Round(weightedMarginRevenue, 2),
                     historicalCostCoveragePct = totalHistPct,
                     estimatedCostCoveragePct = totalEstPct,

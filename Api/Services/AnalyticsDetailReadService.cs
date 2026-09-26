@@ -190,7 +190,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
 
         var rows = isUnknown
             ? context.SalesRows
-                .Where(x => !x.TipObuceId.HasValue || string.Equals(x.TipObuceNaziv, "Nepoznato", StringComparison.OrdinalIgnoreCase))
+                .Where(x => ShoeTypeIdentityPolicy.IsUnknownId(x.TipObuceId))
                 .ToList()
             : context.SalesRows.Where(x => x.TipObuceId == knownId!.Value).ToList();
         if (rows.Count == 0)
@@ -542,7 +542,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 where pz.DatumProdaje >= previousFromUtc.Value
                    && pz.DatumProdaje <= previousToUtc.Value
                    && (!context.Filters.StoreId.HasValue || pz.IDObjekat == context.Filters.StoreId.Value)
-                   && (!ps.ShoeTypeIdAtSale.HasValue || t == null || t.Naziv == null || t.Naziv.Trim() == "")
+                   && !ps.ShoeTypeIdAtSale.HasValue
                    && (!importedOnly || a.DataOrigin == "access")
                    && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
                 group ps by 1 into g
@@ -793,7 +793,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
 
         var knownMarginEvidence = context.SalesRows
             .GroupBy(x => x.TipObuceId)
-            .Where(group => !string.Equals(group.First().TipObuceNaziv, "Nepoznato", StringComparison.OrdinalIgnoreCase))
+            .Where(group => !ShoeTypeIdentityPolicy.IsUnknownId(group.First().TipObuceId))
             .Select(group =>
             {
                 var revenue = group.Sum(x => x.Prihod);
@@ -803,7 +803,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             .ToList();
         var averageMarginPct = AnalyticsMarginPolicy.ResolveWeightedMarginPct(knownMarginEvidence);
         var unknownRevenue = context.SalesRows
-            .Where(x => string.Equals(x.TipObuceNaziv, "Nepoznato", StringComparison.OrdinalIgnoreCase))
+            .Where(x => ShoeTypeIdentityPolicy.IsUnknownId(x.TipObuceId))
             .Sum(x => x.Prihod);
         var unknownSharePct = totalRevenue > 0m
             ? Math.Round((double)(unknownRevenue / context.SalesRows.Sum(x => x.Prihod) * 100m), 2)
@@ -1181,20 +1181,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
     }
 
     private static bool IsUnknownShoeTypeId(string? id)
-    {
-        if (string.Equals(id, "unknown-nepoznato", StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        if (!(id ?? string.Empty).StartsWith("unknown-", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        var suffix = Uri.UnescapeDataString(id!["unknown-".Length..]);
-        return string.Equals(suffix.Trim(), "Nepoznato", StringComparison.OrdinalIgnoreCase);
-    }
+        => ShoeTypeIdentityPolicy.IsUnknownDetailId(id);
 
     private static string ToSerbianDataScope(string scope)
         => scope.ToLowerInvariant() switch

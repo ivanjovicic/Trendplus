@@ -373,6 +373,9 @@ The new DEX/RL/DT/PERF/OBS/SEC programs are future planning lanes. Their first R
 
 ## Program routing matrix
 
+Owner promotion/claim 2026-09-26: after RQ456 DONE on main, claimed P0 `RQ457` (Shoe Type identity/PoP/margin); local lock `.ai/task-locks/RQ457-cursor.lock.md`.
+
+
 Owner idle-recovery promotion 2026-09-24: after the latest RQ completions returned the primary pointer to `none`, current non-DONE queue state and synchronized run evidence were re-evaluated. `RQ423` is dependency-complete and collision-safe for the bounded Pre-Nivelacija focus/pagination population contract, so it moved `WAITING -> READY`; overlapping `RQ424` remains `WAITING`. This is the first concrete application of the new no-idle recovery rule rather than returning “no prompt”.
 
 Owner promotion 2026-09-08: RQ199 was explicitly promoted and completed for Pre-nivelacija DataScope filtering and cache isolation; the RQ queue remains the canonical execution owner.
