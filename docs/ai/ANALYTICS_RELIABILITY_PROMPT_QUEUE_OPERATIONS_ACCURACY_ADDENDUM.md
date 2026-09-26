@@ -2,12 +2,13 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ446
 Main RQ current READY prompt: none
 
 Owner promotion/claim 2026-09-26: idle recovery confirmed `RQ445` is the first dependency-complete P0 certification prompt, with no competing Supplier/Shoe Type accuracy-contract owner or active lock. `RQ445` moved `WAITING -> READY -> IN_PROGRESS` in this workspace; local lock `.ai/task-locks/RQ445-codex.lock.md`.
 
 Owner completion 2026-09-26: `RQ445` was delivered directly to `main`. The canonical `SST-ACCURACY-1.0` contract now binds Supplier/Shoe Type source population, period/store/scope, sale-time identity, signed metrics, denominators, negative/unknown behavior, PoP baselines, cost coverage, surface parity, trust states and bounded claim language. RQ456/RQ457/RQ431 retain their implementation/decision ownership. Run log: `.ai/runs/2026-09-26-RQ445-evidence.md`. Evidence state: synchronized.
+Owner promotion/claim 2026-09-26: idle recovery confirmed `RQ445` DONE on current `origin/main`, no active Supplier/Shoe Type adversarial fixture owner or conflicting RQ407/RQ412 fixture lock, and RQ446's dependency is satisfied. `RQ446` moved `WAITING -> READY -> IN_PROGRESS` in this workspace; local lock `.ai/task-locks/RQ446-cursor.lock.md`.
 
 Certification-layer review 2026-09-25: current main confirms the existing Supplier/Shoe Type semantic owners and bounded integrity runtime, but not a defensible certification claim across contract, adversarial fixture, live execution, browser/render/export, durable evidence, import-trigger freshness, UI evidence, certificate, CI, production or customer acceptance. Added RQ445-RQ455 below as WAITING, collision-safe follow-ups. Semantic closure review later the same day added RQ456-RQ457 for the two remaining source/population and Shoe Type identity/comparison contracts; existing RQ447/RQ449 IDs retain their certification meanings and are not repurposed. These prompts do not reopen RQ407, RQ411-RQ413, RQ373-RQ380 or RQ375-RQ377; they consume their outputs and record the remaining evidence gaps.
 
@@ -120,7 +121,7 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 | RQ425 | DONE | P1 | supplier-footwear-scope-default | Prevent standalone Supplier Footwear from silently falling back to all data |
 | RQ426 | DONE | P1 | inventory-forecast-risk-aggregation | Prove and correct Inventory forecast risk aggregation across sizes and stores |
 | RQ445 | DONE | P0 | supplier-shoetype-accuracy-contract | Canonical accuracy contract for Supplier/Shoe Type metrics, populations, provenance and claim language |
-| RQ446 | WAITING | P0 | supplier-shoetype-adversarial-golden | Extend the shared fixture with adversarial Supplier/Shoe Type cases and immutable expected outputs |
+| RQ446 | IN_PROGRESS | P0 | supplier-shoetype-adversarial-golden | Extend the shared fixture with adversarial Supplier/Shoe Type cases and immutable expected outputs |
 | RQ447 | WAITING | P0 | supplier-shoetype-live-oracle-reproducers | Execute the four live RQ412 oracle cases and close OP2-01/04/05/14 with runtime reproducers |
 | RQ448 | WAITING | P0 | supplier-shoetype-browser-reconciliation | Reconcile raw facts through API, browser-rendered KPI/table/detail and export |
 | RQ449 | WAITING | P1 | operations-integrity-evidence-history | Persist immutable integrity evidence/history beyond the process snapshot |
@@ -1494,7 +1495,7 @@ Do not redefine the RQ411 attribution source, RQ412 oracle SQL or RQ442 date imp
 
 ## RQ446 - Build the adversarial Supplier/Shoe Type golden dataset
 
-Status: WAITING
+Status: IN_PROGRESS
 Ready after: RQ445 contract version is approved
 Priority: P0
 Type: fixture/tests/docs
