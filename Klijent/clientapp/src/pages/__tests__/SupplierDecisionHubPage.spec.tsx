@@ -424,8 +424,8 @@ describe("SupplierDecisionHubPage", () => {
     vi.stubGlobal("fetch", fetchMock);
     renderPage();
 
-    expect(await screen.findByText("Signal: Pregovarati o ceni")).toBeInTheDocument();
-    expect(screen.getByText("Signal: Smanjiti nabavku")).toBeInTheDocument();
+    expect(await screen.findByText("Pregovarati o ceni")).toBeInTheDocument();
+    expect(screen.getByText("Smanjiti nabavku")).toBeInTheDocument();
     expect(screen.getAllByText("Pomoćni signal")).toHaveLength(2);
   });
 
