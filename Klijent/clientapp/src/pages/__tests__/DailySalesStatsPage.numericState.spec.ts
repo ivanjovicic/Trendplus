@@ -223,6 +223,15 @@ describe("Daily Sales numeric evidence states", () => {
     const unknown = summarizePeriod(response({
       dateRows: [row({ firstShiftTotalItems: null, secondShiftTotalItems: null, totalItemsSold: 0 })],
     }));
+    const noTimeFallback = summarizePeriod(response({
+      dateRows: [row({ firstShiftTotalItems: null, secondShiftTotalItems: null, totalItemsSold: 10 })],
+      metadata: {
+        ...response().metadata,
+        shiftAssignmentStatus: "no_time_fallback",
+        noTimeFallbackItems: 10,
+        totalItemsInRange: 10,
+      },
+    }));
     const nonFinite = summarizePeriod(response({
       dateRows: [row({ firstShiftTotalItems: Number.NaN, secondShiftTotalItems: 3, totalItemsSold: 3 })],
     }));
@@ -233,6 +242,10 @@ describe("Daily Sales numeric evidence states", () => {
     expect(measuredZero.secondShiftItems).toBe(0);
     expect(unknown.firstShiftEvidenceState).toBe("unavailable");
     expect(unknown.secondShiftEvidenceState).toBe("unavailable");
+    expect(noTimeFallback.firstShiftSharePct).toBeNull();
+    expect(noTimeFallback.secondShiftSharePct).toBeNull();
+    expect(noTimeFallback.noTimeFallbackItems).toBe(10);
+    expect(noTimeFallback.shiftAssignmentStatus).toBe("no_time_fallback");
     expect(nonFinite.firstShiftEvidenceState).toBe("unavailable");
     expect(nonFinite.secondShiftEvidenceState).toBe("partial");
   });
