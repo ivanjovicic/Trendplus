@@ -213,6 +213,11 @@ jobs:
       - name: Build certification test assembly
         run: dotnet build Api.Tests/Api.Tests.csproj --no-restore --configuration Release
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
       - name: Apply current Trendplus migrations
         run: >-
           dotnet ef database update
@@ -335,6 +340,15 @@ jobs:
               print("::error::RQ447 certification requires exactly 4 executed and passed OP2 reproducers with zero skipped.")
               sys.exit(1)
           PY
+
+      - name: Run RQ447 frontend route/status seam proof
+        working-directory: Klijent/clientapp
+        run: |
+          npm ci
+          npm run test:run -- \
+            src/pages/__tests__/SupplierRedirects.spec.tsx \
+            src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx \
+            --testNamePattern="legacy redirect|preserves gated supplier status identity"
 
       - name: Upload RQ447 certification evidence
         if: always()
