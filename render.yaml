@@ -30,7 +30,8 @@ services:
         value: "16777216"
       - key: AccessImport__ArchiveDeletedRowsMaxRows
         value: "10000"
-      # The web process is the single owner of production schema initialization.
+      # Make web migration participation explicit; the shared initializer's advisory lock
+      # serializes it with the worker process when both services start together.
       - key: Database__AutoMigrate
         value: "true"
       - key: DatabaseInitialization__FailFast
