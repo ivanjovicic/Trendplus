@@ -37,3 +37,13 @@ BCI10 was claimed for current-main backend-suite truth after the latest broad ba
 ## Acceptance decision
 
 BCI10 is `PARTIAL`, not `DONE`: the broad backend job remains red and contains several independent failure families. The dedicated RQ447 certification remains valid and is not reopened by this broad-suite triage.
+
+## Latest current-main recheck
+
+- Run `36270728235` on head `067cd68b6d88ee6e5e24f6e9e2046f675a3ed85e` completed with `failure`.
+- The dedicated RQ447 job `108484268364` completed with `success`: oracle `4/4`, all-routes `1/1`, OP2 `4/4`, frontend seam and certification artifact all passed.
+- The broad job `108484268134` passed service initialization, pgvector startup, both EF migration contexts, startup SQL bootstrap and lifecycle smoke. Its full suite reported `1477 total / 1398 passed / 41 failed / 38 skipped`.
+- The earlier run `36270577143` was cancelled when this newer same-ref push arrived; this is expected `cancel-in-progress` cleanup, not a stuck or cleanup-blocked run.
+- The CI bootstrap repair is validated, but BCI10 remains `PARTIAL` because the remaining failures span independent provider, host-isolation and contract-drift families.
+
+RQ448 remains `WAITING`: no authenticated browser/API/deployment environment is available in this workspace, so no raw-facts-to-render/detail/export claim is made.

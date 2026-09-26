@@ -89,3 +89,17 @@ The OP2 failure from the preceding run was a transient `503 db_warmup` response.
 - Reconcile the SQL Server session helper/tests against one canonical QDB03 contract, including `MaxRows`, deterministic full-scan ordering, safe connection diagnostics and parameter representation.
 - Reconcile supplier negotiation warning assertions with the current localized response contract without weakening warning visibility.
 - Isolate the remote full-suite provider/bootstrap/order failures using the exact CI image and test-host lifecycle; keep skipped tests visible and failing for certification.
+
+## Current-main recheck — run `36270728235`
+
+- Head SHA: `067cd68b6d88ee6e5e24f6e9e2046f675a3ed85e`
+- Event: push to `main`
+- Concurrency group: `analytics-backend-tests-refs/heads/main`
+- Run result: `failure`; both jobs completed normally and teardown completed. The earlier `898202b0` run was cancelled only because this newer same-ref push superseded it under the configured `cancel-in-progress: true` policy.
+- RQ447 certification job `108484268364`: `success`; migrations, startup SQL bootstrap, oracle `4/4`, all-routes `1/1`, OP2 `4/4`, frontend seam and artifact upload all passed. Artifact: `rq447-certification-067cd68b6d88ee6e5e24f6e9e2046f675a3ed85e`.
+- Complete backend analytics suite job `108484268134`: setup, pgvector service, both EF migration contexts, startup SQL bootstrap and lifecycle smoke all passed; only the full test step failed.
+- Broad totals: `1477 total / 1398 passed / 41 failed / 38 skipped`.
+
+The shared CI database bootstrap repair is therefore validated: the previous concrete `PerformanceLogs` / `analytics_refresh_runs` schema failures are no longer the setup blocker. The remaining 41 failures are mixed existing contract/provider/isolation families (supplier warning projections, worker catalog, Access/import and data-source integration, PostgreSQL-backed scope/aggregation, SQL Server supplemental contracts, demo endpoint host setup, cache-key version and pgvector/provider assumptions). They are not safe to hide with a filter or to relabel as RQ448 evidence.
+
+RQ448 remains `WAITING`, not claimed: RQ447's live CI certificate is green, but this workspace still has no authenticated browser tab/session and no deployment/API access. Its required raw-facts → API → rendered Supplier/Shoe Type screen → detail → CSV/XLSX reconciliation cannot be honestly completed from mocked or static tests.
