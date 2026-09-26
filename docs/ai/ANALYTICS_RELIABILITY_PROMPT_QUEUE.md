@@ -24046,6 +24046,7 @@ Full `npx vitest run` at `aaf51c2c` and a focused rerun at `ed0b0eca` (before `R
 
 - Date: 2026-09-26
 - Status: DONE
+- Completion: all nine shared analytics spec failures were classified as copy/contract drift and now pass without product-code changes.
 - Classification: all nine failures were **copy/contract drift** after RQ435 safe error fallbacks and `supplierDecisionLabels` user-facing lineage mapping; no product code changes required.
 - Changed files: seven spec files listed in Scope; queue header and this completion note.
 - Checks run: focused vitest on seven files (59/59); `npm run typecheck`; `npm run check:analytics-guardrails`.
