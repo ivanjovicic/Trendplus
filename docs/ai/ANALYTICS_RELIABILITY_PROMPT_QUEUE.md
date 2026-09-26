@@ -15,6 +15,20 @@ Owner promotion/claim 2026-09-26: idle recovery found Current READY `none`. Conc
 Owner completion 2026-09-26: `RQ383` was delivered for Daily Sales shift provenance. Measured shifts no longer absorb off-shift/no-time remaps; metadata exposes `ShiftAssignmentStatus`, `OffShift*` and `NoTimeFallback*`; frontend keeps shift shares unavailable under `no_time_fallback`. Run log: `.ai/runs/2026-09-26-RQ383-evidence.md`. Evidence state: synchronized; implementation `e5d22c01`; tip `ed1ef168`.
 Owner completion 2026-09-26: `RQ384` was delivered for Daily Sales safe/traceable errors. Endpoint failures no longer return `ex.Message`; Problem details include `errorCode`/`correlationId`, and the frontend allowlists safe Serbian messages while surfacing correlation IDs. Run log: `.ai/runs/2026-09-26-RQ384-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-26: idle recovery found Current READY `none` after RQ456/RQ457 closures on `origin/main`. Verified RQ382/RQ383 DONE, no active Daily Sales endpoint/frontend error-contract lock/branch/PR owner, and RQ384 is dependency-complete. `RQ384` moved `WAITING -> READY -> IN_PROGRESS` in this workspace for Daily Sales safe/traceable error responses; local lock `.ai/task-locks/RQ384-cursor.lock.md`.
+ Current READY prompt: none
+Owner completion 2026-09-26: `RQ431` settled the Daily Sales concentration over-total contract: top-supplier aggregates that exceed the named period quantity/revenue denominator fail closed; signed within-total remainders stay available. Run log: `.ai/runs/2026-09-26-RQ431-evidence.md`. Evidence state: synchronized.
+Owner promotion/claim 2026-09-26: idle recovery found Current READY `none` after RQ384/RQ449. Mechanical repair: `RQ243` section Status WAITING→DONE to match synchronized delivery `ea538f6c` on `origin/main`. Verified no PostgreSQL host for P0 `RQ447`, no competing Daily Sales concentration lock/branch, and the user's claim-and-execute request satisfies the RQ431 owner-decision gate. `RQ431` moved `WAITING -> READY -> IN_PROGRESS` in this workspace; local lock `.ai/task-locks/RQ431-cursor.lock.md`.
+Owner promotion/claim 2026-09-26: idle recovery confirmed `RQ445`/`RQ446` DONE on current `origin/main`, no active receipt-population owner and RQ456's accuracy-contract dependency satisfied. `RQ456` moved `WAITING -> READY -> IN_PROGRESS` in the Operations accuracy addendum; local lock `.ai/task-locks/RQ456-codex.lock.md`. `RQ457` remains WAITING behind the population owner.
+Owner completion 2026-09-26: `RQ456` was delivered to `main` in `74a12194c25bf140cd7438bfe97a2b83a857c7fc`; `origin/main` contains it through merge `54a465254d53a2e71474877d1828a1c9f97f4195`. Focused receipt-population proof is 24/24. Run log: `.ai/runs/2026-09-26-RQ456-evidence.md`. Evidence state: synchronized.
+Owner promotion/claim 2026-09-26: idle recovery confirmed `RQ456` DONE on current `origin/main`, no active Shoe Type endpoint/detail/page owner or conflicting lock/branch/PR. `RQ457` moved `WAITING -> READY -> IN_PROGRESS` in the Operations accuracy addendum; local lock `.ai/task-locks/RQ457-codex.lock.md`.
+Owner completion 2026-09-26: `RQ457` was delivered directly to `main`; Shoe Type list/detail/comparison paths now use sale-time ID/null identity, include previous-only PoP rows with qualified zero-current semantics, and separate full-response headline weighted margin from known-ID recommendation benchmarking. Run log: `.ai/runs/2026-09-26-RQ457-evidence.md`. Evidence state: synchronized.
+Owner promotion/claim 2026-09-26: idle recovery found RQ449 dependency-complete after RQ413/RQ445, with no active integrity-persistence owner or conflicting lock/branch/PR. `RQ449` moved `WAITING -> READY -> IN_PROGRESS` in the Operations accuracy addendum; local lock `.ai/task-locks/RQ449-codex.lock.md`.
+Owner completion 2026-09-26: `RQ449` was delivered directly to `main` in implementation `cfcb8652ca0eafdcedd8560f99d5e8633d9a240e`; Operations Analytics integrity checks now persist redacted append-only evidence with ID retrieval and idempotent history, including cache-clear/unverified transitions. Focused proof is 7/7; build and governance validators pass. Run log: `.ai/runs/2026-09-26-RQ449-evidence.md`. Evidence state: synchronized; current READY returned to `none`; RQ447 remains gated on a PostgreSQL integration host.
+Owner completion 2026-09-26: `RQ446` was delivered directly to `main` in `5979ef65`; the adversarial Supplier/Shoe Type fixture, immutable expected-output manifest and exact-byte SHA-256 guard are synchronized. Focused manifest guard proof is `2/2`; runtime PostgreSQL/API execution remains RQ447. Run log: `.ai/runs/2026-09-26-RQ446-evidence.md`. Evidence state: synchronized.
+Owner promotion/claim 2026-09-26: idle recovery found Current READY `none`. Concurrently RQ446 closed on `main`; this workspace claimed P1 `RQ383` for Daily Sales shift provenance. `RQ382` section Status was mechanically repaired IN_PROGRESS→DONE. Local lock: `.ai/task-locks/RQ383-cursor.lock.md`.
+Owner completion 2026-09-26: `RQ383` was delivered for Daily Sales shift provenance. Measured shifts no longer absorb off-shift/no-time remaps; metadata exposes `ShiftAssignmentStatus`, `OffShift*` and `NoTimeFallback*`; frontend keeps shift shares unavailable under `no_time_fallback`. Run log: `.ai/runs/2026-09-26-RQ383-evidence.md`. Evidence state: synchronized; implementation `e5d22c01`; tip `ed1ef168`.
+Owner completion 2026-09-26: `RQ384` was delivered for Daily Sales safe/traceable errors. Endpoint failures no longer return `ex.Message`; Problem details include `errorCode`/`correlationId`, and the frontend allowlists safe Serbian messages while surfacing correlation IDs. Run log: `.ai/runs/2026-09-26-RQ384-evidence.md`. Evidence state: synchronized.
+Owner promotion/claim 2026-09-26: idle recovery found Current READY `none` after RQ456/RQ457 closures on `origin/main`. Verified RQ382/RQ383 DONE, no active Daily Sales endpoint/frontend error-contract lock/branch/PR owner, and RQ384 is dependency-complete. `RQ384` moved `WAITING -> READY -> IN_PROGRESS` in this workspace for Daily Sales safe/traceable error responses; local lock `.ai/task-locks/RQ384-cursor.lock.md`.
 Owner promotion/claim 2026-09-26: idle recovery verified `RQ458` DONE on current `origin/main` at `cc75ee66`, no active Supplier Decision Hub KPI/report-parity lock, branch or PR owner, and all RQ459 dependencies are satisfied. `RQ459` moved `WAITING -> IN_PROGRESS` in this workspace for KPI/chart/table/report population and period-delta parity; local lock `.ai/task-locks/RQ459-cursor.lock.md`.
 Owner completion 2026-09-26: `RQ459` was delivered to current `main` in implementation `c3e29a65`; `origin/main` contains that implementation and the synchronized closure evidence. Supplier Decision Hub summary now exposes authoritative revenue, margin contribution and top-five share aggregates; KPI, table shares, concentration chart and report/export use the same declared population, and full-price period delta is distinct from row markdown trend. Focused frontend proof is `41/41`; guardrails, TypeScript, build, governance validators and `git diff --check` pass. Backend focused test was not run because `dotnet` is unavailable in this VM. Run log: `.ai/runs/2026-09-26-RQ459-evidence.md`. Evidence state: synchronized.
 Owner completion 2026-09-26: `RQ445` was delivered directly to `main` in `7ce49b17`; the canonical `SST-ACCURACY-1.0` Supplier/Shoe Type contract is established and later certification prompts remain separately gated. Run log: `.ai/runs/2026-09-26-RQ445-evidence.md`. Evidence state: synchronized.
@@ -12190,7 +12204,7 @@ Analytics Details and the main Analytics Dashboard treat missing OOS and low-sto
 
 ## RQ243 - Preserve unknown supplier footwear data-quality evidence in fallback responses
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend/contract/frontend/tests
 Feature family: supplier-footwear-nivelacija-quality-state
@@ -23669,7 +23683,7 @@ Commit suggestion: `fix(analytics): daily sales sort, print form and export stor
 
 ## RQ431 - Decide the Daily Sales supplier-concentration over-total contract
 
-Status: WAITING
+Status: DONE
 Ready after: owner decision recorded on the RQ242 versus RQ381 concentration contract
 Priority: P2
 Type: contract/decision/tests
@@ -23677,6 +23691,12 @@ Feature family: daily-sales-concentration-contract
 Parallel-safe: no
 Owner: Analytics Product + Frontend / Daily Sales
 Commit suggestion: `fix(analytics): settle daily sales concentration over-total contract`
+
+### Claim note
+
+- Date: 2026-09-26
+- Status: IN_PROGRESS
+- Claim: idle recovery; user's claim-and-execute request satisfies the owner-decision gate. Decision: keep RQ242 over-total fail-closed under RQ381 signed denominators (top-supplier aggregates that exceed the named period total block shares; signed negative Ostali only when within total). Local lock `.ai/task-locks/RQ431-cursor.lock.md`. Branch `cursor/daily-sales-concentration-contract-b591`.
 
 ### Problem
 
@@ -23715,6 +23735,25 @@ A focused Daily Sales spec expects a `supplier-concentration-warning` when the t
 
 - Owner decision (business contract). `RQ382`/`RQ384` remain separate owners.
 - Reliability contract: numerator = supplier signed quantity; denominator = the period total named in the decision; non-positive or contradictory denominator → share unavailable, not 0% or 100%.
+
+### Completion note
+
+- Date: 2026-09-26
+- Status: DONE
+- Completion: Owner decision keeps RQ242 over-total fail-closed under RQ381 signed denominators. Existing `buildSupplierConcentration` guard retained; numericState over-total assertion aligned; signed within-total remainder regression added. Premium concentration warning path remains green.
+- Changed files: `Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.numericState.spec.ts`, this queue, `.ai/runs/2026-09-26-RQ431-evidence.md`.
+- Contract/runtime behavior changed: no product behavior change beyond locking the decided contract in tests; over-total shares stay unavailable.
+- Checks run: Daily Sales numericState+premium 44/44; analytics guardrails/typecheck.
+- Checks not run: full suites; live browser; remote CI.
+- Run log: `.ai/runs/2026-09-26-RQ431-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: branch/PR transport then main merge
+- Main commit SHA: `794a5e85`
+- Main verification: passed - `origin/main` contains `794a5e85`
+- Missed: English `N/A` share placeholders remain RQ325
+- Follow-up: idle recovery; RQ447 still needs PostgreSQL
+- Residual risk: CI not inspected
+- Prompt defect / scope repair: RQ243 Status WAITING→DONE mechanical repair
 
 ---
 
