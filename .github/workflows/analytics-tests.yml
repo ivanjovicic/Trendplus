@@ -231,6 +231,33 @@ jobs:
           --configuration Release
           --verbose
 
+      - name: Apply current Trendplus analytics migrations
+        run: >-
+          dotnet ef database update
+          --project Infrastructure/Infrastructure.csproj
+          --startup-project Api/Api.csproj
+          --context AnalyticsDbContext
+          --configuration Release
+          --verbose
+
+      - name: Apply Trendplus startup SQL bootstrap
+        env:
+          PGHOST: localhost
+          PGPORT: "5432"
+          PGUSER: postgres
+          PGPASSWORD: postgres_password
+          PGDATABASE: trendplus_rq447
+        run: |
+          set -euo pipefail
+          psql --version
+          # The application startup path applies these idempotent scripts after
+          # both EF contexts migrate. Certification must reproduce that path so
+          # routes do not run against an artificially incomplete database.
+          psql -v ON_ERROR_STOP=1 -f Database/Migrations/002_CreatePerformanceLogsTable.sql
+          psql -v ON_ERROR_STOP=1 -f Database/Migrations/012_AddAccessImportSupport.sql
+          psql -v ON_ERROR_STOP=1 -f Database/Migrations/017_CreateNightlyAnalyticsMaterializedViews.sql
+          psql -v ON_ERROR_STOP=1 -f Database/Migrations/019_AddAnalyticsDashboardIndexes.sql
+
       - name: Run RQ447 oracle cases
         id: oracle
         run: >-
