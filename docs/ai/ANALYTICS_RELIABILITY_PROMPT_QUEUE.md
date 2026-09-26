@@ -24051,6 +24051,10 @@ Full `npx vitest run` at `aaf51c2c` and a focused rerun at `ed0b0eca` (before `R
 - Run log: `.ai/runs/2026-09-26-RQ440-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
+- Main commit SHA: `73bb621c`
+- Main verification: passed — `origin/main` contains `73bb621c`
+- Missed: none for bounded RQ440 scope; full-suite vitest not re-run.
+- Residual risk: other pre-existing failing specs outside the seven RQ440 files may remain red until their owners close.
 - Follow-up: `RQ438` (backend receipt joins) and `RQ442` (half-open day ranges) remain READY.
 
 ---
