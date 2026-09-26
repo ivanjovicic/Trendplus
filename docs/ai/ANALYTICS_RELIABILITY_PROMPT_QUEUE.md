@@ -3,6 +3,7 @@
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+Owner completion 2026-09-26: `RQ315` is DONE; Pre-Nivelacija trust header renders backend `evidenceWindow` period fields and the focused regression passes 49/49. Run log: `.ai/runs/2026-09-26-RQ315-evidence.md`. Evidence state: synchronized.
 Owner revalidation 2026-09-26: RQ447 is PARTIAL, not DONE, after dedicated run `36262400467`: oracle 4/4 passed, but all-eight-routes failed on the explicit startup `db_warmup` 503 and OP2/frontend gates did not execute. A bounded exact-signal retry was added to the route proof; do not promote RQ448 or certify RQ447 until a fresh artifact passes.
 Owner completion 2026-09-26: fresh run `36262787853` on `f8a2695e7f4805aff2d6c9de3005c34f8c01889a9` passed the dedicated RQ447 certification job: oracle `4/4`, all-eight-routes `1/1`, OP2 `4/4`, zero skips and frontend seam proof `3 passed`; artifact `rq447-certification-f8a2695e7f4805aff2d6c9de3005c34f8c01889a9` (`10912912940`). RQ447 is DONE for its dedicated acceptance; the separate broad backend suite remains outside this gate. Run log: `.ai/runs/2026-09-26-RQ447-evidence.md`. Evidence state: synchronized.
 Owner completion 2026-09-26: `RQ450` delivered post-Access-import integrity probe on `main`. Run log: `.ai/runs/2026-09-26-RQ450-evidence.md`. Evidence state: synchronized.
@@ -17565,7 +17566,7 @@ Reproduction: expand vendor with articles lacking comparable sales window — dr
 
 ## RQ315 - Expose Pre-Nivelacija analysis period in trust header
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/trust/tests
 Feature family: pre-nivelacija-period-provenance
@@ -17608,6 +17609,25 @@ Reproduction: open page with any filters — header never states analysis period
 ### Dependencies
 
 - Backend meta must be inspected; do not invent dates without contract evidence.
+
+### Completion note
+
+- Date: 2026-09-26
+- Status: DONE
+- Completion: The existing backend `evidenceWindow.salesWindowFromUtc/salesWindowToUtc` contract is now explicitly covered by a Pre-Nivelacija trust-header regression; the page passes those authoritative values through and does not silently omit period provenance.
+- Changed files: `Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx`, this queue, `.ai/runs/2026-09-26-RQ315-evidence.md`.
+- Contract/runtime behavior changed: no new formula or date fallback; queue stale-status repair records the already-landed `c84a05fa` period mapping.
+- Checks run: `PreNivelacijaPriorityPage.spec.tsx` 49/49; queue/governance validation.
+- Checks not run: full frontend suite; browser/live API; remote CI.
+- Run log: `.ai/runs/2026-09-26-RQ315-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: branch/PR transport then main merge
+- Main commit SHA: pending-until-merge
+- Main verification: pending-until-merge
+- Missed: explicit snapshot/current-state fallback remains outside this prompt because authoritative evidenceWindow fields are present
+- Follow-up: idle recovery; RQ448 remains gated on authenticated browser/API access
+- Residual risk: live/browser rendering was not run
+- Prompt defect / scope repair: stale WAITING status repaired because implementation already existed on current main
 
 ---
 
