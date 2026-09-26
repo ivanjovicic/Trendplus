@@ -2,7 +2,7 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ449
+Current READY prompt: none
 Main RQ current READY prompt: none
 
 Owner promotion/claim 2026-09-26: idle recovery confirmed `RQ445` is the first dependency-complete P0 certification prompt, with no competing Supplier/Shoe Type accuracy-contract owner or active lock. `RQ445` moved `WAITING -> READY -> IN_PROGRESS` in this workspace; local lock `.ai/task-locks/RQ445-codex.lock.md`.
@@ -129,7 +129,7 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 | RQ446 | DONE | P0 | supplier-shoetype-adversarial-golden | Extend the shared fixture with adversarial Supplier/Shoe Type cases and immutable expected outputs |
 | RQ447 | WAITING | P0 | supplier-shoetype-live-oracle-reproducers | Execute the four live RQ412 oracle cases and close OP2-01/04/05/14 with runtime reproducers |
 | RQ448 | WAITING | P0 | supplier-shoetype-browser-reconciliation | Reconcile raw facts through API, browser-rendered KPI/table/detail and export |
-| RQ449 | IN_PROGRESS | P1 | operations-integrity-evidence-history | Persist immutable integrity evidence/history beyond the process snapshot |
+| RQ449 | DONE | P1 | operations-integrity-evidence-history | Persist immutable integrity evidence/history beyond the process snapshot |
 | RQ450 | WAITING | P1 | operations-post-import-probe | Run a bounded Supplier/Shoe integrity probe immediately after Access import |
 | RQ451 | WAITING | P1 | supplier-shoetype-verified-evidence-ui | Expose Verified status and inspectable evidence on both customer-facing screens |
 | RQ452 | WAITING | P1 | supplier-shoetype-accuracy-certificate | Generate a truthful evidence-backed Supplier/Shoe Type accuracy certificate |
@@ -1631,7 +1631,7 @@ For both Supplier and Shoe Type, seed the certified fixture, execute the indepen
 
 ## RQ449 - Persist integrity evidence history
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: RQ445 contract and RQ413 runtime states are stable
 Priority: P1
 Type: backend/data-contract/migration/tests
@@ -1641,6 +1641,7 @@ Owner: Analytics Reliability / Operations
 Commit suggestion: feat(analytics): persist integrity evidence history
 
 Owner promotion/claim 2026-09-26: idle recovery verified RQ413/RQ445 DONE on current `origin/main`, no active integrity-persistence owner or conflicting lock/branch/PR, and the migration/bootstrap conventions are available. `RQ449` moved `WAITING -> READY -> IN_PROGRESS`; local lock `.ai/task-locks/RQ449-codex.lock.md`.
+Owner completion 2026-09-26: `RQ449` was delivered directly to `main` in implementation `cfcb8652ca0eafdcedd8560f99d5e8633d9a240e`; durable append-only evidence records, redacted metadata, idempotent evidence identity, cache-clear/unverified transitions and evidence retrieval by ID are implemented. Focused integrity evidence proof is 7/7; build, migration generation, queue/governance validators and `git diff --check` pass. The remote migration list was inspected but could not determine applied status because the configured database stream was unavailable. Run log: `.ai/runs/2026-09-26-RQ449-evidence.md`. Evidence state: synchronized. Current READY returned to `none`; RQ447 remains gated on an available PostgreSQL integration host.
 
 ### Problem
 
