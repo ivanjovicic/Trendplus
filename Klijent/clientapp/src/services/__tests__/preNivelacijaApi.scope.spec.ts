@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getPreNivelacijaPrioriteti, PreNivelacijaApiError } from "../preNivelacijaApi";
 import { getDataScopeStorageKey } from "../../utils/dataScope";
+import { AnalyticsResponseValidationError } from "../../validation/analyticsResponseValidation";
 
 const responseBody = JSON.stringify({
   generatedAtUtc: "2026-07-01T08:00:00Z",
@@ -10,18 +11,45 @@ const responseBody = JSON.stringify({
     supplierCount: 0,
     candidatesCount: 0,
     highPriorityCount: 0,
-    totalStockAtRisk: 0,
-    estimatedAvoidableMarkdownLoss: 0,
-    expectedHighlightRevenueUplift: 0,
+    increaseFocusCount: 0,
+    maintainCount: 0,
+    reviewCount: 0,
+    doNotTrustCount: 0,
+    insufficientDataCount: 0,
+    totalStockAtRisk: null,
+    totalStockAtRiskCoverageEligible: 0,
+    totalStockAtRiskCoverageTotal: 0,
+    estimatedAvoidableMarkdownLoss: null,
+    estimatedAvoidableMarkdownLossCoverageEligible: 0,
+    estimatedAvoidableMarkdownLossCoverageTotal: 0,
+    expectedHighlightRevenueUplift: null,
+    expectedHighlightRevenueUpliftCoverageEligible: 0,
+    expectedHighlightRevenueUpliftCoverageTotal: 0,
     averagePreNivelacijaScore: 0,
   },
   supplierLeaderboard: [],
+  filterFacets: { seasons: [], footwearTypes: [] },
   candidates: [],
   queues: { highlightNow: [], monitor: [], likelyMarkdownSoon: [] },
   alerts: [],
   page: 1,
   pageSize: 20,
   totalCandidates: 0,
+  recommendationAllowed: false,
+  evidenceWindow: {
+    salesWindowFromUtc: "2026-01-02T08:00:00Z",
+    salesWindowToUtc: "2026-07-01T08:00:00Z",
+    markdownWindowFromUtc: "2026-01-02T08:00:00Z",
+    markdownWindowToUtc: "2026-07-01T08:00:00Z",
+    timezone: "UTC",
+    salesQuantityPolicy: "signed_net_quantity_preserved",
+    nonPositiveNetPolicy: "recommendation_unavailable",
+    previousWeekDenominatorPolicy: "unavailable_when_non_positive",
+    candidatesWithReturns: 0,
+    candidatesWithNonPositiveNetSales: 0,
+    candidatesWithoutSalesInWindow: 0,
+    suppliersWithUnavailablePreviousWeekDenominator: 0,
+  },
   meta: { success: true, dataQualityStatus: "good" },
 });
 
@@ -33,6 +61,17 @@ describe("pre-nivelacija API scope contract", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     localStorage.clear();
+  });
+
+  it("includes focus in the request when a server-side population filter is active", async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(new Response(responseBody, { status: 200 })));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await getPreNivelacijaPrioriteti({ focus: "review", page: 2, pageSize: 60 });
+
+    const requestUrl = new URL(String(fetchMock.mock.calls[0]?.[0]), "http://localhost");
+    expect(requestUrl.searchParams.get("focus")).toBe("review");
+    expect(requestUrl.searchParams.get("page")).toBe("2");
   });
 
   it("uses the explicit scope for the request even when ambient storage differs", async () => {
@@ -102,5 +141,17 @@ describe("pre-nivelacija API scope contract", () => {
     await expect(getPreNivelacijaPrioriteti({})).rejects.toMatchObject({
       message: "Pre-nivelacija prioriteti trenutno nisu dostupni. Proverite status osvežavanja i pokušajte ponovo.",
     });
+  });
+
+  it("rejects an incomplete decision payload before it can render as an empty success", async () => {
+    const malformedPayload = JSON.parse(responseBody) as Record<string, unknown>;
+    malformedPayload.queues = {
+      highlightNow: [{ artikalId: 1, sku: "SKU-1" }],
+      monitor: [],
+      likelyMarkdownSoon: [],
+    };
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify(malformedPayload), { status: 200 }))));
+
+    await expect(getPreNivelacijaPrioriteti({})).rejects.toBeInstanceOf(AnalyticsResponseValidationError);
   });
 });

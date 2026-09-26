@@ -102,7 +102,11 @@ public sealed class GetInventoryAlertsHandler
                 Warning: items.Count == 0
                     ? "Inventory alert snapshot postoji, ali nema aktivnih alertova za trazene filtere."
                     : hasMissingEvidence ? "Inventory alert snapshot sadrzi redove sa nepotpunom signalnom evidencijom." : null,
-                Items: items);
+                Items: items,
+                Provenance: InventorySignalSnapshotProvenance.ForCurrentSnapshot(
+                    request.FromDate,
+                    request.ToDate,
+                    request.DataScope));
         }
         catch (Exception ex) when (IsMissingRelation(ex))
         {
@@ -117,7 +121,11 @@ public sealed class GetInventoryAlertsHandler
                 SnapshotFreshnessUtc: null,
                 SnapshotFreshnessStatus: InventorySnapshotFreshness.Unknown,
                 Warning: "Inventory alert snapshot jos nije dostupan.",
-                Items: []);
+                Items: [],
+                Provenance: InventorySignalSnapshotProvenance.ForCurrentSnapshot(
+                    request.FromDate,
+                    request.ToDate,
+                    request.DataScope));
         }
     }
 

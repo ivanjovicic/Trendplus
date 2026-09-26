@@ -12,6 +12,90 @@ namespace Api.Tests;
 internal static class PilotAnalyticsSeedPack
 {
     public const string PackId = "pilot-analytics-proof-pack-v1";
+    public const string OperationsFixtureId = "operations-analytics-v1";
+
+    public static readonly IReadOnlyList<PilotOperationsRouteSpec> OperationsRoutes =
+    [
+        new("inventory", "/analytics/inventory", "/analytics/inventory", "/api/analytics/inventory/*", "RQ371/RQ372", "Klijent/clientapp/src/pages/InventoryPage.tsx", "Klijent/clientapp/src/pages/__tests__/InventoryPage.signalKpis.spec.tsx", ["getInventoryList", "getInventoryInsights", "meta"], ["getInventoryList", "getInventoryInsights", "meta"]),
+        new("supplier-sales", "/analytics/supplier-sales-stats", "/analytics/supplier", "/api/analytics/supplier-sales-stats", "RQ373/RQ374", "Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx", "Klijent/clientapp/src/pages/__tests__/SupplierSalesStatsPage.decisionSuppliers.spec.tsx", ["getSupplierSalesStats", "buildSupplierSalesDisplayProjection", "recommendation"], ["buildSupplierSalesDisplayProjection", "buildDecisionSuppliers"]),
+        new("shoe-type-sales", "/analytics/shoe-type-sales-stats", "/analytics/shoe-type-sales-stats", "/api/analytics/shoe-type-sales-stats", "RQ378", "Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx", "Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.spec.tsx", ["getShoeTypeSalesStats", "recommendation", "AnalyticsTrustHeader"], ["getShoeTypeSalesStats", "recommendation"]),
+        new("daily-sales", "/analytics/daily-sales", "/analytics/daily-sales", "/api/analytics/daily-sales", "RQ381/RQ384", "Klijent/clientapp/src/pages/DailySalesStatsPage.tsx", "Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.numericState.spec.ts", ["getDailySalesStats", "summarizePeriod", "AnalyticsTrustHeader"], ["summarizePeriod", "safeDivide"]),
+        new("pre-post-nivelacija", "/analytics/nivelacije-pre-post", "/analytics/nivelacije-pre-post", "/api/analytics/vendor-sales-nivelacija", "RQ385/RQ387", "Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx", "Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.spec.tsx", ["getVendorSalesNivelacija", "recommendation", "AnalyticsTrustHeader"], ["getVendorSalesNivelacija", "recommendation"]),
+        new("color-sales", "/analytics/color-sales-stats", "/analytics/color-sales-stats", "/api/analytics/color-sales-stats", "RQ389/RQ400", "Klijent/clientapp/src/pages/ColorSalesStatsPage.tsx", "Klijent/clientapp/src/pages/__tests__/ColorSalesStatsPage.spec.tsx", ["getColorSalesStats", "recommendation", "AnalyticsTrustHeader"], ["getColorSalesStats", "recommendation"]),
+        new("pre-nivelacija-priorities", "/analytics/pre-nivelacija-prioriteti", "/analytics/pre-nivelacija-prioriteti", "/api/analytics/pre-nivelacija-prioriteti", "RQ388/RQ391", "Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx", "Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx", ["getPreNivelacijaPrioriteti", "recommendationAllowed", "AnalyticsTrustHeader"], ["getPreNivelacijaPrioriteti", "recommendationAllowed"]),
+        new("supplier-footwear", "/analytics/dobavljaci-tipovi-obuce", "/analytics/supplier", "/api/analytics/vendor-sales-nivelacija", "RQ406", "Klijent/clientapp/src/pages/SupplierFootwearAnalyticsPage.tsx", "Klijent/clientapp/src/pages/__tests__/SupplierFootwearAnalyticsPage.typeInsight.spec.ts", ["getVendorSalesNivelacija", "buildTypeInsightChartProjection", "recommendationAllowed"], ["buildTypeInsightChartProjection"])
+    ];
+
+    public static readonly PilotOperationsFixtureSpec OperationsFixture = new(
+        FixtureId: OperationsFixtureId,
+        FromUtc: new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc),
+        ToUtc: new DateTime(2026, 7, 7, 0, 0, 0, DateTimeKind.Utc),
+        SalesRows:
+        [
+            new("sale-existing-101", 1, "existing", "OPS-101", "Dobavljac A", "Patike", "Crna", new DateTime(2026, 7, 1, 9, 15, 0, DateTimeKind.Utc), 3, 300m, 150m, "morning", false),
+            new("return-existing-101", 1, "existing", "OPS-101", "Dobavljac A", "Patike", "Crna", new DateTime(2026, 7, 1, 16, 30, 0, DateTimeKind.Utc), -1, -100m, -50m, "afternoon", true),
+            new("sale-imported-102", 2, "imported", "OPS-102", "Dobavljac C", "Cipele", "Plava", new DateTime(2026, 7, 2, 10, 0, 0, DateTimeKind.Utc), 2, 260m, null, "morning", false),
+            new("sale-unknown-103", 1, "existing", "OPS-103", "Nepoznato", "Nepoznato", "Nepoznato", new DateTime(2026, 7, 3, 22, 30, 0, DateTimeKind.Utc), 1, 80m, null, "off-shift", false)
+        ],
+        PriceEvents:
+        [
+            new("nivelacija-101", 1, "existing", "OPS-101", new DateTime(2026, 7, 4, 12, 0, 0, DateTimeKind.Utc), 100m, 110m, 2, 200m, 3, 270m, 1)
+        ],
+        InventoryRows:
+        [
+            new("OOS-101", 1, "existing", 0, 5, "oos_risk", true),
+            new("EMPTY-104", 2, "existing", 0, 2, "insufficient_data", false)
+        ],
+        Expected: new PilotOperationsExpectedOutput(
+            AllQuantity: 5,
+            AllRevenue: 540m,
+            ExistingQuantity: 3,
+            ExistingRevenue: 280m,
+            ImportedQuantity: 2,
+            ImportedRevenue: 260m,
+            MorningQuantity: 5,
+            MorningRevenue: 560m,
+            AfternoonQuantity: -1,
+            AfternoonRevenue: -100m,
+            OffShiftQuantity: 1,
+            OffShiftRevenue: 80m,
+            ComparablePreQuantity: 2,
+            ComparablePreRevenue: 200m,
+            ComparablePostQuantity: 3,
+            ComparablePostRevenue: 270m,
+            ComparableArticleCount: 1,
+            ComparableRevenueChangePercent: 35m,
+            UnknownBucketRevenue: 80m,
+            SupplierRevenue:
+            [
+                new("Dobavljac A", 2m, 200m, 37.037037m),
+                new("Dobavljac C", 2m, 260m, 48.148148m),
+                new("Nepoznato", 1m, 80m, 14.814815m)
+            ],
+            ShoeTypeRevenue:
+            [
+                new("Patike", 2m, 200m, 37.037037m),
+                new("Cipele", 2m, 260m, 48.148148m),
+                new("Nepoznato", 1m, 80m, 14.814815m)
+            ],
+            ColorRevenue:
+            [
+                new("Crna", 2m, 200m, 37.037037m),
+                new("Plava", 2m, 260m, 48.148148m),
+                new("Nepoznato", 1m, 80m, 14.814815m)
+            ],
+            DailyTotals:
+            [
+                new("2026-07-01", 2m, 200m),
+                new("2026-07-02", 2m, 260m),
+                new("2026-07-03", 1m, 80m)
+            ],
+            PreNivelacijaCandidateCount: 1,
+            InventoryPopulationCount: 2,
+            InventoryAlertCount: 1,
+            InventoryRecommendationAllowedCount: 1,
+            InventoryRiskSku: "OOS-101",
+            InventoryBlockedSku: "EMPTY-104"));
 
     public static readonly DateTime ProductDecisionFromUtc = new(2026, 5, 21, 0, 0, 0, DateTimeKind.Utc);
     public static readonly DateTime ProductDecisionToUtc = new(2026, 6, 19, 0, 0, 0, DateTimeKind.Utc);
@@ -426,6 +510,106 @@ internal static class PilotAnalyticsSeedPack
         };
     }
 }
+
+internal sealed record PilotOperationsRouteSpec(
+    string Family,
+    string MenuPath,
+    string CanonicalPath,
+    string EndpointFamily,
+    string ExistingOwner,
+    string FrontendPage,
+    string FrontendProofFile,
+    IReadOnlyList<string> FrontendPageTokens,
+    IReadOnlyList<string> FrontendProofTokens);
+
+internal sealed record PilotOperationsFixtureSpec(
+    string FixtureId,
+    DateTime FromUtc,
+    DateTime ToUtc,
+    IReadOnlyList<PilotOperationsSalesFact> SalesRows,
+    IReadOnlyList<PilotOperationsPriceEvent> PriceEvents,
+    IReadOnlyList<PilotOperationsInventoryFact> InventoryRows,
+    PilotOperationsExpectedOutput Expected);
+
+internal sealed record PilotOperationsSalesFact(
+    string RowId,
+    int StoreId,
+    string DataOrigin,
+    string Sku,
+    string Supplier,
+    string ShoeType,
+    string Color,
+    DateTime OccurredAtUtc,
+    decimal Quantity,
+    decimal Revenue,
+    decimal? CostRsd,
+    string Shift,
+    bool IsReturn);
+
+internal sealed record PilotOperationsPriceEvent(
+    string EventId,
+    int StoreId,
+    string DataOrigin,
+    string Sku,
+    DateTime EventDateUtc,
+    decimal PrePrice,
+    decimal PostPrice,
+    decimal PreQuantity,
+    decimal PreRevenue,
+    decimal PostQuantity,
+    decimal PostRevenue,
+    int ComparableArticleCount);
+
+internal sealed record PilotOperationsInventoryFact(
+    string Sku,
+    int StoreId,
+    string DataOrigin,
+    decimal OnHandQuantity,
+    decimal MinimumQuantity,
+    string ExpectedState,
+    bool RecommendationAllowed);
+
+internal sealed record PilotOperationsExpectedOutput(
+    decimal AllQuantity,
+    decimal AllRevenue,
+    decimal ExistingQuantity,
+    decimal ExistingRevenue,
+    decimal ImportedQuantity,
+    decimal ImportedRevenue,
+    decimal MorningQuantity,
+    decimal MorningRevenue,
+    decimal AfternoonQuantity,
+    decimal AfternoonRevenue,
+    decimal OffShiftQuantity,
+    decimal OffShiftRevenue,
+    decimal ComparablePreQuantity,
+    decimal ComparablePreRevenue,
+    decimal ComparablePostQuantity,
+    decimal ComparablePostRevenue,
+    int ComparableArticleCount,
+    decimal ComparableRevenueChangePercent,
+    decimal UnknownBucketRevenue,
+    IReadOnlyList<PilotOperationsDimensionExpected> SupplierRevenue,
+    IReadOnlyList<PilotOperationsDimensionExpected> ShoeTypeRevenue,
+    IReadOnlyList<PilotOperationsDimensionExpected> ColorRevenue,
+    IReadOnlyList<PilotOperationsDailyExpected> DailyTotals,
+    int PreNivelacijaCandidateCount,
+    int InventoryPopulationCount,
+    int InventoryAlertCount,
+    int InventoryRecommendationAllowedCount,
+    string InventoryRiskSku,
+    string InventoryBlockedSku);
+
+internal sealed record PilotOperationsDimensionExpected(
+    string Key,
+    decimal Quantity,
+    decimal Revenue,
+    decimal RevenueSharePercent);
+
+internal sealed record PilotOperationsDailyExpected(
+    string Date,
+    decimal Quantity,
+    decimal Revenue);
 
 internal sealed record PilotAnalyticsSeedFamilySpec(
     string Family,

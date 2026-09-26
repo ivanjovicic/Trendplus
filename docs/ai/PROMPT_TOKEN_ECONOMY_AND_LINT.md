@@ -95,12 +95,12 @@ Stop if a smaller prompt can continue the work
 Most Trendplus implementation prompts should read only:
 
 1. `docs/ai/AGENT_START_HERE.md`
-2. one routing/index document, e.g. `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md`
-3. the target prompt section
-4. one relevant contract/safety doc
+2. `MASTER_ROADMAP.md` only long enough to resolve the owner/current pointer
+3. the target prompt section from its canonical queue/addendum
+4. one relevant contract/safety doc when the target requires it
 5. source/test files in `Scope only`
 
-Do not read every audit/addendum unless the routing/index says the target prompt has a read-together dependency.
+Do not preload a historical priority index or every audit/addendum. Use `PROMPT_QUEUE_PROTOCOL.md` Idle recovery only when selection is needed or the current pointer is `none`.
 
 ## Prompt lint checklist
 

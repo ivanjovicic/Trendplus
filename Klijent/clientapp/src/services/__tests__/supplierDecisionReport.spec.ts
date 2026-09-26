@@ -93,6 +93,50 @@ describe("buildSupplierDecisionReportPayload", () => {
     expect(payload.metadata.find((row) => row.key === "observedPeriodFromUtc")?.value).toBe("2026-08-01T00:00:00Z");
   });
 
+  it("uses trust effective dates separately from the observed summary dates", () => {
+    const payload = buildSupplierDecisionReportPayload(buildInput({
+      summary: {
+        ...buildInput().summary!,
+        from: "2026-08-10T00:00:00Z",
+        to: "2026-08-20T23:59:59Z",
+      } as never,
+      trustMetadata: {
+        ...buildInput().trustMetadata!,
+        requestedPeriodFrom: "2026-08-01T00:00:00Z",
+        requestedPeriodTo: "2026-08-31T23:59:59Z",
+        effectiveFrom: "2026-07-01T00:00:00Z",
+        effectiveTo: "2026-08-31T23:59:59Z",
+        effectiveDataset: "90d",
+        effectivePeriodLabel: "Poslednjih 90 dana",
+      },
+    }));
+
+    expect(payload.metadata.find((row) => row.key === "effectivePeriodFromUtc")?.value).toBe("2026-07-01T00:00:00Z");
+    expect(payload.metadata.find((row) => row.key === "effectivePeriodToUtc")?.value).toBe("2026-08-31T23:59:59Z");
+    expect(payload.metadata.find((row) => row.key === "observedPeriodFromUtc")?.value).toBe("2026-08-10T00:00:00Z");
+    expect(payload.rows.find((row) => row.section === "Header" && row.item === "Traženi period")?.value).toContain("1. 8. 2026.");
+    expect(payload.rows.find((row) => row.section === "Header" && row.item === "Posmatrani period")?.value).toContain("10. 8. 2026.");
+  });
+
+  it("keeps the active supplier decision filters visible in report rows and metadata", () => {
+    const payload = buildSupplierDecisionReportPayload(buildInput({
+      category: "Patike",
+      gender: "Muško",
+      seasonId: 7,
+      minRevenue: 5000,
+      onlyHighConfidence: true,
+      excludeOosBeforeMarkdown: true,
+    }));
+
+    expect(payload.rows.find((row) => row.section === "Filteri" && row.item === "Kategorija")?.value).toBe("Patike");
+    expect(payload.rows.find((row) => row.section === "Filteri" && row.item === "Pol")?.value).toBe("Muško");
+    expect(payload.rows.find((row) => row.section === "Filteri" && row.item === "Sezona")?.value).toBe("7");
+    expect(payload.rows.find((row) => row.section === "Filteri" && row.item === "Minimalni prihod")?.value).toBe("5.000 RSD");
+    expect(payload.rows.find((row) => row.section === "Filteri" && row.item === "Samo visoka pouzdanost")?.value).toBe("Da");
+    expect(payload.rows.find((row) => row.section === "Filteri" && row.item === "Isključi artikle bez zaliha pre sniženja")?.value).toBe("Da");
+    expect(payload.filters.find((row) => row.key === "excludeOosBeforeMarkdown")?.value).toBe(true);
+  });
+
   it("keeps the full-price-weighted margin contribution value and definition across report surfaces", () => {
     const base = buildInput();
     const payload = buildSupplierDecisionReportPayload({

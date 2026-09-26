@@ -7,6 +7,8 @@ public readonly record struct NivelacijaSplitSnapshot(
     int PostQuantity,
     decimal RevenueWithSplit,
     decimal ComparableRevenueWithSplit,
+    decimal ComparablePreRevenue,
+    decimal ComparablePostRevenue,
     int ArticleCountWithNivelacija,
     int ComparableArticleCount,
     int ComparablePreQuantity,
@@ -16,6 +18,11 @@ public readonly record struct NivelacijaSplitSnapshot(
     double? RevenueImpactPct,
     double? UnitsImpactPct,
     bool HasComparableSignal,
+    string? SignalNote);
+
+public readonly record struct NivelacijaComparableSignal(
+    double? RevenueImpactPct,
+    double? UnitsImpactPct,
     string? SignalNote);
 
 public static class AnalyticsNivelacijaSplitPolicy
@@ -105,6 +112,47 @@ public static class AnalyticsNivelacijaSplitPolicy
             ? Math.Round((double)((comparablePreRevenue + comparablePostRevenue) / totalRevenue * 100m), 2)
             : (double?)null;
 
+        var comparableSignal = EvaluateComparableSignal(
+            comparablePreRevenue,
+            comparablePostRevenue,
+            comparablePreQuantity,
+            comparablePostQuantity,
+            comparableArticleCount,
+            totalRevenue);
+
+        return new NivelacijaSplitSnapshot(
+            PreRevenue: Math.Round(preRevenue, 2),
+            PreQuantity: preQuantity,
+            PostRevenue: Math.Round(postRevenue, 2),
+            PostQuantity: postQuantity,
+            RevenueWithSplit: Math.Round(revenueWithSplit, 2),
+            ComparableRevenueWithSplit: Math.Round(comparablePreRevenue + comparablePostRevenue, 2),
+            ComparablePreRevenue: Math.Round(comparablePreRevenue, 2),
+            ComparablePostRevenue: Math.Round(comparablePostRevenue, 2),
+            ArticleCountWithNivelacija: articleCountWithNivelacija,
+            ComparableArticleCount: comparableArticleCount,
+            ComparablePreQuantity: comparablePreQuantity,
+            ComparablePostQuantity: comparablePostQuantity,
+            RevenueCoveragePct: revenueCoveragePct,
+            ComparableRevenueCoveragePct: comparableRevenueCoveragePct,
+            RevenueImpactPct: comparableSignal.RevenueImpactPct,
+            UnitsImpactPct: comparableSignal.UnitsImpactPct,
+            HasComparableSignal: comparableSignal.RevenueImpactPct.HasValue && comparableSignal.UnitsImpactPct.HasValue,
+            SignalNote: comparableSignal.SignalNote);
+    }
+
+    public static NivelacijaComparableSignal EvaluateComparableSignal(
+        decimal comparablePreRevenue,
+        decimal comparablePostRevenue,
+        int comparablePreQuantity,
+        int comparablePostQuantity,
+        int comparableArticleCount,
+        decimal totalRevenue)
+    {
+        var comparableRevenueCoveragePct = totalRevenue > 0m
+            ? Math.Round((double)((comparablePreRevenue + comparablePostRevenue) / totalRevenue * 100m), 2)
+            : (double?)null;
+
         string? signalNote = null;
         if (comparableArticleCount == 0)
         {
@@ -127,22 +175,6 @@ public static class AnalyticsNivelacijaSplitPolicy
             ? Math.Round((comparablePostQuantity - comparablePreQuantity) / (double)comparablePreQuantity * 100d, 2)
             : (double?)null;
 
-        return new NivelacijaSplitSnapshot(
-            PreRevenue: Math.Round(preRevenue, 2),
-            PreQuantity: preQuantity,
-            PostRevenue: Math.Round(postRevenue, 2),
-            PostQuantity: postQuantity,
-            RevenueWithSplit: Math.Round(revenueWithSplit, 2),
-            ComparableRevenueWithSplit: Math.Round(comparablePreRevenue + comparablePostRevenue, 2),
-            ArticleCountWithNivelacija: articleCountWithNivelacija,
-            ComparableArticleCount: comparableArticleCount,
-            ComparablePreQuantity: comparablePreQuantity,
-            ComparablePostQuantity: comparablePostQuantity,
-            RevenueCoveragePct: revenueCoveragePct,
-            ComparableRevenueCoveragePct: comparableRevenueCoveragePct,
-            RevenueImpactPct: revenueImpactPct,
-            UnitsImpactPct: unitsImpactPct,
-            HasComparableSignal: revenueImpactPct.HasValue && unitsImpactPct.HasValue,
-            SignalNote: signalNote);
+        return new NivelacijaComparableSignal(revenueImpactPct, unitsImpactPct, signalNote);
     }
 }

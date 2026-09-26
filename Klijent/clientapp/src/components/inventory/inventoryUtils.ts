@@ -1,4 +1,4 @@
-import type { InventoryActionSuggestion, InventoryInsightItem, InventoryListItem, InventoryReportScheduleInput, InventorySnapshotRowState, StoreOption, SupplierFilterOption } from "../../types/analytics";
+import type { ForecastRowDto, InventoryActionDatasetContext, InventoryActionSuggestion, InventoryInsightItem, InventoryListItem, InventoryReportScheduleInput, InventorySnapshotRowState, StoreOption, SupplierFilterOption } from "../../types/analytics";
 import type { DataScope } from "../../utils/dataScope";
 import type { InventoryRow } from "./types";
 import { TONE, resolveTone } from "./toneMap";
@@ -15,6 +15,8 @@ type InventoryListItemWithSignals = InventoryListItem & {
   dataQualityStatus?: string | null;
   reasonCodes?: string[] | null;
   contextStatus?: "loadingContext" | "contextMissing" | null;
+  supplierName?: string | null;
+  storeName?: string | null;
 };
 
 export const WEEKDAY_OPTIONS = [
@@ -26,6 +28,54 @@ export const WEEKDAY_OPTIONS = [
   { value: 6, label: "Subota" },
   { value: 0, label: "Nedelja" },
 ];
+
+export const INVENTORY_ACTION_SOURCE_KEY_SCHEMA_VERSION = "v2";
+
+export function inventoryActionSourceKeySchemaVersion(sourceKey: string | null | undefined): "v2" | "legacy" {
+  return sourceKey?.startsWith(`inventory|${INVENTORY_ACTION_SOURCE_KEY_SCHEMA_VERSION}|`) ? "v2" : "legacy";
+}
+
+function encodeInventoryActionKeyPart(value: string): string {
+  return encodeURIComponent(value.trim().toLowerCase());
+}
+
+function encodeInventoryActionContextPart(value: string | null | undefined): string {
+  return encodeInventoryActionKeyPart(value?.trim() || "unknown");
+}
+
+function formatInventoryActionStore(value: number | null | undefined): string {
+  return value != null && Number.isInteger(value) && value > 0 ? String(value) : "all";
+}
+
+/**
+ * Canonical Inventory action identity. Keep the field order in sync with
+ * Application.Inventory.Models.InventoryActionSourceKey; equality is the
+ * idempotency contract, not the display label.
+ */
+export function buildInventoryActionSourceKey(
+  actionKind: string,
+  articleId: number,
+  context: InventoryActionDatasetContext = {},
+): string {
+  if (!Number.isInteger(articleId) || articleId <= 0) {
+    throw new Error("Inventory action source key requires a positive article id.");
+  }
+
+  return [
+    "inventory",
+    INVENTORY_ACTION_SOURCE_KEY_SCHEMA_VERSION,
+    `kind=${encodeInventoryActionKeyPart(actionKind)}`,
+    `article=${articleId}`,
+    `store=${formatInventoryActionStore(context.storeId)}`,
+    `size=${context.sizeCode?.trim() ? encodeInventoryActionKeyPart(context.sizeCode) : "all"}`,
+    `fromStore=${formatInventoryActionStore(context.fromStoreId)}`,
+    `toStore=${formatInventoryActionStore(context.toStoreId)}`,
+    `scope=${encodeInventoryActionContextPart(context.dataScope)}`,
+    `periodFrom=${encodeInventoryActionContextPart(context.periodFrom)}`,
+    `periodTo=${encodeInventoryActionContextPart(context.periodTo)}`,
+    `snapshot=${encodeInventoryActionContextPart(context.snapshotGeneration)}`,
+  ].join("|");
+}
 
 export function formatNumber(value: number | null | undefined, digits = 0) {
   if (value == null || Number.isNaN(value)) return "Nije dostupno";
@@ -287,8 +337,12 @@ export function buildInventoryRow(item: InventoryListItemWithSignals, stores: St
     item.minimalnaKolicina == null || !Number.isFinite(item.minimalnaKolicina)
       ? null
       : item.minimalnaKolicina;
-  const supplierName = suppliers.find((entry) => entry.supplierId === item.idDobavljac)?.supplierName ?? (item.idDobavljac != null ? `Dobavljac #${item.idDobavljac}` : "Nerasporedjen");
-  const storeName = stores.find((entry) => entry.storeId === item.idObjekat)?.storeName ?? (item.idObjekat != null ? `Objekat #${item.idObjekat}` : "Sve lokacije");
+  const supplierName = suppliers.find((entry) => entry.supplierId === item.idDobavljac)?.supplierName
+    ?? item.supplierName
+    ?? (item.idDobavljac != null ? `Dobavljač #${item.idDobavljac}` : "Neraspoređen");
+  const storeName = stores.find((entry) => entry.storeId === item.idObjekat)?.storeName
+    ?? item.storeName
+    ?? (item.idObjekat != null ? `Objekat #${item.idObjekat}` : "Sve lokacije");
   const unitCost = item.nabavnaCena ?? null;
   // Missing cost + missing backend estimate must stay unknown (not fake zero capital),
   // except when on-hand quantity is already a measured zero (true zero capital).
@@ -351,10 +405,12 @@ export function buildRowFromInsightItem(item: InventoryInsightItem, stores: Stor
     naziv: item.naziv,
     kolicina: item.quantity,
     minimalnaKolicina: item.minimum,
-    nabavnaCena: item.estimatedValue > 0 && item.quantity > 0 ? item.estimatedValue / item.quantity : null,
+    nabavnaCena: item.unitCost,
     estimatedValue: item.estimatedValue,
-    idObjekat: stores.find((store) => store.storeName === item.storeName)?.storeId ?? null,
-    idDobavljac: suppliers.find((supplier) => supplier.supplierName === item.supplierName)?.supplierId ?? null,
+    idObjekat: item.storeId,
+    idDobavljac: item.supplierId,
+    supplierName: item.supplierName,
+    storeName: item.storeName,
     stockCoverDays: item.stockCoverDays ?? null,
     stockCoverStatus: item.stockCoverStatus,
     stockCoverStatusLabel: item.stockCoverStatusLabel,
@@ -403,6 +459,7 @@ export function resolveInventoryExposureRsdFromRow(row: InventoryRow): number | 
 
 export function buildInventoryWorkflowCentralQueueMetadata(
   item: InventoryActionSuggestion,
+  context: InventoryActionDatasetContext = {},
 ): Record<string, unknown> {
   const estimatedValue = resolveInventoryExposureRsd(item.estimatedValue, item.costMissing);
   const valueMetadata = item.estimatedValueBasis === "suggested_action_cost"
@@ -417,6 +474,9 @@ export function buildInventoryWorkflowCentralQueueMetadata(
 
   return {
     suggestionKey: item.suggestionKey,
+    sourceKeySchemaVersion: inventoryActionSourceKeySchemaVersion(item.suggestionKey),
+    legacySourceKey: inventoryActionSourceKeySchemaVersion(item.suggestionKey) === "legacy" ? item.suggestionKey : null,
+    datasetContext: item.datasetContext ?? context,
     actionType: item.actionType,
     suggestedQty: item.suggestedQty,
     forecastDemandQty: item.forecastDemandQty ?? item.suggestedQty,
@@ -458,6 +518,7 @@ export function buildForecastRestockSuggestion(
   signal: ForecastRestockSignal,
   stores: StoreOption[],
   daysSinceMovement: number | null = null,
+  datasetContext: InventoryActionDatasetContext = {},
 ): InventoryActionSuggestion {
   const forecast7d = signal.forecast7d ?? 0;
   const probabilityOfOOSIn7d = signal.probabilityOfOOSIn7d ?? 0;
@@ -466,10 +527,14 @@ export function buildForecastRestockSuggestion(
   const costMissing = row.unitCost == null || row.unitCost <= 0;
 
   return {
-    suggestionKey: `forecast-${signal.skuId}-${signal.storeId}-${signal.sizeCode}`,
+    suggestionKey: buildInventoryActionSourceKey("dopuna", signal.skuId, {
+      ...datasetContext,
+      storeId: signal.storeId,
+      sizeCode: signal.sizeCode,
+    }),
     actionType: "dopuna",
     priority: probabilityOfOOSIn7d > 0.7 ? "critical" : "high",
-    label: `Predlozena dopuna za ${row.naziv}`,
+    label: `Predložena dopuna za ${row.naziv}`,
     reason: `Forecast 7d je ${forecast7d.toFixed(1)} kom, a OOS rizik ${Math.round(probabilityOfOOSIn7d * 100)}%.`,
     status: "pending",
     artikalId: signal.skuId,
@@ -483,6 +548,11 @@ export function buildForecastRestockSuggestion(
     estimatedValueBasis: "suggested_action_cost",
     costMissing,
     daysSinceMovement,
+    datasetContext: {
+      ...datasetContext,
+      storeId: signal.storeId,
+      sizeCode: signal.sizeCode,
+    },
     note: daysSinceMovement == null
       ? `Automatski dodat iz sekcije prognoze za veličinu ${signal.sizeCode} kao signal prognozirane potražnje. Dana bez kretanja: nedostupno (detalj nije učitan ili nema evidencije zastarelosti).`
       : `Automatski dodat iz forecast sekcije za velicinu ${signal.sizeCode} kao signal prognozirane potraznje. Dana bez kretanja: ${daysSinceMovement} dana.`,
@@ -524,7 +594,7 @@ export function getRecommendation(row: InventoryRow) {
     return `Planirati dopunu od najmanje ${formatNumber(Math.max(row.reorderGap ?? 0, 1))} komada.`;
   }
   if (row.quantity >= Math.max(row.minimum * 3, 15)) {
-    return "Zaliha je komforna; proveri da li je kapital previse vezan u robi.";
+    return "Zaliha je komforna; proveri da li je kapital previše vezan u robi.";
   }
   return "Zaliha je stabilna i ne zahteva hitnu akciju.";
 }
@@ -734,6 +804,80 @@ export function getAgingTone(bucket: string) {
 
 export function getAbcTone(bucket: string) {
   return resolveTone(TONE.abc, bucket, TONE.abc.C);
+}
+
+export type InventoryForecastRiskAggregateBasis =
+  | "max-across-sizes"
+  | "unavailable-multi-store"
+  | "no-matching-rows"
+  | "partial-missing-risk";
+
+export type InventoryForecastRiskAggregate = {
+  oosRisk: number | null;
+  overstockRisk: number | null;
+  basis: InventoryForecastRiskAggregateBasis;
+  matchedSizeCount: number;
+};
+
+/** Maps sku-store-size forecast rows onto one inventory list row without cross-store max inflation. */
+export function aggregateInventoryForecastRiskForRow(
+  row: { id: number; idObjekat?: number | null },
+  forecastItems: ForecastRowDto[],
+  options?: { selectedStoreId?: number | null },
+): InventoryForecastRiskAggregate {
+  const rowStoreId = row.idObjekat ?? null;
+  let candidates = forecastItems.filter((item) => item.skuId === row.id);
+
+  if (rowStoreId != null) {
+    candidates = candidates.filter((item) => item.storeId === rowStoreId);
+  } else if (options?.selectedStoreId != null) {
+    candidates = candidates.filter((item) => item.storeId === options.selectedStoreId);
+  } else {
+    const distinctStores = new Set(candidates.map((item) => item.storeId));
+    if (distinctStores.size > 1) {
+      return {
+        oosRisk: null,
+        overstockRisk: null,
+        basis: "unavailable-multi-store",
+        matchedSizeCount: candidates.length,
+      };
+    }
+  }
+
+  if (candidates.length === 0) {
+    return {
+      oosRisk: null,
+      overstockRisk: null,
+      basis: "no-matching-rows",
+      matchedSizeCount: 0,
+    };
+  }
+
+  let oosRiskMax = Number.NEGATIVE_INFINITY;
+  let overstockRiskMax = Number.NEGATIVE_INFINITY;
+  let hasOos = false;
+  let hasOverstock = false;
+  for (const item of candidates) {
+    if (item.probabilityOfOOSIn7d != null) {
+      hasOos = true;
+      oosRiskMax = Math.max(oosRiskMax, item.probabilityOfOOSIn7d);
+    }
+    if (item.overstockRisk != null) {
+      hasOverstock = true;
+      overstockRiskMax = Math.max(overstockRiskMax, item.overstockRisk);
+    }
+  }
+
+  const hasPartialMissing = candidates.some(
+    (item) => item.probabilityOfOOSIn7d == null || item.overstockRisk == null,
+  );
+
+  return {
+    oosRisk: hasOos && Number.isFinite(oosRiskMax) ? oosRiskMax : null,
+    overstockRisk: hasOverstock && Number.isFinite(overstockRiskMax) ? overstockRiskMax : null,
+    basis: hasPartialMissing ? "partial-missing-risk" : "max-across-sizes",
+    matchedSizeCount: candidates.length,
+  };
 }
 
 /** OOS/overstock risk sort is applied only to the currently loaded inventory page. */

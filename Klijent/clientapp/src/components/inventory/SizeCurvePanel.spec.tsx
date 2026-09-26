@@ -96,7 +96,7 @@ describe("SizeCurvePanel evidence states", () => {
   it("sanitizes technical size curve errors", () => {
     renderPanel(null, "System.InvalidOperationException: provider failure");
 
-    expect(screen.getByText("Podaci trenutno nisu dostupni. Proverite kvalitet podataka i pokušajte ponovo.")).toBeInTheDocument();
+    expect(screen.getByText("Signal raspodele veličina trenutno nije dostupan.")).toBeInTheDocument();
     expect(screen.queryByText(/InvalidOperationException/)).not.toBeInTheDocument();
   });
 });

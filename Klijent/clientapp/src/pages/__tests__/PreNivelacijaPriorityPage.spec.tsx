@@ -5,9 +5,20 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import PreNivelacijaPriorityPage from "../PreNivelacijaPriorityPage";
 import { decisionColumns } from "../preNivelacijaDecision";
 import { PreNivelacijaApiError } from "../../services/preNivelacijaApi";
+import { AnalyticsResponseValidationError } from "../../validation/analyticsResponseValidation";
 
 vi.mock("recharts", () => ({
-  BarChart: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  BarChart: ({
+    children,
+    data,
+  }: {
+    children?: ReactNode;
+    data?: Array<{ weekOverWeekRiskDeltaPct?: number | null }>;
+  }) => (
+    <div data-testid="supplier-action-chart" data-wow={JSON.stringify((data ?? []).map((row) => row.weekOverWeekRiskDeltaPct ?? null))}>
+      {children}
+    </div>
+  ),
   ResponsiveContainer: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   CartesianGrid: () => <div />,
   XAxis: () => <div />,
@@ -20,8 +31,20 @@ vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({
   default: ({ title }: { title: string }) => <h1 data-testid="analytics-trust-header">{title}</h1>,
 }));
 vi.mock("../../components/analytics/AnalyticsTableToolbar", () => ({
-  default: ({ rows }: { rows: Array<{ sku: string }> }) => (
-    <output data-testid="export-row-skus" data-skus={rows.map((row) => row.sku).join(",")} />
+  default: ({
+    rows,
+    filters,
+  }: {
+    rows: Array<{ sku: string }>;
+    filters?: Array<{ key: string; label: string; value: string | number | boolean | null | undefined }>;
+  }) => (
+    <>
+      <output data-testid="export-row-skus" data-skus={rows.map((row) => row.sku).join(",")} />
+      <output
+        data-testid="export-filters"
+        data-filters={JSON.stringify(filters ?? [])}
+      />
+    </>
   ),
 }));
 vi.mock("../../components/analytics/AnalyticsErrorState", () => ({
@@ -104,21 +127,106 @@ function makeCandidate(overrides: Record<string, unknown> = {}) {
 }
 
 function buildFilterFacetsFromCandidates(candidates: Array<ReturnType<typeof makeCandidate>>) {
-  const seasons = new Map<number, string>();
-  const footwearTypes = new Map<number, string>();
+  const suppliers = new Map<number, { label: string; count: number }>();
+  const seasons = new Map<number, { label: string; count: number }>();
+  const footwearTypes = new Map<number, { label: string; count: number }>();
 
   candidates.forEach((candidate) => {
+    if (candidate.supplierId != null && candidate.supplierName && candidate.supplierName !== "N/A") {
+      const existing = suppliers.get(candidate.supplierId);
+      suppliers.set(candidate.supplierId, {
+        label: candidate.supplierName,
+        count: (existing?.count ?? 0) + 1,
+      });
+    }
     if (candidate.seasonId != null && candidate.season && candidate.season !== "N/A") {
-      seasons.set(candidate.seasonId, candidate.season);
+      const existing = seasons.get(candidate.seasonId);
+      seasons.set(candidate.seasonId, {
+        label: candidate.season,
+        count: (existing?.count ?? 0) + 1,
+      });
     }
     if (candidate.footwearTypeId != null && candidate.footwearType && candidate.footwearType !== "N/A") {
-      footwearTypes.set(candidate.footwearTypeId, candidate.footwearType);
+      const existing = footwearTypes.get(candidate.footwearTypeId);
+      footwearTypes.set(candidate.footwearTypeId, {
+        label: candidate.footwearType,
+        count: (existing?.count ?? 0) + 1,
+      });
     }
   });
 
   return {
-    seasons: [...seasons.entries()].map(([id, label]) => ({ id, label })).sort((a, b) => a.label.localeCompare(b.label, "sr")),
-    footwearTypes: [...footwearTypes.entries()].map(([id, label]) => ({ id, label })).sort((a, b) => a.label.localeCompare(b.label, "sr")),
+    suppliers: [...suppliers.entries()].map(([id, value]) => ({ id, label: value.label, count: value.count })).sort((a, b) => a.label.localeCompare(b.label, "sr")),
+    seasons: [...seasons.entries()].map(([id, value]) => ({ id, label: value.label, count: value.count })).sort((a, b) => a.label.localeCompare(b.label, "sr")),
+    footwearTypes: [...footwearTypes.entries()].map(([id, value]) => ({ id, label: value.label, count: value.count })).sort((a, b) => a.label.localeCompare(b.label, "sr")),
+  };
+}
+
+function buildSupplierActionShareFromLeaderboard(
+  suppliers: Array<{
+    supplierId?: number | null;
+    supplierName: string;
+    actionScore: number;
+    weekOverWeekRiskDeltaPct?: number | null;
+  }>,
+) {
+  const scored = [...suppliers]
+    .filter((supplier) => supplier.actionScore > 0)
+    .sort((left, right) => right.actionScore - left.actionScore);
+  const totalActionScore = scored.reduce((sum, supplier) => sum + supplier.actionScore, 0);
+  if (totalActionScore <= 0) {
+    return {
+      shareUnit: "percentage_points",
+      weekOverWeekRiskDeltaUnit: "percentage_points",
+      denominatorPolicy: "leaderboard_action_score_full_population_top_seven_plus_other",
+      denominatorLabel: "Nema pozitivnog action score-a u leaderboard-u; udeo u akciji nije dostupan.",
+      leaderboardSupplierCount: 0,
+      visibleSupplierCount: 0,
+      totalActionScore: 0,
+      includedActionScore: 0,
+      otherActionScore: 0,
+      otherSharePct: null,
+      segments: [],
+    };
+  }
+
+  const visibleSuppliers = scored.slice(0, 7);
+  const includedActionScore = visibleSuppliers.reduce((sum, supplier) => sum + supplier.actionScore, 0);
+  const otherActionScore = totalActionScore - includedActionScore;
+  const segments = visibleSuppliers.map((supplier) => ({
+    supplierId: supplier.supplierId ?? null,
+    supplierName: supplier.supplierName,
+    actionSharePct: Number(((supplier.actionScore / totalActionScore) * 100).toFixed(2)),
+    weekOverWeekRiskDeltaPct: supplier.weekOverWeekRiskDeltaPct ?? null,
+    weekOverWeekRiskDeltaUnit: "percentage_points",
+    isOther: false,
+  }));
+
+  let otherSharePct: number | null = null;
+  if (otherActionScore > 0) {
+    otherSharePct = Number(((otherActionScore / totalActionScore) * 100).toFixed(2));
+    segments.push({
+      supplierId: null,
+      supplierName: "Ostali",
+      actionSharePct: otherSharePct,
+      weekOverWeekRiskDeltaPct: null,
+      weekOverWeekRiskDeltaUnit: "percentage_points",
+      isOther: true,
+    });
+  }
+
+  return {
+    shareUnit: "percentage_points",
+    weekOverWeekRiskDeltaUnit: "percentage_points",
+    denominatorPolicy: "leaderboard_action_score_full_population_top_seven_plus_other",
+    denominatorLabel: "Udeo u akciji u odnosu na ukupan action score svih dobavljača u leaderboard-u; prikaz top 7 plus Ostali kada postoji preostali udeo.",
+    leaderboardSupplierCount: scored.length,
+    visibleSupplierCount: visibleSuppliers.length,
+    totalActionScore,
+    includedActionScore,
+    otherActionScore,
+    otherSharePct,
+    segments,
   };
 }
 
@@ -143,6 +251,20 @@ function makeResponse(candidates = [makeCandidate(), makeCandidate({
     reasonCodes: ["sparse_sales"],
   },
 })]) {
+  const supplierLeaderboard = [
+    {
+      supplierId: 11,
+      supplierName: "Dobavljac A",
+      highPrioritySkuCount: 1,
+      candidateSkuCount: candidates.length,
+      stockUnitsAtRisk: 12,
+      estimatedAvoidableMarkdownLoss: 12500,
+      expectedHighlightRevenueUplift: 18000,
+      actionScore: 92,
+      weekOverWeekRiskDeltaPct: 4,
+    },
+  ];
+
   return {
     generatedAtUtc: "2026-06-19T10:00:00Z",
     formulaVersion: "1.0",
@@ -150,25 +272,25 @@ function makeResponse(candidates = [makeCandidate(), makeCandidate({
     summary: {
       supplierCount: 1,
       candidatesCount: candidates.length,
-      highPriorityCount: 1,
+      highPriorityCount: candidates.filter((candidate) => candidate.priorityBand.toLowerCase() === "high").length,
+      increaseFocusCount: candidates.filter((candidate) => candidate.recommendation.status === "increase_focus").length,
+      maintainCount: candidates.filter((candidate) => candidate.recommendation.status === "maintain").length,
+      reviewCount: candidates.filter((candidate) => candidate.recommendation.status === "review").length,
+      doNotTrustCount: candidates.filter((candidate) => candidate.recommendation.status === "do_not_trust").length,
+      insufficientDataCount: candidates.filter((candidate) => candidate.recommendation.status === "insufficient_data").length,
       totalStockAtRisk: 12,
+      totalStockAtRiskCoverageEligible: candidates.filter((candidate) => candidate.priorityBand.toLowerCase() === "high").length,
+      totalStockAtRiskCoverageTotal: candidates.length,
       estimatedAvoidableMarkdownLoss: 12500,
+      estimatedAvoidableMarkdownLossCoverageEligible: 1,
+      estimatedAvoidableMarkdownLossCoverageTotal: candidates.length,
       expectedHighlightRevenueUplift: 18000,
+      expectedHighlightRevenueUpliftCoverageEligible: 1,
+      expectedHighlightRevenueUpliftCoverageTotal: candidates.length,
       averagePreNivelacijaScore: 74,
     },
-    supplierLeaderboard: [
-      {
-        supplierId: 11,
-        supplierName: "Dobavljac A",
-        highPrioritySkuCount: 1,
-        candidateSkuCount: candidates.length,
-        stockUnitsAtRisk: 12,
-        estimatedAvoidableMarkdownLoss: 12500,
-        expectedHighlightRevenueUplift: 18000,
-        actionScore: 92,
-        weekOverWeekRiskDeltaPct: 4,
-      },
-    ],
+    supplierLeaderboard,
+    supplierActionShare: buildSupplierActionShareFromLeaderboard(supplierLeaderboard),
     candidates,
     filterFacets: buildFilterFacetsFromCandidates(candidates),
     queues: {
@@ -184,8 +306,11 @@ function makeResponse(candidates = [makeCandidate(), makeCandidate({
           dueDateUtc: "2026-06-20T00:00:00Z",
         },
       ],
+      highlightNowTotal: 1,
       monitor: [],
+      monitorTotal: 0,
       likelyMarkdownSoon: [],
+      likelyMarkdownSoonTotal: 0,
     },
     alerts: [],
     page: 1,
@@ -213,31 +338,70 @@ function HistoryControls() {
   );
 }
 
+function buildPagedFocusResponse(query: { focus?: string; page?: number; pageSize?: number } = {}) {
+  const allCandidates = [
+    makeCandidate(),
+    makeCandidate({
+      artikalId: 102,
+      sku: "SKU-102",
+      supplierName: "Dobavljac B",
+      category: "Sandale",
+      footwearType: "Open Toe",
+      season: "Jesen/Zima",
+      priorityBand: "medium",
+      stockUnits: 20,
+      daysSinceLastSale: 12,
+      preNivelacijaScore: 63,
+      recommendation: {
+        status: "review",
+        label: "Pregled",
+        summary: "Signal trazi rucnu proveru.",
+        confidencePct: 64,
+        reliabilityPct: 61,
+        dataQualityStatus: "warning",
+        reasonCodes: ["sparse_sales"],
+      },
+    }),
+  ];
+  const page = query.page ?? 1;
+  const pageSize = query.pageSize ?? 60;
+  const filteredCandidates = query.focus === "review"
+    ? allCandidates.filter((candidate) => candidate.recommendation.status === "review")
+    : query.focus === "highPriority"
+      ? allCandidates.filter((candidate) => candidate.priorityBand.toLowerCase() === "high")
+      : allCandidates;
+  const pagedCandidates = filteredCandidates.slice((page - 1) * pageSize, page * pageSize);
+
+  return {
+    ...makeResponse(allCandidates),
+    candidates: pagedCandidates,
+    page,
+    pageSize,
+    totalCandidates: filteredCandidates.length,
+  };
+}
+
 describe("PreNivelacijaPriorityPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    getPreNivelacijaPrioritetiMock.mockResolvedValue(makeResponse());
+    getPreNivelacijaPrioritetiMock.mockImplementation(async (query) => buildPagedFocusResponse(query));
   });
 
-  it("does not rank insufficient_data candidates as high priority", async () => {
+  it("keeps the high-priority band stable even when the recommendation is insufficient_data", async () => {
     render(
       <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
         <PreNivelacijaPriorityPage />
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole("tab", { name: /Visok prioritet \(0\)/i })).toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: /Visok prioritet \(1\)/i })).toBeInTheDocument();
     expect(screen.queryByText(/SKU traži brzu proveru/i)).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("tab", { name: /Visok prioritet \(0\)/i }));
+    fireEvent.click(screen.getByRole("tab", { name: /Visok prioritet \(1\)/i }));
 
-    expect(await screen.findByRole("heading", { name: "Nema rezultata za trenutne filtere." })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Vrati prikaz svih prioriteta." })).toBeInTheDocument();
-    expect(screen.queryByText("SKU-101")).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Vrati prikaz svih prioriteta." }));
     expect((await screen.findAllByText("SKU-101")).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("heading", { name: "Nema rezultata za trenutne filtere." })).not.toBeInTheDocument();
   });
 
   it("renders shared control bar and data table chrome", async () => {
@@ -495,6 +659,35 @@ describe("PreNivelacijaPriorityPage", () => {
     expect(deltaColumn?.getValue?.({ recommendationAllowed: true, revenueDelta: 0 } as never)).toBe(0);
   });
 
+  it("renders supplier action-share with an explicit Ostali bucket when an eighth supplier exists", async () => {
+    const leaderboard = Array.from({ length: 8 }, (_, index) => ({
+      supplierId: index + 1,
+      supplierName: `Dobavljac ${index + 1}`,
+      highPrioritySkuCount: 1,
+      candidateSkuCount: 1,
+      stockUnitsAtRisk: 1,
+      estimatedAvoidableMarkdownLoss: 100,
+      expectedHighlightRevenueUplift: 100,
+      actionScore: index + 1,
+      weekOverWeekRiskDeltaPct: 1,
+    }));
+
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce({
+      ...makeResponse(),
+      supplierLeaderboard: leaderboard,
+      supplierActionShare: buildSupplierActionShareFromLeaderboard(leaderboard),
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/top 7 plus Ostali/i)).toBeInTheDocument();
+    expect(buildSupplierActionShareFromLeaderboard(leaderboard).segments.some((segment) => segment.isOther)).toBe(true);
+  });
+
   it("exports the same focus-filtered rows that the table displays", async () => {
     render(
       <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti"]}>
@@ -506,7 +699,29 @@ describe("PreNivelacijaPriorityPage", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: /Pregledaj \(1\)/i }));
 
-    await waitFor(() => expect(screen.getByTestId("export-row-skus")).toHaveAttribute("data-skus", "SKU-102"));
+    await waitFor(() => {
+      expect(getPreNivelacijaPrioritetiMock).toHaveBeenLastCalledWith(expect.objectContaining({ focus: "review", page: 1 }));
+      expect(screen.getByTestId("export-row-skus")).toHaveAttribute("data-skus", "SKU-102");
+    });
+  });
+
+  it("requests server-side focus filtering so matching candidates outside the current page are still visible", async () => {
+    getPreNivelacijaPrioritetiMock.mockImplementation(async (query) => buildPagedFocusResponse({ ...query, pageSize: 1 }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti?page=2"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(getPreNivelacijaPrioritetiMock).toHaveBeenCalledWith(expect.objectContaining({ page: 2, pageSize: 60 })));
+
+    fireEvent.click(screen.getByRole("tab", { name: /Pregledaj \(1\)/i }));
+
+    await waitFor(() => {
+      expect(getPreNivelacijaPrioritetiMock).toHaveBeenLastCalledWith(expect.objectContaining({ focus: "review", page: 1, pageSize: 60 }));
+      expect(screen.getByTestId("export-row-skus")).toHaveAttribute("data-skus", "SKU-102");
+    });
   });
 
   it("keeps markdown copy scenario-oriented and blocks margin signal without cost", async () => {
@@ -742,9 +957,26 @@ describe("PreNivelacijaPriorityPage", () => {
     expect(alert).not.toHaveTextContent("ECONNREFUSED");
   });
 
+  it("shows controlled guidance when the decision payload fails runtime validation", async () => {
+    getPreNivelacijaPrioritetiMock.mockRejectedValueOnce(
+      new AnalyticsResponseValidationError("Pre-nivelacija prioriteti", ["queues.highlightNow.sku"]),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Pre-nivelacija prioriteti trenutno nisu dostupni. Proverite status osvežavanja i pokušajte ponovo.");
+    expect(alert).not.toHaveTextContent("queues.highlightNow.sku");
+    expect(document.querySelector(".pnp-decision-kpis")).toBeNull();
+  });
+
   it("restores validated filters, focus, page and scope from a shared URL", async () => {
     render(
-      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti?supplierId=11&seasonId=7&footwearTypeId=4&minScore=72&noSaleDaysMin=21&focus=review&page=2&dataScope=imported"]}>
+      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti?supplierId=11&seasonId=7&footwearTypeId=4&minScore=72&noSaleDaysMin=21&focus=review&page=1&dataScope=imported"]}>
         <LocationProbe />
         <PreNivelacijaPriorityPage />
       </MemoryRouter>,
@@ -757,7 +989,8 @@ describe("PreNivelacijaPriorityPage", () => {
       footwearTypeId: 4,
       minScore: 72,
       noSaleDaysMin: 21,
-      page: 2,
+      focus: "review",
+      page: 1,
       dataScope: "imported",
     }));
     expect(screen.getByLabelText("Dobavljač")).toHaveValue("11");
@@ -766,7 +999,7 @@ describe("PreNivelacijaPriorityPage", () => {
     expect(screen.getByLabelText("Min. skor")).toHaveValue(72);
     expect(screen.getByLabelText("Min. dana bez prodaje")).toHaveValue(21);
     expect(screen.getByRole("tab", { name: /Pregledaj/i })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByText("Strana 2")).toBeInTheDocument();
+    expect(screen.getByText("Strana 1")).toBeInTheDocument();
     expect(screen.getByTestId("location-search")).toHaveTextContent("supplierId=11");
     expect(screen.getByTestId("location-search")).toHaveTextContent("focus=review");
   });
@@ -818,9 +1051,14 @@ describe("PreNivelacijaPriorityPage", () => {
       metadata?: Array<{ key: string; value: string }>;
     } | null;
     expect(snapshot?.metadata).toEqual(expect.arrayContaining([
-      expect.objectContaining({ key: "focus", value: "review" }),
+      expect.objectContaining({ key: "focus", value: "Pregledaj" }),
       expect.objectContaining({ key: "minScore", value: "72" }),
+      expect.objectContaining({ key: "dataScope", value: "Uvezeni podaci" }),
+      expect.objectContaining({ key: "supplierId", value: expect.any(String) }),
     ]));
+    expect(snapshot?.metadata?.find((item) => item.key === "supplierId")?.value).not.toBe("11");
+    expect(snapshot?.metadata?.find((item) => item.key === "focus")?.value).not.toBe("review");
+    expect(snapshot?.metadata?.find((item) => item.key === "dataScope")?.value).not.toBe("imported");
   });
 
   it("uses a direct URL scope and normalizes an invalid scope to all", async () => {
@@ -980,12 +1218,12 @@ describe("PreNivelacijaPriorityPage", () => {
     );
 
     const seasonSelect = await screen.findByLabelText("Sezona");
-    expect(within(seasonSelect).getByRole("option", { name: "Jesen/Zima" })).toBeInTheDocument();
-    expect(within(seasonSelect).getByRole("option", { name: "Prolece/Leto" })).toBeInTheDocument();
+    expect(within(seasonSelect).getByRole("option", { name: /Jesen\/Zima/ })).toBeInTheDocument();
+    expect(within(seasonSelect).getByRole("option", { name: /Prolece\/Leto/ })).toBeInTheDocument();
 
     const footwearSelect = screen.getByLabelText("Tip obuće");
-    expect(within(footwearSelect).getByRole("option", { name: "Boot" })).toBeInTheDocument();
-    expect(within(footwearSelect).getByRole("option", { name: "Sneaker" })).toBeInTheDocument();
+    expect(within(footwearSelect).getByRole("option", { name: /Boot/ })).toBeInTheDocument();
+    expect(within(footwearSelect).getByRole("option", { name: /Sneaker/ })).toBeInTheDocument();
   });
 
   it("keeps expanded detail visible across pagination when the same artikal remains in results", async () => {
@@ -1021,6 +1259,46 @@ describe("PreNivelacijaPriorityPage", () => {
 
     await waitFor(() => expect(getPreNivelacijaPrioritetiMock).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 })));
     expect(await screen.findByText("Detalj odluke: SKU-101")).toBeInTheDocument();
+  });
+
+  it("keeps global focus tab counts separate from the visible page slice", async () => {
+    const pageOneCandidate = makeCandidate({ artikalId: 301, sku: "SKU-PAGE-1" });
+    const pageTwoCandidate = makeCandidate({ artikalId: 302, sku: "SKU-PAGE-2" });
+    const allCandidates = [pageOneCandidate, pageTwoCandidate];
+    const globalSummary = {
+      increaseFocusCount: 0,
+      maintainCount: 0,
+      reviewCount: 0,
+      doNotTrustCount: 0,
+      insufficientDataCount: 2,
+      highPriorityCount: 2,
+      candidatesCount: 2,
+    };
+
+    getPreNivelacijaPrioritetiMock.mockImplementation(async (query) => {
+      const pageSize = query.pageSize ?? 60;
+      const page = query.page ?? 1;
+      const pagedCandidates = allCandidates.slice((page - 1) * pageSize, page * pageSize);
+      return {
+        ...makeResponse(allCandidates),
+        summary: { ...makeResponse(allCandidates).summary, ...globalSummary },
+        candidates: pagedCandidates,
+        page,
+        pageSize,
+        totalCandidates: allCandidates.length,
+      };
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    const firstKpi = await screen.findByText("Visok prioritet");
+    expect(firstKpi.parentElement).toHaveTextContent("2");
+    expect(screen.getByRole("tab", { name: /Visok prioritet \(2\)/i })).toBeInTheDocument();
+    expect(screen.getByText(/Vidljiva strana:/i)).toHaveTextContent("Visok prioritet: 2");
   });
 
   it("hides inline detail when the active focus filter excludes the selected row", async () => {
@@ -1084,5 +1362,208 @@ describe("PreNivelacijaPriorityPage", () => {
     const sortedRows = table.querySelectorAll("tbody tr");
     expect(sortedRows[0]).toHaveTextContent("SKU-ALLOWED");
     expect(sortedRows[1]).toHaveTextContent("SKU-BLOCKED");
+  });
+
+  it("renders KPI definitions with coverage and null when no eligible population exists", async () => {
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce({
+      ...makeResponse([
+        makeCandidate({
+          artikalId: 901,
+          sku: "SKU-901",
+          priorityBand: "medium",
+          recommendation: {
+            status: "review",
+            label: "Pregled",
+            summary: "Bez Pojačaj/visokog prioriteta.",
+            confidencePct: 60,
+            reliabilityPct: 55,
+            dataQualityStatus: "warning",
+            recommendationAllowed: true,
+            reasonCodes: ["review_signal"],
+          },
+        }),
+      ]),
+      summary: {
+        ...makeResponse().summary,
+        candidatesCount: 1,
+        highPriorityCount: 0,
+        increaseFocusCount: 0,
+        totalStockAtRisk: null,
+        totalStockAtRiskCoverageEligible: 0,
+        totalStockAtRiskCoverageTotal: 1,
+        estimatedAvoidableMarkdownLoss: null,
+        estimatedAvoidableMarkdownLossCoverageEligible: 0,
+        estimatedAvoidableMarkdownLossCoverageTotal: 1,
+        expectedHighlightRevenueUplift: null,
+        expectedHighlightRevenueUpliftCoverageEligible: 0,
+        expectedHighlightRevenueUpliftCoverageTotal: 1,
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Zaliha pod rizikom")).toBeInTheDocument();
+    expect(screen.getByText("Procena povećanja prihoda")).toBeInTheDocument();
+    expect(screen.getByText("Procena izbegljivog gubitka marže")).toBeInTheDocument();
+    expect(screen.getAllByText("Nije dostupno").length).toBeGreaterThanOrEqual(3);
+    expect(screen.getAllByText("0 od 1 kandidata")).toHaveLength(3);
+  });
+
+  it("keeps other suppliers selectable from facets without clearing the current supplier", async () => {
+    const candidateA = makeCandidate({
+      artikalId: 1001,
+      sku: "SKU-A",
+      supplierId: 11,
+      supplierName: "Dobavljac A",
+      seasonId: 7,
+      season: "Prolece/Leto",
+    });
+    const candidateB = makeCandidate({
+      artikalId: 1002,
+      sku: "SKU-B",
+      supplierId: 22,
+      supplierName: "Dobavljac B",
+      seasonId: 7,
+      season: "Prolece/Leto",
+    });
+
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce({
+      ...makeResponse([candidateA]),
+      filterFacets: {
+        suppliers: [
+          { id: 11, label: "Dobavljac A", count: 1 },
+          { id: 22, label: "Dobavljac B", count: 1 },
+        ],
+        seasons: [{ id: 7, label: "Prolece/Leto", count: 1 }],
+        footwearTypes: [{ id: 4, label: "Patike", count: 1 }],
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti?supplierId=11"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    const supplierSelect = await screen.findByLabelText("Dobavljač");
+    expect(supplierSelect).toHaveValue("11");
+    expect(within(supplierSelect as HTMLElement).getByRole("option", { name: /Dobavljac B/ })).toBeInTheDocument();
+
+    fireEvent.change(supplierSelect, { target: { value: "22" } });
+    fireEvent.click(screen.getByRole("button", { name: /Primeni filtere/i }));
+
+    await waitFor(() => {
+      expect(getPreNivelacijaPrioritetiMock).toHaveBeenCalledWith(
+        expect.objectContaining({ supplierId: 22 }),
+      );
+    });
+  });
+
+  it("shows negative WoW risk deltas instead of dropping them", async () => {
+    const response = makeResponse([makeCandidate()]);
+    response.supplierLeaderboard = [
+      {
+        supplierId: 11,
+        supplierName: "Dobavljac A",
+        highPrioritySkuCount: 1,
+        candidateSkuCount: 1,
+        stockUnitsAtRisk: 12,
+        estimatedAvoidableMarkdownLoss: 12500,
+        expectedHighlightRevenueUplift: 18000,
+        actionScore: 92,
+        weekOverWeekRiskDeltaPct: -18.4,
+      },
+    ];
+    response.supplierActionShare = buildSupplierActionShareFromLeaderboard(response.supplierLeaderboard);
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce(response);
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    const chart = await screen.findByTestId("supplier-action-chart");
+    expect(chart).toHaveAttribute("data-wow", "[-18.4]");
+  });
+
+  it("keeps invalid score drafts visible and blocks apply without refetching defaults", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti?minScore=40&noSaleDaysMin=14"]}>
+        <LocationProbe />
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId("pre-nivelacija-prioriteti-data-table")).toBeInTheDocument();
+    const initialCalls = getPreNivelacijaPrioritetiMock.mock.calls.length;
+
+    const minScoreInput = screen.getByLabelText("Min. skor");
+    fireEvent.change(minScoreInput, { target: { value: "101" } });
+
+    expect(minScoreInput).toHaveValue(101);
+    expect(screen.getByText(/Min\. skor: unesite ceo broj od 0 do 100/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Primeni filtere/i })).toBeDisabled();
+    expect(getPreNivelacijaPrioritetiMock.mock.calls.length).toBe(initialCalls);
+    expect(screen.getByTestId("location-search")).toHaveTextContent("minScore=40");
+  });
+
+  it("renders Serbian band labels, capped queue totals, warning tone and named export filters", async () => {
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce({
+      ...makeResponse([makeCandidate()]),
+      queues: {
+        highlightNow: Array.from({ length: 30 }, (_, index) => ({
+          artikalId: 1000 + index,
+          sku: `SKU-Q-${index}`,
+          supplierName: "Dobavljac A",
+          preNivelacijaScore: 80,
+          priorityBand: "high",
+          owner: "Ana",
+          status: "increase_focus",
+          dueDateUtc: "2026-06-20T00:00:00Z",
+        })),
+        highlightNowTotal: 41,
+        monitor: [],
+        monitorTotal: 0,
+        likelyMarkdownSoon: [],
+        likelyMarkdownSoonTotal: 0,
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti?supplierId=11&focus=review&dataScope=imported"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("heading", { name: /Odmah istaknuti \(prikazano 30 od 41\)/i })).toBeInTheDocument();
+    expect(screen.getAllByText("Visok").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/^high$/i)).not.toBeInTheDocument();
+
+    const highPriorityKpi = screen.getByText("Visok prioritet").closest("article");
+    expect(highPriorityKpi).toHaveClass("analytics-kpi-card--tone-warning");
+
+    const exportFilters = JSON.parse(screen.getByTestId("export-filters").getAttribute("data-filters") ?? "[]") as Array<{
+      key: string;
+      value: string | number;
+    }>;
+    expect(exportFilters).toEqual(expect.arrayContaining([
+      expect.objectContaining({ key: "supplierId", value: "Dobavljac A" }),
+      expect.objectContaining({ key: "focus", value: "Pregledaj" }),
+      expect.objectContaining({ key: "dataScope", value: "Uvezeni podaci" }),
+    ]));
+    expect(exportFilters.find((item) => item.key === "supplierId")?.value).not.toBe(11);
+    expect(exportFilters.find((item) => item.key === "focus")?.value).not.toBe("review");
+
+    const scoreHeader = screen.getByRole("columnheader", { name: /Skor/i });
+    expect(scoreHeader).toHaveAttribute("aria-sort", "none");
+    fireEvent.click(screen.getByRole("button", { name: /Skor/i }));
+    expect(scoreHeader).toHaveAttribute("aria-sort", "descending");
+    expect(scoreHeader.textContent).toContain("▼");
+    expect(scoreHeader.textContent).not.toMatch(/\s\^|\sv/);
   });
 });

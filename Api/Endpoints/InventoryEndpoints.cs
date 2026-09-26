@@ -909,9 +909,9 @@ public static class InventoryEndpoints
         return sortBy?.Trim().ToLowerInvariant() switch
         {
             "naziv" => query.OrderBy(a => a.Naziv).ThenBy(a => a.Id),
-            "vrednost" => query.OrderByDescending(a => (a.NabavnaCena ?? 0m) * ((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0)).ThenBy(a => a.Naziv),
-            "azuriranje" => query.OrderByDescending(a => a.UpdatedAt).ThenBy(a => a.Naziv),
-            _ => query.OrderByDescending(a => a.Kolicina ?? 0).ThenBy(a => a.Naziv)
+            "vrednost" => query.OrderByDescending(a => (a.NabavnaCena ?? 0m) * ((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0)).ThenBy(a => a.Naziv).ThenBy(a => a.Id),
+            "azuriranje" => query.OrderByDescending(a => a.UpdatedAt).ThenBy(a => a.Naziv).ThenBy(a => a.Id),
+            _ => query.OrderByDescending(a => a.Kolicina ?? 0).ThenBy(a => a.Naziv).ThenBy(a => a.Id)
         };
     }
 
@@ -1221,10 +1221,15 @@ public static class InventoryEndpoints
             item.Naziv,
             item.SupplierName,
             item.StoreName,
+            item.SupplierId,
+            item.StoreId,
             item.Quantity,
             item.Minimum,
             reorderGap,
-            item.EstimatedValue,
+            item.CostMissing && item.Quantity > 0 ? null : item.EstimatedValue,
+            item.CostMissing ? null : item.UnitCost,
+            item.CostMissing ? "missing" : "article_master",
+            item.CostMissing,
             item.DaysSinceMovement,
             item.AgingBucket,
             item.AgingLabel,
@@ -1363,6 +1368,9 @@ public static class InventoryEndpoints
         string? dataScope = null)
     {
         var items = await GetCachedInventoryDatasetAsync(cache, db, analyticsDb, storeId, supplierId, search, null, applyAbcClassification: true, ct, dataScope);
+        var normalizedDataScope = NormalizeDataScope(dataScope);
+        const string actionSignalWindow = "rolling-30d";
+        const string snapshotGeneration = InventoryActionSourceKey.UnknownContext;
         var decisions = await actionDecisionService.ListAsync(ct);
         var articleIds = items.Select(item => item.Id).ToArray();
         var soldUnitsByArticle = await LoadSoldUnitsByArticleAsync(db, articleIds, storeId, 30, ct);
@@ -1371,7 +1379,7 @@ public static class InventoryEndpoints
 
         foreach (var item in items.Where(item => item.Quantity <= item.Minimum && item.DaysSinceMovement <= 60))
         {
-            var key = BuildSuggestionKey("dopuna", item, item.StoreId, null);
+            var key = BuildSuggestionKey("dopuna", item, item.StoreId, null, normalizedDataScope, actionSignalWindow, snapshotGeneration);
             suggestions.Add(ToSuggestion(
                 decisions,
                 key,
@@ -1387,12 +1395,13 @@ public static class InventoryEndpoints
                 Math.Max(item.Minimum - item.Quantity, 1),
                 item.EstimatedValue,
                 soldUnitsByArticle,
-                movementWindowStatsByArticle));
+                movementWindowStatsByArticle,
+                BuildActionDatasetContext(normalizedDataScope, actionSignalWindow, snapshotGeneration, item)));
         }
 
         foreach (var item in items.Where(item => item.Quantity >= Math.Max(item.Minimum * 2, 8) && item.DaysSinceMovement >= 60 && item.DaysSinceMovement < 90))
         {
-            var key = BuildSuggestionKey("markdown", item, item.StoreId, null);
+            var key = BuildSuggestionKey("markdown", item, item.StoreId, null, normalizedDataScope, actionSignalWindow, snapshotGeneration);
             suggestions.Add(ToSuggestion(
                 decisions,
                 key,
@@ -1406,12 +1415,13 @@ public static class InventoryEndpoints
                 Math.Max(item.Quantity - item.Minimum, 1),
                 item.EstimatedValue,
                 soldUnitsByArticle,
-                movementWindowStatsByArticle));
+                movementWindowStatsByArticle,
+                BuildActionDatasetContext(normalizedDataScope, actionSignalWindow, snapshotGeneration, item)));
         }
 
         foreach (var item in items.Where(item => item.Quantity >= Math.Max(item.Minimum, 3) && item.DaysSinceMovement >= 90))
         {
-            var key = BuildSuggestionKey("clearance", item, item.StoreId, null);
+            var key = BuildSuggestionKey("clearance", item, item.StoreId, null, normalizedDataScope, actionSignalWindow, snapshotGeneration);
             suggestions.Add(ToSuggestion(
                 decisions,
                 key,
@@ -1425,7 +1435,8 @@ public static class InventoryEndpoints
                 item.Quantity,
                 item.EstimatedValue,
                 soldUnitsByArticle,
-                movementWindowStatsByArticle));
+                movementWindowStatsByArticle,
+                BuildActionDatasetContext(normalizedDataScope, actionSignalWindow, snapshotGeneration, item)));
         }
 
         foreach (var group in items.Where(item => item.StoreId.HasValue).GroupBy(NormalizeSkuKey))
@@ -1456,7 +1467,13 @@ public static class InventoryEndpoints
                     continue;
                 }
 
-                var key = BuildTransferSuggestionKey(group.Key, source.StoreId.Value, destination.StoreId.Value);
+                var key = BuildTransferSuggestionKey(
+                    destination.Id,
+                    source.StoreId.Value,
+                    destination.StoreId.Value,
+                    normalizedDataScope,
+                    actionSignalWindow,
+                    snapshotGeneration);
                 suggestions.Add(ToSuggestion(
                     decisions,
                     key,
@@ -1470,7 +1487,14 @@ public static class InventoryEndpoints
                     qty,
                     Math.Round(destination.UnitCost * qty, 2),
                     soldUnitsByArticle,
-                    movementWindowStatsByArticle));
+                    movementWindowStatsByArticle,
+                    BuildActionDatasetContext(
+                        normalizedDataScope,
+                        actionSignalWindow,
+                        snapshotGeneration,
+                        destination,
+                        source.StoreId,
+                        destination.StoreId)));
             }
         }
 
@@ -1537,7 +1561,8 @@ public static class InventoryEndpoints
         int suggestedQty,
         decimal estimatedValue,
         Dictionary<int, int> soldUnitsByArticle,
-        Dictionary<int, InventorySignalWindowStats> movementWindowStatsByArticle)
+        Dictionary<int, InventorySignalWindowStats> movementWindowStatsByArticle,
+        InventoryActionDatasetContextDto datasetContext)
     {
         decisions.TryGetValue(key, out var decision);
         var signalEvidence = ComputeInventorySignalEvidence(item,
@@ -1567,8 +1592,27 @@ public static class InventoryEndpoints
             signalEvidence.DataQualityStatus,
             signalEvidence.ReasonCodes,
             item.CostMissing,
-            actionType == "transfer" ? "suggested_action_cost" : "current_stock_value");
+            actionType == "transfer" ? "suggested_action_cost" : "current_stock_value",
+            datasetContext);
     }
+
+    private static InventoryActionDatasetContextDto BuildActionDatasetContext(
+        string dataScope,
+        string signalWindow,
+        string snapshotGeneration,
+        InventoryDatasetItem item,
+        int? fromStoreId = null,
+        int? toStoreId = null,
+        string? sizeCode = null)
+        => new(
+            dataScope,
+            signalWindow,
+            signalWindow,
+            snapshotGeneration,
+            item.StoreId,
+            sizeCode,
+            fromStoreId,
+            toStoreId);
 
     private sealed record InventorySignalEvidenceSnapshot(
         decimal? StockCoverDays,
@@ -1700,11 +1744,42 @@ public static class InventoryEndpoints
         };
     }
 
-    private static string BuildSuggestionKey(string actionType, InventoryDatasetItem item, int? fromStoreId, int? toStoreId)
-        => $"{actionType}|{NormalizeSkuKey(item)}|{fromStoreId?.ToString(SerbianCulture) ?? "0"}|{toStoreId?.ToString(SerbianCulture) ?? "0"}";
+    private static string BuildSuggestionKey(
+        string actionType,
+        InventoryDatasetItem item,
+        int? storeId,
+        string? sizeCode,
+        string dataScope,
+        string signalWindow,
+        string snapshotGeneration)
+        => InventoryActionSourceKey.Build(
+            actionType,
+            item.Id,
+            storeId,
+            sizeCode,
+            dataScope,
+            signalWindow,
+            signalWindow,
+            snapshotGeneration);
 
-    private static string BuildTransferSuggestionKey(string normalizedSkuKey, int fromStoreId, int toStoreId)
-        => $"transfer|{normalizedSkuKey}|{fromStoreId.ToString(SerbianCulture)}|{toStoreId.ToString(SerbianCulture)}";
+    private static string BuildTransferSuggestionKey(
+        int articleId,
+        int fromStoreId,
+        int toStoreId,
+        string dataScope,
+        string signalWindow,
+        string snapshotGeneration)
+        => InventoryActionSourceKey.Build(
+            "transfer",
+            articleId,
+            toStoreId,
+            sizeCode: null,
+            dataScope: dataScope,
+            periodFrom: signalWindow,
+            periodTo: signalWindow,
+            snapshotGeneration: snapshotGeneration,
+            fromStoreId: fromStoreId,
+            toStoreId: toStoreId);
 
     private static string NormalizeSkuKey(InventoryDatasetItem item)
         => !string.IsNullOrWhiteSpace(item.Plu)

@@ -1,11 +1,21 @@
-import { fmtPct, formatDateTime } from "../../utils/analyticsFormatters";
+import { fmtPct, formatDate, formatDateTime } from "../../utils/analyticsFormatters";
+import type { RecommendationCode } from "../../services/supplierDecisionHubApi";
 import { getRecommendationMeta } from "./utils";
+import { recommendationReasonLabel } from "../../utils/canonicalRecommendationSemantics";
+import { supplierDecisionDatasetLabel, supplierDecisionProvenanceLabel, supplierDecisionReasonText } from "../../utils/supplierDecisionLabels";
 
 type SupplierExplainabilitySnapshotProps = {
   title?: string;
   subjectLabel?: string | null;
+  recommendationCode?: RecommendationCode | string | null;
   compact?: boolean;
   periodLabel?: string | null;
+  requestedPeriodFrom?: string | null;
+  requestedPeriodTo?: string | null;
+  effectivePeriodFrom?: string | null;
+  effectivePeriodTo?: string | null;
+  observedPeriodFrom?: string | null;
+  observedPeriodTo?: string | null;
   lastRefreshAt?: string | null;
   requestedDataset?: string | null;
   effectiveDataset?: string | null;
@@ -29,7 +39,7 @@ function normalizeQualityLabel(value?: string | null): string {
     case "warning":
       return "Upozorenje";
     case "critical":
-      return "Kriticno";
+      return "Kritično";
     case "insufficient_data":
       return "Nedovoljno podataka";
     default:
@@ -73,10 +83,17 @@ function resolveFallbackTone(value?: boolean | null): "good" | "warning" | "crit
 }
 
 export default function SupplierExplainabilitySnapshot({
-  title = "Snapshot objašnjenja",
+  title = "Sažetak objašnjenja signala",
   subjectLabel,
+  recommendationCode,
   compact = false,
   periodLabel,
+  requestedPeriodFrom,
+  requestedPeriodTo,
+  effectivePeriodFrom,
+  effectivePeriodTo,
+  observedPeriodFrom,
+  observedPeriodTo,
   lastRefreshAt,
   requestedDataset,
   effectiveDataset,
@@ -92,16 +109,24 @@ export default function SupplierExplainabilitySnapshot({
   reasonCodes,
   note,
 }: SupplierExplainabilitySnapshotProps) {
-  const recommendationMeta = recommendationAllowed == null ? null : getRecommendationMeta(recommendationAllowed ? "EXPAND" : "ASSORTMENT_REDUCE");
+  const recommendationMeta = recommendationAllowed === true && recommendationCode
+    ? getRecommendationMeta(recommendationCode)
+    : null;
   const reasonPreview = (reasonCodes ?? []).filter(Boolean).slice(0, compact ? 4 : 8);
   const hasReasonCodes = reasonPreview.length > 0;
-  const requestedLabel = requestedDataset?.trim() || null;
-  const effectiveLabel = effectiveDataset?.trim() || null;
+  const requestedLabel = supplierDecisionDatasetLabel(requestedDataset);
+  const effectiveLabel = supplierDecisionDatasetLabel(effectiveDataset);
   const datasetLabel = requestedLabel && effectiveLabel
     ? `${requestedLabel} → ${effectiveLabel}`
     : (effectiveLabel ?? requestedLabel);
   const periodText = periodLabel?.trim() || "Nedostupan";
-  const provenanceText = provenanceBasis?.trim() || null;
+  const formatRange = (from?: string | null, to?: string | null) => from && to
+    ? `${formatDate(from, "Nedostupno")} - ${formatDate(to, "Nedostupno")}`
+    : null;
+  const requestedPeriodText = formatRange(requestedPeriodFrom, requestedPeriodTo) ?? periodText;
+  const effectivePeriodText = formatRange(effectivePeriodFrom, effectivePeriodTo);
+  const observedPeriodText = formatRange(observedPeriodFrom, observedPeriodTo);
+  const provenanceText = supplierDecisionProvenanceLabel(provenanceBasis);
   const qualityLabel = normalizeQualityLabel(dataQualityStatus);
 
   const cards = [
@@ -133,15 +158,17 @@ export default function SupplierExplainabilitySnapshot({
               : "good",
     },
     {
-      label: "Fallback",
+      label: "Pomoćni skup",
       value: usedFallback == null ? "Nedovoljno podataka" : usedFallback ? "Aktivan" : "Neaktivan",
       tone: resolveFallbackTone(usedFallback),
     },
   ] as const;
 
   const metaCards = [
-    { label: "Period", value: periodText },
-    { label: "Dataset", value: datasetLabel ?? "Nedostupan", secondary: effectivePeriodLabel?.trim() || null },
+    { label: "Traženi period", value: requestedPeriodText },
+    { label: "Efektivni period", value: effectivePeriodText ?? effectivePeriodLabel?.trim() ?? "Nedostupan", secondary: effectivePeriodText && effectivePeriodLabel?.trim() ? effectivePeriodLabel.trim() : null },
+    { label: "Posmatrani period", value: observedPeriodText ?? "Nedostupan" },
+    { label: "Skup podataka", value: datasetLabel ?? "Nedostupan" },
     { label: "Osveženje", value: lastRefreshAt ? formatDateTime(lastRefreshAt, "Nedostupno") : "Nedostupno" },
     { label: "Osnova generisanja", value: provenanceText ?? "Nedostupna" },
   ];
@@ -162,7 +189,7 @@ export default function SupplierExplainabilitySnapshot({
           ) : null}
           {compact ? null : (
             <p className="mt-1 max-w-3xl text-sm leading-6 text-[var(--text-primary)]">
-              Snapshot koristi backend-led signal, bez lokalne confidence ili decision-tree logike.
+              Sažetak koristi serverski signal, bez lokalne logike za sigurnost ili stablo odluke.
             </p>
           )}
         </div>
@@ -177,7 +204,7 @@ export default function SupplierExplainabilitySnapshot({
                   ? "border-[var(--error)] text-[var(--error)]"
                   : "border-[var(--border-default)] text-[var(--text-primary)]"
           }`}>
-            {recommendationAllowed == null ? "Preporuka: nedostupno" : recommendationAllowed ? "Preporuka dozvoljena" : "Preporuka blokirana"}
+            {recommendationMeta.label}: {recommendationAllowed == null ? "preporuka nedostupna" : recommendationAllowed ? "preporuka dozvoljena" : "preporuka blokirana"}
           </span>
         ) : null}
       </div>
@@ -208,13 +235,13 @@ export default function SupplierExplainabilitySnapshot({
       </div>
 
       <div className="mt-4 rounded-2xl border border-[var(--border-default)] bg-[var(--surface-light)] p-3">
-        <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-primary)]">Šifarnici razloga</div>
+        <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-primary)]">Šifre razloga</div>
         <div className="mt-2 flex flex-wrap gap-2">
           {hasReasonCodes ? (
-            reasonPreview.map((reason, index) => tonePill(reason, "neutral", `${reason}-${index}`))
+            reasonPreview.map((reason, index) => tonePill(recommendationReasonLabel(reason), "neutral", `${reason}-${index}`))
           ) : (
             <span className="text-sm text-[var(--text-primary)]">
-              {usedFallback ? "Fallback signal bez dodatnih razloga" : "Nema dodatnih razloga"}
+              {usedFallback ? "Pomoćni signal bez dodatnih razloga" : "Nema dodatnih razloga"}
             </span>
           )}
           {reasonCodes && reasonCodes.length > reasonPreview.length ? tonePill(`+${reasonCodes.length - reasonPreview.length}`, "neutral") : null}
@@ -224,12 +251,12 @@ export default function SupplierExplainabilitySnapshot({
       {!compact ? (
         <div className="mt-4 grid gap-2 md:grid-cols-2">
           <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-light)] p-3 text-sm text-[var(--text-primary)]">
-            <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-primary)]">Fallback razlog</div>
-            <div className="mt-1 font-semibold">{fallbackReason ?? "Nije aktivan"}</div>
+            <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-primary)]">Razlog pomoćnog skupa</div>
+            <div className="mt-1 font-semibold">{supplierDecisionReasonText(fallbackReason) ?? "Nije aktivan"}</div>
           </div>
           <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-light)] p-3 text-sm text-[var(--text-primary)]">
-            <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-primary)]">Fallback kod</div>
-            <div className="mt-1 font-semibold">{fallbackReasonCode ?? "Nije aktivan"}</div>
+            <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-primary)]">Kod pomoćnog skupa</div>
+            <div className="mt-1 font-semibold">{fallbackReasonCode ? "Dodatno objašnjenje je dostupno" : "Nije aktivan"}</div>
           </div>
         </div>
       ) : null}

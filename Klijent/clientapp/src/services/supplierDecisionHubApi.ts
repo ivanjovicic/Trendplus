@@ -249,6 +249,9 @@ export type SupplierDecisionDetailsResponse = {
   markdownDependentArticles: ArticleDecisionItem[];
   blockedByOosArticles: ArticleDecisionItem[];
   recommendationHistory: RecommendationHistoryItem[];
+  trustMetadata?: ScorecardTrustMetadata | null;
+  dataNote?: string | null;
+  meta?: AnalyticsResponseMeta | null;
 };
 
 export class SupplierDecisionApiError extends Error {
@@ -301,8 +304,8 @@ function appendFilterParams(params: URLSearchParams, filters: SupplierDecisionHu
   appendSupplierDecisionReportQuery(params, filters);
 }
 
-async function fetchJson<T>(path: string, params: URLSearchParams, errorMessage: string): Promise<T> {
-  const response = await fetch(makeUrl(path, params));
+async function fetchJson<T>(path: string, params: URLSearchParams, errorMessage: string, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(makeUrl(path, params), signal ? { signal } : undefined);
   if (!response.ok) {
     let message = errorMessage;
     let errorCode: string | null = null;
@@ -435,7 +438,8 @@ export async function getAllSupplierDecisionRanking(
 
 export async function getSupplierDecisionDetails(
   supplierId: number,
-  filters: SupplierDecisionHubFilters
+  filters: SupplierDecisionHubFilters,
+  signal?: AbortSignal
 ): Promise<SupplierDecisionDetailsResponse> {
   const params = new URLSearchParams();
   appendFilterParams(params, filters);
@@ -443,6 +447,7 @@ export async function getSupplierDecisionDetails(
   return fetchJson<SupplierDecisionDetailsResponse>(
     `/api/analytics/suppliers/decision-hub/${supplierId}/details`,
     params,
-    "Ne mogu da učitam detalje dobavljača."
+    "Ne mogu da učitam detalje dobavljača.",
+    signal
   );
 }

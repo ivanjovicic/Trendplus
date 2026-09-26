@@ -24,21 +24,23 @@ export interface PreNivelacijaRecommendation {
   reliabilityPct: number | null;
   dataQualityStatus: "good" | "warning" | "critical" | string;
   reasonCodes: string[];
-  recommendationAllowed?: boolean | null;
+  recommendationAllowed: boolean;
 }
 
 export interface PreNivelacijaSkuCandidate {
   artikalId: number;
   sku: string;
-  supplierId?: number | null;
-  seasonId?: number | null;
-  footwearTypeId?: number | null;
+  supplierId: number | null;
+  seasonId: number | null;
+  footwearTypeId: number | null;
   supplierName: string;
   category: string;
   footwearType: string;
   season: string;
   stockUnits: number;
   units180: number;
+  positiveUnits180: number;
+  negativeUnits180: number;
   velocity180: number;
   daysSinceLastSale: number;
   markdownEvents: number;
@@ -52,16 +54,42 @@ export interface PreNivelacijaSkuCandidate {
   scenarioMarkdownNow: PreNivelacijaScenario;
   marginDeltaHighlightVsMarkdown: number;
   revenueDeltaHighlightVsMarkdown: number;
-  hasCompleteEvidence?: boolean;
-  evidenceReason?: string | null;
+  hasCompleteEvidence: boolean;
+  evidenceReason: string | null;
+  salesEvidenceStatus: string;
+  salesEvidenceReason: string | null;
   confidence: "High" | "Medium" | "Low" | string;
   reliabilityPct: number | null;
   decisionScore: number;
+  recommendationAllowed: boolean;
   recommendation: PreNivelacijaRecommendation;
 }
 
+export interface PreNivelacijaSupplierActionShareSegment {
+  supplierId: number | null;
+  supplierName: string;
+  actionSharePct: number;
+  weekOverWeekRiskDeltaPct: number | null;
+  weekOverWeekRiskDeltaUnit: string;
+  isOther: boolean;
+}
+
+export interface PreNivelacijaSupplierActionShareProjection {
+  shareUnit: string;
+  weekOverWeekRiskDeltaUnit: string;
+  denominatorPolicy: string;
+  denominatorLabel: string;
+  leaderboardSupplierCount: number;
+  visibleSupplierCount: number;
+  totalActionScore: number;
+  includedActionScore: number;
+  otherActionScore: number;
+  otherSharePct: number | null;
+  segments: PreNivelacijaSupplierActionShareSegment[];
+}
+
 export interface PreNivelacijaSupplierAction {
-  supplierId?: number | null;
+  supplierId: number | null;
   supplierName: string;
   highPrioritySkuCount: number;
   candidateSkuCount: number;
@@ -69,7 +97,23 @@ export interface PreNivelacijaSupplierAction {
   estimatedAvoidableMarkdownLoss: number;
   expectedHighlightRevenueUplift: number;
   actionScore: number;
-  weekOverWeekRiskDeltaPct: number;
+  weekOverWeekRiskDeltaPct: number | null;
+  weekOverWeekEvidenceStatus: string;
+}
+
+export interface PreNivelacijaEvidenceWindow {
+  salesWindowFromUtc: string;
+  salesWindowToUtc: string;
+  markdownWindowFromUtc: string;
+  markdownWindowToUtc: string;
+  timezone: string;
+  salesQuantityPolicy: string;
+  nonPositiveNetPolicy: string;
+  previousWeekDenominatorPolicy: string;
+  candidatesWithReturns: number;
+  candidatesWithNonPositiveNetSales: number;
+  candidatesWithoutSalesInWindow: number;
+  suppliersWithUnavailablePreviousWeekDenominator: number;
 }
 
 export interface PreNivelacijaQueueItem {
@@ -85,24 +129,29 @@ export interface PreNivelacijaQueueItem {
 
 export interface PreNivelacijaQueues {
   highlightNow: PreNivelacijaQueueItem[];
+  highlightNowTotal?: number | null;
   monitor: PreNivelacijaQueueItem[];
+  monitorTotal?: number | null;
   likelyMarkdownSoon: PreNivelacijaQueueItem[];
+  likelyMarkdownSoonTotal?: number | null;
 }
 
 export interface PreNivelacijaAlert {
   type: string;
   severity: "critical" | "warning" | "info" | string;
   message: string;
-  supplierName?: string;
-  artikalId?: number;
+  supplierName: string | null;
+  artikalId: number | null;
 }
 
 export interface PreNivelacijaFilterOption {
   id: number;
   label: string;
+  count?: number | null;
 }
 
 export interface PreNivelacijaFilterFacets {
+  suppliers?: PreNivelacijaFilterOption[];
   seasons: PreNivelacijaFilterOption[];
   footwearTypes: PreNivelacijaFilterOption[];
 }
@@ -111,9 +160,20 @@ export interface PreNivelacijaSummary {
   supplierCount: number;
   candidatesCount: number;
   highPriorityCount: number;
-  totalStockAtRisk: number;
-  estimatedAvoidableMarkdownLoss: number;
-  expectedHighlightRevenueUplift: number;
+  increaseFocusCount: number;
+  maintainCount: number;
+  reviewCount: number;
+  doNotTrustCount: number;
+  insufficientDataCount: number;
+  totalStockAtRisk: number | null;
+  totalStockAtRiskCoverageEligible: number;
+  totalStockAtRiskCoverageTotal: number;
+  estimatedAvoidableMarkdownLoss: number | null;
+  estimatedAvoidableMarkdownLossCoverageEligible: number;
+  estimatedAvoidableMarkdownLossCoverageTotal: number;
+  expectedHighlightRevenueUplift: number | null;
+  expectedHighlightRevenueUpliftCoverageEligible: number;
+  expectedHighlightRevenueUpliftCoverageTotal: number;
   averagePreNivelacijaScore: number;
 }
 
@@ -123,13 +183,15 @@ export interface PreNivelacijaPriorityResponse {
   formulaDescription: string;
   summary: PreNivelacijaSummary;
   supplierLeaderboard: PreNivelacijaSupplierAction[];
-  filterFacets?: PreNivelacijaFilterFacets | null;
+  supplierActionShare?: PreNivelacijaSupplierActionShareProjection;
+  filterFacets: PreNivelacijaFilterFacets;
   candidates: PreNivelacijaSkuCandidate[];
   queues: PreNivelacijaQueues;
   alerts: PreNivelacijaAlert[];
   page: number;
   pageSize: number;
   totalCandidates: number;
-  recommendationAllowed?: boolean | null;
+  recommendationAllowed: boolean;
+  evidenceWindow: PreNivelacijaEvidenceWindow;
   meta?: AnalyticsResponseMeta | null;
 }

@@ -4,12 +4,12 @@ import { colorSalesStatsResponseSchema } from "../validation/analyticsResponseSc
 
 export interface AnalyticsRecommendation {
   status: "increase_focus" | "maintain" | "review" | "do_not_trust" | "insufficient_data";
-  label: "Increase focus" | "Maintain" | "Review" | "Do not trust" | "Insufficient data";
+  label: string;
   summary: string;
   confidencePct: number | null;
   reliabilityPct: number | null;
-  dataQualityStatus: "good" | "warning" | "critical";
-  recommendationAllowed?: boolean | null;
+  dataQualityStatus: "good" | "warning" | "critical" | "insufficient_data";
+  recommendationAllowed: boolean;
   reasonCodes: string[];
 }
 
@@ -30,15 +30,15 @@ export interface ColorSalesStat {
   marginContribution: number;
   marginDataCoveragePct: number | null;
   fallbackCostCoveragePct: number | null;
-  marginPct: number;
+  marginPct: number | null;
   // TODO(backend-dto): keep ColorSalesStat aligned with the color-sales-stats endpoint quality payload.
   // Margin quality / cost coverage context must come from backend DTOs, not from frontend derivation.
   totalCost?: number;
   historicalCostRevenue?: number;
-  historicalCostCoveragePct?: number;
-  estimatedCostCoveragePct?: number;
+  historicalCostCoveragePct?: number | null;
+  estimatedCostCoveragePct?: number | null;
   noCostRevenue?: number;
-  noCostCoveragePct?: number;
+  noCostCoveragePct?: number | null;
   snapshotCostRevenue?: number;
   snapshotCostCoveragePct?: number;
   isEstimatedMargin?: boolean;
@@ -47,18 +47,22 @@ export interface ColorSalesStat {
   marginQualityShortLabel?: string | null;
   marginQualityTooltip?: string | null;
   revenueWithNivelacijaSplit: number;
+  comparablePreRevenue: number;
+  comparablePostRevenue: number;
+  comparablePreQuantity: number;
+  comparablePostQuantity: number;
   popRevenueChangePct: number | null;
   popUnitsChangePct: number | null;
   prePostNivelacijaRevenueImpactPct: number | null;
   prePostNivelacijaUnitsImpactPct: number | null;
   prePostNivelacijaRevenueCoveragePct: number | null;
-  prePostSignalNote?: string | null;
-  prePostComparableArticleCount?: number;
+  prePostSignalNote: string | null;
+  prePostComparableArticleCount: number;
   sharePct?: number | null;
   decisionScore?: number | null;
   reliabilityPct?: number | null;
   isUnknown?: boolean;
-  recommendation?: AnalyticsRecommendation;
+  recommendation: AnalyticsRecommendation;
   // Legacy compatibility aliases (deprecated)
   promenaPrometa?: number | null;
   promenaKolicine?: number | null;
@@ -67,11 +71,14 @@ export interface ColorSalesStat {
 export interface ColorSalesTotals {
   ukupanPromet: number;
   ukupanMarzniDoprinos: number;
+  decisionScore?: number | null;
   ukupanTrosak?: number;
+  weightedKnownMarginPct: number | null;
+  weightedKnownMarginRevenue: number;
   prosecnaMarza?: number | null;
-  historicalCostCoveragePct?: number;
-  estimatedCostCoveragePct?: number;
-  noCostCoveragePct?: number;
+  historicalCostCoveragePct?: number | null;
+  estimatedCostCoveragePct?: number | null;
+  noCostCoveragePct?: number | null;
   snapshotCostRevenue?: number;
   snapshotCostCoveragePct?: number;
   isSnapshotActive?: boolean;
@@ -86,6 +93,17 @@ export interface ColorSalesTotals {
   ukupnaKolicina: number;
   preKolicina: number;
   posleKolicina: number;
+  comparablePreRevenue: number;
+  comparablePostRevenue: number;
+  comparablePreQuantity: number;
+  comparablePostQuantity: number;
+  comparableArticleCount: number;
+  comparableRevenueCoveragePct: number | null;
+  prePostSignalNote: string | null;
+  observedPreRevenue: number;
+  observedPostRevenue: number;
+  observedPreQuantity: number;
+  observedPostQuantity: number;
   previousPeriodRevenue: number | null;
   previousPeriodUnits: number | null;
   brojBoja: number;
@@ -93,7 +111,7 @@ export interface ColorSalesTotals {
   popUnitsChangePct: number | null;
   prePostNivelacijaRevenueImpactPct: number | null;
   prePostNivelacijaUnitsImpactPct: number | null;
-  recommendationSummary?: {
+  recommendationSummary: {
     increaseFocus: number;
     maintain: number;
     review: number;
@@ -113,6 +131,35 @@ export interface ColorSalesDataQuality {
   unknownColorRevenueSharePct: number | null;
   revenueWithNivelacijaSplit: number;
   revenueWithNivelacijaSplitSharePct: number | null;
+  observedRevenueWithNivelacijaSplit: number;
+  observedRevenueWithNivelacijaSplitSharePct: number | null;
+  nivelacijaEventCount?: number;
+  nivelacijaEventArticleCount?: number;
+  salesArticleCount?: number;
+  salesArticlesWithMatchingNivelacija?: number;
+  signedRevenuePolicy?: string;
+  signedQuantityPolicy?: string;
+  costQualityDenominatorStatus?: string;
+  weightedKnownMarginPct: number | null;
+  weightedKnownMarginRevenue: number;
+}
+
+export interface ColorSalesLineage {
+  storeId: number | null;
+  dataScope: string;
+  sourceFamily?: string;
+  sourceLabel?: string;
+  sourceTables?: string;
+  observedPopulation?: string;
+  costPolicy?: string;
+  prePostPolicy?: string;
+  unknownPolicy?: string;
+  eventCount: number;
+  eventArticleCount: number;
+  salesArticleCount: number;
+  salesArticlesWithMatchingNivelacija: number;
+  storePolicy: string;
+  originPolicy: string;
 }
 
 export interface SezonaOption {
@@ -124,14 +171,15 @@ export interface SezonaOption {
 
 export interface ColorSalesStatsResponse {
   generatedAt: string;
-  meta?: AnalyticsResponseMeta;
+  meta: AnalyticsResponseMeta;
   fromDate: string | null;
   toDate: string | null;
   dataWindowFrom: string | null;
   dataWindowTo: string | null;
   sezonaId: number | null;
   storeId: number | null;
-  dataScope?: string | null;
+  dataScope: "all" | "existing" | "imported";
+  lineage: ColorSalesLineage;
   colors: ColorSalesStat[];
   totals: ColorSalesTotals;
   dataQuality: ColorSalesDataQuality;
@@ -160,7 +208,7 @@ export async function getColorSalesStats(
   return fetchAnalyticsJson<ColorSalesStatsResponse>(
     "/api/analytics/color-sales-stats",
     params,
-    "Greska pri ucitavanju statistike boja artikala",
+    "Greška pri učitavanju statistike boja artikala",
     { signal: query.signal, schema: colorSalesStatsResponseSchema }
   );
 }

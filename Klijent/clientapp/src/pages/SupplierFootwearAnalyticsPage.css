@@ -354,6 +354,21 @@
   text-transform: uppercase;
 }
 
+.sf-status-stack {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 180px;
+}
+
+.sf-status-reason {
+  color: var(--text-secondary, var(--theme-color-9ca3af, #9ca3af));
+  font-size: 11px;
+  line-height: 1.35;
+  max-width: 280px;
+  white-space: normal;
+}
+
 .sf-decision-status.status-boost {
   background: var(--success-soft, var(--theme-color-rgba-52-211-153-0p15, rgba(52, 211, 153, 0.15)));
   border: 1px solid var(--success-border, var(--theme-color-rgba-52-211-153-0p45, rgba(52, 211, 153, 0.45)));

@@ -234,10 +234,13 @@ public static class AnalyticsCacheKeys
 
     // Keeps the historical heavy-endpoint key dimensions: period, store, season, data scope, and active snapshot batch.
     public static string SupplierSalesStats(DateTime? from, DateTime? to, int? storeId = null, int? sezonaId = null, string? dataScope = null, long? activeSnapshotBatchId = null) =>
-        $"{Prefix}supplier-sales-stats:v2:{FormatTicks(from)}:{FormatTicks(to)}:{FormatNullable(storeId)}:{FormatNullable(sezonaId)}:{NormalizeDataScope(dataScope)}:snap:{FormatNullable(activeSnapshotBatchId)}";
+        $"{Prefix}supplier-sales-stats:v4:{FormatTicks(from)}:{FormatTicks(to)}:{FormatNullable(storeId)}:{FormatNullable(sezonaId)}:{NormalizeDataScope(dataScope)}:snap:{FormatNullable(activeSnapshotBatchId)}";
 
     public static string ShoeTypeSalesStats(DateTime? from, DateTime? to, int? storeId = null, int? sezonaId = null, string? dataScope = null, long? activeSnapshotBatchId = null) =>
-        $"{Prefix}shoe-type-sales-stats:{FormatTicks(from)}:{FormatTicks(to)}:{FormatNullable(storeId)}:{FormatNullable(sezonaId)}:{NormalizeDataScope(dataScope)}:snap:{FormatNullable(activeSnapshotBatchId)}";
+        $"{Prefix}shoe-type-sales-stats:v3:{FormatTicks(from)}:{FormatTicks(to)}:{FormatNullable(storeId)}:{FormatNullable(sezonaId)}:{NormalizeDataScope(dataScope)}:snap:{FormatNullable(activeSnapshotBatchId)}";
+
+    public static string ColorSalesStats(DateTime? from, DateTime? to, int? storeId = null, int? sezonaId = null, string? dataScope = null) =>
+        $"{Prefix}color-sales-stats:v4:{FormatTicks(from)}:{FormatTicks(to)}:{FormatNullable(storeId)}:{FormatNullable(sezonaId)}:{NormalizeDataScope(dataScope)}";
 
     public static string SalesDataWindow(int? storeId = null, string? dataScope = null) =>
         $"{Prefix}data-window:store:{(storeId.HasValue ? storeId.Value.ToString() : "all")}:scope:{NormalizeDataScope(dataScope)}";
@@ -250,20 +253,20 @@ public static class AnalyticsCacheKeys
     public static string ProductDecisionCenter(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, int top = 500, string? dataScope = null, string? search = null) =>
         $"{Prefix}product-decision-center:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}:top:{top}:search:{HashPart(search)}";
 
-    public static string InventoryForecast(int? storeId = null, int? supplierId = null, int? skuId = null, string? sizeCode = null, int top = 200) =>
-        $"{Prefix}inventory-forecast:{FilterSuffix(storeId, supplierId)}:sku:{(skuId.HasValue ? skuId.Value.ToString() : "all")}:size:{(string.IsNullOrWhiteSpace(sizeCode) ? "all" : sizeCode)}:top:{top}";
+    public static string InventoryForecast(int? storeId = null, int? supplierId = null, int? skuId = null, string? sizeCode = null, int top = 200, DateTime? fromDate = null, DateTime? toDate = null, string? dataScope = null) =>
+        $"{Prefix}inventory-forecast:{FormatInstant(fromDate)}:{FormatInstant(toDate)}:{FilterSuffix(storeId, supplierId, dataScope)}:sku:{(skuId.HasValue ? skuId.Value.ToString() : "all")}:size:{(string.IsNullOrWhiteSpace(sizeCode) ? "all" : sizeCode)}:top:{top}";
 
     public static string InventoryForecastBacktest(int? storeId = null, int? supplierId = null, int horizonDays = 14) =>
         $"{Prefix}inventory-forecast-backtest:{FilterSuffix(storeId, supplierId)}:horizon:{horizonDays}";
 
-    public static string InventorySizeCurve(int? storeId = null, int? supplierId = null, int? skuId = null, int top = 200) =>
-        $"{Prefix}inventory-size-curve:{FilterSuffix(storeId, supplierId)}:sku:{(skuId.HasValue ? skuId.Value.ToString() : "all")}:top:{top}";
+    public static string InventorySizeCurve(int? storeId = null, int? supplierId = null, int? skuId = null, string? sizeCode = null, int top = 200, DateTime? fromDate = null, DateTime? toDate = null, string? dataScope = null) =>
+        $"{Prefix}inventory-size-curve:{FormatInstant(fromDate)}:{FormatInstant(toDate)}:{FilterSuffix(storeId, supplierId, dataScope)}:sku:{(skuId.HasValue ? skuId.Value.ToString() : "all")}:size:{(string.IsNullOrWhiteSpace(sizeCode) ? "all" : sizeCode.Trim())}:top:{top}";
 
-    public static string RebalanceSuggestions(int? fromStoreId = null, int? toStoreId = null, int? supplierId = null, string? urgency = null, int top = 100) =>
-        $"{Prefix}rebalance-suggestions:from:{(fromStoreId.HasValue ? fromStoreId.Value.ToString() : "all")}:to:{(toStoreId.HasValue ? toStoreId.Value.ToString() : "all")}:supplier:{(supplierId.HasValue ? supplierId.Value.ToString() : "all")}:urgency:{(string.IsNullOrWhiteSpace(urgency) ? "all" : urgency)}:top:{top}";
+    public static string RebalanceSuggestions(int? fromStoreId = null, int? toStoreId = null, int? supplierId = null, string? urgency = null, int top = 100, DateTime? fromDate = null, DateTime? toDate = null, string? dataScope = null) =>
+        $"{Prefix}rebalance-suggestions:{FormatInstant(fromDate)}:{FormatInstant(toDate)}:from:{(fromStoreId.HasValue ? fromStoreId.Value.ToString() : "all")}:to:{(toStoreId.HasValue ? toStoreId.Value.ToString() : "all")}:supplier:{(supplierId.HasValue ? supplierId.Value.ToString() : "all")}:scope:{NormalizeDataScope(dataScope)}:urgency:{(string.IsNullOrWhiteSpace(urgency) ? "all" : urgency)}:top:{top}";
 
-    public static string InventoryAlerts(int? storeId = null, int? supplierId = null, string? severity = null, int top = 100) =>
-        $"{Prefix}inventory-alerts:{FilterSuffix(storeId, supplierId)}:severity:{(string.IsNullOrWhiteSpace(severity) ? "all" : severity)}:top:{top}";
+    public static string InventoryAlerts(int? storeId = null, int? supplierId = null, string? severity = null, int top = 100, DateTime? fromDate = null, DateTime? toDate = null, string? dataScope = null) =>
+        $"{Prefix}inventory-alerts:{FormatInstant(fromDate)}:{FormatInstant(toDate)}:{FilterSuffix(storeId, supplierId, dataScope)}:severity:{(string.IsNullOrWhiteSpace(severity) ? "all" : severity)}:top:{top}";
 
     public static string InventoryInsights(int? storeId = null, int? supplierId = null, string? search = null, string? sortBy = null, string? dataScope = null) =>
         $"{Prefix}inventory-insights:{FilterSuffix(storeId, supplierId, dataScope)}:search:{HashPart(search)}:sort:{HashPart(sortBy)}";
@@ -319,11 +322,18 @@ public static class AnalyticsCacheKeys
         DateTime? to,
         string? category,
         bool includeInactive,
-        int maxRows) =>
-        $"{Prefix}vendor-sales-nivelacija:v3:vendor:{FormatNullable(vendorId)}:event:{FormatInstant(eventDate)}:from:{FormatInstant(from)}:to:{FormatInstant(to)}:category:{HashPart(category)}:inactive:{includeInactive}:max:{maxRows}";
+        int maxRows,
+        int? storeId = null,
+        string? dataScope = null) =>
+        $"{Prefix}vendor-sales-nivelacija:v5:vendor:{FormatNullable(vendorId)}:event:{FormatInstant(eventDate)}:from:{FormatInstant(from)}:to:{FormatInstant(to)}:category:{HashPart(category)}:inactive:{includeInactive}:max:{maxRows}:store:{FormatNullable(storeId)}:scope:{NormalizeDataScope(dataScope)}";
 
-    public static string VendorSalesNivelacijaOptions(int? vendorId, string? category, int take) =>
-        $"{Prefix}vendor-sales-nivelacija-options:v1:vendor:{FormatNullable(vendorId)}:category:{HashPart(category)}:take:{take}";
+    public static string VendorSalesNivelacijaOptions(
+        int? vendorId,
+        string? category,
+        int take,
+        int? storeId = null,
+        string? dataScope = null) =>
+        $"{Prefix}vendor-sales-nivelacija-options:v2:vendor:{FormatNullable(vendorId)}:category:{HashPart(category)}:take:{take}:store:{FormatNullable(storeId)}:scope:{NormalizeDataScope(dataScope)}";
 
     private static string SupplierDecisionHubFilters(
         DateTime? from,
@@ -461,8 +471,9 @@ public static class AnalyticsCacheKeys
         int? noSaleDaysMin,
         decimal? minScore,
         decimal? marginFloor,
-        string? dataScope = null) =>
-        $"{Prefix}pre-nivelacija-priority:v2:supplier:{FormatNullable(supplierId)}:season:{FormatNullable(seasonId)}:footwear:{FormatNullable(footwearTypeId)}:stock-min:{FormatNullable(stockMin)}:stock-max:{FormatNullable(stockMax)}:no-sale:{FormatNullable(noSaleDaysMin)}:min-score:{FormatNullable(minScore)}:margin-floor:{FormatNullable(marginFloor)}:scope:{NormalizeDataScope(dataScope)}";
+        string? dataScope = null,
+        DateTime? effectiveToUtc = null) =>
+        $"{Prefix}pre-nivelacija-priority:v5:supplier:{FormatNullable(supplierId)}:season:{FormatNullable(seasonId)}:footwear:{FormatNullable(footwearTypeId)}:stock-min:{FormatNullable(stockMin)}:stock-max:{FormatNullable(stockMax)}:no-sale:{FormatNullable(noSaleDaysMin)}:min-score:{FormatNullable(minScore)}:margin-floor:{FormatNullable(marginFloor)}:scope:{NormalizeDataScope(dataScope)}:effective-to:{FormatInstant(effectiveToUtc)}";
 }
 
 /// <summary>

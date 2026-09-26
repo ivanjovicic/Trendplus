@@ -24,13 +24,13 @@ export const RECOMMENDATION_STATUS_PRIORITY: Record<CanonicalRecommendationStatu
 export const RECOMMENDATION_RELIABILITY_LABEL = "Pouzdanost signala %";
 export const RECOMMENDATION_CONFIDENCE_LABEL = "Sigurnost preporuke %";
 export const RECOMMENDATION_SIGNAL_UNAVAILABLE =
-  "Pouzdanost nije dostupna (backend nije dostavio confidence/reliability signal).";
+  "Pouzdanost nije dostupna (server nije dostavio signal sigurnosti/pouzdanosti).";
 
 export const RECOMMENDATION_RELIABILITY_TOOLTIP =
   "Pouzdanost signala % pokazuje koliko je ulazni signal stabilan i podatkovno pokriven. Nije garancija ishoda.";
 
 export const RECOMMENDATION_CONFIDENCE_TOOLTIP =
-  "Sigurnost preporuke % pokazuje koliko je backend preporuka upotrebljiva za odluku. Nije garancija poslovnog ishoda.";
+  "Sigurnost preporuke % pokazuje koliko je serverska preporuka upotrebljiva za odluku. Nije garancija poslovnog ishoda.";
 
 const RECOMMENDATION_REASON_LABELS: Record<string, string> = {
   high_velocity: "Artikal se brzo prodaje.",
@@ -50,6 +50,7 @@ const RECOMMENDATION_REASON_LABELS: Record<string, string> = {
   expected_impact_denominator_missing: "Nedostaje ulaz za procenu očekivanog uticaja.",
   missing_cost_coverage: "Marža je procena jer deo nabavne cene nije potvrđen.",
   limited_nivelacija_coverage: "Pre/post poređenje nema dovoljno pokrića.",
+  missing_comparable_signal: "Nedostaje uporediv signal prodaje pre i posle nivelacije.",
   previous_period_missing: "Nedostaje prethodni period za poređenje.",
   no_previous_baseline: "Nema prethodne baze za poređenje.",
   pop_unavailable: "Poređenje sa prethodnim periodom nije dostupno.",
@@ -162,6 +163,9 @@ export function recommendationReasonHintFromCode(code: string): string | null {
   }
   if (normalized === "tiny_sample") {
     return "Preporuka nije pouzdana zbog malog uzorka.";
+  }
+  if (normalized === "missing_comparable_signal") {
+    return "Nema dovoljno artikala sa prodajom i pre i posle nivelacije da bi se izmerio uticaj promene cene.";
   }
   if (normalized === "previous_period_missing" || normalized === "no_previous_baseline" || normalized === "pop_unavailable") {
     return "Nema prethodnog perioda za PoP poredjenje.";

@@ -34,6 +34,7 @@ using Application.Config;
 using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.HttpOverrides;
 using System.Net.Http.Json;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.Options;
@@ -169,6 +170,8 @@ try
     builder.Services.Configure<DataSourceOptions>(builder.Configuration.GetSection(DataSourceOptions.Section));
     builder.Services.Configure<Infrastructure.Configuration.AnalyticsDataQualityHealthOptions>(
         builder.Configuration.GetSection(Infrastructure.Configuration.AnalyticsDataQualityHealthOptions.Section));
+    builder.Services.Configure<Infrastructure.Configuration.OperationsAnalyticsIntegrityOptions>(
+        builder.Configuration.GetSection(Infrastructure.Configuration.OperationsAnalyticsIntegrityOptions.Section));
     builder.Services.AddOptions<Infrastructure.Configuration.NightlyAnalyticsRefreshOptions>()
         .Bind(builder.Configuration.GetSection(Infrastructure.Configuration.NightlyAnalyticsRefreshOptions.Section))
         .ValidateOnStart();
@@ -304,6 +307,7 @@ try
                 tunedDefaultConnection,
                 npgsql =>
                 {
+                    npgsql.UseVector();
                     npgsql.CommandTimeout(dbCommandTimeoutSeconds);
                     if (enableEfRetryOnFailure)
                     {
@@ -317,6 +321,7 @@ try
                 tunedDefaultConnection,
                 npgsql =>
                 {
+                    npgsql.UseVector();
                     npgsql.CommandTimeout(dbCommandTimeoutSeconds);
                     if (enableEfRetryOnFailure)
                     {
@@ -406,6 +411,7 @@ try
         builder.Services.AddHostedService<SupplierDecisionSchemaRepairHostedService>();
         builder.Services.AddHostedService<AnalyticsConnectionDiagnosticsHostedService>();
         builder.Services.AddHostedService<AnalyticsCachePrewarmHostedService>();
+        builder.Services.AddHostedService<OperationsAnalyticsIntegrityStartupHostedService>();
     }
     builder.Services.Configure<ForwardedHeadersOptions>(options =>
     {
@@ -428,6 +434,8 @@ builder.Services.AddScoped<IAnalyticsDetailReadService, AnalyticsDetailReadServi
 builder.Services.AddScoped<IDailySalesStatsService, DailySalesStatsService>();
 builder.Services.AddScoped<AnalyticsDataQualityHealthService>();
 builder.Services.AddScoped<AnalyticsDataQualityHistoryService>();
+builder.Services.AddSingleton<Infrastructure.Services.OperationsAnalyticsIntegrityRegistry>();
+builder.Services.AddScoped<Infrastructure.Services.IOperationsAnalyticsIntegrityService, Infrastructure.Services.OperationsAnalyticsIntegrityService>();
 builder.Services.AddScoped<AnalyticsRefreshRunRecorder>();
 builder.Services.AddScoped<Api.Services.AnalyticsCostSnapshotService>();
 builder.Services.AddScoped<Infrastructure.Services.Analytics.AnalyticsActionItemService>();
@@ -705,7 +713,13 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
         }
     }
 
-    builder.Services.AddSingleton<AnalyticsCacheAdminService>();
+    builder.Services.AddSingleton<AnalyticsCacheAdminService>(sp =>
+        new AnalyticsCacheAdminService(
+            sp.GetRequiredService<IAnalyticsCacheService>(),
+            sp.GetService<IDistributedCache>(),
+            sp.GetRequiredService<ILogger<AnalyticsCacheAdminService>>(),
+            sp.GetService<OperationsAnalyticsIntegrityRegistry>(),
+            sp.GetRequiredService<IServiceScopeFactory>()));
 
     // Register Api.Services.CommonMatchesClient (implementation in Api project)
     builder.Services.AddScoped<ICommonMatchesClient, CommonMatchesClient>();
@@ -1211,6 +1225,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     app.MapWorkerConfigurationEndpoints();
     app.MapAnalyticsTableEndpoints();
     app.MapDataQualityEndpoints();
+    app.MapOperationsAnalyticsIntegrityEndpoints();
     app.MapDailySalesStatsEndpoints();
     app.MapAnalyticsSnapshotEndpoints();
     app.MapDocumentEndpoints();

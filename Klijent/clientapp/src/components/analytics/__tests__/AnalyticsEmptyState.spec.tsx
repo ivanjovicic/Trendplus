@@ -43,7 +43,9 @@ describe("AnalyticsEmptyState", () => {
   it("sanitizes technical empty-state messages", () => {
     renderEmptyState({ message: "sql_timeout_v2 at internal_table" });
 
-    expect(screen.getByText("Podaci trenutno nisu dostupni. Proverite kvalitet podataka i pokušajte ponovo.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Sistem nije pronašao zapise koji odgovaraju trenutnim filterima."),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/sql_timeout_v2|internal_table/i)).not.toBeInTheDocument();
   });
 

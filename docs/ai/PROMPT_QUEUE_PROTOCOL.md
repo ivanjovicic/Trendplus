@@ -1,6 +1,6 @@
 # Prompt Queue Protocol
 
-Updated: 2026-09-22
+Updated: 2026-09-24
 Repo: `ivanjovicic/Trendplus`
 
 This protocol defines live prompt-queue governance. Cross-program routing lives in `MASTER_ROADMAP.md`; feature/product lifecycle lives in `docs/planning/FEATURE_LIFECYCLE.md`.
@@ -34,15 +34,43 @@ Future planning programs:
 6. Do not resurrect a DONE/PARTIAL/WAITING prompt because an older addendum says it was once next.
 7. A future planning READY (`DEX/RL/DT/PERF/OBS/SEC`) authorizes only its documented planning/contract scope. It does not authorize runtime implementation or outrank higher-priority gates.
 
-## When a queue has no READY prompt
+## Idle recovery when there is no READY prompt
 
-If an owner queue header says `Current READY prompt: none`:
+`Current READY prompt: none` is a routing state, not a reason to stop. For a user instruction such as `next`, `continue`, `claim`, or `claim and execute`, the agent must run this recovery sequence before reporting that no work is available.
 
-1. Confirm there is no other task already marked `READY` or `IN_PROGRESS` in that queue. `none` means there is no active primary pointer, not permission to auto-promote an arbitrary WAITING task.
-2. Do not claim a later `WAITING` prompt from that queue.
-3. Check whether the blocker is only a same-owner routing repair, such as a stale current-ready pointer, a missing completion note, or a mechanical status mismatch.
-4. If the blocker is a same-owner routing repair, make the smallest canonical metadata fix and keep the real blocked/waiting state visible.
-5. If the blocker is a real dependency, approval, tenant/security decision, or migration gate, stop and report it instead of inventing readiness.
+### Recovery order
+
+1. **Refresh routing truth.** Read current `main`, `MASTER_ROADMAP.md`, the owning queue header/addenda and all current `READY` / `IN_PROGRESS` rows. Do not trust an older audit's “next” sentence.
+2. **Finish already-started work and unfinished delivery first.**
+   - Resume the agent/workspace's own active claim.
+   - Inspect recent relevant run logs plus known task branch/PR state before selecting new work. If a valid implementation/proof exists on a branch or PR but `main` does not contain it, finish the permitted merge/push to `main`, resolve only in-scope conflicts, verify the delivered SHA, and synchronize evidence before moving on. Do not merge stale/unverified transport work blindly.
+   - Do not steal a live claim from another owner.
+   - If an `IN_PROGRESS` row is only stale metadata and current `main` plus its run log already prove delivery, reconcile it to the truthful terminal status before selecting new work.
+   - A takeover is allowed only when current evidence proves the old claim is abandoned/stale and there is no active conflicting lock/branch/PR/owner. Record the takeover evidence.
+3. **Re-evaluate non-DONE prompts instead of trusting old blockers.** Inspect `PARTIAL`, `BLOCKED` and `WAITING` candidates in current program priority, then task priority. Verify every named dependency against current code, commits and synchronized run evidence.
+   - If a dependency is already satisfied, repair the stale dependency/status text.
+   - If a blocker was repository-local and can be removed by bounded evidence work (for example a focused test, status/evidence reconciliation, missing contract note or same-owner queue repair), do that work in the same run.
+   - If a `WAITING` prompt is now dependency-complete, collision-safe and authorized by its existing scope, promote `WAITING -> READY` and claim it in the same run. This is an evidence-based promotion, not arbitrary auto-promotion.
+4. **Read the latest relevant agent evidence.** For the candidate owner/family, inspect the newest applicable `.ai/runs/*-evidence.md` files and their `What was missed`, `Risks` and `Next` sections.
+   - If a concrete unfinished same-owner acceptance item already has a prompt, use that prompt.
+   - If a concrete repo-local follow-up is not queued, first prove it is not a duplicate, then add the smallest prompt to the existing owning queue.
+   - A newly added prompt may be promoted immediately only when its dependencies are already satisfied and collision/gate checks are clear.
+5. **Audit remaining queue truth.** Check non-DONE prompts for stale dependencies, delivered-but-not-closed work, obsolete duplicates, contradictory ownership, missing evidence links and prompts left `WAITING` only because of an old one-READY convention. Repair same-owner governance defects before declaring the queue empty.
+6. **Try the next eligible program.** If the current program is genuinely exhausted or externally blocked, continue through the cross-program priority in `MASTER_ROADMAP.md`. Do not resurrect historical ledgers or lower-priority runtime work that bypasses a higher-priority gate.
+7. **Use productive unblock work when runtime execution is impossible.** A queue-execution request authorizes bounded repository-local analysis/tests/docs that can remove a blocker or produce a well-scoped next prompt. Do not manufacture cosmetic busywork merely to avoid an empty queue.
+8. **Stop only after the router is truly exhausted.** “No prompt” by itself is not an acceptable final result. The agent may report **no safe claimable task** only after the recovery sequence proves that every remaining candidate requires unresolved external/business/security/tenant/production authority, unavailable secrets/provider access, or a genuine conflicting active owner. Report the exact candidates and blockers.
+
+### Promotion preference during idle recovery
+
+When several `WAITING` prompts become runnable, prefer:
+
+1. P0/P1 correctness, data-integrity, security or release-truth work;
+2. an explicit `Ready after` dependency that has just become DONE;
+3. concrete `What was missed` / `Next` follow-up from recent synchronized evidence;
+4. the smaller bounded task with clearer focused proof;
+5. presentation/polish only after correctness work of the same owner is clear.
+
+Do not promote two overlapping prompts merely to keep multiple agents busy. Independent prompts may both be READY only when the normal parallel-safety rules are satisfied.
 
 ## Status model
 

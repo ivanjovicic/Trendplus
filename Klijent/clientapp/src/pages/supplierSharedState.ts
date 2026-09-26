@@ -11,6 +11,12 @@ export type SupplierCanonicalFilters = {
   dataScope: string;
   storeId: number | null;
   supplierId: number | null;
+  category?: string | null;
+  gender?: string | null;
+  seasonId?: number | null;
+  minRevenue?: number | null;
+  onlyHighConfidence?: boolean;
+  excludeOosBeforeMarkdown?: boolean;
 };
 
 export type SupplierEmbeddedPageProps = {
@@ -22,6 +28,12 @@ export type SupplierEmbeddedPageProps = {
 export type SupplierTrustHeaderPayload = {
   periodFrom?: string | null;
   periodTo?: string | null;
+  requestedPeriodFrom?: string | null;
+  requestedPeriodTo?: string | null;
+  effectivePeriodFrom?: string | null;
+  effectivePeriodTo?: string | null;
+  observedPeriodFrom?: string | null;
+  observedPeriodTo?: string | null;
   lastRefreshAt?: string | null;
   dataFreshnessStatus?: "fresh" | "stale" | "critical" | "unknown" | string | null;
   refreshIsRunning?: boolean;

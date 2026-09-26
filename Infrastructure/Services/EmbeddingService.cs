@@ -7,6 +7,7 @@ using System.Net.Http.Json;
 using System.Net.Http.Headers;
 using Npgsql;
 using NpgsqlTypes;
+using Pgvector;
 
 namespace Infrastructure.Services;
 
@@ -82,14 +83,15 @@ public class MockEmbeddingService : IEmbeddingService
         await using var command = connection.CreateCommand();
         command.CommandText = sql;
 
-        // Convert float[] to pgvector format
-        var embeddingStr = "[" + string.Join(",", embedding) + "]";
-        command.Parameters.Add(new NpgsqlParameter("embedding", NpgsqlDbType.Unknown)
+        command.Parameters.Add(EmbeddingParameterFactory.Create(embedding));
+        command.Parameters.Add(new NpgsqlParameter("threshold", NpgsqlDbType.Real)
         {
-            Value = embeddingStr
+            Value = threshold
         });
-        command.Parameters.Add(new NpgsqlParameter("threshold", threshold));
-        command.Parameters.Add(new NpgsqlParameter("limit", limit));
+        command.Parameters.Add(new NpgsqlParameter("limit", NpgsqlDbType.Integer)
+        {
+            Value = limit
+        });
 
         var results = new List<SimilarProduct>();
 
@@ -225,14 +227,15 @@ public class PythonEmbeddingService : IEmbeddingService
         await using var command = connection.CreateCommand();
         command.CommandText = sql;
 
-        // Convert float[] to pgvector format
-        var embeddingStr = "[" + string.Join(",", embedding) + "]";
-        command.Parameters.Add(new NpgsqlParameter("embedding", NpgsqlDbType.Unknown)
+        command.Parameters.Add(EmbeddingParameterFactory.Create(embedding));
+        command.Parameters.Add(new NpgsqlParameter("threshold", NpgsqlDbType.Real)
         {
-            Value = embeddingStr
+            Value = threshold
         });
-        command.Parameters.Add(new NpgsqlParameter("threshold", threshold));
-        command.Parameters.Add(new NpgsqlParameter("limit", limit));
+        command.Parameters.Add(new NpgsqlParameter("limit", NpgsqlDbType.Integer)
+        {
+            Value = limit
+        });
 
         var results = new List<SimilarProduct>();
 
@@ -253,6 +256,29 @@ public class PythonEmbeddingService : IEmbeddingService
     }
 
     private record EmbeddingResponse(float[] Embedding);
+}
+
+internal static class EmbeddingParameterFactory
+{
+    internal static NpgsqlParameter Create(float[] embedding)
+    {
+        ArgumentNullException.ThrowIfNull(embedding);
+
+        if (embedding.Length == 0)
+        {
+            throw new ArgumentException("Embedding must contain at least one value.", nameof(embedding));
+        }
+
+        for (var index = 0; index < embedding.Length; index++)
+        {
+            if (!float.IsFinite(embedding[index]))
+            {
+                throw new ArgumentException("Embedding values must be finite.", nameof(embedding));
+            }
+        }
+
+        return new NpgsqlParameter("embedding", new Vector(embedding));
+    }
 }
 
 /// <summary>

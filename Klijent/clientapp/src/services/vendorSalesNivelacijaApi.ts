@@ -1,7 +1,9 @@
-import { fetchWithTimeout } from "../utils/fetchWithTimeout";
-import { apiUrl } from "../utils/apiUrl";
+import { fetchAnalyticsJson } from "./analyticsHttp";
 import type { AnalyticsResponseMeta } from "../types/analytics";
-import { assertAnalyticsMetaSuccess } from "../utils/analyticsResponseMeta";
+import {
+    vendorSalesNivelacijaOptionsSchema,
+    vendorSalesNivelacijaResponseSchema,
+} from "../validation/analyticsResponseSchemas";
 
 const REQUEST_TIMEOUT_MS = 60_000;
 
@@ -40,6 +42,11 @@ export interface VendorSalesNivelacijaVendorStat {
     decreasedPriceArticlesCount: number;
     reliabilityPct: number | null;
     recommendation?: VendorSalesNivelacijaRecommendation | null;
+    comparableArticleCount?: number;
+    primaryFootwearType?: string | null;
+    primaryFootwearTypeSharePercent?: number | null;
+    primaryFootwearTypeAvgElasticity?: number | null;
+    typeInsightsAuthoritative?: boolean;
 }
 
 export interface VendorSalesNivelacijaArticleStat {
@@ -101,12 +108,23 @@ export interface VendorSalesNivelacijaTotals {
     avgCoveragePre30: number | null;
     avgCoveragePost30: number | null;
     hasComparableSalesWindow?: boolean;
+    comparableRows?: number;
+    comparableArticlesCount?: number;
+    comparableVendorsCount?: number;
 }
 
 export interface VendorSalesNivelacijaDataQuality {
     rawRows: number | null;
     deduplicatedRows: number | null;
     duplicateRowsRemoved: number | null;
+    cohortRows?: number | null;
+    cohortRowsExcluded?: number | null;
+    returnedRows?: number | null;
+    truncatedRows?: number | null;
+    comparableRows?: number | null;
+    comparableSharePercent?: number | null;
+    isDetailTruncated?: boolean | null;
+    cohortPolicy?: string | null;
     inactiveRows: number | null;
     unchangedPriceRows: number | null;
     analyzedRows: number | null;
@@ -128,6 +146,9 @@ export interface VendorSalesNivelacijaCategoryStat {
     changeRevenue: number;
     changePercent: number;
     hasComparableSalesWindow?: boolean;
+    comparableArticleCount?: number;
+    postRevenueSharePercent?: number | null;
+    avgElasticity?: number | null;
 }
 
 export interface VendorSalesNivelacijaPriceDirectionStat {
@@ -138,6 +159,7 @@ export interface VendorSalesNivelacijaPriceDirectionStat {
     changeRevenue: number;
     changePercent: number;
     hasComparableSalesWindow?: boolean;
+    comparableArticleCount?: number;
 }
 
 export interface VendorSalesNivelacijaInsight {
@@ -156,12 +178,19 @@ export interface VendorSalesNivelacijaResponse {
     to: string | null;
     category: string | null;
     includeInactive: boolean;
+    storeId: number | null;
+    dataScope: "all" | "existing" | "imported" | string;
+    scopeApplied: boolean;
     categories: string[];
     vendorStats: VendorSalesNivelacijaVendorStat[];
     articleStats: VendorSalesNivelacijaArticleStat[];
     totals: VendorSalesNivelacijaTotals;
     dataQuality?: VendorSalesNivelacijaDataQuality | null;
     categoryStats: VendorSalesNivelacijaCategoryStat[];
+    typeInsightsAuthoritative?: boolean;
+    typeInsightsSource?: string | null;
+    typeInsightsDenominator?: string | null;
+    typeInsightsElasticityWeighting?: string | null;
     priceDirectionStats: VendorSalesNivelacijaPriceDirectionStat[];
     insights: VendorSalesNivelacijaInsight[];
     avgMomentumRevenue?: number | null;
@@ -205,6 +234,11 @@ export interface VendorSalesNivelacijaOptionsQuery {
     dataScope?: string | null;
 }
 
+function normalizeDataScope(dataScope: string | null | undefined): "all" | "existing" | "imported" {
+    const normalized = (dataScope ?? "all").trim().toLowerCase();
+    return normalized === "existing" || normalized === "imported" ? normalized : "all";
+}
+
 export async function getVendorSalesNivelacija(
     query: VendorSalesNivelacijaQuery
 ): Promise<VendorSalesNivelacijaResponse> {
@@ -219,23 +253,26 @@ export async function getVendorSalesNivelacija(
     if (query.storeId != null) params.set("storeId", String(query.storeId));
     if (query.dataScope) params.set("dataScope", query.dataScope);
 
-    const baseUrl = apiUrl("/api/analytics/vendor-sales-nivelacija");
-    const url = params.toString()
-        ? `${baseUrl}?${params.toString()}`
-        : baseUrl;
+    const result = await fetchAnalyticsJson<VendorSalesNivelacijaResponse>(
+        "/api/analytics/vendor-sales-nivelacija",
+        params,
+        "Pre/post nivelacija podaci trenutno nisu dostupni.",
+        {
+            signal: query.signal,
+            timeoutMs: REQUEST_TIMEOUT_MS,
+            schema: vendorSalesNivelacijaResponseSchema,
+        },
+    );
 
-    const response = await fetchWithTimeout(url, { signal: query.signal }, REQUEST_TIMEOUT_MS);
-    if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`Neuspesno ucitavanje pre/post nivelacija analitike: ${text}`);
+    const expectedStoreId = query.storeId ?? null;
+    const expectedDataScope = normalizeDataScope(query.dataScope);
+    if (result.scopeApplied !== true
+        || result.storeId !== expectedStoreId
+        || result.dataScope !== expectedDataScope) {
+        throw new Error("Pre/post nivelacija nije potvrdila traženi objekat i opseg podataka.");
     }
 
-    const payload = (await response.json()) as VendorSalesNivelacijaResponse;
-    return assertAnalyticsMetaSuccess(
-        payload,
-        (result) => result.meta,
-        "Pre/post nivelacija podaci trenutno nisu dostupni."
-    );
+    return result;
 }
 
 export async function getVendorSalesNivelacijaOptions(
@@ -248,16 +285,13 @@ export async function getVendorSalesNivelacijaOptions(
     if (query.storeId != null) params.set("storeId", String(query.storeId));
     if (query.dataScope) params.set("dataScope", query.dataScope);
 
-    const baseUrl = apiUrl("/api/analytics/vendor-sales-nivelacija/options");
-    const url = params.toString()
-        ? `${baseUrl}?${params.toString()}`
-        : baseUrl;
-
-    const response = await fetchWithTimeout(url, undefined, REQUEST_TIMEOUT_MS);
-    if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`Neuspesno ucitavanje nivo opcija: ${text}`);
-    }
-
-    return response.json() as Promise<VendorSalesNivelacijaOption[]>;
+    return fetchAnalyticsJson<VendorSalesNivelacijaOption[]>(
+        "/api/analytics/vendor-sales-nivelacija/options",
+        params,
+        "Opcije pre/post nivelacija trenutno nisu dostupne.",
+        {
+            timeoutMs: REQUEST_TIMEOUT_MS,
+            schema: vendorSalesNivelacijaOptionsSchema,
+        },
+    );
 }

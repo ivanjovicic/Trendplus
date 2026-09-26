@@ -89,6 +89,10 @@ function color(overrides: Partial<ColorSalesStat> = {}): ColorSalesStat {
     marginQualityShortLabel: "Good",
     marginQualityTooltip: "Većina prometa ima poznatu nabavnu cenu.",
     revenueWithNivelacijaSplit: 100000,
+    comparablePreRevenue: 90000,
+    comparablePostRevenue: 30000,
+    comparablePreQuantity: 9,
+    comparablePostQuantity: 3,
     popRevenueChangePct: 50,
     popUnitsChangePct: 20,
     prePostNivelacijaRevenueImpactPct: -12.5,
@@ -161,6 +165,35 @@ function response(overrides: Partial<ColorSalesStatsResponse> = {}): ColorSalesS
     sezonaId: null,
     storeId: null,
     dataScope: "all",
+    meta: {
+      success: true,
+      requestedPeriodFromUtc: "2026-06-01T00:00:00Z",
+      requestedPeriodToUtc: "2026-06-30T23:59:59Z",
+      effectivePeriodFromUtc: "2026-06-01T00:00:00Z",
+      effectivePeriodToUtc: "2026-06-30T23:59:59Z",
+      observedPeriodFromUtc: "2026-06-02T00:00:00Z",
+      observedPeriodToUtc: "2026-06-29T00:00:00Z",
+      metricProvenance: {
+        margin: { kind: "authoritative_backend_aggregate", authority: "authoritative", actionability: "actionable", denominator: "Istorijski trošak prodajne stavke" },
+      },
+    },
+    lineage: {
+      storeId: null,
+      dataScope: "all",
+      sourceFamily: "live_relational_sales_facts",
+      sourceLabel: "Živi podaci prodaje, artikala i nivelacija",
+      sourceTables: "ProdajaZaglavlja, ProdajaStavke, Artikli i DnevnikPromena",
+      observedPopulation: "Sve filtrirane prodajne stavke u traženom periodu",
+      costPolicy: "Istorijski trošak prodajne stavke; fallback nabavna cena artikla; nepokriveni promet ostaje izdvojen",
+      prePostPolicy: "Uporediva kohorta artikala sa prodajom pre i posle prve nivelacije; posmatrani pre/post ostaje odvojen",
+      unknownPolicy: "Prazne ili nepoznate boje grupisane su u Nepoznato",
+      eventCount: 3,
+      eventArticleCount: 2,
+      salesArticleCount: 4,
+      salesArticlesWithMatchingNivelacija: 2,
+      storePolicy: "all_stores_allowed",
+      originPolicy: "all_origins_allowed",
+    },
     colors,
     totals: {
       ukupanPromet: colors.reduce((sum, item) => sum + item.ukupanPromet, 0),
@@ -184,6 +217,17 @@ function response(overrides: Partial<ColorSalesStatsResponse> = {}): ColorSalesS
       ukupnaKolicina: 17,
       preKolicina: 12,
       posleKolicina: 5,
+      comparablePreRevenue: 120000,
+      comparablePostRevenue: 45000,
+      comparablePreQuantity: 12,
+      comparablePostQuantity: 5,
+      comparableArticleCount: 10,
+      comparableRevenueCoveragePct: 75,
+      prePostSignalNote: null,
+      observedPreRevenue: 120000,
+      observedPostRevenue: 45000,
+      observedPreQuantity: 12,
+      observedPostQuantity: 5,
       previousPeriodRevenue: 110000,
       previousPeriodUnits: 11,
       brojBoja: colors.length,
@@ -311,8 +355,41 @@ describe("ColorSalesStatsPage", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Otvori puni detalj" }));
 
     expect(await screen.findByText("Color detail route")).toBeInTheDocument();
-    const snapshot = getAnalyticsDetailSnapshot("color-sales-stats", encodeURIComponent("Crna"));
+    const snapshot = getAnalyticsDetailSnapshot("color-sales-stats", encodeURIComponent("CRNA"));
     expect(snapshot?.metadata.some((field) => field.key === "dataScope" && field.value === "existing")).toBe(true);
+  });
+
+  it("keeps nivelacija lineage visible in the detail snapshot", async () => {
+    vi.mocked(getColorSalesStats).mockResolvedValueOnce(response({
+      lineage: {
+        storeId: 7,
+        dataScope: "imported",
+        sourceFamily: "live_relational_sales_facts",
+        sourceLabel: "Živi podaci prodaje, artikala i nivelacija",
+        sourceTables: "ProdajaZaglavlja, ProdajaStavke, Artikli i DnevnikPromena",
+        observedPopulation: "Sve filtrirane prodajne stavke u traženom periodu",
+        costPolicy: "Istorijski trošak prodajne stavke; fallback nabavna cena artikla; nepokriveni promet ostaje izdvojen",
+        prePostPolicy: "Uporediva kohorta artikala sa prodajom pre i posle prve nivelacije; posmatrani pre/post ostaje odvojen",
+        unknownPolicy: "Prazne ili nepoznate boje grupisane su u Nepoznato",
+        eventCount: 3,
+        eventArticleCount: 2,
+        salesArticleCount: 4,
+        salesArticlesWithMatchingNivelacija: 2,
+        storePolicy: "exact_store_only_unknown_store_excluded",
+        originPolicy: "event_origin_access_only",
+      },
+    }));
+
+    renderPage();
+    await screen.findByText("Prioritetna lista boja");
+    fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
+    fireEvent.click(await screen.findByRole("button", { name: "Otvori puni detalj" }));
+
+    expect(await screen.findByText("Color detail route")).toBeInTheDocument();
+    const snapshot = getAnalyticsDetailSnapshot("color-sales-stats", encodeURIComponent("CRNA"));
+    expect(snapshot?.metadata.some((field) => field.key === "lineageBasis" && field.value === "2/4 artikala ima potvrđen događaj u istom opsegu")).toBe(true);
+    expect(snapshot?.metadata.some((field) => field.key === "sourceLabel" && field.value === "Živi podaci prodaje, artikala i nivelacija")).toBe(true);
+    expect(snapshot?.metadata.some((field) => field.key === "costPolicy" && field.value?.includes("fallback nabavna cena artikla"))).toBe(true);
   });
 
   it("blocks invalid date ranges before issuing a new analytics request", async () => {
@@ -344,7 +421,7 @@ describe("ColorSalesStatsPage", () => {
     await waitFor(() => expect(getColorSalesStats).toHaveBeenCalledTimes(2));
     expect(getColorSalesStats).toHaveBeenLastCalledWith(expect.objectContaining({
       fromDate: "2026-06-01T00:00:00Z",
-      toDate: "2026-08-31T23:59:59Z",
+      toDate: "2026-09-01T00:00:00.000Z",
       sezonaId: 3,
       storeId: 2,
     }));
@@ -535,7 +612,8 @@ describe("ColorSalesStatsPage", () => {
     renderPage();
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/Boje trenutno nisu dostupne/i);
-    expect(screen.getByRole("alert")).toHaveTextContent("backend down");
+    expect(screen.getByRole("alert")).toHaveTextContent("Greška pri učitavanju podataka po boji.");
+    expect(screen.getByRole("alert")).not.toHaveTextContent("backend down");
     expect(screen.queryByText("Ukupan promet")).not.toBeInTheDocument();
     expect(screen.queryByText("Prioritetna lista boja")).not.toBeInTheDocument();
   });
@@ -698,9 +776,9 @@ describe("ColorSalesStatsPage", () => {
     await screen.findByText("Prioritetna lista boja");
 
     fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
-    const decisionScore = await screen.findByText("Decision score");
+    const decisionScore = await screen.findByText("Skor odluke (0–100)");
     expect(decisionScore.closest("article")).toHaveTextContent("N/A");
-    expect(decisionScore.closest("article")).not.toHaveTextContent(/Decision score\s*0/);
+    expect(decisionScore.closest("article")).not.toHaveTextContent(/Skor odluke \(0–100\)\s*0/);
 
     const reliability = screen.getByText("Pouzdanost podataka");
     expect(reliability.closest("article")).toHaveTextContent(RECOMMENDATION_SIGNAL_UNAVAILABLE);
@@ -729,7 +807,7 @@ describe("ColorSalesStatsPage", () => {
     await screen.findByText("Prioritetna lista boja");
 
     fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
-    const decisionScore = await screen.findByText("Decision score");
+    const decisionScore = await screen.findByText("Skor odluke (0–100)");
     expect(decisionScore.closest("article")).toHaveTextContent("42");
     expect(decisionScore.closest("article")).not.toHaveTextContent("88");
   });
@@ -756,7 +834,7 @@ describe("ColorSalesStatsPage", () => {
     await screen.findByText("Prioritetna lista boja");
 
     fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
-    const decisionScore = await screen.findByText("Decision score");
+    const decisionScore = await screen.findByText("Skor odluke (0–100)");
     expect(decisionScore.closest("article")).toHaveTextContent("N/A");
     expect(decisionScore.closest("article")).not.toHaveTextContent("42");
   });
@@ -772,10 +850,10 @@ describe("ColorSalesStatsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Otvori puni detalj" }));
 
     expect(await screen.findByText("Color detail route")).toBeInTheDocument();
-    const snapshot = getAnalyticsDetailSnapshot("color-sales-stats", encodeURIComponent("Crna"));
+    const snapshot = getAnalyticsDetailSnapshot("color-sales-stats", encodeURIComponent("CRNA"));
     expect(snapshot).toEqual(expect.objectContaining({
       table: "color-sales-stats",
-      recordId: "Crna",
+      recordId: "CRNA",
       title: "Crna",
     }));
     expect(snapshot?.fields.some((field) => field.key === "ukupanPromet" && field.value === "120.000 RSD")).toBe(true);
@@ -803,11 +881,11 @@ describe("ColorSalesStatsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Otvori puni detalj" }));
 
     expect(await screen.findByText("Color detail route")).toBeInTheDocument();
-    const snapshot = getAnalyticsDetailSnapshot("color-sales-stats", encodeURIComponent("Crna"));
-    expect(snapshot?.fields.some((field) => field.key === "preNivelacijePromet" && field.value === "90.000 RSD")).toBe(true);
-    expect(snapshot?.fields.some((field) => field.key === "posleNivelacijePromet" && field.value === "30.000 RSD")).toBe(true);
-    expect(snapshot?.fields.some((field) => field.key === "preNivelacijeKolicina" && field.value === "9 kom")).toBe(true);
-    expect(snapshot?.fields.some((field) => field.key === "posleNivelacijeKolicina" && field.value === "3 kom")).toBe(true);
+    const snapshot = getAnalyticsDetailSnapshot("color-sales-stats", encodeURIComponent("CRNA"));
+    expect(snapshot?.fields.some((field) => field.key === "comparablePreRevenue" && field.value === "90.000 RSD")).toBe(true);
+    expect(snapshot?.fields.some((field) => field.key === "comparablePostRevenue" && field.value === "30.000 RSD")).toBe(true);
+    expect(snapshot?.fields.some((field) => field.key === "comparablePreQuantity" && field.value === "9 kom")).toBe(true);
+    expect(snapshot?.fields.some((field) => field.key === "comparablePostQuantity" && field.value === "3 kom")).toBe(true);
     expect(snapshot?.fields.some((field) => field.key === "prePostNivelacijaRevenueImpactPct" && field.value === "N/A")).toBe(true);
   });
 });

@@ -201,7 +201,11 @@ public class AnalyticsCostSnapshotServiceTests
                 IdArtikal = 11,
                 Kolicina = 10,
                 Cena = 20m,
-                NabavnaCena = null
+                NabavnaCena = null,
+                // Grouping uses sale-time attribution (RQ411), not the current article master.
+                SupplierIdAtSale = 1,
+                ShoeTypeIdAtSale = 1,
+                AttributionBasis = SaleDimensionAttribution.SaleSnapshot
             },
             new ProdajaStavka
             {
@@ -210,7 +214,10 @@ public class AnalyticsCostSnapshotServiceTests
                 IdArtikal = 22,
                 Kolicina = 10,
                 Cena = 15m,
-                NabavnaCena = null
+                NabavnaCena = null,
+                SupplierIdAtSale = 2,
+                ShoeTypeIdAtSale = 2,
+                AttributionBasis = SaleDimensionAttribution.SaleSnapshot
             });
 
         db.AnalyticsCostSnapshotBatches.Add(new AnalyticsCostSnapshotBatch

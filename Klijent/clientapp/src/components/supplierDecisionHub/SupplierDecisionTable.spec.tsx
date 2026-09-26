@@ -83,8 +83,23 @@ describe("SupplierDecisionTable", () => {
     expect(screen.getByText("Dobavljač Premium")).toBeInTheDocument();
     expect(screen.getByText(/1.250.000/)).toBeInTheDocument();
     expect(screen.getByText("Visoka")).toBeInTheDocument();
-    expect(screen.getByText("Povecati saradnju")).toBeInTheDocument();
+    expect(screen.getByText("Povećati saradnju")).toBeInTheDocument();
     expect(document.querySelector(".analytics-data-table__numeric")).not.toBeNull();
+  });
+
+  it("renders the backend reason below an insufficient-data recommendation", () => {
+    renderTable({
+      items: [makeItem({
+        recommendationCode: "INSUFFICIENT_DATA",
+        dataQualityStatus: "insufficient_data",
+        statusReason: "Nedostaje uporediv signal pre i posle nivelacije.",
+        reasonCodes: ["missing_comparable_signal"],
+      })],
+    });
+
+    expect(screen.getByTitle("Nedostaje uporediv signal pre i posle nivelacije.")).toHaveTextContent(
+      "Razlog: Nedostaje uporediv signal pre i posle nivelacije.",
+    );
   });
 
   it("delegates backend sort requests without sorting locally", () => {

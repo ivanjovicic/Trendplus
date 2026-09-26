@@ -91,6 +91,50 @@ describe("analyticsTableState", () => {
     ]);
   });
 
+  it("preserves backend recommendation and provenance in the fallback snapshot", () => {
+    const recommendation = {
+      status: "review",
+      label: "Proveriti",
+      summary: "Proveriti kvalitet podataka.",
+      confidencePct: null,
+      reliabilityPct: null,
+      dataQualityStatus: "warning",
+      recommendationAllowed: false,
+      reasonCodes: ["missing_split_coverage"],
+    };
+    const provenance = {
+      requestedFromUtc: "2026-01-01T00:00:00Z",
+      requestedToUtc: "2026-03-31T23:59:59Z",
+      effectiveFromUtc: "2026-01-01T00:00:00Z",
+      effectiveToUtc: "2026-03-31T23:59:59Z",
+      dataScope: "all",
+      generatedAtUtc: "2026-04-01T08:00:00Z",
+      freshness: "fresh",
+      dataQualityStatus: "warning",
+      snapshotActive: false,
+      fallbackApplied: true,
+      recommendationAllowed: false,
+      displayPopulation: "Dobavljač A (Fokusirani dobavljač)",
+      decisionReferenceCohort: "4 dobavljača u celom odgovoru",
+      provenanceBasis: "live_query/supplier_sales_stats",
+      dataWindowFromUtc: "2026-01-01T00:00:00Z",
+      dataWindowToUtc: "2026-03-31T23:59:59Z",
+    };
+
+    const snapshot = buildAnalyticsDetailSnapshot({
+      table: "supplier-sales-stats",
+      recordId: "7",
+      title: "Dobavljač A",
+      columns,
+      row,
+      recommendation,
+      provenance,
+    });
+
+    expect(snapshot.recommendation).toEqual(recommendation);
+    expect(snapshot.provenance).toEqual(provenance);
+  });
+
   it("persists and expires browser preview payloads by TTL", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-01T10:00:00Z"));

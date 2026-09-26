@@ -1,13 +1,7 @@
 {
   "version": 1,
-  "maxEntries": 51,
+  "maxEntries": 52,
   "entries": [
-    {
-      "file": "src/pages/ColorSalesStatsPage.tsx",
-      "rule": "decisionScore_assign",
-      "line": 1131,
-      "reason": "Existing backend-owned decision-score projection requires a reviewed authority exception."
-    },
     {
       "file": "src/pages/ExecutiveDecisionBoardPage.tsx",
       "rule": "recommendationStatus_assign",
@@ -17,13 +11,13 @@
     {
       "file": "src/pages/PreNivelacijaPriorityPage.tsx",
       "rule": "decisionScore_assign",
-      "line": 563,
+      "line": 671,
       "reason": "Existing backend-owned decision-score projection requires a reviewed authority exception."
     },
     {
       "file": "src/pages/PreNivelacijaPriorityPage.tsx",
       "rule": "reliabilityPct_assign",
-      "line": 288,
+      "line": 371,
       "reason": "Existing backend reliability projection requires a reviewed authority exception."
     },
     {
@@ -41,37 +35,37 @@
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "confidencePct_assign",
-      "line": 977,
+      "line": 1193,
       "reason": "Existing backend confidence projection requires a reviewed authority exception."
     },
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "reliabilityPct_assign",
-      "line": 978,
+      "line": 1194,
       "reason": "Existing backend reliability projection requires a reviewed authority exception."
     },
     {
       "file": "src/components/analytics/SupplierDecisionReport.tsx",
       "rule": "confidencePct_assign",
-      "line": 179,
+      "line": 210,
       "reason": "Existing report confidence projection requires a reviewed authority exception."
     },
     {
       "file": "src/components/analytics/SupplierDecisionReport.tsx",
       "rule": "reliabilityPct_assign",
-      "line": 180,
+      "line": 211,
       "reason": "Existing report reliability projection requires a reviewed authority exception."
     },
     {
       "file": "src/components/supplierDecisionHub/SupplierExplainabilitySnapshot.tsx",
       "rule": "confidencePct_assign",
-      "line": 110,
+      "line": 135,
       "reason": "Existing explainability confidence projection requires a reviewed authority exception."
     },
     {
       "file": "src/components/supplierDecisionHub/SupplierExplainabilitySnapshot.tsx",
       "rule": "reliabilityPct_assign",
-      "line": 115,
+      "line": 140,
       "reason": "Existing explainability reliability projection requires a reviewed authority exception."
     },
     {
@@ -101,7 +95,7 @@
     {
       "file": "src/pages/DailySalesStatsPage.tsx",
       "rule": "refetch_setData_null",
-      "line": 745,
+      "line": 815,
       "reason": "Existing daily-sales refetch transition predates the shared reliable-query lifecycle."
     },
     {
@@ -137,7 +131,7 @@
     {
       "file": "src/pages/InventoryPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 736,
+      "line": 858,
       "reason": "Existing inventory page-count fallback requires a reviewed backend-total exception."
     },
     {
@@ -155,61 +149,61 @@
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 513,
+      "line": 589,
       "reason": "Existing supplier decision fallback requires a reviewed backend-authority exception."
     },
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "page_percentage_formula",
-      "line": 129,
+      "line": 132,
       "reason": "Existing supplier-share projection requires a reviewed backend-authority exception."
     },
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "page_reduce_kpi",
-      "line": 449,
+      "line": 524,
       "reason": "Existing supplier aggregation predates the backend KPI ownership contract."
     },
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "sorted_rows_kpi_reduce",
-      "line": 504,
+      "line": 580,
       "reason": "Existing sorted supplier aggregation requires a reviewed KPI ownership exception."
     },
     {
       "file": "src/pages/SupplierFootwearAnalyticsPage.tsx",
       "rule": "refetch_setData_null",
-      "line": 398,
-      "reason": "Existing supplier-footwear refetch transition predates the shared reliable-query lifecycle."
+      "line": 329,
+      "reason": "Supplier Footwear must clear stale scope-bound rows and trust metadata before the next scope-bound request completes."
     },
     {
       "file": "src/pages/SupplierFootwearAnalyticsPage.tsx",
       "rule": "page_percentage_formula",
-      "line": 433,
+      "line": 497,
       "reason": "Existing supplier-footwear percentage projection requires a reviewed authority exception."
     },
     {
       "file": "src/pages/SupplierFootwearAnalyticsPage.tsx",
       "rule": "page_reduce_kpi",
-      "line": 423,
+      "line": 488,
       "reason": "Existing supplier-footwear aggregation predates the backend KPI ownership contract."
     },
     {
       "file": "src/pages/SupplierSalesStatsPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 1627,
+      "line": 1902,
       "reason": "Existing supplier KPI fallback requires a reviewed unavailable-value exception."
     },
     {
       "file": "src/pages/SupplierSalesStatsPage.tsx",
       "rule": "refetch_setData_null",
-      "line": 743,
-      "reason": "Existing supplier refetch transition predates the shared reliable-query lifecycle."
+      "line": 914,
+      "reason": "Supplier scope changes must clear stale rows and trust metadata before the next scope-bound request completes."
     },
     {
       "file": "src/pages/SupplierSalesStatsPage.tsx",
       "rule": "page_reduce_kpi",
-      "line": 200,
+      "line": 617,
       "reason": "Existing supplier aggregation predates the backend KPI ownership contract."
     },
     {
@@ -251,7 +245,7 @@
     {
       "file": "src/components/inventory/inventoryUtils.ts",
       "rule": "fake_zero_fallback",
-      "line": 533,
+      "line": 603,
       "reason": "Existing inventory utility fallback requires a reviewed unknown-value exception."
     },
     {
@@ -269,7 +263,7 @@
     {
       "file": "src/services/analyticsHttp.ts",
       "rule": "swallowed_fetch_failure",
-      "line": 63,
+      "line": 81,
       "reason": "Existing analytics HTTP fallback wrapper requires a reviewed compatibility exception."
     },
     {

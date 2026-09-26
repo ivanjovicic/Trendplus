@@ -14,7 +14,8 @@ public interface IPreNivelacijaScoringService
         string Confidence,
         int Units180,
         int StockUnits,
-        bool HasCompleteEvidence = true);
+        bool HasCompleteEvidence = true,
+        string SalesEvidenceStatus = "positive_net_sales");
 
     public sealed record RecommendationResult(
         int DecisionScore,
@@ -182,6 +183,10 @@ public sealed class PreNivelacijaScoringService : IPreNivelacijaScoringService
 
         var reasons = new List<string>();
         if (!input.HasCompleteEvidence) reasons.Add("missing_evidence");
+        if (!string.Equals(input.SalesEvidenceStatus, "positive_net_sales", StringComparison.OrdinalIgnoreCase))
+        {
+            reasons.Add(input.SalesEvidenceStatus);
+        }
         if (!hasRevenueDeltaEvidence) reasons.Add("missing_revenue_delta_baseline");
         if (thinSample) reasons.Add("thin_sample");
         if (lowReliability) reasons.Add("low_confidence_signal");

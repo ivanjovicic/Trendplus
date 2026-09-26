@@ -18,6 +18,7 @@ export interface PreNivelacijaQuery {
   marginFloor?: number;
   page?: number;
   pageSize?: number;
+  focus?: string | null;
   dataScope?: string | null;
   signal?: AbortSignal;
 }
@@ -85,6 +86,9 @@ export async function getPreNivelacijaPrioriteti(query: PreNivelacijaQuery): Pro
   if (query.marginFloor != null) params.set("marginFloor", String(query.marginFloor));
   params.set("page", String(query.page ?? 1));
   params.set("pageSize", String(query.pageSize ?? 20));
+  if (query.focus != null && query.focus !== "" && query.focus !== "all") {
+    params.set("focus", query.focus);
+  }
   if (query.dataScope != null && query.dataScope !== "") {
     params.set("dataScope", normalizeDataScope(query.dataScope));
   }

@@ -255,7 +255,7 @@ public sealed class SupplierDecisionHubContractTests
         Assert.Equal("no_mv_30d", response.TrustMetadata.FallbackReasonCode);
         Assert.False(response.TrustMetadata.RecommendationAllowed);
         Assert.Equal("warning", response.TrustMetadata.DataCoverageStatus);
-        Assert.Contains("30d", response.DataNote ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("30 dana", response.DataNote ?? string.Empty, StringComparison.OrdinalIgnoreCase);
         Assert.True(response.Meta!.IsPartial);
         Assert.Equal("FALLBACK_DATASET_USED", response.Meta.WarningCode);
     }
@@ -342,7 +342,7 @@ public sealed class SupplierDecisionHubContractTests
         Assert.Contains("supplierId=7", report.StableQueryUrl, StringComparison.Ordinal);
         Assert.Contains("storeId=3", report.StableQueryUrl, StringComparison.Ordinal);
         Assert.Contains("scope=existing", report.StableQueryUrl, StringComparison.Ordinal);
-        Assert.True(report.RecommendationAllowed);
+        Assert.False(report.RecommendationAllowed);
         Assert.False(report.UsedFallback);
         Assert.Equal("stale", report.DataFreshnessStatus);
         Assert.Contains("Supplier agregati kasne.", report.Warnings);
@@ -430,6 +430,11 @@ public sealed class SupplierDecisionHubContractTests
 
         Assert.False(report.RecommendationAllowed);
         Assert.False(report.UsedFallback);
+        Assert.Equal("90d", report.Period.RequestedDataset);
+        Assert.Null(report.Period.EffectiveDataset);
+        Assert.Null(report.Period.EffectivePeriodLabel);
+        Assert.Null(report.Period.EffectiveFromUtc);
+        Assert.Null(report.Period.EffectiveToUtc);
         Assert.Empty(report.Kpis);
         Assert.Empty(report.RecommendedActions);
         Assert.Single(report.Sections);

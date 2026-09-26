@@ -410,7 +410,7 @@ public static class SupplierDecisionHubEndpoints
                             return new SupplierDecisionHubDetailsCacheEntry(false, null);
                         }
 
-                        var details = await BuildDetailsResponseAsync(analyticsConnectionString, activeFilters, supplier, ct);
+                        var details = await BuildDetailsResponseAsync(analyticsConnectionString, activeFilters, dataset, supplier, ct);
                         return new SupplierDecisionHubDetailsCacheEntry(true, details);
                     },
                     CacheExpiration.HeavyAnalytics,
@@ -433,6 +433,14 @@ public static class SupplierDecisionHubEndpoints
             {
                 return Results.NotFound(new { message = $"Supplier {supplierId} not found for the selected filter set." });
             }
+
+            response = response with
+            {
+                Response = response.Response with
+                {
+                    Meta = ApplyCorrelationId(response.Response.Meta, ResolveCorrelationId(httpContext))
+                }
+            };
 
             return Results.Ok(response.Response);
         });
@@ -799,7 +807,7 @@ public static class SupplierDecisionHubEndpoints
                 "Kapital u riziku",
                 rows.Sum(x => x.UnsoldStockValue).ToString("0.##", CultureInfo.InvariantCulture),
                 worstRisk is null
-                    ? "Nijedan dobavljač se trenutno ne izdvaja kao ekstreman stock-risk problem."
+                    ? "Nijedan dobavljač se trenutno ne izdvaja kao ekstreman problem sa rizikom zaliha."
                     : $"Najveći vidljiv rizik trenutno dolazi od dobavljača {worstRisk.SupplierName}.",
                 worstRisk is null ? "neutral" : "warning")
         };
@@ -903,19 +911,20 @@ public static class SupplierDecisionHubEndpoints
         string correlationId)
     {
         var generatedAtUtc = DateTime.UtcNow;
+        var requestedDataset = ResolveRequestedDataset(filters);
         var methodology = BuildSupplierDecisionMethodology(filters, null, false);
         var period = new AnalyticsReportPeriodDto(
             filters.FromDate,
             filters.ToDate,
-            BuildEffectivePeriodLabel(filters, ResolveRequestedDataset(filters)),
-            ResolveRequestedDataset(filters),
-            ResolveRequestedDataset(filters),
-            BuildEffectivePeriodLabel(filters, ResolveRequestedDataset(filters)),
+            BuildEffectivePeriodLabel(filters, requestedDataset),
+            requestedDataset,
+            EffectiveDataset: null,
+            EffectivePeriodLabel: null,
             filters.DataScope,
             RequestedFromUtc: filters.FromDate,
             RequestedToUtc: filters.ToDate,
-            EffectiveFromUtc: filters.FromDate,
-            EffectiveToUtc: filters.ToDate);
+            EffectiveFromUtc: null,
+            EffectiveToUtc: null);
         var rows = new List<AnalyticsLegacyReportRowDto>
         {
             new("Status", "Greška", message, errorCode, null),
@@ -1044,7 +1053,7 @@ public static class SupplierDecisionHubEndpoints
         var supplier = dataset.Rows.Count > 0 ? dataset.Rows[0] : null;
         return supplier is null
             ? null
-            : await BuildDetailsResponseAsync(analyticsConnectionString, filters, supplier, ct);
+            : await BuildDetailsResponseAsync(analyticsConnectionString, filters, dataset, supplier, ct);
     }
 
     private static ReportRefreshInfo? ResolveReportRefreshInfo(
@@ -1071,8 +1080,8 @@ public static class SupplierDecisionHubEndpoints
         var notes = new List<string>
         {
             "Preporuka kombinuje promet, maržni doprinos, zavisnost od sniženja, rizik zaliha i pouzdanost signala.",
-            "Frontend prikazuje backend signal i ne uvodi lokalne threshold-e za recommendation status.",
-            BuildDecisionScoreDataNote(filters) ?? "Za traženi period koristi se kanonski supplier decision dataset bez tihog proširenja opsega."
+            "Ekran prikazuje serverski signal i ne uvodi lokalne pragove za status preporuke.",
+            BuildDecisionScoreDataNote(filters) ?? "Za traženi period koristi se kanonski skup podataka odluke dobavljača bez tihog proširenja opsega."
         };
 
         if (trust?.UsedFallback == true && !string.IsNullOrWhiteSpace(trust.FallbackReason))
@@ -1111,7 +1120,7 @@ public static class SupplierDecisionHubEndpoints
             new("marginContribution", "Maržni doprinos", Round2(marginContribution), "RSD", marginContribution >= 0 ? "positive" : "warning", "Procena doprinosa na osnovu full-price prihoda i pre-markdown marže.", marginContribution == 0m ? "valid_zero" : null),
             new("units", "Prodate jedinice", Round2(totalUnits), "kom", totalUnits > 0 ? "neutral" : "warning", null, totalUnits == 0m ? "valid_zero" : null),
             new("supplierCount", "Broj dobavljača", summary.SupplierCount, null, summary.SupplierCount >= 3 ? "positive" : "warning", null, summary.SupplierCount == 0 ? "valid_zero" : null),
-            new("capitalAtRisk", "Kapital u riziku", summary.CapitalAtRisk, "RSD", summary.CapitalAtRisk > 0 ? "warning" : "positive", "Vrednost neprodate robe koja trenutno nosi najveći stock-risk signal.", summary.CapitalAtRisk == 0m ? "valid_zero" : null),
+            new("capitalAtRisk", "Kapital u riziku", summary.CapitalAtRisk, "RSD", summary.CapitalAtRisk > 0 ? "warning" : "positive", "Vrednost neprodate robe koja trenutno nosi najveći signal rizika zaliha.", summary.CapitalAtRisk == 0m ? "valid_zero" : null),
             new("avgConfidence", "Pouzdanost signala", avgConfidence, "%", hasStableSignalSample && avgConfidence >= 70 ? "positive" : "warning", null, hasStableSignalSample ? (avgConfidence == 0m ? "valid_zero" : null) : "insufficient_data", signalSampleReason),
             new("avgReliability", "Pouzdanost preporuke", avgReliability, "%", hasStableSignalSample && avgReliability >= 70 ? "positive" : "warning", null, hasStableSignalSample ? (avgReliability == 0m ? "valid_zero" : null) : "insufficient_data", signalSampleReason)
         };
@@ -1131,7 +1140,7 @@ public static class SupplierDecisionHubEndpoints
         {
             actions.Add(new AnalyticsReportActionDto(
                 "Proveri kvalitet podataka",
-                "Pre finalne preporuke proveri razlog ograničenja i stanje data quality signala.",
+                "Pre finalne preporuke proveri razlog ograničenja i stanje kvaliteta podataka.",
                 "/analytics/data-quality",
                 "high"));
         }
@@ -1140,7 +1149,7 @@ public static class SupplierDecisionHubEndpoints
         {
             actions.Add(new AnalyticsReportActionDto(
                 "Proveri status osvežavanja",
-                "Report koristi pomoćni dataset; proveri da li su worker refresh-evi ažurni.",
+                "Izveštaj koristi pomoćni skup podataka; proveri da li je osvežavanje analitike ažurno.",
                 "/admin/configuration?panel=workers",
                 "high"));
         }
@@ -1155,7 +1164,7 @@ public static class SupplierDecisionHubEndpoints
         {
             actions.Add(new AnalyticsReportActionDto(
                 $"Pregledaj rast za {topGrow.SupplierName}",
-                "Otvori trajni supplier report za vodećeg kandidata za rast.",
+                "Otvori trajni izveštaj dobavljača za vodećeg kandidata za rast.",
                 BuildSupplierDecisionStableQueryUrl(filters with { SupplierId = topGrow.SupplierId }),
                 "medium"));
         }
@@ -1165,7 +1174,7 @@ public static class SupplierDecisionHubEndpoints
         {
             actions.Add(new AnalyticsReportActionDto(
                 $"Smanji rizik za {topRisk.SupplierName}",
-                "Fokusiraj se na markdown dependency i stock-risk signal za najrizičnijeg dobavljača.",
+                "Fokusiraj se na zavisnost od sniženja i rizik zaliha kod najrizičnijeg dobavljača.",
                 BuildSupplierDecisionStableQueryUrl(filters with { SupplierId = topRisk.SupplierId }),
                 "medium"));
         }
@@ -1173,8 +1182,8 @@ public static class SupplierDecisionHubEndpoints
         if (details is { BlockedByOosArticles.Count: > 0 })
         {
             actions.Add(new AnalyticsReportActionDto(
-                "Istraži OOS false negative artikle",
-                "Pregledaj artikle koji nose OOS false negative signal za izabranog dobavljača.",
+                "Istraži artikle sa signalom nedostatka zaliha",
+                "Pregledaj artikle kod kojih nedostatak zaliha može prikriti stvarnu tražnju izabranog dobavljača.",
                 BuildSupplierDecisionStableQueryUrl(filters),
                 "medium"));
         }
@@ -1204,20 +1213,20 @@ public static class SupplierDecisionHubEndpoints
             sections.Add(new AnalyticsReportSectionDto(
                 "report-status",
                 "Status reporta",
-                "Nedovoljno podataka za supplier report u traženom periodu.",
+                "Nedovoljno podataka za izveštaj dobavljača u traženom periodu.",
                 [
                     new AnalyticsReportColumnDto("status", "Status"),
                     new AnalyticsReportColumnDto("message", "Poruka"),
-                    new AnalyticsReportColumnDto("requestedDataset", "Requested dataset"),
-                    new AnalyticsReportColumnDto("effectiveDataset", "Effective dataset")
+                    new AnalyticsReportColumnDto("requestedDataset", "Traženi skup podataka"),
+                    new AnalyticsReportColumnDto("effectiveDataset", "Efektivni skup podataka")
                 ],
                 [
                     new Dictionary<string, object?>
                     {
                         ["status"] = "insufficient_data",
-                        ["message"] = summary.Meta?.Message ?? "Nema dovoljno podataka za Supplier scorecard u izabranom periodu.",
-                        ["requestedDataset"] = trust?.RequestedDataset,
-                        ["effectiveDataset"] = trust?.EffectiveDataset
+                        ["message"] = summary.Meta?.Message ?? "Nema dovoljno podataka za skorkartu dobavljača u izabranom periodu.",
+                    ["requestedDataset"] = FormatSupplierDatasetLabel(trust?.RequestedDataset),
+                    ["effectiveDataset"] = FormatSupplierDatasetLabel(trust?.EffectiveDataset)
                     }
                 ],
                 1,
@@ -1300,7 +1309,7 @@ public static class SupplierDecisionHubEndpoints
                         ["articleName"] = article.ArticleName,
                         ["sku"] = article.Sku,
                         ["category"] = article.Category,
-                        ["issue"] = article.StockoutBeforeMarkdownFlag ? "OOS false negative" : "Markdown dependency",
+                        ["issue"] = article.StockoutBeforeMarkdownFlag ? "Signal nedostatka zaliha" : "Zavisnost od sniženja",
                         ["preRevenue30d"] = Round2(article.PreRevenue30d),
                         ["postRevenue30d"] = Round2(article.PostRevenue30d),
                         ["signalQuality"] = article.SignalQualityFlag,
@@ -1322,7 +1331,7 @@ public static class SupplierDecisionHubEndpoints
             sections.Add(new AnalyticsReportSectionDto(
                 details is not null ? "risk-items" : "risk-suppliers",
                 details is not null ? "Artikli sa rizikom" : "Dobavljači u riziku",
-                details is not null ? "Najizraženiji artikli sa markdown ili OOS problemom." : "Dobavljači sa najvećim stock-risk ili markdown dependency signalom.",
+                details is not null ? "Najizraženiji artikli sa problemom sniženja ili nedostatka zaliha." : "Dobavljači sa najvećim signalom rizika zaliha ili zavisnosti od sniženja.",
                 details is not null
                     ? [
                         new AnalyticsReportColumnDto("articleName", "Artikal"),
@@ -1338,7 +1347,7 @@ public static class SupplierDecisionHubEndpoints
                         new AnalyticsReportColumnDto("supplierName", "Dobavljač"),
                         new AnalyticsReportColumnDto("recommendation", "Preporuka"),
                         new AnalyticsReportColumnDto("revenue", "Prihod", "currency"),
-                        new AnalyticsReportColumnDto("confidencePct", "Pouzdanost signala", "percent"),
+                        new AnalyticsReportColumnDto("confidencePct", "Sigurnost signala", "percent"),
                         new AnalyticsReportColumnDto("reliabilityPct", "Pouzdanost preporuke", "percent"),
                         new AnalyticsReportColumnDto("reason", "Zašto")
                     ],
@@ -1350,7 +1359,7 @@ public static class SupplierDecisionHubEndpoints
         sections.Add(new AnalyticsReportSectionDto(
             "data-quality",
             "Kvalitet podataka",
-            "Trust metadata, fallback status i pokrivenost dataseta.",
+            "Metapodaci poverenja, status pomoćnog skupa i pokrivenost podataka.",
             [
                 new AnalyticsReportColumnDto("metric", "Metrika"),
                 new AnalyticsReportColumnDto("value", "Vrednost"),
@@ -1360,14 +1369,14 @@ public static class SupplierDecisionHubEndpoints
             {
                 new()
                 {
-                    ["metric"] = "Requested dataset",
-                    ["value"] = trust?.RequestedDataset ?? "n/a",
+                    ["metric"] = "Traženi skup podataka",
+                    ["value"] = FormatSupplierDatasetLabel(trust?.RequestedDataset),
                     ["note"] = trust?.EffectivePeriodLabel
                 },
                 new()
                 {
-                    ["metric"] = "Effective dataset",
-                    ["value"] = trust?.EffectiveDataset ?? "n/a",
+                    ["metric"] = "Efektivni skup podataka",
+                    ["value"] = FormatSupplierDatasetLabel(trust?.EffectiveDataset),
                     ["note"] = trust?.FallbackReason
                 },
                 new()
@@ -1380,7 +1389,7 @@ public static class SupplierDecisionHubEndpoints
                 {
                     ["metric"] = "Rows",
                     ["value"] = trust?.RowCount ?? dataset.Rows.Count,
-                    ["note"] = $"Ignored: {trust?.IgnoredRowCount ?? dataset.IgnoredRowCount}; zero revenue excluded: {trust?.ZeroRevenueRowsExcludedCount ?? dataset.ZeroRevenueRowsExcludedCount}"
+                    ["note"] = $"Preskočeno: {trust?.IgnoredRowCount ?? dataset.IgnoredRowCount}; redovi bez prihoda izuzeti: {trust?.ZeroRevenueRowsExcludedCount ?? dataset.ZeroRevenueRowsExcludedCount}"
                 },
                 new()
                 {
@@ -1508,7 +1517,7 @@ public static class SupplierDecisionHubEndpoints
         rows.Add(new AnalyticsLegacyReportRowDto(section, "Lager u riziku", Round2(supplierStockAtRisk).ToString("0.##", CultureInfo.InvariantCulture), "Sažetak", "RSD"));
         rows.Add(new AnalyticsLegacyReportRowDto(section, "Zavisnost od nivelacija", $"{Round2(supplierMarkdownDependency * 100m).ToString("0.##", CultureInfo.InvariantCulture)}%", "Sažetak", null));
         rows.Add(new AnalyticsLegacyReportRowDto(section, "Preporuka dozvoljena", recommendationAllowed ? "Da" : "Ne", "Sažetak", null));
-        rows.Add(new AnalyticsLegacyReportRowDto(section, "Korišćen fallback", usedFallback ? "Da" : "Ne", "Sažetak", trust?.EffectivePeriodLabel));
+        rows.Add(new AnalyticsLegacyReportRowDto(section, "Korišćen pomoćni skup", usedFallback ? "Da" : "Ne", "Sažetak", trust?.EffectivePeriodLabel));
         rows.Add(new AnalyticsLegacyReportRowDto(section, "Status kvaliteta podataka", coverageStatus, "Sažetak", null));
 
         if (details is not null)
@@ -1580,7 +1589,7 @@ public static class SupplierDecisionHubEndpoints
 
         if (trust is { MissingSupplierNameCount: > 0 })
         {
-            rows.Add(new AnalyticsLegacyReportRowDto(section, "Artikli sa missing supplier problemom", trust.MissingSupplierNameCount.ToString(CultureInfo.InvariantCulture), "Argumenti", "Nedostaju nazivi dobavljača; signal je manje pouzdan"));
+            rows.Add(new AnalyticsLegacyReportRowDto(section, "Artikli bez naziva dobavljača", trust.MissingSupplierNameCount.ToString(CultureInfo.InvariantCulture), "Argumenti", "Nedostaju nazivi dobavljača; signal je manje pouzdan"));
         }
 
         var missingCostReasonDetected = dataset.Rows.Any(row =>
@@ -1588,7 +1597,7 @@ public static class SupplierDecisionHubEndpoints
                 code.Contains("missing_cost", StringComparison.OrdinalIgnoreCase)));
         if (missingCostReasonDetected)
         {
-            rows.Add(new AnalyticsLegacyReportRowDto(section, "Artikli sa missing cost problemom", "Maržni doprinos može biti nepouzdan", "Argumenti", "Detektovan missing_cost signal u reasonCodes."));
+            rows.Add(new AnalyticsLegacyReportRowDto(section, "Artikli bez potvrđene nabavne cene", "Maržni doprinos može biti nepouzdan", "Argumenti", "Detektovano je ograničenje vezano za nabavnu cenu."));
         }
 
         const string blockedRecommendation = "Pomoćni signal - proveriti podatke";
@@ -1617,27 +1626,27 @@ public static class SupplierDecisionHubEndpoints
                 " | ",
                 new[]
                 {
-                    string.IsNullOrWhiteSpace(trust?.EffectiveDataset) ? null : $"dataset: {trust.EffectiveDataset}",
+                    string.IsNullOrWhiteSpace(trust?.EffectiveDataset) ? null : $"skup podataka: {FormatSupplierDatasetLabel(trust.EffectiveDataset)}",
                     string.IsNullOrWhiteSpace(trust?.EffectivePeriodLabel) ? null : $"period: {trust.EffectivePeriodLabel}",
                     string.IsNullOrWhiteSpace(trust?.FallbackReason) ? null : trust.FallbackReason,
                 }.Where(static part => !string.IsNullOrWhiteSpace(part))!);
 
             rows.Add(new AnalyticsLegacyReportRowDto(
                 section,
-                "Korišćen fallback dataset",
+                "Korišćen pomoćni skup podataka",
                 "Da",
                 "Upozorenja",
-                string.IsNullOrWhiteSpace(fallbackContext) ? "Korišćen fallback dataset" : fallbackContext));
+                string.IsNullOrWhiteSpace(fallbackContext) ? "Korišćen pomoćni skup podataka" : fallbackContext));
         }
 
         if (!string.Equals(coverageStatus, "good", StringComparison.OrdinalIgnoreCase))
         {
-            rows.Add(new AnalyticsLegacyReportRowDto(section, "Kvalitet podataka nije idealan", coverageStatus, "Upozorenja", "Preporuke proveriti kroz Data Quality ekran."));
+            rows.Add(new AnalyticsLegacyReportRowDto(section, "Kvalitet podataka nije idealan", coverageStatus, "Upozorenja", "Preporuke proveriti kroz ekran Kvalitet podataka."));
         }
 
         if (missingCostReasonDetected)
         {
-            rows.Add(new AnalyticsLegacyReportRowDto(section, "Visok missing cost", "Da", "Upozorenja", "Missing cost utiče na pouzdanost maržnog doprinosa."));
+            rows.Add(new AnalyticsLegacyReportRowDto(section, "Nedostaje nabavna cena", "Da", "Upozorenja", "Nepotvrđena nabavna cena utiče na pouzdanost maržnog doprinosa."));
             rows.Add(new AnalyticsLegacyReportRowDto(section, "Maržni doprinos je procena", "Da", "Upozorenja", "Deo nabavne cene nije istorijski potvrđen."));
         }
 
@@ -1664,7 +1673,7 @@ public static class SupplierDecisionHubEndpoints
             new("Header", "Naziv izveštaja", "Trendplus izveštaj dobavljača"),
             new("Header", "Period", $"{summary.From:yyyy-MM-dd} - {summary.To:yyyy-MM-dd}", trust?.EffectivePeriodLabel, null),
             new("Header", "Kvalitet podataka", dataQualityStatus, refreshInfo?.DataFreshnessStatus, trust?.FallbackReason),
-            new("Header", "Preporuka dozvoljena", recommendationAllowed ? "Da" : "Ne", trust?.EffectiveDataset, recommendationAllowed ? null : "Pomoćni signal")
+            new("Header", "Preporuka dozvoljena", recommendationAllowed ? "Da" : "Ne", FormatSupplierDatasetLabel(trust?.EffectiveDataset), recommendationAllowed ? null : "Pomoćni signal")
         };
 
         if (hasData)
@@ -1699,7 +1708,7 @@ public static class SupplierDecisionHubEndpoints
             rows.Add(new AnalyticsLegacyReportRowDto(
                 "Status",
                 "Nedovoljno podataka",
-                summary.Meta?.Message ?? "Nema dovoljno podataka za supplier report u izabranom periodu.",
+                summary.Meta?.Message ?? "Nema dovoljno podataka za izveštaj dobavljača u izabranom periodu.",
                 filters.DataScope,
                 trust?.FallbackReason));
         }
@@ -1770,13 +1779,13 @@ public static class SupplierDecisionHubEndpoints
                 new("effectivePeriodToUtc", "Efektivni period do", period.EffectiveToUtc?.ToString("O", CultureInfo.InvariantCulture) ?? string.Empty),
                 new("observedPeriodFromUtc", "Posmatrani period od", period.ObservedFromUtc?.ToString("O", CultureInfo.InvariantCulture) ?? string.Empty),
                 new("observedPeriodToUtc", "Posmatrani period do", period.ObservedToUtc?.ToString("O", CultureInfo.InvariantCulture) ?? string.Empty),
-                new("requestedDataset", "Traženi dataset", trust?.RequestedDataset ?? string.Empty),
-                new("effectiveDataset", "Efektivni dataset", trust?.EffectiveDataset ?? string.Empty),
+                new("requestedDataset", "Traženi skup podataka", trust?.RequestedDataset ?? string.Empty),
+                new("effectiveDataset", "Efektivni skup podataka", trust?.EffectiveDataset ?? string.Empty),
                 new("effectivePeriodLabel", "Efektivni period", trust?.EffectivePeriodLabel ?? string.Empty),
                 new("dataFreshnessStatus", "Svežina podataka", refreshInfo?.DataFreshnessStatus ?? string.Empty),
                 new("dataQualityStatus", "Kvalitet podataka", dataQualityStatus),
                 new("provenanceBasis", "Osnova generisanja", trust?.ProvenanceBasis ?? SelectDecisionScoreMv(GetDecisionScoreWindowDays(filters))),
-                new("usedFallback", "Korišćen fallback", (trust?.UsedFallback ?? false).ToString()),
+                new("usedFallback", "Korišćen pomoćni skup", (trust?.UsedFallback ?? false).ToString()),
                 new("recommendationAllowed", "Preporuka dozvoljena", recommendationAllowed.ToString()),
                 new("methodology", "Metodologija", methodologySummary)
             },
@@ -1900,8 +1909,8 @@ public static class SupplierDecisionHubEndpoints
 
         if (trust?.UsedFallback == true)
         {
-            var fallbackLabel = string.IsNullOrWhiteSpace(trust.EffectivePeriodLabel) ? "pomoćni dataset" : trust.EffectivePeriodLabel;
-            warnings.Add($"Korišćen je pomoćni dataset: {fallbackLabel}.");
+            var fallbackLabel = string.IsNullOrWhiteSpace(trust.EffectivePeriodLabel) ? "pomoćni skup podataka" : trust.EffectivePeriodLabel;
+            warnings.Add($"Korišćen je pomoćni skup podataka: {fallbackLabel}.");
         }
 
         if (trust is { RecommendationAllowed: false })
@@ -1930,16 +1939,17 @@ public static class SupplierDecisionHubEndpoints
         ScorecardTrustMetadata? trustMetadata = null)
     {
         var fallbackWarningMessage = trustMetadata?.UsedFallback == true
-            ? $"Za izabrani period nema dovoljno podataka. Koriscen je dataset {trustMetadata.EffectivePeriodLabel} kao pomocni signal."
+            ? $"Za izabrani period nema dovoljno podataka. Korišćen je skup podataka {trustMetadata.EffectivePeriodLabel} kao pomoćni signal."
             : null;
 
+        AnalyticsResponseMetaDto meta;
         if (rows.Count == 0)
         {
-            return new AnalyticsResponseMetaDto
+            meta = new AnalyticsResponseMetaDto
             {
                 Success = true,
                 EmptyReason = "no_data_in_period",
-                Message = "Nema dovoljno podataka za Supplier scorecard u izabranom periodu.",
+                Message = "Nema dovoljno podataka za skorkartu dobavljača u izabranom periodu.",
                 DataQualityStatus = trustMetadata?.DataCoverageStatus ?? "insufficient_data",
                 RecommendationAllowed = false,
                 IsPartial = trustMetadata?.UsedFallback == true,
@@ -1949,27 +1959,37 @@ public static class SupplierDecisionHubEndpoints
                 GeneratedAtUtc = DateTime.UtcNow
             };
         }
-
-        var recommendationGated = !IsSupplierDecisionRecommendationAllowed(trustMetadata);
-        var warningCode = trustMetadata?.UsedFallback == true
-            ? "FALLBACK_DATASET_USED"
-            : (recommendationGated ? "RECOMMENDATION_GATED" : null);
-        var warningMessage = trustMetadata?.UsedFallback == true
-            ? fallbackWarningMessage
-            : (recommendationGated ? "Preporuka je onemogucena zbog nedovoljne pouzdanosti podataka." : null);
-
-        return new AnalyticsResponseMetaDto
+        else
         {
-            Success = true,
-            DataQualityStatus = trustMetadata?.DataCoverageStatus
-                ?? (recommendationGated ? "insufficient_data" : "good"),
-            RecommendationAllowed = !recommendationGated,
-            IsPartial = trustMetadata?.UsedFallback == true || recommendationGated,
-            WarningCode = warningCode,
-            WarningMessage = warningMessage,
-            LastRefreshAtUtc = trustMetadata?.LastRefreshAtUtc,
-            GeneratedAtUtc = DateTime.UtcNow
-        };
+            var recommendationGated = !IsSupplierDecisionRecommendationAllowed(trustMetadata);
+            var warningCode = trustMetadata?.UsedFallback == true
+                ? "FALLBACK_DATASET_USED"
+                : (recommendationGated ? "RECOMMENDATION_GATED" : null);
+            var warningMessage = trustMetadata?.UsedFallback == true
+                ? fallbackWarningMessage
+                : (recommendationGated ? "Preporuka je onemogućena zbog nedovoljne pouzdanosti podataka." : null);
+
+            meta = new AnalyticsResponseMetaDto
+            {
+                Success = true,
+                DataQualityStatus = trustMetadata?.DataCoverageStatus
+                    ?? (recommendationGated ? "insufficient_data" : "good"),
+                RecommendationAllowed = !recommendationGated,
+                IsPartial = trustMetadata?.UsedFallback == true || recommendationGated,
+                WarningCode = warningCode,
+                WarningMessage = warningMessage,
+                LastRefreshAtUtc = trustMetadata?.LastRefreshAtUtc,
+                GeneratedAtUtc = DateTime.UtcNow
+            };
+        }
+
+        meta.RequestedPeriodFromUtc = trustMetadata?.RequestedFrom;
+        meta.RequestedPeriodToUtc = trustMetadata?.RequestedTo;
+        meta.EffectivePeriodFromUtc = trustMetadata?.EffectiveFrom;
+        meta.EffectivePeriodToUtc = trustMetadata?.EffectiveTo;
+        meta.ObservedPeriodFromUtc = rows.Count > 0 ? rows.Min(row => row.PeriodFrom) : null;
+        meta.ObservedPeriodToUtc = rows.Count > 0 ? rows.Max(row => row.PeriodTo) : null;
+        return meta;
     }
 
     private static AnalyticsResponseMetaDto BuildErrorMeta(string errorCode, string message, string correlationId)
@@ -2124,11 +2144,12 @@ public static class SupplierDecisionHubEndpoints
         if (CanUsePrecomputedSupplierRows(filters))
         {
             var capabilities = await GetPrecomputedQueryCapabilitiesAsync(analyticsConnectionString, ct);
-            if (!capabilities.HasDecisionScoreCache)
+            var windowDays = GetDecisionScoreWindowDays(filters);
+            if (!capabilities.HasDecisionScoreCacheForWindow(windowDays))
             {
                 throw new SupplierDecisionUnavailableException(
-                    "MISSING_TABLE",
-                    "Supplier decision cache nije dostupan. Pokušajte ponovo nakon osvežavanja analitike.");
+                    "MISSING_SCHEMA",
+                $"Skup podataka odluke dobavljača za period {ResolveEffectiveDataset(windowDays)} nije spreman za traženi period. Pokušajte ponovo nakon osvežavanja analitike.");
             }
 
             var (precomputedSql, precomputedParameters) = BuildPrecomputedSupplierRowsSql(filters, capabilities);
@@ -2264,9 +2285,10 @@ public static class SupplierDecisionHubEndpoints
                 var supplierName = NormalizeSupplierName(supplierId, sourceSupplierName);
                 var recommendationCode = GetString(reader, "recommendation_code");
                 var confidenceScore = GetDecimal(reader, "confidence_score");
-                var postSignalCoverage = HasColumn(reader, "post_signal_coverage")
-                    ? GetDecimal(reader, "post_signal_coverage")
-                    : 1m;
+                // Capability validation guarantees this column exists for every precomputed
+                // dataset. A NULL value is read conservatively as 0 by GetDecimal; never
+                // treat a missing/unknown coverage signal as complete evidence.
+                var postSignalCoverage = GetDecimal(reader, "post_signal_coverage");
                 var recommendationSignal = BuildRecommendationSignal(recommendationCode, confidenceScore, postSignalCoverage);
 
                 results.Add(new SupplierScoreRow(
@@ -2386,7 +2408,7 @@ public static class SupplierDecisionHubEndpoints
             "EXPAND_SELECTIVELY" => "Pozitivan signal uz preporuku za selektivno širenje.",
             "HOLD" => "Stabilan učinak; zadržati trenutni nivo fokusa.",
             "PRICE_NEGOTIATE" => "Signal ukazuje na pritisak margine; potreban pregovor o ceni.",
-            "ASSORTMENT_REDUCE" => "Povišen stock-risk i niža isplativost; razmotriti sužavanje asortimana.",
+            "ASSORTMENT_REDUCE" => "Povišen rizik zaliha i niža isplativost; razmotriti sužavanje asortimana.",
             "OOS_FALSE_NEGATIVE" => "Signal je mešovit zbog OOS efekata; potrebno ručno tumačenje.",
             "REVIEW_QUALITY" => "Kvalitet signala zahteva dodatnu proveru pre odluke.",
             _ => "Nedovoljno podataka za pouzdanu preporuku."
@@ -2440,9 +2462,22 @@ public static class SupplierDecisionHubEndpoints
 
     private sealed record PrecomputedQueryCapabilities(
         bool HasDecisionScoreCache,
+        bool HasDecisionScoreCache90d,
+        bool HasDecisionScoreCache180d,
         bool HasMarkdownDependencyCache,
         bool HasMlLatestPredictionsView,
-        bool DecisionScoreCacheHasMlSupplierScore);
+        bool DecisionScoreCacheHasMlSupplierScore,
+        bool DecisionScoreCacheHasRequiredColumns,
+        bool DecisionScoreCache90dHasRequiredColumns,
+        bool DecisionScoreCache180dHasRequiredColumns)
+    {
+        public bool HasDecisionScoreCacheForWindow(int windowDays) => windowDays switch
+        {
+            90 => HasDecisionScoreCache90d && DecisionScoreCache90dHasRequiredColumns,
+            180 => HasDecisionScoreCache180d && DecisionScoreCache180dHasRequiredColumns,
+            _ => HasDecisionScoreCache && DecisionScoreCacheHasRequiredColumns
+        };
+    }
 
     private sealed record SupplierMlQueryCapabilities(
         bool HasSupplierMlPredictionsTable,
@@ -2469,17 +2504,74 @@ public static class SupplierDecisionHubEndpoints
         const string sql = """
 SELECT
     to_regclass('public.mv_supplier_decision_score_cache') IS NOT NULL AS has_decision_score_cache,
+    to_regclass('public.mv_supplier_decision_score_cache_90d') IS NOT NULL AS has_decision_score_cache_90d,
+    to_regclass('public.mv_supplier_decision_score_cache_180d') IS NOT NULL AS has_decision_score_cache_180d,
     to_regclass('public.mv_supplier_markdown_dependency_cache') IS NOT NULL AS has_markdown_dependency_cache,
     to_regclass('public.vw_supplier_ml_latest_predictions') IS NOT NULL AS has_ml_latest_predictions_view,
     to_regclass('public.supplier_ml_predictions') IS NOT NULL AS has_supplier_ml_predictions_table,
     to_regclass('public.model_version') IS NOT NULL AS has_model_version_table,
+    (
+        SELECT COUNT(DISTINCT column_name)
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'vw_supplier_ml_latest_predictions'
+          AND column_name = ANY(ARRAY[
+              'supplier_id',
+              'top_feature_1',
+              'top_feature_2',
+              'top_feature_3',
+              'explanation_text'
+          ])
+    ) = 5 AS ml_latest_predictions_view_has_required_columns,
     EXISTS (
         SELECT 1
         FROM information_schema.columns
         WHERE table_schema = 'public'
           AND table_name = 'mv_supplier_decision_score_cache'
           AND column_name = 'ml_supplier_score'
-    ) AS decision_score_cache_has_ml_supplier_score;
+    ) AS decision_score_cache_has_ml_supplier_score,
+    (
+        SELECT COUNT(DISTINCT column_name)
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'mv_supplier_decision_score_cache'
+          AND column_name = ANY(ARRAY[
+              'supplier_id', 'supplier_name', 'period_from', 'period_to',
+              'revenue', 'units', 'fullprice_revenue_share', 'fullprice_sellthrough',
+              'pre_markdown_margin_pct', 'repeat_winner_rate',
+              'markdown_dependency_score', 'stock_risk_score', 'return_rate',
+              'category_focus_score', 'supplier_quality_index', 'recommendation_code',
+              'confidence_score', 'post_signal_coverage'
+          ])
+    ) = 18 AS decision_score_cache_has_required_columns,
+    (
+        SELECT COUNT(DISTINCT column_name)
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'mv_supplier_decision_score_cache_90d'
+          AND column_name = ANY(ARRAY[
+              'supplier_id', 'supplier_name', 'period_from', 'period_to',
+              'revenue', 'units', 'fullprice_revenue_share', 'fullprice_sellthrough',
+              'pre_markdown_margin_pct', 'repeat_winner_rate',
+              'markdown_dependency_score', 'stock_risk_score', 'return_rate',
+              'category_focus_score', 'supplier_quality_index', 'recommendation_code',
+              'confidence_score', 'post_signal_coverage'
+          ])
+    ) = 18 AS decision_score_cache_90d_has_required_columns,
+    (
+        SELECT COUNT(DISTINCT column_name)
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'mv_supplier_decision_score_cache_180d'
+          AND column_name = ANY(ARRAY[
+              'supplier_id', 'supplier_name', 'period_from', 'period_to',
+              'revenue', 'units', 'fullprice_revenue_share', 'fullprice_sellthrough',
+              'pre_markdown_margin_pct', 'repeat_winner_rate',
+              'markdown_dependency_score', 'stock_risk_score', 'return_rate',
+              'category_focus_score', 'supplier_quality_index', 'recommendation_code',
+              'confidence_score', 'post_signal_coverage'
+          ])
+    ) = 18 AS decision_score_cache_180d_has_required_columns;
 """;
 
         await using var connection = await OpenConnectionAsync(analyticsConnectionString, ct);
@@ -2488,16 +2580,22 @@ SELECT
 
         if (!await reader.ReadAsync(ct))
         {
-            return new PrecomputedQueryCapabilities(false, false, false, false);
+            return new PrecomputedQueryCapabilities(false, false, false, false, false, false, false, false, false);
         }
 
         return new PrecomputedQueryCapabilities(
             GetBoolean(reader, "has_decision_score_cache"),
+            GetBoolean(reader, "has_decision_score_cache_90d"),
+            GetBoolean(reader, "has_decision_score_cache_180d"),
             GetBoolean(reader, "has_markdown_dependency_cache"),
             GetBoolean(reader, "has_ml_latest_predictions_view")
+                && GetBoolean(reader, "ml_latest_predictions_view_has_required_columns")
                 && GetBoolean(reader, "has_supplier_ml_predictions_table")
                 && GetBoolean(reader, "has_model_version_table"),
-            GetBoolean(reader, "decision_score_cache_has_ml_supplier_score"));
+            GetBoolean(reader, "decision_score_cache_has_ml_supplier_score"),
+            GetBoolean(reader, "decision_score_cache_has_required_columns"),
+            GetBoolean(reader, "decision_score_cache_90d_has_required_columns"),
+            GetBoolean(reader, "decision_score_cache_180d_has_required_columns"));
     }
 
     private static async Task<SupplierMlQueryCapabilities> GetSupplierMlQueryCapabilitiesAsync(
@@ -2608,7 +2706,22 @@ SELECT
             "30d" => "Poslednjih 30 dana",
             "90d" => "Poslednjih 90 dana",
             "180d" => "Poslednjih 180 dana",
-            _ => "Neograniceno"
+            _ => "Celokupna istorija"
+        };
+    }
+
+    private static string FormatSupplierDatasetLabel(string? dataset)
+    {
+        return dataset switch
+        {
+            "30d" => "poslednjih 30 dana",
+            "90d" => "poslednjih 90 dana",
+            "180d" => "poslednjih 180 dana",
+            "custom_range" => "prilagođeni period",
+            "all_time" => "celokupna istorija",
+            _ when !string.IsNullOrWhiteSpace(dataset) && dataset.Contains("supplier_decision", StringComparison.OrdinalIgnoreCase)
+                => "keš signala odluke dobavljača",
+            _ => "skup podataka odluke dobavljača"
         };
     }
 
@@ -2628,17 +2741,17 @@ SELECT
         if (usedFallback)
         {
             return requestedDataset == "30d"
-                ? "Trazeni period je 30d, ali ne postoji posebna 30d materialized view. Za helper signal koristi se 90d dataset, uz striktan filter opsega i bez tihog fallback-a za finalnu preporuku."
-                : $"Trazeni period se oslanja na dataset {BuildEffectivePeriodLabel(filters, effectiveDataset)} kao pomocni signal, uz striktan filter opsega i bez tihog fallback-a.";
+                ? "Traženi period je 30 dana, ali ne postoji poseban skup podataka za 30 dana. Za pomoćni signal koristi se skup od 90 dana, uz striktan filter opsega i bez tihog proširenja za finalnu preporuku."
+                : $"Traženi period se oslanja na skup podataka {BuildEffectivePeriodLabel(filters, effectiveDataset)} kao pomoćni signal, uz striktan filter opsega i bez tihog proširenja.";
         }
 
         return requestedDataset switch
         {
-            "30d" => "Metrike su izracunate za trazeni period od 30 dana, uz striktan opseg bez tihog fallback-a.",
-            "90d" => "Metrike su izracunate na osnovu nivelacija iz poslednjih 90 dana.",
-            "180d" => "Metrike su izracunate na osnovu nivelacija iz poslednjih 180 dana.",
+            "30d" => "Metrike su izračunate za traženi period od 30 dana, uz striktan opseg bez tihog proširenja.",
+            "90d" => "Metrike su izračunate na osnovu nivelacija iz poslednjih 90 dana.",
+            "180d" => "Metrike su izračunate na osnovu nivelacija iz poslednjih 180 dana.",
             _ => filters.HasExplicitDateRange
-                ? "Metrike su izracunate za odabrani period preko 180 dana, uz all-history cache kao izvor i striktan filter bez tihog fallback-a."
+                ? "Metrike su izračunate za odabrani period duži od 180 dana, uz keš celokupne istorije kao izvor i striktan filter bez tihog proširenja."
                 : null
         };
     }
@@ -2689,17 +2802,17 @@ SELECT
             if (requestedDataset == "30d" && effectiveDataset == "90d")
             {
                 fallbackReasonCode = "no_mv_30d";
-                fallbackReason = "Trazeni 30d nema zaseban scorecard dataset; koristi se 90d kao pomocni signal (bez tihog fallback-a za finalnu preporuku).";
+                fallbackReason = "Traženi period od 30 dana nema zaseban skup skorkarte; koristi se period od 90 dana kao pomoćni signal (bez tihog proširenja za finalnu preporuku).";
             }
             else if (requestedDataset == "custom_range" && effectiveDataset == "all_time")
             {
                 fallbackReasonCode = "range_uses_all_time";
-                fallbackReason = "Odabrani period je siri od 180 dana; koristi se all-time cache kao helper dataset uz striktan filter opsega (bez tihog fallback-a).";
+                fallbackReason = "Odabrani period je širi od 180 dana; koristi se keš celokupne istorije kao pomoćni skup podataka uz striktan filter opsega (bez tihog proširenja).";
             }
             else
             {
                 fallbackReasonCode = "fallback_dataset_used";
-                fallbackReason = "Trazeni dataset nije dostupan; prikazan je siri helper dataset uz striktan filter opsega (bez tihog fallback-a).";
+                fallbackReason = "Traženi skup podataka nije dostupan; prikazan je širi pomoćni skup podataka uz striktan filter opsega (bez tihog proširenja).";
             }
         }
         else if (hasIncompletePostCoverage)
@@ -2743,6 +2856,13 @@ SELECT
         bool applyDateRangeFilter = true)
     {
         var windowDays = windowOverride ?? GetDecisionScoreWindowDays(filters);
+        if (!capabilities.HasDecisionScoreCacheForWindow(windowDays))
+        {
+            throw new SupplierDecisionUnavailableException(
+                "MISSING_SCHEMA",
+                $"Skup podataka odluke dobavljača za period {ResolveEffectiveDataset(windowDays)} nije spreman za traženi period.");
+        }
+
         var mvName = SelectDecisionScoreMv(windowDays);
         var parameters = new List<NpgsqlParameter>();
         var where = new StringBuilder("WHERE 1 = 1");
@@ -3338,6 +3458,7 @@ FROM final_suppliers;
     private static async Task<SupplierDecisionDetailsResponse> BuildDetailsResponseAsync(
         string analyticsConnectionString,
         SupplierDecisionHubFilters filters,
+        SupplierRowsDataset dataset,
         SupplierScoreRow supplier,
         CancellationToken ct)
     {
@@ -3346,6 +3467,7 @@ FROM final_suppliers;
         var markdownDependentArticles = await QueryArticleDecisionsAsync(analyticsConnectionString, filters, "markdown", ct);
         var blockedByOosArticles = await QueryArticleDecisionsAsync(analyticsConnectionString, filters, "oos", ct);
         var recommendationHistory = await QueryRecommendationHistoryAsync(analyticsConnectionString, filters, ct);
+        var trustMetadata = BuildScorecardTrustMetadata(dataset, filters);
 
         return new SupplierDecisionDetailsResponse(
             new SupplierHeaderDto(
@@ -3380,7 +3502,10 @@ FROM final_suppliers;
             winningArticles,
             markdownDependentArticles,
             blockedByOosArticles,
-            recommendationHistory);
+            recommendationHistory,
+            trustMetadata,
+            BuildDecisionScoreDataNote(filters),
+            BuildResponseMeta(dataset.Rows, trustMetadata));
     }
 
     private static async Task<List<CategoryBreakdownItem>> QueryCategoryBreakdownAsync(
@@ -3748,7 +3873,7 @@ LIMIT 6;
             "EXPAND" => "Jak sell-through bez sniženja i zdrava marža ukazuju na kvalitetnu saradnju sa dobavljačem.",
             "EXPAND_SELECTIVELY" => "Dobavljač ima najbolje rezultate u užem skupu kategorija, a ne kroz ceo asortiman.",
             "PRICE_NEGOTIATE" => "Tražnja se otvara tek posle sniženja, što sugeriše previsoku ulaznu cenu.",
-            "ASSORTMENT_REDUCE" => "Visoka zavisnost od sniženja i stock risk nepotrebno vezuju kapital.",
+            "ASSORTMENT_REDUCE" => "Visoka zavisnost od sniženja i rizik zaliha nepotrebno vezuju kapital.",
             "OOS_FALSE_NEGATIVE" => "Slabiji rezultat može biti posledica nedostatka zaliha pre prvog sniženja.",
             "REVIEW_QUALITY" => "Povraćaji ili kvalitet su dovoljno loši da blokiraju bezbedno širenje saradnje.",
             _ => "Signali su mešoviti, pa je najbezbednije zadržati trenutni nivo saradnje."
@@ -3928,7 +4053,10 @@ public sealed record SupplierDecisionDetailsResponse(
     IReadOnlyList<ArticleDecisionItem> WinningArticles,
     IReadOnlyList<ArticleDecisionItem> MarkdownDependentArticles,
     IReadOnlyList<ArticleDecisionItem> BlockedByOosArticles,
-    IReadOnlyList<RecommendationHistoryItem> RecommendationHistory);
+    IReadOnlyList<RecommendationHistoryItem> RecommendationHistory,
+    ScorecardTrustMetadata? TrustMetadata = null,
+    string? DataNote = null,
+    AnalyticsResponseMetaDto? Meta = null);
 
 public sealed record SupplierDecisionReportResponse(
     string ReportId,

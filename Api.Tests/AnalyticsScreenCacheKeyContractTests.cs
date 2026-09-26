@@ -10,6 +10,41 @@ public sealed class AnalyticsScreenCacheKeyContractTests
     private static readonly DateTime ToUtc = new(2026, 6, 30, 23, 59, 0, DateTimeKind.Utc);
 
     [Fact]
+    public void ColorSalesStats_EveryBusinessDimensionChangesCacheIdentity()
+    {
+        var baseline = AnalyticsCacheKeys.ColorSalesStats(FromUtc, ToUtc, storeId: 1, sezonaId: 2, dataScope: "existing");
+
+        var variants = new[]
+        {
+            AnalyticsCacheKeys.ColorSalesStats(FromUtc.AddDays(1), ToUtc, 1, 2, "existing"),
+            AnalyticsCacheKeys.ColorSalesStats(FromUtc, ToUtc.AddDays(1), 1, 2, "existing"),
+            AnalyticsCacheKeys.ColorSalesStats(FromUtc, ToUtc, 9, 2, "existing"),
+            AnalyticsCacheKeys.ColorSalesStats(FromUtc, ToUtc, 1, 9, "existing"),
+            AnalyticsCacheKeys.ColorSalesStats(FromUtc, ToUtc, 1, 2, "imported")
+        };
+
+        Assert.All(variants, key => Assert.NotEqual(baseline, key));
+        Assert.Equal(variants.Length, variants.Distinct(StringComparer.Ordinal).Count());
+        Assert.Contains("color-sales-stats:", baseline, StringComparison.Ordinal);
+        Assert.Contains("color-sales-stats:v4:", baseline, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ColorSalesFamily_UsesCanonicalPrefixAndCoreInvalidation()
+    {
+        Assert.Contains(AnalyticsCachePolicy.ColorSalesFamily, AnalyticsCachePolicy.CoreFamilies);
+        Assert.Equal(
+            "analytics:color-sales",
+            AnalyticsCachePolicy.ResolveFamilyPrefix(AnalyticsCachePolicy.ColorSalesFamily));
+        Assert.Equal(
+            AnalyticsCachePolicy.ColorSalesStats,
+            AnalyticsCachePolicy.ResolveByFamily(AnalyticsCachePolicy.ColorSalesFamily));
+        Assert.Equal(
+            "analytics:color-sales",
+            AnalyticsCachePolicy.ResolveFamilyPrefix("color-sales-stats"));
+    }
+
+    [Fact]
     public void ProductDecisionCenter_EveryBusinessDimensionChangesCacheIdentity()
     {
         var baseline = AnalyticsCacheKeys.ProductDecisionCenter(FromUtc, ToUtc, storeId: 1, supplierId: 2, top: 100, dataScope: "existing");
@@ -123,6 +158,37 @@ public sealed class AnalyticsScreenCacheKeyContractTests
     }
 
     [Fact]
+    public void InventorySizeCurve_SizeFilterCannotShareCacheEntryWithAggregateCurve()
+    {
+        var aggregate = AnalyticsCacheKeys.InventorySizeCurve(storeId: 7, skuId: 101, sizeCode: null, top: 200);
+        var size42 = AnalyticsCacheKeys.InventorySizeCurve(storeId: 7, skuId: 101, sizeCode: "42", top: 200);
+        var normalizedSize42 = AnalyticsCacheKeys.InventorySizeCurve(storeId: 7, skuId: 101, sizeCode: " 42 ", top: 200);
+
+        Assert.NotEqual(aggregate, size42);
+        Assert.Equal(size42, normalizedSize42);
+    }
+
+    [Fact]
+    public void InventorySecondarySignals_IsolateRequestedPeriodAndScope()
+    {
+        var from = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var to = new DateTime(2026, 1, 31, 0, 0, 0, DateTimeKind.Utc);
+
+        Assert.NotEqual(
+            AnalyticsCacheKeys.InventoryForecast(7, 8, top: 50, fromDate: from, toDate: to, dataScope: "all"),
+            AnalyticsCacheKeys.InventoryForecast(7, 8, top: 50, fromDate: from, toDate: to, dataScope: "existing"));
+        Assert.NotEqual(
+            AnalyticsCacheKeys.InventoryAlerts(7, 8, top: 50, fromDate: from, toDate: to, dataScope: "all"),
+            AnalyticsCacheKeys.InventoryAlerts(7, 8, top: 50, fromDate: from, toDate: to, dataScope: "imported"));
+        Assert.NotEqual(
+            AnalyticsCacheKeys.RebalanceSuggestions(7, supplierId: 8, top: 50, fromDate: from, toDate: to, dataScope: "all"),
+            AnalyticsCacheKeys.RebalanceSuggestions(7, supplierId: 8, top: 50, fromDate: from, toDate: to.AddDays(1), dataScope: "all"));
+        Assert.NotEqual(
+            AnalyticsCacheKeys.InventorySizeCurve(7, 8, 101, top: 50, fromDate: from, toDate: to, dataScope: "all"),
+            AnalyticsCacheKeys.InventorySizeCurve(7, 8, 101, top: 50, fromDate: from.AddDays(1), toDate: to, dataScope: "all"));
+    }
+
+    [Fact]
     public void ReportCacheVersion_InvalidatesSupplierAndPilotReports()
     {
         var supplierV1 = SupplierReportKey(reportCacheVersion: 1);
@@ -185,6 +251,57 @@ public sealed class AnalyticsScreenCacheKeyContractTests
         Assert.Contains("scope:all", all, StringComparison.Ordinal);
         Assert.Contains("scope:imported", imported, StringComparison.Ordinal);
         Assert.Contains("scope:existing", existing, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PreNivelacijaPriority_SeparatesEffectiveUtcWindowDays()
+    {
+        var firstDay = AnalyticsCacheKeys.PreNivelacijaPriorityBase(
+            null, null, null, null, null, null, null, null, "all", new DateTime(2026, 9, 22, 0, 0, 0, DateTimeKind.Utc));
+        var nextDay = AnalyticsCacheKeys.PreNivelacijaPriorityBase(
+            null, null, null, null, null, null, null, null, "all", new DateTime(2026, 9, 23, 0, 0, 0, DateTimeKind.Utc));
+
+        Assert.NotEqual(firstDay, nextDay);
+        Assert.Contains("effective-to:", firstDay, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void VendorSalesNivelacija_SeparatesStoreAndDataScopeCacheEntries()
+    {
+        var baseline = AnalyticsCacheKeys.VendorSalesNivelacija(
+            vendorId: 7,
+            eventDate: FromUtc,
+            from: FromUtc,
+            to: ToUtc,
+            category: "Patike",
+            includeInactive: false,
+            maxRows: 5000,
+            storeId: 1,
+            dataScope: "existing");
+
+        var differentStore = AnalyticsCacheKeys.VendorSalesNivelacija(
+            7, FromUtc, FromUtc, ToUtc, "Patike", false, 5000, 2, "existing");
+        var differentScope = AnalyticsCacheKeys.VendorSalesNivelacija(
+            7, FromUtc, FromUtc, ToUtc, "Patike", false, 5000, 1, "imported");
+        var allStores = AnalyticsCacheKeys.VendorSalesNivelacija(
+            7, FromUtc, FromUtc, ToUtc, "Patike", false, 5000, null, "all");
+
+        Assert.NotEqual(baseline, differentStore);
+        Assert.NotEqual(baseline, differentScope);
+        Assert.NotEqual(baseline, allStores);
+        Assert.Contains("store:1", baseline, StringComparison.Ordinal);
+        Assert.Contains("scope:existing", baseline, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void VendorSalesNivelacijaOptions_SeparatesStoreAndDataScopeCacheEntries()
+    {
+        var all = AnalyticsCacheKeys.VendorSalesNivelacijaOptions(7, "Patike", 200, null, "all");
+        var scoped = AnalyticsCacheKeys.VendorSalesNivelacijaOptions(7, "Patike", 200, 1, "existing");
+
+        Assert.NotEqual(all, scoped);
+        Assert.Contains("store:1", scoped, StringComparison.Ordinal);
+        Assert.Contains("scope:existing", scoped, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -12,6 +12,7 @@ export const ANALYTICS_CRITICAL_METRIC_KEYS = [
   "confidence",
   "reliability",
   "counts",
+  "decisionScore",
 ] as const;
 
 export type AnalyticsCriticalMetricKey = typeof ANALYTICS_CRITICAL_METRIC_KEYS[number];
@@ -62,12 +63,18 @@ export interface AnalyticsResponseMeta {
   requestedPeriodToUtc?: string | null;
   effectivePeriodFromUtc?: string | null;
   effectivePeriodToUtc?: string | null;
+  requestedDataScope?: string | null;
+  effectiveDataScope?: string | null;
+  provenanceBasis?: string | null;
   observedPeriodFromUtc?: string | null;
   observedPeriodToUtc?: string | null;
   dataQualityStatus?: "good" | "warning" | "critical" | "insufficient_data" | string | null;
   recommendationAllowed?: boolean | null;
   isPartial?: boolean;
   metricProvenance?: AnalyticsMetricProvenanceMap | null;
+  operationsIntegrityStatus?: "verified" | "unverified" | "degraded" | "drift_detected" | string | null;
+  operationsIntegrityCheckedAtUtc?: string | null;
+  operationsIntegrityEvidenceId?: string | null;
 }
 
 export type AnalyticsFreshnessStatus = "fresh" | "stale" | "critical" | "unknown";
@@ -1355,10 +1362,15 @@ export interface InventoryInsightItem {
   naziv: string;
   supplierName?: string | null;
   storeName?: string | null;
+  supplierId: number | null;
+  storeId: number | null;
   quantity: number;
   minimum: number;
   reorderGap: number;
-  estimatedValue: number;
+  estimatedValue: number | null;
+  unitCost: number | null;
+  costSource: string;
+  costMissing: boolean;
   daysSinceMovement: number;
   agingBucket: string;
   agingLabel: string;
@@ -1387,6 +1399,19 @@ export interface InventoryInsights {
 }
 
 // ── Inventory Forecast ────────────────────────────────────────────────────────
+
+export interface InventorySignalSnapshotProvenance {
+  evidenceScope: "current-snapshot" | string;
+  supportsRequestedPeriod: boolean;
+  supportsRequestedDataScope: boolean;
+  requestedPeriodFromUtc?: string | null;
+  requestedPeriodToUtc?: string | null;
+  requestedDataScope?: string | null;
+  effectivePeriodFromUtc?: string | null;
+  effectivePeriodToUtc?: string | null;
+  effectiveDataScope?: string | null;
+  warning?: string | null;
+}
 
 export interface ForecastRowDto {
   skuId: number;
@@ -1421,6 +1446,13 @@ export interface ForecastDto {
   /** Proven snapshot freshness from materializer; not response GeneratedAtUtc */
   snapshotFreshnessUtc?: string | null;
   warning?: string | null;
+  /** sku-store-size — one forecast item per size row */
+  rowGrain?: string | null;
+  /** max-by-sku-store-across-sizes — SKU display risk is max across matching size rows */
+  riskAggregationPolicy?: string | null;
+  /** current-snapshot-not-analysis-period — not tied to Inventory period selection */
+  evidenceScope?: string | null;
+  provenance?: InventorySignalSnapshotProvenance | null;
   items: ForecastRowDto[];
 }
 
@@ -1498,6 +1530,7 @@ export interface SizeCurveDto {
   snapshotFreshnessUtc?: string | null;
   snapshotFreshnessStatus?: "fresh" | "stale" | "critical" | "unknown" | string | null;
   warning?: string | null;
+  provenance?: InventorySignalSnapshotProvenance | null;
   items: SizeCurvePointDto[];
 }
 
@@ -1535,6 +1568,7 @@ export interface RebalanceListDto {
   snapshotFreshnessUtc?: string | null;
   snapshotFreshnessStatus?: "fresh" | "stale" | "critical" | "unknown" | string | null;
   warning?: string | null;
+  provenance?: InventorySignalSnapshotProvenance | null;
   items: RebalanceSuggestionDto[];
 }
 
@@ -1563,6 +1597,7 @@ export interface InventoryAlertListDto {
   snapshotFreshnessUtc?: string | null;
   snapshotFreshnessStatus?: "fresh" | "stale" | "critical" | "unknown" | string | null;
   warning?: string | null;
+  provenance?: InventorySignalSnapshotProvenance | null;
   items: InventoryAlertDto[];
 }
 
@@ -1615,6 +1650,18 @@ export interface InventoryActionSuggestion {
   daysSinceMovement: number | null;
   note?: string | null;
   updatedAtUtc?: string | null;
+  datasetContext?: InventoryActionDatasetContext | null;
+}
+
+export interface InventoryActionDatasetContext {
+  dataScope?: string | null;
+  periodFrom?: string | null;
+  periodTo?: string | null;
+  snapshotGeneration?: string | null;
+  storeId?: number | null;
+  sizeCode?: string | null;
+  fromStoreId?: number | null;
+  toStoreId?: number | null;
 }
 
 export interface InventoryActionWorkflow {

@@ -66,6 +66,10 @@ public sealed class AnalyticsNivelacijaSplitPolicyTests
         Assert.Equal(2, snapshot.ArticleCountWithNivelacija);
         Assert.Equal(1, snapshot.ComparableArticleCount);
         Assert.Equal(1_250m, snapshot.ComparableRevenueWithSplit);
+        Assert.Equal(500m, snapshot.ComparablePreRevenue);
+        Assert.Equal(750m, snapshot.ComparablePostRevenue);
+        Assert.Equal(5, snapshot.ComparablePreQuantity);
+        Assert.Equal(6, snapshot.ComparablePostQuantity);
         Assert.Equal(50d, snapshot.RevenueImpactPct);
         Assert.Equal(20d, snapshot.UnitsImpactPct);
         Assert.True(snapshot.HasComparableSignal);
@@ -105,5 +109,86 @@ public sealed class AnalyticsNivelacijaSplitPolicyTests
         Assert.True(validZero.HasComparableSignal);
         Assert.Equal(0d, validZero.RevenueImpactPct);
         Assert.Equal(0d, validZero.UnitsImpactPct);
+    }
+
+    [Fact]
+    public void EvaluateComparableSignal_IgnoresOneSidedRowsInAggregateImpact()
+    {
+        var signal = AnalyticsNivelacijaSplitPolicy.EvaluateComparableSignal(
+            comparablePreRevenue: 500m,
+            comparablePostRevenue: 750m,
+            comparablePreQuantity: 5,
+            comparablePostQuantity: 6,
+            comparableArticleCount: 1,
+            totalRevenue: 1_550m);
+
+        Assert.Equal(50d, signal.RevenueImpactPct);
+        Assert.Equal(20d, signal.UnitsImpactPct);
+        Assert.Null(signal.SignalNote);
+    }
+
+    [Fact]
+    public void EvaluateComparableSignal_BlocksAggregateImpactWhenCohortIsInsufficient()
+    {
+        var signal = AnalyticsNivelacijaSplitPolicy.EvaluateComparableSignal(
+            comparablePreRevenue: 100m,
+            comparablePostRevenue: 600m,
+            comparablePreQuantity: 1,
+            comparablePostQuantity: 6,
+            comparableArticleCount: 1,
+            totalRevenue: 1_000m);
+
+        Assert.Null(signal.RevenueImpactPct);
+        Assert.Null(signal.UnitsImpactPct);
+        Assert.Contains("premala", signal.SignalNote ?? string.Empty);
+    }
+
+    [Fact]
+    public void AggregateComparableSignal_ExcludesOneSidedSupplierActivity()
+    {
+        var comparableSupplier = AnalyticsNivelacijaSplitPolicy.Build(
+            new[]
+            {
+                new TestRow(1, new DateTime(2026, 1, 10, 0, 0, 0, DateTimeKind.Utc), 500m, 5),
+                new TestRow(1, new DateTime(2026, 1, 20, 0, 0, 0, DateTimeKind.Utc), 750m, 6)
+            },
+            new Dictionary<int, DateTime>
+            {
+                [1] = new DateTime(2026, 1, 15, 0, 0, 0, DateTimeKind.Utc)
+            },
+            row => row.ArtikalId,
+            row => row.DatumProdaje,
+            row => row.Prihod,
+            row => row.Kolicina);
+        var oneSidedSupplier = AnalyticsNivelacijaSplitPolicy.Build(
+            new[]
+            {
+                new TestRow(2, new DateTime(2026, 1, 10, 0, 0, 0, DateTimeKind.Utc), 300m, 3),
+                new TestRow(3, new DateTime(2026, 1, 20, 0, 0, 0, DateTimeKind.Utc), 400m, 4)
+            },
+            new Dictionary<int, DateTime>
+            {
+                [2] = new DateTime(2026, 1, 15, 0, 0, 0, DateTimeKind.Utc),
+                [3] = new DateTime(2026, 1, 15, 0, 0, 0, DateTimeKind.Utc)
+            },
+            row => row.ArtikalId,
+            row => row.DatumProdaje,
+            row => row.Prihod,
+            row => row.Kolicina);
+
+        var signal = AnalyticsNivelacijaSplitPolicy.EvaluateComparableSignal(
+            comparableSupplier.ComparablePreRevenue + oneSidedSupplier.ComparablePreRevenue,
+            comparableSupplier.ComparablePostRevenue + oneSidedSupplier.ComparablePostRevenue,
+            comparableSupplier.ComparablePreQuantity + oneSidedSupplier.ComparablePreQuantity,
+            comparableSupplier.ComparablePostQuantity + oneSidedSupplier.ComparablePostQuantity,
+            comparableSupplier.ComparableArticleCount + oneSidedSupplier.ComparableArticleCount,
+            comparableSupplier.RevenueWithSplit + oneSidedSupplier.RevenueWithSplit);
+
+        Assert.Equal(800m, comparableSupplier.PreRevenue + oneSidedSupplier.PreRevenue);
+        Assert.Equal(1_150m, comparableSupplier.PostRevenue + oneSidedSupplier.PostRevenue);
+        Assert.Equal(500m, comparableSupplier.ComparablePreRevenue + oneSidedSupplier.ComparablePreRevenue);
+        Assert.Equal(750m, comparableSupplier.ComparablePostRevenue + oneSidedSupplier.ComparablePostRevenue);
+        Assert.Equal(50d, signal.RevenueImpactPct);
+        Assert.Equal(20d, signal.UnitsImpactPct);
     }
 }

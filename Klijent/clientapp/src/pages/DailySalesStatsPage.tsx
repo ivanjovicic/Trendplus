@@ -223,6 +223,37 @@ function buildStoreLabel(store: StoreOption): string {
   return extras ? `${store.storeName} (${extras})` : store.storeName;
 }
 
+export function resolveDailySalesStoreLabel(stores: StoreOption[], storeId: number | null): string {
+  if (storeId == null) return "Svi objekti";
+  const store = stores.find((candidate) => candidate.storeId === storeId);
+  if (!store || !store.storeName.trim()) return `Nepoznat objekat (ID ${storeId})`;
+  return buildStoreLabel({ ...store, storeName: store.storeName.trim() });
+}
+
+export type DailySalesBlankColumn = {
+  key: string;
+  header: string;
+  dataType: "text";
+};
+
+export function buildDailySalesBlankColumns(): DailySalesBlankColumn[] {
+  const manualSupplierColumns = Array.from({ length: BLANK_SUPPLIER_COLUMN_COUNT }, (_, index) => ({
+    key: `manualSupplier:${index + 1}`,
+    header: "",
+    dataType: "text" as const,
+  }));
+
+  return [
+    { key: "date", header: "Datum", dataType: "text" },
+    { key: "worker1", header: "I sm.", dataType: "text" },
+    { key: "worker2", header: "II sm.", dataType: "text" },
+    { key: "revenue", header: "Prihod dana", dataType: "text" },
+    ...manualSupplierColumns,
+    { key: "others", header: "Ostali", dataType: "text" },
+    { key: "total", header: "Ukupno kom.", dataType: "text" },
+  ];
+}
+
 function finiteOrNull(value: DailySalesNumeric): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
@@ -420,6 +451,26 @@ export function buildSupplierConcentration(
 
   const topSupplierQty = sum(baseRows.map((row) => row.totalQty));
   const topSupplierRevenue = sum(baseRows.map((row) => row.totalRevenue));
+  const hasImpossibleQtyTotal = supplierQtyBasis != null
+    && supplierQtyBasis > 0
+    && topSupplierQty != null
+    && topSupplierQty > supplierQtyBasis;
+  const hasImpossibleRevenueTotal = supplierRevenueBasis != null
+    && supplierRevenueBasis > 0
+    && topSupplierRevenue != null
+    && topSupplierRevenue > supplierRevenueBasis;
+
+  if (hasImpossibleQtyTotal) {
+    warnings.push("Zbir dobavljačkih količina prelazi ukupan period total.");
+  }
+  if (hasImpossibleRevenueTotal) {
+    warnings.push("Zbir dobavljačkog prihoda prelazi ukupan period total.");
+  }
+
+  const concentrationIsInvalid = hasImpossibleQtyTotal || hasImpossibleRevenueTotal;
+  const concentrationRows = concentrationIsInvalid
+    ? baseRows.map((row) => ({ ...row, qtySharePct: null, revenueSharePct: null }))
+    : baseRows;
   const othersQty = supplierQtyBasis != null && topSupplierQty != null
     ? supplierQtyBasis - topSupplierQty
     : null;
@@ -427,8 +478,8 @@ export function buildSupplierConcentration(
     ? supplierRevenueBasis - topSupplierRevenue
     : null;
 
-  const allRows = [...baseRows];
-  if ((othersQty != null && othersQty !== 0) || (othersRevenue != null && othersRevenue !== 0)) {
+  const allRows = [...concentrationRows];
+  if (!concentrationIsInvalid && ((othersQty != null && othersQty !== 0) || (othersRevenue != null && othersRevenue !== 0))) {
     allRows.push({
       supplierName: "Ostali",
       displayName: "Ostali",
@@ -449,17 +500,21 @@ export function buildSupplierConcentration(
     };
   });
 
-  const top3QtySharePct = percent(safeDivide(sum(baseRows.slice(0, 3).map((row) => row.totalQty)), supplierQtyBasis));
-  const top5QtySharePct = percent(safeDivide(sum(baseRows.slice(0, 5).map((row) => row.totalQty)), supplierQtyBasis));
+  const top3QtySharePct = concentrationIsInvalid
+    ? null
+    : percent(safeDivide(sum(concentrationRows.slice(0, 3).map((row) => row.totalQty)), supplierQtyBasis));
+  const top5QtySharePct = concentrationIsInvalid
+    ? null
+    : percent(safeDivide(sum(concentrationRows.slice(0, 5).map((row) => row.totalQty)), supplierQtyBasis));
 
   let cumulative: number | null = 0;
   let suppliersTo80Pct: number | null = null;
-  for (let index = 0; index < baseRows.length; index += 1) {
-    const current = baseRows[index];
+  for (let index = 0; index < concentrationRows.length; index += 1) {
+    const current = concentrationRows[index];
     cumulative = cumulative == null || current?.qtySharePct == null
       ? null
       : cumulative + current.qtySharePct;
-    if (cumulative != null && cumulative >= 80) {
+    if (!concentrationIsInvalid && cumulative != null && cumulative >= 80) {
       suppliersTo80Pct = index + 1;
       break;
     }
@@ -547,13 +602,28 @@ function truncateLabel(value: string, maxLength = 18): string {
 }
 
 export function buildRollingAverage(rows: DailySalesRow[], index: number, accessor: (row: DailySalesRow) => DailySalesNumeric, windowSize = 7): number | null {
-  const start = Math.max(0, index - (windowSize - 1));
-  const slice = rows.slice(start, index + 1);
-  if (slice.length === 0) return null;
+  const start = Math.max(0, index - windowSize);
+  const slice = rows.slice(start, index);
+  if (slice.length < windowSize) return null;
   const values = slice.map((row) => finiteOrNull(accessor(row)));
   if (!values.every((value): value is number => value != null)) return null;
   const result = values.reduce((acc, value) => acc + value, 0) / values.length;
   return Number.isFinite(result) ? result : null;
+}
+
+export function getNextDailySalesSortState(
+  currentKey: SortKey,
+  currentDir: SortDir,
+  field: SortKey,
+): { sortKey: SortKey; sortDir: SortDir } {
+  return {
+    sortKey: field,
+    sortDir: currentKey === field ? (currentDir === "asc" ? "desc" : "asc") : "desc",
+  };
+}
+
+export function isDailySalesNoDataInPeriod(response: DailySalesTableResponse | null): boolean {
+  return response?.meta?.emptyReason === "no_data_in_period";
 }
 
 export function summarizePeriod(response: DailySalesTableResponse | null): PeriodSummary {
@@ -782,6 +852,7 @@ export default function DailySalesStatsPage() {
 
   const chronologicalChartRows = dailyProjections.chronologicalChartRows;
   const tableRows = dailyProjections.tableRows;
+  const noDataInPeriod = isDailySalesNoDataInPeriod(data);
 
   const mismatchCount = useMemo(
     () =>
@@ -817,7 +888,22 @@ export default function DailySalesStatsPage() {
   const previousSummary = useMemo(() => summarizePeriod(previousData), [previousData]);
 
   const emptyStateHint = useMemo(() => {
-    if (!data || tableRows.length > 0) return null;
+    if (!data || (tableRows.length > 0 && !noDataInPeriod)) return null;
+    if (noDataInPeriod) {
+      const noDataMessage = data.meta?.message ?? "Nema prodaje za izabrani period.";
+      const min = data.metadata.minAvailableDate;
+      const max = data.metadata.maxAvailableDate;
+      if (min && max) {
+        const selectedFrom = activeFilters.fromDate;
+        const selectedTo = activeFilters.toDate;
+        const dataFrom = min.slice(0, 10);
+        const dataTo = max.slice(0, 10);
+        if (selectedTo < dataFrom || selectedFrom > dataTo) {
+          return `${noDataMessage} Izabrani period je van dostupnog raspona prodaje (${fmtDate(min)} - ${fmtDate(max)}).`;
+        }
+      }
+      return noDataMessage;
+    }
     const min = data.metadata.minAvailableDate;
     const max = data.metadata.maxAvailableDate;
     if (!min || !max) {
@@ -837,7 +923,7 @@ export default function DailySalesStatsPage() {
     }
 
     return "Nema podataka za izabrane filtere.";
-  }, [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, data, tableRows.length]);
+  }, [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, data, noDataInPeriod, tableRows.length]);
 
   const responseMeta = data?.meta ?? null;
   const trustLastRefreshAt = responseMeta?.lastRefreshAtUtc ?? null;
@@ -849,12 +935,13 @@ export default function DailySalesStatsPage() {
     : emptyStateHint;
 
   const emptyStateVariant = useMemo<"no_data" | "insufficient_data" | "filtered_out" | null>(() => {
-    if (!data || loading || error || tableRows.length > 0) return null;
-    if (data.meta?.emptyReason) return "no_data";
+    if (!data || loading || error) return null;
+    if (noDataInPeriod) return "no_data";
+    if (tableRows.length > 0) return null;
     if (activeFilters.storeId != null) return "filtered_out";
     if ((data.metadata.warnings?.length ?? 0) > 0) return "insufficient_data";
     return "no_data";
-  }, [activeFilters.storeId, data, error, loading, tableRows.length]);
+  }, [activeFilters.storeId, data, error, loading, noDataInPeriod, tableRows.length]);
 
   const toolbarColumns = useMemo<AnalyticsTableColumn<DailySalesRow>[]>(() => {
     const baseColumns: AnalyticsTableColumn<DailySalesRow>[] = [
@@ -886,10 +973,10 @@ export default function DailySalesStatsPage() {
   const toolbarFilters = useMemo<AnalyticsNamedValue[]>(() => [
     { key: "fromDate", label: "Od", value: activeFilters.fromDate },
     { key: "toDate", label: "Do", value: activeFilters.toDate },
-    { key: "storeId", label: "Objekat", value: activeFilters.storeId ?? "Svi objekti" },
+    { key: "storeId", label: "Objekat", value: resolveDailySalesStoreLabel(stores, activeFilters.storeId) },
     { key: "topN", label: "Top dobavljača", value: activeFilters.topN },
     { key: "dataScope", label: "Opseg podataka", value: memoizedQueryDataScope },
-  ], [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeFilters.topN, memoizedQueryDataScope]);
+  ], [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeFilters.topN, memoizedQueryDataScope, stores]);
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(() => [
     { key: "requestedFrom", label: "Zahtevan od", value: fmtDateISO(data?.requestedFrom) ?? "" },
@@ -917,6 +1004,11 @@ export default function DailySalesStatsPage() {
   ), [chronologicalChartRows]);
 
   const trendData = chronologicalTrendData;
+
+  const ma7InsufficientHistoryCount = useMemo(
+    () => trendData.filter((point) => point.ma7Revenue == null || point.ma7Items == null).length,
+    [trendData],
+  );
 
   const shiftMixData = useMemo<ShiftMixPoint[]>(() => (
     chronologicalChartRows.map((row) => ({
@@ -1088,7 +1180,10 @@ export default function DailySalesStatsPage() {
     const offShiftItems = finiteOrNull(metadata?.offShiftItems);
     const offShiftRevenue = finiteOrNull(metadata?.offShiftRevenue);
     const duplicateReceipts = finiteOrNull(metadata?.duplicateReceiptGroupCount);
-    const receiptMismatch = finiteOrNull(metadata?.receiptAmountMismatchCount);
+    const receiptReconciliationUnavailable = metadata?.receiptReconciliation?.status === "unavailable";
+    const receiptMismatch = receiptReconciliationUnavailable
+      ? null
+      : finiteOrNull(metadata?.receiptAmountMismatchCount);
     const nonStandardReceipts = finiteOrNull(metadata?.nonStandardReceiptCount);
     const nonStandardRevenue = finiteOrNull(metadata?.nonStandardReceiptRevenue);
     const suppliers = finiteOrNull(metadata?.uniqueSuppliersInRange);
@@ -1096,7 +1191,7 @@ export default function DailySalesStatsPage() {
     return [
     {
       key: "unknown",
-      label: "Nepoznati dobavljac",
+      label: "Nepoznati dobavljač",
       value: fmtPct(unknownSupplierPct, 1, "Nije dostupno"),
       tone: unknownSupplierPct == null ? "info" : Math.abs(unknownSupplierPct) >= 5 ? "danger" : unknownSupplierPct !== 0 ? "warning" : "good",
       description: "Udeo prodaje bez mapiranog dobavljača.",
@@ -1131,10 +1226,17 @@ export default function DailySalesStatsPage() {
     },
     {
       key: "missingShift",
+      label: "Dani bez satnice",
+      value: fmtNumber(missingShiftCount),
+      tone: missingShiftCount > 0 ? "warning" : "good",
+      description: "Nedostaju podaci za obe smene ili su obe smene nepouzdane; delimično evidentirani dani se broje odvojeno.",
+    },
+    {
+      key: "incompleteShift",
       label: "Dani sa nepotpunom satnicom",
       value: fmtNumber(incompleteShiftCount),
       tone: incompleteShiftCount > 0 ? "warning" : "good",
-      description: "Nedostaje makar jedna smena ili je promet bez pouzdanog razdvajanja po smenama.",
+      description: "Ukupan broj dana bez kompletne smenske evidencije: dani bez satnice plus dani sa delimično evidentiranom satnicom.",
     },
     {
       key: "partialShift",
@@ -1162,14 +1264,16 @@ export default function DailySalesStatsPage() {
       label: "Neusklađeni računi",
       value: fmtNumber(receiptMismatch),
       tone: receiptMismatch == null ? "info" : receiptMismatch > 0 ? "danger" : "good",
-      description: "Računi gde dnevnik i suma stavki ne daju isti iznos.",
+      description: receiptReconciliationUnavailable
+        ? "Nije dostupno: dnevnik nema pouzdan identitet računa za poređenje; vrednost nije prikazana kao 0."
+        : "Računi gde dnevnik i suma stavki ne daju isti iznos.",
     },
     {
       key: "nonStandardReceipts",
       label: "Nestandardni računi",
       value: fmtNumber(nonStandardReceipts),
       tone: nonStandardReceipts == null ? "info" : nonStandardReceipts > 0 ? "warning" : "good",
-      description: "Dokumenti sa nenumerickim brojem racuna, npr. DUG.",
+      description: "Dokumenti sa nenumeričkim brojem računa, npr. DUG.",
     },
     {
       key: "nonStandardRevenue",
@@ -1193,6 +1297,7 @@ export default function DailySalesStatsPage() {
     data?.metadata.offShiftItems,
     data?.metadata.offShiftRevenue,
     data?.metadata.receiptAmountMismatchCount,
+    data?.metadata.receiptReconciliation?.status,
     data?.metadata.uniqueSuppliersInRange,
     data?.metadata.unknownSupplierPct,
     incompleteDailyAggregateCount,
@@ -1249,7 +1354,7 @@ export default function DailySalesStatsPage() {
     } else if (shiftGap != null && shiftGap <= -10) {
       insights.push({
         title: "Prva smena dominira",
-        detail: `Prva smena drži ${fmtPct(currentSummary.firstShiftSharePct, 1)} vidljivih komada. Vredi provjeriti raspored osoblja i dopunu ujutru.`,
+        detail: `Prva smena drži ${fmtPct(currentSummary.firstShiftSharePct, 1)} vidljivih komada. Vredi proveriti raspored osoblja i dopunu ujutru.`,
         tone: "info",
       });
     }
@@ -1349,15 +1454,10 @@ export default function DailySalesStatsPage() {
   );
 
   const handleSort = useCallback((field: SortKey) => {
-    setSortKey((previous) => {
-      if (previous === field) {
-        setSortDir((current) => (current === "asc" ? "desc" : "asc"));
-        return previous;
-      }
-      setSortDir(field === "date" ? "desc" : "desc");
-      return field;
-    });
-  }, []);
+    const next = getNextDailySalesSortState(sortKey, sortDir, field);
+    setSortKey(next.sortKey);
+    setSortDir(next.sortDir);
+  }, [sortDir, sortKey]);
 
   const applyPreset = (preset: PeriodPreset) => {
     setPeriodPreset(preset);
@@ -1429,21 +1529,7 @@ export default function DailySalesStatsPage() {
   };
 
   const handlePrintBlank = useCallback(() => {
-    const manualSupplierColumns = Array.from({ length: BLANK_SUPPLIER_COLUMN_COUNT }, (_, index) => ({
-      key: `manualSupplier:${index + 1}`,
-      header: "",
-      dataType: "text",
-    }));
-
-    const blankColumns = [
-      { key: "date",    header: "Datum",                    dataType: "text" },
-      { key: "worker1", header: "I sm.",                    dataType: "text" },
-      { key: "worker2", header: "II sm.",                   dataType: "text" },
-      { key: "others",  header: "Uk. sm.",                  dataType: "text" },
-      ...manualSupplierColumns,
-      { key: "revenue", header: "Ost.",                     dataType: "text" },
-      { key: "total",   header: "Ukupno",                    dataType: "text" },
-    ];
+    const blankColumns = buildDailySalesBlankColumns();
 
     const blankRows = Array.from({ length: BLANK_PRINT_ROW_COUNT }, () =>
       Object.fromEntries(blankColumns.map((col) => [col.key, ""]))
@@ -1670,7 +1756,7 @@ export default function DailySalesStatsPage() {
         />
       ) : null}
 
-      {!loading && !error && data ? (
+      {!loading && !error && data && !noDataInPeriod ? (
         <>
           <section className="daily-sales-kpis">
             <article>
@@ -1679,7 +1765,7 @@ export default function DailySalesStatsPage() {
               <small>{fmtRsdShort(currentSummary.avgRevenuePerDay)} / dan</small>
             </article>
             <article>
-              <span>Ukupno komada <InfoTip text="Ukupan broj prodatih komada vidljivih u tabeli. Moze biti manji od baze ako je primenjen filter na prodavnicu ili top-N dobavljaca." /></span>
+              <span>Ukupno komada <InfoTip text="Ukupan broj prodatih komada vidljivih u tabeli; ukupan zbir uključuje i kolonu „Ostali“. Može biti manji od baze ako je primenjen filter na prodavnicu ili top-N dobavljača." /></span>
               <strong>{fmtNumber(currentSummary.totalVisibleItems)}</strong>
               <small>{fmtNumber(currentSummary.avgItemsPerDay == null ? null : Math.round(currentSummary.avgItemsPerDay))} / dan</small>
             </article>
@@ -1694,7 +1780,7 @@ export default function DailySalesStatsPage() {
               <small>Na osnovu vidljivih komada u tabeli</small>
             </article>
             <article>
-              <span>Prva smena <InfoTip text="Udeo komada prodatih u prvoj smeni (06:00–13:59) u odnosu na ukupne smenske komade (prva + druga). Dani bez razdvajanja po smenama nisu ukljuceni u ovaj procenat." /></span>
+              <span>Prva smena <InfoTip text="Udeo komada prodatih u prvoj smeni (06:00–13:59) u odnosu na ukupne smenske komade (prva + druga). Dani bez razdvajanja po smenama nisu uključeni u ovaj procenat." /></span>
               <strong>{fmtPct(currentSummary.firstShiftSharePct, 1)}</strong>
               <small>{shiftSummaryText(currentSummary.firstShiftItems, currentSummary.firstShiftEvidenceState)} komada</small>
             </article>
@@ -1704,7 +1790,7 @@ export default function DailySalesStatsPage() {
               <small>{shiftSummaryText(currentSummary.secondShiftItems, currentSummary.secondShiftEvidenceState)} komada</small>
             </article>
             <article>
-              <span>Udeo top 3 dob. <InfoTip text="Procenat komada koje nose tri dobavljaca sa najvecim prometom u opsegu. Formula: (top 3 dobavljaci) / ukupni komadi × 100. Visoka vrednost = visoka zavisnost od malog broja dobavljaca." /></span>
+              <span>Udeo top 3 dob. <InfoTip text="Procenat komada koje nose tri dobavljača sa najvećim prometom u opsegu. Formula: (top 3 dobavljača) / ukupni komadi × 100. Visoka vrednost = visoka zavisnost od malog broja dobavljača." /></span>
               <strong>{fmtPct(supplierConcentration.top3QtySharePct, 1)}</strong>
               <small>Udeo top 3 dobavljača po komadima</small>
             </article>
@@ -1947,9 +2033,9 @@ export default function DailySalesStatsPage() {
               <div>
                 <h2 className="with-tip">
                   <span>Trend prihoda i komada</span>
-                  <InfoTip text="Dnevni trend sa 7-dnevnim pokretnim prosekom (MA7) za prihod i komade. Pokretni prosek gladi kratkorocne oscilacije i otkriva stvarni pravac kretanja. Dobar za detekciju pozitivnog ili negativnog momenta i nestabilnosti prodaje." />
+                  <InfoTip text="Dnevni trend sa 7-dnevnim pokretnim prosekom (MA7) za prihod i komade. Pokretni prosek ublažava kratkoročne oscilacije i otkriva stvarni pravac kretanja. Dobar za detekciju pozitivnog ili negativnog momenta i nestabilnosti prodaje." />
                 </h2>
-                <p>Koristi 7d prosek da odvojis stvarni trend od dnevnog suma.</p>
+                <p>Koristi prethodnih 7 dana, bez tekućeg dana, da odvojiš stvarni trend od dnevnog šuma. {ma7InsufficientHistoryCount > 0 ? `${ma7InsufficientHistoryCount} dana: nedovoljno istorije.` : "Istorija je dovoljna za sve dane."}</p>
               </div>
             </div>
 
@@ -2033,8 +2119,12 @@ export default function DailySalesStatsPage() {
                   <strong>{fmtPct(currentSummary.secondShiftSharePct, 1)}</strong>
                 </div>
                 <div>
-                  <span>Dani sa nepotpunom satnicom</span>
+                  <span>Dani bez satnice <InfoTip text="Dan sa nedostajućim podacima za obe smene ili bez pouzdanog smenskog razdvajanja." /></span>
                   <strong>{fmtNumber(missingShiftCount)}</strong>
+                </div>
+                <div>
+                  <span>Dani sa nepotpunom satnicom <InfoTip text="Ukupan broj dana bez kompletne smenske evidencije: dani bez satnice plus dani sa delimično evidentiranom satnicom." /></span>
+                  <strong>{fmtNumber(incompleteShiftCount)}</strong>
                 </div>
               </div>
             </article>

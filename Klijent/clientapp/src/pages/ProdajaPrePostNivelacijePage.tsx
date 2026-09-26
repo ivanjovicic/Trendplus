@@ -170,7 +170,7 @@ function getSafePrePostInlineErrorMessage(reason: unknown): string {
   return getSafeAnalyticsErrorMessage(
     reason instanceof Error ? reason.message : String(reason),
     undefined,
-    PRE_POST_INLINE_ERROR_FALLBACK,
+    PRE_POST_INLINE_ERROR_FALLBACK, PRE_POST_SAFE_ERROR_MESSAGES,
   );
 }
 const CHART_GRID_STROKE = "var(--dashboard-grid, var(--border-default))";
@@ -363,12 +363,12 @@ const METRIC_WARNING_META: Record<string, MetricWarningMeta> = {
       "vw_nivelacija_did view nije kreiran. Difference-in-Differences procena nije uključena.",
     isExpected: true,
   },
-  "Article stats capped": {
-    label: "Podaci ograničeni (cap)",
-    severity: "watch",
+  "Article detail limited": {
+    label: "Detaljna lista je skraćena",
+    severity: "info",
     explanation:
-      "Broj article redova je ograničen zbog veličine upita. Neke stavke možda nisu vidljive, pa suzite filter.",
-    isExpected: false,
+      "Prikazana lista artikala je ograničena, ali zbirni KPI-jevi i preporuke koriste ceo kanonski kohort.",
+    isExpected: true,
   },
   "OOS/DiD mapping failed": {
     label: "OOS/DiD mapiranje neuspešno",
@@ -420,6 +420,12 @@ function buildConfidenceMeta(
         : "weak";
   return { label: fmtPct(reliabilityPct, 0), tone };
 }
+
+const PRE_POST_SAFE_ERROR_MESSAGES = [
+  PRE_POST_INLINE_ERROR_FALLBACK,
+  "Greška pri učitavanju pre/post analitike.",
+  "Pre/post nivelacija nije dostupna.",
+] as const;
 
 function buildVolatilityMeta(currentRevenue: number | null, previousRevenue: number | null): {
   pct: number | null;
@@ -630,19 +636,16 @@ export default function ProdajaPrePostNivelacijePage() {
     refetch,
   } = useReliableAnalyticsQuery<PrePostQuerySnapshot>({
     query: prePostQuery,
-    getErrorMessage: useCallback((reason: unknown) => reason instanceof Error
-      ? reason.message
-      : "Greška pri ucitavanju pre/post analitike.", []),
+    getErrorMessage: useCallback((reason: unknown) => getSafeAnalyticsErrorMessage(
+      reason instanceof Error ? reason.message : null,
+      null,
+      "Greška pri učitavanju pre/post analitike.",
+      PRE_POST_SAFE_ERROR_MESSAGES,
+    ), []),
   });
   const data = querySnapshot?.current ?? null;
   const previousData = querySnapshot?.previous ?? null;
   const previousComparisonError = querySnapshot?.previousError ?? null;
-  const previousRevenue = useMemo(
-    () => previousData
-      ? comparablePrePostTotal(previousData.totals.postRevenue, previousData.totals.hasComparableSalesWindow)
-      : null,
-    [previousData],
-  );
   const loading = initialLoading || refetching;
   useEffect(() => {
     if (data) setExpandedVendorKey(null);
@@ -762,28 +765,7 @@ export default function ProdajaPrePostNivelacijePage() {
     data?.totals.absoluteChangeRevenue,
     data?.totals.hasComparableSalesWindow,
   );
-  const top5SharePct = useMemo<number | null>(() => {
-    if (sortedRows.length === 0 || totalAbsoluteChangeRevenue == null || totalAbsoluteChangeRevenue <= 0) return null;
-    const top5 = [...sortedRows]
-      .filter((item): item is typeof item & { sharePct: number } => item.sharePct != null && Number.isFinite(item.sharePct))
-      .sort((a, b) => b.sharePct - a.sharePct)
-      .slice(0, 5)
-      .reduce((sum, item) => sum + item.sharePct, 0);
-    return top5;
-  }, [sortedRows, totalAbsoluteChangeRevenue]);
-
   const totalChangeRevenue = comparablePrePostTotal(data?.totals.changeRevenue, data?.totals.hasComparableSalesWindow);
-  const periodGrowthPct = useMemo(() => {
-    if (previousRevenue == null || previousRevenue <= 0 || totalRevenue == null) return null;
-    return ((totalRevenue - previousRevenue) / previousRevenue) * 100;
-  }, [previousRevenue, totalRevenue]);
-
-  const periodGrowthDisplay = useMemo(() => {
-    if (previousComparisonError) return "Nedostupno";
-    if (previousRevenue == null) return "N/A";
-    if (previousRevenue <= 0) return totalRevenue != null && totalRevenue > 0 ? "Nova baza" : "Bez baze";
-    return fmtSignedPct(periodGrowthPct);
-  }, [periodGrowthPct, previousComparisonError, previousRevenue, totalRevenue]);
 
   const vendorCounts = useMemo(() => {
     const increaseFocus = sortedRows.filter((row) => row.status === "increase_focus").length;
@@ -813,6 +795,12 @@ export default function ProdajaPrePostNivelacijePage() {
     [data?.dataQuality],
   );
   const dataMeta = data?.meta ?? null;
+  const effectiveDataScope = data?.dataScope ?? dataScope;
+  const effectiveStoreId = data?.storeId ?? activeFilters.storeId;
+  const effectiveStoreLabel = effectiveStoreId == null
+    ? "Svi objekti"
+    : stores.find((store) => store.storeId === effectiveStoreId)?.storeName
+      ?? `Nepoznat objekat (ID ${effectiveStoreId})`;
   const dataMetaMessage = getAnalyticsMetaMessage(dataMeta);
   const showMetaWarning = !loading && !queryError && isAnalyticsMetaWarning(dataMeta);
   const showFilteredOutState = !loading && !queryError && Boolean(data) && decisionRows.length > 0 && focusedRows.length === 0;
@@ -829,6 +817,7 @@ export default function ProdajaPrePostNivelacijePage() {
     const {
       analyzedSharePercent: analyzedShare,
       duplicateRowsRemoved: duplicateRows,
+      cohortRows,
       inactiveRows,
       analyzedRows,
       deduplicatedRows,
@@ -843,11 +832,21 @@ export default function ProdajaPrePostNivelacijePage() {
       };
     }
 
-    const countDetail = deduplicatedRows != null && deduplicatedRows > 0
-      ? `${analyzedRows} od ${deduplicatedRows} nivelacija redova (${fmtPct(analyzedShare, 0)})`
+    const denominatorRows = cohortRows ?? deduplicatedRows;
+    const countDetail = denominatorRows != null && denominatorRows > 0
+      ? `${analyzedRows} od ${denominatorRows} kanonskih redova (${fmtPct(analyzedShare, 0)})`
       : `${fmtPct(analyzedShare, 0)} redova`;
 
-    const details = `Analizirano: ${countDetail} | bez prodajnog prozora: ${inactiveRows} | nepromenjene cene: ${unchangedPriceRows} | duplikati uklonjeni: ${duplicateRows}`;
+    const cohortDetail = dataQualityProjection.cohortRows != null
+      ? ` | kohort artikala: ${dataQualityProjection.cohortRows}`
+      : "";
+    const comparableDetail = dataQualityProjection.comparableRows != null
+      ? ` | uporedivi redovi: ${dataQualityProjection.comparableRows} (${fmtPct(dataQualityProjection.comparableSharePercent, 0)})`
+      : "";
+    const truncationDetail = dataQualityProjection.isDetailTruncated
+      ? ` | detaljna lista ograničena za ${dataQualityProjection.truncatedRows ?? "nepoznat"} redova; zbirni KPI-jevi koriste ceo kohort`
+      : "";
+    const details = `Analizirano: ${countDetail}${cohortDetail}${comparableDetail}${truncationDetail} | bez prodajnog prozora: ${inactiveRows} | nepromenjene cene: ${unchangedPriceRows} | duplikati događaja uklonjeni: ${duplicateRows}`;
 
     const hasUnexpectedWarnings = dataQualityWarnings.some((warning) => !getMetricWarningMeta(warning).isExpected);
 
@@ -1065,9 +1064,10 @@ const advancedSignals = useMemo(
       {
         key: "storeId",
         label: "Objekat",
-        value: activeFilters.storeId != null
-          ? stores.find((store) => store.storeId === activeFilters.storeId)?.storeName ?? activeFilters.storeId
-          : "Svi objekti",
+       value: activeFilters.storeId != null
+           ? stores.find((store) => store.storeId === activeFilters.storeId)?.storeName
+             ?? `Nepoznat objekat (ID ${activeFilters.storeId})`
+           : "Svi objekti",
       },
       { key: "dataScope", label: "Opseg podataka", value: dataScope },
       { key: "focusFilter", label: "Brzi fokus", value: focusFilterLabel(focusFilter) },
@@ -1078,8 +1078,8 @@ const advancedSignals = useMemo(
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(
     () => [
       { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
-      { key: "dataScope", label: "Opseg podataka", value: dataScope },
-      { key: "storeId", label: "Objekat", value: activeFilters.storeId ?? "Svi objekti" },
+      { key: "dataScope", label: "Opseg podataka", value: effectiveDataScope },
+       { key: "storeId", label: "Objekat", value: effectiveStoreLabel },
       {
         key: "previousComparison",
         label: "Uporedni period",
@@ -1096,7 +1096,12 @@ const advancedSignals = useMemo(
       },
       { key: "dataTrust", label: "Poverenje", value: dataTrustSummary.label },
       { key: "analyzedShare", label: "Analizirani redovi", value: fmtPct(dataQualityProjection.isComplete ? dataQualityProjection.analyzedSharePercent : null, 0, "Nije dostupno") },
-      { key: "duplicateRowsRemoved", label: "Duplicati uklonjeni", value: dataQualityProjection.isComplete ? dataQualityProjection.duplicateRowsRemoved : null },
+      { key: "cohortPolicy", label: "Kohort", value: dataQualityProjection.cohortPolicy === "latest_event_per_article" ? "Najnoviji događaj po artiklu" : dataQualityProjection.cohortPolicy },
+      { key: "cohortRowsExcluded", label: "Isključeno iz kohorta", value: dataQualityProjection.cohortRowsExcluded },
+      { key: "comparableRows", label: "Uporedivi redovi", value: dataQualityProjection.comparableRows },
+      { key: "returnedRows", label: "Vraćenih detaljnih redova", value: dataQualityProjection.returnedRows },
+      { key: "truncatedRows", label: "Sakrivenih detaljnih redova", value: dataQualityProjection.truncatedRows },
+      { key: "duplicateRowsRemoved", label: "Duplikati događaja uklonjeni", value: dataQualityProjection.isComplete ? dataQualityProjection.duplicateRowsRemoved : null },
       { key: "inactiveRows", label: "Neaktivni redovi", value: dataQualityProjection.isComplete ? dataQualityProjection.inactiveRows : null },
       { key: "metricsStatus", label: "Status metrika", value: resolveToolbarMetricsStatus(data?.metricsStatus) },
     ],
@@ -1108,7 +1113,8 @@ const advancedSignals = useMemo(
       data?.totals.articlesCount,
       data?.totals.vendorsCount,
       data?.windowDays,
-      dataScope,
+      effectiveDataScope,
+      effectiveStoreId,
       dataTrustSummary.label,
       focusedRows.length,
       previousComparisonError,
@@ -1291,7 +1297,7 @@ const advancedSignals = useMemo(
         table: "nivelacije-pre-post",
         recordId: buildSupplierVendorDetailRecordId(row, row.vendorRowKey),
         title: row.vendorName,
-        subtitle: "Decision support po dobavljaču",
+        subtitle: "Podrška odlučivanju po dobavljaču",
         columns: decisionColumns,
         row,
         metadata: [...toolbarFilters, ...toolbarMetadata],
@@ -1318,11 +1324,11 @@ const advancedSignals = useMemo(
     <div className="ppn-decision-page">
       <AnalyticsTrustHeader
         title="Prodaja pre/posle nivelacije"
-        description="Event-window analiza: poredi 30 dana pre i 30 dana posle svake nivelacije, pa sabira signal po dobavljaču."
+        description="Analiza prozora događaja: poredi 30 dana pre i 30 dana posle svake nivelacije, pa sabira signal po dobavljaču."
         periodFrom={activeFilters.fromDate}
         periodTo={activeFilters.toDate}
         lastRefreshAt={dataMeta?.lastRefreshAtUtc ?? null}
-        dataSource={`Nivelacija analytics (scope: ${dataScope}${activeFilters.storeId != null ? `, store: ${activeFilters.storeId}` : ""})`}
+        dataSource={`Nivelacija analitika (opseg: ${effectiveDataScope}${effectiveStoreId != null ? `, objekat: ${effectiveStoreId}` : ""})`}
         mode="report"
         dataQualityStatus={dataMeta?.dataQualityStatus ?? null}
         isPartial={showMetaWarning}
@@ -1334,7 +1340,7 @@ const advancedSignals = useMemo(
       />
       <AnalyticsControlBar
         title="Kontrole i opseg"
-        description="Period, dobavljač, kategorija i objekat ostaju ovde; tabela ispod ostaje fokusirana na pre/post signal po dobavljaču."
+        description="Period, dobavljač, kategorija i objekat ostaju ovde; tabela ispod ostaje fokusirana na signal pre/post po dobavljaču."
         chips={controlBarChips}
         primaryAction={{
           key: "apply",
@@ -1481,7 +1487,7 @@ const advancedSignals = useMemo(
           <section className="ppn-decision-signals">
             <article className="ppn-decision-card ppn-signal-card">
               <div className="ppn-card-topline">
-                <h2>Najjaca kategorija</h2>
+                <h2>Najjača kategorija</h2>
                 <span className="ppn-signal-pill signal-neutral">Kategorija</span>
               </div>
               <p>
@@ -1550,17 +1556,9 @@ const advancedSignals = useMemo(
               <span>Post-window promet posle nivelacije</span>
               <strong>{fmtRsd(totalRevenue)}</strong>
             </article>
-            <article className="ppn-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Koliko top 5 dobavljača nosi ukupnu promenu signala.">
-              <span>Top 5 udeo u promeni</span>
-              <strong>{fmtPct(top5SharePct)}</strong>
-            </article>
             <article className="ppn-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Apsolutna promena prometa pre i posle nivelacije.">
               <span>Ukupna promena prometa</span>
               <strong className={trendClass(totalChangeRevenue)}>{fmtRsd(totalChangeRevenue)}</strong>
-            </article>
-            <article className="ppn-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Trend prema prethodnom uporedivom event-opsegu.">
-              <span>Rast/pad vs prethodni event-opseg</span>
-              <strong className={trendClass(periodGrowthPct)}>{periodGrowthDisplay}</strong>
             </article>
           </section>
 
@@ -1781,11 +1779,11 @@ const advancedSignals = useMemo(
                   <strong>{fmtRsd(trustedMetric(selectedRow.postRevenue, selectedRow))}</strong>
                 </article>
                 <article>
-                  <span>Pre nivo kolicina</span>
+                  <span>Pre nivo količina</span>
                   <strong>{fmtQty(trustedMetric(selectedRow.preQty, selectedRow))}</strong>
                 </article>
                 <article>
-                  <span>Posle nivo kolicina</span>
+                  <span>Posle nivo količina</span>
                   <strong>{fmtQty(trustedMetric(selectedRow.postQty, selectedRow))}</strong>
                 </article>
                 <article>
@@ -1856,7 +1854,7 @@ const advancedSignals = useMemo(
                   </article>
                   <article>
                     <span>
-                      Najcesci metric reason
+                      Najčešći razlog metrike
                       <InfoTip text="Interni razlog zašto neki artikli nemaju sve metrike (rolling, momentum, OOS, DiD). Obično se radi o nedostajućim analytics view-ovima – ne utiče na ispravnost osnovne pre/post analize." />
                     </span>
                     <strong>{selectedDriverSummary.topMetricReasons[0] ? getMetricWarningMeta(selectedDriverSummary.topMetricReasons[0].split(" (")[0]).label : "N/A"}</strong>
@@ -1880,7 +1878,7 @@ const advancedSignals = useMemo(
               ))}
               {(!selectedRow.reliabilityAvailable || !selectedRow.confidenceAvailable || selectedRow.dataQualityStatus !== "good") ? (
                 <p className="ppn-decision-reason">
-                  <strong>Data quality:</strong> Otvori <Link to="/analytics/data-quality">Data Quality</Link> da proveris i ispravis signal.
+                      <strong>Kvalitet podataka:</strong> Otvori <Link to="/analytics/data-quality">Kvalitet podataka</Link> da proveriš i ispraviš signal.
                 </p>
               ) : null}
             </section>

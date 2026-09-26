@@ -4,6 +4,14 @@ export type VendorSalesDataQualityProjection = {
   rawRows: number | null;
   deduplicatedRows: number | null;
   duplicateRowsRemoved: number | null;
+  cohortRows: number | null;
+  cohortRowsExcluded: number | null;
+  returnedRows: number | null;
+  truncatedRows: number | null;
+  comparableRows: number | null;
+  comparableSharePercent: number | null;
+  isDetailTruncated: boolean | null;
+  cohortPolicy: string | null;
   inactiveRows: number | null;
   unchangedPriceRows: number | null;
   analyzedRows: number | null;
@@ -28,6 +36,14 @@ export function projectVendorSalesDataQuality(
   const rawRows = finiteQualityValue(dataQuality?.rawRows);
   const deduplicatedRows = finiteQualityValue(dataQuality?.deduplicatedRows);
   const duplicateRowsRemoved = finiteQualityValue(dataQuality?.duplicateRowsRemoved);
+  const cohortRows = finiteQualityValue(dataQuality?.cohortRows);
+  const cohortRowsExcluded = finiteQualityValue(dataQuality?.cohortRowsExcluded);
+  const returnedRows = finiteQualityValue(dataQuality?.returnedRows);
+  const truncatedRows = finiteQualityValue(dataQuality?.truncatedRows);
+  const comparableRows = finiteQualityValue(dataQuality?.comparableRows);
+  const comparableSharePercent = finiteQualityValue(dataQuality?.comparableSharePercent);
+  const isDetailTruncated = dataQuality?.isDetailTruncated === true ? true : dataQuality?.isDetailTruncated === false ? false : null;
+  const cohortPolicy = typeof dataQuality?.cohortPolicy === "string" ? dataQuality.cohortPolicy : null;
   const inactiveRows = finiteQualityValue(dataQuality?.inactiveRows);
   const unchangedPriceRows = finiteQualityValue(dataQuality?.unchangedPriceRows);
   const analyzedRows = finiteQualityValue(dataQuality?.analyzedRows);
@@ -49,11 +65,28 @@ export function projectVendorSalesDataQuality(
   const optionalCoverageIsCompatible =
     isOptionalCoverageCompatible(dataQuality?.avgCoveragePre30) &&
     isOptionalCoverageCompatible(dataQuality?.avgCoveragePost30);
+  const optionalCohortIsCompatible =
+    (dataQuality?.cohortRows == null || (cohortRows != null && cohortRows >= 0)) &&
+    (dataQuality?.cohortRowsExcluded == null || (cohortRowsExcluded != null && cohortRowsExcluded >= 0)) &&
+    (dataQuality?.returnedRows == null || (returnedRows != null && returnedRows >= 0)) &&
+    (dataQuality?.truncatedRows == null || (truncatedRows != null && truncatedRows >= 0)) &&
+    (dataQuality?.comparableRows == null || (comparableRows != null && comparableRows >= 0)) &&
+    (dataQuality?.comparableSharePercent == null || (comparableSharePercent != null && comparableSharePercent >= 0 && comparableSharePercent <= 100)) &&
+    (dataQuality?.isDetailTruncated == null || isDetailTruncated != null) &&
+    (dataQuality?.cohortPolicy == null || cohortPolicy != null);
 
   return {
     rawRows,
     deduplicatedRows,
     duplicateRowsRemoved,
+    cohortRows,
+    cohortRowsExcluded,
+    returnedRows,
+    truncatedRows,
+    comparableRows,
+    comparableSharePercent,
+    isDetailTruncated,
+    cohortPolicy,
     inactiveRows,
     unchangedPriceRows,
     analyzedRows,
@@ -61,6 +94,6 @@ export function projectVendorSalesDataQuality(
     lowPostCoverageRows,
     avgCoveragePre30,
     avgCoveragePost30,
-    isComplete: dataQuality != null && countsAreCompatible && shareIsCompatible && optionalCoverageIsCompatible,
+    isComplete: dataQuality != null && countsAreCompatible && shareIsCompatible && optionalCoverageIsCompatible && optionalCohortIsCompatible,
   };
 }

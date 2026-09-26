@@ -7,12 +7,14 @@ public sealed class VendorSalesNivelacijaArticleStatDto
 {
     public DateTime EventDate { get; set; }
     public int? VendorId { get; set; }
-    public string VendorName { get; set; } = "N/A";
+    public string VendorName { get; set; } = "Nepoznato";
     [JsonIgnore]
     public int ArticleId { get; set; }
+    [JsonIgnore]
+    public long PriceEventId { get; set; }
     public string Sku { get; set; } = string.Empty;
     public string ArticleName { get; set; } = string.Empty;
-    public string Category { get; set; } = "N/A";
+    public string Category { get; set; } = "Nepoznato";
     public decimal? OldPrice { get; set; }
     public decimal? NewPrice { get; set; }
     public int PreQty { get; set; }
@@ -54,7 +56,7 @@ public sealed class VendorSalesNivelacijaArticleStatDto
 public sealed class VendorSalesNivelacijaRecommendationDto
 {
     public string Status { get; set; } = "insufficient_data";
-    public string Label { get; set; } = "Insufficient data";
+    public string Label { get; set; } = "Nedovoljno podataka";
     public string Summary { get; set; } = string.Empty;
     public double? ConfidencePct { get; set; }
     public double? ReliabilityPct { get; set; }
@@ -66,7 +68,7 @@ public sealed class VendorSalesNivelacijaRecommendationDto
 public sealed class VendorSalesNivelacijaVendorStatDto
 {
     public int? VendorId { get; set; }
-    public string VendorName { get; set; } = "N/A";
+    public string VendorName { get; set; } = "Nepoznato";
     public int PreQty { get; set; }
     public decimal PreRevenue { get; set; }
     public int PostQty { get; set; }
@@ -85,6 +87,11 @@ public sealed class VendorSalesNivelacijaVendorStatDto
     public int DecreasedPriceArticlesCount { get; set; }
     public double? ReliabilityPct { get; set; }
     public bool HasComparableSalesWindow { get; set; }
+    public int ComparableArticleCount { get; set; }
+    public string? PrimaryFootwearType { get; set; }
+    public decimal? PrimaryFootwearTypeSharePercent { get; set; }
+    public decimal? PrimaryFootwearTypeAvgElasticity { get; set; }
+    public bool TypeInsightsAuthoritative { get; set; }
     public VendorSalesNivelacijaRecommendationDto? Recommendation { get; set; }
 }
 
@@ -107,6 +114,9 @@ public sealed class VendorSalesNivelacijaTotalsDto
     public decimal? AvgCoveragePre30 { get; set; }
     public decimal? AvgCoveragePost30 { get; set; }
     public bool HasComparableSalesWindow { get; set; }
+    public int ComparableRows { get; set; }
+    public int ComparableArticlesCount { get; set; }
+    public int ComparableVendorsCount { get; set; }
 }
 
 public sealed class VendorSalesNivelacijaDataQualityDto
@@ -114,6 +124,14 @@ public sealed class VendorSalesNivelacijaDataQualityDto
     public int? RawRows { get; set; }
     public int? DeduplicatedRows { get; set; }
     public int? DuplicateRowsRemoved { get; set; }
+    public int? CohortRows { get; set; }
+    public int? CohortRowsExcluded { get; set; }
+    public int? ReturnedRows { get; set; }
+    public int? TruncatedRows { get; set; }
+    public int? ComparableRows { get; set; }
+    public decimal? ComparableSharePercent { get; set; }
+    public bool? IsDetailTruncated { get; set; }
+    public string? CohortPolicy { get; set; }
     public int? InactiveRows { get; set; }
     public int? UnchangedPriceRows { get; set; }
     public int? AnalyzedRows { get; set; }
@@ -125,7 +143,7 @@ public sealed class VendorSalesNivelacijaDataQualityDto
 
 public sealed class VendorSalesNivelacijaCategoryStatDto
 {
-    public string Category { get; set; } = "N/A";
+    public string Category { get; set; } = "Nepoznato";
     public int ArticlesCount { get; set; }
     public int VendorsCount { get; set; }
     public int PreQty { get; set; }
@@ -136,6 +154,9 @@ public sealed class VendorSalesNivelacijaCategoryStatDto
     public decimal ChangeRevenue { get; set; }
     public decimal ChangePercent { get; set; }
     public bool HasComparableSalesWindow { get; set; }
+    public int ComparableArticleCount { get; set; }
+    public decimal? PostRevenueSharePercent { get; set; }
+    public decimal? AvgElasticity { get; set; }
 }
 
 public sealed class VendorSalesNivelacijaPriceDirectionStatDto
@@ -147,6 +168,7 @@ public sealed class VendorSalesNivelacijaPriceDirectionStatDto
     public decimal ChangeRevenue { get; set; }
     public decimal ChangePercent { get; set; }
     public bool HasComparableSalesWindow { get; set; }
+    public int ComparableArticleCount { get; set; }
 }
 
 public sealed class VendorSalesNivelacijaInsightDto
@@ -167,12 +189,19 @@ public sealed class VendorSalesNivelacijaResponseDto
     public DateTime? To { get; set; }
     public string? Category { get; set; }
     public bool IncludeInactive { get; set; }
+    public int? StoreId { get; set; }
+    public string DataScope { get; set; } = "all";
+    public bool ScopeApplied { get; set; }
     public List<string> Categories { get; set; } = [];
     public List<VendorSalesNivelacijaVendorStatDto> VendorStats { get; set; } = [];
     public List<VendorSalesNivelacijaArticleStatDto> ArticleStats { get; set; } = [];
     public VendorSalesNivelacijaTotalsDto Totals { get; set; } = new();
     public VendorSalesNivelacijaDataQualityDto? DataQuality { get; set; }
     public List<VendorSalesNivelacijaCategoryStatDto> CategoryStats { get; set; } = [];
+    public bool TypeInsightsAuthoritative { get; set; }
+    public string? TypeInsightsSource { get; set; }
+    public string? TypeInsightsDenominator { get; set; }
+    public string? TypeInsightsElasticityWeighting { get; set; }
     public List<VendorSalesNivelacijaPriceDirectionStatDto> PriceDirectionStats { get; set; } = [];
     public List<VendorSalesNivelacijaInsightDto> Insights { get; set; } = [];
 

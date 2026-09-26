@@ -110,19 +110,16 @@ Do not introduce a new status, claim mechanism, local lock format or selector fa
 
 ## 6. Queue work
 
+Queue mechanics have one owner: `docs/ai/PROMPT_QUEUE_PROTOCOL.md`. Do not duplicate the selector, promotion, takeover or lock algorithm here.
+
 For formal queue work:
-- treat `Current READY` as the primary/default routing pointer, not as a global mutex or exclusive allowlist; additional `READY` prompts may be claimed when the queue protocol proves them independent;
-- resolve the owner/program using the canonical router/roadmap rules;
-- select/claim through the supported queue mechanism instead of manually grepping and repeatedly attempting direct claims;
-- use the ownership/lock semantics defined by the queue protocol rather than inventing a second coordination layer;
-- work one claimed prompt at a time **per agent/workspace** unless the prompt explicitly authorizes a bounded consolidation; independent agents/workspaces may claim separate collision-safe `READY` prompts concurrently;
-- update status/evidence only through the canonical protocol;
-- do not stop merely because one queue is exhausted if the canonical router defines another safe route;
-- stop or hand off when required proof cannot be produced, authority is materially unclear, or the work crosses a genuine program boundary.
+- resolve the owner/program from `MASTER_ROADMAP.md`, then select/claim through the canonical protocol;
+- treat `Current READY` as the primary/default pointer, not as a global mutex; execute one claimed prompt at a time **per agent/workspace**;
+- when `Current READY` is `none`, run the protocol's **Idle recovery** before reporting no work: re-evaluate stale dependency/status truth, relevant `PARTIAL/BLOCKED/WAITING` prompts and recent run-log `What was missed` / `Risks` / `Next`, then promote and claim only a genuinely runnable candidate;
+- after completing a prompt, re-enter selection/recovery when the user asked to continue/claim-and-execute instead of stopping only because the pointer returned to `none`;
+- stop only for a genuine authority/gate/owner conflict or when the canonical router proves there is no safe repository-local action left.
 
-A queue prompt that contains a mechanical defect may be repaired without asking the user when the acceptance outcome and authoritative owner are clear, the repair stays in the same subsystem, and the exception is recorded in evidence.
-
-Direct user work is not required to become a queue prompt before implementation.
+A mechanical prompt/routing defect may be repaired without asking when the authoritative owner and acceptance are clear, the repair stays same-owner and evidence records it. Direct user work does not need to become a queue prompt before implementation.
 
 ## 7. Delivery truth
 

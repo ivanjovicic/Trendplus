@@ -150,7 +150,14 @@ public sealed class GetInventoryForecastHandler
                 IsAuthoritativeForecast: provenance.IsAuthoritativeForecast,
                 SnapshotFreshnessUtc: provenance.SnapshotFreshnessUtc,
                 Warning: InventoryForecastSnapshotProvenance.ComposeWarning(provenance.ProvenanceStatus, detailWarning),
-                Items: items);
+                RowGrain: InventoryForecastListContract.RowGrain,
+                RiskAggregationPolicy: InventoryForecastListContract.RiskAggregationPolicy,
+                EvidenceScope: InventoryForecastListContract.EvidenceScope,
+                Items: items,
+                Provenance: InventorySignalSnapshotProvenance.ForCurrentSnapshot(
+                    request.FromDate,
+                    request.ToDate,
+                    request.DataScope));
         }
         catch (Exception ex) when (IsMissingRelation(ex))
         {
@@ -168,7 +175,14 @@ public sealed class GetInventoryForecastHandler
                 IsAuthoritativeForecast: provenance.IsAuthoritativeForecast,
                 SnapshotFreshnessUtc: provenance.SnapshotFreshnessUtc,
                 Warning: InventoryForecastSnapshotProvenance.ComposeWarning(provenance.ProvenanceStatus, null),
-                Items: []);
+                RowGrain: InventoryForecastListContract.RowGrain,
+                RiskAggregationPolicy: InventoryForecastListContract.RiskAggregationPolicy,
+                EvidenceScope: InventoryForecastListContract.EvidenceScope,
+                Items: [],
+                Provenance: InventorySignalSnapshotProvenance.ForCurrentSnapshot(
+                    request.FromDate,
+                    request.ToDate,
+                    request.DataScope));
         }
     }
 

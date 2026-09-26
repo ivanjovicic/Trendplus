@@ -38,7 +38,12 @@ function formatAbcBadgeLabel(
 }
 
 function resolveInsightRow(item: InventoryInsightItem, rows: InventoryRow[], stores: StoreOption[], suppliers: SupplierFilterOption[]) {
-  return rows.find((row) => row.id === item.id) ?? buildRowFromInsightItem(item, stores, suppliers);
+  return rows.find((row) => row.id === item.id && row.idObjekat === item.storeId && row.idDobavljac === item.supplierId)
+    ?? buildRowFromInsightItem(item, stores, suppliers);
+}
+
+function insightIdentityKey(item: InventoryInsightItem): string {
+  return `${item.id}:${item.storeId ?? "all"}:${item.supplierId ?? "unknown"}`;
 }
 
 export function InventoryInsightPanels({
@@ -102,7 +107,7 @@ export function InventoryInsightPanels({
               const resolvedRow = resolveInsightRow(item, rows, stores, suppliers);
 
               return (
-              <button key={`aged-${item.id}`} type="button" onClick={() => onOpenDetail(resolvedRow)} className="flex w-full flex-col gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-3 text-left transition hover:border-[var(--border-default)]">
+              <button key={`aged-${insightIdentityKey(item)}`} type="button" onClick={() => onOpenDetail(resolvedRow)} className="flex w-full flex-col gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-3 text-left transition hover:border-[var(--border-default)]">
                 <div className="min-w-0">
                   <div className="truncate text-sm font-semibold text-white">{item.naziv}</div>
                   <div className="truncate text-xs text-[var(--text-primary)]">{item.plu ?? "Bez PLU"} | {item.supplierName ?? "Neraspoređeni dobavljač"}</div>
@@ -135,8 +140,8 @@ export function InventoryInsightPanels({
       <div className="rounded-[28px] border border-[var(--border-default)] bg-[var(--surface-elevated)] p-5">
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-white">ABC segmentacija kapitala <InfoTip text="Klasifikacija artikala po udeju nabavne vrednosti zalihe. Klasa A (~70% vrednosti, manji broj artikala): zahteva najjaci nadzor. Klasa B (~20%): pratiti redovno. Klasa C (~10%): najmanji uticaj. Koristi za prioritizaciju nabavke i inventara." /></h2>
-            <p className="text-sm text-[var(--text-primary)]">Klasa A predstavlja artikle koji nose najveci deo nabavne vrednosti filtrirane zalihe.</p>
+            <h2 className="text-lg font-semibold text-white">ABC segmentacija kapitala <InfoTip text="Klasifikacija artikala po udelu nabavne vrednosti zalihe. Klasa A (~70% vrednosti, manji broj artikala): zahteva najjači nadzor. Klasa B (~20%): pratiti redovno. Klasa C (~10%): najmanji uticaj. Koristi za prioritizaciju nabavke i inventara." /></h2>
+            <p className="text-sm text-[var(--text-primary)]">Klasa A predstavlja artikle koji nose najveći deo nabavne vrednosti filtrirane zalihe.</p>
           </div>
           <div className="rounded-full border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-1 text-xs font-semibold text-[var(--text-primary)]">
             {formatAbcBadgeLabel(insightsLoading, insightsError, classABucket?.itemCount)}
@@ -166,13 +171,13 @@ export function InventoryInsightPanels({
               const resolvedRow = resolveInsightRow(item, rows, stores, suppliers);
 
               return (
-              <button key={`capital-${item.id}`} type="button" onClick={() => onOpenDetail(resolvedRow)} className="flex w-full flex-col gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-3 text-left transition hover:border-[var(--border-default)]">
+              <button key={`capital-${insightIdentityKey(item)}`} type="button" onClick={() => onOpenDetail(resolvedRow)} className="flex w-full flex-col gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-3 text-left transition hover:border-[var(--border-default)]">
                 <div className="min-w-0">
                   <div className="truncate text-sm font-semibold text-white">{item.naziv}</div>
                   <div className="truncate text-xs text-[var(--text-primary)]">{item.storeName ?? "Sve lokacije"} | {item.quantity} kom</div>
                 </div>
                 <div className="flex items-end justify-between gap-3">
-                  <div className="text-sm font-semibold text-[var(--text-primary)]">{formatCurrency(item.estimatedValue)}</div>
+                  <div className="text-sm font-semibold text-[var(--text-primary)]">{formatCurrency(item.costMissing ? null : item.estimatedValue)}</div>
                   <div className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${getAbcTone(item.abcClass)}`}>Klasa {item.abcClass}</div>
                 </div>
                 <InventoryExplainabilitySnapshot

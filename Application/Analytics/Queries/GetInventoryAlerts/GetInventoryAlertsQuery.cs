@@ -7,7 +7,10 @@ public sealed record GetInventoryAlertsQuery(
     int? StoreId = null,
     int? SupplierId = null,
     string? Severity = null,
-    int Top = 100
+    int Top = 100,
+    DateTime? FromDate = null,
+    DateTime? ToDate = null,
+    string? DataScope = null
 ) : IRequest<InventoryAlertListDto>;
 
 public sealed record InventoryAlertDto(
@@ -35,5 +38,6 @@ public sealed record InventoryAlertListDto(
     /// <summary>fresh | stale | critical | unknown.</summary>
     string SnapshotFreshnessStatus,
     string? Warning,
-    IReadOnlyList<InventoryAlertDto> Items
+    IReadOnlyList<InventoryAlertDto> Items,
+    InventorySignalSnapshotProvenance? Provenance = null
 );

@@ -3,7 +3,9 @@
 Date: 2026-06-28
 Routing reviewed: 2026-08-23
 Repo: `ivanjovicic/Trendplus`
-Status: planning/review only; no runtime code changed
+Status: historical planning/review index; **not a live routing source**
+
+> Live routing moved to `MASTER_ROADMAP.md`, `docs/ai/PROMPT_QUEUE_PROTOCOL.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` and the active RQ addenda. Normal implementation agents should not preload this file. Read it only when a target prompt explicitly cites older prioritization rationale.
 
 ## Purpose
 
@@ -36,17 +38,9 @@ Primary goals:
 
 ## How an agent should use this document
 
-For a normal implementation run, read only:
+Do **not** use this document to choose current work. For normal implementation, use `AGENT_START_HERE.md` -> `MASTER_ROADMAP.md` -> `PROMPT_QUEUE_PROTOCOL.md` -> the target prompt section in its canonical RQ queue/addendum.
 
-1. `docs/ai/AGENT_START_HERE.md`
-2. `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`
-3. this file
-4. the single target prompt section from its queue file
-5. the audit file named by that prompt
-6. `docs/ai/ANALYTICS_WAITING_PROMPTS_EXECUTION_PREP.md` only when this index says the prompt was contract-gated or has a prepared default
-7. source/test files in `Scope only`
-
-Do not read every addendum unless the target prompt's `Merge / split rule` says to read a sibling prompt.
+Use this file only for historical rationale behind older RQ lane ordering. If its READY/next language conflicts with current queue evidence, current routing always wins.
 
 ## Current main routing truth (2026-08-23)
 

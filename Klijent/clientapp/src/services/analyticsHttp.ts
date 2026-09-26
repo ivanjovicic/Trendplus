@@ -11,6 +11,10 @@ import {
   validateAnalyticsResponse,
 } from "../validation/analyticsResponseValidation";
 import { assertAnalyticsMetaSuccess } from "../utils/analyticsResponseMeta";
+import {
+  ANALYTICS_ERROR_FALLBACK_MESSAGE,
+  getSafeAnalyticsErrorMessage,
+} from "../utils/analyticsErrorMessages";
 
 type FetchAnalyticsJsonOptions = {
   signal?: AbortSignal;
@@ -21,11 +25,15 @@ type FetchAnalyticsJsonOptions = {
 
 export class ApiHttpError extends Error {
   readonly status: number;
+  readonly errorCode: string | null;
+  readonly correlationId: string | null;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, errorCode?: string | null, correlationId?: string | null) {
     super(message);
     this.name = "ApiHttpError";
     this.status = status;
+    this.errorCode = errorCode ?? null;
+    this.correlationId = correlationId ?? null;
   }
 }
 
@@ -56,28 +64,42 @@ type FailoverAwareWindow = Window & {
   __trendplusFailoverInstalled?: boolean;
 };
 
-async function parseApiError(res: Response, fallbackMessage?: string): Promise<string> {
-  const contentType = res.headers.get("content-type") ?? "";
+type ApiErrorDetails = {
+  message: string;
+  errorCode: string | null;
+  correlationId: string | null;
+};
 
-  if (contentType.includes("application/json")) {
+async function parseApiError(res: Response, fallbackMessage?: string): Promise<ApiErrorDetails> {
+  const contentType = res.headers.get("content-type") ?? "";
+  let candidate: string | null = null;
+  let errorCode: string | null = null;
+  let correlationId: string | null = null;
+
+  const isJson = contentType.includes("json");
+  if (isJson) {
     const payload = (await res.json().catch(() => null)) as
-      | { detail?: string; title?: string; message?: string }
+      | { detail?: string; title?: string; message?: string; errorCode?: string; correlationId?: string }
       | null;
 
-    const detail = payload?.detail ?? payload?.message ?? payload?.title;
-    if (detail && fallbackMessage) {
-      return detail.startsWith(fallbackMessage) ? detail : `${fallbackMessage}: ${detail}`;
-    }
-    if (detail) return detail;
+    candidate = payload?.detail ?? payload?.message ?? payload?.title ?? null;
+    errorCode = typeof payload?.errorCode === "string" ? payload.errorCode : null;
+    correlationId = typeof payload?.correlationId === "string" ? payload.correlationId : null;
   }
 
-  const text = (await res.text()).trim();
-  if (text && fallbackMessage) {
-    return text.startsWith(fallbackMessage) ? text : `${fallbackMessage}: ${text}`;
+  if (!candidate && !isJson) {
+    candidate = (await res.text()).trim() || null;
   }
-  if (text) return text;
 
-  return fallbackMessage ?? `HTTP ${res.status}`;
+  return {
+    message: getSafeAnalyticsErrorMessage(
+      candidate,
+      errorCode,
+      fallbackMessage ?? ANALYTICS_ERROR_FALLBACK_MESSAGE,
+    ),
+    errorCode,
+    correlationId,
+  };
 }
 
 function isApiFailoverLayerActive(): boolean {
@@ -119,7 +141,8 @@ async function fetchWithRetry<T>(
   if (isApiFailoverLayerActive()) {
     const response = await fetchAnalyticsResponse(url, signal, timeoutMs);
     if (!response.ok) {
-      throw new ApiHttpError(response.status, await parseApiError(response, fallbackMessage));
+      const error = await parseApiError(response, fallbackMessage);
+      throw new ApiHttpError(response.status, error.message, error.errorCode, error.correlationId);
     }
     const payload = (await response.json()) as T;
     return validateFetchPayload(payload, schema, fallbackMessage);
@@ -130,7 +153,8 @@ async function fetchWithRetry<T>(
   try {
     const response = await fetchAnalyticsResponse(url, signal, firstAttemptTimeoutMs);
     if (!response.ok) {
-      throw new ApiHttpError(response.status, await parseApiError(response, fallbackMessage));
+      const error = await parseApiError(response, fallbackMessage);
+      throw new ApiHttpError(response.status, error.message, error.errorCode, error.correlationId);
     }
     const payload = (await response.json()) as T;
     return validateFetchPayload(payload, schema, fallbackMessage);
@@ -147,7 +171,8 @@ async function fetchWithRetry<T>(
     // First attempt timed out - retry with longer timeout (for cold-start backends)
     const response = await fetchAnalyticsResponse(url, signal, totalTimeoutMs);
     if (!response.ok) {
-      throw new ApiHttpError(response.status, await parseApiError(response, fallbackMessage));
+      const error = await parseApiError(response, fallbackMessage);
+      throw new ApiHttpError(response.status, error.message, error.errorCode, error.correlationId);
     }
     const payload = (await response.json()) as T;
     return validateFetchPayload(payload, schema, fallbackMessage);
@@ -181,11 +206,15 @@ export async function fetchAnalyticsJson<T>(
       }
 
       if (error instanceof ApiHttpError) {
-        if (!fallbackMessage || error.message.startsWith(fallbackMessage)) {
-          throw error;
-        }
-
-        throw new ApiHttpError(error.status, `${fallbackMessage}: ${error.message}`);
+        const safeMessage = getSafeAnalyticsErrorMessage(
+          error.message,
+          error.errorCode,
+          fallbackMessage ?? ANALYTICS_ERROR_FALLBACK_MESSAGE,
+        );
+        const correlationSuffix = error.correlationId && !error.message.includes(error.correlationId)
+          ? ` (referentni ID: ${error.correlationId})`
+          : "";
+        throw new ApiHttpError(error.status, `${safeMessage}${correlationSuffix}`, error.errorCode, error.correlationId);
       }
 
       if (error instanceof DOMException && error.name === "AbortError") {
@@ -197,7 +226,12 @@ export async function fetchAnalyticsJson<T>(
       }
 
       if (error instanceof Error) {
-        throw new Error(fallbackMessage ? `${fallbackMessage}: ${error.message}` : error.message);
+        const safeMessage = getSafeAnalyticsErrorMessage(
+          error.message,
+          null,
+          fallbackMessage ?? ANALYTICS_ERROR_FALLBACK_MESSAGE,
+        );
+        throw new Error(safeMessage);
       }
 
       throw new Error(fallbackMessage ?? "Nepoznata greska pri ucitavanju podataka.");

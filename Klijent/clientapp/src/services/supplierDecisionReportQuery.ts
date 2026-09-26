@@ -45,3 +45,9 @@ export function buildSupplierDecisionReportHref(query: SupplierDecisionReportQue
   appendSupplierDecisionReportQuery(params, query);
   return `/analytics/supplier/report?${params.toString()}`;
 }
+
+export function buildSupplierDecisionScorecardHref(query: SupplierDecisionReportQuery): string {
+  const params = new URLSearchParams({ tab: "scorecard" });
+  appendSupplierDecisionReportQuery(params, query);
+  return `/analytics/supplier?${params.toString()}`;
+}

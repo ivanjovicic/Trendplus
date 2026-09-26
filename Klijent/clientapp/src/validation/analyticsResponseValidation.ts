@@ -7,7 +7,7 @@ export class AnalyticsResponseValidationError extends Error {
   readonly issuePaths: string[];
 
   constructor(context: string, issuePaths: string[], correlationId?: string | null) {
-    super(`${context} response nije u očekivanom formatu.`);
+    super(`${context} response nije u očekivanom formatu.${correlationId ? ` Referentni ID: ${correlationId}.` : ""}`);
     this.name = "AnalyticsResponseValidationError";
     this.context = context;
     this.correlationId = correlationId ?? null;

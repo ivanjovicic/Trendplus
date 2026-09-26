@@ -26,6 +26,8 @@ type ScorecardTrustMetadata = {
   requestedPeriodTo?: string | null;
   requestedFrom?: string | null;
   requestedTo?: string | null;
+  effectiveFrom?: string | null;
+  effectiveTo?: string | null;
   requestedDataset?: string | null;
   effectiveDataset?: string | null;
   effectivePeriodLabel?: string | null;
@@ -69,6 +71,12 @@ export type SupplierDecisionReportBuildInput = {
   toDate: string;
   supplierLabel: string;
   dataScopeLabel: string;
+  category?: string | null;
+  gender?: string | null;
+  seasonId?: number | null;
+  minRevenue?: number | null;
+  onlyHighConfidence?: boolean | null;
+  excludeOosBeforeMarkdown?: boolean | null;
   freshnessStatus?: AnalyticsFreshnessStatus | string | null;
   lastRefreshAtUtc?: string | null;
   summary: SummaryResponse | null;
@@ -208,8 +216,8 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
   const observedToUtc = input.summary?.to ?? null;
   const requestedFromUtc = trust?.requestedPeriodFrom ?? trust?.requestedFrom ?? `${input.fromDate}T00:00:00Z`;
   const requestedToUtc = trust?.requestedPeriodTo ?? trust?.requestedTo ?? `${input.toDate}T00:00:00Z`;
-  const effectiveFromUtc = input.summary?.from ?? null;
-  const effectiveToUtc = input.summary?.to ?? null;
+  const effectiveFromUtc = trust?.effectiveFrom ?? input.summary?.from ?? null;
+  const effectiveToUtc = trust?.effectiveTo ?? input.summary?.to ?? null;
   const periodLineageLabel = buildPeriodLineageLabel({
     effectivePeriodLabel: trust?.effectivePeriodLabel ?? input.periodLabel,
     effectiveFromUtc,
@@ -226,11 +234,17 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     buildSectionRow("Header", "Datum izveštaja", safeDate(nowUtc), "", ""),
     buildSectionRow("Header", "Poslednje osveženje", safeDate(input.lastRefreshAtUtc ?? trust?.lastRefreshAtUtc), normalizeFreshnessLabel(input.freshnessStatus), ""),
     buildSectionRow("Header", "Kvalitet podataka", dataQualityStatusLabel(meta?.dataQualityStatus), trust?.dataCoverageStatus ?? "", ""),
-    buildSectionRow("Header", "Traženi period", `${safeDate(trust?.requestedPeriodFrom ?? trust?.requestedFrom)} - ${safeDate(trust?.requestedPeriodTo ?? trust?.requestedTo)}`, trust?.requestedDataset ?? "nije dostupno", ""),
+    buildSectionRow("Header", "Traženi period", `${safeDate(requestedFromUtc)} - ${safeDate(requestedToUtc)}`, trust?.requestedDataset ?? "nije dostupno", ""),
     buildSectionRow("Header", "Efektivni dataset", trust?.effectiveDataset ?? "nije dostupno", trust?.effectivePeriodLabel ?? "", ""),
     buildSectionRow("Header", "Posmatrani period", periodLineageLabel ?? "nije dostupno", "", ""),
     buildSectionRow("Header", "Korišćen fallback", trust?.usedFallback ? "Da" : "Ne", trust?.fallbackReason ?? "", ""),
     buildSectionRow("Header", "Preporuka dozvoljena", trust?.recommendationAllowed ? "Da" : "Ne", trust?.dataCoverageStatus ?? "", ""),
+    buildSectionRow("Filteri", "Kategorija", input.category?.trim() || "Sve kategorije", "", ""),
+    buildSectionRow("Filteri", "Pol", input.gender?.trim() || "Svi polovi", "", ""),
+    buildSectionRow("Filteri", "Sezona", input.seasonId == null ? "Sve sezone" : String(input.seasonId), "", ""),
+    buildSectionRow("Filteri", "Minimalni prihod", input.minRevenue == null ? "Nije postavljeno" : fmtRsd(input.minRevenue), "", ""),
+    buildSectionRow("Filteri", "Samo visoka pouzdanost", input.onlyHighConfidence === true ? "Da" : "Ne", "", ""),
+    buildSectionRow("Filteri", "Isključi artikle bez zaliha pre sniženja", input.excludeOosBeforeMarkdown === true ? "Da" : "Ne", "", ""),
     buildSectionRow("KPI", "Prihod", fmtRsd(input.totalRevenue), "", ""),
     buildSectionRow("KPI", "Maržni doprinos", fmtRsd(resolvedMarginContribution), "", numericStateLimitation("maržnog doprinosa", marginContributionEvidenceState)),
     buildSectionRow("KPI", "Broj dobavljača", String(input.summary?.supplierCount ?? input.rows.length), "", ""),
@@ -456,6 +470,12 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     { key: "period", label: "Period", value: `${input.fromDate} - ${input.toDate}` },
     { key: "periodLabel", label: "Oznaka perioda", value: input.periodLabel },
     { key: "dataScope", label: "Opseg podataka", value: input.dataScopeLabel },
+    { key: "category", label: "Kategorija", value: input.category ?? null },
+    { key: "gender", label: "Pol", value: input.gender ?? null },
+    { key: "seasonId", label: "Sezona", value: input.seasonId ?? null },
+    { key: "minRevenue", label: "Minimalni prihod", value: input.minRevenue ?? null },
+    { key: "onlyHighConfidence", label: "Samo visoka pouzdanost", value: input.onlyHighConfidence ?? false },
+    { key: "excludeOosBeforeMarkdown", label: "Isključi artikle bez zaliha pre sniženja", value: input.excludeOosBeforeMarkdown ?? false },
   ];
 
   const metadata: AnalyticsNamedValue[] = [

@@ -50,6 +50,7 @@ public sealed class GetInventorySizeCurveHandler
             where (@storeId is null or store_id = @storeId)
               and (@supplierId is null or supplier_id = @supplierId)
               and (@skuId is null or sku_id = @skuId)
+              and (@sizeCode is null or coalesce(size_code, 'UNKNOWN') = @sizeCode)
             order by broken_run desc nulls last, is_core_size_missing desc nulls last, abs(deviation_pct) desc nulls last
             limit @top;
             """;
@@ -57,6 +58,7 @@ public sealed class GetInventorySizeCurveHandler
         AddParameter(command, "@storeId", request.StoreId);
         AddParameter(command, "@supplierId", request.SupplierId);
         AddParameter(command, "@skuId", request.SkuId);
+        AddParameter(command, "@sizeCode", string.IsNullOrWhiteSpace(request.SizeCode) ? null : request.SizeCode.Trim());
         AddParameter(command, "@top", Math.Clamp(request.Top, 1, 500));
 
         try
@@ -111,7 +113,11 @@ public sealed class GetInventorySizeCurveHandler
                 Warning: items.Count == 0
                     ? "Size curve snapshot postoji, ali nema redova za trazene filtere."
                     : hasMissingEvidence ? "Size curve snapshot sadrzi redove sa nepotpunom signalnom evidencijom." : null,
-                Items: items);
+                Items: items,
+                Provenance: InventorySignalSnapshotProvenance.ForCurrentSnapshot(
+                    request.FromDate,
+                    request.ToDate,
+                    request.DataScope));
         }
         catch (Exception ex) when (IsMissingRelation(ex))
         {
@@ -126,7 +132,11 @@ public sealed class GetInventorySizeCurveHandler
                 SnapshotFreshnessUtc: null,
                 SnapshotFreshnessStatus: InventorySnapshotFreshness.Unknown,
                 Warning: "Size curve snapshot jos nije dostupan.",
-                Items: []);
+                Items: [],
+                Provenance: InventorySignalSnapshotProvenance.ForCurrentSnapshot(
+                    request.FromDate,
+                    request.ToDate,
+                    request.DataScope));
         }
     }
 

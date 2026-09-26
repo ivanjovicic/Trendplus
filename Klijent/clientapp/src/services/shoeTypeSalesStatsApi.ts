@@ -8,7 +8,7 @@ export interface AnalyticsRecommendation {
   summary: string;
   confidencePct: number | null;
   reliabilityPct: number | null;
-  dataQualityStatus: "good" | "warning" | "critical";
+  dataQualityStatus: "good" | "warning" | "critical" | "insufficient_data";
   recommendationAllowed?: boolean | null;
   reasonCodes: string[];
 }
@@ -27,11 +27,13 @@ export interface ShoeTypeSalesStat {
   brojArtikalaSaNivelacijom: number;
   brojArtikalaUkupno: number;
   revenueWithCost: number;
+  costCoveredRevenue?: number;
+  costCoveredRevenueSharePct?: number | null;
   estimatedCostRevenue: number;
   marginContribution: number;
   marginDataCoveragePct: number | null;
   fallbackCostCoveragePct: number | null;
-  marginPct: number;
+  marginPct: number | null;
   // Cost quality breakdown
   totalCost?: number | null;
   historicalCostRevenue?: number;
@@ -52,6 +54,10 @@ export interface ShoeTypeSalesStat {
   prePostNivelacijaRevenueImpactPct: number | null;
   prePostNivelacijaUnitsImpactPct: number | null;
   prePostNivelacijaRevenueCoveragePct: number | null;
+  comparablePreRevenue?: number;
+  comparablePostRevenue?: number;
+  comparablePreQuantity?: number;
+  comparablePostQuantity?: number;
   prePostSignalNote?: string | null;
   prePostComparableArticleCount?: number;
   sharePct?: number | null;
@@ -68,6 +74,7 @@ export interface ShoeTypeSalesTotals {
   ukupanMarzniDoprinos: number;
   ukupanTrosak?: number;
   prosecnaMarza?: number | null;
+  weightedMarginRevenue?: number | null;
   historicalCostCoveragePct?: number;
   estimatedCostCoveragePct?: number;
   noCostCoveragePct?: number;
@@ -85,6 +92,16 @@ export interface ShoeTypeSalesTotals {
   ukupnaKolicina: number;
   preKolicina: number;
   posleKolicina: number;
+  comparablePreRevenue?: number;
+  comparablePostRevenue?: number;
+  comparablePreQuantity?: number;
+  comparablePostQuantity?: number;
+  comparableArticleCount?: number;
+  comparableRevenueCoveragePct?: number | null;
+  observedPreRevenue?: number;
+  observedPostRevenue?: number;
+  observedPreQuantity?: number;
+  observedPostQuantity?: number;
   previousPeriodRevenue: number | null;
   previousPeriodUnits: number | null;
   brojTipovaObuce: number;
@@ -104,8 +121,16 @@ export interface ShoeTypeSalesTotals {
 }
 
 export interface ShoeTypeSalesDataQuality {
+  costCoveredRevenue?: number;
+  costCoveredRevenueSharePct?: number | null;
   missingCostRevenue: number;
   missingCostRevenueSharePct: number | null;
+  noCostRevenue?: number;
+  noCostRevenueSharePct?: number | null;
+  historicalCostRevenue?: number;
+  historicalCostRevenueSharePct?: number | null;
+  snapshotCostRevenue?: number;
+  snapshotCostRevenueSharePct?: number | null;
   estimatedCostRevenue?: number;
   estimatedCostRevenueSharePct?: number | null;
   unknownTypeRevenue: number;
@@ -159,7 +184,7 @@ export async function getShoeTypeSalesStats(
   return fetchAnalyticsJson<ShoeTypeSalesStatsResponse>(
     "/api/analytics/shoe-type-sales-stats",
     params,
-    "Greska pri ucitavanju statistike tipova obuce",
+    "Greška pri učitavanju statistike tipova obuće",
     { signal: query.signal, schema: shoeTypeSalesStatsResponseSchema }
   );
 }

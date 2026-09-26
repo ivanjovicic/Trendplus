@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import React, { useEffect } from "react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import SupplierConsolidatedPage from "../SupplierConsolidatedPage";
 import { getSupplierFilters } from "../../services/analyticsApi";
 
@@ -9,6 +9,17 @@ vi.mock("../../services/analyticsApi", () => ({
   getStores: vi.fn().mockResolvedValue([]),
   getSupplierFilters: vi.fn().mockResolvedValue([]),
 }));
+
+vi.mock("../../services/sezoneApi", () => ({
+  getSezone: vi.fn().mockResolvedValue([
+    { id: 7, naziv: "Proleće 2026", datumOd: "2026-03-01", datumDo: "2026-05-31" },
+  ]),
+}));
+
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="location-search">{location.search}</output>;
+}
 
 vi.mock("../SupplierSalesStatsPage", () => ({
   default: function MockSupplierSalesStatsPage(props: any) {
@@ -59,10 +70,10 @@ describe("SupplierConsolidatedPage", () => {
     expect(screen.getByRole("heading", { level: 2, name: "Dobavljači" })).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getByText("Dataset")).toBeInTheDocument();
-      expect(screen.getByText(/30d\s*(→|->)\s*90d/)).toBeInTheDocument();
-      expect(screen.getByText("mv_supplier_decision_score_cache_90d")).toBeInTheDocument();
-      expect(screen.getByText(/Fallback aktiviran\./)).toBeInTheDocument();
+      expect(screen.getByText("Skup podataka")).toBeInTheDocument();
+      expect(screen.getByText(/poslednjih 30 dana\s*(→|->)\s*poslednjih 90 dana/i)).toBeInTheDocument();
+      expect(screen.getByText("keš signala odluke dobavljača")).toBeInTheDocument();
+      expect(screen.getByText(/Pomoćni skup je aktivan\./)).toBeInTheDocument();
       expect(screen.queryByText(/no_data_30d/i)).not.toBeInTheDocument();
       expect(screen.getByText("Sveže")).toBeInTheDocument();
     });
@@ -76,7 +87,7 @@ describe("SupplierConsolidatedPage", () => {
     );
 
     expect(screen.getByTestId("supplier-legacy-context")).toHaveTextContent(
-      "Kompatibilna veza iz Operacija otvorila je canonical Pregled dobavljača, tab Asortiman",
+      "Kompatibilna veza iz Operacija otvorila je glavni Pregled dobavljača, tab Asortiman",
     );
     expect(screen.getByRole("button", { name: /Asortiman/i })).toHaveAttribute("aria-selected", "true");
   });
@@ -96,7 +107,7 @@ describe("SupplierConsolidatedPage", () => {
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.getByRole("heading", { level: 1, name: "Dobavljači" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "Dobavljači" })).toBeInTheDocument();
-    expect(screen.getAllByLabelText("Supplier filteri")).toHaveLength(1);
+    expect(screen.getAllByLabelText("Filteri dobavljača")).toHaveLength(1);
     expect(screen.getByRole("button", { name: new RegExp(tabLabel, "i") })).toHaveAttribute("aria-selected", "true");
     expect(screen.queryByText("Opseg i filteri")).not.toBeInTheDocument();
     expect(screen.queryByText("Kontrole asortimana")).not.toBeInTheDocument();
@@ -176,17 +187,61 @@ describe("SupplierConsolidatedPage", () => {
     );
 
     expect(await screen.findByTestId("mock-overview")).toBeInTheDocument();
-    expect(screen.getAllByLabelText("Supplier filteri")).toHaveLength(1);
+    expect(screen.getAllByLabelText("Filteri dobavljača")).toHaveLength(1);
 
     fireEvent.click(screen.getByRole("button", { name: /Skorkarta/i }));
     expect(await screen.findByTestId("mock-scorecard")).toBeInTheDocument();
-    expect(screen.getAllByLabelText("Supplier filteri")).toHaveLength(1);
+    expect(screen.getAllByLabelText("Filteri dobavljača")).toHaveLength(1);
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
 
     fireEvent.click(screen.getByRole("button", { name: /Asortiman/i }));
     expect(await screen.findByTestId("mock-assortment")).toBeInTheDocument();
-    expect(screen.getAllByLabelText("Supplier filteri")).toHaveLength(1);
+    expect(screen.getAllByLabelText("Filteri dobavljača")).toHaveLength(1);
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  });
+
+  it("round-trips scorecard-only filters through the canonical URL owner", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier?tab=scorecard&category=Patike&gender=Mu%C5%A1ko&seasonId=7&minRevenue=5000&onlyHighConfidence=true&excludeOosBeforeMarkdown=true"]}>
+        <LocationProbe />
+        <SupplierConsolidatedPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByDisplayValue("Patike")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Muško")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Proleće 2026")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("5000")).toBeInTheDocument();
+    expect(screen.getByLabelText("Samo visoka pouzdanost skorkarte")).toBeChecked();
+    expect(screen.getByLabelText("Isključi artikle bez zaliha pre sniženja iz skorkarte")).toBeChecked();
+
+    fireEvent.change(screen.getByDisplayValue("Patike"), { target: { value: "Čizme" } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location-search")).toHaveTextContent("category=%C4%8Cizme");
+      expect(screen.getByTestId("location-search")).toHaveTextContent("gender=Mu%C5%A1ko");
+      expect(screen.getByTestId("location-search")).toHaveTextContent("seasonId=7");
+      expect(screen.getByTestId("location-search")).toHaveTextContent("onlyHighConfidence=true");
+      expect(screen.getByTestId("location-search")).toHaveTextContent("excludeOosBeforeMarkdown=true");
+    });
+  });
+
+  it("removes invalid scorecard filters from the canonical URL instead of sending them to the backend", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier?tab=scorecard&gender=nepoznato&seasonId=-1&minRevenue=-20&onlyHighConfidence=maybe&excludeOosBeforeMarkdown=false"]}>
+        <LocationProbe />
+        <SupplierConsolidatedPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      const search = screen.getByTestId("location-search").textContent ?? "";
+      expect(search).not.toContain("gender=");
+      expect(search).not.toContain("seasonId=");
+      expect(search).not.toContain("minRevenue=");
+      expect(search).not.toContain("onlyHighConfidence=");
+      expect(search).not.toContain("excludeOosBeforeMarkdown=");
+    });
   });
 
   it("blocks retained supplier options when the filter request itself fails", async () => {

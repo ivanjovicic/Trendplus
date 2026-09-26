@@ -107,13 +107,13 @@ export function getRecommendationMeta(code: RecommendationCode | string): Recomm
   switch (code) {
     case "EXPAND":
       return {
-        label: "Povecati saradnju",
+        label: "Povećati saradnju",
         razlog: "Dobavljač ima dobar rezultat pre sniženja i zadržava zdravu marginu.",
         ton: "pozitivno",
       };
     case "EXPAND_SELECTIVELY":
       return {
-        label: "Povecati selektivno",
+        label: "Povećati selektivno",
         razlog: "Dobavljač ima jake kategorije, ali ne i u celom asortimanu.",
         ton: "upozorenje",
       };
@@ -143,7 +143,7 @@ export function getRecommendationMeta(code: RecommendationCode | string): Recomm
       };
     default:
       return {
-        label: "Zadrzati stanje",
+        label: "Zadržati stanje",
         razlog: "Signal je mešovit i za sada je najbolje zadržati postojeći nivo nabavke.",
         ton: "neutralno",
       };

@@ -101,7 +101,7 @@ describe("SKUDetailModal placeholder context", () => {
       />,
     );
 
-    expect(screen.getByText("Podaci trenutno nisu dostupni. Proverite kvalitet podataka i pokušajte ponovo.")).toBeInTheDocument();
+    expect(screen.getByText("Detalj artikla trenutno nije dostupan.")).toBeInTheDocument();
     expect(screen.queryByText(/NpgsqlException|SqlCommand\.Execute/)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Pokušaj ponovo učitavanje detalja artikla" })).toBeInTheDocument();
   });

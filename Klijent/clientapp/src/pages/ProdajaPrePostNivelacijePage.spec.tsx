@@ -131,6 +131,9 @@ function response(overrides: Partial<VendorSalesNivelacijaResponse> = {}): Vendo
     to: "2026-06-30T23:59:59Z",
     category: null,
     includeInactive: false,
+    storeId: null,
+    dataScope: "all",
+    scopeApplied: true,
     categories: ["Obuca"],
     vendorStats: [vendor()],
     articleStats: [],
@@ -231,10 +234,14 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
 
   it("passes dataScope and storeId to current and previous period requests", async () => {
     localStorage.setItem("trendplus:dataScope", "imported");
+    vi.mocked(getVendorSalesNivelacija).mockImplementation(async (query) => response({
+      dataScope: query.dataScope ?? "all",
+      storeId: query.storeId ?? null,
+    }));
     renderPage();
 
     await screen.findByText("Prioritetna lista dobavljača");
-    expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("scope: imported");
+    expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("opseg: imported");
 
     const controlBar = await screen.findByTestId("analytics-control-bar");
     expect(within(controlBar).getByRole("heading", { name: "Kontrole i opseg" })).toBeInTheDocument();
@@ -268,7 +275,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
       expect(latestCalls.every((query) => query.storeId === 2 && query.dataScope === "imported")).toBe(true);
     });
 
-    expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("store: 2");
+    expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("objekat: 2");
   });
 
   it("keeps the previous snapshot visible when a later query fails", async () => {
@@ -397,9 +404,11 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     await screen.findByText("Prioritetna lista dobavljača");
 
     const warning = await screen.findByTestId("previous-comparison-warning");
-    expect(warning).toHaveTextContent("Previous period timeout");
+    expect(warning).toHaveTextContent("Podaci trenutno nisu dostupni");
+    expect(warning).not.toHaveTextContent("Previous period timeout");
     expect(warning).toHaveTextContent("greške zahteva");
-    expect(screen.getAllByText("Nedostupno").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText("Nedostupno").length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText("Rast/pad vs prethodni event-opseg")).not.toBeInTheDocument();
     expect(screen.queryByText("Nova baza")).not.toBeInTheDocument();
   });
 
@@ -679,6 +688,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
   it("labels absolute-change share explicitly in detail and export snapshot", async () => {
     renderPage();
     await screen.findByText("Prioritetna lista dobavljača");
+    expect(screen.queryByRole("button", { name: /Kvalitet signala: Nepoznato/i })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
 
@@ -688,6 +698,8 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Otvori puni detalj" }));
     expect(await screen.findByText("Pre/Post detail route")).toBeInTheDocument();
 
+    expect(await screen.findByTestId("pre-post-detail-route")).toHaveTextContent("10");
+
     const snapshot = getAnalyticsDetailSnapshot("nivelacije-pre-post", "10");
     expect(snapshot).toEqual(expect.objectContaining({
       table: "nivelacije-pre-post",
@@ -696,6 +708,24 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     }));
     expect(snapshot?.fields.some((field) => field.key === "absoluteChangeSharePct" && field.label === "Udeo u apsolutnoj promeni %")).toBe(true);
     expect(snapshot?.metadata.some((meta) => meta.key === "absoluteChangeShareFormula" && meta.value.includes("apsolutnih promena"))).toBe(true);
+  });
+
+  it("matches the production detail path on direct navigation", () => {
+    renderPage(["/analitika/nivelacije-pre-post/10"]);
+
+    expect(screen.getByTestId("pre-post-detail-route")).toHaveTextContent("10");
+  });
+
+  it("opens the Pre/Post detail route and returns to the list", async () => {
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Otvori puni detalj" }));
+    expect(await screen.findByTestId("pre-post-detail-route")).toHaveTextContent("10");
+
+    fireEvent.click(screen.getByRole("button", { name: "Nazad na pre/post" }));
+    expect(await screen.findByText("Prioritetna lista dobavljača")).toBeInTheDocument();
   });
 
   it("does not reconstruct absolute-change share when the backend aggregate is unavailable", async () => {
@@ -734,7 +764,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(vendorRow).not.toBeNull();
     expect(within(vendorRow!).getByText("Nije dostupno")).toBeInTheDocument();
     expect(within(vendorRow!).queryByText("100,00%")).not.toBeInTheDocument();
-    expect(screen.getByText("Top 5 udeo u promeni").parentElement).toHaveTextContent("N/A");
+    expect(screen.queryByText("Top 5 udeo u promeni")).not.toBeInTheDocument();
   });
 
   it("shows backend reliability percent instead of a local Visoko band", async () => {
@@ -829,7 +859,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(snapshot?.metadata).toEqual(expect.arrayContaining([
       expect.objectContaining({ key: "dataTrust", label: "Poverenje", value: "Nepoznato" }),
       expect.objectContaining({ key: "analyzedShare", label: "Analizirani redovi", value: "Nije dostupno" }),
-      expect.objectContaining({ key: "duplicateRowsRemoved", label: "Duplicati uklonjeni", value: "N/A" }),
+      expect.objectContaining({ key: "duplicateRowsRemoved", label: "Duplikati događaja uklonjeni", value: "N/A" }),
       expect.objectContaining({ key: "inactiveRows", label: "Neaktivni redovi", value: "N/A" }),
     ]));
   });
@@ -882,7 +912,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(snapshot?.metadata).toEqual(expect.arrayContaining([
       expect.objectContaining({ key: "dataTrust", label: "Poverenje", value: "Nepoznato" }),
       expect.objectContaining({ key: "analyzedShare", label: "Analizirani redovi", value: "Nije dostupno" }),
-      expect.objectContaining({ key: "duplicateRowsRemoved", label: "Duplicati uklonjeni", value: "N/A" }),
+      expect.objectContaining({ key: "duplicateRowsRemoved", label: "Duplikati događaja uklonjeni", value: "N/A" }),
     ]));
   });
 
@@ -910,7 +940,8 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     renderPage();
 
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Vendor sales API timeout");
+    expect(alert).toHaveTextContent("Greška pri učitavanju pre/post analitike.");
+    expect(alert).not.toHaveTextContent("Vendor sales API timeout");
     expect(document.querySelector(".ppn-decision-kpis")).toBeNull();
     expect(screen.queryByText(/Nisko signal/)).not.toBeInTheDocument();
     expect(screen.queryByText("Post-window promet posle nivelacije")).not.toBeInTheDocument();
@@ -1004,7 +1035,8 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     renderPage();
     await screen.findByText("Prioritetna lista dobavljača");
 
-    expect(screen.getByTestId("vendor-load-warning")).toHaveTextContent("Vendor API unavailable");
+    expect(screen.getByTestId("vendor-load-warning")).toHaveTextContent("Podaci trenutno nisu dostupni");
+    expect(screen.getByTestId("vendor-load-warning")).not.toHaveTextContent("Vendor API unavailable");
     const vendorSelect = screen.getByLabelText("Dobavljač");
     expect(within(vendorSelect).getAllByRole("option")).toHaveLength(1);
     expect(within(vendorSelect).getByRole("option", { name: "Svi" })).toBeInTheDocument();
@@ -1031,7 +1063,8 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     await screen.findByText("Prioritetna lista dobavljača");
 
     await waitFor(() => {
-      expect(screen.getByTestId("vendor-load-warning")).toHaveTextContent("Temporary outage");
+      expect(screen.getByTestId("vendor-load-warning")).toHaveTextContent("Podaci trenutno nisu dostupni");
+      expect(screen.getByTestId("vendor-load-warning")).not.toHaveTextContent("Temporary outage");
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Pokušaj ponovo" }));

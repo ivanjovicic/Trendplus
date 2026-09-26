@@ -40,11 +40,11 @@ const sortableColumns: Array<{
   { key: "revenue", label: "Prihod", numeric: true },
   { key: "units", label: "Komadi", numeric: true },
   { key: "fullPriceRevenueShare", label: "Udeo bez sniženja", numeric: true },
-  { key: "fullPriceSellthrough", label: "Sell-through pre sniženja", numeric: true },
+  { key: "fullPriceSellthrough", label: "Prodajna realizacija pre sniženja", numeric: true },
   { key: "preMarkdownMarginPct", label: "Marža", numeric: true },
   { key: "markdownRevenueShare", label: "Udeo sniženja", numeric: true },
-  { key: "deadStockRate", label: "Dead stock", numeric: true },
-  { key: "mlSupplierScore", label: "AI procena dobavljača", numeric: true },
+  { key: "deadStockRate", label: "Neaktivna zaliha", numeric: true },
+  { key: "mlSupplierScore", label: "Procena modela dobavljača", numeric: true },
   { key: "supplierQualityIndex", label: "Indeks kvaliteta", numeric: true },
   { key: "confidenceScore", label: "Pouzdanost", numeric: true },
 ];
@@ -96,7 +96,7 @@ export default function SupplierDecisionTable({
           toolbar={(
             <AnalyticsTableToolbar
               tableKey="supplier-decision-hub"
-              tableTitle="Supplier Decision Hub - rangiranje dobavljača"
+              tableTitle="Odluke o dobavljačima - rangiranje"
               columns={columns}
               rows={items}
               filters={analyticsFilters}
@@ -165,9 +165,16 @@ export default function SupplierDecisionTable({
                       <td className="analytics-data-table__numeric text-secondary">{formatScore(item.supplierQualityIndex)}</td>
                       <td className="analytics-data-table__numeric text-secondary">{confidenceLabel(item.confidenceScore)}</td>
                       <td>
-                        <span className={`supplier-decision-pill tone-${recommendation.ton} inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold`}>
-                          {recommendation.label}
-                        </span>
+                        <div className="flex max-w-[280px] flex-col items-start gap-1">
+                          <span className={`supplier-decision-pill tone-${recommendation.ton} inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold`}>
+                            {recommendation.label}
+                          </span>
+                          {item.statusReason ? (
+                            <span className="text-xs leading-5 text-secondary" title={item.statusReason}>
+                              <strong>Razlog:</strong> {item.statusReason}
+                            </span>
+                          ) : null}
+                        </div>
                       </td>
                     </tr>
                   );

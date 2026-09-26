@@ -73,7 +73,7 @@ export function buildCoverageTooltip(
     `Bez troška: ${fmtPct(noCostPct ?? 0, 1)}`,
   ];
   if (snapshotPct != null && snapshotPct > 0) {
-    parts.push(`Zamrznuta procena (snapshot): ${fmtPct(snapshotPct, 1)}`);
+    parts.push(`Zamrznuta procena (snimak): ${fmtPct(snapshotPct, 1)}`);
   }
   return parts.join(" · ");
 }
@@ -117,7 +117,7 @@ export function buildMarginDetailNote(
 
   const snapshotNote =
     isSnapshotActive && (snapshotPct ?? 0) > 0
-      ? ` Deo marže (snapshot: ${fmtPct(snapshotPct, 1)}) pokriven je zamrznutom procenom troška. Snapshot je stabilisan za reproduktivnost, ali nije ekvivalent istorijskoj nabavnoj ceni sa trenutka prodaje.`
+      ? ` Deo marže (snimak: ${fmtPct(snapshotPct, 1)}) pokriven je zamrznutom procenom troška. Snimak je stabilizovan za reproduktivnost, ali nije ekvivalent istorijskoj nabavnoj ceni sa trenutka prodaje.`
       : "";
 
   if (tier === "no_data") {
@@ -144,7 +144,7 @@ export function buildSnapshotBadgeLabel(generatedAtUtc?: string | null): string 
   if (!generatedAtUtc) return "Zamrznuta procena";
   const parsed = new Date(generatedAtUtc);
   if (Number.isNaN(parsed.getTime())) return "Zamrznuta procena";
-  return `Snapshot od ${parsed.toLocaleDateString("sr-RS")}`;
+  return `Snimak od ${parsed.toLocaleDateString("sr-RS")}`;
 }
 
 /**
@@ -163,5 +163,5 @@ export function buildSnapshotTooltip(
           : ` Generisan: ${parsed.toLocaleDateString("sr-RS")}.`;
       })()
     : "";
-  return `Trošak je stabilizovan snapshot-om radi reproduktivnosti izveštaja. Ovo nije istorijska nabavna cena sa trenutka prodaje. Snapshot pokriva ${fmtPct(snapshotPct, 1)} prometa.${datePart}`;
+  return `Trošak je stabilizovan snimkom radi reproduktivnosti izveštaja. Ovo nije istorijska nabavna cena sa trenutka prodaje. Snimak pokriva ${fmtPct(snapshotPct, 1)} prometa.${datePart}`;
 }

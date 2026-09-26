@@ -1,3 +1,4 @@
+using Application.Inventory.Models;
 using Domain.Model.Analytics;
 using Infrastructure.Services.Analytics;
 using Trendplus2.Endpoints;
@@ -9,6 +10,79 @@ namespace Api.Tests;
 [Trait("Category", "Integration")]
 public sealed class DecisionBoardEndpointsTests
 {
+    [Fact]
+    public void BuildDecisionBoardResponse_InventoryProjectionUsesCanonicalSuggestionKey()
+    {
+        var generatedAtUtc = new DateTime(2026, 6, 19, 12, 0, 0, DateTimeKind.Utc);
+        var sourceKey = InventoryActionSourceKey.Build(
+            "dopuna",
+            articleId: 11,
+            storeId: 3,
+            sizeCode: null,
+            dataScope: "all",
+            periodFrom: "rolling-30d",
+            periodTo: "rolling-30d",
+            snapshotGeneration: "unknown");
+        var workflow = new InventoryActionWorkflowDto(
+            generatedAtUtc,
+            PendingCount: 1,
+            ApprovedCount: 0,
+            DeferredCount: 0,
+            ClosedCount: 0,
+            Items:
+            [
+                new InventoryActionSuggestionDto(
+                    SuggestionKey: sourceKey,
+                    ActionType: "dopuna",
+                    Priority: "high",
+                    Label: "Dopuna test",
+                    Reason: "Ispod minimuma.",
+                    Status: "pending",
+                    ArtikalId: 11,
+                    PLU: "SKU-11",
+                    Naziv: "Test artikal",
+                    FromStoreName: null,
+                    ToStoreName: "Store 3",
+                    SuggestedQty: 2,
+                    EstimatedValue: null,
+                    DaysSinceMovement: 5,
+                    Note: null,
+                    UpdatedAtUtc: generatedAtUtc)
+            ]);
+        var action = new AnalyticsActionItem
+        {
+            Id = 99,
+            SourceType = "inventory",
+            SourceKey = sourceKey,
+            Title = "Dopuna test",
+            Priority = "P2",
+            Status = "new",
+        };
+
+        var response = DecisionBoardEndpoints.BuildDecisionBoardResponse(
+            generatedAtUtc,
+            periodFromUtc: generatedAtUtc.AddDays(-30),
+            periodToUtc: generatedAtUtc,
+            lastRefreshAtUtc: generatedAtUtc,
+            productDecisionCenter: null,
+            inventoryInsights: null,
+            inventoryWorkflow: workflow,
+            supplierSummary: null,
+            actions: [action],
+            outcomeSummary: null,
+            refreshStatus: null,
+            dataQualityHealth: null,
+            loadWarnings: [],
+            dataScope: "all",
+            storeId: null,
+            supplierId: null);
+
+        var card = Assert.Single(response.Sections.Single(section => section.Key == "stockRisk").Cards);
+
+        Assert.Equal(sourceKey, card.SourceKey);
+        Assert.True(card.AlreadyInAction);
+    }
+
     [Fact]
     public void BuildDecisionBoardResponse_PreservesMissingImpact_AndCapsInsufficientDataPriority()
     {

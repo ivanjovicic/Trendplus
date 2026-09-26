@@ -1,5 +1,6 @@
 import type { AnalyticsResponseMeta } from "../types/analytics";
 import { fetchAnalyticsJson } from "./analyticsHttp";
+import { supplierSalesStatsResponseSchema } from "../validation/analyticsResponseSchemas";
 
 export interface AnalyticsRecommendation {
   status: "increase_focus" | "maintain" | "review" | "do_not_trust" | "insufficient_data";
@@ -7,7 +8,7 @@ export interface AnalyticsRecommendation {
   summary: string;
   confidencePct: number | null;
   reliabilityPct: number | null;
-  dataQualityStatus: "good" | "warning" | "critical";
+  dataQualityStatus: "good" | "warning" | "critical" | "insufficient_data";
   recommendationAllowed?: boolean | null;
   reasonCodes: string[];
 }
@@ -49,6 +50,10 @@ export interface SupplierSalesStat {
   preNivelacijeKolicina: number;
   posleNivelacijePromet: number;
   posleNivelacijeKolicina: number;
+  comparablePreNivelacijePromet?: number;
+  comparablePostNivelacijePromet?: number;
+  comparablePreNivelacijeKolicina?: number;
+  comparablePostNivelacijeKolicina?: number;
   ukupanPromet: number;
   ukupnaKolicina: number;
   previousPeriodRevenue: number | null;
@@ -103,6 +108,9 @@ export interface SupplierSalesTotals {
   ukupanMarzniDoprinos: number;
   ukupanTrosak?: number;
   prosecnaMarza: number | null;
+  weightedMarginRevenue?: number;
+  weightedMarginContribution?: number;
+  marginBenchmarkBasis?: string | null;
   historicalCostCoveragePct?: number;
   estimatedCostCoveragePct?: number;
   noCostCoveragePct?: number;
@@ -120,6 +128,17 @@ export interface SupplierSalesTotals {
   ukupnaKolicina: number;
   preKolicina: number;
   posleKolicina: number;
+  observedPrePromet?: number;
+  observedPoslePromet?: number;
+  observedPreKolicina?: number;
+  observedPosleKolicina?: number;
+  comparablePrePromet?: number;
+  comparablePoslePromet?: number;
+  comparablePreKolicina?: number;
+  comparablePosleKolicina?: number;
+  prePostComparableArticleCount?: number;
+  prePostNivelacijaRevenueCoveragePct?: number | null;
+  prePostSignalNote?: string | null;
   previousPeriodRevenue: number | null;
   previousPeriodUnits: number | null;
   brojDobavljaca: number;
@@ -143,12 +162,28 @@ export interface SupplierSalesDataQuality {
   missingCostQty: number;
   missingCostRevenue: number;
   missingCostRevenueSharePct: number | null;
+  noCostRevenue?: number;
+  noCostRevenueSharePct?: number | null;
+  costCoveredRevenue?: number;
+  costCoveredRevenueSharePct?: number | null;
+  historicalCostRevenue?: number;
+  historicalCostRevenueSharePct?: number | null;
+  snapshotCostRevenue?: number;
+  snapshotCostRevenueSharePct?: number | null;
   estimatedCostRevenue?: number;
   estimatedCostRevenueSharePct?: number | null;
+  costSourceBasis?: string | null;
   unknownSupplierRevenue: number;
   unknownSupplierRevenueSharePct: number | null;
   revenueWithNivelacijaSplit: number;
   revenueWithNivelacijaSplitSharePct: number | null;
+}
+
+export interface SupplierSalesRecommendationReferenceCohort {
+  scope: "all_response_suppliers";
+  supplierCount: number;
+  includesUnknown: boolean;
+  basis: string;
 }
 
 export interface SezonaOption {
@@ -170,6 +205,7 @@ export interface SupplierSalesStatsResponse {
   dataScope?: string | null;
   provenanceBasis?: string | null;
   recommendationAllowed?: boolean | null;
+  recommendationReferenceCohort?: SupplierSalesRecommendationReferenceCohort | null;
   suppliers: SupplierSalesStat[];
   totals: SupplierSalesTotals;
   dataQuality: SupplierSalesDataQuality;
@@ -198,7 +234,7 @@ export async function getSupplierSalesStats(
   return fetchAnalyticsJson<SupplierSalesStatsResponse>(
     "/api/analytics/supplier-sales-stats",
     params,
-    "Greska pri ucitavanju statistike dobavljaca",
-    { signal: query.signal }
+    "Greška pri učitavanju statistike dobavljača",
+    { signal: query.signal, schema: supplierSalesStatsResponseSchema }
   );
 }

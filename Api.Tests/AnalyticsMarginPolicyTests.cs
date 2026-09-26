@@ -17,6 +17,22 @@ public sealed class AnalyticsMarginPolicyTests
     }
 
     [Fact]
+    public void ResolveNoCostCoverage_DoesNotExposeNegativeRoundingResidue()
+    {
+        Assert.Equal(0m, AnalyticsMarginPolicy.ResolveNoCostRevenue(100m, 100.0001m));
+        Assert.Equal(0d, AnalyticsMarginPolicy.ResolveNoCostCoveragePct(100m, 100.0001m));
+    }
+
+    [Fact]
+    public void ResolveNoCostCoverage_DistinguishesFallbackCoveredRevenueFromUncoveredRevenue()
+    {
+        Assert.Equal(0m, AnalyticsMarginPolicy.ResolveNoCostRevenue(1_000m, 1_000m));
+        Assert.Equal(0d, AnalyticsMarginPolicy.ResolveNoCostCoveragePct(1_000m, 1_000m));
+        Assert.Equal(250m, AnalyticsMarginPolicy.ResolveNoCostRevenue(1_000m, 750m));
+        Assert.Equal(25d, AnalyticsMarginPolicy.ResolveNoCostCoveragePct(1_000m, 750m));
+    }
+
+    [Fact]
     public void ResolveUnitCost_FallsBackToRsdThenLegacy_AndIgnoresInvalidValues()
     {
         var resolvedFromRsd = AnalyticsMarginPolicy.ResolveUnitCost(
@@ -133,5 +149,81 @@ public sealed class AnalyticsMarginPolicyTests
         Assert.Equal(300m, snapshot.EstimatedCostRevenue);
         Assert.Equal(50d, snapshot.HistoricalMarginCoveragePct);
         Assert.Equal(30d, snapshot.FallbackCostCoveragePct);
+    }
+
+    [Fact]
+    public void WeightedMarginBaseline_UsesCoveredRevenueInsteadOfSimpleRowAverage()
+    {
+        var weighted = AnalyticsMarginPolicy.ResolveWeightedMarginPct(new[]
+        {
+            (RevenueWithCost: 900m, MarginContribution: 90m),
+            (RevenueWithCost: 100m, MarginContribution: 50m),
+        });
+
+        Assert.Equal(14d, weighted);
+        Assert.NotEqual(50d, weighted);
+        Assert.Null(AnalyticsMarginPolicy.ResolveWeightedMarginPct(new[]
+        {
+            (RevenueWithCost: 0m, MarginContribution: 10m),
+        }));
+    }
+
+    [Fact]
+    public void ColorSignedEvidencePolicy_PreservesSignedAmounts_AndNullsInvalidCoverage()
+    {
+        Assert.Equal(50d, ColorSignedEvidencePolicy.ResolveNonNegativePercentage(50m, 100m));
+        Assert.Null(ColorSignedEvidencePolicy.ResolveNonNegativePercentage(-50m, 100m));
+        Assert.Null(ColorSignedEvidencePolicy.ResolveNonNegativePercentage(50m, 0m));
+        Assert.Null(ColorSignedEvidencePolicy.ResolveNonNegativePercentage(150m, 100m));
+    }
+
+    [Fact]
+    public void ColorSignedEvidencePolicy_UsesCoveredRevenueWeightedMarginBaseline()
+    {
+        var weighted = ColorSignedEvidencePolicy.ResolveWeightedMarginPct(new[]
+        {
+            (RevenueWithCost: 900m, MarginContribution: 90m),
+            (RevenueWithCost: 100m, MarginContribution: 50m),
+        });
+
+        Assert.Equal(14d, weighted);
+        Assert.Null(ColorSignedEvidencePolicy.ResolveWeightedMarginPct(new[]
+        {
+            (RevenueWithCost: 0m, MarginContribution: 10m),
+        }));
+    }
+
+    [Fact]
+    public void ColorSignedEvidencePolicy_BlocksRecommendationAndQualityForNonPositiveNetRevenue()
+    {
+        var accumulator = new MarginAccumulator();
+        accumulator.Add(revenue: -100m, quantity: -1m, unitCost: 50m);
+        var snapshot = accumulator.Build(totalRevenue: -100m);
+
+        var quality = ColorSignedEvidencePolicy.ClassifyCostQuality(snapshot, -100m);
+
+        Assert.Equal("unavailable", quality.Tier);
+        Assert.Null(ColorSignedEvidencePolicy.ResolveNonNegativePercentage(snapshot.RevenueWithCost, -100m));
+        Assert.False(ColorSignedEvidencePolicy.HasMeasurableRecommendationEvidence(
+            totalRevenue: -100m,
+            marginPct: snapshot.MarginPct,
+            marginCoveragePct: snapshot.MarginDataCoveragePct,
+            unknownColorSharePct: 0d));
+    }
+
+    [Fact]
+    public void ColorSignedEvidencePolicy_AllowsMeasuredNegativeMarginWithPositiveDenominator()
+    {
+        var accumulator = new MarginAccumulator();
+        accumulator.Add(revenue: 100m, quantity: 1m, unitCost: 150m);
+        var snapshot = accumulator.Build(totalRevenue: 100m);
+
+        Assert.Equal(-50d, snapshot.MarginPct);
+        Assert.Equal("confirmed", ColorSignedEvidencePolicy.ClassifyCostQuality(snapshot, 100m).Tier);
+        Assert.True(ColorSignedEvidencePolicy.HasMeasurableRecommendationEvidence(
+            totalRevenue: 100m,
+            marginPct: snapshot.MarginPct,
+            marginCoveragePct: 100d,
+            unknownColorSharePct: 0d));
     }
 }

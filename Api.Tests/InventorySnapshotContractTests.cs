@@ -70,6 +70,9 @@ public sealed class InventorySnapshotContractTests
         Assert.False(result.IsAuthoritativeForecast);
         Assert.Null(result.SnapshotFreshnessUtc);
         Assert.NotEqual(InventoryForecastSnapshotProvenance.Trusted, result.ProvenanceStatus);
+        Assert.Equal(InventoryForecastListContract.RowGrain, result.RowGrain);
+        Assert.Equal(InventoryForecastListContract.RiskAggregationPolicy, result.RiskAggregationPolicy);
+        Assert.Equal(InventoryForecastListContract.EvidenceScope, result.EvidenceScope);
         Assert.Equal(1, result.TotalCount);
         Assert.Equal(1, result.ReturnedCount);
         Assert.Equal(2, result.TotalMatchingCount);
@@ -374,6 +377,36 @@ public sealed class InventorySnapshotContractTests
         Assert.DoesNotContain("coalesce(is_dead_size, false)", commandText, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("coalesce(broken_run, false)", commandText, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("coalesce(curve_confidence, 0)", commandText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact(DisplayName = "Size curve handler preserves store and size filters in the query contract")]
+    public async Task SizeCurveHandler_PreservesStoreAndSizeFilters()
+    {
+        var table = CreateTable(
+            ("sku_id", typeof(int)),
+            ("store_id", typeof(int)),
+            ("size_code", typeof(string)),
+            ("actual_size_share", typeof(decimal)),
+            ("ideal_size_share", typeof(decimal)),
+            ("deviation_pct", typeof(decimal)),
+            ("is_core_size_missing", typeof(bool)),
+            ("is_dead_size", typeof(bool)),
+            ("broken_run", typeof(bool)),
+            ("curve_confidence", typeof(decimal)),
+            ("reason_codes", typeof(string)),
+            ("total_matching_count", typeof(long)));
+        table.Rows.Add(101, 7, "42", 0.4m, 0.35m, 0.05m, false, false, false, 0.9m, "", 1L);
+
+        var context = CreateContext(table);
+        var handler = new GetInventorySizeCurveHandler(context, NullLogger<GetInventorySizeCurveHandler>.Instance);
+
+        var result = await handler.Handle(new GetInventorySizeCurveQuery(StoreId: 7, SkuId: 101, SizeCode: " 42 ", Top: 1), CancellationToken.None);
+
+        var item = Assert.Single(result.Items);
+        Assert.Equal(101, item.SkuId);
+        Assert.Equal(7, item.StoreId);
+        Assert.Equal("42", item.SizeCode);
+        Assert.Contains("coalesce(size_code, 'UNKNOWN') = @sizeCode", context.Connection.LastCommandText ?? string.Empty, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact(DisplayName = "Forecast snapshot keeps matching count at zero on empty reader without post-EOF access")]

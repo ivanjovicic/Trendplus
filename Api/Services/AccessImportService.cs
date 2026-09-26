@@ -11,7 +11,9 @@ using Api.Config;
 using Api.Models;
 using Api.Services.Access;
 using Application.Common.Interfaces;
+using Application.Analytics;
 using Domain.Model;
+using Domain.Model.Prodaja;
 using Domain.Model.Povracaj;
 using Infrastructure.DbContexts;
 using Infrastructure.Configuration;
@@ -332,6 +334,7 @@ using NpgsqlTypes;
     private readonly AnalyticsDbContext _analyticsDb;
     private readonly IAnalyticsCacheService? _analyticsCache;
     private readonly AnalyticsCacheAdminService? _cacheAdmin;
+    private readonly OperationsAnalyticsIntegrityRegistry? _operationsIntegrityRegistry;
     private readonly ILogger<AccessImportService> _logger;
     private readonly AccessImportOptions _options;
     private readonly IServiceScopeFactory? _serviceScopeFactory;
@@ -377,6 +380,7 @@ using NpgsqlTypes;
         IOptions<AccessImportOptions>? options = null,
         IAnalyticsCacheService? analyticsCache = null,
         AnalyticsCacheAdminService? cacheAdmin = null,
+        OperationsAnalyticsIntegrityRegistry? operationsIntegrityRegistry = null,
         IServiceScopeFactory? serviceScopeFactory = null,
         IAccessImportJobQueue? jobQueue = null,
         IAccessImportCursorRepository? cursorRepository = null,
@@ -390,6 +394,7 @@ using NpgsqlTypes;
         _options = options?.Value ?? new AccessImportOptions();
         _analyticsCache = analyticsCache;
         _cacheAdmin = cacheAdmin;
+        _operationsIntegrityRegistry = operationsIntegrityRegistry;
         _serviceScopeFactory = serviceScopeFactory;
         _jobQueue = jobQueue;
         _cursorRepository = cursorRepository;
@@ -1250,17 +1255,30 @@ using NpgsqlTypes;
             .ToListAsync(ct);
         var lineTotalsBySaleId = lineTotals.ToDictionary(x => x.SaleId, x => x.LineTotal);
 
-        var dnevnikTotals = await _trendDb.DnevnikPromena
+        var importedSaleDates = saleHeaders.Select(x => x.SaleDate).Distinct().ToArray();
+        var importedStoreIds = saleHeaders.Select(x => x.IDObjekat).Distinct().ToArray();
+        var dnevnikFacts = await _trendDb.DnevnikPromena
             .AsNoTracking()
-            .Where(x => importedSaleIds.Contains(x.Id) && saleTypeCandidates.Contains(x.TipPromene))
-            .GroupBy(x => x.Id)
-            .Select(g => new
+            .Where(x => saleTypeCandidates.Contains(x.TipPromene)
+                        && importedSaleDates.Contains(x.Datum.Date)
+                        && importedStoreIds.Contains(x.IDObjekat))
+            .Select(x => new
             {
-                SaleId = g.Key,
-                DnevnikTotal = g.Sum(x => x.Iznos < 0 ? -x.Iznos : x.Iznos)
+                SaleDate = x.Datum.Date,
+                x.BrojRacuna,
+                x.IDObjekat,
+                x.Iznos
             })
             .ToListAsync(ct);
-        var dnevnikTotalsBySaleId = dnevnikTotals.ToDictionary(x => x.SaleId, x => x.DnevnikTotal);
+        var dnevnikTotalsByIdentity = dnevnikFacts
+            .Select(x => new
+            {
+                Identity = ReceiptIdentityKeys.TryBuild(x.SaleDate, x.BrojRacuna, x.IDObjekat),
+                Amount = ReceiptIdentityKeys.NormalizeJournalSaleAmount(x.Iznos)
+            })
+            .Where(x => x.Identity.HasValue)
+            .GroupBy(x => x.Identity!.Value)
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Amount));
 
         var duplicateReceiptGroups = saleHeaders
             .Where(x => !string.IsNullOrWhiteSpace(x.BrojRacuna))
@@ -1291,34 +1309,46 @@ using NpgsqlTypes;
                     .Select(x => $"{x.BrojRacuna}/{x.IDObjekat ?? 0} ({x.HeaderCount}x)"));
             var suffix = duplicateReceiptGroups.Count > 3 ? " ..." : string.Empty;
             result.Warnings.Add(
-                $"Import rekonsilijacija: detektovano je {duplicateReceiptGroups.Count} grupa dupliranih racuna u upravo uvezenoj prodaji. Primeri: {sample}{suffix}.");
+                $"Import rekonsilijacija: detektovano je {duplicateReceiptGroups.Count} grupa dupliranih računa u upravo uveženoj prodaji. Primeri: {sample}{suffix}.");
         }
 
         var receiptDiagnostics = saleHeaders
-            .Select(x => new
+            .Select(x =>
             {
-                x.SaleId,
-                x.SaleDate,
-                x.BrojRacuna,
-                x.IDObjekat,
-                Revenue = lineTotalsBySaleId.TryGetValue(x.SaleId, out var lineTotal)
-                    ? lineTotal
-                    : dnevnikTotalsBySaleId.TryGetValue(x.SaleId, out var dnevnikTotal)
-                        ? dnevnikTotal
-                        : 0m
+                var identity = ReceiptIdentityKeys.TryBuild(x.SaleDate, x.BrojRacuna, x.IDObjekat);
+                decimal? revenue = null;
+                if (lineTotalsBySaleId.TryGetValue(x.SaleId, out var lineTotal))
+                {
+                    revenue = lineTotal;
+                }
+                else if (identity.HasValue && dnevnikTotalsByIdentity.TryGetValue(identity.Value, out var dnevnikTotal))
+                {
+                    revenue = dnevnikTotal;
+                }
+
+                return new
+                {
+                    x.SaleId,
+                    x.SaleDate,
+                    x.BrojRacuna,
+                    x.IDObjekat,
+                    Identity = identity,
+                    Revenue = revenue
+                };
             })
             .ToList();
 
         var receiptAmountMismatches = receiptDiagnostics
-            .Where(x => lineTotalsBySaleId.TryGetValue(x.SaleId, out var lineTotal)
-                        && dnevnikTotalsBySaleId.TryGetValue(x.SaleId, out var dnevnikTotal)
+            .Where(x => x.Identity.HasValue
+                        && lineTotalsBySaleId.TryGetValue(x.SaleId, out var lineTotal)
+                        && dnevnikTotalsByIdentity.TryGetValue(x.Identity.Value, out var dnevnikTotal)
                         && decimal.Abs(lineTotal - dnevnikTotal) > 0.01m)
             .Select(x => new
             {
                 x.BrojRacuna,
                 LineTotal = lineTotalsBySaleId[x.SaleId],
-                DnevnikTotal = dnevnikTotalsBySaleId[x.SaleId],
-                Difference = decimal.Abs(lineTotalsBySaleId[x.SaleId] - dnevnikTotalsBySaleId[x.SaleId])
+                DnevnikTotal = dnevnikTotalsByIdentity[x.Identity!.Value],
+                Difference = decimal.Abs(lineTotalsBySaleId[x.SaleId] - dnevnikTotalsByIdentity[x.Identity!.Value])
             })
             .OrderByDescending(x => x.Difference)
             .ToList();
@@ -1332,16 +1362,25 @@ using NpgsqlTypes;
                     .Select(x => $"{x.BrojRacuna ?? "(bez broja)"} ({x.LineTotal:0.##} vs {x.DnevnikTotal:0.##})"));
             var suffix = receiptAmountMismatches.Count > 3 ? " ..." : string.Empty;
             result.Warnings.Add(
-                $"Import rekonsilijacija: {receiptAmountMismatches.Count} racuna ima mismatch izmedju dnevnika i stavki. Primeri: {sample}{suffix}.");
+                $"Import rekonsilijacija: {receiptAmountMismatches.Count} računa ima neusklađenost između dnevnika i stavki. Primeri: {sample}{suffix}.");
         }
 
         var nonStandardReceipts = receiptDiagnostics
             .Where(x => !IsStandardReceiptNumber(x.BrojRacuna))
-            .OrderByDescending(x => x.Revenue)
+            .OrderByDescending(x => x.Revenue ?? decimal.MinValue)
             .ThenBy(x => x.SaleDate)
             .ToList();
+        var nonStandardWithKnownRevenue = nonStandardReceipts.Where(x => x.Revenue.HasValue).ToList();
+        var nonStandardUnavailableCount = nonStandardReceipts.Count(x => !x.Revenue.HasValue);
+        if (nonStandardUnavailableCount > 0)
+        {
+            result.Warnings.Add(
+                $"Import kvalitet: za {nonStandardUnavailableCount} nestandardnih dokumenata promet nije dostupan (nema ni zbir stavki ni podudaran dnevnik po broju računa); nije prikazan kao 0.");
+        }
+
         if (nonStandardReceipts.Count > 0)
         {
+            var knownRevenue = decimal.Round(nonStandardWithKnownRevenue.Sum(x => x.Revenue!.Value), 2, MidpointRounding.AwayFromZero);
             var sample = string.Join(
                 ", ",
                 nonStandardReceipts
@@ -1349,16 +1388,16 @@ using NpgsqlTypes;
                     .Select(x => $"{(string.IsNullOrWhiteSpace(x.BrojRacuna) ? "(prazno)" : x.BrojRacuna)}/{x.IDObjekat ?? 0}"));
             var suffix = nonStandardReceipts.Count > 3 ? " ..." : string.Empty;
             result.Warnings.Add(
-                $"Import quality: {nonStandardReceipts.Count} prodajnih dokumenata ima nestandardni broj racuna. Njihov promet je {decimal.Round(nonStandardReceipts.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero):0.##} RSD. Primeri: {sample}{suffix}.");
+                $"Import kvalitet: {nonStandardReceipts.Count} prodajnih dokumenata ima nestandardni broj računa. Poznat promet: {knownRevenue:0.##} RSD. Primeri: {sample}{suffix}.");
         }
 
-        var debtReceipts = nonStandardReceipts
+        var debtReceipts = nonStandardWithKnownRevenue
             .Where(x => IsDebtReceiptNumber(x.BrojRacuna))
             .ToList();
         if (debtReceipts.Count > 0)
         {
             result.Warnings.Add(
-                $"Import quality: dokument DUG pojavljuje se {debtReceipts.Count} put(a) sa ukupno {decimal.Round(debtReceipts.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero):0.##} RSD.");
+                $"Import kvalitet: dokument DUG pojavljuje se {debtReceipts.Count} put(a) sa ukupno {decimal.Round(debtReceipts.Sum(x => x.Revenue!.Value), 2, MidpointRounding.AwayFromZero):0.##} RSD.");
         }
     }
 
@@ -2508,6 +2547,10 @@ using NpgsqlTypes;
                         {
                             _logger.LogWarning(cacheEx, "Analytics cache invalidation failed after Access import. BatchId: {BatchId}.", batch.Id);
                         }
+
+                        _operationsIntegrityRegistry?.MarkUnverified(
+                            "access_import",
+                            "Access import completed and analytics cache was invalidated; bounded integrity probe is required.");
                     }
 
                     result.Status = "completed";
@@ -4715,6 +4758,10 @@ using NpgsqlTypes;
     private async Task ImportProdajaStavkeAsync(IAccessDataReaderSession session, string table, string? parentTable, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
     {
         var existing = ToFirstDictionary(_trendDb.ProdajaStavke.AsNoTracking().ToList(), x => x.Id);
+        var attributionByArticleId = await _trendDb.Artikli
+            .AsNoTracking()
+            .Select(a => new { a.Id, a.IDDobavljac, a.IDTipObuce })
+            .ToDictionaryAsync(a => a.Id, a => (a.IDDobavljac, a.IDTipObuce), ct);
         var usedIds = existing.Keys.ToHashSet();
         var nextGeneratedId = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
 
@@ -4844,6 +4891,7 @@ using NpgsqlTypes;
                 e.Cena = cena;
                 if (nabavnaCena.HasValue)
                     e.NabavnaCena = nabavnaCena.Value;
+                ApplyFrozenCurrentMasterAttributionIfUnknown(e, attributionByArticleId);
                 ApplyAccessSourceLineage(e, "prodaja_stavke", row);
                 _trendDb.ProdajaStavke.Update(e);
                 result.ProdajaStavkeUpdated++;
@@ -4875,6 +4923,7 @@ using NpgsqlTypes;
                     Cena = cena,
                     NabavnaCena = nabavnaCena
                 };
+                ApplyFrozenCurrentMasterAttributionIfUnknown(newLine, attributionByArticleId);
                 ApplyAccessSourceLineage(newLine, "prodaja_stavke", row);
                 _trendDb.ProdajaStavke.Add(newLine);
                 existing[newLine.Id] = newLine;
@@ -6146,6 +6195,10 @@ using NpgsqlTypes;
     private void ImportProdajaStavke(OdbcConnection conn, string table, bool overwriteExisting, AccessImportRunResponse result)
     {
         var existing = ToFirstDictionary(_trendDb.ProdajaStavke, x => x.Id);
+        var attributionByArticleId = _trendDb.Artikli
+            .AsNoTracking()
+            .Select(a => new { a.Id, a.IDDobavljac, a.IDTipObuce })
+            .ToDictionary(a => a.Id, a => (a.IDDobavljac, a.IDTipObuce));
         var usedIds = existing.Keys.ToHashSet();
         var nextGeneratedId = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
         var saleIds = _trendDb.ProdajaZaglavlja.Select(x => x.Id).ToHashSet();
@@ -6177,6 +6230,7 @@ using NpgsqlTypes;
                 e.IdArtikal = idArtikal.Value;
                 e.Kolicina = qty;
                 e.Cena = cena;
+                ApplyFrozenCurrentMasterAttributionIfUnknown(e, attributionByArticleId);
                 result.ProdajaStavkeUpdated++;
             }
             else
@@ -6203,12 +6257,32 @@ using NpgsqlTypes;
                     Kolicina = qty,
                     Cena = cena
                 };
+                ApplyFrozenCurrentMasterAttributionIfUnknown(newLine, attributionByArticleId);
                 _trendDb.ProdajaStavke.Add(newLine);
                 existing[newLine.Id] = newLine;
                 existingCompositeKeys[compositeKey] = existingCompositeKeys.GetValueOrDefault(compositeKey) + 1;
                 result.ProdajaStavkeInserted++;
             }
         }
+    }
+
+    private static void ApplyFrozenCurrentMasterAttributionIfUnknown(
+        ProdajaStavka line,
+        IReadOnlyDictionary<int, (int? SupplierId, int? ShoeTypeId)> attributionByArticleId)
+    {
+        if (!string.IsNullOrWhiteSpace(line.AttributionBasis)
+            && !string.Equals(line.AttributionBasis, SaleDimensionAttribution.Unknown, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        if (!attributionByArticleId.TryGetValue(line.IdArtikal, out var attribution))
+        {
+            line.AttributionBasis = SaleDimensionAttribution.Unknown;
+            return;
+        }
+
+        SaleDimensionAttribution.FreezeCurrentMasterBackfill(line, attribution.SupplierId, attribution.ShoeTypeId);
     }
 
     private bool IsProdajaLineTable(OdbcConnection conn, string table)

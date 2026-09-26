@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Services.Caching;
@@ -12,6 +13,8 @@ public sealed class AnalyticsCacheAdminService
     private readonly IAnalyticsCacheService _cache;
     private readonly ILogger<AnalyticsCacheAdminService> _logger;
     private readonly IDistributedCache? _distributedCache;
+    private readonly OperationsAnalyticsIntegrityRegistry? _integrityRegistry;
+    private readonly IServiceScopeFactory? _scopeFactory;
 
     private DateTime? _lastClearAtUtc;
     private string? _lastClearFamily;
@@ -22,11 +25,15 @@ public sealed class AnalyticsCacheAdminService
     public AnalyticsCacheAdminService(
         IAnalyticsCacheService cache,
         IDistributedCache? distributedCache,
-        ILogger<AnalyticsCacheAdminService> logger)
+        ILogger<AnalyticsCacheAdminService> logger,
+        OperationsAnalyticsIntegrityRegistry? integrityRegistry = null,
+        IServiceScopeFactory? scopeFactory = null)
     {
         _cache = cache;
         _distributedCache = distributedCache;
         _logger = logger;
+        _integrityRegistry = integrityRegistry;
+        _scopeFactory = scopeFactory;
     }
 
     public async Task<AnalyticsCacheClearState> GetStateAsync(CancellationToken ct = default)
@@ -170,7 +177,33 @@ public sealed class AnalyticsCacheAdminService
             state.Storage,
             state.ReportCacheVersion);
 
+        _integrityRegistry?.MarkUnverified(
+            "cache_clear",
+            $"Analytics cache family '{normalizedFamily}' cleared; bounded Operations integrity probe will reconcile live facts.");
+
+        ScheduleBoundedIntegrityProbe();
+
         return state;
+    }
+
+    private void ScheduleBoundedIntegrityProbe()
+    {
+        if (_scopeFactory is null)
+            return;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await using var scope = _scopeFactory.CreateAsyncScope();
+                var integrityService = scope.ServiceProvider.GetRequiredService<IOperationsAnalyticsIntegrityService>();
+                await integrityService.RunBoundedProbeAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Background Operations integrity probe after cache clear did not complete.");
+            }
+        });
     }
 
     public async Task<AnalyticsCacheClearState> ClearFamiliesAsync(IEnumerable<string> families, CancellationToken ct = default)
@@ -235,6 +268,14 @@ public sealed class AnalyticsCacheAdminService
             state.IsShared,
             state.Storage,
             state.ReportCacheVersion);
+
+        if (includesAnalytics)
+        {
+            _integrityRegistry?.MarkUnverified(
+                "cache_clear",
+                $"Analytics cache families '{_lastClearFamily}' cleared; bounded Operations integrity probe will reconcile live facts.");
+            ScheduleBoundedIntegrityProbe();
+        }
 
         return state;
     }

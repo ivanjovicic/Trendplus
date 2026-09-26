@@ -15,6 +15,7 @@ using Api.Endpoints;
 using Api.Models;
 using Api.Services;
 using Domain.Model;
+using Domain.Model.Prodaja;
 using Infrastructure.Services;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -36,14 +37,17 @@ using Application.TrendShoes;
 using System.Globalization;
 using System.Diagnostics;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Serilog.Context;
 using Trendplus2.Dtos;
+using AnalyticsCacheMetadata = Infrastructure.Services.Caching.AnalyticsCacheEntryMetadata;
 
 namespace Trendplus2.Endpoints;
 
 public static class AllEndpoints
 {
     private static readonly string[] AllowedImageExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+    private static readonly JsonSerializerOptions ColorSalesCacheJsonOptions = new(JsonSerializerDefaults.Web);
     private const int VendorSalesNivelacijaCommandTimeoutSeconds = 45;
     private const int OptionalNivelacijaMetricCommandTimeoutSeconds = 5;
 
@@ -808,9 +812,12 @@ public static class AllEndpoints
             TrendplusDbContext trendplusDb,
             ILogger<Program> logger,
             IAnalyticsCacheService cache,
+            HttpContext httpContext,
             int? vendorId = null,
             string? category = null,
             int take = 200,
+            int? storeId = null,
+            string? dataScope = null,
             CancellationToken ct = default) =>
         {
             try
@@ -818,23 +825,33 @@ public static class AllEndpoints
                 var connectionString = trendplusDb.Database.GetConnectionString();
                 if (string.IsNullOrWhiteSpace(connectionString))
                 {
-                    return Results.Problem(
-                        title: "Missing database connection",
-                        detail: "Trendplus connection string is missing.",
-                        statusCode: 500);
+                    return CreateVendorSalesNivelacijaProblem(
+                        "Opcije pre/post nivelacija nisu dostupne.",
+                        "Povezivanje sa bazom trenutno nije dostupno.",
+                        503,
+                        "vendor_sales_nivelacija_options_unavailable",
+                        ResolveAnalyticsCorrelationId(httpContext));
                 }
 
                 take = Math.Clamp(take, 10, 1000);
                 var categoryTrimmed = string.IsNullOrWhiteSpace(category) ? null : category.Trim();
+                var normalizedDataScope = NormalizeVendorSalesNivelacijaDataScope(dataScope);
                 var stopwatch = Stopwatch.StartNew();
-                var cacheKey = AnalyticsCacheKeys.VendorSalesNivelacijaOptions(vendorId, categoryTrimmed, take);
+                var cacheKey = AnalyticsCacheKeys.VendorSalesNivelacijaOptions(
+                    vendorId,
+                    categoryTrimmed,
+                    take,
+                    storeId,
+                    normalizedDataScope);
 
                 var cachedOptions = await cache.GetAsync<List<VendorSalesNivelacijaOptionDto>>(cacheKey, ct);
                 if (cachedOptions is not null)
                 {
                     logger.LogInformation(
-                        "Vendor sales nivelacija options cache hit. VendorId={VendorId}, CategorySet={CategorySet}, Take={Take}, ElapsedMs={ElapsedMs}",
+                        "Vendor sales nivelacija options cache hit. VendorId={VendorId}, StoreId={StoreId}, DataScope={DataScope}, CategorySet={CategorySet}, Take={Take}, ElapsedMs={ElapsedMs}",
                         vendorId,
+                        storeId,
+                        normalizedDataScope,
                         categoryTrimmed is not null,
                         take,
                         stopwatch.ElapsedMilliseconds);
@@ -850,8 +867,53 @@ public static class AllEndpoints
                 var hasOldPrice = await RelationHasColumnAsync(connection, "vw_vendor_sales_nivelacija", "old_price", ct);
                 var hasNewPrice = await RelationHasColumnAsync(connection, "vw_vendor_sales_nivelacija", "new_price", ct);
                 var hasPriceColumns = hasOldPrice && hasNewPrice;
+                var useScopedFactQuery = storeId.HasValue || normalizedDataScope != "all";
 
-                var sql = hasPriceColumns
+                var sql = useScopedFactQuery
+                    ? $"""
+                        {BuildVendorSalesNivelacijaScopedSourceSql()}
+                        , ranked AS (
+                            SELECT
+                                event_date,
+                                vendor_id,
+                                article_id,
+                                old_price,
+                                new_price,
+                                pre_qty,
+                                pre_revenue,
+                                post_qty,
+                                post_revenue,
+                                ROW_NUMBER() OVER (
+                                    PARTITION BY
+                                        event_date::date,
+                                        COALESCE(vendor_id, -1),
+                                        article_id,
+                                        old_price,
+                                        new_price
+                                    ORDER BY price_event_id DESC
+                                ) AS rn
+                            FROM scoped_vendor_sales_nivelacija
+                            WHERE (@vendorId IS NULL OR vendor_id = @vendorId::int)
+                              AND (@category IS NULL OR category ILIKE @categoryPattern::text)
+                        )
+                        SELECT
+                            event_date,
+                            COUNT(*)::INT AS events_count,
+                            COUNT(DISTINCT vendor_id)::INT AS vendors_count,
+                            COUNT(DISTINCT article_id)::INT AS articles_count,
+                            COUNT(*) FILTER (
+                                WHERE pre_qty <> 0
+                                   OR post_qty <> 0
+                                   OR pre_revenue <> 0
+                                   OR post_revenue <> 0
+                            )::INT AS active_articles_count
+                        FROM ranked
+                        WHERE rn = 1
+                        GROUP BY event_date
+                        ORDER BY event_date DESC
+                        LIMIT @take::int;
+                        """
+                    : hasPriceColumns
                     ? """
                         WITH ranked AS (
                             SELECT
@@ -958,6 +1020,11 @@ public static class AllEndpoints
                 };
                 command.Parameters.Add(categoryPatternParam);
 
+                if (useScopedFactQuery)
+                {
+                    AddVendorSalesNivelacijaScopeParameters(command, storeId, normalizedDataScope);
+                }
+
                 var takeParam = new NpgsqlParameter("take", NpgsqlTypes.NpgsqlDbType.Integer)
                 {
                     Value = take
@@ -981,8 +1048,10 @@ public static class AllEndpoints
 
                 await cache.SetAsync(cacheKey, options, CacheExpiration.HeavyAnalytics, ct);
                 logger.LogInformation(
-                    "Vendor sales nivelacija options computed and cached. VendorId={VendorId}, CategorySet={CategorySet}, Take={Take}, Count={Count}, ElapsedMs={ElapsedMs}, CacheTtlMinutes={CacheTtlMinutes}",
+                    "Vendor sales nivelacija options computed and cached. VendorId={VendorId}, StoreId={StoreId}, DataScope={DataScope}, CategorySet={CategorySet}, Take={Take}, Count={Count}, ElapsedMs={ElapsedMs}, CacheTtlMinutes={CacheTtlMinutes}",
                     vendorId,
+                    storeId,
+                    normalizedDataScope,
                     categoryTrimmed is not null,
                     take,
                     options.Count,
@@ -998,15 +1067,25 @@ public static class AllEndpoints
                     "Vendor sales nivelacija options fallback due to database/schema issue. SqlState={SqlState}",
                     ex.SqlState);
 
-                // Return an empty options set instead of hard-failing the screen.
-                return Results.Ok(new List<VendorSalesNivelacijaOptionDto>());
+                return CreateVendorSalesNivelacijaProblem(
+                    "Opcije pre/post nivelacija nisu dostupne.",
+                    "Opcije trenutno nije moguće učitati. Pokušajte ponovo ili prosledite referentni ID podršci.",
+                    503,
+                    "vendor_sales_nivelacija_options_unavailable",
+                    ResolveAnalyticsCorrelationId(httpContext));
             }
             catch (Exception ex)
             {
+                logger.LogError(ex, "Vendor sales nivelacija options failed unexpectedly.");
                 return Results.Problem(
-                    title: "Failed to load nivelacija options",
-                    detail: ex.Message,
-                    statusCode: 500);
+                    title: "Opcije pre/post nivelacija nisu dostupne.",
+                    detail: $"Opcije trenutno nije moguće učitati. Referentni ID: {ResolveAnalyticsCorrelationId(httpContext)}.",
+                    statusCode: 500,
+                    extensions: new Dictionary<string, object?>
+                    {
+                        ["errorCode"] = "vendor_sales_nivelacija_options_unavailable",
+                        ["correlationId"] = ResolveAnalyticsCorrelationId(httpContext)
+                    });
             }
         })
         .WithName("GetVendorSalesNivelacijaOptions")
@@ -1032,35 +1111,6 @@ public static class AllEndpoints
 
             try
             {
-                static DateTime? NormalizeUtc(DateTime? value)
-                {
-                    if (!value.HasValue) return null;
-                    var date = value.Value;
-                    return date.Kind == DateTimeKind.Unspecified
-                        ? DateTime.SpecifyKind(date, DateTimeKind.Utc)
-                        : date.ToUniversalTime();
-                }
-
-                static (DateTime? previousFromUtc, DateTime? previousToUtc) BuildComparablePreviousRange(
-                    DateTime? currentFromUtc,
-                    DateTime? currentToUtc)
-                {
-                    if (!currentFromUtc.HasValue || !currentToUtc.HasValue || currentFromUtc.Value > currentToUtc.Value)
-                    {
-                        return (null, null);
-                    }
-
-                    var inclusiveDurationTicks = currentToUtc.Value.Ticks - currentFromUtc.Value.Ticks + 1;
-                    if (inclusiveDurationTicks <= 0)
-                    {
-                        return (null, null);
-                    }
-
-                    var previousToUtc = new DateTime(currentFromUtc.Value.Ticks - 1, DateTimeKind.Utc);
-                    var previousFromUtc = new DateTime(previousToUtc.Ticks - inclusiveDurationTicks + 1, DateTimeKind.Utc);
-                    return (previousFromUtc, previousToUtc);
-                }
-
                 static string BuildSupplierBucketKey(int? supplierId)
                     => supplierId.HasValue ? $"id:{supplierId.Value}" : "unknown";
 
@@ -1073,8 +1123,8 @@ public static class AllEndpoints
                     return normalized is "existing" or "imported" ? normalized : "all";
                 }
 
-                fromUtc = NormalizeUtc(fromDate);
-                toUtc = NormalizeUtc(toDate);
+                fromUtc = OperationsDateRange.NormalizeUtc(fromDate);
+                toUtc = OperationsDateRange.NormalizeUtc(toDate);
                 var normalizedDataScope = NormalizeDataScope(dataScope);
                 var importedOnly = normalizedDataScope == "imported";
                 var existingOnly = normalizedDataScope == "existing";
@@ -1092,21 +1142,21 @@ public static class AllEndpoints
                     }
 
                     fromUtc = DateTime.SpecifyKind(sezona.DatumOd.Date, DateTimeKind.Utc);
-                    toUtc = DateTime.SpecifyKind(sezona.DatumDo.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
+                    toUtc = DateTime.SpecifyKind(sezona.DatumDo.Date.AddDays(1), DateTimeKind.Utc);
                 }
 
                 if (!fromUtc.HasValue && !toUtc.HasValue)
                 {
                     var todayUtc = DateTime.UtcNow.Date;
                     fromUtc = todayUtc.AddDays(-29);
-                    toUtc = todayUtc.AddDays(1).AddTicks(-1);
+                    toUtc = todayUtc.AddDays(1);
                 }
 
-                if (fromUtc.HasValue && toUtc.HasValue && fromUtc.Value > toUtc.Value)
+                if (fromUtc.HasValue && toUtc.HasValue && fromUtc.Value >= toUtc.Value)
                 {
                     return Results.BadRequest(new
                     {
-                        message = "Neispravan period: fromDate mora biti manji ili jednak toDate.",
+                        message = "Neispravan period: fromDate mora biti manji od ekskluzivnog toDate.",
                         fromDate = fromUtc.Value,
                         toDate = toUtc.Value
                     });
@@ -1131,7 +1181,7 @@ public static class AllEndpoints
                 var isPrewarmRequest = IsPrewarmRequest(httpContext);
                 var cacheKey = AnalyticsCacheKeys.SupplierSalesStats(fromUtc, toUtc, storeId, sezonaId, normalizedDataScope, activeBatchId);
                 var cacheMetadataKey = AnalyticsCacheKeys.Metadata(cacheKey);
-                var cachedResponse = await cache.GetAsync<AnalyticsJsonCacheEntry>(cacheKey, ct);
+                var cachedResponse = await cache.GetAsync<AnalyticsJsonCachePayload>(cacheKey, ct);
                 if (cachedResponse is not null)
                 {
                     var cacheMetadata = await cache.GetAsync<AnalyticsCacheEntryMetadata>(cacheMetadataKey, ct);
@@ -1192,7 +1242,7 @@ public static class AllEndpoints
                         x => string.IsNullOrWhiteSpace(x.Naziv) ? "Nepoznato" : x.Naziv.Trim(),
                         ct);
 
-                var (previousFromUtc, previousToUtc) = BuildComparablePreviousRange(fromUtc, toUtc);
+                var (previousFromUtc, previousToUtc) = OperationsDateRange.BuildComparablePreviousRange(fromUtc, toUtc);
                 var previousSupplierMetrics = new Dictionary<string, (decimal Revenue, int Units)>(StringComparer.Ordinal);
                 var previousSupplierFootwearMetrics = new Dictionary<string, (decimal Revenue, int Units)>(StringComparer.Ordinal);
                 var previousFootwearRowCount = 0;
@@ -1206,15 +1256,15 @@ public static class AllEndpoints
                         join pz in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
                         join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                         where pz.DatumProdaje >= previousFromUtc.Value
-                           && pz.DatumProdaje <= previousToUtc.Value
+                           && pz.DatumProdaje < previousToUtc.Value
                            && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
                            && (!importedOnly || a.DataOrigin == "access")
                            && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
-                        group ps by new { a.IDDobavljac, a.IDTipObuce } into g
+                        group ps by new { ps.SupplierIdAtSale, ps.ShoeTypeIdAtSale } into g
                         select new
                         {
-                            SupplierId = g.Key.IDDobavljac,
-                            FootwearTypeId = g.Key.IDTipObuce,
+                            SupplierId = g.Key.SupplierIdAtSale,
+                            FootwearTypeId = g.Key.ShoeTypeIdAtSale,
                             Revenue = g.Sum(x => x.Kolicina * x.Cena),
                             Units = g.Sum(x => x.Kolicina)
                         })
@@ -1241,7 +1291,7 @@ public static class AllEndpoints
                     .Where(d =>
                         (d.TipPromene == TipPromeneConstants.Nivelacija || d.TipPromene == TipPromeneConstants.NivelacijaCena) &&
                         d.ArtikalId.HasValue &&
-                        (!toUtc.HasValue || d.Datum <= toUtc.Value) &&
+                        (!toUtc.HasValue || d.Datum < toUtc.Value) &&
                         (!storeId.HasValue || !d.IDObjekat.HasValue || d.IDObjekat == storeId.Value))
                     .GroupBy(d => d.ArtikalId!.Value)
                     .Select(g => new
@@ -1256,7 +1306,7 @@ public static class AllEndpoints
                     join pz in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
                     join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                     where (!fromUtc.HasValue || pz.DatumProdaje >= fromUtc.Value)
-                       && (!toUtc.HasValue || pz.DatumProdaje <= toUtc.Value)
+                       && (!toUtc.HasValue || pz.DatumProdaje < toUtc.Value)
                        && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
                        && (!importedOnly || a.DataOrigin == "access")
                        && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
@@ -1266,16 +1316,18 @@ public static class AllEndpoints
                         Prihod = ps.Kolicina * ps.Cena,
                         SaleLineCost = ps.NabavnaCena,
                         ProductCostRsd = a.NabavnaCenaDin,
-                        ProductCostLegacy = a.NabavnaCena
+                        ProductCostLegacy = a.NabavnaCena,
+                        AttributionBasis = ps.AttributionBasis
                     } by new
                     {
-                        SupplierId = a.IDDobavljac,
-                        FootwearTypeId = a.IDTipObuce,
+                        SupplierId = ps.SupplierIdAtSale,
+                        FootwearTypeId = ps.ShoeTypeIdAtSale,
                         ArtikalId = a.Id,
                         DatumProdaje = pz.DatumProdaje,
                         SaleLineCost = ps.NabavnaCena,
                         ProductCostRsd = a.NabavnaCenaDin,
-                        ProductCostLegacy = a.NabavnaCena
+                        ProductCostLegacy = a.NabavnaCena,
+                        AttributionBasis = ps.AttributionBasis
                     }
                     into g
                     select new
@@ -1288,10 +1340,16 @@ public static class AllEndpoints
                         Prihod = g.Sum(x => x.Prihod),
                         SaleLineCost = g.Key.SaleLineCost,
                         ProductCostRsd = g.Key.ProductCostRsd,
-                        ProductCostLegacy = g.Key.ProductCostLegacy
+                        ProductCostLegacy = g.Key.ProductCostLegacy,
+                        AttributionBasis = g.Key.AttributionBasis
                     })
                     .ToListAsync(ct);
                 var salesRowCount = stavke.Count;
+                var attributionBases = stavke.Select(s => s.AttributionBasis).Distinct(StringComparer.Ordinal).ToArray();
+                var attributionCoveragePct = salesRowCount == 0
+                    ? (double?)null
+                    : Math.Round(stavke.Count(s => !string.Equals(s.AttributionBasis, SaleDimensionAttribution.Unknown, StringComparison.Ordinal)) * 100d / salesRowCount, 2);
+                var attributionBasis = attributionBases.Length == 1 ? attributionBases[0] : "mixed";
 
                 var sezone = (await db.Sezone.AsNoTracking()
                     .OrderByDescending(s => s.DatumOd)
@@ -1472,10 +1530,8 @@ public static class AllEndpoints
                                     estimatedCostCoveragePct = typeMarginSnapshot.FallbackCostCoveragePct,
                                     snapshotCostRevenue = typeMarginSnapshot.SnapshotCostRevenue,
                                     snapshotCostCoveragePct = typeMarginSnapshot.SnapshotCostCoveragePct ?? 0d,
-                                    noCostRevenue = Math.Round(typeRevenue - typeMarginSnapshot.RevenueWithCost, 2),
-                                    noCostCoveragePct = typeRevenue > 0m
-                                        ? Math.Round((double)((typeRevenue - typeMarginSnapshot.RevenueWithCost) / typeRevenue * 100m), 2)
-                                        : (double?)null,
+                                    noCostRevenue = AnalyticsMarginPolicy.ResolveNoCostRevenue(typeRevenue, typeMarginSnapshot.RevenueWithCost),
+                                    noCostCoveragePct = AnalyticsMarginPolicy.ResolveNoCostCoveragePct(typeRevenue, typeMarginSnapshot.RevenueWithCost),
                                     marginQualityLabel = typeMarginQuality.Label,
                                     marginQualityTier = typeMarginQuality.Tier,
                                     marginQualityShortLabel = typeMarginQuality.ShortLabel,
@@ -1494,14 +1550,18 @@ public static class AllEndpoints
                             preNivelacijeKolicina = splitSnapshot.PreQuantity,
                             posleNivelacijePromet = splitSnapshot.PostRevenue,
                             posleNivelacijeKolicina = splitSnapshot.PostQuantity,
+                            comparablePreNivelacijePromet = splitSnapshot.ComparablePreRevenue,
+                            comparablePostNivelacijePromet = splitSnapshot.ComparablePostRevenue,
+                            comparablePreNivelacijeKolicina = splitSnapshot.ComparablePreQuantity,
+                            comparablePostNivelacijeKolicina = splitSnapshot.ComparablePostQuantity,
                             ukupanPromet = Math.Round(totalRevenue, 2),
                             ukupnaKolicina = totalQty,
                             brojArtikalaSaNivelacijom = splitSnapshot.ArticleCountWithNivelacija,
                             brojArtikalaUkupno = articleIds.Count,
-                            revenueWithCost = marginSnapshot.HistoricalCostRevenue,
+                            revenueWithCost = marginSnapshot.RevenueWithCost,
                             estimatedCostRevenue = marginSnapshot.EstimatedCostRevenue,
                             marginContribution = marginSnapshot.MarginContribution,
-                            marginDataCoveragePct = marginSnapshot.HistoricalMarginCoveragePct,
+                            marginDataCoveragePct = marginSnapshot.MarginDataCoveragePct,
                             fallbackCostCoveragePct = marginSnapshot.FallbackCostCoveragePct,
                             marginPct = marginSnapshot.MarginPct,
                             // Cost quality breakdown
@@ -1511,16 +1571,13 @@ public static class AllEndpoints
                             estimatedCostCoveragePct = marginSnapshot.FallbackCostCoveragePct,
                             snapshotCostRevenue = marginSnapshot.SnapshotCostRevenue,
                             snapshotCostCoveragePct = marginSnapshot.SnapshotCostCoveragePct ?? 0d,
-                            noCostRevenue = Math.Round(totalRevenue - marginSnapshot.RevenueWithCost, 2),
-                            noCostCoveragePct = totalRevenue > 0m
-                                ? Math.Round((double)((totalRevenue - marginSnapshot.RevenueWithCost) / totalRevenue * 100m), 2)
-                                : (double?)null,
+                            noCostRevenue = AnalyticsMarginPolicy.ResolveNoCostRevenue(totalRevenue, marginSnapshot.RevenueWithCost),
+                            noCostCoveragePct = AnalyticsMarginPolicy.ResolveNoCostCoveragePct(totalRevenue, marginSnapshot.RevenueWithCost),
                             isEstimatedMargin = (marginSnapshot.FallbackCostCoveragePct ?? 0) > (marginSnapshot.HistoricalMarginCoveragePct ?? 0),
-                            marginQualityLabel = (marginSnapshot.HistoricalMarginCoveragePct ?? 0) >= 50
-                                ? (string?)null
-                                : (marginSnapshot.MarginDataCoveragePct ?? 0) > 0
-                                    ? "Procenjena iz troška artikla"
-                                    : "Trošak nedostupan",
+                            marginQualityLabel = marginQuality.Label,
+                            marginQualityTier = marginQuality.Tier,
+                            marginQualityShortLabel = marginQuality.ShortLabel,
+                            marginQualityTooltip = marginQuality.Tooltip,
                             revenueWithNivelacijaSplit = splitSnapshot.RevenueWithSplit,
                             comparableRevenueWithNivelacijaSplit = splitSnapshot.ComparableRevenueWithSplit,
                             previousPeriodRevenue = hasPreviousComparablePeriod
@@ -1570,28 +1627,64 @@ public static class AllEndpoints
 
                 var sumPreRevenue = suppliers.Sum(r => r.preNivelacijePromet);
                 var sumPostRevenue = suppliers.Sum(r => r.posleNivelacijePromet);
+                var comparablePreRevenue = suppliers.Sum(r => r.comparablePreNivelacijePromet);
+                var comparablePostRevenue = suppliers.Sum(r => r.comparablePostNivelacijePromet);
+                var comparablePreQuantity = suppliers.Sum(r => r.comparablePreNivelacijeKolicina);
+                var comparablePostQuantity = suppliers.Sum(r => r.comparablePostNivelacijeKolicina);
+                var comparableArticleCount = suppliers.Sum(r => r.prePostComparableArticleCount);
                 var totalRevenue = suppliers.Sum(r => r.ukupanPromet);
+                var comparableSignal = AnalyticsNivelacijaSplitPolicy.EvaluateComparableSignal(
+                    comparablePreRevenue,
+                    comparablePostRevenue,
+                    comparablePreQuantity,
+                    comparablePostQuantity,
+                    comparableArticleCount,
+                    totalRevenue);
                 var comparableRevenueWithNivelacijaSplit = suppliers.Sum(r => r.comparableRevenueWithNivelacijaSplit);
                 var unknownSupplierRevenue = suppliers.Where(r => r.isUnknown).Sum(r => r.ukupanPromet);
-                var totalRevenueWithHistoricalCost = suppliers.Sum(r => r.revenueWithCost);
+                var totalRevenueWithAnyCost = suppliers.Sum(r => r.revenueWithCost);
                 var estimatedCostRevenue = suppliers.Sum(r => r.estimatedCostRevenue);
-                var missingCostRevenue = totalRevenue - totalRevenueWithHistoricalCost;
+                var missingCostRevenue = AnalyticsMarginPolicy.ResolveNoCostRevenue(totalRevenue, totalRevenueWithAnyCost);
                 var missingCostQty = stavke.Sum(s =>
-                    AnalyticsMarginPolicy.IsReliableCost(s.SaleLineCost)
+                {
+                    var snapshotCost = s.SaleLineCost is null
+                        && snapshotCostByArtikalId.TryGetValue(s.ArtikalId, out var resolvedSnapshotCost)
+                        ? resolvedSnapshotCost
+                        : (decimal?)null;
+                    var resolvedCost = AnalyticsMarginPolicy.ResolveUnitCostWithSnapshot(
+                        s.SaleLineCost,
+                        snapshotCost,
+                        s.ProductCostRsd,
+                        s.ProductCostLegacy);
+                    return AnalyticsMarginPolicy.IsReliableCost(resolvedCost.UnitCost)
                         ? 0
-                        : s.Kolicina);
+                        : s.Kolicina;
+                });
 
                 var dataQuality = new
                 {
                     missingCostQty,
-                    missingCostRevenue = Math.Round(missingCostRevenue, 2),
-                    missingCostRevenueSharePct = totalRevenue > 0m
-                        ? Math.Round((double)(missingCostRevenue / totalRevenue * 100m), 2)
+                    missingCostRevenue,
+                    missingCostRevenueSharePct = AnalyticsMarginPolicy.ResolveNoCostCoveragePct(totalRevenue, totalRevenueWithAnyCost),
+                    noCostRevenue = missingCostRevenue,
+                    noCostRevenueSharePct = AnalyticsMarginPolicy.ResolveNoCostCoveragePct(totalRevenue, totalRevenueWithAnyCost),
+                    costCoveredRevenue = Math.Round(totalRevenueWithAnyCost, 2),
+                    costCoveredRevenueSharePct = totalRevenue > 0m
+                        ? Math.Round((double)(totalRevenueWithAnyCost / totalRevenue * 100m), 2)
+                        : (double?)null,
+                    historicalCostRevenue = Math.Round(suppliers.Sum(r => r.historicalCostRevenue), 2),
+                    historicalCostRevenueSharePct = totalRevenue > 0m
+                        ? Math.Round((double)(suppliers.Sum(r => r.historicalCostRevenue) / totalRevenue * 100m), 2)
+                        : (double?)null,
+                    snapshotCostRevenue = Math.Round(suppliers.Sum(r => r.snapshotCostRevenue), 2),
+                    snapshotCostRevenueSharePct = totalRevenue > 0m
+                        ? Math.Round((double)(suppliers.Sum(r => r.snapshotCostRevenue) / totalRevenue * 100m), 2)
                         : (double?)null,
                     estimatedCostRevenue = Math.Round(estimatedCostRevenue, 2),
                     estimatedCostRevenueSharePct = totalRevenue > 0m
                         ? Math.Round((double)(estimatedCostRevenue / totalRevenue * 100m), 2)
                         : (double?)null,
+                    costSourceBasis = "historical_sale_line_then_snapshot_then_product_fallback_then_unavailable",
                     unknownSupplierRevenue = Math.Round(unknownSupplierRevenue, 2),
                     unknownSupplierRevenueSharePct = totalRevenue > 0m
                         ? Math.Round((double)(unknownSupplierRevenue / totalRevenue * 100m), 2)
@@ -1605,7 +1698,7 @@ public static class AllEndpoints
                 if (dataQuality.missingCostRevenueSharePct.HasValue && dataQuality.missingCostRevenueSharePct.Value >= 10d)
                 {
                     logger.LogWarning(
-                        "Supplier-sales-stats margin reliability degraded due to missing historical purchase cost. MissingCostRevenueSharePct={MissingCostRevenueSharePct} BatchStoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}",
+                        "Supplier-sales-stats margin reliability degraded due to revenue without any usable purchase cost. MissingCostRevenueSharePct={MissingCostRevenueSharePct} BatchStoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}",
                         dataQuality.missingCostRevenueSharePct.Value,
                         storeId,
                         sezonaId,
@@ -1624,16 +1717,20 @@ public static class AllEndpoints
                         toUtc);
                 }
 
-                var knownSupplierMarginValues = suppliers
+                var knownSupplierMarginEvidence = suppliers
                     .Where(row => !row.isUnknown)
-                    .Select(row => row.marginPct)
+                    .Select(row => (
+                        RevenueWithCost: row.revenueWithCost,
+                        MarginContribution: row.marginContribution))
                     .ToList();
-                var averageKnownMarginPct = knownSupplierMarginValues.Count > 0
-                    ? knownSupplierMarginValues.Average()
-                    : (double?)null;
+                var weightedMarginPct = AnalyticsMarginPolicy.ResolveWeightedMarginPct(knownSupplierMarginEvidence);
+                var weightedMarginRevenue = knownSupplierMarginEvidence.Sum(row => row.RevenueWithCost);
+                var weightedMarginContribution = knownSupplierMarginEvidence.Sum(row => row.MarginContribution);
                 var totalMarginContribution = suppliers.Sum(row => row.marginContribution);
                 var totalUnits = suppliers.Sum(row => row.ukupnaKolicina);
                 var unknownSupplierSharePct = dataQuality.unknownSupplierRevenueSharePct ?? 0d;
+                var operationsIntegrityRegistry = httpContext.RequestServices.GetService<OperationsAnalyticsIntegrityRegistry>();
+                var blockOperationsDecisionSignals = OperationsAnalyticsIntegrityMeta.ShouldBlockDecisionSignals(operationsIntegrityRegistry);
 
                 var suppliersWithRecommendation = suppliers
                     .Select(supplier =>
@@ -1669,10 +1766,13 @@ public static class AllEndpoints
                             HasPreviousPeriodWindow: hasPreviousPeriodWindow,
                             IsNewEntity: isNewSupplier,
                             UnknownBucketSharePct: unknownSupplierSharePct),
-                            averageKnownMarginPct);
+                            weightedMarginPct);
                         var hasComparableNivelacijaSignal = supplier.prePostNivelacijaRevenueImpactPct.HasValue
                             && supplier.prePostNivelacijaUnitsImpactPct.HasValue;
-                        var recommendationAllowed = recommendation.RecommendationAllowed && hasComparableNivelacijaSignal;
+                        var exposedRecommendation = AnalyticsDecisionRecommendationEngine.ApplyComparableSignalGate(
+                            recommendation,
+                            hasComparableNivelacijaSignal);
+                        var recommendationAllowed = exposedRecommendation.RecommendationAllowed && !blockOperationsDecisionSignals;
 
                         return new
                         {
@@ -1683,6 +1783,10 @@ public static class AllEndpoints
                             supplier.preNivelacijeKolicina,
                             supplier.posleNivelacijePromet,
                             supplier.posleNivelacijeKolicina,
+                            supplier.comparablePreNivelacijePromet,
+                            supplier.comparablePostNivelacijePromet,
+                            supplier.comparablePreNivelacijeKolicina,
+                            supplier.comparablePostNivelacijeKolicina,
                             supplier.ukupanPromet,
                             supplier.ukupnaKolicina,
                             supplier.brojArtikalaSaNivelacijom,
@@ -1703,6 +1807,9 @@ public static class AllEndpoints
                             supplier.noCostCoveragePct,
                             supplier.isEstimatedMargin,
                             supplier.marginQualityLabel,
+                            supplier.marginQualityTier,
+                            supplier.marginQualityShortLabel,
+                            supplier.marginQualityTooltip,
                             supplier.revenueWithNivelacijaSplit,
                             supplier.comparableRevenueWithNivelacijaSplit,
                             supplier.previousPeriodRevenue,
@@ -1722,17 +1829,17 @@ public static class AllEndpoints
                             shareOfMarginContribution,
                             shareOfProfit = shareOfMarginContribution,
                             shareOfUnits,
-                            reliabilityPct = recommendationAllowed ? (double?)recommendation.ReliabilityPct : null,
+                            reliabilityPct = recommendationAllowed ? (double?)exposedRecommendation.ReliabilityPct : null,
                             recommendation = new
                             {
-                                recommendation.Status,
-                                recommendation.Label,
-                                recommendation.Summary,
-                                ConfidencePct = recommendationAllowed ? (double?)recommendation.ConfidencePct : null,
-                                ReliabilityPct = recommendationAllowed ? (double?)recommendation.ReliabilityPct : null,
-                                recommendation.DataQualityStatus,
-                                RecommendationAllowed = recommendationAllowed,
-                                reasonCodes = recommendation.ReasonCodes
+                                status = exposedRecommendation.Status,
+                                label = exposedRecommendation.Label,
+                                summary = exposedRecommendation.Summary,
+                                confidencePct = recommendationAllowed ? (double?)exposedRecommendation.ConfidencePct : null,
+                                reliabilityPct = recommendationAllowed ? (double?)exposedRecommendation.ReliabilityPct : null,
+                                dataQualityStatus = exposedRecommendation.DataQualityStatus,
+                                recommendationAllowed,
+                                reasonCodes = exposedRecommendation.ReasonCodes
                             },
                             // Legacy compatibility aliases (deprecated)
                             supplier.promenaPrometa,
@@ -1750,17 +1857,22 @@ public static class AllEndpoints
                 var totalEstPct = totalRevenue > 0m
                     ? Math.Round((double)(suppliers.Sum(r => r.estimatedCostRevenue) / totalRevenue * 100m), 2)
                     : 0d;
-                var totalNoCostPct = totalRevenue > 0m
-                    ? Math.Round((double)((totalRevenue - suppliers.Sum(r => r.historicalCostRevenue) - suppliers.Sum(r => r.snapshotCostRevenue) - suppliers.Sum(r => r.estimatedCostRevenue)) / totalRevenue * 100m), 2)
+                var totalCostCoveredRevenue = suppliers.Sum(r => r.revenueWithCost);
+                var totalNoCostPct = AnalyticsMarginPolicy.ResolveNoCostCoveragePct(totalRevenue, totalCostCoveredRevenue) ?? 0d;
+                var totalCoveragePct = totalRevenue > 0m
+                    ? Math.Round((double)(totalCostCoveredRevenue / totalRevenue * 100m), 2)
                     : 0d;
-                var totalMarginQuality = MarginQualityClassifier.Classify(totalHistPct, totalEstPct + totalSnapshotPct, totalNoCostPct, totalHistPct + totalEstPct + totalSnapshotPct);
+                var totalMarginQuality = MarginQualityClassifier.Classify(totalHistPct, totalEstPct + totalSnapshotPct, totalNoCostPct, totalCoveragePct);
 
                 var totals = new
                 {
                     ukupanPromet = totalRevenue,
                     ukupanMarzniDoprinos = suppliers.Sum(r => r.marginContribution),
                     ukupanTrosak = suppliers.Sum(r => r.totalCost),
-                    prosecnaMarza = averageKnownMarginPct.HasValue ? Math.Round(averageKnownMarginPct.Value, 2) : (double?)null,
+                    prosecnaMarza = weightedMarginPct,
+                    weightedMarginRevenue = Math.Round(weightedMarginRevenue, 2),
+                    weightedMarginContribution = Math.Round(weightedMarginContribution, 2),
+                    marginBenchmarkBasis = "known_supplier_covered_revenue_weighted",
                     historicalCostCoveragePct = totalHistPct,
                     estimatedCostCoveragePct = totalEstPct,
                     noCostCoveragePct = totalNoCostPct,
@@ -1778,6 +1890,19 @@ public static class AllEndpoints
                     ukupnaKolicina = suppliers.Sum(r => r.ukupnaKolicina),
                     preKolicina = suppliers.Sum(r => r.preNivelacijeKolicina),
                     posleKolicina = suppliers.Sum(r => r.posleNivelacijeKolicina),
+                    observedPrePromet = sumPreRevenue,
+                    observedPoslePromet = sumPostRevenue,
+                    observedPreKolicina = suppliers.Sum(r => r.preNivelacijeKolicina),
+                    observedPosleKolicina = suppliers.Sum(r => r.posleNivelacijeKolicina),
+                    comparablePrePromet = Math.Round(comparablePreRevenue, 2),
+                    comparablePoslePromet = Math.Round(comparablePostRevenue, 2),
+                    comparablePreKolicina = comparablePreQuantity,
+                    comparablePosleKolicina = comparablePostQuantity,
+                    prePostComparableArticleCount = comparableArticleCount,
+                    prePostNivelacijaRevenueCoveragePct = totalRevenue > 0m
+                        ? Math.Round((double)((comparablePreRevenue + comparablePostRevenue) / totalRevenue * 100m), 2)
+                        : (double?)null,
+                    prePostSignalNote = comparableSignal.SignalNote,
                     previousPeriodRevenue = previousPeriodRevenue.HasValue
                         ? Math.Round(previousPeriodRevenue.Value, 2)
                         : (decimal?)null,
@@ -1790,19 +1915,15 @@ public static class AllEndpoints
                     popUnitsChangePct = previousPeriodUnits.HasValue && previousPeriodUnits.Value > 0
                         ? Math.Round((suppliers.Sum(r => r.ukupnaKolicina) - previousPeriodUnits.Value) / (double)previousPeriodUnits.Value * 100d, 2)
                         : (double?)null,
-                    prePostNivelacijaRevenueImpactPct = sumPreRevenue > 0m
-                        ? Math.Round((double)((sumPostRevenue - sumPreRevenue) / sumPreRevenue * 100m), 2)
-                        : (double?)null,
-                    prePostNivelacijaUnitsImpactPct = suppliers.Sum(r => r.preNivelacijeKolicina) > 0
-                        ? Math.Round((suppliers.Sum(r => r.posleNivelacijeKolicina) - suppliers.Sum(r => r.preNivelacijeKolicina)) / (double)suppliers.Sum(r => r.preNivelacijeKolicina) * 100d, 2)
-                        : (double?)null,
+                    prePostNivelacijaRevenueImpactPct = comparableSignal.RevenueImpactPct,
+                    prePostNivelacijaUnitsImpactPct = comparableSignal.UnitsImpactPct,
                     recommendationSummary = new
                     {
-                        increaseFocus = suppliersWithRecommendation.Count(x => x.recommendation.Status == "increase_focus"),
-                        maintain = suppliersWithRecommendation.Count(x => x.recommendation.Status == "maintain"),
-                        review = suppliersWithRecommendation.Count(x => x.recommendation.Status == "review"),
-                        doNotTrust = suppliersWithRecommendation.Count(x => x.recommendation.Status == "do_not_trust"),
-                        insufficientData = suppliersWithRecommendation.Count(x => x.recommendation.Status == "insufficient_data")
+                        increaseFocus = suppliersWithRecommendation.Count(x => x.recommendation.status == "increase_focus"),
+                        maintain = suppliersWithRecommendation.Count(x => x.recommendation.status == "maintain"),
+                        review = suppliersWithRecommendation.Count(x => x.recommendation.status == "review"),
+                        doNotTrust = suppliersWithRecommendation.Count(x => x.recommendation.status == "do_not_trust"),
+                        insufficientData = suppliersWithRecommendation.Count(x => x.recommendation.status == "insufficient_data")
                     },
                     // Legacy compatibility alias (pre/post impact metric in old response shape)
                     promenaPrometaPct = sumPreRevenue > 0m
@@ -1811,6 +1932,17 @@ public static class AllEndpoints
                 };
 
                 var generatedAtUtc = DateTime.UtcNow;
+                var supplierTrustMeta = BuildStatsTrustMeta(
+                    suppliers.Count,
+                    "no_supplier_sales",
+                    "Nema podataka za prodaju po dobavljaču.",
+                    dataQuality.missingCostRevenueSharePct,
+                    dataQuality.unknownSupplierRevenueSharePct,
+                    dataQuality.revenueWithNivelacijaSplitSharePct,
+                    generatedAtUtc);
+                supplierTrustMeta.AttributionBasis = attributionBasis;
+                supplierTrustMeta.AttributionCoveragePct = attributionCoveragePct;
+                supplierTrustMeta = OperationsAnalyticsIntegrityMeta.ApplyIntegrityState(supplierTrustMeta, operationsIntegrityRegistry);
                 var response = new
                 {
                     generatedAt = generatedAtUtc,
@@ -1827,22 +1959,23 @@ public static class AllEndpoints
                     suppliers = suppliersWithRecommendation,
                     totals,
                     dataQuality,
-                    meta = BuildStatsTrustMeta(
-                        suppliers.Count,
-                        "no_supplier_sales",
-                        "Nema podataka za prodaju po dobavljaču.",
-                        dataQuality.missingCostRevenueSharePct,
-                        dataQuality.unknownSupplierRevenueSharePct,
-                        dataQuality.revenueWithNivelacijaSplitSharePct,
-                        generatedAtUtc),
-                    recommendationAllowed = suppliersWithRecommendation.Count > 0
-                        && suppliersWithRecommendation.All(x => x.recommendation.RecommendationAllowed),
+                    meta = supplierTrustMeta,
+                    recommendationAllowed = !blockOperationsDecisionSignals
+                        && suppliersWithRecommendation.Count > 0
+                        && suppliersWithRecommendation.All(x => x.recommendation.recommendationAllowed),
+                    recommendationReferenceCohort = new
+                    {
+                        scope = "all_response_suppliers",
+                        supplierCount = suppliersWithRecommendation.Count,
+                        includesUnknown = true,
+                        basis = "backend_supplier_response"
+                    },
                     sezone
                 };
 
                 processingStopwatch.Stop();
                 var responseJson = JsonSerializer.Serialize(response);
-                await cache.SetAsync(cacheKey, new AnalyticsJsonCacheEntry(responseJson), CacheExpiration.HeavyAnalytics, ct);
+                await cache.SetAsync(cacheKey, new AnalyticsJsonCachePayload { Json = responseJson }, CacheExpiration.HeavyAnalytics, ct);
                 await cache.SetAsync(cacheMetadataKey, new AnalyticsCacheEntryMetadata(isPrewarmRequest, DateTime.UtcNow), CacheExpiration.HeavyAnalytics, ct);
                 requestStopwatch.Stop();
                 logger.LogInformation(
@@ -1947,35 +2080,6 @@ public static class AllEndpoints
 
             try
             {
-                static DateTime? NormalizeUtc(DateTime? value)
-                {
-                    if (!value.HasValue) return null;
-                    var date = value.Value;
-                    return date.Kind == DateTimeKind.Unspecified
-                        ? DateTime.SpecifyKind(date, DateTimeKind.Utc)
-                        : date.ToUniversalTime();
-                }
-
-                static (DateTime? previousFromUtc, DateTime? previousToUtc) BuildComparablePreviousRange(
-                    DateTime? currentFromUtc,
-                    DateTime? currentToUtc)
-                {
-                    if (!currentFromUtc.HasValue || !currentToUtc.HasValue || currentFromUtc.Value > currentToUtc.Value)
-                    {
-                        return (null, null);
-                    }
-
-                    var inclusiveDurationTicks = currentToUtc.Value.Ticks - currentFromUtc.Value.Ticks + 1;
-                    if (inclusiveDurationTicks <= 0)
-                    {
-                        return (null, null);
-                    }
-
-                    var previousToUtc = new DateTime(currentFromUtc.Value.Ticks - 1, DateTimeKind.Utc);
-                    var previousFromUtc = new DateTime(previousToUtc.Ticks - inclusiveDurationTicks + 1, DateTimeKind.Utc);
-                    return (previousFromUtc, previousToUtc);
-                }
-
                 static string BuildShoeTypeBucketKey(int? shoeTypeId)
                     => shoeTypeId.HasValue ? $"id:{shoeTypeId.Value}" : "unknown";
 
@@ -1985,8 +2089,8 @@ public static class AllEndpoints
                     return normalized is "existing" or "imported" ? normalized : "all";
                 }
 
-                fromUtc = NormalizeUtc(fromDate);
-                toUtc = NormalizeUtc(toDate);
+                fromUtc = OperationsDateRange.NormalizeUtc(fromDate);
+                toUtc = OperationsDateRange.NormalizeUtc(toDate);
                 var normalizedDataScope = NormalizeDataScope(dataScope);
                 var importedOnly = normalizedDataScope == "imported";
                 var existingOnly = normalizedDataScope == "existing";
@@ -2004,21 +2108,21 @@ public static class AllEndpoints
                     }
 
                     fromUtc = DateTime.SpecifyKind(sezona.DatumOd.Date, DateTimeKind.Utc);
-                    toUtc = DateTime.SpecifyKind(sezona.DatumDo.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
+                    toUtc = DateTime.SpecifyKind(sezona.DatumDo.Date.AddDays(1), DateTimeKind.Utc);
                 }
 
                 if (!fromUtc.HasValue && !toUtc.HasValue)
                 {
                     var todayUtc = DateTime.UtcNow.Date;
                     fromUtc = todayUtc.AddDays(-29);
-                    toUtc = todayUtc.AddDays(1).AddTicks(-1);
+                    toUtc = todayUtc.AddDays(1);
                 }
 
-                if (fromUtc.HasValue && toUtc.HasValue && fromUtc.Value > toUtc.Value)
+                if (fromUtc.HasValue && toUtc.HasValue && fromUtc.Value >= toUtc.Value)
                 {
                     return Results.BadRequest(new
                     {
-                        message = "Neispravan period: fromDate mora biti manji ili jednak toDate.",
+                        message = "Neispravan period: fromDate mora biti manji od ekskluzivnog toDate.",
                         fromDate = fromUtc.Value,
                         toDate = toUtc.Value
                     });
@@ -2090,7 +2194,7 @@ public static class AllEndpoints
                     .Where(d =>
                         (d.TipPromene == TipPromeneConstants.Nivelacija || d.TipPromene == TipPromeneConstants.NivelacijaCena) &&
                         d.ArtikalId.HasValue &&
-                        (!toUtc.HasValue || d.Datum <= toUtc.Value) &&
+                        (!toUtc.HasValue || d.Datum < toUtc.Value) &&
                         (!storeId.HasValue || !d.IDObjekat.HasValue || d.IDObjekat == storeId.Value))
                     .GroupBy(d => d.ArtikalId!.Value)
                     .Select(g => new
@@ -2107,7 +2211,7 @@ public static class AllEndpoints
                         x => string.IsNullOrWhiteSpace(x.Naziv) ? "Nepoznato" : x.Naziv.Trim(),
                         ct);
 
-                var (previousFromUtc, previousToUtc) = BuildComparablePreviousRange(fromUtc, toUtc);
+                var (previousFromUtc, previousToUtc) = OperationsDateRange.BuildComparablePreviousRange(fromUtc, toUtc);
                 var previousShoeTypeMetrics = new Dictionary<string, (decimal Revenue, int Units)>(StringComparer.Ordinal);
                 decimal? previousPeriodRevenue = null;
                 int? previousPeriodUnits = null;
@@ -2119,11 +2223,11 @@ public static class AllEndpoints
                         join pz in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
                         join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                         where pz.DatumProdaje >= previousFromUtc.Value
-                           && pz.DatumProdaje <= previousToUtc.Value
+                           && pz.DatumProdaje < previousToUtc.Value
                            && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
                            && (!importedOnly || a.DataOrigin == "access")
                            && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
-                        group ps by a.IDTipObuce into g
+                        group ps by ps.ShoeTypeIdAtSale into g
                         select new
                         {
                             TipObuceId = g.Key,
@@ -2145,7 +2249,7 @@ public static class AllEndpoints
                     join pz in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
                     join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                     where (!fromUtc.HasValue || pz.DatumProdaje >= fromUtc.Value)
-                       && (!toUtc.HasValue || pz.DatumProdaje <= toUtc.Value)
+                       && (!toUtc.HasValue || pz.DatumProdaje < toUtc.Value)
                        && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
                        && (!importedOnly || a.DataOrigin == "access")
                        && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
@@ -2155,15 +2259,17 @@ public static class AllEndpoints
                         Prihod = ps.Kolicina * ps.Cena,
                         SaleLineCost = ps.NabavnaCena,
                         ProductCostRsd = a.NabavnaCenaDin,
-                        ProductCostLegacy = a.NabavnaCena
+                        ProductCostLegacy = a.NabavnaCena,
+                        AttributionBasis = ps.AttributionBasis
                     } by new
                     {
-                        TipObuceId = a.IDTipObuce,
+                        TipObuceId = ps.ShoeTypeIdAtSale,
                         ArtikalId = a.Id,
                         DatumProdaje = pz.DatumProdaje,
                         SaleLineCost = ps.NabavnaCena,
                         ProductCostRsd = a.NabavnaCenaDin,
-                        ProductCostLegacy = a.NabavnaCena
+                        ProductCostLegacy = a.NabavnaCena,
+                        AttributionBasis = ps.AttributionBasis
                     }
                     into g
                     select new
@@ -2175,9 +2281,16 @@ public static class AllEndpoints
                         Prihod = g.Sum(x => x.Prihod),
                         SaleLineCost = g.Key.SaleLineCost,
                         ProductCostRsd = g.Key.ProductCostRsd,
-                        ProductCostLegacy = g.Key.ProductCostLegacy
+                        ProductCostLegacy = g.Key.ProductCostLegacy,
+                        AttributionBasis = g.Key.AttributionBasis
                     })
                     .ToListAsync(ct);
+
+                var shoeAttributionBases = stavke.Select(s => s.AttributionBasis).Distinct(StringComparer.Ordinal).ToArray();
+                var shoeAttributionCoveragePct = stavke.Count == 0
+                    ? (double?)null
+                    : Math.Round(stavke.Count(s => !string.Equals(s.AttributionBasis, SaleDimensionAttribution.Unknown, StringComparison.Ordinal)) * 100d / stavke.Count, 2);
+                var shoeAttributionBasis = shoeAttributionBases.Length == 1 ? shoeAttributionBases[0] : "mixed";
 
                 var sezone = (await db.Sezone.AsNoTracking()
                     .OrderByDescending(s => s.DatumOd)
@@ -2246,9 +2359,9 @@ public static class AllEndpoints
                             sale => sale.DatumProdaje,
                             sale => sale.Prihod,
                             sale => sale.Kolicina);
-                        var tipObuceNaziv = g.Key.HasValue && tipObuceNazivMap.TryGetValue(g.Key.Value, out var naziv)
-                            ? naziv
-                            : "Nepoznato";
+                        var tipObuceNaziv = "Nepoznato";
+                        if (g.Key.HasValue && tipObuceNazivMap.TryGetValue(g.Key.Value, out var resolvedTipObuceNaziv))
+                            tipObuceNaziv = resolvedTipObuceNaziv;
                         var marginQuality = MarginQualityClassifier.ClassifyFromSnapshot(marginSnapshot, totalRevenue);
 
                         return new
@@ -2263,23 +2376,25 @@ public static class AllEndpoints
                             ukupnaKolicina = totalQty,
                             brojArtikalaSaNivelacijom = splitSnapshot.ArticleCountWithNivelacija,
                             brojArtikalaUkupno = articleIds.Count,
-                            revenueWithCost = marginSnapshot.HistoricalCostRevenue,
+                            revenueWithCost = marginSnapshot.RevenueWithCost,
+                            costCoveredRevenue = marginSnapshot.RevenueWithCost,
+                            costCoveredRevenueSharePct = marginSnapshot.MarginDataCoveragePct,
                             estimatedCostRevenue = marginSnapshot.EstimatedCostRevenue,
                             marginContribution = marginSnapshot.MarginContribution,
-                            marginDataCoveragePct = marginSnapshot.HistoricalMarginCoveragePct,
+                            marginDataCoveragePct = marginSnapshot.MarginDataCoveragePct,
                             fallbackCostCoveragePct = marginSnapshot.FallbackCostCoveragePct,
-                            marginPct = marginSnapshot.MarginPct,
+                            marginPct = marginSnapshot.RevenueWithCost > 0m
+                                ? (double?)marginSnapshot.MarginPct
+                                : null,
                             // Cost quality breakdown
                             totalCost = marginSnapshot.TotalCost,
                             historicalCostRevenue = marginSnapshot.HistoricalCostRevenue,
-                            historicalCostCoveragePct = marginSnapshot.HistoricalMarginCoveragePct ?? 0d,
-                            estimatedCostCoveragePct = marginSnapshot.FallbackCostCoveragePct ?? 0d,
+                            historicalCostCoveragePct = marginSnapshot.HistoricalMarginCoveragePct,
+                            estimatedCostCoveragePct = marginSnapshot.FallbackCostCoveragePct,
                             snapshotCostRevenue = marginSnapshot.SnapshotCostRevenue,
-                            snapshotCostCoveragePct = marginSnapshot.SnapshotCostCoveragePct ?? 0d,
-                            noCostRevenue = Math.Round(totalRevenue - marginSnapshot.RevenueWithCost, 2),
-                            noCostCoveragePct = totalRevenue > 0m
-                                ? Math.Round((double)((totalRevenue - marginSnapshot.RevenueWithCost) / totalRevenue * 100m), 2)
-                                : 0d,
+                            snapshotCostCoveragePct = marginSnapshot.SnapshotCostCoveragePct,
+                            noCostRevenue = AnalyticsMarginPolicy.ResolveNoCostRevenue(totalRevenue, marginSnapshot.RevenueWithCost),
+                            noCostCoveragePct = AnalyticsMarginPolicy.ResolveNoCostCoveragePct(totalRevenue, marginSnapshot.RevenueWithCost),
                             isEstimatedMargin = (marginSnapshot.FallbackCostCoveragePct ?? 0) > (marginSnapshot.HistoricalMarginCoveragePct ?? 0),
                             marginQualityLabel = marginQuality.Label,
                             marginQualityTier = marginQuality.Tier,
@@ -2287,6 +2402,10 @@ public static class AllEndpoints
                             marginQualityTooltip = marginQuality.Tooltip,
                             revenueWithNivelacijaSplit = splitSnapshot.RevenueWithSplit,
                             comparableRevenueWithNivelacijaSplit = splitSnapshot.ComparableRevenueWithSplit,
+                            comparablePreRevenue = splitSnapshot.ComparablePreRevenue,
+                            comparablePostRevenue = splitSnapshot.ComparablePostRevenue,
+                            comparablePreQuantity = splitSnapshot.ComparablePreQuantity,
+                            comparablePostQuantity = splitSnapshot.ComparablePostQuantity,
                             previousPeriodRevenue = hasPreviousComparablePeriod
                                 ? Math.Round(previousRevenueRaw, 2)
                                 : (decimal?)null,
@@ -2314,20 +2433,39 @@ public static class AllEndpoints
 
                 var sumPreRevenue = shoeTypes.Sum(r => r.preNivelacijePromet);
                 var sumPostRevenue = shoeTypes.Sum(r => r.posleNivelacijePromet);
+                var comparablePreRevenue = shoeTypes.Sum(r => r.comparablePreRevenue);
+                var comparablePostRevenue = shoeTypes.Sum(r => r.comparablePostRevenue);
+                var comparablePreQuantity = shoeTypes.Sum(r => r.comparablePreQuantity);
+                var comparablePostQuantity = shoeTypes.Sum(r => r.comparablePostQuantity);
+                var comparableArticleCount = shoeTypes.Sum(r => r.prePostComparableArticleCount);
                 var totalRevenue = shoeTypes.Sum(r => r.ukupanPromet);
                 var comparableRevenueWithNivelacijaSplit = shoeTypes.Sum(r => r.comparableRevenueWithNivelacijaSplit);
-                var totalRevenueWithHistoricalCost = shoeTypes.Sum(r => r.revenueWithCost);
+                var totalCostCoveredRevenue = shoeTypes.Sum(r => r.costCoveredRevenue);
+                var historicalCostRevenue = shoeTypes.Sum(r => r.historicalCostRevenue);
+                var snapshotCostRevenue = shoeTypes.Sum(r => r.snapshotCostRevenue);
                 var estimatedCostRevenue = shoeTypes.Sum(r => r.estimatedCostRevenue);
-                var missingCostRevenue = totalRevenue - totalRevenueWithHistoricalCost;
+                var missingCostRevenue = AnalyticsMarginPolicy.ResolveNoCostRevenue(totalRevenue, totalCostCoveredRevenue);
                 var unknownTypeRevenue = shoeTypes
                     .Where(r => string.Equals(r.tipObuceNaziv, "Nepoznato", StringComparison.OrdinalIgnoreCase))
                     .Sum(r => r.ukupanPromet);
 
                 var dataQuality = new
                 {
-                    missingCostRevenue = Math.Round(missingCostRevenue, 2),
-                    missingCostRevenueSharePct = totalRevenue > 0m
-                        ? Math.Round((double)(missingCostRevenue / totalRevenue * 100m), 2)
+                    costCoveredRevenue = Math.Round(totalCostCoveredRevenue, 2),
+                    costCoveredRevenueSharePct = totalRevenue > 0m
+                        ? Math.Round((double)(totalCostCoveredRevenue / totalRevenue * 100m), 2)
+                        : (double?)null,
+                    missingCostRevenue,
+                    missingCostRevenueSharePct = AnalyticsMarginPolicy.ResolveNoCostCoveragePct(totalRevenue, totalCostCoveredRevenue),
+                    noCostRevenue = missingCostRevenue,
+                    noCostRevenueSharePct = AnalyticsMarginPolicy.ResolveNoCostCoveragePct(totalRevenue, totalCostCoveredRevenue),
+                    historicalCostRevenue = Math.Round(historicalCostRevenue, 2),
+                    historicalCostRevenueSharePct = totalRevenue > 0m
+                        ? Math.Round((double)(historicalCostRevenue / totalRevenue * 100m), 2)
+                        : (double?)null,
+                    snapshotCostRevenue = Math.Round(snapshotCostRevenue, 2),
+                    snapshotCostRevenueSharePct = totalRevenue > 0m
+                        ? Math.Round((double)(snapshotCostRevenue / totalRevenue * 100m), 2)
                         : (double?)null,
                     estimatedCostRevenue = Math.Round(estimatedCostRevenue, 2),
                     estimatedCostRevenueSharePct = totalRevenue > 0m
@@ -2345,12 +2483,13 @@ public static class AllEndpoints
 
                 var knownShoeTypeMarginValues = shoeTypes
                     .Where(row => !string.Equals(row.tipObuceNaziv, "Nepoznato", StringComparison.OrdinalIgnoreCase))
-                    .Select(row => row.marginPct)
+                    .Select(row => (row.costCoveredRevenue, row.marginContribution))
                     .ToList();
-                var averageMarginPct = knownShoeTypeMarginValues.Count > 0
-                    ? knownShoeTypeMarginValues.Average()
-                    : (double?)null;
+                var averageMarginPct = AnalyticsMarginPolicy.ResolveWeightedMarginPct(knownShoeTypeMarginValues);
+                var weightedMarginRevenue = knownShoeTypeMarginValues.Sum(row => row.costCoveredRevenue);
                 var unknownTypeSharePct = dataQuality.unknownTypeRevenueSharePct ?? 0d;
+                var shoeIntegrityRegistry = httpContext.RequestServices.GetService<OperationsAnalyticsIntegrityRegistry>();
+                var blockShoeOperationsDecisions = OperationsAnalyticsIntegrityMeta.ShouldBlockDecisionSignals(shoeIntegrityRegistry);
 
                 var shoeTypesWithRecommendation = shoeTypes
                     .Select(row =>
@@ -2371,8 +2510,8 @@ public static class AllEndpoints
                             TotalUnits: row.ukupnaKolicina,
                             ItemCount: row.brojArtikalaUkupno,
                             SharePct: sharePctForDecision,
-                            MarginPct: row.marginPct,
-                            MarginCoveragePct: row.marginDataCoveragePct,
+                            MarginPct: row.marginPct ?? 0d,
+                            MarginCoveragePct: row.costCoveredRevenueSharePct,
                             SplitCoveragePct: row.prePostNivelacijaRevenueCoveragePct,
                             PopRevenueChangePct: row.popRevenueChangePct,
                             PopUnitsChangePct: row.popUnitsChangePct,
@@ -2384,7 +2523,10 @@ public static class AllEndpoints
                             averageMarginPct);
                         var hasComparableNivelacijaSignal = row.prePostNivelacijaRevenueImpactPct.HasValue
                             && row.prePostNivelacijaUnitsImpactPct.HasValue;
-                        var recommendationAllowed = recommendation.RecommendationAllowed && hasComparableNivelacijaSignal;
+                        var exposedRecommendation = AnalyticsDecisionRecommendationEngine.ApplyComparableSignalGate(
+                            recommendation,
+                            hasComparableNivelacijaSignal);
+                        var recommendationAllowed = exposedRecommendation.RecommendationAllowed && !blockShoeOperationsDecisions;
 
                         return new
                         {
@@ -2400,6 +2542,8 @@ public static class AllEndpoints
                             row.brojArtikalaSaNivelacijom,
                             row.brojArtikalaUkupno,
                             row.revenueWithCost,
+                            row.costCoveredRevenue,
+                            row.costCoveredRevenueSharePct,
                             row.estimatedCostRevenue,
                             row.marginContribution,
                             row.marginDataCoveragePct,
@@ -2424,20 +2568,24 @@ public static class AllEndpoints
                             row.prePostNivelacijaRevenueImpactPct,
                             row.prePostNivelacijaUnitsImpactPct,
                             row.prePostNivelacijaRevenueCoveragePct,
+                            row.comparablePreRevenue,
+                            row.comparablePostRevenue,
+                            row.comparablePreQuantity,
+                            row.comparablePostQuantity,
                             row.prePostSignalNote,
                             row.prePostComparableArticleCount,
                             sharePct,
-                            reliabilityPct = recommendationAllowed ? (double?)recommendation.ReliabilityPct : null,
+                            reliabilityPct = recommendationAllowed ? (double?)exposedRecommendation.ReliabilityPct : null,
                             recommendation = new
                             {
-                                recommendation.Status,
-                                recommendation.Label,
-                                recommendation.Summary,
-                                ConfidencePct = recommendationAllowed ? (double?)recommendation.ConfidencePct : null,
-                                ReliabilityPct = recommendationAllowed ? (double?)recommendation.ReliabilityPct : null,
-                                recommendation.DataQualityStatus,
-                                RecommendationAllowed = recommendationAllowed,
-                                reasonCodes = recommendation.ReasonCodes
+                                status = exposedRecommendation.Status,
+                                label = exposedRecommendation.Label,
+                                summary = exposedRecommendation.Summary,
+                                confidencePct = recommendationAllowed ? (double?)exposedRecommendation.ConfidencePct : null,
+                                reliabilityPct = recommendationAllowed ? (double?)exposedRecommendation.ReliabilityPct : null,
+                                dataQualityStatus = exposedRecommendation.DataQualityStatus,
+                                recommendationAllowed,
+                                reasonCodes = exposedRecommendation.ReasonCodes
                             },
                             // Legacy compatibility aliases (deprecated)
                             row.promenaPrometa,
@@ -2448,17 +2596,21 @@ public static class AllEndpoints
 
                 var totalHistPct = totalRevenue > 0m
                     ? Math.Round((double)(shoeTypes.Sum(r => r.historicalCostRevenue) / totalRevenue * 100m), 2)
-                    : 0d;
+                    : (double?)null;
                 var totalSnapshotPct2 = totalRevenue > 0m
                     ? Math.Round((double)(shoeTypes.Sum(r => r.snapshotCostRevenue) / totalRevenue * 100m), 2)
-                    : 0d;
+                    : (double?)null;
                 var totalEstPct = totalRevenue > 0m
                     ? Math.Round((double)(shoeTypes.Sum(r => r.estimatedCostRevenue) / totalRevenue * 100m), 2)
-                    : 0d;
-                var totalNoCostPct = totalRevenue > 0m
-                    ? Math.Round((double)((totalRevenue - shoeTypes.Sum(r => r.historicalCostRevenue) - shoeTypes.Sum(r => r.snapshotCostRevenue) - shoeTypes.Sum(r => r.estimatedCostRevenue)) / totalRevenue * 100m), 2)
-                    : 0d;
-                var totalMarginQuality = MarginQualityClassifier.Classify(totalHistPct, totalEstPct + totalSnapshotPct2, totalNoCostPct, totalHistPct + totalEstPct + totalSnapshotPct2);
+                    : (double?)null;
+                var totalNoCostPct = AnalyticsMarginPolicy.ResolveNoCostCoveragePct(totalRevenue, totalCostCoveredRevenue);
+                var totalMarginQuality = MarginQualityClassifier.Classify(
+                    totalHistPct ?? 0d,
+                    (totalEstPct ?? 0d) + (totalSnapshotPct2 ?? 0d),
+                    totalNoCostPct ?? 0d,
+                    totalRevenue > 0m
+                        ? Math.Round((double)(totalCostCoveredRevenue / totalRevenue * 100m), 2)
+                        : 0d);
 
                 var totals = new
                 {
@@ -2466,6 +2618,7 @@ public static class AllEndpoints
                     ukupanMarzniDoprinos = shoeTypes.Sum(r => r.marginContribution),
                     ukupanTrosak = shoeTypes.Sum(r => r.totalCost),
                     prosecnaMarza = averageMarginPct.HasValue ? Math.Round(averageMarginPct.Value, 2) : (double?)null,
+                    weightedMarginRevenue = Math.Round(weightedMarginRevenue, 2),
                     historicalCostCoveragePct = totalHistPct,
                     estimatedCostCoveragePct = totalEstPct,
                     noCostCoveragePct = totalNoCostPct,
@@ -2478,11 +2631,24 @@ public static class AllEndpoints
                     marginQualityTier = totalMarginQuality.Tier,
                     marginQualityShortLabel = totalMarginQuality.ShortLabel,
                     marginQualityTooltip = totalMarginQuality.Tooltip,
-                    prePromet = sumPreRevenue,
-                    poslePromet = sumPostRevenue,
+                    // Existing totals are the authoritative comparable cohort.
+                    prePromet = comparablePreRevenue,
+                    poslePromet = comparablePostRevenue,
                     ukupnaKolicina = shoeTypes.Sum(r => r.ukupnaKolicina),
-                    preKolicina = shoeTypes.Sum(r => r.preNivelacijeKolicina),
-                    posleKolicina = shoeTypes.Sum(r => r.posleNivelacijeKolicina),
+                    preKolicina = comparablePreQuantity,
+                    posleKolicina = comparablePostQuantity,
+                    comparablePreRevenue = Math.Round(comparablePreRevenue, 2),
+                    comparablePostRevenue = Math.Round(comparablePostRevenue, 2),
+                    comparablePreQuantity,
+                    comparablePostQuantity,
+                    comparableArticleCount,
+                    comparableRevenueCoveragePct = totalRevenue > 0m
+                        ? Math.Round((double)((comparablePreRevenue + comparablePostRevenue) / totalRevenue * 100m), 2)
+                        : (double?)null,
+                    observedPreRevenue = Math.Round(sumPreRevenue, 2),
+                    observedPostRevenue = Math.Round(sumPostRevenue, 2),
+                    observedPreQuantity = shoeTypes.Sum(r => r.preNivelacijeKolicina),
+                    observedPostQuantity = shoeTypes.Sum(r => r.posleNivelacijeKolicina),
                     brojTipovaObuce = shoeTypes.Count,
                     previousPeriodRevenue = previousPeriodRevenue.HasValue
                         ? Math.Round(previousPeriodRevenue.Value, 2)
@@ -2494,27 +2660,38 @@ public static class AllEndpoints
                     popUnitsChangePct = previousPeriodUnits.HasValue && previousPeriodUnits.Value > 0
                         ? Math.Round((shoeTypes.Sum(r => r.ukupnaKolicina) - previousPeriodUnits.Value) / (double)previousPeriodUnits.Value * 100d, 2)
                         : (double?)null,
-                    prePostNivelacijaRevenueImpactPct = sumPreRevenue > 0m
-                        ? Math.Round((double)((sumPostRevenue - sumPreRevenue) / sumPreRevenue * 100m), 2)
+                    prePostNivelacijaRevenueImpactPct = comparablePreRevenue > 0m
+                        ? Math.Round((double)((comparablePostRevenue - comparablePreRevenue) / comparablePreRevenue * 100m), 2)
                         : (double?)null,
-                    prePostNivelacijaUnitsImpactPct = shoeTypes.Sum(r => r.preNivelacijeKolicina) > 0
-                        ? Math.Round((shoeTypes.Sum(r => r.posleNivelacijeKolicina) - shoeTypes.Sum(r => r.preNivelacijeKolicina)) / (double)shoeTypes.Sum(r => r.preNivelacijeKolicina) * 100d, 2)
+                    prePostNivelacijaUnitsImpactPct = comparablePreQuantity > 0
+                        ? Math.Round((comparablePostQuantity - comparablePreQuantity) / (double)comparablePreQuantity * 100d, 2)
                         : (double?)null,
                     recommendationSummary = new
                     {
-                        increaseFocus = shoeTypesWithRecommendation.Count(x => x.recommendation.Status == "increase_focus"),
-                        maintain = shoeTypesWithRecommendation.Count(x => x.recommendation.Status == "maintain"),
-                        review = shoeTypesWithRecommendation.Count(x => x.recommendation.Status == "review"),
-                        doNotTrust = shoeTypesWithRecommendation.Count(x => x.recommendation.Status == "do_not_trust"),
-                        insufficientData = shoeTypesWithRecommendation.Count(x => x.recommendation.Status == "insufficient_data")
+                        increaseFocus = shoeTypesWithRecommendation.Count(x => x.recommendation.status == "increase_focus"),
+                        maintain = shoeTypesWithRecommendation.Count(x => x.recommendation.status == "maintain"),
+                        review = shoeTypesWithRecommendation.Count(x => x.recommendation.status == "review"),
+                        doNotTrust = shoeTypesWithRecommendation.Count(x => x.recommendation.status == "do_not_trust"),
+                        insufficientData = shoeTypesWithRecommendation.Count(x => x.recommendation.status == "insufficient_data")
                     },
                     // Legacy compatibility alias (pre/post impact metric in old response shape)
-                    promenaPrometaPct = sumPreRevenue > 0m
-                        ? Math.Round((double)((sumPostRevenue - sumPreRevenue) / sumPreRevenue * 100m), 2)
+                    promenaPrometaPct = comparablePreRevenue > 0m
+                        ? Math.Round((double)((comparablePostRevenue - comparablePreRevenue) / comparablePreRevenue * 100m), 2)
                         : (double?)null
                 };
 
                 var generatedAtUtc = DateTime.UtcNow;
+                var shoeTrustMeta = BuildStatsTrustMeta(
+                    shoeTypes.Count,
+                    "no_shoe_type_sales",
+                    "Nema podataka za prodaju po tipu obuće.",
+                    dataQuality.missingCostRevenueSharePct,
+                    dataQuality.unknownTypeRevenueSharePct,
+                    dataQuality.revenueWithNivelacijaSplitSharePct,
+                    generatedAtUtc);
+                shoeTrustMeta.AttributionBasis = shoeAttributionBasis;
+                shoeTrustMeta.AttributionCoveragePct = shoeAttributionCoveragePct;
+                shoeTrustMeta = OperationsAnalyticsIntegrityMeta.ApplyIntegrityState(shoeTrustMeta, shoeIntegrityRegistry);
                 var response = new
                 {
                     generatedAt = generatedAtUtc,
@@ -2528,14 +2705,10 @@ public static class AllEndpoints
                     shoeTypes = shoeTypesWithRecommendation,
                     totals,
                     dataQuality,
-                    meta = BuildStatsTrustMeta(
-                        shoeTypes.Count,
-                        "no_shoe_type_sales",
-                        "Nema podataka za prodaju po tipu obuće.",
-                        dataQuality.missingCostRevenueSharePct,
-                        dataQuality.unknownTypeRevenueSharePct,
-                        dataQuality.revenueWithNivelacijaSplitSharePct,
-                        generatedAtUtc),
+                    meta = shoeTrustMeta,
+                    recommendationAllowed = !blockShoeOperationsDecisions
+                        && shoeTypesWithRecommendation.Count > 0
+                        && shoeTypesWithRecommendation.All(x => x.recommendation.recommendationAllowed),
                     sezone
                 };
 
@@ -2567,19 +2740,23 @@ public static class AllEndpoints
             catch (Exception ex)
             {
                 requestStopwatch.Stop();
+                var correlationId = ResolveAnalyticsCorrelationId(httpContext);
                 logger.LogError(
                     ex,
-                    "Shoe-type-sales-stats failed after {ElapsedMs}ms. StoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}",
+                    "Shoe-type-sales-stats failed after {ElapsedMs}ms. CorrelationId={CorrelationId} StoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}",
                     requestStopwatch.ElapsedMilliseconds,
+                    correlationId,
                     storeId,
                     sezonaId,
                     fromUtc,
                     toUtc);
 
-                return Results.Problem(
-                    title: "Greska pri ucitavanju statistike prodaje po tipu obuce",
-                    detail: ex.Message,
-                    statusCode: 500);
+                return CreateShoeTypeSalesStatsProblem(
+                    "Greška pri učitavanju statistike prodaje po tipu obuće",
+                    "Statistika prodaje po tipu obuće trenutno nije dostupna. Pokušajte ponovo.",
+                    StatusCodes.Status500InternalServerError,
+                    "shoe_type_sales_stats_unavailable",
+                    correlationId);
             }
         })
         .WithName("GetShoeTypeSalesStats")
@@ -2588,8 +2765,10 @@ public static class AllEndpoints
 
         app.MapGet("/api/analytics/color-sales-stats", async (
             TrendplusDbContext db,
-            IMemoryCache cache,
+            IAnalyticsCacheService cache,
             ILogger<Program> logger,
+            HttpContext httpContext,
+            AnalyticsRefreshStatusService refreshStatusService,
             int? sezonaId = null,
             DateTime? fromDate = null,
             DateTime? toDate = null,
@@ -2599,49 +2778,27 @@ public static class AllEndpoints
         {
             DateTime? fromUtc = null;
             DateTime? toUtc = null;
+            DateTime? requestedFromUtc = fromDate.HasValue
+                ? fromDate.Value.Kind == DateTimeKind.Unspecified
+                    ? DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc)
+                    : fromDate.Value.ToUniversalTime()
+                : null;
+            DateTime? requestedToUtc = toDate.HasValue
+                ? toDate.Value.Kind == DateTimeKind.Unspecified
+                    ? DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc)
+                    : toDate.Value.ToUniversalTime()
+                : null;
 
             try
             {
-                static DateTime? NormalizeUtc(DateTime? value)
-                {
-                    if (!value.HasValue) return null;
-                    var date = value.Value;
-                    return date.Kind == DateTimeKind.Unspecified
-                        ? DateTime.SpecifyKind(date, DateTimeKind.Utc)
-                        : date.ToUniversalTime();
-                }
-
-                static string NormalizeColor(string? value) =>
-                    string.IsNullOrWhiteSpace(value) ? "Nepoznato" : value.Trim();
-
-                static (DateTime? previousFromUtc, DateTime? previousToUtc) BuildComparablePreviousRange(
-                    DateTime? currentFromUtc,
-                    DateTime? currentToUtc)
-                {
-                    if (!currentFromUtc.HasValue || !currentToUtc.HasValue || currentFromUtc.Value > currentToUtc.Value)
-                    {
-                        return (null, null);
-                    }
-
-                    var inclusiveDurationTicks = currentToUtc.Value.Ticks - currentFromUtc.Value.Ticks + 1;
-                    if (inclusiveDurationTicks <= 0)
-                    {
-                        return (null, null);
-                    }
-
-                    var previousToUtc = new DateTime(currentFromUtc.Value.Ticks - 1, DateTimeKind.Utc);
-                    var previousFromUtc = new DateTime(previousToUtc.Ticks - inclusiveDurationTicks + 1, DateTimeKind.Utc);
-                    return (previousFromUtc, previousToUtc);
-                }
-
                 static string NormalizeDataScope(string? rawScope)
                 {
                     var normalized = (rawScope ?? "all").Trim().ToLowerInvariant();
                     return normalized is "existing" or "imported" ? normalized : "all";
                 }
 
-                fromUtc = NormalizeUtc(fromDate);
-                toUtc = NormalizeUtc(toDate);
+                fromUtc = OperationsDateRange.NormalizeUtc(fromDate);
+                toUtc = OperationsDateRange.NormalizeUtc(toDate);
                 var normalizedDataScope = NormalizeDataScope(dataScope);
                 var importedOnly = normalizedDataScope == "imported";
                 var existingOnly = normalizedDataScope == "existing";
@@ -2659,30 +2816,48 @@ public static class AllEndpoints
                     }
 
                     fromUtc = DateTime.SpecifyKind(sezona.DatumOd.Date, DateTimeKind.Utc);
-                    toUtc = DateTime.SpecifyKind(sezona.DatumDo.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
+                    toUtc = DateTime.SpecifyKind(sezona.DatumDo.Date.AddDays(1), DateTimeKind.Utc);
                 }
 
                 if (!fromUtc.HasValue && !toUtc.HasValue)
                 {
                     var todayUtc = DateTime.UtcNow.Date;
                     fromUtc = todayUtc.AddDays(-89);
-                    toUtc = todayUtc.AddDays(1).AddTicks(-1);
+                    toUtc = todayUtc.AddDays(1);
                 }
 
-                if (fromUtc.HasValue && toUtc.HasValue && fromUtc.Value > toUtc.Value)
+                if (fromUtc.HasValue && toUtc.HasValue && fromUtc.Value >= toUtc.Value)
                 {
                     return Results.BadRequest(new
                     {
-                        message = "Neispravan period: fromDate mora biti manji ili jednak toDate.",
+                        message = "Neispravan period: fromDate mora biti manji od ekskluzivnog toDate.",
                         fromDate = fromUtc.Value,
                         toDate = toUtc.Value
                     });
                 }
 
-                var cacheKey = $"color-sales-stats:{fromUtc?.Ticks}:{toUtc?.Ticks}:{storeId}:{sezonaId}:{normalizedDataScope}";
-                if (cache.TryGetValue(cacheKey, out object? cachedResponse) && cachedResponse is not null)
+                var cacheKey = AnalyticsCacheKeys.ColorSalesStats(
+                    fromUtc,
+                    toUtc,
+                    storeId,
+                    sezonaId,
+                    normalizedDataScope);
+                var cachePolicy = AnalyticsCachePolicy.ColorSalesStats;
+                var cachedResponse = await cache.GetAsync<ColorSalesStatsCacheEntry>(cacheKey, ct);
+                if (cachedResponse is not null && !string.IsNullOrWhiteSpace(cachedResponse.JsonPayload))
                 {
-                    return Results.Ok(cachedResponse);
+                    var cachedMetadata = await cache.GetAsync<AnalyticsCacheMetadata>(
+                        AnalyticsCacheKeys.Metadata(cacheKey),
+                        ct) ?? new AnalyticsCacheMetadata
+                        {
+                            CreatedAtUtc = DateTime.UnixEpoch,
+                            Family = AnalyticsCachePolicy.ColorSalesFamily,
+                            Provider = ResolveAnalyticsCacheProvider(cache)
+                        };
+
+                    return Results.Content(
+                        ApplyColorSalesCacheMetadata(cachedResponse.JsonPayload, cachedMetadata, cachePolicy),
+                        "application/json");
                 }
 
                 var dataWindow = await (
@@ -2707,12 +2882,14 @@ public static class AllEndpoints
                     ? DateTime.SpecifyKind(dataWindow.toDate.Value, DateTimeKind.Utc)
                     : null;
 
-                var nivelacije = await db.DnevnikPromena.AsNoTracking()
+                var nivelacijeQuery = db.DnevnikPromena.AsNoTracking()
                     .Where(d =>
                         (d.TipPromene == TipPromeneConstants.Nivelacija || d.TipPromene == TipPromeneConstants.NivelacijaCena) &&
                         d.ArtikalId.HasValue &&
-                        (!toUtc.HasValue || d.Datum <= toUtc.Value) &&
-                        (!storeId.HasValue || !d.IDObjekat.HasValue || d.IDObjekat == storeId.Value))
+                        (!toUtc.HasValue || d.Datum < toUtc.Value));
+                nivelacijeQuery = ApplyColorNivelacijaEventScope(nivelacijeQuery, storeId, normalizedDataScope);
+
+                var nivelacije = await nivelacijeQuery
                     .Select(d => new
                     {
                         ArtikalId = d.ArtikalId!.Value,
@@ -2724,7 +2901,7 @@ public static class AllEndpoints
                     .GroupBy(n => n.ArtikalId)
                     .ToDictionary(g => g.Key, g => g.Min(x => x.DatumNivelacije));
 
-                var (previousFromUtc, previousToUtc) = BuildComparablePreviousRange(fromUtc, toUtc);
+                var (previousFromUtc, previousToUtc) = OperationsDateRange.BuildComparablePreviousRange(fromUtc, toUtc);
                 var previousColorMetrics = new Dictionary<string, (decimal Revenue, int Units)>(StringComparer.Ordinal);
                 decimal? previousPeriodRevenue = null;
                 int? previousPeriodUnits = null;
@@ -2736,7 +2913,7 @@ public static class AllEndpoints
                         join pz in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
                         join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                         where pz.DatumProdaje >= previousFromUtc.Value
-                           && pz.DatumProdaje <= previousToUtc.Value
+                           && pz.DatumProdaje < previousToUtc.Value
                            && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
                            && (!importedOnly || a.DataOrigin == "access")
                            && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
@@ -2752,7 +2929,7 @@ public static class AllEndpoints
                     previousPeriodRevenue = previousRowsRaw.Sum(x => x.Revenue);
                     previousPeriodUnits = previousRowsRaw.Sum(x => x.Units);
                     previousColorMetrics = previousRowsRaw
-                        .GroupBy(x => NormalizeColor(x.Boja), StringComparer.Ordinal)
+                        .GroupBy(x => ColorIdentityPolicy.Key(x.Boja), StringComparer.Ordinal)
                         .ToDictionary(
                             g => g.Key,
                             g => (g.Sum(x => x.Revenue), g.Sum(x => x.Units)),
@@ -2764,7 +2941,7 @@ public static class AllEndpoints
                     join pz in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
                     join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                     where (!fromUtc.HasValue || pz.DatumProdaje >= fromUtc.Value)
-                       && (!toUtc.HasValue || pz.DatumProdaje <= toUtc.Value)
+                       && (!toUtc.HasValue || pz.DatumProdaje < toUtc.Value)
                        && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
                        && (!importedOnly || a.DataOrigin == "access")
                        && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
@@ -2791,10 +2968,20 @@ public static class AllEndpoints
                     })
                     .ToListAsync(ct);
 
+                var salesArticleIds = stavke
+                    .Select(s => s.ArtikalId)
+                    .ToHashSet();
+                var salesArticlesWithMatchingNivelacija = salesArticleIds
+                    .Count(prvaNivelacijaPoArtiklu.ContainsKey);
+
                 var colors = stavke
-                    .GroupBy(s => NormalizeColor(s.Boja))
+                    .GroupBy(s => ColorIdentityPolicy.Key(s.Boja), StringComparer.Ordinal)
                     .Select(g =>
                     {
+                        var displayColor = g
+                            .Select(item => ColorIdentityPolicy.DisplayName(item.Boja))
+                            .OrderBy(value => value, StringComparer.Ordinal)
+                            .First();
                         var hasPreviousComparablePeriod = previousFromUtc.HasValue && previousToUtc.HasValue;
                         var previousRevenueRaw = 0m;
                         var previousUnitsRaw = 0;
@@ -2831,11 +3018,29 @@ public static class AllEndpoints
                             sale => sale.DatumProdaje,
                             sale => sale.Prihod,
                             sale => sale.Kolicina);
-                        var marginQuality = MarginQualityClassifier.ClassifyFromSnapshot(marginSnapshot, totalRevenue);
+                        var rowMarginPct = marginSnapshot.RevenueWithCost > 0m
+                            ? (double?)marginSnapshot.MarginPct
+                            : null;
+                        var rowMarginCoveragePct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(
+                            marginSnapshot.RevenueWithCost,
+                            totalRevenue);
+                        var rowHistoricalCoveragePct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(
+                            marginSnapshot.HistoricalCostRevenue,
+                            totalRevenue);
+                        var rowEstimatedCoveragePct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(
+                            marginSnapshot.EstimatedCostRevenue,
+                            totalRevenue);
+                        var rowNoCostCoveragePct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(
+                            totalRevenue - marginSnapshot.RevenueWithCost,
+                            totalRevenue);
+                        var rowSplitCoveragePct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(
+                            splitSnapshot.ComparableRevenueWithSplit,
+                            totalRevenue);
+                        var marginQuality = ColorSignedEvidencePolicy.ClassifyCostQuality(marginSnapshot, totalRevenue);
 
                         return new
                         {
-                            boja = g.Key,
+                            boja = displayColor,
                             preNivelacijePromet = splitSnapshot.PreRevenue,
                             preNivelacijeKolicina = splitSnapshot.PreQuantity,
                             posleNivelacijePromet = splitSnapshot.PostRevenue,
@@ -2847,18 +3052,16 @@ public static class AllEndpoints
                             revenueWithCost = marginSnapshot.HistoricalCostRevenue,
                             estimatedCostRevenue = marginSnapshot.EstimatedCostRevenue,
                             marginContribution = marginSnapshot.MarginContribution,
-                            marginDataCoveragePct = marginSnapshot.HistoricalMarginCoveragePct,
-                            fallbackCostCoveragePct = marginSnapshot.FallbackCostCoveragePct,
-                            marginPct = marginSnapshot.MarginPct,
+                            marginDataCoveragePct = rowMarginCoveragePct,
+                            fallbackCostCoveragePct = rowEstimatedCoveragePct,
+                            marginPct = rowMarginPct,
                             // Cost quality breakdown
                             totalCost = marginSnapshot.TotalCost,
                             historicalCostRevenue = marginSnapshot.HistoricalCostRevenue,
-                            historicalCostCoveragePct = marginSnapshot.HistoricalMarginCoveragePct ?? 0d,
-                            estimatedCostCoveragePct = marginSnapshot.FallbackCostCoveragePct ?? 0d,
+                            historicalCostCoveragePct = rowHistoricalCoveragePct,
+                            estimatedCostCoveragePct = rowEstimatedCoveragePct,
                             noCostRevenue = Math.Round(totalRevenue - marginSnapshot.RevenueWithCost, 2),
-                            noCostCoveragePct = totalRevenue > 0m
-                                ? Math.Round((double)((totalRevenue - marginSnapshot.RevenueWithCost) / totalRevenue * 100m), 2)
-                                : 0d,
+                            noCostCoveragePct = rowNoCostCoveragePct,
                             isEstimatedMargin = (marginSnapshot.FallbackCostCoveragePct ?? 0) > (marginSnapshot.HistoricalMarginCoveragePct ?? 0),
                             marginQualityLabel = marginQuality.Label,
                             marginQualityTier = marginQuality.Tier,
@@ -2866,6 +3069,10 @@ public static class AllEndpoints
                             marginQualityTooltip = marginQuality.Tooltip,
                             revenueWithNivelacijaSplit = splitSnapshot.RevenueWithSplit,
                             comparableRevenueWithNivelacijaSplit = splitSnapshot.ComparableRevenueWithSplit,
+                            comparablePreRevenue = splitSnapshot.ComparablePreRevenue,
+                            comparablePostRevenue = splitSnapshot.ComparablePostRevenue,
+                            comparablePreQuantity = splitSnapshot.ComparablePreQuantity,
+                            comparablePostQuantity = splitSnapshot.ComparablePostQuantity,
                             previousPeriodRevenue = hasPreviousComparablePeriod
                                 ? Math.Round(previousRevenueRaw, 2)
                                 : (decimal?)null,
@@ -2880,7 +3087,7 @@ public static class AllEndpoints
                                 : (double?)null,
                             prePostNivelacijaRevenueImpactPct = splitSnapshot.RevenueImpactPct,
                             prePostNivelacijaUnitsImpactPct = splitSnapshot.UnitsImpactPct,
-                            prePostNivelacijaRevenueCoveragePct = splitSnapshot.ComparableRevenueCoveragePct,
+                            prePostNivelacijaRevenueCoveragePct = rowSplitCoveragePct,
                             prePostSignalNote = splitSnapshot.SignalNote,
                             prePostComparableArticleCount = splitSnapshot.ComparableArticleCount,
                             // Legacy compatibility aliases (pre/post impact metric in old response shape)
@@ -2893,51 +3100,66 @@ public static class AllEndpoints
 
                 var sumPreRevenue = colors.Sum(r => r.preNivelacijePromet);
                 var sumPostRevenue = colors.Sum(r => r.posleNivelacijePromet);
+                var comparablePreRevenue = colors.Sum(r => r.comparablePreRevenue);
+                var comparablePostRevenue = colors.Sum(r => r.comparablePostRevenue);
+                var comparablePreQuantity = colors.Sum(r => r.comparablePreQuantity);
+                var comparablePostQuantity = colors.Sum(r => r.comparablePostQuantity);
+                var comparableArticleCount = colors.Sum(r => r.prePostComparableArticleCount);
                 var totalRevenue = colors.Sum(r => r.ukupanPromet);
                 var comparableRevenueWithNivelacijaSplit = colors.Sum(r => r.comparableRevenueWithNivelacijaSplit);
+                var observedRevenueWithNivelacijaSplit = colors.Sum(r => r.revenueWithNivelacijaSplit);
+                var comparableSignal = AnalyticsNivelacijaSplitPolicy.EvaluateComparableSignal(
+                    comparablePreRevenue,
+                    comparablePostRevenue,
+                    comparablePreQuantity,
+                    comparablePostQuantity,
+                    comparableArticleCount,
+                    totalRevenue);
                 var totalRevenueWithHistoricalCost = colors.Sum(r => r.revenueWithCost);
                 var estimatedCostRevenue = colors.Sum(r => r.estimatedCostRevenue);
-                var missingCostRevenue = totalRevenue - totalRevenueWithHistoricalCost;
+                var missingCostRevenue = totalRevenue - totalRevenueWithHistoricalCost - estimatedCostRevenue;
                 var unknownColorRevenue = colors
-                    .Where(r => string.Equals(r.boja, "Nepoznato", StringComparison.OrdinalIgnoreCase))
+                    .Where(r => ColorIdentityPolicy.IsUnknown(r.boja))
                     .Sum(r => r.ukupanPromet);
+                var knownColorCostEvidence = colors
+                    .Where(row => !ColorIdentityPolicy.IsUnknown(row.boja))
+                    .Select(row => (row.revenueWithCost, row.marginContribution))
+                    .ToList();
+                var weightedKnownMarginPct = ColorSignedEvidencePolicy.ResolveWeightedMarginPct(knownColorCostEvidence);
+                var weightedKnownMarginRevenue = knownColorCostEvidence.Sum(row => row.revenueWithCost);
 
                 var dataQuality = new
                 {
                     missingCostRevenue = Math.Round(missingCostRevenue, 2),
-                    missingCostRevenueSharePct = totalRevenue > 0m
-                        ? Math.Round((double)(missingCostRevenue / totalRevenue * 100m), 2)
-                        : (double?)null,
+                    missingCostRevenueSharePct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(missingCostRevenue, totalRevenue),
                     estimatedCostRevenue = Math.Round(estimatedCostRevenue, 2),
-                    estimatedCostRevenueSharePct = totalRevenue > 0m
-                        ? Math.Round((double)(estimatedCostRevenue / totalRevenue * 100m), 2)
-                        : (double?)null,
+                    estimatedCostRevenueSharePct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(estimatedCostRevenue, totalRevenue),
                     unknownColorRevenue = Math.Round(unknownColorRevenue, 2),
-                    unknownColorRevenueSharePct = totalRevenue > 0m
-                        ? Math.Round((double)(unknownColorRevenue / totalRevenue * 100m), 2)
-                        : (double?)null,
+                    unknownColorRevenueSharePct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(unknownColorRevenue, totalRevenue),
                     revenueWithNivelacijaSplit = Math.Round(comparableRevenueWithNivelacijaSplit, 2),
-                    revenueWithNivelacijaSplitSharePct = totalRevenue > 0m
-                        ? Math.Round((double)(comparableRevenueWithNivelacijaSplit / totalRevenue * 100m), 2)
-                        : (double?)null
+                    revenueWithNivelacijaSplitSharePct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(comparableRevenueWithNivelacijaSplit, totalRevenue),
+                    observedRevenueWithNivelacijaSplit = Math.Round(observedRevenueWithNivelacijaSplit, 2),
+                    observedRevenueWithNivelacijaSplitSharePct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(observedRevenueWithNivelacijaSplit, totalRevenue),
+                    signedRevenuePolicy = ColorSignedEvidencePolicy.SignedRevenuePolicy,
+                    signedQuantityPolicy = ColorSignedEvidencePolicy.SignedQuantityPolicy,
+                    costQualityDenominatorStatus = totalRevenue > 0m
+                        ? ColorSignedEvidencePolicy.PositiveNetRevenueDenominator
+                        : ColorSignedEvidencePolicy.NonPositiveNetRevenueDenominator,
+                    weightedKnownMarginPct,
+                    weightedKnownMarginRevenue = Math.Round(weightedKnownMarginRevenue, 2),
+                    nivelacijaEventCount = nivelacije.Count,
+                    nivelacijaEventArticleCount = prvaNivelacijaPoArtiklu.Count,
+                    salesArticleCount = salesArticleIds.Count,
+                    salesArticlesWithMatchingNivelacija
                 };
 
-                var knownColorMarginValues = colors
-                    .Where(row => !string.Equals(row.boja, "Nepoznato", StringComparison.OrdinalIgnoreCase))
-                    .Select(row => row.marginPct)
-                    .ToList();
-                var averageMarginPct = knownColorMarginValues.Count > 0
-                    ? knownColorMarginValues.Average()
-                    : (double?)null;
-                var unknownColorSharePct = dataQuality.unknownColorRevenueSharePct ?? 0d;
+                var unknownColorSharePct = dataQuality.unknownColorRevenueSharePct;
 
                 var colorsWithRecommendation = colors
                     .Select(row =>
                     {
-                        var sharePctForDecision = totalRevenue > 0m
-                            ? Math.Round((double)(row.ukupanPromet / totalRevenue * 100m), 2)
-                            : 0d;
-                        double? sharePct = totalRevenue > 0m ? sharePctForDecision : null;
+                        var sharePct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(row.ukupanPromet, totalRevenue);
+                        var sharePctForDecision = sharePct ?? 0d;
                         var hasPreviousPeriodWindow = row.previousPeriodRevenue is not null;
                         var isNewColor = hasPreviousPeriodWindow
                             && row.previousPeriodRevenue <= 0m
@@ -2950,7 +3172,7 @@ public static class AllEndpoints
                             TotalUnits: row.ukupnaKolicina,
                             ItemCount: row.brojArtikalaUkupno,
                             SharePct: sharePctForDecision,
-                            MarginPct: row.marginPct,
+                            MarginPct: row.marginPct ?? 0d,
                             MarginCoveragePct: row.marginDataCoveragePct,
                             SplitCoveragePct: row.prePostNivelacijaRevenueCoveragePct,
                             PopRevenueChangePct: row.popRevenueChangePct,
@@ -2960,10 +3182,51 @@ public static class AllEndpoints
                             HasPreviousPeriodWindow: hasPreviousPeriodWindow,
                             IsNewEntity: isNewColor,
                             UnknownBucketSharePct: unknownColorSharePct),
-                            averageMarginPct);
+                            weightedKnownMarginPct);
                         var hasComparableNivelacijaSignal = row.prePostNivelacijaRevenueImpactPct.HasValue
                             && row.prePostNivelacijaUnitsImpactPct.HasValue;
-                        var recommendationAllowed = recommendation.RecommendationAllowed && hasComparableNivelacijaSignal;
+                        var comparableRecommendation = AnalyticsDecisionRecommendationEngine.ApplyComparableSignalGate(
+                            recommendation,
+                            hasComparableNivelacijaSignal);
+                        var hasMeasurableEvidence = ColorSignedEvidencePolicy.HasMeasurableRecommendationEvidence(
+                            row.ukupanPromet,
+                            row.marginPct,
+                            row.marginDataCoveragePct,
+                            unknownColorSharePct);
+                        var recommendationAllowed = comparableRecommendation.RecommendationAllowed
+                            && hasComparableNivelacijaSignal
+                            && hasMeasurableEvidence;
+                        var evidenceCoveragePct = row.marginDataCoveragePct.HasValue
+                            && row.prePostNivelacijaRevenueCoveragePct.HasValue
+                            ? (row.marginDataCoveragePct.Value + row.prePostNivelacijaRevenueCoveragePct.Value) / 2d
+                            : (double?)null;
+                        var decisionScore = ColorDecisionScorePolicy.Resolve(
+                            comparableRecommendation.ConfidencePct,
+                            comparableRecommendation.ReliabilityPct,
+                            evidenceCoveragePct,
+                            recommendationAllowed);
+                        var exposedRecommendationBlocked = !hasMeasurableEvidence;
+                        var exposedRecommendation = exposedRecommendationBlocked
+                            ? comparableRecommendation with
+                            {
+                                Status = "insufficient_data",
+                                Label = "Insufficient data",
+                                Summary = "Signed promet nema pozitivan ili potpun imenilac za pouzdanu preporuku.",
+                                DataQualityStatus = "insufficient_data",
+                                RecommendationAllowed = false,
+                                ReasonCodes = comparableRecommendation.ReasonCodes
+                                    .Append("signed_denominator_unavailable")
+                                    .Distinct(StringComparer.Ordinal)
+                                    .ToArray()
+                            }
+                            : comparableRecommendation;
+                        var exposedRecommendationStatus = exposedRecommendation.Status;
+                        var exposedRecommendationLabel = exposedRecommendationBlocked
+                            ? "Insufficient data"
+                            : exposedRecommendation.Label;
+                        var exposedRecommendationSummary = exposedRecommendation.Summary;
+                        var exposedRecommendationDataQualityStatus = exposedRecommendation.DataQualityStatus;
+                        var exposedReasonCodes = exposedRecommendation.ReasonCodes;
 
                         return new
                         {
@@ -3003,17 +3266,18 @@ public static class AllEndpoints
                             row.prePostSignalNote,
                             row.prePostComparableArticleCount,
                             sharePct,
-                            reliabilityPct = recommendationAllowed ? (double?)recommendation.ReliabilityPct : null,
+                            decisionScore,
+                            reliabilityPct = recommendationAllowed ? (double?)exposedRecommendation.ReliabilityPct : null,
                             recommendation = new
                             {
-                                recommendation.Status,
-                                recommendation.Label,
-                                recommendation.Summary,
-                                ConfidencePct = recommendationAllowed ? (double?)recommendation.ConfidencePct : null,
-                                ReliabilityPct = recommendationAllowed ? (double?)recommendation.ReliabilityPct : null,
-                                recommendation.DataQualityStatus,
+                                Status = exposedRecommendationStatus,
+                                Label = exposedRecommendationLabel,
+                                Summary = exposedRecommendationSummary,
+                                ConfidencePct = recommendationAllowed ? (double?)exposedRecommendation.ConfidencePct : null,
+                                ReliabilityPct = recommendationAllowed ? (double?)exposedRecommendation.ReliabilityPct : null,
+                                DataQualityStatus = exposedRecommendationDataQualityStatus,
                                 RecommendationAllowed = recommendationAllowed,
-                                reasonCodes = recommendation.ReasonCodes
+                                reasonCodes = exposedReasonCodes
                             },
                             // Legacy compatibility aliases (deprecated)
                             row.promenaPrometa,
@@ -3022,22 +3286,34 @@ public static class AllEndpoints
                     })
                     .ToList();
 
-                var totalHistPct = totalRevenue > 0m
-                    ? Math.Round((double)(colors.Sum(r => r.historicalCostRevenue) / totalRevenue * 100m), 2)
-                    : 0d;
-                var totalEstPct = totalRevenue > 0m
-                    ? Math.Round((double)(colors.Sum(r => r.estimatedCostRevenue) / totalRevenue * 100m), 2)
-                    : 0d;
-                var totalNoCostPct = totalRevenue > 0m
-                    ? Math.Round((double)((totalRevenue - colors.Sum(r => r.historicalCostRevenue) - colors.Sum(r => r.estimatedCostRevenue)) / totalRevenue * 100m), 2)
-                    : 0d;
-                var totalMarginQuality = MarginQualityClassifier.Classify(totalHistPct, totalEstPct, totalNoCostPct, totalHistPct + totalEstPct);
+                var decisionScoreRows = colorsWithRecommendation
+                    .Where(row => row.decisionScore.HasValue && row.ukupanPromet > 0m)
+                    .ToList();
+                var totalDecisionScore = decisionScoreRows.Count > 0
+                    ? Math.Round(
+                        (double)(decisionScoreRows.Sum(row => row.ukupanPromet * (decimal)row.decisionScore!.Value)
+                            / decisionScoreRows.Sum(row => row.ukupanPromet)),
+                        2)
+                    : (double?)null;
+
+                var totalHistoricalCostRevenue = colors.Sum(r => r.historicalCostRevenue);
+                var totalEstimatedCostRevenue = colors.Sum(r => r.estimatedCostRevenue);
+                var totalHistPct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(totalHistoricalCostRevenue, totalRevenue);
+                var totalEstPct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(totalEstimatedCostRevenue, totalRevenue);
+                var totalNoCostPct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(
+                    totalRevenue - totalHistoricalCostRevenue - totalEstimatedCostRevenue,
+                    totalRevenue);
+                var totalMarginQuality = totalHistPct.HasValue && totalEstPct.HasValue && totalNoCostPct.HasValue
+                    ? MarginQualityClassifier.Classify(totalHistPct.Value, totalEstPct.Value, totalNoCostPct.Value, totalHistPct.Value + totalEstPct.Value)
+                    : ColorSignedEvidencePolicy.UnavailableCostQuality("Ukupan signed promet nema validan pozitivan imenilac za coverage.");
 
                 var totals = new
                 {
                     ukupanPromet = totalRevenue,
                     ukupanMarzniDoprinos = colors.Sum(r => r.marginContribution),
                     ukupanTrosak = colors.Sum(r => r.totalCost),
+                    weightedKnownMarginPct,
+                    weightedKnownMarginRevenue = Math.Round(weightedKnownMarginRevenue, 2),
                     historicalCostCoveragePct = totalHistPct,
                     estimatedCostCoveragePct = totalEstPct,
                     noCostCoveragePct = totalNoCostPct,
@@ -3046,11 +3322,26 @@ public static class AllEndpoints
                     marginQualityTier = totalMarginQuality.Tier,
                     marginQualityShortLabel = totalMarginQuality.ShortLabel,
                     marginQualityTooltip = totalMarginQuality.Tooltip,
-                    prePromet = sumPreRevenue,
-                    poslePromet = sumPostRevenue,
+                    decisionScore = totalDecisionScore,
+                    // Comparable cohort is authoritative for pre/post decision metrics.
+                    prePromet = comparablePreRevenue,
+                    poslePromet = comparablePostRevenue,
                     ukupnaKolicina = colors.Sum(r => r.ukupnaKolicina),
-                    preKolicina = colors.Sum(r => r.preNivelacijeKolicina),
-                    posleKolicina = colors.Sum(r => r.posleNivelacijeKolicina),
+                    preKolicina = comparablePreQuantity,
+                    posleKolicina = comparablePostQuantity,
+                    comparablePreRevenue = Math.Round(comparablePreRevenue, 2),
+                    comparablePostRevenue = Math.Round(comparablePostRevenue, 2),
+                    comparablePreQuantity,
+                    comparablePostQuantity,
+                    comparableArticleCount,
+                    comparableRevenueCoveragePct = totalRevenue > 0m
+                        ? Math.Round((double)((comparablePreRevenue + comparablePostRevenue) / totalRevenue * 100m), 2)
+                        : (double?)null,
+                    prePostSignalNote = comparableSignal.SignalNote,
+                    observedPreRevenue = Math.Round(sumPreRevenue, 2),
+                    observedPostRevenue = Math.Round(sumPostRevenue, 2),
+                    observedPreQuantity = colors.Sum(r => r.preNivelacijeKolicina),
+                    observedPostQuantity = colors.Sum(r => r.posleNivelacijeKolicina),
                     brojBoja = colors.Count,
                     previousPeriodRevenue = previousPeriodRevenue.HasValue
                         ? Math.Round(previousPeriodRevenue.Value, 2)
@@ -3062,12 +3353,8 @@ public static class AllEndpoints
                     popUnitsChangePct = previousPeriodUnits.HasValue && previousPeriodUnits.Value > 0
                         ? Math.Round((colors.Sum(r => r.ukupnaKolicina) - previousPeriodUnits.Value) / (double)previousPeriodUnits.Value * 100d, 2)
                         : (double?)null,
-                    prePostNivelacijaRevenueImpactPct = sumPreRevenue > 0m
-                        ? Math.Round((double)((sumPostRevenue - sumPreRevenue) / sumPreRevenue * 100m), 2)
-                        : (double?)null,
-                    prePostNivelacijaUnitsImpactPct = colors.Sum(r => r.preNivelacijeKolicina) > 0
-                        ? Math.Round((colors.Sum(r => r.posleNivelacijeKolicina) - colors.Sum(r => r.preNivelacijeKolicina)) / (double)colors.Sum(r => r.preNivelacijeKolicina) * 100d, 2)
-                        : (double?)null,
+                    prePostNivelacijaRevenueImpactPct = comparableSignal.RevenueImpactPct,
+                    prePostNivelacijaUnitsImpactPct = comparableSignal.UnitsImpactPct,
                     recommendationSummary = new
                     {
                         increaseFocus = colorsWithRecommendation.Count(x => x.recommendation.Status == "increase_focus"),
@@ -3077,9 +3364,7 @@ public static class AllEndpoints
                         insufficientData = colorsWithRecommendation.Count(x => x.recommendation.Status == "insufficient_data")
                     },
                     // Legacy compatibility alias (pre/post impact metric in old response shape)
-                    promenaPrometaPct = sumPreRevenue > 0m
-                        ? Math.Round((double)((sumPostRevenue - sumPreRevenue) / sumPreRevenue * 100m), 2)
-                        : (double?)null
+                    promenaPrometaPct = comparableSignal.RevenueImpactPct
                 };
 
                 var sezone = (await db.Sezone.AsNoTracking()
@@ -3102,6 +3387,158 @@ public static class AllEndpoints
                     .ToList();
 
                 var generatedAtUtc = DateTime.UtcNow;
+                var trustMeta = BuildStatsTrustMeta(
+                    colors.Count,
+                    "no_color_sales",
+                    "Nema podataka za prodaju po boji artikla.",
+                    dataQuality.missingCostRevenueSharePct,
+                    dataQuality.unknownColorRevenueSharePct,
+                    dataQuality.revenueWithNivelacijaSplitSharePct,
+                    generatedAtUtc);
+                trustMeta.RequestedPeriodFromUtc = requestedFromUtc;
+                trustMeta.RequestedPeriodToUtc = requestedToUtc;
+                trustMeta.EffectivePeriodFromUtc = fromUtc;
+                trustMeta.EffectivePeriodToUtc = toUtc;
+                trustMeta.ObservedPeriodFromUtc = stavke.Count > 0
+                    ? DateTime.SpecifyKind(stavke.Min(s => s.DatumProdaje), DateTimeKind.Utc)
+                    : null;
+                trustMeta.ObservedPeriodToUtc = stavke.Count > 0
+                    ? DateTime.SpecifyKind(stavke.Max(s => s.DatumProdaje), DateTimeKind.Utc)
+                    : null;
+
+                DateTime? lastRefreshAtUtc = null;
+                try
+                {
+                    lastRefreshAtUtc = (await refreshStatusService.GetStatusAsync(ct)).LastSuccessfulRefreshAtUtc;
+                }
+                catch (Exception refreshEx) when (refreshEx is not OperationCanceledException)
+                {
+                    logger.LogWarning(refreshEx, "Color-sales-stats could not resolve the last successful source refresh timestamp.");
+                }
+
+                trustMeta.MetricProvenance = new Dictionary<string, AnalyticsMetricProvenanceDto>
+                {
+                    ["decisionScore"] = new()
+                    {
+                        Kind = AnalyticsMetricProvenanceKinds.AuthoritativeBackendAggregate,
+                        Authority = AnalyticsMetricAuthority.Authoritative,
+                        Actionability = totalDecisionScore.HasValue
+                            ? AnalyticsMetricActionability.Actionable
+                            : AnalyticsMetricActionability.Blocked,
+                        Unit = ColorDecisionScorePolicy.Unit,
+                        Denominator = ColorDecisionScorePolicy.Denominator
+                    },
+                    ["revenueShare"] = new()
+                    {
+                        Kind = AnalyticsMetricProvenanceKinds.AuthoritativeBackendAggregate,
+                        Authority = AnalyticsMetricAuthority.Authoritative,
+                        Actionability = totalRevenue > 0m
+                            ? AnalyticsMetricActionability.Actionable
+                            : AnalyticsMetricActionability.Blocked,
+                        Unit = "percent",
+                        Denominator = "ukupan pozitivan neto promet iz filtriranih prodajnih stavki"
+                    },
+                    ["margin"] = new()
+                    {
+                        Kind = AnalyticsMetricProvenanceKinds.AuthoritativeBackendAggregate,
+                        Authority = AnalyticsMetricAuthority.Authoritative,
+                        Actionability = totalRevenueWithHistoricalCost > 0m
+                            ? AnalyticsMetricActionability.Actionable
+                            : AnalyticsMetricActionability.Blocked,
+                        Unit = "RSD",
+                        Denominator = ColorSalesProvenance.CostPolicy
+                    },
+                    ["confidence"] = new()
+                    {
+                        Kind = AnalyticsMetricProvenanceKinds.AuthoritativeBackendAggregate,
+                        Authority = AnalyticsMetricAuthority.Authoritative,
+                        Actionability = trustMeta.RecommendationAllowed == true
+                            ? AnalyticsMetricActionability.Actionable
+                            : AnalyticsMetricActionability.Blocked,
+                        Unit = "percent",
+                        Denominator = "Dozvola preporuke i potpuna evidencija troška, uporedive kohorte i nepoznatih boja"
+                    },
+                    ["reliability"] = new()
+                    {
+                        Kind = AnalyticsMetricProvenanceKinds.AuthoritativeBackendAggregate,
+                        Authority = AnalyticsMetricAuthority.Authoritative,
+                        Actionability = trustMeta.RecommendationAllowed == true
+                            ? AnalyticsMetricActionability.Actionable
+                            : AnalyticsMetricActionability.Blocked,
+                        Unit = "percent",
+                        Denominator = "Dozvola preporuke i potpuna evidencija troška, uporedive kohorte i nepoznatih boja"
+                    },
+                    ["counts"] = new()
+                    {
+                        Kind = AnalyticsMetricProvenanceKinds.AuthoritativeBackendAggregate,
+                        Authority = AnalyticsMetricAuthority.Authoritative,
+                        Actionability = AnalyticsMetricActionability.Informational,
+                        Unit = "articles",
+                        Denominator = ColorSalesProvenance.PrePostPolicy
+                    },
+                    ["prePostNivelacijaRevenueImpactPct"] = new()
+                    {
+                        Kind = AnalyticsMetricProvenanceKinds.AuthoritativeBackendAggregate,
+                        Authority = AnalyticsMetricAuthority.Authoritative,
+                        Actionability = comparableSignal.RevenueImpactPct.HasValue
+                            ? AnalyticsMetricActionability.Actionable
+                            : AnalyticsMetricActionability.Blocked,
+                        Unit = "percent",
+                        Denominator = ColorSalesProvenance.PrePostPolicy
+                    },
+                    ["prePostNivelacijaUnitsImpactPct"] = new()
+                    {
+                        Kind = AnalyticsMetricProvenanceKinds.AuthoritativeBackendAggregate,
+                        Authority = AnalyticsMetricAuthority.Authoritative,
+                        Actionability = comparableSignal.UnitsImpactPct.HasValue
+                            ? AnalyticsMetricActionability.Actionable
+                            : AnalyticsMetricActionability.Blocked,
+                        Unit = "percent",
+                        Denominator = ColorSalesProvenance.PrePostPolicy
+                    },
+                    ["prePostComparableArticleCount"] = new()
+                    {
+                        Kind = AnalyticsMetricProvenanceKinds.AuthoritativeBackendAggregate,
+                        Authority = AnalyticsMetricAuthority.Authoritative,
+                        Actionability = AnalyticsMetricActionability.Informational,
+                        Unit = "articles",
+                        Denominator = ColorSalesProvenance.PrePostPolicy
+                    }
+                };
+
+                if (colors.Count > 0
+                    && (!comparableSignal.RevenueImpactPct.HasValue || !comparableSignal.UnitsImpactPct.HasValue))
+                {
+                    const string aggregateCohortWarningCode = "COLOR_PREPOST_COHORT_INSUFFICIENT";
+                    var aggregateCohortWarning = comparableSignal.SignalNote
+                        ?? "Uporediva kohorta nema dovoljno dokaza za pouzdan zbirni pre/post signal.";
+                    trustMeta.WarningCode = aggregateCohortWarningCode;
+                    trustMeta.WarningMessage = aggregateCohortWarning;
+                    trustMeta.Message = aggregateCohortWarning;
+                    trustMeta.IsPartial = true;
+                    trustMeta.RecommendationAllowed = false;
+                    if (string.Equals(trustMeta.DataQualityStatus, "good", StringComparison.OrdinalIgnoreCase))
+                    {
+                        trustMeta.DataQualityStatus = "insufficient_data";
+                    }
+                }
+
+                if (salesArticleIds.Count > 0 && salesArticlesWithMatchingNivelacija == 0)
+                {
+                    const string lineageWarning = "Nije potvrđen događaj nivelacije za istu populaciju prodaje; pre/post signal nije dostupan.";
+                    trustMeta.WarningCode = "COLOR_NIVELACIJA_LINEAGE_UNAVAILABLE";
+                    trustMeta.WarningMessage = lineageWarning;
+                    trustMeta.Message = lineageWarning;
+                    trustMeta.IsPartial = true;
+                    if (!string.Equals(trustMeta.DataQualityStatus, "critical", StringComparison.OrdinalIgnoreCase))
+                    {
+                        trustMeta.DataQualityStatus = "insufficient_data";
+                    }
+
+                    trustMeta.GeneratedAtUtc = generatedAtUtc;
+                    trustMeta.RecommendationAllowed = false;
+                }
+
                 var response = new
                 {
                     generatedAt = generatedAtUtc,
@@ -3112,22 +3549,93 @@ public static class AllEndpoints
                     sezonaId,
                     storeId,
                     dataScope = normalizedDataScope,
+                    lineage = new
+                    {
+                        storeId,
+                        dataScope = normalizedDataScope,
+                        sourceFamily = ColorSalesProvenance.SourceFamily,
+                        sourceLabel = ColorSalesProvenance.SourceLabel,
+                        sourceTables = ColorSalesProvenance.SourceTables,
+                        observedPopulation = ColorSalesProvenance.ObservedPopulation,
+                        costPolicy = ColorSalesProvenance.CostPolicy,
+                        prePostPolicy = ColorSalesProvenance.PrePostPolicy,
+                        unknownPolicy = ColorSalesProvenance.UnknownPolicy,
+                        eventCount = nivelacije.Count,
+                        eventArticleCount = prvaNivelacijaPoArtiklu.Count,
+                        salesArticleCount = salesArticleIds.Count,
+                        salesArticlesWithMatchingNivelacija,
+                        storePolicy = storeId.HasValue ? "exact_store_only_unknown_store_excluded" : "all_stores_allowed",
+                        originPolicy = normalizedDataScope == "imported"
+                            ? "event_origin_access_only"
+                            : normalizedDataScope == "existing"
+                                ? "event_origin_existing_only_unknown_origin_excluded"
+                                : "all_origins_allowed"
+                    },
                     colors = colorsWithRecommendation,
                     totals,
                     dataQuality,
-                    meta = BuildStatsTrustMeta(
-                        colors.Count,
-                        "no_color_sales",
-                        "Nema podataka za prodaju po boji artikla.",
-                        dataQuality.missingCostRevenueSharePct,
-                        dataQuality.unknownColorRevenueSharePct,
-                        dataQuality.revenueWithNivelacijaSplitSharePct,
-                        generatedAtUtc),
+                    meta = trustMeta,
                     sezone
                 };
 
-                cache.Set(cacheKey, response, TimeSpan.FromMinutes(5));
-                return Results.Ok(response);
+                var cacheMetadata = new AnalyticsCacheMetadata
+                {
+                    CreatedAtUtc = DateTime.UtcNow,
+                    DataRefreshAtUtc = lastRefreshAtUtc,
+                    Family = AnalyticsCachePolicy.ColorSalesFamily,
+                    Provider = ResolveAnalyticsCacheProvider(cache)
+                };
+                trustMeta.CacheCreatedAtUtc = cacheMetadata.CreatedAtUtc;
+                trustMeta.LastRefreshAtUtc = cacheMetadata.DataRefreshAtUtc;
+
+                var responseJson = JsonSerializer.Serialize(response, ColorSalesCacheJsonOptions);
+                await cache.SetAsync(
+                    cacheKey,
+                    new ColorSalesStatsCacheEntry { JsonPayload = responseJson },
+                    cachePolicy.Ttl,
+                    ct);
+                await cache.SetAsync(
+                    AnalyticsCacheKeys.Metadata(cacheKey),
+                    cacheMetadata,
+                    cachePolicy.Ttl,
+                    ct);
+
+                return Results.Content(
+                    ApplyColorSalesCacheMetadata(responseJson, cacheMetadata, cachePolicy),
+                    "application/json");
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                logger.LogInformation(
+                    "Color-sales-stats cancelled. StoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}",
+                    storeId,
+                    sezonaId,
+                    fromUtc,
+                    toUtc);
+
+                return CreateColorSalesStatsProblem(
+                    "Zahtev je otkazan",
+                    "Zahtev je otkazan zbog prekida ili isteka vremena. Pokušajte ponovo.",
+                    StatusCodes.Status503ServiceUnavailable,
+                    "color_sales_stats_cancelled",
+                    ResolveAnalyticsCorrelationId(httpContext));
+            }
+            catch (NpgsqlException ex)
+            {
+                logger.LogError(
+                    ex,
+                    "Color-sales-stats database error. StoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}",
+                    storeId,
+                    sezonaId,
+                    fromUtc,
+                    toUtc);
+
+                return CreateColorSalesStatsProblem(
+                    "Greška pri učitavanju statistike prodaje po boji artikla",
+                    "Problem pri povezivanju sa bazom podataka. Molimo pokušajte ponovo kasnije.",
+                    StatusCodes.Status503ServiceUnavailable,
+                    "color_sales_stats_database_unavailable",
+                    ResolveAnalyticsCorrelationId(httpContext));
             }
             catch (Exception ex)
             {
@@ -3139,10 +3647,12 @@ public static class AllEndpoints
                     fromUtc,
                     toUtc);
 
-                return Results.Problem(
-                    title: "Greska pri ucitavanju statistike prodaje po boji artikla",
-                    detail: ex.Message,
-                    statusCode: 500);
+                return CreateColorSalesStatsProblem(
+                    "Greška pri učitavanju statistike prodaje po boji artikla",
+                    "Statistika prodaje po boji artikla trenutno nije dostupna. Pokušajte ponovo.",
+                    StatusCodes.Status500InternalServerError,
+                    "color_sales_stats_unavailable",
+                    ResolveAnalyticsCorrelationId(httpContext));
             }
         })
         .WithName("GetColorSalesStats")
@@ -3161,6 +3671,8 @@ public static class AllEndpoints
             string? category = null,
             bool includeInactive = false,
             int maxRows = 5000,
+            int? storeId = null,
+            string? dataScope = null,
             CancellationToken ct = default) =>
         {
             var correlationId = ResolveAnalyticsCorrelationId(httpContext);
@@ -3169,10 +3681,12 @@ public static class AllEndpoints
                 var connectionString = trendplusDb.Database.GetConnectionString();
                 if (string.IsNullOrWhiteSpace(connectionString))
                 {
-                    return Results.Problem(
-                        title: "Missing database connection",
-                        detail: "Trendplus connection string is missing.",
-                        statusCode: 500);
+                    return CreateVendorSalesNivelacijaProblem(
+                        "Pre/post nivelacija nije dostupna.",
+                        "Povezivanje sa bazom trenutno nije dostupno.",
+                        503,
+                        "vendor_sales_nivelacija_unavailable",
+                        correlationId);
                 }
 
                 var eventDateOnly = eventDate?.Date;
@@ -3181,16 +3695,18 @@ public static class AllEndpoints
 
                 if (fromDateOnly.HasValue && toDateOnly.HasValue && fromDateOnly.Value > toDateOnly.Value)
                 {
-                    return Results.BadRequest(new
-                    {
-                        message = "Invalid date range: from must be <= to",
-                        from = fromDateOnly.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                        to = toDateOnly.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
-                    });
+                    return CreateVendorSalesNivelacijaProblem(
+                        "Neispravan period.",
+                        "Početak perioda mora biti pre ili jednak kraju perioda.",
+                        400,
+                        "vendor_sales_nivelacija_invalid_period",
+                        correlationId);
                 }
 
                 var categoryTrimmed = string.IsNullOrWhiteSpace(category) ? null : category.Trim();
                 var categoryPattern = string.IsNullOrWhiteSpace(categoryTrimmed) ? null : $"%{categoryTrimmed}%";
+                var normalizedDataScope = NormalizeVendorSalesNivelacijaDataScope(dataScope);
+                var useScopedFactQuery = storeId.HasValue || normalizedDataScope != "all";
                 maxRows = Math.Clamp(maxRows, 100, 50_000);
 
                 var endpointStopwatch = Stopwatch.StartNew();
@@ -3201,14 +3717,18 @@ public static class AllEndpoints
                     to,
                     categoryTrimmed,
                     includeInactive,
-                    maxRows);
+                    maxRows,
+                    storeId,
+                    normalizedDataScope);
 
                 var cachedResponse = await cache.GetAsync<VendorSalesNivelacijaResponseDto>(cacheKey, ct);
                 if (cachedResponse is not null)
                 {
                     logger.LogInformation(
-                        "Vendor sales nivelacija cache hit. VendorId={VendorId}, EventDate={EventDate}, From={From}, To={To}, CategorySet={CategorySet}, IncludeInactive={IncludeInactive}, MaxRows={MaxRows}, ElapsedMs={ElapsedMs}",
+                        "Vendor sales nivelacija cache hit. VendorId={VendorId}, StoreId={StoreId}, DataScope={DataScope}, EventDate={EventDate}, From={From}, To={To}, CategorySet={CategorySet}, IncludeInactive={IncludeInactive}, MaxRows={MaxRows}, ElapsedMs={ElapsedMs}",
                         vendorId,
+                        storeId,
+                        normalizedDataScope,
                         eventDateOnly,
                         fromDateOnly,
                         toDateOnly,
@@ -3221,8 +3741,10 @@ public static class AllEndpoints
                 }
 
                 logger.LogInformation(
-                    "Vendor sales nivelacija cache miss. VendorId={VendorId}, EventDate={EventDate}, From={From}, To={To}, CategorySet={CategorySet}, IncludeInactive={IncludeInactive}, MaxRows={MaxRows}",
+                    "Vendor sales nivelacija cache miss. VendorId={VendorId}, StoreId={StoreId}, DataScope={DataScope}, EventDate={EventDate}, From={From}, To={To}, CategorySet={CategorySet}, IncludeInactive={IncludeInactive}, MaxRows={MaxRows}",
                     vendorId,
+                    storeId,
+                    normalizedDataScope,
                     eventDateOnly,
                     fromDateOnly,
                     toDateOnly,
@@ -3247,6 +3769,8 @@ public static class AllEndpoints
                         to,
                         categoryTrimmed,
                         includeInactive,
+                        storeId,
+                        normalizedDataScope,
                         "Missing semantic revenue baseline contract.",
                         AnalyticsResponseMetaFactory.Error(
                             "vendor_sales_nivelacija_contract_missing",
@@ -3255,7 +3779,18 @@ public static class AllEndpoints
                     return Results.Ok(ApplyVendorSalesNivelacijaMeta(missingContract, correlationId));
                 }
 
-                const string rawCountSql = """
+                var rawCountSql = useScopedFactQuery
+                    ? $"""
+                    {BuildVendorSalesNivelacijaScopedSourceSql()}
+                    SELECT COUNT(*)::INT
+                    FROM scoped_vendor_sales_nivelacija
+                    WHERE (@vendorId IS NULL OR vendor_id = @vendorId::int)
+                      AND (@eventDate IS NULL OR event_date::date = @eventDate::date)
+                      AND (@fromDate IS NULL OR event_date::date >= @fromDate::date)
+                      AND (@toDate IS NULL OR event_date::date <= @toDate::date)
+                      AND (@category IS NULL OR category ILIKE @categoryPattern::text);
+                    """
+                    : """
                     SELECT COUNT(*)::INT
                     FROM "vw_vendor_sales_nivelacija"
                     WHERE (@vendorId IS NULL OR vendor_id = @vendorId::int)
@@ -3299,18 +3834,34 @@ public static class AllEndpoints
                         Value = (object?)categoryPattern ?? DBNull.Value
                     });
 
+                    if (useScopedFactQuery)
+                    {
+                        AddVendorSalesNivelacijaScopeParameters(cmd, storeId, normalizedDataScope);
+                    }
+
                     rawRows = Convert.ToInt32(await cmd.ExecuteScalarAsync(ct), CultureInfo.InvariantCulture);
                 }
 
                 var categories = new List<string>();
-                const string categoriesSql = """
-                    SELECT DISTINCT COALESCE(NULLIF(category, ''), 'N/A') AS category
+                var categoriesSql = useScopedFactQuery
+                    ? $"""
+                    {BuildVendorSalesNivelacijaScopedSourceSql()}
+                    SELECT DISTINCT COALESCE(NULLIF(category, ''), 'Nepoznato') AS category
+                    FROM scoped_vendor_sales_nivelacija
+                    WHERE (@vendorId IS NULL OR vendor_id = @vendorId)
+                      AND (@eventDate IS NULL OR event_date::date = @eventDate)
+                      AND (@fromDate IS NULL OR event_date::date >= @fromDate)
+                      AND (@toDate IS NULL OR event_date::date <= @toDate)
+                    ORDER BY COALESCE(NULLIF(category, ''), 'Nepoznato');
+                    """
+                    : """
+                    SELECT DISTINCT COALESCE(NULLIF(category, ''), 'Nepoznato') AS category
                     FROM "vw_vendor_sales_nivelacija"
                     WHERE (@vendorId IS NULL OR vendor_id = @vendorId)
                       AND (@eventDate IS NULL OR event_date::date = @eventDate)
                       AND (@fromDate IS NULL OR event_date::date >= @fromDate)
                       AND (@toDate IS NULL OR event_date::date <= @toDate)
-                    ORDER BY COALESCE(NULLIF(category, ''), 'N/A');
+                    ORDER BY COALESCE(NULLIF(category, ''), 'Nepoznato');
                     """;
 
                 await using (var cmd = new NpgsqlCommand(categoriesSql, connection))
@@ -3336,6 +3887,11 @@ public static class AllEndpoints
                         Value = (object?)toDateOnly ?? DBNull.Value
                     });
 
+                    if (useScopedFactQuery)
+                    {
+                        AddVendorSalesNivelacijaScopeParameters(cmd, storeId, normalizedDataScope);
+                    }
+
                     await using var reader = await cmd.ExecuteReaderAsync(ct);
                     while (await reader.ReadAsync(ct))
                     {
@@ -3345,18 +3901,94 @@ public static class AllEndpoints
                     }
                 }
 
-                var rowsSql = hasPriceColumns
+                var rowsSql = useScopedFactQuery
+                    ? $"""
+                        {BuildVendorSalesNivelacijaScopedSourceSql()}
+                        , ranked AS (
+                            SELECT
+                                price_event_id,
+                                event_date::date AS event_date,
+                                vendor_id,
+                                COALESCE(vendor_name, 'Nepoznato') AS vendor_name,
+                                article_id,
+                                COALESCE(NULLIF(sku, ''), article_id::text) AS sku,
+                                COALESCE(article_name, '') AS article_name,
+                                COALESCE(NULLIF(category, ''), 'Nepoznato') AS category,
+                                old_price,
+                                new_price,
+                                pre_qty::numeric AS pre_qty,
+                                pre_revenue::numeric AS pre_revenue,
+                                post_qty::numeric AS post_qty,
+                                post_revenue::numeric AS post_revenue,
+                                coverage_pre30::numeric AS coverage_pre30,
+                                coverage_post30::numeric AS coverage_post30,
+                                change_qty::numeric AS change_qty,
+                                change_revenue::numeric AS change_revenue,
+                                change_percent_revenue_semantic::numeric AS change_percent,
+                                has_qty_baseline,
+                                qty_baseline_reason,
+                                change_percent_qty_semantic::numeric AS change_percent_qty_semantic,
+                                has_revenue_baseline,
+                                revenue_baseline_reason,
+                                change_percent_revenue_semantic::numeric AS change_percent_revenue_semantic,
+                                ROW_NUMBER() OVER (
+                                    PARTITION BY
+                                        event_date::date,
+                                        COALESCE(vendor_id, -1),
+                                        article_id,
+                                        old_price,
+                                        new_price
+                                    ORDER BY price_event_id DESC
+                                ) AS rn
+                            FROM scoped_vendor_sales_nivelacija
+                            WHERE (@vendorId IS NULL OR vendor_id = @vendorId::int)
+                              AND (@eventDate IS NULL OR event_date::date = @eventDate::date)
+                              AND (@fromDate IS NULL OR event_date::date >= @fromDate::date)
+                              AND (@toDate IS NULL OR event_date::date <= @toDate::date)
+                              AND (@category IS NULL OR category ILIKE @categoryPattern::text)
+                        )
+                        SELECT
+                            price_event_id,
+                            event_date,
+                            vendor_id,
+                            vendor_name,
+                            article_id,
+                            sku,
+                            article_name,
+                            category,
+                            old_price,
+                            new_price,
+                            pre_qty,
+                            pre_revenue,
+                            post_qty,
+                            post_revenue,
+                            coverage_pre30,
+                            coverage_post30,
+                            change_qty,
+                            change_revenue,
+                            change_percent,
+                            has_qty_baseline,
+                            qty_baseline_reason,
+                            change_percent_qty_semantic,
+                            has_revenue_baseline,
+                            revenue_baseline_reason,
+                            change_percent_revenue_semantic
+                        FROM ranked
+                        WHERE rn = 1
+                        ORDER BY vendor_name, ABS(change_revenue) DESC, article_name;
+                        """
+                    : hasPriceColumns
                     ? $"""
                         WITH ranked AS (
                             SELECT
                                 price_event_id,
                                 event_date::date AS event_date,
                                 vendor_id,
-                                COALESCE(vendor_name, 'N/A') AS vendor_name,
+                                COALESCE(vendor_name, 'Nepoznato') AS vendor_name,
                                 article_id,
                                 COALESCE(NULLIF(sku, ''), article_id::text) AS sku,
                                 COALESCE(article_name, '') AS article_name,
-                                COALESCE(NULLIF(category, ''), 'N/A') AS category,
+                                COALESCE(NULLIF(category, ''), 'Nepoznato') AS category,
                                 old_price,
                                 new_price,
                                 pre_qty::numeric AS pre_qty,
@@ -3418,8 +4050,7 @@ public static class AllEndpoints
                             change_percent_revenue_semantic
                         FROM ranked
                         WHERE rn = 1
-                        ORDER BY vendor_name, ABS(change_revenue) DESC, article_name
-                        LIMIT @maxRows;
+                        ORDER BY vendor_name, ABS(change_revenue) DESC, article_name;
                         """
                     : $"""
                         WITH ranked AS (
@@ -3427,11 +4058,11 @@ public static class AllEndpoints
                                 price_event_id,
                                 event_date::date AS event_date,
                                 vendor_id,
-                                COALESCE(vendor_name, 'N/A') AS vendor_name,
+                                COALESCE(vendor_name, 'Nepoznato') AS vendor_name,
                                 article_id,
                                 COALESCE(NULLIF(sku, ''), article_id::text) AS sku,
                                 COALESCE(article_name, '') AS article_name,
-                                COALESCE(NULLIF(category, ''), 'N/A') AS category,
+                                COALESCE(NULLIF(category, ''), 'Nepoznato') AS category,
                                 NULL::numeric AS old_price,
                                 NULL::numeric AS new_price,
                                 pre_qty::numeric AS pre_qty,
@@ -3491,8 +4122,7 @@ public static class AllEndpoints
                             change_percent_revenue_semantic
                         FROM ranked
                         WHERE rn = 1
-                        ORDER BY vendor_name, ABS(change_revenue) DESC, article_name
-                        LIMIT @maxRows;
+                        ORDER BY vendor_name, ABS(change_revenue) DESC, article_name;
                         """;
 
                 var dedupRows = new List<VendorSalesNivelacijaArticleStatDto>();
@@ -3532,22 +4162,21 @@ public static class AllEndpoints
                     {
                         Value = (object?)categoryPattern ?? DBNull.Value
                     });
-                    cmd.Parameters.Add(new NpgsqlParameter("maxRows", NpgsqlTypes.NpgsqlDbType.Integer)
+                    if (useScopedFactQuery)
                     {
-                        Value = maxRows
-                    });
-
+                        AddVendorSalesNivelacijaScopeParameters(cmd, storeId, normalizedDataScope);
+                    }
                     await using var reader = await cmd.ExecuteReaderAsync(ct);
                     while (await reader.ReadAsync(ct))
                     {
-                        _ = reader.GetInt64(0); // price_event_id (not returned)
+                        var priceEventId = reader.GetInt64(0);
                         var evDate = DateTime.SpecifyKind(reader.GetDateTime(1), DateTimeKind.Utc);
                         var vId = reader.IsDBNull(2) ? (int?)null : reader.GetInt32(2);
-                        var vName = reader.IsDBNull(3) ? "N/A" : reader.GetString(3);
+                        var vName = reader.IsDBNull(3) ? "Nepoznato" : reader.GetString(3);
                         _ = reader.GetInt32(4); // article_id (used by metrics queries, not returned)
                         var sku = reader.IsDBNull(5) ? string.Empty : reader.GetString(5);
                         var articleName = reader.IsDBNull(6) ? string.Empty : reader.GetString(6);
-                        var cat = reader.IsDBNull(7) ? "N/A" : reader.GetString(7);
+                        var cat = reader.IsDBNull(7) ? "Nepoznato" : reader.GetString(7);
                         var oldPrice = reader.IsDBNull(8) ? (decimal?)null : reader.GetDecimal(8);
                         var newPrice = reader.IsDBNull(9) ? (decimal?)null : reader.GetDecimal(9);
 
@@ -3596,13 +4225,14 @@ public static class AllEndpoints
 
                         var dto = new VendorSalesNivelacijaArticleStatDto
                         {
+                            PriceEventId = priceEventId,
                             EventDate = evDate,
                             VendorId = vId,
                             VendorName = vName,
                             ArticleId = reader.GetInt32(4),
                             Sku = sku,
                             ArticleName = articleName,
-                            Category = string.IsNullOrWhiteSpace(cat) ? "N/A" : cat,
+                            Category = string.IsNullOrWhiteSpace(cat) ? "Nepoznato" : cat,
                             OldPrice = oldPrice,
                             NewPrice = newPrice,
                             PreQty = preQty,
@@ -3633,24 +4263,30 @@ public static class AllEndpoints
                 }
 
                 var deduplicatedRows = dedupRows.Count;
+                var cohortRows = VendorSalesNivelacijaCohortPolicy
+                    .SelectLatestEventPerArticle(dedupRows)
+                    .ToList();
+                var cohortRowsExcluded = Math.Max(0, deduplicatedRows - cohortRows.Count);
 
-                // Analyze rows: remove unchanged-price rows, and optionally remove inactive rows.
-                var analyzed = dedupRows
+                // Analyze one latest price-event cohort per article. This keeps overlapping
+                // event windows from double-counting the same article sales while preserving
+                // event-level duplicate and cohort denominators separately.
+                var analyzed = cohortRows
                     .Where(x => !(x.OldPrice.HasValue && x.NewPrice.HasValue && x.OldPrice.Value == x.NewPrice.Value))
                     .Where(x => includeInactive || x.HasSalesWindow)
                     .ToList();
 
                 var analyzedRows = analyzed.Count;
 
-                var analyzedSharePercent = deduplicatedRows == 0
+                var analyzedSharePercent = cohortRows.Count == 0
                     ? 0m
-                    : Math.Round(((decimal)analyzedRows / deduplicatedRows) * 100m, 2);
+                    : Math.Round(((decimal)analyzedRows / cohortRows.Count) * 100m, 2);
 
                 // Advanced metrics (best-effort, non-fatal).
                 var globalWarnings = new List<string>();
-                if (deduplicatedRows >= maxRows)
+                if (analyzedRows > maxRows)
                 {
-                    globalWarnings.Add($"Article stats capped to {maxRows.ToString(CultureInfo.InvariantCulture)} rows");
+                    globalWarnings.Add($"Article detail limited to {maxRows.ToString(CultureInfo.InvariantCulture)} rows; aggregate metrics use the full canonical cohort");
                 }
 
                 try
@@ -3665,7 +4301,7 @@ public static class AllEndpoints
                 }
                 catch
                 {
-                    globalWarnings.Add("Metrics mapping failed");
+                    globalWarnings.Add("Mapiranje naprednih metrika nije uspelo");
                 }
 
                 try
@@ -3676,19 +4312,26 @@ public static class AllEndpoints
                 }
                 catch
                 {
-                    globalWarnings.Add("OOS/DiD mapping failed");
+                    globalWarnings.Add("Mapiranje metrika nestanka zaliha i razlike u razlikama nije uspelo");
                 }
 
                 MapElasticityAndLostSalesToNivelacijaArticles(analyzed);
                 MapMetricReasons(analyzed, globalWarnings);
 
+                var comparableRows = analyzed
+                    .Where(x => x.HasComparableSalesWindow)
+                    .ToList();
+                var articleStats = analyzed
+                    .Take(maxRows)
+                    .ToList();
+
                 // Totals
-                var totalPreQty = analyzed.Sum(x => x.PreQty);
-                var totalPostQty = analyzed.Sum(x => x.PostQty);
-                var totalPreRevenue = analyzed.Sum(x => x.PreRevenue);
-                var totalPostRevenue = analyzed.Sum(x => x.PostRevenue);
-                var totalChangeQty = analyzed.Sum(x => x.ChangeQty);
-                var totalChangeRevenue = analyzed.Sum(x => x.ChangeRevenue);
+                var totalPreQty = comparableRows.Sum(x => x.PreQty);
+                var totalPostQty = comparableRows.Sum(x => x.PostQty);
+                var totalPreRevenue = comparableRows.Sum(x => x.PreRevenue);
+                var totalPostRevenue = comparableRows.Sum(x => x.PostRevenue);
+                var totalChangeQty = comparableRows.Sum(x => x.ChangeQty);
+                var totalChangeRevenue = comparableRows.Sum(x => x.ChangeRevenue);
 
                 static decimal Pct(decimal pre, decimal post)
                 {
@@ -3706,13 +4349,13 @@ public static class AllEndpoints
                     return known.Length == 0 ? null : Math.Round(known.Average(), 4);
                 }
 
-                var vendorsCount = analyzed.Select(x => x.VendorId).Distinct().Count();
-                var articlesCount = analyzed
+                var vendorsCount = comparableRows.Select(x => x.VendorId).Distinct().Count();
+                var articlesCount = comparableRows
                     .Select(x => x.Sku)
                     .Where(s => !string.IsNullOrWhiteSpace(s))
                     .Distinct(StringComparer.Ordinal)
                     .Count();
-                var activeArticlesCount = analyzed
+                var activeArticlesCount = comparableRows
                     .Where(x => x.HasSalesWindow && !string.IsNullOrWhiteSpace(x.Sku))
                     .Select(x => x.Sku)
                     .Distinct(StringComparer.Ordinal)
@@ -3721,14 +4364,14 @@ public static class AllEndpoints
                 var avgRevenuePerArticlePre = activeArticlesCount == 0 ? 0m : Math.Round(totalPreRevenue / activeArticlesCount, 2);
                 var avgRevenuePerArticlePost = activeArticlesCount == 0 ? 0m : Math.Round(totalPostRevenue / activeArticlesCount, 2);
 
-                var avgPriceChangePercent = analyzed
+                var avgPriceChangePercent = comparableRows
                     .Where(x => x.PriceChangePercent.HasValue)
                     .Select(x => x.PriceChangePercent!.Value)
                     .DefaultIfEmpty()
                     .Average();
 
-                var avgCoveragePre30 = AverageKnownCoverage(analyzed.Select(x => x.CoveragePre30));
-                var avgCoveragePost30 = AverageKnownCoverage(analyzed.Select(x => x.CoveragePost30));
+                var avgCoveragePre30 = AverageKnownCoverage(comparableRows.Select(x => x.CoveragePre30));
+                var avgCoveragePost30 = AverageKnownCoverage(comparableRows.Select(x => x.CoveragePost30));
                 var lowPostCoverageRows = analyzed.Count(x => x.CoveragePost30.HasValue && x.CoveragePost30.Value < 0.2m);
 
                 var totals = new VendorSalesNivelacijaTotalsDto
@@ -3749,7 +4392,10 @@ public static class AllEndpoints
                     AbsoluteChangeRevenue = 0m,
                     AvgCoveragePre30 = avgCoveragePre30,
                     AvgCoveragePost30 = avgCoveragePost30,
-                    HasComparableSalesWindow = analyzedRows > 0 && analyzed.All(x => x.HasComparableSalesWindow)
+                    HasComparableSalesWindow = comparableRows.Count > 0,
+                    ComparableRows = comparableRows.Count,
+                    ComparableArticlesCount = articlesCount,
+                    ComparableVendorsCount = vendorsCount
                 };
 
                 var productCostsByArticleId = new Dictionary<int, (decimal? ProductCostRsd, decimal? ProductCostLegacy)>();
@@ -3789,15 +4435,18 @@ public static class AllEndpoints
                     .GroupBy(x => new { x.VendorId, x.VendorName })
                     .Select(g =>
                     {
-                        var preRev = g.Sum(x => x.PreRevenue);
-                        var postRev = g.Sum(x => x.PostRevenue);
-                        var preQty = g.Sum(x => x.PreQty);
-                        var postQty = g.Sum(x => x.PostQty);
-                        var increased = g.Count(x => x.PriceChangePercent.HasValue && x.PriceChangePercent.Value > 0m);
-                        var decreased = g.Count(x => x.PriceChangePercent.HasValue && x.PriceChangePercent.Value < 0m);
+                        var comparable = g.Where(x => x.HasComparableSalesWindow).ToList();
+                        var typeInsights = VendorSalesNivelacijaTypeInsightPolicy.Build(comparable);
+                        var primaryType = typeInsights.FirstOrDefault();
+                        var preRev = comparable.Sum(x => x.PreRevenue);
+                        var postRev = comparable.Sum(x => x.PostRevenue);
+                        var preQty = comparable.Sum(x => x.PreQty);
+                        var postQty = comparable.Sum(x => x.PostQty);
+                        var increased = comparable.Count(x => x.PriceChangePercent.HasValue && x.PriceChangePercent.Value > 0m);
+                        var decreased = comparable.Count(x => x.PriceChangePercent.HasValue && x.PriceChangePercent.Value < 0m);
 
                         var margin = new MarginAccumulator();
-                        foreach (var row in g)
+                        foreach (var row in comparable)
                         {
                             if (!productCostsByArticleId.TryGetValue(row.ArticleId, out var costs))
                             {
@@ -3813,7 +4462,7 @@ public static class AllEndpoints
                             : g.Key.VendorName.Trim();
                         var isUnknownVendor = !g.Key.VendorId.HasValue
                             || string.Equals(normalizedVendorName, "Nepoznato", StringComparison.OrdinalIgnoreCase);
-                        var splitCoverage = AverageKnownCoverage(g.Select(x =>
+                        var splitCoverage = AverageKnownCoverage(comparable.Select(x =>
                             x.CoveragePre30.HasValue && x.CoveragePost30.HasValue
                                 ? Math.Min(x.CoveragePre30.Value, x.CoveragePost30.Value)
                                 : (decimal?)null));
@@ -3837,21 +4486,30 @@ public static class AllEndpoints
                                 AbsoluteChangeRevenue = Math.Abs(g.Sum(x => x.ChangeRevenue)),
                                 ChangeSharePercent = 0m,
                                 PostRevenueSharePercent = 0m,
-                                AvgCoveragePre30 = AverageKnownCoverage(g.Select(x => x.CoveragePre30)),
-                                AvgCoveragePost30 = AverageKnownCoverage(g.Select(x => x.CoveragePost30)),
-                                ArticleCount = g
+                                AvgCoveragePre30 = AverageKnownCoverage(comparable.Select(x => x.CoveragePre30)),
+                                AvgCoveragePost30 = AverageKnownCoverage(comparable.Select(x => x.CoveragePost30)),
+                                ArticleCount = comparable
                                     .Select(x => x.Sku)
                                     .Where(s => !string.IsNullOrWhiteSpace(s))
                                     .Distinct(StringComparer.Ordinal)
                                     .Count(),
-                                ActiveArticlesCount = g
+                                ActiveArticlesCount = comparable
                                     .Where(x => x.HasSalesWindow && !string.IsNullOrWhiteSpace(x.Sku))
                                     .Select(x => x.Sku)
                                     .Distinct(StringComparer.Ordinal)
                                     .Count(),
                                 IncreasedPriceArticlesCount = increased,
                                 DecreasedPriceArticlesCount = decreased,
-                                HasComparableSalesWindow = g.Any() && g.All(x => x.HasComparableSalesWindow)
+                                HasComparableSalesWindow = comparable.Count > 0,
+                                ComparableArticleCount = comparable
+                                    .Select(x => x.Sku)
+                                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                                    .Distinct(StringComparer.Ordinal)
+                                    .Count(),
+                                PrimaryFootwearType = primaryType?.Category,
+                                PrimaryFootwearTypeSharePercent = primaryType?.PostRevenueSharePercent,
+                                PrimaryFootwearTypeAvgElasticity = primaryType?.AvgElasticity,
+                                TypeInsightsAuthoritative = primaryType?.PostRevenueSharePercent.HasValue == true
                             },
                             IsUnknownVendor = isUnknownVendor,
                             SplitCoveragePct = splitCoveragePct,
@@ -3895,19 +4553,22 @@ public static class AllEndpoints
                             UnknownBucketSharePct: unknownVendorSharePct),
                             averageKnownMarginPct);
 
+                        var exposedRecommendation = AnalyticsDecisionRecommendationEngine.ApplyComparableSignalGate(
+                            recommendation,
+                            row.Vendor.HasComparableSalesWindow);
                         row.Vendor.ReliabilityPct = row.Vendor.HasComparableSalesWindow
-                            ? recommendation.ReliabilityPct
+                            ? exposedRecommendation.ReliabilityPct
                             : null;
                         row.Vendor.Recommendation = new VendorSalesNivelacijaRecommendationDto
                         {
-                            Status = recommendation.Status,
-                            Label = recommendation.Label,
-                            Summary = recommendation.Summary,
+                            Status = exposedRecommendation.Status,
+                            Label = exposedRecommendation.Label,
+                            Summary = exposedRecommendation.Summary,
                             ConfidencePct = row.Vendor.HasComparableSalesWindow ? recommendation.ConfidencePct : null,
                             ReliabilityPct = row.Vendor.HasComparableSalesWindow ? recommendation.ReliabilityPct : null,
-                            DataQualityStatus = recommendation.DataQualityStatus,
-                            RecommendationAllowed = recommendation.RecommendationAllowed && row.Vendor.HasComparableSalesWindow,
-                            ReasonCodes = recommendation.ReasonCodes
+                            DataQualityStatus = exposedRecommendation.DataQualityStatus,
+                            RecommendationAllowed = exposedRecommendation.RecommendationAllowed,
+                            ReasonCodes = exposedRecommendation.ReasonCodes
                         };
 
                         return row.Vendor;
@@ -3929,27 +4590,28 @@ public static class AllEndpoints
                         : Math.Round((vendor.PostRevenue / totalPostRevenue) * 100m, 2);
                 }
 
-                // Category stats (top 50)
-                var categoryStats = analyzed
-                    .GroupBy(x => x.Category ?? "N/A")
-                    .Select(g =>
+                // Category stats are full-cohort type insights. They must not be
+                // rebuilt from articleStats, which is intentionally capped by maxRows.
+                var typeInsightAggregates = VendorSalesNivelacijaTypeInsightPolicy.Build(comparableRows);
+                var typeInsightsAuthoritative = typeInsightAggregates.Count > 0
+                    && totalPostRevenue > 0m;
+                var categoryStats = typeInsightAggregates
+                    .Select(aggregate => new VendorSalesNivelacijaCategoryStatDto
                     {
-                        var preRev = g.Sum(x => x.PreRevenue);
-                        var postRev = g.Sum(x => x.PostRevenue);
-                        return new VendorSalesNivelacijaCategoryStatDto
-                        {
-                            Category = g.Key,
-                            ArticlesCount = g.Select(x => x.Sku).Distinct(StringComparer.Ordinal).Count(),
-                            VendorsCount = g.Select(x => x.VendorId).Distinct().Count(),
-                            PreQty = g.Sum(x => x.PreQty),
-                            PreRevenue = preRev,
-                            PostQty = g.Sum(x => x.PostQty),
-                            PostRevenue = postRev,
-                            ChangeQty = g.Sum(x => x.ChangeQty),
-                            ChangeRevenue = g.Sum(x => x.ChangeRevenue),
-                            ChangePercent = Pct(preRev, postRev),
-                            HasComparableSalesWindow = g.Any() && g.All(x => x.HasComparableSalesWindow)
-                        };
+                        Category = aggregate.Category,
+                        ArticlesCount = aggregate.ArticlesCount,
+                        VendorsCount = aggregate.VendorsCount,
+                        PreQty = aggregate.PreQty,
+                        PreRevenue = aggregate.PreRevenue,
+                        PostQty = aggregate.PostQty,
+                        PostRevenue = aggregate.PostRevenue,
+                        ChangeQty = aggregate.ChangeQty,
+                        ChangeRevenue = aggregate.ChangeRevenue,
+                        ChangePercent = aggregate.ChangePercent,
+                        HasComparableSalesWindow = true,
+                        ComparableArticleCount = aggregate.ComparableArticleCount,
+                        PostRevenueSharePercent = aggregate.PostRevenueSharePercent,
+                        AvgElasticity = aggregate.AvgElasticity
                     })
                     .OrderByDescending(x => Math.Abs(x.ChangeRevenue))
                     .ToList();
@@ -3957,7 +4619,7 @@ public static class AllEndpoints
                 // Price direction stats
                 string SegmentFor(VendorSalesNivelacijaArticleStatDto x)
                 {
-                    if (!x.PriceChangePercent.HasValue) return "Cena N/A";
+                    if (!x.PriceChangePercent.HasValue) return "Cena nije dostupna";
                     if (x.PriceChangePercent.Value > 0m) return "Cena ↑";
                     if (x.PriceChangePercent.Value < 0m) return "Cena ↓";
                     return "Cena =";
@@ -3967,18 +4629,20 @@ public static class AllEndpoints
                     .GroupBy(SegmentFor)
                     .Select(g =>
                     {
-                        var preRev = g.Sum(x => x.PreRevenue);
-                        var postRev = g.Sum(x => x.PostRevenue);
-                        var avgPct = g.Where(x => x.PriceChangePercent.HasValue).Select(x => x.PriceChangePercent!.Value).DefaultIfEmpty().Average();
+                        var comparable = g.Where(x => x.HasComparableSalesWindow).ToList();
+                        var preRev = comparable.Sum(x => x.PreRevenue);
+                        var postRev = comparable.Sum(x => x.PostRevenue);
+                        var avgPct = comparable.Where(x => x.PriceChangePercent.HasValue).Select(x => x.PriceChangePercent!.Value).DefaultIfEmpty().Average();
                         return new VendorSalesNivelacijaPriceDirectionStatDto
                         {
                             Segment = g.Key,
-                            ArticlesCount = g.Select(x => x.Sku).Distinct(StringComparer.Ordinal).Count(),
-                            VendorsCount = g.Select(x => x.VendorId).Distinct().Count(),
+                            ArticlesCount = comparable.Select(x => x.Sku).Distinct(StringComparer.Ordinal).Count(),
+                            VendorsCount = comparable.Select(x => x.VendorId).Distinct().Count(),
                             AvgPriceChangePercent = Math.Round(avgPct, 2),
-                            ChangeRevenue = g.Sum(x => x.ChangeRevenue),
+                            ChangeRevenue = comparable.Sum(x => x.ChangeRevenue),
                             ChangePercent = Pct(preRev, postRev),
-                            HasComparableSalesWindow = g.Any() && g.All(x => x.HasComparableSalesWindow)
+                            HasComparableSalesWindow = comparable.Count > 0,
+                            ComparableArticleCount = comparable.Select(x => x.Sku).Distinct(StringComparer.Ordinal).Count()
                         };
                     })
                     .OrderByDescending(x => x.ArticlesCount)
@@ -4035,11 +4699,11 @@ public static class AllEndpoints
                     return count == 0 ? null : sum / count;
                 }
 
-                var avgMomentumRevenue = AverageOrNull(analyzed.Select(x => x.MomentumRevenue));
-                var avgElasticity = AverageOrNull(analyzed.Select(x => x.PriceElasticity));
-                var avgDidRevenue = AverageOrNull(analyzed.Select(x => x.DidRevenue));
-                var avgLostSalesOos = AverageOrNull(analyzed.Select(x => x.LostSalesOOS));
-                var avgOosRate = AverageOrNull(analyzed.Select(x => x.OOSRate));
+                var avgMomentumRevenue = AverageOrNull(comparableRows.Select(x => x.MomentumRevenue));
+                var avgElasticity = AverageOrNull(comparableRows.Select(x => x.PriceElasticity));
+                var avgDidRevenue = AverageOrNull(comparableRows.Select(x => x.DidRevenue));
+                var avgLostSalesOos = AverageOrNull(comparableRows.Select(x => x.LostSalesOOS));
+                var avgOosRate = AverageOrNull(comparableRows.Select(x => x.OOSRate));
 
                 var response = new VendorSalesNivelacijaResponseDto
                 {
@@ -4051,15 +4715,28 @@ public static class AllEndpoints
                     To = to,
                     Category = categoryTrimmed,
                     IncludeInactive = includeInactive,
+                    StoreId = storeId,
+                    DataScope = normalizedDataScope,
+                    ScopeApplied = true,
                     Categories = categories,
                     VendorStats = vendorStats,
-                    ArticleStats = analyzed,
+                    ArticleStats = articleStats,
                     Totals = totals,
                     DataQuality = new VendorSalesNivelacijaDataQualityDto
                     {
                         RawRows = rawRows,
                         DeduplicatedRows = deduplicatedRows,
                         DuplicateRowsRemoved = Math.Max(0, rawRows - deduplicatedRows),
+                        CohortRows = cohortRows.Count,
+                        CohortRowsExcluded = cohortRowsExcluded,
+                        ReturnedRows = articleStats.Count,
+                        TruncatedRows = Math.Max(0, analyzedRows - articleStats.Count),
+                        ComparableRows = comparableRows.Count,
+                        ComparableSharePercent = analyzedRows == 0
+                            ? null
+                            : Math.Round((decimal)comparableRows.Count / analyzedRows * 100m, 2),
+                        IsDetailTruncated = articleStats.Count < analyzedRows,
+                        CohortPolicy = "latest_event_per_article",
                         InactiveRows = inactiveRows,
                         UnchangedPriceRows = unchangedPriceRows,
                         AnalyzedRows = analyzedRows,
@@ -4069,6 +4746,16 @@ public static class AllEndpoints
                         AvgCoveragePost30 = avgCoveragePost30
                     },
                     CategoryStats = categoryStats,
+                    TypeInsightsAuthoritative = typeInsightsAuthoritative,
+                    TypeInsightsSource = typeInsightsAuthoritative
+                        ? VendorSalesNivelacijaTypeInsightPolicy.Source
+                        : null,
+                    TypeInsightsDenominator = typeInsightsAuthoritative
+                        ? VendorSalesNivelacijaTypeInsightPolicy.Denominator
+                        : null,
+                    TypeInsightsElasticityWeighting = typeInsightsAuthoritative
+                        ? VendorSalesNivelacijaTypeInsightPolicy.ElasticityWeighting
+                        : null,
                     PriceDirectionStats = priceDirectionStats,
                     Insights = insights,
                     AvgMomentumRevenue = avgMomentumRevenue,
@@ -4086,8 +4773,10 @@ public static class AllEndpoints
                 await cache.SetAsync(cacheKey, response, CacheExpiration.HeavyAnalytics, ct);
 
                 logger.LogInformation(
-                    "Vendor sales nivelacija computed and cached. VendorId={VendorId}, EventDate={EventDate}, From={From}, To={To}, RawRows={RawRows}, AnalyzedRows={AnalyzedRows}, Vendors={Vendors}, Articles={Articles}, ElapsedMs={ElapsedMs}, CacheTtlMinutes={CacheTtlMinutes}",
+                    "Vendor sales nivelacija computed and cached. VendorId={VendorId}, StoreId={StoreId}, DataScope={DataScope}, EventDate={EventDate}, From={From}, To={To}, RawRows={RawRows}, AnalyzedRows={AnalyzedRows}, Vendors={Vendors}, Articles={Articles}, ElapsedMs={ElapsedMs}, CacheTtlMinutes={CacheTtlMinutes}",
                     vendorId,
+                    storeId,
+                    normalizedDataScope,
                     eventDateOnly,
                     fromDateOnly,
                     toDateOnly,
@@ -4102,14 +4791,12 @@ public static class AllEndpoints
             }
             catch (PostgresException ex)
             {
-                var reason =
-                    "Vendor sales nivelacija analytics fallback: view/schema mismatch or database issue. " +
-                    $"SqlState={ex.SqlState ?? "unknown"}.";
-
                 logger.LogWarning(
                     ex,
                     "Vendor sales nivelacija fallback due to database/schema issue. SqlState={SqlState}",
                     ex.SqlState);
+
+                var reason = $"Pre/post nivelacija trenutno nije dostupna. Referentni ID: {correlationId}.";
 
                 // Keep the UI operational with an empty payload when DB schema is behind.
                 var fallback = CreateVendorSalesNivelacijaFallbackResponse(
@@ -4119,6 +4806,8 @@ public static class AllEndpoints
                     to,
                     string.IsNullOrWhiteSpace(category) ? null : category.Trim(),
                     includeInactive,
+                    storeId,
+                    NormalizeVendorSalesNivelacijaDataScope(dataScope),
                     reason,
                     AnalyticsResponseMetaFactory.Error(
                         "vendor_sales_nivelacija_error",
@@ -4138,7 +4827,9 @@ public static class AllEndpoints
                     to,
                     string.IsNullOrWhiteSpace(category) ? null : category.Trim(),
                     includeInactive,
-                    ex.Message,
+                    storeId,
+                    NormalizeVendorSalesNivelacijaDataScope(dataScope),
+                    $"Pre/post nivelacija trenutno nije dostupna. Referentni ID: {correlationId}.",
                     AnalyticsResponseMetaFactory.Error(
                         "vendor_sales_nivelacija_error",
                         "Pre/post nivelacija nije dostupna.",
@@ -6569,17 +7260,17 @@ public static class AllEndpoints
                 reasons.AddRange(globalWarnings);
 
             if (!row.Rolling7dPreRevenue.HasValue && !row.Rolling7dPostRevenue.HasValue)
-                reasons.Add("No rolling data");
+                reasons.Add("Nema podataka za klizni period");
             if (!row.MomentumRevenue.HasValue)
-                reasons.Add("No momentum data");
+                reasons.Add("Nema podataka za zamah prodaje");
             if (!row.OOSRate.HasValue)
-                reasons.Add("No OOS data");
+                reasons.Add("Nema podataka o nestanku zaliha");
             if (!row.DidRevenue.HasValue && !row.DidQty.HasValue)
-                reasons.Add("No DiD data");
+                reasons.Add("Nema podataka za razliku u razlikama");
             if (!row.PriceElasticity.HasValue)
-                reasons.Add("No elasticity data");
+                reasons.Add("Nema podataka o elastičnosti cene");
             if (!row.LostSalesOOS.HasValue)
-                reasons.Add("No lost sales data");
+                reasons.Add("Nema podataka o izgubljenoj prodaji zbog nestanka zaliha");
 
             row.MetricReason = reasons.Count == 0
                 ? null
@@ -6608,7 +7299,8 @@ public static class AllEndpoints
         }
 
         var hasFallbackInsight = response.Insights.Any(insight =>
-            string.Equals(insight.Value, "Fallback mode", StringComparison.OrdinalIgnoreCase)
+            (string.Equals(insight.Value, "Fallback mode", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(insight.Value, "Rezervni režim", StringComparison.OrdinalIgnoreCase))
             || string.Equals(insight.Title, "Podaci privremeno nedostupni", StringComparison.OrdinalIgnoreCase));
 
         AnalyticsResponseMetaDto meta;
@@ -6733,6 +7425,29 @@ public static class AllEndpoints
         return successMeta;
     }
 
+    internal static IQueryable<DnevnikPromena> ApplyColorNivelacijaEventScope(
+        IQueryable<DnevnikPromena> query,
+        int? storeId,
+        string normalizedDataScope)
+    {
+        if (storeId.HasValue)
+        {
+            query = query.Where(d => d.IDObjekat == storeId.Value);
+        }
+
+        if (string.Equals(normalizedDataScope, "imported", StringComparison.OrdinalIgnoreCase))
+        {
+            return query.Where(d => d.DataOrigin == "access");
+        }
+
+        if (string.Equals(normalizedDataScope, "existing", StringComparison.OrdinalIgnoreCase))
+        {
+            return query.Where(d => d.DataOrigin == "existing");
+        }
+
+        return query;
+    }
+
     private static AnalyticsResponseMetaDto CloneAnalyticsResponseMeta(AnalyticsResponseMetaDto meta)
     {
         return new AnalyticsResponseMetaDto
@@ -6753,6 +7468,296 @@ public static class AllEndpoints
         };
     }
 
+    private static string NormalizeVendorSalesNivelacijaDataScope(string? rawScope)
+    {
+        var normalized = (rawScope ?? "all").Trim().ToLowerInvariant();
+        return normalized is "existing" or "imported" ? normalized : "all";
+    }
+
+    private static IResult CreateVendorSalesNivelacijaProblem(
+        string title,
+        string detail,
+        int statusCode,
+        string errorCode,
+        string correlationId)
+    {
+        return Results.Problem(
+            title: title,
+            detail: $"{detail} Referentni ID: {correlationId}.",
+            statusCode: statusCode,
+            extensions: new Dictionary<string, object?>
+            {
+                ["errorCode"] = errorCode,
+                ["correlationId"] = correlationId
+            });
+    }
+
+    private static IResult CreateColorSalesStatsProblem(
+        string title,
+        string detail,
+        int statusCode,
+        string errorCode,
+        string correlationId)
+    {
+        return Results.Problem(
+            title: title,
+            detail: $"{detail} Referentni ID: {correlationId}.",
+            statusCode: statusCode,
+            extensions: new Dictionary<string, object?>
+            {
+                ["errorCode"] = errorCode,
+                ["correlationId"] = correlationId
+            });
+    }
+
+    private static IResult CreateShoeTypeSalesStatsProblem(
+        string title,
+        string detail,
+        int statusCode,
+        string errorCode,
+        string correlationId)
+    {
+        return Results.Problem(
+            title: title,
+            detail: $"{detail} Referentni ID: {correlationId}.",
+            statusCode: statusCode,
+            extensions: new Dictionary<string, object?>
+            {
+                ["errorCode"] = errorCode,
+                ["correlationId"] = correlationId
+            });
+    }
+
+    internal static string ApplyColorSalesCacheMetadata(
+        string jsonPayload,
+        AnalyticsCacheMetadata metadata,
+        AnalyticsCachePolicyEntry policy)
+    {
+        var root = JsonNode.Parse(jsonPayload)?.AsObject()
+            ?? throw new InvalidOperationException("Color cache payload is not a JSON object.");
+        var meta = root["meta"] as JsonObject
+            ?? throw new InvalidOperationException("Color cache payload is missing the analytics metadata object.");
+
+        meta["cacheCreatedAtUtc"] = metadata.CreatedAtUtc;
+        meta["lastRefreshAtUtc"] = metadata.DataRefreshAtUtc;
+
+        var freshnessAnchor = metadata.DataRefreshAtUtc ?? metadata.CreatedAtUtc;
+        if (DateTime.UtcNow - freshnessAnchor > policy.StaleAfter)
+        {
+            var staleWarning = AnalyticsResponseMetaFactory.StaleCacheWarning(
+                "Prikazani su keširani podaci. Pokrenite osvežavanje ako su potrebni najnoviji rezultati.");
+            meta["isPartial"] = true;
+            meta["warningCode"] = staleWarning.WarningCode;
+            meta["warningMessage"] = staleWarning.WarningMessage;
+            meta["message"] = staleWarning.Message;
+            var hasDataQualityStatus = meta["dataQualityStatus"] is JsonValue dataQualityValue
+                && dataQualityValue.TryGetValue<string>(out var dataQualityStatus)
+                && !string.IsNullOrWhiteSpace(dataQualityStatus);
+            if (!hasDataQualityStatus)
+            {
+                meta["dataQualityStatus"] = staleWarning.DataQualityStatus;
+            }
+        }
+
+        root["meta"] = meta;
+        return root.ToJsonString();
+    }
+
+    private static string ResolveAnalyticsCacheProvider(IAnalyticsCacheService cache) =>
+        cache.IsRedisEnabled && cache.IsRedisAvailable ? "redis" : "memory";
+
+    private static void AddVendorSalesNivelacijaScopeParameters(
+        NpgsqlCommand command,
+        int? storeId,
+        string normalizedDataScope)
+    {
+        command.Parameters.Add(new NpgsqlParameter("storeId", NpgsqlDbType.Integer)
+        {
+            Value = (object?)storeId ?? DBNull.Value
+        });
+        command.Parameters.Add(new NpgsqlParameter("dataScope", NpgsqlDbType.Text)
+        {
+            Value = normalizedDataScope
+        });
+    }
+
+    private static string BuildVendorSalesNivelacijaScopedSourceSql() => """
+        WITH nivelacija_events AS (
+            SELECT *
+            FROM (
+                SELECT
+                    d."Id"::bigint AS price_event_id,
+                    COALESCE(src."Datum", d."Datum")::date AS event_date,
+                    a."Id" AS article_id,
+                    COALESCE(NULLIF(a."PLU", ''), a."Id"::text) AS sku,
+                    a."Naziv" AS article_name,
+                    a."Kategorija" AS category,
+                    COALESCE(d."DobavljacId", a."IDDobavljac") AS vendor_id,
+                    dob."Naziv" AS vendor_name,
+                    d."StaraProdajnaCena"::numeric(18,4) AS old_price,
+                    d."NovaProdajnaCena"::numeric(18,4) AS new_price,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY a."Id",
+                                     COALESCE(src."Datum", d."Datum"),
+                                     d."StaraProdajnaCena",
+                                     d."NovaProdajnaCena",
+                                     COALESCE(d."IDObjekat", -1),
+                                     COALESCE(NULLIF(d."DataOrigin", ''), 'existing')
+                        ORDER BY d."Id" DESC
+                    ) AS rn
+                FROM "DnevnikPromena" d
+                JOIN "Artikli" a ON a."Id" = d."ArtikalId"
+                LEFT JOIN "Dobavljaci" dob
+                    ON dob."Id" = COALESCE(d."DobavljacId", a."IDDobavljac")
+                LEFT JOIN "DnevnikPromena" src
+                    ON src."Id" = CASE
+                        WHEN d."BrojRacuna" ~ '^[0-9]+$'
+                        THEN d."BrojRacuna"::integer
+                    END
+                WHERE d."TipPromene" IN ('Nivelacija', 'Nivelacija cena')
+                  AND d."ArtikalId" IS NOT NULL
+                  AND COALESCE(src."Datum", d."Datum") IS NOT NULL
+                  AND (@storeId IS NULL OR d."IDObjekat" = @storeId::int)
+                  AND (
+                        @dataScope::text = 'all'
+                        OR (@dataScope::text = 'imported' AND d."DataOrigin" = 'access')
+                        OR (@dataScope::text = 'existing' AND (d."DataOrigin" = 'existing' OR d."DataOrigin" IS NULL OR d."DataOrigin" = ''))
+                  )
+            ) ranked_events
+            WHERE rn = 1
+        ),
+        sales_daily AS (
+            SELECT
+                ps.id_artikal AS article_id,
+                pz.datum_prodaje::date AS day,
+                SUM(ps.kolicina)::numeric AS units,
+                SUM(ps.kolicina * ps.cena)::numeric(18,2) AS revenue
+            FROM prodaja_stavke ps
+            JOIN prodaja_zaglavlje pz
+              ON pz.id = ps.id_prodaja
+            WHERE (@storeId IS NULL OR pz.id_objekat = @storeId::int)
+              AND (
+                    @dataScope::text = 'all'
+                    OR (@dataScope::text = 'imported' AND pz.data_origin = 'access')
+                    OR (@dataScope::text = 'existing' AND (pz.data_origin = 'existing' OR pz.data_origin IS NULL OR pz.data_origin = ''))
+              )
+            GROUP BY ps.id_artikal, pz.datum_prodaje::date
+        ),
+        pre_window AS (
+            SELECT
+                e.price_event_id,
+                e.event_date,
+                e.article_id,
+                e.sku,
+                e.article_name,
+                e.category,
+                e.vendor_id,
+                e.vendor_name,
+                e.old_price,
+                e.new_price,
+                SUM(s.units) AS pre_qty,
+                SUM(s.revenue) AS pre_revenue,
+                CASE WHEN COUNT(DISTINCT s.day) = 0 THEN NULL
+                     ELSE LEAST(COUNT(DISTINCT s.day) / 30.0, 1)
+                END AS coverage_pre30,
+                COUNT(DISTINCT s.day) AS valid_days_pre30,
+                (
+                    COUNT(DISTINCT s.day) < 7
+                    OR COALESCE(SUM(s.units), 0) < 3
+                    OR COALESCE(SUM(s.revenue), 0) < 100
+                ) AS is_low_signal
+            FROM nivelacija_events e
+            LEFT JOIN sales_daily s
+              ON s.article_id = e.article_id
+             AND s.day >= e.event_date - INTERVAL '30 days'
+             AND s.day < e.event_date
+            GROUP BY
+                e.price_event_id,
+                e.event_date,
+                e.article_id,
+                e.sku,
+                e.article_name,
+                e.category,
+                e.vendor_id,
+                e.vendor_name,
+                e.old_price,
+                e.new_price
+        ),
+        post_window AS (
+            SELECT
+                e.price_event_id,
+                SUM(s.units) AS post_qty,
+                SUM(s.revenue) AS post_revenue,
+                CASE WHEN COUNT(DISTINCT s.day) = 0 THEN NULL
+                     ELSE LEAST(COUNT(DISTINCT s.day) / 30.0, 1)
+                END AS coverage_post30,
+                COUNT(DISTINCT s.day) AS valid_days_post30
+            FROM nivelacija_events e
+            LEFT JOIN sales_daily s
+              ON s.article_id = e.article_id
+             AND s.day >= e.event_date
+             AND s.day < e.event_date + INTERVAL '30 days'
+            GROUP BY e.price_event_id
+        ),
+        scoped_vendor_sales_nivelacija AS (
+            SELECT
+                pre.price_event_id,
+                pre.event_date,
+                pre.vendor_id,
+                pre.vendor_name,
+                pre.article_id,
+                pre.sku,
+                pre.article_name,
+                pre.category,
+                pre.old_price,
+                pre.new_price,
+                pre.pre_qty::numeric AS pre_qty,
+                post.post_qty::numeric AS post_qty,
+                pre.pre_revenue::numeric(18,2) AS pre_revenue,
+                post.post_revenue::numeric(18,2) AS post_revenue,
+                pre.coverage_pre30,
+                post.coverage_post30,
+                (post.post_qty - pre.pre_qty) AS change_qty,
+                (post.post_revenue - pre.pre_revenue) AS change_revenue,
+                CASE
+                    WHEN pre.pre_qty = 0 AND post.post_qty > 0 THEN 100
+                    WHEN pre.pre_qty = 0 THEN 0
+                    ELSE ROUND(((post.post_qty - pre.pre_qty) / NULLIF(pre.pre_qty, 0)) * 100, 2)
+                END AS change_percent_qty,
+                CASE
+                    WHEN pre.pre_revenue = 0 AND post.post_revenue > 0 THEN 100
+                    WHEN pre.pre_revenue = 0 THEN 0
+                    ELSE ROUND(((post.post_revenue - pre.pre_revenue) / NULLIF(pre.pre_revenue, 0)) * 100, 2)
+                END AS change_percent_revenue,
+                (pre.is_low_signal OR post.coverage_post30 < 0.2) AS is_low_signal,
+                COALESCE(pre.pre_qty > 0, FALSE) AS has_qty_baseline,
+                CASE
+                    WHEN pre.pre_qty IS NULL THEN 'missing_pre_qty_window'
+                    WHEN pre.pre_qty = 0 AND post.post_qty > 0 THEN 'no_pre_qty_baseline_uplift'
+                    WHEN pre.pre_qty = 0 AND post.post_qty = 0 THEN 'no_pre_qty_baseline_flat'
+                    ELSE NULL
+                END AS qty_baseline_reason,
+                CASE
+                    WHEN pre.pre_qty = 0 THEN NULL
+                    ELSE ROUND(((post.post_qty - pre.pre_qty) / NULLIF(pre.pre_qty, 0)) * 100, 2)
+                END AS change_percent_qty_semantic,
+                COALESCE(pre.pre_revenue > 0, FALSE) AS has_revenue_baseline,
+                CASE
+                    WHEN pre.pre_revenue IS NULL THEN 'missing_pre_revenue_window'
+                    WHEN pre.pre_revenue = 0 AND post.post_revenue > 0 THEN 'no_pre_revenue_baseline_uplift'
+                    WHEN pre.pre_revenue = 0 AND post.post_revenue = 0 THEN 'no_pre_revenue_baseline_flat'
+                    ELSE NULL
+                END AS revenue_baseline_reason,
+                CASE
+                    WHEN pre.pre_revenue = 0 THEN NULL
+                    ELSE ROUND(((post.post_revenue - pre.pre_revenue) / NULLIF(pre.pre_revenue, 0)) * 100, 2)
+                END AS change_percent_revenue_semantic
+            FROM pre_window pre
+            LEFT JOIN post_window post
+              ON pre.price_event_id = post.price_event_id
+        )
+        """;
+
     private static VendorSalesNivelacijaResponseDto CreateVendorSalesNivelacijaFallbackResponse(
         int? vendorId,
         DateTime? eventDate,
@@ -6760,6 +7765,8 @@ public static class AllEndpoints
         DateTime? to,
         string? category,
         bool includeInactive,
+        int? storeId,
+        string dataScope,
         string reason,
         AnalyticsResponseMetaDto? meta = null)
     {
@@ -6773,6 +7780,9 @@ public static class AllEndpoints
             To = to,
             Category = category,
             IncludeInactive = includeInactive,
+            StoreId = storeId,
+            DataScope = dataScope,
+            ScopeApplied = false,
             Categories = [],
             VendorStats = [],
             ArticleStats = [],
@@ -6785,7 +7795,7 @@ public static class AllEndpoints
                 new()
                 {
                     Title = "Podaci privremeno nedostupni",
-                    Value = "Fallback mode",
+                    Value = "Rezervni režim",
                     Details = reason,
                     Tone = "warning"
                 }
@@ -6804,7 +7814,6 @@ public static class AllEndpoints
 
     private sealed record SalesDataWindowResult(DateTime? FromDate, DateTime? ToDate, bool CacheHit, long ElapsedMs);
 
-    private sealed record AnalyticsJsonCacheEntry(string Json);
 
     private sealed record AnalyticsCacheEntryMetadata(bool CreatedByPrewarm, DateTime CreatedAtUtc);
 

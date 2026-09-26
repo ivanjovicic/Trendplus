@@ -76,7 +76,7 @@ describe("DecisionPulsePage", () => {
     );
 
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Podaci trenutno nisu dostupni");
+    expect(alert).toHaveTextContent("Decision Pulse nije dostupan.");
     expect(alert).not.toHaveTextContent(/HTTP 500|NpgsqlException|Database\.Query/i);
   });
 

@@ -743,11 +743,11 @@ public static class CachedAnalyticsEndpoints
 
                         query = sortBy?.ToLowerInvariant() switch
                         {
-                            "kolicina" => query.OrderByDescending(a => a.Kolicina),
-                            "naziv" => query.OrderBy(a => a.Naziv),
-                            "vrednost" => query.OrderByDescending(a => (a.NabavnaCena ?? 0m) * ((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0)).ThenBy(a => a.Naziv),
-                            "azuriranje" => query.OrderByDescending(a => a.UpdatedAt).ThenBy(a => a.Naziv),
-                            _ => query.OrderByDescending(a => (a.Kolicina ?? 0))
+                            "kolicina" => query.OrderByDescending(a => a.Kolicina).ThenBy(a => a.Id),
+                            "naziv" => query.OrderBy(a => a.Naziv).ThenBy(a => a.Id),
+                            "vrednost" => query.OrderByDescending(a => (a.NabavnaCena ?? 0m) * ((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0)).ThenBy(a => a.Naziv).ThenBy(a => a.Id),
+                            "azuriranje" => query.OrderByDescending(a => a.UpdatedAt).ThenBy(a => a.Naziv).ThenBy(a => a.Id),
+                            _ => query.OrderByDescending(a => (a.Kolicina ?? 0)).ThenBy(a => a.Id)
                         };
 
                         var total = await query.CountAsync(ct);
@@ -776,6 +776,9 @@ public static class CachedAnalyticsEndpoints
                                   && pz.DatumProdaje >= salesWindowStartUtc
                                   && pz.DatumProdaje < salesWindowEndUtc
                                   && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
+                                  && (normalizedDataScope == "all"
+                                      || (normalizedDataScope == "imported" && pz.DataOrigin == "access")
+                                      || (normalizedDataScope == "existing" && (pz.DataOrigin == "existing" || pz.DataOrigin == null || pz.DataOrigin == "")))
                             group ps by ps.IdArtikal
                             into g
                             select new
@@ -875,6 +878,13 @@ public static class CachedAnalyticsEndpoints
                             ? AnalyticsResponseMetaFactory.Empty("no_inventory_items", "Nema artikala koji odgovaraju filterima.")
                             : AnalyticsResponseMetaFactory.Success();
                         meta.CorrelationId = correlationId;
+                        meta.RequestedPeriodFromUtc = salesWindowStartUtc;
+                        meta.RequestedPeriodToUtc = salesWindowEndUtc;
+                        meta.EffectivePeriodFromUtc = salesWindowStartUtc;
+                        meta.EffectivePeriodToUtc = salesWindowEndUtc;
+                        meta.RequestedDataScope = normalizedDataScope;
+                        meta.EffectiveDataScope = normalizedDataScope;
+                        meta.ProvenanceBasis = "article-and-sale-header-data-origin";
 
                         return new ArtikliPagedResponse<InventoryListItemDto>(items, total, page, pageSize, meta);
                     },
@@ -1000,13 +1010,25 @@ public static class CachedAnalyticsEndpoints
             int? skuId = null,
             string? sizeCode = null,
             int top = 200,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            string? dataScope = null,
             CancellationToken ct = default) =>
         {
+            if (fromDate.HasValue != toDate.HasValue
+                || (fromDate.HasValue && fromDate.Value.Date > toDate!.Value.Date))
+            {
+                return Results.BadRequest(new { error = "fromDate i toDate moraju biti kompletan, validan opseg." });
+            }
+
+            var normalizedDataScope = NormalizeDataScope(dataScope);
+            fromDate = fromDate?.Date;
+            toDate = toDate?.Date;
             top = Math.Clamp(top, 1, 500);
-            var cacheKey = AnalyticsCacheKeys.InventoryForecast(storeId, supplierId, skuId, sizeCode, top);
+            var cacheKey = AnalyticsCacheKeys.InventoryForecast(storeId, supplierId, skuId, sizeCode, top, fromDate, toDate, normalizedDataScope);
             var result = await cache.GetOrSetAsync(
                 cacheKey,
-                async () => await mediator.Send(new GetInventoryForecastQuery(storeId, supplierId, skuId, sizeCode, top), ct),
+                async () => await mediator.Send(new GetInventoryForecastQuery(storeId, supplierId, skuId, sizeCode, top, fromDate, toDate, normalizedDataScope), ct),
                 AnalyticsCachePolicy.Inventory.Ttl,
                 ct);
 
@@ -1039,14 +1061,27 @@ public static class CachedAnalyticsEndpoints
             int? storeId = null,
             int? supplierId = null,
             int? skuId = null,
+            string? sizeCode = null,
             int top = 200,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            string? dataScope = null,
             CancellationToken ct = default) =>
         {
+            if (fromDate.HasValue != toDate.HasValue
+                || (fromDate.HasValue && fromDate.Value.Date > toDate!.Value.Date))
+            {
+                return Results.BadRequest(new { error = "fromDate i toDate moraju biti kompletan, validan opseg." });
+            }
+
+            var normalizedDataScope = NormalizeDataScope(dataScope);
+            fromDate = fromDate?.Date;
+            toDate = toDate?.Date;
             top = Math.Clamp(top, 1, 500);
-            var cacheKey = AnalyticsCacheKeys.InventorySizeCurve(storeId, supplierId, skuId, top);
+            var cacheKey = AnalyticsCacheKeys.InventorySizeCurve(storeId, supplierId, skuId, sizeCode, top, fromDate, toDate, normalizedDataScope);
             var result = await cache.GetOrSetAsync(
                 cacheKey,
-                async () => await mediator.Send(new GetInventorySizeCurveQuery(storeId, supplierId, skuId, top), ct),
+                async () => await mediator.Send(new GetInventorySizeCurveQuery(storeId, supplierId, skuId, sizeCode, top, fromDate, toDate, normalizedDataScope), ct),
                 AnalyticsCachePolicy.Inventory.Ttl,
                 ct);
 
@@ -1062,13 +1097,25 @@ public static class CachedAnalyticsEndpoints
             int? supplierId = null,
             string? urgency = null,
             int top = 100,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            string? dataScope = null,
             CancellationToken ct = default) =>
         {
+            if (fromDate.HasValue != toDate.HasValue
+                || (fromDate.HasValue && fromDate.Value.Date > toDate!.Value.Date))
+            {
+                return Results.BadRequest(new { error = "fromDate i toDate moraju biti kompletan, validan opseg." });
+            }
+
+            var normalizedDataScope = NormalizeDataScope(dataScope);
+            fromDate = fromDate?.Date;
+            toDate = toDate?.Date;
             top = Math.Clamp(top, 1, 500);
-            var cacheKey = AnalyticsCacheKeys.RebalanceSuggestions(fromStoreId, toStoreId, supplierId, urgency, top);
+            var cacheKey = AnalyticsCacheKeys.RebalanceSuggestions(fromStoreId, toStoreId, supplierId, urgency, top, fromDate, toDate, normalizedDataScope);
             var result = await cache.GetOrSetAsync(
                 cacheKey,
-                async () => await mediator.Send(new GetRebalanceSuggestionsQuery(fromStoreId, toStoreId, supplierId, urgency, top), ct),
+                async () => await mediator.Send(new GetRebalanceSuggestionsQuery(fromStoreId, toStoreId, supplierId, urgency, top, fromDate, toDate, normalizedDataScope), ct),
                 AnalyticsCachePolicy.Inventory.Ttl,
                 ct);
 
@@ -1083,13 +1130,25 @@ public static class CachedAnalyticsEndpoints
             int? supplierId = null,
             string? severity = null,
             int top = 100,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            string? dataScope = null,
             CancellationToken ct = default) =>
         {
+            if (fromDate.HasValue != toDate.HasValue
+                || (fromDate.HasValue && fromDate.Value.Date > toDate!.Value.Date))
+            {
+                return Results.BadRequest(new { error = "fromDate i toDate moraju biti kompletan, validan opseg." });
+            }
+
+            var normalizedDataScope = NormalizeDataScope(dataScope);
+            fromDate = fromDate?.Date;
+            toDate = toDate?.Date;
             top = Math.Clamp(top, 1, 500);
-            var cacheKey = AnalyticsCacheKeys.InventoryAlerts(storeId, supplierId, severity, top);
+            var cacheKey = AnalyticsCacheKeys.InventoryAlerts(storeId, supplierId, severity, top, fromDate, toDate, normalizedDataScope);
             var result = await cache.GetOrSetAsync(
                 cacheKey,
-                async () => await mediator.Send(new GetInventoryAlertsQuery(storeId, supplierId, severity, top), ct),
+                async () => await mediator.Send(new GetInventoryAlertsQuery(storeId, supplierId, severity, top, fromDate, toDate, normalizedDataScope), ct),
                 AnalyticsCachePolicy.Inventory.Ttl,
                 ct);
 

@@ -47,7 +47,7 @@ const REQUIRED_CANONICAL_PATHS = [
 const PROGRAM_OWNERSHIP = [
   { program: "BCI", roadmap: "MASTER_ROADMAP.md", queue: "docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md" },
   { program: "STAB", roadmap: "MASTER_ROADMAP.md", queue: "docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md" },
-  { program: "RQ", roadmap: "docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md", queue: "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md" },
+  { program: "RQ", roadmap: "MASTER_ROADMAP.md", queue: "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md" },
   { program: "P-UI", roadmap: "docs/roadmaps/ANALYTICS_UI_PREMIUM_ROADMAP.md", queue: "docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md" },
   { program: "QDB", roadmap: "docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md", queue: "docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md" },
   { program: "MT", roadmap: "docs/architecture/MULTITENANCY_ARCHITECTURE_ROADMAP.md", queue: "docs/ai/MULTITENANCY_PROMPT_QUEUE.md" },

@@ -30,7 +30,9 @@ import UltraSpinner from "../components/ui/UltraSpinner";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { getDataScope, type DataScope } from "../utils/dataScope";
+import { colorIdentityKey } from "../utils/colorIdentity";
 import { fmtNumber, fmtPct, fmtQty, fmtRsd, fmtSignedPct, formatDate, getPresetRange } from "../utils/analyticsFormatters";
+import { toInclusiveCalendarDate, toUtcDateOnlyExclusive } from "../utils/analyticsDateRanges";
 import { resolvePresetFilterRange } from "../utils/analyticsPeriodPresets";
 import {
   RECOMMENDATION_SIGNAL_UNAVAILABLE,
@@ -53,11 +55,18 @@ import {
 import { resolveColorCoveragePct } from "../utils/colorSalesCoverage";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
 import { getAnalyticsDataFreshnessStatus } from "../utils/analyticsResponseMeta";
+import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { readAnalyticsTableSort, writeAnalyticsTableSort } from "../utils/analyticsTableSortUrl";
 import { useReliableAnalyticsQuery } from "../hooks/useReliableAnalyticsQuery";
 import "./ColorSalesStatsPage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
+const COLOR_ERROR_FALLBACK = "Greška pri učitavanju podataka po boji.";
+const COLOR_SAFE_ERROR_MESSAGES = [
+  COLOR_ERROR_FALLBACK,
+  "Statistika prodaje po boji artikla trenutno nije dostupna.",
+  "Podaci trenutno nisu dostupni.",
+] as const;
 type SortDir = "asc" | "desc";
 type SortField =
   | "boja"
@@ -102,43 +111,44 @@ const decisionColumns: AnalyticsTableColumn<DecisionColor>[] = [
   { key: "sharePct", header: "Udeo %", dataType: "percent" },
   { key: "marginContribution", header: "Maržni doprinos", dataType: "currency" },
   { key: "popRevenueChangePct", header: "PoP trend %", dataType: "percent" },
-  { key: "prePostNivelacijaRevenueImpactPct", header: "Nivelacija impact %", dataType: "percent" },
+  { key: "prePostNivelacijaRevenueImpactPct", header: "Uticaj nivelacije %", dataType: "percent" },
   {
-    key: "preNivelacijePromet",
-    header: "Pre nivelacije promet",
-    detailLabel: "Pre nivelacije promet",
+    key: "comparablePreRevenue",
+    header: "Uporedivo pre nivelacije",
+    detailLabel: "Uporedivo pre nivelacije promet",
     dataType: "text",
-    getValue: (row) => formatCategoryPrePostRevenueMetric(row.preNivelacijePromet),
+    getValue: (row) => formatCategoryPrePostRevenueMetric(row.comparablePreRevenue),
   },
   {
-    key: "posleNivelacijePromet",
-    header: "Posle nivelacije promet",
-    detailLabel: "Posle nivelacije promet",
+    key: "comparablePostRevenue",
+    header: "Uporedivo posle nivelacije",
+    detailLabel: "Uporedivo posle nivelacije promet",
     dataType: "text",
-    getValue: (row) => formatCategoryPrePostRevenueMetric(row.posleNivelacijePromet),
+    getValue: (row) => formatCategoryPrePostRevenueMetric(row.comparablePostRevenue),
   },
   {
-    key: "preNivelacijeKolicina",
-    header: "Pre nivo kolicina",
-    detailLabel: "Pre nivo kolicina",
+    key: "comparablePreQuantity",
+    header: "Uporedivo pre nivelacije kom",
+    detailLabel: "Uporedivo pre nivelacije količina",
     dataType: "text",
-    getValue: (row) => formatCategoryPrePostQuantityMetric(row.preNivelacijeKolicina),
+    getValue: (row) => formatCategoryPrePostQuantityMetric(row.comparablePreQuantity),
   },
   {
-    key: "posleNivelacijeKolicina",
-    header: "Posle nivo kolicina",
-    detailLabel: "Posle nivo kolicina",
+    key: "comparablePostQuantity",
+    header: "Uporedivo posle nivelacije kom",
+    detailLabel: "Uporedivo posle nivelacije količina",
     dataType: "text",
-    getValue: (row) => formatCategoryPrePostQuantityMetric(row.posleNivelacijeKolicina),
+    getValue: (row) => formatCategoryPrePostQuantityMetric(row.comparablePostQuantity),
   },
+  { key: "prePostComparableArticleCount", header: "Artikli u uporedivoj kohorti", dataType: "number" },
   { key: "status", header: "Preporuka", dataType: "text", getValue: (row) => recommendationStatusLabel(row.status) },
-  { key: "decisionScore", header: "Skor odluke", dataType: "number" },
+  { key: "decisionScore", header: "Skor odluke (0–100)", dataType: "number" },
 ];
 
 function toUtcRange(fromDate: string, toDate: string): { fromDate: string; toDate: string } {
   return {
     fromDate: `${fromDate}T00:00:00Z`,
-    toDate: `${toDate}T23:59:59Z`,
+    toDate: toUtcDateOnlyExclusive(toDate),
   };
 }
 
@@ -146,10 +156,6 @@ function toDateOnly(value: string): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value.slice(0, 10);
   return parsed.toISOString().slice(0, 10);
-}
-
-function normalizeName(value: string | null | undefined): string {
-  return (value ?? "").trim().toUpperCase();
 }
 
 function sortMarker(field: SortField, activeField: SortField, dir: SortDir): string {
@@ -185,7 +191,7 @@ type StatusTooltipData = {
   status: CanonicalRecommendationStatus;
   statusReason: string;
   sharePct: number | null;
-  marginPct: number;
+  marginPct: number | null;
   popRevenueChangePct: number | null;
   prePostNivelacijaRevenueImpactPct: number | null;
   previousPeriodRevenue: number | null;
@@ -204,7 +210,7 @@ function buildStatusTooltip(data: StatusTooltipData): string {
     ? fmtSignedPct(data.prePostNivelacijaRevenueImpactPct, 1)
     : "N/A";
   const reliabilityText = data.reliabilityAvailable ? fmtPct(data.reliabilityPct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
-  return `${recommendationStatusLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Udeo ${fmtPct(data.sharePct, 1)} | Marža ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Nivelacija impact ${impactText} | Split pokriće ${fmtPct(data.splitCoveragePct, 1)} | Pouzdanost ${reliabilityText}`;
+  return `${recommendationStatusLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Udeo ${fmtPct(data.sharePct, 1)} | Marža ${fmtPct(data.marginPct, 1)} | Trend ${popText} | Uticaj nivelacije ${impactText} | Pokriće podele ${fmtPct(data.splitCoveragePct, 1)} | Pouzdanost ${reliabilityText}`;
 }
 
 export function describePopMetric(item: ColorSalesStat): { label: string; title: string; className: string } {
@@ -235,7 +241,7 @@ export function describeNivelacijaImpactMetric(item: ColorSalesStat): { label: s
   if (Number.isFinite(item.prePostNivelacijaRevenueImpactPct)) {
     return {
       label: fmtSignedPct(item.prePostNivelacijaRevenueImpactPct, 2),
-      title: `Pre/post nivelacija impact meri promenu prometa unutar artikala sa poznatim prvim datumom nivelacije. Pokriće: ${fmtPct(resolveColorPercentValue(item.prePostNivelacijaRevenueCoveragePct), 1)} prometa.`,
+      title: `Pre/post uticaj meri promenu prometa unutar uporedive kohorte artikala sa prodajom pre i posle prve nivelacije. Pokriće: ${fmtPct(resolveColorPercentValue(item.prePostNivelacijaRevenueCoveragePct), 1)} prometa.`,
       className: trendClass(item.prePostNivelacijaRevenueImpactPct),
     };
   }
@@ -252,22 +258,22 @@ export function describeNivelacijaImpactMetric(item: ColorSalesStat): { label: s
   if (coverage === 0) {
     return {
       label: "0% pokriće",
-      title: "Pre/post pokriće je izmereno kao 0%; nema artikala sa poznatom istorijom nivelacije, pa impact nije merljiv.",
+      title: "Pre/post pokriće je izmereno kao 0%; nema artikala sa prodajom i pre i posle nivelacije, pa uticaj nije merljiv.",
       className: "trend-neutral",
     };
   }
 
-  if (item.preNivelacijePromet <= 0 && item.posleNivelacijePromet > 0) {
+  if (item.comparablePreRevenue <= 0 && item.comparablePostRevenue > 0) {
     return {
       label: "Bez baze",
-      title: "Postoji promet posle prve nivelacije, ali nema pre-nivelacija baze za smislen procenat promene.",
+      title: "Postoji uporediv promet posle prve nivelacije, ali nema uporedive pre-nivelacija baze za smislen procenat promene.",
       className: "trend-neutral",
     };
   }
 
   return {
     label: "N/A",
-    title: "Pre/post nivelacija impact nije dostupan za izabrani skup podataka.",
+    title: "Pre/post uticaj nivelacije nije dostupan za izabrani skup podataka.",
     className: "trend-neutral",
   };
 }
@@ -278,7 +284,7 @@ function buildStoreLabel(store: StoreOption): string {
 }
 
 function colorKey(item: { boja: string }): string {
-  return normalizeName(item.boja);
+  return colorIdentityKey(item.boja);
 }
 
 export default function ColorSalesStatsPage() {
@@ -361,12 +367,17 @@ export default function ColorSalesStatsPage() {
     refetch,
   } = useReliableAnalyticsQuery<ColorSalesStatsResponse>({
     query: colorQuery,
-    getErrorMessage: useCallback((reason: unknown) => reason instanceof Error
-      ? reason.message
-      : "Greska pri ucitavanju podataka po boji.", []),
+    getErrorMessage: useCallback((reason: unknown) => getSafeAnalyticsErrorMessage(
+      reason instanceof Error ? reason.message : null,
+      null,
+      COLOR_ERROR_FALLBACK,
+      COLOR_SAFE_ERROR_MESSAGES,
+    ), []),
   });
   const loading = initialLoading || refetching;
-  const error = queryError;
+  const error = queryError
+    ? getSafeAnalyticsErrorMessage(queryError, null, COLOR_ERROR_FALLBACK, COLOR_SAFE_ERROR_MESSAGES)
+    : null;
 
   const decisionRows = useMemo<DecisionColor[]>(() => {
     const rows = data?.colors ?? [];
@@ -435,6 +446,7 @@ export default function ColorSalesStatsPage() {
     () => sortedRows.find((row) => colorKey(row) === expandedColorKey) ?? null,
     [expandedColorKey, sortedRows]
   );
+  const selectedDecisionScore = selectedRow?.decisionScore ?? null;
 
   useEffect(() => {
     if (!selectedRow && sortedRows.length > 0 && expandedColorKey != null) {
@@ -443,19 +455,17 @@ export default function ColorSalesStatsPage() {
   }, [expandedColorKey, selectedRow, sortedRows.length]);
 
   useEffect(() => {
-    if (selectedRow && detailSectionRef.current) {
-      const delay = 100;
-      setTimeout(() => {
-        detailSectionRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      }, delay);
-    }
+    if (!selectedRow || !detailSectionRef.current) return;
+    const timeoutId = window.setTimeout(() => {
+      detailSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 100);
+    return () => window.clearTimeout(timeoutId);
   }, [selectedRow]);
 
   const totalRevenue = data ? data.totals.ukupanPromet : null;
-  const top5SharePct = null;
 
   const totalMarginContribution = useMemo(
     () => data ? data.totals.ukupanMarzniDoprinos : null,
@@ -506,7 +516,7 @@ export default function ColorSalesStatsPage() {
     }
 
     const selectedFrom = new Date(`${activeFilters.fromDate}T00:00:00Z`);
-    const selectedTo = new Date(`${activeFilters.toDate}T23:59:59Z`);
+    const selectedTo = new Date(toUtcDateOnlyExclusive(activeFilters.toDate));
     const dataFrom = new Date(data.dataWindowFrom);
     const dataTo = new Date(data.dataWindowTo);
 
@@ -534,6 +544,7 @@ export default function ColorSalesStatsPage() {
     const missingCostShare = resolveColorPercentValue(data.dataQuality.missingCostRevenueSharePct);
     const knownCostShare = resolveColorComplementPercent(missingCostShare);
     const unknownShare = resolveColorPercentValue(data.dataQuality.unknownColorRevenueSharePct);
+    const costQualityDenominatorStatus = data.dataQuality.costQualityDenominatorStatus;
 
     if (splitCoverage != null && splitCoverage < 60) {
       notes.push(`Pre/post nivelacija trenutno pokriva ${fmtPct(splitCoverage, 1)} ukupnog prometa, pa taj signal treba čitati kao delimičan.`);
@@ -547,6 +558,10 @@ export default function ColorSalesStatsPage() {
       notes.push(`Nepoznate boje učestvuju sa ${fmtPct(unknownShare, 1)} ukupnog prometa.`);
     }
 
+    if (costQualityDenominatorStatus === "unavailable_non_positive_net_revenue") {
+      notes.push("Neto promet nije pozitivan, pa coverage troška i automatska preporuka nisu merljivi; signed iznosi ostaju prikazani.");
+    }
+
     return notes;
   }, [data]);
 
@@ -555,7 +570,15 @@ export default function ColorSalesStatsPage() {
       { key: "fromDate", label: "Od", value: activeFilters.fromDate },
       { key: "toDate", label: "Do", value: activeFilters.toDate },
       { key: "sezonaId", label: "Sezona", value: activeSezonaLabel },
-      { key: "storeId", label: "Objekat", value: activeFilters.storeId ?? "Svi objekti" },
+      {
+        key: "storeId",
+        label: "Objekat",
+        value: activeFilters.storeId == null
+          ? "Svi objekti"
+          : stores.find((store) => store.storeId === activeFilters.storeId)
+            ? buildStoreLabel(stores.find((store) => store.storeId === activeFilters.storeId)!)
+            : `Nepoznat objekat (ID ${activeFilters.storeId})`,
+      },
       { key: "dataScope", label: "Opseg podataka", value: dataScope },
     ],
     [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeSezonaLabel, dataScope]
@@ -565,9 +588,37 @@ export default function ColorSalesStatsPage() {
     () => [
       { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
       { key: "dataScope", label: "Opseg podataka", value: data?.dataScope ?? dataScope },
+      { key: "sourceLabel", label: "Izvor podataka", value: data?.lineage?.sourceLabel ?? "Nije dostupno" },
+      { key: "sourceTables", label: "Izvorne tabele", value: data?.lineage?.sourceTables ?? "Nije dostupno" },
+      { key: "observedPopulation", label: "Posmatrana populacija", value: data?.lineage?.observedPopulation ?? "Nije dostupno" },
+      { key: "costPolicy", label: "Politika troška", value: data?.lineage?.costPolicy ?? "Nije dostupno" },
+      { key: "prePostPolicy", label: "Politika pre/post kohorte", value: data?.lineage?.prePostPolicy ?? "Nije dostupno" },
+      { key: "unknownPolicy", label: "Politika nepoznate boje", value: data?.lineage?.unknownPolicy ?? "Nije dostupno" },
+      { key: "lineageBasis", label: "Osnova događaja nivelacije", value: data?.lineage ? `${data.lineage.salesArticlesWithMatchingNivelacija}/${data.lineage.salesArticleCount} artikala ima potvrđen događaj u istom opsegu` : "Nije dostupno" },
+      { key: "nivelacijaEventCount", label: "Događaji nivelacije", value: data?.lineage?.eventCount ?? null },
       { key: "bojaCount", label: "Broj boja", value: fmtNumber(resolveColorCountValue(data?.totals.brojBoja)) },
       { key: "marginCoverage", label: "Promet sa nabavnom cenom", value: fmtPct(resolveColorComplementPercent(data?.dataQuality.missingCostRevenueSharePct), 1) },
       { key: "splitCoverage", label: "Pre/post pokriće", value: fmtPct(resolveColorPercentValue(data?.dataQuality.revenueWithNivelacijaSplitSharePct), 1) },
+      { key: "signedEvidence", label: "Neto dokaz", value: data?.dataQuality.signedRevenuePolicy === "signed_net_revenue_preserved" ? "Neto promet i količina" : "Nije dostupno" },
+      { key: "costDenominator", label: "Imenilac pokrića", value: data?.dataQuality.costQualityDenominatorStatus === "measured_positive_net_revenue" ? "Pozitivan neto promet" : "Nije merljivo" },
+      { key: "decisionScore", label: "Skor odluke (0–100)", value: fmtPct(data?.totals.decisionScore, 2) },
+      { key: "decisionScoreDenominator", label: "Imenilac skora odluke", value: data?.meta?.metricProvenance?.decisionScore?.denominator ?? "Nije dostupno" },
+      { key: "decisionScoreActionability", label: "Akcionalnost skora odluke", value: data?.meta?.metricProvenance?.decisionScore?.actionability === "actionable" ? "Dozvoljeno" : data?.meta?.metricProvenance?.decisionScore?.actionability === "blocked" ? "Blokirano" : "Nije dostupno" },
+      { key: "metricMarginDenominator", label: "Imenilac marže", value: data?.meta?.metricProvenance?.margin?.denominator ?? "Nije dostupno" },
+      { key: "metricRevenueShareDenominator", label: "Imenilac udela prometa", value: data?.meta?.metricProvenance?.revenueShare?.denominator ?? "Nije dostupno" },
+      { key: "metricConfidenceDenominator", label: "Imenilac sigurnosti", value: data?.meta?.metricProvenance?.confidence?.denominator ?? "Nije dostupno" },
+      { key: "metricReliabilityDenominator", label: "Imenilac pouzdanosti", value: data?.meta?.metricProvenance?.reliability?.denominator ?? "Nije dostupno" },
+      { key: "metricCountsDenominator", label: "Osnova brojanja artikala", value: data?.meta?.metricProvenance?.counts?.denominator ?? "Nije dostupno" },
+      { key: "weightedMargin", label: "Ponderisana poznata marža", value: fmtPct(data?.dataQuality.weightedKnownMarginPct, 1) },
+      { key: "comparableArticleCount", label: "Artikli u uporedivoj kohorti", value: data?.totals.comparableArticleCount ?? null },
+      { key: "comparablePreRevenue", label: "Uporediv promet pre nivelacije", value: fmtRsd(data?.totals.comparablePreRevenue) },
+      { key: "comparablePostRevenue", label: "Uporediv promet posle nivelacije", value: fmtRsd(data?.totals.comparablePostRevenue) },
+      { key: "comparablePreQuantity", label: "Uporediva količina pre nivelacije", value: fmtQty(data?.totals.comparablePreQuantity) },
+      { key: "comparablePostQuantity", label: "Uporediva količina posle nivelacije", value: fmtQty(data?.totals.comparablePostQuantity) },
+      { key: "comparableRevenueCoveragePct", label: "Pokriće uporedive kohorte", value: fmtPct(data?.totals.comparableRevenueCoveragePct, 1) },
+      { key: "prePostSignalNote", label: "Napomena uporedive kohorte", value: data?.totals.prePostSignalNote ?? "Nema napomene" },
+      { key: "observedPreRevenue", label: "Posmatrani promet pre nivelacije", value: fmtRsd(data?.totals.observedPreRevenue) },
+      { key: "observedPostRevenue", label: "Posmatrani promet posle nivelacije", value: fmtRsd(data?.totals.observedPostRevenue) },
       { key: "increaseFocus", label: recommendationStatusLabel("increase_focus"), value: counts.increaseFocus },
       { key: "maintain", label: recommendationStatusLabel("maintain"), value: counts.maintain },
       { key: "review", label: recommendationStatusLabel("review"), value: counts.review },
@@ -581,9 +632,22 @@ export default function ColorSalesStatsPage() {
       counts.maintain,
       counts.review,
       data?.dataQuality.missingCostRevenueSharePct,
+      data?.dataQuality.costQualityDenominatorStatus,
       data?.dataQuality.revenueWithNivelacijaSplitSharePct,
+      data?.dataQuality.signedRevenuePolicy,
+      data?.dataQuality.weightedKnownMarginPct,
       data?.dataScope,
       data?.generatedAt,
+      data?.lineage,
+      data?.totals.comparableArticleCount,
+      data?.totals.comparablePostQuantity,
+      data?.totals.comparablePostRevenue,
+      data?.totals.comparablePreQuantity,
+      data?.totals.comparablePreRevenue,
+      data?.totals.comparableRevenueCoveragePct,
+      data?.totals.observedPostRevenue,
+      data?.totals.observedPreRevenue,
+      data?.totals.prePostSignalNote,
       data?.totals.brojBoja,
       dataScope,
     ]
@@ -606,6 +670,24 @@ export default function ColorSalesStatsPage() {
   const trustIsPartial = responseMeta?.isPartial ?? false;
   const trustDataFreshnessStatus = getAnalyticsDataFreshnessStatus(responseMeta);
   const trustEmptyStateReason = responseMeta?.message ?? emptyStateHint;
+  const lineageBasis = useMemo(() => {
+    if (!data?.lineage) return null;
+    const scopeLabel = data.lineage.dataScope === "imported"
+      ? "uvezeni podaci"
+      : data.lineage.dataScope === "existing"
+        ? "postojeći podaci"
+        : "svi izvori podataka";
+    const storeLabel = data.lineage.storeId == null
+      ? "svi objekti"
+      : stores.find((store) => store.storeId === data.lineage?.storeId)
+        ? buildStoreLabel(stores.find((store) => store.storeId === data.lineage?.storeId)!)
+        : `nepoznat objekat (ID ${data.lineage.storeId})`;
+    const matchedLabel = `${data.lineage.salesArticlesWithMatchingNivelacija}/${data.lineage.salesArticleCount} artikala sa potvrđenim događajem nivelacije`;
+    const storePolicyLabel = data.lineage.storeId == null
+      ? "događaji sa svih objekata"
+      : "samo tačan objekat; događaji bez objekta su izuzeti";
+    return `${scopeLabel}; ${storeLabel}; ${matchedLabel}; ${storePolicyLabel}`;
+  }, [data?.lineage, stores]);
   const showBlockingError = Boolean(queryError && !data);
   const showStaleError = Boolean(staleWarning && data);
 
@@ -640,11 +722,11 @@ export default function ColorSalesStatsPage() {
   );
 
   const openDetail = useCallback((row: DecisionColor) => {
-    const recordId = encodeURIComponent(row.boja);
+    const recordId = encodeURIComponent(colorIdentityKey(row.boja));
 
     const params = new URLSearchParams();
     params.set("fromDate", `${activeFilters.fromDate}T00:00:00Z`);
-    params.set("toDate", `${activeFilters.toDate}T23:59:59Z`);
+    params.set("toDate", toUtcDateOnlyExclusive(activeFilters.toDate));
     if (activeFilters.sezonaId != null) params.set("sezonaId", String(activeFilters.sezonaId));
     if (activeFilters.storeId != null) params.set("storeId", String(activeFilters.storeId));
     params.set("dataScope", dataScope);
@@ -654,17 +736,17 @@ export default function ColorSalesStatsPage() {
         table: "color-sales-stats",
         recordId,
         title: row.boja,
-        subtitle: "Color decision detail",
+        subtitle: "Detalj odluke po boji",
         columns: decisionColumns,
         row,
-        metadata: toolbarFilters,
+        metadata: [...toolbarFilters, ...toolbarMetadata],
       })
     );
 
     navigate(`/analitika/color-sales-stats/${recordId}?${params.toString()}`, {
       state: { backgroundLocation: location },
     });
-  }, [activeFilters.fromDate, activeFilters.sezonaId, activeFilters.storeId, activeFilters.toDate, dataScope, location, navigate, toolbarFilters]);
+  }, [activeFilters.fromDate, activeFilters.sezonaId, activeFilters.storeId, activeFilters.toDate, dataScope, location, navigate, toolbarFilters, toolbarMetadata]);
 
   function applyPreset(preset: PeriodPreset) {
     setPeriodPreset(preset);
@@ -812,12 +894,21 @@ export default function ColorSalesStatsPage() {
     <div className="color-decision-page">
       <AnalyticsTrustHeader
         title="Prodaja po boji artikla"
-        description="Decision-support pogled za izbor boja koje treba pojačati u nabavci."
+        description="Podrška za odluku o bojama koje treba pojačati u nabavci."
         periodFrom={data?.fromDate ?? activeFilters.fromDate}
-        periodTo={data?.toDate ?? activeFilters.toDate}
+        periodTo={toInclusiveCalendarDate(data?.toDate) ?? activeFilters.toDate}
+        requestedPeriodFrom={responseMeta?.requestedPeriodFromUtc}
+        requestedPeriodTo={toInclusiveCalendarDate(responseMeta?.requestedPeriodToUtc) ?? activeFilters.toDate}
+        effectivePeriodFrom={responseMeta?.effectivePeriodFromUtc ?? data?.fromDate}
+        effectivePeriodTo={toInclusiveCalendarDate(responseMeta?.effectivePeriodToUtc ?? data?.toDate) ?? activeFilters.toDate}
+        observedPeriodFrom={responseMeta?.observedPeriodFromUtc}
+        observedPeriodTo={responseMeta?.observedPeriodToUtc}
         lastRefreshAt={trustLastRefreshAt}
         dataFreshnessStatus={trustDataFreshnessStatus}
-        dataSource={`Color sales stats materialized view (scope: ${data?.dataScope ?? dataScope})`}
+        dataSource={data?.lineage?.sourceLabel ?? `Prodaja po boji artikla (opseg: ${data?.dataScope ?? dataScope})`}
+        provenanceBasis={data?.lineage?.observedPopulation && data?.lineage?.prePostPolicy
+          ? `${data.lineage.observedPopulation}; ${data.lineage.prePostPolicy}`
+          : lineageBasis}
         dataQualityStatus={trustDataQualityStatus}
         mode="recommendation"
         isPartial={trustIsPartial}
@@ -909,16 +1000,17 @@ export default function ColorSalesStatsPage() {
                 <strong>{fmtRsd(totalRevenue)}</strong>
               </article>
               <article className="color-decision-kpi">
-                <span>Udeo top 5 boja <InfoTip text="N/A dok backend ne vrati autoritativni udeo top 5 boja; frontend ne računa ovaj procenat iz redova." /></span>
-                <strong>{fmtPct(top5SharePct)}</strong>
-              </article>
-              <article className="color-decision-kpi">
-                <span>Ukupan marzni doprinos</span>
+                  <span>Ukupan maržni doprinos</span>
                 <strong>{fmtRsd(totalMarginContribution)}</strong>
               </article>
               <article className="color-decision-kpi">
                 <span>Rast/PAD vs prethodni period</span>
                 <strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong>
+              </article>
+              <article className="color-decision-kpi">
+                <span>Uporediva kohorta pre/post</span>
+                <strong>{fmtRsd(data.totals.comparablePreRevenue)} → {fmtRsd(data.totals.comparablePostRevenue)}</strong>
+                <small>{fmtNumber(data.totals.comparableArticleCount)} artikala · {fmtPct(data.totals.comparableRevenueCoveragePct, 1)} prometa</small>
               </article>
             </section>
           ) : null}
@@ -952,7 +1044,7 @@ export default function ColorSalesStatsPage() {
                     {recommendationStatusLabel("increase_focus")}: {counts.increaseFocus} | {recommendationStatusLabel("maintain")}: {counts.maintain} | {recommendationStatusLabel("review")}: {counts.review} | {recommendationStatusLabel("do_not_trust")}: {counts.doNotTrust} | {recommendationStatusLabel("insufficient_data")}: {counts.insufficientData}
                   </p>
                   <p className="color-decision-metric-note">
-                    PoP trend = promena prometa prema prethodnom uporedivom periodu. Nivelacija impact = pre/post promena unutar prometa sa poznatim prvim datumom nivelacije.
+                    Trend = promena prometa prema prethodnom uporedivom periodu. Uticaj nivelacije = pre/post promena unutar prometa sa poznatim prvim datumom nivelacije.
                   </p>
                 </div>
               </div>
@@ -1001,7 +1093,7 @@ export default function ColorSalesStatsPage() {
                       </th>
                       <th className={`analytics-data-table__numeric${isSortActive("prePostNivelacijaRevenueImpactPct", sortField) ? " is-sorted" : ""}`}>
                         <button type="button" onClick={() => handleSort("prePostNivelacijaRevenueImpactPct")}>
-                          Nivelacija impact{sortMarker("prePostNivelacijaRevenueImpactPct", sortField, sortDir)} <InfoTip text="Pre/post promena prometa unutar artikala sa poznatim prvim datumom nivelacije. Nije isto što i PoP trend." />
+                          Uticaj nivelacije{sortMarker("prePostNivelacijaRevenueImpactPct", sortField, sortDir)} <InfoTip text="Pre/post promena prometa unutar uporedive kohorte artikala sa prodajom i pre i posle nivelacije. Nije isto što i trend prema prethodnom periodu." />
                         </button>
                       </th>
                       <th>
@@ -1043,7 +1135,7 @@ export default function ColorSalesStatsPage() {
                                   {displayStatusLabel(row.status)}
                                 </span>
                                 <span className="color-status-reason-chip" title={row.statusReason}>
-                                  {row.recommendationAllowed ? "Razlog" : "Akcija blokirana"} <InfoTip text={row.statusReason} />
+                                  <strong>{row.recommendationAllowed ? "Razlog" : "Akcija blokirana"}</strong>: {row.statusReason} <InfoTip text={row.statusReason} />
                                 </span>
                               </div>
                             </td>
@@ -1085,30 +1177,38 @@ export default function ColorSalesStatsPage() {
                   <strong>{selectedRow.previousPeriodRevenue != null ? fmtRsd(selectedRow.previousPeriodRevenue) : "N/A"}</strong>
                 </article>
                 <article>
-                  <span>Nivelacija impact prometa</span>
+                  <span>Uticaj nivelacije na promet</span>
                   <strong className={describeNivelacijaImpactMetric(selectedRow).className} title={describeNivelacijaImpactMetric(selectedRow).title}>
                     {describeNivelacijaImpactMetric(selectedRow).label}
                   </strong>
                 </article>
                 <article>
-                  <span>Pre/post pokrice prometa</span>
+                  <span>Pre/post pokriće uporedive kohorte</span>
                   <strong>{fmtPct(resolveColorPercentValue(selectedRow.prePostNivelacijaRevenueCoveragePct), 1)}</strong>
                 </article>
                 <article>
-                  <span>Pre nivelacije promet</span>
-                  <strong>{formatCategoryPrePostRevenueMetric(selectedRow.preNivelacijePromet)}</strong>
+                  <span>Uporedivo pre nivelacije promet</span>
+                  <strong>{formatCategoryPrePostRevenueMetric(selectedRow.comparablePreRevenue)}</strong>
                 </article>
                 <article>
-                  <span>Posle nivelacije promet</span>
-                  <strong>{formatCategoryPrePostRevenueMetric(selectedRow.posleNivelacijePromet)}</strong>
+                  <span>Uporedivo posle nivelacije promet</span>
+                  <strong>{formatCategoryPrePostRevenueMetric(selectedRow.comparablePostRevenue)}</strong>
                 </article>
                 <article>
-                  <span>Pre nivo kolicina</span>
-                  <strong>{formatCategoryPrePostQuantityMetric(selectedRow.preNivelacijeKolicina)}</strong>
+                  <span>Uporedivo pre nivelacije količina</span>
+                  <strong>{formatCategoryPrePostQuantityMetric(selectedRow.comparablePreQuantity)}</strong>
                 </article>
                 <article>
-                  <span>Posle nivo kolicina</span>
-                  <strong>{formatCategoryPrePostQuantityMetric(selectedRow.posleNivelacijeKolicina)}</strong>
+                  <span>Uporedivo posle nivelacije količina</span>
+                  <strong>{formatCategoryPrePostQuantityMetric(selectedRow.comparablePostQuantity)}</strong>
+                </article>
+                <article>
+                  <span>Artikli u uporedivoj kohorti</span>
+                  <strong>{fmtNumber(selectedRow.prePostComparableArticleCount)}</strong>
+                </article>
+                <article>
+                  <span>Posmatrani pre/posle promet</span>
+                  <strong>{formatCategoryPrePostRevenueMetric(selectedRow.preNivelacijePromet)} / {formatCategoryPrePostRevenueMetric(selectedRow.posleNivelacijePromet)}</strong>
                 </article>
                 <article>
                   <span>Artikli sa nivelacijom</span>
@@ -1119,7 +1219,7 @@ export default function ColorSalesStatsPage() {
                   <strong>{selectedRow.reliabilityAvailable ? fmtPct(selectedRow.reliabilityPct, 1) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
                 </article>
                 <article>
-                  <span>Pokrice marze</span>
+                  <span>Pokriće marže</span>
                   <strong>{fmtPct(resolveColorPercentValue(selectedRow.marginDataCoveragePct), 1)}</strong>
                 </article>
                 <article>
@@ -1127,8 +1227,8 @@ export default function ColorSalesStatsPage() {
                   <strong>{fmtSignedPct(selectedRow.marginPct, 2)}</strong>
                 </article>
                 <article>
-                  <span>Decision score</span>
-                  <strong>{selectedRow.decisionScore == null ? "N/A" : fmtNumber(selectedRow.decisionScore, 0)}</strong>
+                  <span>Skor odluke (0–100)</span>
+                  <strong>{selectedDecisionScore == null ? "N/A" : fmtNumber(selectedDecisionScore, 0)}</strong>
                 </article>
               </div>
 

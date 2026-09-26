@@ -161,7 +161,7 @@ describe("SupplierDecisionReportActions", () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Privremeni browser preview" }));
+    fireEvent.click(screen.getByRole("button", { name: "Privremeni pregled u pregledaču" }));
 
     await waitFor(() => {
       expect(screen.getByTestId("location")).toHaveTextContent("/analytics/supplier/report?preview=browser&stateKey=browser-preview-key");
@@ -197,7 +197,7 @@ describe("SupplierDecisionReportActions", () => {
     );
 
     expect(screen.queryByRole("button", { name: "Dodaj u akcije" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Proveri Data Quality" })).toHaveAttribute("href", "/analytics/data-quality");
+    expect(screen.getByRole("link", { name: "Proveri kvalitet podataka" })).toHaveAttribute("href", "/analytics/data-quality");
     expect(upsertAnalyticsActionWithResultMock).not.toHaveBeenCalled();
   });
 

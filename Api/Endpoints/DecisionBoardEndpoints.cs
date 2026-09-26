@@ -459,7 +459,10 @@ public static class DecisionBoardEndpoints
         return inventoryWorkflow.Items
             .Select((item, index) =>
             {
-                var sourceKey = $"inventory:{item.SuggestionKey}";
+                // Inventory suggestions already carry the canonical versioned
+                // source key. Adding a second source-type prefix here would
+                // make Decision Board disagree with queue lookup/create.
+                var sourceKey = item.SuggestionKey;
                 var actionState = ResolveActionState("inventory", sourceKey, actionStates);
                 var confidence = ResolveInventoryBoardConfidence(item);
                 var confidenceSource = item.SignalConfidencePct.HasValue ? "signal" : "workflow_status_only";

@@ -8,6 +8,7 @@ import {
   getDataQualityTopOffenders,
   getDecisionBoardAggregate,
   getDashboardBootstrap,
+  getSizeCurve,
   invalidateAnalyticsCache,
   updateAnalyticsActionOutcome,
 } from "../analyticsApi";
@@ -15,6 +16,44 @@ import { getColorSalesStats } from "../colorSalesStatsApi";
 import { AnalyticsResponseValidationError } from "../../validation/analyticsResponseValidation";
 
 describe("analytics API contract requests", () => {
+  it("preserves alert size-curve SKU, store and size identity in the request", async () => {
+    let receivedUrl: URL | null = null;
+
+    server.use(
+      rest.get("/api/analytics/cached/inventory/size-curve", (req, res, ctx) => {
+        receivedUrl = req.url;
+        return res(ctx.status(200), ctx.json({
+          generatedAtUtc: "2026-09-23T12:00:00Z",
+          totalCount: 0,
+          returnedCount: 0,
+          totalMatchingCount: 0,
+          isTruncated: false,
+          snapshotAvailable: true,
+          snapshotFreshnessUtc: null,
+          snapshotFreshnessStatus: "unknown",
+          warning: "Size curve snapshot postoji, ali nema redova za trazene filtere.",
+          items: [],
+        }));
+      }),
+    );
+
+    await getSizeCurve({
+      skuId: 101,
+      storeId: 7,
+      sizeCode: " 42 ",
+      fromDate: "2026-01-01",
+      toDate: "2026-01-31",
+      dataScope: "existing",
+    });
+
+    expect(receivedUrl?.searchParams.get("skuId")).toBe("101");
+    expect(receivedUrl?.searchParams.get("storeId")).toBe("7");
+    expect(receivedUrl?.searchParams.get("sizeCode")).toBe("42");
+    expect(receivedUrl?.searchParams.get("fromDate")).toBe("2026-01-01");
+    expect(receivedUrl?.searchParams.get("toDate")).toBe("2026-01-31");
+    expect(receivedUrl?.searchParams.get("dataScope")).toBe("existing");
+  });
+
   it("clears cached dashboard bootstrap responses when invalidated", async () => {
     let requestCount = 0;
 
@@ -115,6 +154,7 @@ describe("analytics API contract requests", () => {
         receivedUrl = req.url;
         return res(ctx.status(200), ctx.json({
           generatedAt: "2026-07-01T08:00:00Z",
+          meta: { success: true },
           fromDate: "2026-06-01T00:00:00Z",
           toDate: "2026-07-01T00:00:00Z",
           dataWindowFrom: "2024-01-01T00:00:00Z",
@@ -122,10 +162,22 @@ describe("analytics API contract requests", () => {
           sezonaId: 3,
           storeId: 2,
           dataScope: "imported",
+          lineage: {
+            storeId: 2,
+            dataScope: "imported",
+            eventCount: 0,
+            eventArticleCount: 0,
+            salesArticleCount: 0,
+            salesArticlesWithMatchingNivelacija: 0,
+            storePolicy: "selected_store",
+            originPolicy: "imported_only",
+          },
           colors: [],
           totals: {
             ukupanPromet: 0,
             ukupanMarzniDoprinos: 0,
+            weightedKnownMarginPct: null,
+            weightedKnownMarginRevenue: 0,
             prePromet: 0,
             poslePromet: 0,
             ukupnaKolicina: 0,
@@ -138,14 +190,36 @@ describe("analytics API contract requests", () => {
             popUnitsChangePct: null,
             prePostNivelacijaRevenueImpactPct: null,
             prePostNivelacijaUnitsImpactPct: null,
+            comparablePreRevenue: 0,
+            comparablePostRevenue: 0,
+            comparablePreQuantity: 0,
+            comparablePostQuantity: 0,
+            comparableArticleCount: 0,
+            comparableRevenueCoveragePct: null,
+            prePostSignalNote: null,
+            observedPreRevenue: 0,
+            observedPostRevenue: 0,
+            observedPreQuantity: 0,
+            observedPostQuantity: 0,
+            recommendationSummary: {
+              increaseFocus: 0,
+              maintain: 0,
+              review: 0,
+              doNotTrust: 0,
+              insufficientData: 0,
+            },
           },
           dataQuality: {
             missingCostRevenue: 0,
             missingCostRevenueSharePct: null,
+            weightedKnownMarginPct: null,
+            weightedKnownMarginRevenue: 0,
             unknownColorRevenue: 0,
             unknownColorRevenueSharePct: null,
             revenueWithNivelacijaSplit: 0,
             revenueWithNivelacijaSplitSharePct: null,
+            observedRevenueWithNivelacijaSplit: 0,
+            observedRevenueWithNivelacijaSplitSharePct: null,
           },
           sezone: [],
         }));

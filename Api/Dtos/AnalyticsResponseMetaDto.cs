@@ -20,6 +20,11 @@ public class AnalyticsResponseMetaDto
     public DateTime? RequestedPeriodToUtc { get; set; }
     public DateTime? EffectivePeriodFromUtc { get; set; }
     public DateTime? EffectivePeriodToUtc { get; set; }
+    public string? RequestedDataScope { get; set; }
+    public string? EffectiveDataScope { get; set; }
+    public string? ProvenanceBasis { get; set; }
+    public string? AttributionBasis { get; set; }
+    public double? AttributionCoveragePct { get; set; }
     public DateTime? ObservedPeriodFromUtc { get; set; }
     public DateTime? ObservedPeriodToUtc { get; set; }
     public string? DataQualityStatus { get; set; }
@@ -29,4 +34,7 @@ public class AnalyticsResponseMetaDto
     /// Optional provenance by stable metric key. Existing clients may omit this field.
     /// </summary>
     public IReadOnlyDictionary<string, AnalyticsMetricProvenanceDto>? MetricProvenance { get; set; }
+    public string? OperationsIntegrityStatus { get; set; }
+    public DateTime? OperationsIntegrityCheckedAtUtc { get; set; }
+    public string? OperationsIntegrityEvidenceId { get; set; }
 }

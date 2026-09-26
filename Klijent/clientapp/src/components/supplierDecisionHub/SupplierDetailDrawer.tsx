@@ -67,7 +67,7 @@ function ArticleSection({ title, emptyMessage, items }: ArticleSectionProps) {
                   <strong>{formatCurrency(item.postRevenue30d)}</strong>
                 </div>
                 <div>
-                  <span>Sell-through pre sniženja</span>
+                  <span>Prodajna realizacija pre sniženja</span>
                   <strong>{formatRatioPercent(item.preSellthrough30d)}</strong>
                 </div>
                 <div>
@@ -112,6 +112,7 @@ export default function SupplierDetailDrawer({
   const recommendation = details
     ? getRecommendationMeta(details.supplierHeader.recommendationCode)
     : getRecommendationMeta("HOLD");
+  const trustMetadata = details?.trustMetadata ?? null;
 
   return (
     <div className="supplier-decision-drawer-backdrop" onClick={onClose}>
@@ -153,10 +154,25 @@ export default function SupplierDetailDrawer({
                   <span>AI procena dobavljača: {formatScore(details.supplierHeader.mlSupplierScore)}</span>
                   <span>Indeks kvaliteta: {formatScore(details.supplierHeader.supplierQualityIndex)}</span>
                   <span>Pouzdanost: {confidenceLabel(details.supplierHeader.confidenceScore)}</span>
-                  <span>Trust signala: {formatReliability(details.supplierHeader.reliabilityPct, 0)}</span>
+                  <span>Pouzdanost signala: {formatReliability(details.supplierHeader.reliabilityPct, 0)}</span>
                   <span>Kvalitet podataka: {dataQualityStatusLabel(details.supplierHeader.dataQualityStatus)}</span>
+                  <span>
+                    Traženi period: {formatDateRange(trustMetadata?.requestedPeriodFrom ?? trustMetadata?.requestedFrom, trustMetadata?.requestedPeriodTo ?? trustMetadata?.requestedTo)}
+                  </span>
+                  <span>Skup podataka: {trustMetadata?.effectiveDataset ?? "Nije dostupno"}</span>
+                  <span>Efektivni period: {trustMetadata?.effectivePeriodLabel ?? "Nije dostupan"}</span>
+                  <span>Efektivni opseg: {formatDateRange(trustMetadata?.effectiveFrom, trustMetadata?.effectiveTo)}</span>
+                  <span>Posmatrani podaci: {formatDateRange(details.supplierHeader.periodFrom, details.supplierHeader.periodTo)}</span>
                 </div>
               </div>
+              {trustMetadata?.recommendationAllowed === false ? (
+                <p className="supplier-decision-error" role="status">
+                  Konačna preporuka nije dozvoljena za ovaj period i kvalitet podataka; prikazan je pomoćni signal za proveru.
+                </p>
+              ) : null}
+              {details.dataNote ? (
+                <p className="supplier-decision-muted">{details.dataNote}</p>
+              ) : null}
               {details.supplierHeader.aiExplanation ? (
                 <p className="supplier-decision-muted">
                   AI signal: {details.supplierHeader.aiExplanation}
@@ -186,7 +202,7 @@ export default function SupplierDetailDrawer({
                   <strong>{formatRatioPercent(details.kpis.fullPriceRevenueShare)}</strong>
                 </article>
                 <article>
-                  <span>Sell-through bez sniženja</span>
+                  <span>Prodajna realizacija bez sniženja</span>
                   <strong>{formatRatioPercent(details.kpis.fullPriceSellthrough)}</strong>
                 </article>
                 <article>
@@ -210,9 +226,9 @@ export default function SupplierDetailDrawer({
                       <th>Prihod</th>
                       <th>Komadi</th>
                       <th>Udeo bez sniženja</th>
-                      <th>Sell-through pre sniženja</th>
+                      <th>Prodajna realizacija pre sniženja</th>
                       <th>Udeo sniženja</th>
-                      <th>Dead stock</th>
+                      <th>Neaktivna zaliha</th>
                       <th>Pobednički artikli</th>
                     </tr>
                   </thead>

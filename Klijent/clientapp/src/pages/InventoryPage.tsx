@@ -3,7 +3,7 @@ import { Warehouse } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { AnalyticsMetaError, createInventoryReportSchedule, exportInventoryReport, getAnalyticsActionSourceStatuses, getForecast, getInventoryActionSuggestions, getInventoryAlerts, getInventoryBalance, getInventoryInsights, getInventoryItemDetail, getInventoryList, getInventoryReportSchedules, getInventoryStoreComparison, getRebalanceSuggestions, getSizeCurve, getStores, getSupplierFilters, previewInventoryReport, printBlankInventoryForm, runInventoryReportScheduleNow, saveInventoryActionDecision, upsertAnalyticsActionWithResult } from "../services/analyticsApi";
 import { downloadExport, resolveApiUrl, waitForExport } from "../services/exportApi";
-import type { AnalyticsActionDataQualityStatus, AnalyticsResponseMeta, ForecastDto, InventoryActionSuggestion, InventoryActionWorkflow, InventoryAlertListDto, InventoryBalance, InventoryInsights, InventoryItemDetail, InventoryPagedResponse, InventoryReportSchedule, InventoryReportScheduleInput, InventoryStoreComparison, RebalanceListDto, SizeCurveDto, StoreOption, SupplierFilterOption } from "../types/analytics";
+import type { AnalyticsActionDataQualityStatus, AnalyticsResponseMeta, ForecastDto, InventoryActionDatasetContext, InventoryActionSuggestion, InventoryActionWorkflow, InventoryAlertListDto, InventoryBalance, InventoryInsights, InventoryItemDetail, InventoryPagedResponse, InventoryReportSchedule, InventoryReportScheduleInput, InventoryStoreComparison, RebalanceListDto, SizeCurveDto, StoreOption, SupplierFilterOption } from "../types/analytics";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsControlBar from "../components/analytics/AnalyticsControlBar";
@@ -25,10 +25,16 @@ import { SizeCurvePanel } from "../components/inventory/SizeCurvePanel";
 import { StoreComparisonPanel } from "../components/inventory/StoreComparisonPanel";
 import KpiExplainButton from "../components/analytics/KpiExplainButton";
 import { computeInventorySignalKpis, INVENTORY_SIGNAL_KPI_PAGE_SCOPE_NOTE } from "../components/inventory/inventorySignalKpis";
-import { buildForecastRestockSuggestion, buildInventoryRow, buildInventoryScreenCsvFilename, buildInventoryScreenCsvLines, buildInventoryServerExportContractNote, buildInventoryWorkflowCentralQueueMetadata, buildOffPageDetailPlaceholderRow, buildSupplierChart, createScheduleDraft, formatPercent, INVENTORY_EXPOSURE_BASIS, inventoryRiskSortScopeWarning, isInventoryPageLocalRiskSort, resolveForecastRestockDaysSinceMovement, resolveInventoryExposureRsdFromRow, validateScheduleDraft } from "../components/inventory/inventoryUtils";
+import { aggregateInventoryForecastRiskForRow, buildForecastRestockSuggestion, buildInventoryActionSourceKey, buildInventoryRow, buildInventoryScreenCsvFilename, buildInventoryScreenCsvLines, buildInventoryServerExportContractNote, buildInventoryWorkflowCentralQueueMetadata, buildOffPageDetailPlaceholderRow, buildSupplierChart, createScheduleDraft, formatPercent, INVENTORY_EXPOSURE_BASIS, inventoryRiskSortScopeWarning, isInventoryPageLocalRiskSort, resolveForecastRestockDaysSinceMovement, resolveInventoryExposureRsdFromRow, validateScheduleDraft } from "../components/inventory/inventoryUtils";
 import { getDataScope } from "../utils/dataScope";
 import type { InventoryRow } from "../components/inventory/types";
 import { fmtNumber, formatDateTime } from "../utils/analyticsFormatters";
+import {
+  ANALYTICS_PERIOD_PRESET_OPTIONS,
+  getAnalyticsPeriodPresetRange,
+  isAnalyticsPeriodPreset,
+  type AnalyticsPeriodPreset,
+} from "../utils/analyticsPeriodPresets";
 import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { getAnalyticsMetaMessage, isAnalyticsMetaInsufficient, isAnalyticsMetaWarning, shouldShowAnalyticsEmptyState } from "../utils/analyticsResponseMeta";
@@ -71,11 +77,51 @@ function parseInventorySort(value: string | null): string {
     ? value
     : "kolicina";
 }
+
+type InventoryPeriodState = {
+  preset: AnalyticsPeriodPreset;
+  fromDate: string;
+  toDate: string;
+};
+
+function parseInventoryDate(value: string | null): string | null {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value ? null : value;
+}
+
+function resolveInventoryPeriod(searchParams: URLSearchParams): InventoryPeriodState {
+  const fromDate = parseInventoryDate(searchParams.get("fromDate"));
+  const toDate = parseInventoryDate(searchParams.get("toDate"));
+  const queryPreset = searchParams.get("periodPreset");
+  const preset = queryPreset && isAnalyticsPeriodPreset(queryPreset) ? queryPreset : null;
+
+  if (fromDate && toDate && fromDate <= toDate) {
+    return {
+      preset: preset ?? "custom",
+      fromDate,
+      toDate,
+    };
+  }
+
+  const resolvedPreset = preset && preset !== "custom" ? preset : "30d";
+  const range = getAnalyticsPeriodPresetRange(resolvedPreset);
+  return { preset: resolvedPreset, ...range };
+}
+
+const INVENTORY_ALERT_SEVERITIES = ["critical", "warning", "info"] as const;
+export type InventoryAlertSeverityFilter = "" | (typeof INVENTORY_ALERT_SEVERITIES)[number];
+
+export function parseInventoryAlertSeverity(value: string | null): InventoryAlertSeverityFilter {
+  return value && INVENTORY_ALERT_SEVERITIES.includes(value as (typeof INVENTORY_ALERT_SEVERITIES)[number])
+    ? value as InventoryAlertSeverityFilter
+    : "";
+}
+
 const ALERTS_DISPLAY_COUNT = 12;
 const REBALANCE_DISPLAY_COUNT = 20;
 const REBALANCE_FETCH_LIMIT = 20;
 const FORECAST_FETCH_LIMIT = 50;
-const INVENTORY_SIGNAL_LOOKBACK_DAYS = 30;
 const OOS_RISK_THRESHOLD = 0.25;
 const OVERSTOCK_RISK_THRESHOLD = 0.5;
 const STORE_COMPARISON_SECTION_ID = "inventory-store-comparison";
@@ -118,13 +164,6 @@ function toInventoryPageError(reason: unknown, fallback: string): InventoryPageE
 function toSafeInventoryInlineError(reason: unknown, fallback: string): string {
   const pageError = toInventoryPageError(reason, fallback);
   return getSafeAnalyticsErrorMessage(pageError.message, pageError.errorCode, fallback);
-}
-
-function createInventorySignalWindow() {
-  const toDate = new Date();
-  const fromDate = new Date(toDate);
-  fromDate.setUTCDate(fromDate.getUTCDate() - INVENTORY_SIGNAL_LOOKBACK_DAYS);
-  return { fromDate: fromDate.toISOString(), toDate: toDate.toISOString() };
 }
 
 function toActionDataQualityStatus(value: string | null | undefined): AnalyticsActionDataQualityStatus {
@@ -265,7 +304,10 @@ function snapshotFreshnessLabel(status: SecondarySnapshotFreshness["status"]): s
   return "nepoznat";
 }
 
-export function buildInventorySignalActionSpec(row: InventoryRow): {
+export function buildInventorySignalActionSpec(
+  row: InventoryRow,
+  datasetContext: InventoryActionDatasetContext = {},
+): {
   sourceKey: string;
   title: string;
   recommendationStatus: string;
@@ -273,14 +315,20 @@ export function buildInventorySignalActionSpec(row: InventoryRow): {
   description: string;
   dueAtUtc: string;
   expectedImpactRsd?: number | null;
+  datasetContext: InventoryActionDatasetContext;
 } {
   const dueAtUtc = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  const actionContext: InventoryActionDatasetContext = {
+    ...datasetContext,
+    storeId: row.idObjekat,
+    sizeCode: "all",
+  };
   const normalizedCover = (row.stockCoverStatus ?? "").trim().toLowerCase();
   const normalizedSellThrough = (row.sellThroughStatus ?? "").trim().toLowerCase();
 
   if (row.recommendationAllowed !== true || normalizedCover === "insufficient_data" || normalizedSellThrough === "insufficient_data") {
     return {
-      sourceKey: `inventory:signal_check:${row.id}:${row.idObjekat ?? "all"}`,
+      sourceKey: buildInventoryActionSourceKey("signal_check", row.id, actionContext),
       title: `Proveri signal zalihe: ${row.naziv}`,
       recommendationStatus: "SIGNAL_REVIEW",
       priority: "P2",
@@ -288,13 +336,14 @@ export function buildInventorySignalActionSpec(row: InventoryRow): {
       dueAtUtc,
       // Exposure may exist on the row, but a review action must not claim confirmed expected impact.
       expectedImpactRsd: null,
+      datasetContext: actionContext,
     };
   }
 
   if (normalizedCover === "out_of_stock_risk" || normalizedCover === "low_cover" || normalizedCover === "low") {
     const isCritical = normalizedCover === "out_of_stock_risk";
     return {
-      sourceKey: `inventory:replenish:${row.id}:${row.idObjekat ?? "all"}`,
+      sourceKey: buildInventoryActionSourceKey("replenish", row.id, actionContext),
       title: `Dopuni artikal: ${row.naziv}`,
       recommendationStatus: "REPLENISH",
       priority: isCritical ? "P1" : "P2",
@@ -302,34 +351,38 @@ export function buildInventorySignalActionSpec(row: InventoryRow): {
       dueAtUtc,
       // Stock exposure exists on the row, but inventory has no authoritative expected-impact source.
       expectedImpactRsd: null,
+      datasetContext: actionContext,
     };
   }
 
   if (normalizedCover === "slow_stock" || normalizedCover === "slow" || normalizedCover === "no_velocity") {
     return {
-      sourceKey: `inventory:slow_stock_review:${row.id}:${row.idObjekat ?? "all"}`,
+      sourceKey: buildInventoryActionSourceKey("slow_stock_review", row.id, actionContext),
       title: `Proveri sporu zalihu: ${row.naziv}`,
       recommendationStatus: "SLOW_STOCK_REVIEW",
       priority: normalizedCover === "slow_stock" || normalizedCover === "slow" ? "P2" : "P3",
       description: `${row.signalText}. Artikal zahteva proveru sporog obrta i odluke o markdown/transfer akciji.`,
       dueAtUtc,
       expectedImpactRsd: null,
+      datasetContext: actionContext,
     };
   }
 
   return {
-    sourceKey: `inventory:signal_check:${row.id}:${row.idObjekat ?? "all"}`,
+    sourceKey: buildInventoryActionSourceKey("signal_check", row.id, actionContext),
     title: `Proveri signal zalihe: ${row.naziv}`,
     recommendationStatus: "SIGNAL_REVIEW",
     priority: "P2",
     description: `Signal nije dovoljan za finalnu akciju. Pokrivenost zalihe: ${row.stockCoverStatusLabel}. Prodajni obrt: ${row.sellThroughStatusLabel}.`,
     dueAtUtc,
     expectedImpactRsd: null,
+    datasetContext: actionContext,
   };
 }
 
 export default function InventoryPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const initialInventoryPeriod = useMemo(() => resolveInventoryPeriod(searchParams), [searchParams]);
   const [schedules, setSchedules] = useState<InventoryReportSchedule[]>([]);
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierFilterOption[]>([]);
@@ -351,6 +404,11 @@ export default function InventoryPage() {
   const [sortBy, setSortBy] = useState(() => parseInventorySort(searchParams.get("sortBy")));
   const [pageNumber, setPageNumber] = useState(() => parseInventoryPositiveInt(searchParams.get("page"), 1));
   const [pageSize, setPageSize] = useState(() => parseInventoryPageSize(searchParams.get("pageSize")));
+  const [periodPreset, setPeriodPreset] = useState<AnalyticsPeriodPreset>(initialInventoryPeriod.preset);
+  const [periodFrom, setPeriodFrom] = useState(initialInventoryPeriod.fromDate);
+  const [periodTo, setPeriodTo] = useState(initialInventoryPeriod.toDate);
+  const [draftPeriodFrom, setDraftPeriodFrom] = useState(initialInventoryPeriod.fromDate);
+  const [draftPeriodTo, setDraftPeriodTo] = useState(initialInventoryPeriod.toDate);
   const [detailRow, setDetailRow] = useState<InventoryRow | null>(null);
   const [detailTab, setDetailTab] = useState<"overview" | "sizeCurve">("overview");
   const [detailData, setDetailData] = useState<InventoryItemDetail | null>(null);
@@ -368,16 +426,21 @@ export default function InventoryPage() {
   const [schedulerBusy, setSchedulerBusy] = useState(false);
   const [schedulerMessage, setSchedulerMessage] = useState<string | null>(null);
   const [scheduleDraft, setScheduleDraft] = useState<InventoryReportScheduleInput>(createScheduleDraft);
-  const [alertSeverityFilter, setAlertSeverityFilter] = useState<"" | "critical" | "warning" | "info">("");
+  const [alertSeverityFilter, setAlertSeverityFilter] = useState<InventoryAlertSeverityFilter>(() => parseInventoryAlertSeverity(searchParams.get("alertSeverity")));
   const [sizeCurve, setSizeCurve] = useState<SizeCurveDto | null>(null);
   const [sizeCurveLoading, setSizeCurveLoading] = useState(false);
   const [sizeCurveError, setSizeCurveError] = useState<string | null>(null);
   const [sizeCurveSkuId, setSizeCurveSkuId] = useState<number | null>(null);
-  const [reloadNonce, setReloadNonce] = useState(0);
+  const [sizeCurveStoreId, setSizeCurveStoreId] = useState<number | null>(null);
+  const [sizeCurveSizeCode, setSizeCurveSizeCode] = useState<string | null>(null);
   const [inventoryDataScope, setInventoryDataScope] = useState(() => getDataScope());
   const deferredSearch = useDeferredValue(searchInput);
   const trimmedSearch = deferredSearch.trim();
-  const inventorySignalWindow = useMemo(createInventorySignalWindow, [reloadNonce, inventoryDataScope]);
+  const inventorySignalWindow = useMemo(
+    () => ({ fromDate: periodFrom, toDate: periodTo }),
+    [periodFrom, periodTo],
+  );
+  const invalidDraftPeriod = draftPeriodFrom > draftPeriodTo;
   const exportContractNote = useMemo(
     () => buildInventoryServerExportContractNote(inventoryDataScope),
     [inventoryDataScope],
@@ -418,6 +481,16 @@ export default function InventoryPage() {
       const next = parseInventoryPageSize(searchParams.get("pageSize"));
       return current === next ? current : next;
     });
+    const nextPeriod = resolveInventoryPeriod(searchParams);
+    setPeriodPreset((current) => current === nextPeriod.preset ? current : nextPeriod.preset);
+    setPeriodFrom((current) => current === nextPeriod.fromDate ? current : nextPeriod.fromDate);
+    setPeriodTo((current) => current === nextPeriod.toDate ? current : nextPeriod.toDate);
+    setDraftPeriodFrom((current) => current === nextPeriod.fromDate ? current : nextPeriod.fromDate);
+    setDraftPeriodTo((current) => current === nextPeriod.toDate ? current : nextPeriod.toDate);
+    setAlertSeverityFilter((current) => {
+      const next = parseInventoryAlertSeverity(searchParams.get("alertSeverity"));
+      return current === next ? current : next;
+    });
   }, [searchParams]);
 
   useEffect(() => {
@@ -434,9 +507,13 @@ export default function InventoryPage() {
       setOrDelete("sortBy", sortBy === "kolicina" ? null : sortBy);
       setOrDelete("page", pageNumber === 1 ? null : String(pageNumber));
       setOrDelete("pageSize", pageSize === DEFAULT_INVENTORY_PAGE_SIZE ? null : String(pageSize));
+      setOrDelete("periodPreset", periodPreset);
+      setOrDelete("fromDate", periodFrom);
+      setOrDelete("toDate", periodTo);
+      setOrDelete("alertSeverity", alertSeverityFilter || null);
       return next.toString() === current.toString() ? current : next;
     }, { replace: true });
-  }, [compareStoreIds, pageNumber, pageSize, searchInput, selectedStoreId, selectedSupplierId, setSearchParams, sortBy]);
+  }, [alertSeverityFilter, compareStoreIds, pageNumber, pageSize, periodFrom, periodPreset, periodTo, searchInput, selectedStoreId, selectedSupplierId, setSearchParams, sortBy]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -444,25 +521,6 @@ export default function InventoryPage() {
       mountedRef.current = false;
     };
   }, []);
-
-  useEffect(() => {
-    const handleScopeChange = () => {
-      if (mountedRef.current) {
-        const nextDataScope = getDataScope();
-        if (nextDataScope === inventoryDataScope) {
-          setReloadNonce((current) => current + 1);
-        } else {
-          // A supplier selected in the previous dataset must not narrow the next dataset.
-          setSelectedSupplierId(null);
-          setPageNumber(1);
-          setInventoryDataScope(nextDataScope);
-        }
-      }
-    };
-
-    window.addEventListener("trendplus:data-scope-changed", handleScopeChange);
-    return () => window.removeEventListener("trendplus:data-scope-changed", handleScopeChange);
-  }, [inventoryDataScope]);
 
   useEffect(() => {
     let cancelled = false;
@@ -567,9 +625,16 @@ export default function InventoryPage() {
         dataScope: inventoryDataScope,
         signal,
       }),
-      getForecast({ storeId: selectedStoreId, supplierId: selectedSupplierId, top: FORECAST_FETCH_LIMIT, signal }),
-      getInventoryAlerts({ storeId: selectedStoreId, supplierId: selectedSupplierId, signal }),
-      getRebalanceSuggestions({ fromStoreId: selectedStoreId, supplierId: selectedSupplierId, top: REBALANCE_FETCH_LIMIT, signal }),
+      getForecast({ storeId: selectedStoreId, supplierId: selectedSupplierId, top: FORECAST_FETCH_LIMIT, dataScope: inventoryDataScope, ...inventorySignalWindow, signal }),
+      getInventoryAlerts({
+        storeId: selectedStoreId,
+        supplierId: selectedSupplierId,
+        severity: alertSeverityFilter || undefined,
+        dataScope: inventoryDataScope,
+        ...inventorySignalWindow,
+        signal,
+      }),
+      getRebalanceSuggestions({ fromStoreId: selectedStoreId, supplierId: selectedSupplierId, top: REBALANCE_FETCH_LIMIT, dataScope: inventoryDataScope, ...inventorySignalWindow, signal }),
     ]);
     const failed = results.find((result) => result.status === "rejected");
     if (failed?.status === "rejected") throw failed.reason;
@@ -584,7 +649,7 @@ export default function InventoryPage() {
       alerts: (results[6] as PromiseFulfilledResult<InventoryAlertListDto>).value,
       rebalance: (results[7] as PromiseFulfilledResult<RebalanceListDto>).value,
     };
-  }, [compareStoreIds, inventoryDataScope, inventorySignalWindow, pageNumber, pageSize, selectedStoreId, selectedSupplierId, serverSortBy, trimmedSearch]);
+  }, [alertSeverityFilter, compareStoreIds, inventoryDataScope, inventorySignalWindow, pageNumber, pageSize, selectedStoreId, selectedSupplierId, serverSortBy, trimmedSearch]);
   const {
     data: inventorySnapshot,
     initialLoading,
@@ -601,6 +666,40 @@ export default function InventoryPage() {
       [],
     ),
   });
+  // Declared after useReliableAnalyticsQuery so the same-scope branch can use its stable refetch().
+  useEffect(() => {
+    const handleScopeChange = () => {
+      if (mountedRef.current) {
+        const nextDataScope = getDataScope();
+        if (nextDataScope === inventoryDataScope) {
+          if (periodPreset !== "custom") {
+            const nextRange = getAnalyticsPeriodPresetRange(periodPreset);
+            setPeriodFrom(nextRange.fromDate);
+            setPeriodTo(nextRange.toDate);
+            setDraftPeriodFrom(nextRange.fromDate);
+            setDraftPeriodTo(nextRange.toDate);
+          }
+          // Same dataset: re-run the primary inventory request through the query hook.
+          refetch();
+        } else {
+          // A supplier selected in the previous dataset must not narrow the next dataset.
+          setSelectedSupplierId(null);
+          setPageNumber(1);
+          if (periodPreset !== "custom") {
+            const nextRange = getAnalyticsPeriodPresetRange(periodPreset);
+            setPeriodFrom(nextRange.fromDate);
+            setPeriodTo(nextRange.toDate);
+            setDraftPeriodFrom(nextRange.fromDate);
+            setDraftPeriodTo(nextRange.toDate);
+          }
+          setInventoryDataScope(nextDataScope);
+        }
+      }
+    };
+
+    window.addEventListener("trendplus:data-scope-changed", handleScopeChange);
+    return () => window.removeEventListener("trendplus:data-scope-changed", handleScopeChange);
+  }, [inventoryDataScope, periodPreset, refetch]);
   const balance = inventorySnapshot?.balance ?? null;
   const pageData = inventorySnapshot?.pageData ?? null;
   const insights = inventorySnapshot?.insights ?? null;
@@ -630,6 +729,20 @@ export default function InventoryPage() {
     )
     : null;
   const error = inventoryError;
+  const inventoryActionDatasetContext = useMemo<InventoryActionDatasetContext>(() => ({
+    dataScope: inventoryDataScope,
+    periodFrom: inventorySignalWindow.fromDate,
+    periodTo: inventorySignalWindow.toDate,
+    // cacheCreatedAtUtc is the strongest available generation marker here;
+    // response time alone must not be presented as snapshot freshness.
+    snapshotGeneration: pageData?.meta?.cacheCreatedAtUtc ?? "unknown",
+  }), [inventoryDataScope, inventorySignalWindow.fromDate, inventorySignalWindow.toDate, pageData?.meta?.cacheCreatedAtUtc]);
+  const inventoryWorkflowActionContext = useMemo<InventoryActionDatasetContext>(() => ({
+    dataScope: inventoryDataScope,
+    periodFrom: "rolling-30d",
+    periodTo: "rolling-30d",
+    snapshotGeneration: "unknown",
+  }), [inventoryDataScope]);
 
   useEffect(() => {
     if (!detailRow) {
@@ -686,6 +799,8 @@ export default function InventoryPage() {
     void getSizeCurve({
       skuId: detailRow.id,
       storeId: detailRow.idObjekat ?? selectedStoreId ?? undefined,
+      dataScope: inventoryDataScope,
+      ...inventorySignalWindow,
       signal: controller.signal,
     })
       .then((nextCurve) => {
@@ -701,7 +816,7 @@ export default function InventoryPage() {
       cancelled = true;
       controller.abort();
     };
-  }, [detailRow, detailTab, inventoryDataScope, selectedStoreId]);
+  }, [detailRow, detailTab, inventoryDataScope, inventorySignalWindow, selectedStoreId]);
 
   useEffect(() => {
     if (sizeCurveSkuId == null) {
@@ -713,7 +828,14 @@ export default function InventoryPage() {
     const controller = new AbortController();
     setSizeCurveLoading(true);
     setSizeCurveError(null);
-    void getSizeCurve({ skuId: sizeCurveSkuId, storeId: selectedStoreId, signal: controller.signal })
+    void getSizeCurve({
+      skuId: sizeCurveSkuId,
+      storeId: sizeCurveStoreId ?? selectedStoreId,
+      sizeCode: sizeCurveSizeCode,
+      dataScope: inventoryDataScope,
+      ...inventorySignalWindow,
+      signal: controller.signal,
+    })
       .then((data) => {
         if (!cancelled) setSizeCurve(data);
       })
@@ -730,7 +852,7 @@ export default function InventoryPage() {
       cancelled = true;
       controller.abort();
     };
-  }, [inventoryDataScope, selectedStoreId, sizeCurveSkuId]);
+  }, [inventoryDataScope, inventorySignalWindow, selectedStoreId, sizeCurveSizeCode, sizeCurveSkuId, sizeCurveStoreId]);
 
   const rows = useMemo(() => (pageData?.items ?? []).map((item) => buildInventoryRow(item, stores, suppliers)), [pageData, stores, suppliers]);
   const totalCount = pageData?.totalCount ?? 0;
@@ -760,14 +882,13 @@ export default function InventoryPage() {
   );
   const highestValueRows = useMemo(() => rows.slice().sort((left, right) => (right.estimatedValueAmount ?? Number.NEGATIVE_INFINITY) - (left.estimatedValueAmount ?? Number.NEGATIVE_INFINITY)).slice(0, TOP_VALUE_ITEMS), [rows]);
   const forecastMetricsByRowKey = useMemo(() => new Map(rows.map((row) => {
-    const matching = (forecast?.items ?? []).filter((item) => item.skuId === row.id && (row.idObjekat == null || item.storeId === row.idObjekat));
-    const oosRisk = matching.reduce((max, item) => item.probabilityOfOOSIn7d == null ? max : Math.max(max, item.probabilityOfOOSIn7d), Number.NEGATIVE_INFINITY);
-    const overstockRisk = matching.reduce((max, item) => item.overstockRisk == null ? max : Math.max(max, item.overstockRisk), Number.NEGATIVE_INFINITY);
+    const aggregate = aggregateInventoryForecastRiskForRow(row, forecast?.items ?? [], { selectedStoreId });
     return [`${row.id}:${row.idObjekat ?? 0}`, {
-      oosRisk: Number.isFinite(oosRisk) ? oosRisk : null,
-      overstockRisk: Number.isFinite(overstockRisk) ? overstockRisk : null,
+      oosRisk: aggregate.oosRisk,
+      overstockRisk: aggregate.overstockRisk,
+      aggregationBasis: aggregate.basis,
     }];
-  })), [forecast, rows]);
+  })), [forecast, rows, selectedStoreId]);
   const displayedRows = useMemo(() => {
     if (!isInventoryPageLocalRiskSort(sortBy)) return rows;
     return rows.slice().sort((left, right) => {
@@ -787,7 +908,7 @@ export default function InventoryPage() {
   useEffect(() => {
     let cancelled = false;
 
-    const signalKeys = displayedRows.map((row) => buildInventorySignalActionSpec(row).sourceKey);
+    const signalKeys = displayedRows.map((row) => buildInventorySignalActionSpec(row, inventoryActionDatasetContext).sourceKey);
     const workflowKeys = (effectiveActionWorkflow?.items ?? [])
       .map((item) => item.suggestionKey)
       .filter((key) => Boolean(key));
@@ -826,7 +947,7 @@ export default function InventoryPage() {
     return () => {
       cancelled = true;
     };
-  }, [displayedRows, effectiveActionWorkflow]);
+  }, [displayedRows, effectiveActionWorkflow, inventoryActionDatasetContext]);
 
   const signalKpis = useMemo(
     () => computeInventorySignalKpis(rows, totalCount, pageSize),
@@ -902,6 +1023,10 @@ export default function InventoryPage() {
 
     return `Primarni bilans je osvežen ${formatDateTime(primaryRefreshAt)}, a sekundarni snapshoti (${freshnessLabel}) ${formatDateTime(secondaryPanelFreshness.timestamp)}.`;
   }, [primaryRefreshAt, secondaryPanelFreshness, secondaryPanelsSettled]);
+  const inventoryPeriodLineageNote = useMemo(
+    () => `Izabrani period ${periodFrom} → ${periodTo} važi za listu artikala i detalj artikla. Bilans, uvidi i workflow ostaju trenutni snapshoti; forecast, alert, transfer i size-curve zahtevi nose period/data scope, ali njihovi snapshot izvori još ne filtriraju po tim dimenzijama.`,
+    [periodFrom, periodTo],
+  );
   const signalSearchLineageNote = searchInput.trim().length > 0
     ? "Napomena: tekst pretraga ne utiče na prognozu, upozorenja i redistribuciju; ti paneli slede samo prodavnicu i dobavljača."
     : null;
@@ -942,7 +1067,7 @@ export default function InventoryPage() {
   async function runBlankPrint() {
     try {
       setExportBusy(true);
-      setExportStatus("Pripremam prazan obrazac za stampu...");
+      setExportStatus("Pripremam prazan obrazac za štampu...");
       const result = await printBlankInventoryForm({ orientation: printOrientation });
       if (result.printUrl) window.open(resolveApiUrl(result.printUrl), "_blank", "noopener");
       setExportStatus("Prazan obrazac je otvoren u novom tabu.");
@@ -969,6 +1094,38 @@ export default function InventoryPage() {
       ? ` (redosled: ${sortBy === "oosRisk" ? "OOS rizik" : "Overstock rizik"}, trenutna strana)`
       : "";
     setExportStatus(`CSV za trenutnu stranu${sortNote} je preuzet.`);
+  }
+
+  function applyInventoryPeriodPreset(nextPreset: AnalyticsPeriodPreset) {
+    setPeriodPreset(nextPreset);
+    if (nextPreset === "custom") {
+      setDraftPeriodFrom(periodFrom);
+      setDraftPeriodTo(periodTo);
+      return;
+    }
+
+    const nextRange = getAnalyticsPeriodPresetRange(nextPreset);
+    setPeriodFrom(nextRange.fromDate);
+    setPeriodTo(nextRange.toDate);
+    setDraftPeriodFrom(nextRange.fromDate);
+    setDraftPeriodTo(nextRange.toDate);
+    setPageNumber(1);
+  }
+
+  function updateInventoryCustomPeriod(kind: "from" | "to", value: string) {
+    const nextFrom = kind === "from" ? value : draftPeriodFrom;
+    const nextTo = kind === "to" ? value : draftPeriodTo;
+    if (kind === "from") setDraftPeriodFrom(value);
+    else setDraftPeriodTo(value);
+    setPeriodPreset("custom");
+
+    const parsedFrom = parseInventoryDate(nextFrom);
+    const parsedTo = parseInventoryDate(nextTo);
+    if (!parsedFrom || !parsedTo || parsedFrom > parsedTo) return;
+
+    setPeriodFrom(parsedFrom);
+    setPeriodTo(parsedTo);
+    setPageNumber(1);
   }
 
   async function updateWorkflowStatus(item: InventoryActionSuggestion, status: "approved" | "deferred" | "closed") {
@@ -1003,7 +1160,7 @@ export default function InventoryPage() {
         recommendationStatus: item.actionType,
         priority: mapWorkflowPriorityToQueuePriority(item.priority),
         actionUrl: "/analytics/inventory",
-        metadataJson: JSON.stringify(buildInventoryWorkflowCentralQueueMetadata(item)),
+        metadataJson: JSON.stringify(buildInventoryWorkflowCentralQueueMetadata(item, inventoryWorkflowActionContext)),
       });
       setQueuedSuggestionKeys((current) => (
         current.includes(item.suggestionKey) ? current : [...current, item.suggestionKey]
@@ -1079,6 +1236,18 @@ export default function InventoryPage() {
     openDetail(buildOffPageDetailPlaceholderRow(skuId, stores, suppliers, { storeId, label }));
   }
 
+  function openSizeCurveFromAlert(skuId: number, storeId: number, sizeCode?: string | null) {
+    setSizeCurveStoreId(storeId);
+    setSizeCurveSizeCode(sizeCode ?? null);
+    setSizeCurveSkuId(skuId);
+  }
+
+  function openSizeCurveFromPanel(skuId: number | null) {
+    setSizeCurveStoreId(null);
+    setSizeCurveSizeCode(null);
+    setSizeCurveSkuId(skuId);
+  }
+
   function retryDetailFetch() {
     if (!detailRow) return;
     const currentRow = detailRow;
@@ -1109,7 +1278,12 @@ export default function InventoryPage() {
       detailData,
       detailLoading,
     );
-    const suggestion = buildForecastRestockSuggestion(row, item, stores, daysSinceMovement);
+    const suggestion = buildForecastRestockSuggestion(row, item, stores, daysSinceMovement, {
+      dataScope: inventoryDataScope,
+      periodFrom: "forecast-7d",
+      periodTo: "forecast-7d",
+      snapshotGeneration: forecast?.snapshotFreshnessUtc ?? "unknown",
+    });
     setWorkflowOverride((current) => {
       const base = current ?? effectiveActionWorkflow ?? { generatedAtUtc: "", pendingCount: 0, approvedCount: 0, deferredCount: 0, closedCount: 0, items: [] };
       if (base.items.some((entry) => entry.suggestionKey === suggestion.suggestionKey)) return base;
@@ -1129,7 +1303,7 @@ export default function InventoryPage() {
   }
 
   async function addSignalRowToCentralQueue(row: InventoryRow) {
-    const actionSpec = buildInventorySignalActionSpec(row);
+    const actionSpec = buildInventorySignalActionSpec(row, inventoryActionDatasetContext);
     setQueueBusyKey(actionSpec.sourceKey);
     try {
       const result = await upsertAnalyticsActionWithResult({
@@ -1145,6 +1319,8 @@ export default function InventoryPage() {
         dataQualityStatus: toActionDataQualityStatus(row.dataQualityStatus),
         actionUrl: "/analytics/inventory",
         metadataJson: JSON.stringify({
+          sourceKeySchemaVersion: "v2",
+          datasetContext: actionSpec.datasetContext,
           actionKind: actionSpec.recommendationStatus,
           stockCoverStatus: row.stockCoverStatus,
           sellThroughStatus: row.sellThroughStatus,
@@ -1173,57 +1349,281 @@ export default function InventoryPage() {
     setExportStatus(`Otvoren detalj za sporu zalihu: ${row.naziv}.`);
   }
 
+  // Becomes true after the first primary load settles (data or error); from then on the controls stay mounted,
+  // including while a retry or filter change reloads the page from an error/empty state.
+  const [primaryLoadSettled, setPrimaryLoadSettled] = useState(false);
+  useEffect(() => {
+    if (!primaryLoadSettled && (inventorySnapshot != null || error != null)) setPrimaryLoadSettled(true);
+  }, [error, inventorySnapshot, primaryLoadSettled]);
+
   function retryPageLoad() {
-    setReloadNonce((current) => current + 1);
+    if (periodPreset !== "custom") {
+      const nextRange = getAnalyticsPeriodPresetRange(periodPreset);
+      setPeriodFrom(nextRange.fromDate);
+      setPeriodTo(nextRange.toDate);
+      setDraftPeriodFrom(nextRange.fromDate);
+      setDraftPeriodTo(nextRange.toDate);
+    }
+    // Single retry mechanism: refetch() bumps the query hook's reload version. Any preset-range
+    // update above is batched into the same render, so the hook issues exactly one new request.
+    refetch();
   }
 
-  if (loading && !pageData && !balance) return <div className="rounded-3xl border border-muted surface-light p-8 text-center text-muted">Učitavanje bilansa zaliha...</div>;
-  if (error && (!pageData || !balance)) {
-    return (
-      <AnalyticsErrorState
-        title="Podaci trenutno nisu dostupni"
-        message={error.message || "Ne prikazujemo nule jer nije potvrđeno da je period stvarno prazan."}
-        errorCode={error.errorCode ?? undefined}
-        correlationId={error.correlationId ?? undefined}
-        onRetry={() => {
-          retryPageLoad();
-        }}
-        helpHref="/analytics/data-quality"
-      />
-    );
+  function resetInventoryFilters() {
+    setSearchInput("");
+    setSelectedStoreId(null);
+    setSelectedSupplierId(null);
+    setPageNumber(1);
   }
 
-  if (showEmptyState) {
-    return (
-      <AnalyticsEmptyState
-        variant={showInsufficientEmptyState ? "insufficient_data" : (showFilteredEmptyState ? "filtered_out" : "no_data")}
-        message={inventoryMetaMessage ?? (showInsufficientEmptyState
-          ? "Nema dovoljno signala za pouzdan prikaz zaliha."
-          : "Nema podataka o zalihama za izabrani opseg.")}
-        reasons={[
-          showInsufficientEmptyState
-            ? "Podaci jos nisu dovoljno kompletni za odluku."
-            : "Izabrani filteri suzavaju rezultat na prazan skup.",
-          "Proverite refresh status i data quality signal.",
-          "Proširite opseg ili uklonite deo filtera.",
-        ]}
-        dataQualityHref="/analytics/data-quality"
-        refreshStatusHref="/admin/configuration?panel=workers"
-        onRetry={() => {
-          retryPageLoad();
-        }}
-      />
-    );
-  }
+  // Filters and controls stay visible in error and empty states (and in reloads after the first settled load)
+  // so the user can recover in place.
+  const renderInventoryControls = (showDataSummary: boolean) => (
+      <section className="rounded-[28px] border border-muted surface-light p-5 shadow-lg">
+        <AnalyticsControlBar
+          title="Filteri i akcije"
+          description="Pretraži bilans, suzi lokaciju i ostavi operativne akcije sekundarnim u odnosu na pregled odluka."
+          chips={showDataSummary ? [
+            {
+              key: "rows",
+              label: "Prikazano",
+              value: `${fmtNumber(rows.length, 0, "0")} od ${fmtNumber(totalCount, 0, "0")} artikala`,
+              tone: "info",
+            },
+            {
+              key: "page",
+              label: "Strana",
+              value: `${fmtNumber(pageNumber, 0, "0")} / ${fmtNumber(totalPages, 0, "0")}`,
+            },
+            ...(riskSortScopeWarning
+              ? [{
+                  key: "risk-sort",
+                  label: "Rizik sort",
+                  value: "Lokalno po strani",
+                  tone: "warning" as const,
+                }]
+              : []),
+          ] : []}
+          primaryAction={{
+            key: "queue",
+            label: "Otvori centralni red akcija",
+            to: INVENTORY_ACTIONS_QUEUE_URL,
+          }}
+          secondaryActions={[
+            {
+              key: "refresh",
+              label: "Osveži",
+              onClick: retryPageLoad,
+              tone: "secondary",
+            },
+          ]}
+          fields={[
+            {
+              key: "period-preset",
+              label: "Period signala",
+              control: (
+                <select
+                  aria-label="Period signala zaliha"
+                  value={periodPreset}
+                  onChange={(event) => applyInventoryPeriodPreset(event.target.value as AnalyticsPeriodPreset)}
+                >
+                  {ANALYTICS_PERIOD_PRESET_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              ),
+            },
+            {
+              key: "period-from",
+              label: "Od",
+              control: (
+                <input
+                  aria-label="Početak perioda signala"
+                  type="date"
+                  value={draftPeriodFrom}
+                  onChange={(event) => updateInventoryCustomPeriod("from", event.target.value)}
+                />
+              ),
+            },
+            {
+              key: "period-to",
+              label: "Do",
+              control: (
+                <div className="space-y-2">
+                  <input
+                    aria-label="Kraj perioda signala"
+                    type="date"
+                    value={draftPeriodTo}
+                    onChange={(event) => updateInventoryCustomPeriod("to", event.target.value)}
+                  />
+                  {invalidDraftPeriod ? (
+                    <p className="text-[11px] font-semibold text-[var(--warning)]" role="alert">
+                      Početak perioda mora biti pre kraja perioda.
+                    </p>
+                  ) : null}
+                </div>
+              ),
+            },
+            {
+              key: "search",
+              label: "Pretraga artikala",
+              span: "wide",
+              control: (
+                <input
+                  role="searchbox"
+                  aria-label="Pretraga artikala"
+                  value={searchInput}
+                  onChange={(event) => { setSearchInput(event.target.value); setPageNumber(1); }}
+                  placeholder="Pretraga po PLU ili nazivu artikla"
+                />
+              ),
+            },
+            {
+              key: "store",
+              label: "Prodavnica",
+              control: (
+                <select
+                  aria-label="Filter po prodavnici"
+                  value={selectedStoreId ?? ""}
+                  onChange={(event) => { setSelectedStoreId(event.target.value ? Number(event.target.value) : null); setSelectedSupplierId(null); setPageNumber(1); }}
+                >
+                  <option value="">Sve prodavnice</option>
+                  {stores.map((store) => <option key={store.storeId} value={store.storeId}>{store.storeName}</option>)}
+                </select>
+              ),
+            },
+            {
+              key: "supplier",
+              label: "Dobavljač",
+              control: (
+                <div className="space-y-2">
+                  <select
+                    aria-label="Filter po dobavljaču"
+                    value={selectedSupplierId ?? ""}
+                    onChange={(event) => { setSelectedSupplierId(event.target.value ? Number(event.target.value) : null); setPageNumber(1); }}
+                    disabled={filtersLoading || supplierFiltersStale}
+                    aria-invalid={supplierFiltersStale || undefined}
+                  >
+                    <option value="">{supplierFiltersStale ? "Izbor je privremeno blokiran" : "Svi dobavljači"}</option>
+                    {suppliers.map((supplier) => (
+                      <option key={supplier.supplierId} value={supplier.supplierId} disabled={supplierFiltersStale}>
+                        {supplier.supplierName}
+                      </option>
+                    ))}
+                  </select>
+                  {supplierFiltersWarning ? (
+                    <p className="text-[11px] font-semibold tracking-wide text-[var(--warning)]" role="status">
+                      {supplierFiltersWarning}
+                      {supplierFiltersStale ? ` ${SUPPLIER_FILTER_STALE_LIST_MESSAGE}` : ""}
+                    </p>
+                  ) : null}
+                </div>
+              ),
+            },
+            {
+              key: "sort",
+              label: "Sortiranje",
+              control: (
+                <div className="space-y-2">
+                  <select
+                    aria-label="Sortiranje tabele artikala"
+                    value={sortBy}
+                    onChange={(event) => { setSortBy(event.target.value); setPageNumber(1); }}
+                  >
+                    <option value="kolicina">Količina opadajuće</option>
+                    <option value="naziv">Naziv A-Z</option>
+                    <option value="vrednost">Vrednost opadajuće</option>
+                    <option value="azuriranje">Poslednje ažuriranje</option>
+                    <option value="oosRisk">OOS rizik opadajuce (samo trenutna strana)</option>
+                    <option value="overstockRisk">Overstock rizik opadajuce (samo trenutna strana)</option>
+                  </select>
+                  {riskSortScopeWarning ? (
+                    <p className="text-[11px] font-semibold tracking-wide text-[var(--warning)]" role="status" data-testid="inventory-risk-sort-scope-warning">
+                      {riskSortScopeWarning}
+                    </p>
+                  ) : null}
+                </div>
+              ),
+            },
+            {
+              key: "page-size",
+              label: "Veličina strane",
+              control: (
+                <select
+                  aria-label="Veličina strane tabele artikala"
+                  value={pageSize}
+                  onChange={(event) => { setPageSize(Number(event.target.value)); setPageNumber(1); }}
+                >
+                  {PAGE_SIZE_OPTIONS.map((option) => <option key={option} value={option}>{option} redova</option>)}
+                </select>
+              ),
+            },
+          ]}
+        />
+
+        {exportStatus ? <div className="mt-3 rounded-2xl border border-[var(--info)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--info)]">{exportStatus}</div> : null}
+        {showDataSummary && error ? <div className="mt-3 rounded-2xl border border-[var(--error)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--error)]">{error.message}</div> : null}
+      </section>
+  );
+
+  const blockingState = loading && !pageData && !balance
+    ? <div className="rounded-3xl border border-muted surface-light p-8 text-center text-muted">Učitavanje bilansa zaliha...</div>
+    : error && (!pageData || !balance)
+      ? (
+          <AnalyticsErrorState
+            title="Podaci trenutno nisu dostupni"
+            message={error.message || "Ne prikazujemo nule jer nije potvrđeno da je period stvarno prazan."}
+            errorCode={error.errorCode ?? undefined}
+            correlationId={error.correlationId ?? undefined}
+            onRetry={() => {
+              retryPageLoad();
+            }}
+            helpHref="/analytics/data-quality"
+          />
+      )
+      : showEmptyState
+        ? (
+            <AnalyticsEmptyState
+              variant={showInsufficientEmptyState ? "insufficient_data" : (showFilteredEmptyState ? "filtered_out" : "no_data")}
+              message={inventoryMetaMessage ?? (showInsufficientEmptyState
+                ? "Nema dovoljno signala za pouzdan prikaz zaliha."
+                : "Nema podataka o zalihama za izabrani opseg.")}
+              reasons={[
+                showInsufficientEmptyState
+                  ? "Podaci jos nisu dovoljno kompletni za odluku."
+                  : "Izabrani filteri suzavaju rezultat na prazan skup.",
+                "Proverite refresh status i data quality signal.",
+                "Proširite opseg ili uklonite deo filtera.",
+              ]}
+              dataQualityHref="/analytics/data-quality"
+              refreshStatusHref="/admin/configuration?panel=workers"
+              onRetry={() => {
+                retryPageLoad();
+              }}
+              actions={hasActivePrimaryFilters
+                ? [
+                    { label: "Poništi filtere", onClick: resetInventoryFilters },
+                    { label: "Pokušaj ponovo", onClick: retryPageLoad },
+                  ]
+                : undefined}
+            />
+        )
+        : null;
+
+  const showInventoryControls = primaryLoadSettled || !blockingState;
 
   return (
     <ErrorBoundary fallback={<div className="rounded-3xl border border-[var(--error)] bg-[var(--surface-darker)] p-8 text-center text-[var(--error)]">Bilans stanja trenutno nije mogao da se prikaže. Osveži stranicu ili pokušaj ponovo za nekoliko trenutaka.</div>}>
       <div className="space-y-6">
+      {/* Stable child slots: [page header | null], [controls], [page body | blocking state]. The controls keep
+          their position across loading, error, empty and data states, so inputs are not remounted. */}
+      {blockingState ? null : (
+      <>
       <AnalyticsTrustHeader
         title="Analitika zaliha"
-        description="Operativni pregled zaliha: dopuna, rizik nestanka, višak, transferi i tok odluka. Status poverenja objedinjuje listu artikala, bilans i uvide."
-        periodFrom={null}
-        periodTo={null}
+        description="Operativni pregled zaliha: dopuna, rizik nestanka, višak, transferi i tok odluka. Izabrani period važi za listu i detalj; snapshot paneli su označeni zasebno."
+        periodFrom={periodFrom}
+        periodTo={periodTo}
         lastRefreshAt={primaryRefreshAt}
         dataSource="Snimak analitike zaliha"
         dataQualityStatus={primaryMeta?.dataQualityStatus ?? null}
@@ -1236,8 +1636,11 @@ export default function InventoryPage() {
         refreshStatusHref="/admin/configuration?panel=workers"
         compact
       />
+      <div className="rounded-2xl border border-[var(--info)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--info)]" role="note" data-testid="inventory-period-lineage">
+        {inventoryPeriodLineageNote}
+      </div>
       {freshnessLineageNote ? (
-        <div className="rounded-2xl border border-[var(--warning)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--warning)]" role="note">
+        <div className="rounded-2xl border border-[var(--warning)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--warning)]" role="note" data-testid="inventory-secondary-freshness-lineage">
           {freshnessLineageNote}
         </div>
       ) : null}
@@ -1313,145 +1716,13 @@ export default function InventoryPage() {
         </div>
       </section>
 
-      <section className="rounded-[28px] border border-muted surface-light p-5 shadow-lg">
-        <AnalyticsControlBar
-          title="Filteri i akcije"
-          description="Pretraži bilans, suzi lokaciju i ostavi operativne akcije sekundarnim u odnosu na pregled odluka."
-          chips={[
-            {
-              key: "rows",
-              label: "Prikazano",
-              value: `${fmtNumber(rows.length, 0, "0")} od ${fmtNumber(totalCount, 0, "0")} artikala`,
-              tone: "info",
-            },
-            {
-              key: "page",
-              label: "Strana",
-              value: `${fmtNumber(pageNumber, 0, "0")} / ${fmtNumber(totalPages, 0, "0")}`,
-            },
-            ...(riskSortScopeWarning
-              ? [{
-                  key: "risk-sort",
-                  label: "Rizik sort",
-                  value: "Lokalno po strani",
-                  tone: "warning" as const,
-                }]
-              : []),
-          ]}
-          primaryAction={{
-            key: "queue",
-            label: "Otvori centralni red akcija",
-            to: INVENTORY_ACTIONS_QUEUE_URL,
-          }}
-          secondaryActions={[
-            {
-              key: "refresh",
-              label: "Osveži",
-              onClick: retryPageLoad,
-              tone: "secondary",
-            },
-          ]}
-          fields={[
-            {
-              key: "search",
-              label: "Pretraga artikala",
-              span: "wide",
-              control: (
-                <input
-                  role="searchbox"
-                  aria-label="Pretraga artikala"
-                  value={searchInput}
-                  onChange={(event) => { setSearchInput(event.target.value); setPageNumber(1); }}
-                  placeholder="Pretraga po PLU ili nazivu artikla"
-                />
-              ),
-            },
-            {
-              key: "store",
-              label: "Prodavnica",
-              control: (
-                <select
-                  aria-label="Filter po prodavnici"
-                  value={selectedStoreId ?? ""}
-                  onChange={(event) => { setSelectedStoreId(event.target.value ? Number(event.target.value) : null); setSelectedSupplierId(null); setPageNumber(1); }}
-                >
-                  <option value="">Sve prodavnice</option>
-                  {stores.map((store) => <option key={store.storeId} value={store.storeId}>{store.storeName}</option>)}
-                </select>
-              ),
-            },
-            {
-              key: "supplier",
-              label: "Dobavljač",
-              control: (
-                <div className="space-y-2">
-                  <select
-                    aria-label="Filter po dobavljaču"
-                    value={selectedSupplierId ?? ""}
-                    onChange={(event) => { setSelectedSupplierId(event.target.value ? Number(event.target.value) : null); setPageNumber(1); }}
-                    disabled={filtersLoading || supplierFiltersStale}
-                    aria-invalid={supplierFiltersStale || undefined}
-                  >
-                    <option value="">{supplierFiltersStale ? "Izbor je privremeno blokiran" : "Svi dobavljači"}</option>
-                    {suppliers.map((supplier) => (
-                      <option key={supplier.supplierId} value={supplier.supplierId} disabled={supplierFiltersStale}>
-                        {supplier.supplierName}
-                      </option>
-                    ))}
-                  </select>
-                  {supplierFiltersWarning ? (
-                    <p className="text-[11px] font-semibold tracking-wide text-[var(--warning)]" role="status">
-                      {supplierFiltersWarning}
-                      {supplierFiltersStale ? ` ${SUPPLIER_FILTER_STALE_LIST_MESSAGE}` : ""}
-                    </p>
-                  ) : null}
-                </div>
-              ),
-            },
-            {
-              key: "sort",
-              label: "Sortiranje",
-              control: (
-                <div className="space-y-2">
-                  <select
-                    aria-label="Sortiranje tabele artikala"
-                    value={sortBy}
-                    onChange={(event) => { setSortBy(event.target.value); setPageNumber(1); }}
-                  >
-                    <option value="kolicina">Količina opadajuće</option>
-                    <option value="naziv">Naziv A-Z</option>
-                    <option value="vrednost">Vrednost opadajuce</option>
-                    <option value="azuriranje">Poslednje ažuriranje</option>
-                    <option value="oosRisk">OOS rizik opadajuce (samo trenutna strana)</option>
-                    <option value="overstockRisk">Overstock rizik opadajuce (samo trenutna strana)</option>
-                  </select>
-                  {riskSortScopeWarning ? (
-                    <p className="text-[11px] font-semibold tracking-wide text-[var(--warning)]" role="status" data-testid="inventory-risk-sort-scope-warning">
-                      {riskSortScopeWarning}
-                    </p>
-                  ) : null}
-                </div>
-              ),
-            },
-            {
-              key: "page-size",
-              label: "Veličina strane",
-              control: (
-                <select
-                  aria-label="Veličina strane tabele artikala"
-                  value={pageSize}
-                  onChange={(event) => { setPageSize(Number(event.target.value)); setPageNumber(1); }}
-                >
-                  {PAGE_SIZE_OPTIONS.map((option) => <option key={option} value={option}>{option} redova</option>)}
-                </select>
-              ),
-            },
-          ]}
-        />
+      </>
+      )}
 
-        {exportStatus ? <div className="mt-3 rounded-2xl border border-[var(--info)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--info)]">{exportStatus}</div> : null}
-        {error ? <div className="mt-3 rounded-2xl border border-[var(--error)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--error)]">{error.message}</div> : null}
-      </section>
+      {showInventoryControls ? renderInventoryControls(!blockingState) : null}
+
+      {blockingState ?? (
+      <>
 
       <div className="space-y-1">
         <h2 className="text-xl font-semibold text-contrast">1. Odluke sada</h2>
@@ -1492,7 +1763,7 @@ export default function InventoryPage() {
 
       <div className="grid gap-5 xl:grid-cols-2">
         <ErrorBoundary fallback={<div className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">Alerts nisu dostupni. Osveži stranicu.</div>}>
-          <InventoryAlertsFeed alerts={alerts} alertsLoading={alertsLoading} alertsError={alertsError} alertSeverityFilter={alertSeverityFilter} onSeverityFilterChange={setAlertSeverityFilter} displayCount={ALERTS_DISPLAY_COUNT} onOpenSizeCurve={setSizeCurveSkuId} onOpenDetail={openDetailBySku} />
+          <InventoryAlertsFeed alerts={alerts} alertsLoading={alertsLoading} alertsError={alertsError} alertSeverityFilter={alertSeverityFilter} onSeverityFilterChange={setAlertSeverityFilter} displayCount={ALERTS_DISPLAY_COUNT} onOpenSizeCurve={openSizeCurveFromAlert} onOpenDetail={openDetailBySku} />
         </ErrorBoundary>
         <ErrorBoundary fallback={<div className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">Forecast nije dostupan. Osveži stranicu.</div>}>
           <DemandForecastPanel forecast={forecast} forecastLoading={forecastLoading} forecastError={forecastError} rows={rows} stores={stores} oosThreshold={OOS_RISK_THRESHOLD} overstockThreshold={OVERSTOCK_RISK_THRESHOLD} oosDisplayCount={FORECAST_OOS_DISPLAY} overstockDisplayCount={FORECAST_OVERSTOCK_DISPLAY} onSuggestRestock={queueForecastRestock} />
@@ -1506,7 +1777,7 @@ export default function InventoryPage() {
 
       <div className="space-y-1">
         <h2 className="text-xl font-semibold text-contrast">3. Detaljna analiza zaliha</h2>
-        <p className="text-sm text-muted">KPI, prioriteti, poredjenje prodavnica i lista artikala za dublji pregled.</p>
+        <p className="text-sm text-muted">KPI, poređenje prodavnica i lista artikala za dublji pregled prioriteta.</p>
       </div>
 
       <InventoryKPICards totalSku={balance?.totalSku} totalOnHand={balance?.totalOnHand} lowStockCount={balance?.lowStockCount} lowStockShare={lowStockShare} avgUnitsPerSku={avgUnitsPerSku} totalValue={totalValue} />
@@ -1515,15 +1786,15 @@ export default function InventoryPage() {
 
       <div className="grid gap-5 xl:grid-cols-2">
         <StoreComparisonPanel sectionId={STORE_COMPARISON_SECTION_ID} stores={stores} compareStoreIds={compareStoreIds} comparison={storeComparison} operationsLoading={operationsLoading} onToggleStore={toggleCompareStore} />
-        <SizeCurvePanel sizeCurveSkuId={sizeCurveSkuId} sizeCurve={sizeCurve} sizeCurveLoading={sizeCurveLoading} sizeCurveError={sizeCurveError} onChangeSkuId={setSizeCurveSkuId} />
+        <SizeCurvePanel sizeCurveSkuId={sizeCurveSkuId} sizeCurve={sizeCurve} sizeCurveLoading={sizeCurveLoading} sizeCurveError={sizeCurveError} onChangeSkuId={openSizeCurveFromPanel} />
       </div>
 
       {/* Detail Table - scrollable inventory list */}
-      <InventoryItemsTable rows={displayedRows} loading={loading} totalCount={totalCount} pageNumber={pageNumber} totalPages={totalPages} onOpenDetail={openDetail} onPreviousPage={() => setPageNumber((current) => Math.max(1, current - 1))} onNextPage={() => setPageNumber((current) => Math.min(totalPages, current + 1))} onAddToActions={(row) => void addSignalRowToCentralQueue(row)} onReviewSlowStock={reviewSlowStock} isRowQueued={(row) => queuedSuggestionKeys.includes(buildInventorySignalActionSpec(row).sourceKey)} isRowQueueBusy={(row) => queueBusyKey === buildInventorySignalActionSpec(row).sourceKey} />
+      <InventoryItemsTable rows={displayedRows} loading={loading} totalCount={totalCount} pageNumber={pageNumber} totalPages={totalPages} onOpenDetail={openDetail} onPreviousPage={() => setPageNumber((current) => Math.max(1, current - 1))} onNextPage={() => setPageNumber((current) => Math.min(totalPages, current + 1))} onAddToActions={(row) => void addSignalRowToCentralQueue(row)} onReviewSlowStock={reviewSlowStock} isRowQueued={(row) => queuedSuggestionKeys.includes(buildInventorySignalActionSpec(row, inventoryActionDatasetContext).sourceKey)} isRowQueueBusy={(row) => queueBusyKey === buildInventorySignalActionSpec(row, inventoryActionDatasetContext).sourceKey} />
 
       <div className="space-y-1">
         <h2 className="text-xl font-semibold text-contrast">4. Izvoz i raspored izveštaja</h2>
-        <p className="text-sm text-muted">Operativne opcije za stampu, eksport i scheduler su dostupne po potrebi.</p>
+        <p className="text-sm text-muted">Operativne opcije za štampu, eksport i scheduler su dostupne po potrebi.</p>
       </div>
 
       <section className="rounded-[28px] border border-muted surface-light p-5 shadow-lg">
@@ -1560,6 +1831,8 @@ export default function InventoryPage() {
 
       {/* Detail Modal */}
       <SKUDetailModal detailRow={detailRow} detailData={detailData} detailLoading={detailLoading} detailError={detailError} detailTab={detailTab} detailSizeCurve={detailSizeCurve} detailSizeCurveLoading={detailSizeCurveLoading} onRetry={retryDetailFetch} onTabChange={setDetailTab} onClose={() => setDetailRow(null)} />
+      </>
+      )}
       </div>
     </ErrorBoundary>
   );

@@ -2,6 +2,9 @@ export type AnalyticsMetricKey =
   | "revenue"
   | "marginContribution"
   | "unitsSold"
+  | "totalCost"
+  | "popRevenueChangePct"
+  | "supplierAverageMarginPct"
   | "stockAtRisk"
   | "stockCoverDays"
   | "lostSalesEstimate"
@@ -56,6 +59,9 @@ export const canonicalMetricKeys = [
   "revenue",
   "marginContribution",
   "unitsSold",
+  "totalCost",
+  "popRevenueChangePct",
+  "supplierAverageMarginPct",
   "stockAtRisk",
   "stockCoverDays",
   "slowStockCapital",
@@ -189,6 +195,40 @@ const baseMetrics = {
     interpretation: "Meri promet po količini, nezavisno od cene.",
     relatedScreens: ["/analytics", "/analytics/products", "/analytics/supplier"],
     inputs: ["količina", "period", "filteri"],
+  }),
+  totalCost: defineMetric("totalCost", {
+    label: "Nabavna vrednost",
+    shortDescription: "Zbir nabavne vrednosti prodajnih stavki za koje je pouzdan trošak dostupan.",
+    formula: "SUM(količina × razrešena_nabavna_cena) za stavke sa istorijskim, snapshot ili produkt-fallback troškom",
+    dataSource: "Supplier Sales endpoint + AnalyticsMarginPolicy",
+    interpretation: "Prikazuje trošak robe obuhvaćen izabranim periodom, objektom i data-scope filterima; operativni troškovi nisu uključeni.",
+    limitations: ["Stavke bez pouzdane nabavne cene nisu uključene u zbir; snapshot i produkt-fallback izvori moraju se čitati uz oznaku kvaliteta."],
+    dataQualityDependencies: ["Pokrivenost nabavne cene", "Svežina cost snapshot-a"],
+    relatedScreens: ["/analytics/supplier", "/analytics/shoe-type", "/analytics/color"],
+    inputs: ["količina", "razrešena_nabavna_cena", "period", "filteri"],
+  }),
+  popRevenueChangePct: defineMetric("popRevenueChangePct", {
+    label: "PoP promena prometa",
+    shortDescription: "Procentualna promena prometa u odnosu na prethodni uporedivi period iste dužine.",
+    formula: "((promet_tekućeg_perioda − promet_prethodnog_uporedivog_perioda) / promet_prethodnog_uporedivog_perioda) × 100",
+    dataSource: "Supplier Sales endpoint + Sales facts analytics",
+    interpretation: "Negativna vrednost znači pad prometa, pozitivna rast, a 0% znači da su dva uporediva perioda jednaka.",
+    limitations: ["Prethodni period je neposredno prethodni interval iste uključive dužine i koristi iste store/data-scope filtere."],
+    dataQualityDependencies: ["Dostupan prethodni uporedivi period", "Pozitivan promet prethodnog perioda", "Svežina sales facts refresh-a"],
+    relatedScreens: ["/analytics/supplier", "/analytics/shoe-type", "/analytics/color"],
+    blockedWhen: ["Nema prethodnog uporedivog perioda", "Promet prethodnog perioda <= 0", "Prethodni upit nije uspešan ili nema dokaziv rezultat"],
+    inputs: ["promet_tekućeg_perioda", "promet_prethodnog_uporedivog_perioda", "period", "storeId", "dataScope"],
+  }),
+  supplierAverageMarginPct: defineMetric("supplierAverageMarginPct", {
+    label: "Prosečna marža dobavljača",
+    shortDescription: "Aritmetički prosek marže poznatih dobavljača sa dostupnim obračunom troška.",
+    formula: "AVG((maržni_doprinos_dobavljača / promet_sa_dostupnim_troškom_dobavljača) × 100)",
+    dataSource: "Supplier Sales endpoint + AnalyticsMarginPolicy",
+    interpretation: "Opisuje prosečnu maržu po dobavljaču, a ne ekonomski ponderisanu maržu celog prometa.",
+    limitations: ["Dobavljači bez poznatog identiteta ili bez pozitivnog pokrića troškom ne ulaze u prosek; vrednost nije neto profit."],
+    dataQualityDependencies: ["Pokrivenost nabavne cene", "Validan dobavljač", "Dovoljan broj dobavljača sa maržnim dokazom"],
+    relatedScreens: ["/analytics/supplier"],
+    inputs: ["maržni_doprinos_dobavljača", "promet_sa_dostupnim_troškom_dobavljača", "supplier_id"],
   }),
   stockAtRisk: defineMetric("stockAtRisk", {
     label: "Lager u riziku",
@@ -385,11 +425,13 @@ const operationalMetrics: Record<string, AnalyticsMetricDefinition> = {
     relatedScreens: ["/analytics/products", "/analytics/data-quality"],
   }),
   topSupplierRevenueShare: defineMetric("topSupplierRevenueShare", {
-    label: "Udeo top dobavljača",
-    shortDescription: "Udeo prihoda koji dolazi od top dobavljača u scorecard periodu.",
-    formula: "(prihod_top_dobavljača / ukupan_prihod) * 100",
+    label: "Udeo top 5 dobavljača",
+    shortDescription: "Udeo prometa koji dolazi od pet dobavljača sa najvećim prometom.",
+    formula: "(SUM(promet_top_5_poznatih_dobavljača) / SUM(promet_svih_vidljivih_poznatih_dobavljača)) × 100",
     dataSource: "Supplier decision materialized view",
-    interpretation: "Meri koncentraciju i zavisnost od malog broja dobavljača.",
+    interpretation: "Meri koncentraciju i zavisnost od najvažnijih dobavljača u trenutno vidljivoj poznatoj populaciji.",
+    limitations: ["Nepoznati dobavljači i redovi bez konačnog prometa ne ulaze u imenilac; promena vidljive populacije menja i denominator."],
+    dataQualityDependencies: ["Validan dobavljač", "Pozitivan i konačan promet"],
     relatedScreens: ["/analytics/supplier"],
   }),
   fullPriceShareChange: defineMetric("fullPriceShareChange", {

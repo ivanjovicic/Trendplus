@@ -1,6 +1,7 @@
 ﻿import { Link } from "react-router-dom";
 import { formatDate, formatDateTime } from "../../utils/analyticsFormatters";
 import { getSafeAnalyticsErrorMessage } from "../../utils/analyticsErrorMessages";
+import { supplierDecisionDatasetLabel, supplierDecisionProvenanceLabel, supplierDecisionReasonText } from "../../utils/supplierDecisionLabels";
 import "./AnalyticsTrustHeader.css";
 
 type AnalyticsTrustHeaderProps = {
@@ -8,6 +9,12 @@ type AnalyticsTrustHeaderProps = {
   description: string;
   periodFrom?: string | null;
   periodTo?: string | null;
+  requestedPeriodFrom?: string | null;
+  requestedPeriodTo?: string | null;
+  effectivePeriodFrom?: string | null;
+  effectivePeriodTo?: string | null;
+  observedPeriodFrom?: string | null;
+  observedPeriodTo?: string | null;
   lastRefreshAt?: string | null;
   dataFreshnessStatus?: "fresh" | "stale" | "critical" | "unknown" | string | null;
   refreshIsRunning?: boolean;
@@ -107,7 +114,7 @@ function safeRefreshStepLabel(value: string | null | undefined): string | null {
 function safeFallbackReasonLabel(value: string | null | undefined): string | null {
   const normalized = normalizeToken(value);
   if (!normalized) return null;
-  return FALLBACK_REASON_LABELS[normalized] ?? "Dodatni razlog fallback-a nije naveden.";
+  return FALLBACK_REASON_LABELS[normalized] ?? "Dodatni razlog pomoćnog skupa nije naveden.";
 }
 
 function normalizeStatus(value: string | null | undefined): "good" | "warning" | "critical" | "insufficient_data" | null {
@@ -160,6 +167,12 @@ export default function AnalyticsTrustHeader({
   description,
   periodFrom,
   periodTo,
+  requestedPeriodFrom,
+  requestedPeriodTo,
+  effectivePeriodFrom,
+  effectivePeriodTo,
+  observedPeriodFrom,
+  observedPeriodTo,
   lastRefreshAt,
   dataFreshnessStatus,
   refreshIsRunning,
@@ -191,23 +204,31 @@ export default function AnalyticsTrustHeader({
   const freshness = normalizeFreshness(dataFreshnessStatus);
   const safePeriodFrom = typeof periodFrom === "string" ? periodFrom.trim() : null;
   const safePeriodTo = typeof periodTo === "string" ? periodTo.trim() : null;
-  const hasPeriod = Boolean(safePeriodFrom && safePeriodTo);
+  const safeRequestedFrom = typeof requestedPeriodFrom === "string" ? requestedPeriodFrom.trim() : safePeriodFrom;
+  const safeRequestedTo = typeof requestedPeriodTo === "string" ? requestedPeriodTo.trim() : safePeriodTo;
+  const safeEffectiveFrom = typeof effectivePeriodFrom === "string" ? effectivePeriodFrom.trim() : null;
+  const safeEffectiveTo = typeof effectivePeriodTo === "string" ? effectivePeriodTo.trim() : null;
+  const safeObservedFrom = typeof observedPeriodFrom === "string" ? observedPeriodFrom.trim() : null;
+  const safeObservedTo = typeof observedPeriodTo === "string" ? observedPeriodTo.trim() : null;
+  const hasPeriod = Boolean(safeRequestedFrom && safeRequestedTo);
+  const hasEffectivePeriod = Boolean(safeEffectiveFrom && safeEffectiveTo);
+  const hasObservedPeriod = Boolean(safeObservedFrom && safeObservedTo);
   const hasSummary = hasSummaryValues(dataQualitySummary);
-  const normalizedRequestedDataset = typeof requestedDataset === "string" ? requestedDataset.trim() || null : null;
-  const normalizedEffectiveDataset = typeof effectiveDataset === "string" ? effectiveDataset.trim() || null : null;
+  const normalizedRequestedDataset = supplierDecisionDatasetLabel(requestedDataset);
+  const normalizedEffectiveDataset = supplierDecisionDatasetLabel(effectiveDataset);
   const hasDataset = Boolean(normalizedRequestedDataset || normalizedEffectiveDataset);
   const datasetValue = normalizedRequestedDataset && normalizedEffectiveDataset
     ? `${normalizedRequestedDataset} -> ${normalizedEffectiveDataset}`
     : (normalizedEffectiveDataset ?? normalizedRequestedDataset);
   const effectiveLabel = typeof effectivePeriodLabel === "string" ? effectivePeriodLabel.trim() || null : null;
-  const provenanceLabel = typeof provenanceBasis === "string" ? provenanceBasis.trim() || null : null;
+  const provenanceLabel = supplierDecisionProvenanceLabel(provenanceBasis);
   const dataSourceLabel = typeof dataSource === "string" ? dataSource.trim() || null : null;
   const recommendationNoteText = typeof recommendationNote === "string" ? recommendationNote.trim() || null : null;
   const emptyStateReasonText = typeof emptyStateReason === "string" ? emptyStateReason.trim() || null : null;
   const refreshStepLabel = safeRefreshStepLabel(refreshCurrentStep);
   const fallbackReasonLabel = safeFallbackReasonLabel(fallbackReasonCode);
   const fallbackReasonText = fallbackReason
-    ? getSafeAnalyticsErrorMessage(fallbackReason, fallbackReasonCode, "Dodatni razlog fallback-a nije naveden.")
+    ? supplierDecisionReasonText(getSafeAnalyticsErrorMessage(fallbackReason, fallbackReasonCode, "Dodatni razlog pomoćnog skupa nije naveden."))
     : null;
   const showFallbackBanner = Boolean(usedFallback);
   const showGatedBanner = mode === "recommendation" && recommendationAllowed !== true && !showFallbackBanner;
@@ -235,9 +256,22 @@ export default function AnalyticsTrustHeader({
         <div className="ath-meta-item">
           <span className="ath-meta-key">Period</span>
           <strong className="ath-meta-value">
-            {hasPeriod ? `${formatDate(safePeriodFrom)} - ${formatDate(safePeriodTo)}` : "Period nije definisan"}
+            {hasPeriod ? `${formatDate(safeRequestedFrom)} - ${formatDate(safeRequestedTo)}` : "Period nije definisan"}
           </strong>
         </div>
+        {hasEffectivePeriod ? (
+          <div className="ath-meta-item">
+            <span className="ath-meta-key">Efektivni period</span>
+            <strong className="ath-meta-value">{formatDate(safeEffectiveFrom)} - {formatDate(safeEffectiveTo)}</strong>
+            {effectiveLabel ? <span className="ath-meta-subtle">{effectiveLabel}</span> : null}
+          </div>
+        ) : null}
+        {hasObservedPeriod ? (
+          <div className="ath-meta-item">
+            <span className="ath-meta-key">Posmatrani period</span>
+            <strong className="ath-meta-value">{formatDate(safeObservedFrom)} - {formatDate(safeObservedTo)}</strong>
+          </div>
+        ) : null}
         <div className="ath-meta-item">
           <span className="ath-meta-key">Poslednje osveženje</span>
           <strong className="ath-meta-value">
@@ -261,7 +295,7 @@ export default function AnalyticsTrustHeader({
         ) : null}
         {hasDataset ? (
           <div className="ath-meta-item">
-            <span className="ath-meta-key">Dataset</span>
+            <span className="ath-meta-key">Skup podataka</span>
             <strong className="ath-meta-value">{datasetValue ?? "-"}</strong>
             {effectiveLabel ? <span className="ath-meta-subtle">{effectiveLabel}</span> : null}
           </div>
@@ -270,8 +304,8 @@ export default function AnalyticsTrustHeader({
 
       {showFallbackBanner ? (
         <div className="ath-banner ath-banner-warning" role="note">
-          <strong>Fallback aktiviran.</strong>{" "}
-          Za traženi period nema dovoljno podataka. Korišćen je dataset {effectiveLabel ?? normalizedEffectiveDataset ?? "n/a"} kao pomoćni signal.
+          <strong>Pomoćni skup je aktivan.</strong>{" "}
+          Za traženi period nema dovoljno podataka. Korišćen je skup podataka {effectiveLabel ?? normalizedEffectiveDataset ?? "n/a"} kao pomoćni signal.
           {fallbackReasonText ? ` ${fallbackReasonText}` : null}
           {fallbackReasonLabel ? <span className="ath-banner-code"> ({fallbackReasonLabel})</span> : null}
         </div>

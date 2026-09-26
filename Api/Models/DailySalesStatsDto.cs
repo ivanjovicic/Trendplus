@@ -47,8 +47,9 @@ public sealed class DailySalesMetadata
     public int TotalItemsInRange { get; set; }
     public int DuplicateReceiptGroupCount { get; set; }
     public int DuplicateReceiptHeaderCount { get; set; }
-    public int ReceiptAmountMismatchCount { get; set; }
-    public decimal ReceiptAmountMismatchRevenue { get; set; }
+    public int? ReceiptAmountMismatchCount { get; set; }
+    public decimal? ReceiptAmountMismatchRevenue { get; set; }
+    public DailySalesReceiptReconciliationDto ReceiptReconciliation { get; set; } = new();
     public int NonStandardReceiptCount { get; set; }
     public decimal NonStandardReceiptRevenue { get; set; }
     public int DebtReceiptCount { get; set; }
@@ -58,4 +59,16 @@ public sealed class DailySalesMetadata
     /// <summary>Latest available sale date in the whole dataset (null if no data at all).</summary>
     public DateTime? MaxAvailableDate { get; set; }
     public List<string> Warnings { get; set; } = [];
+}
+
+public sealed class DailySalesReceiptReconciliationDto
+{
+    /// <summary>verified when receipt identity is sufficient for a signed comparison; otherwise unavailable.</summary>
+    public string Status { get; set; } = "unavailable";
+    public string? ReasonCode { get; set; }
+    public int? MatchedReceiptCount { get; set; }
+    public int? UnmatchedReceiptCount { get; set; }
+    public int? UnmatchedDnevnikReceiptCount { get; set; }
+    public int? MismatchCount { get; set; }
+    public decimal? MismatchAmount { get; set; }
 }

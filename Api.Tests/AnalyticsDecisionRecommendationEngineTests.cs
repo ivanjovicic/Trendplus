@@ -317,4 +317,65 @@ public class AnalyticsDecisionRecommendationEngineTests
         Assert.Equal("critical", res.DataQualityStatus);
         Assert.True(res.Status is "do_not_trust" or "insufficient_data");
     }
+
+    [Fact(DisplayName = "Null unknown-entity share fails closed instead of becoming zero")]
+    public void NullUnknownEntityShare_FailsClosed()
+    {
+        var input = new AnalyticsDecisionRecommendationEngine.RecommendationInput(
+            IsUnknownEntity: false,
+            TotalRevenue: 200000m,
+            TotalUnits: 500,
+            ItemCount: 50,
+            SharePct: 5d,
+            MarginPct: 25d,
+            MarginCoveragePct: 95d,
+            SplitCoveragePct: 90d,
+            PopRevenueChangePct: 15d,
+            PopUnitsChangePct: 10d,
+            PreviousPeriodRevenue: 170000m,
+            PreviousPeriodUnits: 450,
+            HasPreviousPeriodWindow: true,
+            IsNewEntity: false,
+            UnknownBucketSharePct: null);
+
+        var result = AnalyticsDecisionRecommendationEngine.Evaluate(input, averageMarginPct: 20d);
+
+        Assert.Equal("insufficient_data", result.Status);
+        Assert.False(result.RecommendationAllowed);
+        Assert.Equal("critical", result.DataQualityStatus);
+        Assert.Contains("unknown_bucket_share_unavailable", result.ReasonCodes);
+    }
+
+    [Fact(DisplayName = "Missing comparable pre/post signal exposes an insufficient-data reason")]
+    public void MissingComparableSignal_InsufficientData()
+    {
+        var recommendation = AnalyticsDecisionRecommendationEngine.Evaluate(
+            new AnalyticsDecisionRecommendationEngine.RecommendationInput(
+                IsUnknownEntity: false,
+                TotalRevenue: 200000m,
+                TotalUnits: 500,
+                ItemCount: 50,
+                SharePct: 5d,
+                MarginPct: 25d,
+                MarginCoveragePct: 95d,
+                SplitCoveragePct: 0d,
+                PopRevenueChangePct: 15d,
+                PopUnitsChangePct: 10d,
+                PreviousPeriodRevenue: 170000m,
+                PreviousPeriodUnits: 450,
+                HasPreviousPeriodWindow: true,
+                IsNewEntity: false,
+                UnknownBucketSharePct: 0d),
+            averageMarginPct: 15d);
+
+        var gated = AnalyticsDecisionRecommendationEngine.ApplyComparableSignalGate(
+            recommendation,
+            hasComparableSignal: false);
+
+        Assert.Equal("insufficient_data", gated.Status);
+        Assert.Equal("insufficient_data", gated.DataQualityStatus);
+        Assert.False(gated.RecommendationAllowed);
+        Assert.Contains("missing_comparable_signal", gated.ReasonCodes);
+        Assert.Contains("uporediv signal", gated.Summary, StringComparison.OrdinalIgnoreCase);
+    }
 }

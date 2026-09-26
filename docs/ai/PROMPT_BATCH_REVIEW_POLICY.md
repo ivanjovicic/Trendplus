@@ -37,8 +37,10 @@ Default read set:
 
 1. `docs/ai/AGENT_START_HERE.md`
 2. `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
-3. `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md`
-4. changed queue/audit/rule docs from the last 3-5 prompt-system commits
+3. `MASTER_ROADMAP.md`
+4. only the changed owner queue/addendum/rule docs from the last 3-5 prompt-system commits
+
+Do not read `ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` during normal batch routing; it is historical review context unless a specific older prompt cites it for rationale.
 
 Do not use batch review as an excuse for whole-repo analysis.
 
@@ -51,7 +53,7 @@ A batch review must check:
 - duplicate prompts for the same feature family
 - prompts marked ready despite blocked gates
 - missing validation/evidence requirements
-- contradictions between `AGENT_START_HERE`, protocol, safety gate, priority review and queues
+- contradictions between `AGENT_START_HERE`, protocol, `MASTER_ROADMAP`, safety gate and owner queues
 - old prompts superseded by newer refined prompts
 - excessive token requirements caused by unnecessary read-first docs
 - missing follow-up prompts for discovered issues

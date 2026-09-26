@@ -88,6 +88,20 @@ public sealed class SupplierDecisionSchemaSqlTests
     }
 
     [Fact]
+    public void VendorSalesNivelacijaScopedFactQueryBindsStoreAndDataOriginForEventsAndSales()
+    {
+        var source = ReadRepoFile("Api/Endpoints/AllEndpoints.cs");
+
+        Assert.Contains("BuildVendorSalesNivelacijaScopedSourceSql", source);
+        Assert.Contains("@storeId IS NULL OR d.\"IDObjekat\" = @storeId::int", source);
+        Assert.Contains("@storeId IS NULL OR pz.id_objekat = @storeId::int", source);
+        Assert.Contains("@dataScope::text = 'all'", source);
+        Assert.Contains("d.\"DataOrigin\" = 'access'", source);
+        Assert.Contains("pz.data_origin = 'access'", source);
+        Assert.Contains("var useScopedFactQuery = storeId.HasValue || normalizedDataScope != \"all\";", source);
+    }
+
+    [Fact]
     public void VendorSalesNivelacijaViewPreservesMissingWindowAsNullAndLabelsBaselineReason()
     {
         var sql = ReadRepoFile("Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql");
@@ -109,12 +123,22 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.DoesNotContain("ChangePercent = changePercentRevenue ?? 0m", source);
         Assert.Contains("ConfidencePct = row.Vendor.HasComparableSalesWindow ? recommendation.ConfidencePct : null", source);
         Assert.Contains("ReliabilityPct = row.Vendor.HasComparableSalesWindow ? recommendation.ReliabilityPct : null", source);
-        Assert.Contains("HasComparableSalesWindow = analyzedRows > 0 && analyzed.All(x => x.HasComparableSalesWindow)", source);
+        Assert.Contains("var comparableRows = analyzed", source);
+        Assert.Contains("HasComparableSalesWindow = comparableRows.Count > 0", source);
+        Assert.DoesNotContain("HasComparableSalesWindow = analyzedRows > 0 && analyzed.All(x => x.HasComparableSalesWindow)", source);
+        Assert.Contains("VendorSalesNivelacijaCohortPolicy", source);
+        Assert.Contains("SelectLatestEventPerArticle(dedupRows)", source);
+        Assert.Contains("ArticleStats = articleStats", source);
+        Assert.Contains("CohortPolicy = \"latest_event_per_article\"", source);
+        Assert.DoesNotContain("LIMIT @maxRows", source);
         Assert.Contains("var totalAbsoluteChangeRevenue = vendorStats.Sum(x => x.AbsoluteChangeRevenue);", source);
         Assert.Contains("totals.AbsoluteChangeRevenue = totalAbsoluteChangeRevenue;", source);
         Assert.Contains("vendor.ChangeSharePercent = totalAbsoluteChangeRevenue == 0m", source);
         Assert.Equal(3, source.Split("var hasComparableNivelacijaSignal =", StringSplitOptions.None).Length - 1);
-        Assert.Equal(3, source.Split("recommendationAllowed = recommendation.RecommendationAllowed && hasComparableNivelacijaSignal", StringSplitOptions.None).Length - 1);
+        Assert.Equal(3, source.Split("var exposedRecommendation = AnalyticsDecisionRecommendationEngine.ApplyComparableSignalGate(", StringSplitOptions.None).Length - 1);
+        // The comparable-signal gate still drives the decision; Operations integrity gating can only block it further.
+        Assert.Contains("var recommendationAllowed = exposedRecommendation.RecommendationAllowed && !blockOperationsDecisionSignals;", source);
+        Assert.DoesNotContain("var recommendationAllowed = exposedRecommendation.RecommendationAllowed;", source);
     }
 
     [Fact]
@@ -144,6 +168,11 @@ public sealed class SupplierDecisionSchemaSqlTests
         AssertNullableIntProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.RawRows));
         AssertNullableIntProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.DeduplicatedRows));
         AssertNullableIntProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.DuplicateRowsRemoved));
+        AssertNullableIntProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.CohortRows));
+        AssertNullableIntProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.CohortRowsExcluded));
+        AssertNullableIntProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.ReturnedRows));
+        AssertNullableIntProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.TruncatedRows));
+        AssertNullableIntProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.ComparableRows));
         AssertNullableIntProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.InactiveRows));
         AssertNullableIntProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.UnchangedPriceRows));
         AssertNullableIntProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.AnalyzedRows));
@@ -311,6 +340,47 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.Contains("ds.period_to >= @fromDate AND ds.period_from <= @toDate", endpoint);
         Assert.Contains("var mvName = SelectDecisionScoreMv(windowDays);", endpoint);
         Assert.Contains("FROM {mvName} ds", endpoint);
+    }
+
+    [Fact]
+    public void SupplierDecisionPrecomputedCapabilitiesGateEachSelectedWindowAndRequiredColumns()
+    {
+        var endpoint = ReadRepoFile("Api/Endpoints/SupplierDecisionHubEndpoints.cs");
+
+        Assert.Contains("var windowDays = GetDecisionScoreWindowDays(filters);", endpoint);
+        Assert.Contains("capabilities.HasDecisionScoreCacheForWindow(windowDays)", endpoint);
+        Assert.Contains("to_regclass('public.mv_supplier_decision_score_cache_90d')", endpoint);
+        Assert.Contains("to_regclass('public.mv_supplier_decision_score_cache_180d')", endpoint);
+        Assert.Contains("to_regclass('public.vw_supplier_ml_latest_predictions')", endpoint);
+        Assert.Contains("ml_latest_predictions_view_has_required_columns", endpoint);
+        Assert.Contains("table_name = 'vw_supplier_ml_latest_predictions'", endpoint);
+        Assert.Contains("'top_feature_1'", endpoint);
+        Assert.Contains("'top_feature_2'", endpoint);
+        Assert.Contains("'top_feature_3'", endpoint);
+        Assert.Contains("'explanation_text'", endpoint);
+        Assert.Contains("table_name = 'mv_supplier_decision_score_cache_90d'", endpoint);
+        Assert.Contains("table_name = 'mv_supplier_decision_score_cache_180d'", endpoint);
+        Assert.Contains("'post_signal_coverage'", endpoint);
+        Assert.Contains("'confidence_score'", endpoint);
+        Assert.Contains("'recommendation_code'", endpoint);
+        Assert.Contains("throw new SupplierDecisionUnavailableException(\n                \"MISSING_SCHEMA\"", endpoint);
+        Assert.DoesNotContain("? GetDecimal(reader, \"post_signal_coverage\")\n                    : 1m", endpoint);
+    }
+
+    [Fact]
+    public void SupplierDecisionAllTimeMlProjectionCarriesTheSameEvidenceContract()
+    {
+        var sql = ReadRepoFile("Database/Analytics/015_AddSupplierMlRanking.sql");
+
+        Assert.Contains("ROUND(COALESCE(post_signal_coverage, 0), 4) AS post_signal_coverage", sql);
+        Assert.Contains("ROUND(COALESCE(did_signal_coverage, 0), 4) AS did_signal_coverage", sql);
+        Assert.Contains("ROUND(COALESCE(cost_signal_coverage, 0), 4) AS cost_signal_coverage", sql);
+        Assert.Contains("evidence_quality_status", sql);
+        Assert.Contains("return_rate_missing_evidence_reason", sql);
+        AssertInOrder(
+            sql,
+            "confidence_score,\n    ROUND(COALESCE(post_signal_coverage, 0), 4) AS post_signal_coverage",
+            "CREATE MATERIALIZED VIEW IF NOT EXISTS mv_supplier_decision_score_cache AS");
     }
 
     [Fact]
@@ -490,6 +560,9 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.Contains("ResolveRequestedDataset", endpoint);
         Assert.Contains("BuildEffectivePeriodLabel", endpoint);
         Assert.Contains("dataCoverageStatus", endpoint);
+        Assert.Contains("meta.RequestedPeriodFromUtc = trustMetadata?.RequestedFrom", endpoint);
+        Assert.Contains("meta.EffectivePeriodFromUtc = trustMetadata?.EffectiveFrom", endpoint);
+        Assert.Contains("meta.ObservedPeriodFromUtc = rows.Count > 0 ? rows.Min(row => row.PeriodFrom) : null", endpoint);
     }
 
     [Fact]
@@ -505,6 +578,20 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.Contains("IReadOnlyList<string> ReasonCodes", endpoint);
         Assert.Contains("recommendationSignal.ReliabilityPct", endpoint);
         Assert.Contains("recommendationSignal.StatusReason", endpoint);
+    }
+
+    [Fact]
+    public void SupplierDecisionRichDetailsReuseCanonicalTrustMetadataAndResponseMeta()
+    {
+        var endpoint = ReadRepoFile("Api/Endpoints/SupplierDecisionHubEndpoints.cs");
+
+        Assert.Contains("BuildDetailsResponseAsync(analyticsConnectionString, activeFilters, dataset, supplier, ct)", endpoint);
+        Assert.Contains("var trustMetadata = BuildScorecardTrustMetadata(dataset, filters);", endpoint);
+        Assert.Contains("BuildResponseMeta(dataset.Rows, trustMetadata)", endpoint);
+        Assert.Contains("Meta = ApplyCorrelationId(response.Response.Meta, ResolveCorrelationId(httpContext))", endpoint);
+        Assert.Contains("ScorecardTrustMetadata? TrustMetadata = null", endpoint);
+        Assert.Contains("string? DataNote = null", endpoint);
+        Assert.Contains("AnalyticsResponseMetaDto? Meta = null", endpoint);
     }
 
     [Fact]
@@ -588,7 +675,8 @@ public sealed class SupplierDecisionSchemaSqlTests
     private static string ReadRepoFile(string relativePath)
     {
         var repoRoot = FindRepoRoot();
-        return File.ReadAllText(Path.Combine(repoRoot, relativePath));
+        // Normalize line endings so multi-line source fragments match on CRLF (Windows autocrlf) and LF checkouts alike.
+        return File.ReadAllText(Path.Combine(repoRoot, relativePath)).ReplaceLineEndings("\n");
     }
 
     private static string FindRepoRoot()

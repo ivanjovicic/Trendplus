@@ -122,11 +122,11 @@ export function SKUDetailModal({
               ["PLU", detailRow.plu ?? "Nije dodeljen"],
               ["Prodavnica", detailData?.storeName ?? detailRow.storeName],
               ["Dobavljac", detailData?.supplierName ?? detailRow.supplierName],
-              ["Kolicina", detailQuantity == null ? "Nije dostupno" : formatNumber(detailQuantity)],
-              ["Minimalna kolicina", detailMinimum == null ? "Nije dostupno" : formatNumber(detailMinimum)],
+              ["Količina", detailQuantity == null ? "Nije dostupno" : formatNumber(detailQuantity)],
+              ["Minimalna količina", detailMinimum == null ? "Nije dostupno" : formatNumber(detailMinimum)],
               ["Gap do minimuma", detailGap == null ? "Nije dostupno" : formatNumber(detailGap)],
               ["Nabavna cena", detailUnitCost == null ? "Nije dostupno" : formatCurrency(detailUnitCost)],
-              ["Pokrice minimuma", detailCoverageRatio == null ? "Nije dostupno" : `${detailCoverageRatio.toFixed(2)}x`],
+              ["Pokriće minimuma", detailCoverageRatio == null ? "Nije dostupno" : `${detailCoverageRatio.toFixed(2)}x`],
               ["Poslednje kretanje", formatDateTime(detailData?.lastMovementAt)],
               ["Dana bez kretanja", detailData ? formatNumber(detailData.daysSinceMovement) : "Učitavanje..."],
               ["Kretanja u izabranom periodu", detailData ? formatNumber(detailData.movementCount) : "Učitavanje..."],
@@ -175,7 +175,7 @@ export function SKUDetailModal({
                       </div>
                     </div>
                     <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-3 text-right">
-                      <div className="text-xs uppercase tracking-[0.18em] text-[var(--text-primary)]">Kolicina / iznos</div>
+                      <div className="text-xs uppercase tracking-[0.18em] text-[var(--text-primary)]">Količina / iznos</div>
                       <div className="mt-2 text-sm font-semibold text-[var(--text-primary)]">{entry.kolicina == null ? "N/A" : formatNumber(entry.kolicina)}</div>
                       <div className="text-xs text-[var(--text-primary)]">{formatCurrency(entry.iznos)}</div>
                     </div>

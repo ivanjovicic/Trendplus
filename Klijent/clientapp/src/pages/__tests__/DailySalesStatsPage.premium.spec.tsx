@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { StrictMode, type ReactNode } from "react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import DailySalesStatsPage, { buildSupplierConcentration } from "../DailySalesStatsPage";
@@ -513,6 +513,70 @@ describe("DailySalesStatsPage premium controls", () => {
     expect(screen.queryByRole("heading", { name: /Nema rezultata za trenutne filtere/i })).not.toBeInTheDocument();
   });
 
+  it("toggles table sort once under StrictMode", async () => {
+    const baseRow = response().dateRows[0];
+    vi.mocked(getDailySalesStats).mockResolvedValue(response({
+      dateRows: [
+        { ...baseRow, date: "2026-04-01", totalRevenue: 9000 },
+        { ...baseRow, date: "2026-04-02", totalRevenue: 1000 },
+      ],
+    }));
+
+    render(
+      <StrictMode>
+        <MemoryRouter initialEntries={["/analytics/daily-sales"]}>
+          <Routes>
+            <Route path="/analytics/daily-sales" element={<DailySalesStatsPage />} />
+          </Routes>
+        </MemoryRouter>
+      </StrictMode>,
+    );
+
+    const table = await screen.findByTestId("daily-sales-stats-data-table");
+    const revenueSort = within(table).getByRole("button", { name: /Prihod dana/ });
+    fireEvent.click(revenueSort);
+    fireEvent.click(revenueSort);
+
+    await waitFor(() => {
+      const rows = within(table).getAllByRole("row").slice(1);
+      expect(within(rows[0]).getAllByRole("cell")[0]).toHaveTextContent(/2\.\s*4\.\s*2026/);
+      expect(within(rows[1]).getAllByRole("cell")[0]).toHaveTextContent(/1\.\s*4\.\s*2026/);
+    });
+  });
+
+  it("uses backend no-data metadata even when the response contains calendar zero rows", async () => {
+    vi.mocked(getDailySalesStats).mockResolvedValue(
+      response({
+        topSuppliers: [],
+        topSuppliersOrder: [],
+        dateRows: [
+          { ...response().dateRows[0], totalRevenue: 0, totalItemsSold: 0, firstShiftTotalItems: 0, secondShiftTotalItems: 0 },
+          { ...response().dateRows[0], date: "2026-04-02", totalRevenue: 0, totalItemsSold: 0, firstShiftTotalItems: 0, secondShiftTotalItems: 0 },
+        ],
+        meta: {
+          success: true,
+          dataQualityStatus: "insufficient_data",
+          emptyReason: "no_data_in_period",
+          message: "Nema prodaje za izabrani period.",
+        },
+        metadata: { ...response().metadata, totalDays: 30, totalItemsInRange: 0 },
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/daily-sales"]}>
+        <Routes>
+          <Route path="/analytics/daily-sales" element={<DailySalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/Nema prodaje za izabrani period\./)).toBeInTheDocument();
+    expect(screen.queryByText("Ukupan prihod")).not.toBeInTheDocument();
+    expect(screen.queryByText("Stabilan pregled")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("line-chart")).not.toBeInTheDocument();
+  });
+
   it("surfaces backend trust warnings from Daily Sales meta", async () => {
     vi.mocked(getDailySalesStats).mockResolvedValue(
       response({
@@ -567,12 +631,21 @@ describe("DailySalesStatsPage premium controls", () => {
   it("marks a null-and-zero shift pair as incomplete without replacing the measured zero", async () => {
     vi.mocked(getDailySalesStats).mockResolvedValue(
       response({
-        dateRows: [{
-          ...response().dateRows[0],
-          firstShiftTotalItems: null,
-          secondShiftTotalItems: 0,
-          totalItemsSold: 18,
-        }],
+        dateRows: [
+          {
+            ...response().dateRows[0],
+            firstShiftTotalItems: 0,
+            secondShiftTotalItems: 0,
+            totalItemsSold: 18,
+          },
+          {
+            ...response().dateRows[0],
+            date: "2026-04-02",
+            firstShiftTotalItems: null,
+            secondShiftTotalItems: 0,
+            totalItemsSold: 10,
+          },
+        ],
       }),
     );
 
@@ -584,19 +657,24 @@ describe("DailySalesStatsPage premium controls", () => {
       </MemoryRouter>,
     );
 
-    const qualityToggle = await screen.findByRole("button", { name: /upozorenj/i });
-    expect(qualityToggle).toHaveTextContent(/upozorenj/i);
+    const qualityToggle = await screen.findByTitle("Prikaži detalje kvaliteta");
     fireEvent.click(qualityToggle);
 
     const qualityPanel = screen.getByRole("heading", { name: /^Kvalitet podataka/ }).closest("article");
     expect(qualityPanel).not.toBeNull();
     const incompleteShiftCard = within(qualityPanel as HTMLElement)
-      .getByText("Dani sa nepotpunom satnicom")
+      .getByText("Dani bez satnice")
       .closest("article");
     expect(incompleteShiftCard).not.toBeNull();
     expect(within(incompleteShiftCard as HTMLElement).getByText("1")).toBeInTheDocument();
 
-    const dayRow = screen.getByRole("cell", { name: "Nije dostupno" }).closest("tr");
+    const incompleteCountCard = within(qualityPanel as HTMLElement)
+      .getByText("Dani sa nepotpunom satnicom")
+      .closest("article");
+    expect(incompleteCountCard).not.toBeNull();
+    expect(within(incompleteCountCard as HTMLElement).getByText("2")).toBeInTheDocument();
+
+    const dayRow = screen.getAllByRole("cell", { name: "Nije dostupno" })[0]?.closest("tr");
     expect(dayRow).not.toBeNull();
     expect(within(dayRow as HTMLElement).getByText("Nije dostupno")).toBeInTheDocument();
     expect(within(dayRow as HTMLElement).getByText("0")).toBeInTheDocument();

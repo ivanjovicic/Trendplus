@@ -2,43 +2,43 @@
   "shoeTypes": [
     {
       "tipObuceNaziv": "Patike",
-      "ukupanPromet": 2800,
+      "ukupanPromet": 2800.00,
       "ukupnaKolicina": 25,
       "sharePct": 38.89,
       "isUnknown": false
     },
     {
       "tipObuceNaziv": "Cipele",
-      "ukupanPromet": 2440,
+      "ukupanPromet": 2440.00,
       "ukupnaKolicina": 13,
       "sharePct": 33.89,
       "isUnknown": false
     },
     {
       "tipObuceNaziv": "Sandale",
-      "ukupanPromet": 1000,
+      "ukupanPromet": 1000.00,
       "ukupnaKolicina": 20,
       "sharePct": 13.89,
       "isUnknown": false
     },
     {
       "tipObuceNaziv": "Nepoznato",
-      "ukupanPromet": 960,
+      "ukupanPromet": 960.00,
       "ukupnaKolicina": 12,
       "sharePct": 13.33,
       "isUnknown": true
     }
   ],
   "totals": {
-    "ukupanPromet": 7200,
+    "ukupanPromet": 7200.00,
     "ukupnaKolicina": 70,
     "brojTipovaObuce": 4,
     "recommendationSummary": {
       "increaseFocus": 0,
       "maintain": 0,
       "review": 0,
-      "doNotTrust": 1,
-      "insufficientData": 3
+      "doNotTrust": 0,
+      "insufficientData": 4
     }
   },
   "dataQuality": {

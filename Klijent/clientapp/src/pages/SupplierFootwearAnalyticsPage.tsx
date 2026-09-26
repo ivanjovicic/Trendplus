@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import AnalyticsControlBar, { type AnalyticsControlBarChip, type AnalyticsControlBarField } from "../components/analytics/AnalyticsControlBar";
 import AnalyticsDataTable from "../components/analytics/AnalyticsDataTable";
@@ -11,7 +11,6 @@ import {
   getVendorSalesNivelacija,
   getVendorSalesNivelacijaOptions,
   type VendorSalesNivelacijaOption,
-  type VendorSalesNivelacijaArticleStat,
   type VendorSalesNivelacijaRecommendation,
   type VendorSalesNivelacijaResponse,
   type VendorSalesNivelacijaVendorStat,
@@ -34,8 +33,8 @@ import { projectVendorSalesDataQuality } from "../utils/vendorSalesDataQuality";
 import {
   buildSupplierVendorDetailRecordId,
   buildSupplierVendorKeys,
-  resolveSupplierArticleVendorKey,
 } from "../utils/supplierVendorIdentity";
+import { getDataScope, normalizeDataScope, type DataScope } from "../utils/dataScope";
 import type { SupplierEmbeddedPageProps } from "./supplierSharedState";
 import "./SupplierFootwearAnalyticsPage.css";
 
@@ -44,7 +43,7 @@ type SortDir = "asc" | "desc";
 type SortField = "vendorName" | "postRevenue" | "sharePct" | "topFootwearType" | "trendPct" | "status";
 type DecisionStatus = VendorSalesNivelacijaRecommendation["status"];
 
-type ActiveFilters = { fromDate: string; toDate: string; vendorId: number | null; category: string; storeId: number | null; dataScope: string | null };
+type ActiveFilters = { fromDate: string; toDate: string; vendorId: number | null; category: string; storeId: number | null; dataScope: DataScope };
 type SuggestedRange = { fromDate: string; toDate: string; label: string };
 type DataQualityStatus = "good" | "warning" | "critical" | "insufficient_data" | null;
 
@@ -146,49 +145,58 @@ function buildStatusTooltip(data: StatusTooltipData): string {
     : " | Pouzdanost Nije dostupno | Poverenje Nije dostupno";
   return `${statusDisplayLabel(data.status)}: ${data.statusReason} | Udeo ${formatMetricDisplayValue({ value: data.sharePct, kind: "percent" })} | Trend ${fmtSignedPct(data.trendPct, 1)} | Tip ${data.topFootwearType} (${formatMetricDisplayValue({ value: data.topFootwearTypeSharePct, kind: "percent" })})${trust}`;
 }
-function buildTypeInsights(
-  articleStats: VendorSalesNivelacijaArticleStat[],
-  vendorStats: VendorSalesNivelacijaVendorStat[],
+const TYPE_INSIGHT_VISIBLE_CATEGORY_LIMIT = 8;
+
+export function buildTypeInsightChartProjection(
+  data: VendorSalesNivelacijaResponse | null,
+  visibleCategoryLimit = TYPE_INSIGHT_VISIBLE_CATEGORY_LIMIT,
 ) {
-  const vendorKeys = buildSupplierVendorKeys(vendorStats);
-  const vendorCategoryRevenue = new Map<string, Map<string, number>>();
-  const vendorCategoryElasticities = new Map<string, Map<string, number[]>>();
-  const globalCategoryRevenue = new Map<string, number>();
+  if (data?.typeInsightsAuthoritative !== true) {
+    return {
+      chartRows: [] as Array<{ name: string; sharePct: number }>,
+      excludedSharePct: null as number | null,
+      totalCategoryCount: 0,
+      displayDenominatorLabel: null as string | null,
+    };
+  }
 
-  articleStats.forEach((row, articleIndex) => {
-    if (!hasComparablePrePostEvidence(row)) return;
-    const vKey = resolveSupplierArticleVendorKey(row, articleIndex, vendorStats, vendorKeys);
-    const category = (row.category ?? "").trim() || "N/A";
-    const revenue = normalizeMetricNumber(row.postRevenue);
-    if (revenue == null) return;
-    if (!vendorCategoryRevenue.has(vKey)) vendorCategoryRevenue.set(vKey, new Map());
-    const categoryMap = vendorCategoryRevenue.get(vKey)!;
-    categoryMap.set(category, (categoryMap.get(category) ?? 0) + revenue);
-    if (!vendorCategoryElasticities.has(vKey)) vendorCategoryElasticities.set(vKey, new Map());
-    const elasticityMap = vendorCategoryElasticities.get(vKey)!;
-    if (!elasticityMap.has(category)) elasticityMap.set(category, []);
-    if (row.priceElasticity != null && Number.isFinite(Number(row.priceElasticity))) elasticityMap.get(category)!.push(Number(row.priceElasticity));
-    globalCategoryRevenue.set(category, (globalCategoryRevenue.get(category) ?? 0) + revenue);
-  });
+  const rankedCategories = (data.categoryStats ?? [])
+    .map((item) => ({
+      name: item.category.trim() || "Nepoznato",
+      sharePct: normalizeMetricNumber(item.postRevenueSharePercent),
+    }))
+    .filter((item): item is { name: string; sharePct: number } => item.sharePct != null)
+    .sort((a, b) => b.sharePct - a.sharePct || a.name.localeCompare(b.name, "sr"));
 
-  const byVendor = new Map<string, { topType: string; topTypeSharePct: number | null; avgElasticity: number | null }>();
-  vendorCategoryRevenue.forEach((categoryMap, key) => {
-    let total = 0;
-    let topType = "N/A";
-    let topRevenue = 0;
-    categoryMap.forEach((value, category) => { total += value; if (value > topRevenue) { topRevenue = value; topType = category; } });
-    const topTypeSharePct = total > 0 ? (topRevenue / total) * 100 : null;
-    const categoryElasticities = vendorCategoryElasticities.get(key)?.get(topType) ?? [];
-    const avgElasticity = categoryElasticities.length > 0 ? categoryElasticities.reduce((sum, value) => sum + value, 0) / categoryElasticities.length : null;
-    byVendor.set(key, { topType, topTypeSharePct, avgElasticity });
-  });
+  const visibleCategories = rankedCategories.slice(0, visibleCategoryLimit);
+  const excludedSharePct = rankedCategories
+    .slice(visibleCategoryLimit)
+    .reduce((sum, item) => sum + item.sharePct, 0);
 
-  const globalTopTypes = [...globalCategoryRevenue.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
-  const globalTotal = globalTopTypes.reduce((sum, item) => sum + item[1], 0);
-  const globalTypeShare = globalTotal > 0
-    ? globalTopTypes.map(([name, revenue]) => ({ name, sharePct: (revenue / globalTotal) * 100 }))
-    : [];
-  return { byVendor, globalTypeShare };
+  const chartRows = [...visibleCategories];
+  if (excludedSharePct > 0) {
+    chartRows.push({
+      name: "Ostali",
+      sharePct: Number(excludedSharePct.toFixed(2)),
+    });
+  }
+
+  const denominator = data.typeInsightsDenominator ?? "comparable_post_revenue";
+  const displayDenominatorLabel = excludedSharePct > 0
+    ? `Udeo u odnosu na punu uporedivu kohortu (${denominator}); prikaz top ${visibleCategoryLimit} plus Ostali.`
+    : `Udeo u odnosu na punu uporedivu kohortu (${denominator}); prikaz top ${Math.min(visibleCategoryLimit, rankedCategories.length)} kategorija.`;
+
+  return {
+    chartRows,
+    excludedSharePct: excludedSharePct > 0 ? Number(excludedSharePct.toFixed(2)) : null,
+    totalCategoryCount: rankedCategories.length,
+    displayDenominatorLabel,
+  };
+}
+
+function buildTypeInsights(data: VendorSalesNivelacijaResponse | null) {
+  const projection = buildTypeInsightChartProjection(data);
+  return { globalTypeShare: projection.chartRows };
 }
 
 function normalizeDataQualityStatus(value: string | null | undefined): DataQualityStatus {
@@ -248,8 +256,18 @@ export default function SupplierFootwearAnalyticsPage({
 }: SupplierEmbeddedPageProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const requestIdRef = useRef(0);
   const initialRange = useMemo(() => getPresetRange("30d"), []);
+  const urlDataScopeParam = searchParams.get("dataScope");
+  const [persistedDataScope, setPersistedDataScope] = useState<DataScope>(() => (
+    normalizeDataScope(urlDataScopeParam ?? getDataScope())
+  ));
+  const effectiveDataScope = useMemo(() => {
+    if (sharedFilters?.dataScope) return normalizeDataScope(sharedFilters.dataScope);
+    if (urlDataScopeParam) return normalizeDataScope(urlDataScopeParam);
+    return persistedDataScope;
+  }, [persistedDataScope, sharedFilters?.dataScope, urlDataScopeParam]);
 
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>(sharedFilters?.periodPreset ?? "30d");
   const [fromDate, setFromDate] = useState(sharedFilters?.fromDate ?? initialRange.fromDate);
@@ -262,7 +280,9 @@ export default function SupplierFootwearAnalyticsPage({
     vendorId: sharedFilters?.supplierId ?? null,
     category: "",
     storeId: sharedFilters?.storeId ?? null,
-    dataScope: sharedFilters?.dataScope ?? null,
+    dataScope: sharedFilters?.dataScope
+      ? normalizeDataScope(sharedFilters.dataScope)
+      : normalizeDataScope(urlDataScopeParam ?? getDataScope()),
   });
 
   const [vendors, setVendors] = useState<Dobavljac[]>([]);
@@ -288,6 +308,34 @@ export default function SupplierFootwearAnalyticsPage({
   ), [activeFilters.category, activeFilters.fromDate, activeFilters.toDate, activeFilters.vendorId, category, fromDate, toDate, vendorId]);
 
   useEffect(() => {
+    if (embedded || sharedFilters?.dataScope || urlDataScopeParam) return;
+    const handleScopeChange = () => {
+      setPersistedDataScope(getDataScope());
+    };
+
+    window.addEventListener("trendplus:data-scope-changed", handleScopeChange);
+    return () => window.removeEventListener("trendplus:data-scope-changed", handleScopeChange);
+  }, [embedded, sharedFilters?.dataScope, urlDataScopeParam]);
+
+  useEffect(() => {
+    setActiveFilters((current) => (
+      current.dataScope === effectiveDataScope
+        ? current
+        : { ...current, dataScope: effectiveDataScope }
+    ));
+  }, [effectiveDataScope]);
+
+  useEffect(() => {
+    setData(null);
+    setError(null);
+    setExpandedVendorKey(null);
+    setPreviousRevenue(null);
+    setPreviousPeriodState("empty");
+    setPreviousPeriodWarning(null);
+    setPreviousPeriodEmptyNote(null);
+  }, [effectiveDataScope]);
+
+  useEffect(() => {
     if (!sharedFilters) return;
     setPeriodPreset(sharedFilters.periodPreset);
     setFromDate(sharedFilters.fromDate);
@@ -300,7 +348,7 @@ export default function SupplierFootwearAnalyticsPage({
         toDate: sharedFilters.toDate,
         vendorId: sharedFilters.supplierId,
         storeId: sharedFilters.storeId,
-        dataScope: sharedFilters.dataScope,
+        dataScope: normalizeDataScope(sharedFilters.dataScope),
       };
       return current.fromDate === next.fromDate
         && current.toDate === next.toDate
@@ -365,17 +413,27 @@ export default function SupplierFootwearAnalyticsPage({
 
       const stillNoRows = currentData.vendorStats.length === 0 && currentData.articleStats.length === 0;
       if (stillNoRows) {
-        const options = await getVendorSalesNivelacijaOptions({
-          vendorId: filters.vendorId,
-          category: filters.category || undefined,
-          storeId: filters.storeId,
-          dataScope: filters.dataScope,
-          take: 60,
-        }).catch(() => [] as VendorSalesNivelacijaOption[]);
+        let options: VendorSalesNivelacijaOption[] | null = null;
+        try {
+          options = await getVendorSalesNivelacijaOptions({
+            vendorId: filters.vendorId,
+            category: filters.category || undefined,
+            storeId: filters.storeId,
+            dataScope: filters.dataScope,
+            take: 60,
+          });
+        } catch (reason) {
+          const safeReason = getSafeAnalyticsErrorMessage(
+            reason instanceof Error ? reason.message : null,
+            undefined,
+            "Opcije za predlog perioda trenutno nisu dostupne.",
+          );
+          setDataHint(`Nema analiziranih redova za izabrani period. ${safeReason}`);
+        }
 
         if (requestId !== requestIdRef.current) return;
 
-        const suggested = options.find((item) => item.hasSalesWindow) ?? options[0];
+        const suggested = options?.find((item) => item.hasSalesWindow) ?? options?.[0];
         if (suggested) {
           const day = toDateOnly(suggested.eventDate);
           setSuggestedRange({
@@ -383,9 +441,12 @@ export default function SupplierFootwearAnalyticsPage({
             toDate: day,
             label: suggested.label,
           });
-          setDataHint("Za izabrani period nema analiziranih redova. Predlozen je datum gde postoje nivelacije i/ili prodaja.");
+          setDataHint("Za izabrani period nema analiziranih redova. Predložen je datum gde postoje nivelacije i/ili prodaja.");
+        } else if (options === null) {
+          // Keep options-unavailable visibly degraded; do not relabel it as a
+          // successful no-match period.
         } else if (likelyFilteredOutByInactive) {
-          setDataHint("U periodu postoje nivelacije, ali bez prodaje u pre/post prozoru. Ukljuci siri period ili proveri opciju sa neaktivnim artiklima.");
+          setDataHint("U periodu postoje nivelacije, ali bez prodaje u pre/post prozoru. Uključi širi period ili proveri opciju sa neaktivnim artiklima.");
         } else {
           setDataHint("U izabranom periodu nema nivelacija za zadate filtere.");
         }
@@ -411,8 +472,12 @@ export default function SupplierFootwearAnalyticsPage({
   useEffect(() => { void load(activeFilters); }, [activeFilters, load]);
 
   const typeInsights = useMemo(
-    () => buildTypeInsights(data?.articleStats ?? [], data?.vendorStats ?? []),
-    [data?.articleStats, data?.vendorStats],
+    () => buildTypeInsights(data),
+    [data],
+  );
+  const typeInsightChartProjection = useMemo(
+    () => buildTypeInsightChartProjection(data),
+    [data],
   );
 
   const decisionRows = useMemo<DecisionVendor[]>(() => {
@@ -427,16 +492,16 @@ export default function SupplierFootwearAnalyticsPage({
       if (!recommendation) return [];
 
       const vendorRowKey = vendorRowKeys[rowIndex];
-      const typeInsight = typeInsights.byVendor.get(vendorRowKey);
       const hasComparableEvidence = rowHasComparableEvidence(item);
       const postRevenue = comparableMetric(item.postRevenue, hasComparableEvidence);
       const sharePct = postRevenue != null && totalRevenue > 0 ? (postRevenue / totalRevenue) * 100 : null;
       const trendPct = comparableMetric(item.semanticChangePercentRevenue ?? item.changePercent, hasComparableEvidence);
       const recommendationAllowed = recommendation.recommendationAllowed === true;
 
-      const topFootwearType = typeInsight?.topType ?? "N/A";
-      const topFootwearTypeSharePct = typeInsight?.topTypeSharePct ?? null;
-      const avgElasticity = typeInsight?.avgElasticity ?? null;
+      const typeInsightsAvailable = data?.typeInsightsAuthoritative === true && item.typeInsightsAuthoritative === true;
+      const topFootwearType = typeInsightsAvailable ? item.primaryFootwearType ?? "N/A" : "N/A";
+      const topFootwearTypeSharePct = typeInsightsAvailable ? normalizeMetricNumber(item.primaryFootwearTypeSharePercent) : null;
+      const avgElasticity = typeInsightsAvailable ? normalizeMetricNumber(item.primaryFootwearTypeAvgElasticity) : null;
 
       return [{
         ...item,
@@ -452,7 +517,7 @@ export default function SupplierFootwearAnalyticsPage({
         statusReason: recommendation.summary,
       }];
     });
-  }, [data?.vendorStats, typeInsights.byVendor]);
+  }, [data?.typeInsightsAuthoritative, data?.vendorStats]);
 
   const sortedRows = useMemo(() => {
     const rows = [...decisionRows];
@@ -516,11 +581,17 @@ export default function SupplierFootwearAnalyticsPage({
   const selectedRow = useMemo(() => (!expandedVendorKey ? null : sortedRows.find((row) => row.vendorRowKey === expandedVendorKey) ?? null), [expandedVendorKey, sortedRows]);
   const dataMeta = data?.meta ?? null;
   const dataMetaMessage = getAnalyticsMetaMessage(dataMeta);
-  const showMetaWarning = !loading && !error && isAnalyticsMetaWarning(dataMeta);
-  const showEmptyState = !loading && !error && ((data?.vendorStats.length ?? 0) === 0 && (data?.articleStats.length ?? 0) === 0);
   const dataQualityProjection = useMemo(() => projectVendorSalesDataQuality(data?.dataQuality), [data?.dataQuality]);
+  const hasTruncatedDetail = dataQualityProjection.isDetailTruncated === true;
+  const showMetaWarning = !loading && !error && (isAnalyticsMetaWarning(dataMeta) || hasTruncatedDetail);
+  const showEmptyState = !loading && !error && ((data?.vendorStats.length ?? 0) === 0 && (data?.articleStats.length ?? 0) === 0);
   const dataQualityStatus = useMemo(() => getDataQualityStatus(data), [data]);
   const recommendationAllowed = data?.recommendationAllowed === true;
+  const typeInsightWarning = hasTruncatedDetail
+    ? `Detalj prikazuje ${dataQualityProjection.returnedRows ?? "N/A"} od ${dataQualityProjection.analyzedRows ?? "N/A"} analiziranih redova. Tipovi obuće i elastičnost računaju se iz pune uporedive kohorte.`
+    : data?.typeInsightsAuthoritative !== true && (dataQualityProjection.analyzedRows ?? 0) > 0
+      ? "Tipovi obuće i elastičnost nisu potvrđeni punom uporedivom kohortom i prikazani su kao nedostupni."
+      : null;
   const controlBarChips = useMemo<AnalyticsControlBarChip[]>(() => [
     {
       key: "period",
@@ -620,7 +691,7 @@ export default function SupplierFootwearAnalyticsPage({
       { key: "vendorId", label: "Dobavljač", value: activeFilters.vendorId ?? "" },
     { key: "category", label: "Kategorija", value: activeFilters.category },
     { key: "storeId", label: "Objekat", value: activeFilters.storeId ?? "" },
-    { key: "dataScope", label: "Opseg podataka", value: activeFilters.dataScope ?? "" },
+    { key: "dataScope", label: "Opseg podataka", value: activeFilters.dataScope },
   ], [activeFilters.category, activeFilters.dataScope, activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeFilters.vendorId, periodPreset]);
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(() => [
@@ -628,7 +699,14 @@ export default function SupplierFootwearAnalyticsPage({
     { key: "vendorsCount", label: "Dobavljača", value: formatMetricDisplayValue({ value: normalizeMetricNumber(data?.totals.vendorsCount), kind: "number", fallback: "N/A" }) },
     { key: "articlesCount", label: "Artikala", value: formatMetricDisplayValue({ value: normalizeMetricNumber(data?.totals.articlesCount), kind: "number", fallback: "N/A" }) },
     { key: "windowDays", label: "Prozor (dani)", value: formatMetricDisplayValue({ value: normalizeMetricNumber(data?.windowDays), kind: "number", fallback: "N/A" }) },
-  ], [data?.generatedAt, data?.totals.articlesCount, data?.totals.vendorsCount, data?.windowDays]);
+    { key: "detailDenominator", label: "Detalj / analiza", value: data?.dataQuality?.returnedRows != null && data?.dataQuality?.analyzedRows != null ? `${data.dataQuality.returnedRows} / ${data.dataQuality.analyzedRows}` : "N/A" },
+    { key: "typeInsightSource", label: "Izvor tipova", value: data?.typeInsightsSource ?? "Nije dostupno" },
+    { key: "typeInsightDenominator", label: "Imenilac tipova", value: data?.typeInsightsDenominator ?? "Nije dostupno" },
+    { key: "typeInsightElasticityWeighting", label: "Tezina elasticnosti", value: data?.typeInsightsElasticityWeighting ?? "Nije dostupno" },
+    { key: "typeInsightExcludedShare", label: "Udeo van prikaza", value: formatMetricDisplayValue({ value: typeInsightChartProjection.excludedSharePct, kind: "percent", fallback: "N/A" }) },
+    { key: "requestedDataScope", label: "Traženi opseg", value: effectiveDataScope },
+    { key: "effectiveDataScope", label: "Efektivni opseg", value: data?.dataScope ?? effectiveDataScope },
+  ], [data?.dataQuality?.analyzedRows, data?.dataQuality?.returnedRows, data?.dataScope, data?.generatedAt, data?.totals.articlesCount, data?.totals.vendorsCount, data?.typeInsightsDenominator, data?.typeInsightsElasticityWeighting, data?.typeInsightsSource, data?.windowDays, effectiveDataScope, typeInsightChartProjection.excludedSharePct]);
 
   useEffect(() => {
     if (!embedded || !onTrustMetadataChange) return;
@@ -678,7 +756,18 @@ export default function SupplierFootwearAnalyticsPage({
     setFromDate(range.fromDate);
     setToDate(range.toDate);
   };
-  const handleApplyFilters = () => { if (!invalidRange) setActiveFilters({ fromDate, toDate, vendorId, category, storeId: sharedFilters?.storeId ?? null, dataScope: sharedFilters?.dataScope ?? null }); };
+  const handleApplyFilters = () => {
+    if (!invalidRange) {
+      setActiveFilters({
+        fromDate,
+        toDate,
+        vendorId,
+        category,
+        storeId: sharedFilters?.storeId ?? null,
+        dataScope: effectiveDataScope,
+      });
+    }
+  };
   const handleResetFilters = () => {
     const range = getPresetRange("30d");
     setPeriodPreset("30d");
@@ -692,7 +781,9 @@ export default function SupplierFootwearAnalyticsPage({
       vendorId: sharedFilters?.supplierId ?? null,
       category: "",
       storeId: sharedFilters?.storeId ?? null,
-      dataScope: sharedFilters?.dataScope ?? null,
+      dataScope: sharedFilters?.dataScope
+        ? normalizeDataScope(sharedFilters.dataScope)
+        : effectiveDataScope,
     });
   };
   const handleApplySuggestedRange = () => {
@@ -708,7 +799,7 @@ export default function SupplierFootwearAnalyticsPage({
       table: "dobavljaci-tipovi-obuce",
       recordId: buildSupplierVendorDetailRecordId(row, row.vendorRowKey),
       title: row.vendorName,
-      subtitle: "Podrska odluci po dobavljacu i tipu obuce",
+      subtitle: "Podrška odluci po dobavljaču i tipu obuće",
       columns: decisionColumns,
       row,
       metadata: [...toolbarFilters, ...toolbarMetadata],
@@ -783,6 +874,7 @@ export default function SupplierFootwearAnalyticsPage({
       {!loading && !error && !previousPeriodWarning && previousPeriodEmptyNote ? (
         <div className="sf-decision-message info" role="status" aria-live="polite">{previousPeriodEmptyNote}</div>
       ) : null}
+      {!loading && !error && typeInsightWarning ? <div className="sf-decision-message warning" role="status" aria-live="polite">{typeInsightWarning}</div> : null}
       {!loading && !error && dataHint ? <div className="sf-decision-message info" role="status" aria-live="polite">{dataHint}</div> : null}
       {!embedded && !loading && !error && suggestedRange ? (
         <div className="sf-decision-message suggestion">
@@ -810,15 +902,16 @@ export default function SupplierFootwearAnalyticsPage({
 
           <section className="sf-decision-kpis">
             <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Promet svih dobavljača u izabranom periodu."><span>Ukupan promet</span><strong>{formatMetricDisplayValue({ value: totalRevenue, kind: "currency" })}</strong></article>
-            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Koliki deo prometa drzi pet najjacih dobavljaca."><span>Udeo top 5 dobavljaca</span><strong>{formatMetricDisplayValue({ value: top5SharePct, kind: "percent" })}</strong></article>
+            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Koliki deo prometa drži pet najjačih dobavljača."><span>Udeo top 5 dobavljača</span><strong>{formatMetricDisplayValue({ value: top5SharePct, kind: "percent" })}</strong></article>
             <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-neutral" data-note="Apsolutna promena prometa u odnosu na pre period."><span>Ukupna promena prometa</span><strong className={trendClass(totalChangeRevenue)}>{formatMetricDisplayValue({ value: totalChangeRevenue, kind: "currency" })}</strong></article>
             <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Relativna promena prema prethodnom uporedivom periodu."><span>Rast/pad u odnosu na prethodni period</span><strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong></article>
-            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Tip obuce koji trenutno nosi najveci deo prometa."><span>Dominantan tip obuce</span><strong>{dominantTypeSummary}</strong></article>
+            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Tip obuće koji trenutno nosi najveći deo prometa."><span>Dominantan tip obuće</span><strong>{dominantTypeSummary}</strong></article>
           </section>
 
           <section className="sf-decision-panels">
             <article className="sf-decision-card analytics-surface-panel">
-              <h2>Koncentracija po tipu obuce</h2><p>Top tipovi obuce po udelu prometa u trenutnom filtru.</p>
+              <h2>Koncentracija po tipu obuće</h2>
+              <p>{typeInsightChartProjection.displayDenominatorLabel ?? "Tipovi obuće nisu potvrđeni punom uporedivom kohortom."}</p>
               {typeInsights.globalTypeShare.length > 0 ? (
                 <div className="sf-decision-chart-wrap">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
@@ -831,7 +924,7 @@ export default function SupplierFootwearAnalyticsPage({
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-              ) : <div className="sf-decision-empty">Nema podataka za grafikon tipova obuce.</div>}
+              ) : <div className="sf-decision-empty">Nema podataka za grafikon tipova obuće.</div>}
             </article>
             <article className="sf-decision-card analytics-surface-panel">
               <AnalyticsDataTable
@@ -869,7 +962,16 @@ export default function SupplierFootwearAnalyticsPage({
                             <td className="align-right">{formatMetricDisplayValue({ value: row.sharePct, kind: "percent", digits: 2 })}</td>
                             <td><strong>{row.topFootwearType}</strong><div className="sf-mini-note">{formatMetricDisplayValue({ value: row.topFootwearTypeSharePct, kind: "percent" })} udela kod dobavljača</div></td>
                             <td className={`align-right ${trendClass(row.trendPct)}`}>{fmtSignedPct(row.trendPct, 2)}</td>
-                            <td><span className={statusClass(row.status)} title={buildStatusTooltip(row)} aria-label={buildStatusTooltip(row)}>{statusDisplayLabel(row.status)}</span></td>
+                            <td>
+                              <div className="sf-status-stack">
+                                <span className={statusClass(row.status)} title={buildStatusTooltip(row)} aria-label={buildStatusTooltip(row)}>{statusDisplayLabel(row.status)}</span>
+                                {row.statusReason ? (
+                                  <span className="sf-status-reason" title={row.statusReason}>
+                                    <strong>Razlog:</strong> {row.statusReason}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </td>
                             <td className="align-center"><button type="button" className="sf-decision-detail-btn" onClick={() => setExpandedVendorKey(expanded ? null : rowId)}>{expanded ? "Sakrij" : "Detalji"}</button></td>
                           </tr>
                         );
@@ -888,8 +990,8 @@ export default function SupplierFootwearAnalyticsPage({
               <div className="sf-decision-detail-grid">
                 <article className="analytics-kpi-card analytics-kpi-card--tone-neutral"><span>Pre nivelacije promet</span><strong>{fmtRsd(comparableMetric(selectedRow.preRevenue, rowHasComparableEvidence(selectedRow)))}</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-info"><span>Posle nivelacije promet</span><strong>{fmtRsd(comparableMetric(selectedRow.postRevenue, rowHasComparableEvidence(selectedRow)))}</strong></article>
-                <article className="analytics-kpi-card analytics-kpi-card--tone-neutral"><span>Pre nivo kolicina</span><strong>{fmtQty(comparableMetric(selectedRow.preQty, rowHasComparableEvidence(selectedRow)))}</strong></article>
-                <article className="analytics-kpi-card analytics-kpi-card--tone-success"><span>Posle nivo kolicina</span><strong>{fmtQty(comparableMetric(selectedRow.postQty, rowHasComparableEvidence(selectedRow)))}</strong></article>
+                <article className="analytics-kpi-card analytics-kpi-card--tone-neutral"><span>Pre nivo količina</span><strong>{fmtQty(comparableMetric(selectedRow.preQty, rowHasComparableEvidence(selectedRow)))}</strong></article>
+                <article className="analytics-kpi-card analytics-kpi-card--tone-success"><span>Posle nivo količina</span><strong>{fmtQty(comparableMetric(selectedRow.postQty, rowHasComparableEvidence(selectedRow)))}</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-info"><span>Glavni tip obuće</span><strong>{selectedRow.topFootwearType} ({formatMetricDisplayValue({ value: selectedRow.topFootwearTypeSharePct, kind: "percent" })})</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-warning"><span>Elastičnost glavnog tipa</span><strong>{fmtElasticity(selectedRow.avgElasticity)}</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-neutral"><span>Aktivni artikli</span><strong>{selectedRow.activeArticlesCount} / {selectedRow.articleCount}</strong></article>

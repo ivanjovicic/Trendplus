@@ -68,11 +68,14 @@ For prompt-system, queue, reliability or agent-workflow work, read:
 5. `docs/ai/PROMPT_BATCH_REVIEW_POLICY.md` only when the batch trigger is met
 6. target queue/audit/source files
 
-For analytics reliability implementation, keep using:
+For analytics reliability implementation, use:
 
-1. `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`
-2. `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md`
-3. `docs/ai/ANALYTICS_WAITING_PROMPTS_EXECUTION_PREP.md` only when the index says so
+1. `MASTER_ROADMAP.md` + `docs/ai/PROMPT_QUEUE_PROTOCOL.md` for live selection/recovery
+2. the target section in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` or its active addendum
+3. `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md` when analytics behavior changes
+4. `docs/ai/ANALYTICS_WAITING_PROMPTS_EXECUTION_PREP.md` only when the target prompt explicitly cites it
+
+`docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` remains historical review context and is not part of the default live read path.
 
 ## What was intentionally not copied
 

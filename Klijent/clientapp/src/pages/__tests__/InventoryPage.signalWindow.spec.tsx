@@ -189,8 +189,8 @@ describe("InventoryPage signal window refresh", () => {
     });
 
     const initialCall = getInventoryListMock.mock.calls[0]?.[0] as { fromDate: string; toDate: string };
-    expect(initialCall.toDate).toBe("2026-09-18T12:00:00.000Z");
-    expect(initialCall.fromDate).toBe("2026-08-19T12:00:00.000Z");
+    expect(initialCall.toDate).toBe("2026-09-18");
+    expect(initialCall.fromDate).toBe("2026-08-20");
 
     currentTime = new Date("2026-09-19T12:00:00.000Z");
     act(() => {
@@ -199,8 +199,8 @@ describe("InventoryPage signal window refresh", () => {
 
     await waitFor(() => {
       const lastCall = getInventoryListMock.mock.calls.at(-1)?.[0] as { fromDate: string; toDate: string };
-      expect(lastCall.toDate).toBe("2026-09-19T12:00:00.000Z");
-      expect(lastCall.fromDate).toBe("2026-08-20T12:00:00.000Z");
+      expect(lastCall.toDate).toBe("2026-09-19");
+      expect(lastCall.fromDate).toBe("2026-08-21");
     });
   });
 
@@ -249,6 +249,21 @@ describe("InventoryPage signal window refresh", () => {
     expect(getForecastMock.mock.calls.at(-1)?.[0]?.signal).toBe(lifecycleSignal);
     expect(getInventoryAlertsMock.mock.calls.at(-1)?.[0]?.signal).toBe(lifecycleSignal);
     expect(getRebalanceSuggestionsMock.mock.calls.at(-1)?.[0]?.signal).toBe(lifecycleSignal);
+    expect(getForecastMock.mock.calls.at(-1)?.[0]).toEqual(expect.objectContaining({
+      fromDate: "2026-08-20",
+      toDate: "2026-09-18",
+      dataScope: "all",
+    }));
+    expect(getInventoryAlertsMock.mock.calls.at(-1)?.[0]).toEqual(expect.objectContaining({
+      fromDate: "2026-08-20",
+      toDate: "2026-09-18",
+      dataScope: "all",
+    }));
+    expect(getRebalanceSuggestionsMock.mock.calls.at(-1)?.[0]).toEqual(expect.objectContaining({
+      fromDate: "2026-08-20",
+      toDate: "2026-09-18",
+      dataScope: "all",
+    }));
 
     setDataScope("existing");
     act(() => {
@@ -288,6 +303,46 @@ describe("InventoryPage signal window refresh", () => {
     expect(screen.getByTestId("location-search")).toHaveTextContent("page=3");
   });
 
+  it("restores a custom period from URL and sends it to supported signal requests", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/inventory?periodPreset=custom&fromDate=2026-01-05&toDate=2026-02-15"]}>
+        <LocationProbe />
+        <InventoryPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(getInventoryListMock).toHaveBeenCalledWith(expect.objectContaining({
+        fromDate: "2026-01-05",
+        toDate: "2026-02-15",
+      }));
+    });
+
+    expect(screen.getByLabelText("Period signala zaliha")).toHaveValue("custom");
+    expect(screen.getByLabelText("Početak perioda signala")).toHaveValue("2026-01-05");
+    expect(screen.getByLabelText("Kraj perioda signala")).toHaveValue("2026-02-15");
+    expect(screen.getByTestId("inventory-period-lineage")).toHaveTextContent("2026-01-05 → 2026-02-15");
+    expect(screen.getByTestId("location-search")).toHaveTextContent("periodPreset=custom");
+  });
+
+  it("fails invalid period URL values closed to the deterministic 30-day preset", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/inventory?periodPreset=custom&fromDate=not-a-date&toDate=2026-01-01"]}>
+        <InventoryPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(getInventoryListMock).toHaveBeenCalledWith(expect.objectContaining({
+        fromDate: "2026-08-20",
+        toDate: "2026-09-18",
+      }));
+    });
+
+    expect(screen.getByLabelText("Period signala zaliha")).toHaveValue("30d");
+    expect(screen.getByTestId("inventory-period-lineage")).toHaveTextContent("2026-08-20 → 2026-09-18");
+  });
+
   it("recomputes the signal window when data scope changes", async () => {
     currentTime = new Date("2026-09-18T08:00:00.000Z");
 
@@ -310,8 +365,8 @@ describe("InventoryPage signal window refresh", () => {
     await waitFor(() => {
       const lastCall = getInventoryListMock.mock.calls.at(-1)?.[0] as { fromDate: string; toDate: string; dataScope: string };
       expect(lastCall.dataScope).toBe("existing");
-      expect(lastCall.toDate).toBe("2026-09-20T08:00:00.000Z");
-      expect(lastCall.fromDate).toBe("2026-08-21T08:00:00.000Z");
+      expect(lastCall.toDate).toBe("2026-09-20");
+      expect(lastCall.fromDate).toBe("2026-08-22");
     });
   });
 });

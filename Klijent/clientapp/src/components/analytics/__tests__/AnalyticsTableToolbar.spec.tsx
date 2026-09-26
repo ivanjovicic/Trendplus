@@ -248,7 +248,7 @@ describe("AnalyticsTableToolbar", () => {
     fireEvent.click(screen.getByRole("button", { name: /Pokreni export/i }));
 
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Podaci trenutno nisu dostupni");
+    expect(alert).toHaveTextContent("Eksport nije uspeo. Pokušajte ponovo.");
     expect(alert).not.toHaveTextContent(/NpgsqlException|password=secret|SQL timeout/i);
     expect(alert).not.toHaveClass("text-[var(--success)]");
     expect(screen.getByRole("dialog", { name: /Export Supplier test/i })).toBeInTheDocument();
