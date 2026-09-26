@@ -103,3 +103,13 @@ The OP2 failure from the preceding run was a transient `503 db_warmup` response.
 The shared CI database bootstrap repair is therefore validated: the previous concrete `PerformanceLogs` / `analytics_refresh_runs` schema failures are no longer the setup blocker. The remaining 41 failures are mixed existing contract/provider/isolation families (supplier warning projections, worker catalog, Access/import and data-source integration, PostgreSQL-backed scope/aggregation, SQL Server supplemental contracts, demo endpoint host setup, cache-key version and pgvector/provider assumptions). They are not safe to hide with a filter or to relabel as RQ448 evidence.
 
 RQ448 remains `WAITING`, not claimed: RQ447's live CI certificate is green, but this workspace still has no authenticated browser tab/session and no deployment/API access. Its required raw-facts → API → rendered Supplier/Shoe Type screen → detail → CSV/XLSX reconciliation cannot be honestly completed from mocked or static tests.
+
+## Remaining-today-commits audit — local repair set
+
+The remaining 2026-09-26 commit set was re-read against the Operations accuracy, BCI10, RQ440/RQ442/RQ446/RQ448/RQ450/RQ456/RQ457/RQ458/RQ459 and STAB prompt requirements. RQ447 certification and its CI workflow were not reopened; the audit found three deterministic contract drifts outside that gate:
+
+- Daily Sales golden data still expected off-shift units inside the first measured shift. The current RQ383/RQ430 contract intentionally keeps daily totals inclusive while shift columns remain measured-window-only. The golden was corrected from `7` to `5` for `2026-01-01`; the focused service suite is green.
+- The startup Operations integrity probe was registered in `Api/Program.cs` but missing from the central worker catalog. The catalog now includes it as a non-controllable web startup service, restoring the single-source-of-truth invariant.
+- Supplier Decision warning assertions still used the old English/mixed labels (`Korišćen fallback dataset`, `Visok missing cost`, `Data Quality ekran`) while the current localized API contract emits `Korišćen pomoćni skup podataka`, `Nedostaje nabavna cena`, and `ekran Kvalitet podataka`. Tests now assert the current contract without weakening warning presence.
+
+Focused local result: Worker registry + supplier negotiation/report contracts `50 passed, 0 failed, 0 skipped`; Daily Sales service contracts `11 passed, 0 failed, 0 skipped`. The Daily Sales integration subset was not used as a local gate because this VM has no PostgreSQL host; RQ447's remote pgvector certificate remains the authoritative integration evidence.

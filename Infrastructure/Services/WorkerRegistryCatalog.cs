@@ -173,6 +173,17 @@ public static class WorkerRegistryCatalog
             RuntimeControlDisabledReason: "Startup-only service.",
             ScheduleControlDisabledReason: "Startup-only service."),
         new(
+            WorkerName: "OperationsAnalyticsIntegrityStartupHostedService",
+            DisplayName: "Operations Integrity Startup Probe",
+            Description: "Runs one bounded Operations integrity probe after web startup.",
+            WorkerType: "startup",
+            IsRuntimeControllable: false,
+            IsScheduleControllable: false,
+            RegistersInWorkerProcess: false,
+            RegistersInWebProcess: true,
+            RuntimeControlDisabledReason: "Startup-only service.",
+            ScheduleControlDisabledReason: "Startup-only service."),
+        new(
             WorkerName: "WorkerRuntimeSettingsSchemaBootstrapHostedService",
             DisplayName: "Worker Runtime Schema Bootstrap",
             Description: "Startup schema bootstrap for WorkerRuntimeSettings table.",

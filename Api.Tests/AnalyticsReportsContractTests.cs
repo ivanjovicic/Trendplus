@@ -903,7 +903,7 @@ public sealed class AnalyticsReportsContractTests
         var section = Assert.Single(report.Sections.Where(x => x.Key == "supplier_negotiation_pack"));
 
         Assert.Contains(section.Rows, row =>
-            string.Equals(Convert.ToString(row.GetValueOrDefault("topic")), "Korišćen fallback dataset", StringComparison.Ordinal)
+            string.Equals(Convert.ToString(row.GetValueOrDefault("topic")), "Korišćen pomoćni skup podataka", StringComparison.Ordinal)
             && string.Equals(Convert.ToString(row.GetValueOrDefault("group")), "Upozorenja", StringComparison.Ordinal)
             && Convert.ToString(row.GetValueOrDefault("note"))!.Contains("period:", StringComparison.OrdinalIgnoreCase));
     }
@@ -973,7 +973,7 @@ public sealed class AnalyticsReportsContractTests
         var section = Assert.Single(report.Sections.Where(x => x.Key == "supplier_negotiation_pack"));
 
         Assert.Contains(section.Rows, row =>
-            string.Equals(Convert.ToString(row.GetValueOrDefault("topic")), "Visok missing cost", StringComparison.Ordinal)
+            string.Equals(Convert.ToString(row.GetValueOrDefault("topic")), "Nedostaje nabavna cena", StringComparison.Ordinal)
             && string.Equals(Convert.ToString(row.GetValueOrDefault("group")), "Upozorenja", StringComparison.Ordinal)
             && Convert.ToString(row.GetValueOrDefault("note"))!.Contains("maržnog doprinosa", StringComparison.OrdinalIgnoreCase));
     }

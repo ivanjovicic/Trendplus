@@ -42,7 +42,7 @@ public sealed class SupplierNegotiationPackReportTests
         var section = Assert.Single(report.Sections.Where(x => x.Key == "supplier_negotiation_pack"));
 
         Assert.Contains(section.Rows, row =>
-            string.Equals(Convert.ToString(row.GetValueOrDefault("item")), "Korišćen fallback dataset", StringComparison.Ordinal)
+            string.Equals(Convert.ToString(row.GetValueOrDefault("item")), "Korišćen pomoćni skup podataka", StringComparison.Ordinal)
             && string.Equals(Convert.ToString(row.GetValueOrDefault("group")), "Upozorenja", StringComparison.Ordinal));
     }
 
@@ -84,7 +84,7 @@ public sealed class SupplierNegotiationPackReportTests
         var section = Assert.Single(report.Sections.Where(x => x.Key == "supplier_negotiation_pack"));
 
         Assert.Contains(section.Rows, row =>
-            string.Equals(Convert.ToString(row.GetValueOrDefault("item")), "Visok missing cost", StringComparison.Ordinal)
+            string.Equals(Convert.ToString(row.GetValueOrDefault("item")), "Nedostaje nabavna cena", StringComparison.Ordinal)
             && string.Equals(Convert.ToString(row.GetValueOrDefault("group")), "Upozorenja", StringComparison.Ordinal));
     }
 
@@ -118,7 +118,7 @@ public sealed class SupplierNegotiationPackReportTests
             string.Equals(Convert.ToString(row.GetValueOrDefault("group")), "Upozorenja", StringComparison.Ordinal)
             && string.Equals(Convert.ToString(row.GetValueOrDefault("topic")), "Kvalitet podataka nije idealan", StringComparison.Ordinal)
             && string.Equals(Convert.ToString(row.GetValueOrDefault("value")), "critical", StringComparison.Ordinal)
-            && string.Equals(Convert.ToString(row.GetValueOrDefault("note")), "Preporuke proveriti kroz Data Quality ekran.", StringComparison.Ordinal));
+            && string.Equals(Convert.ToString(row.GetValueOrDefault("note")), "Preporuke proveriti kroz ekran Kvalitet podataka.", StringComparison.Ordinal));
     }
 
     private static SupplierDecisionHubEndpoints.SupplierDecisionHubFilters CreateFilters(
