@@ -49,9 +49,6 @@ const summaryResponse = {
   from: "2026-04-13T00:00:00Z",
   to: "2026-05-12T00:00:00Z",
   supplierCount: 2,
-  totalRevenue: 500_000,
-  marginContribution: 123_456,
-  topFiveRevenueShare: 0.4,
   fullPriceRevenueShare: 0.62,
   fullPriceSellthrough: 0.48,
   markdownRevenueShare: 0.24,
@@ -80,12 +77,15 @@ function requestUrl(input: RequestInfo | URL) {
   return new URL(String(input), "http://localhost");
 }
 
-function installFetchMock(rankingHandler?: (url: URL) => unknown) {
+function installFetchMock(
+  rankingHandler?: (url: URL) => unknown,
+  summaryOverride: Record<string, unknown> = {},
+) {
   const fetchMock = vi.fn((input: RequestInfo | URL) => {
     const url = requestUrl(input);
 
     if (url.pathname === "/api/analytics/suppliers/decision-hub/summary") {
-      return jsonResponse(summaryResponse);
+      return jsonResponse({ ...summaryResponse, ...summaryOverride });
     }
 
     if (url.pathname === "/api/analytics/suppliers/decision-hub/ranking") {
@@ -144,7 +144,11 @@ describe("SupplierDecisionHubPage", () => {
   });
 
   it("uses summary-owned aggregates when ranking rows are only a visible projection", async () => {
-    installFetchMock();
+    installFetchMock(undefined, {
+      totalRevenue: 500_000,
+      marginContribution: 123_456,
+      topFiveRevenueShare: 0.4,
+    });
 
     renderPage();
 
