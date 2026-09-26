@@ -2,9 +2,10 @@
 
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ382
+Current READY prompt: none
 Owner promotion 2026-09-26: idle recovery verified `RQ381` and `RQ289` DONE, no active Daily Sales scope-quality lock or competing owner, and `RQ382` is dependency-complete. `RQ382` moved `WAITING -> READY` as the next collision-safe P1 Daily Sales scope/diagnostics parity prompt.
 Owner claim 2026-09-26: `RQ382` transitioned `READY -> IN_PROGRESS` in this workspace for scoped diagnostics, availability and visible denominator parity. Local lock: `.ai/task-locks/RQ382-codex.lock.md`.
+Owner completion 2026-09-26: `RQ382` was delivered directly to `main` in `0a48192e`; Daily Sales diagnostics and empty-state availability now use the selected article scope/store population, journal filtering preserves RQ438 receipt identity semantics, and scope provenance is exposed for diagnostics and availability. Run log: `.ai/runs/2026-09-26-RQ382-evidence.md`. Evidence state: synchronized. RQ431 remains owner-gated; RQ441 can be reconsidered after a fresh dependency/collision review.
 Owner claim 2026-09-26: after concurrent RQ442 delivery on `origin/main`, this workspace claimed READY `RQ438` for Daily Sales/Access receipt-identity residuals. Local lock: `.ai/task-locks/RQ438-cursor.lock.md`. Mechanical repair: RQ438 section `Status:` was stale `DONE` without a completion note while the summary row and code still showed READY/unfixed ID joins.
 Owner completion 2026-09-26: `RQ438` was delivered directly to `main` after shared signed journal amount normalization, identity-keyed non-standard/import revenue fallback (never fake 0), partial_dnevnik_identity_coverage when some journal rows lack BrojRacuna, and Serbian import diagnostic copy. Run log: `.ai/runs/2026-09-26-RQ438-evidence.md`. Evidence state: synchronized. Mechanical repair: RQ442 section `Status:` READY→DONE to match its completion note/summary. `Current READY prompt` is `none`; `RQ441` remains WAITING behind `RQ382`.
 Owner promotion 2026-09-26: under the user’s claim-and-execute request, `RQ440` was dependency-complete with no active lock on the seven shared spec files. `RQ440` moved `READY -> IN_PROGRESS` as the primary pointer.
@@ -21202,7 +21203,7 @@ Reproduction: return a valid Daily Sales payload with negative `totalItemsInRang
 
 ## RQ382 - Align Daily Sales data-scope diagnostics and visible denominators
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend-contract/frontend/tests
 Feature family: daily-sales-scope-quality-parity
@@ -21262,6 +21263,24 @@ Reproduction: select `dataScope=imported` for a period containing existing-only 
 
 - `RQ381` owns signed numeric semantics; this prompt owns population/scope parity.
 - `RQ289` remains the owner of supplier ordering, not this prompt.
+
+### Completion note
+
+- Date: 2026-09-26
+- Status: DONE
+- Completion: Daily Sales row totals, receipt diagnostics, excluded/non-standard document diagnostics and empty-state available dates now share the selected article data scope, store and exclusion population. Scope-specific metadata identifies the diagnostics and availability populations, while RQ438 identity matching remains free of database-ID joins.
+- Changed files: `Api/Services/DailySalesStatsService.cs`, `Api/Models/DailySalesStatsDto.cs`, `Api.Tests/DailySalesStatsServiceTests.cs`, `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`, `Klijent/clientapp/src/services/dailySalesStatsApi.ts`, `Klijent/clientapp/src/validation/analyticsResponseSchemas.ts`, queue/roadmap/evidence.
+- Checks run: focused Daily Sales + receipt identity backend tests 22/22; Daily Sales frontend specs 43/44 with the pre-existing RQ431 failure; analytics guardrails/typecheck, build and diff check passed.
+- Checks not run: full suites, live PostgreSQL/browser/export proof and remote CI.
+- Run log: `.ai/runs/2026-09-26-RQ382-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `0a48192e`
+- Main verification: passed - `origin/main` contains `0a48192e`
+- Missed: RQ431 concentration contract decision remains out of scope.
+- Follow-up: re-enter idle recovery; reconsider RQ441 after its declared gates are refreshed.
+- Residual risk: full-suite and live-database/browser proof remain outstanding.
+- Prompt defect / scope repair: protected RQ438 receipt identity behavior after detecting and correcting an unsafe scope-by-database-ID interaction; no unrelated product scope was expanded.
 
 ---
 
