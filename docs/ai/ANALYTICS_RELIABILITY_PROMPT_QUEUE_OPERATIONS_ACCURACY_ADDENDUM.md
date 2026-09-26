@@ -1557,7 +1557,7 @@ Extend the existing RQ407 fixture and RQ412 manifest; do not create a second see
 
 ## RQ447 - Execute the live oracle and close the OP2 runtime seams
 
-Status: PARTIAL
+Status: DONE
 Ready after: PostgreSQL integration host is available and RQ446, RQ456 and RQ457 are DONE
 Priority: P0
 Type: integration-tests/evidence
@@ -1595,9 +1595,10 @@ Run the four SupplierShoeTypeIndependentOracleIntegrationTests cases on PostgreS
 ### Execution host
 
 - `.github/workflows/analytics-tests.yml` now defines a dedicated `rq447-certification` job using `pgvector/pgvector:pg16`, current Trendplus migrations, `TRENDPLUS_RUN_INTEGRATION_TESTS=true`, explicit 4/4 oracle and 1/1 all-eight-routes steps, zero-skip assertions and retained TRX artifacts.
-- RQ447 remains `PARTIAL` until that job produces the required executed evidence on the delivered commit; a local VM skip is not certification proof.
+- RQ447 was `PARTIAL` until that job produced the required executed evidence on the delivered commit; a local VM skip is not certification proof.
 
 Completion note 2026-09-26: `RQ447` certification infrastructure and OP2 seam reproducers were delivered to `main` in implementation `9627ac13a24ea0fa189b2c26fd9be9592bcdb585`, present on `origin/main` through merge `7c793bac`. The CI job is intentionally strict: pgvector PostgreSQL, current EF migrations, 4/4 oracle, 1/1 all-eight-routes, 4/4 OP2 tests and zero skipped. Local discovery produced 9 skipped tests because this VM has no PostgreSQL host; GitHub Actions result/artifact is not yet inspected. Run log: `.ai/runs/2026-09-26-RQ447-evidence.md`. Evidence state: synchronized. RQ447 remains `PARTIAL` until the CI certification job executes and passes.
+Certification closure 2026-09-26: GitHub Actions run `36261497901` on `dec288aedb39f689d65e0f08b9915fc9acd749a9` passed the dedicated `RQ447 Supplier/Shoe Type certification` job. Oracle `4/4`, all-eight-routes `1/1` and OP2 `4/4` all passed with zero skips; frontend route/status proof passed and artifact `rq447-certification-dec288aedb39f689d65e0f08b9915fc9acd749a9` was uploaded. RQ447 is now `DONE`. The separate `Complete backend analytics suite` job failed on missing `PerformanceLogs` bootstrap during its broad coverage run; that is tracked separately from the RQ447 certification gate. Run log: `.ai/runs/2026-09-26-RQ447-evidence.md`. Evidence state: synchronized.
 
 ---
 
