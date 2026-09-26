@@ -3,6 +3,8 @@
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: RQ382
+Owner promotion/claim 2026-09-26: under the user's direct “claim i izvrši sledeći prompt” request, the owner decision gate for `RQ439` was satisfied. `RQ439` transitioned `WAITING -> IN_PROGRESS` in this workspace for read-only triage of unmerged PR #63 against current `main`; local lock `.ai/task-locks/RQ439-cursor.lock.md`. No runtime product code is in scope.
+Owner completion 2026-09-26: `RQ439` confirmed that PR #63 findings `RQ401`, `RQ404` and `RQ405` map to delivered current-main owners; the remaining signal-identity and KPI/report-parity findings were re-queued as fresh `RQ458` and `RQ459` WAITING prompts. PR #63 remains superseded and must not be merged.
 Owner promotion 2026-09-26: idle recovery verified `RQ381` and `RQ289` DONE, no active Daily Sales scope-quality lock or competing owner, and `RQ382` is dependency-complete. `RQ382` moved `WAITING -> READY` as the next collision-safe P1 Daily Sales scope/diagnostics parity prompt.
 Owner claim 2026-09-26: `RQ382` transitioned `READY -> IN_PROGRESS` in this workspace for scoped diagnostics, availability and visible denominator parity. Local lock: `.ai/task-locks/RQ382-codex.lock.md`.
 Owner claim 2026-09-26: after concurrent RQ442 delivery on `origin/main`, this workspace claimed READY `RQ438` for Daily Sales/Access receipt-identity residuals. Local lock: `.ai/task-locks/RQ438-cursor.lock.md`. Mechanical repair: RQ438 section `Status:` was stale `DONE` without a completion note while the summary row and code still showed READY/unfixed ID joins.
@@ -1609,7 +1611,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ436 | DONE | operations-derived-kpi-cleanup | Remove dead or frontend-derived Operacije KPIs and small lifecycle leaks |
 | RQ437 | DONE | operations-stale-test-hygiene | Repair stale Operacije tests that hide regressions |
 | RQ438 | DONE | daily-sales-receipt-identity-residuals | Finish Daily Sales receipt-identity joins and prove the journal amount sign |
-| RQ439 | WAITING | supplier-decision-hub-pr63-triage | Triage unmerged PR #63 Supplier Decision Hub findings against current main |
+| RQ439 | DONE | supplier-decision-hub-pr63-triage | Triage unmerged PR #63 Supplier Decision Hub findings against current main |
 | RQ440 | DONE | analytics-shared-spec-drift | Triage nine unowned failing shared analytics specs |
 | RQ441 | WAITING | daily-sales-frozen-supplier-attribution | Align Daily Sales supplier buckets with sale-time attribution used by canonical Supplier Sales |
 | RQ442 | DONE | operations-whole-day-half-open-ranges | Make Supplier, Shoe Type and Color whole-day filters half-open and boundary-safe |
@@ -1626,6 +1628,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ453 | WAITING | analytics-certification-ci-gate | Add a non-skippable certification CI gate with executed-versus-skipped accounting |
 | RQ454 | WAITING | supplier-shoetype-production-reconciliation | Produce read-only production reconciliation evidence for certified windows |
 | RQ455 | WAITING | supplier-shoetype-customer-acceptance | Capture customer-side reconciliation and acceptance evidence |
+| RQ458 | WAITING | supplier-decision-signal-identity | Preserve per-supplier signal identity when recommendation actionability is blocked |
+| RQ459 | WAITING | supplier-decision-kpi-report-parity | Align Supplier Decision Hub KPI, chart and report totals and delta semantics |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -1633,6 +1637,135 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ180 | DONE | pre-post-aggregate-owner-parity | Remove frontend reconstruction of backend-owned pre/post aggregate denominators |
 | RQ181 | DONE | decision-board-blocked-action-cta | Do not expose an executable action CTA for blocked Decision Board cards |
 | RQ182 | DONE | pre-post-coverage-backend-null-state | Preserve unknown pre/post coverage in backend DTOs and aggregate calculations |
+
+---
+
+## RQ458 - Preserve per-supplier signal identity when recommendation actionability is blocked
+
+Status: WAITING
+Priority: P1
+Type: frontend-contract/tests
+Feature family: supplier-decision-signal-identity
+Parallel-safe: no
+Owner: Analytics Reliability / Supplier Decision Hub
+Commit suggestion: `fix(analytics): preserve supplier decision signal identity`
+
+### Problem
+
+The current Supplier Decision Hub still replaces every row status with `insufficient_data` whenever the page-level `recommendationAllowed` gate is false. It therefore hides backend-owned distinctions such as `EXPAND`, `HOLD`, `PRICE_NEGOTIATE` and `ASSORTMENT_REDUCE` even though the row payload contains them. When the gate is true, the frontend also maps both `PRICE_NEGOTIATE` and `ASSORTMENT_REDUCE` to the same canonical `do_not_trust` presentation. Actionability permission and per-supplier signal identity are separate contracts; blocking a write must not erase the read-only signal.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx:213-219` maps both `PRICE_NEGOTIATE` and `ASSORTMENT_REDUCE` to `do_not_trust`.
+- `SupplierDecisionHubPage.tsx:533-540` sets every blocked-gate row to `insufficient_data`, while retaining only a generic fallback reason.
+- `SupplierDecisionHubPage.tsx:597-604` derives status counts from those collapsed row statuses.
+- `SupplierExplainabilitySnapshot.tsx:112-114` correctly avoids inventing a recommendation while the gate is blocked, but the selected row still arrives with the collapsed status from the page projection.
+- Current RQ401-RQ405 DONE work owns cache schema/provenance, rich detail wiring, filter reachability, effective-period display and localization; none of those completion notes closes this status-identity gap.
+
+### Scope
+
+- Supplier Decision Hub ranking row projection, status/count chips, selected detail/report/export status identity and actionability messaging.
+- Preserve `recommendationAllowed` as the write/action gate; do not expose an executable action when the gate is false.
+- Keep backend recommendation codes, reason codes, reliability and data-quality fields authoritative.
+
+### Read first
+
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` entries `RQ249`, `RQ401`-`RQ405`
+- `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx`
+- `Klijent/clientapp/src/components/supplierDecisionHub/SupplierExplainabilitySnapshot.tsx`
+- `Klijent/clientapp/src/services/supplierDecisionReport.ts`
+- `Klijent/clientapp/src/pages/__tests__/SupplierDecisionHubPage.spec.tsx`
+
+### Do
+
+1. Preserve backend `recommendationCode` and a truthful localized review label when actionability is blocked; only disable or downgrade writes.
+2. Define a distinct presentation for `PRICE_NEGOTIATE` versus `ASSORTMENT_REDUCE`, or make the backend-owned status contract explicit if both intentionally share a label.
+3. Align row counts, selected detail, report/export projections and snapshot note with the same signal identity.
+4. Keep missing/unknown recommendation codes unavailable rather than inventing a status.
+
+### Tests
+
+- blocked-gate fixture with mixed `EXPAND`, `HOLD`, `PRICE_NEGOTIATE` and `ASSORTMENT_REDUCE` rows;
+- allowed-gate price-negotiation versus assortment-reduction presentation;
+- table/count/detail/report/export parity and no action write when blocked;
+- focused Supplier Decision page/report/snapshot tests, analytics guardrails and `git diff --check`.
+
+### Acceptance
+
+- A blocked recommendation gate cannot erase distinct backend supplier signals.
+- Price negotiation is not presented as “Ne veruj” unless that is the declared backend contract.
+- No executable supplier action is enabled while `recommendationAllowed` is false.
+- Unknown recommendation identity remains visibly unavailable/degraded, never a trusted fallback.
+
+### Dependencies
+
+- Consumes the current-main cache/effective-period and detail contracts from `RQ401`, `RQ402` and `RQ404`; do not reopen those owners.
+- Must coordinate with any future Supplier Decision Hub status-label work; no Supplier Sales status mapping is in scope.
+
+---
+
+## RQ459 - Align Supplier Decision Hub KPI, chart and report totals and delta semantics
+
+Status: WAITING
+Priority: P1
+Type: frontend-contract/backend-contract/tests
+Feature family: supplier-decision-kpi-report-parity
+Parallel-safe: no
+Owner: Analytics Reliability / Supplier Decision Hub
+Commit suggestion: `fix(analytics): align supplier decision kpi report parity`
+
+### Problem
+
+The Supplier Decision Hub recomputes total revenue, top-five share, margin contribution and concentration chart shares from ranking rows on the frontend, while the backend summary already owns aggregate values and trust metadata. The report payload receives those client-derived totals. The page also computes period-over-period full-price share change with `calculateSupplierQualityTrendPct`, whose row-level meaning is full-price share minus markdown share; using the same helper for two summary periods gives the wrong business meaning and can make KPI cards, charts and reports disagree.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx:520-590` derives row shares, total revenue, top-five share and margin contribution from `ranking.items`.
+- `SupplierDecisionHubPage.tsx:592-594` computes previous-period full-price delta with `calculateSupplierQualityTrendPct`.
+- `SupplierDecisionHubPage.tsx:118-126` defines that helper as `fullPriceRevenueShare - markdownRevenueShare`, which is not a current-versus-previous-period delta.
+- `SupplierDecisionHubPage.tsx:840-860` passes the client-derived totals into `buildSupplierDecisionReportPayload`.
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs:739-818` already builds authoritative summary aggregates, including revenue-weighted shares, margin and capital-at-risk.
+
+### Scope
+
+- Hub KPI cards, concentration chart denominator, table share population, report/export totals and previous-period delta semantics.
+- Preserve backend recommendation ownership and current requested/effective/observed period trust contract.
+- Keep missing or partial margin evidence unavailable; do not replace unknown with zero.
+
+### Read first
+
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` entries `RQ250`, `RQ362`, `RQ401` and `RQ404`
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs`
+- `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx`
+- `Klijent/clientapp/src/services/supplierDecisionReport.ts`
+- `Klijent/clientapp/src/services/supplierDecisionMargin.ts`
+
+### Do
+
+1. Declare authoritative summary fields versus visible-ranking projections and use one declared population for KPI, chart, table and report.
+2. Split row markdown-quality trend from current-versus-previous-period full-price delta; preserve units and numerator/denominator meaning.
+3. Make report/export totals use the same authoritative values as the on-screen KPI cards, with provenance where a projection is intentionally visible-row based.
+4. Keep incomplete/partial margin contribution fail-closed as unavailable or explicitly partial.
+
+### Tests
+
+- summary/ranking population divergence fixture;
+- row quality trend versus previous-period full-price delta counterexample;
+- KPI/chart/table/report/export parity fixture;
+- missing, partial, measured-zero and non-finite margin cases;
+- focused Supplier Decision page/report/margin tests, analytics guardrails and `git diff --check`.
+
+### Acceptance
+
+- KPI cards, concentration chart, table shares and report/export totals describe one declared population.
+- A period-over-period full-price change cannot be mistaken for row markdown-dependency trend.
+- Partial or missing margin evidence never becomes a trusted zero.
+- Requested/effective/observed period and data-quality metadata remain visible and consistent.
+
+### Dependencies
+
+- Depends on the current-main period/effective-lineage contract from `RQ401`/`RQ404`; do not recreate cache or period semantics.
+- Coordinate with `RQ458` only where status counts share the same projection; no Supplier Sales totals are in scope.
 
 ---
 
@@ -23986,7 +24119,7 @@ Commit suggestion: `fix(analytics): remove remaining dnevnik id joins from recei
 
 ## RQ439 - Triage unmerged PR #63 Supplier Decision Hub findings against current main
 
-Status: WAITING
+Status: DONE
 Ready after: owner decision on whether the unmerged PR #63 audit (`origin/cursor/supplier-decision-hub-audit-444b`) should be salvaged
 Priority: P3
 Type: docs/triage
@@ -24031,6 +24164,23 @@ PR #63 (2026-09-22, branch `cursor/supplier-decision-hub-audit-444b`, four docs 
 
 - Owner decision only; no runtime dependency.
 - Reliability contract: any re-queued finding must state source of truth, units, numerator/denominator and missing-evidence behavior per the protocol.
+
+### Completion note
+
+- Date: 2026-09-26
+- Status: DONE
+- Completion: Re-checked all five PR #63 findings against current `main`. Period/cache, filter reachability and localization map to delivered `RQ401`, `RQ404` and `RQ405`. The signal-identity finding remains confirmed and was re-queued as `RQ458`; the KPI/report population and period-delta finding remains confirmed and was re-queued as `RQ459`.
+- Changed files: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `docs/ai/SUPPLIER_DECISION_HUB_AUDIT_PROMPTS_2026-09-22.md`; `.ai/runs/2026-09-26-RQ439-evidence.md`.
+- Checks run: queue validators with and without `--self-test`; planning and agent-instruction validators with and without `--self-test`; `git diff --check`.
+- Checks not run: frontend/backend runtime tests and builds; RQ439 is read-only triage and changes no product code.
+- Run log: `.ai/runs/2026-09-26-RQ439-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: pull-request
+- Main commit SHA: pending
+- Main verification: pending; PR #63 is superseded and must not be merged.
+- Missed: no known PR #63 finding was left unmapped.
+- Follow-up: `RQ458` and `RQ459` are the fresh implementation handoffs.
+- Residual risk: the two confirmed runtime findings remain unfixed until their new prompts are implemented.
 
 ---
 
