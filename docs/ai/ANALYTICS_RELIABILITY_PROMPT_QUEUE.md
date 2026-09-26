@@ -2,8 +2,8 @@
 
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ456
-Owner promotion/claim 2026-09-26: idle recovery after RQ383 found Current READY none; P0 RQ456 is dependency-complete (RQ445/RQ407/RQ412/RQ446 DONE) and collision-safe. Promoted WAITING -> READY -> IN_PROGRESS for unified retail-sales receipt population. Local lock: `.ai/task-locks/RQ456-cursor.lock.md`. RQ457 remains WAITING; RQ384 remains the next Daily Sales P1 lane.
+Current READY prompt: none
+Owner promotion/claim 2026-09-26: idle recovery after RQ383 found Current READY none; P0 RQ456 is dependency-complete (RQ445/RQ407/RQ412/RQ446 DONE) and collision-safe. RQ456 lives in the Operations accuracy addendum and is IN_PROGRESS there (addendum Current READY = RQ456; local lock `.ai/task-locks/RQ456-cursor.lock.md`). Main-queue Current READY stays `none` because the section owner is the addendum. RQ457 remains WAITING; RQ384 remains the next Daily Sales P1 lane.
 Owner completion 2026-09-26: `RQ446` was delivered directly to `main` in `5979ef65`; the adversarial Supplier/Shoe Type fixture, immutable expected-output manifest and exact-byte SHA-256 guard are synchronized. Focused manifest guard proof is `2/2`; runtime PostgreSQL/API execution remains RQ447. Run log: `.ai/runs/2026-09-26-RQ446-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-26: idle recovery found Current READY `none`. Concurrently RQ446 closed on `main`; this workspace claimed P1 `RQ383` for Daily Sales shift provenance. `RQ382` section Status was mechanically repaired IN_PROGRESS→DONE. Local lock: `.ai/task-locks/RQ383-cursor.lock.md`.
 Owner completion 2026-09-26: `RQ383` was delivered for Daily Sales shift provenance. Measured shifts no longer absorb off-shift/no-time remaps; metadata exposes `ShiftAssignmentStatus`, `OffShift*` and `NoTimeFallback*`; frontend keeps shift shares unavailable under `no_time_fallback`. Run log: `.ai/runs/2026-09-26-RQ383-evidence.md`. Evidence state: synchronized; implementation `e5d22c01`; tip `ed1ef168`.
