@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -10,6 +11,7 @@ namespace Trendplus2.Tests;
 public sealed class SupplierShoeTypeRq447SeamIntegrationTests
     : IClassFixture<WebApplicationFactory<global::Program>>
 {
+    private const int StartupWarmupRetryLimit = 3;
     private const string JulyFrom = "2026-07-01";
     private const string JulyTo = "2026-07-07";
     private const string BoundaryFrom = "2026-09-01";
@@ -104,11 +106,52 @@ public sealed class SupplierShoeTypeRq447SeamIntegrationTests
 
     private static async Task<JsonElement> GetJsonAsync(HttpClient client, string path)
     {
-        using var response = await client.GetAsync(path);
-        var body = await response.Content.ReadAsStringAsync();
-        Assert.True(response.IsSuccessStatusCode, $"{path} returned {(int)response.StatusCode}: {body}");
-        using var document = JsonDocument.Parse(body);
-        return document.RootElement.Clone();
+        for (var attempt = 0; ; attempt++)
+        {
+            using var response = await client.GetAsync(path);
+            var body = await response.Content.ReadAsStringAsync();
+            if (response.IsSuccessStatusCode)
+            {
+                using var document = JsonDocument.Parse(body);
+                return document.RootElement.Clone();
+            }
+
+            var isDatabaseWarmup = IsDatabaseWarmupResponse(response.StatusCode, body, out var retryAfterSeconds);
+            if (attempt >= StartupWarmupRetryLimit || !isDatabaseWarmup)
+            {
+                Assert.Fail($"{path} returned {(int)response.StatusCode}: {body}");
+            }
+
+            await Task.Delay(TimeSpan.FromSeconds(Math.Clamp(retryAfterSeconds, 1, 10)));
+        }
+    }
+
+    private static bool IsDatabaseWarmupResponse(
+        HttpStatusCode statusCode,
+        string body,
+        out int retryAfterSeconds)
+    {
+        retryAfterSeconds = 1;
+        if (statusCode != HttpStatusCode.ServiceUnavailable)
+        {
+            return false;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(body);
+            var root = document.RootElement;
+            return root.TryGetProperty("status", out var status)
+                && status.GetString() == "starting"
+                && root.TryGetProperty("reason", out var reason)
+                && reason.GetString() == "db_warmup"
+                && (!root.TryGetProperty("retryAfterSeconds", out var retryAfter)
+                    || retryAfter.TryGetInt32(out retryAfterSeconds));
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
     }
 
     private static async Task SeedSharedFixtureAsync()
