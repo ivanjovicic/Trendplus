@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.Security.Cryptography;
+using System.Text;
 using Application.Analytics;
 using Infrastructure.Configuration;
 using Infrastructure.DbContexts;
@@ -13,6 +15,7 @@ namespace Infrastructure.Services;
 public interface IOperationsAnalyticsIntegrityService
 {
     void MarkUnverified(string trigger, string summary);
+    Task MarkUnverifiedAsync(string trigger, string summary, CancellationToken ct = default);
     Task<OperationsAnalyticsIntegritySnapshot> RunBoundedProbeAsync(CancellationToken ct = default);
 }
 
@@ -46,33 +49,55 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
             trigger);
     }
 
+    public async Task MarkUnverifiedAsync(string trigger, string summary, CancellationToken ct = default)
+    {
+        var checkedAt = DateTime.UtcNow;
+        var (fromUtc, toUtc) = ResolveProbeWindow(checkedAt);
+        var filters = new OperationsAnalyticsRawFactOracle.Filters(
+            fromUtc,
+            toUtc,
+            null,
+            OperationsAnalyticsRawFactOracle.NormalizeDataScope(_options.DefaultDataScope));
+        var snapshot = OperationsAnalyticsIntegritySnapshot.Degraded(
+            BuildEvidenceId(trigger),
+            trigger,
+            summary);
+
+        await StoreAsync(snapshot, filters, ct);
+        _logger.LogInformation(
+            "Operations analytics integrity unverified transition persisted. Trigger={Trigger}",
+            trigger);
+    }
+
     public async Task<OperationsAnalyticsIntegritySnapshot> RunBoundedProbeAsync(CancellationToken ct = default)
     {
+        var checkedAt = DateTime.UtcNow;
+        var (fromUtc, toUtc) = ResolveProbeWindow(checkedAt);
+        var dataScope = OperationsAnalyticsRawFactOracle.NormalizeDataScope(_options.DefaultDataScope);
+        var filters = new OperationsAnalyticsRawFactOracle.Filters(fromUtc, toUtc, null, dataScope);
+
         if (!_options.Enabled)
         {
             var disabled = OperationsAnalyticsIntegritySnapshot.Degraded(
                 BuildEvidenceId("disabled"),
                 "disabled",
                 "Operations integrity probes are disabled in configuration.");
-            _registry.Set(disabled);
-            return disabled;
+            return await StoreAsync(disabled, filters, ct);
         }
 
         var evidenceId = BuildEvidenceId("probe");
-        var checkedAt = DateTime.UtcNow;
-        var (fromUtc, toUtc) = ResolveProbeWindow(checkedAt);
-        var dataScope = OperationsAnalyticsRawFactOracle.NormalizeDataScope(_options.DefaultDataScope);
-        var filters = new OperationsAnalyticsRawFactOracle.Filters(fromUtc, toUtc, null, dataScope);
 
         try
         {
             var connectionString = _db.Database.GetConnectionString();
             if (string.IsNullOrWhiteSpace(connectionString))
             {
-                return Store(OperationsAnalyticsIntegritySnapshot.Degraded(
+                return await StoreAsync(OperationsAnalyticsIntegritySnapshot.Degraded(
                     evidenceId,
                     "missing_connection",
-                    "Database connection string is unavailable for integrity probes."));
+                    "Database connection string is unavailable for integrity probes."),
+                    filters,
+                    ct);
             }
 
             await using var connection = new NpgsqlConnection(connectionString);
@@ -119,21 +144,90 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
                     BlocksDecisionSignals: false);
             }
 
-            return Store(next);
+            return await StoreAsync(next, filters, ct);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Operations analytics integrity probe failed.");
-            return Store(OperationsAnalyticsIntegritySnapshot.Degraded(
+            return await StoreAsync(OperationsAnalyticsIntegritySnapshot.Degraded(
                 evidenceId,
                 "probe_failure",
-                "Operations integrity probe failed; decision signals remain fail-closed until a successful check."));
+                "Operations integrity probe failed; decision signals remain fail-closed until a successful check."),
+                filters,
+                ct);
         }
     }
 
-    private OperationsAnalyticsIntegritySnapshot Store(OperationsAnalyticsIntegritySnapshot snapshot)
+    private async Task<OperationsAnalyticsIntegritySnapshot> StoreAsync(
+        OperationsAnalyticsIntegritySnapshot snapshot,
+        OperationsAnalyticsRawFactOracle.Filters filters,
+        CancellationToken ct)
     {
         _registry.Set(snapshot);
+
+        try
+        {
+            var connectionString = _db.Database.GetConnectionString();
+            if (string.IsNullOrWhiteSpace(connectionString))
+                return snapshot;
+
+            var alreadyPersisted = await _db.OperationsAnalyticsIntegrityEvidence
+                .AsNoTracking()
+                .AnyAsync(row => row.EvidenceId == snapshot.EvidenceId, ct);
+            if (alreadyPersisted)
+                return snapshot;
+
+            var appliedMigrations = await _db.Database.GetAppliedMigrationsAsync(ct);
+            var primaryDelta = snapshot.Deltas.FirstOrDefault();
+            var databaseFingerprint = Convert.ToHexString(
+                SHA256.HashData(Encoding.UTF8.GetBytes(connectionString)))
+                .ToLowerInvariant();
+
+            _db.OperationsAnalyticsIntegrityEvidence.Add(new Domain.Model.Analytics.OperationsAnalyticsIntegrityEvidenceRecord
+            {
+                EvidenceId = snapshot.EvidenceId,
+                Status = snapshot.Status,
+                CheckedAtUtc = snapshot.CheckedAtUtc,
+                LastVerifiedAtUtc = snapshot.LastVerifiedAtUtc,
+                Trigger = snapshot.Trigger,
+                Summary = snapshot.Summary,
+                FailureClassification = snapshot.Status == OperationsAnalyticsIntegrityStates.Verified ? null : snapshot.Trigger,
+                TenantScope = Environment.GetEnvironmentVariable("TRENDPLUS_TENANT_SCOPE") ?? "dedicated",
+                StoreId = filters.StoreId,
+                DataScope = filters.DataScope,
+                RequestedFromUtc = filters.FromUtc,
+                RequestedToUtc = filters.ToUtc,
+                EffectiveFromUtc = filters.FromUtc,
+                EffectiveToUtc = filters.ToUtc,
+                DatabaseFingerprint = databaseFingerprint,
+                AppCommit = Environment.GetEnvironmentVariable("TRENDPLUS_APP_COMMIT") ?? "unknown",
+                SchemaVersion = appliedMigrations.LastOrDefault() ?? "unknown",
+                ContractVersion = "SST-ACCURACY-1.0",
+                FixtureVersion = "supplier-shoetype-adversarial-golden-2026-09-26",
+                CacheVersion = "supplier-v5;shoe-v4;color-v5;data-window-v2",
+                EndpointOrLiveRevenue = primaryDelta?.EndpointOrLiveRevenue,
+                OracleRevenue = primaryDelta?.OracleRevenue,
+                RevenueDelta = primaryDelta?.RevenueDelta,
+                EndpointOrLiveUnits = primaryDelta?.EndpointOrLiveUnits,
+                OracleUnits = primaryDelta?.OracleUnits,
+                UnitsDelta = primaryDelta?.UnitsDelta,
+                DeltasJson = JsonSerializer.Serialize(snapshot.Deltas),
+                CoverageJson = JsonSerializer.Serialize(new
+                {
+                    unknownAttribution = "not_collected_by_bounded_probe",
+                    attributionCoverage = "not_collected_by_bounded_probe",
+                    costCoverage = "not_collected_by_bounded_probe"
+                }),
+                BlocksDecisionSignals = snapshot.BlocksDecisionSignals,
+                CreatedAtUtc = DateTime.UtcNow
+            });
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Operations analytics integrity evidence could not be persisted for {EvidenceId}.", snapshot.EvidenceId);
+        }
+
         return snapshot;
     }
 

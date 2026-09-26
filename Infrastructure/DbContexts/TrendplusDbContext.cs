@@ -598,6 +598,43 @@ namespace Infrastructure.DbContexts
                   .HasDatabaseName("ix_snapshot_lines_batch_source");
             });
 
+            modelBuilder.Entity<OperationsAnalyticsIntegrityEvidenceRecord>(eb =>
+            {
+                eb.ToTable("operations_analytics_integrity_evidence");
+                eb.HasKey(e => e.EvidenceId);
+                eb.Property(e => e.EvidenceId).HasColumnName("evidence_id").HasMaxLength(128);
+                eb.Property(e => e.Status).HasColumnName("status").IsRequired().HasMaxLength(32);
+                eb.Property(e => e.CheckedAtUtc).HasColumnName("checked_at_utc").IsRequired();
+                eb.Property(e => e.LastVerifiedAtUtc).HasColumnName("last_verified_at_utc");
+                eb.Property(e => e.Trigger).HasColumnName("trigger").HasMaxLength(64);
+                eb.Property(e => e.Summary).HasColumnName("summary").HasMaxLength(2000);
+                eb.Property(e => e.FailureClassification).HasColumnName("failure_classification").HasMaxLength(128);
+                eb.Property(e => e.TenantScope).HasColumnName("tenant_scope").HasMaxLength(128);
+                eb.Property(e => e.StoreId).HasColumnName("store_id");
+                eb.Property(e => e.DataScope).HasColumnName("data_scope").HasMaxLength(32);
+                eb.Property(e => e.RequestedFromUtc).HasColumnName("requested_from_utc");
+                eb.Property(e => e.RequestedToUtc).HasColumnName("requested_to_utc");
+                eb.Property(e => e.EffectiveFromUtc).HasColumnName("effective_from_utc");
+                eb.Property(e => e.EffectiveToUtc).HasColumnName("effective_to_utc");
+                eb.Property(e => e.DatabaseFingerprint).HasColumnName("database_fingerprint").HasMaxLength(128);
+                eb.Property(e => e.AppCommit).HasColumnName("app_commit").HasMaxLength(128);
+                eb.Property(e => e.SchemaVersion).HasColumnName("schema_version").HasMaxLength(128);
+                eb.Property(e => e.ContractVersion).HasColumnName("contract_version").HasMaxLength(64);
+                eb.Property(e => e.FixtureVersion).HasColumnName("fixture_version").HasMaxLength(128);
+                eb.Property(e => e.CacheVersion).HasColumnName("cache_version").HasMaxLength(256);
+                eb.Property(e => e.EndpointOrLiveRevenue).HasColumnName("endpoint_or_live_revenue").HasColumnType("decimal(18,2)");
+                eb.Property(e => e.OracleRevenue).HasColumnName("oracle_revenue").HasColumnType("decimal(18,2)");
+                eb.Property(e => e.RevenueDelta).HasColumnName("revenue_delta").HasColumnType("decimal(18,2)");
+                eb.Property(e => e.EndpointOrLiveUnits).HasColumnName("endpoint_or_live_units");
+                eb.Property(e => e.OracleUnits).HasColumnName("oracle_units");
+                eb.Property(e => e.UnitsDelta).HasColumnName("units_delta");
+                eb.Property(e => e.DeltasJson).HasColumnName("deltas_json").HasColumnType("jsonb");
+                eb.Property(e => e.CoverageJson).HasColumnName("coverage_json").HasColumnType("jsonb");
+                eb.Property(e => e.BlocksDecisionSignals).HasColumnName("blocks_decision_signals").IsRequired();
+                eb.Property(e => e.CreatedAtUtc).HasColumnName("created_at_utc").IsRequired();
+                eb.HasIndex(e => new { e.CheckedAtUtc, e.Status }).HasDatabaseName("ix_operations_integrity_evidence_checked_status");
+            });
+
             // ── Worker runtime settings ──
             modelBuilder.Entity<WorkerRuntimeSettings>(eb =>
             {
@@ -645,6 +682,7 @@ namespace Infrastructure.DbContexts
         public DbSet<Infrastructure.Model.StockReservation> StockReservations { get; set; } = null!;
         public DbSet<AnalyticsCostSnapshotBatch> AnalyticsCostSnapshotBatches { get; set; } = null!;
         public DbSet<AnalyticsSaleLineCostSnapshot> AnalyticsSaleLineCostSnapshots { get; set; } = null!;
+        public DbSet<OperationsAnalyticsIntegrityEvidenceRecord> OperationsAnalyticsIntegrityEvidence { get; set; } = null!;
         public DbSet<WorkerRuntimeSettings> WorkerRuntimeSettings { get; set; } = null!;
 
         public DbConnection GetDbConnection()

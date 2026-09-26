@@ -197,6 +197,9 @@ public sealed class AnalyticsCacheAdminService
             {
                 await using var scope = _scopeFactory.CreateAsyncScope();
                 var integrityService = scope.ServiceProvider.GetRequiredService<IOperationsAnalyticsIntegrityService>();
+                await integrityService.MarkUnverifiedAsync(
+                    "cache_clear",
+                    "Analytics cache was cleared; durable integrity evidence remains unverified until the bounded probe completes.");
                 await integrityService.RunBoundedProbeAsync();
             }
             catch (Exception ex)
