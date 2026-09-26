@@ -2,7 +2,8 @@
 
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ456
+Owner promotion/claim 2026-09-26: idle recovery after RQ383 found Current READY none; P0 RQ456 is dependency-complete (RQ445/RQ407/RQ412/RQ446 DONE) and collision-safe. Promoted WAITING -> READY -> IN_PROGRESS for unified retail-sales receipt population. Local lock: `.ai/task-locks/RQ456-cursor.lock.md`. RQ457 remains WAITING; RQ384 remains the next Daily Sales P1 lane.
 Owner completion 2026-09-26: `RQ446` was delivered directly to `main` in `5979ef65`; the adversarial Supplier/Shoe Type fixture, immutable expected-output manifest and exact-byte SHA-256 guard are synchronized. Focused manifest guard proof is `2/2`; runtime PostgreSQL/API execution remains RQ447. Run log: `.ai/runs/2026-09-26-RQ446-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-26: idle recovery found Current READY `none`. Concurrently RQ446 closed on `main`; this workspace claimed P1 `RQ383` for Daily Sales shift provenance. `RQ382` section Status was mechanically repaired IN_PROGRESS→DONE. Local lock: `.ai/task-locks/RQ383-cursor.lock.md`.
 Owner completion 2026-09-26: `RQ383` was delivered for Daily Sales shift provenance. Measured shifts no longer absorb off-shift/no-time remaps; metadata exposes `ShiftAssignmentStatus`, `OffShift*` and `NoTimeFallback*`; frontend keeps shift shares unavailable under `no_time_fallback`. Run log: `.ai/runs/2026-09-26-RQ383-evidence.md`. Evidence state: synchronized; implementation `e5d22c01`; tip `ed1ef168`.
@@ -1656,6 +1657,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ453 | WAITING | analytics-certification-ci-gate | Add a non-skippable certification CI gate with executed-versus-skipped accounting |
 | RQ454 | WAITING | supplier-shoetype-production-reconciliation | Produce read-only production reconciliation evidence for certified windows |
 | RQ455 | WAITING | supplier-shoetype-customer-acceptance | Capture customer-side reconciliation and acceptance evidence |
+| RQ456 | IN_PROGRESS | operations-retail-sales-receipt-population | Unify DUG/KOREKCIJA retail-sales receipt exclusions across Daily/Supplier/Shoe/Color/oracle |
+| RQ457 | WAITING | shoetype-identity-pop-margin-semantics | Harden Shoe Type identity, previous-only PoP and margin denominator separation |
 | RQ458 | DONE | supplier-decision-signal-identity | Preserve per-supplier signal identity when recommendation actionability is blocked |
 | RQ459 | DONE | supplier-decision-kpi-report-parity | Align Supplier Decision Hub KPI, chart and report totals and delta semantics |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |

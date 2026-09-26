@@ -461,6 +461,61 @@ public sealed class DailySalesStatsServiceTests
     }
 
     [Fact]
+    public async Task GetDailySalesAsync_ExcludesWhitespaceAndMixedCaseNonStandardReceipts()
+    {
+        await using var db = CreateDbContext();
+        SeedSuppliersAndArticles(db);
+
+        db.ProdajaZaglavlja.AddRange(
+            new ProdajaZaglavlje
+            {
+                Id = 190,
+                BrojRacuna = "190",
+                DatumProdaje = new DateTime(2026, 3, 24, 9, 0, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "access"
+            },
+            new ProdajaZaglavlje
+            {
+                Id = 191,
+                BrojRacuna = " dug ",
+                DatumProdaje = new DateTime(2026, 3, 24, 10, 0, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "access"
+            },
+            new ProdajaZaglavlje
+            {
+                Id = 192,
+                BrojRacuna = " KoReKcIjA ",
+                DatumProdaje = new DateTime(2026, 3, 24, 11, 0, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "access"
+            });
+
+        db.ProdajaStavke.AddRange(
+            new ProdajaStavka { Id = 190, IdProdaja = 190, IdArtikal = 101, Kolicina = 4, Cena = 25m },
+            new ProdajaStavka { Id = 191, IdProdaja = 191, IdArtikal = 101, Kolicina = 9, Cena = 10m },
+            new ProdajaStavka { Id = 192, IdProdaja = 192, IdArtikal = 102, Kolicina = 2, Cena = 100m });
+
+        await db.SaveChangesAsync();
+
+        var service = new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance);
+        var result = await service.GetDailySalesAsync(
+            requestedFromUtc: new DateTime(2026, 3, 24, 0, 0, 0, DateTimeKind.Utc),
+            requestedToUtc: new DateTime(2026, 3, 24, 0, 0, 0, DateTimeKind.Utc),
+            storeId: 1,
+            topN: 5,
+            dataScope: "all",
+            ct: CancellationToken.None);
+
+        var row = Assert.Single(result.DateRows);
+        Assert.Equal(4, row.TotalItemsSold);
+        Assert.Equal(100m, row.TotalRevenue);
+        Assert.Equal(1, result.Metadata.DebtReceiptCount);
+        Assert.Equal(90m, result.Metadata.DebtReceiptRevenue);
+    }
+
+    [Fact]
     public async Task GetDailySalesAsync_PreservesSignedReturnsInMetadataSuppliersAndOthers()
     {
         await using var db = CreateDbContext();

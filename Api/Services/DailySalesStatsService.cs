@@ -22,8 +22,6 @@ public interface IDailySalesStatsService
 
 public sealed class DailySalesStatsService : IDailySalesStatsService
 {
-    private static readonly string[] ExcludedDailySalesReceiptNumbers = ["DUG", "KOREKCIJA"];
-    private static readonly string[] ExcludedDailySalesReceiptNumbersForQuery = ["DUG", "dug", "Dug", "KOREKCIJA", "korekcija", "Korekcija"];
 
     private readonly TrendplusDbContext _db;
     private readonly ILogger<DailySalesStatsService> _logger;
@@ -50,7 +48,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
         var toDateUtc = DateTime.SpecifyKind(requestedToUtc.Date, DateTimeKind.Utc);
         var toDateExclusiveUtc = toDateUtc.AddDays(1);
         var saleTypeCandidates = TipPromeneConstants.ProdajaTypes.ToArray();
-        var excludedReceiptNumbersForQuery = ExcludedDailySalesReceiptNumbersForQuery;
+        var excludedReceiptNumbersForQuery = RetailSalesReceiptPopulation.ExcludedCanonicalReceiptNumbers;
 
         // The table population is line/article scoped. Reuse its receipt identity for
         // every receipt diagnostic so existing/imported views cannot inherit evidence
@@ -62,7 +60,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             where pz.DatumProdaje >= fromDateUtc
                && pz.DatumProdaje < toDateExclusiveUtc
                && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
-               && !excludedReceiptNumbersForQuery.Contains((pz.BrojRacuna ?? string.Empty).Trim())
+               && !excludedReceiptNumbersForQuery.Contains((pz.BrojRacuna ?? string.Empty).Trim().ToUpper())
                && (!importedOnly || a.DataOrigin == "access")
                && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
             select pz.Id;
@@ -83,7 +81,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             .ToListAsync(ct);
 
         var includedReceiptHeaders = receiptHeaders
-            .Where(x => !IsExcludedFromDailySales(x.BrojRacuna))
+            .Where(x => !RetailSalesReceiptPopulation.IsExcludedFromRetailSales(x.BrojRacuna))
             .ToList();
 
         var duplicateReceiptGroups = includedReceiptHeaders
@@ -113,7 +111,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             where pz.DatumProdaje >= fromDateUtc
                && pz.DatumProdaje < toDateExclusiveUtc
                && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
-               && !excludedReceiptNumbersForQuery.Contains((pz.BrojRacuna ?? string.Empty).Trim())
+               && !excludedReceiptNumbersForQuery.Contains((pz.BrojRacuna ?? string.Empty).Trim().ToUpper())
                && (!importedOnly || a.DataOrigin == "access")
                && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
             group new
@@ -160,7 +158,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             .Where(d => d.Datum >= fromDateUtc
                         && d.Datum < toDateExclusiveUtc
                         && (!storeId.HasValue || d.IDObjekat == storeId.Value)
-                        && !excludedReceiptNumbersForQuery.Contains((d.BrojRacuna ?? string.Empty).Trim())
+                        && !excludedReceiptNumbersForQuery.Contains((d.BrojRacuna ?? string.Empty).Trim().ToUpper())
                         && saleTypeCandidates.Contains(d.TipPromene))
             .Select(g => new
             {
@@ -219,7 +217,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             where pz.DatumProdaje >= fromDateUtc
                && pz.DatumProdaje < toDateExclusiveUtc
                && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
-               && excludedReceiptNumbersForQuery.Contains((pz.BrojRacuna ?? string.Empty).Trim())
+               && excludedReceiptNumbersForQuery.Contains((pz.BrojRacuna ?? string.Empty).Trim().ToUpper())
                && (!importedOnly || a.DataOrigin == "access")
                && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
             group new
@@ -283,11 +281,11 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
         var nonStandardUnavailableCount = nonStandardReceiptHeaders.Count(x => !x.Revenue.HasValue);
 
         var debtReceiptHeaders = nonStandardReceiptsWithKnownRevenue
-            .Where(x => IsDebtReceiptNumber(x.BrojRacuna))
+            .Where(x => RetailSalesReceiptPopulation.IsDebtReceiptNumber(x.BrojRacuna))
             .ToList();
 
         var excludedDebtReceiptHeaders = excludedReceiptHeaders
-            .Where(x => IsDebtReceiptNumber(x.BrojRacuna))
+            .Where(x => RetailSalesReceiptPopulation.IsDebtReceiptNumber(x.BrojRacuna))
             .ToList();
 
         var aggregates = await (
@@ -302,7 +300,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             where pz.DatumProdaje >= fromDateUtc
                && pz.DatumProdaje < toDateExclusiveUtc
                && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
-                    && !excludedReceiptNumbersForQuery.Contains((pz.BrojRacuna ?? string.Empty).Trim())
+                    && !excludedReceiptNumbersForQuery.Contains((pz.BrojRacuna ?? string.Empty).Trim().ToUpper())
                && (!importedOnly || a.DataOrigin == "access")
                && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
             group new
@@ -630,7 +628,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                 join pz in _db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
                 join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                 where (!storeId.HasValue || pz.IDObjekat == storeId.Value)
-                   && !excludedReceiptNumbersForQuery.Contains((pz.BrojRacuna ?? string.Empty).Trim())
+                   && !excludedReceiptNumbersForQuery.Contains((pz.BrojRacuna ?? string.Empty).Trim().ToUpper())
                    && (!importedOnly || a.DataOrigin == "access")
                    && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
                 select pz.DatumProdaje;
@@ -900,15 +898,6 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
 
         return true;
     }
-
-    private static bool IsDebtReceiptNumber(string? brojRacuna)
-        => string.Equals(brojRacuna?.Trim(), "DUG", StringComparison.OrdinalIgnoreCase);
-
-    private static bool IsCorrectionReceiptNumber(string? brojRacuna)
-        => string.Equals(brojRacuna?.Trim(), "KOREKCIJA", StringComparison.OrdinalIgnoreCase);
-
-    private static bool IsExcludedFromDailySales(string? brojRacuna)
-        => IsDebtReceiptNumber(brojRacuna) || IsCorrectionReceiptNumber(brojRacuna);
 
     private sealed class SalesAggregateRow
     {

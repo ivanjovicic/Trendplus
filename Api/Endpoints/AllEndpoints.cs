@@ -1260,6 +1260,7 @@ public static class AllEndpoints
                            && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
                            && (!importedOnly || a.DataOrigin == "access")
                            && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+                           && !RetailSalesReceiptPopulation.ExcludedCanonicalReceiptNumbers.Contains((pz.BrojRacuna ?? string.Empty).Trim().ToUpper())
                         group ps by new { ps.SupplierIdAtSale, ps.ShoeTypeIdAtSale } into g
                         select new
                         {
@@ -1310,6 +1311,7 @@ public static class AllEndpoints
                        && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
                        && (!importedOnly || a.DataOrigin == "access")
                        && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+                       && !RetailSalesReceiptPopulation.ExcludedCanonicalReceiptNumbers.Contains((pz.BrojRacuna ?? string.Empty).Trim().ToUpper())
                     group new
                     {
                         ps.Kolicina,
@@ -2227,6 +2229,7 @@ public static class AllEndpoints
                            && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
                            && (!importedOnly || a.DataOrigin == "access")
                            && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+                           && !RetailSalesReceiptPopulation.ExcludedCanonicalReceiptNumbers.Contains((pz.BrojRacuna ?? string.Empty).Trim().ToUpper())
                         group ps by ps.ShoeTypeIdAtSale into g
                         select new
                         {
@@ -2253,6 +2256,7 @@ public static class AllEndpoints
                        && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
                        && (!importedOnly || a.DataOrigin == "access")
                        && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+                       && !RetailSalesReceiptPopulation.ExcludedCanonicalReceiptNumbers.Contains((pz.BrojRacuna ?? string.Empty).Trim().ToUpper())
                     group new
                     {
                         ps.Kolicina,
@@ -2867,6 +2871,7 @@ public static class AllEndpoints
                     where (!storeId.HasValue || pz.IDObjekat == storeId.Value)
                        && (!importedOnly || a.DataOrigin == "access")
                        && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+                       && !RetailSalesReceiptPopulation.ExcludedCanonicalReceiptNumbers.Contains((pz.BrojRacuna ?? string.Empty).Trim().ToUpper())
                     group pz by 1 into g
                     select new
                     {
@@ -2917,6 +2922,7 @@ public static class AllEndpoints
                            && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
                            && (!importedOnly || a.DataOrigin == "access")
                            && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+                           && !RetailSalesReceiptPopulation.ExcludedCanonicalReceiptNumbers.Contains((pz.BrojRacuna ?? string.Empty).Trim().ToUpper())
                         group ps by a.Boja into g
                         select new
                         {
@@ -2945,6 +2951,7 @@ public static class AllEndpoints
                        && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
                        && (!importedOnly || a.DataOrigin == "access")
                        && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+                       && !RetailSalesReceiptPopulation.ExcludedCanonicalReceiptNumbers.Contains((pz.BrojRacuna ?? string.Empty).Trim().ToUpper())
                     group new { ps, a, pz } by new
                     {
                         Boja = a.Boja,
@@ -7926,7 +7933,8 @@ public static class AllEndpoints
             var window = await (
                 from pz in db.ProdajaZaglavlja.AsNoTracking()
                 join ps in db.ProdajaStavke.AsNoTracking() on pz.Id equals ps.IdProdaja
-                where !storeId.HasValue || pz.IDObjekat == storeId.Value
+                where (!storeId.HasValue || pz.IDObjekat == storeId.Value)
+                   && !RetailSalesReceiptPopulation.ExcludedCanonicalReceiptNumbers.Contains((pz.BrojRacuna ?? string.Empty).Trim().ToUpper())
                 group pz by 1 into g
                 select new
                 {
@@ -7947,6 +7955,7 @@ public static class AllEndpoints
                 where (!storeId.HasValue || pz.IDObjekat == storeId.Value)
                    && (!importedOnly || a.DataOrigin == "access")
                    && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+                   && !RetailSalesReceiptPopulation.ExcludedCanonicalReceiptNumbers.Contains((pz.BrojRacuna ?? string.Empty).Trim().ToUpper())
                 group pz by 1 into g
                 select new
                 {

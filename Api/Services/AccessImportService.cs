@@ -1217,7 +1217,7 @@ using NpgsqlTypes;
     }
 
     private static bool IsDebtReceiptNumber(string? brojRacuna)
-        => string.Equals(brojRacuna?.Trim(), "DUG", StringComparison.OrdinalIgnoreCase);
+        => RetailSalesReceiptPopulation.IsDebtReceiptNumber(brojRacuna);
 
     private async Task AppendImportedSalesDiagnosticsAsync(AccessImportRunResponse result, CancellationToken ct)
     {

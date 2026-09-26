@@ -153,6 +153,7 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
                   && (!filters.StoreId.HasValue || pz.IDObjekat == filters.StoreId.Value)
                   && (!importedOnly || a.DataOrigin == "access")
                   && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+                  && !RetailSalesReceiptPopulation.ExcludedCanonicalReceiptNumbers.Contains((pz.BrojRacuna ?? string.Empty).Trim().ToUpper())
             select new { ps.Kolicina, Revenue = ps.Kolicina * ps.Cena })
             .ToListAsync(ct);
 

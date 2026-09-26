@@ -352,6 +352,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                && (!filters.StoreId.HasValue || pz.IDObjekat == filters.StoreId.Value)
                && (!importedOnly || a.DataOrigin == "access")
                && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+               && !RetailSalesReceiptPopulation.ExcludedCanonicalReceiptNumbers.Contains((pz.BrojRacuna ?? string.Empty).Trim().ToUpper())
             select new SalesRow
             {
                 ArtikalId = a.Id,
@@ -436,6 +437,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                    && ps.SupplierIdAtSale == supplierId
                    && (!importedOnly || a.DataOrigin == "access")
                    && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+                   && !RetailSalesReceiptPopulation.ExcludedCanonicalReceiptNumbers.Contains((pz.BrojRacuna ?? string.Empty).Trim().ToUpper())
                 group ps by 1 into g
                 select new
                 {
@@ -461,6 +463,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                    && (!ps.SupplierIdAtSale.HasValue || d == null || d.Naziv == null || d.Naziv.Trim() == "")
                    && (!importedOnly || a.DataOrigin == "access")
                    && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+                   && !RetailSalesReceiptPopulation.ExcludedCanonicalReceiptNumbers.Contains((pz.BrojRacuna ?? string.Empty).Trim().ToUpper())
                 group ps by 1 into g
                 select new
                 {
@@ -520,6 +523,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                    && ps.ShoeTypeIdAtSale == shoeTypeId
                    && (!importedOnly || a.DataOrigin == "access")
                    && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+                   && !RetailSalesReceiptPopulation.ExcludedCanonicalReceiptNumbers.Contains((pz.BrojRacuna ?? string.Empty).Trim().ToUpper())
                 group ps by 1 into g
                 select new
                 {
@@ -545,6 +549,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                    && (!ps.ShoeTypeIdAtSale.HasValue || t == null || t.Naziv == null || t.Naziv.Trim() == "")
                    && (!importedOnly || a.DataOrigin == "access")
                    && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+                   && !RetailSalesReceiptPopulation.ExcludedCanonicalReceiptNumbers.Contains((pz.BrojRacuna ?? string.Empty).Trim().ToUpper())
                 group ps by 1 into g
                 select new
                 {
@@ -599,6 +604,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                && (!context.Filters.SupplierId.HasValue || ps.SupplierIdAtSale == context.Filters.SupplierId.Value)
                && (!importedOnly || a.DataOrigin == "access")
                && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+               && !RetailSalesReceiptPopulation.ExcludedCanonicalReceiptNumbers.Contains((pz.BrojRacuna ?? string.Empty).Trim().ToUpper())
             select new
             {
                 Color = a.Boja,

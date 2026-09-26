@@ -2,8 +2,12 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
-Main RQ current READY prompt: none
+Current READY prompt: RQ456
+Main RQ current READY prompt: RQ456
+
+Owner promotion/claim 2026-09-26: idle recovery verified RQ383/RQ446/RQ445 DONE on current `origin/main`, no active retail-sales receipt-population lock/branch/PR, and RQ456 dependencies (RQ445, RQ407, RQ412, RQ446) are satisfied. RQ456 moved WAITING -> READY -> IN_PROGRESS in this workspace; local lock `.ai/task-locks/RQ456-cursor.lock.md`. RQ457 remains WAITING behind RQ456.
+
+
 
 Owner promotion/claim 2026-09-26: idle recovery confirmed `RQ445` is the first dependency-complete P0 certification prompt, with no competing Supplier/Shoe Type accuracy-contract owner or active lock. `RQ445` moved `WAITING -> READY -> IN_PROGRESS` in this workspace; local lock `.ai/task-locks/RQ445-codex.lock.md`.
 
@@ -133,6 +137,8 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 | RQ453 | WAITING | P0 | analytics-certification-ci-gate | Add a non-skippable certification CI gate with executed-versus-skipped accounting |
 | RQ454 | WAITING | P0 | supplier-shoetype-production-reconciliation | Produce read-only production reconciliation evidence for certified windows |
 | RQ455 | WAITING | P1 | supplier-shoetype-customer-acceptance | Capture customer-side reconciliation and acceptance evidence |
+| RQ456 | IN_PROGRESS | P0 | operations-retail-sales-receipt-population | Unify DUG/KOREKCIJA retail-sales receipt exclusions across Daily/Supplier/Shoe/Color/oracle |
+| RQ457 | WAITING | P0 | shoetype-identity-pop-margin-semantics | Harden Shoe Type identity, previous-only PoP and margin denominator separation |
 
 ---
 
@@ -1886,7 +1892,7 @@ Create a reusable acceptance pack and one pilot execution template covering the 
 
 ## RQ456 - Canonicalize retail-sales receipt population
 
-Status: WAITING
+Status: IN_PROGRESS
 Ready after: RQ445 accuracy contract records the exclusion policy
 Priority: P0
 Type: backend/data-contract/oracle/detail/export/tests

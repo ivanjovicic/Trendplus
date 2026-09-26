@@ -1,3 +1,4 @@
+using Application.Analytics;
 using Npgsql;
 using NpgsqlTypes;
 
@@ -33,7 +34,7 @@ public static class SupplierShoeTypeRawFactOracle
 
     public static async Task<Totals> QueryTotalsAsync(NpgsqlConnection connection, Filters filters, CancellationToken ct = default)
     {
-        const string sql = """
+        var sql = $"""
             SELECT
                 COUNT(*)::int AS sale_line_count,
                 COALESCE(SUM(ps.kolicina), 0)::int AS total_units,
@@ -52,6 +53,7 @@ public static class SupplierShoeTypeRawFactOracle
                     OR (@dataScope = 'imported' AND a."DataOrigin" = 'access')
                     OR (@dataScope = 'existing' AND (a."DataOrigin" = 'existing' OR a."DataOrigin" IS NULL OR a."DataOrigin" = ''))
                   )
+              AND {RetailSalesReceiptPopulation.SqlExclusionPredicate}
             """;
 
         await using var command = new NpgsqlCommand(sql, connection);
@@ -74,7 +76,7 @@ public static class SupplierShoeTypeRawFactOracle
         Filters filters,
         CancellationToken ct = default)
     {
-        const string sql = """
+        var sql = $"""
             SELECT
                 ps.supplier_id_at_sale AS dimension_id,
                 COALESCE(SUM(ps.kolicina), 0)::int AS units,
@@ -91,6 +93,7 @@ public static class SupplierShoeTypeRawFactOracle
                     OR (@dataScope = 'imported' AND a."DataOrigin" = 'access')
                     OR (@dataScope = 'existing' AND (a."DataOrigin" = 'existing' OR a."DataOrigin" IS NULL OR a."DataOrigin" = ''))
                   )
+              AND {RetailSalesReceiptPopulation.SqlExclusionPredicate}
             GROUP BY ps.supplier_id_at_sale
             """;
 
@@ -102,7 +105,7 @@ public static class SupplierShoeTypeRawFactOracle
         Filters filters,
         CancellationToken ct = default)
     {
-        const string sql = """
+        var sql = $"""
             SELECT
                 ps.shoe_type_id_at_sale AS dimension_id,
                 COALESCE(SUM(ps.kolicina), 0)::int AS units,
@@ -119,6 +122,7 @@ public static class SupplierShoeTypeRawFactOracle
                     OR (@dataScope = 'imported' AND a."DataOrigin" = 'access')
                     OR (@dataScope = 'existing' AND (a."DataOrigin" = 'existing' OR a."DataOrigin" IS NULL OR a."DataOrigin" = ''))
                   )
+              AND {RetailSalesReceiptPopulation.SqlExclusionPredicate}
             GROUP BY ps.shoe_type_id_at_sale
             """;
 
