@@ -2,7 +2,8 @@
 
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ459
+Owner promotion/claim 2026-09-26: idle recovery verified `RQ458` DONE on current `origin/main` at `cc75ee66`, no active Supplier Decision Hub KPI/report-parity lock, branch or PR owner, and all RQ459 dependencies are satisfied. `RQ459` moved `WAITING -> IN_PROGRESS` in this workspace for KPI/chart/table/report population and period-delta parity; local lock `.ai/task-locks/RQ459-cursor.lock.md`.
 Owner promotion/claim 2026-09-26: idle recovery verified `RQ382` DONE on current `main`, no active Supplier Decision Hub signal-identity lock/branch owner, and `RQ458` dependencies are satisfied. `RQ458` moved `WAITING -> IN_PROGRESS` in this workspace; local lock `.ai/task-locks/RQ458-cursor.lock.md`. `RQ459` remains WAITING because the feature family is exclusive.
 Owner completion 2026-09-26: `RQ458` was delivered to current `main` in `aeeb0b34`; blocked actionability no longer erases per-supplier recommendation identity, and price negotiation is distinct from assortment reduction in the Hub, snapshot and report context. Focused Supplier Decision proof is `15/15`; guardrails, TypeScript and build pass. `RQ459` remains WAITING because the feature family is exclusive.
 Owner promotion/claim 2026-09-26: under the user's direct “claim i izvrši sledeći prompt” request, the owner decision gate for `RQ439` was satisfied. `RQ439` transitioned `WAITING -> IN_PROGRESS` in this workspace for read-only triage of unmerged PR #63 against current `main`; local lock `.ai/task-locks/RQ439-cursor.lock.md`. No runtime product code is in scope.
@@ -1637,7 +1638,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ454 | WAITING | supplier-shoetype-production-reconciliation | Produce read-only production reconciliation evidence for certified windows |
 | RQ455 | WAITING | supplier-shoetype-customer-acceptance | Capture customer-side reconciliation and acceptance evidence |
 | RQ458 | DONE | supplier-decision-signal-identity | Preserve per-supplier signal identity when recommendation actionability is blocked |
-| RQ459 | WAITING | supplier-decision-kpi-report-parity | Align Supplier Decision Hub KPI, chart and report totals and delta semantics |
+| RQ459 | IN_PROGRESS | supplier-decision-kpi-report-parity | Align Supplier Decision Hub KPI, chart and report totals and delta semantics |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -1731,7 +1732,7 @@ The current Supplier Decision Hub still replaces every row status with `insuffic
 
 ## RQ459 - Align Supplier Decision Hub KPI, chart and report totals and delta semantics
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend-contract/backend-contract/tests
 Feature family: supplier-decision-kpi-report-parity
