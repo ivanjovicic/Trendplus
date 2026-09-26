@@ -1559,7 +1559,7 @@ Extend the existing RQ407 fixture and RQ412 manifest; do not create a second see
 
 ## RQ447 - Execute the live oracle and close the OP2 runtime seams
 
-Status: DONE
+Status: PARTIAL
 Ready after: PostgreSQL integration host is available and RQ446, RQ456 and RQ457 are DONE
 Priority: P0
 Type: integration-tests/evidence
@@ -1600,6 +1600,9 @@ Run the four SupplierShoeTypeIndependentOracleIntegrationTests cases on PostgreS
 - RQ447's dedicated certification job has produced the required executed evidence on the delivered commit; a local VM skip remains non-certification evidence.
 
 Completion note 2026-09-26: `RQ447` certification infrastructure, bootstrap fixes and OP2 seam reproducers were delivered to `main` in final SHA `dec288aedb39f689d65e0f08b9915fc9acd749a9`. GitHub Actions run `36261497901` has a successful dedicated certification job: oracle `4/4`, all-eight-routes `1/1`, OP2 `4/4`, all with zero skipped. Artifact: `rq447-certification-dec288aedb39f689d65e0f08b9915fc9acd749a9` (`10912332048`). The parent workflow remains red because the separate Complete backend analytics suite reports 45 broad failures, including missing `PerformanceLogs` bootstrap; no overall-green claim is made. Run log: `.ai/runs/2026-09-26-RQ447-evidence.md`. Evidence state: synchronized. RQ447 is `DONE` for its dedicated certification acceptance.
+
+Latest revalidation 2026-09-26: RQ447 is PARTIAL again after dedicated run `36262400467` on `30f0d5c1`. PostgreSQL/EF migrations and startup bootstrap passed; oracle TRX passed 4/4 with zero skips. The all-eight-routes proof failed before producing a passing 1/1 result, so OP2 and frontend seam gates were not executed. The exact route exception remains pending until the parent workflow reaches terminal state; no DONE claim or certification artifact is accepted from this run. Run log remains `.ai/runs/2026-09-26-RQ447-evidence.md`. Evidence state: pending.
+
 
 ---
 

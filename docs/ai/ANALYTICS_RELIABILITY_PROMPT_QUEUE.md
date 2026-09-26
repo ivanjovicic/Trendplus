@@ -3,6 +3,7 @@
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+Owner revalidation 2026-09-26: RQ447 is PARTIAL, not DONE, after dedicated run `36262400467`: oracle 4/4 passed, but all-eight-routes failed and OP2/frontend gates did not execute. Do not promote RQ448 or certify RQ447 until the route failure is fixed and a fresh artifact passes.
 Owner completion 2026-09-26: `RQ450` delivered post-Access-import integrity probe on `main`. Run log: `.ai/runs/2026-09-26-RQ450-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-26: idle recovery after RQ447/RQ449 DONE. Claimed P1 `RQ450` (Access import post-commit integrity probe); local lock `.ai/task-locks/RQ450-cursor.lock.md`.
 Owner promotion/claim 2026-09-26: after RQ446/RQ456/RQ457 completion, this workspace claimed RQ447 to add the canonical pgvector GitHub Actions certification host with non-skippable 4/4 oracle and 1/1 all-eight-routes evidence. Local lock: `.ai/task-locks/RQ447-codex.lock.md`.
@@ -1673,7 +1674,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ444 | DONE | supplier-overview-period-truth | Supplier overview period truth: drop the sticky legacy season and show the analyzed period |
 | RQ445 | DONE | supplier-shoetype-accuracy-contract | Canonical accuracy contract for Supplier/Shoe Type metrics, populations, provenance and claim language |
 | RQ446 | DONE | supplier-shoetype-adversarial-golden | Extend the shared fixture with adversarial Supplier/Shoe Type cases and immutable expected outputs |
-| RQ447 | DONE | supplier-shoetype-live-oracle-reproducers | Execute the four live RQ412 oracle cases and close OP2-01/04/05/14 with runtime reproducers |
+| RQ447 | PARTIAL | supplier-shoetype-live-oracle-reproducers | Execute the four live RQ412 oracle cases and close OP2-01/04/05/14 with runtime reproducers |
 | RQ448 | WAITING | supplier-shoetype-browser-reconciliation | Reconcile raw facts through API, browser-rendered KPI/table/detail and export |
 | RQ449 | WAITING | operations-integrity-evidence-history | Persist immutable integrity evidence/history beyond the process snapshot |
 | RQ450 | WAITING | operations-post-import-probe | Run a bounded Supplier/Shoe integrity probe immediately after Access import |
