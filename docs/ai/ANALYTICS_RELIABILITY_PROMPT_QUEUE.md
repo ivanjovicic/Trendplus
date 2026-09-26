@@ -23972,8 +23972,8 @@ Commit suggestion: `fix(analytics): remove remaining dnevnik id joins from recei
 - Run log: `.ai/runs/2026-09-26-RQ438-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: `ae4814d10fa132fd41890d659de0de4651ba5e5b` implementation; final closure `8b0adea9a39c9984e59d3d29b1a242fdfcfd736f`
-- Main verification: passed - `origin/main` contains `ae4814d1`; current `origin/main` is `8b0adea9a39c9984e59d3d29b1a242fdfcfd736f`
+- Main commit SHA: `ae4814d10fa132fd41890d659de0de4651ba5e5b` implementation; final closure `e26e8018801bb5f395e164fe82feb0c5b397adab`
+- Main verification: passed - `origin/main` contains `ae4814d1`; current `origin/main` is `e26e8018801bb5f395e164fe82feb0c5b397adab`
 - Missed: live Access file sample of signed sale/return journal rows
 - Follow-up: `RQ441` remains WAITING until `RQ382` is DONE; primary READY pointer is `none`
 - Residual risk: live DB/import proof and full-suite regression remain outstanding
