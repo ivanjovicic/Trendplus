@@ -28,7 +28,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:15
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_DB: trendplus_test
           POSTGRES_USER: postgres
@@ -43,6 +43,8 @@ jobs:
 
     env:
       CI: "true"
+      ASPNETCORE_ENVIRONMENT: Testing
+      Database__AutoMigrate: "false"
       # The backend suite uses the isolated CI PostgreSQL service on loopback.
       # Keep the production resolver fail-closed while declaring this test-only
       # exception explicitly, so startup warmup logs do not misclassify the
@@ -68,6 +70,45 @@ jobs:
       - name: Build solution
         id: build
         run: dotnet build Api.Tests/Api.Tests.csproj --no-restore --configuration Release
+
+      - name: Install EF tool
+        run: dotnet tool install --global dotnet-ef --version 8.*
+
+      - name: Apply current Trendplus migrations
+        run: >-
+          dotnet ef database update
+          --project Infrastructure/Infrastructure.csproj
+          --startup-project Api/Api.csproj
+          --context TrendplusDbContext
+          --configuration Release
+          --verbose
+
+      - name: Apply current Trendplus analytics migrations
+        run: >-
+          dotnet ef database update
+          --project Infrastructure/Infrastructure.csproj
+          --startup-project Api/Api.csproj
+          --context AnalyticsDbContext
+          --configuration Release
+          --verbose
+
+      - name: Apply Trendplus startup SQL bootstrap
+        env:
+          PGHOST: localhost
+          PGPORT: "5432"
+          PGUSER: postgres
+          PGPASSWORD: postgres_password
+          PGDATABASE: trendplus_test
+        run: |
+          set -euo pipefail
+          psql --version
+          psql -v ON_ERROR_STOP=1 -f Database/Migrations/002_CreatePerformanceLogsTable.sql
+          psql -v ON_ERROR_STOP=1 -f Database/Migrations/012_AddAccessImportSupport.sql
+          psql -v ON_ERROR_STOP=1 -f Database/Migrations/017_CreateNightlyAnalyticsMaterializedViews.sql
+          psql -v ON_ERROR_STOP=1 -f Database/Migrations/013_AddVendorSalesNivelacijaViews.sql
+          psql -v ON_ERROR_STOP=1 -f Database/Migrations/014_FixNivelacijaViewsFromDnevnik.sql
+          psql -v ON_ERROR_STOP=1 -f Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql
+          psql -v ON_ERROR_STOP=1 -f Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql
 
       - name: Run migration and bootstrap lifecycle smoke
         id: migration_bootstrap_smoke

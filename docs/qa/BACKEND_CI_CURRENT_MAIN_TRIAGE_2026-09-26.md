@@ -72,6 +72,18 @@ The wide CI job now explicitly sets `Analytics__AllowLoopbackInProduction=true`,
 
 RQ448 was re-evaluated after this run and remains `WAITING`: the local/browser session inventory has no authenticated tab, API/deployment access is unavailable, and mocked frontend tests would not satisfy raw-facts → API → rendered screen → detail → CSV/XLSX acceptance.
 
+## Certification recheck — run `36270291395`
+
+- Head SHA: `62c7616db950a8f7781cb5c7695e4fbea8358406`
+- Concurrency group: `analytics-backend-tests-refs/heads/main`
+- Run result: `failure`; both jobs completed normally and the failure was not caused by queue, cancellation or cleanup.
+- RQ447 certification job `108482830923`: `success`; oracle `4/4`, all-routes `1/1`, OP2 `4/4`, frontend seam and artifact upload all passed.
+- Complete backend analytics suite job `108482831006`: restore, build and lifecycle smoke passed; all-tests step failed with `1475 total / 1398 passed / 39 failed / 38 skipped`.
+
+The first actionable broad-suite schema failures are concrete: `PerformanceLogs` and `analytics_refresh_runs` are missing from the service database, and startup logs also show concurrent duplicate-extension activity. The previous smoke test uses its own Testcontainers database and therefore does not bootstrap the CI service database used by the full suite. The workflow is being repaired to use the canonical pgvector service plus explicit EF migrations and the same startup SQL bootstrap already proven by RQ447. The broad gate remains open until that exact SHA produces a fresh result.
+
+The OP2 failure from the preceding run was a transient `503 db_warmup` response. The bounded retry repair in `SupplierShoeTypeRq447SeamIntegrationTests` was validated by this run and the full RQ447 certification is now green.
+
 ## Next focused work
 
 - Reconcile the SQL Server session helper/tests against one canonical QDB03 contract, including `MaxRows`, deterministic full-scan ordering, safe connection diagnostics and parameter representation.
