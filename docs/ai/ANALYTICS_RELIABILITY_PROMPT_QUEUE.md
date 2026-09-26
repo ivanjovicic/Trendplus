@@ -17693,8 +17693,8 @@ Reproduction: mock meta empty reason mentioning period — header and empty stat
 - Run log: `.ai/runs/2026-09-27-RQ316-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending until push and fresh origin/main check.
+- Main commit SHA: `26ccc5296d689b0151082f28e4f944eb49489319`
+- Main verification: implementation commit `26ccc5296d689b0151082f28e4f944eb49489319` is merged into local main with current remote work; final origin/main verification follows push.
 - Missed: none known within RQ316 scope.
 - Follow-up: re-enter idle recovery for the next dependency-complete prompt.
 - Residual risk: existing build chunk-size warnings and uninspected remote CI remain follow-up only.
