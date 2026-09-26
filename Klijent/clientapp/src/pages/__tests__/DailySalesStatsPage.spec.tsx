@@ -4,6 +4,7 @@ import { rest } from "../../mocks/mswCompat";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { server } from "../../mocks/server";
 import DailySalesStatsPage from "../DailySalesStatsPage";
+import { invalidateAnalyticsCache } from "../../services/analyticsApi";
 
 // Mock the chart components
 vi.mock("recharts", () => ({
@@ -71,6 +72,7 @@ describe("DailySalesStatsPage (integration)", () => {
   };
 
   beforeEach(() => {
+    invalidateAnalyticsCache();
     server.use(
       rest.get("/api/analytics/cached/filters/stores", (_req, res, ctx) =>
         res(ctx.status(200), ctx.json(storesResponse))
