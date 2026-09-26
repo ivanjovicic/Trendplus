@@ -431,6 +431,52 @@ using NpgsqlTypes;
         _incrementalTableSnapshots.Clear();
     }
 
+    /// <summary>
+    /// After a committed Access import that touched analytics, mark Operations integrity unverified
+    /// and run exactly one bounded Supplier/Shoe Type probe linked to the import batch.
+    /// Import success is never rewritten as analytics verification.
+    /// </summary>
+    private void SchedulePostImportIntegrityProbe(long batchId)
+    {
+        var trigger = $"access_import:{batchId}";
+        _operationsIntegrityRegistry?.MarkUnverified(
+            trigger,
+            $"Access import batch {batchId} completed; bounded integrity probe is required before Verified status.");
+
+        if (_serviceScopeFactory is null)
+        {
+            _logger.LogWarning(
+                "Post-import integrity probe could not be scheduled because IServiceScopeFactory is unavailable. BatchId={BatchId}",
+                batchId);
+            return;
+        }
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await using var scope = _serviceScopeFactory.CreateAsyncScope();
+                var integrityService = scope.ServiceProvider.GetRequiredService<IOperationsAnalyticsIntegrityService>();
+                await integrityService.MarkUnverifiedAsync(
+                    trigger,
+                    $"Access import batch {batchId} completed; durable integrity evidence remains unverified until the bounded probe completes.");
+                var snapshot = await integrityService.RunBoundedProbeAsync();
+                _logger.LogInformation(
+                    "Post-import Operations integrity probe finished. BatchId={BatchId} Status={Status} EvidenceId={EvidenceId}",
+                    batchId,
+                    snapshot.Status,
+                    snapshot.EvidenceId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Post-import Operations integrity probe failed; import remains completed and integrity stays fail-closed. BatchId={BatchId}",
+                    batchId);
+            }
+        });
+    }
+
     private void SetBatchProgressContext(string? step, string? table)
     {
         _activeBatchStep = step;
@@ -2491,6 +2537,7 @@ using NpgsqlTypes;
 
         try
         {
+            var postImportIntegrityBatchId = (long?)null;
             await RetriableDbContextTransaction.ExecuteAsync(_trendDb, async transactionCt =>
             {
                 var originalAutoDetectChanges = _trendDb.ChangeTracker.AutoDetectChangesEnabled;
@@ -2534,23 +2581,32 @@ using NpgsqlTypes;
                     if (includeAnalytics)
                         await SyncAnalyticsAsync(result, transactionCt);
 
-                    if (_cacheAdmin is not null || _analyticsCache is not null)
+                    if (includeAnalytics && (_cacheAdmin is not null || _analyticsCache is not null))
                     {
                         try
                         {
                             if (_cacheAdmin is not null)
-                                await _cacheAdmin.ClearFamiliesAsync(AnalyticsCachePolicy.CoreFamilies, transactionCt);
+                            {
+                                // Import owns the single post-commit integrity probe; do not also schedule cache_clear.
+                                await _cacheAdmin.ClearFamiliesAsync(
+                                    AnalyticsCachePolicy.CoreFamilies,
+                                    transactionCt,
+                                    scheduleIntegrityProbe: false);
+                            }
                             else
+                            {
                                 await _analyticsCache!.RemoveByPrefixAsync(AnalyticsCacheKeys.Prefix, transactionCt);
+                            }
                         }
                         catch (Exception cacheEx)
                         {
                             _logger.LogWarning(cacheEx, "Analytics cache invalidation failed after Access import. BatchId: {BatchId}.", batch.Id);
                         }
+                    }
 
-                        _operationsIntegrityRegistry?.MarkUnverified(
-                            "access_import",
-                            "Access import completed and analytics cache was invalidated; bounded integrity probe is required.");
+                    if (includeAnalytics)
+                    {
+                        postImportIntegrityBatchId = batch.Id;
                     }
 
                     result.Status = "completed";
@@ -2588,6 +2644,11 @@ using NpgsqlTypes;
                     _trendDb.ChangeTracker.AutoDetectChangesEnabled = originalAutoDetectChanges;
                 }
             }, _logger, "AccessImportBatchExecution", ct);
+
+            if (postImportIntegrityBatchId is long probeBatchId)
+            {
+                SchedulePostImportIntegrityProbe(probeBatchId);
+            }
 
             return result;
         }

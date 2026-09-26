@@ -128,7 +128,10 @@ public sealed class AnalyticsCacheAdminService
         return ("unknown", false);
     }
 
-    public async Task<AnalyticsCacheClearState> ClearAsync(string? family, CancellationToken ct = default)
+    public async Task<AnalyticsCacheClearState> ClearAsync(
+        string? family,
+        CancellationToken ct = default,
+        bool scheduleIntegrityProbe = true)
     {
         var normalizedFamily = string.IsNullOrWhiteSpace(family) ? "all" : family.Trim().ToLowerInvariant();
         var prefix = normalizedFamily == "all"
@@ -181,7 +184,10 @@ public sealed class AnalyticsCacheAdminService
             "cache_clear",
             $"Analytics cache family '{normalizedFamily}' cleared; bounded Operations integrity probe will reconcile live facts.");
 
-        ScheduleBoundedIntegrityProbe();
+        if (scheduleIntegrityProbe)
+        {
+            ScheduleBoundedIntegrityProbe();
+        }
 
         return state;
     }
@@ -209,7 +215,10 @@ public sealed class AnalyticsCacheAdminService
         });
     }
 
-    public async Task<AnalyticsCacheClearState> ClearFamiliesAsync(IEnumerable<string> families, CancellationToken ct = default)
+    public async Task<AnalyticsCacheClearState> ClearFamiliesAsync(
+        IEnumerable<string> families,
+        CancellationToken ct = default,
+        bool scheduleIntegrityProbe = true)
     {
         var normalizedFamilies = families
             .Where(static family => !string.IsNullOrWhiteSpace(family))
@@ -219,7 +228,7 @@ public sealed class AnalyticsCacheAdminService
 
         if (normalizedFamilies.Length == 0)
         {
-            return await ClearAsync("all", ct);
+            return await ClearAsync("all", ct, scheduleIntegrityProbe);
         }
 
         foreach (var family in normalizedFamilies)
@@ -277,7 +286,10 @@ public sealed class AnalyticsCacheAdminService
             _integrityRegistry?.MarkUnverified(
                 "cache_clear",
                 $"Analytics cache families '{_lastClearFamily}' cleared; bounded Operations integrity probe will reconcile live facts.");
-            ScheduleBoundedIntegrityProbe();
+            if (scheduleIntegrityProbe)
+            {
+                ScheduleBoundedIntegrityProbe();
+            }
         }
 
         return state;

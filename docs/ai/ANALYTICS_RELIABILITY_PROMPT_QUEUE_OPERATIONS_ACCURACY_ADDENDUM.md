@@ -3,6 +3,8 @@
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+Owner completion 2026-09-26: `RQ450` was delivered for post-Access-import Operations integrity probing. Successful analytics imports schedule exactly one post-commit bounded probe linked to `access_import:{batchId}` and suppress the duplicate cache_clear probe on the import path. Run log: `.ai/runs/2026-09-26-RQ450-evidence.md`. Evidence state: synchronized.
+Owner promotion/claim 2026-09-26: idle recovery after RQ447/RQ449 DONE on current `origin/main`. RQ448 remains gated on authenticated browser/API environment; RQ453 still lists RQ448/RQ452 dependencies. `RQ450` is dependency-complete (RQ413/RQ449) with no active Access-import integrity probe owner. `RQ450` moved `WAITING -> READY -> IN_PROGRESS` in this workspace; local lock `.ai/task-locks/RQ450-cursor.lock.md`.
 Main RQ current READY prompt: none
 
 Owner promotion/claim 2026-09-26: idle recovery confirmed `RQ445` is the first dependency-complete P0 certification prompt, with no competing Supplier/Shoe Type accuracy-contract owner or active lock. `RQ445` moved `WAITING -> READY -> IN_PROGRESS` in this workspace; local lock `.ai/task-locks/RQ445-codex.lock.md`.
@@ -1680,7 +1682,7 @@ Add a durable, append-only integrity evidence record for the certified Supplier/
 
 ## RQ450 - Probe immediately after Access import
 
-Status: WAITING
+Status: DONE
 Ready after: RQ413 and RQ449 evidence lifecycle are available
 Priority: P1
 Type: backend/import/worker/tests
@@ -1712,6 +1714,25 @@ Wire successful Access-import completion to invalidate caches, persist an unveri
 ### Dependencies
 
 - RQ413, RQ449, Access import transaction boundary and worker/DI configuration.
+
+### Completion note
+
+- Date: 2026-09-26
+- Status: DONE
+- Completion: Successful Access imports that touch analytics now mark integrity unverified and run one post-commit bounded probe linked to the batch id; import-path cache clear suppresses the duplicate cache_clear probe.
+- Changed files: `AnalyticsCacheAdminService.cs`, `AccessImportService.cs`, `OperationsAnalyticsPostImportProbeTests.cs`, this addendum, main RQ pointer, `.ai/runs/2026-09-26-RQ450-evidence.md`.
+- Contract/runtime behavior changed: post-import integrity probe is batch-linked and single-shot after commit.
+- Checks run: OperationsAnalyticsPostImportProbeTests 3/3; combined integrity/cache admin 20/20.
+- Checks not run: live Access import; full suite; remote CI.
+- Run log: `.ai/runs/2026-09-26-RQ450-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: branch/PR transport then main merge
+- Main commit SHA: pending-until-merge
+- Main verification: pending-until-merge
+- Missed: delete-batch cache path remains on default cache_clear probe
+- Follow-up: idle recovery; RQ448/RQ451/RQ453 remain separately gated
+- Residual risk: background probe best-effort without local PostgreSQL proof
+- Prompt defect / scope repair: none material
 
 ---
 
