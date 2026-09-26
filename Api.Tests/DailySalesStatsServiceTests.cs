@@ -140,6 +140,99 @@ public sealed class DailySalesStatsServiceTests
     }
 
     [Fact]
+    public async Task GetDailySalesAsync_ImportedScope_ExcludesExistingOnlyDiagnostics()
+    {
+        await using var db = CreateDbContext();
+        SeedSuppliersAndArticles(db);
+
+        db.ProdajaZaglavlja.AddRange(
+            new ProdajaZaglavlje
+            {
+                Id = 120,
+                BrojRacuna = "SAME",
+                DatumProdaje = new DateTime(2026, 2, 10, 9, 0, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "existing"
+            },
+            new ProdajaZaglavlje
+            {
+                Id = 121,
+                BrojRacuna = "SAME",
+                DatumProdaje = new DateTime(2026, 2, 10, 9, 5, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "existing"
+            },
+            new ProdajaZaglavlje
+            {
+                Id = 122,
+                BrojRacuna = "123",
+                DatumProdaje = new DateTime(2026, 2, 10, 10, 0, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "existing"
+            });
+
+        db.ProdajaStavke.AddRange(
+            new ProdajaStavka { Id = 120, IdProdaja = 120, IdArtikal = 101, Kolicina = 2, Cena = 100m },
+            new ProdajaStavka { Id = 121, IdProdaja = 121, IdArtikal = 101, Kolicina = 2, Cena = 100m },
+            new ProdajaStavka { Id = 122, IdProdaja = 122, IdArtikal = 104, Kolicina = 5, Cena = 50m });
+
+        await db.SaveChangesAsync();
+
+        var service = new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance);
+        var result = await service.GetDailySalesAsync(
+            requestedFromUtc: new DateTime(2026, 2, 10, 0, 0, 0, DateTimeKind.Utc),
+            requestedToUtc: new DateTime(2026, 2, 10, 0, 0, 0, DateTimeKind.Utc),
+            storeId: 1,
+            topN: 5,
+            dataScope: "imported",
+            ct: CancellationToken.None);
+
+        Assert.Equal(5, Assert.Single(result.DateRows).TotalItemsSold);
+        Assert.Equal(0, result.Metadata.DuplicateReceiptGroupCount);
+        Assert.Equal(0, result.Metadata.NonStandardReceiptCount);
+        Assert.Equal("imported", result.Metadata.DiagnosticsDataScope);
+        Assert.Equal("imported", result.Metadata.AvailabilityDataScope);
+    }
+
+    [Fact]
+    public async Task GetDailySalesAsync_EmptyScopedPeriod_DoesNotExposeOtherScopeAvailability()
+    {
+        await using var db = CreateDbContext();
+        SeedSuppliersAndArticles(db);
+        db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+        {
+            Id = 130,
+            BrojRacuna = "EXISTING",
+            DatumProdaje = new DateTime(2026, 2, 20, 9, 0, 0, DateTimeKind.Utc),
+            IDObjekat = 1,
+            DataOrigin = "existing"
+        });
+        db.ProdajaStavke.Add(new ProdajaStavka
+        {
+            Id = 130,
+            IdProdaja = 130,
+            IdArtikal = 101,
+            Kolicina = 3,
+            Cena = 100m
+        });
+        await db.SaveChangesAsync();
+
+        var service = new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance);
+        var result = await service.GetDailySalesAsync(
+            requestedFromUtc: new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc),
+            requestedToUtc: new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc),
+            storeId: 1,
+            topN: 5,
+            dataScope: "imported",
+            ct: CancellationToken.None);
+
+        Assert.Null(result.Metadata.MinAvailableDate);
+        Assert.Null(result.Metadata.MaxAvailableDate);
+        Assert.DoesNotContain(result.Metadata.Warnings, warning => warning.Contains("Podaci su dostupni od", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(result.Metadata.Warnings, warning => warning.Contains("Nema podataka o prodaji", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public async Task GetDailySalesAsync_WhenTimestampsAreMidnight_MapsRowsToFirstShiftWithWarning()
     {
         await using var db = CreateDbContext();

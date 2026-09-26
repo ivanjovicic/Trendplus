@@ -52,11 +52,27 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
         var saleTypeCandidates = TipPromeneConstants.ProdajaTypes.ToArray();
         var excludedReceiptNumbersForQuery = ExcludedDailySalesReceiptNumbersForQuery;
 
+        // The table population is line/article scoped. Reuse its receipt identity for
+        // every receipt diagnostic so existing/imported views cannot inherit evidence
+        // from the other population.
+        var scopedSaleIdsQuery =
+            from ps in _db.ProdajaStavke.AsNoTracking()
+            join pz in _db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+            join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+            where pz.DatumProdaje >= fromDateUtc
+               && pz.DatumProdaje < toDateExclusiveUtc
+               && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
+               && !excludedReceiptNumbersForQuery.Contains((pz.BrojRacuna ?? string.Empty).Trim())
+               && (!importedOnly || a.DataOrigin == "access")
+               && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+            select pz.Id;
+
         var receiptHeaders = await _db.ProdajaZaglavlja
             .AsNoTracking()
             .Where(pz => pz.DatumProdaje >= fromDateUtc
                          && pz.DatumProdaje < toDateExclusiveUtc
-                         && (!storeId.HasValue || pz.IDObjekat == storeId.Value))
+                         && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
+                         && scopedSaleIdsQuery.Contains(pz.Id))
             .Select(pz => new
             {
                 SaleId = pz.Id,
@@ -93,9 +109,13 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
         var receiptLineTotals = (await (
             from ps in _db.ProdajaStavke.AsNoTracking()
             join pz in _db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+            join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
             where pz.DatumProdaje >= fromDateUtc
                && pz.DatumProdaje < toDateExclusiveUtc
                && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
+               && !excludedReceiptNumbersForQuery.Contains((pz.BrojRacuna ?? string.Empty).Trim())
+               && (!importedOnly || a.DataOrigin == "access")
+               && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
             group new
             {
                 ps.Kolicina,
@@ -130,6 +150,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             .Where(d => d.Datum >= fromDateUtc
                         && d.Datum < toDateExclusiveUtc
                         && (!storeId.HasValue || d.IDObjekat == storeId.Value)
+                        && scopedSaleIdsQuery.Contains(d.Id)
                         && !excludedReceiptNumbersForQuery.Contains((d.BrojRacuna ?? string.Empty).Trim())
                         && saleTypeCandidates.Contains(d.TipPromene))
             .Select(g => new
@@ -171,10 +192,13 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
         var excludedReceiptHeaders = await (
             from ps in _db.ProdajaStavke.AsNoTracking()
             join pz in _db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+            join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
             where pz.DatumProdaje >= fromDateUtc
                && pz.DatumProdaje < toDateExclusiveUtc
                && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
                && excludedReceiptNumbersForQuery.Contains((pz.BrojRacuna ?? string.Empty).Trim())
+               && (!importedOnly || a.DataOrigin == "access")
+               && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
             group new
             {
                 ps.Kolicina,
@@ -536,12 +560,18 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
         DateTime? maxAvailableDate = null;
         if (!hasSalesEvidence)
         {
-            var availabilityQuery = _db.ProdajaZaglavlja.AsNoTracking();
-            if (storeId.HasValue)
-                availabilityQuery = availabilityQuery.Where(pz => pz.IDObjekat == storeId.Value);
+            var availabilityQuery =
+                from ps in _db.ProdajaStavke.AsNoTracking()
+                join pz in _db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+                join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                where (!storeId.HasValue || pz.IDObjekat == storeId.Value)
+                   && !excludedReceiptNumbersForQuery.Contains((pz.BrojRacuna ?? string.Empty).Trim())
+                   && (!importedOnly || a.DataOrigin == "access")
+                   && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+                select pz.DatumProdaje;
 
-            var minRaw = await availabilityQuery.MinAsync(pz => (DateTime?)pz.DatumProdaje, ct);
-            var maxRaw = await availabilityQuery.MaxAsync(pz => (DateTime?)pz.DatumProdaje, ct);
+            var minRaw = await availabilityQuery.Select(date => (DateTime?)date).MinAsync(ct);
+            var maxRaw = await availabilityQuery.Select(date => (DateTime?)date).MaxAsync(ct);
 
             if (minRaw.HasValue)
             {
@@ -596,6 +626,8 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                 NonStandardReceiptRevenue = decimal.Round(nonStandardReceiptsWithKnownRevenue.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero),
                 DebtReceiptCount = excludedDebtReceiptHeaders.Count,
                 DebtReceiptRevenue = decimal.Round(excludedDebtReceiptHeaders.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero),
+                DiagnosticsDataScope = normalizedScope,
+                AvailabilityDataScope = normalizedScope,
                 MinAvailableDate = minAvailableDate,
                 MaxAvailableDate = maxAvailableDate,
                 Warnings = warnings

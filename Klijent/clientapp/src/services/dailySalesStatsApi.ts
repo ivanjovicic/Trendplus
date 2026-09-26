@@ -49,9 +49,11 @@ export interface DailySalesMetadata {
   nonStandardReceiptRevenue: DailySalesNumeric;
   debtReceiptCount: DailySalesNumeric;
   debtReceiptRevenue: DailySalesNumeric;
-  /** ISO 8601 date string — earliest sale date available in the whole dataset. Null if no data. */
+  diagnosticsDataScope?: string | null;
+  availabilityDataScope?: string | null;
+  /** ISO 8601 date string — earliest sale date available in the selected scope/store. Null if no data. */
   minAvailableDate: string | null;
-  /** ISO 8601 date string — latest sale date available in the whole dataset. Null if no data. */
+  /** ISO 8601 date string — latest sale date available in the selected scope/store. Null if no data. */
   maxAvailableDate: string | null;
   warnings?: string[];
 }

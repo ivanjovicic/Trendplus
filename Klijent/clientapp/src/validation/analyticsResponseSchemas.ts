@@ -775,6 +775,8 @@ const dailySalesMetadataSchema = z.object({
   nonStandardReceiptRevenue: nullableNumber,
   debtReceiptCount: nullableNonNegativeInteger,
   debtReceiptRevenue: nullableNumber,
+  diagnosticsDataScope: z.string().nullable().optional(),
+  availabilityDataScope: z.string().nullable().optional(),
   minAvailableDate: validDate.nullable(),
   maxAvailableDate: validDate.nullable(),
   warnings: z.array(z.string()).optional(),

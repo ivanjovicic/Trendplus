@@ -987,8 +987,10 @@ export default function DailySalesStatsPage() {
     { key: "secondShiftHeader", label: "Druga smena", value: SECOND_SHIFT_LABEL },
     { key: "shiftEvidence", label: "Smenska evidencija", value: incompleteShiftCount > 0 ? `Nepotpuna (${incompleteShiftCount} dana)` : "Potpuna" },
     { key: "incompleteDailyAggregates", label: "Nepotpuni dnevni zbirovi", value: incompleteDailyAggregateCount },
+    { key: "diagnosticsDataScope", label: "Opseg dijagnostike", value: data?.metadata.diagnosticsDataScope ?? data?.dataScope ?? "" },
+    { key: "availabilityDataScope", label: "Opseg dostupnosti", value: data?.metadata.availabilityDataScope ?? data?.dataScope ?? "" },
     { key: "warnings", label: "Upozorenja", value: data?.metadata.warnings?.join(" | ") ?? "" },
-  ], [data?.metadata.totalDays, data?.metadata.unknownSupplierPct, data?.metadata.warnings, data?.requestedFrom, data?.requestedTo, incompleteDailyAggregateCount, incompleteShiftCount]);
+  ], [data?.dataScope, data?.metadata.availabilityDataScope, data?.metadata.diagnosticsDataScope, data?.metadata.totalDays, data?.metadata.unknownSupplierPct, data?.metadata.warnings, data?.requestedFrom, data?.requestedTo, incompleteDailyAggregateCount, incompleteShiftCount]);
 
 
   const chronologicalTrendData = useMemo<TrendPoint[]>(() => (

@@ -54,9 +54,13 @@ public sealed class DailySalesMetadata
     public decimal NonStandardReceiptRevenue { get; set; }
     public int DebtReceiptCount { get; set; }
     public decimal DebtReceiptRevenue { get; set; }
-    /// <summary>Earliest available sale date in the whole dataset (null if no data at all).</summary>
+    /// <summary>Scope used for receipt/quality diagnostics in this response.</summary>
+    public string DiagnosticsDataScope { get; set; } = "all";
+    /// <summary>Scope used for the empty-state recoverable date range.</summary>
+    public string AvailabilityDataScope { get; set; } = "all";
+    /// <summary>Earliest available sale date in the selected scope and store (null if no data).</summary>
     public DateTime? MinAvailableDate { get; set; }
-    /// <summary>Latest available sale date in the whole dataset (null if no data at all).</summary>
+    /// <summary>Latest available sale date in the selected scope and store (null if no data).</summary>
     public DateTime? MaxAvailableDate { get; set; }
     public List<string> Warnings { get; set; } = [];
 }
