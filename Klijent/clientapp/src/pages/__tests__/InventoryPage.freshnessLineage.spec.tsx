@@ -221,9 +221,11 @@ describe("InventoryPage freshness lineage", () => {
     );
 
     const trustHeader = await screen.findByTestId("trust-header");
-    expect(trustHeader).toHaveAttribute("data-quality", "stale");
-    expect(trustHeader).toHaveAttribute("data-partial", "true");
-    expect(trustHeader).toHaveAttribute("data-last-refresh", "2026-08-05T10:00:00Z");
+    await waitFor(() => {
+      expect(trustHeader).toHaveAttribute("data-quality", "stale");
+      expect(trustHeader).toHaveAttribute("data-partial", "true");
+      expect(trustHeader).toHaveAttribute("data-last-refresh", "2026-08-05T10:00:00Z");
+    });
     expect(await screen.findByRole("status")).toHaveTextContent("Bilans");
     expect(screen.getByRole("status")).toHaveTextContent("Bilans je zastareo.");
   });
