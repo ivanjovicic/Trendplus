@@ -131,7 +131,7 @@ export function calculateSupplierFullPriceShareDeltaPctPoints(
   if (!isValidSupplierRatio(currentFullPriceRevenueShare) || !isValidSupplierRatio(previousFullPriceRevenueShare)) {
     return null;
   }
-  const deltaPctPoints = (currentFullPriceRevenueShare - previousFullPriceRevenueShare) * 100;
+  const deltaPctPoints = Math.round((currentFullPriceRevenueShare - previousFullPriceRevenueShare) * 10000) / 100;
   return Number.isFinite(deltaPctPoints) ? deltaPctPoints : null;
 }
 
