@@ -9,6 +9,12 @@ Owner promotion/claim 2026-09-26: under the user's direct “claim i izvrši sle
 Owner completion 2026-09-26: `RQ439` confirmed that PR #63 findings `RQ401`, `RQ404` and `RQ405` map to delivered current-main owners; the remaining signal-identity and KPI/report-parity findings were re-queued as fresh `RQ458` and `RQ459` WAITING prompts. PR #63 remains superseded and must not be merged.
 Owner promotion 2026-09-26: idle recovery verified `RQ381` and `RQ289` DONE, no active Daily Sales scope-quality lock or competing owner, and `RQ382` is dependency-complete. `RQ382` moved `WAITING -> READY` as the next collision-safe P1 Daily Sales scope/diagnostics parity prompt.
 Owner claim 2026-09-26: `RQ382` transitioned `READY -> IN_PROGRESS` in this workspace for scoped diagnostics, availability and visible denominator parity. Local lock: `.ai/task-locks/RQ382-codex.lock.md`.
+Owner promotion 2026-09-26: idle recovery verified `RQ438`, `RQ382` and `RQ437` DONE, with no active Daily Sales attribution lock or competing owner. `RQ441` moved `WAITING -> READY` as the next collision-safe P1 sale-time supplier attribution prompt.
+Owner claim 2026-09-26: `RQ441` transitioned `READY -> IN_PROGRESS` in this workspace for frozen supplier bucket parity and attribution provenance. Local lock `.ai/task-locks/RQ441-codex.lock.md` was removed before delivery.
+Owner completion 2026-09-26: `RQ441` was delivered directly to `main` in `7a01087d`; trust metadata and test evidence are recorded in `.ai/runs/2026-09-26-RQ441-evidence.md`. Evidence state: synchronized.
+Owner promotion 2026-09-26: idle recovery verified `RQ381` and `RQ289` DONE, no active Daily Sales scope-quality lock or competing owner, and `RQ382` is dependency-complete. `RQ382` moved `WAITING -> READY` as the next collision-safe P1 Daily Sales scope/diagnostics parity prompt.
+Owner claim 2026-09-26: `RQ382` transitioned `READY -> IN_PROGRESS` in this workspace for scoped diagnostics, availability and visible denominator parity. Local lock: `.ai/task-locks/RQ382-codex.lock.md`.
+Owner completion 2026-09-26: `RQ382` was delivered directly to `main` in `0a48192e`; Daily Sales diagnostics and empty-state availability now use the selected article scope/store population, journal filtering preserves RQ438 receipt identity semantics, and scope provenance is exposed for diagnostics and availability. Run log: `.ai/runs/2026-09-26-RQ382-evidence.md`. Evidence state: synchronized. RQ431 remains owner-gated.
 Owner claim 2026-09-26: after concurrent RQ442 delivery on `origin/main`, this workspace claimed READY `RQ438` for Daily Sales/Access receipt-identity residuals. Local lock: `.ai/task-locks/RQ438-cursor.lock.md`. Mechanical repair: RQ438 section `Status:` was stale `DONE` without a completion note while the summary row and code still showed READY/unfixed ID joins.
 Owner completion 2026-09-26: `RQ438` was delivered directly to `main` after shared signed journal amount normalization, identity-keyed non-standard/import revenue fallback (never fake 0), partial_dnevnik_identity_coverage when some journal rows lack BrojRacuna, and Serbian import diagnostic copy. Run log: `.ai/runs/2026-09-26-RQ438-evidence.md`. Evidence state: synchronized. Mechanical repair: RQ442 section `Status:` READY→DONE to match its completion note/summary. `Current READY prompt` is `none`; `RQ441` remains WAITING behind `RQ382`.
 Owner promotion 2026-09-26: under the user’s claim-and-execute request, `RQ440` was dependency-complete with no active lock on the seven shared spec files. `RQ440` moved `READY -> IN_PROGRESS` as the primary pointer.
@@ -24279,7 +24285,7 @@ Full `npx vitest run` at `aaf51c2c` and a focused rerun at `ed0b0eca` (before `R
 
 ## RQ441 - Align Daily Sales supplier buckets with sale-time attribution
 
-Status: WAITING
+Status: DONE
 Ready after: `RQ438` and `RQ382` are DONE, and `RQ437` is DONE or its owned test files are released
 Priority: P1
 Type: backend/contract/tests
@@ -24342,6 +24348,24 @@ Daily Sales currently groups historical sale lines through the current article-m
 - `RQ382` owns Daily scope/diagnostic population parity.
 - `RQ437` owns stale Daily test files until its remote delivery is synchronized.
 - Do not duplicate `RQ411`'s Supplier/Shoe Type attribution contract; this prompt covers the missing Daily consumer parity.
+
+### Completion note
+
+- Date: 2026-09-26
+- Status: DONE
+- Completion: Daily Sales supplier buckets now use `ProdajaStavka.SupplierIdAtSale`; missing attribution remains `Nepoznato`, and trust metadata exposes `attributionBasis` plus `attributionCoveragePct`.
+- Changed files: `Api/Services/DailySalesStatsService.cs`, `Api.Tests/DailySalesStatsServiceTests.cs`, `Api.Tests/DailySalesStatsIntegrationTests.cs`, `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`, `Klijent/clientapp/src/types/analytics.ts`.
+- Checks run: Daily service 11/11; Daily receipt reconciliation 23/23; Daily Sales integration 15/15; combined Daily/Operations/Supplier filter 90 passed, 19 skipped; guardrails, typecheck, build, governance validators and `git diff --check` passed.
+- Checks not run: live PostgreSQL/RQ407 fixture and external CI; live integration tests are environment-gated in this VM.
+- Run log: `.ai/runs/2026-09-26-RQ441-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `7a01087d84c69981f48e025476fc25b0d2b37f4f`
+- Main verification: implementation SHA is pushed to `origin/main`; final queue/evidence closure will be verified as its ancestor after push.
+- Missed: live PostgreSQL cross-route fixture remains unavailable; the pre-existing RQ431 concentration spec remains owner-gated.
+- Follow-up: idle recovery for the next dependency-complete RQ prompt.
+- Residual risk: production/live canonical Supplier reconciliation still needs the Docker/PostgreSQL proof gate.
+- Prompt defect / scope repair: existing Daily test fixtures assumed current-master attribution; they were updated to explicit sale-time snapshots, while unknown-attribution rows remain explicit.
 
 ---
 
