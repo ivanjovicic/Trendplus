@@ -3,6 +3,9 @@
 ###############################################################################
 * text=auto
 
+# The adversarial manifest is hashed as exact bytes; keep its LF payload stable on Windows and CI.
+docs/qa/SUPPLIER_SHOETYPE_ADVERSARIAL_GOLDEN_MANIFEST_2026-09-26.json -text
+
 ###############################################################################
 # Set default behavior for command prompt diff.
 #
