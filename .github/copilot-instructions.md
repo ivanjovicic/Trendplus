@@ -61,7 +61,8 @@ implementacija → fokusirana lokalna validacija → merge/push na main → prov
 
 - ne zaustavljaj se na branch/PR stanju ako `main` može bezbedno da se ažurira;
 - **ne čekaj CI** pre isporuke na `main`, osim ako prompt eksplicitno traži konkretan remote check;
-- CI zabeleži odvojeno (`queued`, `not inspected`, `green`, `red`) kao residual risk, ne kao uslov za `DONE`;
+- ako je relevantan current-main Actions run već pokrenut i dostupan pre završne evidence, obavezno ga identifikuj i klasifikuj (`queued`, `in_progress`, `green`, `red`) sa run id/SHA; `not inspected` nije prihvatljiv samo zato što CI nije acceptance gate;
+- pending CI ne blokira `DONE`, ali već crven current-main run zahteva pregled failing job/step-a; dokazanu regresiju iz sopstvene izmene popravi pre `DONE`, a pre-existing/unrelated/environment kvar zabeleži konkretno;
 - `PARTIAL` koristi samo kad `main` stvarno ne može da se ažurira (branch protection, konflikt van scope-a, permisije).
 
 Kanonski owner: `AGENTS.md` sekcija 7.1 i `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`.
