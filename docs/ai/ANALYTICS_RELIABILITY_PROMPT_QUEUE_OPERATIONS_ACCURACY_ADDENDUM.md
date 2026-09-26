@@ -13,6 +13,7 @@ Owner promotion/claim 2026-09-26: idle recovery confirmed `RQ445` DONE on curren
 Owner completion 2026-09-26: RQ446 added the adversarial appendix to the shared RQ407/RQ412 SQL fixture, an immutable JSON expected-output corpus with SHA-256 sidecar, and deterministic fixture/manifest guard tests. The appendix covers fractional boundaries, signed returns, mixed-case/whitespace `DUG`/`KOREKCIJA`, store/origin scope, known labels versus null identity, previous-only Shoe Type, master mutation, duplicate replay, cost coverage, non-positive margin, top-N unknown and cache evidence states. The exact-byte manifest policy is now explicit in `.gitattributes`, and the focused guard suite passes 2/2. Run log: `.ai/runs/2026-09-26-RQ446-evidence.md`. Evidence state: synchronized on `main`; runtime PostgreSQL/API execution remains RQ447.
 
 Owner promotion/claim 2026-09-26: idle recovery confirmed `RQ445` and `RQ446` DONE on current `origin/main`, no active receipt-population owner/lock/branch/PR, and RQ456's declared dependency is satisfied. `RQ456` moved `WAITING -> READY -> IN_PROGRESS` in this workspace; local lock `.ai/task-locks/RQ456-codex.lock.md`. RQ457 remains WAITING because its Shoe Type identity/PoP work must coordinate with this population owner.
+Owner completion 2026-09-26: `RQ456` was delivered to `main` in implementation `74a12194c25bf140cd7438bfe97a2b83a857c7fc`; current `origin/main` contains it through merge `54a465254d53a2e71474877d1828a1c9f97f4195`. The shared receipt policy now excludes trimmed/case-insensitive `DUG`/`KOREKCIJA` from certified Daily/Supplier/Shoe Type/Color populations, detail/data-window/cost-snapshot paths and the independent oracle while retaining signed returns. Focused proof is 24/24. Run log: `.ai/runs/2026-09-26-RQ456-evidence.md`. Evidence state: synchronized.
 
 Certification-layer review 2026-09-25: current main confirms the existing Supplier/Shoe Type semantic owners and bounded integrity runtime, but not a defensible certification claim across contract, adversarial fixture, live execution, browser/render/export, durable evidence, import-trigger freshness, UI evidence, certificate, CI, production or customer acceptance. Added RQ445-RQ455 below as WAITING, collision-safe follow-ups. Semantic closure review later the same day added RQ456-RQ457 for the two remaining source/population and Shoe Type identity/comparison contracts; existing RQ447/RQ449 IDs retain their certification meanings and are not repurposed. These prompts do not reopen RQ407, RQ411-RQ413, RQ373-RQ380 or RQ375-RQ377; they consume their outputs and record the remaining evidence gaps.
 
@@ -1940,10 +1941,10 @@ Centralize a reusable sales-receipt population policy and apply it consistently 
 - Checks run: focused .NET tests 24/24; `git diff --check`; queue/planning validators after delivery.
 - Checks not run: live PostgreSQL/oracle execution, browser/export parity and full repository suite remain certification follow-ups.
 - Run log: `.ai/runs/2026-09-26-RQ456-evidence.md`
-- Evidence state: pending until main delivery
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending until push
+- Main commit SHA: `74a12194c25bf140cd7438bfe97a2b83a857c7fc`
+- Main verification: passed — `origin/main` contains the implementation through merge `54a465254d53a2e71474877d1828a1c9f97f4195`.
 - Missed: runtime proof against the RQ446 DUG/KOREKCIJA fixture and deployed API/browser chain remain RQ447/RQ448.
 - Follow-up: promote RQ457 after this population contract is delivered and the Shoe Type owner remains collision-safe.
 - Residual risk: the shared predicate is EF-translatable and unit-tested, but live SQL behavior still requires the PostgreSQL integration host.
