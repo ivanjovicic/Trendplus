@@ -2,7 +2,7 @@
 
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ322 (IN_PROGRESS in this workspace)
+Current READY prompt: none
 Owner promotion/claim 2026-09-27: idle recovery confirmed RQ321 DONE on current origin/main, no active Inventory bootstrap owner or conflicting lock, and RQ322 has no remaining dependency. RQ322 moved WAITING -> READY -> IN_PROGRESS; local lock .ai/task-locks/RQ322-codex.lock.md.
 Owner completion 2026-09-27: RQ321 was delivered directly to main in 95632a21. Four Operacije pages now surface store-filter load failures with a retry action, clear failed options and disable unconfirmed individual-store selection; Inventory remains owned by RQ322. Focused proof is 4/4, analytics guardrails/typecheck/build and diff checks pass. Run log: .ai/runs/2026-09-26-RQ321-evidence.md. Evidence state: synchronized.
 Owner promotion/claim 2026-09-26: idle recovery verified the higher-priority RQ P0 lanes remain externally gated or owned elsewhere, while RQ321 is an independent P2 shared-UX error contract with no dependency, conflicting lock or active store-filter owner. `RQ321` moved `WAITING -> READY -> IN_PROGRESS`; local lock `.ai/task-locks/RQ321-codex.lock.md`.
@@ -17940,7 +17940,7 @@ Reproduction: block stores endpoint — pages load with empty store select and n
 
 ## RQ322 - Replace Inventory store bootstrap console-only error
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P2
 Type: frontend/error-handling/tests
 Feature family: inventory-store-bootstrap-error
@@ -17982,6 +17982,24 @@ Reproduction: fail stores on first inventory load — empty store UX, no surface
 ### Dependencies
 
 - `RQ321` shared helper if introduced.
+
+### Completion note
+
+- Date: 2026-09-27
+- Status: DONE
+- Completion: Inventory store bootstrap failures are visible, retryable and fail-closed for individual-store selection; the store-comparison panel is guarded until the store list recovers.
+- Changed files: `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.retryRecovery.spec.tsx`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, queue/roadmap metadata and run log.
+- Checks run: focused Inventory retry suite 7/7; analytics encoding/guardrails and typecheck; production build; `git diff --check`.
+- Checks not run: backend tests and live browser; no backend contract changed. Remote CI not inspected.
+- Run log: `.ai/runs/2026-09-27-RQ322-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `ff85759e4d29548df2a938033cc0b536017c304d`
+- Main verification: `origin/main` contains `ff85759e4d29548df2a938033cc0b536017c304d` after push.
+- Missed: none known within RQ322 scope.
+- Follow-up: re-enter idle recovery; RQ323 remains independently gated by its Inventory partial-failure dependency.
+- Residual risk: existing build chunk-size warnings and uninspected remote CI remain follow-up only.
+- Prompt defect / scope repair: moved the existing reviewed Inventory guardrail baseline entry from line 858 to 869 after the added bootstrap state; no new exception added.
 
 ---
 
