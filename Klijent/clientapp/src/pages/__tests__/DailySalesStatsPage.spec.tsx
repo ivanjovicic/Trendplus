@@ -27,39 +27,47 @@ describe("DailySalesStatsPage (integration)", () => {
   ];
 
   const dailySalesResponse = {
-    status: "ok",
-    fromDate: "2026-04-01",
-    toDate: "2026-04-30",
-    summary: {
-      totalRevenue: 250000,
-      totalVisibleItems: 500,
-      totalItemsInRange: 500,
-      totalDays: 30,
-      avgRevenuePerDay: 8333,
-      avgItemsPerDay: 16.67,
-      avgRevenuePerItem: 500,
-      firstShiftItems: 250,
-      secondShiftItems: 200,
-      firstShiftSharePct: 50,
-      secondShiftSharePct: 40,
-      offShiftItems: 50,
-      offShiftRevenue: 25000,
-      offShiftSharePct: 10,
-      unknownSupplierPct: 5,
-      uniqueSuppliersInRange: 10,
-    },
-    rows: [
+    requestedFrom: "2026-04-01",
+    requestedTo: "2026-04-30",
+    storeId: null,
+    topN: 5,
+    dataScope: "all",
+    topSuppliers: [],
+    topSuppliersOrder: [],
+    dateRows: [
       {
         date: "2026-04-01",
         firstShiftTotalItems: 10,
         secondShiftTotalItems: 8,
         totalRevenue: 9000,
+        topSupplierCounts: [],
         othersCount: 2,
         totalItemsSold: 20,
-        suppliers: [],
       },
     ],
-    message: "OK",
+    metadata: {
+      totalDays: 30,
+      uniqueSuppliersInRange: 10,
+      unknownSupplierPct: 5,
+      unknownSupplierItems: 1,
+      offShiftItems: 2,
+      offShiftRevenue: 1000,
+      totalItemsInRange: 20,
+      duplicateReceiptGroupCount: 0,
+      duplicateReceiptHeaderCount: 0,
+      receiptAmountMismatchCount: 0,
+      receiptAmountMismatchRevenue: 0,
+      nonStandardReceiptCount: 0,
+      nonStandardReceiptRevenue: 0,
+      debtReceiptCount: 0,
+      debtReceiptRevenue: 0,
+      minAvailableDate: "2026-04-01",
+      maxAvailableDate: "2026-04-30",
+    },
+    meta: {
+      success: true,
+      dataQualityStatus: "good",
+    },
   };
 
   beforeEach(() => {
@@ -129,7 +137,7 @@ describe("DailySalesStatsPage (integration)", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Filter prodavnice nije dostupan.");
+    expect(await screen.findByText("Filter prodavnice nije dostupan.")).toBeInTheDocument();
 
     await waitFor(() => {
       expect(requestedStoreIds.at(-1)).toBeNull();
