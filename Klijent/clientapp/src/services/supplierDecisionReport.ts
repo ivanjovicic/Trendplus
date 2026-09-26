@@ -11,7 +11,7 @@ import type { AnalyticsNamedValue, ResolvedAnalyticsTablePayload } from "../type
 import type { AnalyticsFreshnessStatus, AnalyticsResponseMeta } from "../types/analytics";
 import type { RecommendationCode, SummaryResponse } from "./supplierDecisionHubApi";
 import { dataQualityStatusLabel, normalizeDataQualityStatus } from "../utils/analyticsQuality";
-import { fmtPct, fmtRsd } from "../utils/analyticsFormatters";
+import { fmtPct, fmtRsd, fmtSignedPct } from "../utils/analyticsFormatters";
 import { buildPeriodLineageLabel } from "../utils/analyticsPeriodLineage";
 import { formatMetricDisplayValue, isFiniteMetricNumber } from "../utils/analyticsMetricValue";
 import { recommendationReasonLabel } from "../utils/canonicalRecommendationSemantics";
@@ -86,6 +86,7 @@ export type SupplierDecisionReportBuildInput = {
   totalRevenue: number;
   totalMarginContribution: number | null;
   top5SharePct: number | null;
+  fullPriceShareDeltaPctPoints?: number | null;
   supplierCounts: {
     boost: number;
     keep: number;
@@ -255,6 +256,17 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     buildSectionRow("KPI", "Sigurnost signala", formatMetricDisplayValue({ value: avgConfidencePct, kind: "percent" }), "", numericStateLimitation("sigurnost signala", confidenceEvidenceState)),
     buildSectionRow("KPI", "Pouzdanost signala", formatMetricDisplayValue({ value: avgReliabilityPct, kind: "percent" }), "", numericStateLimitation("pouzdanost signala", reliabilityEvidenceState)),
     buildSectionRow("KPI", "Top 5 udeo", formatMetricDisplayValue({ value: input.top5SharePct, kind: "percent" }), "", ""),
+    buildSectionRow(
+      "KPI",
+      "Promena udela pune cene",
+      input.fullPriceShareDeltaPctPoints == null || !Number.isFinite(input.fullPriceShareDeltaPctPoints)
+        ? "Nije dostupno"
+        : fmtSignedPct(input.fullPriceShareDeltaPctPoints),
+      "Procentni poeni prema prethodnom istom periodu",
+      input.fullPriceShareDeltaPctPoints == null || !Number.isFinite(input.fullPriceShareDeltaPctPoints)
+        ? "Prethodni period ili validan udeo pune cene nije dostupan."
+        : "Ne predstavlja trend markdown zavisnosti po dobavljaču.",
+    ),
     buildSectionRow(
       "Preporuke",
       "Raspodela",
@@ -497,6 +509,8 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     { key: "reliabilityEvidenceState", label: "Stanje pouzdanosti signala", value: reliabilityEvidenceState },
     { key: "marginContributionEvidenceState", label: "Stanje maržnog doprinosa", value: marginContributionEvidenceState },
     { key: "marginContributionDefinition", label: "Definicija maržnog doprinosa", value: SUPPLIER_MARGIN_CONTRIBUTION_DEFINITION },
+    { key: "aggregatePopulation", label: "Skup agregata", value: "Serverski sažetak za aktivne filtere; tabela prikazuje iste redove" },
+    { key: "fullPriceShareDeltaPctPoints", label: "Promena udela pune cene", value: input.fullPriceShareDeltaPctPoints ?? null },
     { key: "requestedDataset", label: "Traženi dataset", value: trust?.requestedDataset ?? null },
     { key: "effectiveDataset", label: "Efektivni dataset", value: trust?.effectiveDataset ?? null },
     { key: "requestedPeriodFromUtc", label: "Traženi period od", value: requestedFromUtc },

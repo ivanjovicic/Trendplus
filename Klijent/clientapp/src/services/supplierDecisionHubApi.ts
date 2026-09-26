@@ -103,6 +103,9 @@ export type SummaryResponse = {
   from: string;
   to: string;
   supplierCount: number;
+  totalRevenue?: number;
+  marginContribution?: number | null;
+  topFiveRevenueShare?: number | null;
   fullPriceRevenueShare: number;
   fullPriceSellthrough: number;
   markdownRevenueShare: number;

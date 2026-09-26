@@ -169,6 +169,9 @@ public sealed class SupplierDecisionHubContractTests
         Assert.Equal(0.62m, response.MarkdownRevenueShare);
         Assert.Equal(0.2105m, response.PreMarkdownMarginPct);
         Assert.Equal(1_100m, response.CapitalAtRisk);
+        Assert.Equal(5_000m, response.TotalRevenue);
+        Assert.Equal(400m, response.MarginContribution);
+        Assert.Equal(1m, response.TopFiveRevenueShare);
 
         Assert.Equal("Grow", response.TopGrowSuppliers.First().SupplierName);
         Assert.Equal("Risk", response.TopRiskSuppliers.First().SupplierName);

@@ -124,6 +124,17 @@ export function calculateSupplierQualityTrendPct(
   return Number.isFinite(trendPct) ? trendPct : null;
 }
 
+export function calculateSupplierFullPriceShareDeltaPctPoints(
+  currentFullPriceRevenueShare: number | null | undefined,
+  previousFullPriceRevenueShare: number | null | undefined,
+): number | null {
+  if (!isValidSupplierRatio(currentFullPriceRevenueShare) || !isValidSupplierRatio(previousFullPriceRevenueShare)) {
+    return null;
+  }
+  const deltaPctPoints = (currentFullPriceRevenueShare - previousFullPriceRevenueShare) * 100;
+  return Number.isFinite(deltaPctPoints) ? deltaPctPoints : null;
+}
+
 export function calculateSupplierRevenueSharePct(
   revenue: number | null | undefined,
   totalRevenue: number | null | undefined,
@@ -532,10 +543,20 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
   const observedPeriodFrom = summary?.from ?? null;
   const observedPeriodTo = summary?.to ?? null;
 
+  const rankingTotalRevenue = useMemo(
+    () => (ranking?.items ?? []).reduce((sum, item) => Number.isFinite(item.revenue) ? sum + item.revenue : sum, 0),
+    [ranking?.items],
+  );
+  const totalRevenue = useMemo(() => {
+    if (isFiniteMetricNumber(summary?.totalRevenue) && summary!.totalRevenue >= 0) {
+      return summary!.totalRevenue;
+    }
+    return rankingTotalRevenue;
+  }, [rankingTotalRevenue, summary?.totalRevenue]);
+
   const decisionRows = useMemo<DecisionRow[]>(() => {
     const rows = ranking?.items ?? [];
     if (rows.length === 0) return [];
-    const totalRevenue = rows.reduce((sum, item) => Number.isFinite(item.revenue) ? sum + item.revenue : sum, 0);
 
     return rows.map((item) => {
       const sharePct = calculateSupplierRevenueSharePct(item.revenue, totalRevenue);
@@ -572,7 +593,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
         reasonCodes,
       };
     });
-  }, [ranking?.items, recommendationAllowed, trustMetadata?.usedFallback]);
+  }, [ranking?.items, recommendationAllowed, totalRevenue, trustMetadata?.usedFallback]);
 
   const sortedRows = useMemo(() => {
     const rows = [...decisionRows];
@@ -589,20 +610,31 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     });
   }, [decisionRows, sortDir, sortField]);
 
-  const totalRevenue = useMemo(() => sortedRows.reduce((sum, row) => Number.isFinite(row.revenue) ? sum + row.revenue : sum, 0), [sortedRows]);
-  const top5SharePct = useMemo(() => {
+  const projectedTop5SharePct = useMemo(() => {
     if (sortedRows.length === 0 || totalRevenue <= 0) return null;
     const top5 = [...sortedRows].sort((a, b) => compareFiniteMetrics(b.revenue, a.revenue)).slice(0, 5).reduce((sum, row) => Number.isFinite(row.revenue) ? sum + row.revenue : sum, 0);
     return (top5 / totalRevenue) * 100;
   }, [sortedRows, totalRevenue]);
+  const top5SharePct = useMemo(() => {
+    if (isFiniteMetricNumber(summary?.topFiveRevenueShare) && summary!.topFiveRevenueShare >= 0) {
+      return summary!.topFiveRevenueShare * 100;
+    }
+    return projectedTop5SharePct;
+  }, [projectedTop5SharePct, summary?.topFiveRevenueShare]);
+  const marginContributionEvidenceState = useMemo(
+    () => classifySupplierMarginContributionEvidence(sortedRows),
+    [sortedRows],
+  );
   const totalMarginContribution = useMemo(() => {
-    const evidenceState = classifySupplierMarginContributionEvidence(sortedRows);
-    if (evidenceState !== "measured" && evidenceState !== "measured_zero") return null;
+    if (marginContributionEvidenceState !== "measured" && marginContributionEvidenceState !== "measured_zero") return null;
+    if (isFiniteMetricNumber(summary?.marginContribution) && summary!.marginContribution >= 0) {
+      return summary!.marginContribution;
+    }
     return sortedRows.reduce((sum, row) => sum + (row.marginContribution ?? 0), 0);
-  }, [sortedRows]);
+  }, [marginContributionEvidenceState, sortedRows, summary?.marginContribution]);
   const fullPriceDeltaPctPoints = useMemo(() => {
     if (!summary || !previousSummary) return null;
-    return calculateSupplierQualityTrendPct(summary.fullPriceRevenueShare, previousSummary.fullPriceRevenueShare);
+    return calculateSupplierFullPriceShareDeltaPctPoints(summary.fullPriceRevenueShare, previousSummary.fullPriceRevenueShare);
   }, [previousSummary, summary]);
   const supplierCounts = useMemo(() => ({
     boost: sortedRows.filter((row) => row.status === "increase_focus").length,
@@ -869,6 +901,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       totalRevenue,
       totalMarginContribution,
       top5SharePct,
+      fullPriceShareDeltaPctPoints: fullPriceDeltaPctPoints,
       supplierCounts,
       rows: sortedRows,
     });
@@ -895,6 +928,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     totalMarginContribution,
     totalRevenue,
     trustMetadata,
+    fullPriceDeltaPctPoints,
   ]);
 
   const durableReportHref = useMemo(() => {

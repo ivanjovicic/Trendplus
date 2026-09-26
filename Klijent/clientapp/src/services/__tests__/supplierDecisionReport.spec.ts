@@ -154,6 +154,21 @@ describe("buildSupplierDecisionReportPayload", () => {
     expect(payload.metadata.find((row) => row.key === "marginContributionDefinition")?.value).toContain("Full-price prihod");
   });
 
+  it("keeps previous-period full-price delta semantics in report/export output", () => {
+    const payload = buildSupplierDecisionReportPayload({
+      ...buildInput(),
+      totalRevenue: 100,
+      fullPriceShareDeltaPctPoints: 20,
+      trustMetadata: { ...buildInput().trustMetadata, recommendationAllowed: true, dataCoverageStatus: "good" },
+      scorecardMeta: { success: true, dataQualityStatus: "good" },
+    });
+
+    expect(payload.rows.find((row) => row.section === "KPI" && row.item === "Promena udela pune cene")?.value).toBe("+20,0%");
+    expect(payload.rows.find((row) => row.section === "KPI" && row.item === "Promena udela pune cene")?.secondary)
+      .toContain("prethodnom istom periodu");
+    expect(payload.metadata.find((row) => row.key === "fullPriceShareDeltaPctPoints")?.value).toBe(20);
+  });
+
   it("keeps measured zero units and markdown dependency distinct from unavailable evidence", () => {
     const base = buildInput();
     const payload = buildSupplierDecisionReportPayload({

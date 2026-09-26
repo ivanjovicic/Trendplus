@@ -747,6 +747,13 @@ public static class SupplierDecisionHubEndpoints
         var totalRevenue = rows.Sum(x => x.Revenue);
         var totalUnits = rows.Sum(x => x.Units);
         var fullPriceBase = rows.Sum(x => x.Revenue * x.FullPriceRevenueShare);
+        var marginContribution = rows.Sum(x => x.Revenue * x.PreMarkdownMarginPct * x.FullPriceRevenueShare);
+        var topFiveRevenueShare = totalRevenue <= 0
+            ? 0m
+            : rows
+                .OrderByDescending(x => x.Revenue)
+                .Take(5)
+                .Sum(x => x.Revenue) / totalRevenue;
 
         var topGrow = rows
             .Where(x => x.RecommendationCode is "EXPAND" or "EXPAND_SELECTIVELY")
@@ -829,7 +836,12 @@ public static class SupplierDecisionHubEndpoints
             insights,
             dataNote,
             trustMetadata,
-            BuildResponseMeta(rows, trustMetadata));
+            BuildResponseMeta(rows, trustMetadata))
+        {
+            TotalRevenue = Round2(totalRevenue),
+            MarginContribution = Round2(marginContribution),
+            TopFiveRevenueShare = Round4(topFiveRevenueShare),
+        };
     }
 
     internal static AnalyticsReportResponseDto BuildSupplierDecisionReportResponse(
@@ -3940,7 +3952,12 @@ public sealed record SummaryResponse(
     IReadOnlyList<KeyInsightItem> KeyInsights,
     string? DataNote = null,
     ScorecardTrustMetadata? TrustMetadata = null,
-    AnalyticsResponseMetaDto? Meta = null);
+    AnalyticsResponseMetaDto? Meta = null)
+{
+    public decimal TotalRevenue { get; init; }
+    public decimal? MarginContribution { get; init; }
+    public decimal? TopFiveRevenueShare { get; init; }
+}
 
 public sealed record ScorecardTrustMetadata(
     DateTime RequestedFrom,

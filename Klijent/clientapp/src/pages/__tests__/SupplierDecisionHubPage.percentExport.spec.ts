@@ -6,6 +6,7 @@ import {
 } from "../../services/analyticsTableState";
 import {
   decisionColumns,
+  calculateSupplierFullPriceShareDeltaPctPoints,
   calculateSupplierQualityTrendPct,
   calculateSupplierRevenueSharePct,
   trendClass,
@@ -84,6 +85,13 @@ describe("Supplier Decision percent export/detail (RQ40)", () => {
     expect(calculateSupplierRevenueSharePct(Number.POSITIVE_INFINITY, 100)).toBeNull();
     expect(calculateSupplierRevenueSharePct(50, Number.POSITIVE_INFINITY)).toBeNull();
     expect(calculateSupplierRevenueSharePct(0, 100)).toBe(0);
+  });
+
+  it("separates previous-period full-price delta from row markdown-quality trend", () => {
+    expect(calculateSupplierQualityTrendPct(0.6, 0.2)).toBe(40);
+    expect(calculateSupplierFullPriceShareDeltaPctPoints(0.6, 0.4)).toBe(20);
+    expect(calculateSupplierFullPriceShareDeltaPctPoints(0.6, 0.6)).toBe(0);
+    expect(calculateSupplierFullPriceShareDeltaPctPoints(1.1, 0.4)).toBeNull();
   });
 
   it("uses the full-price-weighted margin contribution definition", () => {
