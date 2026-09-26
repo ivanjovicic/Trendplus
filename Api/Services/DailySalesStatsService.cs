@@ -72,7 +72,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             .Where(pz => pz.DatumProdaje >= fromDateUtc
                          && pz.DatumProdaje < toDateExclusiveUtc
                          && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
-                         && scopedSaleIdsQuery.Contains(pz.Id))
+                         && (!importedOnly && !existingOnly || scopedSaleIdsQuery.Contains(pz.Id)))
             .Select(pz => new
             {
                 SaleId = pz.Id,
@@ -145,12 +145,21 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                 x.LineTotal))
             .ToList();
 
-        var dnevnikSaleFacts = (await _db.DnevnikPromena
+        var scopedReceiptIdentities = includedReceiptHeaders
+            .Select(x => ReceiptIdentityKeys.TryBuild(x.SaleDate, x.BrojRacuna, x.IDObjekat))
+            .Where(x => x.HasValue)
+            .Select(x => x!.Value)
+            .ToHashSet();
+        var scopedMissingReceiptIdentities = includedReceiptHeaders
+            .Where(x => string.IsNullOrWhiteSpace(x.BrojRacuna))
+            .Select(x => (x.SaleDate, x.IDObjekat))
+            .ToHashSet();
+
+        var dnevnikFactsInRange = await _db.DnevnikPromena
             .AsNoTracking()
             .Where(d => d.Datum >= fromDateUtc
                         && d.Datum < toDateExclusiveUtc
                         && (!storeId.HasValue || d.IDObjekat == storeId.Value)
-                        && scopedSaleIdsQuery.Contains(d.Id)
                         && !excludedReceiptNumbersForQuery.Contains((d.BrojRacuna ?? string.Empty).Trim())
                         && saleTypeCandidates.Contains(d.TipPromene))
             .Select(g => new
@@ -161,13 +170,27 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                 g.IDObjekat,
                 g.Iznos
             })
-            .ToListAsync(ct))
+            .ToListAsync(ct);
+
+        var dnevnikSaleFacts = dnevnikFactsInRange
             .Select(x => new DnevnikReceiptFact(
                 x.SaleId,
                 x.SaleDate,
                 x.BrojRacuna,
                 x.IDObjekat,
                 x.Iznos))
+            .Where(x =>
+            {
+                if (!importedOnly && !existingOnly)
+                {
+                    return true;
+                }
+
+                var identity = ReceiptIdentityKeys.TryBuild(x.SaleDate, x.BrojRacuna, x.IDObjekat);
+                return identity.HasValue
+                    ? scopedReceiptIdentities.Contains(identity.Value)
+                    : scopedMissingReceiptIdentities.Contains((x.SaleDate, x.IDObjekat));
+            })
             .ToList();
 
         var dnevnikTotalsByIdentity = dnevnikSaleFacts
