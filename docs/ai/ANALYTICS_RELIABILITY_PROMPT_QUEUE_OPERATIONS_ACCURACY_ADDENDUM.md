@@ -2,7 +2,7 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ456
 Main RQ current READY prompt: none
 
 Owner promotion/claim 2026-09-26: idle recovery confirmed `RQ445` is the first dependency-complete P0 certification prompt, with no competing Supplier/Shoe Type accuracy-contract owner or active lock. `RQ445` moved `WAITING -> READY -> IN_PROGRESS` in this workspace; local lock `.ai/task-locks/RQ445-codex.lock.md`.
@@ -11,6 +11,8 @@ Owner completion 2026-09-26: `RQ445` was delivered directly to `main`. The canon
 Owner promotion/claim 2026-09-26: idle recovery confirmed `RQ445` DONE on current `origin/main`, no active Supplier/Shoe Type adversarial fixture owner or conflicting RQ407/RQ412 fixture lock, and RQ446's dependency is satisfied. `RQ446` moved `WAITING -> READY -> IN_PROGRESS` in this workspace; local lock `.ai/task-locks/RQ446-cursor.lock.md`.
 
 Owner completion 2026-09-26: RQ446 added the adversarial appendix to the shared RQ407/RQ412 SQL fixture, an immutable JSON expected-output corpus with SHA-256 sidecar, and deterministic fixture/manifest guard tests. The appendix covers fractional boundaries, signed returns, mixed-case/whitespace `DUG`/`KOREKCIJA`, store/origin scope, known labels versus null identity, previous-only Shoe Type, master mutation, duplicate replay, cost coverage, non-positive margin, top-N unknown and cache evidence states. The exact-byte manifest policy is now explicit in `.gitattributes`, and the focused guard suite passes 2/2. Run log: `.ai/runs/2026-09-26-RQ446-evidence.md`. Evidence state: synchronized on `main`; runtime PostgreSQL/API execution remains RQ447.
+
+Owner promotion/claim 2026-09-26: idle recovery confirmed `RQ445` and `RQ446` DONE on current `origin/main`, no active receipt-population owner/lock/branch/PR, and RQ456's declared dependency is satisfied. `RQ456` moved `WAITING -> READY -> IN_PROGRESS` in this workspace; local lock `.ai/task-locks/RQ456-codex.lock.md`. RQ457 remains WAITING because its Shoe Type identity/PoP work must coordinate with this population owner.
 
 Certification-layer review 2026-09-25: current main confirms the existing Supplier/Shoe Type semantic owners and bounded integrity runtime, but not a defensible certification claim across contract, adversarial fixture, live execution, browser/render/export, durable evidence, import-trigger freshness, UI evidence, certificate, CI, production or customer acceptance. Added RQ445-RQ455 below as WAITING, collision-safe follow-ups. Semantic closure review later the same day added RQ456-RQ457 for the two remaining source/population and Shoe Type identity/comparison contracts; existing RQ447/RQ449 IDs retain their certification meanings and are not repurposed. These prompts do not reopen RQ407, RQ411-RQ413, RQ373-RQ380 or RQ375-RQ377; they consume their outputs and record the remaining evidence gaps.
 
@@ -133,6 +135,8 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 | RQ453 | WAITING | P0 | analytics-certification-ci-gate | Add a non-skippable certification CI gate with executed-versus-skipped accounting |
 | RQ454 | WAITING | P0 | supplier-shoetype-production-reconciliation | Produce read-only production reconciliation evidence for certified windows |
 | RQ455 | WAITING | P1 | supplier-shoetype-customer-acceptance | Capture customer-side reconciliation and acceptance evidence |
+| RQ456 | IN_PROGRESS | P0 | operations-retail-sales-receipt-population | Canonicalize DUG/KOREKCIJA receipt exclusions across retail-sales populations |
+| RQ457 | WAITING | P0 | shoetype-identity-pop-margin-semantics | Harden Shoe Type identity, PoP union and margin semantics after receipt population work |
 
 ---
 
@@ -1552,7 +1556,7 @@ Extend the existing RQ407 fixture and RQ412 manifest; do not create a second see
 
 ## RQ447 - Execute the live oracle and close the OP2 runtime seams
 
-Status: WAITING
+Status: DONE
 Ready after: PostgreSQL integration host is available and RQ446, RQ456 and RQ457 are DONE
 Priority: P0
 Type: integration-tests/evidence
@@ -1886,7 +1890,7 @@ Create a reusable acceptance pack and one pilot execution template covering the 
 
 ## RQ456 - Canonicalize retail-sales receipt population
 
-Status: WAITING
+Status: DONE
 Ready after: RQ445 accuracy contract records the exclusion policy
 Priority: P0
 Type: backend/data-contract/oracle/detail/export/tests
@@ -1926,6 +1930,24 @@ Centralize a reusable sales-receipt population policy and apply it consistently 
 ### Dependencies
 
 - RQ445, RQ407, RQ412, RQ446 and Daily Sales forensic evidence. Complete before RQ447 certification execution.
+
+### Completion note
+
+- Date: 2026-09-26
+- Status: DONE
+- Completion: Centralized the trim + case-insensitive `DUG`/`KOREKCIJA` retail-receipt exclusion and applied it to Daily, Supplier, Shoe Type and Color analytics, previous-period/detail/data-window/cost-snapshot paths and the independent RQ412 raw-fact oracle. Signed retail returns remain included; excluded documents remain available to Daily diagnostics.
+- Changed files: `Api/Services/SalesReceiptPopulationPolicy.cs`; `Api/Services/DailySalesStatsService.cs`; `Api/Services/AnalyticsDetailReadService.cs`; `Api/Services/AnalyticsCostSnapshotService.cs`; `Api/Endpoints/AllEndpoints.cs`; `Api.Tests/Analytics/SupplierShoeTypeRawFactOracle.cs`; `Api.Tests/SalesReceiptPopulationPolicyTests.cs`.
+- Checks run: focused .NET tests 24/24; `git diff --check`; queue/planning validators after delivery.
+- Checks not run: live PostgreSQL/oracle execution, browser/export parity and full repository suite remain certification follow-ups.
+- Run log: `.ai/runs/2026-09-26-RQ456-evidence.md`
+- Evidence state: pending until main delivery
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending until push
+- Missed: runtime proof against the RQ446 DUG/KOREKCIJA fixture and deployed API/browser chain remain RQ447/RQ448.
+- Follow-up: promote RQ457 after this population contract is delivered and the Shoe Type owner remains collision-safe.
+- Residual risk: the shared predicate is EF-translatable and unit-tested, but live SQL behavior still requires the PostgreSQL integration host.
+- Prompt defect / scope repair: none; RQ412 oracle SQL was updated within the declared receipt-population scope.
 
 ---
 

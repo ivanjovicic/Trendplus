@@ -47,6 +47,7 @@ public static class SupplierShoeTypeRawFactOracle
             WHERE pz.datum_prodaje >= @fromUtc
               AND pz.datum_prodaje <= @toUtc
               AND (@storeId IS NULL OR pz.id_objekat = @storeId)
+              AND UPPER(BTRIM(COALESCE(pz.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')
               AND (
                     @dataScope = 'all'
                     OR (@dataScope = 'imported' AND a."DataOrigin" = 'access')
@@ -86,6 +87,7 @@ public static class SupplierShoeTypeRawFactOracle
             WHERE pz.datum_prodaje >= @fromUtc
               AND pz.datum_prodaje <= @toUtc
               AND (@storeId IS NULL OR pz.id_objekat = @storeId)
+              AND UPPER(BTRIM(COALESCE(pz.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')
               AND (
                     @dataScope = 'all'
                     OR (@dataScope = 'imported' AND a."DataOrigin" = 'access')
@@ -114,6 +116,7 @@ public static class SupplierShoeTypeRawFactOracle
             WHERE pz.datum_prodaje >= @fromUtc
               AND pz.datum_prodaje <= @toUtc
               AND (@storeId IS NULL OR pz.id_objekat = @storeId)
+              AND UPPER(BTRIM(COALESCE(pz.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')
               AND (
                     @dataScope = 'all'
                     OR (@dataScope = 'imported' AND a."DataOrigin" = 'access')

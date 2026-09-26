@@ -1253,7 +1253,7 @@ public static class AllEndpoints
                 {
                     var previousFootwearRows = await (
                         from ps in db.ProdajaStavke.AsNoTracking()
-                        join pz in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+                        join pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking() on ps.IdProdaja equals pz.Id
                         join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                         where pz.DatumProdaje >= previousFromUtc.Value
                            && pz.DatumProdaje < previousToUtc.Value
@@ -1303,7 +1303,7 @@ public static class AllEndpoints
 
                 var stavke = await (
                     from ps in db.ProdajaStavke.AsNoTracking()
-                    join pz in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+                    join pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking() on ps.IdProdaja equals pz.Id
                     join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                     where (!fromUtc.HasValue || pz.DatumProdaje >= fromUtc.Value)
                        && (!toUtc.HasValue || pz.DatumProdaje < toUtc.Value)
@@ -2220,7 +2220,7 @@ public static class AllEndpoints
                 {
                     var previousRows = await (
                         from ps in db.ProdajaStavke.AsNoTracking()
-                        join pz in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+                        join pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking() on ps.IdProdaja equals pz.Id
                         join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                         where pz.DatumProdaje >= previousFromUtc.Value
                            && pz.DatumProdaje < previousToUtc.Value
@@ -2246,7 +2246,7 @@ public static class AllEndpoints
 
                 var stavke = await (
                     from ps in db.ProdajaStavke.AsNoTracking()
-                    join pz in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+                    join pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking() on ps.IdProdaja equals pz.Id
                     join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                     where (!fromUtc.HasValue || pz.DatumProdaje >= fromUtc.Value)
                        && (!toUtc.HasValue || pz.DatumProdaje < toUtc.Value)
@@ -2861,7 +2861,7 @@ public static class AllEndpoints
                 }
 
                 var dataWindow = await (
-                    from pz in db.ProdajaZaglavlja.AsNoTracking()
+                    from pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking()
                     join ps in db.ProdajaStavke.AsNoTracking() on pz.Id equals ps.IdProdaja
                     join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                     where (!storeId.HasValue || pz.IDObjekat == storeId.Value)
@@ -2910,7 +2910,7 @@ public static class AllEndpoints
                 {
                     var previousRowsRaw = await (
                         from ps in db.ProdajaStavke.AsNoTracking()
-                        join pz in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+                        join pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking() on ps.IdProdaja equals pz.Id
                         join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                         where pz.DatumProdaje >= previousFromUtc.Value
                            && pz.DatumProdaje < previousToUtc.Value
@@ -2938,7 +2938,7 @@ public static class AllEndpoints
 
                 var stavke = await (
                     from ps in db.ProdajaStavke.AsNoTracking()
-                    join pz in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+                    join pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking() on ps.IdProdaja equals pz.Id
                     join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                     where (!fromUtc.HasValue || pz.DatumProdaje >= fromUtc.Value)
                        && (!toUtc.HasValue || pz.DatumProdaje < toUtc.Value)
@@ -7924,7 +7924,7 @@ public static class AllEndpoints
         {
             // dataScope=all does not need the Artikli join; the sale-line join keeps the historical window scoped to actual sold items.
             var window = await (
-                from pz in db.ProdajaZaglavlja.AsNoTracking()
+                from pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking()
                 join ps in db.ProdajaStavke.AsNoTracking() on pz.Id equals ps.IdProdaja
                 where !storeId.HasValue || pz.IDObjekat == storeId.Value
                 group pz by 1 into g
@@ -7941,7 +7941,7 @@ public static class AllEndpoints
         else
         {
             var window = await (
-                from pz in db.ProdajaZaglavlja.AsNoTracking()
+                from pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking()
                 join ps in db.ProdajaStavke.AsNoTracking() on pz.Id equals ps.IdProdaja
                 join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                 where (!storeId.HasValue || pz.IDObjekat == storeId.Value)

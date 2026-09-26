@@ -30,7 +30,7 @@ Preferred customer wording:
 | Non-skippable certification CI | RQ412 integration tests are opt-in and the recorded run could not execute them; no dedicated non-skip certification gate is evidenced. | Missing — RQ453 |
 | Production read-only reconciliation | STAB16 and older audits identify the general missing access/browser proof; no Supplier/Shoe Type-specific dated artifact exists. | Missing / externally gated — RQ454 |
 | Customer acceptance evidence | No fixed-window customer reconciliation/sign-off pack exists for these two screens. | Missing — RQ455 |
-| Retail receipt population parity | Daily Sales excludes trimmed/case-insensitive DUG/KOREKCIJA; Supplier, Shoe Type and Color currently do not apply the same header predicate. | Confirmed inconsistency — RQ456 |
+| Retail receipt population parity | Daily Sales excludes trimmed/case-insensitive DUG/KOREKCIJA; Supplier, Shoe Type and Color now use the same shared header predicate delivered by RQ456. | Contract/fix delivered — live fixture execution remains RQ447 |
 | Shoe Type identity / previous-only rows / margin semantics | Several backend/detail paths infer unknown from the label `Nepoznato`; rows originate only from current-period types; headline weighted margin currently uses a name-filtered known cohort. | Confirmed semantic gaps — RQ457 |
 | Non-positive margin contribution share | Shoe Type chart already falls back to RSD, but detail formatting previously returned percentage shares for a negative total and 0% for 0/0. | Immediate fix delivered on main 2026-09-25; RQ457 keeps backend/detail/export parity |
 
@@ -60,7 +60,7 @@ These decisions are certification prerequisites. RQ456 owns the cross-surface re
 | Sequence | Prompt | Status | Output |
 |---:|---|---|---|
 | 1 | RQ445 | DONE | canonical contract and bounded claim language |
-| 2 | RQ456 | WAITING | one DUG/KOREKCIJA retail-sales population across Daily/Supplier/Shoe/Color/oracle |
+| 2 | RQ456 | DONE | one DUG/KOREKCIJA retail-sales population across Daily/Supplier/Shoe/Color/oracle |
 | 3 | RQ457 | WAITING | Shoe Type ID/null identity, previous-only rows and margin semantics |
 | 4 | RQ446 | DONE | adversarial fixture and immutable expected manifest |
 | 5 | RQ447 | WAITING | live oracle execution and OP2 runtime closure after semantic owners |

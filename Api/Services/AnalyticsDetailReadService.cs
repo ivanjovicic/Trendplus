@@ -341,7 +341,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
 
         var salesRows = await (
             from ps in _db.ProdajaStavke.AsNoTracking()
-            join pz in _db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+            join pz in _db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking() on ps.IdProdaja equals pz.Id
             join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
             join d in _db.Dobavljaci.AsNoTracking() on ps.SupplierIdAtSale equals d.Id into dj
             from d in dj.DefaultIfEmpty()
@@ -428,7 +428,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         {
             var aggregate = await (
                 from ps in _db.ProdajaStavke.AsNoTracking()
-                join pz in _db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+                join pz in _db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking() on ps.IdProdaja equals pz.Id
                 join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                 where pz.DatumProdaje >= previousFromUtc.Value
                    && pz.DatumProdaje <= previousToUtc.Value
@@ -451,7 +451,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         {
             var aggregate = await (
                 from ps in _db.ProdajaStavke.AsNoTracking()
-                join pz in _db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+                join pz in _db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking() on ps.IdProdaja equals pz.Id
                 join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                 join d in _db.Dobavljaci.AsNoTracking() on ps.SupplierIdAtSale equals d.Id into dj
                 from d in dj.DefaultIfEmpty()
@@ -512,7 +512,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         {
             var aggregate = await (
                 from ps in _db.ProdajaStavke.AsNoTracking()
-                join pz in _db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+                join pz in _db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking() on ps.IdProdaja equals pz.Id
                 join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                 where pz.DatumProdaje >= previousFromUtc.Value
                    && pz.DatumProdaje <= previousToUtc.Value
@@ -535,7 +535,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         {
             var aggregate = await (
                 from ps in _db.ProdajaStavke.AsNoTracking()
-                join pz in _db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+                join pz in _db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking() on ps.IdProdaja equals pz.Id
                 join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                 join t in _db.TipoviObuce.AsNoTracking() on ps.ShoeTypeIdAtSale equals t.Id into tj
                 from t in tj.DefaultIfEmpty()
@@ -591,7 +591,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         var existingOnly = string.Equals(context.Filters.DataScope, "existing", StringComparison.OrdinalIgnoreCase);
         var previousRows = await (
             from ps in _db.ProdajaStavke.AsNoTracking()
-            join pz in _db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+            join pz in _db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking() on ps.IdProdaja equals pz.Id
             join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
             where pz.DatumProdaje >= previousFromUtc.Value
                && pz.DatumProdaje <= previousToUtc.Value

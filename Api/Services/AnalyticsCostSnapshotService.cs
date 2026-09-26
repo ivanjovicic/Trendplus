@@ -94,7 +94,7 @@ public sealed class AnalyticsCostSnapshotService
             // Only Access-origin lines with NULL nabavna_cena.
             var eligibleLines = await _db.ProdajaStavke
                 .Join(
-                    _db.ProdajaZaglavlja,
+                    _db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate),
                     ps => ps.IdProdaja,
                     pz => pz.Id,
                     (ps, pz) => new { ps, pz })
@@ -457,7 +457,7 @@ public sealed class AnalyticsCostSnapshotService
 
         var salesLines = await (
             from ps in _db.ProdajaStavke.AsNoTracking()
-            join pz in _db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+            join pz in _db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking() on ps.IdProdaja equals pz.Id
             join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
             where (!context.Filters.FromDateUtc.HasValue || pz.DatumProdaje >= context.Filters.FromDateUtc.Value)
                && (!context.Filters.ToDateUtc.HasValue || pz.DatumProdaje <= context.Filters.ToDateUtc.Value)
@@ -548,7 +548,7 @@ public sealed class AnalyticsCostSnapshotService
 
         var salesLines = await (
             from ps in _db.ProdajaStavke.AsNoTracking()
-            join pz in _db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+            join pz in _db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking() on ps.IdProdaja equals pz.Id
             join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
             where (!context.Filters.FromDateUtc.HasValue || pz.DatumProdaje >= context.Filters.FromDateUtc.Value)
                && (!context.Filters.ToDateUtc.HasValue || pz.DatumProdaje <= context.Filters.ToDateUtc.Value)
