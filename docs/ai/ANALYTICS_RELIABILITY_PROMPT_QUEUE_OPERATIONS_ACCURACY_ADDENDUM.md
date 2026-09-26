@@ -2,7 +2,7 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ456
+Current READY prompt: none
 Main RQ current READY prompt: none
 
 Owner promotion/claim 2026-09-26: idle recovery confirmed `RQ445` is the first dependency-complete P0 certification prompt, with no competing Supplier/Shoe Type accuracy-contract owner or active lock. `RQ445` moved `WAITING -> READY -> IN_PROGRESS` in this workspace; local lock `.ai/task-locks/RQ445-codex.lock.md`.
@@ -136,8 +136,8 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 | RQ453 | WAITING | P0 | analytics-certification-ci-gate | Add a non-skippable certification CI gate with executed-versus-skipped accounting |
 | RQ454 | WAITING | P0 | supplier-shoetype-production-reconciliation | Produce read-only production reconciliation evidence for certified windows |
 | RQ455 | WAITING | P1 | supplier-shoetype-customer-acceptance | Capture customer-side reconciliation and acceptance evidence |
-| RQ456 | IN_PROGRESS | P0 | operations-retail-sales-receipt-population | Canonicalize DUG/KOREKCIJA receipt exclusions across retail-sales populations |
-| RQ457 | WAITING | P0 | shoetype-identity-pop-margin-semantics | Harden Shoe Type identity, PoP union and margin semantics after receipt population work |
+| RQ456 | DONE | P0 | operations-retail-sales-receipt-population | Canonicalize DUG/KOREKCIJA receipt exclusions across retail-sales populations |
+| RQ457 | DONE | P0 | shoetype-identity-pop-margin-semantics | Harden Shoe Type identity, PoP union and margin semantics after receipt population work |
 
 ---
 
@@ -1557,7 +1557,7 @@ Extend the existing RQ407 fixture and RQ412 manifest; do not create a second see
 
 ## RQ447 - Execute the live oracle and close the OP2 runtime seams
 
-Status: DONE
+Status: WAITING
 Ready after: PostgreSQL integration host is available and RQ446, RQ456 and RQ457 are DONE
 Priority: P0
 Type: integration-tests/evidence
@@ -1954,7 +1954,7 @@ Centralize a reusable sales-receipt population policy and apply it consistently 
 
 ## RQ457 - Harden Shoe Type identity, PoP union and margin semantics
 
-Status: WAITING
+Status: DONE
 Ready after: RQ445 records the canonical semantics; coordinate with RQ456 population work
 Priority: P0
 Type: backend/frontend/detail/export/tests
@@ -1962,6 +1962,10 @@ Feature family: shoetype-identity-pop-margin-semantics
 Parallel-safe: no with Shoe Type endpoint/detail/page owners
 Owner: Analytics Reliability / Shoe Type
 Commit suggestion: fix(analytics): close Shoe Type identity and comparison semantics
+
+Owner promotion/claim 2026-09-26: idle recovery confirmed RQ456 DONE on current `origin/main`, no active Shoe Type endpoint/detail/page owner or conflicting lock/branch/PR, and RQ457's declared dependencies are satisfied. `RQ457` moved `WAITING -> READY -> IN_PROGRESS`; local lock `.ai/task-locks/RQ457-codex.lock.md`.
+
+Owner completion 2026-09-26: `RQ457` was delivered directly to `main`. Shoe Type identity now uses sale-time `tipObuceId == null` semantics across list/detail/comparison paths; current and previous period IDs are unioned so previous-only types expose zero current values and -100% PoP when the prior denominator is positive; previous-only rows do not receive invented current cost, pre/post or recommendation evidence; and headline weighted margin uses the full current response while recommendation benchmarking remains known-ID-only. Detail metadata declares both margin bases, and the backend preserves N/A for non-positive margin-share denominators. Focused backend proof is 23/23; TypeScript passed. Run log: `.ai/runs/2026-09-26-RQ457-evidence.md`. Evidence state: synchronized. The targeted frontend suite had 42/43 passing with one pre-existing calendar-rollover expectation failure; no frontend product file was changed.
 
 ### Problem
 

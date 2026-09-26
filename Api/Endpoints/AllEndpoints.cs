@@ -51,6 +51,20 @@ public static class AllEndpoints
     private const int VendorSalesNivelacijaCommandTimeoutSeconds = 45;
     private const int OptionalNivelacijaMetricCommandTimeoutSeconds = 5;
 
+    private sealed class ShoeTypeSalesInput
+    {
+        public int? TipObuceId { get; init; }
+        public int ArtikalId { get; init; }
+        public DateTime DatumProdaje { get; init; }
+        public int Kolicina { get; init; }
+        public decimal Prihod { get; init; }
+        public decimal? SaleLineCost { get; init; }
+        public decimal? ProductCostRsd { get; init; }
+        public decimal? ProductCostLegacy { get; init; }
+        public string? AttributionBasis { get; init; }
+        public bool IsPreviousOnlySeed { get; init; }
+    }
+
     private static readonly string[] SeasonalFallbackImageUrls =
     {
         "https://images.unsplash.com/photo-1460353581641-37baddab0fa2?w=1200&auto=format&fit=crop",
@@ -2213,6 +2227,7 @@ public static class AllEndpoints
 
                 var (previousFromUtc, previousToUtc) = OperationsDateRange.BuildComparablePreviousRange(fromUtc, toUtc);
                 var previousShoeTypeMetrics = new Dictionary<string, (decimal Revenue, int Units)>(StringComparer.Ordinal);
+                var previousShoeTypeIds = new HashSet<int?>();
                 decimal? previousPeriodRevenue = null;
                 int? previousPeriodUnits = null;
 
@@ -2238,6 +2253,8 @@ public static class AllEndpoints
 
                     previousPeriodRevenue = previousRows.Sum(x => x.Revenue);
                     previousPeriodUnits = previousRows.Sum(x => x.Units);
+                    foreach (var previousRow in previousRows)
+                        previousShoeTypeIds.Add(previousRow.TipObuceId);
                     previousShoeTypeMetrics = previousRows.ToDictionary(
                         x => BuildShoeTypeBucketKey(x.TipObuceId),
                         x => (x.Revenue, x.Units),
@@ -2272,7 +2289,7 @@ public static class AllEndpoints
                         AttributionBasis = ps.AttributionBasis
                     }
                     into g
-                    select new
+                    select new ShoeTypeSalesInput
                     {
                         TipObuceId = g.Key.TipObuceId,
                         ArtikalId = g.Key.ArtikalId,
@@ -2282,14 +2299,31 @@ public static class AllEndpoints
                         SaleLineCost = g.Key.SaleLineCost,
                         ProductCostRsd = g.Key.ProductCostRsd,
                         ProductCostLegacy = g.Key.ProductCostLegacy,
-                        AttributionBasis = g.Key.AttributionBasis
+                        AttributionBasis = g.Key.AttributionBasis,
+                        IsPreviousOnlySeed = false
                     })
                     .ToListAsync(ct);
 
-                var shoeAttributionBases = stavke.Select(s => s.AttributionBasis).Distinct(StringComparer.Ordinal).ToArray();
-                var shoeAttributionCoveragePct = stavke.Count == 0
+                var currentShoeTypeIds = stavke.Select(x => x.TipObuceId).ToHashSet();
+                foreach (var previousOnlyId in previousShoeTypeIds.Where(id => !currentShoeTypeIds.Contains(id)))
+                {
+                    stavke.Add(new ShoeTypeSalesInput
+                    {
+                        TipObuceId = previousOnlyId,
+                        ArtikalId = 0,
+                        DatumProdaje = previousFromUtc ?? DateTime.UnixEpoch,
+                        Kolicina = 0,
+                        Prihod = 0m,
+                        AttributionBasis = SaleDimensionAttribution.Unknown,
+                        IsPreviousOnlySeed = true
+                    });
+                }
+
+                var currentStavke = stavke.Where(s => !s.IsPreviousOnlySeed).ToList();
+                var shoeAttributionBases = currentStavke.Select(s => s.AttributionBasis).Distinct(StringComparer.Ordinal).ToArray();
+                var shoeAttributionCoveragePct = currentStavke.Count == 0
                     ? (double?)null
-                    : Math.Round(stavke.Count(s => !string.Equals(s.AttributionBasis, SaleDimensionAttribution.Unknown, StringComparison.Ordinal)) * 100d / stavke.Count, 2);
+                    : Math.Round(currentStavke.Count(s => !string.Equals(s.AttributionBasis, SaleDimensionAttribution.Unknown, StringComparison.Ordinal)) * 100d / currentStavke.Count, 2);
                 var shoeAttributionBasis = shoeAttributionBases.Length == 1 ? shoeAttributionBases[0] : "mixed";
 
                 var sezone = (await db.Sezone.AsNoTracking()
@@ -2318,6 +2352,7 @@ public static class AllEndpoints
                     .GroupBy(s => s.TipObuceId)
                     .Select(g =>
                     {
+                        var currentRows = g.Where(s => !s.IsPreviousOnlySeed).ToList();
                         var shoeTypeBucketKey = BuildShoeTypeBucketKey(g.Key);
                         var hasPreviousComparablePeriod = previousFromUtc.HasValue && previousToUtc.HasValue;
                         var previousRevenueRaw = 0m;
@@ -2334,7 +2369,7 @@ public static class AllEndpoints
 
                         var articleIds = new HashSet<int>();
 
-                        foreach (var s in g)
+                        foreach (var s in currentRows)
                         {
                             totalRevenue += s.Prihod;
                             totalQty += s.Kolicina;
@@ -2353,7 +2388,7 @@ public static class AllEndpoints
 
                         var marginSnapshot = margin.Build(totalRevenue);
                         var splitSnapshot = AnalyticsNivelacijaSplitPolicy.Build(
-                            g,
+                            currentRows,
                             prvaNivelacijaPoArtiklu,
                             sale => sale.ArtikalId,
                             sale => sale.DatumProdaje,
@@ -2446,7 +2481,7 @@ public static class AllEndpoints
                 var estimatedCostRevenue = shoeTypes.Sum(r => r.estimatedCostRevenue);
                 var missingCostRevenue = AnalyticsMarginPolicy.ResolveNoCostRevenue(totalRevenue, totalCostCoveredRevenue);
                 var unknownTypeRevenue = shoeTypes
-                    .Where(r => string.Equals(r.tipObuceNaziv, "Nepoznato", StringComparison.OrdinalIgnoreCase))
+                    .Where(r => !r.tipObuceId.HasValue)
                     .Sum(r => r.ukupanPromet);
 
                 var dataQuality = new
@@ -2481,12 +2516,16 @@ public static class AllEndpoints
                         : (double?)null
                 };
 
-                var knownShoeTypeMarginValues = shoeTypes
-                    .Where(row => !string.Equals(row.tipObuceNaziv, "Nepoznato", StringComparison.OrdinalIgnoreCase))
+                var fullShoeTypeMarginValues = shoeTypes
                     .Select(row => (row.costCoveredRevenue, row.marginContribution))
                     .ToList();
-                var averageMarginPct = AnalyticsMarginPolicy.ResolveWeightedMarginPct(knownShoeTypeMarginValues);
-                var weightedMarginRevenue = knownShoeTypeMarginValues.Sum(row => row.costCoveredRevenue);
+                var averageMarginPct = AnalyticsMarginPolicy.ResolveWeightedMarginPct(fullShoeTypeMarginValues);
+                var knownShoeTypeMarginValues = shoeTypes
+                    .Where(row => row.tipObuceId.HasValue)
+                    .Select(row => (row.costCoveredRevenue, row.marginContribution))
+                    .ToList();
+                var recommendationBenchmarkMarginPct = AnalyticsMarginPolicy.ResolveWeightedMarginPct(knownShoeTypeMarginValues);
+                var weightedMarginRevenue = fullShoeTypeMarginValues.Sum(row => row.costCoveredRevenue);
                 var unknownTypeSharePct = dataQuality.unknownTypeRevenueSharePct ?? 0d;
                 var shoeIntegrityRegistry = httpContext.RequestServices.GetService<OperationsAnalyticsIntegrityRegistry>();
                 var blockShoeOperationsDecisions = OperationsAnalyticsIntegrityMeta.ShouldBlockDecisionSignals(shoeIntegrityRegistry);
@@ -2502,7 +2541,7 @@ public static class AllEndpoints
                         var isNewType = hasPreviousPeriodWindow
                             && row.previousPeriodRevenue <= 0m
                             && row.ukupanPromet > 0m;
-                        var isUnknownType = string.Equals(row.tipObuceNaziv, "Nepoznato", StringComparison.OrdinalIgnoreCase);
+                        var isUnknownType = !row.tipObuceId.HasValue;
 
                         var recommendation = AnalyticsDecisionRecommendationEngine.Evaluate(new AnalyticsDecisionRecommendationEngine.RecommendationInput(
                             IsUnknownEntity: isUnknownType,
@@ -2520,7 +2559,7 @@ public static class AllEndpoints
                             HasPreviousPeriodWindow: hasPreviousPeriodWindow,
                             IsNewEntity: isNewType,
                             UnknownBucketSharePct: unknownTypeSharePct),
-                            averageMarginPct);
+                            recommendationBenchmarkMarginPct);
                         var hasComparableNivelacijaSignal = row.prePostNivelacijaRevenueImpactPct.HasValue
                             && row.prePostNivelacijaUnitsImpactPct.HasValue;
                         var exposedRecommendation = AnalyticsDecisionRecommendationEngine.ApplyComparableSignalGate(
@@ -2619,6 +2658,10 @@ public static class AllEndpoints
                     ukupanTrosak = shoeTypes.Sum(r => r.totalCost),
                     prosecnaMarza = averageMarginPct.HasValue ? Math.Round(averageMarginPct.Value, 2) : (double?)null,
                     weightedMarginRevenue = Math.Round(weightedMarginRevenue, 2),
+                    recommendationBenchmarkMarginPct = recommendationBenchmarkMarginPct.HasValue
+                        ? Math.Round(recommendationBenchmarkMarginPct.Value, 2)
+                        : (double?)null,
+                    marginBenchmarkBasis = "full_response_covered_revenue_weighted",
                     historicalCostCoveragePct = totalHistPct,
                     estimatedCostCoveragePct = totalEstPct,
                     noCostCoveragePct = totalNoCostPct,

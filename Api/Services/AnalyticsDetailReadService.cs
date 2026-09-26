@@ -190,14 +190,9 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
 
         var rows = isUnknown
             ? context.SalesRows
-                .Where(x => !x.TipObuceId.HasValue || string.Equals(x.TipObuceNaziv, "Nepoznato", StringComparison.OrdinalIgnoreCase))
+                .Where(x => !x.TipObuceId.HasValue)
                 .ToList()
             : context.SalesRows.Where(x => x.TipObuceId == knownId!.Value).ToList();
-        if (rows.Count == 0)
-        {
-            return null;
-        }
-
         var title = isUnknown
             ? "Nepoznato"
             : rows.FirstOrDefault()?.TipObuceNaziv ?? $"Tip obuće {knownId!.Value}";
@@ -537,12 +532,10 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 from ps in _db.ProdajaStavke.AsNoTracking()
                 join pz in _db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking() on ps.IdProdaja equals pz.Id
                 join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
-                join t in _db.TipoviObuce.AsNoTracking() on ps.ShoeTypeIdAtSale equals t.Id into tj
-                from t in tj.DefaultIfEmpty()
                 where pz.DatumProdaje >= previousFromUtc.Value
                    && pz.DatumProdaje <= previousToUtc.Value
                    && (!context.Filters.StoreId.HasValue || pz.IDObjekat == context.Filters.StoreId.Value)
-                   && (!ps.ShoeTypeIdAtSale.HasValue || t == null || t.Naziv == null || t.Naziv.Trim() == "")
+                   && !ps.ShoeTypeIdAtSale.HasValue
                    && (!importedOnly || a.DataOrigin == "access")
                    && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
                 group ps by 1 into g
@@ -791,9 +784,8 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         var marginSnapshot = BuildMarginSnapshot(rows, context, totalRevenue);
         var splitSnapshot = BuildSplitSnapshot(rows, context);
 
-        var knownMarginEvidence = context.SalesRows
+        var fullMarginEvidence = context.SalesRows
             .GroupBy(x => x.TipObuceId)
-            .Where(group => !string.Equals(group.First().TipObuceNaziv, "Nepoznato", StringComparison.OrdinalIgnoreCase))
             .Select(group =>
             {
                 var revenue = group.Sum(x => x.Prihod);
@@ -801,9 +793,20 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 return (RevenueWithCost: margin.RevenueWithCost, MarginContribution: margin.MarginContribution);
             })
             .ToList();
-        var averageMarginPct = AnalyticsMarginPolicy.ResolveWeightedMarginPct(knownMarginEvidence);
+        var knownMarginEvidence = context.SalesRows
+            .Where(x => x.TipObuceId.HasValue)
+            .GroupBy(x => x.TipObuceId)
+            .Select(group =>
+            {
+                var revenue = group.Sum(x => x.Prihod);
+                var margin = BuildMarginSnapshot(group.ToList(), context, revenue);
+                return (RevenueWithCost: margin.RevenueWithCost, MarginContribution: margin.MarginContribution);
+            })
+            .ToList();
+        var averageMarginPct = AnalyticsMarginPolicy.ResolveWeightedMarginPct(fullMarginEvidence);
+        var recommendationBenchmarkMarginPct = AnalyticsMarginPolicy.ResolveWeightedMarginPct(knownMarginEvidence);
         var unknownRevenue = context.SalesRows
-            .Where(x => string.Equals(x.TipObuceNaziv, "Nepoznato", StringComparison.OrdinalIgnoreCase))
+            .Where(x => !x.TipObuceId.HasValue)
             .Sum(x => x.Prihod);
         var unknownSharePct = totalRevenue > 0m
             ? Math.Round((double)(unknownRevenue / context.SalesRows.Sum(x => x.Prihod) * 100m), 2)
@@ -832,7 +835,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 HasPreviousPeriodWindow: hasPreviousPeriodWindow,
                 IsNewEntity: isNewEntity,
                 UnknownBucketSharePct: unknownSharePct),
-            averageMarginPct);
+            recommendationBenchmarkMarginPct);
         var exposedRecommendation = AnalyticsDecisionRecommendationEngine.ApplyComparableSignalGate(
             recommendation,
             splitSnapshot.HasComparableSignal);
@@ -849,7 +852,13 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             Title = aggregate.Title,
             Subtitle = aggregate.Subtitle,
             Fields = localizedFields,
-            Metadata = BuildShoeTypeMetadata(context, rows, marginQuality, recommendationAllowed),
+            Metadata = BuildShoeTypeMetadata(
+                context,
+                rows,
+                marginQuality,
+                recommendationAllowed,
+                averageMarginPct,
+                recommendationBenchmarkMarginPct),
             Recommendation = new AnalyticsDetailRecommendationDto
             {
                 Status = exposedRecommendation.Status,
@@ -1157,7 +1166,9 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         AnalyticsContext context,
         IReadOnlyCollection<SalesRow> rows,
         MarginQualityClassifier.MarginQualityResult marginQuality,
-        bool recommendationAllowed)
+        bool recommendationAllowed,
+        double? headlineWeightedMarginPct,
+        double? recommendationBenchmarkMarginPct)
     {
         var filters = context.Filters;
         var metadata = new List<AnalyticsDetailFieldDto>
@@ -1174,6 +1185,10 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             Field("marginQuality", "Kvalitet marže", marginQuality.Label, "text"),
             Field("snapshotStatus", "Snimljeni trošak", context.IsSnapshotActive ? "Aktivan" : "Nije aktivan", "text"),
             Field("snapshotGeneratedAt", "Vreme snimka troška", context.SnapshotGeneratedAtUtc?.ToString("dd.MM.yyyy HH:mm:ss 'UTC'", CultureInfo.InvariantCulture), "datetime"),
+            Field("headlineWeightedMarginPct", "Prosečna marža pune populacije", headlineWeightedMarginPct?.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
+            Field("marginBenchmarkBasis", "Osnova headline marže", "full_response_covered_revenue_weighted", "text"),
+            Field("recommendationBenchmarkMarginPct", "Benchmark marže za preporuku", recommendationBenchmarkMarginPct?.ToString("0.00", CultureInfo.InvariantCulture), "percent"),
+            Field("recommendationMarginBenchmarkBasis", "Osnova benchmarka preporuke", "known_id_covered_revenue_weighted", "text"),
             Field("recommendationAllowed", "Preporuka dozvoljena", recommendationAllowed ? "Da" : "Ne", "text")
         };
         metadata.AddRange(BuildAttributionMetadata(rows));
@@ -1264,11 +1279,6 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         ComparisonMetrics? comparison = null,
         bool includeSnapshotCost = true)
     {
-        if (rows.Count == 0)
-        {
-            return null;
-        }
-
         decimal totalRevenue = 0m;
         int totalQty = 0;
         var margin = new MarginAccumulator();
