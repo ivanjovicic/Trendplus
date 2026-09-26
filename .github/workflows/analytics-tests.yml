@@ -191,6 +191,10 @@ jobs:
       ASPNETCORE_ENVIRONMENT: Testing
       TRENDPLUS_RUN_INTEGRATION_TESTS: "true"
       Database__AutoMigrate: "false"
+      # The CI PostgreSQL service is intentionally loopback-only. Testing is
+      # not Development, so opt into that isolated target explicitly without
+      # weakening the production default of AnalyticsConnectionResolver.
+      Analytics__AllowLoopbackInProduction: "true"
       ConnectionStrings__DefaultConnection: "Host=localhost;Database=trendplus_rq447;Username=postgres;Password=postgres_password"
       ConnectionStrings__AnalyticsConnection: "Host=localhost;Database=trendplus_rq447;Username=postgres;Password=postgres_password"
       ConnectionStrings__AnalyticsDb: "Host=localhost;Database=trendplus_rq447;Username=postgres;Password=postgres_password"
