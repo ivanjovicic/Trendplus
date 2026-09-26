@@ -10,6 +10,8 @@ public sealed class StartupReadinessState
     }
 
     private volatile bool _isReady;
+    private volatile bool _databaseInitializationRequired;
+    private volatile bool _databaseInitializationCompleted;
 
     public bool IsReady => _isReady;
 
@@ -22,9 +24,33 @@ public sealed class StartupReadinessState
 
     public void MarkReady()
     {
+        if (_databaseInitializationRequired && !_databaseInitializationCompleted)
+        {
+            _isReady = false;
+            ReadyAtUtc = null;
+            Reason = "database_initialization";
+            return;
+        }
+
         _isReady = true;
         ReadyAtUtc ??= DateTimeOffset.UtcNow;
         Reason = "ready";
+    }
+
+    public void RequireDatabaseInitialization()
+    {
+        _databaseInitializationRequired = true;
+        _databaseInitializationCompleted = false;
+        MarkNotReady("database_initialization");
+    }
+
+    public void MarkDatabaseInitializationCompleted()
+    {
+        _databaseInitializationCompleted = true;
+        if (DefaultDb.Ok && AnalyticsDb.Ok)
+        {
+            MarkReady();
+        }
     }
 
     public void MarkNotReady(string reason)

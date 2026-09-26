@@ -822,6 +822,13 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     });
 
     var app = builder.Build();
+    if (!isWorkerProcess && shouldRunDeferredDatabaseInitialization && !workersEnabled)
+    {
+        app.Services
+            .GetRequiredService<StartupReadinessState>()
+            .RequireDatabaseInitialization();
+    }
+
     using (var scope = app.Services.CreateScope())
     {
         var cacheAdmin = scope.ServiceProvider.GetRequiredService<AnalyticsCacheAdminService>();

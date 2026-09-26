@@ -15,6 +15,7 @@ public sealed class DeferredStartupTasksHostedService : IHostedService, IDisposa
     private readonly IConfiguration _configuration;
     private readonly IHostApplicationLifetime _hostApplicationLifetime;
     private readonly ILogger<DeferredStartupTasksHostedService> _logger;
+    private readonly StartupReadinessState _readiness;
     private Task? _startupTask;
     private CancellationTokenSource? _startupTaskCts;
 
@@ -22,12 +23,14 @@ public sealed class DeferredStartupTasksHostedService : IHostedService, IDisposa
         IServiceProvider serviceProvider,
         IConfiguration configuration,
         IHostApplicationLifetime hostApplicationLifetime,
-        ILogger<DeferredStartupTasksHostedService> logger)
+        ILogger<DeferredStartupTasksHostedService> logger,
+        StartupReadinessState readiness)
     {
         _serviceProvider = serviceProvider;
         _configuration = configuration;
         _hostApplicationLifetime = hostApplicationLifetime;
         _logger = logger;
+        _readiness = readiness;
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -90,6 +93,7 @@ public sealed class DeferredStartupTasksHostedService : IHostedService, IDisposa
         var runNeonWarmup = _configuration.GetValue<bool?>("StartupTasks:RunNeonWarmup") ?? true;
         var runStaleBatchRecovery = _configuration.GetValue<bool?>("AccessImport:RunStaleRecoveryOnStartup") ?? true;
         var maxRetries = Math.Max(1, _configuration.GetValue<int?>("StartupTasks:DatabaseInitializationMaxRetries") ?? 5);
+        var databaseInitializationSucceeded = !runDatabaseInitialization;
 
         _logger.LogInformation(
             "Deferred startup tasks started. RunDatabaseInitialization: {RunDatabaseInitialization}. RunNeonWarmup: {RunNeonWarmup}. RunStaleBatchRecovery: {RunStaleBatchRecovery}. MaxRetries: {MaxRetries}.",
@@ -147,6 +151,7 @@ public sealed class DeferredStartupTasksHostedService : IHostedService, IDisposa
                     var configuration = services.GetRequiredService<IConfiguration>();
 
                     await DatabaseInitializer.InitializeDatabasesAsync(services, configuration, logger);
+                    databaseInitializationSucceeded = true;
                     _logger.LogInformation("Database initialization succeeded on deferred attempt {Attempt}/{MaxRetries}.", attempt, maxRetries);
                     break;
                 }
@@ -198,6 +203,11 @@ public sealed class DeferredStartupTasksHostedService : IHostedService, IDisposa
                     }
                 }
             }
+        }
+
+        if (runDatabaseInitialization && databaseInitializationSucceeded)
+        {
+            _readiness.MarkDatabaseInitializationCompleted();
         }
 
         if (runStaleBatchRecovery)

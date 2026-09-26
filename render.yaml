@@ -10,7 +10,7 @@ services:
     autoDeploy: true
     buildCommand: dotnet publish Api/Api.csproj -c Release -o out
     startCommand: dotnet out/Api.dll
-    healthCheckPath: /health
+    healthCheckPath: /ready
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
@@ -30,6 +30,13 @@ services:
         value: "16777216"
       - key: AccessImport__ArchiveDeletedRowsMaxRows
         value: "10000"
+      # The web process is the single owner of production schema initialization.
+      - key: Database__AutoMigrate
+        value: "true"
+      - key: DatabaseInitialization__FailFast
+        value: "true"
+      - key: StartupTasks__RunDatabaseInitialization
+        value: "true"
       - key: Caching__UseRedis
         value: "false"
       - key: AnalyticsPrewarm__Enabled
