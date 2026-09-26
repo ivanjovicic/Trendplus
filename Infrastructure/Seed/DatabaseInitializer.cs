@@ -737,7 +737,8 @@ public static class DatabaseInitializer
             && await RelationHasColumnAsync(connectionString, "vw_vendor_sales_nivelacija", "old_price")
             && await RelationHasColumnAsync(connectionString, "vw_vendor_sales_nivelacija", "new_price")
             && await RelationHasColumnAsync(connectionString, "vw_vendor_sales_nivelacija", "coverage_pre30")
-            && await RelationHasColumnAsync(connectionString, "vw_vendor_sales_nivelacija", "coverage_post30");
+            && await RelationHasColumnAsync(connectionString, "vw_vendor_sales_nivelacija", "coverage_post30")
+            && await RelationHasColumnAsync(connectionString, "vw_vendor_sales_nivelacija", "change_percent_revenue_semantic");
     }
 
     private static async Task<bool> RelationHasColumnAsync(

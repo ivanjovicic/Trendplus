@@ -256,8 +256,9 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f Database/Migrations/002_CreatePerformanceLogsTable.sql
           psql -v ON_ERROR_STOP=1 -f Database/Migrations/012_AddAccessImportSupport.sql
           psql -v ON_ERROR_STOP=1 -f Database/Migrations/017_CreateNightlyAnalyticsMaterializedViews.sql
-          # These are the unified-database startup steps that establish the
+          # Reproduce the unified-database startup chain that establishes the
           # semantic pre/post nivelacija contract consumed by Operations routes.
+          # EF migrations alone can leave an older view shape without it.
           psql -v ON_ERROR_STOP=1 -f Database/Migrations/013_AddVendorSalesNivelacijaViews.sql
           psql -v ON_ERROR_STOP=1 -f Database/Migrations/014_FixNivelacijaViewsFromDnevnik.sql
           psql -v ON_ERROR_STOP=1 -f Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql
