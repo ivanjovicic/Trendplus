@@ -51,7 +51,26 @@ public sealed class DailySalesReceiptReconciliationTests
     }
 
     [Fact]
-    public async Task DnevnikWithoutReceiptIdentityIsUnavailableInsteadOfZeroMismatch()
+    public async Task DnevnikWithoutReceiptIdentityKeepsVerifiedCoverageOverIdentityBearingRows()
+    {
+        await using var db = CreateDbContext();
+        SeedArticle(db);
+        AddReceipt(db, 12, "R-12", 200m);
+        AddDnevnik(db, 902, null, 200m);
+        AddDnevnik(db, 912, "R-12", 200m);
+        await db.SaveChangesAsync();
+
+        var result = await RunAsync(db);
+
+        Assert.Equal("verified", result.Metadata.ReceiptReconciliation.Status);
+        Assert.Equal("partial_dnevnik_identity_coverage", result.Metadata.ReceiptReconciliation.ReasonCode);
+        Assert.Equal(1, result.Metadata.ReceiptReconciliation.MatchedReceiptCount);
+        Assert.Equal(0, result.Metadata.ReceiptReconciliation.MismatchCount);
+        Assert.True(result.Metadata.ReceiptReconciliation.UnmatchedDnevnikReceiptCount >= 1);
+    }
+
+    [Fact]
+    public async Task OnlyIdentityLessDnevnikRowsMakeReconciliationUnavailable()
     {
         await using var db = CreateDbContext();
         SeedArticle(db);
@@ -105,7 +124,7 @@ public sealed class DailySalesReceiptReconciliationTests
     }
 
     [Fact]
-    public async Task BlankDnevnikReceiptNumberKeepsUnavailableReasonExplicit()
+    public async Task BlankDnevnikReceiptNumberAloneIsUnavailable()
     {
         await using var db = CreateDbContext();
         SeedArticle(db);
@@ -117,6 +136,106 @@ public sealed class DailySalesReceiptReconciliationTests
         Assert.Equal("unavailable", result.Metadata.ReceiptReconciliation.Status);
         Assert.Equal("dnevnik_receipt_identity_missing", result.Metadata.ReceiptReconciliation.ReasonCode);
         Assert.Null(result.Metadata.ReceiptReconciliation.MismatchAmount);
+    }
+
+    [Fact]
+    public async Task NonStandardRevenueUsesIdentityNotCoincidentIds()
+    {
+        await using var db = CreateDbContext();
+        SeedArticle(db);
+        // Sale header id 50 with non-standard receipt; dnevnik id 50 is a different receipt.
+        AddReceipt(db, 50, "ABC-50", 125m);
+        AddDnevnik(db, 50, "OTHER-50", 999m);
+        AddDnevnik(db, 51, "ABC-50", 125m);
+        await db.SaveChangesAsync();
+
+        var result = await RunAsync(db);
+
+        Assert.Equal(1, result.Metadata.NonStandardReceiptCount);
+        Assert.Equal(125m, result.Metadata.NonStandardReceiptRevenue);
+    }
+
+    [Fact]
+    public async Task SignedJournalAmountReconcilesWithoutFalseMismatch()
+    {
+        await using var db = CreateDbContext();
+        SeedArticle(db);
+        AddReceipt(db, 60, "R-60", -40m);
+        AddDnevnik(db, 960, "R-60", -40m);
+        await db.SaveChangesAsync();
+
+        var result = await RunAsync(db);
+
+        Assert.Equal("verified", result.Metadata.ReceiptReconciliation.Status);
+        Assert.Equal(1, result.Metadata.ReceiptReconciliation.MatchedReceiptCount);
+        Assert.Equal(0, result.Metadata.ReceiptReconciliation.MismatchCount);
+    }
+
+    [Fact]
+    public async Task OppositeSignedJournalVersusReceiptIsMismatchNotAbsEqual()
+    {
+        await using var db = CreateDbContext();
+        SeedArticle(db);
+        AddReceipt(db, 61, "R-61", 100m);
+        AddDnevnik(db, 961, "R-61", -100m);
+        await db.SaveChangesAsync();
+
+        var result = await RunAsync(db);
+
+        Assert.Equal("verified", result.Metadata.ReceiptReconciliation.Status);
+        Assert.Equal(1, result.Metadata.ReceiptReconciliation.MatchedReceiptCount);
+        Assert.Equal(1, result.Metadata.ReceiptReconciliation.MismatchCount);
+        Assert.Equal(200m, result.Metadata.ReceiptReconciliation.MismatchAmount);
+    }
+
+    [Fact]
+    public async Task NonStandardWithoutLineTotalsUsesIdentityFallback()
+    {
+        await using var db = CreateDbContext();
+        SeedArticle(db);
+        db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+        {
+            Id = 70,
+            BrojRacuna = "ABC-70",
+            DatumProdaje = SaleDate,
+            IDObjekat = 1,
+            DataOrigin = "existing"
+        });
+        // Coincident dnevnik id must not contribute; matching identity does.
+        AddDnevnik(db, 70, "OTHER-70", 999m);
+        AddDnevnik(db, 971, "ABC-70", 55m);
+        await db.SaveChangesAsync();
+
+        var result = await RunAsync(db);
+
+        Assert.Equal(1, result.Metadata.NonStandardReceiptCount);
+        Assert.Equal(55m, result.Metadata.NonStandardReceiptRevenue);
+        Assert.Equal(0, result.Metadata.DebtReceiptCount);
+    }
+
+    [Fact]
+    public async Task NonStandardWithoutLineTotalsOrIdentityIsUnavailableNotZero()
+    {
+        await using var db = CreateDbContext();
+        SeedArticle(db);
+        db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+        {
+            Id = 71,
+            BrojRacuna = "XYZ-71",
+            DatumProdaje = SaleDate,
+            IDObjekat = 1,
+            DataOrigin = "existing"
+        });
+        AddDnevnik(db, 71, "OTHER-71", 999m);
+        await db.SaveChangesAsync();
+
+        var result = await RunAsync(db);
+
+        Assert.Equal(1, result.Metadata.NonStandardReceiptCount);
+        Assert.Equal(0m, result.Metadata.NonStandardReceiptRevenue);
+        Assert.Contains(
+            result.Metadata.Warnings,
+            warning => warning.Contains("promet nije dostupan", StringComparison.OrdinalIgnoreCase));
     }
 
     private static async Task<DailySalesTableResponse> RunAsync(TrendplusDbContext db)

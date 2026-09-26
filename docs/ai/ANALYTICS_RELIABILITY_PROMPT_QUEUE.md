@@ -3,12 +3,14 @@
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
-Owner promotion 2026-09-26: under the user's claim-and-execute request, `RQ440` was dependency-complete with no active lock on the seven shared spec files. `RQ440` moved `READY -> IN_PROGRESS` as the primary pointer.
+Owner claim 2026-09-26: after concurrent RQ442 delivery on `origin/main`, this workspace claimed READY `RQ438` for Daily Sales/Access receipt-identity residuals. Local lock: `.ai/task-locks/RQ438-cursor.lock.md`. Mechanical repair: RQ438 section `Status:` was stale `DONE` without a completion note while the summary row and code still showed READY/unfixed ID joins.
+Owner completion 2026-09-26: `RQ438` was delivered directly to `main` after shared signed journal amount normalization, identity-keyed non-standard/import revenue fallback (never fake 0), partial_dnevnik_identity_coverage when some journal rows lack BrojRacuna, and Serbian import diagnostic copy. Run log: `.ai/runs/2026-09-26-RQ438-evidence.md`. Evidence state: synchronized. Mechanical repair: RQ442 section `Status:` READY→DONE to match its completion note/summary. `Current READY prompt` is `none`; `RQ441` remains WAITING behind `RQ382`.
+Owner promotion 2026-09-26: under the user’s claim-and-execute request, `RQ440` was dependency-complete with no active lock on the seven shared spec files. `RQ440` moved `READY -> IN_PROGRESS` as the primary pointer.
 Owner claim 2026-09-26: `RQ440` transitioned `READY -> IN_PROGRESS` in this workspace for shared analytics spec drift triage. Local lock: `.ai/task-locks/RQ440-cursor.lock.md`.
 Owner completion 2026-09-26: `RQ440` was delivered directly to `main` after classifying all nine cases as copy/contract drift from the RQ435 safe-message and supplier-decision label contracts (no product regression). Run log: `.ai/runs/2026-09-26-RQ440-evidence.md`. Evidence state: synchronized. Independent READY lanes `RQ438` and `RQ442` remain claimable.
 Owner claim 2026-09-26: `RQ442` transitioned `READY -> IN_PROGRESS` in this workspace after P1 priority, dependency and collision refresh; it owns the half-open whole-day contract for Supplier Sales, Shoe Type Sales and Color Sales. Local lock was removed before delivery; the primary READY pointer remained `none` while this independent lane was active.
 Owner completion 2026-09-26: `RQ442` was delivered directly to `main` in implementation `73b50263`; whole-day Operations requests now use the exclusive next-UTC-midnight bound across Supplier, Shoe Type and Color, including comparable previous periods and display/provenance conversion. Run log: `.ai/runs/2026-09-26-RQ442-evidence.md`. Evidence state: synchronized; `origin/main` contains the implementation through closure `8716a1a1`.
-Owner promotion 2026-09-26: idle recovery verified `RQ429` DONE, `RQ438` DONE and no active Daily Sales page lock or competing owner. `RQ430` moved `WAITING -> READY` as the next collision-safe Daily Sales page-polish prompt; it is now the current pointer.
+Owner promotion 2026-09-26: idle recovery verified `RQ429` DONE and no active Daily Sales page lock or competing owner. `RQ430` moved `WAITING -> READY` as the next collision-safe Daily Sales page-polish prompt (note: `RQ438` product delivery was still in flight in a parallel workspace and is closed in this run).
 Owner claim 2026-09-26: `RQ430` transitioned `READY -> IN_PROGRESS` in this workspace for StrictMode-safe sorting, print-column mapping and named store export metadata. Local lock: `.ai/task-locks/RQ430-codex.lock.md`.
 Owner completion 2026-09-26: `RQ430` was delivered directly to `main` in `ece7f0d0`; Daily Sales sorting is StrictMode-safe, the blank print form matches table semantics, and store export metadata resolves names with an explicit unknown fallback. Run log: `.ai/runs/2026-09-26-RQ430-evidence.md`. Evidence state: synchronized; current `origin/main` is `cc45173a`.
 Owner certification follow-up 2026-09-25: a current-main review of the Supplier/Shoe Type accuracy claim found the existing RQ407/RQ411-RQ413/RQ373-RQ380/RQ375-RQ377 work materially complete but still missing certification-layer evidence. Added non-duplicative WAITING prompts RQ445-RQ455 in the Operations accuracy addendum for the formal contract, adversarial golden cases, live oracle/reproducer closure, browser/render/export reconciliation, durable evidence history, post-import probe, Verified UI, certificate, non-skippable CI, production read-only proof and customer acceptance. Existing owners remain authoritative; no product code is changed by this planning update. Plan: docs/qa/SUPPLIER_SHOETYPE_ACCURACY_CERTIFICATION_PLAN_2026-09-25.md.
@@ -23957,6 +23959,26 @@ Commit suggestion: `fix(analytics): remove remaining dnevnik id joins from recei
 
 - `RQ428` DONE; `RQ429` (IN_PROGRESS) shares the Daily Sales feature area. `RQ437` owns `Api.Tests/DailySalesStatsServiceTests.cs`; `RQ382` (WAITING) keeps data-scope parity of the same diagnostics.
 - Reliability contract: source of truth is signed `ProdajaStavke` line totals per receipt versus `DnevnikPromena.Iznos` normalized under the proven sign rule; unit RSD; mismatch numerator = matched receipts whose absolute difference exceeds 0.01 RSD, denominator = matched receipts; missing identity or totals → unavailable with reason, never zero; no-baseline and freshness semantics follow the existing Daily Sales metadata.
+
+### Completion note
+
+- Date: 2026-09-26
+- Status: DONE
+- Completion: Daily Sales and Access import receipt diagnostics now share `ReceiptIdentityKeys` with signed journal `Iznos` (Access copies source amount unchanged). Non-standard revenue falls back by receipt identity or is unavailable (never fake 0 / coincident Id joins). Reconciliation stays verified over identity-bearing journal rows with `partial_dnevnik_identity_coverage`, and becomes unavailable only when journal rows exist but none have identity. Import warnings use Serbian diacritics.
+- Changed files: `Application/Analytics/ReceiptIdentityKeys.cs`, `Api/Services/DailySalesStatsService.cs`, `Api/Services/AccessImportService.cs`, `Api.Tests/DailySalesReceiptReconciliationTests.cs`, `Api.Tests/AccessImportReceiptDiagnosticsTests.cs`, this queue, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-26-RQ438-evidence.md`.
+- Contract/runtime behavior changed: journal sign is preserved; identity (UTC day + normalized receipt number + store) replaces Id joins; missing totals/identity → unavailable with reason; partial identity coverage reason code added.
+- Checks run: focused receipt/import diagnostics 16/16; `dotnet test ... --filter "FullyQualifiedName~DailySales|FullyQualifiedName~AccessImport"` 160/160; residual Id-join search clean for diagnostics.
+- Checks not run: full suites; live Access/PostgreSQL fixture for journal sign sample (convention proven from Access import mapping `Iznos` copied unchanged).
+- Run log: `.ai/runs/2026-09-26-RQ438-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending-implementation
+- Main verification: pending until push
+- Missed: live Access file sample of signed sale/return journal rows
+- Follow-up: `RQ441` remains WAITING until `RQ382` is DONE; primary READY pointer is `none`
+- Residual risk: live DB/import proof and full-suite regression remain outstanding
+- Prompt defect / scope repair: RQ438 section had been wrongly marked DONE without completion while still READY/unfixed; repaired during claim. RQ442 section Status READY→DONE to match summary/completion note.
+
 
 ---
 

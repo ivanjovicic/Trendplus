@@ -1,5 +1,6 @@
 using System.Globalization;
 using Api.Models;
+using Application.Analytics;
 using Domain.Model;
 using Domain.Model.Prodaja;
 using Infrastructure.DbContexts;
@@ -148,11 +149,15 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                 x.Iznos))
             .ToList();
 
-        var dnevnikTotalsBySaleId = dnevnikSaleFacts
-            .GroupBy(x => x.SaleId)
-            .ToDictionary(
-                g => g.Key,
-                g => new DnevnikSaleTotal(g.Key, g.Sum(x => x.Iznos)));
+        var dnevnikTotalsByIdentity = dnevnikSaleFacts
+            .Select(x => new
+            {
+                Identity = ReceiptIdentityKeys.TryBuild(x.SaleDate, x.BrojRacuna, x.IDObjekat),
+                Amount = ReceiptIdentityKeys.NormalizeJournalSaleAmount(x.Iznos)
+            })
+            .Where(x => x.Identity.HasValue)
+            .GroupBy(x => x.Identity!.Value)
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Amount));
         var receiptLineTotalsBySaleId = receiptLineTotals.ToDictionary(x => x.SaleId);
         var includedReceiptSaleIds = includedReceiptHeaders
             .Select(x => x.SaleId)
@@ -196,23 +201,41 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
 
         var nonStandardReceiptHeaders = includedReceiptHeaders
             .Where(x => !IsStandardReceiptNumber(x.BrojRacuna))
-            .Select(x => new
+            .Select(x =>
             {
-                x.SaleId,
-                x.SaleDate,
-                x.BrojRacuna,
-                x.IDObjekat,
-                Revenue = receiptLineTotalsBySaleId.TryGetValue(x.SaleId, out var lineTotal)
-                    ? lineTotal.LineTotal
-                    : dnevnikTotalsBySaleId.TryGetValue(x.SaleId, out var dnevnik)
-                        ? dnevnik.DnevnikTotal
-                        : 0m
+                decimal? revenue = null;
+                if (receiptLineTotalsBySaleId.TryGetValue(x.SaleId, out var lineTotal))
+                {
+                    revenue = lineTotal.LineTotal;
+                }
+                else
+                {
+                    var identity = ReceiptIdentityKeys.TryBuild(x.SaleDate, x.BrojRacuna, x.IDObjekat);
+                    if (identity.HasValue && dnevnikTotalsByIdentity.TryGetValue(identity.Value, out var dnevnikTotal))
+                    {
+                        revenue = dnevnikTotal;
+                    }
+                }
+
+                return new
+                {
+                    x.SaleId,
+                    x.SaleDate,
+                    x.BrojRacuna,
+                    x.IDObjekat,
+                    Revenue = revenue
+                };
             })
-            .OrderByDescending(x => x.Revenue)
+            .OrderByDescending(x => x.Revenue ?? decimal.MinValue)
             .ThenBy(x => x.SaleDate)
             .ToList();
+        var nonStandardReceiptsWithKnownRevenue = nonStandardReceiptHeaders
+            .Where(x => x.Revenue.HasValue)
+            .Select(x => new { x.SaleId, x.SaleDate, x.BrojRacuna, x.IDObjekat, Revenue = x.Revenue!.Value })
+            .ToList();
+        var nonStandardUnavailableCount = nonStandardReceiptHeaders.Count(x => !x.Revenue.HasValue);
 
-        var debtReceiptHeaders = nonStandardReceiptHeaders
+        var debtReceiptHeaders = nonStandardReceiptsWithKnownRevenue
             .Where(x => IsDebtReceiptNumber(x.BrojRacuna))
             .ToList();
 
@@ -300,8 +323,15 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                 $"Detektovano je {receiptReconciliation.Mismatches.Count} računa gde zbir stavki ne odgovara dnevniku prodaje. Primeri: {sample}{suffix}.");
         }
 
+        if (nonStandardUnavailableCount > 0)
+        {
+            warnings.Add(
+                $"Za {nonStandardUnavailableCount} nestandardnih dokumenata promet nije dostupan (nema ni zbir stavki ni podudaran dnevnik po broju računa); nije prikazan kao 0.");
+        }
+
         if (nonStandardReceiptHeaders.Count > 0)
         {
+            var knownRevenue = decimal.Round(nonStandardReceiptsWithKnownRevenue.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero);
             var sample = string.Join(
                 ", ",
                 nonStandardReceiptHeaders
@@ -309,7 +339,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                     .Select(x => $"{(string.IsNullOrWhiteSpace(x.BrojRacuna) ? "(prazno)" : x.BrojRacuna)}/{x.IDObjekat ?? 0}"));
             var suffix = nonStandardReceiptHeaders.Count > 3 ? " ..." : string.Empty;
             warnings.Add(
-                $"Detektovano je {nonStandardReceiptHeaders.Count} prodajnih dokumenata sa nestandardnim brojem računa. Promet tih dokumenata je {decimal.Round(nonStandardReceiptHeaders.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero):0.##} RSD. Primeri: {sample}{suffix}.");
+                $"Detektovano je {nonStandardReceiptHeaders.Count} prodajnih dokumenata sa nestandardnim brojem računa. Poznat promet: {knownRevenue:0.##} RSD. Primeri: {sample}{suffix}.");
         }
 
         if (excludedDebtReceiptHeaders.Count > 0)
@@ -563,7 +593,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                     MismatchAmount = receiptReconciliation.MismatchAmount
                 },
                 NonStandardReceiptCount = nonStandardReceiptHeaders.Count,
-                NonStandardReceiptRevenue = decimal.Round(nonStandardReceiptHeaders.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero),
+                NonStandardReceiptRevenue = decimal.Round(nonStandardReceiptsWithKnownRevenue.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero),
                 DebtReceiptCount = excludedDebtReceiptHeaders.Count,
                 DebtReceiptRevenue = decimal.Round(excludedDebtReceiptHeaders.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero),
                 MinAvailableDate = minAvailableDate,
@@ -666,54 +696,67 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
         IReadOnlyCollection<DnevnikReceiptFact> dnevnikFacts,
         IReadOnlySet<int> includedReceiptSaleIds)
     {
+        // Coverage decision (RQ438): verify over identity-bearing journal rows; rows without
+        // BrojRacuna count toward unmatched dnevnik coverage instead of failing the whole period.
         var receiptTotalsByIdentity = receiptLineTotals
             .Where(x => includedReceiptSaleIds.Contains(x.SaleId))
-            .Select(x => new { Identity = TryBuildReceiptIdentity(x.SaleDate, x.BrojRacuna, x.IDObjekat), x.LineTotal })
+            .Select(x => new { Identity = ReceiptIdentityKeys.TryBuild(x.SaleDate, x.BrojRacuna, x.IDObjekat), x.LineTotal })
             .Where(x => x.Identity.HasValue)
             .GroupBy(x => x.Identity!.Value)
             .ToDictionary(g => g.Key, g => g.Sum(x => x.LineTotal));
 
         var dnevnikFactsWithIdentity = dnevnikFacts
-            .Select(x => new { Fact = x, Identity = TryBuildReceiptIdentity(x.SaleDate, x.BrojRacuna, x.IDObjekat) })
+            .Select(x => new
+            {
+                Fact = x,
+                Identity = ReceiptIdentityKeys.TryBuild(x.SaleDate, x.BrojRacuna, x.IDObjekat),
+                Amount = ReceiptIdentityKeys.NormalizeJournalSaleAmount(x.Iznos)
+            })
             .ToList();
         var dnevnikTotalsByIdentity = dnevnikFactsWithIdentity
             .Where(x => x.Identity.HasValue)
             .GroupBy(x => x.Identity!.Value)
-            .ToDictionary(g => g.Key, g => g.Sum(x => x.Fact.Iznos));
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Amount));
 
         var matchedIdentities = receiptTotalsByIdentity.Keys
             .Intersect(dnevnikTotalsByIdentity.Keys)
             .ToHashSet();
         var unmatchedReceiptCount = receiptTotalsByIdentity.Keys.Count(x => !dnevnikTotalsByIdentity.ContainsKey(x));
-        var unmatchedDnevnikReceiptCount = dnevnikTotalsByIdentity.Keys.Count(x => !receiptTotalsByIdentity.ContainsKey(x));
         var missingDnevnikIdentityCount = dnevnikFactsWithIdentity.Count(x => !x.Identity.HasValue);
+        var unmatchedDnevnikReceiptCount =
+            dnevnikTotalsByIdentity.Keys.Count(x => !receiptTotalsByIdentity.ContainsKey(x))
+            + missingDnevnikIdentityCount;
 
-        if (missingDnevnikIdentityCount > 0)
+        if (dnevnikFacts.Count > 0 && dnevnikTotalsByIdentity.Count == 0)
         {
             return new ReceiptReconciliationResult(
                 Status: "unavailable",
                 ReasonCode: "dnevnik_receipt_identity_missing",
                 MatchedReceiptCount: null,
                 UnmatchedReceiptCount: unmatchedReceiptCount,
-                UnmatchedDnevnikReceiptCount: unmatchedDnevnikReceiptCount + missingDnevnikIdentityCount,
+                UnmatchedDnevnikReceiptCount: unmatchedDnevnikReceiptCount,
                 MismatchCount: null,
                 MismatchAmount: null,
                 Mismatches: []);
         }
 
         var mismatches = matchedIdentities
-            .Select(identity => new ReceiptMismatchFact(
-                identity,
-                receiptTotalsByIdentity[identity],
-                dnevnikTotalsByIdentity[identity],
-                decimal.Abs(receiptTotalsByIdentity[identity] - dnevnikTotalsByIdentity[identity])))
+            .Select(identity =>
+            {
+                var key = ToLocalIdentity(identity);
+                return new ReceiptMismatchFact(
+                    key,
+                    receiptTotalsByIdentity[identity],
+                    dnevnikTotalsByIdentity[identity],
+                    decimal.Abs(receiptTotalsByIdentity[identity] - dnevnikTotalsByIdentity[identity]));
+            })
             .Where(x => x.Difference > 0.01m)
             .OrderByDescending(x => x.Difference)
             .ToList();
 
         return new ReceiptReconciliationResult(
             Status: "verified",
-            ReasonCode: null,
+            ReasonCode: missingDnevnikIdentityCount > 0 ? "partial_dnevnik_identity_coverage" : null,
             MatchedReceiptCount: matchedIdentities.Count,
             UnmatchedReceiptCount: unmatchedReceiptCount,
             UnmatchedDnevnikReceiptCount: unmatchedDnevnikReceiptCount,
@@ -722,18 +765,8 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             Mismatches: mismatches);
     }
 
-    private static ReceiptIdentity? TryBuildReceiptIdentity(DateTime saleDate, string? receiptNumber, int? storeId)
-    {
-        if (string.IsNullOrWhiteSpace(receiptNumber))
-        {
-            return null;
-        }
-
-        return new ReceiptIdentity(
-            DateTime.SpecifyKind(saleDate.Date, DateTimeKind.Utc),
-            receiptNumber.Trim().ToUpperInvariant(),
-            storeId);
-    }
+    private static ReceiptIdentity ToLocalIdentity(ReceiptIdentityKeys.Key key)
+        => new(key.SaleDateUtc, key.ReceiptNumberNormalized, key.StoreId);
 
     private static string BuildTopSupplierHeaderName(SupplierAccumulator supplier, bool duplicateName)
     {
@@ -815,7 +848,6 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
         int? IDObjekat,
         decimal Iznos);
 
-    private sealed record DnevnikSaleTotal(int SaleId, decimal DnevnikTotal);
 
     private readonly record struct ReceiptIdentity(DateTime SaleDate, string ReceiptNumber, int? StoreId);
 
