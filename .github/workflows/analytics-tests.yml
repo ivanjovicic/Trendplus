@@ -166,3 +166,181 @@ jobs:
           path: TestResults
           if-no-files-found: warn
           retention-days: 14
+
+  rq447-certification:
+    name: RQ447 Supplier/Shoe Type certification
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: trendplus_rq447
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d trendplus_rq447"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+
+    env:
+      CI: "true"
+      ASPNETCORE_ENVIRONMENT: Testing
+      TRENDPLUS_RUN_INTEGRATION_TESTS: "true"
+      Database__AutoMigrate: "false"
+      ConnectionStrings__DefaultConnection: "Host=localhost;Database=trendplus_rq447;Username=postgres;Password=postgres_password"
+      ConnectionStrings__AnalyticsConnection: "Host=localhost;Database=trendplus_rq447;Username=postgres;Password=postgres_password"
+      ConnectionStrings__AnalyticsDb: "Host=localhost;Database=trendplus_rq447;Username=postgres;Password=postgres_password"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Install EF tool
+        run: dotnet tool install --global dotnet-ef --version 8.*
+
+      - name: Restore dependencies
+        run: dotnet restore Api.Tests/Api.Tests.csproj
+
+      - name: Build certification test assembly
+        run: dotnet build Api.Tests/Api.Tests.csproj --no-restore --configuration Release
+
+      - name: Apply current Trendplus migrations
+        run: >-
+          dotnet ef database update
+          --project Infrastructure/Infrastructure.csproj
+          --startup-project Api/Api.csproj
+          --context TrendplusDbContext
+          --configuration Release
+          --verbose
+
+      - name: Run RQ447 oracle cases
+        id: oracle
+        run: >-
+          dotnet test Api.Tests/Api.Tests.csproj
+          --no-build
+          --configuration Release
+          --filter FullyQualifiedName~SupplierShoeTypeIndependentOracleIntegrationTests
+          --logger "trx;LogFileName=rq447-oracle.trx"
+          --results-directory TestResults/rq447-oracle
+
+      - name: Assert RQ447 oracle executed 4/4 with no skips
+        if: always()
+        env:
+          ORACLE_OUTCOME: ${{ steps.oracle.outcome }}
+        run: |
+          python3 - <<'PY'
+          import glob
+          import os
+          import sys
+          import xml.etree.ElementTree as ET
+
+          reports = glob.glob("TestResults/rq447-oracle/**/*.trx", recursive=True)
+          if not reports:
+              print("::error::RQ447 oracle produced no TRX report.")
+              sys.exit(1)
+
+          root = ET.parse(reports[0]).getroot()
+          namespace = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
+          results = root.findall(".//t:UnitTestResult", namespace)
+          passed = sum(result.attrib.get("outcome") == "Passed" for result in results)
+          skipped = sum(result.attrib.get("outcome") in {"Skipped", "NotExecuted"} for result in results)
+          failed = len(results) - passed - skipped
+          print(f"RQ447 oracle results: total={len(results)} passed={passed} skipped={skipped} failed={failed}")
+          if os.environ.get("ORACLE_OUTCOME") != "success" or len(results) != 4 or passed != 4 or skipped != 0 or failed != 0:
+              print("::error::RQ447 certification requires exactly 4 executed and passed oracle tests with zero skipped.")
+              sys.exit(1)
+          PY
+
+      - name: Run RQ447 all-eight-routes proof
+        id: routes
+        run: >-
+          dotnet test Api.Tests/Api.Tests.csproj
+          --no-build
+          --configuration Release
+          --filter FullyQualifiedName~OperationsAnalyticsAllRoutesIntegrationTests
+          --logger "trx;LogFileName=rq447-all-eight-routes.trx"
+          --results-directory TestResults/rq447-all-eight-routes
+
+      - name: Assert RQ447 all-eight-routes proof executed 1/1 with no skips
+        if: always()
+        env:
+          ROUTES_OUTCOME: ${{ steps.routes.outcome }}
+        run: |
+          python3 - <<'PY'
+          import glob
+          import os
+          import sys
+          import xml.etree.ElementTree as ET
+
+          reports = glob.glob("TestResults/rq447-all-eight-routes/**/*.trx", recursive=True)
+          if not reports:
+              print("::error::RQ447 all-eight-routes proof produced no TRX report.")
+              sys.exit(1)
+
+          root = ET.parse(reports[0]).getroot()
+          namespace = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
+          results = root.findall(".//t:UnitTestResult", namespace)
+          passed = sum(result.attrib.get("outcome") == "Passed" for result in results)
+          skipped = sum(result.attrib.get("outcome") in {"Skipped", "NotExecuted"} for result in results)
+          failed = len(results) - passed - skipped
+          print(f"RQ447 all-eight-routes results: total={len(results)} passed={passed} skipped={skipped} failed={failed}")
+          if os.environ.get("ROUTES_OUTCOME") != "success" or len(results) != 1 or passed != 1 or skipped != 0 or failed != 0:
+              print("::error::RQ447 all-eight-routes certification requires exactly 1 executed and passed test with zero skipped.")
+              sys.exit(1)
+          PY
+
+      - name: Run RQ447 OP2 seam reproducers
+        id: seams
+        run: >-
+          dotnet test Api.Tests/Api.Tests.csproj
+          --no-build
+          --configuration Release
+          --filter FullyQualifiedName~SupplierShoeTypeRq447SeamIntegrationTests
+          --logger "trx;LogFileName=rq447-op2-seams.trx"
+          --results-directory TestResults/rq447-op2-seams
+
+      - name: Assert RQ447 OP2 reproducers executed 4/4 with no skips
+        if: always()
+        env:
+          SEAMS_OUTCOME: ${{ steps.seams.outcome }}
+        run: |
+          python3 - <<'PY'
+          import glob
+          import os
+          import sys
+          import xml.etree.ElementTree as ET
+
+          reports = glob.glob("TestResults/rq447-op2-seams/**/*.trx", recursive=True)
+          if not reports:
+              print("::error::RQ447 OP2 seam reproducers produced no TRX report.")
+              sys.exit(1)
+
+          root = ET.parse(reports[0]).getroot()
+          namespace = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
+          results = root.findall(".//t:UnitTestResult", namespace)
+          passed = sum(result.attrib.get("outcome") == "Passed" for result in results)
+          skipped = sum(result.attrib.get("outcome") in {"Skipped", "NotExecuted"} for result in results)
+          failed = len(results) - passed - skipped
+          print(f"RQ447 OP2 results: total={len(results)} passed={passed} skipped={skipped} failed={failed}")
+          if os.environ.get("SEAMS_OUTCOME") != "success" or len(results) != 4 or passed != 4 or skipped != 0 or failed != 0:
+              print("::error::RQ447 certification requires exactly 4 executed and passed OP2 reproducers with zero skipped.")
+              sys.exit(1)
+          PY
+
+      - name: Upload RQ447 certification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rq447-certification-${{ github.sha }}
+          path: TestResults/rq447-*
+          if-no-files-found: error
+          retention-days: 30
