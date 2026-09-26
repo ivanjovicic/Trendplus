@@ -32,6 +32,7 @@ import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyti
 import { getDataScope, type DataScope } from "../utils/dataScope";
 import { colorIdentityKey } from "../utils/colorIdentity";
 import { fmtNumber, fmtPct, fmtQty, fmtRsd, fmtSignedPct, formatDate, getPresetRange } from "../utils/analyticsFormatters";
+import { toInclusiveCalendarDate, toUtcDateOnlyExclusive } from "../utils/analyticsDateRanges";
 import { resolvePresetFilterRange } from "../utils/analyticsPeriodPresets";
 import {
   RECOMMENDATION_SIGNAL_UNAVAILABLE,
@@ -147,7 +148,7 @@ const decisionColumns: AnalyticsTableColumn<DecisionColor>[] = [
 function toUtcRange(fromDate: string, toDate: string): { fromDate: string; toDate: string } {
   return {
     fromDate: `${fromDate}T00:00:00Z`,
-    toDate: `${toDate}T23:59:59Z`,
+    toDate: toUtcDateOnlyExclusive(toDate),
   };
 }
 
@@ -515,7 +516,7 @@ export default function ColorSalesStatsPage() {
     }
 
     const selectedFrom = new Date(`${activeFilters.fromDate}T00:00:00Z`);
-    const selectedTo = new Date(`${activeFilters.toDate}T23:59:59Z`);
+    const selectedTo = new Date(toUtcDateOnlyExclusive(activeFilters.toDate));
     const dataFrom = new Date(data.dataWindowFrom);
     const dataTo = new Date(data.dataWindowTo);
 
@@ -725,7 +726,7 @@ export default function ColorSalesStatsPage() {
 
     const params = new URLSearchParams();
     params.set("fromDate", `${activeFilters.fromDate}T00:00:00Z`);
-    params.set("toDate", `${activeFilters.toDate}T23:59:59Z`);
+    params.set("toDate", toUtcDateOnlyExclusive(activeFilters.toDate));
     if (activeFilters.sezonaId != null) params.set("sezonaId", String(activeFilters.sezonaId));
     if (activeFilters.storeId != null) params.set("storeId", String(activeFilters.storeId));
     params.set("dataScope", dataScope);
@@ -895,11 +896,11 @@ export default function ColorSalesStatsPage() {
         title="Prodaja po boji artikla"
         description="Podrška za odluku o bojama koje treba pojačati u nabavci."
         periodFrom={data?.fromDate ?? activeFilters.fromDate}
-        periodTo={data?.toDate ?? activeFilters.toDate}
+        periodTo={toInclusiveCalendarDate(data?.toDate) ?? activeFilters.toDate}
         requestedPeriodFrom={responseMeta?.requestedPeriodFromUtc}
-        requestedPeriodTo={responseMeta?.requestedPeriodToUtc}
+        requestedPeriodTo={toInclusiveCalendarDate(responseMeta?.requestedPeriodToUtc) ?? activeFilters.toDate}
         effectivePeriodFrom={responseMeta?.effectivePeriodFromUtc ?? data?.fromDate}
-        effectivePeriodTo={responseMeta?.effectivePeriodToUtc ?? data?.toDate}
+        effectivePeriodTo={toInclusiveCalendarDate(responseMeta?.effectivePeriodToUtc ?? data?.toDate) ?? activeFilters.toDate}
         observedPeriodFrom={responseMeta?.observedPeriodFromUtc}
         observedPeriodTo={responseMeta?.observedPeriodToUtc}
         lastRefreshAt={trustLastRefreshAt}

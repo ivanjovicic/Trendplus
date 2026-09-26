@@ -1111,35 +1111,6 @@ public static class AllEndpoints
 
             try
             {
-                static DateTime? NormalizeUtc(DateTime? value)
-                {
-                    if (!value.HasValue) return null;
-                    var date = value.Value;
-                    return date.Kind == DateTimeKind.Unspecified
-                        ? DateTime.SpecifyKind(date, DateTimeKind.Utc)
-                        : date.ToUniversalTime();
-                }
-
-                static (DateTime? previousFromUtc, DateTime? previousToUtc) BuildComparablePreviousRange(
-                    DateTime? currentFromUtc,
-                    DateTime? currentToUtc)
-                {
-                    if (!currentFromUtc.HasValue || !currentToUtc.HasValue || currentFromUtc.Value > currentToUtc.Value)
-                    {
-                        return (null, null);
-                    }
-
-                    var inclusiveDurationTicks = currentToUtc.Value.Ticks - currentFromUtc.Value.Ticks + 1;
-                    if (inclusiveDurationTicks <= 0)
-                    {
-                        return (null, null);
-                    }
-
-                    var previousToUtc = new DateTime(currentFromUtc.Value.Ticks - 1, DateTimeKind.Utc);
-                    var previousFromUtc = new DateTime(previousToUtc.Ticks - inclusiveDurationTicks + 1, DateTimeKind.Utc);
-                    return (previousFromUtc, previousToUtc);
-                }
-
                 static string BuildSupplierBucketKey(int? supplierId)
                     => supplierId.HasValue ? $"id:{supplierId.Value}" : "unknown";
 
@@ -1152,8 +1123,8 @@ public static class AllEndpoints
                     return normalized is "existing" or "imported" ? normalized : "all";
                 }
 
-                fromUtc = NormalizeUtc(fromDate);
-                toUtc = NormalizeUtc(toDate);
+                fromUtc = OperationsDateRange.NormalizeUtc(fromDate);
+                toUtc = OperationsDateRange.NormalizeUtc(toDate);
                 var normalizedDataScope = NormalizeDataScope(dataScope);
                 var importedOnly = normalizedDataScope == "imported";
                 var existingOnly = normalizedDataScope == "existing";
@@ -1171,21 +1142,21 @@ public static class AllEndpoints
                     }
 
                     fromUtc = DateTime.SpecifyKind(sezona.DatumOd.Date, DateTimeKind.Utc);
-                    toUtc = DateTime.SpecifyKind(sezona.DatumDo.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
+                    toUtc = DateTime.SpecifyKind(sezona.DatumDo.Date.AddDays(1), DateTimeKind.Utc);
                 }
 
                 if (!fromUtc.HasValue && !toUtc.HasValue)
                 {
                     var todayUtc = DateTime.UtcNow.Date;
                     fromUtc = todayUtc.AddDays(-29);
-                    toUtc = todayUtc.AddDays(1).AddTicks(-1);
+                    toUtc = todayUtc.AddDays(1);
                 }
 
-                if (fromUtc.HasValue && toUtc.HasValue && fromUtc.Value > toUtc.Value)
+                if (fromUtc.HasValue && toUtc.HasValue && fromUtc.Value >= toUtc.Value)
                 {
                     return Results.BadRequest(new
                     {
-                        message = "Neispravan period: fromDate mora biti manji ili jednak toDate.",
+                        message = "Neispravan period: fromDate mora biti manji od ekskluzivnog toDate.",
                         fromDate = fromUtc.Value,
                         toDate = toUtc.Value
                     });
@@ -1271,7 +1242,7 @@ public static class AllEndpoints
                         x => string.IsNullOrWhiteSpace(x.Naziv) ? "Nepoznato" : x.Naziv.Trim(),
                         ct);
 
-                var (previousFromUtc, previousToUtc) = BuildComparablePreviousRange(fromUtc, toUtc);
+                var (previousFromUtc, previousToUtc) = OperationsDateRange.BuildComparablePreviousRange(fromUtc, toUtc);
                 var previousSupplierMetrics = new Dictionary<string, (decimal Revenue, int Units)>(StringComparer.Ordinal);
                 var previousSupplierFootwearMetrics = new Dictionary<string, (decimal Revenue, int Units)>(StringComparer.Ordinal);
                 var previousFootwearRowCount = 0;
@@ -1285,7 +1256,7 @@ public static class AllEndpoints
                         join pz in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
                         join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                         where pz.DatumProdaje >= previousFromUtc.Value
-                           && pz.DatumProdaje <= previousToUtc.Value
+                           && pz.DatumProdaje < previousToUtc.Value
                            && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
                            && (!importedOnly || a.DataOrigin == "access")
                            && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
@@ -1320,7 +1291,7 @@ public static class AllEndpoints
                     .Where(d =>
                         (d.TipPromene == TipPromeneConstants.Nivelacija || d.TipPromene == TipPromeneConstants.NivelacijaCena) &&
                         d.ArtikalId.HasValue &&
-                        (!toUtc.HasValue || d.Datum <= toUtc.Value) &&
+                        (!toUtc.HasValue || d.Datum < toUtc.Value) &&
                         (!storeId.HasValue || !d.IDObjekat.HasValue || d.IDObjekat == storeId.Value))
                     .GroupBy(d => d.ArtikalId!.Value)
                     .Select(g => new
@@ -1335,7 +1306,7 @@ public static class AllEndpoints
                     join pz in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
                     join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                     where (!fromUtc.HasValue || pz.DatumProdaje >= fromUtc.Value)
-                       && (!toUtc.HasValue || pz.DatumProdaje <= toUtc.Value)
+                       && (!toUtc.HasValue || pz.DatumProdaje < toUtc.Value)
                        && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
                        && (!importedOnly || a.DataOrigin == "access")
                        && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
@@ -2109,35 +2080,6 @@ public static class AllEndpoints
 
             try
             {
-                static DateTime? NormalizeUtc(DateTime? value)
-                {
-                    if (!value.HasValue) return null;
-                    var date = value.Value;
-                    return date.Kind == DateTimeKind.Unspecified
-                        ? DateTime.SpecifyKind(date, DateTimeKind.Utc)
-                        : date.ToUniversalTime();
-                }
-
-                static (DateTime? previousFromUtc, DateTime? previousToUtc) BuildComparablePreviousRange(
-                    DateTime? currentFromUtc,
-                    DateTime? currentToUtc)
-                {
-                    if (!currentFromUtc.HasValue || !currentToUtc.HasValue || currentFromUtc.Value > currentToUtc.Value)
-                    {
-                        return (null, null);
-                    }
-
-                    var inclusiveDurationTicks = currentToUtc.Value.Ticks - currentFromUtc.Value.Ticks + 1;
-                    if (inclusiveDurationTicks <= 0)
-                    {
-                        return (null, null);
-                    }
-
-                    var previousToUtc = new DateTime(currentFromUtc.Value.Ticks - 1, DateTimeKind.Utc);
-                    var previousFromUtc = new DateTime(previousToUtc.Ticks - inclusiveDurationTicks + 1, DateTimeKind.Utc);
-                    return (previousFromUtc, previousToUtc);
-                }
-
                 static string BuildShoeTypeBucketKey(int? shoeTypeId)
                     => shoeTypeId.HasValue ? $"id:{shoeTypeId.Value}" : "unknown";
 
@@ -2147,8 +2089,8 @@ public static class AllEndpoints
                     return normalized is "existing" or "imported" ? normalized : "all";
                 }
 
-                fromUtc = NormalizeUtc(fromDate);
-                toUtc = NormalizeUtc(toDate);
+                fromUtc = OperationsDateRange.NormalizeUtc(fromDate);
+                toUtc = OperationsDateRange.NormalizeUtc(toDate);
                 var normalizedDataScope = NormalizeDataScope(dataScope);
                 var importedOnly = normalizedDataScope == "imported";
                 var existingOnly = normalizedDataScope == "existing";
@@ -2166,21 +2108,21 @@ public static class AllEndpoints
                     }
 
                     fromUtc = DateTime.SpecifyKind(sezona.DatumOd.Date, DateTimeKind.Utc);
-                    toUtc = DateTime.SpecifyKind(sezona.DatumDo.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
+                    toUtc = DateTime.SpecifyKind(sezona.DatumDo.Date.AddDays(1), DateTimeKind.Utc);
                 }
 
                 if (!fromUtc.HasValue && !toUtc.HasValue)
                 {
                     var todayUtc = DateTime.UtcNow.Date;
                     fromUtc = todayUtc.AddDays(-29);
-                    toUtc = todayUtc.AddDays(1).AddTicks(-1);
+                    toUtc = todayUtc.AddDays(1);
                 }
 
-                if (fromUtc.HasValue && toUtc.HasValue && fromUtc.Value > toUtc.Value)
+                if (fromUtc.HasValue && toUtc.HasValue && fromUtc.Value >= toUtc.Value)
                 {
                     return Results.BadRequest(new
                     {
-                        message = "Neispravan period: fromDate mora biti manji ili jednak toDate.",
+                        message = "Neispravan period: fromDate mora biti manji od ekskluzivnog toDate.",
                         fromDate = fromUtc.Value,
                         toDate = toUtc.Value
                     });
@@ -2252,7 +2194,7 @@ public static class AllEndpoints
                     .Where(d =>
                         (d.TipPromene == TipPromeneConstants.Nivelacija || d.TipPromene == TipPromeneConstants.NivelacijaCena) &&
                         d.ArtikalId.HasValue &&
-                        (!toUtc.HasValue || d.Datum <= toUtc.Value) &&
+                        (!toUtc.HasValue || d.Datum < toUtc.Value) &&
                         (!storeId.HasValue || !d.IDObjekat.HasValue || d.IDObjekat == storeId.Value))
                     .GroupBy(d => d.ArtikalId!.Value)
                     .Select(g => new
@@ -2269,7 +2211,7 @@ public static class AllEndpoints
                         x => string.IsNullOrWhiteSpace(x.Naziv) ? "Nepoznato" : x.Naziv.Trim(),
                         ct);
 
-                var (previousFromUtc, previousToUtc) = BuildComparablePreviousRange(fromUtc, toUtc);
+                var (previousFromUtc, previousToUtc) = OperationsDateRange.BuildComparablePreviousRange(fromUtc, toUtc);
                 var previousShoeTypeMetrics = new Dictionary<string, (decimal Revenue, int Units)>(StringComparer.Ordinal);
                 decimal? previousPeriodRevenue = null;
                 int? previousPeriodUnits = null;
@@ -2281,7 +2223,7 @@ public static class AllEndpoints
                         join pz in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
                         join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                         where pz.DatumProdaje >= previousFromUtc.Value
-                           && pz.DatumProdaje <= previousToUtc.Value
+                           && pz.DatumProdaje < previousToUtc.Value
                            && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
                            && (!importedOnly || a.DataOrigin == "access")
                            && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
@@ -2307,7 +2249,7 @@ public static class AllEndpoints
                     join pz in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
                     join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                     where (!fromUtc.HasValue || pz.DatumProdaje >= fromUtc.Value)
-                       && (!toUtc.HasValue || pz.DatumProdaje <= toUtc.Value)
+                       && (!toUtc.HasValue || pz.DatumProdaje < toUtc.Value)
                        && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
                        && (!importedOnly || a.DataOrigin == "access")
                        && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
@@ -2849,43 +2791,14 @@ public static class AllEndpoints
 
             try
             {
-                static DateTime? NormalizeUtc(DateTime? value)
-                {
-                    if (!value.HasValue) return null;
-                    var date = value.Value;
-                    return date.Kind == DateTimeKind.Unspecified
-                        ? DateTime.SpecifyKind(date, DateTimeKind.Utc)
-                        : date.ToUniversalTime();
-                }
-
-                static (DateTime? previousFromUtc, DateTime? previousToUtc) BuildComparablePreviousRange(
-                    DateTime? currentFromUtc,
-                    DateTime? currentToUtc)
-                {
-                    if (!currentFromUtc.HasValue || !currentToUtc.HasValue || currentFromUtc.Value > currentToUtc.Value)
-                    {
-                        return (null, null);
-                    }
-
-                    var inclusiveDurationTicks = currentToUtc.Value.Ticks - currentFromUtc.Value.Ticks + 1;
-                    if (inclusiveDurationTicks <= 0)
-                    {
-                        return (null, null);
-                    }
-
-                    var previousToUtc = new DateTime(currentFromUtc.Value.Ticks - 1, DateTimeKind.Utc);
-                    var previousFromUtc = new DateTime(previousToUtc.Ticks - inclusiveDurationTicks + 1, DateTimeKind.Utc);
-                    return (previousFromUtc, previousToUtc);
-                }
-
                 static string NormalizeDataScope(string? rawScope)
                 {
                     var normalized = (rawScope ?? "all").Trim().ToLowerInvariant();
                     return normalized is "existing" or "imported" ? normalized : "all";
                 }
 
-                fromUtc = NormalizeUtc(fromDate);
-                toUtc = NormalizeUtc(toDate);
+                fromUtc = OperationsDateRange.NormalizeUtc(fromDate);
+                toUtc = OperationsDateRange.NormalizeUtc(toDate);
                 var normalizedDataScope = NormalizeDataScope(dataScope);
                 var importedOnly = normalizedDataScope == "imported";
                 var existingOnly = normalizedDataScope == "existing";
@@ -2903,21 +2816,21 @@ public static class AllEndpoints
                     }
 
                     fromUtc = DateTime.SpecifyKind(sezona.DatumOd.Date, DateTimeKind.Utc);
-                    toUtc = DateTime.SpecifyKind(sezona.DatumDo.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
+                    toUtc = DateTime.SpecifyKind(sezona.DatumDo.Date.AddDays(1), DateTimeKind.Utc);
                 }
 
                 if (!fromUtc.HasValue && !toUtc.HasValue)
                 {
                     var todayUtc = DateTime.UtcNow.Date;
                     fromUtc = todayUtc.AddDays(-89);
-                    toUtc = todayUtc.AddDays(1).AddTicks(-1);
+                    toUtc = todayUtc.AddDays(1);
                 }
 
-                if (fromUtc.HasValue && toUtc.HasValue && fromUtc.Value > toUtc.Value)
+                if (fromUtc.HasValue && toUtc.HasValue && fromUtc.Value >= toUtc.Value)
                 {
                     return Results.BadRequest(new
                     {
-                        message = "Neispravan period: fromDate mora biti manji ili jednak toDate.",
+                        message = "Neispravan period: fromDate mora biti manji od ekskluzivnog toDate.",
                         fromDate = fromUtc.Value,
                         toDate = toUtc.Value
                     });
@@ -2973,7 +2886,7 @@ public static class AllEndpoints
                     .Where(d =>
                         (d.TipPromene == TipPromeneConstants.Nivelacija || d.TipPromene == TipPromeneConstants.NivelacijaCena) &&
                         d.ArtikalId.HasValue &&
-                        (!toUtc.HasValue || d.Datum <= toUtc.Value));
+                        (!toUtc.HasValue || d.Datum < toUtc.Value));
                 nivelacijeQuery = ApplyColorNivelacijaEventScope(nivelacijeQuery, storeId, normalizedDataScope);
 
                 var nivelacije = await nivelacijeQuery
@@ -2988,7 +2901,7 @@ public static class AllEndpoints
                     .GroupBy(n => n.ArtikalId)
                     .ToDictionary(g => g.Key, g => g.Min(x => x.DatumNivelacije));
 
-                var (previousFromUtc, previousToUtc) = BuildComparablePreviousRange(fromUtc, toUtc);
+                var (previousFromUtc, previousToUtc) = OperationsDateRange.BuildComparablePreviousRange(fromUtc, toUtc);
                 var previousColorMetrics = new Dictionary<string, (decimal Revenue, int Units)>(StringComparer.Ordinal);
                 decimal? previousPeriodRevenue = null;
                 int? previousPeriodUnits = null;
@@ -3000,7 +2913,7 @@ public static class AllEndpoints
                         join pz in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
                         join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                         where pz.DatumProdaje >= previousFromUtc.Value
-                           && pz.DatumProdaje <= previousToUtc.Value
+                           && pz.DatumProdaje < previousToUtc.Value
                            && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
                            && (!importedOnly || a.DataOrigin == "access")
                            && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
@@ -3028,7 +2941,7 @@ public static class AllEndpoints
                     join pz in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
                     join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                     where (!fromUtc.HasValue || pz.DatumProdaje >= fromUtc.Value)
-                       && (!toUtc.HasValue || pz.DatumProdaje <= toUtc.Value)
+                       && (!toUtc.HasValue || pz.DatumProdaje < toUtc.Value)
                        && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
                        && (!importedOnly || a.DataOrigin == "access")
                        && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")

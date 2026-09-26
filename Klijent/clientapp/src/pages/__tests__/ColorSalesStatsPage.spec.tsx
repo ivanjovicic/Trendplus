@@ -421,7 +421,7 @@ describe("ColorSalesStatsPage", () => {
     await waitFor(() => expect(getColorSalesStats).toHaveBeenCalledTimes(2));
     expect(getColorSalesStats).toHaveBeenLastCalledWith(expect.objectContaining({
       fromDate: "2026-06-01T00:00:00Z",
-      toDate: "2026-08-31T23:59:59Z",
+      toDate: "2026-09-01T00:00:00.000Z",
       sezonaId: 3,
       storeId: 2,
     }));

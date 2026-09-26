@@ -35,6 +35,7 @@ import { getDataScope, type DataScope } from "../utils/dataScope";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
 import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange, formatDate } from "../utils/analyticsFormatters";
+import { toInclusiveCalendarDate, toUtcDateOnlyExclusive } from "../utils/analyticsDateRanges";
 import {
   analyticsMetricDescriptions,
   buildPopMetricDescription,
@@ -178,7 +179,7 @@ function clamp(value: number, min: number, max: number): number {
 function toUtcRange(fromDate: string, toDate: string): { fromDate: string; toDate: string } {
   return {
     fromDate: `${fromDate}T00:00:00Z`,
-    toDate: `${toDate}T23:59:59Z`,
+    toDate: toUtcDateOnlyExclusive(toDate),
   };
 }
 
@@ -617,7 +618,7 @@ export default function ShoeTypeSalesStatsPage() {
     }
 
     const selectedFrom = new Date(`${activeFilters.fromDate}T00:00:00Z`);
-    const selectedTo = new Date(`${activeFilters.toDate}T23:59:59Z`);
+    const selectedTo = new Date(toUtcDateOnlyExclusive(activeFilters.toDate));
     const dataFrom = new Date(data.dataWindowFrom);
     const dataTo = new Date(data.dataWindowTo);
 
@@ -764,7 +765,7 @@ export default function ShoeTypeSalesStatsPage() {
 
     const params = new URLSearchParams();
     params.set("fromDate", `${activeFilters.fromDate}T00:00:00Z`);
-    params.set("toDate", `${activeFilters.toDate}T23:59:59Z`);
+    params.set("toDate", toUtcDateOnlyExclusive(activeFilters.toDate));
     if (activeFilters.sezonaId != null) params.set("sezonaId", String(activeFilters.sezonaId));
     if (activeFilters.storeId != null) params.set("storeId", String(activeFilters.storeId));
     params.set("dataScope", dataScope);
@@ -971,7 +972,7 @@ export default function ShoeTypeSalesStatsPage() {
         title="Prodaja po tipu obuće"
         description="Podrška odluci sa asortimanskim fokusom po tipu obuće."
         periodFrom={data?.fromDate ? toDateOnly(data.fromDate) : activeFilters.fromDate}
-        periodTo={data?.toDate ? toDateOnly(data.toDate) : activeFilters.toDate}
+        periodTo={toInclusiveCalendarDate(data?.toDate) ?? activeFilters.toDate}
         lastRefreshAt={trustLastRefreshAt}
         dataFreshnessStatus={trustDataFreshnessStatus}
         dataSource={`Sales facts analytics (scope: ${data?.dataScope ?? dataScope})`}

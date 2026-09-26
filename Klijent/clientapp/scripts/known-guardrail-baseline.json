@@ -191,19 +191,19 @@
     {
       "file": "src/pages/SupplierSalesStatsPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 1901,
+      "line": 1902,
       "reason": "Existing supplier KPI fallback requires a reviewed unavailable-value exception."
     },
     {
       "file": "src/pages/SupplierSalesStatsPage.tsx",
       "rule": "refetch_setData_null",
-      "line": 913,
+      "line": 914,
       "reason": "Supplier scope changes must clear stale rows and trust metadata before the next scope-bound request completes."
     },
     {
       "file": "src/pages/SupplierSalesStatsPage.tsx",
       "rule": "page_reduce_kpi",
-      "line": 616,
+      "line": 617,
       "reason": "Existing supplier aggregation predates the backend KPI ownership contract."
     },
     {

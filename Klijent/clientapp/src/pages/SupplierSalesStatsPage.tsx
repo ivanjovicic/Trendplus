@@ -36,6 +36,7 @@ import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyti
 import { getDataScope, normalizeDataScope, type DataScope } from "../utils/dataScope";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
 import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange, formatDate } from "../utils/analyticsFormatters";
+import { toInclusiveCalendarDate, toUtcDateOnlyExclusive } from "../utils/analyticsDateRanges";
 import { formatMetricDisplayValue } from "../utils/analyticsMetricValue";
 import { buildSupplierSalesStatsTrustProjection } from "../utils/supplierSalesStatsTrust";
 import { recommendationReasonLabel } from "../utils/canonicalRecommendationSemantics";
@@ -182,7 +183,7 @@ function compareFiniteMetrics(left: number | null | undefined, right: number | n
 function toUtcRange(fromDate: string, toDate: string): { fromDate: string; toDate: string } {
   return {
     fromDate: `${fromDate}T00:00:00Z`,
-    toDate: `${toDate}T23:59:59Z`,
+    toDate: toUtcDateOnlyExclusive(toDate),
   };
 }
 
@@ -355,7 +356,7 @@ export function buildSupplierEmbeddedPeriod(input: {
   dataWindowTo?: string | null;
 }): { periodFrom: string; periodTo: string; effectivePeriodLabel: string } {
   const periodFrom = toCalendarDate(input.responseFromDate) ?? input.requestedFromDate;
-  const periodTo = toCalendarDate(input.responseToDate) ?? input.requestedToDate;
+  const periodTo = toInclusiveCalendarDate(input.responseToDate) ?? input.requestedToDate;
   const periodLabel = /^\d{4}-\d{2}-\d{2}$/.test(periodFrom) && /^\d{4}-\d{2}-\d{2}$/.test(periodTo)
     ? `${formatCalendarDate(periodFrom)} - ${formatCalendarDate(periodTo)}`
     : `${periodFrom} - ${periodTo}`;
@@ -1215,7 +1216,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     }
 
     const selectedFrom = new Date(`${activeFilters.fromDate}T00:00:00Z`);
-    const selectedTo = new Date(`${activeFilters.toDate}T23:59:59Z`);
+    const selectedTo = new Date(toUtcDateOnlyExclusive(activeFilters.toDate));
     const dataFrom = new Date(data.dataWindowFrom);
     const dataTo = new Date(data.dataWindowTo);
 
@@ -1449,7 +1450,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
 
     const params = new URLSearchParams();
     params.set("fromDate", `${activeFilters.fromDate}T00:00:00Z`);
-    params.set("toDate", `${activeFilters.toDate}T23:59:59Z`);
+    params.set("toDate", toUtcDateOnlyExclusive(activeFilters.toDate));
     if (activeFilters.sezonaId != null) params.set("sezonaId", String(activeFilters.sezonaId));
     if (activeFilters.storeId != null) params.set("storeId", String(activeFilters.storeId));
     params.set("dataScope", activeDataScope);
@@ -1484,7 +1485,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
           : null,
         provenance: {
           requestedFromUtc: data?.meta?.requestedPeriodFromUtc ?? `${activeFilters.fromDate}T00:00:00Z`,
-          requestedToUtc: data?.meta?.requestedPeriodToUtc ?? `${activeFilters.toDate}T23:59:59Z`,
+          requestedToUtc: data?.meta?.requestedPeriodToUtc ?? toUtcDateOnlyExclusive(activeFilters.toDate),
           effectiveFromUtc: data?.meta?.effectivePeriodFromUtc ?? data?.dataWindowFrom ?? null,
           effectiveToUtc: data?.meta?.effectivePeriodToUtc ?? data?.dataWindowTo ?? null,
           season: activeSezonaLabel,
@@ -1759,7 +1760,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
           title="Dobavljači: Pregled"
           description="Canonical pregled prodaje po dobavljačima za poslovnu odluku. Preporuke dolaze iz backenda."
           periodFrom={data?.fromDate ?? activeFilters.fromDate}
-          periodTo={data?.toDate ?? activeFilters.toDate}
+          periodTo={toInclusiveCalendarDate(data?.toDate) ?? activeFilters.toDate}
           lastRefreshAt={trustLastRefreshAt}
           dataFreshnessStatus={trustDataFreshnessStatus}
           dataSource={`Supplier sales stats (scope: ${formatSupplierDataScopeLabel(activeDataScope)})`}

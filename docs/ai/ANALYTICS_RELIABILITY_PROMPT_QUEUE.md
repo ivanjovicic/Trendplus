@@ -3,6 +3,7 @@
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: RQ440
+Owner claim 2026-09-26: `RQ442` transitioned `READY -> IN_PROGRESS` in this workspace after P1 priority, dependency and collision refresh; it owns the half-open whole-day contract for Supplier Sales, Shoe Type Sales and Color Sales. Local lock: `.ai/task-locks/RQ442-codex.lock.md`. `Current READY prompt` remains `RQ440` as the primary pointer; RQ442 is the selected higher-priority independent lane.
 Owner certification follow-up 2026-09-25: a current-main review of the Supplier/Shoe Type accuracy claim found the existing RQ407/RQ411-RQ413/RQ373-RQ380/RQ375-RQ377 work materially complete but still missing certification-layer evidence. Added non-duplicative WAITING prompts RQ445-RQ455 in the Operations accuracy addendum for the formal contract, adversarial golden cases, live oracle/reproducer closure, browser/render/export reconciliation, durable evidence history, post-import probe, Verified UI, certificate, non-skippable CI, production read-only proof and customer acceptance. Existing owners remain authoritative; no product code is changed by this planning update. Plan: docs/qa/SUPPLIER_SHOETYPE_ACCURACY_CERTIFICATION_PLAN_2026-09-25.md.
 Owner claim 2026-09-25 (Supplier overview audit, grok): the audit of „Prodaja po dobavljačima“ (`/analytics/supplier?tab=overview`, legacy `operations-supplier-sales`) added and claimed `RQ443` (total PoP trend must include suppliers without current sales; the unfocused subset of the unregistered `PS11`/C16 in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-25.md`) and `RQ444` (sticky legacy `sezonaId`, data window shown as the period, +1-day header end date), both `READY -> IN_PROGRESS` in this workspace. Local locks: `.ai/task-locks/RQ443-grok.lock.md`, `.ai/task-locks/RQ444-grok.lock.md`. `Current READY prompt` stays `RQ440`. Other findings route to `RQ442`, `RQ441`, `RQ325` and the unregistered `PS06`/`PS11`/`PS12`/`PS16`/`PS17`/`PS18`. Run log: `.ai/runs/2026-09-25-supplier-sales-overview-audit-evidence.md`.
 Owner completion 2026-09-25: RQ443 was implemented and committed directly on local `main` (`fix(analytics): base supplier total PoP on the full previous period (RQ443)`, parent `77371907`); status `PARTIAL` until `origin/main` contains it (local-only delivery). Run log: `.ai/runs/2026-09-25-RQ443-evidence.md`.
@@ -24109,7 +24110,7 @@ Daily Sales currently groups historical sale lines through the current article-m
 
 ## RQ442 - Make Operations whole-day ranges half-open and boundary-safe
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1
 Type: backend/frontend/contract/tests
 Feature family: operations-whole-day-half-open-ranges

@@ -1,8 +1,10 @@
 # Trendplus Master Roadmap
 
-Updated: 2026-09-25
+Updated: 2026-09-26
 Repository: `ivanjovicic/Trendplus`
 Status: canonical planning entry point
+
+Owner claim 2026-09-26: `RQ442` transitioned `READY -> IN_PROGRESS` in this workspace as the higher-priority P1 Operations whole-day boundary contract after dependency and collision refresh. Local lock: `.ai/task-locks/RQ442-codex.lock.md`; the RQ primary pointer remains `RQ440`.
 
 Owner certification plan 2026-09-25: current-main review confirms the Supplier/Shoe Type semantic and bounded integrity owners (RQ407, RQ411-RQ413, RQ373-RQ380, RQ375-RQ377) are not duplicated. Remaining certification layers are registered as WAITING RQ445-RQ455 in the Operations accuracy addendum: canonical contract, adversarial golden cases, live oracle and reproducer execution, DB-to-browser/render/export proof, durable evidence history, post-import probe, Verified UI, certificate, non-skippable CI, production read-only reconciliation and customer acceptance. Detailed matrix: docs/qa/SUPPLIER_SHOETYPE_ACCURACY_CERTIFICATION_PLAN_2026-09-25.md. No product code is changed by this planning delivery.
 
