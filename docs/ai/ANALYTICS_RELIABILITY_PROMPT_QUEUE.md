@@ -24175,9 +24175,9 @@ PR #63 (2026-09-22, branch `cursor/supplier-decision-hub-audit-444b`, four docs 
 - Checks not run: frontend/backend runtime tests and builds; RQ439 is read-only triage and changes no product code.
 - Run log: `.ai/runs/2026-09-26-RQ439-evidence.md`
 - Evidence state: synchronized
-- Delivery mode: pull-request
-- Main commit SHA: pending
-- Main verification: pending; PR #63 is superseded and must not be merged.
+- Delivery mode: direct main fast-forward (PR #73 transport)
+- Main commit SHA: `066fe0da`
+- Main verification: `origin/main` contains `066fe0da`; PR #63 is superseded and was not merged.
 - Missed: no known PR #63 finding was left unmapped.
 - Follow-up: `RQ458` and `RQ459` are the fresh implementation handoffs.
 - Residual risk: the two confirmed runtime findings remain unfixed until their new prompts are implemented.
