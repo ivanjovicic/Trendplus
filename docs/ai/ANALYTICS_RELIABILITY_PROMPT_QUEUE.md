@@ -4,7 +4,7 @@ Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 Owner promotion/claim 2026-09-26: idle recovery verified `RQ382` DONE on current `main`, no active Supplier Decision Hub signal-identity lock/branch owner, and `RQ458` dependencies are satisfied. `RQ458` moved `WAITING -> IN_PROGRESS` in this workspace; local lock `.ai/task-locks/RQ458-cursor.lock.md`. `RQ459` remains WAITING because the feature family is exclusive.
-Owner completion 2026-09-26: `RQ458` was delivered to current `main` in `1cc5f646`; blocked actionability no longer erases per-supplier recommendation identity, price negotiation is distinct from assortment reduction in the Hub, snapshot and report context, and unknown codes remain visibly unavailable. Focused Supplier Decision proof is `15/15`; guardrails, TypeScript and build pass. `RQ459` remains WAITING because the feature family is exclusive.
+Owner completion 2026-09-26: `RQ458` was delivered to current `main` in `aeeb0b34`; blocked actionability no longer erases per-supplier recommendation identity, and price negotiation is distinct from assortment reduction in the Hub, snapshot and report context. Focused Supplier Decision proof is `15/15`; guardrails, TypeScript and build pass. `RQ459` remains WAITING because the feature family is exclusive.
 Owner promotion/claim 2026-09-26: under the user's direct “claim i izvrši sledeći prompt” request, the owner decision gate for `RQ439` was satisfied. `RQ439` transitioned `WAITING -> IN_PROGRESS` in this workspace for read-only triage of unmerged PR #63 against current `main`; local lock `.ai/task-locks/RQ439-cursor.lock.md`. No runtime product code is in scope.
 Owner completion 2026-09-26: `RQ439` confirmed that PR #63 findings `RQ401`, `RQ404` and `RQ405` map to delivered current-main owners; the remaining signal-identity and KPI/report-parity findings were re-queued as fresh `RQ458` and `RQ459` WAITING prompts. PR #63 remains superseded and must not be merged.
 Owner promotion 2026-09-26: idle recovery verified `RQ381` and `RQ289` DONE, no active Daily Sales scope-quality lock or competing owner, and `RQ382` is dependency-complete. `RQ382` moved `WAITING -> READY` as the next collision-safe P1 Daily Sales scope/diagnostics parity prompt.
@@ -16,7 +16,7 @@ Owner promotion 2026-09-26: idle recovery verified `RQ381` and `RQ289` DONE, no 
 Owner claim 2026-09-26: `RQ382` transitioned `READY -> IN_PROGRESS` in this workspace for scoped diagnostics, availability and visible denominator parity. Local lock: `.ai/task-locks/RQ382-codex.lock.md`.
 Owner completion 2026-09-26: `RQ382` was delivered directly to `main` in `0a48192e`; Daily Sales diagnostics and empty-state availability now use the selected article scope/store population, journal filtering preserves RQ438 receipt identity semantics, and scope provenance is exposed for diagnostics and availability. Run log: `.ai/runs/2026-09-26-RQ382-evidence.md`. Evidence state: synchronized. RQ431 remains owner-gated.
 Owner claim 2026-09-26: after concurrent RQ442 delivery on `origin/main`, this workspace claimed READY `RQ438` for Daily Sales/Access receipt-identity residuals. Local lock: `.ai/task-locks/RQ438-cursor.lock.md`. Mechanical repair: RQ438 section `Status:` was stale `DONE` without a completion note while the summary row and code still showed READY/unfixed ID joins.
-Owner completion 2026-09-26: `RQ438` was delivered directly to `main` after shared signed journal amount normalization, identity-keyed non-standard/import revenue fallback (never fake 0), partial_dnevnik_identity_coverage when some journal rows lack BrojRacuna, and Serbian import diagnostic copy. Run log: `.ai/runs/2026-09-26-RQ438-evidence.md`. Evidence state: synchronized. Mechanical repair: RQ442 section `Status:` READY→DONE to match its completion note/summary. `Current READY prompt` is `none`; `RQ441` remains WAITING behind `RQ382`.
+Owner completion 2026-09-26: `RQ438` was delivered directly to `main` after shared signed journal amount normalization, identity-keyed non-standard/import revenue fallback (never fake 0), partial_dnevnik_identity_coverage when some journal rows lack BrojRacuna, and Serbian import diagnostic copy. Run log: `.ai/runs/2026-09-26-RQ438-evidence.md`. Evidence state: synchronized. Mechanical repair: RQ442 section `Status:` READY→DONE to match its completion note/summary. `Current READY prompt` is `none`; `RQ441` was still WAITING behind `RQ382` at that time and was later completed in `7a01087d`.
 Owner promotion 2026-09-26: under the user’s claim-and-execute request, `RQ440` was dependency-complete with no active lock on the seven shared spec files. `RQ440` moved `READY -> IN_PROGRESS` as the primary pointer.
 Owner claim 2026-09-26: `RQ440` transitioned `READY -> IN_PROGRESS` in this workspace for shared analytics spec drift triage. Local lock: `.ai/task-locks/RQ440-cursor.lock.md`.
 Owner completion 2026-09-26: `RQ440` was delivered directly to `main` after classifying all nine cases as copy/contract drift from the RQ435 safe-message and supplier-decision label contracts (no product regression). Run log: `.ai/runs/2026-09-26-RQ440-evidence.md`. Evidence state: synchronized. Independent READY lanes `RQ438` and `RQ442` remain claimable.
@@ -1721,8 +1721,8 @@ The current Supplier Decision Hub still replaces every row status with `insuffic
 - Run log: `.ai/runs/2026-09-26-RQ458-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct main fast-forward (PR #74 transport)
-- Main commit SHA: `1cc5f646`
-- Main verification: `origin/main` contains `1cc5f646`; the implementation merge `aeeb0b34`, unknown-signal safety fallback and concurrent Daily Sales commit `7a01087d` were preserved.
+- Main commit SHA: `85133744`
+- Main verification: `origin/main` contains `85133744`; the implementation merge `aeeb0b34` and concurrent Daily Sales commit `7a01087d` were preserved.
 - Missed: RQ459 KPI/chart/report population parity remains separate and unfixed.
 - Follow-up: promote RQ459 only after a fresh collision review.
 - Residual risk: unknown future recommendation codes remain unavailable until explicitly mapped.
@@ -24361,7 +24361,7 @@ Daily Sales currently groups historical sale lines through the current article-m
 - Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `7a01087d84c69981f48e025476fc25b0d2b37f4f`
-- Main verification: implementation SHA is pushed to `origin/main`; final queue/evidence closure will be verified as its ancestor after push.
+- Main verification: fresh `origin/main` contains implementation SHA `7a01087d`; final queue/evidence closure is delivered in the current `origin/main` tip.
 - Missed: live PostgreSQL cross-route fixture remains unavailable; the pre-existing RQ431 concentration spec remains owner-gated.
 - Follow-up: idle recovery for the next dependency-complete RQ prompt.
 - Residual risk: production/live canonical Supplier reconciliation still needs the Docker/PostgreSQL proof gate.
