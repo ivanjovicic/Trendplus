@@ -59,7 +59,7 @@ These decisions are certification prerequisites. RQ456 owns the cross-surface re
 
 | Sequence | Prompt | Status | Output |
 |---:|---|---|---|
-| 1 | RQ445 | IN_PROGRESS | canonical contract and bounded claim language |
+| 1 | RQ445 | DONE | canonical contract and bounded claim language |
 | 2 | RQ456 | WAITING | one DUG/KOREKCIJA retail-sales population across Daily/Supplier/Shoe/Color/oracle |
 | 3 | RQ457 | WAITING | Shoe Type ID/null identity, previous-only rows and margin semantics |
 | 4 | RQ446 | WAITING | adversarial fixture and immutable expected manifest |
