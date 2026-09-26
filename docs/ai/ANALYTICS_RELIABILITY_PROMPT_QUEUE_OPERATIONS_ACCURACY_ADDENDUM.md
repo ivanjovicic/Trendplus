@@ -127,7 +127,7 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 | RQ426 | DONE | P1 | inventory-forecast-risk-aggregation | Prove and correct Inventory forecast risk aggregation across sizes and stores |
 | RQ445 | DONE | P0 | supplier-shoetype-accuracy-contract | Canonical accuracy contract for Supplier/Shoe Type metrics, populations, provenance and claim language |
 | RQ446 | DONE | P0 | supplier-shoetype-adversarial-golden | Extend the shared fixture with adversarial Supplier/Shoe Type cases and immutable expected outputs |
-| RQ447 | IN_PROGRESS | P0 | supplier-shoetype-live-oracle-reproducers | Execute the four live RQ412 oracle cases and close OP2-01/04/05/14 with runtime reproducers |
+| RQ447 | PARTIAL | P0 | supplier-shoetype-live-oracle-reproducers | Execute the four live RQ412 oracle cases and close OP2-01/04/05/14 with runtime reproducers |
 | RQ448 | WAITING | P0 | supplier-shoetype-browser-reconciliation | Reconcile raw facts through API, browser-rendered KPI/table/detail and export |
 | RQ449 | DONE | P1 | operations-integrity-evidence-history | Persist immutable integrity evidence/history beyond the process snapshot |
 | RQ450 | WAITING | P1 | operations-post-import-probe | Run a bounded Supplier/Shoe integrity probe immediately after Access import |
@@ -1557,7 +1557,7 @@ Extend the existing RQ407 fixture and RQ412 manifest; do not create a second see
 
 ## RQ447 - Execute the live oracle and close the OP2 runtime seams
 
-Status: IN_PROGRESS
+Status: PARTIAL
 Ready after: PostgreSQL integration host is available and RQ446, RQ456 and RQ457 are DONE
 Priority: P0
 Type: integration-tests/evidence
@@ -1595,7 +1595,9 @@ Run the four SupplierShoeTypeIndependentOracleIntegrationTests cases on PostgreS
 ### Execution host
 
 - `.github/workflows/analytics-tests.yml` now defines a dedicated `rq447-certification` job using `pgvector/pgvector:pg16`, current Trendplus migrations, `TRENDPLUS_RUN_INTEGRATION_TESTS=true`, explicit 4/4 oracle and 1/1 all-eight-routes steps, zero-skip assertions and retained TRX artifacts.
-- RQ447 remains `IN_PROGRESS` until that job produces the required executed evidence on the delivered commit; a local VM skip is not certification proof.
+- RQ447 remains `PARTIAL` until that job produces the required executed evidence on the delivered commit; a local VM skip is not certification proof.
+
+Completion note 2026-09-26: `RQ447` certification infrastructure and OP2 seam reproducers were delivered to `main` in implementation `9627ac13a24ea0fa189b2c26fd9be9592bcdb585`, present on `origin/main` through merge `7c793bac`. The CI job is intentionally strict: pgvector PostgreSQL, current EF migrations, 4/4 oracle, 1/1 all-eight-routes, 4/4 OP2 tests and zero skipped. Local discovery produced 9 skipped tests because this VM has no PostgreSQL host; GitHub Actions result/artifact is not yet inspected. Run log: `.ai/runs/2026-09-26-RQ447-evidence.md`. Evidence state: synchronized. RQ447 remains `PARTIAL` until the CI certification job executes and passes.
 
 ---
 
