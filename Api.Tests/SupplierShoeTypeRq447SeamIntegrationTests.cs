@@ -34,8 +34,12 @@ public sealed class SupplierShoeTypeRq447SeamIntegrationTests
             client,
             "/api/analytics/supplier-sales-stats?fromDate=2026-09-02&toDate=2026-09-03&dataScope=all");
 
-        Assert.Equal(440m, dayOne.GetProperty("totals").GetProperty("ukupanPromet").GetDecimal());
-        Assert.Equal(5, dayOne.GetProperty("totals").GetProperty("ukupnaKolicina").GetInt32());
+        // The canonical retail population excludes only DUG/KOREKCIJA headers.
+        // Keep signed returns and the unknown-dimension bucket in the observed
+        // total so the boundary proof cannot silently turn into a positive-only
+        // or known-identity-only calculation.
+        Assert.Equal(590m, dayOne.GetProperty("totals").GetProperty("ukupanPromet").GetDecimal());
+        Assert.Equal(6, dayOne.GetProperty("totals").GetProperty("ukupnaKolicina").GetInt32());
         Assert.Equal(120m, dayTwo.GetProperty("totals").GetProperty("ukupanPromet").GetDecimal());
         Assert.Equal(1, dayTwo.GetProperty("totals").GetProperty("ukupnaKolicina").GetInt32());
     }
