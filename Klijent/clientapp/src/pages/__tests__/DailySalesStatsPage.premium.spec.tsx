@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { StrictMode, type ReactNode } from "react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import DailySalesStatsPage, { buildSupplierConcentration } from "../DailySalesStatsPage";
@@ -511,6 +511,37 @@ describe("DailySalesStatsPage premium controls", () => {
 
     expect(await screen.findByRole("heading", { name: /Nema podataka za izabrani period/i })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /Nema rezultata za trenutne filtere/i })).not.toBeInTheDocument();
+  });
+
+  it("toggles table sort once under StrictMode", async () => {
+    const baseRow = response().dateRows[0];
+    vi.mocked(getDailySalesStats).mockResolvedValue(response({
+      dateRows: [
+        { ...baseRow, date: "2026-04-01", totalRevenue: 9000 },
+        { ...baseRow, date: "2026-04-02", totalRevenue: 1000 },
+      ],
+    }));
+
+    render(
+      <StrictMode>
+        <MemoryRouter initialEntries={["/analytics/daily-sales"]}>
+          <Routes>
+            <Route path="/analytics/daily-sales" element={<DailySalesStatsPage />} />
+          </Routes>
+        </MemoryRouter>
+      </StrictMode>,
+    );
+
+    const table = await screen.findByTestId("daily-sales-stats-data-table");
+    const revenueSort = within(table).getByRole("button", { name: /Prihod dana/ });
+    fireEvent.click(revenueSort);
+    fireEvent.click(revenueSort);
+
+    await waitFor(() => {
+      const rows = within(table).getAllByRole("row").slice(1);
+      expect(within(rows[0]).getAllByRole("cell")[0]).toHaveTextContent(/2\.\s*4\.\s*2026/);
+      expect(within(rows[1]).getAllByRole("cell")[0]).toHaveTextContent(/1\.\s*4\.\s*2026/);
+    });
   });
 
   it("uses backend no-data metadata even when the response contains calendar zero rows", async () => {

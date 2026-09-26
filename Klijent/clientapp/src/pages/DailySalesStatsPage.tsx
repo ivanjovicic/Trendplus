@@ -223,6 +223,37 @@ function buildStoreLabel(store: StoreOption): string {
   return extras ? `${store.storeName} (${extras})` : store.storeName;
 }
 
+export function resolveDailySalesStoreLabel(stores: StoreOption[], storeId: number | null): string {
+  if (storeId == null) return "Svi objekti";
+  const store = stores.find((candidate) => candidate.storeId === storeId);
+  if (!store || !store.storeName.trim()) return `Nepoznat objekat (ID ${storeId})`;
+  return buildStoreLabel({ ...store, storeName: store.storeName.trim() });
+}
+
+export type DailySalesBlankColumn = {
+  key: string;
+  header: string;
+  dataType: "text";
+};
+
+export function buildDailySalesBlankColumns(): DailySalesBlankColumn[] {
+  const manualSupplierColumns = Array.from({ length: BLANK_SUPPLIER_COLUMN_COUNT }, (_, index) => ({
+    key: `manualSupplier:${index + 1}`,
+    header: "",
+    dataType: "text" as const,
+  }));
+
+  return [
+    { key: "date", header: "Datum", dataType: "text" },
+    { key: "worker1", header: "I sm.", dataType: "text" },
+    { key: "worker2", header: "II sm.", dataType: "text" },
+    { key: "revenue", header: "Prihod dana", dataType: "text" },
+    ...manualSupplierColumns,
+    { key: "others", header: "Ostali", dataType: "text" },
+    { key: "total", header: "Ukupno kom.", dataType: "text" },
+  ];
+}
+
 function finiteOrNull(value: DailySalesNumeric): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
@@ -580,6 +611,17 @@ export function buildRollingAverage(rows: DailySalesRow[], index: number, access
   return Number.isFinite(result) ? result : null;
 }
 
+export function getNextDailySalesSortState(
+  currentKey: SortKey,
+  currentDir: SortDir,
+  field: SortKey,
+): { sortKey: SortKey; sortDir: SortDir } {
+  return {
+    sortKey: field,
+    sortDir: currentKey === field ? (currentDir === "asc" ? "desc" : "asc") : "desc",
+  };
+}
+
 export function isDailySalesNoDataInPeriod(response: DailySalesTableResponse | null): boolean {
   return response?.meta?.emptyReason === "no_data_in_period";
 }
@@ -931,10 +973,10 @@ export default function DailySalesStatsPage() {
   const toolbarFilters = useMemo<AnalyticsNamedValue[]>(() => [
     { key: "fromDate", label: "Od", value: activeFilters.fromDate },
     { key: "toDate", label: "Do", value: activeFilters.toDate },
-    { key: "storeId", label: "Objekat", value: activeFilters.storeId ?? "Svi objekti" },
+    { key: "storeId", label: "Objekat", value: resolveDailySalesStoreLabel(stores, activeFilters.storeId) },
     { key: "topN", label: "Top dobavljača", value: activeFilters.topN },
     { key: "dataScope", label: "Opseg podataka", value: memoizedQueryDataScope },
-  ], [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeFilters.topN, memoizedQueryDataScope]);
+  ], [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeFilters.topN, memoizedQueryDataScope, stores]);
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(() => [
     { key: "requestedFrom", label: "Zahtevan od", value: fmtDateISO(data?.requestedFrom) ?? "" },
@@ -1412,15 +1454,10 @@ export default function DailySalesStatsPage() {
   );
 
   const handleSort = useCallback((field: SortKey) => {
-    setSortKey((previous) => {
-      if (previous === field) {
-        setSortDir((current) => (current === "asc" ? "desc" : "asc"));
-        return previous;
-      }
-      setSortDir(field === "date" ? "desc" : "desc");
-      return field;
-    });
-  }, []);
+    const next = getNextDailySalesSortState(sortKey, sortDir, field);
+    setSortKey(next.sortKey);
+    setSortDir(next.sortDir);
+  }, [sortDir, sortKey]);
 
   const applyPreset = (preset: PeriodPreset) => {
     setPeriodPreset(preset);
@@ -1492,21 +1529,7 @@ export default function DailySalesStatsPage() {
   };
 
   const handlePrintBlank = useCallback(() => {
-    const manualSupplierColumns = Array.from({ length: BLANK_SUPPLIER_COLUMN_COUNT }, (_, index) => ({
-      key: `manualSupplier:${index + 1}`,
-      header: "",
-      dataType: "text",
-    }));
-
-    const blankColumns = [
-      { key: "date",    header: "Datum",                    dataType: "text" },
-      { key: "worker1", header: "I sm.",                    dataType: "text" },
-      { key: "worker2", header: "II sm.",                   dataType: "text" },
-      { key: "others",  header: "Uk. sm.",                  dataType: "text" },
-      ...manualSupplierColumns,
-      { key: "revenue", header: "Ost.",                     dataType: "text" },
-      { key: "total",   header: "Ukupno",                    dataType: "text" },
-    ];
+    const blankColumns = buildDailySalesBlankColumns();
 
     const blankRows = Array.from({ length: BLANK_PRINT_ROW_COUNT }, () =>
       Object.fromEntries(blankColumns.map((col) => [col.key, ""]))

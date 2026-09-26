@@ -4,7 +4,10 @@ import {
   calculateAnomalyDeviation,
   calculateDeltaPct,
   buildSupplierConcentration,
+  buildDailySalesBlankColumns,
   formatDailySalesError,
+  getNextDailySalesSortState,
+  resolveDailySalesStoreLabel,
   safeDivide,
   sortDailySalesRows,
   summarizePeriod,
@@ -136,6 +139,41 @@ describe("Daily Sales numeric evidence states", () => {
     expect(summary.totalRevenue).toBe(0);
     expect(summary.totalVisibleItems).toBe(0);
     expect(summary.avgRevenuePerItem).toBeNull();
+  });
+
+  it("toggles an active sort exactly once and defaults a new field to descending", () => {
+    expect(getNextDailySalesSortState("date", "desc", "totalRevenue")).toEqual({
+      sortKey: "totalRevenue",
+      sortDir: "desc",
+    });
+    expect(getNextDailySalesSortState("totalRevenue", "desc", "totalRevenue")).toEqual({
+      sortKey: "totalRevenue",
+      sortDir: "asc",
+    });
+    expect(getNextDailySalesSortState("totalRevenue", "asc", "totalRevenue")).toEqual({
+      sortKey: "totalRevenue",
+      sortDir: "desc",
+    });
+  });
+
+  it("keeps blank print columns aligned with the Daily Sales table semantics", () => {
+    expect(buildDailySalesBlankColumns().map(({ key, header }) => ({ key, header }))).toEqual([
+      { key: "date", header: "Datum" },
+      { key: "worker1", header: "I sm." },
+      { key: "worker2", header: "II sm." },
+      { key: "revenue", header: "Prihod dana" },
+      ...Array.from({ length: 15 }, (_, index) => ({ key: `manualSupplier:${index + 1}`, header: "" })),
+      { key: "others", header: "Ostali" },
+      { key: "total", header: "Ukupno kom." },
+    ]);
+  });
+
+  it("exports the selected store name and fails closed when the name is unavailable", () => {
+    expect(resolveDailySalesStoreLabel([
+      { storeId: 7, storeName: "Centar", city: "Beograd" },
+    ], 7)).toBe("Centar (Beograd)");
+    expect(resolveDailySalesStoreLabel([], 7)).toBe("Nepoznat objekat (ID 7)");
+    expect(resolveDailySalesStoreLabel([{ storeId: 7, storeName: "   " }], 7)).toBe("Nepoznat objekat (ID 7)");
   });
 
   it("uses seven complete prior days for MA7 and excludes the current day", () => {
