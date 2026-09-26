@@ -34,8 +34,10 @@ public sealed class SupplierShoeTypeRq447SeamIntegrationTests
             client,
             "/api/analytics/supplier-sales-stats?fromDate=2026-09-02&toDate=2026-09-03&dataScope=all");
 
-        Assert.Equal(440m, dayOne.GetProperty("totals").GetProperty("ukupanPromet").GetDecimal());
-        Assert.Equal(5, dayOne.GetProperty("totals").GetProperty("ukupnaKolicina").GetInt32());
+        // The 23:59:59.999999Z access row is inside the half-open window;
+        // only the DUG row is excluded from the certified population.
+        Assert.Equal(590m, dayOne.GetProperty("totals").GetProperty("ukupanPromet").GetDecimal());
+        Assert.Equal(6, dayOne.GetProperty("totals").GetProperty("ukupnaKolicina").GetInt32());
         Assert.Equal(120m, dayTwo.GetProperty("totals").GetProperty("ukupanPromet").GetDecimal());
         Assert.Equal(1, dayTwo.GetProperty("totals").GetProperty("ukupnaKolicina").GetInt32());
     }
