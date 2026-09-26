@@ -79,3 +79,13 @@ No branch was merged. Every remote branch with commits not on `main` is obsolete
 ## Next
 
 - `RQ437` DONE sync after its commit reaches `origin/main` (other workspace); claim `RQ440` and `RQ438`; owner decisions on `RQ431`, `RQ439` and the `setup-dev-environment` branch.
+
+
+## Remote cleanup follow-up — 2026-09-25
+
+- Rechecked current GitHub state after the Supplier/Shoe Type semantic-closure commits.
+- Open PR inventory initially contained only PR #72 (`cursor/operations-runtime-drift-guard-b591`). Its own PR body records RQ413 as already delivered on `main`; the branch was 1 commit ahead / 60 behind and its content was superseded by the delivered RQ413 + later hardening. PR #72 was closed without merging the stale divergent commit.
+- Open PR inventory after cleanup: **0**.
+- Rechecked representative divergent branches from this audit against current `main`: `cursor/supplier-decision-hub-audit-444b` remains obsolete/conflicting and its RQ401-RQ405 subject matter is already delivered under later canonical commits; `cursor/rq290-daily-shift-partial-state-c753` remains superseded by merged RQ290 hardening; `cursor/setup-dev-environment-5ba9` remains the only branch with potentially novel fresh-database setup code, but it still conflicts in `DatabaseInitializer`/migration paths and lacks the PostgreSQL proof required by the earlier audit.
+- No stale/superseded/divergent branch was merged because doing so would regress newer `main` semantics or bypass a required database proof.
+- The remote cleanup was performed through the GitHub connector. This follow-up does **not** assert that an unobserved developer-machine working tree has no uncommitted files.

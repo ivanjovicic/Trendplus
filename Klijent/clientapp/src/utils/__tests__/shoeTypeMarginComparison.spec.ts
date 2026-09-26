@@ -21,12 +21,9 @@ const rows = [
 ];
 
 describe("shoeTypeMarginComparison", () => {
-  it("keeps negative totals comparable for detail formatting only", () => {
-    expect(resolveShoeTypeMarginContributionSharePct(-600, -1000)).toBe(60);
-  });
-
-  it("keeps measured zero totals visible while leaving non-zero margin shares unavailable", () => {
-    expect(resolveShoeTypeMarginContributionSharePct(0, 0)).toBe(0);
+  it("treats zero and negative total contribution as an unavailable share denominator", () => {
+    expect(resolveShoeTypeMarginContributionSharePct(-600, -1000)).toBeNull();
+    expect(resolveShoeTypeMarginContributionSharePct(0, 0)).toBeNull();
     expect(resolveShoeTypeMarginContributionSharePct(100, 0)).toBeNull();
   });
 
@@ -37,11 +34,11 @@ describe("shoeTypeMarginComparison", () => {
     expect(resolveShoeTypeMarginContributionSharePct(100, null)).toBeNull();
   });
 
-  it("formats measured zero share distinctly from unavailable evidence", () => {
+  it("formats non-positive denominator shares as unavailable evidence", () => {
     const formatPct = (value: number, digits = 2) => `${value.toFixed(digits)}%`;
-    expect(formatShoeTypeMarginContributionShare(0, 0, formatPct)).toBe("0.00%");
+    expect(formatShoeTypeMarginContributionShare(0, 0, formatPct)).toBe("Nije dostupno");
     expect(formatShoeTypeMarginContributionShare(100, 0, formatPct)).toBe("Nije dostupno");
-    expect(formatShoeTypeMarginContributionShare(-600, -1000, formatPct)).toBe("60.00%");
+    expect(formatShoeTypeMarginContributionShare(-600, -1000, formatPct)).toBe("Nije dostupno");
   });
 
   it("projects share-mode chart data when total margin is positive", () => {
