@@ -2,8 +2,9 @@
 
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ459
+Current READY prompt: none
 Owner promotion/claim 2026-09-26: idle recovery verified `RQ458` DONE on current `origin/main` at `cc75ee66`, no active Supplier Decision Hub KPI/report-parity lock, branch or PR owner, and all RQ459 dependencies are satisfied. `RQ459` moved `WAITING -> IN_PROGRESS` in this workspace for KPI/chart/table/report population and period-delta parity; local lock `.ai/task-locks/RQ459-cursor.lock.md`.
+Owner completion 2026-09-26: `RQ459` was delivered to current `main` in implementation `c3e29a65` with final synchronized main tip `5cb65d37`. Supplier Decision Hub summary now exposes authoritative revenue, margin contribution and top-five share aggregates; KPI, table shares, concentration chart and report/export use the same declared population, and full-price period delta is distinct from row markdown trend. Focused frontend proof is `41/41`; guardrails, TypeScript, build, governance validators and `git diff --check` pass. Backend focused test was not run because `dotnet` is unavailable in this VM. Run log: `.ai/runs/2026-09-26-RQ459-evidence.md`. Evidence state: synchronized.
 Owner completion 2026-09-26: `RQ445` was delivered directly to `main` in `7ce49b17`; the canonical `SST-ACCURACY-1.0` Supplier/Shoe Type contract is established and later certification prompts remain separately gated. Run log: `.ai/runs/2026-09-26-RQ445-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-26: idle recovery verified `RQ382` DONE on current `main`, no active Supplier Decision Hub signal-identity lock/branch owner, and `RQ458` dependencies are satisfied. `RQ458` moved `WAITING -> IN_PROGRESS` in this workspace; local lock `.ai/task-locks/RQ458-cursor.lock.md`. `RQ459` remains WAITING because the feature family is exclusive.
 Owner completion 2026-09-26: `RQ458` was delivered to current `main` in `aeeb0b34`; blocked actionability no longer erases per-supplier recommendation identity, and price negotiation is distinct from assortment reduction in the Hub, snapshot and report context. Focused Supplier Decision proof is `15/15`; guardrails, TypeScript and build pass. `RQ459` remains WAITING because the feature family is exclusive.
@@ -1652,7 +1653,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ454 | WAITING | supplier-shoetype-production-reconciliation | Produce read-only production reconciliation evidence for certified windows |
 | RQ455 | WAITING | supplier-shoetype-customer-acceptance | Capture customer-side reconciliation and acceptance evidence |
 | RQ458 | DONE | supplier-decision-signal-identity | Preserve per-supplier signal identity when recommendation actionability is blocked |
-| RQ459 | IN_PROGRESS | supplier-decision-kpi-report-parity | Align Supplier Decision Hub KPI, chart and report totals and delta semantics |
+| RQ459 | DONE | supplier-decision-kpi-report-parity | Align Supplier Decision Hub KPI, chart and report totals and delta semantics |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -1746,7 +1747,7 @@ The current Supplier Decision Hub still replaces every row status with `insuffic
 
 ## RQ459 - Align Supplier Decision Hub KPI, chart and report totals and delta semantics
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: frontend-contract/backend-contract/tests
 Feature family: supplier-decision-kpi-report-parity
@@ -1806,6 +1807,25 @@ The Supplier Decision Hub recomputes total revenue, top-five share, margin contr
 
 - Depends on the current-main period/effective-lineage contract from `RQ401`/`RQ404`; do not recreate cache or period semantics.
 - Coordinate with `RQ458` only where status counts share the same projection; no Supplier Sales totals are in scope.
+
+### Completion note
+
+- Date: 2026-09-26
+- Status: DONE
+- Completion: Backend summary fields now provide authoritative total revenue, margin contribution and top-five revenue share. The Hub uses those values for KPI cards, row share denominators, concentration chart and report/export totals, while missing/partial margin evidence remains unavailable. Previous-period full-price share delta uses percentage-point subtraction and no longer reuses the row-level markdown-quality helper.
+- Changed files: `Api/Endpoints/SupplierDecisionHubEndpoints.cs`, `Api.Tests/SupplierDecisionHubContractTests.cs`, `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx`, `Klijent/clientapp/src/services/supplierDecisionHubApi.ts`, `Klijent/clientapp/src/services/supplierDecisionReport.ts`, `Klijent/clientapp/src/pages/__tests__/SupplierDecisionHubPage.spec.tsx`, `Klijent/clientapp/src/pages/__tests__/SupplierDecisionHubPage.percentExport.spec.ts`, `Klijent/clientapp/src/services/__tests__/supplierDecisionReport.spec.ts`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`.
+- Contract/runtime behavior changed: added backward-compatible optional summary aggregates; preserved fallback behavior for older cached summaries and backend-owned trust metadata.
+- Checks run: focused Supplier Decision frontend tests `41/41`; `npm run check:analytics-guardrails`; `npm run typecheck`; `npm run build`; governance validators; `git diff --check`.
+- Checks not run: focused `dotnet test` because `dotnet` is unavailable in this VM; live database/browser/CI proof.
+- Run log: `.ai/runs/2026-09-26-RQ459-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main fast-forward after merge sync (PR #75 transport)
+- Main commit SHA: `c3e29a65`
+- Main verification: `origin/main` contains implementation `c3e29a65`; final main tip is `5cb65d37` and includes the implementation plus the latest concurrent main documentation.
+- Missed: backend test execution could not be performed in this environment.
+- Follow-up: idle recovery; no Supplier Decision sibling remains active.
+- Residual risk: backend compilation/runtime and live report response parity still require CI or an environment with `dotnet` and database access.
+- Prompt defect / scope repair: backend summary aggregates were added as nullable properties so pre-existing serialized cache entries without the new fields fall back safely to the ranking projection.
 
 ---
 
