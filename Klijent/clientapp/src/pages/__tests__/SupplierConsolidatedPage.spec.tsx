@@ -71,8 +71,8 @@ describe("SupplierConsolidatedPage", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Skup podataka")).toBeInTheDocument();
-      expect(screen.getByText(/30d\s*(→|->)\s*90d/)).toBeInTheDocument();
-      expect(screen.getByText("mv_supplier_decision_score_cache_90d")).toBeInTheDocument();
+      expect(screen.getByText(/poslednjih 30 dana\s*(→|->)\s*poslednjih 90 dana/i)).toBeInTheDocument();
+      expect(screen.getByText("keš signala odluke dobavljača")).toBeInTheDocument();
       expect(screen.getByText(/Pomoćni skup je aktivan\./)).toBeInTheDocument();
       expect(screen.queryByText(/no_data_30d/i)).not.toBeInTheDocument();
       expect(screen.getByText("Sveže")).toBeInTheDocument();

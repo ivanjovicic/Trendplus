@@ -67,7 +67,7 @@ describe("SupplierExplainabilitySnapshot", () => {
     expect(within(snapshot).getByText("Traženi period")).toBeInTheDocument();
     expect(within(snapshot).getByText("Efektivni period")).toBeInTheDocument();
     expect(within(snapshot).getByText("Posmatrani period")).toBeInTheDocument();
-    expect(within(snapshot).getByText("mv_supplier_decision_score_cache_90d")).toBeInTheDocument();
+    expect(within(snapshot).getByText("keš signala odluke dobavljača")).toBeInTheDocument();
   });
 
   it("uses the backend recommendation code instead of treating every allowed signal as expand", () => {
