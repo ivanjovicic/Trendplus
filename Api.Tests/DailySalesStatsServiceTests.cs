@@ -67,7 +67,7 @@ public sealed class DailySalesStatsServiceTests
         Assert.Equal(2, result.TopSuppliersOrder.Count);
 
         var dayOne = Assert.Single(result.DateRows, x => x.Date.Date == new DateTime(2026, 1, 1).Date);
-        Assert.Equal(7, dayOne.FirstShiftTotalItems);
+        Assert.Equal(5, dayOne.FirstShiftTotalItems);
         Assert.Equal(3, dayOne.SecondShiftTotalItems);
         Assert.Equal(1300m, dayOne.TotalRevenue);
         Assert.Equal(10, dayOne.TotalItemsSold);
@@ -84,6 +84,8 @@ public sealed class DailySalesStatsServiceTests
         Assert.Equal(0m, dayThree.TotalRevenue);
 
         Assert.Equal(2, result.Metadata.OffShiftItems);
+        Assert.Equal("partial", result.Metadata.ShiftAssignmentStatus);
+        Assert.Equal(0, result.Metadata.NoTimeFallbackItems);
         Assert.True(result.Metadata.UnknownSupplierPct.HasValue);
         Assert.True(result.Metadata.UnknownSupplierPct.Value > 0m);
         Assert.Contains(result.Metadata.Warnings, x => x.Contains("van smena", StringComparison.OrdinalIgnoreCase));
@@ -233,7 +235,7 @@ public sealed class DailySalesStatsServiceTests
     }
 
     [Fact]
-    public async Task GetDailySalesAsync_WhenTimestampsAreMidnight_MapsRowsToFirstShiftWithWarning()
+    public async Task GetDailySalesAsync_WhenTimestampsAreMidnight_KeepsDailyTotalWithoutMeasuredShifts()
     {
         await using var db = CreateDbContext();
         SeedSuppliersAndArticles(db);
@@ -270,15 +272,19 @@ public sealed class DailySalesStatsServiceTests
             ct: CancellationToken.None);
 
         var row = Assert.Single(result.DateRows);
-        Assert.Equal(10, row.FirstShiftTotalItems);
-        Assert.Equal(0, row.SecondShiftTotalItems);
+        Assert.Null(row.FirstShiftTotalItems);
+        Assert.Null(row.SecondShiftTotalItems);
         Assert.Equal(10, row.TotalItemsSold);
         Assert.Equal(0, result.Metadata.OffShiftItems);
+        Assert.Equal(10, result.Metadata.NoTimeFallbackItems);
+        Assert.Equal(800m, result.Metadata.NoTimeFallbackRevenue);
+        Assert.Equal("no_time_fallback", result.Metadata.ShiftAssignmentStatus);
         Assert.Contains(result.Metadata.Warnings, x => x.Contains("Satnica prodaje nije dostupna", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(result.Metadata.Warnings, x => x.Contains("smenski udeo nije meren", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
-    public async Task GetDailySalesAsync_WhenAllHoursAreOffShiftButNotMidnight_MapsRowsToFirstShift()
+    public async Task GetDailySalesAsync_WhenAllHoursAreOffShiftButNotMidnight_UsesNoTimeFallbackNotFirstShift()
     {
         await using var db = CreateDbContext();
         SeedSuppliersAndArticles(db);
@@ -315,10 +321,16 @@ public sealed class DailySalesStatsServiceTests
             dataScope: "all",
             ct: CancellationToken.None);
 
-        // Both days should have data mapped to first shift
         Assert.Equal(2, result.DateRows.Count);
-        Assert.Equal(8, result.DateRows.Sum(r => r.FirstShiftTotalItems));
+        Assert.All(result.DateRows, row =>
+        {
+            Assert.Null(row.FirstShiftTotalItems);
+            Assert.Null(row.SecondShiftTotalItems);
+        });
+        Assert.Equal(8, result.DateRows.Sum(r => r.TotalItemsSold));
         Assert.Equal(0, result.Metadata.OffShiftItems);
+        Assert.Equal(8, result.Metadata.NoTimeFallbackItems);
+        Assert.Equal("no_time_fallback", result.Metadata.ShiftAssignmentStatus);
         Assert.Contains(result.Metadata.Warnings, x => x.Contains("Satnica prodaje nije dostupna", StringComparison.OrdinalIgnoreCase));
     }
 
@@ -531,6 +543,11 @@ public sealed class DailySalesStatsServiceTests
         Assert.Equal(-20, result.Metadata.UnknownSupplierItems);
         Assert.Equal(-3, result.Metadata.OffShiftItems);
         Assert.Equal(-300m, result.Metadata.OffShiftRevenue);
+        Assert.Equal("partial", result.Metadata.ShiftAssignmentStatus);
+        Assert.Equal(0, result.Metadata.NoTimeFallbackItems);
+        // Measured first-shift excludes the 02:00 return (-3); remaining signed lines stay in shift 1.
+        Assert.Equal(-23, row.FirstShiftTotalItems);
+        Assert.Equal(0, row.SecondShiftTotalItems);
         Assert.Equal(-50m, result.Metadata.NonStandardReceiptRevenue);
         Assert.Equal(-200m, result.Metadata.DebtReceiptRevenue);
         Assert.Contains(result.TopSuppliers, supplier => supplier.SupplierName == "Dobavljac B" && supplier.TotalQty == -10);

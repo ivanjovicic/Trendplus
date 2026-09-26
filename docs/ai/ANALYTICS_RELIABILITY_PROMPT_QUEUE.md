@@ -5,6 +5,8 @@ Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 Owner promotion/claim 2026-09-26: idle recovery confirmed `RQ445`/`RQ446` DONE on current `origin/main`, no active receipt-population owner and RQ456's accuracy-contract dependency satisfied. `RQ456` moved `WAITING -> READY -> IN_PROGRESS` in the Operations accuracy addendum; local lock `.ai/task-locks/RQ456-codex.lock.md`. `RQ457` remains WAITING behind the population owner.
 Owner completion 2026-09-26: `RQ446` was delivered directly to `main` in `5979ef65`; the adversarial Supplier/Shoe Type fixture, immutable expected-output manifest and exact-byte SHA-256 guard are synchronized. Focused manifest guard proof is `2/2`; runtime PostgreSQL/API execution remains RQ447. Run log: `.ai/runs/2026-09-26-RQ446-evidence.md`. Evidence state: synchronized.
+Owner promotion/claim 2026-09-26: idle recovery found Current READY `none`. Concurrently RQ446 closed on `main`; this workspace claimed P1 `RQ383` for Daily Sales shift provenance. `RQ382` section Status was mechanically repaired IN_PROGRESS→DONE. Local lock: `.ai/task-locks/RQ383-cursor.lock.md`.
+Owner completion 2026-09-26: `RQ383` was delivered for Daily Sales shift provenance. Measured shifts no longer absorb off-shift/no-time remaps; metadata exposes `ShiftAssignmentStatus`, `OffShift*` and `NoTimeFallback*`; frontend keeps shift shares unavailable under `no_time_fallback`. Run log: `.ai/runs/2026-09-26-RQ383-evidence.md`. Evidence state: synchronized; implementation `e5d22c01`; tip `ed1ef168`.
 Owner promotion/claim 2026-09-26: idle recovery verified `RQ458` DONE on current `origin/main` at `cc75ee66`, no active Supplier Decision Hub KPI/report-parity lock, branch or PR owner, and all RQ459 dependencies are satisfied. `RQ459` moved `WAITING -> IN_PROGRESS` in this workspace for KPI/chart/table/report population and period-delta parity; local lock `.ai/task-locks/RQ459-cursor.lock.md`.
 Owner completion 2026-09-26: `RQ459` was delivered to current `main` in implementation `c3e29a65`; `origin/main` contains that implementation and the synchronized closure evidence. Supplier Decision Hub summary now exposes authoritative revenue, margin contribution and top-five share aggregates; KPI, table shares, concentration chart and report/export use the same declared population, and full-price period delta is distinct from row markdown trend. Focused frontend proof is `41/41`; guardrails, TypeScript, build, governance validators and `git diff --check` pass. Backend focused test was not run because `dotnet` is unavailable in this VM. Run log: `.ai/runs/2026-09-26-RQ459-evidence.md`. Evidence state: synchronized.
 Owner completion 2026-09-26: `RQ445` was delivered directly to `main` in `7ce49b17`; the canonical `SST-ACCURACY-1.0` Supplier/Shoe Type contract is established and later certification prompts remain separately gated. Run log: `.ai/runs/2026-09-26-RQ445-evidence.md`. Evidence state: synchronized.
@@ -1640,11 +1642,11 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ438 | DONE | daily-sales-receipt-identity-residuals | Finish Daily Sales receipt-identity joins and prove the journal amount sign |
 | RQ439 | DONE | supplier-decision-hub-pr63-triage | Triage unmerged PR #63 Supplier Decision Hub findings against current main |
 | RQ440 | DONE | analytics-shared-spec-drift | Triage nine unowned failing shared analytics specs |
-| RQ441 | WAITING | daily-sales-frozen-supplier-attribution | Align Daily Sales supplier buckets with sale-time attribution used by canonical Supplier Sales |
+| RQ441 | DONE | daily-sales-frozen-supplier-attribution | Align Daily Sales supplier buckets with sale-time attribution used by canonical Supplier Sales |
 | RQ442 | DONE | operations-whole-day-half-open-ranges | Make Supplier, Shoe Type and Color whole-day filters half-open and boundary-safe |
 | RQ443 | DONE | supplier-overview-total-pop | Keep the Supplier overview total PoP trend on the full previous-period population |
 | RQ444 | DONE | supplier-overview-period-truth | Supplier overview period truth: drop the sticky legacy season and show the analyzed period |
-| RQ445 | WAITING | supplier-shoetype-accuracy-contract | Canonical accuracy contract for Supplier/Shoe Type metrics, populations, provenance and claim language |
+| RQ445 | DONE | supplier-shoetype-accuracy-contract | Canonical accuracy contract for Supplier/Shoe Type metrics, populations, provenance and claim language |
 | RQ446 | DONE | supplier-shoetype-adversarial-golden | Extend the shared fixture with adversarial Supplier/Shoe Type cases and immutable expected outputs |
 | RQ447 | WAITING | supplier-shoetype-live-oracle-reproducers | Execute the four live RQ412 oracle cases and close OP2-01/04/05/14 with runtime reproducers |
 | RQ448 | WAITING | supplier-shoetype-browser-reconciliation | Reconcile raw facts through API, browser-rendered KPI/table/detail and export |
@@ -21398,7 +21400,7 @@ Reproduction: return a valid Daily Sales payload with negative `totalItemsInRang
 
 ## RQ382 - Align Daily Sales data-scope diagnostics and visible denominators
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend-contract/frontend/tests
 Feature family: daily-sales-scope-quality-parity
@@ -21463,7 +21465,7 @@ Reproduction: select `dataScope=imported` for a period containing existing-only 
 
 ## RQ383 - Make Daily Sales off-shift and no-time fallback provenance explicit
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend-contract/frontend/tests
 Feature family: daily-sales-shift-provenance
@@ -21521,6 +21523,24 @@ Reproduction: load an imported dataset whose timestamps are all midnight or 02:0
 
 - `RQ290` owns generic partial-shift classification; this prompt supplies the backend provenance needed by that helper.
 - `RQ381` owns signed quantity/revenue treatment; do not reintroduce non-negative assumptions here.
+### Completion note
+
+- Date: 2026-09-26
+- Status: DONE
+- Completion: Daily Sales shift columns now only include measured 06:00–13:59 / 14:00–21:59 hours. Off-shift and no-time rows remain in daily totals with explicit `ShiftAssignmentStatus` (`measured`/`partial`/`no_time_fallback`/`unavailable`), `OffShiftItems`/`OffShiftRevenue` and `NoTimeFallbackItems`/`NoTimeFallbackRevenue`. Frontend shift shares, charts and export stay unavailable under no-time fallback and do not label remapped values as measured first shift.
+- Changed files: `Api/Models/DailySalesStatsDto.cs`, `Api/Services/DailySalesStatsService.cs`, `Api.Tests/DailySalesStatsServiceTests.cs`, Daily Sales frontend API/schema/helpers/page/tests, this queue, `.ai/runs/2026-09-26-RQ383-evidence.md`.
+- Contract/runtime behavior changed: no remapping into first-shift measured totals; nullable shift columns under no-time fallback; new metadata provenance fields.
+- Checks run: backend DailySalesStatsServiceTests 11/11; vitest dailyShiftSummary+premium 27/27; numericState 19/20 with one pre-existing RQ431 concentration assertion left unchanged.
+- Checks not run: full suites; live browser Access midnight fixture; remote CI.
+- Run log: `.ai/runs/2026-09-26-RQ383-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `e5d22c011f7783184614f0289f20ff67e2014f69` implementation; final closure `ed1ef1686b0b355dee23ec7ad36aacfc9a44bdd6`
+- Main verification: passed - `origin/main` contains `e5d22c01`; current `origin/main` is `ed1ef1686b0b355dee23ec7ad36aacfc9a44bdd6`
+- Missed: RQ431 concentration over-total decision
+- Follow-up: idle recovery for RQ384 or certification lanes after RQ446 clears
+- Residual risk: operators may see null shift columns where imports previously appeared as first shift
+- Prompt defect / scope repair: repaired stale RQ382 section Status IN_PROGRESS→DONE; summary RQ441/RQ445 DONE alignment
 
 ---
 

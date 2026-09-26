@@ -1,4 +1,4 @@
-import type { DailySalesNumeric, DailySalesRow } from "../services/dailySalesStatsApi";
+import type { DailySalesNumeric, DailySalesRow, DailySalesShiftAssignmentStatus } from "../services/dailySalesStatsApi";
 
 export type DailyShiftSummaryState = "complete" | "partial" | "missing" | "unavailable";
 
@@ -17,7 +17,20 @@ function isShiftValueAbsent(value: DailySalesNumeric): boolean {
   return finiteOrNull(value) === null;
 }
 
-export function classifyDailyShiftSummary(row: DailySalesRow): DailyShiftSummaryState {
+export function isTrustedShiftAssignment(
+  status: DailySalesShiftAssignmentStatus | null | undefined,
+): boolean {
+  return status === "measured" || status === "partial";
+}
+
+export function classifyDailyShiftSummary(
+  row: DailySalesRow,
+  assignmentStatus?: DailySalesShiftAssignmentStatus | null,
+): DailyShiftSummaryState {
+  if (assignmentStatus === "no_time_fallback" || assignmentStatus === "unavailable") {
+    return "unavailable";
+  }
+
   const total = finiteOrNull(row.totalItemsSold);
   const firstAbsent = isShiftValueAbsent(row.firstShiftTotalItems);
   const secondAbsent = isShiftValueAbsent(row.secondShiftTotalItems);
@@ -36,38 +49,51 @@ export function classifyDailyShiftSummary(row: DailySalesRow): DailyShiftSummary
     const first = finiteOrNull(row.firstShiftTotalItems);
     const second = finiteOrNull(row.secondShiftTotalItems);
     if (first === 0 && second === 0) return "missing";
-    return "complete";
+    return assignmentStatus === "partial" ? "partial" : "complete";
   }
 
   return "partial";
 }
 
-export function toDailyShiftEvidenceState(row: DailySalesRow): DailyShiftEvidenceState {
-  const state = classifyDailyShiftSummary(row);
+export function toDailyShiftEvidenceState(
+  row: DailySalesRow,
+  assignmentStatus?: DailySalesShiftAssignmentStatus | null,
+): DailyShiftEvidenceState {
+  const state = classifyDailyShiftSummary(row, assignmentStatus);
   if (state === "missing" || state === "unavailable") return "unavailable";
   if (state === "partial") return "partial";
   return "complete";
 }
 
-export function hasMissingShiftSummary(row: DailySalesRow): boolean {
-  return classifyDailyShiftSummary(row) === "missing";
+export function hasMissingShiftSummary(
+  row: DailySalesRow,
+  assignmentStatus?: DailySalesShiftAssignmentStatus | null,
+): boolean {
+  return classifyDailyShiftSummary(row, assignmentStatus) === "missing";
 }
 
-export function hasPartialShiftSummary(row: DailySalesRow): boolean {
-  return classifyDailyShiftSummary(row) === "partial";
+export function hasPartialShiftSummary(
+  row: DailySalesRow,
+  assignmentStatus?: DailySalesShiftAssignmentStatus | null,
+): boolean {
+  return classifyDailyShiftSummary(row, assignmentStatus) === "partial";
 }
 
-export function hasIncompleteShiftEvidence(row: DailySalesRow): boolean {
-  const state = classifyDailyShiftSummary(row);
-  return state === "partial" || state === "missing";
+export function hasIncompleteShiftEvidence(
+  row: DailySalesRow,
+  assignmentStatus?: DailySalesShiftAssignmentStatus | null,
+): boolean {
+  const state = classifyDailyShiftSummary(row, assignmentStatus);
+  return state === "partial" || state === "missing" || state === "unavailable";
 }
 
 export function resolveShiftDisplayValue(
   row: DailySalesRow,
   shift: "first" | "second",
   formatNumber: (value: DailySalesNumeric) => string,
+  assignmentStatus?: DailySalesShiftAssignmentStatus | null,
 ): string {
-  const state = classifyDailyShiftSummary(row);
+  const state = classifyDailyShiftSummary(row, assignmentStatus);
   const value = shift === "first" ? row.firstShiftTotalItems : row.secondShiftTotalItems;
 
   if (state === "missing" || state === "unavailable") return formatNumber(null);
@@ -79,8 +105,9 @@ export function resolveShiftExportValue(
   row: DailySalesRow,
   shift: "first" | "second",
   placeholder: string,
+  assignmentStatus?: DailySalesShiftAssignmentStatus | null,
 ): string | number | null {
-  const state = classifyDailyShiftSummary(row);
+  const state = classifyDailyShiftSummary(row, assignmentStatus);
   const value = shift === "first" ? row.firstShiftTotalItems : row.secondShiftTotalItems;
 
   if (state === "missing" || state === "unavailable") return placeholder;
@@ -91,8 +118,9 @@ export function resolveShiftExportValue(
 export function resolveShiftChartValue(
   row: DailySalesRow,
   shift: "first" | "second",
+  assignmentStatus?: DailySalesShiftAssignmentStatus | null,
 ): number | null {
-  const state = classifyDailyShiftSummary(row);
+  const state = classifyDailyShiftSummary(row, assignmentStatus);
   const value = shift === "first" ? row.firstShiftTotalItems : row.secondShiftTotalItems;
 
   if (state === "missing" || state === "unavailable") return null;
@@ -103,15 +131,16 @@ export function resolveShiftChartValue(
 export function sumShiftColumn(
   rows: DailySalesRow[],
   key: "firstShiftTotalItems" | "secondShiftTotalItems",
+  assignmentStatus?: DailySalesShiftAssignmentStatus | null,
 ): ShiftColumnAggregate {
   let total = 0;
   let hasValue = false;
   let isPartial = false;
 
   for (const row of rows) {
-    const state = classifyDailyShiftSummary(row);
+    const state = classifyDailyShiftSummary(row, assignmentStatus);
     if (state === "missing" || state === "unavailable") {
-      if (state === "missing") isPartial = true;
+      isPartial = true;
       continue;
     }
 
@@ -136,23 +165,35 @@ export function sumShiftColumn(
 export function summarizeShiftItems(
   rows: DailySalesRow[],
   shift: "first" | "second",
+  assignmentStatus?: DailySalesShiftAssignmentStatus | null,
 ): { value: number | null; state: DailyShiftEvidenceState } {
   if (rows.length === 0) return { value: null, state: "unavailable" };
+  if (assignmentStatus === "no_time_fallback" || assignmentStatus === "unavailable") {
+    return { value: null, state: "unavailable" };
+  }
 
   const key = shift === "first" ? "firstShiftTotalItems" : "secondShiftTotalItems";
-  const aggregate = sumShiftColumn(rows, key);
+  const aggregate = sumShiftColumn(rows, key, assignmentStatus);
 
   if (aggregate.sum == null) {
     return { value: null, state: "unavailable" };
   }
 
-  if (aggregate.isPartial || rows.some((row) => classifyDailyShiftSummary(row) !== "complete")) {
+  if (
+    aggregate.isPartial
+    || assignmentStatus === "partial"
+    || rows.some((row) => classifyDailyShiftSummary(row, assignmentStatus) !== "complete")
+  ) {
     return { value: aggregate.sum, state: "partial" };
   }
 
   return { value: aggregate.sum, state: "complete" };
 }
 
-export function periodHasIncompleteShiftEvidence(rows: DailySalesRow[]): boolean {
-  return rows.some((row) => hasIncompleteShiftEvidence(row));
+export function periodHasIncompleteShiftEvidence(
+  rows: DailySalesRow[],
+  assignmentStatus?: DailySalesShiftAssignmentStatus | null,
+): boolean {
+  if (assignmentStatus === "no_time_fallback" || assignmentStatus === "unavailable") return true;
+  return rows.some((row) => hasIncompleteShiftEvidence(row, assignmentStatus));
 }

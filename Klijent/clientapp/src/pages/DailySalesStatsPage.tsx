@@ -30,6 +30,7 @@ import {
   type DailySalesRow,
   type DailySalesTableResponse,
   type DailySalesNumeric,
+  type DailySalesShiftAssignmentStatus,
 } from "../services/dailySalesStatsApi";
 import type { StoreOption } from "../types/analytics";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
@@ -97,6 +98,8 @@ type PeriodSummary = {
   offShiftItems: number | null;
   offShiftRevenue: number | null;
   offShiftSharePct: number | null;
+  noTimeFallbackItems: number | null;
+  shiftAssignmentStatus: DailySalesShiftAssignmentStatus | null;
   unknownSupplierPct: number | null;
   uniqueSuppliersInRange: number | null;
 };
@@ -364,12 +367,20 @@ function sum(values: DailySalesNumeric[]): number | null {
   return normalized.reduce((acc, value) => acc + value, 0);
 }
 
-function shiftExportValue(row: DailySalesRow, shift: "first" | "second"): string | number | null {
-  return resolveShiftExportValue(row, shift, SHIFT_PLACEHOLDER);
+function shiftExportValue(
+  row: DailySalesRow,
+  shift: "first" | "second",
+  assignmentStatus?: DailySalesShiftAssignmentStatus | null,
+): string | number | null {
+  return resolveShiftExportValue(row, shift, SHIFT_PLACEHOLDER, assignmentStatus);
 }
 
-function shiftDisplayValue(row: DailySalesRow, shift: "first" | "second"): string {
-  return resolveShiftDisplayValue(row, shift, fmtNumber);
+function shiftDisplayValue(
+  row: DailySalesRow,
+  shift: "first" | "second",
+  assignmentStatus?: DailySalesShiftAssignmentStatus | null,
+): string {
+  return resolveShiftDisplayValue(row, shift, fmtNumber, assignmentStatus);
 }
 
 function shiftSummaryText(value: number | null, state: DailyShiftEvidenceState): string {
@@ -628,17 +639,19 @@ export function isDailySalesNoDataInPeriod(response: DailySalesTableResponse | n
 
 export function summarizePeriod(response: DailySalesTableResponse | null): PeriodSummary {
   const rows = response?.dateRows ?? [];
+  const assignmentStatus = response?.metadata.shiftAssignmentStatus ?? null;
   const totalRevenue = sum(rows.map((row) => row.totalRevenue));
   const totalVisibleItems = sum(rows.map((row) => row.totalItemsSold));
   const totalItemsInRange = finiteOrNull(response?.metadata.totalItemsInRange) ?? totalVisibleItems;
   const totalDays = finiteOrNull(response?.metadata.totalDays) ?? (rows.length > 0 ? rows.length : null);
-  const firstShift = summarizeShiftItems(rows, "first");
-  const secondShift = summarizeShiftItems(rows, "second");
+  const firstShift = summarizeShiftItems(rows, "first", assignmentStatus);
+  const secondShift = summarizeShiftItems(rows, "second", assignmentStatus);
   const shiftAccountedItems = firstShift.state === "complete" && secondShift.state === "complete"
     ? sum([firstShift.value, secondShift.value])
     : null;
   const offShiftItems = finiteOrNull(response?.metadata.offShiftItems);
   const offShiftRevenue = finiteOrNull(response?.metadata.offShiftRevenue);
+  const noTimeFallbackItems = finiteOrNull(response?.metadata.noTimeFallbackItems);
   const incompleteDailyAggregateDays = rows.filter((row) => (
     finiteOrNull(row.totalRevenue) == null || finiteOrNull(row.totalItemsSold) == null
   )).length;
@@ -661,6 +674,8 @@ export function summarizePeriod(response: DailySalesTableResponse | null): Perio
     offShiftItems,
     offShiftRevenue,
     offShiftSharePct: percent(safeDivide(offShiftItems, totalItemsInRange)),
+    noTimeFallbackItems,
+    shiftAssignmentStatus: assignmentStatus,
     unknownSupplierPct: finiteOrNull(response?.metadata.unknownSupplierPct),
     uniqueSuppliersInRange: finiteOrNull(response?.metadata.uniqueSuppliersInRange),
   };
@@ -865,14 +880,16 @@ export default function DailySalesStatsPage() {
     [chronologicalChartRows]
   );
 
+  const shiftAssignmentStatus = data?.metadata.shiftAssignmentStatus ?? null;
+
   const missingShiftCount = useMemo(
-    () => chronologicalChartRows.filter((row) => hasMissingShiftSummary(row)).length,
-    [chronologicalChartRows]
+    () => chronologicalChartRows.filter((row) => hasMissingShiftSummary(row, shiftAssignmentStatus)).length,
+    [chronologicalChartRows, shiftAssignmentStatus]
   );
 
   const partialShiftCount = useMemo(
-    () => chronologicalChartRows.filter((row) => hasPartialShiftSummary(row)).length,
-    [chronologicalChartRows]
+    () => chronologicalChartRows.filter((row) => hasPartialShiftSummary(row, shiftAssignmentStatus)).length,
+    [chronologicalChartRows, shiftAssignmentStatus]
   );
 
   const incompleteShiftCount = missingShiftCount + partialShiftCount;
@@ -944,10 +961,11 @@ export default function DailySalesStatsPage() {
   }, [activeFilters.storeId, data, error, loading, noDataInPeriod, tableRows.length]);
 
   const toolbarColumns = useMemo<AnalyticsTableColumn<DailySalesRow>[]>(() => {
+    const assignmentStatus = data?.metadata.shiftAssignmentStatus ?? null;
     const baseColumns: AnalyticsTableColumn<DailySalesRow>[] = [
       { key: "date", header: "Datum", dataType: "date", getValue: (row) => row.date },
-      { key: "firstShiftTotalItems", header: "Prva smena", dataType: "number", getValue: (row) => shiftExportValue(row, "first") },
-      { key: "secondShiftTotalItems", header: "Druga smena", dataType: "number", getValue: (row) => shiftExportValue(row, "second") },
+      { key: "firstShiftTotalItems", header: "Prva smena", dataType: "number", getValue: (row) => shiftExportValue(row, "first", assignmentStatus) },
+      { key: "secondShiftTotalItems", header: "Druga smena", dataType: "number", getValue: (row) => shiftExportValue(row, "second", assignmentStatus) },
       { key: "totalRevenue", header: "Ukupan prihod", dataType: "currency" },
     ];
 
@@ -968,7 +986,7 @@ export default function DailySalesStatsPage() {
       { key: "othersCount", header: "Ostali (kom.)", dataType: "number" },
       { key: "totalItemsSold", header: "Ukupno proizvoda", dataType: "number" },
     ];
-  }, [supplierHeaders, tableRows.length]);
+  }, [data?.metadata.shiftAssignmentStatus, supplierHeaders, tableRows.length]);
 
   const toolbarFilters = useMemo<AnalyticsNamedValue[]>(() => [
     { key: "fromDate", label: "Od", value: activeFilters.fromDate },
@@ -1019,12 +1037,12 @@ export default function DailySalesStatsPage() {
       date: row.date,
       label: fmtDateShort(row.date),
       fullLabel: fmtDate(row.date),
-      firstShiftTotalItems: resolveShiftChartValue(row, "first"),
-      secondShiftTotalItems: resolveShiftChartValue(row, "second"),
+      firstShiftTotalItems: resolveShiftChartValue(row, "first", shiftAssignmentStatus),
+      secondShiftTotalItems: resolveShiftChartValue(row, "second", shiftAssignmentStatus),
       totalItemsSold: finiteOrNull(row.totalItemsSold),
-      shiftEvidenceState: toDailyShiftEvidenceState(row),
+      shiftEvidenceState: toDailyShiftEvidenceState(row, shiftAssignmentStatus),
     }))
-  ), [chronologicalChartRows]);
+  ), [chronologicalChartRows, shiftAssignmentStatus]);
 
   const supplierConcentration = useMemo(
     () => buildSupplierConcentration(data, currentSummary.totalRevenue),
@@ -1057,9 +1075,9 @@ export default function DailySalesStatsPage() {
 
     return WEEKDAY_ORDER.map(({ key, label }) => {
       const bucket = buckets.get(key) ?? { revenue: 0, items: 0, rows: [], dayCount: 0 };
-      const firstShiftAggregate = sumShiftColumn(bucket.rows, "firstShiftTotalItems");
-      const secondShiftAggregate = sumShiftColumn(bucket.rows, "secondShiftTotalItems");
-      const incompleteShiftEvidence = periodHasIncompleteShiftEvidence(bucket.rows)
+      const firstShiftAggregate = sumShiftColumn(bucket.rows, "firstShiftTotalItems", shiftAssignmentStatus);
+      const secondShiftAggregate = sumShiftColumn(bucket.rows, "secondShiftTotalItems", shiftAssignmentStatus);
+      const incompleteShiftEvidence = periodHasIncompleteShiftEvidence(bucket.rows, shiftAssignmentStatus)
         || firstShiftAggregate.isPartial
         || secondShiftAggregate.isPartial;
       const shiftItems = firstShiftAggregate.sum != null && secondShiftAggregate.sum != null
@@ -1076,7 +1094,7 @@ export default function DailySalesStatsPage() {
         dayCount: bucket.dayCount,
       };
     });
-  }, [chronologicalChartRows]);
+  }, [chronologicalChartRows, shiftAssignmentStatus]);
 
   const comparisonCards = useMemo<ComparisonCard[]>(() => [
     {
@@ -1183,6 +1201,8 @@ export default function DailySalesStatsPage() {
     const unknownSupplierPct = finiteOrNull(metadata?.unknownSupplierPct);
     const offShiftItems = finiteOrNull(metadata?.offShiftItems);
     const offShiftRevenue = finiteOrNull(metadata?.offShiftRevenue);
+    const noTimeFallbackItems = finiteOrNull(metadata?.noTimeFallbackItems);
+    const shiftAssignmentStatus = metadata?.shiftAssignmentStatus ?? null;
     const duplicateReceipts = finiteOrNull(metadata?.duplicateReceiptGroupCount);
     const receiptReconciliationUnavailable = metadata?.receiptReconciliation?.status === "unavailable";
     const receiptMismatch = receiptReconciliationUnavailable
@@ -1212,7 +1232,18 @@ export default function DailySalesStatsPage() {
       label: "Van smene (RSD)",
       value: fmtRsdShort(offShiftRevenue),
       tone: offShiftRevenue == null ? "info" : offShiftRevenue !== 0 ? "warning" : "good",
-      description: "Prihod evidentiran van operativnih smena.",
+      description: "Prihod evidentiran van operativnih smena; nije uključen u merene smene.",
+    },
+    {
+      key: "noTimeFallback",
+      label: "Bez satnice (kom.)",
+      value: fmtNumber(noTimeFallbackItems),
+      tone: shiftAssignmentStatus === "no_time_fallback" || (noTimeFallbackItems != null && noTimeFallbackItems !== 0)
+        ? "warning"
+        : noTimeFallbackItems == null
+          ? "info"
+          : "good",
+      description: "Komadi bez pouzdane satnice; dnevni total ostaje, smenski udeo nije meren.",
     },
     {
       key: "mismatch",
@@ -1300,6 +1331,8 @@ export default function DailySalesStatsPage() {
     data?.metadata.nonStandardReceiptRevenue,
     data?.metadata.offShiftItems,
     data?.metadata.offShiftRevenue,
+    data?.metadata.noTimeFallbackItems,
+    data?.metadata.shiftAssignmentStatus,
     data?.metadata.receiptAmountMismatchCount,
     data?.metadata.receiptReconciliation?.status,
     data?.metadata.uniqueSuppliersInRange,
@@ -1398,7 +1431,15 @@ export default function DailySalesStatsPage() {
     if (offShiftItems != null && offShiftItems !== 0) {
       insights.push({
         title: "Ima prodaje van smene",
-        detail: `${fmtNumber(offShiftItems)} komada i ${fmtRsdShort(data?.metadata.offShiftRevenue)} evidentirano je van standardne satnice.`,
+        detail: `${fmtNumber(offShiftItems)} komada i ${fmtRsdShort(data?.metadata.offShiftRevenue)} evidentirano je van standardne satnice i nije uključeno u merene smene.`,
+        tone: "warning",
+      });
+    }
+
+    if (data?.metadata.shiftAssignmentStatus === "no_time_fallback") {
+      insights.push({
+        title: "Smenski udeo nije meren",
+        detail: `Satnica nije pouzdana za razdvajanje smena (${fmtNumber(data.metadata.noTimeFallbackItems)} kom). Dnevni total ostaje, a udeo prve/druge smene nije prikazan kao izmeren.`,
         tone: "warning",
       });
     }
@@ -1422,6 +1463,8 @@ export default function DailySalesStatsPage() {
     data?.metadata.nonStandardReceiptRevenue,
     data?.metadata.offShiftItems,
     data?.metadata.offShiftRevenue,
+    data?.metadata.noTimeFallbackItems,
+    data?.metadata.shiftAssignmentStatus,
     data?.metadata.receiptAmountMismatchCount,
     data?.metadata.unknownSupplierPct,
     incompleteDailyAggregateCount,
@@ -1900,8 +1943,8 @@ export default function DailySalesStatsPage() {
                       return (
                         <tr key={row.date} className={mismatch ? "row-mismatch" : ""}>
                           <td>{fmtDate(row.date)}</td>
-                          <td className="analytics-data-table__numeric">{shiftDisplayValue(row, "first")}</td>
-                          <td className="analytics-data-table__numeric">{shiftDisplayValue(row, "second")}</td>
+                          <td className="analytics-data-table__numeric">{shiftDisplayValue(row, "first", shiftAssignmentStatus)}</td>
+                          <td className="analytics-data-table__numeric">{shiftDisplayValue(row, "second", shiftAssignmentStatus)}</td>
                           <td className="analytics-data-table__numeric">{fmtRsd(row.totalRevenue, 2)}</td>
                           {supplierHeaders.map((_, index) => (
                             <td key={`${row.date}-supplier-${index}`} className="analytics-data-table__numeric">
