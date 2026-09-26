@@ -3954,7 +3954,7 @@ public sealed record SummaryResponse(
     ScorecardTrustMetadata? TrustMetadata = null,
     AnalyticsResponseMetaDto? Meta = null)
 {
-    public decimal TotalRevenue { get; init; }
+    public decimal? TotalRevenue { get; init; }
     public decimal? MarginContribution { get; init; }
     public decimal? TopFiveRevenueShare { get; init; }
 }
