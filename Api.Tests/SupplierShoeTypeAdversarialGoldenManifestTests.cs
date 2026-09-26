@@ -25,7 +25,7 @@ public sealed class SupplierShoeTypeAdversarialGoldenManifestTests
             "Api.Tests/Fixtures/operations-analytics-all-routes-seed.sql",
             manifest.RootElement.GetProperty("fixture").GetString());
 
-        var hashPath = manifestPath + ".sha256";
+        var hashPath = Path.ChangeExtension(manifestPath, ".sha256");
         var declaredHash = File.ReadAllText(hashPath).Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
         var actualHash = Convert.ToHexString(SHA256.HashData(manifestBytes)).ToLowerInvariant();
         Assert.Equal(actualHash, declaredHash);

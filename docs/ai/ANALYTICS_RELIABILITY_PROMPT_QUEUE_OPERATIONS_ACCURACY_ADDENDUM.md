@@ -2,13 +2,15 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ446
+Current READY prompt: none
 Main RQ current READY prompt: none
 
 Owner promotion/claim 2026-09-26: idle recovery confirmed `RQ445` is the first dependency-complete P0 certification prompt, with no competing Supplier/Shoe Type accuracy-contract owner or active lock. `RQ445` moved `WAITING -> READY -> IN_PROGRESS` in this workspace; local lock `.ai/task-locks/RQ445-codex.lock.md`.
 
 Owner completion 2026-09-26: `RQ445` was delivered directly to `main`. The canonical `SST-ACCURACY-1.0` contract now binds Supplier/Shoe Type source population, period/store/scope, sale-time identity, signed metrics, denominators, negative/unknown behavior, PoP baselines, cost coverage, surface parity, trust states and bounded claim language. RQ456/RQ457/RQ431 retain their implementation/decision ownership. Run log: `.ai/runs/2026-09-26-RQ445-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-26: idle recovery confirmed `RQ445` DONE on current `origin/main`, no active Supplier/Shoe Type adversarial fixture owner or conflicting RQ407/RQ412 fixture lock, and RQ446's dependency is satisfied. `RQ446` moved `WAITING -> READY -> IN_PROGRESS` in this workspace; local lock `.ai/task-locks/RQ446-cursor.lock.md`.
+
+Owner completion 2026-09-26: RQ446 added the adversarial appendix to the shared RQ407/RQ412 SQL fixture, an immutable JSON expected-output corpus with SHA-256 sidecar, and deterministic fixture/manifest guard tests. The appendix covers fractional boundaries, signed returns, mixed-case/whitespace `DUG`/`KOREKCIJA`, store/origin scope, known labels versus null identity, previous-only Shoe Type, master mutation, duplicate replay, cost coverage, non-positive margin, top-N unknown and cache evidence states. Run log: `.ai/runs/2026-09-26-RQ446-evidence.md`. Evidence state: pending until PR #76 is delivered to `main`; runtime PostgreSQL/API execution remains RQ447.
 
 Certification-layer review 2026-09-25: current main confirms the existing Supplier/Shoe Type semantic owners and bounded integrity runtime, but not a defensible certification claim across contract, adversarial fixture, live execution, browser/render/export, durable evidence, import-trigger freshness, UI evidence, certificate, CI, production or customer acceptance. Added RQ445-RQ455 below as WAITING, collision-safe follow-ups. Semantic closure review later the same day added RQ456-RQ457 for the two remaining source/population and Shoe Type identity/comparison contracts; existing RQ447/RQ449 IDs retain their certification meanings and are not repurposed. These prompts do not reopen RQ407, RQ411-RQ413, RQ373-RQ380 or RQ375-RQ377; they consume their outputs and record the remaining evidence gaps.
 
@@ -121,7 +123,7 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 | RQ425 | DONE | P1 | supplier-footwear-scope-default | Prevent standalone Supplier Footwear from silently falling back to all data |
 | RQ426 | DONE | P1 | inventory-forecast-risk-aggregation | Prove and correct Inventory forecast risk aggregation across sizes and stores |
 | RQ445 | DONE | P0 | supplier-shoetype-accuracy-contract | Canonical accuracy contract for Supplier/Shoe Type metrics, populations, provenance and claim language |
-| RQ446 | IN_PROGRESS | P0 | supplier-shoetype-adversarial-golden | Extend the shared fixture with adversarial Supplier/Shoe Type cases and immutable expected outputs |
+| RQ446 | DONE | P0 | supplier-shoetype-adversarial-golden | Extend the shared fixture with adversarial Supplier/Shoe Type cases and immutable expected outputs |
 | RQ447 | WAITING | P0 | supplier-shoetype-live-oracle-reproducers | Execute the four live RQ412 oracle cases and close OP2-01/04/05/14 with runtime reproducers |
 | RQ448 | WAITING | P0 | supplier-shoetype-browser-reconciliation | Reconcile raw facts through API, browser-rendered KPI/table/detail and export |
 | RQ449 | WAITING | P1 | operations-integrity-evidence-history | Persist immutable integrity evidence/history beyond the process snapshot |
@@ -1495,13 +1497,14 @@ Do not redefine the RQ411 attribution source, RQ412 oracle SQL or RQ442 date imp
 
 ## RQ446 - Build the adversarial Supplier/Shoe Type golden dataset
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: RQ445 contract version is approved
 Priority: P0
 Type: fixture/tests/docs
 Feature family: supplier-shoetype-adversarial-golden
 Parallel-safe: no with RQ407/RQ412 fixture files
 Owner: Analytics Reliability / Test Infrastructure
+Local lock: removed after DONE
 Commit suggestion: test(analytics): add adversarial Supplier and Shoe Type golden cases
 
 ### Problem
@@ -1527,6 +1530,23 @@ Extend the existing RQ407 fixture and RQ412 manifest; do not create a second see
 ### Dependencies
 
 - RQ445, RQ407, RQ411, RQ412 and RQ442. Coordinate file ownership before implementation.
+
+### Completion note
+
+- Date: 2026-09-26
+- Status: DONE
+- Completion: Extended the shared RQ407/RQ412 fixture with an out-of-window adversarial corpus and added `SUPPLIER_SHOETYPE_ADVERSARIAL_GOLDEN_MANIFEST_2026-09-26.json` plus its SHA-256 sidecar. Added deterministic tests for manifest integrity, required case coverage and fixture markers; no production aggregation helper was used as an oracle.
+- Changed files: `Api.Tests/Fixtures/operations-analytics-all-routes-seed.sql`; `Api.Tests/SupplierShoeTypeAdversarialGoldenManifestTests.cs`; `docs/qa/SUPPLIER_SHOETYPE_INDEPENDENT_ORACLE_MANIFEST_2026-09-25.md`; `docs/qa/SUPPLIER_SHOETYPE_ADVERSARIAL_GOLDEN_MANIFEST_2026-09-26.json`; `docs/qa/SUPPLIER_SHOETYPE_ADVERSARIAL_GOLDEN_MANIFEST_2026-09-26.sha256`.
+- Checks run: manifest JSON/hash/arithmetic validation; `git diff --check`; `node scripts/check-agent-instructions.mjs --self-test`; `node scripts/check-agent-instructions.mjs`; `node scripts/check-prompt-queues.mjs --self-test`; `node scripts/check-prompt-queues.mjs`; `node scripts/check-planning-architecture.mjs --self-test`; `node scripts/check-planning-architecture.mjs`.
+- Checks not run: focused `dotnet test` — unavailable because `dotnet` is not installed in this VM; live PostgreSQL/API/browser/export execution remains RQ447/RQ448.
+- Run log: `.ai/runs/2026-09-26-RQ446-evidence.md`
+- Evidence state: pending
+- Delivery mode: draft PR transport
+- Main commit SHA: pending
+- Main verification: pending — PR #76 is open against `main`; current `origin/main` has not been updated in this workspace.
+- Missed: RQ456/RQ457 receipt/identity runtime semantics, RQ447 live execution and later certification layers remain open.
+- Follow-up: promote RQ447 only after RQ456, RQ457 and a PostgreSQL integration host are available.
+- Residual risk: the immutable fixture expectations are reviewable and deterministic, but the API has not yet been executed against every adversarial case.
 
 ---
 

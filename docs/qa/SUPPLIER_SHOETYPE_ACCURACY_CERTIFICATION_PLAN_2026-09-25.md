@@ -20,7 +20,7 @@ Preferred customer wording:
 |---|---|---|
 | Formal accuracy contract | The canonical `SST-ACCURACY-1.0` contract now binds API, UI, export, trust, cost qualification and claim language. | Established — RQ445; runtime/certification proof remains open |
 | Live RQ412 oracle execution | Four PostgreSQL oracle cases are implemented but the evidence says they were not run in the recorded environment. | Missing proof — RQ447 |
-| Adversarial golden dataset | RQ407 has a strong shared seed and RQ412 has expected totals, but the full boundary/duplicate/mutation/cost adversarial corpus is not an immutable certification pack. | Missing — RQ446 |
+| Adversarial golden dataset | RQ446 now extends the shared RQ407/RQ412 seed with an immutable JSON corpus, SHA-256 sidecar and deterministic manifest/fixture guards for boundary, duplicate, mutation and cost cases. | Established fixture layer — live execution remains RQ447 |
 | OP2-01/04/05/14 reproducers | Second-pass classification keeps these as potential and records no failing runtime assertion. | Missing runtime closure — RQ447; do not reopen statically |
 | Backend to browser to render/export reconciliation | RQ407 proves live PostgreSQL HTTP routes and frontend focused tests; its evidence explicitly says deployed browser request-to-render capture was not run. | Missing — RQ448 |
 | Persistent integrity evidence/history | RQ413 exposes a process/runtime snapshot and evidence id; it does not persist an append-only run history across restart. | Missing — RQ449 |
@@ -62,7 +62,7 @@ These decisions are certification prerequisites. RQ456 owns the cross-surface re
 | 1 | RQ445 | DONE | canonical contract and bounded claim language |
 | 2 | RQ456 | WAITING | one DUG/KOREKCIJA retail-sales population across Daily/Supplier/Shoe/Color/oracle |
 | 3 | RQ457 | WAITING | Shoe Type ID/null identity, previous-only rows and margin semantics |
-| 4 | RQ446 | WAITING | adversarial fixture and immutable expected manifest |
+| 4 | RQ446 | DONE | adversarial fixture and immutable expected manifest |
 | 5 | RQ447 | WAITING | live oracle execution and OP2 runtime closure after semantic owners |
 | 6 | RQ448 | WAITING | DB/API/browser/render/detail/export reconciliation artifact |
 | 7 | RQ449 | WAITING | durable append-only integrity evidence history |
