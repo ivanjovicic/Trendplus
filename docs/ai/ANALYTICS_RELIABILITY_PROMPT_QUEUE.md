@@ -2,7 +2,8 @@
 
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ384
+Current READY prompt: none
+Owner completion 2026-09-26: `RQ384` was delivered for Daily Sales safe/traceable errors. Endpoint failures no longer return `ex.Message`; Problem details include `errorCode`/`correlationId`, and the frontend allowlists safe Serbian messages while surfacing correlation IDs. Run log: `.ai/runs/2026-09-26-RQ384-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-26: idle recovery found Current READY `none` after RQ456/RQ457 closures on `origin/main`. Verified RQ382/RQ383 DONE, no active Daily Sales endpoint/frontend error-contract lock/branch/PR owner, and RQ384 is dependency-complete. `RQ384` moved `WAITING -> READY -> IN_PROGRESS` in this workspace for Daily Sales safe/traceable error responses; local lock `.ai/task-locks/RQ384-cursor.lock.md`.
 Owner promotion/claim 2026-09-26: idle recovery confirmed `RQ445`/`RQ446` DONE on current `origin/main`, no active receipt-population owner and RQ456's accuracy-contract dependency satisfied. `RQ456` moved `WAITING -> READY -> IN_PROGRESS` in the Operations accuracy addendum; local lock `.ai/task-locks/RQ456-codex.lock.md`. `RQ457` remains WAITING behind the population owner.
 Owner completion 2026-09-26: `RQ456` was delivered to `main` in `74a12194c25bf140cd7438bfe97a2b83a857c7fc`; `origin/main` contains it through merge `54a465254d53a2e71474877d1828a1c9f97f4195`. Focused receipt-population proof is 24/24. Run log: `.ai/runs/2026-09-26-RQ456-evidence.md`. Evidence state: synchronized.
@@ -21550,7 +21551,7 @@ Reproduction: load an imported dataset whose timestamps are all midnight or 02:0
 
 ## RQ384 - Make Daily Sales endpoint errors safe and traceable
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend-contract/frontend/tests
 Feature family: daily-sales-safe-error-contract

@@ -417,8 +417,10 @@ describe("DailySalesStatsPage premium controls", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(/Dnevna prodaja trenutno nije dostupna/i);
-    expect(screen.getByRole("alert")).toHaveTextContent("backend down");
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/Dnevna prodaja trenutno nije dostupna/i);
+    expect(alert).toHaveTextContent(/Proverite kvalitet podataka i pokušajte ponovo/i);
+    expect(alert).not.toHaveTextContent("backend down");
     expect(screen.queryByText("Ukupan prihod")).not.toBeInTheDocument();
     expect(screen.queryByTestId("daily-sales-stats-data-table")).not.toBeInTheDocument();
   });
@@ -770,8 +772,10 @@ describe("DailySalesStatsPage premium controls", () => {
     await screen.findByText("Poređenje sa prethodnim periodom");
 
     const warning = await screen.findByTestId("previous-comparison-warning");
-    expect(warning).toHaveTextContent("Previous period timeout");
-    expect(warning).toHaveTextContent("greške zahteva");
+    expect(warning).toHaveTextContent(/Uporedni prethodni period nije učitan/i);
+    expect(warning).toHaveTextContent(/PoP kartice su privremeno nedostupne/i);
+    expect(warning).not.toHaveTextContent(/Previous period timeout/i);
+    expect(warning).toHaveTextContent(/greške zahteva/i);
     expect(screen.getAllByText("Nedostupno").length).toBeGreaterThanOrEqual(4);
     expect(screen.queryByText("Nova baza")).not.toBeInTheDocument();
   });

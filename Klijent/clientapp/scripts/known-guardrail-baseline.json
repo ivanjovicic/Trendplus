@@ -95,7 +95,7 @@
     {
       "file": "src/pages/DailySalesStatsPage.tsx",
       "rule": "refetch_setData_null",
-      "line": 815,
+      "line": 866,
       "reason": "Existing daily-sales refetch transition predates the shared reliable-query lifecycle."
     },
     {
