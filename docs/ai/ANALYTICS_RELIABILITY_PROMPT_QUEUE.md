@@ -21614,6 +21614,25 @@ Reproduction: force a provider/serialization failure or return a malformed Daily
 - Reuse the shared analytics error/meta conventions; do not create a Daily Sales-only error format.
 - `RQ325` owns residual English/technical user-facing copy, including `Daily sales analytics` and `N/A`; this prompt owns failure semantics and traceability.
 
+### Completion note
+
+- Date: 2026-09-26
+- Status: DONE
+- Completion: Daily Sales endpoint failures return safe Problem details with `errorCode`/`correlationId` and never expose raw `ex.Message`. Frontend allowlists safe Serbian messages, preserves correlation IDs for HTTP and schema-invalid payloads, and does not render KPI zeros on failure.
+- Changed files: `Api/Endpoints/DailySalesStatsEndpoints.cs`, `Api.Tests/DailySalesSafeErrorTests.cs`, Daily Sales page/tests, guardrail baseline line drift, this queue, `.ai/runs/2026-09-26-RQ384-evidence.md`.
+- Contract/runtime behavior changed: cancel/timeout/database/unknown failures use shared Problem extension shape; frontend error state is structured `{message,errorCode,correlationId}`.
+- Checks run: DailySalesSafeErrorTests 2/2; premium Daily Sales 22/22; numericState RQ384 cases pass (1 pre-existing RQ431 concentration assertion red); analytics guardrails/typecheck; `git diff --check`.
+- Checks not run: full suites; live forced provider exception; remote CI.
+- Run log: `.ai/runs/2026-09-26-RQ384-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: branch/PR transport then main merge
+- Main commit SHA: `cd5a4da2` implementation; tip closure pending evidence sync
+- Main verification: passed - `origin/main` contains `cd5a4da2` through tip at delivery time
+- Missed: RQ431 concentration over-total decision
+- Follow-up: idle recovery for next READY/promotable prompt
+- Residual risk: ProblemDetails extension serialization host shape; CI not inspected
+- Prompt defect / scope repair: completion-note write raced a parallel commit and was restored in this evidence sync
+
 ---
 
 ## RQ385 - Align Pre/Post request scope, cache lineage and visible provenance
