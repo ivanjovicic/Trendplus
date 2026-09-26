@@ -23735,8 +23735,8 @@ A focused Daily Sales spec expects a `supplier-concentration-warning` when the t
 - Run log: `.ai/runs/2026-09-26-RQ431-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: branch/PR transport then main merge
-- Main commit SHA: pending-until-merge
-- Main verification: pending-until-merge
+- Main commit SHA: `794a5e85`
+- Main verification: passed - `origin/main` contains `794a5e85`
 - Missed: English `N/A` share placeholders remain RQ325
 - Follow-up: idle recovery; RQ447 still needs PostgreSQL
 - Residual risk: CI not inspected
