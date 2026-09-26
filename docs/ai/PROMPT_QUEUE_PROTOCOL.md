@@ -282,6 +282,17 @@ A completed or partially completed prompt records at minimum:
 
 Production/live smoke may be marked complete only from real current deployment evidence.
 
+### Remote CI classification after main delivery
+
+Main-first delivery does not require waiting for GitHub Actions, but an already-triggered relevant run must not be ignored when it is available before the final evidence is written.
+
+- After the target commit is on `main`, inspect the relevant current-main workflow run if one was triggered for the changed paths and is discoverable.
+- Record the run id/SHA and truthful state as `queued`, `in_progress`, `green` or `red`. Do not use `not inspected` merely because remote CI is not a named acceptance gate.
+- A queued or in-progress run does not block `DONE` when the prompt's focused acceptance is otherwise satisfied; do not poll indefinitely or delay main delivery just to wait for CI.
+- If the relevant current-main run is already red, inspect the failing job/step/log far enough to classify it as in-scope regression, pre-existing failure, unrelated concurrent change, or environment/tooling failure.
+- A proven in-scope regression must be fixed (or the prompt must remain non-DONE) before final evidence. A pre-existing/unrelated red run may remain residual risk only with the concrete run id and classification recorded.
+- Never infer remote validation from an older SHA when a newer relevant current-main run is the one exercising the delivered code.
+
 All new or actively refreshed completion notes use the current evidence contract:
 
 - `Run log:` is mandatory and points to durable `.ai/runs/...` evidence or `fallback <reason>`;
