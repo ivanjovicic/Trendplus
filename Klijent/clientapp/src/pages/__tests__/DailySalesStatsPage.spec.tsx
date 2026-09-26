@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { rest } from "../../mocks/mswCompat";
 import { describe, it, expect, beforeEach, vi } from "vitest";
@@ -103,5 +103,38 @@ describe("DailySalesStatsPage (integration)", () => {
 
     const controlBar = screen.getByTestId("analytics-control-bar");
     expect(within(controlBar).getByLabelText("Period")).toBeInTheDocument();
+  });
+
+  it("drops an unverified URL store filter when store discovery fails", async () => {
+    const requestedStoreIds: Array<string | null> = [];
+
+    server.use(
+      rest.get("/api/analytics/cached/filters/stores", (_req, res, ctx) =>
+        res(ctx.status(503), ctx.json({ message: "stores unavailable" }))
+      ),
+      rest.get("/api/analytics/daily-sales", (req, res, ctx) => {
+        requestedStoreIds.push(req.url.searchParams.get("storeId"));
+        return res(ctx.status(200), ctx.json(dailySalesResponse));
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/daily-sales?storeId=2"]}>
+        <Routes>
+          <Route
+            path="/analytics/daily-sales"
+            element={<DailySalesStatsPage />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Filter prodavnice nije dostupan.");
+
+    await waitFor(() => {
+      expect(requestedStoreIds.at(-1)).toBeNull();
+    });
+
+    expect(screen.getByDisplayValue("Svi objekti")).toBeDisabled();
   });
 });

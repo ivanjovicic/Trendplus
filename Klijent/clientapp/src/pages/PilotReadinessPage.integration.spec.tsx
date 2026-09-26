@@ -480,7 +480,7 @@ describe("PilotReadinessPage", () => {
     renderPage();
 
     expect(await screen.findByRole("heading", { name: "Spremnost nije potvrđena" })).toBeInTheDocument();
-    expect(screen.getByTestId("analytics-empty-state")).toHaveTextContent("Nema potvrđenih readiness signala");
+    expect(await screen.findByTestId("analytics-empty-state")).toHaveTextContent("Nema potvrđenih readiness signala");
     expect(screen.getByText(/Nepoznato nikad ne znači zeleno/i)).toBeInTheDocument();
     expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("status: insufficient_data");
   });

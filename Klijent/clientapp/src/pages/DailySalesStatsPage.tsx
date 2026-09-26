@@ -818,6 +818,25 @@ export default function DailySalesStatsPage() {
         if (cancelled) return;
         setStores([]);
         setStoresLoadError("stores_load_failed");
+
+        // A store id restored from the URL is not trustworthy when store discovery fails.
+        // Fail closed to the all-stores scope and discard any store-scoped snapshot that
+        // may have completed before the filter request failed.
+        setStoreId(null);
+        setActiveFilters((current) =>
+          current.storeId == null ? current : { ...current, storeId: null },
+        );
+        setData(null);
+        setPreviousData(null);
+        setPreviousPeriodState("empty");
+        setPreviousPeriodWarning(null);
+        setPreviousPeriodEmptyNote(null);
+        setSearchParams((current) => {
+          if (!current.has("storeId")) return current;
+          const next = new URLSearchParams(current);
+          next.delete("storeId");
+          return next;
+        }, { replace: true });
       }
     };
 
@@ -825,7 +844,7 @@ export default function DailySalesStatsPage() {
     return () => {
       cancelled = true;
     };
-  }, [storesReloadNonce]);
+  }, [storesReloadNonce, setSearchParams]);
 
   const load = useCallback(async (filters: ActiveFilters, signal?: AbortSignal) => {
     const requestId = ++requestIdRef.current;

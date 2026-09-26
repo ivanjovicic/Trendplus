@@ -25,6 +25,7 @@ jobs:
   test:
     name: Complete backend analytics suite
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     services:
       postgres:
@@ -216,6 +217,7 @@ jobs:
   rq447-certification:
     name: RQ447 Supplier/Shoe Type certification
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     services:
       postgres:

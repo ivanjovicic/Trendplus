@@ -2,13 +2,10 @@ name: Apply Database Migrations
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - 'Infrastructure/Migrations/**'
-      - 'Infrastructure/DbContexts/**'
-      - 'Api/Program.cs'
+
+concurrency:
+  group: production-db-migrate
+  cancel-in-progress: false
 
 jobs:
   migrate:
