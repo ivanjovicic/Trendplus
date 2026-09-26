@@ -126,3 +126,17 @@ Ovi promptovi nisu ponovo kopirani.
 | `RQ385`/`RQ388`/`RQ389` | `READY` | nepromenjeni nezavisni lane-ovi |
 
 `MASTER_ROADMAP.md` i kanonski RQ queue su usklađeni sa ovim stanjem.
+
+## RQ439 triage na aktuelnom `main` — 2026-09-26
+
+PR #63 nije merdžovan: aktuelni `main` je u međuvremenu upotrebio RQ401–RQ405 za druge Supplier Decision vlasnike i te promptove završio. Triage je zato mapirao nalaze bez ponovne upotrebe tih ID-jeva:
+
+| Nalaz iz PR #63 | Aktuelni ishod |
+|---|---|
+| Traženi period naspram cache window-a | Pokriven isporučenim `RQ401` + `RQ404` cache/provenance i effective-period ugovorom |
+| Filteri koji nisu dohvatljivi na redirect putu | Pokriven isporučenim `RQ403` canonical filter parity ugovorom |
+| Engleski/ASCII copy | Pokriven isporučenim `RQ405` localization ownerom |
+| Per-supplier signal se briše kada je actionability gate blokiran; `PRICE_NEGOTIATE` se prikazuje kao `do_not_trust` | I dalje potvrđeno na aktuelnom kodu (`SupplierDecisionHubPage.tsx:213-219,533-540`); re-queue kao `RQ458 WAITING` |
+| KPI/chart/report totals i PoP delta koriste različite/popunjene projekcije | I dalje potvrđeno (`SupplierDecisionHubPage.tsx:520-594,840-860`); re-queue kao `RQ459 WAITING` |
+
+`RQ439` je završen kao read-only triage. PR #63 je superseded i ne treba ga merdžovati; nova implementacija treba da koristi `RQ458` i `RQ459`.
