@@ -941,7 +941,7 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
       expect(getShoeTypeSalesStats).toHaveBeenCalledWith(
         expect.objectContaining({
           fromDate: "2026-03-03T00:00:00Z",
-          toDate: "2026-04-01T23:59:59Z",
+          toDate: "2026-04-02T00:00:00.000Z",
         }),
       );
     });
@@ -953,7 +953,7 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
       expect(getShoeTypeSalesStats).toHaveBeenLastCalledWith(
         expect.objectContaining({
           fromDate: "2026-04-02T00:00:00Z",
-          toDate: "2026-05-01T23:59:59Z",
+          toDate: "2026-05-02T00:00:00.000Z",
         }),
       );
     });
