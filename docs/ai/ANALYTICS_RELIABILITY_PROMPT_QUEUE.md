@@ -2,7 +2,8 @@
 
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ321 (IN_PROGRESS in this workspace)
+Current READY prompt: none
+Owner completion 2026-09-27: RQ321 was delivered directly to main in 95632a21. Four Operacije pages now surface store-filter load failures with a retry action, clear failed options and disable unconfirmed individual-store selection; Inventory remains owned by RQ322. Focused proof is 4/4, analytics guardrails/typecheck/build and diff checks pass. Run log: .ai/runs/2026-09-26-RQ321-evidence.md. Evidence state: synchronized.
 Owner promotion/claim 2026-09-26: idle recovery verified the higher-priority RQ P0 lanes remain externally gated or owned elsewhere, while RQ321 is an independent P2 shared-UX error contract with no dependency, conflicting lock or active store-filter owner. `RQ321` moved `WAITING -> READY -> IN_PROGRESS`; local lock `.ai/task-locks/RQ321-codex.lock.md`.
 Owner completion 2026-09-26: `RQ315` is DONE; Pre-Nivelacija trust header renders backend `evidenceWindow` period fields and the focused regression passes 49/49. Run log: `.ai/runs/2026-09-26-RQ315-evidence.md`. Evidence state: synchronized.
 Owner revalidation 2026-09-26: RQ447 is PARTIAL, not DONE, after dedicated run `36262400467`: oracle 4/4 passed, but all-eight-routes failed on the explicit startup `db_warmup` 503 and OP2/frontend gates did not execute. A bounded exact-signal retry was added to the route proof; do not promote RQ448 or certify RQ447 until a fresh artifact passes.
@@ -17873,7 +17874,25 @@ Reproduction: change preset dates without Apply — inputs show new range, heade
 
 ## RQ321 - Surface store-filter load failures on Operacije analytics pages
 
-Status: IN_PROGRESS
+Status: DONE
+
+### Completion note
+
+- Date: 2026-09-27
+- Status: DONE
+- Completion: Four Operacije screens visibly distinguish a failed store-filter request from an empty store list and provide deterministic retry.
+- Changed files: shared AnalyticsFilterLoadNotice, four Operacije pages, focused Shoe Type regression, guardrail baseline, queue and roadmap.
+- Checks run: focused Vitest 4/4; npm run check:analytics-guardrails; npm run build; git diff --check.
+- Checks not run: backend tests; browser/live endpoint smoke.
+- Run log: .ai/runs/2026-09-26-RQ321-evidence.md
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: 95632a21
+- Main verification: pending final push verification
+- Missed: Inventory-specific bootstrap remains RQ322; live blocked-endpoint browser/MSW smoke remains unrun.
+- Follow-up: RQ322
+- Residual risk: individual-store filtering stays unavailable until the store list request succeeds.
+- Prompt defect / scope repair: Inventory was kept out of this shared-UX slice because RQ322 owns its bootstrap and comparison-panel behavior.
 Priority: P2
 Type: frontend/error-handling/tests
 Feature family: operations-store-filter-failure
