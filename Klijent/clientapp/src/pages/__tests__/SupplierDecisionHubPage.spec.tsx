@@ -49,6 +49,9 @@ const summaryResponse = {
   from: "2026-04-13T00:00:00Z",
   to: "2026-05-12T00:00:00Z",
   supplierCount: 2,
+  totalRevenue: 500_000,
+  marginContribution: 123_456,
+  topFiveRevenueShare: 0.4,
   fullPriceRevenueShare: 0.62,
   fullPriceSellthrough: 0.48,
   markdownRevenueShare: 0.24,
@@ -138,6 +141,17 @@ describe("SupplierDecisionHubPage", () => {
     expect(screen.getAllByText(/Trend pune cene/i).length).toBeGreaterThan(0);
     expect(await screen.findByTestId("supplier-decision-hub-data-table")).toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  });
+
+  it("uses summary-owned aggregates when ranking rows are only a visible projection", async () => {
+    installFetchMock();
+
+    renderPage();
+
+    await screen.findByTestId("supplier-decision-hub-data-table");
+    expect(screen.getByText("500.000 RSD")).toBeInTheDocument();
+    expect(screen.getByText("123.456 RSD")).toBeInTheDocument();
+    expect(screen.getByText("40,0%")).toBeInTheDocument();
   });
 
   it("hides standalone title, trust header and filters when embedded", async () => {
