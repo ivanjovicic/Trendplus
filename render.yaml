@@ -7,7 +7,7 @@ services:
     plan: free
     region: frankfurt
     branch: main
-    autoDeploy: true
+    autoDeployTrigger: off
     buildCommand: dotnet publish Api/Api.csproj -c Release -o out
     startCommand: dotnet out/Api.dll
     healthCheckPath: /ready
@@ -84,7 +84,7 @@ services:
     plan: 0.5c-512mb
     region: frankfurt
     branch: main
-    autoDeploy: true
+    autoDeployTrigger: off
     buildCommand: dotnet publish Api/Api.csproj -c Release -o out
     startCommand: dotnet out/Api.dll
     maxShutdownDelaySeconds: 120
@@ -153,7 +153,7 @@ services:
     plan: free
     region: frankfurt
     branch: main
-    autoDeploy: false # Deploy manually
+    autoDeployTrigger: off # Deploy manually
     buildCommand: dotnet publish Trendplus.POS/Trendplus.POS.csproj -c Release -o out
     startCommand: dotnet out/Trendplus.POS.dll
     healthCheckPath: /health
