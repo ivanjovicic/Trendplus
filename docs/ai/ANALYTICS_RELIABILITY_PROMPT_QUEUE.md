@@ -11,6 +11,8 @@ Owner promotion/claim 2026-09-26: idle recovery found RQ449 dependency-complete 
 Owner completion 2026-09-26: `RQ446` was delivered directly to `main` in `5979ef65`; the adversarial Supplier/Shoe Type fixture, immutable expected-output manifest and exact-byte SHA-256 guard are synchronized. Focused manifest guard proof is `2/2`; runtime PostgreSQL/API execution remains RQ447. Run log: `.ai/runs/2026-09-26-RQ446-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-26: idle recovery found Current READY `none`. Concurrently RQ446 closed on `main`; this workspace claimed P1 `RQ383` for Daily Sales shift provenance. `RQ382` section Status was mechanically repaired IN_PROGRESS→DONE. Local lock: `.ai/task-locks/RQ383-cursor.lock.md`.
 Owner completion 2026-09-26: `RQ383` was delivered for Daily Sales shift provenance. Measured shifts no longer absorb off-shift/no-time remaps; metadata exposes `ShiftAssignmentStatus`, `OffShift*` and `NoTimeFallback*`; frontend keeps shift shares unavailable under `no_time_fallback`. Run log: `.ai/runs/2026-09-26-RQ383-evidence.md`. Evidence state: synchronized; implementation `e5d22c01`; tip `ed1ef168`.
+Owner completion 2026-09-26: `RQ384` was delivered for Daily Sales safe/traceable errors. Endpoint failures no longer return `ex.Message`; Problem details include `errorCode`/`correlationId`, and the frontend allowlists safe Serbian messages while surfacing correlation IDs. Run log: `.ai/runs/2026-09-26-RQ384-evidence.md`. Evidence state: synchronized.
+Owner promotion/claim 2026-09-26: idle recovery found Current READY `none` after RQ456/RQ457 closures on `origin/main`. Verified RQ382/RQ383 DONE, no active Daily Sales endpoint/frontend error-contract lock/branch/PR owner, and RQ384 is dependency-complete. `RQ384` moved `WAITING -> READY -> IN_PROGRESS` in this workspace for Daily Sales safe/traceable error responses; local lock `.ai/task-locks/RQ384-cursor.lock.md`.
 Owner promotion/claim 2026-09-26: idle recovery verified `RQ458` DONE on current `origin/main` at `cc75ee66`, no active Supplier Decision Hub KPI/report-parity lock, branch or PR owner, and all RQ459 dependencies are satisfied. `RQ459` moved `WAITING -> IN_PROGRESS` in this workspace for KPI/chart/table/report population and period-delta parity; local lock `.ai/task-locks/RQ459-cursor.lock.md`.
 Owner completion 2026-09-26: `RQ459` was delivered to current `main` in implementation `c3e29a65`; `origin/main` contains that implementation and the synchronized closure evidence. Supplier Decision Hub summary now exposes authoritative revenue, margin contribution and top-five share aggregates; KPI, table shares, concentration chart and report/export use the same declared population, and full-price period delta is distinct from row markdown trend. Focused frontend proof is `41/41`; guardrails, TypeScript, build, governance validators and `git diff --check` pass. Backend focused test was not run because `dotnet` is unavailable in this VM. Run log: `.ai/runs/2026-09-26-RQ459-evidence.md`. Evidence state: synchronized.
 Owner completion 2026-09-26: `RQ445` was delivered directly to `main` in `7ce49b17`; the canonical `SST-ACCURACY-1.0` Supplier/Shoe Type contract is established and later certification prompts remain separately gated. Run log: `.ai/runs/2026-09-26-RQ445-evidence.md`. Evidence state: synchronized.
@@ -21550,13 +21552,19 @@ Reproduction: load an imported dataset whose timestamps are all midnight or 02:0
 
 ## RQ384 - Make Daily Sales endpoint errors safe and traceable
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend-contract/frontend/tests
 Feature family: daily-sales-safe-error-contract
 Parallel-safe: no
 Owner: Analytics Reliability / Daily Sales
 Commit suggestion: `fix(analytics): sanitize daily sales error responses`
+
+### Claim note
+
+- Date: 2026-09-26
+- Status: IN_PROGRESS
+- Claim: idle recovery after Current READY `none`; RQ382/RQ383 DONE; no competing Daily Sales error-contract owner. Local lock `.ai/task-locks/RQ384-cursor.lock.md`. Branch `cursor/daily-sales-safe-error-contract-b591`.
 
 ### Problem
 
@@ -21606,6 +21614,25 @@ Reproduction: force a provider/serialization failure or return a malformed Daily
 
 - Reuse the shared analytics error/meta conventions; do not create a Daily Sales-only error format.
 - `RQ325` owns residual English/technical user-facing copy, including `Daily sales analytics` and `N/A`; this prompt owns failure semantics and traceability.
+
+### Completion note
+
+- Date: 2026-09-26
+- Status: DONE
+- Completion: Daily Sales endpoint failures return safe Problem details with `errorCode`/`correlationId` and never expose raw `ex.Message`. Frontend allowlists safe Serbian messages, preserves correlation IDs for HTTP and schema-invalid payloads, and does not render KPI zeros on failure.
+- Changed files: `Api/Endpoints/DailySalesStatsEndpoints.cs`, `Api.Tests/DailySalesSafeErrorTests.cs`, Daily Sales page/tests, guardrail baseline line drift, this queue, `.ai/runs/2026-09-26-RQ384-evidence.md`.
+- Contract/runtime behavior changed: cancel/timeout/database/unknown failures use shared Problem extension shape; frontend error state is structured `{message,errorCode,correlationId}`.
+- Checks run: DailySalesSafeErrorTests 2/2; premium Daily Sales 22/22; numericState RQ384 cases pass (1 pre-existing RQ431 concentration assertion red); analytics guardrails/typecheck; `git diff --check`.
+- Checks not run: full suites; live forced provider exception; remote CI.
+- Run log: `.ai/runs/2026-09-26-RQ384-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: branch/PR transport then main merge
+- Main commit SHA: `cd5a4da2` implementation; evidence sync `739c03c3`
+- Main verification: passed - `origin/main` contains `cd5a4da2` through `739c03c3`
+- Missed: RQ431 concentration over-total decision
+- Follow-up: idle recovery for next READY/promotable prompt
+- Residual risk: ProblemDetails extension serialization host shape; CI not inspected
+- Prompt defect / scope repair: completion-note write raced a parallel commit and was restored in this evidence sync
 
 ---
 

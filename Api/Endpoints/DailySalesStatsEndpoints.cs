@@ -20,6 +20,7 @@ public static class DailySalesStatsEndpoints
             IDailySalesStatsService service,
             IAnalyticsCacheService cache,
             ILogger<Program> logger,
+            HttpContext httpContext,
             CancellationToken ct) =>
         {
             try
@@ -74,34 +75,66 @@ public static class DailySalesStatsEndpoints
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
-                return Results.Problem(
-                    title: "Greška pri učitavanju dnevne analitike",
-                    detail: "Zahtev je otkazan.",
-                    statusCode: StatusCodes.Status503ServiceUnavailable);
+                var correlationId = AllEndpoints.ResolveAnalyticsCorrelationId(httpContext);
+                logger.LogInformation(
+                    "Daily sales request cancelled. CorrelationId={CorrelationId} StoreId={StoreId}",
+                    correlationId,
+                    request.StoreId);
+
+                return CreateDailySalesStatsProblem(
+                    "Greška pri učitavanju dnevne analitike",
+                    "Zahtev je otkazan.",
+                    StatusCodes.Status503ServiceUnavailable,
+                    "daily_sales_stats_cancelled",
+                    correlationId);
             }
             catch (TaskCanceledException ex)
             {
-                logger.LogWarning(ex, "Daily sales request timed out or was cancelled.");
-                return Results.Problem(
-                    title: "Greška pri učitavanju dnevne analitike",
-                    detail: "Zahtev je istekao ili je prekinut.",
-                    statusCode: StatusCodes.Status503ServiceUnavailable);
+                var correlationId = AllEndpoints.ResolveAnalyticsCorrelationId(httpContext);
+                logger.LogWarning(
+                    ex,
+                    "Daily sales request timed out or was cancelled. CorrelationId={CorrelationId} StoreId={StoreId}",
+                    correlationId,
+                    request.StoreId);
+
+                return CreateDailySalesStatsProblem(
+                    "Greška pri učitavanju dnevne analitike",
+                    "Zahtev je istekao ili je prekinut.",
+                    StatusCodes.Status503ServiceUnavailable,
+                    "daily_sales_stats_timeout",
+                    correlationId);
             }
             catch (NpgsqlException ex)
             {
-                logger.LogError(ex, "Daily sales analytics database error.");
-                return Results.Problem(
-                    title: "Greška pri učitavanju dnevne analitike",
-                    detail: "Problem pri povezivanju sa bazom podataka. Molimo pokušajte ponovo kasnije.",
-                    statusCode: StatusCodes.Status503ServiceUnavailable);
+                var correlationId = AllEndpoints.ResolveAnalyticsCorrelationId(httpContext);
+                logger.LogError(
+                    ex,
+                    "Daily sales analytics database error. CorrelationId={CorrelationId} StoreId={StoreId}",
+                    correlationId,
+                    request.StoreId);
+
+                return CreateDailySalesStatsProblem(
+                    "Greška pri učitavanju dnevne analitike",
+                    "Problem pri povezivanju sa bazom podataka. Molimo pokušajte ponovo kasnije.",
+                    StatusCodes.Status503ServiceUnavailable,
+                    "daily_sales_stats_database_unavailable",
+                    correlationId);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Daily sales analytics endpoint failed.");
-                return Results.Problem(
-                    title: "Greška pri učitavanju dnevne analitike",
-                    detail: ex.Message,
-                    statusCode: StatusCodes.Status500InternalServerError);
+                var correlationId = AllEndpoints.ResolveAnalyticsCorrelationId(httpContext);
+                logger.LogError(
+                    ex,
+                    "Daily sales analytics endpoint failed. CorrelationId={CorrelationId} StoreId={StoreId}",
+                    correlationId,
+                    request.StoreId);
+
+                return CreateDailySalesStatsProblem(
+                    "Greška pri učitavanju dnevne analitike",
+                    "Dnevna prodaja trenutno nije dostupna. Pokušajte ponovo.",
+                    StatusCodes.Status500InternalServerError,
+                    "daily_sales_stats_unavailable",
+                    correlationId);
             }
         })
         .WithName("GetDailySalesStats")
@@ -109,6 +142,24 @@ public static class DailySalesStatsEndpoints
         .RequireRateLimiting("analytics")
         .Produces<DailySalesTableResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest);
+    }
+
+    private static IResult CreateDailySalesStatsProblem(
+        string title,
+        string detail,
+        int statusCode,
+        string errorCode,
+        string correlationId)
+    {
+        return Results.Problem(
+            title: title,
+            detail: $"{detail} Referentni ID: {correlationId}.",
+            statusCode: statusCode,
+            extensions: new Dictionary<string, object?>
+            {
+                ["errorCode"] = errorCode,
+                ["correlationId"] = correlationId
+            });
     }
 
     private static DateTime? NormalizeUtcDate(DateTime? rawDate)

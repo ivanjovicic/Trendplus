@@ -7,12 +7,14 @@ import {
   buildDailySalesBlankColumns,
   formatDailySalesError,
   getNextDailySalesSortState,
+  resolveDailySalesPageError,
   resolveDailySalesStoreLabel,
   safeDivide,
   sortDailySalesRows,
   summarizePeriod,
 } from "../DailySalesStatsPage";
 import type { DailySalesRow, DailySalesTableResponse } from "../../services/dailySalesStatsApi";
+import { ApiHttpError } from "../../services/analyticsHttp";
 import { AnalyticsResponseValidationError } from "../../validation/analyticsResponseValidation";
 
 function row(overrides: Partial<DailySalesRow> = {}): DailySalesRow {
@@ -79,11 +81,34 @@ describe("Daily Sales numeric evidence states", () => {
     const error = new AnalyticsResponseValidationError(
       "Dnevna prodaja",
       ["metadata.offShiftRevenue", "metadata.totalItemsInRange"],
+      "corr-384",
     );
 
     expect(formatDailySalesError(error)).toContain(
       "Neispravna polja: metadata.offShiftRevenue, metadata.totalItemsInRange.",
     );
+    expect(formatDailySalesError(error)).not.toContain("response nije u očekivanom formatu");
+    expect(resolveDailySalesPageError(error).correlationId).toBe("corr-384");
+  });
+
+  it("keeps provider/http failures on the allowlisted safe message and correlation id", () => {
+    const error = new ApiHttpError(
+      500,
+      "Dnevna prodaja trenutno nije dostupna. Pokušajte ponovo. Referentni ID: trace-384.",
+      "daily_sales_stats_unavailable",
+      "trace-384",
+    );
+
+    expect(formatDailySalesError(error)).toContain("Dnevna prodaja trenutno nije dostupna.");
+    expect(formatDailySalesError(error)).toContain("Referentni ID: trace-384.");
+    expect(formatDailySalesError(new Error("NpgsqlException: connection refused"))).toBe(
+      "Dnevna prodaja trenutno nije dostupna. Proverite kvalitet podataka i pokušajte ponovo.",
+    );
+    expect(resolveDailySalesPageError(error)).toEqual({
+      message: "Dnevna prodaja trenutno nije dostupna. Pokušajte ponovo. Referentni ID: trace-384.",
+      errorCode: "daily_sales_stats_unavailable",
+      correlationId: "trace-384",
+    });
   });
 
   it("provides one stable sort order for table and chart rows", () => {

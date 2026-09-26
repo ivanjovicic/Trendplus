@@ -32,6 +32,7 @@ import {
   type DailySalesNumeric,
   type DailySalesShiftAssignmentStatus,
 } from "../services/dailySalesStatsApi";
+import { ApiHttpError } from "../services/analyticsHttp";
 import type { StoreOption } from "../types/analytics";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { getDataScope, normalizeDataScope, type DataScope } from "../utils/dataScope";
@@ -61,6 +62,24 @@ import {
   toDailyShiftEvidenceState,
 } from "../utils/dailyShiftSummary";
 import "./DailySalesStatsPage.css";
+
+const DAILY_SALES_ERROR_FALLBACK =
+  "Dnevna prodaja trenutno nije dostupna. Proverite kvalitet podataka i pokušajte ponovo.";
+const DAILY_SALES_SAFE_ERROR_MESSAGES = [
+  DAILY_SALES_ERROR_FALLBACK,
+  "Dnevna prodaja trenutno nije dostupna.",
+  "Zahtev je otkazan.",
+  "Zahtev je istekao ili je prekinut.",
+  "Problem pri povezivanju sa bazom podataka.",
+  "Podaci trenutno nisu dostupni.",
+  "Greška pri učitavanju dnevne prodaje po smenama i dobavljačima",
+] as const;
+
+type DailySalesPageError = {
+  message: string;
+  errorCode?: string | null;
+  correlationId?: string | null;
+};
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
 type SortDir = "asc" | "desc";
@@ -398,21 +417,38 @@ export function safeDivide(value: DailySalesNumeric, total: DailySalesNumeric): 
 
 export function formatDailySalesError(
   reason: unknown,
-  fallback = "Dnevna prodaja trenutno nije dostupna. Proverite kvalitet podataka i pokušajte ponovo.",
+  fallback = DAILY_SALES_ERROR_FALLBACK,
 ): string {
-  const message = getSafeAnalyticsErrorMessage(
-    reason instanceof Error ? reason.message : String(reason),
-    undefined,
-    fallback,
-  );
+  if (reason instanceof AnalyticsResponseValidationError) {
+    if (reason.issuePaths.length === 0) {
+      return fallback;
+    }
 
-  if (!(reason instanceof AnalyticsResponseValidationError) || reason.issuePaths.length === 0) {
-    return message;
+    const visiblePaths = reason.issuePaths.slice(0, 5).join(", ");
+    const suffix = reason.issuePaths.length > 5 ? ", ..." : "";
+    return `${fallback} Neispravna polja: ${visiblePaths}${suffix}.`;
   }
 
-  const visiblePaths = reason.issuePaths.slice(0, 5).join(", ");
-  const suffix = reason.issuePaths.length > 5 ? ", ..." : "";
-  return `${message} Neispravna polja: ${visiblePaths}${suffix}.`;
+  const apiError = reason instanceof ApiHttpError ? reason : null;
+  return getSafeAnalyticsErrorMessage(
+    reason instanceof Error ? reason.message : String(reason),
+    apiError?.errorCode,
+    fallback,
+    DAILY_SALES_SAFE_ERROR_MESSAGES,
+  );
+}
+
+export function resolveDailySalesPageError(
+  reason: unknown,
+  fallback = DAILY_SALES_ERROR_FALLBACK,
+): DailySalesPageError {
+  const apiError = reason instanceof ApiHttpError ? reason : null;
+  const validationError = reason instanceof AnalyticsResponseValidationError ? reason : null;
+  return {
+    message: formatDailySalesError(reason, fallback),
+    errorCode: apiError?.errorCode ?? null,
+    correlationId: apiError?.correlationId ?? validationError?.correlationId ?? null,
+  };
 }
 
 export function buildSupplierConcentration(
@@ -720,7 +756,7 @@ export default function DailySalesStatsPage() {
   const [previousPeriodWarning, setPreviousPeriodWarning] = useState<string | null>(null);
   const [previousPeriodEmptyNote, setPreviousPeriodEmptyNote] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<DailySalesPageError | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [qualityPanelOpen, setQualityPanelOpen] = useState(false);
@@ -832,7 +868,7 @@ export default function DailySalesStatsPage() {
       setPreviousPeriodState("empty");
       setPreviousPeriodWarning(null);
       setPreviousPeriodEmptyNote(null);
-      setError(formatDailySalesError(reason));
+      setError(resolveDailySalesPageError(reason));
     } finally {
       if (requestId === requestIdRef.current) {
         setLoading(false);
@@ -1529,7 +1565,7 @@ export default function DailySalesStatsPage() {
 
   const handleApplyFilters = () => {
     if (invalidRange) {
-      setError("Datum 'od' ne može biti posle datuma 'do'.");
+      setError({ message: "Datum 'od' ne može biti posle datuma 'do'." });
       return;
     }
 
@@ -1768,7 +1804,9 @@ export default function DailySalesStatsPage() {
       {error ? (
         <AnalyticsErrorState
           title="Dnevna prodaja trenutno nije dostupna"
-          message={error}
+          message={error.message}
+          errorCode={error.errorCode}
+          correlationId={error.correlationId}
           onRetry={() => {
             void load(activeFilters);
           }}
