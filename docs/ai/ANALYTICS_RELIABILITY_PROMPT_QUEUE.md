@@ -4,7 +4,7 @@ Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 Owner promotion/claim 2026-09-26: under the user's direct “claim i izvrši sledeći prompt” request, the owner decision gate for `RQ439` was satisfied. `RQ439` transitioned `WAITING -> IN_PROGRESS` in this workspace for read-only triage of unmerged PR #63 against current `main`; local lock `.ai/task-locks/RQ439-cursor.lock.md`. No runtime product code is in scope.
-Owner completion 2026-09-26: `RQ439` confirmed that PR #63 findings `RQ401`, `RQ404` and `RQ405` map to delivered current-main owners; the remaining signal-identity and KPI/report-parity findings were re-queued as fresh `RQ458` and `RQ459` WAITING prompts. PR #63 remains superseded and must not be merged.
+Owner triage completion 2026-09-26: `RQ439` confirmed that PR #63 findings `RQ401`, `RQ404` and `RQ405` map to delivered current-main owners; the remaining signal-identity and KPI/report-parity findings were re-queued as fresh `RQ458` and `RQ459` WAITING prompts. The triage artifact is complete on the pushed branch, but status remains `PARTIAL` because PR #63 is superseded and the prompt explicitly forbids merging it.
 Owner claim 2026-09-26: after concurrent RQ442 delivery on `origin/main`, this workspace claimed READY `RQ438` for Daily Sales/Access receipt-identity residuals. Local lock: `.ai/task-locks/RQ438-cursor.lock.md`. Mechanical repair: RQ438 section `Status:` was stale `DONE` without a completion note while the summary row and code still showed READY/unfixed ID joins.
 Owner completion 2026-09-26: `RQ438` was delivered directly to `main` after shared signed journal amount normalization, identity-keyed non-standard/import revenue fallback (never fake 0), partial_dnevnik_identity_coverage when some journal rows lack BrojRacuna, and Serbian import diagnostic copy. Run log: `.ai/runs/2026-09-26-RQ438-evidence.md`. Evidence state: synchronized. Mechanical repair: RQ442 section `Status:` READY→DONE to match its completion note/summary. `Current READY prompt` is `none`; `RQ441` remains WAITING behind `RQ382`.
 Owner promotion 2026-09-26: under the user’s claim-and-execute request, `RQ440` was dependency-complete with no active lock on the seven shared spec files. `RQ440` moved `READY -> IN_PROGRESS` as the primary pointer.
@@ -1609,7 +1609,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ436 | DONE | operations-derived-kpi-cleanup | Remove dead or frontend-derived Operacije KPIs and small lifecycle leaks |
 | RQ437 | DONE | operations-stale-test-hygiene | Repair stale Operacije tests that hide regressions |
 | RQ438 | DONE | daily-sales-receipt-identity-residuals | Finish Daily Sales receipt-identity joins and prove the journal amount sign |
-| RQ439 | DONE | supplier-decision-hub-pr63-triage | Triage unmerged PR #63 Supplier Decision Hub findings against current main |
+| RQ439 | PARTIAL | supplier-decision-hub-pr63-triage | Triage unmerged PR #63 Supplier Decision Hub findings against current main |
 | RQ440 | DONE | analytics-shared-spec-drift | Triage nine unowned failing shared analytics specs |
 | RQ441 | WAITING | daily-sales-frozen-supplier-attribution | Align Daily Sales supplier buckets with sale-time attribution used by canonical Supplier Sales |
 | RQ442 | DONE | operations-whole-day-half-open-ranges | Make Supplier, Shoe Type and Color whole-day filters half-open and boundary-safe |
@@ -2687,7 +2687,7 @@ Operators still have to open analytics screens to learn that a decision, data-qu
 ### Completion note
 
 - Date: 2026-08-20
-- Status: DONE
+- Status: PARTIAL
 - Completion: Product Decision exception Pulse with Why + deep link, stale/empty/error suppression, in-app feed and SMTP email path; tenantScope fixed to n/a_dedicated
 - Changed files: Application/Analytics/DecisionPulse/DecisionPulseProjector.cs; Application/Analytics/DecisionPulse/DecisionPulseEmailComposer.cs; Api/Services/Analytics/DecisionPulseService.cs; Api/Endpoints/DecisionPulseEndpoints.cs; Api/Program.cs; Api.Tests/DecisionPulseProjectorTests.cs; Klijent/clientapp/src/pages/DecisionPulsePage.tsx; Klijent/clientapp/src/services/decisionPulseApi.ts; Klijent/clientapp/src/pages/__tests__/DecisionPulsePage.spec.tsx; Klijent/clientapp/src/App.tsx; Klijent/clientapp/src/layout/navConfig.ts; docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md; MASTER_ROADMAP.md; .ai/runs/2026-08-20-RQ106-evidence.md
 - Contract/runtime behavior changed: yes; new GET/POST `/api/analytics/decision-pulse` and `/analytics/decision-pulse` UI
@@ -24117,7 +24117,7 @@ Commit suggestion: `fix(analytics): remove remaining dnevnik id joins from recei
 
 ## RQ439 - Triage unmerged PR #63 Supplier Decision Hub findings against current main
 
-Status: DONE
+Status: PARTIAL
 Ready after: owner decision on whether the unmerged PR #63 audit (`origin/cursor/supplier-decision-hub-audit-444b`) should be salvaged
 Priority: P3
 Type: docs/triage
@@ -24166,7 +24166,7 @@ PR #63 (2026-09-22, branch `cursor/supplier-decision-hub-audit-444b`, four docs 
 ### Completion note
 
 - Date: 2026-09-26
-- Status: DONE
+- Status: PARTIAL
 - Completion: Re-checked all five PR #63 findings against current `main`. Period/cache, filter reachability and localization map to delivered `RQ401`, `RQ404` and `RQ405`. The signal-identity finding remains confirmed and was re-queued as `RQ458`; the KPI/report population and period-delta finding remains confirmed and was re-queued as `RQ459`.
 - Changed files: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `docs/ai/SUPPLIER_DECISION_HUB_AUDIT_PROMPTS_2026-09-22.md`; `.ai/runs/2026-09-26-RQ439-evidence.md`.
 - Checks run: queue validators with and without `--self-test`; planning and agent-instruction validators with and without `--self-test`; `git diff --check`.
@@ -24178,7 +24178,7 @@ PR #63 (2026-09-22, branch `cursor/supplier-decision-hub-audit-444b`, four docs 
 - Main verification: pending; PR #63 is superseded and must not be merged.
 - Missed: no known PR #63 finding was left unmapped.
 - Follow-up: `RQ458` and `RQ459` are the fresh implementation handoffs.
-- Residual risk: the two confirmed runtime findings remain unfixed until their new prompts are implemented.
+- Residual risk: the two confirmed runtime findings remain unfixed until their new prompts are implemented; triage docs remain off `main` because the historical PR is forbidden from merge.
 
 ---
 
