@@ -1677,8 +1677,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ446 | DONE | supplier-shoetype-adversarial-golden | Extend the shared fixture with adversarial Supplier/Shoe Type cases and immutable expected outputs |
 | RQ447 | DONE | supplier-shoetype-live-oracle-reproducers | Execute the four live RQ412 oracle cases and close OP2-01/04/05/14 with runtime reproducers |
 | RQ448 | WAITING | supplier-shoetype-browser-reconciliation | Reconcile raw facts through API, browser-rendered KPI/table/detail and export |
-| RQ449 | WAITING | operations-integrity-evidence-history | Persist immutable integrity evidence/history beyond the process snapshot |
-| RQ450 | WAITING | operations-post-import-probe | Run a bounded Supplier/Shoe integrity probe immediately after Access import |
+| RQ449 | DONE | operations-integrity-evidence-history | Persist immutable integrity evidence/history beyond the process snapshot |
+| RQ450 | DONE | operations-post-import-probe | Run a bounded Supplier/Shoe integrity probe immediately after Access import |
 | RQ451 | WAITING | supplier-shoetype-verified-evidence-ui | Expose Verified status and inspectable evidence on both customer-facing screens |
 | RQ452 | WAITING | supplier-shoetype-accuracy-certificate | Generate a truthful evidence-backed Supplier/Shoe Type accuracy certificate |
 | RQ453 | WAITING | analytics-certification-ci-gate | Add a non-skippable certification CI gate with executed-versus-skipped accounting |

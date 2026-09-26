@@ -11,7 +11,7 @@ namespace Trendplus2.Tests;
 public sealed class OperationsAnalyticsAllRoutesIntegrationTests
     : IClassFixture<WebApplicationFactory<global::Program>>
 {
-    private const int StartupWarmupRetryLimit = 3;
+    private const int StartupWarmupMaxAttempts = 3;
     private const string FromDate = "2026-07-01";
     private const string ToDate = "2026-07-07";
     private const string NivelacijaEventDate = "2026-08-01T00:00:00Z";
@@ -94,7 +94,7 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
 
     private static async Task<JsonElement> GetJsonAsync(HttpClient client, string path)
     {
-        for (var attempt = 0; ; attempt++)
+        for (var attempt = 1; ; attempt++)
         {
             using var response = await client.GetAsync(path);
             var body = await response.Content.ReadAsStringAsync();
@@ -105,7 +105,7 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
             }
 
             var isDatabaseWarmup = IsDatabaseWarmupResponse(response.StatusCode, body, out var retryAfterSeconds);
-            if (attempt >= StartupWarmupRetryLimit || !isDatabaseWarmup)
+            if (attempt >= StartupWarmupMaxAttempts || !isDatabaseWarmup)
             {
                 Assert.Fail($"{path} returned {(int)response.StatusCode}: {body}");
             }

@@ -16,7 +16,10 @@ public interface IOperationsAnalyticsIntegrityService
 {
     void MarkUnverified(string trigger, string summary);
     Task MarkUnverifiedAsync(string trigger, string summary, CancellationToken ct = default);
-    Task<OperationsAnalyticsIntegritySnapshot> RunBoundedProbeAsync(CancellationToken ct = default);
+    Task<OperationsAnalyticsIntegritySnapshot> RunBoundedProbeAsync(
+        CancellationToken ct = default,
+        string? trigger = null,
+        string? summary = null);
 }
 
 public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIntegrityService
@@ -58,7 +61,7 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
             toUtc,
             null,
             OperationsAnalyticsRawFactOracle.NormalizeDataScope(_options.DefaultDataScope));
-        var snapshot = OperationsAnalyticsIntegritySnapshot.Degraded(
+        var snapshot = OperationsAnalyticsIntegritySnapshot.Unverified(
             BuildEvidenceId(trigger),
             trigger,
             summary);
@@ -69,23 +72,31 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
             trigger);
     }
 
-    public async Task<OperationsAnalyticsIntegritySnapshot> RunBoundedProbeAsync(CancellationToken ct = default)
+    public async Task<OperationsAnalyticsIntegritySnapshot> RunBoundedProbeAsync(
+        CancellationToken ct = default,
+        string? trigger = null,
+        string? summary = null)
     {
         var checkedAt = DateTime.UtcNow;
         var (fromUtc, toUtc) = ResolveProbeWindow(checkedAt);
         var dataScope = OperationsAnalyticsRawFactOracle.NormalizeDataScope(_options.DefaultDataScope);
         var filters = new OperationsAnalyticsRawFactOracle.Filters(fromUtc, toUtc, null, dataScope);
+        var probeTrigger = string.IsNullOrWhiteSpace(trigger) ? "bounded_probe" : trigger.Trim();
+        var probeSummary = string.IsNullOrWhiteSpace(summary) ? null : summary.Trim();
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeoutCts.CancelAfter(TimeSpan.FromSeconds(Math.Max(1, _options.ProbeTimeoutSeconds)));
+        var probeCt = timeoutCts.Token;
 
         if (!_options.Enabled)
         {
             var disabled = OperationsAnalyticsIntegritySnapshot.Degraded(
-                BuildEvidenceId("disabled"),
-                "disabled",
-                "Operations integrity probes are disabled in configuration.");
+                BuildEvidenceId(probeTrigger),
+                probeTrigger,
+                probeSummary ?? "Operations integrity probes are disabled in configuration.");
             return await StoreAsync(disabled, filters, ct);
         }
 
-        var evidenceId = BuildEvidenceId("probe");
+        var evidenceId = BuildEvidenceId(probeTrigger);
 
         try
         {
@@ -94,23 +105,23 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
             {
                 return await StoreAsync(OperationsAnalyticsIntegritySnapshot.Degraded(
                     evidenceId,
-                    "missing_connection",
-                    "Database connection string is unavailable for integrity probes."),
+                    probeTrigger,
+                    probeSummary ?? "Database connection string is unavailable for integrity probes."),
                     filters,
                     ct);
             }
 
             await using var connection = new NpgsqlConnection(connectionString);
-            await connection.OpenAsync(ct);
+            await connection.OpenAsync(probeCt);
 
-            var oracleTotals = await OperationsAnalyticsRawFactOracle.QueryTotalsAsync(connection, filters, ct);
-            var liveTotals = await ReadLiveAggregatedTotalsAsync(filters, ct);
+            var oracleTotals = await OperationsAnalyticsRawFactOracle.QueryTotalsAsync(connection, filters, probeCt);
+            var liveTotals = await ReadLiveAggregatedTotalsAsync(filters, probeCt);
             var deltas = new List<OperationsAnalyticsIntegrityProbeDelta>
             {
                 BuildDelta("supplier_shoe_live_aggregate", liveTotals.Revenue, oracleTotals.TotalRevenue, liveTotals.Units, oracleTotals.TotalUnits)
             };
 
-            var cacheDelta = await TryCompareCachedSupplierTotalsAsync(fromUtc, toUtc, dataScope, liveTotals, ct);
+            var cacheDelta = await TryCompareCachedSupplierTotalsAsync(fromUtc, toUtc, dataScope, liveTotals, probeCt);
             if (cacheDelta is not null)
                 deltas.Add(cacheDelta);
 
@@ -126,8 +137,8 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
                     evidenceId,
                     checkedAt,
                     null,
-                    "bounded_probe",
-                    "Bounded Supplier/Shoe Type probe detected unexplained quantity or revenue delta.",
+                    probeTrigger,
+                    probeSummary ?? "Bounded Supplier/Shoe Type probe detected unexplained quantity or revenue delta.",
                     deltas,
                     BlocksDecisionSignals: true);
             }
@@ -138,21 +149,34 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
                     evidenceId,
                     checkedAt,
                     checkedAt,
-                    "bounded_probe",
-                    "Bounded Supplier/Shoe Type probe reconciled live aggregates, raw-fact oracle and cache lane.",
+                    probeTrigger,
+                    probeSummary ?? "Bounded Supplier/Shoe Type probe reconciled live aggregates, raw-fact oracle and cache lane.",
                     deltas,
                     BlocksDecisionSignals: false);
             }
 
             return await StoreAsync(next, filters, ct);
         }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested && timeoutCts.IsCancellationRequested)
+        {
+            _logger.LogWarning(
+                "Operations analytics integrity probe timed out after {TimeoutSeconds} seconds. Trigger={Trigger}",
+                Math.Max(1, _options.ProbeTimeoutSeconds),
+                probeTrigger);
+            return await StoreAsync(OperationsAnalyticsIntegritySnapshot.Degraded(
+                evidenceId,
+                probeTrigger,
+                probeSummary ?? "Operations integrity probe timed out; decision signals remain fail-closed until a successful check."),
+                filters,
+                ct);
+        }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Operations analytics integrity probe failed.");
             return await StoreAsync(OperationsAnalyticsIntegritySnapshot.Degraded(
                 evidenceId,
-                "probe_failure",
-                "Operations integrity probe failed; decision signals remain fail-closed until a successful check."),
+                probeTrigger,
+                probeSummary ?? "Operations integrity probe failed; decision signals remain fail-closed until a successful check."),
                 filters,
                 ct);
         }

@@ -64,7 +64,9 @@ public sealed class OperationsAnalyticsPostImportProbeTests
         Assert.Contains("SchedulePostImportIntegrityProbe", source);
         Assert.Contains("scheduleIntegrityProbe: false", source);
         Assert.Contains("access_import:{batchId}", source);
-        Assert.Contains("RunBoundedProbeAsync()", source);
+        Assert.Contains("RunBoundedProbeAsync(", source);
+        Assert.Contains("trigger: trigger", source);
+        Assert.Contains("summary: $\"Access import batch {batchId}", source);
         Assert.DoesNotContain(
             "_operationsIntegrityRegistry?.MarkUnverified(\n                            \"access_import\",",
             source.Replace("\r\n", "\n"));
@@ -107,7 +109,10 @@ public sealed class OperationsAnalyticsPostImportProbeTests
         public Task MarkUnverifiedAsync(string trigger, string summary, CancellationToken ct = default)
             => Task.CompletedTask;
 
-        public Task<OperationsAnalyticsIntegritySnapshot> RunBoundedProbeAsync(CancellationToken ct = default)
+        public Task<OperationsAnalyticsIntegritySnapshot> RunBoundedProbeAsync(
+            CancellationToken ct = default,
+            string? trigger = null,
+            string? summary = null)
             => Task.FromResult(OperationsAnalyticsIntegritySnapshot.Degraded("test", "noop", "noop"));
     }
 

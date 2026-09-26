@@ -460,7 +460,9 @@ using NpgsqlTypes;
                 await integrityService.MarkUnverifiedAsync(
                     trigger,
                     $"Access import batch {batchId} completed; durable integrity evidence remains unverified until the bounded probe completes.");
-                var snapshot = await integrityService.RunBoundedProbeAsync();
+                var snapshot = await integrityService.RunBoundedProbeAsync(
+                    trigger: trigger,
+                    summary: $"Access import batch {batchId} bounded Supplier/Shoe Type probe completed.");
                 _logger.LogInformation(
                     "Post-import Operations integrity probe finished. BatchId={BatchId} Status={Status} EvidenceId={EvidenceId}",
                     batchId,

@@ -45,7 +45,7 @@ public static class SupplierShoeTypeRawFactOracle
             INNER JOIN prodaja_zaglavlje pz ON ps.id_prodaja = pz.id
             INNER JOIN "Artikli" a ON ps.id_artikal = a."Id"
             WHERE pz.datum_prodaje >= @fromUtc
-              AND pz.datum_prodaje <= @toUtc
+              AND pz.datum_prodaje < @toUtc
               AND (@storeId IS NULL OR pz.id_objekat = @storeId)
               AND UPPER(BTRIM(COALESCE(pz.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')
               AND (
@@ -85,7 +85,7 @@ public static class SupplierShoeTypeRawFactOracle
             INNER JOIN prodaja_zaglavlje pz ON ps.id_prodaja = pz.id
             INNER JOIN "Artikli" a ON ps.id_artikal = a."Id"
             WHERE pz.datum_prodaje >= @fromUtc
-              AND pz.datum_prodaje <= @toUtc
+              AND pz.datum_prodaje < @toUtc
               AND (@storeId IS NULL OR pz.id_objekat = @storeId)
               AND UPPER(BTRIM(COALESCE(pz.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')
               AND (
@@ -114,7 +114,7 @@ public static class SupplierShoeTypeRawFactOracle
             INNER JOIN prodaja_zaglavlje pz ON ps.id_prodaja = pz.id
             INNER JOIN "Artikli" a ON ps.id_artikal = a."Id"
             WHERE pz.datum_prodaje >= @fromUtc
-              AND pz.datum_prodaje <= @toUtc
+              AND pz.datum_prodaje < @toUtc
               AND (@storeId IS NULL OR pz.id_objekat = @storeId)
               AND UPPER(BTRIM(COALESCE(pz.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')
               AND (
