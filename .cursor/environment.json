@@ -1,0 +1,21 @@
+{
+  "name": "Trendplus Full Stack",
+  "user": "ubuntu",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "install": "bash .cursor/install.sh",
+  "start": "bash .cursor/start.sh",
+  "terminals": [
+    {
+      "name": "backend-api",
+      "command": "cd Api && ASPNETCORE_ENVIRONMENT=Development PORT=8080 dotnet run -c Debug --project Api.csproj"
+    },
+    {
+      "name": "frontend",
+      "command": "cd Klijent/clientapp && npm run dev"
+    }
+  ],
+  "ports": [8080, 5174, 5434]
+}

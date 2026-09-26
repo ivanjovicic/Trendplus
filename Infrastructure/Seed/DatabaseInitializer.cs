@@ -818,6 +818,7 @@ public static class DatabaseInitializer
         await EnsureWorkerRuntimeSettingsSchemaAsync(connectionString, logger);
         await EnsureDeletedRowsArchiveSchemaAsync(connectionString, logger, "trendplus");
         await EnsureTrendplusTransferSchemaAsync(connectionString, logger);
+        await EnsureAccessImportBaseSchemaAsync(connectionString, logger);
 
         // Ensure migrations history table exists
         await ExecuteSqlCommandAsync(connectionString, @"
@@ -1291,6 +1292,32 @@ public static class DatabaseInitializer
         return (bool?)await command.ExecuteScalarAsync() ?? false;
     }
 
+    private static async Task EnsureAccessImportBaseSchemaAsync(string connectionString, ILogger logger)
+    {
+        // The "DataImportBatches" table is created by the raw startup script
+        // 012_AddAccessImportSupport.sql, which runs after EF migrations. Post-baseline
+        // EF migrations (e.g. AddCancellationColumnsToDataImportBatches) alter this table,
+        // so on a brand-new database it must exist before MigrateAsync runs. This mirrors
+        // the base table definition from script 012 and is safe to run repeatedly.
+        await ExecuteSqlCommandAsync(connectionString, @"
+            CREATE TABLE IF NOT EXISTS ""DataImportBatches"" (
+                ""Id"" BIGSERIAL PRIMARY KEY,
+                ""SourceSystem"" VARCHAR(64) NOT NULL DEFAULT 'access',
+                ""SourceFileName"" VARCHAR(300) NOT NULL,
+                ""StartedAtUtc"" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                ""CompletedAtUtc"" TIMESTAMPTZ NULL,
+                ""Status"" VARCHAR(32) NOT NULL DEFAULT 'running',
+                ""SummaryJson"" TEXT NULL,
+                ""ErrorMessage"" VARCHAR(4000) NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS ""IX_DataImportBatches_StartedAtUtc"" ON ""DataImportBatches"" (""StartedAtUtc"");
+            CREATE INDEX IF NOT EXISTS ""IX_DataImportBatches_Status"" ON ""DataImportBatches"" (""Status"");
+        ", logger);
+
+        logger.LogInformation("Ensured Access import base schema (DataImportBatches) before EF migrations.");
+    }
+
     private static async Task EnsureTrendplusMigrationHistorySeededAsync(string connectionString, ILogger logger)
     {
         var migrationIds = new[]
@@ -1312,7 +1339,14 @@ public static class DatabaseInitializer
             "20260223143834_AddKolicinaToDnevnikPromena",
             "20260223162737_AddMaterijalToArtikli",
             "20260224180000_AddIDObjektRedniBrojToDnevnikPromena",
-            "20260225100001_AddKorisnikImeNabavnaCenaToProdaja"
+            "20260225100001_AddKorisnikImeNabavnaCenaToProdaja",
+            // The following migrations create tables that the idempotent bootstrap
+            // self-heal above also provisions (Transfers/TransferItems/StockReservations
+            // and WorkerRuntimeSettings). On a brand-new database EF would otherwise try
+            // to CREATE those tables a second time and fail with 42P07 (already exists),
+            // so mark them as applied to match the bootstrap-created schema.
+            "20260327120000_CreateTransfersTables",
+            "20260507132430_AddWorkerRuntimeSettings"
         };
 
         await using var connection = new NpgsqlConnection(connectionString);

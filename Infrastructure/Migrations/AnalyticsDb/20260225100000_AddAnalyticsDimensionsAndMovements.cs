@@ -1,8 +1,8 @@
 using System;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Infrastructure.DbContexts;
-using Microsoft.EntityFrameworkCore.Infrastructure;
 
 #nullable disable
 
