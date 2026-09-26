@@ -28,7 +28,20 @@ vi.mock("recharts", () => ({
 }));
 
 vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({
-  default: ({ title }: { title: string }) => <h1 data-testid="analytics-trust-header">{title}</h1>,
+  default: ({
+    title,
+    periodFrom,
+    periodTo,
+  }: {
+    title: string;
+    periodFrom?: string | null;
+    periodTo?: string | null;
+  }) => (
+    <>
+      <h1 data-testid="analytics-trust-header">{title}</h1>
+      <output data-testid="analytics-trust-period">{periodFrom ?? "unknown"}|{periodTo ?? "unknown"}</output>
+    </>
+  ),
 }));
 vi.mock("../../components/analytics/AnalyticsTableToolbar", () => ({
   default: ({
@@ -316,6 +329,20 @@ function makeResponse(candidates = [makeCandidate(), makeCandidate({
     page: 1,
     pageSize: 60,
     totalCandidates: candidates.length,
+    evidenceWindow: {
+      salesWindowFromUtc: "2026-05-01T00:00:00Z",
+      salesWindowToUtc: "2026-06-01T00:00:00Z",
+      markdownWindowFromUtc: "2026-05-15T00:00:00Z",
+      markdownWindowToUtc: "2026-06-01T00:00:00Z",
+      timezone: "UTC",
+      salesQuantityPolicy: "signed_net_quantity_preserved",
+      nonPositiveNetPolicy: "recommendation_unavailable",
+      previousWeekDenominatorPolicy: "unavailable_when_non_positive",
+      candidatesWithReturns: 0,
+      candidatesWithNonPositiveNetSales: 0,
+      candidatesWithoutSalesInWindow: 0,
+      suppliersWithUnavailablePreviousWeekDenominator: 0,
+    },
     meta: {
       success: true,
       dataQualityStatus: "good",
@@ -429,6 +456,20 @@ describe("PreNivelacijaPriorityPage", () => {
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.getByRole("heading", { level: 1, name: "Prioriteti pre-nivelacije" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "Prioriteti pre-nivelacije" })).toBeInTheDocument();
+  });
+
+  it("shows the backend evidence window in the trust header", async () => {
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce(makeResponse());
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId("analytics-trust-period")).toHaveTextContent(
+      "2026-05-01T00:00:00Z|2026-06-01T00:00:00Z",
+    );
   });
 
   it("shows backend reliability as a percent instead of local Visoko/Srednje/Nisko bands", async () => {
