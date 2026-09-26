@@ -78,6 +78,15 @@ const offPageAlert = {
   },
 };
 
+async function waitForInventoryBootstrap() {
+  await waitFor(() => {
+    // Store discovery fills the default comparison selection, which intentionally
+    // triggers one follow-up inventory request. RQ323 hides secondary snapshots
+    // during that refetch, so interact only with the settled current-scope alert.
+    expect(getInventoryAlertsMock.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+}
+
 function seedInventoryMocks() {
   getStoresMock.mockResolvedValue([{ storeId: 1, storeName: "Prodavnica 1" }]);
   getSupplierFiltersMock.mockResolvedValue([]);
@@ -157,6 +166,7 @@ describe("InventoryPage off-page SKU detail", () => {
       </MemoryRouter>,
     );
 
+    await waitForInventoryBootstrap();
     const alertButton = await screen.findByRole("button", { name: /Otvori detalj artikla za alert Off-page alert artikal/i });
     fireEvent.click(alertButton);
 
@@ -188,6 +198,7 @@ describe("InventoryPage off-page SKU detail", () => {
       </MemoryRouter>,
     );
 
+    await waitForInventoryBootstrap();
     const alertButton = await screen.findByRole("button", { name: /Otvori detalj artikla za alert Off-page alert artikal/i });
     fireEvent.click(alertButton);
 
@@ -210,6 +221,7 @@ describe("InventoryPage off-page SKU detail", () => {
       </MemoryRouter>,
     );
 
+    await waitForInventoryBootstrap();
     const alertButton = await screen.findByRole("button", { name: /Otvori detalj artikla za alert Off-page alert artikal/i });
     fireEvent.click(alertButton);
 
@@ -235,6 +247,7 @@ describe("InventoryPage off-page SKU detail", () => {
       </MemoryRouter>,
     );
 
+    await waitForInventoryBootstrap();
     const alertButton = await screen.findByRole("button", { name: /Otvori detalj artikla za alert Off-page alert artikal/i });
     fireEvent.click(alertButton);
 
@@ -265,6 +278,7 @@ describe("InventoryPage off-page SKU detail", () => {
       </MemoryRouter>,
     );
 
+    await waitForInventoryBootstrap();
     const sizeCurveButton = await screen.findByRole("button", { name: /Otvori raspodelu veličina za SKU 9999/i });
     fireEvent.click(sizeCurveButton);
 
