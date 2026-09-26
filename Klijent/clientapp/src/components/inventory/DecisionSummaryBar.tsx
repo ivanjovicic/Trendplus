@@ -34,8 +34,12 @@ export function DecisionSummaryBar({
     outOfStockCount == null || !Number.isFinite(outOfStockCount) ? null : Math.max(0, outOfStockCount);
   const currentLowStockCount =
     lowStockCount == null || !Number.isFinite(lowStockCount) ? null : Math.max(0, lowStockCount);
-  const p2Transfer = actionWorkflow?.items?.filter((item) => item.actionType === "transfer" && item.status === "pending").length ?? 0;
-  const p2DeadStock = actionWorkflow?.items?.filter((item) => (item.actionType === "clearance" || item.actionType === "markdown") && item.status === "pending").length ?? 0;
+  const p2Transfer = actionWorkflowError
+    ? null
+    : actionWorkflow?.items?.filter((item) => item.actionType === "transfer" && item.status === "pending").length ?? 0;
+  const p2DeadStock = actionWorkflowError
+    ? null
+    : actionWorkflow?.items?.filter((item) => (item.actionType === "clearance" || item.actionType === "markdown") && item.status === "pending").length ?? 0;
   const workflowPending = actionWorkflowError ? null : actionWorkflow?.pendingCount ?? 0;
   const hasOos = (currentOosCount ?? 0) > 0;
   const hasLowStock = (currentLowStockCount ?? 0) > 0;
@@ -76,22 +80,22 @@ export function DecisionSummaryBar({
         </div>
 
         {/* P2: Transfer kandidati */}
-        <div className={`rounded-2xl border-2 p-3 transition-colors ${p2Transfer > 0 ? "border-info bg-[var(--surface-darker)]" : "border-border bg-surface"}`}>
+        <div className={`rounded-2xl border-2 p-3 transition-colors ${p2Transfer != null && p2Transfer > 0 ? "border-info bg-[var(--surface-darker)]" : "border-border bg-surface"}`}>
           <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] font-semibold">
-            <GitCompareArrows size={12} className={p2Transfer > 0 ? "text-info" : "text-muted"} />
-            <span className={p2Transfer > 0 ? "text-info" : "text-muted"}>P2 Transfer</span>
+            <GitCompareArrows size={12} className={p2Transfer != null && p2Transfer > 0 ? "text-info" : "text-muted"} />
+            <span className={p2Transfer != null && p2Transfer > 0 ? "text-info" : "text-muted"}>P2 Transfer</span>
           </div>
-          <div className={`mt-2 text-lg font-bold ${p2Transfer > 0 ? "text-info" : "text-foreground"}`}>{formatNumber(p2Transfer)}</div>
+          <div className={`mt-2 text-lg font-bold ${p2Transfer != null && p2Transfer > 0 ? "text-info" : "text-foreground"}`}>{formatCount(p2Transfer)}</div>
           <div className="mt-1 text-[10px] text-muted">prebacivanje između</div>
         </div>
 
         {/* P2: Dead stock / Markdown */}
-        <div className={`rounded-2xl border-2 p-3 transition-colors ${p2DeadStock > 0 ? "border-warning bg-[var(--surface-darker)]" : "border-border bg-surface"}`}>
+        <div className={`rounded-2xl border-2 p-3 transition-colors ${p2DeadStock != null && p2DeadStock > 0 ? "border-warning bg-[var(--surface-darker)]" : "border-border bg-surface"}`}>
           <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] font-semibold">
-            <TrendingDown size={12} className={p2DeadStock > 0 ? "text-warning" : "text-muted"} />
-            <span className={p2DeadStock > 0 ? "text-warning" : "text-muted"}>P2 Mrtva zaliha</span>
+            <TrendingDown size={12} className={p2DeadStock != null && p2DeadStock > 0 ? "text-warning" : "text-muted"} />
+            <span className={p2DeadStock != null && p2DeadStock > 0 ? "text-warning" : "text-muted"}>P2 Mrtva zaliha</span>
           </div>
-          <div className={`mt-2 text-lg font-bold ${p2DeadStock > 0 ? "text-warning" : "text-foreground"}`}>{formatNumber(p2DeadStock)}</div>
+          <div className={`mt-2 text-lg font-bold ${p2DeadStock != null && p2DeadStock > 0 ? "text-warning" : "text-foreground"}`}>{formatCount(p2DeadStock)}</div>
           <div className="mt-1 text-[10px] text-muted">mrtva zaliha / sniženje</div>
         </div>
 
