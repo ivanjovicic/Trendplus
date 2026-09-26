@@ -4,6 +4,8 @@ Date: 2026-09-25
 Repository: ivanjovicic/Trendplus
 Status: canonical plan for the certification follow-up; not a product implementation and not a claim that either screen is already certified.
 
+Canonical contract: [`SUPPLIER_SHOETYPE_ACCURACY_CONTRACT_2026-09-26.md`](SUPPLIER_SHOETYPE_ACCURACY_CONTRACT_2026-09-26.md), version `SST-ACCURACY-1.0` (RQ445; contract established, certification still open).
+
 ## Purpose
 
 Define the evidence required before Trendplus may make a defensible, bounded accuracy claim for Prodaja po dobavljačima and Prodaja po vrsti obuće. The claim is scoped to a tenant/store, requested and effective period, data scope, application build, schema and contract version. It must never be presented as an unconditional claim about every future source record.
@@ -16,7 +18,7 @@ Preferred customer wording:
 
 | Desired layer | Current evidence on main | Verdict / owner |
 |---|---|---|
-| Formal accuracy contract | RQ411/RQ412 manifests define attribution/oracle facts, but no single contract binds API, UI, export, trust, cost qualification and claim language. | Missing — RQ445 |
+| Formal accuracy contract | The canonical `SST-ACCURACY-1.0` contract now binds API, UI, export, trust, cost qualification and claim language. | Established — RQ445; runtime/certification proof remains open |
 | Live RQ412 oracle execution | Four PostgreSQL oracle cases are implemented but the evidence says they were not run in the recorded environment. | Missing proof — RQ447 |
 | Adversarial golden dataset | RQ407 has a strong shared seed and RQ412 has expected totals, but the full boundary/duplicate/mutation/cost adversarial corpus is not an immutable certification pack. | Missing — RQ446 |
 | OP2-01/04/05/14 reproducers | Second-pass classification keeps these as potential and records no failing runtime assertion. | Missing runtime closure — RQ447; do not reopen statically |
@@ -57,7 +59,7 @@ These decisions are certification prerequisites. RQ456 owns the cross-surface re
 
 | Sequence | Prompt | Status | Output |
 |---:|---|---|---|
-| 1 | RQ445 | WAITING | canonical contract and bounded claim language |
+| 1 | RQ445 | IN_PROGRESS | canonical contract and bounded claim language |
 | 2 | RQ456 | WAITING | one DUG/KOREKCIJA retail-sales population across Daily/Supplier/Shoe/Color/oracle |
 | 3 | RQ457 | WAITING | Shoe Type ID/null identity, previous-only rows and margin semantics |
 | 4 | RQ446 | WAITING | adversarial fixture and immutable expected manifest |
