@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import AnalyticsErrorState from "../AnalyticsErrorState";
+import { ANALYTICS_EMPTY_ERROR_FALLBACK_MESSAGE } from "../../../utils/analyticsErrorMessages";
 
 function renderError(overrides: Partial<React.ComponentProps<typeof AnalyticsErrorState>> = {}) {
   return render(
@@ -61,9 +62,7 @@ describe("AnalyticsErrorState", () => {
     renderError({ message: "TypeError: Failed to fetch analytics payload" });
 
     const alert = screen.getByRole("alert");
-    expect(alert).toHaveTextContent(
-      "Podaci trenutno nisu dostupni. Proverite kvalitet podataka i pokušajte ponovo.",
-    );
+    expect(alert).toHaveTextContent(ANALYTICS_EMPTY_ERROR_FALLBACK_MESSAGE);
     expect(alert).not.toHaveTextContent("TypeError: Failed to fetch analytics payload");
   });
 
@@ -71,9 +70,7 @@ describe("AnalyticsErrorState", () => {
     renderError({ message: "sql_timeout_v2" });
 
     const alert = screen.getByRole("alert");
-    expect(alert).toHaveTextContent(
-      "Podaci trenutno nisu dostupni. Proverite kvalitet podataka i pokušajte ponovo.",
-    );
+    expect(alert).toHaveTextContent(ANALYTICS_EMPTY_ERROR_FALLBACK_MESSAGE);
     expect(alert).not.toHaveTextContent("sql_timeout_v2");
   });
 

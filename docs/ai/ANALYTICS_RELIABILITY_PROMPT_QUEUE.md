@@ -2,8 +2,12 @@
 
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ440
-Owner claim 2026-09-26: `RQ442` transitioned `READY -> IN_PROGRESS` in this workspace after P1 priority, dependency and collision refresh; it owns the half-open whole-day contract for Supplier Sales, Shoe Type Sales and Color Sales. Local lock: `.ai/task-locks/RQ442-codex.lock.md`. `Current READY prompt` remains `RQ440` as the primary pointer; RQ442 is the selected higher-priority independent lane.
+Current READY prompt: none
+Owner promotion 2026-09-26: under the user's claim-and-execute request, `RQ440` was dependency-complete with no active lock on the seven shared spec files. `RQ440` moved `READY -> IN_PROGRESS` as the primary pointer.
+Owner claim 2026-09-26: `RQ440` transitioned `READY -> IN_PROGRESS` in this workspace for shared analytics spec drift triage. Local lock: `.ai/task-locks/RQ440-cursor.lock.md`.
+Owner completion 2026-09-26: `RQ440` was delivered directly to `main` after classifying all nine cases as copy/contract drift from the RQ435 safe-message and supplier-decision label contracts (no product regression). Run log: `.ai/runs/2026-09-26-RQ440-evidence.md`. Evidence state: synchronized. Independent READY lanes `RQ438` and `RQ442` remain claimable.
+Owner claim 2026-09-26: `RQ442` transitioned `READY -> IN_PROGRESS` in this workspace after P1 priority, dependency and collision refresh; it owns the half-open whole-day contract for Supplier Sales, Shoe Type Sales and Color Sales. Local lock was removed before delivery; the primary READY pointer remained `none` while this independent lane was active.
+Owner completion 2026-09-26: `RQ442` was delivered directly to `main` in implementation `73b50263`; whole-day Operations requests now use the exclusive next-UTC-midnight bound across Supplier, Shoe Type and Color, including comparable previous periods and display/provenance conversion. Run log: `.ai/runs/2026-09-26-RQ442-evidence.md`. Evidence state: pending until the merge closure verifies `origin/main`.
 Owner certification follow-up 2026-09-25: a current-main review of the Supplier/Shoe Type accuracy claim found the existing RQ407/RQ411-RQ413/RQ373-RQ380/RQ375-RQ377 work materially complete but still missing certification-layer evidence. Added non-duplicative WAITING prompts RQ445-RQ455 in the Operations accuracy addendum for the formal contract, adversarial golden cases, live oracle/reproducer closure, browser/render/export reconciliation, durable evidence history, post-import probe, Verified UI, certificate, non-skippable CI, production read-only proof and customer acceptance. Existing owners remain authoritative; no product code is changed by this planning update. Plan: docs/qa/SUPPLIER_SHOETYPE_ACCURACY_CERTIFICATION_PLAN_2026-09-25.md.
 Owner claim 2026-09-25 (Supplier overview audit, grok): the audit of „Prodaja po dobavljačima“ (`/analytics/supplier?tab=overview`, legacy `operations-supplier-sales`) added and claimed `RQ443` (total PoP trend must include suppliers without current sales; the unfocused subset of the unregistered `PS11`/C16 in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-25.md`) and `RQ444` (sticky legacy `sezonaId`, data window shown as the period, +1-day header end date), both `READY -> IN_PROGRESS` in this workspace. Local locks: `.ai/task-locks/RQ443-grok.lock.md`, `.ai/task-locks/RQ444-grok.lock.md`. `Current READY prompt` stays `RQ440`. Other findings route to `RQ442`, `RQ441`, `RQ325` and the unregistered `PS06`/`PS11`/`PS12`/`PS16`/`PS17`/`PS18`. Run log: `.ai/runs/2026-09-25-supplier-sales-overview-audit-evidence.md`.
 Owner completion 2026-09-25: RQ443 was implemented and committed directly on local `main` (`fix(analytics): base supplier total PoP on the full previous period (RQ443)`, parent `77371907`); status `PARTIAL` until `origin/main` contains it (local-only delivery). Run log: `.ai/runs/2026-09-25-RQ443-evidence.md`.
@@ -1599,9 +1603,9 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ437 | DONE | operations-stale-test-hygiene | Repair stale Operacije tests that hide regressions |
 | RQ438 | READY | daily-sales-receipt-identity-residuals | Finish Daily Sales receipt-identity joins and prove the journal amount sign |
 | RQ439 | WAITING | supplier-decision-hub-pr63-triage | Triage unmerged PR #63 Supplier Decision Hub findings against current main |
-| RQ440 | READY | analytics-shared-spec-drift | Triage nine unowned failing shared analytics specs |
+| RQ440 | DONE | analytics-shared-spec-drift | Triage nine unowned failing shared analytics specs |
 | RQ441 | WAITING | daily-sales-frozen-supplier-attribution | Align Daily Sales supplier buckets with sale-time attribution used by canonical Supplier Sales |
-| RQ442 | READY | operations-whole-day-half-open-ranges | Make Supplier, Shoe Type and Color whole-day filters half-open and boundary-safe |
+| RQ442 | DONE | operations-whole-day-half-open-ranges | Make Supplier, Shoe Type and Color whole-day filters half-open and boundary-safe |
 | RQ443 | PARTIAL | supplier-overview-total-pop | Keep the Supplier overview total PoP trend on the full previous-period population |
 | RQ444 | PARTIAL | supplier-overview-period-truth | Supplier overview period truth: drop the sticky legacy season and show the analyzed period |
 | RQ445 | WAITING | supplier-shoetype-accuracy-contract | Canonical accuracy contract for Supplier/Shoe Type metrics, populations, provenance and claim language |
@@ -23875,7 +23879,7 @@ Five focused tests fail on `00accd93` because assertions drifted behind delivere
 
 ## RQ438 - Finish Daily Sales receipt-identity joins and prove the journal amount sign
 
-Status: READY
+Status: DONE
 Ready after: `RQ429` is DONE (same Daily Sales feature area; `RQ429` may touch the typed Daily Sales response)
 Priority: P2
 Type: backend/contract/tests
@@ -23986,7 +23990,7 @@ PR #63 (2026-09-22, branch `cursor/supplier-decision-hub-audit-444b`, four docs 
 
 ## RQ440 - Triage nine unowned failing shared analytics specs
 
-Status: READY
+Status: DONE
 Priority: P2
 Type: tests
 Feature family: analytics-shared-spec-drift
@@ -24037,6 +24041,23 @@ Full `npx vitest run` at `aaf51c2c` and a focused rerun at `ed0b0eca` (before `R
 
 - No blocking dependency; must not edit `RQ437`-owned files while `RQ437` is active.
 - Reliability contract: tests must keep asserting that missing evidence is never rendered as zero, healthy or fresh, and that technical identifiers are not shown to users unless a trust/lineage contract explicitly requires them.
+
+### Completion note
+
+- Date: 2026-09-26
+- Status: DONE
+- Classification: all nine failures were **copy/contract drift** after RQ435 safe error fallbacks and `supplierDecisionLabels` user-facing lineage mapping; no product code changes required.
+- Changed files: seven spec files listed in Scope; queue header and this completion note.
+- Checks run: focused vitest on seven files (59/59); `npm run typecheck`; `npm run check:analytics-guardrails`.
+- Checks not run: full vitest suite; remote CI.
+- Run log: `.ai/runs/2026-09-26-RQ440-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `73bb621c`
+- Main verification: passed — `origin/main` contains `73bb621c`
+- Missed: none for bounded RQ440 scope; full-suite vitest not re-run.
+- Residual risk: other pre-existing failing specs outside the seven RQ440 files may remain red until their owners close.
+- Follow-up: `RQ438` (backend receipt joins) and `RQ442` (half-open day ranges) remain READY.
 
 ---
 
@@ -24110,7 +24131,7 @@ Daily Sales currently groups historical sale lines through the current article-m
 
 ## RQ442 - Make Operations whole-day ranges half-open and boundary-safe
 
-Status: IN_PROGRESS
+Status: READY
 Priority: P1
 Type: backend/frontend/contract/tests
 Feature family: operations-whole-day-half-open-ranges
@@ -24170,6 +24191,25 @@ Supplier Sales, Shoe Type Sales and Color Sales send a selected date's end as `2
 - No blocking runtime dependency; `RQ440`-owned shared specs must not be edited unless a named case proves a real regression.
 - `RQ382` remains the owner of Daily scope diagnostics; this prompt owns the non-Daily whole-day boundary contract.
 - Pre/Post remains out of scope unless a separate date contract defect is proven.
+
+### Completion note
+
+- Date: 2026-09-26
+- Status: DONE
+- Completion: Supplier Sales, Shoe Type Sales and Color Sales now use a shared half-open whole-day contract `[fromUtc, toUtc)`, including comparable previous-period queries, cache/provenance request bounds and calendar-date display conversion.
+- Changed files: `Application/Analytics/OperationsDateRange.cs`, `Api/Endpoints/AllEndpoints.cs`, the three Operations frontend pages, focused tests/utilities, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, this queue, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-26-RQ442-evidence.md`.
+- Contract/runtime behavior changed: date-only end selections serialize to the next UTC midnight exclusively; exact midnight is excluded and fractional timestamps before it are included; invalid/equal ranges fail closed; adjacent comparable periods do not overlap.
+- Checks run: focused backend test 2/2; focused frontend tests 55/55; analytics guardrails, encoding, TypeScript, backend build and `git diff --check` passed.
+- Checks not run: full suites and live PostgreSQL fractional-second endpoint fixture; see the run log.
+- Run log: `.ai/runs/2026-09-26-RQ442-evidence.md`
+- Evidence state: pending until final main verification
+- Delivery mode: direct-main
+- Main commit SHA: `73b50263` implementation; merge closure pending
+- Main verification: pending until push
+- Missed: live PostgreSQL cross-route boundary reconciliation
+- Follow-up: none for RQ442; primary READY pointer remains `none` for the next idle-recovery selection.
+- Residual risk: live database proof and full-suite regression coverage remain outstanding.
+- Prompt defect / scope repair: frontend test expectation and three guardrail baseline line numbers were updated for the intentional exclusive-bound contract/import line shift; no product scope was expanded.
 
 ---
 

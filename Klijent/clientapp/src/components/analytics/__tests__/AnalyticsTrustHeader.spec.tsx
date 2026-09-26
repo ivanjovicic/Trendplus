@@ -78,9 +78,9 @@ describe("AnalyticsTrustHeader", () => {
 
     expect(screen.getByText("Postoje upozorenja")).toBeInTheDocument();
     expect(screen.getByText("Zastarelo")).toBeInTheDocument();
-    expect(screen.getByText("requested_window -> all_time")).toBeInTheDocument();
+    expect(screen.getByText("requested_window -> celokupna istorija")).toBeInTheDocument();
     expect(screen.getByText("All-time fallback")).toBeInTheDocument();
-    expect(screen.getByText("mv_supplier_decision_score_cache_90d")).toBeInTheDocument();
+    expect(screen.getByText("keš signala odluke dobavljača")).toBeInTheDocument();
     expect(screen.getByText(/Pomoćni skup je aktivan\./i)).toBeInTheDocument();
     expect(screen.getByText(/Nema dovoljno zapisa u traženom periodu/i)).toBeInTheDocument();
     expect(screen.queryByText(/NO_WINDOW_ROWS/i)).not.toBeInTheDocument();
@@ -174,7 +174,7 @@ describe("AnalyticsTrustHeader", () => {
     });
 
     expect(screen.queryByText(/sql_timeout_v2|internal_table|internal_secret_fallback/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/Dodatni razlog pomoćnog skupa nije naveden/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Dodatni razlog pomoćnog skupa nije naveden/i).length).toBeGreaterThan(0);
   });
 
   it("does not crash on malformed optional text fields", () => {
