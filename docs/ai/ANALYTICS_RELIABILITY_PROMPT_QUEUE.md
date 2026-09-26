@@ -2,7 +2,8 @@
 
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ321 (IN_PROGRESS in this workspace)
+Owner promotion/claim 2026-09-26: idle recovery verified the higher-priority RQ P0 lanes remain externally gated or owned elsewhere, while RQ321 is an independent P2 shared-UX error contract with no dependency, conflicting lock or active store-filter owner. `RQ321` moved `WAITING -> READY -> IN_PROGRESS`; local lock `.ai/task-locks/RQ321-codex.lock.md`.
 Owner completion 2026-09-26: `RQ315` is DONE; Pre-Nivelacija trust header renders backend `evidenceWindow` period fields and the focused regression passes 49/49. Run log: `.ai/runs/2026-09-26-RQ315-evidence.md`. Evidence state: synchronized.
 Owner revalidation 2026-09-26: RQ447 is PARTIAL, not DONE, after dedicated run `36262400467`: oracle 4/4 passed, but all-eight-routes failed on the explicit startup `db_warmup` 503 and OP2/frontend gates did not execute. A bounded exact-signal retry was added to the route proof; do not promote RQ448 or certify RQ447 until a fresh artifact passes.
 Owner completion 2026-09-26: fresh run `36262787853` on `f8a2695e7f4805aff2d6c9de3005c34f8c01889a9` passed the dedicated RQ447 certification job: oracle `4/4`, all-eight-routes `1/1`, OP2 `4/4`, zero skips and frontend seam proof `3 passed`; artifact `rq447-certification-f8a2695e7f4805aff2d6c9de3005c34f8c01889a9` (`10912912940`). RQ447 is DONE for its dedicated acceptance; the separate broad backend suite remains outside this gate. Run log: `.ai/runs/2026-09-26-RQ447-evidence.md`. Evidence state: synchronized.
@@ -17872,7 +17873,7 @@ Reproduction: change preset dates without Apply — inputs show new range, heade
 
 ## RQ321 - Surface store-filter load failures on Operacije analytics pages
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P2
 Type: frontend/error-handling/tests
 Feature family: operations-store-filter-failure

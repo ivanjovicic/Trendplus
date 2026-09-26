@@ -4,6 +4,8 @@ Updated: 2026-09-26
 Repository: `ivanjovicic/Trendplus`
 Status: canonical planning entry point
 
+Owner promotion/claim 2026-09-26: idle recovery confirmed the higher-priority RQ certification lanes are externally gated or owned elsewhere, while RQ321 is an independent P2 shared-UX error contract with no dependency or conflicting store-filter owner. RQ321 is IN_PROGRESS in this workspace; the local lock is .ai/task-locks/RQ321-codex.lock.md.
+
 Owner re-entry 2026-09-26: BCI10 was claimed after current-main backend run `36264090648` completed red (`1475 total / 1394 passed / 43 failed / 38 skipped`). Restore, build and migration/bootstrap succeeded; the dedicated RQ447 job was green, while the broad backend test step failed. The run was not stuck or waiting for cleanup. A bounded `[FromServices]` binding repair for the cache authorization test host is on this delivery; BCI10 remains `PARTIAL` pending focused SQL/session, report-warning and full-suite provider/isolation repairs. Evidence: `.ai/runs/2026-09-26-BCI10-reentry-evidence.md`; QA: `docs/qa/BACKEND_CI_CURRENT_MAIN_TRIAGE_2026-09-26.md`.
 
 Owner completion 2026-09-26: RQ447 fresh dedicated certification run `36262787853` on `f8a2695e7f4805aff2d6c9de3005c34f8c01889a9` passed oracle `4/4`, all-eight-routes `1/1`, OP2 `4/4`, zero skips and frontend seam proof `3 passed`; RQ447 is DONE for its dedicated gate. The separate broad backend suite remains outside this acceptance. Run log: `.ai/runs/2026-09-26-RQ447-evidence.md`.

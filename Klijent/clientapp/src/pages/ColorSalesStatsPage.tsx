@@ -25,6 +25,7 @@ import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
+import AnalyticsFilterLoadNotice from "../components/analytics/AnalyticsFilterLoadNotice";
 import InfoTip from "../components/ui/InfoTip";
 import UltraSpinner from "../components/ui/UltraSpinner";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
@@ -309,6 +310,8 @@ export default function ColorSalesStatsPage() {
   });
 
   const [stores, setStores] = useState<StoreOption[]>([]);
+  const [storesLoadError, setStoresLoadError] = useState<string | null>(null);
+  const [storesReloadNonce, setStoresReloadNonce] = useState(0);
   const [dataScope, setDataScopeValue] = useState<DataScope>(() => getDataScope());
   const [sortField, setSortField] = useState<SortField>(() => readAnalyticsTableSort(searchParams, COLOR_SORT_FIELDS, "status", "desc").field);
   const [sortDir, setSortDir] = useState<SortDir>(() => readAnalyticsTableSort(searchParams, COLOR_SORT_FIELDS, "status", "desc").dir);
@@ -337,16 +340,25 @@ export default function ColorSalesStatsPage() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     const loadStores = async () => {
       try {
-        setStores(await getStores(true));
+        const nextStores = await getStores(true);
+        if (cancelled) return;
+        setStores(nextStores);
+        setStoresLoadError(null);
       } catch {
+        if (cancelled) return;
         setStores([]);
+        setStoresLoadError("stores_load_failed");
       }
     };
 
     void loadStores();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [storesReloadNonce]);
 
   const colorQuery = useCallback((signal: AbortSignal) => {
     const currentRange = toUtcRange(activeFilters.fromDate, activeFilters.toDate);
@@ -866,6 +878,7 @@ export default function ColorSalesStatsPage() {
         control: (
           <select
             value={storeId ?? ""}
+            disabled={storesLoadError != null}
             onChange={(event) => setStoreId(event.target.value ? Number(event.target.value) : null)}
           >
             <option value="">Svi objekti</option>
@@ -878,7 +891,7 @@ export default function ColorSalesStatsPage() {
         ),
       },
     ],
-    [data?.sezone, fromDate, handleSeasonChange, periodPreset, sezonaId, storeId, stores, toDate],
+    [data?.sezone, fromDate, handleSeasonChange, periodPreset, sezonaId, storeId, stores, storesLoadError, toDate],
   );
 
   const handleSort = (field: SortField) => {
@@ -919,6 +932,8 @@ export default function ColorSalesStatsPage() {
         refreshStatusHref="/admin/configuration?panel=workers"
         compact
       />
+
+      {storesLoadError ? <AnalyticsFilterLoadNotice onRetry={() => setStoresReloadNonce((value) => value + 1)} /> : null}
 
       <AnalyticsControlBar
         title="Opseg i filteri"

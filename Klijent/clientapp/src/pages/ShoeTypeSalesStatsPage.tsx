@@ -25,6 +25,7 @@ import AnalyticsControlBar, {
 import AnalyticsDataTable from "../components/analytics/AnalyticsDataTable";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
+import AnalyticsFilterLoadNotice from "../components/analytics/AnalyticsFilterLoadNotice";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import InfoTip from "../components/ui/InfoTip";
@@ -388,6 +389,8 @@ export default function ShoeTypeSalesStatsPage() {
   });
 
   const [stores, setStores] = useState<StoreOption[]>([]);
+  const [storesLoadError, setStoresLoadError] = useState<string | null>(null);
+  const [storesReloadNonce, setStoresReloadNonce] = useState(0);
   const [dataScope, setDataScopeValue] = useState<DataScope>(() => getDataScope());
   const [sortField, setSortField] = useState<SortField>(() => readAnalyticsTableSort(searchParams, SHOE_SORT_FIELDS, "status", "desc").field);
   const [sortDir, setSortDir] = useState<SortDir>(() => readAnalyticsTableSort(searchParams, SHOE_SORT_FIELDS, "status", "desc").dir);
@@ -416,16 +419,25 @@ export default function ShoeTypeSalesStatsPage() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     const loadStores = async () => {
       try {
-        setStores(await getStores(true));
+        const nextStores = await getStores(true);
+        if (cancelled) return;
+        setStores(nextStores);
+        setStoresLoadError(null);
       } catch {
+        if (cancelled) return;
         setStores([]);
+        setStoresLoadError("stores_load_failed");
       }
     };
 
     void loadStores();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [storesReloadNonce]);
 
   const shoeTypeQuery = useCallback((signal: AbortSignal) => {
     const currentRange = toUtcRange(activeFilters.fromDate, activeFilters.toDate);
@@ -947,6 +959,7 @@ export default function ShoeTypeSalesStatsPage() {
         control: (
           <select
             value={storeId ?? ""}
+            disabled={storesLoadError != null}
             onChange={(event) => {
               const newStore = event.target.value ? Number(event.target.value) : null;
               setStoreId(newStore);
@@ -963,7 +976,7 @@ export default function ShoeTypeSalesStatsPage() {
         ),
       },
     ],
-    [data?.sezone, fromDate, periodPreset, sezonaId, storeId, stores, toDate],
+    [data?.sezone, fromDate, periodPreset, sezonaId, storeId, stores, storesLoadError, toDate],
   );
 
   return (
@@ -985,6 +998,8 @@ export default function ShoeTypeSalesStatsPage() {
         refreshStatusHref="/admin/configuration?panel=workers"
         compact
       />
+
+      {storesLoadError ? <AnalyticsFilterLoadNotice onRetry={() => setStoresReloadNonce((value) => value + 1)} /> : null}
 
       <AnalyticsControlBar
         title="Opseg i filteri"

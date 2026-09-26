@@ -23,7 +23,7 @@
     {
       "file": "src/pages/ProdajaPrePostNivelacijePage.tsx",
       "rule": "reliabilityPct_assign",
-      "line": 411,
+      "line": 412,
       "reason": "Existing backend reliability projection requires a reviewed authority exception."
     },
     {
@@ -95,7 +95,7 @@
     {
       "file": "src/pages/DailySalesStatsPage.tsx",
       "rule": "refetch_setData_null",
-      "line": 866,
+      "line": 878,
       "reason": "Existing daily-sales refetch transition predates the shared reliable-query lifecycle."
     },
     {

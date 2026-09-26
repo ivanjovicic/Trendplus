@@ -22,6 +22,7 @@ import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
+import AnalyticsFilterLoadNotice from "../components/analytics/AnalyticsFilterLoadNotice";
 import InfoTip from "../components/ui/InfoTip";
 import { savePrintPayload } from "../services/analyticsTableState";
 import { getStores } from "../services/analyticsApi";
@@ -750,6 +751,8 @@ export default function DailySalesStatsPage() {
   });
 
   const [stores, setStores] = useState<StoreOption[]>([]);
+  const [storesLoadError, setStoresLoadError] = useState<string | null>(null);
+  const [storesReloadNonce, setStoresReloadNonce] = useState(0);
   const [data, setData] = useState<DailySalesTableResponse | null>(null);
   const [previousData, setPreviousData] = useState<DailySalesTableResponse | null>(null);
   const [previousPeriodState, setPreviousPeriodState] = useState<PreviousPeriodComparisonState>("empty");
@@ -804,16 +807,25 @@ export default function DailySalesStatsPage() {
   }, [searchParams, setSearchParams]);
 
   useEffect(() => {
+    let cancelled = false;
     const loadStores = async () => {
       try {
-        setStores(await getStores(true));
+        const nextStores = await getStores(true);
+        if (cancelled) return;
+        setStores(nextStores);
+        setStoresLoadError(null);
       } catch {
+        if (cancelled) return;
         setStores([]);
+        setStoresLoadError("stores_load_failed");
       }
     };
 
     void loadStores();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [storesReloadNonce]);
 
   const load = useCallback(async (filters: ActiveFilters, signal?: AbortSignal) => {
     const requestId = ++requestIdRef.current;
@@ -1722,6 +1734,7 @@ export default function DailySalesStatsPage() {
         control: (
           <select
             value={storeId ?? ""}
+            disabled={storesLoadError != null}
             onChange={(event) => setStoreId(event.target.value ? Number(event.target.value) : null)}
           >
             <option value="">Svi objekti</option>
@@ -1747,7 +1760,7 @@ export default function DailySalesStatsPage() {
         ),
       },
     ],
-    [fromDate, periodPreset, storeId, stores, toDate, topN],
+    [fromDate, periodPreset, storeId, stores, storesLoadError, toDate, topN],
   );
 
   return (
@@ -1769,6 +1782,8 @@ export default function DailySalesStatsPage() {
         emptyStateReason={!loading && !error ? trustEmptyStateReason : null}
         compact
       />
+
+      {storesLoadError ? <AnalyticsFilterLoadNotice onRetry={() => setStoresReloadNonce((value) => value + 1)} /> : null}
 
       <AnalyticsControlBar
         title="Opseg i filteri"

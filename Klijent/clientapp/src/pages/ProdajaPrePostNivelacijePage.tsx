@@ -17,6 +17,7 @@ import AnalyticsControlBar, {
 import AnalyticsDataTable from "../components/analytics/AnalyticsDataTable";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
+import AnalyticsFilterLoadNotice from "../components/analytics/AnalyticsFilterLoadNotice";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import InfoTip from "../components/ui/InfoTip";
@@ -532,6 +533,8 @@ export default function ProdajaPrePostNivelacijePage() {
   const [vendors, setVendors] = useState<Dobavljac[]>([]);
   const [vendorLoadError, setVendorLoadError] = useState<string | null>(null);
   const [stores, setStores] = useState<StoreOption[]>([]);
+  const [storesLoadError, setStoresLoadError] = useState<string | null>(null);
+  const [storesReloadNonce, setStoresReloadNonce] = useState(0);
   const [dataScope, setDataScopeValue] = useState<DataScope>(() => getDataScope());
   const [sortField, setSortField] = useState<SortField>(() => readAnalyticsTableSort(searchParams, PRE_POST_SORT_FIELDS, "status", "desc").field);
   const [sortDir, setSortDir] = useState<SortDir>(() => readAnalyticsTableSort(searchParams, PRE_POST_SORT_FIELDS, "status", "desc").dir);
@@ -579,15 +582,24 @@ export default function ProdajaPrePostNivelacijePage() {
   }, [loadVendors]);
 
   useEffect(() => {
+    let cancelled = false;
     const loadStores = async () => {
       try {
-        setStores(await getStores(true));
+        const nextStores = await getStores(true);
+        if (cancelled) return;
+        setStores(nextStores);
+        setStoresLoadError(null);
       } catch {
+        if (cancelled) return;
         setStores([]);
+        setStoresLoadError("stores_load_failed");
       }
     };
     void loadStores();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [storesReloadNonce]);
 
   const prePostQuery = useCallback(async (signal: AbortSignal): Promise<PrePostQuerySnapshot> => {
     const currentRange = toUtcRange(activeFilters.fromDate, activeFilters.toDate);
@@ -1277,7 +1289,7 @@ const advancedSignals = useMemo(
         label: "Objekat",
         span: "wide",
         control: (
-          <select value={storeId ?? ""} onChange={(event) => setStoreId(event.target.value ? Number(event.target.value) : null)}>
+          <select disabled={storesLoadError != null} value={storeId ?? ""} onChange={(event) => setStoreId(event.target.value ? Number(event.target.value) : null)}>
             <option value="">Svi objekti</option>
             {stores.map((store) => (
               <option key={store.storeId} value={store.storeId}>
@@ -1288,7 +1300,7 @@ const advancedSignals = useMemo(
         ),
       },
     ],
-    [category, data?.categories, fromDate, handlePresetChange, periodPreset, storeId, stores, toDate, vendorId, vendors]
+    [category, data?.categories, fromDate, handlePresetChange, periodPreset, storeId, stores, storesLoadError, toDate, vendorId, vendors]
   );
 
   const openVendorDetail = (row: DecisionVendor) => {
@@ -1338,6 +1350,7 @@ const advancedSignals = useMemo(
         refreshStatusHref="/admin/configuration?panel=workers"
         compact
       />
+      {storesLoadError ? <AnalyticsFilterLoadNotice onRetry={() => setStoresReloadNonce((value) => value + 1)} /> : null}
       <AnalyticsControlBar
         title="Kontrole i opseg"
         description="Period, dobavljač, kategorija i objekat ostaju ovde; tabela ispod ostaje fokusirana na signal pre/post po dobavljaču."

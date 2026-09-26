@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -166,5 +166,25 @@ describe("ShoeTypeSalesStatsPage dataScope lineage", () => {
     await waitFor(() => {
       expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("scope: existing");
     });
+  });
+
+  it("surfaces a store-filter failure and retries the store request", async () => {
+    vi.mocked(getStores)
+      .mockRejectedValueOnce(new Error("stores unavailable"))
+      .mockResolvedValueOnce([{ storeId: 1, storeName: "Centar", city: "Beograd", region: "BG" }]);
+
+    renderPage();
+
+    const notice = await screen.findByRole("alert");
+    expect(notice).toHaveTextContent("Filter prodavnice nije dostupan.");
+    expect(screen.getByDisplayValue("Svi objekti")).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Pokušaj ponovo" }));
+
+    await waitFor(() => {
+      expect(getStores).toHaveBeenCalledTimes(2);
+    });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByDisplayValue("Svi objekti")).not.toBeDisabled();
   });
 });
