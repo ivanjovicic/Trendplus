@@ -150,8 +150,9 @@ Rules:
 - treat branch/PR work as transport only; opening or updating a PR is not completion;
 - merge or fast-forward to `main` and push when repository policy allows it;
 - do **not** wait for GitHub/Origin CI to finish before delivering to `main`;
-- do **not** subscribe, poll or block closure on CI unless the assigned prompt explicitly makes a named check part of acceptance;
-- record CI honestly in evidence as `queued`, `running`, `not inspected`, `green` or `red`; CI state is residual risk/follow-up, not a substitute for main SHA verification;
+- do **not** subscribe, poll indefinitely or block closure on CI unless the assigned prompt explicitly makes a named check part of acceptance;
+- after delivery, if a relevant current-main Actions run was already triggered and is discoverable, inspect and classify it before final evidence; record its run id/SHA and state as `queued`, `in_progress`, `green` or `red` rather than using `not inspected` as a shortcut;
+- a queued/in-progress run is residual risk, but an already-red current-main run must have its failing job/step classified; fix a proven in-scope regression before claiming `DONE`, or record the concrete pre-existing/unrelated/environment classification;
 - use `PARTIAL` only when `main` cannot be updated safely (branch protection, merge conflict outside scope, missing permissions). Never use `PARTIAL` merely because CI is still running.
 
 ## 8. Validation discipline
