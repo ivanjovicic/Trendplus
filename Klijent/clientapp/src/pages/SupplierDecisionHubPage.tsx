@@ -229,7 +229,7 @@ const RECOMMENDATION_SIGNAL_LABELS: Record<RecommendationCode, string> = {
 };
 
 function recommendationSignalLabel(code: RecommendationCode): string {
-  return RECOMMENDATION_SIGNAL_LABELS[code];
+  return RECOMMENDATION_SIGNAL_LABELS[code] ?? "Signal nije dostupan";
 }
 
 function buildStatusTooltip(row: DecisionRow): string {
