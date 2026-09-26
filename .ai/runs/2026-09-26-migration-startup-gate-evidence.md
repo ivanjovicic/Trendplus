@@ -4,9 +4,9 @@ Date: 2026-09-26
 Agent/tool: Cursor
 Delivery target: main
 Working branch / PR: main
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: 067cd68b6d88ee6e5e24f6e9e2046f675a3ed85e
+Main verification: passed - `origin/main` contains 067cd68b6d88ee6e5e24f6e9e2046f675a3ed85e
+Evidence state: synchronized
 
 ## What was done
 - Confirmed the production cause: Render's web service did not set `Database__AutoMigrate`, so `DeferredStartupTasksHostedService` was not registered in the production web process; the worker process also does not own deferred initialization while workers are enabled.
