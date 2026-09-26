@@ -18,6 +18,7 @@ using Domain.Model.Analytics;
 using Trendplus2.Dtos;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using System.Diagnostics;
 using System.Globalization;
@@ -120,7 +121,7 @@ public static class CachedAnalyticsEndpoints
             IAnalyticsCacheService cache,
             ITrendplusDbContext trendDb,
             IMediator mediator,
-            AnalyticsRefreshStatusService refreshStatusService,
+            [FromServices] AnalyticsRefreshStatusService refreshStatusService,
             ILoggerFactory loggerFactory,
             HttpContext httpContext,
             DateTime? fromDate = null,
@@ -290,7 +291,7 @@ public static class CachedAnalyticsEndpoints
             IAnalyticsCacheService cache,
             ITrendplusDbContext trendDb,
             IMediator mediator,
-            AnalyticsRefreshStatusService refreshStatusService,
+            [FromServices] AnalyticsRefreshStatusService refreshStatusService,
             ILoggerFactory loggerFactory,
             HttpContext httpContext,
             DateTime? fromDate = null,
@@ -1741,7 +1742,7 @@ public static class CachedAnalyticsEndpoints
         group.MapGet("/products/decision-center", async (
             IAnalyticsCacheService cache,
             ITrendplusDbContext db,
-            AnalyticsRefreshStatusService refreshStatusService,
+            [FromServices] AnalyticsRefreshStatusService refreshStatusService,
             ILogger<Program> logger,
             ILoggerFactory loggerFactory,
             HttpContext httpContext,
@@ -2051,7 +2052,7 @@ public static class CachedAnalyticsEndpoints
             IAnalyticsCacheService cache,
             ITrendplusDbContext db,
             IMediator mediator,
-            AnalyticsRefreshStatusService refreshStatusService,
+            [FromServices] AnalyticsRefreshStatusService refreshStatusService,
             ILogger<Program> logger,
             IConfiguration configuration,
             ILoggerFactory loggerFactory,
