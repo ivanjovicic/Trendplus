@@ -5,7 +5,7 @@ Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 Owner completion 2026-09-26: `RQ446` was delivered directly to `main` in `5979ef65`; the adversarial Supplier/Shoe Type fixture, immutable expected-output manifest and exact-byte SHA-256 guard are synchronized. Focused manifest guard proof is `2/2`; runtime PostgreSQL/API execution remains RQ447. Run log: `.ai/runs/2026-09-26-RQ446-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-26: idle recovery found Current READY `none`. Concurrently RQ446 closed on `main`; this workspace claimed P1 `RQ383` for Daily Sales shift provenance. `RQ382` section Status was mechanically repaired IN_PROGRESS→DONE. Local lock: `.ai/task-locks/RQ383-cursor.lock.md`.
-Owner completion 2026-09-26: `RQ383` was delivered for Daily Sales shift provenance. Measured shifts no longer absorb off-shift/no-time remaps; metadata exposes `ShiftAssignmentStatus`, `OffShift*` and `NoTimeFallback*`; frontend keeps shift shares unavailable under `no_time_fallback`. Run log: `.ai/runs/2026-09-26-RQ383-evidence.md`. Evidence state: pending until main SHA verification.
+Owner completion 2026-09-26: `RQ383` was delivered for Daily Sales shift provenance. Measured shifts no longer absorb off-shift/no-time remaps; metadata exposes `ShiftAssignmentStatus`, `OffShift*` and `NoTimeFallback*`; frontend keeps shift shares unavailable under `no_time_fallback`. Run log: `.ai/runs/2026-09-26-RQ383-evidence.md`. Evidence state: synchronized; implementation `e5d22c01`; tip `ed1ef168`.
 Owner promotion/claim 2026-09-26: idle recovery verified `RQ458` DONE on current `origin/main` at `cc75ee66`, no active Supplier Decision Hub KPI/report-parity lock, branch or PR owner, and all RQ459 dependencies are satisfied. `RQ459` moved `WAITING -> IN_PROGRESS` in this workspace for KPI/chart/table/report population and period-delta parity; local lock `.ai/task-locks/RQ459-cursor.lock.md`.
 Owner completion 2026-09-26: `RQ459` was delivered to current `main` in implementation `c3e29a65`; `origin/main` contains that implementation and the synchronized closure evidence. Supplier Decision Hub summary now exposes authoritative revenue, margin contribution and top-five share aggregates; KPI, table shares, concentration chart and report/export use the same declared population, and full-price period delta is distinct from row markdown trend. Focused frontend proof is `41/41`; guardrails, TypeScript, build, governance validators and `git diff --check` pass. Backend focused test was not run because `dotnet` is unavailable in this VM. Run log: `.ai/runs/2026-09-26-RQ459-evidence.md`. Evidence state: synchronized.
 Owner completion 2026-09-26: `RQ445` was delivered directly to `main` in `7ce49b17`; the canonical `SST-ACCURACY-1.0` Supplier/Shoe Type contract is established and later certification prompts remain separately gated. Run log: `.ai/runs/2026-09-26-RQ445-evidence.md`. Evidence state: synchronized.
@@ -21532,10 +21532,10 @@ Reproduction: load an imported dataset whose timestamps are all midnight or 02:0
 - Checks run: backend DailySalesStatsServiceTests 11/11; vitest dailyShiftSummary+premium 27/27; numericState 19/20 with one pre-existing RQ431 concentration assertion left unchanged.
 - Checks not run: full suites; live browser Access midnight fixture; remote CI.
 - Run log: `.ai/runs/2026-09-26-RQ383-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `e5d22c011f7783184614f0289f20ff67e2014f69` implementation; final closure `ed1ef1686b0b355dee23ec7ad36aacfc9a44bdd6`
+- Main verification: passed - `origin/main` contains `e5d22c01`; current `origin/main` is `ed1ef1686b0b355dee23ec7ad36aacfc9a44bdd6`
 - Missed: RQ431 concentration over-total decision
 - Follow-up: idle recovery for RQ384 or certification lanes after RQ446 clears
 - Residual risk: operators may see null shift columns where imports previously appeared as first shift
