@@ -7,6 +7,8 @@ Owner completion 2026-09-26: `RQ450` was delivered for post-Access-import Operat
 Owner promotion/claim 2026-09-26: idle recovery after RQ447/RQ449 DONE on current `origin/main`. RQ448 remains gated on authenticated browser/API environment; RQ453 still lists RQ448/RQ452 dependencies. `RQ450` is dependency-complete (RQ413/RQ449) with no active Access-import integrity probe owner. `RQ450` moved `WAITING -> READY -> IN_PROGRESS` in this workspace; local lock `.ai/task-locks/RQ450-cursor.lock.md`.
 Main RQ current READY prompt: none
 
+Idle recovery 2026-09-26: `RQ448` remains `WAITING`, not claimed. RQ447/RQ442/RQ413/RQ449 dependencies are complete, but this workspace has no authenticated browser/API session or deployment access and the local Docker/PostgreSQL host is unavailable; mocked frontend tests would not satisfy the raw-facts-to-render/detail/export acceptance.
+
 Owner promotion/claim 2026-09-26: idle recovery confirmed `RQ445` is the first dependency-complete P0 certification prompt, with no competing Supplier/Shoe Type accuracy-contract owner or active lock. `RQ445` moved `WAITING -> READY -> IN_PROGRESS` in this workspace; local lock `.ai/task-locks/RQ445-codex.lock.md`.
 
 Owner completion 2026-09-26: `RQ445` was delivered directly to `main`. The canonical `SST-ACCURACY-1.0` contract now binds Supplier/Shoe Type source population, period/store/scope, sale-time identity, signed metrics, denominators, negative/unknown behavior, PoP baselines, cost coverage, surface parity, trust states and bounded claim language. RQ456/RQ457/RQ431 retain their implementation/decision ownership. Run log: `.ai/runs/2026-09-26-RQ445-evidence.md`. Evidence state: synchronized.
@@ -132,7 +134,7 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 | RQ447 | DONE | P0 | supplier-shoetype-live-oracle-reproducers | Execute the four live RQ412 oracle cases and close OP2-01/04/05/14 with runtime reproducers |
 | RQ448 | WAITING | P0 | supplier-shoetype-browser-reconciliation | Reconcile raw facts through API, browser-rendered KPI/table/detail and export |
 | RQ449 | DONE | P1 | operations-integrity-evidence-history | Persist immutable integrity evidence/history beyond the process snapshot |
-| RQ450 | WAITING | P1 | operations-post-import-probe | Run a bounded Supplier/Shoe integrity probe immediately after Access import |
+| RQ450 | DONE | P1 | operations-post-import-probe | Run a bounded Supplier/Shoe integrity probe immediately after Access import |
 | RQ451 | WAITING | P1 | supplier-shoetype-verified-evidence-ui | Expose Verified status and inspectable evidence on both customer-facing screens |
 | RQ452 | WAITING | P1 | supplier-shoetype-accuracy-certificate | Generate a truthful evidence-backed Supplier/Shoe Type accuracy certificate |
 | RQ453 | WAITING | P0 | analytics-certification-ci-gate | Add a non-skippable certification CI gate with executed-versus-skipped accounting |
