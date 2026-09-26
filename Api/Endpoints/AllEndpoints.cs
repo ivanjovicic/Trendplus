@@ -2458,6 +2458,9 @@ public static class AllEndpoints
                             prePostNivelacijaRevenueCoveragePct = splitSnapshot.ComparableRevenueCoveragePct,
                             prePostSignalNote = splitSnapshot.SignalNote,
                             prePostComparableArticleCount = splitSnapshot.ComparableArticleCount,
+                            isPreviousOnly = currentRows.Count == 0
+                                && hasPreviousComparablePeriod
+                                && previousShoeTypeMetrics.ContainsKey(shoeTypeBucketKey),
                             // Legacy compatibility aliases (pre/post impact metric in old response shape)
                             promenaPrometa = splitSnapshot.RevenueImpactPct,
                             promenaKolicine = splitSnapshot.UnitsImpactPct
@@ -2565,7 +2568,9 @@ public static class AllEndpoints
                         var exposedRecommendation = AnalyticsDecisionRecommendationEngine.ApplyComparableSignalGate(
                             recommendation,
                             hasComparableNivelacijaSignal);
-                        var recommendationAllowed = exposedRecommendation.RecommendationAllowed && !blockShoeOperationsDecisions;
+                        var recommendationAllowed = exposedRecommendation.RecommendationAllowed
+                            && !blockShoeOperationsDecisions
+                            && !row.isPreviousOnly;
 
                         return new
                         {
@@ -2613,6 +2618,7 @@ public static class AllEndpoints
                             row.comparablePostQuantity,
                             row.prePostSignalNote,
                             row.prePostComparableArticleCount,
+                            row.isPreviousOnly,
                             sharePct,
                             reliabilityPct = recommendationAllowed ? (double?)exposedRecommendation.ReliabilityPct : null,
                             recommendation = new
