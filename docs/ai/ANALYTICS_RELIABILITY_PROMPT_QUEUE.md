@@ -18060,8 +18060,8 @@ Reproduction: load store A, switch to store B with failing alerts API — store 
 - Run log: `.ai/runs/2026-09-27-RQ323-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending until push and fresh origin/main check.
+- Main commit SHA: `0dc0dae309418cb975e5e196fc7ce33b22eb9ae9`
+- Main verification: `origin/main` contains `0dc0dae309418cb975e5e196fc7ce33b22eb9ae9` after push.
 - Missed: none known within RQ323 scope.
 - Follow-up: re-enter idle recovery for the next dependency-complete Inventory or shared analytics prompt.
 - Residual risk: existing primary stale-refetch policy remains by design; build chunk-size warnings and remote CI remain follow-up only.
