@@ -315,7 +315,7 @@ describe("Daily Sales numeric evidence states", () => {
     });
   });
 
-  it("preserves a signed negative remainder when omitted suppliers contain returns", () => {
+  it("blocks concentration shares when top-supplier totals exceed the named period denominator", () => {
     const inconsistent = response({
       topSuppliers: [{
         supplierId: 1,
@@ -331,12 +331,53 @@ describe("Daily Sales numeric evidence states", () => {
 
     const concentration = buildSupplierConcentration(inconsistent, 9000);
 
-    expect(concentration.warning).toBeNull();
-    expect(concentration.top3QtySharePct).toBeCloseTo((25 / 18) * 100, 5);
-    expect(concentration.chartData.find((item) => item.supplierName === "Ostali")).toMatchObject({
-      totalQty: -7,
-      totalRevenue: -3000,
+    expect(concentration.warning).toContain("Zbir dobavljačkih količina prelazi ukupan period total.");
+    expect(concentration.warning).toContain("Zbir dobavljačkog prihoda prelazi ukupan period total.");
+    expect(concentration.top3QtySharePct).toBeNull();
+    expect(concentration.top5QtySharePct).toBeNull();
+    expect(concentration.suppliersTo80Pct).toBeNull();
+    expect(concentration.chartData.find((item) => item.supplierName === "Ostali")).toBeUndefined();
+    expect(concentration.chartData.find((item) => item.supplierName === "Alfa")).toMatchObject({
+      totalQty: 25,
+      qtySharePct: null,
+      revenueSharePct: null,
     });
+  });
+
+  it("keeps signed within-total remainders available for concentration shares", () => {
+    const withReturns = response({
+      topSuppliers: [
+        {
+          supplierId: 1,
+          supplierName: "Alfa",
+          isUnknown: false,
+          totalQty: 20,
+          totalRevenue: 8000,
+        },
+        {
+          supplierId: 2,
+          supplierName: "Bravo",
+          isUnknown: false,
+          totalQty: -2,
+          totalRevenue: -500,
+        },
+      ],
+      topSuppliersOrder: ["Alfa", "Bravo"],
+      metadata: { ...response().metadata, totalItemsInRange: 18 },
+      dateRows: [row({ totalItemsSold: 18, totalRevenue: 9000 })],
+    });
+
+    const concentration = buildSupplierConcentration(withReturns, 9000);
+
+    expect(concentration.warning).toBeNull();
+    expect(concentration.top3QtySharePct).toBeCloseTo(100, 5);
+    expect(concentration.chartData.find((item) => item.supplierName === "Ostali")).toMatchObject({
+      totalQty: 0,
+      totalRevenue: 1500,
+    });
+    const bravo = concentration.chartData.find((item) => item.supplierName === "Bravo");
+    expect(bravo?.totalQty).toBe(-2);
+    expect(bravo?.qtySharePct).toBeCloseTo((-2 / 18) * 100, 5);
   });
 
   it("uses topSuppliersOrder for concentration ranking instead of response array order", () => {
