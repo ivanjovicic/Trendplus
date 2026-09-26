@@ -45,12 +45,20 @@ vi.mock("../../services/analyticsApi", () => ({
 vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({ default: () => null }));
 vi.mock("../../components/analytics/AnalyticsEmptyState", () => ({ default: () => null }));
 vi.mock("../../components/analytics/KpiExplainButton", () => ({ default: () => null }));
-vi.mock("../../components/inventory/ActionWorkflowPanel", () => ({ ActionWorkflowPanel: () => null }));
+vi.mock("../../components/inventory/ActionWorkflowPanel", () => ({
+  ActionWorkflowPanel: ({ actionWorkflow }: { actionWorkflow: unknown }) => <div data-testid="inventory-action-workflow-state">{actionWorkflow ? "loaded" : "empty"}</div>,
+}));
 vi.mock("../../components/inventory/DecisionSummaryBar", () => ({ DecisionSummaryBar: () => null }));
-vi.mock("../../components/inventory/DemandForecastPanel", () => ({ DemandForecastPanel: () => null }));
+vi.mock("../../components/inventory/DemandForecastPanel", () => ({
+  DemandForecastPanel: ({ forecast, forecastError }: { forecast: unknown; forecastError: string | null }) => <div data-testid="inventory-forecast-state">{forecastError ?? (forecast ? "loaded" : "empty")}</div>,
+}));
 vi.mock("../../components/inventory/ExportSchedulerPanel", () => ({ ExportSchedulerPanel: () => null }));
-vi.mock("../../components/inventory/InventoryAlertsFeed", () => ({ InventoryAlertsFeed: () => null }));
-vi.mock("../../components/inventory/InventoryInsightPanels", () => ({ InventoryInsightPanels: () => null }));
+vi.mock("../../components/inventory/InventoryAlertsFeed", () => ({
+  InventoryAlertsFeed: ({ alerts, alertsError }: { alerts: unknown; alertsError?: string | null }) => <div data-testid="inventory-alerts-state">{alertsError ?? (alerts ? "loaded" : "empty")}</div>,
+}));
+vi.mock("../../components/inventory/InventoryInsightPanels", () => ({
+  InventoryInsightPanels: ({ insights, insightsError }: { insights: unknown; insightsError?: string | null }) => <div data-testid="inventory-insights-state">{insightsError ?? (insights ? "loaded" : "empty")}</div>,
+}));
 vi.mock("../../components/inventory/InventoryItemsTable", () => ({
   InventoryItemsTable: ({ rows }: { rows: Array<{ naziv: string }> }) => (
     <div data-testid="inventory-items-table">{rows.map((row) => row.naziv).join(",")}</div>
@@ -61,10 +69,14 @@ vi.mock("../../components/inventory/InventoryKPICards", () => ({
 }));
 vi.mock("../../components/inventory/InventoryPriorityPanels", () => ({ InventoryPriorityPanels: () => null }));
 vi.mock("../../components/inventory/MailSchedulerPanel", () => ({ MailSchedulerPanel: () => null }));
-vi.mock("../../components/inventory/RebalancingTable", () => ({ RebalancingTable: () => null }));
+vi.mock("../../components/inventory/RebalancingTable", () => ({
+  RebalancingTable: ({ rebalance, rebalanceError }: { rebalance: unknown; rebalanceError?: string | null }) => <div data-testid="inventory-rebalance-state">{rebalanceError ?? (rebalance ? "loaded" : "empty")}</div>,
+}));
 vi.mock("../../components/inventory/SKUDetailModal", () => ({ SKUDetailModal: () => null }));
 vi.mock("../../components/inventory/SizeCurvePanel", () => ({ SizeCurvePanel: () => null }));
-vi.mock("../../components/inventory/StoreComparisonPanel", () => ({ StoreComparisonPanel: () => null }));
+vi.mock("../../components/inventory/StoreComparisonPanel", () => ({
+  StoreComparisonPanel: ({ comparison }: { comparison: unknown }) => <div data-testid="inventory-store-comparison-state">{comparison ? "loaded" : "empty"}</div>,
+}));
 vi.mock("../../components/ErrorBoundary", () => ({ ErrorBoundary: ({ children }: { children: ReactNode }) => <>{children}</> }));
 
 describe("InventoryPage partial load failure", () => {
@@ -199,5 +211,45 @@ describe("InventoryPage partial load failure", () => {
       expect(screen.getByTestId("inventory-items-table")).toHaveTextContent("Novi artikal");
       expect(screen.getByTestId("inventory-items-table")).not.toHaveTextContent("Stari artikal");
     });
+  });
+
+  it("clears secondary panels when a filter reload rejects their requests", async () => {
+    getInventoryBalanceMock.mockResolvedValue({
+      totalSku: 1,
+      totalOnHand: 10,
+      outOfStockCount: 0,
+      lowStockCount: 0,
+      estimatedInventoryValue: 1000,
+      meta: { success: true },
+    });
+    getInventoryInsightsMock.mockResolvedValue({ aging: [{ bucketKey: "90+", itemCount: 4 }], meta: { success: true } });
+    getInventoryStoreComparisonMock.mockResolvedValue({ summary: "Staro poređenje", meta: { success: true } });
+    getInventoryActionSuggestionsMock.mockResolvedValue({ items: [{ suggestionKey: "old" }], pendingCount: 1, meta: { success: true } });
+    getForecastMock.mockResolvedValue({ snapshotAvailable: true, items: [{ skuId: 501 }], meta: { success: true } });
+    getInventoryAlertsMock.mockResolvedValue({ snapshotAvailable: true, items: [{ skuId: 501 }], meta: { success: true } });
+    getRebalanceSuggestionsMock.mockResolvedValue({ snapshotAvailable: true, items: [{ skuId: 501 }], meta: { success: true } });
+
+    render(
+      <MemoryRouter>
+        <InventoryPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId("inventory-insights-state")).toHaveTextContent("loaded"));
+
+    getInventoryInsightsMock.mockRejectedValue(new Error("insights down"));
+    getInventoryStoreComparisonMock.mockRejectedValue(new Error("comparison down"));
+    getInventoryActionSuggestionsMock.mockRejectedValue(new Error("workflow down"));
+    getForecastMock.mockRejectedValue(new Error("forecast down"));
+    getInventoryAlertsMock.mockRejectedValue(new Error("alerts down"));
+    getRebalanceSuggestionsMock.mockRejectedValue(new Error("rebalance down"));
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "novi" } });
+
+    await waitFor(() => expect(screen.getByTestId("inventory-insights-state")).not.toHaveTextContent("loaded"));
+    expect(screen.getByTestId("inventory-store-comparison-error")).toBeInTheDocument();
+    expect(screen.getByTestId("inventory-action-workflow-error")).toBeInTheDocument();
+    expect(screen.getByTestId("inventory-forecast-state")).not.toHaveTextContent("loaded");
+    expect(screen.getByTestId("inventory-alerts-state")).not.toHaveTextContent("loaded");
+    expect(screen.getByTestId("inventory-rebalance-state")).not.toHaveTextContent("loaded");
   });
 });

@@ -3,6 +3,7 @@
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+Owner promotion/claim 2026-09-27: idle recovery confirmed RQ322 DONE on current origin/main, RQ313 DONE and no competing Inventory partial-failure owner. RQ323 moved WAITING -> READY -> IN_PROGRESS; local lock .ai/task-locks/RQ323-codex.lock.md.
 Owner promotion/claim 2026-09-27: idle recovery confirmed RQ321 DONE on current origin/main, no active Inventory bootstrap owner or conflicting lock, and RQ322 has no remaining dependency. RQ322 moved WAITING -> READY -> IN_PROGRESS; local lock .ai/task-locks/RQ322-codex.lock.md.
 Owner completion 2026-09-27: RQ321 was delivered directly to main in 95632a21. Four Operacije pages now surface store-filter load failures with a retry action, clear failed options and disable unconfirmed individual-store selection; Inventory remains owned by RQ322. Focused proof is 4/4, analytics guardrails/typecheck/build and diff checks pass. Run log: .ai/runs/2026-09-26-RQ321-evidence.md. Evidence state: synchronized.
 Owner promotion/claim 2026-09-26: idle recovery verified the higher-priority RQ P0 lanes remain externally gated or owned elsewhere, while RQ321 is an independent P2 shared-UX error contract with no dependency, conflicting lock or active store-filter owner. `RQ321` moved `WAITING -> READY -> IN_PROGRESS`; local lock `.ai/task-locks/RQ321-codex.lock.md`.
@@ -18005,7 +18006,7 @@ Reproduction: fail stores on first inventory load — empty store UX, no surface
 
 ## RQ323 - Clear stale Inventory secondary panel data on partial failure
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/trust/tests
 Feature family: inventory-secondary-panel-stale-data
@@ -18047,6 +18048,24 @@ Reproduction: load store A, switch to store B with failing alerts API — store 
 ### Dependencies
 
 - `RQ313` insights-specific subset.
+
+### Completion note
+
+- Date: 2026-09-27
+- Status: DONE
+- Completion: Inventory now separates primary and secondary request outcomes; failed secondary panels clear immediately on reload and render panel-specific unavailable states instead of stale prior-filter data.
+- Changed files: `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/components/inventory/DecisionSummaryBar.tsx`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.partialFailure.spec.tsx`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, queue/roadmap metadata and run log.
+- Checks run: focused Inventory partial-failure/retry suite 10/10; analytics encoding/guardrails and typecheck; production build; `git diff --check`.
+- Checks not run: backend tests and live browser; no backend contract changed. Remote CI not inspected.
+- Run log: `.ai/runs/2026-09-27-RQ323-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending until push and fresh origin/main check.
+- Missed: none known within RQ323 scope.
+- Follow-up: re-enter idle recovery for the next dependency-complete Inventory or shared analytics prompt.
+- Residual risk: existing primary stale-refetch policy remains by design; build chunk-size warnings and remote CI remain follow-up only.
+- Prompt defect / scope repair: moved the existing reviewed Inventory guardrail baseline entry from line 869 to 931 after the lifecycle code expansion; no new exception added.
 
 ---
 

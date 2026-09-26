@@ -131,15 +131,25 @@ const INVENTORY_ACTIONS_QUEUE_URL = "/analytics/actions?sourceType=inventory";
 
 type InventoryPageError = { message: string; errorCode?: string | null; correlationId?: string | null };
 
+type InventorySecondaryPanelErrors = {
+  insights: string | null;
+  storeComparison: string | null;
+  actionWorkflow: string | null;
+  forecast: string | null;
+  alerts: string | null;
+  rebalance: string | null;
+};
+
 type InventoryLifecycleSnapshot = {
   balance: InventoryBalance;
   pageData: InventoryPagedResponse;
-  insights: InventoryInsights;
-  storeComparison: InventoryStoreComparison;
-  actionWorkflow: InventoryActionWorkflow;
-  forecast: ForecastDto;
-  alerts: InventoryAlertListDto;
-  rebalance: RebalanceListDto;
+  insights: InventoryInsights | null;
+  storeComparison: InventoryStoreComparison | null;
+  actionWorkflow: InventoryActionWorkflow | null;
+  forecast: ForecastDto | null;
+  alerts: InventoryAlertListDto | null;
+  rebalance: RebalanceListDto | null;
+  secondaryErrors: InventorySecondaryPanelErrors;
 };
 
 function toInventoryPageError(reason: unknown, fallback: string): InventoryPageError {
@@ -165,6 +175,14 @@ function toInventoryPageError(reason: unknown, fallback: string): InventoryPageE
 function toSafeInventoryInlineError(reason: unknown, fallback: string): string {
   const pageError = toInventoryPageError(reason, fallback);
   return getSafeAnalyticsErrorMessage(pageError.message, pageError.errorCode, fallback);
+}
+
+function resolveInventorySecondaryResult<T>(
+  result: PromiseSettledResult<T>,
+  fallback: string,
+): { value: T | null; error: string | null } {
+  if (result.status === "fulfilled") return { value: result.value, error: null };
+  return { value: null, error: toSafeInventoryInlineError(result.reason, fallback) };
 }
 
 function toActionDataQualityStatus(value: string | null | undefined): AnalyticsActionDataQualityStatus {
@@ -647,18 +665,51 @@ export default function InventoryPage() {
       }),
       getRebalanceSuggestions({ fromStoreId: selectedStoreId, supplierId: selectedSupplierId, top: REBALANCE_FETCH_LIMIT, dataScope: inventoryDataScope, ...inventorySignalWindow, signal }),
     ]);
-    const failed = results.find((result) => result.status === "rejected");
-    if (failed?.status === "rejected") throw failed.reason;
+    const primaryFailed = results.slice(0, 2).find((result) => result.status === "rejected");
+    if (primaryFailed?.status === "rejected") throw primaryFailed.reason;
+
+    const insightsResult = resolveInventorySecondaryResult(
+      results[2] as PromiseSettledResult<InventoryInsights>,
+      "Uvidi o zalihama trenutno nisu dostupni.",
+    );
+    const storeComparisonResult = resolveInventorySecondaryResult(
+      results[3] as PromiseSettledResult<InventoryStoreComparison>,
+      "Poređenje prodavnica trenutno nije dostupno.",
+    );
+    const actionWorkflowResult = resolveInventorySecondaryResult(
+      results[4] as PromiseSettledResult<InventoryActionWorkflow>,
+      "Tok akcija trenutno nije dostupan.",
+    );
+    const forecastResult = resolveInventorySecondaryResult(
+      results[5] as PromiseSettledResult<ForecastDto>,
+      "Prognoza zaliha trenutno nije dostupna.",
+    );
+    const alertsResult = resolveInventorySecondaryResult(
+      results[6] as PromiseSettledResult<InventoryAlertListDto>,
+      "Upozorenja zaliha trenutno nisu dostupna.",
+    );
+    const rebalanceResult = resolveInventorySecondaryResult(
+      results[7] as PromiseSettledResult<RebalanceListDto>,
+      "Predlozi redistribucije trenutno nisu dostupni.",
+    );
 
     return {
       balance: (results[0] as PromiseFulfilledResult<InventoryBalance>).value,
       pageData: (results[1] as PromiseFulfilledResult<InventoryPagedResponse>).value,
-      insights: (results[2] as PromiseFulfilledResult<InventoryInsights>).value,
-      storeComparison: (results[3] as PromiseFulfilledResult<InventoryStoreComparison>).value,
-      actionWorkflow: (results[4] as PromiseFulfilledResult<InventoryActionWorkflow>).value,
-      forecast: (results[5] as PromiseFulfilledResult<ForecastDto>).value,
-      alerts: (results[6] as PromiseFulfilledResult<InventoryAlertListDto>).value,
-      rebalance: (results[7] as PromiseFulfilledResult<RebalanceListDto>).value,
+      insights: insightsResult.value,
+      storeComparison: storeComparisonResult.value,
+      actionWorkflow: actionWorkflowResult.value,
+      forecast: forecastResult.value,
+      alerts: alertsResult.value,
+      rebalance: rebalanceResult.value,
+      secondaryErrors: {
+        insights: insightsResult.error,
+        storeComparison: storeComparisonResult.error,
+        actionWorkflow: actionWorkflowResult.error,
+        forecast: forecastResult.error,
+        alerts: alertsResult.error,
+        rebalance: rebalanceResult.error,
+      },
     };
   }, [alertSeverityFilter, compareStoreIds, inventoryDataScope, inventorySignalWindow, pageNumber, pageSize, selectedStoreId, selectedSupplierId, serverSortBy, trimmedSearch]);
   const {
@@ -713,26 +764,37 @@ export default function InventoryPage() {
   }, [inventoryDataScope, periodPreset, refetch]);
   const balance = inventorySnapshot?.balance ?? null;
   const pageData = inventorySnapshot?.pageData ?? null;
-  const insights = inventorySnapshot?.insights ?? null;
-  const storeComparison = inventorySnapshot?.storeComparison ?? null;
-  const actionWorkflow = inventorySnapshot?.actionWorkflow ?? null;
-  const forecast = inventorySnapshot?.forecast ?? null;
-  const alerts = inventorySnapshot?.alerts ?? null;
-  const rebalance = inventorySnapshot?.rebalance ?? null;
+  const secondarySnapshot = refetching || staleWarning ? null : inventorySnapshot;
+  const insights = secondarySnapshot?.insights ?? null;
+  const storeComparison = secondarySnapshot?.storeComparison ?? null;
+  const actionWorkflow = secondarySnapshot?.actionWorkflow ?? null;
+  const forecast = secondarySnapshot?.forecast ?? null;
+  const alerts = secondarySnapshot?.alerts ?? null;
+  const rebalance = secondarySnapshot?.rebalance ?? null;
+  const secondaryErrors = secondarySnapshot?.secondaryErrors ?? {
+    insights: null,
+    storeComparison: null,
+    actionWorkflow: null,
+    forecast: null,
+    alerts: null,
+    rebalance: null,
+  };
   const loading = initialLoading || refetching;
   const insightsLoading = loading;
-  const insightsError = queryError ?? staleWarning;
+  const insightsError = secondaryErrors.insights ?? queryError ?? staleWarning;
   const operationsLoading = loading;
   const forecastLoading = loading;
   const alertsLoading = loading;
   const rebalanceLoading = loading;
-  const forecastError = queryError;
-  const alertsError = queryError;
-  const rebalanceError = queryError;
+  const forecastError = secondaryErrors.forecast ?? queryError ?? staleWarning;
+  const alertsError = secondaryErrors.alerts ?? queryError ?? staleWarning;
+  const rebalanceError = secondaryErrors.rebalance ?? queryError ?? staleWarning;
   useEffect(() => {
-    setWorkflowOverride(inventorySnapshot?.actionWorkflow ?? null);
-  }, [inventorySnapshot]);
-  const effectiveActionWorkflow = workflowOverride ?? actionWorkflow;
+    setWorkflowOverride(secondarySnapshot?.actionWorkflow ?? null);
+  }, [secondarySnapshot]);
+  const effectiveActionWorkflow = secondarySnapshot == null ? null : workflowOverride ?? actionWorkflow;
+  const actionWorkflowError = secondaryErrors.actionWorkflow ?? queryError ?? staleWarning;
+  const storeComparisonError = secondaryErrors.storeComparison ?? queryError ?? staleWarning;
   const inventoryError = queryError || staleWarning
     ? toInventoryPageError(
       errorReason ?? staleReason ?? queryError ?? staleWarning,
@@ -1747,6 +1809,7 @@ export default function InventoryPage() {
       <DecisionSummaryBar
         balance={balance}
         actionWorkflow={effectiveActionWorkflow}
+        actionWorkflowError={actionWorkflowError}
         outOfStockCount={balance?.outOfStockCount}
         lowStockCount={balance?.lowStockCount}
         dataQualityWarning={dataQualityNeedsReview}
@@ -1756,13 +1819,19 @@ export default function InventoryPage() {
 
       {/* Panel za kritične odluke i tok akcija */}
       <ErrorBoundary fallback={<div className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">Panel toka akcija nije mogao da se prikaže. Osveži stranicu.</div>}>
-        <ActionWorkflowPanel
-          sectionId={ACTION_WORKFLOW_SECTION_ID}
-          actionWorkflow={effectiveActionWorkflow}
-          operationsLoading={operationsLoading}
-          workflowBusyKey={workflowBusyKey}
-          onUpdateWorkflowStatus={(item, status) => void updateWorkflowStatus(item, status)}
-        />
+        {actionWorkflowError ? (
+          <div data-testid="inventory-action-workflow-error" className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">
+            {actionWorkflowError}
+          </div>
+        ) : (
+          <ActionWorkflowPanel
+            sectionId={ACTION_WORKFLOW_SECTION_ID}
+            actionWorkflow={effectiveActionWorkflow}
+            operationsLoading={operationsLoading}
+            workflowBusyKey={workflowBusyKey}
+            onUpdateWorkflowStatus={(item, status) => void updateWorkflowStatus(item, status)}
+          />
+        )}
       </ErrorBoundary>
 
       <div className="space-y-1">
@@ -1803,6 +1872,10 @@ export default function InventoryPage() {
         {storesLoadError ? (
           <div data-testid="inventory-store-comparison-unavailable" className="rounded-[28px] border border-muted surface-light p-5 text-sm text-muted">
             Poređenje prodavnica nije dostupno dok se lista prodavnica ne učita.
+          </div>
+        ) : storeComparisonError ? (
+          <div data-testid="inventory-store-comparison-error" className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">
+            {storeComparisonError}
           </div>
         ) : (
           <StoreComparisonPanel sectionId={STORE_COMPARISON_SECTION_ID} stores={stores} compareStoreIds={compareStoreIds} comparison={storeComparison} operationsLoading={operationsLoading} onToggleStore={toggleCompareStore} />

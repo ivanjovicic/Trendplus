@@ -10,6 +10,7 @@ type DecisionSummaryBarProps = {
   lowStockCount?: number | null;
   dataQualityWarning?: boolean | null;
   dataQualityHref?: string | null;
+  actionWorkflowError?: string | null;
   loading?: boolean;
 };
 
@@ -25,6 +26,7 @@ export function DecisionSummaryBar({
   lowStockCount,
   dataQualityWarning,
   dataQualityHref,
+  actionWorkflowError,
   loading,
 }: DecisionSummaryBarProps) {
   // Backend low-stock already excludes OOS; never subtract. Null stays unavailable.
@@ -34,7 +36,7 @@ export function DecisionSummaryBar({
     lowStockCount == null || !Number.isFinite(lowStockCount) ? null : Math.max(0, lowStockCount);
   const p2Transfer = actionWorkflow?.items?.filter((item) => item.actionType === "transfer" && item.status === "pending").length ?? 0;
   const p2DeadStock = actionWorkflow?.items?.filter((item) => (item.actionType === "clearance" || item.actionType === "markdown") && item.status === "pending").length ?? 0;
-  const workflowPending = actionWorkflow?.pendingCount ?? 0;
+  const workflowPending = actionWorkflowError ? null : actionWorkflow?.pendingCount ?? 0;
   const hasOos = (currentOosCount ?? 0) > 0;
   const hasLowStock = (currentLowStockCount ?? 0) > 0;
 
@@ -94,12 +96,12 @@ export function DecisionSummaryBar({
         </div>
 
         {/* Workflow Pending */}
-        <div className={`rounded-2xl border-2 p-3 transition-colors ${workflowPending > 0 ? "border-focus bg-[var(--surface-darker)]" : "border-border bg-surface"}`}>
+        <div className={`rounded-2xl border-2 p-3 transition-colors ${workflowPending != null && workflowPending > 0 ? "border-focus bg-[var(--surface-darker)]" : "border-border bg-surface"}`}>
           <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] font-semibold">
-            <Workflow size={12} className={workflowPending > 0 ? "text-focus" : "text-muted"} />
-            <span className={workflowPending > 0 ? "text-focus" : "text-muted"}>Tok akcija</span>
+            <Workflow size={12} className={workflowPending != null && workflowPending > 0 ? "text-focus" : "text-muted"} />
+            <span className={workflowPending != null && workflowPending > 0 ? "text-focus" : "text-muted"}>Tok akcija</span>
           </div>
-          <div className={`mt-2 text-lg font-bold ${workflowPending > 0 ? "text-focus" : "text-foreground"}`}>{formatNumber(workflowPending)}</div>
+          <div className={`mt-2 text-lg font-bold ${workflowPending != null && workflowPending > 0 ? "text-focus" : "text-foreground"}`}>{formatCount(workflowPending)}</div>
           <div className="mt-1 text-[10px] text-muted">čeka odluku</div>
         </div>
 
