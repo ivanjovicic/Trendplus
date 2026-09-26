@@ -2,7 +2,7 @@
 
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ430
+Current READY prompt: none
 Owner promotion 2026-09-26: under the user's claim-and-execute request, `RQ440` was dependency-complete with no active lock on the seven shared spec files. `RQ440` moved `READY -> IN_PROGRESS` as the primary pointer.
 Owner claim 2026-09-26: `RQ440` transitioned `READY -> IN_PROGRESS` in this workspace for shared analytics spec drift triage. Local lock: `.ai/task-locks/RQ440-cursor.lock.md`.
 Owner completion 2026-09-26: `RQ440` was delivered directly to `main` after classifying all nine cases as copy/contract drift from the RQ435 safe-message and supplier-decision label contracts (no product regression). Run log: `.ai/runs/2026-09-26-RQ440-evidence.md`. Evidence state: synchronized. Independent READY lanes `RQ438` and `RQ442` remain claimable.
@@ -10,6 +10,7 @@ Owner claim 2026-09-26: `RQ442` transitioned `READY -> IN_PROGRESS` in this work
 Owner completion 2026-09-26: `RQ442` was delivered directly to `main` in implementation `73b50263`; whole-day Operations requests now use the exclusive next-UTC-midnight bound across Supplier, Shoe Type and Color, including comparable previous periods and display/provenance conversion. Run log: `.ai/runs/2026-09-26-RQ442-evidence.md`. Evidence state: synchronized; `origin/main` contains the implementation through closure `8716a1a1`.
 Owner promotion 2026-09-26: idle recovery verified `RQ429` DONE, `RQ438` DONE and no active Daily Sales page lock or competing owner. `RQ430` moved `WAITING -> READY` as the next collision-safe Daily Sales page-polish prompt; it is now the current pointer.
 Owner claim 2026-09-26: `RQ430` transitioned `READY -> IN_PROGRESS` in this workspace for StrictMode-safe sorting, print-column mapping and named store export metadata. Local lock: `.ai/task-locks/RQ430-codex.lock.md`.
+Owner completion 2026-09-26: `RQ430` was delivered directly to `main` in `ece7f0d0`; Daily Sales sorting is StrictMode-safe, the blank print form matches table semantics, and store export metadata resolves names with an explicit unknown fallback. Run log: `.ai/runs/2026-09-26-RQ430-evidence.md`. Evidence state: pending until final closure sync.
 Owner certification follow-up 2026-09-25: a current-main review of the Supplier/Shoe Type accuracy claim found the existing RQ407/RQ411-RQ413/RQ373-RQ380/RQ375-RQ377 work materially complete but still missing certification-layer evidence. Added non-duplicative WAITING prompts RQ445-RQ455 in the Operations accuracy addendum for the formal contract, adversarial golden cases, live oracle/reproducer closure, browser/render/export reconciliation, durable evidence history, post-import probe, Verified UI, certificate, non-skippable CI, production read-only proof and customer acceptance. Existing owners remain authoritative; no product code is changed by this planning update. Plan: docs/qa/SUPPLIER_SHOETYPE_ACCURACY_CERTIFICATION_PLAN_2026-09-25.md.
 Owner claim 2026-09-25 (Supplier overview audit, grok): the audit of „Prodaja po dobavljačima“ (`/analytics/supplier?tab=overview`, legacy `operations-supplier-sales`) added and claimed `RQ443` (total PoP trend must include suppliers without current sales; the unfocused subset of the unregistered `PS11`/C16 in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-25.md`) and `RQ444` (sticky legacy `sezonaId`, data window shown as the period, +1-day header end date), both `READY -> IN_PROGRESS` in this workspace. Local locks: `.ai/task-locks/RQ443-grok.lock.md`, `.ai/task-locks/RQ444-grok.lock.md`. `Current READY prompt` stays `RQ440`. Other findings route to `RQ442`, `RQ441`, `RQ325` and the unregistered `PS06`/`PS11`/`PS12`/`PS16`/`PS17`/`PS18`. Run log: `.ai/runs/2026-09-25-supplier-sales-overview-audit-evidence.md`.
 Owner completion 2026-09-25: RQ443 was implemented and committed directly on local `main` (`fix(analytics): base supplier total PoP on the full previous period (RQ443)`, parent `77371907`); status `PARTIAL` until `origin/main` contains it (local-only delivery). Run log: `.ai/runs/2026-09-25-RQ443-evidence.md`.
@@ -1595,7 +1596,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ427 | DONE | inventory-retry-recovery | Make Inventory retry refetch and keep controls on error/empty states |
 | RQ428 | DONE | daily-sales-receipt-reconciliation-key | Join Daily Sales receipt-mismatch diagnostics on real receipt identity |
 | RQ429 | DONE | daily-sales-empty-state-metric-consistency | Make Daily Sales empty state, incomplete-shift counts and MA7 baseline truthful |
-| RQ430 | IN_PROGRESS | daily-sales-page-polish | Fix Daily Sales sort toggle, print-form columns and store identity in export |
+| RQ430 | DONE | daily-sales-page-polish | Fix Daily Sales sort toggle, print-form columns and store identity in export |
 | RQ431 | WAITING | daily-sales-concentration-contract | Decide the Daily Sales supplier-concentration over-total contract |
 | RQ432 | DONE | pre-nivelacija-kpi-definition-parity | Align Pre-Nivelacija KPI definitions with backend sums, tooltips and table gating |
 | RQ433 | DONE | pre-nivelacija-facet-universe | Build Pre-Nivelacija supplier, season and type options from the filter universe |
@@ -23344,7 +23345,7 @@ The backend always returns one row per calendar day, so the page never reaches i
 
 ## RQ430 - Fix Daily Sales sort toggle, print-form columns and store identity in export
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: `RQ429` is DONE (same page file)
 Priority: P3
 Type: frontend/tests
@@ -23391,6 +23392,25 @@ Commit suggestion: `fix(analytics): daily sales sort, print form and export stor
 ### Dependencies
 
 - `RQ429` (same file). If `RQ327` runs first, the sort handler fix moves into that change; do not implement both independently.
+
+### Completion note
+
+- Date: 2026-09-26
+- Status: DONE
+- Completion: Daily Sales sort state now computes one next state outside React state updaters, blank print columns are aligned with the rendered table, and export filter metadata uses the selected store name or `Nepoznat objekat (ID n)` when no name is available.
+- Changed files: `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.numericState.spec.ts`, `Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.premium.spec.tsx`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, queue/roadmap/evidence files.
+- Contract/runtime behavior changed: a repeated sort click toggles exactly once under StrictMode; print form key/header/order matches Daily Sales semantics; selected store names are carried into export filter metadata.
+- Checks run: Daily Sales premium 22/22; new helper regressions 3/3; analytics guardrails, encoding, TypeScript and prompt-queue governance passed; `git diff --check` passed.
+- Checks not run: full frontend suite; the full numeric-state suite retains a pre-existing RQ431 concentration-contract failure; backend tests and CI were not run.
+- Run log: `.ai/runs/2026-09-26-RQ430-evidence.md`
+- Evidence state: pending until final closure sync
+- Delivery mode: direct-main
+- Main commit SHA: `ece7f0d0` implementation; closure pending
+- Main verification: pending until final closure sync
+- Missed: RQ431 business-contract decision remains out of scope.
+- Follow-up: re-enter idle recovery; no successor is promoted in this run.
+- Residual risk: full frontend suite remains unverified outside the focused Daily Sales proof.
+- Prompt defect / scope repair: stale RQ438/RQ442/RQ443/RQ444 statuses were reconciled during idle recovery; no product scope expansion.
 
 ---
 
