@@ -11,6 +11,22 @@ namespace Infrastructure.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.Sql("""
+                -- Reconcile columns expected by the current model before
+                -- creating the dependent indexes. Older versions of
+                -- AddDataOriginToImportEntities recorded only a subset of
+                -- these columns, so this must be safe on both clean and
+                -- partially upgraded databases.
+                ALTER TABLE IF EXISTS "Artikli"
+                    ADD COLUMN IF NOT EXISTS "DataOrigin" character varying(32) NOT NULL DEFAULT 'existing';
+                ALTER TABLE IF EXISTS "Dobavljaci"
+                    ADD COLUMN IF NOT EXISTS "DataOrigin" character varying(32) NOT NULL DEFAULT 'existing';
+                ALTER TABLE IF EXISTS "Sezone"
+                    ADD COLUMN IF NOT EXISTS "DataOrigin" character varying(32) NOT NULL DEFAULT 'existing';
+                ALTER TABLE IF EXISTS "TipoviObuce"
+                    ADD COLUMN IF NOT EXISTS "DataOrigin" character varying(32) NOT NULL DEFAULT 'existing';
+                ALTER TABLE IF EXISTS "prodaja_zaglavlje"
+                    ADD COLUMN IF NOT EXISTS "data_origin" character varying(32) NOT NULL DEFAULT 'existing';
+
                 CREATE INDEX IF NOT EXISTS "IX_prodaja_zaglavlje_data_origin_datum_prodaje"
                 ON "prodaja_zaglavlje" ("data_origin", "datum_prodaje");
                 """);
