@@ -21626,8 +21626,8 @@ Reproduction: force a provider/serialization failure or return a malformed Daily
 - Run log: `.ai/runs/2026-09-26-RQ384-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: branch/PR transport then main merge
-- Main commit SHA: `cd5a4da2` implementation; tip closure pending evidence sync
-- Main verification: passed - `origin/main` contains `cd5a4da2` through tip at delivery time
+- Main commit SHA: `cd5a4da2` implementation; evidence sync `739c03c3`
+- Main verification: passed - `origin/main` contains `cd5a4da2` through `739c03c3`
 - Missed: RQ431 concentration over-total decision
 - Follow-up: idle recovery for next READY/promotable prompt
 - Residual risk: ProblemDetails extension serialization host shape; CI not inspected
