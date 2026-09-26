@@ -857,8 +857,9 @@ export default function PreNivelacijaPriorityPage() {
       : emptyStateVariant === "filtered_out"
         ? "Promenite filtere dobavljača, sezone ili tipa obuće."
         : "Nema kandidata koji ispunjavaju trenutne filtere za pre-nivelacioni prioritet.";
-  const emptyStateReason = dataMeta?.emptyReason ?? dataMetaMessage ?? null;
-  const safeEmptyStateReason = emptyStateReason && /period/i.test(emptyStateReason) ? null : emptyStateReason;
+  // getAnalyticsMetaMessage is the single safe projection for both trust and empty states.
+  // It preserves approved period guidance while mapping backend reason codes to Serbian copy.
+  const emptyStateReason = dataMetaMessage;
 
   const attentionNotices = useMemo(() => {
     const notices: Array<{ key: string; title: string; detail: string; tone: "info" | "warning" | "critical" }> = [];
@@ -1261,7 +1262,7 @@ export default function PreNivelacijaPriorityPage() {
           ]}
           dataQualityHref="/analytics/data-quality"
           refreshStatusHref="/admin/configuration?panel=workers"
-          emptyReason={safeEmptyStateReason}
+          emptyReason={emptyStateReason}
           onRetry={refetch}
         />
       ) : null}

@@ -3,6 +3,7 @@
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+Owner promotion/claim 2026-09-27: idle recovery confirmed RQ323 DONE on current origin/main, RQ265 is satisfied and no active Pre-Nivelacija empty-reason owner or lock. RQ316 moved WAITING -> READY -> IN_PROGRESS; local lock .ai/task-locks/RQ316-codex.lock.md.
 Owner promotion/claim 2026-09-27: idle recovery confirmed RQ322 DONE on current origin/main, RQ313 DONE and no competing Inventory partial-failure owner. RQ323 moved WAITING -> READY -> IN_PROGRESS; local lock .ai/task-locks/RQ323-codex.lock.md.
 Owner promotion/claim 2026-09-27: idle recovery confirmed RQ321 DONE on current origin/main, no active Inventory bootstrap owner or conflicting lock, and RQ322 has no remaining dependency. RQ322 moved WAITING -> READY -> IN_PROGRESS; local lock .ai/task-locks/RQ322-codex.lock.md.
 Owner completion 2026-09-27: RQ321 was delivered directly to main in 95632a21. Four Operacije pages now surface store-filter load failures with a retry action, clear failed options and disable unconfirmed individual-store selection; Inventory remains owned by RQ322. Focused proof is 4/4, analytics guardrails/typecheck/build and diff checks pass. Run log: .ai/runs/2026-09-26-RQ321-evidence.md. Evidence state: synchronized.
@@ -17637,7 +17638,7 @@ Reproduction: open page with any filters — header never states analysis period
 
 ## RQ316 - Align Pre-Nivelacija period empty reasons across trust and empty states
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/trust/tests
 Feature family: pre-nivelacija-empty-reason-parity
@@ -17680,6 +17681,24 @@ Reproduction: mock meta empty reason mentioning period — header and empty stat
 ### Dependencies
 
 - `RQ265` empty-reason contract.
+
+### Completion note
+
+- Date: 2026-09-27
+- Status: DONE
+- Completion: Pre-Nivelacija trust header and empty state now share the safe analytics meta reason projection, preserving localized period guidance without exposing backend codes.
+- Changed files: `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`, `Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx`, queue/roadmap metadata and run log.
+- Checks run: Pre-Nivelacija focused spec 50/50; analytics encoding/guardrails and typecheck; production build; `git diff --check`.
+- Checks not run: backend tests and live browser; frontend-only change. Remote CI not inspected.
+- Run log: `.ai/runs/2026-09-27-RQ316-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending until push and fresh origin/main check.
+- Missed: none known within RQ316 scope.
+- Follow-up: re-enter idle recovery for the next dependency-complete prompt.
+- Residual risk: existing build chunk-size warnings and uninspected remote CI remain follow-up only.
+- Prompt defect / scope repair: none.
 
 ---
 

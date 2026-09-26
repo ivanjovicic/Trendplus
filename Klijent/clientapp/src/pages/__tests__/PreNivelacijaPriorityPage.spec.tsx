@@ -32,14 +32,17 @@ vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({
     title,
     periodFrom,
     periodTo,
+    emptyStateReason,
   }: {
     title: string;
     periodFrom?: string | null;
     periodTo?: string | null;
+    emptyStateReason?: string | null;
   }) => (
     <>
       <h1 data-testid="analytics-trust-header">{title}</h1>
       <output data-testid="analytics-trust-period">{periodFrom ?? "unknown"}|{periodTo ?? "unknown"}</output>
+      <output data-testid="analytics-trust-empty-reason">{emptyStateReason ?? "none"}</output>
     </>
   ),
 }));
@@ -960,6 +963,27 @@ describe("PreNivelacijaPriorityPage", () => {
     expect(screen.getByText("Proverite kvalitet podataka.")).toBeInTheDocument();
     expect(screen.queryByText(/period/i)).not.toBeInTheDocument();
     expect(document.querySelector(".pnp-decision-kpis")).toBeNull();
+  });
+
+  it("uses the same safe period reason in the trust header and empty state", async () => {
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce({
+      ...makeResponse([]),
+      meta: {
+        success: true,
+        dataQualityStatus: "insufficient_data",
+        emptyReason: "no_data_in_period",
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    const periodReason = "Nema podataka za izabrani period.";
+    expect(await screen.findByText(periodReason)).toBeInTheDocument();
+    expect(screen.getByTestId("analytics-trust-empty-reason")).toHaveTextContent(periodReason);
   });
 
   it("shows safe guidance and hides KPI cards when the priority load fails", async () => {
