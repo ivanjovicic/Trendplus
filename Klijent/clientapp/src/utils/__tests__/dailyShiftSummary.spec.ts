@@ -63,4 +63,23 @@ describe("dailyShiftSummary", () => {
     expect(sumShiftColumn(rows, "secondShiftTotalItems")).toEqual({ sum: 6, isPartial: true });
     expect(summarizeShiftItems(rows, "second")).toEqual({ value: 6, state: "partial" });
   });
+
+  it("treats no-time fallback assignment as unavailable shift shares", () => {
+    const fallbackRow = row({
+      totalItemsSold: 10,
+      firstShiftTotalItems: null,
+      secondShiftTotalItems: null,
+    });
+
+    expect(classifyDailyShiftSummary(fallbackRow, "no_time_fallback")).toBe("unavailable");
+    expect(resolveShiftChartValue(fallbackRow, "first", "no_time_fallback")).toBeNull();
+    expect(summarizeShiftItems([fallbackRow], "first", "no_time_fallback")).toEqual({
+      value: null,
+      state: "unavailable",
+    });
+    expect(classifyDailyShiftSummary(
+      row({ totalItemsSold: 10, firstShiftTotalItems: 6, secondShiftTotalItems: 4 }),
+      "partial",
+    )).toBe("partial");
+  });
 });

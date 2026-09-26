@@ -755,8 +755,11 @@ const dailySalesMetadataSchema = z.object({
   // corrections can legitimately make these values negative.
   unknownSupplierPct: nullableNumber,
   unknownSupplierItems: nullableSignedInteger,
+  shiftAssignmentStatus: z.string().nullable().optional(),
   offShiftItems: nullableSignedInteger,
   offShiftRevenue: nullableNumber,
+  noTimeFallbackItems: nullableSignedInteger.optional(),
+  noTimeFallbackRevenue: nullableNumber.optional(),
   totalItemsInRange: nullableSignedInteger,
   duplicateReceiptGroupCount: nullableNonNegativeInteger,
   duplicateReceiptHeaderCount: nullableNonNegativeInteger,

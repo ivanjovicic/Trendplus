@@ -434,7 +434,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                 .Select(g => $"{g.Key}h={g.Sum(x => x.Qty)}")
                 .ToList();
             _logger.LogWarning(
-                "Daily-sales: no shift-classifiable hours detected. Remapping all to shift 1. HourDistribution=[{Hours}] TotalRows={TotalRows}",
+                "Daily-sales: no shift-classifiable hours detected. Shift shares unavailable. HourDistribution=[{Hours}] TotalRows={TotalRows}",
                 string.Join(", ", hourDistribution),
                 aggregates.Count);
         }
@@ -442,8 +442,8 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
         var offShiftItems = 0;
         var offShiftRevenue = 0m;
         var totalItemsInRange = 0;
-        var fallbackMappedItems = 0;
-        var fallbackMappedRevenue = 0m;
+        var noTimeFallbackItems = 0;
+        var noTimeFallbackRevenue = 0m;
 
         foreach (var row in aggregates)
         {
@@ -459,19 +459,16 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                 supplierTotals[supplierKey] = supplierAccumulator;
             }
 
+            // Daily totals and supplier buckets always include the row. Shift columns only
+            // receive measured 06-14 / 14-22 hours — never remapped fallback or off-shift qty.
             var shift = ResolveShift(row.HourOfDay);
             if (shift == 0 && useNoTimeDataFallback)
             {
-                shift = 1;
-                fallbackMappedItems += row.Qty;
-                fallbackMappedRevenue += row.Revenue;
+                noTimeFallbackItems += row.Qty;
+                noTimeFallbackRevenue += row.Revenue;
             }
-
-            if (shift == 0)
+            else if (shift == 0)
             {
-                // Data with timestamps outside shift hours (e.g. imported Access data at midnight)
-                // is mapped to first shift so it still counts in daily totals and supplier breakdown.
-                shift = 1;
                 offShiftItems += row.Qty;
                 offShiftRevenue += row.Revenue;
             }
@@ -491,7 +488,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             {
                 day.FirstShiftQty += row.Qty;
             }
-            else
+            else if (shift == 2)
             {
                 day.SecondShiftQty += row.Qty;
             }
@@ -500,6 +497,16 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             day.Revenue += row.Revenue;
             day.SupplierQty[supplierKey] = day.SupplierQty.GetValueOrDefault(supplierKey) + row.Qty;
         }
+
+        var shiftAssignmentStatus = !hasSalesEvidence
+            ? "unavailable"
+            : useNoTimeDataFallback
+                ? "no_time_fallback"
+                : offShiftItems != 0
+                    ? "partial"
+                    : hasClassifiedShiftRows
+                        ? "measured"
+                        : "unavailable";
 
         var rankedSuppliers = supplierTotals
             .Select(x => new
@@ -564,11 +571,18 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             // returns/corrections outside top-N outweigh the omitted sales.
             var othersCount = totalItems - sumTop;
 
+            int? firstShift = useNoTimeDataFallback
+                ? null
+                : day?.FirstShiftQty ?? 0;
+            int? secondShift = useNoTimeDataFallback
+                ? null
+                : day?.SecondShiftQty ?? 0;
+
             rows.Add(new DailySalesRowDto
             {
                 Date = dateKey,
-                FirstShiftTotalItems = day?.FirstShiftQty ?? 0,
-                SecondShiftTotalItems = day?.SecondShiftQty ?? 0,
+                FirstShiftTotalItems = firstShift,
+                SecondShiftTotalItems = secondShift,
                 TotalRevenue = decimal.Round(day?.Revenue ?? 0m, 2, MidpointRounding.AwayFromZero),
                 TopSupplierCounts = topCounts,
                 OthersCount = othersCount,
@@ -591,16 +605,18 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
 
         if (useNoTimeDataFallback)
         {
-            warnings.Add("Satnica prodaje nije dostupna; količine su mapirane u prvu smenu.");
+            warnings.Add(
+                $"Satnica prodaje nije dostupna za pouzdano razdvajanje smena; dnevni total ostaje vidljiv, a smenski udeo nije meren ({noTimeFallbackItems} kom, {noTimeFallbackRevenue:N2} RSD).");
             _logger.LogWarning(
-                "Daily-sales fallback applied: midnight-only timestamps mapped to first shift. MappedItems={MappedItems} MappedRevenue={MappedRevenue}",
-                fallbackMappedItems,
-                fallbackMappedRevenue);
+                "Daily-sales no-time fallback: shift shares unavailable. MappedItems={MappedItems} MappedRevenue={MappedRevenue}",
+                noTimeFallbackItems,
+                noTimeFallbackRevenue);
         }
 
         if (offShiftItems != 0)
         {
-            warnings.Add($"Prodaja van smena (06-14 / 14-22) mapirana u prvu smenu: {offShiftItems} kom, {offShiftRevenue:N2} RSD.");
+            warnings.Add(
+                $"Prodaja van smena (06-14 / 14-22) nije uključena u merene smene: {offShiftItems} kom, {offShiftRevenue:N2} RSD.");
         }
 
         // When no items found in the requested range, query the overall available range so the
@@ -658,8 +674,11 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                 UniqueSuppliersInRange = supplierTotals.Count,
                 UnknownSupplierPct = unknownSupplierPct,
                 UnknownSupplierItems = unknownSupplierItems,
+                ShiftAssignmentStatus = shiftAssignmentStatus,
                 OffShiftItems = offShiftItems,
                 OffShiftRevenue = decimal.Round(offShiftRevenue, 2, MidpointRounding.AwayFromZero),
+                NoTimeFallbackItems = noTimeFallbackItems,
+                NoTimeFallbackRevenue = decimal.Round(noTimeFallbackRevenue, 2, MidpointRounding.AwayFromZero),
                 TotalItemsInRange = totalItemsInRange,
                 DuplicateReceiptGroupCount = duplicateReceiptGroups.Count,
                 DuplicateReceiptHeaderCount = duplicateReceiptGroups.Sum(x => Math.Max(0, x.HeaderCount - 1)),

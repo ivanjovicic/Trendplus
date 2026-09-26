@@ -32,13 +32,23 @@ export interface DailySalesReceiptReconciliation {
   mismatchAmount: DailySalesNumeric;
 }
 
+export type DailySalesShiftAssignmentStatus =
+  | "measured"
+  | "partial"
+  | "no_time_fallback"
+  | "unavailable"
+  | string;
+
 export interface DailySalesMetadata {
   totalDays: DailySalesNumeric;
   uniqueSuppliersInRange: DailySalesNumeric;
   unknownSupplierPct: DailySalesNumeric;
   unknownSupplierItems: DailySalesNumeric;
+  shiftAssignmentStatus?: DailySalesShiftAssignmentStatus | null;
   offShiftItems: DailySalesNumeric;
   offShiftRevenue: DailySalesNumeric;
+  noTimeFallbackItems?: DailySalesNumeric;
+  noTimeFallbackRevenue?: DailySalesNumeric;
   totalItemsInRange: DailySalesNumeric;
   duplicateReceiptGroupCount: DailySalesNumeric;
   duplicateReceiptHeaderCount: DailySalesNumeric;

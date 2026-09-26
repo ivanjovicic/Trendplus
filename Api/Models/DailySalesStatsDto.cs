@@ -28,8 +28,10 @@ public sealed class DailySalesSupplierHeaderDto
 public sealed class DailySalesRowDto
 {
     public DateTime Date { get; set; }
-    public int FirstShiftTotalItems { get; set; }
-    public int SecondShiftTotalItems { get; set; }
+    /// <summary>Measured first-shift quantity only; null when shift assignment is unavailable or no-time fallback.</summary>
+    public int? FirstShiftTotalItems { get; set; }
+    /// <summary>Measured second-shift quantity only; null when shift assignment is unavailable or no-time fallback.</summary>
+    public int? SecondShiftTotalItems { get; set; }
     public decimal TotalRevenue { get; set; }
     public List<int> TopSupplierCounts { get; set; } = [];
     public int OthersCount { get; set; }
@@ -42,8 +44,15 @@ public sealed class DailySalesMetadata
     public int UniqueSuppliersInRange { get; set; }
     public decimal? UnknownSupplierPct { get; set; }
     public int UnknownSupplierItems { get; set; }
+    /// <summary>
+    /// measured | partial | no_time_fallback | unavailable.
+    /// Off-shift and no-time rows are never presented as measured first-shift values.
+    /// </summary>
+    public string ShiftAssignmentStatus { get; set; } = "unavailable";
     public int OffShiftItems { get; set; }
     public decimal OffShiftRevenue { get; set; }
+    public int NoTimeFallbackItems { get; set; }
+    public decimal NoTimeFallbackRevenue { get; set; }
     public int TotalItemsInRange { get; set; }
     public int DuplicateReceiptGroupCount { get; set; }
     public int DuplicateReceiptHeaderCount { get; set; }
