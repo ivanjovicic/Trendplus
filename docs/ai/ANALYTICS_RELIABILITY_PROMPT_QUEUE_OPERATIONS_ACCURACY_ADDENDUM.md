@@ -9,6 +9,8 @@ Main RQ current READY prompt: none
 
 Idle recovery 2026-09-26: `RQ448` remains `WAITING`, not claimed. RQ447/RQ442/RQ413/RQ449 dependencies are complete, but this workspace has no authenticated browser/API session or deployment access and the local Docker/PostgreSQL host is unavailable; mocked frontend tests would not satisfy the raw-facts-to-render/detail/export acceptance.
 
+Verification 2026-09-26 after backend CI run `36269623614`: browser inventory still has no authenticated tab/session and no deployment/API access is available. RQ448 therefore remains `WAITING`; the green dedicated RQ447 certificate does not substitute for browser-render/detail/export proof.
+
 Owner promotion/claim 2026-09-26: idle recovery confirmed `RQ445` is the first dependency-complete P0 certification prompt, with no competing Supplier/Shoe Type accuracy-contract owner or active lock. `RQ445` moved `WAITING -> READY -> IN_PROGRESS` in this workspace; local lock `.ai/task-locks/RQ445-codex.lock.md`.
 
 Owner completion 2026-09-26: `RQ445` was delivered directly to `main`. The canonical `SST-ACCURACY-1.0` contract now binds Supplier/Shoe Type source population, period/store/scope, sale-time identity, signed metrics, denominators, negative/unknown behavior, PoP baselines, cost coverage, surface parity, trust states and bounded claim language. RQ456/RQ457/RQ431 retain their implementation/decision ownership. Run log: `.ai/runs/2026-09-26-RQ445-evidence.md`. Evidence state: synchronized.

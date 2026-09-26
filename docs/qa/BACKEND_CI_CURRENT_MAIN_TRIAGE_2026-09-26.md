@@ -56,6 +56,22 @@ AnalyticsCacheInvalidateAuthorizationTests: 4 passed, 0 failed, 0 skipped
 
 BCI10 remains `PARTIAL`. The current-main run is valid evidence of a red broad backend gate, while RQ447 remains green for its dedicated certification acceptance. The remaining SQL/session, report-label, and full-suite database/provider families require focused follow-up ownership; this re-entry does not close BCI10 and does not mark the broad workflow green.
 
+## Current-main recheck — run `36269623614`
+
+- Head SHA: `47c0a5c0d066effcb524b266661aac8810486fb0`
+- Event: push to `main`
+- Concurrency group: `analytics-backend-tests-refs/heads/main`
+- Run result: `failure`; both jobs completed teardown normally, so the run was not stuck, cancelled, or waiting for cleanup/bootstrap.
+- RQ447 certification job `108480955813`: `success`; oracle `4/4`, all-routes `1/1`, OP2 `4/4`, frontend seam and artifact upload all passed.
+- Complete backend analytics suite job `108480955962`: `failure` only in the all-tests step; restore, build and migration/bootstrap smoke passed.
+- Broad totals: `1475 total / 1410 passed / 27 failed / 38 skipped`.
+
+The 27 failures are a smaller but still mixed set: five SQL Server supplemental contract failures, three supplier-report warning-label assertions, one color cache-key version assertion, two outbox/data-source/Access integration groups, and several full-suite provider/isolation or database-schema failures. They are not one cleanup/bootstrap fault and are not safe to hide with a filter.
+
+The wide CI job now explicitly sets `Analytics__AllowLoopbackInProduction=true`, matching the already-certified isolated RQ447 job. This is a test-environment declaration only; the production resolver remains fail-closed. It removes misleading loopback-resolution noise from the broad job but does not claim the 27 assertion/provider failures are repaired.
+
+RQ448 was re-evaluated after this run and remains `WAITING`: the local/browser session inventory has no authenticated tab, API/deployment access is unavailable, and mocked frontend tests would not satisfy raw-facts → API → rendered screen → detail → CSV/XLSX acceptance.
+
 ## Next focused work
 
 - Reconcile the SQL Server session helper/tests against one canonical QDB03 contract, including `MaxRows`, deterministic full-scan ordering, safe connection diagnostics and parameter representation.

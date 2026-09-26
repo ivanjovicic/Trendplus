@@ -43,6 +43,11 @@ jobs:
 
     env:
       CI: "true"
+      # The backend suite uses the isolated CI PostgreSQL service on loopback.
+      # Keep the production resolver fail-closed while declaring this test-only
+      # exception explicitly, so startup warmup logs do not misclassify the
+      # healthy service as an unsafe production fallback.
+      Analytics__AllowLoopbackInProduction: "true"
       ConnectionStrings__DefaultConnection: "Host=localhost;Database=trendplus_test;Username=postgres;Password=postgres_password"
       ConnectionStrings__AnalyticsConnection: "Host=localhost;Database=trendplus_test;Username=postgres;Password=postgres_password"
       ConnectionStrings__AnalyticsDb: "Host=localhost;Database=trendplus_test;Username=postgres;Password=postgres_password"
