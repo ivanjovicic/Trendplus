@@ -81,6 +81,25 @@ describe("DecisionSummaryBar", () => {
     expect(screen.queryByText("P1 OOS 7d")).not.toBeInTheDocument();
   });
 
+  it("does not present workflow-derived zeros when the workflow request failed", () => {
+    render(
+      <MemoryRouter>
+        <DecisionSummaryBar
+          balance={null}
+          actionWorkflow={null}
+          actionWorkflowError="Tok akcija trenutno nije dostupan."
+          lowStockCount={0}
+          outOfStockCount={0}
+          dataQualityWarning={false}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("P2 Transfer").closest(".rounded-2xl")).toHaveTextContent("Nije dostupno");
+    expect(screen.getByText("P2 Mrtva zaliha").closest(".rounded-2xl")).toHaveTextContent("Nije dostupno");
+    expect(screen.getByText("Tok akcija").closest(".rounded-2xl")).toHaveTextContent("Nije dostupno");
+  });
+
   it("preserves measured zero counts as zero", () => {
     render(
       <MemoryRouter>
