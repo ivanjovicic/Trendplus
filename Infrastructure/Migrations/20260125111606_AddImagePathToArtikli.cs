@@ -10,58 +10,19 @@ namespace Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "Boja",
-                table: "Artikli",
-                type: "text",
-                nullable: true);
-
-            migrationBuilder.AddColumn<string>(
-                name: "Kategorija",
-                table: "Artikli",
-                type: "text",
-                nullable: true);
-
-            migrationBuilder.AddColumn<int>(
-                name: "MinimalnaKolicina",
-                table: "Artikli",
-                type: "integer",
-                nullable: true);
-
-            migrationBuilder.AddColumn<string>(
-                name: "Pol",
-                table: "Artikli",
-                type: "text",
-                nullable: true);
-
-            migrationBuilder.AddColumn<string>(
-                name: "Velicina",
-                table: "Artikli",
-                type: "text",
-                nullable: true);
+            // Kategorija, Pol, Velicina and Boja are owned by the preceding
+            // AddArtikliKategorije migration. This migration was generated
+            // against a model that already contained those columns and must
+            // not try to add them a second time on a clean database.
+            migrationBuilder.Sql(
+                "ALTER TABLE \"Artikli\" ADD COLUMN IF NOT EXISTS \"MinimalnaKolicina\" integer;");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "Boja",
-                table: "Artikli");
-
-            migrationBuilder.DropColumn(
-                name: "Kategorija",
-                table: "Artikli");
-
-            migrationBuilder.DropColumn(
                 name: "MinimalnaKolicina",
-                table: "Artikli");
-
-            migrationBuilder.DropColumn(
-                name: "Pol",
-                table: "Artikli");
-
-            migrationBuilder.DropColumn(
-                name: "Velicina",
                 table: "Artikli");
         }
     }
