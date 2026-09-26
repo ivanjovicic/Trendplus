@@ -1727,8 +1727,8 @@ Wire successful Access-import completion to invalidate caches, persist an unveri
 - Run log: `.ai/runs/2026-09-26-RQ450-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: branch/PR transport then main merge
-- Main commit SHA: pending-until-merge
-- Main verification: pending-until-merge
+- Main commit SHA: `30f0d5c1`
+- Main verification: passed - `origin/main` contains `30f0d5c1`
 - Missed: delete-batch cache path remains on default cache_clear probe
 - Follow-up: idle recovery; RQ448/RQ451/RQ453 remain separately gated
 - Residual risk: background probe best-effort without local PostgreSQL proof
