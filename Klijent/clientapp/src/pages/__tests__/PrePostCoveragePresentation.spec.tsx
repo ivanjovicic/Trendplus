@@ -35,7 +35,7 @@ describe("pre/post coverage presentation guardrails", () => {
   it.each(unknownCoverageValues)("does not turn supplier coverage %s into a measured zero", (coverage) => {
     const result = describeSupplierImpactMetric(supplierMetric({ prePostNivelacijaRevenueCoveragePct: coverage }));
 
-    expect(result.label).toBe("N/A");
+    expect(result.label).toBe("Nije dostupno");
     expect(result.title).toContain("nije dostupno");
   });
 
@@ -66,7 +66,7 @@ describe("pre/post coverage presentation guardrails", () => {
     for (const coverage of unknownCoverageValues) {
       const result = describeMetric(categoryMetric({ prePostNivelacijaRevenueCoveragePct: coverage }));
 
-      expect(result.label).toBe("N/A");
+      expect(result.label).toBe("Nije dostupno");
       expect(result.title).toContain("nije dostupno");
     }
 
@@ -99,7 +99,7 @@ describe("pre/post coverage presentation guardrails", () => {
 
     for (const result of results) {
       expect(result.label).not.toMatch(/NaN|Infinity/);
-      expect(result.label).toBe("N/A");
+      expect(result.label).toBe("Nije dostupno");
     }
   });
 });

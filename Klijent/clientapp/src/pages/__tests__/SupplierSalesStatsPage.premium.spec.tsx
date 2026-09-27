@@ -109,9 +109,9 @@ describe("SupplierSalesStatsPage premium controls", () => {
   });
 
   it("keeps non-finite PoP revenue and units unavailable while preserving zero", () => {
-    expect(describePopMetric({ popRevenueChangePct: Number.POSITIVE_INFINITY, previousPeriodRevenue: 100, ukupanPromet: 200 }).label).toBe("N/A");
+    expect(describePopMetric({ popRevenueChangePct: Number.POSITIVE_INFINITY, previousPeriodRevenue: 100, ukupanPromet: 200 }).label).toBe("Nije dostupno");
     expect(describePopMetric({ popRevenueChangePct: 0, previousPeriodRevenue: 100, ukupanPromet: 200 }).label).toBe("0,00%");
-    expect(describePopUnitsMetric({ popUnitsChangePct: Number.NEGATIVE_INFINITY, previousPeriodUnits: 100, ukupnaKolicina: 200 }).label).toBe("N/A");
+    expect(describePopUnitsMetric({ popUnitsChangePct: Number.NEGATIVE_INFINITY, previousPeriodUnits: 100, ukupnaKolicina: 200 }).label).toBe("Nije dostupno");
     expect(describePopUnitsMetric({ popUnitsChangePct: 0, previousPeriodUnits: 100, ukupnaKolicina: 200 }).label).toBe("0,00%");
   });
 
@@ -396,7 +396,7 @@ describe("SupplierSalesStatsPage premium controls", () => {
 
     expect(trustHeaderProps).toEqual(expect.objectContaining({
       title: "Dobavljači: Pregled",
-      dataSource: "Supplier sales stats (scope: Svi podaci)",
+      dataSource: "Prodaja po dobavljačima (opseg: Svi podaci)",
       provenanceBasis: "live_query",
       requestedDataset: "Svi podaci",
       effectiveDataset: "Svi podaci",

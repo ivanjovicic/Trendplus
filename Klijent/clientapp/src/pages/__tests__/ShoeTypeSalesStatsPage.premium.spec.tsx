@@ -233,7 +233,7 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     );
 
     const toolbar = await screen.findByTestId("analytics-table-toolbar");
-    expect(toolbar).toHaveTextContent("Tipova: N/A");
+    expect(toolbar).toHaveTextContent("Tipova: Nije dostupno");
     expect(toolbar).not.toHaveTextContent("Tipova: 0");
   });
 
@@ -851,7 +851,7 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     expect(within(detailPanel!).getByText("Posle nivelacije promet").parentElement).toHaveTextContent(/30\.000/);
     expect(within(detailPanel!).getByText("Pre nivo količina").parentElement).toHaveTextContent(/9.*kom/);
     expect(within(detailPanel!).getByText("Posle nivo količina").parentElement).toHaveTextContent(/3.*kom/);
-    expect(within(detailPanel!).getByText("Uticaj nivelacije na promet").parentElement).toHaveTextContent("N/A");
+    expect(within(detailPanel!).getByText("Uticaj nivelacije na promet").parentElement).toHaveTextContent("Nije dostupno");
   });
 
   it("keeps concentration chart from inventing invalid Ostali share percentages", async () => {

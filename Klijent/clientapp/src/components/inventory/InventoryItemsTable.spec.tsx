@@ -72,7 +72,7 @@ describe("Inventory signal presentation", () => {
   it("exposes readable stock cover and sell-through status labels", () => {
     expect(stockCoverStatusLabel("out_of_stock_risk")).toBe("Rizik rasprodaje");
     expect(stockCoverStatusLabel("insufficient_data")).toBe("Nedovoljno podataka");
-    expect(sellThroughStatusLabel("warning")).toBe("Sell-through upozorenje");
+    expect(sellThroughStatusLabel("warning")).toBe("Upozorenje prodajnog obrta");
     expect(sellThroughStatusLabel("insufficient_data")).toBe("Nedovoljno podataka");
   });
 

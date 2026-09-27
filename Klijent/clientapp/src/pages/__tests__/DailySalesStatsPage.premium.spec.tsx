@@ -265,7 +265,7 @@ describe("DailySalesStatsPage premium controls", () => {
     await waitFor(() => {
       expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute(
         "data-source",
-        "Daily sales analytics (scope: imported)",
+        "Dnevna prodaja (opseg: Uvezeni)",
       );
       expect(screen.getByTestId("location-search")).toHaveTextContent(
         "fromDate=2026-04-01&toDate=2026-04-30&dataScope=imported",
@@ -278,7 +278,7 @@ describe("DailySalesStatsPage premium controls", () => {
     await waitFor(() => {
       expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute(
         "data-source",
-        "Daily sales analytics (scope: imported)",
+        "Dnevna prodaja (opseg: Uvezeni)",
       );
     });
   });

@@ -328,7 +328,7 @@ describe("ColorSalesStatsPage premium controls", () => {
     expect(within(detailPanel!).getByText("Uporedivo posle nivelacije promet").parentElement).toHaveTextContent(/30\.000/);
     expect(within(detailPanel!).getByText("Uporedivo pre nivelacije količina").parentElement).toHaveTextContent(/9.*kom/);
     expect(within(detailPanel!).getByText("Uporedivo posle nivelacije količina").parentElement).toHaveTextContent(/3.*kom/);
-    expect(within(detailPanel!).getByText("Uticaj nivelacije na promet").parentElement).toHaveTextContent("N/A");
+    expect(within(detailPanel!).getByText("Uticaj nivelacije na promet").parentElement).toHaveTextContent("Nije dostupno");
   });
 
   it("keeps raw pre/post detail metrics independently unavailable when individual evidence is missing", async () => {
