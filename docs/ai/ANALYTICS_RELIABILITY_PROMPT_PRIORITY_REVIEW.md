@@ -276,7 +276,7 @@ The queues are strong enough for agent execution, but current routing is not the
 
 The older `RQ89`/`RQ90`/`BCI05` pointers below this heading are historical and obsolete. Use `MASTER_ROADMAP.md`.
 
-- Backend CI: no current READY (`BCI10` DONE).
+- Backend CI: historical snapshot only; use `MASTER_ROADMAP.md` and `BACKEND_CI_REPAIR_PROMPT_QUEUE.md` for current BCI routing (BCI10 was later reopened by fresh current-main evidence).
 - Release truth: no current READY (`STAB14`/`STAB15` DONE).
 - Analytics correctness/runtime forecasting: `RQ108` DONE; `RQ109` DONE; `RQ110` DONE; `RQ111` DONE; `RQ112` DONE; `RQ113` READY; `RQ114`-`RQ120` WAITING behind their named dependencies/owner gates.
 - Connector runtime: no current READY (`QDB09` DONE); `QDB07` remains WAITING behind release gates.
