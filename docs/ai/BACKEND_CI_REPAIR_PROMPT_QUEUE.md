@@ -169,3 +169,5 @@ Run `36270728235` still contained failures across Access import FK guards, lost-
 
 
 ## Expected transition  1. `BCI01` is `PARTIAL` with GHA proof that restore/build succeed and the test step runs. 2. `BCI04` is `DONE`; remaining failures are owned by focused repair prompts. 3. `BCI02` is `DONE`; coverage/artifact cascade no longer invents secondary root causes. 4. `BCI03` is `DONE`; canonical backend filter + available SDK pins + pin regression check. 5. Promote BCI01 to `DONE` only after a GHA run has restore + build + test step all successful. 6. If later current-main evidence turns red again, use `BCI10` rather than reopening bootstrap-era prompts.
+# Current READY prompt (authoritative, 2026-09-27): `BCI13`. The historical inline pointer in the original single-line header is superseded by this routing correction; `BCI11` and `BCI12` are DONE and `BCI10` remains PARTIAL.
+

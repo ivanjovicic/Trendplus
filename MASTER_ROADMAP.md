@@ -4,9 +4,9 @@ Updated: 2026-09-26
 Repository: `ivanjovicic/Trendplus`
 Status: canonical planning entry point
 
-Backend CI recovery 2026-09-27: corrected stale routing that still marked BCI10 DONE after the 2026-09-26 current-main broad-suite failure. BCI10 is PARTIAL; BCI11 is DONE after the SQL Server contract repair, BCI12 is the primary READY cache-key contract lane, and BCI13/BCI14 are staged behind the next focused/broad evidence.
+Backend CI recovery 2026-09-27: corrected stale routing that still marked BCI10 DONE after the 2026-09-26 current-main broad-suite failure. BCI10 is PARTIAL; BCI11 and BCI12 are DONE, BCI13 is the primary READY endpoint-host repair lane, and BCI14 is staged behind the next focused/broad evidence.
 
-Backend CI completion 2026-09-27: BCI11 is DONE on the delivered main SHA recorded in `.ai/runs/2026-09-27-BCI11-evidence.md`; BCI12 is now the primary READY lane. BCI10 remains PARTIAL because the broad suite is still red from unrelated environment/endpoint/provider families.
+Backend CI completion 2026-09-27: BCI11 is DONE on the delivered main SHA recorded in `.ai/runs/2026-09-27-BCI11-evidence.md`; BCI11 and BCI12 are DONE and BCI13 is now the primary READY lane. BCI10 remains PARTIAL because the broad suite is still red from unrelated environment/endpoint/provider families.
 
 Backend CI completion 2026-09-27: BCI12 is DONE on the delivered main SHA recorded in `.ai/runs/2026-09-27-BCI12-evidence.md`; the stale Color v4 assertion now matches the authoritative v5 runtime contract. BCI13 is promoted to the primary READY lane; BCI10 remains PARTIAL.
 
