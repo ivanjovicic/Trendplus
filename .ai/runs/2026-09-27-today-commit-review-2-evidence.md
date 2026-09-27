@@ -54,3 +54,13 @@ Queue defects: the RQ321 section carried a misplaced RQ327 completion note with 
 ## Delivery
 
 - Implementation SHA `8c3693908ec93c3fb74625f3068e3e96def93f73`, pushed directly to `main` (no upstream delta at rebase). `git merge-base --is-ancestor 8c369390 origin/main` returned 0.
+
+## Post-delivery CI (8c369390)
+
+- Planning Governance 36324193581: green.
+- Analytics Quality Gates 36324193541: green.
+- Analytics Tests & Data Integrity 36324193528: red.
+  - RQ447 certification job: green.
+  - "Complete backend analytics suite": `Build solution` green, so the backend change compiles.
+  - "Run all backend tests with coverage": red, with 33 of 1478 tests failing. The failing families are SqlServerSourceDataSession, DataSourceDiscovery, DemoEnvironmentVerification, AnalyticsAggregationWorker, CachedAnalyticsCriticalEndpoints, Outbox and others unrelated to detail labels. The new `AnalyticsDetailLocalizedLabelTests` is not among them.
+  - Classification: pre-existing and unrelated. The same step was already red on `fdac63ba` (run 36275934187) before this change. It is owned by the reopened BCI current-main repair lanes (`docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`).
