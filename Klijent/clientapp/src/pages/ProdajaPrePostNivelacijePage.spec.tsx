@@ -309,6 +309,38 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     });
   });
 
+  it("shows visible/total row context only while focus hides part of the vendors", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(response({
+      vendorStats: [
+        vendor(),
+        vendor({
+          vendorId: 11,
+          vendorName: "Vendor B",
+          recommendation: {
+            status: "review",
+            label: "Review",
+            summary: "Signal za proveru.",
+            confidencePct: 64,
+            reliabilityPct: 61,
+            dataQualityStatus: "warning",
+            reasonCodes: ["review_signal"],
+          },
+        }),
+      ],
+      totals: { ...response().totals, vendorsCount: 2 },
+    }));
+    renderPage();
+
+    await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
+    expect(screen.queryByTestId("ppn-focus-row-context")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Pregledaj/i }));
+    expect(screen.getByTestId("ppn-focus-row-context")).toHaveTextContent("Prikazano 1 od 2 dobavljača (fokus: Pregledaj)");
+
+    fireEvent.click(screen.getByRole("button", { name: /^Sve/ }));
+    expect(screen.queryByTestId("ppn-focus-row-context")).not.toBeInTheDocument();
+  });
+
   it("removes invalid focus values and falls back to all", async () => {
     renderPage(["/analitika/nivelacije-pre-post?focus=not-a-focus"]);
 
