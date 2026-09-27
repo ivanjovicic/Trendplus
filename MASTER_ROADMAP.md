@@ -4,6 +4,9 @@ Updated: 2026-09-26
 Repository: `ivanjovicic/Trendplus`
 Status: canonical planning entry point
 
+Owner promotion/claim 2026-09-27: idle recovery reconciled RQ327's stale queue section to DONE from synchronized main/evidence, verified RQ317 DONE and no active Pre/Post expansion owner or conflicting lock/branch/PR. RQ328 moved WAITING -> READY -> IN_PROGRESS in this workspace; local lock .ai/task-locks/RQ328-codex.lock.md.
+Owner completion 2026-09-27: RQ328 was delivered directly to `main` in `9526ac93`; Pre/Post preserves expanded vendors across refetch when the stable vendor key remains and clears stale expansion when it disappears. Focused proof is 15/15; guardrails, typecheck, build and diff checks pass. Run log: .ai/runs/2026-09-27-RQ328-evidence.md. Evidence state: synchronized.
+
 Owner promotion/claim 2026-09-27: idle recovery verified RQ317 DONE on current origin/main, no active shared Operacije URL-state owner or conflicting lock/branch/PR, and RQ318 is dependency-complete. RQ318 is IN_PROGRESS in this workspace; local lock .ai/task-locks/RQ318-codex.lock.md.
 Owner promotion/claim 2026-09-27: idle recovery verified RQ318 DONE on current origin/main, RQ325 is dependency-complete after RQ306, and no active residual-copy owner or conflicting lock/branch/PR exists. RQ325 is IN_PROGRESS in this workspace; local lock .ai/task-locks/RQ325-codex.lock.md.
 Owner completion 2026-09-27: RQ325 was delivered directly to main in 4ecea4b1. Residual Operacije copy and scope labels are localized; focused proof is 132/132, guardrails/typecheck/build/diff checks pass. Run log: .ai/runs/2026-09-27-RQ325-evidence.md. Evidence state: synchronized.

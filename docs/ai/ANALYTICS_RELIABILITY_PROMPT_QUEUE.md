@@ -18316,7 +18316,7 @@ Reproduction: sort by SKU desc, refresh — default status desc restored.
 
 ## RQ327 - Persist Daily Sales table sort in URL
 
-Status: WAITING
+Status: DONE
 Priority: P3
 Type: frontend/url-state/tests
 Feature family: daily-sales-sort-url-state
@@ -18355,6 +18355,26 @@ Reproduction: sort by revenue, copy URL — new tab defaults to date desc.
 
 - Shared daily-sales links preserve table sort.
 
+### Completion note
+
+- Date: 2026-09-27
+- Status: DONE
+- Completion: Daily Sales table sorting restores from validated `sort`/`dir` URL state and preserves the next direction through filter updates.
+- Changed files: `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.spec.tsx`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, this queue, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-27-RQ327-evidence.md`.
+- Contract/runtime behavior changed: shared Daily Sales links now preserve the table sort; invalid values fail closed to the documented defaults.
+- Checks run: focused Vitest 4/4; analytics guardrails/typecheck; production build; `git diff --check`; planning and queue validators.
+- Checks not run: backend tests and remote CI; frontend-only URL-state prompt.
+- Run log: `.ai/runs/2026-09-27-RQ327-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main after remote-main synchronization merge
+- Main commit SHA: `dc20d775ca3c71fc019503efc572958ca2418524`
+- Main verification: `origin/main` contains the implementation through `775e0173980d182445733cae3bfaa26c0cd6b011`.
+- Missed: none in owned scope.
+- Follow-up: RQ328.
+- Residual risk: existing Vite large-chunk warning.
+- Next: RQ328 is the current claimed prompt.
+- Prompt defect / scope repair: section status was stale `WAITING`; reconciled to the synchronized DONE evidence.
+
 ### Dependencies
 
 - None.
@@ -18363,7 +18383,7 @@ Reproduction: sort by revenue, copy URL — new tab defaults to date desc.
 
 ## RQ328 - Preserve Pre/Post expanded vendor across refetch
 
-Status: WAITING
+Status: DONE
 Priority: P3
 Type: frontend/ux/tests
 Feature family: pre-post-expansion-persistence
@@ -18401,6 +18421,26 @@ Reproduction: expand vendor row, Apply filters — expansion collapses.
 ### Acceptance
 
 - Refetch keeps expansion when vendor remains in results.
+
+### Completion note
+
+- Date: 2026-09-27
+- Status: DONE
+- Completion: Pre/Post refetch now preserves the expanded vendor when its stable row key remains in the new result and clears the expansion when the vendor disappears.
+- Changed files: `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`, `Klijent/clientapp/src/pages/__tests__/ProdajaPrePostNivelacijePage.expansion.spec.ts`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`.
+- Contract/runtime behavior changed: expansion state is reconciled against the current vendor population instead of being reset on every successful response.
+- Checks run: focused Pre/Post tests 15/15; analytics guardrails/typecheck; production build; `git diff --check`.
+- Checks not run: backend tests and remote CI; frontend-only state persistence prompt.
+- Run log: `.ai/runs/2026-09-27-RQ328-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `9526ac93061f3d1facc5a407bf152e83426ef3bb`
+- Main verification: `origin/main` contains the implementation SHA.
+- Missed: browser-level authenticated render proof remains RQ448 scope and was not required for this local state contract.
+- Follow-up: canonical idle recovery for the next dependency-complete prompt.
+- Residual risk: existing Vite large-chunk warning; no new guardrail violation.
+- Next: `Current READY prompt: none` after RQ328 closure.
+- Prompt defect / scope repair: none.
 
 ### Dependencies
 
