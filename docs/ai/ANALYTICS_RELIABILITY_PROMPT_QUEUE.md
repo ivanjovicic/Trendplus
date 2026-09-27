@@ -3,7 +3,7 @@
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
-Owner completion 2026-09-27: RQ329 was delivered directly to `main` in implementation `ea4ac7cc7d1b4f7afbd385bfe49e9a69f4be3f3a`, with current `origin/main` verified through merge `18c348b59b46e08ef2f47c1dee30b7779e2889c3`. The Shoe Type table no longer passes a dead truncation label; the response has no authoritative hidden-row total/pagination contract, so the UI avoids an unsupported claim. Focused premium proof is 39/39; guardrails/typecheck/build/diff checks pass. Run log: `.ai/runs/2026-09-27-RQ329-evidence.md`. Evidence state: synchronized.
+Owner completion 2026-09-27: RQ329 was delivered directly to `main` in implementation `ea4ac7cc7d3d3bacf73ac8c13699e1e5efe5479a`, with current `origin/main` verified through merge `18c348b59b46e08ef2f47c1dee30b7779e2889c3`. The Shoe Type table no longer passes a dead truncation label; the response has no authoritative hidden-row total/pagination contract, so the UI avoids an unsupported claim. Focused premium proof is 39/39; guardrails/typecheck/build/diff checks pass. Run log: `.ai/runs/2026-09-27-RQ329-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-27: idle recovery verified current `origin/main` includes RQ328 and RQ460 closure, RQ329 is dependency-complete and no active Shoe Type truncation owner/lock/branch/PR exists. RQ329 moved WAITING -> READY -> IN_PROGRESS; local lock `.ai/task-locks/RQ329-codex.lock.md`.
 Owner promotion/claim/completion 2026-09-27: idle recovery found RQ326 live in another workspace, confirmed RQ319 remains product-decision gated, and promoted/claimed dependency-free RQ324 (Inventory SKU detail size-curve error) as collision-safe; local lock `.ai/task-locks/RQ324-cursor.lock.md`. RQ324 was delivered directly to `main` in `9bbbc9b5`; the SKU detail size-curve tab now separates a failed fetch from an empty curve with a sanitized, retryable error. Focused modal proof 7/7, Inventory page specs 73/74 (the one failure is pre-existing on `b1f5b7cc`), guardrails, typecheck and build pass. Run log: `.ai/runs/2026-09-27-RQ324-evidence.md`. Evidence state: synchronized.
 Owner completion 2026-09-27: RQ327 was delivered directly to `main` in `dc20d775`; Daily Sales table sorting now restores from validated `sort`/`dir` URL state and persists the next direction through filter updates. Focused proof is 4/4; guardrails, typecheck, build and diff checks pass. Run log: `.ai/runs/2026-09-27-RQ327-evidence.md`. Evidence state: synchronized.
@@ -18561,7 +18561,7 @@ Reproduction: any filter state — truncation label never shown.
 - Run log: `.ai/runs/2026-09-27-RQ329-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: `ea4ac7cc7d1b4f7afbd385bfe49e9a69f4be3f3a` (present through merge `18c348b59b46e08ef2f47c1dee30b7779e2889c3`)
+- Main commit SHA: `ea4ac7cc7d3d3bacf73ac8c13699e1e5efe5479a` (present through merge `18c348b59b46e08ef2f47c1dee30b7779e2889c3`)
 - Main verification: fresh `origin/main` contains the implementation SHA.
 - Missed: no hidden-row label was added because no authoritative total/pagination metadata exists.
 - Follow-up: none; current READY prompt is none.
