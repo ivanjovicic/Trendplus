@@ -4,8 +4,8 @@ Date: 2026-09-27
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct delivery
-Main commit SHA: pending
-Main verification: pending push and origin/main verification
+Main commit SHA: e6913573
+Main verification: passed - `git rev-parse HEAD` and `git rev-parse origin/main` resolve to e6913573; `git merge-base --is-ancestor e6913573 origin/main` passed.
 Evidence state: synchronized
 
 ## What was done
@@ -23,12 +23,12 @@ Evidence state: synchronized
 ## Validation run
 - `dotnet test Api.Tests/Api.Tests.csproj --no-restore --configuration Release --filter "FullyQualifiedName~AnalyticsScreenCacheKeyContractTests" --verbosity minimal --logger "console;verbosity=minimal"`: pass, 18/18, 0 skipped.
 - Build performed as part of the test command: succeeded with pre-existing warnings.
-- `git diff --check`: pending final documentation cleanup.
+- `git diff --check`: pass.
 
 ## Validation not run
 - Full backend suite: not rerun; BCI10 already has a fresh red broad result and BCI12 changes only one stale contract assertion.
 - Browser/production checks: not applicable to this backend cache-key contract.
-- GitHub Actions result for the final delivery SHA: pending push and inspection.
+- GitHub Actions run `36343166491` for SHA `e6913573da717de16eb7978b0c607d9f349335b0` is queued; no remote test result is inferred from the queue state.
 
 ## Documentation impact
 - BCI12 completion and evidence are recorded in the owning backend CI queue.
