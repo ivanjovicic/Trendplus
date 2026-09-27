@@ -166,8 +166,8 @@ export const NAV_GROUPS: NavGroup[] = [
         },
       },
       { to: "/analytics/shoe-type-sales-stats", label: "Prodaja po tipu obuće", icon: ShoppingBag },
-      { to: "/analytics/daily-sales", label: "Prodaja po smeni i dobavljačima", icon: ShoppingBag },
-      { to: "/analytics/nivelacije-pre-post", label: "Pre/Posle nivelacije", icon: TrendingUp },
+      { to: "/analytics/daily-sales", label: "Prodaja po smeni i dobavljačima", icon: CalendarDays },
+      { to: "/analytics/nivelacije-pre-post", label: "Pre/Posle nivelacije", icon: Activity },
       { to: "/analytics/color-sales-stats", label: "Prodaja po boji artikla", icon: Palette },
       {
         to: "/analytics/pre-nivelacija-prioriteti",
@@ -178,7 +178,7 @@ export const NAV_GROUPS: NavGroup[] = [
       {
         to: "/analytics/dobavljaci-tipovi-obuce",
         label: "Dobavljači i tipovi obuće",
-        icon: ShoppingBag,
+        icon: Tags,
         badge: {
           label: "Alias",
           tone: "info",
