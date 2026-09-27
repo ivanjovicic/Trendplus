@@ -53,4 +53,4 @@ Queue defects: the RQ321 section carried a misplaced RQ327 completion note with 
 
 ## Delivery
 
-- See final report / `git log origin/main`.
+- Implementation SHA `8c3693908ec93c3fb74625f3068e3e96def93f73`, pushed directly to `main` (no upstream delta at rebase). `git merge-base --is-ancestor 8c369390 origin/main` returned 0.
