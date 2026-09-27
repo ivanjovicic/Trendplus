@@ -4,6 +4,8 @@ Updated: 2026-09-26
 Repository: `ivanjovicic/Trendplus`
 Status: canonical planning entry point
 
+Idle recovery 2026-09-27: reconciled stale RQ191/RQ192 summary rows to their terminal `DONE` sections. No safe next prompt was promoted: remaining RQ/Q candidates require live runtime/browser/production access or the RQ319 product decision. Evidence: `.ai/runs/2026-09-27-idle-recovery-evidence.md`.
+
 Owner promotion/claim 2026-09-27: idle recovery verified RQ311 DONE on current `origin/main`, confirmed RQ310 is dependency-complete, and found only a stale route-alignment branch last updated 2026-06-17 with no active lock/PR owner. RQ310 moved WAITING -> READY -> IN_PROGRESS; local lock `.ai/task-locks/RQ310-codex.lock.md`.
 Owner completion 2026-09-27: RQ310 was delivered directly to `main` in implementation `cde5a5870a6406bab830a7164bb6f0e9993efd80`; Operacije page-level test fixtures now use production `/analytics/...` list routes and detail/modal tests retain `/analitika/:table/:id`. Focused proof is 178/178; App route smoke is 20/20; guardrails/typecheck/build pass. Run log: `.ai/runs/2026-09-27-RQ310-evidence.md`. Evidence state: synchronized.
 

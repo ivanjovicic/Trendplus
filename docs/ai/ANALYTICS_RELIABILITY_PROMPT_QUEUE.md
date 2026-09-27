@@ -3,6 +3,7 @@
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+Idle recovery 2026-09-27: reconciled stale summary rows RQ191/RQ192 to their terminal `DONE` sections; no safe RQ prompt was promoted because remaining candidates are externally gated, partial pending live proof, or require the RQ319 product decision. Evidence: `.ai/runs/2026-09-27-idle-recovery-evidence.md`.
 Owner promotion/claim 2026-09-27: idle recovery verified RQ311 DONE on current `origin/main`, confirmed RQ310 was dependency-complete, and found only a stale route-alignment branch last updated 2026-06-17 with no active lock/PR owner. RQ310 moved WAITING -> READY -> IN_PROGRESS; local lock `.ai/task-locks/RQ310-codex.lock.md`.
 Owner completion 2026-09-27: RQ310 was delivered directly to `main` in implementation `cde5a5870a6406bab830a7164bb6f0e9993efd80`. Operacije page-level fixtures now mount production `/analytics/...` list routes while detail/modal fixtures retain `/analitika/:table/:id`. Focused proof is 178/178, App route smoke is 20/20, guardrails/typecheck/build pass. Run log: `.ai/runs/2026-09-27-RQ310-evidence.md`. Evidence state: synchronized.
 Owner completion 2026-09-27: RQ311 was delivered directly to `main` in implementation `6b590226064a60778ac035d2f761d6b98badbddc`, with current `origin/main` verified through merge `76653b0d79148ec5769283f385d776cb64b5d88a`. The assignment guardrail rules now exclude `==`/`===` comparisons, four false-positive baseline entries were removed, and affected Operacije specs remain green at 134/134. Run log: `.ai/runs/2026-09-27-RQ311-evidence.md`. Evidence state: synchronized.
@@ -1493,8 +1494,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ188 | DONE | price-intelligence-validity | Price-intelligence discount depth encodes missing list price as 0% |
 | RQ189 | DONE | demand-acceleration-new-product-state | Demand acceleration hardcodes 1.0 sentinel for new demand |
 | RQ190 | OBSOLETE | forecast-snapshot-freshness-aggregation | Excluded: standalone forecast provenance work is deferred |
-| RQ191 | WAITING | frontend-numeric-safety | Frontend percent clamp hides negative backend signals |
-| RQ192 | WAITING | ml-feature-missing-encoding | Supplier ML return rate coalesces missing to 0% |
+| RQ191 | DONE | frontend-numeric-safety | Frontend percent clamp hides negative backend signals |
+| RQ192 | DONE | ml-feature-missing-encoding | Supplier ML return rate coalesces missing to 0% |
 | RQ193 | DONE | analytics-async-ordering | Inventory page cross-panel async race condition |
 | RQ194 | DONE | analytics-details-async-safety | Analytics Details missing in-flight guard |
 | RQ195 | DONE | pilot-readiness-async-consistency | Pilot Readiness multi-signal load can mix reload generations |
