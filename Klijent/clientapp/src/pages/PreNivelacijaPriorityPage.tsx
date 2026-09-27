@@ -172,6 +172,31 @@ function parseFocusFilter(value: string | null): FocusFilter {
   return "all";
 }
 
+const DEFAULT_SORT_FIELD: SortField = "status";
+const DEFAULT_SORT_DIR: SortDir = "desc";
+const SORT_FIELDS = new Set<SortField>([
+  "sku",
+  "supplierName",
+  "preNivelacijaScore",
+  "stockUnits",
+  "daysSinceLastSale",
+  "revenueDelta",
+  "status",
+]);
+
+function defaultSortDir(field: SortField): SortDir {
+  return field === "sku" || field === "supplierName" ? "asc" : DEFAULT_SORT_DIR;
+}
+
+function parseSortField(value: string | null): SortField {
+  return value && SORT_FIELDS.has(value as SortField) ? value as SortField : DEFAULT_SORT_FIELD;
+}
+
+function parseSortDir(value: string | null, field: SortField): SortDir {
+  if (value === "asc" || value === "desc") return value;
+  return defaultSortDir(field);
+}
+
 function sameActiveFilters(left: ActiveFilters, right: ActiveFilters): boolean {
   return left.supplierId === right.supplierId
     && left.seasonId === right.seasonId
@@ -180,7 +205,14 @@ function sameActiveFilters(left: ActiveFilters, right: ActiveFilters): boolean {
     && left.noSaleDaysMin === right.noSaleDaysMin;
 }
 
-function buildPreNivelacijaSearchParams(filters: ActiveFilters, focus: FocusFilter, page: number, dataScope: DataScope): URLSearchParams {
+function buildPreNivelacijaSearchParams(
+  filters: ActiveFilters,
+  focus: FocusFilter,
+  page: number,
+  dataScope: DataScope,
+  sortField: SortField = DEFAULT_SORT_FIELD,
+  sortDir: SortDir = defaultSortDir(sortField),
+): URLSearchParams {
   const params = new URLSearchParams();
   if (filters.supplierId != null) params.set("supplierId", String(filters.supplierId));
   if (filters.seasonId != null) params.set("seasonId", String(filters.seasonId));
@@ -190,6 +222,8 @@ function buildPreNivelacijaSearchParams(filters: ActiveFilters, focus: FocusFilt
   if (focus !== "all") params.set("focus", focus);
   if (page > 1) params.set("page", String(page));
   params.set("dataScope", dataScope);
+  if (sortField !== DEFAULT_SORT_FIELD) params.set("sort", sortField);
+  if (sortDir !== defaultSortDir(sortField)) params.set("dir", sortDir);
   return params;
 }
 
@@ -505,6 +539,8 @@ export default function PreNivelacijaPriorityPage() {
   }), [searchParams]);
   const queryFocus = parseFocusFilter(searchParams.get("focus"));
   const queryPage = parseBoundedInteger(searchParams.get("page"), 1, 1, Number.MAX_SAFE_INTEGER);
+  const querySortField = parseSortField(searchParams.get("sort"));
+  const querySortDir = parseSortDir(searchParams.get("dir"), querySortField);
 
   const [supplierId, setSupplierId] = useState<number | null>(queryFilters.supplierId);
   const [seasonId, setSeasonId] = useState<number | null>(queryFilters.seasonId);
@@ -514,8 +550,8 @@ export default function PreNivelacijaPriorityPage() {
   const [activeFilters, setActiveFilters] = useState<ActiveFilters>(queryFilters);
 
   const [page, setPage] = useState(queryPage);
-  const [sortField, setSortField] = useState<SortField>("status");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [sortField, setSortField] = useState<SortField>(querySortField);
+  const [sortDir, setSortDir] = useState<SortDir>(querySortDir);
   const [expandedArtikalId, setExpandedArtikalId] = useState<number | null>(null);
   const [focusFilter, setFocusFilter] = useState<FocusFilter>(queryFocus);
   const [dataScope, setDataScopeValue] = useState<DataScope>(() => queryDataScope);
@@ -530,13 +566,22 @@ export default function PreNivelacijaPriorityPage() {
     setActiveFilters((current) => sameActiveFilters(current, queryFilters) ? current : queryFilters);
     setPage((current) => current === queryPage ? current : queryPage);
     setFocusFilter((current) => current === queryFocus ? current : queryFocus);
-  }, [queryFilters, queryFocus, queryPage]);
+    setSortField((current) => current === querySortField ? current : querySortField);
+    setSortDir((current) => current === querySortDir ? current : querySortDir);
+  }, [queryFilters, queryFocus, queryPage, querySortDir, querySortField]);
 
   useEffect(() => {
-    const canonicalParams = buildPreNivelacijaSearchParams(queryFilters, queryFocus, queryPage, queryDataScope);
+    const canonicalParams = buildPreNivelacijaSearchParams(
+      queryFilters,
+      queryFocus,
+      queryPage,
+      queryDataScope,
+      querySortField,
+      querySortDir,
+    );
     if (canonicalParams.toString() === searchParams.toString()) return;
     setSearchParams(canonicalParams, { replace: true });
-  }, [queryDataScope, queryFilters, queryFocus, queryPage, searchParams, setSearchParams]);
+  }, [queryDataScope, queryFilters, queryFocus, queryPage, querySortDir, querySortField, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (dataScopeRef.current === queryDataScope) return;
@@ -950,16 +995,19 @@ export default function PreNivelacijaPriorityPage() {
   }, [data?.evidenceWindow]);
 
   const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDir((current) => (current === "asc" ? "desc" : "asc"));
-      return;
-    }
+    const nextSortDir = sortField === field
+      ? (sortDir === "asc" ? "desc" : "asc")
+      : defaultSortDir(field);
     setSortField(field);
-    setSortDir(field === "sku" || field === "supplierName" ? "asc" : "desc");
+    setSortDir(nextSortDir);
+    setSearchParams(
+      buildPreNivelacijaSearchParams(activeFilters, focusFilter, page, dataScope, field, nextSortDir),
+      { replace: true },
+    );
   };
 
   const syncQueryState = (filters: ActiveFilters, focus: FocusFilter, nextPage: number) => {
-    setSearchParams(buildPreNivelacijaSearchParams(filters, focus, nextPage, dataScope), { replace: true });
+    setSearchParams(buildPreNivelacijaSearchParams(filters, focus, nextPage, dataScope, sortField, sortDir), { replace: true });
   };
 
   const handleApplyFilters = () => {
@@ -1153,7 +1201,7 @@ export default function PreNivelacijaPriorityPage() {
       })
     );
 
-    const detailParams = buildPreNivelacijaSearchParams(activeFilters, focusFilter, page, dataScope);
+    const detailParams = buildPreNivelacijaSearchParams(activeFilters, focusFilter, page, dataScope, sortField, sortDir);
     navigate(`/analitika/pre-nivelacija-prioriteti/${row.artikalId}?${detailParams.toString()}`, {
       state: { backgroundLocation: location },
     });

@@ -1069,6 +1069,28 @@ describe("PreNivelacijaPriorityPage", () => {
     expect(screen.getByTestId("location-search")).toHaveTextContent("focus=review");
   });
 
+  it("restores table sort from a shared URL and persists the next direction", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti?sort=sku&dir=asc"]}>
+        <LocationProbe />
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByTestId("pre-nivelacija-prioriteti-data-table");
+
+    const skuHeader = screen.getByRole("columnheader", { name: /SKU/i });
+    expect(skuHeader).toHaveAttribute("aria-sort", "ascending");
+    expect(screen.getByTestId("location-search")).toHaveTextContent("sort=sku");
+    expect(screen.getByTestId("location-search")).not.toHaveTextContent("dir=desc");
+
+    fireEvent.click(screen.getByRole("button", { name: /SKU/i }));
+
+    expect(skuHeader).toHaveAttribute("aria-sort", "descending");
+    await waitFor(() => expect(screen.getByTestId("location-search")).toHaveTextContent("sort=sku"));
+    expect(screen.getByTestId("location-search")).toHaveTextContent("dir=desc");
+  });
+
   it("fails safely to defaults and canonicalizes invalid query values", async () => {
     render(
       <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti?supplierId=bad&seasonId=-4&footwearTypeId=0&minScore=101&noSaleDaysMin=-1&focus=unknown&page=0&dataScope=unknown"]}>
