@@ -5,6 +5,7 @@ Repository: `ivanjovicic/Trendplus`
 Status: canonical planning entry point
 
 Owner promotion/claim 2026-09-27: idle recovery reconciled stale RQ summary rows against their DONE sections, confirmed higher-priority RQ448/RQ454/RQ455 remain externally gated and RQ319 requires a product UX choice, then promoted/claimed dependency-complete RQ311 for Operacije guardrail cleanup; local lock `.ai/task-locks/RQ311-codex.lock.md`.
+Owner completion 2026-09-27: RQ311 was delivered directly to `main` in implementation `6b590226064a60778ac035d2f761d6b98badbddc`; assignment guardrails now exclude `==`/`===` comparisons, four false-positive baseline entries were removed, and affected Operacije proof is 134/134. Run log: `.ai/runs/2026-09-27-RQ311-evidence.md`. Evidence state: synchronized.
 
 Owner promotion/claim 2026-09-27: idle recovery verified current `origin/main` includes RQ328 and RQ460 closure, RQ329 is dependency-complete and no active Shoe Type truncation owner/lock/branch/PR exists. RQ329 moved WAITING -> READY -> IN_PROGRESS; local lock `.ai/task-locks/RQ329-codex.lock.md`.
 Owner completion 2026-09-27: RQ329 was delivered directly to `main` in implementation `ea4ac7cc7d3d3bacf73ac8c13699e1e5efe5479a`; the Shoe Type table no longer exposes a dead truncation hint because the current response has no authoritative hidden-row total/pagination contract. Focused proof is 39/39; guardrails/typecheck/build/diff checks pass. Run log: `.ai/runs/2026-09-27-RQ329-evidence.md`. Evidence state: synchronized.

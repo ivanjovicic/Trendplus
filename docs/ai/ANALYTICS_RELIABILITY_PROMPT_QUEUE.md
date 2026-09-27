@@ -2,7 +2,8 @@
 
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ311 (IN_PROGRESS in this workspace)
+Current READY prompt: none
+Owner completion 2026-09-27: RQ311 was delivered directly to `main` in implementation `6b590226064a60778ac035d2f761d6b98badbddc`, with current `origin/main` verified through merge `76653b0d79148ec5769283f385d776cb64b5d88a`. The assignment guardrail rules now exclude `==`/`===` comparisons, four false-positive baseline entries were removed, and affected Operacije specs remain green at 134/134. Run log: `.ai/runs/2026-09-27-RQ311-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-27: idle recovery reconciled stale RQ summary rows against their DONE sections, confirmed higher-priority RQ448/RQ454/RQ455 remain externally gated and RQ319 requires a product UX choice, then promoted/claimed dependency-complete RQ311 for Operacije guardrail cleanup; local lock `.ai/task-locks/RQ311-codex.lock.md`.
 Owner completion 2026-09-27: RQ329 was delivered directly to `main` in implementation `ea4ac7cc7d3d3bacf73ac8c13699e1e5efe5479a`, with current `origin/main` verified through merge `18c348b59b46e08ef2f47c1dee30b7779e2889c3`. The Shoe Type table no longer passes a dead truncation label; the response has no authoritative hidden-row total/pagination contract, so the UI avoids an unsupported claim. Focused premium proof is 39/39; guardrails/typecheck/build/diff checks pass. Run log: `.ai/runs/2026-09-27-RQ329-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-27: idle recovery verified current `origin/main` includes RQ328 and RQ460 closure, RQ329 is dependency-complete and no active Shoe Type truncation owner/lock/branch/PR exists. RQ329 moved WAITING -> READY -> IN_PROGRESS; local lock `.ai/task-locks/RQ329-codex.lock.md`.
@@ -1582,7 +1583,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ308 | DONE | inventory-period-provenance | Add Inventory period control and make snapshot/signal semantics explicit |
 | RQ309 | DONE | operations-nav-icons | Differentiate duplicate Operacije sidebar icons |
 | RQ310 | WAITING | operations-test-route-alignment | Align Operacije page tests with production `/analytics/...` routes |
-| RQ311 | IN_PROGRESS | operations-guardrail-cleanup | Resolve Operacije guardrail violations for score/reliability mapping |
+| RQ311 | DONE | operations-guardrail-cleanup | Resolve Operacije guardrail violations for score/reliability mapping |
 | RQ312 | DONE | inventory-signal-window-freshness | Refresh Inventory signal window instead of freezing at mount |
 | RQ313 | DONE | inventory-insights-error-state | Fail closed when Inventory insights fetch fails |
 | RQ314 | DONE | pre-post-driver-fake-zero | Stop Pre/Post driver summary from showing fake zero RSD |
@@ -17445,7 +17446,7 @@ Many Operacije specs mount pages on `/analitika/...` list paths, but production 
 
 ## RQ311 - Resolve Operacije guardrail violations for score/reliability mapping
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P3
 Type: frontend/guardrails/tests
 Feature family: operations-guardrail-cleanup
@@ -17494,6 +17495,24 @@ Reproduction: run guardrail script and inspect flagged lines. Risk: confidence/r
 ### Dependencies
 
 - `RQ304` may resolve Color portion; coordinate to avoid duplicate work.
+
+### Completion note
+
+- Date: 2026-09-27
+- Status: DONE
+- Completion: Guardrail assignment detection now excludes equality comparisons; four false-positive baseline entries were removed while genuine backend-owned projections remain reviewed.
+- Changed files: `Klijent/clientapp/scripts/check-analytics-guardrails.mjs`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, queue and roadmap records.
+- Checks run: affected Operacije specs 134/134; analytics guardrails/typecheck; build; queue/planning validators; diff check.
+- Checks not run: backend tests - no backend files changed.
+- Run log: `.ai/runs/2026-09-27-RQ311-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `6b590226064a60778ac035d2f761d6b98badbddc` (present through merge `76653b0d79148ec5769283f385d776cb64b5d88a`)
+- Main verification: fresh `origin/main` contains the implementation SHA.
+- Missed: no scoring/recommendation policy changes; remaining genuine mappings stay reviewed baseline entries.
+- Follow-up: RQ310 remains WAITING for its separate production-route test migration.
+- Residual risk: existing Vite large-chunk warning only.
+- Prompt defect / scope repair: current evidence showed the old `==`/`===` matches were scanner defects; the fix stayed within guardrail owner scope.
 
 
 ---
