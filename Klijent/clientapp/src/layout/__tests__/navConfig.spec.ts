@@ -23,6 +23,14 @@ describe("navConfig", () => {
     expect(adminGroup?.items.find((item) => item.to === "/admin/common-products")?.badge?.label).toBe("Support");
   });
 
+  it("gives every Operacije entry a distinct icon", () => {
+    const operationsItems = findGroup("analytics-operations")?.items ?? [];
+    const icons = operationsItems.map((item) => item.icon);
+
+    expect(operationsItems.length).toBeGreaterThan(1);
+    expect(new Set(icons).size).toBe(icons.length);
+  });
+
   it("preserves representative analytics and admin routes", () => {
     const routeSet = new Set(NAV_GROUPS.flatMap((group) => group.items.map((item) => item.to)));
 

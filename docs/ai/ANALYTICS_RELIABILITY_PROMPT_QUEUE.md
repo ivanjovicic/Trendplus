@@ -1581,7 +1581,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ307 | DONE | shoe-type-impact-label | Replace English nivelacija impact label on Shoe Type surface |
 | RQ308 | DONE | inventory-period-provenance | Add Inventory period control and make snapshot/signal semantics explicit |
 | RQ309 | DONE | operations-nav-icons | Differentiate duplicate Operacije sidebar icons |
-| RQ310 | DONE | operations-test-route-alignment | Align Operacije page tests with production `/analytics/...` routes |
+| RQ310 | WAITING | operations-test-route-alignment | Align Operacije page tests with production `/analytics/...` routes |
 | RQ311 | IN_PROGRESS | operations-guardrail-cleanup | Resolve Operacije guardrail violations for score/reliability mapping |
 | RQ312 | DONE | inventory-signal-window-freshness | Refresh Inventory signal window instead of freezing at mount |
 | RQ313 | DONE | inventory-insights-error-state | Fail closed when Inventory insights fetch fails |
@@ -17389,11 +17389,19 @@ Three Operacije entries share `ShoppingBag` (`shoe-type-sales-stats`, `daily-sal
 
 - None.
 
+### Completion
+
+- Status repair: this section was flipped `WAITING -> DONE` by the RQ326 closure commit `5f4c67d0` without any RQ309 implementation (Operacije still reused `ShoppingBag` three times and `TrendingUp` twice). Claimed 2026-09-27 through idle recovery; local lock `.ai/task-locks/RQ309-cursor.lock.md`.
+- Delivered directly to `main` in `d2c47908`: daily sales -> `CalendarDays`, Pre/Post -> `Activity`, supplier/shoe-type alias -> `Tags`; shoe type keeps `ShoppingBag`, supplier alias keeps `TrendingUp`. Labels/routes unchanged.
+- Proof: new `navConfig.spec.ts` distinct-icon assertion (fails on the previous config), layout specs 13/13, analytics guardrails with typecheck pass.
+- Run log: `.ai/runs/2026-09-27-RQ309-evidence.md`. Evidence state: synchronized.
+
 ---
 
 ## RQ310 - Align Operacije page tests with production `/analytics/...` routes
 
-Status: DONE
+Status: WAITING
+Status repair 2026-09-27: reverted a false `DONE` introduced by the RQ327 closure commit `775e0173`; no RQ310 work exists and Operacije specs still use `/analitika/<page>` initial entries.
 Priority: P3
 Type: frontend/tests
 Feature family: operations-test-route-alignment
@@ -18308,7 +18316,7 @@ Reproduction: open color detail snapshot, trust subtitles, inventory alerts — 
 
 ## RQ326 - Persist Pre-Nivelacija table sort in URL
 
-Status: WAITING
+Status: DONE
 Priority: P3
 Type: frontend/url-state/tests
 Feature family: pre-nivelacija-sort-url-state
