@@ -30,7 +30,7 @@ import InfoTip from "../components/ui/InfoTip";
 import UltraSpinner from "../components/ui/UltraSpinner";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
-import { getDataScope, type DataScope } from "../utils/dataScope";
+import { dataScopeLabel, getDataScope, type DataScope } from "../utils/dataScope";
 import { colorIdentityKey } from "../utils/colorIdentity";
 import { fmtNumber, fmtPct, fmtQty, fmtRsd, fmtSignedPct, formatDate, getPresetRange } from "../utils/analyticsFormatters";
 import { toInclusiveCalendarDate, toUtcDateOnlyExclusive } from "../utils/analyticsDateRanges";
@@ -206,10 +206,10 @@ function buildStatusTooltip(data: StatusTooltipData): string {
     ? fmtSignedPct(data.popRevenueChangePct, 1)
     : data.previousPeriodRevenue != null && data.previousPeriodRevenue <= 0
       ? "Novo / bez prethodne baze"
-      : "N/A";
+      : "Nije dostupno";
   const impactText = data.prePostNivelacijaRevenueImpactPct != null
     ? fmtSignedPct(data.prePostNivelacijaRevenueImpactPct, 1)
-    : "N/A";
+    : "Nije dostupno";
   const reliabilityText = data.reliabilityAvailable ? fmtPct(data.reliabilityPct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
   return `${recommendationStatusLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Udeo ${fmtPct(data.sharePct, 1)} | Marža ${fmtPct(data.marginPct, 1)} | Trend ${popText} | Uticaj nivelacije ${impactText} | Pokriće podele ${fmtPct(data.splitCoveragePct, 1)} | Pouzdanost ${reliabilityText}`;
 }
@@ -232,7 +232,7 @@ export function describePopMetric(item: ColorSalesStat): { label: string; title:
   }
 
   return {
-    label: "N/A",
+    label: "Nije dostupno",
     title: "PoP trend nije dostupan jer ne postoji validna prethodna baza za poređenje.",
     className: "trend-neutral",
   };
@@ -250,7 +250,7 @@ export function describeNivelacijaImpactMetric(item: ColorSalesStat): { label: s
   const coverage = resolveColorPercentValue(item.prePostNivelacijaRevenueCoveragePct);
   if (coverage == null) {
     return {
-      label: "N/A",
+      label: "Nije dostupno",
       title: "Pre/post pokriće nije dostupno jer validno pokriće nije dostupno za ovaj skup podataka.",
       className: "trend-neutral",
     };
@@ -273,7 +273,7 @@ export function describeNivelacijaImpactMetric(item: ColorSalesStat): { label: s
   }
 
   return {
-    label: "N/A",
+    label: "Nije dostupno",
     title: "Pre/post uticaj nivelacije nije dostupan za izabrani skup podataka.",
     className: "trend-neutral",
   };
@@ -649,7 +649,7 @@ export default function ColorSalesStatsPage() {
             ? buildStoreLabel(stores.find((store) => store.storeId === activeFilters.storeId)!)
             : `Nepoznat objekat (ID ${activeFilters.storeId})`,
       },
-      { key: "dataScope", label: "Opseg podataka", value: dataScope },
+      { key: "dataScope", label: "Opseg podataka", value: dataScopeLabel(dataScope) },
     ],
     [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeSezonaLabel, dataScope]
   );
@@ -657,7 +657,7 @@ export default function ColorSalesStatsPage() {
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(
     () => [
       { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
-      { key: "dataScope", label: "Opseg podataka", value: data?.dataScope ?? dataScope },
+      { key: "dataScope", label: "Opseg podataka", value: dataScopeLabel(data?.dataScope === "existing" || data?.dataScope === "imported" ? data.dataScope : dataScope) },
       { key: "sourceLabel", label: "Izvor podataka", value: data?.lineage?.sourceLabel ?? "Nije dostupno" },
       { key: "sourceTables", label: "Izvorne tabele", value: data?.lineage?.sourceTables ?? "Nije dostupno" },
       { key: "observedPopulation", label: "Posmatrana populacija", value: data?.lineage?.observedPopulation ?? "Nije dostupno" },
@@ -772,7 +772,7 @@ export default function ColorSalesStatsPage() {
       {
         key: "scope",
         label: "Opseg",
-        value: dataScope,
+        value: dataScopeLabel(dataScope),
         tone: "info",
       },
       {
@@ -980,7 +980,7 @@ export default function ColorSalesStatsPage() {
         observedPeriodTo={responseMeta?.observedPeriodToUtc}
         lastRefreshAt={trustLastRefreshAt}
         dataFreshnessStatus={trustDataFreshnessStatus}
-        dataSource={data?.lineage?.sourceLabel ?? `Prodaja po boji artikla (opseg: ${data?.dataScope ?? dataScope})`}
+        dataSource={data?.lineage?.sourceLabel ?? `Prodaja po boji artikla (opseg: ${dataScopeLabel(data?.dataScope === "existing" || data?.dataScope === "imported" ? data.dataScope : dataScope)})`}
         provenanceBasis={data?.lineage?.observedPopulation && data?.lineage?.prePostPolicy
           ? `${data.lineage.observedPopulation}; ${data.lineage.prePostPolicy}`
           : lineageBasis}
@@ -1103,7 +1103,7 @@ export default function ColorSalesStatsPage() {
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
                       <XAxis type="number" tick={{ fill: "var(--text-secondary)", fontSize: 12 }} unit="%" />
                       <YAxis type="category" dataKey="name" width={180} tick={{ fill: "var(--text-primary)", fontSize: 12 }} />
-                      <Tooltip contentStyle={CHART_TOOLTIP_STYLE} labelStyle={CHART_TOOLTIP_LABEL_STYLE} formatter={(value: number | string | undefined) => value == null ? "N/A" : fmtPct(Number(value), 2)} />
+                      <Tooltip contentStyle={CHART_TOOLTIP_STYLE} labelStyle={CHART_TOOLTIP_LABEL_STYLE} formatter={(value: number | string | undefined) => value == null ? "Nije dostupno" : fmtPct(Number(value), 2)} />
                       <Bar dataKey="sharePct" fill="var(--accent-primary)" radius={[0, 8, 8, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -1251,7 +1251,7 @@ export default function ColorSalesStatsPage() {
                 </article>
                 <article>
                   <span>Prethodni period promet</span>
-                  <strong>{selectedRow.previousPeriodRevenue != null ? fmtRsd(selectedRow.previousPeriodRevenue) : "N/A"}</strong>
+                  <strong>{selectedRow.previousPeriodRevenue != null ? fmtRsd(selectedRow.previousPeriodRevenue) : "Nije dostupno"}</strong>
                 </article>
                 <article>
                   <span>Uticaj nivelacije na promet</span>
@@ -1305,7 +1305,7 @@ export default function ColorSalesStatsPage() {
                 </article>
                 <article>
                   <span>Skor odluke (0–100)</span>
-                  <strong>{selectedDecisionScore == null ? "N/A" : fmtNumber(selectedDecisionScore, 0)}</strong>
+                  <strong>{selectedDecisionScore == null ? "Nije dostupno" : fmtNumber(selectedDecisionScore, 0)}</strong>
                 </article>
               </div>
 

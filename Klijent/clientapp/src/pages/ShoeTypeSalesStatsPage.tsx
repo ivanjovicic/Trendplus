@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Bar,
@@ -32,7 +32,7 @@ import InfoTip from "../components/ui/InfoTip";
 import UltraSpinner from "../components/ui/UltraSpinner";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
-import { getDataScope, type DataScope } from "../utils/dataScope";
+import { dataScopeLabel, getDataScope, type DataScope } from "../utils/dataScope";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
 import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange, formatDate } from "../utils/analyticsFormatters";
@@ -270,10 +270,10 @@ function buildStatusTooltip(data: StatusTooltipData): string {
     ? fmtSignedPct(data.popRevenueChangePct, 1)
     : data.previousPeriodRevenue != null && data.previousPeriodRevenue <= 0
       ? "Novo / bez prethodne baze"
-      : "N/A";
+      : "Nije dostupno";
   const impactText = data.prePostNivelacijaRevenueImpactPct != null
     ? fmtSignedPct(data.prePostNivelacijaRevenueImpactPct, 1)
-    : "N/A";
+    : "Nije dostupno";
   const reliabilityText = data.reliabilityAvailable ? fmtPct(data.reliabilityPct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
   const confidenceText = data.confidenceAvailable ? fmtPct(data.confidencePct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
   const qualityText = recommendationQualityLabel(data.dataQualityStatus);
@@ -299,7 +299,7 @@ function describePopMetric(item: ShoeTypeSalesStat): { label: string; title: str
   }
 
   return {
-    label: "N/A",
+    label: "Nije dostupno",
     title: "PoP trend nije dostupan jer ne postoji validna prethodna baza za poređenja.",
     className: "trend-neutral",
   };
@@ -328,7 +328,7 @@ export function describeNivelacijaImpactMetric(item: ShoeTypeSalesStat): { label
   const coverage = item.prePostNivelacijaRevenueCoveragePct;
   if (typeof coverage !== "number" || !Number.isFinite(coverage) || coverage < 0) {
     return {
-      label: "N/A",
+      label: "Nije dostupno",
       title: "Pre/post pokriće nije dostupno jer validno pokriće nije dostupno za ovaj skup podataka.",
       className: "trend-neutral",
     };
@@ -351,7 +351,7 @@ export function describeNivelacijaImpactMetric(item: ShoeTypeSalesStat): { label
   }
 
   return {
-    label: "N/A",
+    label: "Nije dostupno",
     title: "Uticaj pre/post nivelacije nije dostupan za izabrani skup podataka.",
     className: "trend-neutral",
   };
@@ -782,7 +782,7 @@ export default function ShoeTypeSalesStatsPage() {
       { key: "toDate", label: "Do", value: activeFilters.toDate },
       { key: "sezonaId", label: "Sezona", value: activeSezonaLabel },
        { key: "storeId", label: "Objekat", value: activeStoreLabel },
-      { key: "dataScope", label: "Opseg podataka", value: dataScope },
+      { key: "dataScope", label: "Opseg podataka", value: dataScopeLabel(dataScope) },
     ],
      [activeFilters.fromDate, activeStoreLabel, activeFilters.toDate, activeSezonaLabel, dataScope]
   );
@@ -790,13 +790,13 @@ export default function ShoeTypeSalesStatsPage() {
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(
     () => [
       { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
-      { key: "dataScope", label: "Opseg podataka", value: data?.dataScope ?? dataScope },
-      { key: "tipova", label: "Tipova", value: formatMetricDisplayValue({ value: data?.totals.brojTipovaObuce, kind: "number", fallback: "N/A" }) },
+      { key: "dataScope", label: "Opseg podataka", value: dataScopeLabel(data?.dataScope === "existing" || data?.dataScope === "imported" ? data.dataScope : dataScope) },
+      { key: "tipova", label: "Tipova", value: formatMetricDisplayValue({ value: data?.totals.brojTipovaObuce, kind: "number", fallback: "Nije dostupno" }) },
       { key: "marginCoverage", label: "Pokrivenost istorijskim troškom %", value: fmtPct(resolveShoeTypePercentValue(data?.dataQuality.historicalCostRevenueSharePct), 1) },
       { key: "fallbackCoverage", label: "Promet sa procenjenom nabavnom %", value: fmtPct(resolveShoeTypePercentValue(data?.dataQuality.estimatedCostRevenueSharePct), 1) },
       { key: "noCostCoverage", label: "Promet bez nabavne cene %", value: fmtPct(resolveShoeTypePercentValue(data?.dataQuality.noCostRevenueSharePct ?? data?.dataQuality.missingCostRevenueSharePct), 1) },
       { key: "splitCoverage", label: "Uporedivo pre/post pokriće", value: fmtPct(resolveShoeTypePercentValue(data?.dataQuality.revenueWithNivelacijaSplitSharePct), 1) },
-      { key: "comparableArticleCount", label: "Uporedivih artikala", value: formatMetricDisplayValue({ value: data?.totals.comparableArticleCount, kind: "number", fallback: "N/A" }) },
+      { key: "comparableArticleCount", label: "Uporedivih artikala", value: formatMetricDisplayValue({ value: data?.totals.comparableArticleCount, kind: "number", fallback: "Nije dostupno" }) },
       { key: "comparableImpact", label: "Ukupni uticaj nivelacije (uporediva kohorta)", value: fmtSignedPct(data?.totals.prePostNivelacijaRevenueImpactPct) },
       { key: "snapshotCoverage", label: "Pokrivenost troškom iz snimka %", value: fmtPct(resolveShoeTypePercentValue(data?.totals.snapshotCostCoveragePct), 1) },
       { key: "isSnapshotActive", label: "Snimak aktivan", value: data?.totals.isSnapshotActive ? "da" : "ne" },
@@ -928,7 +928,7 @@ export default function ShoeTypeSalesStatsPage() {
       {
         key: "scope",
         label: "Opseg",
-        value: data?.dataScope ?? dataScope,
+        value: dataScopeLabel(data?.dataScope === "existing" || data?.dataScope === "imported" ? data.dataScope : dataScope),
         tone: "info",
       },
       {
@@ -1062,7 +1062,7 @@ export default function ShoeTypeSalesStatsPage() {
         periodTo={toInclusiveCalendarDate(data?.toDate) ?? activeFilters.toDate}
         lastRefreshAt={trustLastRefreshAt}
         dataFreshnessStatus={trustDataFreshnessStatus}
-        dataSource={`Sales facts analytics (scope: ${data?.dataScope ?? dataScope})`}
+        dataSource={`Analitika prodajnih činjenica (opseg: ${dataScopeLabel(data?.dataScope === "existing" || data?.dataScope === "imported" ? data.dataScope : dataScope)})`}
         dataQualityStatus={trustDataQualityStatus}
         mode="signal"
         isPartial={trustIsPartial}
@@ -1190,7 +1190,7 @@ export default function ShoeTypeSalesStatsPage() {
                 <strong>{fmtPct(avgMarginPct, 1)}</strong>
               </article>
               <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Promena prometa prema prethodnom uporedivom periodu.">
-                <span>PoP trend prometa <InfoTip text="Promena ukupnog prometa u odnosu na prethodni uporedivi period iste dužine. Formula: (trenutni promet – prethodni promet) / prethodni promet × 100. N/A ako prethodni period nije dostupan." /></span>
+                <span>PoP trend prometa <InfoTip text="Promena ukupnog prometa u odnosu na prethodni uporedivi period iste dužine. Formula: (trenutni promet – prethodni promet) / prethodni promet × 100. Nije dostupno ako prethodni period nije dostupan." /></span>
                 <strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong>
               </article>
             </section>
@@ -1219,7 +1219,7 @@ export default function ShoeTypeSalesStatsPage() {
                       <CartesianGrid strokeDasharray="2 6" stroke="var(--dashboard-grid, rgba(102, 255, 126, 0.16))" />
                       <XAxis type="number" tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} unit="%" />
                       <YAxis type="category" dataKey="name" width={180} tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} />
-                      <Tooltip contentStyle={COMMAND_TOOLTIP_STYLE} labelStyle={COMMAND_TOOLTIP_LABEL_STYLE} cursor={CHART_CURSOR_STYLE} formatter={(value: number | string | undefined) => value == null ? "N/A" : fmtPct(Number(value), 2)} />
+                      <Tooltip contentStyle={COMMAND_TOOLTIP_STYLE} labelStyle={COMMAND_TOOLTIP_LABEL_STYLE} cursor={CHART_CURSOR_STYLE} formatter={(value: number | string | undefined) => value == null ? "Nije dostupno" : fmtPct(Number(value), 2)} />
                       <Legend wrapperStyle={CHART_LEGEND_STYLE} iconType="circle" iconSize={8} />
                       <Bar dataKey="sharePct" fill="url(#shoeShareGradient)" radius={[0, 10, 10, 0]} name="Udeo u prometu %" />
                     </BarChart>
@@ -1275,7 +1275,7 @@ export default function ShoeTypeSalesStatsPage() {
                         contentStyle={COMMAND_TOOLTIP_STYLE}
                         labelStyle={COMMAND_TOOLTIP_LABEL_STYLE}
                         cursor={CHART_CURSOR_STYLE}
-                        formatter={((value: any) => value == null ? "N/A" : fmtPct(Number(value), 1)) as any}
+                        formatter={((value: any) => value == null ? "Nije dostupno" : fmtPct(Number(value), 1)) as any}
                       />
                       <Legend
                         wrapperStyle={CHART_LEGEND_STYLE}
@@ -1598,7 +1598,7 @@ export default function ShoeTypeSalesStatsPage() {
                 </article>
                 <article>
                   <span>Prethodni period promet <InfoTip text="Ukupan promet ovog tipa obuće u prethodnom periodu (iste dužine kao trenutni)." /></span>
-                  <strong>{selectedRow.previousPeriodRevenue != null ? fmtRsd(selectedRow.previousPeriodRevenue) : "N/A"}</strong>
+                  <strong>{selectedRow.previousPeriodRevenue != null ? fmtRsd(selectedRow.previousPeriodRevenue) : "Nije dostupno"}</strong>
                 </article>
                 <article>
                   <span>PoP trend količine <InfoTip text="Procenat promene prodatih komada u odnosu na prethodni uporediv period." /></span>
@@ -1608,7 +1608,7 @@ export default function ShoeTypeSalesStatsPage() {
                 </article>
                 <article>
                   <span>Prethodni period količina <InfoTip text="Broj prodatih komada ovog tipa u prethodnom periodu." /></span>
-                  <strong>{selectedRow.previousPeriodUnits != null ? fmtQty(selectedRow.previousPeriodUnits) : "N/A"}</strong>
+                  <strong>{selectedRow.previousPeriodUnits != null ? fmtQty(selectedRow.previousPeriodUnits) : "Nije dostupno"}</strong>
                 </article>
               </div>
 

@@ -1,5 +1,11 @@
 export type DataScope = "all" | "existing" | "imported";
 
+export function dataScopeLabel(scope: DataScope): string {
+    if (scope === "existing") return "Postojeći";
+    if (scope === "imported") return "Uvezeni";
+    return "Svi podaci";
+}
+
 const STORAGE_KEY = "trendplus:dataScope";
 
 export function normalizeDataScope(raw: string | null | undefined): DataScope {

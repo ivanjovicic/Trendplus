@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Bar,
@@ -60,7 +60,7 @@ import {
   recommendationStatusTooltipBrief,
   type RecommendationQualityStatus,
 } from "../utils/canonicalRecommendationSemantics";
-import { getDataScope, type DataScope } from "../utils/dataScope";
+import { dataScopeLabel, getDataScope, normalizeDataScope, type DataScope } from "../utils/dataScope";
 import {
   comparablePrePostMetric,
   comparablePrePostTotal,
@@ -433,7 +433,7 @@ const METRIC_WARNING_META: Record<string, MetricWarningMeta> = {
     label: "DiD metrika nedostupna",
     severity: "info",
     explanation:
-      "vw_nivelacija_did view nije kreiran. Difference-in-Differences procena nije uključena.",
+      "Pogled vw_nivelacija_did nije kreiran. Procena efekta metodom razlike u razlikama nije uključena.",
     isExpected: true,
   },
   "Article detail limited": {
@@ -892,7 +892,7 @@ export default function ProdajaPrePostNivelacijePage() {
     [data?.dataQuality],
   );
   const dataMeta = data?.meta ?? null;
-  const effectiveDataScope = data?.dataScope ?? dataScope;
+  const effectiveDataScope = normalizeDataScope(data?.dataScope ?? dataScope);
   const effectiveStoreId = data?.storeId ?? activeFilters.storeId;
   const effectiveStoreLabel = effectiveStoreId == null
     ? "Svi objekti"
@@ -925,7 +925,7 @@ export default function ProdajaPrePostNivelacijePage() {
       return {
         label: "Nepoznato",
         tone: "unknown" as const,
-        details: "Kvalitet signala nije potvrđen jer snapshot kvaliteta nedostaje ili je delimičan.",
+        details: "Kvalitet signala nije potvrđen jer snimak kvaliteta nedostaje ili je delimičan.",
       };
     }
 
@@ -1059,7 +1059,7 @@ const advancedSignals = useMemo(
         label: "Efekat razlike u razlikama (DiD)",
         value: fmtRsd(data?.avgDidRevenue),
         hint: "prosečan prihod",
-        tip: "Difference-in-Differences procena uzročnog efekta nivelacije. Poredi promenu prodaje sa kontrolnom grupom (artikli bez nivelacije). Nedostupno ako vw_nivelacija_did nije kreiran.",
+        tip: "Procena uzročnog efekta nivelacije metodom razlike u razlikama. Poredi promenu prodaje sa kontrolnom grupom (artikli bez nivelacije). Nije dostupno ako vw_nivelacija_did nije kreiran.",
       },
       {
         label: "Izgubljena prodaja zbog nestašice",
@@ -1113,7 +1113,7 @@ const advancedSignals = useMemo(
     for (const article of vendorArticles) {
       const changeRevenue = trustedMetric(article.changeRevenue, article);
       if (changeRevenue == null) continue;
-      dominantCategoryMap.set(article.category || "N/A", (dominantCategoryMap.get(article.category || "N/A") ?? 0) + changeRevenue);
+      dominantCategoryMap.set(article.category || "Nije dostupno", (dominantCategoryMap.get(article.category || "Nije dostupno") ?? 0) + changeRevenue);
       if (article.metricReason) {
         metricReasonCounts.set(article.metricReason, (metricReasonCounts.get(article.metricReason) ?? 0) + 1);
       }
@@ -1131,11 +1131,11 @@ const advancedSignals = useMemo(
       .map(([reason, count]) => `${reason} (${count})`);
 
     return {
-      dominantCategory: dominantCategoryEntry?.[0] ?? "N/A",
+      dominantCategory: dominantCategoryEntry?.[0] ?? "Nije dostupno",
       dominantCategoryRevenue: dominantCategoryEntry?.[1] ?? null,
-      topWinnerLabel: topWinner ? `${topWinner.article.sku || "-"} • ${topWinner.article.articleName}` : "N/A",
+      topWinnerLabel: topWinner ? `${topWinner.article.sku || "-"} • ${topWinner.article.articleName}` : "Nije dostupno",
       topWinnerRevenue: topWinner?.metric ?? null,
-      topRiskLabel: topRisk ? `${topRisk.article.sku || "-"} • ${topRisk.article.articleName}` : "N/A",
+      topRiskLabel: topRisk ? `${topRisk.article.sku || "-"} • ${topRisk.article.articleName}` : "Nije dostupno",
       topRiskRevenue: topRisk?.metric ?? null,
       avgMomentumRevenue: averageNullable(vendorArticles.map((item) => item.momentumRevenue)),
       avgElasticity: averageNullable(vendorArticles.map((item) => item.priceElasticity)),
@@ -1166,7 +1166,7 @@ const advancedSignals = useMemo(
              ?? `Nepoznat objekat (ID ${activeFilters.storeId})`
            : "Svi objekti",
       },
-      { key: "dataScope", label: "Opseg podataka", value: dataScope },
+      { key: "dataScope", label: "Opseg podataka", value: dataScopeLabel(dataScope) },
       { key: "focusFilter", label: "Brzi fokus", value: focusFilterLabel(focusFilter) },
     ],
     [activeFilters.category, activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeFilters.vendorId, dataScope, focusFilter, periodPreset, stores, vendors]
@@ -1175,7 +1175,7 @@ const advancedSignals = useMemo(
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(
     () => [
       { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
-      { key: "dataScope", label: "Opseg podataka", value: effectiveDataScope },
+      { key: "dataScope", label: "Opseg podataka", value: dataScopeLabel(effectiveDataScope) },
        { key: "storeId", label: "Objekat", value: effectiveStoreLabel },
       {
         key: "previousComparison",
@@ -1220,7 +1220,7 @@ const advancedSignals = useMemo(
 
   const controlBarChips = useMemo<AnalyticsControlBarChip[]>(
     () => [
-      { key: "scope", label: "Opseg", value: dataScope, tone: "info" },
+      { key: "scope", label: "Opseg", value: dataScopeLabel(dataScope), tone: "info" },
       {
         key: "period",
         label: "Period",
@@ -1433,7 +1433,7 @@ const advancedSignals = useMemo(
         periodFrom={activeFilters.fromDate}
         periodTo={activeFilters.toDate}
         lastRefreshAt={dataMeta?.lastRefreshAtUtc ?? null}
-        dataSource={`Nivelacija analitika (opseg: ${effectiveDataScope}${effectiveStoreId != null ? `, objekat: ${effectiveStoreId}` : ""})`}
+        dataSource={`Analitika nivelacije (opseg: ${dataScopeLabel(effectiveDataScope)}${effectiveStoreId != null ? `, objekat: ${effectiveStoreId}` : ""})`}
         mode="report"
         dataQualityStatus={dataMeta?.dataQualityStatus ?? null}
         isPartial={showMetaWarning}
@@ -1475,7 +1475,7 @@ const advancedSignals = useMemo(
         <div>
           <h2 className="ppn-decision-title">Prodaja pre/posle nivelacije</h2>
           <p className="ppn-decision-subtitle">
-            Event-window analiza: poredi 30 dana pre i 30 dana posle svake nivelacije, pa sabira signal po dobavljaču.
+            Analiza prozora događaja poredi 30 dana pre i 30 dana posle svake nivelacije, pa sabira signal po dobavljaču.
             Nije izolovani profit, već poslovni signal za prioritet nabavke i nadzor cene.
           </p>
         </div>
@@ -1500,7 +1500,7 @@ const advancedSignals = useMemo(
       ) : null}
       {showMetaWarning ? (
         <div className="ppn-decision-message warning" role="status">
-          Prikazani podaci su delimični. {dataMetaMessage ?? "Proverite analytics refresh status."}
+          Prikazani podaci su delimični. {dataMetaMessage ?? "Proverite status osvežavanja analitike."}
         </div>
       ) : null}
       {previousComparisonError ? (
@@ -1583,7 +1583,7 @@ const advancedSignals = useMemo(
                   {dataQualityProjection.isComplete ? (
                     <span className="ppn-signal-pill signal-neutral">Redovi {dataQualityProjection.analyzedRows}/{dataQualityProjection.rawRows}</span>
                   ) : (
-                    <span className="ppn-signal-pill signal-neutral">Snapshot kvaliteta nije potvrđen</span>
+                    <span className="ppn-signal-pill signal-neutral">Kvalitet snimka nije potvrđen</span>
                   )}
                 </div>
               )}
@@ -1602,24 +1602,24 @@ const advancedSignals = useMemo(
                   : "Kategorijski signal nije dostupan za izabrani opseg."}
               </p>
               <div className="ppn-stat-pair">
-                <strong>{leadingCategory ? fmtRsd(leadingCategory.changeRevenue) : "N/A"}</strong>
-                <span>{leadingCategory ? fmtSignedPct(leadingCategory.changePercent, 1) : "N/A"}</span>
+                <strong>{leadingCategory ? fmtRsd(leadingCategory.changeRevenue) : "Nije dostupno"}</strong>
+                <span>{leadingCategory ? fmtSignedPct(leadingCategory.changePercent, 1) : "Nije dostupno"}</span>
               </div>
             </article>
 
             <article className="ppn-decision-card ppn-signal-card">
               <div className="ppn-card-topline">
                 <h2>Dominantna promena cene</h2>
-                <span className="ppn-signal-pill signal-neutral">Mix</span>
+                <span className="ppn-signal-pill signal-neutral">Mešavina</span>
               </div>
               <p>
                 {leadingPriceDirection
                   ? `${leadingPriceDirection.segment} trenutno nosi najveći doprinos promeni prometa.`
-                  : "Nema dovoljno price-direction signala za izabrani opseg."}
+                  : "Nema dovoljno signala o smeru promene cene za izabrani opseg."}
               </p>
               <div className="ppn-stat-pair">
-                <strong>{leadingPriceDirection ? fmtRsd(leadingPriceDirection.changeRevenue) : "N/A"}</strong>
-                <span>{leadingPriceDirection ? fmtSignedPct(leadingPriceDirection.avgPriceChangePercent, 1) : "N/A"}</span>
+                <strong>{leadingPriceDirection ? fmtRsd(leadingPriceDirection.changeRevenue) : "Nije dostupno"}</strong>
+                <span>{leadingPriceDirection ? fmtSignedPct(leadingPriceDirection.avgPriceChangePercent, 1) : "Nije dostupno"}</span>
               </div>
             </article>
           </section>
@@ -1636,14 +1636,14 @@ const advancedSignals = useMemo(
             </section>
           ) : null}
 
-          {advancedSignals.some((item) => item.value !== "N/A") ? (
+          {advancedSignals.some((item) => item.value !== "Nije dostupno") ? (
             <section className="ppn-advanced-signals-secondary">
               <h3 className="ppn-section-label">
                 Dodatni analitički signali
                 <InfoTip text="Dodatni signali izračunati iz naprednih pogleda. Dostupni su samo ako su potrebni pogledi kreirani u bazi – osnovna analiza ostaje ispravna i kada su ovi signali nedostupni." />
               </h3>
               <div className="ppn-mini-metrics ppn-mini-metrics--secondary">
-                {advancedSignals.filter((item) => item.value !== "N/A").map((item) => (
+                {advancedSignals.filter((item) => item.value !== "Nije dostupno").map((item) => (
                   <article key={item.label}>
                     <span className="ppn-mini-metric-label">
                       {item.label}
@@ -1726,7 +1726,7 @@ const advancedSignals = useMemo(
                     </div>
                     <AnalyticsTableToolbar
                       tableKey="nivelacije-pre-post"
-                      tableTitle="Decision support pre/post nivelacije"
+                      tableTitle="Podrška odluci pre/post nivelacije"
                       columns={decisionColumns}
                       rows={focusedRows}
                       filters={toolbarFilters}
@@ -1790,7 +1790,7 @@ const advancedSignals = useMemo(
                         <button type="button" onClick={() => handleSort("status")}>
                           Preporuka{sortMarker("status", sortField, sortDir)}
                         </button>
-                        <InfoTip text="Backend-authoritative recommendation za ovaj pre/post red. Status, razlog i sigurnost preporuke dolaze iz server-side analytics recommendation engine-a; frontend više ne računa lokalne threshold odluke." />
+                        <InfoTip text="Autoritativna preporuka za ovaj pre/post red dolazi iz serverskog analitičkog sloja. Status, razlog i sigurnost se prikazuju bez lokalnog praga u ekranu." />
                       </th>
                       <th className="align-center">Detalj</th>
                     </tr>
@@ -1954,16 +1954,16 @@ const advancedSignals = useMemo(
                     <small>Elasticnost {fmtNumber(selectedDriverSummary.avgElasticity, 2)}</small>
                   </article>
                   <article>
-                    <span>DID / Lost sales OOS</span>
+                    <span>DiD / Izgubljena prodaja zbog nestašice</span>
                     <strong>{fmtRsd(selectedDriverSummary.avgDidRevenue)}</strong>
-                    <small>Lost sales {fmtRsd(selectedDriverSummary.avgLostSalesOOS)}</small>
+                    <small>Izgubljena prodaja {fmtRsd(selectedDriverSummary.avgLostSalesOOS)}</small>
                   </article>
                   <article>
                     <span>
                       Najčešći razlog metrike
-                      <InfoTip text="Interni razlog zašto neki artikli nemaju sve metrike (rolling, momentum, OOS, DiD). Obično se radi o nedostajućim analytics view-ovima – ne utiče na ispravnost osnovne pre/post analize." />
+                      <InfoTip text="Interni razlog zašto neki artikli nemaju sve metrike (pokretni prosek, zamah prodaje, nestašica ili DiD). Obično nedostaje pomoćni analitički pogled; osnovna pre/post analiza ostaje ispravna." />
                     </span>
-                    <strong>{selectedDriverSummary.topMetricReasons[0] ? getMetricWarningMeta(selectedDriverSummary.topMetricReasons[0].split(" (")[0]).label : "N/A"}</strong>
+                    <strong>{selectedDriverSummary.topMetricReasons[0] ? getMetricWarningMeta(selectedDriverSummary.topMetricReasons[0].split(" (")[0]).label : "Nije dostupno"}</strong>
                     <small>{selectedDriverSummary.topMetricReasons.slice(1).map((r) => getMetricWarningMeta(r.split(" (")[0]).label).join(" | ") || "Bez dodatnih upozorenja"}</small>
                   </article>
                 </div>
@@ -1994,5 +1994,3 @@ const advancedSignals = useMemo(
     </div>
   );
 }
-
-

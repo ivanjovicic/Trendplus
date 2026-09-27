@@ -11,13 +11,13 @@
     {
       "file": "src/pages/PreNivelacijaPriorityPage.tsx",
       "rule": "decisionScore_assign",
-      "line": 671,
+      "line": 661,
       "reason": "Existing backend-owned decision-score projection requires a reviewed authority exception."
     },
     {
       "file": "src/pages/PreNivelacijaPriorityPage.tsx",
       "rule": "reliabilityPct_assign",
-      "line": 371,
+      "line": 361,
       "reason": "Existing backend reliability projection requires a reviewed authority exception."
     },
     {
@@ -97,12 +97,6 @@
       "rule": "refetch_setData_null",
       "line": 829,
       "reason": "Store-filter discovery failure must clear stale store-scoped rows before falling back to the all-stores scope."
-    },
-    {
-      "file": "src/pages/DailySalesStatsPage.tsx",
-      "rule": "refetch_setData_null",
-      "line": 897,
-      "reason": "Existing daily-sales refetch transition predates the shared reliable-query lifecycle."
     },
     {
       "file": "src/pages/DataQualityPage.tsx",
@@ -191,19 +185,19 @@
     {
       "file": "src/pages/SupplierSalesStatsPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 1902,
+      "line": 1896,
       "reason": "Existing supplier KPI fallback requires a reviewed unavailable-value exception."
     },
     {
       "file": "src/pages/SupplierSalesStatsPage.tsx",
       "rule": "refetch_setData_null",
-      "line": 914,
+      "line": 908,
       "reason": "Supplier scope changes must clear stale rows and trust metadata before the next scope-bound request completes."
     },
     {
       "file": "src/pages/SupplierSalesStatsPage.tsx",
       "rule": "page_reduce_kpi",
-      "line": 617,
+      "line": 611,
       "reason": "Existing supplier aggregation predates the backend KPI ownership contract."
     },
     {

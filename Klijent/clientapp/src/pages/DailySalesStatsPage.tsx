@@ -36,7 +36,7 @@ import {
 import { ApiHttpError } from "../services/analyticsHttp";
 import type { StoreOption } from "../types/analytics";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
-import { getDataScope, normalizeDataScope, type DataScope } from "../utils/dataScope";
+import { dataScopeLabel, getDataScope, normalizeDataScope, type DataScope } from "../utils/dataScope";
 import UltraSpinner from "../components/ui/UltraSpinner";
 import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
 import { fmtPct, fmtRsd, fmtRsdShort, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
@@ -294,7 +294,7 @@ function fmtCompactNumber(value: DailySalesNumeric): string {
 function fmtDelta(deltaPct: number | null, currentValue: DailySalesNumeric, previousValue: DailySalesNumeric): string {
   if (deltaPct == null) {
     if (finiteOrNull(previousValue) === 0 && (finiteOrNull(currentValue) ?? 0) > 0) return "Nova baza";
-    return "N/A";
+    return "Nije dostupno";
   }
   return fmtSignedPct(deltaPct, 1);
 }
@@ -1060,7 +1060,7 @@ export default function DailySalesStatsPage() {
     { key: "toDate", label: "Do", value: activeFilters.toDate },
     { key: "storeId", label: "Objekat", value: resolveDailySalesStoreLabel(stores, activeFilters.storeId) },
     { key: "topN", label: "Top dobavljača", value: activeFilters.topN },
-    { key: "dataScope", label: "Opseg podataka", value: memoizedQueryDataScope },
+    { key: "dataScope", label: "Opseg podataka", value: dataScopeLabel(memoizedQueryDataScope) },
   ], [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeFilters.topN, memoizedQueryDataScope, stores]);
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(() => [
@@ -1072,8 +1072,8 @@ export default function DailySalesStatsPage() {
     { key: "secondShiftHeader", label: "Druga smena", value: SECOND_SHIFT_LABEL },
     { key: "shiftEvidence", label: "Smenska evidencija", value: incompleteShiftCount > 0 ? `Nepotpuna (${incompleteShiftCount} dana)` : "Potpuna" },
     { key: "incompleteDailyAggregates", label: "Nepotpuni dnevni zbirovi", value: incompleteDailyAggregateCount },
-    { key: "diagnosticsDataScope", label: "Opseg dijagnostike", value: data?.metadata.diagnosticsDataScope ?? data?.dataScope ?? "" },
-    { key: "availabilityDataScope", label: "Opseg dostupnosti", value: data?.metadata.availabilityDataScope ?? data?.dataScope ?? "" },
+    { key: "diagnosticsDataScope", label: "Opseg dijagnostike", value: dataScopeLabel(normalizeDataScope(data?.metadata.diagnosticsDataScope ?? data?.dataScope)) },
+    { key: "availabilityDataScope", label: "Opseg dostupnosti", value: dataScopeLabel(normalizeDataScope(data?.metadata.availabilityDataScope ?? data?.dataScope)) },
     { key: "supplierAttributionBasis", label: "Osnov atribucije dobavljača", value: data?.meta?.attributionBasis ?? "nije dostupno" },
     { key: "supplierAttributionCoveragePct", label: "Pokrivenost atribucijom %", value: data?.meta?.attributionCoveragePct ?? null },
     { key: "warnings", label: "Upozorenja", value: data?.metadata.warnings?.join(" | ") ?? "" },
@@ -1689,7 +1689,7 @@ export default function DailySalesStatsPage() {
       },
       {
         key: "topn",
-        label: "Top N",
+        label: "Broj top dobavljača",
         value: String(activeFilters.topN),
         tone: "neutral",
       },
@@ -1791,7 +1791,7 @@ export default function DailySalesStatsPage() {
         periodTo={data?.requestedTo ?? activeFilters.toDate}
         lastRefreshAt={trustLastRefreshAt}
         dataFreshnessStatus={trustDataFreshnessStatus}
-        dataSource={`Daily sales analytics (scope: ${data?.dataScope ?? memoizedQueryDataScope})`}
+        dataSource={`Dnevna prodaja (opseg: ${dataScopeLabel(normalizeDataScope(data?.dataScope ?? memoizedQueryDataScope))})`}
         dataQualityStatus={trustDataQualityStatus}
         isPartial={trustIsPartial}
         mode="signal"
@@ -1894,7 +1894,7 @@ export default function DailySalesStatsPage() {
               <small>Prethodni period: {fmtDateShort(previousRange.fromDate)} - {fmtDateShort(previousRange.toDate)}</small>
             </article>
             <article>
-              <span>RSD po komadu <InfoTip text="Prosecna prodajna cena po komadu: Ukupan prihod / Ukupno komada. Bazira se na vidljivim komadima u tabeli, ne na svim transakcijama." /></span>
+              <span>RSD po komadu <InfoTip text="Prosečna prodajna cena po komadu: Ukupan prihod / Ukupno komada. Bazira se na vidljivim komadima u tabeli, ne na svim transakcijama." /></span>
               <strong>{fmtRsd(currentSummary.avgRevenuePerItem, 2)}</strong>
               <small>Na osnovu vidljivih komada u tabeli</small>
             </article>
@@ -2119,7 +2119,7 @@ export default function DailySalesStatsPage() {
                     <span>Kvalitet podataka</span>
                     <InfoTip text="Signali koji utiču na pouzdanost odluka u ovom periodu. Nepoznati dobavljač: prodaja bez mapiranog dobavljača. Dani nepodudaranja: zbir po dobavljačima ne odgovara dnevnom totalu. Nepotpuna satnica: nedostaje smena ili nema pouzdanog razdvajanja. Nepotpuni zbir: prihod ili ukupan broj komada nije dostupan. Dupli/neusklađeni računi: neregularnosti u kasi. Visoke vrednosti na bilo kom signalu = zadržite oprez pri interpretaciji trendova." />
                   </h2>
-                  <p>Dijagnosticki sloj — bitno samo ako planirate dublje analize pouzdanosti.</p>
+                  <p>Dijagnostički sloj — bitno samo ako planirate dublje analize pouzdanosti.</p>
                 </div>
                 <button
                   type="button"
@@ -2194,7 +2194,7 @@ export default function DailySalesStatsPage() {
                 <div>
                   <h2 className="with-tip">
                     <span>Smenski miks po danima</span>
-                    <InfoTip text="Stacked bar pokazuje raspodelu komada po smenama po danima. Koristi za staffing i dopunu robe." />
+                    <InfoTip text="Složeni stubičasti grafikon pokazuje raspodelu komada po smenama po danima. Koristi se za raspored osoblja i dopunu robe." />
                   </h2>
                   <p>Prva smena: {FIRST_SHIFT_LABEL}. Druga smena: {SECOND_SHIFT_LABEL}.</p>
                 </div>
@@ -2289,15 +2289,15 @@ export default function DailySalesStatsPage() {
 
               <div className="daily-sales-mini-stats">
                 <div>
-                  <span>Top 3 share</span>
+                  <span>Udeo top 3</span>
                   <strong>{fmtPct(supplierConcentration.top3QtySharePct, 1)}</strong>
                 </div>
                 <div>
-                  <span>Top 5 share</span>
+                  <span>Udeo top 5</span>
                   <strong>{fmtPct(supplierConcentration.top5QtySharePct, 1)}</strong>
                 </div>
                 <div>
-                  <span>Dobavljaca za 80%</span>
+                  <span>Dobavljača za 80%</span>
                   <strong>{supplierConcentration.suppliersTo80Pct != null ? fmtNumber(supplierConcentration.suppliersTo80Pct) : "Nije dostupno"}</strong>
                 </div>
               </div>
@@ -2308,11 +2308,11 @@ export default function DailySalesStatsPage() {
                 <div>
                   <h2 className="with-tip">
                     <span>Obrazac po danu u nedelji</span>
-                    <InfoTip text="Prosecan prihod i komadi po danu u nedelji. Koristi za raspored tima, cilj po danu i dopunu." />
+                    <InfoTip text="Prosečan prihod i komadi po danu u nedelji. Koristi za raspored tima, cilj po danu i dopunu." />
                   </h2>
                   <p>
-                    Najbolji prodajni dan: <strong>{dayPatternSummary.strongestDay?.dayName ?? "N/A"}</strong>.
-                    Najmirniji radni dan: <strong>{dayPatternSummary.weakestDay?.dayName ?? "N/A"}</strong>.
+                    Najbolji prodajni dan: <strong>{dayPatternSummary.strongestDay?.dayName ?? "Nije dostupno"}</strong>.
+                    Najmirniji radni dan: <strong>{dayPatternSummary.weakestDay?.dayName ?? "Nije dostupno"}</strong>.
                   </p>
                 </div>
               </div>
@@ -2355,8 +2355,8 @@ export default function DailySalesStatsPage() {
               <div className="daily-sales-panel-head">
                 <div>
                   <h2 className="with-tip">
-                    <span>Heuristicki signali i anomalije</span>
-                    <InfoTip text="Pregledni heuristicki signali i nekoliko dana koji najvise odstupaju od 7d proseka. Ovo nije recommendation status model." />
+                    <span>Heuristički signali i anomalije</span>
+                    <InfoTip text="Pregledni heuristički signali i nekoliko dana koji najviše odstupaju od 7-dnevnog proseka. Ovo nije model statusa preporuke." />
                   </h2>
                   <p>Brz pregled gde treba dodatna analiza, bez kopanja po celoj tabeli.</p>
                 </div>
@@ -2374,19 +2374,19 @@ export default function DailySalesStatsPage() {
               <div className="daily-sales-anomaly-summary">
                 <div>
                   <span>Najbolji dan</span>
-                  <strong>{bestRevenueDay ? `${fmtDate(bestRevenueDay.date)} | ${fmtRsdShort(bestRevenueDay.totalRevenue)}` : "N/A"}</strong>
+                  <strong>{bestRevenueDay ? `${fmtDate(bestRevenueDay.date)} | ${fmtRsdShort(bestRevenueDay.totalRevenue)}` : "Nije dostupno"}</strong>
                 </div>
                 <div>
                   <span>Najslabiji dan</span>
-                  <strong>{weakestRevenueDay ? `${fmtDate(weakestRevenueDay.date)} | ${fmtRsdShort(weakestRevenueDay.totalRevenue)}` : "N/A"}</strong>
+                  <strong>{weakestRevenueDay ? `${fmtDate(weakestRevenueDay.date)} | ${fmtRsdShort(weakestRevenueDay.totalRevenue)}` : "Nije dostupno"}</strong>
                 </div>
                 <div>
-                  <span>Najveci skok</span>
-                  <strong>{biggestJump ? `${biggestJump.label} | ${fmtSignedPct(biggestJump.revenueDeltaPct, 1)}` : "N/A"}</strong>
+                  <span>Najveći skok</span>
+                  <strong>{biggestJump ? `${biggestJump.label} | ${fmtSignedPct(biggestJump.revenueDeltaPct, 1)}` : "Nije dostupno"}</strong>
                 </div>
                 <div>
-                  <span>Najveci pad</span>
-                  <strong>{biggestDrop ? `${biggestDrop.label} | ${fmtSignedPct(biggestDrop.revenueDeltaPct, 1)}` : "N/A"}</strong>
+                  <span>Najveći pad</span>
+                  <strong>{biggestDrop ? `${biggestDrop.label} | ${fmtSignedPct(biggestDrop.revenueDeltaPct, 1)}` : "Nije dostupno"}</strong>
                 </div>
               </div>
 

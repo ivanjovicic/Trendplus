@@ -379,7 +379,7 @@ describe("ColorSalesStatsPage", () => {
 
     expect(await screen.findByText("Color detail route")).toBeInTheDocument();
     const snapshot = getAnalyticsDetailSnapshot("color-sales-stats", encodeURIComponent("CRNA"));
-    expect(snapshot?.metadata.some((field) => field.key === "dataScope" && field.value === "existing")).toBe(true);
+    expect(snapshot?.metadata.some((field) => field.key === "dataScope" && field.value === "Postojeći")).toBe(true);
   });
 
   it("keeps nivelacija lineage visible in the detail snapshot", async () => {
@@ -800,7 +800,7 @@ describe("ColorSalesStatsPage", () => {
 
     fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
     const decisionScore = await screen.findByText("Skor odluke (0–100)");
-    expect(decisionScore.closest("article")).toHaveTextContent("N/A");
+    expect(decisionScore.closest("article")).toHaveTextContent("Nije dostupno");
     expect(decisionScore.closest("article")).not.toHaveTextContent(/Skor odluke \(0–100\)\s*0/);
 
     const reliability = screen.getByText("Pouzdanost podataka");
@@ -858,7 +858,7 @@ describe("ColorSalesStatsPage", () => {
 
     fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
     const decisionScore = await screen.findByText("Skor odluke (0–100)");
-    expect(decisionScore.closest("article")).toHaveTextContent("N/A");
+    expect(decisionScore.closest("article")).toHaveTextContent("Nije dostupno");
     expect(decisionScore.closest("article")).not.toHaveTextContent("42");
   });
 

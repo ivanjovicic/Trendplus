@@ -62,7 +62,7 @@ export function InventoryAlertsFeed({
         </div>
       ) : !alerts?.snapshotAvailable ? (
         <div className="mt-4 rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">
-          {alertsLoading ? "Učitavam upozorenja..." : "Upozorenja nisu dostupna. Snapshot tabela je prazna ili nije pokrenuta analitika."}
+          {alertsLoading ? "Učitavam upozorenja..." : "Upozorenja nisu dostupna. Tabela trenutnog stanja je prazna ili analitika nije pokrenuta."}
           {formatInventorySnapshotWarning(alerts?.warning) ? <div className="mt-2 text-xs text-warning">{formatInventorySnapshotWarning(alerts?.warning)}</div> : null}
         </div>
       ) : (
@@ -77,7 +77,7 @@ export function InventoryAlertsFeed({
                   <div className="rounded-full border border-border bg-surface px-2 py-0.5 text-[11px] font-semibold text-muted">
                     {fmtPctFromRatio(alert.confidenceScore)}
                   </div>
-                ) : <div aria-label="Pouzdanost nije dostupna" className="rounded-full border border-dashed border-border bg-surface px-2 py-0.5 text-[11px] font-semibold text-muted">N/A</div>}
+                ) : <div aria-label="Pouzdanost nije dostupna" className="rounded-full border border-dashed border-border bg-surface px-2 py-0.5 text-[11px] font-semibold text-muted">Nije dostupno</div>}
               </div>
               <div className="mt-3 text-sm font-semibold text-foreground">{alert.title}</div>
               <div className="mt-1 text-xs leading-5 text-muted">{alert.message}</div>

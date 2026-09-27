@@ -33,7 +33,7 @@ import InfoTip from "../components/ui/InfoTip";
 import UltraSpinner from "../components/ui/UltraSpinner";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
-import { getDataScope, normalizeDataScope, type DataScope } from "../utils/dataScope";
+import { dataScopeLabel, getDataScope, normalizeDataScope, type DataScope } from "../utils/dataScope";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
 import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange, formatDate } from "../utils/analyticsFormatters";
 import { toInclusiveCalendarDate, toUtcDateOnlyExclusive } from "../utils/analyticsDateRanges";
@@ -74,12 +74,6 @@ type SortField =
   | "prePostNivelacijaRevenueImpactPct"
   | "status";
 type DecisionStatus = "increase_focus" | "maintain" | "review" | "do_not_trust" | "insufficient_data";
-
-const SUPPLIER_DATA_SCOPE_LABELS: Record<string, string> = {
-  all: "Svi podaci",
-  existing: "Postojeći artikli",
-  imported: "Uvezeni podaci",
-};
 
 type ActiveFilters = {
   fromDate: string;
@@ -369,8 +363,8 @@ export function buildSupplierEmbeddedPeriod(input: {
 }
 
 function formatSupplierDataScopeLabel(scope: string | null | undefined): string {
-  if (!scope) return "Svi podaci";
-  return SUPPLIER_DATA_SCOPE_LABELS[scope] ?? scope;
+  if (scope !== "existing" && scope !== "imported" && scope !== "all") return "Svi podaci";
+  return dataScopeLabel(scope);
 }
 
 type StatusTooltipData = {
@@ -402,10 +396,10 @@ function buildStatusTooltip(data: StatusTooltipData): string {
     ? fmtSignedPct(data.popRevenueChangePct, 1)
     : data.previousPeriodRevenue != null && Number.isFinite(data.previousPeriodRevenue) && data.previousPeriodRevenue <= 0
       ? "Novo / bez prethodne baze"
-      : "N/A";
+      : "Nije dostupno";
   const impactText = data.prePostNivelacijaRevenueImpactPct != null && Number.isFinite(data.prePostNivelacijaRevenueImpactPct)
     ? fmtSignedPct(data.prePostNivelacijaRevenueImpactPct, 1)
-    : "N/A";
+    : "Nije dostupno";
   const reliabilityText = data.reliabilityAvailable
     ? formatMetricDisplayValue({ value: data.reliabilityPct, kind: "percent", digits: 0 })
     : RECOMMENDATION_SIGNAL_UNAVAILABLE;
@@ -441,7 +435,7 @@ export function describePopMetric(supplier: Pick<DecisionSupplier, "popRevenueCh
   }
 
   return {
-    label: "N/A",
+    label: "Nije dostupno",
     title: "PoP trend nije dostupan jer ne postoji validna prethodna baza za poređenje.",
     className: "trend-neutral",
   };
@@ -461,7 +455,7 @@ export function describeNivelacijaImpactMetric(supplier: Pick<DecisionSupplier, 
 
   if (supplier.prePostSignalNote) {
     return {
-      label: "Low signal",
+      label: "Ograničen signal",
       title: supplier.prePostSignalNote,
       className: "trend-neutral",
     };
@@ -470,7 +464,7 @@ export function describeNivelacijaImpactMetric(supplier: Pick<DecisionSupplier, 
   const coverage = supplier.prePostNivelacijaRevenueCoveragePct;
   if (typeof coverage !== "number" || !Number.isFinite(coverage) || coverage < 0) {
     return {
-      label: "N/A",
+      label: "Nije dostupno",
       title: "Pre/post pokriće nije dostupno jer validno pokriće nije dostupno za ovaj skup podataka.",
       className: "trend-neutral",
     };
@@ -493,7 +487,7 @@ export function describeNivelacijaImpactMetric(supplier: Pick<DecisionSupplier, 
   }
 
   return {
-    label: "N/A",
+    label: "Nije dostupno",
     title: "Pre/post uticaj nivelacije nije dostupan za izabrani skup podataka.",
     className: "trend-neutral",
   };
@@ -517,7 +511,7 @@ export function describePopUnitsMetric(supplier: Pick<DecisionSupplier, "popUnit
   }
 
   return {
-    label: "N/A",
+    label: "Nije dostupno",
     title: "Promena prodane količine nije dostupna jer nedostaje prethodni period za poređenje.",
     className: "trend-neutral",
   };
@@ -535,7 +529,7 @@ export function describeNivelacijaUnitsImpactMetric(supplier: Pick<DecisionSuppl
 
   if (supplier.prePostSignalNote) {
     return {
-      label: "Low signal",
+      label: "Ograničen signal",
       title: supplier.prePostSignalNote,
       className: "trend-neutral",
     };
@@ -544,7 +538,7 @@ export function describeNivelacijaUnitsImpactMetric(supplier: Pick<DecisionSuppl
   const coverage = supplier.prePostNivelacijaRevenueCoveragePct;
   if (typeof coverage !== "number" || !Number.isFinite(coverage) || coverage < 0) {
     return {
-      label: "N/A",
+      label: "Nije dostupno",
       title: "Pre/post pokriće nije dostupno jer validno pokriće nije dostupno za ovaj skup podataka.",
       className: "trend-neutral",
     };
@@ -567,7 +561,7 @@ export function describeNivelacijaUnitsImpactMetric(supplier: Pick<DecisionSuppl
   }
 
   return {
-    label: "N/A",
+    label: "Nije dostupno",
     title: "Pre/post uticaj količine nije dostupan za izabrani skup podataka.",
     className: "trend-neutral",
   };
@@ -575,7 +569,7 @@ export function describeNivelacijaUnitsImpactMetric(supplier: Pick<DecisionSuppl
 
 function describeFootwearMix(supplier: Pick<DecisionSupplier, "primaryFootwearType" | "primaryFootwearTypeSharePct" | "footwearTypeCount">): string {
   const sharePct = finiteOrNull(supplier.primaryFootwearTypeSharePct);
-  if (supplier.footwearTypeCount <= 0 || supplier.primaryFootwearType === "N/A" || sharePct == null) {
+  if (supplier.footwearTypeCount <= 0 || supplier.primaryFootwearType === "Nije dostupno" || sharePct == null) {
     return "Nema dovoljno podataka o vrstama obuće za ovog dobavljača.";
   }
 
@@ -668,7 +662,7 @@ export function buildDecisionSuppliers(data: SupplierSalesStatsResponse | null |
     const footwearBreakdown = supplier.footwearBreakdown ?? [];
     const primaryFootwearType = supplier.primaryFootwearType
       ?? footwearBreakdown[0]?.tipObuceNaziv
-      ?? "N/A";
+      ?? "Nije dostupno";
     const primaryFootwearTypeSharePct = finiteOrNull(supplier.primaryFootwearTypeSharePct)
       ?? finiteOrNull(footwearBreakdown[0]?.shareOfSupplierRevenuePct);
     const footwearTypeCount = supplier.footwearTypeCount ?? footwearBreakdown.length;
@@ -1270,7 +1264,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
 
     const snapshotPct = data.totals.snapshotCostCoveragePct;
     if (data.totals.isSnapshotActive && snapshotPct != null && snapshotPct > 0) {
-      notes.push(`Za ${fmtPct(snapshotPct, 1)} prometa trošak je stabilizovan zamrznutom procenom (snapshot). Ovo je reproduktivna procena, ne istorijska nabavna cena.`);
+      notes.push(`Za ${fmtPct(snapshotPct, 1)} prometa trošak je stabilizovan zamrznutom procenom (snimak). Ovo je reproduktivna procena, ne istorijska nabavna cena.`);
     }
 
     return notes;
@@ -1323,14 +1317,14 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       periodTo: embeddedPeriod.periodTo,
       lastRefreshAt: trustLastRefreshAt,
       dataFreshnessStatus: trustDataFreshnessStatus,
-      dataSource: `Supplier sales stats (scope: ${formatSupplierDataScopeLabel(activeDataScope)})`,
+      dataSource: `Prodaja po dobavljačima (opseg: ${formatSupplierDataScopeLabel(activeDataScope)})`,
       provenanceBasis: data.provenanceBasis ?? null,
       dataQualityStatus: trustDataQualityStatus,
       requestedDataset: formatSupplierDataScopeLabel(activeDataScope),
       effectiveDataset: formatSupplierDataScopeLabel(data.dataScope ?? activeDataScope),
       effectivePeriodLabel: embeddedPeriod.effectivePeriodLabel,
       recommendationAllowed: data.recommendationAllowed === true,
-      recommendationNote: `Prikazani skup: ${displayPopulationLabel}. Referentni skup preporuke: ${recommendationReferenceLabel}. Preporuke dolaze iz backenda.`,
+      recommendationNote: `Prikazani skup: ${displayPopulationLabel}. Referentni skup preporuke: ${recommendationReferenceLabel}. Preporuke dolaze iz serverskog sloja.`,
       emptyStateReason: trustEmptyStateReason,
     });
   }, [
@@ -1354,7 +1348,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       { key: "toDate", label: "Do", value: activeFilters.toDate },
       { key: "sezonaId", label: "Sezona", value: activeSezonaLabel },
       { key: "storeId", label: "Objekat", value: activeFilters.storeId ?? "Svi objekti" },
-      { key: "dataScope", label: "Opseg podataka", value: activeDataScope },
+      { key: "dataScope", label: "Opseg podataka", value: formatSupplierDataScopeLabel(activeDataScope) },
       { key: "supplierId", label: "Dobavljač", value: activeSupplierId ?? "Svi dobavljači" },
       { key: "includeUnknown", label: "Uključi nepoznate", value: includeUnknown ? "da" : "ne" },
     ],
@@ -1366,7 +1360,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
       { key: "displayPopulation", label: "Prikazani skup", value: `${displayPopulationLabel} (${displayProjection.displaySupplierCount})` },
       { key: "referenceCohort", label: "Referentni skup preporuke", value: recommendationReferenceLabel },
-      { key: "suppliers", label: `Dobavljača (${displayPopulationLabel})`, value: formatMetricDisplayValue({ value: displayProjection.displaySupplierCount, kind: "number", fallback: "N/A" }) },
+      { key: "suppliers", label: `Dobavljača (${displayPopulationLabel})`, value: formatMetricDisplayValue({ value: displayProjection.displaySupplierCount, kind: "number", fallback: "Nije dostupno" }) },
       { key: "unknownSuppliers", label: `Nepoznato/N-A (${displayPopulationLabel})`, value: displayProjection.unknownSupplierCount },
       { key: "marginCoverage", label: `${displayPopulationIsFiltered ? "Pokriće istorijskog troška % (ceo odgovor)" : "Pokriće istorijskog troška %"}`, value: fmtPct(data?.dataQuality.historicalCostRevenueSharePct, 1) },
       { key: "fallbackCoverage", label: `${displayPopulationIsFiltered ? "Promet sa procenjenom nabavnom % (ceo odgovor)" : "Promet sa procenjenom nabavnom %"}`, value: fmtPct(data?.dataQuality.estimatedCostRevenueSharePct, 1) },
@@ -1376,10 +1370,10 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       { key: "splitCoverage", label: `${displayPopulationIsFiltered ? "Uporedivo pre/post pokrivanje (ceo odgovor)" : "Uporedivo pre/post pokrivanje"}`, value: fmtPct(data?.dataQuality.revenueWithNivelacijaSplitSharePct, 1) },
       { key: "observedPrePostRevenue", label: "Posmatrani promet pre / posle nivelacije", value: `${fmtRsd(data?.totals.observedPrePromet ?? data?.totals.prePromet)} / ${fmtRsd(data?.totals.observedPoslePromet ?? data?.totals.poslePromet)}` },
       { key: "comparablePrePostRevenue", label: "Uporedivi promet pre / posle nivelacije", value: `${fmtRsd(data?.totals.comparablePrePromet)} / ${fmtRsd(data?.totals.comparablePoslePromet)}` },
-      { key: "comparablePrePostArticles", label: "Artikli u uporedivoj pre/post kohorti", value: formatMetricDisplayValue({ value: data?.totals.prePostComparableArticleCount ?? null, kind: "number", fallback: "N/A" }) },
+      { key: "comparablePrePostArticles", label: "Artikli u uporedivoj pre/post kohorti", value: formatMetricDisplayValue({ value: data?.totals.prePostComparableArticleCount ?? null, kind: "number", fallback: "Nije dostupno" }) },
       { key: "prePostSignalNote", label: "Napomena za pre/post signal", value: data?.totals.prePostSignalNote ?? "Nema napomene" },
-      { key: "snapshotCoverage", label: `${displayPopulationIsFiltered ? "Zamrznuta procena (snapshot) % (ceo odgovor)" : "Zamrznuta procena (snapshot) %"}`, value: fmtPct(data?.totals.snapshotCostCoveragePct, 1) },
-      { key: "isSnapshotActive", label: `${displayPopulationIsFiltered ? "Snapshot aktivan (ceo odgovor)" : "Snapshot aktivan"}`, value: data?.totals.isSnapshotActive ? "da" : "ne" },
+      { key: "snapshotCoverage", label: `${displayPopulationIsFiltered ? "Zamrznuta procena (snimak) % (ceo odgovor)" : "Zamrznuta procena (snimak) %"}`, value: fmtPct(data?.totals.snapshotCostCoveragePct, 1) },
+      { key: "isSnapshotActive", label: `${displayPopulationIsFiltered ? "Snimak aktivan (ceo odgovor)" : "Snimak aktivan"}`, value: data?.totals.isSnapshotActive ? "da" : "ne" },
       { key: "increaseFocus", label: "Pojačaj fokus", value: supplierCounts.increaseFocus },
       { key: "maintain", label: "Zadrži", value: supplierCounts.maintain },
       { key: "review", label: "U pregledu", value: supplierCounts.review },
@@ -1611,7 +1605,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       {
         key: "scope",
         label: "Opseg",
-        value: activeDataScope,
+        value: formatSupplierDataScopeLabel(activeDataScope),
         tone: "info",
       },
       {
@@ -1758,12 +1752,12 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       {!embedded ? (
         <AnalyticsTrustHeader
           title="Dobavljači: Pregled"
-          description="Canonical pregled prodaje po dobavljačima za poslovnu odluku. Preporuke dolaze iz backenda."
+          description="Pregled prodaje po dobavljačima za poslovnu odluku. Preporuke dolaze iz serverskog sloja."
           periodFrom={data?.fromDate ?? activeFilters.fromDate}
           periodTo={toInclusiveCalendarDate(data?.toDate) ?? activeFilters.toDate}
           lastRefreshAt={trustLastRefreshAt}
           dataFreshnessStatus={trustDataFreshnessStatus}
-          dataSource={`Supplier sales stats (scope: ${formatSupplierDataScopeLabel(activeDataScope)})`}
+          dataSource={`Prodaja po dobavljačima (opseg: ${formatSupplierDataScopeLabel(activeDataScope)})`}
           provenanceBasis={data?.provenanceBasis ?? null}
           dataQualityStatus={trustDataQualityStatus ?? null}
           requestedDataset={formatSupplierDataScopeLabel(activeDataScope)}
@@ -1771,7 +1765,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
           effectivePeriodLabel={formatEffectivePeriodLabel(data?.dataWindowFrom, data?.dataWindowTo)}
           mode="recommendation"
           isPartial={trustIsPartial}
-          recommendationNote={`Prikazani skup: ${displayPopulationLabel}. Referentni skup preporuke: ${recommendationReferenceLabel}. Preporuke dolaze iz backenda.`}
+          recommendationNote={`Prikazani skup: ${displayPopulationLabel}. Referentni skup preporuke: ${recommendationReferenceLabel}. Preporuke dolaze iz serverskog sloja.`}
           emptyStateReason={!loading && !showBlockingError && trustEmptyStateReason ? trustEmptyStateReason : null}
           dataQualityHref="/analytics/data-quality"
           refreshStatusHref="/admin/configuration?panel=workers"
@@ -1919,7 +1913,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                 <KpiExplainButton metricKey="topSupplierRevenueShare" ariaLabel="Kako je izračunat udeo top 5 dobavljača" />
               </article>
               <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Momentum prema prethodnom uporedivom periodu.">
-                <span>Ukupan PoP trend <InfoTip text="Promena ukupnog prometa u odnosu na prethodni uporedivi period iste dužine. Formula: (trenutni promet – prethodni promet) / prethodni promet × 100. Prethodni promet obuhvata i dobavljače koji u tekućem periodu nemaju prodaju. N/A ako prethodni period nije dostupan ili ako su prikazani samo poznati dobavljači, jer za taj skup ne postoji potpun prethodni zbir." /></span>
+                <span>Ukupan PoP trend <InfoTip text="Promena ukupnog prometa u odnosu na prethodni uporedivi period iste dužine. Formula: (trenutni promet – prethodni promet) / prethodni promet × 100. Prethodni promet obuhvata i dobavljače koji u tekućem periodu nemaju prodaju. Nije dostupno ako prethodni period nije dostupan ili ako su prikazani samo poznati dobavljači, jer za taj skup ne postoji potpun prethodni zbir." /></span>
                 <strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong>
                 <KpiExplainButton metricKey="popRevenueChangePct" ariaLabel="Kako je izračunat Ukupan PoP trend" />
               </article>
@@ -2412,7 +2406,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                           <th className="align-right">Udeo kod dobavljača <InfoTip text="Procenat ukupnog prometa dobavljača koji čini ova vrsta obuće. Formula: promet vrste / ukupan promet dobavljača × 100." /></th>
                           <th className="align-right">{canonicalTerms.marginContribution.label} <InfoTip text="Razlika prodajne i nabavne vrednosti za deo prometa gde je trošak dostupan ili procenjen. Operativni troškovi nisu uključeni." /></th>
                           <th className="align-right">{canonicalTerms.marginPct.label} <InfoTip text="Procenat maržnog doprinosa od prodaje. Formula: maržni doprinos / promet sa dostupnim troškom × 100. Ako je trošak procenjen, signal čitati oprezno." /></th>
-                          <th className="align-right">PoP trend <InfoTip text="Promena prometa ove kombinacije u odnosu na prethodni uporedivi period iste dužine. N/A ako prethodni period nije dostupan." /></th>
+                          <th className="align-right">PoP trend <InfoTip text="Promena prometa ove kombinacije u odnosu na prethodni uporedivi period iste dužine. Nije dostupno ako prethodni period nije dostupan." /></th>
                           <th className="align-right">Pokriće troška <InfoTip text="Udeo prometa za koji postoji direktna istorijska nabavna cena. Procenjeni i nedostajući troškovi prikazani su u opisu reda." /></th>
                         </tr>
                       </thead>
@@ -2448,7 +2442,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                             <td className={`align-right ${trendClass(row.popRevenueChangePct)}`}>{fmtSignedPct(row.popRevenueChangePct, 1)}</td>
                             <td className="align-right">
                               <span>{fmtPct(row.historicalCostCoveragePct, 1)}</span>
-                              <span className="supplier-footwear-cost-note" title={`Procenjeno: ${fmtPct(row.estimatedCostCoveragePct, 1)} | Bez troška: ${fmtPct(row.noCostCoveragePct, 1)} | Snapshot: ${fmtPct(row.snapshotCostCoveragePct, 1)}`}>
+                              <span className="supplier-footwear-cost-note" title={`Procenjeno: ${fmtPct(row.estimatedCostCoveragePct, 1)} | Bez troška: ${fmtPct(row.noCostCoveragePct, 1)} | Snimak: ${fmtPct(row.snapshotCostCoveragePct, 1)}`}>
                                 detalj
                               </span>
                             </td>
@@ -2475,7 +2469,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                 </article>
                 <article>
                   <span>Prethodni period promet <InfoTip text="Vrednost prometa u prethodnom uporedivom periodu iste dužine." /></span>
-                  <strong>{selectedSupplier.previousPeriodRevenue != null ? fmtRsd(selectedSupplier.previousPeriodRevenue) : "N/A"}</strong>
+                  <strong>{selectedSupplier.previousPeriodRevenue != null ? fmtRsd(selectedSupplier.previousPeriodRevenue) : "Nije dostupno"}</strong>
                 </article>
                 <article>
                   <span>PoP trend količine <InfoTip text="Promena količine prodatih komada u odnosu na prethodni uporedivi period iste dužine (%)." /></span>
@@ -2485,7 +2479,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                 </article>
                 <article>
                   <span>Prethodni period količina <InfoTip text="Količina prodatih komada u prethodnom uporedivom periodu iste dužine." /></span>
-                  <strong>{selectedSupplier.previousPeriodUnits != null ? fmtQty(selectedSupplier.previousPeriodUnits) : "N/A"}</strong>
+                  <strong>{selectedSupplier.previousPeriodUnits != null ? fmtQty(selectedSupplier.previousPeriodUnits) : "Nije dostupno"}</strong>
                 </article>
               </div>
 
@@ -2559,7 +2553,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                 </article>
                 {(selectedSupplier.snapshotCostCoveragePct ?? 0) > 0 ? (
                   <article>
-                    <span>Zamrznuta procena (snapshot) % <InfoTip text="Procenat prometa gde je trošak stabilizovan zamrznutom procenom (snapshot) radi reproduktivnosti izveštaja. Ovo nije istorijska nabavna cena sa trenutka prodaje." /></span>
+                    <span>Zamrznuta procena (snimak) % <InfoTip text="Procenat prometa gde je trošak stabilizovan zamrznutom procenom (snimak) radi reproduktivnosti izveštaja. Ovo nije istorijska nabavna cena sa trenutka prodaje." /></span>
                     <strong>{fmtPct(selectedSupplier.snapshotCostCoveragePct, 1)}</strong>
                   </article>
                 ) : null}
@@ -2610,4 +2604,3 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     </div>
   );
 }
-

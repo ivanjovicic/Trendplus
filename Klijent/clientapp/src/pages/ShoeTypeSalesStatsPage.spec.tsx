@@ -154,7 +154,7 @@ describe("ShoeTypeSalesStatsPage dataScope lineage", () => {
 
     await screen.findByText("Prioritetna lista tipova obuće");
     expect(getShoeTypeSalesStats).toHaveBeenCalledWith(expect.objectContaining({ dataScope: "imported" }));
-    expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("scope: imported");
+    expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("opseg: Uvezeni");
 
     localStorage.setItem("trendplus:dataScope", "existing");
     vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({ dataScope: "existing" }));
@@ -164,7 +164,7 @@ describe("ShoeTypeSalesStatsPage dataScope lineage", () => {
       expect(getShoeTypeSalesStats).toHaveBeenLastCalledWith(expect.objectContaining({ dataScope: "existing" }));
     });
     await waitFor(() => {
-      expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("scope: existing");
+      expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("opseg: Postojeći");
     });
   });
 

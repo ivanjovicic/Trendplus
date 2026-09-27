@@ -1,4 +1,4 @@
-﻿import { TrendingDown, TrendingUp } from "lucide-react";
+import { TrendingDown, TrendingUp } from "lucide-react";
 import type { ForecastDto, ForecastRowDto, StoreOption } from "../../types/analytics";
 import { fmtNumber, fmtPctFromRatio } from "../../utils/analyticsFormatters";
 import { formatSignalCountBadge } from "./inventoryUtils";
@@ -65,7 +65,7 @@ export function DemandForecastPanel({
           </div>
         </div>
         <div className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-semibold text-muted">
-          {forecastLoading ? "Učitavam..." : formatSignalCountBadge(forecast?.returnedCount ?? forecast?.totalCount, forecast?.totalMatchingCount, "SKU", forecast?.isTruncated)}
+          {forecastLoading ? "Učitavam..." : formatSignalCountBadge(forecast?.returnedCount ?? forecast?.totalCount, forecast?.totalMatchingCount, "artikala", forecast?.isTruncated)}
         </div>
       </div>
 
@@ -105,7 +105,7 @@ export function DemandForecastPanel({
             <div className="mt-3 space-y-2">
               {highOosItems.map((item) => {
                 const matchingRow = findForecastRow(rows, item);
-                const name = matchingRow?.naziv ?? `SKU #${item.skuId}`;
+                const name = matchingRow?.naziv ?? `Artikal #${item.skuId}`;
                 const store = stores.find((entry) => entry.storeId === item.storeId)?.storeName ?? matchingRow?.storeName ?? `Objekat #${item.storeId}`;
                 const oosRisk = item.probabilityOfOOSIn7d ?? 0;
                 const forecastDisabled = item.forecast7d == null || item.probabilityOfOOSIn7d == null;
@@ -120,7 +120,7 @@ export function DemandForecastPanel({
                     </div>
                     <div className="shrink-0 text-right">
                       <div className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${tone}`}>
-                        {fmtPctFromRatio(item.probabilityOfOOSIn7d)} OOS
+                        {fmtPctFromRatio(item.probabilityOfOOSIn7d)} rizik nestašice
                       </div>
                       <div className="mt-1 text-[11px] font-medium text-muted">
                         {oosRisk > 0.7 ? "Status: kritično" : oosRisk > 0.4 ? "Status: upozorenje" : "Status: stabilno"}
@@ -137,7 +137,7 @@ export function DemandForecastPanel({
                 );
               })}
               {highOosItems.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-6 text-center text-sm text-[var(--text-primary)]">Nema visokog OOS rizika za trenutne filtere.</div>
+                <div className="rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-6 text-center text-sm text-[var(--text-primary)]">Nema visokog rizika nestašice za trenutne filtere.</div>
               ) : null}
             </div>
           </div>
@@ -150,7 +150,7 @@ export function DemandForecastPanel({
             <div className="mt-3 space-y-2">
               {overstockItems.map((item) => {
                 const matchingRow = findForecastRow(rows, item);
-                const name = matchingRow?.naziv ?? `SKU #${item.skuId}`;
+                const name = matchingRow?.naziv ?? `Artikal #${item.skuId}`;
                 const store = stores.find((entry) => entry.storeId === item.storeId)?.storeName ?? matchingRow?.storeName ?? `Objekat #${item.storeId}`;
                 const overstockRisk = item.overstockRisk ?? 0;
 

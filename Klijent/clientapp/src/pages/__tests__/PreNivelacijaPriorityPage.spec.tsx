@@ -1118,7 +1118,7 @@ describe("PreNivelacijaPriorityPage", () => {
     expect(snapshot?.metadata).toEqual(expect.arrayContaining([
       expect.objectContaining({ key: "focus", value: "Pregledaj" }),
       expect.objectContaining({ key: "minScore", value: "72" }),
-      expect.objectContaining({ key: "dataScope", value: "Uvezeni podaci" }),
+      expect.objectContaining({ key: "dataScope", value: "Uvezeni" }),
       expect.objectContaining({ key: "supplierId", value: expect.any(String) }),
     ]));
     expect(snapshot?.metadata?.find((item) => item.key === "supplierId")?.value).not.toBe("11");
@@ -1619,7 +1619,7 @@ describe("PreNivelacijaPriorityPage", () => {
     expect(exportFilters).toEqual(expect.arrayContaining([
       expect.objectContaining({ key: "supplierId", value: "Dobavljac A" }),
       expect.objectContaining({ key: "focus", value: "Pregledaj" }),
-      expect.objectContaining({ key: "dataScope", value: "Uvezeni podaci" }),
+      expect.objectContaining({ key: "dataScope", value: "Uvezeni" }),
     ]));
     expect(exportFilters.find((item) => item.key === "supplierId")?.value).not.toBe(11);
     expect(exportFilters.find((item) => item.key === "focus")?.value).not.toBe("review");

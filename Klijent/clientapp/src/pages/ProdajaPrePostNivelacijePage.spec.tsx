@@ -362,7 +362,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     renderPage();
 
     await screen.findByText("Prioritetna lista dobavljača");
-    expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("opseg: imported");
+    expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("opseg: Uvezeni");
 
     const controlBar = await screen.findByTestId("analytics-control-bar");
     expect(within(controlBar).getByRole("heading", { name: "Kontrole i opseg" })).toBeInTheDocument();
@@ -572,7 +572,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     renderPage();
     await screen.findByText("Prioritetna lista dobavljača");
 
-    expect(await screen.findByText(/Nije dostupno/)).toBeInTheDocument();
+    expect((await screen.findAllByText("Nije dostupno")).length).toBeGreaterThan(0);
     expect(screen.queryByText(/Nisko signal/)).not.toBeInTheDocument();
   });
 
@@ -1004,10 +1004,10 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     const trustButton = await screen.findByRole("button", { name: /Kvalitet signala: Nepoznato/i });
     expect(trustButton).toBeInTheDocument();
     fireEvent.click(trustButton);
-    expect(screen.getByText("Kvalitet signala nije potvrđen jer snapshot kvaliteta nedostaje ili je delimičan.")).toBeInTheDocument();
+    expect(screen.getByText("Kvalitet signala nije potvrđen jer snimak kvaliteta nedostaje ili je delimičan.")).toBeInTheDocument();
 
     fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
-    expect(screen.getByText("Kvalitet signala nije potvrđen jer snapshot kvaliteta nedostaje ili je delimičan.")).toBeInTheDocument();
+    expect(screen.getByText("Kvalitet signala nije potvrđen jer snimak kvaliteta nedostaje ili je delimičan.")).toBeInTheDocument();
   });
 
   it("keeps non-finite quality metadata unknown rather than healthy", async () => {

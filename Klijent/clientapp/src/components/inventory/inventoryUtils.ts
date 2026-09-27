@@ -115,15 +115,15 @@ export function formatInventorySnapshotWarning(warning?: string | null): string 
   const normalized = warning?.trim().toLowerCase();
   if (!normalized) return null;
   if (normalized.includes("nepotpun") || normalized.includes("partial") || normalized.includes("incomplete")) {
-    return "Snapshot sadrži redove sa nepotpunom signalnom evidencijom.";
+    return "Trenutno stanje sadrži redove sa nepotpunom signalnom evidencijom.";
   }
   if (normalized.includes("nema") || normalized.includes("empty") || normalized.includes("no_rows")) {
-    return "Snapshot je dostupan, ali nema redova za izabrane filtere.";
+    return "Trenutno stanje je dostupno, ali nema redova za izabrane filtere.";
   }
   if (normalized.includes("nije dostupan") || normalized.includes("missing") || normalized.includes("unavailable")) {
-    return "Snapshot trenutno nije dostupan.";
+    return "Trenutno stanje nije dostupno.";
   }
-  return "Snapshot ima ograničenje kvaliteta podataka.";
+  return "Trenutno stanje ima ograničenje kvaliteta podataka.";
 }
 
 export function inventorySnapshotRowStatusLabel(state?: InventorySnapshotRowState | null): string {
@@ -263,7 +263,7 @@ export function sellThroughStatusLabel(status: string): string {
     case "good":
       return "Dobar prodajni obrt";
     case "warning":
-      return "Sell-through upozorenje";
+      return "Upozorenje prodajnog obrta";
     case "critical":
       return "Kritičan prodajni obrt";
     default:
@@ -535,7 +535,7 @@ export function buildForecastRestockSuggestion(
     actionType: "dopuna",
     priority: probabilityOfOOSIn7d > 0.7 ? "critical" : "high",
     label: `Predložena dopuna za ${row.naziv}`,
-    reason: `Forecast 7d je ${forecast7d.toFixed(1)} kom, a OOS rizik ${Math.round(probabilityOfOOSIn7d * 100)}%.`,
+    reason: `Prognoza za 7 dana je ${forecast7d.toFixed(1)} kom, a rizik nestašice ${Math.round(probabilityOfOOSIn7d * 100)}%.`,
     status: "pending",
     artikalId: signal.skuId,
     plu: row.plu,

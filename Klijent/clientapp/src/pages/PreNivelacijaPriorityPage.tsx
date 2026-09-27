@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Bar,
@@ -25,7 +25,7 @@ import { CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
 import { fmtNumber, fmtPct, fmtRsd } from "../utils/analyticsFormatters";
 import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescriptions";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
-import { getDataScope, normalizeDataScope, type DataScope } from "../utils/dataScope";
+import { dataScopeLabel, getDataScope, normalizeDataScope, type DataScope } from "../utils/dataScope";
 import { createAnalyticsDatasetProjections } from "../utils/analyticsDatasetProjections";
 import { useReliableAnalyticsQuery } from "../hooks/useReliableAnalyticsQuery";
 import {
@@ -110,12 +110,6 @@ const FOCUS_LABELS: Record<FocusFilter, string> = {
   highPriority: "Visok prioritet",
 };
 
-const DATA_SCOPE_LABELS: Record<DataScope, string> = {
-  all: "Svi podaci",
-  existing: "Postojeći podaci",
-  imported: "Uvezeni podaci",
-};
-
 type IntegerDraftParseResult =
   | { ok: true; value: number }
   | { ok: false; error: string };
@@ -145,10 +139,6 @@ function parseMinScoreDraft(value: string): IntegerDraftParseResult {
 
 function parseNoSaleDaysMinDraft(value: string): IntegerDraftParseResult {
   return parseIntegerDraft(value, NO_SALE_DAYS_RANGE.min, NO_SALE_DAYS_RANGE.max, "Min. dana bez prodaje");
-}
-
-function dataScopeLabel(scope: DataScope): string {
-  return DATA_SCOPE_LABELS[scope] ?? DATA_SCOPE_LABELS.all;
 }
 
 function formatQueueHeading(title: string, shown: number, total: number | null | undefined): string {
@@ -888,8 +878,8 @@ export default function PreNivelacijaPriorityPage() {
     if (showMetaWarning) {
       notices.push({
         key: "meta-warning",
-        title: "Prikaz je delimičan ili fallback",
-        detail: dataMetaMessage ?? "Proverite analytics refresh status i data quality signal pre jačih odluka.",
+        title: "Prikaz je delimičan ili koristi rezervni izvor",
+        detail: dataMetaMessage ?? "Proverite status osvežavanja i kvalitet podataka pre jačih odluka.",
         tone: "critical",
       });
     } else if (globalStatusCounts && globalStatusCounts.review > 0) {
@@ -1427,7 +1417,7 @@ export default function PreNivelacijaPriorityPage() {
                       </th>
                       <th aria-sort={sortAriaValue("status", sortField, sortDir)}>
                         <button type="button" onClick={() => handleSort("status")}>Preporuka {sortMarker("status", sortField, sortDir)}</button>
-                        <InfoTip text="Backend je izvor istine za preporuku pre nivelacije. Status i razlog dolaze iz server-side scoring sloja; frontend više ne računa lokalnu preporuku." />
+                        <InfoTip text="Preporuka pre nivelacije dolazi iz serverskog sloja. Status i razlog su autoritativni; ekran ih samo prikazuje." />
                       </th>
                       <th className="align-center">Detalj</th>
                     </tr>
@@ -1640,7 +1630,7 @@ export default function PreNivelacijaPriorityPage() {
             <section className="pnp-queues">
               <h2 className="pnp-queues-title">
                 Redovi čekanja
-                <InfoTip text="SKU su raspoređeni po backend recommendation statusu (Pojačaj, Zadrži, Pregledaj, Ne veruj, Nedovoljno podataka) i pomoćnim prioritetnim signalima." />
+                <InfoTip text="SKU su raspoređeni po statusu preporuke sa serverskog sloja (Pojačaj, Zadrži, Pregledaj, Ne veruj, Nedovoljno podataka) i pomoćnim prioritetnim signalima." />
               </h2>
               <div className="pnp-queues-grid">
                 <article className="pnp-queue-panel pnp-queue-panel--boost">

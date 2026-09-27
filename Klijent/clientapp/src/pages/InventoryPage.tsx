@@ -1,4 +1,4 @@
-﻿import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Warehouse } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { AnalyticsMetaError, createInventoryReportSchedule, exportInventoryReport, getAnalyticsActionSourceStatuses, getForecast, getInventoryActionSuggestions, getInventoryAlerts, getInventoryBalance, getInventoryInsights, getInventoryItemDetail, getInventoryList, getInventoryReportSchedules, getInventoryStoreComparison, getRebalanceSuggestions, getSizeCurve, getStores, getSupplierFilters, previewInventoryReport, printBlankInventoryForm, runInventoryReportScheduleNow, saveInventoryActionDecision, upsertAnalyticsActionWithResult } from "../services/analyticsApi";
@@ -1669,7 +1669,7 @@ export default function InventoryPage() {
                 showInsufficientEmptyState
                   ? "Podaci jos nisu dovoljno kompletni za odluku."
                   : "Izabrani filteri suzavaju rezultat na prazan skup.",
-                "Proverite refresh status i data quality signal.",
+                "Proverite status osvežavanja i signal kvaliteta podataka.",
                 "Proširite opseg ili uklonite deo filtera.",
               ]}
               dataQualityHref="/analytics/data-quality"
@@ -1723,7 +1723,7 @@ export default function InventoryPage() {
       ) : null}
       {showMetaWarning ? (
         <div className="rounded-2xl border border-[var(--warning)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--warning)]" role="status">
-          Prikazani podaci su delimični ili fallback. {inventoryMetaMessage ?? "Proverite status osvežavanja i data quality signal."}
+          Prikazani podaci su delimični ili koriste rezervni izvor. {inventoryMetaMessage ?? "Proverite status osvežavanja i signal kvaliteta podataka."}
           {primaryInventoryTrust.degradedSourceLabels.length > 0 ? ` Izvor(i) sa ograničenjem: ${primaryInventoryTrust.degradedSourceLabels.join(", ")}.` : ""}
         </div>
       ) : null}
@@ -1787,7 +1787,7 @@ export default function InventoryPage() {
             <div className="rounded-2xl border border-muted bg-[var(--surface-darker)] p-4">
               <div className="text-xs uppercase tracking-[0.22em] text-[var(--text-primary)]">Stanje fonda</div>
               <div data-testid="inventory-health-snapshot-only" className="mt-2 text-lg font-semibold text-contrast">Istorijska serija nije dostupna</div>
-              <div className="mt-2 text-sm text-secondary">Trenutni snapshot ne daje backend-obranjeni health score ni istorijski trend. Za ovaj prikaz nisu dostupni period, izvor, svežina i kvalitet istorijskih opažanja.</div>
+              <div className="mt-2 text-sm text-secondary">Trenutno stanje ne daje serverski potvrđen pokazatelj zdravlja ni istorijski trend. Za ovaj prikaz nisu dostupni period, izvor, svežina i kvalitet istorijskih opažanja.</div>
             </div>
           </div>
         </div>
