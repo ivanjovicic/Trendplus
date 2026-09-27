@@ -239,6 +239,14 @@ const MEDIUM_SIGNAL_RELIABILITY_PCT = 40;
 const VENDOR_NIVELACIJA_MAX_ROWS = 50_000;
 const PRE_POST_INLINE_ERROR_FALLBACK = "Podaci trenutno nisu dostupni. Proverite kvalitet podataka i pokušajte ponovo.";
 
+export function reconcilePrePostExpandedVendorKey(
+  expandedVendorKey: string | null,
+  availableVendorKeys: readonly string[],
+): string | null {
+  if (!expandedVendorKey) return null;
+  return availableVendorKeys.includes(expandedVendorKey) ? expandedVendorKey : null;
+}
+
 function getSafePrePostInlineErrorMessage(reason: unknown): string {
   return getSafeAnalyticsErrorMessage(
     reason instanceof Error ? reason.message : String(reason),
@@ -745,7 +753,11 @@ export default function ProdajaPrePostNivelacijePage() {
   const previousComparisonError = querySnapshot?.previousError ?? null;
   const loading = initialLoading || refetching;
   useEffect(() => {
-    if (data) setExpandedVendorKey(null);
+    if (!data) return;
+    setExpandedVendorKey((current) => reconcilePrePostExpandedVendorKey(
+      current,
+      buildSupplierVendorKeys(data.vendorStats ?? []),
+    ));
   }, [data]);
 
   const previousRevenueByVendorKey = useMemo(() => {
