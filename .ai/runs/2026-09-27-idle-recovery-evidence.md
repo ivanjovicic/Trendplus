@@ -6,9 +6,9 @@ Date: 2026-09-27
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct delivery
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: b08a855d76b1074d6b44e8004bdc9c6478e5f652
+Main verification: passed - fresh origin/main contains b08a855d76b1074d6b44e8004bdc9c6478e5f652
+Evidence state: synchronized
 
 ## What was done
 
