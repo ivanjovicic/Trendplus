@@ -5,6 +5,7 @@ Repository: `ivanjovicic/Trendplus`
 Status: canonical planning entry point
 
 Owner promotion/claim 2026-09-27: idle recovery verified RQ299 DONE on current origin/main, no active Pre/Post focus owner or conflicting lock/branch/PR, and RQ317 is dependency-complete. RQ317 is IN_PROGRESS in this workspace; local lock .ai/task-locks/RQ317-codex.lock.md.
+Owner completion 2026-09-27: RQ317 was delivered directly to main in 86e12599 with validated Pre/Post focus URL state, Apply/reload preservation and router back-navigation proof. Focused 41/41, guardrails, typecheck, build and diff checks pass. Run log: .ai/runs/2026-09-27-RQ317-evidence.md. Evidence state: synchronized.
 
 Owner promotion/claim 2026-09-26: idle recovery confirmed the higher-priority RQ certification lanes are externally gated or owned elsewhere, while RQ321 is an independent P2 shared-UX error contract with no dependency or conflicting store-filter owner. RQ321 is IN_PROGRESS in this workspace; the local lock is .ai/task-locks/RQ321-codex.lock.md.
 Owner completion 2026-09-27: RQ321 was delivered to main in 95632a21 with focused 4/4 proof, analytics guardrails/typecheck/build and diff checks passing. Inventory-specific bootstrap remains RQ322.
