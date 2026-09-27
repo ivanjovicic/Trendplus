@@ -437,6 +437,8 @@ export default function InventoryPage() {
   const [detailError, setDetailError] = useState<string | null>(null);
   const [detailSizeCurve, setDetailSizeCurve] = useState<SizeCurveDto | null>(null);
   const [detailSizeCurveLoading, setDetailSizeCurveLoading] = useState(false);
+  const [detailSizeCurveError, setDetailSizeCurveError] = useState<string | null>(null);
+  const [detailSizeCurveRetryKey, setDetailSizeCurveRetryKey] = useState(0);
   const [exportBusy, setExportBusy] = useState(false);
   const [exportStatus, setExportStatus] = useState<string | null>(null);
   const [printOrientation, setPrintOrientation] = useState<"landscape" | "portrait">("landscape");
@@ -824,6 +826,7 @@ export default function InventoryPage() {
       setDetailLoading(false);
       setDetailSizeCurve(null);
       setDetailSizeCurveLoading(false);
+      setDetailSizeCurveError(null);
       return;
     }
     let cancelled = false;
@@ -864,11 +867,13 @@ export default function InventoryPage() {
     if (!detailRow || detailTab !== "sizeCurve") {
       setDetailSizeCurve(null);
       setDetailSizeCurveLoading(false);
+      setDetailSizeCurveError(null);
       return;
     }
     let cancelled = false;
     const controller = new AbortController();
     setDetailSizeCurveLoading(true);
+    setDetailSizeCurveError(null);
     void getSizeCurve({
       skuId: detailRow.id,
       storeId: detailRow.idObjekat ?? selectedStoreId ?? undefined,
@@ -879,8 +884,11 @@ export default function InventoryPage() {
       .then((nextCurve) => {
         if (!cancelled) setDetailSizeCurve(nextCurve);
       })
-      .catch(() => {
-        if (!cancelled) setDetailSizeCurve(null);
+      .catch((reason) => {
+        if (!cancelled) {
+          setDetailSizeCurve(null);
+          setDetailSizeCurveError(toSafeInventoryInlineError(reason, "Raspodela veličina za ovaj artikal trenutno nije dostupna."));
+        }
       })
       .finally(() => {
         if (!cancelled) setDetailSizeCurveLoading(false);
@@ -889,7 +897,7 @@ export default function InventoryPage() {
       cancelled = true;
       controller.abort();
     };
-  }, [detailRow, detailTab, inventoryDataScope, inventorySignalWindow, selectedStoreId]);
+  }, [detailRow, detailTab, detailSizeCurveRetryKey, inventoryDataScope, inventorySignalWindow, selectedStoreId]);
 
   useEffect(() => {
     if (sizeCurveSkuId == null) {
@@ -1924,7 +1932,7 @@ export default function InventoryPage() {
       </section>
 
       {/* Detail Modal */}
-      <SKUDetailModal detailRow={detailRow} detailData={detailData} detailLoading={detailLoading} detailError={detailError} detailTab={detailTab} detailSizeCurve={detailSizeCurve} detailSizeCurveLoading={detailSizeCurveLoading} onRetry={retryDetailFetch} onTabChange={setDetailTab} onClose={() => setDetailRow(null)} />
+      <SKUDetailModal detailRow={detailRow} detailData={detailData} detailLoading={detailLoading} detailError={detailError} detailTab={detailTab} detailSizeCurve={detailSizeCurve} detailSizeCurveLoading={detailSizeCurveLoading} detailSizeCurveError={detailSizeCurveError} onRetry={retryDetailFetch} onRetrySizeCurve={() => setDetailSizeCurveRetryKey((key) => key + 1)} onTabChange={setDetailTab} onClose={() => setDetailRow(null)} />
       </>
       )}
       </div>

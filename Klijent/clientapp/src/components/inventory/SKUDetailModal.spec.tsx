@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { SKUDetailModal } from "./SKUDetailModal";
 import type { InventoryRow } from "./types";
@@ -139,5 +139,51 @@ describe("SKUDetailModal placeholder context", () => {
     expect(screen.getByText("Dozvoljena")).toBeInTheDocument();
     expect(screen.getByText("Rizik rasprodaje")).toBeInTheDocument();
     expect(screen.getByText("replenish_needed")).toBeInTheDocument();
+  });
+});
+
+describe("SKUDetailModal size-curve tab", () => {
+  function renderSizeCurveTab(detailSizeCurveError: string | null, onRetrySizeCurve = vi.fn()) {
+    render(
+      <SKUDetailModal
+        detailRow={buildPlaceholderRow({ contextStatus: null })}
+        detailData={null}
+        detailLoading={false}
+        detailError={null}
+        detailTab="sizeCurve"
+        detailSizeCurve={null}
+        detailSizeCurveLoading={false}
+        detailSizeCurveError={detailSizeCurveError}
+        onClose={vi.fn()}
+        onRetry={vi.fn()}
+        onRetrySizeCurve={onRetrySizeCurve}
+        onTabChange={vi.fn()}
+      />,
+    );
+    return onRetrySizeCurve;
+  }
+
+  it("shows an explicit retryable error instead of the empty state when the size-curve fetch fails", () => {
+    const onRetrySizeCurve = renderSizeCurveTab("Raspodela veličina za ovaj artikal trenutno nije dostupna.");
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Raspodela veličina za ovaj artikal trenutno nije dostupna.");
+    expect(screen.queryByText("Nema podataka o raspodeli veličina za ovaj artikal.")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Pokušaj ponovo učitavanje raspodele veličina" }));
+    expect(onRetrySizeCurve).toHaveBeenCalledTimes(1);
+  });
+
+  it("sanitizes technical size-curve errors", () => {
+    renderSizeCurveTab("NpgsqlException: provider failure at SqlCommand.Execute");
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Raspodela veličina za ovaj artikal trenutno nije dostupna.");
+    expect(screen.queryByText(/NpgsqlException|SqlCommand\.Execute/)).not.toBeInTheDocument();
+  });
+
+  it("keeps the empty state for a successful fetch without size-curve data", () => {
+    renderSizeCurveTab(null);
+
+    expect(screen.getByText("Nema podataka o raspodeli veličina za ovaj artikal.")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });

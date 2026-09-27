@@ -14,8 +14,10 @@ type SKUDetailModalProps = {
   detailTab: "overview" | "sizeCurve";
   detailSizeCurve: SizeCurveDto | null;
   detailSizeCurveLoading: boolean;
+  detailSizeCurveError?: string | null;
   onClose: () => void;
   onRetry: () => void;
+  onRetrySizeCurve?: () => void;
   onTabChange: (tab: "overview" | "sizeCurve") => void;
 };
 
@@ -27,12 +29,17 @@ export function SKUDetailModal({
   detailTab,
   detailSizeCurve,
   detailSizeCurveLoading,
+  detailSizeCurveError = null,
   onClose,
   onRetry,
+  onRetrySizeCurve,
   onTabChange,
 }: SKUDetailModalProps) {
   const safeDetailError = detailError
     ? getSafeAnalyticsErrorMessage(detailError, undefined, "Detalj artikla trenutno nije dostupan.")
+    : null;
+  const safeSizeCurveError = detailSizeCurveError
+    ? getSafeAnalyticsErrorMessage(detailSizeCurveError, undefined, "Raspodela veličina za ovaj artikal trenutno nije dostupna.")
     : null;
   const hasPlaceholderContext = detailRow?.contextStatus != null;
   const showPlaceholderValues = hasPlaceholderContext && detailData == null;
@@ -70,7 +77,7 @@ export function SKUDetailModal({
           </div>
 
           {detailTab === "sizeCurve" ? (
-            detailSizeCurveLoading ? <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Učitavam raspodelu veličina za SKU #{detailRow.id}...</div> : !detailSizeCurve?.snapshotAvailable || (detailSizeCurve.items ?? []).length === 0 ? <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Nema podataka o raspodeli veličina za ovaj artikal.</div> : <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4"><SizeCurveVisualization items={detailSizeCurve.items} cardLimit={6} /></div>
+            detailSizeCurveLoading ? <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Učitavam raspodelu veličina za SKU #{detailRow.id}...</div> : safeSizeCurveError ? <div role="alert" className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-6 text-center text-sm text-[var(--text-primary)]"><div className="font-semibold">{safeSizeCurveError}</div><div className="mt-1">Ovo nije potvrda da artikal nema podataka o veličinama.</div>{onRetrySizeCurve ? <button type="button" aria-label="Pokušaj ponovo učitavanje raspodele veličina" onClick={onRetrySizeCurve} className="mt-3 rounded-lg border border-[var(--border-default)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)]">Pokušaj ponovo</button> : null}</div> : !detailSizeCurve?.snapshotAvailable || (detailSizeCurve.items ?? []).length === 0 ? <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Nema podataka o raspodeli veličina za ovaj artikal.</div> : <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4"><SizeCurveVisualization items={detailSizeCurve.items} cardLimit={6} /></div>
           ) : (
             <>
           {showContextBanner && contextBannerText ? (
