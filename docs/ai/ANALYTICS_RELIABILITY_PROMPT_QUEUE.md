@@ -2,7 +2,8 @@
 
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ317 (IN_PROGRESS in this workspace)
+Owner promotion/claim 2026-09-27: idle recovery verified RQ299 DONE on current origin/main, no active Pre/Post focus owner or conflicting lock/branch/PR, and RQ317 is dependency-complete. RQ317 moved WAITING -> READY -> IN_PROGRESS; local lock .ai/task-locks/RQ317-codex.lock.md.
 Owner promotion/claim 2026-09-27: idle recovery confirmed RQ323 DONE on current origin/main, RQ265 is satisfied and no active Pre-Nivelacija empty-reason owner or lock. RQ316 moved WAITING -> READY -> IN_PROGRESS; local lock .ai/task-locks/RQ316-codex.lock.md.
 Owner promotion/claim 2026-09-27: idle recovery confirmed RQ322 DONE on current origin/main, RQ313 DONE and no competing Inventory partial-failure owner. RQ323 moved WAITING -> READY -> IN_PROGRESS; local lock .ai/task-locks/RQ323-codex.lock.md.
 Owner promotion/claim 2026-09-27: idle recovery confirmed RQ321 DONE on current origin/main, no active Inventory bootstrap owner or conflicting lock, and RQ322 has no remaining dependency. RQ322 moved WAITING -> READY -> IN_PROGRESS; local lock .ai/task-locks/RQ322-codex.lock.md.
@@ -17704,7 +17705,7 @@ Reproduction: mock meta empty reason mentioning period — header and empty stat
 
 ## RQ317 - Persist Pre/Post focus filter in URL and across reloads
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P2
 Type: frontend/url-state/tests
 Feature family: pre-post-focus-url-state

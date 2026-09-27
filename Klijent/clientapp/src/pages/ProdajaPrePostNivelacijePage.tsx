@@ -96,6 +96,22 @@ const PRE_POST_SORT_FIELDS: readonly SortField[] = [
 ];
 type DecisionStatus = VendorSalesNivelacijaRecommendation["status"];
 type FocusFilter = "all" | "increaseFocus" | "maintain" | "review" | "doNotTrust" | "insufficientData" | "lowConfidence" | "volatile";
+const FOCUS_FILTER_VALUES: readonly FocusFilter[] = [
+  "all",
+  "increaseFocus",
+  "maintain",
+  "review",
+  "doNotTrust",
+  "insufficientData",
+  "lowConfidence",
+  "volatile",
+];
+
+function parseFocusFilter(value: string | null): FocusFilter {
+  return value && FOCUS_FILTER_VALUES.includes(value as FocusFilter)
+    ? value as FocusFilter
+    : "all";
+}
 type ConfidenceTone = "strong" | "watch" | "weak";
 type VolatilityTone = "positive" | "negative" | "warning" | "neutral";
 
@@ -513,6 +529,7 @@ export default function ProdajaPrePostNivelacijePage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const queryFocus = parseFocusFilter(searchParams.get("focus"));
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("30d");
   const [fromDate, setFromDate] = useState(() => getPresetRange("30d").fromDate);
   const [toDate, setToDate] = useState(() => getPresetRange("30d").toDate);
@@ -540,13 +557,21 @@ export default function ProdajaPrePostNivelacijePage() {
   const [sortDir, setSortDir] = useState<SortDir>(() => readAnalyticsTableSort(searchParams, PRE_POST_SORT_FIELDS, "status", "desc").dir);
   const [expandedVendorKey, setExpandedVendorKey] = useState<string | null>(null);
   const [trustPanelOpen, setTrustPanelOpen] = useState(false);
-  const [focusFilter, setFocusFilter] = useState<FocusFilter>("all");
+  const [focusFilter, setFocusFilter] = useState<FocusFilter>(queryFocus);
 
   useEffect(() => {
     const nextSort = readAnalyticsTableSort(searchParams, PRE_POST_SORT_FIELDS, "status", "desc");
     setSortField((current) => current === nextSort.field ? current : nextSort.field);
     setSortDir((current) => current === nextSort.dir ? current : nextSort.dir);
-  }, [searchParams]);
+    setFocusFilter((current) => current === queryFocus ? current : queryFocus);
+
+    const canonicalParams = new URLSearchParams(searchParams);
+    if (queryFocus === "all") canonicalParams.delete("focus");
+    else canonicalParams.set("focus", queryFocus);
+    if (canonicalParams.toString() !== searchParams.toString()) {
+      setSearchParams(canonicalParams, { replace: true });
+    }
+  }, [queryFocus, searchParams, setSearchParams]);
 
   const invalidRange = useMemo(() => {
     if (!fromDate || !toDate) return false;
@@ -1202,7 +1227,6 @@ const advancedSignals = useMemo(
     const range = resolvePresetFilterRange(periodPreset, fromDate, toDate);
     setFromDate(range.fromDate);
     setToDate(range.toDate);
-    setFocusFilter("all");
     setActiveFilters({
       fromDate: range.fromDate,
       toDate: range.toDate,
@@ -1227,6 +1251,16 @@ const advancedSignals = useMemo(
       vendorId: null,
       category: "",
       storeId: null,
+    });
+  };
+
+  const handleFocusChange = (nextFocus: FocusFilter) => {
+    setFocusFilter(nextFocus);
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if (nextFocus === "all") next.delete("focus");
+      else next.set("focus", nextFocus);
+      return next;
     });
   };
 
@@ -1437,7 +1471,7 @@ const advancedSignals = useMemo(
           }
           actions={[
             showFilteredOutState
-              ? { label: "Vrati prikaz svih dobavljača.", onClick: () => setFocusFilter("all") }
+              ? { label: "Vrati prikaz svih dobavljača.", onClick: () => handleFocusChange("all") }
               : { label: "Proširite period pretrage." },
             { label: "Uklonite filter dobavljača ili prodavnice." },
             { label: "Proverite analytics refresh.", href: "/analytics/data-quality" },
@@ -1649,7 +1683,7 @@ const advancedSignals = useMemo(
                     key={item}
                     type="button"
                     className={focusFilter === item ? "ppn-focus-chip active" : "ppn-focus-chip"}
-                    onClick={() => setFocusFilter(item)}
+                    onClick={() => handleFocusChange(item)}
                   >
                     {focusFilterLabel(item)} <span>{focusFilterCounts[item]}</span>
                   </button>

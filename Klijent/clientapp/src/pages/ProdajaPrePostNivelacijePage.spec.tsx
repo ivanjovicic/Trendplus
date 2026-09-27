@@ -195,10 +195,16 @@ function LocationProbe() {
   return <output data-testid="location-search">{location.search}</output>;
 }
 
+function HistoryProbe() {
+  const navigate = useNavigate();
+  return <button type="button" data-testid="history-back" onClick={() => navigate(-1)}>Nazad</button>;
+}
+
 function renderPage(initialEntries = ["/analitika/nivelacije-pre-post"]) {
   return render(
     <MemoryRouter initialEntries={initialEntries}>
       <LocationProbe />
+      <HistoryProbe />
       <Routes>
         <Route path="/analitika/nivelacije-pre-post" element={<ProdajaPrePostNivelacijePage />} />
         <Route path="/analitika/nivelacije-pre-post/:id" element={<PrePostDetailRouteStub />} />
@@ -219,9 +225,23 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
   });
 
   it("round-trips Pre/Post table sort through the URL", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(response({
+      vendorStats: [vendor({
+        recommendation: {
+          status: "review",
+          label: "Review",
+          summary: "Signal za proveru.",
+          confidencePct: 64,
+          reliabilityPct: 61,
+          dataQualityStatus: "warning",
+          reasonCodes: ["review_signal"],
+        },
+      })],
+    }));
     renderPage(["/analitika/nivelacije-pre-post?sort=changeRevenue&dir=asc&focus=review"]);
 
     const table = await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
+    expect(screen.getByRole("button", { name: /Pregledaj/i })).toHaveClass("active");
     const revenueButton = within(table).getByRole("button", { name: /Promena/ });
     expect(revenueButton).toHaveTextContent("^");
 
@@ -230,6 +250,77 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(screen.getByTestId("location-search")).toHaveTextContent("sort=changeRevenue");
     expect(screen.getByTestId("location-search")).toHaveTextContent("dir=desc");
     expect(screen.getByTestId("location-search")).toHaveTextContent("focus=review");
+  });
+
+  it("restores focus from a shared URL and keeps it after applying filters", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(response({
+      vendorStats: [vendor({
+        recommendation: {
+          status: "review",
+          label: "Review",
+          summary: "Signal za proveru.",
+          confidencePct: 64,
+          reliabilityPct: 61,
+          dataQualityStatus: "warning",
+          reasonCodes: ["review_signal"],
+        },
+      })],
+    }));
+    renderPage(["/analitika/nivelacije-pre-post?focus=review"]);
+
+    await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
+    expect(screen.getByRole("button", { name: /Pregledaj/i })).toHaveClass("active");
+
+    fireEvent.click(screen.getByRole("button", { name: "Primeni" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Pregledaj/i })).toHaveClass("active");
+      expect(screen.getByTestId("location-search")).toHaveTextContent("focus=review");
+    });
+  });
+
+  it("removes invalid focus values and falls back to all", async () => {
+    renderPage(["/analitika/nivelacije-pre-post?focus=not-a-focus"]);
+
+    await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
+    expect(screen.getByRole("button", { name: /^Sve/ })).toHaveClass("active");
+    expect(screen.getByTestId("location-search")).not.toHaveTextContent("focus=not-a-focus");
+  });
+
+  it("writes focus changes to URL history so browser back restores the prior focus", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(response({
+      vendorStats: [
+        vendor(),
+        vendor({
+          vendorId: 11,
+          vendorName: "Vendor B",
+          recommendation: {
+            status: "review",
+            label: "Review",
+            summary: "Signal za proveru.",
+            confidencePct: 64,
+            reliabilityPct: 61,
+            dataQualityStatus: "warning",
+            reasonCodes: ["review_signal"],
+          },
+        }),
+      ],
+      totals: { ...response().totals, vendorsCount: 2 },
+    }));
+    renderPage();
+
+    await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
+    fireEvent.click(screen.getByRole("button", { name: /Pregledaj/i }));
+    expect(screen.getByTestId("location-search")).toHaveTextContent("focus=review");
+
+    fireEvent.click(screen.getByRole("button", { name: /Pojacaj/i }));
+    expect(screen.getByTestId("location-search")).toHaveTextContent("focus=increaseFocus");
+
+    fireEvent.click(screen.getByTestId("history-back"));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Pregledaj/i })).toHaveClass("active");
+      expect(screen.getByTestId("location-search")).toHaveTextContent("focus=review");
+    });
   });
 
   it("passes dataScope and storeId to current and previous period requests", async () => {
