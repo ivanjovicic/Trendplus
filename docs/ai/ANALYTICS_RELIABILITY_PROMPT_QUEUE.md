@@ -3,6 +3,7 @@
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+Owner promotion/claim/completion 2026-09-27: idle recovery found RQ326 live in another workspace, confirmed RQ319 remains product-decision gated, and promoted/claimed dependency-free RQ324 (Inventory SKU detail size-curve error) as collision-safe; local lock `.ai/task-locks/RQ324-cursor.lock.md`. RQ324 was delivered directly to `main` in `9bbbc9b5`; the SKU detail size-curve tab now separates a failed fetch from an empty curve with a sanitized, retryable error. Focused modal proof 7/7, Inventory page specs 73/74 (the one failure is pre-existing on `b1f5b7cc`), guardrails, typecheck and build pass. Run log: `.ai/runs/2026-09-27-RQ324-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-27: idle recovery confirmed RQ318/RQ317/RQ316 are DONE on current origin/main, RQ319 remains product-decision gated, and RQ326 is dependency-complete after RQ299 with no conflicting Pre-Nivelacija sort owner. RQ326 moved WAITING -> READY -> IN_PROGRESS; local lock `.ai/task-locks/RQ326-codex.lock.md`.
 Owner completion 2026-09-27: RQ326 was delivered directly to `main` in `4138fd9a`; Pre-Nivelacija validates and persists `sort`/`dir` URL state through shared links, filter/pagination changes and detail navigation. Focused proof is 51/51; guardrails, typecheck, build and diff checks pass. Run log: `.ai/runs/2026-09-27-RQ326-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-27: idle recovery verified RQ318 DONE on current origin/main, RQ325 is dependency-complete after RQ306, and no active residual-copy owner or conflicting lock/branch/PR exists. RQ325 moved WAITING -> READY -> IN_PROGRESS; local lock `.ai/task-locks/RQ325-codex.lock.md`.
@@ -1589,7 +1590,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ321 | DONE | operations-store-filter-failure | Surface store-filter load failures on Operacije pages |
 | RQ322 | DONE | inventory-store-bootstrap-error | Replace Inventory store bootstrap console-only error |
 | RQ323 | DONE | inventory-secondary-panel-stale-data | Clear stale Inventory secondary panel data on partial failure |
-| RQ324 | WAITING | inventory-detail-size-curve-error | Surface SKU detail size-curve fetch errors |
+| RQ324 | DONE | inventory-detail-size-curve-error | Surface SKU detail size-curve fetch errors |
 | RQ325 | DONE | operations-residual-english-copy | Complete Serbian copy on residual Operacije English strings |
 | RQ326 | DONE | pre-nivelacija-sort-url-state | Persist Pre-Nivelacija table sort in URL |
 | RQ327 | WAITING | daily-sales-sort-url-state | Persist Daily Sales table sort in URL |
@@ -18100,7 +18101,7 @@ Reproduction: load store A, switch to store B with failing alerts API — store 
 
 ## RQ324 - Surface SKU detail size-curve fetch errors in Inventory modal
 
-Status: WAITING
+Status: DONE
 Priority: P3
 Type: frontend/error-handling/tests
 Feature family: inventory-detail-size-curve-error
