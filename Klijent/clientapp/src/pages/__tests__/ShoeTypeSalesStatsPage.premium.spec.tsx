@@ -188,6 +188,31 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     expect(screen.getByTestId("location-search")).toHaveTextContent("storeId=2");
   });
 
+  it("does not show truncation context when every returned shoe type row is rendered", async () => {
+    vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
+      shoeTypes: [
+        shoeType(),
+        shoeType({ tipObuceId: 2, tipObuceNaziv: "Cipele" }),
+      ],
+      totals: {
+        ...response().totals,
+        brojTipovaObuce: 2,
+      },
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const table = await screen.findByTestId("shoe-type-sales-stats-data-table");
+    expect(within(table).getByText("Prikazano: 2 redova")).toBeInTheDocument();
+    expect(within(table).queryByText(/deo redova je sakriven/)).not.toBeInTheDocument();
+  });
+
   it("restores validated period, season and store filters from a shared URL", async () => {
     vi.mocked(getStores).mockResolvedValue([{ storeId: 2, storeName: "Novi Beograd", city: "Beograd", region: "BG" }]);
     vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({

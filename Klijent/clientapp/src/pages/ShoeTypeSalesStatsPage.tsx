@@ -1315,11 +1315,6 @@ export default function ShoeTypeSalesStatsPage() {
               <AnalyticsDataTable
                 testId="shoe-type-sales-stats-data-table"
                 rowCount={sortedRows.length}
-                truncationLabel={
-                  decisionRows.length > sortedRows.length
-                    ? `Ukupno u rezultatu: ${decisionRows.length.toLocaleString("sr-RS")} (deo redova je sakriven sort/filter kontekstom)`
-                    : undefined
-                }
                 toolbar={(
                   <AnalyticsTableToolbar
                     tableKey="shoe-type-sales-stats"

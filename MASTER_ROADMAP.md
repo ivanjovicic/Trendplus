@@ -4,6 +4,8 @@ Updated: 2026-09-26
 Repository: `ivanjovicic/Trendplus`
 Status: canonical planning entry point
 
+Owner promotion/claim 2026-09-27: idle recovery verified current `origin/main` includes RQ328 and RQ460 closure, RQ329 is dependency-complete and no active Shoe Type truncation owner/lock/branch/PR exists. RQ329 moved WAITING -> READY -> IN_PROGRESS; local lock `.ai/task-locks/RQ329-codex.lock.md`.
+
 Owner promotion/claim 2026-09-27: idle recovery reconciled RQ327's stale queue section to DONE from synchronized main/evidence, verified RQ317 DONE and no active Pre/Post expansion owner or conflicting lock/branch/PR. RQ328 moved WAITING -> READY -> IN_PROGRESS in this workspace; local lock .ai/task-locks/RQ328-codex.lock.md.
 Owner completion 2026-09-27: RQ328 was delivered directly to `main` in `9526ac93`; Pre/Post preserves expanded vendors across refetch when the stable vendor key remains and clears stale expansion when it disappears. Focused proof is 15/15; guardrails, typecheck, build and diff checks pass. Run log: .ai/runs/2026-09-27-RQ328-evidence.md. Evidence state: synchronized.
 

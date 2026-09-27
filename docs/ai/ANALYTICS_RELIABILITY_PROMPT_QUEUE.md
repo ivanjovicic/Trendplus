@@ -2,7 +2,8 @@
 
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ329 (IN_PROGRESS in this workspace)
+Owner promotion/claim 2026-09-27: idle recovery verified current `origin/main` includes RQ328 and RQ460 closure, RQ329 is dependency-complete and no active Shoe Type truncation owner/lock/branch/PR exists. RQ329 moved WAITING -> READY -> IN_PROGRESS; local lock `.ai/task-locks/RQ329-codex.lock.md`.
 Owner promotion/claim/completion 2026-09-27: idle recovery found RQ326 live in another workspace, confirmed RQ319 remains product-decision gated, and promoted/claimed dependency-free RQ324 (Inventory SKU detail size-curve error) as collision-safe; local lock `.ai/task-locks/RQ324-cursor.lock.md`. RQ324 was delivered directly to `main` in `9bbbc9b5`; the SKU detail size-curve tab now separates a failed fetch from an empty curve with a sanitized, retryable error. Focused modal proof 7/7, Inventory page specs 73/74 (the one failure is pre-existing on `b1f5b7cc`), guardrails, typecheck and build pass. Run log: `.ai/runs/2026-09-27-RQ324-evidence.md`. Evidence state: synchronized.
 Owner completion 2026-09-27: RQ327 was delivered directly to `main` in `dc20d775`; Daily Sales table sorting now restores from validated `sort`/`dir` URL state and persists the next direction through filter updates. Focused proof is 4/4; guardrails, typecheck, build and diff checks pass. Run log: `.ai/runs/2026-09-27-RQ327-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-27: idle recovery confirmed RQ318/RQ317/RQ316 are DONE on current origin/main, RQ319 remains product-decision gated, and RQ326 is dependency-complete after RQ299 with no conflicting Pre-Nivelacija sort owner. RQ326 moved WAITING -> READY -> IN_PROGRESS; local lock `.ai/task-locks/RQ326-codex.lock.md`.
@@ -1597,7 +1598,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ326 | DONE | pre-nivelacija-sort-url-state | Persist Pre-Nivelacija table sort in URL |
 | RQ327 | DONE | daily-sales-sort-url-state | Persist Daily Sales table sort in URL |
 | RQ328 | DONE | pre-post-expansion-persistence | Preserve Pre/Post expanded vendor across refetch |
-| RQ329 | WAITING | shoe-type-truncation-label | Fix or remove dead Shoe Type truncation label |
+| RQ329 | IN_PROGRESS | shoe-type-truncation-label | Fix or remove dead Shoe Type truncation label |
 | RQ330 | WAITING | pre-post-focus-row-context | Add row-count context when Pre/Post focus hides vendors |
 | RQ331 | DONE | inventory-page-local-signal-kpis | Stop Inventory signal KPI cards from counting only the current page slice |
 | RQ332 | DONE | inventory-detail-placeholder-fake-zero | Remove fake zero inventory/value when opening SKU detail off-page |
@@ -18505,7 +18506,7 @@ Reproduction: expand vendor row, Apply filters — expansion collapses.
 
 ## RQ329 - Fix or remove dead Shoe Type truncation label
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P3
 Type: frontend/ux/tests
 Feature family: shoe-type-truncation-label
