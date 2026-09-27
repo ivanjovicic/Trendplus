@@ -1760,6 +1760,11 @@ const advancedSignals = useMemo(
                   </button>
                 ))}
               </div>
+              {focusFilter !== "all" && focusedRows.length < sortedRows.length ? (
+                <p className="ppn-chart-hint" data-testid="ppn-focus-row-context" role="status">
+                  Prikazano {focusedRows.length.toLocaleString("sr-RS")} od {sortedRows.length.toLocaleString("sr-RS")} dobavljača (fokus: {focusFilterLabel(focusFilter)}). Izaberite „Sve” za ceo rezultat.
+                </p>
+              ) : null}
 
               <div className="ppn-decision-table-wrap">
                 <table className="ppn-decision-table">

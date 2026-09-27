@@ -1584,7 +1584,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ312 | DONE | inventory-signal-window-freshness | Refresh Inventory signal window instead of freezing at mount |
 | RQ313 | DONE | inventory-insights-error-state | Fail closed when Inventory insights fetch fails |
 | RQ314 | DONE | pre-post-driver-fake-zero | Stop Pre/Post driver summary from showing fake zero RSD |
-| RQ315 | WAITING | pre-nivelacija-period-provenance | Expose Pre-Nivelacija analysis period in trust header |
+| RQ315 | DONE | pre-nivelacija-period-provenance | Expose Pre-Nivelacija analysis period in trust header |
 | RQ316 | DONE | pre-nivelacija-empty-reason-parity | Align Pre-Nivelacija period empty reasons across surfaces |
 | RQ317 | DONE | pre-post-focus-url-state | Persist Pre/Post focus filter in URL and across reloads |
 | RQ318 | DONE | operations-list-url-state | Back Operacije list filters with URL state (phased) |
@@ -1599,7 +1599,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ327 | DONE | daily-sales-sort-url-state | Persist Daily Sales table sort in URL |
 | RQ328 | DONE | pre-post-expansion-persistence | Preserve Pre/Post expanded vendor across refetch |
 | RQ329 | IN_PROGRESS | shoe-type-truncation-label | Fix or remove dead Shoe Type truncation label |
-| RQ330 | WAITING | pre-post-focus-row-context | Add row-count context when Pre/Post focus hides vendors |
+| RQ330 | DONE | pre-post-focus-row-context | Add row-count context when Pre/Post focus hides vendors |
 | RQ331 | DONE | inventory-page-local-signal-kpis | Stop Inventory signal KPI cards from counting only the current page slice |
 | RQ332 | DONE | inventory-detail-placeholder-fake-zero | Remove fake zero inventory/value when opening SKU detail off-page |
 | RQ333 | DONE | pre-post-frontend-share-recompute | Stop Pre/Post frontend from recomputing post revenue share percent |
@@ -18553,7 +18553,7 @@ Reproduction: any filter state — truncation label never shown.
 
 ## RQ330 - Add row-count context when Pre/Post focus filter hides vendors
 
-Status: WAITING
+Status: DONE
 Priority: P3
 Type: frontend/ux/tests
 Feature family: pre-post-focus-row-context
@@ -18595,6 +18595,15 @@ Reproduction: select focus with partial matches — table shrinks without count 
 ### Dependencies
 
 - `RQ317` focus URL state optional complement.
+
+### Completion
+
+- Claimed 2026-09-27 through idle recovery (RQ317 DONE; RQ329 left for the Shoe Type owner; no conflicting Pre/Post lock). Local lock `.ai/task-locks/RQ330-cursor.lock.md`.
+- Delivered directly to `main` in `ac732e4c`: when a focus chip narrows the vendor list, the table shows „Prikazano N od M dobavljača (fokus: X)” with a hint to choose „Sve”; hidden for „Sve” or when focus hides nothing.
+- Proof: Pre/Post page + expansion specs 46/46 (new partial-match spec), analytics guardrails with typecheck and build pass.
+- Same-run reconciliation: RQ315 summary row WAITING -> DONE and its run log SHA synchronized to `c95171df` (PR #82, already on main).
+- Run log: `.ai/runs/2026-09-27-RQ330-evidence.md`. Evidence state: synchronized.
+
 ## RQ331 - Stop Inventory signal KPI cards from counting only the current page slice
 
 Status: DONE
