@@ -4,6 +4,7 @@ Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 Owner promotion/claim/completion 2026-09-27: idle recovery found RQ326 live in another workspace, confirmed RQ319 remains product-decision gated, and promoted/claimed dependency-free RQ324 (Inventory SKU detail size-curve error) as collision-safe; local lock `.ai/task-locks/RQ324-cursor.lock.md`. RQ324 was delivered directly to `main` in `9bbbc9b5`; the SKU detail size-curve tab now separates a failed fetch from an empty curve with a sanitized, retryable error. Focused modal proof 7/7, Inventory page specs 73/74 (the one failure is pre-existing on `b1f5b7cc`), guardrails, typecheck and build pass. Run log: `.ai/runs/2026-09-27-RQ324-evidence.md`. Evidence state: synchronized.
+Owner completion 2026-09-27: RQ327 was delivered directly to `main` in `dc20d775`; Daily Sales table sorting now restores from validated `sort`/`dir` URL state and persists the next direction through filter updates. Focused proof is 4/4; guardrails, typecheck, build and diff checks pass. Run log: `.ai/runs/2026-09-27-RQ327-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-27: idle recovery confirmed RQ318/RQ317/RQ316 are DONE on current origin/main, RQ319 remains product-decision gated, and RQ326 is dependency-complete after RQ299 with no conflicting Pre-Nivelacija sort owner. RQ326 moved WAITING -> READY -> IN_PROGRESS; local lock `.ai/task-locks/RQ326-codex.lock.md`.
 Owner completion 2026-09-27: RQ326 was delivered directly to `main` in `4138fd9a`; Pre-Nivelacija validates and persists `sort`/`dir` URL state through shared links, filter/pagination changes and detail navigation. Focused proof is 51/51; guardrails, typecheck, build and diff checks pass. Run log: `.ai/runs/2026-09-27-RQ326-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-27: idle recovery verified RQ318 DONE on current origin/main, RQ325 is dependency-complete after RQ306, and no active residual-copy owner or conflicting lock/branch/PR exists. RQ325 moved WAITING -> READY -> IN_PROGRESS; local lock `.ai/task-locks/RQ325-codex.lock.md`.
@@ -17,6 +18,7 @@ Owner promotion/claim 2026-09-27: idle recovery confirmed RQ322 DONE on current 
 Owner promotion/claim 2026-09-27: idle recovery confirmed RQ321 DONE on current origin/main, no active Inventory bootstrap owner or conflicting lock, and RQ322 has no remaining dependency. RQ322 moved WAITING -> READY -> IN_PROGRESS; local lock .ai/task-locks/RQ322-codex.lock.md.
 Owner completion 2026-09-27: RQ321 was delivered directly to main in 95632a21. Four Operacije pages now surface store-filter load failures with a retry action, clear failed options and disable unconfirmed individual-store selection; Inventory remains owned by RQ322. Focused proof is 4/4, analytics guardrails/typecheck/build and diff checks pass. Run log: .ai/runs/2026-09-26-RQ321-evidence.md. Evidence state: synchronized.
 Owner promotion/claim 2026-09-26: idle recovery verified the higher-priority RQ P0 lanes remain externally gated or owned elsewhere, while RQ321 is an independent P2 shared-UX error contract with no dependency, conflicting lock or active store-filter owner. `RQ321` moved `WAITING -> READY -> IN_PROGRESS`; local lock `.ai/task-locks/RQ321-codex.lock.md`.
+Owner promotion/claim 2026-09-27: idle recovery verified RQ326 DONE on current origin/main, RQ299 is complete, and the stale RQ352 Daily Sales lock has synchronized DONE evidence with no sort-path ownership. RQ327 moved WAITING -> READY -> IN_PROGRESS; local lock `.ai/task-locks/RQ327-codex.lock.md`.
 Owner completion 2026-09-26: `RQ315` is DONE; Pre-Nivelacija trust header renders backend `evidenceWindow` period fields and the focused regression passes 49/49. Run log: `.ai/runs/2026-09-26-RQ315-evidence.md`. Evidence state: synchronized.
 Owner revalidation 2026-09-26: RQ447 is PARTIAL, not DONE, after dedicated run `36262400467`: oracle 4/4 passed, but all-eight-routes failed on the explicit startup `db_warmup` 503 and OP2/frontend gates did not execute. A bounded exact-signal retry was added to the route proof; do not promote RQ448 or certify RQ447 until a fresh artifact passes.
 Owner completion 2026-09-26: fresh run `36262787853` on `f8a2695e7f4805aff2d6c9de3005c34f8c01889a9` passed the dedicated RQ447 certification job: oracle `4/4`, all-eight-routes `1/1`, OP2 `4/4`, zero skips and frontend seam proof `3 passed`; artifact `rq447-certification-f8a2695e7f4805aff2d6c9de3005c34f8c01889a9` (`10912912940`). RQ447 is DONE for its dedicated acceptance; the separate broad backend suite remains outside this gate. Run log: `.ai/runs/2026-09-26-RQ447-evidence.md`. Evidence state: synchronized.
@@ -1593,7 +1595,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ324 | DONE | inventory-detail-size-curve-error | Surface SKU detail size-curve fetch errors |
 | RQ325 | DONE | operations-residual-english-copy | Complete Serbian copy on residual Operacije English strings |
 | RQ326 | DONE | pre-nivelacija-sort-url-state | Persist Pre-Nivelacija table sort in URL |
-| RQ327 | WAITING | daily-sales-sort-url-state | Persist Daily Sales table sort in URL |
+| RQ327 | DONE | daily-sales-sort-url-state | Persist Daily Sales table sort in URL |
 | RQ328 | WAITING | pre-post-expansion-persistence | Preserve Pre/Post expanded vendor across refetch |
 | RQ329 | WAITING | shoe-type-truncation-label | Fix or remove dead Shoe Type truncation label |
 | RQ330 | WAITING | pre-post-focus-row-context | Add row-count context when Pre/Post focus hides vendors |
@@ -17333,7 +17335,7 @@ Three Operacije entries share `ShoppingBag` (`shoe-type-sales-stats`, `daily-sal
 
 ## RQ310 - Align Operacije page tests with production `/analytics/...` routes
 
-Status: WAITING
+Status: DONE
 Priority: P3
 Type: frontend/tests
 Feature family: operations-test-route-alignment
@@ -17966,6 +17968,25 @@ Reproduction: block stores endpoint — pages load with empty store select and n
 ### Dependencies
 
 - None.
+
+### Completion note
+
+- Date: 2026-09-27
+- Status: DONE
+- Completion: Daily Sales validates `sort` and `dir` URL values, restores table sorting from shared links, preserves it through filter updates, and writes the next sort direction back to the URL. Default date-desc sorting remains omitted from canonical URLs.
+- Changed files: `DailySalesStatsPage.tsx`, its focused integration spec and the reviewed guardrail baseline line position.
+- Contract/runtime behavior changed: invalid sort keys fail closed to date-desc; supported supplier-column keys are bounded to the top-N range.
+- Checks run: focused Vitest 4/4; `npm run check:analytics-guardrails`; typecheck; production build; `git diff --check`; planning architecture validator.
+- Checks not run: backend tests and remote CI - frontend URL-state prompt with no backend changes.
+- Run log: `.ai/runs/2026-09-27-RQ327-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main after remote-main synchronization merge
+- Main commit SHA: `dc20d7754f21dc61c94c902a40d3964fb3dd77d8`
+- Main verification: passed - `origin/main` contains the implementation SHA on 2026-09-27.
+- Missed: RQ327 does not change backend query ordering; sorting remains a frontend table projection as specified.
+- Follow-up: canonical idle recovery for the next dependency-complete prompt.
+- Residual risk: existing Vite large-chunk warning; no new analytics guardrail violation remains.
+- Next: `Current READY prompt: none`.
 
 ---
 
