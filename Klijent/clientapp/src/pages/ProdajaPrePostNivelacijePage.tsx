@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Bar,
@@ -595,6 +595,8 @@ export default function ProdajaPrePostNivelacijePage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const setSearchParamsRef = useRef(setSearchParams);
+  setSearchParamsRef.current = setSearchParams;
   const queryState = useMemo(() => resolvePrePostUrlState(searchParams), [searchParams]);
   const queryFocus = parseFocusFilter(searchParams.get("focus"));
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>(queryState.preset);
@@ -688,6 +690,13 @@ export default function ProdajaPrePostNivelacijePage() {
         if (cancelled) return;
         setStores([]);
         setStoresLoadError("stores_load_failed");
+        // A store id restored from the URL cannot be verified without the store list; fall back to all stores.
+        setSearchParamsRef.current((current) => {
+          if (!current.has("storeId")) return current;
+          const next = new URLSearchParams(current);
+          next.delete("storeId");
+          return next;
+        }, { replace: true });
       }
     };
     void loadStores();

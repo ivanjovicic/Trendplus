@@ -105,6 +105,30 @@ describe("DecisionSummaryBar", () => {
       <MemoryRouter>
         <DecisionSummaryBar
           balance={null}
+          actionWorkflow={{
+            generatedAtUtc: "2026-09-27T10:00:00Z",
+            pendingCount: 0,
+            approvedCount: 0,
+            deferredCount: 0,
+            closedCount: 0,
+            items: [],
+          }}
+          lowStockCount={0}
+          outOfStockCount={0}
+          dataQualityWarning={false}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getAllByText("0").length).toBe(5);
+    expect(screen.queryByText("Nije dostupno")).not.toBeInTheDocument();
+  });
+
+  it("does not present workflow-derived zeros when the workflow has not loaded", () => {
+    render(
+      <MemoryRouter>
+        <DecisionSummaryBar
+          balance={null}
           actionWorkflow={null}
           lowStockCount={0}
           outOfStockCount={0}
@@ -113,7 +137,27 @@ describe("DecisionSummaryBar", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getAllByText("0").length).toBeGreaterThanOrEqual(2);
-    expect(screen.queryByText("Nije dostupno")).not.toBeInTheDocument();
+    expect(screen.getByText("P2 Transfer").closest(".rounded-2xl")).toHaveTextContent("Nije dostupno");
+    expect(screen.getByText("P2 Mrtva zaliha").closest(".rounded-2xl")).toHaveTextContent("Nije dostupno");
+    expect(screen.getByText("Tok akcija").closest(".rounded-2xl")).toHaveTextContent("Nije dostupno");
+  });
+
+  it("shows a pending placeholder instead of zero while the workflow refetches", () => {
+    render(
+      <MemoryRouter>
+        <DecisionSummaryBar
+          balance={{} as never}
+          actionWorkflow={null}
+          lowStockCount={3}
+          outOfStockCount={1}
+          dataQualityWarning={false}
+          loading
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Tok akcija").closest(".rounded-2xl")).toHaveTextContent("…");
+    expect(screen.getByText("Tok akcija").closest(".rounded-2xl")).not.toHaveTextContent("0");
+    expect(screen.getByText("P2 Transfer").closest(".rounded-2xl")).toHaveTextContent("…");
   });
 });

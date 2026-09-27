@@ -341,6 +341,18 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(screen.queryByTestId("ppn-focus-row-context")).not.toBeInTheDocument();
   });
 
+  it("drops an unverified URL store filter when store discovery fails", async () => {
+    vi.mocked(getStores).mockRejectedValueOnce(new Error("stores unavailable"));
+    renderPage(["/analytics/nivelacije-pre-post?storeId=2"]);
+
+    expect(await screen.findByText("Filter prodavnice nije dostupan.")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId("location-search")).not.toHaveTextContent("storeId=");
+      expect(vi.mocked(getVendorSalesNivelacija).mock.lastCall?.[0]?.storeId ?? null).toBeNull();
+    });
+    expect(screen.getByTestId("location-search")).not.toHaveTextContent("storeId=");
+  });
+
   it("keeps the expanded vendor detail open when Apply refetches and the vendor remains", async () => {
     vi.mocked(getVendorSalesNivelacija).mockResolvedValue(response());
     renderPage();

@@ -1822,7 +1822,7 @@ export default function InventoryPage() {
         lowStockCount={balance?.lowStockCount}
         dataQualityWarning={dataQualityNeedsReview}
         dataQualityHref="/analytics/data-quality"
-        loading={loading && !balance && !effectiveActionWorkflow}
+        loading={loading}
       />
 
       {/* Panel za kritične odluke i tok akcija */}

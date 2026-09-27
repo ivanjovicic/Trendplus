@@ -18075,24 +18075,10 @@ Reproduction: block stores endpoint — pages load with empty store select and n
 
 - None.
 
-### Completion note
+### Review follow-up (2026-09-27)
 
-- Date: 2026-09-27
-- Status: DONE
-- Completion: Daily Sales validates `sort` and `dir` URL values, restores table sorting from shared links, preserves it through filter updates, and writes the next sort direction back to the URL. Default date-desc sorting remains omitted from canonical URLs.
-- Changed files: `DailySalesStatsPage.tsx`, its focused integration spec and the reviewed guardrail baseline line position.
-- Contract/runtime behavior changed: invalid sort keys fail closed to date-desc; supported supplier-column keys are bounded to the top-N range.
-- Checks run: focused Vitest 4/4; `npm run check:analytics-guardrails`; typecheck; production build; `git diff --check`; planning architecture validator.
-- Checks not run: backend tests and remote CI - frontend URL-state prompt with no backend changes.
-- Run log: `.ai/runs/2026-09-27-RQ327-evidence.md`
-- Evidence state: synchronized
-- Delivery mode: direct-main after remote-main synchronization merge
-- Main commit SHA: `dc20d7754f21dc61c94c902a40d3964fb3dd77d8`
-- Main verification: passed - `origin/main` contains the implementation SHA on 2026-09-27.
-- Missed: RQ327 does not change backend query ordering; sorting remains a frontend table projection as specified.
-- Follow-up: canonical idle recovery for the next dependency-complete prompt.
-- Residual risk: existing Vite large-chunk warning; no new analytics guardrail violation remains.
-- Next: `Current READY prompt: none`.
+- Color, Shoe Type and Pre/Post restored `storeId` from the URL (RQ318) but kept applying it after a store-list failure while the notice claimed all-store data. They now drop the unverified `storeId` like Daily; store effects no longer re-run on every URL change. Evidence: `.ai/runs/2026-09-27-today-commit-review-2-evidence.md`.
+- A misplaced RQ327 completion note (with a wrong SHA) was removed from this section; RQ327 keeps its own note.
 
 ---
 
@@ -18223,6 +18209,7 @@ Reproduction: load store A, switch to store B with failing alerts API — store 
 - Follow-up: re-enter idle recovery for the next dependency-complete Inventory or shared analytics prompt.
 - Residual risk: existing primary stale-refetch policy remains by design; build chunk-size warnings and remote CI remain follow-up only.
 - Prompt defect / scope repair: moved the existing reviewed Inventory guardrail baseline entry from line 869 to 931 after the lifecycle code expansion; no new exception added.
+- Review follow-up (2026-09-27): `DecisionSummaryBar` still showed workflow-derived `0` while the workflow refetched or was not loaded; it now shows a pending placeholder or `Nije dostupno`. Evidence: `.ai/runs/2026-09-27-today-commit-review-2-evidence.md`.
 
 ---
 
@@ -18270,6 +18257,24 @@ Reproduction: open SKU detail size-curve tab with failing API — blank panel, n
 ### Dependencies
 
 - None.
+
+### Completion note
+
+- Date: 2026-09-27
+- Status: DONE
+- Completion: SKU detail size-curve failures render a sanitized alert with a size-curve-only retry; the empty state remains only for a successful fetch without curve data.
+- Changed files: `InventoryPage.tsx`, `SKUDetailModal.tsx`, `SKUDetailModal.spec.tsx`, reviewed guardrail baseline line positions, queue/roadmap metadata and run log.
+- Checks run: `SKUDetailModal.spec.tsx` 7/7; Inventory page specs; `npm run check:analytics-guardrails`; production build; `git diff --cached --check`.
+- Checks not run: backend tests - frontend-only change.
+- Run log: `.ai/runs/2026-09-27-RQ324-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `9bbbc9b58e9788fc95155824807aea387113aae5`
+- Main verification: passed - `origin/main` contains `9bbbc9b5`.
+- Missed: none known within RQ324 scope.
+- Follow-up: none.
+- Residual risk: existing Vite large-chunk warning.
+- Prompt defect / scope repair: the completion note was missing from this section after a concurrent queue edit; restored from the run log on 2026-09-27.
 
 ---
 
@@ -18351,6 +18356,7 @@ Reproduction: open color detail snapshot, trust subtitles, inventory alerts — 
 - Residual risk: existing Vite large-chunk warning; no new analytics guardrail violation remains.
 - Run log: `.ai/runs/2026-09-27-RQ325-evidence.md`
 - Evidence state: synchronized
+- Review follow-up (2026-09-27): Color/aggregated detail labels in `AnalyticsDetailReadService.cs` still exposed `Insufficient data`, `impact`, `snapshot`/`fallback` and ASCII `marza`; localized with the Supplier/Shoe Type wording. Evidence: `.ai/runs/2026-09-27-today-commit-review-2-evidence.md`.
 
 ---
 

@@ -342,6 +342,8 @@ export default function ColorSalesStatsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const setSearchParamsRef = useRef(setSearchParams);
+  setSearchParamsRef.current = setSearchParams;
   const detailSectionRef = useRef<HTMLElement>(null);
   const queryState = useMemo(() => resolveColorUrlState(searchParams), [searchParams]);
 
@@ -409,6 +411,13 @@ export default function ColorSalesStatsPage() {
         if (cancelled) return;
         setStores([]);
         setStoresLoadError("stores_load_failed");
+        // A store id restored from the URL cannot be verified without the store list; fall back to all stores.
+        setSearchParamsRef.current((current) => {
+          if (!current.has("storeId")) return current;
+          const next = new URLSearchParams(current);
+          next.delete("storeId");
+          return next;
+        }, { replace: true });
       }
     };
 

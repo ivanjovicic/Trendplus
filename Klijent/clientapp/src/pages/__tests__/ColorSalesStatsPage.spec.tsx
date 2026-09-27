@@ -335,6 +335,26 @@ describe("ColorSalesStatsPage", () => {
     expect(screen.getByLabelText("Objekat")).toHaveValue("2");
   });
 
+  it("drops an unverified URL store filter when store discovery fails", async () => {
+    vi.mocked(getStores).mockRejectedValueOnce(new Error("stores unavailable"));
+    render(
+      <MemoryRouter initialEntries={["/analytics/color-sales-stats?storeId=2"]}>
+        <LocationProbe />
+        <Routes>
+          <Route path="/analytics/color-sales-stats" element={<ColorSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Filter prodavnice nije dostupan.")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId("location-search")).not.toHaveTextContent("storeId=");
+      expect(vi.mocked(getColorSalesStats).mock.lastCall?.[0]?.storeId ?? null).toBeNull();
+    });
+    expect(screen.getByLabelText("Objekat")).toBeDisabled();
+    expect(getStores).toHaveBeenCalledTimes(1);
+  });
+
   it("renders premium chrome with shared control bar and shared data table", async () => {
     renderPage();
 

@@ -14,8 +14,8 @@ type DecisionSummaryBarProps = {
   loading?: boolean;
 };
 
-function formatCount(value: number | null | undefined) {
-  if (value == null || !Number.isFinite(value)) return "Nije dostupno";
+function formatCount(value: number | null | undefined, pending = false) {
+  if (value == null || !Number.isFinite(value)) return pending ? "…" : "Nije dostupno";
   return formatNumber(value);
 }
 
@@ -34,13 +34,16 @@ export function DecisionSummaryBar({
     outOfStockCount == null || !Number.isFinite(outOfStockCount) ? null : Math.max(0, outOfStockCount);
   const currentLowStockCount =
     lowStockCount == null || !Number.isFinite(lowStockCount) ? null : Math.max(0, lowStockCount);
-  const p2Transfer = actionWorkflowError
-    ? null
-    : actionWorkflow?.items?.filter((item) => item.actionType === "transfer" && item.status === "pending").length ?? 0;
-  const p2DeadStock = actionWorkflowError
-    ? null
-    : actionWorkflow?.items?.filter((item) => (item.actionType === "clearance" || item.actionType === "markdown") && item.status === "pending").length ?? 0;
-  const workflowPending = actionWorkflowError ? null : actionWorkflow?.pendingCount ?? 0;
+  // A missing workflow (failed, refetching or never loaded) is unknown, not zero pending actions.
+  const workflowLoaded = !actionWorkflowError && actionWorkflow != null;
+  const workflowPendingLoad = !actionWorkflowError && actionWorkflow == null && Boolean(loading);
+  const p2Transfer = workflowLoaded
+    ? actionWorkflow.items?.filter((item) => item.actionType === "transfer" && item.status === "pending").length ?? 0
+    : null;
+  const p2DeadStock = workflowLoaded
+    ? actionWorkflow.items?.filter((item) => (item.actionType === "clearance" || item.actionType === "markdown") && item.status === "pending").length ?? 0
+    : null;
+  const workflowPending = workflowLoaded && Number.isFinite(actionWorkflow.pendingCount) ? actionWorkflow.pendingCount : null;
   const hasOos = (currentOosCount ?? 0) > 0;
   const hasLowStock = (currentLowStockCount ?? 0) > 0;
 
@@ -85,7 +88,7 @@ export function DecisionSummaryBar({
             <GitCompareArrows size={12} className={p2Transfer != null && p2Transfer > 0 ? "text-info" : "text-muted"} />
             <span className={p2Transfer != null && p2Transfer > 0 ? "text-info" : "text-muted"}>P2 Transfer</span>
           </div>
-          <div className={`mt-2 text-lg font-bold ${p2Transfer != null && p2Transfer > 0 ? "text-info" : "text-foreground"}`}>{formatCount(p2Transfer)}</div>
+          <div className={`mt-2 text-lg font-bold ${p2Transfer != null && p2Transfer > 0 ? "text-info" : "text-foreground"}`}>{formatCount(p2Transfer, workflowPendingLoad)}</div>
           <div className="mt-1 text-[10px] text-muted">prebacivanje između</div>
         </div>
 
@@ -95,7 +98,7 @@ export function DecisionSummaryBar({
             <TrendingDown size={12} className={p2DeadStock != null && p2DeadStock > 0 ? "text-warning" : "text-muted"} />
             <span className={p2DeadStock != null && p2DeadStock > 0 ? "text-warning" : "text-muted"}>P2 Mrtva zaliha</span>
           </div>
-          <div className={`mt-2 text-lg font-bold ${p2DeadStock != null && p2DeadStock > 0 ? "text-warning" : "text-foreground"}`}>{formatCount(p2DeadStock)}</div>
+          <div className={`mt-2 text-lg font-bold ${p2DeadStock != null && p2DeadStock > 0 ? "text-warning" : "text-foreground"}`}>{formatCount(p2DeadStock, workflowPendingLoad)}</div>
           <div className="mt-1 text-[10px] text-muted">mrtva zaliha / sniženje</div>
         </div>
 
@@ -105,7 +108,7 @@ export function DecisionSummaryBar({
             <Workflow size={12} className={workflowPending != null && workflowPending > 0 ? "text-focus" : "text-muted"} />
             <span className={workflowPending != null && workflowPending > 0 ? "text-focus" : "text-muted"}>Tok akcija</span>
           </div>
-          <div className={`mt-2 text-lg font-bold ${workflowPending != null && workflowPending > 0 ? "text-focus" : "text-foreground"}`}>{formatCount(workflowPending)}</div>
+          <div className={`mt-2 text-lg font-bold ${workflowPending != null && workflowPending > 0 ? "text-focus" : "text-foreground"}`}>{formatCount(workflowPending, workflowPendingLoad)}</div>
           <div className="mt-1 text-[10px] text-muted">čeka odluku</div>
         </div>
 

@@ -763,6 +763,8 @@ function comparisonTone(deltaPct: number | null): InsightTone {
 
 export default function DailySalesStatsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const setSearchParamsRef = useRef(setSearchParams);
+  setSearchParamsRef.current = setSearchParams;
   const requestIdRef = useRef(0);
 
   const initialRange = useMemo(() => getPresetRange("30d"), []);
@@ -877,7 +879,7 @@ export default function DailySalesStatsPage() {
         setPreviousPeriodState("empty");
         setPreviousPeriodWarning(null);
         setPreviousPeriodEmptyNote(null);
-        setSearchParams((current) => {
+        setSearchParamsRef.current((current) => {
           if (!current.has("storeId")) return current;
           const next = new URLSearchParams(current);
           next.delete("storeId");
@@ -890,7 +892,7 @@ export default function DailySalesStatsPage() {
     return () => {
       cancelled = true;
     };
-  }, [storesReloadNonce, setSearchParams]);
+  }, [storesReloadNonce]);
 
   const load = useCallback(async (filters: ActiveFilters, signal?: AbortSignal) => {
     const requestId = ++requestIdRef.current;

@@ -168,6 +168,23 @@ describe("ShoeTypeSalesStatsPage dataScope lineage", () => {
     });
   });
 
+  it("drops an unverified URL store filter when store discovery fails", async () => {
+    vi.mocked(getStores).mockRejectedValueOnce(new Error("stores unavailable"));
+    render(
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats?storeId=2"]}>
+        <Routes>
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Filter prodavnice nije dostupan.")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(vi.mocked(getShoeTypeSalesStats).mock.lastCall?.[0]?.storeId ?? null).toBeNull();
+    });
+    expect(screen.getByDisplayValue("Svi objekti")).toBeDisabled();
+  });
+
   it("surfaces a store-filter failure and retries the store request", async () => {
     vi.mocked(getStores)
       .mockRejectedValueOnce(new Error("stores unavailable"))
