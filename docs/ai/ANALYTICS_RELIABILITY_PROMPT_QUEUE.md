@@ -2,7 +2,8 @@
 
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ311 (IN_PROGRESS in this workspace)
+Owner promotion/claim 2026-09-27: idle recovery reconciled stale RQ summary rows against their DONE sections, confirmed higher-priority RQ448/RQ454/RQ455 remain externally gated and RQ319 requires a product UX choice, then promoted/claimed dependency-complete RQ311 for Operacije guardrail cleanup; local lock `.ai/task-locks/RQ311-codex.lock.md`.
 Owner completion 2026-09-27: RQ329 was delivered directly to `main` in implementation `ea4ac7cc7d3d3bacf73ac8c13699e1e5efe5479a`, with current `origin/main` verified through merge `18c348b59b46e08ef2f47c1dee30b7779e2889c3`. The Shoe Type table no longer passes a dead truncation label; the response has no authoritative hidden-row total/pagination contract, so the UI avoids an unsupported claim. Focused premium proof is 39/39; guardrails/typecheck/build/diff checks pass. Run log: `.ai/runs/2026-09-27-RQ329-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-27: idle recovery verified current `origin/main` includes RQ328 and RQ460 closure, RQ329 is dependency-complete and no active Shoe Type truncation owner/lock/branch/PR exists. RQ329 moved WAITING -> READY -> IN_PROGRESS; local lock `.ai/task-locks/RQ329-codex.lock.md`.
 Owner promotion/claim/completion 2026-09-27: idle recovery found RQ326 live in another workspace, confirmed RQ319 remains product-decision gated, and promoted/claimed dependency-free RQ324 (Inventory SKU detail size-curve error) as collision-safe; local lock `.ai/task-locks/RQ324-cursor.lock.md`. RQ324 was delivered directly to `main` in `9bbbc9b5`; the SKU detail size-curve tab now separates a failed fetch from an empty curve with a sanitized, retryable error. Focused modal proof 7/7, Inventory page specs 73/74 (the one failure is pre-existing on `b1f5b7cc`), guardrails, typecheck and build pass. Run log: `.ai/runs/2026-09-27-RQ324-evidence.md`. Evidence state: synchronized.
@@ -1446,20 +1447,20 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ135 | DONE | data-quality-trust-propagation-after-snapshot | Refresh trust-bearing analytics caches after data-quality snapshot |
 | RQ128 | WAITING | pdc-actionability-deploy-parity | Prove the PDC/Decision Board actionability gate on the exact production deployment |
 | RQ129 | DONE | decision-board-non-product-confidence-normalization | Remove non-product fake confidence from blocked and insufficient Decision Board cards |
-| RQ132 | BLOCKED | dashboard-support-signal-explainability | Explain the exact block reason, evidence state and next safe operator step for Dashboard support signals |
+| RQ132 | DONE | dashboard-support-signal-explainability | Explain the exact block reason, evidence state and next safe operator step for Dashboard support signals |
 | RQ137 | PARTIAL | analytics-period-lineage-parity | Align requested, effective and observed period truth across dashboard, pilot readiness and supplier reports |
 | RQ138 | OBSOLETE | trend-model-evaluation-contract | Excluded: standalone Trend Models evaluation is outside the current analytics-surface scope |
 | RQ139 | PARTIAL | analytics-denominator-null-zero-contract | Core trend/Data Quality false-zero fixes are delivered; derived intelligence, full pre/post contract and cross-surface parity still require follow-up |
 | RQ140 | PARTIAL | pre-post-nivelacija-causal-comparability | Local comparability and recommendation gates are hardened; live database/refresh/browser proof remains with STAB16 |
-| RQ141 | WAITING | analytics-lineage-scope-cache-refresh-parity | Map every analytics route to period, scope, source, schema, cache and refresh truth |
+| RQ141 | DONE | analytics-lineage-scope-cache-refresh-parity | Map every analytics route to period, scope, source, schema, cache and refresh truth |
 | RQ142 | OBSOLETE | forecast-trend-measured-evaluation | Excluded: standalone forecast/Trend Models evaluation is deferred |
-| RQ143 | WAITING | backend-decision-ranking-ownership | Remove frontend decision/ranking invention and make actionability backend-owned end to end |
+| RQ143 | DONE | backend-decision-ranking-ownership | Remove frontend decision/ranking invention and make actionability backend-owned end to end |
 | RQ144 | DONE | data-quality-health-denominator-contract | Make Data Quality health distinguish no evidence, valid zero and unavailable shares |
-| RQ145 | WAITING | analytics-surface-parity-and-safe-messaging | Prove table/chart/detail/export/report parity and safe mapping of backend codes |
-| RQ146 | WAITING | analytics-schema-runtime-proof | Prove endpoint, EF/SQL, relation/migration, 404 and refresh-failure behavior on current runtime |
-| RQ147 | WAITING | analytics-metric-evidence-registry | Make the proof level, decision use and limitation of every KPI backend-owned and portable |
-| RQ148 | WAITING | sales-margin-returns-measurement-basis | Prove whether sales and margin KPIs are gross/net/returned/cost-covered before they drive decisions |
-| RQ149 | WAITING | inventory-economic-metric-evidence | Make inventory economics and availability-censored demand explicitly measurable or unavailable |
+| RQ145 | DONE | analytics-surface-parity-and-safe-messaging | Prove table/chart/detail/export/report parity and safe mapping of backend codes |
+| RQ146 | DONE | analytics-schema-runtime-proof | Prove endpoint, EF/SQL, relation/migration, 404 and refresh-failure behavior on current runtime |
+| RQ147 | DONE | analytics-metric-evidence-registry | Make the proof level, decision use and limitation of every KPI backend-owned and portable |
+| RQ148 | DONE | sales-margin-returns-measurement-basis | Prove whether sales and margin KPIs are gross/net/returned/cost-covered before they drive decisions |
+| RQ149 | DONE | inventory-economic-metric-evidence | Make inventory economics and availability-censored demand explicitly measurable or unavailable |
 | RQ150 | OBSOLETE | forecast-decision-calibration | Excluded: forecast calibration is deferred from the analytics queue |
 | RQ151 | DONE | analytics-action-safe-messaging | Replace raw unknown action warning/reason codes with safe user-facing copy |
 | RQ152 | DONE | analytics-derived-numeric-state | Preserve unknown/missing numeric evidence in legacy derived intelligence builders |
@@ -1579,9 +1580,9 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ306 | DONE | operations-diacritics-pass | Fix missing Serbian diacritics across Operacije user-facing copy |
 | RQ307 | DONE | shoe-type-impact-label | Replace English nivelacija impact label on Shoe Type surface |
 | RQ308 | DONE | inventory-period-provenance | Add Inventory period control and make snapshot/signal semantics explicit |
-| RQ309 | WAITING | operations-nav-icons | Differentiate duplicate Operacije sidebar icons |
-| RQ310 | WAITING | operations-test-route-alignment | Align Operacije page tests with production `/analytics/...` routes |
-| RQ311 | WAITING | operations-guardrail-cleanup | Resolve Operacije guardrail violations for score/reliability mapping |
+| RQ309 | DONE | operations-nav-icons | Differentiate duplicate Operacije sidebar icons |
+| RQ310 | DONE | operations-test-route-alignment | Align Operacije page tests with production `/analytics/...` routes |
+| RQ311 | IN_PROGRESS | operations-guardrail-cleanup | Resolve Operacije guardrail violations for score/reliability mapping |
 | RQ312 | DONE | inventory-signal-window-freshness | Refresh Inventory signal window instead of freezing at mount |
 | RQ313 | DONE | inventory-insights-error-state | Fail closed when Inventory insights fetch fails |
 | RQ314 | DONE | pre-post-driver-fake-zero | Stop Pre/Post driver summary from showing fake zero RSD |
@@ -1678,7 +1679,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ428 | DONE | daily-sales-receipt-reconciliation-key | Join Daily Sales receipt-mismatch diagnostics on real receipt identity |
 | RQ429 | DONE | daily-sales-empty-state-metric-consistency | Make Daily Sales empty state, incomplete-shift counts and MA7 baseline truthful |
 | RQ430 | DONE | daily-sales-page-polish | Fix Daily Sales sort toggle, print-form columns and store identity in export |
-| RQ431 | WAITING | daily-sales-concentration-contract | Decide the Daily Sales supplier-concentration over-total contract |
+| RQ431 | DONE | daily-sales-concentration-contract | Decide the Daily Sales supplier-concentration over-total contract |
 | RQ432 | DONE | pre-nivelacija-kpi-definition-parity | Align Pre-Nivelacija KPI definitions with backend sums, tooltips and table gating |
 | RQ433 | DONE | pre-nivelacija-facet-universe | Build Pre-Nivelacija supplier, season and type options from the filter universe |
 | RQ434 | DONE | pre-nivelacija-display-polish | Fix Pre-Nivelacija signed WoW, filter validation, labels, counts and tones |
@@ -17436,7 +17437,7 @@ Many Operacije specs mount pages on `/analitika/...` list paths, but production 
 
 ## RQ311 - Resolve Operacije guardrail violations for score/reliability mapping
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P3
 Type: frontend/guardrails/tests
 Feature family: operations-guardrail-cleanup

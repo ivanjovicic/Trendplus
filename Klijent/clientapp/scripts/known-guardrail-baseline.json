@@ -15,18 +15,6 @@
       "reason": "Existing backend-owned decision-score projection requires a reviewed authority exception."
     },
     {
-      "file": "src/pages/PreNivelacijaPriorityPage.tsx",
-      "rule": "reliabilityPct_assign",
-      "line": 395,
-      "reason": "Existing backend reliability projection requires a reviewed authority exception."
-    },
-    {
-      "file": "src/pages/ProdajaPrePostNivelacijePage.tsx",
-      "rule": "reliabilityPct_assign",
-      "line": 492,
-      "reason": "Existing backend reliability projection requires a reviewed authority exception."
-    },
-    {
       "file": "src/pages/ProductDecisionCenterPage.tsx",
       "rule": "recommendationStatus_assign",
       "line": 1800,

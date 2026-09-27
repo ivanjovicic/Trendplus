@@ -30,15 +30,16 @@ const rules = [
   { name: "fmtPct", re: /\bfunction\s+fmtPct\b|\bconst\s+fmtPct\b/, scopes: ["pages", "components"] },
   { name: "formatCurrency", re: /\bfunction\s+formatCurrency\b|\bconst\s+formatCurrency\b|\bexport\s+function\s+formatCurrency\b/, scopes: ["pages"] },
   { name: "formatPercent", re: /\bfunction\s+formatPercent\b|\bconst\s+formatPercent\b|\bexport\s+function\s+formatPercent\b/, scopes: ["pages"] },
-  { name: "decisionScore_assign", re: /\bdecisionScore\b\s*=/, scopes: ["pages", "components"] },
+  // Assignment rules intentionally exclude ==/=== comparisons so equality checks do not become baseline debt.
+  { name: "decisionScore_assign", re: /\bdecisionScore\b\s*=(?!=)/, scopes: ["pages", "components"] },
   { name: "qualityIndex_mul", re: /qualityIndex\s*\*/, scopes: ["pages", "components"] },
   { name: "score_mul_zero", re: /score\s*\*\s*0\./, scopes: ["pages", "components", "services", "utils"] },
   { name: "marginCoverage_mul_zero", re: /marginCoveragePct\s*\*\s*0\./, scopes: ["pages", "components"] },
   { name: "trendNorm", re: /\btrendNorm\b/, scopes: ["pages", "components"] },
   { name: "shareNorm", re: /\bshareNorm\b/, scopes: ["pages", "components"] },
-  { name: "confidencePct_assign", re: /\bconfidencePct\b\s*=/, scopes: ["pages", "components"] },
-  { name: "reliabilityPct_assign", re: /\breliabilityPct\b\s*=/, scopes: ["pages", "components"] },
-  { name: "recommendationStatus_assign", re: /\brecommendationStatus\b\s*=/, scopes: ["pages", "components"] },
+  { name: "confidencePct_assign", re: /\bconfidencePct\b\s*=(?!=)/, scopes: ["pages", "components"] },
+  { name: "reliabilityPct_assign", re: /\breliabilityPct\b\s*=(?!=)/, scopes: ["pages", "components"] },
+  { name: "recommendationStatus_assign", re: /\brecommendationStatus\b\s*=(?!=)/, scopes: ["pages", "components"] },
   {
     name: "fake_zero_fallback",
     re: /\b(?:revenue|promet|margin|marza|cost|trosak|quantity|kolicina|count|broj|share|confidence|reliability|score|total|units|artikala|dobavljaca|tipova|value)[A-Za-z0-9_.]*\s*\?\?\s*0\b/i,
@@ -248,6 +249,16 @@ function runSelfTest() {
   for (const [name, line] of ruleFixtures) {
     const rule = rules.find((candidate) => candidate.name === name);
     assert(rule?.re.test(line), `${name} fixture should be detected`);
+  }
+  const equalityFixtures = [
+    ["decisionScore_assign", "if (row.decisionScore == null) return;"],
+    ["confidencePct_assign", "if (row.confidencePct === null) return;"],
+    ["reliabilityPct_assign", "if (row.reliabilityPct == null) return;"],
+    ["recommendationStatus_assign", "if (row.recommendationStatus === null) return;"],
+  ];
+  for (const [name, line] of equalityFixtures) {
+    const rule = rules.find((candidate) => candidate.name === name);
+    assert(!rule?.re.test(line), `${name} must not classify equality as assignment`);
   }
   assert(
     isAllowlisted(
