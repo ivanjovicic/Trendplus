@@ -71,12 +71,13 @@ The latest broad backend CI evidence still contains deterministic failures in `S
 
 ## BCI12 - Align Color cache-key version contract
 
-Status: READY  
+Status: DONE
 Priority: P1  
 Type: tests/contract  
 Feature family: backend-ci-cache-key-contract  
 Parallel-safe: yes, with BCI11  
-Owner: unassigned  
+Owner: Codex
+Local lock: removed after done close
 Commit suggestion: `test(cache): align color cache key contract`
 
 ### Problem
@@ -98,11 +99,20 @@ The latest broad backend run still fails `AnalyticsScreenCacheKeyContractTests.C
 - No cache key is weakened to an unversioned or dimension-insensitive form.
 - BCI10 remains PARTIAL until the broad suite is re-run.
 
+### Completion note (2026-09-27)
+- Status: DONE
+- Runtime contract confirmed: `AnalyticsCacheKeys.ColorSalesStats` intentionally emits `color-sales-stats:v5` with date, store, season and data-scope dimensions.
+- Change: stale focused assertion updated from v4 to v5; runtime cache-key implementation was not changed.
+- Checks: 18/18 `AnalyticsScreenCacheKeyContractTests` passed, 0 skipped; build succeeded with existing warnings; `git diff --check` pass after final doc cleanup.
+- Run log: `.ai/runs/2026-09-27-BCI12-evidence.md`
+- Evidence state: synchronized
+- Next: BCI13 is promoted to READY for endpoint test-host wiring; BCI10 remains PARTIAL.
+
 ---
 
 ## BCI13 - Repair endpoint test-host wiring without weakening auth contracts
 
-Status: WAITING  
+Status: READY
 Ready after: BCI11 and BCI12 focused deterministic drifts are closed or explicitly proven unrelated  
 Priority: P0  
 Type: backend/tests/test-host  
