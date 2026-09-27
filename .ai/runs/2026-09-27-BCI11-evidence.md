@@ -4,8 +4,8 @@ Date: 2026-09-27
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct delivery
-Main commit SHA: pending
-Main verification: pending push and origin/main verification
+Main commit SHA: 2c347ec5
+Main verification: passed - `git rev-parse origin/main` and `git rev-parse HEAD` both resolve to 2c347ec5; `git merge-base --is-ancestor 2c347ec5 origin/main` passed.
 Evidence state: synchronized
 
 ## What was done
@@ -29,7 +29,7 @@ Evidence state: synchronized
 - `dotnet test Api.Tests/Api.Tests.csproj --no-restore --configuration Release --filter "FullyQualifiedName~SqlServerSourceDataSessionSqlTests" --verbosity minimal`: pass, 14/14, 0 skipped.
 - `dotnet test Api.Tests/Api.Tests.csproj --no-restore --configuration Release --filter "FullyQualifiedName~SqlServerSourceDataSession" --verbosity minimal`: pass, 25/25, 0 skipped; live Testcontainers SQL Server integration included.
 - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --verbosity minimal --logger "console;verbosity=minimal"`: fail for unrelated current-main residuals, 1478 total / 1427 passed / 13 failed / 38 skipped.
-- `git diff --check`: pending final documentation cleanup.
+- `git diff --check`: pass.
 
 ## Validation not run
 - GitHub Actions result for the final delivery SHA: not inspected; repository policy does not require waiting for remote CI before main delivery.
