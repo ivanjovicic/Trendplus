@@ -112,6 +112,62 @@ function parseFocusFilter(value: string | null): FocusFilter {
     ? value as FocusFilter
     : "all";
 }
+
+function parsePrePostDate(value: string | null): string | null {
+  if (!value) return null;
+  const date = value.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  const parsed = new Date(`${date}T00:00:00.000Z`);
+  return Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date ? null : date;
+}
+
+function parsePrePostPositiveInteger(value: string | null): number | null {
+  if (!value || !/^\d+$/.test(value)) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function parsePrePostPeriodPreset(value: string | null): PeriodPreset | null {
+  return value === "30d" || value === "90d" || value === "180d" || value === "365d" || value === "custom"
+    ? value
+    : null;
+}
+
+function resolvePrePostUrlState(searchParams: URLSearchParams): { preset: PeriodPreset; filters: ActiveFilters } {
+  const requestedPreset = parsePrePostPeriodPreset(searchParams.get("periodPreset"));
+  const fromDate = parsePrePostDate(searchParams.get("fromDate"));
+  const toDate = parsePrePostDate(searchParams.get("toDate"));
+  const hasValidRange = fromDate != null && toDate != null && fromDate <= toDate;
+  const preset = hasValidRange ? requestedPreset ?? "custom" : requestedPreset && requestedPreset !== "custom" ? requestedPreset : "30d";
+  const range = hasValidRange ? { fromDate, toDate } : preset === "custom" ? getPresetRange("30d") : getPresetRange(preset);
+  return {
+    preset,
+    filters: {
+      fromDate: range.fromDate,
+      toDate: range.toDate,
+      vendorId: parsePrePostPositiveInteger(searchParams.get("vendorId")),
+      category: searchParams.get("category") ?? "",
+      storeId: parsePrePostPositiveInteger(searchParams.get("storeId")),
+    },
+  };
+}
+
+function writePrePostUrlState(current: URLSearchParams, preset: PeriodPreset, filters: ActiveFilters, focus?: FocusFilter): URLSearchParams {
+  const next = new URLSearchParams(current);
+  next.set("periodPreset", preset);
+  next.set("fromDate", filters.fromDate);
+  next.set("toDate", filters.toDate);
+  if (filters.vendorId == null) next.delete("vendorId");
+  else next.set("vendorId", String(filters.vendorId));
+  if (filters.category) next.set("category", filters.category);
+  else next.delete("category");
+  if (filters.storeId == null) next.delete("storeId");
+  else next.set("storeId", String(filters.storeId));
+  if (focus === undefined) return next;
+  if (focus === "all") next.delete("focus");
+  else next.set("focus", focus);
+  return next;
+}
 type ConfidenceTone = "strong" | "watch" | "weak";
 type VolatilityTone = "positive" | "negative" | "warning" | "neutral";
 
@@ -529,23 +585,15 @@ export default function ProdajaPrePostNivelacijePage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const queryState = useMemo(() => resolvePrePostUrlState(searchParams), [searchParams]);
   const queryFocus = parseFocusFilter(searchParams.get("focus"));
-  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("30d");
-  const [fromDate, setFromDate] = useState(() => getPresetRange("30d").fromDate);
-  const [toDate, setToDate] = useState(() => getPresetRange("30d").toDate);
-  const [vendorId, setVendorId] = useState<number | null>(null);
-  const [category, setCategory] = useState("");
-  const [storeId, setStoreId] = useState<number | null>(null);
-  const [activeFilters, setActiveFilters] = useState<ActiveFilters>(() => {
-    const range = getPresetRange("30d");
-    return {
-      fromDate: range.fromDate,
-      toDate: range.toDate,
-      vendorId: null,
-      category: "",
-      storeId: null,
-    };
-  });
+  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>(queryState.preset);
+  const [fromDate, setFromDate] = useState(queryState.filters.fromDate);
+  const [toDate, setToDate] = useState(queryState.filters.toDate);
+  const [vendorId, setVendorId] = useState<number | null>(queryState.filters.vendorId);
+  const [category, setCategory] = useState(queryState.filters.category);
+  const [storeId, setStoreId] = useState<number | null>(queryState.filters.storeId);
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>(queryState.filters);
 
   const [vendors, setVendors] = useState<Dobavljac[]>([]);
   const [vendorLoadError, setVendorLoadError] = useState<string | null>(null);
@@ -564,14 +612,26 @@ export default function ProdajaPrePostNivelacijePage() {
     setSortField((current) => current === nextSort.field ? current : nextSort.field);
     setSortDir((current) => current === nextSort.dir ? current : nextSort.dir);
     setFocusFilter((current) => current === queryFocus ? current : queryFocus);
-
-    const canonicalParams = new URLSearchParams(searchParams);
-    if (queryFocus === "all") canonicalParams.delete("focus");
-    else canonicalParams.set("focus", queryFocus);
+    setPeriodPreset((current) => current === queryState.preset ? current : queryState.preset);
+    setFromDate((current) => current === queryState.filters.fromDate ? current : queryState.filters.fromDate);
+    setToDate((current) => current === queryState.filters.toDate ? current : queryState.filters.toDate);
+    setVendorId((current) => current === queryState.filters.vendorId ? current : queryState.filters.vendorId);
+    setCategory((current) => current === queryState.filters.category ? current : queryState.filters.category);
+    setStoreId((current) => current === queryState.filters.storeId ? current : queryState.filters.storeId);
+    setActiveFilters((current) => (
+      current.fromDate === queryState.filters.fromDate
+      && current.toDate === queryState.filters.toDate
+      && current.vendorId === queryState.filters.vendorId
+      && current.category === queryState.filters.category
+      && current.storeId === queryState.filters.storeId
+        ? current
+        : queryState.filters
+    ));
+    const canonicalParams = writePrePostUrlState(searchParams, queryState.preset, queryState.filters, queryFocus);
     if (canonicalParams.toString() !== searchParams.toString()) {
       setSearchParams(canonicalParams, { replace: true });
     }
-  }, [queryFocus, searchParams, setSearchParams]);
+  }, [queryFocus, queryState, searchParams, setSearchParams]);
 
   const invalidRange = useMemo(() => {
     if (!fromDate || !toDate) return false;
@@ -1227,13 +1287,15 @@ const advancedSignals = useMemo(
     const range = resolvePresetFilterRange(periodPreset, fromDate, toDate);
     setFromDate(range.fromDate);
     setToDate(range.toDate);
-    setActiveFilters({
+    const nextFilters = {
       fromDate: range.fromDate,
       toDate: range.toDate,
       vendorId,
       category,
       storeId,
-    });
+    };
+    setActiveFilters(nextFilters);
+    setSearchParams((current) => writePrePostUrlState(current, periodPreset, nextFilters, focusFilter), { replace: true });
   };
 
   const handleResetFilters = () => {
@@ -1245,23 +1307,20 @@ const advancedSignals = useMemo(
     setCategory("");
     setStoreId(null);
     setFocusFilter("all");
-    setActiveFilters({
+    const nextFilters = {
       fromDate: range.fromDate,
       toDate: range.toDate,
       vendorId: null,
       category: "",
       storeId: null,
-    });
+    };
+    setActiveFilters(nextFilters);
+    setSearchParams((current) => writePrePostUrlState(current, "30d", nextFilters, "all"), { replace: true });
   };
 
   const handleFocusChange = (nextFocus: FocusFilter) => {
     setFocusFilter(nextFocus);
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      if (nextFocus === "all") next.delete("focus");
-      else next.set("focus", nextFocus);
-      return next;
-    });
+    setSearchParams((current) => writePrePostUrlState(current, periodPreset, activeFilters, nextFocus));
   };
 
   const controlBarFields = useMemo<AnalyticsControlBarField[]>(

@@ -288,26 +288,69 @@ function colorKey(item: { boja: string }): string {
   return colorIdentityKey(item.boja);
 }
 
+function parseColorDate(value: string | null): string | null {
+  if (!value) return null;
+  const date = value.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  const parsed = new Date(`${date}T00:00:00.000Z`);
+  return Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date ? null : date;
+}
+
+function parseColorPositiveInteger(value: string | null): number | null {
+  if (!value || !/^\d+$/.test(value)) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function parseColorPeriodPreset(value: string | null): PeriodPreset | null {
+  return value === "30d" || value === "90d" || value === "180d" || value === "365d" || value === "custom"
+    ? value
+    : null;
+}
+
+function resolveColorUrlState(searchParams: URLSearchParams): { preset: PeriodPreset; filters: ActiveFilters } {
+  const requestedPreset = parseColorPeriodPreset(searchParams.get("periodPreset"));
+  const fromDate = parseColorDate(searchParams.get("fromDate"));
+  const toDate = parseColorDate(searchParams.get("toDate"));
+  const hasValidRange = fromDate != null && toDate != null && fromDate <= toDate;
+  const preset = hasValidRange ? requestedPreset ?? "custom" : requestedPreset && requestedPreset !== "custom" ? requestedPreset : "30d";
+  const range = hasValidRange ? { fromDate, toDate } : preset === "custom" ? getPresetRange("30d") : getPresetRange(preset);
+  return {
+    preset,
+    filters: {
+      fromDate: range.fromDate,
+      toDate: range.toDate,
+      sezonaId: parseColorPositiveInteger(searchParams.get("sezonaId")),
+      storeId: parseColorPositiveInteger(searchParams.get("storeId")),
+    },
+  };
+}
+
+function writeColorUrlState(current: URLSearchParams, preset: PeriodPreset, filters: ActiveFilters): URLSearchParams {
+  const next = new URLSearchParams(current);
+  next.set("periodPreset", preset);
+  next.set("fromDate", filters.fromDate);
+  next.set("toDate", filters.toDate);
+  if (filters.sezonaId == null) next.delete("sezonaId");
+  else next.set("sezonaId", String(filters.sezonaId));
+  if (filters.storeId == null) next.delete("storeId");
+  else next.set("storeId", String(filters.storeId));
+  return next;
+}
+
 export default function ColorSalesStatsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const detailSectionRef = useRef<HTMLElement>(null);
+  const queryState = useMemo(() => resolveColorUrlState(searchParams), [searchParams]);
 
-  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("30d");
-  const [fromDate, setFromDate] = useState(() => getPresetRange("30d").fromDate);
-  const [toDate, setToDate] = useState(() => getPresetRange("30d").toDate);
-  const [sezonaId, setSezonaId] = useState<number | null>(null);
-  const [storeId, setStoreId] = useState<number | null>(null);
-  const [activeFilters, setActiveFilters] = useState<ActiveFilters>(() => {
-    const range = getPresetRange("30d");
-    return {
-      fromDate: range.fromDate,
-      toDate: range.toDate,
-      sezonaId: null,
-      storeId: null,
-    };
-  });
+  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>(queryState.preset);
+  const [fromDate, setFromDate] = useState(queryState.filters.fromDate);
+  const [toDate, setToDate] = useState(queryState.filters.toDate);
+  const [sezonaId, setSezonaId] = useState<number | null>(queryState.filters.sezonaId);
+  const [storeId, setStoreId] = useState<number | null>(queryState.filters.storeId);
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>(queryState.filters);
 
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [storesLoadError, setStoresLoadError] = useState<string | null>(null);
@@ -321,7 +364,22 @@ export default function ColorSalesStatsPage() {
     const nextSort = readAnalyticsTableSort(searchParams, COLOR_SORT_FIELDS, "status", "desc");
     setSortField((current) => current === nextSort.field ? current : nextSort.field);
     setSortDir((current) => current === nextSort.dir ? current : nextSort.dir);
-  }, [searchParams]);
+    setPeriodPreset((current) => current === queryState.preset ? current : queryState.preset);
+    setFromDate((current) => current === queryState.filters.fromDate ? current : queryState.filters.fromDate);
+    setToDate((current) => current === queryState.filters.toDate ? current : queryState.filters.toDate);
+    setSezonaId((current) => current === queryState.filters.sezonaId ? current : queryState.filters.sezonaId);
+    setStoreId((current) => current === queryState.filters.storeId ? current : queryState.filters.storeId);
+    setActiveFilters((current) => (
+      current.fromDate === queryState.filters.fromDate
+      && current.toDate === queryState.filters.toDate
+      && current.sezonaId === queryState.filters.sezonaId
+      && current.storeId === queryState.filters.storeId
+        ? current
+        : queryState.filters
+    ));
+    const canonical = writeColorUrlState(searchParams, queryState.preset, queryState.filters);
+    if (canonical.toString() !== searchParams.toString()) setSearchParams(canonical, { replace: true });
+  }, [queryState, searchParams, setSearchParams]);
 
   const invalidRange = useMemo(() => {
     if (!fromDate || !toDate) return false;
@@ -790,12 +848,14 @@ export default function ColorSalesStatsPage() {
     const range = resolvePresetFilterRange(periodPreset, fromDate, toDate);
     setFromDate(range.fromDate);
     setToDate(range.toDate);
-    setActiveFilters({
+    const nextFilters = {
       fromDate: range.fromDate,
       toDate: range.toDate,
       sezonaId,
       storeId,
-    });
+    };
+    setActiveFilters(nextFilters);
+    setSearchParams((current) => writeColorUrlState(current, periodPreset, nextFilters), { replace: true });
   };
 
   const resetFilters = () => {
@@ -805,12 +865,14 @@ export default function ColorSalesStatsPage() {
     setToDate(range.toDate);
     setSezonaId(null);
     setStoreId(null);
-    setActiveFilters({
+    const nextFilters = {
       fromDate: range.fromDate,
       toDate: range.toDate,
       sezonaId: null,
       storeId: null,
-    });
+    };
+    setActiveFilters(nextFilters);
+    setSearchParams((current) => writeColorUrlState(current, "30d", nextFilters), { replace: true });
   };
 
   const controlBarFields = useMemo<AnalyticsControlBarField[]>(

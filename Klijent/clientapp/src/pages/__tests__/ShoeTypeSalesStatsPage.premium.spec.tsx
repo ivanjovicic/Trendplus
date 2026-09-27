@@ -188,6 +188,33 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     expect(screen.getByTestId("location-search")).toHaveTextContent("storeId=2");
   });
 
+  it("restores validated period, season and store filters from a shared URL", async () => {
+    vi.mocked(getStores).mockResolvedValue([{ storeId: 2, storeName: "Novi Beograd", city: "Beograd", region: "BG" }]);
+    vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
+      sezone: [{ id: 3, naziv: "Leto 2026", datumOd: "2026-06-01T00:00:00Z", datumDo: "2026-08-31T23:59:59Z" }],
+    }));
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats?periodPreset=custom&fromDate=2026-06-01&toDate=2026-08-31&sezonaId=3&storeId=2"]}>
+        <LocationProbe />
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByText("Prioritetna lista tipova obuće");
+    await waitFor(() => expect(getShoeTypeSalesStats).toHaveBeenLastCalledWith(expect.objectContaining({
+      fromDate: "2026-06-01T00:00:00Z",
+      toDate: "2026-09-01T00:00:00.000Z",
+      sezonaId: 3,
+      storeId: 2,
+    })));
+    expect(screen.getByLabelText("Od")).toHaveValue("2026-06-01");
+    expect(screen.getByLabelText("Do")).toHaveValue("2026-08-31");
+    expect(screen.getByLabelText("Sezona")).toHaveValue("3");
+    expect(screen.getByLabelText("Objekat")).toHaveValue("2");
+  });
+
   it("exports unavailable shoe type count instead of fake zero", async () => {
     const baseResponse = response();
     vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({

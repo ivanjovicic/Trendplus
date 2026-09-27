@@ -2,7 +2,8 @@
 
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ318 (IN_PROGRESS in this workspace)
+Owner promotion/claim 2026-09-27: idle recovery verified RQ317 DONE on current origin/main, no active shared Operacije URL-state owner or conflicting lock/branch/PR, and RQ318 is dependency-complete. RQ318 moved WAITING -> READY -> IN_PROGRESS; local lock .ai/task-locks/RQ318-codex.lock.md.
 Owner promotion/claim 2026-09-27: idle recovery verified RQ299 DONE on current origin/main, no active Pre/Post focus owner or conflicting lock/branch/PR, and RQ317 is dependency-complete. RQ317 moved WAITING -> READY -> IN_PROGRESS; local lock .ai/task-locks/RQ317-codex.lock.md.
 Owner completion 2026-09-27: RQ317 was delivered directly to main in `86e12599`. Pre/Post focus is now validated in the `focus` URL parameter, invalid values fail closed to `Sve`, Apply/reload preserves the selected focus and router back navigation restores prior focus. Focused proof is 41/41; analytics guardrails, typecheck, build and diff checks pass. Run log: `.ai/runs/2026-09-27-RQ317-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-27: idle recovery confirmed RQ323 DONE on current origin/main, RQ265 is satisfied and no active Pre-Nivelacija empty-reason owner or lock. RQ316 moved WAITING -> READY -> IN_PROGRESS; local lock .ai/task-locks/RQ316-codex.lock.md.
@@ -17755,7 +17756,7 @@ Reproduction: set focus chip, Apply or scope reload — focus returns to all; re
 
 ## RQ318 - Back Operacije list filters with URL state (phased)
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P2
 Type: frontend/url-state/tests
 Feature family: operations-list-url-state

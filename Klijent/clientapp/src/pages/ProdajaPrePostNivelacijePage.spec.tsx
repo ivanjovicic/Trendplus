@@ -252,6 +252,36 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(screen.getByTestId("location-search")).toHaveTextContent("focus=review");
   });
 
+  it("restores validated period, vendor, category, store and focus from a shared URL", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(response({
+      vendorStats: [vendor({
+        recommendation: {
+          status: "review",
+          label: "Review",
+          summary: "Signal za proveru.",
+          confidencePct: 64,
+          reliabilityPct: 61,
+          dataQualityStatus: "warning",
+          reasonCodes: ["review_signal"],
+        },
+      })],
+    }));
+    renderPage(["/analitika/nivelacije-pre-post?periodPreset=custom&fromDate=2026-06-01&toDate=2026-08-31&vendorId=10&category=Obuca&storeId=2&focus=review"]);
+
+    await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
+    await waitFor(() => {
+      const calls = vi.mocked(getVendorSalesNivelacija).mock.calls.map(([query]) => query);
+      expect(calls.length).toBeGreaterThanOrEqual(2);
+      expect(calls.every((query) => query.vendorId === 10 && query.category === "Obuca" && query.storeId === 2)).toBe(true);
+    });
+    expect(screen.getByLabelText("Od")).toHaveValue("2026-06-01");
+    expect(screen.getByLabelText("Do")).toHaveValue("2026-08-31");
+    expect(screen.getByLabelText("Dobavljač")).toHaveValue("10");
+    expect(screen.getByLabelText("Kategorija")).toHaveValue("Obuca");
+    expect(screen.getByLabelText("Objekat")).toHaveValue("2");
+    expect(screen.getByRole("button", { name: /Pregledaj/i })).toHaveClass("active");
+  });
+
   it("restores focus from a shared URL and keeps it after applying filters", async () => {
     vi.mocked(getVendorSalesNivelacija).mockResolvedValue(response({
       vendorStats: [vendor({

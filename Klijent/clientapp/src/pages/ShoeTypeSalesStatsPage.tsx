@@ -367,26 +367,69 @@ function shoeTypeKey(item: { tipObuceId: number | null; tipObuceNaziv: string })
   return `name:${normalizeName(item.tipObuceNaziv)}`;
 }
 
+function parseShoeTypeDate(value: string | null): string | null {
+  if (!value) return null;
+  const date = value.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  const parsed = new Date(`${date}T00:00:00.000Z`);
+  return Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date ? null : date;
+}
+
+function parseShoeTypePositiveInteger(value: string | null): number | null {
+  if (!value || !/^\d+$/.test(value)) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function parseShoeTypePeriodPreset(value: string | null): PeriodPreset | null {
+  return value === "30d" || value === "90d" || value === "180d" || value === "365d" || value === "custom"
+    ? value
+    : null;
+}
+
+function resolveShoeTypeUrlState(searchParams: URLSearchParams): { preset: PeriodPreset; filters: ActiveFilters } {
+  const requestedPreset = parseShoeTypePeriodPreset(searchParams.get("periodPreset"));
+  const fromDate = parseShoeTypeDate(searchParams.get("fromDate"));
+  const toDate = parseShoeTypeDate(searchParams.get("toDate"));
+  const hasValidRange = fromDate != null && toDate != null && fromDate <= toDate;
+  const preset = hasValidRange ? requestedPreset ?? "custom" : requestedPreset && requestedPreset !== "custom" ? requestedPreset : "30d";
+  const range = hasValidRange ? { fromDate, toDate } : preset === "custom" ? getPresetRange("30d") : getPresetRange(preset);
+  return {
+    preset,
+    filters: {
+      fromDate: range.fromDate,
+      toDate: range.toDate,
+      sezonaId: parseShoeTypePositiveInteger(searchParams.get("sezonaId")),
+      storeId: parseShoeTypePositiveInteger(searchParams.get("storeId")),
+    },
+  };
+}
+
+function writeShoeTypeUrlState(current: URLSearchParams, preset: PeriodPreset, filters: ActiveFilters): URLSearchParams {
+  const next = new URLSearchParams(current);
+  next.set("periodPreset", preset);
+  next.set("fromDate", filters.fromDate);
+  next.set("toDate", filters.toDate);
+  if (filters.sezonaId == null) next.delete("sezonaId");
+  else next.set("sezonaId", String(filters.sezonaId));
+  if (filters.storeId == null) next.delete("storeId");
+  else next.set("storeId", String(filters.storeId));
+  return next;
+}
+
 export default function ShoeTypeSalesStatsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const detailSectionRef = useRef<HTMLElement>(null);
+  const queryState = useMemo(() => resolveShoeTypeUrlState(searchParams), [searchParams]);
 
-  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("30d");
-  const [fromDate, setFromDate] = useState(() => getPresetRange("30d").fromDate);
-  const [toDate, setToDate] = useState(() => getPresetRange("30d").toDate);
-  const [sezonaId, setSezonaId] = useState<number | null>(null);
-  const [storeId, setStoreId] = useState<number | null>(null);
-  const [activeFilters, setActiveFilters] = useState<ActiveFilters>(() => {
-    const range = getPresetRange("30d");
-    return {
-      fromDate: range.fromDate,
-      toDate: range.toDate,
-      sezonaId: null,
-      storeId: null,
-    };
-  });
+  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>(queryState.preset);
+  const [fromDate, setFromDate] = useState(queryState.filters.fromDate);
+  const [toDate, setToDate] = useState(queryState.filters.toDate);
+  const [sezonaId, setSezonaId] = useState<number | null>(queryState.filters.sezonaId);
+  const [storeId, setStoreId] = useState<number | null>(queryState.filters.storeId);
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>(queryState.filters);
 
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [storesLoadError, setStoresLoadError] = useState<string | null>(null);
@@ -400,7 +443,22 @@ export default function ShoeTypeSalesStatsPage() {
     const nextSort = readAnalyticsTableSort(searchParams, SHOE_SORT_FIELDS, "status", "desc");
     setSortField((current) => current === nextSort.field ? current : nextSort.field);
     setSortDir((current) => current === nextSort.dir ? current : nextSort.dir);
-  }, [searchParams]);
+    setPeriodPreset((current) => current === queryState.preset ? current : queryState.preset);
+    setFromDate((current) => current === queryState.filters.fromDate ? current : queryState.filters.fromDate);
+    setToDate((current) => current === queryState.filters.toDate ? current : queryState.filters.toDate);
+    setSezonaId((current) => current === queryState.filters.sezonaId ? current : queryState.filters.sezonaId);
+    setStoreId((current) => current === queryState.filters.storeId ? current : queryState.filters.storeId);
+    setActiveFilters((current) => (
+      current.fromDate === queryState.filters.fromDate
+      && current.toDate === queryState.filters.toDate
+      && current.sezonaId === queryState.filters.sezonaId
+      && current.storeId === queryState.filters.storeId
+        ? current
+        : queryState.filters
+    ));
+    const canonical = writeShoeTypeUrlState(searchParams, queryState.preset, queryState.filters);
+    if (canonical.toString() !== searchParams.toString()) setSearchParams(canonical, { replace: true });
+  }, [queryState, searchParams, setSearchParams]);
 
   const invalidRange = useMemo(() => {
     if (!fromDate || !toDate) return false;
@@ -806,7 +864,9 @@ export default function ShoeTypeSalesStatsPage() {
     setSezonaId(null);
     setFromDate(range.fromDate);
     setToDate(range.toDate);
-    setActiveFilters({ fromDate: range.fromDate, toDate: range.toDate, sezonaId: null, storeId });
+    const nextFilters = { fromDate: range.fromDate, toDate: range.toDate, sezonaId: null, storeId };
+    setActiveFilters(nextFilters);
+    setSearchParams((current) => writeShoeTypeUrlState(current, preset, nextFilters), { replace: true });
   };
 
   const handleSeasonChange = (value: string) => {
@@ -815,20 +875,26 @@ export default function ShoeTypeSalesStatsPage() {
     setPeriodPreset("custom");
 
     if (parsed == null) {
-      setActiveFilters({ fromDate, toDate, sezonaId: null, storeId });
+      const nextFilters = { fromDate, toDate, sezonaId: null, storeId };
+      setActiveFilters(nextFilters);
+      setSearchParams((current) => writeShoeTypeUrlState(current, "custom", nextFilters), { replace: true });
       return;
     }
 
     const selected = data?.sezone.find((item) => item.id === parsed);
     if (!selected) {
-      setActiveFilters({ fromDate, toDate, sezonaId: parsed, storeId });
+      const nextFilters = { fromDate, toDate, sezonaId: parsed, storeId };
+      setActiveFilters(nextFilters);
+      setSearchParams((current) => writeShoeTypeUrlState(current, "custom", nextFilters), { replace: true });
       return;
     }
     const newFrom = toDateOnly(selected.datumOd);
     const newTo = toDateOnly(selected.datumDo);
     setFromDate(newFrom);
     setToDate(newTo);
-    setActiveFilters({ fromDate: newFrom, toDate: newTo, sezonaId: parsed, storeId });
+    const nextFilters = { fromDate: newFrom, toDate: newTo, sezonaId: parsed, storeId };
+    setActiveFilters(nextFilters);
+    setSearchParams((current) => writeShoeTypeUrlState(current, "custom", nextFilters), { replace: true });
   };
 
   const resetFilters = () => {
@@ -838,12 +904,14 @@ export default function ShoeTypeSalesStatsPage() {
     setToDate(range.toDate);
     setSezonaId(null);
     setStoreId(null);
-    setActiveFilters({
+    const nextFilters = {
       fromDate: range.fromDate,
       toDate: range.toDate,
       sezonaId: null,
       storeId: null,
-    });
+    };
+    setActiveFilters(nextFilters);
+    setSearchParams((current) => writeShoeTypeUrlState(current, "30d", nextFilters), { replace: true });
   };
 
   const handleSort = (field: SortField) => {
@@ -914,7 +982,9 @@ export default function ShoeTypeSalesStatsPage() {
               setSezonaId(null);
               setFromDate(newFrom);
               if (newFrom.length === 10 && new Date(newFrom) <= new Date(toDate)) {
-                setActiveFilters({ fromDate: newFrom, toDate, sezonaId: null, storeId });
+                const nextFilters = { fromDate: newFrom, toDate, sezonaId: null, storeId };
+                setActiveFilters(nextFilters);
+                setSearchParams((current) => writeShoeTypeUrlState(current, "custom", nextFilters), { replace: true });
               }
             }}
           />
@@ -933,7 +1003,9 @@ export default function ShoeTypeSalesStatsPage() {
               setSezonaId(null);
               setToDate(newTo);
               if (newTo.length === 10 && new Date(fromDate) <= new Date(newTo)) {
-                setActiveFilters({ fromDate, toDate: newTo, sezonaId: null, storeId });
+                const nextFilters = { fromDate, toDate: newTo, sezonaId: null, storeId };
+                setActiveFilters(nextFilters);
+                setSearchParams((current) => writeShoeTypeUrlState(current, "custom", nextFilters), { replace: true });
               }
             }}
           />
@@ -963,7 +1035,9 @@ export default function ShoeTypeSalesStatsPage() {
             onChange={(event) => {
               const newStore = event.target.value ? Number(event.target.value) : null;
               setStoreId(newStore);
-              setActiveFilters({ fromDate, toDate, sezonaId, storeId: newStore });
+              const nextFilters = { fromDate, toDate, sezonaId, storeId: newStore };
+              setActiveFilters(nextFilters);
+              setSearchParams((current) => writeShoeTypeUrlState(current, periodPreset, nextFilters), { replace: true });
             }}
           >
             <option value="">Svi objekti</option>

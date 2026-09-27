@@ -312,6 +312,29 @@ describe("ColorSalesStatsPage", () => {
     expect(screen.getByTestId("location-search")).toHaveTextContent("sezonaId=3");
   });
 
+  it("restores validated period, season and store filters from a shared URL", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analitika/color-sales-stats?periodPreset=custom&fromDate=2026-06-01&toDate=2026-08-31&sezonaId=3&storeId=2"]}>
+        <LocationProbe />
+        <Routes>
+          <Route path="/analitika/color-sales-stats" element={<ColorSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByText("Prioritetna lista boja");
+    await waitFor(() => expect(getColorSalesStats).toHaveBeenLastCalledWith(expect.objectContaining({
+      fromDate: "2026-06-01T00:00:00Z",
+      toDate: "2026-09-01T00:00:00.000Z",
+      sezonaId: 3,
+      storeId: 2,
+    })));
+    expect(screen.getByLabelText("Od")).toHaveValue("2026-06-01");
+    expect(screen.getByLabelText("Do")).toHaveValue("2026-08-31");
+    expect(screen.getByLabelText("Sezona")).toHaveValue("3");
+    expect(screen.getByLabelText("Objekat")).toHaveValue("2");
+  });
+
   it("renders premium chrome with shared control bar and shared data table", async () => {
     renderPage();
 
