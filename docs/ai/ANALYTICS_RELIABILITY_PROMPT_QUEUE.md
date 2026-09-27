@@ -2,7 +2,8 @@
 
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ329 (IN_PROGRESS in this workspace)
+Current READY prompt: none
+Owner completion 2026-09-27: RQ329 was delivered directly to `main` in implementation `ea4ac7cc7d1b4f7afbd385bfe49e9a69f4be3f3a`, with current `origin/main` verified through merge `18c348b59b46e08ef2f47c1dee30b7779e2889c3`. The Shoe Type table no longer passes a dead truncation label; the response has no authoritative hidden-row total/pagination contract, so the UI avoids an unsupported claim. Focused premium proof is 39/39; guardrails/typecheck/build/diff checks pass. Run log: `.ai/runs/2026-09-27-RQ329-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-27: idle recovery verified current `origin/main` includes RQ328 and RQ460 closure, RQ329 is dependency-complete and no active Shoe Type truncation owner/lock/branch/PR exists. RQ329 moved WAITING -> READY -> IN_PROGRESS; local lock `.ai/task-locks/RQ329-codex.lock.md`.
 Owner promotion/claim/completion 2026-09-27: idle recovery found RQ326 live in another workspace, confirmed RQ319 remains product-decision gated, and promoted/claimed dependency-free RQ324 (Inventory SKU detail size-curve error) as collision-safe; local lock `.ai/task-locks/RQ324-cursor.lock.md`. RQ324 was delivered directly to `main` in `9bbbc9b5`; the SKU detail size-curve tab now separates a failed fetch from an empty curve with a sanitized, retryable error. Focused modal proof 7/7, Inventory page specs 73/74 (the one failure is pre-existing on `b1f5b7cc`), guardrails, typecheck and build pass. Run log: `.ai/runs/2026-09-27-RQ324-evidence.md`. Evidence state: synchronized.
 Owner completion 2026-09-27: RQ327 was delivered directly to `main` in `dc20d775`; Daily Sales table sorting now restores from validated `sort`/`dir` URL state and persists the next direction through filter updates. Focused proof is 4/4; guardrails, typecheck, build and diff checks pass. Run log: `.ai/runs/2026-09-27-RQ327-evidence.md`. Evidence state: synchronized.
@@ -1598,7 +1599,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ326 | DONE | pre-nivelacija-sort-url-state | Persist Pre-Nivelacija table sort in URL |
 | RQ327 | DONE | daily-sales-sort-url-state | Persist Daily Sales table sort in URL |
 | RQ328 | DONE | pre-post-expansion-persistence | Preserve Pre/Post expanded vendor across refetch |
-| RQ329 | IN_PROGRESS | shoe-type-truncation-label | Fix or remove dead Shoe Type truncation label |
+| RQ329 | DONE | shoe-type-truncation-label | Fix or remove dead Shoe Type truncation label |
 | RQ330 | DONE | pre-post-focus-row-context | Add row-count context when Pre/Post focus hides vendors |
 | RQ331 | DONE | inventory-page-local-signal-kpis | Stop Inventory signal KPI cards from counting only the current page slice |
 | RQ332 | DONE | inventory-detail-placeholder-fake-zero | Remove fake zero inventory/value when opening SKU detail off-page |
@@ -18506,7 +18507,7 @@ Reproduction: expand vendor row, Apply filters — expansion collapses.
 
 ## RQ329 - Fix or remove dead Shoe Type truncation label
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P3
 Type: frontend/ux/tests
 Feature family: shoe-type-truncation-label
@@ -18548,6 +18549,24 @@ Reproduction: any filter state — truncation label never shown.
 ### Dependencies
 
 - `RQ330` related Pre/Post focus context pattern.
+
+### Completion note
+
+- Date: 2026-09-27
+- Status: DONE
+- Completion: Removed the dead Shoe Type truncation hint and added a full-result regression.
+- Changed files: `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/ShoeTypeSalesStatsPage.premium.spec.tsx`, queue and roadmap records.
+- Checks run: focused premium 39/39; analytics guardrails/typecheck; build; diff check.
+- Checks not run: backend tests - frontend-only scope.
+- Run log: `.ai/runs/2026-09-27-RQ329-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `ea4ac7cc7d1b4f7afbd385bfe49e9a69f4be3f3a` (present through merge `18c348b59b46e08ef2f47c1dee30b7779e2889c3`)
+- Main verification: fresh `origin/main` contains the implementation SHA.
+- Missed: no hidden-row label was added because no authoritative total/pagination metadata exists.
+- Follow-up: none; current READY prompt is none.
+- Residual risk: existing Vite large-chunk warning only.
+- Prompt defect / scope repair: removed the misleading prop per the prompt's allowed alternative; a truthful label requires a future backend total/pagination contract.
 
 ---
 
