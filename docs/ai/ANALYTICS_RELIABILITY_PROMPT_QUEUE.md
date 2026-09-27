@@ -2,8 +2,9 @@
 
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ318 (IN_PROGRESS in this workspace)
+Current READY prompt: none
 Owner promotion/claim 2026-09-27: idle recovery verified RQ317 DONE on current origin/main, no active shared Operacije URL-state owner or conflicting lock/branch/PR, and RQ318 is dependency-complete. RQ318 moved WAITING -> READY -> IN_PROGRESS; local lock .ai/task-locks/RQ318-codex.lock.md.
+Owner completion 2026-09-27: RQ318 was delivered directly to main in `3ddd4fb5`. Color, Shoe Type and Pre/Post now restore validated primary list filters from shared URLs while preserving sort/focus context; Inventory's existing URL contract remains unchanged. Focused proof is 102/102; guardrails, typecheck, build and diff checks pass. Run log: `.ai/runs/2026-09-27-RQ318-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-27: idle recovery verified RQ299 DONE on current origin/main, no active Pre/Post focus owner or conflicting lock/branch/PR, and RQ317 is dependency-complete. RQ317 moved WAITING -> READY -> IN_PROGRESS; local lock .ai/task-locks/RQ317-codex.lock.md.
 Owner completion 2026-09-27: RQ317 was delivered directly to main in `86e12599`. Pre/Post focus is now validated in the `focus` URL parameter, invalid values fail closed to `Sve`, Apply/reload preserves the selected focus and router back navigation restores prior focus. Focused proof is 41/41; analytics guardrails, typecheck, build and diff checks pass. Run log: `.ai/runs/2026-09-27-RQ317-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-27: idle recovery confirmed RQ323 DONE on current origin/main, RQ265 is satisfied and no active Pre-Nivelacija empty-reason owner or lock. RQ316 moved WAITING -> READY -> IN_PROGRESS; local lock .ai/task-locks/RQ316-codex.lock.md.
@@ -17756,7 +17757,8 @@ Reproduction: set focus chip, Apply or scope reload — focus returns to all; re
 
 ## RQ318 - Back Operacije list filters with URL state (phased)
 
-Status: IN_PROGRESS
+Status: DONE
+Completion note 2026-09-27: Delivered on `main` at `3ddd4fb5`. Color and Shoe Type restore validated period/date, season and store filters; Pre/Post restores period/date, vendor, category, store and focus while preserving sorting. Invalid or incomplete ranges fail closed to safe defaults. Focused proof is `102/102`; guardrails, typecheck, build and diff checks pass. Run log: `.ai/runs/2026-09-27-RQ318-evidence.md`. Evidence state: synchronized.
 Priority: P2
 Type: frontend/url-state/tests
 Feature family: operations-list-url-state
