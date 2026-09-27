@@ -3,6 +3,8 @@
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+Owner promotion/claim 2026-09-27: idle recovery confirmed RQ318/RQ317/RQ316 are DONE on current origin/main, RQ319 remains product-decision gated, and RQ326 is dependency-complete after RQ299 with no conflicting Pre-Nivelacija sort owner. RQ326 moved WAITING -> READY -> IN_PROGRESS; local lock `.ai/task-locks/RQ326-codex.lock.md`.
+Owner completion 2026-09-27: RQ326 was delivered directly to `main` in `4138fd9a`; Pre-Nivelacija validates and persists `sort`/`dir` URL state through shared links, filter/pagination changes and detail navigation. Focused proof is 51/51; guardrails, typecheck, build and diff checks pass. Run log: `.ai/runs/2026-09-27-RQ326-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-27: idle recovery verified RQ318 DONE on current origin/main, RQ325 is dependency-complete after RQ306, and no active residual-copy owner or conflicting lock/branch/PR exists. RQ325 moved WAITING -> READY -> IN_PROGRESS; local lock `.ai/task-locks/RQ325-codex.lock.md`.
 Owner completion 2026-09-27: RQ325 was delivered directly to `main` in `4ecea4b1`; residual Operacije copy is localized across Color, Pre-Nivelacija, Pre/Post, Supplier, Shoe Type, Daily Sales and Inventory, raw data-scope codes use the shared Serbian mapping, and focused proof is 132/132 with guardrails, typecheck, build and diff checks passing. Run log: `.ai/runs/2026-09-27-RQ325-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-27: idle recovery verified RQ317 DONE on current origin/main, no active shared Operacije URL-state owner or conflicting lock/branch/PR, and RQ318 is dependency-complete. RQ318 moved WAITING -> READY -> IN_PROGRESS; local lock .ai/task-locks/RQ318-codex.lock.md.
@@ -1579,17 +1581,17 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ313 | DONE | inventory-insights-error-state | Fail closed when Inventory insights fetch fails |
 | RQ314 | DONE | pre-post-driver-fake-zero | Stop Pre/Post driver summary from showing fake zero RSD |
 | RQ315 | WAITING | pre-nivelacija-period-provenance | Expose Pre-Nivelacija analysis period in trust header |
-| RQ316 | WAITING | pre-nivelacija-empty-reason-parity | Align Pre-Nivelacija period empty reasons across surfaces |
-| RQ317 | WAITING | pre-post-focus-url-state | Persist Pre/Post focus filter in URL and across reloads |
-| RQ318 | WAITING | operations-list-url-state | Back Operacije list filters with URL state (phased) |
+| RQ316 | DONE | pre-nivelacija-empty-reason-parity | Align Pre-Nivelacija period empty reasons across surfaces |
+| RQ317 | DONE | pre-post-focus-url-state | Persist Pre/Post focus filter in URL and across reloads |
+| RQ318 | DONE | operations-list-url-state | Back Operacije list filters with URL state (phased) |
 | RQ319 | WAITING | operations-filter-apply-consistency | Unify Operacije filter apply semantics |
 | RQ320 | WAITING | operations-draft-period-desync | Show draft vs active period on Apply-required screens |
-| RQ321 | WAITING | operations-store-filter-failure | Surface store-filter load failures on Operacije pages |
-| RQ322 | WAITING | inventory-store-bootstrap-error | Replace Inventory store bootstrap console-only error |
-| RQ323 | WAITING | inventory-secondary-panel-stale-data | Clear stale Inventory secondary panel data on partial failure |
+| RQ321 | DONE | operations-store-filter-failure | Surface store-filter load failures on Operacije pages |
+| RQ322 | DONE | inventory-store-bootstrap-error | Replace Inventory store bootstrap console-only error |
+| RQ323 | DONE | inventory-secondary-panel-stale-data | Clear stale Inventory secondary panel data on partial failure |
 | RQ324 | WAITING | inventory-detail-size-curve-error | Surface SKU detail size-curve fetch errors |
 | RQ325 | DONE | operations-residual-english-copy | Complete Serbian copy on residual Operacije English strings |
-| RQ326 | WAITING | pre-nivelacija-sort-url-state | Persist Pre-Nivelacija table sort in URL |
+| RQ326 | DONE | pre-nivelacija-sort-url-state | Persist Pre-Nivelacija table sort in URL |
 | RQ327 | WAITING | daily-sales-sort-url-state | Persist Daily Sales table sort in URL |
 | RQ328 | WAITING | pre-post-expansion-persistence | Preserve Pre/Post expanded vendor across refetch |
 | RQ329 | WAITING | shoe-type-truncation-label | Fix or remove dead Shoe Type truncation label |
@@ -17289,7 +17291,7 @@ Reproduction: open `/analytics/inventory`, look for a period selector, then comp
 
 ## RQ309 - Differentiate duplicate Operacije sidebar icons
 
-Status: WAITING
+Status: DONE
 Priority: P3
 Type: frontend/navigation
 Feature family: operations-nav-icons
@@ -18268,6 +18270,25 @@ Reproduction: sort by SKU desc, refresh — default status desc restored.
 ### Dependencies
 
 - `RQ299`.
+
+### Completion note
+
+- Date: 2026-09-27
+- Status: DONE
+- Completion: Pre-Nivelacija now parses validated `sort`/`dir` values from shared URLs, keeps them through filter/pagination/detail navigation, and writes the next sort direction back to the URL.
+- Changed files: `PreNivelacijaPriorityPage.tsx`, its focused spec and the reviewed guardrail baseline line positions.
+- Contract/runtime behavior changed: invalid sort fields/directions fail closed to the documented defaults; default sort direction remains omitted when canonical.
+- Checks run: focused Vitest 51/51; `npm run check:analytics-guardrails`; typecheck; production build; `git diff --check`; planning architecture validator.
+- Checks not run: backend tests and remote CI - frontend URL-state prompt with no backend changes.
+- Run log: `.ai/runs/2026-09-27-RQ326-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `4138fd9a788716b61a0ad3921a4de105351fe1d8`
+- Main verification: passed - `origin/main` contains the implementation SHA on 2026-09-27.
+- Missed: Daily Sales sort URL state remains RQ327; no cross-page sort contract was absorbed.
+- Follow-up: canonical idle recovery for the next dependency-complete prompt.
+- Residual risk: existing Vite large-chunk warning; no new analytics guardrail violation remains.
+- Next: `Current READY prompt: none`.
 
 ---
 
