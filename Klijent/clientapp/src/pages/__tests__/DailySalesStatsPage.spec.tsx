@@ -1,5 +1,5 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { rest } from "../../mocks/mswCompat";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { server } from "../../mocks/server";
@@ -22,6 +22,11 @@ vi.mock("recharts", () => ({
 }));
 
 describe("DailySalesStatsPage (integration)", () => {
+  function LocationProbe() {
+    const location = useLocation();
+    return <output data-testid="location-search">{location.pathname}{location.search}</output>;
+  }
+
   const storesResponse = [
     { storeId: 1, storeName: "Store 1" },
     { storeId: 2, storeName: "Store 2" },
@@ -113,6 +118,38 @@ describe("DailySalesStatsPage (integration)", () => {
 
     const controlBar = screen.getByTestId("analytics-control-bar");
     expect(within(controlBar).getByLabelText("Period")).toBeInTheDocument();
+  });
+
+  it("restores table sort from the URL and persists the next direction", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/daily-sales?sort=totalRevenue&dir=asc"]}>
+        <Routes>
+          <Route
+            path="/analytics/daily-sales"
+            element={
+              <>
+                <LocationProbe />
+                <DailySalesStatsPage />
+              </>
+            }
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const revenueHeader = await screen.findByRole("columnheader", { name: /Prihod dana/i });
+    expect(revenueHeader).toHaveAttribute("aria-sort", "ascending");
+    expect(screen.getByTestId("location-search")).toHaveTextContent("sort=totalRevenue");
+    expect(screen.getByTestId("location-search")).toHaveTextContent("dir=asc");
+
+    const revenueButton = within(revenueHeader).getByRole("button", { name: /Prihod dana/i });
+    fireEvent.click(revenueButton);
+
+    await waitFor(() => expect(revenueHeader).toHaveAttribute("aria-sort", "descending"));
+    await waitFor(() => {
+      expect(screen.getByTestId("location-search")).toHaveTextContent("sort=totalRevenue");
+      expect(screen.getByTestId("location-search")).toHaveTextContent("dir=desc");
+    });
   });
 
   it("drops an unverified URL store filter when store discovery fails", async () => {

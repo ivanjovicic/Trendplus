@@ -222,6 +222,15 @@ const WEEKDAY_ORDER: Array<{ key: number; label: string }> = [
   { key: 0, label: "Ned" },
 ];
 
+const DAILY_FIXED_SORT_KEYS = [
+  "date",
+  "firstShiftTotalItems",
+  "secondShiftTotalItems",
+  "totalRevenue",
+  "othersCount",
+  "totalItemsSold",
+] as const satisfies readonly SortKey[];
+
 function parseDateInputOrDefault(value: string | null, fallback: string): string {
   if (!value) return fallback;
   const normalized = value.slice(0, 10);
@@ -239,6 +248,32 @@ function parseTopN(value: string | null): number {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return DEFAULT_TOP_N;
   return Math.min(25, Math.max(1, Math.round(parsed)));
+}
+
+function isDailySalesSortKey(value: string | null): value is SortKey {
+  if (!value) return false;
+  if ((DAILY_FIXED_SORT_KEYS as readonly string[]).includes(value)) return true;
+  const supplierIndex = value.startsWith("supplier:") ? Number(value.slice("supplier:".length)) : NaN;
+  return Number.isInteger(supplierIndex) && supplierIndex >= 0 && supplierIndex < 25;
+}
+
+function readDailySalesSort(searchParams: URLSearchParams): { sortKey: SortKey; sortDir: SortDir } {
+  const candidate = searchParams.get("sort");
+  const sortKey = isDailySalesSortKey(candidate) ? candidate : "date";
+  const sortDir = searchParams.get("dir") === "asc" ? "asc" : "desc";
+  return { sortKey, sortDir };
+}
+
+function writeDailySalesSort(searchParams: URLSearchParams, sortKey: SortKey, sortDir: SortDir): URLSearchParams {
+  const next = new URLSearchParams(searchParams);
+  if (sortKey === "date" && sortDir === "desc") {
+    next.delete("sort");
+    next.delete("dir");
+  } else {
+    next.set("sort", sortKey);
+    next.set("dir", sortDir);
+  }
+  return next;
 }
 
 function buildStoreLabel(store: StoreOption): string {
@@ -346,6 +381,11 @@ function sortMarker(field: SortKey, active: SortKey, dir: SortDir): ReactNode | 
   const up = "▲";
   const down = "▼";
   return <span className="sort-badge">{dir === "asc" ? up : down}</span>;
+}
+
+function sortAriaValue(field: SortKey, active: SortKey, dir: SortDir): "ascending" | "descending" | "none" {
+  if (field !== active) return "none";
+  return dir === "asc" ? "ascending" : "descending";
 }
 
 export function sortDailySalesRows(rows: DailySalesRow[], sortKey: SortKey, sortDir: SortDir): DailySalesRow[] {
@@ -735,6 +775,7 @@ export default function DailySalesStatsPage() {
   const queryStoreId = parseNullableInt(searchParams.get("storeId"));
   const queryTopN = parseTopN(searchParams.get("topN"));
   const queryDataScope = normalizeDataScope(searchParams.get("dataScope") ?? getDataScope());
+  const querySort = useMemo(() => readDailySalesSort(searchParams), [searchParams]);
   const hasExplicitDate = searchParams.has("fromDate") || searchParams.has("toDate");
   const initialPreset: PeriodPreset = hasExplicitDate ? "custom" : "30d";
 
@@ -760,8 +801,8 @@ export default function DailySalesStatsPage() {
   const [previousPeriodEmptyNote, setPreviousPeriodEmptyNote] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<DailySalesPageError | null>(null);
-  const [sortKey, setSortKey] = useState<SortKey>("date");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [sortKey, setSortKey] = useState<SortKey>(querySort.sortKey);
+  const [sortDir, setSortDir] = useState<SortDir>(querySort.sortDir);
   const [qualityPanelOpen, setQualityPanelOpen] = useState(false);
   const [dataScope, setDataScopeValue] = useState<DataScope>(() => queryDataScope);
   const dataScopeRef = useRef<DataScope>(queryDataScope);
@@ -776,6 +817,15 @@ export default function DailySalesStatsPage() {
   useEffect(() => {
     setDataScopeValue(queryDataScope);
   }, [queryDataScope]);
+
+  useEffect(() => {
+    setSortKey((current) => current === querySort.sortKey ? current : querySort.sortKey);
+    setSortDir((current) => current === querySort.sortDir ? current : querySort.sortDir);
+    const canonical = writeDailySalesSort(searchParams, querySort.sortKey, querySort.sortDir);
+    if (canonical.toString() !== searchParams.toString()) {
+      setSearchParams(canonical, { replace: true });
+    }
+  }, [querySort.sortDir, querySort.sortKey, searchParams, setSearchParams]);
 
   useEffect(() => {
     dataScopeRef.current = dataScope;
@@ -1571,7 +1621,8 @@ export default function DailySalesStatsPage() {
     const next = getNextDailySalesSortState(sortKey, sortDir, field);
     setSortKey(next.sortKey);
     setSortDir(next.sortDir);
-  }, [sortDir, sortKey]);
+    setSearchParams((current) => writeDailySalesSort(current, next.sortKey, next.sortDir), { replace: true });
+  }, [setSearchParams, sortDir, sortKey]);
 
   const applyPreset = (preset: PeriodPreset) => {
     setPeriodPreset(preset);
@@ -1591,7 +1642,7 @@ export default function DailySalesStatsPage() {
     if (filters.storeId != null) params.set("storeId", String(filters.storeId));
     params.set("topN", String(filters.topN));
     params.set("dataScope", memoizedQueryDataScope);
-    setSearchParams(params, { replace: true });
+    setSearchParams(writeDailySalesSort(params, sortKey, sortDir), { replace: true });
   };
 
   const handleApplyFilters = () => {
@@ -1954,24 +2005,24 @@ export default function DailySalesStatsPage() {
               <table className="daily-sales-table">
                 <thead>
                   <tr>
-                    <th className="col-date">
+                    <th className="col-date" aria-sort={sortAriaValue("date", sortKey, sortDir)}>
                       <button type="button" onClick={() => handleSort("date")}>
                         Datum{sortMarker("date", sortKey, sortDir)}
                       </button>
                     </th>
-                    <th className="analytics-data-table__numeric col-shift1">
+                    <th className="analytics-data-table__numeric col-shift1" aria-sort={sortAriaValue("firstShiftTotalItems", sortKey, sortDir)}>
                       <button type="button" onClick={() => handleSort("firstShiftTotalItems")}>
                         Prva smena{sortMarker("firstShiftTotalItems", sortKey, sortDir)}{" "}
                         <InfoTip text="Suma komada prodatih od 06:00 do 13:59." />
                       </button>
                     </th>
-                    <th className="analytics-data-table__numeric col-shift2">
+                    <th className="analytics-data-table__numeric col-shift2" aria-sort={sortAriaValue("secondShiftTotalItems", sortKey, sortDir)}>
                       <button type="button" onClick={() => handleSort("secondShiftTotalItems")}>
                         Druga smena{sortMarker("secondShiftTotalItems", sortKey, sortDir)}{" "}
                         <InfoTip text="Suma komada prodatih od 14:00 do 21:59." />
                       </button>
                     </th>
-                    <th className="analytics-data-table__numeric col-revenue">
+                    <th className="analytics-data-table__numeric col-revenue" aria-sort={sortAriaValue("totalRevenue", sortKey, sortDir)}>
                       <button type="button" onClick={() => handleSort("totalRevenue")}>
                         Prihod dana{sortMarker("totalRevenue", sortKey, sortDir)}
                       </button>
@@ -1979,20 +2030,20 @@ export default function DailySalesStatsPage() {
                     {supplierHeaders.map((name, index) => {
                       const displayName = tableRows.length === 0 ? "" : name;
                       return (
-                        <th key={`supplier-header-${index}`} className="analytics-data-table__numeric">
+                        <th key={`supplier-header-${index}`} className="analytics-data-table__numeric" aria-sort={sortAriaValue(`supplier:${index}`, sortKey, sortDir)}>
                           <button type="button" onClick={() => handleSort(`supplier:${index}`)}>
                             {displayName}{sortMarker(`supplier:${index}`, sortKey, sortDir)}
                           </button>
                         </th>
                       );
                     })}
-                    <th className="analytics-data-table__numeric">
+                    <th className="analytics-data-table__numeric" aria-sort={sortAriaValue("othersCount", sortKey, sortDir)}>
                       <button type="button" onClick={() => handleSort("othersCount")}>
                         Ostali{sortMarker("othersCount", sortKey, sortDir)}{" "}
                         <InfoTip text="Komadi dobavljača koji nisu u top N listi za izabrani opseg." />
                       </button>
                     </th>
-                    <th className="analytics-data-table__numeric">
+                    <th className="analytics-data-table__numeric" aria-sort={sortAriaValue("totalItemsSold", sortKey, sortDir)}>
                       <button type="button" onClick={() => handleSort("totalItemsSold")}>
                         Ukupno kom{sortMarker("totalItemsSold", sortKey, sortDir)}
                       </button>
