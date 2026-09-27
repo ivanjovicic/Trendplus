@@ -92,9 +92,9 @@ public sealed class SqlServerSourceDataSessionTests
             "SELECT * FROM [sales].[Order] WHERE ([Updated At] > @p0 OR ([Updated At] = @p1 AND [ID] > @p2)) ORDER BY [Updated At], [ID]",
             sql);
         Assert.Equal(3, parameters.Count);
-        Assert.Equal(cursorUtc.AddSeconds(-30), parameters[0]);
-        Assert.Equal(cursorUtc.AddSeconds(-30), parameters[1]);
-        Assert.Equal(700L, parameters[2]);
+        Assert.Equal(cursorUtc.AddSeconds(-30), parameters[0].Value);
+        Assert.Equal(cursorUtc.AddSeconds(-30), parameters[1].Value);
+        Assert.Equal(700L, parameters[2].Value);
     }
 
     [Fact]
@@ -114,7 +114,7 @@ public sealed class SqlServerSourceDataSessionTests
             "[sales].[Order]",
             query);
 
-        Assert.Equal("SELECT * FROM [sales].[Order]", sql);
+        Assert.Equal("SELECT * FROM [sales].[Order] ORDER BY [Naziv]", sql);
         Assert.Empty(parameters);
     }
 }

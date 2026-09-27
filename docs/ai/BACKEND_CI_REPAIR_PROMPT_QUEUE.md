@@ -13,12 +13,13 @@
 
 ## BCI11 - Reconcile SQL Server source-session contract on current main
 
-Status: READY  
+Status: DONE
 Priority: P0  
 Type: backend/tests/ci  
 Feature family: backend-ci-sqlserver-session-contract  
 Parallel-safe: yes, with BCI12 only  
-Owner: unassigned  
+Owner: Codex
+Local lock: removed after done close
 Commit suggestion: `test(ci): reconcile sql server source session contract`
 
 ### Problem
@@ -55,6 +56,16 @@ The latest broad backend CI evidence still contains deterministic failures in `S
 - No secret leakage is introduced.
 - No test is skipped or weakened to manufacture green.
 - A fresh broad-suite result is recorded before BCI10 can close.
+
+### Completion note (2026-09-27)
+- Status: DONE
+- Runtime contract repaired: canonical `read-only` mode, credential-free source identity/diagnostics, parameterized `TOP`, named cursor parameters, quoted identifiers and deterministic full-scan ordering.
+- Focused deterministic SQL contract: 14/14 passed, 0 skipped.
+- Full SQL Server source-session family: 25/25 passed, 0 skipped; live Testcontainers SQL Server coverage included.
+- Fresh broad backend suite: 1478 total / 1427 passed / 13 failed / 38 skipped. Remaining failures are unrelated environment/test-host/provider families (invalid Neon credentials, missing SQL Server connection string and schema/order-isolation failures); BCI10 remains PARTIAL.
+- Run log: `.ai/runs/2026-09-27-BCI11-evidence.md`
+- Evidence state: synchronized
+- Next: `BCI12` is the primary READY lane; BCI13/BCI14 remain staged behind focused residual-family routing.
 
 ---
 

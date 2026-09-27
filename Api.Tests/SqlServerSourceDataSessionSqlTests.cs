@@ -89,8 +89,8 @@ public sealed class SqlServerSourceDataSessionSqlTests
             "SELECT * FROM [dbo].[Order] WHERE ([UpdatedAt] > @p0 OR ([UpdatedAt] = @p1 AND [Id] > @p2)) ORDER BY [UpdatedAt], [Id]",
             commandText);
         Assert.Equal(3, parameters.Count);
-        Assert.Equal(cursorUtc.AddSeconds(-60), parameters[0]);
-        Assert.Equal(1L, parameters[2]);
+        Assert.Equal(cursorUtc.AddSeconds(-60), parameters[0].Value);
+        Assert.Equal(1L, parameters[2].Value);
     }
 
     [Fact]
@@ -122,7 +122,7 @@ public sealed class SqlServerSourceDataSessionSqlTests
             query);
 
         Assert.StartsWith("SELECT TOP (@maxRows) * FROM [dbo].[Order]", commandText, StringComparison.Ordinal);
-        Assert.Contains(25, parameters);
+        Assert.Contains(parameters, parameter => parameter.Name == "@maxRows" && Equals(parameter.Value, 25));
     }
 
     [Fact]
