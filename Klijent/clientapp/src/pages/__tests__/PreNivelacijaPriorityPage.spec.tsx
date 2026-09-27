@@ -723,7 +723,7 @@ describe("PreNivelacijaPriorityPage", () => {
     });
 
     render(
-      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti"]}>
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
         <PreNivelacijaPriorityPage />
       </MemoryRouter>,
     );
@@ -734,7 +734,7 @@ describe("PreNivelacijaPriorityPage", () => {
 
   it("exports the same focus-filtered rows that the table displays", async () => {
     render(
-      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti"]}>
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
         <PreNivelacijaPriorityPage />
       </MemoryRouter>,
     );
@@ -753,7 +753,7 @@ describe("PreNivelacijaPriorityPage", () => {
     getPreNivelacijaPrioritetiMock.mockImplementation(async (query) => buildPagedFocusResponse({ ...query, pageSize: 1 }));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti?page=2"]}>
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti?page=2"]}>
         <PreNivelacijaPriorityPage />
       </MemoryRouter>,
     );
@@ -1041,7 +1041,7 @@ describe("PreNivelacijaPriorityPage", () => {
 
   it("restores validated filters, focus, page and scope from a shared URL", async () => {
     render(
-      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti?supplierId=11&seasonId=7&footwearTypeId=4&minScore=72&noSaleDaysMin=21&focus=review&page=1&dataScope=imported"]}>
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti?supplierId=11&seasonId=7&footwearTypeId=4&minScore=72&noSaleDaysMin=21&focus=review&page=1&dataScope=imported"]}>
         <LocationProbe />
         <PreNivelacijaPriorityPage />
       </MemoryRouter>,
@@ -1071,7 +1071,7 @@ describe("PreNivelacijaPriorityPage", () => {
 
   it("restores table sort from a shared URL and persists the next direction", async () => {
     render(
-      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti?sort=sku&dir=asc"]}>
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti?sort=sku&dir=asc"]}>
         <LocationProbe />
         <PreNivelacijaPriorityPage />
       </MemoryRouter>,
@@ -1093,7 +1093,7 @@ describe("PreNivelacijaPriorityPage", () => {
 
   it("fails safely to defaults and canonicalizes invalid query values", async () => {
     render(
-      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti?supplierId=bad&seasonId=-4&footwearTypeId=0&minScore=101&noSaleDaysMin=-1&focus=unknown&page=0&dataScope=unknown"]}>
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti?supplierId=bad&seasonId=-4&footwearTypeId=0&minScore=101&noSaleDaysMin=-1&focus=unknown&page=0&dataScope=unknown"]}>
         <LocationProbe />
         <PreNivelacijaPriorityPage />
       </MemoryRouter>,
@@ -1120,7 +1120,7 @@ describe("PreNivelacijaPriorityPage", () => {
 
   it("keeps URL context and snapshot metadata through focus and detail navigation", async () => {
     render(
-      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti?supplierId=11&seasonId=7&footwearTypeId=4&minScore=72&noSaleDaysMin=21&focus=review&page=1&dataScope=imported"]}>
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti?supplierId=11&seasonId=7&footwearTypeId=4&minScore=72&noSaleDaysMin=21&focus=review&page=1&dataScope=imported"]}>
         <LocationProbe />
         <PreNivelacijaPriorityPage />
       </MemoryRouter>,
@@ -1218,7 +1218,7 @@ describe("PreNivelacijaPriorityPage", () => {
 
   it("resets filters, focus and URL to documented defaults", async () => {
     render(
-      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti?supplierId=11&seasonId=7&footwearTypeId=4&minScore=72&noSaleDaysMin=21&focus=review&page=2&dataScope=imported"]}>
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti?supplierId=11&seasonId=7&footwearTypeId=4&minScore=72&noSaleDaysMin=21&focus=review&page=2&dataScope=imported"]}>
         <LocationProbe />
         <PreNivelacijaPriorityPage />
       </MemoryRouter>,
@@ -1247,8 +1247,8 @@ describe("PreNivelacijaPriorityPage", () => {
     render(
       <MemoryRouter
         initialEntries={[
-          "/analitika/pre-nivelacija-prioriteti?minScore=40&noSaleDaysMin=14&dataScope=all",
-          "/analitika/pre-nivelacija-prioriteti?minScore=40&noSaleDaysMin=14&focus=review&dataScope=all",
+          "/analytics/pre-nivelacija-prioriteti?minScore=40&noSaleDaysMin=14&dataScope=all",
+          "/analytics/pre-nivelacija-prioriteti?minScore=40&noSaleDaysMin=14&focus=review&dataScope=all",
         ]}
         initialIndex={1}
       >
@@ -1299,7 +1299,7 @@ describe("PreNivelacijaPriorityPage", () => {
     });
 
     render(
-      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti"]}>
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
         <PreNivelacijaPriorityPage />
       </MemoryRouter>,
     );
@@ -1332,7 +1332,7 @@ describe("PreNivelacijaPriorityPage", () => {
       });
 
     render(
-      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti"]}>
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
         <PreNivelacijaPriorityPage />
       </MemoryRouter>,
     );
@@ -1377,7 +1377,7 @@ describe("PreNivelacijaPriorityPage", () => {
     });
 
     render(
-      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti"]}>
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
         <PreNivelacijaPriorityPage />
       </MemoryRouter>,
     );
@@ -1390,7 +1390,7 @@ describe("PreNivelacijaPriorityPage", () => {
 
   it("hides inline detail when the active focus filter excludes the selected row", async () => {
     render(
-      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti"]}>
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
         <PreNivelacijaPriorityPage />
       </MemoryRouter>,
     );
@@ -1439,7 +1439,7 @@ describe("PreNivelacijaPriorityPage", () => {
     ]));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti"]}>
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
         <PreNivelacijaPriorityPage />
       </MemoryRouter>,
     );
@@ -1488,7 +1488,7 @@ describe("PreNivelacijaPriorityPage", () => {
     });
 
     render(
-      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti"]}>
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
         <PreNivelacijaPriorityPage />
       </MemoryRouter>,
     );
@@ -1531,7 +1531,7 @@ describe("PreNivelacijaPriorityPage", () => {
     });
 
     render(
-      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti?supplierId=11"]}>
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti?supplierId=11"]}>
         <PreNivelacijaPriorityPage />
       </MemoryRouter>,
     );
@@ -1569,7 +1569,7 @@ describe("PreNivelacijaPriorityPage", () => {
     getPreNivelacijaPrioritetiMock.mockResolvedValueOnce(response);
 
     render(
-      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti"]}>
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
         <PreNivelacijaPriorityPage />
       </MemoryRouter>,
     );
@@ -1580,7 +1580,7 @@ describe("PreNivelacijaPriorityPage", () => {
 
   it("keeps invalid score drafts visible and blocks apply without refetching defaults", async () => {
     render(
-      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti?minScore=40&noSaleDaysMin=14"]}>
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti?minScore=40&noSaleDaysMin=14"]}>
         <LocationProbe />
         <PreNivelacijaPriorityPage />
       </MemoryRouter>,
@@ -1622,7 +1622,7 @@ describe("PreNivelacijaPriorityPage", () => {
     });
 
     render(
-      <MemoryRouter initialEntries={["/analitika/pre-nivelacija-prioriteti?supplierId=11&focus=review&dataScope=imported"]}>
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti?supplierId=11&focus=review&dataScope=imported"]}>
         <PreNivelacijaPriorityPage />
       </MemoryRouter>,
     );

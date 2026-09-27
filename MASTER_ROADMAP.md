@@ -4,6 +4,8 @@ Updated: 2026-09-26
 Repository: `ivanjovicic/Trendplus`
 Status: canonical planning entry point
 
+Owner promotion/claim 2026-09-27: idle recovery verified RQ311 DONE on current `origin/main`, confirmed RQ310 is dependency-complete, and found only a stale route-alignment branch last updated 2026-06-17 with no active lock/PR owner. RQ310 moved WAITING -> READY -> IN_PROGRESS; local lock `.ai/task-locks/RQ310-codex.lock.md`.
+
 Owner promotion/claim 2026-09-27: idle recovery reconciled stale RQ summary rows against their DONE sections, confirmed higher-priority RQ448/RQ454/RQ455 remain externally gated and RQ319 requires a product UX choice, then promoted/claimed dependency-complete RQ311 for Operacije guardrail cleanup; local lock `.ai/task-locks/RQ311-codex.lock.md`.
 Owner completion 2026-09-27: RQ311 was delivered directly to `main` in implementation `6b590226064a60778ac035d2f761d6b98badbddc`; assignment guardrails now exclude `==`/`===` comparisons, four false-positive baseline entries were removed, and affected Operacije proof is 134/134. Run log: `.ai/runs/2026-09-27-RQ311-evidence.md`. Evidence state: synchronized.
 

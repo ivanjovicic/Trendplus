@@ -200,13 +200,13 @@ function HistoryProbe() {
   return <button type="button" data-testid="history-back" onClick={() => navigate(-1)}>Nazad</button>;
 }
 
-function renderPage(initialEntries = ["/analitika/nivelacije-pre-post"]) {
+function renderPage(initialEntries = ["/analytics/nivelacije-pre-post"]) {
   return render(
     <MemoryRouter initialEntries={initialEntries}>
       <LocationProbe />
       <HistoryProbe />
       <Routes>
-        <Route path="/analitika/nivelacije-pre-post" element={<ProdajaPrePostNivelacijePage />} />
+        <Route path="/analytics/nivelacije-pre-post" element={<ProdajaPrePostNivelacijePage />} />
         <Route path="/analitika/nivelacije-pre-post/:id" element={<PrePostDetailRouteStub />} />
       </Routes>
     </MemoryRouter>,
@@ -238,7 +238,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
         },
       })],
     }));
-    renderPage(["/analitika/nivelacije-pre-post?sort=changeRevenue&dir=asc&focus=review"]);
+    renderPage(["/analytics/nivelacije-pre-post?sort=changeRevenue&dir=asc&focus=review"]);
 
     const table = await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
     expect(screen.getByRole("button", { name: /Pregledaj/i })).toHaveClass("active");
@@ -266,7 +266,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
         },
       })],
     }));
-    renderPage(["/analitika/nivelacije-pre-post?periodPreset=custom&fromDate=2026-06-01&toDate=2026-08-31&vendorId=10&category=Obuca&storeId=2&focus=review"]);
+    renderPage(["/analytics/nivelacije-pre-post?periodPreset=custom&fromDate=2026-06-01&toDate=2026-08-31&vendorId=10&category=Obuca&storeId=2&focus=review"]);
 
     await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
     await waitFor(() => {
@@ -296,7 +296,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
         },
       })],
     }));
-    renderPage(["/analitika/nivelacije-pre-post?focus=review"]);
+    renderPage(["/analytics/nivelacije-pre-post?focus=review"]);
 
     await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
     expect(screen.getByRole("button", { name: /Pregledaj/i })).toHaveClass("active");
@@ -342,7 +342,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
   });
 
   it("removes invalid focus values and falls back to all", async () => {
-    renderPage(["/analitika/nivelacije-pre-post?focus=not-a-focus"]);
+    renderPage(["/analytics/nivelacije-pre-post?focus=not-a-focus"]);
 
     await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
     expect(screen.getByRole("button", { name: /^Sve/ })).toHaveClass("active");

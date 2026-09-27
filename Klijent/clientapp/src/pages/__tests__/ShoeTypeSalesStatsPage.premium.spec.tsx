@@ -169,10 +169,10 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
 
   it("round-trips shoe type table sort through the URL", async () => {
     render(
-      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats?sort=ukupanPromet&dir=asc&storeId=2"]}>
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats?sort=ukupanPromet&dir=asc&storeId=2"]}>
         <LocationProbe />
         <Routes>
-          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -201,9 +201,9 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -219,10 +219,10 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
       sezone: [{ id: 3, naziv: "Leto 2026", datumOd: "2026-06-01T00:00:00Z", datumDo: "2026-08-31T23:59:59Z" }],
     }));
     render(
-      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats?periodPreset=custom&fromDate=2026-06-01&toDate=2026-08-31&sezonaId=3&storeId=2"]}>
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats?periodPreset=custom&fromDate=2026-06-01&toDate=2026-08-31&sezonaId=3&storeId=2"]}>
         <LocationProbe />
         <Routes>
-          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -250,9 +250,9 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -272,9 +272,9 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -301,9 +301,9 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -341,9 +341,9 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -365,9 +365,9 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
 
   it("uses shared control bar and analytics data table without changing recommendation labels", async () => {
     render(
-      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -431,9 +431,9 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -489,9 +489,9 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -525,9 +525,9 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -541,9 +541,9 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     vi.mocked(getShoeTypeSalesStats).mockRejectedValue(new Error("backend down"));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -559,9 +559,9 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
       .mockRejectedValueOnce(new Error("Network error on refetch"));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -604,9 +604,9 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -619,9 +619,9 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
 
   it("keeps a positive total margin as percentage-share comparison data", async () => {
     render(
-      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -663,9 +663,9 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -696,9 +696,9 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -746,9 +746,9 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -786,9 +786,9 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -821,9 +821,9 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -857,9 +857,9 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -913,9 +913,9 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -950,9 +950,9 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -982,9 +982,9 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     );
 
     render(
-      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -1032,9 +1032,9 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
       .mockImplementationOnce(() => secondPayload.promise);
 
     render(
-      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );

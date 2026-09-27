@@ -245,9 +245,9 @@ describe("ColorSalesStatsPage premium controls", () => {
 
   it("uses shared trust header, control bar and analytics data table without changing ranking labels", async () => {
     render(
-      <MemoryRouter initialEntries={["/analitika/color-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/color-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/color-sales-stats" element={<ColorSalesStatsPage />} />
+          <Route path="/analytics/color-sales-stats" element={<ColorSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -280,9 +280,9 @@ describe("ColorSalesStatsPage premium controls", () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/color-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/color-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/color-sales-stats" element={<ColorSalesStatsPage />} />
+          <Route path="/analytics/color-sales-stats" element={<ColorSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -309,9 +309,9 @@ describe("ColorSalesStatsPage premium controls", () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/color-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/color-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/color-sales-stats" element={<ColorSalesStatsPage />} />
+          <Route path="/analytics/color-sales-stats" element={<ColorSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -350,9 +350,9 @@ describe("ColorSalesStatsPage premium controls", () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/color-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/color-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/color-sales-stats" element={<ColorSalesStatsPage />} />
+          <Route path="/analytics/color-sales-stats" element={<ColorSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -393,9 +393,9 @@ describe("ColorSalesStatsPage premium controls", () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/color-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/color-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/color-sales-stats" element={<ColorSalesStatsPage />} />
+          <Route path="/analytics/color-sales-stats" element={<ColorSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -443,9 +443,9 @@ describe("ColorSalesStatsPage premium controls", () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/color-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/color-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/color-sales-stats" element={<ColorSalesStatsPage />} />
+          <Route path="/analytics/color-sales-stats" element={<ColorSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -500,9 +500,9 @@ describe("ColorSalesStatsPage premium controls", () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/color-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/color-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/color-sales-stats" element={<ColorSalesStatsPage />} />
+          <Route path="/analytics/color-sales-stats" element={<ColorSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -532,9 +532,9 @@ describe("ColorSalesStatsPage premium controls", () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/color-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/color-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/color-sales-stats" element={<ColorSalesStatsPage />} />
+          <Route path="/analytics/color-sales-stats" element={<ColorSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -571,9 +571,9 @@ describe("ColorSalesStatsPage premium controls", () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/color-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/color-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/color-sales-stats" element={<ColorSalesStatsPage />} />
+          <Route path="/analytics/color-sales-stats" element={<ColorSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -604,9 +604,9 @@ describe("ColorSalesStatsPage premium controls", () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/color-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/color-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/color-sales-stats" element={<ColorSalesStatsPage />} />
+          <Route path="/analytics/color-sales-stats" element={<ColorSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -630,9 +630,9 @@ describe("ColorSalesStatsPage premium controls", () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/color-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/color-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/color-sales-stats" element={<ColorSalesStatsPage />} />
+          <Route path="/analytics/color-sales-stats" element={<ColorSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -656,9 +656,9 @@ describe("ColorSalesStatsPage premium controls", () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/color-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/color-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/color-sales-stats" element={<ColorSalesStatsPage />} />
+          <Route path="/analytics/color-sales-stats" element={<ColorSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );

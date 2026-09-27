@@ -2,7 +2,8 @@
 
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ310 (IN_PROGRESS in this workspace)
+Owner promotion/claim 2026-09-27: idle recovery verified RQ311 DONE on current `origin/main`, confirmed RQ310 is dependency-complete, and found only a stale route-alignment branch last updated 2026-06-17 with no active lock/PR owner. RQ310 moved WAITING -> READY -> IN_PROGRESS; local lock `.ai/task-locks/RQ310-codex.lock.md`.
 Owner completion 2026-09-27: RQ311 was delivered directly to `main` in implementation `6b590226064a60778ac035d2f761d6b98badbddc`, with current `origin/main` verified through merge `76653b0d79148ec5769283f385d776cb64b5d88a`. The assignment guardrail rules now exclude `==`/`===` comparisons, four false-positive baseline entries were removed, and affected Operacije specs remain green at 134/134. Run log: `.ai/runs/2026-09-27-RQ311-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-27: idle recovery reconciled stale RQ summary rows against their DONE sections, confirmed higher-priority RQ448/RQ454/RQ455 remain externally gated and RQ319 requires a product UX choice, then promoted/claimed dependency-complete RQ311 for Operacije guardrail cleanup; local lock `.ai/task-locks/RQ311-codex.lock.md`.
 Owner completion 2026-09-27: RQ329 was delivered directly to `main` in implementation `ea4ac7cc7d3d3bacf73ac8c13699e1e5efe5479a`, with current `origin/main` verified through merge `18c348b59b46e08ef2f47c1dee30b7779e2889c3`. The Shoe Type table no longer passes a dead truncation label; the response has no authoritative hidden-row total/pagination contract, so the UI avoids an unsupported claim. Focused premium proof is 39/39; guardrails/typecheck/build/diff checks pass. Run log: `.ai/runs/2026-09-27-RQ329-evidence.md`. Evidence state: synchronized.
@@ -1582,7 +1583,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ307 | DONE | shoe-type-impact-label | Replace English nivelacija impact label on Shoe Type surface |
 | RQ308 | DONE | inventory-period-provenance | Add Inventory period control and make snapshot/signal semantics explicit |
 | RQ309 | DONE | operations-nav-icons | Differentiate duplicate Operacije sidebar icons |
-| RQ310 | WAITING | operations-test-route-alignment | Align Operacije page tests with production `/analytics/...` routes |
+| RQ310 | IN_PROGRESS | operations-test-route-alignment | Align Operacije page tests with production `/analytics/...` routes |
 | RQ311 | DONE | operations-guardrail-cleanup | Resolve Operacije guardrail violations for score/reliability mapping |
 | RQ312 | DONE | inventory-signal-window-freshness | Refresh Inventory signal window instead of freezing at mount |
 | RQ313 | DONE | inventory-insights-error-state | Fail closed when Inventory insights fetch fails |
@@ -17401,7 +17402,7 @@ Three Operacije entries share `ShoppingBag` (`shoe-type-sales-stats`, `daily-sal
 
 ## RQ310 - Align Operacije page tests with production `/analytics/...` routes
 
-Status: WAITING
+Status: IN_PROGRESS
 Status repair 2026-09-27: reverted a false `DONE` introduced by the RQ327 closure commit `775e0173`; no RQ310 work exists and Operacije specs still use `/analitika/<page>` initial entries.
 Priority: P3
 Type: frontend/tests

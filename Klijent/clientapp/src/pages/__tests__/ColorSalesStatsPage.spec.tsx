@@ -267,9 +267,9 @@ function LocationProbe() {
 
 function renderPage() {
   return render(
-    <MemoryRouter initialEntries={["/analitika/color-sales-stats"]}>
+    <MemoryRouter initialEntries={["/analytics/color-sales-stats"]}>
       <Routes>
-        <Route path="/analitika/color-sales-stats" element={<ColorSalesStatsPage />} />
+        <Route path="/analytics/color-sales-stats" element={<ColorSalesStatsPage />} />
         <Route path="/analitika/color-sales-stats/:color" element={<div>Color detail route</div>} />
       </Routes>
     </MemoryRouter>,
@@ -293,10 +293,10 @@ describe("ColorSalesStatsPage", () => {
 
   it("round-trips color table sort through the URL", async () => {
     render(
-      <MemoryRouter initialEntries={["/analitika/color-sales-stats?sort=ukupanPromet&dir=asc&sezonaId=3"]}>
+      <MemoryRouter initialEntries={["/analytics/color-sales-stats?sort=ukupanPromet&dir=asc&sezonaId=3"]}>
         <LocationProbe />
         <Routes>
-          <Route path="/analitika/color-sales-stats" element={<ColorSalesStatsPage />} />
+          <Route path="/analytics/color-sales-stats" element={<ColorSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -314,10 +314,10 @@ describe("ColorSalesStatsPage", () => {
 
   it("restores validated period, season and store filters from a shared URL", async () => {
     render(
-      <MemoryRouter initialEntries={["/analitika/color-sales-stats?periodPreset=custom&fromDate=2026-06-01&toDate=2026-08-31&sezonaId=3&storeId=2"]}>
+      <MemoryRouter initialEntries={["/analytics/color-sales-stats?periodPreset=custom&fromDate=2026-06-01&toDate=2026-08-31&sezonaId=3&storeId=2"]}>
         <LocationProbe />
         <Routes>
-          <Route path="/analitika/color-sales-stats" element={<ColorSalesStatsPage />} />
+          <Route path="/analytics/color-sales-stats" element={<ColorSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );

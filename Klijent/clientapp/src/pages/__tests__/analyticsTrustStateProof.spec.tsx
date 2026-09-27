@@ -87,9 +87,9 @@ describe("analytics trust-state header proof", () => {
     vi.mocked(getShoeTypeSalesStats).mockRejectedValue(new Error("backend down"));
 
     render(
-      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats"]}>
         <Routes>
-          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
