@@ -39,6 +39,7 @@ import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyti
 import { dataScopeLabel, getDataScope, normalizeDataScope, type DataScope } from "../utils/dataScope";
 import UltraSpinner from "../components/ui/UltraSpinner";
 import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
+import { readAnalyticsTableSort, writeAnalyticsTableSort } from "../utils/analyticsTableSortUrl";
 import { fmtPct, fmtRsd, fmtRsdShort, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { getAnalyticsDataFreshnessStatus } from "../utils/analyticsResponseMeta";
@@ -250,29 +251,24 @@ function parseTopN(value: string | null): number {
   return Math.min(25, Math.max(1, Math.round(parsed)));
 }
 
-function isDailySalesSortKey(value: string | null): value is SortKey {
-  if (!value) return false;
-  if ((DAILY_FIXED_SORT_KEYS as readonly string[]).includes(value)) return true;
-  const supplierIndex = value.startsWith("supplier:") ? Number(value.slice("supplier:".length)) : NaN;
-  return Number.isInteger(supplierIndex) && supplierIndex >= 0 && supplierIndex < 25;
+function dailySalesSortKeys(topN: number): SortKey[] {
+  const supplierKeys = Array.from({ length: topN }, (_, index): SortKey => `supplier:${index}`);
+  return [...DAILY_FIXED_SORT_KEYS, ...supplierKeys];
 }
 
 function readDailySalesSort(searchParams: URLSearchParams): { sortKey: SortKey; sortDir: SortDir } {
-  const candidate = searchParams.get("sort");
-  const sortKey = isDailySalesSortKey(candidate) ? candidate : "date";
-  const sortDir = searchParams.get("dir") === "asc" ? "asc" : "desc";
-  return { sortKey, sortDir };
+  const topN = parseTopN(searchParams.get("topN"));
+  const { field, dir } = readAnalyticsTableSort(searchParams, dailySalesSortKeys(topN), "date", "desc");
+  const requestedField = searchParams.get("sort");
+  if (requestedField && requestedField !== field) return { sortKey: "date", sortDir: "desc" };
+  return { sortKey: field, sortDir: dir };
 }
 
 function writeDailySalesSort(searchParams: URLSearchParams, sortKey: SortKey, sortDir: SortDir): URLSearchParams {
+  if (sortKey !== "date" || sortDir !== "desc") return writeAnalyticsTableSort(searchParams, sortKey, sortDir);
   const next = new URLSearchParams(searchParams);
-  if (sortKey === "date" && sortDir === "desc") {
-    next.delete("sort");
-    next.delete("dir");
-  } else {
-    next.set("sort", sortKey);
-    next.set("dir", sortDir);
-  }
+  next.delete("sort");
+  next.delete("dir");
   return next;
 }
 

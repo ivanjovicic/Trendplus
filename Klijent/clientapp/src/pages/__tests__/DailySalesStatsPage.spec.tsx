@@ -152,6 +152,31 @@ describe("DailySalesStatsPage (integration)", () => {
     });
   });
 
+  it("falls back to the default date sort when the URL supplier column exceeds topN", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/daily-sales?topN=5&sort=supplier:7&dir=asc"]}>
+        <Routes>
+          <Route
+            path="/analytics/daily-sales"
+            element={
+              <>
+                <LocationProbe />
+                <DailySalesStatsPage />
+              </>
+            }
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      const search = screen.getByTestId("location-search").textContent ?? "";
+      expect(search).not.toContain("sort=");
+      expect(search).not.toContain("dir=");
+      expect(search).toContain("topN=5");
+    });
+  });
+
   it("drops an unverified URL store filter when store discovery fails", async () => {
     const requestedStoreIds: Array<string | null> = [];
 

@@ -244,6 +244,8 @@ export function reconcilePrePostExpandedVendorKey(
   availableVendorKeys: readonly string[],
 ): string | null {
   if (!expandedVendorKey) return null;
+  // Positional `row:<index>` keys can point at a different vendor after refetch; only stable `id:` keys survive.
+  if (!expandedVendorKey.startsWith("id:")) return null;
   return availableVendorKeys.includes(expandedVendorKey) ? expandedVendorKey : null;
 }
 

@@ -22,6 +22,7 @@ import type { AnalyticsNamedValue } from "../types/analyticsTable";
 import type { PreNivelacijaPriorityResponse } from "../types/preNivelacija";
 import { decisionColumns, type DecisionCandidate, type DecisionStatus, type FiniteNumber, type NormalizedScenario } from "./preNivelacijaDecision";
 import { CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
+import { readAnalyticsTableSort, writeAnalyticsTableSort } from "../utils/analyticsTableSortUrl";
 import { fmtNumber, fmtPct, fmtRsd } from "../utils/analyticsFormatters";
 import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescriptions";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
@@ -174,7 +175,7 @@ function parseFocusFilter(value: string | null): FocusFilter {
 
 const DEFAULT_SORT_FIELD: SortField = "status";
 const DEFAULT_SORT_DIR: SortDir = "desc";
-const SORT_FIELDS = new Set<SortField>([
+const SORT_FIELDS: readonly SortField[] = [
   "sku",
   "supplierName",
   "preNivelacijaScore",
@@ -182,20 +183,13 @@ const SORT_FIELDS = new Set<SortField>([
   "daysSinceLastSale",
   "revenueDelta",
   "status",
-]);
+];
 
 function defaultSortDir(field: SortField): SortDir {
   return field === "sku" || field === "supplierName" ? "asc" : DEFAULT_SORT_DIR;
 }
 
-function parseSortField(value: string | null): SortField {
-  return value && SORT_FIELDS.has(value as SortField) ? value as SortField : DEFAULT_SORT_FIELD;
-}
-
-function parseSortDir(value: string | null, field: SortField): SortDir {
-  if (value === "asc" || value === "desc") return value;
-  return defaultSortDir(field);
-}
+const SORT_DEFAULTS = { field: DEFAULT_SORT_FIELD, dir: defaultSortDir };
 
 function sameActiveFilters(left: ActiveFilters, right: ActiveFilters): boolean {
   return left.supplierId === right.supplierId
@@ -222,9 +216,7 @@ function buildPreNivelacijaSearchParams(
   if (focus !== "all") params.set("focus", focus);
   if (page > 1) params.set("page", String(page));
   params.set("dataScope", dataScope);
-  if (sortField !== DEFAULT_SORT_FIELD) params.set("sort", sortField);
-  if (sortDir !== defaultSortDir(sortField)) params.set("dir", sortDir);
-  return params;
+  return writeAnalyticsTableSort(params, sortField, sortDir, SORT_DEFAULTS);
 }
 
 const STATUS_PRIORITY: Record<DecisionStatus, number> = {
@@ -539,8 +531,7 @@ export default function PreNivelacijaPriorityPage() {
   }), [searchParams]);
   const queryFocus = parseFocusFilter(searchParams.get("focus"));
   const queryPage = parseBoundedInteger(searchParams.get("page"), 1, 1, Number.MAX_SAFE_INTEGER);
-  const querySortField = parseSortField(searchParams.get("sort"));
-  const querySortDir = parseSortDir(searchParams.get("dir"), querySortField);
+  const { field: querySortField, dir: querySortDir } = readAnalyticsTableSort(searchParams, SORT_FIELDS, DEFAULT_SORT_FIELD, defaultSortDir);
 
   const [supplierId, setSupplierId] = useState<number | null>(queryFilters.supplierId);
   const [seasonId, setSeasonId] = useState<number | null>(queryFilters.seasonId);

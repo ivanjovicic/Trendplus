@@ -341,6 +341,26 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(screen.queryByTestId("ppn-focus-row-context")).not.toBeInTheDocument();
   });
 
+  it("keeps the expanded vendor detail open when Apply refetches and the vendor remains", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(response());
+    renderPage();
+
+    await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
+    fireEvent.click(screen.getByRole("button", { name: "Detalji" }));
+    expect(screen.getByRole("heading", { name: /Detalj odluke: Vendor A/ })).toBeInTheDocument();
+    const callsBeforeApply = vi.mocked(getVendorSalesNivelacija).mock.calls.length;
+
+    fireEvent.click(screen.getByRole("button", { name: "Primeni" }));
+
+    await waitFor(() => {
+      expect(vi.mocked(getVendorSalesNivelacija).mock.calls.length).toBeGreaterThan(callsBeforeApply);
+    });
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: /Detalj odluke: Vendor A/ })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Sakrij" })).toBeInTheDocument();
+    });
+  });
+
   it("removes invalid focus values and falls back to all", async () => {
     renderPage(["/analytics/nivelacije-pre-post?focus=not-a-focus"]);
 
