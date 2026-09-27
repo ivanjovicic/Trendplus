@@ -1703,6 +1703,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ455 | WAITING | supplier-shoetype-customer-acceptance | Capture customer-side reconciliation and acceptance evidence |
 | RQ458 | DONE | supplier-decision-signal-identity | Preserve per-supplier signal identity when recommendation actionability is blocked |
 | RQ459 | DONE | supplier-decision-kpi-report-parity | Align Supplier Decision Hub KPI, chart and report totals and delta semantics |
+| RQ460 | DONE | analytics-quality-gates-copy-spec-drift | Restore green Analytics Quality Gates after RQ325 localized copy |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -1710,6 +1711,60 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ180 | DONE | pre-post-aggregate-owner-parity | Remove frontend reconstruction of backend-owned pre/post aggregate denominators |
 | RQ181 | DONE | decision-board-blocked-action-cta | Do not expose an executable action CTA for blocked Decision Board cards |
 | RQ182 | DONE | pre-post-coverage-backend-null-state | Preserve unknown pre/post coverage in backend DTOs and aggregate calculations |
+
+---
+
+## RQ460 - Restore green Analytics Quality Gates after RQ325 localized copy
+
+Status: DONE
+Priority: P1
+Type: frontend/tests/release-truth
+Feature family: analytics-quality-gates-copy-spec-drift
+Parallel-safe: no
+Owner: Analytics Frontend / Shared Analytics UX
+Commit suggestion: `test(analytics): align specs with localized operations copy`
+
+### Problem
+
+RQ325 (`4ecea4b1`) intentionally localized user-facing Operacije copy (`N/A` -> `Nije dostupno`, `Sell-through upozorenje` -> `Upozorenje prodajnog obrta`, English trust data-source labels -> Serbian, forecast `SKU` count -> `artikala`), but nine spec files outside its focused set still asserted the old copy. The "Frontend analytics tests, guardrails and build" job of Analytics Quality Gates was red on every `main` commit since then, so CI no longer protected later deliveries.
+
+### Evidence
+
+- Analytics Quality Gates runs 36315204135 (`4138fd9a`), 36315352002 (`f54ffc2a`) and 36315714315 (`8fe215a6`) fail in "Run analytics tests" with 20 failed tests.
+- Local reproduction on `775e0173`: 9 files, 20 failed / 110 passed; every failure is an old-copy expectation against the RQ325 localized output.
+- Recorded as residual risk/Next in `.ai/runs/2026-09-27-RQ324-evidence.md`.
+
+### Scope
+
+- Spec assertions only: `InventoryItemsTable.spec.tsx`, `analyticsTrustStateProof.spec.tsx`, `ColorSalesStatsPage.premium.spec.tsx`, `DailySalesStatsPage.premium.spec.tsx`, `InventoryPage.forecastGuardrails.spec.tsx`, `InventorySignalNullEvidence.spec.tsx`, `PrePostCoveragePresentation.spec.tsx`, `ShoeTypeSalesStatsPage.premium.spec.tsx`, `SupplierSalesStatsPage.premium.spec.tsx`.
+- No product copy or behavior change; the RQ325 localized contract is authoritative.
+
+### Read first
+
+- `.ai/runs/2026-09-27-RQ325-evidence.md`, the failing spec lines and the rendering source for each asserted label.
+
+### Do
+
+1. Update only the failing assertions to the localized labels that the current source renders.
+2. Keep unavailable/non-finite semantics asserted (no fake zero, no `NaN`/`Infinity`), only with the localized label.
+
+### Tests
+
+- The nine spec files plus the CI analytics test set (`src/components/analytics src/components/inventory src/components/supplierDecisionHub src/services/__tests__ src/pages`).
+
+### Acceptance
+
+- The CI analytics test set passes locally, and the next Analytics Quality Gates run on `main` no longer fails on these copy expectations.
+
+### Dependencies
+
+- RQ325 (DONE).
+
+### Completion
+
+- Claimed 2026-09-27 through idle recovery from the RQ324 run-log Next; local lock `.ai/task-locks/RQ460-cursor.lock.md`.
+- Delivered directly to `main` in `286743dd`. Nine specs: 130/130. CI analytics test set locally: 946/948; the two failures (`DataQualityPage.spec.tsx`, `AnalyticsDashboard.controlBar.spec.tsx`) pass 20/20 in isolation and were not part of the CI failure set (load-sensitive locally).
+- Run log: `.ai/runs/2026-09-27-RQ460-evidence.md`. Evidence state: synchronized.
 
 ---
 
