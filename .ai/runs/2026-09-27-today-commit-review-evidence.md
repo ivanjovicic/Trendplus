@@ -47,4 +47,5 @@
 
 ## Delivery
 
-- Commit/main SHA: see `git log origin/main` (recorded in final report).
+- Implementation SHA `2c9e3252`, pushed directly to `main` (rebased over c3df38ca; the upstream delta was docs/queue only). `git merge-base --is-ancestor 2c9e3252 origin/main` returned 0.
+- The guardrail still passes on the rebased tree.
