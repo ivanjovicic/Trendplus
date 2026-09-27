@@ -1596,7 +1596,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ325 | DONE | operations-residual-english-copy | Complete Serbian copy on residual Operacije English strings |
 | RQ326 | DONE | pre-nivelacija-sort-url-state | Persist Pre-Nivelacija table sort in URL |
 | RQ327 | DONE | daily-sales-sort-url-state | Persist Daily Sales table sort in URL |
-| RQ328 | WAITING | pre-post-expansion-persistence | Preserve Pre/Post expanded vendor across refetch |
+| RQ328 | DONE | pre-post-expansion-persistence | Preserve Pre/Post expanded vendor across refetch |
 | RQ329 | WAITING | shoe-type-truncation-label | Fix or remove dead Shoe Type truncation label |
 | RQ330 | WAITING | pre-post-focus-row-context | Add row-count context when Pre/Post focus hides vendors |
 | RQ331 | DONE | inventory-page-local-signal-kpis | Stop Inventory signal KPI cards from counting only the current page slice |
