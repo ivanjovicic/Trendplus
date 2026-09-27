@@ -3,6 +3,8 @@
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+Owner promotion/claim 2026-09-27: idle recovery verified RQ318 DONE on current origin/main, RQ325 is dependency-complete after RQ306, and no active residual-copy owner or conflicting lock/branch/PR exists. RQ325 moved WAITING -> READY -> IN_PROGRESS; local lock `.ai/task-locks/RQ325-codex.lock.md`.
+Owner completion 2026-09-27: RQ325 was delivered directly to `main` in `4ecea4b1`; residual Operacije copy is localized across Color, Pre-Nivelacija, Pre/Post, Supplier, Shoe Type, Daily Sales and Inventory, raw data-scope codes use the shared Serbian mapping, and focused proof is 132/132 with guardrails, typecheck, build and diff checks passing. Run log: `.ai/runs/2026-09-27-RQ325-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-27: idle recovery verified RQ317 DONE on current origin/main, no active shared Operacije URL-state owner or conflicting lock/branch/PR, and RQ318 is dependency-complete. RQ318 moved WAITING -> READY -> IN_PROGRESS; local lock .ai/task-locks/RQ318-codex.lock.md.
 Owner completion 2026-09-27: RQ318 was delivered directly to main in `3ddd4fb5`. Color, Shoe Type and Pre/Post now restore validated primary list filters from shared URLs while preserving sort/focus context; Inventory's existing URL contract remains unchanged. Focused proof is 102/102; guardrails, typecheck, build and diff checks pass. Run log: `.ai/runs/2026-09-27-RQ318-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-27: idle recovery verified RQ299 DONE on current origin/main, no active Pre/Post focus owner or conflicting lock/branch/PR, and RQ317 is dependency-complete. RQ317 moved WAITING -> READY -> IN_PROGRESS; local lock .ai/task-locks/RQ317-codex.lock.md.
@@ -1586,7 +1588,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ322 | WAITING | inventory-store-bootstrap-error | Replace Inventory store bootstrap console-only error |
 | RQ323 | WAITING | inventory-secondary-panel-stale-data | Clear stale Inventory secondary panel data on partial failure |
 | RQ324 | WAITING | inventory-detail-size-curve-error | Surface SKU detail size-curve fetch errors |
-| RQ325 | WAITING | operations-residual-english-copy | Complete Serbian copy on residual Operacije English strings |
+| RQ325 | DONE | operations-residual-english-copy | Complete Serbian copy on residual Operacije English strings |
 | RQ326 | WAITING | pre-nivelacija-sort-url-state | Persist Pre-Nivelacija table sort in URL |
 | RQ327 | WAITING | daily-sales-sort-url-state | Persist Daily Sales table sort in URL |
 | RQ328 | WAITING | pre-post-expansion-persistence | Preserve Pre/Post expanded vendor across refetch |
@@ -18143,7 +18145,7 @@ Reproduction: open SKU detail size-curve tab with failing API — blank panel, n
 
 ## RQ325 - Complete Serbian copy on residual Operacije English strings
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: frontend/copy/tests
 Feature family: operations-residual-english-copy
@@ -18202,6 +18204,23 @@ Reproduction: open color detail snapshot, trust subtitles, inventory alerts — 
 
 - Coordinate with `RQ301`/`RQ306`.
 - `RQ306` is DONE; its post-completion ASCII residuals are owned here (addendum 2026-09-25). Shoe Type backend error title belongs to `RQ435`, Pre-Nivelacija band codes/sort markers to `RQ434`, Daily Sales store-name export label to `RQ430`.
+
+### Completion note
+
+- Date: 2026-09-27
+- Status: DONE
+- Completion: Residual user-facing Operacije copy is localized across the owned pages and Inventory child panels; raw `all`/`existing`/`imported` scope values now render through the shared `dataScopeLabel` mapping.
+- Changed files: frontend Operacije pages/child panels, shared `dataScope` helper and focused copy specs; guardrail baseline; queue/roadmap/evidence.
+- Checks run: focused Vitest 132/132; `npm run check:analytics-guardrails`; typecheck; production build; `git diff --check`; planning architecture validator.
+- Checks not run: backend tests and remote CI - frontend copy/tests-only prompt; not required by the delivery policy.
+- Delivery mode: direct-main
+- Main commit SHA: `4ecea4b17860f2ae4fccc0d0207c01be6122d266`
+- Main verification: passed - `origin/main` contains `4ecea4b1` as an ancestor on 2026-09-27.
+- Missed: backend log-only English messages and explicitly out-of-scope backend error titles remain with their owning prompts; full browser/render audit and full repository suites were not run.
+- Follow-up: canonical idle recovery for the next dependency-complete prompt.
+- Residual risk: existing Vite large-chunk warning; no new analytics guardrail violation remains.
+- Run log: `.ai/runs/2026-09-27-RQ325-evidence.md`
+- Evidence state: synchronized
 
 ---
 

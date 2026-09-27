@@ -5,6 +5,8 @@ Repository: `ivanjovicic/Trendplus`
 Status: canonical planning entry point
 
 Owner promotion/claim 2026-09-27: idle recovery verified RQ317 DONE on current origin/main, no active shared Operacije URL-state owner or conflicting lock/branch/PR, and RQ318 is dependency-complete. RQ318 is IN_PROGRESS in this workspace; local lock .ai/task-locks/RQ318-codex.lock.md.
+Owner promotion/claim 2026-09-27: idle recovery verified RQ318 DONE on current origin/main, RQ325 is dependency-complete after RQ306, and no active residual-copy owner or conflicting lock/branch/PR exists. RQ325 is IN_PROGRESS in this workspace; local lock .ai/task-locks/RQ325-codex.lock.md.
+Owner completion 2026-09-27: RQ325 was delivered directly to main in 4ecea4b1. Residual Operacije copy and scope labels are localized; focused proof is 132/132, guardrails/typecheck/build/diff checks pass. Run log: .ai/runs/2026-09-27-RQ325-evidence.md. Evidence state: synchronized.
 Owner completion 2026-09-27: RQ318 was delivered directly to main in 3ddd4fb5 with validated URL restoration for Color, Shoe Type and Pre/Post primary filters. Focused 102/102, guardrails, typecheck, build and diff checks pass. Run log: .ai/runs/2026-09-27-RQ318-evidence.md. Evidence state: synchronized.
 
 Owner promotion/claim 2026-09-27: idle recovery verified RQ299 DONE on current origin/main, no active Pre/Post focus owner or conflicting lock/branch/PR, and RQ317 is dependency-complete. RQ317 is IN_PROGRESS in this workspace; local lock .ai/task-locks/RQ317-codex.lock.md.
