@@ -3,7 +3,7 @@
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: RQ461
-Owner audit follow-up 2026-09-28 (Supplier report + Pilot intake audit, grok): promoted three non-conflicting, decision-free prompts — `RQ461` (READY, P1: the durable Supplier report renderer expects section/header/metadata names the backend never emits, so warnings/top/risk/recommendation sections, freshness and the recommendation badge are always empty or wrong), `RQ462` (READY, P1, parallel-safe frontend: `/analytics/reports/pilot-intake` passes `report={null}` and always renders the empty state) and `RQ466` (READY, P1, parallel-safe backend: pilot intake ignores `dataScope`, uses a health window relative to now and presents query time as last refresh). `Current READY prompt` is `RQ461`; also READY: `RQ462`, `RQ466`. Run log: `.ai/runs/2026-09-28-supplier-report-pilot-intake-audit-evidence.md`.
+Owner audit follow-up 2026-09-28 (Supplier report + Pilot intake audit, grok): promoted three non-conflicting, decision-free prompts — `RQ461` (READY, P1: the durable Supplier report renderer expects section/header/metadata names the backend never emits, so warnings/top/risk/recommendation sections, freshness and the recommendation badge are always empty or wrong), `RQ462` (READY, P1, parallel-safe frontend: `/analytics/reports/pilot-intake` passes `report={null}` and always renders the empty state) and `RQ466` (READY, P1, parallel-safe backend: pilot intake ignores `dataScope`, uses a health window relative to now and presents query time as last refresh). `Current READY prompt` is `RQ461`; also READY: `RQ462`, `RQ466`. WAITING follow-ups: `RQ463` (requested-window truth; decision fail-closed vs recompute), `RQ464` (metric basis/scoring decision), `RQ465` (actions/negotiation pack), `RQ467` (pilot readiness semantics decision), `RQ468` (Serbian copy on both screens). Run log: `.ai/runs/2026-09-28-supplier-report-pilot-intake-audit-evidence.md`.
 Idle recovery 2026-09-27: reconciled stale summary rows RQ191/RQ192 to their terminal `DONE` sections; no safe RQ prompt was promoted because remaining candidates are externally gated, partial pending live proof, or require the RQ319 product decision. Evidence: `.ai/runs/2026-09-27-idle-recovery-evidence.md`.
 Owner promotion/claim 2026-09-27: idle recovery verified RQ311 DONE on current `origin/main`, confirmed RQ310 was dependency-complete, and found only a stale route-alignment branch last updated 2026-06-17 with no active lock/PR owner. RQ310 moved WAITING -> READY -> IN_PROGRESS; local lock `.ai/task-locks/RQ310-codex.lock.md`.
 Owner completion 2026-09-27: RQ310 was delivered directly to `main` in implementation `cde5a5870a6406bab830a7164bb6f0e9993efd80`. Operacije page-level fixtures now mount production `/analytics/...` list routes while detail/modal fixtures retain `/analitika/:table/:id`. Focused proof is 178/178, App route smoke is 20/20, guardrails/typecheck/build pass. Run log: `.ai/runs/2026-09-27-RQ310-evidence.md`. Evidence state: synchronized.
@@ -1714,7 +1714,12 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ460 | DONE | analytics-quality-gates-copy-spec-drift | Restore green Analytics Quality Gates after RQ325 localized copy |
 | RQ461 | READY | supplier-decision-durable-report-render-contract | Align the Supplier report durable renderer with the backend report payload |
 | RQ462 | READY | pilot-intake-durable-report-render | Render the durable Pilot intake report instead of the permanent empty state |
+| RQ463 | WAITING | supplier-decision-requested-window-truth | Make the Supplier report requested window, labels and provenance truthful |
+| RQ464 | WAITING | supplier-decision-report-metric-basis | Decide and document the Supplier report metric basis and a single scoring model |
+| RQ465 | WAITING | supplier-decision-report-actions-negotiation | Fix Supplier report actions, negotiation pack and page-level defects |
 | RQ466 | READY | pilot-intake-backend-scope-period-truth | Make the Pilot intake backend honour scope, requested period and refresh truth |
+| RQ467 | WAITING | pilot-intake-readiness-score-semantics | Decide Pilot intake readiness score semantics and default period |
+| RQ468 | WAITING | supplier-report-pilot-intake-serbian-copy | Complete Serbian copy on the Supplier report and Pilot intake screens |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -25231,6 +25236,171 @@ The page spec mocks the component, so the defect is untested.
 
 ---
 
+## RQ463 - Make the Supplier report requested window, labels and provenance truthful
+
+Status: WAITING
+Ready after: `RQ461` DONE (same files) and an owner decision on option A/B below
+Priority: P1
+Type: backend-contract/tests
+Feature family: supplier-decision-requested-window-truth
+Parallel-safe: no
+Owner: Analytics Reliability / Supplier Decision Hub
+Local lock: `.ai/task-locks/RQ463-<agent>.lock.md`
+Commit suggestion: `fix(analytics): truthful supplier report window and provenance`
+
+### Problem
+
+The Supplier report maps any explicit date range to a precomputed window by **length only**. A 31–90-day range, including a historic one such as 2025-10-01..12-29, is reported as requested „90d“ = effective „90d“ with no fallback, and may allow recommendations, while the MV is a rolling window ending at the refresh date. Historic ranges are labelled „Poslednjih N dana“. The SQL only checks overlap. Markdown dependency and capital/stock-at-risk values come from an all-history view while revenue is windowed. The live path without dates uses a 180-day lookback but is labelled „Celokupna istorija“. `provenanceBasis` names an MV even on the live SQL path, and the error report uses the requested-dataset label.
+
+### Evidence (at `c5a1937f`)
+
+- Window mapping:
+  - `Api/Endpoints/SupplierDecisionHubEndpoints.cs:2666` `GetDecisionScoreWindowDays` and `:2688` `ResolveRequestedDataset` are length-only; `:2709` `BuildEffectivePeriodLabel` returns „Poslednjih N dana“.
+  - The MV windows are rolling from refresh (`Database/Migrations/029_AddSupplierDecisionWindowedViews.sql:23-38`).
+  - The precomputed filter is overlap-only: `AND ds.period_to >= @fromDate AND ds.period_from <= @toDate` (`:2933`).
+- Trust effective period: the trust `EffectiveFrom/To` are the rows' min/max `period_from`/`period_to` (first markdown ±30 days; `BuildScorecardTrustMetadata`, `:2771-2862`).
+- All-history join: `LEFT JOIN mv_supplier_markdown_dependency_cache md` (`:2894`); the windowed MVs do not project `markdown_revenue_share`/`unsold_stock_value`.
+- Live path without dates:
+  - `TryCreateFilters :661-663` and `BuildRowFilters` (`:3390-3447`) apply a 180-day lookback.
+  - Live 2026-09-28 `dataScope=existing`: effective 2026-04-01..09-28 labelled „Celokupna istorija“/`all_time`, `provenanceBasis=mv_supplier_decision_score_cache` (`:1799`, `:2809`).
+- Error report: `:928-939` uses the requested-dataset label. Live 2026-06-01..06-30 gave „Poslednjih 30 dana“ with `MISSING_SCHEMA`; the raw dataset code also appears in the message.
+- The test `Api.Tests/SupplierDecisionHubContractTests.cs:241-261` encodes the June 2026 range as a "30d" fallback, i.e. the length-only behaviour.
+
+### Owner decision needed
+
+- **A — fail closed (smaller):** only a range that ends at the MV refresh date and has length 30/90/180 counts as that window. Any other range is labelled as the nearest rolling window with `usedFallback=true`, fallback reason `requested_range_not_precomputed`, and recommendations blocked.
+- **B — recompute:** compute the requested historic window from base tables (new SQL/MV work, performance review needed).
+
+### Scope (after the decision)
+
+- Implement A or B for window resolution, labels (`BuildEffectivePeriodLabel` shows actual dates for non-rolling ranges) and the trust effective period (the effective window, not the markdown ±30 row span).
+- The no-date live path is labelled with its real lookback (e.g. „Poslednjih 180 dana“), or it truly uses all history.
+- `provenanceBasis` names the live SQL basis on the live path.
+- Markdown dependency / capital at risk either come from the same window or are labelled „za celu istoriju“, with separate provenance.
+- The error report label/message uses the resolved label, never a raw dataset code.
+
+### Tests
+
+- Contract tests: historic 90-day range → fallback + blocked recommendation (A) or recomputed values (B); non-anchored length-90 range; no-date live-path label; provenance on the live path; error report label. Update `:241-261` accordingly.
+
+### Acceptance
+
+- No historic or non-anchored range is presented as „Poslednjih N dana“ or as a non-fallback precomputed window; every value's window is stated.
+
+### Dependencies
+
+- `RQ461` first (same files). Coordinate with `RQ137` (PARTIAL; record the supplier-report part). `PS08` (missing MVs in production) is separate.
+- Reliability contract: fail closed when the requested window cannot be served exactly.
+
+---
+
+## RQ464 - Decide and document the Supplier report metric basis and a single scoring model
+
+Status: WAITING
+Ready after: owner decision (Ivan) on the questions below; then `RQ461` DONE
+Priority: P2
+Type: decision/backend/sql/tests
+Feature family: supplier-decision-report-metric-basis
+Parallel-safe: no
+Owner: Analytics Reliability / Supplier Decision Hub
+Local lock: `.ai/task-locks/RQ464-<agent>.lock.md`
+Commit suggestion: `fix(analytics): supplier report metric basis`
+
+### Problem
+
+The Supplier report shows „Prihod“, „Prodate jedinice“ and „Maržni doprinos“ with the description „Ukupan prihod za traženi filter skup“, but:
+- the values are the pre- and post-markdown ±30-day window totals of marked-down articles only, not the sales of the requested period, so they cannot match the Supplier overview (`Prodaja po dobavljaču`);
+- `DUG`/`KOREKCIJA` receipts are included, although `RQ456` made their exclusion canonical for Daily/Supplier/Shoe Type/Color;
+- missing cost is treated as 0, which inflates the pre-markdown margin;
+- `return_rate` joins returns by `povracaj_zaglavlje.id_dobavljac`, which may mean supplier returns rather than customer returns;
+- the MV path and the live SQL path use different confidence formulas and rule thresholds, so toggling category, gender, season, store, `dataScope≠all` or „bez rasprodatih“ silently switches the model;
+- the store filter uses the article's `IDObjekat`, not the sale store;
+- the KPI „Pouzdanost signala“ is an unweighted mean while the sections say „Sigurnost signala“.
+
+### Evidence (at `c5a1937f`)
+
+- Revenue/units basis: `Database/Migrations/029_AddSupplierDecisionWindowedViews.sql:369-371`; `018_AddSupplierDecisionHubViews.sql:141-175` (pre/post markdown windows) and `:433-434`.
+- KPIs: `Api/Endpoints/SupplierDecisionHubEndpoints.cs:1131` (label/description); margin `:1121` = Σ revenue × preMarkdownMargin × fullPriceShare.
+- Missing cost: `018:163-175` `COALESCE(…, 0)` for cost.
+- Returns: `029:358-362` (`LEFT JOIN povracaj_zaglavlje pz ON pz.id_dobavljac = sr.supplier_id`).
+- Scoring: MV threshold `ds.confidence_score * 100 >= @confidenceThreshold` (`:2946`) vs live `sr.confidence_score >= @confidenceThreshold` (`:3463`) with its own 0–100 formula and rules (`:3244-3325`).
+- Store filter: `:3402-3403` (`a."IDObjekat"`).
+- No `DUG`/`KOREKCIJA` predicate in 015/018/029 or the live SQL (compare the `RQ456` canonical predicate).
+
+### Owner decisions
+
+1. Should the Supplier report show period sales (matching the Supplier overview) plus separate markdown-window metrics, or keep the markdown-window basis with explicit labels („Prihod u prozoru ±30 dana oko sniženja“)?
+2. Apply the `RQ456` `DUG`/`KOREKCIJA` exclusion to the supplier decision views and the live SQL? (Recommended: yes, for cross-screen parity.)
+3. Missing cost: exclude those lines from margin and show coverage (recommended), or keep treating the cost as 0?
+4. Returns: which table/column represents customer returns per supplier?
+5. One scoring model for both paths (recommended: the MV formula, ported to the live path) and one threshold scale.
+6. Store filter: the sale store (header `IDObjekat`) or the article's home store?
+
+### Scope (after decisions)
+
+- Implement the chosen basis in SQL (new migration for MVs), the live SQL and the KPI labels/descriptions, and add a parity test against the Supplier overview for the same period/scope if basis 1 is chosen.
+
+### Tests
+
+- SQL/contract tests for each decided rule; a parity test between the MV and live paths on the same fixture; a label test.
+
+### Acceptance
+
+- Every Supplier report KPI states its basis. With the period-sales basis, totals reconcile with the Supplier overview for the same filters. Both paths give the same score for the same data.
+
+### Dependencies
+
+- `RQ461` (renderer), `RQ463` (window). `RQ456` precedent for the receipt exclusion. `PS08` for production MV availability.
+- Reliability contract: no metric is presented under a label that implies a different basis.
+
+---
+
+## RQ465 - Fix Supplier report actions, negotiation pack and page-level defects
+
+Status: WAITING
+Ready after: `RQ461` DONE (same files); decision 1 below for the negotiation pack
+Priority: P2
+Type: frontend/backend/tests
+Feature family: supplier-decision-report-actions-negotiation
+Parallel-safe: no
+Owner: Analytics Reliability / Supplier Decision Hub
+Local lock: `.ai/task-locks/RQ465-<agent>.lock.md`
+Commit suggestion: `fix(analytics): supplier report actions and negotiation pack`
+
+### Problem and evidence (at `c5a1937f`)
+
+1. **Negotiation pack in an all-supplier report** (`Api/Endpoints/SupplierDecisionHubEndpoints.cs:1486-1530`): with no supplier filter, the pack and „Finalni savet“ silently use the top-revenue supplier (`primarySupplier`, `:1487`), and nothing on screen says so. Decision: hide the pack unless one supplier is selected (recommended), or label it „Primer: najveći dobavljač po prihodu“.
+2. **Grow/risk fallbacks** (`:766-800`): when no supplier has an EXPAND/risk code, the top-quality or markdown suppliers are presented as „Kandidat za rast“ or risk anyway. Only rule-coded suppliers should get these labels; otherwise show „nema kandidata“.
+3. **„Kapital u riziku“ insight** (`:815`): raw `0.##` number; use the RSD formatter.
+4. **Stable/action URLs** (`:1009-1052`) always add explicit dates, so an all-time report link reopens as a windowed report. Preserve the absence of dates.
+5. **„Dodaj u akcije“** (`Klijent/clientapp/src/components/analytics/SupplierDecisionReportActions.tsx:181-215`) can create a supplier-negotiation action without a supplier. Disable it or ask for a supplier.
+6. **„Otvori trajni izveštaj“** on the durable page navigates to the same URL (no-op). Hide it on the durable route.
+7. **„Ponovo generiši izveštaj“ / „Vrati se“** links drop the current filters (`pages/SupplierDecisionReportPage.tsx:352-353`, `:435-436`).
+8. **Export error** is never cleared after a later success (`:137`, `:393`). The status span always uses the success colour, even for errors (`SupplierDecisionReportActions.tsx:330`).
+9. **Dead `section` URL param**: forwarded to the backend but ignored. Either remove it or implement scrolling to the section.
+10. **`scope ?? dataScope`** (`SupplierDecisionHubEndpoints.cs:471`): a conflicting `scope` silently wins. Reject conflicting values or document the precedence.
+11. **Client date-order validation** is missing (`SupplierDecisionReportPage.tsx:112-131`). `fromDate > toDate` produces an HTTP 400 whose English text („One or more validation errors occurred.“) reaches the UI (live 2026-09-28). Validate client-side with a Serbian message and map backend validation errors to Serbian text.
+
+### Scope
+
+- Items 2–11 need no business decision. Item 1 needs the owner choice (default to hiding the pack when no supplier is selected if Ivan agrees).
+
+### Tests
+
+- Backend: no negotiation-pack rows without a supplier filter (or labelled), no fallback labels without codes, all-time stable URL without dates.
+- Vitest: the durable page has no „Otvori trajni izveštaj“; links keep filters; the export error clears; error status colour; the date-order message; no action without a supplier.
+
+### Acceptance
+
+- No recommendation, negotiation or action is shown for a supplier the rules did not select. Links and regeneration preserve the user's filters. No English validation text is shown.
+
+### Dependencies
+
+- `RQ461` first; `RQ235`/`RQ249` gating must stay intact.
+- Reliability contract: actions are only offered for backend-identified suppliers with an allowed recommendation.
+
+---
+
 ## RQ466 - Make the Pilot intake backend honour scope, requested period and refresh truth
 
 Status: READY
@@ -25303,3 +25473,122 @@ Commit suggestion: `fix(analytics): pilot intake scope, period and refresh truth
 
 - Coordinates with `RQ137` (PARTIAL): record the pilot part of its acceptance as satisfied in the completion note. `RQ462` consumes the fields.
 - Reliability contract: backend-owned counts, windows and freshness; fail closed (null + reason) rather than substituting another window or time.
+
+---
+
+## RQ467 - Decide Pilot intake readiness score semantics and default period
+
+Status: WAITING
+Ready after: owner decision (Ivan) on the questions below; then `RQ466` DONE (same file)
+Priority: P2
+Type: decision/backend/tests
+Feature family: pilot-intake-readiness-score-semantics
+Parallel-safe: no
+Owner: Analytics Reliability / Data Quality
+Local lock: `.ai/task-locks/RQ467-<agent>.lock.md`
+Commit suggestion: `fix(analytics): pilot intake readiness semantics`
+
+### Problem
+
+The Pilot intake readiness score is structurally stuck at „Kritično“ after a static import:
+- „nedovoljni signali“ counts every master article not sold in the period, and ≥75% forces „Kritično“, which contradicts the methodology bands (40–69 = „pilot moguć“) and double-penalizes the score;
+- „blokirane preporuke“ sums overlapping sets of mixed units (articles plus sale lines);
+- „nula/negativna cena“ counts signed return lines;
+- no `DUG`/`KOREKCIJA` policy is applied;
+- the store filter means the article's store for articles but the receipt store for sales;
+- missing cost reads `NabavnaCena` only, while the health service uses `ps.NabavnaCena ?? a.NabavnaCena`;
+- the default period (the last 30 UTC days) is unrelated to import coverage.
+
+### Evidence (at `c5a1937f`; live 2026-09-28)
+
+- `Api/Endpoints/DataQualityEndpoints.cs:592-594` (`insufficientSignalCount`), `ResolveReadiness :1515-1535`, methodology bands in the report text; live 12422/12422 insufficient → 42 „Kritično“; still 12326/12422 for 2026-07-14..08-12 with 195 sales.
+- `:649` `blockedRecommendationsCount = missingSupplierCount + missingCostCount + missingSupplierNameCount + saleWithoutArticleCount`.
+- `:590` `Cena <= 0` over signed lines.
+- `:518-545` store predicates.
+- `:562` vs the health service cost fallback.
+- `TryResolveIntakePeriod :1600-1617` default window.
+
+### Owner decisions
+
+1. Definition of an insufficient signal: articles with stock but no sales in the period? Articles in the imported assortment? Should it gate readiness at all?
+2. Blocked recommendations: distinct articles blocked by any reason (recommended), with per-reason counts shown separately.
+3. Exclude returns (negative quantity) and `DUG`/`KOREKCIJA` from price checks and sales counts (align with `RQ456`)?
+4. Store semantics: the receipt store for sales, the article store for the master data?
+5. Cost: the same fallback chain as the health service/other SQL (`ps.NabavnaCena → a.NabavnaCenaDin → a.NabavnaCena`)?
+6. Default period: anchor to the latest import coverage (last observed sale date) instead of now?
+
+### Scope (after decisions)
+
+- Implement the rules, align the label with the bands (no override that contradicts them without an explicit reason code), and update the methodology text.
+
+### Tests
+
+- Unit tests for `ResolveReadiness` bands/overrides; count tests per decided rule; the default-period test.
+
+### Acceptance
+
+- The readiness label follows the documented bands and reasons; every count has one unit and no overlap.
+
+### Dependencies
+
+- `RQ466` first (same file; scope/period truth). `RQ79` owns the percent unit.
+- Reliability contract: the score explains itself through reason codes; no hidden overrides.
+
+---
+
+## RQ468 - Complete Serbian copy on the Supplier report and Pilot intake screens
+
+Status: WAITING
+Ready after: `RQ461`, `RQ462` and `RQ466` DONE (same files; copy must follow the new renderer/rows)
+Priority: P2
+Type: frontend/backend-copy/tests
+Feature family: supplier-report-pilot-intake-serbian-copy
+Parallel-safe: no
+Owner: Analytics Reliability / Copy
+Local lock: `.ai/task-locks/RQ468-<agent>.lock.md`
+Commit suggestion: `fix(analytics): serbian copy on supplier report and pilot intake`
+
+### Problem
+
+`RQ325` localized Operacije only. The Supplier report and Pilot intake screens, their durable backend rows/exports and their API error messages still show English and ASCII (no diacritics) text. Live rows on 2026-09-28 contained „Naziv izvestaja“, „Scope“, „Readiness score“, „Ucitano“, „Racuni“, „Bez dobavljaca“, „Preporucene akcije“, „Batch id“, „Scope importa“ and „n/a“.
+
+### Evidence and replacements (at `c5a1937f`; re-verify line numbers after `RQ461`/`RQ462`/`RQ466`)
+
+- Pilot backend `Api/Endpoints/DataQualityEndpoints.cs`:
+  - Rows `:745-767`:
+    - „Naziv izvestaja“ → „Naziv izveštaja“; „Trendplus pilot izvestaj kvaliteta podataka“ → „… izveštaj …“;
+    - „Scope“ → „Opseg podataka“, with the value via a Serbian scope label (`sve`/`postojeći`/`uvezeni`, matching `utils/dataScope.ts` `dataScopeLabel`);
+    - the raw `insufficient_data` value → a Serbian status label;
+    - „Readiness score“ → „Skor spremnosti“;
+    - „Poslednji import (UTC)“ → „Poslednji uvoz“, with a Belgrade `dd.MM.yyyy HH:mm` value;
+    - „Status importa“ → „Status uvoza“ and „Scope importa“ → „Opseg uvoza“ (`unknown` → „nepoznato“);
+    - „Batch id“ → „ID paketa uvoza“; `n/a` → „nije dostupno“;
+    - „Ucitano“ → „Učitano“; „Racuni“ → „Računi“; „Bez dobavljaca“ → „Bez dobavljača“; „Preporucene akcije“ → „Preporučene akcije“.
+  - Actions `:18-26`: „Povezi dobavljace“ → „Poveži dobavljače“; „Pokreni osvezavanje analitike“ → „Pokreni osvežavanje analitike“ (others keep their text; add diacritics where missing).
+  - Messages: `ReadinessLabel: "Greska"` (`:330`) → „Greška“; „Pilot intake izvestaj trenutno nije dostupan.“ (`:337`) and „Pilot intake report trenutno nije dostupan.“ (`:890`, `:900`, `:909`, `:926`) → „Pilot izveštaj o prijemu podataka trenutno nije dostupan.“; „Pilot intake izvestaj nema import batch u periodu.“ (`:661`): new wording per `RQ466`.
+- Pilot frontend:
+  - `pages/PilotIntakeReportPage.tsx`: „Pilot intake report trenutno nije dostupan.“ (`:251`, `:261`); „Proverite refresh status.“ (`:311`) → „Proverite status osvežavanja.“; „Za trajni dokument koristite Excel/Print ili ponovo generišite report.“ (`:328`) → „Za trajni dokument koristite izvoz u Excel ili štampu, ili ponovo generišite izveštaj.“; „Vrati se na Data Quality“ (`:331`, `:351`, `:393`) → „Nazad na Kvalitet podataka“; „Ponovo generiši report“ (`:332`, `:394`) → „Ponovo generiši izveštaj“; „Backend nije vratio podatke …“ (`:348`) → „Server nije vratio podatke …“; „… ponovo učitajte report.“ (`:349`) → „… izveštaj.“; `dataSource="Data quality checks"` (`:374`) → „Provere kvaliteta podataka“; „Otvori Pilot Intake“ (`:333`, `:352`) → „Otvori pilot izveštaj“; „Prikazujemo privremeni browser preview. Za trajan dokument otvorite trajni report.“ (`:388`) → „Prikazujemo privremeni pregled u pregledaču. Za trajan dokument otvorite trajni izveštaj.“; „Učitavam pilot intake izveštaj...“ (`:289`) → „Učitavam pilot izveštaj…“.
+  - `components/analytics/PilotDataQualityIntakeReport.tsx`: „Durable report:“ (`:386`), „Scope:“ (`:412`, raw scope value → `dataScopeLabel`), „Refresh:“ (`:414`) → „Trajni izveštaj:“, „Opseg:“, „Osvežavanje:“; „Učitavam pilot intake izveštaj...“ (`:333`) → „Učitavam pilot izveštaj…“.
+- Supplier backend `Api/Endpoints/SupplierDecisionHubEndpoints.cs`: „Coverage status“ / „Rows“ / „Recommendation allowed“ (`:1396-1410`) → „Status pokrivenosti“ / „Broj redova“ / „Preporuka dozvoljena“; „Supplier decision report trenutno nije dostupan.“ (`:967`) → „Izveštaj dobavljača trenutno nije dostupan.“; „Supplier decision podaci trenutno nisu spremni/dostupni …“ (`:2196`, `:2217`, `:2236`) → „Podaci za odluke o dobavljačima …“; „Analytics refresh može biti zastareo.“ (`:1078`, `:1872`) → „Osvežavanje analitike može biti zastarelo.“; raw dataset codes in the `MISSING_SCHEMA` message („all_time“, „90d“) → the Serbian period label; ASP.NET validation title „One or more validation errors occurred.“ → a Serbian problem title/detail.
+- Supplier frontend:
+  - `components/analytics/SupplierDecisionReport.tsx:535` „Napomene iz backend payload-a“ → „Napomene uz izveštaj“. Backend `SupplierDecisionHubEndpoints.cs:1616` „Trust podaci nisu dovoljni za bezbednu preporuku.“ → „Podaci o pouzdanosti nisu dovoljni za bezbednu preporuku.“
+  - `services/supplierDecisionReport.ts:240-242`, `:348`, `:403`, `:466-467`, `:514-525`: „Efektivni dataset“ / „Traženi dataset“ → „Efektivni / Traženi skup podataka“; „Korišćen fallback (dataset)“ → „Korišćen pomoćni skup podataka“; „Razlog fallback-a“ → „Razlog korišćenja pomoćnog skupa“; „Delimični/fallback podaci“ → „Delimični ili pomoćni podaci“; `:281`, `:443`, `:455` „pomoćni scorecard signal“ → „pomoćni signal ocene“; `:300` „Dead stock“ → „Neprodate zalihe“; `:431` „report payload-u … Data Quality ekran“ → „izveštaju … ekran Kvalitet podataka“; the summary text (`:636-689`) must use the labels above and „Da/Ne“, not `True/False`/`warning`.
+- `services/analyticsApi.ts`: `:1177` „Greska pri ucitavanju trajnog supplier report-a“ → „Greška pri učitavanju izveštaja dobavljača“; „Greska pri ucitavanju pilot intake report-a“ (`:1153`) and „Greska pri ucitavanju trajnog pilot intake report-a“ (`:1200`) → „Greška pri učitavanju pilot izveštaja“ / „Greška pri učitavanju trajnog pilot izveštaja“. Other ASCII „Greska pri ucitavanju …“ messages in this file are outside these two screens: list them in the run log as follow-up and do not change them here.
+
+### Scope
+
+- Only user-visible copy (UI, durable rows, exports, API messages) for these two screens. Technical keys, enum codes and metadata keys stay unchanged. Do not duplicate `RQ325` (Operacije) or `RQ79` (percent unit).
+
+### Tests
+
+- Update the focused specs and backend row tests. Add a guard test asserting that the durable rows of both reports contain no ASCII-only variants of the listed words or the listed English terms.
+- `npm run check:analytics-guardrails`, typecheck.
+
+### Acceptance
+
+- No English or diacritic-less Serbian remains in the listed surfaces; raw scope/status/boolean codes are shown via Serbian labels.
+
+### Dependencies
+
+- After `RQ461`, `RQ462`, `RQ466`. `RQ325` routing bullet points here.
+- Reliability contract: copy changes must not change numbers, keys or gating.
