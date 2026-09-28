@@ -65,7 +65,7 @@ public sealed class LostSalesValidationScopePostgresIntegrationTests : IClassFix
             dataScope: "imported");
 
         var velocity = Assert.Single(snapshot.Cards, card => card.Key == "velocity");
-        Assert.Equal(3m, velocity.Value);
+        Assert.Equal(0.43m, velocity.Value);
         var pareto = Assert.Single(snapshot.Cards, card => card.Key == "pareto");
         Assert.Equal(100m, pareto.Value);
     }

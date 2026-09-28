@@ -172,7 +172,8 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
                 source_row_id bigint,
                 source_updated_at_utc timestamp with time zone,
                 source_hash character varying(128),
-                source_batch_id bigint
+                source_batch_id bigint,
+                attribution_basis character varying(64) NOT NULL DEFAULT 'unknown'
             );
 
             CREATE TABLE IF NOT EXISTS prodaja_stavke (
@@ -182,11 +183,14 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
                 kolicina integer NOT NULL,
                 cena numeric(18,2) NOT NULL,
                 nabavna_cena numeric(18,2),
+                supplier_id_at_sale integer,
+                shoe_type_id_at_sale integer,
                 source_table_key character varying(128),
                 source_row_id bigint,
                 source_updated_at_utc timestamp with time zone,
                 source_hash character varying(128),
                 source_batch_id bigint,
+                attribution_basis character varying(64) NOT NULL DEFAULT 'unknown',
                 CONSTRAINT "FK_prodaja_stavke_prodaja_zaglavlje_id_prodaja"
                     FOREIGN KEY (id_prodaja) REFERENCES prodaja_zaglavlje(id) ON DELETE CASCADE
             );

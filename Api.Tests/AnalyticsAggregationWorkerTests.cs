@@ -35,6 +35,75 @@ public sealed class AnalyticsAggregationWorkerTests : IClassFixture<PostgresCont
         var connectionString = await _fixture.TryCreateDatabaseConnectionStringAsync($"tp_analytics_agg_{Guid.NewGuid():N}");
         Assert.False(string.IsNullOrWhiteSpace(connectionString));
 
+        await using (var db = new TrendplusDbContext(
+            new DbContextOptionsBuilder<TrendplusDbContext>()
+                .UseNpgsql(connectionString!)
+                .Options))
+        {
+            await db.Database.EnsureCreatedAsync();
+        }
+
+        await using (var schemaConnection = new NpgsqlConnection(connectionString))
+        {
+            await schemaConnection.OpenAsync();
+            await using var schema = new NpgsqlCommand(
+                """
+                CREATE TABLE IF NOT EXISTS "AnalyticsDailySummary" (
+                    "Id" bigserial PRIMARY KEY,
+                    "Date" date NOT NULL UNIQUE,
+                    "TotalRevenue" numeric(18,2) NOT NULL DEFAULT 0,
+                    "TotalTransactions" integer NOT NULL DEFAULT 0,
+                    "TotalUnits" integer NOT NULL DEFAULT 0,
+                    "AvgBasketValue" numeric(18,2) NOT NULL DEFAULT 0,
+                    "AvgItemPrice" numeric(18,2) NOT NULL DEFAULT 0,
+                    "BasketStdDev" numeric(18,2) NOT NULL DEFAULT 0,
+                    "ItemPriceStdDev" numeric(18,2) NOT NULL DEFAULT 0,
+                    "EffectiveTransactionCount" numeric(18,2) NOT NULL DEFAULT 0,
+                    "DataConfidence" numeric(18,2) NOT NULL DEFAULT 0,
+                    "UpdatedAt" timestamptz NOT NULL DEFAULT NOW()
+                );
+                CREATE TABLE IF NOT EXISTS "AnalyticsCategorySummary" (
+                    "Id" bigserial PRIMARY KEY,
+                    "Date" date NOT NULL,
+                    "Kategorija" varchar(100) NOT NULL,
+                    "TotalRevenue" numeric(18,2) NOT NULL DEFAULT 0,
+                    "TotalUnits" integer NOT NULL DEFAULT 0,
+                    "TransactionCount" integer NOT NULL DEFAULT 0,
+                    "UpdatedAt" timestamptz NOT NULL DEFAULT NOW()
+                );
+                CREATE TABLE IF NOT EXISTS "AnalyticsSupplierSummary" (
+                    "Id" bigserial PRIMARY KEY,
+                    "Date" date NOT NULL,
+                    "DobavljacId" integer NULL,
+                    "DobavljacNaziv" varchar(200),
+                    "TotalRevenue" numeric(18,2) NOT NULL DEFAULT 0,
+                    "TotalUnits" integer NOT NULL DEFAULT 0,
+                    "TransactionCount" integer NOT NULL DEFAULT 0,
+                    "UpdatedAt" timestamptz NOT NULL DEFAULT NOW()
+                );
+                CREATE TABLE IF NOT EXISTS "AnalyticsGenderSummary" (
+                    "Id" bigserial PRIMARY KEY,
+                    "Date" date NOT NULL,
+                    "Pol" varchar(50) NOT NULL,
+                    "TotalRevenue" numeric(18,2) NOT NULL DEFAULT 0,
+                    "TotalUnits" integer NOT NULL DEFAULT 0,
+                    "UpdatedAt" timestamptz NOT NULL DEFAULT NOW()
+                );
+                CREATE TABLE IF NOT EXISTS "AnalyticsTopProducts" (
+                    "Id" bigserial PRIMARY KEY,
+                    "Date" date NOT NULL,
+                    "ProductId" integer NOT NULL,
+                    "ProductName" varchar(300),
+                    "TotalRevenue" numeric(18,2) NOT NULL DEFAULT 0,
+                    "TotalUnits" integer NOT NULL DEFAULT 0,
+                    "Rank" integer NOT NULL DEFAULT 0,
+                    "UpdatedAt" timestamptz NOT NULL DEFAULT NOW()
+                );
+                """,
+                schemaConnection);
+            await schema.ExecuteNonQueryAsync();
+        }
+
         await using var harness = CreateHarness(connectionString!, useInMemoryDatabase: false);
 
         await InvokeRefreshAnalyticsAsync(harness.Worker);
@@ -194,59 +263,59 @@ public sealed class AnalyticsAggregationWorkerTests : IClassFixture<PostgresCont
                 kolicina numeric(18,2) NOT NULL,
                 cena numeric(18,2) NOT NULL
             );
-            CREATE TABLE ""Artikli"" (
-                ""Id" bigint PRIMARY KEY,
-                ""Kategorija" text NULL,
-                ""Pol" text NULL,
-                ""IDDobavljac" bigint NULL
+            CREATE TABLE "Artikli" (
+                "Id" bigint PRIMARY KEY,
+                "Kategorija" text NULL,
+                "Pol" text NULL,
+                "IDDobavljac" bigint NULL
             );
-            CREATE TABLE ""Dobavljaci"" (
-                ""Id" bigint PRIMARY KEY,
-                ""Naziv" text NULL
+            CREATE TABLE "Dobavljaci" (
+                "Id" bigint PRIMARY KEY,
+                "Naziv" text NULL
             );
-            CREATE TABLE ""AnalyticsDailySummary"" (
-                ""Date" date PRIMARY KEY,
-                ""TotalRevenue" numeric(18,2),
-                ""TotalTransactions" bigint,
-                ""TotalUnits" numeric(18,2),
-                ""AvgBasketValue" numeric(18,2),
-                ""AvgItemPrice" numeric(18,2),
-                ""BasketStdDev" numeric(18,2),
-                ""ItemPriceStdDev" numeric(18,2),
-                ""EffectiveTransactionCount" numeric(18,2),
-                ""DataConfidence" numeric(18,2),
-                ""UpdatedAt" timestamptz
+            CREATE TABLE "AnalyticsDailySummary" (
+                "Date" date PRIMARY KEY,
+                "TotalRevenue" numeric(18,2),
+                "TotalTransactions" bigint,
+                "TotalUnits" numeric(18,2),
+                "AvgBasketValue" numeric(18,2),
+                "AvgItemPrice" numeric(18,2),
+                "BasketStdDev" numeric(18,2),
+                "ItemPriceStdDev" numeric(18,2),
+                "EffectiveTransactionCount" numeric(18,2),
+                "DataConfidence" numeric(18,2),
+                "UpdatedAt" timestamptz
             );
-            CREATE TABLE ""AnalyticsCategorySummary"" (
-                ""Date" date NOT NULL,
-                ""Kategorija" text NOT NULL,
-                ""TotalRevenue" numeric(18,2),
-                ""TotalUnits" numeric(18,2),
-                ""TransactionCount" bigint,
-                ""UpdatedAt" timestamptz
+            CREATE TABLE "AnalyticsCategorySummary" (
+                "Date" date NOT NULL,
+                "Kategorija" text NOT NULL,
+                "TotalRevenue" numeric(18,2),
+                "TotalUnits" numeric(18,2),
+                "TransactionCount" bigint,
+                "UpdatedAt" timestamptz
             );
-            CREATE TABLE ""AnalyticsSupplierSummary"" (
-                ""Date" date NOT NULL,
-                ""DobavljacId" bigint NULL,
-                ""DobavljacNaziv" text NOT NULL,
-                ""TotalRevenue" numeric(18,2),
-                ""TotalUnits" numeric(18,2),
-                ""TransactionCount" bigint,
-                ""UpdatedAt" timestamptz
+            CREATE TABLE "AnalyticsSupplierSummary" (
+                "Date" date NOT NULL,
+                "DobavljacId" bigint NULL,
+                "DobavljacNaziv" text NOT NULL,
+                "TotalRevenue" numeric(18,2),
+                "TotalUnits" numeric(18,2),
+                "TransactionCount" bigint,
+                "UpdatedAt" timestamptz
             );
-            CREATE TABLE ""AnalyticsGenderSummary"" (
-                ""Date" date NOT NULL,
-                ""Pol" text NOT NULL,
-                ""TotalRevenue" numeric(18,2),
-                ""TotalUnits" numeric(18,2),
-                ""UpdatedAt" timestamptz
+            CREATE TABLE "AnalyticsGenderSummary" (
+                "Date" date NOT NULL,
+                "Pol" text NOT NULL,
+                "TotalRevenue" numeric(18,2),
+                "TotalUnits" numeric(18,2),
+                "UpdatedAt" timestamptz
             );
             INSERT INTO prodaja_zaglavlje (id, datum_prodaje) VALUES (1, '2026-09-10T10:00:00Z');
             INSERT INTO prodaja_stavke (id, id_prodaja, id_artikal, kolicina, cena)
             VALUES (1, 1, 10, 2, 100), (2, 1, 999, 3, 50);
-            INSERT INTO ""Artikli"" (""Id"", ""Kategorija"", ""Pol"", ""IDDobavljac"")
+            INSERT INTO "Artikli" ("Id", "Kategorija", "Pol", "IDDobavljac")
             VALUES (10, 'Obuca', 'M', 20);
-            INSERT INTO ""Dobavljaci"" (""Id"", ""Naziv"") VALUES (20, 'Dobavljac A');
+            INSERT INTO "Dobavljaci" ("Id", "Naziv") VALUES (20, 'Dobavljac A');
             """,
             connection))
         {

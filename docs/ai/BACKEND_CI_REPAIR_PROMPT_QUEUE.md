@@ -174,13 +174,14 @@ The current broad suite still shows clustered failures in `DataSourceDiscoveryEn
 
 ## BCI14 - Isolate remaining PostgreSQL/provider/order-dependent broad-suite failures
 
-Status: WAITING  
+Status: PARTIAL
 Ready after: BCI11-BCI13 deterministic failures are closed and a fresh broad-suite run identifies the residual set  
 Priority: P0  
 Type: backend/tests/ci-isolation  
 Feature family: backend-ci-provider-order-isolation  
 Parallel-safe: no  
-Owner: unassigned  
+Owner: Codex
+Local lock: `.ai/task-locks/BCI14-codex.lock.md`
 Commit suggestion: `test(ci): isolate provider and suite-order failures`
 
 ### Problem
@@ -200,8 +201,27 @@ Run `36270728235` still contained failures across Access import FK guards, lost-
 - Full-suite state is materially reduced or green without weakened gates.
 - BCI10 closes only on fresh exact-main green restore/build/test evidence.
 
+### Completion note
+- Date: 2026-09-29
+- Status: PARTIAL
+- Completion: repaired four proven test-fixture/contract-drift families and reduced the focused residual set to green; the exact broad run was attempted but stalled without a final summary.
+- Changed files: `Api.Tests/AccessImportForeignKeyGuardTests.cs`, `Api.Tests/AnalyticsAggregationWorkerTests.cs`, `Api.Tests/LostSalesValidationScopePostgresIntegrationTests.cs`, queue/roadmap/evidence files.
+- Contract/runtime behavior changed: no production runtime behavior; test setup now matches the current schema and velocity contract.
+- Checks run: focused rebuild `AccessImportForeignKeyGuardTests|AnalyticsAggregationWorkerTests|LostSalesValidationScopePostgresIntegrationTests` -> 10/11 passed before final import fixture repair; `AccessImportForeignKeyGuardTests` -> 3/3 passed after repair; `git diff --check` and governance checks recorded in the run log.
+- Checks not run: exact broad suite did not complete; it stalled after startup and was interrupted once. Remote CI was not inspected.
+- Run log: `.ai/runs/2026-09-29-BCI14-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending until delivery
+- Main verification: pending until delivery
+- Missed: broad-suite residual provider/order lifecycle family remains for follow-up.
+- Follow-up: re-enter BCI14/next provider-order isolation prompt after a fresh exact-main broad run can complete.
+- Residual risk: broad CI gate is not green evidence; no runtime fix was justified.
+- Next: classify the stalled/broad-only EF provider/order lifecycle behavior and remaining environment-backed failures.
+- Prompt defect / scope repair: current focused tests had schema drift, malformed raw SQL identifiers, missing aggregate-table setup, and a stale units-per-day assertion; all repairs stayed in test-owned setup/assertion scope.
+
 
 ## Expected transition  1. `BCI01` is `PARTIAL` with GHA proof that restore/build succeed and the test step runs. 2. `BCI04` is `DONE`; remaining failures are owned by focused repair prompts. 3. `BCI02` is `DONE`; coverage/artifact cascade no longer invents secondary root causes. 4. `BCI03` is `DONE`; canonical backend filter + available SDK pins + pin regression check. 5. Promote BCI01 to `DONE` only after a GHA run has restore + build + test step all successful. 6. If later current-main evidence turns red again, use `BCI10` rather than reopening bootstrap-era prompts.
-# Current READY prompt (authoritative, 2026-09-27): `BCI13`. The historical inline pointer in the original single-line header is superseded by this routing correction; `BCI11` and `BCI12` are DONE and `BCI10` remains PARTIAL.
-# Current READY prompt (authoritative, 2026-09-28): `none`. `BCI13` is DONE; `BCI14` remains WAITING for a fresh broad-suite residual classification.
+# Owner claim 2026-09-29: `BCI14` moved `WAITING -> READY -> IN_PROGRESS` after BCI11-BCI13 were verified DONE and BCI13 evidence recorded the fresh broad-suite residual set. Local lock: `.ai/task-locks/BCI14-codex.lock.md`.
+# Current READY prompt (authoritative, 2026-09-29): `BCI14`.
 
