@@ -4,9 +4,9 @@ Date: 2026-09-28
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / no PR
-Main commit SHA: pending
-Main verification: pending until commit and push
-Evidence state: pending
+Main commit SHA: `641a4a0c`
+Main verification: passed - `origin/main` contains `641a4a0c` after direct push on 2026-09-28.
+Evidence state: synchronized
 
 ## What was done
 
