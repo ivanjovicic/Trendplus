@@ -2,8 +2,9 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ484
-Owner completion 2026-09-28: `RQ486` moved READY → IN_PROGRESS → DONE and was delivered directly to `main` in `966939e53c585221fcde27550ca0c76ba33e9d76`. Supplier trust metadata is keyed to the active request, invalid date ranges do not request data, stores carry page scope and duplicate labels expose stable IDs, unknown URL suppliers remain visible with an explicit message, filter layout wraps, local dates are preserved, sorting is pure and revenue rank badges are conditional. Focused proof: 55/55; guardrails/typecheck and production build pass. Run log: `.ai/runs/2026-09-28-RQ486-evidence.md`. Evidence state: synchronized. Next primary READY is `RQ484`; `RQ483` remains independently READY.
+Current READY prompt: RQ483
+Owner completion 2026-09-28: `RQ486` moved READY → IN_PROGRESS → DONE and was delivered directly to `main` in `966939e53c585221fcde27550ca0c76ba33e9d76`. Supplier trust metadata is keyed to the active request, invalid date ranges do not request data, stores carry page scope and duplicate labels expose stable IDs, unknown URL suppliers remain visible with an explicit message, filter layout wraps, local dates are preserved, sorting is pure and revenue rank badges are conditional. Focused proof: 55/55; guardrails/typecheck and production build pass. Run log: `.ai/runs/2026-09-28-RQ486-evidence.md`. Evidence state: synchronized. Next primary READY is `RQ483`; `RQ467` remains independently READY.
+Owner promotion/claim/completion 2026-09-28: `RQ484` moved READY → IN_PROGRESS → DONE and was delivered directly to `main` in `ded6bfc1600ad98813227076876c3073e23807a0`. Supplier-only recommendation policy now treats missing nivelacija evidence as a reason plus confidence reduction for sales/trend/margin decisions, keeps price-event claims fail-closed, preserves unknown suppliers as `do_not_trust`, computes page readiness over known suppliers and applies the revenue-based `<15%` / `15–<25%` / `≥25%` gate. Focused proof: 64/64; backend build passed. Live PostgreSQL integration proof was not run because no isolated test database was assigned. Run log: `.ai/runs/2026-09-28-RQ484-evidence.md`. Evidence state: synchronized. Next primary READY is `RQ483`; `RQ467` remains independently READY.
 Owner promotion/claim/completion 2026-09-28: `RQ466` moved READY → IN_PROGRESS → DONE in this workspace after the previous Pilot intake frontend delivery. The backend now validates scope, applies the requested scope to article/sales/store counts, uses the requested half-open health window, keeps unknown refresh time null, emits only count-backed actions, supports `refresh=true` cache bypass and logs safe report failures. Implementation: `e2d47788`. Focused proof: health 10/10, report contracts 52/52, API build passed. Run log: `.ai/runs/2026-09-28-RQ466-evidence.md`. Evidence state: synchronized. The primary READY pointer advances to `RQ486`; `RQ484` and `RQ483` remain independently READY.
 Owner promotion 2026-09-28: `RQ467` moved WAITING → READY after its declared dependency `RQ466` reached DONE on current `origin/main`; it remains unclaimed for the next selection because the current primary pointer is `RQ486`.
 Owner completion 2026-09-28: `RQ462` was delivered directly to `main` in implementation `69f1f6456f9a0f328f0351aaccc1883de27ec833`; the Pilot intake durable route now renders the backend report instead of a permanent empty state, including authoritative KPIs, sections, actions and exports, while empty/error states remain backend-driven. Run log: `.ai/runs/2026-09-28-RQ462-evidence.md`. Evidence state: synchronized; `RQ466` is now the primary READY prompt.
@@ -1727,8 +1728,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ463 | WAITING | supplier-decision-requested-window-truth | Make the Supplier report requested window, labels and provenance truthful |
 | RQ464 | WAITING | supplier-decision-report-metric-basis | Align Supplier report KPIs with the Supplier overview and use one scoring model |
 | RQ465 | WAITING | supplier-decision-report-actions-negotiation | Fix Supplier report actions, negotiation pack and page-level defects |
-| RQ466 | READY | pilot-intake-backend-scope-period-truth | Make the Pilot intake backend honour scope, requested period and refresh truth |
-| RQ467 | WAITING | pilot-intake-readiness-score-semantics | Pilot intake readiness score semantics and business-date default period |
+| RQ466 | DONE | pilot-intake-backend-scope-period-truth | Make the Pilot intake backend honour scope, requested period and refresh truth |
+| RQ467 | READY | pilot-intake-readiness-score-semantics | Pilot intake readiness score semantics and business-date default period |
 | RQ468 | WAITING | supplier-report-pilot-intake-serbian-copy | Complete Serbian copy on the Supplier report and Pilot intake screens |
 | RQ469 | WAITING | pdc-action-status-batch-contract | Keep Product Decision action-status lookups within the backend batch contract |
 | RQ470 | WAITING | pdc-search-population-contract | Restore Product Decision server-side search and make the analyzed population visible |
@@ -1739,7 +1740,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ475 | WAITING | supplier-analytics-schema-readiness | Make Supplier scorecard/assortment semantic-data readiness operationally actionable |
 | RQ476 | WAITING | supplier-share-denominator-contract | Unify Supplier raw API, display, recommendation and export share semantics |
 | RQ483 | READY | pdc-decision-rule-reachability | Make Product Decision rules reachable, measured from the period end and driven by one explainable threshold policy |
-| RQ484 | READY | operations-recommendation-gate-policy | Apply the approved Operations recommendation gate policy for nivelacija evidence and the unknown bucket |
+| RQ484 | DONE | operations-recommendation-gate-policy | Apply the approved Operations recommendation gate policy for nivelacija evidence and the unknown bucket |
 | RQ485 | WAITING | pdc-page-state-hygiene | Product Decision page hygiene: duplicate header block, URL state, deterministic sorting and local dates |
 | RQ486 | DONE | supplier-shell-overview-hygiene | Supplier page shell and overview hygiene: trust header, date validation, stores, layout, sorting and badges |
 | RQ487 | WAITING | pdc-supplier-query-performance | Bound Product Decision and Supplier overview query cost |
@@ -26657,7 +26658,7 @@ Approved with changes. The scope, Do, Tests and Acceptance below already reflect
 
 ## RQ484 - Apply the approved Operations recommendation gate policy for nivelacija evidence and the unknown bucket
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: backend/contract/tests
 Feature family: operations-recommendation-gate-policy
@@ -26745,6 +26746,16 @@ Approved with the semantics below. This replaces „Owner decision needed“ abo
 
 - `RQ140` (PARTIAL, comparability proof owner) and `RQ445` (claim contract). Coordinate with `RQ474` and `RQ476` (same endpoint file).
 - Reliability contract: gates stay backend-owned and explainable by reason codes.
+
+### Completion 2026-09-28
+
+- Delivered directly to `main` in `ded6bfc1600ad98813227076876c3073e23807a0`.
+- Supplier list and detail now use the Supplier-only gate policy: missing nivelacija evidence adds `missing_comparable_signal` and reduces confidence for sales/trend/margin decisions; price-event claims remain fail-closed; unknown rows remain `do_not_trust`.
+- Page readiness is computed over known suppliers only. The trust-contract revenue denominator is explicit in response cohort metadata, with `<15%` no block, `15–<25%` warning/degraded and `>=25%` critical page-level block. Shoe Type/Color behavior remains on the existing policy path.
+- Focused proof: `dotnet test Api.Tests/Api.Tests.csproj --no-restore --filter "FullyQualifiedName~AnalyticsDecisionRecommendationEngineTests|FullyQualifiedName~OperationsRecommendationGatePolicyTests|FullyQualifiedName~AnalyticsStatsTrustMetaTests|FullyQualifiedName~SupplierDecisionSchemaSqlTests"` → 64/64 pass; `dotnet build Api.Tests/Api.Tests.csproj --no-restore` → pass.
+- Live PostgreSQL integration tests were not run because no isolated test database was assigned; existing user database was not mutated.
+- Run log: `.ai/runs/2026-09-28-RQ484-evidence.md`
+- Evidence state: synchronized.
 
 ---
 
