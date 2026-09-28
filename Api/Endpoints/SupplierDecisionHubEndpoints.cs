@@ -507,6 +507,24 @@ public static class SupplierDecisionHubEndpoints
             reportCacheVersion);
         var reportCacheKeyHash = AnalyticsCacheKeys.SafeKeyFingerprint(reportCacheKey);
         var cacheLogger = loggerFactory.CreateLogger("SupplierDecisionReportCache");
+        ReportRefreshInfo? refreshInfo = null;
+
+        try
+        {
+            var refreshStatus = await refreshStatusService.GetStatusAsync(ct);
+            refreshInfo = ResolveReportRefreshInfo(refreshStatus, "supplier_decision_mvs");
+        }
+        catch
+        {
+            refreshInfo = null;
+        }
+
+        var useEffectiveWindowForFallback = activeFilters.HasExplicitDateRange
+            && (!IsExactRollingWindow(activeFilters, refreshInfo?.LastRefreshAtUtc)
+                || !string.Equals(
+                    ResolveRequestedDataset(activeFilters),
+                    ResolveEffectiveDataset(GetDecisionScoreWindowDays(activeFilters)),
+                    StringComparison.OrdinalIgnoreCase));
 
         try
         {
@@ -535,22 +553,19 @@ public static class SupplierDecisionHubEndpoints
                     activeFilters.StoreId,
                     activeFilters.DataScope);
 
-                var dataset = await GetSupplierRowsCachedAsync(cache, analyticsConnectionString, activeFilters, ct);
+                var dataset = useEffectiveWindowForFallback
+                    ? await QuerySupplierRowsAsync(analyticsConnectionString, activeFilters, ct, ignoreExplicitDateFilter: true)
+                    : await GetSupplierRowsCachedAsync(cache, analyticsConnectionString, activeFilters, ct);
                 var summary = BuildSummaryResponse(dataset, activeFilters);
                 var details = await BuildSupplierDecisionReportDetailsAsync(analyticsConnectionString, activeFilters, dataset, ct);
-                ReportRefreshInfo? refreshInfo = null;
 
-                try
-                {
-                    var refreshStatus = await refreshStatusService.GetStatusAsync(ct);
-                    refreshInfo = ResolveReportRefreshInfo(refreshStatus, "supplier_decision_mvs");
-                }
-                catch
-                {
-                    refreshInfo = null;
-                }
-
-                report = BuildSupplierDecisionReportResponse(summary, dataset, activeFilters, refreshInfo, details);
+                report = BuildSupplierDecisionReportResponse(
+                    summary,
+                    dataset,
+                    activeFilters,
+                    refreshInfo,
+                    details,
+                    requireRefreshAnchor: true);
 
                 await cache.SetAsync(reportCacheKey, report, CacheExpiration.HeavyAnalytics, ct);
                 cacheLogger.LogInformation(
@@ -739,7 +754,9 @@ public static class SupplierDecisionHubEndpoints
 
     internal static SummaryResponse BuildSummaryResponse(
         SupplierRowsDataset dataset,
-        SupplierDecisionHubFilters filters)
+        SupplierDecisionHubFilters filters,
+        DateTime? decisionScoreRefreshAtUtc = null,
+        bool requireRefreshAnchor = false)
     {
         var rows = dataset.Rows;
         var from = rows.Count > 0 ? rows.Min(x => x.PeriodFrom) : filters.FromDate;
@@ -819,8 +836,8 @@ public static class SupplierDecisionHubEndpoints
                 worstRisk is null ? "neutral" : "warning")
         };
 
-        var dataNote = BuildDecisionScoreDataNote(filters);
-        var trustMetadata = BuildScorecardTrustMetadata(dataset, filters);
+        var dataNote = BuildDecisionScoreDataNote(filters, decisionScoreRefreshAtUtc, requireRefreshAnchor);
+        var trustMetadata = BuildScorecardTrustMetadata(dataset, filters, decisionScoreRefreshAtUtc, requireRefreshAnchor);
 
         return new SummaryResponse(
             from,
@@ -849,8 +866,20 @@ public static class SupplierDecisionHubEndpoints
         SupplierRowsDataset dataset,
         SupplierDecisionHubFilters filters,
         ReportRefreshInfo? refreshInfo = null,
-        SupplierDecisionDetailsResponse? details = null)
+        SupplierDecisionDetailsResponse? details = null,
+        bool requireRefreshAnchor = false)
     {
+        var enforceRefreshAnchor = requireRefreshAnchor || refreshInfo is not null;
+        if (enforceRefreshAnchor)
+        {
+            // The report is the decision artifact, so it must not inherit a summary
+            // whose window was evaluated without the authoritative MV refresh date.
+            summary = BuildSummaryResponse(
+                dataset,
+                filters,
+                refreshInfo?.LastRefreshAtUtc,
+                requireRefreshAnchor: true);
+        }
         var trust = summary.TrustMetadata;
         var generatedAtUtc = DateTime.UtcNow;
         var reportId = BuildSupplierDecisionReportId(filters);
@@ -874,7 +903,12 @@ public static class SupplierDecisionHubEndpoints
             EffectiveToUtc: trust?.EffectiveTo,
             ObservedFromUtc: summary.From,
             ObservedToUtc: summary.To);
-        var methodology = BuildSupplierDecisionMethodology(filters, trust, details is not null);
+        var methodology = BuildSupplierDecisionMethodology(
+            filters,
+            trust,
+            details is not null,
+            refreshInfo?.LastRefreshAtUtc,
+            requireRefreshAnchor: enforceRefreshAnchor);
         var hasData = dataset.Rows.Count > 0;
         var kpis = hasData
             ? BuildSupplierDecisionReportKpis(summary, dataset)
@@ -928,7 +962,7 @@ public static class SupplierDecisionHubEndpoints
         var period = new AnalyticsReportPeriodDto(
             filters.FromDate,
             filters.ToDate,
-            BuildEffectivePeriodLabel(filters, requestedDataset),
+            BuildRequestedPeriodLabel(filters),
             requestedDataset,
             EffectiveDataset: null,
             EffectivePeriodLabel: null,
@@ -1087,13 +1121,16 @@ public static class SupplierDecisionHubEndpoints
     private static AnalyticsReportMethodologyDto BuildSupplierDecisionMethodology(
         SupplierDecisionHubFilters filters,
         ScorecardTrustMetadata? trust,
-        bool includesArticleDetails)
+        bool includesArticleDetails,
+        DateTime? decisionScoreRefreshAtUtc = null,
+        bool requireRefreshAnchor = false)
     {
         var notes = new List<string>
         {
             "Preporuka kombinuje promet, maržni doprinos, zavisnost od sniženja, rizik zaliha i pouzdanost signala.",
             "Ekran prikazuje serverski signal i ne uvodi lokalne pragove za status preporuke.",
-            BuildDecisionScoreDataNote(filters) ?? "Za traženi period koristi se kanonski skup podataka odluke dobavljača bez tihog proširenja opsega."
+            BuildDecisionScoreDataNote(filters, decisionScoreRefreshAtUtc, requireRefreshAnchor)
+                ?? "Za traženi period koristi se kanonski skup podataka odluke dobavljača bez tihog proširenja opsega."
         };
 
         if (trust?.UsedFallback == true && !string.IsNullOrWhiteSpace(trust.FallbackReason))
@@ -2167,7 +2204,8 @@ public static class SupplierDecisionHubEndpoints
     private static async Task<SupplierRowsDataset> QuerySupplierRowsAsync(
         string analyticsConnectionString,
         SupplierDecisionHubFilters filters,
-        CancellationToken ct)
+        CancellationToken ct,
+        bool ignoreExplicitDateFilter = false)
     {
         if (CanUsePrecomputedSupplierRows(filters))
         {
@@ -2180,7 +2218,10 @@ public static class SupplierDecisionHubEndpoints
                 $"Skup podataka odluke dobavljača za period {FormatSupplierDatasetLabel(ResolveEffectiveDataset(windowDays))} nije spreman za traženi period. Pokušajte ponovo nakon osvežavanja analitike.");
             }
 
-            var (precomputedSql, precomputedParameters) = BuildPrecomputedSupplierRowsSql(filters, capabilities);
+            var (precomputedSql, precomputedParameters) = BuildPrecomputedSupplierRowsSql(
+                filters,
+                capabilities,
+                applyDateRangeFilter: !ignoreExplicitDateFilter);
             try
             {
                 var rawRows = await ExecuteSupplierRowsQueryAsync(analyticsConnectionString, precomputedSql, precomputedParameters, ct);
@@ -2682,7 +2723,7 @@ SELECT
     private static int GetDecisionScoreWindowDays(SupplierDecisionHubFilters filters)
     {
         if (!filters.HasExplicitDateRange)
-            return 0;
+            return DefaultLookbackDays;
 
         var days = GetRequestedRangeDays(filters);
         if (days <= 90) return 90;
@@ -2701,11 +2742,27 @@ SELECT
         return Math.Max(1, days);
     }
 
+    private static bool IsExactRollingWindow(
+        SupplierDecisionHubFilters filters,
+        DateTime? decisionScoreRefreshAtUtc)
+    {
+        if (!filters.HasExplicitDateRange || !decisionScoreRefreshAtUtc.HasValue)
+        {
+            return !filters.HasExplicitDateRange;
+        }
+
+        var refreshDate = decisionScoreRefreshAtUtc.Value.ToUniversalTime().Date;
+        var requestedDays = GetRequestedRangeDays(filters);
+        return requestedDays is 30 or 90 or 180
+            && filters.ToDate.Date == refreshDate
+            && filters.FromDate.Date == refreshDate.AddDays(-(requestedDays - 1));
+    }
+
     private static string ResolveRequestedDataset(SupplierDecisionHubFilters filters)
     {
         if (!filters.HasExplicitDateRange)
         {
-            return "all_time";
+            return "180d";
         }
 
         var days = GetRequestedRangeDays(filters);
@@ -2735,6 +2792,23 @@ SELECT
             "90d" => "Poslednjih 90 dana",
             "180d" => "Poslednjih 180 dana",
             _ => "Celokupna istorija"
+        };
+    }
+
+    private static string BuildRequestedPeriodLabel(SupplierDecisionHubFilters filters)
+    {
+        if (!filters.HasExplicitDateRange)
+        {
+            return "Poslednjih 180 dana";
+        }
+
+        var requestedDays = GetRequestedRangeDays(filters);
+        return requestedDays switch
+        {
+            30 => "Poslednjih 30 dana",
+            90 => "Poslednjih 90 dana",
+            180 => "Poslednjih 180 dana",
+            _ => $"{filters.FromDate:dd.MM.yyyy} - {filters.ToDate:dd.MM.yyyy}"
         };
     }
 
@@ -2783,17 +2857,27 @@ SELECT
         _ => "mv_supplier_decision_score_cache"
     };
 
-    private static string? BuildDecisionScoreDataNote(SupplierDecisionHubFilters filters)
+    private static string? BuildDecisionScoreDataNote(
+        SupplierDecisionHubFilters filters,
+        DateTime? decisionScoreRefreshAtUtc = null,
+        bool requireRefreshAnchor = false)
     {
         var requestedDataset = ResolveRequestedDataset(filters);
         var effectiveDataset = ResolveEffectiveDataset(GetDecisionScoreWindowDays(filters));
-        var usedFallback = !string.Equals(requestedDataset, effectiveDataset, StringComparison.OrdinalIgnoreCase);
+        var usedFallback = !string.Equals(requestedDataset, effectiveDataset, StringComparison.OrdinalIgnoreCase)
+            || (requireRefreshAnchor
+                && filters.HasExplicitDateRange
+                && !IsExactRollingWindow(filters, decisionScoreRefreshAtUtc));
 
         if (usedFallback)
         {
-            return requestedDataset == "30d"
-                ? "Traženi period je 30 dana, ali ne postoji poseban skup podataka za 30 dana. Za pomoćni signal koristi se skup od 90 dana, uz striktan filter opsega i bez tihog proširenja za finalnu preporuku."
-                : $"Traženi period se oslanja na skup podataka {BuildEffectivePeriodLabel(filters, effectiveDataset)} kao pomoćni signal, uz striktan filter opsega i bez tihog proširenja.";
+            return requireRefreshAnchor
+                && filters.HasExplicitDateRange
+                && !IsExactRollingWindow(filters, decisionScoreRefreshAtUtc)
+                ? "Traženi period nije tačno prekompajliran do datuma poslednjeg uspešnog osvežavanja; prikazan je najbliži rolling signal kao pomoćni podatak, a preporuka je ograničena."
+                : requestedDataset == "30d"
+                    ? "Traženi period je 30 dana, ali ne postoji poseban skup podataka za 30 dana. Za pomoćni signal koristi se skup od 90 dana, uz striktan filter opsega i bez tihog proširenja za finalnu preporuku."
+                    : $"Traženi period se oslanja na skup podataka {BuildEffectivePeriodLabel(filters, effectiveDataset)} kao pomoćni signal, uz striktan filter opsega i bez tihog proširenja.";
         }
 
         return requestedDataset switch
@@ -2809,14 +2893,20 @@ SELECT
 
     private static ScorecardTrustMetadata BuildScorecardTrustMetadata(
         SupplierRowsDataset dataset,
-        SupplierDecisionHubFilters filters)
+        SupplierDecisionHubFilters filters,
+        DateTime? decisionScoreRefreshAtUtc = null,
+        bool requireRefreshAnchor = false)
     {
         var rows = dataset.Rows;
         var hasData = rows.Count > 0;
         var requestedDataset = ResolveRequestedDataset(filters);
         var windowDays = GetDecisionScoreWindowDays(filters);
         var effectiveDataset = ResolveEffectiveDataset(windowDays);
-        var usedFallback = !string.Equals(requestedDataset, effectiveDataset, StringComparison.OrdinalIgnoreCase);
+        var requestedWindowIsExact = IsExactRollingWindow(filters, decisionScoreRefreshAtUtc);
+        var usedFallback = !string.Equals(requestedDataset, effectiveDataset, StringComparison.OrdinalIgnoreCase)
+            || (requireRefreshAnchor
+                && filters.HasExplicitDateRange
+                && !requestedWindowIsExact);
         var effectiveFrom = hasData ? rows.Min(x => x.PeriodFrom) : filters.FromDate;
         var effectiveTo = hasData ? rows.Max(x => x.PeriodTo) : filters.ToDate;
         var missingSupplierNameCount = rows.Count(x => x.SupplierNameMissing);
@@ -2845,10 +2935,17 @@ SELECT
             180 => "window_180d",
             _ => "all_history"
         };
-        var provenanceBasis = SelectDecisionScoreMv(windowDays);
+        var provenanceBasis = CanUsePrecomputedSupplierRows(filters)
+            ? SelectDecisionScoreMv(windowDays)
+            : "supplier_decision_live_sql";
         var fallbackReasonCode = (string?)null;
         var fallbackReason = (string?)null;
-        if (usedFallback)
+        if (requireRefreshAnchor && filters.HasExplicitDateRange && !requestedWindowIsExact)
+        {
+            fallbackReasonCode = "requested_range_not_precomputed";
+            fallbackReason = "Traženi period nije tačno prekompajliran do datuma poslednjeg uspešnog osvežavanja; preporuka je blokirana, a rolling signal je samo pomoćni podatak.";
+        }
+        else if (usedFallback)
         {
             if (requestedDataset == "30d" && effectiveDataset == "90d")
             {

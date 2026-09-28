@@ -3,6 +3,7 @@
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: RQ463
+Owner claim 2026-09-28: `RQ463` moved READY -> IN_PROGRESS after fresh main/remote sync, dependency and collision checks; local lock `.ai/task-locks/RQ463-codex.lock.md`.
 Owner promotion 2026-09-28: `RQ463` moved WAITING → READY after `RQ468` completed; it is the next primary Supplier report window/provenance prompt and remains unclaimed.
 Owner completion 2026-09-28: `RQ468` moved READY → IN_PROGRESS → DONE and was delivered directly to `main`. Supplier report and Pilot intake user-visible copy, durable rows/exports, API messages and readiness/import states now use Serbian labels and diacritics, including localized scope/status/boolean values and Belgrade-local import timestamps. Focused proof: frontend 32/32; backend 68/68; client guardrails, typecheck and build pass; API build pass; diff check pass. Implementation: `38eb2ec6fc9a0a74e3c4ce291102aca58b4b4cca`; run log: `.ai/runs/2026-09-28-RQ468-evidence.md`. Evidence state: synchronized after final documentation push. Next primary READY is `RQ463`.
 Owner completion 2026-09-28: `RQ467` moved READY → IN_PROGRESS → DONE and was delivered directly to `main` after implementing Pilot intake readiness semantics. Unsold master articles no longer create a hidden readiness penalty or critical override; signal coverage is informational, blocked recommendations are distinct blocked articles, DUG/KOREKCIJA receipts are excluded, signed returns remain net sales without becoming price errors, store/cost semantics are explicit, and the default period uses the latest scoped business date with an explicit fallback anchor. Focused proof: backend 68/68, frontend 21/21; API build, client typecheck, guardrails and production build pass. Implementation: `cd9b3b31b702ae45312b0537197f51cd1608166e`; run log: `.ai/runs/2026-09-28-RQ467-evidence.md`. Evidence state: synchronized. Next primary READY is `RQ468`.
@@ -25302,7 +25303,7 @@ The page spec mocks the component, so the defect is untested.
 
 ## RQ463 - Make the Supplier report requested window, labels and provenance truthful
 
-Status: READY
+Status: IN_PROGRESS
 Ready after: `RQ461` DONE (same files/metadata contract). Owner decision recorded 2026-09-28 (option A); no decision remains.
 Priority: P1
 Type: backend-contract/tests

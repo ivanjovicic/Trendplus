@@ -358,7 +358,52 @@ public sealed class SupplierDecisionHubContractTests
         Assert.True(report.Meta.IsPartial);
         Assert.Equal("STALE_REFRESH", report.Meta.WarningCode);
         Assert.Equal("warning", report.Meta.DataQualityStatus);
+        Assert.Contains(report.Payload.Metadata, item => item.Key == "provenanceBasis" && item.Value == "supplier_decision_live_sql");
+    }
+
+    [Fact]
+    public void BuildSupplierDecisionReportResponse_ExactRollingWindowUsesRefreshAnchor()
+    {
+        var filters = Filters90Days();
+        var dataset = Dataset(Row(1, "A"), Row(2, "B"), Row(3, "C"));
+        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(
+            SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters),
+            dataset,
+            filters,
+            new SupplierDecisionHubEndpoints.ReportRefreshInfo(
+                LastRefreshAtUtc: new DateTime(2026, 7, 1, 4, 0, 0, DateTimeKind.Utc),
+                DataFreshnessStatus: "fresh",
+                WarningMessage: null));
+
+        Assert.False(report.UsedFallback);
+        Assert.True(report.RecommendationAllowed);
+        Assert.Equal("Poslednjih 90 dana", report.Period.EffectivePeriodLabel);
         Assert.Contains(report.Payload.Metadata, item => item.Key == "provenanceBasis" && item.Value == "mv_supplier_decision_score_cache_90d");
+    }
+
+    [Fact]
+    public void BuildSupplierDecisionReportResponse_HistoricSameLengthWindowFailsClosedButKeepsKpis()
+    {
+        var filters = Filters(
+            from: new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc),
+            to: new DateTime(2025, 12, 29, 0, 0, 0, DateTimeKind.Utc));
+        var dataset = Dataset(Row(1, "A"), Row(2, "B"), Row(3, "C"));
+        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(
+            SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters),
+            dataset,
+            filters,
+            new SupplierDecisionHubEndpoints.ReportRefreshInfo(
+                LastRefreshAtUtc: new DateTime(2026, 7, 1, 4, 0, 0, DateTimeKind.Utc),
+                DataFreshnessStatus: "fresh",
+                WarningMessage: null));
+
+        Assert.True(report.UsedFallback);
+        Assert.False(report.RecommendationAllowed);
+        Assert.NotEmpty(report.Kpis);
+        Assert.Contains("nije tačno prekompajliran", report.FallbackReason ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("FALLBACK_DATASET_USED", report.Meta!.WarningCode);
+        Assert.Equal(new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc), report.Period.RequestedFromUtc);
+        Assert.Equal(new DateTime(2025, 12, 29, 0, 0, 0, DateTimeKind.Utc), report.Period.RequestedToUtc);
     }
 
     [Fact]
