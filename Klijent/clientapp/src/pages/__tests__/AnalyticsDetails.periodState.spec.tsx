@@ -47,10 +47,13 @@ describe("AnalyticsDetails period state", () => {
     vi.clearAllMocks();
 
     fireEvent.change(screen.getByRole("combobox"), { target: { value: "custom" } });
-    fireEvent.change(screen.getByLabelText("Od"), { target: { value: "2026-08-30T00:00" } });
+    // Use a value that is guaranteed to differ from the rolling default period so
+    // this assertion does not become date-dependent when CI runs on 2026-09-28
+    // (whose 30d default already starts on 2026-08-30).
+    fireEvent.change(screen.getByLabelText("Od"), { target: { value: "2000-01-01T00:00" } });
     await waitFor(() => expect(apiMocks.getSalesSummary).toHaveBeenCalled());
     vi.clearAllMocks();
-    fireEvent.change(screen.getByLabelText("Do"), { target: { value: "2026-08-01T23:59" } });
+    fireEvent.change(screen.getByLabelText("Do"), { target: { value: "1999-12-31T23:59" } });
 
     expect(await screen.findByTestId("analytics-details-invalid-period")).toHaveTextContent("Period nije validan");
     expect(screen.getByTestId("analytics-details-invalid-period")).toHaveTextContent("Podaci nisu učitani za ovaj period.");
