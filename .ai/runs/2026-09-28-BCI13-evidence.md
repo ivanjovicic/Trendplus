@@ -4,8 +4,8 @@ Date: 2026-09-28
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct delivery
-Main commit SHA: pending
-Main verification: pending push/verification
+Main commit SHA: b28010740b484e378315b8c8b9e90762d5a0fa1d
+Main verification: `git rev-parse origin/main` returned `b28010740b484e378315b8c8b9e90762d5a0fa1d`; implementation SHA is the exact current `origin/main` tip.
 Evidence state: synchronized
 
 ## What was done
