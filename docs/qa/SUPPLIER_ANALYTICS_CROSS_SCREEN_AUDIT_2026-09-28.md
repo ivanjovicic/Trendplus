@@ -119,3 +119,18 @@ This file is a docs-only consolidation artifact. The GitHub connector write that
 ## Residual risk and next step
 
 The next safe execution lane remains the existing `RQ461` READY prompt (with parallel-safe `RQ462` and `RQ466`), subject to the queue protocol and collision checks. `RQ463`, `RQ464` and `RQ467` remain product-decision/acceptance follow-ups, not duplicates. Live production availability/readiness and browser layout still require a runtime-enabled verification pass.
+
+## Correction 2026-09-28 12:22 (owner-approved; recorded by grok)
+
+The statements above that „No new prompt was registered“ (Outcome), that remaining PS proposals „register only if a future reproducer proves a new, non-overlapping contract“ (De-duplication map), and that „no new ID was required“ (Validation) are **no longer true**. They stay above as history. This audit was written without seeing a concurrent, then-unpushed local de-dup run that registered six non-overlapping residual prompts from `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-25.md`:
+
+| Prompt | Source PS | Status (2026-09-28 12:22) |
+|---|---|---|
+| `RQ483` Product Decision rules reachable, period-end based, one threshold policy | `PS04` | READY (owner decision 2026-09-28; must not change the `RQ472` journal gate or claim live actionability) |
+| `RQ484` Operations recommendation gate policy (nivelacija evidence, unknown bucket), Supplier-only | `PS07` | READY (owner decision 2026-09-28) |
+| `RQ485` Product Decision page hygiene | `PS10`, Product Decision part of `PS16` | WAITING after `RQ469`–`RQ471` |
+| `RQ486` Supplier page shell and overview hygiene | `PS12`, `PS15`, Supplier part of `PS16`, `PS18`, frontend link residual of `PS13` | READY |
+| `RQ487` Bound Product Decision and Supplier overview query cost | `PS14` | WAITING after the `RQ474` diagnosis |
+| `RQ488` Serbian copy and export values | residual of `PS17` | WAITING after `RQ485` |
+
+The mapping in the De-duplication map above for `PS01`–`PS03`, `PS05`, `PS06`, `PS08`, `PS09`, `PS11` and `PS13` (sale-time attribution) is unchanged. Current routing: `Current READY prompt: RQ461`; also READY `RQ462`, `RQ466`, `RQ486`, `RQ484`, `RQ483`. The „Residual risk and next step“ lane list above is superseded accordingly. Evidence: `.ai/runs/2026-09-28-supplier-report-pilot-intake-owner-decisions-evidence.md` and `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`.
