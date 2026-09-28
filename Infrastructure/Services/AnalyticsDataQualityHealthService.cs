@@ -107,11 +107,35 @@ public sealed class AnalyticsDataQualityHealthService
     {
         var safeLookbackDays = Math.Max(1, lookbackDays);
         var (windowFromUtc, windowToExclusiveUtc) = DataQualitySalesWindow.Resolve(safeLookbackDays);
+        return await CaptureAsyncInternal(windowFromUtc, windowToExclusiveUtc, dataScope, ct);
+    }
+
+    public Task<AnalyticsDataQualityHealthSnapshot> CaptureAsync(
+        DateTime windowFromUtc,
+        DateTime windowToExclusiveUtc,
+        string? dataScope,
+        CancellationToken ct)
+    {
+        if (windowToExclusiveUtc <= windowFromUtc)
+        {
+            throw new ArgumentException("Health window must use a positive half-open interval.", nameof(windowToExclusiveUtc));
+        }
+
+        return CaptureAsyncInternal(windowFromUtc, windowToExclusiveUtc, dataScope, ct);
+    }
+
+    private async Task<AnalyticsDataQualityHealthSnapshot> CaptureAsyncInternal(
+        DateTime windowFromUtc,
+        DateTime windowToExclusiveUtc,
+        string? dataScope,
+        CancellationToken ct)
+    {
         // Inclusive display end stays compatible with existing health/report consumers.
         var windowToUtc = windowToExclusiveUtc.AddTicks(-1);
         var normalizedDataScope = NormalizeDataScope(dataScope);
         var importedOnly = normalizedDataScope == "imported";
         var existingOnly = normalizedDataScope == "existing";
+        var safeLookbackDays = Math.Max(1, (int)(windowToExclusiveUtc.Date - windowFromUtc.Date).TotalDays);
 
         var orphanArticleCount = await (
             from a in _db.Artikli.AsNoTracking()

@@ -321,6 +321,61 @@ public sealed class AnalyticsReportsContractTests
         Assert.Empty(report.Kpis);
     }
 
+    [Theory]
+    [InlineData(null, "all")]
+    [InlineData(" ALL ", "all")]
+    [InlineData("Existing", "existing")]
+    [InlineData("IMPORTED", "imported")]
+    public void PilotIntakeScope_NormalizesOnlySupportedValues(string? rawScope, string expected)
+    {
+        var valid = DataQualityEndpoints.TryNormalizePilotDataScope(rawScope, out var normalized, out var errorMessage);
+
+        Assert.True(valid);
+        Assert.Equal(expected, normalized);
+        Assert.Null(errorMessage);
+    }
+
+    [Fact]
+    public void PilotIntakeScope_RejectsUnknownValueWithoutFallingBackToAll()
+    {
+        var valid = DataQualityEndpoints.TryNormalizePilotDataScope("warehouse", out var normalized, out var errorMessage);
+
+        Assert.False(valid);
+        Assert.Equal("all", normalized);
+        Assert.Equal("Opseg podataka nije validan. Dozvoljene vrednosti su all, existing i imported.", errorMessage);
+    }
+
+    [Fact]
+    public void PilotIntakeReport_DoesNotAdvertiseActionsWhenAllActionCountsAreZero()
+    {
+        var intake = new DataQualityEndpoints.PilotDataQualityIntakeReportDto(
+            new DateTime(2026, 6, 30, 12, 0, 0, DateTimeKind.Utc),
+            new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc),
+            "all",
+            null,
+            null,
+            new DateTime(2026, 6, 29, 22, 0, 0, DateTimeKind.Utc),
+            "completed",
+            "global",
+            42,
+            new DateTime(2026, 6, 30, 4, 0, 0, DateTimeKind.Utc),
+            "fresh",
+            100,
+            "excellent",
+            "Spremno",
+            new DataQualityEndpoints.PilotDataQualityIntakeLoadedDataDto(1200, 45000, 9300, 48, 12, null, null),
+            new DataQualityEndpoints.PilotDataQualityIntakeIssuesDto(0, 0, 0, 0, 0, 0, 0, 0, 0),
+            new DataQualityEndpoints.PilotDataQualityIntakeImpactDto(0d, 0d, 0, 0, 0),
+            [],
+            AnalyticsResponseMetaFactory.Success("good"));
+        var period = (new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc), new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc), new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        var report = DataQualityEndpoints.BuildPilotIntakeReportResponse(intake, period, null, null, "all");
+
+        Assert.Empty(report.RecommendedActions);
+    }
+
     [Fact]
     public void PilotIntakeReport_EmptyIntakeEvidence_DoesNotReintroduceReadinessScore()
     {
@@ -432,6 +487,39 @@ public sealed class AnalyticsReportsContractTests
         Assert.False(meta!.Success);
         Assert.Equal("invalid_period", meta.ErrorCode);
         Assert.Equal("corr-invalid-pilot-period", meta.CorrelationId);
+    }
+
+    [Fact]
+    public async Task PilotIntakeReport_InvalidScope_ReturnsErrorMetaBeforeCacheOrDataAccess()
+    {
+        var cache = new StubAnalyticsCacheService();
+        var cacheAdmin = new AnalyticsCacheAdminService(cache, null, NullLogger<AnalyticsCacheAdminService>.Instance);
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Headers["X-Correlation-ID"] = "corr-invalid-pilot-scope";
+
+        var result = await DataQualityEndpoints.HandlePilotIntakeReportAsync(
+            httpContext,
+            trendDb: null!,
+            analyticsDb: null!,
+            cache,
+            cacheAdmin,
+            NullLoggerFactory.Instance,
+            healthService: null!,
+            refreshStatusService: null!,
+            fromDate: "2026-06-01",
+            toDate: "2026-06-30",
+            storeId: null,
+            supplierId: null,
+            scope: "warehouse",
+            dataScope: null,
+            ct: CancellationToken.None);
+
+        var ok = Assert.IsType<Ok<DataQualityEndpoints.PilotIntakeInvalidPeriodResponseDto>>(result);
+        var meta = ok.Value!.Meta;
+        Assert.NotNull(meta);
+        Assert.False(meta!.Success);
+        Assert.Equal("invalid_scope", meta.ErrorCode);
+        Assert.Equal("corr-invalid-pilot-scope", meta.CorrelationId);
     }
 
     [Fact]

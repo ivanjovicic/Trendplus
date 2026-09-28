@@ -31,6 +31,48 @@ public sealed class AnalyticsDataQualityHealthServiceTests
     }
 
     [Fact]
+    public async Task CaptureAsync_ExplicitWindowUsesRequestedPeriodInsteadOfNowAnchoredLookback()
+    {
+        await using var db = CreateContext();
+        db.Artikli.Add(new Artikli
+        {
+            Id = 1,
+            Naziv = "Artikal",
+            Kolicina = 1,
+            NabavnaCena = 20m,
+            DataOrigin = "existing",
+            UpdatedAt = DateTime.UtcNow
+        });
+        db.ProdajaZaglavlja.AddRange(
+            new ProdajaZaglavlje
+            {
+                Id = 1,
+                DatumProdaje = new DateTime(2026, 5, 31, 12, 0, 0, DateTimeKind.Utc),
+                DataOrigin = "existing"
+            },
+            new ProdajaZaglavlje
+            {
+                Id = 2,
+                DatumProdaje = new DateTime(2026, 6, 15, 12, 0, 0, DateTimeKind.Utc),
+                DataOrigin = "existing"
+            });
+        db.ProdajaStavke.AddRange(
+            new ProdajaStavka { Id = 1, IdProdaja = 1, IdArtikal = 1, Kolicina = 1, Cena = 900m },
+            new ProdajaStavka { Id = 2, IdProdaja = 2, IdArtikal = 1, Kolicina = 1, Cena = 100m });
+        await db.SaveChangesAsync();
+
+        var service = new AnalyticsDataQualityHealthService(db);
+        var fromUtc = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        var toExclusiveUtc = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc);
+        var snapshot = await service.CaptureAsync(fromUtc, toExclusiveUtc, "all", CancellationToken.None);
+
+        Assert.Equal(100m, snapshot.TotalRevenue);
+        Assert.Equal(fromUtc, snapshot.WindowFromUtc);
+        Assert.Equal(toExclusiveUtc.AddTicks(-1), snapshot.WindowToUtc);
+        Assert.Equal(30, snapshot.LookbackDays);
+    }
+
+    [Fact]
     public async Task CaptureAsync_ExistingScopeExcludesImportedProblems()
     {
         await using var db = CreateContext();

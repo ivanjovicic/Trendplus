@@ -15,16 +15,6 @@ namespace Trendplus2.Endpoints;
 
 public static class DataQualityEndpoints
 {
-    private static readonly string[] PilotIntakeRecommendations =
-    [
-        "Povezi dobavljace",
-        "Dopuni nabavne cene",
-        "Proveri artikle bez kategorije",
-        "Proveri redove prodaje bez artikla",
-        "Pokreni osvezavanje analitike",
-        "Proveri import mapu",
-    ];
-
     public static void MapDataQualityEndpoints(this WebApplication app)
     {
         app.MapGet("/api/analytics/data-quality/health", async (
@@ -293,6 +283,20 @@ public static class DataQualityEndpoints
                         correlationId)));
             }
 
+            if (!TryNormalizePilotDataScope(dataScope, out var normalizedDataScope, out var scopeErrorMessage))
+            {
+                return Results.Ok(BuildPilotIntakeInvalidPeriodResponse(
+                    storeId,
+                    supplierId,
+                    dataScope,
+                    ApplyCorrelationId(
+                        AnalyticsResponseMetaFactory.Error(
+                            "invalid_scope",
+                            scopeErrorMessage!,
+                            correlationId),
+                        correlationId)));
+            }
+
             try
             {
                 var report = await BuildPilotDataQualityIntakeReportAsync(
@@ -303,7 +307,7 @@ public static class DataQualityEndpoints
                     resolvedPeriod,
                     storeId,
                     supplierId,
-                    dataScope,
+                    normalizedDataScope,
                     ct);
 
                 return Results.Ok(report with
@@ -316,7 +320,7 @@ public static class DataQualityEndpoints
                 var generatedAtUtcErr = DateTime.UtcNow;
                 return Results.Ok(new PilotDataQualityIntakeReportDto(
                     generatedAtUtcErr, resolvedPeriod.FromUtc, resolvedPeriod.ToUtc,
-                    string.IsNullOrWhiteSpace(dataScope) ? "all" : dataScope,
+                    normalizedDataScope,
                     storeId?.ToString(CultureInfo.InvariantCulture),
                     supplierId?.ToString(CultureInfo.InvariantCulture),
                     LastImportAtUtc: null,
@@ -358,7 +362,8 @@ public static class DataQualityEndpoints
         [FromQuery] int? supplierId,
         [FromQuery] string? scope,
         [FromQuery] string? dataScope,
-        CancellationToken ct)
+        CancellationToken ct,
+        [FromQuery] bool refresh = false)
     {
         var correlationId = ResolveCorrelationId(httpContext);
         if (!TryResolveIntakePeriod(fromDate, toDate, out var period, out var periodErrorCode, out var periodErrorMessage))
@@ -375,6 +380,18 @@ public static class DataQualityEndpoints
         var resolvedScope = !string.IsNullOrWhiteSpace(scope)
             ? scope
             : dataScope;
+        if (!TryNormalizePilotDataScope(resolvedScope, out var normalizedScope, out var scopeErrorMessage))
+        {
+            return Results.Ok(new PilotIntakeInvalidPeriodResponseDto(
+                ApplyCorrelationId(
+                    AnalyticsResponseMetaFactory.Error(
+                        "invalid_scope",
+                        scopeErrorMessage!,
+                        correlationId),
+                    correlationId)));
+        }
+
+        resolvedScope = normalizedScope;
         var reportCacheVersion = await cacheAdmin.GetReportCacheVersionAsync(ct);
         var reportCacheKey = AnalyticsCacheKeys.PilotIntakeReport(
             period.FromUtc,
@@ -388,7 +405,9 @@ public static class DataQualityEndpoints
 
         try
         {
-            var cachedReport = await cache.GetAsync<AnalyticsReportResponseDto>(reportCacheKey, ct);
+            var cachedReport = refresh
+                ? null
+                : await cache.GetAsync<AnalyticsReportResponseDto>(reportCacheKey, ct);
             AnalyticsReportResponseDto report;
             if (cachedReport is not null)
             {
@@ -405,13 +424,14 @@ public static class DataQualityEndpoints
             else
             {
                 cacheLogger.LogInformation(
-                    "Pilot intake report cache MISS. ReportType={ReportType} KeyHash={CacheKeyHash} Version={ReportCacheVersion} SupplierId={SupplierId} StoreId={StoreId} DataScope={DataScope}",
+                    "Pilot intake report cache MISS. ReportType={ReportType} KeyHash={CacheKeyHash} Version={ReportCacheVersion} SupplierId={SupplierId} StoreId={StoreId} DataScope={DataScope} Refresh={Refresh}",
                     "pilot-intake",
                     reportCacheKeyHash,
                     reportCacheVersion,
                     supplierId,
                     storeId,
-                    resolvedScope);
+                    resolvedScope,
+                    refresh);
 
                 var intake = await BuildPilotDataQualityIntakeReportAsync(
                     trendDb,
@@ -442,8 +462,18 @@ public static class DataQualityEndpoints
                 Meta = ApplyCorrelationId(report.Meta, correlationId)
             });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            loggerFactory.CreateLogger("PilotIntakeReport").LogError(
+                ex,
+                "Pilot intake report failed. ReportId={ReportId} FromDate={FromDate} ToDate={ToDate} StoreId={StoreId} SupplierId={SupplierId} DataScope={DataScope} Refresh={Refresh}",
+                BuildPilotIntakeReportId(period, storeId, supplierId, resolvedScope),
+                period.FromUtc,
+                period.ToUtc,
+                storeId,
+                supplierId,
+                resolvedScope,
+                refresh);
             return Results.Ok(BuildPilotIntakeErrorReportResponse(period, storeId, supplierId, resolvedScope, correlationId));
         }
     }
@@ -510,8 +540,7 @@ public static class DataQualityEndpoints
         string? dataScope,
         CancellationToken ct)
     {
-        var lookbackDays = Math.Clamp((int)Math.Ceiling((period.ToUtc.Date - period.FromUtc.Date).TotalDays) + 1, 2, 90);
-        var health = await healthService.CaptureAsync(lookbackDays, dataScope, ct);
+        var health = await healthService.CaptureAsync(period.FromUtc, period.ToExclusiveUtc, dataScope, ct);
         var refreshStatus = await refreshStatusService.GetStatusAsync(ct);
 
         IQueryable<Domain.Model.Artikli> articleQuery = trendDb.Artikli.AsNoTracking();
@@ -525,18 +554,27 @@ public static class DataQualityEndpoints
             articleQuery = articleQuery.Where(x => x.IDDobavljac == supplierId.Value);
         }
 
+        if (dataScope == "imported")
+        {
+            articleQuery = articleQuery.Where(x => x.DataOrigin == "access");
+        }
+        else if (dataScope == "existing")
+        {
+            articleQuery = articleQuery.Where(x => x.DataOrigin == "existing" || x.DataOrigin == null || x.DataOrigin == "");
+        }
+
         var totalArticles = await articleQuery.CountAsync(ct);
         var totalSuppliers = await articleQuery
             .Where(x => x.IDDobavljac.HasValue && x.IDDobavljac.Value > 0)
             .Select(x => x.IDDobavljac!.Value)
             .Distinct()
             .CountAsync(ct);
-        var totalStores = await analyticsDb.StoresDim.AsNoTracking().CountAsync(ct);
 
         var salesLinesScoped =
             from line in trendDb.ProdajaStavke.AsNoTracking()
             join header in trendDb.ProdajaZaglavlja.AsNoTracking() on line.IdProdaja equals header.Id
             where header.DatumProdaje >= period.FromUtc && header.DatumProdaje < period.ToExclusiveUtc
+               && (dataScope == "all" || (dataScope == "imported" && header.DataOrigin == "access") || (dataScope == "existing" && (header.DataOrigin == "existing" || header.DataOrigin == null || header.DataOrigin == "")))
             select new { line.Id, line.IdProdaja, line.IdArtikal, line.Cena, header.DatumProdaje, header.IDObjekat };
 
         if (storeId.HasValue)
@@ -552,6 +590,10 @@ public static class DataQualityEndpoints
                 where article.IDDobavljac == supplierId.Value
                 select line;
         }
+
+        var totalStores = storeId.HasValue
+            ? 1
+            : await salesLinesScoped.Select(x => x.IDObjekat).Distinct().CountAsync(ct);
 
         var salesLineCount = await salesLinesScoped.CountAsync(ct);
         var salesReceiptCount = await salesLinesScoped.Select(x => x.IdProdaja).Distinct().CountAsync(ct);
@@ -652,14 +694,14 @@ public static class DataQualityEndpoints
         // Batches are not store/supplier-scoped in schema; never pretend filter scope.
         var lastImportScope = latestBatch is null ? null : "global";
         var generatedAtUtc = DateTime.UtcNow;
-        var lastRefreshAtUtc = refreshStatus.LastSuccessfulRefreshAtUtc ?? health.GeneratedAtUtc;
+        var lastRefreshAtUtc = refreshStatus.LastSuccessfulRefreshAtUtc;
         var articlesWithoutSupplierPercent = totalArticles <= 0 ? 0d : (double)missingSupplierCount / totalArticles;
         var meta = !hasIntakeEvidence
             ? AnalyticsResponseMetaFactory.Empty(
                 latestBatch is null ? "no_import" : "no_intake_evidence",
                 latestBatch is null
-                    ? "Pilot intake izvestaj nema import batch u periodu."
-                    : "Nema dovoljno ucitanih artikala ili import redova za readiness procenu.",
+                    ? "Nema evidentiranog importa."
+                    : "Nema dovoljno ucitanih artikala ili prodajnih redova za izabrani period i opseg.",
                 "insufficient_data")
             : AnalyticsResponseMetaFactory.Success(readiness.MetaStatus, lastRefreshAtUtc);
         meta.GeneratedAtUtc = generatedAtUtc;
@@ -707,7 +749,15 @@ public static class DataQualityEndpoints
                 RecommendationsBlockedCount: blockedRecommendationsCount,
                 IgnoredRowsCount: ignoredRows,
                 InsufficientSignalCount: insufficientSignalCount),
-            PilotIntakeRecommendations,
+            BuildPilotIntakeRecommendationTitles(
+                totalArticles,
+                missingSupplierCount,
+                missingSupplierNameCount,
+                missingCostCount,
+                missingCategoryCount,
+                saleWithoutArticleCount,
+                ignoredRows,
+                refreshStatus.DataFreshnessStatus),
             meta);
     }
 
@@ -1036,11 +1086,64 @@ public static class DataQualityEndpoints
         return report.RecommendedActions
             .Select(action => new AnalyticsReportActionDto(
                 action,
-                "Otvori povezani ekran za rešavanje identifikovanog problema u intake fazi.",
+                action switch
+                {
+                    "Povezi dobavljace" => $"{report.Issues.MissingSupplierCount + report.Issues.MissingSupplierNameCount} artikala nema pouzdano povezanog dobavljača.",
+                    "Dopuni nabavne cene" => $"{report.Issues.MissingCostCount} artikala nema važeću nabavnu cenu.",
+                    "Proveri artikle bez kategorije" => $"{report.Issues.MissingCategoryCount} artikala nema kategoriju.",
+                    "Proveri redove prodaje bez artikla" => $"{report.Issues.SaleWithoutArticleCount} prodajnih redova nema povezani artikal.",
+                    "Proveri import mapu" => $"{report.Impact.IgnoredRowsCount} redova importa je preskočeno ili odbijeno.",
+                    "Pokreni osvezavanje analitike" => "Poslednji uspešni refresh nije dovoljno svež ili nije poznat.",
+                    _ => "Otvori povezani ekran za rešavanje identifikovanog problema u intake fazi."
+                },
                 MapPilotActionHref(action),
                 action.Contains("osvez", StringComparison.OrdinalIgnoreCase) ? "high" : "medium"))
             .DistinctBy(action => action.Title, StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    private static List<string> BuildPilotIntakeRecommendationTitles(
+        int totalArticles,
+        int missingSupplierCount,
+        int missingSupplierNameCount,
+        int missingCostCount,
+        int missingCategoryCount,
+        int saleWithoutArticleCount,
+        int ignoredRowsCount,
+        string? dataFreshnessStatus)
+    {
+        var recommendations = new List<string>();
+        if (missingSupplierCount + missingSupplierNameCount > 0)
+        {
+            recommendations.Add("Povezi dobavljace");
+        }
+
+        if (missingCostCount > 0)
+        {
+            recommendations.Add("Dopuni nabavne cene");
+        }
+
+        if (missingCategoryCount > 0)
+        {
+            recommendations.Add("Proveri artikle bez kategorije");
+        }
+
+        if (saleWithoutArticleCount > 0)
+        {
+            recommendations.Add("Proveri redove prodaje bez artikla");
+        }
+
+        if (totalArticles > 0 && (dataFreshnessStatus is "stale" or "critical" or null or "unknown"))
+        {
+            recommendations.Add("Pokreni osvezavanje analitike");
+        }
+
+        if (ignoredRowsCount > 0)
+        {
+            recommendations.Add("Proveri import mapu");
+        }
+
+        return recommendations;
     }
 
     private static List<AnalyticsReportSectionDto> BuildPilotIntakeSections(
@@ -1595,6 +1698,27 @@ public static class DataQualityEndpoints
         };
 
         return Math.Clamp((int)Math.Round(100d - penalty), 0, 100);
+    }
+
+    internal static bool TryNormalizePilotDataScope(
+        string? rawScope,
+        out string normalizedScope,
+        out string? errorMessage)
+    {
+        var candidate = string.IsNullOrWhiteSpace(rawScope)
+            ? "all"
+            : rawScope.Trim().ToLowerInvariant();
+
+        if (candidate is "all" or "existing" or "imported")
+        {
+            normalizedScope = candidate;
+            errorMessage = null;
+            return true;
+        }
+
+        normalizedScope = "all";
+        errorMessage = "Opseg podataka nije validan. Dozvoljene vrednosti su all, existing i imported.";
+        return false;
     }
 
     internal static bool TryResolveIntakePeriod(
