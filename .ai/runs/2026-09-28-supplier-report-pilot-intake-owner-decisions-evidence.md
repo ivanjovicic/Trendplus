@@ -87,3 +87,18 @@ Open items for Ivan after this follow-up:
 - Confirm `RQ483` READY now, or prefer strict sequencing after `RQ472`.
 - `RQ473`: confirmation carried over from the previous run.
 - Local `main` still needs to be merged with `origin/main` by whoever pushes. The cross-screen audit sentence about no new prompts is superseded by `RQ483`–`RQ488`.
+
+---
+
+## Follow-up 2026-09-28 12:22 — final owner decisions, merge and push (grok)
+
+C: free space before the run: 8,241,704,960 bytes. The scratch copies in `C:\tp2tmp\grok-work` are deleted after every run; other `C:\tp2tmp` files were not touched. Local `main` was `8dc5920c` (7 ahead / 3 behind `origin/main` `7fb92c86`). The id check found no `RQ489`+ id and no task locks.
+
+| Item | Decision (Ivan, 2026-09-28 12:22) | Status |
+|---|---|---|
+| `RQ484` | Supplier-only. No 15/25, known-only aggregation or gate change on Shoe Type/Color, only the principle; `RQ457` and the related contracts are unchanged; no new prompt | READY (explicit out-of-scope section added) |
+| `RQ483` | Stays READY, not strictly after `RQ472`. Guards: journal gate untouched; no live-actionability claim; no parallel claim with `RQ472` (first claimed finishes/merges, the other rebases and revalidates) | READY |
+| `RQ473` | The `RQ464` decision is canonical for missing-cost semantics and the owner blocker is removed; parity of the cost chain, denominator, metadata and tests remains | WAITING only for file overlap with READY `RQ483` (Product Decision builder) and `RQ484` (Supplier stats builder) |
+| Cross-screen audit doc | Dated correction appended listing `RQ483`–`RQ488` with the PS mapping; original lines kept as history | fixed (post-merge commit) |
+
+Merge procedure: a real merge of `origin/main` into local `main` (no rebase, no force). The result, conflicts, push and final tree states are reported in the task response.
