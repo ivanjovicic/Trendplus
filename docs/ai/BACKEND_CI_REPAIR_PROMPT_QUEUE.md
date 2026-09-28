@@ -212,8 +212,8 @@ Run `36270728235` still contained failures across Access import FK guards, lost-
 - Run log: `.ai/runs/2026-09-29-BCI14-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending until delivery
-- Main verification: pending until delivery
+- Main commit SHA: `dfd1ea15e6112e8fe892514eaa0db6370e009c19`
+- Main verification: passed - `origin/main` resolves to and contains the implementation SHA
 - Missed: broad-suite residual provider/order lifecycle family remains for follow-up.
 - Follow-up: re-enter BCI14/next provider-order isolation prompt after a fresh exact-main broad run can complete.
 - Residual risk: broad CI gate is not green evidence; no runtime fix was justified.
