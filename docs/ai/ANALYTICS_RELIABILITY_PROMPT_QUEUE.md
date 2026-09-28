@@ -2,7 +2,9 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ465
+Current READY prompt: none
+Owner claim 2026-09-28: `RQ465` moved READY -> IN_PROGRESS after fresh main/remote/dependency/collision checks; local lock `.ai/task-locks/RQ465-codex.lock.md`.
+Owner completion 2026-09-28: `RQ465` moved IN_PROGRESS -> DONE and was delivered directly to `main` in `749cf2b1`. Supplier report negotiation packs, Finalni savet and negotiation actions are now limited to an explicitly selected supplier; rule-coded candidate/risk fallbacks are removed; all-time stable URLs preserve absent dates; conflicting scope aliases fail closed; durable report actions preserve filters, section links scroll to the requested section, date order is validated in Serbian, and export errors clear after success. Focused proof: frontend 22/22; backend Supplier report/Supplier Hub/negotiation-pack contracts 83/83; analytics guardrails, typecheck and production build pass; governance validators pass. Missed: none known. Run log: `.ai/runs/2026-09-28-RQ465-evidence.md`. Evidence state: synchronized. Idle recovery after completion found no actual READY section to promote; remaining actionable queue rows are partial or waiting on declared gates/ownership.
 Owner claim 2026-09-28: `RQ464` moved READY -> IN_PROGRESS after fresh main/remote/collision checks; local lock `.ai/task-locks/RQ464-codex.lock.md`.
 Owner completion 2026-09-28: `RQ464` moved IN_PROGRESS -> DONE and was delivered directly to `main` in `c3b80a661d93208f6c2b026da73665b9c4345adf`. Supplier report main KPIs now use the Supplier overview sales population, missing cost is excluded only from margin, markdown-window metrics are a separate `Rezultat oko sniženja` block, receipt/store/sale-time attribution and signed-return semantics are aligned, and live scoring ports the MV percent-rank model with one 0–100 recommendation scale. Focused proof: 119/119 combined SupplierDecision/report tests; API build passed; diff check passed. Run log: `.ai/runs/2026-09-28-RQ464-evidence.md`. Evidence state: synchronized.
 Owner promotion 2026-09-28: `RQ465` moved WAITING -> READY after `RQ464` reached DONE; it is now the primary READY prompt and remains serialized on the Supplier report backend file.
@@ -1737,7 +1739,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ462 | DONE | pilot-intake-durable-report-render | Render the durable Pilot intake report instead of the permanent empty state |
 | RQ463 | WAITING | supplier-decision-requested-window-truth | Make the Supplier report requested window, labels and provenance truthful |
 | RQ464 | WAITING | supplier-decision-report-metric-basis | Align Supplier report KPIs with the Supplier overview and use one scoring model |
-| RQ465 | WAITING | supplier-decision-report-actions-negotiation | Fix Supplier report actions, negotiation pack and page-level defects |
+| RQ465 | DONE | supplier-decision-report-actions-negotiation | Fix Supplier report actions, negotiation pack and page-level defects |
 | RQ466 | DONE | pilot-intake-backend-scope-period-truth | Make the Pilot intake backend honour scope, requested period and refresh truth |
 | RQ467 | DONE | pilot-intake-readiness-score-semantics | Pilot intake readiness score semantics and business-date default period |
 | RQ468 | READY | supplier-report-pilot-intake-serbian-copy | Complete Serbian copy on the Supplier report and Pilot intake screens |
@@ -25498,7 +25500,7 @@ Owner note (Ivan, 2026-09-28): the owner explicitly rejected splitting `RQ464` e
 
 ## RQ465 - Fix Supplier report actions, negotiation pack and page-level defects
 
-Status: READY
+Status: DONE
 Ready after: `RQ461` DONE (same files); do not run concurrently with `RQ463`/`RQ464` (same backend file). Owner decision recorded 2026-09-28; no decision remains.
 Priority: P2
 Type: frontend/backend/tests
@@ -25560,6 +25562,23 @@ Decision tests:
 
 - `RQ461` first; `RQ235`/`RQ249` gating must stay intact.
 - Reliability contract: actions are only offered for backend-identified suppliers with an allowed recommendation.
+
+### Completion note
+
+- Date: 2026-09-28
+- Status: DONE
+- Completion: delivered directly to `main`; the implementation is present in `749cf2b1` and `origin/main` contains that SHA.
+- Changed files: `Api/Endpoints/SupplierDecisionHubEndpoints.cs`; `Api.Tests/AnalyticsReportsContractTests.cs`; `Api.Tests/SupplierDecisionHubContractTests.cs`; `Api.Tests/SupplierNegotiationPackReportTests.cs`; `Klijent/clientapp/src/components/analytics/SupplierDecisionReport.tsx`; `Klijent/clientapp/src/components/analytics/SupplierDecisionReportActions.tsx`; `Klijent/clientapp/src/components/analytics/__tests__/SupplierDecisionReportActions.spec.tsx`; `Klijent/clientapp/src/pages/SupplierDecisionReportPage.tsx`; `Klijent/clientapp/src/pages/__tests__/SupplierDecisionReportPage.spec.tsx`
+- Checks run: focused Vitest 22/22; focused backend SupplierDecisionHub/AnalyticsReports/SupplierNegotiationPack tests 83/83; `npm run check:analytics-guardrails`; `npm run build`; `node scripts/check-agent-instructions.mjs`; `node scripts/check-prompt-queues.mjs`; `node scripts/check-planning-architecture.mjs`; `git diff --check`; `git merge-base --is-ancestor 749cf2b1 origin/main`
+- Checks not run: full backend test suite; live PostgreSQL/integration proof; remote CI completion
+- Run log: `.ai/runs/2026-09-28-RQ465-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-to-main
+- Main commit SHA: `749cf2b1`
+- Main verification: passed - `origin/main` contains `749cf2b1`
+- Missed: none known
+- Follow-up: idle recovery found no actual READY section to promote; next selection requires a fresh queue-owner promotion after reconciling the remaining partial/waiting rows
+- Residual risk: full-suite and live integration coverage remain outside this focused delivery
 
 ---
 
