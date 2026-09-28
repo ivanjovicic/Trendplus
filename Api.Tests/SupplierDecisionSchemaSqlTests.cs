@@ -315,7 +315,7 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.Contains("ds.period_to >= @fromDate AND ds.period_from <= @toDate", endpoint);
         Assert.Contains("fs.first_markdown_date >= @fromDate", endpoint);
         Assert.Contains("fs.first_markdown_date <= @toDate", endpoint);
-        Assert.Contains("a.\\\"IDObjekat\\\" = @storeId", endpoint);
+        Assert.Contains("store_pz.\\\"IDObjekat\\\" = @storeId", endpoint);
         Assert.Contains("a.\\\"DataOrigin\\\" = 'access'", endpoint);
         Assert.Contains("a.\\\"DataOrigin\\\" IS NULL OR a.\\\"DataOrigin\\\" = ''", endpoint);
         Assert.Contains("COALESCE(fs.category, 'Uncategorized') ILIKE @category", endpoint);
@@ -403,7 +403,7 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.Contains("return \"30d\"", endpoint);
         Assert.Contains("return \"90d\"", endpoint);
         Assert.Contains("return \"180d\"", endpoint);
-        Assert.Contains("return \"all_time\"", endpoint);
+        Assert.Contains("_ => \"all_time\"", endpoint);
         Assert.Contains("no_mv_30d", endpoint);
 
         Assert.Contains("\"mv_supplier_decision_score_cache_90d\"", options);
@@ -440,6 +440,69 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.Contains("CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric", sql);
         Assert.Contains("WHEN COALESCE(fs.evidence_quality_status, 'partial') <> 'complete' THEN 'REVIEW_QUALITY'", sql);
         Assert.Contains("return_rate_missing_evidence_reason", sql);
+    }
+
+    [Fact]
+    public void SupplierDecisionLiveSqlUsesRetailReceiptPopulationSaleAttributionAndReceiptStore()
+    {
+        var endpoint = ReadRepoFile("Api/Endpoints/SupplierDecisionHubEndpoints.cs");
+
+        Assert.Contains("SalesReceiptPopulationPolicy.IncludedHeaderPredicate", endpoint);
+        Assert.Contains("ps.supplier_id_at_sale = b.supplier_id", endpoint);
+        Assert.Contains("UPPER(TRIM(COALESCE(pz.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')", endpoint);
+        Assert.Contains("store_pz.\\\"IDObjekat\\\" = @storeId", endpoint);
+        Assert.Contains("returned_units_in_period", endpoint);
+        Assert.DoesNotContain("period_returns AS", endpoint);
+        Assert.DoesNotContain("povracaj_zaglavlje", endpoint);
+    }
+
+    [Fact]
+    public void SupplierDecisionMaterializedViewsUseSignedRetailReturnsAndSaleTimeSupplierAttribution()
+    {
+        foreach (var path in new[]
+        {
+            "Database/Migrations/018_AddSupplierDecisionHubViews.sql",
+            "Database/Migrations/029_AddSupplierDecisionWindowedViews.sql"
+        })
+        {
+            var sql = ReadRepoFile(path);
+
+            Assert.Contains("ps.supplier_id_at_sale = sr.supplier_id", sql);
+            Assert.Contains("returned_units_in_period", sql);
+            Assert.Contains("UPPER(TRIM(COALESCE(pz.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')", sql);
+            Assert.DoesNotContain("returns_in_period AS", sql);
+            Assert.DoesNotContain("povracaj_zaglavlje", sql);
+            Assert.DoesNotContain("povracaj_stavke", sql);
+        }
+    }
+
+    [Fact]
+    public void SupplierReportMetricBasisUsesMarginPolicyAndDoesNotTreatMissingCostAsZero()
+    {
+        var endpoint = ReadRepoFile("Api/Endpoints/SupplierDecisionHubEndpoints.cs");
+
+        Assert.Contains("BuildSupplierReportMetricBasis", endpoint);
+        Assert.Contains("AnalyticsMarginPolicy.ResolveNoCostRevenue", endpoint);
+        Assert.Contains("SalesReceiptPopulationPolicy.IncludedHeaderPredicate", endpoint);
+        Assert.Contains("saleLine.SupplierIdAtSale", endpoint);
+        Assert.Contains("receipt.IDObjekat", endpoint);
+        Assert.DoesNotContain("povracaj_zaglavlje", endpoint);
+    }
+
+    [Fact]
+    public void SupplierDecisionLiveRecommendationUsesTheBaseScoreScaleNotAnOptionalMlBlend()
+    {
+        var endpoint = ReadRepoFile("Api/Endpoints/SupplierDecisionHubEndpoints.cs");
+
+        Assert.Contains("PERCENT_RANK() OVER (ORDER BY COALESCE(ss.fullprice_sellthrough, 0))", endpoint);
+        Assert.Contains("0.60 * ns.fullprice_sellthrough_rank", endpoint);
+        Assert.Contains("ns.pre_markdown_margin_rank * 100", endpoint);
+        Assert.Contains("ns.markdown_revenue_share_rank", endpoint);
+        Assert.Contains("ns.dead_stock_rate_rank", endpoint);
+        Assert.Contains("WHEN sr.supplier_quality_index > 80 THEN 'EXPAND'", endpoint);
+        Assert.Contains("WHEN sr.supplier_quality_index >= 60 THEN 'EXPAND_SELECTIVELY'", endpoint);
+        Assert.Contains("supplier_quality_index,\n    recommendation_code", endpoint);
+        Assert.DoesNotContain("WHEN sr.blended_supplier_quality_index > 80 THEN 'EXPAND'", endpoint);
     }
 
     [Fact]

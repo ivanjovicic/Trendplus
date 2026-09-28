@@ -3,6 +3,7 @@
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: RQ464
+Owner claim 2026-09-28: `RQ464` moved READY -> IN_PROGRESS after fresh main/remote/collision checks; local lock `.ai/task-locks/RQ464-codex.lock.md`.
 Owner claim 2026-09-28: `RQ463` moved READY -> IN_PROGRESS after fresh main/remote sync, dependency and collision checks; local lock `.ai/task-locks/RQ463-codex.lock.md`.
 Owner completion 2026-09-28: `RQ463` moved IN_PROGRESS -> DONE and was delivered directly to `main` in `1c933f79aa6a84d464e93b1aad9a20afdcde96fc`. Supplier report requested/effective windows now require an exact rolling-period anchor on the last successful Supplier-MV refresh; historic/non-anchored requests expose requested dates, `requested_range_not_precomputed`, truthful live-SQL/MV provenance and blocked recommendations while preserving KPI/report sections. No-date reports now state the 180-day lookback. Focused proof: SupplierDecisionHubContractTests plus AnalyticsReportsContractTests 72/72; backend build passed; diff check passed. Run log: `.ai/runs/2026-09-28-RQ463-evidence.md`. Evidence state: synchronized. `RQ464` is now the primary READY prompt.
 Owner promotion 2026-09-28: `RQ464` moved WAITING -> READY after `RQ463` reached DONE; it remains unclaimed for a later request because it owns the next Supplier report metric-basis slice.
@@ -25386,7 +25387,7 @@ Decision tests:
 
 ## RQ464 - Align Supplier report KPIs with the Supplier overview and use one scoring model
 
-Status: READY
+Status: IN_PROGRESS
 Ready after: `RQ463` DONE (and therefore `RQ461`; same files, KPI/section contract and period semantics). Owner decisions recorded 2026-09-28; no decision remains.
 Priority: P2
 Type: backend/sql/tests

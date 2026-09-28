@@ -124,6 +124,57 @@ public sealed class AnalyticsReportsContractTests
     }
 
     [Fact]
+    public void SupplierDecisionReport_MainKpis_UseSupplierOverviewBasisAndExposeMissingCost()
+    {
+        var fromUtc = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);
+        var toUtc = new DateTime(2026, 6, 29, 0, 0, 0, DateTimeKind.Utc);
+        var filters = CreateDefaultFilters(fromUtc, toUtc);
+        var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
+            [CreateSupplierRow(1, "Alpha", "EXPAND", 82m, 84m, 900m, 9m)],
+            0,
+            0,
+            toUtc);
+        var metricBasis = SupplierDecisionHubEndpoints.BuildSupplierReportMetricBasis(
+        [
+            new SupplierDecisionHubEndpoints.SupplierReportSalesLine(1, 1_000m, 10, 40m, null, null, null),
+            new SupplierDecisionHubEndpoints.SupplierReportSalesLine(1, 500m, 5, null, null, null, null)
+        ]);
+
+        var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
+        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(
+            summary,
+            dataset,
+            filters,
+            metricBasis: metricBasis);
+
+        Assert.Equal(1_500m, Assert.Single(report.Kpis, kpi => kpi.Key == "revenue").Value);
+        Assert.Equal(15m, Assert.Single(report.Kpis, kpi => kpi.Key == "units").Value);
+        Assert.Equal(600m, Assert.Single(report.Kpis, kpi => kpi.Key == "marginContribution").Value);
+        Assert.Contains("troškom", Assert.Single(report.Kpis, kpi => kpi.Key == "marginContribution").Note, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(33.33d, metricBasis.CostCoveragePct);
+    }
+
+    [Fact]
+    public void SupplierDecisionReport_SeparatesMarkdownWindowFromMainKpis()
+    {
+        var filters = CreateDefaultFilters(
+            new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2026, 6, 29, 0, 0, 0, DateTimeKind.Utc));
+        var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
+            [CreateSupplierRow(1, "Alpha", "EXPAND", 82m, 84m, 900m, 9m, fullPriceRevenueShare: 0.4m)],
+            0,
+            0,
+            filters.ToDate);
+        var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
+        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(summary, dataset, filters);
+
+        var markdownSection = Assert.Single(report.Sections, section => section.Key == "markdown-result");
+        Assert.Contains("±30", markdownSection.Description, StringComparison.Ordinal);
+        Assert.Contains(markdownSection.Rows, row =>
+            string.Equals(Convert.ToString(row["supplierName"]), "Alpha", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void SupplierDecisionReport_Fallback_ReturnsWarningMetaAndUsedFallback()
     {
         var toUtc = new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc);

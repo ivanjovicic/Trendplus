@@ -625,30 +625,24 @@ sales_in_period AS (
                 THEN ps.kolicina
                 ELSE 0
             END
-        ), 0)::numeric AS sold_units_in_period
-    FROM signal_rollup sr
-    JOIN "Artikli" a ON a."IDDobavljac" = sr.supplier_id
-    LEFT JOIN prodaja_stavke ps ON ps.id_artikal = a."Id"
-    LEFT JOIN prodaja_zaglavlje pz ON pz.id = ps.id_prodaja
-    GROUP BY sr.supplier_id
-),
-returns_in_period AS (
-    -- Supplier returns indicate quality / fit / assortment problems.
-    -- Ignore explicitly rejected return documents.
-    SELECT
-        sr.supplier_id,
+        ), 0)::numeric AS sold_units_in_period,
         COALESCE(SUM(
             CASE
-                WHEN pz.datum_povracaja::date >= sr.period_from
-                 AND pz.datum_povracaja::date <= sr.period_to
-                 AND COALESCE(pz.status, '') <> 'Odbijen'
-                THEN ps.kolicina
+                WHEN pz.datum_prodaje::date >= sr.period_from
+                 AND pz.datum_prodaje::date <= sr.period_to
+                 AND ps.kolicina < 0
+                THEN ABS(ps.kolicina)
                 ELSE 0
             END
         ), 0)::numeric AS returned_units_in_period
     FROM signal_rollup sr
-    LEFT JOIN povracaj_zaglavlje pz ON pz.id_dobavljac = sr.supplier_id
-    LEFT JOIN povracaj_stavke ps ON ps.id_povracaj = pz.id
+    JOIN "Artikli" a ON a."IDDobavljac" = sr.supplier_id
+    LEFT JOIN prodaja_stavke ps
+           ON ps.id_artikal = a."Id"
+          AND ps.supplier_id_at_sale = sr.supplier_id
+    LEFT JOIN prodaja_zaglavlje pz
+           ON pz.id = ps.id_prodaja
+          AND UPPER(TRIM(COALESCE(pz.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')
     GROUP BY sr.supplier_id
 ),
 decision_inputs AS (
@@ -670,7 +664,7 @@ decision_inputs AS (
         COALESCE(st.cost_signal_coverage, 0) AS cost_signal_coverage,
         CASE
             WHEN COALESCE(si.sold_units_in_period, 0) = 0 THEN NULL
-            ELSE COALESCE(ri.returned_units_in_period, 0)
+            ELSE COALESCE(si.returned_units_in_period, 0)
                  / NULLIF(si.sold_units_in_period, 0)
         END AS return_rate,
         CASE
@@ -694,7 +688,6 @@ decision_inputs AS (
     LEFT JOIN category_focus cf ON cf.supplier_id = st.supplier_id
     LEFT JOIN seasonal_category_mix scm ON scm.supplier_id = st.supplier_id
     LEFT JOIN sales_in_period si ON si.supplier_id = st.supplier_id
-    LEFT JOIN returns_in_period ri ON ri.supplier_id = st.supplier_id
 ),
 distribution_bounds AS (
     SELECT

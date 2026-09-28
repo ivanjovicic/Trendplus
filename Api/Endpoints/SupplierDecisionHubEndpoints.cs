@@ -1,6 +1,8 @@
 ﻿using Api.Config;
 using Api.Services;
 using Application.Analytics;
+using Infrastructure.Configuration;
+using Infrastructure.DbContexts;
 using Infrastructure.Services.Caching;
 using Microsoft.Extensions.Configuration;
 using Npgsql;
@@ -9,6 +11,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json.Serialization;
 using Trendplus2.Dtos;
+using Microsoft.EntityFrameworkCore;
 
 namespace Trendplus2.Endpoints;
 
@@ -556,6 +559,15 @@ public static class SupplierDecisionHubEndpoints
                 var dataset = useEffectiveWindowForFallback
                     ? await QuerySupplierRowsAsync(analyticsConnectionString, activeFilters, ct, ignoreExplicitDateFilter: true)
                     : await GetSupplierRowsCachedAsync(cache, analyticsConnectionString, activeFilters, ct);
+                var db = httpContext.RequestServices.GetRequiredService<TrendplusDbContext>();
+                var snapshotOptions = httpContext.RequestServices
+                    .GetService<Microsoft.Extensions.Options.IOptions<AnalyticsSnapshotOptions>>()?.Value
+                    ?? new AnalyticsSnapshotOptions();
+                var metricBasis = await QuerySupplierReportMetricBasisAsync(
+                    db,
+                    snapshotOptions,
+                    activeFilters,
+                    ct);
                 var summary = BuildSummaryResponse(dataset, activeFilters);
                 var details = await BuildSupplierDecisionReportDetailsAsync(analyticsConnectionString, activeFilters, dataset, ct);
 
@@ -565,7 +577,8 @@ public static class SupplierDecisionHubEndpoints
                     activeFilters,
                     refreshInfo,
                     details,
-                    requireRefreshAnchor: true);
+                    requireRefreshAnchor: true,
+                    metricBasis: metricBasis);
 
                 await cache.SetAsync(reportCacheKey, report, CacheExpiration.HeavyAnalytics, ct);
                 cacheLogger.LogInformation(
@@ -645,11 +658,133 @@ public static class SupplierDecisionHubEndpoints
         IReadOnlyList<string> ReasonCodes,
         decimal PostSignalCoverage = 1m);
 
+    internal sealed record SupplierReportSalesLine(
+        int? SupplierId,
+        decimal Revenue,
+        int Quantity,
+        decimal? SaleLineCost,
+        decimal? SnapshotCost,
+        decimal? ProductCostRsd,
+        decimal? ProductCostLegacy);
+
+    internal sealed record SupplierReportMetricBasis(
+        bool HasEvidence,
+        decimal Revenue,
+        decimal Units,
+        decimal RevenueWithCost,
+        decimal TotalCost,
+        decimal MarginContribution,
+        decimal NoCostRevenue,
+        double? CostCoveragePct,
+        decimal HistoricalCostRevenue,
+        decimal EstimatedCostRevenue,
+        decimal SnapshotCostRevenue);
+
     internal sealed record SupplierRowsDataset(
         IReadOnlyList<SupplierScoreRow> Rows,
         int ZeroRevenueRowsExcludedCount,
         int IgnoredRowCount,
         DateTime GeneratedAtUtc);
+
+    internal static SupplierReportMetricBasis BuildSupplierReportMetricBasis(
+        IEnumerable<SupplierReportSalesLine> lines)
+    {
+        var materialized = lines.ToList();
+        var totalRevenue = materialized.Sum(line => line.Revenue);
+        var totalUnits = materialized.Sum(line => line.Quantity);
+        var margin = new MarginAccumulator();
+
+        foreach (var line in materialized)
+        {
+            margin.Add(
+                line.Revenue,
+                line.Quantity,
+                line.SaleLineCost,
+                line.SnapshotCost,
+                line.ProductCostRsd,
+                line.ProductCostLegacy);
+        }
+
+        var snapshot = margin.Build(totalRevenue);
+        return new SupplierReportMetricBasis(
+            materialized.Count > 0,
+            Round2(totalRevenue),
+            Round2(totalUnits),
+            snapshot.RevenueWithCost,
+            snapshot.TotalCost,
+            snapshot.MarginContribution,
+            AnalyticsMarginPolicy.ResolveNoCostRevenue(totalRevenue, snapshot.RevenueWithCost),
+            AnalyticsMarginPolicy.ResolveNoCostCoveragePct(totalRevenue, snapshot.RevenueWithCost),
+            snapshot.HistoricalCostRevenue,
+            snapshot.EstimatedCostRevenue,
+            snapshot.SnapshotCostRevenue);
+    }
+
+    private static async Task<SupplierReportMetricBasis> QuerySupplierReportMetricBasisAsync(
+        TrendplusDbContext db,
+        AnalyticsSnapshotOptions snapshotOptions,
+        SupplierDecisionHubFilters filters,
+        CancellationToken ct)
+    {
+        Dictionary<int, decimal> snapshotCostByArticleId = [];
+        if (snapshotOptions.UseSnapshotCost)
+        {
+            var activeBatchId = await db.AnalyticsCostSnapshotBatches
+                .Where(batch => batch.Status == "active" && batch.Scope == "access_origin")
+                .Select(batch => (long?)batch.Id)
+                .FirstOrDefaultAsync(ct);
+
+            if (activeBatchId.HasValue)
+            {
+                snapshotCostByArticleId = await db.AnalyticsSaleLineCostSnapshots
+                    .Where(snapshot => snapshot.BatchId == activeBatchId.Value)
+                    .GroupBy(snapshot => snapshot.ArtikalId)
+                    .Select(group => new { ArtikalId = group.Key, Cost = group.Min(snapshot => snapshot.ResolvedUnitCost) })
+                    .ToDictionaryAsync(item => item.ArtikalId, item => item.Cost, ct);
+            }
+        }
+
+        var toExclusive = filters.HasExplicitDateRange
+            ? filters.ToDate
+            : filters.ToDate.AddDays(1);
+        var query =
+            from saleLine in db.ProdajaStavke.AsNoTracking()
+            join receipt in db.ProdajaZaglavlja
+                .Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate)
+                .AsNoTracking()
+                on saleLine.IdProdaja equals receipt.Id
+            join article in db.Artikli.AsNoTracking() on saleLine.IdArtikal equals article.Id
+            where receipt.DatumProdaje >= filters.FromDate
+                && receipt.DatumProdaje < toExclusive
+                && (!filters.StoreId.HasValue || receipt.IDObjekat == filters.StoreId.Value)
+                && (!filters.SupplierId.HasValue || saleLine.SupplierIdAtSale == filters.SupplierId.Value)
+                && (string.IsNullOrWhiteSpace(filters.Category) || EF.Functions.ILike(article.Kategorija ?? string.Empty, filters.Category))
+                && (string.IsNullOrWhiteSpace(filters.Gender) || EF.Functions.ILike(article.Pol ?? string.Empty, filters.Gender))
+                && (!filters.SeasonId.HasValue || article.IDSezona == filters.SeasonId.Value)
+                && (filters.DataScope == "all"
+                    || (filters.DataScope == "imported" && article.DataOrigin == "access")
+                    || (filters.DataScope == "existing" && (article.DataOrigin == "existing" || article.DataOrigin == null || article.DataOrigin == "")))
+            select new
+            {
+                saleLine.SupplierIdAtSale,
+                saleLine.Kolicina,
+                Revenue = saleLine.Kolicina * saleLine.Cena,
+                saleLine.IdArtikal,
+                SaleLineCost = saleLine.NabavnaCena,
+                ProductCostRsd = article.NabavnaCenaDin,
+                ProductCostLegacy = article.NabavnaCena
+            };
+
+        var rows = await query.ToListAsync(ct);
+        return BuildSupplierReportMetricBasis(rows.Select(row => new SupplierReportSalesLine(
+            row.SupplierIdAtSale,
+            row.Revenue,
+            row.Kolicina,
+            row.SaleLineCost,
+            snapshotCostByArticleId.TryGetValue(row.IdArtikal, out var snapshotCost) ? snapshotCost : null,
+            row.ProductCostRsd,
+            row.ProductCostLegacy)));
+    }
 
     internal static bool TryCreateFilters(
         DateTime? fromDate,
@@ -867,7 +1002,8 @@ public static class SupplierDecisionHubEndpoints
         SupplierDecisionHubFilters filters,
         ReportRefreshInfo? refreshInfo = null,
         SupplierDecisionDetailsResponse? details = null,
-        bool requireRefreshAnchor = false)
+        bool requireRefreshAnchor = false,
+        SupplierReportMetricBasis? metricBasis = null)
     {
         var enforceRefreshAnchor = requireRefreshAnchor || refreshInfo is not null;
         if (enforceRefreshAnchor)
@@ -910,15 +1046,15 @@ public static class SupplierDecisionHubEndpoints
             refreshInfo?.LastRefreshAtUtc,
             requireRefreshAnchor: enforceRefreshAnchor);
         var hasData = dataset.Rows.Count > 0;
-        var kpis = hasData
-            ? BuildSupplierDecisionReportKpis(summary, dataset)
+        var kpis = hasData && (metricBasis is null || metricBasis.HasEvidence)
+            ? BuildSupplierDecisionReportKpis(summary, dataset, metricBasis)
             : [];
         var meta = BuildSupplierDecisionReportMeta(summary.Meta, trust, refreshInfo, dataset.Rows);
         var dataQualityStatus = meta.DataQualityStatus ?? trust?.DataCoverageStatus ?? "insufficient_data";
         var recommendationAllowed = meta.RecommendationAllowed == true;
         var warnings = BuildSupplierDecisionWarnings(meta, trust, refreshInfo);
         var actions = BuildSupplierDecisionReportActions(summary, filters, trust, details, hasData, recommendationAllowed);
-        var sections = BuildSupplierDecisionReportSections(summary, dataset, trust, refreshInfo, details, actions, methodology, hasData, recommendationAllowed, dataQualityStatus);
+        var sections = BuildSupplierDecisionReportSections(summary, dataset, trust, refreshInfo, details, actions, methodology, hasData, recommendationAllowed, dataQualityStatus, metricBasis);
         var rows = BuildSupplierDecisionLegacyRows(summary, dataset, filters, trust, refreshInfo, generatedAtUtc, kpis, actions, methodology.Summary, warnings, hasData, details, recommendationAllowed, dataQualityStatus);
         var payload = BuildSupplierDecisionPayload(reportId, generatedAtUtc, filters, period, trust, refreshInfo, summary.Meta, methodology.Summary, rows, hasData, recommendationAllowed, dataQualityStatus);
 
@@ -1128,6 +1264,8 @@ public static class SupplierDecisionHubEndpoints
         var notes = new List<string>
         {
             "Preporuka kombinuje promet, maržni doprinos, zavisnost od sniženja, rizik zaliha i pouzdanost signala.",
+            "Glavni prihod, jedinice i maržni doprinos koriste istu prodajnu populaciju kao Supplier overview za traženi period; rezultat oko sniženja je odvojeni ±30-dnevni signal.",
+            "Nedostajući pouzdani trošak ostaje u prihodu i jedinicama, ali se izuzima iz maržnog doprinosa i prikazuje kroz pokrivenost troškom.",
             "Ekran prikazuje serverski signal i ne uvodi lokalne pragove za status preporuke.",
             BuildDecisionScoreDataNote(filters, decisionScoreRefreshAtUtc, requireRefreshAnchor)
                 ?? "Za traženi period koristi se kanonski skup podataka odluke dobavljača bez tihog proširenja opsega."
@@ -1151,13 +1289,18 @@ public static class SupplierDecisionHubEndpoints
 
     private static List<AnalyticsReportKpiDto> BuildSupplierDecisionReportKpis(
         SummaryResponse summary,
-        SupplierRowsDataset dataset)
+        SupplierRowsDataset dataset,
+        SupplierReportMetricBasis? metricBasis = null)
     {
-        var totalRevenue = dataset.Rows.Sum(x => x.Revenue);
-        var totalUnits = dataset.Rows.Sum(x => x.Units);
-        var marginContribution = dataset.Rows.Sum(x => x.Revenue * x.PreMarkdownMarginPct * x.FullPriceRevenueShare);
+        var totalRevenue = metricBasis?.Revenue ?? dataset.Rows.Sum(x => x.Revenue);
+        var totalUnits = metricBasis?.Units ?? dataset.Rows.Sum(x => x.Units);
+        var marginContribution = metricBasis?.MarginContribution
+            ?? dataset.Rows.Sum(x => x.Revenue * x.PreMarkdownMarginPct * x.FullPriceRevenueShare);
         var avgConfidence = dataset.Rows.Count == 0 ? 0m : Round2(dataset.Rows.Average(x => x.ConfidenceScore));
-        var avgReliability = dataset.Rows.Count == 0 ? 0m : Round2(dataset.Rows.Average(x => x.ReliabilityPct));
+        var scoreRevenue = dataset.Rows.Sum(x => x.Revenue);
+        var avgReliability = scoreRevenue > 0m
+            ? Round2(dataset.Rows.Sum(x => x.ReliabilityPct * x.Revenue) / scoreRevenue)
+            : 0m;
         var hasStableSignalSample = dataset.Rows.Count >= 3;
         var signalSampleReason = hasStableSignalSample
             ? null
@@ -1165,13 +1308,13 @@ public static class SupplierDecisionHubEndpoints
 
         return new List<AnalyticsReportKpiDto>
         {
-            new("revenue", "Prihod", Round2(totalRevenue), "RSD", totalRevenue > 0 ? "neutral" : "warning", "Ukupan prihod za traženi filter skup.", totalRevenue == 0m ? "valid_zero" : null),
-            new("marginContribution", "Maržni doprinos", Round2(marginContribution), "RSD", marginContribution >= 0 ? "positive" : "warning", "Procena doprinosa na osnovu full-price prihoda i pre-markdown marže.", marginContribution == 0m ? "valid_zero" : null),
-            new("units", "Prodate jedinice", Round2(totalUnits), "kom", totalUnits > 0 ? "neutral" : "warning", null, totalUnits == 0m ? "valid_zero" : null),
+            new("revenue", "Prihod", Round2(totalRevenue), "RSD", totalRevenue > 0 ? "neutral" : "warning", metricBasis is null ? "Ukupan prihod za traženi filter skup." : "Ukupan neto prihod iz Supplier overview populacije za traženi period.", totalRevenue == 0m ? "valid_zero" : null),
+            new("marginContribution", "Maržni doprinos", Round2(marginContribution), "RSD", marginContribution >= 0 ? "positive" : "warning", metricBasis is null ? "Procena doprinosa na osnovu full-price prihoda i pre-markdown marže." : "Doprinos marže samo za prihod sa pouzdanim troškom; prihod bez troška nije prikazan kao lažna nula.", marginContribution == 0m ? "valid_zero" : null),
+            new("units", "Prodate jedinice", Round2(totalUnits), "kom", totalUnits > 0 ? "neutral" : "warning", metricBasis is null ? null : "Neto količina iz Supplier overview populacije; povratne stavke ostaju potpisane.", totalUnits == 0m ? "valid_zero" : null),
             new("supplierCount", "Broj dobavljača", summary.SupplierCount, null, summary.SupplierCount >= 3 ? "positive" : "warning", null, summary.SupplierCount == 0 ? "valid_zero" : null),
             new("capitalAtRisk", "Kapital u riziku", summary.CapitalAtRisk, "RSD", summary.CapitalAtRisk > 0 ? "warning" : "positive", "Vrednost neprodate robe koja trenutno nosi najveći signal rizika zaliha.", summary.CapitalAtRisk == 0m ? "valid_zero" : null),
             new("avgConfidence", "Pouzdanost signala", avgConfidence, "%", hasStableSignalSample && avgConfidence >= 70 ? "positive" : "warning", null, hasStableSignalSample ? (avgConfidence == 0m ? "valid_zero" : null) : "insufficient_data", signalSampleReason),
-            new("avgReliability", "Pouzdanost preporuke", avgReliability, "%", hasStableSignalSample && avgReliability >= 70 ? "positive" : "warning", null, hasStableSignalSample ? (avgReliability == 0m ? "valid_zero" : null) : "insufficient_data", signalSampleReason)
+            new("avgReliability", "Pouzdanost preporuke", avgReliability, "%", hasStableSignalSample && avgReliability >= 70 ? "positive" : "warning", "Ponderisano prihodom scorecard skupa.", hasStableSignalSample ? (avgReliability == 0m ? "valid_zero" : null) : "insufficient_data", signalSampleReason)
         };
     }
 
@@ -1253,7 +1396,8 @@ public static class SupplierDecisionHubEndpoints
         AnalyticsReportMethodologyDto methodology,
         bool hasData,
         bool recommendationAllowed,
-        string dataQualityStatus)
+        string dataQualityStatus,
+        SupplierReportMetricBasis? metricBasis = null)
     {
         var sections = new List<AnalyticsReportSectionDto>();
 
@@ -1403,6 +1547,88 @@ public static class SupplierDecisionHubEndpoints
                 riskRows,
                 riskRows.Count,
                 riskRows.Count == 0 ? "Nema identifikovanih stavki sa rizikom za traženi opseg." : null));
+
+            var markdownRows = dataset.Rows
+                .OrderByDescending(row => row.Revenue)
+                .Select(row => new Dictionary<string, object?>
+                {
+                    ["supplierName"] = row.SupplierName,
+                    ["revenue"] = Round2(row.Revenue),
+                    ["units"] = Round2(row.Units),
+                    ["markdownRevenueSharePct"] = Round2(row.MarkdownRevenueShare * 100m),
+                    ["preMarkdownMarginPct"] = Round2(row.PreMarkdownMarginPct * 100m),
+                    ["note"] = "Signal je zasnovan na ±30 dana oko prvog sniženja i nije izvor glavnih KPI-jeva."
+                })
+                .ToList();
+
+            sections.Add(new AnalyticsReportSectionDto(
+                "markdown-result",
+                "Rezultat oko sniženja",
+                "Odvojeni signal iz ±30-dnevnog pre/post prozora oko sniženja; ne mešati sa glavnim KPI-jevima traženog perioda.",
+                [
+                    new AnalyticsReportColumnDto("supplierName", "Dobavljač"),
+                    new AnalyticsReportColumnDto("revenue", "Prihod scorecard prozora", "currency"),
+                    new AnalyticsReportColumnDto("units", "Jedinice scorecard prozora", "number"),
+                    new AnalyticsReportColumnDto("markdownRevenueSharePct", "Udeo prihoda posle sniženja", "percent"),
+                    new AnalyticsReportColumnDto("preMarkdownMarginPct", "Marža pre sniženja", "percent"),
+                    new AnalyticsReportColumnDto("note", "Napomena")
+                ],
+                markdownRows,
+                markdownRows.Count,
+                markdownRows.Count == 0 ? "Nema dostupnog rezultata oko sniženja." : null));
+        }
+
+        var dataQualityRows = new List<Dictionary<string, object?>>
+        {
+            new()
+            {
+                ["metric"] = "Traženi skup podataka",
+                ["value"] = FormatSupplierDatasetLabel(trust?.RequestedDataset),
+                ["note"] = trust?.EffectivePeriodLabel
+            },
+            new()
+            {
+                ["metric"] = "Efektivni skup podataka",
+                ["value"] = FormatSupplierDatasetLabel(trust?.EffectiveDataset),
+                ["note"] = trust?.FallbackReason
+            },
+            new()
+            {
+                ["metric"] = "Status pokrivenosti",
+                ["value"] = FormatSupplierCoverageLabel(trust?.DataCoverageStatus ?? summary.Meta?.DataQualityStatus),
+                ["note"] = refreshInfo?.DataFreshnessStatus
+            },
+            new()
+            {
+                ["metric"] = "Broj redova",
+                ["value"] = trust?.RowCount ?? dataset.Rows.Count,
+                ["note"] = $"Preskočeno: {trust?.IgnoredRowCount ?? dataset.IgnoredRowCount}; redovi bez prihoda izuzeti: {trust?.ZeroRevenueRowsExcludedCount ?? dataset.ZeroRevenueRowsExcludedCount}"
+            },
+            new()
+            {
+                ["metric"] = "Preporuka dozvoljena",
+                ["value"] = recommendationAllowed ? "Da" : "Ne",
+                ["note"] = recommendationAllowed ? "Finalna preporuka dozvoljena" : "Pomoćni signal - proveriti podatke pre odluke"
+            }
+        };
+
+        if (metricBasis is not null)
+        {
+            dataQualityRows.AddRange(
+            [
+                new()
+                {
+                    ["metric"] = "Prihod sa pouzdanim troškom",
+                    ["value"] = Round2(metricBasis.RevenueWithCost),
+                    ["note"] = $"Pokrivenost: {metricBasis.CostCoveragePct?.ToString("0.##", CultureInfo.InvariantCulture) ?? "N/A"}%"
+                },
+                new()
+                {
+                    ["metric"] = "Prihod bez pouzdanog troška",
+                    ["value"] = Round2(metricBasis.NoCostRevenue),
+                    ["note"] = "Uključen u prihod i jedinice, izuzet iz maržnog doprinosa."
+                }
+            ]);
         }
 
         sections.Add(new AnalyticsReportSectionDto(
@@ -1414,40 +1640,8 @@ public static class SupplierDecisionHubEndpoints
                 new AnalyticsReportColumnDto("value", "Vrednost"),
                 new AnalyticsReportColumnDto("note", "Napomena")
             ],
-            new List<Dictionary<string, object?>>
-            {
-                new()
-                {
-                    ["metric"] = "Traženi skup podataka",
-                    ["value"] = FormatSupplierDatasetLabel(trust?.RequestedDataset),
-                    ["note"] = trust?.EffectivePeriodLabel
-                },
-                new()
-                {
-                    ["metric"] = "Efektivni skup podataka",
-                    ["value"] = FormatSupplierDatasetLabel(trust?.EffectiveDataset),
-                    ["note"] = trust?.FallbackReason
-                },
-                new()
-                {
-                    ["metric"] = "Status pokrivenosti",
-                    ["value"] = FormatSupplierCoverageLabel(trust?.DataCoverageStatus ?? summary.Meta?.DataQualityStatus),
-                    ["note"] = refreshInfo?.DataFreshnessStatus
-                },
-                new()
-                {
-                    ["metric"] = "Broj redova",
-                    ["value"] = trust?.RowCount ?? dataset.Rows.Count,
-                    ["note"] = $"Preskočeno: {trust?.IgnoredRowCount ?? dataset.IgnoredRowCount}; redovi bez prihoda izuzeti: {trust?.ZeroRevenueRowsExcludedCount ?? dataset.ZeroRevenueRowsExcludedCount}"
-                },
-                new()
-                {
-                    ["metric"] = "Preporuka dozvoljena",
-                    ["value"] = recommendationAllowed ? "Da" : "Ne",
-                    ["note"] = recommendationAllowed ? "Finalna preporuka dozvoljena" : "Pomoćni signal - proveriti podatke pre odluke"
-                }
-            },
-            5,
+            dataQualityRows,
+            dataQualityRows.Count,
             null));
 
         var negotiationRows = BuildSupplierNegotiationPackRows(summary, dataset, trust, details, dataQualityStatus, recommendationAllowed);
@@ -3122,6 +3316,9 @@ ORDER BY ds.supplier_quality_index DESC, ds.revenue DESC, ds.supplier_name;
         var parameters = new List<NpgsqlParameter>();
         var rowWhere = BuildRowFilters(filters, parameters);
         var supplierWhere = BuildSupplierFilters(filters, parameters);
+        var periodSalesStorePredicate = filters.StoreId.HasValue
+            ? "          AND pz.\"IDObjekat\" = @storeId\n"
+            : string.Empty;
         var currentCostSql = AnalyticsMarginPolicy.BuildPositiveCostSql(@"a.""NabavnaCenaDin""", @"a.""NabavnaCena""");
         parameters.Add(new NpgsqlParameter("mlAsOfDate", filters.ToDate));
         var modelVersionJoin = mlCapabilities.CanFilterActiveModelVersion
@@ -3292,6 +3489,19 @@ supplier_base AS (
               AND COALESCE(had_sales_before_markdown_flag, FALSE)
               AND signal_quality_flag <> 'low'
         )::numeric / NULLIF(COUNT(*), 0) AS repeat_winner_rate
+        ,SUM(
+            CASE
+                WHEN category ILIKE '%sand%'
+                  OR category ILIKE '%papuc%'
+                  OR category ILIKE '%cizm%'
+                  OR category ILIKE '%gleznj%'
+                  OR category ILIKE '%boot%'
+                  OR category ILIKE '%slipper%'
+                  OR category ILIKE '%season%'
+                THEN COALESCE(pre_revenue_30d, 0) + COALESCE(post_revenue_30d, 0)
+                ELSE 0
+            END
+        )::numeric / NULLIF(SUM(COALESCE(pre_revenue_30d, 0) + COALESCE(post_revenue_30d, 0)), 0) AS seasonal_category_share
     FROM filtered_signals
     GROUP BY supplier_id, supplier_name
 ),
@@ -3314,30 +3524,24 @@ period_sales AS (
                 ELSE 0
             END
         ), 0)::numeric AS sold_units_in_period
-    FROM supplier_base b
-    JOIN filtered_articles fa ON fa.supplier_id = b.supplier_id
-    LEFT JOIN prodaja_stavke ps ON ps.id_artikal = fa.article_id
-    LEFT JOIN prodaja_zaglavlje pz ON pz.id = ps.id_prodaja
-    GROUP BY b.supplier_id
-),
-period_returns AS (
-    SELECT
-        b.supplier_id,
-        COALESCE(SUM(
+        ,COALESCE(SUM(
             CASE
-                WHEN pz.datum_povracaja::date >= b.period_from
-                 AND pz.datum_povracaja::date <= b.period_to
-                 AND COALESCE(pz.status, '') <> 'Odbijen'
-                THEN ps.kolicina
+                WHEN pz.datum_prodaje::date >= b.period_from
+                 AND pz.datum_prodaje::date <= b.period_to
+                 AND ps.kolicina < 0
+                THEN ABS(ps.kolicina)
                 ELSE 0
             END
         ), 0)::numeric AS returned_units_in_period
     FROM supplier_base b
     JOIN filtered_articles fa ON fa.supplier_id = b.supplier_id
-    LEFT JOIN povracaj_stavke ps ON ps.id_artikal = fa.article_id
-    LEFT JOIN povracaj_zaglavlje pz
-           ON pz.id = ps.id_povracaj
-          AND pz.id_dobavljac = b.supplier_id
+    LEFT JOIN prodaja_stavke ps
+           ON ps.id_artikal = fa.article_id
+          AND ps.supplier_id_at_sale = b.supplier_id
+    LEFT JOIN prodaja_zaglavlje pz
+           ON pz.id = ps.id_prodaja
+          AND UPPER(TRIM(COALESCE(pz.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')
+{periodSalesStorePredicate}
     GROUP BY b.supplier_id
 ),
 supplier_scored AS (
@@ -3355,6 +3559,7 @@ supplier_scored AS (
         ROUND(COALESCE(b.dead_stock_rate, 0), 4) AS dead_stock_rate,
         b.unsold_stock_value,
         ROUND(COALESCE(b.repeat_winner_rate, 0), 4) AS repeat_winner_rate,
+        ROUND(COALESCE(b.seasonal_category_share, 0), 4) AS seasonal_category_share,
         ROUND(COALESCE(b.oos_adjusted_markdown_dependency, 0) * 100, 2) AS markdown_dependency_score,
         ROUND(
             LEAST(
@@ -3372,7 +3577,7 @@ supplier_scored AS (
             2
         ) AS stock_risk_score,
         ROUND(
-            COALESCE(r.returned_units_in_period, 0)
+            COALESCE(s.returned_units_in_period, 0)
             / NULLIF(COALESCE(s.sold_units_in_period, 0), 0),
             4
         ) AS return_rate,
@@ -3398,30 +3603,66 @@ supplier_scored AS (
     FROM supplier_base b
     LEFT JOIN category_focus cf ON cf.supplier_id = b.supplier_id
     LEFT JOIN period_sales s ON s.supplier_id = b.supplier_id
-    LEFT JOIN period_returns r ON r.supplier_id = b.supplier_id
+),
+distribution_bounds AS (
+    SELECT COALESCE(
+        percentile_cont(0.80) WITHIN GROUP (
+            ORDER BY GREATEST(COALESCE(pre_markdown_margin_pct, 0), 0)
+        ),
+        0
+    )::numeric AS margin_p80
+    FROM supplier_scored
+),
+normalized_signals AS (
+    SELECT
+        ss.*,
+        CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY COALESCE(ss.fullprice_sellthrough, 0)), 0)::numeric END AS fullprice_sellthrough_rank,
+        CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY COALESCE(ss.fullprice_revenue_share, 0)), 0)::numeric END AS fullprice_revenue_share_rank,
+        CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY LEAST(GREATEST(COALESCE(ss.pre_markdown_margin_pct, 0), 0), db.margin_p80)), 0)::numeric END AS pre_markdown_margin_rank,
+        CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY COALESCE(ss.markdown_revenue_share, 0)), 0)::numeric END AS markdown_revenue_share_rank,
+        CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY COALESCE(ss.dead_stock_rate, 0)), 0)::numeric END AS dead_stock_rate_rank,
+        CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY COALESCE(ss.unsold_stock_value, 0)), 0)::numeric END AS unsold_stock_value_rank,
+        CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY COALESCE(ss.repeat_winner_rate, 0)), 0)::numeric END AS repeat_winner_rate_rank,
+        CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY COALESCE(ss.return_rate, 0)), 0)::numeric END AS return_rate_rank,
+        CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY COALESCE(ss.category_focus_score, 0)), 0)::numeric END AS category_focus_rank
+    FROM supplier_scored ss
+    CROSS JOIN distribution_bounds db
 ),
 supplier_rows AS (
     SELECT
-        ss.*,
+        ns.*,
         ROUND(
             LEAST(
                 100,
                 GREATEST(
                     0,
-                    0.25 * (ss.fullprice_revenue_share * 100)
-                    + 0.15 * (ss.fullprice_sellthrough * 100)
-                    + 0.15 * (LEAST(GREATEST(ss.pre_markdown_margin_pct, 0), 1) * 100)
-                    + 0.15 * (ss.repeat_winner_rate * 100)
-                    + 0.10 * ss.category_focus_score
-                    + 0.20 * ss.confidence_score
-                    - 0.20 * ss.markdown_dependency_score
-                    - 0.10 * ss.stock_risk_score
-                    - 0.10 * (LEAST(GREATEST(COALESCE(ss.return_rate, 0), 0), 1) * 100)
+                    (
+                        0.60 * ns.fullprice_sellthrough_rank
+                        + 0.40 * ns.fullprice_revenue_share_rank
+                    ) * 100
+                    + ns.pre_markdown_margin_rank * 100
+                    - ns.markdown_revenue_share_rank * CASE
+                        WHEN ns.seasonal_category_share >= 0.60 THEN 75
+                        WHEN ns.seasonal_category_share >= 0.30 THEN 85
+                        ELSE 100
+                      END
+                    - (0.50 * ns.dead_stock_rate_rank + 0.50 * ns.unsold_stock_value_rank) * 100
+                    + LEAST(
+                        20,
+                        GREATEST(
+                            -20,
+                            (
+                                0.50 * ns.repeat_winner_rate_rank
+                                - 0.30 * ns.return_rate_rank
+                                + 0.20 * ns.category_focus_rank
+                            ) * 100
+                        )
+                      )
                 )
             ),
             2
         ) AS supplier_quality_index
-    FROM supplier_scored ss
+    FROM normalized_signals ns
 ),
 filtered_suppliers AS (
     SELECT
@@ -3461,7 +3702,7 @@ filtered_suppliers AS (
              AND sr.repeat_winner_rate < 0.30
             THEN 'ASSORTMENT_REDUCE'
             ELSE 'HOLD'
-        END AS recommendation_code
+        END AS legacy_recommendation_code
     FROM supplier_rows sr
     {supplierWhere}
 ),
@@ -3482,12 +3723,12 @@ final_suppliers AS (
              AND sr.fullprice_sellthrough < 0.45
              AND sr.markdown_dependency_score >= 40
             THEN 'OOS_FALSE_NEGATIVE'
-            WHEN sr.blended_supplier_quality_index > 80 THEN 'EXPAND'
-            WHEN sr.blended_supplier_quality_index >= 60 THEN 'EXPAND_SELECTIVELY'
-            WHEN sr.blended_supplier_quality_index >= 40 THEN 'HOLD'
-            WHEN sr.blended_supplier_quality_index >= 25 THEN 'PRICE_NEGOTIATE'
+            WHEN sr.supplier_quality_index > 80 THEN 'EXPAND'
+            WHEN sr.supplier_quality_index >= 60 THEN 'EXPAND_SELECTIVELY'
+            WHEN sr.supplier_quality_index >= 40 THEN 'HOLD'
+            WHEN sr.supplier_quality_index >= 25 THEN 'PRICE_NEGOTIATE'
             ELSE 'ASSORTMENT_REDUCE'
-        END AS blended_recommendation_code
+        END AS recommendation_code
     FROM supplier_rows_with_ml sr
 )
 SELECT
@@ -3513,8 +3754,8 @@ SELECT
     top_feature_1,
     top_feature_2,
     top_feature_3,
-    blended_supplier_quality_index AS supplier_quality_index,
-    blended_recommendation_code AS recommendation_code,
+    supplier_quality_index,
+    recommendation_code,
     confidence_score,
     post_signal_coverage
 FROM final_suppliers;
@@ -3537,7 +3778,15 @@ FROM final_suppliers;
 
         if (filters.StoreId.HasValue)
         {
-            where.Append(" AND a.\"IDObjekat\" = @storeId");
+            where.Append(" AND EXISTS (\n" +
+                "     SELECT 1\n" +
+                "     FROM prodaja_stavke store_ps\n" +
+                "     JOIN prodaja_zaglavlje store_pz\n" +
+                "       ON store_pz.id = store_ps.id_prodaja\n" +
+                "      AND UPPER(TRIM(COALESCE(store_pz.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')\n" +
+                "     WHERE store_ps.id_artikal = fs.article_id\n" +
+                "       AND store_pz.\"IDObjekat\" = @storeId\n" +
+                " )");
             parameters.Add(new NpgsqlParameter("storeId", filters.StoreId.Value));
         }
 
