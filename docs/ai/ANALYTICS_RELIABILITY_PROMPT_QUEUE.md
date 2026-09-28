@@ -1,6 +1,6 @@
 # Analytics Reliability Prompt Queue
 
-Date: 2026-09-25
+Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: RQ461
 Owner audit follow-up 2026-09-28 (Supplier report + Pilot intake audit, grok): promoted three non-conflicting, decision-free prompts — `RQ461` (READY, P1: the durable Supplier report renderer expects section/header/metadata names the backend never emits, so warnings/top/risk/recommendation sections, freshness and the recommendation badge are always empty or wrong), `RQ462` (READY, P1, parallel-safe frontend: `/analytics/reports/pilot-intake` passes `report={null}` and always renders the empty state) and `RQ466` (READY, P1, parallel-safe backend: pilot intake ignores `dataScope`, uses a health window relative to now and presents query time as last refresh). `Current READY prompt` is `RQ461`; also READY: `RQ462`, `RQ466`. WAITING follow-ups: `RQ463` (requested-window truth; decision fail-closed vs recompute), `RQ464` (metric basis/scoring decision), `RQ465` (actions/negotiation pack), `RQ467` (pilot readiness semantics decision), `RQ468` (Serbian copy on both screens). Run log: `.ai/runs/2026-09-28-supplier-report-pilot-intake-audit-evidence.md`.
@@ -45,7 +45,8 @@ Owner promotion/claim 2026-09-26: idle recovery found Current READY `none`. Conc
 Owner completion 2026-09-26: `RQ383` was delivered for Daily Sales shift provenance. Measured shifts no longer absorb off-shift/no-time remaps; metadata exposes `ShiftAssignmentStatus`, `OffShift*` and `NoTimeFallback*`; frontend keeps shift shares unavailable under `no_time_fallback`. Run log: `.ai/runs/2026-09-26-RQ383-evidence.md`. Evidence state: synchronized; implementation `e5d22c01`; tip `ed1ef168`.
 Owner completion 2026-09-26: `RQ384` was delivered for Daily Sales safe/traceable errors. Endpoint failures no longer return `ex.Message`; Problem details include `errorCode`/`correlationId`, and the frontend allowlists safe Serbian messages while surfacing correlation IDs. Run log: `.ai/runs/2026-09-26-RQ384-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-26: idle recovery found Current READY `none` after RQ456/RQ457 closures on `origin/main`. Verified RQ382/RQ383 DONE, no active Daily Sales endpoint/frontend error-contract lock/branch/PR owner, and RQ384 is dependency-complete. `RQ384` moved `WAITING -> READY -> IN_PROGRESS` in this workspace for Daily Sales safe/traceable error responses; local lock `.ai/task-locks/RQ384-cursor.lock.md`.
- Current READY prompt: none
+Current READY prompt: RQ461
+Owner audit 2026-09-28: direct live/source audit of Product Decision and Supplier Analytics registered bounded follow-ups `RQ469`-`RQ476` as `WAITING`. Confirmed evidence, cross-screen denominator/population comparison and browser-helper limitation are recorded in `docs/qa/PRODUCTS_SUPPLIER_LIVE_AUDIT_2026-09-28.md`; no prompt was claimed or promoted by this audit.
 Owner completion 2026-09-26: `RQ431` settled the Daily Sales concentration over-total contract: top-supplier aggregates that exceed the named period quantity/revenue denominator fail closed; signed within-total remainders stay available. Run log: `.ai/runs/2026-09-26-RQ431-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-26: idle recovery found Current READY `none` after RQ384/RQ449. Mechanical repair: `RQ243` section Status WAITING→DONE to match synchronized delivery `ea538f6c` on `origin/main`. Verified no PostgreSQL host for P0 `RQ447`, no competing Daily Sales concentration lock/branch, and the user's claim-and-execute request satisfies the RQ431 owner-decision gate. `RQ431` moved `WAITING -> READY -> IN_PROGRESS` in this workspace; local lock `.ai/task-locks/RQ431-cursor.lock.md`.
 Owner promotion/claim 2026-09-26: idle recovery confirmed `RQ445`/`RQ446` DONE on current `origin/main`, no active receipt-population owner and RQ456's accuracy-contract dependency satisfied. `RQ456` moved `WAITING -> READY -> IN_PROGRESS` in the Operations accuracy addendum; local lock `.ai/task-locks/RQ456-codex.lock.md`. `RQ457` remains WAITING behind the population owner.
@@ -1720,6 +1721,14 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ466 | READY | pilot-intake-backend-scope-period-truth | Make the Pilot intake backend honour scope, requested period and refresh truth |
 | RQ467 | WAITING | pilot-intake-readiness-score-semantics | Decide Pilot intake readiness score semantics and default period |
 | RQ468 | WAITING | supplier-report-pilot-intake-serbian-copy | Complete Serbian copy on the Supplier report and Pilot intake screens |
+| RQ469 | WAITING | pdc-action-status-batch-contract | Keep Product Decision action-status lookups within the backend batch contract |
+| RQ470 | WAITING | pdc-search-population-contract | Restore Product Decision server-side search and make the analyzed population visible |
+| RQ471 | WAITING | pdc-kpi-population-actionability | Align Product Decision KPI populations with row actionability |
+| RQ472 | WAITING | pdc-journal-evidence-gate | Replace the hard-coded Product Decision journal gate with proven evidence |
+| RQ473 | WAITING | analytics-margin-basis-parity | Align Product and Supplier margin cost/coverage semantics |
+| RQ474 | WAITING | supplier-overview-error-empty-contract | Separate Supplier overview failure, empty and retry states |
+| RQ475 | WAITING | supplier-analytics-schema-readiness | Make Supplier scorecard/assortment semantic-data readiness operationally actionable |
+| RQ476 | WAITING | supplier-share-denominator-contract | Unify Supplier raw API, display, recommendation and export share semantics |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -25600,3 +25609,436 @@ Commit suggestion: `fix(analytics): serbian copy on supplier report and pilot in
 
 - After `RQ461`, `RQ462`, `RQ466`. `RQ325` routing bullet points here.
 - Reliability contract: copy changes must not change numbers, keys or gating.
+
+---
+
+## RQ469 - Keep Product Decision action-status lookups within the backend batch contract
+
+Status: WAITING
+Priority: P1
+Type: frontend/contract/tests
+Feature family: pdc-action-status-batch
+Parallel-safe: no (shares `ProductDecisionCenterPage.tsx` with RQ470/RQ471)
+Owner: Analytics Reliability / Product Decision
+Commit suggestion: `fix(analytics): batch product decision action status lookups`
+
+### Problem
+
+The Product Decision page can request action status for 1,200 rows, while `POST /api/analytics/actions/status` accepts at most 1,000. The live-sized page therefore sends an invalid request and can surface queue-status failure as if analytics data were stale or partial.
+
+### Evidence
+
+- `Api/Endpoints/AnalyticsActionsEndpoints.cs` rejects `body.Items.Count > 1000`.
+- `ProductDecisionCenterPage.tsx` requests `top: 1200` and posts one lookup collection from the rows.
+- Live 2026-09-28 response: `rowCount=1200`, `analyzedRows=12422`.
+
+### Scope
+
+The Product Decision action-status effect and client wrapper. Do not change action-write authorization or business status semantics.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `Api/Endpoints/AnalyticsActionsEndpoints.cs`
+- `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+- `Klijent/clientapp/src/services/analyticsApi.ts`
+
+### Do
+
+1. Split requests into tested chunks no larger than the backend cap, or restrict lookups to the rendered page after RQ470.
+2. Key the effect by a stable `(sourceType, sourceKey)` signature so a pure re-sort does not re-post.
+3. Merge results through a `Map`, preserve previous status while refreshing and scope a failed-chunk warning to queue status.
+
+### Tests
+
+- 1,200 rows send no request over the cap and every row receives its status.
+- Sorting does not re-post; a changed key set posts once.
+- A failed chunk leaves other chunks usable.
+- Existing 1,000 accepted / 1,001 rejected contract remains covered.
+
+### Acceptance
+
+The live-sized response never causes an action-status 400, queue badges do not flicker on sort, and queue-status failure is not reported as stale analytics data.
+
+### Dependencies
+
+- Sequence with RQ470 and RQ471; same page owner.
+- No external database or product decision is required.
+
+---
+
+## RQ470 - Restore Product Decision server-side search and make the analyzed population visible
+
+Status: WAITING
+Priority: P1
+Type: frontend/api-client/tests
+Feature family: pdc-search-population-contract
+Parallel-safe: no (shares `ProductDecisionCenterPage.tsx` with RQ469/RQ471)
+Owner: Analytics Reliability / Product Decision
+Commit suggestion: `fix(analytics): restore product decision search population contract`
+
+### Problem
+
+The page passes a conditional `search` property, but `getProductDecisionCenter` does not declare or append it. The backend supports search, so the page currently searches only within the returned top-1,200 rows. The same page does not make the analyzed-versus-hidden population sufficiently visible.
+
+### Evidence
+
+- `Klijent/clientapp/src/services/analyticsApi.ts` has no Product Decision `search` option or query parameter.
+- `ProductDecisionCenterPage.tsx` passes `search` through an untyped conditional spread.
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs` accepts `search` and includes it in the cache key.
+- Live no-search response: `rowCount=1200`, `analyzedRows=12422`, `ignoredRowsCount=11222`; live `search=ZZZ_NO_SUCH_PRODUCT_998877` returns zero rows.
+- `RQ200` is DONE, so this is a demonstrated client regression follow-up.
+
+### Scope
+
+The Product Decision API client, loading state, cap/pagination or virtualization and population labels. No new backend search algorithm is needed.
+
+### Read first
+
+- `AGENTS.md`
+- `RQ200` and `.ai/runs/2026-09-08-RQ200-pdc-search-evidence.md`
+- `Klijent/clientapp/src/services/analyticsApi.ts`
+- `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+
+### Do
+
+1. Add `search` to the client options and append it to the actual URL; assert the URL in a client test.
+2. Debounce typing and keep the previous table mounted while a new search loads.
+3. Add pagination or virtualization, reset page on search/filter changes and retain sorting.
+4. Show `analyzedRows` and `ignoredRowsCount` instead of calling the returned cap “Ukupno redova”.
+
+### Tests
+
+- The URL contains `search` and a fixture beyond the cap is findable.
+- Typing does not unmount the table or issue one request per keystroke.
+- Pagination boundaries and page reset are covered.
+- Returned, analyzed and hidden population labels are distinct.
+
+### Acceptance
+
+Any analyzed product is findable, the cap is visible and 1,200 returned rows are not presented as the whole dataset.
+
+### Dependencies
+
+- Sequence with RQ469 and RQ471; same page owner.
+- Backend search support from RQ200 remains authoritative.
+
+---
+
+## RQ471 - Align Product Decision KPI populations with row actionability
+
+Status: WAITING
+Priority: P2
+Type: frontend/backend-summary/tests
+Feature family: pdc-kpi-population-actionability
+Parallel-safe: no (shares the Product Decision page and summary builder)
+Owner: Analytics Reliability / Product Decision
+Commit suggestion: `fix(analytics): align product decision kpi populations`
+
+### Problem
+
+Product status/risk counters use returned rows, while money summaries use the analyzed population. Status counts also ignore `recommendationAllowed`, and the coverage-risk count includes `insufficient_data`. This makes KPI scope and actionability easy to misread.
+
+### Evidence
+
+- `ProductDecisionCenterPage.tsx` derives local recommendation and risk counts from returned `rows`.
+- `CachedAnalyticsEndpoints.cs` explicitly exposes `countDenominatorScope=returned_rows` and `moneyDenominatorScope=analyzed_rows`.
+- Live response contains 1,200 returned rows, 12,422 analyzed rows and visible insufficient/blocked samples.
+
+### Scope
+
+The Product Decision summary contract and KPI rendering. Decision scoring remains backend-owned.
+
+### Read first
+
+- `AGENTS.md` analytics invariants
+- `RQ02`, `RQ143` and `RQ200`
+- Product Decision summary builder and KPI projection
+
+### Do
+
+1. Expose backend-owned analyzed/returned/actionable/blocked counts as needed.
+2. Exclude `insufficient_data` from operational coverage risk or label it explicitly as insufficient evidence.
+3. Render denominator/population labels and remove frontend business-decision recomputation.
+
+### Tests
+
+- Allowed, blocked and insufficient fixtures produce distinct counts.
+- Top-limit fixtures keep analyzed and returned labels correct.
+- No KPI claims an executable recommendation for a blocked row.
+
+### Acceptance
+
+Product KPIs cannot be read as one population when they are not, and actionable counts never contradict row-level gating.
+
+### Dependencies
+
+- Sequence after RQ470; coordinate with RQ469 because all three touch the same page.
+- RQ02/RQ143 remain source-of-truth contracts.
+
+---
+
+## RQ472 - Replace the hard-coded Product Decision journal gate with proven evidence
+
+Status: WAITING
+Priority: P1
+Type: backend/contract/tests
+Feature family: pdc-journal-evidence-gate
+Parallel-safe: no (shared Product Decision backend path)
+Owner: Analytics Reliability / Product Decision
+Commit suggestion: `fix(analytics): gate product decisions on proven journal completeness`
+
+### Problem
+
+`HasCompleteJournal` is hard-coded to `false`, making opening stock unavailable, sell-through insufficient and every product recommendation non-actionable. The live response is consistent with this fail-closed path: visible rows are insufficient/blocked and action counts are zero.
+
+### Evidence
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs` sets `HasCompleteJournal = false` with a fail-closed comment.
+- The inventory signal calculator maps missing opening stock to `insufficient_data` and recommendation-not-allowed.
+- Live Product Decision evidence shows the resulting blocked state.
+
+### Scope
+
+Journal completeness/watermark evidence, opening-stock derivation and recommendation metadata. Do not bypass the gate or mutate production data.
+
+### Read first
+
+- `AGENTS.md` no-fake-zero and backend decision-source rules
+- `RQ128`, `RQ143`, `RQ146` and `RQ148`
+- `CachedAnalyticsEndpoints.cs`, `InventorySignalCalculator.cs` and `ProductDecisionReasoningHelper.cs`
+
+### Do
+
+1. Obtain owner approval for the authoritative journal completeness signal and watermark.
+2. Implement a proven fail-closed signal, or document an owner-approved advisory-only policy until it exists.
+3. Keep recommendation allowance, evidence quality and insufficient reasons aligned.
+
+### Tests
+
+- Complete, incomplete, missing and stale journal fixtures produce distinct metadata/actionability.
+- Period boundaries cannot be marked complete without the required watermark.
+- Missing opening stock never becomes actionable through a synthetic zero.
+
+### Acceptance
+
+The screen emits recommendations only from proven journal evidence, or clearly remains blocked with an inspectable reason; the hard-coded gate is removed or formally approved as policy.
+
+### Dependencies
+
+- Owner decision on journal completeness/opening-stock evidence is required before promotion.
+- Coordinate with RQ473; do not mix cost-policy changes into the gate patch.
+
+---
+
+## RQ473 - Align Product and Supplier margin cost/coverage semantics
+
+Status: WAITING
+Priority: P1
+Type: backend/contract/tests
+Feature family: analytics-margin-basis-parity
+Parallel-safe: no (Product and Supplier margin owners)
+Owner: Analytics Reliability / Margin Policy
+Commit suggestion: `fix(analytics): align product and supplier margin basis`
+
+### Problem
+
+Product Decision and Supplier overview can show different margins for the same facts. Product uses a different cost fallback/coverage rule and total-revenue denominator; Supplier uses the shared margin policy and covered-revenue semantics.
+
+### Evidence
+
+- Product margin code in `CachedAnalyticsEndpoints.cs` uses its own cost fallback chain and total revenue denominator.
+- Supplier overview uses `AnalyticsMarginPolicy` and `NabavnaCenaDin` fallback with covered-revenue semantics.
+- Both routes are served by the same current-main deployment, so this is a contract mismatch, not a version mismatch.
+
+### Scope
+
+Cost-field precedence, zero/positive coverage, covered-revenue denominator, margin quality metadata and cross-screen tests. Do not silently change business policy.
+
+### Read first
+
+- `AGENTS.md` margin/trust invariants
+- `RQ148` and `RQ256`
+- Product and Supplier margin builders
+- `Application/Analytics/AnalyticsMarginPolicy.cs`
+
+### Do
+
+1. Freeze canonical cost precedence and cost coverage with the margin-policy owner.
+2. Reuse one backend policy across Product and Supplier, including denominator and unknown-cost handling.
+3. Expose coverage/quality metadata; uncovered revenue must not become covered-margin percentage.
+
+### Tests
+
+- Same fixture produces the same documented basis on Product and Supplier.
+- Null, zero, positive, fallback and conflicting costs are covered.
+- Total margin, covered revenue and unavailable margin remain distinct.
+
+### Acceptance
+
+Equivalent data has equivalent margin semantics across both screens, and intentional cohort differences are visible in metadata.
+
+### Dependencies
+
+- Margin-policy owner decision is required before promotion.
+- RQ148/RQ256 remain prior contracts; do not duplicate their delivered null/coverage behavior.
+
+---
+
+## RQ474 - Separate Supplier overview failure, empty and retry states
+
+Status: WAITING
+Priority: P1
+Type: backend/frontend/tests
+Feature family: supplier-overview-error-empty-contract
+Parallel-safe: no (Supplier overview endpoint and page)
+Owner: Analytics Reliability / Supplier
+Commit suggestion: `fix(analytics): distinguish supplier overview failure from empty state`
+
+### Problem
+
+The live Supplier overview request returns HTTP 503 while the API is reachable. The page must not render this as a successful empty supplier dataset and needs a safe, traceable retry path.
+
+### Evidence
+
+- Live `GET /api/analytics/supplier-sales-stats?...&dataScope=all` returns 503 with a safe generic problem response.
+- `SupplierSalesStatsPage.tsx` handles the request through a generic catch path; a focused error/empty/retry contract is needed.
+
+### Scope
+
+Supplier overview error mapping, frontend error/empty/loading state and retry/correlation presentation. No production data mutation.
+
+### Read first
+
+- `AGENTS.md` no-fake-zero and empty-is-not-error rules
+- `RQ321`, `RQ384` and `RQ443`
+- Supplier stats endpoint, page and `supplierSalesStatsApi.ts`
+
+### Do
+
+1. Classify the live 503 through the owning service/log path and map it to a stable safe error code/correlation ID.
+2. Render distinct error, successful-empty and degraded/fallback states with retry.
+3. Preserve period/scope/provenance after a successful retry; never substitute zero totals for failure.
+
+### Tests
+
+- 503, schema-invalid, successful-empty and non-empty fixtures render distinct states.
+- Retry clears stale error only after success.
+- Technical exception details are not exposed; correlation ID is preserved where supported.
+
+### Acceptance
+
+Unavailable Supplier overview cannot be mistaken for “no data”, while a successful empty response remains a truthful empty state.
+
+### Dependencies
+
+- Read-only current API/provider logs are needed to classify the 503 cause.
+- No production schema/data change is in scope.
+
+---
+
+## RQ475 - Make Supplier scorecard/assortment semantic-data readiness operationally actionable
+
+Status: WAITING
+Priority: P1
+Type: backend/runtime-contract/tests
+Feature family: supplier-analytics-schema-readiness
+Parallel-safe: no (Supplier Decision Hub and assortment readiness)
+Owner: Analytics Reliability / Supplier / Data Platform
+Commit suggestion: `fix(analytics): make supplier analytics readiness explicit`
+
+### Problem
+
+The live scorecard returns transport 200 but `meta.success=false`, `MISSING_SCHEMA`, no rows and `recommendationAllowed=false`; assortment returns `vendor_sales_nivelacija_contract_missing`, `scopeApplied=false` and empty totals. These fail closed, but the two customer-facing tabs lack one durable, inspectable readiness/recovery contract.
+
+### Evidence
+
+- Live scorecard: requested 30d, effective 90d fallback, `rowCount=0`, `hasData=false`, `recommendationAllowed=false`, `MISSING_SCHEMA`.
+- Live assortment: semantic revenue contract missing, scope not applied, empty vendor/article arrays.
+- RQ146/RQ459 cover broader schema/KPI contracts but do not prove the current live precomputed data is ready.
+
+### Scope
+
+Read-only schema/migration/readiness verification, stable API metadata and scorecard/assortment error/empty/retry presentation. Do not create/alter production tables here.
+
+### Read first
+
+- `AGENTS.md` meta contract/fail-closed rules
+- `RQ146`, `RQ401`, `RQ439` and `RQ459`
+- Supplier Hub and vendor-sales-nivelacija endpoints/pages
+
+### Do
+
+1. Verify expected views/tables/columns against migrations and the live read-only host; record the exact missing object or stale-refresh condition.
+2. Keep unavailable, successful-empty and transport-failure states distinct with requested/effective period and no-silent-fallback metadata.
+3. Add a safe recovery instruction/retry and readiness identifier; never infer recommendations from empty totals.
+
+### Tests
+
+- Missing object, stale object, valid empty and populated fixtures produce distinct meta states.
+- Recommendation remains blocked while readiness is unverified.
+- Scope/period is not marked applied when the semantic contract is missing.
+
+### Acceptance
+
+An operator can identify why scorecard/assortment are unavailable and what read-only readiness check is needed; customers never see fake zero KPIs or actionable recommendations from an absent schema.
+
+### Dependencies
+
+- Read-only live database/schema or provider-log access is required.
+- RQ146/RQ459 remain prior contracts and are not reopened without new proof.
+
+---
+
+## RQ476 - Unify Supplier raw API, display, recommendation and export share semantics
+
+Status: WAITING
+Priority: P2
+Type: backend/frontend/contract/tests
+Feature family: supplier-share-denominator-contract
+Parallel-safe: no (Supplier overview/API/Hub share owners)
+Owner: Analytics Reliability / Supplier / Margin Policy
+Commit suggestion: `fix(analytics): unify supplier share denominator semantics`
+
+### Problem
+
+Supplier overview display uses a labeled positive-revenue denominator over the visible population and excludes negative rows from concentration. Raw Supplier API share values use signed total revenue, while Decision Hub filters non-positive rows. Returns-only/negative and unknown suppliers can therefore make API, cards, recommendations and exports disagree.
+
+### Evidence
+
+- `Api/Endpoints/AllEndpoints.cs` raw supplier `sharePct` uses signed supplier revenue over signed total revenue.
+- `SupplierSalesStatsPage.tsx` uses positive visible-population revenue; negative rows have no positive share and unknown inclusion follows the visible filter.
+- `SupplierDecisionHubEndpoints.cs` filters revenue rows to positive values for its summary.
+- RQ233/RQ373/RQ443/RQ459 cover their delivered display/KPI contracts; this is the remaining raw-API/recommendation/export residual.
+
+### Scope
+
+Supplier share fields, top-five/concentration metadata, recommendation inputs, exports and unknown/negative/focused tests. Business-rule changes require owner sign-off.
+
+### Read first
+
+- `AGENTS.md` decision/provenance rules
+- `RQ233`, `RQ373`, `RQ443`, `RQ459`
+- Supplier overview API/page and Decision Hub endpoint
+
+### Do
+
+1. Decide and document the canonical denominator: positive net revenue of the declared visible/decision population, with explicit unknown inclusion.
+2. Keep negative rows visible when appropriate, but prevent them from inflating concentration or producing ambiguous positive share.
+3. Make raw API, recommendation, UI and export use one policy and expose denominator metadata.
+
+### Tests
+
+- Positive-only, mixed positive/negative, returns-only, unknown-included and focused fixtures.
+- Top-five plus “Ostali” stays bounded by the declared denominator.
+- API, card, chart, recommendation and export agree or carry explicitly named different cohorts.
+
+### Acceptance
+
+Users can tell exactly which population and denominator each share uses; negative/unknown rows cannot silently make raw API and screen semantics diverge.
+
+### Dependencies
+
+- Owner decision on negative revenue and unknown-supplier policy is required before promotion.
+- Existing RQ233/RQ373/RQ443/RQ459 deliveries remain intact.
