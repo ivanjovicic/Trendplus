@@ -25958,6 +25958,7 @@ The screen emits recommendations only from proven journal evidence, or clearly r
 ## RQ473 - Align Product and Supplier margin cost/coverage semantics
 
 Status: WAITING
+Ready after: `RQ483` and `RQ484` DONE (file overlap only; the missing-cost owner decision was resolved 2026-09-28 12:22, see the cross-reference below)
 Priority: P1
 Type: backend/contract/tests
 Feature family: analytics-margin-basis-parity
@@ -26004,13 +26005,30 @@ Equivalent data has equivalent margin semantics across both screens, and intenti
 
 ### Dependencies
 
-- Margin-policy owner decision is required before promotion.
+- Margin-policy owner decision for missing cost: resolved 2026-09-28 12:22 (canonical in `RQ464`; see the cross-reference below). Cost precedence/parity alignment remains in scope.
 - RQ148/RQ256 remain prior contracts; do not duplicate their delivered null/coverage behavior.
 
 ### Cross-reference 2026-09-28 (owner decision recorded in RQ464, grok)
 
 - Ivan's 2026-09-28 decision for the Supplier report (`RQ464`, decision 4): missing cost is not 0; the line stays in revenue and units, is excluded only from the margin calculation, and cost coverage / revenue with known cost / revenue without cost are shown, following the `AnalyticsMarginPolicy` direction. The same decision set also fixes the pilot cost fallback as `ps.NabavnaCena → a.NabavnaCenaDin → a.NabavnaCena` (> 0 only; `RQ467`).
-- This may answer part of the margin-policy decision this prompt waits on. The `RQ473` owner should confirm with Ivan before promotion; this note does not change its status.
+- This may answer part of the margin-policy decision this prompt waits on. Superseded by the owner decision of 2026-09-28 12:22 below.
+
+### Cross-reference (owner decision, Ivan, 2026-09-28 12:22; recorded by grok)
+
+- The `RQ464` owner decision is **canonical for missing-cost semantics**:
+  - missing or 0 cost is not a valid cost;
+  - the line stays in the revenue/units population;
+  - it is excluded from both the margin numerator and the denominator evidence, so margin is computed over cost-covered revenue;
+  - cost coverage and revenue without reliable cost are shown;
+  - missing cost never becomes 0 RSD.
+- The owner question „what to do when cost is missing“ is therefore **resolved**, and the margin-policy owner-decision blocker for missing cost is removed.
+- `RQ473` is **not closed**. It still must align the Product Decision and Supplier implementations on:
+  - the full cost precedence chain and fallback sources (the pilot chain `ps.NabavnaCena → a.NabavnaCenaDin → a.NabavnaCena`, > 0 only, from `RQ467` is the reference);
+  - the covered-revenue denominator;
+  - quality metadata;
+  - cross-screen parity tests.
+  Whether both screens implement the decision identically remains this prompt.
+- Status: WAITING only for file overlap, not for a decision. The Product margin code lives in `CachedAnalyticsEndpoints.cs` `BuildProductDecisionCenterAsync` (`:5992`, `:6120`), which READY `RQ483` owns. The Supplier overview margin lives in `AllEndpoints.cs` (`:1661-1682`), in the Supplier stats builder that READY `RQ484` owns. Promote after `RQ483` and `RQ484` are DONE, or earlier only if neither is claimed and the collision check is clear.
 
 ---
 
@@ -26539,6 +26557,11 @@ Source: `PS04` in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-25.md` (resid
 
 Status note (2026-09-28): the owner decision removed the threshold sign-off blocker. The earlier `RQ472` dependency was about observability only. `RQ472` (WAITING, itself gated on an owner journal-signal approval) keeps ownership of the journal gate and recommendation actionability. The hard-coded `HasCompleteJournal: false` (`CachedAnalyticsEndpoints.cs:8156`) only adds `opening_stock_unavailable` and lowers data quality/allowance (`:6218-6261`); it does not overwrite the helper's status classification. This prompt's rules are therefore provable at helper/builder level now. No READY/IN_PROGRESS prompt owns these files. Do not change the journal gate here. If `RQ472` is promoted while this prompt is active, sequence the two by lock/claim (same builder file).
 
+Owner decision (Ivan, 2026-09-28 12:22): stays READY; it does not have to wait for `RQ472`. Mandatory guards:
+1. Do not touch `HasCompleteJournal` or the journal gate. That remains `RQ472`.
+2. Do not claim live actionability just because rules become reachable. Until `RQ472` lands, reachable statuses stay non-actionable wherever the journal gate says so, and the run log/methodology must say this.
+3. `RQ483` and `RQ472` must not be claimed in parallel while they share a file (`CachedAnalyticsEndpoints.cs` `BuildProductDecisionCenterAsync`, `ProductDecisionReasoningHelper.cs`). Whichever is claimed first finishes and merges; the other then rebases onto it and revalidates. The same file rule applies to `RQ473` (Product margin code in the same builder).
+
 ### Problem
 
 Several Product Decision statuses are practically unreachable, depend on the current clock instead of the analyzed period, or rest on undocumented magic thresholds:
@@ -26644,13 +26667,13 @@ Status note (2026-09-28): owner decision recorded below; no decision remains. RE
 
 ### Scope
 
-- Engine gate policy; aggregation of the response-level flag for Supplier/Shoe Type/Color; trust meta; tests. No frontend scoring. Keep the `SST-ACCURACY-1.0` (`RQ445`) claim language.
+- Engine gate policy, aggregation of the response-level flag and trust meta for **Supplier** only (owner decision 2026-09-28 12:22; see the out-of-scope section); tests. No frontend scoring. Keep the `SST-ACCURACY-1.0` (`RQ445`) claim language.
 
 ### Tests
 
 - A supplier without nivelacija evidence but with good coverage and a baseline gets `maintain`/`increase_focus` allowed, with a reason code and reduced confidence (decision 1).
 - The unknown bucket stays `do_not_trust`; the response flag is allowed with a small unknown share and not allowed with a heavy one.
-- The same cases for Shoe Type and Color; the existing `RQ140` comparability tests stay green.
+- Shoe Type and Color: regression tests prove their outputs are unchanged (Supplier-only decision); the existing `RQ140` comparability tests stay green.
 
 ### Acceptance
 
@@ -26670,9 +26693,9 @@ Approved with the semantics below. This replaces „Owner decision needed“ abo
 
 #### Implementation notes
 
-- The engine gate is shared, so decision 1 applies to Supplier, Shoe Type, Color **and** the detail pages (`Api/Services/AnalyticsDetailReadService.cs:839`, `:950`, `:1425` also call `ApplyComparableSignalGate`). Split the gate: it may block only the price-event claim, reason codes and confidence, not the sales/trend/margin/stock recommendation.
+- The engine gate is shared (`Api/Services/AnalyticsDetailReadService.cs:839` Shoe Type detail, `:950` Color detail and `:1425` aggregated detail also call `ApplyComparableSignalGate`). Decision 1 applies to the Supplier list and the Supplier detail path only; Shoe Type/Color keep the current gate (owner decision 2026-09-28 12:22). Split the gate: it may block only the price-event claim, reason codes and confidence, not the sales/trend/margin/stock recommendation.
 - Current thresholds disagree with the decision and with each other. `AnalyticsDecisionRecommendationEngine.ComputeDataQualityStatus` (`:133-162`) gives warning at `unknownShare >= 10` and critical at `>= 25`, and treats missing or low split coverage as warning. `AllEndpoints.cs` `BuildStatsTrustMeta` (`:7412-7462`) gives warning at `>= 10` and critical at `>= 20`, and makes split coverage `< 40` critical. Put the approved values in one named policy (constants plus methodology/provenance text). Do not scatter literals. Split coverage alone must no longer make the trust header critical.
-- Decisions 2 and 3 are decided for the **Supplier** page. `BuildStatsTrustMeta` is shared with Shoe Type (`:2733`) and Color (`:3439`). Use the policy object with Supplier-specific values and leave the Shoe Type/Color page-level thresholds unchanged until Ivan confirms extending them. Record which values each surface uses in the run log.
+- Decisions 2 and 3 are decided for the **Supplier** page. `BuildStatsTrustMeta` is shared with Shoe Type (`:2733`) and Color (`:3439`). Use the policy object with Supplier-specific values and leave the Shoe Type/Color page-level thresholds unchanged (owner decision 2026-09-28 12:22: Supplier-only). Record which values each surface uses in the run log.
 - `RQ476` (WAITING) owns the negative/unknown share policy. When it lands, the thresholds must read from that single source. `RQ464` must reuse the same gate semantics in the Supplier report score policy.
 
 #### Acceptance
@@ -26687,9 +26710,15 @@ Approved with the semantics below. This replaces „Owner decision needed“ abo
 #### Tests
 
 - `AnalyticsDecisionRecommendationEngineTests`: a known supplier without nivelacija evidence stays allowed with a reason code and lower confidence; a price-event claim without evidence stays blocked; an unknown row stays `do_not_trust` after every gate.
-- `AnalyticsStatsTrustMetaTests`: unknown share boundaries `14.9 / 15.0 / 24.9 / 25.0` produce none / warning / warning / critical for Supplier; split coverage alone does not produce critical; Shoe Type/Color values are unchanged unless Ivan extends the decision.
+- `AnalyticsStatsTrustMetaTests`: unknown share boundaries `14.9 / 15.0 / 24.9 / 25.0` produce none / warning / warning / critical for Supplier; split coverage alone does not produce critical; Shoe Type/Color values are unchanged.
 - A Supplier endpoint integration test: the response-level flag is computed over known suppliers. Revenue-share and row-count disagreement fixtures prove the denominator.
 - The existing `RQ140` comparability tests and the detail-page recommendation tests stay green.
+
+### Out of scope: Shoe Type / Color (owner decision, Ivan, 2026-09-28 12:22)
+
+- `RQ484` stays **Supplier-only**. Do not carry the 15/25 unknown-share thresholds, the known-only page aggregation or the nivelacija gate change to Shoe Type or Color. Keep the shared engine and `BuildStatsTrustMeta` behaviour for those surfaces unchanged: select the policy per surface and add regression tests that prove Shoe Type/Color list and detail outputs (`AllEndpoints.cs:2566-2571`, `:2733`, `:3235-3246`, `:3439`; `AnalyticsDetailReadService.cs` `BuildShoeTypeDetailProjection :839`, `BuildColorDetailProjection :950`) stay unchanged.
+- For Shoe Type/Color only the principle applies: the known population drives metrics and recommendations, and „Nepoznato“ is shown separately as a quality signal that must not corrupt known-row identity. Unknown shoe type and unknown color have different causes and business risk, so 15/25 must not be hardcoded there without separate evidence.
+- Existing Shoe Type/Color contracts must not change through `RQ484`, especially `RQ457` (sale-time identity, previous-only PoP rows, known-ID benchmarking) and the related Operations accuracy decisions. No Shoe Type/Color prompt is created by this decision.
 
 ### Dependencies
 
