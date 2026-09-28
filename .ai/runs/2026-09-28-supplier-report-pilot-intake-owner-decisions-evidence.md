@@ -52,11 +52,38 @@ Existing mapping honoured: PS01→`RQ469`, PS02→`RQ472`, PS03→`RQ473`, PS05�
 
 ## Open items for Ivan
 
-- `RQ484` (PS07): gate policy decision.
-- `RQ483` (PS04): threshold sign-off.
-- Optional: promote only the backend part of `RQ464` (views, live SQL, score policy, parity tests) now, with `RQ461`'s renderer/rows as avoid-paths, if parallel lanes are wanted.
+- `RQ484` (PS07): gate policy decision. Resolved 2026-09-28 11:53 (see the follow-up below).
+- `RQ483` (PS04): threshold sign-off. Resolved 2026-09-28 11:53 (see the follow-up below).
+- Optional (rejected by the owner 2026-09-28 11:53): promote only the backend part of `RQ464` (views, live SQL, score policy, parity tests) now, with `RQ461`'s renderer/rows as avoid-paths, if parallel lanes are wanted.
 - `RQ473` owner to confirm whether the `RQ464` missing-cost decision closes its margin-policy question.
 
 ## Validation
 
 See the commit output: `git diff --check` plus the 6 validators on every commit.
+
+---
+
+## Follow-up 2026-09-28 11:53 — owner decisions for RQ484 and RQ483 (grok)
+
+Worktree `Trendplus2-grok` was refreshed to local `main` `ab496013`. Before this run, local `main` was 4 ahead / 3 behind `origin/main`. The 3 origin commits (`4b9c68e8`, `406c2526`, `7fb92c86`) are docs-only: they add `docs/qa/SUPPLIER_ANALYTICS_CROSS_SCREEN_AUDIT_2026-09-28.md` and two MASTER_ROADMAP header lines. They contain no queue changes and no `RQ48x` ids. That cross-screen audit was written without seeing the unpushed `RQ483`–`RQ488` and states that no new prompt was registered. Whoever merges must reconcile that sentence; this run did not edit it. There was no merge or rebase. The id check found max `RQ488`; no `RQ489`+ and no `.ai/task-locks` entries.
+
+| Prompt | Decision (Ivan, 2026-09-28) | New status | Reason |
+|---|---|---|---|
+| `RQ484` | Approved: nivelacija evidence only for price-event claims (otherwise a reason code plus confidence reduction); unknown row stays `do_not_trust` and never actionable; page-level readiness over known suppliers; unknown revenue share `< 15%` no block, `15–25%` warning/degraded, `>= 25%` page-level final/actionable blocked; revenue denominator of the supplier trust contract, not row counts | READY | No decision left; files (`AllEndpoints.cs` recommendation builders and `BuildStatsTrustMeta`, `AnalyticsDecisionRecommendationEngine.cs`, `AnalyticsDetailReadService.cs` gate calls) do not overlap READY `RQ461` (`SupplierDecisionHubEndpoints.cs` + report frontend), `RQ462`/`RQ486` (frontend), `RQ466` (Data Quality backend) or `BCI13` (test host). `RQ474`/`RQ476` share the endpoint file but are WAITING. |
+| `RQ483` | Approved with changes: 45 days → review candidate only; 3 units → positive/new-product signals only (0-sales stock enters dead-stock analysis); 0.15/day → configurable pilot threshold, never actionable alone; verify size vs model grain; `MinStock = 0`/null → velocity/stock-cover candidate, `lostSalesEstimate` null; `no_baseline` new-product path, no percent from a 0 base; one policy with provenance | READY (scope rewritten) | Threshold sign-off resolved. The `RQ472` relation is observability only: the hard-coded journal flag adds `opening_stock_unavailable` and lowers allowance but does not overwrite the helper classification, so the rewritten rules are provable at helper/builder level. `RQ472` is WAITING (owner-gated), so there is no active overlap; if both become active, sequence by claim. |
+| `RQ464` | Owner rejected an early split (semantic dependency on `RQ463`); optional pre-step: test/fixture preparation only, no runtime change, no new READY prompt | WAITING after `RQ463` (unchanged) | One-line owner note added. |
+
+Code evidence gathered for `RQ484`:
+- `ComputeDataQualityStatus` (`AnalyticsDecisionRecommendationEngine.cs:133-162`) gives warning at unknown `>= 10` and critical at `>= 25`.
+- `BuildStatsTrustMeta` (`AllEndpoints.cs:7412-7462`, shared by Supplier `:1949`, Shoe Type `:2733` and Color `:3439`) gives warning at `>= 10` and critical at `>= 20`, and makes split coverage `< 40` critical.
+- Both are aligned to the approved policy for Supplier only; Shoe Type/Color stay unchanged until Ivan decides.
+
+Order unchanged: `RQ461` → `RQ463` → `RQ464`; `RQ465` after `RQ461` (sequential with `RQ463`/`RQ464`); `RQ466` → `RQ467`.
+
+READY set after this follow-up: `Current READY prompt: RQ461`; also READY: `RQ462`, `RQ466`, `RQ486`, `RQ484`, `RQ483` (distinct feature families and files). Cross-queue READY: `BCI13`.
+
+Open items for Ivan after this follow-up:
+- Extend the `RQ484` unknown-share thresholds (15/25) and known-only page aggregation to Shoe Type/Color, or keep them Supplier-only.
+- Confirm `RQ483` READY now, or prefer strict sequencing after `RQ472`.
+- `RQ473`: confirmation carried over from the previous run.
+- Local `main` still needs to be merged with `origin/main` by whoever pushes. The cross-screen audit sentence about no new prompts is superseded by `RQ483`–`RQ488`.
