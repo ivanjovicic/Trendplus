@@ -17,6 +17,7 @@ type SupplierDecisionReportActionsProps = {
   payload: ResolvedAnalyticsTablePayload | null;
   disabled?: boolean;
   onError?: (message: string) => void;
+  onSuccess?: () => void;
   durableReportHref?: string | null;
 };
 
@@ -53,10 +54,11 @@ function toActionDataQualityStatus(payload: ResolvedAnalyticsTablePayload | null
   return "insufficient_data";
 }
 
-export default function SupplierDecisionReportActions({ payload, disabled = false, onError, durableReportHref }: SupplierDecisionReportActionsProps) {
+export default function SupplierDecisionReportActions({ payload, disabled = false, onError, onSuccess, durableReportHref }: SupplierDecisionReportActionsProps) {
   const navigate = useNavigate();
   const [busy, setBusy] = useState<"durable" | "preview" | "copy" | "csv" | "print" | "excel" | "pdf" | "queue" | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [statusTone, setStatusTone] = useState<"success" | "error">("success");
   const [queued, setQueued] = useState(false);
   const pdfExportEnabled = String(import.meta.env.VITE_ENABLE_PDF_EXPORT ?? "false").toLowerCase() === "true";
 
@@ -71,7 +73,7 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
     const scopePart = dataScope || "all";
     const periodPart = periodValue?.replace(/\s+/g, "").replace(/[^0-9\-]/g, "") || "unknown-period";
     const supplierPart = supplierId ?? "all";
-    const actionKind = recommendationAllowed ? "negotiation" : "signal_check";
+    const actionKind = recommendationAllowed && supplierId != null ? "negotiation" : "signal_check";
     return `supplier:${actionKind}:${supplierPart}:${periodPart}:${scopePart}`;
   }, [dataScope, payload, periodValue, recommendationAllowed, supplierId]);
 
@@ -105,7 +107,13 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
 
   const actionDisabled = disabled || !payload || busy !== null;
   const durableActionDisabled = disabled || !durableReportHref || busy !== null;
-  const queueDisabled = disabled || !payload || !sourceKey || busy !== null || queued;
+  const queueDisabled = disabled || !payload || !sourceKey || supplierId == null || busy !== null || queued;
+
+  const markSuccess = (message?: string) => {
+    setStatusTone("success");
+    if (message !== undefined) setStatus(message);
+    onSuccess?.();
+  };
 
   const copyToClipboard = async (text: string) => {
     if (navigator.clipboard?.writeText) {
@@ -137,6 +145,7 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
       setStatus(null);
       try {
         navigate(durableReportHref);
+        markSuccess();
       } finally {
         setBusy(null);
       }
@@ -146,41 +155,48 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
     if (!payload || actionDisabled) return;
     setBusy(type);
     setStatus(null);
+    setStatusTone("success");
     try {
       if (type === "preview") {
         const stateKey = saveBrowserPreviewPayload(payload);
         navigate(`/analytics/supplier/report?preview=browser&stateKey=${encodeURIComponent(stateKey)}`);
+        markSuccess();
         return;
       }
 
       if (type === "copy") {
         const text = buildSupplierDecisionReportSummaryText(payload);
         await copyToClipboard(text);
-        setStatus("Sažetak je kopiran.");
+        markSuccess("Sažetak je kopiran.");
         return;
       }
 
       if (type === "csv") {
         exportSupplierDecisionReportCsv(payload);
-        setStatus("CSV izveštaj je preuzet.");
+        markSuccess("CSV izveštaj je preuzet.");
         return;
       }
 
       if (type === "print") {
         await openSupplierDecisionPrintPreview(payload);
-        setStatus("Pregled štampe je otvoren u novoj kartici.");
+        markSuccess("Pregled štampe je otvoren u novoj kartici.");
         return;
       }
 
       if (type === "excel") {
         await exportSupplierDecisionReportExcel(payload);
-        setStatus("Excel izveštaj je preuzet.");
+        markSuccess("Excel izveštaj je preuzet.");
         return;
       }
 
       if (type === "queue") {
         if (recommendationAllowed !== true) {
           setStatus("Akcija nije dostupna: konačna preporuka nije dozvoljena. Proverite kvalitet podataka pre bilo kakve akcije.");
+          return;
+        }
+
+        if (supplierId == null) {
+          setStatus("Izaberite jednog dobavljača da biste dodali pregovaračku akciju.");
           return;
         }
 
@@ -217,7 +233,7 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
         if (result.sourceKey) {
           setQueued(true);
         }
-        setStatus(result.existing
+        markSuccess(result.existing
           ? "Akcija je već u centralnim akcijama."
           : "Akcija je dodata u centralni red.");
         return;
@@ -228,7 +244,7 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
       }
 
       await exportSupplierDecisionReportPdf(payload);
-      setStatus("PDF izveštaj je preuzet.");
+      markSuccess("PDF izveštaj je preuzet.");
     } catch (reason) {
       const message = type === "queue"
         ? getAnalyticsActionWriteErrorMessage(reason)
@@ -237,6 +253,7 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
         : reason instanceof Error
           ? reason.message
           : "Izvoz izveštaja nije uspeo.";
+      setStatusTone("error");
       setStatus(message);
       onError?.(type === "pdf"
         ? "PDF izvoz trenutno nije dostupan. Koristite štampu ili Excel."
@@ -260,7 +277,7 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
       ) : null}
       {payload ? (
         <>
-          {recommendationAllowed === true ? (
+          {recommendationAllowed === true && supplierId != null ? (
             <button
               type="button"
               className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
@@ -269,6 +286,10 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
             >
               {busy === "queue" ? "Dodajem..." : queued ? "U akcijama" : "Dodaj u akcije"}
             </button>
+          ) : recommendationAllowed === true ? (
+            <span role="note" className="inline-flex items-center gap-2 text-xs text-muted">
+              Izaberite jednog dobavljača da biste dodali pregovaračku akciju.
+            </span>
           ) : (
             <span role="note" className="inline-flex items-center gap-2 text-xs text-muted">
               Akcija nije dostupna: konačna preporuka nije dozvoljena. <Link to="/analytics/data-quality">Proveri kvalitet podataka</Link>
@@ -327,7 +348,14 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
           ) : null}
         </>
       ) : null}
-      {status ? <span className="text-xs text-[var(--accent-success)]">{status}</span> : null}
+      {status ? (
+        <span
+          className={`text-xs ${statusTone === "error" ? "text-[var(--accent-danger,#f87171)]" : "text-[var(--accent-success)]"}`}
+          role={statusTone === "error" ? "alert" : "status"}
+        >
+          {status}
+        </span>
+      ) : null}
     </div>
   );
 }

@@ -11,7 +11,7 @@ import {
   type BrowserPreviewSnapshot,
 } from "../services/analyticsTableState";
 import { AnalyticsMetaError, getSupplierDecisionDurableReport } from "../services/analyticsApi";
-import { buildSupplierDecisionReportHref } from "../services/supplierDecisionReportQuery";
+import { buildSupplierDecisionReportHref, buildSupplierDecisionScorecardHref } from "../services/supplierDecisionReportQuery";
 import type { ResolvedAnalyticsTablePayload } from "../types/analyticsTable";
 import { formatDateTime } from "../utils/analyticsFormatters";
 import "./SupplierDecisionReportPage.css";
@@ -125,6 +125,15 @@ export default function SupplierDecisionReportPage() {
       !isSupportedScope(scope) ? "scope" : null,
       !isSupportedScope(dataScope) ? "dataScope" : null,
     ].filter((key): key is string => Boolean(key));
+
+    if (invalid.length === 0
+      && fromDate
+      && toDate
+      && !hasInvalidDate(fromDate)
+      && !hasInvalidDate(toDate)
+      && fromDate > toDate) {
+      return `Period "od" mora biti pre ili jednak datumu "do". Izveštaj nije učitan da se podaci ne bi proširili na drugi skup.`;
+    }
 
     if (invalid.length === 0) return null;
     return `Neispravan filter u linku izveštaja (${Array.from(new Set(invalid)).join(", ")}). Izveštaj nije učitan da se podaci ne bi proširili na drugi skup.`;
@@ -311,6 +320,43 @@ export default function SupplierDecisionReportPage() {
     toDate,
   ]);
 
+  const scorecardHref = useMemo(() => {
+    if (queryValidationError) return "/analytics/supplier?tab=scorecard";
+    return buildSupplierDecisionScorecardHref({
+      fromDate,
+      toDate,
+      scope,
+      dataScope,
+      supplierId: parsedSupplierId,
+      storeId: parsedStoreId,
+      category,
+      gender,
+      seasonId: parsedSeasonId,
+      minRevenue: parsedMinRevenue,
+      onlyHighConfidence: parsedOnlyHighConfidence,
+      excludeOosBeforeMarkdown: parsedExcludeOosBeforeMarkdown,
+      section,
+    });
+  }, [
+    category,
+    dataScope,
+    excludeOosBeforeMarkdown,
+    fromDate,
+    gender,
+    minRevenue,
+    onlyHighConfidence,
+    parsedExcludeOosBeforeMarkdown,
+    parsedMinRevenue,
+    parsedOnlyHighConfidence,
+    parsedSeasonId,
+    parsedStoreId,
+    parsedSupplierId,
+    queryValidationError,
+    scope,
+    section,
+    toDate,
+  ]);
+
   if (loading && !payload) {
     return (
       <div className="supplier-decision-report-page">
@@ -349,9 +395,9 @@ export default function SupplierDecisionReportPage() {
             "Za trajni dokument koristite Excel, štampu ili ponovo generišite izveštaj.",
           ]}
           actions={[
-            { label: "Vrati se na dobavljače", href: "/analytics/supplier" },
-            { label: "Ponovo generiši izveštaj", href: "/analytics/supplier" },
-            { label: "Otvori skorkartu", href: "/analytics/supplier?tab=scorecard" },
+            { label: "Vrati se na dobavljače", href: scorecardHref },
+            { label: "Ponovo generiši izveštaj", href: durableReportHref ?? scorecardHref },
+            { label: "Otvori skorkartu", href: scorecardHref },
           ]}
           refreshStatusHref="/admin/configuration?panel=workers"
           dataQualityHref="/analytics/data-quality"
@@ -369,8 +415,8 @@ export default function SupplierDecisionReportPage() {
           message="Server nije vratio podatke za traženi kontekst izveštaja."
           reasons={["Proverite period i aktivne filtere, pa ponovo učitajte izveštaj."]}
           actions={[
-            { label: "Vrati se na dobavljače", href: "/analytics/supplier" },
-            { label: "Otvori skorkartu", href: "/analytics/supplier?tab=scorecard" },
+            { label: "Vrati se na dobavljače", href: scorecardHref },
+            { label: "Otvori skorkartu", href: scorecardHref },
           ]}
           refreshStatusHref="/admin/configuration?panel=workers"
           dataQualityHref="/analytics/data-quality"
@@ -432,23 +478,28 @@ export default function SupplierDecisionReportPage() {
           ) : null}
         </div>
         <div className="sdrp-actions">
-          <Link to="/analytics/supplier" className="sdrp-back">Vrati se na dobavljače</Link>
-          <Link to="/analytics/supplier" className="sdrp-back">Ponovo generiši izveštaj</Link>
-          <Link to="/analytics/supplier?tab=scorecard" className="sdrp-back">Otvori skorkartu</Link>
+          <Link to={scorecardHref} className="sdrp-back">Vrati se na dobavljače</Link>
+          <Link to={durableReportHref ?? scorecardHref} className="sdrp-back">Ponovo generiši izveštaj</Link>
+          <Link to={scorecardHref} className="sdrp-back">Otvori skorkartu</Link>
           {isBrowserPreview ? (
             <p className="sdrp-export-disabled" data-testid="local-preview-export-disabled">
               Izvoz i štampa su onemogućeni za lokalni pregled. Otvorite trajni izveštaj preko akcija skorkarte.
             </p>
           ) : (
             <>
-              <SupplierDecisionReportActions payload={payload} durableReportHref={durableReportHref} onError={setExportError} />
+              <SupplierDecisionReportActions
+                payload={payload}
+                durableReportHref={isBrowserPreview ? durableReportHref : null}
+                onError={setExportError}
+                onSuccess={() => setExportError(null)}
+              />
               <button type="button" className="sdrp-print" onClick={() => window.print()}>Štampaj iz pregleda</button>
             </>
           )}
         </div>
       </header>
 
-      <SupplierDecisionReport payload={payload} />
+      <SupplierDecisionReport payload={payload} sectionKey={section} />
     </div>
   );
 }

@@ -147,6 +147,36 @@ public sealed class SupplierDecisionHubContractTests
     }
 
     [Fact]
+    public void BuildSupplierDecisionReportResponse_AllTimeStableUrlOmitsSyntheticDates()
+    {
+        var filters = new SupplierDecisionHubEndpoints.SupplierDecisionHubFilters(
+            new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc),
+            false,
+            null,
+            null,
+            null,
+            null,
+            false,
+            false,
+            null,
+            null,
+            "all");
+        var dataset = Dataset(
+            Row(1, "A", recommendationCode: "EXPAND"),
+            Row(2, "B"),
+            Row(3, "C"));
+
+        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(
+            SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters),
+            dataset,
+            filters);
+
+        Assert.DoesNotContain("fromDate=", report.StableQueryUrl, StringComparison.Ordinal);
+        Assert.DoesNotContain("toDate=", report.StableQueryUrl, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void BuildSummaryResponse_UsesRevenueAndUnitWeightedMetrics()
     {
         var filters = Filters90Days();
@@ -278,6 +308,22 @@ public sealed class SupplierDecisionHubContractTests
         Assert.False(response.TrustMetadata.RecommendationAllowed);
         Assert.Equal(2, response.TrustMetadata.RowCount);
         Assert.Equal("RECOMMENDATION_GATED", response.Meta!.WarningCode);
+    }
+
+    [Fact]
+    public void BuildSummaryResponse_DoesNotInventCandidatesWithoutRuleCodedSignals()
+    {
+        var response = SupplierDecisionHubEndpoints.BuildSummaryResponse(
+            Dataset(
+                Row(1, "A", recommendationCode: "HOLD", confidence: 90m),
+                Row(2, "B", recommendationCode: "HOLD", confidence: 80m),
+                Row(3, "C", recommendationCode: "HOLD", confidence: 75m)),
+            Filters90Days());
+
+        Assert.Empty(response.TopGrowSuppliers);
+        Assert.Empty(response.TopRiskSuppliers);
+        var growthInsight = Assert.Single(response.KeyInsights, insight => insight.Title == "Kandidat za rast");
+        Assert.Equal("Nema kandidata", growthInsight.Value);
     }
 
     [Fact]

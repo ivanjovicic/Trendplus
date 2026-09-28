@@ -471,6 +471,16 @@ public static class SupplierDecisionHubEndpoints
         string? dataScope = null,
         CancellationToken ct = default)
     {
+        if (scope is not null
+            && dataScope is not null
+            && !string.Equals(scope.Trim(), dataScope.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["scope"] = ["scope i dataScope moraju imati istu vrednost kada su oba prosleđena."]
+            });
+        }
+
         var resolvedScope = scope ?? dataScope;
 
         if (!TryCreateFilters(
@@ -915,16 +925,6 @@ public static class SupplierDecisionHubEndpoints
             .Select(MapSummarySupplier)
             .ToList();
 
-        if (topGrow.Count == 0)
-        {
-            topGrow = rows
-                .OrderByDescending(x => x.SupplierQualityIndex)
-                .ThenByDescending(x => x.Revenue)
-                .Take(5)
-                .Select(MapSummarySupplier)
-                .ToList();
-        }
-
         var topRisk = rows
             .Where(x => x.RecommendationCode is "ASSORTMENT_REDUCE" or "PRICE_NEGOTIATE" or "REVIEW_QUALITY" or "OOS_FALSE_NEGATIVE")
             .OrderByDescending(x => x.StockRiskScore)
@@ -933,16 +933,6 @@ public static class SupplierDecisionHubEndpoints
             .Select(MapSummarySupplier)
             .ToList();
 
-        if (topRisk.Count == 0)
-        {
-            topRisk = rows
-                .OrderByDescending(x => x.MarkdownDependencyScore)
-                .ThenByDescending(x => x.StockRiskScore)
-                .Take(5)
-                .Select(MapSummarySupplier)
-                .ToList();
-        }
-
         var bestGrow = topGrow.FirstOrDefault();
         var worstRisk = topRisk.FirstOrDefault();
 
@@ -950,7 +940,7 @@ public static class SupplierDecisionHubEndpoints
         {
             new(
                 "Kandidat za rast",
-                bestGrow?.SupplierName ?? "Nema jasnog kandidata",
+                bestGrow?.SupplierName ?? "Nema kandidata",
                 bestGrow is null
                     ? "Trenutni skup filtera ne izdvaja dobavljača za sigurno širenje saradnje."
                     : $"Vodeći kandidat ima indeks kvaliteta {bestGrow.SupplierQualityIndex.ToString("0.##", CultureInfo.InvariantCulture)} i udeo prihoda bez sniženja {FormatPercent(rows.First(x => x.SupplierId == bestGrow.SupplierId).FullPriceRevenueShare)}.",
@@ -964,7 +954,7 @@ public static class SupplierDecisionHubEndpoints
                 totalRevenue > 0 && rows.Sum(x => x.MarkdownRevenueShare * x.Revenue) / totalRevenue >= 0.5m ? "warning" : "neutral"),
             new(
                 "Kapital u riziku",
-                rows.Sum(x => x.UnsoldStockValue).ToString("0.##", CultureInfo.InvariantCulture),
+                $"{Round2(rows.Sum(x => x.UnsoldStockValue)).ToString("N2", CultureInfo.InvariantCulture)} RSD",
                 worstRisk is null
                     ? "Nijedan dobavljač se trenutno ne izdvaja kao ekstreman problem sa rizikom zaliha."
                     : $"Najveći vidljiv rizik trenutno dolazi od dobavljača {worstRisk.SupplierName}.",
@@ -1054,7 +1044,7 @@ public static class SupplierDecisionHubEndpoints
         var recommendationAllowed = meta.RecommendationAllowed == true;
         var warnings = BuildSupplierDecisionWarnings(meta, trust, refreshInfo);
         var actions = BuildSupplierDecisionReportActions(summary, filters, trust, details, hasData, recommendationAllowed);
-        var sections = BuildSupplierDecisionReportSections(summary, dataset, trust, refreshInfo, details, actions, methodology, hasData, recommendationAllowed, dataQualityStatus, metricBasis);
+        var sections = BuildSupplierDecisionReportSections(summary, dataset, trust, refreshInfo, details, actions, methodology, hasData, recommendationAllowed, dataQualityStatus, filters.SupplierId.HasValue, metricBasis);
         var rows = BuildSupplierDecisionLegacyRows(summary, dataset, filters, trust, refreshInfo, generatedAtUtc, kpis, actions, methodology.Summary, warnings, hasData, details, recommendationAllowed, dataQualityStatus);
         var payload = BuildSupplierDecisionPayload(reportId, generatedAtUtc, filters, period, trust, refreshInfo, summary.Meta, methodology.Summary, rows, hasData, recommendationAllowed, dataQualityStatus);
 
@@ -1180,10 +1170,14 @@ public static class SupplierDecisionHubEndpoints
     {
         var query = new List<string>
         {
-            $"fromDate={Uri.EscapeDataString(filters.FromDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))}",
-            $"toDate={Uri.EscapeDataString(filters.ToDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))}",
             $"scope={Uri.EscapeDataString(filters.DataScope)}"
         };
+
+        if (filters.HasExplicitDateRange)
+        {
+            query.Insert(0, $"fromDate={Uri.EscapeDataString(filters.FromDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))}");
+            query.Insert(1, $"toDate={Uri.EscapeDataString(filters.ToDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))}");
+        }
 
         if (filters.SupplierId.HasValue)
         {
@@ -1397,6 +1391,7 @@ public static class SupplierDecisionHubEndpoints
         bool hasData,
         bool recommendationAllowed,
         string dataQualityStatus,
+        bool hasSelectedSupplier,
         SupplierReportMetricBasis? metricBasis = null)
     {
         var sections = new List<AnalyticsReportSectionDto>();
@@ -1644,27 +1639,30 @@ public static class SupplierDecisionHubEndpoints
             dataQualityRows.Count,
             null));
 
-        var negotiationRows = BuildSupplierNegotiationPackRows(summary, dataset, trust, details, dataQualityStatus, recommendationAllowed);
-        sections.Add(new AnalyticsReportSectionDto(
-            "supplier_negotiation_pack",
-            "Paket za razgovor sa dobavljačem",
-            "Poslovni sažetak, argumenti i preporučeni tok razgovora sa dobavljačem.",
-            [
-                new AnalyticsReportColumnDto("item", "Stavka"),
-                new AnalyticsReportColumnDto("value", "Vrednost"),
-                new AnalyticsReportColumnDto("group", "Grupa"),
-                new AnalyticsReportColumnDto("note", "Napomena")
-            ],
-            negotiationRows.Select(row => new Dictionary<string, object?>
-            {
-                ["item"] = row.Item,
-                ["topic"] = row.Item,
-                ["value"] = row.Value,
-                ["group"] = row.Secondary,
-                ["note"] = row.Note
-            }).ToList(),
-            negotiationRows.Count,
-            negotiationRows.Count == 0 ? "Pregovarački paket nije dostupan za izabrani opseg." : null));
+        if (hasSelectedSupplier)
+        {
+            var negotiationRows = BuildSupplierNegotiationPackRows(summary, dataset, trust, details, dataQualityStatus, recommendationAllowed);
+            sections.Add(new AnalyticsReportSectionDto(
+                "supplier_negotiation_pack",
+                "Paket za razgovor sa dobavljačem",
+                "Poslovni sažetak, argumenti i preporučeni tok razgovora sa dobavljačem.",
+                [
+                    new AnalyticsReportColumnDto("item", "Stavka"),
+                    new AnalyticsReportColumnDto("value", "Vrednost"),
+                    new AnalyticsReportColumnDto("group", "Grupa"),
+                    new AnalyticsReportColumnDto("note", "Napomena")
+                ],
+                negotiationRows.Select(row => new Dictionary<string, object?>
+                {
+                    ["item"] = row.Item,
+                    ["topic"] = row.Item,
+                    ["value"] = row.Value,
+                    ["group"] = row.Secondary,
+                    ["note"] = row.Note
+                }).ToList(),
+                negotiationRows.Count,
+                negotiationRows.Count == 0 ? "Pregovarački paket nije dostupan za izabrani opseg." : null));
+        }
 
         sections.Add(new AnalyticsReportSectionDto(
             "recommended-actions",
@@ -1967,7 +1965,7 @@ public static class SupplierDecisionHubEndpoints
             rows.Add(new AnalyticsLegacyReportRowDto("Upozorenja", "Upozorenje", warning));
         }
 
-        if (hasData)
+        if (hasData && filters.SupplierId.HasValue)
         {
             rows.AddRange(BuildSupplierNegotiationPackRows(summary, dataset, trust, details, dataQualityStatus, recommendationAllowed));
         }

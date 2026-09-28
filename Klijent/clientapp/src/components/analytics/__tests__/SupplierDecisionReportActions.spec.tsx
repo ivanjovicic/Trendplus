@@ -51,6 +51,14 @@ const payload = {
 
 const allowedPayload = {
   ...payload,
+  metadata: [
+    ...payload.metadata.map((entry) => entry.key === "recommendationAllowed" ? { ...entry, value: true } : entry),
+    { key: "supplierId", label: "Dobavljač", value: 7 },
+  ],
+};
+
+const allSupplierAllowedPayload = {
+  ...payload,
   metadata: payload.metadata.map((entry) => entry.key === "recommendationAllowed" ? { ...entry, value: true } : entry),
 };
 
@@ -198,6 +206,20 @@ describe("SupplierDecisionReportActions", () => {
 
     expect(screen.queryByRole("button", { name: "Dodaj u akcije" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Proveri kvalitet podataka" })).toHaveAttribute("href", "/analytics/data-quality");
+    expect(upsertAnalyticsActionWithResultMock).not.toHaveBeenCalled();
+  });
+
+  it("does not expose a supplier negotiation action for an all-supplier report", () => {
+    vi.stubEnv("VITE_ENABLE_PDF_EXPORT", "false");
+
+    render(
+      <MemoryRouter>
+        <SupplierDecisionReportActions payload={allSupplierAllowedPayload} />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByRole("button", { name: "Dodaj u akcije" })).not.toBeInTheDocument();
+    expect(screen.getByText("Izaberite jednog dobavljača da biste dodali pregovaračku akciju.")).toBeInTheDocument();
     expect(upsertAnalyticsActionWithResultMock).not.toHaveBeenCalled();
   });
 

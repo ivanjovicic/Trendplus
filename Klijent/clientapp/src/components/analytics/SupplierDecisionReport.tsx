@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import type { AnalyticsNamedValue, ResolvedAnalyticsTablePayload } from "../../types/analyticsTable";
 import { dataQualityStatusLabel, normalizeDataQualityStatus } from "../../utils/analyticsQuality";
 import { buildPeriodLineageLabel } from "../../utils/analyticsPeriodLineage";
@@ -13,6 +13,7 @@ import "./SupplierDecisionReport.css";
 
 type SupplierDecisionReportProps = {
   payload: ResolvedAnalyticsTablePayload;
+  sectionKey?: string | null;
 };
 
 type ReportRow = {
@@ -233,8 +234,15 @@ function renderMetaChips(items: AnalyticsNamedValue[] | undefined, className: st
   );
 }
 
-export default function SupplierDecisionReport({ payload }: SupplierDecisionReportProps) {
+export default function SupplierDecisionReport({ payload, sectionKey }: SupplierDecisionReportProps) {
   const grouped = useMemo(() => groupRows(payload), [payload]);
+
+  useEffect(() => {
+    if (!sectionKey) return;
+    const target = Array.from(document.querySelectorAll<HTMLElement>("[data-report-section]"))
+      .find((element) => element.dataset.reportSection === sectionKey);
+    target?.scrollIntoView({ block: "start" });
+  }, [payload, sectionKey]);
 
   const supplierLabel = rowValueAny(payload, [
     { section: "Header", item: "Dobavljač" },
@@ -343,7 +351,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
         </div>
       </div>
 
-      <section className="sdr-meta">
+      <section className="sdr-meta" data-report-section="metadata">
         <div className="sdr-meta-grid">
           <div className="sdr-meta-item"><span>Opseg podataka</span><strong>{dataScope}</strong></div>
           <div className="sdr-meta-item"><span>Datum izveštaja</span><strong>{reportDate}</strong></div>
@@ -355,7 +363,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
         {renderMetaChips(payload.filters, "sdr-chip-row")}
       </section>
 
-      <section className="sdr-section">
+      <section className="sdr-section" data-report-section="explainability">
         <SupplierExplainabilitySnapshot
           title="Sažetak objašnjenja signala"
           subjectLabel={supplierLabel}
@@ -386,7 +394,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
       </section>
 
       {!hasData ? (
-        <section className="sdr-section sdr-empty-state" role="status" data-testid="supplier-report-empty-state">
+        <section className="sdr-section sdr-empty-state" role="status" data-testid="supplier-report-empty-state" data-report-section="report-status">
           <h2>Nema podataka za izveštaj</h2>
           <p>{statusRows[0]?.value ?? metaValue(payload, "statusMessage") ?? "Nema dovoljno podataka za izabrani period i opseg."}</p>
           {metaValue(payload, "emptyReason") ? <small>Razlog: {localizeReportText(metaValue(payload, "emptyReason"))}</small> : null}
@@ -394,7 +402,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
       ) : null}
 
       {warnings.length > 0 ? (
-        <section className="sdr-section sdr-warnings">
+        <section className="sdr-section sdr-warnings" data-report-section="warnings">
           <h2>Upozorenja i ograničenja</h2>
           <div className="sdr-warning-list">
             {warnings.map((w, idx) => (
@@ -408,7 +416,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
         </section>
       ) : null}
 
-      <section className="sdr-section">
+      <section className="sdr-section" data-report-section="executive-summary">
         <h2>Izvršni sažetak</h2>
         <div className="sdr-kpi-grid">
           {kpi.map((row) => {
@@ -425,7 +433,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
         </div>
       </section>
 
-      <section className="sdr-section">
+      <section className="sdr-section" data-report-section="recommended-actions">
         <h2>Preporuke</h2>
         {recommendations.length === 0 ? <p className="sdr-empty">Nema preporuka za prikaz.</p> : (
           <div className="sdr-reco-list">
@@ -440,7 +448,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
         )}
       </section>
 
-      <section className="sdr-section">
+      <section className="sdr-section" data-report-section="top-suppliers">
         <h2>Top artikli / dobavljači</h2>
         <div className="sdr-two-col">
           <div>
@@ -474,7 +482,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
         </div>
       </section>
 
-      <section className="sdr-section">
+      <section className="sdr-section" data-report-section="actions">
         <h2>Akcije po signalu</h2>
         <div className="sdr-two-col">
           <div>
@@ -508,17 +516,14 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
         </div>
       </section>
 
-      {hasData ? (
-        <section className="sdr-section">
+      {hasData && negotiationPack.length > 0 ? (
+        <section className="sdr-section" data-report-section="supplier_negotiation_pack">
           <div className="sdr-section-head">
             <h2>Paket za razgovor sa dobavljačem</h2>
             <button type="button" className="sdr-copy-btn" onClick={copyNegotiationSummary} disabled={negotiationPack.length === 0}>
               Kopiraj sažetak za sastanak
             </button>
           </div>
-          {negotiationPack.length === 0 ? (
-            <p className="sdr-empty">Paket nije dostupan za trenutni opseg.</p>
-          ) : (
           <div className="sdr-negotiation-pack">
             <div className="sdr-negotiation-grid">
               {negotiationSummaryRows.map((row, idx) => (
@@ -575,11 +580,10 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
               </div>
             </div>
           </div>
-          )}
         </section>
       ) : null}
 
-      <section className="sdr-section">
+      <section className="sdr-section" data-report-section="data-quality">
         <h2>Kvalitet podataka</h2>
         {dataQuality.length === 0 ? (
           <p className="sdr-empty">Detaljan sažetak kvaliteta podataka nije dostupan u ovom sadržaju izveštaja. Otvorite ekran Kvalitet podataka za detalje.</p>
@@ -597,7 +601,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
         )}
       </section>
 
-      <section className="sdr-section">
+      <section className="sdr-section" data-report-section="methodology">
         <h2>Metodologija</h2>
         <MetricMethodologyPanel metricKeys={methodologyMetricKeys} dataQualityHref="/analytics/data-quality" />
         {methodology.length === 0 ? (

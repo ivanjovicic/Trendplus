@@ -30,7 +30,7 @@ public sealed class SupplierNegotiationPackReportTests
     {
         var toUtc = new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc);
         var fromUtc = toUtc.AddDays(-29);
-        var filters = CreateFilters(fromUtc, toUtc);
+        var filters = CreateFilters(fromUtc, toUtc, supplierId: 11);
         var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
             [CreateSupplierRow(11, "Alpha", "EXPAND", 80m, 82m, 200000m, 400m, fromUtc, toUtc)],
             0,
@@ -51,7 +51,7 @@ public sealed class SupplierNegotiationPackReportTests
     {
         var toUtc = new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc);
         var fromUtc = toUtc.AddDays(-29);
-        var filters = CreateFilters(fromUtc, toUtc);
+        var filters = CreateFilters(fromUtc, toUtc, supplierId: 11);
         var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
             [CreateSupplierRow(11, "Alpha", "EXPAND", 80m, 82m, 200000m, 400m, fromUtc, toUtc)],
             0,
@@ -72,7 +72,7 @@ public sealed class SupplierNegotiationPackReportTests
     {
         var toUtc = new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc);
         var fromUtc = toUtc.AddDays(-29);
-        var filters = CreateFilters(fromUtc, toUtc);
+        var filters = CreateFilters(fromUtc, toUtc, supplierId: 11);
         var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
             [CreateSupplierRow(11, "Alpha", "PRICE_NEGOTIATE", 42m, 43m, 120000m, 310m, fromUtc, toUtc, reasonCodes: ["missing_cost"])],
             0,

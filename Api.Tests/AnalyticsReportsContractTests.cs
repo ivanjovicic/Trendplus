@@ -51,7 +51,7 @@ public sealed class AnalyticsReportsContractTests
     {
         var fromUtc = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);
         var toUtc = new DateTime(2026, 6, 29, 0, 0, 0, DateTimeKind.Utc);
-        var filters = CreateDefaultFilters(fromUtc, toUtc, reportSection: "supplier_negotiation_pack");
+        var filters = CreateDefaultFilters(fromUtc, toUtc, supplierId: 1, reportSection: "supplier_negotiation_pack");
         var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
             [CreateSupplierRow(1, "Alpha", "EXPAND", 82m, 84m, 520000m, 1400m)],
             0,
@@ -743,7 +743,7 @@ public sealed class AnalyticsReportsContractTests
             string.Equals(Convert.ToString(row["value"]), "Alpha", StringComparison.Ordinal));
         Assert.Contains(executiveSummary.Rows, row =>
             string.Equals(Convert.ToString(row["metric"]), "Kapital u riziku", StringComparison.Ordinal) &&
-            string.Equals(Convert.ToString(row["value"]), "435000", StringComparison.Ordinal));
+            string.Equals(Convert.ToString(row["value"]), "435,000.00 RSD", StringComparison.Ordinal));
 
         var topSuppliers = Assert.Single(report.Sections.Where(section => section.Key == "top-suppliers"));
         Assert.Equal(2, topSuppliers.RowCount);
@@ -1074,6 +1074,48 @@ public sealed class AnalyticsReportsContractTests
         Assert.Equal("Paket za razgovor sa dobavljačem", section.Title);
         Assert.True(section.RowCount > 0);
         Assert.Contains(section.Rows, row => string.Equals(Convert.ToString(row.GetValueOrDefault("topic")), "Finalni savet", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void SupplierDecisionReport_AllSuppliersDoesNotExposeNegotiationPack()
+    {
+        var fromUtc = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);
+        var toUtc = new DateTime(2026, 6, 29, 0, 0, 0, DateTimeKind.Utc);
+        var filters = CreateDefaultFilters(fromUtc, toUtc);
+        var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
+            [
+                CreateSupplierRow(1, "Alpha", "EXPAND", 82m, 84m, 520000m, 1400m),
+                CreateSupplierRow(2, "Beta", "HOLD", 74m, 76m, 410000m, 1100m),
+                CreateSupplierRow(3, "Gamma", "PRICE_NEGOTIATE", 63m, 68m, 280000m, 980m)
+            ],
+            0,
+            0,
+            toUtc);
+
+        var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
+        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(summary, dataset, filters);
+
+        Assert.DoesNotContain(report.Sections, section => section.Key == "supplier_negotiation_pack");
+        Assert.DoesNotContain(report.Rows, row => row.Item == "Finalni savet");
+    }
+
+    [Fact]
+    public async Task SupplierDecisionReport_RejectsConflictingScopeAliases()
+    {
+        var result = await SupplierDecisionHubEndpoints.HandleSupplierDecisionReportAsync(
+            new DefaultHttpContext(),
+            configuration: null!,
+            cache: null!,
+            cacheAdmin: null!,
+            loggerFactory: NullLoggerFactory.Instance,
+            refreshStatusService: null!,
+            scope: "all",
+            dataScope: "existing",
+            ct: CancellationToken.None);
+
+        var validation = Assert.IsType<ProblemHttpResult>(result);
+        Assert.Equal(StatusCodes.Status400BadRequest, validation.StatusCode);
+        Assert.Contains("validation", validation.ProblemDetails!.Title ?? string.Empty, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

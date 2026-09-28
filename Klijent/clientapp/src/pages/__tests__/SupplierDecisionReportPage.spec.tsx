@@ -130,6 +130,26 @@ describe("SupplierDecisionReportPage", () => {
     expect(getSupplierDecisionDurableReportMock).not.toHaveBeenCalled();
   });
 
+  it("shows a Serbian validation error when the report period is reversed", () => {
+    renderPage("/analytics/supplier/report?fromDate=2026-06-30&toDate=2026-04-01");
+
+    expect(screen.getByText(/Period \"od\" mora biti pre ili jednak datumu \"do\"/i)).toBeInTheDocument();
+    expect(getSupplierDecisionDurableReportMock).not.toHaveBeenCalled();
+  });
+
+  it("preserves report filters when returning to the supplier scorecard", async () => {
+    getSupplierDecisionDurableReportMock.mockResolvedValueOnce(durableResponse());
+
+    renderPage("/analytics/supplier/report?fromDate=2026-04-01&toDate=2026-06-30&supplierId=7&scope=existing&section=warnings");
+
+    await screen.findByText("report-body");
+
+    expect(screen.getByRole("link", { name: "Vrati se na dobavljače" })).toHaveAttribute(
+      "href",
+      "/analytics/supplier?tab=scorecard&fromDate=2026-04-01&toDate=2026-06-30&scope=existing&supplierId=7&section=warnings"
+    );
+  });
+
   it("shows expired state only for a preview-only URL whose browser snapshot is missing", () => {
     renderPage("/analytics/supplier/report?preview=browser&stateKey=missing");
 
