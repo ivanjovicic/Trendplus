@@ -4,6 +4,9 @@ Updated: 2026-09-28
 Repository: `ivanjovicic/Trendplus`
 Status: canonical planning entry point
 
+Owner claim 2026-09-28: `BCI13` transitioned `READY -> IN_PROGRESS` after current-main refresh, dependency and endpoint-host collision checks; local lock `.ai/task-locks/BCI13-codex.lock.md`.
+Owner completion 2026-09-28: `BCI13` is DONE after the current named-source endpoint host was restored, admin SQL identifier parsing was normalized, and focused endpoint/auth proof passed `36/36` plus `7/7` authorization tests. `BCI14` remains WAITING for a fresh broad-suite residual classification. Run log: `.ai/runs/2026-09-28-BCI13-evidence.md`.
+
 Supplier cohort/trust UX audit 2026-09-28: post-RQ484/RQ486 review kept existing correctness owners RQ474/RQ475/RQ476 and P0 RQ494/RQ495, then registered non-duplicate WAITING RQ498-RQ500 for cross-tab cohort/unit naming, consolidated trust/provenance severity truth, and KPI information hierarchy. No current READY pointer change. Audit: `docs/qa/SUPPLIER_ANALYTICS_COHORT_UX_AUDIT_2026-09-28.md`.
 
 Shoe Type + Daily Sales audit 2026-09-28: current-main review found four residual contracts after the delivered September hardening: certified sales `dataScope` contradicts `SST-ACCURACY-1.0` because endpoints/oracle use article origin instead of sale-header origin; line-level cost snapshots are consumed as article-level minimums; Shoe Type signed share can affect recommendations while the UI hides out-of-0..100 values and still has sort-dependent rank/negative-base “Novo” residuals; Daily shift assignment lacks explicit business-time/source timestamp provenance. Registered `RQ494`-`RQ497` as WAITING with no current READY pointer change. Audit: `docs/qa/SHOE_TYPE_DAILY_SALES_AUDIT_2026-09-28.md`.

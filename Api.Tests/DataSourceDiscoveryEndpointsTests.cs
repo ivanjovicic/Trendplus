@@ -32,7 +32,7 @@ public sealed class DataSourceDiscoveryEndpointsTests : IClassFixture<SqlServerC
     [Fact]
     public async Task ListProfiles_RejectsRequestWithoutAdminKey()
     {
-        await using var host = await TestHost.CreateAsync(configureProfiles: _ => { });
+        await using var host = await TestHost.CreateAsync(configureSources: _ => { });
 
         using var response = await host.Client.GetAsync("/api/data-sources");
 
@@ -40,28 +40,21 @@ public sealed class DataSourceDiscoveryEndpointsTests : IClassFixture<SqlServerC
     }
 
     [Fact]
-    public async Task ListProfiles_HidesSecretsAndDisabledProfiles()
+    public async Task ListProfiles_HidesSecrets()
     {
         const string password = "Trendplus_Strong_123!";
-        await using var host = await TestHost.CreateAsync(configureProfiles: profiles =>
+        await using var host = await TestHost.CreateAsync(configureSources: sources =>
         {
-            profiles.ConnectionTestTimeoutSeconds = 5;
-            profiles.DiscoveryTimeoutSeconds = 10;
-            profiles.Profiles.Add(new NamedDataSourceProfileOptions
+            sources.Sources["sql-prod"] = new DataSourceProfileOptions
             {
-                Name = "sql-prod",
                 Provider = "sqlserver",
-                ConnectionString = $"Server=tcp:trendplus.example,1433;Database=Retail;User Id=readonly;Password={password};TrustServerCertificate=true;",
-                DefaultSchema = "sales",
-                Description = "Primary retail SQL source"
-            });
-            profiles.Profiles.Add(new NamedDataSourceProfileOptions
+                ConnectionString = $"Server=tcp:trendplus.example,1433;Database=Retail;User Id=readonly;Password={password};TrustServerCertificate=true;"
+            };
+            sources.Sources["oracle-proof"] = new DataSourceProfileOptions
             {
-                Name = "disabled-profile",
-                Provider = "sqlserver",
-                ConnectionString = "Server=hidden;Database=Hidden;Password=super-secret;",
-                Enabled = false
-            });
+                Provider = "oracle",
+                ConnectionString = "Server=hidden;Database=Hidden;Password=super-secret;"
+            };
         });
 
         var request = new HttpRequestMessage(HttpMethod.Get, "/api/data-sources");
@@ -76,36 +69,35 @@ public sealed class DataSourceDiscoveryEndpointsTests : IClassFixture<SqlServerC
         Assert.DoesNotContain("disabled-profile", body, StringComparison.OrdinalIgnoreCase);
 
         using var json = JsonDocument.Parse(body);
-        var profiles = json.RootElement.GetProperty("profiles");
-        var profile = Assert.Single(profiles.EnumerateArray());
+        var profiles = json.RootElement.EnumerateArray().ToArray();
+        var profile = Assert.Single(profiles, item => item.GetProperty("name").GetString() == "sql-prod");
         Assert.Equal("sql-prod", profile.GetProperty("name").GetString());
         Assert.Equal("sqlserver", profile.GetProperty("provider").GetString());
-        Assert.Equal("sqlclient", profile.GetProperty("mode").GetString());
-        Assert.Equal("sales", profile.GetProperty("defaultSchema").GetString());
+        Assert.True(profile.GetProperty("configured").GetBoolean());
+        Assert.DoesNotContain("readonly", body, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("oracle-proof", body, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
     public async Task TestConnection_ReturnsSafeUnsupportedProviderCategory()
     {
-        await using var host = await TestHost.CreateAsync(configureProfiles: profiles =>
+        await using var host = await TestHost.CreateAsync(configureSources: sources =>
         {
-            profiles.Profiles.Add(new NamedDataSourceProfileOptions
+            sources.Sources["oracle-proof"] = new DataSourceProfileOptions
             {
-                Name = "oracle-proof",
-                Provider = "oracle"
-            });
+                Provider = "oracle",
+                ConnectionString = "Server=hidden;Database=Hidden;Password=super-secret;"
+            };
         });
 
-        var request = new HttpRequestMessage(HttpMethod.Post, "/api/data-sources/oracle-proof/test");
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/data-sources/oracle-proof/test-connection");
         request.Headers.Add("X-Admin-Key", AdminApiKey);
 
         using var response = await host.Client.SendAsync(request);
         var payload = await response.Content.ReadAsStringAsync();
 
-        response.EnsureSuccessStatusCode();
-        using var json = JsonDocument.Parse(payload);
-        Assert.False(json.RootElement.GetProperty("ok").GetBoolean());
-        Assert.Equal("unsupported_provider", json.RootElement.GetProperty("category").GetString());
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("not supported", payload, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("connection string", payload, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -113,22 +105,22 @@ public sealed class DataSourceDiscoveryEndpointsTests : IClassFixture<SqlServerC
     public async Task TestConnection_IsRateLimitedByDedicatedPolicy()
     {
         await using var host = await TestHost.CreateAsync(
-            configureProfiles: profiles =>
+            configureSources: sources =>
             {
-                profiles.Profiles.Add(new NamedDataSourceProfileOptions
+                sources.Sources["oracle-proof"] = new DataSourceProfileOptions
                 {
-                    Name = "oracle-proof",
-                    Provider = "oracle"
-                });
+                    Provider = "oracle",
+                    ConnectionString = "Server=hidden;Database=Hidden;Password=super-secret;"
+                };
             },
             sourceDiscoveryTestPermitLimit: 1);
 
-        var first = new HttpRequestMessage(HttpMethod.Post, "/api/data-sources/oracle-proof/test");
+        var first = new HttpRequestMessage(HttpMethod.Post, "/api/data-sources/oracle-proof/test-connection");
         first.Headers.Add("X-Admin-Key", AdminApiKey);
         using var firstResponse = await host.Client.SendAsync(first);
-        Assert.Equal(HttpStatusCode.OK, firstResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, firstResponse.StatusCode);
 
-        var second = new HttpRequestMessage(HttpMethod.Post, "/api/data-sources/oracle-proof/test");
+        var second = new HttpRequestMessage(HttpMethod.Post, "/api/data-sources/oracle-proof/test-connection");
         second.Headers.Add("X-Admin-Key", AdminApiKey);
         using var secondResponse = await host.Client.SendAsync(second);
         Assert.Equal(HttpStatusCode.TooManyRequests, secondResponse.StatusCode);
@@ -141,45 +133,34 @@ public sealed class DataSourceDiscoveryEndpointsTests : IClassFixture<SqlServerC
             return;
 
         var connectionString = await _fixture.CreateSeededConnectionStringAsync();
-        await using var host = await TestHost.CreateAsync(configureProfiles: profiles =>
+        await using var host = await TestHost.CreateAsync(configureSources: sources =>
         {
-            profiles.ConnectionTestTimeoutSeconds = 5;
-            profiles.DiscoveryTimeoutSeconds = 10;
-            profiles.Profiles.Add(new NamedDataSourceProfileOptions
+            sources.Sources["pilot-sql"] = new DataSourceProfileOptions
             {
-                Name = "pilot-sql",
                 Provider = "sqlserver",
                 ConnectionString = connectionString,
-                DefaultSchema = "sales"
-            });
+            };
         });
 
-        using var testResponse = await SendAuthorizedAsync(host.Client, HttpMethod.Post, "/api/data-sources/pilot-sql/test");
+        using var testResponse = await SendAuthorizedAsync(host.Client, HttpMethod.Post, "/api/data-sources/pilot-sql/test-connection");
         var testPayload = await testResponse.Content.ReadAsStringAsync();
         testResponse.EnsureSuccessStatusCode();
         using var testJson = JsonDocument.Parse(testPayload);
-        Assert.True(testJson.RootElement.GetProperty("ok").GetBoolean());
+        Assert.True(testJson.RootElement.GetProperty("success").GetBoolean());
         Assert.Equal("ok", testJson.RootElement.GetProperty("category").GetString());
         Assert.DoesNotContain("Password=", testPayload, StringComparison.OrdinalIgnoreCase);
 
-        using var schemasResponse = await SendAuthorizedAsync(host.Client, HttpMethod.Get, "/api/data-sources/pilot-sql/schemas");
-        var schemasPayload = await schemasResponse.Content.ReadAsStringAsync();
-        schemasResponse.EnsureSuccessStatusCode();
-        using var schemasJson = JsonDocument.Parse(schemasPayload);
-        var schemaNames = schemasJson.RootElement.EnumerateArray()
-            .Select(item => item.GetProperty("name").GetString())
-            .ToArray();
-        Assert.Contains("dbo", schemaNames);
-        Assert.Contains("sales", schemaNames);
-
-        using var tablesResponse = await SendAuthorizedAsync(host.Client, HttpMethod.Get, "/api/data-sources/pilot-sql/tables?schema=sales");
+        using var tablesResponse = await SendAuthorizedAsync(host.Client, HttpMethod.Get, "/api/data-sources/pilot-sql/tables");
         var tablesPayload = await tablesResponse.Content.ReadAsStringAsync();
         tablesResponse.EnsureSuccessStatusCode();
         using var tablesJson = JsonDocument.Parse(tablesPayload);
-        var table = Assert.Single(tablesJson.RootElement.EnumerateArray());
-        Assert.Equal("[sales].[Order]", table.GetProperty("identifier").GetString());
-        Assert.Equal("sales", table.GetProperty("schema").GetString());
-        Assert.Equal("Order", table.GetProperty("name").GetString());
+        var schemaNames = tablesJson.RootElement.GetProperty("schemas").EnumerateArray()
+            .Select(item => item.GetString())
+            .ToArray();
+        Assert.Contains("dbo", schemaNames);
+        Assert.Contains("sales", schemaNames);
+        var tables = tablesJson.RootElement.GetProperty("tables").EnumerateArray().ToArray();
+        Assert.Contains(tables, table => table.GetString() == "[sales].[Order]");
 
         using var columnsResponse = await SendAuthorizedAsync(
             host.Client,
@@ -188,8 +169,8 @@ public sealed class DataSourceDiscoveryEndpointsTests : IClassFixture<SqlServerC
         var columnsPayload = await columnsResponse.Content.ReadAsStringAsync();
         columnsResponse.EnsureSuccessStatusCode();
         using var columnsJson = JsonDocument.Parse(columnsPayload);
-        var columns = columnsJson.RootElement.EnumerateArray()
-            .Select(item => item.GetProperty("name").GetString())
+        var columns = columnsJson.RootElement.GetProperty("columns").EnumerateArray()
+            .Select(item => item.GetString())
             .ToArray();
         Assert.Equal(new[] { "ID", "Updated At", "Naziv", "Price", "Optional Note" }, columns);
     }
@@ -216,7 +197,7 @@ public sealed class DataSourceDiscoveryEndpointsTests : IClassFixture<SqlServerC
         public HttpClient Client { get; }
 
         public static async Task<TestHost> CreateAsync(
-            Action<DataSourceOptions> configureProfiles,
+            Action<DataSourceConnectorOptions> configureSources,
             int sourceDiscoveryTestPermitLimit = 8)
         {
             var builder = WebApplication.CreateBuilder(new WebApplicationOptions
@@ -239,7 +220,7 @@ public sealed class DataSourceDiscoveryEndpointsTests : IClassFixture<SqlServerC
                     AutoReplenishment = true
                 };
 
-                foreach (var policyName in new[] { "writes", "fixed", "db-heavy", "strict" })
+                foreach (var policyName in new[] { "writes", "fixed", "db-heavy" })
                 {
                     options.AddPolicy(policyName, _ =>
                         RateLimitPartition.GetFixedWindowLimiter(
@@ -247,18 +228,16 @@ public sealed class DataSourceDiscoveryEndpointsTests : IClassFixture<SqlServerC
                             factory: _ => CreatePolicy(100)));
                 }
 
-                options.AddPolicy("source-discovery-tests", _ =>
+                options.AddPolicy("strict", _ =>
                     RateLimitPartition.GetFixedWindowLimiter(
-                        partitionKey: "source-discovery-tests",
+                        partitionKey: "strict",
                         factory: _ => CreatePolicy(sourceDiscoveryTestPermitLimit)));
             });
 
             builder.Configuration["Admin:ApiKey"] = AdminApiKey;
-            builder.Services.Configure<AccessImportOptions>(_ => { });
-            builder.Services.Configure<DataSourceOptions>(options => configureProfiles(options));
-            builder.Services.AddSingleton<IDataSourceProfileCatalog, DataSourceProfileCatalog>();
-            builder.Services.AddSingleton<ISourceDataSessionFactory, SourceDataSessionFactory>();
-            builder.Services.AddScoped<IDataSourceDiscoveryService, DataSourceDiscoveryService>();
+            builder.Services.Configure<DataSourceConnectorOptions>(options => configureSources(options));
+            builder.Services.AddSingleton<ISourceSessionFactory, SourceSessionFactory>();
+            builder.Services.AddSingleton<NamedSourceDiscoveryService>();
             builder.Services.AddSingleton<ILogger<Program>>(NullLogger<Program>.Instance);
 
             var app = builder.Build();

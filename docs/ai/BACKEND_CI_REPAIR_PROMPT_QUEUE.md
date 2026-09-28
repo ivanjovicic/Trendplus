@@ -112,13 +112,14 @@ The latest broad backend run still fails `AnalyticsScreenCacheKeyContractTests.C
 
 ## BCI13 - Repair endpoint test-host wiring without weakening auth contracts
 
-Status: READY
+Status: DONE
 Ready after: BCI11 and BCI12 focused deterministic drifts are closed or explicitly proven unrelated  
 Priority: P0  
 Type: backend/tests/test-host  
 Feature family: backend-ci-endpoint-host-isolation  
 Parallel-safe: no  
-Owner: unassigned  
+Owner: Codex
+Local lock: removed after done close
 Commit suggestion: `test(ci): repair endpoint host isolation`
 
 ### Problem
@@ -136,6 +137,36 @@ The current broad suite still shows clustered failures in `DataSourceDiscoveryEn
 - Discovery/Admin/Demo endpoint tests exercise the intended contract instead of failing during host construction.
 - Wrong/missing admin keys still fail.
 - Secrets/raw connection strings remain absent from responses/logs.
+
+### Completion note
+
+- Date: 2026-09-28
+- Status: DONE
+- Completion: repaired the named-source endpoint test host against the current `NamedSourceDiscoveryService` contract and normalized bracketed SQL Server identifiers in the admin discovery parser.
+- Changed files:
+  - `Api.Tests/DataSourceDiscoveryEndpointsTests.cs`
+  - `Api/Endpoints/AdminDataSourceEndpoints.cs`
+  - `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
+  - `MASTER_ROADMAP.md`
+  - `.ai/runs/2026-09-28-BCI13-evidence.md`
+- Contract/runtime behavior changed: admin discovery now returns schema/table matching that is consistent for quoted SQL Server identifiers; test-only named-source host wiring now binds the current provider-neutral discovery service and routes.
+- Checks run:
+  - `dotnet build Api.Tests/Api.Tests.csproj --configuration Release --no-restore` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --configuration Release --no-build --filter "FullyQualifiedName~DataSourceDiscoveryEndpointsTests|FullyQualifiedName~AdminDataSourceEndpointsTests|FullyQualifiedName~DemoEnvironmentVerificationEndpointTests"` - pass (`36 passed / 0 failed / 0 skipped`)
+  - `dotnet test Api.Tests/Api.Tests.csproj --configuration Release --no-build --filter "FullyQualifiedName~DataSourceDiscoveryAuthorizationTests"` - pass (`7 passed / 0 failed / 0 skipped`)
+  - `git diff --check` - pass
+  - governance validators - pass
+- Checks not run:
+  - fresh broad GitHub Actions backend suite - not run locally; it is the next BCI14 gate after this focused repair
+- Run log: `.ai/runs/2026-09-28-BCI13-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending push/verification
+- Missed: fresh broad backend-suite re-entry; owned by BCI14 after endpoint-host repair
+- Follow-up: BCI14 remains WAITING until a fresh broad suite identifies the residual provider/order-isolation set
+- Residual risk: focused endpoint/auth proof is green, but the broad CI gate remains unresolved by design
+- Prompt defect / scope repair: the legacy endpoint test host and assertions targeted the superseded `IDataSourceDiscoveryService`/`DataSourceOptions` API; they were updated to the current `NamedSourceDiscoveryService` contract, and one proven same-owner parser defect was repaired.
 
 ---
 
@@ -170,4 +201,5 @@ Run `36270728235` still contained failures across Access import FK guards, lost-
 
 ## Expected transition  1. `BCI01` is `PARTIAL` with GHA proof that restore/build succeed and the test step runs. 2. `BCI04` is `DONE`; remaining failures are owned by focused repair prompts. 3. `BCI02` is `DONE`; coverage/artifact cascade no longer invents secondary root causes. 4. `BCI03` is `DONE`; canonical backend filter + available SDK pins + pin regression check. 5. Promote BCI01 to `DONE` only after a GHA run has restore + build + test step all successful. 6. If later current-main evidence turns red again, use `BCI10` rather than reopening bootstrap-era prompts.
 # Current READY prompt (authoritative, 2026-09-27): `BCI13`. The historical inline pointer in the original single-line header is superseded by this routing correction; `BCI11` and `BCI12` are DONE and `BCI10` remains PARTIAL.
+# Current READY prompt (authoritative, 2026-09-28): `none`. `BCI13` is DONE; `BCI14` remains WAITING for a fresh broad-suite residual classification.
 

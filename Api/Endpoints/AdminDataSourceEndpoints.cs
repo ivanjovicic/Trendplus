@@ -684,11 +684,10 @@ public static class AdminDataSourceEndpoints
         if (string.IsNullOrWhiteSpace(tableReference))
             return null;
 
-        var parts = tableReference.Split('.', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (parts.Length != 2)
+        if (!SqlServerIdentifier.TryParseTable(tableReference, out var schema, out var table, out _))
             return null;
 
-        return (parts[0], parts[1]);
+        return (schema, table);
     }
 
     private sealed record NamedDataSourceProfile(string Name, string Provider, string? ConnectionString, string? DisplayName)
