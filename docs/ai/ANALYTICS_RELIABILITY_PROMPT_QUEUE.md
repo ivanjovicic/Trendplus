@@ -2,7 +2,8 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ483
+Current READY prompt: RQ467
+Owner completion 2026-09-28: `RQ483` moved READY → IN_PROGRESS → DONE and was delivered directly to `main` in `43f2a73fc82d245c53c16903cd06b311a7bfcbe7`. Product Decision now measures last-sale age from the requested period end, bounds the last-sale query to that period, admits zero-sales stock into a non-actionable stale review path, supports new-product and MinStock 0/null replenishment candidates with reduced confidence, keeps lost-sales/slow-stock capital unavailable rather than zero when required evidence is missing, and exposes one threshold policy with provenance plus `article_size` grain metadata. Focused proof: 30/30; backend build passed. RQ472 journal gate/actionability was intentionally untouched. Run log: `.ai/runs/2026-09-28-RQ483-evidence.md`. Evidence state: synchronized. Next primary READY is `RQ467`; `RQ483` is DONE.
 Owner completion 2026-09-28: `RQ486` moved READY → IN_PROGRESS → DONE and was delivered directly to `main` in `966939e53c585221fcde27550ca0c76ba33e9d76`. Supplier trust metadata is keyed to the active request, invalid date ranges do not request data, stores carry page scope and duplicate labels expose stable IDs, unknown URL suppliers remain visible with an explicit message, filter layout wraps, local dates are preserved, sorting is pure and revenue rank badges are conditional. Focused proof: 55/55; guardrails/typecheck and production build pass. Run log: `.ai/runs/2026-09-28-RQ486-evidence.md`. Evidence state: synchronized. Next primary READY is `RQ483`; `RQ467` remains independently READY.
 Owner promotion/claim/completion 2026-09-28: `RQ484` moved READY → IN_PROGRESS → DONE and was delivered directly to `main` in `ded6bfc1600ad98813227076876c3073e23807a0`. Supplier-only recommendation policy now treats missing nivelacija evidence as a reason plus confidence reduction for sales/trend/margin decisions, keeps price-event claims fail-closed, preserves unknown suppliers as `do_not_trust`, computes page readiness over known suppliers and applies the revenue-based `<15%` / `15–<25%` / `≥25%` gate. Focused proof: 64/64; backend build passed. Live PostgreSQL integration proof was not run because no isolated test database was assigned. Run log: `.ai/runs/2026-09-28-RQ484-evidence.md`. Evidence state: synchronized. Next primary READY is `RQ483`; `RQ467` remains independently READY.
 Owner promotion/claim/completion 2026-09-28: `RQ466` moved READY → IN_PROGRESS → DONE in this workspace after the previous Pilot intake frontend delivery. The backend now validates scope, applies the requested scope to article/sales/store counts, uses the requested half-open health window, keeps unknown refresh time null, emits only count-backed actions, supports `refresh=true` cache bypass and logs safe report failures. Implementation: `e2d47788`. Focused proof: health 10/10, report contracts 52/52, API build passed. Run log: `.ai/runs/2026-09-28-RQ466-evidence.md`. Evidence state: synchronized. The primary READY pointer advances to `RQ486`; `RQ484` and `RQ483` remain independently READY.
@@ -1739,7 +1740,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ474 | WAITING | supplier-overview-error-empty-contract | Separate Supplier overview failure, empty and retry states |
 | RQ475 | WAITING | supplier-analytics-schema-readiness | Make Supplier scorecard/assortment semantic-data readiness operationally actionable |
 | RQ476 | WAITING | supplier-share-denominator-contract | Unify Supplier raw API, display, recommendation and export share semantics |
-| RQ483 | READY | pdc-decision-rule-reachability | Make Product Decision rules reachable, measured from the period end and driven by one explainable threshold policy |
+| RQ483 | DONE | pdc-decision-rule-reachability | Make Product Decision rules reachable, measured from the period end and driven by one explainable threshold policy |
 | RQ484 | DONE | operations-recommendation-gate-policy | Apply the approved Operations recommendation gate policy for nivelacija evidence and the unknown bucket |
 | RQ485 | WAITING | pdc-page-state-hygiene | Product Decision page hygiene: duplicate header block, URL state, deterministic sorting and local dates |
 | RQ486 | DONE | supplier-shell-overview-hygiene | Supplier page shell and overview hygiene: trust header, date validation, stores, layout, sorting and badges |
@@ -26567,7 +26568,7 @@ Every Pulse item opens the evidence surface that owns its decision, users see un
 
 ## RQ483 - Make Product Decision rules reachable, measured from the period end and driven by one explainable threshold policy
 
-Status: READY
+Status: DONE
 Priority: P2
 Type: backend/tests
 Feature family: pdc-decision-rule-reachability
@@ -26576,6 +26577,8 @@ Owner: Analytics Reliability / Product Decision
 Local lock: `.ai/task-locks/RQ483-<agent>.lock.md`
 Commit suggestion: `fix(analytics): make product decision rules reachable`
 Source: `PS04` in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-25.md` (residual business-rule task; de-dup 2026-09-28). Scope rewritten 2026-09-28 after the owner decision below (approved with changes).
+
+Completion 2026-09-28: Delivered to `main` in `43f2a73fc82d245c53c16903cd06b311a7bfcbe7`. The backend Product Decision rules now use period-end freshness and a single owner-approved threshold policy with provenance; stale zero-sales stock is a `WATCH` review candidate with `stale_no_sale_review`, DO_NOT_ORDER requires the stronger no-sale evidence, positive/new-product sampling remains policy-gated, MinStock 0/null uses velocity and stock-cover evidence with `lostSalesEstimate=null`, and missing cost leaves slow-stock capital null. Product rows are explicitly `article_size` grain, so a slow size does not mark a model family. RQ472 journal gate/actionability was not changed. Run log: `.ai/runs/2026-09-28-RQ483-evidence.md`; Evidence state: synchronized.
 
 Status note (2026-09-28): the owner decision removed the threshold sign-off blocker. The earlier `RQ472` dependency was about observability only. `RQ472` (WAITING, itself gated on an owner journal-signal approval) keeps ownership of the journal gate and recommendation actionability. The hard-coded `HasCompleteJournal: false` (`CachedAnalyticsEndpoints.cs:8156`) only adds `opening_stock_unavailable` and lowers data quality/allowance (`:6218-6261`); it does not overwrite the helper's status classification. This prompt's rules are therefore provable at helper/builder level now. No READY/IN_PROGRESS prompt owns these files. Do not change the journal gate here. If `RQ472` is promoted while this prompt is active, sequence the two by lock/claim (same builder file).
 
