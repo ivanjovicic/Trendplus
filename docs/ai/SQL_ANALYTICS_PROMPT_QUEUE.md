@@ -1064,6 +1064,13 @@ visible to the API connection; the repository SQL already declares the column,
 so the remaining proof/fix is applying and verifying the view/migration on the
 live analytics database.
 
+### 2026-09-28 direct-screen evidence addendum
+
+- Same-day production audit reused from the Supplier/Products live pass confirms the same `/api/analytics/vendor-sales-nivelacija` endpoint used by `/analytics/nivelacije-pre-post` still returns `vendor_sales_nivelacija_contract_missing` because the live view contract lacks `change_percent_revenue_semantic`. This is a direct Pre/Post availability problem, not only a Supplier-assortment symptom.
+- The handler checks `vw_vendor_sales_nivelacija.change_percent_revenue_semantic` **before** choosing the scoped raw-fact SQL path. Therefore `storeId` / non-`all` requests can also fail solely because the view contract is absent even when `BuildVendorSalesNivelacijaScopedSourceSql()` could otherwise compute the rows.
+- Do not create an unproven fallback. When Q83 resumes, prove whether the view gate is semantically required for the scoped path. A scoped path may bypass the view check only if focused tests prove the same revenue-baseline/nullability contract, fail-closed states and provenance; otherwise retain the gate and document the dependency.
+- The separate DUG/KOREKCIJA receipt-population mismatch is registered as RQ490 and must coordinate with Q83's exclusive SQL ownership rather than editing these files concurrently.
+
 ### Scope only
 
 - `Api/Endpoints/AllEndpoints.cs` vendor-sales-nivelacija raw SQL and reader mapping
