@@ -2,7 +2,7 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ495
+Current READY prompt: none
 Owner promotion/claim 2026-09-28: idle recovery confirmed `RQ494` is the highest-priority dependency-complete operations accuracy prompt after RQ445/RQ446/RQ456/RQ457/RQ484 completion; no active lock/branch/PR owner overlaps its sales-header dataScope scope, and Q83 is `PARTIAL` without an active repo-local lock. `RQ494` moved WAITING -> READY -> IN_PROGRESS in this workspace; local lock `.ai/task-locks/RQ494-codex.lock.md`.
 Owner completion 2026-09-29: `RQ494` moved IN_PROGRESS -> DONE and was delivered directly to `main` in `84b6ea26450aaf77341ccf37c47efe5fac83246f`. Certified sales `dataScope` now follows `ProdajaZaglavlje.DataOrigin` across Daily, Supplier, Shoe Type, Color/detail/data-window and the independent Supplier/Shoe oracle; metadata exposes `sale_header.data_origin`, and the adversarial header/article-origin fixture is covered. Focused backend proof: 24/24; Supplier/Shoe contract suite: 40 passed, 5 PostgreSQL integration tests skipped because no connection string was available; frontend schema: 15/15; guardrails/typecheck/build pass. Run log: `.ai/runs/2026-09-29-RQ494-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-29: idle recovery verified `RQ494` DONE on current `origin/main`, no active lock/branch/PR owner overlaps the line-level snapshot-cost path, and `RQ495` is dependency-complete and collision-safe; `RQ495` moved WAITING -> READY -> IN_PROGRESS in this workspace. Local lock `.ai/task-locks/RQ495-codex.lock.md`.
