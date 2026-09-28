@@ -983,10 +983,11 @@ export async function getDecisionBoardAggregate(options?: {
   );
 }
 
-export async function getStores(useCached = true): Promise<AnalyticsArrayWithMeta<StoreOption>> {
+export async function getStores(useCached = true, dataScope?: string | null): Promise<AnalyticsArrayWithMeta<StoreOption>> {
+  const params = dataScope ? new URLSearchParams({ dataScope }) : undefined;
   return fetchJson<AnalyticsArrayWithMeta<StoreOption>>(
     useCached ? "/api/analytics/cached/filters/stores" : "/api/analytics/filters/stores",
-    undefined,
+    params,
     "Greska pri ucitavanju prodavnica",
     attachFilterFallbackMeta
   );

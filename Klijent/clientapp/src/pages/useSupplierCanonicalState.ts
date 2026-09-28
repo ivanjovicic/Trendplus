@@ -85,7 +85,6 @@ export function useSupplierCanonicalState() {
           return current;
         }
         next.set("dataScope", nextScope);
-        next.delete("supplierId");
         return next;
       }, { replace: true });
     };
@@ -150,7 +149,6 @@ export function useSupplierCanonicalState() {
   const setCanonicalDataScope = (value: string) => {
     updateParams((next) => {
       next.set("dataScope", normalizeDataScope(value));
-      next.delete("supplierId");
     });
   };
 
@@ -158,7 +156,6 @@ export function useSupplierCanonicalState() {
     updateParams((next) => {
       if (value) next.set("storeId", value);
       else next.delete("storeId");
-      next.delete("supplierId");
     });
   };
 

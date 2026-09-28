@@ -9,6 +9,7 @@ import {
   getDecisionBoardAggregate,
   getDashboardBootstrap,
   getSizeCurve,
+  getStores,
   invalidateAnalyticsCache,
   updateAnalyticsActionOutcome,
 } from "../analyticsApi";
@@ -16,6 +17,21 @@ import { getColorSalesStats } from "../colorSalesStatsApi";
 import { AnalyticsResponseValidationError } from "../../validation/analyticsResponseValidation";
 
 describe("analytics API contract requests", () => {
+  it("requests stores within the active data scope", async () => {
+    let receivedUrl: URL | null = null;
+
+    server.use(
+      rest.get("/api/analytics/cached/filters/stores", (req, res, ctx) => {
+        receivedUrl = req.url;
+        return res(ctx.status(200), ctx.json([{ storeId: 7, storeName: "Komision" }]));
+      }),
+    );
+
+    await getStores(true, "imported");
+
+    expect(receivedUrl?.searchParams.get("dataScope")).toBe("imported");
+  });
+
   it("preserves alert size-curve SKU, store and size identity in the request", async () => {
     let receivedUrl: URL | null = null;
 

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import React, { useEffect } from "react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import SupplierConsolidatedPage from "../SupplierConsolidatedPage";
-import { getSupplierFilters } from "../../services/analyticsApi";
+import { getStores, getSupplierFilters } from "../../services/analyticsApi";
 
 vi.mock("../../services/analyticsApi", () => ({
   getStores: vi.fn().mockResolvedValue([]),
@@ -153,7 +153,7 @@ describe("SupplierConsolidatedPage", () => {
     });
   });
 
-  it("requests supplier filters with canonical dataScope and clears invalid supplier selection", async () => {
+  it("requests supplier filters with canonical dataScope and preserves an unavailable URL supplier", async () => {
     vi.mocked(getSupplierFilters).mockResolvedValue([
       { supplierId: 202, supplierName: "Dobavljač B" },
     ] as Awaited<ReturnType<typeof getSupplierFilters>>);
@@ -175,7 +175,26 @@ describe("SupplierConsolidatedPage", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByRole("combobox", { name: /Dobavljač/i })).toHaveValue("");
+      expect(screen.getByRole("combobox", { name: /Dobavljač/i })).toHaveValue("101");
+      expect(screen.getByText("Dobavljač nije u izabranom periodu/opsegu.")).toBeInTheDocument();
+    });
+  });
+
+  it("disambiguates duplicate store names with their stable ids", async () => {
+    vi.mocked(getStores).mockResolvedValue([
+      { storeId: 12, storeName: "Komision", city: "Gospodska 6", region: "N/A" },
+      { storeId: 34, storeName: "Komision", city: "Gospodska 6", region: "N/A" },
+    ]);
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier?dataScope=existing"]}>
+        <SupplierConsolidatedPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("option", { name: "Komision (Gospodska 6, N/A) [ID 12]" })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "Komision (Gospodska 6, N/A) [ID 34]" })).toBeInTheDocument();
     });
   });
 

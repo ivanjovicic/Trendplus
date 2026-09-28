@@ -36,7 +36,7 @@ import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyti
 import { dataScopeLabel, getDataScope, normalizeDataScope, type DataScope } from "../utils/dataScope";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
 import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange, formatDate } from "../utils/analyticsFormatters";
-import { toInclusiveCalendarDate, toUtcDateOnlyExclusive } from "../utils/analyticsDateRanges";
+import { toCalendarDate, toInclusiveCalendarDate, toUtcDateOnlyExclusive } from "../utils/analyticsDateRanges";
 import { formatMetricDisplayValue } from "../utils/analyticsMetricValue";
 import { buildSupplierSalesStatsTrustProjection } from "../utils/supplierSalesStatsTrust";
 import { recommendationReasonLabel } from "../utils/canonicalRecommendationSemantics";
@@ -181,10 +181,8 @@ function toUtcRange(fromDate: string, toDate: string): { fromDate: string; toDat
   };
 }
 
-function toDateOnly(value: string): string {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value.slice(0, 10);
-  return parsed.toISOString().slice(0, 10);
+export function toDateOnly(value: string): string {
+  return toCalendarDate(value) ?? value.slice(0, 10);
 }
 
 type SupplierRevenueRow = Pick<SupplierSalesStat, "dobavljacNaziv" | "ukupanPromet">;
@@ -297,18 +295,6 @@ function displayStatusLabel(status: DecisionStatus): string {
   return "Nedovoljno podataka";
 }
 
-function displaySignalLabel(
-  status: DecisionStatus,
-  reliabilityAvailable: boolean,
-  dataQualityStatus: RecommendationQualityStatus,
-): string {
-  if (status === "insufficient_data") return "Nedovoljno podataka";
-  if (!reliabilityAvailable || dataQualityStatus === "insufficient_data" || dataQualityStatus === "critical") {
-    return "Pomoćni signal";
-  }
-
-  return displayStatusLabel(status);
-}
 function trendClass(value: number | null | undefined): string {
   if (value == null || !Number.isFinite(value)) return "trend-neutral";
   if (value > 0) return "trend-up";
@@ -319,16 +305,6 @@ function trendClass(value: number | null | undefined): string {
 function formatEffectivePeriodLabel(fromDate?: string | null, toDate?: string | null): string | null {
   if (!fromDate || !toDate) return null;
   return `${formatDate(fromDate)} - ${formatDate(toDate)}`;
-}
-
-function toCalendarDate(value: string | null | undefined): string | null {
-  const trimmed = value?.trim() ?? "";
-  if (!trimmed) return null;
-  // Date-only values and UTC/unzoned timestamps carry the calendar date in their first 10 characters;
-  // `2026-06-30T23:59:59Z` must stay 30.06., not become 01.07. in a UTC+ browser.
-  if (/^\d{4}-\d{2}-\d{2}(?:[T ][0-9:.]*Z?)?$/i.test(trimmed)) return trimmed.slice(0, 10);
-  const parsed = new Date(trimmed);
-  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10);
 }
 
 function formatCalendarDate(value: string): string {
@@ -599,9 +575,10 @@ function normalizeName(value: string | null | undefined): string {
   return (value ?? "").trim().toUpperCase();
 }
 
-function buildStoreLabel(store: StoreOption): string {
+function buildStoreLabel(store: StoreOption, duplicateNames: ReadonlySet<string> = new Set()): string {
   const extras = [store.city, store.region].filter(Boolean).join(", ");
-  return extras ? `${store.storeName} (${extras})` : store.storeName;
+  const baseLabel = extras ? `${store.storeName} (${extras})` : store.storeName;
+  return duplicateNames.has(store.storeName) ? `${baseLabel} [ID ${store.storeId}]` : baseLabel;
 }
 
 export function buildDecisionSuppliers(data: SupplierSalesStatsResponse | null | undefined): DecisionSupplier[] {
@@ -877,6 +854,11 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
   });
 
   const [stores, setStores] = useState<StoreOption[]>([]);
+  const duplicateStoreNames = useMemo(() => {
+    const counts = new Map<string, number>();
+    stores.forEach((store) => counts.set(store.storeName, (counts.get(store.storeName) ?? 0) + 1));
+    return new Set([...counts.entries()].filter(([, count]) => count > 1).map(([name]) => name));
+  }, [stores]);
   const [data, setData] = useState<SupplierSalesStatsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -960,7 +942,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
   useEffect(() => {
     const loadStores = async () => {
       try {
-        const items = await getStores(true);
+        const items = await getStores(true, activeDataScope);
         setStores(items);
       } catch {
         // Preserve the last known store list on transient failures instead of faking an empty filter set.
@@ -968,9 +950,10 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     };
 
     void loadStores();
-  }, []);
+  }, [activeDataScope]);
 
   const load = useCallback(async (filters: ActiveFilters, signal?: AbortSignal) => {
+    if (invalidRange) return;
     const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
@@ -999,7 +982,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       setLoading(false);
       setError(reason instanceof Error ? reason.message : "Greška pri učitavanju podataka o dobavljačima.");
     }
-  }, [activeDataScope]);
+  }, [activeDataScope, invalidRange]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -1298,7 +1281,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
 
   useEffect(() => {
     if (!embedded || !onTrustMetadataChange) return;
-    if (!data) {
+    if (!data || loading) {
       onTrustMetadataChange(null);
       return;
     }
@@ -1333,6 +1316,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     activeFilters.toDate,
     data,
     embedded,
+    loading,
     onTrustMetadataChange,
     trustDataFreshnessStatus,
     trustDataQualityStatus,
@@ -1568,7 +1552,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     p.set("dataScope", activeDataScope);
     p.set("includeUnknown", includeUnknown ? "true" : "false");
     if (focus) p.set("focus", focus); else p.delete("focus");
-    p.delete("supplierId");
+    if (focusSupplierId) p.set("supplierId", focusSupplierId); else p.delete("supplierId");
     setSearchParams(p, { replace: true });
   };
 
@@ -1583,15 +1567,13 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
   };
 
   const handleSort = (field: SortField) => {
-    setSortField((previousField) => {
-      if (previousField === field) {
-        setSortDir((previousDir) => (previousDir === "asc" ? "desc" : "asc"));
-        return previousField;
-      }
+    if (sortField === field) {
+      setSortDir((previousDir) => (previousDir === "asc" ? "desc" : "asc"));
+      return;
+    }
 
-      setSortDir(field === "dobavljacNaziv" ? "asc" : "desc");
-      return field;
-    });
+    setSortField(field);
+    setSortDir(field === "dobavljacNaziv" ? "asc" : "desc");
   };
 
   const handleIncludeUnknownChange = (value: boolean) => {
@@ -1624,8 +1606,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     [activeDataScope, activeFilters.fromDate, activeFilters.toDate, data?.suppliers?.length, visibleSuppliers.length],
   );
 
-  const controlBarFields = useMemo<AnalyticsControlBarField[]>(
-    () => [
+  const controlBarFields: AnalyticsControlBarField[] = [
       {
         key: "preset",
         label: "Period",
@@ -1706,7 +1687,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
             <option value="">Svi objekti</option>
             {stores.map((store) => (
               <option key={store.storeId} value={store.storeId}>
-                {buildStoreLabel(store)}
+                {buildStoreLabel(store, duplicateStoreNames)}
               </option>
             ))}
           </select>
@@ -1726,20 +1707,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
           </label>
         ),
       },
-    ],
-    [
-      commitFilters,
-      data?.sezone,
-      fromDate,
-      handleSeasonChange,
-      includeUnknown,
-      periodPreset,
-      sezonaId,
-      storeId,
-      stores,
-      toDate,
-    ],
-  );
+    ];
   const popTrendSortMarker = sortMarker("popRevenueChangePct", sortField, sortDir);
   const popTrendTooltip = analyticsMetricDescriptions.popRevenueChangePct;
 
@@ -1796,7 +1764,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
         />
       ) : null}
 
-      {invalidRange ? (
+      {invalidRange && !embedded ? (
         <div className="supplier-decision-message error" role="alert">Datum 'od' ne može biti posle datuma 'do'.</div>
       ) : null}
       {showBlockingError ? (
@@ -2173,7 +2141,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                     ) : (
                       visibleSuppliers.map((supplier, index) => {
                         const rowKey = supplierKey(supplier);
-                        const rank = index + 1;
+                        const rank = sortField === "ukupanPromet" ? index + 1 : null;
                         const isExpanded = expandedSupplierKey === rowKey;
                         const popMetric = describePopMetric(supplier);
                         const contributionVsRevenueMismatch = !supplier.isUnknown
@@ -2194,12 +2162,14 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                               supplier.isUnknown ? "supplier-unknown-row" : "",
                               contributionVsRevenueMismatch ? "supplier-mismatch-row" : "",
                               highContributionLowRevenue ? "supplier-high-profit-row" : "",
-                              rank <= 3 ? `supplier-rank-row supplier-rank-row-${rank}` : "",
+                              rank != null && rank <= 3 ? `supplier-rank-row supplier-rank-row-${rank}` : "",
                             ].filter(Boolean).join(" ")}
                           >
                             <td>
                               <div className="supplier-name-cell">
-                                <span className={`supplier-rank-badge ${rank <= 3 ? `rank-${rank}` : "rank-other"}`}>#{rank}</span>
+                                {rank != null ? (
+                                  <span className={`supplier-rank-badge ${rank <= 3 ? `rank-${rank}` : "rank-other"}`}>#{rank}</span>
+                                ) : null}
                                 {supplier.isUnknown ? (
                                   <span
                                     className="supplier-unknown-label"

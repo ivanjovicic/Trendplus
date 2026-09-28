@@ -6,6 +6,18 @@ export function toUtcDateOnlyExclusive(dateOnly: string): string {
   return parsed.toISOString();
 }
 
+/** Preserve a date-only value's calendar day; convert zoned timestamps to UTC calendar dates. */
+export function toCalendarDate(value: string | null | undefined): string | null {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed) return null;
+  const datePrefix = trimmed.match(/^(\d{4}-\d{2}-\d{2})(?:$|[T ])/);
+  if (datePrefix && !/[zZ]|[+-]\d{2}:?\d{2}$/.test(trimmed)) return datePrefix[1];
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10);
+}
+
 /** Convert an exclusive UTC endpoint back to the last included calendar date for display. */
 export function toInclusiveCalendarDate(exclusiveUtc: string | null | undefined): string | null {
   const value = exclusiveUtc?.trim() ?? "";

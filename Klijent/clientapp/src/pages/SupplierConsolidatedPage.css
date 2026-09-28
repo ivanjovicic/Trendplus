@@ -46,7 +46,7 @@
 
 .supplier-consolidated-filters {
   display: grid;
-  grid-template-columns: repeat(6, minmax(130px, 1fr)) auto;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
   gap: 0.75rem;
   align-items: end;
   position: sticky;
@@ -143,6 +143,14 @@
   padding: 0.45rem 0.65rem;
 }
 
+.supplier-consolidated-field select {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .supplier-consolidated-check {
   display: flex;
   align-items: center;
@@ -230,6 +238,10 @@
 .supplier-consolidated-filter-note--stale {
   border-left: 3px solid var(--warning, #f59e0b);
   padding-left: 0.55rem;
+}
+
+.supplier-consolidated-filter-note--missing {
+  color: var(--text-secondary);
 }
 
 /* Tab Navigation */

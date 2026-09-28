@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getStores, getSupplierFilters } from "../services/analyticsApi";
 import { getSezone } from "../services/sezoneApi";
@@ -73,9 +73,10 @@ const legacyContextMessages: Record<string, string> = {
   "operations-supplier-footwear": "Kompatibilna veza iz Operacija otvorila je glavni Pregled dobavljača, tab Asortiman. Aktivna navigacija prati ovaj glavni ekran.",
 };
 
-function buildStoreLabel(store: StoreOption): string {
+function buildStoreLabel(store: StoreOption, duplicateNames: ReadonlySet<string> = new Set()): string {
   const extras = [store.city, store.region].filter(Boolean).join(", ");
-  return extras ? `${store.storeName} (${extras})` : store.storeName;
+  const baseLabel = extras ? `${store.storeName} (${extras})` : store.storeName;
+  return duplicateNames.has(store.storeName) ? `${baseLabel} [ID ${store.storeId}]` : baseLabel;
 }
 
 export default function SupplierConsolidatedPage() {
@@ -86,8 +87,8 @@ export default function SupplierConsolidatedPage() {
   const [supplierFiltersWarning, setSupplierFiltersWarning] = useState<string | null>(null);
   const [supplierFiltersStale, setSupplierFiltersStale] = useState(false);
   const suppliersRef = useRef(suppliers);
-  const [trustPayload, setTrustPayload] = useState<SupplierTrustHeaderPayload | null>(null);
-  const didInitTrustResetRef = useRef(false);
+  const [trustState, setTrustState] = useState<{ key: string; payload: SupplierTrustHeaderPayload | null }>({ key: "", payload: null });
+  const [supplierFiltersLoaded, setSupplierFiltersLoaded] = useState(false);
   suppliersRef.current = suppliers;
   const {
     currentTab,
@@ -108,8 +109,45 @@ export default function SupplierConsolidatedPage() {
     resetFilters,
   } = useSupplierCanonicalState();
 
+  const trustRequestKey = useMemo(
+    () => [
+      currentTab,
+      canonicalFilters.fromDate,
+      canonicalFilters.toDate,
+      canonicalFilters.dataScope,
+      canonicalFilters.storeId ?? "",
+      canonicalFilters.supplierId ?? "",
+      canonicalFilters.category ?? "",
+      canonicalFilters.gender ?? "",
+      canonicalFilters.seasonId ?? "",
+      canonicalFilters.minRevenue ?? "",
+      canonicalFilters.onlyHighConfidence ? "1" : "0",
+      canonicalFilters.excludeOosBeforeMarkdown ? "1" : "0",
+    ].join("|"),
+    [canonicalFilters, currentTab],
+  );
+  const trustRequestKeyRef = useRef("");
+  trustRequestKeyRef.current = trustRequestKey;
+  const trustPayload = trustState.key === trustRequestKey ? trustState.payload : null;
+  const handleTrustMetadataChange = useCallback(
+    (payload: SupplierTrustHeaderPayload | null) => setTrustState({ key: trustRequestKeyRef.current, payload }),
+    [],
+  );
+  const duplicateStoreNames = useMemo(() => {
+    const counts = new Map<string, number>();
+    stores.forEach((store) => counts.set(store.storeName, (counts.get(store.storeName) ?? 0) + 1));
+    return new Set([...counts.entries()].filter(([, count]) => count > 1).map(([name]) => name));
+  }, [stores]);
+  const supplierSelectionMissing = supplierFiltersLoaded
+    && !supplierFiltersStale
+    && canonicalFilters.supplierId != null
+    && !suppliers.some((supplier) => String(supplier.supplierId) === String(canonicalFilters.supplierId));
+
   const selectedStoreLabel = canonicalFilters.storeId
-    ? stores.find((store) => String(store.storeId) === String(canonicalFilters.storeId))?.storeName ?? "Izabrani objekat"
+    ? (() => {
+      const selected = stores.find((store) => String(store.storeId) === String(canonicalFilters.storeId));
+      return selected ? buildStoreLabel(selected, duplicateStoreNames) : "Izabrani objekat";
+    })()
     : "Svi objekti";
   const selectedSupplierLabel = canonicalFilters.supplierId
     ? suppliers.find((supplier) => String(supplier.supplierId) === String(canonicalFilters.supplierId))?.supplierName ?? "Izabrani dobavljač"
@@ -188,7 +226,7 @@ export default function SupplierConsolidatedPage() {
 
   useEffect(() => {
     let cancelled = false;
-    getStores(true)
+    getStores(true, canonicalFilters.dataScope)
       .then((items) => { if (!cancelled) setStores(items); })
       .catch(() => {
         if (!cancelled) {
@@ -211,48 +249,22 @@ export default function SupplierConsolidatedPage() {
         if (cancelled) return;
 
         const resolved = resolveSupplierFilterFallbackState(items, suppliersRef.current);
+        setSupplierFiltersLoaded(true);
         setSupplierFiltersWarning(resolved.warning);
         setSupplierFiltersStale(resolved.isStale);
         setSuppliers(resolved.suppliers);
 
-        if (
-          resolved.shouldClearSelection
-          && canonicalFilters.supplierId != null
-        ) {
-          setSupplier("");
-          return;
-        }
-
-        if (
-          !resolved.isStale
-          && canonicalFilters.supplierId != null
-          && !resolved.suppliers.some((entry) => String(entry.supplierId) === String(canonicalFilters.supplierId))
-        ) {
-          setSupplier("");
-        }
       })
       .catch(() => {
         if (!cancelled) {
           // Preserve prior options without claiming that they match the active period and scope.
           setSupplierFiltersWarning(SUPPLIER_FILTER_LOAD_FAILED_MESSAGE);
           setSupplierFiltersStale(true);
-          if (canonicalFilters.supplierId != null) {
-            setSupplier("");
-          }
+          setSupplierFiltersLoaded(true);
         }
       });
     return () => { cancelled = true; };
   }, [canonicalFilters.fromDate, canonicalFilters.storeId, canonicalFilters.toDate, canonicalFilters.dataScope]);
-
-  useEffect(() => {
-    if (!didInitTrustResetRef.current)
-    {
-      didInitTrustResetRef.current = true;
-      return;
-    }
-
-    setTrustPayload(null);
-  }, [currentTab, canonicalFilters.category, canonicalFilters.dataScope, canonicalFilters.excludeOosBeforeMarkdown, canonicalFilters.fromDate, canonicalFilters.gender, canonicalFilters.minRevenue, canonicalFilters.onlyHighConfidence, canonicalFilters.seasonId, canonicalFilters.storeId, canonicalFilters.supplierId, canonicalFilters.toDate]);
 
   return (
     <div className="supplier-consolidated-page">
@@ -347,7 +359,7 @@ export default function SupplierConsolidatedPage() {
           <select value={canonicalFilters.storeId ?? ""} onChange={(event) => setStore(event.target.value)}>
             <option value="">Svi objekti</option>
             {stores.map((store) => (
-              <option key={store.storeId} value={store.storeId}>{buildStoreLabel(store)}</option>
+              <option key={store.storeId} value={store.storeId}>{buildStoreLabel(store, duplicateStoreNames)}</option>
             ))}
           </select>
         </label>
@@ -366,6 +378,11 @@ export default function SupplierConsolidatedPage() {
             aria-describedby={supplierFiltersStale ? "supplier-filter-stale-warning" : undefined}
           >
             <option value="">{supplierFiltersStale ? "Izbor je privremeno blokiran" : "Svi dobavljači"}</option>
+            {supplierSelectionMissing ? (
+              <option value={canonicalFilters.supplierId ?? ""} disabled>
+                {selectedSupplierLabel} (nije u aktivnom skupu)
+              </option>
+            ) : null}
             {suppliers.map((supplier) => (
               <option key={supplier.supplierId} value={supplier.supplierId} disabled={supplierFiltersStale}>
                 {supplier.supplierName}
@@ -380,6 +397,11 @@ export default function SupplierConsolidatedPage() {
             >
               {supplierFiltersWarning}
               {supplierFiltersStale ? ` ${SUPPLIER_FILTER_STALE_LIST_MESSAGE}` : ""}
+            </span>
+          ) : null}
+          {supplierSelectionMissing ? (
+            <span className="supplier-consolidated-filter-note supplier-consolidated-filter-note--missing" role="status">
+              Dobavljač nije u izabranom periodu/opsegu.
             </span>
           ) : null}
         </label>
@@ -495,17 +517,17 @@ export default function SupplierConsolidatedPage() {
       <div className="supplier-consolidated-content">
         {currentTab === "overview" && (
           <div className="supplier-embedded-container supplier-embedded-overview">
-            <SupplierSalesStatsPage embedded sharedFilters={canonicalFilters} onTrustMetadataChange={setTrustPayload} />
+            <SupplierSalesStatsPage embedded sharedFilters={canonicalFilters} onTrustMetadataChange={handleTrustMetadataChange} />
           </div>
         )}
         {currentTab === "scorecard" && (
           <div className="supplier-embedded-container supplier-embedded-scorecard">
-            <SupplierDecisionHubPage embedded sharedFilters={canonicalFilters} onTrustMetadataChange={setTrustPayload} />
+            <SupplierDecisionHubPage embedded sharedFilters={canonicalFilters} onTrustMetadataChange={handleTrustMetadataChange} />
           </div>
         )}
         {currentTab === "assortment" && (
           <div className="supplier-embedded-container supplier-embedded-assortment">
-            <SupplierFootwearAnalyticsPage embedded sharedFilters={canonicalFilters} onTrustMetadataChange={setTrustPayload} />
+            <SupplierFootwearAnalyticsPage embedded sharedFilters={canonicalFilters} onTrustMetadataChange={handleTrustMetadataChange} />
           </div>
         )}
       </div>
