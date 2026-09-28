@@ -25570,12 +25570,13 @@ Decision tests:
 - Completion: delivered directly to `main`; the implementation is present in `749cf2b1` and `origin/main` contains that SHA.
 - Changed files: `Api/Endpoints/SupplierDecisionHubEndpoints.cs`; `Api.Tests/AnalyticsReportsContractTests.cs`; `Api.Tests/SupplierDecisionHubContractTests.cs`; `Api.Tests/SupplierNegotiationPackReportTests.cs`; `Klijent/clientapp/src/components/analytics/SupplierDecisionReport.tsx`; `Klijent/clientapp/src/components/analytics/SupplierDecisionReportActions.tsx`; `Klijent/clientapp/src/components/analytics/__tests__/SupplierDecisionReportActions.spec.tsx`; `Klijent/clientapp/src/pages/SupplierDecisionReportPage.tsx`; `Klijent/clientapp/src/pages/__tests__/SupplierDecisionReportPage.spec.tsx`
 - Checks run: focused Vitest 22/22; focused backend SupplierDecisionHub/AnalyticsReports/SupplierNegotiationPack tests 83/83; `npm run check:analytics-guardrails`; `npm run build`; `node scripts/check-agent-instructions.mjs`; `node scripts/check-prompt-queues.mjs`; `node scripts/check-planning-architecture.mjs`; `git diff --check`; `git merge-base --is-ancestor 749cf2b1 origin/main`
-- Checks not run: full backend test suite; live PostgreSQL/integration proof; remote CI completion
+- Checks not run: full backend test suite; live PostgreSQL/integration proof; remote CI completion (current-main runs were inspected and were `in_progress` at closure)
 - Run log: `.ai/runs/2026-09-28-RQ465-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-to-main
 - Main commit SHA: `749cf2b1`
 - Main verification: passed - `origin/main` contains `749cf2b1`
+- Remote CI at closure: runs `36460007974` (Analytics Tests & Data Integrity, `749cf2b1`), `36460007982` (Analytics Quality Gates, `749cf2b1`) and `36460132645` (Planning Governance, `21b63594`) were `in_progress` when inspected
 - Missed: none known
 - Follow-up: idle recovery found no actual READY section to promote; next selection requires a fresh queue-owner promotion after reconciling the remaining partial/waiting rows
 - Residual risk: full-suite and live integration coverage remain outside this focused delivery
