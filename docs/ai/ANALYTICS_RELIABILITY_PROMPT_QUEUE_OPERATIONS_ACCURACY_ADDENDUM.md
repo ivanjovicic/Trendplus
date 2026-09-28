@@ -3,6 +3,8 @@
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+Owner promotion/claim 2026-09-28: idle recovery verified `RQ390`, `RQ432` and `RQ456` DONE on current `origin/main`, no active Pre-Nivelacija endpoint/model/page owner or conflicting lock/branch/PR, and `RQ489` is dependency-complete. `RQ489` moved WAITING -> READY -> IN_PROGRESS in this workspace; local lock `.ai/task-locks/RQ489-codex.lock.md`.
+Owner completion 2026-09-28: `RQ489` moved IN_PROGRESS -> DONE and was delivered directly to `main` in `63787f0b24a946e3ce8efa1abb1fa8f1509d7c1b`. Pre-Nivelacija now uses the canonical trimmed/case-insensitive DUG/KOREKCIJA receipt population, keeps positive-net signed returns actionable, computes recency from the latest positive retail sale, exposes receipt/return/recency provenance, and bumps the cache/formula version to v6. Focused proof: backend 44/44; frontend 74/74; analytics guardrails, typecheck and production build pass; governance validators pass. Live PostgreSQL endpoint execution was not run because no isolated test database was assigned. Run log: `.ai/runs/2026-09-28-RQ489-evidence.md`. Evidence state: synchronized.
 Owner completion 2026-09-26: `RQ450` was delivered for post-Access-import Operations integrity probing. Successful analytics imports schedule exactly one post-commit bounded probe linked to `access_import:{batchId}` and suppress the duplicate cache_clear probe on the import path. Run log: `.ai/runs/2026-09-26-RQ450-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-26: idle recovery after RQ447/RQ449 DONE on current `origin/main`. RQ448 remains gated on authenticated browser/API environment; RQ453 still lists RQ448/RQ452 dependencies. `RQ450` is dependency-complete (RQ413/RQ449) with no active Access-import integrity probe owner. `RQ450` moved `WAITING -> READY -> IN_PROGRESS` in this workspace; local lock `.ai/task-locks/RQ450-cursor.lock.md`.
 Main RQ current READY prompt: none
@@ -2065,7 +2067,7 @@ Routing note: this addendum does not replace the main RQ primary pointer. At reg
 
 ## RQ489 - Pre-Nivelacija: certified retail population, signed returns and positive-sale recency
 
-Status: READY  
+Status: DONE
 Priority: P1  
 Type: backend/frontend/tests  
 Feature family: pre-nivelacija-retail-population  
