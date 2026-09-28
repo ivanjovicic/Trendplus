@@ -17,3 +17,10 @@
 - Analytics Quality Gates run `36448814105` exposed two pre-existing brittle frontend tests while validating the post-review fix: `AnalyticsDetails.periodState.spec.tsx` depended on the wall-clock 30-day default (on 2026-09-28 its hard-coded 2026-08-30 value was not a state change), and `SupplierDecisionReport.spec.tsx` assumed a UTC+2 runner timezone.
 - Both were repaired as test-contract fixes only: the period test now uses a guaranteed changed valid date before reversing it, and Supplier report timestamp assertions use the shared environment-aware formatter instead of hard-coded UTC+2 text.
 - The Pilot Intake regenerate regression itself was not among the failures.
+
+## RQ467 post-review
+
+- A concurrent RQ467 delivery landed while this review was in progress and was reviewed before close-out.
+- Found a provenance mismatch in the new default-period fallback: for `dataScope=existing/all`, the code reused the scope-filtered `includedHeaders` query but labelled the result `import_business_date_fallback` and told the UI it came from the imported dataset.
+- Repaired the fallback to query the actual included `DataOrigin=access` retail population before emitting the import fallback code/message.
+- Added `PilotIntakeDefaultPeriodAnchorTests` proving an existing-scope request with no scoped sales anchors to the imported business date rather than an unrelated existing-scope date.
