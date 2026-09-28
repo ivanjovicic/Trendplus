@@ -1717,7 +1717,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ461 | READY | supplier-decision-durable-report-render-contract | Align the Supplier report durable renderer with the backend report payload |
 | RQ462 | READY | pilot-intake-durable-report-render | Render the durable Pilot intake report instead of the permanent empty state |
 | RQ463 | WAITING | supplier-decision-requested-window-truth | Make the Supplier report requested window, labels and provenance truthful |
-| RQ464 | WAITING | supplier-decision-report-metric-basis | Decide and document the Supplier report metric basis and a single scoring model |
+| RQ464 | WAITING | supplier-decision-report-metric-basis | Align Supplier report KPIs with the Supplier overview and use one scoring model |
 | RQ465 | WAITING | supplier-decision-report-actions-negotiation | Fix Supplier report actions, negotiation pack and page-level defects |
 | RQ466 | READY | pilot-intake-backend-scope-period-truth | Make the Pilot intake backend honour scope, requested period and refresh truth |
 | RQ467 | WAITING | pilot-intake-readiness-score-semantics | Decide Pilot intake readiness score semantics and default period |
@@ -25188,6 +25188,15 @@ The focused specs pass only because their fixtures use client-shaped rows. Audit
 - None blocking. `RQ463`, `RQ465` and `RQ468` edit the same files and run after this prompt.
 - Reliability contract: backend-owned values (recommendationAllowed, freshness, coverage) are rendered, never recomputed client-side; if a value is missing, show „nije dostupno“, not a default.
 
+### Addendum 2026-09-28 (owner decisions on RQ463–RQ465, grok)
+
+- The renderer vocabulary delivered here must leave room for the blocks the follow-ups add, so they do not need a second contract change:
+  - „Rezultat oko sniženja“ (the separate markdown-window block from `RQ464`);
+  - the fallback reason `requested_range_not_precomputed` with its Serbian text (`RQ463`);
+  - the empty candidate states „Nema kandidata“ / „Nema dobavljača sa rizikom“ (`RQ465`).
+- Do not implement their backend logic here.
+- Keep the zero-fill removal as scoped here (no pack when there are no rows). Hiding the pack whenever `supplierId` is null is `RQ465`'s owner decision; do not implement it twice.
+
 ---
 
 ## RQ462 - Render the durable Pilot intake report instead of the permanent empty state
@@ -25257,7 +25266,7 @@ The page spec mocks the component, so the defect is untested.
 ## RQ463 - Make the Supplier report requested window, labels and provenance truthful
 
 Status: WAITING
-Ready after: `RQ461` DONE (same files) and an owner decision on option A/B below
+Ready after: `RQ461` DONE (same files/metadata contract). Owner decision recorded 2026-09-28 (option A); no decision remains.
 Priority: P1
 Type: backend-contract/tests
 Feature family: supplier-decision-requested-window-truth
@@ -25284,7 +25293,7 @@ The Supplier report maps any explicit date range to a precomputed window by **le
 - Error report: `:928-939` uses the requested-dataset label. Live 2026-06-01..06-30 gave „Poslednjih 30 dana“ with `MISSING_SCHEMA`; the raw dataset code also appears in the message.
 - The test `Api.Tests/SupplierDecisionHubContractTests.cs:241-261` encodes the June 2026 range as a "30d" fallback, i.e. the length-only behaviour.
 
-### Owner decision needed
+### Owner decision needed (resolved 2026-09-28: option A, see below)
 
 - **A — fail closed (smaller):** only a range that ends at the MV refresh date and has length 30/90/180 counts as that window. Any other range is labelled as the nearest rolling window with `usedFallback=true`, fallback reason `requested_range_not_precomputed`, and recommendations blocked.
 - **B — recompute:** compute the requested historic window from base tables (new SQL/MV work, performance review needed).
@@ -25305,6 +25314,29 @@ The Supplier report maps any explicit date range to a precomputed window by **le
 
 - No historic or non-anchored range is presented as „Poslednjih N dana“ or as a non-fallback precomputed window; every value's window is stated.
 
+### Owner decision (Ivan, 2026-09-28)
+
+Decision: **option A — fail closed now.** No full historical recompute of the decision score in this prompt.
+
+- A precomputed `30d`/`90d`/`180d` window counts as **exact** only if the requested period truly equals that rolling window on the MV refresh date: requested `toDate` = the refresh business date, and the length is exactly 30/90/180 days. Any other explicit range is an arbitrary period, including a historic range of the same length or a range ending before the refresh date.
+- For an arbitrary period:
+  - show the requested dates clearly (`dd.MM.yyyy – dd.MM.yyyy`), never „Poslednjih N dana“;
+  - mark the fallback: `usedFallback=true`, `fallbackReasonCode=requested_range_not_precomputed`, with a Serbian reason text;
+  - the effective window label names the rolling window actually used;
+  - block the recommendation (`recommendationAllowed=false`, decision score / precomputed signal shown as a blocked auxiliary signal) but **not the whole report**.
+- Sales/revenue/units for an arbitrary period are **not** taken from the precomputed window. `RQ464` computes them exactly from base sales data for the requested period. Only the decision score / precomputed signal stays blocked when it was not computed for that exact period. Until `RQ464` lands, the fallback note must say that the sales figures belong to the rolling window.
+- Out of scope: a real historical decision-score recompute. It may become a separate later task if the business needs it; do not start it here.
+
+Decision acceptance:
+- A request whose range exactly matches the rolling window on the refresh date gives `usedFallback=false` and the window label; recommendations follow the normal trust gates.
+- Historic same-length range (e.g. 2025-10-01..2025-12-29), a non-anchored 90-day range and a 45-day range each give `usedFallback=true`, `fallbackReasonCode=requested_range_not_precomputed`, the requested dates shown, `recommendationAllowed=false`, and a report that still renders (KPIs/sections present, not an error state).
+- No request ever labels a non-rolling range „Poslednjih N dana“; the no-date live path shows its real lookback; `provenanceBasis` is truthful on both paths.
+
+Decision tests:
+- Contract tests in `Api.Tests/SupplierDecisionHubContractTests.cs` for: exact-rolling match; historic same-length range; non-anchored range; odd length; no-date live path label; error report label (no raw `90d`/`all_time`).
+- Replace the length-only expectation at `:241-261` (the June 2026 "30d" fallback) with the new fallback reason and blocked recommendation.
+- Vitest (after `RQ461`): the durable report shows the requested dates, the fallback badge/reason and „Preporuke: ograničene“ while still rendering KPIs.
+
 ### Dependencies
 
 - `RQ461` first (same files). Coordinate with `RQ137` (PARTIAL; record the supplier-report part). `PS08` (missing MVs in production) is separate.
@@ -25312,12 +25344,12 @@ The Supplier report maps any explicit date range to a precomputed window by **le
 
 ---
 
-## RQ464 - Decide and document the Supplier report metric basis and a single scoring model
+## RQ464 - Align Supplier report KPIs with the Supplier overview and use one scoring model
 
 Status: WAITING
-Ready after: owner decision (Ivan) on the questions below; then `RQ461` DONE
+Ready after: `RQ463` DONE (and therefore `RQ461`; same files, KPI/section contract and period semantics). Owner decisions recorded 2026-09-28; no decision remains.
 Priority: P2
-Type: decision/backend/sql/tests
+Type: backend/sql/tests
 Feature family: supplier-decision-report-metric-basis
 Parallel-safe: no
 Owner: Analytics Reliability / Supplier Decision Hub
@@ -25345,7 +25377,7 @@ The Supplier report shows „Prihod“, „Prodate jedinice“ and „Maržni do
 - Store filter: `:3402-3403` (`a."IDObjekat"`).
 - No `DUG`/`KOREKCIJA` predicate in 015/018/029 or the live SQL (compare the `RQ456` canonical predicate).
 
-### Owner decisions
+### Owner decisions (resolved 2026-09-28, see below)
 
 1. Should the Supplier report show period sales (matching the Supplier overview) plus separate markdown-window metrics, or keep the markdown-window basis with explicit labels („Prihod u prozoru ±30 dana oko sniženja“)?
 2. Apply the `RQ456` `DUG`/`KOREKCIJA` exclusion to the supplier decision views and the live SQL? (Recommended: yes, for cross-screen parity.)
@@ -25366,6 +25398,33 @@ The Supplier report shows „Prihod“, „Prodate jedinice“ and „Maržni do
 
 - Every Supplier report KPI states its basis. With the period-sales basis, totals reconcile with the Supplier overview for the same filters. Both paths give the same score for the same data.
 
+### Owner decision (Ivan, 2026-09-28)
+
+1. **Main KPIs = Supplier overview parity.** „Prihod“, „Prodate jedinice“, net sales and the basic sales stats of the Supplier report must equal the Supplier overview (`GET /api/analytics/supplier-sales-stats`, „Prodaja po dobavljačima“) for the same period, store, scope and supplier filter. They must use the same population contract (`SST-ACCURACY-1.0` from `RQ445`; the receipt policy `Api/Services/SalesReceiptPopulationPolicy.cs` from `RQ456`). Compute them exactly from base sales data for the requested period, including the arbitrary periods for which `RQ463` blocks the decision score.
+2. **Markdown window is a separate block.** The pre/post nivelacija ±30-day metrics stay, but only as a clearly named separate block (e.g. „Rezultat oko sniženja“ with its own window description). They are never the source of the main period revenue/units. The KPI description „Ukupan prihod za traženi filter skup“ must describe the real basis.
+3. **DUG/KOREKCIJA excluded** via the canonical `SalesReceiptPopulationPolicy` (the `RQ456` contract for Daily/Supplier/Shoe Type/Color). This applies to the main KPIs, the markdown-window block, the supplier decision views/MVs (new migration) and the live SQL. Signed retail returns stay in net sales.
+4. **Missing cost is not 0.** A line without a cost stays in revenue and units and is excluded only from the margin calculation. Show cost coverage, revenue with known cost and revenue without cost, following the `Application/Analytics/AnalyticsMarginPolicy.cs` direction. Replace the `COALESCE(…, 0)` cost in `018`/`029` and the live SQL. Cost fallback chain for the Supplier report: the one already used by `AnalyticsMarginPolicy`/Supplier overview. Coordinate with `RQ473` (Product ↔ Supplier margin parity), which owns the cross-screen policy.
+5. **Returns.** `povracaj_zaglavlje`/`povracaj_stavke` and `ReturnFact` are **supplier returns**, not customer returns; do not use them for a customer return rate. Customer returns = signed retail return lines in `ProdajaStavke` (negative quantity/revenue) in the same sales population. `DnevnikPromena` „Povrat kupca“ may be used only as a control/reconciliation check, never as a second parallel source. If a supplier-return metric is kept, label it „Povrat dobavljaču“.
+6. **Supplier attribution** is sale-time (`SupplierIdAtSale`) where a confirmed snapshot exists, consistent with `RQ441` and the Supplier overview (including its basis/coverage metadata); otherwise fall back as the Supplier overview does and disclose the basis.
+7. **Store filter** = the sale store `ProdajaZaglavlje.IDObjekat`, not the article's current/home store (`a."IDObjekat"`).
+8. **Scoring: one model, one scale.** The MV and live paths produce the same normalized inputs, and one backend `SupplierDecisionScorePolicy`/engine (e.g. `Application/Analytics/SupplierDecisionScorePolicy.cs`) computes the score and recommendation. There must not be two SQL formulas that can diverge. If the full refactor is too big for this prompt, the short-term acceptable step is to port the MV model into the live path, plus a parity test that must produce identical results. Record the remaining refactor as a follow-up.
+
+Decision acceptance:
+- On the same fixture and filters, the Supplier report main KPIs (revenue, units, net sales, receipts/lines where shown) equal the Supplier overview totals, both for all suppliers and for one supplier. This holds for a precomputed-window period and for an arbitrary historic period.
+- „Rezultat oko sniženja“ is a separate, labelled block; no main KPI reads the markdown window.
+- A `DUG`/`KOREKCIJA` receipt changes neither the main KPIs nor the markdown block. A signed retail return reduces net revenue/units.
+- A line without a cost is counted in revenue/units, excluded from margin, and reported in coverage / revenue without cost; no pre-markdown margin is computed with cost 0.
+- No customer-return metric reads `povracaj_*`/`ReturnFact`.
+- A master-data supplier change after the sale does not move historical revenue when a snapshot exists.
+- A store filter selects by receipt store.
+- MV path and live path give identical score/recommendation for the same normalized inputs (parity test); one threshold scale.
+
+Decision tests:
+- `Api.Tests`: a Supplier report ↔ Supplier overview parity test on the shared adversarial fixture (`RQ446`), covering returns, `DUG`/`KOREKCIJA`, missing cost, unknown supplier, sale-time attribution and a receipt-store filter.
+- SQL/migration tests for the updated views: DUG/KOREKCIJA excluded, no cost COALESCE to 0, customer returns from signed lines.
+- Score parity test (MV vs live, same inputs → same score/recommendation).
+- A label test for the KPI descriptions and the „Rezultat oko sniženja“ block.
+
 ### Dependencies
 
 - `RQ461` (renderer), `RQ463` (window). `RQ456` precedent for the receipt exclusion. `PS08` for production MV availability.
@@ -25376,7 +25435,7 @@ The Supplier report shows „Prihod“, „Prodate jedinice“ and „Maržni do
 ## RQ465 - Fix Supplier report actions, negotiation pack and page-level defects
 
 Status: WAITING
-Ready after: `RQ461` DONE (same files); decision 1 below for the negotiation pack
+Ready after: `RQ461` DONE (same files); do not run concurrently with `RQ463`/`RQ464` (same backend file). Owner decision recorded 2026-09-28; no decision remains.
 Priority: P2
 Type: frontend/backend/tests
 Feature family: supplier-decision-report-actions-negotiation
@@ -25411,6 +25470,27 @@ Commit suggestion: `fix(analytics): supplier report actions and negotiation pack
 ### Acceptance
 
 - No recommendation, negotiation or action is shown for a supplier the rules did not select. Links and regeneration preserve the user's filters. No English validation text is shown.
+
+### Owner decision (Ivan, 2026-09-28)
+
+- The negotiation pack is shown **only when exactly one supplier is selected** (`supplierId` set). There is no „primer za najvećeg dobavljača“ fallback.
+- With `supplierId=null`:
+  - a candidate/signal list may stay;
+  - there is **no** „Finalni savet“ for a specific supplier;
+  - there is **no** `supplier_negotiation_pack`;
+  - there is **no** „Dodaj u akcije → pregovor sa dobavljačem“.
+- With exactly one supplier selected, the negotiation pack, „Finalni savet“ and the negotiation action appear, subject to the existing `RQ235`/`RQ249` gating.
+- „Kandidat za rast“ and „Rizik“ exist only when the backend rule actually assigns them (EXPAND / risk reason code). There is no fallback to the first/top-quality/markdown row. When no supplier qualifies, show an explicit „Nema kandidata“ / „Nema dobavljača sa rizikom“ state.
+- This resolves item 1 above. Items 2–11 need no further decision.
+
+Decision acceptance:
+- Backend: `supplierId=null` → zero `supplier_negotiation_pack` rows, no „Finalni savet“ row and no negotiation action in `actions`. `supplierId=X` → the pack is present for X only.
+- Backend: a fixture with no EXPAND-coded supplier emits no „Kandidat za rast“ row; with no risk-coded supplier, no risk row; the fallback code paths at `SupplierDecisionHubEndpoints.cs:766-800` are removed.
+- Frontend: with no supplier selected, „Dodaj u akcije“ offers no supplier-negotiation action; with one supplier it does (when allowed).
+
+Decision tests:
+- `Api.Tests/SupplierDecisionHubContractTests.cs`: all-supplier vs single-supplier report rows/actions; no-EXPAND and no-risk fixtures.
+- Vitest (`SupplierDecisionReportActions`/page specs): the action menu with `supplierId=null` vs a selected supplier; the empty candidate states render.
 
 ### Dependencies
 
@@ -25884,6 +25964,11 @@ Equivalent data has equivalent margin semantics across both screens, and intenti
 
 - Margin-policy owner decision is required before promotion.
 - RQ148/RQ256 remain prior contracts; do not duplicate their delivered null/coverage behavior.
+
+### Cross-reference 2026-09-28 (owner decision recorded in RQ464, grok)
+
+- Ivan's 2026-09-28 decision for the Supplier report (`RQ464`, decision 4): missing cost is not 0; the line stays in revenue and units, is excluded only from the margin calculation, and cost coverage / revenue with known cost / revenue without cost are shown, following the `AnalyticsMarginPolicy` direction. The same decision set also fixes the pilot cost fallback as `ps.NabavnaCena → a.NabavnaCenaDin → a.NabavnaCena` (> 0 only; `RQ467`).
+- This may answer part of the margin-policy decision this prompt waits on. The `RQ473` owner should confirm with Ivan before promotion; this note does not change its status.
 
 ---
 
