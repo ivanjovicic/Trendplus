@@ -2,7 +2,8 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ467
+Current READY prompt: RQ468
+Owner completion 2026-09-28: `RQ467` moved READY → IN_PROGRESS → DONE and was delivered directly to `main` after implementing Pilot intake readiness semantics. Unsold master articles no longer create a hidden readiness penalty or critical override; signal coverage is informational, blocked recommendations are distinct blocked articles, DUG/KOREKCIJA receipts are excluded, signed returns remain net sales without becoming price errors, store/cost semantics are explicit, and the default period uses the latest scoped business date with an explicit fallback anchor. Focused proof: backend 68/68, frontend 21/21; API build, client typecheck, guardrails and production build pass. Implementation: `cd9b3b31b702ae45312b0537197f51cd1608166e`; run log: `.ai/runs/2026-09-28-RQ467-evidence.md`. Evidence state: synchronized. Next primary READY is `RQ468`.
 Owner completion 2026-09-28: `RQ483` moved READY → IN_PROGRESS → DONE and was delivered directly to `main` in `43f2a73fc82d245c53c16903cd06b311a7bfcbe7`. Product Decision now measures last-sale age from the requested period end, bounds the last-sale query to that period, admits zero-sales stock into a non-actionable stale review path, supports new-product and MinStock 0/null replenishment candidates with reduced confidence, keeps lost-sales/slow-stock capital unavailable rather than zero when required evidence is missing, and exposes one threshold policy with provenance plus `article_size` grain metadata. Focused proof: 30/30; backend build passed. RQ472 journal gate/actionability was intentionally untouched. Run log: `.ai/runs/2026-09-28-RQ483-evidence.md`. Evidence state: synchronized. Next primary READY is `RQ467`; `RQ483` is DONE.
 Owner completion 2026-09-28: `RQ486` moved READY → IN_PROGRESS → DONE and was delivered directly to `main` in `966939e53c585221fcde27550ca0c76ba33e9d76`. Supplier trust metadata is keyed to the active request, invalid date ranges do not request data, stores carry page scope and duplicate labels expose stable IDs, unknown URL suppliers remain visible with an explicit message, filter layout wraps, local dates are preserved, sorting is pure and revenue rank badges are conditional. Focused proof: 55/55; guardrails/typecheck and production build pass. Run log: `.ai/runs/2026-09-28-RQ486-evidence.md`. Evidence state: synchronized. Next primary READY is `RQ483`; `RQ467` remains independently READY.
 Owner promotion/claim/completion 2026-09-28: `RQ484` moved READY → IN_PROGRESS → DONE and was delivered directly to `main` in `ded6bfc1600ad98813227076876c3073e23807a0`. Supplier-only recommendation policy now treats missing nivelacija evidence as a reason plus confidence reduction for sales/trend/margin decisions, keeps price-event claims fail-closed, preserves unknown suppliers as `do_not_trust`, computes page readiness over known suppliers and applies the revenue-based `<15%` / `15–<25%` / `≥25%` gate. Focused proof: 64/64; backend build passed. Live PostgreSQL integration proof was not run because no isolated test database was assigned. Run log: `.ai/runs/2026-09-28-RQ484-evidence.md`. Evidence state: synchronized. Next primary READY is `RQ483`; `RQ467` remains independently READY.
@@ -1730,8 +1731,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ464 | WAITING | supplier-decision-report-metric-basis | Align Supplier report KPIs with the Supplier overview and use one scoring model |
 | RQ465 | WAITING | supplier-decision-report-actions-negotiation | Fix Supplier report actions, negotiation pack and page-level defects |
 | RQ466 | DONE | pilot-intake-backend-scope-period-truth | Make the Pilot intake backend honour scope, requested period and refresh truth |
-| RQ467 | READY | pilot-intake-readiness-score-semantics | Pilot intake readiness score semantics and business-date default period |
-| RQ468 | WAITING | supplier-report-pilot-intake-serbian-copy | Complete Serbian copy on the Supplier report and Pilot intake screens |
+| RQ467 | DONE | pilot-intake-readiness-score-semantics | Pilot intake readiness score semantics and business-date default period |
+| RQ468 | READY | supplier-report-pilot-intake-serbian-copy | Complete Serbian copy on the Supplier report and Pilot intake screens |
 | RQ469 | WAITING | pdc-action-status-batch-contract | Keep Product Decision action-status lookups within the backend batch contract |
 | RQ470 | WAITING | pdc-search-population-contract | Restore Product Decision server-side search and make the analyzed population visible |
 | RQ471 | WAITING | pdc-kpi-population-actionability | Align Product Decision KPI populations with row actionability |
@@ -25618,14 +25619,14 @@ Commit suggestion: `fix(analytics): pilot intake scope, period and refresh truth
 
 ## RQ467 - Pilot intake readiness score semantics and business-date default period
 
-Status: READY
+Status: DONE
 Ready after: `RQ466` DONE (same builder function). Owner decisions recorded 2026-09-28; no decision remains.
 Priority: P2
 Type: backend/frontend/tests
 Feature family: pilot-intake-readiness-score-semantics
 Parallel-safe: no
 Owner: Analytics Reliability / Data Quality
-Local lock: `.ai/task-locks/RQ467-<agent>.lock.md`
+Local lock: removed after delivery; historical template: `.ai/task-locks/RQ467-<agent>.lock.md`
 Commit suggestion: `fix(analytics): pilot intake readiness semantics`
 
 ### Problem
@@ -25697,12 +25698,32 @@ Decision tests:
 - `RQ466` first (same file; scope/period truth). `RQ79` owns the percent unit.
 - Reliability contract: the score explains itself through reason codes; no hidden overrides.
 
+### Completion note
+
+- Date: 2026-09-28
+- Status: DONE
+- Completion: Pilot intake readiness, population, cost and business-date semantics implemented and delivered.
+- Changed files: backend endpoint/health service, backend contracts/tests, Pilot intake/readiness frontend/types/tests, guardrail baseline, queue and roadmap.
+- Checks run: focused backend 68/68; frontend 21/21; API build; client guardrails/typecheck/build; governance validators; diff check — all pass.
+- Checks not run: live PostgreSQL integration/oracle; full dotnet suite; remote CI completion.
+- Run log: `.ai/runs/2026-09-28-RQ467-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `cd9b3b31b702ae45312b0537197f51cd1608166e`
+- Main verification: `origin/main` at `81e28043eb5506e6357945515579e0b8db758362` contains the implementation SHA as an ancestor.
+- Backend readiness now ignores legitimate unsold master articles as a score penalty, counts unique structurally blocked articles, applies the shared receipt-population and positive-cost policies, distinguishes receipt-store sales from article-store master data, and anchors implicit periods to scoped business dates with an explicit fallback code.
+- Frontend renders signal coverage, blocked-article units and period-anchor provenance in the durable report and readiness card.
+- Missed: no in-scope implementation item known; live PostgreSQL certification remains external follow-up.
+- Follow-up: `RQ468` — Serbian copy on Supplier report and Pilot intake.
+- Residual risk: live SQL translation/data-shape proof and remote CI remain residual.
+- Prompt defect / scope repair: stale primary-pointer metadata was reconciled; no business-scope expansion.
+
 ---
 
 ## RQ468 - Complete Serbian copy on the Supplier report and Pilot intake screens
 
-Status: WAITING
-Ready after: `RQ461`, `RQ462` and `RQ466` DONE (same files; copy must follow the new renderer/rows)
+Status: READY
+Ready after: `RQ461`, `RQ462`, `RQ466` and `RQ467` DONE (same files; copy must follow the new renderer/rows)
 Priority: P2
 Type: frontend/backend-copy/tests
 Feature family: supplier-report-pilot-intake-serbian-copy
