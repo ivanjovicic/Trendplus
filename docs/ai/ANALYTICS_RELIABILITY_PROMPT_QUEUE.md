@@ -1730,6 +1730,12 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ474 | WAITING | supplier-overview-error-empty-contract | Separate Supplier overview failure, empty and retry states |
 | RQ475 | WAITING | supplier-analytics-schema-readiness | Make Supplier scorecard/assortment semantic-data readiness operationally actionable |
 | RQ476 | WAITING | supplier-share-denominator-contract | Unify Supplier raw API, display, recommendation and export share semantics |
+| RQ483 | WAITING | pdc-decision-rule-reachability | Make Product Decision rules reachable and measured from the period end |
+| RQ484 | WAITING | operations-recommendation-gate-policy | Decide the Operations recommendation gate policy for nivelacija evidence and the unknown bucket |
+| RQ485 | WAITING | pdc-page-state-hygiene | Product Decision page hygiene: duplicate header block, URL state, deterministic sorting and local dates |
+| RQ486 | READY | supplier-shell-overview-hygiene | Supplier page shell and overview hygiene: trust header, date validation, stores, layout, sorting and badges |
+| RQ487 | WAITING | pdc-supplier-query-performance | Bound Product Decision and Supplier overview query cost |
+| RQ488 | WAITING | pdc-decision-engine-copy-export | Serbian copy and export values on Product Decision and decision-engine summaries |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -26512,3 +26518,339 @@ Every Pulse item opens the evidence surface that owns its decision, users see un
 
 - Coordinate with `RQ480`/`RQ481` because warning and period metadata may share the page contract.
 - Do not duplicate `RQ475` scorecard readiness or `RQ476` Supplier share semantics.
+
+---
+
+## RQ483 - Make Product Decision rules reachable and measured from the period end
+
+Status: WAITING
+Ready after: `RQ472` DONE (journal gate; until then every row stays blocked, so rule changes are unobservable) and owner sign-off on the thresholds listed below
+Priority: P2
+Type: backend/tests
+Feature family: pdc-decision-rule-reachability
+Parallel-safe: no (`Application/Analytics/ProductDecisionReasoningHelper.cs`, `Api/Endpoints/CachedAnalyticsEndpoints.cs` Product Decision builder)
+Owner: Analytics Reliability / Product Decision
+Local lock: `.ai/task-locks/RQ483-<agent>.lock.md`
+Commit suggestion: `fix(analytics): make product decision rules reachable`
+Source: `PS04` in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-25.md` (residual business-rule task; de-dup 2026-09-28)
+
+### Problem
+
+Several Product Decision statuses are practically unreachable or depend on the current clock instead of the analyzed period:
+- **MARKDOWN / stale DO_NOT_ORDER:** these need `UnitsSold >= 3` in the period and `DaysSinceLastSale >= 45`. In a 30-day period, a sale inside the period means the last sale was under 30 days ago, so the rules can never fire. Dead stock with zero sales becomes INSUFFICIENT_DATA instead.
+- **Clock dependence:** `daysSinceLastSale` is measured from `nowUtc`, and the last-sale query has no upper date bound, so historical periods are inconsistent.
+- **REPLENISH/BOOST:** these need `StockGap > 0`. With `MinStock = 0` an out-of-stock bestseller is never REPLENISH, and the lost-sales estimate returns 0 instead of "unavailable".
+- **No baseline:** a missing previous-period baseline (`TrendPct == null`) forces INSUFFICIENT_DATA, so new fast sellers never get REPLENISH/BOOST.
+- **Slow-stock capital** uses `UnitCost ?? 0m`, so a missing cost gives 0 capital, and the 0.15 units/day threshold is undocumented.
+
+### Evidence (at `c5a1937f`; product code unchanged on `5fe1f30b`)
+
+- `Application/Analytics/ProductDecisionReasoningHelper.cs:5` (`MinimumUnitsForRecommendation = 3`), `:76`, `:81`, `:92-93` (`0.15m`, `>= 45`), `:96-99` (`StockGap.Value > 0`), `:137`.
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs:6075-6090`: last-sale query without an upper date bound. `:6135-6137`: `daysSinceLastSale` computed from `nowUtc`. `:92-102`: `CalculateLostSalesEstimate` returns 0 when `minimumStock <= 0`. `:6209-6213`: `(article.UnitCost ?? 0m)` in slow-stock capital.
+- Prior DONE work kept nullable evidence (`RQ157`, `RQ255`, `RQ256`) but did not address rule reachability. `RQ472` (WAITING) owns the journal gate that currently blocks every row.
+
+### Owner sign-off needed (thresholds only)
+
+- The stale-stock days (45), the minimum units (3), the slow-velocity threshold (0.15/day) and the aggregation level (size vs model).
+- The `MinStock = 0` policy: a velocity-based cover target, or an explicit „minimalna zaliha nije podešena“ reason.
+- The new-product path: REPLENISH allowed on velocity + stock, with reduced confidence.
+
+### Scope
+
+- Decision rules, the last-sale window, lost-sales and slow-stock computations and their tests. No frontend decision logic. No change to the journal gate (`RQ472`) or the margin policy (`RQ473`).
+
+### Do
+
+1. Add a separate zero-sales dead-stock path (stock > 0, no sale for N days measured from the period end) with its own reason code, separate from low-velocity sellers.
+2. Measure `daysSinceLastSale` from the period end and bound the last-sale query to `< periodToExclusive`.
+3. Implement the signed-off `MinStock = 0` policy; the lost-sales estimate is `null` (unavailable), never 0, when it cannot be computed.
+4. Add an explicit new-product path instead of INSUFFICIENT_DATA when there is no baseline but velocity and stock evidence exist.
+5. Slow-stock capital is unavailable (null) when cost is missing; count those rows separately.
+
+### Tests
+
+- Table-driven `ProductDecisionReasoningHelperTests` proving every status is reachable with a realistic 30-day fixture.
+- A historical-period test with no dependency on `DateTime.UtcNow` when a period end exists.
+- The `MinStock = 0` case, the new-product case and the missing-cost slow-stock case (`ProductDecisionCenterBuilderIntegrationTests`).
+
+### Acceptance
+
+- Every recommendation status is reachable in a 30-day window; no rule depends on the current clock when a period end exists; missing inputs yield null/unavailable, never 0.
+
+### Dependencies
+
+- `RQ472` (journal gate) first; coordinate with `RQ473` (margin/cost) and `RQ469`–`RQ471` (same Product Decision surface, frontend).
+- Reliability contract: backend-owned decisions only; missing evidence is unavailable, not zero.
+
+---
+
+## RQ484 - Decide the Operations recommendation gate policy for nivelacija evidence and the unknown bucket
+
+Status: WAITING
+Ready after: owner decision (Ivan) on the gate policy below
+Priority: P1
+Type: decision/backend/contract/tests
+Feature family: operations-recommendation-gate-policy
+Parallel-safe: no (`Api/Endpoints/AllEndpoints.cs` Supplier/Shoe Type/Color recommendation builders, `Application/Analytics/AnalyticsDecisionRecommendationEngine.cs`)
+Owner: Analytics Reliability / Supplier
+Local lock: `.ai/task-locks/RQ484-<agent>.lock.md`
+Commit suggestion: `fix(analytics): operations recommendation gate policy`
+Source: `PS07` in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-25.md` (residual business-rule task; de-dup 2026-09-28)
+
+### Problem
+
+`RQ140` (PARTIAL) deliberately made recommendations fail closed when pre/post nivelacija comparability is missing. As implemented, the gate blocks **every** Supplier, Shoe Type and Color recommendation (including PoP/margin decisions that do not need a price change) unless both the pre/post revenue and units impact exist. The same happens when split coverage is missing. The gate also overwrites the unknown bucket's `do_not_trust` with `insufficient_data`. The response-level `recommendationAllowed` requires every row, including the unknown bucket, to be allowed. So it is false whenever an unknown bucket exists, and the trust header stays in warning.
+
+### Evidence (at `c5a1937f`; product code unchanged on `5fe1f30b`)
+
+- `Api/Endpoints/AllEndpoints.cs:1784-1789` (Supplier), `:2566-2571` (Shoe Type), `:3235-3246` (Color): `hasComparableNivelacijaSignal` requires both `prePostNivelacijaRevenueImpactPct` and the units impact, then calls `AnalyticsDecisionRecommendationEngine.ApplyComparableSignalGate`.
+- `Application/Analytics/AnalyticsDecisionRecommendationEngine.cs:32`: `ApplyComparableSignalGate` overwrites the status.
+- `AllEndpoints.cs:1977-1984`: response-level `recommendationAllowed = … && suppliersWithRecommendation.All(x => x.recommendation.recommendationAllowed)` with `includesUnknown = true`. Same pattern for Shoe Type at `:2758-2760`.
+- `RQ140` completion note: "gate recommendation score/confidence/reliability on valid revenue and quantity impact … fail closed when comparability is missing". This prompt changes only the policy scope, not the comparability proof that `RQ140` owns.
+
+### Owner decision needed
+
+1. Is pre/post nivelacija evidence a hard gate for all recommendations, or optional evidence (reason code + confidence adjustment) for PoP/margin decisions and a hard gate only for markdown-effect claims? (Recommended: optional, except for markdown-effect claims.)
+2. Should missing split coverage be a reason code rather than `insufficient_data`?
+3. Unknown bucket: always keep `do_not_trust` (never overwritten)? Compute the response-level flag over known rows only, with the existing unknown-share thresholds (`unknown_heavy_dataset` 15%, critical 25%)? (Recommended: yes.)
+
+### Scope (after the decision)
+
+- Engine gate policy; aggregation of the response-level flag for Supplier/Shoe Type/Color; trust meta; tests. No frontend scoring. Keep the `SST-ACCURACY-1.0` (`RQ445`) claim language.
+
+### Tests
+
+- A supplier without nivelacija evidence but with good coverage and a baseline gets `maintain`/`increase_focus` allowed, with a reason code (if decision 1 = optional).
+- The unknown bucket stays `do_not_trust`; the response flag is allowed with a small unknown share and not allowed with a heavy one.
+- The same cases for Shoe Type and Color; the existing `RQ140` comparability tests stay green.
+
+### Acceptance
+
+- Rows with sufficient sales/margin evidence receive the policy-defined recommendation state; the trust header reflects known-row readiness and the unknown share; `do_not_trust` is never overwritten.
+
+### Dependencies
+
+- `RQ140` (PARTIAL, comparability proof owner) and `RQ445` (claim contract). Coordinate with `RQ474` and `RQ476` (same endpoint file).
+- Reliability contract: gates stay backend-owned and explainable by reason codes.
+
+---
+
+## RQ485 - Product Decision page hygiene: duplicate header block, URL state, deterministic sorting and local dates
+
+Status: WAITING
+Ready after: `RQ469`, `RQ470` and `RQ471` DONE (same page `ProductDecisionCenterPage.tsx`; `RQ470` owns the `search` URL parameter and pagination)
+Priority: P2
+Type: frontend/tests
+Feature family: pdc-page-state-hygiene
+Parallel-safe: no (`Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx` + CSS/specs)
+Owner: Analytics Reliability / Product Decision
+Local lock: `.ai/task-locks/RQ485-<agent>.lock.md`
+Commit suggestion: `fix(analytics): product decision page state and date hygiene`
+Source: `PS10` and the Product Decision part of `PS16` in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-25.md` (de-dup 2026-09-28)
+
+### Problem and evidence (at `c5a1937f`; product code unchanged on `5fe1f30b`)
+
+- **Duplicate block:** `ProductDecisionCenterPage.tsx:1298` and `:1496` both render `<h1>Odluke o proizvodima</h1>`, and `:1301`/`:1499` both render `AnalyticsTableToolbar`. The meta warning / header / KPI block appears twice. The 2026-09-28 live audit could not render the DOM, so verify the deployed DOM first.
+- **URL state:** period preset, from/to, sort and filters are not in the URL, so 90 days resets to 30 on reload. `RQ470` adds only `search` and pagination.
+- **Impure sort handler:** `setSortDir` is called inside the `setSortField` updater (`:1040-1049`); StrictMode double-invokes updaters, so the toggle cancels out in dev.
+- **Null sorting:** nulls sort as `-9999` (`:883-887`) and mix with real negative values.
+- **UTC default date:** `toDateInputValue` uses `toISOString()` (`:228-229`), so between 00:00 and 02:00 Belgrade time the default "to" date is yesterday.
+- **Date format:** the native date input shows the browser-locale format (live 2026-09-25: `06/28/2026`) while the trust header uses Serbian dates.
+- **To verify:** `queueMessage` is cleared only when a new queue action starts (`:1155`), so it persists across filter changes; check whether the timeline request passes `storeId`/`supplierId`.
+
+### Scope
+
+- `ProductDecisionCenterPage.tsx` (+ CSS) and its specs. No backend change; no decision logic (`RQ143`).
+- Out of scope: server-side whole-day boundaries (`RQ442` DONE), search/pagination (`RQ470`), KPI populations (`RQ471`), action-status batching (`RQ469`).
+
+### Do
+
+1. Keep one header/toolbar/KPI/warning block, placed under the trust header.
+2. Sync the period preset, from/to, sort and filters with the URL (validated on read; no history spam), alongside `RQ470`'s `search`.
+3. Make the sort handler pure; sort nulls last in both directions; handle header-click combinations missing from the select with a neutral value.
+4. Use one shared local-date helper (Europe/Belgrade) for defaults, and show dates in Serbian format next to or instead of the native picker.
+5. Clear `queueMessage` on filter change or after a timeout. Fix the timeline params if verification confirms they are missing.
+
+### Tests
+
+- Exactly one `h1` and one toolbar.
+- URL round-trip (set 90 days → reload → still 90 days; sort survives).
+- The sort toggle under StrictMode; nulls last.
+- Fake timers at 00:30 Europe/Belgrade → the default "to" date is today.
+- The Serbian date display.
+
+### Acceptance
+
+- One header; state survives reload and sharing; sorting is deterministic; defaults are correct around midnight.
+
+### Dependencies
+
+- After `RQ469`/`RQ470`/`RQ471` (same page).
+- Reliability contract: presentation-only; no client-side decisions or totals.
+
+---
+
+## RQ486 - Supplier page shell and overview hygiene: trust header, date validation, stores, layout, sorting and badges
+
+Status: READY
+Priority: P2
+Type: frontend/css/tests
+Feature family: supplier-shell-overview-hygiene
+Parallel-safe: no (`SupplierConsolidatedPage.tsx`/`.css`, `SupplierSalesStatsPage.tsx`, `services/analyticsApi.ts` `getStores`)
+Owner: Analytics Reliability / Supplier
+Local lock: `.ai/task-locks/RQ486-<agent>.lock.md`
+Commit suggestion: `fix(analytics): supplier shell and overview hygiene`
+Source: `PS12`, `PS15`, the Supplier part of `PS16`, `PS18` and the frontend link residual of `PS13` in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-25.md` (de-dup 2026-09-28)
+
+### Problem and evidence (at `c5a1937f`; product code unchanged on `5fe1f30b`)
+
+- **Stale trust header:** `SupplierConsolidatedPage.tsx:245-255` resets `trustPayload` on any filter change, but the child re-emits it only when its own effect dependencies change. Switching supplier A→B leaves the header at defaults. This was left as a known residual by `RQ444` ("trust-header staleness on supplier switch remains with PS12").
+- **Double date validation:** both the parent (`SupplierConsolidatedPage.tsx:456`) and the child (`SupplierSalesStatsPage.tsx:919`, `:1799`) validate the range and show an error. The child's shared-filter sync can still send the request, and the backend returns 400.
+- **Stores scope:** `getStores` (`services/analyticsApi.ts:986-993`) takes no data scope argument; the page refetches on scope change but the request carries only the global/local scope. Verify the `fetchJson` scope-append path.
+- **Duplicate store label:** live 2026-09-25, the object dropdown showed two identical „Komision (Gospodska 6, N/A)“ options (keyed by `storeId`, `SupplierConsolidatedPage.tsx:350`; label from the local `buildStoreLabel`, `:76`). Likely duplicate store master rows; report them to the data owner.
+- **Layout:** live 2026-09-25 at 1280 px, the filter bar overflowed horizontally and values were clipped („Poslednjih …“, „Svi dobavlja…“). The 2026-09-28 live audit could not render the page, so reproduce first (`SupplierConsolidatedPage.css`).
+- **UTC date shift:** `SupplierSalesStatsPage.tsx:184-188` `toDateOnly` uses `toISOString()` and shifts datetime strings without `Z`.
+- **Impure sort handler:** `handleSort` (`:1585-1594`) calls `setSortDir` inside the `setSortField` updater.
+- **Dead code:** `displaySignalLabel` (`:300`) is defined and never used; the `controlBarFields` `useMemo` (`:1627`) depends on functions recreated every render, so it never hits.
+- **Rank badges:** gold/silver/bronze `supplier-rank-badge` classes (`:2195-2202`) follow the current sort order, so they appear even on alphabetical sort.
+- **Silent supplier clear (`PS13` residual):** an unknown/absent `supplierId` in the URL (e.g. from the Product Decision link) is silently cleared (`SupplierConsolidatedPage.tsx:226-231`).
+
+### Scope
+
+- Frontend state, validation, store fetch/labels, filter-bar CSS, date helper, sort handler, dead code and badges on the Supplier shell/overview; tests.
+- Out of scope, to avoid duplication:
+  - error/empty/503 states (`RQ474`);
+  - share/PoP denominators (`RQ476`);
+  - server whole-day boundaries (`RQ442` DONE);
+  - period truth (`RQ444` DONE);
+  - supplier attribution rules (`RQ441`/`RQ445` DONE).
+
+### Do
+
+1. Key the trust payload by request identity: pending while loading, emitted on every settled response, never stale metadata for new filters.
+2. One validation owner for the date range: no request on an invalid range, one error message.
+3. Pass the page data scope to the stores request; disambiguate identical store labels (append the store code/id) and list the duplicate store ids in the run log for the data owner.
+4. Reproduce the 1280/1024 px overflow; let the filters wrap; give truncated options their full text (`title`); constrain the object dropdown.
+5. Use a shared local-date helper for `toDateOnly`.
+6. Make `handleSort` pure; remove `displaySignalLabel`; stabilize or drop the `controlBarFields` memo.
+7. Show rank badges only when sorted by revenue (backend order); otherwise hide them.
+8. For an unknown `supplierId`, show „Dobavljač nije u izabranom periodu/opsegu“ instead of silently clearing it.
+
+### Tests
+
+- Supplier switch → the trust header updates after the response settles.
+- Invalid range → no request, one error.
+- The stores request receives the page scope; duplicate labels are disambiguated.
+- `toDateOnly` with and without `Z`.
+- The sort toggle under StrictMode.
+- No badges on alphabetical sort.
+- The unknown-supplier message.
+- A 1280 px layout check (Playwright screenshot if available, otherwise attached manual evidence).
+
+### Acceptance
+
+- The trust header always describes the shown data; invalid input never reaches the backend; stores follow the page scope with unique labels; no horizontal overflow at 1280 px; deterministic sorting; badges always mean revenue rank; an unknown supplier is explained.
+
+### Dependencies
+
+- None blocking. `RQ474`/`RQ476` (WAITING, same page) must rebase on this work if they start later.
+- Reliability contract: presentation/state only; no client-side totals or decisions.
+
+---
+
+## RQ487 - Bound Product Decision and Supplier overview query cost
+
+Status: WAITING
+Ready after: `RQ474` classifies the live Supplier overview 503 (read-only provider logs), and a baseline timing/`EXPLAIN ANALYZE` measurement exists
+Priority: P2
+Type: backend/performance/tests
+Feature family: pdc-supplier-query-performance
+Parallel-safe: no (`Api/Endpoints/CachedAnalyticsEndpoints.cs` Product Decision builder, `Api/Endpoints/AllEndpoints.cs` supplier-sales-stats)
+Owner: Analytics Reliability / Performance
+Local lock: `.ai/task-locks/RQ487-<agent>.lock.md`
+Commit suggestion: `perf(analytics): bound product and supplier decision queries`
+Source: `PS14` in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-25.md` (de-dup 2026-09-28)
+
+### Problem and evidence (at `c5a1937f`; product code unchanged on `5fe1f30b`)
+
+- **Product Decision:**
+  - loads all matching articles and sends the full id list through `articleIds.Contains(...)` (`CachedAnalyticsEndpoints.cs:6030`, `:6059`, `:6079`);
+  - the last-sale query scans the whole history without an upper bound (`:6075-6090`; the period-end semantics are `RQ483`'s);
+  - the cache key includes the raw search string.
+- **Supplier overview:**
+  - the query groups at sale-line/timestamp grain;
+  - `prvaNivelacijaPoArtiklu` (`AllEndpoints.cs:1304`) scans the nivelacija history without an article filter;
+  - the endpoint returned HTTP 503 live on 2026-09-28 (cause unclassified; `RQ474`).
+- **Cache metadata:** cache-hit truth was addressed generally by `RQ141`/`RQ187` (DONE). Verify whether the supplier-sales-stats cache-hit path still returns the payload without age/stale/correlation metadata, and whether the `blockOperationsDecisionSignals` evaluation is baked into the cached payload. Fix only a proven gap.
+
+### Scope
+
+- Query shape, bounds and cache metadata; behaviour-preserving (identical results), with tests and measured numbers. No schema/index migration without separate approval (propose it in the run log).
+
+### Do
+
+1. Product Decision: filter via joins/subqueries instead of huge `IN` lists; bound the last-sale lookup to the needed articles (and the period end once `RQ483` lands); normalize search in the cache key.
+2. Supplier overview: aggregate in SQL at the needed grain; restrict the nivelacija lookup to relevant articles.
+3. Close any proven cache-hit metadata gap (age/stale/correlation id; read-time decision-block evaluation).
+4. Record before/after timings on 30/90-day windows.
+
+### Tests
+
+- Builder integration tests prove identical results before and after.
+- A cache-hit metadata test if step 3 changes anything.
+
+### Acceptance
+
+- A measured latency reduction with unchanged numbers; cache hits disclose their age where a gap was proven.
+
+### Dependencies
+
+- `RQ474` (503 diagnosis), `RQ483` (last-sale period semantics), `RQ470` (search cache key). `RQ141`/`RQ187` are prior contracts.
+- Reliability contract: no numeric change; performance work must be proven equivalent.
+
+---
+
+## RQ488 - Serbian copy and export values on Product Decision and decision-engine summaries
+
+Status: WAITING
+Ready after: `RQ485` DONE (same Product Decision page); the engine-label part may run earlier if no active prompt owns `AnalyticsDecisionRecommendationEngine.cs`
+Priority: P3
+Type: frontend/backend-copy/tests
+Feature family: pdc-decision-engine-copy-export
+Parallel-safe: no (`ProductDecisionCenterPage.tsx`, `Application/Analytics/AnalyticsDecisionRecommendationEngine.cs`, `Api/Endpoints/InventorySignalCalculator.cs`)
+Owner: Analytics UI / Copy
+Local lock: `.ai/task-locks/RQ488-<agent>.lock.md`
+Commit suggestion: `fix(analytics): Serbian decision copy and export values`
+Source: residual of `PS17` in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-25.md` (de-dup 2026-09-28). The Product Decision ASCII labels and the Supplier shell ASCII copy listed in `PS17` are already fixed on current code, and the Supplier overview copy went through `RQ325`.
+
+### Problem and evidence (at `c5a1937f`; product code unchanged on `5fe1f30b`)
+
+- **English engine text:** `Application/Analytics/AnalyticsDecisionRecommendationEngine.cs:247` („Strong PoP trend and healthy margin …“) and `:274-275` („Increase focus“, „Maintain“). The Supplier overview surfaces `recommendation.summary` as the status reason (`SupplierSalesStatsPage.tsx:639-640`), so English text reaches users.
+- **Export percent unit:** Product Decision export column `sellThroughRatio` is declared `dataType: "percent"` with header „Obrt zalihe“ (`ProductDecisionCenterPage.tsx:219`) but holds a 0–1 ratio, so it exports as „0,45%“. The label also conflates sell-through with stock turnover.
+- **Header mismatch:** the export header „Kvalitet ulaza“ (`:221`) differs from the UI's „Kvalitet podataka“.
+- **Backend labels:** „Dobar sell-through“ / „Upozorenje sell-through“ (`Api/Endpoints/InventorySignalCalculator.cs:243-244`) override the client label; „Ne naručuj“ (backend) vs „Ne naručivati“ (UI).
+- **ASCII message:** `services/analyticsApi.ts:844` „Greska pri ucitavanju Product Decision Center pregleda“ → „Greška pri učitavanju pregleda odluka o proizvodima“.
+
+### Scope
+
+- User-visible copy, label maps and export column types on Product Decision, plus the Serbian engine summaries/labels (keep machine codes unchanged).
+- Out of scope: Operacije copy (`RQ325` DONE), Supplier report/Pilot copy (`RQ468`).
+
+### Do
+
+1. Serbian engine summaries/labels, or map the codes to Serbian in the established label maps; never show English summaries.
+2. Export the ratio in percent units (or declare a ratio type); use the correct metric name („Prodajnost“ for sell-through vs „Obrt zalihe“ for turnover) and use one header name for data quality.
+3. Unify „Ne naručivati“ wording and fix the listed ASCII message.
+
+### Tests
+
+- `npm run check:analytics-guardrails`; export tests for the percent unit and header names; engine label tests (`AnalyticsDecisionRecommendationEngineTests`).
+
+### Acceptance
+
+- No English, raw enum or ASCII-substituted copy on Product Decision or in engine summaries shown on Operations screens; the export units match their declared type.
+
+### Dependencies
+
+- After `RQ485`; coordinate with `RQ484` if the engine gate summary text changes.
+- Reliability contract: copy only; codes, numbers and gating unchanged.

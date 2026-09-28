@@ -1148,3 +1148,32 @@ Izvor: `.ai/runs/2026-09-25-supplier-sales-overview-audit-evidence.md` (tabela s
 - `PS11`/`PS17` dopuna: InfoTip „Ukupan promet“ (`:1858`) kaže „svih dobavljača“, a bedž kvaliteta marže (`:1877`, `data.totals.marginQuality*`) opisuje ceo odgovor i kada je prikazan fokusirani dobavljač.
 - `RQ444` (registrovan, `PARTIAL`, lokalni commit `53f66cfa`) pokriva lepljivi legacy `sezonaId`, prikaz prozora podataka kao perioda u kartici „Period i filteri“ i +1 dan krajnjeg datuma u zaglavlju; to nije deo `PS12` ni `PS16`.
 - Preostali ASCII/engleski copy ovog ekrana dodat je u `RQ325` (dodatak 2026-09-25, Supplier overview); `PS17` ga ne treba ponavljati.
+
+---
+
+## Dodatak 2026-09-28 — de-dup PS04, PS07, PS10, PS12–PS18 i registracija (grok)
+
+Izvor: `.ai/runs/2026-09-28-supplier-report-pilot-intake-owner-decisions-evidence.md`. Po uputstvu vlasnika (Ivan, 2026-09-28) PS stavke se **ne** registruju en bloc. Postojeća mapa vlasnika se poštuje, a novi RQ je otvoren samo za ono što nema vlasnika. Linije su proverene na kodu `c5a1937f`; commit-i do `5fe1f30b` menjaju samo dokumentaciju. Ovaj dodatak ne menja PS sekcije iznad.
+
+| PS | Mapiranje | Razlog |
+|---|---|---|
+| `PS01` | postojeći `RQ469` | action-status batch ugovor |
+| `PS02` | postojeći `RQ472` | journal gate |
+| `PS03` | postojeći `RQ473` | paritet marže; odluka o nabavnoj ceni iz `RQ464` je upisana kao cross-reference |
+| `PS04` | **novi `RQ483`** (WAITING) | dostižnost pravila i merenje od kraja perioda; nema vlasnika (`RQ157`/`RQ255`/`RQ256` DONE su rešili samo nullable dokaze); posle `RQ472` i potvrde pragova |
+| `PS05` | postojeći `RQ470` | serverska pretraga i populacija |
+| `PS06` | postojeći `RQ474` | Supplier overview 503 / greška ≠ prazno |
+| `PS07` | **novi `RQ484`** (WAITING, odluka vlasnika) | politika gate-a preporuka (nivelacija dokaz, nepoznati dobavljač) za Supplier/Tip obuće/Boju; `RQ140` (PARTIAL) je namerno uveo fail-closed gate, pa promena opsega traži odluku |
+| `PS08` | postojeći `RQ475` (kanonski, nikad duplirati) | Scorecard `MISSING_SCHEMA` / Assortment `vendor_sales_nivelacija_contract_missing` |
+| `PS09` | postojeći `RQ471` | KPI populacija vs actionability |
+| `PS10` | **novi `RQ485`** (WAITING, posle `RQ469`–`RQ471`) | dupli header blok (i dalje `ProductDecisionCenterPage.tsx:1298`/`:1496`), URL stanje, čisto sortiranje, null na kraju |
+| `PS11` | postojeći `RQ476` (deo) + `RQ443` DONE | nefokusirani PoP isporučen u `RQ443`; imenioci udela u `RQ476` |
+| `PS12` | **novi `RQ486`** (READY) | trust header pri promeni dobavljača (rezidual iz `RQ444`), jedna validacija perioda, scope prodavnica, duple labele prodavnica |
+| `PS13` | nije registrovan — postojeći vlasnici | atribucija u trenutku prodaje: `RQ441` DONE, ugovor `RQ445` DONE, Supplier izveštaj `RQ464` (odluka 6); tihi reset nepoznatog `supplierId` iz linka je stavka 8 u `RQ486` |
+| `PS14` | **novi `RQ487`** (WAITING) | ograničavanje cene upita; posle dijagnoze 503 (`RQ474`) i merenja; cache-hit metapodaci samo ako se dokaže rupa posle `RQ141`/`RQ187` DONE |
+| `PS15` | spojen u `RQ486` | isti fajl (`SupplierConsolidatedPage.tsx`/`.css`); prvo reprodukovati overflow na 1280 px |
+| `PS16` | spojen u `RQ485` (Product Decision) i `RQ486` (Supplier) | lokalni datum i srpski prikaz; serverske granice su `RQ442` DONE |
+| `PS17` | **novi `RQ488`** (WAITING, rezidual) | ASCII labele na Product Decision i Supplier shell su već ispravljene na kodu, a Supplier overview copy je išao kroz `RQ325`; ostaje engleski tekst engine-a, jedinica/zaglavlje izvoza i poruka `analyticsApi.ts:844` |
+| `PS18` | spojen u `RQ486` | isti fajl (`SupplierSalesStatsPage.tsx`): sort handler, mrtav `displaySignalLabel`, rank bedževi |
+
+Napomena: tabela „Confirmed findings and queue mapping“ u `docs/qa/PRODUCTS_SUPPLIER_LIVE_AUDIT_2026-09-28.md` navodi `RQ461`–`RQ468` za F1–F8; ispravna mapa je `RQ469`–`RQ476` (vidi dodatak u tom fajlu).

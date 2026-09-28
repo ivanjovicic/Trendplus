@@ -64,3 +64,19 @@ The most important alignment rule is to label population and denominator on ever
 
 Eight bounded prompts were registered in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` as `RQ469`–`RQ476` (the intervening IDs already belong to existing Supplier report/Pilot intake work). They remain `WAITING`; this direct audit requested analysis and queue registration, not an implementation claim. The existing `Current READY prompt` is `RQ461` (with the existing parallel READY entries `RQ462` and `RQ466`); this audit did not promote a new prompt.
 
+## Correction addendum 2026-09-28 (grok)
+
+The "Queue prompt" column in "Confirmed findings and queue mapping" above predates the final numbering and still lists `RQ461`–`RQ468`. Those ids belong to the Supplier report / Pilot intake work (`f79d5d92`, `657647ad`). The registered ids for this audit are the ones given in "Queue delivery":
+
+| Finding | Registered prompt |
+|---|---|
+| F1 | `RQ469` |
+| F2 | `RQ470` |
+| F3 | `RQ471` |
+| F4 | `RQ472` |
+| F5 | `RQ473` |
+| F6 | `RQ474` |
+| F7 | `RQ475` |
+| F8 | `RQ476` |
+
+The same substitution applies to the prose references in "Existing work not duplicated": `RQ462` → `RQ470`, `RQ467` → `RQ475`, `RQ468` → `RQ476`. The original lines are left unchanged. Evidence: `.ai/runs/2026-09-28-supplier-report-pilot-intake-owner-decisions-evidence.md`.
