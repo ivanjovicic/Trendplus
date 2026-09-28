@@ -4,6 +4,8 @@ Updated: 2026-09-28
 Repository: `ivanjovicic/Trendplus`
 Status: canonical planning entry point
 
+Supplier cohort/trust UX audit 2026-09-28: post-RQ484/RQ486 review kept existing correctness owners RQ474/RQ475/RQ476 and P0 RQ494/RQ495, then registered non-duplicate WAITING RQ498-RQ500 for cross-tab cohort/unit naming, consolidated trust/provenance severity truth, and KPI information hierarchy. No current READY pointer change. Audit: `docs/qa/SUPPLIER_ANALYTICS_COHORT_UX_AUDIT_2026-09-28.md`.
+
 Shoe Type + Daily Sales audit 2026-09-28: current-main review found four residual contracts after the delivered September hardening: certified sales `dataScope` contradicts `SST-ACCURACY-1.0` because endpoints/oracle use article origin instead of sale-header origin; line-level cost snapshots are consumed as article-level minimums; Shoe Type signed share can affect recommendations while the UI hides out-of-0..100 values and still has sort-dependent rank/negative-base “Novo” residuals; Daily shift assignment lacks explicit business-time/source timestamp provenance. Registered `RQ494`-`RQ497` as WAITING with no current READY pointer change. Audit: `docs/qa/SHOE_TYPE_DAILY_SALES_AUDIT_2026-09-28.md`.
 
 Nivelacija cross-screen audit 2026-09-28: direct Pre/Post and Pre-Nivelacija Priority source/contract review registered additional READY `RQ489` (certified receipt population, signed-return and positive-sale recency semantics) plus WAITING `RQ490`–`RQ493` for Pre/Post receipt parity, activity-vs-coverage semantics, Pre-Nivelacija store grain and scoring/scenario truth. Existing Q83 retains the live view/schema owner and RQ140 retains causal-comparability ownership. Audit: `docs/qa/NIVELACIJA_PRE_POST_PRIORITY_AUDIT_2026-09-28.md`.
