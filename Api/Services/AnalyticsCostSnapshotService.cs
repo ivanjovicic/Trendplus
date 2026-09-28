@@ -473,6 +473,7 @@ public sealed class AnalyticsCostSnapshotService
                 ProductCostLegacy = a.NabavnaCena
             } by new
             {
+                ProdajaStavkaId = ps.Id,
                 SupplierId = ps.SupplierIdAtSale,
                 ArtikalId = a.Id,
                 SaleLineCost = ps.NabavnaCena,
@@ -481,6 +482,7 @@ public sealed class AnalyticsCostSnapshotService
             }
             into g
             select new SupplierComparisonLine(
+                g.Key.ProdajaStavkaId,
                 g.Key.SupplierId,
                 g.Key.ArtikalId,
                 g.Sum(x => x.Kolicina),
@@ -508,12 +510,13 @@ public sealed class AnalyticsCostSnapshotService
             line => line.SupplierId,
             line => ResolveSupplierName(line.SupplierId),
             line => line.ArtikalId,
+            line => line.ProdajaStavkaId,
             line => line.Quantity,
             line => line.Revenue,
             line => line.SaleLineCost,
             line => line.ProductCostRsd,
             line => line.ProductCostLegacy,
-            context.SnapshotCostByArtikalId);
+            context.SnapshotCostBySaleLineId);
 
         var result = BuildComparisonResult(
             reportKey: "supplier-sales-stats",
@@ -564,6 +567,7 @@ public sealed class AnalyticsCostSnapshotService
                 ProductCostLegacy = a.NabavnaCena
             } by new
             {
+                ProdajaStavkaId = ps.Id,
                 ShoeTypeId = ps.ShoeTypeIdAtSale,
                 ArtikalId = a.Id,
                 SaleLineCost = ps.NabavnaCena,
@@ -572,6 +576,7 @@ public sealed class AnalyticsCostSnapshotService
             }
             into g
             select new ShoeTypeComparisonLine(
+                g.Key.ProdajaStavkaId,
                 g.Key.ShoeTypeId,
                 g.Key.ArtikalId,
                 g.Sum(x => x.Kolicina),
@@ -599,12 +604,13 @@ public sealed class AnalyticsCostSnapshotService
             line => line.ShoeTypeId,
             line => ResolveShoeTypeName(line.ShoeTypeId),
             line => line.ArtikalId,
+            line => line.ProdajaStavkaId,
             line => line.Quantity,
             line => line.Revenue,
             line => line.SaleLineCost,
             line => line.ProductCostRsd,
             line => line.ProductCostLegacy,
-            context.SnapshotCostByArtikalId);
+            context.SnapshotCostBySaleLineId);
 
         var result = BuildComparisonResult(
             reportKey: "shoe-type-sales-stats",
@@ -639,11 +645,9 @@ public sealed class AnalyticsCostSnapshotService
                 $"Batch {batch.Id} je u statusu '{batch.Status}' i nije spreman za poredjenje.");
         }
 
-        var snapshotCostByArtikalId = await _db.AnalyticsSaleLineCostSnapshots
+        var snapshotCostBySaleLineId = await _db.AnalyticsSaleLineCostSnapshots
             .Where(s => s.BatchId == batch.Id)
-            .GroupBy(s => s.ArtikalId)
-            .Select(g => new { ArtikalId = g.Key, Cost = g.Min(s => s.ResolvedUnitCost) })
-            .ToDictionaryAsync(x => x.ArtikalId, x => x.Cost, ct);
+            .ToDictionaryAsync(s => s.ProdajaStavkaId, s => s.ResolvedUnitCost, ct);
 
         return new ComparisonContext(
             Filters: filters,
@@ -655,7 +659,7 @@ public sealed class AnalyticsCostSnapshotService
                 batch.GeneratedAtUtc,
                 batch.ActivatedAtUtc),
             FeatureFlagEnabled: _snapshotOptions.Value.UseSnapshotCost,
-            SnapshotCostByArtikalId: snapshotCostByArtikalId,
+            SnapshotCostBySaleLineId: snapshotCostBySaleLineId,
             Top: Math.Clamp(request.Top ?? 25, 1, 100));
     }
 
@@ -727,12 +731,13 @@ public sealed class AnalyticsCostSnapshotService
         Func<TLine, int?> entityIdSelector,
         Func<TLine, string> entityNameSelector,
         Func<TLine, int> artikalIdSelector,
+        Func<TLine, int> saleLineIdSelector,
         Func<TLine, int> quantitySelector,
         Func<TLine, decimal> revenueSelector,
         Func<TLine, decimal?> saleLineCostSelector,
         Func<TLine, decimal?> productCostRsdSelector,
         Func<TLine, decimal?> productCostLegacySelector,
-        IReadOnlyDictionary<int, decimal> snapshotCostByArtikalId)
+        IReadOnlyDictionary<int, decimal> snapshotCostBySaleLineId)
     {
         return lines
             .GroupBy(bucketKeySelector)
@@ -752,7 +757,7 @@ public sealed class AnalyticsCostSnapshotService
                     var productCostLegacy = productCostLegacySelector(line);
                     decimal? snapshotCost = null;
 
-                    if (saleLineCost is null && snapshotCostByArtikalId.TryGetValue(artikalIdSelector(line), out var resolvedSnapshotCost))
+                    if (saleLineCost is null && snapshotCostBySaleLineId.TryGetValue(saleLineIdSelector(line), out var resolvedSnapshotCost))
                     {
                         snapshotCost = resolvedSnapshotCost;
                     }
@@ -950,10 +955,11 @@ public sealed class AnalyticsCostSnapshotService
         ComparisonFilters Filters,
         SnapshotComparisonBatch Batch,
         bool FeatureFlagEnabled,
-        IReadOnlyDictionary<int, decimal> SnapshotCostByArtikalId,
+        IReadOnlyDictionary<int, decimal> SnapshotCostBySaleLineId,
         int Top);
 
     private sealed record SupplierComparisonLine(
+        int ProdajaStavkaId,
         int? SupplierId,
         int ArtikalId,
         int Quantity,
@@ -963,6 +969,7 @@ public sealed class AnalyticsCostSnapshotService
         decimal? ProductCostLegacy);
 
     private sealed record ShoeTypeComparisonLine(
+        int ProdajaStavkaId,
         int? ShoeTypeId,
         int ArtikalId,
         int Quantity,

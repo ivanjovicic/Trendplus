@@ -675,7 +675,8 @@ public static class SupplierDecisionHubEndpoints
         decimal? SaleLineCost,
         decimal? SnapshotCost,
         decimal? ProductCostRsd,
-        decimal? ProductCostLegacy);
+        decimal? ProductCostLegacy,
+        int SaleLineId = 0);
 
     internal sealed record SupplierReportMetricBasis(
         bool HasEvidence,
@@ -736,7 +737,7 @@ public static class SupplierDecisionHubEndpoints
         SupplierDecisionHubFilters filters,
         CancellationToken ct)
     {
-        Dictionary<int, decimal> snapshotCostByArticleId = [];
+        Dictionary<int, decimal> snapshotCostBySaleLineId = [];
         if (snapshotOptions.UseSnapshotCost)
         {
             var activeBatchId = await db.AnalyticsCostSnapshotBatches
@@ -746,11 +747,9 @@ public static class SupplierDecisionHubEndpoints
 
             if (activeBatchId.HasValue)
             {
-                snapshotCostByArticleId = await db.AnalyticsSaleLineCostSnapshots
+                snapshotCostBySaleLineId = await db.AnalyticsSaleLineCostSnapshots
                     .Where(snapshot => snapshot.BatchId == activeBatchId.Value)
-                    .GroupBy(snapshot => snapshot.ArtikalId)
-                    .Select(group => new { ArtikalId = group.Key, Cost = group.Min(snapshot => snapshot.ResolvedUnitCost) })
-                    .ToDictionaryAsync(item => item.ArtikalId, item => item.Cost, ct);
+                    .ToDictionaryAsync(snapshot => snapshot.ProdajaStavkaId, snapshot => snapshot.ResolvedUnitCost, ct);
             }
         }
 
@@ -776,6 +775,7 @@ public static class SupplierDecisionHubEndpoints
                     || (filters.DataScope == "existing" && (article.DataOrigin == "existing" || article.DataOrigin == null || article.DataOrigin == "")))
             select new
             {
+                SaleLineId = saleLine.Id,
                 saleLine.SupplierIdAtSale,
                 saleLine.Kolicina,
                 Revenue = saleLine.Kolicina * saleLine.Cena,
@@ -791,9 +791,10 @@ public static class SupplierDecisionHubEndpoints
             row.Revenue,
             row.Kolicina,
             row.SaleLineCost,
-            snapshotCostByArticleId.TryGetValue(row.IdArtikal, out var snapshotCost) ? snapshotCost : null,
+            snapshotCostBySaleLineId.TryGetValue(row.SaleLineId, out var snapshotCost) ? snapshotCost : null,
             row.ProductCostRsd,
-            row.ProductCostLegacy)));
+            row.ProductCostLegacy,
+            row.SaleLineId)));
     }
 
     internal static bool TryCreateFilters(

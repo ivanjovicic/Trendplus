@@ -74,6 +74,32 @@ public sealed class AnalyticsMarginPolicyTests
     }
 
     [Fact]
+    public void ResolveUnitCostWithSnapshot_UsesTheExactSaleLineForSameArticle()
+    {
+        var snapshotCostsBySaleLineId = new Dictionary<int, decimal>
+        {
+            [1001] = 120m,
+            [1002] = 180m
+        };
+
+        var firstLine = AnalyticsMarginPolicy.ResolveUnitCostWithSnapshot(
+            saleLineCost: null,
+            snapshotCost: snapshotCostsBySaleLineId[1001],
+            productCostRsd: 999m,
+            productCostLegacy: 999m);
+        var secondLine = AnalyticsMarginPolicy.ResolveUnitCostWithSnapshot(
+            saleLineCost: null,
+            snapshotCost: snapshotCostsBySaleLineId[1002],
+            productCostRsd: 999m,
+            productCostLegacy: 999m);
+
+        Assert.Equal(120m, firstLine.UnitCost);
+        Assert.Equal(180m, secondLine.UnitCost);
+        Assert.Equal(MarginCostSource.SnapshotFallback, firstLine.Source);
+        Assert.Equal(MarginCostSource.SnapshotFallback, secondLine.Source);
+    }
+
+    [Fact]
     public void MarginAccumulator_BuildsContributionAndCoverage_ForKnownCostRows()
     {
         var accumulator = new MarginAccumulator();

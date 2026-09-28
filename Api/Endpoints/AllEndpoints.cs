@@ -53,6 +53,7 @@ public static class AllEndpoints
 
     private sealed class ShoeTypeSalesInput
     {
+        public int ProdajaStavkaId { get; init; }
         public int? TipObuceId { get; init; }
         public int ArtikalId { get; init; }
         public DateTime DatumProdaje { get; init; }
@@ -1224,16 +1225,14 @@ public static class AllEndpoints
                 var dbStopwatch = Stopwatch.StartNew();
                 var snapshotCostRowCount = 0;
 
-                // Load per-article snapshot costs when active batch exists
-                Dictionary<int, decimal> snapshotCostByArtikalId = [];
+                // Load exact sale-line snapshot costs when an active batch exists.
+                Dictionary<int, decimal> snapshotCostBySaleLineId = [];
                 if (activeBatchId.HasValue)
                 {
-                    snapshotCostByArtikalId = await db.AnalyticsSaleLineCostSnapshots
+                    snapshotCostBySaleLineId = await db.AnalyticsSaleLineCostSnapshots
                         .Where(s => s.BatchId == activeBatchId.Value)
-                        .GroupBy(s => s.ArtikalId)
-                        .Select(g => new { ArtikalId = g.Key, Cost = g.Min(s => s.ResolvedUnitCost) })
-                        .ToDictionaryAsync(x => x.ArtikalId, x => x.Cost, ct);
-                    snapshotCostRowCount = snapshotCostByArtikalId.Count;
+                        .ToDictionaryAsync(s => s.ProdajaStavkaId, s => s.ResolvedUnitCost, ct);
+                    snapshotCostRowCount = snapshotCostBySaleLineId.Count;
                 }
 
                 var dataWindow = await GetSalesDataWindowAsync(db, cache, logger, storeId, normalizedDataScope, ct);
@@ -1328,6 +1327,7 @@ public static class AllEndpoints
                         AttributionBasis = ps.AttributionBasis
                     } by new
                     {
+                        ProdajaStavkaId = ps.Id,
                         SupplierId = ps.SupplierIdAtSale,
                         FootwearTypeId = ps.ShoeTypeIdAtSale,
                         ArtikalId = a.Id,
@@ -1340,6 +1340,7 @@ public static class AllEndpoints
                     into g
                     select new
                     {
+                        ProdajaStavkaId = g.Key.ProdajaStavkaId,
                         DobavljacId = g.Key.SupplierId,
                         TipObuceId = g.Key.FootwearTypeId,
                         ArtikalId = g.Key.ArtikalId,
@@ -1436,7 +1437,7 @@ public static class AllEndpoints
                             totalQty += s.Kolicina;
                             articleIds.Add(s.ArtikalId);
                             decimal? snapshotCost = null;
-                            if (s.SaleLineCost is null && snapshotCostByArtikalId.TryGetValue(s.ArtikalId, out var sc))
+                            if (s.SaleLineCost is null && snapshotCostBySaleLineId.TryGetValue(s.ProdajaStavkaId, out var sc))
                                 snapshotCost = sc;
                             margin.Add(
                                 s.Prihod,
@@ -1489,7 +1490,7 @@ public static class AllEndpoints
                                     typeArticleIds.Add(row.ArtikalId);
 
                                     decimal? snapshotCost = null;
-                                    if (row.SaleLineCost is null && snapshotCostByArtikalId.TryGetValue(row.ArtikalId, out var sc))
+                                    if (row.SaleLineCost is null && snapshotCostBySaleLineId.TryGetValue(row.ProdajaStavkaId, out var sc))
                                         snapshotCost = sc;
 
                                     typeMargin.Add(
@@ -1656,7 +1657,7 @@ public static class AllEndpoints
                 var missingCostQty = stavke.Sum(s =>
                 {
                     var snapshotCost = s.SaleLineCost is null
-                        && snapshotCostByArtikalId.TryGetValue(s.ArtikalId, out var resolvedSnapshotCost)
+                        && snapshotCostBySaleLineId.TryGetValue(s.ProdajaStavkaId, out var resolvedSnapshotCost)
                         ? resolvedSnapshotCost
                         : (decimal?)null;
                     var resolvedCost = AnalyticsMarginPolicy.ResolveUnitCostWithSnapshot(
@@ -2203,14 +2204,12 @@ public static class AllEndpoints
 
                 var dbStopwatch = Stopwatch.StartNew();
 
-                Dictionary<int, decimal> snapshotCostByArtikalId2 = [];
+                Dictionary<int, decimal> snapshotCostBySaleLineId2 = [];
                 if (activeBatchId2.HasValue)
                 {
-                    snapshotCostByArtikalId2 = await db.AnalyticsSaleLineCostSnapshots
+                    snapshotCostBySaleLineId2 = await db.AnalyticsSaleLineCostSnapshots
                         .Where(s => s.BatchId == activeBatchId2.Value)
-                        .GroupBy(s => s.ArtikalId)
-                        .Select(g => new { ArtikalId = g.Key, Cost = g.Min(s => s.ResolvedUnitCost) })
-                        .ToDictionaryAsync(x => x.ArtikalId, x => x.Cost, ct);
+                        .ToDictionaryAsync(s => s.ProdajaStavkaId, s => s.ResolvedUnitCost, ct);
                 }
 
                 var dataWindow = await GetSalesDataWindowAsync(db, cache, logger, storeId, normalizedDataScope, ct);
@@ -2289,6 +2288,7 @@ public static class AllEndpoints
                         AttributionBasis = ps.AttributionBasis
                     } by new
                     {
+                        ProdajaStavkaId = ps.Id,
                         TipObuceId = ps.ShoeTypeIdAtSale,
                         ArtikalId = a.Id,
                         DatumProdaje = pz.DatumProdaje,
@@ -2300,6 +2300,7 @@ public static class AllEndpoints
                     into g
                     select new ShoeTypeSalesInput
                     {
+                        ProdajaStavkaId = g.Key.ProdajaStavkaId,
                         TipObuceId = g.Key.TipObuceId,
                         ArtikalId = g.Key.ArtikalId,
                         DatumProdaje = g.Key.DatumProdaje,
@@ -2319,6 +2320,7 @@ public static class AllEndpoints
                     stavke.Add(new ShoeTypeSalesInput
                     {
                         TipObuceId = previousOnlyId,
+                        ProdajaStavkaId = 0,
                         ArtikalId = 0,
                         DatumProdaje = previousFromUtc ?? DateTime.UnixEpoch,
                         Kolicina = 0,
@@ -2384,7 +2386,7 @@ public static class AllEndpoints
                             totalQty += s.Kolicina;
                             articleIds.Add(s.ArtikalId);
                             decimal? snapshotCost2 = null;
-                            if (s.SaleLineCost is null && snapshotCostByArtikalId2.TryGetValue(s.ArtikalId, out var sc2))
+                            if (s.SaleLineCost is null && snapshotCostBySaleLineId2.TryGetValue(s.ProdajaStavkaId, out var sc2))
                                 snapshotCost2 = sc2;
                             margin.Add(
                                 s.Prihod,

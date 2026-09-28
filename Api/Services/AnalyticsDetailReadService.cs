@@ -33,6 +33,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
 
     private sealed class SalesRow
     {
+        public int ProdajaStavkaId { get; init; }
         public int ArtikalId { get; init; }
         public int Kolicina { get; init; }
         public decimal Prihod { get; init; }
@@ -55,7 +56,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         public AnalyticsFilters Filters { get; init; } = new();
         public Dictionary<int, DateTime> PrvaNivelacijaPoArtiklu { get; init; } = [];
         public List<SalesRow> SalesRows { get; init; } = [];
-        public Dictionary<int, decimal> ArticleSnapshotCosts { get; init; } = new Dictionary<int, decimal>();
+        public Dictionary<int, decimal> SnapshotCostsBySaleLineId { get; init; } = new Dictionary<int, decimal>();
         public bool IsSnapshotActive { get; init; }
         public DateTime? SnapshotGeneratedAtUtc { get; init; }
     }
@@ -350,6 +351,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                && (!existingOnly || pz.DataOrigin == "existing" || pz.DataOrigin == null || pz.DataOrigin == "")
             select new SalesRow
             {
+                ProdajaStavkaId = ps.Id,
                 ArtikalId = a.Id,
                 Kolicina = ps.Kolicina,
                 Prihod = ps.Kolicina * ps.Cena,
@@ -371,7 +373,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
 
         long? activeBatchId = null;
         DateTime? snapshotGeneratedAt = null;
-        Dictionary<int, decimal> snapshotCostByArtikalId = [];
+        Dictionary<int, decimal> snapshotCostsBySaleLineId = [];
         if (_snapshotOptions.UseSnapshotCost)
         {
             var activeBatch = await _db.AnalyticsCostSnapshotBatches
@@ -382,11 +384,9 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             snapshotGeneratedAt = activeBatch?.GeneratedAtUtc;
             if (activeBatchId.HasValue)
             {
-                snapshotCostByArtikalId = await _db.AnalyticsSaleLineCostSnapshots
+                snapshotCostsBySaleLineId = await _db.AnalyticsSaleLineCostSnapshots
                     .Where(s => s.BatchId == activeBatchId.Value)
-                    .GroupBy(s => s.ArtikalId)
-                    .Select(g => new { ArtikalId = g.Key, Cost = g.Min(s => s.ResolvedUnitCost) })
-                    .ToDictionaryAsync(x => x.ArtikalId, x => x.Cost, ct);
+                    .ToDictionaryAsync(s => s.ProdajaStavkaId, s => s.ResolvedUnitCost, ct);
             }
         }
 
@@ -395,7 +395,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             Filters = filters,
             PrvaNivelacijaPoArtiklu = prvaNivelacijaPoArtiklu,
             SalesRows = salesRows,
-            ArticleSnapshotCosts = snapshotCostByArtikalId,
+            SnapshotCostsBySaleLineId = snapshotCostsBySaleLineId,
             IsSnapshotActive = activeBatchId.HasValue,
             SnapshotGeneratedAtUtc = snapshotGeneratedAt
         };
@@ -1084,7 +1084,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             decimal? snapshotCost = null;
             if (includeSnapshotCost
                 && row.SaleLineCost is null
-                && context.ArticleSnapshotCosts.TryGetValue(row.ArtikalId, out var resolvedSnapshotCost))
+                && context.SnapshotCostsBySaleLineId.TryGetValue(row.ProdajaStavkaId, out var resolvedSnapshotCost))
             {
                 snapshotCost = resolvedSnapshotCost;
             }
@@ -1298,7 +1298,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             decimal? snapshotCost = null;
             if (includeSnapshotCost
                 && row.SaleLineCost is null
-                && context.ArticleSnapshotCosts.TryGetValue(row.ArtikalId, out var sc))
+                && context.SnapshotCostsBySaleLineId.TryGetValue(row.ProdajaStavkaId, out var sc))
                 snapshotCost = sc;
             margin.Add(
                 row.Prihod,
