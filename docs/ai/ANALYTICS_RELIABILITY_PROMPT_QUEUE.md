@@ -2,7 +2,8 @@
 
 Date: 2026-09-25
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ461
+Owner audit follow-up 2026-09-28 (Supplier report + Pilot intake audit, grok): promoted three non-conflicting, decision-free prompts — `RQ461` (READY, P1: the durable Supplier report renderer expects section/header/metadata names the backend never emits, so warnings/top/risk/recommendation sections, freshness and the recommendation badge are always empty or wrong), `RQ462` (READY, P1, parallel-safe frontend: `/analytics/reports/pilot-intake` passes `report={null}` and always renders the empty state) and `RQ466` (READY, P1, parallel-safe backend: pilot intake ignores `dataScope`, uses a health window relative to now and presents query time as last refresh). `Current READY prompt` is `RQ461`; also READY: `RQ462`, `RQ466`. Run log: `.ai/runs/2026-09-28-supplier-report-pilot-intake-audit-evidence.md`.
 Idle recovery 2026-09-27: reconciled stale summary rows RQ191/RQ192 to their terminal `DONE` sections; no safe RQ prompt was promoted because remaining candidates are externally gated, partial pending live proof, or require the RQ319 product decision. Evidence: `.ai/runs/2026-09-27-idle-recovery-evidence.md`.
 Owner promotion/claim 2026-09-27: idle recovery verified RQ311 DONE on current `origin/main`, confirmed RQ310 was dependency-complete, and found only a stale route-alignment branch last updated 2026-06-17 with no active lock/PR owner. RQ310 moved WAITING -> READY -> IN_PROGRESS; local lock `.ai/task-locks/RQ310-codex.lock.md`.
 Owner completion 2026-09-27: RQ310 was delivered directly to `main` in implementation `cde5a5870a6406bab830a7164bb6f0e9993efd80`. Operacije page-level fixtures now mount production `/analytics/...` list routes while detail/modal fixtures retain `/analitika/:table/:id`. Focused proof is 178/178, App route smoke is 20/20, guardrails/typecheck/build pass. Run log: `.ai/runs/2026-09-27-RQ310-evidence.md`. Evidence state: synchronized.
@@ -1711,6 +1712,9 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ458 | DONE | supplier-decision-signal-identity | Preserve per-supplier signal identity when recommendation actionability is blocked |
 | RQ459 | DONE | supplier-decision-kpi-report-parity | Align Supplier Decision Hub KPI, chart and report totals and delta semantics |
 | RQ460 | DONE | analytics-quality-gates-copy-spec-drift | Restore green Analytics Quality Gates after RQ325 localized copy |
+| RQ461 | READY | supplier-decision-durable-report-render-contract | Align the Supplier report durable renderer with the backend report payload |
+| RQ462 | READY | pilot-intake-durable-report-render | Render the durable Pilot intake report instead of the permanent empty state |
+| RQ466 | READY | pilot-intake-backend-scope-period-truth | Make the Pilot intake backend honour scope, requested period and refresh truth |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -25081,3 +25085,221 @@ On „Prodaja po dobavljačima“ the period shown can differ from the period co
 - Residual risk: Data Quality return links keep `sezonaId` until the period is changed; trust-header staleness on supplier switch remains with `PS12`.
 - Next: none; RQ444 is synchronized DONE.
 - Prompt defect / scope repair: none.
+
+---
+
+## RQ461 - Align the Supplier report durable renderer with the backend report payload
+
+Status: READY
+Priority: P1
+Type: backend-contract/frontend/tests
+Feature family: supplier-decision-durable-report-render-contract
+Parallel-safe: no
+Owner: Analytics Reliability / Supplier Decision Hub
+Local lock: `.ai/task-locks/RQ461-<agent>.lock.md`
+Commit suggestion: `fix(analytics): align supplier report renderer with backend payload`
+
+### Problem
+
+`/analytics/supplier/report` (sidebar route and the Hub link `SupplierDecisionHubPage.tsx:935`) renders the backend durable payload with `SupplierDecisionReport.tsx`. The component was written for the client-built browser preview payload (`services/supplierDecisionReport.ts`), and the backend uses a different vocabulary for sections, header items and metadata keys. As a result, most of the durable report is silently empty or raw:
+- warnings, recommendations, top suppliers, risk, boost/reduce and data-quality sections never render;
+- the backend „Status“ / no-data message is never shown, and a successful empty report renders a zero-filled negotiation pack instead of an empty state (contradicts `RQ236`);
+- the freshness badge never appears;
+- the recommendation badge always says „ograničene“;
+- header, meta and filter values are raw codes or ISO strings, and KPI values are raw invariant decimals.
+
+The focused specs pass only because their fixtures use client-shaped rows. Audit: `.ai/runs/2026-09-28-supplier-report-pilot-intake-audit-evidence.md`.
+
+### Evidence (at `c5a1937f`)
+
+- Section and item names:
+  - The component expects the sections „Upozorenje“, „Preporuke“, „Top artikli / dobavljači“, „Rizik zalihe“, „Pojačaj“, „Smanji“, „Kvalitet podataka“ (`Klijent/clientapp/src/components/analytics/SupplierDecisionReport.tsx:235-244`), and the Header items „Dobavljač“, „Opseg podataka“, „Datum izveštaja“, „Poslednje osveženje“, „Efektivni skup podataka“ (`:183-204`).
+  - `BuildSupplierDecisionLegacyRows` (`Api/Endpoints/SupplierDecisionHubEndpoints.cs:1668-1742`) emits Header (Naziv, Period, Kvalitet, Preporuka dozvoljena), KPI, „Top dobavljači“ (`:1701`), „Rizik“, „Upozorenja“ (`:1730`), „Status“, `supplier_negotiation_pack`, „Preporučene akcije“ (`:1737`) and „Metodologija“ (`:1740`).
+- Metadata keys and values:
+  - Freshness: the component reads `dataFreshness` (`:206`); the backend emits `dataFreshnessStatus` (`:1797`).
+  - Recommendation badge: `String(recommendationAllowed) === "true"` (`:281`) never matches the backend `bool.ToString()` value `True` (`:1801`). `metaBoolean` (`:120-126`) parses case-insensitively, so the badge and the snapshot (`:315`) disagree.
+  - `confidencePct`, `reliabilityPct`, `reasonCodesPreview`, `fallbackReason(Code)` are read (`:210-217`, `:317-321`) but not emitted by `BuildSupplierDecisionPayload`.
+- Raw values:
+  - requested/effective period chips show raw ISO (`:288-293`);
+  - filter chips show raw `all`/`existing`/`false` (`renderMetaChips :166`; backend filters `:1758-1770`, supplier `all` or a numeric id `:1760`);
+  - KPI values are formatted by `FormatReportValue` (`:1903`) as invariant decimals, with the unit only in the secondary text.
+- Empty report: a successful response with zero suppliers still builds the zero-filled `supplier_negotiation_pack` („Dobavljač: Nije određeno“, „Prihod 0“; `:1486-1530`). The page empty state (`pages/SupplierDecisionReportPage.tsx:364`) only handles a null payload. Live-confirmed on `dataScope=existing` (2026-09-28).
+- Dead contract: the typed `sections`/`kpis`/`warnings` of `AnalyticsReportResponseDto` are ignored by the page (`:188-205`).
+- The production MV path currently returns `MISSING_SCHEMA` for every window (live 2026-09-28). This is an environment issue owned by `PS08` in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-25.md`; do not fix it here, but the error state must keep rendering correctly.
+
+### Scope
+
+- One canonical vocabulary for section names, header items and metadata keys between the backend payload and `SupplierDecisionReport.tsx`. Prefer consuming the typed `sections`/`kpis`/`warnings`, or export shared constants and adapt one side. Do not keep two silently divergent vocabularies.
+- Render the backend `Status` section and a real empty state for `hasData=false`. The backend must not emit a zero-filled negotiation pack when there are no rows.
+- Parse booleans case-insensitively everywhere (a single helper). Show freshness from `dataFreshnessStatus`.
+- Format dates as `dd.MM.yyyy`, amounts/percentages/counts with the shared sr-RS formatters, and filter chips as labelled Serbian values (supplier name when known, `dataScopeLabel` from `utils/dataScope.ts`, „Da/Ne“).
+- Either emit the snapshot fields the component reads or remove the dead reads.
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`, `RQ236`, `RQ249`, `RQ458`, `RQ459` sections.
+- `SupplierDecisionHubEndpoints.cs:860-1000`, `:1115-1139`, `:1486-1530`, `:1668-1810`, `:1903`.
+- `SupplierDecisionReport.tsx`, `SupplierDecisionReportPage.tsx`, `services/supplierDecisionReport.ts` (preview builder; keep both paths rendering).
+
+### Do
+
+1. Add a backend-shaped fixture, captured from `BuildSupplierDecisionReportAsync` output (data and no-data variants), to the component spec. Confirm it fails on the current code.
+2. Align the vocabulary as described in Scope; keep the browser-preview payload working through the same mapping.
+3. Implement the empty/status state, remove the zero-fill, fix freshness/boolean/formatting/chips.
+4. Keep `RQ235`/`RQ249` action gating and `RQ234` filter fidelity unchanged.
+
+### Tests
+
+- Vitest: the component rendered with the backend-shaped fixture shows warnings, top suppliers, risk, recommended actions, methodology, the freshness badge, „Preporuke: dozvoljene“ when `recommendationAllowed=True`, formatted dates/amounts and labelled chips. The no-data fixture shows the empty/status state and no negotiation pack.
+- Backend contract test (`Api.Tests/SupplierDecisionHubContractTests.cs`): the section/header/metadata names equal the shared constants; no negotiation-pack rows when there are no suppliers.
+- Existing focused specs stay green.
+
+### Acceptance
+
+- No report section, header item or metadata key read by the renderer is missing from the backend payload (asserted by a test).
+- A successful empty report renders an explicit empty state, never zero KPIs.
+- No raw ISO, invariant decimals or raw `all`/`existing`/`true`/`false` codes are visible on the durable report.
+
+### Dependencies
+
+- None blocking. `RQ463`, `RQ465` and `RQ468` edit the same files and run after this prompt.
+- Reliability contract: backend-owned values (recommendationAllowed, freshness, coverage) are rendered, never recomputed client-side; if a value is missing, show „nije dostupno“, not a default.
+
+---
+
+## RQ462 - Render the durable Pilot intake report instead of the permanent empty state
+
+Status: READY
+Priority: P1
+Type: frontend/tests
+Feature family: pilot-intake-durable-report-render
+Parallel-safe: yes, frontend-only (`PilotIntakeReportPage.tsx`, `PilotDataQualityIntakeReport.tsx` and their specs); `RQ466` owns the backend
+Owner: Analytics Reliability / Data Quality
+Local lock: `.ai/task-locks/RQ462-<agent>.lock.md`
+Commit suggestion: `fix(analytics): render durable pilot intake report`
+
+### Problem
+
+`/analytics/reports/pilot-intake` never shows the report. The page passes `report={null}` together with `durableReport`, and the component returns the empty state „Pilot intake izveštaj nema dovoljno podataka / Nema import batch-a ili prodajnih redova u izabranom periodu.“ whenever `!report`. The readiness score, KPIs, sections, recommended actions, CSV/PDF/XLSX export and copy are therefore unreachable. Meanwhile the trust header above shows the backend status (live 2026-09-28: 42, „Kritično“), so the screen contradicts itself. The code history shows this path was never working:
+- the page has passed `null` since `8006a4a6` (2026-05-25);
+- the `!report` guard predates `5fb731d3` (2026-09-07).
+
+The page spec mocks the component, so the defect is untested.
+
+### Evidence (at `c5a1937f`)
+
+- `Klijent/clientapp/src/pages/PilotIntakeReportPage.tsx:397-404` passes `report={null}` and `durableReport={resolvedReport}`.
+- `components/analytics/PilotDataQualityIntakeReport.tsx:347-356`: `if (!report || isAnalyticsMetaEmpty(report.meta))` returns the empty state before any durable rendering.
+- Dead helpers: `normalizeColumnType :180`, `formatDurableValue :191`, `normalizeText :208`. The durable sections block shows „N redova“ counts (`:422`), which say nothing to the user.
+- The CSV rows duplicate „Status spremnosti“ and „Oznaka spremnosti“ with the same value (`:68-69`, `:126-127`). The CSV filename uses `toLocaleDateString("sr-RS")` → „pilot-intake-28. 9. 2026..csv“ (`:300`).
+- Trust header: `lastRefreshAt` is taken from the report's `lastRefreshAtUtc` (which the backend fills with query time; see `RQ466`/`RQ137`), while `dataFreshnessStatus` comes from refresh-status (`:370-371`).
+- The page spec mocks `PilotDataQualityIntakeReport`. Focused Vitest passed 52/52 on 2026-09-28 without catching this.
+
+### Scope
+
+- Map the durable response (`payload.kpis`, `sections`, rows, metadata, readiness) into the component's report model, or render durable data directly, so that readiness, KPIs, sections, actions and exports show real backend values.
+- Show the empty state only when the backend says the report is empty (`meta.empty`/`meta.error`), with the backend message.
+- Remove the dead helpers and the duplicate readiness row. Replace „N redova“ with meaningful content or remove it.
+- CSV filename `pilot-intake-YYYY-MM-DD[_from_to].csv` (Belgrade date). Include a UTF-8 BOM if other analytics CSVs do (align with `RQ46`).
+- Trust header: `lastRefreshAt` from refresh-status `lastSuccessfulRefreshAtUtc` only (null → „nije dostupno“), not from the report.
+- Keep the browser-preview path working.
+
+### Read first
+
+- `RQ79` (percent unit) and `RQ137` sections; `RQ466` (backend fields may change: coordinate on field names, and do not implement the backend part here).
+- `PilotIntakeReportPage.tsx`, `PilotDataQualityIntakeReport.tsx`, `services/analyticsApi.ts` pilot mapping (`:1150-1210`).
+
+### Do
+
+1. Write a page spec that renders the real component with a backend-shaped durable response (captured from `BuildPilotDataQualityIntakeReportAsync`, e.g. the 2026-09-28 live shape) and assert that the readiness score and a KPI are visible. Confirm it fails now.
+2. Implement the mapping, then the cleanups listed in Scope.
+
+### Tests
+
+- Vitest: the durable route shows the readiness score/label, KPI values, sections and actions from the fixture; the meta-empty fixture shows the empty state with the backend message; CSV filename and content (no duplicate row); the trust header does not use the report's `lastRefreshAtUtc`.
+- Existing pilot specs stay green.
+
+### Acceptance
+
+- On `/analytics/reports/pilot-intake` with a non-empty backend response, the user sees the readiness score, KPIs, sections and actions; the empty state appears only for backend-empty/error responses.
+- No dead helper remains; no duplicate readiness row; the CSV filename has no spaces or double dots.
+
+### Dependencies
+
+- None blocking. `RQ466` (backend truth) and `RQ468` (copy) follow; `RQ79` owns the ratio unit.
+- Reliability contract: render backend numbers as-is with the shared formatters; never synthesize a score, percentage or freshness client-side.
+
+---
+
+## RQ466 - Make the Pilot intake backend honour scope, requested period and refresh truth
+
+Status: READY
+Priority: P1
+Type: backend/contract/tests
+Feature family: pilot-intake-backend-scope-period-truth
+Parallel-safe: yes, backend-only (`Api/Endpoints/DataQualityEndpoints.cs`, `Infrastructure/Services/AnalyticsDataQualityHealthService.cs`, `Api.Tests`); `RQ462` owns the frontend
+Owner: Analytics Reliability / Data Quality
+Local lock: `.ai/task-locks/RQ466-<agent>.lock.md`
+Commit suggestion: `fix(analytics): pilot intake scope, period and refresh truth`
+
+### Problem
+
+`GET /api/analytics/reports/pilot-intake` returns numbers that do not match the filters it echoes:
+- `dataScope` only reaches the health service, so article/sales/batch counts are identical for `all` and `imported`, and an unknown scope is accepted;
+- the health block („Prihod bez cene“ and its penalties) uses a window relative to *now*, not the requested period;
+- `lastRefreshAtUtc` falls back to the query time;
+- recommended actions are a static list shown even when every count is 0;
+- the empty message claims „nema import batch u periodu“ although batches are not period-filtered;
+- exceptions are swallowed without logging;
+- „Ponovo generiši report“ returns the 20-minute cached report.
+
+### Evidence (at `c5a1937f`; live read-only GETs 2026-09-28 ~10:55 CEST on `https://trendplus-api.onrender.com`)
+
+- Scope handling:
+  - `Api/Endpoints/DataQualityEndpoints.cs:375-377`: `scope` is not validated; live `scope=bogus` is served as report `all`.
+  - `:514`: `dataScope` is passed only to `healthService.CaptureAsync`. Article/sales queries `:518-600` ignore it; live `scope=imported` returns counts identical to `all`.
+- Health window:
+  - `:513-514`: lookback = requested length clamped to 2–90 days.
+  - `Infrastructure/Services/AnalyticsDataQualityHealthService.cs:106-160` (`DataQualitySalesWindow.Resolve`, `:109`) anchors that lookback to now.
+  - Live 2026-07-14..08-12 had 195 sale lines, yet `revenueWithoutCost` was null.
+- Freshness: `:655`: `lastRefreshAtUtc = refreshStatus.LastSuccessfulRefreshAtUtc ?? health.GeneratedAtUtc`. Live `lastRefreshAtUtc` ≈ `generatedAtUtc` (08:54:27.27Z vs .38Z). This violates the `RQ137` acceptance "No report or trust header presents query generation time as the last successful refresh".
+- Static actions: `PilotIntakeRecommendations` `:18-26`, emitted unconditionally (`:710`, rows `:765`, `:782`, `:1036`).
+- Empty message: `:657-663` („Pilot intake izvestaj nema import batch u periodu.“, ASCII), but the import batch query is global (live latest batch 42, 2026-08-12, shown for any period).
+- Logging: `catch (Exception)` without logging at `:445` (and the intake report `:314`).
+- Cache: the report is cached under HeavyAnalytics (20 min, `IAnalyticsCacheService.cs:500`); the page's „Ponovo generiši report“ re-requests the same key.
+- `StoresCount` = all `StoresDim` rows (`:534`), regardless of store/period.
+
+### Scope
+
+- Validate `scope`/`dataScope` against the canonical set (`all`, `existing`, `imported`; return `invalid_scope` meta error in Serbian) and apply it to every count, using the same scope predicate as the other analytics endpoints.
+- Health figures used by the report must use the requested `[from, toExclusive)` window, e.g. pass explicit bounds to the health service. If this is not supported, emit null with a reason, never a different window.
+- `lastRefreshAtUtc` = last successful refresh only; null when unknown.
+- Recommended actions are conditional on their counts (e.g. „Dopuni nabavne cene“ only when missing cost > 0), in canonical order, with counts in the description.
+- The empty message states the actual condition. Import-batch data is labelled as the latest global batch, or filtered to the period, whichever the implementer can prove.
+- Log exceptions with the report id and filters (no PII).
+- Regenerate: either support an explicit cache bypass (`refresh=true`) or have `RQ462` relabel the button. Document the choice.
+- `StoresCount`: count the stores in scope for the filters, or relabel it as the total number of stores.
+
+### Read first
+
+- `RQ137` completion note and acceptance; `RQ79`; `RQ467` (score semantics stay there: do not change weights or thresholds here).
+- `DataQualityEndpoints.cs:360-712`, `:1515-1620`; `AnalyticsDataQualityHealthService.cs:90-210`.
+
+### Do
+
+1. Add failing endpoint tests for: scope applied/validated; health window equals the requested period; `lastRefreshAtUtc` null without refresh status; conditional actions; logging on exception.
+2. Implement the fixes and keep period validation (`TryResolveIntakePeriod`) unchanged.
+
+### Tests
+
+- `Api.Tests` (existing `PilotIntake*`/`DataQualityEndpoints*` suites): the scope matrix, an explicit historic window with sales gives non-null `revenueWithoutCost`, the refresh fallback is removed, zero counts give no action, and an invalid scope gives `invalid_scope`.
+- Focused backend filter used in the audit: 72/72 must stay green.
+
+### Acceptance
+
+- Changing scope changes (or explicitly rejects) the counts; the health numbers belong to the requested period; `lastRefreshAtUtc` is never the query time; actions reflect the counts; exceptions are logged.
+
+### Dependencies
+
+- Coordinates with `RQ137` (PARTIAL): record the pilot part of its acceptance as satisfied in the completion note. `RQ462` consumes the fields.
+- Reliability contract: backend-owned counts, windows and freshness; fail closed (null + reason) rather than substituting another window or time.
