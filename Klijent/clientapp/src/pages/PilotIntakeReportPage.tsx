@@ -215,6 +215,7 @@ export default function PilotIntakeReportPage() {
               dataScope,
               storeId: parsedStoreId,
               supplierId: parsedSupplierId,
+              refresh: reloadTick > 0,
             });
 
         const [refreshResult, reportResult] = await Promise.allSettled([refreshTask, reportTask]);

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import PilotIntakeReportPage from "../PilotIntakeReportPage";
@@ -104,6 +104,30 @@ describe("PilotIntakeReportPage", () => {
 
     expect(getPilotIntakeDurableReportMock).toHaveBeenCalledTimes(2);
     expect(getBrowserPreviewPayloadMock).not.toHaveBeenCalled();
+  });
+
+  it("bypasses the durable report cache after the user asks to regenerate", async () => {
+    getPilotIntakeDurableReportMock.mockResolvedValue(durableReport());
+
+    renderPage("/analytics/reports/pilot-intake?fromDate=2026-04-01&toDate=2026-06-30&dataScope=all");
+
+    expect(await screen.findByText(/pilot-report:Trajni pilot report/)).toBeInTheDocument();
+    expect(getPilotIntakeDurableReportMock).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      fromDate: "2026-04-01",
+      toDate: "2026-06-30",
+      dataScope: "all",
+      refresh: false,
+    }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Ponovo generiši report" }));
+
+    await waitFor(() => expect(getPilotIntakeDurableReportMock).toHaveBeenCalledTimes(2));
+    expect(getPilotIntakeDurableReportMock).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      fromDate: "2026-04-01",
+      toDate: "2026-06-30",
+      dataScope: "all",
+      refresh: true,
+    }));
   });
 
   it("shows expired state only when an explicit browser preview has no snapshot", async () => {
