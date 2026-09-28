@@ -1187,6 +1187,7 @@ export async function getPilotIntakeDurableReport(paramsInput: {
   supplierId?: number | null;
   scope?: string | null;
   dataScope?: string | null;
+  refresh?: boolean | null;
 }): Promise<PilotIntakeDurableReport> {
   const params = new URLSearchParams();
   if (paramsInput.fromDate) params.set("fromDate", paramsInput.fromDate);
@@ -1195,6 +1196,7 @@ export async function getPilotIntakeDurableReport(paramsInput: {
   if (paramsInput.supplierId != null) params.set("supplierId", String(paramsInput.supplierId));
   if (paramsInput.scope) params.set("scope", paramsInput.scope);
   if (paramsInput.dataScope) params.set("dataScope", paramsInput.dataScope);
+  if (paramsInput.refresh) params.set("refresh", "true");
 
   return fetchJson(
     "/api/analytics/reports/pilot-intake",
