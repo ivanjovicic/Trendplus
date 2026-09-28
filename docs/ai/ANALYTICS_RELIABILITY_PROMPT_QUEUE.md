@@ -2,7 +2,8 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ486
+Current READY prompt: RQ484
+Owner completion 2026-09-28: `RQ486` moved READY → IN_PROGRESS → DONE and was delivered directly to `main` in `966939e53c585221fcde27550ca0c76ba33e9d76`. Supplier trust metadata is keyed to the active request, invalid date ranges do not request data, stores carry page scope and duplicate labels expose stable IDs, unknown URL suppliers remain visible with an explicit message, filter layout wraps, local dates are preserved, sorting is pure and revenue rank badges are conditional. Focused proof: 55/55; guardrails/typecheck and production build pass. Run log: `.ai/runs/2026-09-28-RQ486-evidence.md`. Evidence state: synchronized. Next primary READY is `RQ484`; `RQ483` remains independently READY.
 Owner promotion/claim/completion 2026-09-28: `RQ466` moved READY → IN_PROGRESS → DONE in this workspace after the previous Pilot intake frontend delivery. The backend now validates scope, applies the requested scope to article/sales/store counts, uses the requested half-open health window, keeps unknown refresh time null, emits only count-backed actions, supports `refresh=true` cache bypass and logs safe report failures. Implementation: `e2d47788`. Focused proof: health 10/10, report contracts 52/52, API build passed. Run log: `.ai/runs/2026-09-28-RQ466-evidence.md`. Evidence state: synchronized. The primary READY pointer advances to `RQ486`; `RQ484` and `RQ483` remain independently READY.
 Owner promotion 2026-09-28: `RQ467` moved WAITING → READY after its declared dependency `RQ466` reached DONE on current `origin/main`; it remains unclaimed for the next selection because the current primary pointer is `RQ486`.
 Owner completion 2026-09-28: `RQ462` was delivered directly to `main` in implementation `69f1f6456f9a0f328f0351aaccc1883de27ec833`; the Pilot intake durable route now renders the backend report instead of a permanent empty state, including authoritative KPIs, sections, actions and exports, while empty/error states remain backend-driven. Run log: `.ai/runs/2026-09-28-RQ462-evidence.md`. Evidence state: synchronized; `RQ466` is now the primary READY prompt.
@@ -1740,7 +1741,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ483 | READY | pdc-decision-rule-reachability | Make Product Decision rules reachable, measured from the period end and driven by one explainable threshold policy |
 | RQ484 | READY | operations-recommendation-gate-policy | Apply the approved Operations recommendation gate policy for nivelacija evidence and the unknown bucket |
 | RQ485 | WAITING | pdc-page-state-hygiene | Product Decision page hygiene: duplicate header block, URL state, deterministic sorting and local dates |
-| RQ486 | READY | supplier-shell-overview-hygiene | Supplier page shell and overview hygiene: trust header, date validation, stores, layout, sorting and badges |
+| RQ486 | DONE | supplier-shell-overview-hygiene | Supplier page shell and overview hygiene: trust header, date validation, stores, layout, sorting and badges |
 | RQ487 | WAITING | pdc-supplier-query-performance | Bound Product Decision and Supplier overview query cost |
 | RQ488 | WAITING | pdc-decision-engine-copy-export | Serbian copy and export values on Product Decision and decision-engine summaries |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
@@ -26804,7 +26805,7 @@ Source: `PS10` and the Product Decision part of `PS16` in `docs/ai/PRODUCTS_SUPP
 
 ## RQ486 - Supplier page shell and overview hygiene: trust header, date validation, stores, layout, sorting and badges
 
-Status: READY
+Status: DONE
 Priority: P2
 Type: frontend/css/tests
 Feature family: supplier-shell-overview-hygiene
@@ -26867,6 +26868,14 @@ Source: `PS12`, `PS15`, the Supplier part of `PS16`, `PS18` and the frontend lin
 
 - None blocking. `RQ474`/`RQ476` (WAITING, same page) must rebase on this work if they start later.
 - Reliability contract: presentation/state only; no client-side totals or decisions.
+
+### Completion 2026-09-28
+
+- Delivered directly to `main` in `966939e53c585221fcde27550ca0c76ba33e9d76`.
+- Focused proof: Supplier/Date/API tests 55/55; analytics guardrails, typecheck and production build pass.
+- Live duplicate store IDs and browser screenshots were not available in this run; the UI now disambiguates duplicate names with stable IDs and the remaining visual proof is recorded in the run log.
+- Run log: `.ai/runs/2026-09-28-RQ486-evidence.md`
+- Evidence state: synchronized.
 
 ---
 
