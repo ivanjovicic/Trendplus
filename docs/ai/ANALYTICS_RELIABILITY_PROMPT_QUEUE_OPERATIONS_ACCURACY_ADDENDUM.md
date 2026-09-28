@@ -2053,3 +2053,381 @@ Replace name-based Shoe Type unknown predicates in `AllEndpoints.cs`, `Analytics
 ### Dependencies
 
 - RQ375-RQ377, RQ411, RQ412, RQ285, RQ346, RQ445, RQ446 and RQ456 population contract. Complete before RQ447 certification execution.
+
+
+---
+
+# Nivelacija cross-screen audit follow-ups — 2026-09-28
+
+Audit: `docs/qa/NIVELACIJA_PRE_POST_PRIORITY_AUDIT_2026-09-28.md`.
+
+Routing note: this addendum does not replace the main RQ primary pointer. At registration time the master primary remains `RQ486`; `RQ489` is an additional collision-safe READY candidate. `RQ490`–`RQ493` stay WAITING for the dependencies below.
+
+## RQ489 - Pre-Nivelacija: certified retail population, signed returns and positive-sale recency
+
+Status: READY  
+Priority: P1  
+Type: backend/frontend/tests  
+Feature family: pre-nivelacija-retail-population  
+Parallel-safe: no  
+Owner: Analytics Backend + Frontend / Pre-Nivelacija Prioriteti
+
+### Problem
+
+The Pre-Nivelacija sales window queries `ProdajaStavke` / `ProdajaZaglavlja` directly without the canonical receipt-number policy from RQ456. `DUG` / `KOREKCIJA` can therefore influence velocity, WoW, last-sale recency, score and recommendation even though certified retail screens exclude them. In addition, any negative signed line makes `ResolveSalesEvidence` incomplete, so one legitimate customer return hard-blocks the recommendation even when net sales remain positive. `LastSale` is also the maximum timestamp over signed lines, so a return can make demand look freshly sold.
+
+### Evidence
+
+- `PreNivelacijaPriorityEndpoints.cs` sales query groups sales lines directly and contains no `SalesReceiptPopulationPolicy` / receipt-number predicate.
+- RQ456 is DONE and defines certified retail turnover as trimmed/case-insensitive exclusion of `DUG` and `KOREKCIJA`, while signed retail returns remain in the net population.
+- `ResolveSalesEvidence(... negativeUnits180 < 0 ...)` currently returns `IsComplete=false` for every signed adjustment.
+- `LastSale = MAX(DatumProdaje)` does not distinguish positive sale from return.
+- The page copy says a return/correction blocks the recommendation until the signed balance is confirmed.
+- Audit F1/F2: `docs/qa/NIVELACIJA_PRE_POST_PRIORITY_AUDIT_2026-09-28.md`.
+
+### Scope
+
+- `Api/Endpoints/PreNivelacijaPriorityEndpoints.cs`
+- `Api/Models/PreNivelacijaPriorityModels.cs` only for explicit population/evidence metadata if required
+- `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx` only for evidence wording that must follow the backend contract
+- focused Pre-Nivelacija backend/frontend tests
+- cache/formula version only when required to prevent stale pre-fix responses
+
+Do not change score weights, scenario multipliers, store grain or Pre/Post SQL in this prompt.
+
+### Read first
+
+- `docs/qa/NIVELACIJA_PRE_POST_PRIORITY_AUDIT_2026-09-28.md`
+- RQ390 completion/evidence
+- RQ432 completion/evidence
+- RQ456 contract/evidence
+- `Application/Analytics/SalesReceiptPopulationPolicy.cs` (or current canonical receipt-policy location)
+- `Api/Endpoints/PreNivelacijaPriorityEndpoints.cs`
+- `Api/Services/PreNivelacijaScoringService.cs`
+
+### Do
+
+1. Apply the canonical certified-retail receipt population to every Pre-Nivelacija sales window: trimmed/case-insensitive `DUG` / `KOREKCIJA` are excluded; ordinary signed retail returns remain included.
+2. Preserve positive, negative and signed-net quantities. A negative line by itself must not make evidence incomplete when the resulting net demand is still positive.
+3. Treat `net <= 0`, no positive sales, impossible/non-finite states and genuinely insufficient evidence as blocked/insufficient with explicit reason codes.
+4. Compute “last sale” / recency from the latest **positive retail sale**, not a return line. Returns remain visible in net/WoW evidence but must not reset demand recency.
+5. Expose population/return provenance in `EvidenceWindow` (or equivalent) so the UI/export can state the receipt and return policy without reverse-engineering it.
+6. Keep a signed-return warning/reason available for review when useful, but do not let the mere presence of a valid return overwrite an otherwise usable recommendation.
+7. Update the current page text that says every signed adjustment blocks the recommendation.
+8. Bump the cache/formula version if an old cached payload could survive the semantic change.
+
+### Tests
+
+- mixed-case/whitespace `DUG` and `KOREKCIJA` are excluded from 180d/7d/previous-7d quantities and recency;
+- ordinary positive sale + later negative return, net still positive: usable sales evidence, signed-return reason/provenance retained, recency stays on the latest positive sale;
+- return-only / net-zero / net-negative cases remain non-actionable with explicit states;
+- signed returns reduce net units rather than being dropped;
+- no-sale candidate remains distinguishable from return-only and measured zero;
+- focused page copy/metadata test;
+- existing RQ390/RQ432 KPI population tests remain green.
+
+### Acceptance
+
+- Pre-Nivelacija and the certified retail screens use the same receipt population.
+- A legitimate signed return does not automatically invalidate positive net demand.
+- A return never masquerades as a fresh positive sale for `daysSinceLastSale`.
+- The user can tell which receipt/return policy was applied.
+- No scoring-weight/store-grain change is smuggled into this prompt.
+
+### Dependencies
+
+- RQ390, RQ432 and RQ456 are DONE and are inputs, not blockers.
+- Collision review at registration found no READY prompt owning the named Pre-Nivelacija endpoint/model/page paths; therefore RQ489 is READY.
+- RQ492/RQ493 share these paths and remain WAITING behind RQ489.
+
+## RQ490 - Pre/Post: align the event windows with the certified retail receipt population
+
+Status: WAITING  
+Priority: P1  
+Type: SQL/backend/tests  
+Feature family: pre-post-retail-population  
+Parallel-safe: no  
+Owner: Analytics SQL + Backend / Pre-Post Nivelacija
+
+### Problem
+
+Both the canonical `vw_vendor_sales_nivelacija` sales-day source and the scoped raw-fact fallback read sales headers/lines without the RQ456 receipt population. DUG/KOREKCIJA can therefore change pre/post revenue, units, change percentages, low-signal classification and downstream recommendation evidence.
+
+### Evidence
+
+- `Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql` builds `sales_daily` without a receipt-number exclusion.
+- `BuildVendorSalesNivelacijaScopedSourceSql()` also reads the same sales facts without the canonical receipt policy.
+- RQ456 excludes trimmed/case-insensitive DUG/KOREKCIJA and preserves signed returns on certified retail analytics.
+- Audit F3: `docs/qa/NIVELACIJA_PRE_POST_PRIORITY_AUDIT_2026-09-28.md`.
+
+### Scope
+
+- `Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql`
+- only the minimum migration/view refresh script required to deploy the same predicate safely
+- `Api/Endpoints/AllEndpoints.cs` vendor-sales-nivelacija scoped source only
+- focused SQL/backend parity tests for view/scoped paths
+
+Do not change Q83 nullability rules, RQ140 causal interpretation, recommendation thresholds, or Pre-Nivelacija scoring.
+
+### Read first
+
+- RQ456 evidence/receipt contract
+- Q83 current PARTIAL prompt and completion note
+- RQ140 evidence
+- `Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql`
+- vendor-sales-nivelacija scoped SQL in `AllEndpoints.cs`
+
+### Do
+
+1. Apply one canonical predicate to both the view-backed and scoped Pre/Post sales populations.
+2. Exclude trimmed/case-insensitive DUG/KOREKCIJA.
+3. Preserve ordinary signed retail returns as signed revenue/quantity; do not silently absolute-value or discard them.
+4. Prove view-backed `dataScope=all` and scoped store/dataScope paths produce the same result for the same logical cohort.
+5. Keep price-event cohort selection separate from sales-receipt population selection.
+6. Reuse the RQ456 adversarial receipt fixtures or add a small nivelacija-specific extension rather than inventing a second policy.
+7. If SQL deployment/view recreation is required, preserve Q83's fail-closed semantic-column/nullability contract.
+
+### Tests
+
+- DUG/KOREKCIJA mixed case/whitespace around both pre and post windows;
+- signed return inside pre/post window remains signed;
+- same event under all-scope view and scoped raw path has identical pre/post units/revenue/change;
+- store and dataScope filters do not reintroduce excluded receipts;
+- null/zero baseline tests from Q83 remain green.
+
+### Acceptance
+
+- Pre/Post no longer disagrees with certified sales screens because of DUG/KOREKCIJA.
+- View-backed and scoped paths use the same receipt contract.
+- Signed returns remain part of net retail effects.
+- Q83's missing-vs-zero/revenue semantic contract is not weakened.
+
+### Dependencies
+
+- RQ456 is DONE.
+- WAITING while RQ484 is READY because both own `AllEndpoints.cs`.
+- Q83 is the existing exclusive SQL/nullability owner for the same view files. RQ490 may start only after that repo-local ownership is released/closed or there is an explicit handoff proving no active Q83 lock/worktree. It does **not** have to wait for unrelated provider-only live proof if Q83's repo-local implementation is complete and ownership is explicitly handed off.
+
+## RQ491 - Pre/Post: separate sales activity/sample strength from real data coverage
+
+Status: WAITING  
+Priority: P1  
+Type: SQL/backend/frontend/tests  
+Feature family: pre-post-evidence-coverage-semantics  
+Parallel-safe: no  
+Owner: Analytics Backend + Frontend / Pre-Post Nivelacija
+
+### Problem
+
+`coverage_pre30` / `coverage_post30` currently mean “distinct days with a sale divided by 30”. The page calls this “pokrivenost” and treats 20%/60% as evidence-quality thresholds. Sparse demand is therefore conflated with missing/partial data.
+
+### Evidence
+
+- Nivelacija SQL computes the fields from distinct sale days / 30.
+- `ProdajaPrePostNivelacijePage.tsx` labels the value “post-window pokrivenost” and uses it in `concentrationQuality`.
+- A fully observed 30-day window with sales on two days appears as about 6.7% “coverage”, even though no source data is missing.
+- Other analytics contracts use “coverage” for actual evidence/revenue availability, so the vocabulary is inconsistent.
+- Audit F4: `docs/qa/NIVELACIJA_PRE_POST_PRIORITY_AUDIT_2026-09-28.md`.
+
+### Scope
+
+- vendor-sales-nivelacija DTO/SQL/endpoint fields that represent pre/post sample activity
+- `ProdajaPrePostNivelacijePage.tsx`, export/tooltips/trust metadata
+- focused backend/frontend tests
+
+Do not change the event window from 30 calendar days and do not invent a data-coverage percentage when the source cannot prove observation completeness.
+
+### Read first
+
+- RQ140 and RQ156 evidence
+- Q83
+- RQ490 when DONE
+- `Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql`
+- `Api/Models/VendorSalesNivelacijaModels.cs`
+- `ProdajaPrePostNivelacijePage.tsx`
+
+### Do
+
+1. Give the existing statistic its true name and unit, e.g. `salesActiveDaysPre30/Post30` plus `salesActivityRatePct`.
+2. Preserve backward compatibility only with explicit deprecation/provenance; do not keep showing activity density as generic “coverage”.
+3. If true observation/data coverage can be computed from an authoritative data-window/freshness source, expose it separately. Otherwise return it as unavailable rather than deriving it from sales frequency.
+4. Base low-sample warnings on explicit sample-strength dimensions (active sale days, units, revenue, comparable rows) and label them as sample/activity limitations.
+5. Update concentration quality, tooltips, details and export so “retka prodaja” cannot be interpreted as “nedostaju podaci”.
+6. Preserve measured zero vs unknown states.
+
+### Tests
+
+- complete 30-day observation + two sale days => low sales activity, **not** low data coverage;
+- dense sale days => high activity;
+- unknown/incomplete observation window => data coverage unavailable/degraded independently of activity;
+- zero-sales window is distinct from unavailable source data;
+- concentration warnings use sample/activity wording;
+- Q83 nullability cases remain intact.
+
+### Acceptance
+
+- “Coverage” is no longer overloaded across unrelated meanings.
+- Sparse footwear demand is not presented as missing data.
+- Data completeness and sample strength can vary independently and are shown independently.
+- Table/KPI/export/detail use the same backend-owned semantics.
+
+### Dependencies
+
+- Ready after RQ490, because both change the same Pre/Post SQL/endpoint family.
+- Coordinate with Q83/RQ140; this prompt does not reopen their nullability/causal ownership.
+
+## RQ492 - Pre-Nivelacija: make SKU + store the actionable decision grain
+
+Status: WAITING  
+Priority: P1  
+Type: backend/frontend/tests  
+Feature family: pre-nivelacija-store-grain  
+Parallel-safe: no  
+Owner: Analytics Backend + Frontend / Pre-Nivelacija Prioriteti
+
+### Problem
+
+Candidate stock comes from `Artikli.Kolicina`, while `Artikli` also has `IDObjekat`. The endpoint drops that identity, has no store filter, and groups sales by article id without reconciling `ProdajaZaglavlje.IDObjekat` to the inventory row's store. The result is not sufficiently specific for an operational action queue.
+
+### Evidence
+
+- `Domain/Model/Artikli.cs` exposes `IDObjekat`; inventory/transfer code treats article stock as store-bound.
+- the Pre-Nivelacija article projection does not include `IDObjekat`;
+- `PreNivelacijaSkuCandidateDto` exposes no store;
+- the sales query has no receipt-store predicate;
+- the route/page has no store filter.
+- Audit F5: `docs/qa/NIVELACIJA_PRE_POST_PRIORITY_AUDIT_2026-09-28.md`.
+
+### Scope
+
+- Pre-Nivelacija endpoint/models/API client/page
+- store facet/filter/URL/export/detail state
+- focused tests for multi-store SKU/article cases
+
+Do not change score weights/scenario multipliers in this prompt.
+
+### Read first
+
+- RQ299 historical scope note (store was intentionally out of that earlier prompt)
+- RQ390/RQ423/RQ432/RQ433 evidence
+- inventory/store semantics and `Artikli.IDObjekat`
+- `ProdajaZaglavlja.IDObjekat`
+- RQ489 when DONE
+
+### Do
+
+1. Treat actionable candidate grain as `ArtikalId + StoreId` (or prove an equivalent canonical SKU-store key).
+2. Expose store id/name on candidate/detail/export and add a store filter/facet.
+3. For a store-bound candidate, compute demand evidence from receipts in that same sale store. Do not silently combine local stock with another store's sales.
+4. If store identity is missing/ambiguous, keep the analytic row visible but fail closed for store-specific actionability with a reason code.
+5. “All stores” may aggregate summaries, but candidate/action rows must preserve store identity and must not merge same-SKU rows without an explicit aggregation contract.
+6. Keep dataScope semantics explicit and independent from store.
+7. Add cross-store mismatch telemetry/count metadata if such source inconsistencies are observed.
+
+### Tests
+
+- same PLU in two stores with different stock and demand produces two distinguishable action rows;
+- store A return/sales cannot change store B velocity/recency;
+- store filter affects candidate, summary, leaderboard, queues, export and detail consistently;
+- missing store blocks store-specific recommendation without hiding the row;
+- all-store summary equals the explicit aggregation of store-grain rows.
+
+### Acceptance
+
+- every actionable priority says **where** the action applies;
+- stock and demand are reconciled at the same store grain;
+- URL/filter/export/detail preserve that grain;
+- same SKU across stores cannot silently contaminate another store's recommendation.
+
+### Dependencies
+
+- Ready after RQ489 because the same sales query/model/page must first adopt the canonical retail population.
+- No dependency on RQ490/RQ491; those own the retrospective Pre/Post surface.
+
+## RQ493 - Pre-Nivelacija: score stability, heuristic scenario truth and candidate wording
+
+Status: WAITING  
+Priority: P1  
+Type: backend/frontend/tests/contract  
+Feature family: pre-nivelacija-score-truth  
+Parallel-safe: no  
+Owner: Analytics Decision Logic / Pre-Nivelacija
+
+### Problem
+
+The 0–100 Pre-Nivelacija score appears stable/absolute but two components are divided by the current candidate universe's maximum stock/velocity. The helper is named `PercentileNormalize` although it is a max-ratio. An unrelated extreme SKU can therefore alter other rows' scores and the meaning of `minScore`. Scenario outputs also use fixed, uncalibrated boost/discount multipliers while rendering precise 30-day units/revenue/margin. Finally, the “Kandidati” tooltip says every candidate has sufficient sales signal, although blocked/no-sales rows intentionally remain in the candidate universe.
+
+### Evidence
+
+- `PreNivelacijaScoringService.ComputeScoreBreakdown` uses `value / max * 100`.
+- `maxStock` / `maxVelocity` are calculated from the current candidate universe.
+- `SimulateScenarios` uses hard-coded highlight boost, markdown discount, demand multiplier and smoothing prior.
+- RQ432 intentionally keeps score-band candidates distinct from recommendation eligibility.
+- current “Kandidati” tooltip says candidates have enough sales signal for intervention.
+- Audit F6–F8: `docs/qa/NIVELACIJA_PRE_POST_PRIORITY_AUDIT_2026-09-28.md`.
+
+### Scope
+
+- `Api/Services/PreNivelacijaScoringService.cs`
+- Pre-Nivelacija formula/evidence DTO metadata
+- Pre-Nivelacija page wording/methodology/export
+- focused score/sensitivity/scenario tests
+
+This prompt is a truth/stability contract. Do not invent an ML/causal model or claim empirical calibration. Long-term measured calibration belongs to RL12.
+
+### Read first
+
+- RQ139/RQ140 numeric/causal evidence
+- RQ390, RQ432
+- RQ489/RQ492 when DONE
+- `PreNivelacijaScoringService.cs`
+- RL12 planning/causal outcome contract
+
+### Do
+
+1. Stop calling the current max-ratio helper a percentile. Either:
+   - move to a versioned, stable reference normalization, or
+   - explicitly declare the score `cohort_relative` with the exact reference population/maxima in metadata.
+2. If the score stays cohort-relative, do not describe `minScore` as a timeless absolute business threshold; expose its basis in methodology/export.
+3. Add model/scenario provenance: formula version, score basis, relevant parameter version, `scenarioBasis=heuristic_uncalibrated` until measured calibration exists.
+4. Do not present scenario differences as empirically proven uplift. Use wording such as “heuristička scenario procena/razlika” and keep the existing non-guarantee visible.
+5. An uncalibrated scenario delta must not be the sole evidence for a strong causal/ROI claim.
+6. Correct the “Kandidati” tooltip: it is the scored in-stock candidate universe after filters/minScore; recommendation/data-quality fields separately determine actionability.
+7. Add a deterministic sensitivity test showing what happens when an unrelated extreme-stock/extreme-velocity SKU enters the reference population.
+8. Hand measured outcome calibration/backtesting to RL12 rather than baking guessed coefficients into this prompt.
+
+### Tests
+
+- same row under unchanged stable reference gives the same score;
+- if cohort-relative mode remains, reference population/maxima/version are returned and tests prove score movement is explainable;
+- unrelated filter/facet operations that are not supposed to redefine the reference population do not silently change scores;
+- scenario metadata identifies the heuristic basis;
+- UI/export never label the heuristic delta as established causal uplift;
+- blocked/no-sales candidate copy no longer says it has sufficient intervention evidence.
+
+### Acceptance
+
+- users can tell whether the score is absolute or cohort-relative and what population defines it;
+- `minScore` semantics are defensible across requests;
+- exact-looking RSD scenario values are explicitly identified as heuristic until calibration exists;
+- candidate population and actionable recommendation population are no longer conflated.
+
+### Dependencies
+
+- Ready after RQ489 and RQ492 because all three own the same Pre-Nivelacija endpoint/model/page family.
+- RL12 is the future measured-calibration owner; RQ493 must not claim RL12 acceptance.
+
+## Existing-owner acceptance addendum — RQ140 Pre/Post causal wording
+
+Status remains: PARTIAL (existing RQ140 owner)
+
+The current Pre/Post page must not describe `vw_nivelacija_did.did_revenue` as an established “uzročni efekat” solely because the SQL subtracts one matched control's pre/post change. The current view chooses a same-supplier/category control by closest pre-period revenue/quantity; that does not by itself prove parallel trends, overlap, absence of concurrent treatments or uncertainty bounds.
+
+Add to RQ140 acceptance when it resumes:
+- expose/control the exact DiD matching basis and coverage;
+- use “DiD procena”, “kontrolisana razlika” or similarly bounded wording until causal assumptions are demonstrated;
+- no recommendation may increase confidence merely because a numeric DiD exists without comparability/quality gates;
+- tests cover missing control, weak match, zero baseline and valid comparable control;
+- empirical causal/outcome validation remains with RL12.
+
+This is an acceptance clarification, not a new prompt id.
