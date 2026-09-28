@@ -1731,7 +1731,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ474 | WAITING | supplier-overview-error-empty-contract | Separate Supplier overview failure, empty and retry states |
 | RQ475 | WAITING | supplier-analytics-schema-readiness | Make Supplier scorecard/assortment semantic-data readiness operationally actionable |
 | RQ476 | WAITING | supplier-share-denominator-contract | Unify Supplier raw API, display, recommendation and export share semantics |
-| RQ483 | WAITING | pdc-decision-rule-reachability | Make Product Decision rules reachable and measured from the period end |
+| RQ483 | READY | pdc-decision-rule-reachability | Make Product Decision rules reachable, measured from the period end and driven by one explainable threshold policy |
 | RQ484 | READY | operations-recommendation-gate-policy | Apply the approved Operations recommendation gate policy for nivelacija evidence and the unknown bucket |
 | RQ485 | WAITING | pdc-page-state-hygiene | Product Decision page hygiene: duplicate header block, URL state, deterministic sorting and local dates |
 | RQ486 | READY | supplier-shell-overview-hygiene | Supplier page shell and overview hygiene: trust header, date validation, stores, layout, sorting and badges |
@@ -26522,10 +26522,9 @@ Every Pulse item opens the evidence surface that owns its decision, users see un
 
 ---
 
-## RQ483 - Make Product Decision rules reachable and measured from the period end
+## RQ483 - Make Product Decision rules reachable, measured from the period end and driven by one explainable threshold policy
 
-Status: WAITING
-Ready after: `RQ472` DONE (journal gate; until then every row stays blocked, so rule changes are unobservable) and owner sign-off on the thresholds listed below
+Status: READY
 Priority: P2
 Type: backend/tests
 Feature family: pdc-decision-rule-reachability
@@ -26533,54 +26532,78 @@ Parallel-safe: no (`Application/Analytics/ProductDecisionReasoningHelper.cs`, `A
 Owner: Analytics Reliability / Product Decision
 Local lock: `.ai/task-locks/RQ483-<agent>.lock.md`
 Commit suggestion: `fix(analytics): make product decision rules reachable`
-Source: `PS04` in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-25.md` (residual business-rule task; de-dup 2026-09-28)
+Source: `PS04` in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-25.md` (residual business-rule task; de-dup 2026-09-28). Scope rewritten 2026-09-28 after the owner decision below (approved with changes).
+
+Status note (2026-09-28): the owner decision removed the threshold sign-off blocker. The earlier `RQ472` dependency was about observability only. `RQ472` (WAITING, itself gated on an owner journal-signal approval) keeps ownership of the journal gate and recommendation actionability. The hard-coded `HasCompleteJournal: false` (`CachedAnalyticsEndpoints.cs:8156`) only adds `opening_stock_unavailable` and lowers data quality/allowance (`:6218-6261`); it does not overwrite the helper's status classification. This prompt's rules are therefore provable at helper/builder level now. No READY/IN_PROGRESS prompt owns these files. Do not change the journal gate here. If `RQ472` is promoted while this prompt is active, sequence the two by lock/claim (same builder file).
 
 ### Problem
 
-Several Product Decision statuses are practically unreachable or depend on the current clock instead of the analyzed period:
-- **MARKDOWN / stale DO_NOT_ORDER:** these need `UnitsSold >= 3` in the period and `DaysSinceLastSale >= 45`. In a 30-day period, a sale inside the period means the last sale was under 30 days ago, so the rules can never fire. Dead stock with zero sales becomes INSUFFICIENT_DATA instead.
+Several Product Decision statuses are practically unreachable, depend on the current clock instead of the analyzed period, or rest on undocumented magic thresholds:
+- **Dead stock / stale:** the MARKDOWN and stale DO_NOT_ORDER rules need `UnitsSold >= 3` in the period and `DaysSinceLastSale >= 45`. In a 30-day period, a sale inside the period means the last sale was under 30 days ago, so the rules can never fire. A product with zero sales becomes INSUFFICIENT_DATA instead of entering stale/dead-stock analysis.
 - **Clock dependence:** `daysSinceLastSale` is measured from `nowUtc`, and the last-sale query has no upper date bound, so historical periods are inconsistent.
-- **REPLENISH/BOOST:** these need `StockGap > 0`. With `MinStock = 0` an out-of-stock bestseller is never REPLENISH, and the lost-sales estimate returns 0 instead of "unavailable".
+- **REPLENISH/BOOST:** these need `StockGap > 0`. With `MinStock = 0`/null an out-of-stock bestseller is never REPLENISH, and the lost-sales estimate returns 0 instead of "unavailable".
 - **No baseline:** a missing previous-period baseline (`TrendPct == null`) forces INSUFFICIENT_DATA, so new fast sellers never get REPLENISH/BOOST.
-- **Slow-stock capital** uses `UnitCost ?? 0m`, so a missing cost gives 0 capital, and the 0.15 units/day threshold is undocumented.
+- **Slow stock:** slow-stock capital uses `UnitCost ?? 0m`, so a missing cost gives 0 capital. The 0.15 units/day threshold is a hardcoded, undocumented literal that would flag much of the normal assortment at per-size level.
 
-### Evidence (at `c5a1937f`; product code unchanged on `5fe1f30b`)
+### Evidence (at `c5a1937f`; product code unchanged through current `main`)
 
-- `Application/Analytics/ProductDecisionReasoningHelper.cs:5` (`MinimumUnitsForRecommendation = 3`), `:76`, `:81`, `:92-93` (`0.15m`, `>= 45`), `:96-99` (`StockGap.Value > 0`), `:137`.
+- `Application/Analytics/ProductDecisionReasoningHelper.cs:5` (`MinimumUnitsForRecommendation = 3`), `:76` (the minimum-units gate also blocks the zero-sales dead-stock branch), `:81`, `:92-93` (`0.15m`, `>= 45`), `:96-99` (`StockGap.Value > 0`), `:137`.
 - `Api/Endpoints/CachedAnalyticsEndpoints.cs:6075-6090`: last-sale query without an upper date bound. `:6135-6137`: `daysSinceLastSale` computed from `nowUtc`. `:92-102`: `CalculateLostSalesEstimate` returns 0 when `minimumStock <= 0`. `:6209-6213`: `(article.UnitCost ?? 0m)` in slow-stock capital.
-- Prior DONE work kept nullable evidence (`RQ157`, `RQ255`, `RQ256`) but did not address rule reachability. `RQ472` (WAITING) owns the journal gate that currently blocks every row.
+- Prior DONE work kept nullable evidence (`RQ157`, `RQ255`, `RQ256`) but did not address rule reachability. `RQ472` (WAITING) owns the journal gate.
 
-### Owner sign-off needed (thresholds only)
+### Owner decision (Ivan, 2026-09-28)
 
-- The stale-stock days (45), the minimum units (3), the slow-velocity threshold (0.15/day) and the aggregation level (size vs model).
-- The `MinStock = 0` policy: a velocity-based cover target, or an explicit „minimalna zaliha nije podešena“ reason.
-- The new-product path: REPLENISH allowed on velocity + stock, with reduced confidence.
+Approved with changes. The scope, Do, Tests and Acceptance below already reflect these decisions; no owner decision remains.
+
+1. **45 days = initial stale/no-sale signal, not an automatic action.** An article with stock and no sale for `>= 45` days (measured from the period end) becomes a **review candidate** (for example a `stale_no_sale_review` reason). It is never automatically MARKDOWN or DO_NOT_ORDER. A stronger DO_NOT_ORDER needs extra evidence: a longer no-sale period, sufficient history, stock on hand and seasonal context.
+2. **3 units = minimum pilot sample for positive/new-product signals only.** It applies to positive signals (REPLENISH/BOOST, new-product demand). It is no longer a condition for the dead-stock branch: a product with 0 sales must be able to enter stale/dead-stock analysis.
+3. **0.15 units/day = configurable initial pilot threshold, not a universal slow-item rule** (about 4.5 per month; at per-size level it would flag much normal assortment). It is not hardcoded as business truth, it is shown in methodology/provenance, and alone it must not generate an actionable MARKDOWN/DO_NOT_ORDER. It will be calibrated later from the real Trendplus sales distribution.
+4. **Grain.** Check the slow-stock signal at the right grain. If `Artikli` rows are effectively sizes of the same model, verify (and record in the run log) whether the markdown decision is made per article/size or per family/model. One slow size must not automatically mark the model as bad.
+5. **`MinStock = 0`/null.** Do not treat 0 as proof that replenishment is not needed, and do not invent a fixed minimum stock. Use demand/velocity plus stock cover to produce a reduced-confidence replenishment candidate. Without a reliable minimum/target stock, `lostSalesEstimate` is null/N/A, never 0. If demand is insufficient for a velocity-based estimate, the reason is `minimum_stock_not_configured` / insufficient evidence.
+6. **New product without a previous period.** `previousSales = 0` does not automatically mean INSUFFICIENT_DATA. Add a separate `new_product`/`no_baseline` flag. If the current period has at least the minimum sample, real demand and low stock cover, allow REPLENISH/BOOST with reduced confidence. Never compute a percent trend from a 0 base.
+7. **One policy.** Every threshold (45 days, the stronger DO_NOT_ORDER evidence, 3 units, 0.15/day, stock-cover limits, confidence reductions) lives in one configurable, explainable policy/config with provenance (name, value, source „initial pilot threshold, owner 2026-09-28“, calibration status) exposed in methodology/metadata. No magic numbers scattered in code.
 
 ### Scope
 
-- Decision rules, the last-sale window, lost-sales and slow-stock computations and their tests. No frontend decision logic. No change to the journal gate (`RQ472`) or the margin policy (`RQ473`).
+- The Product Decision rule set in `ProductDecisionReasoningHelper.cs` and the Product Decision builder inputs in `CachedAnalyticsEndpoints.cs`: the last-sale window, the stale/dead-stock path, velocity/stock-cover replenishment, the new-product path, lost-sales and slow-stock capital, one threshold policy with provenance, and tests.
+- Out of scope: frontend decision logic, the journal gate and actionability (`RQ472`), the margin/cost policy (`RQ473`), and calibrating the thresholds (later, from real data).
 
 ### Do
 
-1. Add a separate zero-sales dead-stock path (stock > 0, no sale for N days measured from the period end) with its own reason code, separate from low-velocity sellers.
-2. Measure `daysSinceLastSale` from the period end and bound the last-sale query to `< periodToExclusive`.
-3. Implement the signed-off `MinStock = 0` policy; the lost-sales estimate is `null` (unavailable), never 0, when it cannot be computed.
-4. Add an explicit new-product path instead of INSUFFICIENT_DATA when there is no baseline but velocity and stock evidence exist.
-5. Slow-stock capital is unavailable (null) when cost is missing; count those rows separately.
+1. Introduce one Product Decision threshold policy (a record/options with defaults equal to the owner-approved initial values, plus provenance). Replace the literals at `:5`, `:92-93` and the `CalculateLostSalesEstimate`/slow-stock inputs with it, and expose the values and provenance in the response methodology/metadata.
+2. Measure `daysSinceLastSale` from the period end and bound the last-sale query to `< periodToExclusive`. When a period end exists, nothing depends on `DateTime.UtcNow`.
+3. Add a stale/dead-stock path that also admits 0-sales products (stock > 0, no sale `>= 45` days) and produces a **review candidate** with its own reason code. DO_NOT_ORDER requires the extra evidence from decision 1. Keep the 3-unit minimum only for positive/new-product signals.
+4. The slow-velocity threshold produces only a reason code / review signal with provenance, never an actionable MARKDOWN/DO_NOT_ORDER on its own.
+5. Grain: establish whether `Artikli` rows are sizes of one model and at which grain the markdown decision is made. Aggregate or annotate so that one slow size does not mark the model as bad, and record the finding in the run log.
+6. `MinStock = 0`/null: a velocity plus stock-cover replenishment candidate with reduced confidence. `lostSalesEstimate = null` without a reliable minimum/target. `minimum_stock_not_configured` / insufficient evidence when demand is too thin.
+7. New product: a `new_product`/`no_baseline` flag. REPLENISH/BOOST with reduced confidence when the minimum sample, real demand and low stock cover exist. `TrendPct` stays null (no percent from a 0 base).
+8. Slow-stock capital is null (unavailable) when cost is missing; count those rows separately. Do not use `UnitCost ?? 0m`.
 
 ### Tests
 
-- Table-driven `ProductDecisionReasoningHelperTests` proving every status is reachable with a realistic 30-day fixture.
-- A historical-period test with no dependency on `DateTime.UtcNow` when a period end exists.
-- The `MinStock = 0` case, the new-product case and the missing-cost slow-stock case (`ProductDecisionCenterBuilderIntegrationTests`).
+- Table-driven `ProductDecisionReasoningHelperTests` with a realistic 30-day fixture:
+  - a 0-sales article with stock and no sale for 45+ days → review candidate, not INSUFFICIENT_DATA and not MARKDOWN/DO_NOT_ORDER;
+  - the same article with the extra evidence → DO_NOT_ORDER is reachable;
+  - a velocity `< 0.15/day` alone → reason code only, never an actionable status;
+  - 2 units vs 3 units on a positive signal → the minimum sample gate still applies there.
+- A historical-period test: `daysSinceLastSale` and the last-sale lookup use the period end, with no dependency on `DateTime.UtcNow`.
+- `MinStock = 0` and null: a velocity/stock-cover candidate with reduced confidence and `lostSalesEstimate == null` (never 0); thin demand gives `minimum_stock_not_configured`.
+- A new product with `previousSales = 0`: `no_baseline` flag, REPLENISH/BOOST with reduced confidence when sample/demand/low cover hold, and `TrendPct == null`.
+- Grain: two sizes of one model where only one is slow → the model is not marked bad.
+- Missing cost → slow-stock capital null and counted separately (`ProductDecisionCenterBuilderIntegrationTests`).
+- A policy test: the response methodology/metadata exposes every threshold with its value and provenance. Changing a policy value changes the outcome without code edits.
 
 ### Acceptance
 
-- Every recommendation status is reachable in a 30-day window; no rule depends on the current clock when a period end exists; missing inputs yield null/unavailable, never 0.
+- Every recommendation status is reachable in a 30-day window. Zero-sales stock enters stale/dead-stock analysis. 45 days yields a review candidate, and DO_NOT_ORDER needs extra evidence.
+- 0.15/day and 45 days never produce an actionable MARKDOWN/DO_NOT_ORDER alone. The 3-unit sample gates only positive/new-product signals.
+- No rule depends on the current clock when a period end exists. Missing inputs yield null/unavailable, never 0 (`lostSalesEstimate`, slow-stock capital, trend from a 0 base).
+- The grain finding is recorded, and one slow size never marks a model as bad.
+- All thresholds come from one configurable policy with provenance shown in methodology.
 
 ### Dependencies
 
-- `RQ472` (journal gate) first; coordinate with `RQ473` (margin/cost) and `RQ469`–`RQ471` (same Product Decision surface, frontend).
+- None blocking. `RQ472` keeps the journal gate/actionability (same builder file: sequence by claim if both become active). Coordinate with `RQ473` (margin/cost) and `RQ469`–`RQ471`/`RQ485` (same Product Decision surface, frontend).
 - Reliability contract: backend-owned decisions only; missing evidence is unavailable, not zero.
 
 ---
