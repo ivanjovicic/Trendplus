@@ -4,9 +4,9 @@ Date: 2026-09-28
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / no PR
-Main commit SHA: pending
-Main verification: pending - will verify origin/main after delivery
-Evidence state: pending
+Main commit SHA: cf58670711357a8e6cdefeff9d9fef1c9d4b92f5
+Main verification: passed - `origin/main` contains implementation `cf58670711357a8e6cdefeff9d9fef1c9d4b92f5`; evidence sync is delivered in the follow-up commit
+Evidence state: synchronized
 
 ## What was done
 
@@ -28,8 +28,10 @@ Evidence state: pending
 - Live Actions list/count/outcome-summary requests -> pass as evidence collection; the recorded response differences are findings, not test failures.
 - Live Decision Pulse request -> pass as evidence collection; `PULSE_PARTIAL` and 124 suppressed candidates are recorded as a product-trust finding.
 - Live Supplier Scorecard summary request -> pass as evidence collection; transport 200 with `MISSING_SCHEMA` semantic failure is routed to existing `RQ475`.
-- `git diff --check` -> pending until documentation patches are complete.
-- Repository queue/planning validators -> pending until documentation patches are complete.
+- `git diff --check` -> pass.
+- `node scripts/check-agent-instructions.mjs --self-test` and `node scripts/check-agent-instructions.mjs` -> pass.
+- `node scripts/check-prompt-queues.mjs --self-test` and `node scripts/check-prompt-queues.mjs` -> pass (`594` tasks checked).
+- `node scripts/check-planning-architecture.mjs --self-test` and `node scripts/check-planning-architecture.mjs` -> pass (`78` new planning tasks checked).
 
 ## Validation not run
 
