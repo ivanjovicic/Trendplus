@@ -367,7 +367,7 @@ export default function PilotIntakeReportPage() {
         mode="report"
         periodFrom={resolvedReport.periodFrom ?? resolvedReport.period?.fromUtc ?? null}
         periodTo={resolvedReport.periodTo ?? resolvedReport.period?.toUtc ?? null}
-        lastRefreshAt={resolvedReport.lastRefreshAtUtc ?? (isBrowserPreview ? null : refreshStatus?.lastSuccessfulRefreshAtUtc ?? null)}
+        lastRefreshAt={isBrowserPreview ? resolvedReport.lastRefreshAtUtc ?? null : refreshStatus?.lastSuccessfulRefreshAtUtc ?? null}
         dataFreshnessStatus={isBrowserPreview ? resolvedReport.dataFreshnessStatus ?? null : refreshStatus?.dataFreshnessStatus ?? null}
         refreshIsRunning={isBrowserPreview ? false : refreshStatus?.isRunning ?? false}
         refreshCurrentStep={isBrowserPreview ? null : refreshStatus?.currentStep ?? null}

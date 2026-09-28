@@ -1,6 +1,6 @@
 ﻿import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import type { AnalyticsNamedValue } from "../../types/analyticsTable";
+import type { AnalyticsNamedValue, ResolvedAnalyticsTablePayload } from "../../types/analyticsTable";
 import type {
   AnalyticsRefreshStatus,
   PilotDataQualityIntakeReport,
@@ -21,10 +21,13 @@ import {
 } from "../../utils/pilotImportReadiness";
 import {
   fmtNumber,
+  fmtPct,
+  fmtPctFromRatio,
+  fmtRsd,
   formatDate,
   formatDateTime,
 } from "../../utils/analyticsFormatters";
-import { isAnalyticsMetaEmpty, isAnalyticsMetaWarning } from "../../utils/analyticsResponseMeta";
+import { isAnalyticsMetaEmpty, isAnalyticsMetaError, isAnalyticsMetaWarning } from "../../utils/analyticsResponseMeta";
 import AnalyticsEmptyState from "./AnalyticsEmptyState";
 import AnalyticsErrorState from "./AnalyticsErrorState";
 import KpiExplainButton from "./KpiExplainButton";
@@ -66,7 +69,6 @@ export function buildCsv(report: PilotDataQualityIntakeReport): string {
   const rows = [
     ["Sekcija", "Stavka", "Vrednost"],
     ["Skor", "Status spremnosti", getPilotReadinessStatusLabel(report.readinessStatus)],
-    ["Skor", "Oznaka spremnosti", getPilotReadinessStatusLabel(report.readinessStatus)],
     ["Skor", "Skor spremnosti", String(report.readinessScore)],
     ["Učitano", "Artikli", String(report.loadedData.articlesCount)],
     ["Učitano", "Stavke prodaje", String(report.loadedData.saleItemsCount)],
@@ -124,7 +126,6 @@ export function buildExportPayload(report: PilotDataQualityIntakeReport, filters
   const impact = resolvePilotIntakeImpact(report);
   const rows: Array<{ section: string; item: string; value: string }> = [
     { section: "Skor", item: "Status spremnosti", value: getPilotReadinessStatusLabel(report.readinessStatus) },
-    { section: "Skor", item: "Oznaka spremnosti", value: getPilotReadinessStatusLabel(report.readinessStatus) },
     { section: "Skor", item: "Skor spremnosti", value: String(report.readinessScore) },
     { section: "Učitano", item: "Artikli", value: String(report.loadedData.articlesCount) },
     { section: "Učitano", item: "Stavke prodaje", value: String(report.loadedData.saleItemsCount) },
@@ -177,41 +178,217 @@ export function buildExportPayload(report: PilotDataQualityIntakeReport, filters
   });
 }
 
-function normalizeColumnType(value: string | undefined) {
-  return value === "number"
-    || value === "currency"
-    || value === "percent"
-    || value === "date"
-    || value === "datetime"
-    || value === "text"
-    ? value
-    : "text";
-}
-
-function formatDurableValue(value: unknown): string {
-  if (value == null) return "-";
-  if (typeof value === "number") return fmtNumber(value, 0, "-");
-  if (typeof value === "boolean") return value ? "Da" : "Ne";
-  return String(value);
-}
-
 function durableMethodologySummary(report: PilotIntakeDurableReport): string {
   if (typeof report.methodology === "string") return report.methodology;
   return report.methodologySummary ?? report.methodology.summary;
 }
 
-function durableSectionRowCount(section: PilotIntakeDurableReport["sections"][number]): number {
-  if (typeof section.rowCount === "number") return section.rowCount;
-  return Array.isArray(section.rows) ? section.rows.length : 0;
+function durableKpiNumber(value: unknown): number | null {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value !== "string" || !value.trim()) return null;
+  const parsed = Number(value.replace(/\s/g, "").replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
-function normalizeText(value: string | null | undefined): string {
-  return (value ?? "")
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[^\w\s]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
+function formatDurableKpiValue(kpi: NonNullable<PilotIntakeDurableReport["kpis"]>[number]): string {
+  if (["error", "insufficient_data", "stale"].includes(kpi.valueStatus ?? "")) {
+    return kpi.valueReason ?? "Nije dostupno";
+  }
+  const value = durableKpiNumber(kpi.value);
+  if (value == null) return kpi.valueReason ?? "Nije dostupno";
+  if (kpi.unit === "ratio") return fmtPctFromRatio(value, 1, "Nije dostupno");
+  if (kpi.unit === "%") return fmtPct(value, 1, "Nije dostupno");
+  if (kpi.unit === "/100") return `${fmtNumber(value, 0, "Nije dostupno")}/100`;
+  if (kpi.unit?.toUpperCase() === "RSD") return fmtRsd(value, 0, "Nije dostupno");
+  return fmtNumber(value, 0, "Nije dostupno");
+}
+
+function formatDurableCell(value: unknown, dataType?: string): string {
+  if (value == null || value === "") return "Nije dostupno";
+  if (dataType === "date") return formatDate(String(value), "Nije dostupno");
+  if (dataType === "datetime") return formatDateTime(String(value), "Nije dostupno");
+  if (dataType === "number" || dataType === "currency") {
+    const numeric = durableKpiNumber(value);
+    return numeric == null ? "Nije dostupno" : dataType === "currency" ? fmtRsd(numeric, 0, "Nije dostupno") : fmtNumber(numeric, 0, "Nije dostupno");
+  }
+  if (typeof value === "boolean") return value ? "Da" : "Ne";
+  return String(value);
+}
+
+function durableFreshnessLabel(value: string | null | undefined): string {
+  switch (value?.trim().toLowerCase()) {
+    case "fresh": return "Sveže";
+    case "stale": return "Zastarelo";
+    case "critical": return "Kritično";
+    case "warning": return "Oprez";
+    default: return "Nije dostupna";
+  }
+}
+
+function durableReportIsEmpty(report: PilotIntakeDurableReport): boolean {
+  if (isAnalyticsMetaEmpty(report.meta)) return true;
+  return (report.kpis?.length ?? 0) === 0 && report.sections.some((section) => section.key === "report-status");
+}
+
+function toResolvedPayload(report: PilotIntakeDurableReport): ResolvedAnalyticsTablePayload {
+  return {
+    tableKey: report.payload.tableKey,
+    tableTitle: report.payload.tableTitle,
+    documentType: report.payload.documentType,
+    templateName: report.payload.templateName,
+    templateVersion: report.payload.templateVersion,
+    locale: report.payload.locale,
+    columns: report.payload.columns,
+    rows: report.payload.rows.map((row) => ({
+      section: row.section,
+      item: row.item,
+      value: row.value,
+      secondary: row.secondary,
+      note: row.note,
+    })),
+    filters: report.payload.filters,
+    metadata: report.payload.metadata,
+  };
+}
+
+function csvCell(value: unknown): string {
+  const text = String(value ?? "");
+  return /[",\n;]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+export function buildDurableCsv(report: PilotIntakeDurableReport): string {
+  const rows = [
+    ["Sekcija", "Stavka", "Vrednost"],
+    ...report.rows.map((row) => [row.section, row.item, row.value]),
+  ];
+  return `\uFEFF${rows.map((row) => row.map(csvCell).join(",")).join("\n")}`;
+}
+
+function buildDurableSummary(report: PilotIntakeDurableReport): string {
+  const kpis = (report.kpis ?? []).map((kpi) => `${kpi.label}: ${formatDurableKpiValue(kpi)}`);
+  const actions = (report.recommendedActions ?? []).map((action) => action.title);
+  return [
+    report.reportTitle ?? report.title ?? "Trendplus pilot izveštaj kvaliteta podataka",
+    ...kpis,
+    actions.length > 0 ? `Preporučene akcije: ${actions.join("; ")}` : null,
+  ].filter((line): line is string => Boolean(line)).join("\n");
+}
+
+function csvDate(value: string | null | undefined): string {
+  const raw = value?.slice(0, 10) ?? "";
+  return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : "unknown-date";
+}
+
+export function buildPilotCsvFilename(report: PilotDataQualityIntakeReport | null, durableReport: PilotIntakeDurableReport | null | undefined): string {
+  const generatedAt = report?.generatedAtUtc ?? durableReport?.generatedAtUtc;
+  const from = durableReport?.periodFrom ?? report?.periodFromUtc;
+  const to = durableReport?.periodTo ?? report?.periodToUtc;
+  const periodSuffix = from && to ? `_${csvDate(from)}_${csvDate(to)}` : "";
+  return `pilot-intake-${csvDate(generatedAt)}${periodSuffix}.csv`;
+}
+
+type DurableReportContentProps = {
+  report: PilotIntakeDurableReport;
+  exportBusy: boolean;
+  exportStatus: string | null;
+  onTextExport: () => void;
+  onServerExport: (format: "pdf" | "xlsx" | "csv") => void;
+  onCopy: () => void;
+};
+
+function DurableReportContent({ report, exportBusy, exportStatus, onTextExport, onServerExport, onCopy }: DurableReportContentProps) {
+  const kpis = report.kpis ?? [];
+  const actions = report.recommendedActions ?? [];
+  const warnings = report.warnings ?? [];
+
+  return (
+    <section className="pilot-intake-card tone-warning" data-testid="pilot-durable-report">
+      <div className="pilot-intake-head">
+        <div>
+          <h2>{report.reportTitle ?? report.title ?? "Pilot intake izveštaj"}</h2>
+          <p>Trajni izveštaj kvaliteta podataka iz backend izvora.</p>
+        </div>
+        <div className="pilot-intake-score">
+          <span>{report.recommendationAllowed ? "Preporuke dozvoljene" : "Preporuke ograničene"}</span>
+          <strong>{getPilotReadinessStatusLabel(report.dataQualityStatus)}</strong>
+        </div>
+      </div>
+
+      {warnings.length > 0 ? (
+        <div className="pilot-intake-warning" role="status">
+          {warnings.join(" · ")}
+        </div>
+      ) : null}
+
+      {kpis.length > 0 ? (
+        <div className="pilot-intake-grid" data-testid="pilot-durable-kpis">
+          {kpis.map((kpi) => (
+            <article key={kpi.key}>
+              <span>{kpi.label}</span>
+              <strong>{formatDurableKpiValue(kpi)}</strong>
+              {kpi.note || kpi.valueReason ? <p>{kpi.note ?? kpi.valueReason}</p> : null}
+            </article>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="pilot-intake-meta">
+        <span>Period: {formatDate(report.periodFrom ?? report.period?.fromUtc, "Nije dostupan")} - {formatDate(report.periodTo ?? report.period?.toUtc, "Nije dostupan")}</span>
+        <span>Scope: {getPilotImportScopeLabel(report.period?.scope)}</span>
+        <span>Generisano: {formatDateTime(report.generatedAtUtc, "Nije dostupno")}</span>
+        <span>Svežina: {durableFreshnessLabel(report.dataFreshnessStatus)}</span>
+      </div>
+
+      <div className="pilot-intake-durable-sections" data-testid="pilot-durable-sections">
+        {report.sections.map((section) => {
+          const rows: Array<Record<string, unknown>> = section.rows ?? report.rows
+            .filter((row) => row.section === section.key)
+            .map((row) => ({ item: row.item, value: row.value, note: row.note }));
+          const columns: Array<{ key: string; label: string; dataType?: string }> = section.columns ?? (rows.length > 0
+            ? Object.keys(rows[0]).map((key) => ({ key, label: key }))
+            : []);
+
+          return (
+            <article key={section.key} className="pilot-intake-durable-section">
+              <h3>{section.title ?? section.key}</h3>
+              {section.description ? <p>{section.description}</p> : null}
+              {rows.length > 0 && columns.length > 0 ? (
+                <div className="pilot-intake-durable-table-wrap">
+                  <table className="pilot-intake-durable-table">
+                    <thead><tr>{columns.map((column) => <th key={column.key}>{column.label}</th>)}</tr></thead>
+                    <tbody>
+                      {rows.map((row, rowIndex) => (
+                        <tr key={`${section.key}-${rowIndex}`}>
+                          {columns.map((column) => <td key={column.key}>{formatDurableCell(row[column.key], column.dataType)}</td>)}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : <p className="pilot-card-note">{section.emptyMessage ?? "Nema stavki za ovaj opseg."}</p>}
+            </article>
+          );
+        })}
+      </div>
+
+      <div className="pilot-intake-actions" data-testid="pilot-durable-actions">
+        {actions.length > 0 ? actions.map((action) => (
+          <div key={`${action.title}-${action.href}`} className="pilot-intake-action-row">
+            <Link to={action.href || "/analytics/data-quality"}>{action.title}</Link>
+            <span>{action.description}</span>
+          </div>
+        )) : <p className="pilot-card-note">Nema preporučenih akcija za traženi opseg.</p>}
+      </div>
+
+      <div className="pilot-intake-export">
+        <button type="button" onClick={onTextExport}>Preuzmi CSV</button>
+        <button type="button" disabled={exportBusy} onClick={() => onServerExport("pdf")}>PDF</button>
+        <button type="button" disabled={exportBusy} onClick={() => onServerExport("xlsx")}>XLSX</button>
+        <button type="button" onClick={onCopy}>Kopiraj sažetak</button>
+        {exportStatus ? <span>{exportStatus}</span> : null}
+      </div>
+    </section>
+  );
 }
 
 type TrustSignalState = "clear" | "partial" | "issues";
@@ -281,23 +458,29 @@ export default function PilotDataQualityIntakeReportPanel({ report, loading, err
   const [exportStatus, setExportStatus] = useState<string | null>(null);
   const [methodologyKey, setMethodologyKey] = useState<AnalyticsMetricKey | null>(null);
 
-  const durableSections = durableReport?.sections ?? [];
   const durableSummary = durableReport ? durableMethodologySummary(durableReport) : null;
   const durableWarnings = durableReport?.warnings ?? [];
   const durableGeneratedAt = durableReport?.generatedAtUtc ?? report?.generatedAtUtc ?? null;
   const generatedAtLabel = durableGeneratedAt ? formatDateTime(durableGeneratedAt, "Nije dostupno") : "Nije dostupno";
   const metaWarning = isAnalyticsMetaWarning(report?.meta) || isAnalyticsMetaWarning(durableReport?.meta);
 
-  const reportText = useMemo(() => (report ? buildSummary(report) : ""), [report]);
-  const exportPayload = useMemo(() => (report ? buildExportPayload(report, filters) : null), [filters, report]);
+  const reportText = useMemo(() => {
+    if (report) return buildSummary(report);
+    return durableReport ? buildDurableSummary(durableReport) : "";
+  }, [durableReport, report]);
+  const exportPayload = useMemo(() => {
+    if (report) return buildExportPayload(report, filters);
+    return durableReport ? toResolvedPayload(durableReport) : null;
+  }, [durableReport, filters, report]);
 
   async function runTextExport() {
-    if (!report) return;
-    const blob = new Blob([buildCsv(report)], { type: "text/csv;charset=utf-8" });
+    if (!report && !durableReport) return;
+    const csv = report ? buildCsv(report) : buildDurableCsv(durableReport!);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `pilot-intake-${formatDate(report.generatedAtUtc)}.csv`;
+    link.download = buildPilotCsvFilename(report, durableReport);
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -340,6 +523,41 @@ export default function PilotDataQualityIntakeReportPanel({ report, loading, err
         message={error}
         onRetry={onRetry}
         helpHref="/admin/configuration?panel=workers"
+      />
+    );
+  }
+
+  if (durableReport && isAnalyticsMetaError(durableReport.meta)) {
+    return (
+      <AnalyticsErrorState
+        title="Pilot intake izveštaj nije dostupan"
+        message={durableReport.meta?.errorMessage ?? durableReport.meta?.message ?? "Pilot intake izveštaj nije dostupan."}
+        onRetry={onRetry}
+        helpHref="/analytics/data-quality"
+      />
+    );
+  }
+
+  if (durableReport && durableReportIsEmpty(durableReport)) {
+    return (
+      <AnalyticsEmptyState
+        variant="insufficient_data"
+        title="Pilot intake izveštaj nema dovoljno podataka"
+        message={durableReport.meta?.message ?? "Nema dovoljno učitanih podataka da bi se izračunao readiness score."}
+        reasons={durableReport.meta?.emptyReason ? [durableReport.meta.emptyReason] : ["Nema import batch-a ili prodajnih redova u izabranom periodu."]}
+      />
+    );
+  }
+
+  if (!report && durableReport) {
+    return (
+      <DurableReportContent
+        report={durableReport}
+        exportBusy={exportBusy}
+        exportStatus={exportStatus}
+        onTextExport={() => void runTextExport()}
+        onServerExport={(format) => void runServerExport(format)}
+        onCopy={() => void navigator.clipboard?.writeText(reportText)}
       />
     );
   }
@@ -413,18 +631,6 @@ export default function PilotDataQualityIntakeReportPanel({ report, loading, err
         <span>Import: {formatDateTime(report.lastImportAtUtc, "Nije dostupan")}</span>
         <span>Refresh: {formatDateTime(report.lastRefreshAtUtc, "Nije dostupan")}</span>
       </div>
-
-      {durableSections.length > 0 ? (
-        <div className="pilot-intake-durable-sections">
-          {durableSections.map((section) => (
-            <article key={section.key}>
-              <span>{section.title ?? section.key}</span>
-              <strong>{fmtNumber(durableSectionRowCount(section), 0, "-")} redova</strong>
-              {section.description ? <p>{section.description}</p> : null}
-            </article>
-          ))}
-        </div>
-      ) : null}
 
       <div className="pilot-intake-actions">
         {report.recommendedActions.map((action) => {

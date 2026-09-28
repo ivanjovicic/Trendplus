@@ -2,7 +2,8 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ462
+Current READY prompt: RQ466
+Owner completion 2026-09-28: `RQ462` was delivered directly to `main`; the Pilot intake durable route now renders the backend report instead of a permanent empty state, including authoritative KPIs, sections, actions and exports, while empty/error states remain backend-driven. Run log: `.ai/runs/2026-09-28-RQ462-evidence.md`. Evidence state: pending until the delivery SHA is verified; `RQ466` is now the primary READY prompt.
 Owner completion 2026-09-28: `RQ461` was delivered directly to `main` in implementation `b39a54d4e062af4cd851cf0edb5eacb7822f6f08`; the durable Supplier report now consumes backend section/header/metadata vocabulary, renders explicit empty/status state, omits the zero-filled negotiation pack for empty data, and formats trust/period/filter values for users. Run log: `.ai/runs/2026-09-28-RQ461-evidence.md`. Evidence state: synchronized; `RQ462` is now the primary READY prompt.
 Owner audit follow-up 2026-09-28 (Supplier report + Pilot intake audit, grok): promoted three non-conflicting, decision-free prompts — `RQ461` (READY, P1: the durable Supplier report renderer expects section/header/metadata names the backend never emits, so warnings/top/risk/recommendation sections, freshness and the recommendation badge are always empty or wrong), `RQ462` (READY, P1, parallel-safe frontend: `/analytics/reports/pilot-intake` passes `report={null}` and always renders the empty state) and `RQ466` (READY, P1, parallel-safe backend: pilot intake ignores `dataScope`, uses a health window relative to now and presents query time as last refresh). `Current READY prompt` is `RQ461`; also READY: `RQ462`, `RQ466`. WAITING follow-ups: `RQ463` (requested-window truth; decision fail-closed vs recompute), `RQ464` (metric basis/scoring decision), `RQ465` (actions/negotiation pack), `RQ467` (pilot readiness semantics decision), `RQ468` (Serbian copy on both screens). Run log: `.ai/runs/2026-09-28-supplier-report-pilot-intake-audit-evidence.md`.
 Owner decision follow-up 2026-09-28 (Ivan; recorded by grok): dated „Owner decision (Ivan, 2026-09-28)“ sections added to `RQ463` (fail closed, `requested_range_not_precomputed`), `RQ464` (Supplier overview KPI parity, DUG/KOREKCIJA, missing cost, supplier vs customer returns, receipt store, one score policy), `RQ465` (negotiation pack only with one supplier) and `RQ467` (readiness = data quality, distinct blocked articles, business-date default period). No decision remains; they stay WAITING only for same-file sequencing (`RQ463`/`RQ465` after `RQ461`, `RQ464` after `RQ463`, `RQ467` after `RQ466`). PS de-dup registered `RQ483`–`RQ488` (`RQ486` READY; `RQ484` needs a gate-policy decision). `Current READY prompt` stays `RQ461`; also READY: `RQ462`, `RQ466`, `RQ486`. Run log: `.ai/runs/2026-09-28-supplier-report-pilot-intake-owner-decisions-evidence.md`.
@@ -49,7 +50,7 @@ Owner promotion/claim 2026-09-26: idle recovery found Current READY `none`. Conc
 Owner completion 2026-09-26: `RQ383` was delivered for Daily Sales shift provenance. Measured shifts no longer absorb off-shift/no-time remaps; metadata exposes `ShiftAssignmentStatus`, `OffShift*` and `NoTimeFallback*`; frontend keeps shift shares unavailable under `no_time_fallback`. Run log: `.ai/runs/2026-09-26-RQ383-evidence.md`. Evidence state: synchronized; implementation `e5d22c01`; tip `ed1ef168`.
 Owner completion 2026-09-26: `RQ384` was delivered for Daily Sales safe/traceable errors. Endpoint failures no longer return `ex.Message`; Problem details include `errorCode`/`correlationId`, and the frontend allowlists safe Serbian messages while surfacing correlation IDs. Run log: `.ai/runs/2026-09-26-RQ384-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-26: idle recovery found Current READY `none` after RQ456/RQ457 closures on `origin/main`. Verified RQ382/RQ383 DONE, no active Daily Sales endpoint/frontend error-contract lock/branch/PR owner, and RQ384 is dependency-complete. `RQ384` moved `WAITING -> READY -> IN_PROGRESS` in this workspace for Daily Sales safe/traceable error responses; local lock `.ai/task-locks/RQ384-cursor.lock.md`.
-Current READY prompt: RQ462
+Current READY prompt: RQ466
 Owner audit 2026-09-28: direct live/source audit of Product Decision and Supplier Analytics registered bounded follow-ups `RQ469`-`RQ476` as `WAITING`. Confirmed evidence, cross-screen denominator/population comparison and browser-helper limitation are recorded in `docs/qa/PRODUCTS_SUPPLIER_LIVE_AUDIT_2026-09-28.md`; no prompt was claimed or promoted by this audit.
 Owner audit 2026-09-28: direct live/source audit of Actions, Decision Pulse and Supplier Scorecard registered `RQ477`-`RQ482` as `WAITING`. Actions showed four old smoke records while the default outcome summary covered a different empty 90-day window; Decision Pulse returned `PULSE_PARTIAL` with 124 suppressed candidates and an unavailable Supplier source; Scorecard re-confirmed the existing `RQ475` schema-readiness owner. Evidence: `docs/qa/ACTIONS_DECISION_PULSE_SUPPLIER_SCORECARD_LIVE_AUDIT_2026-09-28.md`; no prompt was claimed or promoted.
 Owner completion 2026-09-26: `RQ431` settled the Daily Sales concentration over-total contract: top-supplier aggregates that exceed the named period quantity/revenue denominator fail closed; signed within-total remainders stay available. Run log: `.ai/runs/2026-09-26-RQ431-evidence.md`. Evidence state: synchronized.
@@ -1719,7 +1720,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ459 | DONE | supplier-decision-kpi-report-parity | Align Supplier Decision Hub KPI, chart and report totals and delta semantics |
 | RQ460 | DONE | analytics-quality-gates-copy-spec-drift | Restore green Analytics Quality Gates after RQ325 localized copy |
 | RQ461 | DONE | supplier-decision-durable-report-render-contract | Align the Supplier report durable renderer with the backend report payload |
-| RQ462 | READY | pilot-intake-durable-report-render | Render the durable Pilot intake report instead of the permanent empty state |
+| RQ462 | DONE | pilot-intake-durable-report-render | Render the durable Pilot intake report instead of the permanent empty state |
 | RQ463 | WAITING | supplier-decision-requested-window-truth | Make the Supplier report requested window, labels and provenance truthful |
 | RQ464 | WAITING | supplier-decision-report-metric-basis | Align Supplier report KPIs with the Supplier overview and use one scoring model |
 | RQ465 | WAITING | supplier-decision-report-actions-negotiation | Fix Supplier report actions, negotiation pack and page-level defects |
@@ -25218,7 +25219,7 @@ The focused specs pass only because their fixtures use client-shaped rows. Audit
 
 ## RQ462 - Render the durable Pilot intake report instead of the permanent empty state
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: frontend/tests
 Feature family: pilot-intake-durable-report-render
@@ -25281,6 +25282,13 @@ The page spec mocks the component, so the defect is untested.
 ### Addendum 2026-09-28 (owner decision on RQ467, grok)
 
 - Render the backend fields generically as scoped here. The new fields decided in `RQ467` („Pokrivenost poslovnim signalom“, per-reason blocked counts, the default-period anchor/fallback note) are rendered by `RQ467` after this prompt; do not invent them client-side.
+
+### Completion 2026-09-28
+
+- Delivered directly to `main`: durable Pilot intake payload rendering, backend-driven empty/error handling, meaningful sections/actions, truthful refresh provenance and stable CSV export naming.
+- Focused proof: 16/16 Pilot intake component/page Vitest tests; guardrails, typecheck and production build pass.
+- Run log: `.ai/runs/2026-09-28-RQ462-evidence.md`
+- Evidence state: pending until the final delivery SHA is verified.
 
 ---
 

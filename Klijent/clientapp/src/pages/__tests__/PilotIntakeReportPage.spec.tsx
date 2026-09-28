@@ -96,6 +96,7 @@ describe("PilotIntakeReportPage", () => {
 
     const first = renderPage(url);
     expect(await screen.findByText(/pilot-report:Trajni pilot report/)).toBeInTheDocument();
+    expect(screen.getByTestId("trust-header")).toHaveTextContent("2026-04-01|2026-06-30|2026-09-14T10:00:00Z");
     first.unmount();
 
     renderPage(url);
