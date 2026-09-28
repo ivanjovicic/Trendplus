@@ -1,6 +1,7 @@
 using Domain.Model.Prodaja;
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
+using Xunit;
 using Trendplus2.Endpoints;
 
 namespace Api.Tests;

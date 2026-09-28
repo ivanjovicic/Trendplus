@@ -33,3 +33,8 @@
   - The missing-cost top-offender contract test now asserts the RQ467 article master fallback `NabavnaCenaDin -> NabavnaCena` instead of the obsolete single-field predicate; the service comment was corrected to distinguish top-offender master-cost semantics from revenue-window sale-line override semantics.
   - Demo endpoint tests suppress only EF Core's process-wide `ManyServiceProvidersCreatedWarning` for their isolated InMemory test hosts, preventing unrelated test-count/order from turning that warning into a cascade of test failures.
 - The remaining older backend integration failures are left as separate baseline work unless the newest CI proves one is caused by today's reviewed changes.
+
+## Certification build follow-up
+
+- RQ447 certification on `72479fe9` exposed a compile error in the newly added `PilotIntakeDefaultPeriodAnchorTests`: the file was missing `using Xunit;`.
+- Added the missing test import immediately; no runtime behavior changed.
