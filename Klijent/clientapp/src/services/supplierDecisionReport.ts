@@ -652,7 +652,9 @@ export function buildSupplierDecisionReportSummaryText(payload: ResolvedAnalytic
   const distribution = get("Preporuke", "Raspodela");
 
   const dataQuality = payload.metadata.find((m) => m.key === "dataQualityStatus")?.value ?? null;
-  const freshness = payload.metadata.find((m) => m.key === "dataFreshness")?.value ?? null;
+  const freshness = payload.metadata.find((m) => m.key === "dataFreshnessStatus")?.value
+    ?? payload.metadata.find((m) => m.key === "dataFreshness")?.value
+    ?? null;
   const effectiveDataset = payload.metadata.find((m) => m.key === "effectiveDataset")?.value ?? null;
   const usedFallback = payload.metadata.find((m) => m.key === "usedFallback")?.value ?? null;
   const fallbackReason = payload.metadata.find((m) => m.key === "fallbackReason")?.value ?? null;

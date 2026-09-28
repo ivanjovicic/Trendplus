@@ -218,6 +218,48 @@ public sealed class AnalyticsReportsContractTests
     }
 
     [Fact]
+    public void SupplierDecisionReport_EmptyDataset_DurablePayloadHasExplicitStatusAndNoNegotiationPack()
+    {
+        var fromUtc = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);
+        var toUtc = new DateTime(2026, 6, 29, 0, 0, 0, DateTimeKind.Utc);
+        var filters = CreateDefaultFilters(fromUtc, toUtc);
+        var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset([], 0, 0, toUtc);
+
+        var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
+        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(summary, dataset, filters);
+
+        Assert.Contains(report.Payload.Metadata, item => item.Key == "hasData" && item.Value == "False");
+        Assert.Contains(report.Payload.Metadata, item => item.Key == "emptyReason" && item.Value == "no_data_in_period");
+        Assert.Contains(report.Rows, row => row.Section == "Status");
+        Assert.DoesNotContain(report.Payload.Rows, row => row.Section == "supplier_negotiation_pack");
+    }
+
+    [Fact]
+    public void SupplierDecisionReport_DurablePayloadExposesRendererHeaderAndFreshnessContract()
+    {
+        var fromUtc = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);
+        var toUtc = new DateTime(2026, 6, 29, 0, 0, 0, DateTimeKind.Utc);
+        var filters = CreateDefaultFilters(fromUtc, toUtc, supplierId: 1);
+        var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
+            [CreateSupplierRow(1, "Alpha", "EXPAND", 82m, 84m, 520000m, 1400m, fromUtc, toUtc)],
+            0,
+            0,
+            toUtc);
+        var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
+        var refreshInfo = new SupplierDecisionHubEndpoints.ReportRefreshInfo(toUtc.AddHours(2), "fresh", null);
+
+        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(summary, dataset, filters, refreshInfo);
+
+        Assert.Contains(report.Payload.Rows, row => row.Section == "Header" && row.Item == "Dobavljač");
+        Assert.Contains(report.Payload.Rows, row => row.Section == "Header" && row.Item == "Opseg podataka" && row.Value == "Svi podaci");
+        Assert.Contains(report.Payload.Rows, row => row.Section == "Header" && row.Item == "Datum izveštaja");
+        Assert.Contains(report.Payload.Rows, row => row.Section == "Header" && row.Item == "Poslednje osveženje");
+        Assert.Contains(report.Payload.Rows, row => row.Section == "Header" && row.Item == "Efektivni skup podataka");
+        Assert.Contains(report.Payload.Metadata, item => item.Key == "dataFreshnessStatus" && item.Value == "fresh");
+        Assert.Contains(report.Payload.Metadata, item => item.Key == "recommendationAllowed" && item.Value == "False");
+    }
+
+    [Fact]
     public void SupplierDecisionReport_Error_ReturnsErrorMeta()
     {
         var fromUtc = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);

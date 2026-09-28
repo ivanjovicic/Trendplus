@@ -110,15 +110,15 @@ describe("SupplierDecisionReport", () => {
     payload.metadata = [
       ...payload.metadata,
       { key: "generatedAtUtc", label: "Generisano", value: "2026-08-26T10:00:00Z" },
-      { key: "dataFreshness", label: "Svežina podataka", value: "stale" },
+      { key: "dataFreshnessStatus", label: "Svežina podataka", value: "stale" },
     ];
 
     render(<SupplierDecisionReport payload={payload} />);
 
     expect(screen.getByText("Datum izveštaja")).toBeInTheDocument();
-    expect(screen.getByText("2026-08-26T10:00:00Z")).toBeInTheDocument();
+    expect(screen.getByText(/26\. 8\. 2026\. 12:00/)).toBeInTheDocument();
     expect(screen.getByText("Poslednje osveženje")).toBeInTheDocument();
-    expect(screen.getByText("2026-07-31T05:30:00Z")).toBeInTheDocument();
+    expect(screen.getAllByText(/31\. 7\. 2026\. 07:30/).length).toBeGreaterThan(0);
     expect(screen.getByText("Svežina podataka: Zastarelo")).toBeInTheDocument();
     expect(screen.getAllByText("Efektivni period").length).toBeGreaterThan(0);
     expect(screen.getByText(/Posmatrani podaci:/)).toBeInTheDocument();
@@ -134,5 +134,45 @@ describe("SupplierDecisionReport", () => {
 
     expect(screen.getByText("Kvalitet podataka: Nedovoljno podataka")).toBeInTheDocument();
     expect(screen.queryByText("Kvalitet podataka: insufficient_data")).not.toBeInTheDocument();
+  });
+
+  it("maps backend legacy section names and case-insensitive recommendation metadata", () => {
+    const payload = buildPayload();
+    payload.rows = [
+      ...payload.rows,
+      { section: "Top dobavljači", item: "Alpha", value: "520000", secondary: "Signal: EXPAND" },
+      { section: "Rizik", item: "Beta", value: "1200", secondary: "Pomoćni signal" },
+      { section: "Preporučene akcije", item: "Proveri kvalitet podataka", value: "Otvorite Kvalitet podataka" },
+      { section: "Upozorenja", item: "Upozorenje", value: "Podaci su zastareli" },
+    ];
+    payload.metadata = payload.metadata.map((item) => item.key === "recommendationAllowed"
+      ? { ...item, value: "True" }
+      : item);
+
+    render(<SupplierDecisionReport payload={payload} />);
+
+    expect(screen.getByText("Proveri kvalitet podataka")).toBeInTheDocument();
+    expect(screen.getByText("520.000 RSD")).toBeInTheDocument();
+    expect(screen.getByText("1.200 RSD")).toBeInTheDocument();
+    expect(screen.getByText("Preporuke: dozvoljene")).toBeInTheDocument();
+    expect(screen.getByText("Podaci su zastareli")).toBeInTheDocument();
+  });
+
+  it("renders an explicit empty state without a negotiation pack", () => {
+    const payload = buildPayload();
+    payload.rows = [
+      { section: "Header", item: "Naziv izveštaja", value: "Trendplus izveštaj dobavljača" },
+      { section: "Status", item: "Nedovoljno podataka", value: "Nema dovoljno podataka za izabrani period." },
+    ];
+    payload.metadata = [
+      { key: "hasData", label: "Ima podataka", value: false },
+      { key: "emptyReason", label: "Razlog praznog rezultata", value: "no_data_in_period" },
+      { key: "recommendationAllowed", label: "Preporuka dozvoljena", value: false },
+    ];
+
+    render(<SupplierDecisionReport payload={payload} />);
+
+    expect(screen.getByTestId("supplier-report-empty-state")).toHaveTextContent("Nema dovoljno podataka za izabrani period.");
+    expect(screen.queryByRole("heading", { name: "Paket za razgovor sa dobavljačem" })).not.toBeInTheDocument();
   });
 });

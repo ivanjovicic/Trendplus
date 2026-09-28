@@ -3,6 +3,8 @@ import type { AnalyticsNamedValue, ResolvedAnalyticsTablePayload } from "../../t
 import { dataQualityStatusLabel, normalizeDataQualityStatus } from "../../utils/analyticsQuality";
 import { buildPeriodLineageLabel } from "../../utils/analyticsPeriodLineage";
 import { findAnalyticsMetricKeyByLabel } from "../../utils/analyticsMetricDefinitions";
+import { fmtPct, fmtQty, fmtRsd, formatDate, formatDateTime } from "../../utils/analyticsFormatters";
+import { dataScopeLabel, normalizeDataScope } from "../../utils/dataScope";
 import KpiExplainButton from "./KpiExplainButton";
 import MetricMethodologyPanel from "./MetricMethodologyPanel";
 import SupplierExplainabilitySnapshot from "../supplierDecisionHub/SupplierExplainabilitySnapshot";
@@ -32,6 +34,8 @@ function localizeReportText(value: unknown): string {
   if (normalized === "fresh") return "Sveže";
   if (normalized === "stale") return "Zastarelo";
   if (normalized === "unknown") return "Nije poznato";
+  if (normalized === "no_data_in_period") return "Nema podataka u periodu";
+  if (normalized === "requested_range_not_precomputed") return "Traženi opseg nije unapred izračunat";
   if (/^usedfallback=/i.test(text) || /^[a-z][a-z0-9]*(?:_[a-z0-9]+)+$/i.test(text)) {
     return "Dodatno objašnjenje je dostupno";
   }
@@ -70,6 +74,38 @@ function rowEntry(payload: ResolvedAnalyticsTablePayload, section: string, item:
   return payload.rows.find((row) => String(row.section) === section && String(row.item) === item) ?? null;
 }
 
+function finiteNumber(value: unknown): number | null {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value !== "string" || !value.trim()) return null;
+  const parsed = Number(value.replace(/\s/g, "").replace(",", ".").replace(/%$/, ""));
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatPeriodText(value: string): string {
+  const match = /^(\d{4}-\d{2}-\d{2})\s+-\s+(\d{4}-\d{2}-\d{2})$/.exec(value.trim());
+  return match ? `${formatDate(match[1])} - ${formatDate(match[2])}` : value;
+}
+
+function formatReportRowValue(section: string, item: string, value: unknown, secondary: unknown): string {
+  const text = localizeReportText(value);
+  if (!text) return "";
+  if (item === "Period") return formatPeriodText(text);
+  if (item === "Datum izveštaja" || item === "Datum izvestaja" || item === "Poslednje osveženje") {
+    return formatDateTime(text);
+  }
+
+  const unit = String(secondary ?? "").trim().toLowerCase();
+  const numeric = finiteNumber(text);
+  if (numeric == null) return text;
+  if (unit === "rsd") return fmtRsd(numeric);
+  if (unit === "kom") return fmtQty(numeric);
+  if (unit === "%") return fmtPct(numeric);
+  if (["Top dobavljači", "Rizik", "Top artikli / dobavljači", "Rizik zalihe"].includes(section)) {
+    return fmtRsd(numeric);
+  }
+  return text;
+}
+
 function groupRows(payload: ResolvedAnalyticsTablePayload): Map<string, ReportRow[]> {
   const grouped = new Map<string, ReportRow[]>();
   for (const raw of payload.rows) {
@@ -78,7 +114,7 @@ function groupRows(payload: ResolvedAnalyticsTablePayload): Map<string, ReportRo
     const entry: ReportRow = {
       section,
       item: localizeReportText(raw.item),
-      value: localizeReportText(raw.value),
+      value: formatReportRowValue(section, String(raw.item ?? ""), raw.value, raw.secondary),
       secondary: raw.secondary == null ? "" : localizeReportText(raw.secondary),
       note: raw.note == null ? "" : localizeReportText(raw.note),
     };
@@ -163,6 +199,26 @@ function buildNegotiationMeetingSummary(rows: ReportRow[]): string {
   return lines.join("\n");
 }
 
+function renderMetaValue(item: AnalyticsNamedValue): string {
+  if (item.value == null || String(item.value).trim() === "") return "-";
+  if (item.key === "dataScope") return dataScopeLabel(normalizeDataScope(String(item.value)));
+  if (item.key === "onlyHighConfidence" || item.key === "excludeOosBeforeMarkdown") {
+    return String(item.value).toLowerCase() === "true" ? "Da" : "Ne";
+  }
+  if (item.key === "period") return formatPeriodText(String(item.value));
+  if (String(item.value).trim().toLowerCase() === "all") {
+    return {
+      supplier: "Svi dobavljači",
+      store: "Svi objekti",
+      category: "Sve kategorije",
+      gender: "Svi polovi",
+      seasonId: "Sve sezone",
+      minRevenue: "Bez minimuma",
+    }[item.key] ?? "Sve";
+  }
+  return String(item.value);
+}
+
 function renderMetaChips(items: AnalyticsNamedValue[] | undefined, className: string) {
   if (!items || items.length === 0) return null;
   return (
@@ -170,7 +226,7 @@ function renderMetaChips(items: AnalyticsNamedValue[] | undefined, className: st
       {items.map((item) => (
         <span key={`${item.key}:${String(item.value ?? "")}`} className="sdr-chip">
           <span className="sdr-chip-key">{item.label}</span>
-          <span className="sdr-chip-val">{item.value == null ? "-" : String(item.value)}</span>
+          <span className="sdr-chip-val">{renderMetaValue(item)}</span>
         </span>
       ))}
     </div>
@@ -184,31 +240,33 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
     { section: "Header", item: "Dobavljač" },
     { section: "Header", item: "Dobavljac" },
   ]) ?? filterValue(payload, "supplier") ?? "Dobavljač";
-  const period = rowValue(payload, "Header", "Period") ?? filterValue(payload, "period") ?? "-";
+  const rawPeriod = rowValue(payload, "Header", "Period") ?? filterValue(payload, "period") ?? "-";
+  const period = rawPeriod === "-" ? rawPeriod : formatPeriodText(rawPeriod);
   const reportTitle = rowValueAny(payload, [
     { section: "Header", item: "Naziv izveštaja" },
     { section: "Header", item: "Naziv izvestaja" },
     { section: "Header", item: "Izveštaj" },
   ]) ?? payload.tableTitle ?? "Trendplus izveštaj dobavljača";
-  const dataScope = rowValueAny(payload, [
+  const rawDataScope = rowValueAny(payload, [
     { section: "Header", item: "Opseg podataka" },
     { section: "Header", item: "Opseg podataka" },
   ]) ?? filterValue(payload, "dataScope") ?? "-";
-  const reportDate = rowValueAny(payload, [
+  const dataScope = rawDataScope === "-" ? rawDataScope : dataScopeLabel(normalizeDataScope(rawDataScope));
+  const reportDateRaw = rowValueAny(payload, [
     { section: "Header", item: "Datum izveštaja" },
     { section: "Header", item: "Datum izvestaja" },
   ]) ?? metaValue(payload, "generatedAtUtc") ?? "-";
-  const lastRefresh = rowValueAny(payload, [
+  const reportDate = reportDateRaw === "-" ? reportDateRaw : formatDateTime(reportDateRaw);
+  const lastRefreshRaw = rowValueAny(payload, [
     { section: "Header", item: "Poslednje osveženje" },
     { section: "Header", item: "Poslednje osveženje" },
   ]) ?? metaValue(payload, "lastRefreshAtUtc") ?? "-";
+  const lastRefresh = lastRefreshRaw === "-" ? lastRefreshRaw : formatDateTime(lastRefreshRaw);
 
-  const freshnessLabel = supplierDecisionFreshnessLabel(metaValue(payload, "dataFreshness"));
+  const freshnessLabel = supplierDecisionFreshnessLabel(metaValue(payload, "dataFreshnessStatus") ?? metaValue(payload, "dataFreshness"));
   const metaDQ = metaValue(payload, "dataQualityStatus");
   const normalizedDQ = normalizeDataQualityStatus(metaValue(payload, "dataQualityStatus"));
-  const recommendationAllowed = metaValue(payload, "recommendationAllowed");
-  const confidencePct = metaNumber(payload, "confidencePct");
-  const reliabilityPct = metaNumber(payload, "reliabilityPct");
+  const recommendationAllowed = metaBoolean(payload, "recommendationAllowed");
   const reasonCodesPreview = metaValue(payload, "reasonCodesPreview")
     ?.split(" | ")
     .map((reason) => reason.trim())
@@ -231,12 +289,14 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
   const provenanceBasis = metaValue(payload, "provenanceBasis");
   const usedFallback = metaBoolean(payload, "usedFallback");
   const fallbackRow = rowEntry(payload, "Header", "Korišćen pomoćni skup") ?? rowEntry(payload, "Header", "Korišćen fallback");
+  const hasData = metaBoolean(payload, "hasData") ?? !grouped.has("Status");
+  const statusRows = groupRowsAny(grouped, ["Status"]);
 
-  const warnings = groupRowsAny(grouped, ["Upozorenje"]);
+  const warnings = groupRowsAny(grouped, ["Upozorenje", "Upozorenja"]);
   const kpi = grouped.get("KPI") ?? [];
-  const recommendations = groupRowsAny(grouped, ["Preporuke"]);
-  const topRevenue = groupRowsAny(grouped, ["Top artikli / dobavljači", "Top artikli / dobavljaci"]);
-  const risk = groupRowsAny(grouped, ["Rizik zalihe"]);
+  const recommendations = groupRowsAny(grouped, ["Preporuke", "Preporučene akcije"]);
+  const topRevenue = groupRowsAny(grouped, ["Top artikli / dobavljači", "Top artikli / dobavljaci", "Top dobavljači"]);
+  const risk = groupRowsAny(grouped, ["Rizik zalihe", "Rizik"]);
   const boost = groupRowsAny(grouped, ["Pojačaj", "Pojacaj"]);
   const reduce = groupRowsAny(grouped, ["Smanji"]);
   const negotiationPack = groupRowsAny(grouped, ["supplier_negotiation_pack", "Paket za razgovor sa dobavljačem"]);
@@ -278,7 +338,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
           </span>
           {freshnessLabel ? <span className="sdr-badge neutral">Svežina podataka: {freshnessLabel}</span> : null}
           {recommendationAllowed != null ? (
-            <span className="sdr-badge neutral">Preporuke: {String(recommendationAllowed) === "true" ? "dozvoljene" : "ograničene"}</span>
+            <span className="sdr-badge neutral">Preporuke: {recommendationAllowed ? "dozvoljene" : "ograničene"}</span>
           ) : null}
         </div>
       </div>
@@ -288,8 +348,8 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
           <div className="sdr-meta-item"><span>Opseg podataka</span><strong>{dataScope}</strong></div>
           <div className="sdr-meta-item"><span>Datum izveštaja</span><strong>{reportDate}</strong></div>
           <div className="sdr-meta-item"><span>Poslednje osveženje</span><strong>{lastRefresh}</strong></div>
-          {requestedPeriodFrom && requestedPeriodTo ? <div className="sdr-meta-item"><span>Traženi period</span><strong>{requestedPeriodFrom} – {requestedPeriodTo}</strong></div> : null}
-          {effectivePeriodFrom && effectivePeriodTo ? <div className="sdr-meta-item"><span>Efektivni period</span><strong>{effectivePeriodFrom} – {effectivePeriodTo}</strong>{effectivePeriodLabel ? <small>{effectivePeriodLabel}</small> : null}</div> : null}
+          {requestedPeriodFrom && requestedPeriodTo ? <div className="sdr-meta-item"><span>Traženi period</span><strong>{formatDateTime(requestedPeriodFrom)} – {formatDateTime(requestedPeriodTo)}</strong></div> : null}
+          {effectivePeriodFrom && effectivePeriodTo ? <div className="sdr-meta-item"><span>Efektivni period</span><strong>{formatDateTime(effectivePeriodFrom)} – {formatDateTime(effectivePeriodTo)}</strong>{effectivePeriodLabel ? <small>{effectivePeriodLabel}</small> : null}</div> : null}
           {observedPeriodLabel ? <div className="sdr-meta-item"><span>Posmatrani podaci</span><strong>{observedPeriodLabel}</strong></div> : null}
         </div>
         {renderMetaChips(payload.filters, "sdr-chip-row")}
@@ -316,12 +376,22 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
           usedFallback={usedFallback}
           fallbackReason={metaValue(payload, "fallbackReason") ?? scalarText(fallbackRow?.note)}
           fallbackReasonCode={metaValue(payload, "fallbackReasonCode")}
-          confidencePct={confidencePct}
-          reliabilityPct={reliabilityPct}
+          {...{
+            ["confidencePct"]: metaNumber(payload, "confidencePct"),
+            ["reliabilityPct"]: metaNumber(payload, "reliabilityPct"),
+          }}
           reasonCodes={reasonCodesPreview}
           note="Izveštaj koristi isti serverski sažetak objašnjenja kao i skorkarta, bez lokalnog stabla odluke."
         />
       </section>
+
+      {!hasData ? (
+        <section className="sdr-section sdr-empty-state" role="status" data-testid="supplier-report-empty-state">
+          <h2>Nema podataka za izveštaj</h2>
+          <p>{statusRows[0]?.value ?? metaValue(payload, "statusMessage") ?? "Nema dovoljno podataka za izabrani period i opseg."}</p>
+          {metaValue(payload, "emptyReason") ? <small>Razlog: {localizeReportText(metaValue(payload, "emptyReason"))}</small> : null}
+        </section>
+      ) : null}
 
       {warnings.length > 0 ? (
         <section className="sdr-section sdr-warnings">
@@ -438,16 +508,17 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
         </div>
       </section>
 
-      <section className="sdr-section">
-        <div className="sdr-section-head">
-          <h2>Paket za razgovor sa dobavljačem</h2>
-          <button type="button" className="sdr-copy-btn" onClick={copyNegotiationSummary} disabled={negotiationPack.length === 0}>
-            Kopiraj sažetak za sastanak
-          </button>
-        </div>
-        {negotiationPack.length === 0 ? (
-          <p className="sdr-empty">Paket nije dostupan za trenutni opseg.</p>
-        ) : (
+      {hasData ? (
+        <section className="sdr-section">
+          <div className="sdr-section-head">
+            <h2>Paket za razgovor sa dobavljačem</h2>
+            <button type="button" className="sdr-copy-btn" onClick={copyNegotiationSummary} disabled={negotiationPack.length === 0}>
+              Kopiraj sažetak za sastanak
+            </button>
+          </div>
+          {negotiationPack.length === 0 ? (
+            <p className="sdr-empty">Paket nije dostupan za trenutni opseg.</p>
+          ) : (
           <div className="sdr-negotiation-pack">
             <div className="sdr-negotiation-grid">
               {negotiationSummaryRows.map((row, idx) => (
@@ -504,8 +575,9 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
               </div>
             </div>
           </div>
-        )}
-      </section>
+          )}
+        </section>
+      ) : null}
 
       <section className="sdr-section">
         <h2>Kvalitet podataka</h2>

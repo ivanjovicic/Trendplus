@@ -2,7 +2,8 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ461
+Current READY prompt: RQ462
+Owner completion 2026-09-28: `RQ461` was delivered directly to `main`; the durable Supplier report now consumes backend section/header/metadata vocabulary, renders explicit empty/status state, omits the zero-filled negotiation pack for empty data, and formats trust/period/filter values for users. Run log: `.ai/runs/2026-09-28-RQ461-evidence.md`. Evidence state: pending until the delivery SHA is verified; `RQ462` is now the primary READY prompt.
 Owner audit follow-up 2026-09-28 (Supplier report + Pilot intake audit, grok): promoted three non-conflicting, decision-free prompts — `RQ461` (READY, P1: the durable Supplier report renderer expects section/header/metadata names the backend never emits, so warnings/top/risk/recommendation sections, freshness and the recommendation badge are always empty or wrong), `RQ462` (READY, P1, parallel-safe frontend: `/analytics/reports/pilot-intake` passes `report={null}` and always renders the empty state) and `RQ466` (READY, P1, parallel-safe backend: pilot intake ignores `dataScope`, uses a health window relative to now and presents query time as last refresh). `Current READY prompt` is `RQ461`; also READY: `RQ462`, `RQ466`. WAITING follow-ups: `RQ463` (requested-window truth; decision fail-closed vs recompute), `RQ464` (metric basis/scoring decision), `RQ465` (actions/negotiation pack), `RQ467` (pilot readiness semantics decision), `RQ468` (Serbian copy on both screens). Run log: `.ai/runs/2026-09-28-supplier-report-pilot-intake-audit-evidence.md`.
 Owner decision follow-up 2026-09-28 (Ivan; recorded by grok): dated „Owner decision (Ivan, 2026-09-28)“ sections added to `RQ463` (fail closed, `requested_range_not_precomputed`), `RQ464` (Supplier overview KPI parity, DUG/KOREKCIJA, missing cost, supplier vs customer returns, receipt store, one score policy), `RQ465` (negotiation pack only with one supplier) and `RQ467` (readiness = data quality, distinct blocked articles, business-date default period). No decision remains; they stay WAITING only for same-file sequencing (`RQ463`/`RQ465` after `RQ461`, `RQ464` after `RQ463`, `RQ467` after `RQ466`). PS de-dup registered `RQ483`–`RQ488` (`RQ486` READY; `RQ484` needs a gate-policy decision). `Current READY prompt` stays `RQ461`; also READY: `RQ462`, `RQ466`, `RQ486`. Run log: `.ai/runs/2026-09-28-supplier-report-pilot-intake-owner-decisions-evidence.md`.
 Owner decision follow-up 2026-09-28 11:53 (Ivan; recorded by grok): `RQ484` approved (nivelacija evidence only for price-event claims; unknown supplier stays `do_not_trust`; page-level readiness over known suppliers; unknown revenue share `<15%` no block, `15–25%` degraded, `>=25%` page-level actionable blocked; trust-contract revenue denominator) → READY. `RQ483` approved with changes (45 days = review candidate, 3 units only for positive signals, 0.15/day configurable pilot threshold, size/model grain, `MinStock` 0/null and new-product paths, one policy with provenance), scope rewritten → READY (the `RQ472` relation is observability only; sequence by claim if both become active). `RQ464` stays WAITING after `RQ463` (owner rejected an early split; optional fixture-only pre-step). `Current READY prompt` stays `RQ461`; also READY: `RQ462`, `RQ466`, `RQ486`, `RQ484`, `RQ483`. Run log: `.ai/runs/2026-09-28-supplier-report-pilot-intake-owner-decisions-evidence.md`.
@@ -48,7 +49,7 @@ Owner promotion/claim 2026-09-26: idle recovery found Current READY `none`. Conc
 Owner completion 2026-09-26: `RQ383` was delivered for Daily Sales shift provenance. Measured shifts no longer absorb off-shift/no-time remaps; metadata exposes `ShiftAssignmentStatus`, `OffShift*` and `NoTimeFallback*`; frontend keeps shift shares unavailable under `no_time_fallback`. Run log: `.ai/runs/2026-09-26-RQ383-evidence.md`. Evidence state: synchronized; implementation `e5d22c01`; tip `ed1ef168`.
 Owner completion 2026-09-26: `RQ384` was delivered for Daily Sales safe/traceable errors. Endpoint failures no longer return `ex.Message`; Problem details include `errorCode`/`correlationId`, and the frontend allowlists safe Serbian messages while surfacing correlation IDs. Run log: `.ai/runs/2026-09-26-RQ384-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-26: idle recovery found Current READY `none` after RQ456/RQ457 closures on `origin/main`. Verified RQ382/RQ383 DONE, no active Daily Sales endpoint/frontend error-contract lock/branch/PR owner, and RQ384 is dependency-complete. `RQ384` moved `WAITING -> READY -> IN_PROGRESS` in this workspace for Daily Sales safe/traceable error responses; local lock `.ai/task-locks/RQ384-cursor.lock.md`.
-Current READY prompt: RQ461
+Current READY prompt: RQ462
 Owner audit 2026-09-28: direct live/source audit of Product Decision and Supplier Analytics registered bounded follow-ups `RQ469`-`RQ476` as `WAITING`. Confirmed evidence, cross-screen denominator/population comparison and browser-helper limitation are recorded in `docs/qa/PRODUCTS_SUPPLIER_LIVE_AUDIT_2026-09-28.md`; no prompt was claimed or promoted by this audit.
 Owner audit 2026-09-28: direct live/source audit of Actions, Decision Pulse and Supplier Scorecard registered `RQ477`-`RQ482` as `WAITING`. Actions showed four old smoke records while the default outcome summary covered a different empty 90-day window; Decision Pulse returned `PULSE_PARTIAL` with 124 suppressed candidates and an unavailable Supplier source; Scorecard re-confirmed the existing `RQ475` schema-readiness owner. Evidence: `docs/qa/ACTIONS_DECISION_PULSE_SUPPLIER_SCORECARD_LIVE_AUDIT_2026-09-28.md`; no prompt was claimed or promoted.
 Owner completion 2026-09-26: `RQ431` settled the Daily Sales concentration over-total contract: top-supplier aggregates that exceed the named period quantity/revenue denominator fail closed; signed within-total remainders stay available. Run log: `.ai/runs/2026-09-26-RQ431-evidence.md`. Evidence state: synchronized.
@@ -1717,7 +1718,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ458 | DONE | supplier-decision-signal-identity | Preserve per-supplier signal identity when recommendation actionability is blocked |
 | RQ459 | DONE | supplier-decision-kpi-report-parity | Align Supplier Decision Hub KPI, chart and report totals and delta semantics |
 | RQ460 | DONE | analytics-quality-gates-copy-spec-drift | Restore green Analytics Quality Gates after RQ325 localized copy |
-| RQ461 | READY | supplier-decision-durable-report-render-contract | Align the Supplier report durable renderer with the backend report payload |
+| RQ461 | DONE | supplier-decision-durable-report-render-contract | Align the Supplier report durable renderer with the backend report payload |
 | RQ462 | READY | pilot-intake-durable-report-render | Render the durable Pilot intake report instead of the permanent empty state |
 | RQ463 | WAITING | supplier-decision-requested-window-truth | Make the Supplier report requested window, labels and provenance truthful |
 | RQ464 | WAITING | supplier-decision-report-metric-basis | Align Supplier report KPIs with the Supplier overview and use one scoring model |
@@ -25122,7 +25123,7 @@ On „Prodaja po dobavljačima“ the period shown can differ from the period co
 
 ## RQ461 - Align the Supplier report durable renderer with the backend report payload
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: backend-contract/frontend/tests
 Feature family: supplier-decision-durable-report-render-contract
@@ -25205,6 +25206,13 @@ The focused specs pass only because their fixtures use client-shaped rows. Audit
   - the empty candidate states „Nema kandidata“ / „Nema dobavljača sa rizikom“ (`RQ465`).
 - Do not implement their backend logic here.
 - Keep the zero-fill removal as scoped here (no pack when there are no rows). Hiding the pack whenever `supplierId` is null is `RQ465`'s owner decision; do not implement it twice.
+
+### Completion 2026-09-28
+
+- Delivered directly to `main`: backend durable payload/header contract and frontend renderer alignment.
+- Focused proof: 14/14 Supplier report/page Vitest tests; 45/45 `AnalyticsReportsContractTests`; guardrails baseline-only with no new violations; typecheck and build pass.
+- Run log: `.ai/runs/2026-09-28-RQ461-evidence.md`
+- Evidence state: pending until the final delivery SHA is verified.
 
 ---
 

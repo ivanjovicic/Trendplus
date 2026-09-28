@@ -885,8 +885,8 @@ public static class SupplierDecisionHubEndpoints
         var warnings = BuildSupplierDecisionWarnings(meta, trust, refreshInfo);
         var actions = BuildSupplierDecisionReportActions(summary, filters, trust, details, hasData, recommendationAllowed);
         var sections = BuildSupplierDecisionReportSections(summary, dataset, trust, refreshInfo, details, actions, methodology, hasData, recommendationAllowed, dataQualityStatus);
-        var rows = BuildSupplierDecisionLegacyRows(summary, dataset, filters, trust, refreshInfo, kpis, actions, methodology.Summary, warnings, hasData, details, recommendationAllowed, dataQualityStatus);
-        var payload = BuildSupplierDecisionPayload(reportId, generatedAtUtc, filters, period, trust, refreshInfo, methodology.Summary, rows, recommendationAllowed, dataQualityStatus);
+        var rows = BuildSupplierDecisionLegacyRows(summary, dataset, filters, trust, refreshInfo, generatedAtUtc, kpis, actions, methodology.Summary, warnings, hasData, details, recommendationAllowed, dataQualityStatus);
+        var payload = BuildSupplierDecisionPayload(reportId, generatedAtUtc, filters, period, trust, refreshInfo, summary.Meta, methodology.Summary, rows, hasData, recommendationAllowed, dataQualityStatus);
 
         return new AnalyticsReportResponseDto(
             reportId,
@@ -1671,6 +1671,7 @@ public static class SupplierDecisionHubEndpoints
         SupplierDecisionHubFilters filters,
         ScorecardTrustMetadata? trust,
         ReportRefreshInfo? refreshInfo,
+        DateTime generatedAtUtc,
         IReadOnlyList<AnalyticsReportKpiDto> kpis,
         List<AnalyticsReportActionDto> actions,
         string methodologySummary,
@@ -1683,7 +1684,12 @@ public static class SupplierDecisionHubEndpoints
         var rows = new List<AnalyticsLegacyReportRowDto>
         {
             new("Header", "Naziv izveštaja", "Trendplus izveštaj dobavljača"),
+            new("Header", "Dobavljač", details?.SupplierHeader.SupplierName ?? (dataset.Rows.Count == 1 ? dataset.Rows[0].SupplierName : "Svi dobavljači")),
             new("Header", "Period", $"{summary.From:yyyy-MM-dd} - {summary.To:yyyy-MM-dd}", trust?.EffectivePeriodLabel, null),
+            new("Header", "Opseg podataka", FormatSupplierDataScopeLabel(filters.DataScope)),
+            new("Header", "Datum izveštaja", generatedAtUtc.ToString("O", CultureInfo.InvariantCulture)),
+            new("Header", "Poslednje osveženje", (refreshInfo?.LastRefreshAtUtc ?? trust?.LastRefreshAtUtc)?.ToString("O", CultureInfo.InvariantCulture) ?? string.Empty),
+            new("Header", "Efektivni skup podataka", FormatSupplierDatasetLabel(trust?.EffectiveDataset), trust?.EffectivePeriodLabel, trust?.FallbackReason),
             new("Header", "Kvalitet podataka", dataQualityStatus, refreshInfo?.DataFreshnessStatus, trust?.FallbackReason),
             new("Header", "Preporuka dozvoljena", recommendationAllowed ? "Da" : "Ne", FormatSupplierDatasetLabel(trust?.EffectiveDataset), recommendationAllowed ? null : "Pomoćni signal")
         };
@@ -1730,7 +1736,10 @@ public static class SupplierDecisionHubEndpoints
             rows.Add(new AnalyticsLegacyReportRowDto("Upozorenja", "Upozorenje", warning));
         }
 
-        rows.AddRange(BuildSupplierNegotiationPackRows(summary, dataset, trust, details, dataQualityStatus, recommendationAllowed));
+        if (hasData)
+        {
+            rows.AddRange(BuildSupplierNegotiationPackRows(summary, dataset, trust, details, dataQualityStatus, recommendationAllowed));
+        }
 
         foreach (var action in actions)
         {
@@ -1748,8 +1757,10 @@ public static class SupplierDecisionHubEndpoints
         AnalyticsReportPeriodDto period,
         ScorecardTrustMetadata? trust,
         ReportRefreshInfo? refreshInfo,
+        AnalyticsResponseMetaDto? meta,
         string methodologySummary,
         IReadOnlyList<AnalyticsLegacyReportRowDto> rows,
+        bool hasData,
         bool recommendationAllowed,
         string dataQualityStatus)
     {
@@ -1796,8 +1807,13 @@ public static class SupplierDecisionHubEndpoints
                 new("effectivePeriodLabel", "Efektivni period", trust?.EffectivePeriodLabel ?? string.Empty),
                 new("dataFreshnessStatus", "Svežina podataka", refreshInfo?.DataFreshnessStatus ?? string.Empty),
                 new("dataQualityStatus", "Kvalitet podataka", dataQualityStatus),
+                new("hasData", "Ima podataka", hasData.ToString()),
+                new("emptyReason", "Razlog praznog rezultata", meta?.EmptyReason ?? string.Empty),
+                new("statusMessage", "Status poruka", meta?.Message ?? string.Empty),
                 new("provenanceBasis", "Osnova generisanja", trust?.ProvenanceBasis ?? SelectDecisionScoreMv(GetDecisionScoreWindowDays(filters))),
                 new("usedFallback", "Korišćen pomoćni skup", (trust?.UsedFallback ?? false).ToString()),
+                new("fallbackReason", "Razlog pomoćnog skupa", trust?.FallbackReason ?? string.Empty),
+                new("fallbackReasonCode", "Kod pomoćnog skupa", trust?.FallbackReasonCode ?? string.Empty),
                 new("recommendationAllowed", "Preporuka dozvoljena", recommendationAllowed.ToString()),
                 new("methodology", "Metodologija", methodologySummary)
             },
@@ -2734,6 +2750,17 @@ SELECT
             _ when !string.IsNullOrWhiteSpace(dataset) && dataset.Contains("supplier_decision", StringComparison.OrdinalIgnoreCase)
                 => "keš signala odluke dobavljača",
             _ => "skup podataka odluke dobavljača"
+        };
+    }
+
+    private static string FormatSupplierDataScopeLabel(string? dataScope)
+    {
+        return dataScope?.Trim().ToLowerInvariant() switch
+        {
+            "existing" => "Postojeći podaci",
+            "imported" => "Uvezeni podaci",
+            "all" => "Svi podaci",
+            _ => "Opseg nije poznat"
         };
     }
 
