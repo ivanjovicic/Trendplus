@@ -107,7 +107,10 @@ export interface PreNivelacijaEvidenceWindow {
   markdownWindowFromUtc: string;
   markdownWindowToUtc: string;
   timezone: string;
+  receiptPopulationPolicy: string;
   salesQuantityPolicy: string;
+  signedReturnPolicy: string;
+  lastSaleRecencyPolicy: string;
   nonPositiveNetPolicy: string;
   previousWeekDenominatorPolicy: string;
   candidatesWithReturns: number;

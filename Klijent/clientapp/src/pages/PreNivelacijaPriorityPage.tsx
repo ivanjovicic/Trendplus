@@ -970,7 +970,10 @@ export default function PreNivelacijaPriorityPage() {
       { key: "visiblePageHighPriority", label: "Visok prioritet (vidljiva strana)", value: candidateCounts.highPriority },
       { key: "salesWindowFromUtc", label: "Prodajni prozor od (UTC)", value: data?.evidenceWindow?.salesWindowFromUtc ?? null },
       { key: "salesWindowToUtc", label: "Prodajni prozor do (UTC)", value: data?.evidenceWindow?.salesWindowToUtc ?? null },
+      { key: "receiptPopulationPolicy", label: "Populacija računa", value: data?.evidenceWindow?.receiptPopulationPolicy === "certified_retail_excludes_trimmed_case_insensitive_dug_korekcija" ? "Maloprodaja bez DUG/KOREKCIJA računa" : data?.evidenceWindow?.receiptPopulationPolicy ?? null },
       { key: "salesQuantityPolicy", label: "Politika količine", value: data?.evidenceWindow?.salesQuantityPolicy === "signed_net_quantity_preserved" ? "Potpisana neto količina; povrati i korekcije ostaju vidljivi" : data?.evidenceWindow?.salesQuantityPolicy ?? null },
+      { key: "signedReturnPolicy", label: "Politika povrata", value: data?.evidenceWindow?.signedReturnPolicy === "included_in_signed_net_positive_net_remains_actionable" ? "Povrat ulazi u neto; pozitivan neto ostaje podoban za preporuku" : data?.evidenceWindow?.signedReturnPolicy ?? null },
+      { key: "lastSaleRecencyPolicy", label: "Recency prodaje", value: data?.evidenceWindow?.lastSaleRecencyPolicy === "latest_positive_retail_sale_only" ? "Poslednja pozitivna maloprodajna prodaja" : data?.evidenceWindow?.lastSaleRecencyPolicy ?? null },
       { key: "nonPositiveNetPolicy", label: "Nevažeći neto signal", value: data?.evidenceWindow?.nonPositiveNetPolicy === "recommendation_unavailable" ? "Preporuka nedostupna" : data?.evidenceWindow?.nonPositiveNetPolicy ?? null },
       { key: "candidatesWithReturns", label: "Kandidati sa povratima/korekcijama", value: data?.evidenceWindow?.candidatesWithReturns ?? null },
       { key: "candidatesWithoutSalesInWindow", label: "Bez prodaje u prozoru", value: data?.evidenceWindow?.candidatesWithoutSalesInWindow ?? null },
@@ -982,7 +985,7 @@ export default function PreNivelacijaPriorityPage() {
   const evidenceBasis = useMemo(() => {
     const window = data?.evidenceWindow;
     if (!window) return null;
-    return `UTC prozor ${window.salesWindowFromUtc} – ${window.salesWindowToUtc}; količine su potpisane neto vrednosti; nepozitivan neto i nepozitivan prethodni prozor ostaju nedostupni za preporuku.`;
+    return `UTC prozor ${window.salesWindowFromUtc} – ${window.salesWindowToUtc}; maloprodajna populacija isključuje DUG/KOREKCIJA, povrati ostaju u potpisanom netu, a recency koristi poslednju pozitivnu prodaju.`;
   }, [data?.evidenceWindow]);
 
   const handleSort = (field: SortField) => {

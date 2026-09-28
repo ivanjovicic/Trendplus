@@ -5,7 +5,7 @@ using Trendplus2.Dtos;
 public sealed class PreNivelacijaPriorityResponseDto
 {
     public DateTime GeneratedAtUtc { get; set; } = DateTime.UtcNow;
-    public string FormulaVersion { get; set; } = "pre_nivelacija_v1";
+    public string FormulaVersion { get; set; } = "pre_nivelacija_v6";
     public string FormulaDescription { get; set; } = string.Empty;
     public PreNivelacijaSummaryDto Summary { get; set; } = new();
     public List<PreNivelacijaSupplierActionDto> SupplierLeaderboard { get; set; } = [];
@@ -29,7 +29,10 @@ public sealed class PreNivelacijaEvidenceWindowDto
     public DateTime MarkdownWindowFromUtc { get; set; }
     public DateTime MarkdownWindowToUtc { get; set; }
     public string Timezone { get; set; } = "UTC";
+    public string ReceiptPopulationPolicy { get; set; } = "certified_retail_excludes_trimmed_case_insensitive_dug_korekcija";
     public string SalesQuantityPolicy { get; set; } = "signed_net_quantity_preserved";
+    public string SignedReturnPolicy { get; set; } = "included_in_signed_net_positive_net_remains_actionable";
+    public string LastSaleRecencyPolicy { get; set; } = "latest_positive_retail_sale_only";
     public string NonPositiveNetPolicy { get; set; } = "recommendation_unavailable";
     public string PreviousWeekDenominatorPolicy { get; set; } = "unavailable_when_non_positive";
     public int CandidatesWithReturns { get; set; }

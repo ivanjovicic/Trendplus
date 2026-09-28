@@ -19,7 +19,7 @@ public static class PreNivelacijaPriorityEndpoints
         public int NegativeUnits180 { get; init; }
         public int Units7 { get; init; }
         public int UnitsPrev7 { get; init; }
-        public DateTime? LastSaleDateUtc { get; init; }
+        public DateTime? LastPositiveSaleDateUtc { get; init; }
     }
 
     private sealed class SeasonLite
@@ -32,7 +32,7 @@ public static class PreNivelacijaPriorityEndpoints
     private sealed class PreNivelacijaPriorityBaseCacheEntry
     {
         public DateTime GeneratedAtUtc { get; init; }
-        public string FormulaVersion { get; init; } = "pre_nivelacija_v5";
+        public string FormulaVersion { get; init; } = "pre_nivelacija_v6";
         public string FormulaDescription { get; init; } = string.Empty;
         public PreNivelacijaSummaryDto Summary { get; init; } = new();
         public List<PreNivelacijaSupplierActionDto> SupplierLeaderboard { get; init; } = [];
@@ -171,7 +171,10 @@ public static class PreNivelacijaPriorityEndpoints
                     {
                         var sales = await (
                             from ps in db.ProdajaStavke.AsNoTracking()
-                            join p in db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals p.Id
+                            join p in db.ProdajaZaglavlja
+                                .AsNoTracking()
+                                .Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate)
+                                on ps.IdProdaja equals p.Id
                             where artikalIds.Contains(ps.IdArtikal)
                                 && p.DatumProdaje >= from180Utc
                                 && p.DatumProdaje <= nowUtc
@@ -185,7 +188,10 @@ public static class PreNivelacijaPriorityEndpoints
                                 Units180 = g.Sum(x => x.ps.Kolicina),
                                 PositiveUnits180 = g.Where(x => x.ps.Kolicina > 0).Sum(x => x.ps.Kolicina),
                                 NegativeUnits180 = g.Where(x => x.ps.Kolicina < 0).Sum(x => x.ps.Kolicina),
-                                LastSale = g.Max(x => (DateTime?)x.p.DatumProdaje),
+                                LastPositiveSale = g
+                                    .Where(x => x.ps.Kolicina > 0)
+                                    .Select(x => (DateTime?)x.p.DatumProdaje)
+                                    .Max(),
                                 Units7 = g.Where(x => x.p.DatumProdaje >= last7FromUtc).Sum(x => x.ps.Kolicina),
                                 UnitsPrev7 = g.Where(x => x.p.DatumProdaje >= prev7FromUtc && x.p.DatumProdaje < last7FromUtc).Sum(x => x.ps.Kolicina),
                             })
@@ -200,7 +206,7 @@ public static class PreNivelacijaPriorityEndpoints
                                 NegativeUnits180 = x.NegativeUnits180,
                                 Units7 = x.Units7,
                                 UnitsPrev7 = x.UnitsPrev7,
-                                LastSaleDateUtc = x.LastSale
+                                LastPositiveSaleDateUtc = x.LastPositiveSale
                             });
                     }
                     catch
@@ -283,7 +289,7 @@ public static class PreNivelacijaPriorityEndpoints
 
                         var units180 = salesByArtikal.TryGetValue(a.Id, out var salesLite) ? salesLite.Units180 : 0;
                         var velocity180 = decimal.Round(units180 / 180m, 4);
-                        var lastSaleDate = salesLite?.LastSaleDateUtc;
+                        var lastSaleDate = salesLite?.LastPositiveSaleDateUtc;
                         var daysSinceLastSale = lastSaleDate.HasValue
                             ? Math.Max(0, (nowUtc.Date - lastSaleDate.Value.Date).Days)
                             : 999;
@@ -419,7 +425,7 @@ public static class PreNivelacijaPriorityEndpoints
                     return new PreNivelacijaPriorityBaseCacheEntry
                     {
                         GeneratedAtUtc = nowUtc,
-                        FormulaVersion = "pre_nivelacija_v5",
+                        FormulaVersion = "pre_nivelacija_v6",
                         FormulaDescription = BuildFormulaDescription(),
                         Summary = new PreNivelacijaSummaryDto(),
                         SupplierLeaderboard = [],
@@ -476,7 +482,7 @@ public static class PreNivelacijaPriorityEndpoints
 
     private static string BuildFormulaDescription()
     {
-        return "Skor pre-nivelacije = 0,30*pritisak_zalihe + 0,25*rizik_brzine_prodaje + 0,20*rizik_svežine + 0,10*prilika_za_sniženje + 0,10*potencijal_marže + 0,05*sezonski_signal; preporuka = 0,50*skor + 0,20*razlika_scenarija + 0,15*rizik_zastarelosti + 0,15*pouzdanost. Prozor prodaje i nivelacija: poslednjih 180 dana u UTC; količina je potpisana neto vrednost.";
+        return "Skor pre-nivelacije = 0,30*pritisak_zalihe + 0,25*rizik_brzine_prodaje + 0,20*rizik_svežine + 0,10*prilika_za_sniženje + 0,10*potencijal_marže + 0,05*sezonski_signal; preporuka = 0,50*skor + 0,20*razlika_scenarija + 0,15*rizik_zastarelosti + 0,15*pouzdanost. Prozor prodaje i nivelacija: poslednjih 180 dana u UTC; DUG/KOREKCIJA računi su isključeni, povrati ostaju u potpisanom netu, a recency koristi poslednju pozitivnu prodaju.";
     }
 
     internal static bool IsHighPriorityCandidate(PreNivelacijaSkuCandidateDto candidate)
@@ -590,24 +596,24 @@ public static class PreNivelacijaPriorityEndpoints
             return new PreNivelacijaSalesEvidence(false, "no_sales_in_window", "no_sales_in_window");
         }
 
-        if (negativeUnits180 < 0)
-        {
-            return signedUnits180 <= 0
-                ? new PreNivelacijaSalesEvidence(false, "non_positive_net_with_returns", "signed_sales_non_positive")
-                : new PreNivelacijaSalesEvidence(false, "signed_adjustment", "signed_sales_adjustment");
-        }
-
         if (signedUnits180 < 0)
         {
-            return new PreNivelacijaSalesEvidence(false, "negative_net_sales", "negative_net_sales");
+            return negativeUnits180 < 0
+                ? new PreNivelacijaSalesEvidence(false, "non_positive_net_with_returns", "signed_sales_non_positive")
+                : new PreNivelacijaSalesEvidence(false, "negative_net_sales", "negative_net_sales");
         }
 
         if (signedUnits180 == 0)
         {
-            return new PreNivelacijaSalesEvidence(false, "zero_net_sales", "zero_net_sales");
+            return negativeUnits180 < 0
+                ? new PreNivelacijaSalesEvidence(false, "non_positive_net_with_returns", "signed_sales_non_positive")
+                : new PreNivelacijaSalesEvidence(false, "zero_net_sales", "zero_net_sales");
         }
 
-        return new PreNivelacijaSalesEvidence(true, "positive_net_sales", null);
+        return new PreNivelacijaSalesEvidence(
+            true,
+            "positive_net_sales",
+            negativeUnits180 < 0 ? "signed_sales_return" : null);
     }
 
     internal static decimal? CalculateWeekOverWeekRiskDelta(int last7Units, int previous7Units)
@@ -632,6 +638,9 @@ public static class PreNivelacijaPriorityEndpoints
             SalesWindowToUtc = salesWindowToUtc,
             MarkdownWindowFromUtc = salesWindowFromUtc,
             MarkdownWindowToUtc = salesWindowToUtc,
+            ReceiptPopulationPolicy = "certified_retail_excludes_trimmed_case_insensitive_dug_korekcija",
+            SignedReturnPolicy = "included_in_signed_net_positive_net_remains_actionable",
+            LastSaleRecencyPolicy = "latest_positive_retail_sale_only",
             CandidatesWithReturns = candidates.Count(x => x.NegativeUnits180 < 0),
             CandidatesWithNonPositiveNetSales = candidates.Count(x => x.Units180 <= 0),
             CandidatesWithoutSalesInWindow = candidates.Count(x => string.Equals(x.SalesEvidenceStatus, "no_sales_in_window", StringComparison.OrdinalIgnoreCase)),
@@ -682,7 +691,7 @@ public static class PreNivelacijaPriorityEndpoints
         return new PreNivelacijaPriorityBaseCacheEntry
         {
             GeneratedAtUtc = nowUtc,
-            FormulaVersion = "pre_nivelacija_v5",
+            FormulaVersion = "pre_nivelacija_v6",
             FormulaDescription = BuildFormulaDescription(),
             Summary = new PreNivelacijaSummaryDto
             {

@@ -82,8 +82,9 @@ public sealed class PreNivelacijaMarginEvidenceTests
     [Theory]
     [InlineData(false, 0, 0, false, "no_sales_in_window", "no_sales_in_window")]
     [InlineData(true, 0, 0, false, "zero_net_sales", "zero_net_sales")]
+    [InlineData(true, 0, -2, false, "non_positive_net_with_returns", "signed_sales_non_positive")]
     [InlineData(true, -2, -5, false, "non_positive_net_with_returns", "signed_sales_non_positive")]
-    [InlineData(true, 8, -2, false, "signed_adjustment", "signed_sales_adjustment")]
+    [InlineData(true, 8, -2, true, "positive_net_sales", "signed_sales_return")]
     [InlineData(true, 8, 0, true, "positive_net_sales", null)]
     public void ResolveSalesEvidence_DistinguishesSignedAndMissingSignals(
         bool hasSalesRows,
