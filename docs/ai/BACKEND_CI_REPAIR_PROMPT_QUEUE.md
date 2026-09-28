@@ -158,6 +158,8 @@ The current broad suite still shows clustered failures in `DataSourceDiscoveryEn
   - governance validators - pass
 - Checks not run:
   - fresh broad GitHub Actions backend suite - not run locally; it is the next BCI14 gate after this focused repair
+  - remote Analytics Tests & Data Integrity run `36454389512` on `b28010740b484e378315b8c8b9e90762d5a0fa1d` - `in_progress` when inspected
+  - remote Planning Governance run `36454421776` on closure SHA `01e7cbb078aed0d8f915cdfe09f6c8b3db4b99b4` - `in_progress` when inspected; prior run `36454389679` on the implementation SHA was green
 - Run log: `.ai/runs/2026-09-28-BCI13-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
