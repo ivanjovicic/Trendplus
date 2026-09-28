@@ -188,7 +188,7 @@ export function computePilotImportReadiness(
   lastImportStatus?: string | null,
 ): PilotImportReadinessResult {
   if (!report) {
-    return buildUnknownResult("Pilot intake report još nije dostupan, pa readiness ne može da se proceni.");
+    return buildUnknownResult("Pilot izveštaj o prijemu podataka još nije dostupan, pa skor spremnosti ne može da se proceni.");
   }
 
   const baseStatus = normalizeStatus(report.readinessStatus);
@@ -211,13 +211,13 @@ export function computePilotImportReadiness(
     saleLineCount <= 0 ? "Nema stavki prodaje u pilot paketu." : null,
     receiptCount <= 0 ? "Nema računa u pilot paketu." : null,
     !firstSaleDate || !lastSaleDate ? "Nedostaje prvi ili poslednji datum prodaje." : null,
-    baseStatus === "critical" ? "Backend readiness je označen kao critical." : null,
+    baseStatus === "critical" ? "Sistem je označio stanje kao kritično." : null,
     freshnessStatus === "critical" ? "Poslednje osvežavanje je kritično zastarelo." : null,
-    isFailedImportStatus(importStatus) ? "Poslednji import nije uspeo." : null,
+    isFailedImportStatus(importStatus) ? "Poslednji uvoz nije uspeo." : null,
   ].filter((value): value is string => value !== null);
 
   const warningSignals = [
-    baseStatus === "warning" ? `Backend readiness je ${getPilotReadinessStatusLabel(report.readinessStatus)}.` : null,
+    baseStatus === "warning" ? `Stanje spremnosti je: ${getPilotReadinessStatusLabel(report.readinessStatus)}.` : null,
     supplierCount <= 0 ? "Nema dobavljača u pilot paketu." : null,
     report.issues.missingSupplierCount > 0 ? `${formatCount(report.issues.missingSupplierCount)} artikala nema dobavljača.` : null,
     report.issues.missingCostCount > 0 ? `${formatCount(report.issues.missingCostCount)} stavki nema nabavnu cenu.` : null,
@@ -233,20 +233,20 @@ export function computePilotImportReadiness(
         : null,
     report.impact.insufficientSignalCount > 0 ? `${formatCount(report.impact.insufficientSignalCount)} artikala nema dovoljno signala.` : null,
     report.impact.ignoredRowsCount > 0 ? `${formatCount(report.impact.ignoredRowsCount)} redova je ignorisano pri importu.` : null,
-    !report.lastImportAtUtc ? "Poslednji import nije dostupan." : null,
-    report.lastImportAtUtc && !importStatus ? "Status poslednjeg importa nije poznat." : null,
+    !report.lastImportAtUtc ? "Poslednji uvoz nije dostupan." : null,
+    report.lastImportAtUtc && !importStatus ? "Status poslednjeg uvoza nije poznat." : null,
     importScope === "global" && (report.storeId || report.supplierId)
-      ? "Status importa je globalan, nije mapiran na izabrani store/supplier filter."
+      ? "Status uvoza je globalan i nije mapiran na izabrani objekat/dobavljača."
       : null,
     !refreshStatus ? "Status osvežavanja nije dostupan." : null,
     freshnessStatus === "stale" ? "Poslednje osvežavanje je zastarelo." : null,
     refreshStatus?.isRunning ? "Osvežavanje analitike je trenutno u toku." : null,
-    isWarningImportStatus(importStatus) ? "Poslednji import još nije potvrdio stabilno stanje." : null,
+    isWarningImportStatus(importStatus) ? "Poslednji uvoz još nije potvrdio stabilno stanje." : null,
     report.meta?.dataQualityStatus === "insufficient_data" ? "Kvalitet podataka je označen kao nedovoljan." : null,
   ].filter((value): value is string => value !== null);
 
   if (hardBlockers.length === 0 && warningSignals.length === 0 && baseStatus !== "good" && baseStatus !== "excellent") {
-    warningSignals.push(`Backend readiness status nije mapiran: ${getPilotReadinessStatusLabel(report.readinessStatus)}.`);
+    warningSignals.push(`Status spremnosti nije mapiran: ${getPilotReadinessStatusLabel(report.readinessStatus)}.`);
   }
 
   reasons.push(...hardBlockers, ...warningSignals);

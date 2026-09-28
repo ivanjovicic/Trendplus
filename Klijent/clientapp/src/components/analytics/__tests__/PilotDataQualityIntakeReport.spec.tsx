@@ -24,7 +24,7 @@ function emptyIntakeReport(): PilotDataQualityIntakeReport {
     lastImportBatchId: 42,
     lastRefreshAtUtc: "2026-09-07T07:45:00Z",
     readinessStatus: "insufficient_data",
-    readinessLabel: "Nema dovoljno podataka za readiness procenu",
+    readinessLabel: "Nema dovoljno podataka za procenu spremnosti",
     readinessScore: 0,
     loadedData: {
       articlesCount: 0,
@@ -58,7 +58,7 @@ function emptyIntakeReport(): PilotDataQualityIntakeReport {
       success: true,
       emptyReason: "no_intake_evidence",
       dataQualityStatus: "insufficient_data",
-      message: "Nema dovoljno ucitanih artikala ili import redova za readiness procenu.",
+      message: "Nema dovoljno učitanih artikala ili redova uvoza za procenu spremnosti.",
     },
   };
 }
@@ -156,7 +156,7 @@ describe("PilotDataQualityIntakeReport", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole("heading", { name: "Pilot intake izveštaj nema dovoljno podataka" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Pilot izveštaj nema dovoljno podataka" })).toBeInTheDocument();
     expect(screen.queryByTestId("pilot-durable-report")).not.toBeInTheDocument();
   });
 
@@ -181,8 +181,8 @@ describe("PilotDataQualityIntakeReport", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole("heading", { name: "Pilot intake izveštaj nema dovoljno podataka" })).toBeInTheDocument();
-    expect(screen.getByText("Nema dovoljno ucitanih artikala ili import redova za readiness procenu.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Pilot izveštaj nema dovoljno podataka" })).toBeInTheDocument();
+    expect(screen.getByText("Nema dovoljno učitanih artikala ili redova uvoza za procenu spremnosti.")).toBeInTheDocument();
     expect(screen.queryByText("0/100")).not.toBeInTheDocument();
   });
 
@@ -225,7 +225,7 @@ describe("PilotDataQualityIntakeReport", () => {
       expect(text).toMatch(/5(?:[,.]0)?%/);
       expect(text).toContain("import_business_date_fallback");
     }
-    expect(surfaces[1]).toContain("ne menja readiness skor");
+    expect(surfaces[1]).toContain("ne menja skor spremnosti");
   });
 
   it("keeps unknown and future values visibly unknown in every export surface", () => {

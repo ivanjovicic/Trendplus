@@ -1151,7 +1151,7 @@ export async function getPilotDataQualityIntakeReport(paramsInput: {
   return fetchJson(
     "/api/analytics/data-quality/intake-report",
     params,
-    "Greska pri ucitavanju pilot intake report-a"
+    "Greška pri učitavanju pilot izveštaja"
   );
 }
 
@@ -1176,7 +1176,7 @@ export async function getSupplierDecisionDurableReport(paramsInput: {
   return fetchJson(
     "/api/analytics/reports/supplier-decision",
     params,
-    "Greska pri ucitavanju trajnog supplier report-a"
+    "Greška pri učitavanju izveštaja dobavljača"
   );
 }
 
@@ -1201,7 +1201,7 @@ export async function getPilotIntakeDurableReport(paramsInput: {
   return fetchJson(
     "/api/analytics/reports/pilot-intake",
     params,
-    "Greska pri ucitavanju trajnog pilot intake report-a"
+    "Greška pri učitavanju trajnog pilot izveštaja"
   );
 }
 

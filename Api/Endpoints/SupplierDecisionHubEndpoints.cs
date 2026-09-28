@@ -964,7 +964,7 @@ public static class SupplierDecisionHubEndpoints
                 new AnalyticsReportSectionDto(
                     "report-status",
                     "Status reporta",
-                    "Supplier decision report trenutno nije dostupan.",
+                    "Izveštaj dobavljača trenutno nije dostupan.",
                     [
                         new AnalyticsReportColumnDto("status", "Status"),
                         new AnalyticsReportColumnDto("message", "Poruka"),
@@ -1075,7 +1075,7 @@ public static class SupplierDecisionHubEndpoints
         var job = refreshStatus.Jobs.FirstOrDefault(x => string.Equals(x.Key, preferredJobKey, StringComparison.OrdinalIgnoreCase));
         var freshnessStatus = job?.DataFreshnessStatus ?? refreshStatus.DataFreshnessStatus;
         var warningMessage = freshnessStatus is "stale" or "critical"
-            ? job?.StatusReason ?? refreshStatus.WorkerWarning ?? "Analytics refresh može biti zastareo."
+            ? job?.StatusReason ?? refreshStatus.WorkerWarning ?? "Osvežavanje analitike može biti zastarelo."
             : null;
 
         return new ReportRefreshInfo(
@@ -1393,20 +1393,20 @@ public static class SupplierDecisionHubEndpoints
                 },
                 new()
                 {
-                    ["metric"] = "Coverage status",
-                    ["value"] = trust?.DataCoverageStatus ?? summary.Meta?.DataQualityStatus ?? "insufficient_data",
+                    ["metric"] = "Status pokrivenosti",
+                    ["value"] = FormatSupplierCoverageLabel(trust?.DataCoverageStatus ?? summary.Meta?.DataQualityStatus),
                     ["note"] = refreshInfo?.DataFreshnessStatus
                 },
                 new()
                 {
-                    ["metric"] = "Rows",
+                    ["metric"] = "Broj redova",
                     ["value"] = trust?.RowCount ?? dataset.Rows.Count,
                     ["note"] = $"Preskočeno: {trust?.IgnoredRowCount ?? dataset.IgnoredRowCount}; redovi bez prihoda izuzeti: {trust?.ZeroRevenueRowsExcludedCount ?? dataset.ZeroRevenueRowsExcludedCount}"
                 },
                 new()
                 {
-                    ["metric"] = "Recommendation allowed",
-                    ["value"] = recommendationAllowed,
+                    ["metric"] = "Preporuka dozvoljena",
+                    ["value"] = recommendationAllowed ? "Da" : "Ne",
                     ["note"] = recommendationAllowed ? "Finalna preporuka dozvoljena" : "Pomoćni signal - proveriti podatke pre odluke"
                 }
             },
@@ -1613,7 +1613,7 @@ public static class SupplierDecisionHubEndpoints
         }
 
         const string blockedRecommendation = "Pomoćni signal - proveriti podatke";
-        const string blockedRecommendationReason = "Trust podaci nisu dovoljni za bezbednu preporuku.";
+        const string blockedRecommendationReason = "Podaci o pouzdanosti nisu dovoljni za bezbednu preporuku.";
         rows.Add(new AnalyticsLegacyReportRowDto(section, "Pojačaj saradnju", recommendationAllowed ? (recommendationCode is "EXPAND" or "EXPAND_SELECTIVELY" ? "Da" : "Razmotriti") : blockedRecommendation, "Predlog razgovora", recommendationAllowed ? RecommendationReason("EXPAND") : blockedRecommendationReason));
         rows.Add(new AnalyticsLegacyReportRowDto(section, "Zadrži", recommendationAllowed ? (recommendationCode is "HOLD" ? "Da" : "Razmotriti") : blockedRecommendation, "Predlog razgovora", recommendationAllowed ? RecommendationReason("HOLD") : blockedRecommendationReason));
         rows.Add(new AnalyticsLegacyReportRowDto(section, "Pregovaraj bolje uslove", recommendationAllowed ? (recommendationCode is "PRICE_NEGOTIATE" ? "Da" : "Razmotriti") : blockedRecommendation, "Predlog razgovora", recommendationAllowed ? RecommendationReason("PRICE_NEGOTIATE") : blockedRecommendationReason));
@@ -1885,7 +1885,7 @@ public static class SupplierDecisionHubEndpoints
         {
             resolved.IsPartial = true;
             resolved.WarningCode = "STALE_REFRESH";
-            resolved.WarningMessage = refreshInfo?.WarningMessage ?? "Analytics refresh može biti zastareo.";
+            resolved.WarningMessage = refreshInfo?.WarningMessage ?? "Osvežavanje analitike može biti zastarelo.";
             resolved.Message ??= resolved.WarningMessage;
             if (string.IsNullOrWhiteSpace(resolved.DataQualityStatus) || string.Equals(resolved.DataQualityStatus, "good", StringComparison.OrdinalIgnoreCase))
             {
@@ -2177,7 +2177,7 @@ public static class SupplierDecisionHubEndpoints
             {
                 throw new SupplierDecisionUnavailableException(
                     "MISSING_SCHEMA",
-                $"Skup podataka odluke dobavljača za period {ResolveEffectiveDataset(windowDays)} nije spreman za traženi period. Pokušajte ponovo nakon osvežavanja analitike.");
+                $"Skup podataka odluke dobavljača za period {FormatSupplierDatasetLabel(ResolveEffectiveDataset(windowDays))} nije spreman za traženi period. Pokušajte ponovo nakon osvežavanja analitike.");
             }
 
             var (precomputedSql, precomputedParameters) = BuildPrecomputedSupplierRowsSql(filters, capabilities);
@@ -2209,7 +2209,7 @@ public static class SupplierDecisionHubEndpoints
             {
                 throw new SupplierDecisionUnavailableException(
                     ex.SqlState == "42P01" ? "MISSING_TABLE" : "SQL_ERROR",
-                    "Supplier decision podaci trenutno nisu spremni. Pokušajte ponovo uskoro.",
+                    "Podaci za odluke o dobavljačima trenutno nisu spremni. Pokušajte ponovo uskoro.",
                     ex);
             }
         }
@@ -2230,7 +2230,7 @@ public static class SupplierDecisionHubEndpoints
         {
             throw new SupplierDecisionUnavailableException(
                 "MISSING_TABLE",
-                "Supplier decision podaci trenutno nisu spremni. Pokušajte ponovo uskoro.",
+                "Podaci za odluke o dobavljačima trenutno nisu spremni. Pokušajte ponovo uskoro.",
                 ex);
         }
         catch (NpgsqlException ex) when (ex.InnerException is TimeoutException)
@@ -2249,7 +2249,7 @@ public static class SupplierDecisionHubEndpoints
 
             throw new SupplierDecisionUnavailableException(
                 "SQL_TIMEOUT",
-                "Supplier decision podaci trenutno nisu dostupni zbog isteka vremena.",
+                "Podaci za odluke o dobavljačima trenutno nisu dostupni zbog isteka vremena.",
                 ex);
         }
     }
@@ -2738,6 +2738,18 @@ SELECT
         };
     }
 
+    private static string FormatSupplierCoverageLabel(string? status)
+    {
+        return status?.Trim().ToLowerInvariant() switch
+        {
+            "good" => "Dobro",
+            "warning" or "stale" => "Upozorenje",
+            "critical" or "degraded" => "Kritično",
+            "insufficient_data" => "Nedovoljno podataka",
+            _ => "Nije poznato"
+        };
+    }
+
     private static string FormatSupplierDatasetLabel(string? dataset)
     {
         return dataset switch
@@ -2899,7 +2911,7 @@ SELECT
         {
             throw new SupplierDecisionUnavailableException(
                 "MISSING_SCHEMA",
-                $"Skup podataka odluke dobavljača za period {ResolveEffectiveDataset(windowDays)} nije spreman za traženi period.");
+                $"Skup podataka odluke dobavljača za period {FormatSupplierDatasetLabel(ResolveEffectiveDataset(windowDays))} nije spreman za traženi period.");
         }
 
         var mvName = SelectDecisionScoreMv(windowDays);

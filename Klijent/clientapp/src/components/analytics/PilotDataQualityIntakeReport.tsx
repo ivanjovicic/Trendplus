@@ -106,8 +106,8 @@ export function buildCsv(report: PilotDataQualityIntakeReport): string {
     ["Uticaj", "Pokrivenost poslovnim signalom", signalCoverage == null ? "nije dostupno" : fmtPctFromRatio(signalCoverage, 1, "nije dostupno")],
     ["Period", "Anchor perioda", report.periodAnchorCode ?? "nije potvrđen"],
     ["Period", "Napomena za anchor", report.periodAnchorMessage ?? ""],
-    ["Import", "Status importa", getPilotImportStatusLabel(report.lastImportStatus)],
-    ["Import", "Scope importa", getPilotImportScopeLabel(report.lastImportScope)],
+    ["Uvoz", "Status uvoza", getPilotImportStatusLabel(report.lastImportStatus)],
+    ["Uvoz", "Opseg uvoza", getPilotImportScopeLabel(report.lastImportScope)],
   ];
 
   for (const action of report.recommendedActions) {
@@ -132,10 +132,10 @@ export function buildSummary(report: PilotDataQualityIntakeReport): string {
     `Učitano: ${fmtNumber(report.loadedData.articlesCount, 0, "-")} artikala, ${fmtNumber(report.loadedData.saleItemsCount, 0, "-")} stavki prodaje, ${fmtNumber(report.loadedData.receiptsCount, 0, "-")} računa`,
     `Top problemi: bez dobavljača ${fmtNumber(report.issues.missingSupplierCount, 0, "-")}, bez nabavne cene ${fmtNumber(report.issues.missingCostCount, 0, "-")}, bez kategorije ${fmtNumber(report.issues.missingCategoryCount, 0, "-")}`,
     `Uticaj: prihod bez cene ${formatPilotImpactPercentage(impact.revenueWithoutCost)}, artikli bez dobavljača ${formatPilotImpactPercentage(impact.articlesWithoutSupplier)}, blokirani artikli ${fmtNumber(report.impact.recommendationsBlockedCount, 0, "-")}`,
-    `Pokrivenost poslovnim signalom: ${signalCoverage == null ? "nije dostupna" : fmtPctFromRatio(signalCoverage, 1, "nije dostupna")} (informativno, ne menja readiness skor)`,
+    `Pokrivenost poslovnim signalom: ${signalCoverage == null ? "nije dostupna" : fmtPctFromRatio(signalCoverage, 1, "nije dostupna")} (informativno, ne menja skor spremnosti)`,
     `Anchor perioda: ${report.periodAnchorCode ?? "nije potvrđen"}${report.periodAnchorMessage ? ` — ${report.periodAnchorMessage}` : ""}`,
-    `Status importa: ${getPilotImportStatusLabel(report.lastImportStatus)}`,
-    `Scope importa: ${getPilotImportScopeLabel(report.lastImportScope)}`,
+    `Status uvoza: ${getPilotImportStatusLabel(report.lastImportStatus)}`,
+    `Opseg uvoza: ${getPilotImportScopeLabel(report.lastImportScope)}`,
     `Preporučene akcije: ${report.recommendedActions.join("; ")}`,
   ].join("\n");
 }
@@ -189,9 +189,9 @@ export function buildExportPayload(report: PilotDataQualityIntakeReport, filters
     filters,
     metadata: [
       { key: "generatedAtUtc", label: "Generisano", value: report.generatedAtUtc },
-      { key: "lastImportAtUtc", label: "Poslednji import", value: report.lastImportAtUtc ?? null },
-      { key: "lastImportStatus", label: "Status importa", value: getPilotImportStatusLabel(report.lastImportStatus) },
-      { key: "lastImportScope", label: "Scope importa", value: getPilotImportScopeLabel(report.lastImportScope) },
+      { key: "lastImportAtUtc", label: "Poslednji uvoz", value: report.lastImportAtUtc ?? null },
+      { key: "lastImportStatus", label: "Status uvoza", value: getPilotImportStatusLabel(report.lastImportStatus) },
+      { key: "lastImportScope", label: "Opseg uvoza", value: getPilotImportScopeLabel(report.lastImportScope) },
       { key: "lastRefreshAtUtc", label: "Poslednje osveženje", value: report.lastRefreshAtUtc ?? null },
       { key: "dataScope", label: "Opseg podataka", value: report.dataScope },
       { key: "periodAnchorCode", label: "Anchor perioda", value: report.periodAnchorCode ?? null },
@@ -328,7 +328,7 @@ function DurableReportContent({ report, exportBusy, exportStatus, onTextExport, 
     <section className="pilot-intake-card tone-warning" data-testid="pilot-durable-report">
       <div className="pilot-intake-head">
         <div>
-          <h2>{report.reportTitle ?? report.title ?? "Pilot intake izveštaj"}</h2>
+          <h2>{report.reportTitle ?? report.title ?? "Pilot izveštaj"}</h2>
           <p>Trajni izveštaj kvaliteta podataka iz backend izvora.</p>
         </div>
         <div className="pilot-intake-score">
@@ -357,7 +357,7 @@ function DurableReportContent({ report, exportBusy, exportStatus, onTextExport, 
 
       <div className="pilot-intake-meta">
         <span>Period: {formatDate(report.periodFrom ?? report.period?.fromUtc, "Nije dostupan")} - {formatDate(report.periodTo ?? report.period?.toUtc, "Nije dostupan")}</span>
-        <span>Scope: {getPilotImportScopeLabel(report.period?.scope)}</span>
+        <span>Opseg podataka: {getPilotImportScopeLabel(report.period?.scope)}</span>
         <span>Generisano: {formatDateTime(report.generatedAtUtc, "Nije dostupno")}</span>
         <span>Svežina: {durableFreshnessLabel(report.dataFreshnessStatus)}</span>
       </div>
@@ -536,13 +536,13 @@ export default function PilotDataQualityIntakeReportPanel({ report, loading, err
   }
 
   if (loading) {
-    return <div className="pilot-intake-loading">Učitavam pilot intake izveštaj...</div>;
+    return <div className="pilot-intake-loading">Učitavam pilot izveštaj…</div>;
   }
 
   if (error) {
     return (
       <AnalyticsErrorState
-        title="Pilot intake izveštaj nije dostupan"
+        title="Pilot izveštaj nije dostupan"
         message={error}
         onRetry={onRetry}
         helpHref="/admin/configuration?panel=workers"
@@ -553,8 +553,8 @@ export default function PilotDataQualityIntakeReportPanel({ report, loading, err
   if (durableReport && isAnalyticsMetaError(durableReport.meta)) {
     return (
       <AnalyticsErrorState
-        title="Pilot intake izveštaj nije dostupan"
-        message={durableReport.meta?.errorMessage ?? durableReport.meta?.message ?? "Pilot intake izveštaj nije dostupan."}
+        title="Pilot izveštaj nije dostupan"
+        message={durableReport.meta?.errorMessage ?? durableReport.meta?.message ?? "Pilot izveštaj nije dostupan."}
         onRetry={onRetry}
         helpHref="/analytics/data-quality"
       />
@@ -565,8 +565,8 @@ export default function PilotDataQualityIntakeReportPanel({ report, loading, err
     return (
       <AnalyticsEmptyState
         variant="insufficient_data"
-        title="Pilot intake izveštaj nema dovoljno podataka"
-        message={durableReport.meta?.message ?? "Nema dovoljno učitanih podataka da bi se izračunao readiness score."}
+        title="Pilot izveštaj nema dovoljno podataka"
+        message={durableReport.meta?.message ?? "Nema dovoljno učitanih podataka da bi se izračunao skor spremnosti."}
         reasons={durableReport.meta?.emptyReason ? [durableReport.meta.emptyReason] : ["Nema import batch-a ili prodajnih redova u izabranom periodu."]}
       />
     );
@@ -589,8 +589,8 @@ export default function PilotDataQualityIntakeReportPanel({ report, loading, err
     return (
       <AnalyticsEmptyState
         variant="insufficient_data"
-        title="Pilot intake izveštaj nema dovoljno podataka"
-        message={report?.meta?.message ?? "Nema dovoljno učitanih podataka da bi se izračunao readiness score."}
+        title="Pilot izveštaj nema dovoljno podataka"
+        message={report?.meta?.message ?? "Nema dovoljno učitanih podataka da bi se izračunao skor spremnosti."}
         reasons={["Nema import batch-a ili prodajnih redova u izabranom periodu."]}
       />
     );
@@ -605,7 +605,7 @@ export default function PilotDataQualityIntakeReportPanel({ report, loading, err
     <section className={`pilot-intake-card tone-${tone}`}>
       <div className="pilot-intake-head">
         <div>
-          <h2>Pilot intake izveštaj</h2>
+          <h2>Pilot izveštaj</h2>
           <p>Spremnost podataka za bezbedne preporuke, uz jasno označene rupe u katalogu i signalu.</p>
         </div>
         <div className="pilot-intake-score">
@@ -624,7 +624,7 @@ export default function PilotDataQualityIntakeReportPanel({ report, loading, err
 
       {durableReport ? (
         <div className="pilot-intake-durable-note">
-          <strong>Durable report:</strong> {durableReport.reportTitle ?? durableReport.title ?? "Pilot intake"} · {generatedAtLabel}
+          <strong>Trajni izveštaj:</strong> {durableReport.reportTitle ?? durableReport.title ?? "Pilot izveštaj"} · {generatedAtLabel}
           {durableWarnings.length > 0 ? <span> · {durableWarnings.length} upozorenja</span> : null}
           <p>{durableSummary}</p>
         </div>
@@ -652,9 +652,9 @@ export default function PilotDataQualityIntakeReportPanel({ report, loading, err
         <span>Period: {formatDate(report.periodFromUtc)} - {formatDate(report.periodToUtc)}</span>
         <span>Pokrivenost poslovnim signalom: {resolveSignalCoverage(report) == null ? "nije dostupna" : fmtPctFromRatio(resolveSignalCoverage(report), 1, "nije dostupna")}</span>
         <span>Anchor perioda: {report.periodAnchorCode ?? "nije potvrđen"}</span>
-        <span>Scope: {report.dataScope}</span>
-        <span>Import: {formatDateTime(report.lastImportAtUtc, "Nije dostupan")}</span>
-        <span>Refresh: {formatDateTime(report.lastRefreshAtUtc, "Nije dostupan")}</span>
+        <span>Opseg podataka: {getPilotImportScopeLabel(report.dataScope)}</span>
+        <span>Uvoz: {formatDateTime(report.lastImportAtUtc, "Nije dostupan")}</span>
+        <span>Osvežavanje: {formatDateTime(report.lastRefreshAtUtc, "Nije dostupan")}</span>
       </div>
 
       {report.periodAnchorMessage ? (

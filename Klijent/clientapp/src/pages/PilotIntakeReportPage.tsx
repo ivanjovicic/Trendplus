@@ -249,7 +249,7 @@ export default function PilotIntakeReportPage() {
             setBackendError({
               message: reportResult.reason instanceof Error
                 ? reportResult.reason.message
-                : "Pilot intake report trenutno nije dostupan.",
+                : "Pilot izveštaj o prijemu podataka trenutno nije dostupan.",
             });
           }
         }
@@ -259,7 +259,7 @@ export default function PilotIntakeReportPage() {
         setRefreshStatus(null);
         setRefreshStatusError(null);
         setBackendError({
-          message: reason instanceof Error ? reason.message : "Pilot intake report trenutno nije dostupan.",
+          message: reason instanceof Error ? reason.message : "Pilot izveštaj o prijemu podataka trenutno nije dostupan.",
         });
       } finally {
         if (!cancelled) {
@@ -287,7 +287,7 @@ export default function PilotIntakeReportPage() {
   if (loading && !resolvedReport) {
     return (
       <div className="pilot-intake-report-page">
-        <div className="data-quality-loading">Učitavam pilot intake izveštaj...</div>
+        <div className="data-quality-loading">Učitavam pilot izveštaj…</div>
       </div>
     );
   }
@@ -309,7 +309,7 @@ export default function PilotIntakeReportPage() {
               ]
             : [
                 "Proverite period.",
-                "Proverite refresh status.",
+                "Proverite status osvežavanja.",
                 "Otvorite kvalitet podataka.",
               ]}
           onRetry={() => setReloadTick((prev) => prev + 1)}
@@ -326,12 +326,12 @@ export default function PilotIntakeReportPage() {
           title="Pregled izveštaja je istekao"
           message="Pregled izveštaja je istekao jer se čuva privremeno u browseru."
           reasons={[
-            "Za trajni dokument koristite Excel/Print ili ponovo generišite report.",
+                "Za trajni dokument koristite izvoz u Excel ili štampu, ili ponovo generišite izveštaj.",
           ]}
           actions={[
-            { label: "Vrati se na Data Quality", href: "/analytics/data-quality" },
-            { label: "Ponovo generiši report", href: "/analytics/data-quality" },
-            { label: "Otvori Pilot Intake", href: "/analytics/reports/pilot-intake" },
+            { label: "Nazad na Kvalitet podataka", href: "/analytics/data-quality" },
+            { label: "Ponovo generiši izveštaj", href: "/analytics/data-quality" },
+            { label: "Otvori pilot izveštaj", href: "/analytics/reports/pilot-intake" },
           ]}
           variant="filtered_out"
           dataQualityHref="/analytics/data-quality"
@@ -346,11 +346,11 @@ export default function PilotIntakeReportPage() {
       <div className="pilot-intake-report-page">
         <AnalyticsEmptyState
           title="Trajni izveštaj nema podatke"
-          message="Backend nije vratio podatke za traženi kontekst izveštaja."
-          reasons={["Proverite period i aktivne filtere, pa ponovo učitajte report."]}
+          message="Server nije vratio podatke za traženi kontekst izveštaja."
+          reasons={["Proverite period i aktivne filtere, pa ponovo učitajte izveštaj."]}
           actions={[
-            { label: "Vrati se na Data Quality", href: "/analytics/data-quality" },
-            { label: "Otvori Pilot Intake", href: "/analytics/reports/pilot-intake" },
+            { label: "Nazad na Kvalitet podataka", href: "/analytics/data-quality" },
+            { label: "Otvori pilot izveštaj", href: "/analytics/reports/pilot-intake" },
           ]}
           variant="insufficient_data"
           dataQualityHref="/analytics/data-quality"
@@ -372,7 +372,7 @@ export default function PilotIntakeReportPage() {
         dataFreshnessStatus={isBrowserPreview ? resolvedReport.dataFreshnessStatus ?? null : refreshStatus?.dataFreshnessStatus ?? null}
         refreshIsRunning={isBrowserPreview ? false : refreshStatus?.isRunning ?? false}
         refreshCurrentStep={isBrowserPreview ? null : refreshStatus?.currentStep ?? null}
-        dataSource="Data quality checks"
+        dataSource="Provere kvaliteta podataka"
         dataQualityStatus={resolvedReport.dataQualityStatus}
         dataQualityHref="/analytics/data-quality"
         refreshStatusHref="/admin/configuration?panel=workers"
@@ -386,13 +386,13 @@ export default function PilotIntakeReportPage() {
 
       {isBrowserPreview ? (
         <div className="pirp-warning-banner no-print" role="status">
-          Prikazujemo privremeni browser preview. Za trajan dokument otvorite trajni report.
+          Prikazujemo privremeni pregled u pregledaču. Za trajan dokument otvorite trajni izveštaj.
         </div>
       ) : null}
 
       <div className="pirp-actions no-print">
-        <Link to="/analytics/data-quality" className="pirp-back-link">Vrati se na Data Quality</Link>
-        <button type="button" className="pirp-retry-btn" onClick={() => setReloadTick((prev) => prev + 1)}>Ponovo generiši report</button>
+        <Link to="/analytics/data-quality" className="pirp-back-link">Nazad na Kvalitet podataka</Link>
+        <button type="button" className="pirp-retry-btn" onClick={() => setReloadTick((prev) => prev + 1)}>Ponovo generiši izveštaj</button>
       </div>
 
       <PilotDataQualityIntakeReport

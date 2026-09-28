@@ -58,16 +58,16 @@ export default function PilotImportReadinessCard({
               <li>Dobavljači: {fmtNumber(report.loadedData.suppliersCount, 0, "-")}</li>
               <li>Prva prodaja: {formatDate(report.loadedData.firstSaleDate, "-")}</li>
               <li>Poslednja prodaja: {formatDate(report.loadedData.lastSaleDate, "-")}</li>
-              <li>Poslednji import: {formatDateTime(report.lastImportAtUtc, "-")}</li>
-              <li>Status importa: {getPilotImportStatusLabel(report.lastImportStatus)}</li>
-              <li>Scope importa: {getPilotImportScopeLabel(report.lastImportScope)}</li>
+              <li>Poslednji uvoz: {formatDateTime(report.lastImportAtUtc, "-")}</li>
+              <li>Status uvoza: {getPilotImportStatusLabel(report.lastImportStatus)}</li>
+              <li>Opseg uvoza: {getPilotImportScopeLabel(report.lastImportScope)}</li>
               <li>Poslednje osveženje: {formatDateTime(report.lastRefreshAtUtc, "-")}</li>
               <li>Status osvežavanja: {refreshStatus?.dataFreshnessStatus ?? "-"}</li>
               <li>Prihod bez nabavne cene: {formatPilotImpactPercentage(impact!.revenueWithoutCost)}</li>
               <li>Artikli bez dobavljača: {formatPilotImpactPercentage(impact!.articlesWithoutSupplier)}</li>
             </ul>
           ) : (
-            <p className="pilot-card-note">Pilot intake report još nije dostupan.</p>
+            <p className="pilot-card-note">Pilot izveštaj o prijemu podataka još nije dostupan.</p>
           )}
         </section>
 

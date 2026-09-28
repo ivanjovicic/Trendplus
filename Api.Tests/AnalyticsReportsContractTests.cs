@@ -309,7 +309,7 @@ public sealed class AnalyticsReportsContractTests
     {
         var intake = CreatePilotIntakeReport(
             25,
-            AnalyticsResponseMetaFactory.Empty("no_import", "Pilot intake izvestaj nema import batch u periodu.", "insufficient_data"));
+            AnalyticsResponseMetaFactory.Empty("no_import", "Pilot izveštaj o prijemu podataka nema paket uvoza u periodu.", "insufficient_data"));
         var period = (new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc), new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc), new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc));
 
         var report = DataQualityEndpoints.BuildPilotIntakeReportResponse(intake, period, null, null, "all");
@@ -383,7 +383,7 @@ public sealed class AnalyticsReportsContractTests
             100,
             AnalyticsResponseMetaFactory.Empty(
                 "no_intake_evidence",
-                "Nema dovoljno ucitanih artikala ili import redova za readiness procenu.",
+                "Nema dovoljno učitanih artikala ili redova uvoza za procenu spremnosti.",
                 "insufficient_data"));
         var period = (new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc), new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc), new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc));
 
@@ -392,7 +392,7 @@ public sealed class AnalyticsReportsContractTests
         Assert.False(report.RecommendationAllowed);
         Assert.Equal("no_intake_evidence", report.Meta?.EmptyReason);
         Assert.Empty(report.Kpis);
-        Assert.DoesNotContain(report.Rows, row => row.Item.Equals("Readiness score", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(report.Rows, row => row.Item.Equals("Skor spremnosti", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -879,7 +879,7 @@ public sealed class AnalyticsReportsContractTests
     {
         var intake = CreatePilotIntakeReport(
             25,
-            AnalyticsResponseMetaFactory.Empty("no_import", "Pilot intake izvestaj nema import batch u periodu.", "insufficient_data"));
+            AnalyticsResponseMetaFactory.Empty("no_import", "Pilot izveštaj o prijemu podataka nema paket uvoza u periodu.", "insufficient_data"));
         var period = (new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc), new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc), new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc));
 
         var report = DataQualityEndpoints.BuildPilotIntakeReportResponse(intake, period, null, null, "all");
@@ -1479,7 +1479,7 @@ public sealed class AnalyticsReportsContractTests
             new DataQualityEndpoints.PilotDataQualityIntakeLoadedDataDto(1200, 45000, 9300, 48, 12, new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc), new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc)),
             new DataQualityEndpoints.PilotDataQualityIntakeIssuesDto(4, 8, 15, 9, 11, 2, 1, 3, 1),
             new DataQualityEndpoints.PilotDataQualityIntakeImpactDto(0.04d, 0.01d, 12, 5, 18),
-            ["Povezi dobavljace", "Pokreni osvezavanje analitike"],
+            ["Poveži dobavljače", "Pokreni osvežavanje analitike"],
             meta);
     }
     private static SupplierDecisionHubEndpoints.SupplierDecisionHubFilters CreateDefaultFilters(

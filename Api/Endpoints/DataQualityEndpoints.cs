@@ -347,14 +347,14 @@ public static class DataQualityEndpoints
                     DataFreshnessStatus: null,
                     ReadinessScore: 0,
                     ReadinessStatus: "error",
-                    ReadinessLabel: "Greska",
+                    ReadinessLabel: "Greška",
                     new PilotDataQualityIntakeLoadedDataDto(0, 0, 0, 0, 0, null, null),
                     new PilotDataQualityIntakeIssuesDto(0, 0, 0, null, null, 0, 0, 0, 0),
                     new PilotDataQualityIntakeImpactDto(0d, 0d, 0, 0, 0),
                     [],
                     AnalyticsResponseMetaFactory.Error(
                         "intake_report_error",
-                        "Pilot intake izvestaj trenutno nije dostupan.",
+                        "Pilot izveštaj o prijemu podataka trenutno nije dostupan.",
                         correlationId)));
             }
         })
@@ -533,16 +533,16 @@ public static class DataQualityEndpoints
 
         if (report.DataFreshnessStatus is "stale" or "critical")
         {
-            warnings.Add("Analytics refresh može biti zastareo; proverite worker status.");
+            warnings.Add("Osvežavanje analitike može biti zastarelo; proverite status radnika.");
         }
 
         if (IsFailedImportStatus(report.LastImportStatus))
         {
-            warnings.Add("Poslednji import nije uspeo; ne tretirajte timestamp importa kao spremnost.");
+            warnings.Add("Poslednji uvoz nije uspeo; ne tretirajte vreme uvoza kao spremnost.");
         }
         else if (IsInFlightImportStatus(report.LastImportStatus))
         {
-            warnings.Add("Poslednji import je još u toku ili nije potpuno završen.");
+            warnings.Add("Poslednji uvoz je još u toku ili nije potpuno završen.");
         }
         else if (report.LastImportAtUtc.HasValue && string.IsNullOrWhiteSpace(report.LastImportStatus))
         {
@@ -552,7 +552,7 @@ public static class DataQualityEndpoints
         if (string.Equals(report.LastImportScope, "global", StringComparison.OrdinalIgnoreCase) &&
             (!string.IsNullOrWhiteSpace(report.StoreId) || !string.IsNullOrWhiteSpace(report.SupplierId)))
         {
-            warnings.Add("Status importa je globalan; nije pouzdano mapiran na izabrani store/supplier filter.");
+            warnings.Add("Status uvoza je globalan; nije pouzdano mapiran na izabrani objekat/dobavljača.");
         }
 
         if (string.Equals(report.PeriodAnchorCode, "import_business_date_fallback", StringComparison.OrdinalIgnoreCase)
@@ -768,7 +768,7 @@ public static class DataQualityEndpoints
                 latestBatch is null ? "no_import" : "no_intake_evidence",
                 latestBatch is null
                     ? "Nema evidentiranog importa."
-                    : "Nema dovoljno ucitanih artikala ili prodajnih redova za izabrani period i opseg.",
+                    : "Nema dovoljno učitanih artikala ili prodajnih redova za izabrani period i opseg.",
                 "insufficient_data")
             : AnalyticsResponseMetaFactory.Success(readiness.MetaStatus, lastRefreshAtUtc);
         meta.GeneratedAtUtc = generatedAtUtc;
@@ -857,27 +857,83 @@ public static class DataQualityEndpoints
         return $"/analytics/reports/pilot-intake?{string.Join("&", query)}";
     }
 
+    private static string FormatPilotDataScopeLabel(string? scope)
+        => scope?.Trim().ToLowerInvariant() switch
+        {
+            "existing" => "Postojeći podaci",
+            "imported" => "Uvezeni podaci",
+            "all" => "Svi podaci",
+            _ => "Opseg nije poznat"
+        };
+
+    private static string FormatPilotDataQualityLabel(string? status)
+        => status?.Trim().ToLowerInvariant() switch
+        {
+            "good" => "Dobro",
+            "warning" => "Upozorenje",
+            "critical" => "Kritično",
+            "insufficient_data" => "Nedovoljno podataka",
+            _ => "Nije poznato"
+        };
+
+    private static string FormatPilotImportStatusLabel(string? status)
+        => status?.Trim().ToLowerInvariant() switch
+        {
+            "completed" or "success" or "succeeded" => "Završen",
+            "failed" => "Neuspešan",
+            "error" => "Greška",
+            "running" or "in_progress" => "U toku",
+            "partial" => "Delimično završen",
+            "queued" or "pending" => "Na čekanju",
+            "blocked" => "Blokiran",
+            "cancelled" or "canceled" => "Otkazan",
+            _ => "Nepoznato"
+        };
+
+    private static string FormatPilotImportScopeLabel(string? scope)
+        => scope?.Trim().ToLowerInvariant() switch
+        {
+            "global" or "all" => "Svi podaci",
+            "store" or "store_id" => "Prodavnica",
+            "supplier" or "supplier_id" => "Dobavljač",
+            "filtered" => "Filtrirani podaci",
+            _ => "Nepoznato"
+        };
+
+    private static string FormatBelgradeDateTime(DateTime? utc)
+    {
+        if (!utc.HasValue)
+        {
+            return "nije dostupno";
+        }
+
+        var value = DateTime.SpecifyKind(utc.Value, DateTimeKind.Utc);
+        var zone = TimeZoneInfo.FindSystemTimeZoneById(
+            OperatingSystem.IsWindows() ? "Central Europe Standard Time" : "Europe/Belgrade");
+        return TimeZoneInfo.ConvertTimeFromUtc(value, zone).ToString("dd.MM.yyyy HH:mm", CultureInfo.InvariantCulture);
+    }
+
     private static List<ReportRowDto> BuildPilotIntakeRows(PilotDataQualityIntakeReportDto report, string methodology)
     {
         var signalCoverage = ResolveSignalCoverage(report);
         var rows = new List<ReportRowDto>
         {
-            new("Header", "Naziv izvestaja", "Trendplus pilot izvestaj kvaliteta podataka"),
+            new("Header", "Naziv izveštaja", "Trendplus pilot izveštaj kvaliteta podataka"),
             new("Header", "Period", $"{report.PeriodFromUtc:yyyy-MM-dd} - {report.PeriodToUtc:yyyy-MM-dd}"),
-            new("Header", "Scope", report.DataScope),
-            new("Header", "Kvalitet podataka", report.Meta?.DataQualityStatus ?? "insufficient_data"),
-            new("KPI", "Readiness score", report.ReadinessScore.ToString(CultureInfo.InvariantCulture), report.ReadinessLabel),
-            new("Import", "Poslednji import (UTC)", report.LastImportAtUtc?.ToString("O", CultureInfo.InvariantCulture) ?? "n/a"),
-            new("Import", "Status importa", report.LastImportStatus ?? "unknown"),
-            new("Import", "Scope importa", report.LastImportScope ?? "unknown"),
-            new("Import", "Batch id", report.LastImportBatchId?.ToString(CultureInfo.InvariantCulture) ?? "n/a"),
-            new("Ucitano", "Artikli", report.LoadedData.ArticlesCount.ToString(CultureInfo.InvariantCulture)),
-            new("Ucitano", "Stavke prodaje", report.LoadedData.SaleItemsCount.ToString(CultureInfo.InvariantCulture)),
-            new("Ucitano", "Racuni", report.LoadedData.ReceiptsCount.ToString(CultureInfo.InvariantCulture)),
-            new("Problemi", "Bez dobavljaca", report.Issues.MissingSupplierCount.ToString(CultureInfo.InvariantCulture)),
+            new("Header", "Opseg podataka", FormatPilotDataScopeLabel(report.DataScope)),
+            new("Header", "Kvalitet podataka", FormatPilotDataQualityLabel(report.Meta?.DataQualityStatus)),
+            new("KPI", "Skor spremnosti", report.ReadinessScore.ToString(CultureInfo.InvariantCulture), report.ReadinessLabel),
+            new("Import", "Poslednji uvoz", FormatBelgradeDateTime(report.LastImportAtUtc)),
+            new("Import", "Status uvoza", FormatPilotImportStatusLabel(report.LastImportStatus)),
+            new("Import", "Opseg uvoza", FormatPilotImportScopeLabel(report.LastImportScope)),
+            new("Import", "ID paketa uvoza", report.LastImportBatchId?.ToString(CultureInfo.InvariantCulture) ?? "nije dostupno"),
+            new("Učitano", "Artikli", report.LoadedData.ArticlesCount.ToString(CultureInfo.InvariantCulture)),
+            new("Učitano", "Stavke prodaje", report.LoadedData.SaleItemsCount.ToString(CultureInfo.InvariantCulture)),
+            new("Učitano", "Računi", report.LoadedData.ReceiptsCount.ToString(CultureInfo.InvariantCulture)),
+            new("Problemi", "Bez dobavljača", report.Issues.MissingSupplierCount.ToString(CultureInfo.InvariantCulture)),
             new("Problemi", "Bez nabavne cene", report.Issues.MissingCostCount.ToString(CultureInfo.InvariantCulture)),
             new("Problemi", "Prodaja bez artikla", report.Issues.SaleWithoutArticleCount.ToString(CultureInfo.InvariantCulture)),
-            new("Uticaj", "Prihod bez cene", report.Impact.RevenueWithoutCostPercent?.ToString("0.####", CultureInfo.InvariantCulture) ?? "n/a"),
+            new("Uticaj", "Prihod bez cene", report.Impact.RevenueWithoutCostPercent?.ToString("0.####", CultureInfo.InvariantCulture) ?? "nije dostupno"),
             new("Uticaj", "Blokirani artikli (jedinstveni)", report.Impact.RecommendationsBlockedCount.ToString(CultureInfo.InvariantCulture)),
             new("Metodologija", "Opis", methodology),
             new("Uticaj", "Pokrivenost poslovnim signalom", signalCoverage is null ? "nije dostupno" : signalCoverage.Value.ToString("P2", CultureInfo.InvariantCulture), "artikli sa prodajom u periodu / svi artikli"),
@@ -886,7 +942,7 @@ public static class DataQualityEndpoints
 
         foreach (var action in report.RecommendedActions)
         {
-            rows.Add(new ReportRowDto("Preporucene akcije", "Akcija", action));
+            rows.Add(new ReportRowDto("Preporučene akcije", "Akcija", action));
         }
 
         return rows;
@@ -896,8 +952,8 @@ public static class DataQualityEndpoints
     {
         var rows = new List<ReportRowDto>
         {
-            new("Status", "Nedovoljno podataka", report.Meta?.Message ?? "Pilot intake report nema dovoljno podataka za traženi period."),
-            new("Status", "Opseg", $"{report.PeriodFromUtc:yyyy-MM-dd} - {report.PeriodToUtc:yyyy-MM-dd}", report.DataScope, null),
+            new("Status", "Nedovoljno podataka", report.Meta?.Message ?? "Pilot izveštaj o prijemu podataka nema dovoljno podataka za traženi period."),
+            new("Status", "Opseg podataka", $"{report.PeriodFromUtc:yyyy-MM-dd} - {report.PeriodToUtc:yyyy-MM-dd}", FormatPilotDataScopeLabel(report.DataScope), null),
             new("Metodologija", "Opis", methodology)
         };
 
@@ -1009,7 +1065,7 @@ public static class DataQualityEndpoints
                 new AnalyticsReportSectionDto(
                     "report-status",
                     "Status reporta",
-                    "Pilot intake report trenutno nije dostupan.",
+                    "Pilot izveštaj o prijemu podataka trenutno nije dostupan.",
                     [
                         new AnalyticsReportColumnDto("status", "Status"),
                         new AnalyticsReportColumnDto("message", "Poruka"),
@@ -1019,7 +1075,7 @@ public static class DataQualityEndpoints
                         new Dictionary<string, object?>
                         {
                             ["status"] = "greška",
-                            ["message"] = "Pilot intake report trenutno nije dostupan.",
+                            ["message"] = "Pilot izveštaj o prijemu podataka trenutno nije dostupan.",
                             ["errorCode"] = "pilot_intake_report_error"
                         }
                     ],
@@ -1028,7 +1084,7 @@ public static class DataQualityEndpoints
             ],
             [],
             methodology,
-            [new AnalyticsLegacyReportRowDto("Status", "Greška", "Pilot intake report trenutno nije dostupan.", "pilot_intake_report_error", null)],
+            [new AnalyticsLegacyReportRowDto("Status", "Greška", "Pilot izveštaj o prijemu podataka trenutno nije dostupan.", "pilot_intake_report_error", null)],
             new AnalyticsResolvedReportPayloadDto(
                 "pilot-data-quality-intake",
                 "Trendplus pilot izveštaj kvaliteta podataka",
@@ -1045,7 +1101,7 @@ public static class DataQualityEndpoints
             MethodologySummary: methodology.Summary,
             Meta: AnalyticsResponseMetaFactory.Error(
                 "pilot_intake_report_error",
-                "Pilot intake report trenutno nije dostupan.",
+                "Pilot izveštaj o prijemu podataka trenutno nije dostupan.",
                 correlationId));
     }
 
@@ -1103,7 +1159,7 @@ public static class DataQualityEndpoints
             new List<AnalyticsReportNamedValueDto>
             {
                 new("period", "Period", $"{period.FromUtc:yyyy-MM-dd} - {period.ToUtc:yyyy-MM-dd}"),
-                new("dataScope", "Scope", normalizedScope),
+                new("dataScope", "Opseg podataka", FormatPilotDataScopeLabel(normalizedScope)),
                 new("storeId", "Objekat", storeId?.ToString(CultureInfo.InvariantCulture) ?? "all"),
                 new("supplierId", "Dobavljač", supplierId?.ToString(CultureInfo.InvariantCulture) ?? "all"),
                 new("periodAnchorCode", "Anchor perioda", intake.PeriodAnchorCode),
@@ -1111,11 +1167,11 @@ public static class DataQualityEndpoints
             },
             new List<AnalyticsReportNamedValueDto>
             {
-                new("reportId", "Report ID", reportId),
+                new("reportId", "ID izveštaja", reportId),
                 new("generatedAtUtc", "Generisano", intake.GeneratedAtUtc.ToString("O", CultureInfo.InvariantCulture)),
                 new("lastRefreshAtUtc", "Poslednje osveženje", intake.LastRefreshAtUtc?.ToString("O", CultureInfo.InvariantCulture) ?? string.Empty),
                 new("dataFreshnessStatus", "Svežina podataka", intake.DataFreshnessStatus ?? string.Empty),
-                new("dataQualityStatus", "Kvalitet podataka", intake.Meta?.DataQualityStatus ?? "insufficient_data"),
+                new("dataQualityStatus", "Kvalitet podataka", FormatPilotDataQualityLabel(intake.Meta?.DataQualityStatus)),
                 new("methodology", "Metodologija", methodologySummary)
             },
             "sr-RS",
@@ -1140,9 +1196,9 @@ public static class DataQualityEndpoints
             : report.ReadinessScore == 0 ? "valid_zero"
             : null;
         var readinessReason =
-            report.Meta?.Success == false ? (report.Meta?.Message ?? "Readiness signal nije potvrđen.")
-            : report.DataFreshnessStatus is "critical" or "stale" ? "Readiness score je izračunat nad zastarelim refresh signalom."
-            : string.Equals(report.Meta?.DataQualityStatus, "insufficient_data", StringComparison.OrdinalIgnoreCase) ? "Nema dovoljno potvrđenih podataka za pouzdanu readiness procenu."
+            report.Meta?.Success == false ? (report.Meta?.Message ?? "Signal spremnosti nije potvrđen.")
+            : report.DataFreshnessStatus is "critical" or "stale" ? "Skor spremnosti je izračunat nad zastarelim osvežavanjem."
+            : string.Equals(report.Meta?.DataQualityStatus, "insufficient_data", StringComparison.OrdinalIgnoreCase) ? "Nema dovoljno potvrđenih podataka za pouzdanu procenu spremnosti."
             : null;
 
         return new List<AnalyticsReportKpiDto>
@@ -1178,16 +1234,16 @@ public static class DataQualityEndpoints
                 action,
                 action switch
                 {
-                    "Povezi dobavljace" => $"{report.Issues.MissingSupplierCount + report.Issues.MissingSupplierNameCount} artikala nema pouzdano povezanog dobavljača.",
+                    "Poveži dobavljače" => $"{report.Issues.MissingSupplierCount + report.Issues.MissingSupplierNameCount} artikala nema pouzdano povezanog dobavljača.",
                     "Dopuni nabavne cene" => $"{report.Issues.MissingCostCount} artikala nema važeću nabavnu cenu.",
                     "Proveri artikle bez kategorije" => $"{report.Issues.MissingCategoryCount} artikala nema kategoriju.",
                     "Proveri redove prodaje bez artikla" => $"{report.Issues.SaleWithoutArticleCount} prodajnih redova nema povezani artikal.",
                     "Proveri import mapu" => $"{report.Impact.IgnoredRowsCount} redova importa je preskočeno ili odbijeno.",
-                    "Pokreni osvezavanje analitike" => "Poslednji uspešni refresh nije dovoljno svež ili nije poznat.",
+                    "Pokreni osvežavanje analitike" => "Poslednje uspešno osvežavanje nije dovoljno sveže ili nije poznato.",
                     _ => "Otvori povezani ekran za rešavanje identifikovanog problema u intake fazi."
                 },
                 MapPilotActionHref(action),
-                action.Contains("osvez", StringComparison.OrdinalIgnoreCase) ? "high" : "medium"))
+                action.Contains("osvež", StringComparison.OrdinalIgnoreCase) ? "high" : "medium"))
             .DistinctBy(action => action.Title, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
@@ -1205,7 +1261,7 @@ public static class DataQualityEndpoints
         var recommendations = new List<string>();
         if (missingSupplierCount + missingSupplierNameCount > 0)
         {
-            recommendations.Add("Povezi dobavljace");
+            recommendations.Add("Poveži dobavljače");
         }
 
         if (missingCostCount > 0)
@@ -1225,7 +1281,7 @@ public static class DataQualityEndpoints
 
         if (totalArticles > 0 && (dataFreshnessStatus is "stale" or "critical" or null or "unknown"))
         {
-            recommendations.Add("Pokreni osvezavanje analitike");
+            recommendations.Add("Pokreni osvežavanje analitike");
         }
 
         if (ignoredRowsCount > 0)
@@ -1249,7 +1305,7 @@ public static class DataQualityEndpoints
             sections.Add(new AnalyticsReportSectionDto(
                 "report-status",
                 "Status reporta",
-                "Pilot intake report nema dovoljno podataka za traženi period.",
+                "Pilot izveštaj o prijemu podataka nema dovoljno podataka za traženi period.",
                 [
                     new AnalyticsReportColumnDto("status", "Status"),
                     new AnalyticsReportColumnDto("message", "Poruka"),
@@ -1259,7 +1315,7 @@ public static class DataQualityEndpoints
                     new Dictionary<string, object?>
                     {
                         ["status"] = report.Meta?.EmptyReason ?? "no_data",
-                        ["message"] = report.Meta?.Message ?? "Pilot intake report nema dovoljno podataka za traženi period.",
+                        ["message"] = report.Meta?.Message ?? "Pilot izveštaj o prijemu podataka nema dovoljno podataka za traženi period.",
                         ["scope"] = report.DataScope
                     }
                 ],
@@ -1333,7 +1389,7 @@ public static class DataQualityEndpoints
         sections.Add(new AnalyticsReportSectionDto(
             "recommended-actions",
             "Preporučene akcije",
-            "Sledeći koraci koji najbrže podižu readiness score ili otklanjaju blokade.",
+            "Sledeći koraci koji najbrže podižu skor spremnosti ili otklanjaju blokade.",
             [
                 new AnalyticsReportColumnDto("priority", "Prioritet"),
                 new AnalyticsReportColumnDto("title", "Akcija"),
@@ -1353,7 +1409,7 @@ public static class DataQualityEndpoints
         sections.Add(new AnalyticsReportSectionDto(
             "methodology",
             "Metodologija",
-            "Pragovi readiness score-a i način tumačenja upozorenja.",
+            "Pragovi skora spremnosti i način tumačenja upozorenja.",
             [
                 new AnalyticsReportColumnDto("topic", "Tema"),
                 new AnalyticsReportColumnDto("details", "Objašnjenje")
@@ -1372,15 +1428,15 @@ public static class DataQualityEndpoints
     private static AnalyticsReportMethodologyDto BuildPilotIntakeMethodology()
     {
         return new AnalyticsReportMethodologyDto(
-            "Readiness score vrednuje potpunost master podataka, integritet prodaje i uticaj na preporuke; pokrivenost prodajnim signalom je informativna.",
+            "Skor spremnosti vrednuje potpunost matičnih podataka, integritet prodaje i uticaj na preporuke; pokrivenost prodajnim signalom je informativna.",
             new List<string>
             {
                 "90-100: spremno za pouzdanu analitiku.",
                 "70-89: upotrebljivo uz upozorenja.",
                 "40-69: pilot moguć, ali preporuke ostaju ograničene.",
                 "Ispod 40: prvo rešiti kvalitet podataka i import tok.",
-                "Pokrivenost poslovnim signalom = artikli sa najmanje jednom prodajnom stavkom u periodu / svi artikli; legitimno nesoldovani artikli ne ruše readiness.",
-                "Blokirani artikli su jedinstveni artikli pogođeni makar jednim razlogom; per-reason brojevi mogu da se preklapaju.",
+                "Pokrivenost poslovnim signalom = artikli sa najmanje jednom prodajnom stavkom u periodu / svi artikli; legitimno neprodati artikli ne ruše skor spremnosti.",
+                "Blokirani artikli su jedinstveni artikli pogođeni makar jednim razlogom; brojevi po razlozima mogu da se preklapaju.",
                 "DUG/KOREKCIJA računi nisu retail prodaja; negativna količina povrata ne tretira se kao greška cene."
             },
             ["/analytics/data-quality", "/admin/configuration?panel=workers"]);
@@ -1391,7 +1447,7 @@ public static class DataQualityEndpoints
         var normalized = action.ToLowerInvariant();
         if (normalized.Contains("dobavlj")) return "/analytics/supplier";
         if (normalized.Contains("cena") || normalized.Contains("kategor") || normalized.Contains("map")) return "/analytics/data-quality";
-        if (normalized.Contains("osvez")) return "/admin/configuration?panel=workers";
+        if (normalized.Contains("osvež") || normalized.Contains("osvez")) return "/admin/configuration?panel=workers";
         return "/analytics/data-quality";
     }
 
@@ -1722,7 +1778,7 @@ public static class DataQualityEndpoints
         {
             return new IntakeReadinessDto(
                 "insufficient_data",
-                "Nema dovoljno podataka za readiness procenu",
+                "Nema dovoljno podataka za procenu spremnosti",
                 "insufficient_data");
         }
 
@@ -1839,7 +1895,7 @@ public static class DataQualityEndpoints
         if (!hasFrom || !hasTo)
         {
             errorCode = "invalid_period";
-            errorMessage = "Pilot intake period zahteva i početni i završni datum u formatu YYYY-MM-DD.";
+            errorMessage = "Period pilot prijema podataka zahteva i početni i završni datum u formatu YYYY-MM-DD.";
             return false;
         }
 
@@ -1848,14 +1904,14 @@ public static class DataQualityEndpoints
         if (fromUtc is null || toUtc is null)
         {
             errorCode = "invalid_period";
-            errorMessage = "Pilot intake period nije validan. Koristite datum u formatu YYYY-MM-DD.";
+            errorMessage = "Period pilot prijema podataka nije validan. Koristite datum u formatu YYYY-MM-DD.";
             return false;
         }
 
         if (toUtc.Value < fromUtc.Value)
         {
             errorCode = "invalid_period";
-            errorMessage = "Pilot intake period nije validan. Početni datum ne može biti posle završnog datuma.";
+            errorMessage = "Period pilot prijema podataka nije validan. Početni datum ne može biti posle završnog datuma.";
             return false;
         }
 
