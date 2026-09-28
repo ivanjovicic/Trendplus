@@ -47,6 +47,7 @@ Owner completion 2026-09-26: `RQ384` was delivered for Daily Sales safe/traceabl
 Owner promotion/claim 2026-09-26: idle recovery found Current READY `none` after RQ456/RQ457 closures on `origin/main`. Verified RQ382/RQ383 DONE, no active Daily Sales endpoint/frontend error-contract lock/branch/PR owner, and RQ384 is dependency-complete. `RQ384` moved `WAITING -> READY -> IN_PROGRESS` in this workspace for Daily Sales safe/traceable error responses; local lock `.ai/task-locks/RQ384-cursor.lock.md`.
 Current READY prompt: RQ461
 Owner audit 2026-09-28: direct live/source audit of Product Decision and Supplier Analytics registered bounded follow-ups `RQ469`-`RQ476` as `WAITING`. Confirmed evidence, cross-screen denominator/population comparison and browser-helper limitation are recorded in `docs/qa/PRODUCTS_SUPPLIER_LIVE_AUDIT_2026-09-28.md`; no prompt was claimed or promoted by this audit.
+Owner audit 2026-09-28: direct live/source audit of Actions, Decision Pulse and Supplier Scorecard registered `RQ477`-`RQ482` as `WAITING`. Actions showed four old smoke records while the default outcome summary covered a different empty 90-day window; Decision Pulse returned `PULSE_PARTIAL` with 124 suppressed candidates and an unavailable Supplier source; Scorecard re-confirmed the existing `RQ475` schema-readiness owner. Evidence: `docs/qa/ACTIONS_DECISION_PULSE_SUPPLIER_SCORECARD_LIVE_AUDIT_2026-09-28.md`; no prompt was claimed or promoted.
 Owner completion 2026-09-26: `RQ431` settled the Daily Sales concentration over-total contract: top-supplier aggregates that exceed the named period quantity/revenue denominator fail closed; signed within-total remainders stay available. Run log: `.ai/runs/2026-09-26-RQ431-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-26: idle recovery found Current READY `none` after RQ384/RQ449. Mechanical repair: `RQ243` section Status WAITING→DONE to match synchronized delivery `ea538f6c` on `origin/main`. Verified no PostgreSQL host for P0 `RQ447`, no competing Daily Sales concentration lock/branch, and the user's claim-and-execute request satisfies the RQ431 owner-decision gate. `RQ431` moved `WAITING -> READY -> IN_PROGRESS` in this workspace; local lock `.ai/task-locks/RQ431-cursor.lock.md`.
 Owner promotion/claim 2026-09-26: idle recovery confirmed `RQ445`/`RQ446` DONE on current `origin/main`, no active receipt-population owner and RQ456's accuracy-contract dependency satisfied. `RQ456` moved `WAITING -> READY -> IN_PROGRESS` in the Operations accuracy addendum; local lock `.ai/task-locks/RQ456-codex.lock.md`. `RQ457` remains WAITING behind the population owner.
@@ -26042,3 +26043,355 @@ Users can tell exactly which population and denominator each share uses; negativ
 
 - Owner decision on negative revenue and unknown-supplier policy is required before promotion.
 - Existing RQ233/RQ373/RQ443/RQ459 deliveries remain intact.
+
+---
+
+## RQ477 - Align Actions list, counts and outcome summary to one visible population
+
+Status: WAITING
+Priority: P1
+Type: backend/frontend/contract/tests
+Feature family: analytics-actions-population-period-parity
+Parallel-safe: no (shared Actions page and action-summary endpoints)
+Owner: Analytics Reliability / Actions
+Commit suggestion: `fix(analytics): align actions list and outcome populations`
+
+### Problem
+
+The Actions page combines three populations without a shared visible contract: the list has no period filter, the outcome summary defaults to the last 90 created days, and the counts endpoint is global and unfiltered. A user can therefore see rows and KPI cards that do not describe the same period or filter population.
+
+### Evidence
+
+- Live `GET /api/analytics/actions?page=1&pageSize=50` returned four rows, all dated 2026-05-22.
+- Live `GET /api/analytics/actions/outcomes/summary` defaulted to 2026-06-30 through 2026-09-28 and returned `sampleSize=0`.
+- Live `GET /api/analytics/actions/counts` returned global `{new:3, done:1, p1Open:1}` with no filter metadata.
+- `AnalyticsActionsPage.tsx`, `analyticsApi.ts`, `AnalyticsActionsEndpoints.cs` and `AnalyticsActionItemService.cs` use separate list/count/summary contracts.
+
+### Scope
+
+Actions list, count and outcome-summary request/response contracts plus `AnalyticsActionsPage`. Do not change action lifecycle semantics or authorization. Do not remove live records in this prompt.
+
+### Read first
+
+- `AGENTS.md` analytics population/provenance rules
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `docs/qa/ACTIONS_DECISION_PULSE_SUPPLIER_SCORECARD_LIVE_AUDIT_2026-09-28.md`
+- `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx`
+- `Klijent/clientapp/src/services/analyticsApi.ts`
+- `Api/Endpoints/AnalyticsActionsEndpoints.cs`
+- `Infrastructure/Services/Analytics/AnalyticsActionItemService.cs`
+
+### Do
+
+1. Define one explicit requested period and population contract for the page, or label each intentionally different panel as global/list/summary with its exact denominator.
+2. Bind list, counts and outcome summary to the same validated period, source, priority and data-quality filters where the product contract says they are comparable.
+3. Keep status and text search list-only only if that limitation is clearly labelled; otherwise add a backend-supported summary population rather than filtering a summary in the browser.
+4. Expose requested/effective period, total population and filter scope in metadata and preserve empty-versus-error semantics.
+
+### Tests
+
+- May-only fixtures and last-90-day fixtures produce visibly distinct but truthful list/summary states.
+- Counts match the declared global or filtered population and their labels state which one applies.
+- Changing period/source/priority/data quality does not leave a stale summary beside a new list.
+- Successful empty, backend error and partial/fallback responses remain distinct.
+
+### Acceptance
+
+Every Actions KPI and panel identifies the population and period it describes; the default page cannot show old list rows beside a silent empty summary from another window; no frontend-only recomputation creates a false match.
+
+### Dependencies
+
+- Sequence with any change that touches `AnalyticsActionsPage.tsx` or the same endpoint methods; coordinate with `RQ478` before merging overlapping summary math changes.
+- No production data mutation is required.
+
+---
+
+## RQ478 - Exclude not-measured actions from measured outcome denominators
+
+Status: WAITING
+Priority: P1
+Type: backend/contract/tests
+Feature family: analytics-actions-measurement-denominator
+Parallel-safe: no (shared `AnalyticsActionItemService` summary projection)
+Owner: Analytics Reliability / Actions
+Commit suggestion: `fix(analytics): align action measurement denominators`
+
+### Problem
+
+The legacy Actions outcome summary treats every outcome status other than normalized `pending` as measured. That includes `not_measured`, so closed-measured counts and positive/negative outcome rates can include actions that explicitly have no measurement. The newer `measurementStatistics` projection already uses a stricter measurement lifecycle and can disagree with the legacy totals rendered on the same page.
+
+### Evidence
+
+- `Infrastructure/Services/Analytics/AnalyticsActionItemService.cs:BuildSummaryAggregate` defines `measuredItems` as `NormalizeOutcomeStatus(x.OutcomeStatus) != Pending`.
+- The same predicate feeds `closedMeasuredCount` and the positive/negative denominators.
+- `Application/Analytics/RecommendationMeasurementStatisticsProjection.cs` separates executed, measured, pending and not-measured states and is the nearest authoritative comparison.
+- `AnalyticsActionsPage.tsx` renders legacy `totals` beside the measurement-statistics review component.
+
+### Scope
+
+The Actions outcome summary projection, DTO metadata and focused backend/frontend tests. Do not redefine business success/neutral/negative meanings or change action acceptance/execution lifecycle.
+
+### Read first
+
+- `AGENTS.md` no-fake-zero and measurement/provenance rules
+- `Infrastructure/Services/Analytics/AnalyticsActionItemService.cs`
+- `Application/Analytics/RecommendationMeasurementStatisticsProjection.cs`
+- `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx`
+- `docs/qa/ACTIONS_DECISION_PULSE_SUPPLIER_SCORECARD_LIVE_AUDIT_2026-09-28.md`
+
+### Do
+
+1. Freeze the canonical measured predicate: `not_measured` and pending must not enter measured denominators; only proven measurement statuses may do so.
+2. Align legacy totals with `measurementStatistics`, or mark legacy fields deprecated and render one authoritative projection.
+3. Preserve explicit zero/unknown behavior and warnings when the measured denominator is zero.
+4. Expose the measurement denominator and pending/not-measured counts so a user can explain coverage.
+
+### Tests
+
+- Pending, not-measured, success, neutral and negative fixtures produce the expected measured count and rates.
+- Open and closed actions cannot make not-measured rows count as closed-measured.
+- Zero measured rows produce unavailable rates rather than fake zero success/negative percentages.
+- Legacy totals and `measurementStatistics` agree on the same fixture or the UI clearly labels their different contracts.
+
+### Acceptance
+
+An action is counted as measured only when the backend has a valid measurement outcome; positive/negative rates and closed coverage no longer include `not_measured`, and the page has one inspectable denominator contract.
+
+### Dependencies
+
+- Sequence after or coordinate with `RQ477` because both touch the Actions summary contract.
+- No external database or production write is required for the focused proof.
+
+---
+
+## RQ479 - Quarantine smoke action fixtures from the operational queue
+
+Status: WAITING
+Priority: P1
+Type: data-hygiene/release-contract/tests
+Feature family: analytics-actions-live-fixture-hygiene
+Parallel-safe: yes (readiness/seed/release gate; no Actions rendering edits)
+Owner: Analytics Reliability / Release Data
+Commit suggestion: `chore(analytics): prevent smoke fixtures in operational actions`
+
+### Problem
+
+The live Actions endpoint currently exposes four old `Smoke...` records from 2026-05-22, including a P1 inventory item. They look like normal operational actions but have incomplete quality/impact/evidence fields, so they distort counts and can mislead a pilot user.
+
+### Evidence
+
+- Live list returned `inventory:smoke:final:20260522151551`, `product:smoke:final:20260522151533`, `product:smoke:jsonok` and `dashboard:smoke:final:20260522151558`.
+- The same live dataset drives global counts and outcome-summary requests.
+- This is an environment/seed provenance finding; no destructive delete has been performed.
+
+### Scope
+
+Seed/test-fixture provenance, deployment environment classification, and a safe health/readiness guard that prevents smoke fixtures from being presented as operational work. Do not delete, update or backfill production rows without an explicit data owner and approved migration/runbook.
+
+### Read first
+
+- `AGENTS.md` delivery, tenant and destructive-action rules
+- `docs/qa/ACTIONS_DECISION_PULSE_SUPPLIER_SCORECARD_LIVE_AUDIT_2026-09-28.md`
+- action seed/bootstrap and test-fixture code
+- `Api/Endpoints/AnalyticsActionsEndpoints.cs`
+- deployment configuration and release-data documentation
+
+### Do
+
+1. Identify the exact origin, tenant and environment of the four records using read-only database/provider evidence.
+2. Classify smoke data separately from real operational actions, or prevent it from reaching the pilot/production operational tenant.
+3. Add a release/readiness check that fails or warns when known smoke keys are present in a non-test environment.
+4. Document the approved cleanup/quarantine procedure; leave any destructive cleanup to the authorized owner.
+
+### Tests
+
+- Test seed keeps smoke fixtures available in isolated test environments.
+- A production-like readiness fixture detects smoke keys and reports a safe, traceable warning/failure.
+- Real actions with incomplete optional evidence are not falsely classified as smoke data.
+- Tenant/environment boundaries prevent test fixtures from contributing to operational counts.
+
+### Acceptance
+
+Known smoke fixtures cannot silently appear as live operational actions in a pilot/production tenant; the owner can identify their origin and apply a documented, authorized cleanup or quarantine path without data loss by an agent.
+
+### Dependencies
+
+- Read-only access to the live database/provider logs and an explicit data/release owner are required before any cleanup decision.
+- No production mutation is authorized by this prompt.
+
+---
+
+## RQ480 - Surface Decision Pulse partial-source failures and provide retry
+
+Status: WAITING
+Priority: P1
+Type: backend/frontend/contract/tests
+Feature family: decision-pulse-partial-retry-contract
+Parallel-safe: no (shared Decision Pulse feed/page trust state)
+Owner: Analytics Reliability / Decision Pulse
+Commit suggestion: `fix(analytics): surface decision pulse partial source state`
+
+### Problem
+
+Decision Pulse can return HTTP 200 with `meta.success=true`, `meta.isPartial=true`, `warningCode=PULSE_PARTIAL` and an unavailable Supplier source. The page treats the no-item response as an ordinary empty state and does not provide a prominent warning or retry action. The same omission applies when partial data is returned with items.
+
+### Evidence
+
+- Live Pulse response: `suppressedCount=124`, `items=[]`, `meta.success=true`, `meta.isPartial=true`, `warningCode=PULSE_PARTIAL`, message “Supplier decision hub nije dostupan.”
+- `DecisionPulseService.cs` deliberately preserves partial-source metadata.
+- `DecisionPulsePage.tsx` checks `meta.success` but does not branch on `meta.isPartial`/`warningCode`; its empty state says there are no actionable Pulse items and has no retry button.
+- Existing page tests cover ordinary empty and failed responses, but not partial source failure with zero or non-zero items.
+
+### Scope
+
+Decision Pulse response-state mapping, warning/retry UI and focused tests. Keep the backend decision filtering and fail-closed suppression rules unchanged.
+
+### Read first
+
+- `AGENTS.md` empty/error/partial analytics rules
+- `Api/Services/Analytics/DecisionPulseService.cs`
+- `Application/Analytics/DecisionPulse/DecisionPulseProjector.cs`
+- `Klijent/clientapp/src/pages/DecisionPulsePage.tsx`
+- `Klijent/clientapp/src/pages/__tests__/DecisionPulsePage.spec.tsx`
+- `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx` partial-state rendering
+
+### Do
+
+1. Render a distinct partial/degraded banner whenever `meta.isPartial` or a warning code is present, regardless of item count.
+2. Show the affected source, safe warning message, suppressed count and a retry action without turning the state into a fake success or fake error.
+3. Keep successful empty, partial empty, hard error and populated-partial states distinct and accessible.
+4. Preserve correlation/evidence metadata where the backend provides it.
+
+### Tests
+
+- Partial with zero items renders warning plus retry, not only “no actions”.
+- Partial with items keeps items visible and renders the warning.
+- Retry refetches and clears the warning only after a successful non-partial response.
+- Hard error and successful empty remain distinct; no fake KPI zero is introduced.
+
+### Acceptance
+
+Users cannot mistake an incomplete Pulse feed for a complete no-action conclusion, and they have a safe retry path that preserves the backend trust state.
+
+### Dependencies
+
+- Coordinate with existing `RQ475` for the Supplier readiness message; do not duplicate scorecard schema ownership.
+- No production data mutation is required.
+
+---
+
+## RQ481 - Bind Decision Pulse to shared period and data-scope lineage
+
+Status: WAITING
+Priority: P1
+Type: backend/frontend/contract/tests
+Feature family: decision-pulse-period-scope-lineage
+Parallel-safe: no (Decision Pulse page/client/service contract)
+Owner: Analytics Reliability / Decision Pulse
+Commit suggestion: `fix(analytics): align decision pulse period and scope lineage`
+
+### Problem
+
+The Decision Pulse client supports period, store, supplier and data-scope options, but the page calls `getDecisionPulse()` with none of them. The service defaults to a 30-day calendar period, sends no date/scope to the inventory workflow source and uses a hard-coded `n/a_dedicated` tenant scope. Comparable Decision Board surfaces carry shared scope and render the selected period.
+
+### Evidence
+
+- `Klijent/clientapp/src/services/decisionPulseApi.ts` accepts `fromDate`, `toDate`, `storeId`, `supplierId` and `dataScope`.
+- `Klijent/clientapp/src/pages/DecisionPulsePage.tsx` passes no options on mount and has no visible shared-filter binding.
+- `DecisionPulseService.cs` defaults to `periodFrom`/`periodTo`, calls inventory workflow without period/scope arguments and returns hard-coded tenant scope.
+- `ExecutiveDecisionBoardPage.tsx` reads shared `dataScope` and passes it to its aggregate endpoint.
+
+### Scope
+
+Decision Pulse period/scope/filter request lineage and response metadata across page, client and source adapters. Do not invent new decision scoring or silently broaden a requested data scope.
+
+### Read first
+
+- `AGENTS.md` decision/period/provenance rules
+- `Klijent/clientapp/src/pages/DecisionPulsePage.tsx`
+- `Klijent/clientapp/src/services/decisionPulseApi.ts`
+- `Api/Services/Analytics/DecisionPulseService.cs`
+- `Application/Analytics/DecisionPulse/DecisionPulseProjector.cs`
+- `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx`
+
+### Do
+
+1. Reuse the established global data-scope and period state, or explicitly label Pulse as an independent default-period surface if product owners choose that contract.
+2. Pass validated period/scope/store/supplier filters through every source that can honor them; mark unsupported source dimensions as not applied rather than pretending parity.
+3. Use one documented boundary convention and expose requested/effective period and scope in the response metadata.
+4. Keep suppression/freshness decisions backend-owned and preserve partial-source provenance.
+
+### Tests
+
+- A changed global scope/period reaches the Pulse request and response metadata.
+- Boundary dates use the documented half-open/inclusive convention consistently across sources.
+- Unsupported source dimensions are explicit and cannot silently expand to all data.
+- Refresh/filter changes clear stale Pulse items and ignore an older in-flight response.
+
+### Acceptance
+
+Decision Pulse is either demonstrably aligned with shared period/scope filters or clearly labelled as an independent default; no source silently ignores a requested dimension while the UI implies parity.
+
+### Dependencies
+
+- Product owner must confirm whether Pulse is a shared-filter decision surface or an intentionally independent 30-day feed before promotion.
+- Coordinate with `RQ480`; partial-state rendering and lineage metadata should land as one coherent trust contract where they touch the same page.
+
+---
+
+## RQ482 - Align Decision Pulse source provenance, labels and Supplier deep links
+
+Status: WAITING
+Priority: P2
+Type: backend/frontend/contract/tests
+Feature family: decision-pulse-source-provenance-links
+Parallel-safe: yes (Pulse item contract/labels; coordinate with RQ480/RQ481)
+Owner: Analytics Reliability / Decision Pulse
+Commit suggestion: `fix(analytics): align decision pulse provenance and links`
+
+### Problem
+
+Supplier-origin Pulse items are projected with a deep link to `/analytics/supplier?tab=overview` even though their source is the Supplier decision hub/scorecard. The page also renders raw internal freshness, data-quality and tenant codes and does not show generated time, feed period or suppressed-count context.
+
+### Evidence
+
+- `Application/Analytics/DecisionPulse/DecisionPulseProjector.cs` sets `SupplierDeepLink = "/analytics/supplier?tab=overview"` for Supplier decision candidates.
+- `DecisionPulsePage.tsx` renders `item.inputFreshnessStatus`, `item.dataQualityStatus` and `item.tenantScope` directly.
+- The live response exposes `generatedAtUtc`, `periodFromUtc`, `periodToUtc`, `tenantScope` and `suppressedCount`, but the page does not present the feed-level provenance.
+- Supplier Scorecard is the nearest evidence surface for Supplier decision recommendations; its current readiness issue remains owned by `RQ475`.
+
+### Scope
+
+Pulse item source/deep-link contract, shared Serbian label mapping and feed-level provenance display. Do not recreate Supplier recommendation status or scoring in the frontend.
+
+### Read first
+
+- `AGENTS.md` backend decision source-of-truth and frontend label rules
+- `Application/Analytics/DecisionPulse/DecisionPulseProjector.cs`
+- `Klijent/clientapp/src/pages/DecisionPulsePage.tsx`
+- `Klijent/clientapp/src/services/decisionPulseApi.ts`
+- Supplier Scorecard route and trust metadata
+- `docs/qa/ACTIONS_DECISION_PULSE_SUPPLIER_SCORECARD_LIVE_AUDIT_2026-09-28.md`
+
+### Do
+
+1. Deep-link Supplier candidates to the authoritative scorecard/decision surface, or expose an explicit source/detail route when the overview is intentionally the owner.
+2. Map freshness, data quality and tenant/scope values through established user-facing labels; do not expose raw backend codes as the primary explanation.
+3. Render generated time, requested/effective period, tenant/scope, source availability and suppressed count with clear stale/partial semantics.
+4. Keep item-level reason/status authoritative from the backend and make the source identity stable for export/detail navigation.
+
+### Tests
+
+- Supplier items navigate to the intended scorecard/decision route and product/inventory links remain unchanged.
+- Raw `fresh`, `good`, `n/a_dedicated` and unknown codes map to safe Serbian labels, with an explicit unknown fallback.
+- Feed metadata renders for populated, empty and partial responses without inventing values.
+- Snapshot/detail/export, if present, preserve source and period provenance.
+
+### Acceptance
+
+Every Pulse item opens the evidence surface that owns its decision, users see understandable trust labels and the feed period/suppression/source context is visible; no frontend scoring is introduced.
+
+### Dependencies
+
+- Coordinate with `RQ480`/`RQ481` because warning and period metadata may share the page contract.
+- Do not duplicate `RQ475` scorecard readiness or `RQ476` Supplier share semantics.

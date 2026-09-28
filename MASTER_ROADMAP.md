@@ -4,6 +4,8 @@ Updated: 2026-09-28
 Repository: `ivanjovicic/Trendplus`
 Status: canonical planning entry point
 
+Owner audit 2026-09-28: direct live/source review of Actions, Decision Pulse and Supplier Scorecard registered `RQ477`-`RQ482` as `WAITING`. Actions showed four old smoke fixtures and a list-versus-outcome period mismatch; Decision Pulse returned a partial Supplier-source failure with 124 suppressed candidates; Scorecard readiness remains owned by existing `RQ475`, and Supplier share parity remains owned by `RQ476`. Audit: `docs/qa/ACTIONS_DECISION_PULSE_SUPPLIER_SCORECARD_LIVE_AUDIT_2026-09-28.md`.
+
 Backend CI recovery 2026-09-27: corrected stale routing that still marked BCI10 DONE after the 2026-09-26 current-main broad-suite failure. BCI10 is PARTIAL; BCI11 and BCI12 are DONE, BCI13 is the primary READY endpoint-host repair lane, and BCI14 is staged behind the next focused/broad evidence.
 
 Backend CI completion 2026-09-27: BCI11 is DONE on the delivered main SHA recorded in `.ai/runs/2026-09-27-BCI11-evidence.md`; BCI11 and BCI12 are DONE and BCI13 is now the primary READY lane. BCI10 remains PARTIAL because the broad suite is still red from unrelated environment/endpoint/provider families.
