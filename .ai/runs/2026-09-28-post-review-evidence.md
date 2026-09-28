@@ -24,3 +24,12 @@
 - Found a provenance mismatch in the new default-period fallback: for `dataScope=existing/all`, the code reused the scope-filtered `includedHeaders` query but labelled the result `import_business_date_fallback` and told the UI it came from the imported dataset.
 - Repaired the fallback to query the actual included `DataOrigin=access` retail population before emitting the import fallback code/message.
 - Added `PilotIntakeDefaultPeriodAnchorTests` proving an existing-scope request with no scoped sales anchors to the imported business date rather than an unrelated existing-scope date.
+
+## Backend CI review
+
+- Full backend run `36449412559` exposed 28 failures. Comparing it with earlier runs `36442045065` and `36443560294` showed that most failures predated RQ467; the review did not rewrite broad integration behavior just to turn that historical baseline green.
+- Three safe, directly evidenced repairs were made:
+  - Data-source discovery endpoint parameters are now explicitly `[FromServices]`, fixing ASP.NET minimal-API binding that had inferred `NamedSourceDiscoveryService` as a request body even on GET routes.
+  - The missing-cost top-offender contract test now asserts the RQ467 article master fallback `NabavnaCenaDin -> NabavnaCena` instead of the obsolete single-field predicate; the service comment was corrected to distinguish top-offender master-cost semantics from revenue-window sale-line override semantics.
+  - Demo endpoint tests suppress only EF Core's process-wide `ManyServiceProvidersCreatedWarning` for their isolated InMemory test hosts, preventing unrelated test-count/order from turning that warning into a cascade of test failures.
+- The remaining older backend integration failures are left as separate baseline work unless the newest CI proves one is caused by today's reviewed changes.

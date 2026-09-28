@@ -13,7 +13,8 @@ public sealed class AnalyticsDataQualityHealthService
     /// Article membership is scoped by <c>Artikli."DataOrigin"</c>;
     /// <c>sales_30d</c> revenue impact is scoped by sale-header <c>prodaja_zaglavlje.data_origin</c> (RQ05 sales-revenue rule)
     /// over the shared finite interval <c>[@salesFromUtc, @salesToExclusiveUtc)</c>.
-    /// <c>missingCost</c> uses the effective purchase price (sale-line override, then article price), where null and non-positive values are missing.
+    /// <c>missingCost</c> in this top-offender query uses the article master fallback NabavnaCenaDin -> NabavnaCena; null/non-positive values are missing.
+    /// Revenue-window health below additionally prefers a positive sale-line cost before the same article fallback.
     /// </summary>
     public const string TopOffendersSql = """
             WITH sales_30d AS (
