@@ -321,7 +321,9 @@ public sealed class DemoEnvironmentVerificationEndpointTests
             // Evaluating Guid.NewGuid() inside the options lambda can create a fresh empty database per scope.
             var databaseName = $"demo-verification-{Guid.NewGuid():N}";
             builder.Services.AddDbContext<TrendplusDbContext>(options =>
-                options.UseInMemoryDatabase(databaseName, DatabaseRoot));
+                options.UseInMemoryDatabase(databaseName, DatabaseRoot)
+                    .ConfigureWarnings(warnings =>
+                        warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.CoreEventId.ManyServiceProvidersCreatedWarning)));
             builder.Services.AddSingleton<WorkerHealthService>();
             builder.Services.AddSingleton(new WorkerRuntimeControlService(
                 initialEnabled: true,

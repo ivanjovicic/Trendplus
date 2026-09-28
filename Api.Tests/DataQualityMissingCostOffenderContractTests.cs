@@ -41,7 +41,8 @@ public sealed class DataQualityMissingCostOffenderContractTests
         var sql = AnalyticsDataQualityHealthService.TopOffendersSql;
 
         Assert.Contains("is_missing_cost", sql, StringComparison.Ordinal);
-        Assert.Contains("a.\"NabavnaCena\" IS NULL OR a.\"NabavnaCena\" <= 0", sql, StringComparison.Ordinal);
+        Assert.Contains("WHEN a.\"NabavnaCenaDin\" > 0 THEN a.\"NabavnaCenaDin\"", sql, StringComparison.Ordinal);
+        Assert.Contains("WHEN a.\"NabavnaCena\" > 0 THEN a.\"NabavnaCena\"", sql, StringComparison.Ordinal);
         Assert.Contains("@issueType = 'missingCost' AND is_missing_cost", sql, StringComparison.Ordinal);
         Assert.Contains("@issueType <> 'missingCost' AND issue_type = @issueType", sql, StringComparison.Ordinal);
         // Sale-header origin is mapped to snake_case data_origin; do not regress to quoted "DataOrigin".

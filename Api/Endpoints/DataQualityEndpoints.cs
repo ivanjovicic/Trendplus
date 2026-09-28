@@ -1933,7 +1933,7 @@ public static class DataQualityEndpoints
             out errorCode,
             out errorMessage);
 
-    private static async Task<IntakePeriodAnchor> ResolvePilotDefaultPeriodAnchorAsync(
+    internal static async Task<IntakePeriodAnchor> ResolvePilotDefaultPeriodAnchorAsync(
         TrendplusDbContext trendDb,
         int? storeId,
         int? supplierId,
@@ -1981,10 +1981,16 @@ public static class DataQualityEndpoints
                 null);
         }
 
-        // A filtered store/supplier can legitimately have no sales. Use the latest
-        // included business date from the imported population, but make the fallback
-        // explicit so the UI never presents it as a precise scoped observation.
-        var importedBusinessDate = await includedHeaders
+        // A filtered store/supplier can legitimately have no sales. Fall back to
+        // the actual imported retail population regardless of the requested dataScope;
+        // the provenance code/message below explicitly promises an import-business-date
+        // anchor, so reusing the scope-filtered query here would be misleading for
+        // existing/all requests.
+        var importedHeaders = trendDb.ProdajaZaglavlja
+            .AsNoTracking()
+            .Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate)
+            .Where(x => x.DataOrigin == "access");
+        var importedBusinessDate = await importedHeaders
             .Select(x => (DateTime?)x.DatumProdaje)
             .MaxAsync(ct);
         if (importedBusinessDate.HasValue)
@@ -2046,7 +2052,7 @@ public static class DataQualityEndpoints
 
     internal sealed record DataQualityScoreDto(int Value, string Status, string Summary);
     internal sealed record IntakeReadinessDto(string Code, string Label, string MetaStatus);
-    private sealed record IntakePeriodAnchor(DateTime Date, string Code, string? Message);
+    internal sealed record IntakePeriodAnchor(DateTime Date, string Code, string? Message);
     internal sealed record PilotIntakeInvalidPeriodResponseDto(AnalyticsResponseMetaDto Meta);
     private sealed record IntakeBatchSnapshot
     {
