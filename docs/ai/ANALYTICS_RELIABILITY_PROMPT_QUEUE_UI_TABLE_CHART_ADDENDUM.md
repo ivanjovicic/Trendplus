@@ -513,6 +513,12 @@ Analytics exports are built from visible column definitions. Hidden trust fields
 
 - Exported analytics tables retain source/coverage/quality context.
 
+### Addendum 2026-09-28 (Supplier report + Pilot intake audit, grok)
+
+- Supplier report CSV (`Klijent/clientapp/src/services/supplierDecisionReport.ts:622-634`, at `c5a1937f`): comma separator, no UTF-8 BOM, UTC date in the filename, and no filters, period, freshness, fallback or `recommendationAllowed` metadata in the file.
+- Pilot intake CSV (`components/analytics/PilotDataQualityIntakeReport.tsx:300`): the filename uses `toLocaleDateString("sr-RS")` → „pilot-intake-28. 9. 2026..csv“ (spaces, double dot); no BOM; no period/scope/refresh metadata. The filename/duplicate-row fixes are in `RQ462`; the trust metadata block stays here.
+- Evidence: `.ai/runs/2026-09-28-supplier-report-pilot-intake-audit-evidence.md`.
+
 ---
 
 ## RQ47 - Supplier action source key filter lineage

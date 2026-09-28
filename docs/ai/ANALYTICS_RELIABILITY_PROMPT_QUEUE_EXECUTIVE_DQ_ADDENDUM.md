@@ -419,6 +419,12 @@ Pilot intake durable rows store `RevenueWithoutCostPercent` ratio as string `0.#
 
 - Pilot intake durable report percent values cannot be misread as raw ratios.
 
+### Addendum 2026-09-28 (Supplier report + Pilot intake audit, grok)
+
+- Live evidence (2026-09-28 ~10:55 CEST, `GET https://trendplus-api.onrender.com/api/analytics/reports/pilot-intake`, read-only): the durable row „Uticaj / Prihod bez cene“ is `n/a`, and the KPI `revenueWithoutCost` is null with unit `ratio`. The row formatter is still `RevenueWithoutCostPercent?.ToString("0.####")` (`Api/Endpoints/DataQualityEndpoints.cs:760`, at `c5a1937f`).
+- The null value itself is a separate bug: the health window is relative to now, not the requested period (owned by `RQ466`). The unit/format decision stays here. The durable page could not show this value at all until `RQ462`, because it always renders the empty state.
+- Evidence: `.ai/runs/2026-09-28-supplier-report-pilot-intake-audit-evidence.md`.
+
 ---
 
 ## RQ80 - Missing-cost issue workflow

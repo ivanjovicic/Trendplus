@@ -5005,6 +5005,13 @@ Do not rewrite recommendation formulas, move worker ownership into the web proce
 - `STAB16` remains the live-runtime/deploy proof owner; do not duplicate production deploy verification here.
 - This prompt remains `PARTIAL` and non-runnable; live freshness/deployment proof stays with `STAB16`.
 
+### Addendum 2026-09-28 (Supplier report + Pilot intake audit, grok)
+
+- Evidence: `.ai/runs/2026-09-28-supplier-report-pilot-intake-audit-evidence.md`; line numbers at `c5a1937f`; live read-only GETs on `https://trendplus-api.onrender.com`, 2026-09-28 ~10:55 CEST.
+- Pilot intake still presents query time as refresh time. `Api/Endpoints/DataQualityEndpoints.cs:655` computes `lastRefreshAtUtc = refreshStatus.LastSuccessfulRefreshAtUtc ?? health.GeneratedAtUtc`. Live `lastRefreshAtUtc` ≈ `generatedAtUtc` (≈0.1 s apart). This violates this prompt's acceptance; the fix is owned by `RQ466`, and the page-side trust header mixes sources (`PilotIntakeReportPage.tsx:370-371`, owned by `RQ462`).
+- Supplier report period labels are length-based. `BuildEffectivePeriodLabel` (`SupplierDecisionHubEndpoints.cs:2709`) labels historic ranges „Poslednjih N dana“, and the live path without dates uses a 180-day lookback labelled „Celokupna istorija“ (live-confirmed). The trust effective period is the markdown ±30-day row span. All of this is owned by `RQ463`.
+- When `RQ463`/`RQ466` complete, record here which part of this prompt's acceptance they satisfy; this prompt stays PARTIAL until `STAB16` live proof.
+
 ---
 
 ## RQ138 - Add an authoritative Trend Models evaluation contract before numeric claims return
@@ -18366,6 +18373,7 @@ Reproduction: open color detail snapshot, trust subtitles, inventory alerts — 
 - Run log: `.ai/runs/2026-09-27-RQ325-evidence.md`
 - Evidence state: synchronized
 - Review follow-up (2026-09-27): Color/aggregated detail labels in `AnalyticsDetailReadService.cs` still exposed `Insufficient data`, `impact`, `snapshot`/`fallback` and ASCII `marza`; localized with the Supplier/Shoe Type wording. Evidence: `.ai/runs/2026-09-27-today-commit-review-2-evidence.md`.
+- Routing follow-up (2026-09-28, grok Supplier report + Pilot intake audit, `.ai/runs/2026-09-28-supplier-report-pilot-intake-audit-evidence.md`): English/ASCII copy on `/analytics/supplier/report` and `/analytics/reports/pilot-intake` (frontend, durable backend rows/exports and `analyticsApi.ts` messages) is outside this Operacije-only prompt and is owned by `RQ468`; do not reopen `RQ325` for it.
 
 ---
 
