@@ -164,7 +164,7 @@ The current broad suite still shows clustered failures in `DataSourceDiscoveryEn
 - Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `b28010740b484e378315b8c8b9e90762d5a0fa1d`
-- Main verification: `git rev-parse origin/main` returned `b28010740b484e378315b8c8b9e90762d5a0fa1d`; implementation SHA is the exact current `origin/main` tip.
+- Main verification: implementation SHA was verified at `origin/main` as `b28010740b484e378315b8c8b9e90762d5a0fa1d`; current `origin/main` tip is `9e6be0c32712003649642d3ec378831940f1778a`, and the implementation SHA is an ancestor.
 - Missed: fresh broad backend-suite re-entry; owned by BCI14 after endpoint-host repair
 - Follow-up: BCI14 remains WAITING until a fresh broad suite identifies the residual provider/order-isolation set
 - Residual risk: focused endpoint/auth proof is green, but the broad CI gate remains unresolved by design

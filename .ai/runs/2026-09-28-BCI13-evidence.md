@@ -5,7 +5,7 @@ Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct delivery
 Main commit SHA: b28010740b484e378315b8c8b9e90762d5a0fa1d
-Main verification: `git rev-parse origin/main` returned `b28010740b484e378315b8c8b9e90762d5a0fa1d`; implementation SHA is the exact current `origin/main` tip.
+Main verification: implementation SHA was verified at `origin/main` as `b28010740b484e378315b8c8b9e90762d5a0fa1d`; current `origin/main` tip is `9e6be0c32712003649642d3ec378831940f1778a`, and the implementation SHA is an ancestor.
 Evidence state: synchronized
 
 ## What was done
