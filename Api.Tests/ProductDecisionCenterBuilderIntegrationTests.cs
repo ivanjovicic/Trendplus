@@ -37,6 +37,13 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.Equal(2, response.Rows.Count);
         Assert.Equal(0, response.IgnoredRowsCount);
         Assert.NotEqual(default, response.GeneratedAtUtc);
+        Assert.Equal("article_size", response.DecisionGrain);
+        Assert.Equal("product-decision-initial-pilot-v1", response.ThresholdPolicy.PolicyName);
+        Assert.Equal(45, response.ThresholdPolicy.StaleReviewDays);
+        Assert.Equal(90, response.ThresholdPolicy.StrongNoSaleDays);
+        Assert.Equal(0.15m, response.ThresholdPolicy.LowVelocityUnitsPerDay);
+        Assert.Equal(14, response.ThresholdPolicy.LostSalesImpactWindowDays);
+        Assert.Equal("initial_pilot_not_calibrated", response.ThresholdPolicy.CalibrationStatus);
         Assert.NotNull(response.Meta);
         Assert.Null(response.Meta!.LastRefreshAtUtc);
 
@@ -98,7 +105,9 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.Equal("insufficient_data", replenish.ConfidenceLevel);
         Assert.Null(replenish.ConfidenceScore);
         Assert.Contains("sales_velocity", replenish.PrimaryDrivers);
-        Assert.Equal("stale", replenish.InputFreshnessStatus);
+        // Freshness is measured from the requested historical period end, not
+        // from the agent's current wall clock.
+        Assert.Equal("fresh", replenish.InputFreshnessStatus);
         Assert.Contains("product_recommendation_blocked", replenish.WarningCodes);
         Assert.NotEmpty(replenish.ConfidenceBreakdown);
         Assert.Contains(replenish.ConfidenceBreakdown, node => node.Code == "confidence_score");

@@ -140,13 +140,13 @@ internal static class PilotAnalyticsSeedPack
                 "row 102 stays FIX_DATA with critical data-quality blockers",
                 "summary counts remain 1 replenish / 1 bad-data row",
                 "unknown store returns explicit empty success meta",
-                "freshness is intentionally historical and may surface as stale"
+                "freshness is measured from the requested historical period end"
             ],
             AllowedStates:
             [
                 "no_rows_for_period",
                 "insufficient_data",
-                "stale freshness"
+                "period-end freshness"
             ],
             ProofFiles:
             [

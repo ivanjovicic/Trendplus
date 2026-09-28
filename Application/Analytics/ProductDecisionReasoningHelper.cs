@@ -2,7 +2,33 @@ namespace Application.Analytics;
 
 public static class ProductDecisionReasoningHelper
 {
-    public const int MinimumUnitsForRecommendation = 3;
+    public sealed record ThresholdPolicy
+    {
+        public string PolicyName { get; init; } = "product-decision-initial-pilot-v1";
+        public string Source { get; init; } = "initial pilot threshold, owner 2026-09-28";
+        public string CalibrationStatus { get; init; } = "initial_pilot_not_calibrated";
+        public int MinimumUnitsForPositiveSignal { get; init; } = 3;
+        public int StaleReviewDays { get; init; } = 45;
+        public int StrongNoSaleDays { get; init; } = 90;
+        public decimal LowVelocityUnitsPerDay { get; init; } = 0.15m;
+        public decimal HighVelocityUnitsPerDay { get; init; } = 0.8m;
+        public decimal LowStockCoverDays { get; init; } = 14m;
+        public decimal GoodTrendPct { get; init; } = 10m;
+        public decimal BadTrendPct { get; init; } = -10m;
+        public decimal GoodMarginPct { get; init; } = 22m;
+        public decimal LowMarginPct { get; init; } = 10m;
+        public decimal HighStockMultiple { get; init; } = 3m;
+        public int HighStockAdditionalUnits { get; init; } = 10;
+        public int LostSalesImpactWindowDays { get; init; } = 14;
+        public int NewProductConfidencePenaltyPct { get; init; } = 15;
+        public int UnconfiguredMinStockConfidencePenaltyPct { get; init; } = 15;
+
+        public static ThresholdPolicy Default { get; } = new();
+    }
+
+    // Compatibility alias for existing explainability code. The policy is the
+    // single owner of the value; callers should prefer the policy property.
+    public static int MinimumUnitsForRecommendation => ThresholdPolicy.Default.MinimumUnitsForPositiveSignal;
 
     public static class ReasonCodes
     {
@@ -21,6 +47,10 @@ public static class ProductDecisionReasoningHelper
         public const string ReplenishNeeded = "replenish_needed";
         public const string HighStockRisk = "high_stock_risk";
         public const string DataQualityBlocker = "data_quality_blocker";
+        public const string StaleNoSaleReview = "stale_no_sale_review";
+        public const string LowVelocityReview = "low_velocity_review";
+        public const string NoBaseline = "no_baseline";
+        public const string MinimumStockNotConfigured = "minimum_stock_not_configured";
     }
 
     public sealed record Input(
@@ -37,16 +67,19 @@ public static class ProductDecisionReasoningHelper
         int? StockGap,
         int? CurrentStock,
         int? MinStock,
-        int? DaysSinceLastSale);
+        int? DaysSinceLastSale,
+        bool IsNewProduct = false,
+        decimal? StockCoverDays = null);
 
     public sealed record Result(
         string RecommendationStatus,
         IReadOnlyList<string> ReasonCodes);
 
-    public static Result Evaluate(Input input)
+    public static Result Evaluate(Input input, ThresholdPolicy? policy = null)
     {
-        var recommendationStatus = ResolveRecommendationStatus(input);
-        var codes = BuildReasonCodes(input, recommendationStatus);
+        var effectivePolicy = policy ?? ThresholdPolicy.Default;
+        var recommendationStatus = ResolveRecommendationStatus(input, effectivePolicy);
+        var codes = BuildReasonCodes(input, recommendationStatus, effectivePolicy);
         return new Result(recommendationStatus, codes);
     }
 
@@ -62,54 +95,84 @@ public static class ProductDecisionReasoningHelper
         return ((currentRevenue - previousRevenue.Value) / previousRevenue.Value) * 100m;
     }
 
-    public static string ResolveRecommendationStatus(Input input)
+    public static string ResolveRecommendationStatus(Input input, ThresholdPolicy? policy = null)
     {
+        var effectivePolicy = policy ?? ThresholdPolicy.Default;
+
         if (input.MissingSupplier || input.MissingCost || input.MissingCategory)
             return "FIX_DATA";
 
-        if (!input.StockGap.HasValue || !input.CurrentStock.HasValue || !input.MinStock.HasValue)
+        if (!input.CurrentStock.HasValue)
             return "INSUFFICIENT_DATA";
+
+        var staleStock = input.DaysSinceLastSale >= effectivePolicy.StaleReviewDays;
+        var hasStockTarget = input.MinStock is > 0;
+        var lowCover = input.StockCoverDays.HasValue
+            && input.StockCoverDays.Value <= effectivePolicy.LowStockCoverDays;
+        var replenishmentNeeded = input.StockGap is > 0 || (!hasStockTarget && lowCover);
+        var highStock = hasStockTarget
+            && input.CurrentStock.Value > Math.Max(
+                input.MinStock!.Value * effectivePolicy.HighStockMultiple,
+                input.MinStock.Value + (decimal)effectivePolicy.HighStockAdditionalUnits);
+
+        // A stocked article with no sale for the initial review window is a
+        // review candidate, even when current-period sales are zero. It is not
+        // silently upgraded to an executable markdown/order decision.
+        if (staleStock && input.CurrentStock.Value > 0 && input.UnitsSold <= 0)
+            return "WATCH";
 
         if (!input.MarginCoveragePct.HasValue)
             return "INSUFFICIENT_DATA";
 
-        if (input.UnitsSold < MinimumUnitsForRecommendation || input.Revenue <= 0m || !input.DaysSinceLastSale.HasValue)
+        if (!hasStockTarget && !lowCover)
             return "INSUFFICIENT_DATA";
 
-        // Require valid evidence for trend and margin before allowing recommendations
-        // null/missing evidence must fail closed
-        if (input.TrendPct == null)
+        var positiveSampleComplete = input.UnitsSold >= effectivePolicy.MinimumUnitsForPositiveSignal
+            && input.Revenue > 0m
+            && input.MarginPct.HasValue
+            && input.DaysSinceLastSale.HasValue;
+
+        if (!positiveSampleComplete)
+            return "INSUFFICIENT_DATA";
+
+        // A missing previous-period baseline is valid for a new product, but
+        // never becomes a fabricated percentage trend.
+        if (input.TrendPct is null && !input.IsNewProduct)
             return "INSUFFICIENT_DATA";
 
         if (input.MarginPct == null)
             return "INSUFFICIENT_DATA";
 
-        var goodTrend = input.TrendPct.Value >= 10m;
-        var badTrend = input.TrendPct.Value <= -10m;
-        var goodMargin = input.MarginPct.Value >= 22m;
-        var lowMargin = input.MarginPct.Value < 10m;
-        var highVelocity = input.VelocityUnitsPerDay >= 0.8m;
-        var lowVelocity = input.VelocityUnitsPerDay < 0.15m;
-        var staleStock = input.DaysSinceLastSale.Value >= 45;
-        var highStock = input.CurrentStock.Value > Math.Max(input.MinStock.Value * 3, input.MinStock.Value + 10);
+        var goodTrend = input.IsNewProduct || input.TrendPct.GetValueOrDefault() >= effectivePolicy.GoodTrendPct;
+        var badTrend = input.TrendPct.HasValue && input.TrendPct.Value <= effectivePolicy.BadTrendPct;
+        var goodMargin = input.MarginPct.Value >= effectivePolicy.GoodMarginPct;
+        var lowMargin = input.MarginPct.Value < effectivePolicy.LowMarginPct;
+        var highVelocity = input.VelocityUnitsPerDay >= effectivePolicy.HighVelocityUnitsPerDay;
+        var lowVelocity = input.VelocityUnitsPerDay < effectivePolicy.LowVelocityUnitsPerDay;
 
-        if (goodTrend && goodMargin && highVelocity && input.StockGap.Value > 0)
+        if (goodTrend && goodMargin && highVelocity && replenishmentNeeded)
             return "BOOST";
 
-        if (highVelocity && input.StockGap.Value > 0)
+        if (highVelocity && replenishmentNeeded)
             return "REPLENISH";
 
-        if ((staleStock && lowVelocity && (badTrend || lowMargin)) && input.CurrentStock.Value > input.MinStock.Value)
+        if (staleStock && lowVelocity && (badTrend || lowMargin) && input.CurrentStock.Value > input.MinStock.GetValueOrDefault())
             return "MARKDOWN";
 
-        if ((badTrend && lowMargin && highStock) || (staleStock && highStock && lowVelocity))
+        if (input.DaysSinceLastSale >= effectivePolicy.StrongNoSaleDays
+            && highStock
+            && (lowVelocity || (badTrend && lowMargin)))
             return "DO_NOT_ORDER";
 
         return "WATCH";
     }
 
-    public static IReadOnlyList<string> BuildReasonCodes(Input input, string recommendationStatus)
+    public static IReadOnlyList<string> BuildReasonCodes(
+        Input input,
+        string recommendationStatus,
+        ThresholdPolicy? policy = null)
     {
+        var effectivePolicy = policy ?? ThresholdPolicy.Default;
         var codes = new HashSet<string>(StringComparer.Ordinal);
 
         if (input.MissingSupplier) codes.Add(ReasonCodes.MissingSupplier);
@@ -127,21 +190,34 @@ public static class ProductDecisionReasoningHelper
         if (input.StockGap is > 0 || (input.CurrentStock.HasValue && input.MinStock.HasValue && input.CurrentStock.Value < input.MinStock.Value))
             codes.Add(ReasonCodes.LowStock);
 
-        if (input.VelocityUnitsPerDay >= 0.8m)
+        if (input.VelocityUnitsPerDay >= effectivePolicy.HighVelocityUnitsPerDay)
             codes.Add(ReasonCodes.HighVelocity);
 
+        if (input.VelocityUnitsPerDay < effectivePolicy.LowVelocityUnitsPerDay)
+            codes.Add(ReasonCodes.LowVelocityReview);
+
         if (input.MarginPct.HasValue
-            && (input.MarginPct.Value < 10m || input.MarginCoveragePct is < 60m))
+            && (input.MarginPct.Value < effectivePolicy.LowMarginPct || input.MarginCoveragePct is < 60m))
             codes.Add(ReasonCodes.PoorMargin);
 
-        if (input.DaysSinceLastSale.HasValue && input.DaysSinceLastSale.Value >= 45)
+        if (input.DaysSinceLastSale.HasValue && input.DaysSinceLastSale.Value >= effectivePolicy.StaleReviewDays)
+        {
             codes.Add(ReasonCodes.StaleStock);
+            if (input.UnitsSold <= 0 && input.CurrentStock.GetValueOrDefault() > 0)
+                codes.Add(ReasonCodes.StaleNoSaleReview);
+        }
+
+        if (input.IsNewProduct)
+            codes.Add(ReasonCodes.NoBaseline);
+
+        if (input.MinStock is null or <= 0)
+            codes.Add(ReasonCodes.MinimumStockNotConfigured);
 
         var missingDecisionEvidence =
-            input.TrendPct is null ||
+            (!input.IsNewProduct && input.TrendPct is null) ||
             input.MarginPct is null ||
             input.MarginCoveragePct is null ||
-            input.UnitsSold < MinimumUnitsForRecommendation ||
+            input.UnitsSold < effectivePolicy.MinimumUnitsForPositiveSignal ||
             input.Revenue <= 0m ||
             !input.DaysSinceLastSale.HasValue;
 
@@ -149,7 +225,7 @@ public static class ProductDecisionReasoningHelper
         {
             codes.Add(ReasonCodes.InsufficientHistory);
 
-            if (input.UnitsSold < MinimumUnitsForRecommendation)
+            if (input.UnitsSold < effectivePolicy.MinimumUnitsForPositiveSignal)
                 codes.Add(ReasonCodes.LowSampleSize);
 
             if (input.Revenue <= 0m)

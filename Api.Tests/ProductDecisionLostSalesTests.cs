@@ -48,4 +48,19 @@ public sealed class ProductDecisionLostSalesTests
         Assert.Equal(0m, CachedAnalyticsEndpoints.CalculateLostSalesEstimate(5, 10, 2m, 0m, 14));
         Assert.Equal(0m, CachedAnalyticsEndpoints.CalculateLostSalesEstimate(5, 0, 2m, 100m, 14));
     }
+
+    [Fact]
+    public void CalculateSlowStockCapital_ReturnsNullWhenCostIsMissing()
+    {
+        Assert.Null(CachedAnalyticsEndpoints.CalculateSlowStockCapital(
+            velocityUnitsPerDay: 0.1m,
+            currentStock: 20,
+            minimumStock: 5,
+            unitCost: null));
+        Assert.Equal(2_000m, CachedAnalyticsEndpoints.CalculateSlowStockCapital(
+            velocityUnitsPerDay: 0.1m,
+            currentStock: 20,
+            minimumStock: 5,
+            unitCost: 100m));
+    }
 }

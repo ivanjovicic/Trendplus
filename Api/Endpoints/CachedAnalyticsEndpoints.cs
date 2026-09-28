@@ -32,7 +32,6 @@ namespace Trendplus2.Endpoints;
 public static class CachedAnalyticsEndpoints
 {
     private const int MovementStatsBatchSize = 5_000;
-    private const int ProductDecisionLostSalesImpactWindowDays = 14;
     private const string OpeningStockConfidenceUnknown = "unknown";
     private static readonly TimeSpan DashboardSectionTtl = CacheExpiration.Medium;
     private static readonly TimeSpan DashboardFastSectionTtl = CacheExpiration.Short;
@@ -109,6 +108,54 @@ public static class CachedAnalyticsEndpoints
         var projectedDemandValue = velocityUnitsPerDay * impactWindowDays * averageUnitPrice;
         return Math.Round(projectedDemandValue * stockShortfallRatio, 2, MidpointRounding.AwayFromZero);
     }
+
+    internal static decimal? CalculateSlowStockCapital(
+        decimal velocityUnitsPerDay,
+        int? currentStock,
+        int? minimumStock,
+        decimal? unitCost,
+        ProductDecisionReasoningHelper.ThresholdPolicy? policy = null)
+    {
+        var effectivePolicy = policy ?? ProductDecisionReasoningHelper.ThresholdPolicy.Default;
+        if (!currentStock.HasValue || minimumStock is not > 0)
+            return null;
+
+        if (velocityUnitsPerDay >= effectivePolicy.LowVelocityUnitsPerDay
+            || currentStock.Value <= minimumStock.Value * 2)
+        {
+            return 0m;
+        }
+
+        return unitCost.HasValue
+            ? Math.Round(unitCost.Value * currentStock.Value, 2, MidpointRounding.AwayFromZero)
+            : null;
+    }
+
+    private static ProductDecisionThresholdPolicyDto BuildProductDecisionThresholdPolicyDto(
+        ProductDecisionReasoningHelper.ThresholdPolicy policy) =>
+        new()
+        {
+            PolicyName = policy.PolicyName,
+            Source = policy.Source,
+            CalibrationStatus = policy.CalibrationStatus,
+            MinimumUnitsForPositiveSignal = policy.MinimumUnitsForPositiveSignal,
+            StaleReviewDays = policy.StaleReviewDays,
+            StrongNoSaleDays = policy.StrongNoSaleDays,
+            LowVelocityUnitsPerDay = policy.LowVelocityUnitsPerDay,
+            HighVelocityUnitsPerDay = policy.HighVelocityUnitsPerDay,
+            LowStockCoverDays = policy.LowStockCoverDays,
+            GoodTrendPct = policy.GoodTrendPct,
+            BadTrendPct = policy.BadTrendPct,
+            GoodMarginPct = policy.GoodMarginPct,
+            LowMarginPct = policy.LowMarginPct,
+            HighStockMultiple = policy.HighStockMultiple,
+            HighStockAdditionalUnits = policy.HighStockAdditionalUnits,
+            LostSalesImpactWindowDays = policy.LostSalesImpactWindowDays,
+            NewProductConfidencePenaltyPct = policy.NewProductConfidencePenaltyPct,
+            UnconfiguredMinStockConfidencePenaltyPct = policy.UnconfiguredMinStockConfidencePenaltyPct,
+            SlowVelocityIsReviewOnly = true,
+            SlowStockCapitalRequiresCost = true
+        };
 
     public static void MapCachedAnalyticsEndpoints(this WebApplication app)
     {
@@ -5949,6 +5996,7 @@ public static class CachedAnalyticsEndpoints
         var normalizedSearch = string.IsNullOrWhiteSpace(search) ? string.Empty : search.Trim().ToLowerInvariant();
         var importedOnly = normalizedDataScope == "imported";
         var existingOnly = normalizedDataScope == "existing";
+        var thresholdPolicy = ProductDecisionReasoningHelper.ThresholdPolicy.Default;
 
         var nowUtc = DateTime.UtcNow;
         var periodToExclusiveUtc = (toDate?.Date ?? nowUtc.Date).AddDays(1);
@@ -5959,6 +6007,7 @@ public static class CachedAnalyticsEndpoints
         }
 
         var periodDays = Math.Max(1, (int)Math.Ceiling((periodToExclusiveUtc - periodFromUtc).TotalDays));
+        var periodEndUtc = periodToExclusiveUtc.AddTicks(-1);
         var previousFromUtc = periodFromUtc.AddDays(-periodDays);
         var previousToExclusiveUtc = periodFromUtc;
 
@@ -6004,6 +6053,8 @@ public static class CachedAnalyticsEndpoints
                 RequestedDataScope = normalizedDataScope,
                 ScopeAuthority = "both",
                 ScopeBreakdown = "article_origin=Artikli.DataOrigin;sale_origin=ProdajaZaglavlje.DataOrigin",
+                DecisionGrain = "article_size",
+                ThresholdPolicy = BuildProductDecisionThresholdPolicyDto(thresholdPolicy),
                 Summary = BuildProductDecisionCenterSummary([], analyzedLostSalesEstimate: 0m, analyzedSlowStockCapital: 0m),
                 TotalRows = 0,
                 AnalyzedRows = 0,
@@ -6077,6 +6128,7 @@ public static class CachedAnalyticsEndpoints
             join ps in db.ProdajaStavke.AsNoTracking() on pz.Id equals ps.IdProdaja
             join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
             where articleIds.Contains(ps.IdArtikal)
+                  && pz.DatumProdaje < periodToExclusiveUtc
                   && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
                   && (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
                   && (!importedOnly || pz.DataOrigin == "access")
@@ -6128,12 +6180,14 @@ public static class CachedAnalyticsEndpoints
                         : "Nizak kvalitet"
                 : "Nedovoljno podataka";
 
-            var stockEvidenceComplete = article.CurrentStock.HasValue && article.MinStock.HasValue;
+            var currentStockAvailable = article.CurrentStock.HasValue;
+            var stockTargetConfigured = article.MinStock is > 0;
+            var stockEvidenceComplete = currentStockAvailable && stockTargetConfigured;
             var stockGap = stockEvidenceComplete
                 ? Math.Max(0, article.MinStock!.Value - article.CurrentStock!.Value)
                 : (int?)null;
             var daysSinceLastSale = lastSaleAtUtc > default(DateTime)
-                ? (int?)Math.Max(0, (int)Math.Floor((nowUtc - DateTime.SpecifyKind(lastSaleAtUtc, DateTimeKind.Utc)).TotalDays))
+                ? (int?)Math.Max(0, (int)Math.Floor((periodEndUtc - DateTime.SpecifyKind(lastSaleAtUtc, DateTimeKind.Utc)).TotalDays))
                 : null;
 
             // Missing previous baseline must stay null — never synthesize +100% growth.
@@ -6148,7 +6202,7 @@ public static class CachedAnalyticsEndpoints
                     article.MinStock!.Value,
                     velocityUnitsPerDay,
                     avgUnitPrice,
-                    ProductDecisionLostSalesImpactWindowDays)
+                    thresholdPolicy.LostSalesImpactWindowDays)
                 : null;
 
             var missingSupplier = !article.SupplierId.HasValue || string.IsNullOrWhiteSpace(article.SupplierName);
@@ -6159,7 +6213,7 @@ public static class CachedAnalyticsEndpoints
 
             var dataQualityStatus = missingSupplier || missingCost || missingCategory
                 ? "critical"
-                : (!stockEvidenceComplete || missingMarginCoverage || marginCoveragePct is < 60m || missingVariantData ? "warning" : "good");
+                : (!currentStockAvailable || !stockTargetConfigured || missingMarginCoverage || marginCoveragePct is < 60m || missingVariantData ? "warning" : "good");
 
             var reasoning = ProductDecisionReasoningHelper.Evaluate(new ProductDecisionReasoningHelper.Input(
                 MissingSupplier: missingSupplier,
@@ -6175,22 +6229,30 @@ public static class CachedAnalyticsEndpoints
                 StockGap: stockGap,
                 CurrentStock: article.CurrentStock,
                 MinStock: article.MinStock,
-                DaysSinceLastSale: daysSinceLastSale));
+                DaysSinceLastSale: daysSinceLastSale,
+                IsNewProduct: !hasPreviousBaseline || previousRevenueValue <= 0m,
+                StockCoverDays: article.CurrentStock.HasValue && velocityUnitsPerDay > 0m
+                    ? article.CurrentStock.Value / velocityUnitsPerDay
+                    : null), thresholdPolicy);
 
             var recommendationStatus = reasoning.RecommendationStatus;
 
+            var isNewProduct = !hasPreviousBaseline || previousRevenueValue <= 0m;
             var confidencePct = ResolveRecommendationConfidence(
                 recommendationStatus,
                 revenue,
                 unitsSold,
                 marginCoveragePct,
                 trendPct,
-                daysSinceLastSale);
+                daysSinceLastSale,
+                isNewProduct,
+                !stockTargetConfigured,
+                thresholdPolicy);
 
             var reasonCodes = reasoning.ReasonCodes;
 
-            var recommendationReason = !stockEvidenceComplete
-                ? "Podaci o trenutnoj i minimalnoj zalihi nisu dostupni; preporuka je blokirana."
+            var recommendationReason = !currentStockAvailable
+                ? "Podaci o trenutnoj zalihi nisu dostupni; preporuka je blokirana."
                 : BuildRecommendationReason(
                     recommendationStatus,
                     revenue,
@@ -6206,11 +6268,12 @@ public static class CachedAnalyticsEndpoints
 
             var recommendationLabel = RecommendationLabel(recommendationStatus);
             var recommendedAction = RecommendedAction(recommendationStatus);
-            decimal? slowStockCapital = !stockEvidenceComplete
-                ? null
-                : velocityUnitsPerDay < 0.15m && article.CurrentStock!.Value > article.MinStock!.Value * 2
-                    ? Math.Round((article.UnitCost ?? 0m) * article.CurrentStock.Value, 2)
-                    : 0m;
+            var slowStockCapital = CalculateSlowStockCapital(
+                velocityUnitsPerDay,
+                article.CurrentStock,
+                article.MinStock,
+                article.UnitCost,
+                thresholdPolicy);
 
             var movementWindowStats = movementWindowStatsByArticle.TryGetValue(article.ProductId, out var stats)
                 ? stats
@@ -6252,7 +6315,10 @@ public static class CachedAnalyticsEndpoints
                 marginCoveragePct,
                 trendPct,
                 daysSinceLastSale,
-                effectiveDataQualityStatus);
+                effectiveDataQualityStatus,
+                isNewProduct,
+                !stockTargetConfigured,
+                thresholdPolicy);
 
             var combinedReasonCodes = reasonCodes
                 .Concat(signal.ReasonCodes)
@@ -6360,6 +6426,8 @@ public static class CachedAnalyticsEndpoints
                 analyzedLostSalesEstimate: totalLostSalesEstimate,
                 analyzedSlowStockCapital: totalSlowStockCapital),
             Rows = sortedRows,
+            DecisionGrain = "article_size",
+            ThresholdPolicy = BuildProductDecisionThresholdPolicyDto(thresholdPolicy),
             Meta = sortedRows.Count == 0
                 ? BuildSuccessMeta(
                     dataQualityStatus: "insufficient_data",
@@ -6526,8 +6594,12 @@ public static class CachedAnalyticsEndpoints
         int unitsSold,
         decimal? marginCoveragePct,
         decimal? trendPct,
-        int? daysSinceLastSale)
+        int? daysSinceLastSale,
+        bool isNewProduct = false,
+        bool minStockUnconfigured = false,
+        ProductDecisionReasoningHelper.ThresholdPolicy? policy = null)
     {
+        var effectivePolicy = policy ?? ProductDecisionReasoningHelper.ThresholdPolicy.Default;
         var confidence = 35m;
 
         if (unitsSold >= 20) confidence += 20m;
@@ -6538,7 +6610,9 @@ public static class CachedAnalyticsEndpoints
         else if (marginCoveragePct is < 50m) confidence -= 20m;
 
         if (trendPct.HasValue) confidence += 10m;
-        if (daysSinceLastSale.HasValue && daysSinceLastSale.Value > 90) confidence -= 15m;
+        if (daysSinceLastSale.HasValue && daysSinceLastSale.Value > effectivePolicy.StrongNoSaleDays) confidence -= 15m;
+        if (isNewProduct) confidence -= effectivePolicy.NewProductConfidencePenaltyPct;
+        if (minStockUnconfigured) confidence -= effectivePolicy.UnconfiguredMinStockConfidencePenaltyPct;
 
         if (recommendationStatus is "FIX_DATA" or "INSUFFICIENT_DATA")
         {
@@ -6556,8 +6630,12 @@ public static class CachedAnalyticsEndpoints
         decimal? marginCoveragePct,
         decimal? trendPct,
         int? daysSinceLastSale,
-        string dataQualityStatus)
+        string dataQualityStatus,
+        bool isNewProduct = false,
+        bool minStockUnconfigured = false,
+        ProductDecisionReasoningHelper.ThresholdPolicy? policy = null)
     {
+        var effectivePolicy = policy ?? ProductDecisionReasoningHelper.ThresholdPolicy.Default;
         var reliability = 30m;
 
         if (unitsSold >= 20) reliability += 25m;
@@ -6572,7 +6650,10 @@ public static class CachedAnalyticsEndpoints
         reliability += trendPct.HasValue ? 10m : -5m;
 
         if (!daysSinceLastSale.HasValue) reliability -= 10m;
-        else if (daysSinceLastSale.Value > 90) reliability -= 10m;
+        else if (daysSinceLastSale.Value > effectivePolicy.StrongNoSaleDays) reliability -= 10m;
+
+        if (isNewProduct) reliability -= effectivePolicy.NewProductConfidencePenaltyPct;
+        if (minStockUnconfigured) reliability -= effectivePolicy.UnconfiguredMinStockConfidencePenaltyPct;
 
         if (dataQualityStatus == "critical") reliability = Math.Min(reliability, 35m);
         else if (dataQualityStatus == "warning") reliability = Math.Min(reliability, 70m);
@@ -8552,6 +8633,10 @@ public class ProductDecisionCenterResponseDto
     public string RequestedDataScope { get; set; } = "all";
     public string ScopeAuthority { get; set; } = "both";
     public string ScopeBreakdown { get; set; } = "article_origin=Artikli.DataOrigin;sale_origin=ProdajaZaglavlje.DataOrigin";
+    /// <summary>Product decisions are evaluated per Artikli article/size row; one slow size does not mark a model family.</summary>
+    public string DecisionGrain { get; set; } = "article_size";
+    /// <summary>Single backend-owned threshold policy and provenance for this response.</summary>
+    public ProductDecisionThresholdPolicyDto ThresholdPolicy { get; set; } = new();
     /// <summary>Returned/top row count (same as <see cref="Rows"/>.Count).</summary>
     public int TotalRows { get; set; }
     /// <summary>All analyzed product rows before top limiting.</summary>
@@ -8567,6 +8652,30 @@ public class ProductDecisionCenterResponseDto
         Success = true,
         GeneratedAtUtc = DateTime.UtcNow
     };
+}
+
+public class ProductDecisionThresholdPolicyDto
+{
+    public string PolicyName { get; set; } = string.Empty;
+    public string Source { get; set; } = string.Empty;
+    public string CalibrationStatus { get; set; } = string.Empty;
+    public int MinimumUnitsForPositiveSignal { get; set; }
+    public int StaleReviewDays { get; set; }
+    public int StrongNoSaleDays { get; set; }
+    public decimal LowVelocityUnitsPerDay { get; set; }
+    public decimal HighVelocityUnitsPerDay { get; set; }
+    public decimal LowStockCoverDays { get; set; }
+    public decimal GoodTrendPct { get; set; }
+    public decimal BadTrendPct { get; set; }
+    public decimal GoodMarginPct { get; set; }
+    public decimal LowMarginPct { get; set; }
+    public decimal HighStockMultiple { get; set; }
+    public int HighStockAdditionalUnits { get; set; }
+    public int LostSalesImpactWindowDays { get; set; }
+    public int NewProductConfidencePenaltyPct { get; set; }
+    public int UnconfiguredMinStockConfidencePenaltyPct { get; set; }
+    public bool SlowVelocityIsReviewOnly { get; set; }
+    public bool SlowStockCapitalRequiresCost { get; set; }
 }
 
 public class ProductDecisionTimelineFilterResponseDto

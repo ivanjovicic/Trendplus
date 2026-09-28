@@ -312,5 +312,108 @@ public class ProductDecisionReasoningHelperTests
         Assert.Equal("INSUFFICIENT_DATA", withNullTrend.RecommendationStatus);
         Assert.NotEqual(withZeroTrend.RecommendationStatus, withNullTrend.RecommendationStatus);
     }
+
+    [Fact(DisplayName = "Zero sales with stock and 45+ stale days becomes review candidate")]
+    public void ZeroSalesStaleStock_IsReviewCandidate_NotAction()
+    {
+        var result = ProductDecisionReasoningHelper.Evaluate(new ProductDecisionReasoningHelper.Input(
+            MissingSupplier: false,
+            MissingCost: false,
+            MissingCategory: false,
+            MissingVariantData: false,
+            Revenue: 0m,
+            UnitsSold: 0,
+            VelocityUnitsPerDay: 0m,
+            MarginPct: null,
+            MarginCoveragePct: null,
+            TrendPct: null,
+            StockGap: 0,
+            CurrentStock: 12,
+            MinStock: 4,
+            DaysSinceLastSale: 60));
+
+        Assert.Equal("WATCH", result.RecommendationStatus);
+        Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.StaleNoSaleReview, result.ReasonCodes);
+        Assert.DoesNotContain(result.RecommendationStatus, new[] { "MARKDOWN", "DO_NOT_ORDER" });
+    }
+
+    [Fact(DisplayName = "New product without baseline can replenish with reduced-evidence path")]
+    public void NewProductWithoutBaseline_AllowsReplenishWithoutTrendPercent()
+    {
+        var result = ProductDecisionReasoningHelper.Evaluate(new ProductDecisionReasoningHelper.Input(
+            MissingSupplier: false,
+            MissingCost: false,
+            MissingCategory: false,
+            MissingVariantData: false,
+            Revenue: 40_000m,
+            UnitsSold: 30,
+            VelocityUnitsPerDay: 1m,
+            MarginPct: 20m,
+            MarginCoveragePct: 90m,
+            TrendPct: null,
+            StockGap: null,
+            CurrentStock: 2,
+            MinStock: 0,
+            DaysSinceLastSale: 1,
+            IsNewProduct: true,
+            StockCoverDays: 2m));
+
+        Assert.Equal("REPLENISH", result.RecommendationStatus);
+        Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.NoBaseline, result.ReasonCodes);
+        Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.MinimumStockNotConfigured, result.ReasonCodes);
+    }
+
+    [Fact(DisplayName = "Strong stale evidence makes DO_NOT_ORDER reachable")]
+    public void StrongStaleEvidence_AllowsDoNotOrder()
+    {
+        var result = ProductDecisionReasoningHelper.Evaluate(new ProductDecisionReasoningHelper.Input(
+            MissingSupplier: false,
+            MissingCost: false,
+            MissingCategory: false,
+            MissingVariantData: false,
+            Revenue: 5_000m,
+            UnitsSold: 5,
+            VelocityUnitsPerDay: 0.1m,
+            MarginPct: 20m,
+            MarginCoveragePct: 90m,
+            TrendPct: 0m,
+            StockGap: 0,
+            CurrentStock: 30,
+            MinStock: 5,
+            DaysSinceLastSale: 100));
+
+        Assert.Equal("DO_NOT_ORDER", result.RecommendationStatus);
+        Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.HighStockRisk, result.ReasonCodes);
+    }
+
+    [Fact(DisplayName = "Changing the policy changes the outcome without changing rule code")]
+    public void PolicyValueChangesOutcome()
+    {
+        var input = new ProductDecisionReasoningHelper.Input(
+            MissingSupplier: false,
+            MissingCost: false,
+            MissingCategory: false,
+            MissingVariantData: false,
+            Revenue: 30_000m,
+            UnitsSold: 5,
+            VelocityUnitsPerDay: 0.2m,
+            MarginPct: 12m,
+            MarginCoveragePct: 90m,
+            TrendPct: -20m,
+            StockGap: 0,
+            CurrentStock: 25,
+            MinStock: 5,
+            DaysSinceLastSale: 65);
+
+        var defaultResult = ProductDecisionReasoningHelper.Evaluate(input);
+        var stricterVelocityPolicy = ProductDecisionReasoningHelper.ThresholdPolicy.Default with
+        {
+            LowVelocityUnitsPerDay = 0.25m
+        };
+        var calibratedResult = ProductDecisionReasoningHelper.Evaluate(input, stricterVelocityPolicy);
+
+        Assert.Equal("WATCH", defaultResult.RecommendationStatus);
+        Assert.Equal("MARKDOWN", calibratedResult.RecommendationStatus);
+    }
 }
 
