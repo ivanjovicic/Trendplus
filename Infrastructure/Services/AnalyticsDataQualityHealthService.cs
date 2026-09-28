@@ -29,6 +29,7 @@ public sealed class AnalyticsDataQualityHealthService
                      OR (@dataScope = 'imported' AND p.data_origin = 'access')
                      OR (@dataScope = 'existing' AND (p.data_origin = 'existing' OR p.data_origin IS NULL OR p.data_origin = ''))
                   )
+                  AND UPPER(BTRIM(COALESCE(p.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')
                 GROUP BY ps.id_artikal
             ),
             quality_source AS (
@@ -44,7 +45,11 @@ public sealed class AnalyticsDataQualityHealthService
                         WHEN NULLIF(BTRIM(a."Naziv"), '') IS NULL THEN 'invalidName'
                         ELSE 'ok'
                     END AS issue_type,
-                    (a."NabavnaCena" IS NULL OR a."NabavnaCena" <= 0) AS is_missing_cost,
+                    (CASE
+                        WHEN a."NabavnaCenaDin" > 0 THEN a."NabavnaCenaDin"
+                        WHEN a."NabavnaCena" > 0 THEN a."NabavnaCena"
+                        ELSE NULL
+                     END IS NULL) AS is_missing_cost,
                     COALESCE(s.sales_30d, 0) AS sales_30d
                 FROM "Artikli" a
                 LEFT JOIN "Dobavljaci" d ON a."IDDobavljac" = d."Id"
@@ -159,13 +164,19 @@ public sealed class AnalyticsDataQualityHealthService
                // Revenue impact follows sale-header origin (same rule as top offenders / issues).
                && (!importedOnly || pz.DataOrigin == "access")
                && (!existingOnly || pz.DataOrigin == "existing" || pz.DataOrigin == null || pz.DataOrigin == "")
+               && !new[] { "DUG", "KOREKCIJA" }.Contains((pz.BrojRacuna ?? string.Empty).Trim().ToUpper())
             group new { ps, a, d } by 1 into g
             select new
             {
                 TotalRevenue = g.Sum(x => x.ps.Kolicina * x.ps.Cena),
                 MissingCostRevenue = g.Sum(x =>
-                    (x.ps.NabavnaCena ?? x.a.NabavnaCena) == null ||
-                    (x.ps.NabavnaCena ?? x.a.NabavnaCena) <= 0m
+                    (x.ps.NabavnaCena.HasValue && x.ps.NabavnaCena.Value > 0m
+                        ? x.ps.NabavnaCena
+                        : x.a.NabavnaCenaDin.HasValue && x.a.NabavnaCenaDin.Value > 0m
+                            ? x.a.NabavnaCenaDin
+                            : x.a.NabavnaCena.HasValue && x.a.NabavnaCena.Value > 0m
+                                ? x.a.NabavnaCena
+                                : null) == null
                         ? x.ps.Kolicina * x.ps.Cena
                         : 0m),
                 UnknownSupplierRevenue = g.Sum(x =>

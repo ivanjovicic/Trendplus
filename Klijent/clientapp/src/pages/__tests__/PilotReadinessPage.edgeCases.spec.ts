@@ -237,6 +237,22 @@ describe("Pilot readiness edge-state mapping", () => {
     expect(card.reason).not.toContain("(70)");
   });
 
+  it("keeps high unsold coverage informational when structural blockers are absent", () => {
+    const report = intake({
+      readinessStatus: "good",
+      readinessLabel: "Upotrebljivo uz upozorenja",
+      readinessScore: 78,
+      loadedData: { ...intake().loadedData, articlesCount: 100 },
+      impact: { ...intake().impact, insufficientSignalCount: 95, recommendationsBlockedCount: 0 },
+    });
+
+    const card = findCard(payload({ intakeReport: report }), "data-quality");
+
+    expect(card.status).toBe("ready");
+    expect(card.reason).toContain("pokrivenost poslovnim signalom je 5%");
+    expect(card.reason).not.toContain("Pilot nije spreman");
+  });
+
   it("blocks and withholds the numeric score when intake evidence is empty", () => {
     const report = intake({
       readinessStatus: "insufficient_data",

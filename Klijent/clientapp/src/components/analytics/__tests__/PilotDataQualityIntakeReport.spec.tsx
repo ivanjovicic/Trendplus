@@ -207,6 +207,27 @@ describe("PilotDataQualityIntakeReport", () => {
     }
   });
 
+  it("exports signal coverage and the explicit period anchor without turning unsold articles into a blocker", () => {
+    const report = emptyIntakeReport();
+    report.loadedData.articlesCount = 100;
+    report.impact.insufficientSignalCount = 95;
+    report.periodAnchorCode = "import_business_date_fallback";
+    report.periodAnchorMessage = "Za izabrani filter nema prodaje; period je usidren na poslednji poslovni datum u uvezenom skupu podataka.";
+
+    const surfaces = [
+      buildCsv(report),
+      buildSummary(report),
+      JSON.stringify(buildExportPayload(report, [])),
+    ];
+
+    for (const text of surfaces) {
+      expect(text).toContain("Pokrivenost poslovnim signalom");
+      expect(text).toMatch(/5(?:[,.]0)?%/);
+      expect(text).toContain("import_business_date_fallback");
+    }
+    expect(surfaces[1]).toContain("ne menja readiness skor");
+  });
+
   it("keeps unknown and future values visibly unknown in every export surface", () => {
     const report = emptyIntakeReport();
     report.readinessStatus = "future_readiness_v2";

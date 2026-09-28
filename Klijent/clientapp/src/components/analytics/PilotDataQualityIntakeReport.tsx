@@ -64,8 +64,21 @@ function formatOptionalCount(value: number | null | undefined): string {
   return value == null ? "-" : String(value);
 }
 
+function resolveSignalCoverage(report: PilotDataQualityIntakeReport): number | null {
+  if (report.loadedData.articlesCount <= 0) return null;
+  const covered = Math.max(
+    0,
+    Math.min(
+      report.loadedData.articlesCount,
+      report.loadedData.articlesCount - report.impact.insufficientSignalCount,
+    ),
+  );
+  return covered / report.loadedData.articlesCount;
+}
+
 export function buildCsv(report: PilotDataQualityIntakeReport): string {
   const impact = resolvePilotIntakeImpact(report);
+  const signalCoverage = resolveSignalCoverage(report);
   const rows = [
     ["Sekcija", "Stavka", "Vrednost"],
     ["Skor", "Status spremnosti", getPilotReadinessStatusLabel(report.readinessStatus)],
@@ -88,9 +101,11 @@ export function buildCsv(report: PilotDataQualityIntakeReport): string {
     ["Problemi", "Dobavljač bez naziva", String(report.issues.missingSupplierNameCount)],
     ["Uticaj", "Prihod bez cene", formatPilotImpactPercentage(impact.revenueWithoutCost)],
     ["Uticaj", "Artikli bez dobavljača", formatPilotImpactPercentage(impact.articlesWithoutSupplier)],
-    ["Uticaj", "Blokirane preporuke", String(report.impact.recommendationsBlockedCount)],
+    ["Uticaj", "Blokirani artikli (jedinstveni)", String(report.impact.recommendationsBlockedCount)],
     ["Uticaj", "Ignorisani redovi", String(report.impact.ignoredRowsCount)],
-    ["Uticaj", "Nedovoljni signali", String(report.impact.insufficientSignalCount)],
+    ["Uticaj", "Pokrivenost poslovnim signalom", signalCoverage == null ? "nije dostupno" : fmtPctFromRatio(signalCoverage, 1, "nije dostupno")],
+    ["Period", "Anchor perioda", report.periodAnchorCode ?? "nije potvrđen"],
+    ["Period", "Napomena za anchor", report.periodAnchorMessage ?? ""],
     ["Import", "Status importa", getPilotImportStatusLabel(report.lastImportStatus)],
     ["Import", "Scope importa", getPilotImportScopeLabel(report.lastImportScope)],
   ];
@@ -109,13 +124,16 @@ export function buildCsv(report: PilotDataQualityIntakeReport): string {
 
 export function buildSummary(report: PilotDataQualityIntakeReport): string {
   const impact = resolvePilotIntakeImpact(report);
+  const signalCoverage = resolveSignalCoverage(report);
   return [
     `Trendplus pilot izveštaj kvaliteta podataka`,
     `Status spremnosti: ${getPilotReadinessStatusLabel(report.readinessStatus)}`,
     `Skor spremnosti: ${getPilotReadinessStatusLabel(report.readinessStatus)} (${report.readinessScore}/100)`,
     `Učitano: ${fmtNumber(report.loadedData.articlesCount, 0, "-")} artikala, ${fmtNumber(report.loadedData.saleItemsCount, 0, "-")} stavki prodaje, ${fmtNumber(report.loadedData.receiptsCount, 0, "-")} računa`,
     `Top problemi: bez dobavljača ${fmtNumber(report.issues.missingSupplierCount, 0, "-")}, bez nabavne cene ${fmtNumber(report.issues.missingCostCount, 0, "-")}, bez kategorije ${fmtNumber(report.issues.missingCategoryCount, 0, "-")}`,
-    `Uticaj: prihod bez cene ${formatPilotImpactPercentage(impact.revenueWithoutCost)}, artikli bez dobavljača ${formatPilotImpactPercentage(impact.articlesWithoutSupplier)}, blokirane preporuke ${fmtNumber(report.impact.recommendationsBlockedCount, 0, "-")}`,
+    `Uticaj: prihod bez cene ${formatPilotImpactPercentage(impact.revenueWithoutCost)}, artikli bez dobavljača ${formatPilotImpactPercentage(impact.articlesWithoutSupplier)}, blokirani artikli ${fmtNumber(report.impact.recommendationsBlockedCount, 0, "-")}`,
+    `Pokrivenost poslovnim signalom: ${signalCoverage == null ? "nije dostupna" : fmtPctFromRatio(signalCoverage, 1, "nije dostupna")} (informativno, ne menja readiness skor)`,
+    `Anchor perioda: ${report.periodAnchorCode ?? "nije potvrđen"}${report.periodAnchorMessage ? ` — ${report.periodAnchorMessage}` : ""}`,
     `Status importa: ${getPilotImportStatusLabel(report.lastImportStatus)}`,
     `Scope importa: ${getPilotImportScopeLabel(report.lastImportScope)}`,
     `Preporučene akcije: ${report.recommendedActions.join("; ")}`,
@@ -124,6 +142,7 @@ export function buildSummary(report: PilotDataQualityIntakeReport): string {
 
 export function buildExportPayload(report: PilotDataQualityIntakeReport, filters: AnalyticsNamedValue[]) {
   const impact = resolvePilotIntakeImpact(report);
+  const signalCoverage = resolveSignalCoverage(report);
   const rows: Array<{ section: string; item: string; value: string }> = [
     { section: "Skor", item: "Status spremnosti", value: getPilotReadinessStatusLabel(report.readinessStatus) },
     { section: "Skor", item: "Skor spremnosti", value: String(report.readinessScore) },
@@ -145,9 +164,11 @@ export function buildExportPayload(report: PilotDataQualityIntakeReport, filters
     { section: "Problemi", item: "Dobavljač bez naziva", value: String(report.issues.missingSupplierNameCount) },
     { section: "Uticaj", item: "Prihod bez cene", value: formatPilotImpactPercentage(impact.revenueWithoutCost) },
     { section: "Uticaj", item: "Artikli bez dobavljača", value: formatPilotImpactPercentage(impact.articlesWithoutSupplier) },
-    { section: "Uticaj", item: "Blokirane preporuke", value: String(report.impact.recommendationsBlockedCount) },
+    { section: "Uticaj", item: "Blokirani artikli (jedinstveni)", value: String(report.impact.recommendationsBlockedCount) },
     { section: "Uticaj", item: "Ignorisani redovi", value: String(report.impact.ignoredRowsCount) },
-    { section: "Uticaj", item: "Nedovoljni signali", value: String(report.impact.insufficientSignalCount) },
+    { section: "Uticaj", item: "Pokrivenost poslovnim signalom", value: signalCoverage == null ? "nije dostupno" : fmtPctFromRatio(signalCoverage, 1, "nije dostupno") },
+    { section: "Period", item: "Anchor perioda", value: report.periodAnchorCode ?? "nije potvrđen" },
+    { section: "Period", item: "Napomena za anchor", value: report.periodAnchorMessage ?? "-" },
   ];
 
   for (const action of report.recommendedActions) {
@@ -173,6 +194,8 @@ export function buildExportPayload(report: PilotDataQualityIntakeReport, filters
       { key: "lastImportScope", label: "Scope importa", value: getPilotImportScopeLabel(report.lastImportScope) },
       { key: "lastRefreshAtUtc", label: "Poslednje osveženje", value: report.lastRefreshAtUtc ?? null },
       { key: "dataScope", label: "Opseg podataka", value: report.dataScope },
+      { key: "periodAnchorCode", label: "Anchor perioda", value: report.periodAnchorCode ?? null },
+      { key: "periodAnchorMessage", label: "Napomena za anchor", value: report.periodAnchorMessage ?? null },
     ],
     locale: "sr-RS",
   });
@@ -621,16 +644,24 @@ export default function PilotDataQualityIntakeReportPanel({ report, loading, err
         <article className={`state-${signalStateTone(impactState)}`}>
           <span>Uticaj na preporuke</span>
           <strong>{signalStateLabel(impactState)}</strong>
-          <p>{formatPilotImpactPercentage(impact.revenueWithoutCost)} prihoda bez cene · {formatPilotImpactPercentage(impact.articlesWithoutSupplier)} artikala bez dobavljača · {fmtNumber(report.impact.recommendationsBlockedCount, 0, "-")} blokiranih preporuka</p>
+          <p>{formatPilotImpactPercentage(impact.revenueWithoutCost)} prihoda bez cene · {formatPilotImpactPercentage(impact.articlesWithoutSupplier)} artikala bez dobavljača · {fmtNumber(report.impact.recommendationsBlockedCount, 0, "-")} blokiranih artikala</p>
         </article>
       </div>
 
       <div className="pilot-intake-meta">
         <span>Period: {formatDate(report.periodFromUtc)} - {formatDate(report.periodToUtc)}</span>
+        <span>Pokrivenost poslovnim signalom: {resolveSignalCoverage(report) == null ? "nije dostupna" : fmtPctFromRatio(resolveSignalCoverage(report), 1, "nije dostupna")}</span>
+        <span>Anchor perioda: {report.periodAnchorCode ?? "nije potvrđen"}</span>
         <span>Scope: {report.dataScope}</span>
         <span>Import: {formatDateTime(report.lastImportAtUtc, "Nije dostupan")}</span>
         <span>Refresh: {formatDateTime(report.lastRefreshAtUtc, "Nije dostupan")}</span>
       </div>
+
+      {report.periodAnchorMessage ? (
+        <div className="pilot-intake-warning" role="status">
+          {report.periodAnchorMessage}
+        </div>
+      ) : null}
 
       <div className="pilot-intake-actions">
         {report.recommendedActions.map((action) => {

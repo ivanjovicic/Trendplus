@@ -110,7 +110,7 @@ public sealed class AnalyticsDataQualityConsistencyTests
     }
 
     [Fact]
-    public void IntakeScore_CannotStayGreen_WhenSignalIsInsufficientAndImportIsCritical()
+    public void IntakeScore_UsesFreshnessAsGate_ButNotUnsoldArticlesAsPenalty()
     {
         var health = new AnalyticsDataQualityHealthSnapshot
         {
@@ -138,8 +138,39 @@ public sealed class AnalyticsDataQualityConsistencyTests
             freshnessStatus: "critical",
             health);
 
-        Assert.InRange(score, 0, 69);
+        Assert.Equal(75, score);
         Assert.Equal("critical", DataQualityEndpoints.ResolveReadiness(score, "critical", 900, 1_000).Code);
+    }
+
+    [Fact]
+    public void IntakeScore_DoesNotPenalizeLegitimatelyUnsoldArticles()
+    {
+        var score = DataQualityEndpoints.CalculateIntakeScore(
+            totalArticles: 1_000,
+            missingSupplierCount: 0,
+            missingCostCount: 0,
+            missingCategoryCount: 0,
+            missingSizeCount: 0,
+            missingColorCount: 0,
+            missingSupplierNameCount: 0,
+            duplicateSkuCount: 0,
+            saleWithoutArticleCount: 0,
+            zeroOrNegativePriceCount: 0,
+            ignoredRows: 0,
+            rowsRead: 1_000,
+            insufficientSignalCount: 999,
+            freshnessStatus: "fresh",
+            new AnalyticsDataQualityHealthSnapshot
+            {
+                HasRevenueEvidence = true,
+                TotalRevenue = 100_000m,
+                MissingCostRevenueSharePct = 0d,
+                UnknownSupplierRevenueSharePct = 0d,
+                OrphanArticleCount = 0
+            });
+
+        Assert.Equal(100, score);
+        Assert.Equal("excellent", DataQualityEndpoints.ResolveReadiness(score, "fresh", 999, 1_000, 1_000).Code);
     }
 
     [Theory]

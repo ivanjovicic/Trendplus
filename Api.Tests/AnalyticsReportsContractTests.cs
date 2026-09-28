@@ -413,6 +413,27 @@ public sealed class AnalyticsReportsContractTests
         Assert.Equal(period.ToUtc.AddDays(1), period.ToExclusiveUtc);
     }
 
+    [Fact]
+    public void PilotIntakePeriod_AbsentDates_UsesBusinessDateAnchorWhenProvided()
+    {
+        var anchor = new DateTime(2026, 8, 5, 0, 0, 0, DateTimeKind.Utc);
+
+        var resolved = DataQualityEndpoints.TryResolveIntakePeriod(
+            null,
+            null,
+            anchor,
+            out var period,
+            out var errorCode,
+            out var errorMessage);
+
+        Assert.True(resolved);
+        Assert.Null(errorCode);
+        Assert.Null(errorMessage);
+        Assert.Equal(new DateTime(2026, 7, 7, 0, 0, 0, DateTimeKind.Utc), period.FromUtc);
+        Assert.Equal(anchor, period.ToUtc);
+        Assert.Equal(new DateTime(2026, 8, 6, 0, 0, 0, DateTimeKind.Utc), period.ToExclusiveUtc);
+    }
+
     [Theory]
     [InlineData("2026-06-01", "2026-06-30")]
     [InlineData("2026-06-15", "2026-06-15")]

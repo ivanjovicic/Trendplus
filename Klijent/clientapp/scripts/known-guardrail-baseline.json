@@ -125,7 +125,7 @@
     {
       "file": "src/pages/PilotReadinessPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 485,
+      "line": 489,
       "reason": "Existing pilot-readiness count fallback requires a reviewed unavailable-value exception."
     },
     {

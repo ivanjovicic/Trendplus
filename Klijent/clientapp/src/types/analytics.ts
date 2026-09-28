@@ -1050,6 +1050,9 @@ export interface PilotDataQualityIntakeReport {
   impact: PilotDataQualityIntakeImpact;
   recommendedActions: string[];
   meta?: AnalyticsResponseMeta | null;
+  /** explicit_request | sales_business_date | import_business_date_fallback */
+  periodAnchorCode?: string | null;
+  periodAnchorMessage?: string | null;
 }
 
 export interface DurableReportRow {

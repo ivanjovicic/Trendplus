@@ -198,6 +198,10 @@ function buildDataQualityCard(intakeReport: PilotDataQualityIntakeReport | null,
   const healthMetaWarning = Boolean(health?.meta?.isPartial || isAnalyticsMetaWarning(health?.meta));
   const blockedRecommendations = intakeReport?.impact.recommendationsBlockedCount ?? 0;
   const hasBlockingIssue = blockedRecommendations > 0;
+  const totalArticles = intakeReport?.loadedData.articlesCount ?? 0;
+  const signalCoverage = intakeReport && totalArticles > 0
+    ? Math.max(0, Math.min(1, (totalArticles - intakeReport.impact.insufficientSignalCount) / totalArticles))
+    : null;
   const isCritical = intakeIsEmpty
     || readinessStatus === "critical"
     || readinessStatus === "insufficient_data"
@@ -215,7 +219,7 @@ function buildDataQualityCard(intakeReport: PilotDataQualityIntakeReport | null,
     : intakeReport
       ? intakeIsEmpty
         ? `Kvalitet podataka: ${summary} Skor spremnosti nije dostupan dok se ne potvrde artikli i import redovi.`
-        : `Kvalitet podataka: ${summary} (skor ${formatLoadCount(score)}). Trenutno je blokirano ${formatLoadCount(blockedRecommendations)} preporuka; ignorisano je ${formatLoadCount(intakeReport.impact.ignoredRowsCount)} redova.`
+        : `Kvalitet podataka: ${summary} (skor ${formatLoadCount(score)}). Blokirano je ${formatLoadCount(blockedRecommendations)} jedinstvenih artikala; pokrivenost poslovnim signalom je ${signalCoverage == null ? "nije dostupna" : `${Math.round(signalCoverage * 100)}%`} i informativna je.`
       : `Health score: ${formatLoadCount(score)}. ${health?.scoreSummary ?? "Data quality health je učitan."}`;
 
   return {
@@ -227,7 +231,7 @@ function buildDataQualityCard(intakeReport: PilotDataQualityIntakeReport | null,
     actionLabel: "Otvori Kvalitet podataka",
     href: "/analytics/data-quality",
     meta: intakeReport
-      ? `Bez dobavljača: ${formatLoadCount(intakeReport.issues.missingSupplierCount)} · bez nabavne cene: ${formatLoadCount(intakeReport.issues.missingCostCount)} · bez kategorije: ${formatLoadCount(intakeReport.issues.missingCategoryCount)} · nedovoljni signali: ${formatLoadCount(intakeReport.impact.insufficientSignalCount)} · ignorisani redovi: ${formatLoadCount(intakeReport.impact.ignoredRowsCount)}`
+      ? `Bez dobavljača: ${formatLoadCount(intakeReport.issues.missingSupplierCount)} · bez nabavne cene: ${formatLoadCount(intakeReport.issues.missingCostCount)} · bez kategorije: ${formatLoadCount(intakeReport.issues.missingCategoryCount)} · pokrivenost signala: ${signalCoverage == null ? "nije dostupna" : `${Math.round(signalCoverage * 100)}%`} · anchor: ${intakeReport.periodAnchorCode ?? "nije potvrđen"}`
       : null,
   };
 }
