@@ -2743,3 +2743,263 @@ Do not change the established 06-14 / 14-22 business shift definitions unless re
 
 - Ready after RQ494 because both edit Daily sales population/query semantics.
 - Independent of RQ495/RQ496 after RQ494, but do not claim it while another Daily service owner is active.
+
+
+---
+
+Supplier cross-tab audit registration 2026-09-28: current-main review after RQ484/RQ486 found three non-overlapping residuals that are not owned by RQ474/RQ475/RQ476/RQ494/RQ495. Registered RQ498-RQ500 as WAITING; the canonical RQ primary pointer is unchanged. Audit: `docs/qa/SUPPLIER_ANALYTICS_COHORT_UX_AUDIT_2026-09-28.md`.
+
+## RQ498 - Supplier tabs: make cohort, metric basis and percentage-point units explicit
+
+Status: WAITING  
+Ready after: `RQ474`, `RQ475`, `RQ476`, `RQ494` and `RQ495` are DONE or their final metric/population contracts are stable  
+Priority: P1  
+Type: frontend-contract/report-export/tests  
+Feature family: supplier-cross-tab-metric-semantics  
+Parallel-safe: no  
+Owner: Analytics Reliability / Supplier
+
+### Problem
+
+The canonical Supplier tabs intentionally use different populations but expose similar headline names that look directly comparable:
+
+- Pregled “Ukupan promet” is certified period retail sales.
+- Skorkarta “Ukupan prihod” is scorecard-cohort revenue, not all Supplier sales.
+- Asortiman “Ukupan promet” is comparable post-nivelacija `postRevenue`, not ordinary period sales.
+- “Udeo top 5 dobavljača” appears across different populations.
+- Skorkarta “Maržni doprinos” is `full-price revenue × pre-markdown margin` estimate, not the covered retail-sales margin contribution in Pregled.
+- row “Trend pune cene” is `fullPriceRevenueShare - markdownRevenueShare`, which is a composition gap, not a time trend.
+- summary “Promena udela pune cene” is a current-vs-previous **percentage-point** delta, but the visible unit is percent-like rather than explicit pp.
+
+The calculations may be internally correct, but the shared vocabulary can make users compare unlike values as if they had the same numerator, denominator and time basis.
+
+### Evidence
+
+- `SupplierSalesStatsPage.tsx` owns certified period-sales revenue/units/cost/margin and positive-revenue concentration.
+- `SupplierDecisionHubPage.tsx` explains that Skorkarta only covers articles in the scorecard/markdown cohort; `supplierDecisionMargin.ts` defines margin contribution as “Full-price prihod × pre-markdown marža (procena)”.
+- `SupplierFootwearAnalyticsPage.tsx` builds headline `totalRevenue` from authoritative comparable `postRevenue` and compares prior event cohorts.
+- `SupplierDecisionHubPage.tsx` computes row `qualityTrendPct` from full-price share minus markdown share and uses a separate current-vs-previous full-price-share delta for the summary.
+- `RQ459` fixed formula/aggregate parity but intentionally retained row markdown-quality semantics; it does not solve the remaining label/unit ambiguity.
+- Audit: `docs/qa/SUPPLIER_ANALYTICS_COHORT_UX_AUDIT_2026-09-28.md`.
+
+### Scope
+
+- `SupplierSalesStatsPage.tsx`, `SupplierDecisionHubPage.tsx`, `SupplierFootwearAnalyticsPage.tsx`;
+- shared Supplier trust/table/export/report labels and formatters only where they expose these metrics;
+- optional explicit metric-basis/population metadata/chips if the current trust payload is insufficient.
+
+Do not change sales population, share denominator, recommendation scoring, cost resolution or pre/post event-window formulas. Those belong to `RQ476`, `RQ494`, `RQ495` and existing scorecard owners.
+
+### Read first
+
+- `docs/qa/SUPPLIER_ANALYTICS_COHORT_UX_AUDIT_2026-09-28.md`
+- `RQ459`, `RQ474`, `RQ475`, `RQ476`, `RQ494`, `RQ495`
+- `docs/qa/SUPPLIER_SHOETYPE_ACCURACY_CONTRACT_2026-09-26.md`
+- the three Supplier tab pages and Supplier report/export helpers
+
+### Do
+
+1. Give every headline revenue/margin/share metric a visible basis that survives screenshots and exports:
+   - Pregled: certified period sales;
+   - Skorkarta: scorecard/markdown cohort;
+   - Asortiman: comparable pre/post event cohort and post window.
+2. Rename Asortiman “Ukupan promet” to a post-window/comparable-cohort label; its help text must not say it is ordinary period sales.
+3. Rename or qualify Skorkarta revenue and margin cards so they cannot be mistaken for Pregled totals. The margin label must say it is an estimate based on full-price revenue and pre-markdown margin.
+4. Rename row “Trend pune cene” to a non-temporal composition label (for example full-price vs markdown gap) and display it in percentage points when the source values are shares.
+5. Display current-vs-previous full-price-share change explicitly in percentage points (`pp`), including report/export/detail metadata.
+6. Where the same human-readable label remains on more than one tab, expose a population/basis chip directly beside the metric or in the table/export metadata.
+7. Preserve missing/partial/no-baseline as unavailable/qualified; do not turn them into zero.
+
+### Tests
+
+- same numeric value on all three tabs renders three distinct population/basis labels;
+- Asortiman post revenue cannot render as generic period “Ukupan promet”;
+- a 0.62 full-price share vs 0.24 markdown share renders a 38 pp composition gap, not a temporal “trend”;
+- current 0.62 vs previous 0.58 renders +4 pp, not +4% growth;
+- Skorkarta estimated margin contribution is visibly distinct from Pregled covered retail-sales margin contribution;
+- table/detail/export/report preserve the same units and basis;
+- focused Supplier frontend specs, export specs and analytics guardrails pass.
+
+### Acceptance
+
+- a user cannot reasonably infer that identically positioned Supplier cards share the same population when they do not;
+- percent ratios and percentage-point deltas are never conflated;
+- Asortiman cannot present post-window revenue as ordinary period sales;
+- Skorkarta cannot present an estimated scorecard margin as the canonical Pregled margin;
+- no calculation or recommendation rule changes under this prompt.
+
+### Dependencies
+
+- Wait for `RQ474`/`RQ475` readiness/error contracts and `RQ476` share semantics.
+- Wait for P0 `RQ494` sales-population and `RQ495` margin-input semantics before freezing cross-tab labels.
+- `RQ459` is DONE and remains the aggregate/formula owner; do not reopen it.
+
+## RQ499 - Supplier shell: make critical, pending and tab-specific provenance states truthful
+
+Status: WAITING  
+Ready after: `RQ474` and `RQ475` settle the child error/readiness states  
+Priority: P1  
+Type: frontend-contract/tests  
+Feature family: supplier-consolidated-trust-provenance  
+Parallel-safe: no  
+Owner: Analytics Reliability / Supplier
+
+### Problem
+
+The consolidated Supplier shell can misstate trust while the active child tab is loading or critical:
+
+- `dataQualityLabels` has no `critical` key, so a real critical child status falls back to “Pouzdanost nije potvrđena”.
+- `trustToneClass` only maps `error` to the critical tone; `critical` itself can fall through to a non-critical tone.
+- when no child trust payload is available, the header uses “Materijalizovani prikaz skorkarte dobavljača” as the fallback source for **all** tabs, including Pregled and Asortiman.
+- a not-yet-arrived payload is treated similarly to “recommendation not allowed”, instead of an explicit pending trust state.
+- the shell text says Skorkarta is a supporting signal whose final decision lives in Pregled, while the trust-header mode can still present the scorecard as a recommendation when its gate is allowed. The user-facing role must be unambiguous without changing backend gate logic.
+
+### Evidence
+
+- `SupplierConsolidatedPage.tsx` current `dataQualityLabels`, `trustToneClass`, fallback `dataSource` and `mode` branches.
+- `SupplierConsolidatedPage.tsx` tab descriptions/takeaways explicitly define Pregled as final, Skorkarta as supporting comparison signal and Asortiman as explanation.
+- `RQ486` fixed stale request-key state, invalid dates, stores, layout and sorting, but its completion did not add the missing `critical` mapping or tab-specific fallback source.
+- Audit: `docs/qa/SUPPLIER_ANALYTICS_COHORT_UX_AUDIT_2026-09-28.md`.
+
+### Scope
+
+- `SupplierConsolidatedPage.tsx` and its focused specs;
+- shared `AnalyticsTrustHeader` only if a reusable pending/supporting-signal state is required.
+
+Do not change child API calls, recommendation decisions, scorecard eligibility, metric values or readiness backend contracts.
+
+### Read first
+
+- `RQ474`, `RQ475`, `RQ486`
+- `docs/ANALYTICS_TRUST_HEADER_COVERAGE.md`
+- `SupplierConsolidatedPage.tsx`
+- `AnalyticsTrustHeader.tsx`
+- Supplier shared trust payload types/specs
+
+### Do
+
+1. Add an explicit `critical` label and critical visual tone; keep `error`, `warning`, `insufficient_data`, `unknown` distinct.
+2. Define tab-specific fallback/pending data sources:
+   - Pregled: Supplier retail-sales stats;
+   - Skorkarta: Supplier decision scorecard/materialized source;
+   - Asortiman: vendor-sales-nivelacija/pre-post source.
+3. While the child payload for the active request has not arrived, show a neutral pending trust state rather than inventing a source quality/recommendation conclusion.
+4. On filter/tab changes, never show the prior tab’s source/severity while the new request is pending.
+5. Make the user-facing role consistent: Pregled is final decision; Skorkarta may show a backend recommendation **signal** but must not look like a second final decision owner; Asortiman remains explanatory.
+6. Preserve child-provided requested/effective/observed period, fallback and recommendation metadata unchanged once it arrives.
+
+### Tests
+
+- `critical` child status -> critical label and tone;
+- pending Overview/Scorecard/Assortment -> correct tab source/pending state, never the Scorecard source on another tab;
+- tab switch while previous payload exists -> no stale source/severity flash;
+- scorecard `recommendationAllowed=true` still renders as supporting scorecard signal, not the canonical final decision;
+- `error`, `warning`, `insufficient_data`, `unknown` remain distinct;
+- `RQ486` supplier-switch and request-key regressions stay green.
+
+### Acceptance
+
+- critical never appears neutral or merely unknown;
+- the active tab never claims another tab’s data source;
+- loading/pending is not represented as low-quality data;
+- exactly one Supplier surface is presented as the final business recommendation: Pregled.
+
+### Dependencies
+
+- `RQ486` is DONE and is a required baseline.
+- Sequence after `RQ474`/`RQ475` so the child error/readiness states are stable.
+- No dependency on `RQ498` calculations; coordinate if both touch shell metric-basis copy.
+
+## RQ500 - Supplier information hierarchy: promote unique Scorecard/Assortment evidence and demote duplicate overview KPIs
+
+Status: WAITING  
+Ready after: `RQ498` and `RQ499` are DONE, and `RQ474`/`RQ475`/`RQ476` are stable  
+Priority: P2  
+Type: frontend/product-analytics/tests  
+Feature family: supplier-cross-tab-information-hierarchy  
+Parallel-safe: no  
+Owner: Analytics UX / Supplier
+
+### Problem
+
+The three canonical Supplier tabs are worth keeping, but Skorkarta and Asortiman spend prime screen space repeating generic Supplier revenue/concentration/growth metrics already better owned by Pregled. Their most distinctive decision evidence is lower in the page.
+
+Skorkarta already receives `fullPriceRevenueShare`, `fullPriceSellthrough`, `markdownRevenueShare`, `preMarkdownMarginPct` and `capitalAtRisk`, yet its headline cards emphasize total revenue, top-five concentration and estimated margin contribution.
+
+Asortiman’s unique value is type mix, comparable pre/post behavior, elasticity and article coverage, yet its headline cards emphasize post revenue, top-five Supplier share and generic change/growth.
+
+The result is extra cognitive load and a false sense that three tabs are alternative versions of the same Supplier dashboard.
+
+### Evidence
+
+- `SupplierDecisionHubPage.tsx` summary/ranking DTOs expose full-price share, markdown share, full-price sell-through, pre-markdown margin, capital at risk and recommendation evidence.
+- `SupplierFootwearAnalyticsPage.tsx` exposes dominant type, type distribution, elasticity, active/total articles and comparable pre/post metrics.
+- `SupplierSalesStatsPage.tsx` is already the canonical final-decision owner for period revenue/units/margin/concentration/PoP.
+- Consolidated tab descriptions explicitly define the three different user questions.
+- Audit: `docs/qa/SUPPLIER_ANALYTICS_COHORT_UX_AUDIT_2026-09-28.md`.
+
+### Scope
+
+- presentation hierarchy, card selection/order, section titles/help text and focused frontend tests for the three Supplier tabs;
+- exports may keep the full metric set but should group/name it by population and role.
+
+Do not remove API fields, alter backend formulas, change recommendation logic or delete drill-down data. This is prioritization, not data loss.
+
+### Read first
+
+- `docs/qa/SUPPLIER_ANALYTICS_COHORT_UX_AUDIT_2026-09-28.md`
+- `RQ498`, `RQ499`
+- `SupplierConsolidatedPage.tsx`
+- the three Supplier tab pages and their focused specs
+
+### Do
+
+1. Preserve Pregled as the primary decision view. Its headline should prioritize:
+   - period revenue/units;
+   - margin contribution + cost coverage;
+   - weighted margin;
+   - concentration;
+   - PoP;
+   - final recommendation/reason/quality.
+2. Rework Skorkarta headline priority toward:
+   - full-price revenue share;
+   - markdown revenue share/dependency;
+   - full-price sell-through;
+   - pre-markdown margin;
+   - capital at risk;
+   - full-price share delta (pp);
+   - scorecard signal/reason.
+   Demote scorecard-cohort revenue, top-five concentration and estimated margin contribution to context unless a concrete decision use is documented.
+3. Rework Asortiman headline priority toward:
+   - dominant footwear type + share;
+   - type distribution/concentration;
+   - comparable-cohort coverage;
+   - active versus total articles;
+   - type elasticity/response;
+   - comparable pre/post revenue/quantity behavior.
+   Demote post-window total revenue, Supplier top-five share and generic cross-supplier growth to context.
+4. Avoid duplicate charts that answer the same question as Pregled unless their cohort difference is the point of the chart.
+5. Keep row/detail/export access to demoted metrics; do not delete evidence.
+6. Add a compact cross-tab “šta ovaj tab meri” population/role cue so a user can align the three tabs without opening help text.
+
+### Tests
+
+- each tab has a distinct primary KPI set matching its declared question;
+- Skorkarta exposes the full-price/markdown/sell-through/risk metrics already returned by the API;
+- Asortiman exposes type/coverage/elasticity/pre-post evidence as primary;
+- demoted metrics remain available in detail/export where useful;
+- no final-recommendation CTA appears outside Pregled;
+- responsive Supplier specs and analytics guardrails pass.
+
+### Acceptance
+
+- Pregled, Skorkarta and Asortiman are complementary rather than three competing dashboards;
+- the first screenful of each tab answers a different, explicit business question;
+- unique evidence is promoted and duplicate generic KPI noise is reduced;
+- no numeric definition, backend ownership or recommendation gate is changed.
+
+### Dependencies
+
+- Run after `RQ498` establishes truthful cohort/unit labels and `RQ499` establishes trust-role semantics.
+- Also wait for `RQ474`/`RQ475`/`RQ476` because unavailable/error/share states must be final before visual reprioritization.
+- P0 `RQ494`/`RQ495` remain higher priority whenever their affected Supplier numbers are not yet stable.
