@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import SupplierDecisionReport from "../SupplierDecisionReport";
+import { formatDateTime } from "../../../utils/analyticsFormatters";
 
 vi.mock("../KpiExplainButton", () => ({
   default: () => null,
@@ -116,9 +117,9 @@ describe("SupplierDecisionReport", () => {
     render(<SupplierDecisionReport payload={payload} />);
 
     expect(screen.getByText("Datum izveštaja")).toBeInTheDocument();
-    expect(screen.getByText(/26\. 8\. 2026\. 12:00/)).toBeInTheDocument();
+    expect(screen.getByText(formatDateTime("2026-08-26T10:00:00Z"))).toBeInTheDocument();
     expect(screen.getByText("Poslednje osveženje")).toBeInTheDocument();
-    expect(screen.getAllByText(/31\. 7\. 2026\. 07:30/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(formatDateTime("2026-07-31T05:30:00Z")).length).toBeGreaterThan(0);
     expect(screen.getByText("Svežina podataka: Zastarelo")).toBeInTheDocument();
     expect(screen.getAllByText("Efektivni period").length).toBeGreaterThan(0);
     expect(screen.getByText(/Posmatrani podaci:/)).toBeInTheDocument();

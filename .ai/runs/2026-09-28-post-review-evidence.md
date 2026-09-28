@@ -11,3 +11,9 @@
 - RQ467 remains READY and is intentionally not bundled into this review fix because it changes readiness/population business semantics (default-period anchor, DUG/KOREKCIJA policy, cost fallback and blocked-count definition) rather than repairing a local regression.
 - No production database mutation or schema change was made.
 - Validation available in this connector-only review: static source/diff inspection and the added focused regression specification. Runtime test execution was not available in this chat execution environment.
+
+## CI follow-up
+
+- Analytics Quality Gates run `36448814105` exposed two pre-existing brittle frontend tests while validating the post-review fix: `AnalyticsDetails.periodState.spec.tsx` depended on the wall-clock 30-day default (on 2026-09-28 its hard-coded 2026-08-30 value was not a state change), and `SupplierDecisionReport.spec.tsx` assumed a UTC+2 runner timezone.
+- Both were repaired as test-contract fixes only: the period test now uses a guaranteed changed valid date before reversing it, and Supplier report timestamp assertions use the shared environment-aware formatter instead of hard-coded UTC+2 text.
+- The Pilot Intake regenerate regression itself was not among the failures.
