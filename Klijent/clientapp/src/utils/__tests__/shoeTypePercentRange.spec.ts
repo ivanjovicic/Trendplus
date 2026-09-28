@@ -5,6 +5,7 @@ import {
   resolveShoeTypePercentValue,
   resolveShoeTypeQuantitySharePct,
   resolveShoeTypeRevenueSharePct,
+  resolveShoeTypeSignedSharePct,
 } from "../shoeTypePercentRange";
 
 describe("resolveShoeTypePercentValue", () => {
@@ -37,6 +38,16 @@ describe("resolveShoeTypePartSharePct", () => {
     [10, null],
   ])("rejects incompatible share evidence (%s / %s)", (numerator, denominator) => {
     expect(resolveShoeTypePartSharePct(numerator, denominator)).toBeNull();
+  });
+});
+
+describe("resolveShoeTypeSignedSharePct", () => {
+  it.each([-5, 0, 100, 150])("keeps finite signed net-sales shares (%s)", (value) => {
+    expect(resolveShoeTypeSignedSharePct(value)).toBe(value);
+  });
+
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, null, undefined])("rejects non-finite shares (%s)", (value) => {
+    expect(resolveShoeTypeSignedSharePct(value)).toBeNull();
   });
 });
 

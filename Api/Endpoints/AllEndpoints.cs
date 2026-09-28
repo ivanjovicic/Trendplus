@@ -2547,13 +2547,14 @@ public static class AllEndpoints
                 var shoeTypesWithRecommendation = shoeTypes
                     .Select(row =>
                     {
-                        var sharePctForDecision = totalRevenue > 0m
+                        var sharePctAvailable = totalRevenue > 0m;
+                        var sharePctForDecision = sharePctAvailable
                             ? Math.Round((double)(row.ukupanPromet / totalRevenue * 100m), 2)
                             : 0d;
-                        double? sharePct = totalRevenue > 0m ? sharePctForDecision : null;
+                        double? sharePct = sharePctAvailable ? sharePctForDecision : null;
                         var hasPreviousPeriodWindow = row.previousPeriodRevenue is not null;
                         var isNewType = hasPreviousPeriodWindow
-                            && row.previousPeriodRevenue <= 0m
+                            && row.previousPeriodRevenue == 0m
                             && row.ukupanPromet > 0m;
                         var isUnknownType = !row.tipObuceId.HasValue;
 
@@ -2572,7 +2573,8 @@ public static class AllEndpoints
                             PreviousPeriodUnits: row.previousPeriodUnits,
                             HasPreviousPeriodWindow: hasPreviousPeriodWindow,
                             IsNewEntity: isNewType,
-                            UnknownBucketSharePct: unknownTypeSharePct),
+                            UnknownBucketSharePct: unknownTypeSharePct,
+                            SharePctAvailable: sharePctAvailable),
                             recommendationBenchmarkMarginPct);
                         var hasComparableNivelacijaSignal = row.prePostNivelacijaRevenueImpactPct.HasValue
                             && row.prePostNivelacijaUnitsImpactPct.HasValue;
@@ -2631,6 +2633,10 @@ public static class AllEndpoints
                             row.prePostComparableArticleCount,
                             row.isPreviousOnly,
                             sharePct,
+                            sharePctBasis = sharePctAvailable ? "net_sales_signed" : null,
+                            sharePctNumerator = Math.Round((double)row.ukupanPromet, 2),
+                            sharePctDenominator = Math.Round((double)totalRevenue, 2),
+                            sharePctUnavailableReason = sharePctAvailable ? null : "non_positive_net_sales_denominator",
                             reliabilityPct = recommendationAllowed ? (double?)exposedRecommendation.ReliabilityPct : null,
                             recommendation = new
                             {

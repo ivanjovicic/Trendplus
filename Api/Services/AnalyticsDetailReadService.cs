@@ -813,12 +813,13 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         var unknownSharePct = totalRevenue > 0m
             ? Math.Round((double)(unknownRevenue / context.SalesRows.Sum(x => x.Prihod) * 100m), 2)
             : 0d;
-        var sharePct = context.SalesRows.Sum(x => x.Prihod) > 0m
+        var sharePctAvailable = context.SalesRows.Sum(x => x.Prihod) > 0m;
+        var sharePct = sharePctAvailable
             ? Math.Round((double)(totalRevenue / context.SalesRows.Sum(x => x.Prihod) * 100m), 2)
             : 0d;
         var hasPreviousPeriodWindow = comparison?.PreviousPeriodRevenue is not null;
         var isNewEntity = hasPreviousPeriodWindow
-            && comparison!.PreviousPeriodRevenue <= 0m
+            && comparison!.PreviousPeriodRevenue == 0m
             && totalRevenue > 0m;
         var recommendation = AnalyticsDecisionRecommendationEngine.Evaluate(
             new AnalyticsDecisionRecommendationEngine.RecommendationInput(
@@ -836,7 +837,8 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 PreviousPeriodUnits: comparison?.PreviousPeriodUnits,
                 HasPreviousPeriodWindow: hasPreviousPeriodWindow,
                 IsNewEntity: isNewEntity,
-                UnknownBucketSharePct: unknownSharePct),
+                UnknownBucketSharePct: unknownSharePct,
+                SharePctAvailable: sharePctAvailable),
             recommendationBenchmarkMarginPct);
         var exposedRecommendation = AnalyticsDecisionRecommendationEngine.ApplyComparableSignalGate(
             recommendation,

@@ -154,7 +154,7 @@ describe("ShoeTypeSalesStatsPage overview label truth (RQ446)", () => {
     const chart = await screen.findByTestId("shoe-type-concentration-chart");
     const series = chart.querySelector('[data-testid="bar-series"][data-key="sharePct"]');
     expect(series).not.toBeNull();
-    expect(series).toHaveTextContent("Udeo u prometu %");
+    expect(series).toHaveTextContent("Neto udeo u prometu %");
     expect(chart.textContent).not.toContain("raw:sharePct");
   });
 

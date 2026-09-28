@@ -17,7 +17,8 @@ public static class AnalyticsDecisionRecommendationEngine
         int? PreviousPeriodUnits,
         bool HasPreviousPeriodWindow,
         bool IsNewEntity,
-        double? UnknownBucketSharePct);
+        double? UnknownBucketSharePct,
+        bool SharePctAvailable = true);
 
     public sealed record RecommendationResult(
         string Status,
@@ -72,6 +73,7 @@ public static class AnalyticsDecisionRecommendationEngine
             : 100d;
 
         if (input.IsUnknownEntity) reasons.Add("unknown_entity");
+        if (!input.SharePctAvailable) reasons.Add("share_denominator_unavailable");
         if (input.IsNewEntity) reasons.Add("new_entity");
         if (!input.HasPreviousPeriodWindow) reasons.Add("previous_period_missing");
         if (input.PreviousPeriodRevenue.HasValue && input.PreviousPeriodRevenue.Value <= 0m && input.TotalRevenue > 0m) reasons.Add("no_previous_baseline");
@@ -153,6 +155,7 @@ public static class AnalyticsDecisionRecommendationEngine
         bool applyUnknownShareCriticalGate)
     {
         if (input.IsUnknownEntity
+            || !input.SharePctAvailable
             || !hasUnknownShare
             || !hasMarginCoverage
             || marginCoverage < 40d
@@ -189,7 +192,8 @@ public static class AnalyticsDecisionRecommendationEngine
 
         if (reasons.Contains("missing_known_margin_baseline")
             || (requireComparableSignal && reasons.Contains("missing_split_coverage"))
-            || reasons.Contains("unknown_bucket_share_unavailable"))
+            || reasons.Contains("unknown_bucket_share_unavailable")
+            || reasons.Contains("share_denominator_unavailable"))
         {
             return "insufficient_data";
         }
@@ -274,6 +278,8 @@ public static class AnalyticsDecisionRecommendationEngine
                 "Nivelacija split coverage is missing; insufficient evidence for a reliable recommendation.",
             "insufficient_data" when reasons.Contains("unknown_bucket_share_unavailable") =>
                 "Unknown-entity share denominator is unavailable; insufficient evidence for a reliable recommendation.",
+            "insufficient_data" when reasons.Contains("share_denominator_unavailable") =>
+                "Net-sales share denominator is unavailable; insufficient evidence for a reliable recommendation.",
             "insufficient_data" when IsTinySample(input) =>
                 "Sample is too small (revenue/units/articles) to produce a trustworthy recommendation.",
             _ => "Insufficient evidence for automated decision support."

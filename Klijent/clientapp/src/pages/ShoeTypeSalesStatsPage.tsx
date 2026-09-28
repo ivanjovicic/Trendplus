@@ -69,6 +69,7 @@ import {
 } from "../utils/shoeTypeMarginComparison";
 import {
   resolveShoeTypePercentValue,
+  resolveShoeTypeSignedSharePct,
   resolveShoeTypeQuantitySharePct,
 } from "../utils/shoeTypePercentRange";
 import { resolveShoeTypeCoveragePct } from "../utils/shoeTypeSalesCoverage";
@@ -147,7 +148,7 @@ const decisionColumns: AnalyticsTableColumn<DecisionShoeType>[] = [
   { key: "ukupanPromet", header: "Promet", dataType: "currency" },
   { key: "ukupnaKolicina", header: "Količina", dataType: "number" },
   { key: "totalCost", header: "Nabavna vrednost", dataType: "currency" },
-  { key: "sharePct", header: "Udeo %", dataType: "percent" },
+  { key: "sharePct", header: "Neto udeo %", dataType: "percent" },
   { key: "marginContribution", header: "Maržni doprinos", dataType: "currency" },
   { key: "marginPct", header: "Marža %", dataType: "percent" },
   { key: "marginQualityLabel", header: "Kvalitet marže", dataType: "text" },
@@ -263,6 +264,10 @@ type StatusTooltipData = {
   confidenceAvailable: boolean;
   dataQualityStatus: RecommendationQualityStatus;
   reasonCodes: string[];
+  sharePctBasis?: "net_sales_signed" | null;
+  sharePctNumerator?: number | null;
+  sharePctDenominator?: number | null;
+  sharePctUnavailableReason?: "non_positive_net_sales_denominator" | null;
 };
 
 function buildStatusTooltip(data: StatusTooltipData): string {
@@ -278,7 +283,12 @@ function buildStatusTooltip(data: StatusTooltipData): string {
   const confidenceText = data.confidenceAvailable ? fmtPct(data.confidencePct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
   const qualityText = recommendationQualityLabel(data.dataQualityStatus);
   const hintText = recommendationReasonHints(data.reasonCodes).join(" | ");
-  return `${recommendationStatusLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Udeo ${fmtPct(data.sharePct, 1)} | Marža ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Nivelacija artikala ${fmtPct(data.coveragePct, 1)} | Uticaj nivelacije ${impactText} | Split pokriće ${fmtPct(data.splitCoveragePct, 1)} | ${RECOMMENDATION_RELIABILITY_LABEL} ${reliabilityText} | ${RECOMMENDATION_CONFIDENCE_LABEL} ${confidenceText} | Kvalitet ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
+  const shareText = data.sharePctBasis === "net_sales_signed"
+    ? `${fmtPct(data.sharePct, 1)} (neto promet: ${fmtRsd(data.sharePctNumerator)} / ${fmtRsd(data.sharePctDenominator)}; povrati mogu dati <0% ili >100%)`
+    : data.sharePctUnavailableReason === "non_positive_net_sales_denominator"
+      ? "Nije dostupno (ukupan neto promet nije pozitivan)"
+    : fmtPct(data.sharePct, 1);
+  return `${recommendationStatusLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Neto udeo ${shareText} | Marža ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Nivelacija artikala ${fmtPct(data.coveragePct, 1)} | Uticaj nivelacije ${impactText} | Split pokriće ${fmtPct(data.splitCoveragePct, 1)} | ${RECOMMENDATION_RELIABILITY_LABEL} ${reliabilityText} | ${RECOMMENDATION_CONFIDENCE_LABEL} ${confidenceText} | Kvalitet ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
 }
 
 function describePopMetric(item: ShoeTypeSalesStat): { label: string; title: string; className: string } {
@@ -290,7 +300,7 @@ function describePopMetric(item: ShoeTypeSalesStat): { label: string; title: str
     };
   }
 
-  if (item.previousPeriodRevenue != null && item.previousPeriodRevenue <= 0 && item.ukupanPromet > 0) {
+  if (item.previousPeriodRevenue === 0 && item.ukupanPromet > 0) {
     return {
       label: "Novo",
       title: "Tip obuće nije imao promet u prethodnom uporedivom periodu, pa PoP procenat nije smislen.",
@@ -542,7 +552,7 @@ export default function ShoeTypeSalesStatsPage() {
     if (rows.length === 0) return [];
 
     return rows.map((item) => {
-      const sharePct = resolveShoeTypePercentValue(item.sharePct);
+      const sharePct = resolveShoeTypeSignedSharePct(item.sharePct);
       const totalCost = item.totalCost ?? null;
       const marginContribution = item.marginContribution;
       const splitCoveragePct = resolveShoeTypePercentValue(item.prePostNivelacijaRevenueCoveragePct);
@@ -643,7 +653,7 @@ export default function ShoeTypeSalesStatsPage() {
     if (sortedRows.length === 0) return [] as Array<{ name: string; sharePct: number }>;
 
     const ranked = [...sortedRows]
-      .filter((row): row is typeof row & { sharePct: number } => resolveShoeTypePercentValue(row.sharePct) != null)
+      .filter((row): row is typeof row & { sharePct: number } => resolveShoeTypeSignedSharePct(row.sharePct) != null)
       .sort((a, b) => b.sharePct - a.sharePct);
     if (ranked.length === 0) return [];
     const topRows = ranked.slice(0, 6).map((row) => ({
@@ -652,8 +662,8 @@ export default function ShoeTypeSalesStatsPage() {
     }));
 
     const remaining = ranked.slice(6).reduce((sum, row) => sum + row.sharePct, 0);
-    const ostaliSharePct = resolveShoeTypePercentValue(Number(remaining.toFixed(2)));
-    if (ostaliSharePct != null && ostaliSharePct > 0.1) {
+    const ostaliSharePct = resolveShoeTypeSignedSharePct(Number(remaining.toFixed(2)));
+    if (ostaliSharePct != null && Math.abs(ostaliSharePct) > 0.1) {
       topRows.push({ name: "Ostali", sharePct: ostaliSharePct });
     }
 
@@ -664,7 +674,7 @@ export default function ShoeTypeSalesStatsPage() {
     () => buildShoeTypeMarginComparisonProjection(
       sortedRows,
       totalMarginContribution,
-      (sharePct) => resolveShoeTypePercentValue(sharePct) != null,
+      (sharePct) => resolveShoeTypeSignedSharePct(sharePct) != null,
     ),
     [sortedRows, totalMarginContribution],
   );
@@ -1213,8 +1223,8 @@ export default function ShoeTypeSalesStatsPage() {
 
           <section className="shoetype-decision-panels">
             <article className="shoetype-decision-card shoetype-decision-card--chart analytics-surface-panel">
-              <h2>Koncentracija prometa po tipu obuće <InfoTip text="Grafikon prikazuje koliki udeo ukupnog prometa nose tipovi obuće. Koristi samo promet, bez tumačenja profita ili neto marže." /></h2>
-              <p>Brz pregled koji tipovi nose najveći deo prihoda.</p>
+              <h2>Koncentracija neto prometa po tipu obuće <InfoTip text="Grafikon prikazuje potpisani neto udeo ukupnog prometa po tipu obuće. Povrati mogu dati negativan udeo ili udeo veći od 100%; to je posledica neto imenice, ne greška prikaza." /></h2>
+              <p>Rangirano po potpisanom neto prometu; povrati mogu dati negativan udeo ili udeo veći od 100%.</p>
               {concentrationData.length > 0 ? (
                 <div className="shoetype-decision-chart-wrap" data-testid="shoe-type-concentration-chart">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
@@ -1230,7 +1240,7 @@ export default function ShoeTypeSalesStatsPage() {
                       <YAxis type="category" dataKey="name" width={180} tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} />
                       <Tooltip contentStyle={COMMAND_TOOLTIP_STYLE} labelStyle={COMMAND_TOOLTIP_LABEL_STYLE} cursor={CHART_CURSOR_STYLE} formatter={(value: number | string | undefined) => value == null ? "Nije dostupno" : fmtPct(Number(value), 2)} />
                       <Legend wrapperStyle={CHART_LEGEND_STYLE} iconType="circle" iconSize={8} />
-                      <Bar dataKey="sharePct" fill="url(#shoeShareGradient)" radius={[0, 10, 10, 0]} name="Udeo u prometu %" />
+                      <Bar dataKey="sharePct" fill="url(#shoeShareGradient)" radius={[0, 10, 10, 0]} name="Neto udeo u prometu %" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -1392,7 +1402,7 @@ export default function ShoeTypeSalesStatsPage() {
                           data-sort-dir={isSortActive("sharePct", sortField) ? sortDir : "none"}
                           onClick={() => handleSort("sharePct")}
                         >
-                          Udeo u prometu <span className="sort-indicator" aria-hidden="true">{sortMarker("sharePct", sortField, sortDir)}</span> <InfoTip text="Udeo ovog tipa obuće u ukupnom prometu svih prikazanih tipova. Formula: promet tipa / ukupan promet x 100." />
+                          Neto udeo u prometu <span className="sort-indicator" aria-hidden="true">{sortMarker("sharePct", sortField, sortDir)}</span> <InfoTip text="Potpisani neto udeo ovog tipa obuće u ukupnom neto prometu. Povrati mogu dati vrednost ispod 0% ili iznad 100%." />
                         </button>
                       </th>
                       <th className={`analytics-data-table__numeric${isSortActive("marginContribution", sortField) ? " is-sorted" : ""}`}>
@@ -1463,16 +1473,17 @@ export default function ShoeTypeSalesStatsPage() {
                     ) : (
                       sortedRows.map((row, index) => {
                         const rowKey = shoeTypeKey(row);
-                        const rank = index + 1;
+                        const revenueRanked = sortField === "ukupanPromet" && sortDir === "desc";
+                        const rank = revenueRanked ? index + 1 : null;
                         const expanded = expandedTypeKey === rowKey;
                         const popMetric = describePopMetric(row);
                         const nivelacijaImpactMetric = describeNivelacijaImpactMetric(row);
                         return (
-                          <tr key={rowKey} className={[expanded ? "expanded-row" : "", rank <= 3 ? `shoetype-rank-row shoetype-rank-row-${rank}` : ""].filter(Boolean).join(" ")}>
+                          <tr key={rowKey} className={[expanded ? "expanded-row" : "", rank != null && rank <= 3 ? `shoetype-rank-row shoetype-rank-row-${rank}` : ""].filter(Boolean).join(" ")}>
                             <td className="analytics-data-table__numeric"><span className="metric-chip metric-chip-neutral">{fmtPct(row.coveragePct, 1)}</span></td>
                             <td>
                               <div className="shoetype-name-cell">
-                                <span className={`shoetype-rank-badge ${rank <= 3 ? `rank-${rank}` : "rank-other"}`}>#{rank}</span>
+                                {rank != null ? <span className={`shoetype-rank-badge ${rank <= 3 ? `rank-${rank}` : "rank-other"}`}>#{rank}</span> : null}
                                 <AnalyticsUnknownLink
                                   value={row.tipObuceNaziv}
                                   issueType="missingShoeType"
@@ -1565,7 +1576,7 @@ export default function ShoeTypeSalesStatsPage() {
                   <strong>{fmtSignedPct(selectedRow.marginPct, 2)}</strong>
                 </article>
                 <article>
-                  <span>Udeo u prometu <InfoTip text="Procenat koji ovaj tip obuće čini u ukupnom prometu. Formula: promet tipa / ukupan promet svih prikazanih tipova x 100." /></span>
+                  <span>Neto udeo u prometu <InfoTip text="Potpisani neto udeo ovog tipa u ukupnom prometu. Formula: neto promet tipa / ukupni neto promet svih prikazanih tipova x 100. Povrati mogu dati vrednost ispod 0% ili iznad 100%." /></span>
                   <strong>{fmtPct(selectedRow.sharePct, 2)}</strong>
                 </article>
                 <article>

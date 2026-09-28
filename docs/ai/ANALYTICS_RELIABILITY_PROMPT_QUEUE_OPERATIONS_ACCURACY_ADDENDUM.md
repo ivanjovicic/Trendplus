@@ -2,11 +2,12 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ496
 Owner promotion/claim 2026-09-28: idle recovery confirmed `RQ494` is the highest-priority dependency-complete operations accuracy prompt after RQ445/RQ446/RQ456/RQ457/RQ484 completion; no active lock/branch/PR owner overlaps its sales-header dataScope scope, and Q83 is `PARTIAL` without an active repo-local lock. `RQ494` moved WAITING -> READY -> IN_PROGRESS in this workspace; local lock `.ai/task-locks/RQ494-codex.lock.md`.
 Owner completion 2026-09-29: `RQ494` moved IN_PROGRESS -> DONE and was delivered directly to `main` in `84b6ea26450aaf77341ccf37c47efe5fac83246f`. Certified sales `dataScope` now follows `ProdajaZaglavlje.DataOrigin` across Daily, Supplier, Shoe Type, Color/detail/data-window and the independent Supplier/Shoe oracle; metadata exposes `sale_header.data_origin`, and the adversarial header/article-origin fixture is covered. Focused backend proof: 24/24; Supplier/Shoe contract suite: 40 passed, 5 PostgreSQL integration tests skipped because no connection string was available; frontend schema: 15/15; guardrails/typecheck/build pass. Run log: `.ai/runs/2026-09-29-RQ494-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-29: idle recovery verified `RQ494` DONE on current `origin/main`, no active lock/branch/PR owner overlaps the line-level snapshot-cost path, and `RQ495` is dependency-complete and collision-safe; `RQ495` moved WAITING -> READY -> IN_PROGRESS in this workspace. Local lock `.ai/task-locks/RQ495-codex.lock.md`.
 Owner completion 2026-09-29: `RQ495` moved IN_PROGRESS -> DONE after all Supplier/Shoe Type list, detail, Supplier Hub and snapshot-comparison readers were changed from article-level minimum cost to exact `BatchId + ProdajaStavkaId` lookup. Sale-line identity is preserved through grouped inputs, historical cost remains first, exact snapshot remains second, product fallback remains later, and existing batch-id cache keys remain sufficient. Focused proof: 27/27 owner tests and 57/57 analytics report contract tests; governance validators and diff check pass. Run log: `.ai/runs/2026-09-29-RQ495-evidence.md`. Evidence state: synchronized after main delivery.
+Owner promotion/claim 2026-09-29: idle recovery verified `RQ494` and `RQ495` DONE on current `origin/main`, no active Shoe Type/`AllEndpoints.cs` lock or branch/PR owner remains, and `RQ496` is dependency-complete and collision-safe; `RQ496` moved WAITING -> READY -> IN_PROGRESS in this workspace. Local lock `.ai/task-locks/RQ496-codex.lock.md`.
 Owner promotion/claim 2026-09-28: idle recovery verified `RQ390`, `RQ432` and `RQ456` DONE on current `origin/main`, no active Pre-Nivelacija endpoint/model/page owner or conflicting lock/branch/PR, and `RQ489` is dependency-complete. `RQ489` moved WAITING -> READY -> IN_PROGRESS in this workspace; local lock `.ai/task-locks/RQ489-codex.lock.md`.
 Owner completion 2026-09-28: `RQ489` moved IN_PROGRESS -> DONE and was delivered directly to `main` in `63787f0b24a946e3ce8efa1abb1fa8f1509d7c1b`. Pre-Nivelacija now uses the canonical trimmed/case-insensitive DUG/KOREKCIJA receipt population, keeps positive-net signed returns actionable, computes recency from the latest positive retail sale, exposes receipt/return/recency provenance, and bumps the cache/formula version to v6. Focused proof: backend 44/44; frontend 74/74; analytics guardrails, typecheck and production build pass; governance validators pass. Live PostgreSQL endpoint execution was not run because no isolated test database was assigned. Run log: `.ai/runs/2026-09-28-RQ489-evidence.md`. Evidence state: synchronized.
 Owner completion 2026-09-26: `RQ450` was delivered for post-Access-import Operations integrity probing. Successful analytics imports schedule exactly one post-commit bounded probe linked to `access_import:{batchId}` and suppress the duplicate cache_clear probe on the import path. Run log: `.ai/runs/2026-09-26-RQ450-evidence.md`. Evidence state: synchronized.
@@ -2607,12 +2608,13 @@ Do not change the order of cost sources: sale-line historical cost remains first
 
 ## RQ496 - Shoe Type signed-share, recommendation and ranking presentation parity
 
-Status: WAITING  
+Status: IN_PROGRESS  
 Priority: P1  
 Type: backend/frontend/tests  
 Feature family: shoetype-signed-share-presentation-truth  
 Parallel-safe: no  
-Owner: Shoe Type Analytics
+Owner: Codex (Shoe Type Analytics)
+Local lock: `.ai/task-locks/RQ496-codex.lock.md`
 
 ### Problem
 

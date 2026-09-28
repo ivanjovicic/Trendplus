@@ -75,6 +75,7 @@ const RECOMMENDATION_REASON_LABELS: Record<string, string> = {
   tiny_sample: "Uzorak je premali za pouzdanu odluku.",
   unstable_margin: "Marža je nestabilna.",
   unknown_heavy_dataset: "Skup podataka sadrži previše nepoznatih vrednosti.",
+  share_denominator_unavailable: "Ukupan neto promet nije pozitivan, pa udeo nije merljiv.",
 };
 
 export function recommendationReasonLabel(code: string | null | undefined): string {
@@ -169,6 +170,9 @@ export function recommendationReasonHintFromCode(code: string): string | null {
   }
   if (normalized === "previous_period_missing" || normalized === "no_previous_baseline" || normalized === "pop_unavailable") {
     return "Nema prethodnog perioda za PoP poredjenje.";
+  }
+  if (normalized === "share_denominator_unavailable") {
+    return "Neto udeo nije merljiv jer ukupan neto promet nije pozitivan.";
   }
   return null;
 }

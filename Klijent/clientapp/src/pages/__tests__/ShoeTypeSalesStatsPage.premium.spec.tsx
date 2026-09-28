@@ -708,7 +708,7 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     expect(screen.queryByTestId("shoe-type-margin-value-chart")).not.toBeInTheDocument();
   });
 
-  it("fails closed on malformed backend share percentages in table, KPI and detail", async () => {
+  it("keeps signed backend net-sales shares visible in table, chart and detail", async () => {
     vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
       shoeTypes: [
         shoeType({
@@ -758,17 +758,45 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     const cizmeRow = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Čizme"));
     expect(patikeRow).toBeDefined();
     expect(cizmeRow).toBeDefined();
-    expect(patikeRow).toHaveTextContent("N/A");
-    expect(cizmeRow).toHaveTextContent("N/A");
+    expect(patikeRow).toHaveTextContent("150,00%");
+    expect(cizmeRow).toHaveTextContent("-5,00%");
+    expect(table.querySelectorAll(".shoetype-rank-badge")).toHaveLength(0);
+    fireEvent.click(within(table).getByRole("button", { name: /Promet/ }));
+    expect(table.querySelectorAll(".shoetype-rank-badge")).toHaveLength(2);
 
-    expect(screen.queryByText("Udeo top 5 tipova")).not.toBeInTheDocument();
+    expect(screen.getByTestId("shoe-type-concentration-chart")).toBeInTheDocument();
 
     fireEvent.click(within(patikeRow!).getByRole("button", { name: "Detalji" }));
     const detailHeading = await screen.findByRole("heading", { name: "Detalj odluke: Patike" });
     const detailPanel = detailHeading.closest("section");
     expect(detailPanel).not.toBeNull();
-    expect(within(detailPanel!).getByText("Udeo u prometu").parentElement).toHaveTextContent("N/A");
+    expect(within(detailPanel!).getByText("Neto udeo u prometu").parentElement).toHaveTextContent("150,00%");
     expect(within(detailPanel!).getByText("Pre/post pokriće prometa").parentElement).toHaveTextContent("N/A");
+  });
+
+  it("does not label a negative previous baseline as Novo", async () => {
+    vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
+      shoeTypes: [shoeType({
+        tipObuceNaziv: "Patike",
+        ukupanPromet: 120000,
+        previousPeriodRevenue: -1000,
+        popRevenueChangePct: null,
+      })],
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const table = await screen.findByTestId("shoe-type-sales-stats-data-table");
+    const row = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Patike"));
+    expect(row).toBeDefined();
+    expect(row).not.toHaveTextContent("Novo");
+    expect(row).toHaveTextContent("Nije dostupno");
   });
 
   it("does not recompute share when the backend omits it", async () => {
@@ -879,7 +907,7 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     expect(within(detailPanel!).getByText("Uticaj nivelacije na promet").parentElement).toHaveTextContent("Nije dostupno");
   });
 
-  it("keeps concentration chart from inventing invalid Ostali share percentages", async () => {
+  it("keeps signed Ostali share visible in concentration chart", async () => {
     vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
       shoeTypes: [
         ...Array.from({ length: 6 }, (_, index) => shoeType({
@@ -922,8 +950,8 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
 
     const concentrationChart = await screen.findByTestId("shoe-type-concentration-chart");
     const chartData = JSON.parse(within(concentrationChart).getByTestId("bar-chart").getAttribute("data-chart-data") ?? "[]") as Array<{ name: string; sharePct: number }>;
-    expect(chartData.some((entry) => entry.name === "Ostali")).toBe(false);
-    expect(chartData).toHaveLength(6);
+    expect(chartData.find((entry) => entry.name === "Ostali")?.sharePct).toBe(110);
+    expect(chartData).toHaveLength(7);
   });
 
   it("keeps valid zero and 100 percentages visible across surfaces", async () => {

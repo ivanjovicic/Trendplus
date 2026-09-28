@@ -448,4 +448,32 @@ public class AnalyticsDecisionRecommendationEngineTests
         Assert.Contains("unknown_entity", projected.ReasonCodes);
         Assert.Contains("missing_comparable_signal", projected.ReasonCodes);
     }
+
+    [Fact(DisplayName = "Unavailable net-sales share denominator blocks recommendation")]
+    public void UnavailableShareDenominator_FailsClosed()
+    {
+        var input = new AnalyticsDecisionRecommendationEngine.RecommendationInput(
+            IsUnknownEntity: false,
+            TotalRevenue: 200000m,
+            TotalUnits: 500,
+            ItemCount: 50,
+            SharePct: 0d,
+            MarginPct: 25d,
+            MarginCoveragePct: 95d,
+            SplitCoveragePct: 90d,
+            PopRevenueChangePct: 15d,
+            PopUnitsChangePct: 10d,
+            PreviousPeriodRevenue: 170000m,
+            PreviousPeriodUnits: 450,
+            HasPreviousPeriodWindow: true,
+            IsNewEntity: false,
+            UnknownBucketSharePct: 0d,
+            SharePctAvailable: false);
+
+        var result = AnalyticsDecisionRecommendationEngine.Evaluate(input, averageMarginPct: 15d);
+
+        Assert.Equal("insufficient_data", result.Status);
+        Assert.False(result.RecommendationAllowed);
+        Assert.Contains("share_denominator_unavailable", result.ReasonCodes);
+    }
 }

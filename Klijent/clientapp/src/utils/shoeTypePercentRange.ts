@@ -10,6 +10,11 @@ export function resolveShoeTypePercentValue(value: number | null | undefined): n
   return value;
 }
 
+/** Net-sales shares stay signed because returns can produce values outside 0-100%. */
+export function resolveShoeTypeSignedSharePct(value: number | null | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
 export function resolveShoeTypePartSharePct(
   numerator: number | null | undefined,
   denominator: number | null | undefined,
