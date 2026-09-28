@@ -1720,7 +1720,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ464 | WAITING | supplier-decision-report-metric-basis | Align Supplier report KPIs with the Supplier overview and use one scoring model |
 | RQ465 | WAITING | supplier-decision-report-actions-negotiation | Fix Supplier report actions, negotiation pack and page-level defects |
 | RQ466 | READY | pilot-intake-backend-scope-period-truth | Make the Pilot intake backend honour scope, requested period and refresh truth |
-| RQ467 | WAITING | pilot-intake-readiness-score-semantics | Decide Pilot intake readiness score semantics and default period |
+| RQ467 | WAITING | pilot-intake-readiness-score-semantics | Pilot intake readiness score semantics and business-date default period |
 | RQ468 | WAITING | supplier-report-pilot-intake-serbian-copy | Complete Serbian copy on the Supplier report and Pilot intake screens |
 | RQ469 | WAITING | pdc-action-status-batch-contract | Keep Product Decision action-status lookups within the backend batch contract |
 | RQ470 | WAITING | pdc-search-population-contract | Restore Product Decision server-side search and make the analyzed population visible |
@@ -25261,6 +25261,10 @@ The page spec mocks the component, so the defect is untested.
 - None blocking. `RQ466` (backend truth) and `RQ468` (copy) follow; `RQ79` owns the ratio unit.
 - Reliability contract: render backend numbers as-is with the shared formatters; never synthesize a score, percentage or freshness client-side.
 
+### Addendum 2026-09-28 (owner decision on RQ467, grok)
+
+- Render the backend fields generically as scoped here. The new fields decided in `RQ467` („Pokrivenost poslovnim signalom“, per-reason blocked counts, the default-period anchor/fallback note) are rendered by `RQ467` after this prompt; do not invent them client-side.
+
 ---
 
 ## RQ463 - Make the Supplier report requested window, labels and provenance truthful
@@ -25572,14 +25576,19 @@ Commit suggestion: `fix(analytics): pilot intake scope, period and refresh truth
 - Coordinates with `RQ137` (PARTIAL): record the pilot part of its acceptance as satisfied in the completion note. `RQ462` consumes the fields.
 - Reliability contract: backend-owned counts, windows and freshness; fail closed (null + reason) rather than substituting another window or time.
 
+### Addendum 2026-09-28 (owner decision on RQ467, grok)
+
+- The default-period anchor (latest business date, `MAX(DatumProdaje)` for the scope, then 30 days back) is owned by `RQ467`; do not change `TryResolveIntakePeriod` defaults here. The health-window fix here must use the **resolved** report period (whatever `TryResolveIntakePeriod` returns), so the `RQ467` anchor flows through without a second change.
+- The `DUG`/`KOREKCIJA` exclusion, the cost fallback chain, the blocked-count definition and the store semantics are owned by `RQ467`; do not change those predicates here. Conditional actions here should key on per-reason counts, so they stay correct after `RQ467` makes the blocked headline a distinct-article count.
+
 ---
 
-## RQ467 - Decide Pilot intake readiness score semantics and default period
+## RQ467 - Pilot intake readiness score semantics and business-date default period
 
 Status: WAITING
-Ready after: owner decision (Ivan) on the questions below; then `RQ466` DONE (same file)
+Ready after: `RQ466` DONE (same builder function). Owner decisions recorded 2026-09-28; no decision remains.
 Priority: P2
-Type: decision/backend/tests
+Type: backend/frontend/tests
 Feature family: pilot-intake-readiness-score-semantics
 Parallel-safe: no
 Owner: Analytics Reliability / Data Quality
@@ -25606,7 +25615,7 @@ The Pilot intake readiness score is structurally stuck at „Kritično“ after 
 - `:562` vs the health service cost fallback.
 - `TryResolveIntakePeriod :1600-1617` default window.
 
-### Owner decisions
+### Owner decisions (resolved 2026-09-28, see below)
 
 1. Definition of an insufficient signal: articles with stock but no sales in the period? Articles in the imported assortment? Should it gate readiness at all?
 2. Blocked recommendations: distinct articles blocked by any reason (recommended), with per-reason counts shown separately.
@@ -25626,6 +25635,29 @@ The Pilot intake readiness score is structurally stuck at „Kritično“ after 
 ### Acceptance
 
 - The readiness label follows the documented bands and reasons; every count has one unit and no overlap.
+
+### Owner decision (Ivan, 2026-09-28)
+
+1. **Readiness measures data quality/usability**, not legitimately unsold articles. „Insufficient signal“ must not mean „every article unsold in the last 30 days“.
+2. `insufficientSignalCount` is **not a hard gate** in the readiness score (no penalty, no „Kritično“ override) until Product Decision has a reliable evidence contract (see `RQ472`). It may be shown separately as „Pokrivenost poslovnim signalom“ with its own definition text.
+3. `blockedRecommendationsCount` = **distinct articles** blocked by at least one structural problem. The reasons (missing supplier, missing cost, missing supplier name, sale without article/orphan, …) are shown separately and may overlap; the headline is never their sum. Every count has one unit (articles or sale lines), stated in its label.
+4. `DUG`/`KOREKCIJA` receipts are excluded via `SalesReceiptPopulationPolicy` (`RQ456`). Net sales metrics keep signed retail returns.
+5. The invalid-price check does not count negative return lines as price errors: only non-return lines with `Cena <= 0`, or a separately labelled check.
+6. **Store semantics:** sales metrics are filtered by the receipt store (`ProdajaZaglavlje.IDObjekat`), master-data metrics by the article store (`Artikli.IDObjekat`). The labels differ explicitly (e.g. „Prodaja u objektu“ vs „Artikli objekta“).
+7. **Cost fallback:** `ps.NabavnaCena → a.NabavnaCenaDin → a.NabavnaCena`, using only values `> 0`; this is the same chain as the health service/other SQL.
+8. **Default period:** anchored not to today but to the latest business date in the last successful imported set. Primary anchor: `MAX(DatumProdaje)` for the selected scope (after the receipt policy); the default period is the 30 days ending on that date. The import timestamp alone is not a valid anchor (an import today may load July data). If there are no sales, use the last known business date from the import and explicitly mark a fallback (`periodAnchor=import_business_date_fallback` plus Serbian text). An explicit `fromDate`/`toDate` is always respected.
+
+Decision acceptance:
+- The live-like fixture (12422 articles, few or no sales) no longer yields „Kritično“ solely because articles are unsold; readiness follows the documented bands from structural problems only; „Pokrivenost poslovnim signalom“ is shown separately.
+- The blocked count equals the distinct blocked articles; the per-reason counts are shown and may overlap; no mixed-unit sum.
+- `DUG`/`KOREKCIJA` receipts do not change sales counts; a return line is not a price error; returns reduce net sales.
+- The store filter applies the receipt store to sales and the article store to master data, with different labels.
+- The cost check uses the three-step fallback with `> 0`.
+- With no dates and sales ending 2026-08-05, the default period is 2026-07-07..2026-08-05, not the 30 days before today. With no sales, the import business-date fallback is flagged.
+
+Decision tests:
+- `Api.Tests` (`PilotIntake*`, `ResolveReadiness`): bands without the insufficient-signal gate; the distinct blocked-article count with overlapping reasons; DUG/KOREKCIJA exclusion; a return line not counted as a price error; store semantics; the cost fallback chain; a default-period anchor from `MAX(DatumProdaje)` for each scope; the no-sales fallback flag; an explicit period that overrides the anchor.
+- After `RQ462`: a Vitest spec showing „Pokrivenost poslovnim signalom“, per-reason counts and the default-period fallback note (the frontend rendering of the new fields belongs to this prompt).
 
 ### Dependencies
 
