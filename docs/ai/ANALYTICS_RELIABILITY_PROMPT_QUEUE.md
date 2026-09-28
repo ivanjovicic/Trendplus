@@ -1732,7 +1732,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ475 | WAITING | supplier-analytics-schema-readiness | Make Supplier scorecard/assortment semantic-data readiness operationally actionable |
 | RQ476 | WAITING | supplier-share-denominator-contract | Unify Supplier raw API, display, recommendation and export share semantics |
 | RQ483 | WAITING | pdc-decision-rule-reachability | Make Product Decision rules reachable and measured from the period end |
-| RQ484 | WAITING | operations-recommendation-gate-policy | Decide the Operations recommendation gate policy for nivelacija evidence and the unknown bucket |
+| RQ484 | READY | operations-recommendation-gate-policy | Apply the approved Operations recommendation gate policy for nivelacija evidence and the unknown bucket |
 | RQ485 | WAITING | pdc-page-state-hygiene | Product Decision page hygiene: duplicate header block, URL state, deterministic sorting and local dates |
 | RQ486 | READY | supplier-shell-overview-hygiene | Supplier page shell and overview hygiene: trust header, date validation, stores, layout, sorting and badges |
 | RQ487 | WAITING | pdc-supplier-query-performance | Bound Product Decision and Supplier overview query cost |
@@ -26585,18 +26585,19 @@ Several Product Decision statuses are practically unreachable or depend on the c
 
 ---
 
-## RQ484 - Decide the Operations recommendation gate policy for nivelacija evidence and the unknown bucket
+## RQ484 - Apply the approved Operations recommendation gate policy for nivelacija evidence and the unknown bucket
 
-Status: WAITING
-Ready after: owner decision (Ivan) on the gate policy below
+Status: READY
 Priority: P1
-Type: decision/backend/contract/tests
+Type: backend/contract/tests
 Feature family: operations-recommendation-gate-policy
-Parallel-safe: no (`Api/Endpoints/AllEndpoints.cs` Supplier/Shoe Type/Color recommendation builders, `Application/Analytics/AnalyticsDecisionRecommendationEngine.cs`)
+Parallel-safe: no (`Api/Endpoints/AllEndpoints.cs` Supplier/Shoe Type/Color recommendation builders and `BuildStatsTrustMeta`, `Application/Analytics/AnalyticsDecisionRecommendationEngine.cs`, `Api/Services/AnalyticsDetailReadService.cs` gate calls)
 Owner: Analytics Reliability / Supplier
 Local lock: `.ai/task-locks/RQ484-<agent>.lock.md`
 Commit suggestion: `fix(analytics): operations recommendation gate policy`
 Source: `PS07` in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-25.md` (residual business-rule task; de-dup 2026-09-28)
+
+Status note (2026-09-28): owner decision recorded below; no decision remains. READY because no READY/IN_PROGRESS prompt owns these files: `RQ461` owns `SupplierDecisionHubEndpoints.cs` and the report frontend, `RQ462`/`RQ486` are frontend-only, `RQ466` owns the Data Quality backend and `BCI13` the test host. `RQ474`/`RQ476` (WAITING) share `AllEndpoints.cs`; if either is promoted while this is active, sequence by lock/claim.
 
 ### Problem
 
@@ -26609,25 +26610,60 @@ Source: `PS07` in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-25.md` (resid
 - `AllEndpoints.cs:1977-1984`: response-level `recommendationAllowed = … && suppliersWithRecommendation.All(x => x.recommendation.recommendationAllowed)` with `includesUnknown = true`. Same pattern for Shoe Type at `:2758-2760`.
 - `RQ140` completion note: "gate recommendation score/confidence/reliability on valid revenue and quantity impact … fail closed when comparability is missing". This prompt changes only the policy scope, not the comparability proof that `RQ140` owns.
 
-### Owner decision needed
+### Owner decision needed (resolved 2026-09-28, see „Owner decision (Ivan, 2026-09-28)“ below)
 
 1. Is pre/post nivelacija evidence a hard gate for all recommendations, or optional evidence (reason code + confidence adjustment) for PoP/margin decisions and a hard gate only for markdown-effect claims? (Recommended: optional, except for markdown-effect claims.)
 2. Should missing split coverage be a reason code rather than `insufficient_data`?
 3. Unknown bucket: always keep `do_not_trust` (never overwritten)? Compute the response-level flag over known rows only, with the existing unknown-share thresholds (`unknown_heavy_dataset` 15%, critical 25%)? (Recommended: yes.)
 
-### Scope (after the decision)
+### Scope
 
 - Engine gate policy; aggregation of the response-level flag for Supplier/Shoe Type/Color; trust meta; tests. No frontend scoring. Keep the `SST-ACCURACY-1.0` (`RQ445`) claim language.
 
 ### Tests
 
-- A supplier without nivelacija evidence but with good coverage and a baseline gets `maintain`/`increase_focus` allowed, with a reason code (if decision 1 = optional).
+- A supplier without nivelacija evidence but with good coverage and a baseline gets `maintain`/`increase_focus` allowed, with a reason code and reduced confidence (decision 1).
 - The unknown bucket stays `do_not_trust`; the response flag is allowed with a small unknown share and not allowed with a heavy one.
 - The same cases for Shoe Type and Color; the existing `RQ140` comparability tests stay green.
 
 ### Acceptance
 
 - Rows with sufficient sales/margin evidence receive the policy-defined recommendation state; the trust header reflects known-row readiness and the unknown share; `do_not_trust` is never overwritten.
+
+### Owner decision (Ivan, 2026-09-28)
+
+Approved with the semantics below. This replaces „Owner decision needed“ above; no owner decision remains for this prompt.
+
+1. **Nivelacija evidence is scoped to price-event claims.** Pre/post nivelacija comparability is required only when a recommendation or its explanation claims something about the markdown effect, markdown dependency, nivelacija success or a similar price-event signal. For recommendations based on sales, trend, margin, stock and data reliability, missing nivelacija evidence (including missing split coverage) is a reason code plus a confidence reduction, never automatic `insufficient_data`. The `RQ140` comparability proof stays unchanged for the price-event claims it gates.
+2. **Unknown supplier.** `do_not_trust` on the unknown row is never overwritten by another gate, and the unknown row never gets an actionable recommendation. Page-level readiness and the page-level recommendation are computed over **known** suppliers only; the unknown share is a separate quality gate.
+3. **Unknown revenue share thresholds:**
+   - `< 15%`: does not block known suppliers.
+   - `15%` to `< 25%`: warning/degraded. Valid known-supplier recommendations stay available, with a clear warning.
+   - `>= 25%`: critical. Block the page-level final/actionable recommendation. Individual rows may stay visible as analytic signals, but not as unconditional decisions.
+4. **Denominator.** The 15/25 thresholds are computed on the same declared revenue population/denominator as the supplier trust contract (the `SST-ACCURACY-1.0` / `RQ445` basis that currently feeds `unknownRevenueSharePct`), never on row counts.
+
+#### Implementation notes
+
+- The engine gate is shared, so decision 1 applies to Supplier, Shoe Type, Color **and** the detail pages (`Api/Services/AnalyticsDetailReadService.cs:839`, `:950`, `:1425` also call `ApplyComparableSignalGate`). Split the gate: it may block only the price-event claim, reason codes and confidence, not the sales/trend/margin/stock recommendation.
+- Current thresholds disagree with the decision and with each other. `AnalyticsDecisionRecommendationEngine.ComputeDataQualityStatus` (`:133-162`) gives warning at `unknownShare >= 10` and critical at `>= 25`, and treats missing or low split coverage as warning. `AllEndpoints.cs` `BuildStatsTrustMeta` (`:7412-7462`) gives warning at `>= 10` and critical at `>= 20`, and makes split coverage `< 40` critical. Put the approved values in one named policy (constants plus methodology/provenance text). Do not scatter literals. Split coverage alone must no longer make the trust header critical.
+- Decisions 2 and 3 are decided for the **Supplier** page. `BuildStatsTrustMeta` is shared with Shoe Type (`:2733`) and Color (`:3439`). Use the policy object with Supplier-specific values and leave the Shoe Type/Color page-level thresholds unchanged until Ivan confirms extending them. Record which values each surface uses in the run log.
+- `RQ476` (WAITING) owns the negative/unknown share policy. When it lands, the thresholds must read from that single source. `RQ464` must reuse the same gate semantics in the Supplier report score policy.
+
+#### Acceptance
+
+- A known supplier with good sales/margin coverage and a baseline, but no nivelacija evidence, gets its sales/margin-based recommendation (for example `maintain`/`increase_focus`) with a `nivelacija_evidence_missing`-style reason code and reduced confidence, not `insufficient_data`.
+- Any markdown-effect / nivelacija-success / price-event claim without comparable pre/post evidence stays blocked, as `RQ140` requires.
+- The unknown row is always `do_not_trust` and never actionable, whatever the other gates say.
+- Page-level `recommendationAllowed`/readiness ignores the unknown row and applies the unknown-share gate: `< 15%` unaffected, `15–25%` degraded with a visible warning while known recommendations stay allowed, `>= 25%` page-level final/actionable recommendation blocked while rows stay visible as signals.
+- The share is revenue-based on the supplier trust-contract population. A dataset with few unknown rows but a large unknown revenue share (and the reverse) proves it.
+- Threshold values and their provenance appear in methodology/meta. No other gate changes its semantics silently.
+
+#### Tests
+
+- `AnalyticsDecisionRecommendationEngineTests`: a known supplier without nivelacija evidence stays allowed with a reason code and lower confidence; a price-event claim without evidence stays blocked; an unknown row stays `do_not_trust` after every gate.
+- `AnalyticsStatsTrustMetaTests`: unknown share boundaries `14.9 / 15.0 / 24.9 / 25.0` produce none / warning / warning / critical for Supplier; split coverage alone does not produce critical; Shoe Type/Color values are unchanged unless Ivan extends the decision.
+- A Supplier endpoint integration test: the response-level flag is computed over known suppliers. Revenue-share and row-count disagreement fixtures prove the denominator.
+- The existing `RQ140` comparability tests and the detail-page recommendation tests stay green.
 
 ### Dependencies
 
