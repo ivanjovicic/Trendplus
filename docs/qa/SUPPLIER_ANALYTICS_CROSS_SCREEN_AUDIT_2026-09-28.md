@@ -14,13 +14,13 @@ The audit confirms that the current canonical queue already owns every confirmed
 - `RQ461`-`RQ468`: Supplier report and Pilot intake
 - `RQ469`-`RQ476`: Product Decision and Supplier overview/scorecard/assortment
 - `RQ477`-`RQ482`: Actions and Decision Pulse
-- Existing owners `RQ441`, `RQ442`, `RQ443`, `RQ444`, `RQ456`, `RQ457`, `RQ458`, `RQ459`, `RQ243`, `RQ325) and earlier supplier/secondary-screen owners cover the already-delivered contracts.
+- Existing owners `RQ441`, `RQ442`, `RQ443`, `RQ444`, `RQ456`, `RQ457`, `RQ458`, `RQ459`, `RQ243`, `RQ325` and earlier supplier/secondary-screen owners cover the already-delivered contracts.
 
 No new prompt was registered. Re-registering PS01-PS18 or creating another supplier-screen owner would duplicate active ownership.
 
 ## Audit basis
 
-Reviewed on current `main):
+Reviewed on current `main`:
 
 - `docs/qa/PRODUCTS_SUPPLIER_LIVE_AUDIT_2026-09-28.md`
 - `docs/qa/ACTIONS_DECISION_PULSE_SUPPLIER_SCORECARD_LIVE_AUDIT_2026-09-28.md`
@@ -53,9 +53,9 @@ Live/source evidence already recorded in the referenced audit artifacts was not 
 | Contract | Required canonical rule | Current evidence / gap | Queue owner |
 |---|---|---|---|
 | Sales population | Same period, scope and sale-line population as Supplier overview when KPI names imply parity | Supplier report currently mixes markdown/pre-post windows with period sales; linked screens expose different cohorts without always naming them | `RQ463`, `RQ464`, `RQ471`, `RQ476` |
-| Receipt population | Exclude `DUG` and `KOREKCIJA); keep signed retail returns | Delivered for certified sales surfaces by `RQ456); Supplier decision/pilot extensions remain explicitly owned by `RQ464`/`RQ467` | `RQ456`, `RQ464`, `RQ467` |
+| Receipt population | Exclude `DUG` and `KOREKCIJA`; keep signed retail returns | Delivered for certified sales surfaces by `RQ456`; Supplier decision/pilot extensions remain explicitly owned by `RQ464`/`RQ467` | `RQ456`, `RQ464`, `RQ467` |
 | Supplier identity | Prefer sale-time `SupplierIdAtSale`, not current master-data reassignment | Delivered in the Supplier sales path and recorded by `RQ441`; do not introduce a second attribution rule | `RQ441` |
-| Store filter | Sales metrics use sale store `ProdajaZaglavlje.IDObjekat); master-data metrics name their different scope | This distinction is part of the readiness/report decision contract | `RQ464`, `RQ467` |
+| Store filter | Sales metrics use sale store `ProdajaZaglavlje.IDObjekat`; master-data metrics name their different scope | This distinction is part of the readiness/report decision contract | `RQ464`, `RQ467` |
 | Cost/margin | Missing/non-positive cost is unavailable for margin, never zero; revenue/units remain included; expose coverage | `AnalyticsMarginPolicy` is canonical for Supplier sales, but Product/report paths still drift | `RQ464`, `RQ473` |
 | Returns | Customer returns are signed retail sale lines; supplier-return facts are not customer return rate | Existing report evidence identified `povracaj_zaglavlje` misuse risk; no second return source should be introduced | `RQ464` |
 | Recommendation | Backend owns one score/status model; fallback or missing evidence blocks recommendation | Supplier report MV/live paths and linked Product/Supplier surfaces can use different models or gates | `RQ464`, `RQ472`, `RQ475` |
@@ -105,7 +105,7 @@ These are decisions for implementation acceptance, not permission to mark the WA
 ## Validation and delivery
 
 - Repository tree, current queue, roadmap, source audits and evidence artifacts were fetched from GitHub.
-- Queue inspection confirmed `RQ461`-`RQ482) exist with the intended statuses and no new ID was required.
+- Queue inspection confirmed `RQ461`-`RQ482` exist with the intended statuses and no new ID was required.
 - Roadmap inspection confirmed the RQ program row points to the current READY set and the 2026-09-28 audit evidence.
 - Existing live/source evidence was cross-checked against the screen/metric matrix above.
 - Local build, test and guardrail commands: not run — this is a connector-only docs/governance audit and the current workspace has no Trendplus checkout.
@@ -114,7 +114,7 @@ These are decisions for implementation acceptance, not permission to mark the WA
 
 ## Delivery note
 
-This file is a docs-only consolidation artifact. The GitHub connector write that adds it is the delivery event on `main); the final task response records the exact commit SHA returned by GitHub and the fresh `main) verification. No queue item was claimed or falsely closed.
+This file is a docs-only consolidation artifact. The GitHub connector write that adds it is the delivery event on `main`; the final task response records the exact commit SHA returned by GitHub and the fresh `main` verification. No queue item was claimed or falsely closed.
 
 ## Residual risk and next step
 
