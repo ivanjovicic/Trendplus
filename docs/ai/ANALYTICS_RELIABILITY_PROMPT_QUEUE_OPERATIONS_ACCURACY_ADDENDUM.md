@@ -2431,3 +2431,315 @@ Add to RQ140 acceptance when it resumes:
 - empirical causal/outcome validation remains with RL12.
 
 This is an acceptance clarification, not a new prompt id.
+
+
+---
+
+# Shoe Type + Daily Sales residual correctness follow-ups — 2026-09-28
+
+Audit: `docs/qa/SHOE_TYPE_DAILY_SALES_AUDIT_2026-09-28.md`.
+
+Registration note: no new READY task is created here. The current RQ primary and existing independent READY lanes remain unchanged. These prompts are sequenced behind active/earlier same-file owners.
+
+## RQ494 - Certified retail sales dataScope: use sale-header origin and repair the oracle
+
+Status: WAITING  
+Priority: P0  
+Type: backend/oracle/integration/docs  
+Feature family: certified-retail-sales-datascope-lineage  
+Parallel-safe: no  
+Owner: Operations Analytics Accuracy
+
+### Problem
+
+The formal `SST-ACCURACY-1.0` contract says the certified sales population applies `dataScope` to the sale header, but Daily Sales, Shoe Type and the RQ412 raw-fact oracle currently filter `imported/existing` using current `Artikli.DataOrigin`. The oracle can therefore certify the implementation while both violate the formal source-lineage contract. Current article-master edits can also reclassify historical sales between scopes.
+
+### Evidence
+
+- `docs/qa/SUPPLIER_SHOETYPE_ACCURACY_CONTRACT_2026-09-26.md`: sale line included only when its header satisfies period/store/data-scope.
+- `docs/qa/ANALYTICS_DATASCOPE_CONSISTENCY_AUDIT.md`: sales revenue uses `ProdajaZaglavlja.DataOrigin`; article origin belongs to article/master quality.
+- `Api/Endpoints/AllEndpoints.cs` Shoe Type current and previous queries filter `a.DataOrigin`.
+- `Api/Services/DailySalesStatsService.cs` main aggregate and diagnostics filter `a.DataOrigin`.
+- `SupplierShoeTypeRawFactOracle` / oracle manifest also use article origin.
+- Existing adversarial scope fixtures do not prove a header/article-origin mismatch.
+- Audit F1/F2: `docs/qa/SHOE_TYPE_DAILY_SALES_AUDIT_2026-09-28.md`.
+
+### Scope
+
+- certified retail sales population for Daily, Supplier, Shoe Type and Color where the same SST/RQ456 claim applies;
+- `Api/Services/DailySalesStatsService.cs`;
+- relevant Supplier/Shoe/Color queries in `Api/Endpoints/AllEndpoints.cs`;
+- `Api/Services/AnalyticsDetailReadService.cs` and data-window/cost comparison paths only where they represent the same sales population;
+- `Api.Tests/Analytics/SupplierShoeTypeRawFactOracle.cs`, RQ446 fixture/golden expectations and scoped integrity probes;
+- metadata/docs needed to distinguish sales-header scope from separately article-scoped quality/membership.
+
+Do not change dimension-at-sale identity, DUG/KOREKCIJA policy, margin formula, Pre/Post event-window semantics or inventory article-scope semantics.
+
+### Read first
+
+- `docs/qa/SHOE_TYPE_DAILY_SALES_AUDIT_2026-09-28.md`
+- `docs/qa/SUPPLIER_SHOETYPE_ACCURACY_CONTRACT_2026-09-26.md`
+- `docs/qa/ANALYTICS_DATASCOPE_CONSISTENCY_AUDIT.md`
+- RQ412/RQ445/RQ446/RQ456/RQ457 evidence
+- RQ382 evidence
+- `SalesReceiptPopulationPolicy`
+
+### Do
+
+1. Make certified **sales** `dataScope` follow `ProdajaZaglavlja.DataOrigin`: imported = access; existing = existing/null/blank legacy according to the canonical normalization.
+2. Keep current `Artikli.DataOrigin` only for a separately named article/master membership or quality filter when a surface explicitly requires it. Do not call two different predicates simply `dataScope`.
+3. Apply the same sales-header predicate to current period, previous period, Daily receipt diagnostics/availability, detail, export, data-window and independent oracle paths that claim the same population.
+4. Add an adversarial fixture with header/article origin disagreement in both directions. Expected revenue/quantity must follow the header.
+5. Update the oracle/golden manifest and integrity probe so it is independent of the production aggregation and cannot pass by reproducing the old article-origin bug.
+6. Version or amend certification provenance so pre-fix scoped evidence is not used to claim `imported/existing` VERIFIED parity.
+7. Preserve store-on-sale-header, half-open periods, sale-time Supplier/Shoe Type identity, DUG/KOREKCIJA exclusion and signed returns.
+8. Expose requested/effective sales-scope source in metadata/export. If a surface also applies article membership, expose it as a second explicit predicate.
+
+### Tests
+
+- header access + article existing: included only in imported sales scope;
+- header existing + article access: included only in existing sales scope;
+- changing only current article origin does not reclassify historical certified sales;
+- Daily/Supplier/Shoe Type/Color authoritative total revenue/quantity reconcile for the same period/store/scope before dimension grouping;
+- detail/export/data-window/oracle use the same header scope;
+- DUG/KOREKCIJA and signed-return fixture cases remain unchanged;
+- RQ412/RQ446 independent oracle still has zero unexplained delta after expected manifest update.
+
+### Acceptance
+
+- one documented sales-scope predicate exists and is used everywhere that claims certified retail sales parity;
+- endpoint and oracle cannot agree on the wrong origin source;
+- historical sale provenance is stable under current article-master origin edits;
+- any intentionally article-scoped metric is separately named/provenanced;
+- old scoped certification is not presented as current VERIFIED evidence after the contract change.
+
+### Dependencies
+
+- RQ445/RQ446/RQ456/RQ457 are DONE inputs.
+- WAITING while READY/current work owns `AllEndpoints.cs` (notably RQ484) and to avoid colliding with other queued same-file prompts such as RQ490.
+- Once that owner is clear, RQ494 has priority over later P1 presentation work because it changes the population itself.
+- RQ448 browser/render/export certification consumes this repaired contract; it must not substitute for it.
+
+## RQ495 - Supplier/Shoe Type margin: bind snapshot cost to the exact sale line
+
+Status: WAITING  
+Priority: P0  
+Type: backend/financial-semantics/tests  
+Feature family: sale-line-snapshot-cost-binding  
+Parallel-safe: no  
+Owner: Analytics Margin / Supplier + Shoe Type
+
+### Problem
+
+Cost snapshot rows are created at `ProdajaStavkaId` grain and only for eligible Access-origin lines, but Supplier/Shoe Type list and detail reads collapse the active batch to `ArtikalId -> MIN(ResolvedUnitCost)`. That article-level minimum is then offered as snapshot cost to any row for the article whose sale-line cost is missing. This can transfer cost evidence across sale lines, historical dates or source populations and change margin/recommendation values.
+
+### Evidence
+
+- `AnalyticsSaleLineCostSnapshot` stores both `ProdajaStavkaId` and `ArtikalId`.
+- `AnalyticsCostSnapshotService.GenerateBatchAsync` generates snapshots for individual Access-origin sale lines with null line cost.
+- the snapshot implementation plan explicitly requires line-level granularity so arbitrary re-aggregation preserves atomic historical cost evidence.
+- Supplier/Shoe Type endpoint and `AnalyticsDetailReadService` load snapshots by `GroupBy(ArtikalId).Min(ResolvedUnitCost)`.
+- the Shoe Type aggregation no longer retains `ProdajaStavkaId` in its input row, so exact snapshot binding is impossible in the current projection.
+- Audit F3: `docs/qa/SHOE_TYPE_DAILY_SALES_AUDIT_2026-09-28.md`.
+
+### Scope
+
+- Supplier/Shoe Type current-period and detail/cost-snapshot paths that consume `AnalyticsSaleLineCostSnapshots`;
+- query/projection shape needed to preserve `ProdajaStavkaId`;
+- `AnalyticsMarginPolicy` usage only as necessary to feed the exact snapshot cost;
+- focused backend/integration tests and provenance fields.
+
+Do not change the order of cost sources: sale-line historical cost remains first, exact snapshot second, product fallback later, missing last.
+
+### Read first
+
+- `docs/ANALYTICS_SNAPSHOT_IMPLEMENTATION_PLAN.md`
+- RQ375 and RQ457 evidence
+- `AnalyticsCostSnapshotService.cs`
+- `AnalyticsSaleLineCostSnapshot.cs`
+- `AnalyticsMarginPolicy.cs`
+- `AllEndpoints.cs` Supplier/Shoe Type snapshot loading
+- `AnalyticsDetailReadService.cs`
+
+### Do
+
+1. Preserve sale-line identity through the Supplier/Shoe Type aggregation input.
+2. Resolve snapshot cost by `BatchId + ProdajaStavkaId`, not by article-level min/avg/first cost.
+3. Never apply an Access snapshot row to another sale line merely because it has the same article id.
+4. Keep product fallback as an explicitly estimated later source when the exact line has neither historical nor snapshot cost.
+5. Make list/detail/export/cost-comparison use the same line-level resolution and coverage accounting.
+6. Add provenance counters for exact snapshot-covered revenue versus product fallback/uncovered revenue.
+7. Invalidate/bump affected caches if old article-level snapshot results can survive deployment.
+8. Do not rewrite historical snapshot rows; repair consumption semantics.
+
+### Tests
+
+- same article, two Access sale lines, two different snapshot costs -> each line uses its own snapshot;
+- same article, Access snapshot exists + existing/POS missing-cost line -> snapshot does not leak to the other line;
+- sale-line historical cost overrides snapshot;
+- exact snapshot overrides mutable product fallback;
+- missing exact snapshot falls through to product cost without borrowing another line's snapshot;
+- Supplier/Shoe Type list/detail totals and margin coverage reconcile at line grain;
+- RQ457 weighted-margin/non-positive-denominator tests remain green.
+
+### Acceptance
+
+- no cost evidence moves between sale lines through article-level grouping;
+- snapshot-enabled margin is historically stable at the intended atomic grain;
+- list/detail/export agree on exact snapshot coverage;
+- source tags/coverage truthfully distinguish historical, exact snapshot, product fallback and missing.
+
+### Dependencies
+
+- Ready only after RQ494 is complete or its sales-population edits are otherwise safely sequenced.
+- Coordinate with any active `AllEndpoints.cs` owner; do not run concurrently with RQ494/RQ484/RQ490.
+- RQ457 remains DONE and is not reopened; RQ495 supplies more accurate inputs to its formulas.
+
+## RQ496 - Shoe Type signed-share, recommendation and ranking presentation parity
+
+Status: WAITING  
+Priority: P1  
+Type: backend/frontend/tests  
+Feature family: shoetype-signed-share-presentation-truth  
+Parallel-safe: no  
+Owner: Shoe Type Analytics
+
+### Problem
+
+The backend computes signed `sharePct` and passes it into the recommendation engine whenever total revenue is positive. With signed returns a row can legitimately be negative or exceed 100% of net revenue. The frontend rejects every share outside 0..100 and renders it unavailable, so a hidden value can still influence a recommendation. The page also styles `index + 1` after arbitrary user sorting as #1/#2/#3 and labels any non-positive previous revenue as “Novo”.
+
+### Evidence
+
+- `AllEndpoints.cs`: `row.ukupanPromet / totalRevenue * 100` is passed to `RecommendationInput.SharePct`.
+- `AnalyticsDecisionRecommendationEngine` can use `SharePct >= 2.5` in `increase_focus`.
+- `shoeTypePercentRange.ts` accepts only 0..100 and maps negative/>100 to null.
+- concentration filters through the same 0..100 helper.
+- table rank is `index + 1` after the selected sort; default sort is status.
+- `describePopMetric` labels `previousPeriodRevenue <= 0 && current > 0` as “Novo”, including negative previous revenue.
+- the SST contract preserves signed revenue/share arithmetic and requires denominator truth.
+- the 2026-09-25 audit routed these residuals to old RQ448/RQ449 labels that no longer own them in the current queue; this prompt is the current de-duplicated owner.
+
+### Scope
+
+- Shoe Type share state/DTO only if additional denominator/basis metadata is required;
+- `AnalyticsDecisionRecommendationEngine` input construction for Shoe Type;
+- `ShoeTypeSalesStatsPage.tsx`, `shoeTypePercentRange.ts`, chart/detail/export helpers;
+- focused backend/frontend signed-return, rank and PoP-baseline tests.
+
+Do not change retail population, snapshot cost resolution or RQ457 identity/margin formula.
+
+### Read first
+
+- RQ431 signed concentration decision
+- RQ445/RQ457 evidence
+- `SST-ACCURACY-1.0`
+- `AnalyticsDecisionRecommendationEngine.cs`
+- `ShoeTypeSalesStatsPage.tsx`
+- `shoeTypePercentRange.ts`
+
+### Do
+
+1. Define one backend-owned share state: numerator, signed denominator, value when mathematically valid, and unavailable reason when not.
+2. Preserve valid negative/>100 signed shares when they are the declared net-sales share, or deliberately introduce a **separately named** positive-contribution share for ranking/decision use. Never silently clamp/drop while the recommendation consumes the raw value.
+3. Return/expose the exact share basis consumed by recommendations.
+4. If concentration needs a different positive-only population, name its numerator/denominator and do not label it simply “Udeo u prometu”.
+5. Replace sort-dependent #1/#2/#3 badges with either a stable explicitly named business rank or no rank badge during arbitrary sorts.
+6. Distinguish `previous == 0` from `previous < 0`; negative previous revenue is not “Novo”.
+7. Keep previous-only positive-baseline rows from RQ457 at truthful -100% PoP.
+8. Ensure table, status tooltip, concentration, detail and export display the same share/baseline semantics.
+
+### Tests
+
+- positive total with one negative type and another type >100% net share;
+- negative row share remains visible/qualified and does not become fake N/A if the declared arithmetic is valid;
+- recommendation-consumed share equals displayed/provenanced share basis;
+- zero/non-positive denominator fails closed;
+- sort by status/name/margin does not relabel the first visible row as business rank #1;
+- previous revenue <0 => invalid PoP base, not “Novo”;
+- previous revenue ==0 measured base and previous-only positive-base cases remain distinct.
+
+### Acceptance
+
+- no recommendation uses a share the operator cannot inspect/understand;
+- signed returns cannot make chart/table/recommendation silently use three different populations;
+- rank badges cannot imply business rank from arbitrary table order;
+- “Novo” never describes a negative previous-period baseline.
+
+### Dependencies
+
+- Ready after RQ494 and RQ495 so population and margin inputs are stable.
+- Sequence after any active Shoe Type/`AllEndpoints.cs` owner.
+- Do not reuse current RQ448/RQ449 ids; those ids now have other canonical ownership.
+
+## RQ497 - Daily Sales: prove and expose business-time semantics for shift assignment
+
+Status: WAITING  
+Priority: P1  
+Type: backend/import-contract/frontend/tests  
+Feature family: daily-sales-shift-business-time  
+Parallel-safe: no  
+Owner: Daily Sales / Source Time Semantics
+
+### Problem
+
+Daily Sales assigns 06-14 / 14-22 shifts from raw `ProdajaZaglavlje.DatumProdaje.Hour`, but the response does not declare the timestamp basis or business timezone. Access import historically stamps source-local wall-clock values as UTC without offset conversion, while other sources can represent actual UTC instants. Without a source-time contract, the same UTC-looking hour can mean different local business time and DST/source mixing can move sales across shift boundaries.
+
+### Evidence
+
+- `DailySalesStatsService` groups by `pz.DatumProdaje.Hour` and `ResolveShift(hour)`.
+- UI labels are business-clock labels `06:00-13:59` and `14:00-21:59`.
+- Daily metadata has shift assignment state but no `shiftTimeZone` or timestamp-basis provenance.
+- `DAILY_SALES_FORENSIC_REPORT.md` records that Access local datetime is stamped `Utc` without offset conversion to preserve wall clock.
+- database column is timestamp-with-time-zone and other code paths can carry genuine UTC timestamps.
+- Audit F7: `docs/qa/SHOE_TYPE_DAILY_SALES_AUDIT_2026-09-28.md`.
+
+### Scope
+
+- source timestamp contract for sales used by Daily shift analytics;
+- Access import mapping only as needed to persist/declare timestamp basis;
+- Daily service/model/API/page/export metadata;
+- focused shift boundary/DST/mixed-source tests.
+
+Do not change the established 06-14 / 14-22 business shift definitions unless repository evidence proves a different owner-configured schedule.
+
+### Read first
+
+- RQ383/RQ429 evidence
+- `DAILY_SALES_FORENSIC_REPORT.md`
+- `DailySalesStatsService.cs`
+- Access sale import timestamp conversion
+- POS/existing sale creation paths
+- store/config models for any existing timezone setting
+
+### Do
+
+1. Inventory each supported sales source and prove whether `DatumProdaje` represents source-local wall clock, a true UTC instant, or unknown legacy time.
+2. Define shift assignment in **store/business local time**.
+3. For true UTC instants, convert to the configured store/business timezone before extracting hour/date.
+4. For legacy Access wall-clock-as-UTC values, preserve wall clock only through an explicit source timestamp-basis contract; do not infer from `DateTimeKind` alone.
+5. If the basis cannot be proven for a row/source, keep it in full-day totals but mark shift evidence partial/unavailable rather than guessing a shift.
+6. Return `shiftTimeZone`, `shiftTimestampBasis` (or mixed/unknown), and affected-row counts in metadata/export.
+7. Preserve RQ383: off-shift/no-time rows never get fabricated into shift 1/2.
+8. Add DST and boundary cases at 05:59/06:00/13:59/14:00/21:59/22:00 local business time.
+
+### Tests
+
+- Access wall-clock source preserves intended local 06/14 boundaries;
+- genuine UTC source converts correctly to business timezone;
+- DST spring/fall cases do not silently move into the wrong shift;
+- mixed known bases aggregate correctly with provenance;
+- unknown basis contributes to daily totals but not a fabricated measured shift;
+- store-specific timezone is honored if configured; otherwise one explicit deployment default is returned, never hidden;
+- RQ383 off-shift/no-time tests remain green.
+
+### Acceptance
+
+- “Prva smena 06-14” has one provable business-time meaning across sources;
+- source timestamp ambiguity cannot create a measured-looking shift value;
+- timezone/basis is inspectable in trust/export metadata;
+- full-day totals remain unaffected by rows that cannot be shift-classified.
+
+### Dependencies
+
+- Ready after RQ494 because both edit Daily sales population/query semantics.
+- Independent of RQ495/RQ496 after RQ494, but do not claim it while another Daily service owner is active.
