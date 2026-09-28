@@ -54,7 +54,11 @@ public static class AnalyticsDecisionRecommendationEngine
         };
     }
 
-    public static RecommendationResult Evaluate(RecommendationInput input, double? averageMarginPct)
+    public static RecommendationResult Evaluate(
+        RecommendationInput input,
+        double? averageMarginPct,
+        bool requireComparableSignal = true,
+        bool applyUnknownShareCriticalGate = true)
     {
         var reasons = new List<string>();
 
@@ -90,8 +94,15 @@ public static class AnalyticsDecisionRecommendationEngine
             splitCoverage,
             hasUnknownShare,
             unknownShare,
-            reliability);
-        var status = DecideStatus(input, averageMarginPct, reliability, dataQualityStatus, reasons);
+            reliability,
+            applyUnknownShareCriticalGate);
+        var status = DecideStatus(
+            input,
+            averageMarginPct,
+            reliability,
+            dataQualityStatus,
+            reasons,
+            requireComparableSignal);
         var confidence = ComputeConfidence(status, reliability, reasons);
         var summary = BuildSummary(status, reasons, input, reliability);
 
@@ -138,13 +149,14 @@ public static class AnalyticsDecisionRecommendationEngine
         double splitCoverage,
         bool hasUnknownShare,
         double unknownShare,
-        double reliabilityPct)
+        double reliabilityPct,
+        bool applyUnknownShareCriticalGate)
     {
         if (input.IsUnknownEntity
             || !hasUnknownShare
             || !hasMarginCoverage
             || marginCoverage < 40d
-            || unknownShare >= 25d
+            || (applyUnknownShareCriticalGate && unknownShare >= 25d)
             || reliabilityPct < 35d)
         {
             return "critical";
@@ -167,7 +179,8 @@ public static class AnalyticsDecisionRecommendationEngine
         double? averageMarginPct,
         double reliabilityPct,
         string dataQualityStatus,
-        IReadOnlyCollection<string> reasons)
+        IReadOnlyCollection<string> reasons,
+        bool requireComparableSignal)
     {
         if (input.IsUnknownEntity)
         {
@@ -175,7 +188,7 @@ public static class AnalyticsDecisionRecommendationEngine
         }
 
         if (reasons.Contains("missing_known_margin_baseline")
-            || reasons.Contains("missing_split_coverage")
+            || (requireComparableSignal && reasons.Contains("missing_split_coverage"))
             || reasons.Contains("unknown_bucket_share_unavailable"))
         {
             return "insufficient_data";

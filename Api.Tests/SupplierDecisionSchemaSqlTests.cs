@@ -135,10 +135,11 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.Contains("totals.AbsoluteChangeRevenue = totalAbsoluteChangeRevenue;", source);
         Assert.Contains("vendor.ChangeSharePercent = totalAbsoluteChangeRevenue == 0m", source);
         Assert.Equal(3, source.Split("var hasComparableNivelacijaSignal =", StringSplitOptions.None).Length - 1);
-        Assert.Equal(3, source.Split("var exposedRecommendation = AnalyticsDecisionRecommendationEngine.ApplyComparableSignalGate(", StringSplitOptions.None).Length - 1);
-        // The comparable-signal gate still drives the decision; Operations integrity gating can only block it further.
-        Assert.Contains("var recommendationAllowed = exposedRecommendation.RecommendationAllowed && !blockOperationsDecisionSignals;", source);
-        Assert.DoesNotContain("var recommendationAllowed = exposedRecommendation.RecommendationAllowed;", source);
+        Assert.Equal(2, source.Split("var exposedRecommendation = AnalyticsDecisionRecommendationEngine.ApplyComparableSignalGate(", StringSplitOptions.None).Length - 1);
+        Assert.Contains("var exposedRecommendation = OperationsRecommendationGatePolicy.ApplySupplierPolicy(", source);
+        Assert.Contains("var supplierPageRecommendationAllowed", source);
+        Assert.Contains("scope = \"known_supplier_rows\"", source);
+        Assert.Contains("unknownSupplierRevenueDenominator = \"supplier_trust_contract_revenue\"", source);
     }
 
     [Fact]

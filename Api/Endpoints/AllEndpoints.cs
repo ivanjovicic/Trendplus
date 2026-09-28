@@ -1742,7 +1742,7 @@ public static class AllEndpoints
                 var weightedMarginContribution = knownSupplierMarginEvidence.Sum(row => row.MarginContribution);
                 var totalMarginContribution = suppliers.Sum(row => row.marginContribution);
                 var totalUnits = suppliers.Sum(row => row.ukupnaKolicina);
-                var unknownSupplierSharePct = dataQuality.unknownSupplierRevenueSharePct ?? 0d;
+                var unknownSupplierSharePct = dataQuality.unknownSupplierRevenueSharePct;
                 var operationsIntegrityRegistry = httpContext.RequestServices.GetService<OperationsAnalyticsIntegrityRegistry>();
                 var blockOperationsDecisionSignals = OperationsAnalyticsIntegrityMeta.ShouldBlockDecisionSignals(operationsIntegrityRegistry);
 
@@ -1780,12 +1780,15 @@ public static class AllEndpoints
                             HasPreviousPeriodWindow: hasPreviousPeriodWindow,
                             IsNewEntity: isNewSupplier,
                             UnknownBucketSharePct: unknownSupplierSharePct),
-                            weightedMarginPct);
+                            weightedMarginPct,
+                            requireComparableSignal: false,
+                            applyUnknownShareCriticalGate: false);
                         var hasComparableNivelacijaSignal = supplier.prePostNivelacijaRevenueImpactPct.HasValue
                             && supplier.prePostNivelacijaUnitsImpactPct.HasValue;
-                        var exposedRecommendation = AnalyticsDecisionRecommendationEngine.ApplyComparableSignalGate(
+                        var exposedRecommendation = OperationsRecommendationGatePolicy.ApplySupplierPolicy(
                             recommendation,
-                            hasComparableNivelacijaSignal);
+                            hasComparableNivelacijaSignal,
+                            claimsPriceEvent: false);
                         var recommendationAllowed = exposedRecommendation.RecommendationAllowed && !blockOperationsDecisionSignals;
 
                         return new
@@ -1862,6 +1865,17 @@ public static class AllEndpoints
                     })
                     .ToList();
 
+                var knownSupplierRecommendations = suppliersWithRecommendation
+                    .Where(x => !x.isUnknown)
+                    .ToList();
+                var supplierPageRecommendationAllowed = !blockOperationsDecisionSignals
+                    && knownSupplierRecommendations.Count > 0
+                    && knownSupplierRecommendations.All(x => x.recommendation.recommendationAllowed)
+                    && dataQuality.missingCostRevenueSharePct.HasValue
+                    && unknownSupplierSharePct.HasValue
+                    && dataQuality.missingCostRevenueSharePct.Value < 50d
+                    && !OperationsRecommendationGatePolicy.IsSupplierUnknownRevenueCritical(unknownSupplierSharePct.Value);
+
                 var totalHistPct = totalRevenue > 0m
                     ? Math.Round((double)(suppliers.Sum(r => r.historicalCostRevenue) / totalRevenue * 100m), 2)
                     : 0d;
@@ -1933,11 +1947,11 @@ public static class AllEndpoints
                     prePostNivelacijaUnitsImpactPct = comparableSignal.UnitsImpactPct,
                     recommendationSummary = new
                     {
-                        increaseFocus = suppliersWithRecommendation.Count(x => x.recommendation.status == "increase_focus"),
-                        maintain = suppliersWithRecommendation.Count(x => x.recommendation.status == "maintain"),
-                        review = suppliersWithRecommendation.Count(x => x.recommendation.status == "review"),
-                        doNotTrust = suppliersWithRecommendation.Count(x => x.recommendation.status == "do_not_trust"),
-                        insufficientData = suppliersWithRecommendation.Count(x => x.recommendation.status == "insufficient_data")
+                        increaseFocus = knownSupplierRecommendations.Count(x => x.recommendation.status == "increase_focus"),
+                        maintain = knownSupplierRecommendations.Count(x => x.recommendation.status == "maintain"),
+                        review = knownSupplierRecommendations.Count(x => x.recommendation.status == "review"),
+                        doNotTrust = knownSupplierRecommendations.Count(x => x.recommendation.status == "do_not_trust"),
+                        insufficientData = knownSupplierRecommendations.Count(x => x.recommendation.status == "insufficient_data")
                     },
                     // Legacy compatibility alias (pre/post impact metric in old response shape)
                     promenaPrometaPct = sumPreRevenue > 0m
@@ -1953,7 +1967,10 @@ public static class AllEndpoints
                     dataQuality.missingCostRevenueSharePct,
                     dataQuality.unknownSupplierRevenueSharePct,
                     dataQuality.revenueWithNivelacijaSplitSharePct,
-                    generatedAtUtc);
+                    generatedAtUtc,
+                    supplierPolicy: true);
+                supplierTrustMeta.ProvenanceBasis = OperationsRecommendationGatePolicy.SupplierTrustProvenance;
+                supplierTrustMeta.RecommendationAllowed = supplierPageRecommendationAllowed;
                 supplierTrustMeta.AttributionBasis = attributionBasis;
                 supplierTrustMeta.AttributionCoveragePct = attributionCoveragePct;
                 supplierTrustMeta = OperationsAnalyticsIntegrityMeta.ApplyIntegrityState(supplierTrustMeta, operationsIntegrityRegistry);
@@ -1974,15 +1991,15 @@ public static class AllEndpoints
                     totals,
                     dataQuality,
                     meta = supplierTrustMeta,
-                    recommendationAllowed = !blockOperationsDecisionSignals
-                        && suppliersWithRecommendation.Count > 0
-                        && suppliersWithRecommendation.All(x => x.recommendation.recommendationAllowed),
+                    recommendationAllowed = supplierPageRecommendationAllowed,
                     recommendationReferenceCohort = new
                     {
-                        scope = "all_response_suppliers",
-                        supplierCount = suppliersWithRecommendation.Count,
-                        includesUnknown = true,
-                        basis = "backend_supplier_response"
+                        scope = "known_supplier_rows",
+                        supplierCount = knownSupplierRecommendations.Count,
+                        includesUnknown = false,
+                        unknownSupplierRevenueSharePct = unknownSupplierSharePct,
+                        unknownSupplierRevenueDenominator = "supplier_trust_contract_revenue",
+                        basis = OperationsRecommendationGatePolicy.SupplierTrustProvenance
                     },
                     sezone
                 };
@@ -7416,7 +7433,8 @@ public static class AllEndpoints
         double? missingCostRevenueSharePct,
         double? unknownRevenueSharePct,
         double? comparableSplitCoveragePct,
-        DateTime generatedAtUtc)
+        DateTime generatedAtUtc,
+        bool supplierPolicy = false)
     {
         if (rowCount <= 0)
         {
@@ -7429,7 +7447,7 @@ public static class AllEndpoints
         // A missing denominator is unknown evidence, not a healthy zero/100% value.
         if (!missingCostRevenueSharePct.HasValue
             || !unknownRevenueSharePct.HasValue
-            || !comparableSplitCoveragePct.HasValue)
+            || (!supplierPolicy && !comparableSplitCoveragePct.HasValue))
         {
             var unavailableMeta = AnalyticsResponseMetaFactory.Warning(
                 "STATS_TRUST_INSUFFICIENT",
@@ -7442,26 +7460,40 @@ public static class AllEndpoints
 
         var missingCostShare = missingCostRevenueSharePct.Value;
         var unknownShare = unknownRevenueSharePct.Value;
-        var splitCoverage = comparableSplitCoveragePct.Value;
+        var splitCoverage = comparableSplitCoveragePct.GetValueOrDefault();
 
-        var isCritical = missingCostShare >= 50d || unknownShare >= 20d || splitCoverage < 40d;
+        var isSupplierUnknownCritical = supplierPolicy
+            && OperationsRecommendationGatePolicy.IsSupplierUnknownRevenueCritical(unknownShare);
+        var isCritical = missingCostShare >= 50d
+            || (!supplierPolicy && unknownShare >= 20d)
+            || isSupplierUnknownCritical
+            || (!supplierPolicy && splitCoverage < 40d);
         if (isCritical)
         {
             var criticalMeta = AnalyticsResponseMetaFactory.Warning(
-                "STATS_TRUST_CRITICAL",
-                "Kvalitet podataka je kritično degradiran; trust i dalje dolazi iz backenda.",
+                isSupplierUnknownCritical ? "SUPPLIER_UNKNOWN_SHARE_CRITICAL" : "STATS_TRUST_CRITICAL",
+                isSupplierUnknownCritical
+                    ? $"Nepoznati dobavljači čine {unknownShare:0.##}% revenue denominatora; od {OperationsRecommendationGatePolicy.SupplierUnknownRevenueCriticalThresholdPct:0.#}% Supplier preporuka je blokirana."
+                    : "Kvalitet podataka je kritično degradiran; trust i dalje dolazi iz backenda.",
                 "critical");
             criticalMeta.GeneratedAtUtc = generatedAtUtc;
             criticalMeta.RecommendationAllowed = false;
             return criticalMeta;
         }
 
-        var isWarning = missingCostShare >= 10d || unknownShare >= 10d || splitCoverage < 60d;
+        var isSupplierUnknownWarning = supplierPolicy
+            && unknownShare >= OperationsRecommendationGatePolicy.SupplierUnknownRevenueWarningThresholdPct;
+        var isWarning = missingCostShare >= 10d
+            || isSupplierUnknownWarning
+            || (!supplierPolicy && unknownShare >= 10d)
+            || splitCoverage < 60d;
         if (isWarning)
         {
             var warningMeta = AnalyticsResponseMetaFactory.Warning(
-                "STATS_TRUST_DEGRADED",
-                "Podaci imaju upozorenja o kvalitetu; prikaz je delimično oslabljen.",
+                isSupplierUnknownWarning ? "SUPPLIER_UNKNOWN_SHARE_WARNING" : "STATS_TRUST_DEGRADED",
+                isSupplierUnknownWarning
+                    ? $"Nepoznati dobavljači čine {unknownShare:0.##}% revenue denominatora; pragovi su <{OperationsRecommendationGatePolicy.SupplierUnknownRevenueWarningThresholdPct:0.#}% bez blokade, {OperationsRecommendationGatePolicy.SupplierUnknownRevenueWarningThresholdPct:0.#}–<{OperationsRecommendationGatePolicy.SupplierUnknownRevenueCriticalThresholdPct:0.#}% upozorenje, ≥{OperationsRecommendationGatePolicy.SupplierUnknownRevenueCriticalThresholdPct:0.#}% blokada."
+                    : "Podaci imaju upozorenja o kvalitetu; prikaz je delimično oslabljen.",
                 "warning");
             warningMeta.GeneratedAtUtc = generatedAtUtc;
             warningMeta.RecommendationAllowed = true;

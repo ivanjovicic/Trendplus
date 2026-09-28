@@ -72,4 +72,66 @@ public class AnalyticsStatsTrustMetaTests
         Assert.Null(meta.LastRefreshAtUtc);
         Assert.Equal(generatedAt, meta.GeneratedAtUtc);
     }
+
+    [Theory(DisplayName = "Supplier stats trust meta applies the 15/25 percent unknown-revenue gate")]
+    [InlineData(14.9, "good", null, true)]
+    [InlineData(15.0, "warning", "SUPPLIER_UNKNOWN_SHARE_WARNING", true)]
+    [InlineData(24.9, "warning", "SUPPLIER_UNKNOWN_SHARE_WARNING", true)]
+    [InlineData(25.0, "critical", "SUPPLIER_UNKNOWN_SHARE_CRITICAL", false)]
+    public void BuildStatsTrustMeta_SupplierUnknownRevenueBoundaries(
+        double unknownRevenueSharePct,
+        string expectedQuality,
+        string? expectedWarningCode,
+        bool expectedRecommendationAllowed)
+    {
+        var meta = AllEndpoints.BuildStatsTrustMeta(
+            rowCount: 12,
+            emptyReason: "no_supplier_sales",
+            emptyMessage: "Nema podataka za prodaju po dobavljaču.",
+            missingCostRevenueSharePct: 0,
+            unknownRevenueSharePct: unknownRevenueSharePct,
+            comparableSplitCoveragePct: 100,
+            generatedAtUtc: DateTime.UtcNow,
+            supplierPolicy: true);
+
+        Assert.Equal(expectedQuality, meta.DataQualityStatus);
+        Assert.Equal(expectedWarningCode, meta.WarningCode);
+        Assert.Equal(expectedRecommendationAllowed, meta.RecommendationAllowed);
+    }
+
+    [Fact(DisplayName = "Supplier split coverage alone is not a critical page gate")]
+    public void BuildStatsTrustMeta_SupplierMissingSplitIsWarningOnly()
+    {
+        var meta = AllEndpoints.BuildStatsTrustMeta(
+            rowCount: 12,
+            emptyReason: "no_supplier_sales",
+            emptyMessage: "Nema podataka za prodaju po dobavljaču.",
+            missingCostRevenueSharePct: 0,
+            unknownRevenueSharePct: 0,
+            comparableSplitCoveragePct: 32,
+            generatedAtUtc: DateTime.UtcNow,
+            supplierPolicy: true);
+
+        Assert.Equal("warning", meta.DataQualityStatus);
+        Assert.Equal("STATS_TRUST_DEGRADED", meta.WarningCode);
+        Assert.True(meta.RecommendationAllowed);
+    }
+
+    [Fact(DisplayName = "Supplier missing split denominator is warning-only when trust denominators are known")]
+    public void BuildStatsTrustMeta_SupplierMissingSplitDenominatorDoesNotBlock()
+    {
+        var meta = AllEndpoints.BuildStatsTrustMeta(
+            rowCount: 12,
+            emptyReason: "no_supplier_sales",
+            emptyMessage: "Nema podataka za prodaju po dobavljaču.",
+            missingCostRevenueSharePct: 0,
+            unknownRevenueSharePct: 0,
+            comparableSplitCoveragePct: null,
+            generatedAtUtc: DateTime.UtcNow,
+            supplierPolicy: true);
+
+        Assert.Equal("warning", meta.DataQualityStatus);
+        Assert.Equal("STATS_TRUST_DEGRADED", meta.WarningCode);
+        Assert.True(meta.RecommendationAllowed);
+    }
 }

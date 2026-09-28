@@ -174,7 +174,8 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             "Prodaja po dobavljaču",
             rows,
             context,
-            comparison);
+            comparison,
+            supplierRecommendationPolicy: true);
         return aggregate is null ? null : BuildSupplierDetailProjection(aggregate, rows, context);
     }
 
@@ -1277,7 +1278,8 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         List<SalesRow> rows,
         AnalyticsContext context,
         ComparisonMetrics? comparison = null,
-        bool includeSnapshotCost = true)
+        bool includeSnapshotCost = true,
+        bool supplierRecommendationPolicy = false)
     {
         decimal totalRevenue = 0m;
         int totalQty = 0;
@@ -1421,10 +1423,17 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 HasPreviousPeriodWindow: hasPreviousPeriodWindow,
                 IsNewEntity: isNewSupplier,
                 UnknownBucketSharePct: unknownSharePct),
-            averageMarginPct);
-        var exposedRecommendation = AnalyticsDecisionRecommendationEngine.ApplyComparableSignalGate(
-            recommendation,
-            splitSnapshot.HasComparableSignal);
+            averageMarginPct,
+            requireComparableSignal: !supplierRecommendationPolicy,
+            applyUnknownShareCriticalGate: !supplierRecommendationPolicy);
+        var exposedRecommendation = supplierRecommendationPolicy
+            ? OperationsRecommendationGatePolicy.ApplySupplierPolicy(
+                recommendation,
+                splitSnapshot.HasComparableSignal,
+                claimsPriceEvent: false)
+            : AnalyticsDecisionRecommendationEngine.ApplyComparableSignalGate(
+                recommendation,
+                splitSnapshot.HasComparableSignal);
         var recommendationAllowed = exposedRecommendation.RecommendationAllowed;
 
         var metadata = BuildFilterMetadata(context.Filters).ToList();

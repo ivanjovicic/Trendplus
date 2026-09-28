@@ -378,4 +378,74 @@ public class AnalyticsDecisionRecommendationEngineTests
         Assert.Contains("missing_comparable_signal", gated.ReasonCodes);
         Assert.Contains("uporediv signal", gated.Summary, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact(DisplayName = "Supplier sales may proceed without price-event evidence, with a confidence reduction")]
+    public void SupplierPolicy_MissingComparableSignal_ReducesConfidenceWithoutBlockingSalesRecommendation()
+    {
+        var recommendation = AnalyticsDecisionRecommendationEngine.Evaluate(
+            new AnalyticsDecisionRecommendationEngine.RecommendationInput(
+                IsUnknownEntity: false,
+                TotalRevenue: 200000m,
+                TotalUnits: 500,
+                ItemCount: 50,
+                SharePct: 5d,
+                MarginPct: 25d,
+                MarginCoveragePct: 95d,
+                SplitCoveragePct: null,
+                PopRevenueChangePct: 15d,
+                PopUnitsChangePct: 10d,
+                PreviousPeriodRevenue: 170000m,
+                PreviousPeriodUnits: 450,
+                HasPreviousPeriodWindow: true,
+                IsNewEntity: false,
+                UnknownBucketSharePct: 0d),
+            averageMarginPct: 15d,
+            requireComparableSignal: false,
+            applyUnknownShareCriticalGate: false);
+
+        var projected = OperationsRecommendationGatePolicy.ApplySupplierPolicy(
+            recommendation,
+            hasComparableSignal: false,
+            claimsPriceEvent: false);
+
+        Assert.Equal("increase_focus", projected.Status);
+        Assert.True(projected.RecommendationAllowed);
+        Assert.Contains("missing_comparable_signal", projected.ReasonCodes);
+        Assert.Equal(recommendation.ConfidencePct - 15d, projected.ConfidencePct);
+    }
+
+    [Fact(DisplayName = "Supplier unknown row remains do_not_trust when comparable evidence is missing")]
+    public void SupplierPolicy_UnknownRow_RemainsDoNotTrust()
+    {
+        var recommendation = AnalyticsDecisionRecommendationEngine.Evaluate(
+            new AnalyticsDecisionRecommendationEngine.RecommendationInput(
+                IsUnknownEntity: true,
+                TotalRevenue: 200000m,
+                TotalUnits: 500,
+                ItemCount: 50,
+                SharePct: 5d,
+                MarginPct: 25d,
+                MarginCoveragePct: 95d,
+                SplitCoveragePct: null,
+                PopRevenueChangePct: 15d,
+                PopUnitsChangePct: 10d,
+                PreviousPeriodRevenue: 170000m,
+                PreviousPeriodUnits: 450,
+                HasPreviousPeriodWindow: true,
+                IsNewEntity: false,
+                UnknownBucketSharePct: 25d),
+            averageMarginPct: 15d,
+            requireComparableSignal: false,
+            applyUnknownShareCriticalGate: false);
+
+        var projected = OperationsRecommendationGatePolicy.ApplySupplierPolicy(
+            recommendation,
+            hasComparableSignal: false,
+            claimsPriceEvent: true);
+
+        Assert.Equal("do_not_trust", projected.Status);
+        Assert.False(projected.RecommendationAllowed);
+        Assert.Contains("unknown_entity", projected.ReasonCodes);
+        Assert.Contains("missing_comparable_signal", projected.ReasonCodes);
+    }
 }

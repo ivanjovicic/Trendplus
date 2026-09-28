@@ -48,10 +48,17 @@ public class AnalyticsSupplierSalesIntegrationTests : IClassFixture<WebApplicati
         var root = await GetJsonRootAsync("/api/analytics/supplier-sales-stats?sezonaId=1");
 
         var cohort = root.GetProperty("recommendationReferenceCohort");
-        Assert.Equal("all_response_suppliers", cohort.GetProperty("scope").GetString());
-        Assert.Equal(root.GetProperty("suppliers").GetArrayLength(), cohort.GetProperty("supplierCount").GetInt32());
-        Assert.True(cohort.GetProperty("includesUnknown").GetBoolean());
-        Assert.Equal("backend_supplier_response", cohort.GetProperty("basis").GetString());
+        var knownSupplierCount = root.GetProperty("suppliers")
+            .EnumerateArray()
+            .Count(supplier => !supplier.GetProperty("isUnknown").GetBoolean());
+        Assert.Equal("known_supplier_rows", cohort.GetProperty("scope").GetString());
+        Assert.Equal(knownSupplierCount, cohort.GetProperty("supplierCount").GetInt32());
+        Assert.False(cohort.GetProperty("includesUnknown").GetBoolean());
+        Assert.Equal("supplier_trust_contract_revenue_unknown_gate_v1", cohort.GetProperty("basis").GetString());
+        Assert.Equal(
+            root.GetProperty("dataQuality").GetProperty("unknownSupplierRevenueSharePct").GetDouble(),
+            cohort.GetProperty("unknownSupplierRevenueSharePct").GetDouble());
+        Assert.Equal("supplier_trust_contract_revenue", cohort.GetProperty("unknownSupplierRevenueDenominator").GetString());
     }
 
     [OperationsIntegrationFact(DisplayName = "Supplier totals expose comparable pre/post cohort separately from observed totals")]
