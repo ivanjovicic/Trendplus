@@ -25710,7 +25710,7 @@ Decision tests:
 - Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `cd9b3b31b702ae45312b0537197f51cd1608166e`
-- Main verification: `origin/main` at `81e28043eb5506e6357945515579e0b8db758362` contains the implementation SHA as an ancestor.
+- Main verification: `origin/main` at `cd4992aa` contains the implementation SHA as an ancestor.
 - Backend readiness now ignores legitimate unsold master articles as a score penalty, counts unique structurally blocked articles, applies the shared receipt-population and positive-cost policies, distinguishes receipt-store sales from article-store master data, and anchors implicit periods to scoped business dates with an explicit fallback code.
 - Frontend renders signal coverage, blocked-article units and period-anchor provenance in the durable report and readiness card.
 - Missed: no in-scope implementation item known; live PostgreSQL certification remains external follow-up.
