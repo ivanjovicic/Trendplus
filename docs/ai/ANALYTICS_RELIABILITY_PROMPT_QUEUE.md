@@ -2,7 +2,9 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ468
+Current READY prompt: RQ463
+Owner promotion 2026-09-28: `RQ463` moved WAITING → READY after `RQ468` completed; it is the next primary Supplier report window/provenance prompt and remains unclaimed.
+Owner completion 2026-09-28: `RQ468` moved READY → IN_PROGRESS → DONE and was delivered directly to `main`. Supplier report and Pilot intake user-visible copy, durable rows/exports, API messages and readiness/import states now use Serbian labels and diacritics, including localized scope/status/boolean values and Belgrade-local import timestamps. Focused proof: frontend 32/32; backend 68/68; client guardrails, typecheck and build pass; API build pass; diff check pass. Implementation: `38eb2ec6fc9a0a74e3c4ce291102aca58b4b4cca`; run log: `.ai/runs/2026-09-28-RQ468-evidence.md`. Evidence state: synchronized after final documentation push. Next primary READY is `RQ463`.
 Owner completion 2026-09-28: `RQ467` moved READY → IN_PROGRESS → DONE and was delivered directly to `main` after implementing Pilot intake readiness semantics. Unsold master articles no longer create a hidden readiness penalty or critical override; signal coverage is informational, blocked recommendations are distinct blocked articles, DUG/KOREKCIJA receipts are excluded, signed returns remain net sales without becoming price errors, store/cost semantics are explicit, and the default period uses the latest scoped business date with an explicit fallback anchor. Focused proof: backend 68/68, frontend 21/21; API build, client typecheck, guardrails and production build pass. Implementation: `cd9b3b31b702ae45312b0537197f51cd1608166e`; run log: `.ai/runs/2026-09-28-RQ467-evidence.md`. Evidence state: synchronized. Next primary READY is `RQ468`.
 Owner completion 2026-09-28: `RQ483` moved READY → IN_PROGRESS → DONE and was delivered directly to `main` in `43f2a73fc82d245c53c16903cd06b311a7bfcbe7`. Product Decision now measures last-sale age from the requested period end, bounds the last-sale query to that period, admits zero-sales stock into a non-actionable stale review path, supports new-product and MinStock 0/null replenishment candidates with reduced confidence, keeps lost-sales/slow-stock capital unavailable rather than zero when required evidence is missing, and exposes one threshold policy with provenance plus `article_size` grain metadata. Focused proof: 30/30; backend build passed. RQ472 journal gate/actionability was intentionally untouched. Run log: `.ai/runs/2026-09-28-RQ483-evidence.md`. Evidence state: synchronized. Next primary READY is `RQ467`; `RQ483` is DONE.
 Owner completion 2026-09-28: `RQ486` moved READY → IN_PROGRESS → DONE and was delivered directly to `main` in `966939e53c585221fcde27550ca0c76ba33e9d76`. Supplier trust metadata is keyed to the active request, invalid date ranges do not request data, stores carry page scope and duplicate labels expose stable IDs, unknown URL suppliers remain visible with an explicit message, filter layout wraps, local dates are preserved, sorting is pure and revenue rank badges are conditional. Focused proof: 55/55; guardrails/typecheck and production build pass. Run log: `.ai/runs/2026-09-28-RQ486-evidence.md`. Evidence state: synchronized. Next primary READY is `RQ483`; `RQ467` remains independently READY.
@@ -25300,7 +25302,7 @@ The page spec mocks the component, so the defect is untested.
 
 ## RQ463 - Make the Supplier report requested window, labels and provenance truthful
 
-Status: WAITING
+Status: READY
 Ready after: `RQ461` DONE (same files/metadata contract). Owner decision recorded 2026-09-28 (option A); no decision remains.
 Priority: P1
 Type: backend-contract/tests
@@ -25722,14 +25724,14 @@ Decision tests:
 
 ## RQ468 - Complete Serbian copy on the Supplier report and Pilot intake screens
 
-Status: READY
+Status: DONE
 Ready after: `RQ461`, `RQ462`, `RQ466` and `RQ467` DONE (same files; copy must follow the new renderer/rows)
 Priority: P2
 Type: frontend/backend-copy/tests
 Feature family: supplier-report-pilot-intake-serbian-copy
 Parallel-safe: no
 Owner: Analytics Reliability / Copy
-Local lock: `.ai/task-locks/RQ468-<agent>.lock.md`
+Local lock: removed after delivery
 Commit suggestion: `fix(analytics): serbian copy on supplier report and pilot intake`
 
 ### Problem
@@ -25776,6 +25778,19 @@ Commit suggestion: `fix(analytics): serbian copy on supplier report and pilot in
 
 - After `RQ461`, `RQ462`, `RQ466`. `RQ325` routing bullet points here.
 - Reliability contract: copy changes must not change numbers, keys or gating.
+
+### Completion 2026-09-28
+
+- Delivered directly to `main`: Serbian copy is complete across the Supplier report and Pilot intake durable/API/UI surfaces; technical keys and business values remain unchanged.
+- Focused proof: 32/32 frontend tests; 68/68 backend tests; client analytics guardrails, typecheck and production build; API build; `git diff --check` — all pass.
+- Checks not run: live PostgreSQL integration; full .NET suite; remote CI completion.
+- Run log: `.ai/runs/2026-09-28-RQ468-evidence.md`
+- Evidence state: synchronized after final documentation push; `origin/main` verification follows the closure commit.
+- Implementation SHA: `38eb2ec6fc9a0a74e3c4ce291102aca58b4b4cca`.
+- Delivery mode: direct-main.
+- Follow-up: `RQ463` — requested-window truth and Supplier report provenance.
+- Residual risk: remote/live runtime proof remains external; no copy change was made outside the two assigned surfaces.
+- Prompt defect / scope repair: the scope required the Pilot readiness card and shared readiness reason labels because they are visible on the assigned Pilot surface; no business-semantic scope was expanded.
 
 ---
 
