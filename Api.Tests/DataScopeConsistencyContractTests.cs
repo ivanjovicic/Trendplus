@@ -40,4 +40,41 @@ public sealed class DataScopeConsistencyContractTests
         Assert.True(typeof(AnalyticsDataQualityHealthSnapshot).GetProperty(nameof(AnalyticsDataQualityHealthSnapshot.HasRevenueEvidence)) is not null);
         Assert.True(typeof(AnalyticsDataQualityHealthSnapshot).GetProperty(nameof(AnalyticsDataQualityHealthSnapshot.TotalRevenue)) is not null);
     }
+
+    [Fact]
+    public void SupplierShoeTypeOracleScopesSalesByHeaderOrigin()
+    {
+        var source = ReadRepoFile("Api.Tests/Analytics/SupplierShoeTypeRawFactOracle.cs");
+
+        Assert.Contains("pz.data_origin = 'access'", source, StringComparison.Ordinal);
+        Assert.Contains("pz.data_origin = 'existing'", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("a.\"DataOrigin\"", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("INNER JOIN \"Artikli\" a", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DailySalesUsesCanonicalHeaderDataScopePolicy()
+    {
+        var source = ReadRepoFile("Api/Services/DailySalesStatsService.cs");
+
+        Assert.Contains("SalesDataScopePolicy.HeaderPredicate(normalizedScope)", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("a.DataOrigin == \"access\"", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("a.DataOrigin == \"existing\"", source, StringComparison.Ordinal);
+    }
+
+    private static string ReadRepoFile(string relativePath)
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "Trendplus2.sln")))
+            {
+                return File.ReadAllText(Path.Combine(directory.FullName, relativePath));
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new InvalidOperationException("Could not find repository root.");
+    }
 }

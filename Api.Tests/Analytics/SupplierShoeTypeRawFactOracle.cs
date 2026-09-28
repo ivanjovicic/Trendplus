@@ -43,15 +43,14 @@ public static class SupplierShoeTypeRawFactOracle
                 COUNT(DISTINCT ps.attribution_basis)::int AS distinct_attribution_bases
             FROM prodaja_stavke ps
             INNER JOIN prodaja_zaglavlje pz ON ps.id_prodaja = pz.id
-            INNER JOIN "Artikli" a ON ps.id_artikal = a."Id"
             WHERE pz.datum_prodaje >= @fromUtc
               AND pz.datum_prodaje < @toUtc
               AND (@storeId IS NULL OR pz.id_objekat = @storeId)
               AND UPPER(BTRIM(COALESCE(pz.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')
               AND (
                     @dataScope = 'all'
-                    OR (@dataScope = 'imported' AND a."DataOrigin" = 'access')
-                    OR (@dataScope = 'existing' AND (a."DataOrigin" = 'existing' OR a."DataOrigin" IS NULL OR a."DataOrigin" = ''))
+                    OR (@dataScope = 'imported' AND pz.data_origin = 'access')
+                    OR (@dataScope = 'existing' AND (pz.data_origin = 'existing' OR pz.data_origin IS NULL OR pz.data_origin = ''))
                   )
             """;
 
@@ -83,15 +82,14 @@ public static class SupplierShoeTypeRawFactOracle
                 COUNT(*)::int AS sale_line_count
             FROM prodaja_stavke ps
             INNER JOIN prodaja_zaglavlje pz ON ps.id_prodaja = pz.id
-            INNER JOIN "Artikli" a ON ps.id_artikal = a."Id"
             WHERE pz.datum_prodaje >= @fromUtc
               AND pz.datum_prodaje < @toUtc
               AND (@storeId IS NULL OR pz.id_objekat = @storeId)
               AND UPPER(BTRIM(COALESCE(pz.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')
               AND (
                     @dataScope = 'all'
-                    OR (@dataScope = 'imported' AND a."DataOrigin" = 'access')
-                    OR (@dataScope = 'existing' AND (a."DataOrigin" = 'existing' OR a."DataOrigin" IS NULL OR a."DataOrigin" = ''))
+                    OR (@dataScope = 'imported' AND pz.data_origin = 'access')
+                    OR (@dataScope = 'existing' AND (pz.data_origin = 'existing' OR pz.data_origin IS NULL OR pz.data_origin = ''))
                   )
             GROUP BY ps.supplier_id_at_sale
             """;
@@ -112,15 +110,14 @@ public static class SupplierShoeTypeRawFactOracle
                 COUNT(*)::int AS sale_line_count
             FROM prodaja_stavke ps
             INNER JOIN prodaja_zaglavlje pz ON ps.id_prodaja = pz.id
-            INNER JOIN "Artikli" a ON ps.id_artikal = a."Id"
             WHERE pz.datum_prodaje >= @fromUtc
               AND pz.datum_prodaje < @toUtc
               AND (@storeId IS NULL OR pz.id_objekat = @storeId)
               AND UPPER(BTRIM(COALESCE(pz.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')
               AND (
                     @dataScope = 'all'
-                    OR (@dataScope = 'imported' AND a."DataOrigin" = 'access')
-                    OR (@dataScope = 'existing' AND (a."DataOrigin" = 'existing' OR a."DataOrigin" IS NULL OR a."DataOrigin" = ''))
+                    OR (@dataScope = 'imported' AND pz.data_origin = 'access')
+                    OR (@dataScope = 'existing' AND (pz.data_origin = 'existing' OR pz.data_origin IS NULL OR pz.data_origin = ''))
                   )
             GROUP BY ps.shoe_type_id_at_sale
             """;

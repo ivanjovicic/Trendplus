@@ -52,13 +52,14 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
         // from the other population.
         var scopedSaleIdsQuery =
             from ps in _db.ProdajaStavke.AsNoTracking()
-            join pz in _db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking() on ps.IdProdaja equals pz.Id
+            join pz in _db.ProdajaZaglavlja
+                .Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate)
+                .Where(SalesDataScopePolicy.HeaderPredicate(normalizedScope))
+                .AsNoTracking() on ps.IdProdaja equals pz.Id
             join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
             where pz.DatumProdaje >= fromDateUtc
                && pz.DatumProdaje < toDateExclusiveUtc
                && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
-               && (!importedOnly || a.DataOrigin == "access")
-               && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
             select pz.Id;
 
         var receiptHeaders = await _db.ProdajaZaglavlja
@@ -102,13 +103,14 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
 
         var receiptLineTotals = (await (
             from ps in _db.ProdajaStavke.AsNoTracking()
-            join pz in _db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking() on ps.IdProdaja equals pz.Id
+            join pz in _db.ProdajaZaglavlja
+                .Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate)
+                .Where(SalesDataScopePolicy.HeaderPredicate(normalizedScope))
+                .AsNoTracking() on ps.IdProdaja equals pz.Id
             join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
             where pz.DatumProdaje >= fromDateUtc
                && pz.DatumProdaje < toDateExclusiveUtc
                && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
-               && (!importedOnly || a.DataOrigin == "access")
-               && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
             group new
             {
                 ps.Kolicina,
@@ -207,14 +209,14 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
 
         var excludedReceiptHeaders = await (
             from ps in _db.ProdajaStavke.AsNoTracking()
-            join pz in _db.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals pz.Id
+            join pz in _db.ProdajaZaglavlja
+                .Where(SalesDataScopePolicy.HeaderPredicate(normalizedScope))
+                .AsNoTracking() on ps.IdProdaja equals pz.Id
             join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
             where pz.DatumProdaje >= fromDateUtc
                && pz.DatumProdaje < toDateExclusiveUtc
                && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
                && SalesReceiptPopulationPolicy.ExcludedReceiptNumbers.Contains((pz.BrojRacuna ?? string.Empty).Trim().ToUpper())
-               && (!importedOnly || a.DataOrigin == "access")
-               && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
             group new
             {
                 ps.Kolicina,
@@ -285,7 +287,10 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
 
         var aggregates = await (
             from ps in _db.ProdajaStavke.AsNoTracking()
-            join pz in _db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking() on ps.IdProdaja equals pz.Id
+            join pz in _db.ProdajaZaglavlja
+                .Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate)
+                .Where(SalesDataScopePolicy.HeaderPredicate(normalizedScope))
+                .AsNoTracking() on ps.IdProdaja equals pz.Id
             join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
             // Supplier identity is frozen on the sale line. The article join remains
             // the source for data-origin scoping, but current article master edits must
@@ -295,8 +300,6 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             where pz.DatumProdaje >= fromDateUtc
                && pz.DatumProdaje < toDateExclusiveUtc
                && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
-               && (!importedOnly || a.DataOrigin == "access")
-               && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
             group new
             {
                 ps.Kolicina,
@@ -619,11 +622,12 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
         {
             var availabilityQuery =
                 from ps in _db.ProdajaStavke.AsNoTracking()
-                join pz in _db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking() on ps.IdProdaja equals pz.Id
+                join pz in _db.ProdajaZaglavlja
+                    .Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate)
+                    .Where(SalesDataScopePolicy.HeaderPredicate(normalizedScope))
+                    .AsNoTracking() on ps.IdProdaja equals pz.Id
                 join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                 where (!storeId.HasValue || pz.IDObjekat == storeId.Value)
-                   && (!importedOnly || a.DataOrigin == "access")
-                   && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
                 select pz.DatumProdaje;
 
             var minRaw = await availabilityQuery.Select(date => (DateTime?)date).MinAsync(ct);
@@ -644,6 +648,9 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
 
         var generatedAtUtc = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
         var responseMeta = BuildDailySalesMeta(hasSalesEvidence, warnings, generatedAtUtc);
+        responseMeta.RequestedDataScope = normalizedScope;
+        responseMeta.EffectiveDataScope = normalizedScope;
+        responseMeta.DataScopeSource = SalesDataScopePolicy.Source;
         responseMeta.AttributionBasis = attributionBasis;
         responseMeta.AttributionCoveragePct = attributionCoveragePct;
 

@@ -45,6 +45,14 @@ public sealed class SupplierShoeTypeIndependentOracleIntegrationTests
         await AssertEndpointsMatchOracleAsync(filters);
     }
 
+    [OperationsIntegrationFact(DisplayName = "Supplier and Shoe Type scope follows sale header when article origin disagrees")]
+    public async Task SharedFixture_HeaderOriginWinsOverCurrentArticleOrigin()
+    {
+        await SeedSharedFixtureAsync();
+        await AssertEndpointsMatchOracleAsync(BuildFilters("imported", 1, "2026-09-10", "2026-09-11"));
+        await AssertEndpointsMatchOracleAsync(BuildFilters("existing", 1, "2026-09-10", "2026-09-11"));
+    }
+
     [OperationsIntegrationFact(DisplayName = "Historical supplier attribution ignores current article master mutation")]
     public async Task SharedFixture_AttributionFrozenAfterMasterMutation()
     {
@@ -83,7 +91,7 @@ public sealed class SupplierShoeTypeIndependentOracleIntegrationTests
         using var client = _factory.CreateClient();
         var scopeQuery = $"&dataScope={Uri.EscapeDataString(filters.DataScope)}";
         var storeQuery = filters.StoreId.HasValue ? $"&storeId={filters.StoreId.Value}" : string.Empty;
-        var fromQuery = $"fromDate={FromDate}&toDate={ToDate}";
+        var fromQuery = $"fromDate={filters.FromUtc:yyyy-MM-dd}&toDate={filters.ToUtc:yyyy-MM-dd}";
 
         var supplier = await GetJsonAsync(
             client,
@@ -197,10 +205,14 @@ public sealed class SupplierShoeTypeIndependentOracleIntegrationTests
         Assert.Equal(oracleBuckets.Count, shoeRows.Length);
     }
 
-    private static SupplierShoeTypeRawFactOracle.Filters BuildFilters(string dataScope, int? storeId)
+    private static SupplierShoeTypeRawFactOracle.Filters BuildFilters(
+        string dataScope,
+        int? storeId,
+        string fromDate = FromDate,
+        string toDate = ToDate)
     {
-        var fromUtc = DateTime.SpecifyKind(DateTime.Parse(FromDate), DateTimeKind.Utc);
-        var toUtc = DateTime.SpecifyKind(DateTime.Parse(ToDate), DateTimeKind.Utc);
+        var fromUtc = DateTime.SpecifyKind(DateTime.Parse(fromDate), DateTimeKind.Utc);
+        var toUtc = DateTime.SpecifyKind(DateTime.Parse(toDate), DateTimeKind.Utc);
         return new SupplierShoeTypeRawFactOracle.Filters(fromUtc, toUtc, storeId, dataScope);
     }
 

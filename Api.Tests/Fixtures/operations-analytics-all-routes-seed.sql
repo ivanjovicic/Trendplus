@@ -120,6 +120,20 @@ VALUES
   (20, 20, 17, 1, 100, 100, 1, 1, 'sale_snapshot'),
   (21, 21, 18, 1, 80, 100, 2, 2, 'sale_snapshot');
 
+-- RQ494 adversarial scope rows: sales scope must follow the sale header even
+-- when current Artikli.DataOrigin points at the opposite population.
+INSERT INTO prodaja_zaglavlje
+  (id, broj_racuna, datum_prodaje, id_objekat, korisnik_ime, data_origin)
+VALUES
+  (22, 'RQ494-HEADER-ACCESS', '2026-09-10T10:00:00Z', 1, 'rq494', 'access'),
+  (23, 'RQ494-HEADER-EXISTING', '2026-09-10T11:00:00Z', 1, 'rq494', 'existing');
+
+INSERT INTO prodaja_stavke
+  (id, id_prodaja, id_artikal, kolicina, cena, nabavna_cena, supplier_id_at_sale, shoe_type_id_at_sale, attribution_basis)
+VALUES
+  (22, 22, 1, 2, 100, 50, 1, 1, 'sale_snapshot'),
+  (23, 23, 2, 3, 130, NULL, 2, 2, 'sale_snapshot');
+
 INSERT INTO "DnevnikPromena"
   ("Id", "TipPromene", "Datum", "Iznos", "DobavljacId", "ArtikalId", "StaraProdajnaCena", "NovaProdajnaCena", "Kolicina", "IDObjekat", "DataOrigin")
 VALUES
@@ -129,6 +143,6 @@ SELECT setval(pg_get_serial_sequence('"Dobavljaci"', 'Id'), COALESCE((SELECT MAX
 SELECT setval(pg_get_serial_sequence('"TipoviObuce"', 'Id'), COALESCE((SELECT MAX("Id") FROM "TipoviObuce"), 1), true);
 SELECT setval(pg_get_serial_sequence('"Sezone"', 'Id'), COALESCE((SELECT MAX("Id") FROM "Sezone"), 1), true);
 SELECT setval(pg_get_serial_sequence('"Artikli"', 'Id'), COALESCE((SELECT MAX("Id") FROM "Artikli"), 1), true);
-SELECT setval(pg_get_serial_sequence('prodaja_zaglavlje', 'id'), 21, true);
-SELECT setval(pg_get_serial_sequence('prodaja_stavke', 'id'), 21, true);
+SELECT setval(pg_get_serial_sequence('prodaja_zaglavlje', 'id'), 23, true);
+SELECT setval(pg_get_serial_sequence('prodaja_stavke', 'id'), 23, true);
 SELECT setval(pg_get_serial_sequence('"DnevnikPromena"', 'Id'), 1, true);

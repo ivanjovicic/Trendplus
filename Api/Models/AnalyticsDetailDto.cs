@@ -30,6 +30,7 @@ public sealed class AnalyticsDetailProvenanceDto
     public string? Season { get; init; }
     public int? StoreId { get; init; }
     public string DataScope { get; init; } = "all";
+    public string? DataScopeSource { get; init; }
     public DateTime GeneratedAtUtc { get; init; }
     public string Freshness { get; init; } = "fresh";
     public string DataQualityStatus { get; init; } = string.Empty;

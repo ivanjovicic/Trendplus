@@ -1140,8 +1140,6 @@ public static class AllEndpoints
                 fromUtc = OperationsDateRange.NormalizeUtc(fromDate);
                 toUtc = OperationsDateRange.NormalizeUtc(toDate);
                 var normalizedDataScope = NormalizeDataScope(dataScope);
-                var importedOnly = normalizedDataScope == "imported";
-                var existingOnly = normalizedDataScope == "existing";
 
                 if (sezonaId.HasValue)
                 {
@@ -1267,13 +1265,11 @@ public static class AllEndpoints
                 {
                     var previousFootwearRows = await (
                         from ps in db.ProdajaStavke.AsNoTracking()
-                        join pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking() on ps.IdProdaja equals pz.Id
+                    join pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).Where(SalesDataScopePolicy.HeaderPredicate(normalizedDataScope)).AsNoTracking() on ps.IdProdaja equals pz.Id
                         join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                         where pz.DatumProdaje >= previousFromUtc.Value
                            && pz.DatumProdaje < previousToUtc.Value
                            && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
-                           && (!importedOnly || a.DataOrigin == "access")
-                           && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
                         group ps by new { ps.SupplierIdAtSale, ps.ShoeTypeIdAtSale } into g
                         select new
                         {
@@ -1317,13 +1313,11 @@ public static class AllEndpoints
 
                 var stavke = await (
                     from ps in db.ProdajaStavke.AsNoTracking()
-                    join pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking() on ps.IdProdaja equals pz.Id
+                    join pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).Where(SalesDataScopePolicy.HeaderPredicate(normalizedDataScope)).AsNoTracking() on ps.IdProdaja equals pz.Id
                     join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                     where (!fromUtc.HasValue || pz.DatumProdaje >= fromUtc.Value)
                        && (!toUtc.HasValue || pz.DatumProdaje < toUtc.Value)
                        && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
-                       && (!importedOnly || a.DataOrigin == "access")
-                       && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
                     group new
                     {
                         ps.Kolicina,
@@ -1971,6 +1965,9 @@ public static class AllEndpoints
                     supplierPolicy: true);
                 supplierTrustMeta.ProvenanceBasis = OperationsRecommendationGatePolicy.SupplierTrustProvenance;
                 supplierTrustMeta.RecommendationAllowed = supplierPageRecommendationAllowed;
+                supplierTrustMeta.RequestedDataScope = normalizedDataScope;
+                supplierTrustMeta.EffectiveDataScope = normalizedDataScope;
+                supplierTrustMeta.DataScopeSource = SalesDataScopePolicy.Source;
                 supplierTrustMeta.AttributionBasis = attributionBasis;
                 supplierTrustMeta.AttributionCoveragePct = attributionCoveragePct;
                 supplierTrustMeta = OperationsAnalyticsIntegrityMeta.ApplyIntegrityState(supplierTrustMeta, operationsIntegrityRegistry);
@@ -1984,6 +1981,7 @@ public static class AllEndpoints
                     sezonaId,
                     storeId,
                     dataScope = normalizedDataScope,
+                    dataScopeSource = SalesDataScopePolicy.Source,
                     provenanceBasis = snapshotPathUsed && activeBatchId.HasValue
                         ? $"live_query/snapshot_cost_batch_{activeBatchId.Value}"
                         : "live_query",
@@ -2123,8 +2121,6 @@ public static class AllEndpoints
                 fromUtc = OperationsDateRange.NormalizeUtc(fromDate);
                 toUtc = OperationsDateRange.NormalizeUtc(toDate);
                 var normalizedDataScope = NormalizeDataScope(dataScope);
-                var importedOnly = normalizedDataScope == "imported";
-                var existingOnly = normalizedDataScope == "existing";
 
                 if (sezonaId.HasValue)
                 {
@@ -2252,13 +2248,11 @@ public static class AllEndpoints
                 {
                     var previousRows = await (
                         from ps in db.ProdajaStavke.AsNoTracking()
-                        join pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking() on ps.IdProdaja equals pz.Id
+                    join pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).Where(SalesDataScopePolicy.HeaderPredicate(normalizedDataScope)).AsNoTracking() on ps.IdProdaja equals pz.Id
                         join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                         where pz.DatumProdaje >= previousFromUtc.Value
                            && pz.DatumProdaje < previousToUtc.Value
                            && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
-                           && (!importedOnly || a.DataOrigin == "access")
-                           && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
                         group ps by ps.ShoeTypeIdAtSale into g
                         select new
                         {
@@ -2280,13 +2274,11 @@ public static class AllEndpoints
 
                 var stavke = await (
                     from ps in db.ProdajaStavke.AsNoTracking()
-                    join pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking() on ps.IdProdaja equals pz.Id
+                        join pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).Where(SalesDataScopePolicy.HeaderPredicate(normalizedDataScope)).AsNoTracking() on ps.IdProdaja equals pz.Id
                     join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                     where (!fromUtc.HasValue || pz.DatumProdaje >= fromUtc.Value)
                        && (!toUtc.HasValue || pz.DatumProdaje < toUtc.Value)
                        && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
-                       && (!importedOnly || a.DataOrigin == "access")
-                       && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
                     group new
                     {
                         ps.Kolicina,
@@ -2757,6 +2749,9 @@ public static class AllEndpoints
                     generatedAtUtc);
                 shoeTrustMeta.AttributionBasis = shoeAttributionBasis;
                 shoeTrustMeta.AttributionCoveragePct = shoeAttributionCoveragePct;
+                shoeTrustMeta.RequestedDataScope = normalizedDataScope;
+                shoeTrustMeta.EffectiveDataScope = normalizedDataScope;
+                shoeTrustMeta.DataScopeSource = SalesDataScopePolicy.Source;
                 shoeTrustMeta = OperationsAnalyticsIntegrityMeta.ApplyIntegrityState(shoeTrustMeta, shoeIntegrityRegistry);
                 var response = new
                 {
@@ -2768,6 +2763,7 @@ public static class AllEndpoints
                     sezonaId,
                     storeId,
                     dataScope = normalizedDataScope,
+                    dataScopeSource = SalesDataScopePolicy.Source,
                     shoeTypes = shoeTypesWithRecommendation,
                     totals,
                     dataQuality,
@@ -2866,8 +2862,6 @@ public static class AllEndpoints
                 fromUtc = OperationsDateRange.NormalizeUtc(fromDate);
                 toUtc = OperationsDateRange.NormalizeUtc(toDate);
                 var normalizedDataScope = NormalizeDataScope(dataScope);
-                var importedOnly = normalizedDataScope == "imported";
-                var existingOnly = normalizedDataScope == "existing";
 
                 if (sezonaId.HasValue)
                 {
@@ -2927,12 +2921,10 @@ public static class AllEndpoints
                 }
 
                 var dataWindow = await (
-                    from pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking()
+                    from pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).Where(SalesDataScopePolicy.HeaderPredicate(normalizedDataScope)).AsNoTracking()
                     join ps in db.ProdajaStavke.AsNoTracking() on pz.Id equals ps.IdProdaja
                     join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                     where (!storeId.HasValue || pz.IDObjekat == storeId.Value)
-                       && (!importedOnly || a.DataOrigin == "access")
-                       && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
                     group pz by 1 into g
                     select new
                     {
@@ -2976,13 +2968,11 @@ public static class AllEndpoints
                 {
                     var previousRowsRaw = await (
                         from ps in db.ProdajaStavke.AsNoTracking()
-                        join pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking() on ps.IdProdaja equals pz.Id
+                        join pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).Where(SalesDataScopePolicy.HeaderPredicate(normalizedDataScope)).AsNoTracking() on ps.IdProdaja equals pz.Id
                         join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                         where pz.DatumProdaje >= previousFromUtc.Value
                            && pz.DatumProdaje < previousToUtc.Value
                            && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
-                           && (!importedOnly || a.DataOrigin == "access")
-                           && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
                         group ps by a.Boja into g
                         select new
                         {
@@ -3004,13 +2994,11 @@ public static class AllEndpoints
 
                 var stavke = await (
                     from ps in db.ProdajaStavke.AsNoTracking()
-                    join pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking() on ps.IdProdaja equals pz.Id
+                        join pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).Where(SalesDataScopePolicy.HeaderPredicate(normalizedDataScope)).AsNoTracking() on ps.IdProdaja equals pz.Id
                     join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                     where (!fromUtc.HasValue || pz.DatumProdaje >= fromUtc.Value)
                        && (!toUtc.HasValue || pz.DatumProdaje < toUtc.Value)
                        && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
-                       && (!importedOnly || a.DataOrigin == "access")
-                       && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
                     group new { ps, a, pz } by new
                     {
                         Boja = a.Boja,
@@ -3461,6 +3449,9 @@ public static class AllEndpoints
                     dataQuality.unknownColorRevenueSharePct,
                     dataQuality.revenueWithNivelacijaSplitSharePct,
                     generatedAtUtc);
+                trustMeta.RequestedDataScope = normalizedDataScope;
+                trustMeta.EffectiveDataScope = normalizedDataScope;
+                trustMeta.DataScopeSource = SalesDataScopePolicy.Source;
                 trustMeta.RequestedPeriodFromUtc = requestedFromUtc;
                 trustMeta.RequestedPeriodToUtc = requestedToUtc;
                 trustMeta.EffectivePeriodFromUtc = fromUtc;
@@ -3615,6 +3606,7 @@ public static class AllEndpoints
                     sezonaId,
                     storeId,
                     dataScope = normalizedDataScope,
+                    dataScopeSource = SalesDataScopePolicy.Source,
                     lineage = new
                     {
                         storeId,
@@ -3632,10 +3624,10 @@ public static class AllEndpoints
                         salesArticlesWithMatchingNivelacija,
                         storePolicy = storeId.HasValue ? "exact_store_only_unknown_store_excluded" : "all_stores_allowed",
                         originPolicy = normalizedDataScope == "imported"
-                            ? "event_origin_access_only"
+                            ? "sales_header_origin_access_only"
                             : normalizedDataScope == "existing"
-                                ? "event_origin_existing_only_unknown_origin_excluded"
-                                : "all_origins_allowed"
+                                ? "sales_header_origin_existing_only_unknown_origin_included"
+                                : "sales_header_origin_all_origins_allowed"
                     },
                     colors = colorsWithRecommendation,
                     totals,
@@ -8005,7 +7997,7 @@ public static class AllEndpoints
         {
             // dataScope=all does not need the Artikli join; the sale-line join keeps the historical window scoped to actual sold items.
             var window = await (
-                from pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking()
+                from pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).Where(SalesDataScopePolicy.HeaderPredicate(normalizedDataScope)).AsNoTracking()
                 join ps in db.ProdajaStavke.AsNoTracking() on pz.Id equals ps.IdProdaja
                 where !storeId.HasValue || pz.IDObjekat == storeId.Value
                 group pz by 1 into g
@@ -8022,12 +8014,10 @@ public static class AllEndpoints
         else
         {
             var window = await (
-                from pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).AsNoTracking()
+                from pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).Where(SalesDataScopePolicy.HeaderPredicate(normalizedDataScope)).AsNoTracking()
                 join ps in db.ProdajaStavke.AsNoTracking() on pz.Id equals ps.IdProdaja
                 join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                 where (!storeId.HasValue || pz.IDObjekat == storeId.Value)
-                   && (!importedOnly || a.DataOrigin == "access")
-                   && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
                 group pz by 1 into g
                 select new
                 {

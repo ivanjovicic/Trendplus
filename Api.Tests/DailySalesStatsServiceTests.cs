@@ -114,7 +114,7 @@ public sealed class DailySalesStatsServiceTests
                 Id = 21,
                 DatumProdaje = new DateTime(2026, 2, 1, 10, 0, 0, DateTimeKind.Utc),
                 IDObjekat = 1,
-                DataOrigin = "existing"
+                DataOrigin = "access"
             });
 
         db.ProdajaStavke.AddRange(
@@ -139,6 +139,55 @@ public sealed class DailySalesStatsServiceTests
         Assert.Equal("warning", imported.Meta.DataQualityStatus);
         Assert.True(imported.Meta.IsPartial);
         Assert.Null(imported.Meta.LastRefreshAtUtc);
+    }
+
+    [Fact]
+    public async Task GetDailySalesAsync_DataScopeFollowsSaleHeaderWhenArticleOriginDisagrees()
+    {
+        await using var db = CreateDbContext();
+        SeedSuppliersAndArticles(db);
+
+        db.ProdajaZaglavlja.AddRange(
+            new ProdajaZaglavlje
+            {
+                Id = 40,
+                DatumProdaje = new DateTime(2026, 2, 2, 9, 0, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "access"
+            },
+            new ProdajaZaglavlje
+            {
+                Id = 41,
+                DatumProdaje = new DateTime(2026, 2, 2, 10, 0, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "existing"
+            });
+        db.ProdajaStavke.AddRange(
+            new ProdajaStavka { Id = 50, IdProdaja = 40, IdArtikal = 101, Kolicina = 2, Cena = 100m },
+            new ProdajaStavka { Id = 51, IdProdaja = 41, IdArtikal = 104, Kolicina = 7, Cena = 50m });
+        await db.SaveChangesAsync();
+
+        var service = new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance);
+        var imported = await service.GetDailySalesAsync(
+            new DateTime(2026, 2, 2, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2026, 2, 2, 0, 0, 0, DateTimeKind.Utc),
+            1,
+            3,
+            "imported",
+            CancellationToken.None);
+        var existing = await service.GetDailySalesAsync(
+            new DateTime(2026, 2, 2, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2026, 2, 2, 0, 0, 0, DateTimeKind.Utc),
+            1,
+            3,
+            "existing",
+            CancellationToken.None);
+
+        Assert.Equal(2, Assert.Single(imported.DateRows).TotalItemsSold);
+        Assert.Equal(7, Assert.Single(existing.DateRows).TotalItemsSold);
+        Assert.Equal(SalesDataScopePolicy.Source, imported.Meta.DataScopeSource);
+        Assert.Equal("imported", imported.Meta.EffectiveDataScope);
+        Assert.Equal("existing", existing.Meta.EffectiveDataScope);
     }
 
     [Fact]
@@ -170,7 +219,7 @@ public sealed class DailySalesStatsServiceTests
                 BrojRacuna = "123",
                 DatumProdaje = new DateTime(2026, 2, 10, 10, 0, 0, DateTimeKind.Utc),
                 IDObjekat = 1,
-                DataOrigin = "existing"
+                DataOrigin = "access"
             });
 
         db.ProdajaStavke.AddRange(

@@ -346,8 +346,8 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
             where (!filters.FromUtc.HasValue || pz.DatumProdaje >= filters.FromUtc.Value)
                && (!filters.ToUtc.HasValue || pz.DatumProdaje <= filters.ToUtc.Value)
                && (!filters.StoreId.HasValue || pz.IDObjekat == filters.StoreId.Value)
-               && (!importedOnly || a.DataOrigin == "access")
-               && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+               && (!importedOnly || pz.DataOrigin == "access")
+               && (!existingOnly || pz.DataOrigin == "existing" || pz.DataOrigin == null || pz.DataOrigin == "")
             select new SalesRow
             {
                 ArtikalId = a.Id,
@@ -430,8 +430,8 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                    && pz.DatumProdaje <= previousToUtc.Value
                    && (!context.Filters.StoreId.HasValue || pz.IDObjekat == context.Filters.StoreId.Value)
                    && ps.SupplierIdAtSale == supplierId
-                   && (!importedOnly || a.DataOrigin == "access")
-                   && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+               && (!importedOnly || pz.DataOrigin == "access")
+               && (!existingOnly || pz.DataOrigin == "existing" || pz.DataOrigin == null || pz.DataOrigin == "")
                 group ps by 1 into g
                 select new
                 {
@@ -455,8 +455,8 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                    && pz.DatumProdaje <= previousToUtc.Value
                    && (!context.Filters.StoreId.HasValue || pz.IDObjekat == context.Filters.StoreId.Value)
                    && (!ps.SupplierIdAtSale.HasValue || d == null || d.Naziv == null || d.Naziv.Trim() == "")
-                   && (!importedOnly || a.DataOrigin == "access")
-                   && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+               && (!importedOnly || pz.DataOrigin == "access")
+               && (!existingOnly || pz.DataOrigin == "existing" || pz.DataOrigin == null || pz.DataOrigin == "")
                 group ps by 1 into g
                 select new
                 {
@@ -514,8 +514,8 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                    && pz.DatumProdaje <= previousToUtc.Value
                    && (!context.Filters.StoreId.HasValue || pz.IDObjekat == context.Filters.StoreId.Value)
                    && ps.ShoeTypeIdAtSale == shoeTypeId
-                   && (!importedOnly || a.DataOrigin == "access")
-                   && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+               && (!importedOnly || pz.DataOrigin == "access")
+               && (!existingOnly || pz.DataOrigin == "existing" || pz.DataOrigin == null || pz.DataOrigin == "")
                 group ps by 1 into g
                 select new
                 {
@@ -537,8 +537,8 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                    && pz.DatumProdaje <= previousToUtc.Value
                    && (!context.Filters.StoreId.HasValue || pz.IDObjekat == context.Filters.StoreId.Value)
                    && !ps.ShoeTypeIdAtSale.HasValue
-                   && (!importedOnly || a.DataOrigin == "access")
-                   && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+               && (!importedOnly || pz.DataOrigin == "access")
+               && (!existingOnly || pz.DataOrigin == "existing" || pz.DataOrigin == null || pz.DataOrigin == "")
                 group ps by 1 into g
                 select new
                 {
@@ -591,8 +591,8 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                && pz.DatumProdaje <= previousToUtc.Value
                && (!context.Filters.StoreId.HasValue || pz.IDObjekat == context.Filters.StoreId.Value)
                && (!context.Filters.SupplierId.HasValue || ps.SupplierIdAtSale == context.Filters.SupplierId.Value)
-               && (!importedOnly || a.DataOrigin == "access")
-               && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+               && (!importedOnly || pz.DataOrigin == "access")
+               && (!existingOnly || pz.DataOrigin == "existing" || pz.DataOrigin == null || pz.DataOrigin == "")
             select new
             {
                 Color = a.Boja,
@@ -747,6 +747,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 Season = context.Filters.SezonaNaziv ?? context.Filters.SezonaId?.ToString(CultureInfo.InvariantCulture),
                 StoreId = context.Filters.StoreId,
                 DataScope = context.Filters.DataScope,
+                DataScopeSource = SalesDataScopePolicy.Source,
                 GeneratedAtUtc = generatedAtUtc,
                 Freshness = "fresh",
                 DataQualityStatus = recommendation?.DataQualityStatus ?? "insufficient_data",
@@ -880,6 +881,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 Season = context.Filters.SezonaNaziv ?? context.Filters.SezonaId?.ToString(CultureInfo.InvariantCulture),
                 StoreId = context.Filters.StoreId,
                 DataScope = context.Filters.DataScope,
+                DataScopeSource = SalesDataScopePolicy.Source,
                 GeneratedAtUtc = DateTime.UtcNow,
                 Freshness = "fresh",
                 DataQualityStatus = recommendation.DataQualityStatus,
@@ -1017,6 +1019,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 Season = context.Filters.SezonaNaziv ?? context.Filters.SezonaId?.ToString(CultureInfo.InvariantCulture),
                 StoreId = context.Filters.StoreId,
                 DataScope = context.Filters.DataScope,
+                DataScopeSource = SalesDataScopePolicy.Source,
                 GeneratedAtUtc = DateTime.UtcNow,
                 Freshness = "fresh",
                 DataQualityStatus = exposedRecommendation.DataQualityStatus,
