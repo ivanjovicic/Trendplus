@@ -25483,6 +25483,7 @@ Owner note (Ivan, 2026-09-28): the owner explicitly rejected splitting `RQ464` e
 - Changed files: `Api/Endpoints/SupplierDecisionHubEndpoints.cs`, `Api.Tests/AnalyticsReportsContractTests.cs`, `Api.Tests/SupplierDecisionSchemaSqlTests.cs`, `Database/Migrations/018_AddSupplierDecisionHubViews.sql`, `Database/Migrations/029_AddSupplierDecisionWindowedViews.sql`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
 - Checks run: API build; combined SupplierDecision/report tests 119/119; `git diff --check`; direct push to `main` with fresh `origin/main` verification
 - Checks not run: live PostgreSQL/API fixture, full repository suite, remote CI completion
+- Remote CI state: Analytics Tests & Data Integrity run `36458011135` is `in_progress` for the implementation SHA; Planning Governance run `36458172727` is `queued` for the closure SHA.
 - Missed: live PostgreSQL numeric parity fixture and central application score-policy extraction remain follow-up scope.
 - Run log: `.ai/runs/2026-09-28-RQ464-evidence.md`
 - Evidence state: synchronized
