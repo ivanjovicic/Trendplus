@@ -2,8 +2,10 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ464
+Current READY prompt: RQ465
 Owner claim 2026-09-28: `RQ464` moved READY -> IN_PROGRESS after fresh main/remote/collision checks; local lock `.ai/task-locks/RQ464-codex.lock.md`.
+Owner completion 2026-09-28: `RQ464` moved IN_PROGRESS -> DONE and was delivered directly to `main` in `c3b80a661d93208f6c2b026da73665b9c4345adf`. Supplier report main KPIs now use the Supplier overview sales population, missing cost is excluded only from margin, markdown-window metrics are a separate `Rezultat oko sniženja` block, receipt/store/sale-time attribution and signed-return semantics are aligned, and live scoring ports the MV percent-rank model with one 0–100 recommendation scale. Focused proof: 119/119 combined SupplierDecision/report tests; API build passed; diff check passed. Run log: `.ai/runs/2026-09-28-RQ464-evidence.md`. Evidence state: synchronized.
+Owner promotion 2026-09-28: `RQ465` moved WAITING -> READY after `RQ464` reached DONE; it is now the primary READY prompt and remains serialized on the Supplier report backend file.
 Owner claim 2026-09-28: `RQ463` moved READY -> IN_PROGRESS after fresh main/remote sync, dependency and collision checks; local lock `.ai/task-locks/RQ463-codex.lock.md`.
 Owner completion 2026-09-28: `RQ463` moved IN_PROGRESS -> DONE and was delivered directly to `main` in `1c933f79aa6a84d464e93b1aad9a20afdcde96fc`. Supplier report requested/effective windows now require an exact rolling-period anchor on the last successful Supplier-MV refresh; historic/non-anchored requests expose requested dates, `requested_range_not_precomputed`, truthful live-SQL/MV provenance and blocked recommendations while preserving KPI/report sections. No-date reports now state the 180-day lookback. Focused proof: SupplierDecisionHubContractTests plus AnalyticsReportsContractTests 72/72; backend build passed; diff check passed. Run log: `.ai/runs/2026-09-28-RQ463-evidence.md`. Evidence state: synchronized. `RQ464` is now the primary READY prompt.
 Owner promotion 2026-09-28: `RQ464` moved WAITING -> READY after `RQ463` reached DONE; it remains unclaimed for a later request because it owns the next Supplier report metric-basis slice.
@@ -25387,7 +25389,7 @@ Decision tests:
 
 ## RQ464 - Align Supplier report KPIs with the Supplier overview and use one scoring model
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: `RQ463` DONE (and therefore `RQ461`; same files, KPI/section contract and period semantics). Owner decisions recorded 2026-09-28; no decision remains.
 Priority: P2
 Type: backend/sql/tests
@@ -25471,13 +25473,31 @@ Decision tests:
 - `RQ461` (renderer), `RQ463` (window). `RQ456` precedent for the receipt exclusion. `PS08` for production MV availability.
 - Reliability contract: no metric is presented under a label that implies a different basis.
 
-Owner note (Ivan, 2026-09-28): the owner explicitly rejected splitting `RQ464` early. It depends semantically on `RQ463`: `RQ463` defines the requested/effective period and precomputed validity, and `RQ464` then aligns period sales → margin/cost coverage → markdown metrics → scoring → recommendation. Status stays WAITING after `RQ463`. Optional pre-step, only if agents run out of work: pure test/fixture preparation with no runtime change (adversarial fixtures for DUG/KOREKCIJA, signed returns, missing cost, sale store and MV/live parity). This is not a separate READY prompt and does not claim `RQ464`. The unknown-share and nivelacija gate semantics must follow `RQ484`.
+Owner note (Ivan, 2026-09-28): the owner explicitly rejected splitting `RQ464` early. It depended semantically on `RQ463`: `RQ463` defined the requested/effective period and precomputed validity, and `RQ464` then aligned period sales → margin/cost coverage → markdown metrics → scoring → recommendation. After `RQ463` reached DONE, this workspace claimed and completed `RQ464`. Optional pre-step, only if agents run out of work: pure test/fixture preparation with no runtime change (adversarial fixtures for DUG/KOREKCIJA, signed returns, missing cost, sale store and MV/live parity). This is not a separate READY prompt and does not claim `RQ464`. The unknown-share and nivelacija gate semantics must follow `RQ484`.
+
+### Completion note
+
+- Date: 2026-09-28
+- Status: DONE
+- Completion: Supplier report metric basis and scoring now align with Supplier overview and the MV model; markdown-window evidence is separate and missing-cost/review trust semantics remain explicit.
+- Changed files: `Api/Endpoints/SupplierDecisionHubEndpoints.cs`, `Api.Tests/AnalyticsReportsContractTests.cs`, `Api.Tests/SupplierDecisionSchemaSqlTests.cs`, `Database/Migrations/018_AddSupplierDecisionHubViews.sql`, `Database/Migrations/029_AddSupplierDecisionWindowedViews.sql`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- Checks run: API build; combined SupplierDecision/report tests 119/119; `git diff --check`; direct push to `main` with fresh `origin/main` verification
+- Checks not run: live PostgreSQL/API fixture, full repository suite, remote CI completion
+- Missed: live PostgreSQL numeric parity fixture and central application score-policy extraction remain follow-up scope.
+- Run log: `.ai/runs/2026-09-28-RQ464-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `c3b80a661d93208f6c2b026da73665b9c4345adf`
+- Main verification: passed — fresh `origin/main` contains implementation SHA `c3b80a661d93208f6c2b026da73665b9c4345adf`
+- Follow-up: promote `RQ465`; centralize the score formula in an application policy when its owner is scheduled
+- Residual risk: no live database fixture was available; MV/live parity is guarded statically and by shared SQL components, while central policy extraction remains follow-up
+- Prompt defect / scope repair: accepted short-term MV-model port into live SQL per the owner decision; no separate score engine was introduced
 
 ---
 
 ## RQ465 - Fix Supplier report actions, negotiation pack and page-level defects
 
-Status: WAITING
+Status: READY
 Ready after: `RQ461` DONE (same files); do not run concurrently with `RQ463`/`RQ464` (same backend file). Owner decision recorded 2026-09-28; no decision remains.
 Priority: P2
 Type: frontend/backend/tests
