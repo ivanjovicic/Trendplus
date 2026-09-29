@@ -3,6 +3,7 @@
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+Routing repair 2026-09-29: RQ448's live section was stale at `IN_PROGRESS`; synchronized queue/roadmap truth and prior evidence show it remains `WAITING` behind the authenticated browser/API/deployment gate. No implementation claim is reopened.
 Routing reconciliation 2026-09-29: any workspace still showing `RQ466` as `Current READY` is stale. `RQ466` and `RQ502` are `DONE` on current main; no RQ prompt is currently READY. Registration evidence: `.ai/runs/2026-09-29-RQ502-registration-evidence.md`.
 Owner claim 2026-09-29: after fresh `origin/main` sync to `2d85df0f13dac4e8dcb463656515d61ea32e0021`, RQ502 remained READY, RQ494 was verified DONE, and no conflicting lock/branch/PR owner was found for the Operations store-filter scope. RQ502 moved `READY -> IN_PROGRESS` in this workspace. Local lock: `.ai/task-locks/RQ502-codex.lock.md`.
 Owner completion 2026-09-29: RQ502 moved `IN_PROGRESS -> DONE` and was delivered directly to `main` in `baa4ce300cbb2c63662ed22ef64d353e2b31e209`. Scoped store options now reload and validate against `dataScope` across Shoe Type, Color, Daily Sales and Pre/Post; stale/fallback lists are visible and untrusted selections are cleared; duplicate labels expose stable IDs. Focused frontend proof is 91/91 across the new utility/API contracts and four page suites; guardrails, typecheck, production build, diff check and governance validators pass. Run log: `.ai/runs/2026-09-29-RQ502-evidence.md`. Evidence state: synchronized. RQ503/RQ504 remain sequenced behind this completed lane.
@@ -1646,7 +1647,7 @@ Completion note 2026-09-29: RQ447 is DONE after changing the certification filte
 
 ## RQ448 - Reconcile raw facts through API, browser render and export
 
-Status: IN_PROGRESS
+Status: WAITING
 Ready after: RQ447 has a runnable fixture and authenticated test browser/API environment
 Priority: P0
 Type: e2e/browser/export/tests
