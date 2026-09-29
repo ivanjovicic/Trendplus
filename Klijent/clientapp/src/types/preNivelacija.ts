@@ -30,6 +30,8 @@ export interface PreNivelacijaRecommendation {
 export interface PreNivelacijaSkuCandidate {
   artikalId: number;
   sku: string;
+  storeId: number | null;
+  storeName: string;
   supplierId: number | null;
   seasonId: number | null;
   footwearTypeId: number | null;
@@ -122,6 +124,8 @@ export interface PreNivelacijaEvidenceWindow {
 export interface PreNivelacijaQueueItem {
   artikalId: number;
   sku: string;
+  storeId: number | null;
+  storeName: string;
   supplierName: string;
   preNivelacijaScore: number;
   priorityBand: string;
@@ -157,6 +161,7 @@ export interface PreNivelacijaFilterFacets {
   suppliers?: PreNivelacijaFilterOption[];
   seasons: PreNivelacijaFilterOption[];
   footwearTypes: PreNivelacijaFilterOption[];
+  stores?: PreNivelacijaFilterOption[];
 }
 
 export interface PreNivelacijaSummary {

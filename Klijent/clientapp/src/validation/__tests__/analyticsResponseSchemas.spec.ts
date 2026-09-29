@@ -680,6 +680,8 @@ describe("analytics response schemas", () => {
       candidates: [{
         artikalId: 1,
         sku: "SKU-1",
+        storeId: 1,
+        storeName: "Objekat #1",
         supplierId: 1,
         seasonId: 1,
         footwearTypeId: 2,

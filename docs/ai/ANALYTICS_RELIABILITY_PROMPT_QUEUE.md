@@ -2,9 +2,25 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ492 (IN_PROGRESS in this workspace)
 Routing reconciliation 2026-09-29: any workspace still showing `RQ466` as `Current READY` is stale. `RQ466` was `DONE` on current main; `RQ502` was the primary READY prompt and is now `DONE`. Registration evidence: `.ai/runs/2026-09-29-RQ502-registration-evidence.md`.
 Owner claim 2026-09-29: after fresh `origin/main` sync to `2d85df0f13dac4e8dcb463656515d61ea32e0021`, RQ502 remained READY, RQ494 was verified DONE, and no conflicting lock/branch/PR owner was found for the Operations store-filter scope. RQ502 moved `READY -> IN_PROGRESS` in this workspace. Local lock: `.ai/task-locks/RQ502-codex.lock.md`.
+Owner promotion/claim 2026-09-29: idle recovery refreshed `origin/main` to `37d6f037a3ac0102392791e21089b9c87ff73e0f`, verified RQ489 DONE, and found RQ491 blocked by the exclusive PARTIAL Q83 Pre/Post SQL owner. RQ492 is dependency-complete and collision-safe for the Pre-Nivelacija store-grain surface, and moved `WAITING -> READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ492-codex.lock.md`.
+Routing repair 2026-09-29: RQ495's stale primary summary is reconciled to DONE to match its synchronized completion evidence and current-main delivery; the prompt is not reopened.
+## RQ492 - Pre-Nivelacija: make SKU + store the actionable decision grain
+
+Status: IN_PROGRESS
+Priority: P1
+Feature family: pre-nivelacija-store-grain
+Parallel-safe: no
+Full prompt: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md`
+
+### Claim note
+
+- Dependency RQ489 is DONE on current main.
+- RQ491 is not claimed because Q83 remains the PARTIAL exclusive owner for the overlapping Pre/Post SQL/endpoint family.
+- Scope is limited to Pre-Nivelacija backend/frontend store-grain identity, store filtering/facets, URL/export/detail parity and focused proof.
+
 ## RQ502 - Reload and validate Operations store options against the active dataScope
 
 Status: DONE

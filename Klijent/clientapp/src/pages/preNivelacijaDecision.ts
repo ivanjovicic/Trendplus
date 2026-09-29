@@ -73,6 +73,7 @@ export type DecisionCandidate = Omit<
 
 export const decisionColumns: AnalyticsTableColumn<DecisionCandidate>[] = [
   { key: "sku", header: "SKU", dataType: "text" },
+  { key: "storeName", header: "Objekat", dataType: "text" },
   { key: "supplierName", header: "Dobavljač", dataType: "text" },
   { key: "preNivelacijaScore", header: "Skor nivelacije", dataType: "number" },
   { key: "stockUnits", header: "Zaliha (kom)", dataType: "number" },

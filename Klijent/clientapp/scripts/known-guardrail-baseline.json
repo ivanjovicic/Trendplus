@@ -11,7 +11,7 @@
     {
       "file": "src/pages/PreNivelacijaPriorityPage.tsx",
       "rule": "decisionScore_assign",
-      "line": 697,
+      "line": 723,
       "reason": "Backend decisionScore is only normalized for display and is exposed only when backend recommendationAllowed === true; gating and non-finite handling are covered by PreNivelacijaPriorityPage.spec."
     },
     {

@@ -77,6 +77,16 @@ describe("pre-nivelacija API scope contract", () => {
     expect(requestUrl.searchParams.get("page")).toBe("2");
   });
 
+  it("includes the selected store in the request", async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(new Response(responseBody, { status: 200 })));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await getPreNivelacijaPrioriteti({ storeId: 17 });
+
+    const requestUrl = new URL(String(fetchMock.mock.calls[0]?.[0]), "http://localhost");
+    expect(requestUrl.searchParams.get("storeId")).toBe("17");
+  });
+
   it("uses the explicit scope for the request even when ambient storage differs", async () => {
     localStorage.setItem(getDataScopeStorageKey(), "existing");
     const fetchMock = vi.fn(() => Promise.resolve(new Response(responseBody, { status: 200 })));

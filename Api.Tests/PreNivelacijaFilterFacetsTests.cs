@@ -123,6 +123,25 @@ public sealed class PreNivelacijaFilterFacetsTests
         Assert.Equal(2, filtered[0].ArtikalId);
     }
 
+    [Fact]
+    public void StoreFacetAndFilterPreserveSkuStoreGrain()
+    {
+        var first = CreateCandidate(1, supplierId: 10, supplierName: "A", seasonId: 1, season: "S1", footwearTypeId: 1, footwearType: "T1");
+        first.StoreId = 1;
+        first.StoreName = "Objekat #1";
+        var second = CreateCandidate(1, supplierId: 10, supplierName: "A", seasonId: 1, season: "S1", footwearTypeId: 1, footwearType: "T1");
+        second.StoreId = 2;
+        second.StoreName = "Objekat #2";
+        var candidates = new List<PreNivelacijaSkuCandidateDto> { first, second };
+
+        var facets = PreNivelacijaPriorityEndpoints.BuildFilterFacets(candidates, null, null, null);
+        var filtered = PreNivelacijaPriorityEndpoints.ApplyDimensionFilters(candidates, null, null, null, storeId: 2);
+
+        Assert.Equal([1, 2], facets.Stores.Select(option => option.Id).OrderBy(id => id).ToArray());
+        Assert.Single(filtered);
+        Assert.Equal(2, filtered[0].StoreId);
+    }
+
     private static PreNivelacijaSkuCandidateDto CreateCandidate(
         int artikalId,
         int supplierId,

@@ -65,6 +65,7 @@ type ActiveFilters = {
   supplierId: number | null;
   seasonId: number | null;
   footwearTypeId: number | null;
+  storeId: number | null;
   minScore: number;
   noSaleDaysMin: number;
 };
@@ -191,10 +192,15 @@ function defaultSortDir(field: SortField): SortDir {
 
 const SORT_DEFAULTS = { field: DEFAULT_SORT_FIELD, dir: defaultSortDir };
 
+function candidateKey(row: Pick<DecisionCandidate, "artikalId" | "storeId">): string {
+  return `${row.artikalId}:${row.storeId ?? "missing"}`;
+}
+
 function sameActiveFilters(left: ActiveFilters, right: ActiveFilters): boolean {
   return left.supplierId === right.supplierId
     && left.seasonId === right.seasonId
     && left.footwearTypeId === right.footwearTypeId
+    && left.storeId === right.storeId
     && left.minScore === right.minScore
     && left.noSaleDaysMin === right.noSaleDaysMin;
 }
@@ -211,6 +217,7 @@ function buildPreNivelacijaSearchParams(
   if (filters.supplierId != null) params.set("supplierId", String(filters.supplierId));
   if (filters.seasonId != null) params.set("seasonId", String(filters.seasonId));
   if (filters.footwearTypeId != null) params.set("footwearTypeId", String(filters.footwearTypeId));
+  if (filters.storeId != null) params.set("storeId", String(filters.storeId));
   params.set("minScore", String(filters.minScore));
   params.set("noSaleDaysMin", String(filters.noSaleDaysMin));
   if (focus !== "all") params.set("focus", focus);
@@ -526,6 +533,7 @@ export default function PreNivelacijaPriorityPage() {
     supplierId: parseOptionalPositiveInteger(searchParams.get("supplierId")),
     seasonId: parseOptionalPositiveInteger(searchParams.get("seasonId")),
     footwearTypeId: parseOptionalPositiveInteger(searchParams.get("footwearTypeId")),
+    storeId: parseOptionalPositiveInteger(searchParams.get("storeId")),
     minScore: parseBoundedInteger(searchParams.get("minScore"), DEFAULT_MIN_SCORE, 0, 100),
     noSaleDaysMin: parseNonNegativeInteger(searchParams.get("noSaleDaysMin"), DEFAULT_NO_SALE_DAYS_MIN),
   }), [searchParams]);
@@ -536,6 +544,7 @@ export default function PreNivelacijaPriorityPage() {
   const [supplierId, setSupplierId] = useState<number | null>(queryFilters.supplierId);
   const [seasonId, setSeasonId] = useState<number | null>(queryFilters.seasonId);
   const [footwearTypeId, setFootwearTypeId] = useState<number | null>(queryFilters.footwearTypeId);
+  const [storeId, setStoreId] = useState<number | null>(queryFilters.storeId);
   const [minScoreText, setMinScoreText] = useState<string>(String(queryFilters.minScore));
   const [noSaleDaysMinText, setNoSaleDaysMinText] = useState<string>(String(queryFilters.noSaleDaysMin));
   const [activeFilters, setActiveFilters] = useState<ActiveFilters>(queryFilters);
@@ -543,7 +552,7 @@ export default function PreNivelacijaPriorityPage() {
   const [page, setPage] = useState(queryPage);
   const [sortField, setSortField] = useState<SortField>(querySortField);
   const [sortDir, setSortDir] = useState<SortDir>(querySortDir);
-  const [expandedArtikalId, setExpandedArtikalId] = useState<number | null>(null);
+  const [expandedArtikalId, setExpandedArtikalId] = useState<string | null>(null);
   const [focusFilter, setFocusFilter] = useState<FocusFilter>(queryFocus);
   const [dataScope, setDataScopeValue] = useState<DataScope>(() => queryDataScope);
   const dataScopeRef = useRef<DataScope>(queryDataScope);
@@ -552,6 +561,7 @@ export default function PreNivelacijaPriorityPage() {
     setSupplierId((current) => current === queryFilters.supplierId ? current : queryFilters.supplierId);
     setSeasonId((current) => current === queryFilters.seasonId ? current : queryFilters.seasonId);
     setFootwearTypeId((current) => current === queryFilters.footwearTypeId ? current : queryFilters.footwearTypeId);
+    setStoreId((current) => current === queryFilters.storeId ? current : queryFilters.storeId);
     setMinScoreText((current) => current === String(queryFilters.minScore) ? current : String(queryFilters.minScore));
     setNoSaleDaysMinText((current) => current === String(queryFilters.noSaleDaysMin) ? current : String(queryFilters.noSaleDaysMin));
     setActiveFilters((current) => sameActiveFilters(current, queryFilters) ? current : queryFilters);
@@ -601,6 +611,7 @@ export default function PreNivelacijaPriorityPage() {
     supplierId: activeFilters.supplierId ?? undefined,
     seasonId: activeFilters.seasonId ?? undefined,
     footwearTypeId: activeFilters.footwearTypeId ?? undefined,
+    storeId: activeFilters.storeId ?? undefined,
     minScore: activeFilters.minScore,
     noSaleDaysMin: activeFilters.noSaleDaysMin,
     page,
@@ -632,7 +643,7 @@ export default function PreNivelacijaPriorityPage() {
     : null;
   useEffect(() => {
     if (!data) return;
-    setExpandedArtikalId((current) => current == null || data.candidates.some((candidate) => candidate.artikalId === current)
+    setExpandedArtikalId((current) => current == null || data.candidates.some((candidate) => candidateKey(candidate) === current)
       ? current
       : null);
   }, [data]);
@@ -682,6 +693,21 @@ export default function PreNivelacijaPriorityPage() {
 
     return facetFootwearTypes;
   }, [data?.filterFacets?.footwearTypes, footwearTypeId]);
+
+  const storeOptions = useMemo(() => {
+    const options = [...(data?.filterFacets?.stores ?? [])]
+      .sort((a, b) => a.label.localeCompare(b.label, "sr"));
+
+    if (storeId != null && !options.some((item) => item.id === storeId)) {
+      options.unshift({
+        id: storeId,
+        label: `Nepoznat objekat (ID ${storeId})`,
+        count: 0,
+      });
+    }
+
+    return options;
+  }, [data?.filterFacets?.stores, storeId]);
 
   const decisionRows = useMemo<DecisionCandidate[]>(() => {
     const rows = data?.candidates ?? [];
@@ -804,6 +830,7 @@ export default function PreNivelacijaPriorityPage() {
     supplierId !== activeFilters.supplierId
     || seasonId !== activeFilters.seasonId
     || footwearTypeId !== activeFilters.footwearTypeId
+    || storeId !== activeFilters.storeId
     || (minScoreDraft.ok
       ? minScoreDraft.value !== activeFilters.minScore
       : minScoreText !== String(activeFilters.minScore))
@@ -829,7 +856,7 @@ export default function PreNivelacijaPriorityPage() {
 
   const selectedRow = useMemo(() => {
     if (expandedArtikalId == null) return null;
-    return preNivelacijaProjections.detailRows.find((row) => row.artikalId === expandedArtikalId) ?? null;
+    return preNivelacijaProjections.detailRows.find((row) => candidateKey(row) === expandedArtikalId) ?? null;
   }, [expandedArtikalId, preNivelacijaProjections.detailRows]);
 
   const canGoPrev = page > 1;
@@ -934,11 +961,13 @@ export default function PreNivelacijaPriorityPage() {
     const selectedSupplier = supplierOptions.find((item) => item.id === activeFilters.supplierId);
     const selectedSeason = seasonOptions.find((item) => item.id === activeFilters.seasonId);
     const selectedFootwearType = footwearTypeOptions.find((item) => item.id === activeFilters.footwearTypeId);
+    const selectedStore = storeOptions.find((item) => item.id === activeFilters.storeId);
 
     return [
       { key: "supplierId", label: "Dobavljač", value: selectedSupplier?.label ?? "Svi" },
       { key: "seasonId", label: "Sezona", value: selectedSeason?.label ?? "Sve" },
       { key: "footwearTypeId", label: "Tip obuće", value: selectedFootwearType?.label ?? "Svi" },
+      { key: "storeId", label: "Objekat", value: selectedStore?.label ?? "Svi" },
       { key: "minScore", label: "Min. skor", value: activeFilters.minScore },
       { key: "noSaleDaysMin", label: "Min. dana bez prodaje", value: activeFilters.noSaleDaysMin },
       { key: "focus", label: "Fokus", value: FOCUS_LABELS[focusFilter] },
@@ -951,12 +980,14 @@ export default function PreNivelacijaPriorityPage() {
     activeFilters.noSaleDaysMin,
     activeFilters.seasonId,
     activeFilters.supplierId,
+    activeFilters.storeId,
     dataScope,
     focusFilter,
     footwearTypeOptions,
     page,
     seasonOptions,
     supplierOptions,
+    storeOptions,
   ]);
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(
@@ -1011,6 +1042,7 @@ export default function PreNivelacijaPriorityPage() {
       supplierId,
       seasonId,
       footwearTypeId,
+      storeId,
       minScore: minScoreDraft.value,
       noSaleDaysMin: noSaleDaysMinDraft.value,
     };
@@ -1025,12 +1057,14 @@ export default function PreNivelacijaPriorityPage() {
       supplierId: null,
       seasonId: null,
       footwearTypeId: null,
+      storeId: null,
       minScore: DEFAULT_MIN_SCORE,
       noSaleDaysMin: DEFAULT_NO_SALE_DAYS_MIN,
     };
     setSupplierId(null);
     setSeasonId(null);
     setFootwearTypeId(null);
+    setStoreId(null);
     setMinScoreText(String(DEFAULT_MIN_SCORE));
     setNoSaleDaysMinText(String(DEFAULT_NO_SALE_DAYS_MIN));
     setPage(1);
@@ -1133,6 +1167,20 @@ export default function PreNivelacijaPriorityPage() {
       ),
     },
     {
+      key: "storeId",
+      label: "Objekat",
+      control: (
+        <select value={storeId ?? ""} onChange={(e) => setStoreId(e.target.value ? Number(e.target.value) : null)}>
+          <option value="">Svi objekti</option>
+          {storeOptions.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.count == null ? item.label : `${item.label} (${item.count})`}
+            </option>
+          ))}
+        </select>
+      ),
+    },
+    {
       key: "minScore",
       label: "Min. skor",
       control: (
@@ -1180,7 +1228,7 @@ export default function PreNivelacijaPriorityPage() {
         </div>
       ),
     },
-  ], [footwearTypeId, footwearTypeOptions, minScoreDraft, minScoreText, noSaleDaysMinDraft, noSaleDaysMinText, seasonId, seasonOptions, supplierId, supplierOptions]);
+  ], [footwearTypeId, footwearTypeOptions, minScoreDraft, minScoreText, noSaleDaysMinDraft, noSaleDaysMinText, seasonId, seasonOptions, storeId, storeOptions, supplierId, supplierOptions]);
 
   const openCandidateDetail = (row: DecisionCandidate) => {
     saveAnalyticsDetailSnapshot(
@@ -1437,6 +1485,7 @@ export default function PreNivelacijaPriorityPage() {
                       <th aria-sort={sortAriaValue("supplierName", sortField, sortDir)}>
                         <button type="button" onClick={() => handleSort("supplierName")}>Dobavljač {sortMarker("supplierName", sortField, sortDir)}</button>
                       </th>
+                      <th>Objekat</th>
                       <th className="align-right" aria-sort={sortAriaValue("preNivelacijaScore", sortField, sortDir)}>
                         <button type="button" onClick={() => handleSort("preNivelacijaScore")}>Skor {sortMarker("preNivelacijaScore", sortField, sortDir)}</button>
                         <InfoTip text="Skor nivelacije (0–100): kompozitni signal od pritiska zalihe, brzine prodaje (sell-through), dana bez prodaje, šanse za sniženje i marže potencijala. Viši skor = veći prioritet za intervenciju." />
@@ -1467,16 +1516,17 @@ export default function PreNivelacijaPriorityPage() {
                   <tbody>
                     {preNivelacijaProjections.filteredRows.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="pnp-decision-empty-row">Nema podataka za izabrane filtere.</td>
+                        <td colSpan={10} className="pnp-decision-empty-row">Nema podataka za izabrane filtere.</td>
                       </tr>
                     ) : (
                       preNivelacijaProjections.filteredRows.map((row) => {
-                        const expanded = expandedArtikalId === row.artikalId;
+                        const expanded = expandedArtikalId === candidateKey(row);
                         const reliability = reliabilitySignalDisplay(row);
                         return (
-                          <tr key={row.artikalId} className={expanded ? "expanded-row" : ""}>
+                          <tr key={`${row.artikalId}-${row.storeId ?? "missing"}`} className={expanded ? "expanded-row" : ""}>
                             <td>{row.sku}</td>
                             <td title={row.supplierName}>{row.supplierName}</td>
+                            <td title={row.storeName}>{row.storeName}{row.storeId != null ? ` (ID ${row.storeId})` : ""}</td>
                             <td className="align-right">
                               <div className="pnp-score-cell">
                                 <span>{formatFiniteNumber(row.preNivelacijaScore, 1)}</span>
@@ -1517,7 +1567,7 @@ export default function PreNivelacijaPriorityPage() {
                               <button
                                 type="button"
                                 className="pnp-decision-detail-btn"
-                                onClick={() => setExpandedArtikalId(expanded ? null : row.artikalId)}
+                                 onClick={() => setExpandedArtikalId(expanded ? null : candidateKey(row))}
                               >
                                 {expanded ? "Sakrij" : "Detalji"}
                               </button>
@@ -1543,6 +1593,10 @@ export default function PreNivelacijaPriorityPage() {
                 <article>
                   <span>Dobavljač</span>
                   <strong title={selectedRow.supplierName}>{selectedRow.supplierName}</strong>
+                </article>
+                <article>
+                  <span>Objekat</span>
+                  <strong title={selectedRow.storeName}>{selectedRow.storeName}{selectedRow.storeId != null ? ` (ID ${selectedRow.storeId})` : ""}</strong>
                 </article>
                 <article>
                   <span>Prioritetna kategorija</span>
@@ -1681,10 +1735,11 @@ export default function PreNivelacijaPriorityPage() {
                     <p className="pnp-queue-empty">Nema SKU u ovom redu.</p>
                   ) : (
                     data.queues.highlightNow.map((item) => (
-                      <div key={item.artikalId} className="pnp-queue-item">
+                      <div key={`${item.artikalId}-${item.storeId ?? "missing"}`} className="pnp-queue-item">
                         <div>
                           <div className="pnp-queue-item-sku">{item.sku}</div>
                           <div className="pnp-queue-item-supplier">{item.supplierName}</div>
+                          <div className="pnp-queue-item-supplier">{item.storeName}{item.storeId != null ? ` (ID ${item.storeId})` : ""}</div>
                         </div>
                         <span className={`pnp-decision-status ${item.priorityBand.toLowerCase() === "high" ? "status-boost" : "status-keep"}`}>
                           {priorityBandLabel(item.priorityBand)}
@@ -1699,10 +1754,11 @@ export default function PreNivelacijaPriorityPage() {
                     <p className="pnp-queue-empty">Nema SKU u ovom redu.</p>
                   ) : (
                     data.queues.monitor.map((item) => (
-                      <div key={item.artikalId} className="pnp-queue-item">
+                      <div key={`${item.artikalId}-${item.storeId ?? "missing"}`} className="pnp-queue-item">
                         <div>
                           <div className="pnp-queue-item-sku">{item.sku}</div>
                           <div className="pnp-queue-item-supplier">{item.supplierName}</div>
+                          <div className="pnp-queue-item-supplier">{item.storeName}{item.storeId != null ? ` (ID ${item.storeId})` : ""}</div>
                         </div>
                         <span className={`pnp-decision-status ${item.priorityBand.toLowerCase() === "high" ? "status-boost" : "status-keep"}`}>
                           {priorityBandLabel(item.priorityBand)}
@@ -1717,10 +1773,11 @@ export default function PreNivelacijaPriorityPage() {
                     <p className="pnp-queue-empty">Nema SKU u ovom redu.</p>
                   ) : (
                     data.queues.likelyMarkdownSoon.map((item) => (
-                      <div key={item.artikalId} className="pnp-queue-item">
+                      <div key={`${item.artikalId}-${item.storeId ?? "missing"}`} className="pnp-queue-item">
                         <div>
                           <div className="pnp-queue-item-sku">{item.sku}</div>
                           <div className="pnp-queue-item-supplier">{item.supplierName}</div>
+                          <div className="pnp-queue-item-supplier">{item.storeName}{item.storeId != null ? ` (ID ${item.storeId})` : ""}</div>
                         </div>
                         <span className="pnp-decision-status status-reduce">{priorityBandLabel(item.priorityBand)}</span>
                       </div>

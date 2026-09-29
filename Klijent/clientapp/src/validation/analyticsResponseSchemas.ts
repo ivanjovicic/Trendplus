@@ -864,6 +864,8 @@ const preNivelacijaRecommendationSchema = z.object({
 const preNivelacijaCandidateSchema = z.object({
   artikalId: nonNegativeInteger,
   sku: z.string().trim().min(1),
+  storeId: nonNegativeInteger.nullable(),
+  storeName: z.string().trim().min(1),
   supplierId: nonNegativeInteger.nullable(),
   seasonId: nonNegativeInteger.nullable(),
   footwearTypeId: nonNegativeInteger.nullable(),
@@ -922,6 +924,8 @@ const preNivelacijaSupplierSchema = z.object({
 const preNivelacijaQueueItemSchema = z.object({
   artikalId: nonNegativeInteger,
   sku: z.string().trim().min(1),
+  storeId: nonNegativeInteger.nullable(),
+  storeName: z.string().trim().min(1),
   supplierName: z.string().trim().min(1),
   preNivelacijaScore: nonNegativePercentage,
   priorityBand: preNivelacijaPriorityBandSchema,
@@ -973,6 +977,7 @@ export const preNivelacijaPriorityResponseSchema = z.object({
     suppliers: z.array(preNivelacijaFilterOptionSchema).optional(),
     seasons: z.array(preNivelacijaFilterOptionSchema),
     footwearTypes: z.array(preNivelacijaFilterOptionSchema),
+    stores: z.array(preNivelacijaFilterOptionSchema).optional(),
   }).passthrough(),
   candidates: z.array(preNivelacijaCandidateSchema),
   queues: z.object({

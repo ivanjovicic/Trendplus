@@ -11,6 +11,7 @@ export interface PreNivelacijaQuery {
   supplierId?: number;
   seasonId?: number;
   footwearTypeId?: number;
+  storeId?: number;
   stockMin?: number;
   stockMax?: number;
   noSaleDaysMin?: number;
@@ -79,6 +80,7 @@ export async function getPreNivelacijaPrioriteti(query: PreNivelacijaQuery): Pro
   if (query.supplierId != null) params.set("supplierId", String(query.supplierId));
   if (query.seasonId != null) params.set("seasonId", String(query.seasonId));
   if (query.footwearTypeId != null) params.set("footwearTypeId", String(query.footwearTypeId));
+  if (query.storeId != null) params.set("storeId", String(query.storeId));
   if (query.stockMin != null) params.set("stockMin", String(query.stockMin));
   if (query.stockMax != null) params.set("stockMax", String(query.stockMax));
   if (query.noSaleDaysMin != null) params.set("noSaleDaysMin", String(query.noSaleDaysMin));

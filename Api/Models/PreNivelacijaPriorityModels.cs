@@ -46,6 +46,7 @@ public sealed class PreNivelacijaFilterFacetsDto
     public List<PreNivelacijaFilterOptionDto> Suppliers { get; set; } = [];
     public List<PreNivelacijaFilterOptionDto> Seasons { get; set; } = [];
     public List<PreNivelacijaFilterOptionDto> FootwearTypes { get; set; } = [];
+    public List<PreNivelacijaFilterOptionDto> Stores { get; set; } = [];
 }
 
 public sealed class PreNivelacijaFilterOptionDto
@@ -144,6 +145,8 @@ public sealed class PreNivelacijaQueueItemDto
 {
     public int ArtikalId { get; set; }
     public string Sku { get; set; } = string.Empty;
+    public int? StoreId { get; set; }
+    public string StoreName { get; set; } = "N/A";
     public string SupplierName { get; set; } = "N/A";
     public decimal PreNivelacijaScore { get; set; }
     public string PriorityBand { get; set; } = "neutral";
@@ -165,6 +168,8 @@ public sealed class PreNivelacijaSkuCandidateDto
 {
     public int ArtikalId { get; set; }
     public string Sku { get; set; } = string.Empty;
+    public int? StoreId { get; set; }
+    public string StoreName { get; set; } = "N/A";
     public int? SupplierId { get; set; }
     public int? SeasonId { get; set; }
     public int? FootwearTypeId { get; set; }

@@ -266,6 +266,19 @@ public sealed class AnalyticsScreenCacheKeyContractTests
     }
 
     [Fact]
+    public void PreNivelacijaPriority_SeparatesStoreGrainCacheEntries()
+    {
+        var storeOne = AnalyticsCacheKeys.PreNivelacijaPriorityBase(
+            null, null, null, null, null, null, null, null, "all", null, 1);
+        var storeTwo = AnalyticsCacheKeys.PreNivelacijaPriorityBase(
+            null, null, null, null, null, null, null, null, "all", null, 2);
+
+        Assert.NotEqual(storeOne, storeTwo);
+        Assert.Contains("store:1", storeOne, StringComparison.Ordinal);
+        Assert.Contains("store:2", storeTwo, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void VendorSalesNivelacija_SeparatesStoreAndDataScopeCacheEntries()
     {
         var baseline = AnalyticsCacheKeys.VendorSalesNivelacija(

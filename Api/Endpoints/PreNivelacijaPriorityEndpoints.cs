@@ -2,6 +2,7 @@ using System.Globalization;
 using Api.Models;
 using Api.Services;
 using Application.Analytics;
+using Application.Artikli.Common.Interfaces;
 using Infrastructure.DbContexts;
 using Infrastructure.Services.Caching;
 using Microsoft.AspNetCore.RateLimiting;
@@ -32,7 +33,7 @@ public static class PreNivelacijaPriorityEndpoints
     private sealed class PreNivelacijaPriorityBaseCacheEntry
     {
         public DateTime GeneratedAtUtc { get; init; }
-        public string FormulaVersion { get; init; } = "pre_nivelacija_v6";
+        public string FormulaVersion { get; init; } = "pre_nivelacija_v7";
         public string FormulaDescription { get; init; } = string.Empty;
         public PreNivelacijaSummaryDto Summary { get; init; } = new();
         public List<PreNivelacijaSupplierActionDto> SupplierLeaderboard { get; init; } = [];
@@ -54,12 +55,14 @@ public static class PreNivelacijaPriorityEndpoints
     {
         app.MapGet("/api/analytics/pre-nivelacija-prioriteti", async (
             TrendplusDbContext db,
+            IAnalyticsDbContext analyticsDb,
             IPreNivelacijaScoringService scoring,
             IAnalyticsCacheService cache,
             ILoggerFactory loggerFactory,
             int? supplierId = null,
             int? seasonId = null,
             int? footwearTypeId = null,
+            int? storeId = null,
             int? stockMin = null,
             int? stockMax = null,
             int? noSaleDaysMin = null,
@@ -89,7 +92,8 @@ public static class PreNivelacijaPriorityEndpoints
                 minScore,
                 marginFloor,
                 normalizedDataScope,
-                requestNowUtc.Date);
+                requestNowUtc.Date,
+                storeId);
 
             var baseEntry = await cache.GetOrSetAsync(
                 cacheKey,
@@ -131,7 +135,8 @@ public static class PreNivelacijaPriorityEndpoints
                         artikliQuery = artikliQuery.Where(a => a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "");
                     }
 
-                    // Supplier/season/footwear filters are applied after cache so facets stay leave-one-out.
+                    // Supplier/season/footwear/store filters are applied after cache so facets stay leave-one-out
+                    // and all-store scoring remains the explicit aggregation of the same store-grain rows.
 
                     if (stockMin.HasValue)
                     {
@@ -151,6 +156,7 @@ public static class PreNivelacijaPriorityEndpoints
                             SupplierId = a.IDDobavljac,
                             SeasonId = a.IDSezona,
                             FootwearTypeId = a.IDTipObuce,
+                            StoreId = a.IDObjekat,
                             StockUnits = a.Kolicina ?? 0,
                             a.Kategorija,
                             SellingPrice = a.ProdajnaCena ?? a.PrvaProdajnaCena,
@@ -163,9 +169,32 @@ public static class PreNivelacijaPriorityEndpoints
                         return BuildEmptyBaseEntry(nowUtc);
                     }
 
+                    Dictionary<int, string> storeNames;
+                    try
+                    {
+                        var storeIds = artikli
+                            .Where(x => x.StoreId is > 0)
+                            .Select(x => x.StoreId!.Value)
+                            .Distinct()
+                            .ToArray();
+                        storeNames = await analyticsDb.StoresDim
+                            .AsNoTracking()
+                            .Where(x => storeIds.Contains(x.StoreId))
+                            .ToDictionaryAsync(
+                                x => x.StoreId,
+                                x => string.IsNullOrWhiteSpace(x.StoreName) ? $"Objekat #{x.StoreId}" : x.StoreName.Trim(),
+                                ct);
+                    }
+                    catch (Exception ex)
+                    {
+                        loggerFactory.CreateLogger("PreNivelacijaPriorityEndpoints")
+                            .LogWarning(ex, "Pre-nivelacija store-name lookup unavailable; using stable store IDs.");
+                        storeNames = new Dictionary<int, string>();
+                    }
+
                     var artikalIds = artikli.Select(x => x.Id).ToArray();
 
-                    Dictionary<int, SalesLite> salesByArtikal;
+                    Dictionary<(int ArtikalId, int? StoreId), SalesLite> salesByArtikal;
                     var salesQueryFailed = false;
                     try
                     {
@@ -181,10 +210,11 @@ public static class PreNivelacijaPriorityEndpoints
                                 && (normalizedDataScope == "all"
                                     || (normalizedDataScope == "imported" && p.DataOrigin == "access")
                                     || (normalizedDataScope == "existing" && (p.DataOrigin == "existing" || p.DataOrigin == null || p.DataOrigin == "")))
-                            group new { ps, p } by ps.IdArtikal into g
+                            group new { ps, p } by new { ArtikalId = ps.IdArtikal, StoreId = p.IDObjekat } into g
                             select new
                             {
-                                ArtikalId = g.Key,
+                                ArtikalId = g.Key.ArtikalId,
+                                StoreId = g.Key.StoreId,
                                 Units180 = g.Sum(x => x.ps.Kolicina),
                                 PositiveUnits180 = g.Where(x => x.ps.Kolicina > 0).Sum(x => x.ps.Kolicina),
                                 NegativeUnits180 = g.Where(x => x.ps.Kolicina < 0).Sum(x => x.ps.Kolicina),
@@ -198,7 +228,7 @@ public static class PreNivelacijaPriorityEndpoints
                             .ToListAsync(ct);
 
                         salesByArtikal = sales.ToDictionary(
-                            x => x.ArtikalId,
+                            x => (x.ArtikalId, x.StoreId),
                             x => new SalesLite
                             {
                                 Units180 = x.Units180,
@@ -212,10 +242,10 @@ public static class PreNivelacijaPriorityEndpoints
                     catch
                     {
                         salesQueryFailed = true;
-                        salesByArtikal = new Dictionary<int, SalesLite>();
+                        salesByArtikal = new Dictionary<(int ArtikalId, int? StoreId), SalesLite>();
                     }
 
-                    Dictionary<int, (int MarkdownEvents, decimal AvgMarkdownPct)> markdownByArtikal;
+                    Dictionary<(int ArtikalId, int? StoreId), (int MarkdownEvents, decimal AvgMarkdownPct)> markdownByArtikal;
                     var markdownQueryFailed = false;
                     try
                     {
@@ -236,13 +266,14 @@ public static class PreNivelacijaPriorityEndpoints
                             .Select(dp => new
                             {
                                 ArtikalId = dp.ArtikalId!.Value,
+                                StoreId = dp.IDObjekat,
                                 dp.StaraProdajnaCena,
                                 dp.NovaProdajnaCena
                             })
                             .ToListAsync(ct);
 
                         markdownByArtikal = markdownRows
-                            .GroupBy(x => x.ArtikalId)
+                            .GroupBy(x => (x.ArtikalId, x.StoreId))
                             .ToDictionary(
                                 g => g.Key,
                                 g =>
@@ -264,7 +295,7 @@ public static class PreNivelacijaPriorityEndpoints
                         loggerFactory.CreateLogger("PreNivelacijaPriorityEndpoints")
                             .LogWarning(ex, "Pre-nivelacija markdown evidence query failed.");
                         markdownQueryFailed = true;
-                        markdownByArtikal = new Dictionary<int, (int MarkdownEvents, decimal AvgMarkdownPct)>();
+                        markdownByArtikal = new Dictionary<(int ArtikalId, int? StoreId), (int MarkdownEvents, decimal AvgMarkdownPct)>();
                     }
 
                     if (salesQueryFailed || markdownQueryFailed)
@@ -274,7 +305,7 @@ public static class PreNivelacijaPriorityEndpoints
 
                     var maxStock = Math.Max(1, artikli.Max(x => x.StockUnits));
                     var maxVelocity = artikli
-                        .Select(x => salesByArtikal.TryGetValue(x.Id, out var salesLite) ? (decimal)salesLite.Units180 / 180m : 0m)
+                        .Select(x => salesByArtikal.TryGetValue((x.Id, x.StoreId), out var salesLite) ? (decimal)salesLite.Units180 / 180m : 0m)
                         .DefaultIfEmpty(0m)
                         .Max();
 
@@ -287,7 +318,9 @@ public static class PreNivelacijaPriorityEndpoints
                         var seasonName = ResolveSeasonName(a.SeasonId, seasons);
                         var footwearType = ResolveFootwearType(a.FootwearTypeId, footwearTypes);
 
-                        var units180 = salesByArtikal.TryGetValue(a.Id, out var salesLite) ? salesLite.Units180 : 0;
+                        var salesKey = (a.Id, a.StoreId);
+                        var salesLite = salesByArtikal.GetValueOrDefault(salesKey);
+                        var units180 = salesLite?.Units180 ?? 0;
                         var velocity180 = decimal.Round(units180 / 180m, 4);
                         var lastSaleDate = salesLite?.LastPositiveSaleDateUtc;
                         var daysSinceLastSale = lastSaleDate.HasValue
@@ -297,8 +330,9 @@ public static class PreNivelacijaPriorityEndpoints
                         if (noSaleDaysMin.HasValue && daysSinceLastSale < noSaleDaysMin.Value)
                             continue;
 
-                        var markdownEvents = markdownByArtikal.TryGetValue(a.Id, out var markdownLite) ? markdownLite.MarkdownEvents : 0;
-                        var avgMarkdownPct = markdownByArtikal.TryGetValue(a.Id, out markdownLite) ? markdownLite.AvgMarkdownPct : 0m;
+                        var markdownLite = markdownByArtikal.GetValueOrDefault(salesKey);
+                        var markdownEvents = markdownLite.MarkdownEvents;
+                        var avgMarkdownPct = markdownLite.AvgMarkdownPct;
 
                         var marginEvidence = ResolveMarginEvidence(a.SellingPrice, a.PurchasePrice);
                         var salesEvidence = ResolveSalesEvidence(
@@ -350,6 +384,8 @@ public static class PreNivelacijaPriorityEndpoints
                         {
                             ArtikalId = a.Id,
                             Sku = sku,
+                            StoreId = a.StoreId,
+                            StoreName = ResolveStoreName(a.StoreId, storeNames),
                             SupplierId = a.SupplierId,
                             SeasonId = a.SeasonId,
                             FootwearTypeId = a.FootwearTypeId,
@@ -412,6 +448,25 @@ public static class PreNivelacijaPriorityEndpoints
                         candidate.DecisionScore = recommendation.DecisionScore;
                         candidate.ReliabilityPct = recommendation.ReliabilityPct;
                         candidate.Recommendation = recommendation.Recommendation;
+                        if (!candidate.StoreId.HasValue)
+                        {
+                            candidate.Recommendation = new PreNivelacijaRecommendationDto
+                            {
+                                Status = "do_not_trust",
+                                Label = "Nedostaje objekat",
+                                Summary = "Akcija je blokirana jer kandidat nema pouzdan identitet prodavnice.",
+                                ConfidencePct = 0,
+                                ReliabilityPct = 0,
+                                DataQualityStatus = "critical",
+                                RecommendationAllowed = false,
+                                ReasonCodes = candidate.Recommendation.ReasonCodes
+                                    .Append("missing_store_identity")
+                                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                                    .ToArray()
+                            };
+                            candidate.DecisionScore = 0;
+                            candidate.ReliabilityPct = 0;
+                        }
                     }
 
                     allCandidates = allCandidates
@@ -425,7 +480,7 @@ public static class PreNivelacijaPriorityEndpoints
                     return new PreNivelacijaPriorityBaseCacheEntry
                     {
                         GeneratedAtUtc = nowUtc,
-                        FormulaVersion = "pre_nivelacija_v6",
+                        FormulaVersion = "pre_nivelacija_v7",
                         FormulaDescription = BuildFormulaDescription(),
                         Summary = new PreNivelacijaSummaryDto(),
                         SupplierLeaderboard = [],
@@ -442,7 +497,7 @@ public static class PreNivelacijaPriorityEndpoints
                 ct);
 
             var response = BuildResponse(
-                MaterializeFacetFilteredEntry(baseEntry, supplierId, seasonId, footwearTypeId),
+                MaterializeFacetFilteredEntry(baseEntry, supplierId, seasonId, footwearTypeId, storeId),
                 page,
                 pageSize,
                 focus,
@@ -452,7 +507,8 @@ public static class PreNivelacijaPriorityEndpoints
                         : baseEntry.Candidates,
                     supplierId,
                     seasonId,
-                    footwearTypeId));
+                    footwearTypeId,
+                    storeId));
 
                 return Results.Ok(response);
             }
@@ -691,7 +747,7 @@ public static class PreNivelacijaPriorityEndpoints
         return new PreNivelacijaPriorityBaseCacheEntry
         {
             GeneratedAtUtc = nowUtc,
-            FormulaVersion = "pre_nivelacija_v6",
+            FormulaVersion = "pre_nivelacija_v7",
             FormulaDescription = BuildFormulaDescription(),
             Summary = new PreNivelacijaSummaryDto
             {
@@ -883,12 +939,13 @@ public static class PreNivelacijaPriorityEndpoints
         PreNivelacijaPriorityBaseCacheEntry universeEntry,
         int? supplierId,
         int? seasonId,
-        int? footwearTypeId)
+        int? footwearTypeId,
+        int? storeId = null)
     {
         var universe = universeEntry.FacetUniverseCandidates.Count > 0
             ? universeEntry.FacetUniverseCandidates
             : universeEntry.Candidates;
-        var filtered = ApplyDimensionFilters(universe, supplierId, seasonId, footwearTypeId);
+        var filtered = ApplyDimensionFilters(universe, supplierId, seasonId, footwearTypeId, storeId);
         var leaderboard = BuildSupplierLeaderboard(filtered);
         var summary = BuildSummary(filtered, leaderboard);
         var queues = BuildQueues(filtered, universeEntry.GeneratedAtUtc);
@@ -927,7 +984,8 @@ public static class PreNivelacijaPriorityEndpoints
         IReadOnlyList<PreNivelacijaSkuCandidateDto> candidates,
         int? supplierId,
         int? seasonId,
-        int? footwearTypeId)
+        int? footwearTypeId,
+        int? storeId = null)
     {
         IEnumerable<PreNivelacijaSkuCandidateDto> query = candidates;
         if (supplierId.HasValue)
@@ -943,6 +1001,11 @@ public static class PreNivelacijaPriorityEndpoints
         if (footwearTypeId.HasValue)
         {
             query = query.Where(candidate => candidate.FootwearTypeId == footwearTypeId.Value);
+        }
+
+        if (storeId.HasValue)
+        {
+            query = query.Where(candidate => candidate.StoreId == storeId.Value);
         }
 
         return query.ToList();
@@ -1032,15 +1095,18 @@ public static class PreNivelacijaPriorityEndpoints
         IReadOnlyList<PreNivelacijaSkuCandidateDto> universe,
         int? selectedSupplierId,
         int? selectedSeasonId,
-        int? selectedFootwearTypeId)
+        int? selectedFootwearTypeId,
+        int? selectedStoreId = null)
     {
         var supplierUniverse = ApplyDimensionFilters(universe, null, selectedSeasonId, selectedFootwearTypeId);
         var seasonUniverse = ApplyDimensionFilters(universe, selectedSupplierId, null, selectedFootwearTypeId);
         var footwearUniverse = ApplyDimensionFilters(universe, selectedSupplierId, selectedSeasonId, null);
+        var storeUniverse = ApplyDimensionFilters(universe, selectedSupplierId, selectedSeasonId, selectedFootwearTypeId);
 
         var suppliers = AggregateSupplierFacet(supplierUniverse);
         var seasons = AggregateSeasonFacet(seasonUniverse);
         var footwearTypes = AggregateFootwearFacet(footwearUniverse);
+        var stores = AggregateStoreFacet(storeUniverse);
 
         EnsureSelectedFacetOption(
             suppliers,
@@ -1060,13 +1126,36 @@ public static class PreNivelacijaPriorityEndpoints
             universe,
             candidate => candidate.FootwearTypeId,
             candidate => candidate.FootwearType);
+        EnsureSelectedFacetOption(
+            stores,
+            selectedStoreId,
+            universe,
+            candidate => candidate.StoreId,
+            candidate => candidate.StoreName);
 
         return new PreNivelacijaFilterFacetsDto
         {
             Suppliers = suppliers,
             Seasons = seasons,
-            FootwearTypes = footwearTypes
+            FootwearTypes = footwearTypes,
+            Stores = stores
         };
+    }
+
+    private static List<PreNivelacijaFilterOptionDto> AggregateStoreFacet(
+        IReadOnlyList<PreNivelacijaSkuCandidateDto> candidates)
+    {
+        return candidates
+            .Where(candidate => candidate.StoreId is > 0)
+            .GroupBy(candidate => candidate.StoreId!.Value)
+            .Select(group => new PreNivelacijaFilterOptionDto
+            {
+                Id = group.Key,
+                Label = group.Select(item => string.IsNullOrWhiteSpace(item.StoreName) ? $"Objekat #{group.Key}" : item.StoreName.Trim()).First(),
+                Count = group.Count()
+            })
+            .OrderBy(option => option.Label, StringComparer.Create(new System.Globalization.CultureInfo("sr-Latn-RS"), ignoreCase: true))
+            .ToList();
     }
 
     private static List<PreNivelacijaFilterOptionDto> AggregateSupplierFacet(
@@ -1208,6 +1297,13 @@ public static class PreNivelacijaPriorityEndpoints
         return "N/A";
     }
 
+    private static string ResolveStoreName(int? storeId, IReadOnlyDictionary<int, string> storeNames)
+    {
+        return storeId is > 0 && storeNames.TryGetValue(storeId.Value, out var name) && !string.IsNullOrWhiteSpace(name)
+            ? name.Trim()
+            : storeId is > 0 ? $"Objekat #{storeId.Value}" : "N/A";
+    }
+
     private static decimal ResolveSeasonRecencyBoost(int? seasonId, IReadOnlyDictionary<int, SeasonLite> seasons, DateTime maxSaleDate)
     {
         if (!seasonId.HasValue || !seasons.TryGetValue(seasonId.Value, out var season))
@@ -1229,6 +1325,8 @@ public static class PreNivelacijaPriorityEndpoints
         {
             ArtikalId = sku.ArtikalId,
             Sku = sku.Sku,
+            StoreId = sku.StoreId,
+            StoreName = sku.StoreName,
             SupplierName = sku.SupplierName,
             PreNivelacijaScore = sku.PreNivelacijaScore,
             PriorityBand = sku.PriorityBand,
