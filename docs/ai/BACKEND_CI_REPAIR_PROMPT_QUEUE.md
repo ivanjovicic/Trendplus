@@ -174,14 +174,14 @@ The current broad suite still shows clustered failures in `DataSourceDiscoveryEn
 
 ## BCI14 - Isolate remaining PostgreSQL/provider/order-dependent broad-suite failures
 
-Status: PARTIAL
+Status: DONE
 Ready after: BCI11-BCI13 deterministic failures are closed and a fresh broad-suite run identifies the residual set  
 Priority: P0  
 Type: backend/tests/ci-isolation  
 Feature family: backend-ci-provider-order-isolation  
 Parallel-safe: no  
 Owner: Codex
-Local lock: `.ai/task-locks/BCI14-codex.lock.md`
+Local lock: removed after done close
 Commit suggestion: `test(ci): isolate provider and suite-order failures`
 
 ### Problem
@@ -243,6 +243,26 @@ Run `36270728235` still contained failures across Access import FK guards, lost-
 # Owner re-entry claim 2026-09-29: `BCI14` moved `PARTIAL -> IN_PROGRESS` after the prior broad-suite attempt stalled without a summary; no active lock or conflicting owner remained. The re-entry is limited to fresh exact-main broad-suite evidence and bounded provider/order isolation.
 # Owner re-entry claim 2026-09-29 (follow-up pass): `BCI14` moved `PARTIAL -> IN_PROGRESS` after the prior delivered evidence left the residual test names and provider/order family unclassified; no active lock, branch or conflicting owner remained. This pass is limited to exact broad-suite TRX evidence and bounded classification, with no runtime expansion.
 # Current READY prompt (authoritative, 2026-09-29): `BCI14`.
+
+### Final review completion note - 2026-09-29
+- Date: 2026-09-29
+- Status: DONE
+- Completion: the latest-commit review repaired the remaining schema/bootstrap and shared-database test isolation defects; the exact Release suite is now `1501 passed / 39 skipped / 0 failed / 1540 total`.
+- Changed files: `Api.Tests/DataQualityIssuesHandlerTests.cs`, `Infrastructure/Migrations/20260929000521_PersistDailySalesTimestampBasis.cs`, `Infrastructure/Seed/DatabaseInitializer.cs`, plus the durable review evidence and roadmap synchronization.
+- Contract/runtime behavior changed: current `prodaja_zaglavlje.source_timestamp_basis` schema is now present in idempotent bootstrap and migration paths; legacy DataQuality handler integration tests use isolated current-schema Testcontainers databases. No KPI or recommendation semantics changed.
+- Checks run: `dotnet build Api.Tests/Api.Tests.csproj --configuration Release --no-restore` -> pass; `DataQualityIssuesHandlerTests` -> `6/6`; schema/migration lifecycle plus `DataQualityPostgresIntegrationTests` -> `10/10`; exact full Release suite -> `1501/39/0`; agent instruction, prompt queue, planning architecture and `git diff --check` -> pass.
+- Checks not run: GitHub Actions inspection -> not run; no connector result was available. BCI10 remains the separate current-main/remote gate.
+- Run log: `.ai/runs/2026-09-29-latest-commit-review-evidence.md`
+- Evidence state: synchronized after final main verification
+- Delivery mode: direct-main
+- Main commit SHA: `d4f4272a`
+- Main verification: passed - `origin/main` contains `d4f4272a`; documentation synchronization is included in the next direct-main commit
+- Missed: none known within BCI14's provider/order/schema-isolation scope.
+- Follow-up: keep BCI10 PARTIAL until fresh exact-main GitHub Actions restore/build/test evidence is inspected and green.
+- Residual risk: local full-suite proof is green, but remote CI status for the resulting SHA is not inspected.
+- Prompt defect / scope repair: the prior residual classification stopped at an external-schema diagnosis; the repository-owned repair was to align bootstrap/migration idempotence and isolate the legacy test class rather than mutate the external database.
+
+# Current READY prompt (authoritative, 2026-09-29 review): `none`.
 
 ### Follow-up pass completion note - 2026-09-29
 - Date: 2026-09-29
