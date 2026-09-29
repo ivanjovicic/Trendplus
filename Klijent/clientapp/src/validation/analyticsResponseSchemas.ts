@@ -27,6 +27,31 @@ const provenanceSchema = z.object({
   denominator: z.string().nullable().optional(),
 }).passthrough();
 
+const analyticsContextDescriptorSchema = z.object({
+  contractVersion: z.string().min(1),
+  state: z.string().min(1),
+  fingerprint: z.string().regex(/^sha256:[0-9a-f]{64}$/).nullable().optional(),
+  unavailableReason: z.string().nullable().optional(),
+  dateBoundaryConvention: z.string().nullable().optional(),
+  requestedPeriodFromUtc: validDate.nullable().optional(),
+  requestedPeriodToUtc: validDate.nullable().optional(),
+  effectivePeriodFromUtc: validDate.nullable().optional(),
+  effectivePeriodToUtc: validDate.nullable().optional(),
+  observedPeriodFromUtc: validDate.nullable().optional(),
+  observedPeriodToUtc: validDate.nullable().optional(),
+  requestedDataScope: z.string().nullable().optional(),
+  effectiveDataScope: z.string().nullable().optional(),
+  dataScopeSource: z.string().nullable().optional(),
+  populationKey: z.string().nullable().optional(),
+  populationFilters: z.record(z.string(), z.string().nullable()).optional(),
+  sourceDataset: z.string().nullable().optional(),
+  sourceGeneration: z.string().nullable().optional(),
+  formulaVersion: z.string().nullable().optional(),
+  materializerGeneration: z.string().nullable().optional(),
+  cacheGeneration: z.string().nullable().optional(),
+  rowLimitSemantics: z.string().nullable().optional(),
+}).passthrough();
+
 export const analyticsResponseMetaSchema = z.object({
   success: z.boolean(),
   generatedAtUtc: validDate.optional(),
@@ -44,6 +69,7 @@ export const analyticsResponseMetaSchema = z.object({
   recommendationAllowed: z.boolean().nullable().optional(),
   isPartial: z.boolean().optional(),
   metricProvenance: z.record(z.string(), provenanceSchema).nullable().optional(),
+  context: analyticsContextDescriptorSchema.nullable().optional(),
 }).passthrough();
 
 const optionalMeta = analyticsResponseMetaSchema.nullable().optional();

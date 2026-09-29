@@ -1,4 +1,5 @@
 using Application.Analytics.Queries.GetDataQualityIssues;
+using Application.Analytics;
 using Infrastructure.Configuration;
 using Infrastructure.DbContexts;
 using Infrastructure.Services;
@@ -72,7 +73,32 @@ public static class DataQualityEndpoints
                         EmptyReason = score.Status == "insufficient_data"
                             ? snapshot.TotalRevenue <= 0 ? "no_sales_in_period" : "missing_revenue_quality_evidence"
                             : null,
-                        IsPartial = false
+                        IsPartial = false,
+                        Context = AnalyticsContextFingerprintPolicy.Create(
+                            sourceDataset: "data_quality_sales_health",
+                            sourceGeneration: "sales_header_origin_v1",
+                            formulaVersion: "data_quality_health_context_v1",
+                            materializerGeneration: "data_quality_health_query",
+                            rowLimitSemantics: "lookback_window_all_rows",
+                            requestedPeriodFromUtc: snapshot.WindowFromUtc,
+                            requestedPeriodToUtc: snapshot.WindowToUtc,
+                            effectivePeriodFromUtc: snapshot.WindowFromUtc,
+                            effectivePeriodToUtc: snapshot.WindowToUtc,
+                            observedPeriodFromUtc: snapshot.WindowFromUtc,
+                            observedPeriodToUtc: snapshot.WindowToUtc,
+                            requestedDataScope: string.IsNullOrWhiteSpace(dataScope) ? "all" : dataScope.Trim(),
+                            effectiveDataScope: string.IsNullOrWhiteSpace(dataScope) ? "all" : dataScope.Trim(),
+                            dataScopeSource: "data_quality_health_capture",
+                            populationKey: "data_quality_sales_denominator",
+                            populationFilters: new Dictionary<string, string?>
+                            {
+                                ["lookbackDays"] = snapshot.LookbackDays.ToString(CultureInfo.InvariantCulture),
+                                ["unknownSupplierPolicy"] = "explicit_unknown_revenue"
+                            },
+                            resultState: AnalyticsContextFingerprintPolicy.ResolveResultState(
+                                success: true,
+                                isPartial: false,
+                                isEmpty: score.Status == "insufficient_data" && snapshot.TotalRevenue <= 0)),
                     }));
             }
             catch (Exception)
@@ -1473,7 +1499,8 @@ public static class DataQualityEndpoints
                 IsPartial = meta.IsPartial,
                 GeneratedAtUtc = meta.GeneratedAtUtc,
                 LastRefreshAtUtc = meta.LastRefreshAtUtc,
-                CorrelationId = meta.CorrelationId
+                CorrelationId = meta.CorrelationId,
+                Context = meta.Context
             };
 
         resolved.CorrelationId = correlationId;

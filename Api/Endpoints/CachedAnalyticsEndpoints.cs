@@ -2554,7 +2554,13 @@ public static class CachedAnalyticsEndpoints
                                 ct),
                             "Lost-sales validacija nije dostupna.");
 
-                        response.Meta = BuildDashboardBootstrapMeta(response, requestedPeriodFromUtc, requestedPeriodToUtc);
+                        response.Meta = BuildDashboardBootstrapMeta(
+                            response,
+                            requestedPeriodFromUtc,
+                            requestedPeriodToUtc,
+                            storeId,
+                            supplierId,
+                            normalizedDataScope);
 
                         return response;
                     },
@@ -6194,6 +6200,23 @@ public static class CachedAnalyticsEndpoints
 
         if (articles.Count == 0)
         {
+            var emptyMeta = BuildProductDecisionContextMeta(
+                new AnalyticsResponseMetaDto
+                {
+                    Success = true,
+                    DataQualityStatus = "insufficient_data",
+                    EmptyReason = "no_rows_for_period",
+                    Message = "Nema podataka za izabrani period i filtere.",
+                    GeneratedAtUtc = nowUtc
+                },
+                periodFromUtc,
+                periodToExclusiveUtc,
+                storeId,
+                supplierId,
+                normalizedDataScope,
+                normalizedSearch,
+                top);
+
             return new ProductDecisionCenterResponseDto
             {
                 GeneratedAtUtc = nowUtc,
@@ -6210,14 +6233,7 @@ public static class CachedAnalyticsEndpoints
                 IgnoredRowsCount = 0,
                 IgnoredRowsMeaning = ProductDecisionDenominatorScope.HiddenByTopLimit,
                 Rows = [],
-                Meta = new AnalyticsResponseMetaDto
-                {
-                    Success = true,
-                    DataQualityStatus = "insufficient_data",
-                    EmptyReason = "no_rows_for_period",
-                    Message = "Nema podataka za izabrani period i filtere.",
-                    GeneratedAtUtc = nowUtc
-                }
+                Meta = emptyMeta
             };
         }
 
@@ -6558,6 +6574,23 @@ public static class CachedAnalyticsEndpoints
             .ToList();
 
         var rowWindow = BuildProductDecisionCenterRowWindow(rows.Count, sortedRows.Count);
+        var responseMeta = sortedRows.Count == 0
+            ? BuildSuccessMeta(
+                dataQualityStatus: "insufficient_data",
+                message: "Nema dovoljno podataka za preporuke u ovom periodu.",
+                emptyReason: "no_rows_for_period")
+            : BuildSuccessMeta(
+                dataQualityStatus: ResolveDataQualityFromRows(sortedRows));
+        responseMeta = BuildProductDecisionContextMeta(
+            responseMeta,
+            periodFromUtc,
+            periodToExclusiveUtc,
+            storeId,
+            supplierId,
+            normalizedDataScope,
+            normalizedSearch,
+            top);
+
         return new ProductDecisionCenterResponseDto
         {
             GeneratedAtUtc = nowUtc,
@@ -6577,14 +6610,47 @@ public static class CachedAnalyticsEndpoints
             Rows = sortedRows,
             DecisionGrain = "article_size",
             ThresholdPolicy = BuildProductDecisionThresholdPolicyDto(thresholdPolicy),
-            Meta = sortedRows.Count == 0
-                ? BuildSuccessMeta(
-                    dataQualityStatus: "insufficient_data",
-                    message: "Nema dovoljno podataka za preporuke u ovom periodu.",
-                    emptyReason: "no_rows_for_period")
-                : BuildSuccessMeta(
-                    dataQualityStatus: ResolveDataQualityFromRows(sortedRows))
+            Meta = responseMeta
         };
+    }
+
+    private static AnalyticsResponseMetaDto BuildProductDecisionContextMeta(
+        AnalyticsResponseMetaDto meta,
+        DateTime periodFromUtc,
+        DateTime periodToExclusiveUtc,
+        int? storeId,
+        int? supplierId,
+        string normalizedDataScope,
+        string normalizedSearch,
+        int top)
+    {
+        meta.Context = AnalyticsContextFingerprintPolicy.Create(
+            sourceDataset: "certified_sales_rows+article_master",
+            sourceGeneration: "sales_header_origin_v1",
+            formulaVersion: "product_decision_context_v1",
+            materializerGeneration: "product_decision_query",
+            rowLimitSemantics: $"top_{Math.Max(1, top)}_rows;counts_returned;money_analyzed",
+            requestedPeriodFromUtc: periodFromUtc,
+            requestedPeriodToUtc: periodToExclusiveUtc,
+            effectivePeriodFromUtc: periodFromUtc,
+            effectivePeriodToUtc: periodToExclusiveUtc,
+            observedPeriodFromUtc: null,
+            observedPeriodToUtc: null,
+            requestedDataScope: normalizedDataScope,
+            effectiveDataScope: normalizedDataScope,
+            dataScopeSource: "article_and_sale_header_origin",
+            populationKey: "product_decision_article_size",
+            populationFilters: new Dictionary<string, string?>
+            {
+                ["storeId"] = storeId?.ToString(CultureInfo.InvariantCulture),
+                ["supplierId"] = supplierId?.ToString(CultureInfo.InvariantCulture),
+                ["search"] = string.IsNullOrWhiteSpace(normalizedSearch) ? null : normalizedSearch
+            },
+            resultState: AnalyticsContextFingerprintPolicy.ResolveResultState(
+                meta.Success,
+                meta.IsPartial,
+                meta.EmptyReason is not null));
+        return meta;
     }
 
     /// <summary>
@@ -8192,7 +8258,10 @@ public static class CachedAnalyticsEndpoints
     internal static AnalyticsResponseMetaDto BuildDashboardBootstrapMeta(
         AnalyticsDashboardBootstrapDto response,
         DateTime requestedPeriodFromUtc,
-        DateTime requestedPeriodToUtc)
+        DateTime requestedPeriodToUtc,
+        int? storeId = null,
+        int? supplierId = null,
+        string normalizedDataScope = "all")
     {
         var inventoryFallback = response.Inventory?.UsedOperationalFallback == true;
         var hasSectionErrors = response.Errors.Count > 0;
@@ -8218,6 +8287,31 @@ public static class CachedAnalyticsEndpoints
         meta.EffectivePeriodToUtc = requestedPeriodToUtc;
         meta.ObservedPeriodFromUtc = observedWindow?.FromUtc;
         meta.ObservedPeriodToUtc = observedWindow?.ToUtc;
+        meta.Context = AnalyticsContextFingerprintPolicy.Create(
+            sourceDataset: "dashboard_certified_sales",
+            sourceGeneration: "sales_header_origin_v1",
+            formulaVersion: "dashboard_context_v1",
+            materializerGeneration: "dashboard_bootstrap",
+            rowLimitSemantics: "section_specific_declared_populations",
+            requestedPeriodFromUtc: requestedPeriodFromUtc,
+            requestedPeriodToUtc: requestedPeriodToUtc,
+            effectivePeriodFromUtc: meta.EffectivePeriodFromUtc,
+            effectivePeriodToUtc: meta.EffectivePeriodToUtc,
+            observedPeriodFromUtc: meta.ObservedPeriodFromUtc,
+            observedPeriodToUtc: meta.ObservedPeriodToUtc,
+            requestedDataScope: normalizedDataScope,
+            effectiveDataScope: normalizedDataScope,
+            dataScopeSource: "dashboard_sections_declared",
+            populationKey: "dashboard_sales_sections",
+            populationFilters: new Dictionary<string, string?>
+            {
+                ["storeId"] = storeId?.ToString(CultureInfo.InvariantCulture),
+                ["supplierId"] = supplierId?.ToString(CultureInfo.InvariantCulture)
+            },
+            resultState: AnalyticsContextFingerprintPolicy.ResolveResultState(
+                meta.Success,
+                meta.IsPartial,
+                meta.EmptyReason is not null));
         return meta;
     }
 

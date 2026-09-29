@@ -1972,6 +1972,34 @@ public static class AllEndpoints
                 supplierTrustMeta.AttributionBasis = attributionBasis;
                 supplierTrustMeta.AttributionCoveragePct = attributionCoveragePct;
                 supplierTrustMeta = OperationsAnalyticsIntegrityMeta.ApplyIntegrityState(supplierTrustMeta, operationsIntegrityRegistry);
+                supplierTrustMeta.Context = AnalyticsContextFingerprintPolicy.Create(
+                    sourceDataset: "certified_sales_rows",
+                    sourceGeneration: "sales_header_origin_v1",
+                    formulaVersion: "supplier_sales_context_v1",
+                    materializerGeneration: snapshotPathUsed && activeBatchId.HasValue
+                        ? $"snapshot_cost_batch:{activeBatchId.Value}"
+                        : "live_query",
+                    rowLimitSemantics: "all_filtered_rows",
+                    requestedPeriodFromUtc: fromUtc,
+                    requestedPeriodToUtc: toUtc,
+                    effectivePeriodFromUtc: fromUtc,
+                    effectivePeriodToUtc: toUtc,
+                    observedPeriodFromUtc: null,
+                    observedPeriodToUtc: null,
+                    requestedDataScope: normalizedDataScope,
+                    effectiveDataScope: normalizedDataScope,
+                    dataScopeSource: SalesDataScopePolicy.Source,
+                    populationKey: "supplier_sales",
+                    populationFilters: new Dictionary<string, string?>
+                    {
+                        ["storeId"] = storeId?.ToString(CultureInfo.InvariantCulture),
+                        ["sezonaId"] = sezonaId?.ToString(CultureInfo.InvariantCulture),
+                        ["unknownSupplierPolicy"] = "visible_and_decision_population_explicit"
+                    },
+                    resultState: AnalyticsContextFingerprintPolicy.ResolveResultState(
+                        supplierTrustMeta.Success,
+                        supplierTrustMeta.IsPartial,
+                        supplierTrustMeta.EmptyReason is not null));
                 var response = new
                 {
                     generatedAt = generatedAtUtc,
@@ -2761,6 +2789,34 @@ public static class AllEndpoints
                 shoeTrustMeta.EffectiveDataScope = normalizedDataScope;
                 shoeTrustMeta.DataScopeSource = SalesDataScopePolicy.Source;
                 shoeTrustMeta = OperationsAnalyticsIntegrityMeta.ApplyIntegrityState(shoeTrustMeta, shoeIntegrityRegistry);
+                shoeTrustMeta.Context = AnalyticsContextFingerprintPolicy.Create(
+                    sourceDataset: "certified_sales_rows",
+                    sourceGeneration: "sales_header_origin_v1",
+                    formulaVersion: "shoe_type_sales_context_v1",
+                    materializerGeneration: snapshotPathUsed2 && activeBatchId2.HasValue
+                        ? $"snapshot_cost_batch:{activeBatchId2.Value}"
+                        : "live_query",
+                    rowLimitSemantics: "all_filtered_rows",
+                    requestedPeriodFromUtc: fromUtc,
+                    requestedPeriodToUtc: toUtc,
+                    effectivePeriodFromUtc: fromUtc,
+                    effectivePeriodToUtc: toUtc,
+                    observedPeriodFromUtc: null,
+                    observedPeriodToUtc: null,
+                    requestedDataScope: normalizedDataScope,
+                    effectiveDataScope: normalizedDataScope,
+                    dataScopeSource: SalesDataScopePolicy.Source,
+                    populationKey: "shoe_type_sales",
+                    populationFilters: new Dictionary<string, string?>
+                    {
+                        ["storeId"] = storeId?.ToString(CultureInfo.InvariantCulture),
+                        ["sezonaId"] = sezonaId?.ToString(CultureInfo.InvariantCulture),
+                        ["unknownShoeTypePolicy"] = "visible_and_decision_population_explicit"
+                    },
+                    resultState: AnalyticsContextFingerprintPolicy.ResolveResultState(
+                        shoeTrustMeta.Success,
+                        shoeTrustMeta.IsPartial,
+                        shoeTrustMeta.EmptyReason is not null));
                 var response = new
                 {
                     generatedAt = generatedAtUtc,
@@ -3609,6 +3665,33 @@ public static class AllEndpoints
                     trustMeta.GeneratedAtUtc = generatedAtUtc;
                     trustMeta.RecommendationAllowed = false;
                 }
+
+                trustMeta.Context = AnalyticsContextFingerprintPolicy.Create(
+                    sourceDataset: "certified_sales_rows",
+                    sourceGeneration: "sales_header_origin_v1",
+                    formulaVersion: "color_sales_context_v1",
+                    materializerGeneration: "live_query",
+                    rowLimitSemantics: "all_filtered_rows",
+                    requestedPeriodFromUtc: requestedFromUtc,
+                    requestedPeriodToUtc: requestedToUtc,
+                    effectivePeriodFromUtc: fromUtc,
+                    effectivePeriodToUtc: toUtc,
+                    observedPeriodFromUtc: trustMeta.ObservedPeriodFromUtc,
+                    observedPeriodToUtc: trustMeta.ObservedPeriodToUtc,
+                    requestedDataScope: normalizedDataScope,
+                    effectiveDataScope: normalizedDataScope,
+                    dataScopeSource: SalesDataScopePolicy.Source,
+                    populationKey: "color_sales",
+                    populationFilters: new Dictionary<string, string?>
+                    {
+                        ["storeId"] = storeId?.ToString(CultureInfo.InvariantCulture),
+                        ["sezonaId"] = sezonaId?.ToString(CultureInfo.InvariantCulture),
+                        ["unknownColorPolicy"] = "visible_and_decision_population_explicit"
+                    },
+                    resultState: AnalyticsContextFingerprintPolicy.ResolveResultState(
+                        trustMeta.Success,
+                        trustMeta.IsPartial,
+                        trustMeta.EmptyReason is not null));
 
                 var response = new
                 {
@@ -7551,7 +7634,8 @@ public static class AllEndpoints
             LastRefreshAtUtc = meta.LastRefreshAtUtc,
             DataQualityStatus = meta.DataQualityStatus,
             RecommendationAllowed = meta.RecommendationAllowed,
-            IsPartial = meta.IsPartial
+            IsPartial = meta.IsPartial,
+            Context = meta.Context
         };
     }
 

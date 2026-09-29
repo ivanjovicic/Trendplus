@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Application.Analytics;
 
 namespace Trendplus2.Dtos;
 
@@ -35,6 +36,11 @@ public class AnalyticsResponseMetaDto
     /// Optional provenance by stable metric key. Existing clients may omit this field.
     /// </summary>
     public IReadOnlyDictionary<string, AnalyticsMetricProvenanceDto>? MetricProvenance { get; set; }
+    /// <summary>
+    /// Additive machine-comparable context identity for cross-surface metrics.
+    /// A null fingerprint or unavailable state must never be treated as a match.
+    /// </summary>
+    public AnalyticsContextDescriptor? Context { get; set; }
     public string? OperationsIntegrityStatus { get; set; }
     public DateTime? OperationsIntegrityCheckedAtUtc { get; set; }
     public string? OperationsIntegrityEvidenceId { get; set; }

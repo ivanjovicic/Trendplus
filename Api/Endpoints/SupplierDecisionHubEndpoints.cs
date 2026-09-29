@@ -2142,7 +2142,8 @@ public static class SupplierDecisionHubEndpoints
             IsPartial = source.IsPartial,
             GeneratedAtUtc = source.GeneratedAtUtc,
             LastRefreshAtUtc = source.LastRefreshAtUtc,
-            CorrelationId = source.CorrelationId
+            CorrelationId = source.CorrelationId,
+            Context = source.Context
         };
     }
 
@@ -2247,6 +2248,33 @@ public static class SupplierDecisionHubEndpoints
         meta.EffectivePeriodToUtc = trustMetadata?.EffectiveTo;
         meta.ObservedPeriodFromUtc = rows.Count > 0 ? rows.Min(row => row.PeriodFrom) : null;
         meta.ObservedPeriodToUtc = rows.Count > 0 ? rows.Max(row => row.PeriodTo) : null;
+        meta.Context = AnalyticsContextFingerprintPolicy.Create(
+            sourceDataset: "supplier_decision_sales",
+            sourceGeneration: "sales_header_origin_v1",
+            formulaVersion: "supplier_decision_context_v1",
+            materializerGeneration: "supplier_decision_query",
+            rowLimitSemantics: "supplier_rows_with_summary_population",
+            requestedPeriodFromUtc: meta.RequestedPeriodFromUtc,
+            requestedPeriodToUtc: meta.RequestedPeriodToUtc,
+            effectivePeriodFromUtc: meta.EffectivePeriodFromUtc,
+            effectivePeriodToUtc: meta.EffectivePeriodToUtc,
+            observedPeriodFromUtc: meta.ObservedPeriodFromUtc,
+            observedPeriodToUtc: meta.ObservedPeriodToUtc,
+            requestedDataScope: trustMetadata?.DataScope,
+            effectiveDataScope: trustMetadata?.DataScope,
+            dataScopeSource: "supplier_decision_population",
+            populationKey: "supplier_decision_rows",
+            populationFilters: new Dictionary<string, string?>
+            {
+                ["requestedDataset"] = trustMetadata?.RequestedDataset,
+                ["effectiveDataset"] = trustMetadata?.EffectiveDataset,
+                ["usedFallback"] = trustMetadata?.UsedFallback.ToString().ToLowerInvariant()
+            },
+            cacheGeneration: trustMetadata?.LastRefreshAtUtc?.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture),
+            resultState: AnalyticsContextFingerprintPolicy.ResolveResultState(
+                meta.Success,
+                meta.IsPartial,
+                meta.EmptyReason is not null));
         return meta;
     }
 

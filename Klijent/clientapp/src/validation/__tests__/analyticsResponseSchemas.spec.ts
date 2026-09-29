@@ -882,4 +882,44 @@ describe("analytics response schemas", () => {
       "Color sales",
     )).toThrow(AnalyticsResponseValidationError);
   });
+
+  it("accepts an explicit analytics context fingerprint and unavailable state", () => {
+    const withContext = {
+      ...validColorResponse,
+      meta: {
+        ...validColorResponse.meta,
+        context: {
+          contractVersion: "analytics_context_v1",
+          state: "available",
+          fingerprint: `sha256:${"a".repeat(64)}`,
+          dateBoundaryConvention: "half_open_utc",
+          requestedPeriodFromUtc: "2026-06-01T00:00:00Z",
+          requestedPeriodToUtc: "2026-07-01T00:00:00Z",
+          effectivePeriodFromUtc: "2026-06-01T00:00:00Z",
+          effectivePeriodToUtc: "2026-07-01T00:00:00Z",
+          populationKey: "certified_retail_sales",
+          populationFilters: { storeId: null },
+          sourceDataset: "certified_sales_rows",
+          sourceGeneration: "sales_header_origin_v1",
+          formulaVersion: "sales_context_v1",
+          materializerGeneration: "live_query",
+          rowLimitSemantics: "all_filtered_rows",
+        },
+      },
+    };
+
+    expect(colorSalesStatsResponseSchema.safeParse(withContext).success).toBe(true);
+    expect(colorSalesStatsResponseSchema.safeParse({
+      ...withContext,
+      meta: {
+        ...withContext.meta,
+        context: {
+          contractVersion: "analytics_context_v1",
+          state: "unavailable",
+          fingerprint: null,
+          unavailableReason: "missing_context_fields:sourceGeneration",
+        },
+      },
+    }).success).toBe(true);
+  });
 });

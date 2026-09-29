@@ -2,8 +2,9 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ509 (IN_PROGRESS in this workspace)
 Systemic reliability audit registration 2026-09-29: `RQ509`-`RQ515` are registered as WAITING follow-ups from `docs/qa/ANALYTICS_RELIABILITY_NEXT_WAVE_AUDIT_2026-09-29.md`. They extend, rather than replace, RQ359-RQ367/RQ141/RQ145-RQ149 and the RQ413/RQ449/RQ450 integrity stack. No RQ509-RQ515 prompt is promoted or claimed by this audit; RQ501 completed separately and current routing is defined only by this header plus fresh dependency/collision checks.
+Owner promotion/claim 2026-09-29: idle recovery refreshed `origin/main` to `67e310027c7684d4c468665db760308bb6acad4c`, verified no active RQ509 lock/branch/PR owner and no collision with the PARTIAL/non-runnable RQ137/RQ139/RQ140 contracts. RQ509 moved `WAITING -> READY -> IN_PROGRESS` as the first P0 context-identity prompt; local lock: `.ai/task-locks/RQ509-codex.lock.md`. Q83 remains the exclusive PARTIAL Pre/Post SQL/view owner and RQ491 is not promoted.
 Owner decisions 2026-09-29 (Ivan): RQ501 aligns Color with the RQ496 Shoe Type signed net-sales contract (`net_sales_signed`, explicit numerator/denominator/state, mathematically valid negative and >100% values, unavailable never coerced to recommendation zero; quality/coverage ratios remain bounded 0–100). RQ505 frames Color as a supporting signal/analysis surface with signal trust framing; backend status/reason stays authoritative and `decisionScore` remains detail/transparency evidence, not a competing final CTA. RQ507 approves removing Supplier compatibility aliases from the primary Operations sidebar while preserving legacy URLs/redirects and keeping Shoe Type, Color, Daily and Pre/Post available. RQ476 uses positive net revenue of the declared visible/decision population for concentration/share; negative/returns-only rows remain visible without ambiguous positive share, and unknown-supplier inclusion is explicit and consistent across API/UI/recommendation/export.
 Routing reconciliation 2026-09-29: any workspace still showing `RQ466` as `Current READY` is stale. `RQ466` was `DONE` on current main; `RQ502` was the primary READY prompt and is now `DONE`. Registration evidence: `.ai/runs/2026-09-29-RQ502-registration-evidence.md`.
 Owner claim 2026-09-29: after fresh `origin/main` sync to `2d85df0f13dac4e8dcb463656515d61ea32e0021`, RQ502 remained READY, RQ494 was verified DONE, and no conflicting lock/branch/PR owner was found for the Operations store-filter scope. RQ502 moved `READY -> IN_PROGRESS` in this workspace. Local lock: `.ai/task-locks/RQ502-codex.lock.md`.
@@ -27273,13 +27274,20 @@ Source: residual of `PS17` in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-2
 
 ## RQ509 - Give every comparable analytics result a canonical context fingerprint
 
-Status: WAITING  
+Status: IN_PROGRESS
 Priority: P0  
 Type: backend/contract/integration-tests/tooling  
 Feature family: analytics-context-fingerprint-reconciliation  
 Parallel-safe: no, shared context identity affects cross-screen comparison  
 Owner: Analytics Reliability / Cross-Surface Truth  
 Commit suggestion: `feat(analytics): add canonical analytics context fingerprint`
+
+### Claim note
+
+- RQ137/RQ141 lineage vocabulary and RQ148 financial basis are reused; their existing PARTIAL/non-runnable proof is not reopened.
+- RQ501 is DONE and no active context-fingerprint owner, lock, branch or PR conflicts with this claim.
+- Scope is limited to additive context descriptor/fingerprint metadata and deterministic reconciliation proof; no production data or Q83 SQL/view path is changed.
+- Local lock: `.ai/task-locks/RQ509-codex.lock.md`.
 
 ### Problem
 
@@ -27819,4 +27827,3 @@ This must not become another arbitrary numeric score.
 - `RQ510` provides mandatory evidence coverage.
 - Reuse existing recommendation/data-quality contracts; do not bypass active product owners such as `RQ505`, `RQ498`/`RQ499`, `RQ477`–`RQ482`.
 - The existing Actions/Outcome and RL/Decision Intelligence programs remain the owner of measured value and causal learning.
-

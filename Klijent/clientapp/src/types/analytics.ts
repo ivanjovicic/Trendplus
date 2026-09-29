@@ -47,6 +47,31 @@ export interface AnalyticsMetricProvenance {
 
 export type AnalyticsMetricProvenanceMap = Partial<Record<AnalyticsCriticalMetricKey, AnalyticsMetricProvenance>>;
 
+export interface AnalyticsContextDescriptor {
+  contractVersion: string;
+  state: "available" | "empty" | "degraded" | "unavailable" | string;
+  fingerprint?: string | null;
+  unavailableReason?: string | null;
+  dateBoundaryConvention?: string | null;
+  requestedPeriodFromUtc?: string | null;
+  requestedPeriodToUtc?: string | null;
+  effectivePeriodFromUtc?: string | null;
+  effectivePeriodToUtc?: string | null;
+  observedPeriodFromUtc?: string | null;
+  observedPeriodToUtc?: string | null;
+  requestedDataScope?: string | null;
+  effectiveDataScope?: string | null;
+  dataScopeSource?: string | null;
+  populationKey?: string | null;
+  populationFilters?: Record<string, string | null>;
+  sourceDataset?: string | null;
+  sourceGeneration?: string | null;
+  formulaVersion?: string | null;
+  materializerGeneration?: string | null;
+  cacheGeneration?: string | null;
+  rowLimitSemantics?: string | null;
+}
+
 export interface AnalyticsResponseMeta {
   success: boolean;
   warningCode?: string | null;
@@ -74,6 +99,7 @@ export interface AnalyticsResponseMeta {
   recommendationAllowed?: boolean | null;
   isPartial?: boolean;
   metricProvenance?: AnalyticsMetricProvenanceMap | null;
+  context?: AnalyticsContextDescriptor | null;
   operationsIntegrityStatus?: "verified" | "unverified" | "degraded" | "drift_detected" | string | null;
   operationsIntegrityCheckedAtUtc?: string | null;
   operationsIntegrityEvidenceId?: string | null;
