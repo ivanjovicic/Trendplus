@@ -2,7 +2,7 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ502
 Routing reconciliation 2026-09-29: the live RQ447 heading was stale at `IN_PROGRESS`; its synchronized completion note and run `36536448476` prove the dedicated acceptance is DONE, so the heading is corrected to `DONE` without reopening the prompt.
 Owner promotion/claim 2026-09-28: idle recovery confirmed `RQ494` is the highest-priority dependency-complete operations accuracy prompt after RQ445/RQ446/RQ456/RQ457/RQ484 completion; no active lock/branch/PR owner overlaps its sales-header dataScope scope, and Q83 is `PARTIAL` without an active repo-local lock. `RQ494` moved WAITING -> READY -> IN_PROGRESS in this workspace; local lock `.ai/task-locks/RQ494-codex.lock.md`.
 Owner completion 2026-09-29: `RQ494` moved IN_PROGRESS -> DONE and was delivered directly to `main` in `84b6ea26450aaf77341ccf37c47efe5fac83246f`. Certified sales `dataScope` now follows `ProdajaZaglavlje.DataOrigin` across Daily, Supplier, Shoe Type, Color/detail/data-window and the independent Supplier/Shoe oracle; metadata exposes `sale_header.data_origin`, and the adversarial header/article-origin fixture is covered. Focused backend proof: 24/24; Supplier/Shoe contract suite: 40 passed, 5 PostgreSQL integration tests skipped because no connection string was available; frontend schema: 15/15; guardrails/typecheck/build pass. Run log: `.ai/runs/2026-09-29-RQ494-evidence.md`. Evidence state: synchronized.
@@ -3023,3 +3023,578 @@ Do not remove API fields, alter backend formulas, change recommendation logic or
 - Run after `RQ498` establishes truthful cohort/unit labels and `RQ499` establishes trust-role semantics.
 - Also wait for `RQ474`/`RQ475`/`RQ476` because unavailable/error/share states must be final before visual reprioritization.
 - P0 `RQ494`/`RQ495` remain higher priority whenever their affected Supplier numbers are not yet stable.
+
+
+---
+
+Shoe Type cross-screen audit registration 2026-09-29: current-main review after RQ494-RQ497 found one owner-gated categorical share-policy drift, one directly runnable scope-filter defect, and six sequenced/conditional UX-contract follow-ups. Registered RQ501-RQ508. RQ502 is the primary READY prompt; RQ501 and RQ505/RQ507 remain owner-decision gated, RQ503/RQ504 are sequenced on same pages, RQ506 is conditional on snapshot rollout, and RQ508 waits for the product-role decisions it documents. Audit: `docs/qa/SHOE_TYPE_CROSS_SCREEN_AUDIT_2026-09-29.md`.
+
+## RQ501 - Align Shoe Type and Color signed net-sales share semantics
+
+Status: WAITING  
+Priority: P1  
+Type: backend-contract/frontend/tests  
+Feature family: categorical-signed-share-parity  
+Parallel-safe: no  
+Owner: Analytics Reliability / Category Sales  
+Owner decision required: preserve Color's older non-negative share policy or align Color to the RQ496 signed net-sales share contract
+
+### Problem
+
+Shoe Type and Color are sibling categorical breakdowns over the same certified signed retail-sales population, but they now expose and consume different share semantics.
+
+After RQ496, Shoe Type:
+- exposes signed net-sales share with basis/numerator/denominator;
+- allows mathematically valid negative or >100% values when total net revenue is positive;
+- uses the same visible share basis as the recommendation input.
+
+Color still uses `ColorSignedEvidencePolicy.ResolveNonNegativePercentage`:
+- negative numerator -> unavailable;
+- ratio >100% -> unavailable;
+- recommendation input receives `sharePct ?? 0d`.
+
+A return-heavy category can therefore be visible as a signed share on Shoe Type while the analogous Color row shows N/A and recommendation consumes zero share. This was an intentional older Color contract, so it must be reconciled explicitly rather than silently changed.
+
+### Evidence
+
+- `Application/Analytics/ColorSignedEvidencePolicy.cs` rejects negative numerators and percentages outside 0..100.
+- Color endpoint in `Api/Endpoints/AllEndpoints.cs` builds `sharePctForDecision = sharePct ?? 0d`.
+- RQ392 documents the older Color fail-closed non-negative ratio policy.
+- RQ496 documents the newer Shoe Type signed share/display/recommendation parity contract.
+- Both screens consume the RQ456/RQ494 certified retail-sales population.
+- Audit: `docs/qa/SHOE_TYPE_CROSS_SCREEN_AUDIT_2026-09-29.md`.
+
+### Scope
+
+- Color revenue-share DTO/meta/policy and recommendation input;
+- Shoe Type only as the comparison/reference contract;
+- Color table/chart/detail/export and focused tests.
+
+Do not change cost/margin policy, receipt population, dataScope, identity or PoP logic.
+
+### Read first
+
+- RQ392/RQ393/RQ400 completion evidence
+- RQ445/RQ456/RQ494/RQ496
+- `ColorSignedEvidencePolicy.cs`
+- Color/Shoe Type endpoint code and pages
+- `SST-ACCURACY-1.0`
+
+### Do
+
+1. Record an explicit product/analytics decision for categorical sales share.
+2. Preferred contract if approved: expose signed Color net-sales share with `basis=net_sales_signed`, numerator, denominator and denominator state, matching Shoe Type.
+3. If recommendations need a positive-contribution share instead, add a separately named field; never replace an unavailable signed share with numeric zero.
+4. Keep coverage/quality ratios non-negative and bounded; do not confuse them with signed sales share.
+5. Make table, chart, detail, recommendation input and export use the same declared basis.
+6. Preserve fail-closed behavior when the total net denominator is non-positive.
+
+### Tests
+
+- positive total with one negative Color row;
+- another Color row above 100% signed share;
+- non-positive total denominator;
+- visible share equals recommendation-consumed share basis;
+- chart/detail/export parity;
+- coverage percentages remain bounded 0..100 and are not changed by signed-share work.
+
+### Acceptance
+
+- Shoe Type and Color cannot use the same label “udeo u prometu” for materially different arithmetic without an explicit basis label;
+- recommendation never consumes hidden zero when the business share is actually negative/>100 or unavailable;
+- signed amount and bounded quality-ratio semantics remain distinct.
+
+### Dependencies
+
+- Owner decision required because RQ392 intentionally established the current Color behavior.
+- RQ496 is DONE and is the Shoe Type reference contract.
+- Do not run concurrently with another Color `AllEndpoints.cs` decision owner.
+
+## RQ502 - Reload and validate Operations store options against the active dataScope
+
+Status: READY  
+Priority: P1  
+Type: frontend-contract/tests  
+Feature family: operations-store-filter-scope-truth  
+Parallel-safe: no  
+Owner: Analytics Reliability / Operations Filters  
+Commit suggestion: `fix(analytics): scope operations store filters`
+
+### Problem
+
+Shoe Type and Color update their analytics data request when global `dataScope` changes, but their store-option effects call `getStores(true)` and depend only on `storesReloadNonce`. The visible store list can therefore remain from the previous scope while the data payload already uses the new scope.
+
+The shared API contract supports explicit scoped store requests: `getStores(true, "imported")` sends `dataScope=imported`. Supplier consolidated already reloads stores with the page scope and uses that scope as an effect dependency.
+
+A stale selected store/list can make a valid new-scope dataset look empty or make the filter UI claim a store option that was not verified for the active scope.
+
+### Evidence
+
+- `ShoeTypeSalesStatsPage.tsx`: dataScope event updates query scope; store effect depends on `storesReloadNonce` and calls `getStores(true)`.
+- `ColorSalesStatsPage.tsx`: same pattern.
+- 2026-09-27 commit-review evidence records the same store-effect pattern on Shoe Type, Color, Pre/Post and Daily.
+- `analyticsApi.contract.spec.ts` proves explicit store requests carry the requested `dataScope`.
+- `SupplierConsolidatedPage.tsx` calls `getStores(true, canonicalFilters.dataScope)` and reloads on scope change.
+- Audit: `docs/qa/SHOE_TYPE_CROSS_SCREEN_AUDIT_2026-09-29.md`.
+
+### Scope
+
+- Shoe Type, Color, Daily Sales and Pre/Post store option loading where the same stale-scope pattern is present;
+- `getStores` client caching only if scope identity is not already part of the cache key;
+- selected-store validation and duplicate-label presentation.
+
+Do not change the backend sales population or store-on-sale-header contract.
+
+### Read first
+
+- RQ321 completion/evidence
+- RQ494 completion/evidence
+- `ANALYTICS_FILTER_FALLBACK_CONTRACT.md`
+- `analyticsApi.contract.spec.ts`
+- Supplier consolidated store-loading implementation
+
+### Do
+
+1. Reproduce each named page's behavior across `all -> existing -> imported`.
+2. Call `getStores(true, activeDataScope)` explicitly and reload the option list when scope changes.
+3. Ensure client caching keys scoped store lists by `dataScope`; no all-scope response may satisfy an imported/existing request.
+4. Revalidate the selected `storeId` after the new scoped list arrives:
+   - preserve it if present;
+   - otherwise clear it with a visible, non-error explanation rather than silently keeping an invalid filter.
+5. Preserve the last-known-good store list on fallback per the filter fallback contract, but mark it stale and do not claim it matches the new scope.
+6. Disambiguate duplicate store labels with stable ID/code as Supplier consolidated already does.
+7. Ensure URL state, active filters, toolbar/export metadata and actual request all converge on the same validated store.
+
+### Tests
+
+- all -> imported scope triggers a second scoped store request;
+- same for existing;
+- selected store present in new scope remains selected;
+- selected store absent in new scope is cleared/explained before analytics request is treated as authoritative;
+- cached all-scope list cannot satisfy imported request;
+- fallback metadata preserves prior list but marks it stale;
+- duplicate labels are unique;
+- focused Shoe Type/Color/Daily/PrePost filter tests and analytics API contract tests pass.
+
+### Acceptance
+
+- store options always describe the active dataScope;
+- visible store selection can never be stale while the dataset has already switched scope;
+- scope change cannot create a misleading empty dataset because an invalid old store silently remained selected.
+
+### Dependencies
+
+- RQ494 is DONE and defines sales-scope provenance.
+- No blocking owner is known; this prompt is the current primary READY lane.
+- RQ503/RQ504 touch the same categorical pages and remain sequenced behind this prompt.
+
+## RQ503 - Sort unavailable categorical metrics as unavailable, not as magic negative numbers
+
+Status: WAITING  
+Ready after: `RQ502` DONE  
+Priority: P2  
+Type: frontend/tests  
+Feature family: categorical-null-sort-truth  
+Parallel-safe: no  
+Owner: Analytics UI / Category Sales
+
+### Problem
+
+Shoe Type and Color sort nullable metrics by replacing unavailable values with magic numeric sentinels such as `-1`, `-9999` and `-Infinity`.
+
+That collapses two different states:
+- a real signed business value;
+- no measured value / unavailable denominator.
+
+With signed returns and negative margins/PoP, unavailable rows can be interleaved with real negative rows or promoted as extreme values when direction changes.
+
+### Evidence
+
+- Shoe Type comparator uses `totalCost ?? -1`, `sharePct ?? -1`, `marginPct ?? -Infinity`, PoP/impact `?? -9999`.
+- Color comparator uses equivalent `-1`/`-9999` sentinels and a `decisionScore ?? -1` tie-break.
+- RQ496 made signed negative/>100 Shoe Type shares legitimate values, increasing the importance of keeping null separate.
+- Audit: `docs/qa/SHOE_TYPE_CROSS_SCREEN_AUDIT_2026-09-29.md`.
+
+### Scope
+
+- Shoe Type and Color sorting helpers/handlers and focused tests;
+- optionally one shared nullable comparator helper if it reduces duplication.
+
+Do not change metric values, status priority or recommendation scoring.
+
+### Read first
+
+- RQ496
+- existing analytics table sort/url helpers
+- Shoe Type and Color page sort specs
+
+### Do
+
+1. Introduce a comparator that treats null/unavailable as a separate state.
+2. Keep unavailable rows last for both ascending and descending business-value sorts unless a column explicitly documents another rule.
+3. Never encode null as a numeric sentinel.
+4. Preserve legitimate negative values and >100 signed shares in their correct numeric order.
+5. Keep stable deterministic tie-breakers after availability/value comparison.
+6. Preserve URL sort round-trip behavior.
+
+### Tests
+
+- null vs -25 vs 0 vs +25 for share/margin/PoP;
+- null remains last in both directions;
+- legitimate -100% PoP sorts numerically rather than as missing;
+- non-finite values fail closed as unavailable;
+- URL sort state and stable tie-breakers remain deterministic.
+
+### Acceptance
+
+- sorting can never imply that “Nije dostupno” is the smallest/largest measured business value;
+- signed negative evidence remains distinguishable from missing evidence.
+
+### Dependencies
+
+- Sequence after RQ502 because both edit Shoe Type/Color pages.
+- Independent of RQ501's business decision once the comparator operates on the declared nullable field.
+
+## RQ504 - Rebalance Shoe Type information hierarchy and make cost-source vocabulary exact
+
+Status: WAITING  
+Ready after: `RQ502` and `RQ503` DONE; coordinate with `RQ501` if Color/Shoe shared copy is changed  
+Priority: P2  
+Type: frontend/product-analytics/tests  
+Feature family: shoetype-information-hierarchy  
+Parallel-safe: no  
+Owner: Analytics UX / Shoe Type
+
+### Problem
+
+Shoe Type is a high-value supporting screen, but its main table is overloaded:
+- 12 columns;
+- “Pokriće artikala %” appears before the entity identity “Tip obuće”;
+- raw total cost and multiple diagnostic metrics compete with revenue/margin/recommendation;
+- deep cost coverage is repeated in table/detail/metadata.
+
+The recent RQ495 cost contract also makes some current copy stale: tooltips describe cost as “istorijski ili procenjeni”, while the actual source order can be historical sale-line -> exact snapshot -> product fallback -> unavailable.
+
+### Evidence
+
+- current Shoe Type table/header/detail code;
+- `analyticsMetricDefinitions.ts` already names historical/snapshot/product-fallback sources;
+- RQ495 exact sale-line snapshot completion;
+- RQ496 signed-share completion;
+- audit: `docs/qa/SHOE_TYPE_CROSS_SCREEN_AUDIT_2026-09-29.md`.
+
+### Scope
+
+- Shoe Type page column/card ordering, labels/tooltips, optional/secondary fields and responsive behavior;
+- export/detail retains full evidence.
+
+No backend formula, cost priority, share rule or recommendation change.
+
+### Read first
+
+- RQ495/RQ496 evidence
+- `analyticsMetricDefinitions.ts`
+- Shoe Type page/specs
+- `ANALYTICS_EXECUTION_PLAN.md` only as historical input; do not trust stale statements over current code
+
+### Do
+
+1. Put “Tip obuće” first.
+2. Prioritize visible columns: Type, revenue, units, net share, margin contribution, margin + quality, PoP, pre/post impact + comparable coverage, recommendation, detail.
+3. Move article-level nivelacija coverage and raw total cost to secondary/optional columns or detail unless product evidence proves they are daily-primary.
+4. Keep the full values in detail/export.
+5. Rename generic “Pokriće artikala %” to an explicit concept such as “Udeo artikala sa nivelacijom”.
+6. Make cost tooltips/source badges explicitly distinguish:
+   - istorijski trošak sa prodajne stavke;
+   - tačan snapshot trošak;
+   - produkt-fallback/procenu;
+   - bez troška.
+7. Keep pre/post impact visually coupled with comparable coverage so the effect cannot be read without evidence strength.
+8. Preserve compact responsive usability without horizontal information overload.
+
+### Tests
+
+- identity is first business column;
+- primary metric order is stable;
+- demoted evidence remains present in detail/export;
+- snapshot cost is not labelled historical or generic estimated;
+- impact and comparable coverage are both available in the same decision context;
+- responsive/table/export specs and guardrails pass.
+
+### Acceptance
+
+- first screenful answers “koji tipovi nose promet, maržu i rast?” before showing diagnostics;
+- no cost-source copy contradicts the RQ495 resolution order;
+- no useful evidence is deleted.
+
+### Dependencies
+
+- Sequence after RQ502/RQ503 due shared page ownership.
+- If RQ501 changes shared categorical wording, rebase copy rather than invent a second vocabulary.
+
+## RQ505 - Decide one product-authority model for Shoe Type and Color supporting analytics
+
+Status: WAITING  
+Priority: P2  
+Type: product-contract/frontend/docs/tests  
+Feature family: category-screen-authority  
+Parallel-safe: no  
+Owner: Analytics Product / Category Sales  
+Owner decision required: whether Color is a recommendation surface or a supporting signal surface
+
+### Problem
+
+Current product architecture classifies Shoe Type and Color as supporting/analysis surfaces, but their user-facing authority differs:
+- Shoe Type trust header is `mode="signal"`;
+- Color is `mode="recommendation"` and says it supports deciding which colors to strengthen in purchasing;
+- Color detail exposes backend `Skor odluke (0–100)`;
+- `ANALYTICS_EXECUTION_PLAN.md` simultaneously says decisionScore is deprecated as a user-visible metric.
+
+RQ400 intentionally made Color decisionScore backend-owned and visible, so this is now a product-contract contradiction, not a simple stale-string fix.
+
+### Evidence
+
+- current Shoe Type/Color trust headers and detail panels;
+- RQ400 completion evidence;
+- `docs/ANALYTICS_EXECUTION_PLAN.md` L2 supporting classification and decisionScore dictionary;
+- audit: `docs/qa/SHOE_TYPE_CROSS_SCREEN_AUDIT_2026-09-29.md`.
+
+### Scope
+
+- product role, trust-header mode, visible score/status hierarchy and copy for Shoe Type/Color;
+- docs/tests needed to lock the decision.
+
+Do not change recommendation engine formulas under this prompt.
+
+### Read first
+
+- RQ400/RQ496
+- `docs/ANALYTICS_EXECUTION_PLAN.md`
+- `docs/ANALYTICS_TRUST_HEADER_COVERAGE.md`
+- Shoe Type/Color pages/specs
+
+### Do
+
+1. Decide whether Color is:
+   - a supporting signal like Shoe Type, or
+   - an independent recommendation surface.
+2. If supporting, use signal framing and demote `decisionScore` to transparency/detail evidence; status/reason remains backend evidence, not a competing final CTA.
+3. If recommendation, document why Color is allowed stronger authority than Shoe Type and define its actionability boundary.
+4. Use the same words for confidence, reliability, score and recommendation across both pages.
+5. Keep backend status/reason codes authoritative and fail closed when actionability is denied.
+
+### Tests
+
+- trust mode and page copy match the chosen role;
+- blocked recommendation cannot look actionable;
+- decisionScore, confidence and reliability remain distinct;
+- no local scoring is introduced.
+
+### Acceptance
+
+- users can tell whether each screen is a final recommendation, supporting signal or analysis breakdown;
+- architecture docs and UI no longer contradict each other.
+
+### Dependencies
+
+- Product-owner decision required.
+- Coordinate with RQ501 if Color share semantics alter recommendation inputs.
+- RQ508 documents the final chosen model after implementation.
+
+## RQ506 - Guard cross-dimension margin parity before snapshot cost is enabled beyond Supplier/Shoe Type
+
+Status: WAITING  
+Priority: P2  
+Type: backend-config/contract/tests  
+Feature family: snapshot-cost-cross-dimension-parity  
+Parallel-safe: no  
+Owner: Analytics Margin / Snapshot Rollout  
+Ready when: snapshot-cost rollout is planned for an environment, or evidence shows `Analytics:UseSnapshotCost=true`
+
+### Problem
+
+Repository default is `Analytics:UseSnapshotCost=false`, so Color's non-snapshot cost path is not a proven current production defect.
+
+If snapshot mode is enabled, however:
+- Supplier/Shoe Type resolve exact sale-line snapshot cost before product fallback;
+- Color remains intentionally non-snapshot;
+- the same missing-historical-cost sale can therefore contribute different margin/cost evidence depending on grouping screen.
+
+That would make cross-dimensional margin comparison unsafe unless the difference is explicitly labelled or Color adopts the same exact snapshot source.
+
+### Evidence
+
+- `Api/appsettings.json` and Development config default `UseSnapshotCost=false`.
+- snapshot implementation plan names Color support as phase 2.
+- RQ397 explicitly kept Color detail on the same non-snapshot basis as Color list.
+- RQ495 strengthened Supplier/Shoe Type to exact `BatchId + ProdajaStavkaId` snapshot lookup.
+- `OPERATIONS_UNDOCUMENTED_FINDINGS_2026-09-25.md` recorded this as a latent conditional inconsistency.
+
+### Scope
+
+- snapshot rollout guard/config validation and, if approved, Color list/detail/export cost-source parity;
+- no snapshot generation redesign.
+
+### Read first
+
+- `ANALYTICS_SNAPSHOT_IMPLEMENTATION_PLAN.md`
+- RQ397/RQ495
+- Color margin list/detail tests
+- `AnalyticsSnapshotOptions`
+
+### Do
+
+1. Add a guard/test proving the application cannot claim cross-dimension margin parity while snapshot mode is enabled and Color remains on another cost basis.
+2. Choose one rollout path:
+   - extend exact sale-line snapshot resolution to Color list/detail/export; or
+   - explicitly mark Color margin basis as non-snapshot and block/relabel cross-screen parity claims.
+3. If extending, reuse exact sale-line lookup; never regress to article-min/avg snapshot cost.
+4. Include cost-source provenance and cache identity where snapshot results can differ from legacy fallback.
+5. Preserve false/default mode behavior exactly.
+
+### Tests
+
+- flag false -> current Color behavior unchanged;
+- flag true + same missing historical cost -> explicit chosen behavior;
+- exact snapshot differs from product fallback counterexample;
+- list/detail/export agree;
+- cache cannot serve pre-snapshot result under snapshot-active identity.
+
+### Acceptance
+
+- enabling snapshot cost cannot silently make Shoe Type and Color margin figures look directly comparable when they use different cost evidence;
+- default-off deployment remains unchanged.
+
+### Dependencies
+
+- Conditional; do not promote merely for cosmetic work while the flag is false and rollout is not planned.
+- RQ495 is DONE and provides the exact lookup reference.
+
+## RQ507 - Simplify Operations navigation: keep Supplier compatibility routes but remove duplicate sidebar ownership
+
+Status: WAITING  
+Priority: P2  
+Type: product-navigation/frontend/tests  
+Feature family: operations-analytics-information-architecture  
+Parallel-safe: no  
+Owner: Analytics Product / Navigation  
+Owner decision required: approve sidebar de-duplication
+
+### Problem
+
+Operacije navigation exposes two entries that are compatibility aliases, not distinct analytics surfaces:
+- “Prodaja po dobavljačima” -> canonical Supplier Pregled;
+- “Dobavljači i tipovi obuće” -> canonical Supplier Asortiman.
+
+They sit beside real standalone analyses (Shoe Type, Daily, Pre/Post, Color, Pre-Nivelacija), making the menu imply more unique decision surfaces than actually exist.
+
+### Evidence
+
+- `navConfig.ts` marks both entries with `Alias` badges.
+- Supplier redirects preserve the canonical route.
+- current architecture already defines one canonical Supplier surface with tabs.
+- audit: `docs/qa/SHOE_TYPE_CROSS_SCREEN_AUDIT_2026-09-29.md`.
+
+### Scope
+
+- sidebar/nav labels/grouping and route-smoke tests;
+- preserve legacy URLs/redirects/bookmarks.
+
+No analytics endpoint or metric change.
+
+### Read first
+
+- Supplier redirect code/specs
+- `navConfig.ts`
+- current Supplier consolidated routing
+- `ANALYTICS_EXECUTION_PLAN.md`
+
+### Do
+
+1. Remove/hide the two Supplier aliases from primary Operacije navigation after owner approval.
+2. Keep their routes as compatibility redirects with existing context hints.
+3. Keep Shoe Type as the main global category breakdown.
+4. Keep Color available but visually/group-wise as a secondary attribute analysis, not a peer final-decision hub.
+5. Keep Daily and Pre/Post distinct because they answer time/shift and price-event questions.
+6. Update route/nav smoke tests and any menu documentation.
+
+### Tests
+
+- old alias URLs still redirect to the correct Supplier tab;
+- sidebar contains no duplicate Supplier ownership;
+- active-route state remains correct after redirects;
+- Shoe Type/Color/Daily/PrePost remain reachable.
+
+### Acceptance
+
+- one canonical Supplier entry exists in primary navigation;
+- compatibility is preserved without advertising aliases as separate products;
+- global Shoe Type remains a standalone supporting analysis.
+
+### Dependencies
+
+- Product-owner approval for navigation removal.
+- Independent of numeric contracts; can be implemented after approval without touching data logic.
+
+## RQ508 - Reconcile analytics execution-plan metric dictionary with current delivered contracts
+
+Status: WAITING  
+Ready after: product decisions in `RQ501`, `RQ505` and `RQ507` are resolved  
+Priority: P2  
+Type: docs/architecture/guard-tests  
+Feature family: analytics-plan-current-truth  
+Parallel-safe: yes  
+Owner: Analytics Architecture / Documentation
+
+### Problem
+
+`docs/ANALYTICS_EXECUTION_PLAN.md` contains historical statements that no longer match current code and delivered September RQ contracts. Examples include old Shoe Type thresholds/fallback scoring, older SupplierFootwear scoring ownership and a blanket claim that decisionScore is deprecated user-visible while RQ400 intentionally exposes a backend Color score.
+
+Agents use this file as architecture input, so stale claims can cause already-fixed logic to be reintroduced or current owners to be bypassed.
+
+### Evidence
+
+- current Shoe Type page consumes backend recommendation projection;
+- RQ400/RQ484/RQ496 changed score/gate/share authority;
+- RQ494/RQ495 changed scope and cost-source truth;
+- current Supplier is already consolidated into tabs;
+- execution plan still describes several of those as future work or old drift.
+
+### Scope
+
+- `docs/ANALYTICS_EXECUTION_PLAN.md` and directly linked architecture tables;
+- optional source-scan guard for a small number of “must match current architecture” statements.
+
+No runtime code.
+
+### Read first
+
+- completion evidence for RQ400, RQ484, RQ494-RQ500 and the final RQ501/RQ505/RQ507 decisions
+- `ARCHITECTURE_BOUNDARIES.md`
+- current nav/routes/pages
+
+### Do
+
+1. Re-baseline the metric dictionary against current code and completed queue contracts.
+2. Mark historical/deprecated statements as history instead of current truth.
+3. Update canonical/supporting/forensic surface map.
+4. Update recommendation/decisionScore authority and terminology to the final approved product model.
+5. Update cost-source and dataScope definitions to RQ494/RQ495 truth.
+6. Remove roadmap items that are already delivered; link remaining work to live RQ ids.
+7. Add a dated “verified against main” marker and the inspected SHA.
+
+### Tests
+
+- queue/planning architecture validators;
+- source-reference check for named routes/pages;
+- no live RQ id is presented with a stale status.
+
+### Acceptance
+
+- an agent reading the execution plan cannot reasonably infer an already-removed frontend scoring path or old dataScope/cost contract;
+- architecture documentation matches current main and canonical queue ownership.
+
+### Dependencies
+
+- Wait for RQ501/RQ505/RQ507 decisions so the document does not encode an unresolved product choice as fact.
+- May read RQ502-RQ504 outcomes if they land first.
