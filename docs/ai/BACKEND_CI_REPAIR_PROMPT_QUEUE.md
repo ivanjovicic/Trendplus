@@ -220,8 +220,25 @@ Run `36270728235` still contained failures across Access import FK guards, lost-
 - Next: classify the stalled/broad-only EF provider/order lifecycle behavior and remaining environment-backed failures.
 - Prompt defect / scope repair: current focused tests had schema drift, malformed raw SQL identifiers, missing aggregate-table setup, and a stale units-per-day assertion; all repairs stayed in test-owned setup/assertion scope.
 
+### Re-entry completion note - 2026-09-29
+- Date: 2026-09-29
+- Status: PARTIAL
+- Completion: the exact Release suite completed with `1540 total / 1491 passed / 39 skipped / 10 failed`. The cached analytics residual was isolated and the fixture/class is now green at `17/17`; the broad residual remains provider/order/environment-sensitive.
+- Changed files: `Api.Tests/CachedAnalyticsCriticalEndpointsIntegrationTests.cs`, queue/roadmap/evidence files.
+- Contract/runtime behavior changed: no production runtime behavior. The test host now uses an isolated Analytics InMemory provider and seeds required dimensions; the journal probe now respects the canonical article-origin inventory scope while preserving the no-fake-opening-stock assertion.
+- Checks run: exact broad suite red; combined residual run cancelled after host/order sensitivity; focused cached analytics test `17/17`; `git diff --check` and governance checks remain to be run after final doc edits.
+- Checks not run: fresh exact-main green suite and remote GitHub Actions inspection; no remote connector result was available.
+- Run log: `.ai/runs/2026-09-29-BCI14-evidence.md`
+- Evidence state: pending until delivery verification completes.
+- Delivery mode: direct-main
+- Missed: remaining Neon credential and provider/order lifecycle residuals are not yet assigned to one final root cause.
+- Follow-up: rerun the exact broad suite when the host/CI topology can complete, then group residual failures by provider, fixture and host lifecycle; keep BCI10 open.
+- Residual risk: current-main backend CI remains red outside the focused cached-analytics class.
+- Prompt defect / scope repair: the historical journal test assumed one existing article could belong to both imported and existing inventory scopes; the fixture now uses separate article-origin probe rows in line with RQ05/RQ119.
+
 
 ## Expected transition  1. `BCI01` is `PARTIAL` with GHA proof that restore/build succeed and the test step runs. 2. `BCI04` is `DONE`; remaining failures are owned by focused repair prompts. 3. `BCI02` is `DONE`; coverage/artifact cascade no longer invents secondary root causes. 4. `BCI03` is `DONE`; canonical backend filter + available SDK pins + pin regression check. 5. Promote BCI01 to `DONE` only after a GHA run has restore + build + test step all successful. 6. If later current-main evidence turns red again, use `BCI10` rather than reopening bootstrap-era prompts.
 # Owner claim 2026-09-29: `BCI14` moved `WAITING -> READY -> IN_PROGRESS` after BCI11-BCI13 were verified DONE and BCI13 evidence recorded the fresh broad-suite residual set. Local lock: `.ai/task-locks/BCI14-codex.lock.md`.
+# Owner re-entry claim 2026-09-29: `BCI14` moved `PARTIAL -> IN_PROGRESS` after the prior broad-suite attempt stalled without a summary; no active lock or conflicting owner remained. The re-entry is limited to fresh exact-main broad-suite evidence and bounded provider/order isolation.
 # Current READY prompt (authoritative, 2026-09-29): `BCI14`.
 

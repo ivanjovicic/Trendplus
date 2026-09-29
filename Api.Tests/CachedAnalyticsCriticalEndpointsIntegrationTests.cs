@@ -491,7 +491,7 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
     }
 
     [Fact]
-    public async Task CachedInventoryList_RespectsJournalDataScope()
+    public async Task CachedInventoryList_RespectsArticleAndJournalDataScope()
     {
         await using var factory = CreateFactory();
         SeedInventoryJournalScopeProbeData(factory.Services);
@@ -518,7 +518,7 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
             "/api/analytics/cached/inventory/list?page=1&pageSize=10&storeId=1&search=JournalProbe&dataScope=existing");
 
         var existingItem = existingRoot.GetProperty("items").EnumerateArray().Single();
-        Assert.Equal(903, existingItem.GetProperty("id").GetInt32());
+        Assert.Equal(906, existingItem.GetProperty("id").GetInt32());
         Assert.Equal("insufficient_data", existingItem.GetProperty("sellThroughStatus").GetString());
         Assert.Equal(JsonValueKind.Null, existingItem.GetProperty("sellThroughRatio").ValueKind);
         Assert.False(existingItem.GetProperty("recommendationAllowed").GetBoolean());
@@ -578,8 +578,18 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
     {
         using var scope = services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
+        var analyticsDb = scope.ServiceProvider.GetRequiredService<AnalyticsDbContext>();
         db.Database.EnsureDeleted();
         db.Database.EnsureCreated();
+        analyticsDb.Database.EnsureDeleted();
+        analyticsDb.Database.EnsureCreated();
+
+        analyticsDb.StoresDim.AddRange(
+            new StoresDim { StoreKey = 1, StoreId = 1, StoreName = "Prodavnica 1", DataOrigin = "existing" },
+            new StoresDim { StoreKey = 2, StoreId = 2, StoreName = "Prodavnica 2", DataOrigin = "existing" });
+        analyticsDb.SuppliersDim.AddRange(
+            new SuppliersDim { SupplierKey = 1, SupplierId = 1, Naziv = "Dobavljač A", DataOrigin = "existing" },
+            new SuppliersDim { SupplierKey = 2, SupplierId = 2, Naziv = "Dobavljač B", DataOrigin = "existing" });
 
         db.Dobavljaci.AddRange(
             new Dobavljac { Id = 1, Naziv = "Dobavljač A", DataOrigin = "existing" },
@@ -653,6 +663,7 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
             new ProdajaStavka { Id = 14, IdProdaja = 3, IdArtikal = 103, Kolicina = 4, Cena = 50m });
 
         db.SaveChanges();
+        analyticsDb.SaveChanges();
     }
 
     private static void SeedInventoryScopeProbeData(IServiceProvider services)
@@ -696,19 +707,33 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
         using var scope = services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
 
-        db.Artikli.Add(new Artikli
-        {
-            Id = 903,
-            PLU = "JOURNALPROBE-001",
-            Naziv = "JournalProbe Item",
-            IDObjekat = 1,
-            IDDobavljac = 1,
-            Kolicina = 10,
-            MinimalnaKolicina = 5,
-            NabavnaCena = 20m,
-            DataOrigin = "existing",
-            UpdatedAt = DateTime.UtcNow
-        });
+        db.Artikli.AddRange(
+            new Artikli
+            {
+                Id = 903,
+                PLU = "JOURNALPROBE-001",
+                Naziv = "JournalProbe Imported",
+                IDObjekat = 1,
+                IDDobavljac = 1,
+                Kolicina = 10,
+                MinimalnaKolicina = 5,
+                NabavnaCena = 20m,
+                DataOrigin = "access",
+                UpdatedAt = DateTime.UtcNow
+            },
+            new Artikli
+            {
+                Id = 906,
+                PLU = "JOURNALPROBE-002",
+                Naziv = "JournalProbe Existing",
+                IDObjekat = 1,
+                IDDobavljac = 1,
+                Kolicina = 10,
+                MinimalnaKolicina = 5,
+                NabavnaCena = 20m,
+                DataOrigin = "existing",
+                UpdatedAt = DateTime.UtcNow
+            });
 
         db.DnevnikPromena.AddRange(
             new DnevnikPromena
@@ -842,6 +867,7 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
     private sealed class CachedAnalyticsFactory : WebApplicationFactory<global::Program>
     {
         private readonly string _databaseName = $"cached-analytics-critical-{Guid.NewGuid():N}";
+        private readonly string _analyticsDatabaseName = $"cached-analytics-critical-dim-{Guid.NewGuid():N}";
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -851,6 +877,10 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
                 services.RemoveAll<TrendplusDbContext>();
                 services.RemoveAll<IDbContextFactory<TrendplusDbContext>>();
                 services.RemoveAll<ITrendplusDbContext>();
+                services.RemoveAll<DbContextOptions<AnalyticsDbContext>>();
+                services.RemoveAll<AnalyticsDbContext>();
+                services.RemoveAll<IDbContextFactory<AnalyticsDbContext>>();
+                services.RemoveAll<IAnalyticsDbContext>();
 
                 services.AddDbContextFactory<TrendplusDbContext>(options =>
                     options.UseInMemoryDatabase(_databaseName)
@@ -860,6 +890,14 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
                         .ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
                 services.AddScoped<ITrendplusDbContext>(sp =>
                     sp.GetRequiredService<TrendplusDbContext>());
+                services.AddDbContextFactory<AnalyticsDbContext>(options =>
+                    options.UseInMemoryDatabase(_analyticsDatabaseName)
+                        .ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
+                services.AddDbContext<AnalyticsDbContext>(options =>
+                    options.UseInMemoryDatabase(_analyticsDatabaseName)
+                        .ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
+                services.AddScoped<IAnalyticsDbContext>(sp =>
+                    sp.GetRequiredService<AnalyticsDbContext>());
             });
         }
     }
