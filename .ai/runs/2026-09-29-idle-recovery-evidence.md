@@ -4,9 +4,9 @@ Date: 2026-09-29
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct delivery
-Main commit SHA: pending
-Main verification: pending until routing repair is delivered
-Evidence state: pending
+Main commit SHA: 86f5f45abf7f4c96c1493714b0b4f525a9d178db
+Main verification: passed - fresh `git fetch origin` confirmed `HEAD` and `origin/main` at 86f5f45abf7f4c96c1493714b0b4f525a9d178db; `git merge-base --is-ancestor 86f5f45abf7f4c96c1493714b0b4f525a9d178db origin/main` passed.
+Evidence state: synchronized
 
 ## What was done
 - Refreshed `origin/main` and confirmed the checkout was already up to date.
