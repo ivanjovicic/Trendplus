@@ -119,7 +119,7 @@ describe("PilotIntakeReportPage", () => {
       refresh: false,
     }));
 
-    fireEvent.click(screen.getByRole("button", { name: "Ponovo generiši report" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ponovo generiši izveštaj" }));
 
     await waitFor(() => expect(getPilotIntakeDurableReportMock).toHaveBeenCalledTimes(2));
     expect(getPilotIntakeDurableReportMock).toHaveBeenNthCalledWith(2, expect.objectContaining({
