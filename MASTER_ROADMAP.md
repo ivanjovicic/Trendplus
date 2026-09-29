@@ -10,6 +10,8 @@ Updated: 2026-09-28
 Repository: `ivanjovicic/Trendplus`
 Status: canonical planning entry point
 
+Shoe Type cross-screen audit 2026-09-29: post-RQ494-RQ497 current-main review keeps Shoe Type as the primary supporting category analysis and identifies residual categorical share drift with Color, stale store-option scope, nullable-sort sentinels, information-hierarchy/cost-source copy, Color/Shoe authority drift, conditional snapshot parity, Supplier alias navigation duplication and stale execution-plan claims. Registered `RQ501`-`RQ508`; `RQ502` is primary READY, others are sequenced/owner-gated/conditional as documented. Audit: `docs/qa/SHOE_TYPE_CROSS_SCREEN_AUDIT_2026-09-29.md`.
+
 Owner claim 2026-09-28: `BCI13` transitioned `READY -> IN_PROGRESS` after current-main refresh, dependency and endpoint-host collision checks; local lock `.ai/task-locks/BCI13-codex.lock.md`.
 Owner completion 2026-09-28: `BCI13` is DONE after the current named-source endpoint host was restored, admin SQL identifier parsing was normalized, and focused endpoint/auth proof passed `36/36` plus `7/7` authorization tests. `BCI14` remains WAITING for a fresh broad-suite residual classification. Run log: `.ai/runs/2026-09-28-BCI13-evidence.md`.
 Owner claim 2026-09-29: `BCI14` moved `WAITING -> READY -> IN_PROGRESS` after BCI11-BCI13 were verified DONE and the BCI13 evidence recorded the fresh broad-suite residual set; local lock `.ai/task-locks/BCI14-codex.lock.md`.
