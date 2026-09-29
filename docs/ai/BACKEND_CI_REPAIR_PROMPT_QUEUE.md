@@ -241,5 +241,22 @@ Run `36270728235` still contained failures across Access import FK guards, lost-
 ## Expected transition  1. `BCI01` is `PARTIAL` with GHA proof that restore/build succeed and the test step runs. 2. `BCI04` is `DONE`; remaining failures are owned by focused repair prompts. 3. `BCI02` is `DONE`; coverage/artifact cascade no longer invents secondary root causes. 4. `BCI03` is `DONE`; canonical backend filter + available SDK pins + pin regression check. 5. Promote BCI01 to `DONE` only after a GHA run has restore + build + test step all successful. 6. If later current-main evidence turns red again, use `BCI10` rather than reopening bootstrap-era prompts.
 # Owner claim 2026-09-29: `BCI14` moved `WAITING -> READY -> IN_PROGRESS` after BCI11-BCI13 were verified DONE and BCI13 evidence recorded the fresh broad-suite residual set. Local lock: `.ai/task-locks/BCI14-codex.lock.md`.
 # Owner re-entry claim 2026-09-29: `BCI14` moved `PARTIAL -> IN_PROGRESS` after the prior broad-suite attempt stalled without a summary; no active lock or conflicting owner remained. The re-entry is limited to fresh exact-main broad-suite evidence and bounded provider/order isolation.
+# Owner re-entry claim 2026-09-29 (follow-up pass): `BCI14` moved `PARTIAL -> IN_PROGRESS` after the prior delivered evidence left the residual test names and provider/order family unclassified; no active lock, branch or conflicting owner remained. This pass is limited to exact broad-suite TRX evidence and bounded classification, with no runtime expansion.
 # Current READY prompt (authoritative, 2026-09-29): `BCI14`.
+
+### Follow-up pass completion note - 2026-09-29
+- Date: 2026-09-29
+- Status: PARTIAL
+- Completion: the exact broad suite improved from `1493 passed / 8 failed / 39 skipped` to `1497 passed / 4 failed / 39 skipped` after four bounded residual repairs. The remaining four failures are one DataQuality handler class blocked by an external schema/migration mismatch: `prodaja_zaglavlje.source_timestamp_basis` is absent in the configured PostgreSQL database.
+- Changed files: `Api.Tests/AccessImportForeignKeyGuardTests.cs`, `Api.Tests/OutboxProcessorWorkerConcurrencyTests.cs`, `Api.Tests/EmbeddingSimilarityPgvectorIntegrationTests.cs`, `Infrastructure/Services/AnalyticsDataQualityHistoryService.cs`, queue/roadmap/evidence files.
+- Contract/runtime behavior changed: test setup now includes the current timestamp-basis column and suppresses a broad-suite-only EF provider warning; reflection coverage accepts the runtime-compatible derived Task type; DataQuality history schema bootstrap is keyed by database identity instead of one process-global boolean. No production KPI/decision semantics changed.
+- Checks run: exact follow-up broad TRX `1497/4/39`; Access `3/3`; Outbox `3/3`; pgvector `1/1`; DataQuality worker `1/1`; DataQuality handler focused class remains `4 failed / 2 passed` on the external missing-column schema.
+- Checks not run: fresh exact-main green suite and remote GitHub Actions inspection; the external schema owner/migration was not changed.
+- Run log: `.ai/runs/2026-09-29-BCI14-evidence.md`
+- Evidence state: pending until final delivery verification completes.
+- Delivery mode: direct-main
+- Missed: the four DataQuality handler scenarios cannot execute against the configured database until the current migration/schema is present.
+- Follow-up: apply/verify the `20260929000521_PersistDailySalesTimestampBasis` migration on the test database or route these tests to an isolated current-schema fixture, then rerun the exact broad suite.
+- Residual risk: BCI10 remains open; broad CI is not green evidence while the external schema mismatch remains.
+- Prompt defect / scope repair: the earlier broad failure list was incomplete because no TRX artifact existed; this pass added the TRX run and grouped the residuals by provider, fixture and schema lifecycle.
 

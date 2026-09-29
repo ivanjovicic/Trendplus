@@ -7,7 +7,7 @@ namespace Infrastructure.Services;
 
 public sealed class AnalyticsDataQualityHistoryService
 {
-    private static bool _schemaEnsured;
+    private static readonly HashSet<string> EnsuredSchemaKeys = new(StringComparer.Ordinal);
     private static readonly SemaphoreSlim SchemaLock = new(1, 1);
 
     private readonly TrendplusDbContext _db;
@@ -126,15 +126,11 @@ public sealed class AnalyticsDataQualityHistoryService
 
     private async Task EnsureSchemaAsync(CancellationToken ct)
     {
-        if (_schemaEnsured)
-        {
-            return;
-        }
-
+        var schemaKey = GetSchemaKey();
         await SchemaLock.WaitAsync(ct);
         try
         {
-            if (_schemaEnsured)
+            if (EnsuredSchemaKeys.Contains(schemaKey))
             {
                 return;
             }
@@ -166,12 +162,18 @@ public sealed class AnalyticsDataQualityHistoryService
                 """;
 
             await _db.Database.ExecuteSqlRawAsync(sql, ct);
-            _schemaEnsured = true;
+            EnsuredSchemaKeys.Add(schemaKey);
         }
         finally
         {
             SchemaLock.Release();
         }
+    }
+
+    private string GetSchemaKey()
+    {
+        var connection = _db.Database.GetDbConnection();
+        return $"{connection.DataSource}\u001f{connection.Database}";
     }
 
     private static string NormalizeDataScope(string? dataScope)

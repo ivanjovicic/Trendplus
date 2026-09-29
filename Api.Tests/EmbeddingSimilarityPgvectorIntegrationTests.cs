@@ -1,6 +1,7 @@
 using Infrastructure.DbContexts;
 using Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -33,6 +34,7 @@ public sealed class EmbeddingSimilarityPgvectorIntegrationTests : IClassFixture<
 
         var options = new DbContextOptionsBuilder<TrendplusDbContext>()
             .UseNpgsql(connectionString, npgsql => npgsql.UseVector())
+            .ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning))
             .Options;
 
         await using var db = new TrendplusDbContext(options);

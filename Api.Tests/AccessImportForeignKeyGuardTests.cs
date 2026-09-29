@@ -168,6 +168,7 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
                 id_objekat integer,
                 korisnik_ime character varying(200),
                 data_origin character varying(32) NOT NULL DEFAULT 'existing',
+                source_timestamp_basis character varying(64),
                 source_table_key character varying(128),
                 source_row_id bigint,
                 source_updated_at_utc timestamp with time zone,

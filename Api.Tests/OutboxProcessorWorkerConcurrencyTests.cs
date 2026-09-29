@@ -97,8 +97,7 @@ public sealed class OutboxProcessorWorkerConcurrencyTests : IClassFixture<Postgr
 
         Assert.NotNull(method);
         var task = method!.Invoke(null, new object[] { db, CancellationToken.None });
-        Assert.IsType<Task<List<OutboxMessage>>>(task);
-        return (Task<List<OutboxMessage>>)task!;
+        return Assert.IsAssignableFrom<Task<List<OutboxMessage>>>(task);
     }
 
     private static TrendplusDbContext CreateDbContext(string connectionString)
