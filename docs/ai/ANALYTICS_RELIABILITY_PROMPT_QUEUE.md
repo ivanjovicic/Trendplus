@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ504 (IN_PROGRESS in this workspace)
+Current READY prompt: none
 Routing reconciliation 2026-09-29: any workspace still showing `RQ466` as `Current READY` is stale. `RQ466` was `DONE` on current main; `RQ502` was the primary READY prompt and is now `DONE`. Registration evidence: `.ai/runs/2026-09-29-RQ502-registration-evidence.md`.
 Owner claim 2026-09-29: after fresh `origin/main` sync to `2d85df0f13dac4e8dcb463656515d61ea32e0021`, RQ502 remained READY, RQ494 was verified DONE, and no conflicting lock/branch/PR owner was found for the Operations store-filter scope. RQ502 moved `READY -> IN_PROGRESS` in this workspace. Local lock: `.ai/task-locks/RQ502-codex.lock.md`.
 Owner promotion/claim 2026-09-29: idle recovery refreshed `origin/main` to `37d6f037a3ac0102392791e21089b9c87ff73e0f`, verified RQ489 DONE, and found RQ491 blocked by the exclusive PARTIAL Q83 Pre/Post SQL owner. RQ492 is dependency-complete and collision-safe for the Pre-Nivelacija store-grain surface, and moved `WAITING -> READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ492-codex.lock.md`.
@@ -10,6 +10,7 @@ Routing repair 2026-09-29: RQ495's stale primary summary is reconciled to DONE t
 Owner promotion/claim 2026-09-29: idle recovery verified RQ502 DONE on refreshed `origin/main`, confirmed RQ503 is dependency-complete after RQ502 and collision-safe with no active lock/branch/PR owner for categorical nullable sorting. RQ503 moved `WAITING -> READY -> IN_PROGRESS` in this workspace. Local lock: `.ai/task-locks/RQ503-codex.lock.md`.
 Routing repair 2026-09-29: RQ503's primary queue heading was stale at `IN_PROGRESS`; its synchronized completion note and current-main delivery prove `DONE`. The prompt is not reopened.
 Owner promotion/claim 2026-09-29: idle recovery verified RQ503 DONE on refreshed `origin/main`, confirmed RQ504 is dependency-complete after RQ502/RQ503 and collision-safe with no active lock/branch/PR owner for Shoe Type information hierarchy/cost-source copy. RQ504 moved `WAITING -> READY -> IN_PROGRESS` in this workspace. Local lock: `.ai/task-locks/RQ504-codex.lock.md`.
+Owner completion 2026-09-29: RQ504 moved `IN_PROGRESS -> DONE` and was delivered directly to `main` in `082eed72ff9b9acc9efe6c034bc56ffd5d49a675`. Shoe Type now leads with identity and decision metrics, keeps nivelacija article coverage and resolved cost in detail/export evidence, couples pre/post impact with comparable coverage, and uses exact historical/snapshot/product-fallback/unavailable cost vocabulary. Focused frontend proof is 44/44 plus 7/7 utility/metric tests; guardrails, typecheck, production build, governance validators and diff check pass. Run log: `.ai/runs/2026-09-29-RQ504-evidence.md`. Evidence state: synchronized. Current RQ READY is `none`; RQ491 remains WAITING behind Q83.
 
 ## RQ503 - Sort unavailable categorical metrics as unavailable, not as magic negative numbers
 
@@ -45,7 +46,7 @@ Full prompt: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADD
 
 ## RQ504 - Rebalance Shoe Type information hierarchy and make cost-source vocabulary exact
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P2
 Feature family: shoetype-information-hierarchy
 Parallel-safe: no
@@ -56,6 +57,23 @@ Full prompt: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADD
 - Dependencies RQ502 and RQ503 are DONE on current main.
 - RQ501 remains owner-decision gated; shared categorical wording will be preserved and rebased if that decision later changes it.
 - No active lock, branch or PR owner conflicts with Shoe Type hierarchy/cost-source copy; local lock: `.ai/task-locks/RQ504-codex.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-29
+- Status: DONE
+- Completion: Shoe Type decision hierarchy now puts `Tip obuće`, revenue, units, signed net share, margin, PoP, coupled pre/post impact/comparable coverage and recommendation ahead of diagnostic fields. Article-level nivelacija coverage and resolved cost remain available in detail/export evidence. Cost labels/tooltips distinguish historical sale-line cost, exact snapshot cost, product fallback/estimate and no cost.
+- Changed files: Shoe Type decision page/CSS/tests, metric definitions/descriptions, margin-quality vocabulary, queue/roadmap metadata and `.ai/runs/2026-09-29-RQ504-evidence.md`.
+- Checks run: focused Shoe Type frontend 44/44; utility/metric tests 7/7; analytics guardrails and typecheck; production build; prompt-queue, planning-architecture and agent-instruction validators; `git diff --check`.
+- Checks not run: authenticated browser/session, live PostgreSQL/API and remote CI because no assigned environment was available and none was a named RQ504 gate.
+- Run log: `.ai/runs/2026-09-29-RQ504-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `082eed72ff9b9acc9efe6c034bc56ffd5d49a675`
+- Main verification: fresh `git fetch origin` confirmed exact `HEAD`/`origin/main` equality at `082eed72ff9b9acc9efe6c034bc56ffd5d49a675`; `git merge-base --is-ancestor 082eed72ff9b9acc9efe6c034bc56ffd5d49a675 origin/main` passed.
+- Missed: no known RQ504 acceptance item; live/browser/remote proof is recorded as not run.
+- Follow-up: RQ491 remains WAITING behind Q83; no safe RQ prompt is READY after RQ504.
+- Residual risk: existing Vite large-chunk warning remains; live snapshot/source data was not available for authenticated browser proof.
 ## RQ492 - Pre-Nivelacija: make SKU + store the actionable decision grain
 
 Status: DONE
