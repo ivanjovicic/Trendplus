@@ -18,6 +18,13 @@ export type AnalyticsContractFixture = {
   chartRows: readonly { observedAtUtc: string }[];
   visibleRows: readonly unknown[];
   totalCount: number;
+  requestedContextFingerprint: string | null;
+  projectedContextFingerprint: string | null;
+  lastGoodSnapshot: unknown;
+  refetchSnapshot: unknown;
+  projectedSnapshot: unknown;
+  sourceRecommendationAllowed: boolean;
+  exportedRecommendationAllowed: boolean;
 };
 
 export type AnalyticsReliabilityContractAdapter<TResponse> = {
@@ -29,6 +36,13 @@ export type AnalyticsReliabilityContractAdapter<TResponse> = {
   selectProjectedValue: (response: TResponse) => unknown;
   selectChartRows: (response: TResponse) => readonly { observedAtUtc: string }[];
   selectCounts: (response: TResponse) => { visibleCount: number; totalCount: number };
+  selectRequestedContextFingerprint: (response: TResponse) => string | null;
+  selectProjectedContextFingerprint: (response: TResponse) => string | null;
+  selectLastGoodSnapshot: (response: TResponse) => unknown;
+  selectRefetchSnapshot: (response: TResponse) => unknown;
+  selectProjectedSnapshot: (response: TResponse) => unknown;
+  selectSourceRecommendationAllowed: (response: TResponse) => boolean;
+  selectExportedRecommendationAllowed: (response: TResponse) => boolean;
 };
 
 export const ANALYTICS_RELIABILITY_NUMERIC_CASES = [
@@ -55,6 +69,13 @@ function fixture(overrides: Partial<AnalyticsContractFixture> = {}): AnalyticsCo
     ],
     visibleRows: ["visible-1", "visible-2"],
     totalCount: 10,
+    requestedContextFingerprint: `sha256:${"a".repeat(64)}`,
+    projectedContextFingerprint: `sha256:${"a".repeat(64)}`,
+    lastGoodSnapshot: { metric: 1250.5 },
+    refetchSnapshot: { metric: null },
+    projectedSnapshot: { metric: 1250.5 },
+    sourceRecommendationAllowed: true,
+    exportedRecommendationAllowed: true,
     ...overrides,
   };
 }
@@ -139,6 +160,39 @@ export function registerAnalyticsReliabilityContractSuite<TResponse>(
 
       expect(adapter.selectCounts(response)).toEqual({ visibleCount: 1, totalCount: 250 });
     });
+
+    it("preserves requested/effective context identity through presentation", () => {
+      const fingerprint = `sha256:${"b".repeat(64)}`;
+      const response = adapter.responseFactory(fixture({
+        requestedContextFingerprint: fingerprint,
+        projectedContextFingerprint: fingerprint,
+      }));
+
+      expect(adapter.selectProjectedContextFingerprint(response))
+        .toBe(adapter.selectRequestedContextFingerprint(response));
+    });
+
+    it("does not replace a last-good snapshot with a partial refetch", () => {
+      const response = adapter.responseFactory(fixture({
+        meta: { success: true, dataQualityStatus: "warning" },
+        lastGoodSnapshot: { metric: 1250.5 },
+        refetchSnapshot: { metric: null },
+        projectedSnapshot: { metric: 1250.5 },
+      }));
+
+      expect(adapter.selectProjectedSnapshot(response)).toEqual(adapter.selectLastGoodSnapshot(response));
+      expect(adapter.selectProjectedSnapshot(response)).not.toEqual(adapter.selectRefetchSnapshot(response));
+    });
+
+    it("does not restore a blocked recommendation/value in export projection", () => {
+      const response = adapter.responseFactory(fixture({
+        sourceRecommendationAllowed: false,
+        exportedRecommendationAllowed: false,
+      }));
+
+      expect(adapter.selectSourceRecommendationAllowed(response)).toBe(false);
+      expect(adapter.selectExportedRecommendationAllowed(response)).toBe(false);
+    });
   });
 }
 
@@ -157,5 +211,12 @@ export function createFixtureAdapter(name: string): AnalyticsReliabilityContract
       visibleCount: response.visibleRows.length,
       totalCount: response.totalCount,
     }),
+    selectRequestedContextFingerprint: (response) => response.requestedContextFingerprint,
+    selectProjectedContextFingerprint: (response) => response.projectedContextFingerprint,
+    selectLastGoodSnapshot: (response) => response.lastGoodSnapshot,
+    selectRefetchSnapshot: (response) => response.refetchSnapshot,
+    selectProjectedSnapshot: (response) => response.projectedSnapshot,
+    selectSourceRecommendationAllowed: (response) => response.sourceRecommendationAllowed,
+    selectExportedRecommendationAllowed: (response) => response.exportedRecommendationAllowed,
   };
 }
