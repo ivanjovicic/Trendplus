@@ -281,3 +281,15 @@ Run `36270728235` still contained failures across Access import FK guards, lost-
 - Residual risk: BCI10 remains open; broad CI is not green evidence while the external schema mismatch remains.
 - Prompt defect / scope repair: the earlier broad failure list was incomplete because no TRX artifact existed; this pass added the TRX run and grouped the residuals by provider, fixture and schema lifecycle.
 
+### Current execution completion - 2026-09-29
+- Status: DONE
+- Owner: Codex
+- Claim: `BCI10` was re-entered from `PARTIAL` for one bounded acceptance item: dispatch and inspect `analytics-tests.yml` on the exact current `origin/main` SHA. No production runtime changes are in scope.
+- Local lock: `.ai/task-locks/BCI10-codex.lock.md` (created for the run and removed before commit)
+- Routing repair: this re-entry overrides stale historical `BCI11`/`BCI14` current-pointer prose; the master roadmap and this note are the current claim truth.
+- Completion: workflow run `36535601283` on SHA `9d6d25d8ea3fa53149554eec6ddfcd9c3568a710` reached restore, build, migrations, startup bootstrap, lifecycle smoke, full backend tests, coverage summary and artifact upload successfully. Backend job `109298805061` recorded `1540 total / 1501 passed / 0 failed / 39 skipped`; artifact `11018202319` contains the TRX and two Cobertura reports.
+- Overall workflow classification: red only because the parallel `RQ447 Supplier/Shoe Type certification` job failed its separate no-skip assertions. Its `4/4` oracle command itself completed successfully, but the certification job is not part of BCI10 acceptance and no RQ447 files were changed.
+- Run log: `.ai/runs/2026-09-29-BCI10-evidence.md`
+- Evidence state: synchronized.
+- Current READY prompt: `none`.
+

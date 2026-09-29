@@ -1,5 +1,8 @@
 # Trendplus Master Roadmap
 
+Owner re-entry claim 2026-09-29: `BCI10` moved `PARTIAL -> IN_PROGRESS` for the explicit current-main GitHub Actions restore/build/test evidence gate. No active lock or conflicting owner remained; local lock `.ai/task-locks/BCI10-codex.lock.md`. Scope is limited to workflow dispatch, exact run inspection and evidence/routing synchronization; no production runtime changes.
+Owner completion 2026-09-29: `BCI10` is DONE on exact current-main SHA `9d6d25d8` after workflow run `36535601283` completed the backend restore/build/test/coverage/artifact gate green; backend job `109298805061` recorded `1501 passed / 0 failed / 39 skipped`. The overall workflow is red only because the separate RQ447 certification job failed its own assertions; that job is outside BCI10 scope. Run log: `.ai/runs/2026-09-29-BCI10-evidence.md`.
+
 Updated: 2026-09-28
 Repository: `ivanjovicic/Trendplus`
 Status: canonical planning entry point
@@ -466,7 +469,7 @@ Owner completion 2026-09-29: `RQ497` moved IN_PROGRESS -> DONE and was delivered
 
 | Program | Owner queue / roadmap | Current READY | Blocked by / current truth | Parallel-safe planning | Next milestone |
 |---|---|---|---|---|---|
-| BCI | `MASTER_ROADMAP.md` / `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md` + `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md` | none | `BCI10` remains PARTIAL pending fresh exact-main GitHub Actions restore/build/test proof; BCI11-BCI14 are DONE, with BCI14's local exact Release suite green at `1501/39/0`. | No | Re-enter BCI10 only for fresh exact-main green restore/build/test evidence |
+| BCI | `MASTER_ROADMAP.md` / `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md` + `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md` | none | `BCI10` is DONE on exact current-main run `36535601283` / SHA `9d6d25d8`; backend job is green at `1501/0/39`. BCI11-BCI14 are DONE. The same workflow's separate RQ447 certification job is red and remains outside BCI ownership. | No | no current BCI claim; RQ447 has its own owner/gate |
 | STAB | `MASTER_ROADMAP.md` / `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md` | none | A same-day 2026-08-27 API-only recheck confirmed the canonical Render runtime SHA `6ecbfa67a7304c3cbeeb71755a35255e766c8e24` is contained in current `main`, but refresh workers are still unregistered and direct read-only reconciliation/browser proof is still missing. Current operator evidence also reports Render web SHA `d38aafd405a9213a279bb76664cde4bf69ddf83b`, no worker service, and Neon storage `0.54/0.5 GB`. `STAB16` remains BLOCKED on provider worker access, read-only audit connection and Neon storage capacity; GenAI remains BLOCKED by the core-pilot/release gate. | No | storage triage, then restore worker/reconciliation proof through STAB16 |
 | RQ | `MASTER_ROADMAP.md` / `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` + active RQ addenda | none | `RQ497` is DONE on current `origin/main`; Daily Sales source timestamp, business timezone and shift assignment truth are explicit. | Selected backend/frontend/integration tests only | idle recovery |
 | P-UI | `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md` + least-improved addendum + `docs/roadmaps/ANALYTICS_UI_PREMIUM_ROADMAP.md` | none | P-UI-21 DONE. P-UI-22 DONE. Queue complete. | Yes | queue complete |
