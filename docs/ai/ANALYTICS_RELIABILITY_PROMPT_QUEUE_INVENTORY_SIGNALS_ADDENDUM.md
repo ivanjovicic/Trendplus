@@ -1019,10 +1019,10 @@ Cached inventory signal routes (`forecast`, `size-curve`, `rebalance-suggestions
 - Checks run: focused inventory snapshot contract tests `35/35`; API Release build; frontend typecheck; focused inventory signal tests `15/15`
 - Checks not run: live PostgreSQL snapshot relation queries and browser smoke; configured local environment does not provide the production materializer/remote browser proof
 - Run log: `.ai/runs/2026-09-29-RQ132-RQ133-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `54834154d29e1b737558d67825511b465b323483`
+- Main verification: `origin/main` contains `54834154d29e1b737558d67825511b465b323483`; exact SHA verified after push
 - Missed: no backend signal algorithm or materializer ownership was changed; live source-to-render proof remains external follow-up
 - Follow-up: none in this lane; `RQ133` was completed in the same direct execution pass
 - Residual risk: legacy consumers still need to migrate from `snapshotAvailable`/`warning`; both paths remain intentionally compatible during migration
@@ -1109,10 +1109,10 @@ Inventory signal panels still normalize trust locally. Missing forecast risk is 
 - Checks run: focused signal tests `15/15`; frontend typecheck
 - Checks not run: full browser smoke; no browser session was available in this repository-only pass
 - Run log: `.ai/runs/2026-09-29-RQ132-RQ133-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `54834154d29e1b737558d67825511b465b323483`
+- Main verification: `origin/main` contains `54834154d29e1b737558d67825511b465b323483`; exact SHA verified after push
 - Missed: no business scoring or recommendation heuristic was added in the browser
 - Follow-up: none in this inventory-signal UI lane; live source-to-render proof remains external
 - Residual risk: panels retain legacy fallback behavior for cached payloads that predate the new `meta` field
