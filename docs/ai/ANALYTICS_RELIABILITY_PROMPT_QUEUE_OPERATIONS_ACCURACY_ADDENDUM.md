@@ -3203,7 +3203,7 @@ Do not change the backend sales population or store-on-sale-header contract.
 - Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `baa4ce300cbb2c63662ed22ef64d353e2b31e209`
-- Main verification: fresh `git fetch origin`; `HEAD` and `origin/main` both resolve to `baa4ce300cbb2c63662ed22ef64d353e2b31e209`; ancestry verification passed.
+- Main verification: fresh `git fetch origin`; implementation SHA `baa4ce300cbb2c63662ed22ef64d353e2b31e209` is contained in `origin/main`; ancestry verification passed.
 - Missed: none known within RQ502 scope.
 - Follow-up: RQ503/RQ504 remain sequenced behind this completed lane.
 - Residual risk: remote CI and live multi-scope data were not inspected in this local run.
