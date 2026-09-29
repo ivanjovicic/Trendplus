@@ -4,8 +4,8 @@ Date: 2026-09-29
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct delivery
-Main commit SHA: d4f4272a
-Main verification: passed - d4f4272a pushed to origin/main before documentation synchronization
+Main commit SHA: d4f4272ad2292527f00b949b8a53243d82c382f2
+Main verification: passed - d4f4272ad2292527f00b949b8a53243d82c382f2 pushed to origin/main before documentation synchronization
 Evidence state: synchronized
 
 ## What was done

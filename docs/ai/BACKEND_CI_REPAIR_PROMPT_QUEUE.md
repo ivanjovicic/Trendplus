@@ -255,8 +255,8 @@ Run `36270728235` still contained failures across Access import FK guards, lost-
 - Run log: `.ai/runs/2026-09-29-latest-commit-review-evidence.md`
 - Evidence state: synchronized after final main verification
 - Delivery mode: direct-main
-- Main commit SHA: `d4f4272a`
-- Main verification: passed - `origin/main` contains `d4f4272a`; documentation synchronization is included in the next direct-main commit
+- Main commit SHA: `d4f4272ad2292527f00b949b8a53243d82c382f2`
+- Main verification: passed - `origin/main` contains `d4f4272ad2292527f00b949b8a53243d82c382f2`; documentation synchronization is included in the next direct-main commit
 - Missed: none known within BCI14's provider/order/schema-isolation scope.
 - Follow-up: keep BCI10 PARTIAL until fresh exact-main GitHub Actions restore/build/test evidence is inspected and green.
 - Residual risk: local full-suite proof is green, but remote CI status for the resulting SHA is not inspected.
