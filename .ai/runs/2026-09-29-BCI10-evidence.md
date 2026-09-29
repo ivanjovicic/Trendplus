@@ -4,9 +4,9 @@ Date: 2026-09-29
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct delivery
-Main commit SHA: pending evidence-sync commit
-Main verification: pending push of evidence-sync commit
-Evidence state: pending
+Main commit SHA: `30e18b7df73e9bdd34e4a140e0aca94512c8126b`
+Main verification: pending push; this evidence commit is the implementation/evidence SHA to verify as an ancestor of `origin/main`
+Evidence state: synchronized after local commit; remote verification pending
 
 ## What was done
 
