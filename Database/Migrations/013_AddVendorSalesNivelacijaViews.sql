@@ -172,7 +172,10 @@ INSERT INTO price_history (
 )
 SELECT
         d."ArtikalId",
-        COALESCE(d."DobavljacId", a."IDDobavljac"),
+        -- Preserve referential integrity when historical rows point to a deleted vendor.
+        (SELECT v."Id"
+         FROM "Dobavljaci" v
+         WHERE v."Id" = COALESCE(d."DobavljacId", a."IDDobavljac")),
         d."StaraProdajnaCena"::NUMERIC(18,4),
         d."NovaProdajnaCena"::NUMERIC(18,4),
         d."Datum",
