@@ -5,8 +5,8 @@ Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct delivery
 Main commit SHA: `30e18b7df73e9bdd34e4a140e0aca94512c8126b`
-Main verification: pending push; this evidence commit is the implementation/evidence SHA to verify as an ancestor of `origin/main`
-Evidence state: synchronized after local commit; remote verification pending
+Main verification: `origin/main` contains `30e18b7df73e9bdd34e4a140e0aca94512c8126b`; after the final documentation sync, local and `origin/main` resolve to `edce153c550d6f2fa94ab6bf68e5965e29bb1a18`
+Evidence state: synchronized
 
 ## What was done
 
