@@ -79,6 +79,10 @@ export function readAnalyticsMetricProvenance(
     actionability: candidate.actionability,
     unit: normalizeOptionalText(candidate.unit),
     denominator: normalizeOptionalText(candidate.denominator),
+    contextFingerprint: normalizeOptionalText(candidate.contextFingerprint),
+    formulaVersion: normalizeOptionalText(candidate.formulaVersion),
+    coverage: normalizeOptionalText(candidate.coverage),
+    limitation: normalizeOptionalText(candidate.limitation),
   };
 }
 

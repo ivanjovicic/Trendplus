@@ -11,6 +11,10 @@ public sealed class AnalyticsMetricProvenanceDto
     public string Actionability { get; set; } = AnalyticsMetricActionability.Unknown;
     public string? Unit { get; set; }
     public string? Denominator { get; set; }
+    public string? ContextFingerprint { get; set; }
+    public string? FormulaVersion { get; set; }
+    public string? Coverage { get; set; }
+    public string? Limitation { get; set; }
 }
 
 public static class AnalyticsMetricProvenanceKinds

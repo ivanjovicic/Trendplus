@@ -62,22 +62,29 @@ public sealed class InventorySnapshotContractTests
         Assert.True(success.Success);
         Assert.False(success.IsPartial);
         Assert.Equal("good", success.DataQualityStatus);
+        Assert.NotNull(success.Context?.Fingerprint);
+        Assert.Equal("complete", success.MetricProvenance!["counts"].Coverage);
+        Assert.Equal(success.Context.Fingerprint, success.MetricProvenance["counts"].ContextFingerprint);
 
         Assert.True(empty.Success);
         Assert.Equal("no_inventory_signal_data", empty.EmptyReason);
         Assert.Equal("insufficient_data", empty.DataQualityStatus);
         Assert.Equal(provenance.RequestedDataScope, empty.RequestedDataScope);
         Assert.Equal(provenance.EvidenceScope, empty.ProvenanceBasis);
+        Assert.Equal("empty", empty.MetricProvenance!["counts"].Coverage);
 
         Assert.True(warning.Success);
         Assert.True(warning.IsPartial);
         Assert.Equal("inventory_signal_evidence_warning", warning.WarningCode);
         Assert.Equal("warning", warning.DataQualityStatus);
+        Assert.Equal("partial", warning.MetricProvenance!["counts"].Coverage);
 
         Assert.True(unavailable.Success);
         Assert.True(unavailable.IsPartial);
         Assert.Equal("inventory_signal_snapshot_unavailable", unavailable.WarningCode);
         Assert.Equal("insufficient_data", unavailable.DataQualityStatus);
+        Assert.Null(unavailable.Context?.Fingerprint);
+        Assert.Equal("unavailable", unavailable.MetricProvenance!["counts"].Coverage);
     }
 
     [Fact(DisplayName = "Cached inventory signal error meta remains non-success and correlated")]

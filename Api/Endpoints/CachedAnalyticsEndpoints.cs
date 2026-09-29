@@ -1093,7 +1093,15 @@ public static class CachedAnalyticsEndpoints
                     result.Warning,
                     result.SnapshotFreshnessUtc,
                     result.Provenance,
-                    result.ProvenanceStatus);
+                    result.ProvenanceStatus,
+                    new Dictionary<string, string?>
+                    {
+                        ["storeId"] = storeId?.ToString(CultureInfo.InvariantCulture),
+                        ["supplierId"] = supplierId?.ToString(CultureInfo.InvariantCulture),
+                        ["skuId"] = skuId?.ToString(CultureInfo.InvariantCulture),
+                        ["sizeCode"] = sizeCode,
+                        ["dataScope"] = normalizedDataScope
+                    });
                 meta.CorrelationId = correlationId;
                 return Results.Ok(BuildInventoryForecastResponse(result, meta));
             }
@@ -1183,7 +1191,15 @@ public static class CachedAnalyticsEndpoints
                     result.Warning,
                     result.SnapshotFreshnessUtc,
                     result.Provenance,
-                    result.SnapshotFreshnessStatus);
+                    result.SnapshotFreshnessStatus,
+                    new Dictionary<string, string?>
+                    {
+                        ["storeId"] = storeId?.ToString(CultureInfo.InvariantCulture),
+                        ["supplierId"] = supplierId?.ToString(CultureInfo.InvariantCulture),
+                        ["skuId"] = skuId?.ToString(CultureInfo.InvariantCulture),
+                        ["sizeCode"] = sizeCode,
+                        ["dataScope"] = normalizedDataScope
+                    });
                 meta.CorrelationId = correlationId;
                 return Results.Ok(BuildInventorySizeCurveResponse(result, meta));
             }
@@ -1254,7 +1270,15 @@ public static class CachedAnalyticsEndpoints
                     result.Warning,
                     result.SnapshotFreshnessUtc,
                     result.Provenance,
-                    result.SnapshotFreshnessStatus);
+                    result.SnapshotFreshnessStatus,
+                    new Dictionary<string, string?>
+                    {
+                        ["fromStoreId"] = fromStoreId?.ToString(CultureInfo.InvariantCulture),
+                        ["toStoreId"] = toStoreId?.ToString(CultureInfo.InvariantCulture),
+                        ["supplierId"] = supplierId?.ToString(CultureInfo.InvariantCulture),
+                        ["urgency"] = urgency,
+                        ["dataScope"] = normalizedDataScope
+                    });
                 meta.CorrelationId = correlationId;
                 return Results.Ok(BuildRebalanceResponse(result, meta));
             }
@@ -1324,7 +1348,14 @@ public static class CachedAnalyticsEndpoints
                     result.Warning,
                     result.SnapshotFreshnessUtc,
                     result.Provenance,
-                    result.SnapshotFreshnessStatus);
+                    result.SnapshotFreshnessStatus,
+                    new Dictionary<string, string?>
+                    {
+                        ["storeId"] = storeId?.ToString(CultureInfo.InvariantCulture),
+                        ["supplierId"] = supplierId?.ToString(CultureInfo.InvariantCulture),
+                        ["severity"] = severity,
+                        ["dataScope"] = normalizedDataScope
+                    });
                 meta.CorrelationId = correlationId;
                 return Results.Ok(BuildInventoryAlertsResponse(result, meta));
             }
@@ -6650,6 +6681,10 @@ public static class CachedAnalyticsEndpoints
                 meta.Success,
                 meta.IsPartial,
                 meta.EmptyReason is not null));
+        meta.MetricProvenance = AnalyticsMetricEvidenceCoveragePolicy.Enrich(
+            "product-decision-center",
+            meta,
+            meta.MetricProvenance);
         return meta;
     }
 
@@ -8312,6 +8347,10 @@ public static class CachedAnalyticsEndpoints
                 meta.Success,
                 meta.IsPartial,
                 meta.EmptyReason is not null));
+        meta.MetricProvenance = AnalyticsMetricEvidenceCoveragePolicy.Enrich(
+            "dashboard",
+            meta,
+            meta.MetricProvenance);
         return meta;
     }
 
@@ -8526,7 +8565,8 @@ public static class CachedAnalyticsEndpoints
         string? legacyWarning,
         DateTime? snapshotFreshnessUtc,
         InventorySignalSnapshotProvenance? provenance,
-        string? signalStatus = null)
+        string? signalStatus = null,
+        IReadOnlyDictionary<string, string?>? populationFilters = null)
     {
         var warning = string.IsNullOrWhiteSpace(legacyWarning) ? null : legacyWarning.Trim();
         var provenanceWarning = string.IsNullOrWhiteSpace(provenance?.Warning) ? null : provenance.Warning.Trim();
@@ -8595,6 +8635,36 @@ public static class CachedAnalyticsEndpoints
             meta.EffectiveDataScope = provenance.EffectiveDataScope;
             meta.ProvenanceBasis = provenance.EvidenceScope;
         }
+
+        meta.Context = AnalyticsContextFingerprintPolicy.Create(
+            sourceDataset: "inventory_signal_snapshot",
+            sourceGeneration: "inventory_snapshot_generation_v1",
+            formulaVersion: "inventory_signal_context_v1",
+            materializerGeneration: "inventory_signal_snapshot",
+            rowLimitSemantics: "declared_snapshot_population;returned_items",
+            requestedPeriodFromUtc: provenance?.RequestedPeriodFromUtc,
+            requestedPeriodToUtc: provenance?.RequestedPeriodToUtc,
+            effectivePeriodFromUtc: provenance?.EffectivePeriodFromUtc,
+            effectivePeriodToUtc: provenance?.EffectivePeriodToUtc,
+            observedPeriodFromUtc: null,
+            observedPeriodToUtc: null,
+            requestedDataScope: provenance?.RequestedDataScope,
+            effectiveDataScope: provenance?.EffectiveDataScope ?? "current_snapshot",
+            dataScopeSource: "inventory_signal_snapshot_provenance",
+            populationKey: "inventory_signal",
+            populationFilters: populationFilters,
+            cacheGeneration: snapshotFreshnessUtc?.ToString("O", CultureInfo.InvariantCulture),
+            resultState: AnalyticsContextFingerprintPolicy.ResolveResultState(
+                success: snapshotAvailable && meta.Success,
+                isPartial: meta.IsPartial,
+                isEmpty: meta.EmptyReason is not null),
+            unavailableReason: !snapshotAvailable
+                ? "inventory_signal_snapshot_unavailable"
+                : null);
+        meta.MetricProvenance = AnalyticsMetricEvidenceCoveragePolicy.Enrich(
+            "inventory",
+            meta,
+            meta.MetricProvenance);
 
         return meta;
     }

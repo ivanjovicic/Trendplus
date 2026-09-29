@@ -33,6 +33,59 @@ public static class DataQualityEndpoints
                 var snapshot = await healthService.CaptureAsync(requestedLookback, dataScope, ct);
                 var score = BuildScore(snapshot, options.Value);
 
+                var healthMeta = new AnalyticsResponseMetaDto
+                {
+                    Success = true,
+                    CorrelationId = correlationId,
+                    GeneratedAtUtc = DateTime.UtcNow,
+                    LastRefreshAtUtc = null,
+                    DataQualityStatus = score.Status switch
+                    {
+                        "critical" => "critical",
+                        "warning" => "warning",
+                        "good" or "excellent" => "good",
+                        _ => "insufficient_data"
+                    },
+                    Message = score.Status == "insufficient_data"
+                        ? snapshot.TotalRevenue <= 0
+                            ? "Nema dovoljno prometnog dokaza u ovom prozoru."
+                            : "Nedostaje dokaz za sve prometne pokazatelje kvaliteta u ovom prozoru."
+                        : null,
+                    EmptyReason = score.Status == "insufficient_data"
+                        ? snapshot.TotalRevenue <= 0 ? "no_sales_in_period" : "missing_revenue_quality_evidence"
+                        : null,
+                    IsPartial = false,
+                    Context = AnalyticsContextFingerprintPolicy.Create(
+                        sourceDataset: "data_quality_sales_health",
+                        sourceGeneration: "sales_header_origin_v1",
+                        formulaVersion: "data_quality_health_context_v1",
+                        materializerGeneration: "data_quality_health_query",
+                        rowLimitSemantics: "lookback_window_all_rows",
+                        requestedPeriodFromUtc: snapshot.WindowFromUtc,
+                        requestedPeriodToUtc: snapshot.WindowToUtc,
+                        effectivePeriodFromUtc: snapshot.WindowFromUtc,
+                        effectivePeriodToUtc: snapshot.WindowToUtc,
+                        observedPeriodFromUtc: snapshot.WindowFromUtc,
+                        observedPeriodToUtc: snapshot.WindowToUtc,
+                        requestedDataScope: string.IsNullOrWhiteSpace(dataScope) ? "all" : dataScope.Trim(),
+                        effectiveDataScope: string.IsNullOrWhiteSpace(dataScope) ? "all" : dataScope.Trim(),
+                        dataScopeSource: "data_quality_health_capture",
+                        populationKey: "data_quality_sales_denominator",
+                        populationFilters: new Dictionary<string, string?>
+                        {
+                            ["lookbackDays"] = snapshot.LookbackDays.ToString(CultureInfo.InvariantCulture),
+                            ["unknownSupplierPolicy"] = "explicit_unknown_revenue"
+                        },
+                        resultState: AnalyticsContextFingerprintPolicy.ResolveResultState(
+                            success: true,
+                            isPartial: false,
+                            isEmpty: score.Status == "insufficient_data" && snapshot.TotalRevenue <= 0))
+                };
+                healthMeta.MetricProvenance = AnalyticsMetricEvidenceCoveragePolicy.Enrich(
+                    "data-quality",
+                    healthMeta,
+                    healthMeta.MetricProvenance);
+
                 return Results.Ok(new DataQualityHealthResponse(
                     snapshot.GeneratedAtUtc,
                     snapshot.LookbackDays,
@@ -52,54 +105,7 @@ public static class DataQualityEndpoints
                         options.Value.WarningOrphanArticleCount,
                         options.Value.WarningMissingCostRevenueSharePct,
                         options.Value.WarningUnknownSupplierRevenueSharePct),
-                    new AnalyticsResponseMetaDto
-                    {
-                        Success = true,
-                        CorrelationId = correlationId,
-                        GeneratedAtUtc = DateTime.UtcNow,
-                        LastRefreshAtUtc = null,
-                        DataQualityStatus = score.Status switch
-                        {
-                            "critical" => "critical",
-                            "warning" => "warning",
-                            "good" or "excellent" => "good",
-                            _ => "insufficient_data"
-                        },
-                        Message = score.Status == "insufficient_data"
-                            ? snapshot.TotalRevenue <= 0
-                                ? "Nema dovoljno prometnog dokaza u ovom prozoru."
-                                : "Nedostaje dokaz za sve prometne pokazatelje kvaliteta u ovom prozoru."
-                            : null,
-                        EmptyReason = score.Status == "insufficient_data"
-                            ? snapshot.TotalRevenue <= 0 ? "no_sales_in_period" : "missing_revenue_quality_evidence"
-                            : null,
-                        IsPartial = false,
-                        Context = AnalyticsContextFingerprintPolicy.Create(
-                            sourceDataset: "data_quality_sales_health",
-                            sourceGeneration: "sales_header_origin_v1",
-                            formulaVersion: "data_quality_health_context_v1",
-                            materializerGeneration: "data_quality_health_query",
-                            rowLimitSemantics: "lookback_window_all_rows",
-                            requestedPeriodFromUtc: snapshot.WindowFromUtc,
-                            requestedPeriodToUtc: snapshot.WindowToUtc,
-                            effectivePeriodFromUtc: snapshot.WindowFromUtc,
-                            effectivePeriodToUtc: snapshot.WindowToUtc,
-                            observedPeriodFromUtc: snapshot.WindowFromUtc,
-                            observedPeriodToUtc: snapshot.WindowToUtc,
-                            requestedDataScope: string.IsNullOrWhiteSpace(dataScope) ? "all" : dataScope.Trim(),
-                            effectiveDataScope: string.IsNullOrWhiteSpace(dataScope) ? "all" : dataScope.Trim(),
-                            dataScopeSource: "data_quality_health_capture",
-                            populationKey: "data_quality_sales_denominator",
-                            populationFilters: new Dictionary<string, string?>
-                            {
-                                ["lookbackDays"] = snapshot.LookbackDays.ToString(CultureInfo.InvariantCulture),
-                                ["unknownSupplierPolicy"] = "explicit_unknown_revenue"
-                            },
-                            resultState: AnalyticsContextFingerprintPolicy.ResolveResultState(
-                                success: true,
-                                isPartial: false,
-                                isEmpty: score.Status == "insufficient_data" && snapshot.TotalRevenue <= 0)),
-                    }));
+                    healthMeta));
             }
             catch (Exception)
             {
@@ -154,6 +160,20 @@ public static class DataQualityEndpoints
                     Message = result.Total == 0 ? "Nema otvorenih data quality problema za izabrani filter." : null,
                     EmptyReason = result.Total == 0 ? "no_open_issues" : null
                 };
+                meta = BuildDataQualityEvidenceMeta(
+                    meta,
+                    sourceDataset: "data_quality_issue_ledger",
+                    sourceGeneration: "data_quality_issue_ledger_v1",
+                    rowLimitSemantics: $"page_{result.Page};page_size_{result.PageSize}",
+                    populationKey: "data_quality_issues",
+                    populationFilters: new Dictionary<string, string?>
+                    {
+                        ["type"] = request.Type,
+                        ["search"] = request.Q,
+                        ["sortBy"] = request.SortBy,
+                        ["sortDir"] = request.SortDir,
+                        ["dataScope"] = request.DataScope
+                    });
 
                 return Results.Ok(new DataQualityIssueListResponse(
                     result.Page,
@@ -207,12 +227,7 @@ public static class DataQualityEndpoints
                     dataScope,
                     ct);
 
-                return Results.Ok(new DataQualityTopOffendersResponse(
-                    normalizedIssueType,
-                    resolvedLimit,
-                    items.Count,
-                    items,
-                    new AnalyticsResponseMetaDto
+                var meta = BuildDataQualityEvidenceMeta(new AnalyticsResponseMetaDto
                     {
                         Success = true,
                         CorrelationId = correlationId,
@@ -220,7 +235,23 @@ public static class DataQualityEndpoints
                         DataQualityStatus = items.Count == 0 ? "insufficient_data" : "warning",
                         Message = items.Count == 0 ? "Nema top offender zapisa za izabrani tip problema." : null,
                         EmptyReason = items.Count == 0 ? "no_top_offenders" : null
-                    }));
+                    },
+                    sourceDataset: "data_quality_issue_ledger",
+                    sourceGeneration: "data_quality_issue_ledger_v1",
+                    rowLimitSemantics: $"top_{resolvedLimit}",
+                    populationKey: "data_quality_top_offenders",
+                    populationFilters: new Dictionary<string, string?>
+                    {
+                        ["issueType"] = normalizedIssueType,
+                        ["dataScope"] = dataScope
+                    });
+
+                return Results.Ok(new DataQualityTopOffendersResponse(
+                    normalizedIssueType,
+                    resolvedLimit,
+                    items.Count,
+                    items,
+                    meta));
             }
             catch (Exception)
             {
@@ -252,11 +283,7 @@ public static class DataQualityEndpoints
             {
                 var points = await historyService.GetTrendAsync(resolvedDays, dataScope, ct);
 
-                return Results.Ok(new DataQualityTrendResponse(
-                    resolvedDays,
-                    string.IsNullOrWhiteSpace(dataScope) ? "all" : dataScope,
-                    points,
-                    new AnalyticsResponseMetaDto
+                var meta = BuildDataQualityEvidenceMeta(new AnalyticsResponseMetaDto
                     {
                         Success = true,
                         CorrelationId = correlationId,
@@ -264,7 +291,22 @@ public static class DataQualityEndpoints
                         DataQualityStatus = points.Count == 0 ? "insufficient_data" : "warning",
                         Message = points.Count == 0 ? "Trend data quality-ja nije dostupan za izabrani opseg." : null,
                         EmptyReason = points.Count == 0 ? "no_trend_points" : null
-                    }));
+                    },
+                    sourceDataset: "data_quality_history",
+                    sourceGeneration: "data_quality_history_v1",
+                    rowLimitSemantics: $"last_{resolvedDays}_days",
+                    populationKey: "data_quality_trend",
+                    populationFilters: new Dictionary<string, string?>
+                    {
+                        ["days"] = resolvedDays.ToString(CultureInfo.InvariantCulture),
+                        ["dataScope"] = dataScope
+                    });
+
+                return Results.Ok(new DataQualityTrendResponse(
+                    resolvedDays,
+                    string.IsNullOrWhiteSpace(dataScope) ? "all" : dataScope,
+                    points,
+                    meta));
             }
             catch (Exception)
             {
@@ -1012,6 +1054,39 @@ public static class DataQualityEndpoints
             ? BuildPilotIntakeKpis(intake)
             : [];
         var reportId = BuildPilotIntakeReportId(period, storeId, supplierId, normalizedScope);
+        var reportMeta = intake.Meta ?? AnalyticsResponseMetaFactory.Success(
+            intake.DataFreshnessStatus ?? "insufficient_data",
+            intake.LastRefreshAtUtc);
+        reportMeta.Context = AnalyticsContextFingerprintPolicy.Create(
+            sourceDataset: "data_quality_sales_health+article_master",
+            sourceGeneration: "sales_header_origin_v1",
+            formulaVersion: "pilot_intake_context_v1",
+            materializerGeneration: "pilot_intake_report",
+            rowLimitSemantics: "report_declared_sections",
+            requestedPeriodFromUtc: period.FromUtc,
+            requestedPeriodToUtc: period.ToUtc,
+            effectivePeriodFromUtc: period.FromUtc,
+            effectivePeriodToUtc: period.ToUtc,
+            observedPeriodFromUtc: intake.LoadedData.FirstSaleDate,
+            observedPeriodToUtc: intake.LoadedData.LastSaleDate,
+            requestedDataScope: normalizedScope,
+            effectiveDataScope: normalizedScope,
+            dataScopeSource: "pilot_intake_filters",
+            populationKey: "pilot_intake_declared_sections",
+            populationFilters: new Dictionary<string, string?>
+            {
+                ["storeId"] = storeId?.ToString(CultureInfo.InvariantCulture),
+                ["supplierId"] = supplierId?.ToString(CultureInfo.InvariantCulture),
+                ["dataScope"] = normalizedScope
+            },
+            resultState: AnalyticsContextFingerprintPolicy.ResolveResultState(
+                reportMeta.Success,
+                reportMeta.IsPartial,
+                reportMeta.EmptyReason is not null || !hasData));
+        reportMeta.MetricProvenance = AnalyticsMetricEvidenceCoveragePolicy.Enrich(
+            "pilot-intake",
+            reportMeta,
+            reportMeta.MetricProvenance);
 
         return new AnalyticsReportResponseDto(
             reportId,
@@ -1048,7 +1123,7 @@ public static class DataQualityEndpoints
             ReportTitle: "Trendplus pilot izveštaj kvaliteta podataka",
             ReportType: "pilot-intake",
             MethodologySummary: methodology.Summary,
-            Meta: intake.Meta);
+            Meta: reportMeta);
     }
 
     internal static AnalyticsReportResponseDto BuildPilotIntakeErrorReportResponse(
@@ -1477,6 +1552,42 @@ public static class DataQualityEndpoints
         return "/analytics/data-quality";
     }
 
+    private static AnalyticsResponseMetaDto BuildDataQualityEvidenceMeta(
+        AnalyticsResponseMetaDto meta,
+        string sourceDataset,
+        string sourceGeneration,
+        string rowLimitSemantics,
+        string populationKey,
+        IReadOnlyDictionary<string, string?>? populationFilters)
+    {
+        meta.Context = AnalyticsContextFingerprintPolicy.Create(
+            sourceDataset: sourceDataset,
+            sourceGeneration: sourceGeneration,
+            formulaVersion: "data_quality_health_context_v1",
+            materializerGeneration: "data_quality_query",
+            rowLimitSemantics: rowLimitSemantics,
+            requestedPeriodFromUtc: null,
+            requestedPeriodToUtc: null,
+            effectivePeriodFromUtc: null,
+            effectivePeriodToUtc: null,
+            observedPeriodFromUtc: null,
+            observedPeriodToUtc: null,
+            requestedDataScope: populationFilters?.GetValueOrDefault("dataScope") ?? "all",
+            effectiveDataScope: populationFilters?.GetValueOrDefault("dataScope") ?? "all",
+            dataScopeSource: "data_quality_filters",
+            populationKey: populationKey,
+            populationFilters: populationFilters,
+            resultState: AnalyticsContextFingerprintPolicy.ResolveResultState(
+                meta.Success,
+                meta.IsPartial,
+                meta.EmptyReason is not null));
+        meta.MetricProvenance = AnalyticsMetricEvidenceCoveragePolicy.Enrich(
+            "data-quality",
+            meta,
+            meta.MetricProvenance);
+        return meta;
+    }
+
     private static AnalyticsResponseMetaDto ApplyCorrelationId(AnalyticsResponseMetaDto? meta, string correlationId)
     {
         var resolved = meta is null
@@ -1497,6 +1608,7 @@ public static class DataQualityEndpoints
                 RecommendationAllowed = meta.RecommendationAllowed,
                 EmptyReason = meta.EmptyReason,
                 IsPartial = meta.IsPartial,
+                MetricProvenance = meta.MetricProvenance,
                 GeneratedAtUtc = meta.GeneratedAtUtc,
                 LastRefreshAtUtc = meta.LastRefreshAtUtc,
                 CorrelationId = meta.CorrelationId,

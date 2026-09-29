@@ -43,6 +43,10 @@ export interface AnalyticsMetricProvenance {
   actionability: AnalyticsMetricActionability;
   unit?: string | null;
   denominator?: string | null;
+  contextFingerprint?: string | null;
+  formulaVersion?: string | null;
+  coverage?: "complete" | "partial" | "empty" | "unavailable" | string | null;
+  limitation?: string | null;
 }
 
 export type AnalyticsMetricProvenanceMap = Partial<Record<AnalyticsCriticalMetricKey, AnalyticsMetricProvenance>>;

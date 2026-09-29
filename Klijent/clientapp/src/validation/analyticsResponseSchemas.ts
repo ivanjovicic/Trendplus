@@ -25,6 +25,10 @@ const provenanceSchema = z.object({
   actionability: z.enum(["actionable", "informational", "blocked", "unknown"]),
   unit: z.string().nullable().optional(),
   denominator: z.string().nullable().optional(),
+  contextFingerprint: z.string().regex(/^sha256:[0-9a-f]{64}$/).nullable().optional(),
+  formulaVersion: z.string().nullable().optional(),
+  coverage: z.enum(["complete", "partial", "empty", "unavailable"]).nullable().optional(),
+  limitation: z.string().nullable().optional(),
 }).passthrough();
 
 const analyticsContextDescriptorSchema = z.object({

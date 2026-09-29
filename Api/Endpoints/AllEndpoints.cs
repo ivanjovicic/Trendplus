@@ -2000,6 +2000,10 @@ public static class AllEndpoints
                         supplierTrustMeta.Success,
                         supplierTrustMeta.IsPartial,
                         supplierTrustMeta.EmptyReason is not null));
+                supplierTrustMeta.MetricProvenance = AnalyticsMetricEvidenceCoveragePolicy.Enrich(
+                    "supplier",
+                    supplierTrustMeta,
+                    supplierTrustMeta.MetricProvenance);
                 var response = new
                 {
                     generatedAt = generatedAtUtc,
@@ -2817,6 +2821,10 @@ public static class AllEndpoints
                         shoeTrustMeta.Success,
                         shoeTrustMeta.IsPartial,
                         shoeTrustMeta.EmptyReason is not null));
+                shoeTrustMeta.MetricProvenance = AnalyticsMetricEvidenceCoveragePolicy.Enrich(
+                    "shoe-type",
+                    shoeTrustMeta,
+                    shoeTrustMeta.MetricProvenance);
                 var response = new
                 {
                     generatedAt = generatedAtUtc,
@@ -3692,6 +3700,10 @@ public static class AllEndpoints
                         trustMeta.Success,
                         trustMeta.IsPartial,
                         trustMeta.EmptyReason is not null));
+                trustMeta.MetricProvenance = AnalyticsMetricEvidenceCoveragePolicy.Enrich(
+                    "color",
+                    trustMeta,
+                    trustMeta.MetricProvenance);
 
                 var response = new
                 {
@@ -7635,6 +7647,7 @@ public static class AllEndpoints
             DataQualityStatus = meta.DataQualityStatus,
             RecommendationAllowed = meta.RecommendationAllowed,
             IsPartial = meta.IsPartial,
+            MetricProvenance = meta.MetricProvenance,
             Context = meta.Context
         };
     }

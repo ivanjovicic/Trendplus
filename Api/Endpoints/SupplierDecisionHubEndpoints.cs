@@ -2123,6 +2123,10 @@ public static class SupplierDecisionHubEndpoints
             }
         }
 
+        resolved.MetricProvenance = AnalyticsMetricEvidenceCoveragePolicy.Enrich(
+            "supplier-report",
+            resolved,
+            resolved.MetricProvenance);
         return resolved;
     }
 
@@ -2140,6 +2144,7 @@ public static class SupplierDecisionHubEndpoints
             RecommendationAllowed = source.RecommendationAllowed,
             EmptyReason = source.EmptyReason,
             IsPartial = source.IsPartial,
+            MetricProvenance = source.MetricProvenance,
             GeneratedAtUtc = source.GeneratedAtUtc,
             LastRefreshAtUtc = source.LastRefreshAtUtc,
             CorrelationId = source.CorrelationId,
@@ -2275,6 +2280,10 @@ public static class SupplierDecisionHubEndpoints
                 meta.Success,
                 meta.IsPartial,
                 meta.EmptyReason is not null));
+        meta.MetricProvenance = AnalyticsMetricEvidenceCoveragePolicy.Enrich(
+            "supplier",
+            meta,
+            meta.MetricProvenance);
         return meta;
     }
 

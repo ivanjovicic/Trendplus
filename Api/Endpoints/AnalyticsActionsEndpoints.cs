@@ -3,6 +3,7 @@ using Domain.Model.Analytics;
 using Infrastructure.Services.Analytics;
 using Microsoft.AspNetCore.Http;
 using Trendplus2.Endpoints;
+using Trendplus2.Dtos;
 
 namespace Api.Endpoints;
 
@@ -47,13 +48,27 @@ public static class AnalyticsActionsEndpoints
                 AttachRecommendationLifecycle(item);
             }
 
+            var meta = BuildActionsMeta(
+                isEmpty: totalCount == 0,
+                dataQualityStatus: normalizedDataQualityStatus,
+                rowLimitSemantics: $"page_{page};page_size_{pageSize}",
+                populationFilters: new Dictionary<string, string?>
+                {
+                    ["status"] = status,
+                    ["priority"] = priority,
+                    ["sourceType"] = sourceType,
+                    ["dataQualityStatus"] = normalizedDataQualityStatus,
+                    ["search"] = search
+                });
+
             return Results.Ok(new
             {
                 items,
                 totalCount,
                 page,
                 pageSize,
-                totalPages = (int)Math.Ceiling((double)totalCount / pageSize)
+                totalPages = (int)Math.Ceiling((double)totalCount / pageSize),
+                meta
             });
         })
         .WithName("GetAnalyticsActions");
@@ -64,9 +79,27 @@ public static class AnalyticsActionsEndpoints
             CancellationToken ct) =>
         {
             var counts = await svc.GetCountsAsync(ct);
-            return Results.Ok(counts);
+            var totalCount = counts.New + counts.Accepted + counts.Deferred + counts.Rejected + counts.Done;
+            return Results.Ok(new
+            {
+                counts.New,
+                counts.Accepted,
+                counts.Deferred,
+                counts.Rejected,
+                counts.Done,
+                counts.P1Open,
+                meta = BuildActionsMeta(
+                    isEmpty: totalCount == 0,
+                    dataQualityStatus: null,
+                    rowLimitSemantics: "all_ledger_status_counts",
+                    populationFilters: null)
+            });
         })
         .WithName("GetAnalyticsActionCounts");
+
+        // The outcome summary keeps its existing nested outcome metadata. The
+        // decision board and list/count projections carry the shared runtime
+        // evidence contract without changing the summary's established shape.
 
         // GET /api/analytics/actions/outcomes/summary
         group.MapGet("/outcomes/summary", async (
@@ -364,6 +397,47 @@ public static class AnalyticsActionsEndpoints
             return Results.Ok(detailed);
         })
         .WithName("UpdateAnalyticsActionOutcome");
+    }
+
+    private static AnalyticsResponseMetaDto BuildActionsMeta(
+        bool isEmpty,
+        string? dataQualityStatus,
+        string rowLimitSemantics,
+        IReadOnlyDictionary<string, string?>? populationFilters)
+    {
+        var meta = isEmpty
+            ? AnalyticsResponseMetaFactory.Empty(
+                "no_analytics_actions",
+                "Nema akcija u deklarisanoj action ledger populaciji.",
+                dataQualityStatus ?? "insufficient_data")
+            : AnalyticsResponseMetaFactory.Success(dataQualityStatus ?? "good");
+
+        meta.Context = AnalyticsContextFingerprintPolicy.Create(
+            sourceDataset: "analytics_action_ledger",
+            sourceGeneration: "action_ledger_v1",
+            formulaVersion: "analytics_actions_context_v1",
+            materializerGeneration: "analytics_action_item_query",
+            rowLimitSemantics: rowLimitSemantics,
+            requestedPeriodFromUtc: null,
+            requestedPeriodToUtc: null,
+            effectivePeriodFromUtc: null,
+            effectivePeriodToUtc: null,
+            observedPeriodFromUtc: null,
+            observedPeriodToUtc: null,
+            requestedDataScope: "action_ledger",
+            effectiveDataScope: "action_ledger",
+            dataScopeSource: "analytics_action_filters",
+            populationKey: "analytics_action_ledger",
+            populationFilters: populationFilters,
+            resultState: AnalyticsContextFingerprintPolicy.ResolveResultState(
+                meta.Success,
+                meta.IsPartial,
+                meta.EmptyReason is not null));
+        meta.MetricProvenance = AnalyticsMetricEvidenceCoveragePolicy.Enrich(
+            "analytics-actions",
+            meta,
+            meta.MetricProvenance);
+        return meta;
     }
 
     private static void AttachRecommendationLifecycle(AnalyticsActionItem item)

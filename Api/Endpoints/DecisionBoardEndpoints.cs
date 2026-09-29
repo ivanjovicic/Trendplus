@@ -229,7 +229,13 @@ public static class DecisionBoardEndpoints
             storeId,
             supplierId);
 
-        var responseMeta = BuildDecisionBoardMeta(response, warnings, correlationId);
+        var responseMeta = BuildDecisionBoardMeta(
+            response,
+            warnings,
+            correlationId,
+            normalizedDataScope,
+            storeId,
+            supplierId);
         return Results.Ok(response with { Meta = responseMeta });
     }
 
@@ -367,7 +373,10 @@ public static class DecisionBoardEndpoints
     private static AnalyticsResponseMetaDto BuildDecisionBoardMeta(
         DecisionBoardAggregateResponseDto response,
         List<string> loadWarnings,
-        string correlationId)
+        string correlationId,
+        string normalizedDataScope,
+        int? storeId,
+        int? supplierId)
     {
         var meta = response.Meta ?? AnalyticsResponseMetaFactory.Success(
             response.OverallDataQualityStatus,
@@ -381,6 +390,36 @@ public static class DecisionBoardEndpoints
         {
             meta.WarningCode = "BOARD_PARTIAL";
         }
+
+        meta.Context = AnalyticsContextFingerprintPolicy.Create(
+            sourceDataset: "decision_board_sources",
+            sourceGeneration: "sales_header_origin_v1",
+            formulaVersion: "decision_board_context_v1",
+            materializerGeneration: "decision_board_composite",
+            rowLimitSemantics: "source_cards_declared_populations",
+            requestedPeriodFromUtc: response.PeriodFromUtc,
+            requestedPeriodToUtc: response.PeriodToUtc,
+            effectivePeriodFromUtc: response.PeriodFromUtc,
+            effectivePeriodToUtc: response.PeriodToUtc,
+            observedPeriodFromUtc: null,
+            observedPeriodToUtc: null,
+            requestedDataScope: normalizedDataScope,
+            effectiveDataScope: normalizedDataScope,
+            dataScopeSource: "decision_board_filters",
+            populationKey: "decision_board_sources",
+            populationFilters: new Dictionary<string, string?>
+            {
+                ["storeId"] = storeId?.ToString(CultureInfo.InvariantCulture),
+                ["supplierId"] = supplierId?.ToString(CultureInfo.InvariantCulture)
+            },
+            resultState: AnalyticsContextFingerprintPolicy.ResolveResultState(
+                meta.Success,
+                meta.IsPartial || loadWarnings.Count > 0,
+                meta.EmptyReason is not null));
+        meta.MetricProvenance = AnalyticsMetricEvidenceCoveragePolicy.Enrich(
+            "decision-board",
+            meta,
+            meta.MetricProvenance);
 
         return meta;
     }

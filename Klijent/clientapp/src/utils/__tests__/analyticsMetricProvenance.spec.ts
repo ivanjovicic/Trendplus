@@ -15,6 +15,10 @@ describe("analyticsMetricProvenance", () => {
         actionability: "informational",
         unit: "ratio",
         denominator: "period_total_revenue",
+        contextFingerprint: "sha256:revenue",
+        formulaVersion: "supplier_sales_context_v1",
+        coverage: "complete",
+        limitation: "Signed net-sales basis.",
       },
       margin: {
         kind: "observed_row_value",
@@ -43,13 +47,17 @@ describe("analyticsMetricProvenance", () => {
     },
   };
 
-  it("preserves source, authority, actionability, unit, and denominator", () => {
+  it("preserves source, authority, actionability, denominator, and runtime evidence", () => {
     expect(readAnalyticsMetricProvenance(meta, "revenueShare")).toEqual({
       kind: "authoritative_backend_aggregate",
       authority: "authoritative",
       actionability: "informational",
       unit: "ratio",
       denominator: "period_total_revenue",
+      contextFingerprint: "sha256:revenue",
+      formulaVersion: "supplier_sales_context_v1",
+      coverage: "complete",
+      limitation: "Signed net-sales basis.",
     });
     expect(readAnalyticsMetricProvenance(meta, "margin")?.unit).toBe("RSD");
     expect(readAnalyticsMetricProvenance(meta, "confidence")?.denominator).toBe("eligible_signal_count");
