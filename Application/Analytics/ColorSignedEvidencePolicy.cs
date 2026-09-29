@@ -2,8 +2,8 @@ namespace Application.Analytics;
 
 /// <summary>
 /// Contract helpers for Color analytics, where sales lines are net signed evidence.
-/// Amounts remain signed; ratio metrics are only emitted when their denominator and
-/// numerator produce a valid non-negative percentage.
+/// Amounts remain signed; sales-share metrics preserve signed net-sales arithmetic,
+/// while coverage/quality ratios remain bounded non-negative percentages.
 /// </summary>
 public static class ColorSignedEvidencePolicy
 {
@@ -37,6 +37,17 @@ public static class ColorSignedEvidencePolicy
         return double.IsFinite(percentage) && percentage is >= 0d and <= 100d
             ? Math.Round(percentage, 2)
             : null;
+    }
+
+    public static double? ResolveSignedNetSalesSharePercentage(decimal numerator, decimal denominator)
+    {
+        if (denominator <= 0m)
+        {
+            return null;
+        }
+
+        var percentage = (double)(numerator / denominator * 100m);
+        return double.IsFinite(percentage) ? Math.Round(percentage, 2) : null;
     }
 
     public static MarginQualityClassifier.MarginQualityResult ClassifyCostQuality(

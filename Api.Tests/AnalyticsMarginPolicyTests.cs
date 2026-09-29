@@ -203,6 +203,26 @@ public sealed class AnalyticsMarginPolicyTests
         Assert.Null(ColorSignedEvidencePolicy.ResolveNonNegativePercentage(150m, 100m));
     }
 
+    [Theory]
+    [InlineData(-50d, -50d)]
+    [InlineData(150d, 150d)]
+    [InlineData(0d, 0d)]
+    public void ColorSignedEvidencePolicy_PreservesMathematicallyValidSignedNetSalesShares(
+        double numerator,
+        double expected)
+    {
+        Assert.Equal(expected, ColorSignedEvidencePolicy.ResolveSignedNetSalesSharePercentage(
+            (decimal)numerator,
+            100m));
+    }
+
+    [Fact]
+    public void ColorSignedEvidencePolicy_DoesNotInventShareForNonPositiveDenominator()
+    {
+        Assert.Null(ColorSignedEvidencePolicy.ResolveSignedNetSalesSharePercentage(50m, 0m));
+        Assert.Null(ColorSignedEvidencePolicy.ResolveSignedNetSalesSharePercentage(-50m, -100m));
+    }
+
     [Fact]
     public void ColorSignedEvidencePolicy_UsesCoveredRevenueWeightedMarginBaseline()
     {

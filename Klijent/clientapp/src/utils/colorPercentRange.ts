@@ -10,6 +10,11 @@ export function resolveColorPercentValue(value: number | null | undefined): numb
   return value;
 }
 
+/** Net-sales shares stay signed because returns can produce values outside 0-100%. */
+export function resolveColorSignedSharePct(value: number | null | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
 export function resolveColorPartSharePct(
   numerator: number | null | undefined,
   denominator: number | null | undefined,

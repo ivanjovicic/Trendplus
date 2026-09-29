@@ -372,7 +372,7 @@ describe("ColorSalesStatsPage", () => {
     );
 
     await screen.findByText("Crna");
-    expect(screen.getByText("Koncentracija prometa po bojama")).toBeInTheDocument();
+    expect(screen.getByText("Koncentracija neto prometa po bojama")).toBeInTheDocument();
     expect(screen.getByText("Prioritetna lista boja")).toBeInTheDocument();
     expect(screen.getByText("Pojacaj")).toBeInTheDocument();
     expect(screen.getByText("Pregledaj")).toBeInTheDocument();

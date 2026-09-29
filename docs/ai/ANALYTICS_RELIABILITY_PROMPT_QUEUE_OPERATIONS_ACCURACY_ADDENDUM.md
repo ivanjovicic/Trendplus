@@ -2,7 +2,8 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ501 (IN_PROGRESS in this workspace)
+Owner decisions 2026-09-29 (Ivan): RQ501 aligns Color with the RQ496 Shoe Type signed net-sales contract (`net_sales_signed`, explicit numerator/denominator/state, mathematically valid negative and >100% values, unavailable never coerced to recommendation zero; quality/coverage ratios remain bounded 0–100). RQ505 frames Color as a supporting signal/analysis surface with signal trust framing; backend status/reason stays authoritative and `decisionScore` remains detail/transparency evidence, not a competing final CTA. RQ507 approves removing Supplier compatibility aliases from the primary Operations sidebar while preserving legacy URLs/redirects and keeping Shoe Type, Color, Daily and Pre/Post available. RQ476 uses positive net revenue of the declared visible/decision population for concentration/share; negative/returns-only rows remain visible without ambiguous positive share, and unknown-supplier inclusion is explicit and consistent across API/UI/recommendation/export.
 Routing repair 2026-09-29: RQ448's live section was stale at `IN_PROGRESS`; synchronized queue/roadmap truth and prior evidence show it remains `WAITING` behind the authenticated browser/API/deployment gate. No implementation claim is reopened.
 Routing reconciliation 2026-09-29: any workspace still showing `RQ466` as `Current READY` is stale. `RQ466` and `RQ502` are `DONE` on current main; no RQ prompt is currently READY. Registration evidence: `.ai/runs/2026-09-29-RQ502-registration-evidence.md`.
 Owner claim 2026-09-29: after fresh `origin/main` sync to `2d85df0f13dac4e8dcb463656515d61ea32e0021`, RQ502 remained READY, RQ494 was verified DONE, and no conflicting lock/branch/PR owner was found for the Operations store-filter scope. RQ502 moved `READY -> IN_PROGRESS` in this workspace. Local lock: `.ai/task-locks/RQ502-codex.lock.md`.
@@ -15,6 +16,7 @@ Owner promotion/claim 2026-09-29: idle recovery verified RQ502 DONE on refreshed
 Owner completion 2026-09-29: RQ503 moved `IN_PROGRESS -> DONE` and was delivered directly to `main` in `810b07ecb6137c47707b2e0ee2db841484eb3a65`. Shoe Type and Color unavailable nullable/non-finite metrics now sort last in both directions without numeric sentinels, while signed negative values and URL sort state remain correct. Focused frontend proof is 81/81; typecheck, guardrails, production build, governance validators and diff check pass. Live browser, PostgreSQL/API and remote CI proof were not run because no assigned environment was available. Run log: `.ai/runs/2026-09-29-RQ503-evidence.md`. Evidence state: synchronized. Current RQ READY is `none`; RQ491 remains WAITING behind Q83 and RQ504 is the next same-page follow-up.
 Owner promotion/claim 2026-09-29: idle recovery verified RQ503 DONE on refreshed `origin/main`, confirmed RQ504 is dependency-complete after RQ502/RQ503 and collision-safe with no active lock/branch/PR owner for Shoe Type information hierarchy/cost-source copy. RQ504 moved `WAITING -> READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ504-codex.lock.md`.
 Owner completion 2026-09-29: RQ504 moved `IN_PROGRESS -> DONE` and was delivered directly to `main` in `082eed72ff9b9acc9efe6c034bc56ffd5d49a675`. Shoe Type now leads with identity and decision metrics, keeps nivelacija article coverage and resolved cost in detail/export evidence, couples pre/post impact with comparable coverage, and uses exact historical/snapshot/product-fallback/unavailable cost vocabulary. Focused frontend proof is 44/44 plus 7/7 utility/metric tests; guardrails, typecheck, production build, governance validators and diff check pass. Run log: `.ai/runs/2026-09-29-RQ504-evidence.md`. Evidence state: synchronized. Current RQ READY is `none`; RQ491 remains WAITING behind Q83.
+Owner promotion/claim 2026-09-29: owner decision is now recorded, RQ496 is DONE on current `origin/main`, and no active Color `AllEndpoints.cs` decision owner, lock, branch or PR conflicts with RQ501. RQ501 moved `WAITING -> READY -> IN_PROGRESS` for signed Color/Shoe Type parity. Local lock: `.ai/task-locks/RQ501-codex.lock.md`. Q83 remains the exclusive PARTIAL Pre/Post SQL/view owner; RQ491 is not promoted.
 Routing repair 2026-09-29: RQ495's live heading is reconciled from stale `WAITING` to `DONE` to match its synchronized completion evidence and current-main delivery; the prompt is not reopened.
 Routing reconciliation 2026-09-29: the live RQ447 heading was stale at `IN_PROGRESS`; its synchronized completion note and run `36536448476` prove the dedicated acceptance is DONE, so the heading is corrected to `DONE` without reopening the prompt.
 Owner promotion/claim 2026-09-28: idle recovery confirmed `RQ494` is the highest-priority dependency-complete operations accuracy prompt after RQ445/RQ446/RQ456/RQ457/RQ484 completion; no active lock/branch/PR owner overlaps its sales-header dataScope scope, and Q83 is `PARTIAL` without an active repo-local lock. `RQ494` moved WAITING -> READY -> IN_PROGRESS in this workspace; local lock `.ai/task-locks/RQ494-codex.lock.md`.
@@ -3044,13 +3046,13 @@ Shoe Type cross-screen audit registration 2026-09-29: current-main review after 
 
 ## RQ501 - Align Shoe Type and Color signed net-sales share semantics
 
-Status: WAITING  
+Status: IN_PROGRESS
 Priority: P1  
 Type: backend-contract/frontend/tests  
 Feature family: categorical-signed-share-parity  
 Parallel-safe: no  
 Owner: Analytics Reliability / Category Sales  
-Owner decision required: preserve Color's older non-negative share policy or align Color to the RQ496 signed net-sales share contract
+Owner decision recorded: align Color with RQ496's signed `net_sales_signed` contract; mathematically valid negative and >100% values remain visible, unavailable is never coerced to recommendation zero, and quality/coverage ratios remain separate bounded 0–100 indicators.
 
 ### Problem
 

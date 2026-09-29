@@ -57,6 +57,7 @@ import {
   resolveColorComplementPercent,
   resolveColorCountValue,
   resolveColorPercentValue,
+  resolveColorSignedSharePct,
 } from "../utils/colorPercentRange";
 import { resolveColorCoveragePct } from "../utils/colorSalesCoverage";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
@@ -116,7 +117,7 @@ type DecisionColor = Omit<ColorSalesStat, "reliabilityPct"> & {
 const decisionColumns: AnalyticsTableColumn<DecisionColor>[] = [
   { key: "boja", header: "Boja", dataType: "text" },
   { key: "ukupanPromet", header: "Promet", dataType: "currency" },
-  { key: "sharePct", header: "Udeo %", dataType: "percent" },
+  { key: "sharePct", header: "Neto udeo %", dataType: "percent" },
   { key: "marginContribution", header: "Maržni doprinos", dataType: "currency" },
   { key: "popRevenueChangePct", header: "PoP trend %", dataType: "percent" },
   { key: "prePostNivelacijaRevenueImpactPct", header: "Uticaj nivelacije %", dataType: "percent" },
@@ -149,6 +150,15 @@ const decisionColumns: AnalyticsTableColumn<DecisionColor>[] = [
     getValue: (row) => formatCategoryPrePostQuantityMetric(row.comparablePostQuantity),
   },
   { key: "prePostComparableArticleCount", header: "Artikli u uporedivoj kohorti", dataType: "number" },
+  { key: "sharePctBasis", header: "Osnova neto udela", dataType: "text" },
+  { key: "sharePctNumerator", header: "Neto udeo numerator", dataType: "currency" },
+  { key: "sharePctDenominator", header: "Neto udeo denominator", dataType: "currency" },
+  {
+    key: "sharePctUnavailableReason",
+    header: "Stanje neto udela",
+    dataType: "text",
+    getValue: (row) => row.sharePctUnavailableReason ?? (row.sharePctBasis === "net_sales_signed" ? "available" : null),
+  },
   { key: "status", header: "Preporuka", dataType: "text", getValue: (row) => recommendationStatusLabel(row.status) },
   { key: "decisionScore", header: "Skor odluke (0–100)", dataType: "number" },
 ];
@@ -206,6 +216,10 @@ type StatusTooltipData = {
   splitCoveragePct: number | null;
   reliabilityPct: number | null;
   reliabilityAvailable: boolean;
+  sharePctBasis?: "net_sales_signed" | null;
+  sharePctNumerator?: number | null;
+  sharePctDenominator?: number | null;
+  sharePctUnavailableReason?: "non_positive_net_sales_denominator" | null;
 };
 
 function buildStatusTooltip(data: StatusTooltipData): string {
@@ -218,7 +232,12 @@ function buildStatusTooltip(data: StatusTooltipData): string {
     ? fmtSignedPct(data.prePostNivelacijaRevenueImpactPct, 1)
     : "Nije dostupno";
   const reliabilityText = data.reliabilityAvailable ? fmtPct(data.reliabilityPct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
-  return `${recommendationStatusLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Udeo ${fmtPct(data.sharePct, 1)} | Marža ${fmtPct(data.marginPct, 1)} | Trend ${popText} | Uticaj nivelacije ${impactText} | Pokriće podele ${fmtPct(data.splitCoveragePct, 1)} | Pouzdanost ${reliabilityText}`;
+  const shareText = data.sharePctBasis === "net_sales_signed"
+    ? `${fmtPct(data.sharePct, 1)} (neto promet: ${fmtRsd(data.sharePctNumerator)} / ${fmtRsd(data.sharePctDenominator)}; povrati mogu dati <0% ili >100%)`
+    : data.sharePctUnavailableReason === "non_positive_net_sales_denominator"
+      ? "Nije dostupno (ukupan neto promet nije pozitivan)"
+      : fmtPct(data.sharePct, 1);
+  return `${recommendationStatusLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Neto udeo ${shareText} | Marža ${fmtPct(data.marginPct, 1)} | Trend ${popText} | Uticaj nivelacije ${impactText} | Pokriće podele ${fmtPct(data.splitCoveragePct, 1)} | Pouzdanost ${reliabilityText}`;
 }
 
 export function describePopMetric(item: ColorSalesStat): { label: string; title: string; className: string } {
@@ -516,7 +535,7 @@ export default function ColorSalesStatsPage() {
     if (rows.length === 0) return [];
 
     return rows.map((item) => {
-      const sharePct = resolveColorPercentValue(item.sharePct);
+      const sharePct = resolveColorSignedSharePct(item.sharePct);
       const marginContribution = item.marginContribution;
       const splitCoveragePct = resolveColorPercentValue(item.prePostNivelacijaRevenueCoveragePct);
       const coveragePct = resolveColorCoveragePct(
@@ -614,7 +633,7 @@ export default function ColorSalesStatsPage() {
     if (sortedRows.length === 0) return [] as Array<{ name: string; sharePct: number }>;
 
     const ranked = [...sortedRows]
-      .filter((row): row is typeof row & { sharePct: number } => resolveColorPercentValue(row.sharePct) != null)
+      .filter((row): row is typeof row & { sharePct: number } => resolveColorSignedSharePct(row.sharePct) != null)
       .sort((a, b) => b.sharePct - a.sharePct);
     if (ranked.length === 0) return [];
     const topRows = ranked.slice(0, 6).map((row) => ({
@@ -623,8 +642,8 @@ export default function ColorSalesStatsPage() {
     }));
 
     const remaining = ranked.slice(6).reduce((sum, row) => sum + row.sharePct, 0);
-    const ostaleSharePct = resolveColorPercentValue(Number(remaining.toFixed(2)));
-    if (ostaleSharePct != null && ostaleSharePct > 0.1) {
+    const ostaleSharePct = resolveColorSignedSharePct(Number(remaining.toFixed(2)));
+    if (ostaleSharePct != null && Math.abs(ostaleSharePct) > 0.1) {
       topRows.push({ name: "Ostale", sharePct: ostaleSharePct });
     }
 
@@ -1166,8 +1185,8 @@ export default function ColorSalesStatsPage() {
 
           <section className="color-decision-panels">
             <article className="color-decision-card">
-              <h2>Koncentracija prometa po bojama</h2>
-              <p>Top boje koje nose najveći deo prodaje.</p>
+              <h2>Koncentracija neto prometa po bojama</h2>
+              <p>Rangirano po potpisanom neto prometu; povrati mogu dati negativan udeo ili udeo veći od 100%.</p>
               {concentrationData.length > 0 ? (
                 <div className="color-decision-chart-wrap">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
@@ -1227,7 +1246,7 @@ export default function ColorSalesStatsPage() {
                       </th>
                       <th className={`analytics-data-table__numeric${isSortActive("sharePct", sortField) ? " is-sorted" : ""}`}>
                         <button type="button" onClick={() => handleSort("sharePct")}>
-                          Udeo %{sortMarker("sharePct", sortField, sortDir)} <InfoTip text="Udeo u ukupnom prometu (procenat)." />
+                          Neto udeo %{sortMarker("sharePct", sortField, sortDir)} <InfoTip text="Potpisani neto udeo boje u ukupnom neto prometu. Formula: neto promet boje / ukupan neto promet svih prikazanih boja × 100. Povrati mogu dati vrednost ispod 0% ili iznad 100%." />
                         </button>
                       </th>
                       <th className={`analytics-data-table__numeric${isSortActive("marginContribution", sortField) ? " is-sorted" : ""}`}>
@@ -1315,6 +1334,20 @@ export default function ColorSalesStatsPage() {
               </div>
 
               <div className="color-decision-detail-grid">
+                <article>
+                  <span>Neto udeo u prometu <InfoTip text="Potpisani neto udeo ove boje u ukupnom neto prometu. Povrati mogu dati vrednost ispod 0% ili iznad 100%." /></span>
+                  <strong>{fmtPct(selectedRow.sharePct, 2)}</strong>
+                </article>
+                <article>
+                  <span>Osnova/numerator/denominator neto udela</span>
+                  <strong>
+                    {selectedRow.sharePctBasis === "net_sales_signed"
+                      ? `net_sales_signed · ${fmtRsd(selectedRow.sharePctNumerator)} / ${fmtRsd(selectedRow.sharePctDenominator)}`
+                      : selectedRow.sharePctUnavailableReason === "non_positive_net_sales_denominator"
+                        ? "Nije dostupno: denominator nije pozitivan"
+                        : "Nije dostupno"}
+                  </strong>
+                </article>
                 <article>
                   <span>PoP trend prometa</span>
                   <strong className={describePopMetric(selectedRow).className} title={describePopMetric(selectedRow).title}>

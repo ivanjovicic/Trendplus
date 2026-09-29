@@ -544,7 +544,7 @@ describe("ColorSalesStatsPage premium controls", () => {
     expect(within(toolbar).queryByText("Broj boja: 0")).not.toBeInTheDocument();
   });
 
-  it("keeps concentration chart from inventing invalid Ostale share percentages", async () => {
+  it("keeps signed net-sales shares visible in the concentration chart", async () => {
     vi.mocked(getColorSalesStats).mockResolvedValue(response({
       colors: [
         ...Array.from({ length: 6 }, (_, index) => color({
@@ -581,8 +581,7 @@ describe("ColorSalesStatsPage premium controls", () => {
     const chartData = JSON.parse(
       (await screen.findByTestId("bar-chart")).getAttribute("data-chart-data") ?? "[]",
     ) as Array<{ name: string; sharePct: number }>;
-    expect(chartData.some((entry) => entry.name === "Ostale")).toBe(false);
-    expect(chartData).toHaveLength(6);
+    expect(chartData.some((entry) => entry.name === "Ostale" && entry.sharePct === 110)).toBe(true);
   });
 
   it("keeps valid zero and 100 percentages visible across surfaces", async () => {
@@ -644,7 +643,7 @@ describe("ColorSalesStatsPage premium controls", () => {
     expect(row).toHaveTextContent("N/A");
   });
 
-  it("fails closed on invalid share and coverage percentages in the table", async () => {
+  it("keeps signed share outside 0-100 while coverage remains bounded", async () => {
     vi.mocked(getColorSalesStats).mockResolvedValue(response({
       colors: [color({
         boja: "Nevalidna",
@@ -666,8 +665,12 @@ describe("ColorSalesStatsPage premium controls", () => {
     const table = await screen.findByTestId("analytics-data-table");
     const row = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Nevalidna"));
     expect(row).toBeDefined();
-    expect(row).not.toHaveTextContent("150,00%");
-    expect(row).not.toHaveTextContent("130,00%");
-    expect(row).toHaveTextContent("N/A");
+    expect(row).toHaveTextContent("150,00%");
+    fireEvent.click(within(row!).getByRole("button", { name: "Detalji" }));
+    const detailHeading = await screen.findByRole("heading", { name: "Detalj odluke: Nevalidna" });
+    const detailPanel = detailHeading.closest("section");
+    expect(detailPanel).not.toBeNull();
+    expect(within(detailPanel!).getByText("Pre/post pokriće uporedive kohorte").parentElement).toHaveTextContent("N/A");
+    expect(within(detailPanel!).getByText("Pre/post pokriće uporedive kohorte").parentElement).not.toHaveTextContent("130,0%");
   });
 });

@@ -5,6 +5,7 @@ import {
   resolveColorPartSharePct,
   resolveColorPercentValue,
   resolveColorRevenueSharePct,
+  resolveColorSignedSharePct,
 } from "../colorPercentRange";
 
 describe("resolveColorPercentValue", () => {
@@ -37,6 +38,17 @@ describe("resolveColorPartSharePct", () => {
     [10, null],
   ])("rejects incompatible share evidence (%s / %s)", (numerator, denominator) => {
     expect(resolveColorPartSharePct(numerator, denominator)).toBeNull();
+  });
+});
+
+describe("resolveColorSignedSharePct", () => {
+  it.each([-5, 0, 100, 150])("keeps finite signed net-sales shares (%s)", (value) => {
+    expect(resolveColorSignedSharePct(value)).toBe(value);
+  });
+
+  it("keeps unavailable shares unavailable", () => {
+    expect(resolveColorSignedSharePct(null)).toBeNull();
+    expect(resolveColorSignedSharePct(Number.NaN)).toBeNull();
   });
 });
 

@@ -59,6 +59,10 @@ export interface ColorSalesStat {
   prePostSignalNote: string | null;
   prePostComparableArticleCount: number;
   sharePct?: number | null;
+  sharePctBasis?: "net_sales_signed" | null;
+  sharePctNumerator?: number | null;
+  sharePctDenominator?: number | null;
+  sharePctUnavailableReason?: "non_positive_net_sales_denominator" | null;
   decisionScore?: number | null;
   reliabilityPct?: number | null;
   isUnknown?: boolean;

@@ -624,7 +624,6 @@ describe("analytics response schemas", () => {
 
   it.each([
     ["negative count", { ...colorRow, brojArtikalaUkupno: -1 }],
-    ["percentage above 100", { ...colorRow, sharePct: 101 }],
     ["margin percentage above 100", { ...colorRow, marginPct: 101 }],
     ["NaN", { ...colorRow, marginContribution: Number.NaN }],
     ["Infinity", { ...colorRow, marginContribution: Number.POSITIVE_INFINITY }],
@@ -634,6 +633,22 @@ describe("analytics response schemas", () => {
       colors: [invalidRow],
     });
     expect(result.success).toBe(false);
+  });
+
+  it("accepts signed Color net-sales shares with explicit basis metadata", () => {
+    const result = colorSalesStatsResponseSchema.safeParse({
+      ...validColorResponse,
+      colors: [{
+        ...colorRow,
+        sharePct: -25,
+        sharePctBasis: "net_sales_signed",
+        sharePctNumerator: -500,
+        sharePctDenominator: 2000,
+        sharePctUnavailableReason: null,
+      }],
+    });
+
+    expect(result.success).toBe(true);
   });
 
   it("accepts signed Pre-Nivelacija sales evidence and explicit window provenance", () => {

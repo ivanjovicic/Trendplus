@@ -3220,7 +3220,8 @@ public static class AllEndpoints
                 var colorsWithRecommendation = colors
                     .Select(row =>
                     {
-                        var sharePct = ColorSignedEvidencePolicy.ResolveNonNegativePercentage(row.ukupanPromet, totalRevenue);
+                        var sharePctAvailable = totalRevenue > 0m;
+                        var sharePct = ColorSignedEvidencePolicy.ResolveSignedNetSalesSharePercentage(row.ukupanPromet, totalRevenue);
                         var sharePctForDecision = sharePct ?? 0d;
                         var hasPreviousPeriodWindow = row.previousPeriodRevenue is not null;
                         var isNewColor = hasPreviousPeriodWindow
@@ -3243,7 +3244,8 @@ public static class AllEndpoints
                             PreviousPeriodUnits: row.previousPeriodUnits,
                             HasPreviousPeriodWindow: hasPreviousPeriodWindow,
                             IsNewEntity: isNewColor,
-                            UnknownBucketSharePct: unknownColorSharePct),
+                            UnknownBucketSharePct: unknownColorSharePct,
+                            SharePctAvailable: sharePctAvailable),
                             weightedKnownMarginPct);
                         var hasComparableNivelacijaSignal = row.prePostNivelacijaRevenueImpactPct.HasValue
                             && row.prePostNivelacijaUnitsImpactPct.HasValue;
@@ -3328,6 +3330,10 @@ public static class AllEndpoints
                             row.prePostSignalNote,
                             row.prePostComparableArticleCount,
                             sharePct,
+                            sharePctBasis = sharePctAvailable ? "net_sales_signed" : null,
+                            sharePctNumerator = Math.Round((double)row.ukupanPromet, 2),
+                            sharePctDenominator = Math.Round((double)totalRevenue, 2),
+                            sharePctUnavailableReason = sharePctAvailable ? null : "non_positive_net_sales_denominator",
                             decisionScore,
                             reliabilityPct = recommendationAllowed ? (double?)exposedRecommendation.ReliabilityPct : null,
                             recommendation = new
@@ -3501,7 +3507,7 @@ public static class AllEndpoints
                             ? AnalyticsMetricActionability.Actionable
                             : AnalyticsMetricActionability.Blocked,
                         Unit = "percent",
-                        Denominator = "ukupan pozitivan neto promet iz filtriranih prodajnih stavki"
+                        Denominator = "net_sales_signed: ukupan pozitivan neto promet iz filtriranih prodajnih stavki"
                     },
                     ["margin"] = new()
                     {
