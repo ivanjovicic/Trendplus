@@ -1,4 +1,7 @@
 import { makeUrl } from "./analyticsApi";
+import type { AnalyticsResponseMeta } from "../types/analytics";
+import { validateAnalyticsResponse } from "../validation/analyticsResponseValidation";
+import { decisionPulseResponseSchema } from "../validation/analyticsResponseSchemas";
 
 export type DecisionPulseItem = {
   id: string;
@@ -23,16 +26,7 @@ export type DecisionPulseResponse = {
   tenantScope: string;
   suppressedCount: number;
   items: DecisionPulseItem[];
-  meta: {
-    success: boolean;
-    emptyReason?: string | null;
-    message?: string | null;
-    errorCode?: string | null;
-    errorMessage?: string | null;
-    dataQualityStatus?: string | null;
-    warningCode?: string | null;
-    warningMessage?: string | null;
-  };
+  meta: AnalyticsResponseMeta;
 };
 
 export async function getDecisionPulse(options?: {
@@ -54,5 +48,9 @@ export async function getDecisionPulse(options?: {
     throw new Error(`Decision Pulse HTTP ${response.status}`);
   }
 
-  return (await response.json()) as DecisionPulseResponse;
+  return validateAnalyticsResponse(
+    await response.json(),
+    decisionPulseResponseSchema,
+    "Decision Pulse",
+  ) as DecisionPulseResponse;
 }

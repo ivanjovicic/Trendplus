@@ -2,6 +2,9 @@
 import type { AnalyticsResponseMeta } from "../types/analytics";
 import { appendSupplierDecisionReportQuery } from "./supplierDecisionReportQuery";
 import { AnalyticsMetaError, assertAnalyticsMetaSuccess } from "../utils/analyticsResponseMeta";
+import { validateAnalyticsResponse } from "../validation/analyticsResponseValidation";
+import { supplierDecisionHubResponseSchema } from "../validation/analyticsResponseSchemas";
+import type { ZodType } from "zod";
 
 export type RecommendationCode =
   | "EXPAND"
@@ -137,6 +140,7 @@ export type QuadrantItem = {
 
 export type QuadrantResponse = {
   items: QuadrantItem[];
+  meta?: AnalyticsResponseMeta | null;
 };
 
 export type RankingItem = {
@@ -307,7 +311,13 @@ function appendFilterParams(params: URLSearchParams, filters: SupplierDecisionHu
   appendSupplierDecisionReportQuery(params, filters);
 }
 
-async function fetchJson<T>(path: string, params: URLSearchParams, errorMessage: string, signal?: AbortSignal): Promise<T> {
+async function fetchJson<T>(
+  path: string,
+  params: URLSearchParams,
+  errorMessage: string,
+  signal?: AbortSignal,
+  schema?: ZodType<unknown>,
+): Promise<T> {
   const response = await fetch(makeUrl(path, params), signal ? { signal } : undefined);
   if (!response.ok) {
     let message = errorMessage;
@@ -339,7 +349,7 @@ async function fetchJson<T>(path: string, params: URLSearchParams, errorMessage:
   }
 
   try {
-    return assertAnalyticsMetaSuccess(
+    const checked = assertAnalyticsMetaSuccess(
       parsed,
       (candidate) => {
         if (!candidate || typeof candidate !== "object") return null;
@@ -347,6 +357,9 @@ async function fetchJson<T>(path: string, params: URLSearchParams, errorMessage:
       },
       errorMessage
     );
+    return schema
+      ? validateAnalyticsResponse<T>(checked, schema, errorMessage)
+      : checked;
   } catch (reason) {
     if (reason instanceof AnalyticsMetaError) {
       throw new SupplierDecisionApiError(
@@ -368,7 +381,9 @@ export async function getSupplierDecisionSummary(
   return fetchJson<SummaryResponse>(
     "/api/analytics/suppliers/decision-hub/summary",
     params,
-    "Ne mogu da učitam sažetak dobavljača."
+    "Ne mogu da učitam sažetak dobavljača.",
+    undefined,
+    supplierDecisionHubResponseSchema,
   );
 }
 
@@ -380,7 +395,9 @@ export async function getSupplierDecisionQuadrant(
   return fetchJson<QuadrantResponse>(
     "/api/analytics/suppliers/decision-hub/quadrant",
     params,
-    "Ne mogu da učitam kvadrant dobavljača."
+    "Ne mogu da učitam kvadrant dobavljača.",
+    undefined,
+    supplierDecisionHubResponseSchema,
   );
 }
 
@@ -399,7 +416,9 @@ export async function getSupplierDecisionRanking(
   return fetchJson<RankingResponse>(
     "/api/analytics/suppliers/decision-hub/ranking",
     params,
-    "Ne mogu da učitam rang listu dobavljača."
+    "Ne mogu da učitam rang listu dobavljača.",
+    undefined,
+    supplierDecisionHubResponseSchema,
   );
 }
 
@@ -451,6 +470,7 @@ export async function getSupplierDecisionDetails(
     `/api/analytics/suppliers/decision-hub/${supplierId}/details`,
     params,
     "Ne mogu da učitam detalje dobavljača.",
-    signal
+    signal,
+    supplierDecisionHubResponseSchema,
   );
 }

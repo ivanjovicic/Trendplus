@@ -61,8 +61,8 @@ describe("analytics API contract requests", () => {
     server.use(
       rest.get("/api/analytics/cached/inventory/size-curve", (req, res, ctx) => {
         receivedUrl = req.url;
-        return res(ctx.status(200), ctx.json({
-          generatedAtUtc: "2026-09-23T12:00:00Z",
+          return res(ctx.status(200), ctx.json({
+            generatedAtUtc: "2026-09-23T12:00:00Z",
           totalCount: 0,
           returnedCount: 0,
           totalMatchingCount: 0,
@@ -70,9 +70,10 @@ describe("analytics API contract requests", () => {
           snapshotAvailable: true,
           snapshotFreshnessUtc: null,
           snapshotFreshnessStatus: "unknown",
-          warning: "Size curve snapshot postoji, ali nema redova za trazene filtere.",
-          items: [],
-        }));
+            warning: "Size curve snapshot postoji, ali nema redova za trazene filtere.",
+            items: [],
+            meta: { success: true, dataQualityStatus: "warning" },
+          }));
       }),
     );
 
@@ -335,6 +336,7 @@ describe("analytics API contract requests", () => {
           page: 2,
           pageSize: 25,
           totalPages: 0,
+          meta: { success: true, dataQualityStatus: "empty" },
         }));
       }),
       rest.get("/api/analytics/actions/outcomes/summary", (req, res, ctx) => {

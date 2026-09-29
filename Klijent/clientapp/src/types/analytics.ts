@@ -1951,6 +1951,7 @@ export interface AnalyticsActionListResponse {
   page: number;
   pageSize: number;
   totalPages: number;
+  meta?: AnalyticsResponseMeta | null;
 }
 
 export interface AnalyticsActionCounts {
@@ -1960,6 +1961,7 @@ export interface AnalyticsActionCounts {
   rejected: number;
   done: number;
   p1Open: number;
+  meta?: AnalyticsResponseMeta | null;
 }
 
 export interface AnalyticsActionUpsertInput {

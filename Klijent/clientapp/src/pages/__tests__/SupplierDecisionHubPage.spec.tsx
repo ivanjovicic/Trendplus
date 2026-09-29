@@ -58,6 +58,7 @@ const summaryResponse = {
   topRiskSuppliers: [],
   keyInsights: [],
   dataNote: "Metrike su izračunate na osnovu nivelacija iz poslednjih 90 dana.",
+  meta: { success: true, dataQualityStatus: "warning" },
 };
 
 function jsonResponse(body: unknown, status = 200) {
@@ -89,15 +90,14 @@ function installFetchMock(
     }
 
     if (url.pathname === "/api/analytics/suppliers/decision-hub/ranking") {
-      return jsonResponse(
-        rankingHandler?.(url) ?? {
+      const rankingResponse = rankingHandler?.(url) ?? {
           page: 1,
           pageSize: 100,
           totalCount: 2,
           items: [rankingItem(1, 100_000), rankingItem(2, 80_000)],
           dataNote: summaryResponse.dataNote,
-        }
-      );
+        };
+      return jsonResponse({ meta: { success: true, dataQualityStatus: "warning" }, ...rankingResponse });
     }
 
     if (url.pathname === "/api/sezone") {
@@ -294,6 +294,7 @@ describe("SupplierDecisionHubPage", () => {
       items: [],
       dataNote: summaryResponse.dataNote,
       trustMetadata,
+      meta: { success: true, dataQualityStatus: "insufficient_data" },
     };
 
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
@@ -365,6 +366,7 @@ describe("SupplierDecisionHubPage", () => {
       items: [rankingItem(1, 100_000)],
       dataNote: summaryResponse.dataNote,
       trustMetadata,
+      meta: { success: true, dataQualityStatus: "warning" },
     };
 
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
@@ -433,6 +435,7 @@ describe("SupplierDecisionHubPage", () => {
           ],
           dataNote: summaryResponse.dataNote,
           trustMetadata,
+          meta: { success: true, dataQualityStatus: "warning" },
         });
       }
       if (url.pathname === "/api/sezone") return jsonResponse([]);
@@ -489,6 +492,7 @@ describe("SupplierDecisionHubPage", () => {
           items: [rankingItem(1, 100_000)],
           dataNote: summaryResponse.dataNote,
           trustMetadata,
+          meta: { success: true, dataQualityStatus: "good" },
         });
       }
 
@@ -503,7 +507,7 @@ describe("SupplierDecisionHubPage", () => {
       }
 
       if (url.pathname === "/api/analytics/actions") {
-        return jsonResponse({ items: [] });
+        return jsonResponse({ items: [], totalCount: 0, page: 1, pageSize: 25, totalPages: 0, meta: { success: true } });
       }
 
       if (url.pathname === "/api/sezone") {
@@ -651,6 +655,7 @@ describe("SupplierDecisionHubPage", () => {
           totalCount: 2,
           items: [rankingItem(1), rankingItem(2, 80_000)],
           dataNote: summaryResponse.dataNote,
+          meta: { success: true, dataQualityStatus: "warning" },
         });
       }
 

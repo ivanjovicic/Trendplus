@@ -77,10 +77,26 @@ import {
 } from "../utils/analyticsResponseMeta";
 import type { ZodType } from "zod";
 import {
+  analyticsActionCountsResponseSchema,
+  analyticsActionListResponseSchema,
+  analyticsActionOutcomeSummaryResponseSchema,
+  dashboardAdvancedResponseSchema,
+  dashboardBootstrapResponseSchema,
+  dataQualityHealthResponseSchema,
+  dataQualityIssueListResponseSchema,
+  dataQualityTopOffendersResponseSchema,
+  dataQualityTrendResponseSchema,
+  decisionBoardAggregateResponseSchema,
+  durableAnalyticsReportResponseSchema,
+  inventoryActionWorkflowResponseSchema,
   inventoryBalanceResponseSchema,
   inventoryDetailResponseSchema,
   inventoryInsightsResponseSchema,
   inventoryPagedResponseSchema,
+  inventorySignalResponseSchema,
+  inventoryStoreComparisonResponseSchema,
+  pilotDataQualityIntakeResponseSchema,
+  productDecisionCenterResponseSchema,
 } from "../validation/analyticsResponseSchemas";
 import { validateAnalyticsResponse } from "../validation/analyticsResponseValidation";
 
@@ -756,7 +772,9 @@ export async function getDashboardAdvanced(
   return fetchJson(
     useCached ? "/api/analytics/cached/dashboard/advanced" : "/api/analytics/dashboard/advanced",
     params,
-    "Greska pri ucitavanju advanced dashboard metrika"
+    "Greska pri ucitavanju advanced dashboard metrika",
+    undefined,
+    dashboardAdvancedResponseSchema,
   );
 }
 
@@ -773,7 +791,9 @@ export async function getDashboardBootstrap(
   return fetchJson(
     "/api/analytics/cached/dashboard/bootstrap",
     params,
-    "Greska pri ucitavanju analytics dashboard bootstrapa"
+    "Greska pri ucitavanju analytics dashboard bootstrapa",
+    undefined,
+    dashboardBootstrapResponseSchema,
   );
 }
 
@@ -841,7 +861,9 @@ export async function getProductDecisionCenter(options?: {
   return fetchJson(
     "/api/analytics/cached/products/decision-center",
     params,
-    "Greska pri ucitavanju Product Decision Center pregleda"
+    "Greska pri ucitavanju Product Decision Center pregleda",
+    undefined,
+    productDecisionCenterResponseSchema,
   );
 }
 
@@ -979,7 +1001,9 @@ export async function getDecisionBoardAggregate(options?: {
   return fetchJson(
     "/api/analytics/decision-board",
     params,
-    "Greška pri učitavanju executive decision board pregleda"
+    "Greška pri učitavanju executive decision board pregleda",
+    undefined,
+    decisionBoardAggregateResponseSchema,
   );
 }
 
@@ -1083,7 +1107,9 @@ export async function getDataQualityIssues(paramsInput: {
   return fetchJson(
     "/api/analytics/data-quality/list",
     params,
-    "Greska pri ucitavanju data quality problema"
+    "Greska pri ucitavanju data quality problema",
+    undefined,
+    dataQualityIssueListResponseSchema,
   );
 }
 
@@ -1098,7 +1124,9 @@ export async function getAnalyticsDataQualityHealth(
   return fetchJson(
     "/api/analytics/data-quality/health",
     params,
-    "Greska pri ucitavanju data quality health pregleda"
+    "Greska pri ucitavanju data quality health pregleda",
+    undefined,
+    dataQualityHealthResponseSchema,
   );
 }
 
@@ -1115,7 +1143,9 @@ export async function getDataQualityTopOffenders(
   return fetchJson(
     "/api/analytics/data-quality/top-offenders",
     params,
-    "Greska pri ucitavanju top data quality problema"
+    "Greska pri ucitavanju top data quality problema",
+    undefined,
+    dataQualityTopOffendersResponseSchema,
   );
 }
 
@@ -1130,7 +1160,9 @@ export async function getAnalyticsDataQualityTrend(
   return fetchJson(
     "/api/analytics/data-quality/trend",
     params,
-    "Greska pri ucitavanju data quality trenda"
+    "Greska pri ucitavanju data quality trenda",
+    undefined,
+    dataQualityTrendResponseSchema,
   );
 }
 
@@ -1151,7 +1183,9 @@ export async function getPilotDataQualityIntakeReport(paramsInput: {
   return fetchJson(
     "/api/analytics/data-quality/intake-report",
     params,
-    "Greška pri učitavanju pilot izveštaja"
+    "Greška pri učitavanju pilot izveštaja",
+    undefined,
+    pilotDataQualityIntakeResponseSchema,
   );
 }
 
@@ -1176,7 +1210,9 @@ export async function getSupplierDecisionDurableReport(paramsInput: {
   return fetchJson(
     "/api/analytics/reports/supplier-decision",
     params,
-    "Greška pri učitavanju izveštaja dobavljača"
+    "Greška pri učitavanju izveštaja dobavljača",
+    undefined,
+    durableAnalyticsReportResponseSchema,
   );
 }
 
@@ -1201,7 +1237,9 @@ export async function getPilotIntakeDurableReport(paramsInput: {
   return fetchJson(
     "/api/analytics/reports/pilot-intake",
     params,
-    "Greška pri učitavanju trajnog pilot izveštaja"
+    "Greška pri učitavanju trajnog pilot izveštaja",
+    undefined,
+    durableAnalyticsReportResponseSchema,
   );
 }
 
@@ -1430,7 +1468,7 @@ export async function getInventoryStoreComparison(options?: {
     "/api/analytics/inventory/store-comparison",
     params,
     "Greska pri ucitavanju poredenja prodavnica",
-    undefined,
+    inventoryStoreComparisonResponseSchema,
     options?.signal,
   );
 }
@@ -1453,7 +1491,7 @@ export async function getInventoryActionSuggestions(options?: {
     params,
     "Greska pri ucitavanju predloga akcije",
     undefined,
-    undefined,
+    inventoryActionWorkflowResponseSchema,
     options?.signal,
   );
 }
@@ -1500,7 +1538,9 @@ export async function getAnalyticsActions(
   return fetchJson<AnalyticsActionListResponse>(
     "/api/analytics/actions",
     params,
-    "Greška pri učitavanju liste akcija"
+    "Greška pri učitavanju liste akcija",
+    undefined,
+    analyticsActionListResponseSchema,
   );
 }
 
@@ -1508,7 +1548,9 @@ export async function getAnalyticsActionCounts(): Promise<AnalyticsActionCounts>
   return fetchJson<AnalyticsActionCounts>(
     "/api/analytics/actions/counts",
     undefined,
-    "Greška pri učitavanju brojača akcija"
+    "Greška pri učitavanju brojača akcija",
+    undefined,
+    analyticsActionCountsResponseSchema,
   );
 }
 
@@ -1529,7 +1571,9 @@ export async function getAnalyticsActionOutcomeSummary(
   return fetchJson<AnalyticsActionOutcomeSummaryResponse>(
     "/api/analytics/actions/outcomes/summary",
     params,
-    "Greška pri učitavanju sažetka ishoda akcija"
+    "Greška pri učitavanju sažetka ishoda akcija",
+    undefined,
+    analyticsActionOutcomeSummaryResponseSchema,
   );
 }
 
@@ -1697,7 +1741,7 @@ export async function getForecast(options?: {
     params,
     "Greska pri ucitavanju forecast podataka",
     undefined,
-    undefined,
+    inventorySignalResponseSchema,
     options?.signal,
   );
 }
@@ -1750,7 +1794,7 @@ export async function getSizeCurve(options?: {
     params,
     "Greska pri ucitavanju size curve",
     undefined,
-    undefined,
+    inventorySignalResponseSchema,
     options?.signal,
   );
 }
@@ -1782,7 +1826,7 @@ export async function getRebalanceSuggestions(options?: {
     params,
     "Greska pri ucitavanju predloga za redistribuciju",
     undefined,
-    undefined,
+    inventorySignalResponseSchema,
     options?.signal,
   );
 }
@@ -1812,7 +1856,7 @@ export async function getInventoryAlerts(options?: {
     params,
     "Greska pri ucitavanju inventory alertova",
     undefined,
-    undefined,
+    inventorySignalResponseSchema,
     options?.signal,
   );
 }

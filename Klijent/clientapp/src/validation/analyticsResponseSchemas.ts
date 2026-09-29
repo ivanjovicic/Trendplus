@@ -1135,3 +1135,251 @@ export const inventoryDetailResponseSchema = z.object({
   recommendationAllowed: z.boolean(),
   history: z.array(z.unknown()),
 }).passthrough();
+
+// Tier-1 composed surfaces share the same runtime meta/context/provenance
+// contract. The page fields below deliberately validate only the stable
+// business boundary; passthrough keeps additive endpoint fields compatible.
+const tier1MetaEnvelope = { meta: analyticsResponseMetaSchema };
+
+export const dashboardAdvancedResponseSchema = z.object({
+  generatedAtUtc: validDate,
+  cards: z.array(z.object({
+    key: z.string(),
+    value: finiteNumber,
+    status: z.string(),
+  }).passthrough()),
+  insights: z.array(z.unknown()),
+  actions: z.array(z.unknown()),
+  validations: z.array(z.unknown()),
+  ...tier1MetaEnvelope,
+}).passthrough();
+
+export const dashboardBootstrapResponseSchema = z.object({
+  errors: z.array(z.string()),
+  ...tier1MetaEnvelope,
+}).passthrough();
+
+export const productDecisionCenterResponseSchema = z.object({
+  generatedAtUtc: validDate,
+  periodFromUtc: validDate,
+  periodToUtc: validDate,
+  totalRows: nonNegativeInteger,
+  rows: z.array(z.unknown()),
+  ...tier1MetaEnvelope,
+}).passthrough();
+
+export const decisionBoardAggregateResponseSchema = z.object({
+  generatedAtUtc: validDate,
+  periodFromUtc: validDate.nullable().optional(),
+  periodToUtc: validDate.nullable().optional(),
+  warnings: z.array(z.string()),
+  metrics: z.array(z.unknown()),
+  sourceStates: z.array(z.unknown()),
+  sections: z.array(z.unknown()),
+  ...tier1MetaEnvelope,
+}).passthrough();
+
+export const dataQualityIssueListResponseSchema = z.object({
+  page: nonNegativeInteger,
+  pageSize: nonNegativeInteger,
+  total: nonNegativeInteger,
+  items: z.array(z.unknown()),
+  ...tier1MetaEnvelope,
+}).passthrough();
+
+export const dataQualityHealthResponseSchema = z.object({
+  generatedAt: validDate,
+  lookbackDays: nonNegativeInteger,
+  windowFrom: validDate,
+  windowTo: validDate,
+  orphanArticleCount: nonNegativeInteger,
+  totalRevenue: finiteNumber,
+  hasRevenueEvidence: z.boolean(),
+  missingCostRevenue: finiteNumber,
+  missingCostRevenueSharePct: nullableNonNegativePercentage,
+  unknownSupplierRevenue: finiteNumber,
+  unknownSupplierRevenueSharePct: nullableNonNegativePercentage,
+  score: nonNegativePercentage,
+  scoreStatus: z.string(),
+  scoreSummary: z.string(),
+  thresholds: z.object({
+    orphanArticleCount: nonNegativeInteger,
+    missingCostRevenueSharePct: nonNegativePercentage,
+    unknownSupplierRevenueSharePct: nonNegativePercentage,
+  }).passthrough(),
+  ...tier1MetaEnvelope,
+}).passthrough();
+
+export const dataQualityTopOffendersResponseSchema = z.object({
+  issueType: z.string(),
+  limit: nonNegativeInteger,
+  count: nonNegativeInteger,
+  items: z.array(z.unknown()),
+  ...tier1MetaEnvelope,
+}).passthrough();
+
+export const dataQualityTrendResponseSchema = z.object({
+  days: nonNegativeInteger,
+  dataScope: z.string(),
+  points: z.array(z.object({
+    date: validDate,
+    missingCostRevenueSharePct: nullableNonNegativePercentage,
+    unknownSupplierRevenueSharePct: nullableNonNegativePercentage,
+    orphanArticleCount: nonNegativeInteger,
+  }).passthrough()),
+  ...tier1MetaEnvelope,
+}).passthrough();
+
+export const pilotDataQualityIntakeResponseSchema = z.object({
+  generatedAtUtc: validDate,
+  dataScope: z.string(),
+  readinessScore: nonNegativePercentage,
+  readinessStatus: z.string(),
+  loadedData: z.object({
+    articlesCount: nonNegativeInteger,
+    saleItemsCount: nonNegativeInteger,
+    receiptsCount: nonNegativeInteger,
+    suppliersCount: nonNegativeInteger,
+    storesCount: nonNegativeInteger,
+    firstSaleDate: validDate.nullable(),
+    lastSaleDate: validDate.nullable(),
+  }).passthrough(),
+  issues: z.object({
+    missingSupplierCount: nonNegativeInteger,
+    missingCostCount: nonNegativeInteger,
+    missingCategoryCount: nonNegativeInteger,
+    saleWithoutArticleCount: nonNegativeInteger,
+    zeroOrNegativePriceCount: nonNegativeInteger,
+    missingSupplierNameCount: nonNegativeInteger,
+  }).passthrough(),
+  impact: z.object({
+    revenueWithoutCostPercent: nullableNonNegativePercentage,
+    articlesWithoutSupplierPercent: nullableNonNegativePercentage,
+    recommendationsBlockedCount: nonNegativeInteger,
+    ignoredRowsCount: nonNegativeInteger,
+    insufficientSignalCount: nonNegativeInteger,
+  }).passthrough(),
+  recommendedActions: z.array(z.string()),
+  ...tier1MetaEnvelope,
+}).passthrough();
+
+const durableReportPeriodSchema = z.object({
+  fromUtc: validDate.nullable().optional(),
+  toUtc: validDate.nullable().optional(),
+  label: z.string(),
+}).passthrough();
+
+export const durableAnalyticsReportResponseSchema = z.object({
+  reportId: z.string(),
+  generatedAtUtc: validDate.nullable(),
+  period: durableReportPeriodSchema,
+  rows: z.array(z.unknown()),
+  sections: z.array(z.unknown()),
+  payload: z.record(z.string(), z.unknown()),
+  ...tier1MetaEnvelope,
+}).passthrough();
+
+export const inventorySignalResponseSchema = z.object({
+  generatedAtUtc: validDate,
+  totalCount: nonNegativeInteger,
+  returnedCount: nonNegativeInteger.nullable().optional(),
+  totalMatchingCount: nonNegativeInteger.nullable().optional(),
+  isTruncated: z.boolean().nullable().optional(),
+  snapshotAvailable: z.boolean(),
+  snapshotFreshnessUtc: validDate.nullable().optional(),
+  snapshotFreshnessStatus: z.string().nullable().optional(),
+  warning: z.string().nullable().optional(),
+  items: z.array(z.unknown()),
+  ...tier1MetaEnvelope,
+}).passthrough();
+
+export const inventoryStoreComparisonResponseSchema = z.object({
+  generatedAtUtc: validDate,
+  stores: z.array(z.object({
+    storeId: nonNegativeInteger,
+    storeName: z.string(),
+    totalSku: nonNegativeInteger,
+    totalOnHand: finiteNumber,
+    lowStockCount: nonNegativeInteger,
+    outOfStockCount: nonNegativeInteger,
+    criticalCount: nonNegativeInteger,
+    stale90PlusCount: nonNegativeInteger,
+    estimatedValue: finiteNumber,
+    avgUnitsPerSku: finiteNumber,
+    healthySharePct: nonNegativePercentage,
+  }).passthrough()),
+  sharedRisks: z.array(z.object({
+    skuKey: z.string(),
+    label: z.string(),
+    storeCoverage: nonNegativeInteger,
+    impactedStores: z.array(z.string()),
+  }).passthrough()),
+  summary: z.string(),
+  ...tier1MetaEnvelope,
+}).passthrough();
+
+export const inventoryActionWorkflowResponseSchema = z.object({
+  generatedAtUtc: validDate,
+  pendingCount: nonNegativeInteger,
+  approvedCount: nonNegativeInteger,
+  deferredCount: nonNegativeInteger,
+  closedCount: nonNegativeInteger,
+  items: z.array(z.unknown()),
+  ...tier1MetaEnvelope,
+}).passthrough();
+
+export const analyticsActionListResponseSchema = z.object({
+  items: z.array(z.unknown()),
+  totalCount: nonNegativeInteger,
+  page: nonNegativeInteger,
+  pageSize: nonNegativeInteger,
+  totalPages: nonNegativeInteger,
+  ...tier1MetaEnvelope,
+}).passthrough();
+
+export const analyticsActionCountsResponseSchema = z.object({
+  new: nonNegativeInteger,
+  accepted: nonNegativeInteger,
+  deferred: nonNegativeInteger,
+  rejected: nonNegativeInteger,
+  done: nonNegativeInteger,
+  p1Open: nonNegativeInteger,
+  ...tier1MetaEnvelope,
+}).passthrough();
+
+export const analyticsActionOutcomeSummaryResponseSchema = z.object({
+  meta: analyticsResponseMetaSchema.extend({
+    generatedAtUtc: validDate,
+    sampleSize: nonNegativeInteger,
+    measuredSampleSize: nonNegativeInteger,
+  }).passthrough(),
+  totals: z.object({
+    createdCount: nonNegativeInteger,
+    closedCount: nonNegativeInteger,
+    openCount: nonNegativeInteger,
+  }).passthrough(),
+  impact: z.object({
+    expectedImpactRsd: nullableNumber.optional(),
+    measuredImpactRsd: nullableNumber.optional(),
+    measuredImpactSampleCount: nonNegativeInteger,
+  }).passthrough(),
+}).passthrough();
+
+export const supplierDecisionHubResponseSchema = z.object({
+  generatedAtUtc: validDate.optional(),
+  periodFromUtc: validDate.nullable().optional(),
+  periodToUtc: validDate.nullable().optional(),
+  items: z.array(z.unknown()).optional(),
+  totalCount: nonNegativeInteger.optional(),
+  page: nonNegativeInteger.optional(),
+  pageSize: nonNegativeInteger.optional(),
+  ...tier1MetaEnvelope,
+}).passthrough();
+
+export const decisionPulseResponseSchema = z.object({
+  generatedAtUtc: validDate,
+  periodFromUtc: validDate.nullable(),
+  periodToUtc: validDate.nullable(),
+  items: z.array(z.unknown()),
+  meta: analyticsResponseMetaSchema,
+}).passthrough();

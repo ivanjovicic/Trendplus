@@ -21,6 +21,7 @@ describe("Inventory data-scope API contract", () => {
       return {
         ok: true,
         json: async () => ({
+          generatedAtUtc: "2026-05-26T12:00:00Z",
           totalSku: 0,
           totalOnHand: 0,
           lowStockCount: 0,
@@ -43,6 +44,14 @@ describe("Inventory data-scope API contract", () => {
           abc: [],
           topAgedItems: [],
           topCapitalLockedItems: [],
+          snapshotAvailable: true,
+          pendingCount: 0,
+          approvedCount: 0,
+          deferredCount: 0,
+          closedCount: 0,
+          stores: [],
+          sharedRisks: [],
+          summary: "Nema podataka.",
           meta: { success: true, dataQualityStatus: "insufficient_evidence" },
         }),
       };
