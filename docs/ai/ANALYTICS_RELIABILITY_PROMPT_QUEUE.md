@@ -2,14 +2,14 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ492 (IN_PROGRESS in this workspace)
+Current READY prompt: none
 Routing reconciliation 2026-09-29: any workspace still showing `RQ466` as `Current READY` is stale. `RQ466` was `DONE` on current main; `RQ502` was the primary READY prompt and is now `DONE`. Registration evidence: `.ai/runs/2026-09-29-RQ502-registration-evidence.md`.
 Owner claim 2026-09-29: after fresh `origin/main` sync to `2d85df0f13dac4e8dcb463656515d61ea32e0021`, RQ502 remained READY, RQ494 was verified DONE, and no conflicting lock/branch/PR owner was found for the Operations store-filter scope. RQ502 moved `READY -> IN_PROGRESS` in this workspace. Local lock: `.ai/task-locks/RQ502-codex.lock.md`.
 Owner promotion/claim 2026-09-29: idle recovery refreshed `origin/main` to `37d6f037a3ac0102392791e21089b9c87ff73e0f`, verified RQ489 DONE, and found RQ491 blocked by the exclusive PARTIAL Q83 Pre/Post SQL owner. RQ492 is dependency-complete and collision-safe for the Pre-Nivelacija store-grain surface, and moved `WAITING -> READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ492-codex.lock.md`.
 Routing repair 2026-09-29: RQ495's stale primary summary is reconciled to DONE to match its synchronized completion evidence and current-main delivery; the prompt is not reopened.
 ## RQ492 - Pre-Nivelacija: make SKU + store the actionable decision grain
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Feature family: pre-nivelacija-store-grain
 Parallel-safe: no
@@ -20,6 +20,24 @@ Full prompt: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADD
 - Dependency RQ489 is DONE on current main.
 - RQ491 is not claimed because Q83 remains the PARTIAL exclusive owner for the overlapping Pre/Post SQL/endpoint family.
 - Scope is limited to Pre-Nivelacija backend/frontend store-grain identity, store filtering/facets, URL/export/detail parity and focused proof.
+
+### Completion note
+
+- Date: 2026-09-29
+- Status: DONE
+- Completion: Pre-Nivelacija now preserves `ArtikalId + StoreId`, uses store-aware demand/evidence, keeps store identity through filters/facets/URL/export/detail/queues, and fails closed when store identity is missing.
+- Changed files: Pre-Nivelacija backend DTO/endpoint/cache, frontend page/client/schema/tests, queue/roadmap metadata and `.ai/runs/2026-09-29-RQ492-evidence.md`.
+- Checks run: focused backend 25/25 and 46/46; focused frontend 75/75; analytics guardrails; API/backend builds; typecheck; production build; governance validators; `git diff --check`.
+- Checks not run: live PostgreSQL, authenticated browser/export and remote CI because no assigned environment was available and none was a named RQ492 gate.
+- Run log: `.ai/runs/2026-09-29-RQ492-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `fdd9d8165b48481daa1b6e84134dfe09b82da980`
+- Main verification: fresh `git fetch origin` confirmed exact `origin/main` equality and `git merge-base --is-ancestor fdd9d8165b48481daa1b6e84134dfe09b82da980 origin/main` passed.
+- Missed: none known within RQ492 scope.
+- Follow-up: RQ491 remains WAITING behind Q83; later Pre-Nivelacija scoring/scenario truth remains RQ493.
+- Residual risk: live PostgreSQL, browser and remote CI evidence remain external follow-up.
+- Prompt defect / scope repair: none for RQ492; stale RQ495 queue truth was reconciled during routing and not reopened.
 
 ## RQ502 - Reload and validate Operations store options against the active dataScope
 
