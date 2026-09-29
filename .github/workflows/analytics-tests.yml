@@ -318,7 +318,7 @@ jobs:
           dotnet test Api.Tests/Api.Tests.csproj
           --no-build
           --configuration Release
-          --filter FullyQualifiedName~SupplierShoeTypeIndependentOracleIntegrationTests
+          --filter "FullyQualifiedName=Trendplus2.Tests.SupplierShoeTypeIndependentOracleIntegrationTests.SharedFixture_EndpointsMatchIndependentOracle_AllScope|FullyQualifiedName=Trendplus2.Tests.SupplierShoeTypeIndependentOracleIntegrationTests.SharedFixture_EndpointsMatchIndependentOracle_ImportedScope|FullyQualifiedName=Trendplus2.Tests.SupplierShoeTypeIndependentOracleIntegrationTests.SharedFixture_EndpointsMatchIndependentOracle_ExistingScopeAndStore|FullyQualifiedName=Trendplus2.Tests.SupplierShoeTypeIndependentOracleIntegrationTests.SharedFixture_HeaderOriginWinsOverCurrentArticleOrigin"
           --logger "trx;LogFileName=rq447-oracle.trx"
           --results-directory TestResults/rq447-oracle
 

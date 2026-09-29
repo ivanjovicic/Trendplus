@@ -1576,7 +1576,7 @@ Extend the existing RQ407 fixture and RQ412 manifest; do not create a second see
 
 ## RQ447 - Execute the live oracle and close the OP2 runtime seams
 
-Status: DONE
+Status: IN_PROGRESS
 Ready after: PostgreSQL integration host is available and RQ446, RQ456 and RQ457 are DONE
 Priority: P0
 Type: integration-tests/evidence
@@ -1623,6 +1623,8 @@ Run the four SupplierShoeTypeIndependentOracleIntegrationTests cases on PostgreS
 Completion note 2026-09-26: `RQ447` certification infrastructure, bootstrap fixes and OP2 seam reproducers were delivered to `main` in final SHA `dec288aedb39f689d65e0f08b9915fc9acd749a9`. GitHub Actions run `36261497901` has a successful dedicated certification job: oracle `4/4`, all-eight-routes `1/1`, OP2 `4/4`, all with zero skipped. Artifact: `rq447-certification-dec288aedb39f689d65e0f08b9915fc9acd749a9` (`10912332048`). The parent workflow remains red because the separate Complete backend analytics suite reports 45 broad failures, including missing `PerformanceLogs` bootstrap; no overall-green claim is made. Run log: `.ai/runs/2026-09-26-RQ447-evidence.md`. Evidence state: synchronized. RQ447 is `DONE` for its dedicated certification acceptance.
 
 Superseded revalidation note 2026-09-26: dedicated run `36262400467` was temporarily PARTIAL after an explicit startup `db_warmup` 503. The bounded retry was then validated by fresh runs `36262787853` and `36263873033`, which passed oracle 4/4, all-eight-routes 1/1, OP2 4/4, frontend seam proof and artifact upload with zero skips. This historical PARTIAL result does not override the current `DONE` status. Run log: `.ai/runs/2026-09-26-RQ447-evidence.md`. Evidence state: synchronized.
+
+Owner re-entry claim 2026-09-29: current-main workflow `36535601283` exposed a stale exact-count boundary: the broad class filter executed 5 passed oracle tests because the later attribution-mutation test shares the class. RQ447 is re-entered only to select the four named oracle cases required by this certification gate and capture a fresh zero-skip run. Local lock: `.ai/task-locks/RQ447-codex.lock.md`.
 
 
 ---
