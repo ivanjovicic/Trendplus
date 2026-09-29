@@ -10,12 +10,11 @@ namespace Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "source_timestamp_basis",
-                table: "prodaja_zaglavlje",
-                type: "character varying(64)",
-                maxLength: 64,
-                nullable: true);
+            migrationBuilder.Sql(
+                """
+                ALTER TABLE IF EXISTS prodaja_zaglavlje
+                    ADD COLUMN IF NOT EXISTS source_timestamp_basis character varying(64);
+                """);
         }
 
         /// <inheritdoc />

@@ -1451,6 +1451,7 @@ public static class DatabaseInitializer
                 nacin_placanja  character varying(100),
                 id_objekat      integer,
                 korisnik_ime    character varying(200),
+                source_timestamp_basis character varying(64),
                 data_origin     character varying(32) NOT NULL DEFAULT 'existing'
             );
 
@@ -1467,6 +1468,7 @@ public static class DatabaseInitializer
 
             -- Prodaja operational columns (idempotent)
             ALTER TABLE IF EXISTS prodaja_zaglavlje ADD COLUMN IF NOT EXISTS korisnik_ime character varying(200);
+            ALTER TABLE IF EXISTS prodaja_zaglavlje ADD COLUMN IF NOT EXISTS source_timestamp_basis character varying(64);
             ALTER TABLE IF EXISTS prodaja_stavke    ADD COLUMN IF NOT EXISTS nabavna_cena decimal(18,2);
             ALTER TABLE IF EXISTS prodaja_stavke    ADD COLUMN IF NOT EXISTS supplier_id_at_sale integer;
             ALTER TABLE IF EXISTS prodaja_stavke    ADD COLUMN IF NOT EXISTS shoe_type_id_at_sale integer;

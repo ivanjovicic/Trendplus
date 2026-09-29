@@ -3,21 +3,29 @@ using Domain.Model;
 using Domain.Model.Prodaja;
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using System.Diagnostics.CodeAnalysis;
 using Xunit;
 
 namespace Api.Tests;
 
-public sealed class DataQualityIssuesHandlerTests
+[Trait("Category", "Integration")]
+public sealed class DataQualityIssuesHandlerTests : IClassFixture<PostgresContainerFixture>
 {
+    private readonly PostgresContainerFixture _fixture;
+
+    public DataQualityIssuesHandlerTests(PostgresContainerFixture fixture)
+    {
+        _fixture = fixture;
+    }
+
     [Fact]
     public async Task Handle_ReturnsMissingSupplier_Items()
     {
-        if (!TryCreateContexts(out var trendDb, out var analyticsDb))
+        var contexts = await TryCreateContextsAsync();
+        if (contexts is null)
         {
             return;
         }
+        var (trendDb, analyticsDb) = contexts.Value;
 
         var uniqueId = CreateUniqueId();
         var tipId = uniqueId + 100;
@@ -76,10 +84,12 @@ public sealed class DataQualityIssuesHandlerTests
     [Fact]
     public async Task Handle_ReturnsMissingShoeType_Items()
     {
-        if (!TryCreateContexts(out var trendDb, out var analyticsDb))
+        var contexts = await TryCreateContextsAsync();
+        if (contexts is null)
         {
             return;
         }
+        var (trendDb, analyticsDb) = contexts.Value;
 
         var uniqueId = CreateUniqueId() + 10_000;
         var supplierId = uniqueId + 100;
@@ -121,10 +131,12 @@ public sealed class DataQualityIssuesHandlerTests
     [Fact]
     public async Task Handle_ReturnsInvalidName_Items()
     {
-        if (!TryCreateContexts(out var trendDb, out var analyticsDb))
+        var contexts = await TryCreateContextsAsync();
+        if (contexts is null)
         {
             return;
         }
+        var (trendDb, analyticsDb) = contexts.Value;
 
         var uniqueId = CreateUniqueId() + 20_000;
         var supplierId = uniqueId + 100;
@@ -183,10 +195,12 @@ public sealed class DataQualityIssuesHandlerTests
     [Fact]
     public async Task Handle_FiltersLowRevenueNoise_WhenMinSalesSpecified()
     {
-        if (!TryCreateContexts(out var trendDb, out var analyticsDb))
+        var contexts = await TryCreateContextsAsync();
+        if (contexts is null)
         {
             return;
         }
+        var (trendDb, analyticsDb) = contexts.Value;
 
         var uniqueId = CreateUniqueId() + 40_000;
         var tipId = uniqueId + 100;
@@ -244,10 +258,12 @@ public sealed class DataQualityIssuesHandlerTests
     [Fact]
     public async Task Handle_ScopesSales30dByDataScope()
     {
-        if (!TryCreateContexts(out var trendDb, out var analyticsDb))
+        var contexts = await TryCreateContextsAsync();
+        if (contexts is null)
         {
             return;
         }
+        var (trendDb, analyticsDb) = contexts.Value;
 
         var uniqueId = CreateUniqueId() + 50_000;
         var importedProductId = uniqueId + 1;
@@ -396,10 +412,12 @@ public sealed class DataQualityIssuesHandlerTests
     [Fact]
     public async Task Handle_SupportsPagination_AndSorting()
     {
-        if (!TryCreateContexts(out var trendDb, out var analyticsDb))
+        var contexts = await TryCreateContextsAsync();
+        if (contexts is null)
         {
             return;
         }
+        var (trendDb, analyticsDb) = contexts.Value;
 
         var uniqueId = CreateUniqueId() + 30_000;
         var tipId = uniqueId + 100;
@@ -458,51 +476,32 @@ public sealed class DataQualityIssuesHandlerTests
         }
     }
 
-    private static bool TryCreateContexts(
-        [NotNullWhen(true)] out TrendplusDbContext? trendDb,
-        [NotNullWhen(true)] out AnalyticsDbContext? analyticsDb)
+    private async Task<(TrendplusDbContext TrendDb, AnalyticsDbContext AnalyticsDb)?>
+        TryCreateContextsAsync()
     {
-        trendDb = null;
-        analyticsDb = null;
-
-        var configuration = new ConfigurationBuilder()
-            .SetBasePath(AppContext.BaseDirectory)
-            .AddJsonFile("appsettings.json", optional: false)
-            .AddJsonFile("appsettings.Development.json", optional: true)
-            .Build();
-
-        if (!IntegrationDbGuard.TryResolveConnectionString(
-                configuration.GetConnectionString("DefaultConnection"),
-                out var trendConnection))
+        if (!_fixture.IsAvailable)
         {
-            return false;
+            return null;
         }
 
-        if (!IntegrationDbGuard.TryResolveConnectionString(
-                configuration.GetConnectionString("AnalyticsConnection") ?? trendConnection,
-                out var analyticsConnection))
+        var connectionString = await _fixture.TryCreateDatabaseConnectionStringAsync(
+            $"tp_dq_handler_{Guid.NewGuid():N}");
+        if (string.IsNullOrWhiteSpace(connectionString))
         {
-            return false;
-        }
-
-        if (!IntegrationDbGuard.TryEnsureAvailable(
-            ("DefaultConnection", trendConnection),
-            ("AnalyticsConnection", analyticsConnection)))
-        {
-            return false;
+            return null;
         }
 
         var trendOptions = new DbContextOptionsBuilder<TrendplusDbContext>()
-            .UseNpgsql(trendConnection)
+            .UseNpgsql(connectionString)
             .Options;
 
         var analyticsOptions = new DbContextOptionsBuilder<AnalyticsDbContext>()
-            .UseNpgsql(analyticsConnection)
+            .UseNpgsql(connectionString)
             .Options;
 
-        trendDb = new TrendplusDbContext(trendOptions);
-        analyticsDb = new AnalyticsDbContext(analyticsOptions);
-        return true;
+        var trendDb = new TrendplusDbContext(trendOptions);
+        await trendDb.Database.EnsureCreatedAsync();
+        return (trendDb, new AnalyticsDbContext(analyticsOptions));
     }
 
     private static int CreateUniqueId()
