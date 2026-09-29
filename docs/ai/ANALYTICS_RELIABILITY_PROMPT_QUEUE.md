@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ503 (IN_PROGRESS in this workspace)
+Current READY prompt: none
 Routing reconciliation 2026-09-29: any workspace still showing `RQ466` as `Current READY` is stale. `RQ466` was `DONE` on current main; `RQ502` was the primary READY prompt and is now `DONE`. Registration evidence: `.ai/runs/2026-09-29-RQ502-registration-evidence.md`.
 Owner claim 2026-09-29: after fresh `origin/main` sync to `2d85df0f13dac4e8dcb463656515d61ea32e0021`, RQ502 remained READY, RQ494 was verified DONE, and no conflicting lock/branch/PR owner was found for the Operations store-filter scope. RQ502 moved `READY -> IN_PROGRESS` in this workspace. Local lock: `.ai/task-locks/RQ502-codex.lock.md`.
 Owner promotion/claim 2026-09-29: idle recovery refreshed `origin/main` to `37d6f037a3ac0102392791e21089b9c87ff73e0f`, verified RQ489 DONE, and found RQ491 blocked by the exclusive PARTIAL Q83 Pre/Post SQL owner. RQ492 is dependency-complete and collision-safe for the Pre-Nivelacija store-grain surface, and moved `WAITING -> READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ492-codex.lock.md`.
@@ -22,6 +22,24 @@ Full prompt: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADD
 - Dependency RQ502 is DONE on current main.
 - RQ501 remains owner-decision gated and does not block this comparator contract once the nullable field semantics are preserved.
 - No active lock, branch or PR owner conflicts with Shoe Type/Color nullable sorting; local lock: `.ai/task-locks/RQ503-codex.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-29
+- Status: DONE
+- Completion: Shoe Type and Color nullable numeric metrics now treat null/non-finite values as unavailable and keep them last in both sort directions. Legitimate negative values retain numeric ordering, URL sort state is preserved, and status/score/revenue tie-breakers remain deterministic.
+- Changed files: shared nullable comparator and tests, Shoe Type/Color sort implementations, one RQ502-valid Shoe Type URL fixture, queue/roadmap metadata and `.ai/runs/2026-09-29-RQ503-evidence.md`.
+- Checks run: focused frontend 81/81; typecheck; analytics guardrails; production build; governance validators; `git diff --check`.
+- Checks not run: authenticated browser/session, live PostgreSQL/API and remote CI because no assigned environment was available and none was a named RQ503 gate.
+- Run log: `.ai/runs/2026-09-29-RQ503-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `810b07ecb6137c47707b2e0ee2db841484eb3a65`
+- Main verification: fresh `git fetch origin` confirmed exact `HEAD`/`origin/main` equality at `810b07ecb6137c47707b2e0ee2db841484eb3a65`; `git merge-base --is-ancestor 810b07ecb6137c47707b2e0ee2db841484eb3a65 origin/main` passed.
+- Missed: no known RQ503 acceptance item; live/browser/remote proof is recorded as not run.
+- Follow-up: RQ491 remains WAITING behind Q83; RQ504 is the next same-page follow-up after RQ503.
+- Residual risk: existing Vite large-chunk warning remains; nullable ordering is intentionally corrected from the prior numeric-sentinel behavior.
+- Prompt defect / scope repair: repaired one stale test fixture to provide a valid store option under the existing RQ502 scope-validation contract; no product scope was expanded.
 ## RQ492 - Pre-Nivelacija: make SKU + store the actionable decision grain
 
 Status: DONE
