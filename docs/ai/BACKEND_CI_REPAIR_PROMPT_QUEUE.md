@@ -226,10 +226,11 @@ Run `36270728235` still contained failures across Access import FK guards, lost-
 - Completion: the exact Release suite completed with `1540 total / 1491 passed / 39 skipped / 10 failed`. The cached analytics residual was isolated and the fixture/class is now green at `17/17`; the broad residual remains provider/order/environment-sensitive.
 - Changed files: `Api.Tests/CachedAnalyticsCriticalEndpointsIntegrationTests.cs`, queue/roadmap/evidence files.
 - Contract/runtime behavior changed: no production runtime behavior. The test host now uses an isolated Analytics InMemory provider and seeds required dimensions; the journal probe now respects the canonical article-origin inventory scope while preserving the no-fake-opening-stock assertion.
-- Checks run: exact broad suite red; combined residual run cancelled after host/order sensitivity; focused cached analytics test `17/17`; `git diff --check` and governance checks remain to be run after final doc edits.
+- Checks run: exact broad suite red; combined residual run cancelled after host/order sensitivity; focused cached analytics test `17/17`; `git diff --check` and queue/planning governance checks pass.
 - Checks not run: fresh exact-main green suite and remote GitHub Actions inspection; no remote connector result was available.
 - Run log: `.ai/runs/2026-09-29-BCI14-evidence.md`
 - Evidence state: pending until delivery verification completes.
+- Main commit SHA: `33f6a629` (implementation commit; final evidence verification follows).
 - Delivery mode: direct-main
 - Missed: remaining Neon credential and provider/order lifecycle residuals are not yet assigned to one final root cause.
 - Follow-up: rerun the exact broad suite when the host/CI topology can complete, then group residual failures by provider, fixture and host lifecycle; keep BCI10 open.

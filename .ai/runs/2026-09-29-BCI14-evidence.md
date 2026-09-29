@@ -4,9 +4,9 @@ Date: 2026-09-29
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct delivery
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: `33f6a629`
+Main verification: pending final verification
+Evidence state: pending final verification
 
 ## What was done
 - Claimed BCI14 after BCI11-BCI13 were confirmed DONE and repaired the stale queue/roadmap pointer.
@@ -39,7 +39,7 @@ Evidence state: pending
 - Combined residual filter over the provider-sensitive families -> cancelled after approximately four minutes without a summary; output showed `CachedAnalyticsCriticalEndpointsIntegrationTests` entering an order/host-sensitive failure cluster.
 - `dotnet test Api.Tests/Api.Tests.csproj --configuration Release --no-restore --filter "FullyQualifiedName~CachedAnalyticsCriticalEndpointsIntegrationTests.CachedInventoryList_RespectsArticleAndJournalDataScope"` -> pass, `1/1`.
 - `dotnet test Api.Tests/Api.Tests.csproj --configuration Release --no-build --filter "FullyQualifiedName~CachedAnalyticsCriticalEndpointsIntegrationTests"` -> pass, `17/17`.
-- `git diff --check` -> pending final documentation edit.
+- `git diff --check` -> pass.
 
 ## Validation not run
 - Remote CI/GitHub Actions -> not inspected; no connector result was available in this run.
