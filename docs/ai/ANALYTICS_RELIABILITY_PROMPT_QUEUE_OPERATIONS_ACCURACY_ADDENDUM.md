@@ -9,6 +9,7 @@ Owner promotion/claim 2026-09-29: idle recovery verified `RQ494` DONE on current
 Owner completion 2026-09-29: `RQ495` moved IN_PROGRESS -> DONE after all Supplier/Shoe Type list, detail, Supplier Hub and snapshot-comparison readers were changed from article-level minimum cost to exact `BatchId + ProdajaStavkaId` lookup. Sale-line identity is preserved through grouped inputs, historical cost remains first, exact snapshot remains second, product fallback remains later, and existing batch-id cache keys remain sufficient. Focused proof: 27/27 owner tests and 57/57 analytics report contract tests; governance validators and diff check pass. Run log: `.ai/runs/2026-09-29-RQ495-evidence.md`. Evidence state: synchronized after main delivery.
 Owner promotion/claim 2026-09-29: idle recovery verified `RQ494` and `RQ495` DONE on current `origin/main`, no active Shoe Type/`AllEndpoints.cs` lock or branch/PR owner remains, and `RQ496` is dependency-complete and collision-safe; `RQ496` moved WAITING -> READY -> IN_PROGRESS in this workspace. Local lock `.ai/task-locks/RQ496-codex.lock.md`.
 Owner completion 2026-09-29: `RQ496` moved IN_PROGRESS -> DONE and was delivered directly to `main` in `75f924040fa26f47573df80144919673cbcd4f97`. Shoe Type now exposes signed net-sales share basis/numerator/denominator and fail-closed denominator state; table/chart/detail/recommendation surfaces use the same signed semantics, arbitrary table sorts no longer imply business rank, and negative previous revenue is not labeled `Novo`. Focused proof: backend engine 16/16, Shoe Type unit 7/7, frontend signed-share utility 27/27, Shoe Type/presentation/schema tests 57/57, guardrails/typecheck and API build pass. Run log: `.ai/runs/2026-09-29-RQ496-evidence.md`. Evidence state: synchronized.
+Owner completion 2026-09-29: `RQ497` moved IN_PROGRESS -> DONE and was delivered directly to `main`. Daily Sales now declares source timestamp basis and business timezone, converts true UTC instants with DST-aware timezone rules, preserves legacy Access wall-clock semantics, and fails closed for unknown basis while retaining full-day totals. Focused backend proof: 15/15; frontend Daily Sales/schema proof: 64/64; analytics guardrails/typecheck and API build pass. Live PostgreSQL migration/application and authenticated browser proof were not run because no isolated database or session was assigned. Run log: `.ai/runs/2026-09-29-RQ497-evidence.md`. Evidence state: synchronized after main delivery. Current RQ READY returned to `none`.
 Owner promotion/claim 2026-09-28: idle recovery verified `RQ390`, `RQ432` and `RQ456` DONE on current `origin/main`, no active Pre-Nivelacija endpoint/model/page owner or conflicting lock/branch/PR, and `RQ489` is dependency-complete. `RQ489` moved WAITING -> READY -> IN_PROGRESS in this workspace; local lock `.ai/task-locks/RQ489-codex.lock.md`.
 Owner completion 2026-09-28: `RQ489` moved IN_PROGRESS -> DONE and was delivered directly to `main` in `63787f0b24a946e3ce8efa1abb1fa8f1509d7c1b`. Pre-Nivelacija now uses the canonical trimmed/case-insensitive DUG/KOREKCIJA receipt population, keeps positive-net signed returns actionable, computes recency from the latest positive retail sale, exposes receipt/return/recency provenance, and bumps the cache/formula version to v6. Focused proof: backend 44/44; frontend 74/74; analytics guardrails, typecheck and production build pass; governance validators pass. Live PostgreSQL endpoint execution was not run because no isolated test database was assigned. Run log: `.ai/runs/2026-09-28-RQ489-evidence.md`. Evidence state: synchronized.
 Owner completion 2026-09-26: `RQ450` was delivered for post-Access-import Operations integrity probing. Successful analytics imports schedule exactly one post-commit bounded probe linked to `access_import:{batchId}` and suppress the duplicate cache_clear probe on the import path. Run log: `.ai/runs/2026-09-26-RQ450-evidence.md`. Evidence state: synchronized.
@@ -155,7 +156,7 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 | RQ494 | DONE | P0 | operations-sales-header-data-scope | Bind certified analytics populations to sale-header data origin |
 | RQ495 | IN_PROGRESS | P0 | sale-line-snapshot-cost-binding | Bind snapshot cost evidence to the exact sale line |
 | RQ496 | DONE | P1 | shoetype-signed-share-presentation-truth | Preserve signed share and ranking semantics across Shoe Type surfaces |
-| RQ497 | WAITING | P1 | daily-sales-shift-business-time | Expose source timestamp and business-time semantics for shift assignment |
+| RQ497 | DONE | P1 | daily-sales-shift-business-time | Expose source timestamp and business-time semantics for shift assignment |
 
 ---
 
@@ -2686,12 +2687,13 @@ Do not change retail population, snapshot cost resolution or RQ457 identity/marg
 
 ## RQ497 - Daily Sales: prove and expose business-time semantics for shift assignment
 
-Status: WAITING  
+Status: DONE
 Priority: P1  
 Type: backend/import-contract/frontend/tests  
 Feature family: daily-sales-shift-business-time  
 Parallel-safe: no  
-Owner: Daily Sales / Source Time Semantics
+Owner: Codex (Daily Sales / Source Time Semantics)
+Local lock: none (closed before delivery)
 
 ### Problem
 

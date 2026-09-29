@@ -4788,7 +4788,8 @@ using NpgsqlTypes;
                     NacinPlacanja = S(row, "nacinplacanja", "paymenttype"),
                     IDObjekat = I(row, "idobjekat", "storeid"),
                     KorisnikIme = S(row, "korisnikime", "korisnik", "username", "operater", "kasir"),
-                    DataOrigin = "access"
+                    DataOrigin = "access",
+                    SourceTimestampBasis = "legacy_access_wall_clock"
                 };
                 _trendDb.ProdajaZaglavlja.Add(e);
                 existing[e.Id] = e;
@@ -4806,6 +4807,7 @@ using NpgsqlTypes;
                 e.IDObjekat = I(row, "idobjekat", "storeid");
                 e.KorisnikIme = S(row, "korisnikime", "korisnik", "username", "operater", "kasir");
                 e.DataOrigin = "access";
+                e.SourceTimestampBasis = "legacy_access_wall_clock";
                 _trendDb.ProdajaZaglavlja.Update(e);
                 result.ProdajaUpdated++;
                 TrackTrendWrite();
@@ -5260,7 +5262,8 @@ using NpgsqlTypes;
                         DatumProdaje = dnevnik?.Datum ?? rowSaleDate!.Value,
                         NacinPlacanja = S(row, "nacinplacanja", "paymenttype"),
                         IDObjekat = idObjekat,
-                        DataOrigin = "access"
+                        DataOrigin = "access",
+                        SourceTimestampBasis = "legacy_access_wall_clock"
                     };
                     _trendDb.ProdajaZaglavlja.Add(zaglavlje);
                     pendingHeadersByBusinessKey[businessKey] = zaglavlje;
@@ -5279,6 +5282,7 @@ using NpgsqlTypes;
                 if (zaglavlje.IDObjekat is null && idObjekat.HasValue)
                     zaglavlje.IDObjekat = idObjekat.Value;
                 zaglavlje.DataOrigin = "access";
+                zaglavlje.SourceTimestampBasis = "legacy_access_wall_clock";
                 if (updatedHeaderIds.Add(zaglavlje.Id))
                 {
                     if (_trendDb.Entry(zaglavlje).State == EntityState.Detached)
@@ -6236,7 +6240,8 @@ using NpgsqlTypes;
                     NacinPlacanja = S(row, "nacinplacanja", "paymenttype"),
                     IDObjekat = I(row, "idobjekat", "storeid"),
                     KorisnikIme = S(row, "korisnikime", "korisnik", "username", "operater", "kasir"),
-                    DataOrigin = "access"
+                    DataOrigin = "access",
+                    SourceTimestampBasis = "legacy_access_wall_clock"
                 };
                 _trendDb.ProdajaZaglavlja.Add(e);
                 existing[e.Id] = e;
@@ -6250,6 +6255,7 @@ using NpgsqlTypes;
                 e.IDObjekat = I(row, "idobjekat", "storeid");
                 e.KorisnikIme = S(row, "korisnikime", "korisnik", "username", "operater", "kasir");
                 e.DataOrigin = "access";
+                e.SourceTimestampBasis = "legacy_access_wall_clock";
                 result.ProdajaUpdated++;
             }
         }
@@ -6438,7 +6444,8 @@ using NpgsqlTypes;
                     DatumProdaje = dnevnik?.Datum ?? DT(row, "datumprodaje", "datum", "saledate") ?? DateTime.UtcNow,
                     NacinPlacanja = S(row, "nacinplacanja", "paymenttype"),
                     IDObjekat = idObjekat,
-                    DataOrigin = "access"
+                    DataOrigin = "access",
+                    SourceTimestampBasis = "legacy_access_wall_clock"
                 };
                 _trendDb.ProdajaZaglavlja.Add(zaglavlje);
                 existingZaglavlja[zaglavlje.Id] = zaglavlje;
@@ -6453,6 +6460,7 @@ using NpgsqlTypes;
                 if (zaglavlje.IDObjekat is null && idObjekat.HasValue)
                     zaglavlje.IDObjekat = idObjekat.Value;
                 zaglavlje.DataOrigin = "access";
+                zaglavlje.SourceTimestampBasis = "legacy_access_wall_clock";
                 result.ProdajaUpdated++;
             }
 
@@ -6572,7 +6580,8 @@ using NpgsqlTypes;
                     NacinPlacanja = null,
                     IDObjekat = first.IDObjekat,
                     KorisnikIme = first.KorisnikIme,
-                    DataOrigin = "access"
+                    DataOrigin = "access",
+                    SourceTimestampBasis = "legacy_access_wall_clock"
                 };
                 _trendDb.ProdajaZaglavlja.Add(zaglavlje);
                 existingZaglavlja[zaglavlje.Id] = zaglavlje;
@@ -6603,6 +6612,11 @@ using NpgsqlTypes;
                 if (!string.Equals(zaglavlje.DataOrigin, "access", StringComparison.OrdinalIgnoreCase))
                 {
                     zaglavlje.DataOrigin = "access";
+                    shouldUpdate = true;
+                }
+                if (!string.Equals(zaglavlje.SourceTimestampBasis, "legacy_access_wall_clock", StringComparison.Ordinal))
+                {
+                    zaglavlje.SourceTimestampBasis = "legacy_access_wall_clock";
                     shouldUpdate = true;
                 }
 
@@ -9218,7 +9232,8 @@ using NpgsqlTypes;
                         NacinPlacanja = S(row, "nacinplacanja", "paymenttype"),
                         IDObjekat = I(row, "idobjekat", "storeid") ?? 0,
                         KorisnikIme = S(row, "korisnikime", "korisnik", "username", "operater", "kasir"),
-                        DataOrigin = "access"
+                        DataOrigin = "access",
+                        SourceTimestampBasis = "legacy_access_wall_clock"
                     };
 
                     if (e.DatumProdaje == DateTime.MinValue)

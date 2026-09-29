@@ -223,6 +223,7 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.IDObjekat).HasColumnName("id_objekat");
                 eb.Property(e => e.KorisnikIme).HasColumnName("korisnik_ime").HasMaxLength(200);
                 eb.Property(e => e.DataOrigin).HasColumnName("data_origin").IsRequired().HasMaxLength(32).HasDefaultValue("existing");
+                eb.Property(e => e.SourceTimestampBasis).HasColumnName("source_timestamp_basis").HasMaxLength(64);
                 eb.Property(e => e.SourceTableKey).HasColumnName("source_table_key").HasMaxLength(128);
                 eb.Property(e => e.SourceRowId).HasColumnName("source_row_id");
                 eb.Property(e => e.SourceUpdatedAtUtc).HasColumnName("source_updated_at_utc");

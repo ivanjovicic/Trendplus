@@ -45,6 +45,11 @@ export interface DailySalesMetadata {
   unknownSupplierPct: DailySalesNumeric;
   unknownSupplierItems: DailySalesNumeric;
   shiftAssignmentStatus?: DailySalesShiftAssignmentStatus | null;
+  shiftTimeZone?: string | null;
+  shiftTimestampBasis?: string | null;
+  shiftTimestampBasisKnownRows?: DailySalesNumeric;
+  shiftTimestampBasisUnknownRows?: DailySalesNumeric;
+  shiftTimestampBasisUnknownRevenue?: DailySalesNumeric;
   offShiftItems: DailySalesNumeric;
   offShiftRevenue: DailySalesNumeric;
   noTimeFallbackItems?: DailySalesNumeric;

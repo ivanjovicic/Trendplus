@@ -41,6 +41,13 @@ If no date range is provided, default window is last 30 days (inclusive).
 - `OthersCount = TotalItemsSold - sum(TopSupplierCounts)`.
 - `TotalItemsSold = FirstShiftTotalItems + SecondShiftTotalItems`.
 - Rows for days without sales are still returned with zero values.
+- Shift assignment is performed in the configured `DailySales:TimeZoneId` business timezone.
+  The deployment default is `UTC`; production is configured as `Europe/Belgrade`.
+- `metadata.shiftTimeZone` is the timezone actually used. `metadata.shiftTimestampBasis`
+  reports `utc_instant`, `legacy_access_wall_clock`, `mixed`, or `unknown`.
+- `metadata.shiftTimestampBasisKnownRows` and `shiftTimestampBasisUnknownRows` expose
+  affected source-line counts. Unknown-basis lines remain in daily/supplier totals but are
+  not assigned to a shift; affected daily shift cells are null.
 
 ## Shift Definition
 
@@ -50,9 +57,10 @@ If no date range is provided, default window is last 30 days (inclusive).
   - `offShiftItems`
   - `offShiftRevenue`
   - warnings list
-- If source rows contain only midnight timestamps (`00:00`) and no usable hour distribution,
-  endpoint applies fallback mapping to first shift and emits warning:
-  - `Satnica prodaje nije dostupna (00:00); kolicine su mapirane u prvu smenu.`
+- If source rows contain no classifiable hour, existing RQ383 behavior is preserved: daily totals
+  remain visible, shift cells are null, and `shiftAssignmentStatus=no_time_fallback`.
+- Access imports use `legacy_access_wall_clock`: the imported source wall clock is preserved and
+  is not offset-converted a second time. True UTC sources use timezone conversion, including DST.
 
 ## Response Contract (summary)
 
@@ -101,8 +109,8 @@ For very large windows or high concurrency, keep `topN` conservative and maintai
    - check article supplier mapping quality (`IDDobavljac`)
 3. Off-shift warning appears:
    - inspect sales timestamps outside 06-22 operational window
-4. Midnight-only timestamps (all 00:00:00):
-   - endpoint will fallback-map quantities to first shift
-   - verify source system captures real time-of-sale if shift analytics must be strict
+4. Unknown timestamp basis:
+   - inspect `source_timestamp_basis` and `data_origin` on `prodaja_zaglavlje`
+   - verify `shiftTimestampBasisUnknownRows`; those rows intentionally have no shift assignment
 5. Slow query:
    - verify indexes exist and run `EXPLAIN ANALYZE` on staging/production snapshot

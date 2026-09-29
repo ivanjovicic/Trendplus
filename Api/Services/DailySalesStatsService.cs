@@ -5,6 +5,7 @@ using Domain.Model;
 using Domain.Model.Prodaja;
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Trendplus2.Dtos;
 
 namespace Api.Services;
@@ -22,13 +23,24 @@ public interface IDailySalesStatsService
 
 public sealed class DailySalesStatsService : IDailySalesStatsService
 {
+    private const string UtcInstantBasis = "utc_instant";
+    private const string LegacyAccessWallClockBasis = "legacy_access_wall_clock";
+    private const string DefaultShiftTimeZoneId = "UTC";
     private readonly TrendplusDbContext _db;
     private readonly ILogger<DailySalesStatsService> _logger;
+    private readonly TimeZoneInfo _shiftTimeZone;
+    private readonly string _shiftTimeZoneId;
+    private readonly bool _shiftTimeZoneConfigurationWarning;
 
-    public DailySalesStatsService(TrendplusDbContext db, ILogger<DailySalesStatsService> logger)
+    public DailySalesStatsService(
+        TrendplusDbContext db,
+        ILogger<DailySalesStatsService> logger,
+        IConfiguration? configuration = null)
     {
         _db = db;
         _logger = logger;
+        var configuredTimeZoneId = configuration?["DailySales:TimeZoneId"];
+        (_shiftTimeZone, _shiftTimeZoneId, _shiftTimeZoneConfigurationWarning) = ResolveShiftTimeZone(configuredTimeZoneId);
     }
 
     public async Task<DailySalesTableResponse> GetDailySalesAsync(
@@ -308,6 +320,8 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             {
                 SaleDate = pz.DatumProdaje.Date,
                 HourOfDay = pz.DatumProdaje.Hour,
+                DataOrigin = pz.DataOrigin,
+                SourceTimestampBasis = pz.SourceTimestampBasis,
                 SupplierId = ps.SupplierIdAtSale,
                 SupplierName = supplier != null ? supplier.Naziv : null,
                 AttributionBasis = ps.AttributionBasis
@@ -317,6 +331,8 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             {
                 SaleDate = DateTime.SpecifyKind(g.Key.SaleDate, DateTimeKind.Utc),
                 HourOfDay = g.Key.HourOfDay,
+                DataOrigin = g.Key.DataOrigin,
+                SourceTimestampBasis = g.Key.SourceTimestampBasis,
                 SupplierId = g.Key.SupplierId,
                 SupplierName = g.Key.SupplierName,
                 AttributionBasis = g.Key.AttributionBasis,
@@ -349,6 +365,11 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
         var dayAccumulators = new Dictionary<DateTime, DayAccumulator>();
         var supplierTotals = new Dictionary<string, SupplierAccumulator>(StringComparer.Ordinal);
         var warnings = new List<string>();
+
+        if (_shiftTimeZoneConfigurationWarning)
+        {
+            warnings.Add($"Konfigurisana vremenska zona za smene nije pronađena; korišćen je UTC ({DefaultShiftTimeZoneId}).");
+        }
 
         if (duplicateReceiptGroups.Count > 0)
         {
@@ -416,10 +437,44 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             $"Dokumenti označeni kao DUG su isključeni iz dnevne prodaje {excludedDebtReceiptHeaders.Count} put(a) sa ukupno {decimal.Round(excludedDebtReceiptHeaders.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero):0.##} RSD.");
         }
 
-        var hasClassifiedShiftRows = aggregates.Any(x => ResolveShift(x.HourOfDay) is 1 or 2);
-        var hasAnyRows = aggregates.Any(x => x.Qty != 0);
+        var timestampFacts = aggregates
+            .Select(x => new
+            {
+                Row = x,
+                Basis = ResolveTimestampBasis(x.SourceTimestampBasis, x.DataOrigin)
+            })
+            .ToList();
+        var knownTimestampRows = timestampFacts
+            .Where(x => x.Basis is not null)
+            .Sum(x => x.Row.LineCount);
+        var unknownTimestampRows = timestampFacts
+            .Where(x => x.Basis is null)
+            .Sum(x => x.Row.LineCount);
+        var unknownTimestampRevenue = timestampFacts
+            .Where(x => x.Basis is null)
+            .Sum(x => x.Row.Revenue);
+        var timestampBases = timestampFacts
+            .Where(x => x.Basis is not null)
+            .Select(x => x.Basis!)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        var shiftTimestampBasis = unknownTimestampRows > 0
+            ? timestampBases.Length > 0 ? "mixed" : "unknown"
+            : timestampBases.Length switch
+            {
+                0 => "unknown",
+                1 => timestampBases[0],
+                _ => "mixed"
+            };
+        var hasClassifiedShiftRows = timestampFacts.Any(x =>
+        {
+            if (x.Basis is null) return false;
+            var localTimestamp = ResolveLocalTimestamp(x.Row, x.Basis);
+            return ResolveShift(localTimestamp.Hour) is 1 or 2;
+        });
+        var hasAnyKnownRows = timestampFacts.Any(x => x.Basis is not null && x.Row.Qty != 0);
         var hasSalesEvidence = aggregates.Count > 0;
-        var useNoTimeDataFallback = !hasClassifiedShiftRows && hasAnyRows;
+        var useNoTimeDataFallback = !hasClassifiedShiftRows && hasAnyKnownRows && unknownTimestampRows == 0;
 
         if (useNoTimeDataFallback && aggregates.Count > 0)
         {
@@ -456,13 +511,20 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
 
             // Daily totals and supplier buckets always include the row. Shift columns only
             // receive measured 06-14 / 14-22 hours — never remapped fallback or off-shift qty.
-            var shift = ResolveShift(row.HourOfDay);
-            if (shift == 0 && useNoTimeDataFallback)
+            var timestampBasis = ResolveTimestampBasis(row.SourceTimestampBasis, row.DataOrigin);
+            var isUnknownTimestampBasis = timestampBasis is null;
+            var localTimestamp = timestampBasis is null
+                ? DateTime.SpecifyKind(row.SaleDate.Date.AddHours(row.HourOfDay), DateTimeKind.Utc)
+                : ResolveLocalTimestamp(row, timestampBasis);
+            var shift = isUnknownTimestampBasis ? 0 : ResolveShift(localTimestamp.Hour);
+            // Keep unknown-basis lines in daily/supplier totals, but never invent a shift
+            // from an unproven timestamp basis.
+            if (!isUnknownTimestampBasis && shift == 0 && useNoTimeDataFallback)
             {
                 noTimeFallbackItems += row.Qty;
                 noTimeFallbackRevenue += row.Revenue;
             }
-            else if (shift == 0)
+            else if (!isUnknownTimestampBasis && shift == 0)
             {
                 offShiftItems += row.Qty;
                 offShiftRevenue += row.Revenue;
@@ -472,11 +534,16 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             supplierAccumulator.TotalRevenue += row.Revenue;
             totalItemsInRange += row.Qty;
 
-            var dateKey = DateTime.SpecifyKind(row.SaleDate.Date, DateTimeKind.Utc);
+            var dateKey = DateTime.SpecifyKind(localTimestamp.Date, DateTimeKind.Utc);
             if (!dayAccumulators.TryGetValue(dateKey, out var day))
             {
                 day = new DayAccumulator();
                 dayAccumulators[dateKey] = day;
+            }
+
+            if (isUnknownTimestampBasis)
+            {
+                day.HasUnknownTimestampBasis = true;
             }
 
             if (shift == 1)
@@ -497,7 +564,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             ? "unavailable"
             : useNoTimeDataFallback
                 ? "no_time_fallback"
-                : offShiftItems != 0
+                : offShiftItems != 0 || unknownTimestampRows > 0
                     ? "partial"
                     : hasClassifiedShiftRows
                         ? "measured"
@@ -547,9 +614,16 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
         }
 
         var rows = new List<DailySalesRowDto>();
-        for (var cursor = fromDateUtc.Date; cursor <= toDateUtc.Date; cursor = cursor.AddDays(1))
+        var requestedDateKeys = Enumerable
+            .Range(0, (toDateUtc.Date - fromDateUtc.Date).Days + 1)
+            .Select(offset => DateTime.SpecifyKind(fromDateUtc.Date.AddDays(offset), DateTimeKind.Utc));
+        var rowDateKeys = requestedDateKeys
+            .Concat(dayAccumulators.Keys)
+            .Distinct()
+            .OrderByDescending(x => x)
+            .ToList();
+        foreach (var dateKey in rowDateKeys)
         {
-            var dateKey = DateTime.SpecifyKind(cursor, DateTimeKind.Utc);
             dayAccumulators.TryGetValue(dateKey, out var day);
 
             var topCounts = new List<int>(topSupplierKeys.Count);
@@ -566,10 +640,10 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             // returns/corrections outside top-N outweigh the omitted sales.
             var othersCount = totalItems - sumTop;
 
-            int? firstShift = useNoTimeDataFallback
+            int? firstShift = useNoTimeDataFallback || day?.HasUnknownTimestampBasis == true
                 ? null
                 : day?.FirstShiftQty ?? 0;
-            int? secondShift = useNoTimeDataFallback
+            int? secondShift = useNoTimeDataFallback || day?.HasUnknownTimestampBasis == true
                 ? null
                 : day?.SecondShiftQty ?? 0;
 
@@ -612,6 +686,12 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
         {
             warnings.Add(
                 $"Prodaja van smena (06-14 / 14-22) nije uključena u merene smene: {offShiftItems} kom, {offShiftRevenue:N2} RSD.");
+        }
+
+        if (unknownTimestampRows > 0)
+        {
+            warnings.Add(
+                $"Za {unknownTimestampRows} redova nije potvrđena osnova vremena; uključeni su u dnevne totale, ali nisu dodeljeni smeni ({unknownTimestampRevenue:N2} RSD).");
         }
 
         // When no items found in the requested range, query the overall available range so the
@@ -673,6 +753,11 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                 UnknownSupplierPct = unknownSupplierPct,
                 UnknownSupplierItems = unknownSupplierItems,
                 ShiftAssignmentStatus = shiftAssignmentStatus,
+                ShiftTimeZone = _shiftTimeZoneId,
+                ShiftTimestampBasis = shiftTimestampBasis,
+                ShiftTimestampBasisKnownRows = knownTimestampRows,
+                ShiftTimestampBasisUnknownRows = unknownTimestampRows,
+                ShiftTimestampBasisUnknownRevenue = decimal.Round(unknownTimestampRevenue, 2, MidpointRounding.AwayFromZero),
                 OffShiftItems = offShiftItems,
                 OffShiftRevenue = decimal.Round(offShiftRevenue, 2, MidpointRounding.AwayFromZero),
                 NoTimeFallbackItems = noTimeFallbackItems,
@@ -759,6 +844,71 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
         if (hourOfDay >= 6 && hourOfDay < 14) return 1;
         if (hourOfDay >= 14 && hourOfDay < 22) return 2;
         return 0;
+    }
+
+    private static string? ResolveTimestampBasis(string? explicitBasis, string? dataOrigin)
+    {
+        if (string.Equals(explicitBasis, UtcInstantBasis, StringComparison.Ordinal)
+            || string.Equals(explicitBasis, LegacyAccessWallClockBasis, StringComparison.Ordinal))
+        {
+            return explicitBasis;
+        }
+
+        if (string.Equals(dataOrigin, "access", StringComparison.OrdinalIgnoreCase))
+            return LegacyAccessWallClockBasis;
+
+        if (string.Equals(dataOrigin, "existing", StringComparison.OrdinalIgnoreCase)
+            || string.IsNullOrWhiteSpace(dataOrigin))
+        {
+            return UtcInstantBasis;
+        }
+
+        return null;
+    }
+
+    private DateTime ResolveLocalTimestamp(SalesAggregateRow row, string timestampBasis)
+    {
+        var rawTimestamp = DateTime.SpecifyKind(
+            row.SaleDate.Date.AddHours(row.HourOfDay),
+            DateTimeKind.Unspecified);
+
+        if (string.Equals(timestampBasis, LegacyAccessWallClockBasis, StringComparison.Ordinal))
+        {
+            // Access imported values are legacy local wall-clock values stamped as UTC
+            // during import. Preserve their clock/date rather than applying an offset twice.
+            return rawTimestamp;
+        }
+
+        return TimeZoneInfo.ConvertTimeFromUtc(
+            DateTime.SpecifyKind(rawTimestamp, DateTimeKind.Utc),
+            _shiftTimeZone);
+    }
+
+    private static (TimeZoneInfo TimeZone, string Id, bool Warning) ResolveShiftTimeZone(string? configuredId)
+    {
+        if (string.IsNullOrWhiteSpace(configuredId))
+            return (TimeZoneInfo.Utc, DefaultShiftTimeZoneId, false);
+
+        var normalizedId = configuredId.Trim();
+        try
+        {
+            return (TimeZoneInfo.FindSystemTimeZoneById(normalizedId), normalizedId, false);
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            if (string.Equals(normalizedId, "Europe/Belgrade", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    return (TimeZoneInfo.FindSystemTimeZoneById("Central Europe Standard Time"), normalizedId, false);
+                }
+                catch (TimeZoneNotFoundException) { }
+                catch (InvalidTimeZoneException) { }
+            }
+        }
+        catch (InvalidTimeZoneException) { }
+
+        return (TimeZoneInfo.Utc, DefaultShiftTimeZoneId, true);
     }
 
     private static string BuildSupplierKey(int? supplierId)
@@ -906,6 +1056,8 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
     {
         public DateTime SaleDate { get; init; }
         public int HourOfDay { get; init; }
+        public string? DataOrigin { get; init; }
+        public string? SourceTimestampBasis { get; init; }
         public int? SupplierId { get; init; }
         public string? SupplierName { get; init; }
         public string? AttributionBasis { get; init; }
@@ -929,6 +1081,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
         public int SecondShiftQty { get; set; }
         public int TotalItems { get; set; }
         public decimal Revenue { get; set; }
+        public bool HasUnknownTimestampBasis { get; set; }
         public Dictionary<string, int> SupplierQty { get; } = new(StringComparer.Ordinal);
     }
 

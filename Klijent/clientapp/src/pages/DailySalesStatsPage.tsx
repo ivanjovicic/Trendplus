@@ -1318,6 +1318,16 @@ export default function DailySalesStatsPage() {
     const offShiftRevenue = finiteOrNull(metadata?.offShiftRevenue);
     const noTimeFallbackItems = finiteOrNull(metadata?.noTimeFallbackItems);
     const shiftAssignmentStatus = metadata?.shiftAssignmentStatus ?? null;
+    const shiftTimeZone = metadata?.shiftTimeZone ?? null;
+    const shiftTimestampBasis = metadata?.shiftTimestampBasis ?? null;
+    const shiftTimestampBasisUnknownRows = finiteOrNull(metadata?.shiftTimestampBasisUnknownRows);
+    const timestampBasisLabel = shiftTimestampBasis === "legacy_access_wall_clock"
+      ? "Access lokalni zidni sat"
+      : shiftTimestampBasis === "utc_instant"
+        ? "UTC instant"
+        : shiftTimestampBasis === "mixed"
+          ? "Mešovita osnova"
+          : "Nepoznata osnova";
     const duplicateReceipts = finiteOrNull(metadata?.duplicateReceiptGroupCount);
     const receiptReconciliationUnavailable = metadata?.receiptReconciliation?.status === "unavailable";
     const receiptMismatch = receiptReconciliationUnavailable
@@ -1359,6 +1369,19 @@ export default function DailySalesStatsPage() {
           ? "info"
           : "good",
       description: "Komadi bez pouzdane satnice; dnevni total ostaje, smenski udeo nije meren.",
+    },
+    {
+      key: "timestampBasis",
+      label: "Osnova vremena",
+      value: shiftTimeZone == null ? timestampBasisLabel : `${timestampBasisLabel} · ${shiftTimeZone}`,
+      tone: shiftTimestampBasisUnknownRows == null
+        ? "info"
+        : shiftTimestampBasisUnknownRows > 0
+          ? "warning"
+          : "good",
+      description: shiftTimestampBasisUnknownRows != null && shiftTimestampBasisUnknownRows > 0
+        ? `${fmtNumber(shiftTimestampBasisUnknownRows)} redova nema potvrđenu osnovu vremena; ostaju u dnevnom totalu bez dodele smeni.`
+        : "Smena se dodeljuje u prikazanoj poslovnoj vremenskoj zoni prema potvrđenoj osnovi izvornog vremena.",
     },
     {
       key: "mismatch",
@@ -1448,6 +1471,9 @@ export default function DailySalesStatsPage() {
     data?.metadata.offShiftRevenue,
     data?.metadata.noTimeFallbackItems,
     data?.metadata.shiftAssignmentStatus,
+    data?.metadata.shiftTimeZone,
+    data?.metadata.shiftTimestampBasis,
+    data?.metadata.shiftTimestampBasisUnknownRows,
     data?.metadata.receiptAmountMismatchCount,
     data?.metadata.receiptReconciliation?.status,
     data?.metadata.uniqueSuppliersInRange,

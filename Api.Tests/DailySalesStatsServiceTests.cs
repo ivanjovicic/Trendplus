@@ -3,6 +3,7 @@ using Domain.Model;
 using Domain.Model.Prodaja;
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -665,6 +666,146 @@ public sealed class DailySalesStatsServiceTests
         Assert.Contains(afterMasterMutation.TopSuppliers, x =>
             x.SupplierId == 2 && x.SupplierName == "Dobavljac B" && x.TotalQty == 4);
         Assert.DoesNotContain(afterMasterMutation.TopSuppliers, x => x.SupplierId == 3);
+    }
+
+    [Fact]
+    public async Task GetDailySalesAsync_AssignsShiftBoundariesWithoutChangingDefinitions()
+    {
+        await using var db = CreateDbContext();
+        SeedSuppliersAndArticles(db);
+
+        var timestamps = new[]
+        {
+            new DateTime(2026, 7, 1, 5, 59, 0, DateTimeKind.Utc),
+            new DateTime(2026, 7, 1, 6, 0, 0, DateTimeKind.Utc),
+            new DateTime(2026, 7, 1, 13, 59, 0, DateTimeKind.Utc),
+            new DateTime(2026, 7, 1, 14, 0, 0, DateTimeKind.Utc),
+            new DateTime(2026, 7, 1, 21, 59, 0, DateTimeKind.Utc),
+            new DateTime(2026, 7, 1, 22, 0, 0, DateTimeKind.Utc)
+        };
+
+        for (var index = 0; index < timestamps.Length; index++)
+        {
+            db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+            {
+                Id = 700 + index,
+                DatumProdaje = timestamps[index],
+                IDObjekat = 1,
+                DataOrigin = "existing"
+            });
+            db.ProdajaStavke.Add(new ProdajaStavka
+            {
+                Id = 700 + index,
+                IdProdaja = 700 + index,
+                IdArtikal = 101,
+                Kolicina = 1,
+                Cena = 10m
+            });
+        }
+
+        await db.SaveChangesAsync();
+
+        var result = await new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance)
+            .GetDailySalesAsync(timestamps[0].Date, timestamps[^1].Date, 1, 5, "all");
+
+        var row = Assert.Single(result.DateRows);
+        Assert.Equal(2, row.FirstShiftTotalItems);
+        Assert.Equal(2, row.SecondShiftTotalItems);
+        Assert.Equal(2, result.Metadata.OffShiftItems);
+        Assert.Equal("partial", result.Metadata.ShiftAssignmentStatus);
+        Assert.Equal("UTC", result.Metadata.ShiftTimeZone);
+        Assert.Equal("utc_instant", result.Metadata.ShiftTimestampBasis);
+    }
+
+    [Fact]
+    public async Task GetDailySalesAsync_UnknownTimestampBasisStaysInDailyTotalsWithoutShiftAssignment()
+    {
+        await using var db = CreateDbContext();
+        SeedSuppliersAndArticles(db);
+        db.ProdajaZaglavlja.AddRange(
+            new ProdajaZaglavlje
+            {
+                Id = 800,
+                DatumProdaje = new DateTime(2026, 8, 1, 10, 0, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "mystery_source"
+            },
+            new ProdajaZaglavlje
+            {
+                Id = 801,
+                DatumProdaje = new DateTime(2026, 8, 1, 11, 0, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "existing"
+            });
+        db.ProdajaStavke.AddRange(
+            new ProdajaStavka { Id = 800, IdProdaja = 800, IdArtikal = 101, Kolicina = 1, Cena = 100m },
+            new ProdajaStavka { Id = 801, IdProdaja = 801, IdArtikal = 101, Kolicina = 1, Cena = 50m });
+        await db.SaveChangesAsync();
+
+        var result = await new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance)
+            .GetDailySalesAsync(
+                new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc),
+                new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc),
+                1,
+                5,
+                "all");
+
+        var row = Assert.Single(result.DateRows);
+        Assert.Equal(2, row.TotalItemsSold);
+        Assert.Null(row.FirstShiftTotalItems);
+        Assert.Null(row.SecondShiftTotalItems);
+        Assert.Equal("mixed", result.Metadata.ShiftTimestampBasis);
+        Assert.Equal(1, result.Metadata.ShiftTimestampBasisKnownRows);
+        Assert.Equal(1, result.Metadata.ShiftTimestampBasisUnknownRows);
+        Assert.Equal(100m, result.Metadata.ShiftTimestampBasisUnknownRevenue);
+        Assert.Equal("partial", result.Metadata.ShiftAssignmentStatus);
+        Assert.Contains(result.Metadata.Warnings, x => x.Contains("osnova vremena", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task GetDailySalesAsync_ConvertsUtcInstantToConfiguredBusinessTimeZoneAcrossDst()
+    {
+        await using var db = CreateDbContext();
+        SeedSuppliersAndArticles(db);
+        db.ProdajaZaglavlja.AddRange(
+            new ProdajaZaglavlje
+            {
+                Id = 900,
+                DatumProdaje = new DateTime(2026, 3, 29, 4, 30, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "existing"
+            },
+            new ProdajaZaglavlje
+            {
+                Id = 901,
+                DatumProdaje = new DateTime(2026, 3, 29, 5, 30, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "existing"
+            });
+        db.ProdajaStavke.AddRange(
+            new ProdajaStavka { Id = 900, IdProdaja = 900, IdArtikal = 101, Kolicina = 1, Cena = 100m },
+            new ProdajaStavka { Id = 901, IdProdaja = 901, IdArtikal = 101, Kolicina = 1, Cena = 100m });
+        await db.SaveChangesAsync();
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["DailySales:TimeZoneId"] = "Europe/Belgrade"
+            })
+            .Build();
+        var service = new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance, configuration);
+
+        var result = await service.GetDailySalesAsync(
+            new DateTime(2026, 3, 29, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2026, 3, 29, 0, 0, 0, DateTimeKind.Utc),
+            1,
+            5,
+            "all");
+
+        var row = Assert.Single(result.DateRows, x => x.Date.Date == new DateTime(2026, 3, 29).Date);
+        Assert.Equal(2, row.FirstShiftTotalItems);
+        Assert.Equal("Europe/Belgrade", result.Metadata.ShiftTimeZone);
+        Assert.Equal("utc_instant", result.Metadata.ShiftTimestampBasis);
     }
 
     private static TrendplusDbContext CreateDbContext()

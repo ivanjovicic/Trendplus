@@ -49,6 +49,13 @@ public sealed class DailySalesMetadata
     /// Off-shift and no-time rows are never presented as measured first-shift values.
     /// </summary>
     public string ShiftAssignmentStatus { get; set; } = "unavailable";
+    /// <summary>Business timezone used for shift assignment, or UTC when no deployment override exists.</summary>
+    public string ShiftTimeZone { get; set; } = "UTC";
+    /// <summary>utc_instant, legacy_access_wall_clock, mixed, or unknown.</summary>
+    public string ShiftTimestampBasis { get; set; } = "unknown";
+    public int ShiftTimestampBasisKnownRows { get; set; }
+    public int ShiftTimestampBasisUnknownRows { get; set; }
+    public decimal ShiftTimestampBasisUnknownRevenue { get; set; }
     public int OffShiftItems { get; set; }
     public decimal OffShiftRevenue { get; set; }
     public int NoTimeFallbackItems { get; set; }
