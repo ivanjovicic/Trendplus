@@ -2,9 +2,10 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ502 (IN_PROGRESS in this workspace)
+Current READY prompt: none
 Routing reconciliation 2026-09-29: any workspace still showing `RQ466` as `Current READY` is stale. `RQ466` is `DONE` on current main; `RQ502` is the primary READY prompt. Registration evidence: `.ai/runs/2026-09-29-RQ502-registration-evidence.md`.
 Owner claim 2026-09-29: after fresh `origin/main` sync to `2d85df0f13dac4e8dcb463656515d61ea32e0021`, RQ502 remained READY, RQ494 was verified DONE, and no conflicting lock/branch/PR owner was found for the Operations store-filter scope. RQ502 moved `READY -> IN_PROGRESS` in this workspace. Local lock: `.ai/task-locks/RQ502-codex.lock.md`.
+Owner completion 2026-09-29: RQ502 moved `IN_PROGRESS -> DONE` and was delivered directly to `main` in `baa4ce300cbb2c63662ed22ef64d353e2b31e209`. Scoped store options now reload and validate against `dataScope` across Shoe Type, Color, Daily Sales and Pre/Post; stale/fallback lists are visible and untrusted selections are cleared; duplicate labels expose stable IDs. Focused frontend proof is 91/91 across the new utility/API contracts and four page suites; guardrails, typecheck, production build, diff check and governance validators pass. Run log: `.ai/runs/2026-09-29-RQ502-evidence.md`. Evidence state: synchronized. RQ503/RQ504 remain sequenced behind this completed lane.
 Routing reconciliation 2026-09-29: the live RQ447 heading was stale at `IN_PROGRESS`; its synchronized completion note and run `36536448476` prove the dedicated acceptance is DONE, so the heading is corrected to `DONE` without reopening the prompt.
 Owner promotion/claim 2026-09-28: idle recovery confirmed `RQ494` is the highest-priority dependency-complete operations accuracy prompt after RQ445/RQ446/RQ456/RQ457/RQ484 completion; no active lock/branch/PR owner overlaps its sales-header dataScope scope, and Q83 is `PARTIAL` without an active repo-local lock. `RQ494` moved WAITING -> READY -> IN_PROGRESS in this workspace; local lock `.ai/task-locks/RQ494-codex.lock.md`.
 Owner completion 2026-09-29: `RQ494` moved IN_PROGRESS -> DONE and was delivered directly to `main` in `84b6ea26450aaf77341ccf37c47efe5fac83246f`. Certified sales `dataScope` now follows `ProdajaZaglavlje.DataOrigin` across Daily, Supplier, Shoe Type, Color/detail/data-window and the independent Supplier/Shoe oracle; metadata exposes `sale_header.data_origin`, and the adversarial header/article-origin fixture is covered. Focused backend proof: 24/24; Supplier/Shoe contract suite: 40 passed, 5 PostgreSQL integration tests skipped because no connection string was available; frontend schema: 15/15; guardrails/typecheck/build pass. Run log: `.ai/runs/2026-09-29-RQ494-evidence.md`. Evidence state: synchronized.
@@ -3114,7 +3115,7 @@ Do not change cost/margin policy, receipt population, dataScope, identity or PoP
 
 ## RQ502 - Reload and validate Operations store options against the active dataScope
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1  
 Type: frontend-contract/tests  
 Feature family: operations-store-filter-scope-truth  
@@ -3187,8 +3188,26 @@ Do not change the backend sales population or store-on-sale-header contract.
 ### Dependencies
 
 - RQ494 is DONE and defines sales-scope provenance.
-- No blocking owner is known; this prompt is the current primary READY lane.
+- No blocking owner was known; this prompt was the current primary READY lane and is now complete.
 - RQ503/RQ504 touch the same categorical pages and remain sequenced behind this prompt.
+
+### Completion note
+
+- Date: 2026-09-29
+- Status: DONE
+- Completion: Scoped Operations store options and selected-store requests now reload, validate and converge across Shoe Type, Color, Daily Sales and Pre/Post.
+- Changed files: frontend Operations analytics pages, shared store fallback/presentation helpers, focused API/page tests, analytics guardrail baseline, queue/roadmap metadata and `.ai/runs/2026-09-29-RQ502-evidence.md`.
+- Checks run: focused frontend tests 91/91; analytics guardrails; typecheck; production build; `git diff --check`; agent-instructions, prompt-queue and planning-architecture validators.
+- Checks not run: backend/live PostgreSQL proof; not applicable to this frontend/API-client-only scope.
+- Run log: `.ai/runs/2026-09-29-RQ502-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `baa4ce300cbb2c63662ed22ef64d353e2b31e209`
+- Main verification: fresh `git fetch origin`; `HEAD` and `origin/main` both resolve to `baa4ce300cbb2c63662ed22ef64d353e2b31e209`; ancestry verification passed.
+- Missed: none known within RQ502 scope.
+- Follow-up: RQ503/RQ504 remain sequenced behind this completed lane.
+- Residual risk: remote CI and live multi-scope data were not inspected in this local run.
+- Prompt defect / scope repair: the primary queue received a minimal RQ502 routing entry because its validator requires the current-pointer task to be present there; the full prompt remains in this addendum.
 
 ## RQ503 - Sort unavailable categorical metrics as unavailable, not as magic negative numbers
 
