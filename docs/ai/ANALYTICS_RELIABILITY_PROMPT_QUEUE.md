@@ -3,6 +3,7 @@
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+Systemic reliability audit registration 2026-09-29: `RQ509`-`RQ515` are registered as WAITING follow-ups from `docs/qa/ANALYTICS_RELIABILITY_NEXT_WAVE_AUDIT_2026-09-29.md`. They extend, rather than replace, RQ359-RQ367/RQ141/RQ145-RQ149 and the RQ413/RQ449/RQ450 integrity stack. No new prompt is promoted or claimed by this audit; current `RQ501` ownership/routing is unchanged.
 Owner decisions 2026-09-29 (Ivan): RQ501 aligns Color with the RQ496 Shoe Type signed net-sales contract (`net_sales_signed`, explicit numerator/denominator/state, mathematically valid negative and >100% values, unavailable never coerced to recommendation zero; quality/coverage ratios remain bounded 0–100). RQ505 frames Color as a supporting signal/analysis surface with signal trust framing; backend status/reason stays authoritative and `decisionScore` remains detail/transparency evidence, not a competing final CTA. RQ507 approves removing Supplier compatibility aliases from the primary Operations sidebar while preserving legacy URLs/redirects and keeping Shoe Type, Color, Daily and Pre/Post available. RQ476 uses positive net revenue of the declared visible/decision population for concentration/share; negative/returns-only rows remain visible without ambiguous positive share, and unknown-supplier inclusion is explicit and consistent across API/UI/recommendation/export.
 Routing reconciliation 2026-09-29: any workspace still showing `RQ466` as `Current READY` is stale. `RQ466` was `DONE` on current main; `RQ502` was the primary READY prompt and is now `DONE`. Registration evidence: `.ai/runs/2026-09-29-RQ502-registration-evidence.md`.
 Owner claim 2026-09-29: after fresh `origin/main` sync to `2d85df0f13dac4e8dcb463656515d61ea32e0021`, RQ502 remained READY, RQ494 was verified DONE, and no conflicting lock/branch/PR owner was found for the Operations store-filter scope. RQ502 moved `READY -> IN_PROGRESS` in this workspace. Local lock: `.ai/task-locks/RQ502-codex.lock.md`.
@@ -27269,3 +27270,553 @@ Source: residual of `PS17` in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-2
 
 - After `RQ485`; coordinate with `RQ484` if the engine gate summary text changes.
 - Reliability contract: copy only; codes, numbers and gating unchanged.
+
+## RQ509 - Give every comparable analytics result a canonical context fingerprint
+
+Status: WAITING  
+Priority: P0  
+Type: backend/contract/integration-tests/tooling  
+Feature family: analytics-context-fingerprint-reconciliation  
+Parallel-safe: no, shared context identity affects cross-screen comparison  
+Owner: Analytics Reliability / Cross-Surface Truth  
+Commit suggestion: `feat(analytics): add canonical analytics context fingerprint`
+
+### Problem
+
+Trendplus now exposes requested/effective/observed periods, scope and freshness on many routes, but there is no one machine-comparable identity proving that two values were calculated from the same population and source generation.
+
+A Dashboard total, Product total, Supplier total, Data Quality denominator or durable report can therefore each be internally correct while still disagreeing because one of them used another effective period, dataScope, store/supplier cohort, source/materializer version, cache generation or row-limit population.
+
+The planning-only `PROD-AN-11` identified this class of risk. `RQ141` mapped lineage fields, but a stable context identity plus deterministic differential reconciliation is still missing.
+
+### Evidence
+
+- `RQ137` and `RQ141` define requested/effective/observed period, dataScope, cache and refresh vocabulary.
+- `docs/qa/ANALYTICS_ROUTE_LINEAGE_MATRIX_2026-09-05.md` still has route-specific source/cache/runtime facts rather than one comparable context token.
+- `docs/ai/ANALYTICS_PRODUCTION_VALUE_PROMPT_BACKLOG_2026-08-19.md` / `PROD-AN-11` explicitly calls for a canonical context stamp and cross-surface reconciliation.
+- Recent Operations work shows that subtle differences such as sale-header origin, store scope, signed returns and cost generation materially change otherwise similar totals.
+- Audit: `docs/qa/ANALYTICS_RELIABILITY_NEXT_WAVE_AUDIT_2026-09-29.md`.
+
+### Scope
+
+- A backward-compatible backend `AnalyticsContextFingerprint` / context descriptor reused by Tier-1 analytics responses where cross-screen comparison is meaningful.
+- Canonical fields: requested/effective/observed period, date-boundary convention, dataScope, store/supplier or declared population filters, source dataset/generation identity, formula/contract version, materializer/cache generation and row-limit/population semantics.
+- Deterministic differential reconciliation for Dashboard/core sales, Product Decision Center, Supplier overview, Data Quality sales denominators and other directly comparable sales totals.
+- A read-only reconciliation command/artifact over a deterministic fixture; no production mutation.
+
+Do not force unrelated metrics to reconcile when their declared populations differ. Do not hide a legitimate cohort difference merely to make totals equal.
+
+### Read first
+
+- `RQ137`, `RQ141`, `RQ145`, `RQ148`
+- `docs/qa/ANALYTICS_ROUTE_LINEAGE_MATRIX_2026-09-05.md`
+- `docs/qa/ANALYTICS_PILOT_SCREEN_DATA_AVAILABILITY_MATRIX.md`
+- `docs/ai/ANALYTICS_PRODUCTION_VALUE_PROMPT_BACKLOG_2026-08-19.md` / `PROD-AN-11`
+- current Dashboard/PDC/Supplier/Data Quality endpoint meta and cache contracts
+
+### Do
+
+1. Define a stable canonical context descriptor and deterministic fingerprint serialization. The hash/fingerprint must be derived from normalized business context, never process-local object identity.
+2. Include enough information to tell whether two metrics are actually comparable: period, scope, dimensions/population, source generation, formula/contract version and returned/analyzed row semantics.
+3. Return the descriptor/fingerprint in selected Tier-1 responses without removing existing lineage fields.
+4. Build a shared deterministic fixture and differential test that compares only metrics whose fingerprint/population contract says they are equivalent.
+5. If equal business labels have different fingerprints/populations, surface the difference explicitly instead of forcing parity.
+6. Add a read-only reconciliation output containing endpoint, metric key, context fingerprint, expected/actual value and explained/unexplained delta.
+7. Keep customer/source data out of committed artifacts; fixture evidence may be committed, production evidence must be redacted and separately authorized.
+
+### Tests
+
+- Semantically identical requests with normalized dates/scope/filter ordering produce the same context fingerprint.
+- Changing period, dataScope, store, supplier population, source generation, formula version or row-limit semantics changes the fingerprint.
+- Same-fingerprint revenue/units/transaction fixtures reconcile exactly across applicable Tier-1 consumers.
+- Different-fingerprint values are classified as non-comparable rather than a numeric failure.
+- Cache keys cannot return a context descriptor from another scope/generation.
+- Valid zero and successful empty remain distinct from missing/unavailable context.
+
+### Acceptance
+
+- Every cross-screen comparison can first prove whether the compared numbers belong to the same business context.
+- Same-context comparable metrics have zero unexplained deterministic-fixture deltas.
+- Different cohorts are visibly/machine-readably different and are never blended under one unlabeled total.
+- The fingerprint supplements, not replaces, human-readable period/scope/provenance.
+
+### Dependencies
+
+- Reuse `RQ137`/`RQ141` lineage vocabulary and `RQ148` financial measurement basis.
+- Register now but promote only after fresh collision review against active cross-screen owners; do not disrupt the current `RQ501` claim.
+- `STAB16`/production access is not required for the deterministic implementation; live reconciliation remains a later evidence layer.
+
+---
+
+## RQ510 - Make metric provenance and evidence coverage mandatory for Tier-1 KPIs
+
+Status: WAITING  
+Ready after: RQ509 DONE or its context descriptor contract is stable  
+Priority: P0  
+Type: backend/contract/frontend/export-report/tests/governance  
+Feature family: analytics-metric-provenance-coverage  
+Parallel-safe: no, shared metric semantics are a cross-screen contract  
+Owner: Analytics Reliability / Metric Evidence  
+Commit suggestion: `feat(analytics): enforce metric evidence coverage`
+
+### Problem
+
+Trendplus already has `AnalyticsMetricProvenanceDto`, `AnalyticsResponseMetaDto.MetricProvenance`, frontend provenance readers and a methodology registry. However, current-main source review does not show broad runtime endpoint population of metric provenance; the strongest direct uses are the shared factory/DTO, tests and frontend fixtures/consumers.
+
+This means the infrastructure exists without a coverage guarantee. A Tier-1 KPI can still be displayed with good methodology copy while its actual runtime value does not declare authority, evidence class, unit, denominator, actionability or limitation.
+
+### Evidence
+
+- `RQ147` defines backend-owned metric evidence/decision-use tiers.
+- `RQ362` delivered the shared provenance DTO/meta vocabulary.
+- `Api/Dtos/AnalyticsMetricProvenanceDto.cs` currently carries kind, authority, actionability, unit and denominator.
+- Source search for runtime `MetricProvenance` population primarily returns factory/contracts/tests rather than broad endpoint-owned construction.
+- `analyticsMetricDefinitions.ts` is a useful presentation/methodology registry but must not become runtime evidence authority.
+- Audit: `docs/qa/ANALYTICS_RELIABILITY_NEXT_WAVE_AUDIT_2026-09-29.md`.
+
+### Scope
+
+- Tier-1 decision KPI families on Dashboard, Product Decision Center, canonical Supplier, Inventory, Data Quality, Actions/Decision Board and durable reports.
+- Backend metric evidence/provenance population and a machine-readable coverage manifest.
+- Frontend methodology/trust/export/report preservation of the same evidence.
+- Additive fields only; no breaking response rewrite and no formula redesign owned by another prompt.
+
+### Read first
+
+- `RQ147`, `RQ362`, `RQ148`, `RQ149`
+- `Api/Dtos/AnalyticsMetricProvenanceDto.cs`
+- `Api/Dtos/AnalyticsResponseMetaDto.cs`
+- `Klijent/clientapp/src/utils/analyticsMetricDefinitions.ts`
+- `Klijent/clientapp/src/utils/analyticsMetricProvenance.ts`
+- final owner decisions for any metric whose business meaning is still gated, including `RQ501`/`RQ505` where relevant
+
+### Do
+
+1. Define the Tier-1 metric coverage manifest: route/surface, metric key, authority/evidence kind, unit, denominator, formula/contract version, coverage/limitation owner and allowed decision use.
+2. Extend the provenance/evidence shape only where needed to reference context fingerprint, formula/contract version, coverage and limitation without duplicating `RQ147`.
+3. Populate backend-owned evidence for every selected metric from the same code path that calculates/owns the value.
+4. Preserve the evidence through table/detail/chart/export/report/action projections. Frontend may localize text but may not upgrade authority/actionability.
+5. Add a guard/test that fails when a Tier-1 displayed metric is registered as decision-relevant but no runtime evidence mapping exists.
+6. Keep modeled/estimated, observed, authoritative aggregate and unavailable states distinct; no modeled value may become causal through presentation.
+7. Preserve exact true-zero and missing/unknown semantics.
+
+### Tests
+
+- Coverage manifest completeness for every selected Tier-1 KPI.
+- Each provenance kind/authority/actionability combination remains valid through API serialization and frontend schema parsing.
+- Missing denominator/coverage/freshness cannot produce `actionable`.
+- Card/table/detail/export/report preserve the same metric key, unit, denominator, evidence class, context fingerprint and limitation.
+- A frontend methodology alias cannot silently change runtime authority.
+- Existing metric-provenance and methodology tests remain green.
+
+### Acceptance
+
+- Every Tier-1 decision-relevant KPI has machine-readable evidence sufficient to answer “what is this number, from which context, how authoritative is it, and may it drive an action?”
+- Methodology copy is a translation of runtime truth, not a substitute for it.
+- Missing evidence blocks or qualifies the decision rather than becoming a healthy default.
+- Coverage is enforced by a test/manifest, not by code-review memory.
+
+### Dependencies
+
+- `RQ147` and `RQ362` are DONE and are the semantic foundation.
+- Sequence after `RQ509` so evidence can bind to one context identity.
+- Do not override unresolved metric/business contracts owned by `RQ501`, `RQ476`, `RQ498` or other active owners.
+
+---
+
+## RQ511 - Extend runtime response validation to every Tier-1 analytics client
+
+Status: WAITING  
+Ready after: RQ510 evidence/meta shape is stable  
+Priority: P1  
+Type: frontend/api-contract/tests/governance  
+Feature family: analytics-runtime-schema-tier1-coverage  
+Parallel-safe: no with API-client contract owners  
+Owner: Analytics Frontend / Runtime Contracts  
+Commit suggestion: `feat(analytics): validate every tier1 response`
+
+### Problem
+
+`RQ363` introduced strong Zod/API-boundary validation and current schemas cover several Operations, Supplier and Inventory families. There is still no enforced coverage manifest proving that every Tier-1 analytics request passes through an explicit runtime schema or a reviewed exception.
+
+A less-migrated or newly-added analytics client can therefore return TypeScript-shaped but runtime-invalid data that reaches business rendering.
+
+### Evidence
+
+- `Klijent/clientapp/src/validation/analyticsResponseSchemas.ts` validates many high-risk numeric/meta contracts.
+- `validateAnalyticsResponse` is already used by multiple analytics clients.
+- `RQ363` explicitly recorded that schemas were rolled out to selected surfaces and that remaining endpoints awaited later validation work.
+- Composed surfaces such as Dashboard, Product Decision Center, Decision Board, Data Quality, Actions, Decision Pulse and durable reports have independent clients/contracts and need explicit coverage proof.
+- Audit: `docs/qa/ANALYTICS_RELIABILITY_NEXT_WAVE_AUDIT_2026-09-29.md`.
+
+### Scope
+
+- Tier-1 frontend API clients not already fully validated.
+- Shared runtime schemas for meta/context/provenance plus page-specific business fields.
+- A manifest/test proving every Tier-1 analytics client either validates at the boundary or has a narrow documented exception.
+- No local repair/coercion of backend business values.
+
+### Read first
+
+- `RQ363`
+- `analyticsResponseSchemas.ts`, `analyticsResponseValidation.ts`, `analyticsHttp.ts`
+- current API clients for Dashboard, PDC, Supplier, Inventory, Data Quality, Actions, Decision Board, Decision Pulse and durable reports
+- active owners `RQ477`–`RQ482`, `RQ498`–`RQ500` before touching overlapping clients
+
+### Do
+
+1. Inventory Tier-1 clients and classify current runtime-schema coverage.
+2. Add schemas at the fetch boundary for uncovered critical responses, reusing shared meta/context/provenance schemas.
+3. Validate finite numbers, count sign/range, nullable denominator states, dates, enums/statuses, context fingerprints and metric evidence consistency.
+4. Fail closed with a controlled analytics contract-violation state. Do not coerce invalid values into zero or silently drop invalid trust metadata.
+5. Preserve successful empty, valid signed monetary/delta values and nullable unknown states.
+6. Add a coverage guard so a new Tier-1 client cannot bypass runtime validation unnoticed.
+
+### Tests
+
+- Missing/null/zero/positive/valid-negative/non-finite/out-of-range/malformed-date fixtures as appropriate per field.
+- Contradictory meta fixtures such as `success=true` with an invalid required context/evidence contract.
+- Schema violation never renders a healthy KPI/empty result.
+- Valid signed metrics are not rejected by generic non-negative schemas.
+- Every Tier-1 client appears in the coverage manifest with validated or reviewed-exception state.
+- Focused page/client tests, typecheck, guardrails and production build pass.
+
+### Acceptance
+
+- Runtime-invalid Tier-1 analytics payloads cannot reach business rendering as trusted values.
+- 100% of Tier-1 clients are covered by explicit schema validation or a narrow reviewed exception.
+- Valid zero, signed business values, unknown and successful empty remain semantically distinct.
+- The browser never “repairs” an invalid backend metric into a plausible number.
+
+### Dependencies
+
+- `RQ363` is DONE and remains the implementation pattern.
+- Sequence after `RQ510` so the final evidence/context shape is validated once rather than churned twice.
+- Coordinate with current page/client owners; no duplicate formula or recommendation logic.
+
+---
+
+## RQ512 - Extend the shared Analytics Reliability Contract suite to all Tier-1 screens
+
+Status: WAITING  
+Ready after: RQ511 DONE  
+Priority: P1  
+Type: frontend/tests/architecture  
+Feature family: analytics-reliability-contract-tier1-adoption  
+Parallel-safe: yes when adapters do not edit runtime business code  
+Owner: Analytics Reliability / Test Foundations  
+Commit suggestion: `test(analytics): cover tier1 reliability invariants`
+
+### Problem
+
+`RQ360` created a reusable invariant suite, but the current registration covers only Pre/Post, Shoe Type, Color, Daily Sales and Inventory.
+
+The highest-value composed screens can therefore regress on the same generic failure classes without participating in the common contract.
+
+### Evidence
+
+Current `analyticsReliabilityContract.spec.ts` registers five adapters:
+
+- Pre/Post
+- Shoe Type
+- Color
+- Daily Sales
+- Inventory
+
+Tier-1 gaps include Dashboard, Product Decision Center, canonical Supplier, Executive Decision Board, Data Quality, Actions, Decision Pulse and durable Supplier/Pilot reports.
+
+### Scope
+
+- Test adapters/fixtures for uncovered Tier-1 screens.
+- Small reusable invariant extensions only when multiple new adapters need them.
+- No production formula/recommendation rewrite.
+
+### Read first
+
+- `RQ360`, `RQ359`, `RQ364`
+- `Klijent/clientapp/src/testing/analyticsReliabilityContract.ts`
+- each target page's nearest focused specs
+- `RQ511` runtime-schema coverage manifest
+
+### Do
+
+1. Register Tier-1 adapters for the uncovered critical screens.
+2. Reuse the existing invariants: unknown != zero, empty != error, backend authority, chronology, visible/page count != global total.
+3. Add shared invariants where broadly applicable:
+   - requested/effective context survives page projection;
+   - stale/partial/refetch state does not overwrite the last-good snapshot;
+   - blocked recommendation/value cannot reappear in export/report projection;
+   - provenance/context identity does not change through presentation.
+4. Keep screen-specific formulas out of the generic kit.
+5. Require every Tier-1 screen in the coverage manifest to have either a contract adapter or a reviewed reason why the generic invariant is not applicable.
+
+### Tests
+
+- Contract-suite invocation for Dashboard, PDC, Supplier, Decision Board, Data Quality, Actions, Decision Pulse and durable reports where applicable.
+- Counterexamples for true zero vs unknown, partial vs empty, old-vs-new request race and page-vs-global population.
+- Report/export consumers cannot restore a metric hidden/blocked by the source contract.
+- Existing five adapters remain green.
+
+### Acceptance
+
+- Every Tier-1 analytics screen participates in one shared reliability invariant framework.
+- A generic trust regression fails in the shared suite instead of waiting for another screen-specific audit.
+- The test kit remains free of product scoring/formula logic.
+- Coverage can be reviewed mechanically.
+
+### Dependencies
+
+- `RQ360` is DONE.
+- Run after `RQ511` so adapters exercise the final validated boundary.
+- Coordinate with active screen-specific test owners but prefer test-only path safety.
+
+---
+
+## RQ513 - Generalize continuous analytics integrity evidence beyond Supplier and Shoe Type
+
+Status: WAITING  
+Ready after: RQ509 and RQ510 DONE  
+Priority: P0  
+Type: backend/integration/worker/evidence/tests  
+Feature family: analytics-core-runtime-integrity  
+Parallel-safe: no, runtime trust state and evidence IDs are shared infrastructure  
+Owner: Analytics Reliability / Runtime Integrity  
+Commit suggestion: `feat(analytics): verify core analytics continuously`
+
+### Problem
+
+Trendplus has a strong bounded integrity pattern for Supplier/Shoe Type through `RQ413`, durable history through `RQ449`, and post-import probing through `RQ450`. Other Tier-1 families do not have equivalent continuous proof.
+
+Local deterministic tests can remain green while a new import, cache generation, refresh run or deployed schema causes Dashboard, Inventory, Data Quality or composed Decision Board analytics to drift.
+
+### Evidence
+
+- `OperationsAnalyticsIntegrityService`, registry, worker and API already define verified/degraded/drift states for a bounded family.
+- `RQ449` persists immutable evidence IDs/history.
+- `RQ450` proves the post-import unverified -> bounded probe lifecycle.
+- `docs/qa/ANALYTICS_ROUTE_LINEAGE_MATRIX_2026-09-05.md` still marks runtime freshness/schema/source proof as unproven for several core families.
+- No general repository-wide analytics canary/integrity reconciler was found; the existing implementation is intentionally Operations/Supplier/Shoe scoped.
+- Audit: `docs/qa/ANALYTICS_RELIABILITY_NEXT_WAVE_AUDIT_2026-09-29.md`.
+
+### Scope
+
+Generalize the existing integrity framework with **family-specific bounded invariants**, not one giant duplicated analytics engine.
+
+Initial high-value families:
+
+- canonical sales/Dashboard totals versus raw certified sales facts;
+- Inventory balance/value/risk identity using its owned raw/snapshot basis;
+- Data Quality denominator/issue-count consistency;
+- Decision Board contributor identity: aggregate cards must reconcile to the exact source family/context they claim.
+
+Reuse the existing registry/evidence/history/worker conventions where possible.
+
+### Read first
+
+- `RQ413`, `RQ449`, `RQ450`, `RQ451`
+- `docs/qa/OPERATIONS_ANALYTICS_INTEGRITY_GUARD_2026-09-25.md`
+- `RQ509` context fingerprint
+- `RQ510` metric evidence coverage
+- family-specific existing independent fixtures/integration tests
+
+### Do
+
+1. Define a pluggable family probe contract with bounded runtime cost and explicit owner for every invariant.
+2. Reuse context fingerprint, app/schema/contract/source generation and durable evidence IDs.
+3. On import/refresh/cache invalidation affecting a family, mark its integrity state unverified until the corresponding bounded probe completes.
+4. Distinguish:
+   - `verified`: required invariants executed and matched;
+   - `drift_detected`: a proven unexplained mismatch;
+   - `degraded`: timeout/dependency/proof unavailable;
+   - `unverified`: no current evidence for this generation.
+5. Fail closed only where the affected decision contract requires it; a probe outage is not the same as a proven data mismatch.
+6. Persist redacted evidence and make it inspectable through an operator/read-only API.
+7. Do not copy production aggregation code into the oracle; use independently derived bounded checks or conservation identities.
+
+### Tests
+
+- Import/refresh/cache-clear changes the relevant family generation to unverified and schedules exactly the allowed probe lifecycle.
+- Known mismatch -> drift_detected with non-zero delta and evidence ID.
+- Timeout/missing dependency -> degraded, never verified.
+- Restart preserves durable history but does not treat old-generation evidence as current.
+- Context/source generation changes invalidate prior verification.
+- Cross-family isolation: Inventory failure does not falsely mark Supplier verified/drifted.
+- Probe cost/row/window bounds are enforced.
+
+### Acceptance
+
+- Every enrolled Tier-1 family has current-generation integrity evidence or an explicit non-verified state.
+- A stale evidence ID cannot certify a new import/refresh/schema/context generation.
+- Proven data drift is detected before a decision surface can silently continue as trusted.
+- Supplier/Shoe Type keeps its existing certified oracle; no second competing formula is introduced.
+
+### Dependencies
+
+- `RQ413`, `RQ449`, `RQ450` are DONE and are the implementation reference.
+- `RQ509` and `RQ510` provide context/evidence identity.
+- Do not duplicate `RQ448`/`RQ452`–`RQ455` Supplier/Shoe browser/certificate ownership.
+
+---
+
+## RQ514 - Make analytics production-readiness evidence exact-SHA-bound and self-expiring
+
+Status: WAITING  
+Ready after: RQ513 integrity evidence contract is stable  
+Priority: P1  
+Type: tooling/evidence/docs/release-gate/tests  
+Feature family: analytics-production-readiness-truth  
+Parallel-safe: yes, evidence synthesis only unless a separate runtime fix is discovered  
+Owner: Analytics Reliability / Release Evidence  
+Commit suggestion: `feat(analytics): generate current readiness status`
+
+### Problem
+
+`docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS.md` is a manual status snapshot dated 2026-06-19 and tied to an old review HEAD, but it still contains a broad “Ready with warnings” verdict.
+
+Analytics implementation, migrations, queues and live evidence have changed substantially since then. A historical PASS must not continue looking current after the app SHA, schema, contract version or evidence freshness window changes.
+
+### Evidence
+
+- Current repository machine-readable validation evidence exists through `RQ367`.
+- Route lineage and multiple run logs explicitly distinguish local proof from live/runtime proof.
+- Current queue still contains live/browser/provider gates such as `Q83`, `RQ448`, `RQ454` and related production evidence work.
+- The readiness status document does not mechanically expire or bind each row to current app/deployed/schema/evidence versions.
+- Audit: `docs/qa/ANALYTICS_RELIABILITY_NEXT_WAVE_AUDIT_2026-09-29.md`.
+
+### Scope
+
+- A generated machine-readable analytics readiness snapshot and Markdown renderer.
+- Exact repository SHA, deployed SHA when known, schema/contract/context generations, evidence timestamps and expiry policy.
+- Per-route/per-family states such as code-ready, runtime-unproven, verified-current, stale-evidence, blocked and failed.
+- Consume existing evidence; do not fake missing browser/provider proof.
+
+### Read first
+
+- `RQ367`
+- `docs/Analytics/ANALYTICS_PRODUCTION_READINESS_CHECKLIST.md`
+- `docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS.md`
+- `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`
+- `RQ448`, `RQ453`, `RQ454`, `STAB16`
+- `RQ513` integrity evidence schema
+
+### Do
+
+1. Define a machine-readable readiness schema with evidence source, checked SHA/generation, timestamp, expiry, executed/skipped/blocked status and limitation.
+2. Render the human-readable status document from that evidence rather than hand-maintaining a global verdict.
+3. Invalidate or downgrade PASS when:
+   - app/deployed SHA changes and the evidence is SHA-sensitive;
+   - schema/contract/source generation changes;
+   - the named freshness/expiry interval is exceeded;
+   - a required proof was skipped/unavailable;
+   - current integrity state is unverified/degraded/drifted.
+4. Separate local/code readiness from deployed/runtime verification.
+5. Never convert old live proof into current proof just because deterministic tests still pass.
+6. Keep historical snapshots immutable or dated; do not overwrite evidence history without provenance.
+
+### Tests
+
+- Exact-current SHA + fresh required evidence can produce verified-current.
+- New app SHA with no rerun downgrades the affected evidence.
+- Expired browser/live/schema proof becomes stale-evidence, not PASS.
+- Skipped or environment-blocked checks cannot produce verified-current.
+- Drift/unverified integrity state blocks the relevant verified claim.
+- Renderer and machine JSON agree.
+
+### Acceptance
+
+- No analytics readiness document can look current while referring to an old build or expired proof.
+- Reviewers can distinguish code-ready from production-verified per critical family.
+- Every PASS is traceable to executable evidence, exact version identity and a freshness policy.
+- Missing external access stays explicit rather than being inferred green.
+
+### Dependencies
+
+- `RQ367` is DONE and supplies the validation-evidence pattern.
+- Sequence after `RQ513` so runtime integrity can feed readiness.
+- Consume, never bypass, external gates such as `STAB16`, `Q83`, `RQ448`, `RQ453` and `RQ454`.
+
+---
+
+## RQ515 - Expose decision readiness per screen from existing evidence and blockers
+
+Status: WAITING  
+Ready after: RQ510 DONE  
+Priority: P1  
+Type: backend/contract/frontend/tests  
+Feature family: analytics-screen-decision-readiness  
+Parallel-safe: no with trust/recommendation headers on target screens  
+Owner: Analytics Product Reliability / Decision Readiness  
+Commit suggestion: `feat(analytics): expose decision readiness`
+
+### Problem
+
+A general data-quality status is not sufficient to answer whether a specific business decision is safe.
+
+A screen can have broadly healthy source data but still lack one decision-critical input such as cost coverage, stable identity, inventory observation, comparable pre/post evidence, current freshness or recommendation eligibility. Conversely, a descriptive signal can remain useful even when the final action is blocked.
+
+Trendplus already exposes many blockers independently, but there is no uniform screen-level readiness contract that explains whether the current view is:
+
+- safe for the declared recommendation;
+- useful only as a supporting signal;
+- blocked pending specific evidence.
+
+This must not become another arbitrary numeric score.
+
+### Evidence
+
+- `RQ144` proves global Data Quality denominator truth.
+- `RQ147`/`RQ149` distinguish evidence and inventory-economic eligibility from generic quality.
+- Supplier, Product, Inventory, Color/Shoe Type and Pre-Nivelacija already expose route-specific recommendationAllowed/reason/coverage concepts.
+- Current product architecture distinguishes Recommendation, Signal and Report surfaces, but readiness language is still implemented per screen.
+- Audit: `docs/qa/ANALYTICS_RELIABILITY_NEXT_WAVE_AUDIT_2026-09-29.md`.
+
+### Scope
+
+- Shared backend decision-readiness contract and presentation helper for action-bearing Tier-1 screens.
+- Reuse existing evidence, recommendationAllowed, freshness, data quality, metric provenance and family-specific blockers.
+- Repair/deep-link guidance to the owner surface (Data Quality, refresh status, missing cost/identity, etc.).
+- No new weighted readiness score and no replacement recommendation engine.
+
+### Read first
+
+- `docs/ai/ANALYTICS_STANDARDS.md`
+- `RQ143`, `RQ144`, `RQ147`, `RQ149`, `RQ510`
+- current trust/recommendation contracts for Product, Supplier, Inventory, Pre-Nivelacija and Decision Board
+- final `RQ505` product-role decision for Color/Shoe Type framing
+
+### Do
+
+1. Define a small categorical readiness contract, for example:
+   - `decision_ready`
+   - `signal_only`
+   - `blocked`
+   - `unavailable`
+   with backend-owned reason codes and evidence references.
+2. Derive readiness only from existing authoritative blockers/evidence; do not invent a new frontend score or arbitrary threshold.
+3. Make the declared surface role part of interpretation: a Signal screen may be useful while not decision-ready, while a Recommendation surface must block actions when readiness is blocked.
+4. Show the top blocking reasons and a safe repair/review next step.
+5. Preserve the same readiness state in page, detail, action payload, export/report and Decision Board aggregation.
+6. Ensure one family’s missing evidence does not incorrectly block unrelated decisions.
+
+### Tests
+
+- Good global Data Quality + missing cost/comparability/freshness on one decision family -> that family is signal-only/blocked with the exact reason.
+- Poor unrelated evidence does not block an unaffected family.
+- `recommendationAllowed=false` can never render `decision_ready`.
+- Signal surfaces never masquerade as final recommendation owners.
+- Export/report/action payload preserves readiness and reasons.
+- Unknown reason codes map to safe user-facing copy without becoming green.
+
+### Acceptance
+
+- A user can tell, per screen and current context, whether the result is actionable, informational or blocked and why.
+- Decision readiness is explainable from existing evidence, not a second opaque score.
+- General Data Quality and decision-specific readiness can differ without contradiction because their scopes are explicit.
+- Repair guidance points to the correct evidence owner.
+
+### Dependencies
+
+- `RQ510` provides mandatory evidence coverage.
+- Reuse existing recommendation/data-quality contracts; do not bypass active product owners such as `RQ505`, `RQ498`/`RQ499`, `RQ477`–`RQ482`.
+- The existing Actions/Outcome and RL/Decision Intelligence programs remain the owner of measured value and causal learning.
+
