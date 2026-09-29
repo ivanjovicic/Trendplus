@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Data;
 using System.Data.Common;
+using Application.Analytics.Queries;
 using Application.Analytics.Queries.GetInventorySnapshotFoundation;
 using Application.Analytics.Queries.GetInventoryAlerts;
 using Application.Analytics.Queries.GetInventoryForecast;
@@ -12,6 +13,7 @@ using Domain.Model.Analytics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
+using Trendplus2.Dtos;
 using Trendplus2.Endpoints;
 using Xunit;
 
@@ -20,6 +22,78 @@ namespace Trendplus2.Tests;
 [Trait("Category", "Unit")]
 public sealed class InventorySnapshotContractTests
 {
+    [Fact(DisplayName = "Cached inventory signal meta distinguishes data, empty, warning and unavailable states")]
+    public void CachedInventorySignalMeta_UsesSharedTrustContract()
+    {
+        var provenance = InventorySignalSnapshotProvenance.ForCurrentSnapshot(
+            new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2026, 9, 30, 0, 0, 0, DateTimeKind.Utc),
+            "existing");
+
+        var success = CachedAnalyticsEndpoints.BuildInventorySignalMeta(
+            snapshotAvailable: true,
+            itemCount: 1,
+            legacyWarning: null,
+            snapshotFreshnessUtc: null,
+            provenance: null,
+            signalStatus: "trusted");
+        var empty = CachedAnalyticsEndpoints.BuildInventorySignalMeta(
+            snapshotAvailable: true,
+            itemCount: 0,
+            legacyWarning: "snapshot postoji, ali nema redova",
+            snapshotFreshnessUtc: null,
+            provenance: provenance,
+            signalStatus: "unknown");
+        var warning = CachedAnalyticsEndpoints.BuildInventorySignalMeta(
+            snapshotAvailable: true,
+            itemCount: 1,
+            legacyWarning: "redovi sa nepotpunom signalnom evidencijom",
+            snapshotFreshnessUtc: null,
+            provenance: provenance,
+            signalStatus: "unknown");
+        var unavailable = CachedAnalyticsEndpoints.BuildInventorySignalMeta(
+            snapshotAvailable: false,
+            itemCount: 0,
+            legacyWarning: "snapshot nije dostupan",
+            snapshotFreshnessUtc: null,
+            provenance: provenance,
+            signalStatus: "missing_relation");
+
+        Assert.True(success.Success);
+        Assert.False(success.IsPartial);
+        Assert.Equal("good", success.DataQualityStatus);
+
+        Assert.True(empty.Success);
+        Assert.Equal("no_inventory_signal_data", empty.EmptyReason);
+        Assert.Equal("insufficient_data", empty.DataQualityStatus);
+        Assert.Equal(provenance.RequestedDataScope, empty.RequestedDataScope);
+        Assert.Equal(provenance.EvidenceScope, empty.ProvenanceBasis);
+
+        Assert.True(warning.Success);
+        Assert.True(warning.IsPartial);
+        Assert.Equal("inventory_signal_evidence_warning", warning.WarningCode);
+        Assert.Equal("warning", warning.DataQualityStatus);
+
+        Assert.True(unavailable.Success);
+        Assert.True(unavailable.IsPartial);
+        Assert.Equal("inventory_signal_snapshot_unavailable", unavailable.WarningCode);
+        Assert.Equal("insufficient_data", unavailable.DataQualityStatus);
+    }
+
+    [Fact(DisplayName = "Cached inventory signal error meta remains non-success and correlated")]
+    public void CachedInventorySignalMeta_ErrorDoesNotLookLikeEmptySuccess()
+    {
+        var meta = AnalyticsResponseMetaFactory.Error(
+            "inventory_signal_db_error",
+            "Signal trenutno nije dostupan.",
+            "corr-signal-1");
+
+        Assert.False(meta.Success);
+        Assert.Equal("inventory_signal_db_error", meta.ErrorCode);
+        Assert.Equal("corr-signal-1", meta.CorrelationId);
+        Assert.Null(meta.EmptyReason);
+    }
+
     [Theory(DisplayName = "Inventory export accepts only explicit supported data scopes")]
     [InlineData(null, true, "all")]
     [InlineData("", true, "all")]

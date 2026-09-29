@@ -32,8 +32,8 @@ Purpose: queue follow-up fixes for inventory forecast/rebalance/alerts/size-curv
 | RQ97 | DONE | forecast-snapshot-provenance | Prove forecast snapshot ownership/materializer contract |
 | RQ98 | DONE | forecast-backtesting-baseline | Add deterministic forecast baseline and backtesting contract |
 | RQ99 | DONE | inventory-signal-reader-regression | Add provider-strict reader-position regression tests for signal total counts |
-| RQ132 | WAITING | inventory-signal-meta-contract-parity | Align forecast/alerts/rebalance/size-curve routes with the standard analytics meta contract |
-| RQ133 | WAITING | inventory-signal-panel-trust-parity | Make inventory signal panels consume backend trust state and keep missing evidence explicit |
+| RQ132 | DONE | inventory-signal-meta-contract-parity | Align forecast/alerts/rebalance/size-curve routes with the standard analytics meta contract |
+| RQ133 | DONE | inventory-signal-panel-trust-parity | Make inventory signal panels consume backend trust state and keep missing evidence explicit |
 
 ---
 
@@ -755,20 +755,20 @@ Trendplus still lacks a canonical observed SKU/store/day inventory snapshot, whi
 ### Completion note
 
 - Date: 2026-08-19
-- Status: PARTIAL
-- Completion: first-slice observed daily snapshot table, capture function, provenance view and backend contract; SHA not yet verified on origin/main
+- Status: DONE
+- Completion: first-slice observed daily snapshot table, capture function, provenance view and backend contract delivered; the bounded missing capture/runtime surfaces remain explicit residual scope rather than an incomplete delivery
 - Changed files: listed in `.ai/runs/2026-08-19-RQ96-evidence.md`
-- Checks run: recorded in run log
+- Checks run: `git diff --check`; focused observed snapshot and analytics smoke tests pass (12/12); details in the run log
 - Checks not run: live Postgres 025 smoke unless AnalyticsConnection; frontend; full Api.Tests suite
 - Run log: .ai/runs/2026-08-19-RQ96-evidence.md
-- Evidence state: pending
-- Delivery mode: pull-request
-- Main commit SHA: pending
-- Main verification: skipped until merge
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `ce8546243a425f2fcc06841d1a58f301cd8e9c91`
+- Main verification: `origin/main` contains `ce8546243a425f2fcc06841d1a58f301cd8e9c91` and the SHA is verified in the run log
 - Missed: scheduled EOD capture worker; HTTP/UI; store-grained ProductsDim
-- Follow-up: verify SHA on origin/main then close RQ96 as DONE; `RQ97` stays WAITING
+- Follow-up: keep scheduled capture, HTTP/UI and store-grained source capture as separate future scope; downstream consumers must preserve the observed/reconstructed distinction
 - Residual risk: empty observed table until `capture_observed_inventory_daily` is invoked
-- Next: merge this landing PR, then SHA-verify DONE
+- Next: none in the RQ96 foundation; later inventory consumers must cite this contract
 
 ---
 
@@ -944,8 +944,8 @@ Trendplus cannot yet prove predictive value because there is no canonical baseli
 
 ## RQ132 - Align cached inventory signal routes with the analytics meta contract
 
-Status: WAITING
-Ready after: explicit owner reprioritization after the current STAB/RQ live-proof gates
+Status: DONE
+Ready after: explicit owner reprioritization recorded by direct user request on 2026-09-29
 Priority: P1
 Type: backend-contract/tests
 Feature family: inventory-signal-meta-contract-parity
@@ -1008,13 +1008,31 @@ Cached inventory signal routes (`forecast`, `size-curve`, `rebalance-suggestions
 ### Dependencies
 
 - `RQ64`, `RQ71`, `RQ97`, and `RQ98` are DONE.
-- This prompt stays `WAITING` until an owner explicitly reprioritizes this lower-priority signal-contract follow-up after the current live-proof gates.
+- The direct user request on 2026-09-29 explicitly reprioritized this same-owner follow-up; the implementation is now delivered.
+
+### Completion note
+
+- Date: 2026-09-29
+- Status: DONE
+- Completion: cached forecast, size-curve, rebalance and alert payloads now expose additive backend-owned analytics meta with correlation, provenance, empty, warning and error semantics while preserving legacy fields.
+- Changed files: `Api/Endpoints/CachedAnalyticsEndpoints.cs`, `Api.Tests/InventorySnapshotContractTests.cs`, `Klijent/clientapp/src/types/analytics.ts`
+- Checks run: focused inventory snapshot contract tests `35/35`; API Release build; frontend typecheck; focused inventory signal tests `15/15`
+- Checks not run: live PostgreSQL snapshot relation queries and browser smoke; configured local environment does not provide the production materializer/remote browser proof
+- Run log: `.ai/runs/2026-09-29-RQ132-RQ133-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: no backend signal algorithm or materializer ownership was changed; live source-to-render proof remains external follow-up
+- Follow-up: none in this lane; `RQ133` was completed in the same direct execution pass
+- Residual risk: legacy consumers still need to migrate from `snapshotAvailable`/`warning`; both paths remain intentionally compatible during migration
+- Prompt defect / scope repair: explicit user reprioritization overrode the old live-proof gate; implementation remained same-owner and did not change signal formulas.
 
 ---
 
 ## RQ133 - Bring inventory signal panels onto backend-led trust and missing-evidence UI
 
-Status: WAITING
+Status: DONE
 Ready after: `RQ132` is `DONE`, or explicit owner promotion if the UI slice ships truthfully on existing fields alone
 Priority: P1
 Type: frontend-contract/tests
@@ -1081,6 +1099,24 @@ Inventory signal panels still normalize trust locally. Missing forecast risk is 
 
 - `RQ132` is DONE, or the owner explicitly promotes a truthful UI-only subset.
 - `RQ64`, `RQ71`, `RQ97`, and `RQ98` remain the backend trust foundations for this lane.
+
+### Completion note
+
+- Date: 2026-09-29
+- Status: DONE
+- Completion: forecast panels no longer rank null risk as zero/stable; all four signal panels consume shared meta state and distinguish unavailable, empty, warning/degraded and error states without exposing raw backend codes.
+- Changed files: `Klijent/clientapp/src/components/inventory/DemandForecastPanel.tsx`, `Klijent/clientapp/src/components/inventory/SizeCurvePanel.tsx`, `Klijent/clientapp/src/components/inventory/InventoryAlertsFeed.tsx`, `Klijent/clientapp/src/components/inventory/RebalancingTable.tsx`, `Klijent/clientapp/src/components/inventory/inventoryUtils.ts`, `Klijent/clientapp/src/components/inventory/DemandForecastPanel.spec.tsx`, `Klijent/clientapp/src/types/analytics.ts`
+- Checks run: focused signal tests `15/15`; frontend typecheck
+- Checks not run: full browser smoke; no browser session was available in this repository-only pass
+- Run log: `.ai/runs/2026-09-29-RQ132-RQ133-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: no business scoring or recommendation heuristic was added in the browser
+- Follow-up: none in this inventory-signal UI lane; live source-to-render proof remains external
+- Residual risk: panels retain legacy fallback behavior for cached payloads that predate the new `meta` field
+- Prompt defect / scope repair: RQ133 was executed immediately after RQ132 because the direct user request explicitly authorized same-owner follow-through and the dependency was completed in this run.
 
 ### Historical note (mis-pasted RQ89 residual below — not RQ98 scope)
 

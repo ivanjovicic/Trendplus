@@ -1,8 +1,8 @@
-import type { ForecastRowDto, InventoryActionDatasetContext, InventoryActionSuggestion, InventoryInsightItem, InventoryListItem, InventoryReportScheduleInput, InventorySnapshotRowState, StoreOption, SupplierFilterOption } from "../../types/analytics";
+import type { AnalyticsResponseMeta, ForecastRowDto, InventoryActionDatasetContext, InventoryActionSuggestion, InventoryInsightItem, InventoryListItem, InventoryReportScheduleInput, InventorySnapshotRowState, StoreOption, SupplierFilterOption } from "../../types/analytics";
 import type { DataScope } from "../../utils/dataScope";
+import { getAnalyticsMetaMessage, isAnalyticsMetaEmpty, isAnalyticsMetaError, isAnalyticsMetaWarning, shouldShowAnalyticsEmptyState } from "../../utils/analyticsResponseMeta";
 import type { InventoryRow } from "./types";
 import { TONE, resolveTone } from "./toneMap";
-
 type InventoryListItemWithSignals = InventoryListItem & {
   stockCoverDays?: number | null;
   stockCoverStatus?: string | null;
@@ -904,4 +904,27 @@ export function inventoryRiskSortScopeWarning(
   }
 
   return `${base} Trenutno je učitana cela filtrirana lista na jednoj strani.`;
+}
+
+export type InventorySignalPanelState = "ready" | "warning" | "empty" | "unavailable" | "error";
+
+export function resolveInventorySignalPanelState(
+  meta: AnalyticsResponseMeta | null | undefined,
+  snapshotAvailable: boolean | null | undefined,
+  rowCount: number,
+  legacyWarning?: string | null,
+): InventorySignalPanelState {
+  if (isAnalyticsMetaError(meta)) return "error";
+  if (snapshotAvailable === false) return "unavailable";
+  if (isAnalyticsMetaEmpty(meta) || shouldShowAnalyticsEmptyState(meta, rowCount)) return "empty";
+  if (rowCount === 0) return "empty";
+  if (isAnalyticsMetaWarning(meta) || Boolean(legacyWarning?.trim())) return "warning";
+  return "ready";
+}
+
+export function resolveInventorySignalPanelMessage(
+  meta: AnalyticsResponseMeta | null | undefined,
+  legacyWarning?: string | null,
+): string | null {
+  return getAnalyticsMetaMessage(meta) ?? formatInventorySnapshotWarning(legacyWarning);
 }

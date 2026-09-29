@@ -3,6 +3,7 @@ import { LoadingSkeleton } from "../LoadingSkeleton";
 import type { SizeCurveDto } from "../../types/analytics";
 import { SizeCurveVisualization } from "./SizeCurveVisualization";
 import { getSafeAnalyticsErrorMessage } from "../../utils/analyticsErrorMessages";
+import { resolveInventorySignalPanelMessage, resolveInventorySignalPanelState } from "./inventoryUtils";
 
 type SizeCurvePanelProps = {
   sizeCurveSkuId: number | null;
@@ -39,7 +40,14 @@ export function SizeCurvePanel({
   onChangeSkuId,
 }: SizeCurvePanelProps) {
   const items = sizeCurve?.items ?? [];
-  const warningLabel = getSizeCurveWarningLabel(sizeCurve?.warning);
+  const signalState = resolveInventorySignalPanelState(
+    sizeCurve?.meta,
+    sizeCurve?.snapshotAvailable,
+    items.length,
+    sizeCurve?.warning,
+  );
+  const warningLabel = resolveInventorySignalPanelMessage(sizeCurve?.meta)
+    ?? getSizeCurveWarningLabel(sizeCurve?.warning);
   const safeSizeCurveError = sizeCurveError
     ? getSafeAnalyticsErrorMessage(sizeCurveError, undefined, "Signal raspodele veličina trenutno nije dostupan.")
     : null;
@@ -81,12 +89,16 @@ export function SizeCurvePanel({
         </div>
       ) : sizeCurveLoading ? (
           <div className="mt-4 rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] p-4 text-center text-sm text-[var(--text-primary)]"><div className="mb-4">Učitavam raspodelu veličina za SKU #{sizeCurveSkuId}...</div><LoadingSkeleton type="messages" count={1} /></div>
-      ) : !sizeCurve?.snapshotAvailable ? (
+      ) : signalState === "error" ? (
+        <div className="mt-4 rounded-2xl border border-[var(--error)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--error)]">
+          {warningLabel ?? "Signal raspodele veličina trenutno nije dostupan."}
+        </div>
+      ) : signalState === "unavailable" ? (
         <div className="mt-4 rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">
           <div>Raspodela veličina nije dostupna za SKU #{sizeCurveSkuId}.</div>
           {warningLabel ? <div className="mt-2 text-xs text-warning">{warningLabel}</div> : null}
         </div>
-      ) : items.length === 0 ? (
+      ) : signalState === "empty" ? (
         <div className="mt-4 rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">
           <div>Snimak raspodele veličina je dostupan, ali nema podataka za SKU #{sizeCurveSkuId} u izabranom opsegu.</div>
           {warningLabel ? <div className="mt-2 text-xs text-warning">{warningLabel}</div> : null}

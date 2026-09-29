@@ -1,7 +1,7 @@
 ﻿import { AlertTriangle } from "lucide-react";
 import type { InventoryAlertListDto } from "../../types/analytics";
 import { fmtPctFromRatio } from "../../utils/analyticsFormatters";
-import { formatInventorySnapshotWarning, formatSignalCountBadge, getAlertSeverityTone, inventorySnapshotRowReasonLabel, inventorySnapshotRowStatusLabel } from "./inventoryUtils";
+import { formatSignalCountBadge, getAlertSeverityTone, inventorySnapshotRowReasonLabel, inventorySnapshotRowStatusLabel, resolveInventorySignalPanelMessage, resolveInventorySignalPanelState } from "./inventoryUtils";
 
 type InventoryAlertsFeedProps = {
   alerts: InventoryAlertListDto | null;
@@ -25,6 +25,13 @@ export function InventoryAlertsFeed({
   onOpenDetail,
 }: InventoryAlertsFeedProps) {
   const visibleAlerts = alerts?.items ?? [];
+  const signalState = resolveInventorySignalPanelState(
+    alerts?.meta,
+    alerts?.snapshotAvailable,
+    visibleAlerts.length,
+    alerts?.warning,
+  );
+  const signalMessage = resolveInventorySignalPanelMessage(alerts?.meta, alerts?.warning);
 
     return (
     <section className="rounded-[28px] border border-border bg-surface p-5">
@@ -60,12 +67,26 @@ export function InventoryAlertsFeed({
         <div className="mt-4 rounded-2xl border border-[var(--error)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--error)]">
           {alertsError}
         </div>
-      ) : !alerts?.snapshotAvailable ? (
+      ) : alertsLoading ? (
         <div className="mt-4 rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">
-          {alertsLoading ? "Učitavam upozorenja..." : "Upozorenja nisu dostupna. Tabela trenutnog stanja je prazna ili analitika nije pokrenuta."}
-          {formatInventorySnapshotWarning(alerts?.warning) ? <div className="mt-2 text-xs text-warning">{formatInventorySnapshotWarning(alerts?.warning)}</div> : null}
+          Učitavam upozorenja...
+        </div>
+      ) : signalState === "error" ? (
+        <div className="mt-4 rounded-2xl border border-[var(--error)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--error)]">
+          {signalMessage ?? "Upozorenja zaliha trenutno nisu dostupna."}
+        </div>
+      ) : signalState === "unavailable" ? (
+        <div className="mt-4 rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">
+          Upozorenja nisu dostupna. Snapshot tabela nije dostupna ili analitika nije pokrenuta.
+          {signalMessage ? <div className="mt-2 text-xs text-warning">{signalMessage}</div> : null}
+        </div>
+      ) : signalState === "empty" ? (
+        <div className="mt-4 rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">
+          Nema upozorenja za izabranu prodavnicu i dobavljača.
+          {signalMessage ? <div className="mt-2 text-xs text-warning">{signalMessage}</div> : null}
         </div>
       ) : (
+        <>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {visibleAlerts.slice(0, displayCount).map((alert, index) => (
             <article key={`${alert.alertType}-${alert.skuId}-${alert.sizeCode ?? "all"}-${index}`} onClick={() => onOpenDetail(alert.skuId, alert.storeId, alert.title)} className={`cursor-pointer rounded-2xl border border-border bg-surface p-4 ${alert.severity === "critical" ? "inventory-alert-critical" : ""}`}>
@@ -101,8 +122,9 @@ export function InventoryAlertsFeed({
             </div>
           ) : null}
         </div>
+        </>
       )}
-      {formatInventorySnapshotWarning(alerts?.warning) ? <p className="mt-3 text-xs text-warning">Napomena: {formatInventorySnapshotWarning(alerts?.warning)}</p> : null}
+      {signalState === "warning" && signalMessage ? <p className="mt-3 text-xs text-warning">Napomena: {signalMessage}</p> : null}
     </section>
   );
 }

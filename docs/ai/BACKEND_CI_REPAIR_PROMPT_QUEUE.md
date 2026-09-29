@@ -293,3 +293,10 @@ Run `36270728235` still contained failures across Access import FK guards, lost-
 - Evidence state: synchronized.
 - Current READY prompt: `none`.
 
+### Current routing correction - 2026-09-29
+
+- `BCI10` is DONE on current `origin/main`; the exact backend job `109298805061` is green at `1501 passed / 0 failed / 39 skipped` in workflow run `36535601283`.
+- `BCI11`, `BCI12`, `BCI13` and `BCI14` are DONE; no BCI prompt is READY or IN_PROGRESS.
+- The red sibling `RQ447` certification job is outside BCI ownership and was corrected separately by run `36536448476`.
+- Queue pointer: `Current READY prompt: none`.
+

@@ -1,7 +1,7 @@
 import { TrendingDown, TrendingUp } from "lucide-react";
 import type { ForecastDto, ForecastRowDto, StoreOption } from "../../types/analytics";
 import { fmtNumber, fmtPctFromRatio } from "../../utils/analyticsFormatters";
-import { formatSignalCountBadge } from "./inventoryUtils";
+import { formatSignalCountBadge, resolveInventorySignalPanelMessage, resolveInventorySignalPanelState } from "./inventoryUtils";
 import { TONE } from "./toneMap";
 import type { InventoryRow } from "./types";
 
@@ -36,21 +36,29 @@ export function DemandForecastPanel({
   overstockDisplayCount,
   onSuggestRestock,
 }: DemandForecastPanelProps) {
-  const highOosItems = (forecast?.items ?? [])
-    .filter((item) => (item.probabilityOfOOSIn7d ?? 0) > oosThreshold)
-    .sort((left, right) => (right.probabilityOfOOSIn7d ?? 0) - (left.probabilityOfOOSIn7d ?? 0))
+  const forecastItems = forecast?.items ?? [];
+  const signalState = resolveInventorySignalPanelState(
+    forecast?.meta,
+    forecast?.snapshotAvailable,
+    forecastItems.length,
+    forecast?.warning,
+  );
+  const highOosItems = forecastItems
+    .filter((item) => item.probabilityOfOOSIn7d != null && item.probabilityOfOOSIn7d > oosThreshold)
+    .sort((left, right) => right.probabilityOfOOSIn7d! - left.probabilityOfOOSIn7d!)
     .slice(0, oosDisplayCount);
 
-  const overstockItems = (forecast?.items ?? [])
-    .filter((item) => (item.overstockRisk ?? 0) > overstockThreshold)
-    .sort((left, right) => (right.overstockRisk ?? 0) - (left.overstockRisk ?? 0))
+  const overstockItems = forecastItems
+    .filter((item) => item.overstockRisk != null && item.overstockRisk > overstockThreshold)
+    .sort((left, right) => right.overstockRisk! - left.overstockRisk!)
     .slice(0, overstockDisplayCount);
 
-  const warningText = forecast?.warning;
+  const warningText = resolveInventorySignalPanelMessage(forecast?.meta, forecast?.warning);
   const provenanceStatus = forecast?.provenanceStatus ?? null;
   const isAuthoritative = forecast?.isAuthoritativeForecast === true;
-  const showUnprovenBanner =
-    Boolean(forecast?.snapshotAvailable) && !isAuthoritative && provenanceStatus !== "trusted";
+  const showUnprovenBanner = Boolean(forecast?.snapshotAvailable) && !isAuthoritative && provenanceStatus !== "trusted";
+  const hasMissingOosEvidence = forecastItems.some((item) => item.probabilityOfOOSIn7d == null);
+  const hasMissingOverstockEvidence = forecastItems.some((item) => item.overstockRisk == null);
 
   return (
     <section className="rounded-[28px] border border-border bg-surface p-5">
@@ -73,25 +81,41 @@ export function DemandForecastPanel({
         <div className="mt-4 rounded-2xl border border-[var(--error)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--error)]">
           {forecastError}
         </div>
-      ) : !forecast?.snapshotAvailable ? (
+      ) : signalState === "error" ? (
+        <div className="mt-4 rounded-2xl border border-[var(--error)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--error)]">
+          {warningText ?? "Prognoza zaliha trenutno nije dostupna."}
+        </div>
+      ) : forecastLoading ? (
         <div className="mt-4 rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">
-          {forecastLoading
-            ? "Učitavam prognozu..."
-              : provenanceStatus === "missing_relation"
-              ? "Prognoza nije dostupna — nedostaje veza sa snimkom prognoze (missing_relation). Ovo nije proizvod za automatsko predviđanje."
-              : "Prognoza trenutno nije dostupna. Veza sa snimkom nije učitana ili nije dostupna."}
+          Učitavam prognozu...
+        </div>
+      ) : signalState === "unavailable" ? (
+        <div className="mt-4 rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">
+          Prognoza trenutno nije dostupna. Signal snapshot nije učitan ili nije dostupan.
           {warningText ? <div className="mt-2 text-xs text-warning">{warningText}</div> : null}
         </div>
+      ) : signalState === "empty" ? (
+        <>
+          {showUnprovenBanner ? (
+            <div className="mt-4 rounded-2xl border border-warning/40 bg-surface-elevated px-4 py-3 text-sm text-warning">
+              Ograničeni signal: izvor podataka nije dokazan. Ne tretirati kao proizvod za automatsko predviđanje.
+              {warningText ? <div className="mt-1 text-xs text-muted">{warningText}</div> : null}
+            </div>
+          ) : null}
+          <div className="mt-4 rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">
+            Nema podataka za prognozu potražnje za trenutni opseg prodavnice i dobavljača.
+            {warningText ? <div className="mt-2 text-xs text-warning">{warningText}</div> : null}
+          </div>
+        </>
       ) : (
         <>
           {showUnprovenBanner ? (
             <div className="mt-4 rounded-2xl border border-warning/40 bg-surface-elevated px-4 py-3 text-sm text-warning">
-              Ograničeni signal: izvor podataka nije dokazan
-              {provenanceStatus ? ` (${provenanceStatus})` : ""}. Ne tretirati kao proizvod za automatsko predviđanje.
+              Ograničeni signal: izvor podataka nije dokazan. Ne tretirati kao proizvod za automatsko predviđanje.
               {warningText ? <div className="mt-1 text-xs text-muted">{warningText}</div> : null}
             </div>
           ) : null}
-          {(forecast.items ?? []).length === 0 ? (
+          {forecastItems.length === 0 ? (
         <div className="mt-4 rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">
           Nema podataka za prognozu potražnje za trenutni opseg prodavnice i dobavljača.
         </div>
@@ -102,12 +126,13 @@ export function DemandForecastPanel({
               <TrendingDown size={14} className="text-warning" />
               Najveći rizik nestanka zaliha u 7 dana
             </h3>
+            {hasMissingOosEvidence ? <div className="mt-2 rounded-xl border border-dashed border-border px-3 py-2 text-xs text-muted">Za deo redova rizik nestašice nije dostupan; ti redovi nisu rangirani kao nizak rizik.</div> : null}
             <div className="mt-3 space-y-2">
               {highOosItems.map((item) => {
                 const matchingRow = findForecastRow(rows, item);
                 const name = matchingRow?.naziv ?? `Artikal #${item.skuId}`;
                 const store = stores.find((entry) => entry.storeId === item.storeId)?.storeName ?? matchingRow?.storeName ?? `Objekat #${item.storeId}`;
-                const oosRisk = item.probabilityOfOOSIn7d ?? 0;
+                const oosRisk = item.probabilityOfOOSIn7d!;
                 const forecastDisabled = item.forecast7d == null || item.probabilityOfOOSIn7d == null;
                 const tone = oosRisk > 0.7 ? TONE.severity.critical : oosRisk > 0.4 ? TONE.severity.warning : TONE.severity.info;
 
@@ -147,12 +172,13 @@ export function DemandForecastPanel({
               <TrendingUp size={14} className="text-[var(--text-primary)]" />
               Rizik prevelike zalihe (28 dana)
             </h3>
+            {hasMissingOverstockEvidence ? <div className="mt-2 rounded-xl border border-dashed border-[var(--border-default)] px-3 py-2 text-xs text-[var(--text-primary)]">Za deo redova rizik viška nije dostupan; ti redovi nisu rangirani kao stabilni.</div> : null}
             <div className="mt-3 space-y-2">
               {overstockItems.map((item) => {
                 const matchingRow = findForecastRow(rows, item);
                 const name = matchingRow?.naziv ?? `Artikal #${item.skuId}`;
                 const store = stores.find((entry) => entry.storeId === item.storeId)?.storeName ?? matchingRow?.storeName ?? `Objekat #${item.storeId}`;
-                const overstockRisk = item.overstockRisk ?? 0;
+                const overstockRisk = item.overstockRisk!;
 
                 return (
                   <div key={`${item.skuId}-${item.storeId}-${item.sizeCode}`} className="flex items-start justify-between gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2">

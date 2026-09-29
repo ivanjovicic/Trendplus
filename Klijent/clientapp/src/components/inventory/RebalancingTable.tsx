@@ -1,7 +1,7 @@
 ﻿import { ArrowRightLeft } from "lucide-react";
 import type { RebalanceListDto, StoreOption } from "../../types/analytics";
 import { fmtNumber } from "../../utils/analyticsFormatters";
-import { formatCurrency, formatInventorySnapshotWarning, formatSignalCountBadge, getRebalanceUrgencyTone, inventorySnapshotRowReasonLabel, inventorySnapshotRowStatusLabel } from "./inventoryUtils";
+import { formatCurrency, formatSignalCountBadge, getRebalanceUrgencyTone, inventorySnapshotRowReasonLabel, inventorySnapshotRowStatusLabel, resolveInventorySignalPanelMessage, resolveInventorySignalPanelState } from "./inventoryUtils";
 import type { InventoryRow } from "./types";
 
 type RebalancingTableProps = {
@@ -25,6 +25,15 @@ export function RebalancingTable({
   scopeLabel,
   onCompareStores,
 }: RebalancingTableProps) {
+  const items = rebalance?.items ?? [];
+  const signalState = resolveInventorySignalPanelState(
+    rebalance?.meta,
+    rebalance?.snapshotAvailable,
+    items.length,
+    rebalance?.warning,
+  );
+  const signalMessage = resolveInventorySignalPanelMessage(rebalance?.meta, rebalance?.warning);
+
   return (
     <section className="rounded-[28px] border border-[var(--border-default)] bg-[var(--surface-elevated)] p-5">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
@@ -49,16 +58,26 @@ export function RebalancingTable({
         <div className="mt-4 rounded-2xl border border-[var(--error)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--error)]">
           {rebalanceError}
         </div>
-      ) : !rebalance?.snapshotAvailable ? (
+      ) : rebalanceLoading ? (
         <div className="mt-4 rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">
-          <div>{rebalanceLoading ? "Učitavam predloge za redistribuciju..." : "Redistribucija nije dostupna. Snapshot tabela nije dostupna."}</div>
-          {formatInventorySnapshotWarning(rebalance?.warning) ? <div className="mt-2 text-xs text-warning">{formatInventorySnapshotWarning(rebalance?.warning)}</div> : null}
+          Učitavam predloge za redistribuciju...
         </div>
-      ) : (rebalance.items ?? []).length === 0 ? (
+      ) : signalState === "error" ? (
+        <div className="mt-4 rounded-2xl border border-[var(--error)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--error)]">
+          {signalMessage ?? "Predlozi redistribucije trenutno nisu dostupni."}
+        </div>
+      ) : signalState === "unavailable" ? (
+        <div className="mt-4 rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">
+          <div>Redistribucija nije dostupna. Snapshot tabela nije dostupna.</div>
+          {signalMessage ? <div className="mt-2 text-xs text-warning">{signalMessage}</div> : null}
+        </div>
+      ) : signalState === "empty" ? (
         <div className="mt-4 rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">
           Nema preporučenih redistribucija {scopeLabel}.
+          {signalMessage ? <div className="mt-2 text-xs text-warning">{signalMessage}</div> : null}
         </div>
       ) : (
+        <>
         <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--border-default)]">
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
@@ -76,7 +95,7 @@ export function RebalancingTable({
                 </tr>
               </thead>
               <tbody>
-                {rebalance.items.slice(0, displayCount).map((item, index) => {
+                {items.slice(0, displayCount).map((item, index) => {
                   const name = rows.find((row) => row.id === item.skuId)?.naziv ?? `SKU #${item.skuId}`;
                   const fromStore = stores.find((store) => store.storeId === item.fromStoreId)?.storeName ?? `#${item.fromStoreId}`;
                   const toStore = stores.find((store) => store.storeId === item.toStoreId)?.storeName ?? `#${item.toStoreId}`;
@@ -112,8 +131,9 @@ export function RebalancingTable({
             </table>
           </div>
         </div>
+        </>
       )}
-      {formatInventorySnapshotWarning(rebalance?.warning) ? <p className="mt-3 text-xs text-warning">Napomena: {formatInventorySnapshotWarning(rebalance?.warning)}</p> : null}
+      {signalState === "warning" && signalMessage ? <p className="mt-3 text-xs text-warning">Napomena: {signalMessage}</p> : null}
     </section>
   );
 }

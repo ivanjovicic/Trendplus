@@ -6,6 +6,7 @@ using Application.Analytics.Queries.GetInventoryAlerts;
 using Application.Analytics.Queries.GetInventorySizeCurve;
 using Application.Analytics.Queries.GetRebalanceSuggestions;
 using Application.Analytics.Queries.GetTopProducts;
+using Application.Analytics.Queries;
 using Application.Analytics;
 using Application.Artikli.Common.Interfaces;
 using Application.Common.Interfaces;
@@ -1053,6 +1054,8 @@ public static class CachedAnalyticsEndpoints
         group.MapGet("/inventory/forecast", async (
             IAnalyticsCacheService cache,
             IMediator mediator,
+            HttpContext httpContext,
+            ILoggerFactory loggerFactory,
             int? storeId = null,
             int? supplierId = null,
             int? skuId = null,
@@ -1074,13 +1077,48 @@ public static class CachedAnalyticsEndpoints
             toDate = toDate?.Date;
             top = Math.Clamp(top, 1, 500);
             var cacheKey = AnalyticsCacheKeys.InventoryForecast(storeId, supplierId, skuId, sizeCode, top, fromDate, toDate, normalizedDataScope);
-            var result = await cache.GetOrSetAsync(
-                cacheKey,
-                async () => await mediator.Send(new GetInventoryForecastQuery(storeId, supplierId, skuId, sizeCode, top, fromDate, toDate, normalizedDataScope), ct),
-                AnalyticsCachePolicy.Inventory.Ttl,
-                ct);
+            var correlationId = ResolveCorrelationId(httpContext);
+            var logger = loggerFactory.CreateLogger("CachedAnalyticsEndpoints.InventoryForecast");
+            try
+            {
+                var result = await cache.GetOrSetAsync(
+                    cacheKey,
+                    async () => await mediator.Send(new GetInventoryForecastQuery(storeId, supplierId, skuId, sizeCode, top, fromDate, toDate, normalizedDataScope), ct),
+                    AnalyticsCachePolicy.Inventory.Ttl,
+                    ct);
 
-            return Results.Ok(result);
+                var meta = BuildInventorySignalMeta(
+                    result.SnapshotAvailable,
+                    result.Items.Count,
+                    result.Warning,
+                    result.SnapshotFreshnessUtc,
+                    result.Provenance,
+                    result.ProvenanceStatus);
+                meta.CorrelationId = correlationId;
+                return Results.Ok(BuildInventoryForecastResponse(result, meta));
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return Results.StatusCode(499);
+            }
+            catch (NpgsqlException ex)
+            {
+                logger.LogWarning(ex, "Cached inventory forecast query failed due to database issue.");
+                return Results.Ok(BuildInventoryForecastErrorResponse(
+                    AnalyticsResponseMetaFactory.Error(
+                        "inventory_forecast_db_error",
+                        "Prognoza zaliha trenutno nije dostupna.",
+                        correlationId)));
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Unexpected error loading cached inventory forecast.");
+                return Results.Ok(BuildInventoryForecastErrorResponse(
+                    AnalyticsResponseMetaFactory.Error(
+                        "inventory_forecast_error",
+                        "Neocekivana greska pri ucitavanju prognoze zaliha.",
+                        correlationId)));
+            }
         });
 
         // ========== FORECAST BASELINE / BACKTEST CONTRACT (CACHED, FAIL-CLOSED) ==========
@@ -1106,6 +1144,8 @@ public static class CachedAnalyticsEndpoints
         group.MapGet("/inventory/size-curve", async (
             IAnalyticsCacheService cache,
             IMediator mediator,
+            HttpContext httpContext,
+            ILoggerFactory loggerFactory,
             int? storeId = null,
             int? supplierId = null,
             int? skuId = null,
@@ -1127,19 +1167,56 @@ public static class CachedAnalyticsEndpoints
             toDate = toDate?.Date;
             top = Math.Clamp(top, 1, 500);
             var cacheKey = AnalyticsCacheKeys.InventorySizeCurve(storeId, supplierId, skuId, sizeCode, top, fromDate, toDate, normalizedDataScope);
-            var result = await cache.GetOrSetAsync(
-                cacheKey,
-                async () => await mediator.Send(new GetInventorySizeCurveQuery(storeId, supplierId, skuId, sizeCode, top, fromDate, toDate, normalizedDataScope), ct),
-                AnalyticsCachePolicy.Inventory.Ttl,
-                ct);
+            var correlationId = ResolveCorrelationId(httpContext);
+            var logger = loggerFactory.CreateLogger("CachedAnalyticsEndpoints.InventorySizeCurve");
+            try
+            {
+                var result = await cache.GetOrSetAsync(
+                    cacheKey,
+                    async () => await mediator.Send(new GetInventorySizeCurveQuery(storeId, supplierId, skuId, sizeCode, top, fromDate, toDate, normalizedDataScope), ct),
+                    AnalyticsCachePolicy.Inventory.Ttl,
+                    ct);
 
-            return Results.Ok(result);
+                var meta = BuildInventorySignalMeta(
+                    result.SnapshotAvailable,
+                    result.Items.Count,
+                    result.Warning,
+                    result.SnapshotFreshnessUtc,
+                    result.Provenance,
+                    result.SnapshotFreshnessStatus);
+                meta.CorrelationId = correlationId;
+                return Results.Ok(BuildInventorySizeCurveResponse(result, meta));
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return Results.StatusCode(499);
+            }
+            catch (NpgsqlException ex)
+            {
+                logger.LogWarning(ex, "Cached inventory size curve query failed due to database issue.");
+                return Results.Ok(BuildInventorySizeCurveErrorResponse(
+                    AnalyticsResponseMetaFactory.Error(
+                        "inventory_size_curve_db_error",
+                        "Raspodela velicina trenutno nije dostupna.",
+                        correlationId)));
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Unexpected error loading cached inventory size curve.");
+                return Results.Ok(BuildInventorySizeCurveErrorResponse(
+                    AnalyticsResponseMetaFactory.Error(
+                        "inventory_size_curve_error",
+                        "Neocekivana greska pri ucitavanju raspodele velicina.",
+                        correlationId)));
+            }
         });
 
         // ========== REBALANCE SUGGESTIONS (CACHED) ==========
         group.MapGet("/inventory/rebalance-suggestions", async (
             IAnalyticsCacheService cache,
             IMediator mediator,
+            HttpContext httpContext,
+            ILoggerFactory loggerFactory,
             int? fromStoreId = null,
             int? toStoreId = null,
             int? supplierId = null,
@@ -1161,19 +1238,56 @@ public static class CachedAnalyticsEndpoints
             toDate = toDate?.Date;
             top = Math.Clamp(top, 1, 500);
             var cacheKey = AnalyticsCacheKeys.RebalanceSuggestions(fromStoreId, toStoreId, supplierId, urgency, top, fromDate, toDate, normalizedDataScope);
-            var result = await cache.GetOrSetAsync(
-                cacheKey,
-                async () => await mediator.Send(new GetRebalanceSuggestionsQuery(fromStoreId, toStoreId, supplierId, urgency, top, fromDate, toDate, normalizedDataScope), ct),
-                AnalyticsCachePolicy.Inventory.Ttl,
-                ct);
+            var correlationId = ResolveCorrelationId(httpContext);
+            var logger = loggerFactory.CreateLogger("CachedAnalyticsEndpoints.InventoryRebalanceSuggestions");
+            try
+            {
+                var result = await cache.GetOrSetAsync(
+                    cacheKey,
+                    async () => await mediator.Send(new GetRebalanceSuggestionsQuery(fromStoreId, toStoreId, supplierId, urgency, top, fromDate, toDate, normalizedDataScope), ct),
+                    AnalyticsCachePolicy.Inventory.Ttl,
+                    ct);
 
-            return Results.Ok(result);
+                var meta = BuildInventorySignalMeta(
+                    result.SnapshotAvailable,
+                    result.Items.Count,
+                    result.Warning,
+                    result.SnapshotFreshnessUtc,
+                    result.Provenance,
+                    result.SnapshotFreshnessStatus);
+                meta.CorrelationId = correlationId;
+                return Results.Ok(BuildRebalanceResponse(result, meta));
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return Results.StatusCode(499);
+            }
+            catch (NpgsqlException ex)
+            {
+                logger.LogWarning(ex, "Cached inventory rebalance query failed due to database issue.");
+                return Results.Ok(BuildRebalanceErrorResponse(
+                    AnalyticsResponseMetaFactory.Error(
+                        "inventory_rebalance_db_error",
+                        "Predlozi redistribucije trenutno nisu dostupni.",
+                        correlationId)));
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Unexpected error loading cached inventory rebalance suggestions.");
+                return Results.Ok(BuildRebalanceErrorResponse(
+                    AnalyticsResponseMetaFactory.Error(
+                        "inventory_rebalance_error",
+                        "Neocekivana greska pri ucitavanju predloga redistribucije.",
+                        correlationId)));
+            }
         });
 
         // ========== INVENTORY ALERTS (CACHED) ==========
         group.MapGet("/inventory/alerts", async (
             IAnalyticsCacheService cache,
             IMediator mediator,
+            HttpContext httpContext,
+            ILoggerFactory loggerFactory,
             int? storeId = null,
             int? supplierId = null,
             string? severity = null,
@@ -1194,13 +1308,48 @@ public static class CachedAnalyticsEndpoints
             toDate = toDate?.Date;
             top = Math.Clamp(top, 1, 500);
             var cacheKey = AnalyticsCacheKeys.InventoryAlerts(storeId, supplierId, severity, top, fromDate, toDate, normalizedDataScope);
-            var result = await cache.GetOrSetAsync(
-                cacheKey,
-                async () => await mediator.Send(new GetInventoryAlertsQuery(storeId, supplierId, severity, top, fromDate, toDate, normalizedDataScope), ct),
-                AnalyticsCachePolicy.Inventory.Ttl,
-                ct);
+            var correlationId = ResolveCorrelationId(httpContext);
+            var logger = loggerFactory.CreateLogger("CachedAnalyticsEndpoints.InventoryAlerts");
+            try
+            {
+                var result = await cache.GetOrSetAsync(
+                    cacheKey,
+                    async () => await mediator.Send(new GetInventoryAlertsQuery(storeId, supplierId, severity, top, fromDate, toDate, normalizedDataScope), ct),
+                    AnalyticsCachePolicy.Inventory.Ttl,
+                    ct);
 
-            return Results.Ok(result);
+                var meta = BuildInventorySignalMeta(
+                    result.SnapshotAvailable,
+                    result.Items.Count,
+                    result.Warning,
+                    result.SnapshotFreshnessUtc,
+                    result.Provenance,
+                    result.SnapshotFreshnessStatus);
+                meta.CorrelationId = correlationId;
+                return Results.Ok(BuildInventoryAlertsResponse(result, meta));
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return Results.StatusCode(499);
+            }
+            catch (NpgsqlException ex)
+            {
+                logger.LogWarning(ex, "Cached inventory alerts query failed due to database issue.");
+                return Results.Ok(BuildInventoryAlertsErrorResponse(
+                    AnalyticsResponseMetaFactory.Error(
+                        "inventory_alerts_db_error",
+                        "Inventory upozorenja trenutno nisu dostupna.",
+                        correlationId)));
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Unexpected error loading cached inventory alerts.");
+                return Results.Ok(BuildInventoryAlertsErrorResponse(
+                    AnalyticsResponseMetaFactory.Error(
+                        "inventory_alerts_error",
+                        "Neocekivana greska pri ucitavanju inventory upozorenja.",
+                        correlationId)));
+            }
         });
 
         // ========== DAILY SALES (CACHED) ==========
@@ -8272,6 +8421,255 @@ public static class CachedAnalyticsEndpoints
     private static bool IsMissingRelation(Exception ex) =>
         ex is PostgresException pg && pg.SqlState == "42P01"
         || ex.InnerException is PostgresException innerPg && innerPg.SqlState == "42P01";
+
+    /// <summary>
+    /// Maps the four legacy inventory signal payloads onto the shared analytics
+    /// trust contract without changing their existing fields or algorithms.
+    /// </summary>
+    internal static AnalyticsResponseMetaDto BuildInventorySignalMeta(
+        bool snapshotAvailable,
+        int itemCount,
+        string? legacyWarning,
+        DateTime? snapshotFreshnessUtc,
+        InventorySignalSnapshotProvenance? provenance,
+        string? signalStatus = null)
+    {
+        var warning = string.IsNullOrWhiteSpace(legacyWarning) ? null : legacyWarning.Trim();
+        var provenanceWarning = string.IsNullOrWhiteSpace(provenance?.Warning) ? null : provenance.Warning.Trim();
+        AnalyticsResponseMetaDto meta;
+
+        if (!snapshotAvailable)
+        {
+            meta = AnalyticsResponseMetaFactory.Warning(
+                "inventory_signal_snapshot_unavailable",
+                warning ?? provenanceWarning ?? "Signal snapshot trenutno nije dostupan.",
+                "insufficient_data",
+                snapshotFreshnessUtc);
+        }
+        else if (itemCount == 0)
+        {
+            meta = AnalyticsResponseMetaFactory.Empty(
+                "no_inventory_signal_data",
+                warning ?? "Signal snapshot postoji, ali nema redova za trazene filtere.",
+                "insufficient_data");
+            meta.LastRefreshAtUtc = snapshotFreshnessUtc;
+        }
+        else if (warning is not null)
+        {
+            meta = AnalyticsResponseMetaFactory.Warning(
+                ResolveInventorySignalWarningCode(signalStatus, warning),
+                warning,
+                "warning",
+                snapshotFreshnessUtc);
+        }
+        else if (IsStaleSignalStatus(signalStatus))
+        {
+            meta = AnalyticsResponseMetaFactory.Warning(
+                "inventory_signal_stale",
+                "Signal snapshot je zastareo ili mu svezina nije poverljiva.",
+                "warning",
+                snapshotFreshnessUtc);
+        }
+        else if (IsUnknownSignalStatus(signalStatus))
+        {
+            meta = AnalyticsResponseMetaFactory.Warning(
+                "inventory_signal_freshness_unknown",
+                "Svezina signal snapshot-a nije dokazana.",
+                "warning",
+                snapshotFreshnessUtc);
+        }
+        else if (provenanceWarning is not null)
+        {
+            meta = AnalyticsResponseMetaFactory.Warning(
+                "inventory_signal_snapshot_scope",
+                provenanceWarning,
+                "warning",
+                snapshotFreshnessUtc);
+        }
+        else
+        {
+            meta = AnalyticsResponseMetaFactory.Success("good", snapshotFreshnessUtc);
+        }
+
+        if (provenance is not null)
+        {
+            meta.RequestedPeriodFromUtc = provenance.RequestedPeriodFromUtc;
+            meta.RequestedPeriodToUtc = provenance.RequestedPeriodToUtc;
+            meta.EffectivePeriodFromUtc = provenance.EffectivePeriodFromUtc;
+            meta.EffectivePeriodToUtc = provenance.EffectivePeriodToUtc;
+            meta.RequestedDataScope = provenance.RequestedDataScope;
+            meta.EffectiveDataScope = provenance.EffectiveDataScope;
+            meta.ProvenanceBasis = provenance.EvidenceScope;
+        }
+
+        return meta;
+    }
+
+    private static string ResolveInventorySignalWarningCode(string? signalStatus, string warning)
+    {
+        if (string.Equals(signalStatus, "missing_relation", StringComparison.OrdinalIgnoreCase))
+            return "inventory_signal_snapshot_unavailable";
+        if (string.Equals(signalStatus, "stale", StringComparison.OrdinalIgnoreCase)
+            || warning.Contains("stale", StringComparison.OrdinalIgnoreCase))
+            return "inventory_signal_stale";
+        if (string.Equals(signalStatus, "owner_unknown", StringComparison.OrdinalIgnoreCase)
+            || warning.Contains("owner_unknown", StringComparison.OrdinalIgnoreCase))
+            return "inventory_signal_provenance_untrusted";
+        return "inventory_signal_evidence_warning";
+    }
+
+    private static bool IsStaleSignalStatus(string? signalStatus) =>
+        string.Equals(signalStatus, "stale", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(signalStatus, "critical", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsUnknownSignalStatus(string? signalStatus) =>
+        string.Equals(signalStatus, "unknown", StringComparison.OrdinalIgnoreCase);
+
+    private static object BuildInventoryForecastResponse(
+        InventoryForecastListDto result,
+        AnalyticsResponseMetaDto meta) => new
+        {
+            result.GeneratedAtUtc,
+            result.TotalCount,
+            result.ReturnedCount,
+            result.TotalMatchingCount,
+            result.IsTruncated,
+            result.SnapshotAvailable,
+            result.ProvenanceStatus,
+            result.MaterializerOwner,
+            result.IsAuthoritativeForecast,
+            result.SnapshotFreshnessUtc,
+            result.Warning,
+            result.RowGrain,
+            result.RiskAggregationPolicy,
+            result.EvidenceScope,
+            result.Items,
+            result.Provenance,
+            Meta = meta
+        };
+
+    private static object BuildInventoryAlertsResponse(
+        InventoryAlertListDto result,
+        AnalyticsResponseMetaDto meta) => new
+        {
+            result.GeneratedAtUtc,
+            result.TotalCount,
+            result.ReturnedCount,
+            result.TotalMatchingCount,
+            result.IsTruncated,
+            result.SnapshotAvailable,
+            result.SnapshotFreshnessUtc,
+            result.SnapshotFreshnessStatus,
+            result.Warning,
+            result.Items,
+            result.Provenance,
+            Meta = meta
+        };
+
+    private static object BuildInventorySizeCurveResponse(
+        InventorySizeCurveListDto result,
+        AnalyticsResponseMetaDto meta) => new
+        {
+            result.GeneratedAtUtc,
+            result.TotalCount,
+            result.ReturnedCount,
+            result.TotalMatchingCount,
+            result.IsTruncated,
+            result.SnapshotAvailable,
+            result.SnapshotFreshnessUtc,
+            result.SnapshotFreshnessStatus,
+            result.Warning,
+            result.Items,
+            result.Provenance,
+            Meta = meta
+        };
+
+    private static object BuildRebalanceResponse(
+        RebalanceSuggestionListDto result,
+        AnalyticsResponseMetaDto meta) => new
+        {
+            result.GeneratedAtUtc,
+            result.TotalCount,
+            result.ReturnedCount,
+            result.TotalMatchingCount,
+            result.IsTruncated,
+            result.SnapshotAvailable,
+            result.SnapshotFreshnessUtc,
+            result.SnapshotFreshnessStatus,
+            result.Warning,
+            result.Items,
+            result.Provenance,
+            Meta = meta
+        };
+
+    private static object BuildInventoryForecastErrorResponse(AnalyticsResponseMetaDto meta) =>
+        BuildInventoryForecastResponse(
+            new InventoryForecastListDto(
+                DateTime.UtcNow,
+                0,
+                0,
+                0,
+                false,
+                false,
+                "unknown",
+                null,
+                false,
+                null,
+                meta.ErrorMessage,
+                InventoryForecastListContract.RowGrain,
+                InventoryForecastListContract.RiskAggregationPolicy,
+                InventoryForecastListContract.EvidenceScope,
+                [],
+                null),
+            meta);
+
+    private static object BuildInventoryAlertsErrorResponse(AnalyticsResponseMetaDto meta) =>
+        BuildInventoryAlertsResponse(
+            new InventoryAlertListDto(
+                DateTime.UtcNow,
+                0,
+                0,
+                0,
+                false,
+                false,
+                null,
+                "unknown",
+                meta.ErrorMessage,
+                [],
+                null),
+            meta);
+
+    private static object BuildInventorySizeCurveErrorResponse(AnalyticsResponseMetaDto meta) =>
+        BuildInventorySizeCurveResponse(
+            new InventorySizeCurveListDto(
+                DateTime.UtcNow,
+                0,
+                0,
+                0,
+                false,
+                false,
+                null,
+                "unknown",
+                meta.ErrorMessage,
+                [],
+                null),
+            meta);
+
+    private static object BuildRebalanceErrorResponse(AnalyticsResponseMetaDto meta) =>
+        BuildRebalanceResponse(
+            new RebalanceSuggestionListDto(
+                DateTime.UtcNow,
+                0,
+                0,
+                0,
+                false,
+                false,
+                null,
+                "unknown",
+                meta.ErrorMessage,
+                [],
+                null),
+            meta);
 
     internal sealed record ProductDecisionConfidenceProfile(
         string RecommendationId,
