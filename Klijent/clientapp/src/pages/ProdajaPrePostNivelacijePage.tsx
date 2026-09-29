@@ -32,6 +32,7 @@ import {
 } from "../services/vendorSalesNivelacijaApi";
 import type { Dobavljac } from "../types/Dobavljaci";
 import type { StoreOption } from "../types/analytics";
+import { buildStoreOptionLabel, getDuplicateStoreNames } from "../utils/storeFilterPresentation";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
 import { fmtNumber, fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
@@ -61,6 +62,11 @@ import {
   type RecommendationQualityStatus,
 } from "../utils/canonicalRecommendationSemantics";
 import { dataScopeLabel, getDataScope, normalizeDataScope, type DataScope } from "../utils/dataScope";
+import {
+  resolveStoreFilterFallbackState,
+  resolveStoreFilterLoadFailure,
+  STORE_FILTER_SCOPE_LOADING_MESSAGE,
+} from "../utils/storeFilterFallbackState";
 import {
   comparablePrePostMetric,
   comparablePrePostTotal,
@@ -581,11 +587,6 @@ function trustedMetric(value: number | null | undefined, row: { hasComparableSal
   return comparablePrePostMetric(value, row);
 }
 
-function buildStoreLabel(store: StoreOption): string {
-  const extras = [store.city, store.region].filter(Boolean).join(", ");
-  return extras ? `${store.storeName} (${extras})` : store.storeName;
-}
-
 function displayVendorName(name: string | null | undefined): string {
   const trimmed = (name ?? "").trim();
   return trimmed.length > 0 ? trimmed : "Nepoznat dobavljač";
@@ -611,8 +612,16 @@ export default function ProdajaPrePostNivelacijePage() {
   const [vendorLoadError, setVendorLoadError] = useState<string | null>(null);
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [storesLoadError, setStoresLoadError] = useState<string | null>(null);
+  const [storesWarning, setStoresWarning] = useState<string | null>(null);
+  const [storesStale, setStoresStale] = useState(false);
+  const [storesScope, setStoresScope] = useState<DataScope | null>(null);
+  const [storeValidationNonce, setStoreValidationNonce] = useState(0);
   const [storesReloadNonce, setStoresReloadNonce] = useState(0);
   const [dataScope, setDataScopeValue] = useState<DataScope>(() => getDataScope());
+  const pendingStoreIdRef = useRef<number | null>(null);
+  const storesStateRef = useRef<{ scope: DataScope | null; stale: boolean; loadError: string | null }>({ scope: null, stale: false, loadError: null });
+  storesStateRef.current = { scope: storesScope, stale: storesStale, loadError: storesLoadError };
+  const duplicateStoreNames = useMemo(() => getDuplicateStoreNames(stores), [stores]);
   const [sortField, setSortField] = useState<SortField>(() => readAnalyticsTableSort(searchParams, PRE_POST_SORT_FIELDS, "status", "desc").field);
   const [sortDir, setSortDir] = useState<SortDir>(() => readAnalyticsTableSort(searchParams, PRE_POST_SORT_FIELDS, "status", "desc").dir);
   const [expandedVendorKey, setExpandedVendorKey] = useState<string | null>(null);
@@ -661,6 +670,19 @@ export default function ProdajaPrePostNivelacijePage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (storesScope == null || storesScope === dataScope) return;
+    pendingStoreIdRef.current = pendingStoreIdRef.current ?? storeId;
+    setStoreId(null);
+    setActiveFilters((current) => current.storeId == null ? current : { ...current, storeId: null });
+    setSearchParamsRef.current((current) => {
+      if (!current.has("storeId")) return current;
+      const next = new URLSearchParams(current);
+      next.delete("storeId");
+      return next;
+    }, { replace: true });
+  }, [dataScope, storesScope, storeId]);
+
   const loadVendors = useCallback(async () => {
     try {
       const items = await getDobavljaci();
@@ -680,34 +702,63 @@ export default function ProdajaPrePostNivelacijePage() {
 
   useEffect(() => {
     let cancelled = false;
+    const previousStores = stores;
+    const requestedStoreId = pendingStoreIdRef.current ?? storeId;
     const loadStores = async () => {
       try {
-        const nextStores = await getStores(true);
+        const nextStores = await getStores(true, dataScope);
         if (cancelled) return;
-        setStores(nextStores);
+        const resolved = resolveStoreFilterFallbackState(nextStores, previousStores, requestedStoreId);
+        setStores(resolved.stores);
+        setStoresWarning(resolved.warning);
+        setStoresStale(resolved.isStale);
+        setStoresScope(dataScope);
         setStoresLoadError(null);
+        pendingStoreIdRef.current = null;
+        setStoreId(resolved.selectedStoreId);
+        setActiveFilters((current) => current.storeId === resolved.selectedStoreId
+          ? current
+          : { ...current, storeId: resolved.selectedStoreId });
+        setSearchParamsRef.current((current) => {
+          const next = new URLSearchParams(current);
+          if (resolved.selectedStoreId == null) next.delete("storeId");
+          else next.set("storeId", String(resolved.selectedStoreId));
+          return next;
+        }, { replace: true });
+        if (requestedStoreId != null) setStoreValidationNonce((value) => value + 1);
       } catch {
         if (cancelled) return;
-        setStores([]);
+        const resolved = resolveStoreFilterLoadFailure(previousStores, requestedStoreId);
+        setStores(resolved.stores);
+        setStoresWarning(resolved.warning);
+        setStoresStale(true);
+        setStoresScope(dataScope);
         setStoresLoadError("stores_load_failed");
-        // A store id restored from the URL cannot be verified without the store list; fall back to all stores.
+        pendingStoreIdRef.current = requestedStoreId;
+        setStoreId(null);
+        setActiveFilters((current) => current.storeId == null ? current : { ...current, storeId: null });
         setSearchParamsRef.current((current) => {
           if (!current.has("storeId")) return current;
           const next = new URLSearchParams(current);
           next.delete("storeId");
           return next;
         }, { replace: true });
+        if (requestedStoreId != null) setStoreValidationNonce((value) => value + 1);
       }
     };
     void loadStores();
     return () => {
       cancelled = true;
     };
-  }, [storesReloadNonce]);
+  }, [dataScope, storesReloadNonce]);
 
   const prePostQuery = useCallback(async (signal: AbortSignal): Promise<PrePostQuerySnapshot> => {
     const currentRange = toUtcRange(activeFilters.fromDate, activeFilters.toDate);
     const previousRange = buildPreviousRange(activeFilters.fromDate, activeFilters.toDate);
+    const { scope: loadedStoreScope, stale: storesAreStale, loadError: storeLoadError } = storesStateRef.current;
+    const scopedStoreId = loadedStoreScope === dataScope && !storesAreStale && storeLoadError == null
+      ? activeFilters.storeId
+      : null;
     const [currentResult, previousResult] = await Promise.allSettled([
       getVendorSalesNivelacija({
         ...currentRange,
@@ -715,7 +766,7 @@ export default function ProdajaPrePostNivelacijePage() {
         category: activeFilters.category || null,
         includeInactive: false,
         maxRows: VENDOR_NIVELACIJA_MAX_ROWS,
-        storeId: activeFilters.storeId,
+        storeId: scopedStoreId,
         dataScope,
         signal,
       }),
@@ -725,7 +776,7 @@ export default function ProdajaPrePostNivelacijePage() {
         category: activeFilters.category || null,
         includeInactive: false,
         maxRows: VENDOR_NIVELACIJA_MAX_ROWS,
-        storeId: activeFilters.storeId,
+        storeId: scopedStoreId,
         dataScope,
         signal,
       }),
@@ -742,7 +793,7 @@ export default function ProdajaPrePostNivelacijePage() {
         ? getSafePrePostInlineErrorMessage(previousResult.reason)
         : null,
     };
-  }, [activeFilters, dataScope]);
+  }, [activeFilters, dataScope, storeValidationNonce]);
   const {
     data: querySnapshot,
     initialLoading,
@@ -752,6 +803,7 @@ export default function ProdajaPrePostNivelacijePage() {
     refetch,
   } = useReliableAnalyticsQuery<PrePostQuerySnapshot>({
     query: prePostQuery,
+    enabled: storesScope === dataScope || (storesScope == null && storeId == null),
     getErrorMessage: useCallback((reason: unknown) => getSafeAnalyticsErrorMessage(
       reason instanceof Error ? reason.message : null,
       null,
@@ -917,10 +969,12 @@ export default function ProdajaPrePostNivelacijePage() {
   const dataMeta = data?.meta ?? null;
   const effectiveDataScope = normalizeDataScope(data?.dataScope ?? dataScope);
   const effectiveStoreId = data?.storeId ?? activeFilters.storeId;
+  const effectiveStore = stores.find((store) => store.storeId === effectiveStoreId);
   const effectiveStoreLabel = effectiveStoreId == null
     ? "Svi objekti"
-    : stores.find((store) => store.storeId === effectiveStoreId)?.storeName
-      ?? `Nepoznat objekat (ID ${effectiveStoreId})`;
+    : effectiveStore
+      ? buildStoreOptionLabel(effectiveStore, duplicateStoreNames)
+      : `Nepoznat objekat (ID ${effectiveStoreId})`;
   const dataMetaMessage = getAnalyticsMetaMessage(dataMeta);
   const showMetaWarning = !loading && !queryError && isAnalyticsMetaWarning(dataMeta);
   const showFilteredOutState = !loading && !queryError && Boolean(data) && decisionRows.length > 0 && focusedRows.length === 0;
@@ -1405,18 +1459,22 @@ const advancedSignals = useMemo(
         label: "Objekat",
         span: "wide",
         control: (
-          <select disabled={storesLoadError != null} value={storeId ?? ""} onChange={(event) => setStoreId(event.target.value ? Number(event.target.value) : null)}>
+          <select
+            disabled={storesLoadError != null || storesStale || storesScope !== dataScope}
+            value={storesScope === dataScope && !storesStale ? storeId ?? "" : ""}
+            onChange={(event) => setStoreId(event.target.value ? Number(event.target.value) : null)}
+          >
             <option value="">Svi objekti</option>
             {stores.map((store) => (
               <option key={store.storeId} value={store.storeId}>
-                {buildStoreLabel(store)}
+                {buildStoreOptionLabel(store, duplicateStoreNames)}
               </option>
             ))}
           </select>
         ),
       },
     ],
-    [category, data?.categories, fromDate, handlePresetChange, periodPreset, storeId, stores, storesLoadError, toDate, vendorId, vendors]
+    [category, data?.categories, dataScope, fromDate, handlePresetChange, periodPreset, storeId, stores, storesLoadError, storesScope, storesStale, toDate, vendorId, vendors]
   );
 
   const openVendorDetail = (row: DecisionVendor) => {
@@ -1466,7 +1524,13 @@ const advancedSignals = useMemo(
         refreshStatusHref="/admin/configuration?panel=workers"
         compact
       />
-      {storesLoadError ? <AnalyticsFilterLoadNotice onRetry={() => setStoresReloadNonce((value) => value + 1)} /> : null}
+      {storesWarning || (storesScope != null && storesScope !== dataScope)
+        ? <AnalyticsFilterLoadNotice
+            onRetry={() => setStoresReloadNonce((value) => value + 1)}
+            message={storesWarning ?? STORE_FILTER_SCOPE_LOADING_MESSAGE}
+            stale={(storesStale && storesLoadError == null) || storesScope !== dataScope}
+          />
+        : null}
       <AnalyticsControlBar
         title="Kontrole i opseg"
         description="Period, dobavljač, kategorija i objekat ostaju ovde; tabela ispod ostaje fokusirana na signal pre/post po dobavljaču."

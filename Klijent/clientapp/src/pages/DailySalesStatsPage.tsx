@@ -35,6 +35,7 @@ import {
 } from "../services/dailySalesStatsApi";
 import { ApiHttpError } from "../services/analyticsHttp";
 import type { StoreOption } from "../types/analytics";
+import { buildStoreOptionLabel, getDuplicateStoreNames } from "../utils/storeFilterPresentation";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { dataScopeLabel, getDataScope, normalizeDataScope, type DataScope } from "../utils/dataScope";
 import UltraSpinner from "../components/ui/UltraSpinner";
@@ -43,6 +44,11 @@ import { readAnalyticsTableSort, writeAnalyticsTableSort } from "../utils/analyt
 import { fmtPct, fmtRsd, fmtRsdShort, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { getAnalyticsDataFreshnessStatus } from "../utils/analyticsResponseMeta";
+import {
+  resolveStoreFilterFallbackState,
+  resolveStoreFilterLoadFailure,
+  STORE_FILTER_SCOPE_LOADING_MESSAGE,
+} from "../utils/storeFilterFallbackState";
 import { AnalyticsResponseValidationError } from "../validation/analyticsResponseValidation";
 import {
   DAILY_SALES_PREVIOUS_PERIOD_FAILURE_NOTE,
@@ -272,16 +278,11 @@ function writeDailySalesSort(searchParams: URLSearchParams, sortKey: SortKey, so
   return next;
 }
 
-function buildStoreLabel(store: StoreOption): string {
-  const extras = [store.city, store.region].filter(Boolean).join(", ");
-  return extras ? `${store.storeName} (${extras})` : store.storeName;
-}
-
 export function resolveDailySalesStoreLabel(stores: StoreOption[], storeId: number | null): string {
   if (storeId == null) return "Svi objekti";
   const store = stores.find((candidate) => candidate.storeId === storeId);
   if (!store || !store.storeName.trim()) return `Nepoznat objekat (ID ${storeId})`;
-  return buildStoreLabel({ ...store, storeName: store.storeName.trim() });
+  return buildStoreOptionLabel({ ...store, storeName: store.storeName.trim() }, getDuplicateStoreNames(stores));
 }
 
 export type DailySalesBlankColumn = {
@@ -791,6 +792,10 @@ export default function DailySalesStatsPage() {
 
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [storesLoadError, setStoresLoadError] = useState<string | null>(null);
+  const [storesWarning, setStoresWarning] = useState<string | null>(null);
+  const [storesStale, setStoresStale] = useState(false);
+  const [storesScope, setStoresScope] = useState<DataScope | null>(null);
+  const [storeValidationNonce, setStoreValidationNonce] = useState(0);
   const [storesReloadNonce, setStoresReloadNonce] = useState(0);
   const [data, setData] = useState<DailySalesTableResponse | null>(null);
   const [previousData, setPreviousData] = useState<DailySalesTableResponse | null>(null);
@@ -804,6 +809,10 @@ export default function DailySalesStatsPage() {
   const [qualityPanelOpen, setQualityPanelOpen] = useState(false);
   const [dataScope, setDataScopeValue] = useState<DataScope>(() => queryDataScope);
   const dataScopeRef = useRef<DataScope>(queryDataScope);
+  const pendingStoreIdRef = useRef<number | null>(null);
+  const storesStateRef = useRef<{ scope: DataScope | null; stale: boolean; loadError: string | null }>({ scope: null, stale: false, loadError: null });
+  storesStateRef.current = { scope: storesScope, stale: storesStale, loadError: storesLoadError };
+  const duplicateStoreNames = useMemo(() => getDuplicateStoreNames(stores), [stores]);
 
   const memoizedQueryDataScope = useMemo(() => dataScope, [dataScope]);
 
@@ -855,17 +864,55 @@ export default function DailySalesStatsPage() {
   }, [searchParams, setSearchParams]);
 
   useEffect(() => {
+    if (storesScope == null || storesScope === dataScope) return;
+    pendingStoreIdRef.current = pendingStoreIdRef.current ?? storeId;
+    setStoreId(null);
+    setActiveFilters((current) => current.storeId == null ? current : { ...current, storeId: null });
+    setSearchParamsRef.current((current) => {
+      if (!current.has("storeId")) return current;
+      const next = new URLSearchParams(current);
+      next.delete("storeId");
+      return next;
+    }, { replace: true });
+  }, [dataScope, storesScope, storeId]);
+
+  useEffect(() => {
     let cancelled = false;
+    const previousStores = stores;
+    const requestedStoreId = pendingStoreIdRef.current ?? storeId;
+    const shouldRefreshAnalytics = requestedStoreId != null
+      || (storesScope != null && storesScope !== dataScope);
     const loadStores = async () => {
       try {
-        const nextStores = await getStores(true);
+        const nextStores = await getStores(true, dataScope);
         if (cancelled) return;
-        setStores(nextStores);
+        const resolved = resolveStoreFilterFallbackState(nextStores, previousStores, requestedStoreId);
+        setStores(resolved.stores);
+        setStoresWarning(resolved.warning);
+        setStoresStale(resolved.isStale);
+        setStoresScope(dataScope);
         setStoresLoadError(null);
+        pendingStoreIdRef.current = null;
+        setStoreId(resolved.selectedStoreId);
+        setActiveFilters((current) => current.storeId === resolved.selectedStoreId
+          ? current
+          : { ...current, storeId: resolved.selectedStoreId });
+        setSearchParamsRef.current((current) => {
+          const next = new URLSearchParams(current);
+          if (resolved.selectedStoreId == null) next.delete("storeId");
+          else next.set("storeId", String(resolved.selectedStoreId));
+          return next;
+        }, { replace: true });
+        if (shouldRefreshAnalytics) setStoreValidationNonce((value) => value + 1);
       } catch {
         if (cancelled) return;
-        setStores([]);
+        const resolved = resolveStoreFilterLoadFailure(previousStores, requestedStoreId);
+        setStores(resolved.stores);
+        setStoresWarning(resolved.warning);
+        setStoresStale(true);
+        setStoresScope(dataScope);
         setStoresLoadError("stores_load_failed");
+        pendingStoreIdRef.current = requestedStoreId;
 
         // A store id restored from the URL is not trustworthy when store discovery fails.
         // Fail closed to the all-stores scope and discard any store-scoped snapshot that
@@ -885,6 +932,7 @@ export default function DailySalesStatsPage() {
           next.delete("storeId");
           return next;
         }, { replace: true });
+        if (shouldRefreshAnalytics) setStoreValidationNonce((value) => value + 1);
       }
     };
 
@@ -892,11 +940,16 @@ export default function DailySalesStatsPage() {
     return () => {
       cancelled = true;
     };
-  }, [storesReloadNonce]);
+  }, [dataScope, storesReloadNonce]);
 
   const load = useCallback(async (filters: ActiveFilters, signal?: AbortSignal) => {
     const requestId = ++requestIdRef.current;
-    const previousRange = getPreviousPeriodRange(filters);
+    const { scope: loadedStoreScope, stale: storesAreStale, loadError: storeLoadError } = storesStateRef.current;
+    const scopedStoreId = loadedStoreScope === dataScope && !storesAreStale && storeLoadError == null
+      ? filters.storeId
+      : null;
+    const requestFilters = { ...filters, storeId: scopedStoreId };
+    const previousRange = getPreviousPeriodRange(requestFilters);
     setLoading(true);
     setError(null);
     setPreviousPeriodWarning(null);
@@ -907,7 +960,7 @@ export default function DailySalesStatsPage() {
         getDailySalesStats({
           fromDate: filters.fromDate,
           toDate: filters.toDate,
-          storeId: filters.storeId,
+          storeId: requestFilters.storeId,
           topN: filters.topN,
           dataScope: memoizedQueryDataScope,
           signal,
@@ -915,7 +968,7 @@ export default function DailySalesStatsPage() {
         getDailySalesStats({
           fromDate: previousRange.fromDate,
           toDate: previousRange.toDate,
-          storeId: filters.storeId,
+          storeId: requestFilters.storeId,
           topN: filters.topN,
           dataScope: memoizedQueryDataScope,
           signal,
@@ -953,9 +1006,10 @@ export default function DailySalesStatsPage() {
         setLoading(false);
       }
     }
-  }, [memoizedQueryDataScope]);
+  }, [dataScope, memoizedQueryDataScope, storeValidationNonce]);
 
   useEffect(() => {
+    if (storesScope !== dataScope && !(storesScope == null && activeFilters.storeId == null)) return;
     const controller = new AbortController();
     void load(activeFilters, controller.signal);
     return () => controller.abort();
@@ -1827,14 +1881,14 @@ export default function DailySalesStatsPage() {
         label: "Objekat",
         control: (
           <select
-            value={storeId ?? ""}
-            disabled={storesLoadError != null}
+            value={storesScope === dataScope && !storesStale ? storeId ?? "" : ""}
+            disabled={storesLoadError != null || storesStale || storesScope !== dataScope}
             onChange={(event) => setStoreId(event.target.value ? Number(event.target.value) : null)}
           >
             <option value="">Svi objekti</option>
             {stores.map((store) => (
               <option key={store.storeId} value={store.storeId}>
-                {buildStoreLabel(store)}
+                {buildStoreOptionLabel(store, duplicateStoreNames)}
               </option>
             ))}
           </select>
@@ -1854,7 +1908,7 @@ export default function DailySalesStatsPage() {
         ),
       },
     ],
-    [fromDate, periodPreset, storeId, stores, storesLoadError, toDate, topN],
+    [dataScope, fromDate, periodPreset, storeId, stores, storesLoadError, storesScope, storesStale, toDate, topN],
   );
 
   return (
@@ -1877,7 +1931,13 @@ export default function DailySalesStatsPage() {
         compact
       />
 
-      {storesLoadError ? <AnalyticsFilterLoadNotice onRetry={() => setStoresReloadNonce((value) => value + 1)} /> : null}
+      {storesWarning || (storesScope != null && storesScope !== dataScope)
+        ? <AnalyticsFilterLoadNotice
+            onRetry={() => setStoresReloadNonce((value) => value + 1)}
+            message={storesWarning ?? STORE_FILTER_SCOPE_LOADING_MESSAGE}
+            stale={(storesStale && storesLoadError == null) || storesScope !== dataScope}
+          />
+        : null}
 
       <AnalyticsControlBar
         title="Opseg i filteri"

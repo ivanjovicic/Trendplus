@@ -1,8 +1,10 @@
 type AnalyticsFilterLoadNoticeProps = {
   onRetry: () => void;
+  message?: string;
+  stale?: boolean;
 };
 
-export default function AnalyticsFilterLoadNotice({ onRetry }: AnalyticsFilterLoadNoticeProps) {
+export default function AnalyticsFilterLoadNotice({ onRetry, message, stale = false }: AnalyticsFilterLoadNoticeProps) {
   return (
     <div
       role="alert"
@@ -10,8 +12,8 @@ export default function AnalyticsFilterLoadNotice({ onRetry }: AnalyticsFilterLo
       className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100"
     >
       <p>
-        <strong>Filter prodavnice nije dostupan.</strong>{" "}
-        Podaci po svim objektima mogu biti prikazani, ali izbor pojedinačne prodavnice nije potvrđen.
+        <strong>{stale ? "Lista prodavnica je zastarela." : "Filter prodavnice nije dostupan."}</strong>{" "}
+        {message ?? "Podaci po svim objektima mogu biti prikazani, ali izbor pojedinačne prodavnice nije potvrđen."}
       </p>
       <button
         type="button"

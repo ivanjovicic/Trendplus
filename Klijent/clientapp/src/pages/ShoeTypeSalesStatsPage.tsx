@@ -33,6 +33,11 @@ import UltraSpinner from "../components/ui/UltraSpinner";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { dataScopeLabel, getDataScope, type DataScope } from "../utils/dataScope";
+import {
+  resolveStoreFilterFallbackState,
+  resolveStoreFilterLoadFailure,
+  STORE_FILTER_SCOPE_LOADING_MESSAGE,
+} from "../utils/storeFilterFallbackState";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
 import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange, formatDate } from "../utils/analyticsFormatters";
@@ -78,6 +83,7 @@ import { getAnalyticsDataFreshnessStatus } from "../utils/analyticsResponseMeta"
 import { formatMetricDisplayValue } from "../utils/analyticsMetricValue";
 import { readAnalyticsTableSort, writeAnalyticsTableSort } from "../utils/analyticsTableSortUrl";
 import { useReliableAnalyticsQuery } from "../hooks/useReliableAnalyticsQuery";
+import { buildStoreOptionLabel, getDuplicateStoreNames } from "../utils/storeFilterPresentation";
 import "./ShoeTypeSalesStatsPage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
@@ -367,11 +373,6 @@ export function describeNivelacijaImpactMetric(item: ShoeTypeSalesStat): { label
   };
 }
 
-function buildStoreLabel(store: StoreOption): string {
-  const extras = [store.city, store.region].filter(Boolean).join(", ");
-  return extras ? `${store.storeName} (${extras})` : store.storeName;
-}
-
 function shoeTypeKey(item: { tipObuceId: number | null; tipObuceNaziv: string }): string {
   if (item.tipObuceId != null) return `id:${item.tipObuceId}`;
   return `name:${normalizeName(item.tipObuceNaziv)}`;
@@ -445,8 +446,16 @@ export default function ShoeTypeSalesStatsPage() {
 
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [storesLoadError, setStoresLoadError] = useState<string | null>(null);
+  const [storesWarning, setStoresWarning] = useState<string | null>(null);
+  const [storesStale, setStoresStale] = useState(false);
+  const [storesScope, setStoresScope] = useState<DataScope | null>(null);
+  const [storeValidationNonce, setStoreValidationNonce] = useState(0);
   const [storesReloadNonce, setStoresReloadNonce] = useState(0);
   const [dataScope, setDataScopeValue] = useState<DataScope>(() => getDataScope());
+  const pendingStoreIdRef = useRef<number | null>(null);
+  const storesStateRef = useRef<{ scope: DataScope | null; stale: boolean; loadError: string | null }>({ scope: null, stale: false, loadError: null });
+  storesStateRef.current = { scope: storesScope, stale: storesStale, loadError: storesLoadError };
+  const duplicateStoreNames = useMemo(() => getDuplicateStoreNames(stores), [stores]);
   const [sortField, setSortField] = useState<SortField>(() => readAnalyticsTableSort(searchParams, SHOE_SORT_FIELDS, "status", "desc").field);
   const [sortDir, setSortDir] = useState<SortDir>(() => readAnalyticsTableSort(searchParams, SHOE_SORT_FIELDS, "status", "desc").dir);
   const [expandedTypeKey, setExpandedTypeKey] = useState<string | null>(null);
@@ -489,24 +498,62 @@ export default function ShoeTypeSalesStatsPage() {
   }, []);
 
   useEffect(() => {
+    if (storesScope == null || storesScope === dataScope) return;
+    pendingStoreIdRef.current = pendingStoreIdRef.current ?? storeId;
+    setStoreId(null);
+    setActiveFilters((current) => current.storeId == null ? current : { ...current, storeId: null });
+    setSearchParamsRef.current((current) => {
+      if (!current.has("storeId")) return current;
+      const next = new URLSearchParams(current);
+      next.delete("storeId");
+      return next;
+    }, { replace: true });
+  }, [dataScope, storesScope, storeId]);
+
+  useEffect(() => {
     let cancelled = false;
+    const previousStores = stores;
+    const requestedStoreId = pendingStoreIdRef.current ?? storeId;
     const loadStores = async () => {
       try {
-        const nextStores = await getStores(true);
+        const nextStores = await getStores(true, dataScope);
         if (cancelled) return;
-        setStores(nextStores);
+        const resolved = resolveStoreFilterFallbackState(nextStores, previousStores, requestedStoreId);
+        setStores(resolved.stores);
+        setStoresWarning(resolved.warning);
+        setStoresStale(resolved.isStale);
+        setStoresScope(dataScope);
         setStoresLoadError(null);
+        pendingStoreIdRef.current = null;
+        setStoreId(resolved.selectedStoreId);
+        setActiveFilters((current) => current.storeId === resolved.selectedStoreId
+          ? current
+          : { ...current, storeId: resolved.selectedStoreId });
+        setSearchParamsRef.current((current) => {
+          const next = new URLSearchParams(current);
+          if (resolved.selectedStoreId == null) next.delete("storeId");
+          else next.set("storeId", String(resolved.selectedStoreId));
+          return next;
+        }, { replace: true });
+        if (requestedStoreId != null) setStoreValidationNonce((value) => value + 1);
       } catch {
         if (cancelled) return;
-        setStores([]);
+        const resolved = resolveStoreFilterLoadFailure(previousStores, requestedStoreId);
+        setStores(resolved.stores);
+        setStoresWarning(resolved.warning);
+        setStoresStale(true);
+        setStoresScope(dataScope);
         setStoresLoadError("stores_load_failed");
-        // A store id restored from the URL cannot be verified without the store list; fall back to all stores.
+        pendingStoreIdRef.current = requestedStoreId;
+        setStoreId(null);
+        setActiveFilters((current) => current.storeId == null ? current : { ...current, storeId: null });
         setSearchParamsRef.current((current) => {
           if (!current.has("storeId")) return current;
           const next = new URLSearchParams(current);
           next.delete("storeId");
           return next;
         }, { replace: true });
+        if (requestedStoreId != null) setStoreValidationNonce((value) => value + 1);
       }
     };
 
@@ -514,18 +561,22 @@ export default function ShoeTypeSalesStatsPage() {
     return () => {
       cancelled = true;
     };
-  }, [storesReloadNonce]);
+  }, [dataScope, storesReloadNonce]);
 
   const shoeTypeQuery = useCallback((signal: AbortSignal) => {
     const currentRange = toUtcRange(activeFilters.fromDate, activeFilters.toDate);
+    const { scope: loadedStoreScope, stale: storesAreStale, loadError: storeLoadError } = storesStateRef.current;
+    const scopedStoreId = loadedStoreScope === dataScope && !storesAreStale && storeLoadError == null
+      ? activeFilters.storeId
+      : null;
     return getShoeTypeSalesStats({
       ...currentRange,
       sezonaId: activeFilters.sezonaId,
-      storeId: activeFilters.storeId,
+      storeId: scopedStoreId,
       dataScope,
       signal,
     });
-  }, [activeFilters, dataScope]);
+  }, [activeFilters, dataScope, storeValidationNonce]);
   const {
     data,
     initialLoading,
@@ -535,6 +586,7 @@ export default function ShoeTypeSalesStatsPage() {
     refetch,
   } = useReliableAnalyticsQuery<ShoeTypeSalesStatsResponse>({
     query: shoeTypeQuery,
+    enabled: storesScope === dataScope || (storesScope == null && storeId == null),
     getErrorMessage: useCallback((reason: unknown) => getSafeAnalyticsErrorMessage(
       reason instanceof Error ? reason.message : null,
       null,
@@ -697,7 +749,7 @@ export default function ShoeTypeSalesStatsPage() {
   const activeStoreLabel = activeFilters.storeId == null
     ? "Svi objekti"
     : stores.find((store) => store.storeId === activeFilters.storeId)
-      ? buildStoreLabel(stores.find((store) => store.storeId === activeFilters.storeId)!)
+      ? buildStoreOptionLabel(stores.find((store) => store.storeId === activeFilters.storeId)!, duplicateStoreNames)
       : `Nepoznat objekat (ID ${activeFilters.storeId})`;
 
   const emptyStateHint = useMemo(() => {
@@ -1049,8 +1101,8 @@ export default function ShoeTypeSalesStatsPage() {
         label: "Objekat",
         control: (
           <select
-            value={storeId ?? ""}
-            disabled={storesLoadError != null}
+            disabled={storesLoadError != null || storesStale || storesScope !== dataScope}
+            value={storesScope === dataScope && !storesStale ? storeId ?? "" : ""}
             onChange={(event) => {
               const newStore = event.target.value ? Number(event.target.value) : null;
               setStoreId(newStore);
@@ -1062,14 +1114,14 @@ export default function ShoeTypeSalesStatsPage() {
             <option value="">Svi objekti</option>
             {stores.map((store) => (
               <option key={store.storeId} value={store.storeId}>
-                {buildStoreLabel(store)}
+                {buildStoreOptionLabel(store, duplicateStoreNames)}
               </option>
             ))}
           </select>
         ),
       },
     ],
-    [data?.sezone, fromDate, periodPreset, sezonaId, storeId, stores, storesLoadError, toDate],
+    [data?.sezone, dataScope, fromDate, periodPreset, sezonaId, storeId, stores, storesLoadError, storesScope, storesStale, toDate],
   );
 
   return (
@@ -1092,7 +1144,13 @@ export default function ShoeTypeSalesStatsPage() {
         compact
       />
 
-      {storesLoadError ? <AnalyticsFilterLoadNotice onRetry={() => setStoresReloadNonce((value) => value + 1)} /> : null}
+      {storesWarning || (storesScope != null && storesScope !== dataScope)
+        ? <AnalyticsFilterLoadNotice
+            onRetry={() => setStoresReloadNonce((value) => value + 1)}
+            message={storesWarning ?? STORE_FILTER_SCOPE_LOADING_MESSAGE}
+            stale={(storesStale && storesLoadError == null) || storesScope !== dataScope}
+          />
+        : null}
 
       <AnalyticsControlBar
         title="Opseg i filteri"

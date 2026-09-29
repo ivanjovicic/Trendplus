@@ -10,7 +10,7 @@ Updated: 2026-09-28
 Repository: `ivanjovicic/Trendplus`
 Status: canonical planning entry point
 
-RQ routing reconciliation 2026-09-29: `RQ466` is DONE; a checkout that still reports it as Current READY is stale. Current RQ primary READY is `RQ502`; full prompt lives in the Operations Accuracy addendum, with registration evidence at `.ai/runs/2026-09-29-RQ502-registration-evidence.md`. No RQ502 lock exists until a claiming workspace creates its required uncommitted local lock.
+RQ routing reconciliation 2026-09-29: `RQ466` is DONE; a checkout that still reports it as Current READY is stale. Current RQ primary is `RQ502`, now `IN_PROGRESS` in this workspace; full prompt lives in the Operations Accuracy addendum, with registration evidence at `.ai/runs/2026-09-29-RQ502-registration-evidence.md`. The claim uses the required uncommitted local lock `.ai/task-locks/RQ502-codex.lock.md`.
 
 Shoe Type cross-screen audit 2026-09-29: post-RQ494-RQ497 current-main review keeps Shoe Type as the primary supporting category analysis and identifies residual categorical share drift with Color, stale store-option scope, nullable-sort sentinels, information-hierarchy/cost-source copy, Color/Shoe authority drift, conditional snapshot parity, Supplier alias navigation duplication and stale execution-plan claims. Registered `RQ501`-`RQ508`; `RQ502` is primary READY, others are sequenced/owner-gated/conditional as documented. Audit: `docs/qa/SHOE_TYPE_CROSS_SCREEN_AUDIT_2026-09-29.md`.
 

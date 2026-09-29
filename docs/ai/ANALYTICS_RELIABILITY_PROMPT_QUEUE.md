@@ -2,8 +2,17 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ502
-Routing reconciliation 2026-09-29: any workspace still showing `RQ466` as `Current READY` is stale. `RQ466` is `DONE` on current main; `RQ502` is the primary READY prompt. Registration evidence: `.ai/runs/2026-09-29-RQ502-registration-evidence.md`. RQ502 intentionally has no committed/local lock until a workspace claims it.
+Current READY prompt: RQ502 (IN_PROGRESS in this workspace)
+Routing reconciliation 2026-09-29: any workspace still showing `RQ466` as `Current READY` is stale. `RQ466` is `DONE` on current main; `RQ502` is the primary READY prompt. Registration evidence: `.ai/runs/2026-09-29-RQ502-registration-evidence.md`.
+Owner claim 2026-09-29: after fresh `origin/main` sync to `2d85df0f13dac4e8dcb463656515d61ea32e0021`, RQ502 remained READY, RQ494 was verified DONE, and no conflicting lock/branch/PR owner was found for the Operations store-filter scope. RQ502 moved `READY -> IN_PROGRESS` in this workspace. Local lock: `.ai/task-locks/RQ502-codex.lock.md`.
+## RQ502 - Reload and validate Operations store options against the active dataScope
+
+Status: IN_PROGRESS
+Priority: P1
+Feature family: operations-store-filter-scope-truth
+Parallel-safe: no
+Full prompt: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md`
+
 Shoe Type cross-screen audit registration 2026-09-29: `RQ501`-`RQ508` were added in `ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md`. `RQ502` is the primary READY prompt for scope-correct Operations store filters; `RQ501`, `RQ505`, `RQ507` require owner/product decisions; `RQ503`/`RQ504` are sequenced behind RQ502; `RQ506` is conditional on snapshot rollout; `RQ508` follows the product-role decisions. Audit: `docs/qa/SHOE_TYPE_CROSS_SCREEN_AUDIT_2026-09-29.md`.
 Owner promotion/claim 2026-09-28: idle recovery verified `RQ390`, `RQ432` and `RQ456` DONE on current `origin/main`, no active Pre-Nivelacija endpoint/model/page owner or conflicting lock/branch/PR, and `RQ489` is dependency-complete. `RQ489` moved WAITING -> READY -> IN_PROGRESS in this workspace; local lock `.ai/task-locks/RQ489-codex.lock.md`.
 Owner completion 2026-09-28: `RQ489` moved IN_PROGRESS -> DONE and was delivered directly to `main` in `63787f0b24a946e3ce8efa1abb1fa8f1509d7c1b`. Pre-Nivelacija now uses the canonical trimmed/case-insensitive DUG/KOREKCIJA receipt population, keeps positive-net signed returns actionable, computes recency from the latest positive retail sale, exposes receipt/return/recency provenance, and bumps the cache/formula version to v6. Focused proof: backend 44/44; frontend 74/74; analytics guardrails, typecheck and production build pass; governance validators pass. Live PostgreSQL endpoint execution was not run because no isolated test database was assigned. Run log: `.ai/runs/2026-09-28-RQ489-evidence.md`. Evidence state: synchronized.
@@ -70,7 +79,7 @@ Owner promotion/claim 2026-09-26: idle recovery found Current READY `none`. Conc
 Owner completion 2026-09-26: `RQ383` was delivered for Daily Sales shift provenance. Measured shifts no longer absorb off-shift/no-time remaps; metadata exposes `ShiftAssignmentStatus`, `OffShift*` and `NoTimeFallback*`; frontend keeps shift shares unavailable under `no_time_fallback`. Run log: `.ai/runs/2026-09-26-RQ383-evidence.md`. Evidence state: synchronized; implementation `e5d22c01`; tip `ed1ef168`.
 Owner completion 2026-09-26: `RQ384` was delivered for Daily Sales safe/traceable errors. Endpoint failures no longer return `ex.Message`; Problem details include `errorCode`/`correlationId`, and the frontend allowlists safe Serbian messages while surfacing correlation IDs. Run log: `.ai/runs/2026-09-26-RQ384-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-26: idle recovery found Current READY `none` after RQ456/RQ457 closures on `origin/main`. Verified RQ382/RQ383 DONE, no active Daily Sales endpoint/frontend error-contract lock/branch/PR owner, and RQ384 is dependency-complete. `RQ384` moved `WAITING -> READY -> IN_PROGRESS` in this workspace for Daily Sales safe/traceable error responses; local lock `.ai/task-locks/RQ384-cursor.lock.md`.
-Current READY prompt: RQ466
+Current READY prompt: RQ502 (IN_PROGRESS in this workspace; full prompt in the Operations Accuracy addendum)
 Owner audit 2026-09-28: direct live/source audit of Product Decision and Supplier Analytics registered bounded follow-ups `RQ469`-`RQ476` as `WAITING`. Confirmed evidence, cross-screen denominator/population comparison and browser-helper limitation are recorded in `docs/qa/PRODUCTS_SUPPLIER_LIVE_AUDIT_2026-09-28.md`; no prompt was claimed or promoted by this audit.
 Owner audit 2026-09-28: direct live/source audit of Actions, Decision Pulse and Supplier Scorecard registered `RQ477`-`RQ482` as `WAITING`. Actions showed four old smoke records while the default outcome summary covered a different empty 90-day window; Decision Pulse returned `PULSE_PARTIAL` with 124 suppressed candidates and an unavailable Supplier source; Scorecard re-confirmed the existing `RQ475` schema-readiness owner. Evidence: `docs/qa/ACTIONS_DECISION_PULSE_SUPPLIER_SCORECARD_LIVE_AUDIT_2026-09-28.md`; no prompt was claimed or promoted.
 Owner completion 2026-09-26: `RQ431` settled the Daily Sales concentration over-total contract: top-supplier aggregates that exceed the named period quantity/revenue denominator fail closed; signed within-total remainders stay available. Run log: `.ai/runs/2026-09-26-RQ431-evidence.md`. Evidence state: synchronized.

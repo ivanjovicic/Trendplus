@@ -32,6 +32,29 @@ describe("analytics API contract requests", () => {
     expect(receivedUrl?.searchParams.get("dataScope")).toBe("imported");
   });
 
+  it("keeps store cache entries isolated by data scope", async () => {
+    const requestCounts = new Map<string, number>();
+    invalidateAnalyticsCache();
+
+    server.use(
+      rest.get("/api/analytics/cached/filters/stores", (req, res, ctx) => {
+        const scope = req.url.searchParams.get("dataScope") ?? "none";
+        requestCounts.set(scope, (requestCounts.get(scope) ?? 0) + 1);
+        return res(ctx.status(200), ctx.json([{ storeId: 7, storeName: scope }]));
+      }),
+    );
+
+    const allStores = await getStores(true, "all");
+    const importedStores = await getStores(true, "imported");
+    const cachedAllStores = await getStores(true, "all");
+
+    expect(allStores[0]?.storeName).toBe("all");
+    expect(importedStores[0]?.storeName).toBe("imported");
+    expect(cachedAllStores[0]?.storeName).toBe("all");
+    expect(requestCounts.get("all")).toBe(1);
+    expect(requestCounts.get("imported")).toBe(1);
+  });
+
   it("preserves alert size-curve SKU, store and size identity in the request", async () => {
     let receivedUrl: URL | null = null;
 

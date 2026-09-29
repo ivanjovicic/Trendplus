@@ -83,7 +83,7 @@
     {
       "file": "src/pages/DailySalesStatsPage.tsx",
       "rule": "refetch_setData_null",
-      "line": 877,
+      "line": 924,
       "reason": "Store-filter discovery failure must clear stale store-scoped rows before falling back to the all-stores scope."
     },
     {
