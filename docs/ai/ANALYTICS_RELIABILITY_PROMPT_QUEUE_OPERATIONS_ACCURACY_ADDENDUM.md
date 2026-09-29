@@ -1626,6 +1626,8 @@ Superseded revalidation note 2026-09-26: dedicated run `36262400467` was tempora
 
 Owner re-entry claim 2026-09-29: current-main workflow `36535601283` exposed a stale exact-count boundary: the broad class filter executed 5 passed oracle tests because the later attribution-mutation test shares the class. RQ447 is re-entered only to select the four named oracle cases required by this certification gate and capture a fresh zero-skip run. Local lock: `.ai/task-locks/RQ447-codex.lock.md`.
 
+Completion note 2026-09-29: RQ447 is DONE after changing the certification filter to the four explicit oracle methods required by the gate. Workflow run `36536448476` on SHA `b86b60f25978bf2d1d7e0c5f7f151f1f2e1ee9bd` recorded oracle `4/4`, all-eight-routes `1/1`, OP2 `4/4`, zero skips, frontend seam proof success and artifact `11018966290`; the parallel backend job also completed successfully. No runtime business code changed. Run log: `.ai/runs/2026-09-29-RQ447-evidence.md`. Evidence state: synchronized.
+
 
 ---
 
