@@ -229,7 +229,7 @@ Run `36270728235` still contained failures across Access import FK guards, lost-
 - Checks run: exact broad suite red; combined residual run cancelled after host/order sensitivity; focused cached analytics test `17/17`; `git diff --check` and queue/planning governance checks pass.
 - Checks not run: fresh exact-main green suite and remote GitHub Actions inspection; no remote connector result was available.
 - Run log: `.ai/runs/2026-09-29-BCI14-evidence.md`
-- Evidence state: pending until delivery verification completes.
+- Evidence state: synchronized.
 - Main commit SHA: `33f6a629` (implementation commit; final evidence verification follows).
 - Delivery mode: direct-main
 - Missed: remaining Neon credential and provider/order lifecycle residuals are not yet assigned to one final root cause.
