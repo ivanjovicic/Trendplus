@@ -4,9 +4,9 @@ Date: 2026-09-29
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct delivery
-Main commit SHA: pending
-Main verification: pending final follow-up delivery
-Evidence state: pending
+Main commit SHA: `f8aa9873`
+Main verification: passed - `origin/main` contains `f8aa9873`
+Evidence state: synchronized
 
 ## What was done
 - Claimed BCI14 after BCI11-BCI13 were confirmed DONE and repaired the stale queue/roadmap pointer.

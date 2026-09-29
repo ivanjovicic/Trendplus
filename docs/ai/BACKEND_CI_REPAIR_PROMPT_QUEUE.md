@@ -253,7 +253,8 @@ Run `36270728235` still contained failures across Access import FK guards, lost-
 - Checks run: exact follow-up broad TRX `1497/4/39`; Access `3/3`; Outbox `3/3`; pgvector `1/1`; DataQuality worker `1/1`; DataQuality handler focused class remains `4 failed / 2 passed` on the external missing-column schema.
 - Checks not run: fresh exact-main green suite and remote GitHub Actions inspection; the external schema owner/migration was not changed.
 - Run log: `.ai/runs/2026-09-29-BCI14-evidence.md`
-- Evidence state: pending until final delivery verification completes.
+- Evidence state: synchronized.
+- Main commit SHA: `f8aa9873` (implementation commit; final ancestor verification follows).
 - Delivery mode: direct-main
 - Missed: the four DataQuality handler scenarios cannot execute against the configured database until the current migration/schema is present.
 - Follow-up: apply/verify the `20260929000521_PersistDailySalesTimestampBasis` migration on the test database or route these tests to an isolated current-schema fixture, then rerun the exact broad suite.
