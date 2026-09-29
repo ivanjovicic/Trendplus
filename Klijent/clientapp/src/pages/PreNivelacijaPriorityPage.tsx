@@ -994,6 +994,13 @@ export default function PreNivelacijaPriorityPage() {
     () => [
       { key: "generatedAtUtc", label: "Generisano", value: data?.generatedAtUtc ?? "" },
       { key: "formulaVersion", label: "Formula", value: data?.formulaVersion ?? "" },
+      { key: "formulaDescription", label: "Opis formule", value: data?.formulaDescription ?? "" },
+      { key: "scoreBasis", label: "Osnova skora", value: data?.modelEvidence?.scoreBasis === "cohort_relative_max_ratio" ? "Relativan skor prema maksimumu referentne kohorte" : data?.modelEvidence?.scoreBasis ?? null },
+      { key: "scoreReferencePopulation", label: "Referentna populacija skora", value: data?.modelEvidence?.scoreReferencePopulation === "base_candidate_universe_before_dimension_filters" ? "Osnovna populacija kandidata pre dimenzionih filtera" : data?.modelEvidence?.scoreReferencePopulation ?? null },
+      { key: "scoreNormalization", label: "Normalizacija skora", value: data?.modelEvidence?.scoreNormalization === "stock_and_velocity_divided_by_reference_population_max" ? "Zaliha i brzina prema maksimumu referentne populacije" : data?.modelEvidence?.scoreNormalization ?? null },
+      { key: "scenarioBasis", label: "Osnova scenarija", value: data?.modelEvidence?.scenarioBasis === "heuristic_uncalibrated" ? "Heuristička, nekalibrisana procena" : data?.modelEvidence?.scenarioBasis ?? null },
+      { key: "scenarioParameterVersion", label: "Verzija scenario parametara", value: data?.modelEvidence?.scenarioParameterVersion ?? null },
+      { key: "scenarioDisclaimer", label: "Ograničenje scenarija", value: data?.modelEvidence?.scenarioDisclaimer === "heuristic_estimate_not_causal_or_calibrated_uplift" ? "Nije kauzalna niti kalibrisana procena povećanja" : data?.modelEvidence?.scenarioDisclaimer ?? null },
       { key: "populationBasis", label: "Osnova brojanja", value: "Globalno = cela filtrirana populacija; strana = trenutno učitani redovi" },
       { key: "totalCandidates", label: "Ukupno kandidata (globalno)", value: data ? normalizeNonNegativeNumber(data.totalCandidates) : null },
       { key: "globalHighPriority", label: "Visok prioritet (globalno)", value: data ? normalizeNonNegativeNumber(data.summary.highPriorityCount) : null },
@@ -1378,8 +1385,8 @@ export default function PreNivelacijaPriorityPage() {
           ) : null}
 
           <section className="pnp-decision-kpis">
-            <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="SKU koji zadovoljavaju filtere i prag skora.">
-              <span>Kandidati <InfoTip text="Ukupan broj SKU koji zadovoljavaju filtere i imaju aktivan signal pre nivelacije (pre-nivelacioni skor ≥ min. skora). Ovo su artikli koji imaju zalihu i prodajni signal dovoljan za intervenciju." /></span>
+            <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="SKU koji zadovoljavaju filtere i prag skora; nisu svi spremni za akciju.">
+              <span>Kandidati <InfoTip text="Ukupan broj SKU koji zadovoljavaju filtere i prag pre-nivelacionog skora. Ovo je skorirana populacija kandidata; status preporuke i kvalitet podataka odvojeno određuju da li je akcija dozvoljena." /></span>
               <strong>{formatNonNegativeNumber(data.summary.candidatesCount)}</strong>
             </article>
             <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Kandidati sa najjačim signalom za brzu intervenciju.">
@@ -1392,12 +1399,12 @@ export default function PreNivelacijaPriorityPage() {
               <em>{formatKpiCoverage(data.summary.totalStockAtRiskCoverageEligible, data.summary.totalStockAtRiskCoverageTotal)}</em>
             </article>
             <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Procena prihoda ako se dozvoljeni Pojačaj kandidati istaknu umesto da se sniže.">
-              <span>Procena povećanja prihoda <InfoTip text="Procenjeni prihod: scenario isticanja minus scenario sniženja samo za dozvoljene 'Pojačaj' kandidate. Blokirane preporuke i drugi statusi nisu uključeni, u skladu sa tabelarnim gatingom. PROCENA – bazirana na scenariju sa istorijskim podacima prodaje, nije garantovani prihod." /></span>
+              <span><span>Procena povećanja prihoda</span> <small>(heuristička, nekalibrisana)</small> <InfoTip text="Heuristička, nekalibrisana procena: scenario isticanja minus scenario sniženja samo za dozvoljene 'Pojačaj' kandidate. Blokirane preporuke i drugi statusi nisu uključeni; rezultat nije kauzalno dokazan niti garantovani prihod." /></span>
               <strong>{formatNullableKpiRsd(data.summary.expectedHighlightRevenueUplift)}</strong>
               <em>{formatKpiCoverage(data.summary.expectedHighlightRevenueUpliftCoverageEligible, data.summary.expectedHighlightRevenueUpliftCoverageTotal)}</em>
             </article>
             <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Procena izbegljivog gubitka marže koji može da se izbegne pre nivelacije.">
-              <span>Procena izbegljivog gubitka marže <InfoTip text="Procenjeni gubitak marže (ne prihoda) koji se može izbeći pravovremenom intervencijom pre nivelacije. Uključuje samo kandidate sa kompletnim dokazom o trošku i pozitivnom delta marže. Redovi bez troška ne ulaze u zbir. PROCENA bazirana na scenario modelu (isticanje vs. sniženje u 30-dnevnom prozoru)." /></span>
+              <span><span>Procena izbegljivog gubitka marže</span> <small>(heuristička, nekalibrisana)</small> <InfoTip text="Heuristička, nekalibrisana procena gubitka marže (ne prihoda) koji se može izbeći pravovremenom intervencijom. Uključuje samo kandidate sa kompletnim dokazom o trošku i pozitivnom delta marže; nije kauzalno dokazana procena." /></span>
               <strong className={data.summary.estimatedAvoidableMarkdownLoss == null ? "" : "trend-down"}>{formatNullableKpiRsd(data.summary.estimatedAvoidableMarkdownLoss)}</strong>
               <em>{formatKpiCoverage(data.summary.estimatedAvoidableMarkdownLossCoverageEligible, data.summary.estimatedAvoidableMarkdownLossCoverageTotal)}</em>
             </article>
@@ -1500,7 +1507,7 @@ export default function PreNivelacijaPriorityPage() {
                       </th>
                       <th className="align-right" aria-sort={sortAriaValue("revenueDelta", sortField, sortDir)}>
                         <button type="button" onClick={() => handleSort("revenueDelta")}>Isticanje vs sniženje {sortMarker("revenueDelta", sortField, sortDir)}</button>
-                        <InfoTip text="Razlika procenjenog prihoda u 30-dnevnom prozoru: scenario isticanja minus scenario sniženja. Pozitivna vrednost = scenario više naginje isticanju pre nivelacije. Negativno = scenario više naginje sniženju. Ovo je signal, ne garantovani ishod." />
+                        <InfoTip text="Heuristička, nekalibrisana razlika procenjenog prihoda u 30-dnevnom prozoru: scenario isticanja minus scenario sniženja. Pozitivna vrednost je signal, ne kauzalno dokazan ni garantovani ishod." />
                       </th>
                       <th className="align-center">
                         {RECOMMENDATION_RELIABILITY_LABEL}
@@ -1603,11 +1610,11 @@ export default function PreNivelacijaPriorityPage() {
                   <strong>{priorityBandLabel(selectedRow.priorityBand)}</strong>
                 </article>
                 <article>
-                  <span>Scenario isticanje (30d procena prihoda)</span>
+                  <span>Scenario isticanje (30d heuristička procena prihoda)</span>
                   <strong>{formatGatedRsd(selectedRow.recommendationAllowed, selectedRow.scenarioHighlightNow.expectedRevenue30d)}</strong>
                 </article>
                 <article>
-                  <span>Scenario sniženje (30d procena prihoda)</span>
+                  <span>Scenario sniženje (30d heuristička procena prihoda)</span>
                   <strong>{formatGatedRsd(selectedRow.recommendationAllowed, selectedRow.scenarioMarkdownNow.expectedRevenue30d)}</strong>
                 </article>
                 <article>

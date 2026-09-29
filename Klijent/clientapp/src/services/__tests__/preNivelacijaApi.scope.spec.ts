@@ -7,6 +7,14 @@ const responseBody = JSON.stringify({
   generatedAtUtc: "2026-07-01T08:00:00Z",
   formulaVersion: "test",
   formulaDescription: "Test empty response",
+  modelEvidence: {
+    scoreBasis: "cohort_relative_max_ratio",
+    scoreReferencePopulation: "base_candidate_universe_before_dimension_filters",
+    scoreNormalization: "stock_and_velocity_divided_by_reference_population_max",
+    scenarioBasis: "heuristic_uncalibrated",
+    scenarioParameterVersion: "pre_nivelacija_scenario_v1",
+    scenarioDisclaimer: "heuristic_estimate_not_causal_or_calibrated_uplift",
+  },
   summary: {
     supplierCount: 0,
     candidatesCount: 0,

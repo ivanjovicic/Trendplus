@@ -2,12 +2,13 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ493 (IN_PROGRESS in this workspace)
 Routing reconciliation 2026-09-29: any workspace still showing `RQ466` as `Current READY` is stale. `RQ466` is `DONE` on current main; `RQ502` is the primary READY prompt. Registration evidence: `.ai/runs/2026-09-29-RQ502-registration-evidence.md`.
 Owner claim 2026-09-29: after fresh `origin/main` sync to `2d85df0f13dac4e8dcb463656515d61ea32e0021`, RQ502 remained READY, RQ494 was verified DONE, and no conflicting lock/branch/PR owner was found for the Operations store-filter scope. RQ502 moved `READY -> IN_PROGRESS` in this workspace. Local lock: `.ai/task-locks/RQ502-codex.lock.md`.
 Owner completion 2026-09-29: RQ502 moved `IN_PROGRESS -> DONE` and was delivered directly to `main` in `baa4ce300cbb2c63662ed22ef64d353e2b31e209`. Scoped store options now reload and validate against `dataScope` across Shoe Type, Color, Daily Sales and Pre/Post; stale/fallback lists are visible and untrusted selections are cleared; duplicate labels expose stable IDs. Focused frontend proof is 91/91 across the new utility/API contracts and four page suites; guardrails, typecheck, production build, diff check and governance validators pass. Run log: `.ai/runs/2026-09-29-RQ502-evidence.md`. Evidence state: synchronized. RQ503/RQ504 remain sequenced behind this completed lane.
 Owner promotion/claim 2026-09-29: idle recovery refreshed `origin/main` to `37d6f037a3ac0102392791e21089b9c87ff73e0f`, verified RQ489 DONE, and found RQ491 blocked by the exclusive PARTIAL Q83 Pre/Post SQL owner. RQ492 is dependency-complete and collision-safe for the Pre-Nivelacija store-grain surface; it moved `WAITING -> READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ492-codex.lock.md`.
 Owner completion 2026-09-29: RQ492 moved `IN_PROGRESS -> DONE` and was delivered directly to `main` in implementation `fdd9d8165b48481daa1b6e84134dfe09b82da980`. Pre-Nivelacija now preserves `ArtikalId + StoreId`, uses store-aware demand/evidence, carries store identity through filter/facet/URL/export/detail/queue paths, and fails closed for missing store identity. Focused backend proof is 25/25 plus 46/46; focused frontend proof is 75/75; guardrails, typecheck, builds, governance validators and diff check pass. Live PostgreSQL, browser/export and remote CI proof were not run because no assigned environment was available. Run log: `.ai/runs/2026-09-29-RQ492-evidence.md`. Evidence state: synchronized. Current RQ READY is `none`; RQ491 remains WAITING behind Q83 and RQ493 is the later scoring/scenario follow-up.
+Owner promotion/claim 2026-09-29: idle recovery verified RQ489 and RQ492 DONE on current `origin/main`, retained RQ491 WAITING behind Q83, and found RQ493 dependency-complete and collision-safe. RQ493 moved `WAITING -> READY -> IN_PROGRESS` for the Pre-Nivelacija score/scenario truth surface. Local lock: `.ai/task-locks/RQ493-codex.lock.md`.
 Routing repair 2026-09-29: RQ495's live heading is reconciled from stale `WAITING` to `DONE` to match its synchronized completion evidence and current-main delivery; the prompt is not reopened.
 Routing reconciliation 2026-09-29: the live RQ447 heading was stale at `IN_PROGRESS`; its synchronized completion note and run `36536448476` prove the dedicated acceptance is DONE, so the heading is corrected to `DONE` without reopening the prompt.
 Owner promotion/claim 2026-09-28: idle recovery confirmed `RQ494` is the highest-priority dependency-complete operations accuracy prompt after RQ445/RQ446/RQ456/RQ457/RQ484 completion; no active lock/branch/PR owner overlaps its sales-header dataScope scope, and Q83 is `PARTIAL` without an active repo-local lock. `RQ494` moved WAITING -> READY -> IN_PROGRESS in this workspace; local lock `.ai/task-locks/RQ494-codex.lock.md`.
@@ -1640,7 +1641,7 @@ Completion note 2026-09-29: RQ447 is DONE after changing the certification filte
 
 ## RQ448 - Reconcile raw facts through API, browser render and export
 
-Status: WAITING
+Status: IN_PROGRESS
 Ready after: RQ447 has a runnable fixture and authenticated test browser/API environment
 Priority: P0
 Type: e2e/browser/export/tests

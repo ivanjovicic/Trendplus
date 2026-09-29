@@ -63,20 +63,20 @@ public sealed class PreNivelacijaScoringService : IPreNivelacijaScoringService
         decimal maxVelocity)
     {
         // Stock pressure: normalized stock level
-        var stockPressure = maxStock <= 0 ? 0m : PercentileNormalize(stockUnits, maxStock);
+        var stockPressure = maxStock <= 0 ? 0m : NormalizeToReferenceMax(stockUnits, maxStock);
 
         // Velocity risk: inverse of normalized velocity
-        var velocityNorm = maxVelocity <= 0m ? 0m : PercentileNormalize(velocity180, maxVelocity);
+        var velocityNorm = maxVelocity <= 0m ? 0m : NormalizeToReferenceMax(velocity180, maxVelocity);
         var velocityRisk = 100m - velocityNorm;
 
         // Recency risk: days since last sale normalized to 180 days
-        var recencyRisk = PercentileNormalize(daysSinceLastSale, 180m);
+        var recencyRisk = NormalizeToReferenceMax(daysSinceLastSale, 180m);
 
         // Markdown opportunity: potential for markdown based on events and average markdown percentage
         var markdownOpportunity = Clamp(100m - (markdownEvents * 20m + avgMarkdownPct * 0.5m));
 
         // Margin potential: normalized gross margin percentage
-        var marginPotential = PercentileNormalize(grossMarginPctEst, 60m);
+        var marginPotential = NormalizeToReferenceMax(grossMarginPctEst, 60m);
 
         // Season recency boost: directly clamped
         var seasonBoost = Clamp(seasonRecencyBoost);
@@ -219,7 +219,7 @@ public sealed class PreNivelacijaScoringService : IPreNivelacijaScoringService
 
     // Helper methods
 
-    private static decimal PercentileNormalize(decimal value, decimal max)
+    private static decimal NormalizeToReferenceMax(decimal value, decimal max)
     {
         return Clamp((value * 100m) / max);
     }

@@ -276,6 +276,7 @@ public sealed class AnalyticsScreenCacheKeyContractTests
         Assert.NotEqual(storeOne, storeTwo);
         Assert.Contains("store:1", storeOne, StringComparison.Ordinal);
         Assert.Contains("store:2", storeTwo, StringComparison.Ordinal);
+        Assert.Contains("pre-nivelacija-priority:v8", storeOne, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ493 (IN_PROGRESS in this workspace)
 Routing reconciliation 2026-09-29: any workspace still showing `RQ466` as `Current READY` is stale. `RQ466` was `DONE` on current main; `RQ502` was the primary READY prompt and is now `DONE`. Registration evidence: `.ai/runs/2026-09-29-RQ502-registration-evidence.md`.
 Owner claim 2026-09-29: after fresh `origin/main` sync to `2d85df0f13dac4e8dcb463656515d61ea32e0021`, RQ502 remained READY, RQ494 was verified DONE, and no conflicting lock/branch/PR owner was found for the Operations store-filter scope. RQ502 moved `READY -> IN_PROGRESS` in this workspace. Local lock: `.ai/task-locks/RQ502-codex.lock.md`.
 Owner promotion/claim 2026-09-29: idle recovery refreshed `origin/main` to `37d6f037a3ac0102392791e21089b9c87ff73e0f`, verified RQ489 DONE, and found RQ491 blocked by the exclusive PARTIAL Q83 Pre/Post SQL owner. RQ492 is dependency-complete and collision-safe for the Pre-Nivelacija store-grain surface, and moved `WAITING -> READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ492-codex.lock.md`.
@@ -38,6 +38,20 @@ Full prompt: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADD
 - Follow-up: RQ491 remains WAITING behind Q83; later Pre-Nivelacija scoring/scenario truth remains RQ493.
 - Residual risk: live PostgreSQL, browser and remote CI evidence remain external follow-up.
 - Prompt defect / scope repair: none for RQ492; stale RQ495 queue truth was reconciled during routing and not reopened.
+
+## RQ493 - Pre-Nivelacija: score stability, heuristic scenario truth and candidate wording
+
+Status: IN_PROGRESS
+Priority: P1
+Feature family: pre-nivelacija-score-truth
+Parallel-safe: no
+Full prompt: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md`
+
+### Claim note
+
+- Dependencies RQ489 and RQ492 are DONE on current main.
+- RQ491 remains WAITING behind Q83 and owns the separate Pre/Post evidence-coverage family.
+- No active lock, branch or PR owner conflicts with the Pre-Nivelacija scoring/scenario surface; local lock: `.ai/task-locks/RQ493-codex.lock.md`.
 
 ## RQ502 - Reload and validate Operations store options against the active dataScope
 

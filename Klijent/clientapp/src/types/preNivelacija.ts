@@ -16,6 +16,15 @@ export interface PreNivelacijaScenario {
   effectivePrice: number;
 }
 
+export interface PreNivelacijaModelEvidence {
+  scoreBasis: string;
+  scoreReferencePopulation: string;
+  scoreNormalization: string;
+  scenarioBasis: string;
+  scenarioParameterVersion: string;
+  scenarioDisclaimer: string;
+}
+
 export interface PreNivelacijaRecommendation {
   status: "increase_focus" | "maintain" | "review" | "do_not_trust" | "insufficient_data";
   label: string;
@@ -189,6 +198,7 @@ export interface PreNivelacijaPriorityResponse {
   generatedAtUtc: string;
   formulaVersion: string;
   formulaDescription: string;
+  modelEvidence: PreNivelacijaModelEvidence;
   summary: PreNivelacijaSummary;
   supplierLeaderboard: PreNivelacijaSupplierAction[];
   supplierActionShare?: PreNivelacijaSupplierActionShareProjection;

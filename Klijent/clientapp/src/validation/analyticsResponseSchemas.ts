@@ -942,6 +942,15 @@ const preNivelacijaAlertSchema = z.object({
   artikalId: nonNegativeInteger.nullable(),
 }).passthrough();
 
+const preNivelacijaModelEvidenceSchema = z.object({
+  scoreBasis: z.string().trim().min(1),
+  scoreReferencePopulation: z.string().trim().min(1),
+  scoreNormalization: z.string().trim().min(1),
+  scenarioBasis: z.string().trim().min(1),
+  scenarioParameterVersion: z.string().trim().min(1),
+  scenarioDisclaimer: z.string().trim().min(1),
+}).passthrough();
+
 const preNivelacijaFilterOptionSchema = z.object({
   id: nonNegativeInteger,
   label: z.string().trim().min(1),
@@ -952,6 +961,7 @@ export const preNivelacijaPriorityResponseSchema = z.object({
   generatedAtUtc: validDate,
   formulaVersion: z.string(),
   formulaDescription: z.string(),
+  modelEvidence: preNivelacijaModelEvidenceSchema,
   summary: z.object({
     supplierCount: nonNegativeInteger,
     candidatesCount: nonNegativeInteger,

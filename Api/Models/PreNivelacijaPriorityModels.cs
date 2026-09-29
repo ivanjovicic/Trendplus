@@ -5,8 +5,9 @@ using Trendplus2.Dtos;
 public sealed class PreNivelacijaPriorityResponseDto
 {
     public DateTime GeneratedAtUtc { get; set; } = DateTime.UtcNow;
-    public string FormulaVersion { get; set; } = "pre_nivelacija_v6";
+    public string FormulaVersion { get; set; } = "pre_nivelacija_v8";
     public string FormulaDescription { get; set; } = string.Empty;
+    public PreNivelacijaModelEvidenceDto ModelEvidence { get; set; } = new();
     public PreNivelacijaSummaryDto Summary { get; set; } = new();
     public List<PreNivelacijaSupplierActionDto> SupplierLeaderboard { get; set; } = [];
     public PreNivelacijaSupplierActionShareProjectionDto SupplierActionShare { get; set; } = new();
@@ -20,6 +21,16 @@ public sealed class PreNivelacijaPriorityResponseDto
     public bool RecommendationAllowed { get; set; }
     public PreNivelacijaEvidenceWindowDto EvidenceWindow { get; set; } = new();
     public AnalyticsResponseMetaDto? Meta { get; set; }
+}
+
+public sealed class PreNivelacijaModelEvidenceDto
+{
+    public string ScoreBasis { get; set; } = "cohort_relative_max_ratio";
+    public string ScoreReferencePopulation { get; set; } = "base_candidate_universe_before_dimension_filters";
+    public string ScoreNormalization { get; set; } = "stock_and_velocity_divided_by_reference_population_max";
+    public string ScenarioBasis { get; set; } = "heuristic_uncalibrated";
+    public string ScenarioParameterVersion { get; set; } = "pre_nivelacija_scenario_v1";
+    public string ScenarioDisclaimer { get; set; } = "heuristic_estimate_not_causal_or_calibrated_uplift";
 }
 
 public sealed class PreNivelacijaEvidenceWindowDto

@@ -33,8 +33,9 @@ public static class PreNivelacijaPriorityEndpoints
     private sealed class PreNivelacijaPriorityBaseCacheEntry
     {
         public DateTime GeneratedAtUtc { get; init; }
-        public string FormulaVersion { get; init; } = "pre_nivelacija_v7";
+        public string FormulaVersion { get; init; } = "pre_nivelacija_v8";
         public string FormulaDescription { get; init; } = string.Empty;
+        public PreNivelacijaModelEvidenceDto ModelEvidence { get; init; } = new();
         public PreNivelacijaSummaryDto Summary { get; init; } = new();
         public List<PreNivelacijaSupplierActionDto> SupplierLeaderboard { get; init; } = [];
         /// <summary>
@@ -480,8 +481,9 @@ public static class PreNivelacijaPriorityEndpoints
                     return new PreNivelacijaPriorityBaseCacheEntry
                     {
                         GeneratedAtUtc = nowUtc,
-                        FormulaVersion = "pre_nivelacija_v7",
+                        FormulaVersion = "pre_nivelacija_v8",
                         FormulaDescription = BuildFormulaDescription(),
+                        ModelEvidence = BuildModelEvidence(),
                         Summary = new PreNivelacijaSummaryDto(),
                         SupplierLeaderboard = [],
                         Candidates = allCandidates,
@@ -538,7 +540,12 @@ public static class PreNivelacijaPriorityEndpoints
 
     private static string BuildFormulaDescription()
     {
-        return "Skor pre-nivelacije = 0,30*pritisak_zalihe + 0,25*rizik_brzine_prodaje + 0,20*rizik_svežine + 0,10*prilika_za_sniženje + 0,10*potencijal_marže + 0,05*sezonski_signal; preporuka = 0,50*skor + 0,20*razlika_scenarija + 0,15*rizik_zastarelosti + 0,15*pouzdanost. Prozor prodaje i nivelacija: poslednjih 180 dana u UTC; DUG/KOREKCIJA računi su isključeni, povrati ostaju u potpisanom netu, a recency koristi poslednju pozitivnu prodaju.";
+        return "Skor pre-nivelacije = 0,30*pritisak_zalihe + 0,25*rizik_brzine_prodaje + 0,20*rizik_svežine + 0,10*prilika_za_sniženje + 0,10*potencijal_marže + 0,05*sezonski_signal; pritisak zalihe i rizik brzine su relativni prema maksimumu osnovne referentne kohorte, nisu percentile ni apsolutni pragovi. Preporuka = 0,50*skor + 0,20*razlika_scenarija + 0,15*rizik_zastarelosti + 0,15*pouzdanost. Scenario brojevi su heuristička, nekalibrisana procena bez kauzalne garancije. Prozor prodaje i nivelacija: poslednjih 180 dana u UTC; DUG/KOREKCIJA računi su isključeni, povrati ostaju u potpisanom netu, a recency koristi poslednju pozitivnu prodaju.";
+    }
+
+    private static PreNivelacijaModelEvidenceDto BuildModelEvidence()
+    {
+        return new PreNivelacijaModelEvidenceDto();
     }
 
     internal static bool IsHighPriorityCandidate(PreNivelacijaSkuCandidateDto candidate)
@@ -747,8 +754,9 @@ public static class PreNivelacijaPriorityEndpoints
         return new PreNivelacijaPriorityBaseCacheEntry
         {
             GeneratedAtUtc = nowUtc,
-            FormulaVersion = "pre_nivelacija_v7",
+            FormulaVersion = "pre_nivelacija_v8",
             FormulaDescription = BuildFormulaDescription(),
+            ModelEvidence = BuildModelEvidence(),
             Summary = new PreNivelacijaSummaryDto
             {
                 SupplierCount = 0,
@@ -910,6 +918,7 @@ public static class PreNivelacijaPriorityEndpoints
             GeneratedAtUtc = baseEntry.GeneratedAtUtc,
             FormulaVersion = baseEntry.FormulaVersion,
             FormulaDescription = baseEntry.FormulaDescription,
+            ModelEvidence = baseEntry.ModelEvidence,
             Summary = baseEntry.Summary,
             SupplierLeaderboard = baseEntry.SupplierLeaderboard,
             SupplierActionShare = BuildSupplierActionShareProjection(baseEntry.SupplierLeaderboard),
@@ -961,6 +970,7 @@ public static class PreNivelacijaPriorityEndpoints
             GeneratedAtUtc = universeEntry.GeneratedAtUtc,
             FormulaVersion = universeEntry.FormulaVersion,
             FormulaDescription = universeEntry.FormulaDescription,
+            ModelEvidence = universeEntry.ModelEvidence,
             Summary = summary,
             SupplierLeaderboard = leaderboard,
             Candidates = filtered,

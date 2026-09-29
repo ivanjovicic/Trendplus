@@ -29,6 +29,38 @@ public sealed class PreNivelacijaScoringServiceTests
     }
 
     [Fact]
+    public void ComputeScoreBreakdown_ExposesCohortRelativeMaxSensitivity()
+    {
+        var service = new PreNivelacijaScoringService();
+
+        var baselineReference = service.ComputeScoreBreakdown(
+            stockUnits: 50,
+            velocity180: 0.20m,
+            daysSinceLastSale: 30,
+            markdownEvents: 0,
+            avgMarkdownPct: 0m,
+            grossMarginPctEst: 30m,
+            seasonRecencyBoost: 10m,
+            maxStock: 100,
+            maxVelocity: 0.40m);
+        var extremeReference = service.ComputeScoreBreakdown(
+            stockUnits: 50,
+            velocity180: 0.20m,
+            daysSinceLastSale: 30,
+            markdownEvents: 0,
+            avgMarkdownPct: 0m,
+            grossMarginPctEst: 30m,
+            seasonRecencyBoost: 10m,
+            maxStock: 1000,
+            maxVelocity: 4m);
+
+        Assert.Equal(50m, baselineReference.StockPressure);
+        Assert.Equal(5m, extremeReference.StockPressure);
+        Assert.Equal(50m, baselineReference.VelocityRisk);
+        Assert.Equal(95m, extremeReference.VelocityRisk);
+    }
+
+    [Fact]
     public void SimulateScenarios_ProducesPositiveEffectivePrices_AndConfidence()
     {
         var service = new PreNivelacijaScoringService();

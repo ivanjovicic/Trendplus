@@ -78,7 +78,7 @@ export const decisionColumns: AnalyticsTableColumn<DecisionCandidate>[] = [
   { key: "preNivelacijaScore", header: "Skor nivelacije", dataType: "number" },
   { key: "stockUnits", header: "Zaliha (kom)", dataType: "number" },
   { key: "daysSinceLastSale", header: "Dana bez prodaje", dataType: "number" },
-  { key: "revenueDelta", header: "Isticanje vs sniženje (prihod)", dataType: "currency", getValue: (row) => row.recommendationAllowed ? row.revenueDelta : null },
+  { key: "revenueDelta", header: "Heuristička procena: isticanje vs sniženje (prihod)", dataType: "currency", getValue: (row) => row.recommendationAllowed ? row.revenueDelta : null },
   { key: "reliabilityPct", header: RECOMMENDATION_RELIABILITY_LABEL, dataType: "percent", getValue: (row) => row.reliabilityAvailable ? row.reliabilityPct : null },
   { key: "decisionScore", header: "Ocena preporuke", dataType: "number", getValue: (row) => row.decisionScoreAvailable ? row.decisionScore : null },
   { key: "status", header: "Preporuka", dataType: "text" },

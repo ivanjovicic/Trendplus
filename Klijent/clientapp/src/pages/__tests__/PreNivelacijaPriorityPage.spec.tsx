@@ -285,6 +285,14 @@ function makeResponse(candidates = [makeCandidate(), makeCandidate({
     generatedAtUtc: "2026-06-19T10:00:00Z",
     formulaVersion: "1.0",
     formulaDescription: "Rule-based markdown scenario support.",
+    modelEvidence: {
+      scoreBasis: "cohort_relative_max_ratio",
+      scoreReferencePopulation: "base_candidate_universe_before_dimension_filters",
+      scoreNormalization: "stock_and_velocity_divided_by_reference_population_max",
+      scenarioBasis: "heuristic_uncalibrated",
+      scenarioParameterVersion: "pre_nivelacija_scenario_v1",
+      scenarioDisclaimer: "heuristic_estimate_not_causal_or_calibrated_uplift",
+    },
     summary: {
       supplierCount: 1,
       candidatesCount: candidates.length,
