@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ493 (IN_PROGRESS in this workspace)
+Current READY prompt: none
 Routing reconciliation 2026-09-29: any workspace still showing `RQ466` as `Current READY` is stale. `RQ466` was `DONE` on current main; `RQ502` was the primary READY prompt and is now `DONE`. Registration evidence: `.ai/runs/2026-09-29-RQ502-registration-evidence.md`.
 Owner claim 2026-09-29: after fresh `origin/main` sync to `2d85df0f13dac4e8dcb463656515d61ea32e0021`, RQ502 remained READY, RQ494 was verified DONE, and no conflicting lock/branch/PR owner was found for the Operations store-filter scope. RQ502 moved `READY -> IN_PROGRESS` in this workspace. Local lock: `.ai/task-locks/RQ502-codex.lock.md`.
 Owner promotion/claim 2026-09-29: idle recovery refreshed `origin/main` to `37d6f037a3ac0102392791e21089b9c87ff73e0f`, verified RQ489 DONE, and found RQ491 blocked by the exclusive PARTIAL Q83 Pre/Post SQL owner. RQ492 is dependency-complete and collision-safe for the Pre-Nivelacija store-grain surface, and moved `WAITING -> READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ492-codex.lock.md`.
@@ -41,7 +41,7 @@ Full prompt: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADD
 
 ## RQ493 - Pre-Nivelacija: score stability, heuristic scenario truth and candidate wording
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Feature family: pre-nivelacija-score-truth
 Parallel-safe: no
@@ -52,6 +52,24 @@ Full prompt: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADD
 - Dependencies RQ489 and RQ492 are DONE on current main.
 - RQ491 remains WAITING behind Q83 and owns the separate Pre/Post evidence-coverage family.
 - No active lock, branch or PR owner conflicts with the Pre-Nivelacija scoring/scenario surface; local lock: `.ai/task-locks/RQ493-codex.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-29
+- Status: DONE
+- Completion: Pre-Nivelacija now exposes cohort-relative max-ratio score basis, reference population, normalization, formula version and heuristic/uncalibrated scenario provenance. Methodology/export wording no longer calls max-ratio a percentile or presents scenarios as causal/calibrated uplift; candidate population and actionability are distinct.
+- Changed files: Pre-Nivelacija backend DTO/endpoint/scoring/cache, frontend page/decision wording/types/schema/tests, focused score/cache tests, queue/roadmap metadata and `.ai/runs/2026-09-29-RQ493-evidence.md`.
+- Checks run: focused backend 26/26 and 46/46; API/backend builds; frontend typecheck, focused frontend 75/75, analytics guardrails and production build; governance validators; `git diff --check`.
+- Checks not run: live PostgreSQL/API data, authenticated browser/export proof and remote CI inspection because no assigned environment was available and none was a named RQ493 gate.
+- Run log: `.ai/runs/2026-09-29-RQ493-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `0fc8acca10a62ad250348438ca0acc664705dd41`
+- Main verification: fresh `git fetch origin` confirmed exact `HEAD`/`origin/main` equality at `0fc8acca10a62ad250348438ca0acc664705dd41`; `git merge-base --is-ancestor 0fc8acca10a62ad250348438ca0acc664705dd41 origin/main` passed.
+- Missed: none known within RQ493 scope; live/runtime/browser/remote proof is recorded as not run.
+- Follow-up: `RQ491` remains WAITING behind Q83; RQ493 does not claim RL12 measured calibration. Re-enter canonical idle recovery for the next safe prompt.
+- Residual risk: cohort-relative scores can change with the reference maximum, scenarios remain heuristic/uncalibrated, and the existing Vite large-chunk warning remains.
+- Prompt defect / scope repair: none for RQ493; stale BCI10 roadmap wording was reconciled to authoritative PARTIAL/external-gate truth without claiming BCI work.
 
 ## RQ502 - Reload and validate Operations store options against the active dataScope
 
