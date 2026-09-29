@@ -89,6 +89,8 @@ import "./ShoeTypeSalesStatsPage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
 const SHOE_TYPE_ERROR_FALLBACK = "Greška pri učitavanju podataka po tipu obuće.";
+const SHOE_TYPE_COST_SOURCE_ORDER = "Prioritet izvora troška: istorijski trošak sa prodajne stavke → tačan snapshot trošak → produkt-fallback/procena → bez troška.";
+const SHOE_TYPE_COST_SOURCE_TOOLTIP = `${SHOE_TYPE_COST_SOURCE_ORDER} Snapshot i produkt-fallback/procena nisu istorijski trošak sa trenutka prodaje.`;
 const SHOE_TYPE_SAFE_ERROR_MESSAGES = [
   SHOE_TYPE_ERROR_FALLBACK,
   "Statistika prodaje po tipu obuće trenutno nije dostupna.",
@@ -150,19 +152,20 @@ const STATUS_PRIORITY: Record<DecisionStatus, number> = {
 };
 
 const decisionColumns: AnalyticsTableColumn<DecisionShoeType>[] = [
-  { key: "coveragePct", header: "Pokriće artikala %", dataType: "percent" },
   { key: "tipObuceNaziv", header: "Tip obuće", dataType: "text" },
   { key: "ukupanPromet", header: "Promet", dataType: "currency" },
   { key: "ukupnaKolicina", header: "Količina", dataType: "number" },
-  { key: "totalCost", header: "Nabavna vrednost", dataType: "currency" },
   { key: "sharePct", header: "Neto udeo %", dataType: "percent" },
   { key: "marginContribution", header: "Maržni doprinos", dataType: "currency" },
   { key: "marginPct", header: "Marža %", dataType: "percent" },
   { key: "marginQualityLabel", header: "Kvalitet marže", dataType: "text" },
   { key: "popRevenueChangePct", header: "PoP trend %", dataType: "percent" },
   { key: "prePostNivelacijaRevenueImpactPct", header: "Uticaj nivelacije %", dataType: "percent" },
+  { key: "splitCoveragePct", header: "Pre/post pokriće prometa %", dataType: "percent" },
   { key: "status", header: "Preporuka", dataType: "text" },
   { key: "recommendationConfidencePct", header: RECOMMENDATION_CONFIDENCE_LABEL, dataType: "number" },
+  { key: "coveragePct", header: "Udeo artikala sa nivelacijom %", dataType: "percent" },
+  { key: "totalCost", header: "Nabavna vrednost (rešeni trošak)", dataType: "currency" },
 ];
 
 const CHART_AXIS_TICK = { fill: "var(--dashboard-chart-axis, var(--text-muted, #8ad5a8))", fontSize: 12, fontWeight: 600 };
@@ -869,7 +872,7 @@ export default function ShoeTypeSalesStatsPage() {
       { key: "dataScope", label: "Opseg podataka", value: dataScopeLabel(data?.dataScope === "existing" || data?.dataScope === "imported" ? data.dataScope : dataScope) },
       { key: "tipova", label: "Tipova", value: formatMetricDisplayValue({ value: data?.totals.brojTipovaObuce, kind: "number", fallback: "Nije dostupno" }) },
       { key: "marginCoverage", label: "Pokrivenost istorijskim troškom %", value: fmtPct(resolveShoeTypePercentValue(data?.dataQuality.historicalCostRevenueSharePct), 1) },
-      { key: "fallbackCoverage", label: "Promet sa procenjenom nabavnom %", value: fmtPct(resolveShoeTypePercentValue(data?.dataQuality.estimatedCostRevenueSharePct), 1) },
+      { key: "fallbackCoverage", label: "Promet sa produkt-fallback/procenom %", value: fmtPct(resolveShoeTypePercentValue(data?.dataQuality.estimatedCostRevenueSharePct), 1) },
       { key: "noCostCoverage", label: "Promet bez nabavne cene %", value: fmtPct(resolveShoeTypePercentValue(data?.dataQuality.noCostRevenueSharePct ?? data?.dataQuality.missingCostRevenueSharePct), 1) },
       { key: "splitCoverage", label: "Uporedivo pre/post pokriće", value: fmtPct(resolveShoeTypePercentValue(data?.dataQuality.revenueWithNivelacijaSplitSharePct), 1) },
       { key: "comparableArticleCount", label: "Uporedivih artikala", value: formatMetricDisplayValue({ value: data?.totals.comparableArticleCount, kind: "number", fallback: "Nije dostupno" }) },
@@ -1246,7 +1249,7 @@ export default function ShoeTypeSalesStatsPage() {
                 <strong>{fmtQty(data.totals.ukupnaKolicina)}</strong>
               </article>
       <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--tone-neutral" data-note="Trošak robe sa dostupnim ili procenjenim ulazom.">
-                <span>Ukupna nabavna vrednost <InfoTip text="Zbir troška robe za deo prometa sa dostupnim troškom. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili procenjenim troškom. Operativni troškovi nisu uključeni." /></span>
+                <span>Ukupna nabavna vrednost <InfoTip text={`Zbir troška robe za deo prometa sa dostupnim troškom. ${SHOE_TYPE_COST_SOURCE_TOOLTIP} Operativni troškovi nisu uključeni.`} /></span>
                 <strong>{fmtRsd(data.totals.ukupanTrosak)}</strong>
               </article>
               <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Bruto maržni doprinos po tipovima obuće.">
@@ -1412,7 +1415,6 @@ export default function ShoeTypeSalesStatsPage() {
                 <table className="shoetype-decision-table">
                   <thead>
                     <tr>
-                      <th className="analytics-data-table__numeric">Pokriće artikala % <InfoTip text="Udeo različitih artikala ovog tipa koji imaju registrovanu nivelaciju. Nulti denominator znači da procenat nije merljiv." /></th>
                       <th className={isSortActive("tipObuceNaziv", sortField) ? "is-sorted" : undefined}>
                         <button
                           type="button"
@@ -1444,17 +1446,6 @@ export default function ShoeTypeSalesStatsPage() {
                           onClick={() => handleSort("ukupnaKolicina")}
                         >
                           Količina <span className="sort-indicator" aria-hidden="true">{sortMarker("ukupnaKolicina", sortField, sortDir)}</span> <InfoTip text="Ukupan broj prodatih komada u izabranom periodu." />
-                        </button>
-                      </th>
-                      <th className={`analytics-data-table__numeric${isSortActive("totalCost", sortField) ? " is-sorted" : ""}`}>
-                        <button
-                          type="button"
-                          className={`sortable-header ${isSortActive("totalCost", sortField) ? "is-active" : ""}`}
-                          data-sort-active={isSortActive("totalCost", sortField) ? "true" : "false"}
-                          data-sort-dir={isSortActive("totalCost", sortField) ? sortDir : "none"}
-                          onClick={() => handleSort("totalCost")}
-                        >
-                          Nabavna vrednost <span className="sort-indicator" aria-hidden="true">{sortMarker("totalCost", sortField, sortDir)}</span> <InfoTip text="Zbir troška robe za ovaj red. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili procenjenim troškom. Operativni troškovi nisu uključeni." />
                         </button>
                       </th>
                       <th className={`analytics-data-table__numeric${isSortActive("sharePct", sortField) ? " is-sorted" : ""}`}>
@@ -1509,7 +1500,7 @@ export default function ShoeTypeSalesStatsPage() {
                           data-sort-dir={isSortActive("prePostNivelacijaRevenueImpactPct", sortField) ? sortDir : "none"}
                           onClick={() => handleSort("prePostNivelacijaRevenueImpactPct")}
                         >
-                          Uticaj nivelacije <span className="sort-indicator" aria-hidden="true">{sortMarker("prePostNivelacijaRevenueImpactPct", sortField, sortDir)}</span> <InfoTip text={analyticsMetricDescriptions.prePostNivelacijaImpactPct} />
+                          Uticaj nivelacije / uporedivost <span className="sort-indicator" aria-hidden="true">{sortMarker("prePostNivelacijaRevenueImpactPct", sortField, sortDir)}</span> <InfoTip text={`${analyticsMetricDescriptions.prePostNivelacijaImpactPct} Pre/post pokriće prometa prikazano je uz uticaj i označava uporedivu kohortu.`} />
                         </button>
                       </th>
                       <th className={isSortActive("status", sortField) ? "is-sorted" : undefined}>
@@ -1529,7 +1520,7 @@ export default function ShoeTypeSalesStatsPage() {
                   <tbody>
                     {sortedRows.length === 0 ? (
                       <tr>
-                        <td colSpan={12} className="shoetype-decision-empty-row">
+                        <td colSpan={10} className="shoetype-decision-empty-row">
                           Nema podataka za izabrane filtere.
                         </td>
                       </tr>
@@ -1543,7 +1534,6 @@ export default function ShoeTypeSalesStatsPage() {
                         const nivelacijaImpactMetric = describeNivelacijaImpactMetric(row);
                         return (
                           <tr key={rowKey} className={[expanded ? "expanded-row" : "", rank != null && rank <= 3 ? `shoetype-rank-row shoetype-rank-row-${rank}` : ""].filter(Boolean).join(" ")}>
-                            <td className="analytics-data-table__numeric"><span className="metric-chip metric-chip-neutral">{fmtPct(row.coveragePct, 1)}</span></td>
                             <td>
                               <div className="shoetype-name-cell">
                                 {rank != null ? <span className={`shoetype-rank-badge ${rank <= 3 ? `rank-${rank}` : "rank-other"}`}>#{rank}</span> : null}
@@ -1563,7 +1553,6 @@ export default function ShoeTypeSalesStatsPage() {
                             </td>
                             <td className="analytics-data-table__numeric metric-strong">{fmtRsd(row.ukupanPromet)}</td>
                             <td className="analytics-data-table__numeric">{fmtQty(row.ukupnaKolicina)}</td>
-                            <td className="analytics-data-table__numeric">{fmtRsd(row.totalCost)}</td>
                             <td className="analytics-data-table__numeric"><span className="metric-chip metric-chip-neutral">{fmtPct(row.sharePct, 2)}</span></td>
                             <td className="analytics-data-table__numeric metric-strong">{fmtRsd(row.marginContribution)}</td>
                             <td className="analytics-data-table__numeric">
@@ -1575,7 +1564,10 @@ export default function ShoeTypeSalesStatsPage() {
                               ) : null}
                             </td>
                             <td className="analytics-data-table__numeric" title={popMetric.title}><span className={`metric-chip trend-pill ${popMetric.className}`}>{popMetric.label}</span></td>
-                            <td className="analytics-data-table__numeric" title={nivelacijaImpactMetric.title}><span className={`metric-chip trend-pill ${nivelacijaImpactMetric.className}`}>{nivelacijaImpactMetric.label}</span></td>
+                            <td className="analytics-data-table__numeric" title={`${nivelacijaImpactMetric.title} Pre/post pokriće prometa: ${fmtPct(row.splitCoveragePct, 1)}.`}>
+                              <span className={`metric-chip trend-pill ${nivelacijaImpactMetric.className}`}>{nivelacijaImpactMetric.label}</span>
+                              <small className="shoetype-decision-table-submetric">Pre/post pokriće: {fmtPct(row.splitCoveragePct, 1)}</small>
+                            </td>
                             <td>
                               <div className="shoetype-status-stack">
                                 <span
@@ -1627,7 +1619,7 @@ export default function ShoeTypeSalesStatsPage() {
                   <strong>{fmtQty(selectedRow.ukupnaKolicina)}</strong>
                 </article>
                 <article>
-                  <span>Nabavna vrednost <InfoTip text="Zbir troška robe za ovaj red. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili procenjenim troškom. Operativni troškovi nisu uključeni." /></span>
+                  <span>Nabavna vrednost (rešeni trošak) <InfoTip text={`Zbir troška robe za ovaj red. ${SHOE_TYPE_COST_SOURCE_TOOLTIP} Operativni troškovi nisu uključeni.`} /></span>
                   <strong>{fmtRsd(selectedRow.totalCost)}</strong>
                 </article>
                 <article>
@@ -1661,7 +1653,7 @@ export default function ShoeTypeSalesStatsPage() {
                   <strong>{selectedRow.brojArtikalaUkupno}</strong>
                 </article>
                 <article>
-                  <span>Pokriće artikala sa nivelacijom <InfoTip text="Udeo različitih artikala ovog tipa koji imaju registrovanu nivelaciju. Nulti denominator znači da procenat nije merljiv." /></span>
+                  <span>Udeo artikala sa nivelacijom <InfoTip text="Udeo različitih artikala ovog tipa koji imaju registrovanu nivelaciju. Nulti denominator znači da procenat nije merljiv." /></span>
                   <strong>{fmtPct(selectedRow.coveragePct, 1)}</strong>
                 </article>
               </div>
@@ -1767,11 +1759,11 @@ export default function ShoeTypeSalesStatsPage() {
                   <strong>{fmtPct(selectedRow.historicalCostCoveragePct, 1)}</strong>
                 </article>
                 <article>
-                  <span>Promet sa procenjenom nabavnom % <InfoTip text="Procenat prometa gde je nabavna cena procenjena iz artikla (bez direktnog troska na stavci prodaje). Formula: promet sa procenjenom nabavnom / ukupan promet x 100. Operativni troskovi nisu ukljuceni." /></span>
+                  <span>Promet sa produkt-fallback/procenom % <InfoTip text="Procenat prometa gde nema direktnog istorijskog troška sa prodajne stavke, već se koristi produkt-fallback/procena. Ovo nije istorijski trošak sa trenutka prodaje." /></span>
                   <strong>{fmtPct(selectedRow.estimatedCostCoveragePct ?? selectedRow.fallbackCostCoveragePct, 1)}</strong>
                 </article>
                 <article>
-                        <span>Promet bez nabavne cene % <InfoTip text="Procenat prometa koji nema ni direktni ni procenjeni trošak, pa ne ulazi u obračun maržnog doprinosa ni marže %. Formula: promet bez troška / ukupan promet x 100." /></span>
+                        <span>Promet bez nabavne cene % <InfoTip text="Procenat prometa koji nema ni istorijski trošak sa prodajne stavke, ni tačan snapshot trošak, ni produkt-fallback/procenu; zato ne ulazi u obračun maržnog doprinosa ni marže %." /></span>
                   <strong>{fmtPct(selectedRow.noCostCoveragePct, 1)}</strong>
                 </article>
                 {selectedRow.snapshotCostCoveragePct != null && selectedRow.snapshotCostCoveragePct > 0 ? (

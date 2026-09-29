@@ -30,9 +30,9 @@ export const analyticsMetricDescriptions = {
   recommendationSafety: getAnalyticsMetricDefinition("confidencePct").interpretation,
   prePostNivelacijaImpactPct: markdownDependencyDefinition.shortDescription,
   costCoveragePct:
-    "Pokrivenost troška pokazuje koliki deo prometa ima potvrđenu ili procenjenu nabavnu cenu.",
+    "Pokrivenost troška pokazuje koliki deo prometa ima rešeni trošak; prioritet je istorijski trošak sa prodajne stavke, zatim tačan snapshot trošak, produkt-fallback/procena, a ostatak ostaje bez troška.",
   costCoverage:
-    "Niža pokrivenost troška znači da maržu i preporuke treba čitati opreznije.",
+    "Niža pokrivenost troška znači da maržu i preporuke treba čitati opreznije. Snapshot nije istorijska nabavna cena sa trenutka prodaje, a produkt-fallback/procena nije direktan trošak prodajne stavke.",
   velocity: velocityDefinition.shortDescription,
   outOfStock: getAnalyticsMetricDefinition("outOfStockRisk").shortDescription,
   lostSales: lostSalesDefinition.shortDescription,

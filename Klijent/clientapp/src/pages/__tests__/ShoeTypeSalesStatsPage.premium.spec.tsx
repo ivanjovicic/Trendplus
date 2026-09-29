@@ -353,13 +353,12 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     const row = within(table).getAllByRole("row").find((candidate) => within(candidate).queryByText("Patike"));
     expect(row).toBeDefined();
     if (!row) throw new Error("Shoe type data row was not rendered");
-    expect(row).toHaveTextContent("N/A");
     const status = within(row).getByLabelText(/Nivelacija artikala N\/A/);
     expect(status).toBeInTheDocument();
     expect(status).not.toHaveAttribute("aria-label", expect.stringContaining("Nivelacija artikala 0%"));
 
     within(row).getByRole("button", { name: "Detalji" }).click();
-    const detailLabel = await screen.findByText("Pokriće artikala sa nivelacijom");
+    const detailLabel = await screen.findByText("Udeo artikala sa nivelacijom");
     expect(detailLabel.parentElement).toHaveTextContent("N/A");
     expect(detailLabel.parentElement).not.toHaveTextContent("0%");
   });
@@ -773,6 +772,42 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     expect(detailPanel).not.toBeNull();
     expect(within(detailPanel!).getByText("Neto udeo u prometu").parentElement).toHaveTextContent("150,00%");
     expect(within(detailPanel!).getByText("Pre/post pokriće prometa").parentElement).toHaveTextContent("N/A");
+  });
+
+  it("puts shoe type identity and decision metrics first while retaining evidence in detail", async () => {
+    vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
+      shoeTypes: [shoeType({
+        tipObuceNaziv: "Patike",
+        prePostNivelacijaRevenueCoveragePct: 75,
+      })],
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const table = await screen.findByTestId("shoe-type-sales-stats-data-table");
+    const headers = within(table).getAllByRole("columnheader");
+    expect(headers[0]).toHaveTextContent("Tip obuće");
+    expect(headers[1]).toHaveTextContent("Promet");
+    expect(headers.map((header) => header.textContent)).not.toContain(expect.stringContaining("Pokriće artikala %"));
+    expect(headers.map((header) => header.textContent)).not.toContain(expect.stringContaining("Nabavna vrednost"));
+
+    const row = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Patike"));
+    expect(row).toBeDefined();
+    expect(row).toHaveTextContent("Pre/post pokriće: 75,0%");
+    fireEvent.click(within(row!).getByRole("button", { name: "Detalji" }));
+
+    const detailHeading = await screen.findByRole("heading", { name: "Detalj odluke: Patike" });
+    const detailPanel = detailHeading.closest("section");
+    expect(detailPanel).not.toBeNull();
+    expect(within(detailPanel!).getByText("Udeo artikala sa nivelacijom")).toBeInTheDocument();
+    expect(within(detailPanel!).getByText("Nabavna vrednost (rešeni trošak)")).toBeInTheDocument();
+    expect(screen.getAllByTestId("info-tip").some((tip) => tip.textContent?.includes("istorijski trošak sa prodajne stavke") && tip.textContent?.includes("tačan snapshot trošak") && tip.textContent?.includes("produkt-fallback/procena") && tip.textContent?.includes("bez troška"))).toBe(true);
   });
 
   it("does not label a negative previous baseline as Novo", async () => {

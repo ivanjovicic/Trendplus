@@ -2,7 +2,7 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ504 (IN_PROGRESS in this workspace)
 Routing reconciliation 2026-09-29: any workspace still showing `RQ466` as `Current READY` is stale. `RQ466` is `DONE` on current main; `RQ502` is the primary READY prompt. Registration evidence: `.ai/runs/2026-09-29-RQ502-registration-evidence.md`.
 Owner claim 2026-09-29: after fresh `origin/main` sync to `2d85df0f13dac4e8dcb463656515d61ea32e0021`, RQ502 remained READY, RQ494 was verified DONE, and no conflicting lock/branch/PR owner was found for the Operations store-filter scope. RQ502 moved `READY -> IN_PROGRESS` in this workspace. Local lock: `.ai/task-locks/RQ502-codex.lock.md`.
 Owner completion 2026-09-29: RQ502 moved `IN_PROGRESS -> DONE` and was delivered directly to `main` in `baa4ce300cbb2c63662ed22ef64d353e2b31e209`. Scoped store options now reload and validate against `dataScope` across Shoe Type, Color, Daily Sales and Pre/Post; stale/fallback lists are visible and untrusted selections are cleared; duplicate labels expose stable IDs. Focused frontend proof is 91/91 across the new utility/API contracts and four page suites; guardrails, typecheck, production build, diff check and governance validators pass. Run log: `.ai/runs/2026-09-29-RQ502-evidence.md`. Evidence state: synchronized. RQ503/RQ504 remain sequenced behind this completed lane.
@@ -12,6 +12,7 @@ Owner promotion/claim 2026-09-29: idle recovery verified RQ489 and RQ492 DONE on
 Owner completion 2026-09-29: RQ493 moved `IN_PROGRESS -> DONE` and was delivered directly to `main` in `0fc8acca10a62ad250348438ca0acc664705dd41`. Pre-Nivelacija now exposes cohort-relative max-ratio score/reference-population provenance, formula version `pre_nivelacija_v8`, and heuristic/uncalibrated scenario metadata; UI/methodology/export wording distinguishes scored candidates from actionable candidates and avoids percentile/causal/calibration claims. Focused backend proof is 26/26 plus 46/46; frontend proof is 75/75; API/backend builds, typecheck, guardrails, production build, governance validators and diff check pass. Live PostgreSQL, browser/export and remote CI proof were not run because no assigned environment was available. Run log: `.ai/runs/2026-09-29-RQ493-evidence.md`. Evidence state: synchronized. Current RQ READY is `none`; RQ491 remains WAITING behind Q83.
 Owner promotion/claim 2026-09-29: idle recovery verified RQ502 DONE on refreshed `origin/main`, confirmed RQ503 is dependency-complete after RQ502 and collision-safe with no active lock/branch/PR owner for categorical nullable sorting. RQ503 moved `WAITING -> READY -> IN_PROGRESS` for Shoe Type and Color comparator truth. Local lock: `.ai/task-locks/RQ503-codex.lock.md`.
 Owner completion 2026-09-29: RQ503 moved `IN_PROGRESS -> DONE` and was delivered directly to `main` in `810b07ecb6137c47707b2e0ee2db841484eb3a65`. Shoe Type and Color unavailable nullable/non-finite metrics now sort last in both directions without numeric sentinels, while signed negative values and URL sort state remain correct. Focused frontend proof is 81/81; typecheck, guardrails, production build, governance validators and diff check pass. Live browser, PostgreSQL/API and remote CI proof were not run because no assigned environment was available. Run log: `.ai/runs/2026-09-29-RQ503-evidence.md`. Evidence state: synchronized. Current RQ READY is `none`; RQ491 remains WAITING behind Q83 and RQ504 is the next same-page follow-up.
+Owner promotion/claim 2026-09-29: idle recovery verified RQ503 DONE on refreshed `origin/main`, confirmed RQ504 is dependency-complete after RQ502/RQ503 and collision-safe with no active lock/branch/PR owner for Shoe Type information hierarchy/cost-source copy. RQ504 moved `WAITING -> READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ504-codex.lock.md`.
 Routing repair 2026-09-29: RQ495's live heading is reconciled from stale `WAITING` to `DONE` to match its synchronized completion evidence and current-main delivery; the prompt is not reopened.
 Routing reconciliation 2026-09-29: the live RQ447 heading was stale at `IN_PROGRESS`; its synchronized completion note and run `36536448476` prove the dedicated acceptance is DONE, so the heading is corrected to `DONE` without reopening the prompt.
 Owner promotion/claim 2026-09-28: idle recovery confirmed `RQ494` is the highest-priority dependency-complete operations accuracy prompt after RQ445/RQ446/RQ456/RQ457/RQ484 completion; no active lock/branch/PR owner overlaps its sales-header dataScope scope, and Q83 is `PARTIAL` without an active repo-local lock. `RQ494` moved WAITING -> READY -> IN_PROGRESS in this workspace; local lock `.ai/task-locks/RQ494-codex.lock.md`.
@@ -3285,7 +3286,7 @@ Do not change metric values, status priority or recommendation scoring.
 
 ## RQ504 - Rebalance Shoe Type information hierarchy and make cost-source vocabulary exact
 
-Status: WAITING  
+Status: IN_PROGRESS
 Ready after: `RQ502` and `RQ503` DONE; coordinate with `RQ501` if Color/Shoe shared copy is changed  
 Priority: P2  
 Type: frontend/product-analytics/tests  

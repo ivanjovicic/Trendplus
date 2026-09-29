@@ -199,10 +199,10 @@ const baseMetrics = {
   totalCost: defineMetric("totalCost", {
     label: "Nabavna vrednost",
     shortDescription: "Zbir nabavne vrednosti prodajnih stavki za koje je pouzdan trošak dostupan.",
-    formula: "SUM(količina × razrešena_nabavna_cena) za stavke sa istorijskim, snapshot ili produkt-fallback troškom",
+    formula: "SUM(količina × razrešena_nabavna_cena) uz prioritet: istorijski trošak sa prodajne stavke → tačan snapshot trošak → produkt-fallback/procena; stavke bez troška ostaju van zbira",
     dataSource: "Supplier Sales endpoint + AnalyticsMarginPolicy",
     interpretation: "Prikazuje trošak robe obuhvaćen izabranim periodom, objektom i data-scope filterima; operativni troškovi nisu uključeni.",
-    limitations: ["Stavke bez pouzdane nabavne cene nisu uključene u zbir; snapshot i produkt-fallback izvori moraju se čitati uz oznaku kvaliteta."],
+    limitations: ["Izvor mora da se čita uz oznaku kvaliteta: snapshot nije istorijska nabavna cena sa trenutka prodaje, a produkt-fallback/procena nije direktan trošak prodajne stavke; bez troška nema maržnog signala."],
     dataQualityDependencies: ["Pokrivenost nabavne cene", "Svežina cost snapshot-a"],
     relatedScreens: ["/analytics/supplier", "/analytics/shoe-type", "/analytics/color"],
     inputs: ["količina", "razrešena_nabavna_cena", "period", "filteri"],

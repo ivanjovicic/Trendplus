@@ -68,12 +68,12 @@ export function buildCoverageTooltip(
   snapshotPct?: number | null
 ): string {
   const parts = [
-    `Istorijski trošak: ${fmtPct(historicalPct ?? 0, 1)}`,
-    `Procenjeni (fallback) trošak: ${fmtPct(estimatedPct ?? 0, 1)}`,
+    `Istorijski trošak sa prodajne stavke: ${fmtPct(historicalPct ?? 0, 1)}`,
+    `Produkt-fallback/procena: ${fmtPct(estimatedPct ?? 0, 1)}`,
     `Bez troška: ${fmtPct(noCostPct ?? 0, 1)}`,
   ];
   if (snapshotPct != null && snapshotPct > 0) {
-    parts.push(`Zamrznuta procena (snimak): ${fmtPct(snapshotPct, 1)}`);
+    parts.splice(1, 0, `Tačan snapshot trošak: ${fmtPct(snapshotPct, 1)}`);
   }
   return parts.join(" · ");
 }
