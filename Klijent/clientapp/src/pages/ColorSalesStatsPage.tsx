@@ -63,6 +63,7 @@ import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTo
 import { getAnalyticsDataFreshnessStatus } from "../utils/analyticsResponseMeta";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { readAnalyticsTableSort, writeAnalyticsTableSort } from "../utils/analyticsTableSortUrl";
+import { compareNullableNumbers } from "../utils/nullableNumericSort";
 import { useReliableAnalyticsQuery } from "../hooks/useReliableAnalyticsQuery";
 import { buildStoreOptionLabel, getDuplicateStoreNames } from "../utils/storeFilterPresentation";
 import "./ColorSalesStatsPage.css";
@@ -552,24 +553,28 @@ export default function ColorSalesStatsPage() {
       let compare = 0;
 
       if (sortField === "boja") {
-        compare = a.boja.localeCompare(b.boja, "sr");
+        compare = sortDir === "asc"
+          ? a.boja.localeCompare(b.boja, "sr")
+          : -a.boja.localeCompare(b.boja, "sr");
       } else if (sortField === "ukupanPromet") {
-        compare = a.ukupanPromet - b.ukupanPromet;
+        compare = compareNullableNumbers(a.ukupanPromet, b.ukupanPromet, sortDir);
       } else if (sortField === "sharePct") {
-        compare = (a.sharePct ?? -1) - (b.sharePct ?? -1);
+        compare = compareNullableNumbers(a.sharePct, b.sharePct, sortDir);
       } else if (sortField === "marginContribution") {
-        compare = a.marginContribution - b.marginContribution;
+        compare = compareNullableNumbers(a.marginContribution, b.marginContribution, sortDir);
       } else if (sortField === "popRevenueChangePct") {
-        compare = (a.popRevenueChangePct ?? -9999) - (b.popRevenueChangePct ?? -9999);
+        compare = compareNullableNumbers(a.popRevenueChangePct, b.popRevenueChangePct, sortDir);
       } else if (sortField === "prePostNivelacijaRevenueImpactPct") {
-        compare = (a.prePostNivelacijaRevenueImpactPct ?? -9999) - (b.prePostNivelacijaRevenueImpactPct ?? -9999);
+        compare = compareNullableNumbers(a.prePostNivelacijaRevenueImpactPct, b.prePostNivelacijaRevenueImpactPct, sortDir);
       } else if (sortField === "status") {
-        compare = RECOMMENDATION_STATUS_PRIORITY[a.status] - RECOMMENDATION_STATUS_PRIORITY[b.status];
+        compare = sortDir === "asc"
+          ? RECOMMENDATION_STATUS_PRIORITY[a.status] - RECOMMENDATION_STATUS_PRIORITY[b.status]
+          : RECOMMENDATION_STATUS_PRIORITY[b.status] - RECOMMENDATION_STATUS_PRIORITY[a.status];
       }
 
-      if (compare === 0) compare = (a.decisionScore ?? -1) - (b.decisionScore ?? -1);
-      if (compare === 0) compare = a.ukupanPromet - b.ukupanPromet;
-      return sortDir === "asc" ? compare : -compare;
+      if (compare === 0) compare = compareNullableNumbers(a.decisionScore, b.decisionScore, sortDir);
+      if (compare === 0) compare = compareNullableNumbers(a.ukupanPromet, b.ukupanPromet, sortDir);
+      return compare;
     });
   }, [decisionRows, sortDir, sortField]);
 

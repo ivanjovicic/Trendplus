@@ -82,6 +82,7 @@ import { buildShoeTypeRecommendationProjection } from "../utils/shoeTypeStatusId
 import { getAnalyticsDataFreshnessStatus } from "../utils/analyticsResponseMeta";
 import { formatMetricDisplayValue } from "../utils/analyticsMetricValue";
 import { readAnalyticsTableSort, writeAnalyticsTableSort } from "../utils/analyticsTableSortUrl";
+import { compareNullableNumbers } from "../utils/nullableNumericSort";
 import { useReliableAnalyticsQuery } from "../hooks/useReliableAnalyticsQuery";
 import { buildStoreOptionLabel, getDuplicateStoreNames } from "../utils/storeFilterPresentation";
 import "./ShoeTypeSalesStatsPage.css";
@@ -644,31 +645,35 @@ export default function ShoeTypeSalesStatsPage() {
       let compare = 0;
 
       if (sortField === "tipObuceNaziv") {
-        compare = a.tipObuceNaziv.localeCompare(b.tipObuceNaziv, "sr");
+        compare = sortDir === "asc"
+          ? a.tipObuceNaziv.localeCompare(b.tipObuceNaziv, "sr")
+          : -a.tipObuceNaziv.localeCompare(b.tipObuceNaziv, "sr");
       } else if (sortField === "ukupanPromet") {
-        compare = a.ukupanPromet - b.ukupanPromet;
+        compare = compareNullableNumbers(a.ukupanPromet, b.ukupanPromet, sortDir);
       } else if (sortField === "ukupnaKolicina") {
-        compare = a.ukupnaKolicina - b.ukupnaKolicina;
+        compare = compareNullableNumbers(a.ukupnaKolicina, b.ukupnaKolicina, sortDir);
       } else if (sortField === "totalCost") {
-        compare = (a.totalCost ?? -1) - (b.totalCost ?? -1);
+        compare = compareNullableNumbers(a.totalCost, b.totalCost, sortDir);
       } else if (sortField === "sharePct") {
-        compare = (a.sharePct ?? -1) - (b.sharePct ?? -1);
+        compare = compareNullableNumbers(a.sharePct, b.sharePct, sortDir);
       } else if (sortField === "marginContribution") {
-        compare = a.marginContribution - b.marginContribution;
+        compare = compareNullableNumbers(a.marginContribution, b.marginContribution, sortDir);
       } else if (sortField === "marginPct") {
-        compare = (a.marginPct ?? -Infinity) - (b.marginPct ?? -Infinity);
+        compare = compareNullableNumbers(a.marginPct, b.marginPct, sortDir);
       } else if (sortField === "popRevenueChangePct") {
-        compare = (a.popRevenueChangePct ?? -9999) - (b.popRevenueChangePct ?? -9999);
+        compare = compareNullableNumbers(a.popRevenueChangePct, b.popRevenueChangePct, sortDir);
       } else if (sortField === "prePostNivelacijaRevenueImpactPct") {
-        compare = (a.prePostNivelacijaRevenueImpactPct ?? -9999) - (b.prePostNivelacijaRevenueImpactPct ?? -9999);
+        compare = compareNullableNumbers(a.prePostNivelacijaRevenueImpactPct, b.prePostNivelacijaRevenueImpactPct, sortDir);
       } else if (sortField === "status") {
-        compare = STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status];
+        compare = sortDir === "asc"
+          ? STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status]
+          : STATUS_PRIORITY[b.status] - STATUS_PRIORITY[a.status];
       }
 
-      if (compare === 0) compare = (a.recommendationConfidencePct ?? -1) - (b.recommendationConfidencePct ?? -1);
-      if (compare === 0) compare = a.ukupanPromet - b.ukupanPromet;
+      if (compare === 0) compare = compareNullableNumbers(a.recommendationConfidencePct, b.recommendationConfidencePct, sortDir);
+      if (compare === 0) compare = compareNullableNumbers(a.ukupanPromet, b.ukupanPromet, sortDir);
 
-      return sortDir === "asc" ? compare : -compare;
+      return compare;
     });
   }, [decisionRows, sortDir, sortField]);
 

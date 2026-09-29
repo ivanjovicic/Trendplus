@@ -168,6 +168,7 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
   });
 
   it("round-trips shoe type table sort through the URL", async () => {
+    vi.mocked(getStores).mockResolvedValue([{ storeId: 2, storeName: "Novi Beograd", city: "Beograd", region: "BG" }]);
     render(
       <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats?sort=ukupanPromet&dir=asc&storeId=2"]}>
         <LocationProbe />
