@@ -2,7 +2,8 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ507
+Current READY prompt: RQ508
+Owner completion 2026-09-30: `RQ507` moved `IN_PROGRESS -> DONE` on implementation SHA `8b4e1fc1c2ed89cff450f2be640ca98fecbfd342`; fresh fetch verified `HEAD == origin/main` at that SHA. Supplier compatibility aliases were removed from the primary Operations sidebar, legacy redirect/query/history semantics were preserved, and canonical Supplier/Shoe Type/Color/Daily/Pre/Post navigation remains reachable. Run log: `.ai/runs/2026-09-30-RQ507-evidence.md`; evidence state is synchronized. Fresh recovery found no active `analytics-plan-current-truth` lock/branch/open-PR collision and promoted `RQ508` `WAITING -> READY`; no RQ508 claim started in this delivery turn.
 Owner promotion/claim 2026-09-30: fresh recovery verified `HEAD == origin/main == 9f954e0cf4439346330ec5617a6bffbd9252a61a`, confirmed RQ505 is DONE, no active lock/branch/open-PR owner collides with `operations-analytics-information-architecture`, and promoted/claimed `RQ507` `READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ507-codex.lock.md`.
 Routing repair 2026-09-30: `RQ516` is DONE on current `origin/main`; the stale addendum pointer was corrected to the next dependency-complete prompt `RQ505`. After RQ505 delivery, `RQ507` was promoted as the next READY prompt and `RQ508` remains behind RQ505/RQ507.
 Owner promotion/claim 2026-09-30: fresh recovery verified `HEAD == origin/main == 0145e947d8b942ed874640216993b2d7bc7616cd`, confirmed RQ516 is DONE, RQ501 is DONE, the 2026-09-29 owner decision is recorded, and no active lock/branch/open-PR owner collides with `category-screen-authority`. `RQ505` moved `WAITING -> READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ505-codex.lock.md`.
@@ -3540,7 +3541,7 @@ That would make cross-dimensional margin comparison unsafe unless the difference
 
 ## RQ507 - Simplify Operations navigation: keep Supplier compatibility routes but remove duplicate sidebar ownership
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: RQ516 DONE and RQ505 DONE; fresh collision check passed
 Priority: P2  
 Type: product-navigation/frontend/tests  
@@ -3605,10 +3606,27 @@ No analytics endpoint or metric change.
 - Product-owner approval was recorded on 2026-09-29 and is no longer a blocker.
 - Independent of numeric contracts; implement after fresh collision/routing recovery without touching data logic.
 
+### Completion note
+
+- Date: 2026-09-30
+- Status: DONE
+- Completion: Supplier compatibility aliases are no longer advertised as separate primary Operations products; legacy routes/redirects remain intact, and Supplier, Shoe Type, Color, Daily and Pre/Post remain reachable.
+- Changed files: `Klijent/clientapp/src/layout/navConfig.ts`, `Klijent/clientapp/src/layout/__tests__/navConfig.spec.ts`, `Klijent/clientapp/src/layout/components/__tests__/Sidebar.spec.tsx`, this queue, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-30-RQ507-evidence.md`.
+- Checks: focused frontend/route proof `4 files / 30 tests`, analytics guardrails/typecheck, production build, `git diff --check`, and prompt queue validators passed.
+- Not run: backend suites and live browser/provider proof; both are outside this navigation-only scope.
+- Remote CI: Planning Governance run `36729882942` passed; Analytics Quality Gates run `36729883355` was `in_progress` at inspection time.
+- Run log: `.ai/runs/2026-09-30-RQ507-evidence.md`; evidence state synchronized.
+- Delivery: direct to `main`; implementation SHA `8b4e1fc1c2ed89cff450f2be640ca98fecbfd342`; fresh verification `HEAD == origin/main == 8b4e1fc1c2ed89cff450f2be640ca98fecbfd342`.
+- Missed work: none known in the owned scope. No separate menu documentation required an update.
+- Follow-up: `RQ508` is promoted to `READY` after a fresh collision check; it was not claimed in this delivery turn.
+- Residual risk: Analytics Quality Gates remained in progress, and the existing Vite large-chunk warning remains non-blocking.
+
+Owner promotion 2026-09-30: fresh recovery verified no active `analytics-plan-current-truth` lock/branch/open-PR collision after RQ507 completion and moved `RQ508` `WAITING -> READY`; `RQ508` is now the current READY prompt. No claim started in this RQ507 delivery turn.
+
 ## RQ508 - Reconcile analytics execution-plan metric dictionary with current delivered contracts
 
-Status: WAITING  
-Ready after: product decisions in `RQ501`, `RQ505` and `RQ507` are resolved  
+Status: READY
+Ready after: `RQ501`, `RQ505` and `RQ507` DONE; fresh collision check passed
 Priority: P2  
 Type: docs/architecture/guard-tests  
 Feature family: analytics-plan-current-truth  
