@@ -3645,9 +3645,12 @@ No runtime code.
 - May read RQ502-RQ504 outcomes if they land first.
 
 
+Owner promotion/claim 2026-09-30: fresh `origin/main` verification found no active lock/branch/open-PR owner for the analytics post-compile re-certification family, confirmed repair commit `0aba65a74748f98115d263261ce4de6eb009ed61` is an ancestor, and moved `RQ516` `READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ516-codex.lock.md`.
+Owner completion 2026-09-30: `RQ516` moved `IN_PROGRESS -> DONE` after exact-main API Release build, 119/119 focused unit/contract/lifecycle tests, Actions shared-population endpoint 1/1 and current Product Decision action-status fallback 3/3 passed. No deterministic residual remained and no product code change was required. Run log: `.ai/runs/2026-09-30-RQ516-evidence.md`; evidence state is pending until closure SHA verification.
+
 ## RQ516 - Re-certify analytics backend tests after Decision Board signature repair
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: backend-build/tests/evidence
 Feature family: analytics-post-compile-recertification
