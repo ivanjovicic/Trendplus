@@ -1033,7 +1033,7 @@ export default function AnalyticsActionsPage() {
               <div className="aaq-summary-card">
                 <span className="aaq-summary-card-label">Ishod čeka proveru</span>
                 <strong className="aaq-summary-card-value">{fmtNumber(outcomeSummary.totals.pendingOutcomeCount, 0, "0")}</strong>
-                <span className="aaq-summary-card-note">Otvoreno: {fmtNumber(outcomeSummary.totals.openCount, 0, "0")}</span>
+                <span className="aaq-summary-card-note">Otvoreno: {fmtNumber(outcomeSummary.totals.openCount, 0, "0")} · nije mereno: {fmtNumber(outcomeSummary.totals.notMeasuredCount, 0, "0")}</span>
               </div>
             </div>
 

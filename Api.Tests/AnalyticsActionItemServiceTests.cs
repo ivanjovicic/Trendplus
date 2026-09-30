@@ -738,19 +738,19 @@ public class AnalyticsActionItemServiceTests
         Assert.Equal(4, summary.Totals.CreatedCount);
         Assert.Equal(3, summary.Totals.ClosedCount);
         Assert.Equal(1, summary.Totals.OpenCount);
-        Assert.Equal(3, summary.Totals.MeasuredCount);
-        Assert.Equal(3, summary.Totals.MeasuredOutcomeCount);
+        Assert.Equal(1, summary.Totals.MeasuredCount);
+        Assert.Equal(1, summary.Totals.MeasuredOutcomeCount);
         Assert.Equal(1, summary.Totals.PendingOutcomeCount);
-        Assert.Equal(2, summary.Totals.SuccessCount);
-        Assert.Equal(1, summary.Totals.NegativeCount);
-        Assert.Equal(0.6667m, summary.Totals.OutcomeCoverageRate);
+        Assert.Equal(1, summary.Totals.SuccessCount);
+        Assert.Equal(0, summary.Totals.NegativeCount);
+        Assert.Equal(0m, summary.Totals.OutcomeCoverageRate);
         Assert.Equal(summary.Totals.OutcomeCoverageRate, summary.Totals.ClosedOutcomeCoverageRate);
-        Assert.Equal(0.6667m, summary.Totals.PositiveOutcomeRate);
+        Assert.Equal(1m, summary.Totals.PositiveOutcomeRate);
         Assert.Equal(summary.Totals.PositiveOutcomeRate, summary.Totals.MeasuredPositiveOutcomeRate);
-        Assert.Equal(0.3333m, summary.Totals.NegativeOutcomeRate);
+        Assert.Equal(0m, summary.Totals.NegativeOutcomeRate);
         Assert.Equal(summary.Totals.NegativeOutcomeRate, summary.Totals.MeasuredNegativeOutcomeRate);
-        Assert.Equal(360m, summary.Impact.ExpectedImpactRsd);
-        Assert.Equal(180m, summary.Impact.MeasuredImpactRsd);
+        Assert.Equal(200m, summary.Impact.ExpectedImpactRsd);
+        Assert.Equal(100m, summary.Impact.MeasuredImpactRsd);
         Assert.Equal(0.5000m, summary.Impact.RealizationRatio);
     }
 
@@ -937,14 +937,14 @@ public class AnalyticsActionItemServiceTests
         Assert.Equal(2, summary.Totals.CreatedCount);
         Assert.Equal(2, summary.Totals.ClosedCount);
         Assert.Equal(0, summary.Totals.OpenCount);
-        Assert.Equal(2, summary.Totals.MeasuredCount);
+        Assert.Equal(1, summary.Totals.MeasuredCount);
         Assert.Equal(0, summary.Totals.PendingOutcomeCount);
         Assert.Equal(1, summary.Totals.SuccessCount);
-        Assert.Equal(1, summary.Totals.NegativeCount);
-        Assert.Equal(1.0000m, summary.Totals.OutcomeCoverageRate);
-        Assert.Equal(500m, summary.Impact.ExpectedImpactRsd);
-        Assert.Equal(150m, summary.Impact.MeasuredImpactRsd);
-        Assert.Equal(0.3000m, summary.Impact.RealizationRatio);
+        Assert.Equal(0, summary.Totals.NegativeCount);
+        Assert.Equal(0.5000m, summary.Totals.OutcomeCoverageRate);
+        Assert.Equal(200m, summary.Impact.ExpectedImpactRsd);
+        Assert.Equal(120m, summary.Impact.MeasuredImpactRsd);
+        Assert.Equal(0.6000m, summary.Impact.RealizationRatio);
     }
 
     [Fact]
@@ -1043,8 +1043,9 @@ public class AnalyticsActionItemServiceTests
 
         var p2Bucket = Assert.Single(summary.ByPriority.Where(x => x.Key == AnalyticsActionConstants.Priorities.P2));
         Assert.Equal(2, p2Bucket.TotalCount);
-        Assert.Equal(2, p2Bucket.MeasuredCount);
+        Assert.Equal(0, p2Bucket.MeasuredCount);
         Assert.Equal(0, p2Bucket.PendingOutcomeCount);
+        Assert.Equal(1, p2Bucket.NotMeasuredCount);
         Assert.Null(p2Bucket.MeasuredImpactRsd);
         Assert.Equal(0, p2Bucket.MeasuredImpactSampleCount);
 
@@ -1058,7 +1059,7 @@ public class AnalyticsActionItemServiceTests
 
         var warningBucket = Assert.Single(summary.ByDataQuality.Where(x => x.Key == AnalyticsActionConstants.DataQualityStatuses.Warning));
         Assert.Equal(1, warningBucket.TotalCount);
-        Assert.Equal(1, warningBucket.NegativeCount);
+        Assert.Equal(0, warningBucket.NegativeCount);
         Assert.Null(warningBucket.MeasuredImpactRsd);
         Assert.Equal(0, warningBucket.MeasuredImpactSampleCount);
 

@@ -1380,30 +1380,44 @@ public sealed class AnalyticsActionItemService
         string label,
         IReadOnlyList<AnalyticsActionItem> items)
     {
-        var totalCount = items.Count;
-        var closedItems = items
-            .Where(x => string.Equals(x.Status, AnalyticsActionConstants.Statuses.Done, StringComparison.Ordinal)
-                || string.Equals(x.Status, AnalyticsActionConstants.Statuses.Rejected, StringComparison.Ordinal))
+        var itemCaptures = items
+            .Select(item => new
+            {
+                Item = item,
+                Capture = RecommendationLifecycleSemantics.Project(item)
+            })
+            .ToArray();
+        var totalCount = itemCaptures.Length;
+        var closedItems = itemCaptures
+            .Where(x => string.Equals(x.Item.Status, AnalyticsActionConstants.Statuses.Done, StringComparison.Ordinal)
+                || string.Equals(x.Item.Status, AnalyticsActionConstants.Statuses.Rejected, StringComparison.Ordinal))
             .ToArray();
         var closedCount = closedItems.Length;
 
-        var normalizedOutcomes = items.Select(item => NormalizeOutcomeStatus(item.OutcomeStatus)).ToArray();
-        var measuredItems = items
-            .Where(x => NormalizeOutcomeStatus(x.OutcomeStatus) != AnalyticsActionConstants.OutcomeStatuses.Pending)
+        var measuredItems = itemCaptures
+            .Where(x => x.Capture.CountsTowardMeasured)
             .ToArray();
         var measuredCount = measuredItems.Length;
         var measuredOutcomeCount = measuredCount;
-        var pendingOutcomeCount = totalCount - measuredCount;
-        var successCount = normalizedOutcomes.Count(x => x == AnalyticsActionConstants.OutcomeStatuses.Success);
-        var neutralCount = normalizedOutcomes.Count(x => x == AnalyticsActionConstants.OutcomeStatuses.Neutral);
-        var negativeCount = normalizedOutcomes.Count(x => x == AnalyticsActionConstants.OutcomeStatuses.Negative);
-        var notMeasuredCount = normalizedOutcomes.Count(x => x == AnalyticsActionConstants.OutcomeStatuses.NotMeasured);
-        var measuredImpactItems = measuredItems.Where(x => x.MeasuredImpactRsd.HasValue).ToArray();
+        var normalizedOutcomes = itemCaptures
+            .Select(x => NormalizeOutcomeStatus(x.Item.OutcomeStatus))
+            .ToArray();
+        var notMeasuredCount = itemCaptures.Count(x => x.Capture.CountsTowardNotMeasured
+            || string.Equals(
+                NormalizeOutcomeStatus(x.Item.OutcomeStatus),
+                AnalyticsActionConstants.OutcomeStatuses.NotMeasured,
+                StringComparison.Ordinal));
+        var pendingOutcomeCount = normalizedOutcomes.Count(x =>
+            string.Equals(x, AnalyticsActionConstants.OutcomeStatuses.Pending, StringComparison.Ordinal));
+        var successCount = measuredItems.Count(x => x.Capture.CountsTowardSuccess);
+        var neutralCount = measuredItems.Count(x => x.Capture.CountsTowardNeutral);
+        var negativeCount = measuredItems.Count(x => x.Capture.CountsTowardNegative);
+        var measuredImpactItems = measuredItems.Where(x => x.Item.MeasuredImpactRsd.HasValue).ToArray();
         var measuredImpactSampleCount = measuredImpactItems.Length;
-        decimal? measuredImpactRsd = measuredImpactSampleCount > 0 ? measuredImpactItems.Sum(x => x.MeasuredImpactRsd!.Value) : null;
-        var expectedImpactSampleItems = measuredImpactItems.Where(x => x.ExpectedImpactRsd.HasValue).ToArray();
-        decimal? expectedImpactRsd = expectedImpactSampleItems.Length > 0 ? expectedImpactSampleItems.Sum(x => x.ExpectedImpactRsd!.Value) : null;
-        var closedMeasuredCount = closedItems.Count(x => NormalizeOutcomeStatus(x.OutcomeStatus) != AnalyticsActionConstants.OutcomeStatuses.Pending);
+        decimal? measuredImpactRsd = measuredImpactSampleCount > 0 ? measuredImpactItems.Sum(x => x.Item.MeasuredImpactRsd!.Value) : null;
+        var expectedImpactSampleItems = measuredImpactItems.Where(x => x.Item.ExpectedImpactRsd.HasValue).ToArray();
+        decimal? expectedImpactRsd = expectedImpactSampleItems.Length > 0 ? expectedImpactSampleItems.Sum(x => x.Item.ExpectedImpactRsd!.Value) : null;
+        var closedMeasuredCount = closedItems.Count(x => x.Capture.CountsTowardMeasured);
         decimal? outcomeCoverageRate = closedCount > 0 ? Math.Round((decimal)closedMeasuredCount / closedCount, 4, MidpointRounding.AwayFromZero) : null;
         decimal? positiveOutcomeRate = measuredCount > 0 ? Math.Round((decimal)successCount / measuredCount, 4, MidpointRounding.AwayFromZero) : null;
         decimal? negativeOutcomeRate = measuredCount > 0 ? Math.Round((decimal)negativeCount / measuredCount, 4, MidpointRounding.AwayFromZero) : null;
