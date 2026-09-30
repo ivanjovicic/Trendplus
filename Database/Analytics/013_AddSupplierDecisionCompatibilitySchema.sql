@@ -126,6 +126,10 @@ SELECT
     slf."Qty" AS kolicina,
     slf."UnitPrice" AS cena,
     slf."NabavnaCena" AS nabavna_cena,
+    -- Analytics fact history may predate sale-time supplier attribution.
+    -- Keep the compatibility contract explicit; NULL means unknown evidence,
+    -- never a fabricated current-supplier assignment.
+    NULL::integer AS supplier_id_at_sale,
     slf."DataOrigin" AS data_origin
 FROM "SalesLineFacts" slf;
 
