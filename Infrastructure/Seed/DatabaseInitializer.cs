@@ -597,22 +597,19 @@ public static class DatabaseInitializer
         NpgsqlConnection connection,
         string relationName)
     {
-        const string sql = """
-            SELECT EXISTS (
-                SELECT 1
-                FROM pg_class c
-                JOIN pg_namespace n ON n.oid = c.relnamespace
-                WHERE n.nspname = 'public'
-                  AND c.relname = @relationName
-                  AND c.relkind = 'm'
-            );
-            """;
-
-        await using var command = new NpgsqlCommand(sql, connection);
-        command.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
-        command.Parameters.AddWithValue("relationName", relationName);
-        return (bool?)await command.ExecuteScalarAsync() ?? false;
+        var capability = await PostgresMaterializedViewCapabilityReader.InspectAsync(
+            connection,
+            relationName);
+        return capability.Exists;
     }
+
+    private static Task<MaterializedViewCapabilityResult> InspectSupplierDecisionScoreMaterializedViewAsync(
+        NpgsqlConnection connection,
+        string relationName) =>
+        PostgresMaterializedViewCapabilityReader.InspectAsync(
+            connection,
+            relationName,
+            SupplierDecisionMaterializedViewContract.DecisionScoreRequiredColumns);
 
     private static async Task LogSupplierDecisionHubCacheCountsAsync(
         NpgsqlConnection connection,
@@ -662,24 +659,30 @@ public static class DatabaseInitializer
         string databaseLabel,
         string mode)
     {
-        var windowed90Ready = await IsPublicMaterializedViewAsync(connection, "mv_supplier_decision_score_cache_90d");
-        var windowed180Ready = await IsPublicMaterializedViewAsync(connection, "mv_supplier_decision_score_cache_180d");
+        var windowed90 = await InspectSupplierDecisionScoreMaterializedViewAsync(
+            connection,
+            "mv_supplier_decision_score_cache_90d");
+        var windowed180 = await InspectSupplierDecisionScoreMaterializedViewAsync(
+            connection,
+            "mv_supplier_decision_score_cache_180d");
 
-        if (windowed90Ready && windowed180Ready)
+        if (windowed90.IsReady && windowed180.IsReady)
         {
             logger.LogInformation(
-                "[{Mode}] Supplier decision windowed caches are present in {DatabaseLabel}: 90d and 180d materialized views exist, but startup readiness still gates only the all-time cache stack.",
+                "[{Mode}] Supplier decision windowed cache capability for {DatabaseLabel}: 90d=READY 180d=READY. Both materialized views exist, contain all required columns and are populated.",
                 mode,
                 databaseLabel);
             return;
         }
 
         logger.LogWarning(
-            "[{Mode}] Supplier decision windowed caches are not fully ready in {DatabaseLabel}: 90dReady={Windowed90Ready} 180dReady={Windowed180Ready}. Startup readiness still gates only the all-time cache stack.",
+            "[{Mode}] Supplier decision windowed cache capability for {DatabaseLabel}: 90d={Windowed90State} missingColumns={Windowed90MissingColumns}; 180d={Windowed180State} missingColumns={Windowed180MissingColumns}. Endpoint readiness uses the same materialized-view capability contract.",
             mode,
             databaseLabel,
-            windowed90Ready,
-            windowed180Ready);
+            windowed90.ErrorCode ?? "READY",
+            string.Join(",", windowed90.MissingColumns),
+            windowed180.ErrorCode ?? "READY",
+            string.Join(",", windowed180.MissingColumns));
     }
 
     private static async Task EnsureSupplierDecisionWindowedViewsAsync(
