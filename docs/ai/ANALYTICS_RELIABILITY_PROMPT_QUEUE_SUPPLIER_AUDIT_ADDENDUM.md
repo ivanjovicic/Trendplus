@@ -86,8 +86,8 @@ None; RQ475 consumes the corrected readiness states.
 - Run log: `.ai/runs/2026-09-30-RQ518-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending until the documentation/evidence closure commit is pushed
+- Main commit SHA: 8e736ffd6e939dca9b45a75ff062c8d99a57c7a0
+- Main verification: pending until the closure commits are fast-forwarded to origin/main
 - Missed: Real PostgreSQL execution of the integration fixture could not run without the .NET SDK.
 - Follow-up: RQ519 is the current primary READY prompt; RQ525 remains an independent parallel-safe P1 lane.
 - Residual risk: Runtime integration behavior is covered by committed tests but was not executable in this environment.
