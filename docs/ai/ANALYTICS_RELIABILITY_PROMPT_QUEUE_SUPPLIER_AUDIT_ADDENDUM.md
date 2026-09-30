@@ -4,8 +4,8 @@ Date: 2026-09-30
 Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
 Current READY prompt: RQ518
-Additional READY prompts: RQ524, RQ525
-Queue reconciliation 2026-09-30: RQ518 remains the primary deterministic P1 fix. RQ524 and RQ525 are independent, dependency-free P1 proof lanes and are READY in parallel. RQ524 builds/runs only the repository-local reconciliation pack and fixture evidence; production execution remains exclusively RQ454/STAB16. RQ519-RQ532 otherwise remain sequenced/owner-gated as declared below.
+Additional READY prompts: RQ525
+Queue reconciliation 2026-09-30: RQ518 is the primary deterministic P1 lane and is currently IN_PROGRESS. RQ524 was independently claimable, delivered the initial read-only pack, and is now PARTIAL pending deterministic PostgreSQL fixture completion. RQ525 remains the independent dependency-free P1 READY lane. RQ524 is repository-local/fixture-only; production execution remains exclusively RQ454/STAB16. RQ519-RQ532 otherwise remain sequenced/owner-gated as declared below.
 
 This addendum registers only non-duplicate Supplier follow-ups after second-pass source verification. Existing RQ474, RQ475 and RQ487 remain authoritative for overview error/readiness/query-cost work. RQ517 is already DONE for Daily Sales and is not reused.
 
@@ -301,7 +301,7 @@ RQ520, RQ522 and RQ498 DONE.
 
 Status: PARTIAL
 Claimed: 2026-09-30 by ChatGPT connector workspace after exact-main refresh; no rq524 branch/search collision found.
-Progress: read-only reconciliation script and run evidence delivered on main. Deterministic PostgreSQL fixture execution remains required; production reads were not attempted because this prompt requires explicit owner approval.
+Progress: read-only reconciliation script and run evidence delivered on main. Deterministic PostgreSQL fixture execution remains required. Production/replica execution was not attempted and is outside RQ524; it remains exclusively RQ454/STAB16.
 Priority: P1
 Type: sql/qa/evidence
 Feature family: supplier-reconciliation-evidence
