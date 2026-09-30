@@ -17,5 +17,18 @@
       "command": "cd Klijent/clientapp && npm run dev"
     }
   ],
-  "ports": [8080, 5174, 5434]
+  "ports": [
+    {
+      "name": "backend-api",
+      "port": 8080
+    },
+    {
+      "name": "frontend",
+      "port": 5174
+    },
+    {
+      "name": "postgres",
+      "port": 5434
+    }
+  ]
 }
