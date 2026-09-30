@@ -93,11 +93,13 @@ Napomena o arhitekturi: frontend je React + Vite SPA (Vercel hostuje samo statik
 - `RQ325` (`WAITING`) — preostali engleski copy (Operacije); `PS17` koordinira, ne duplira.
 - `RQ439` (`WAITING`) — trijaža PR #63 za Supplier Decision Hub; pre izmene `SupplierDecisionHubPage.tsx` u `PS08` proveriti preklapanje.
 - `RQ440` (`READY`) — deljeni padajući spec-ovi; ne menjati ih bez dokazane regresije.
-- `RQ441` / `RQ442` — u trenutku pisanja postoje samo kao necommit-ovane izmene drugog agenta u radnom stablu queue fajla (Daily Sales atribucija u vreme prodaje; half-open dnevni opsezi `T23:59:59Z` / `<=`). `PS13` i `PS16` ih ne dupliraju; proveriti konačne brojeve pre upotrebe.
+- `RQ441` / `RQ442` — commit-ovani su i `DONE` na `main` (ispravka 2026-09-30; beleška „necommit-ovane izmene“ iz 2026-09-25 je zastarela): Daily Sales atribucija u vreme prodaje i half-open dnevni opsezi `T23:59:59Z` / `<=`. `PS13` i `PS16` ih ne dupliraju.
 
 ## Registracija u queue
 
 Presedan (`fb956bac`, Operacije audit) dodaje RQ sekcije i redove statusne tabele u kanonski queue, ažurira queue header i `MASTER_ROADMAP.md`. Ovde to namerno NIJE urađeno: u trenutku pisanja `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` i `MASTER_ROADMAP.md` imaju necommit-ovane izmene drugog, paralelnog agenta (`RQ441`, `RQ442`). Stage-ovanje tih fajlova bi commit-ovalo tuđi rad, a paralelna izmena rizikuje koliziju.
+
+Ispravka 2026-09-30: registracija je naknadno urađena u de-dup prolazu 2026-09-28 (`RQ469`–`RQ476`, `RQ483`–`RQ488`; vidi tabelu na kraju ovog dokumenta), a `RQ441`/`RQ442` su `DONE`. Nastavak: `docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md`.
 
 Oznake `PS01`-`PS18` su privremene. Pri registraciji dodeliti sledeće slobodne RQ brojeve istim redosledom, prepisati sekcije ispod u queue format i ne menjati, ne preuređivati i ne zatvarati postojeće stavke.
 
@@ -830,7 +832,7 @@ Commit suggestion: `fix(analytics): align product and supplier scope attribution
 ### Read first
 
 - `AGENTS.md`
-- `RQ411`, `RQ412`; `RQ441` (Daily Sales counterpart; uncommitted in the working tree at the time of writing)
+- `RQ411`, `RQ412`; `RQ441` (Daily Sales counterpart; DONE on `main` — corrected 2026-09-30)
 
 ### Do
 
@@ -962,7 +964,7 @@ Commit suggestion: `fix(analytics): local date defaults and Serbian date display
 - `ProductDecisionCenterPage.tsx:228-246` `toDateInputValue` uses `toISOString()` (UTC); between 00:00 and 02:00 Belgrade time the default "to" date is yesterday.
 - `SupplierSalesStatsPage.tsx:189-193` `toDateOnly` shifts datetime strings without `Z`.
 - Native `<input type="date">` shows the browser-locale format (live: `06/28/2026` on Products, `08/27/2026` on Supplier), while the trust header uses Serbian "27. 8. 2026. - 25. 9. 2026.".
-- The `T23:59:59Z` end serialization and inclusive `<=` in `SupplierSalesStatsPage.tsx:182-187` belong to `RQ442` (uncommitted in the working tree at the time of writing); do not duplicate.
+- The `T23:59:59Z` end serialization and inclusive `<=` in `SupplierSalesStatsPage.tsx:182-187` belong to `RQ442` (DONE on `main` — corrected 2026-09-30); do not duplicate.
 - **Hypothesis:** the storage basis of `DatumProdaje` (UTC vs local) is unclear (the Access import uses `DT(...)` or a `UtcNow` fallback, `AccessImportService` around `:4689`); verify before changing server-side boundaries.
 
 ### Scope
