@@ -97,7 +97,7 @@ None; RQ475 consumes the corrected readiness states.
 
 ## RQ519 - Make Supplier nivelacija schema lifecycle idempotent and preserve scorecard dependencies
 
-Status: WAITING
+Status: READY
 Ready after: RQ518 DONE
 Priority: P1
 Type: backend/sql/startup/tests
