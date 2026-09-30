@@ -39,10 +39,9 @@ public sealed class SupplierDecisionSchemaSqlTests
     {
         var sql = ReadRepoFile("Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql");
 
-        Assert.Contains("WHEN pre.pre_qty = 0 AND post.post_qty > 0 THEN 100", sql);
-        Assert.Contains("WHEN pre.pre_qty = 0 THEN 0", sql);
-        Assert.Contains("WHEN pre.pre_revenue = 0 AND post.post_revenue > 0 THEN 100", sql);
-        Assert.Contains("WHEN pre.pre_revenue = 0 THEN 0", sql);
+        Assert.Contains("WHEN pre.pre_qty = 0 AND COALESCE(post.post_qty, 0) > 0 THEN NULL", sql);
+        Assert.Contains("WHEN pre.pre_revenue = 0 AND COALESCE(post.post_revenue, 0) > 0 THEN NULL", sql);
+        Assert.DoesNotContain("WHEN pre.pre_revenue = 0 AND post.post_revenue > 0 THEN 100", sql);
         Assert.Contains("ELSE ROUND(((post.post_qty - pre.pre_qty) / NULLIF(pre.pre_qty, 0)) * 100, 2)", sql);
         Assert.Contains("ELSE ROUND(((post.post_revenue - pre.pre_revenue) / NULLIF(pre.pre_revenue, 0)) * 100, 2)", sql);
     }
@@ -72,6 +71,16 @@ public sealed class SupplierDecisionSchemaSqlTests
         var sql = ReadRepoFile("Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql");
 
         Assert.Contains("(pre.is_low_signal OR post.coverage_post30 < 0.2) AS is_low_signal", sql);
+    }
+
+    [Fact]
+    public void VendorSalesNivelacijaEndpointUsesDedicatedPriceChangeEffectPolicy()
+    {
+        var source = ReadRepoFile("Api/Endpoints/AllEndpoints.cs");
+
+        Assert.Contains("VendorSalesNivelacijaPriceChangeEffectPolicy.Evaluate", source);
+        Assert.DoesNotContain("PopRevenueChangePct: (double)row.Vendor.ChangePercent", source);
+        Assert.Contains("RecommendationAllowed = false", source);
     }
 
     [Fact]
@@ -181,7 +190,7 @@ public sealed class SupplierDecisionSchemaSqlTests
         var sql = ReadRepoFile("Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql");
 
         Assert.Contains("SUM(s.units) AS pre_qty", sql);
-        Assert.Contains("SUM(s.revenue) AS post_revenue", sql);
+        Assert.Contains("WHEN e.event_date + INTERVAL '30 days' <= CURRENT_DATE THEN COALESCE(SUM(s.revenue), 0)", sql);
         Assert.Contains("WHEN pre.pre_qty IS NULL THEN 'missing_pre_qty_window'", sql);
         Assert.Contains("WHEN pre.pre_revenue IS NULL THEN 'missing_pre_revenue_window'", sql);
         Assert.Contains("change_percent_revenue_semantic::numeric AS change_percent", ReadRepoFile("Api/Endpoints/AllEndpoints.cs"));
@@ -195,10 +204,12 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.Contains("&& hasQtyBaseline", source);
         Assert.Contains("&& hasRevenueBaseline", source);
         Assert.DoesNotContain("ChangePercent = changePercentRevenue ?? 0m", source);
-        Assert.Contains("ConfidencePct = row.Vendor.HasComparableSalesWindow ? recommendation.ConfidencePct : null", source);
-        Assert.Contains("ReliabilityPct = row.Vendor.HasComparableSalesWindow ? recommendation.ReliabilityPct : null", source);
+        Assert.Contains("VendorSalesNivelacijaPriceChangeEffectPolicy.Evaluate", source);
+        Assert.Contains("RecommendationAllowed = false", source);
         Assert.Contains("var comparableRows = analyzed", source);
-        Assert.Contains("HasComparableSalesWindow = comparableRows.Count > 0", source);
+        Assert.Contains("var matureComparableRows = comparableRows", source);
+        Assert.Contains("IsPostWindowMature", source);
+        Assert.Contains("HasComparableSalesWindow = matureComparableRows.Count > 0", source);
         Assert.DoesNotContain("HasComparableSalesWindow = analyzedRows > 0 && analyzed.All(x => x.HasComparableSalesWindow)", source);
         Assert.Contains("VendorSalesNivelacijaCohortPolicy", source);
         Assert.Contains("SelectLatestEventPerArticle(dedupRows)", source);
@@ -209,7 +220,7 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.Contains("totals.AbsoluteChangeRevenue = totalAbsoluteChangeRevenue;", source);
         Assert.Contains("vendor.ChangeSharePercent = totalAbsoluteChangeRevenue == 0m", source);
         Assert.Equal(3, source.Split("var hasComparableNivelacijaSignal =", StringSplitOptions.None).Length - 1);
-        Assert.Equal(2, source.Split("var exposedRecommendation = AnalyticsDecisionRecommendationEngine.ApplyComparableSignalGate(", StringSplitOptions.None).Length - 1);
+        Assert.Equal(1, source.Split("var exposedRecommendation = AnalyticsDecisionRecommendationEngine.ApplyComparableSignalGate(", StringSplitOptions.None).Length - 1);
         Assert.Contains("var exposedRecommendation = OperationsRecommendationGatePolicy.ApplySupplierPolicy(", source);
         Assert.Contains("var supplierPageRecommendationAllowed", source);
         Assert.Contains("scope = \"known_supplier_rows\"", source);

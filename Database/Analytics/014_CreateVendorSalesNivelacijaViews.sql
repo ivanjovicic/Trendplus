@@ -155,8 +155,14 @@ SELECT
     e.category,
     e.old_price,
     e.new_price,
-    SUM(s.units) AS post_qty,
-    SUM(s.revenue) AS post_revenue,
+    CASE
+        WHEN e.event_date + INTERVAL '30 days' <= CURRENT_DATE THEN COALESCE(SUM(s.units), 0)
+        ELSE SUM(s.units)
+    END AS post_qty,
+    CASE
+        WHEN e.event_date + INTERVAL '30 days' <= CURRENT_DATE THEN COALESCE(SUM(s.revenue), 0)::numeric(18,2)
+        ELSE SUM(s.revenue)::numeric(18,2)
+    END AS post_revenue,
     CASE WHEN COUNT(DISTINCT s.day) = 0 THEN NULL
          ELSE LEAST(COUNT(DISTINCT s.day) / 30.0, 1)
     END AS coverage_post30,
@@ -225,14 +231,14 @@ SELECT
     (post.post_qty - pre.pre_qty) AS change_qty,
     (post.post_revenue - pre.pre_revenue) AS change_revenue,
     CASE
-        WHEN pre.pre_qty = 0 AND post.post_qty > 0 THEN 100
+        WHEN pre.pre_qty = 0 AND COALESCE(post.post_qty, 0) > 0 THEN NULL
         WHEN pre.pre_qty = 0 THEN 0
-        ELSE ROUND(((post.post_qty - pre.pre_qty) / NULLIF(pre.pre_qty, 0)) * 100, 2)
+        ELSE ROUND(((COALESCE(post.post_qty, 0) - pre.pre_qty) / NULLIF(pre.pre_qty, 0)) * 100, 2)
     END AS change_percent_qty,
     CASE
-        WHEN pre.pre_revenue = 0 AND post.post_revenue > 0 THEN 100
+        WHEN pre.pre_revenue = 0 AND COALESCE(post.post_revenue, 0) > 0 THEN NULL
         WHEN pre.pre_revenue = 0 THEN 0
-        ELSE ROUND(((post.post_revenue - pre.pre_revenue) / NULLIF(pre.pre_revenue, 0)) * 100, 2)
+        ELSE ROUND(((COALESCE(post.post_revenue, 0) - pre.pre_revenue) / NULLIF(pre.pre_revenue, 0)) * 100, 2)
     END AS change_percent_revenue,
     (pre.is_low_signal OR post.coverage_post30 < 0.2) AS is_low_signal,
     COALESCE(pre.pre_qty > 0, FALSE) AS has_qty_baseline,

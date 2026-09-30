@@ -22,8 +22,8 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using NpgsqlTypes;
 using Infrastructure.DbContexts;
-using Application.Analytics.Queries.GetTopProducts;
 using Application.Analytics;
+using Application.Analytics.Queries.GetTopProducts;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -4319,6 +4319,7 @@ public static class AllEndpoints
                         """;
 
                 var dedupRows = new List<VendorSalesNivelacijaArticleStatDto>();
+                var asOfDate = toDateOnly ?? DateTime.UtcNow.Date;
 
                 var inactiveRows = 0;
                 var unchangedPriceRows = 0;
@@ -4391,6 +4392,20 @@ public static class AllEndpoints
                         var hasComparableSalesWindow = preQtyEvidence.HasValue && postQtyEvidence.HasValue
                             && preRevenueEvidence.HasValue && postRevenueEvidence.HasValue
                             && hasQtyBaseline && hasRevenueBaseline;
+                        var isPostWindowMature = VendorSalesNivelacijaPriceChangeEffectPolicy.IsPostWindowMature(evDate, asOfDate);
+                        var postWindowDaysElapsed = VendorSalesNivelacijaPriceChangeEffectPolicy.ComputePostWindowDaysElapsed(evDate, asOfDate);
+                        if (isPostWindowMature)
+                        {
+                            if (!postQtyEvidence.HasValue)
+                            {
+                                postQtyEvidence = 0m;
+                            }
+
+                            if (!postRevenueEvidence.HasValue)
+                            {
+                                postRevenueEvidence = 0m;
+                            }
+                        }
 
                         var preQty = preQtyEvidence.HasValue ? (int)preQtyEvidence.Value : 0;
                         var preRevenue = preRevenueEvidence ?? 0m;
@@ -4448,7 +4463,9 @@ public static class AllEndpoints
                             HasRevenueBaseline = hasRevenueBaseline,
                             RevenueBaselineReason = revenueBaselineReason,
                             SemanticChangePercentRevenue = semanticChangePercentRevenue ?? changePercentRevenue,
-                            SemanticChangePercentQty = semanticChangePercentQty
+                            SemanticChangePercentQty = semanticChangePercentQty,
+                            IsPostWindowMature = isPostWindowMature,
+                            PostWindowDaysElapsed = postWindowDaysElapsed
                         };
 
                         dedupRows.Add(dto);
@@ -4514,23 +4531,23 @@ public static class AllEndpoints
                 var comparableRows = analyzed
                     .Where(x => x.HasComparableSalesWindow)
                     .ToList();
+                var matureComparableRows = comparableRows
+                    .Where(x => x.IsPostWindowMature)
+                    .ToList();
                 var articleStats = analyzed
                     .Take(maxRows)
                     .ToList();
 
-                // Totals
-                var totalPreQty = comparableRows.Sum(x => x.PreQty);
-                var totalPostQty = comparableRows.Sum(x => x.PostQty);
-                var totalPreRevenue = comparableRows.Sum(x => x.PreRevenue);
-                var totalPostRevenue = comparableRows.Sum(x => x.PostRevenue);
-                var totalChangeQty = comparableRows.Sum(x => x.ChangeQty);
-                var totalChangeRevenue = comparableRows.Sum(x => x.ChangeRevenue);
+                // Totals (mature comparable cohort only)
+                var totalPreQty = matureComparableRows.Sum(x => x.PreQty);
+                var totalPostQty = matureComparableRows.Sum(x => x.PostQty);
+                var totalPreRevenue = matureComparableRows.Sum(x => x.PreRevenue);
+                var totalPostRevenue = matureComparableRows.Sum(x => x.PostRevenue);
+                var totalChangeQty = totalPostQty - totalPreQty;
+                var totalChangeRevenue = totalPostRevenue - totalPreRevenue;
 
-                static decimal Pct(decimal pre, decimal post)
-                {
-                    if (pre == 0m) return post > 0m ? 100m : 0m;
-                    return Math.Round(((post - pre) / pre) * 100m, 2);
-                }
+                static decimal? SemanticChangePercent(decimal pre, decimal post)
+                    => VendorSalesNivelacijaPriceChangeEffectPolicy.ComputeSemanticChangePercent(pre, post);
 
                 static decimal? AverageKnownCoverage(IEnumerable<decimal?> values)
                 {
@@ -4542,13 +4559,13 @@ public static class AllEndpoints
                     return known.Length == 0 ? null : Math.Round(known.Average(), 4);
                 }
 
-                var vendorsCount = comparableRows.Select(x => x.VendorId).Distinct().Count();
-                var articlesCount = comparableRows
+                var vendorsCount = matureComparableRows.Select(x => x.VendorId).Distinct().Count();
+                var articlesCount = matureComparableRows
                     .Select(x => x.Sku)
                     .Where(s => !string.IsNullOrWhiteSpace(s))
                     .Distinct(StringComparer.Ordinal)
                     .Count();
-                var activeArticlesCount = comparableRows
+                var activeArticlesCount = matureComparableRows
                     .Where(x => x.HasSalesWindow && !string.IsNullOrWhiteSpace(x.Sku))
                     .Select(x => x.Sku)
                     .Distinct(StringComparer.Ordinal)
@@ -4557,14 +4574,14 @@ public static class AllEndpoints
                 var avgRevenuePerArticlePre = activeArticlesCount == 0 ? 0m : Math.Round(totalPreRevenue / activeArticlesCount, 2);
                 var avgRevenuePerArticlePost = activeArticlesCount == 0 ? 0m : Math.Round(totalPostRevenue / activeArticlesCount, 2);
 
-                var avgPriceChangePercent = comparableRows
+                var avgPriceChangePercent = matureComparableRows
                     .Where(x => x.PriceChangePercent.HasValue)
                     .Select(x => x.PriceChangePercent!.Value)
                     .DefaultIfEmpty()
                     .Average();
 
-                var avgCoveragePre30 = AverageKnownCoverage(comparableRows.Select(x => x.CoveragePre30));
-                var avgCoveragePost30 = AverageKnownCoverage(comparableRows.Select(x => x.CoveragePost30));
+                var avgCoveragePre30 = AverageKnownCoverage(matureComparableRows.Select(x => x.CoveragePre30));
+                var avgCoveragePost30 = AverageKnownCoverage(matureComparableRows.Select(x => x.CoveragePost30));
                 var lowPostCoverageRows = analyzed.Count(x => x.CoveragePost30.HasValue && x.CoveragePost30.Value < 0.2m);
 
                 var totals = new VendorSalesNivelacijaTotalsDto
@@ -4575,7 +4592,7 @@ public static class AllEndpoints
                     PostRevenue = totalPostRevenue,
                     ChangeQty = totalChangeQty,
                     ChangeRevenue = totalChangeRevenue,
-                    ChangePercent = Pct(totalPreRevenue, totalPostRevenue),
+                    ChangePercent = SemanticChangePercent(totalPreRevenue, totalPostRevenue) ?? 0m,
                     VendorsCount = vendorsCount,
                     ArticlesCount = articlesCount,
                     ActiveArticlesCount = activeArticlesCount,
@@ -4585,8 +4602,8 @@ public static class AllEndpoints
                     AbsoluteChangeRevenue = 0m,
                     AvgCoveragePre30 = avgCoveragePre30,
                     AvgCoveragePost30 = avgCoveragePost30,
-                    HasComparableSalesWindow = comparableRows.Count > 0,
-                    ComparableRows = comparableRows.Count,
+                    HasComparableSalesWindow = matureComparableRows.Count > 0,
+                    ComparableRows = matureComparableRows.Count,
                     ComparableArticlesCount = articlesCount,
                     ComparableVendorsCount = vendorsCount
                 };
@@ -4629,17 +4646,21 @@ public static class AllEndpoints
                     .Select(g =>
                     {
                         var comparable = g.Where(x => x.HasComparableSalesWindow).ToList();
-                        var typeInsights = VendorSalesNivelacijaTypeInsightPolicy.Build(comparable);
+                        var matureComparable = comparable.Where(x => x.IsPostWindowMature).ToList();
+                        var typeInsights = VendorSalesNivelacijaTypeInsightPolicy.Build(matureComparable);
                         var primaryType = typeInsights.FirstOrDefault();
-                        var preRev = comparable.Sum(x => x.PreRevenue);
-                        var postRev = comparable.Sum(x => x.PostRevenue);
-                        var preQty = comparable.Sum(x => x.PreQty);
-                        var postQty = comparable.Sum(x => x.PostQty);
-                        var increased = comparable.Count(x => x.PriceChangePercent.HasValue && x.PriceChangePercent.Value > 0m);
-                        var decreased = comparable.Count(x => x.PriceChangePercent.HasValue && x.PriceChangePercent.Value < 0m);
+                        var preRev = matureComparable.Sum(x => x.PreRevenue);
+                        var postRev = matureComparable.Sum(x => x.PostRevenue);
+                        var preQty = matureComparable.Sum(x => x.PreQty);
+                        var postQty = matureComparable.Sum(x => x.PostQty);
+                        var increased = matureComparable.Count(x => x.PriceChangePercent.HasValue && x.PriceChangePercent.Value > 0m);
+                        var decreased = matureComparable.Count(x => x.PriceChangePercent.HasValue && x.PriceChangePercent.Value < 0m);
+                        var changeQty = postQty - preQty;
+                        var changeRevenue = postRev - preRev;
+                        var semanticChangePercent = SemanticChangePercent(preRev, postRev);
 
                         var margin = new MarginAccumulator();
-                        foreach (var row in comparable)
+                        foreach (var row in matureComparable)
                         {
                             if (!productCostsByArticleId.TryGetValue(row.ArticleId, out var costs))
                             {
@@ -4655,7 +4676,7 @@ public static class AllEndpoints
                             : g.Key.VendorName.Trim();
                         var isUnknownVendor = !g.Key.VendorId.HasValue
                             || string.Equals(normalizedVendorName, "Nepoznato", StringComparison.OrdinalIgnoreCase);
-                        var splitCoverage = AverageKnownCoverage(comparable.Select(x =>
+                        var splitCoverage = AverageKnownCoverage(matureComparable.Select(x =>
                             x.CoveragePre30.HasValue && x.CoveragePost30.HasValue
                                 ? Math.Min(x.CoveragePre30.Value, x.CoveragePost30.Value)
                                 : (decimal?)null));
@@ -4673,28 +4694,29 @@ public static class AllEndpoints
                                 PreRevenue = preRev,
                                 PostQty = postQty,
                                 PostRevenue = postRev,
-                                ChangeQty = g.Sum(x => x.ChangeQty),
-                                ChangeRevenue = g.Sum(x => x.ChangeRevenue),
-                                ChangePercent = Pct(preRev, postRev),
-                                AbsoluteChangeRevenue = Math.Abs(g.Sum(x => x.ChangeRevenue)),
+                                ChangeQty = changeQty,
+                                ChangeRevenue = changeRevenue,
+                                ChangePercent = semanticChangePercent ?? 0m,
+                                SemanticChangePercentRevenue = semanticChangePercent,
+                                AbsoluteChangeRevenue = Math.Abs(changeRevenue),
                                 ChangeSharePercent = 0m,
                                 PostRevenueSharePercent = 0m,
-                                AvgCoveragePre30 = AverageKnownCoverage(comparable.Select(x => x.CoveragePre30)),
-                                AvgCoveragePost30 = AverageKnownCoverage(comparable.Select(x => x.CoveragePost30)),
-                                ArticleCount = comparable
+                                AvgCoveragePre30 = AverageKnownCoverage(matureComparable.Select(x => x.CoveragePre30)),
+                                AvgCoveragePost30 = AverageKnownCoverage(matureComparable.Select(x => x.CoveragePost30)),
+                                ArticleCount = matureComparable
                                     .Select(x => x.Sku)
                                     .Where(s => !string.IsNullOrWhiteSpace(s))
                                     .Distinct(StringComparer.Ordinal)
                                     .Count(),
-                                ActiveArticlesCount = comparable
+                                ActiveArticlesCount = matureComparable
                                     .Where(x => x.HasSalesWindow && !string.IsNullOrWhiteSpace(x.Sku))
                                     .Select(x => x.Sku)
                                     .Distinct(StringComparer.Ordinal)
                                     .Count(),
                                 IncreasedPriceArticlesCount = increased,
                                 DecreasedPriceArticlesCount = decreased,
-                                HasComparableSalesWindow = comparable.Count > 0,
-                                ComparableArticleCount = comparable
+                                HasComparableSalesWindow = matureComparable.Count > 0,
+                                ComparableArticleCount = matureComparable
                                     .Select(x => x.Sku)
                                     .Where(s => !string.IsNullOrWhiteSpace(s))
                                     .Distinct(StringComparer.Ordinal)
@@ -4706,21 +4728,16 @@ public static class AllEndpoints
                             },
                             IsUnknownVendor = isUnknownVendor,
                             SplitCoveragePct = splitCoveragePct,
-                            PopUnitsChangePct = (double)Pct(preQty, postQty),
+                            PopUnitsChangePct = preQty > 0
+                                ? (double?)Math.Round(((postQty - preQty) / (decimal)preQty) * 100m, 2)
+                                : null,
                             MarginSnapshot = marginSnapshot,
-                            IsNewVendor = preRev <= 0m && postRev > 0m
+                            IsNewVendor = preRev <= 0m && postRev > 0m,
+                            MatureComparableCount = matureComparable.Count,
+                            ImmatureComparableCount = comparable.Count - matureComparable.Count
                         };
                     })
                     .ToList();
-
-                var averageKnownMarginPct = vendorRecommendationRows
-                    .Where(x => !x.IsUnknownVendor)
-                    .Select(x => x.MarginSnapshot.MarginPct)
-                    .DefaultIfEmpty(0d)
-                    .Average();
-                var unknownVendorSharePct = totalPostRevenue == 0m
-                    ? 0d
-                    : Math.Round((double)(vendorRecommendationRows.Where(x => x.IsUnknownVendor).Sum(x => x.Vendor.PostRevenue) / totalPostRevenue * 100m), 2);
 
                 var vendorStats = vendorRecommendationRows
                     .Select(row =>
@@ -4728,40 +4745,34 @@ public static class AllEndpoints
                         var sharePct = totalPostRevenue == 0m
                             ? 0d
                             : Math.Round((double)(row.Vendor.PostRevenue / totalPostRevenue * 100m), 2);
-                        var recommendation = AnalyticsDecisionRecommendationEngine.Evaluate(new AnalyticsDecisionRecommendationEngine.RecommendationInput(
-                            IsUnknownEntity: row.IsUnknownVendor,
-                            TotalRevenue: row.Vendor.PostRevenue,
-                            TotalUnits: row.Vendor.PostQty,
-                            ItemCount: row.Vendor.ArticleCount,
-                            SharePct: sharePct,
-                            MarginPct: row.MarginSnapshot.MarginPct,
-                            MarginCoveragePct: row.MarginSnapshot.MarginDataCoveragePct,
-                            SplitCoveragePct: row.SplitCoveragePct,
-                            PopRevenueChangePct: (double)row.Vendor.ChangePercent,
-                            PopUnitsChangePct: row.PopUnitsChangePct,
-                            PreviousPeriodRevenue: row.Vendor.PreRevenue,
-                            PreviousPeriodUnits: row.Vendor.PreQty,
-                            HasPreviousPeriodWindow: row.Vendor.HasComparableSalesWindow,
-                            IsNewEntity: row.IsNewVendor,
-                            UnknownBucketSharePct: unknownVendorSharePct),
-                            averageKnownMarginPct);
+                        var effect = VendorSalesNivelacijaPriceChangeEffectPolicy.Evaluate(
+                            new VendorSalesNivelacijaPriceChangeEffectPolicy.VendorAggregateInput(
+                                IsUnknownVendor: row.IsUnknownVendor,
+                                PreRevenue: row.Vendor.PreRevenue,
+                                PostRevenue: row.Vendor.PostRevenue,
+                                PreQty: row.Vendor.PreQty,
+                                PostQty: row.Vendor.PostQty,
+                                ComparableArticleCount: row.Vendor.ComparableArticleCount,
+                                MatureComparableArticleCount: row.MatureComparableCount,
+                                ImmatureComparableArticleCount: row.ImmatureComparableCount,
+                                SemanticChangePercentRevenue: row.Vendor.SemanticChangePercentRevenue.HasValue
+                                    ? (double)row.Vendor.SemanticChangePercentRevenue.Value
+                                    : null,
+                                MarginPct: row.MarginSnapshot.MarginPct,
+                                MarginCoveragePct: row.MarginSnapshot.MarginDataCoveragePct,
+                                SplitCoveragePct: row.SplitCoveragePct));
 
-                        var exposedRecommendation = AnalyticsDecisionRecommendationEngine.ApplyComparableSignalGate(
-                            recommendation,
-                            row.Vendor.HasComparableSalesWindow);
-                        row.Vendor.ReliabilityPct = row.Vendor.HasComparableSalesWindow
-                            ? exposedRecommendation.ReliabilityPct
-                            : null;
+                        row.Vendor.ReliabilityPct = effect.ReliabilityPct;
                         row.Vendor.Recommendation = new VendorSalesNivelacijaRecommendationDto
                         {
-                            Status = exposedRecommendation.Status,
-                            Label = exposedRecommendation.Label,
-                            Summary = exposedRecommendation.Summary,
-                            ConfidencePct = row.Vendor.HasComparableSalesWindow ? recommendation.ConfidencePct : null,
-                            ReliabilityPct = row.Vendor.HasComparableSalesWindow ? recommendation.ReliabilityPct : null,
-                            DataQualityStatus = exposedRecommendation.DataQualityStatus,
-                            RecommendationAllowed = exposedRecommendation.RecommendationAllowed,
-                            ReasonCodes = exposedRecommendation.ReasonCodes
+                            Status = effect.Status,
+                            Label = effect.Label,
+                            Summary = effect.Summary,
+                            ConfidencePct = effect.ConfidencePct,
+                            ReliabilityPct = effect.ReliabilityPct,
+                            DataQualityStatus = effect.DataQualityStatus,
+                            RecommendationAllowed = effect.RecommendationAllowed,
+                            ReasonCodes = effect.ReasonCodes
                         };
 
                         return row.Vendor;
@@ -4785,7 +4796,7 @@ public static class AllEndpoints
 
                 // Category stats are full-cohort type insights. They must not be
                 // rebuilt from articleStats, which is intentionally capped by maxRows.
-                var typeInsightAggregates = VendorSalesNivelacijaTypeInsightPolicy.Build(comparableRows);
+                var typeInsightAggregates = VendorSalesNivelacijaTypeInsightPolicy.Build(matureComparableRows);
                 var typeInsightsAuthoritative = typeInsightAggregates.Count > 0
                     && totalPostRevenue > 0m;
                 var categoryStats = typeInsightAggregates
@@ -4822,7 +4833,7 @@ public static class AllEndpoints
                     .GroupBy(SegmentFor)
                     .Select(g =>
                     {
-                        var comparable = g.Where(x => x.HasComparableSalesWindow).ToList();
+                        var comparable = g.Where(x => x.HasComparableSalesWindow && x.IsPostWindowMature).ToList();
                         var preRev = comparable.Sum(x => x.PreRevenue);
                         var postRev = comparable.Sum(x => x.PostRevenue);
                         var avgPct = comparable.Where(x => x.PriceChangePercent.HasValue).Select(x => x.PriceChangePercent!.Value).DefaultIfEmpty().Average();
@@ -4832,8 +4843,8 @@ public static class AllEndpoints
                             ArticlesCount = comparable.Select(x => x.Sku).Distinct(StringComparer.Ordinal).Count(),
                             VendorsCount = comparable.Select(x => x.VendorId).Distinct().Count(),
                             AvgPriceChangePercent = Math.Round(avgPct, 2),
-                            ChangeRevenue = comparable.Sum(x => x.ChangeRevenue),
-                            ChangePercent = Pct(preRev, postRev),
+                            ChangeRevenue = postRev - preRev,
+                            ChangePercent = SemanticChangePercent(preRev, postRev) ?? 0m,
                             HasComparableSalesWindow = comparable.Count > 0,
                             ComparableArticleCount = comparable.Select(x => x.Sku).Distinct(StringComparer.Ordinal).Count()
                         };
@@ -4957,8 +4968,7 @@ public static class AllEndpoints
                     AvgLostSalesOOS = avgLostSalesOos,
                     OOSRate = avgOosRate,
                     MetricsStatus = globalWarnings.Count == 0 ? null : string.Join("; ", globalWarnings.Distinct(StringComparer.Ordinal)),
-                    RecommendationAllowed = vendorStats.Count > 0
-                        && vendorStats.All(x => x.Recommendation?.RecommendationAllowed == true)
+                    RecommendationAllowed = false
                 };
 
                 ApplyVendorSalesNivelacijaMeta(response, correlationId);
@@ -7929,8 +7939,14 @@ public static class AllEndpoints
         post_window AS (
             SELECT
                 e.price_event_id,
-                SUM(s.units) AS post_qty,
-                SUM(s.revenue) AS post_revenue,
+                CASE
+                    WHEN e.event_date + INTERVAL '30 days' <= COALESCE(@toDate::date, CURRENT_DATE) THEN COALESCE(SUM(s.units), 0)
+                    ELSE SUM(s.units)
+                END AS post_qty,
+                CASE
+                    WHEN e.event_date + INTERVAL '30 days' <= COALESCE(@toDate::date, CURRENT_DATE) THEN COALESCE(SUM(s.revenue), 0)::numeric(18,2)
+                    ELSE SUM(s.revenue)::numeric(18,2)
+                END AS post_revenue,
                 CASE WHEN COUNT(DISTINCT s.day) = 0 THEN NULL
                      ELSE LEAST(COUNT(DISTINCT s.day) / 30.0, 1)
                 END AS coverage_post30,
@@ -7963,12 +7979,12 @@ public static class AllEndpoints
                 (post.post_qty - pre.pre_qty) AS change_qty,
                 (post.post_revenue - pre.pre_revenue) AS change_revenue,
                 CASE
-                    WHEN pre.pre_qty = 0 AND post.post_qty > 0 THEN 100
+                    WHEN pre.pre_qty = 0 AND COALESCE(post.post_qty, 0) > 0 THEN NULL
                     WHEN pre.pre_qty = 0 THEN 0
                     ELSE ROUND(((post.post_qty - pre.pre_qty) / NULLIF(pre.pre_qty, 0)) * 100, 2)
                 END AS change_percent_qty,
                 CASE
-                    WHEN pre.pre_revenue = 0 AND post.post_revenue > 0 THEN 100
+                    WHEN pre.pre_revenue = 0 AND COALESCE(post.post_revenue, 0) > 0 THEN NULL
                     WHEN pre.pre_revenue = 0 THEN 0
                     ELSE ROUND(((post.post_revenue - pre.pre_revenue) / NULLIF(pre.pre_revenue, 0)) * 100, 2)
                 END AS change_percent_revenue,

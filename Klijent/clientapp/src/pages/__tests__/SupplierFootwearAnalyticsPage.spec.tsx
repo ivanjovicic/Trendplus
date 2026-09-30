@@ -67,14 +67,14 @@ vi.mock("../../services/vendorSalesNivelacijaApi", () => ({
         decreasedPriceArticlesCount: 0,
         reliabilityPct: 80,
         recommendation: {
-          status: "increase_focus",
-          label: "Pojačaj fokus",
-          summary: "Signal je jak.",
+          status: "effective",
+          label: "Efekat pozitivan",
+          summary: "Promet posle promene cene raste 20% u odnosu na uporediv pre prozor (descriptive signal, ne PoP).",
           confidencePct: 75,
           reliabilityPct: 80,
           dataQualityStatus: "good",
-          recommendationAllowed: true,
-          reasonCodes: ["high_signal"],
+          recommendationAllowed: false,
+          reasonCodes: [],
         },
       },
     ],
@@ -921,5 +921,18 @@ describe("SupplierFootwearAnalyticsPage", () => {
     within(unknownRows[0].closest("tr")!).getByRole("button", { name: "Detalji" }).click();
     expect(await screen.findByText("Detalj odluke: Nepoznat dobavljač")).toBeInTheDocument();
     expect(screen.getByText(/Identitet dobavljača nije potvrđen/)).toBeInTheDocument();
+  });
+
+  it("renders assortment price-change effect labels instead of Supplier overview PoP copy", async () => {
+    render(
+      <MemoryRouter>
+        <SupplierFootwearAnalyticsPage />
+      </MemoryRouter>,
+    );
+
+    const tableSurface = await screen.findByTestId("supplier-footwear-analytics-data-table");
+    expect(within(tableSurface).getByText("Efekat pozitivan")).toBeInTheDocument();
+    expect(within(tableSurface).queryByText("Pojačaj fokus")).not.toBeInTheDocument();
+    expect(within(tableSurface).queryByText("PoP trend")).not.toBeInTheDocument();
   });
 });

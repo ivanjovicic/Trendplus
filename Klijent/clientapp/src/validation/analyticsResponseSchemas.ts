@@ -600,7 +600,7 @@ export const supplierSalesStatsResponseSchema = z.object({
 }).passthrough();
 
 const vendorSalesNivelacijaRecommendationSchema = z.object({
-  status: z.enum(["increase_focus", "maintain", "review", "do_not_trust", "insufficient_data"]),
+  status: z.enum(["effective", "neutral", "ineffective", "immature", "insufficient_data"]),
   label: z.string().trim().min(1),
   summary: z.string(),
   confidencePct: nullableNonNegativePercentage,
