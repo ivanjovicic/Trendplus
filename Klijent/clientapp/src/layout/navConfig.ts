@@ -23,7 +23,6 @@ import {
   ShoppingCart,
   Sparkles,
   Tags,
-  TrendingUp,
   Undo2,
   Wrench,
   Zap,
@@ -155,35 +154,24 @@ export const NAV_GROUPS: NavGroup[] = [
     badge: { label: "Ops", tone: "warning", title: "Operativni tokovi i zalihe" },
     items: [
       { to: "/analytics/inventory", label: "Zalihe i dopuna", icon: Boxes },
-      {
-        to: "/analytics/supplier-sales-stats",
-        label: "Prodaja po dobavljačima",
-        icon: TrendingUp,
-        badge: {
-          label: "Alias",
-          tone: "info",
-          title: "Kompatibilna veza: otvara Pregled dobavljača, tab Pregled",
-        },
-      },
       { to: "/analytics/shoe-type-sales-stats", label: "Prodaja po tipu obuće", icon: ShoppingBag },
       { to: "/analytics/daily-sales", label: "Prodaja po smeni i dobavljačima", icon: CalendarDays },
       { to: "/analytics/nivelacije-pre-post", label: "Pre/Posle nivelacije", icon: Activity },
-      { to: "/analytics/color-sales-stats", label: "Prodaja po boji artikla", icon: Palette },
+      {
+        to: "/analytics/color-sales-stats",
+        label: "Prodaja po boji artikla",
+        icon: Palette,
+        badge: {
+          label: "Analiza",
+          tone: "info",
+          title: "Sekundarna analiza atributa; nije samostalna konačna preporuka",
+        },
+      },
       {
         to: "/analytics/pre-nivelacija-prioriteti",
         label: "Prioriteti nivelacije",
         icon: Sparkles,
         badge: { label: "Task", tone: "warning", title: "Operativni prioriteti za nivelaciju" },
-      },
-      {
-        to: "/analytics/dobavljaci-tipovi-obuce",
-        label: "Dobavljači i tipovi obuće",
-        icon: Tags,
-        badge: {
-          label: "Alias",
-          tone: "info",
-          title: "Kompatibilna veza: otvara Pregled dobavljača, tab Asortiman",
-        },
       },
     ],
   },

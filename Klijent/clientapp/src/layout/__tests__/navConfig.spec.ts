@@ -31,6 +31,21 @@ describe("navConfig", () => {
     expect(new Set(icons).size).toBe(icons.length);
   });
 
+  it("keeps supplier compatibility routes out of primary Operacije while retaining category analyses", () => {
+    const operationsRoutes = new Set(findGroup("analytics-operations")?.items.map((item) => item.to));
+
+    expect(operationsRoutes.has("/analytics/supplier-sales-stats")).toBe(false);
+    expect(operationsRoutes.has("/analytics/dobavljaci-tipovi-obuce")).toBe(false);
+    expect(operationsRoutes.has("/analytics/shoe-type-sales-stats")).toBe(true);
+    expect(operationsRoutes.has("/analytics/color-sales-stats")).toBe(true);
+    expect(operationsRoutes.has("/analytics/daily-sales")).toBe(true);
+    expect(operationsRoutes.has("/analytics/nivelacije-pre-post")).toBe(true);
+    expect(findGroup("analytics-operations")?.items.find((item) => item.to === "/analytics/color-sales-stats")?.badge).toMatchObject({
+      label: "Analiza",
+      tone: "info",
+    });
+  });
+
   it("preserves representative analytics and admin routes", () => {
     const routeSet = new Set(NAV_GROUPS.flatMap((group) => group.items.map((item) => item.to)));
 

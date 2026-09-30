@@ -38,16 +38,18 @@ describe("Sidebar", () => {
     expect(activeLinks[0]).toHaveTextContent("Pregled dobavljača");
   });
 
-  it("explains Operations supplier aliases before navigation", () => {
+  it("keeps supplier aliases hidden while exposing canonical category analyses", () => {
     render(
       <MemoryRouter initialEntries={["/analytics/inventory"]}>
         <Sidebar mobileOpen={false} onCloseMobile={() => {}} collapsed={false} onToggleCollapse={() => {}} />
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole("link", { name: /Prodaja po dobavljačima/ })).toBeInTheDocument();
-    expect(screen.getByTitle("Kompatibilna veza: otvara Pregled dobavljača, tab Pregled")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Dobavljači i tipovi obuće/ })).toBeInTheDocument();
-    expect(screen.getByTitle("Kompatibilna veza: otvara Pregled dobavljača, tab Asortiman")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Prodaja po dobavljačima/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Dobavljači i tipovi obuće/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Prodaja po tipu obuće/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Prodaja po boji artikla/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Prodaja po smeni i dobavljačima/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Pre\/Posle nivelacije/ })).toBeInTheDocument();
   });
 });
