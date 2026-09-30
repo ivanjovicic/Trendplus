@@ -22,7 +22,7 @@ Ova sekcija je autoritativna korekcija prvog prolaza. Supplier runtime fajlovi i
 - **N36 nije automatski aritmetički bug:** signed maržni doprinos može matematički dati udeo >100% uz negativne doprinose drugih dobavljača. Denominator mora biti eksplicitan ili owner mora odobriti novu semantiku.
 - **N38 je enhancement gap**, ne dokaz postojećeg numeričkog baga.
 
-Queue de-dup: SA-F5 nije dobio novi RQ (safe-error/readiness ide u RQ474/RQ475, Analytics 015 u RQ525, security handoff samo ako se N27 dokaže); SA-I1 je takođe de-duplikovan u RQ474/RQ475. Preostalih 15 promptova su RQ518-RQ532. RQ517 ostaje postojeći DONE Daily Sales prompt.
+Queue de-dup: SA-F5 nije dobio novi RQ (safe-error/readiness ide u RQ474/RQ475, Analytics 015 u RQ525, security handoff samo ako se N27 dokaže); SA-I1 je takođe de-duplikovan u RQ474/RQ475. Preostalih 15 promptova su RQ518-RQ532. Završna queue provera je dodatno razdvojila RQ522/RQ498 (machine-readable basis naspram visible labels/units) i RQ499/RQ523/RQ529 (trust-state semantika naspram lokalnih frontend/a11y residuala). RQ518 je primarni READY; nezavisni P1 proof lane-ovi RQ524 i RQ525 su takođe READY. RQ517 ostaje postojeći DONE Daily Sales prompt.
 
 ## Sažetak
 
@@ -64,7 +64,7 @@ Pored dostupnosti, najvažniji semantički nalazi su:
 
 Pošto live nijedan broj nije mogao da se proveri, PROVE sekcija ima P1 prioritet.
 
-Ukupno 17 novih promptova (`SA-F1`–`SA-F7`, `SA-P1`–`SA-P5`, `SA-I1`–`SA-I2`, `SA-E1`–`SA-E3`): 6 × P1, 9 × P2, 2 × P3. Hipoteze su označene sa **Hipoteza**. **Nije registrovano u queue; RQ brojevi se dodeljuju pri registraciji.** Promptovi se referenciraju neutralnim ID-jevima `SA-F*`/`SA-P*`/`SA-I*`/`SA-E*`. Pored toga, jedan delta dodatak ne otvara novi prompt nego dopunjuje otvorene `RQ474`/`RQ487`.
+Prvi prolaz je definisao 17 audit prompt-koncepta (`SA-F1`–`SA-F7`, `SA-P1`–`SA-P5`, `SA-I1`–`SA-I2`, `SA-E1`–`SA-E3`): 6 × P1, 9 × P2, 2 × P3. Posle second-pass de-dup provere, SA-F5 i SA-I1 ostaju kod postojećih ownera, a 15 novih canonical promptova je registrovano kao `RQ518`–`RQ532`. Završna queue provera promoviše `RQ518` kao primarni READY i nezavisne proof lane-ove `RQ524`/`RQ525` kao dodatne READY; ostali ostaju WAITING iza eksplicitnih zavisnosti/owner odluka. Hipoteze ostaju označene kao **Hipoteza**.
 
 ## Git stanje (Faza A)
 
@@ -1026,8 +1026,8 @@ Commit suggestion: `feat(analytics): supplier footwear size curve and controlled
 | SA-F5 | RQ474/RQ475 + RQ525; security handoff only if N27 proven | — | DE-DUP |
 | SA-F6 | RQ522 | P2 | WAITING |
 | SA-F7 (corrected) | RQ523 | P3 | WAITING |
-| SA-P1 | RQ524 | P1 | WAITING |
-| SA-P2 | RQ525 | P1 | WAITING |
+| SA-P1 | RQ524 | P1 | READY (parallel proof lane) |
+| SA-P2 | RQ525 | P1 | READY (parallel proof lane) |
 | SA-P3 | RQ526 | P2 | WAITING |
 | SA-P4 | RQ527 | P2 | WAITING |
 | SA-P5 | RQ528 | P2 | WAITING |
@@ -1037,7 +1037,7 @@ Commit suggestion: `feat(analytics): supplier footwear size curve and controlled
 | SA-E2 | RQ531 | P2 | WAITING / owner-gated |
 | SA-E3 | RQ532 | P3 | WAITING |
 
-RQ517 je već DONE Daily Sales prompt i nije prepisan. Addendum owner: docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_SUPPLIER_AUDIT_ADDENDUM.md.
+RQ517 je već DONE Daily Sales prompt i nije prepisan. Addendum owner: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_SUPPLIER_AUDIT_ADDENDUM.md`. Završna provera je takođe dodala ovaj addendum u `scripts/check-prompt-queues.mjs`, pa njegovi READY/status konflikti više nisu van governance validatora.
 
 ## Šta nije urađeno / nije provereno
 
