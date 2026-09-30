@@ -7859,6 +7859,12 @@ public static class AllEndpoints
             ) ranked_events
             WHERE rn = 1
         ),
+        event_bounds AS (
+            SELECT
+                MIN(event_date) AS min_event_date,
+                MAX(event_date) AS max_event_date
+            FROM nivelacija_events
+        ),
         sales_daily AS (
             SELECT
                 ps.id_artikal AS article_id,
@@ -7868,7 +7874,11 @@ public static class AllEndpoints
             FROM prodaja_stavke ps
             JOIN prodaja_zaglavlje pz
               ON pz.id = ps.id_prodaja
+            CROSS JOIN event_bounds bounds
             WHERE (@storeId IS NULL OR pz.id_objekat = @storeId::int)
+              AND bounds.min_event_date IS NOT NULL
+              AND pz.datum_prodaje::date >= bounds.min_event_date - INTERVAL '30 days'
+              AND pz.datum_prodaje::date < bounds.max_event_date + INTERVAL '30 days'
               AND (
                     @dataScope::text = 'all'
                     OR (@dataScope::text = 'imported' AND pz.data_origin = 'access')

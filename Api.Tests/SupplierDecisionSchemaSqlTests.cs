@@ -102,6 +102,80 @@ public sealed class SupplierDecisionSchemaSqlTests
     }
 
     [Fact]
+    public void VendorSalesNivelacijaScopedFactQueryBoundsSalesToSelectedEventWindows()
+    {
+        var source = ReadRepoFile("Api/Endpoints/AllEndpoints.cs");
+
+        Assert.Contains("event_bounds AS", source);
+        Assert.Contains("MIN(event_date) AS min_event_date", source);
+        Assert.Contains("MAX(event_date) AS max_event_date", source);
+        Assert.Contains("CROSS JOIN event_bounds bounds", source);
+        Assert.Contains("bounds.min_event_date IS NOT NULL", source);
+        Assert.Contains("pz.datum_prodaje::date >= bounds.min_event_date - INTERVAL '30 days'", source);
+        Assert.Contains("pz.datum_prodaje::date < bounds.max_event_date + INTERVAL '30 days'", source);
+        AssertInOrder(source, "event_bounds AS", "sales_daily AS", "pre_window AS", "post_window AS");
+    }
+
+    [Fact]
+    public void NivelacijaStartupRechecks016DependenciesAfterDestructiveViewScripts()
+    {
+        var initializer = ReadRepoFile("Infrastructure/Seed/DatabaseInitializer.cs");
+
+        Assert.Contains("AreVendorSalesNivelacijaDependenciesReadyAsync", initializer);
+        Assert.Contains("vw_nivelacija_kontrolna_grupa", initializer);
+        Assert.Contains("vw_nivelacija_did", initializer);
+        Assert.Contains("DeleteAppliedStartupSqlHistoryAsync(connectionString, sqlFile)", initializer);
+        Assert.Contains("Supplier nivelacija dependencies remain unavailable", initializer);
+        Assert.Contains("Database/Migrations/014_NormalizeNivelacijaEvents.sql", initializer);
+        Assert.DoesNotContain(
+            "ExecuteSqlFileAsync(connectionString, \"Database/Migrations/014_FixNivelacijaViewsFromDnevnik.sql\"",
+            initializer);
+        var trendStartupStart = initializer.IndexOf(
+            "logger.LogInformation(\"[Startup] Executing sequential migrations: 014, 016...\")",
+            StringComparison.Ordinal);
+        var trendStartupEnd = initializer.IndexOf(
+            "// 005: Test data (if needed)",
+            trendStartupStart,
+            StringComparison.Ordinal);
+        Assert.True(trendStartupStart >= 0);
+        Assert.True(trendStartupEnd > trendStartupStart);
+        var trendStartup = initializer[trendStartupStart..trendStartupEnd];
+        AssertInOrder(
+            trendStartup,
+            "Database/Migrations/014_NormalizeNivelacijaEvents.sql",
+            "Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql",
+            "EnsureVendorSalesNivelacijaDependenciesAsync(connectionString, logger, \"trendplus\")");
+        var analyticsStartupStart = initializer.IndexOf(
+            "if (!unifiedDb)\n        {\n            if (!await AreVendorSalesNivelacijaViewReadyAsync",
+            StringComparison.Ordinal);
+        var analyticsStartupEnd = initializer.IndexOf(
+            "await ExecuteSqlFileAsync(connectionString, \"Database/Analytics/Intelligence/020_create_intelligence_schema.sql\", logger);",
+            analyticsStartupStart,
+            StringComparison.Ordinal);
+        Assert.True(analyticsStartupStart >= 0);
+        Assert.True(analyticsStartupEnd > analyticsStartupStart);
+        var analyticsStartup = initializer[analyticsStartupStart..analyticsStartupEnd];
+        AssertInOrder(
+            analyticsStartup,
+            "Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql",
+            "EnsureVendorSalesNivelacijaDependenciesAsync(connectionString, logger, \"analytics\")");
+    }
+
+    [Fact]
+    public void NivelacijaStartupHasOneCanonicalViewOwnerAndDataOnlyNormalizationRepair()
+    {
+        var normalization = ReadRepoFile("Database/Migrations/014_NormalizeNivelacijaEvents.sql");
+        var canonicalViews = ReadRepoFile("Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql");
+
+        Assert.Contains("UPDATE \"DnevnikPromena\"", normalization);
+        Assert.Contains("line.\"BrojRacuna\" ~ '^-?[0-9]+$'", normalization);
+        Assert.DoesNotContain("CREATE VIEW", normalization, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("DROP VIEW", normalization, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("CREATE OR REPLACE VIEW vw_vendor_sales_nivelacija AS", canonicalViews);
+        Assert.Contains("change_percent_revenue_semantic", canonicalViews);
+    }
+
+    [Fact]
     public void VendorSalesNivelacijaViewPreservesMissingWindowAsNullAndLabelsBaselineReason()
     {
         var sql = ReadRepoFile("Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql");

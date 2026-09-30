@@ -769,6 +769,47 @@ public static class DatabaseInitializer
             && await RelationHasColumnAsync(connectionString, "vw_vendor_sales_nivelacija", "change_percent_revenue_semantic");
     }
 
+    private static async Task<bool> AreVendorSalesNivelacijaDependenciesReadyAsync(string connectionString)
+    {
+        return await AreVendorSalesNivelacijaViewReadyAsync(connectionString)
+            && await AreRelationsReadyAsync(
+                connectionString,
+                "public.vw_nivelacija_kontrolna_grupa",
+                "public.vw_nivelacija_did")
+            && await RelationHasColumnAsync(connectionString, "vw_nivelacija_did", "price_event_id")
+            && await RelationHasColumnAsync(connectionString, "vw_nivelacija_did", "did_revenue")
+            && await RelationHasColumnAsync(connectionString, "vw_nivelacija_did", "did_qty");
+    }
+
+    private static async Task EnsureVendorSalesNivelacijaDependenciesAsync(
+        string connectionString,
+        ILogger logger,
+        string databaseLabel)
+    {
+        const string sqlFile = "Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql";
+
+        if (!await AreVendorSalesNivelacijaDependenciesReadyAsync(connectionString))
+        {
+            logger.LogInformation(
+                "[Startup] Supplier nivelacija dependencies are incomplete in {DatabaseLabel}. Forcing re-execution of {SqlFile}.",
+                databaseLabel,
+                sqlFile);
+            await DeleteAppliedStartupSqlHistoryAsync(connectionString, sqlFile);
+        }
+
+        await ExecuteSqlFileAsync(connectionString, sqlFile, logger);
+
+        if (!await AreVendorSalesNivelacijaDependenciesReadyAsync(connectionString))
+        {
+            throw new InvalidOperationException(
+                $"Supplier nivelacija dependencies remain unavailable after {sqlFile} in {databaseLabel}.");
+        }
+
+        logger.LogInformation(
+            "[Startup] Supplier nivelacija dependencies verified in {DatabaseLabel}: vendor view and 016 control/DiD views are ready.",
+            databaseLabel);
+    }
+
     private static async Task<bool> RelationHasColumnAsync(
         string connectionString,
         string relationName,
@@ -929,9 +970,9 @@ public static class DatabaseInitializer
         }
 
         logger.LogInformation("[Startup] Executing sequential migrations: 014, 016...");
-        await ExecuteSqlFileAsync(connectionString, "Database/Migrations/014_FixNivelacijaViewsFromDnevnik.sql", logger);
+        await ExecuteSqlFileAsync(connectionString, "Database/Migrations/014_NormalizeNivelacijaEvents.sql", logger);
         await ExecuteSqlFileAsync(connectionString, "Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql", logger);
-        await ExecuteSqlFileAsync(connectionString, "Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql", logger);
+        await EnsureVendorSalesNivelacijaDependenciesAsync(connectionString, logger, "trendplus");
 
         // 005: Test data (if needed)
         logger.LogInformation("[Startup] Executing 005_CreateArtikliAndTestData.sql...");
@@ -2430,7 +2471,7 @@ public static class DatabaseInitializer
 
             await ExecuteSqlFileAsync(connectionString, "Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql", logger);
         }
-        await ExecuteSqlFileAsync(connectionString, "Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql", logger);
+        await EnsureVendorSalesNivelacijaDependenciesAsync(connectionString, logger, "analytics");
         await ExecuteSqlFileAsync(connectionString, "Database/Analytics/Intelligence/020_create_intelligence_schema.sql", logger);
         // Supplier Decision Hub endpoints read through AnalyticsConnection. In split-db
         // deployments, 013/014/016 provide the compatibility/nivelacija dependencies

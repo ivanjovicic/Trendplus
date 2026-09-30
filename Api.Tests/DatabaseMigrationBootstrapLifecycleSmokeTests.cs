@@ -60,6 +60,12 @@ public sealed class DatabaseMigrationBootstrapLifecycleSmokeTests : IClassFixtur
         Assert.True(await TableExistsAsync(connection, "Artikli"));
         Assert.True(await TableExistsAsync(connection, "SalesFacts"));
         Assert.True(await TableExistsAsync(connection, "analytics_data_quality_history"));
+        Assert.True(await TableExistsAsync(connection, "vw_vendor_sales_nivelacija"));
+        Assert.True(await TableExistsAsync(connection, "vw_nivelacija_kontrolna_grupa"));
+        Assert.True(await TableExistsAsync(connection, "vw_nivelacija_did"));
+        Assert.True(await ColumnExistsAsync(connection, "vw_vendor_sales_nivelacija", "change_percent_revenue_semantic"));
+        Assert.True(await ColumnExistsAsync(connection, "vw_nivelacija_did", "did_revenue"));
+        Assert.True(await ColumnExistsAsync(connection, "vw_nivelacija_did", "did_qty"));
 
         Assert.True(await MigrationExistsAsync(connection, "20251224163406_InitialPostgreSQL"));
         Assert.True(await MigrationExistsAsync(connection, "20251229125031_AddProductsDimTimestamp"));
@@ -116,6 +122,26 @@ public sealed class DatabaseMigrationBootstrapLifecycleSmokeTests : IClassFixtur
             );
             """,
             ("migrationId", migrationId));
+    }
+
+    private static async Task<bool> ColumnExistsAsync(
+        NpgsqlConnection connection,
+        string relationName,
+        string columnName)
+    {
+        return await ScalarAsync<bool>(
+            connection,
+            """
+            SELECT EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = ANY (current_schemas(FALSE))
+                  AND table_name = @relationName
+                  AND column_name = @columnName
+            );
+            """,
+            ("relationName", relationName),
+            ("columnName", columnName));
     }
 
     private static async Task<long> DuplicateIndexCountAsync(NpgsqlConnection connection)

@@ -5,7 +5,7 @@
 -- - Difference-in-Differences (DiD) vs best-matching control
 --
 -- Depends on:
--- - vw_vendor_sales_nivelacija (014_FixNivelacijaViewsFromDnevnik.sql)
+-- - vw_vendor_sales_nivelacija (Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql)
 -- - mv_daily_sales_facts       (017_CreateNightlyAnalyticsMaterializedViews.sql)
 -- ==========================================================
 

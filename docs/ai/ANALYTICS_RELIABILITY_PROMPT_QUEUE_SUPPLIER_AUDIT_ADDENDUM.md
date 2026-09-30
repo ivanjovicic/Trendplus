@@ -3,9 +3,9 @@
 Date: 2026-09-30
 Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
-Current READY prompt: RQ519
-Additional READY prompts: RQ525
-Queue reconciliation 2026-09-30: RQ518 is DONE after shared PostgreSQL catalog-based materialized-view capability detection was delivered on main with explicit MISSING_OBJECT/MISSING_COLUMNS/NOT_POPULATED states and regression coverage. RQ519 is now the primary dependency-complete P1 READY lane. RQ524 independently delivered the initial read-only pack and remains PARTIAL after deterministic PostgreSQL fixture execution because the broader reconciliation checks are still incomplete. RQ525 remains an independent dependency-free P1 READY lane. RQ524 is repository-local/fixture-only; production execution remains exclusively RQ454/STAB16. RQ519-RQ532 otherwise remain sequenced/owner-gated as declared below.
+Current READY prompt: RQ525
+Additional READY prompts: none
+Queue reconciliation 2026-09-30: RQ518 is DONE after shared PostgreSQL catalog-based materialized-view capability detection was delivered on main with explicit MISSING_OBJECT/MISSING_COLUMNS/NOT_POPULATED states and regression coverage. RQ519 was the primary dependency-complete lane and is now PARTIAL after the canonical lifecycle repair and PostgreSQL fixture proof; the real DatabaseInitializer test harness remains blocked by an unrelated pre-existing compile failure. RQ525 is now the primary independent P1 READY lane. RQ524 independently delivered the initial read-only pack and remains PARTIAL after deterministic PostgreSQL fixture execution because the broader reconciliation checks are still incomplete. RQ524 is repository-local/fixture-only; production execution remains exclusively RQ454/STAB16. RQ519-RQ532 otherwise remain sequenced/owner-gated as declared below.
 
 This addendum registers only non-duplicate Supplier follow-ups after second-pass source verification. Existing RQ474, RQ475 and RQ487 remain authoritative for overview error/readiness/query-cost work. RQ517 is already DONE for Daily Sales and is not reused.
 
@@ -80,8 +80,10 @@ None; RQ475 consumes the corrected readiness states.
 
 ## RQ519 - Make Supplier nivelacija schema lifecycle idempotent and preserve scorecard dependencies
 
-Status: READY
+Status: PARTIAL
 Ready after: RQ518 DONE (satisfied 2026-09-30)
+Claimed: 2026-09-30 by ChatGPT on `cursor/rq519-nivelacija-lifecycle-78b0`; delivered as PARTIAL pending focused test execution after the unrelated baseline compile failure is repaired.
+Progress: startup now uses data-only nivelacija normalization, keeps Analytics 014 as the canonical view owner, rechecks and repairs 016 control/DiD dependencies after destructive view scripts, and bounds scoped sales aggregation to the selected event windows. PostgreSQL 16.15 fixture execution passed repeated canonical sequence, destructive dependency repair, and final relation readiness. Run log: `.ai/runs/2026-09-30-RQ519-evidence.md`; evidence state: pending until delivery verification.
 Priority: P1
 Type: backend/sql/startup/tests
 Feature family: supplier-nivelacija-schema-lifecycle
