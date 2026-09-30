@@ -230,23 +230,120 @@ const PRODUCT_DECISION_PAGE_EXPLANATION =
   "Ovaj ekran predlaže šta uraditi sa artiklima: dopuniti, pojačati, sniziti cenu, pratiti ili proveriti podatke. Dobra marža ili zdrava zaliha same po sebi nisu dovoljne — ako je uzorak prodaje mali, preporuka ostaje blokirana dok ne stigne više dokaza.";
 
 function toDateInputValue(date: Date): string {
-  return date.toISOString().slice(0, 10);
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Belgrade",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
 }
 
-function defaultPeriodRange() {
-  const to = new Date();
-  const from = new Date(to);
-  from.setDate(from.getDate() - 29);
-  return { fromDate: toDateInputValue(from), toDate: toDateInputValue(to) };
+function shiftDateInputValue(value: string, days: number): string {
+  const parsed = new Date(`${value}T12:00:00Z`);
+  parsed.setUTCDate(parsed.getUTCDate() + days);
+  return parsed.toISOString().slice(0, 10);
 }
 
-function applyPeriodPreset(preset: Exclude<PeriodPreset, "custom">) {
-  const to = new Date();
-  const from = new Date(to);
-  if (preset === "last60") from.setDate(from.getDate() - 59);
-  else if (preset === "last90") from.setDate(from.getDate() - 89);
-  else from.setDate(from.getDate() - 29);
-  return { fromDate: toDateInputValue(from), toDate: toDateInputValue(to) };
+export function defaultPeriodRange(now = new Date()) {
+  const toDate = toDateInputValue(now);
+  return { fromDate: shiftDateInputValue(toDate, -29), toDate };
+}
+
+export function applyPeriodPreset(preset: Exclude<PeriodPreset, "custom">, now = new Date()) {
+  const toDate = toDateInputValue(now);
+  const days = preset === "last60" ? -59 : preset === "last90" ? -89 : -29;
+  return { fromDate: shiftDateInputValue(toDate, days), toDate };
+}
+
+function formatDateInputForDisplay(value: string): string {
+  const parsed = new Date(`${value}T12:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat("sr-RS", {
+    timeZone: "Europe/Belgrade",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(parsed);
+}
+
+type ProductDecisionUrlState = {
+  periodPreset: PeriodPreset;
+  fromDate: string;
+  toDate: string;
+  storeId: number | null;
+  supplierId: number | null;
+  recommendationFilter: RecommendationFilter;
+  dataQualityFilter: DataQualityFilter;
+  search: string;
+  sortField: SortField;
+  sortDir: SortDir;
+};
+
+function isDateInputValue(value: string | null): value is string {
+  return value != null && /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function readProductDecisionUrlState(fallback: { fromDate: string; toDate: string }): ProductDecisionUrlState {
+  const params = window.location.pathname === "/analytics/products"
+    ? new URLSearchParams(window.location.search)
+    : new URLSearchParams();
+  const period = params.get("period");
+  const periodPreset: PeriodPreset = period === "last60" || period === "last90" || period === "custom" ? period : "last30";
+  const recommendation = params.get("recommendation") as RecommendationFilter | null;
+  const quality = params.get("quality") as DataQualityFilter | null;
+  const sort = params.get("sort") as SortField | null;
+  const dir = params.get("dir");
+  const validRecommendations = RECOMMENDATION_OPTIONS.some((option) => option.value === recommendation);
+  const validQuality = ["all", "good", "warning", "critical", "insufficient_data"].includes(quality ?? "");
+  const validSort = ["productName", "supplierName", "revenue", "unitsSold", "velocityUnitsPerDay", "marginPct", "currentStock", "trendPct", "stockCoverDays", "sellThroughRatio", "confidencePct", "recommendationStatus", "dataQualityStatus"].includes(sort ?? "");
+  return {
+    periodPreset,
+    fromDate: isDateInputValue(params.get("from")) ? params.get("from")! : fallback.fromDate,
+    toDate: isDateInputValue(params.get("to")) ? params.get("to")! : fallback.toDate,
+    storeId: params.get("store") && /^\d+$/.test(params.get("store")!) ? Number(params.get("store")) : null,
+    supplierId: params.get("supplier") && /^\d+$/.test(params.get("supplier")!) ? Number(params.get("supplier")) : null,
+    recommendationFilter: validRecommendations ? recommendation! : "all",
+    dataQualityFilter: validQuality ? quality! : "all",
+    search: params.get("search") ?? "",
+    sortField: validSort ? sort! : "recommendationStatus",
+    sortDir: dir === "asc" ? "asc" : "desc",
+  };
+}
+
+function writeProductDecisionUrlState(state: ProductDecisionUrlState): void {
+  if (window.location.pathname !== "/analytics/products") return;
+  const params = new URLSearchParams(window.location.search);
+  const values: Record<string, string | null> = {
+    period: state.periodPreset,
+    from: state.fromDate,
+    to: state.toDate,
+    store: state.storeId == null ? null : String(state.storeId),
+    supplier: state.supplierId == null ? null : String(state.supplierId),
+    recommendation: state.recommendationFilter === "all" ? null : state.recommendationFilter,
+    quality: state.dataQualityFilter === "all" ? null : state.dataQualityFilter,
+    search: state.search.trim() || null,
+    sort: state.sortField === "recommendationStatus" ? null : state.sortField,
+    dir: state.sortDir === "desc" ? null : state.sortDir,
+  };
+  for (const [key, value] of Object.entries(values)) {
+    if (value == null) params.delete(key);
+    else params.set(key, value);
+  }
+  const query = params.toString();
+  window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
+}
+
+export function compareNullable<T>(left: T | null | undefined, right: T | null | undefined, compare: (a: T, b: T) => number, direction: SortDir): number {
+  const leftMissing = left == null;
+  const rightMissing = right == null;
+  if (leftMissing || rightMissing) {
+    if (leftMissing && rightMissing) return 0;
+    return leftMissing ? 1 : -1;
+  }
+  const result = compare(left, right);
+  return direction === "asc" ? result : -result;
 }
 
 function canonicalDataQualityStatus(
@@ -699,18 +796,19 @@ export function buildProductQueueSpec(row: ProductDecisionRow): {
 
 export default function ProductDecisionCenterPage() {
   const initialRange = useMemo(() => defaultPeriodRange(), []);
+  const initialUrlState = useMemo(() => readProductDecisionUrlState(initialRange), [initialRange]);
 
-  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("last30");
-  const [fromDate, setFromDate] = useState(initialRange.fromDate);
-  const [toDate, setToDate] = useState(initialRange.toDate);
-  const [storeId, setStoreId] = useState<number | null>(null);
-  const [supplierId, setSupplierId] = useState<number | null>(null);
-  const [recommendationFilter, setRecommendationFilter] = useState<RecommendationFilter>("all");
-  const [dataQualityFilter, setDataQualityFilter] = useState<DataQualityFilter>("all");
-  const [search, setSearch] = useState("");
+  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>(initialUrlState.periodPreset);
+  const [fromDate, setFromDate] = useState(initialUrlState.fromDate);
+  const [toDate, setToDate] = useState(initialUrlState.toDate);
+  const [storeId, setStoreId] = useState<number | null>(initialUrlState.storeId);
+  const [supplierId, setSupplierId] = useState<number | null>(initialUrlState.supplierId);
+  const [recommendationFilter, setRecommendationFilter] = useState<RecommendationFilter>(initialUrlState.recommendationFilter);
+  const [dataQualityFilter, setDataQualityFilter] = useState<DataQualityFilter>(initialUrlState.dataQualityFilter);
+  const [search, setSearch] = useState(initialUrlState.search);
   const [serverSearch, setServerSearch] = useState("");
-  const [sortField, setSortField] = useState<SortField>("recommendationStatus");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [sortField, setSortField] = useState<SortField>(initialUrlState.sortField);
+  const [sortDir, setSortDir] = useState<SortDir>(initialUrlState.sortDir);
   const [expandedProductId, setExpandedProductId] = useState<number | null>(null);
   const [timelineByProductId, setTimelineByProductId] = useState<Record<number, ProductDecisionTimelineFilterResponse | null>>({});
   const [timelineLoadingProductId, setTimelineLoadingProductId] = useState<number | null>(null);
@@ -751,6 +849,43 @@ export default function ProductDecisionCenterPage() {
 
     return () => window.clearTimeout(timer);
   }, [search]);
+
+  useEffect(() => {
+    writeProductDecisionUrlState({
+      periodPreset,
+      fromDate,
+      toDate,
+      storeId,
+      supplierId,
+      recommendationFilter,
+      dataQualityFilter,
+      search,
+      sortField,
+      sortDir,
+    });
+  }, [dataQualityFilter, fromDate, periodPreset, recommendationFilter, search, sortDir, sortField, storeId, supplierId, toDate]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const next = readProductDecisionUrlState(defaultPeriodRange());
+      setPeriodPreset(next.periodPreset);
+      setFromDate(next.fromDate);
+      setToDate(next.toDate);
+      setStoreId(next.storeId);
+      setSupplierId(next.supplierId);
+      setRecommendationFilter(next.recommendationFilter);
+      setDataQualityFilter(next.dataQualityFilter);
+      setSearch(next.search);
+      setSortField(next.sortField);
+      setSortDir(next.sortDir);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  useEffect(() => {
+    setQueueMessage(null);
+  }, [dataQualityFilter, fromDate, periodPreset, recommendationFilter, search, sortDir, sortField, storeId, supplierId, toDate]);
 
   useEffect(() => {
     const handleScopeChange = () => {
@@ -889,25 +1024,21 @@ export default function ProductDecisionCenterPage() {
   const sortedRows = useMemo(() => {
     const copy = [...filteredRows];
     copy.sort((a, b) => {
-      let diff = 0;
-      if (sortField === "productName") diff = a.productName.localeCompare(b.productName, "sr");
-      else if (sortField === "supplierName") diff = (a.supplierName ?? "").localeCompare(b.supplierName ?? "", "sr");
-      else if (sortField === "revenue") diff = a.revenue - b.revenue;
-      else if (sortField === "unitsSold") diff = a.unitsSold - b.unitsSold;
-      else if (sortField === "velocityUnitsPerDay") diff = a.velocityUnitsPerDay - b.velocityUnitsPerDay;
-      else if (sortField === "marginPct") diff = (a.marginPct ?? -9999) - (b.marginPct ?? -9999);
-      else if (sortField === "currentStock") diff = (a.currentStock ?? -9999) - (b.currentStock ?? -9999);
-      else if (sortField === "trendPct") diff = (a.trendPct ?? -9999) - (b.trendPct ?? -9999);
-      else if (sortField === "stockCoverDays") diff = (a.stockCoverDays ?? -9999) - (b.stockCoverDays ?? -9999);
-      else if (sortField === "sellThroughRatio") diff = (a.sellThroughRatio ?? -9999) - (b.sellThroughRatio ?? -9999);
-      else if (sortField === "confidencePct") diff = a.confidencePct - b.confidencePct;
-      else if (sortField === "dataQualityStatus") {
-        diff = DATA_QUALITY_ORDER[canonicalDataQualityStatus(a.dataQualityStatus)] - DATA_QUALITY_ORDER[canonicalDataQualityStatus(b.dataQualityStatus)];
-      } else {
-        diff = RECOMMENDATION_PRIORITY[a.recommendationStatus] - RECOMMENDATION_PRIORITY[b.recommendationStatus];
+      if (sortField === "productName") return compareNullable(a.productName, b.productName, (left, right) => left.localeCompare(right, "sr"), sortDir);
+      if (sortField === "supplierName") return compareNullable(a.supplierName, b.supplierName, (left, right) => left.localeCompare(right, "sr"), sortDir);
+      if (sortField === "revenue") return compareNullable(a.revenue, b.revenue, (left, right) => left - right, sortDir);
+      if (sortField === "unitsSold") return compareNullable(a.unitsSold, b.unitsSold, (left, right) => left - right, sortDir);
+      if (sortField === "velocityUnitsPerDay") return compareNullable(a.velocityUnitsPerDay, b.velocityUnitsPerDay, (left, right) => left - right, sortDir);
+      if (sortField === "marginPct") return compareNullable(a.marginPct, b.marginPct, (left, right) => left - right, sortDir);
+      if (sortField === "currentStock") return compareNullable(a.currentStock, b.currentStock, (left, right) => left - right, sortDir);
+      if (sortField === "trendPct") return compareNullable(a.trendPct, b.trendPct, (left, right) => left - right, sortDir);
+      if (sortField === "stockCoverDays") return compareNullable(a.stockCoverDays, b.stockCoverDays, (left, right) => left - right, sortDir);
+      if (sortField === "sellThroughRatio") return compareNullable(a.sellThroughRatio, b.sellThroughRatio, (left, right) => left - right, sortDir);
+      if (sortField === "confidencePct") return compareNullable(a.confidencePct, b.confidencePct, (left, right) => left - right, sortDir);
+      if (sortField === "dataQualityStatus") {
+        return compareNullable(a.dataQualityStatus, b.dataQualityStatus, (left, right) => DATA_QUALITY_ORDER[canonicalDataQualityStatus(left)] - DATA_QUALITY_ORDER[canonicalDataQualityStatus(right)], sortDir);
       }
-
-      return sortDir === "asc" ? diff : -diff;
+      return compareNullable(a.recommendationStatus, b.recommendationStatus, (left, right) => RECOMMENDATION_PRIORITY[left] - RECOMMENDATION_PRIORITY[right], sortDir);
     });
     return copy;
   }, [filteredRows, sortDir, sortField]);
@@ -1081,14 +1212,12 @@ export default function ProductDecisionCenterPage() {
   };
 
   const setSort = (field: SortField) => {
-    setSortField((prevField) => {
-      if (prevField === field) {
-        setSortDir((prevDir) => (prevDir === "asc" ? "desc" : "asc"));
-        return prevField;
-      }
+    if (sortField === field) {
+      setSortDir((prevDir) => (prevDir === "asc" ? "desc" : "asc"));
+    } else {
       setSortDir("desc");
-      return field;
-    });
+      setSortField(field);
+    }
   };
 
   const loadDecisionTimeline = useCallback(async (row: ProductDecisionRow, familyMode: "row" | "all") => {
@@ -1440,23 +1569,27 @@ export default function ProductDecisionCenterPage() {
             Od datuma
             <input
               type="date"
+              aria-label="Od datuma"
               value={fromDate}
               onChange={(event) => {
                 setFromDate(event.target.value);
                 setPeriodPreset("custom");
               }}
             />
+            <span className="product-decision-filter-period-note">Prikaz: {formatDateInputForDisplay(fromDate)}</span>
           </label>
           <label>
             Do datuma
             <input
               type="date"
+              aria-label="Do datuma"
               value={toDate}
               onChange={(event) => {
                 setToDate(event.target.value);
                 setPeriodPreset("custom");
               }}
             />
+            <span className="product-decision-filter-period-note">Prikaz: {formatDateInputForDisplay(toDate)}</span>
           </label>
           <label>
             Prodavnica
@@ -1546,86 +1679,6 @@ export default function ProductDecisionCenterPage() {
         <div className="product-decision-message product-decision-message-info" role="status">
           Prikazani podaci su delimični ili fallback. {responseMetaMessage ?? "Proverite status osvežavanja analitike."}
         </div>
-      ) : null}
-
-      <header className="product-decision-header">
-        <div>
-          <h1>Odluke o proizvodima</h1>
-          <p>{PRODUCT_DECISION_PAGE_EXPLANATION}</p>
-        </div>
-        <AnalyticsTableToolbar
-          tableKey="product-decision-center"
-          tableTitle="Odluke o proizvodima"
-          columns={TABLE_COLUMNS}
-          rows={sortedRows}
-          filters={tableFilters}
-          metadata={tableMetadata}
-        />
-      </header>
-
-      {!hideKpiChrome ? (
-      <section className="product-decision-kpis" aria-label="KPI kartice">
-        <article className="kpi-card">
-          <span>Za dopunu</span>
-          <strong>{fmtNumber(kpis.replenishCount, 0, "0")}</strong>
-          <KpiExplainButton metricKey="replenishCount" ariaLabel="Kako je izračunat broj proizvoda za dopunu" />
-        </article>
-        <article className="kpi-card">
-          <span>Za pojačanje</span>
-          <strong>{fmtNumber(kpis.boostCount, 0, "0")}</strong>
-          <KpiExplainButton metricKey="boostCount" ariaLabel="Kako je izračunat broj proizvoda za pojačanje" />
-        </article>
-        <article className="kpi-card">
-          <span>Za sniženje</span>
-          <strong>{fmtNumber(kpis.markdownCount, 0, "0")}</strong>
-          <KpiExplainButton metricKey="markdownCount" ariaLabel="Kako je izračunat broj proizvoda za sniženje" />
-        </article>
-        <article className="kpi-card">
-          <span>Ne naručivati</span>
-          <strong>{fmtNumber(kpis.doNotOrderCount, 0, "0")}</strong>
-          <KpiExplainButton metricKey="doNotOrderCount" ariaLabel="Kako je izračunat broj proizvoda koje ne treba naručivati" />
-        </article>
-        <article className="kpi-card">
-          <span>Proveriti podatke</span>
-          <strong>{fmtNumber(kpis.fixDataCount, 0, "0")}</strong>
-          <KpiExplainButton metricKey="fixDataCount" ariaLabel="Kako je izračunat broj proizvoda za proveru podataka" />
-        </article>
-        <article className="kpi-card">
-          <span>Procena izgubljene prodaje</span>
-          <strong>{fmtRsd(kpis.lostSalesEstimate, 0, "N/A")}</strong>
-          <KpiExplainButton metricKey="lostSalesEstimate" ariaLabel="Kako je izračunata procena izgubljene prodaje" />
-        </article>
-        <article className="kpi-card">
-          <span>Kapital u sporoj zalihi</span>
-          <strong>{fmtRsd(kpis.slowStockCapital, 0, "N/A")}</strong>
-          <KpiExplainButton metricKey="slowStockCapital" ariaLabel="Kako je izračunat kapital u sporoj zalihi" />
-        </article>
-        <article className="kpi-card">
-          <span>Rizik pokrivenosti</span>
-          <strong>{fmtNumber(kpis.stockCoverRiskCount, 0, "0")}</strong>
-          <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj artikala sa rizičnom pokrivenošću zalihe" />
-        </article>
-        <article className="kpi-card">
-          <span>Nedovoljno podataka za pokrivenost</span>
-          <strong>{fmtNumber(kpis.insufficientStockCoverageCount, 0, "0")}</strong>
-          <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj artikala bez dovoljno podataka za pokrivenost zalihe" />
-        </article>
-        <article className="kpi-card">
-          <span>SKU sa niskom pokrivenošću</span>
-          <strong>{fmtNumber(kpis.lowCoverSkus, 0, "0")}</strong>
-          <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj artikala sa niskom pokrivenošću" />
-        </article>
-        <article className="kpi-card">
-          <span>SKU sa sporim obrtom</span>
-          <strong>{fmtNumber(kpis.slowStockSkus, 0, "0")}</strong>
-          <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj artikala sa sporim obrtom" />
-        </article>
-        <article className="kpi-card">
-          <span>SKU sa dobrim obrtom</span>
-          <strong>{fmtNumber(kpis.goodSellThroughSkus, 0, "0")}</strong>
-          <KpiExplainButton metricKey="sellThrough" ariaLabel="Kako je izračunat broj artikala sa dobrim obrtom zalihe" />
-        </article>
-      </section>
       ) : null}
 
       {queueMessage ? <div className="product-decision-message product-decision-message-info">{queueMessage}</div> : null}

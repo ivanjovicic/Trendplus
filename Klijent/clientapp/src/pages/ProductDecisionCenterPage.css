@@ -113,6 +113,14 @@
   box-shadow: 0 0 0 4px var(--theme-color-rgba-68-208-255-0p12, rgba(68,208,255,0.12));
 }
 
+.product-decision-filter-period-note {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
 .product-decision-message {
   border-radius: 18px;
   padding: 0.9rem 1rem;
