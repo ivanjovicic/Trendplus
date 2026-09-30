@@ -1932,7 +1932,7 @@ Against an approved read-only production or replica connection, compare raw sale
 
 ### Dependencies
 
-- STAB16, RQ445-RQ448, RQ453 and approved read-only credentials. Do not duplicate STAB16 deployment or worker ownership.
+- STAB16, RQ445-RQ448, RQ453 and approved read-only credentials. Reuse the repository-local Supplier reconciliation pack from RQ524 if it is available, but do not wait for RQ524 if the production gate opens first; RQ524 itself must not execute against production. Do not duplicate STAB16 deployment or worker ownership.
 
 ---
 
