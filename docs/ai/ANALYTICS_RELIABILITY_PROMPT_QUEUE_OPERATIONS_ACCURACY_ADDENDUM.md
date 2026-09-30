@@ -2,7 +2,7 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ516
 Owner decisions 2026-09-29 (Ivan): RQ501 aligns Color with the RQ496 Shoe Type signed net-sales contract (`net_sales_signed`, explicit numerator/denominator/state, mathematically valid negative and >100% values, unavailable never coerced to recommendation zero; quality/coverage ratios remain bounded 0–100). RQ505 frames Color as a supporting signal/analysis surface with signal trust framing; backend status/reason stays authoritative and `decisionScore` remains detail/transparency evidence, not a competing final CTA. RQ507 approves removing Supplier compatibility aliases from the primary Operations sidebar while preserving legacy URLs/redirects and keeping Shoe Type, Color, Daily and Pre/Post available. RQ476 uses positive net revenue of the declared visible/decision population for concentration/share; negative/returns-only rows remain visible without ambiguous positive share, and unknown-supplier inclusion is explicit and consistent across API/UI/recommendation/export.
 Routing repair 2026-09-29: RQ448's live section was stale at `IN_PROGRESS`; synchronized queue/roadmap truth and prior evidence show it remains `WAITING` behind the authenticated browser/API/deployment gate. No implementation claim is reopened.
 Routing reconciliation 2026-09-29: any workspace still showing `RQ466` as `Current READY` is stale. `RQ466` and `RQ502` are `DONE` on current main; no RQ prompt is currently READY. Registration evidence: `.ai/runs/2026-09-29-RQ502-registration-evidence.md`.
@@ -3378,12 +3378,13 @@ No backend formula, cost priority, share rule or recommendation change.
 ## RQ505 - Decide one product-authority model for Shoe Type and Color supporting analytics
 
 Status: WAITING  
+Ready after: RQ516 DONE; then promote after fresh collision check  
 Priority: P2  
 Type: product-contract/frontend/docs/tests  
 Feature family: category-screen-authority  
 Parallel-safe: no  
 Owner: Analytics Product / Category Sales  
-Owner decision required: whether Color is a recommendation surface or a supporting signal surface
+Owner decision resolved 2026-09-29 (Ivan): Color is a supporting signal/analysis surface with signal trust framing; backend status/reason remains authoritative and decisionScore stays detail/transparency evidence, not a competing final CTA.
 
 ### Problem
 
@@ -3440,9 +3441,9 @@ Do not change recommendation engine formulas under this prompt.
 
 ### Dependencies
 
-- Product-owner decision required.
-- Coordinate with RQ501 if Color share semantics alter recommendation inputs.
-- RQ508 documents the final chosen model after implementation.
+- Product-owner decision is resolved by the 2026-09-29 queue-level owner decision.
+- RQ501 is DONE; preserve its signed-share semantics and backend recommendation authority.
+- RQ508 documents the final chosen model after RQ505/RQ507 implementation.
 
 ## RQ506 - Guard cross-dimension margin parity before snapshot cost is enabled beyond Supplier/Shoe Type
 
@@ -3516,12 +3517,13 @@ That would make cross-dimensional margin comparison unsafe unless the difference
 ## RQ507 - Simplify Operations navigation: keep Supplier compatibility routes but remove duplicate sidebar ownership
 
 Status: WAITING  
+Ready after: RQ516 DONE; prefer RQ505 first, then promote after fresh collision check  
 Priority: P2  
 Type: product-navigation/frontend/tests  
 Feature family: operations-analytics-information-architecture  
 Parallel-safe: no  
 Owner: Analytics Product / Navigation  
-Owner decision required: approve sidebar de-duplication
+Owner decision resolved 2026-09-29 (Ivan): remove Supplier compatibility aliases from the primary Operations sidebar while preserving legacy URLs/redirects and keeping Shoe Type, Color, Daily and Pre/Post available.
 
 ### Problem
 
@@ -3576,8 +3578,8 @@ No analytics endpoint or metric change.
 
 ### Dependencies
 
-- Product-owner approval for navigation removal.
-- Independent of numeric contracts; can be implemented after approval without touching data logic.
+- Product-owner approval was recorded on 2026-09-29 and is no longer a blocker.
+- Independent of numeric contracts; implement after fresh collision/routing recovery without touching data logic.
 
 ## RQ508 - Reconcile analytics execution-plan metric dictionary with current delivered contracts
 
@@ -3641,3 +3643,83 @@ No runtime code.
 
 - Wait for RQ501/RQ505/RQ507 decisions so the document does not encode an unresolved product choice as fact.
 - May read RQ502-RQ504 outcomes if they land first.
+
+
+## RQ516 - Re-certify analytics backend tests after Decision Board signature repair
+
+Status: READY  
+Priority: P1  
+Type: backend-build/tests/evidence  
+Feature family: analytics-post-compile-recertification  
+Parallel-safe: no  
+Owner: Analytics Reliability / Backend Validation  
+Commit suggestion: `test(analytics): recertify blocked backend contracts`
+
+### Problem
+
+Several 2026-09-30 analytics prompts were completed with frontend/contract evidence, but their focused API tests could not execute because `Api/Endpoints/DecisionBoardEndpoints.cs` no longer matched the expanded `AnalyticsActionItemService.ListAsync` signature. The repository-local compile blocker was repaired on main in commit `0aba65a74748f98115d263261ce4de6eb009ed61` by passing the Decision Board period as `createdFrom/createdTo` and naming the cancellation token.
+
+The affected DONE prompts must not be reopened merely because their evidence recorded the old blocker, but current main needs one bounded exact-main re-certification pass so new backend regressions are not hidden behind stale “blocked before execution” notes.
+
+### Evidence
+
+- RQ471 evidence: Product Decision backend summary test blocked by DecisionBoard compile errors `CS8323/CS8130/CS8183`.
+- RQ476 evidence: Supplier share backend tests blocked by the same compile defect.
+- RQ477 evidence: Analytics Actions shared-created-population endpoint test blocked by the same defect.
+- RQ478 evidence: Actions measurement-denominator API test blocked by the same defect.
+- RQ488 evidence: focused API test blocked by the same defect.
+- RQ485 recorded one pre-existing Product Decision `actionStatusFallback` frontend assertion failure; current source and test text now appear aligned and should be rerun rather than blindly changed.
+- Daily Sales URL regression mentioned by RQ511/RQ512 is already superseded by later RQ502 evidence with the final Daily Sales set passing 5/5; do not create a duplicate fix.
+- Repair commit: `0aba65a74748f98115d263261ce4de6eb009ed61`.
+
+### Scope
+
+- exact current-main API build;
+- focused backend tests that were previously blocked in RQ471/RQ476/RQ477/RQ478/RQ488;
+- focused Product Decision `actionStatusFallback` frontend rerun;
+- queue/evidence synchronization only if a previously blocked test now proves a real residual defect.
+
+Do not change journal/live/provider/schema semantics, recommendation scoring, owner-approved product decisions, production data, or Q83/RQ491 ownership.
+
+### Read first
+
+- `.ai/runs/2026-09-30-RQ471-evidence.md`
+- `.ai/runs/2026-09-30-RQ476-evidence.md`
+- `.ai/runs/2026-09-30-RQ477-evidence.md`
+- `.ai/runs/2026-09-30-RQ478-evidence.md`
+- `.ai/runs/2026-09-30-RQ485-evidence.md`
+- `.ai/runs/2026-09-30-RQ488-evidence.md`
+- `Api/Endpoints/DecisionBoardEndpoints.cs`
+- `Infrastructure/Services/Analytics/AnalyticsActionItemService.cs`
+
+### Do
+
+1. Fresh-fetch `origin/main`; require the Decision Board repair commit to be an ancestor and verify no active lock/branch/PR owns the same validation/fix scope.
+2. Run `dotnet build Api/Api.csproj --configuration Release`.
+3. Run the focused API tests named/filtered by the five affected evidence files. If a filter no longer resolves because a test was renamed, locate the exact current test owner instead of weakening coverage.
+4. Rerun `ProductDecisionCenterPage.actionStatusFallback.spec.tsx`.
+5. If all formerly blocked proof is green, record one evidence file referencing exact SHA and leave RQ471/RQ476/RQ477/RQ478/RQ488 as DONE.
+6. If a deterministic repository-local failure remains, fix only the smallest root cause, add/repair focused regression coverage, rerun the affected set, and document which DONE prompt’s residual was closed. Do not alter business semantics to make tests pass.
+7. Run prompt/guardrail validators and `git diff --check`; synchronize routing back to `Current READY prompt: none` only after exact-main delivery and fresh verification.
+8. After RQ516 closure, re-enter idle recovery. RQ505 and RQ507 no longer need owner decisions; prefer RQ505 first because it defines category-screen authority, then RQ507 navigation, then dependency-complete RQ508 documentation.
+
+### Tests / evidence
+
+- API Release build passes.
+- Previously blocked focused backend tests execute (not merely compile) and pass, or a concrete residual is repaired with focused proof.
+- `ProductDecisionCenterPage.actionStatusFallback.spec.tsx` passes or any real mismatch is repaired without weakening the user-facing fallback contract.
+- queue validator, analytics guardrails where touched, and `git diff --check` pass.
+- evidence records exact tested main SHA and distinguishes local code proof from live/provider/schema proof.
+
+### Acceptance
+
+- No current-main analytics backend test remains hidden behind the repaired Decision Board signature error.
+- DONE prompts keep truthful evidence: historical blocked notes remain historical, while RQ516 supplies current exact-main execution proof.
+- No duplicate Daily Sales repair is introduced.
+- RQ505/RQ507 routing correctly reflects that their owner decisions were already resolved on 2026-09-29.
+
+### Dependencies
+
+- Requires repair commit `0aba65a74748f98115d263261ce4de6eb009ed61` on current main.
+- No live database, provider, browser, seed-owner or product-owner decision is required for this repository-local certification pass.
+- Q83 remains PARTIAL and RQ491 remains WAITING.
