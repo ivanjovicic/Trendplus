@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ471 (IN_PROGRESS in this workspace)
+Current READY prompt: none
 Systemic reliability audit registration 2026-09-29: `RQ509`-`RQ515` are registered as WAITING follow-ups from `docs/qa/ANALYTICS_RELIABILITY_NEXT_WAVE_AUDIT_2026-09-29.md`. They extend, rather than replace, RQ359-RQ367/RQ141/RQ145-RQ149 and the RQ413/RQ449/RQ450 integrity stack. No RQ509-RQ515 prompt is promoted or claimed by this audit; RQ501 completed separately and current routing is defined only by this header plus fresh dependency/collision checks.
 Owner promotion/claim 2026-09-29: idle recovery refreshed `origin/main` to `67e310027c7684d4c468665db760308bb6acad4c`, verified no active RQ509 lock/branch/PR owner and no collision with the PARTIAL/non-runnable RQ137/RQ139/RQ140 contracts. RQ509 moved `WAITING -> READY -> IN_PROGRESS` as the first P0 context-identity prompt; local lock: `.ai/task-locks/RQ509-codex.lock.md`. Q83 remains the exclusive PARTIAL Pre/Post SQL/view owner and RQ491 is not promoted.
 Owner completion 2026-09-29: RQ509 moved `IN_PROGRESS -> DONE` and was delivered directly to `main` in implementation `d71afbb67864c7990c08f754c6234127f45a33bf`. The additive context descriptor/fingerprint now covers Dashboard, Product Decision Center, Supplier, Shoe Type, Color, Data Quality and Supplier Decision Hub, with deterministic read-only reconciliation classifications and fail-closed unavailable identity. Focused backend proof is 46/46; frontend schema proof is 16/16; typecheck, analytics guardrails, production build, API build, governance validators and diff check pass. Run log: `.ai/runs/2026-09-29-RQ509-evidence.md`. Evidence state: synchronized. Current RQ READY returned to `none`; RQ510 is the next P0 dependency-complete candidate after fresh recovery. Q83 remains PARTIAL and RQ491 remains WAITING.
@@ -26209,7 +26209,7 @@ Any analyzed product is findable, the cap is visible and 1,200 returned rows are
 
 ## RQ471 - Align Product Decision KPI populations with row actionability
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P2
 Type: frontend/backend-summary/tests
 Feature family: pdc-kpi-population-actionability
@@ -26264,6 +26264,14 @@ Product KPIs cannot be read as one population when they are not, and actionable 
 - Fresh idle recovery verified exact `origin/main` `5c3581964f049d740f10f5c8c9b7f6d05b77aa6a`, with RQ469/RQ470 DONE, no active task lock, branch or open PR collision, and no runnable P1 remaining without an external or owner gate.
 - RQ471 is promoted `WAITING -> READY -> IN_PROGRESS` as the next safe repository-local fallback. Scope is limited to backend-owned Product Decision population/actionability metadata and page labels/KPIs; no scoring or journal-gate semantics are changed.
 - Local lock: `.ai/task-locks/RQ471-codex.lock.md`.
+
+### Completion note
+
+- Completion date: 2026-09-30
+- RQ471 is DONE on implementation SHA `39b4097f3b82a9eb0508c3ec0fdd4a4ee82799b8`, delivered directly to `main`; fresh fetch verified `HEAD == origin/main`.
+- Product Decision summary now exposes backend-owned actionable/blocked/insufficient-evidence counts, recommendation status counts, and coverage/sell-through counters. Operational coverage risk excludes `insufficient_data`, which is shown separately; page labels distinguish returned-row counts, analyzed-row money and backend action permission.
+- Focused frontend Product Decision proof is 33/34 across queue-status/confidence/action-status fallback files; the single failed assertion is a pre-existing isolated action-status fallback title expectation outside this diff. Typecheck, client build, queue governance (613 tasks) and diff checks pass. API test/build remain blocked before execution by unrelated `DecisionBoardEndpoints.cs` errors `CS8323`, `CS8130`, `CS8183`.
+- Local lock removed after delivery. RQ472 remains journal-owner gated, RQ474/RQ475/RQ479 remain live/provider-owner gated, RQ481 remains product-owner gated, Q83 remains PARTIAL and RQ491 remains WAITING.
 
 ---
 
