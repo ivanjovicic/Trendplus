@@ -1044,7 +1044,7 @@ describe("AnalyticsActionsPage", () => {
     expect(screen.queryByText("Dopuni artikal A")).not.toBeInTheDocument();
   });
 
-  it("reloads summary only for source, priority and data quality filters", async () => {
+  it("reloads summary for the shared period and population filters", async () => {
     render(<AnalyticsActionsPage />);
 
     expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
@@ -1053,6 +1053,8 @@ describe("AnalyticsActionsPage", () => {
     fireEvent.change(screen.getByLabelText("Filter po izvoru"), { target: { value: "supplier" } });
     await waitFor(() => {
       expect(getAnalyticsActionOutcomeSummaryMock).toHaveBeenLastCalledWith({
+        createdFrom: expect.any(String),
+        createdTo: expect.any(String),
         sourceType: "supplier",
         priority: undefined,
         dataQualityStatus: undefined,
@@ -1062,6 +1064,8 @@ describe("AnalyticsActionsPage", () => {
     fireEvent.change(screen.getByLabelText("Filter po prioritetu"), { target: { value: "P2" } });
     await waitFor(() => {
       expect(getAnalyticsActionOutcomeSummaryMock).toHaveBeenLastCalledWith({
+        createdFrom: expect.any(String),
+        createdTo: expect.any(String),
         sourceType: "supplier",
         priority: "P2",
         dataQualityStatus: undefined,
@@ -1071,6 +1075,8 @@ describe("AnalyticsActionsPage", () => {
     fireEvent.change(screen.getByLabelText("Filter po kvalitetu podataka"), { target: { value: "warning" } });
     await waitFor(() => {
       expect(getAnalyticsActionOutcomeSummaryMock).toHaveBeenLastCalledWith({
+        createdFrom: expect.any(String),
+        createdTo: expect.any(String),
         sourceType: "supplier",
         priority: "P2",
         dataQualityStatus: "warning",

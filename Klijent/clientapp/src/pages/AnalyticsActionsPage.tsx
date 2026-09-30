@@ -260,6 +260,31 @@ function getOutcomeSummaryWarningLabel(code: string): string {
   return OUTCOME_SUMMARY_WARNING_LABELS[code] ?? "Upozorenje o kvalitetu ili merenju nije detaljnije mapirano.";
 }
 
+function getDefaultCreatedPeriod(): { createdFrom: string; createdTo: string } {
+  const to = new Date();
+  const from = new Date(to);
+  from.setUTCDate(from.getUTCDate() - 90);
+  return { createdFrom: from.toISOString(), createdTo: to.toISOString() };
+}
+
+function isoToDateInput(value: string | null | undefined): string {
+  return value ? value.slice(0, 10) : "";
+}
+
+function dateInputToIso(value: string, endOfDay: boolean): string | undefined {
+  if (!value) return undefined;
+  return `${value}T${endOfDay ? "23:59:59.999" : "00:00:00.000"}Z`;
+}
+
+function formatActionPopulationPeriod(filters: AnalyticsActionFilters): string {
+  const from = isoToDateInput(filters.createdFrom);
+  const to = isoToDateInput(filters.createdTo);
+  if (from && to) return `${from} – ${to}`;
+  if (from) return `od ${from}`;
+  if (to) return `do ${to}`;
+  return "sve evidentirane akcije";
+}
+
 function getOutcomeSummaryEmptyReason(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const normalized = value.trim().toLowerCase();
@@ -567,10 +592,12 @@ export default function AnalyticsActionsPage() {
 
   const [filters, setFilters] = useState<AnalyticsActionFilters>(() => {
     const sourceType = parseSourceTypeQuery(new URLSearchParams(location.search).get("sourceType"));
+    const period = getDefaultCreatedPeriod();
     return {
       page: 1,
       pageSize: 50,
       sourceType,
+      ...period,
     };
   });
 
@@ -615,12 +642,18 @@ export default function AnalyticsActionsPage() {
 
   const loadCounts = useCallback(async () => {
     try {
-      const c = await getAnalyticsActionCounts();
+      const c = await getAnalyticsActionCounts({
+        createdFrom: filters.createdFrom,
+        createdTo: filters.createdTo,
+        sourceType: filters.sourceType,
+        priority: filters.priority,
+        dataQualityStatus: filters.dataQualityStatus,
+      });
       setCounts(c);
     } catch {
       // non-critical
     }
-  }, []);
+  }, [filters.createdFrom, filters.createdTo, filters.sourceType, filters.priority, filters.dataQualityStatus]);
 
   const loadOutcomeSummary = useCallback(async (f: AnalyticsActionFilters) => {
     const requestSeq = ++outcomeSummaryRequestSeqRef.current;
@@ -628,6 +661,8 @@ export default function AnalyticsActionsPage() {
     setOutcomeSummaryError(null);
     try {
       const summary = await getAnalyticsActionOutcomeSummary({
+        createdFrom: f.createdFrom,
+        createdTo: f.createdTo,
         sourceType: f.sourceType,
         priority: f.priority,
         dataQualityStatus: f.dataQualityStatus,
@@ -656,7 +691,7 @@ export default function AnalyticsActionsPage() {
 
   useEffect(() => {
     void loadOutcomeSummary(filters);
-  }, [filters.sourceType, filters.priority, filters.dataQualityStatus, loadOutcomeSummary]);
+  }, [filters.createdFrom, filters.createdTo, filters.sourceType, filters.priority, filters.dataQualityStatus, loadOutcomeSummary]);
 
   useEffect(() => {
     const sourceType = parseSourceTypeQuery(new URLSearchParams(location.search).get("sourceType"));
@@ -920,7 +955,7 @@ export default function AnalyticsActionsPage() {
           <div>
             <h2 id="aaq-summary-title" className="aaq-summary-title">Sažetak ishoda akcija</h2>
             <p className="aaq-summary-subtitle">
-              Pregled za {formatSummaryWindow(outcomeSummary)}. Sažetak prati izvor, prioritet i kvalitet podataka;
+              Pregled za {formatSummaryWindow(outcomeSummary)}. Lista, KPI brojači i sažetak koriste istu populaciju kreiranih akcija;
               status i tekstualna pretraga važe samo za listu akcija.
             </p>
             <p className="aaq-summary-hint">
@@ -1147,6 +1182,24 @@ export default function AnalyticsActionsPage() {
       )}
 
       <div className="aaq-filters">
+        <label className="aaq-filter-date">
+          <span>Period od</span>
+          <input
+            type="date"
+            value={isoToDateInput(filters.createdFrom)}
+            onChange={(e) => setFilters((current) => ({ ...current, createdFrom: dateInputToIso(e.target.value, false), page: 1 }))}
+            aria-label="Period od"
+          />
+        </label>
+        <label className="aaq-filter-date">
+          <span>Period do</span>
+          <input
+            type="date"
+            value={isoToDateInput(filters.createdTo)}
+            onChange={(e) => setFilters((current) => ({ ...current, createdTo: dateInputToIso(e.target.value, true), page: 1 }))}
+            aria-label="Period do"
+          />
+        </label>
         <select
           value={filters.status ?? ""}
           onChange={(e) => setFilter("status", e.target.value as AnalyticsActionStatus)}
@@ -1201,6 +1254,10 @@ export default function AnalyticsActionsPage() {
           aria-label="Pretraži akcije"
         />
       </div>
+
+      <p className="aaq-population-contract" role="status">
+        Populacija: akcije kreirane {formatActionPopulationPeriod(filters)}. Lista: {fmtNumber(totalCount, 0, "0")} akcija; KPI brojači i sažetak koriste isti period, izvor, prioritet i kvalitet podataka.
+      </p>
 
       {error ? (
         <AnalyticsErrorState

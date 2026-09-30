@@ -59,6 +59,8 @@ public sealed class AnalyticsActionItemService
         string? sourceType,
         string? dataQualityStatus,
         string? search,
+        DateTime? createdFrom,
+        DateTime? createdTo,
         int page,
         int pageSize,
         CancellationToken ct = default)
@@ -102,6 +104,12 @@ public sealed class AnalyticsActionItemService
                 x.SourceType.ToLower().Contains(term));
         }
 
+        if (createdFrom.HasValue)
+            q = q.Where(x => x.CreatedAtUtc >= createdFrom.Value);
+
+        if (createdTo.HasValue)
+            q = q.Where(x => x.CreatedAtUtc <= createdTo.Value);
+
         var totalCount = await q.CountAsync(ct);
 
         var items = await q
@@ -129,16 +137,46 @@ public sealed class AnalyticsActionItemService
 
     // ── Counts for KPI bar ─────────────────────────────────────────────────
 
-    public async Task<AnalyticsActionCountsDto> GetCountsAsync(CancellationToken ct = default)
+    public async Task<AnalyticsActionCountsDto> GetCountsAsync(
+        DateTime? createdFrom,
+        DateTime? createdTo,
+        string? sourceType,
+        string? priority,
+        string? dataQualityStatus,
+        CancellationToken ct = default)
     {
-        var items = await _db.AnalyticsActionItems
-            .AsNoTracking()
+        var q = _db.AnalyticsActionItems.AsNoTracking();
+
+        if (createdFrom.HasValue)
+            q = q.Where(x => x.CreatedAtUtc >= createdFrom.Value);
+
+        if (createdTo.HasValue)
+            q = q.Where(x => x.CreatedAtUtc <= createdTo.Value);
+
+        if (!string.IsNullOrWhiteSpace(sourceType))
+            q = q.Where(x => x.SourceType == sourceType);
+
+        if (!string.IsNullOrWhiteSpace(priority))
+            q = q.Where(x => x.Priority == priority);
+
+        if (!string.IsNullOrWhiteSpace(dataQualityStatus))
+        {
+            var legacyKeys = AnalyticsActionConstants.DataQualityStatuses.LegacyMappings
+                .Where(kv => string.Equals(kv.Value, dataQualityStatus, StringComparison.OrdinalIgnoreCase))
+                .Select(kv => kv.Key)
+                .ToArray();
+
+            q = legacyKeys.Length > 0
+                ? q.Where(x => x.DataQualityStatus == dataQualityStatus || legacyKeys.Contains(x.DataQualityStatus))
+                : q.Where(x => x.DataQualityStatus == dataQualityStatus);
+        }
+
+        var items = await q
             .GroupBy(x => x.Status)
             .Select(g => new { Status = g.Key, Count = g.Count() })
             .ToListAsync(ct);
 
-        var p1Open = await _db.AnalyticsActionItems
-            .AsNoTracking()
+        var p1Open = await q
             .CountAsync(x =>
                 x.Priority == AnalyticsActionConstants.Priorities.P1 &&
                 (x.Status == AnalyticsActionConstants.Statuses.New ||
@@ -225,7 +263,10 @@ public sealed class AnalyticsActionItemService
                     SampleSize: 0,
                     MeasuredSampleSize: 0,
                     Warnings: warningCodes,
-                    EmptyReason: "Nema akcija za izabrane filtere."
+                    EmptyReason: "Nema akcija za izabrane filtere.",
+                    PopulationFilters: BuildSummaryPopulationFilters(query),
+                    RequestedDataScope: "action_ledger",
+                    EffectiveDataScope: "action_ledger"
                 ),
                 Totals: new AnalyticsActionOutcomeSummaryTotalsDto(
                     CreatedCount: 0,
@@ -279,7 +320,10 @@ public sealed class AnalyticsActionItemService
                 SampleSize: items.Count,
                 MeasuredSampleSize: totals.MeasuredCount,
                 Warnings: warningCodes,
-                EmptyReason: emptyReason
+                EmptyReason: emptyReason,
+                PopulationFilters: BuildSummaryPopulationFilters(query),
+                RequestedDataScope: "action_ledger",
+                EffectiveDataScope: "action_ledger"
             ),
             Totals: new AnalyticsActionOutcomeSummaryTotalsDto(
                 CreatedCount: items.Count,
@@ -1179,6 +1223,21 @@ public sealed class AnalyticsActionItemService
         return "created";
     }
 
+    private static IReadOnlyDictionary<string, string?> BuildSummaryPopulationFilters(
+        AnalyticsActionOutcomeSummaryQuery query)
+        => new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            ["createdFrom"] = query.CreatedFrom?.ToString("O"),
+            ["createdTo"] = query.CreatedTo?.ToString("O"),
+            ["resolvedFrom"] = query.ResolvedFrom?.ToString("O"),
+            ["resolvedTo"] = query.ResolvedTo?.ToString("O"),
+            ["measuredFrom"] = query.MeasuredFrom?.ToString("O"),
+            ["measuredTo"] = query.MeasuredTo?.ToString("O"),
+            ["sourceType"] = query.SourceType,
+            ["priority"] = query.Priority,
+            ["dataQualityStatus"] = query.DataQualityStatus
+        };
+
     private static string NormalizeOutcomeStatus(string? outcomeStatus)
     {
         if (string.IsNullOrWhiteSpace(outcomeStatus))
@@ -1511,7 +1570,10 @@ public sealed record AnalyticsActionOutcomeSummaryMetaDto(
     int SampleSize,
     int MeasuredSampleSize,
     IReadOnlyList<string> Warnings,
-    string? EmptyReason
+    string? EmptyReason,
+    IReadOnlyDictionary<string, string?>? PopulationFilters = null,
+    string? RequestedDataScope = null,
+    string? EffectiveDataScope = null
 );
 
 public sealed record AnalyticsActionOutcomeSummaryTotalsDto(

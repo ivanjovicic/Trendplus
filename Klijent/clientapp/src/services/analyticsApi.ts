@@ -56,6 +56,7 @@ import type {
   AnalyticsActionOutcomeSummaryFilters,
   AnalyticsActionOutcomeSummaryResponse,
   AnalyticsActionFilters,
+  AnalyticsActionPopulationFilters,
   AnalyticsResponseMeta,
   SupplierDecisionDurableReport,
   PilotIntakeDurableReport,
@@ -1535,6 +1536,8 @@ export async function getAnalyticsActions(
   if (filters?.sourceType) params.append("sourceType", filters.sourceType);
   if (filters?.dataQualityStatus) params.append("dataQualityStatus", filters.dataQualityStatus);
   if (filters?.search) params.append("search", filters.search);
+  if (filters?.createdFrom) params.append("createdFrom", filters.createdFrom);
+  if (filters?.createdTo) params.append("createdTo", filters.createdTo);
   if (filters?.page != null) params.append("page", String(filters.page));
   if (filters?.pageSize != null) params.append("pageSize", String(filters.pageSize));
   return fetchJson<AnalyticsActionListResponse>(
@@ -1546,10 +1549,18 @@ export async function getAnalyticsActions(
   );
 }
 
-export async function getAnalyticsActionCounts(): Promise<AnalyticsActionCounts> {
+export async function getAnalyticsActionCounts(
+  filters?: AnalyticsActionPopulationFilters
+): Promise<AnalyticsActionCounts> {
+  const params = new URLSearchParams();
+  if (filters?.createdFrom) params.append("createdFrom", filters.createdFrom);
+  if (filters?.createdTo) params.append("createdTo", filters.createdTo);
+  if (filters?.sourceType) params.append("sourceType", filters.sourceType);
+  if (filters?.priority) params.append("priority", filters.priority);
+  if (filters?.dataQualityStatus) params.append("dataQualityStatus", filters.dataQualityStatus);
   return fetchJson<AnalyticsActionCounts>(
     "/api/analytics/actions/counts",
-    undefined,
+    params,
     "Greška pri učitavanju brojača akcija",
     undefined,
     analyticsActionCountsResponseSchema,

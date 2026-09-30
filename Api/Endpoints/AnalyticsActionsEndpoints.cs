@@ -22,6 +22,8 @@ public static class AnalyticsActionsEndpoints
             string? sourceType,
             string? dataQualityStatus,
             string? search,
+            DateTime? createdFrom,
+            DateTime? createdTo,
             int page = 1,
             int pageSize = 50,
             CancellationToken ct = default) =>
@@ -42,7 +44,10 @@ public static class AnalyticsActionsEndpoints
             if (normalizedDataQualityStatus != null && !AnalyticsActionConstants.IsValidDataQualityStatus(normalizedDataQualityStatus))
                 return Results.BadRequest($"dataQualityStatus must be one of: {string.Join(", ", AnalyticsActionConstants.DataQualityStatuses.AllValues)}");
 
-            var (items, totalCount) = await svc.ListAsync(status, priority, sourceType, normalizedDataQualityStatus, search, page, pageSize, ct);
+            if (createdFrom.HasValue && createdTo.HasValue && createdFrom > createdTo)
+                return Results.BadRequest("createdFrom must be earlier than or equal to createdTo");
+
+            var (items, totalCount) = await svc.ListAsync(status, priority, sourceType, normalizedDataQualityStatus, search, createdFrom, createdTo, page, pageSize, ct);
             foreach (var item in items)
             {
                 AttachRecommendationLifecycle(item);
@@ -52,8 +57,12 @@ public static class AnalyticsActionsEndpoints
                 isEmpty: totalCount == 0,
                 dataQualityStatus: normalizedDataQualityStatus,
                 rowLimitSemantics: $"page_{page};page_size_{pageSize}",
+                requestedPeriodFromUtc: createdFrom,
+                requestedPeriodToUtc: createdTo,
                 populationFilters: new Dictionary<string, string?>
                 {
+                    ["createdFrom"] = createdFrom?.ToString("O"),
+                    ["createdTo"] = createdTo?.ToString("O"),
                     ["status"] = status,
                     ["priority"] = priority,
                     ["sourceType"] = sourceType,
@@ -76,9 +85,27 @@ public static class AnalyticsActionsEndpoints
         // GET /api/analytics/actions/counts
         group.MapGet("/counts", async (
             AnalyticsActionItemService svc,
+            DateTime? createdFrom,
+            DateTime? createdTo,
+            string? sourceType,
+            string? priority,
+            string? dataQualityStatus,
             CancellationToken ct) =>
         {
-            var counts = await svc.GetCountsAsync(ct);
+            if (createdFrom.HasValue && createdTo.HasValue && createdFrom > createdTo)
+                return Results.BadRequest("createdFrom must be earlier than or equal to createdTo");
+
+            if (!string.IsNullOrWhiteSpace(sourceType) && !AnalyticsActionConstants.IsValidSourceType(sourceType))
+                return Results.BadRequest($"sourceType must be one of: {string.Join(", ", AnalyticsActionConstants.SourceTypes.AllValues)}");
+
+            if (!string.IsNullOrWhiteSpace(priority) && !AnalyticsActionConstants.IsValidPriority(priority))
+                return Results.BadRequest($"priority must be one of: {string.Join(", ", AnalyticsActionConstants.Priorities.AllValues)}");
+
+            var normalizedDataQualityStatus = AnalyticsActionConstants.NormalizeDataQualityStatus(dataQualityStatus);
+            if (normalizedDataQualityStatus != null && !AnalyticsActionConstants.IsValidDataQualityStatus(normalizedDataQualityStatus))
+                return Results.BadRequest($"dataQualityStatus must be one of: {string.Join(", ", AnalyticsActionConstants.DataQualityStatuses.AllValues)}");
+
+            var counts = await svc.GetCountsAsync(createdFrom, createdTo, sourceType, priority, normalizedDataQualityStatus, ct);
             var totalCount = counts.New + counts.Accepted + counts.Deferred + counts.Rejected + counts.Done;
             return Results.Ok(new
             {
@@ -90,9 +117,18 @@ public static class AnalyticsActionsEndpoints
                 counts.P1Open,
                 meta = BuildActionsMeta(
                     isEmpty: totalCount == 0,
-                    dataQualityStatus: null,
+                    dataQualityStatus: normalizedDataQualityStatus,
                     rowLimitSemantics: "all_ledger_status_counts",
-                    populationFilters: null)
+                    requestedPeriodFromUtc: createdFrom,
+                    requestedPeriodToUtc: createdTo,
+                    populationFilters: new Dictionary<string, string?>
+                    {
+                        ["createdFrom"] = createdFrom?.ToString("O"),
+                        ["createdTo"] = createdTo?.ToString("O"),
+                        ["sourceType"] = sourceType,
+                        ["priority"] = priority,
+                        ["dataQualityStatus"] = normalizedDataQualityStatus
+                    })
             });
         })
         .WithName("GetAnalyticsActionCounts");
@@ -403,6 +439,8 @@ public static class AnalyticsActionsEndpoints
         bool isEmpty,
         string? dataQualityStatus,
         string rowLimitSemantics,
+        DateTime? requestedPeriodFromUtc,
+        DateTime? requestedPeriodToUtc,
         IReadOnlyDictionary<string, string?>? populationFilters)
     {
         var meta = isEmpty
@@ -418,10 +456,10 @@ public static class AnalyticsActionsEndpoints
             formulaVersion: "analytics_actions_context_v1",
             materializerGeneration: "analytics_action_item_query",
             rowLimitSemantics: rowLimitSemantics,
-            requestedPeriodFromUtc: null,
-            requestedPeriodToUtc: null,
-            effectivePeriodFromUtc: null,
-            effectivePeriodToUtc: null,
+            requestedPeriodFromUtc: requestedPeriodFromUtc,
+            requestedPeriodToUtc: requestedPeriodToUtc,
+            effectivePeriodFromUtc: requestedPeriodFromUtc,
+            effectivePeriodToUtc: requestedPeriodToUtc,
             observedPeriodFromUtc: null,
             observedPeriodToUtc: null,
             requestedDataScope: "action_ledger",

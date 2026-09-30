@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { server } from "../../mocks/server";
 import {
   getAnalyticsActions,
+  getAnalyticsActionCounts,
   getAnalyticsActionOutcomeSummary,
   getDataQualityIssues,
   getDataQualityTopOffenders,
@@ -412,6 +413,8 @@ describe("analytics API contract requests", () => {
       sourceType: "inventory",
       dataQualityStatus: "warning",
       search: "dopuna",
+      createdFrom: "2026-04-01T00:00:00Z",
+      createdTo: "2026-07-01T23:59:59.999Z",
       page: 2,
       pageSize: 25,
     });
@@ -428,6 +431,8 @@ describe("analytics API contract requests", () => {
     expect(receivedPaths[0]).toContain("sourceType=inventory");
     expect(receivedPaths[0]).toContain("dataQualityStatus=warning");
     expect(receivedPaths[0]).toContain("search=dopuna");
+    expect(receivedPaths[0]).toContain("createdFrom=2026-04-01T00%3A00%3A00Z");
+    expect(receivedPaths[0]).toContain("createdTo=2026-07-01T23%3A59%3A59.999Z");
     expect(receivedPaths[0]).toContain("page=2");
     expect(receivedPaths[0]).toContain("pageSize=25");
     expect(receivedPaths[0]).toContain("dataScope=all");
@@ -437,6 +442,39 @@ describe("analytics API contract requests", () => {
     expect(receivedPaths[1]).toContain("priority=P1");
     expect(receivedPaths[1]).toContain("dataQualityStatus=warning");
     expect(receivedPaths[1]).toContain("dataScope=all");
+  });
+
+  it("forwards the shared population contract to action counts", async () => {
+    let receivedUrl: URL | null = null;
+
+    server.use(
+      rest.get("/api/analytics/actions/counts", (req, res, ctx) => {
+        receivedUrl = req.url;
+        return res(ctx.status(200), ctx.json({
+          new: 1,
+          accepted: 2,
+          deferred: 0,
+          rejected: 0,
+          done: 3,
+          p1Open: 1,
+          meta: { success: true },
+        }));
+      }),
+    );
+
+    await getAnalyticsActionCounts({
+      createdFrom: "2026-04-01T00:00:00Z",
+      createdTo: "2026-07-01T23:59:59.999Z",
+      sourceType: "inventory",
+      priority: "P1",
+      dataQualityStatus: "warning",
+    });
+
+    expect(receivedUrl?.searchParams.get("createdFrom")).toBe("2026-04-01T00:00:00Z");
+    expect(receivedUrl?.searchParams.get("createdTo")).toBe("2026-07-01T23:59:59.999Z");
+    expect(receivedUrl?.searchParams.get("sourceType")).toBe("inventory");
+    expect(receivedUrl?.searchParams.get("priority")).toBe("P1");
+    expect(receivedUrl?.searchParams.get("dataQualityStatus")).toBe("warning");
   });
 
   it("submits Analytics Action outcome PATCH with null evidence for pending states", async () => {

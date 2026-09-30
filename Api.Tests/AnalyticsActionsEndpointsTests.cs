@@ -370,6 +370,41 @@ public sealed class AnalyticsActionsEndpointsTests
     }
 
     [Fact]
+    public async Task SharedCreatedPopulation_FiltersListCountsAndSummaryTogether()
+    {
+        await using var host = await AnalyticsActionsTestHost.CreateAsync();
+        await host.SeedActionAsync(
+            sourceKey: "population-old",
+            createdAtUtc: new DateTime(2026, 5, 22, 12, 0, 0, DateTimeKind.Utc),
+            dataQualityStatus: AnalyticsActionConstants.DataQualityStatuses.Warning);
+        await host.SeedActionAsync(
+            sourceKey: "population-visible",
+            createdAtUtc: new DateTime(2026, 7, 1, 12, 0, 0, DateTimeKind.Utc),
+            dataQualityStatus: AnalyticsActionConstants.DataQualityStatuses.Warning);
+        const string query = "createdFrom=2026-06-01T00:00:00Z&createdTo=2026-08-01T23:59:59Z&sourceType=inventory&priority=P1&dataQualityStatus=warning";
+
+        using var listResponse = await host.Client.GetAsync($"/api/analytics/actions?{query}");
+        listResponse.EnsureSuccessStatusCode();
+        using var listPayload = JsonDocument.Parse(await listResponse.Content.ReadAsStringAsync());
+        Assert.Equal(1, listPayload.RootElement.GetProperty("totalCount").GetInt32());
+        Assert.StartsWith("2026-06-01T00:00:00", listPayload.RootElement.GetProperty("meta").GetProperty("context").GetProperty("requestedPeriodFromUtc").GetString());
+
+        using var countsResponse = await host.Client.GetAsync($"/api/analytics/actions/counts?{query}");
+        countsResponse.EnsureSuccessStatusCode();
+        using var countsPayload = JsonDocument.Parse(await countsResponse.Content.ReadAsStringAsync());
+        Assert.Equal(1, countsPayload.RootElement.GetProperty("accepted").GetInt32());
+        Assert.Equal(1, countsPayload.RootElement.GetProperty("p1Open").GetInt32());
+        Assert.Equal("inventory", countsPayload.RootElement.GetProperty("meta").GetProperty("context").GetProperty("populationFilters").GetProperty("sourceType").GetString());
+
+        using var summaryResponse = await host.Client.GetAsync($"/api/analytics/actions/outcomes/summary?{query}");
+        summaryResponse.EnsureSuccessStatusCode();
+        using var summaryPayload = JsonDocument.Parse(await summaryResponse.Content.ReadAsStringAsync());
+        Assert.Equal(1, summaryPayload.RootElement.GetProperty("totals").GetProperty("createdCount").GetInt32());
+        Assert.Equal("inventory", summaryPayload.RootElement.GetProperty("meta").GetProperty("populationFilters").GetProperty("sourceType").GetString());
+        Assert.Equal("action_ledger", summaryPayload.RootElement.GetProperty("meta").GetProperty("requestedDataScope").GetString());
+    }
+
+    [Fact]
     public async Task PatchOutcome_ValidStatusUpdatesFields_AndReturnsDetailedAction()
     {
         await using var host = await AnalyticsActionsTestHost.CreateAsync(withAdminKey: true);
@@ -578,7 +613,10 @@ public sealed class AnalyticsActionsEndpointsTests
             string? sourceType = null,
             string? sourceKey = null,
             string? status = null,
-            string? metadataJson = null)
+            string? metadataJson = null,
+            DateTime? createdAtUtc = null,
+            string? priority = null,
+            string? dataQualityStatus = null)
         {
             using var scope = App.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AnalyticsDbContext>();
@@ -592,9 +630,12 @@ public sealed class AnalyticsActionsEndpointsTests
                 outcomeMeasuredAtUtc: outcomeMeasuredAtUtc,
                 outcomeNotes: outcomeNotes,
                 metadataJson: metadataJson,
-                createdAtUtc: now,
+                createdAtUtc: createdAtUtc ?? now,
                 updatedAtUtc: now,
                 dueAtUtc: now.AddDays(5));
+
+            item.Priority = priority ?? item.Priority;
+            item.DataQualityStatus = dataQualityStatus;
 
             db.AnalyticsActionItems.Add(item);
             await db.SaveChangesAsync();

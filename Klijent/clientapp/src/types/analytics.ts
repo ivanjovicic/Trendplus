@@ -2058,6 +2058,9 @@ export interface AnalyticsActionOutcomeSummaryMeta {
   measuredSampleSize: number;
   warnings: string[];
   emptyReason?: string | null;
+  populationFilters?: Record<string, string | null> | null;
+  requestedDataScope?: string | null;
+  effectiveDataScope?: string | null;
 }
 
 export interface AnalyticsActionOutcomeSummaryTotals {
@@ -2151,6 +2154,8 @@ export interface AnalyticsActionOutcomeSummaryResponse {
 }
 
 export interface AnalyticsActionFilters {
+  createdFrom?: string;
+  createdTo?: string;
   status?: AnalyticsActionStatus;
   priority?: AnalyticsActionPriority;
   sourceType?: AnalyticsActionSourceType;
@@ -2158,4 +2163,12 @@ export interface AnalyticsActionFilters {
   search?: string;
   page?: number;
   pageSize?: number;
+}
+
+export interface AnalyticsActionPopulationFilters {
+  createdFrom?: string;
+  createdTo?: string;
+  sourceType?: AnalyticsActionSourceType;
+  priority?: AnalyticsActionPriority;
+  dataQualityStatus?: AnalyticsActionDataQualityStatus;
 }

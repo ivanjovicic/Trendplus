@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ477 (IN_PROGRESS in this workspace)
 Systemic reliability audit registration 2026-09-29: `RQ509`-`RQ515` are registered as WAITING follow-ups from `docs/qa/ANALYTICS_RELIABILITY_NEXT_WAVE_AUDIT_2026-09-29.md`. They extend, rather than replace, RQ359-RQ367/RQ141/RQ145-RQ149 and the RQ413/RQ449/RQ450 integrity stack. No RQ509-RQ515 prompt is promoted or claimed by this audit; RQ501 completed separately and current routing is defined only by this header plus fresh dependency/collision checks.
 Owner promotion/claim 2026-09-29: idle recovery refreshed `origin/main` to `67e310027c7684d4c468665db760308bb6acad4c`, verified no active RQ509 lock/branch/PR owner and no collision with the PARTIAL/non-runnable RQ137/RQ139/RQ140 contracts. RQ509 moved `WAITING -> READY -> IN_PROGRESS` as the first P0 context-identity prompt; local lock: `.ai/task-locks/RQ509-codex.lock.md`. Q83 remains the exclusive PARTIAL Pre/Post SQL/view owner and RQ491 is not promoted.
 Owner completion 2026-09-29: RQ509 moved `IN_PROGRESS -> DONE` and was delivered directly to `main` in implementation `d71afbb67864c7990c08f754c6234127f45a33bf`. The additive context descriptor/fingerprint now covers Dashboard, Product Decision Center, Supplier, Shoe Type, Color, Data Quality and Supplier Decision Hub, with deterministic read-only reconciliation classifications and fail-closed unavailable identity. Focused backend proof is 46/46; frontend schema proof is 16/16; typecheck, analytics guardrails, production build, API build, governance validators and diff check pass. Run log: `.ai/runs/2026-09-29-RQ509-evidence.md`. Evidence state: synchronized. Current RQ READY returned to `none`; RQ510 is the next P0 dependency-complete candidate after fresh recovery. Q83 remains PARTIAL and RQ491 remains WAITING.
@@ -26061,7 +26061,7 @@ Commit suggestion: `fix(analytics): serbian copy on supplier report and pilot in
 
 ## RQ469 - Keep Product Decision action-status lookups within the backend batch contract
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: frontend/contract/tests
 Feature family: pdc-action-status-batch
@@ -26134,7 +26134,7 @@ The live-sized response never causes an action-status 400, queue badges do not f
 
 ## RQ470 - Restore Product Decision server-side search and make the analyzed population visible
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: frontend/api-client/tests
 Feature family: pdc-search-population-contract
@@ -26315,7 +26315,7 @@ The screen emits recommendations only from proven journal evidence, or clearly r
 
 ## RQ473 - Align Product and Supplier margin cost/coverage semantics
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: `RQ483` and `RQ484` DONE (file overlap only; the missing-cost owner decision was resolved 2026-09-28 12:22, see the cross-reference below)
 Priority: P1
 Type: backend/contract/tests
@@ -26565,7 +26565,7 @@ Users can tell exactly which population and denominator each share uses; negativ
 
 ## RQ477 - Align Actions list, counts and outcome summary to one visible population
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: backend/frontend/contract/tests
 Feature family: analytics-actions-population-period-parity
@@ -26620,6 +26620,14 @@ Every Actions KPI and panel identifies the population and period it describes; t
 
 - Sequence with any change that touches `AnalyticsActionsPage.tsx` or the same endpoint methods; coordinate with `RQ478` before merging overlapping summary math changes.
 - No production data mutation is required.
+
+### Claim note
+
+- Claim date: 2026-09-30
+- Idle recovery reconciled stale `IN_PROGRESS` metadata for RQ469/RQ470/RQ473 to `DONE` from their synchronized completion notes and delivered implementation SHAs. No task lock, branch or open PR remains active.
+- RQ477 is the highest safe P1 repository-local candidate: its Actions population/period contract is independent of the completed Product Decision page sequence, has no unresolved external gate, and no active owner collides with the Actions page or summary endpoints.
+- RQ477 is promoted `WAITING -> READY -> IN_PROGRESS` in this workspace. RQ478 remains sequenced because it overlaps the same summary projection.
+- Local lock: `.ai/task-locks/RQ477-codex.lock.md`.
 
 ---
 

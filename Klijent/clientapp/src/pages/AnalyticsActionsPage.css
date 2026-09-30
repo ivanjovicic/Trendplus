@@ -346,6 +346,15 @@
   flex-wrap: wrap;
 }
 
+.aaq-filter-date {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  color: var(--text-secondary, #666);
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
 .aaq-filter-chip {
   cursor: pointer;
   background: var(--theme-color-rgba-59-130-246-0p10, rgba(59,130,246,0.10));
@@ -382,6 +391,7 @@
 
 .aaq-select,
 .aaq-search,
+.aaq-filter-date input,
 .aaq-modal textarea,
 .aaq-modal select,
 .aaq-modal input {
@@ -394,7 +404,8 @@
 }
 
 .aaq-select,
-.aaq-search {
+.aaq-search,
+.aaq-filter-date input {
   padding: 0.55rem 0.7rem;
   font-weight: 650;
 }
@@ -407,12 +418,20 @@
 
 .aaq-select:focus,
 .aaq-search:focus,
+.aaq-filter-date input:focus,
 .aaq-modal textarea:focus,
 .aaq-modal select:focus,
 .aaq-modal input:focus {
   outline: none;
   border-color: var(--focus-ring, #3b82f6);
   box-shadow: 0 0 0 4px var(--theme-color-rgba-68-208-255-0p12, rgba(68,208,255,0.12));
+}
+
+.aaq-population-contract {
+  margin: -0.35rem 0 0;
+  color: var(--text-secondary, #666);
+  font-size: 0.78rem;
+  line-height: 1.4;
 }
 
 .aaq-error {
