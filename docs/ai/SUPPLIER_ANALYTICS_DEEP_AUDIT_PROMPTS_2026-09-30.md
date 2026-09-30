@@ -7,6 +7,23 @@ Površina: `/analytics/supplier` — Pregled (`SupplierSalesStatsPage`), Skorkar
 Audited SHA: `origin/main` `278d37b93356aa7f2011ae5d02bf7e7cf1f801ed`. Ponovo provereno na `8b4e1fc1c2ed89cff450f2be640ca98fecbfd342`: između ta dva SHA nema izmena u auditovanim supplier fajlovima (diff dira samo navigaciju i docs), pa reference `file:line` važe na oba.
 Prethodni auditi: `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-25.md` (PS01–PS18), `docs/ai/SUPPLIER_DECISION_HUB_AUDIT_PROMPTS_2026-09-22.md` (RQ401–RQ405, RQ458/RQ459).
 
+## Second-pass verifikacija na current main (2026-09-30)
+
+Ova sekcija je autoritativna korekcija prvog prolaza. Supplier runtime fajlovi iz audita nisu menjani između 8b4e1fc1 i second-pass verifikacije; promene do ovog prolaza bile su u dokumentaciji i nepovezanom Daily Sales kodu, pa većina kodnih nalaza i dalje važi.
+
+- **Potvrđen kodni defekt:** N01. MV capability check preko information_schema.columns nije ispravan za PostgreSQL materialized-view kolone; RQ518 je P1/READY.
+- **Potvrđen lifecycle rizik, live uzrok nije dokazan:** N02/N03. 014/016 zaista imaju DROP ... CASCADE i readiness/history redosled može ostaviti privremeno/nepopravljeno stanje, ali kasniji rebuild postoji. RQ519 prvo zahteva dokaz i idempotentnost.
+- **Potvrđena semantička greška:** N04-N09. Assortment pre/post markdown efekat se prosleđuje shared PoP engine-u, maturity/no-post/zero-baseline i vendor aggregate semantike imaju stvarne nedoslednosti. RQ520 to odvaja bez izmišljanja novih buying pragova.
+- **Potvrđeni scorecard input bugovi:** N11/N12 i receipt-population drift N19. N13/N15/N16/N21 su model/policy pitanja, ne automatski bugovi; promene pragova/težina/normalizacije su owner-gated u RQ531.
+- **Hipoteze ostaju hipoteze:** N18, N20, N25, N27 i uzrok Pregled 503. Dokaz ide kroz RQ524 ili postojeće owners.
+- **N26 je spušten:** Analytics 015 SQL ima problematičan CREATE MATERIALIZED VIEW CONCURRENTLY i transakciono osetljiv CREATE INDEX CONCURRENTLY, ali current initializer ga ne izvršava u startup sekvenci; RQ525 ga tretira kao optional-script hygiene/test, ne startup root cause.
+- **C22 je FIXED:** RQ488 je već lokalizovao shared recommendation engine. Odvojeni residual 'Preporuka je gated.' u AnalyticsTrustHeader ostaje.
+- **C15/C32 potvrđeni:** focused Supplier share se frontend projekcijom ponovo računa nad vidljivim redom; revenue-rank bedž ne proverava sort smer.
+- **N36 nije automatski aritmetički bug:** signed maržni doprinos može matematički dati udeo >100% uz negativne doprinose drugih dobavljača. Denominator mora biti eksplicitan ili owner mora odobriti novu semantiku.
+- **N38 je enhancement gap**, ne dokaz postojećeg numeričkog baga.
+
+Queue de-dup: SA-F5 nije dobio novi RQ (safe-error/readiness ide u RQ474/RQ475, Analytics 015 u RQ525, security handoff samo ako se N27 dokaže); SA-I1 je takođe de-duplikovan u RQ474/RQ475. Preostalih 15 promptova su RQ518-RQ532. RQ517 ostaje postojeći DONE Daily Sales prompt.
+
 ## Sažetak
 
 Sva tri taba su u produkciji i dalje bez upotrebljivih podataka. Live audit od 2026-09-30 je to potvrdio:
@@ -15,7 +32,7 @@ Sva tri taba su u produkciji i dalje bez upotrebljivih podataka. Live audit od 2
 - Skorkarta za svaki prozor prijavljuje „nije spreman“.
 - Asortiman prikazuje samo „nema potvrđen ugovor“.
 
-Kod pokazuje tri različita uzroka, i nijedan nije „sistem je spor“:
+Kod pokazuje jedan potvrđen uzrok (Skorkarta) i dva jaka kandidata koji zahtevaju runtime dokaz (Asortiman i Pregled):
 
 1. **Skorkarta — potvrđen defekt koda (visoka pouzdanost).**
    - Endpoint proverava kolone materijalizovanih view-ova preko `information_schema.columns` (`Api/Endpoints/SupplierDecisionHubEndpoints.cs:2820-2888`).
@@ -84,7 +101,7 @@ Registracija 09-25 promptova: **jeste urađena** (de-dup 2026-09-28): PS01→RQ4
 | C19 | snapshot trošak = Min | FIXED | per-line `AllEndpoints.cs:1229-1236,1439-1448` (`d41ed2e`) |
 | C20 | težak supplier upit | OSTAJE (`RQ487` WAITING) | `:1313-1355` per-line; `:1299-1311` bez filtera po artiklu; **novo**: ceo snapshot batch u memoriji `:1229-1236` → delta u ovom dokumentu |
 | C21 | keš 20 min bez stale signala | OSTAJE (`RQ487`) | TTL `IAnalyticsCacheService.cs:501`; cache-hit bez age/correlation `AllEndpoints.cs:1197-1213`; ključ `:1195` bez integrity-block stanja iako je `blockOperationsDecisionSignals` upečen (`:1749,1794,1880`) |
-| C22 | engine na engleskom | DELIMIČNO (`RQ488` DONE) | caveat-i i dalje engleski: `AnalyticsDecisionRecommendationEngine.cs:255`, `:259` → `SA-F7` |
+| C22 | engine na engleskom | **FIXED (`RQ488` DONE)** | current engine summary/caveat/label tekst je na srpskom; odvojeni AnalyticsTrustHeader residual „Preporuka je gated.“ ostaje pod C27/RQ529 |
 | C27 | labele | DELIMIČNO | „Low signal“ uklonjen; ostaje „decision preporuke“ `SupplierSalesStatsPage.tsx:1997`, `<h2>Dobavljači</h2>` bez h1 `SupplierConsolidatedPage.tsx:320`, `dataQualityLabels` bez `critical` `:48-54`; „Preporuka je gated.“ `components/analytics/AnalyticsTrustHeader.tsx:316` → `SA-F7`/`SA-I2` |
 | C29 | nevalidan period i dalje šalje zahtev | FIXED | child `if (invalidRange) return` `SupplierSalesStatsPage.tsx:957`; hub `:988`, asortiman `:760` |
 | C30 | generički catch vraća `ex.Message` | OSTAJE | `AllEndpoints.cs:2137-2140`; hub details `SupplierDecisionHubEndpoints.cs:434-437`; summary/quadrant/ranking u meta `:125,221,358` → `SA-F5` |
@@ -135,7 +152,7 @@ Oznake: K = korektnost, D = dokaz (proof), V = vrednost za odluku, U = UX/UI, R 
 | N12 | `sales_in_period` traži i trenutni `IDDobavljac` i `supplier_id_at_sale` = isti → artikli koji su menjali dobavljača ispadaju; period je raspon markdown prozora (do ~150 d), ne traženi | `029:349-358,304-305` | Medium | K | SA-F4 |
 | N13 | `REVIEW_QUALITY` čim bilo koja pokrivenost (post/DiD/trošak) <100%; page gate blokira ako *bilo koji* red ima `PostSignalCoverage < 1` → preporuka praktično nikad dozvoljena (**H** na live podacima) | `029:382-389,445`; `SupplierDecisionHubEndpoints.cs:3159,3171-3176` | High | K/V | SA-F4 |
 | N14 | Skor je relativni `PERCENT_RANK` (menja se kad se menjaju drugi dobavljači), zbir komponenti do 220 stegnut na 0–100 (izjednačenja na 0/100); pragovi 80/60/40/25 bez obrazloženja | `029:411-453` | Medium | V/D | SA-E2 |
-| N15 | `inventory_penalty` rangira apsolutnu vrednost zaliha (RSD) → veliki dobavljači kažnjeni zbog veličine | `029:135,418,432` | Medium | K | SA-F4 |
+| N15 | `inventory_penalty` rangira apsolutnu vrednost zaliha (RSD), pa model ima ekspoziciju na veličinu dobavljača; da li je to nepoželjno je model-policy odluka, ne automatski bug | `029:135,418,432` | Medium | V/K | RQ531 |
 | N16 | `confidence_score` težine 0.4+0.3+0.3+0.1+0.1+0.1 = 1.3 (−0.15) stegnute na 0–1 | `029:434` | Low | K | SA-E2 |
 | N17 | Populacija skorkarte = artikli čija je *prva ikada* nivelacija u prozoru; artikli sa ranijom prvom nivelacijom ne ulaze; Asortiman uzima *poslednji* događaj po artiklu i uključuje poskupljenja | `018:95-140`; `029:23-27`; `VendorSalesNivelacijaCohortPolicy.SelectLatestEventPerArticle` `AllEndpoints.cs:4459-4470` | Medium | K/V | SA-F6 |
 | N18 | Trošak fallback `NabavnaCenaDin → NabavnaCena`; `NabavnaCena` je možda u drugoj valuti (**H**) | `018:166-173`; `029:73-80`; `AllEndpoints.cs:4603-4649` | Medium | K | SA-F4 |
@@ -146,7 +163,7 @@ Oznake: K = korektnost, D = dokaz (proof), V = vrednost za odluku, U = UX/UI, R 
 | N23 | Asortiman „period“ filtrira datum nivelacije; pre/post prodaja pada van izabranog perioda; „Promet“ kolona je 30 d post-markdown prihod | `AllEndpoints.cs:3982-3983`; `SupplierFootwearAnalyticsPage.tsx:82` | Medium | K/U | SA-F6/SA-I1 |
 | N24 | Scoped nivelacija SQL agregira *celu* istoriju prodaje (`sales_daily` bez datumske granice) i izvršava se 3× po zahtevu (count, kategorije, redovi) × 2 zahteva (tekući + prethodni period), timeout 45 s svaki | `AllEndpoints.cs:51,3975-4150,7862-7876`; `SupplierFootwearAnalyticsPage.tsx:386-389` | High | R | SA-F2 (perf deo) |
 | N25 | Store filter na Asortimanu filtrira i događaje nivelacije po `IDObjekat`; ako su nivelacije na nivou lanca, izbor objekta daje prazno (**H**) | `AllEndpoints.cs:7853` | Medium | K | SA-F6 |
-| N26 | `Database/Analytics/015_AddSupplierMlRanking.sql:46` `CREATE MATERIALIZED VIEW CONCURRENTLY` je nevalidan SQL; `CREATE INDEX CONCURRENTLY` (`:33-43`) ne može u transakciji → ML overlay se ne može primeniti (**H** da li se fajl uopšte izvršava) | `015:33-46`; `DatabaseInitializer.cs:2418` | Low | R | SA-F5 |
+| N26 | Analytics 015 sadrži nevalidan `CREATE MATERIALIZED VIEW CONCURRENTLY` i transakciono osetljiv `CREATE INDEX CONCURRENTLY`, ali current initializer ga tretira kao opcioni overlay i ne izvršava ga u startup sekvenci; script-hygiene/test residual, ne startup root cause | `015:33-46`; DatabaseInitializer optional-overlay komentar | Low | R | RQ525 |
 | N27 | Nijedan `AddAuthentication`/fallback policy u `Program.cs`; supplier endpointi nemaju `RequireAuthorization` — podaci o nabavci/marži su javni ako API nije iza zaštićenog proxy-ja (**H**, zavisi od deploy-a) | `Program.cs:1149`; `SupplierDecisionHubEndpoints.cs:39-41` | High (ako je javno) | R | SA-F5 |
 | N28 | Summary/quadrant/ranking vraćaju 200 sa nulama + error meta; details vraća 503 sa engleskim naslovom i `ex.Message`; 404 poruka engleska | `SupplierDecisionHubEndpoints.cs:104-126,432-448` | Medium | R/U | SA-F5/SA-I1 |
 | N29 | Asortiman chip-ovi prikazuju *draft* vrednosti umesto primenjenih; „Signal“ chip prikazuje sirove enum-e (`good`, `insufficient_data`) | `SupplierFootwearAnalyticsPage.tsx:595-626` | Low | U | SA-F7 |
@@ -156,7 +173,7 @@ Oznake: K = korektnost, D = dokaz (proof), V = vrednost za odluku, U = UX/UI, R 
 | N33 | Sortabilna zaglavlja bez `aria-sort`; ASCII markeri „ ^“/„ v“; tabovi sa `aria-selected` bez `role="tab"`/`tablist` i istovremeno `aria-current`; nema `h1` | `SupplierSalesStatsPage.tsx:2023-2131`; `SupplierFootwearAnalyticsPage.tsx:109`; `SupplierConsolidatedPage.tsx:320,487-488` | Low | U | SA-I2 |
 | N34 | Podrazumevani „danas“ na backendu je UTC (`DateTime.UtcNow.Date`), ne Beograd; nivelacija `from?.ToUniversalTime().Date` | `AllEndpoints.cs:1163,3886-3887` | Low | K | SA-P1 (dokaz) / SA-F6 |
 | N35 | Nepoznati dobavljač = null ID *ili* naziv „Nepoznato“; ID koji ne postoji u `Dobavljaci` stvara zaseban „nepoznat“ red (više nepoznatih redova) | `AllEndpoints.cs:1463-1464`; `4653-4657` | Low | K | SA-F6 |
-| N36 | Udeo maržnog doprinosa deli sa ukupnim doprinosom koji uključuje negativne → udeli >100% | `AllEndpoints.cs:1757-1759`; `SupplierSalesStatsPage.tsx:738-750` | Low | K | SA-F7 |
+| N36 | Udeo maržnog doprinosa koristi signed ukupni doprinos; uz negativne doprinose pojedinačni udeo može biti >100%. To je matematički moguće i zahteva eksplicitnu denominator semantiku/owner odluku, ne automatski positive-only fix | AllEndpoints.cs; SupplierSalesStatsPage display projection | Low | V/K | RQ523/RQ531 |
 | N37 | Engine pragovi (PoP ≥12%, marža ≥ max(8, avg−2), udeo ≥2,5%, pouzdanost ≥60; tiny <3 artikla/<8 kom/<15.000 RSD nezavisno od dužine perioda) nisu objašnjeni u UI | `AnalyticsDecisionRecommendationEngine.cs:~118-230` | Medium | V | SA-E2 |
 | N38 | Vrednosti za kupovinu koje fale: pokrivenost zaliha (dani), otvorene porudžbine/lead time, stopa povrata na Pregledu, trend marže, top/bottom artikli, size curve, efikasnost sniženja sa kontrolom | — | Medium | V | SA-E1/SA-E3 |
 
@@ -358,6 +375,8 @@ The pre/post metrics also have these defects:
 ---
 
 ### SA-F4 — Repair scorecard formula defects that are bugs, not policy
+> **Second-pass correction:** superseded by RQ521. Automatski se popravljaju samo potvrđeni input bugovi; coverage pragovi, inventory penalty, confidence težine i cost fallback ne menjaju se bez owner odluke/dokaza (RQ531/RQ524).
+
 
 Suggested status: WAITING
 Priority: P2
@@ -420,6 +439,8 @@ Several scorecard inputs are computed wrongly, independent of any weighting poli
 ---
 
 ### SA-F5 — Safe supplier errors, auth confirmation and ML migration hygiene
+> **DE-DUP second-pass:** nema novog RQ. Safe-error/readiness pripada RQ474/RQ475; deploy auth posture ide security owner-u samo ako se gap dokaže; Analytics 015 je u RQ525.
+
 
 Suggested status: WAITING
 Priority: P2
@@ -536,6 +557,8 @@ None of these differences is disclosed.
 ---
 
 ### SA-F7 — Supplier overview and assortment frontend residuals
+> **Second-pass correction:** C22 je uklonjen iz scope-a jer ga je RQ488 već popravio. N36 se ne menja prećutno na positive-only denominator; signed semantika se prvo eksplicitno objašnjava ili owner odobrava promenu.
+
 
 Suggested status: WAITING
 Priority: P3
@@ -761,6 +784,8 @@ On the shared fixture, call the overview, the scorecard and the assortment for t
 ## IMPROVE — UX/UI
 
 ### SA-I1 — Honest loading, error, retry and requested-vs-effective period on supplier tabs
+> **DE-DUP second-pass:** nema novog RQ. Pregled deo pripada RQ474; Skorkarta/Asortiman readiness/error/retry deo pripada RQ475.
+
 
 Suggested status: WAITING
 Priority: P2
@@ -990,31 +1015,29 @@ Commit suggestion: `feat(analytics): supplier footwear size curve and controlled
 | live: presets, jargon, gated | SA-I2, SA-F7 | ne |
 | live: Workeri 0/1, Redis off | SA-P1 (R7), `RQ475` | da |
 
-## Pregled promptova (nije registrovano u queue)
+## Canonical queue mapping posle second-pass verifikacije
 
-| Prompt | RQ | Sekcija | Prioritet | Predloženi status |
-|---|---|---|---|---|
-| SA-F1 | — (dodeljuje se pri registraciji) | FIX | P1 | WAITING |
-| SA-F2 | — (dodeljuje se pri registraciji) | FIX | P1 | WAITING |
-| SA-F3 | — (dodeljuje se pri registraciji) | FIX | P1 | WAITING |
-| SA-F4 | — (dodeljuje se pri registraciji) | FIX | P2 | WAITING |
-| SA-F5 | — (dodeljuje se pri registraciji) | FIX | P2 | WAITING |
-| SA-F6 | — (dodeljuje se pri registraciji) | FIX | P2 | WAITING |
-| SA-F7 | — (dodeljuje se pri registraciji) | FIX | P3 | WAITING |
-| SA-P1 | — (dodeljuje se pri registraciji) | PROVE | P1 | WAITING |
-| SA-P2 | — (dodeljuje se pri registraciji) | PROVE | P1 | WAITING |
-| SA-P3 | — (dodeljuje se pri registraciji) | PROVE | P2 | WAITING |
-| SA-P4 | — (dodeljuje se pri registraciji) | PROVE | P2 | WAITING |
-| SA-P5 | — (dodeljuje se pri registraciji) | PROVE | P2 | WAITING |
-| SA-I1 | — (dodeljuje se pri registraciji) | IMPROVE | P2 | WAITING |
-| SA-I2 | — (dodeljuje se pri registraciji) | IMPROVE | P3 | WAITING |
-| SA-E1 | — (dodeljuje se pri registraciji) | ENHANCE | P2 | WAITING |
-| SA-E2 | — (dodeljuje se pri registraciji) | ENHANCE | P2 | WAITING |
-| SA-E3 | — (dodeljuje se pri registraciji) | ENHANCE | P3 | WAITING |
+| Audit prompt | Canonical owner | Prioritet | Status |
+|---|---|---:|---|
+| SA-F1 | RQ518 | P1 | READY |
+| SA-F2 | RQ519 | P1 | WAITING |
+| SA-F3 | RQ520 | P1 | WAITING |
+| SA-F4 (corrected) | RQ521 | P2 | WAITING |
+| SA-F5 | RQ474/RQ475 + RQ525; security handoff only if N27 proven | — | DE-DUP |
+| SA-F6 | RQ522 | P2 | WAITING |
+| SA-F7 (corrected) | RQ523 | P3 | WAITING |
+| SA-P1 | RQ524 | P1 | WAITING |
+| SA-P2 | RQ525 | P1 | WAITING |
+| SA-P3 | RQ526 | P2 | WAITING |
+| SA-P4 | RQ527 | P2 | WAITING |
+| SA-P5 | RQ528 | P2 | WAITING |
+| SA-I1 | RQ474/RQ475 | — | DE-DUP |
+| SA-I2 | RQ529 | P3 | WAITING |
+| SA-E1 | RQ530 | P2 | WAITING |
+| SA-E2 | RQ531 | P2 | WAITING / owner-gated |
+| SA-E3 | RQ532 | P3 | WAITING |
 
-Preporučeni redosled: SA-F1 + SA-P2 → SA-F2 → SA-P1 → `RQ474`/`RQ487` → SA-F3/SA-P4 → SA-F4/SA-P3 → SA-F6/SA-P5 → SA-I1 → SA-F5 → SA-E2 → SA-E1 → SA-F7/SA-I2 → SA-E3.
-
-Nije registrovano u queue; RQ brojevi se dodeljuju pri registraciji (proveriti sledeći slobodan broj u `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` i adendumima u trenutku registracije). Queue i `MASTER_ROADMAP.md` nisu menjani ovim commit-om.
+RQ517 je već DONE Daily Sales prompt i nije prepisan. Addendum owner: docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_SUPPLIER_AUDIT_ADDENDUM.md.
 
 ## Šta nije urađeno / nije provereno
 
