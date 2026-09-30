@@ -3,9 +3,9 @@
 Date: 2026-09-30
 Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
-Current READY prompt: RQ518
+Current READY prompt: RQ519
 Additional READY prompts: RQ525
-Queue reconciliation 2026-09-30: RQ518 is the primary deterministic P1 lane and is currently IN_PROGRESS. RQ524 was independently claimable, delivered the initial read-only pack, and is now PARTIAL pending deterministic PostgreSQL fixture completion. RQ525 remains the independent dependency-free P1 READY lane. RQ524 is repository-local/fixture-only; production execution remains exclusively RQ454/STAB16. RQ519-RQ532 otherwise remain sequenced/owner-gated as declared below.
+Queue reconciliation 2026-09-30: RQ518 is DONE after shared PostgreSQL catalog-based materialized-view capability detection was delivered on main with explicit MISSING_OBJECT/MISSING_COLUMNS/NOT_POPULATED states and regression coverage. RQ519 is now the primary dependency-complete P1 READY lane. RQ524 independently delivered the initial read-only pack and is PARTIAL pending deterministic PostgreSQL fixture completion. RQ525 remains an independent dependency-free P1 READY lane. RQ524 is repository-local/fixture-only; production execution remains exclusively RQ454/STAB16. RQ519-RQ532 otherwise remain sequenced/owner-gated as declared below.
 
 This addendum registers only non-duplicate Supplier follow-ups after second-pass source verification. Existing RQ474, RQ475 and RQ487 remain authoritative for overview error/readiness/query-cost work. RQ517 is already DONE for Daily Sales and is not reused.
 
@@ -35,13 +35,14 @@ This addendum registers only non-duplicate Supplier follow-ups after second-pass
 
 ## RQ518 - Fix Supplier scorecard materialized-view capability detection
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/sql/tests
 Feature family: supplier-scorecard-mv-capability
 Parallel-safe: no
 Owner: Analytics Reliability / Supplier Decision
-Claimed: 2026-09-30 by ChatGPT connector workspace after exact-main refresh; no open PR or rq518 branch collision found. Local filesystem lock is unavailable in connector-only execution, so the canonical IN_PROGRESS state is the exclusive remote claim.
+Claimed: 2026-09-30 by ChatGPT connector workspace after exact-main refresh; no open PR or rq518 branch collision found. Local filesystem lock was unavailable in connector-only execution, so the canonical IN_PROGRESS row served as the exclusive remote claim.
+Completion: delivered on main through `306076b4`; evidence `.ai/runs/2026-09-30-RQ518-evidence.md`. Endpoint/startup now share catalog truth and fail closed with explicit materialized-view readiness states. Post-push CI remains residual evidence, not a delivery gate.
 
 ### Problem
 
@@ -79,8 +80,8 @@ None; RQ475 consumes the corrected readiness states.
 
 ## RQ519 - Make Supplier nivelacija schema lifecycle idempotent and preserve scorecard dependencies
 
-Status: WAITING
-Ready after: RQ518 DONE
+Status: READY
+Ready after: RQ518 DONE (satisfied 2026-09-30)
 Priority: P1
 Type: backend/sql/startup/tests
 Feature family: supplier-nivelacija-schema-lifecycle
