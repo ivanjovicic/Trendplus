@@ -406,6 +406,7 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
                 Kolicina = 4,
                 MinimalnaKolicina = 2,
                 NabavnaCena = null,
+                NabavnaCenaDin = 140m,
                 Kategorija = "Patike",
                 Boja = "Crna",
                 Velicina = "42",
@@ -456,8 +457,8 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         var measuredZero = Assert.Single(response.Rows.Where(item => item.ProductId == 106));
         Assert.True(measuredZero.Revenue > 0m);
         Assert.Equal(0m, measuredZero.MarginPct);
-        Assert.Equal(0m, measuredZero.MarginCoveragePct);
-        Assert.Equal("Nizak kvalitet", measuredZero.MarginQualityLabel);
+        Assert.Equal(100m, measuredZero.MarginCoveragePct);
+        Assert.Equal("Visok kvalitet", measuredZero.MarginQualityLabel);
         Assert.DoesNotContain(ProductDecisionReasoningHelper.ReasonCodes.MarginCoverageUnavailable, measuredZero.ReasonCodes);
         var measuredMargin = Assert.Single(measuredZero.EvidenceChain.Where(item => item.Code == "margin_signal"));
         Assert.False(measuredMargin.IsMissing);

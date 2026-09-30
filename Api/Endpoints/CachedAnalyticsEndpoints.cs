@@ -6224,7 +6224,11 @@ public static class CachedAnalyticsEndpoints
                 Size = a.Velicina,
                 CurrentStock = a.Kolicina,
                 MinStock = a.MinimalnaKolicina,
-                UnitCost = a.NabavnaCena,
+                UnitCost = (a.NabavnaCenaDin ?? 0m) > 0m
+                    ? a.NabavnaCenaDin
+                    : (a.NabavnaCena ?? 0m) > 0m
+                        ? a.NabavnaCena
+                        : null,
                 UpdatedAtUtc = a.UpdatedAt
             })
             .ToListAsync(ct);
@@ -6281,7 +6285,14 @@ public static class CachedAnalyticsEndpoints
                   && (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
                   && (!importedOnly || pz.DataOrigin == "access")
                   && (!existingOnly || pz.DataOrigin == "existing" || pz.DataOrigin == null || pz.DataOrigin == "")
-            group new { ps, a } by ps.IdArtikal
+            let resolvedUnitCost = (ps.NabavnaCena ?? 0m) > 0m
+                ? ps.NabavnaCena
+                : (a.NabavnaCenaDin ?? 0m) > 0m
+                    ? a.NabavnaCenaDin
+                    : (a.NabavnaCena ?? 0m) > 0m
+                        ? a.NabavnaCena
+                        : null
+            group new { ps, ResolvedUnitCost = resolvedUnitCost } by ps.IdArtikal
             into g
             select new ProductDecisionSalesAggregate
             {
@@ -6289,11 +6300,11 @@ public static class CachedAnalyticsEndpoints
                 Revenue = g.Sum(x => x.ps.Kolicina * x.ps.Cena),
                 UnitsSold = g.Sum(x => x.ps.Kolicina),
                 MarginContribution = g.Sum(x =>
-                    (x.ps.NabavnaCena ?? x.a.NabavnaCena).HasValue
-                        ? (x.ps.Cena - (x.ps.NabavnaCena ?? x.a.NabavnaCena)!.Value) * x.ps.Kolicina
+                    x.ResolvedUnitCost.HasValue
+                        ? (x.ps.Cena - x.ResolvedUnitCost.Value) * x.ps.Kolicina
                         : 0m),
                 CostCoveredRevenue = g.Sum(x =>
-                    (x.ps.NabavnaCena ?? x.a.NabavnaCena).HasValue
+                    x.ResolvedUnitCost.HasValue
                         ? x.ps.Kolicina * x.ps.Cena
                         : 0m)
             })
@@ -6364,9 +6375,12 @@ public static class CachedAnalyticsEndpoints
             var unitsSold = sales?.UnitsSold ?? 0;
             var velocityUnitsPerDay = periodDays > 0 ? (decimal)unitsSold / periodDays : 0m;
             var marginContribution = sales?.MarginContribution ?? 0m;
-            var marginPct = revenue > 0m ? (marginContribution / revenue) * 100m : (decimal?)null;
+            var costCoveredRevenue = sales?.CostCoveredRevenue ?? 0m;
+            var marginPct = costCoveredRevenue > 0m
+                ? (marginContribution / costCoveredRevenue) * 100m
+                : (decimal?)null;
             decimal? marginCoveragePct = revenue > 0m
-                ? ((sales?.CostCoveredRevenue ?? 0m) / revenue) * 100m
+                ? (costCoveredRevenue / revenue) * 100m
                 : null;
             var marginQualityLabel = marginCoveragePct.HasValue
                 ? marginCoveragePct.Value >= 85m

@@ -74,6 +74,21 @@ public sealed class AnalyticsMarginPolicyTests
     }
 
     [Fact]
+    public void ResolveUnitCostWithSource_UsesCanonicalPositivePrecedence()
+    {
+        var rsd = AnalyticsMarginPolicy.ResolveUnitCostWithSource(0m, 18m, 22m);
+        var legacy = AnalyticsMarginPolicy.ResolveUnitCostWithSource(null, 0m, 22m);
+        var unavailable = AnalyticsMarginPolicy.ResolveUnitCostWithSource(null, 0m, -1m);
+
+        Assert.Equal(18m, rsd.UnitCost);
+        Assert.Equal(MarginCostSource.ProductFallbackRsd, rsd.Source);
+        Assert.Equal(22m, legacy.UnitCost);
+        Assert.Equal(MarginCostSource.ProductFallbackLegacy, legacy.Source);
+        Assert.Null(unavailable.UnitCost);
+        Assert.Equal(MarginCostSource.None, unavailable.Source);
+    }
+
+    [Fact]
     public void ResolveUnitCostWithSnapshot_UsesTheExactSaleLineForSameArticle()
     {
         var snapshotCostsBySaleLineId = new Dictionary<int, decimal>
