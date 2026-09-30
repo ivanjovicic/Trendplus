@@ -304,7 +304,7 @@ RQ520, RQ522 and RQ498 DONE.
 
 Status: PARTIAL
 Claimed: 2026-09-30 by ChatGPT on `cursor/rq524-pack-extend-78b0`; extended the repository-local reconciliation pack and reran deterministic PostgreSQL fixture evidence.
-Progress: the read-only pack now exposes fifteen checks (`SUP-001`..`SUP-015`) for previous-only suppliers, attribution drift, startup-history presence, nivelacija store grain, assortment comparable totals, overview-vs-scorecard explained delta, assortment baseline flags and scorecard refresh history. Local execution against the shared operations seed returned no FAIL (`6` PASS, `9` EXPLAINED). Production/replica execution was not attempted and remains exclusively RQ454/STAB16. Run log: `.ai/runs/2026-09-30-RQ524-evidence.md`; evidence state: pending delivery sync; main verification: pending.
+Progress: the read-only pack now exposes fifteen checks (`SUP-001`..`SUP-015`) for previous-only suppliers, attribution drift, startup-history presence, nivelacija store grain, assortment comparable totals, overview-vs-scorecard explained delta, assortment baseline flags and scorecard refresh history. Local execution against the shared operations seed returned no FAIL (`6` PASS, `9` EXPLAINED). Production/replica execution was not attempted and remains exclusively RQ454/STAB16. Run log: `.ai/runs/2026-09-30-RQ524-evidence.md`; evidence state: synchronized; main verification: `origin/main` contains `a93ae60ae3eb011f1995b40efd4fa94246faf827`.
 Priority: P1
 Type: sql/qa/evidence
 Feature family: supplier-reconciliation-evidence
