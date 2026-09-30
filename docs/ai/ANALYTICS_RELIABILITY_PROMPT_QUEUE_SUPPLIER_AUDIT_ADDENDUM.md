@@ -35,12 +35,13 @@ This addendum registers only non-duplicate Supplier follow-ups after second-pass
 
 ## RQ518 - Fix Supplier scorecard materialized-view capability detection
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1
 Type: backend/sql/tests
 Feature family: supplier-scorecard-mv-capability
 Parallel-safe: no
 Owner: Analytics Reliability / Supplier Decision
+Claimed: 2026-09-30 by ChatGPT connector workspace after exact-main refresh; no open PR or rq518 branch collision found. Local filesystem lock is unavailable in connector-only execution, so the canonical IN_PROGRESS state is the exclusive remote claim.
 
 ### Problem
 
