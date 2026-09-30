@@ -2,8 +2,9 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ508
+Current READY prompt: none
 Owner promotion/claim 2026-09-30: fresh recovery verified `HEAD == origin/main == ce690bbf6df25cc14361299fc70fed6d6f80fc9a`, confirmed RQ501/RQ505/RQ507 are DONE, no active `analytics-plan-current-truth` lock/branch/open-PR owner exists, and moved `RQ508` `READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ508-codex.lock.md`.
+Owner completion 2026-09-30: `RQ508` moved `IN_PROGRESS -> DONE` on implementation SHA `50512ffefb2005c889cafecfec46c770fc5c46bf`; fresh fetch verified `HEAD == origin/main` at that SHA. The execution plan now has a verified current-truth contract for surface ownership, backend decision authority, dataScope, line-bound cost precedence and signed-share semantics; historical May 2026 proposals are explicitly non-live. A source-reference/current-truth guard is wired into Planning Governance. Run log: `.ai/runs/2026-09-30-RQ508-evidence.md`; evidence state is synchronized. Fresh recovery found no safe successor READY: the parent RQ pointer is `none`, RQ491 remains WAITING behind PARTIAL Q83 and other candidates retain their named gates.
 Owner completion 2026-09-30: `RQ507` moved `IN_PROGRESS -> DONE` on implementation SHA `8b4e1fc1c2ed89cff450f2be640ca98fecbfd342`; fresh fetch verified `HEAD == origin/main` at that SHA. Supplier compatibility aliases were removed from the primary Operations sidebar, legacy redirect/query/history semantics were preserved, and canonical Supplier/Shoe Type/Color/Daily/Pre/Post navigation remains reachable. Run log: `.ai/runs/2026-09-30-RQ507-evidence.md`; evidence state is synchronized. Fresh recovery found no active `analytics-plan-current-truth` lock/branch/open-PR collision and promoted `RQ508` `WAITING -> READY`; no RQ508 claim started in this delivery turn.
 Owner promotion/claim 2026-09-30: fresh recovery verified `HEAD == origin/main == 9f954e0cf4439346330ec5617a6bffbd9252a61a`, confirmed RQ505 is DONE, no active lock/branch/open-PR owner collides with `operations-analytics-information-architecture`, and promoted/claimed `RQ507` `READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ507-codex.lock.md`.
 Routing repair 2026-09-30: `RQ516` is DONE on current `origin/main`; the stale addendum pointer was corrected to the next dependency-complete prompt `RQ505`. After RQ505 delivery, `RQ507` was promoted as the next READY prompt and `RQ508` remains behind RQ505/RQ507.
@@ -3626,7 +3627,7 @@ Owner promotion 2026-09-30: fresh recovery verified no active `analytics-plan-cu
 
 ## RQ508 - Reconcile analytics execution-plan metric dictionary with current delivered contracts
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: `RQ501`, `RQ505` and `RQ507` DONE; fresh collision check passed
 Priority: P2  
 Type: docs/architecture/guard-tests  
@@ -3686,6 +3687,21 @@ No runtime code.
 
 - Wait for RQ501/RQ505/RQ507 decisions so the document does not encode an unresolved product choice as fact.
 - May read RQ502-RQ504 outcomes if they land first.
+
+### Completion note
+
+- Date: 2026-09-30
+- Status: DONE
+- Completion: Rebased `ANALYTICS_EXECUTION_PLAN.md` with a prominent current contract verified against main, preserved the old audit as historical traceability, reconciled Supplier/category authority, decisionScore actionability, sale-header dataScope and exact sale-line cost precedence, and added a focused source-reference/current-truth validator to Planning Governance.
+- Changed files: `docs/ANALYTICS_EXECUTION_PLAN.md`, `scripts/check-analytics-execution-plan.mjs`, `.github/workflows/planning-governance.yml`, this queue, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-30-RQ508-evidence.md`.
+- Checks: execution-plan guard/self-test, prompt queue validator/self-test, planning architecture validator/self-test, agent instruction validator/self-test and `git diff --check` passed.
+- Not run: runtime frontend/backend suites and live browser/provider proof; RQ508 changes documentation and governance only.
+- Remote CI: Planning Governance run `36730832702` and Analytics Quality Gates run `36730832951` were `in_progress` at inspection time.
+- Run log: `.ai/runs/2026-09-30-RQ508-evidence.md`; evidence state synchronized.
+- Delivery: direct to `main`; implementation SHA `50512ffefb2005c889cafecfec46c770fc5c46bf`; fresh verification `HEAD == origin/main == 50512ffefb2005c889cafecfec46c770fc5c46bf` before closure sync.
+- Missed work: none known in the RQ508 documentation/guard scope.
+- Follow-up: no successor promoted; parent RQ pointer is `none`, RQ491 remains WAITING behind PARTIAL Q83 and other candidates retain named external/owner gates.
+- Residual risk: remote governance/quality runs were still in progress; the historical sections remain intentionally retained and are guarded by the current-truth marker.
 
 
 Owner promotion/claim 2026-09-30: fresh `origin/main` verification found no active lock/branch/open-PR owner for the analytics post-compile re-certification family, confirmed repair commit `0aba65a74748f98115d263261ce4de6eb009ed61` is an ancestor, and moved `RQ516` `READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ516-codex.lock.md`.

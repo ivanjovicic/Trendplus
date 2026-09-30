@@ -9,7 +9,7 @@
 
 ## 0. Current Contract — Verified Against Main
 
-> **Verified against main:** `ce690bbf6df25cc14361299fc70fed6d6f80fc9a` on 2026-09-30. This section is the current architecture contract. Sections 1–9 retain the May 2026 audit/proposal for traceability and are historical unless a live RQ prompt explicitly reopens the same scope.
+> **Verified against main:** `50512ffefb2005c889cafecfec46c770fc5c46bf` on 2026-09-30. This section is the current architecture contract. Sections 1–9 retain the May 2026 audit/proposal for traceability and are historical unless a live RQ prompt explicitly reopens the same scope.
 
 ### Current surface ownership
 
