@@ -4,6 +4,8 @@ Date: 2026-09-30
 Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
 Current READY prompt: RQ518
+Additional READY prompts: RQ524, RQ525
+Queue reconciliation 2026-09-30: RQ518 remains the primary deterministic P1 fix. RQ524 and RQ525 are independent, dependency-free P1 proof lanes and are READY in parallel; production reads under RQ524 still require explicit owner approval. RQ519-RQ532 otherwise remain sequenced/owner-gated as declared below.
 
 This addendum registers only non-duplicate Supplier follow-ups after second-pass source verification. Existing RQ474, RQ475 and RQ487 remain authoritative for overview error/readiness/query-cost work. RQ517 is already DONE for Daily Sales and is not reused.
 
@@ -165,7 +167,7 @@ RQ519 DONE; owner approval only if effect becomes actionable.
 ## RQ521 - Repair confirmed Supplier scorecard input bugs without changing model policy
 
 Status: WAITING
-Ready after: RQ518 DONE and RQ526 oracle available
+Ready after: RQ518 DONE and RQ526 DONE
 Priority: P2
 Type: sql/backend/tests
 Feature family: supplier-scorecard-input-correctness
@@ -202,7 +204,7 @@ Oracle/MV agree on corrected inputs without changing owner-approved model policy
 
 ### Dependencies
 
-RQ518 DONE and RQ526 oracle available; RQ445/RQ473 remain authority.
+RQ518 DONE and RQ526 DONE; RQ445/RQ473 remain authority.
 
 ---
 
@@ -226,11 +228,11 @@ Overview uses sale-time/snapshot-aware basis; scorecard/assortment use markdown-
 
 ### Scope
 
-Basis/provenance metadata plus low-risk canonical alignment; no silent cohort or attribution rewrite.
+Machine-readable/backend basis/provenance metadata plus low-risk canonical alignment; no silent cohort or attribution rewrite. Visible cross-tab metric naming, percentage-point units and report/export labels remain owned by RQ498 and must consume this basis rather than being duplicated here.
 
 ### Read first
 
-RQ445/RQ473/RQ519/RQ521; shared context/provenance contracts; Supplier shell/endpoints.
+RQ445/RQ473/RQ498/RQ519/RQ521; shared context/provenance contracts; Supplier shell/endpoints.
 
 ### Do
 
@@ -262,27 +264,27 @@ Owner: Analytics UI
 
 ### Problem
 
-Focused Supplier share is recomputed over one visible row, revenue rank badges also appear for ascending sort, shared trust copy still says gated, assortment chips can show draft/raw state, and category is not URL-persistent. C22 engine-English claim is stale; RQ488 fixed it.
+Focused Supplier share is recomputed over one visible row, revenue rank badges also appear for ascending sort, assortment chips can show draft/raw state, and category is not URL-persistent. C22 engine-English claim is stale; RQ488 fixed it. Shared pending/critical/gated trust semantics are owned by RQ499; visible cross-tab basis/unit wording is owned by RQ498.
 
 ### Evidence
 
-Current display projection runs after focused filtering; rank is index+1 whenever sort field is revenue regardless of direction; AnalyticsTrustHeader still renders 'Preporuka je gated.'; assortment applied-state handling is inconsistent.
+Current display projection runs after focused filtering; rank is index+1 whenever sort field is revenue regardless of direction; assortment applied-state handling is inconsistent. AnalyticsTrustHeader trust-state wording remains evidence for RQ499, not this prompt.
 
 ### Scope
 
-Presentation/state residuals only; no recommendation-code or signed margin-share denominator change without owner approval.
+Presentation/state residuals only. No recommendation-code, shared trust-state semantics, cross-tab basis/unit naming or signed margin-share denominator change; those remain RQ499, RQ498 and RQ531 as applicable.
 
 ### Read first
 
-RQ476/RQ488; Supplier overview/assortment specs; AnalyticsTrustHeader.
+RQ476/RQ488/RQ498/RQ499; Supplier overview/assortment specs.
 
 ### Do
 
-Preserve backend whole-population share when focused; badges only for descending revenue; remove remaining jargon and add critical copy; chips use activeFilters and Serbian enum labels; persist category; label signed margin-contribution denominator explicitly.
+Preserve backend whole-population share when focused; badges only for descending revenue; chips use activeFilters and Serbian enum labels; persist category. Do not redefine shared trust-state copy or the signed margin-contribution denominator here; those remain RQ499 and RQ498/RQ531 respectively.
 
 ### Tests
 
-Focused share, asc/desc rank, trust copy, applied-filter chip and category deep-link tests.
+Focused share, asc/desc rank, applied-filter chip and category deep-link tests.
 
 ### Acceptance
 
@@ -290,13 +292,13 @@ No focused 100% artifact, inverse badge, raw enum/jargon or silent denominator c
 
 ### Dependencies
 
-RQ520 and RQ522 DONE.
+RQ520, RQ522 and RQ498 DONE.
 
 ---
 
 ## RQ524 - Add read-only Supplier analytics reconciliation pack
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: sql/qa/evidence
 Feature family: supplier-reconciliation-evidence
@@ -339,7 +341,7 @@ None for fixture; owner approval for production reads.
 
 ## RQ525 - Add real-PostgreSQL Supplier schema readiness harness
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: tests/infrastructure
 Feature family: supplier-schema-readiness-tests
@@ -383,7 +385,7 @@ None; coordinate with RQ518/RQ519 paths.
 ## RQ526 - Add independent Supplier scorecard oracle and golden fixture
 
 Status: WAITING
-Ready after: RQ525 harness available
+Ready after: RQ525 DONE
 Priority: P2
 Type: tests/sql
 Feature family: supplier-scorecard-oracle
@@ -420,14 +422,14 @@ Every component is independently reproducible; input bugs fail before/pass after
 
 ### Dependencies
 
-RQ525 harness available.
+RQ525 DONE.
 
 ---
 
 ## RQ527 - Add Assortment pre/post oracle and golden fixture
 
 Status: WAITING
-Ready after: RQ519 and RQ525
+Ready after: RQ519 DONE and RQ525 DONE
 Priority: P2
 Type: tests/sql
 Feature family: supplier-assortment-oracle
@@ -464,7 +466,7 @@ Totals match declared population; Change equals Post-Pre for comparable rows; ma
 
 ### Dependencies
 
-RQ519 and RQ525.
+RQ519 DONE and RQ525 DONE.
 
 ---
 
@@ -512,10 +514,10 @@ RQ522 DONE.
 
 ---
 
-## RQ529 - Fix Supplier semantics, accessibility, date formatting and jargon
+## RQ529 - Fix Supplier accessibility, date formatting and terminology help
 
 Status: WAITING
-Ready after: RQ523 DONE
+Ready after: RQ523 DONE and RQ499 DONE
 Priority: P3
 Type: frontend/a11y/copy/tests
 Feature family: supplier-a11y-formatting
@@ -524,23 +526,23 @@ Owner: Analytics UI
 
 ### Problem
 
-Supplier shell lacks one H1, tab semantics are inconsistent, sortable headers need aria-sort, native date display is locale-dependent, duplicate store labels can remain ambiguous and terms need explanation.
+Supplier shell lacks one H1, tab semantics are inconsistent, sortable headers need aria-sort, native date display is locale-dependent, duplicate store labels can remain ambiguous and metric terminology needs accessible help. Shared trust-state severity/pending/gated wording is explicitly outside this prompt and remains RQ499.
 
 ### Evidence
 
-Current shell uses H2; tab buttons combine aria-selected/aria-current without tab roles; trust header retains jargon; audit observed locale/label ambiguity.
+Current shell uses H2; tab buttons combine aria-selected/aria-current without tab roles; audit observed locale/label ambiguity. Shared trust-header state wording is handled by RQ499.
 
 ### Scope
 
-Accessibility/copy/formatting only; preset alignment is owner decision if it changes filters.
+Accessibility/date/terminology-help formatting only; preset alignment is owner decision if it changes filters. Do not change trust-state meaning or severity copy.
 
 ### Read first
 
-Supplier shell/page specs; RQ523; shared accessibility patterns.
+Supplier shell/page specs; RQ499/RQ523; shared accessibility patterns.
 
 ### Do
 
-Add coherent heading/tab or link semantics, aria-sort/direction, Serbian date display, stable duplicate-store disambiguation and glossary InfoTips; get owner decision before changing canonical presets.
+Add coherent heading/tab or link semantics, aria-sort/direction, Serbian date display, stable duplicate-store disambiguation and glossary InfoTips; get owner decision before changing canonical presets. Do not alter pending/critical/recommendation trust semantics here.
 
 ### Tests
 
@@ -552,14 +554,14 @@ Keyboard/screen-reader semantics coherent, dates stable Serbian, jargon explaine
 
 ### Dependencies
 
-RQ523 DONE.
+RQ523 DONE and RQ499 DONE.
 
 ---
 
 ## RQ530 - Add Supplier buying-value panel with independently proven metrics
 
 Status: WAITING
-Ready after: RQ522 DONE and RQ474/RQ487 make Overview reliably usable
+Ready after: RQ522 DONE, RQ500 DONE, RQ524 evidence available, and RQ474/RQ487 make Overview reliably usable
 Priority: P2
 Type: backend/frontend/product/tests
 Feature family: supplier-buying-panel
@@ -596,14 +598,14 @@ Every metric has source/formula/unit/coverage/missing behavior and independent p
 
 ### Dependencies
 
-RQ522 DONE and RQ474/RQ487 make Overview usable; RQ524 evidence.
+RQ522 DONE, RQ500 DONE and RQ524 evidence; RQ474/RQ487 make Overview usable.
 
 ---
 
 ## RQ531 - Govern and explain Supplier scorecard model weights and thresholds
 
 Status: WAITING
-Ready after: RQ526 oracle available and product owner approves model-policy decisions
+Ready after: RQ526 DONE and product owner approves model-policy decisions
 Priority: P2
 Type: product/sql/frontend/docs/tests
 Feature family: supplier-scorecard-model-governance
@@ -640,14 +642,14 @@ Every model policy is versioned, explainable, owner-approved and oracle-matched.
 
 ### Dependencies
 
-RQ526 oracle available and explicit product-owner decision.
+RQ526 DONE and explicit product-owner decision.
 
 ---
 
 ## RQ532 - Add Supplier size-curve and controlled markdown effectiveness evidence
 
 Status: WAITING
-Ready after: RQ520 and RQ527 DONE
+Ready after: RQ520, RQ527 and RQ500 DONE
 Priority: P3
 Type: backend/frontend/product/tests
 Feature family: supplier-assortment-size-curve
@@ -684,4 +686,4 @@ Every insight states population, maturity/control basis; raw pre/post is never p
 
 ### Dependencies
 
-RQ520 and RQ527 DONE.
+RQ520, RQ527 and RQ500 DONE.
