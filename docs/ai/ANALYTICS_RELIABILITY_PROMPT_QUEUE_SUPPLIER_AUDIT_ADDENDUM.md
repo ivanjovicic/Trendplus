@@ -3,9 +3,9 @@
 Date: 2026-09-30
 Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
-Current READY prompt: none; RQ525 is PARTIAL pending Testcontainers-backed execution
+Current READY prompt: none
 Additional READY prompts: none
-Queue reconciliation 2026-09-30: RQ518 is DONE after shared PostgreSQL catalog-based materialized-view capability detection was delivered on main with explicit MISSING_OBJECT/MISSING_COLUMNS/NOT_POPULATED states and regression coverage. RQ519 remains PARTIAL after the canonical lifecycle repair, PostgreSQL fixture proof and focused test-assembly pass; its Docker-backed DatabaseInitializer runtime assertions remain pending because Docker is unavailable in this VM. RQ525 is PARTIAL after the readiness harness, isolated 015 proof and deterministic local PostgreSQL sequence were delivered; Testcontainers-backed execution remains pending because Docker is unavailable in this VM. RQ524 independently delivered the initial read-only pack and remains PARTIAL after deterministic PostgreSQL fixture execution because the broader reconciliation checks are still incomplete. RQ524 is repository-local/fixture-only; production execution remains exclusively RQ454/STAB16. RQ519-RQ532 otherwise remain sequenced/owner-gated as declared below.
+Queue reconciliation 2026-09-30: RQ518 is DONE after shared PostgreSQL catalog-based materialized-view capability detection was delivered on main with explicit MISSING_OBJECT/MISSING_COLUMNS/NOT_POPULATED states and regression coverage. RQ519 remains PARTIAL after the canonical lifecycle repair, PostgreSQL fixture proof and focused test-assembly pass; its Docker-backed DatabaseInitializer runtime assertions remain pending because Docker is unavailable in this VM. RQ525 is PARTIAL after the readiness harness, isolated 015 proof and deterministic local PostgreSQL sequence were delivered; Testcontainers-backed execution remains pending because Docker is unavailable in this VM. RQ524 remains PARTIAL after extending the read-only pack to fifteen fixture-backed checks with stable PASS/EXPLAINED evidence and no FAIL on PostgreSQL 16.15; production execution remains exclusively RQ454/STAB16. RQ519-RQ532 otherwise remain sequenced/owner-gated as declared below.
 
 This addendum registers only non-duplicate Supplier follow-ups after second-pass source verification. Existing RQ474, RQ475 and RQ487 remain authoritative for overview error/readiness/query-cost work. RQ517 is already DONE for Daily Sales and is not reused.
 
@@ -303,8 +303,8 @@ RQ520, RQ522 and RQ498 DONE.
 ## RQ524 - Add read-only Supplier analytics reconciliation pack
 
 Status: PARTIAL
-Claimed: 2026-09-30 by ChatGPT connector workspace after exact-main refresh; no rq524 branch/search collision found.
-Progress: read-only reconciliation script and run evidence delivered on main; the corrected pack now executes against the shared deterministic seed on local PostgreSQL 16 and returns stable PASS/EXPLAINED evidence with no FAIL. The broader requested reconciliation set remains incomplete. Production/replica execution was not attempted and is outside RQ524; it remains exclusively RQ454/STAB16. Run log: `.ai/runs/2026-09-30-RQ524-evidence.md`; evidence state: synchronized; main verification: `12eea85eaa49e10add6f7b82e0bbd5e0b2ff9c5a`.
+Claimed: 2026-09-30 by ChatGPT on `cursor/rq524-pack-extend-78b0`; extended the repository-local reconciliation pack and reran deterministic PostgreSQL fixture evidence.
+Progress: the read-only pack now exposes fifteen checks (`SUP-001`..`SUP-015`) for previous-only suppliers, attribution drift, startup-history presence, nivelacija store grain, assortment comparable totals, overview-vs-scorecard explained delta, assortment baseline flags and scorecard refresh history. Local execution against the shared operations seed returned no FAIL (`6` PASS, `9` EXPLAINED). Production/replica execution was not attempted and remains exclusively RQ454/STAB16. Run log: `.ai/runs/2026-09-30-RQ524-evidence.md`; evidence state: pending delivery sync; main verification: pending.
 Priority: P1
 Type: sql/qa/evidence
 Feature family: supplier-reconciliation-evidence
