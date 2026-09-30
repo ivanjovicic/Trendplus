@@ -356,7 +356,7 @@ public sealed class InventoryReportDeliveryService
     private static List<string> ParseRecipients(string recipientsCsv)
     {
         return recipientsCsv
-            .Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Where(static x => x.Contains('@'))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();

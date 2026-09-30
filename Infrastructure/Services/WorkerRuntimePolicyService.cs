@@ -195,7 +195,7 @@ public sealed class WorkerRuntimePolicyService
             return null;
 
         var lines = notes
-            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         foreach (var line in lines)
         {
@@ -225,7 +225,7 @@ public sealed class WorkerRuntimePolicyService
             return null;
 
         var lines = notes
-            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Where(line => !line.StartsWith(ManualRunMarkerPrefix, StringComparison.OrdinalIgnoreCase))
             .ToArray();
 

@@ -89,7 +89,7 @@ public static class InventoryReportScheduleValidator
             Add(errors, nameof(InventoryReportScheduleUpsertRequest.RecipientsCsv), "Lista primalaca ne sme biti duža od 2000 karaktera.");
         }
 
-        var recipients = value.Split([',', ';', '\r', '\n'], StringSplitOptions.None);
+        var recipients = value.Split(new[] { ',', ';', '\r', '\n' }, StringSplitOptions.None);
         if (recipients.Any(recipient => recipient.Trim().Length == 0))
         {
             Add(errors, nameof(InventoryReportScheduleUpsertRequest.RecipientsCsv), "Lista primalaca sadrži praznu stavku.");
