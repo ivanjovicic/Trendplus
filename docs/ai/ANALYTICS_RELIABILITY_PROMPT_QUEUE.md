@@ -26577,6 +26577,8 @@ Users can tell exactly which population and denominator each share uses; negativ
 
 Owner completion 2026-09-30: RQ476 moved `IN_PROGRESS -> DONE` and was delivered directly to `main` in implementation `2d30d2bc9c66ae5384164d32147d146034c65831`; Supplier overview, Decision Hub, recommendation projections and export metadata now share the positive-net-revenue policy, while negative/returns-only rows remain visible and non-positive shares are unavailable. Focused frontend proof is 54/54; typecheck, client build, analytics guardrails, prompt governance and diff checks pass. The focused API tests were blocked before execution by the pre-existing unrelated `DecisionBoardEndpoints.cs` compile errors (`CS8323`, `CS8130`, `CS8183`). Fresh fetch verified exact `HEAD == origin/main` at the implementation SHA before closure synchronization. Run log: `.ai/runs/2026-09-30-RQ476-evidence.md`. Q83 remains PARTIAL and RQ491 remains WAITING.
 
+Owner promotion/claim 2026-09-30: fresh recovery verified `HEAD == origin/main == 4101794bac92f0f6f7cc7ac1f7436e9c3b62d745`, RQ469/RQ470/RQ471 are DONE, and no active Product Decision page lock/branch/PR owner or path collision remains. RQ472/RQ474/RQ475 remain gated by their named journal/live/schema authorities; RQ491 remains WAITING behind Q83. Dependency-complete RQ485 moved `WAITING -> READY -> IN_PROGRESS` as the highest safe repository-local Product Decision prompt. Local lock: `.ai/task-locks/RQ485-codex.lock.md`.
+
 ### Claim note
 
 - Claim date: 2026-09-30
@@ -27187,7 +27189,7 @@ Approved with the semantics below. This replaces „Owner decision needed“ abo
 
 ## RQ485 - Product Decision page hygiene: duplicate header block, URL state, deterministic sorting and local dates
 
-Status: WAITING
+Status: DONE
 Ready after: `RQ469`, `RQ470` and `RQ471` DONE (same page `ProductDecisionCenterPage.tsx`; `RQ470` owns the `search` URL parameter and pagination)
 Priority: P2
 Type: frontend/tests
@@ -27237,6 +27239,8 @@ Source: `PS10` and the Product Decision part of `PS16` in `docs/ai/PRODUCTS_SUPP
 
 - After `RQ469`/`RQ470`/`RQ471` (same page).
 - Reliability contract: presentation-only; no client-side decisions or totals.
+
+Owner completion 2026-09-30: RQ485 moved `IN_PROGRESS -> DONE` and was delivered directly to `main` in implementation `a6511b252c00d536cb9ed4699031ba54d26058f3`; Product Decision now renders one header/toolbar/KPI block, persists validated period/filter/sort/search state in the `/analytics/products` URL, uses Europe/Belgrade-local date defaults/display, sorts nulls last and clears stale queue feedback on state changes. Dedicated hygiene proof is 2/2; existing Product Decision focused regressions are 39/40 with one pre-existing unrelated `actionStatusFallback` title expectation; typecheck, analytics guardrails, production build, prompt governance and diff checks pass. Fresh fetch verified exact `HEAD == origin/main` at the implementation SHA before closure synchronization. Run log: `.ai/runs/2026-09-30-RQ485-evidence.md`. Q83 remains PARTIAL and RQ491 remains WAITING.
 
 ---
 
