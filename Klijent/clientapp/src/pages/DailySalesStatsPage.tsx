@@ -809,6 +809,7 @@ export default function DailySalesStatsPage() {
   const [qualityPanelOpen, setQualityPanelOpen] = useState(false);
   const [dataScope, setDataScopeValue] = useState<DataScope>(() => queryDataScope);
   const dataScopeRef = useRef<DataScope>(queryDataScope);
+  const pendingDataScopeUrlSyncRef = useRef(false);
   const pendingStoreIdRef = useRef<number | null>(null);
   const storesStateRef = useRef<{ scope: DataScope | null; stale: boolean; loadError: string | null }>({ scope: null, stale: false, loadError: null });
   storesStateRef.current = { scope: storesScope, stale: storesStale, loadError: storesLoadError };
@@ -843,18 +844,9 @@ export default function DailySalesStatsPage() {
       const nextScope = normalizeDataScope(getDataScope());
       const scopeChanged = dataScopeRef.current !== nextScope;
       dataScopeRef.current = nextScope;
-      if (scopeChanged) setDataScopeValue(nextScope);
-
-      const currentQueryScope = searchParams.get("dataScope");
-      const shouldSyncUrl = currentQueryScope !== nextScope && (scopeChanged || searchParams.has("dataScope"));
-      if (!shouldSyncUrl) return;
-
-      setSearchParams((current) => {
-        if (current.get("dataScope") === nextScope) return current;
-        const next = new URLSearchParams(current);
-        next.set("dataScope", nextScope);
-        return next;
-      }, { replace: true });
+      if (!scopeChanged) return;
+      pendingDataScopeUrlSyncRef.current = true;
+      setDataScopeValue(nextScope);
     };
 
     window.addEventListener("trendplus:data-scope-changed", handleScopeChange);
@@ -862,6 +854,15 @@ export default function DailySalesStatsPage() {
       window.removeEventListener("trendplus:data-scope-changed", handleScopeChange);
     };
   }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (!pendingDataScopeUrlSyncRef.current) return;
+    pendingDataScopeUrlSyncRef.current = false;
+    if (searchParams.get("dataScope") === dataScope) return;
+    const next = new URLSearchParams(searchParams);
+    next.set("dataScope", dataScope);
+    setSearchParamsRef.current(next, { replace: true });
+  }, [dataScope, searchParams]);
 
   useEffect(() => {
     if (storesScope == null || storesScope === dataScope) return;
@@ -901,6 +902,7 @@ export default function DailySalesStatsPage() {
           const next = new URLSearchParams(current);
           if (resolved.selectedStoreId == null) next.delete("storeId");
           else next.set("storeId", String(resolved.selectedStoreId));
+          next.set("dataScope", dataScope);
           return next;
         }, { replace: true });
         if (shouldRefreshAnalytics) setStoreValidationNonce((value) => value + 1);
@@ -930,6 +932,7 @@ export default function DailySalesStatsPage() {
           if (!current.has("storeId")) return current;
           const next = new URLSearchParams(current);
           next.delete("storeId");
+          next.set("dataScope", dataScope);
           return next;
         }, { replace: true });
         if (shouldRefreshAnalytics) setStoreValidationNonce((value) => value + 1);

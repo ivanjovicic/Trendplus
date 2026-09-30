@@ -28135,3 +28135,99 @@ This must not become another arbitrary numeric score.
 - Checks not run: live PostgreSQL/API/browser/export/provider proof and remote CI; no named RQ515 gate required them and Q83 remains the live-schema owner.
 - Local lock was removed before direct-main delivery. Fresh fetch confirmed the implementation SHA is contained in the final current `main`; the queue pointer is returned to `none` for the next recovery.
 - Residual: readiness remains backend-authoritative and live/deployed proof is still external; Q83 remains PARTIAL and RQ491 is not promoted.
+
+Owner promotion/claim 2026-09-30: fresh current-main quality-gate run `36717170282` exposed the previously recorded RQ511 Daily Sales URL-display residual. No active Daily Sales lock/branch/PR owner or conflicting queue claim remained; RQ517 moved `WAITING -> READY -> IN_PROGRESS` for the bounded scope-URL contract repair. Local lock: `.ai/task-locks/RQ517-codex.lock.md`.
+
+---
+
+## RQ517 - Preserve Daily Sales data-scope URL state after global scope changes
+
+Status: DONE
+Ready after: `RQ511` DONE and the current-main quality gate reproduces the URL residual
+Priority: P1
+Type: frontend/tests
+Feature family: daily-sales-scope-url-contract
+Parallel-safe: no
+Owner: Analytics Frontend / Daily Sales
+Commit suggestion: `fix(analytics): preserve daily sales scope url state`
+
+### Problem
+
+Daily Sales reloads both periods with the new global `dataScope`, but a scope change from a URL without an explicit scope can leave the router search string without `dataScope`. That loses the selected population in copied/deep-linked URLs and fails the existing contract test in the current-main Analytics Quality Gates run.
+
+### Evidence
+
+- Current-main run `36717170282` fails one frontend test: `DailySalesStatsPage.premium.spec.tsx` expects `fromDate=2026-04-01&toDate=2026-04-30&dataScope=imported`, but receives the same period without `dataScope`.
+- The local reproducer fails identically: 21/22 tests pass, with the failure at the global-scope-change URL assertion.
+- RQ511 recorded this as an unrelated pre-existing Daily Sales URL-display residual, so this prompt closes an existing owner gap rather than creating a new analytics semantics owner.
+
+### Scope
+
+- `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`
+- `Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.premium.spec.tsx` only if the smallest regression assertion needs strengthening
+- this queue and the durable RQ517 run log
+
+Do not change Daily Sales backend aggregation, response schema, data-scope meaning, period calculation, other pages or shared global-scope ownership.
+
+### Read first
+
+- `RQ269`, `RQ382`, `RQ511` completion notes and run evidence
+- `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`
+- `Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.premium.spec.tsx`
+- `Klijent/clientapp/src/utils/dataScope.ts`
+- `.github/workflows/analytics-quality-gates.yml`
+
+### Do
+
+1. Make the smallest deterministic change that persists the changed global scope in the Daily Sales URL while preserving the no-reload behavior for a repeated current-scope event.
+2. Keep the request scope, visible trust metadata and URL scope aligned after both initial load and a global scope change.
+3. Add or retain a focused regression proof for the missing-scope URL case and the repeated-event no-reload case.
+4. Preserve existing URL parameters and replace-state behavior; do not introduce a second scope source of truth.
+
+### Tests
+
+- `npm run test:run -- src/pages/__tests__/DailySalesStatsPage.premium.spec.tsx`
+- `npm run test:analytics`
+- `npm run check:analytics-guardrails`
+- `npm run typecheck`
+- `npm run build`
+- `git diff --check`
+- inspect the current-main Analytics Quality Gates run for the delivered SHA
+
+### Acceptance
+
+- The focused Daily Sales suite is green and proves both period requests use the new scope and the URL contains that scope after a change.
+- Repeating an event for the current scope does not issue another pair of period requests.
+- Existing dates, store, top-N and sort query parameters are preserved.
+- No backend or unrelated analytics behavior changes.
+- The change is delivered to `main` and the exact delivered SHA is verified on `origin/main`.
+
+### Dependencies
+
+- `RQ511` DONE; its recorded Daily Sales URL residual is the direct evidence for this follow-up.
+- No external provider, database, tenant, authorization or production decision is required.
+
+### Claim note
+
+- Claim date: 2026-09-30
+- Current-main quality run `36717170282` and local reproduction prove the residual; no active owner collision was found.
+- The prompt is bounded to the existing Daily Sales URL/state owner and does not reopen completed backend/data-scope prompts.
+- Local lock: `.ai/task-locks/RQ517-codex.lock.md`.
+
+### Completion note
+
+- Date: 2026-09-30
+- Status: DONE
+- Completion: Daily Sales now persists the active `dataScope` when global scope changes, including after a late store-load success or failure update that uses a stale router snapshot. Repeated events for the current scope still short-circuit without reloading either period.
+- Changed files: `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-30-RQ517-evidence.md`.
+- Checks run: Daily Sales focused suite 22/22; `npm run test:analytics` 136/136 files and 983/983 tests; `npm run check:analytics-guardrails`; `npm run typecheck`; `npm run build`; `node scripts/check-prompt-queues.mjs`; `node scripts/check-agent-instructions.mjs`; `node scripts/check-planning-architecture.mjs`; `git diff --check`.
+- Checks not run: live browser/provider/database proof; not required for this bounded frontend URL/state repair. Post-push remote gate inspection remains pending until delivery.
+- Run log: `.ai/runs/2026-09-30-RQ517-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: none known in owned scope.
+- Follow-up: inspect the post-push Analytics Quality Gates run, then re-enter canonical recovery.
+- Residual risk: existing Vite large-chunk warning; no known correctness residual in the owned scope.
+- Prompt defect / scope repair: guardrail baseline line moved from 924 to 926 because the validator stores line-numbered known violations; no new semantic violation was introduced.
