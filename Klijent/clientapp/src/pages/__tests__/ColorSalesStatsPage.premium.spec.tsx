@@ -321,7 +321,7 @@ describe("ColorSalesStatsPage premium controls", () => {
     expect(row).toBeDefined();
     fireEvent.click(within(row!).getByRole("button", { name: "Detalji" }));
 
-    const detailHeading = await screen.findByRole("heading", { name: "Detalj odluke: Crna" });
+    const detailHeading = await screen.findByRole("heading", { name: "Detalj signala: Crna" });
     const detailPanel = detailHeading.closest("section");
     expect(detailPanel).not.toBeNull();
     expect(within(detailPanel!).getByText("Uporedivo pre nivelacije promet").parentElement).toHaveTextContent(/90\.000/);
@@ -362,7 +362,7 @@ describe("ColorSalesStatsPage premium controls", () => {
     expect(row).toBeDefined();
     fireEvent.click(within(row!).getByRole("button", { name: "Detalji" }));
 
-    const detailHeading = await screen.findByRole("heading", { name: "Detalj odluke: Teget" });
+    const detailHeading = await screen.findByRole("heading", { name: "Detalj signala: Teget" });
     const detailPanel = detailHeading.closest("section");
     expect(detailPanel).not.toBeNull();
     expect(within(detailPanel!).getByText("Uporedivo pre nivelacije promet").parentElement).toHaveTextContent(/50\.000/);
@@ -405,7 +405,7 @@ describe("ColorSalesStatsPage premium controls", () => {
     expect(row).toBeDefined();
     fireEvent.click(within(row!).getByRole("button", { name: "Detalji" }));
 
-    const detailHeading = await screen.findByRole("heading", { name: "Detalj odluke: Bordo" });
+    const detailHeading = await screen.findByRole("heading", { name: "Detalj signala: Bordo" });
     const detailPanel = detailHeading.closest("section");
     expect(detailPanel).not.toBeNull();
     expect(within(detailPanel!).getByText("Uporedivo pre nivelacije promet").parentElement).toHaveTextContent(/0.*RSD/);
@@ -474,7 +474,7 @@ describe("ColorSalesStatsPage premium controls", () => {
     expect(within(tableHead!).getByText(/Nedovoljno podataka: 0/)).toBeInTheDocument();
 
     fireEvent.click(within(reviewRow).getByRole("button", { name: "Detalji" }));
-    expect(await screen.findByRole("heading", { name: "Detalj odluke: Crna za pregled" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Detalj signala: Crna za pregled" })).toBeInTheDocument();
     expect(screen.getByText("Razlog preporuke:").parentElement).toHaveTextContent("Backend je blokirao izvrsenje preporuke: Potrebna je rucna provera.");
     expect(screen.getAllByText(RECOMMENDATION_SIGNAL_UNAVAILABLE)).toHaveLength(1);
   });
@@ -616,7 +616,7 @@ describe("ColorSalesStatsPage premium controls", () => {
     expect(row).toHaveTextContent("100,00%");
 
     fireEvent.click(within(row!).getByRole("button", { name: "Detalji" }));
-    const detailHeading = await screen.findByRole("heading", { name: "Detalj odluke: Crvena" });
+    const detailHeading = await screen.findByRole("heading", { name: "Detalj signala: Crvena" });
     const detailPanel = detailHeading.closest("section");
     expect(detailPanel).not.toBeNull();
     expect(within(detailPanel!).getByText("Pokriće marže").parentElement).toHaveTextContent("0,0%");
@@ -667,7 +667,7 @@ describe("ColorSalesStatsPage premium controls", () => {
     expect(row).toBeDefined();
     expect(row).toHaveTextContent("150,00%");
     fireEvent.click(within(row!).getByRole("button", { name: "Detalji" }));
-    const detailHeading = await screen.findByRole("heading", { name: "Detalj odluke: Nevalidna" });
+    const detailHeading = await screen.findByRole("heading", { name: "Detalj signala: Nevalidna" });
     const detailPanel = detailHeading.closest("section");
     expect(detailPanel).not.toBeNull();
     expect(within(detailPanel!).getByText("Pre/post pokriće uporedive kohorte").parentElement).toHaveTextContent("N/A");

@@ -1,6 +1,8 @@
 # AnalyticsTrustHeader Coverage Audit
 
-Updated: 2026-05-24
+Updated: 2026-09-30
+
+RQ505 verification: Color and Shoe Type are supporting/analysis surfaces. Both use `mode="signal"`; backend status/reason remains authoritative, while any decision score is detail/transparency evidence rather than a competing final CTA.
 
 | Screen / Route | Uses `AnalyticsTrustHeader` | Mode | Period Source | Last Refresh Source | Data Source Label | Data Quality Status Source | Data Quality Summary Source | Empty / Error State |
 |---|---|---|---|---|---|---|---|---|
@@ -17,4 +19,3 @@ Updated: 2026-05-24
 | `/analytics/color-sales-stats` ([ColorSalesStatsPage.tsx](../Klijent/clientapp/src/pages/ColorSalesStatsPage.tsx)) | yes | `signal` | active filters | payload `generatedAt` | `Sales facts analytics` | not provided | not provided (`compact` fallback text) | yes (`AnalyticsErrorState` + `AnalyticsEmptyState`) |
 | `/analytics/nivelacije-pre-post` ([ProdajaPrePostNivelacijePage.tsx](../Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx)) | yes | `report` | active filters | payload `generatedAt` | `Nivelacija analytics` | not provided | not provided (`compact` fallback text) | yes (`AnalyticsErrorState` + `AnalyticsEmptyState`) |
 | `/analytics/pre-nivelacija-prioriteti` ([PreNivelacijaPriorityPage.tsx](../Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx)) | yes | `recommendation` | not defined (`null`) | payload `generatedAtUtc` | `Nivelacija analytics` | not provided | not provided (`compact` fallback text) | yes (`AnalyticsErrorState` + `AnalyticsEmptyState`) |
-

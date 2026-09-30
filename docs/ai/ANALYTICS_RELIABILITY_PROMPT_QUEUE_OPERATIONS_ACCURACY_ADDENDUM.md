@@ -2,7 +2,9 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ516
+Current READY prompt: RQ505
+Routing repair 2026-09-30: `RQ516` is DONE on current `origin/main`; the stale addendum pointer was corrected to the next dependency-complete prompt `RQ505`. `RQ507` remains sequenced behind this category-screen authority owner and `RQ508` remains behind RQ505/RQ507.
+Owner promotion/claim 2026-09-30: fresh recovery verified `HEAD == origin/main == 0145e947d8b942ed874640216993b2d7bc7616cd`, confirmed RQ516 is DONE, RQ501 is DONE, the 2026-09-29 owner decision is recorded, and no active lock/branch/open-PR owner collides with `category-screen-authority`. `RQ505` moved `WAITING -> READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ505-codex.lock.md`.
 Owner decisions 2026-09-29 (Ivan): RQ501 aligns Color with the RQ496 Shoe Type signed net-sales contract (`net_sales_signed`, explicit numerator/denominator/state, mathematically valid negative and >100% values, unavailable never coerced to recommendation zero; quality/coverage ratios remain bounded 0–100). RQ505 frames Color as a supporting signal/analysis surface with signal trust framing; backend status/reason stays authoritative and `decisionScore` remains detail/transparency evidence, not a competing final CTA. RQ507 approves removing Supplier compatibility aliases from the primary Operations sidebar while preserving legacy URLs/redirects and keeping Shoe Type, Color, Daily and Pre/Post available. RQ476 uses positive net revenue of the declared visible/decision population for concentration/share; negative/returns-only rows remain visible without ambiguous positive share, and unknown-supplier inclusion is explicit and consistent across API/UI/recommendation/export.
 Routing repair 2026-09-29: RQ448's live section was stale at `IN_PROGRESS`; synchronized queue/roadmap truth and prior evidence show it remains `WAITING` behind the authenticated browser/API/deployment gate. No implementation claim is reopened.
 Routing reconciliation 2026-09-29: any workspace still showing `RQ466` as `Current READY` is stale. `RQ466` and `RQ502` are `DONE` on current main; no RQ prompt is currently READY. Registration evidence: `.ai/runs/2026-09-29-RQ502-registration-evidence.md`.
@@ -3377,7 +3379,7 @@ No backend formula, cost priority, share rule or recommendation change.
 
 ## RQ505 - Decide one product-authority model for Shoe Type and Color supporting analytics
 
-Status: WAITING  
+Status: IN_PROGRESS
 Ready after: RQ516 DONE; then promote after fresh collision check
 Priority: P2  
 Type: product-contract/frontend/docs/tests  

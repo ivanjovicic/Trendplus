@@ -162,7 +162,7 @@ const decisionColumns: AnalyticsTableColumn<DecisionShoeType>[] = [
   { key: "popRevenueChangePct", header: "PoP trend %", dataType: "percent" },
   { key: "prePostNivelacijaRevenueImpactPct", header: "Uticaj nivelacije %", dataType: "percent" },
   { key: "splitCoveragePct", header: "Pre/post pokriće prometa %", dataType: "percent" },
-  { key: "status", header: "Preporuka", dataType: "text" },
+  { key: "status", header: "Status signala", dataType: "text" },
   { key: "recommendationConfidencePct", header: RECOMMENDATION_CONFIDENCE_LABEL, dataType: "number" },
   { key: "coveragePct", header: "Udeo artikala sa nivelacijom %", dataType: "percent" },
   { key: "totalCost", header: "Nabavna vrednost (rešeni trošak)", dataType: "currency" },
@@ -1136,7 +1136,7 @@ export default function ShoeTypeSalesStatsPage() {
     <div className="shoetype-decision-page">
       <AnalyticsTrustHeader
         title="Prodaja po tipu obuće"
-        description="Podrška odluci sa asortimanskim fokusom po tipu obuće."
+        description="Podržavajući signal za analizu asortimana po tipu obuće; nije samostalna konačna preporuka."
         periodFrom={data?.fromDate ? toDateOnly(data.fromDate) : activeFilters.fromDate}
         periodTo={toInclusiveCalendarDate(data?.toDate) ?? activeFilters.toDate}
         lastRefreshAt={trustLastRefreshAt}
@@ -1145,6 +1145,7 @@ export default function ShoeTypeSalesStatsPage() {
         dataQualityStatus={trustDataQualityStatus}
         mode="signal"
         isPartial={trustIsPartial}
+        recommendationNote="Tip obuće je podržavajući analitički signal, ne samostalna konačna preporuka. Backend status i razlog ostaju autoritativna evidencija."
         emptyStateReason={!loading && !showBlockingError && trustEmptyStateReason ? trustEmptyStateReason : null}
         methodologyHref="/analytics/data-quality"
         dataQualityHref="/analytics/data-quality"
@@ -1511,7 +1512,7 @@ export default function ShoeTypeSalesStatsPage() {
                           data-sort-dir={isSortActive("status", sortField) ? sortDir : "none"}
                           onClick={() => handleSort("status")}
                         >
-                          Preporuka <span className="sort-indicator" aria-hidden="true">{sortMarker("status", sortField, sortDir)}</span> <InfoTip text={analyticsMetricDescriptions.recommendation} />
+                          Status signala <span className="sort-indicator" aria-hidden="true">{sortMarker("status", sortField, sortDir)}</span> <InfoTip text={`${analyticsMetricDescriptions.recommendation} Ovaj ekran je podržavajući signal, ne samostalna konačna preporuka.`} />
                         </button>
                       </th>
                       <th className="align-center">Detalj <InfoTip text="Proširi inline detalj ili otvori puni detalj za ovaj tip obuće." /></th>
@@ -1604,7 +1605,7 @@ export default function ShoeTypeSalesStatsPage() {
           {selectedRow ? (
             <section className="shoetype-decision-detail" ref={detailSectionRef}>
               <div className="shoetype-decision-detail-head">
-                <h3>Detalj odluke: {selectedRow.tipObuceNaziv}</h3>
+                <h3>Detalj signala: {selectedRow.tipObuceNaziv}</h3>
                 <button type="button" onClick={() => openDetail(selectedRow)}>Otvori puni detalj</button>
               </div>
 

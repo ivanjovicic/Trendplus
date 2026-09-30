@@ -159,8 +159,8 @@ const decisionColumns: AnalyticsTableColumn<DecisionColor>[] = [
     dataType: "text",
     getValue: (row) => row.sharePctUnavailableReason ?? (row.sharePctBasis === "net_sales_signed" ? "available" : null),
   },
-  { key: "status", header: "Preporuka", dataType: "text", getValue: (row) => recommendationStatusLabel(row.status) },
-  { key: "decisionScore", header: "Skor odluke (0–100)", dataType: "number" },
+  { key: "status", header: "Status signala", dataType: "text", getValue: (row) => recommendationStatusLabel(row.status) },
+  { key: "decisionScore", header: "Skor odluke (detalj/transparencija)", dataType: "number" },
 ];
 
 function toUtcRange(fromDate: string, toDate: string): { fromDate: string; toDate: string } {
@@ -891,7 +891,7 @@ export default function ColorSalesStatsPage() {
         table: "color-sales-stats",
         recordId,
         title: row.boja,
-        subtitle: "Detalj odluke po boji",
+        subtitle: "Detalj signala po boji",
         columns: decisionColumns,
         row,
         metadata: [...toolbarFilters, ...toolbarMetadata],
@@ -1054,7 +1054,7 @@ export default function ColorSalesStatsPage() {
     <div className="color-decision-page">
       <AnalyticsTrustHeader
         title="Prodaja po boji artikla"
-        description="Podrška za odluku o bojama koje treba pojačati u nabavci."
+        description="Podržavajući signal za analizu boja i odluku o nabavci; nije samostalna konačna preporuka."
         periodFrom={data?.fromDate ?? activeFilters.fromDate}
         periodTo={toInclusiveCalendarDate(data?.toDate) ?? activeFilters.toDate}
         requestedPeriodFrom={responseMeta?.requestedPeriodFromUtc}
@@ -1070,9 +1070,9 @@ export default function ColorSalesStatsPage() {
           ? `${data.lineage.observedPopulation}; ${data.lineage.prePostPolicy}`
           : lineageBasis}
         dataQualityStatus={trustDataQualityStatus}
-        mode="recommendation"
+        mode="signal"
         isPartial={trustIsPartial}
-        recommendationNote="Preporuke dolaze iz backenda; ovaj ekran zadržava odluku, period i kvalitet podataka na jednom mestu."
+        recommendationNote="Boja je podržavajući analitički signal, ne samostalna konačna preporuka. Backend status i razlog ostaju autoritativna evidencija; skor odluke je samo detalj/transparencija kada je dozvoljen."
         emptyStateReason={!loading && !showBlockingError && trustEmptyStateReason ? trustEmptyStateReason : null}
         methodologyHref="/analytics/data-quality"
         dataQualityHref="/analytics/data-quality"
@@ -1266,7 +1266,7 @@ export default function ColorSalesStatsPage() {
                       </th>
                       <th>
                         <button type="button" onClick={() => handleSort("status")}>
-                          Preporuka{sortMarker("status", sortField, sortDir)} <InfoTip text="Sistemska preporuka: Pojacaj / Zadrzi / Pregledaj / Ne veruj / Nedovoljno podataka. Status i izvrsivost akcije su odvojeni signali." />
+                          Status signala{sortMarker("status", sortField, sortDir)} <InfoTip text="Backend status signala: Pojacaj / Zadrzi / Pregledaj / Ne veruj / Nedovoljno podataka. Status i izvrsivost akcije su odvojeni signali; ovaj ekran nije samostalna konačna preporuka." />
                         </button>
                       </th>
                       <th className="align-center">Detalj</th>
@@ -1329,7 +1329,7 @@ export default function ColorSalesStatsPage() {
           {selectedRow ? (
             <section className="color-decision-detail" ref={detailSectionRef}>
               <div className="color-decision-detail-head">
-                <h3>Detalj odluke: {selectedRow.boja}</h3>
+                <h3>Detalj signala: {selectedRow.boja}</h3>
                 <button type="button" onClick={() => openDetail(selectedRow)}>Otvori puni detalj</button>
               </div>
 

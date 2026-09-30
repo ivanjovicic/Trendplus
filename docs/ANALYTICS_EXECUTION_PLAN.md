@@ -113,6 +113,16 @@ Inventory ekran već ima:
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
+### 2.4 Current category-screen authority (RQ505, verified 2026-09-30)
+
+`Color Sales Stats` and `Shoe Type Sales Stats` are supporting/analysis surfaces, not independent final-recommendation hubs. Both surfaces must make that role explicit:
+
+- `AnalyticsTrustHeader` uses `mode="signal"` and the page copy calls the result a supporting analytical signal.
+- Backend `status` and `statusReason` remain the authoritative recommendation evidence; the frontend maps and explains them but does not create a competing decision.
+- `confidencePct` and `reliabilityPct` remain distinct backend signals.
+- `decisionScore`, when supplied by the backend and allowed by actionability, is detail/transparency evidence only; it is not a primary CTA or a replacement for status/reason.
+- Missing, unknown or blocked recommendation evidence fails closed to an informational/blocked state. No local scoring formula is permitted.
+
 ---
 
 ## 3. Canonical Metric Dictionary
@@ -128,9 +138,9 @@ Inventory ekran već ima:
 | 4 | **Marža %** | `(promet - trošak) / promet * 100`; trošak via `AnalyticsMarginPolicy` | Backend | Uz quality tier caveat; formatirati kao `XX.X%` | Nikad prikazati bez tier indikatora; "estimated" tier → jasno upozorenje | Tooltip tekst varira po ekranu; neki ekrani izostavljaju caveat |
 | 5 | **PoP promena %** | `(current_revenue - prev_revenue) / prev_revenue * 100` | Backend | `+XX.X%` ili `-XX.X%` sa strelicom; null-safe | Validan samo kad oba perioda imaju podatke; prikazati "nema pored. perioda" kad je null | ShoeTypeSalesStats koristi `popNorm` u lokalnoj formuli drugačije nego SupplierSalesStats |
 | 6 | **Pouzdanost %** | `AnalyticsDecisionRecommendationEngine.reliabilityPct` | Backend (RecommendationEngine) | `XX%`; tooltip: objašnjava komponente (cost coverage, split coverage, period coverage) | Nije statistički confidence interval; mera pokrivenosti podataka | PreNivelacijaPriority mapira string→broj: "high"→90, "medium"→65, "low"→35 (drugačiji input skup); SupplierFootwearAnalytics računa lokalno kao `marginCoveragePct*0.45 + splitCoveragePct*0.20 + ...` |
-| 7 | **Sigurnost preporuke %** | `AnalyticsDecisionRecommendationEngine.confidencePct` | Backend (RecommendationEngine) | `XX%`; tooltip: composite od data completeness faktora | Različit od `Pouzdanost %`; ne prikazivati kao jedini signal | ShoeTypeSalesStatsPage koristi `confidencePct` kao ceo `decisionScore` kad backend dostupan — pogrešna semantika |
+| 7 | **Sigurnost preporuke %** | `AnalyticsDecisionRecommendationEngine.confidencePct` | Backend (RecommendationEngine) | `XX%`; tooltip: composite od data completeness faktora | Različit od `Pouzdanost %`; ne prikazivati kao jedini signal | Supporting category pages prikazuju confidence odvojeno od reliability; ne mapirati ga u `decisionScore` |
 | 8 | **Preporuka** | `AnalyticsDecisionRecommendationEngine.Evaluate()` → `status`, `statusReason`, `reliabilityPct`, `confidencePct`, `reasonCodes[]` | Backend (canonical) | Badge: `increase_focus / maintain / review / do_not_trust / insufficient_data` + `statusReason` tooltip | `insufficient_data` blokira decision; `do_not_trust` prominentno prikazati | SupplierFootwearAnalytics: lokalni "Pojacaj/Zadrzi/Smanji"; SupplierDecisionHub: paralelni "EXPAND/ASSORTMENT_REDUCE/PRICE_NEGOTIATE" iz analytics DB — tri različita status seta |
-| 9 | **Skor odluke** *(decisionScore)* | **DEPRECATED kao korisnički vidljiva metrika** | N/A | Ne prikazivati kao primarni signal; eventualno u debug/transparency mode | — | 5 različitih formula u 5 fajlova; pragovi 68/43 u 4 strane i 70/45 u ShoeTypeSalesStats |
+| 9 | **Skor odluke** *(decisionScore)* | Backend optional projection | Backend | Samo u detalju/transparency prikazu kada je actionability dozvoljena; nikad kao primarni signal ili CTA | Ne zamenjuje backend `status`, `statusReason`, `confidencePct` ili `reliabilityPct` | Nema lokalne formule na supporting category pages; nedostupan/blocked ostaje `Nije dostupno` |
 | 10 | **Manjak (kom)** | `max(minimum - quantity, 0)` u `InventoryEndpoints.cs` | Backend | Integer; "0 = bez manjka"; samo kad je `minimum > 0` | Bez definisanog minimuma prikazuje 0 — ne znači da nema potrebe za dopunom | Nema drifta; backend-only |
 | 11 | **Starost zalihe** | `ResolveAging(daysSinceMovement)` → bucket: 0–30 / 31–60 / 61–90 / 90+ | Backend (`InventoryEndpoints.cs`) | Bucket label sa color coding | Bazira se na poslednjem pokretu; nula-pokret može biti novo stanje ili mrtva zaliha | Nema drifta |
 | 12 | **Pre/Post nivelacija uticaj %** | `AnalyticsNivelacijaSplitPolicy` → comparable article cohort | Backend | `+XX.X%` / `-XX.X%` + `splitCoveragePct %` uvek uz vrednost | Pokriva samo komparabilne artikle; nizak `splitCoveragePct` → interpretirati oprezno | `splitCoveragePct` nije uvek prikazan uz vrednost na svim ekranima |
@@ -162,8 +172,8 @@ Inventory ekran već ima:
 | Pre/Post Nivelacija decision score | ❌ Frontend (`ProdajaPrePostNivelacijePage.tsx` line 608) | Backend | P1 |
 | BOOST/KEEP thresholds | ❌ Duplicirani konstantni u 5 frontend fajlova | Backend (ili bar shared utility, ne po strani) | P1 |
 | Pouzdanost % za footwear breakdown | ❌ Frontend lokalni composite | Backend (RecommendationEngine) | P0 (uz T2) |
-| ColorSalesStats fallback scoring | ❌ Frontend fallback (`ColorSalesStatsPage.tsx` line 449) | Ukloniti fallback; backend mora uvek da vrati recommendation ili `insufficient_data` | P1 |
-| ShoeTypeSalesStats fallback scoring | ⚠️ Hybrid — pokušava backend, pada na lokalni | Ukloniti lokalni fallback; standardizovati na backend status | P1 |
+| ColorSalesStats recommendation projection | ✅ Backend status/reason with fail-closed frontend mapping | Keep backend authority; unknown/missing evidence remains informational and non-actionable | P1 |
+| ShoeTypeSalesStats recommendation projection | ✅ Backend status/reason with fail-closed frontend mapping | Keep backend authority; unknown/missing evidence remains informational and non-actionable | P1 |
 
 ### 4.2 Šta mora IZAĆI iz frontenda
 
@@ -595,12 +605,12 @@ Inventory ekran prikazuje stanje (aging, gap, quantity) ali ne prikazuje demand 
 | **Supplier Decision Hub** | 🔀 **Merge → Tab 2 u canonical supplier** | SupplierQualityIndex + MarkdownDependencyScore + FullPriceSellthrough su komplementarni signali; vredna perspektiva ali ne zasebna decision surface | Uslov: T6 (cache), frontend decisionScore formula uklonjena, tab dostupan iz canonical URL-a |
 | **Supplier Footwear Analytics** | 🔀 **Fold → Tab 3 / Drilldown u canonical supplier** | Supplier × tip obuće cross-section je vredan kao detail; nije zasebna decision surface | Uslov: T2 (lokalni scoring → backend pre merge-a); fold se dešava u Talasu 2 |
 | **Insight Studio** | 🔵 **Keep as secondary (power-user)** | demand-signals, inventory-risk, price-intelligence, trend-momentum su jedinstven analitički sloj koji nije dupliran nigde drugde; Nije u main nav — dobro za power usere | Long-term: demand signal prebaciti u Inventory (T10); InsightStudio ostaje za dublje istraživanje |
-| **Color Sales Stats** | 🔵 **Keep as supporting** | Prodajni mix po boji je vredna dimenzija; nije decision surface, nego analysis detail | Ukloniti local fallback scoring (T9); standardizovati backend recommendation display |
+| **Color Sales Stats** | 🔵 **Keep as supporting** | Prodajni mix po boji je vredna dimenzija; nije decision surface, nego analysis detail | Signal mode; backend status/reason autoritativni; `decisionScore` samo detail/transparency |
 | **Daily Sales** | 🔵 **Keep as L0 overview (operational)** | Jedini operativni monitoring ekran; 2-min cache; dobro radi svoju ulogu | Ne proširivati u decision surface; prikazuje šta se prodaje, ne šta treba raditi |
 | **Inventory** | ✅ **Keep as CANONICAL (inventory domain)** | Server-side aging, gap, parametrizovani upiti; jasna decision-support funkcija | Proširiti sa demand signal (T10); ne spajati sa supplier surface-om |
 | **Pre/Post Nivelacija** | 🔵 **Keep as supporting (seasonal analysis)** | Komparabilna analiza pre/posle markdown eventa; vredna ali sezonska; nije stalno korišćena | Ukloniti lokalni scoring (T4); može postati tab u Pre-Nivelacija Prioriteti ako korisnici to traže |
 | **Pre-Nivelacija Prioriteti** | ✅ **Keep as CANONICAL (nivelacija workflow)** | Jedina decision surface za "šta puniti pre markdowna"; visoka business criticality | Ukloniti lokalni scoring (T3); dodati cache (T7); dugoročno može absorbovati Pre/Post tab |
-| **Shoe Type Sales Stats** | 🔵 **Keep as supporting** | Prodajni mix po tipu obuće; koristan za asortiman odluke; server-side recommendation (hybrid, zahteva cleanup) | Alinirati threshold (T1); ukloniti lokalni fallback; ostaje na svom URL-u |
+| **Shoe Type Sales Stats** | 🔵 **Keep as supporting** | Prodajni mix po tipu obuće; koristan za asortiman odluke; backend status/reason evidence | Signal mode; nema lokalnog scoringa; ostaje na svom URL-u |
 
 ---
 

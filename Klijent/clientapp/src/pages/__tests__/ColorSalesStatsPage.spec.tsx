@@ -787,7 +787,8 @@ describe("ColorSalesStatsPage", () => {
     renderPage();
 
     expect(screen.getByRole("region", { name: "Kontekst pouzdanosti analitike" })).toBeInTheDocument();
-    expect(screen.getByText("Preporuka sistema")).toBeInTheDocument();
+    expect(screen.getByText("Analitički signal")).toBeInTheDocument();
+    expect(screen.getByText(/podržavajući analitički signal/i)).toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.getByRole("heading", { level: 1, name: "Prodaja po boji artikla" })).toBeInTheDocument();
     await screen.findByText("Crna");
@@ -887,7 +888,7 @@ describe("ColorSalesStatsPage", () => {
     await screen.findByText("Prioritetna lista boja");
 
     fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
-    expect(await screen.findByRole("heading", { name: /Detalj odluke:/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /Detalj signala:/i })).toBeInTheDocument();
     expect(screen.getByText("PoP trend prometa")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Otvori puni detalj" }));
