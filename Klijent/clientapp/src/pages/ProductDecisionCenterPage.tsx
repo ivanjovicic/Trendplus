@@ -24,6 +24,10 @@ import {
   formatDateTime,
 } from "../utils/analyticsFormatters";
 import { formatMetricDisplayValue } from "../utils/analyticsMetricValue";
+import {
+  chunkProductDecisionActionStatusLookups,
+  productDecisionActionStatusLookupSignature,
+} from "../utils/productDecisionActionStatus";
 import { ANALYTICS_VELOCITY_LABEL } from "../utils/analyticsVelocitySemantics";
 import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
 import { downloadDecisionTimelineExportCsv } from "../utils/decisionTimelineExport";
@@ -735,7 +739,9 @@ export default function ProductDecisionCenterPage() {
   const [queueMessage, setQueueMessage] = useState<string | null>(null);
   const [queueBusyKey, setQueueBusyKey] = useState<string | null>(null);
   const [queuedActionKeys, setQueuedActionKeys] = useState<Set<string> | null>(null);
+  const queuedActionKeysRef = useRef<Set<string> | null>(null);
   const queueBusyKeyRef = useRef<string | null>(null);
+  queuedActionKeysRef.current = queuedActionKeys;
 
   useEffect(() => {
     const handleScopeChange = () => {
@@ -897,10 +903,8 @@ export default function ProductDecisionCenterPage() {
     return copy;
   }, [filteredRows, sortDir, sortField]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const candidates = sortedRows.map((row) => {
+  const actionStatusLookupItems = useMemo(() => {
+    const candidates = filteredRows.map((row) => {
       const queueSpec = buildProductQueueSpec(row);
       return {
         sourceType: queueSpec.sourceType,
@@ -908,9 +912,20 @@ export default function ProductDecisionCenterPage() {
       };
     });
 
-    const lookupItems = Array.from(new Map(
+    return Array.from(new Map(
       candidates.map((entry) => [`${entry.sourceType}::${entry.sourceKey}`, entry])
     ).values());
+  }, [filteredRows, fromDate, storeId, supplierId, toDate]);
+
+  const actionStatusLookupSignature = useMemo(
+    () => productDecisionActionStatusLookupSignature(actionStatusLookupItems),
+    [actionStatusLookupItems],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const lookupItems = actionStatusLookupItems;
 
     if (lookupItems.length === 0) {
       setActionStatusWarning(null);
@@ -923,23 +938,29 @@ export default function ProductDecisionCenterPage() {
 
     (async () => {
       setActionStatusWarning(null);
-      setQueuedActionKeys(null);
       try {
-        const statuses = await getAnalyticsActionSourceStatuses({
-          items: lookupItems,
-        });
+        const chunks = chunkProductDecisionActionStatusLookups(lookupItems);
+        const settled = await Promise.allSettled(chunks.map((items) => getAnalyticsActionSourceStatuses({ items })));
 
         if (cancelled) return;
 
+        const successfulStatuses = settled
+          .filter((result): result is PromiseFulfilledResult<Awaited<ReturnType<typeof getAnalyticsActionSourceStatuses>>> => result.status === "fulfilled")
+          .flatMap((result) => result.value.items);
+        const hasFailedChunk = settled.some((result) => result.status === "rejected");
+        const currentKeys = new Set(lookupItems.map((item) => item.sourceKey));
         const keys = new Set<string>();
+        for (const key of queuedActionKeysRef.current ?? []) {
+          if (currentKeys.has(key)) keys.add(key);
+        }
         const snapshots: Record<number, { capturedAtUtc: string; recommendationId: string }> = {};
-        for (const item of statuses.items) {
+        for (const item of successfulStatuses) {
           if (item.exists && item.sourceKey) keys.add(item.sourceKey);
         }
-        for (const row of sortedRows) {
+        for (const row of filteredRows) {
           const queueSpec = buildProductQueueSpec(row);
           const sourceKey = buildSourceKey(row, queueSpec.actionKind, fromDate, toDate, storeId, supplierId);
-          const status = statuses.items.find((entry) => entry.sourceType === queueSpec.sourceType && entry.sourceKey === sourceKey);
+          const status = successfulStatuses.find((entry) => entry.sourceType === queueSpec.sourceType && entry.sourceKey === sourceKey);
           if (status?.hasEvidenceSnapshot && status.evidenceSnapshotCapturedAtUtc && status.evidenceSnapshotRecommendationId) {
             snapshots[row.productId] = {
               capturedAtUtc: status.evidenceSnapshotCapturedAtUtc,
@@ -948,13 +969,17 @@ export default function ProductDecisionCenterPage() {
           }
         }
 
-        setQueuedActionKeys(keys);
-        setEvidenceSnapshotByProductId(snapshots);
-        setActionStatusWarning(null);
+        if (successfulStatuses.length === 0 && hasFailedChunk && queuedActionKeysRef.current == null) {
+          setQueuedActionKeys(null);
+        } else {
+          setQueuedActionKeys(keys);
+        }
+        if (successfulStatuses.length > 0 || !hasFailedChunk) {
+          setEvidenceSnapshotByProductId(snapshots);
+        }
+        setActionStatusWarning(hasFailedChunk ? buildActionStatusWarning(null) : null);
       } catch (reason) {
         if (!cancelled) {
-          setQueuedActionKeys(null);
-          setEvidenceSnapshotByProductId({});
           setActionStatusWarning(buildActionStatusWarning(reason));
         }
       }
@@ -963,7 +988,7 @@ export default function ProductDecisionCenterPage() {
     return () => {
       cancelled = true;
     };
-  }, [fromDate, sortedRows, storeId, supplierId, toDate]);
+  }, [actionStatusLookupItems, actionStatusLookupSignature, filteredRows, fromDate, storeId, supplierId, toDate]);
   const hasBlockingError = Boolean(error && !payload);
   const showMetaWarning = !loading && !hasBlockingError && isAnalyticsMetaWarning(responseMeta);
   const showInsufficientState = !loading
