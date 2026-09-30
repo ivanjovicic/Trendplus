@@ -1,5 +1,5 @@
 export type AnalyticsScalar = string | number | boolean | null | undefined;
-export type AnalyticsDataType = "text" | "number" | "currency" | "percent" | "date" | "datetime";
+export type AnalyticsDataType = "text" | "number" | "currency" | "percent" | "ratio" | "date" | "datetime";
 
 export interface AnalyticsNamedValue {
   key: string;

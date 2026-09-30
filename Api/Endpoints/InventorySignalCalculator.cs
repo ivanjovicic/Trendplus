@@ -240,9 +240,9 @@ public static class InventorySignalCalculator
     {
         return status switch
         {
-            SellThroughGood => "Dobar sell-through",
-            SellThroughWarning => "Upozorenje sell-through",
-            SellThroughCritical => "Kritičan sell-through",
+            SellThroughGood => "Dobra prodajnost",
+            SellThroughWarning => "Upozorenje prodajnosti",
+            SellThroughCritical => "Kritična prodajnost",
             _ => "Nedovoljno podataka",
         };
     }

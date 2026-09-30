@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   buildAnalyticsDetailSnapshot,
+  formatAnalyticsCellValue,
   formatDetailFieldValue,
   getAnalyticsDetailSnapshot,
   getBrowserPreviewPayload,
@@ -35,6 +36,10 @@ const row: Row = {
 };
 
 describe("analyticsTableState", () => {
+  it("keeps ratio exports as raw 0-1 values instead of percent units", () => {
+    expect(formatAnalyticsCellValue(0.45, "ratio")).toBe("0,45");
+  });
+
   it("resolves table payload using only declared columns and getValue functions", () => {
     const payload = resolveAnalyticsTablePayload({
       tableKey: "supplier-sales",

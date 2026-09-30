@@ -154,6 +154,7 @@ public class DocumentRendererTests
     [InlineData("currency", "1250.50", true, "1250.50", "3")]
     [InlineData("percent", "35", true, "35", "4")]
     [InlineData("percent", "0.35", true, "0.35", "4")]
+    [InlineData("ratio", "0.35", true, "0.35", "2")]
     [InlineData("text", "42.5", false, "", "0")]
     [InlineData("number", "not-a-number", false, "", "0")]
     public void TryCreateTypedCell_RespectsDataTypeContract(

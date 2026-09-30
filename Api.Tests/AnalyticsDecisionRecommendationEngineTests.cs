@@ -136,6 +136,8 @@ public class AnalyticsDecisionRecommendationEngineTests
 
         var res = AnalyticsDecisionRecommendationEngine.Evaluate(input, averageMarginPct: 15d);
         Assert.Equal("increase_focus", res.Status);
+        Assert.Equal("Pojačati fokus", res.Label);
+        Assert.Contains("Snažan trend", res.Summary, StringComparison.Ordinal);
         Assert.True(res.RecommendationAllowed);
     }
 

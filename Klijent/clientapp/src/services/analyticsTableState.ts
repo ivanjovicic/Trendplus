@@ -33,7 +33,7 @@ export type BrowserPreviewSnapshot = {
 const NON_FINITE_TOKEN = /^(?:[+-]?infinity|nan)$/i;
 
 function isNumericDataType(dataType?: AnalyticsDataType | string): boolean {
-  return dataType === "number" || dataType === "currency" || dataType === "percent";
+  return dataType === "number" || dataType === "currency" || dataType === "percent" || dataType === "ratio";
 }
 
 function normalizeAnalyticsScalar(value: AnalyticsScalar, dataType?: AnalyticsDataType | string): AnalyticsScalar {
@@ -94,6 +94,9 @@ export function formatAnalyticsCellValue(
     }
     case "percent": {
       return fmtPct(normalized as number, 2, fallback);
+    }
+    case "ratio": {
+      return fmtNumber(normalized as number, 2, fallback);
     }
     case "number": {
       const num = normalized as number;

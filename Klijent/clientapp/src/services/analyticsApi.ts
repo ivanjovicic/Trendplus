@@ -864,7 +864,7 @@ export async function getProductDecisionCenter(options?: {
   return fetchJson(
     "/api/analytics/cached/products/decision-center",
     params,
-    "Greska pri ucitavanju Product Decision Center pregleda",
+    "Greška pri učitavanju pregleda odluka o proizvodima",
     undefined,
     productDecisionCenterResponseSchema,
   );

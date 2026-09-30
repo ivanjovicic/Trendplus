@@ -172,7 +172,7 @@ public sealed class XlsxDocumentRenderer : IDocumentRenderer
     }
 
     /// <summary>
-    /// Parses export cell text into an Excel numeric value when DataType is number/currency/percent/date.
+    /// Parses export cell text into an Excel numeric value when DataType is number/currency/percent/ratio/date.
     /// Percent columns expect percent units (35 = 35%), matching frontend RQ40 contract — not Excel ratio.
     /// </summary>
     public static bool TryCreateTypedCell(
@@ -195,6 +195,7 @@ public sealed class XlsxDocumentRenderer : IDocumentRenderer
             "number" => TryParseNumber(rawValue, StyleNumber, out invariantNumericValue, out styleIndex),
             "currency" => TryParseNumber(rawValue, StyleCurrency, out invariantNumericValue, out styleIndex),
             "percent" => TryParseNumber(rawValue, StylePercentUnits, out invariantNumericValue, out styleIndex),
+            "ratio" => TryParseNumber(rawValue, StyleNumber, out invariantNumericValue, out styleIndex),
             "date" or "datetime" => TryParseDate(rawValue, out invariantNumericValue, out styleIndex),
             _ => false
         };

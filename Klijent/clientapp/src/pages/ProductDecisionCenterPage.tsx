@@ -220,9 +220,9 @@ const TABLE_COLUMNS: AnalyticsTableColumn<ProductDecisionCenterItem>[] = [
   { key: "currentStock", header: "Zaliha", dataType: "number" },
   { key: "trendPct", header: "Trend", dataType: "percent" },
   { key: "stockCoverDays", header: "Pokrivenost zalihe", dataType: "number" },
-  { key: "sellThroughRatio", header: "Obrt zalihe", dataType: "percent" },
+  { key: "sellThroughRatio", header: "Prodajnost (odnos)", dataType: "ratio", formatHint: "ratio_0_to_1" },
   { key: "confidencePct", header: "Sigurnost preporuke", dataType: "number" },
-  { key: "dataQualityStatus", header: "Kvalitet ulaza", dataType: "text" },
+  { key: "dataQualityStatus", header: "Kvalitet podataka", dataType: "text" },
   { key: "recommendationLabel", header: "Preporuka", dataType: "text" },
 ];
 
@@ -618,9 +618,9 @@ function stockCoverStatusLabel(status: string | null | undefined): string {
 
 function sellThroughStatusLabel(status: string | null | undefined): string {
   const normalized = (status ?? "").trim().toLowerCase();
-  if (normalized === "good") return "Dobar obrt zalihe";
-  if (normalized === "warning") return "Upozorenje za obrt zalihe";
-  if (normalized === "critical") return "Kritičan obrt zalihe";
+  if (normalized === "good") return "Dobra prodajnost";
+  if (normalized === "warning") return "Upozorenje prodajnosti";
+  if (normalized === "critical") return "Kritična prodajnost";
   return "Nedovoljno podataka";
 }
 
@@ -1547,9 +1547,9 @@ export default function ProductDecisionCenterPage() {
           <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj artikala sa sporim obrtom" />
         </article>
         <article className="kpi-card">
-          <span>SKU sa dobrim obrtom</span>
+          <span>SKU sa dobrom prodajnošću</span>
           <strong>{fmtNumber(kpis.goodSellThroughSkus, 0, "0")}</strong>
-          <KpiExplainButton metricKey="sellThrough" ariaLabel="Kako je izračunat broj artikala sa dobrim obrtom zalihe" />
+          <KpiExplainButton metricKey="sellThrough" ariaLabel="Kako je izračunat broj artikala sa dobrom prodajnošću" />
         </article>
         </section>
       ) : null}
@@ -1657,7 +1657,7 @@ export default function ProductDecisionCenterPage() {
               <option value="revenue:desc">Promet opadajuće</option>
               <option value="velocityUnitsPerDay:desc">{ANALYTICS_VELOCITY_LABEL} opadajuće</option>
               <option value="stockCoverDays:asc">Pokrivenost zalihe rastuće</option>
-              <option value="sellThroughRatio:desc">Obrt zalihe opadajuće</option>
+              <option value="sellThroughRatio:desc">Prodajnost opadajuće</option>
               <option value="trendPct:desc">Trend opadajuće</option>
               <option value="dataQualityStatus:desc">Kvalitet podataka (kritično prvo)</option>
               <option value="productName:asc">Artikal A-Z</option>
@@ -1774,7 +1774,7 @@ export default function ProductDecisionCenterPage() {
                 <th onClick={() => setSort("currentStock")}>Zaliha</th>
                 <th onClick={() => setSort("trendPct")}>Trend</th>
                 <th onClick={() => setSort("stockCoverDays")}>Pokrivenost zalihe</th>
-                <th onClick={() => setSort("sellThroughRatio")}>Obrt zalihe</th>
+                <th onClick={() => setSort("sellThroughRatio")}>Prodajnost</th>
                 <th onClick={() => setSort("confidencePct")}>Sigurnost preporuke</th>
                 <th onClick={() => setSort("dataQualityStatus")}>Kvalitet podataka</th>
                 <th onClick={() => setSort("recommendationStatus")}>Preporuka</th>
@@ -2271,8 +2271,8 @@ export default function ProductDecisionCenterPage() {
                                   <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunata pokrivenost zalihe" />
                                 </div>
                                 <div>
-                                  <strong>Obrt zalihe:</strong> {formatSignalMetricValue(row.sellThroughRatio, row.sellThroughStatus, "ratio")}
-                                  <KpiExplainButton metricKey="sellThrough" ariaLabel="Kako je izračunat signal obrta zalihe" />
+                                  <strong>Prodajnost:</strong> {formatSignalMetricValue(row.sellThroughRatio, row.sellThroughStatus, "ratio")}
+                                  <KpiExplainButton metricKey="sellThrough" ariaLabel="Kako je izračunat signal prodajnosti" />
                                 </div>
                                 <div><strong>Pokrivenost nabavnom cenom:</strong> {fmtPct(row.marginCoveragePct, 1, "Nije dostupno")}</div>
                                 <div>

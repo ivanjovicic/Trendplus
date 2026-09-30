@@ -22,7 +22,7 @@ public class InventorySignalCalculatorTests
         Assert.Equal(InventorySignalCalculator.StockCoverHealthy, result.StockCoverStatus);
         Assert.Equal("Zdrava pokrivenost", result.StockCoverStatusLabel);
         Assert.Equal(0.2667m, result.SellThroughRatio);
-        Assert.Equal("Kritičan sell-through", result.SellThroughStatusLabel);
+        Assert.Equal("Kritična prodajnost", result.SellThroughStatusLabel);
         Assert.True(result.RecommendationAllowed);
     }
 
@@ -207,7 +207,7 @@ public class InventorySignalCalculatorTests
     public void StatusLabels_AreSerbianAndUtf8Safe()
     {
         Assert.Equal("Rizik rasprodaje", InventorySignalCalculator.StockCoverStatusLabel(InventorySignalCalculator.StockCoverOutOfStockRisk));
-        Assert.Equal("Kritičan sell-through", InventorySignalCalculator.SellThroughStatusLabel(InventorySignalCalculator.SellThroughCritical));
+        Assert.Equal("Kritična prodajnost", InventorySignalCalculator.SellThroughStatusLabel(InventorySignalCalculator.SellThroughCritical));
         Assert.DoesNotContain("Ä", InventorySignalCalculator.StockCoverStatusLabel(InventorySignalCalculator.StockCoverOutOfStockRisk));
         Assert.DoesNotContain("�", InventorySignalCalculator.SellThroughStatusLabel(InventorySignalCalculator.SellThroughCritical));
     }

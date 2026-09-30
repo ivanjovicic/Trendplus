@@ -47,7 +47,7 @@ public static class AnalyticsDecisionRecommendationEngine
         return recommendation with
         {
             Status = "insufficient_data",
-            Label = "Insufficient data",
+            Label = "Nedovoljno podataka",
             Summary = "Nedostaje uporediv signal pre i posle nivelacije; nema dovoljno dokaza za pouzdanu preporuku.",
             DataQualityStatus = "insufficient_data",
             RecommendationAllowed = false,
@@ -261,28 +261,28 @@ public static class AnalyticsDecisionRecommendationEngine
 
         return status switch
         {
-            "increase_focus" => $"Strong PoP trend and healthy margin with acceptable reliability ({reliabilityPct:0.#}%).{costCaveat}{baselineCaveat}",
-            "maintain" => $"Stable supplier profile without strong upside/downside signal. Reliability {reliabilityPct:0.#}%.{costCaveat}{baselineCaveat}",
+            "increase_focus" => $"Snažan trend u odnosu na prethodni period i zdrava marža uz prihvatljivu pouzdanost ({reliabilityPct:0.#}%).{costCaveat}{baselineCaveat}",
+            "maintain" => $"Stabilan profil dobavljača bez jakog pozitivnog ili negativnog signala. Pouzdanost {reliabilityPct:0.#}%.{costCaveat}{baselineCaveat}",
             "review" when reasons.Contains("new_entity") =>
-                "Supplier is new versus previous comparable period; review manually before increasing focus.",
-            "review" => "Performance or quality signals are mixed; review before changing procurement focus.",
+                "Dobavljač je nov u odnosu na prethodni uporediv period; pre promene fokusa potrebna je ručna provera.",
+            "review" => "Signal učinka ili kvaliteta je mešovit; proverite podatke pre promene fokusa nabavke.",
             "do_not_trust" when reasons.Contains("unknown_entity") =>
-                "Supplier identity is unknown, so recommendation is not trustworthy for business decisions.",
+                "Identitet dobavljača nije poznat, pa preporuka nije pouzdana za poslovne odluke.",
             "do_not_trust" =>
-                "Data reliability is too low or margin signal is unstable; do not trust automated recommendation.",
+                "Pouzdanost podataka je preniska ili je signal marže nestabilan; ne oslanjajte se na automatsku preporuku.",
             "insufficient_data" when reasons.Contains("previous_period_missing") =>
-                "Comparable previous period is missing; insufficient evidence for a reliable recommendation.",
+                "Nedostaje uporediv prethodni period; nema dovoljno dokaza za pouzdanu preporuku.",
             "insufficient_data" when reasons.Contains("missing_known_margin_baseline") =>
-                "Comparable known-margin baseline is missing; insufficient evidence for a reliable recommendation.",
+                "Nedostaje uporediva osnova poznate marže; nema dovoljno dokaza za pouzdanu preporuku.",
             "insufficient_data" when reasons.Contains("missing_split_coverage") =>
-                "Nivelacija split coverage is missing; insufficient evidence for a reliable recommendation.",
+                "Nedostaje pokrivenost podele nivelacije; nema dovoljno dokaza za pouzdanu preporuku.",
             "insufficient_data" when reasons.Contains("unknown_bucket_share_unavailable") =>
-                "Unknown-entity share denominator is unavailable; insufficient evidence for a reliable recommendation.",
+                "Delilac udela nepoznatih dobavljača nije dostupan; nema dovoljno dokaza za pouzdanu preporuku.",
             "insufficient_data" when reasons.Contains("share_denominator_unavailable") =>
-                "Net-sales share denominator is unavailable; insufficient evidence for a reliable recommendation.",
+                "Delilac neto prodajnog udela nije dostupan; nema dovoljno dokaza za pouzdanu preporuku.",
             "insufficient_data" when IsTinySample(input) =>
-                "Sample is too small (revenue/units/articles) to produce a trustworthy recommendation.",
-            _ => "Insufficient evidence for automated decision support."
+                "Uzorak je premali (promet/komadi/artikli) za pouzdanu preporuku.",
+            _ => "Nema dovoljno dokaza za automatsku podršku odlučivanju."
         };
     }
 
@@ -290,11 +290,11 @@ public static class AnalyticsDecisionRecommendationEngine
     {
         return status switch
         {
-            "increase_focus" => "Increase focus",
-            "maintain" => "Maintain",
-            "review" => "Review",
-            "do_not_trust" => "Do not trust",
-            _ => "Insufficient data"
+            "increase_focus" => "Pojačati fokus",
+            "maintain" => "Zadržati",
+            "review" => "Proveriti",
+            "do_not_trust" => "Ne verovati podacima",
+            _ => "Nedovoljno podataka"
         };
     }
 

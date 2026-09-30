@@ -4,7 +4,7 @@ import { supplierSalesStatsResponseSchema } from "../validation/analyticsRespons
 
 export interface AnalyticsRecommendation {
   status: "increase_focus" | "maintain" | "review" | "do_not_trust" | "insufficient_data";
-  label: "Increase focus" | "Maintain" | "Review" | "Do not trust" | "Insufficient data";
+  label: string;
   summary: string;
   confidencePct: number | null;
   reliabilityPct: number | null;
