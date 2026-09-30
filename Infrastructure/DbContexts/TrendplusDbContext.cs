@@ -604,6 +604,7 @@ namespace Infrastructure.DbContexts
                 eb.ToTable("operations_analytics_integrity_evidence");
                 eb.HasKey(e => e.EvidenceId);
                 eb.Property(e => e.EvidenceId).HasColumnName("evidence_id").HasMaxLength(128);
+                eb.Property(e => e.Family).HasColumnName("family").IsRequired().HasMaxLength(64);
                 eb.Property(e => e.Status).HasColumnName("status").IsRequired().HasMaxLength(32);
                 eb.Property(e => e.CheckedAtUtc).HasColumnName("checked_at_utc").IsRequired();
                 eb.Property(e => e.LastVerifiedAtUtc).HasColumnName("last_verified_at_utc");
@@ -621,6 +622,8 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.AppCommit).HasColumnName("app_commit").HasMaxLength(128);
                 eb.Property(e => e.SchemaVersion).HasColumnName("schema_version").HasMaxLength(128);
                 eb.Property(e => e.ContractVersion).HasColumnName("contract_version").HasMaxLength(64);
+                eb.Property(e => e.ContextFingerprint).HasColumnName("context_fingerprint").HasMaxLength(128);
+                eb.Property(e => e.SourceGeneration).HasColumnName("source_generation").HasMaxLength(256);
                 eb.Property(e => e.FixtureVersion).HasColumnName("fixture_version").HasMaxLength(128);
                 eb.Property(e => e.CacheVersion).HasColumnName("cache_version").HasMaxLength(256);
                 eb.Property(e => e.EndpointOrLiveRevenue).HasColumnName("endpoint_or_live_revenue").HasColumnType("decimal(18,2)");

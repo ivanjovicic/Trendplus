@@ -10,6 +10,8 @@ public sealed class OperationsAnalyticsIntegrityOptions
     public int PollIntervalMinutes { get; set; } = 30;
     public int ProbeLookbackDays { get; set; } = 7;
     public int ProbeTimeoutSeconds { get; set; } = 30;
+    public int MaxProbeRows { get; set; } = 10000;
+    public int MaxProbeWindowDays { get; set; } = 31;
     public string DefaultDataScope { get; set; } = "all";
     public decimal RevenueToleranceRsd { get; set; } = 0.01m;
 }

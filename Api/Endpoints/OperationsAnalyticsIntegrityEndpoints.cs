@@ -23,6 +23,9 @@ public static class OperationsAnalyticsIntegrityEndpoints
                 trigger = snapshot.Trigger,
                 summary = snapshot.Summary,
                 blocksDecisionSignals = snapshot.BlocksDecisionSignals,
+                family = snapshot.Family,
+                contextFingerprint = snapshot.ContextFingerprint,
+                sourceGeneration = snapshot.SourceGeneration,
                 deltas = snapshot.Deltas.Select(delta => new
                 {
                     dimension = delta.Dimension,
@@ -32,6 +35,18 @@ public static class OperationsAnalyticsIntegrityEndpoints
                     endpointOrLiveUnits = delta.EndpointOrLiveUnits,
                     oracleUnits = delta.OracleUnits,
                     unitsDelta = delta.UnitsDelta
+                }),
+                families = registry.CurrentByFamily.Select(familySnapshot => new
+                {
+                    family = familySnapshot.Family,
+                    status = familySnapshot.Status,
+                    evidenceId = familySnapshot.EvidenceId,
+                    checkedAtUtc = familySnapshot.CheckedAtUtc,
+                    lastVerifiedAtUtc = familySnapshot.LastVerifiedAtUtc,
+                    contextFingerprint = familySnapshot.ContextFingerprint,
+                    sourceGeneration = familySnapshot.SourceGeneration,
+                    blocksDecisionSignals = familySnapshot.BlocksDecisionSignals,
+                    summary = familySnapshot.Summary
                 })
             });
         })
@@ -69,6 +84,9 @@ public static class OperationsAnalyticsIntegrityEndpoints
                 appCommit = record.AppCommit,
                 schemaVersion = record.SchemaVersion,
                 contractVersion = record.ContractVersion,
+                family = record.Family,
+                contextFingerprint = record.ContextFingerprint,
+                sourceGeneration = record.SourceGeneration,
                 fixtureVersion = record.FixtureVersion,
                 cacheVersion = record.CacheVersion,
                 endpointOrLiveRevenue = record.EndpointOrLiveRevenue,

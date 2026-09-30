@@ -15,7 +15,7 @@ namespace Infrastructure.Services;
 public interface IOperationsAnalyticsIntegrityService
 {
     void MarkUnverified(string trigger, string summary);
-    Task MarkUnverifiedAsync(string trigger, string summary, CancellationToken ct = default);
+    Task MarkUnverifiedAsync(string trigger, string summary, string? family = null, CancellationToken ct = default);
     Task<OperationsAnalyticsIntegritySnapshot> RunBoundedProbeAsync(
         CancellationToken ct = default,
         string? trigger = null,
@@ -29,19 +29,25 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
     private readonly OperationsAnalyticsIntegrityRegistry _registry;
     private readonly OperationsAnalyticsIntegrityOptions _options;
     private readonly ILogger<OperationsAnalyticsIntegrityService> _logger;
+    private readonly IReadOnlyDictionary<string, IOperationsAnalyticsIntegrityFamilyProbe> _familyProbes;
 
     public OperationsAnalyticsIntegrityService(
         TrendplusDbContext db,
         IAnalyticsCacheService cache,
         OperationsAnalyticsIntegrityRegistry registry,
         IOptions<OperationsAnalyticsIntegrityOptions> options,
-        ILogger<OperationsAnalyticsIntegrityService> logger)
+        ILogger<OperationsAnalyticsIntegrityService> logger,
+        IEnumerable<IOperationsAnalyticsIntegrityFamilyProbe>? familyProbes = null)
     {
         _db = db;
         _cache = cache;
         _registry = registry;
         _options = options.Value;
         _logger = logger;
+        _familyProbes = (familyProbes ?? Array.Empty<IOperationsAnalyticsIntegrityFamilyProbe>())
+            .Where(probe => !string.IsNullOrWhiteSpace(probe.Family))
+            .GroupBy(probe => probe.Family.Trim(), StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Last(), StringComparer.Ordinal);
     }
 
     public void MarkUnverified(string trigger, string summary)
@@ -52,7 +58,11 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
             trigger);
     }
 
-    public async Task MarkUnverifiedAsync(string trigger, string summary, CancellationToken ct = default)
+    public async Task MarkUnverifiedAsync(
+        string trigger,
+        string summary,
+        string? family = null,
+        CancellationToken ct = default)
     {
         var checkedAt = DateTime.UtcNow;
         var (fromUtc, toUtc) = ResolveProbeWindow(checkedAt);
@@ -61,15 +71,28 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
             toUtc,
             null,
             OperationsAnalyticsRawFactOracle.NormalizeDataScope(_options.DefaultDataScope));
-        var snapshot = OperationsAnalyticsIntegritySnapshot.Unverified(
-            BuildEvidenceId(trigger),
-            trigger,
-            summary);
-
-        await StoreAsync(snapshot, filters, ct);
+        var affectedFamilies = OperationsAnalyticsIntegrityFamilies.ResolveAffected(family);
+        foreach (var affectedFamily in affectedFamilies)
+        {
+            var generation = _registry.GetGeneration(affectedFamily);
+            var snapshot = CreateSnapshot(
+                affectedFamily,
+                OperationsAnalyticsIntegrityStates.Unverified,
+                BuildEvidenceId($"{trigger}:{affectedFamily}"),
+                trigger,
+                summary,
+                filters,
+                checkedAt,
+                contextFingerprint: BuildContextFingerprint(affectedFamily, generation, filters),
+                sourceGenerationForContext: generation,
+                deltas: Array.Empty<OperationsAnalyticsIntegrityProbeDelta>(),
+                blocksDecisionSignals: false);
+            await StoreAsync(snapshot, filters, ct);
+        }
         _logger.LogInformation(
-            "Operations analytics integrity unverified transition persisted. Trigger={Trigger}",
-            trigger);
+            "Operations analytics integrity unverified transition persisted. Trigger={Trigger} Family={Family}",
+            trigger,
+            family ?? "all");
     }
 
     public async Task<OperationsAnalyticsIntegritySnapshot> RunBoundedProbeAsync(
@@ -88,33 +111,38 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
         var probeCt = timeoutCts.Token;
 
         if (!_options.Enabled)
-        {
-            var disabled = OperationsAnalyticsIntegritySnapshot.Degraded(
-                BuildEvidenceId(probeTrigger),
+            return await StoreFamilyStatesAsync(
+                filters,
                 probeTrigger,
-                probeSummary ?? "Operations integrity probes are disabled in configuration.");
-            return await StoreAsync(disabled, filters, ct);
-        }
-
-        var evidenceId = BuildEvidenceId(probeTrigger);
+                probeSummary ?? "Operations integrity probes are disabled in configuration.",
+                OperationsAnalyticsIntegrityStates.Degraded,
+                ct);
 
         try
         {
             var connectionString = _db.Database.GetConnectionString();
             if (string.IsNullOrWhiteSpace(connectionString))
-            {
-                return await StoreAsync(OperationsAnalyticsIntegritySnapshot.Degraded(
-                    evidenceId,
-                    probeTrigger,
-                    probeSummary ?? "Database connection string is unavailable for integrity probes."),
+                return await StoreFamilyStatesAsync(
                     filters,
+                    probeTrigger,
+                    probeSummary ?? "Database connection string is unavailable for integrity probes.",
+                    OperationsAnalyticsIntegrityStates.Degraded,
                     ct);
-            }
 
             await using var connection = new NpgsqlConnection(connectionString);
             await connection.OpenAsync(probeCt);
 
             var oracleTotals = await OperationsAnalyticsRawFactOracle.QueryTotalsAsync(connection, filters, probeCt);
+            if (oracleTotals.SaleLineCount > _options.MaxProbeRows)
+            {
+                return await StoreFamilyStatesAsync(
+                    filters,
+                    probeTrigger,
+                    $"Probe row bound exceeded ({oracleTotals.SaleLineCount} > {_options.MaxProbeRows}); no family is certified.",
+                    OperationsAnalyticsIntegrityStates.Degraded,
+                    ct);
+            }
+
             var liveTotals = await ReadLiveAggregatedTotalsAsync(filters, probeCt);
             var deltas = new List<OperationsAnalyticsIntegrityProbeDelta>
             {
@@ -129,33 +157,74 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
                 Math.Abs(delta.RevenueDelta) > _options.RevenueToleranceRsd
                 || delta.UnitsDelta != 0);
 
-            OperationsAnalyticsIntegritySnapshot next;
-            if (materialDrift)
+            var supplierFamily = OperationsAnalyticsIntegrityFamilies.SupplierShoeType;
+            var supplierGeneration = _registry.GetGeneration(supplierFamily);
+            var supplierSnapshot = CreateSnapshot(
+                supplierFamily,
+                materialDrift
+                    ? OperationsAnalyticsIntegrityStates.DriftDetected
+                    : OperationsAnalyticsIntegrityStates.Verified,
+                BuildEvidenceId($"{probeTrigger}:{supplierFamily}"),
+                probeTrigger,
+                probeSummary ?? (materialDrift
+                    ? "Bounded Supplier/Shoe Type probe detected unexplained quantity or revenue delta."
+                    : "Bounded Supplier/Shoe Type probe reconciled live aggregates, raw-fact oracle and cache lane."),
+                filters,
+                checkedAt,
+                BuildContextFingerprint(supplierFamily, supplierGeneration, filters),
+                supplierGeneration,
+                deltas,
+                materialDrift,
+                materialDrift ? null : checkedAt,
+                oracleTotals.SaleLineCount);
+            await StoreAsync(supplierSnapshot, filters, ct);
+
+            var salesFamily = OperationsAnalyticsIntegrityFamilies.SalesDashboard;
+            var salesGeneration = _registry.GetGeneration(salesFamily);
+            var salesSnapshot = CreateSnapshot(
+                salesFamily,
+                materialDrift
+                    ? OperationsAnalyticsIntegrityStates.DriftDetected
+                    : OperationsAnalyticsIntegrityStates.Verified,
+                BuildEvidenceId($"{probeTrigger}:{salesFamily}"),
+                probeTrigger,
+                probeSummary ?? (materialDrift
+                    ? "Dashboard sales totals have a non-zero bounded reconciliation delta."
+                    : "Dashboard sales totals reconciled to the independent raw-fact oracle."),
+                filters,
+                checkedAt,
+                BuildContextFingerprint(salesFamily, salesGeneration, filters),
+                salesGeneration,
+                [BuildDelta("dashboard_sales_totals", liveTotals.Revenue, oracleTotals.TotalRevenue, liveTotals.Units, oracleTotals.TotalUnits)],
+                materialDrift,
+                materialDrift ? null : checkedAt,
+                oracleTotals.SaleLineCount);
+            await StoreAsync(salesSnapshot, filters, ct);
+
+            foreach (var definition in OperationsAnalyticsIntegrityFamilies.Enrolled.Where(
+                         definition => !string.Equals(definition.Family, supplierFamily, StringComparison.Ordinal)
+                                      && !string.Equals(definition.Family, salesFamily, StringComparison.Ordinal)))
             {
-                next = new OperationsAnalyticsIntegritySnapshot(
-                    OperationsAnalyticsIntegrityStates.DriftDetected,
-                    evidenceId,
-                    checkedAt,
-                    null,
+                var generation = _registry.GetGeneration(definition.Family);
+                var result = await RunFamilyProbeAsync(definition, generation, filters, probeTrigger, probeCt);
+                var snapshot = CreateSnapshot(
+                    definition.Family,
+                    result.Status,
+                    BuildEvidenceId($"{probeTrigger}:{definition.Family}"),
                     probeTrigger,
-                    probeSummary ?? "Bounded Supplier/Shoe Type probe detected unexplained quantity or revenue delta.",
-                    deltas,
-                    BlocksDecisionSignals: true);
-            }
-            else
-            {
-                next = new OperationsAnalyticsIntegritySnapshot(
-                    OperationsAnalyticsIntegrityStates.Verified,
-                    evidenceId,
+                    result.Summary,
+                    filters,
                     checkedAt,
-                    checkedAt,
-                    probeTrigger,
-                    probeSummary ?? "Bounded Supplier/Shoe Type probe reconciled live aggregates, raw-fact oracle and cache lane.",
-                    deltas,
-                    BlocksDecisionSignals: false);
+                    BuildContextFingerprint(definition.Family, generation, filters),
+                    generation,
+                    result.Deltas,
+                    result.BlocksDecisionSignals,
+                    result.Status == OperationsAnalyticsIntegrityStates.Verified ? checkedAt : null,
+                    null);
+                await StoreAsync(snapshot, filters, ct);
             }
 
-            return await StoreAsync(next, filters, ct);
+            return supplierSnapshot;
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested && timeoutCts.IsCancellationRequested)
         {
@@ -163,24 +232,164 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
                 "Operations analytics integrity probe timed out after {TimeoutSeconds} seconds. Trigger={Trigger}",
                 Math.Max(1, _options.ProbeTimeoutSeconds),
                 probeTrigger);
-            return await StoreAsync(OperationsAnalyticsIntegritySnapshot.Degraded(
-                evidenceId,
-                probeTrigger,
-                probeSummary ?? "Operations integrity probe timed out; decision signals remain fail-closed until a successful check."),
+            return await StoreFamilyStatesAsync(
                 filters,
+                probeTrigger,
+                probeSummary ?? "Operations integrity probe timed out; decision signals remain fail-closed until a successful check.",
+                OperationsAnalyticsIntegrityStates.Degraded,
                 ct);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Operations analytics integrity probe failed.");
-            return await StoreAsync(OperationsAnalyticsIntegritySnapshot.Degraded(
-                evidenceId,
-                probeTrigger,
-                probeSummary ?? "Operations integrity probe failed; decision signals remain fail-closed until a successful check."),
+            return await StoreFamilyStatesAsync(
                 filters,
+                probeTrigger,
+                probeSummary ?? "Operations integrity probe failed; decision signals remain fail-closed until a successful check.",
+                OperationsAnalyticsIntegrityStates.Degraded,
                 ct);
         }
     }
+
+    private async Task<OperationsAnalyticsIntegritySnapshot> StoreFamilyStatesAsync(
+        OperationsAnalyticsRawFactOracle.Filters filters,
+        string trigger,
+        string summary,
+        string status,
+        CancellationToken ct)
+    {
+        OperationsAnalyticsIntegritySnapshot? supplierSnapshot = null;
+        var checkedAt = DateTime.UtcNow;
+
+        foreach (var definition in OperationsAnalyticsIntegrityFamilies.Enrolled)
+        {
+            var generation = _registry.GetGeneration(definition.Family);
+            var snapshot = CreateSnapshot(
+                definition.Family,
+                status,
+                BuildEvidenceId($"{trigger}:{definition.Family}"),
+                trigger,
+                summary,
+                filters,
+                checkedAt,
+                BuildContextFingerprint(definition.Family, generation, filters),
+                generation,
+                Array.Empty<OperationsAnalyticsIntegrityProbeDelta>(),
+                blocksDecisionSignals: false,
+                lastVerifiedAtUtc: null,
+                probeRowCount: null);
+            await StoreAsync(snapshot, filters, ct);
+
+            if (string.Equals(definition.Family, OperationsAnalyticsIntegrityFamilies.SupplierShoeType, StringComparison.Ordinal))
+                supplierSnapshot = snapshot;
+        }
+
+        return supplierSnapshot!;
+    }
+
+    private async Task<OperationsAnalyticsIntegrityProbeResult> RunFamilyProbeAsync(
+        OperationsAnalyticsIntegrityFamilyDefinition definition,
+        string generation,
+        OperationsAnalyticsRawFactOracle.Filters filters,
+        string trigger,
+        CancellationToken ct)
+    {
+        if (!_familyProbes.TryGetValue(definition.Family, out var probe))
+        {
+            return OperationsAnalyticsIntegrityProbeResult.Unverified(
+                $"No independently derived bounded probe is registered for {definition.Family}; state remains explicitly unverified.");
+        }
+
+        var request = new OperationsAnalyticsIntegrityProbeRequest(
+            definition,
+            BuildContextFingerprint(definition.Family, generation, filters),
+            generation,
+            filters.FromUtc,
+            filters.ToUtc,
+            filters.DataScope,
+            trigger,
+            Math.Min(definition.MaxRows, _options.MaxProbeRows),
+            ct);
+
+        try
+        {
+            return await probe.ProbeAsync(request);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return OperationsAnalyticsIntegrityProbeResult.Degraded(
+                $"{definition.Family} bounded probe exceeded its runtime/window budget.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Integrity family probe failed. Family={Family}", definition.Family);
+            return OperationsAnalyticsIntegrityProbeResult.Degraded(
+                $"{definition.Family} bounded probe dependency failed; no verification was recorded.");
+        }
+    }
+
+    private OperationsAnalyticsIntegritySnapshot CreateSnapshot(
+        string family,
+        string status,
+        string evidenceId,
+        string trigger,
+        string summary,
+        OperationsAnalyticsRawFactOracle.Filters filters,
+        DateTime checkedAtUtc,
+        string contextFingerprint,
+        string sourceGenerationForContext,
+        IReadOnlyList<OperationsAnalyticsIntegrityProbeDelta> deltas,
+        bool blocksDecisionSignals,
+        DateTime? lastVerifiedAtUtc = null,
+        int? probeRowCount = null)
+    {
+        var snapshot = new OperationsAnalyticsIntegritySnapshot(
+            status,
+            evidenceId,
+            checkedAtUtc,
+            lastVerifiedAtUtc,
+            trigger,
+            summary,
+            deltas,
+            blocksDecisionSignals)
+        {
+            Family = family,
+            ContextFingerprint = contextFingerprint,
+            SourceGeneration = sourceGenerationForContext,
+            ProbeWindowFromUtc = filters.FromUtc,
+            ProbeWindowToUtc = filters.ToUtc,
+            ProbeRowCount = probeRowCount
+        };
+        return snapshot;
+    }
+
+    private static string BuildContextFingerprint(
+        string family,
+        string sourceGeneration,
+        OperationsAnalyticsRawFactOracle.Filters filters)
+        => AnalyticsContextFingerprintPolicy.Create(
+            sourceDataset: $"integrity:{family}",
+            sourceGeneration: sourceGeneration,
+            formulaVersion: "analytics_integrity_probe_v2",
+            materializerGeneration: "bounded-independent-probe",
+            rowLimitSemantics: $"max_rows:{OperationsAnalyticsIntegrityFamilies.DefinitionFor(family).MaxRows}",
+            requestedPeriodFromUtc: filters.FromUtc,
+            requestedPeriodToUtc: filters.ToUtc,
+            effectivePeriodFromUtc: filters.FromUtc,
+            effectivePeriodToUtc: filters.ToUtc,
+            observedPeriodFromUtc: filters.FromUtc,
+            observedPeriodToUtc: filters.ToUtc,
+            requestedDataScope: filters.DataScope,
+            effectiveDataScope: filters.DataScope,
+            dataScopeSource: "operations_integrity_probe",
+            populationKey: family,
+            populationFilters: new Dictionary<string, string?>
+            {
+                ["store_id"] = filters.StoreId?.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ["family"] = family
+            },
+            cacheGeneration: null,
+            resultState: AnalyticsContextFingerprintPolicy.StateAvailable).Fingerprint!;
 
     private async Task<OperationsAnalyticsIntegritySnapshot> StoreAsync(
         OperationsAnalyticsIntegritySnapshot snapshot,
@@ -210,6 +419,7 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
             _db.OperationsAnalyticsIntegrityEvidence.Add(new Domain.Model.Analytics.OperationsAnalyticsIntegrityEvidenceRecord
             {
                 EvidenceId = snapshot.EvidenceId,
+                Family = snapshot.Family,
                 Status = snapshot.Status,
                 CheckedAtUtc = snapshot.CheckedAtUtc,
                 LastVerifiedAtUtc = snapshot.LastVerifiedAtUtc,
@@ -227,6 +437,8 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
                 AppCommit = Environment.GetEnvironmentVariable("TRENDPLUS_APP_COMMIT") ?? "unknown",
                 SchemaVersion = appliedMigrations.LastOrDefault() ?? "unknown",
                 ContractVersion = "SST-ACCURACY-1.0",
+                ContextFingerprint = snapshot.ContextFingerprint,
+                SourceGeneration = snapshot.SourceGeneration,
                 FixtureVersion = "supplier-shoetype-adversarial-golden-2026-09-26",
                 CacheVersion = "supplier-v5;shoe-v4;color-v5;data-window-v2",
                 EndpointOrLiveRevenue = primaryDelta?.EndpointOrLiveRevenue,
@@ -238,6 +450,12 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
                 DeltasJson = JsonSerializer.Serialize(snapshot.Deltas),
                 CoverageJson = JsonSerializer.Serialize(new
                 {
+                    family = snapshot.Family,
+                    contextFingerprint = snapshot.ContextFingerprint,
+                    sourceGeneration = snapshot.SourceGeneration,
+                    probeWindowFromUtc = snapshot.ProbeWindowFromUtc,
+                    probeWindowToUtc = snapshot.ProbeWindowToUtc,
+                    probeRowCount = snapshot.ProbeRowCount,
                     unknownAttribution = "not_collected_by_bounded_probe",
                     attributionCoverage = "not_collected_by_bounded_probe",
                     costCoverage = "not_collected_by_bounded_probe"
@@ -322,7 +540,11 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
     }
 
     private (DateTime FromUtc, DateTime ToUtc) ResolveProbeWindow(DateTime checkedAtUtc)
-        => OperationsAnalyticsIntegrityProbeWindow.Resolve(checkedAtUtc, _options.ProbeLookbackDays);
+        => OperationsAnalyticsIntegrityProbeWindow.Resolve(
+            checkedAtUtc,
+            Math.Min(
+                Math.Max(1, _options.ProbeLookbackDays),
+                Math.Max(1, _options.MaxProbeWindowDays)));
 
     private static string BuildEvidenceId(string trigger)
         => $"{trigger}-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid():N}"[..40];

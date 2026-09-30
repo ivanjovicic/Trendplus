@@ -106,7 +106,7 @@ public sealed class OperationsAnalyticsPostImportProbeTests
     {
         public void MarkUnverified(string trigger, string summary) { }
 
-        public Task MarkUnverifiedAsync(string trigger, string summary, CancellationToken ct = default)
+        public Task MarkUnverifiedAsync(string trigger, string summary, string? family = null, CancellationToken ct = default)
             => Task.CompletedTask;
 
         public Task<OperationsAnalyticsIntegritySnapshot> RunBoundedProbeAsync(

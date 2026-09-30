@@ -7,6 +7,7 @@ namespace Domain.Model.Analytics;
 public sealed class OperationsAnalyticsIntegrityEvidenceRecord
 {
     public required string EvidenceId { get; set; }
+    public string Family { get; set; } = "supplier_shoe_type";
     public required string Status { get; set; }
     public DateTime CheckedAtUtc { get; set; }
     public DateTime? LastVerifiedAtUtc { get; set; }
@@ -24,6 +25,8 @@ public sealed class OperationsAnalyticsIntegrityEvidenceRecord
     public string? AppCommit { get; set; }
     public string? SchemaVersion { get; set; }
     public string? ContractVersion { get; set; }
+    public string? ContextFingerprint { get; set; }
+    public string? SourceGeneration { get; set; }
     public string? FixtureVersion { get; set; }
     public string? CacheVersion { get; set; }
     public decimal? EndpointOrLiveRevenue { get; set; }

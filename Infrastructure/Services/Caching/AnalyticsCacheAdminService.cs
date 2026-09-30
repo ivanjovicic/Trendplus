@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Application.Analytics;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -182,17 +183,18 @@ public sealed class AnalyticsCacheAdminService
 
         _integrityRegistry?.MarkUnverified(
             "cache_clear",
-            $"Analytics cache family '{normalizedFamily}' cleared; bounded Operations integrity probe will reconcile live facts.");
+            $"Analytics cache family '{normalizedFamily}' cleared; bounded Operations integrity probe will reconcile live facts.",
+            OperationsAnalyticsIntegrityFamilies.ResolveAffected(normalizedFamily));
 
         if (scheduleIntegrityProbe)
         {
-            ScheduleBoundedIntegrityProbe();
+            ScheduleBoundedIntegrityProbe(normalizedFamily);
         }
 
         return state;
     }
 
-    private void ScheduleBoundedIntegrityProbe()
+    private void ScheduleBoundedIntegrityProbe(string? family = null)
     {
         if (_scopeFactory is null)
             return;
@@ -205,7 +207,8 @@ public sealed class AnalyticsCacheAdminService
                 var integrityService = scope.ServiceProvider.GetRequiredService<IOperationsAnalyticsIntegrityService>();
                 await integrityService.MarkUnverifiedAsync(
                     "cache_clear",
-                    "Analytics cache was cleared; durable integrity evidence remains unverified until the bounded probe completes.");
+                    "Analytics cache was cleared; durable integrity evidence remains unverified until the bounded probe completes.",
+                    family);
                 await integrityService.RunBoundedProbeAsync();
             }
             catch (Exception ex)
@@ -285,10 +288,11 @@ public sealed class AnalyticsCacheAdminService
         {
             _integrityRegistry?.MarkUnverified(
                 "cache_clear",
-                $"Analytics cache families '{_lastClearFamily}' cleared; bounded Operations integrity probe will reconcile live facts.");
+                $"Analytics cache families '{_lastClearFamily}' cleared; bounded Operations integrity probe will reconcile live facts.",
+                OperationsAnalyticsIntegrityFamilies.ResolveAffected(string.Join(',', normalizedFamilies)));
             if (scheduleIntegrityProbe)
             {
-                ScheduleBoundedIntegrityProbe();
+                ScheduleBoundedIntegrityProbe(string.Join(',', normalizedFamilies));
             }
         }
 

@@ -11,6 +11,129 @@ public static class OperationsAnalyticsIntegrityStates
         => string.Equals(status, DriftDetected, StringComparison.Ordinal);
 }
 
+public static class OperationsAnalyticsIntegrityFamilies
+{
+    public const string SupplierShoeType = "supplier_shoe_type";
+    public const string SalesDashboard = "sales_dashboard";
+    public const string Inventory = "inventory";
+    public const string DataQuality = "data_quality";
+    public const string DecisionBoard = "decision_board";
+
+    public static IReadOnlyList<OperationsAnalyticsIntegrityFamilyDefinition> Enrolled { get; } =
+    [
+        new(SupplierShoeType, "Analytics Reliability / Supplier and Shoe Type certification", 10000, 31, true),
+        new(SalesDashboard, "Analytics Reliability / Sales and Dashboard totals", 10000, 31, false),
+        new(Inventory, "Analytics Reliability / Inventory identity", 10000, 31, true),
+        new(DataQuality, "Analytics Reliability / Data Quality identity", 10000, 31, false),
+        new(DecisionBoard, "Analytics Reliability / Decision Board contributors", 10000, 31, true)
+    ];
+
+    public static IReadOnlyList<string> ResolveAffected(string? family)
+    {
+        if (string.IsNullOrWhiteSpace(family))
+            return Enrolled.Select(static definition => definition.Family).ToArray();
+
+        if (family.Contains(',', StringComparison.Ordinal))
+        {
+            return family
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .SelectMany(ResolveAffected)
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+        }
+
+        var normalized = family.Trim().ToLowerInvariant();
+        if (normalized is "all" or "analytics" or "cache_clear" or "access_import")
+            return Enrolled.Select(static definition => definition.Family).ToArray();
+
+        var resolved = normalized switch
+        {
+            "supplier-sales" or "supplier" or "shoe-type" or "shoetype" or "color" => SupplierShoeType,
+            "sales" or "dashboard" or "sales-dashboard" => SalesDashboard,
+            "inventory" or "inventory-alerts" or "inventory-snapshot" => Inventory,
+            "data-quality" or "dataquality" => DataQuality,
+            "decision-board" or "decisionboard" => DecisionBoard,
+            _ => null
+        };
+
+        return resolved is null
+            ? Enrolled.Select(static definition => definition.Family).ToArray()
+            : [resolved];
+    }
+
+    public static OperationsAnalyticsIntegrityFamilyDefinition DefinitionFor(string family)
+        => Enrolled.Single(definition => string.Equals(definition.Family, family, StringComparison.Ordinal));
+}
+
+public sealed record OperationsAnalyticsIntegrityFamilyDefinition(
+    string Family,
+    string Owner,
+    int MaxRows,
+    int MaxWindowDays,
+    bool BlocksDecisionSignals);
+
+public sealed record OperationsAnalyticsIntegrityProbeRequest(
+    OperationsAnalyticsIntegrityFamilyDefinition Definition,
+    string ContextFingerprint,
+    string SourceGeneration,
+    DateTime FromUtc,
+    DateTime ToUtc,
+    string DataScope,
+    string Trigger,
+    int MaxRows,
+    CancellationToken CancellationToken);
+
+public sealed record OperationsAnalyticsIntegrityProbeResult(
+    string Status,
+    string Summary,
+    IReadOnlyList<OperationsAnalyticsIntegrityProbeDelta> Deltas,
+    bool BlocksDecisionSignals)
+{
+    public static OperationsAnalyticsIntegrityProbeResult Verified(
+        string summary,
+        IReadOnlyList<OperationsAnalyticsIntegrityProbeDelta>? deltas = null)
+        => new(
+            OperationsAnalyticsIntegrityStates.Verified,
+            summary,
+            deltas ?? Array.Empty<OperationsAnalyticsIntegrityProbeDelta>(),
+            BlocksDecisionSignals: false);
+
+    public static OperationsAnalyticsIntegrityProbeResult Unverified(string summary)
+        => new(
+            OperationsAnalyticsIntegrityStates.Unverified,
+            summary,
+            Array.Empty<OperationsAnalyticsIntegrityProbeDelta>(),
+            BlocksDecisionSignals: false);
+
+    public static OperationsAnalyticsIntegrityProbeResult Degraded(string summary)
+        => new(
+            OperationsAnalyticsIntegrityStates.Degraded,
+            summary,
+            Array.Empty<OperationsAnalyticsIntegrityProbeDelta>(),
+            BlocksDecisionSignals: false);
+
+    public static OperationsAnalyticsIntegrityProbeResult DriftDetected(
+        string summary,
+        IReadOnlyList<OperationsAnalyticsIntegrityProbeDelta> deltas)
+        => new(
+            OperationsAnalyticsIntegrityStates.DriftDetected,
+            summary,
+            deltas,
+            BlocksDecisionSignals: true);
+}
+
+/// <summary>
+/// Family-owned, independently derived bounded integrity probe. A probe must not
+/// call the production aggregation it certifies or silently turn missing proof into zero.
+/// </summary>
+public interface IOperationsAnalyticsIntegrityFamilyProbe
+{
+    string Family { get; }
+
+    Task<OperationsAnalyticsIntegrityProbeResult> ProbeAsync(
+        OperationsAnalyticsIntegrityProbeRequest request);
+}
+
 public sealed record OperationsAnalyticsIntegrityProbeDelta(
     string Dimension,
     decimal EndpointOrLiveRevenue,
@@ -30,6 +153,13 @@ public sealed record OperationsAnalyticsIntegritySnapshot(
     IReadOnlyList<OperationsAnalyticsIntegrityProbeDelta> Deltas,
     bool BlocksDecisionSignals)
 {
+    public string Family { get; set; } = OperationsAnalyticsIntegrityFamilies.SupplierShoeType;
+    public string? ContextFingerprint { get; set; }
+    public string? SourceGeneration { get; set; }
+    public DateTime? ProbeWindowFromUtc { get; set; }
+    public DateTime? ProbeWindowToUtc { get; set; }
+    public int? ProbeRowCount { get; set; }
+
     public static OperationsAnalyticsIntegritySnapshot Unverified(string evidenceId, string trigger, string summary)
         => new(
             OperationsAnalyticsIntegrityStates.Unverified,
