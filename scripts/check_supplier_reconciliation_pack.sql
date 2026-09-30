@@ -1,6 +1,6 @@
 -- RQ524: read-only Supplier analytics reconciliation pack.
 -- Purpose: turn Supplier hypotheses into explicit PASS / FAIL / EXPLAINED evidence.
--- Safety: SELECT-only. Do not run against production without explicit owner approval.
+-- Safety: SELECT-only. RQ524 is repository-local/fixture-only; any production/replica execution is owned by RQ454/STAB16.
 -- psql usage:
 --   \set from_utc '2026-01-01T00:00:00Z'
 --   \set to_utc   '2026-03-31T23:59:59Z'
