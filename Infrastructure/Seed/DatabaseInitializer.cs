@@ -331,19 +331,22 @@ public static class DatabaseInitializer
 
     private static async Task<bool> AreSupplierDecisionHubCachesReadyAsync(string connectionString)
     {
-        const string sql = """
-            SELECT
-                to_regclass('public.mv_supplier_markdown_dependency_cache') IS NOT NULL
-                AND to_regclass('public.mv_supplier_decision_score_cache') IS NOT NULL
-                AND to_regclass('public.mv_supplier_recommendations_cache') IS NOT NULL;
-            """;
-
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
 
-        await using var command = new NpgsqlCommand(sql, connection);
-        command.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
-        return (bool?)await command.ExecuteScalarAsync() ?? false;
+        var markdownDependency = await PostgresMaterializedViewCapabilityReader.InspectAsync(
+            connection,
+            "mv_supplier_markdown_dependency_cache");
+        var decisionScore = await InspectSupplierDecisionScoreMaterializedViewAsync(
+            connection,
+            "mv_supplier_decision_score_cache");
+        var recommendations = await PostgresMaterializedViewCapabilityReader.InspectAsync(
+            connection,
+            "mv_supplier_recommendations_cache");
+
+        return markdownDependency.IsReady
+            && decisionScore.IsReady
+            && recommendations.IsReady;
     }
 
     private static async Task<bool> AreSupplierDecisionHubCoreViewsReadyAsync(string connectionString)
@@ -617,14 +620,26 @@ public static class DatabaseInitializer
         string databaseLabel,
         string mode)
     {
-        if (!await IsPublicMaterializedViewAsync(connection, "mv_supplier_markdown_dependency_cache")
-            || !await IsPublicMaterializedViewAsync(connection, "mv_supplier_decision_score_cache")
-            || !await IsPublicMaterializedViewAsync(connection, "mv_supplier_recommendations_cache"))
+        var markdownDependency = await PostgresMaterializedViewCapabilityReader.InspectAsync(
+            connection,
+            "mv_supplier_markdown_dependency_cache");
+        var decisionScore = await InspectSupplierDecisionScoreMaterializedViewAsync(
+            connection,
+            "mv_supplier_decision_score_cache");
+        var recommendations = await PostgresMaterializedViewCapabilityReader.InspectAsync(
+            connection,
+            "mv_supplier_recommendations_cache");
+
+        if (!markdownDependency.IsReady || !decisionScore.IsReady || !recommendations.IsReady)
         {
             logger.LogWarning(
-                "[{Mode}] Supplier decision cache counts skipped for {DatabaseLabel}: one or more cache MVs are missing.",
+                "[{Mode}] Supplier decision cache counts skipped for {DatabaseLabel}: markdown={MarkdownState}; score={ScoreState} missingColumns={ScoreMissingColumns}; recommendations={RecommendationsState}.",
                 mode,
-                databaseLabel);
+                databaseLabel,
+                markdownDependency.ErrorCode ?? "READY",
+                decisionScore.ErrorCode ?? "READY",
+                string.Join(",", decisionScore.MissingColumns),
+                recommendations.ErrorCode ?? "READY");
             return;
         }
 
@@ -691,23 +706,29 @@ public static class DatabaseInitializer
         string mode)
     {
         const string sqlFile = "Database/Migrations/029_AddSupplierDecisionWindowedViews.sql";
-        var windowed90Ready = false;
-        var windowed180Ready = false;
+        MaterializedViewCapabilityResult windowed90;
+        MaterializedViewCapabilityResult windowed180;
 
         await using (var connection = new NpgsqlConnection(connectionString))
         {
             await connection.OpenAsync();
-            windowed90Ready = await IsPublicMaterializedViewAsync(connection, "mv_supplier_decision_score_cache_90d");
-            windowed180Ready = await IsPublicMaterializedViewAsync(connection, "mv_supplier_decision_score_cache_180d");
+            windowed90 = await InspectSupplierDecisionScoreMaterializedViewAsync(
+                connection,
+                "mv_supplier_decision_score_cache_90d");
+            windowed180 = await InspectSupplierDecisionScoreMaterializedViewAsync(
+                connection,
+                "mv_supplier_decision_score_cache_180d");
         }
 
-        if (!windowed90Ready || !windowed180Ready)
+        if (!windowed90.IsReady || !windowed180.IsReady)
         {
             logger.LogWarning(
-                "[{Mode}] Supplier decision windowed views are incomplete before startup SQL repair: 90dReady={Windowed90Ready} 180dReady={Windowed180Ready}. Forcing {SqlFile} to run even when its hash was recorded.",
+                "[{Mode}] Supplier decision windowed views are incomplete before startup SQL repair: 90d={Windowed90State} missingColumns={Windowed90MissingColumns}; 180d={Windowed180State} missingColumns={Windowed180MissingColumns}. Forcing {SqlFile} to run even when its hash was recorded.",
                 mode,
-                windowed90Ready,
-                windowed180Ready,
+                windowed90.ErrorCode ?? "READY",
+                string.Join(",", windowed90.MissingColumns),
+                windowed180.ErrorCode ?? "READY",
+                string.Join(",", windowed180.MissingColumns),
                 sqlFile);
             await DeleteAppliedStartupSqlHistoryAsync(connectionString, sqlFile);
         }
@@ -716,16 +737,20 @@ public static class DatabaseInitializer
 
         await using var verificationConnection = new NpgsqlConnection(connectionString);
         await verificationConnection.OpenAsync();
-        var repaired90Ready = await IsPublicMaterializedViewAsync(verificationConnection, "mv_supplier_decision_score_cache_90d");
-        var repaired180Ready = await IsPublicMaterializedViewAsync(verificationConnection, "mv_supplier_decision_score_cache_180d");
-        if (!repaired90Ready || !repaired180Ready)
+        var repaired90 = await InspectSupplierDecisionScoreMaterializedViewAsync(
+            verificationConnection,
+            "mv_supplier_decision_score_cache_90d");
+        var repaired180 = await InspectSupplierDecisionScoreMaterializedViewAsync(
+            verificationConnection,
+            "mv_supplier_decision_score_cache_180d");
+        if (!repaired90.IsReady || !repaired180.IsReady)
         {
             throw new InvalidOperationException(
-                $"Supplier decision windowed views remain unavailable after {sqlFile}: 90dReady={repaired90Ready} 180dReady={repaired180Ready}.");
+                $"Supplier decision windowed views remain unavailable after {sqlFile}: 90d={repaired90.ErrorCode ?? "READY"} missingColumns={string.Join(",", repaired90.MissingColumns)}; 180d={repaired180.ErrorCode ?? "READY"} missingColumns={string.Join(",", repaired180.MissingColumns)}.");
         }
 
         logger.LogInformation(
-            "[{Mode}] Supplier decision windowed views verified after startup SQL repair: 90d and 180d materialized views are present.",
+            "[{Mode}] Supplier decision windowed views verified after startup SQL repair: 90d and 180d materialized views are present, complete and populated.",
             mode);
     }
 
