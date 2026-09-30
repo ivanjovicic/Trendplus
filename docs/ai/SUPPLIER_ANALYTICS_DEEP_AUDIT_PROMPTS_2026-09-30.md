@@ -623,6 +623,8 @@ Inventar postojećeg dokaza:
 
 ### SA-P1 — Read-only supplier reconciliation SQL pack and evidence run
 
+> **Final queue correction:** canonical `RQ524` is repository-local/fixture proof only. It may build the reusable read-only reconciliation pack, but production/replica execution remains exclusively `RQ454` behind `STAB16`; the historical production-read paragraph below is superseded.
+
 Suggested status: WAITING (recommended with SA-F1)
 Priority: P1
 Type: sql/qa/evidence
