@@ -395,10 +395,10 @@ None; coordinate with RQ518/RQ519 paths.
 - Checks run: governance validators passed; focused Supplier SQL contract tests passed (43); local PostgreSQL 013→014→016→018→029 sequence, repeat lifecycle and five-MV refresh passed.
 - Checks not run: Testcontainers-backed integration execution, because Docker is unavailable in this VM; full backend suite skipped due unrelated baseline compiler overload conflicts.
 - Run log: `.ai/runs/2026-09-30-RQ525-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: pull-request
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: 749ede7a2d196817a078347a6cdd0ee525c577f7
+- Main verification: fresh `git fetch origin main` confirmed `origin/main` contains 749ede7a2d196817a078347a6cdd0ee525c577f7
 - Missed: actual `PostgresContainerFixture` execution remains unobserved.
 - Follow-up: run `SupplierDecisionSchemaReadinessIntegrationTests` in a Docker-enabled environment; promote RQ525 to DONE if green.
 - Residual risk: the raw 013 script still depends on startup history to avoid rerunning its dependent MV drop path.
