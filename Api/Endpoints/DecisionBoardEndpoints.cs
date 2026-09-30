@@ -167,9 +167,11 @@ public static class DecisionBoardEndpoints
                 sourceType: null,
                 dataQualityStatus: null,
                 search: null,
+                createdFrom: periodFromUtc,
+                createdTo: periodToUtc,
                 page: 1,
                 pageSize: 500,
-                ct);
+                ct: ct);
             actions = items;
             outcomeSummary = await actionItemService.GetOutcomeSummaryAsync(
                 new AnalyticsActionOutcomeSummaryQuery(
