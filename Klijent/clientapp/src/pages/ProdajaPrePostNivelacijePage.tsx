@@ -49,16 +49,12 @@ import {
   RECOMMENDATION_CONFIDENCE_LABEL,
   RECOMMENDATION_RELIABILITY_LABEL,
   RECOMMENDATION_SIGNAL_UNAVAILABLE,
-  RECOMMENDATION_STATUS_PRIORITY,
   normalizeRecommendationPct,
   normalizeRecommendationQualityStatus,
   recommendationQualityLabel,
   recommendationQualityStyle,
   recommendationReasonLabel,
   recommendationReasonHints,
-  recommendationStatusLabel,
-  recommendationStatusTone,
-  recommendationStatusTooltipBrief,
   type RecommendationQualityStatus,
 } from "../utils/canonicalRecommendationSemantics";
 import { dataScopeLabel, getDataScope, normalizeDataScope, type DataScope } from "../utils/dataScope";
@@ -204,6 +200,7 @@ type DecisionVendor = VendorSalesNivelacijaVendorStat & {
   confidencePct: number | null;
   confidenceAvailable: boolean;
   status: DecisionStatus;
+  statusLabel: string;
   statusReason: string;
   dataQualityStatus: RecommendationQualityStatus;
   reasonCodes: string[];
@@ -239,7 +236,11 @@ type DetailDriverSummary = {
 };
 
 const STATUS_PRIORITY: Record<DecisionStatus, number> = {
-  ...RECOMMENDATION_STATUS_PRIORITY,
+  effective: 5,
+  neutral: 4,
+  ineffective: 3,
+  immature: 2,
+  insufficient_data: 1,
 };
 const MEDIUM_SIGNAL_RELIABILITY_PCT = 40;
 const VENDOR_NIVELACIJA_MAX_ROWS = 50_000;
@@ -293,7 +294,7 @@ const decisionColumns: AnalyticsTableColumn<DecisionVendor>[] = [
   { key: "reliabilityPct", header: RECOMMENDATION_RELIABILITY_LABEL, dataType: "percent" },
   { key: "confidencePct", header: RECOMMENDATION_CONFIDENCE_LABEL, dataType: "percent" },
   { key: "volatilityLabel", header: "Volatilnost", dataType: "text" },
-  { key: "status", header: "Preporuka", dataType: "text" },
+  { key: "status", header: "Efekat promene cene", dataType: "text" },
   { key: "articleCount", header: "Artikala", dataType: "number" },
   { key: "activeArticlesCount", header: "Aktivnih artikala", dataType: "number" },
   { key: "statusReason", header: "Razlog preporuke", dataType: "text" },
@@ -351,16 +352,31 @@ function sortMarker(field: SortField, activeField: SortField, dir: SortDir): str
 }
 
 function statusClass(status: DecisionStatus): string {
-  const tone = recommendationStatusTone(status);
-  if (tone === "boost") return "ppn-decision-status status-boost";
-  if (tone === "keep") return "ppn-decision-status status-keep";
-  if (tone === "review") return "ppn-decision-status status-review";
-  if (tone === "reduce") return "ppn-decision-status status-reduce";
+  if (status === "effective") return "ppn-decision-status status-boost";
+  if (status === "neutral") return "ppn-decision-status status-keep";
+  if (status === "immature") return "ppn-decision-status status-review";
+  if (status === "ineffective") return "ppn-decision-status status-reduce";
   return "ppn-decision-status status-na";
 }
 
-function statusDisplayLabel(status: DecisionStatus): string {
-  return recommendationStatusLabel(status);
+function effectStatusLabel(status: DecisionStatus): string {
+  if (status === "effective") return "Pozitivan efekat";
+  if (status === "neutral") return "Neutralan efekat";
+  if (status === "ineffective") return "Slab efekat";
+  if (status === "immature") return "Prozor u toku";
+  return "Nedovoljno podataka";
+}
+
+function effectStatusTooltipBrief(status: DecisionStatus): string {
+  if (status === "effective") return "Promena cene ima potvrđen pozitivan signal u post-periodu.";
+  if (status === "neutral") return "Promena cene nema jasan pozitivan ili negativan signal.";
+  if (status === "ineffective") return "Promena cene ima slab ili negativan signal u post-periodu.";
+  if (status === "immature") return "Post-period još nije dovoljno zreo za jači zaključak.";
+  return "Nema dovoljno pouzdanih podataka za efekat promene cene.";
+}
+
+function statusDisplayLabel(status: DecisionStatus, backendLabel?: string | null): string {
+  return backendLabel?.trim() || effectStatusLabel(status);
 }
 
 function trendClass(value: number | null | undefined): string {
@@ -392,11 +408,11 @@ function insightToneClass(tone: string): string {
 }
 
 function focusFilterLabel(filter: FocusFilter): string {
-  if (filter === "increaseFocus") return recommendationStatusLabel("increase_focus");
-  if (filter === "maintain") return recommendationStatusLabel("maintain");
-  if (filter === "review") return recommendationStatusLabel("review");
-  if (filter === "doNotTrust") return recommendationStatusLabel("do_not_trust");
-  if (filter === "insufficientData") return "Nedovoljno podataka";
+  if (filter === "increaseFocus") return effectStatusLabel("effective");
+  if (filter === "maintain") return effectStatusLabel("neutral");
+  if (filter === "review") return effectStatusLabel("immature");
+  if (filter === "doNotTrust") return effectStatusLabel("ineffective");
+  if (filter === "insufficientData") return effectStatusLabel("insufficient_data");
   if (filter === "lowConfidence") return "Nisko poverenje";
   if (filter === "volatile") return "Visoka volatilnost";
   return "Sve";
@@ -549,10 +565,10 @@ function buildVolatilityMeta(currentRevenue: number | null, previousRevenue: num
 }
 
 function focusFilterMatches(row: DecisionVendor, filter: FocusFilter): boolean {
-  if (filter === "increaseFocus") return row.status === "increase_focus";
-  if (filter === "maintain") return row.status === "maintain";
-  if (filter === "review") return row.status === "review";
-  if (filter === "doNotTrust") return row.status === "do_not_trust";
+  if (filter === "increaseFocus") return row.status === "effective";
+  if (filter === "maintain") return row.status === "neutral";
+  if (filter === "review") return row.status === "immature";
+  if (filter === "doNotTrust") return row.status === "ineffective";
   if (filter === "insufficientData") return row.status === "insufficient_data";
   if (filter === "lowConfidence") return row.confidenceTone === "weak";
   if (filter === "volatile") return row.volatilityLabel === "Visoka" || row.volatilityLabel === "Promenljivo" || row.volatilityLabel === "Novo";
@@ -561,6 +577,7 @@ function focusFilterMatches(row: DecisionVendor, filter: FocusFilter): boolean {
 
 type StatusTooltipData = {
   status: DecisionStatus;
+  statusLabel: string;
   statusReason: string;
   sharePct: number | null;
   sharePctAvailable: boolean;
@@ -580,7 +597,7 @@ function buildStatusTooltip(data: StatusTooltipData): string {
   const qualityText = recommendationQualityLabel(data.dataQualityStatus);
   const hintText = recommendationReasonHints(data.reasonCodes).join(" | ");
   const shareText = data.sharePctAvailable ? fmtPct(data.sharePct, 1) : "Nije dostupno";
-  return `${statusDisplayLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Udeo ${shareText} | Trend ${fmtSignedPct(data.trendPct, 1)} | Delta ${fmtRsd(data.changeRevenue)} | ${RECOMMENDATION_RELIABILITY_LABEL} ${reliabilityText} | ${RECOMMENDATION_CONFIDENCE_LABEL} ${confidenceText} | Kvalitet ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
+  return `${statusDisplayLabel(data.status, data.statusLabel)}: ${data.statusReason} | ${effectStatusTooltipBrief(data.status)} | Udeo ${shareText} | Trend ${fmtSignedPct(data.trendPct, 1)} | Delta ${fmtRsd(data.changeRevenue)} | ${RECOMMENDATION_RELIABILITY_LABEL} ${reliabilityText} | ${RECOMMENDATION_CONFIDENCE_LABEL} ${confidenceText} | Kvalitet ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
 }
 
 function trustedMetric(value: number | null | undefined, row: { hasComparableSalesWindow?: boolean | null }): number | null {
@@ -848,8 +865,9 @@ export default function ProdajaPrePostNivelacijePage() {
       const vendorRowKey = vendorRowKeys[rowIndex];
       const backendRecommendation = item.recommendation;
       const status = backendRecommendation?.status ?? "insufficient_data";
+      const statusLabel = backendRecommendation?.label ?? effectStatusLabel(status);
       const statusReason = backendRecommendation?.summary
-        ?? "Backend recommendation payload nije dostupan za ovaj red; frontend ne računa zamenski poslovni status.";
+        ?? "Backend effect payload nije dostupan za ovaj red; frontend ne računa zamenski poslovni status.";
       const confidencePctValue = normalizeRecommendationPct(backendRecommendation?.confidencePct);
       const recommendationReliabilityPct = normalizeRecommendationPct(backendRecommendation?.reliabilityPct ?? item.reliabilityPct);
 
@@ -882,6 +900,7 @@ export default function ProdajaPrePostNivelacijePage() {
         confidencePct: confidencePctValue,
         confidenceAvailable: confidencePctValue != null,
         status,
+        statusLabel,
         statusReason,
         dataQualityStatus: normalizeRecommendationQualityStatus(backendRecommendation?.dataQualityStatus),
         reasonCodes: backendRecommendation?.reasonCodes ?? [],
@@ -940,10 +959,10 @@ export default function ProdajaPrePostNivelacijePage() {
   const totalChangeRevenue = comparablePrePostTotal(data?.totals.changeRevenue, data?.totals.hasComparableSalesWindow);
 
   const vendorCounts = useMemo(() => {
-    const increaseFocus = sortedRows.filter((row) => row.status === "increase_focus").length;
-    const maintain = sortedRows.filter((row) => row.status === "maintain").length;
-    const review = sortedRows.filter((row) => row.status === "review").length;
-    const doNotTrust = sortedRows.filter((row) => row.status === "do_not_trust").length;
+    const increaseFocus = sortedRows.filter((row) => row.status === "effective").length;
+    const maintain = sortedRows.filter((row) => row.status === "neutral").length;
+    const review = sortedRows.filter((row) => row.status === "immature").length;
+    const doNotTrust = sortedRows.filter((row) => row.status === "ineffective").length;
     const insufficientData = sortedRows.filter((row) => row.status === "insufficient_data").length;
     return { increaseFocus, maintain, review, doNotTrust, insufficientData };
   }, [sortedRows]);
@@ -951,10 +970,10 @@ export default function ProdajaPrePostNivelacijePage() {
   const focusFilterCounts = useMemo(() => {
     return {
       all: sortedRows.length,
-      increaseFocus: sortedRows.filter((row) => row.status === "increase_focus").length,
-      maintain: sortedRows.filter((row) => row.status === "maintain").length,
-      review: sortedRows.filter((row) => row.status === "review").length,
-      doNotTrust: sortedRows.filter((row) => row.status === "do_not_trust").length,
+      increaseFocus: sortedRows.filter((row) => row.status === "effective").length,
+      maintain: sortedRows.filter((row) => row.status === "neutral").length,
+      review: sortedRows.filter((row) => row.status === "immature").length,
+      doNotTrust: sortedRows.filter((row) => row.status === "ineffective").length,
       insufficientData: sortedRows.filter((row) => row.status === "insufficient_data").length,
       lowConfidence: sortedRows.filter((row) => row.confidenceTone === "weak").length,
       volatile: sortedRows.filter((row) => focusFilterMatches(row, "volatile")).length,
@@ -1808,7 +1827,7 @@ const advancedSignals = useMemo(
                     <div>
                       <h2>Prioritetna lista dobavljača</h2>
                       <p>
-                        {recommendationStatusLabel("increase_focus")}: {vendorCounts.increaseFocus} | {recommendationStatusLabel("maintain")}: {vendorCounts.maintain} | {recommendationStatusLabel("review")}: {vendorCounts.review} | {recommendationStatusLabel("do_not_trust")}: {vendorCounts.doNotTrust} | {recommendationStatusLabel("insufficient_data")}: {vendorCounts.insufficientData}
+                        {effectStatusLabel("effective")}: {vendorCounts.increaseFocus} | {effectStatusLabel("neutral")}: {vendorCounts.maintain} | {effectStatusLabel("immature")}: {vendorCounts.review} | {effectStatusLabel("ineffective")}: {vendorCounts.doNotTrust} | {effectStatusLabel("insufficient_data")}: {vendorCounts.insufficientData}
                       </p>
                     </div>
                     <AnalyticsTableToolbar
@@ -1880,9 +1899,9 @@ const advancedSignals = useMemo(
                       </th>
                       <th>
                         <button type="button" onClick={() => handleSort("status")}>
-                          Preporuka{sortMarker("status", sortField, sortDir)}
+                          Efekat promene cene{sortMarker("status", sortField, sortDir)}
                         </button>
-                        <InfoTip text="Autoritativna preporuka za ovaj pre/post red dolazi iz serverskog analitičkog sloja. Status, razlog i sigurnost se prikazuju bez lokalnog praga u ekranu." />
+                        <InfoTip text="Autoritativan efekat promene cene za ovaj pre/post red dolazi iz serverskog analitičkog sloja. Status, razlog i sigurnost se prikazuju bez lokalnog praga u ekranu." />
                       </th>
                       <th className="align-center">Detalj</th>
                     </tr>
@@ -1927,7 +1946,7 @@ const advancedSignals = useMemo(
                                 title={buildStatusTooltip(row)}
                                 aria-label={buildStatusTooltip(row)}
                               >
-                                {statusDisplayLabel(row.status)}
+                                {statusDisplayLabel(row.status, row.statusLabel)}
                               </span>
                             </td>
                             <td className="align-center">
