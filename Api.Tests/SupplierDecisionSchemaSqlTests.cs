@@ -344,14 +344,17 @@ public sealed class SupplierDecisionSchemaSqlTests
     }
 
     [Fact]
-    public void SupplierDecisionPrecomputedCapabilitiesGateEachSelectedWindowAndRequiredColumns()
+    public void SupplierDecisionPrecomputedCapabilitiesUseMaterializedViewCatalogTruth()
     {
         var endpoint = ReadRepoFile("Api/Endpoints/SupplierDecisionHubEndpoints.cs");
+        var capabilityReader = ReadRepoFile("Infrastructure/Analytics/SupplierDecisionMaterializedViewCapability.cs");
 
         Assert.Contains("var windowDays = GetDecisionScoreWindowDays(filters);", endpoint);
-        Assert.Contains("capabilities.HasDecisionScoreCacheForWindow(windowDays)", endpoint);
-        Assert.Contains("to_regclass('public.mv_supplier_decision_score_cache_90d')", endpoint);
-        Assert.Contains("to_regclass('public.mv_supplier_decision_score_cache_180d')", endpoint);
+        Assert.Contains("var decisionScoreCapability = capabilities.DecisionScoreCacheForWindow(windowDays);", endpoint);
+        Assert.Contains("if (!decisionScoreCapability.IsReady)", endpoint);
+        Assert.Contains("PostgresMaterializedViewCapabilityReader.InspectAsync", endpoint);
+        Assert.Contains("SupplierDecisionMaterializedViewContract.DecisionScoreRequiredColumns", endpoint);
+        Assert.Contains("SupplierDecisionMaterializedViewContract.MlSupplierScoreColumn", endpoint);
         Assert.Contains("to_regclass('public.vw_supplier_ml_latest_predictions')", endpoint);
         Assert.Contains("ml_latest_predictions_view_has_required_columns", endpoint);
         Assert.Contains("table_name = 'vw_supplier_ml_latest_predictions'", endpoint);
@@ -359,12 +362,19 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.Contains("'top_feature_2'", endpoint);
         Assert.Contains("'top_feature_3'", endpoint);
         Assert.Contains("'explanation_text'", endpoint);
-        Assert.Contains("table_name = 'mv_supplier_decision_score_cache_90d'", endpoint);
-        Assert.Contains("table_name = 'mv_supplier_decision_score_cache_180d'", endpoint);
-        Assert.Contains("'post_signal_coverage'", endpoint);
-        Assert.Contains("'confidence_score'", endpoint);
-        Assert.Contains("'recommendation_code'", endpoint);
-        Assert.Contains("throw new SupplierDecisionUnavailableException(\n                \"MISSING_SCHEMA\"", endpoint);
+        Assert.DoesNotContain("table_name = 'mv_supplier_decision_score_cache", endpoint);
+        Assert.Contains("\"MISSING_OBJECT\"", endpoint);
+        Assert.Contains("\"MISSING_COLUMNS\"", endpoint);
+        Assert.Contains("\"NOT_POPULATED\"", endpoint);
+        Assert.Contains("FROM pg_class c", capabilityReader);
+        Assert.Contains("JOIN pg_namespace n", capabilityReader);
+        Assert.Contains("LEFT JOIN pg_matviews mv", capabilityReader);
+        Assert.Contains("JOIN pg_attribute a", capabilityReader);
+        Assert.Contains("a.attnum > 0", capabilityReader);
+        Assert.Contains("NOT a.attisdropped", capabilityReader);
+        Assert.Contains("\"post_signal_coverage\"", capabilityReader);
+        Assert.Contains("\"confidence_score\"", capabilityReader);
+        Assert.Contains("\"recommendation_code\"", capabilityReader);
         Assert.DoesNotContain("? GetDecimal(reader, \"post_signal_coverage\")\n                    : 1m", endpoint);
     }
 
@@ -562,7 +572,7 @@ public sealed class SupplierDecisionSchemaSqlTests
     }
 
     [Fact]
-    public void SupplierDecisionWindowedMvStartupReadinessIsLoggedButNotGated()
+    public void SupplierDecisionWindowedMvStartupReadinessUsesEndpointCapabilityContract()
     {
         var initializer = ReadRepoFile("Infrastructure/Seed/DatabaseInitializer.cs");
         var options = ReadRepoFile("Infrastructure/Configuration/NightlyAnalyticsRefreshOptions.cs");
@@ -572,9 +582,13 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.Contains("mv_supplier_decision_score_cache", initializer);
         Assert.Contains("mv_supplier_recommendations_cache", initializer);
         Assert.Contains("LogSupplierDecisionHubWindowedCacheStatusAsync", initializer);
-        Assert.Contains("Supplier decision windowed caches are present", initializer);
-        Assert.Contains("Supplier decision windowed caches are not fully ready", initializer);
-        Assert.Contains("Startup readiness still gates only the all-time cache stack", initializer);
+        Assert.Contains("InspectSupplierDecisionScoreMaterializedViewAsync", initializer);
+        Assert.Contains("PostgresMaterializedViewCapabilityReader.InspectAsync", initializer);
+        Assert.Contains("SupplierDecisionMaterializedViewContract.DecisionScoreRequiredColumns", initializer);
+        Assert.Contains("90d=READY 180d=READY", initializer);
+        Assert.Contains("Endpoint readiness uses the same materialized-view capability contract.", initializer);
+        Assert.Contains("windowed90.ErrorCode ?? \"READY\"", initializer);
+        Assert.Contains("windowed180.ErrorCode ?? \"READY\"", initializer);
         Assert.Contains("\"mv_supplier_decision_score_cache_90d\"", options);
         Assert.Contains("\"mv_supplier_decision_score_cache_180d\"", options);
     }
