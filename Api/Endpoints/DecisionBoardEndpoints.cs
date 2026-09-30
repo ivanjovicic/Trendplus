@@ -420,6 +420,12 @@ public static class DecisionBoardEndpoints
             "decision-board",
             meta,
             meta.MetricProvenance);
+        AnalyticsResponseMetaFactory.ApplyDecisionReadiness(
+            meta,
+            "recommendation",
+            reasonCodes: loadWarnings,
+            evidenceReferences: ["decision-board.sources", "decision-board.recommendation", "decision-board.dataQuality"],
+            repairPath: "Data Quality ili izvorna analitička površina");
 
         return meta;
     }

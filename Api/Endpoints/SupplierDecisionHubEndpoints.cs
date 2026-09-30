@@ -2148,7 +2148,8 @@ public static class SupplierDecisionHubEndpoints
             GeneratedAtUtc = source.GeneratedAtUtc,
             LastRefreshAtUtc = source.LastRefreshAtUtc,
             CorrelationId = source.CorrelationId,
-            Context = source.Context
+            Context = source.Context,
+            DecisionReadiness = source.DecisionReadiness
         };
     }
 

@@ -3704,6 +3704,11 @@ public static class AllEndpoints
                     "color",
                     trustMeta,
                     trustMeta.MetricProvenance);
+                AnalyticsResponseMetaFactory.ApplyDecisionReadiness(
+                    trustMeta,
+                    "signal",
+                    reasonCodes: ["color_is_supporting_signal"],
+                    evidenceReferences: ["color.net_sales_signed", "color.data_quality", "color.recommendation"]);
 
                 var response = new
                 {
@@ -7542,7 +7547,11 @@ public static class AllEndpoints
             var emptyMeta = AnalyticsResponseMetaFactory.Empty(emptyReason, emptyMessage, "insufficient_data");
             emptyMeta.GeneratedAtUtc = generatedAtUtc;
             emptyMeta.RecommendationAllowed = false;
-            return emptyMeta;
+            return AnalyticsResponseMetaFactory.ApplyDecisionReadiness(
+                emptyMeta,
+                "recommendation",
+                reasonCodes: [emptyReason],
+                evidenceReferences: ["analytics.data_quality", "analytics.recommendation"]);
         }
 
         // A missing denominator is unknown evidence, not a healthy zero/100% value.
@@ -7556,7 +7565,12 @@ public static class AllEndpoints
                 "insufficient_data");
             unavailableMeta.GeneratedAtUtc = generatedAtUtc;
             unavailableMeta.RecommendationAllowed = false;
-            return unavailableMeta;
+            return AnalyticsResponseMetaFactory.ApplyDecisionReadiness(
+                unavailableMeta,
+                "recommendation",
+                reasonCodes: ["stats_trust_insufficient"],
+                evidenceReferences: ["analytics.metricProvenance", "analytics.data_quality"],
+                repairPath: "Data Quality");
         }
 
         var missingCostShare = missingCostRevenueSharePct.Value;
@@ -7579,7 +7593,12 @@ public static class AllEndpoints
                 "critical");
             criticalMeta.GeneratedAtUtc = generatedAtUtc;
             criticalMeta.RecommendationAllowed = false;
-            return criticalMeta;
+            return AnalyticsResponseMetaFactory.ApplyDecisionReadiness(
+                criticalMeta,
+                "recommendation",
+                reasonCodes: [criticalMeta.WarningCode ?? "stats_trust_critical"],
+                evidenceReferences: ["analytics.metricProvenance", "analytics.data_quality"],
+                repairPath: "Data Quality");
         }
 
         var isSupplierUnknownWarning = supplierPolicy
@@ -7598,13 +7617,21 @@ public static class AllEndpoints
                 "warning");
             warningMeta.GeneratedAtUtc = generatedAtUtc;
             warningMeta.RecommendationAllowed = true;
-            return warningMeta;
+            return AnalyticsResponseMetaFactory.ApplyDecisionReadiness(
+                warningMeta,
+                "recommendation",
+                reasonCodes: [warningMeta.WarningCode ?? "stats_trust_warning"],
+                evidenceReferences: ["analytics.metricProvenance", "analytics.data_quality"],
+                repairPath: "Data Quality");
         }
 
         var successMeta = AnalyticsResponseMetaFactory.Success("good");
         successMeta.GeneratedAtUtc = generatedAtUtc;
         successMeta.RecommendationAllowed = true;
-        return successMeta;
+        return AnalyticsResponseMetaFactory.ApplyDecisionReadiness(
+            successMeta,
+            "recommendation",
+            evidenceReferences: ["analytics.metricProvenance", "analytics.data_quality", "analytics.recommendation"]);
     }
 
     internal static IQueryable<DnevnikPromena> ApplyColorNivelacijaEventScope(
@@ -7648,7 +7675,8 @@ public static class AllEndpoints
             RecommendationAllowed = meta.RecommendationAllowed,
             IsPartial = meta.IsPartial,
             MetricProvenance = meta.MetricProvenance,
-            Context = meta.Context
+            Context = meta.Context,
+            DecisionReadiness = meta.DecisionReadiness
         };
     }
 

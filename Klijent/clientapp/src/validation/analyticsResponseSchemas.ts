@@ -56,6 +56,15 @@ const analyticsContextDescriptorSchema = z.object({
   rowLimitSemantics: z.string().nullable().optional(),
 }).passthrough();
 
+const decisionReadinessSchema = z.object({
+  state: z.enum(["decision_ready", "signal_only", "blocked", "unavailable"]),
+  surfaceRole: z.string().min(1),
+  recommendationAllowed: z.boolean().nullable().optional(),
+  reasonCodes: z.array(z.string()),
+  evidenceReferences: z.array(z.string()),
+  repairPath: z.string().nullable().optional(),
+});
+
 export const analyticsResponseMetaSchema = z.object({
   success: z.boolean(),
   generatedAtUtc: validDate.optional(),
@@ -74,6 +83,7 @@ export const analyticsResponseMetaSchema = z.object({
   isPartial: z.boolean().optional(),
   metricProvenance: z.record(z.string(), provenanceSchema).nullable().optional(),
   context: analyticsContextDescriptorSchema.nullable().optional(),
+  decisionReadiness: decisionReadinessSchema.nullable().optional(),
 }).passthrough();
 
 const optionalMeta = analyticsResponseMetaSchema.nullable().optional();

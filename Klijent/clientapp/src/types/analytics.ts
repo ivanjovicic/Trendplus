@@ -107,6 +107,22 @@ export interface AnalyticsResponseMeta {
   operationsIntegrityStatus?: "verified" | "unverified" | "degraded" | "drift_detected" | string | null;
   operationsIntegrityCheckedAtUtc?: string | null;
   operationsIntegrityEvidenceId?: string | null;
+  decisionReadiness?: AnalyticsDecisionReadiness | null;
+}
+
+export type AnalyticsDecisionReadinessState =
+  | "decision_ready"
+  | "signal_only"
+  | "blocked"
+  | "unavailable";
+
+export interface AnalyticsDecisionReadiness {
+  state: AnalyticsDecisionReadinessState | string;
+  surfaceRole: "recommendation" | "signal" | "report" | string;
+  recommendationAllowed?: boolean | null;
+  reasonCodes: string[];
+  evidenceReferences: string[];
+  repairPath?: string | null;
 }
 
 export type AnalyticsFreshnessStatus = "fresh" | "stale" | "critical" | "unknown";

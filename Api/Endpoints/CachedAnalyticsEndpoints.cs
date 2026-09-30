@@ -6685,6 +6685,12 @@ public static class CachedAnalyticsEndpoints
             "product-decision-center",
             meta,
             meta.MetricProvenance);
+        AnalyticsResponseMetaFactory.ApplyDecisionReadiness(
+            meta,
+            "recommendation",
+            reasonCodes: ["product_decision_evidence"] ,
+            evidenceReferences: ["product.recommendation", "product.metricProvenance", "product.context"],
+            repairPath: "Data Quality");
         return meta;
     }
 
@@ -8665,6 +8671,13 @@ public static class CachedAnalyticsEndpoints
             "inventory",
             meta,
             meta.MetricProvenance);
+        AnalyticsResponseMetaFactory.ApplyDecisionReadiness(
+            meta,
+            "recommendation",
+            freshnessStatus: IsStaleSignalStatus(signalStatus) ? "stale" : IsUnknownSignalStatus(signalStatus) ? "unknown" : null,
+            reasonCodes: ["inventory.evidence", "inventory.freshness"],
+            evidenceReferences: ["inventory.snapshot", "inventory.provenance"],
+            repairPath: "Inventory refresh status");
 
         return meta;
     }

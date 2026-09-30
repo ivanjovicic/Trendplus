@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Application.Analytics;
 
 namespace Trendplus2.Dtos;
 
@@ -8,6 +9,27 @@ namespace Trendplus2.Dtos;
 /// </summary>
 public static class AnalyticsResponseMetaFactory
 {
+    public static AnalyticsResponseMetaDto ApplyDecisionReadiness(
+        AnalyticsResponseMetaDto meta,
+        string surfaceRole,
+        string? freshnessStatus = null,
+        IEnumerable<string>? reasonCodes = null,
+        IEnumerable<string>? evidenceReferences = null,
+        string? repairPath = null)
+    {
+        meta.DecisionReadiness = AnalyticsDecisionReadinessPolicy.Resolve(
+            meta.Success,
+            surfaceRole,
+            meta.RecommendationAllowed,
+            meta.DataQualityStatus,
+            meta.IsPartial,
+            freshnessStatus,
+            reasonCodes,
+            evidenceReferences,
+            repairPath);
+        return meta;
+    }
+
     public static AnalyticsResponseMetaDto Success(
         string? dataQualityStatus = null,
         DateTime? lastRefreshAtUtc = null,

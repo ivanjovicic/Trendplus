@@ -437,6 +437,12 @@ public static class AnalyticsActionsEndpoints
             "analytics-actions",
             meta,
             meta.MetricProvenance);
+        AnalyticsResponseMetaFactory.ApplyDecisionReadiness(
+            meta,
+            "recommendation",
+            reasonCodes: ["analytics_actions.ledger"],
+            evidenceReferences: ["analytics-actions.ledger", "analytics-actions.lifecycle"],
+            repairPath: "Actions i Data Quality");
         return meta;
     }
 

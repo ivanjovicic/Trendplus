@@ -620,21 +620,35 @@ public static class PreNivelacijaPriorityEndpoints
     {
         if (salesQueryFailed)
         {
-            return AnalyticsResponseMetaFactory.Error(
+            return AnalyticsResponseMetaFactory.ApplyDecisionReadiness(
+                AnalyticsResponseMetaFactory.Error(
                 "pre_nivelacija_sales_unavailable",
                 "Prodaja za pre-nivelacija skor trenutno nije dostupna.",
-                null);
+                null),
+                "recommendation",
+                reasonCodes: ["pre_nivelacija_sales_unavailable"],
+                evidenceReferences: ["pre_nivelacija.salesEvidence"],
+                repairPath: "Sales data quality");
         }
 
         if (markdownQueryFailed)
         {
-            return AnalyticsResponseMetaFactory.Error(
+            return AnalyticsResponseMetaFactory.ApplyDecisionReadiness(
+                AnalyticsResponseMetaFactory.Error(
                 "pre_nivelacija_markdown_unavailable",
                 "Dnevnik nivelacija za pre-nivelacija skor trenutno nije dostupan.",
-                null);
+                null),
+                "recommendation",
+                reasonCodes: ["pre_nivelacija_markdown_unavailable"],
+                evidenceReferences: ["pre_nivelacija.markdownEvidence"],
+                repairPath: "Nivelacija evidence");
         }
 
-        return AnalyticsResponseMetaFactory.Success();
+        return AnalyticsResponseMetaFactory.ApplyDecisionReadiness(
+            AnalyticsResponseMetaFactory.Success(),
+            "recommendation",
+            reasonCodes: ["pre_nivelacija.evidence"],
+            evidenceReferences: ["pre_nivelacija.salesEvidence", "pre_nivelacija.marginEvidence"]);
     }
 
     internal readonly record struct PreNivelacijaMarginEvidence(
@@ -941,6 +955,12 @@ public static class PreNivelacijaPriorityEndpoints
         response.Meta.EffectivePeriodToUtc = baseEntry.EvidenceWindow.SalesWindowToUtc;
         response.Meta.ObservedPeriodFromUtc = baseEntry.EvidenceWindow.SalesWindowFromUtc;
         response.Meta.ObservedPeriodToUtc = baseEntry.EvidenceWindow.SalesWindowToUtc;
+        AnalyticsResponseMetaFactory.ApplyDecisionReadiness(
+            response.Meta,
+            "recommendation",
+            reasonCodes: ["pre_nivelacija.evidence"],
+            evidenceReferences: ["pre_nivelacija.salesEvidence", "pre_nivelacija.marginEvidence", "pre_nivelacija.recommendation"],
+            repairPath: "Data Quality ili Nivelacija evidence");
         return response;
     }
 
