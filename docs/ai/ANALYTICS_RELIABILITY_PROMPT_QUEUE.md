@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ477 (IN_PROGRESS in this workspace)
+Current READY prompt: none
 Systemic reliability audit registration 2026-09-29: `RQ509`-`RQ515` are registered as WAITING follow-ups from `docs/qa/ANALYTICS_RELIABILITY_NEXT_WAVE_AUDIT_2026-09-29.md`. They extend, rather than replace, RQ359-RQ367/RQ141/RQ145-RQ149 and the RQ413/RQ449/RQ450 integrity stack. No RQ509-RQ515 prompt is promoted or claimed by this audit; RQ501 completed separately and current routing is defined only by this header plus fresh dependency/collision checks.
 Owner promotion/claim 2026-09-29: idle recovery refreshed `origin/main` to `67e310027c7684d4c468665db760308bb6acad4c`, verified no active RQ509 lock/branch/PR owner and no collision with the PARTIAL/non-runnable RQ137/RQ139/RQ140 contracts. RQ509 moved `WAITING -> READY -> IN_PROGRESS` as the first P0 context-identity prompt; local lock: `.ai/task-locks/RQ509-codex.lock.md`. Q83 remains the exclusive PARTIAL Pre/Post SQL/view owner and RQ491 is not promoted.
 Owner completion 2026-09-29: RQ509 moved `IN_PROGRESS -> DONE` and was delivered directly to `main` in implementation `d71afbb67864c7990c08f754c6234127f45a33bf`. The additive context descriptor/fingerprint now covers Dashboard, Product Decision Center, Supplier, Shoe Type, Color, Data Quality and Supplier Decision Hub, with deterministic read-only reconciliation classifications and fail-closed unavailable identity. Focused backend proof is 46/46; frontend schema proof is 16/16; typecheck, analytics guardrails, production build, API build, governance validators and diff check pass. Run log: `.ai/runs/2026-09-29-RQ509-evidence.md`. Evidence state: synchronized. Current RQ READY returned to `none`; RQ510 is the next P0 dependency-complete candidate after fresh recovery. Q83 remains PARTIAL and RQ491 remains WAITING.
@@ -26565,7 +26565,7 @@ Users can tell exactly which population and denominator each share uses; negativ
 
 ## RQ477 - Align Actions list, counts and outcome summary to one visible population
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/frontend/contract/tests
 Feature family: analytics-actions-population-period-parity
@@ -26628,6 +26628,17 @@ Every Actions KPI and panel identifies the population and period it describes; t
 - RQ477 is the highest safe P1 repository-local candidate: its Actions population/period contract is independent of the completed Product Decision page sequence, has no unresolved external gate, and no active owner collides with the Actions page or summary endpoints.
 - RQ477 is promoted `WAITING -> READY -> IN_PROGRESS` in this workspace. RQ478 remains sequenced because it overlaps the same summary projection.
 - Local lock: `.ai/task-locks/RQ477-codex.lock.md`.
+
+### Completion note
+
+- Completion date: 2026-09-30
+- RQ477 is DONE on implementation SHA `effb0cc7e991a7fe85052ac6e0e4aeb92a061dee`, delivered directly to `main` and verified on exact `origin/main`.
+- Actions list, KPI counts and outcome summary now share an explicit created-action period plus source, priority and data-quality filters. The UI defaults to a visible 90-day created-action window and lets the operator change the window; status/search remain clearly list-only.
+- Backend metadata now exposes requested/effective period, data scope and population filters for list/count responses; summary metadata carries the same population filters and data scope. Missing/empty outcome evidence remains nullable and distinct from zero.
+- Checks run: focused frontend/API/page proof 46/46; `npm run typecheck`; `npm run build`; Infrastructure build; `node scripts/check-prompt-queues.mjs`; `git diff --check`.
+- Checks not run: focused API test could not execute because the current repository API/test build is blocked by pre-existing `DecisionBoardEndpoints.cs` errors (`CS8323`, `CS8130`, `CS8183`); no RQ477 source error was emitted. Remote CI was not inspected.
+- Local lock was removed before closure. RQ478 remains sequenced on the same Actions summary projection; Q83 remains PARTIAL and RQ491 remains WAITING.
+- Run log: `.ai/runs/2026-09-30-RQ477-evidence.md`.
 
 ---
 
