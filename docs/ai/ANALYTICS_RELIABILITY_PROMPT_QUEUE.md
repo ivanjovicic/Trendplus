@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ480 (IN_PROGRESS in this workspace)
+Current READY prompt: none
 Systemic reliability audit registration 2026-09-29: `RQ509`-`RQ515` are registered as WAITING follow-ups from `docs/qa/ANALYTICS_RELIABILITY_NEXT_WAVE_AUDIT_2026-09-29.md`. They extend, rather than replace, RQ359-RQ367/RQ141/RQ145-RQ149 and the RQ413/RQ449/RQ450 integrity stack. No RQ509-RQ515 prompt is promoted or claimed by this audit; RQ501 completed separately and current routing is defined only by this header plus fresh dependency/collision checks.
 Owner promotion/claim 2026-09-29: idle recovery refreshed `origin/main` to `67e310027c7684d4c468665db760308bb6acad4c`, verified no active RQ509 lock/branch/PR owner and no collision with the PARTIAL/non-runnable RQ137/RQ139/RQ140 contracts. RQ509 moved `WAITING -> READY -> IN_PROGRESS` as the first P0 context-identity prompt; local lock: `.ai/task-locks/RQ509-codex.lock.md`. Q83 remains the exclusive PARTIAL Pre/Post SQL/view owner and RQ491 is not promoted.
 Owner completion 2026-09-29: RQ509 moved `IN_PROGRESS -> DONE` and was delivered directly to `main` in implementation `d71afbb67864c7990c08f754c6234127f45a33bf`. The additive context descriptor/fingerprint now covers Dashboard, Product Decision Center, Supplier, Shoe Type, Color, Data Quality and Supplier Decision Hub, with deterministic read-only reconciliation classifications and fail-closed unavailable identity. Focused backend proof is 46/46; frontend schema proof is 16/16; typecheck, analytics guardrails, production build, API build, governance validators and diff check pass. Run log: `.ai/runs/2026-09-29-RQ509-evidence.md`. Evidence state: synchronized. Current RQ READY returned to `none`; RQ510 is the next P0 dependency-complete candidate after fresh recovery. Q83 remains PARTIAL and RQ491 remains WAITING.
@@ -26775,7 +26775,7 @@ Known smoke fixtures cannot silently appear as live operational actions in a pil
 
 ## RQ480 - Surface Decision Pulse partial-source failures and provide retry
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/frontend/contract/tests
 Feature family: decision-pulse-partial-retry-contract
@@ -26836,6 +26836,14 @@ Users cannot mistake an incomplete Pulse feed for a complete no-action conclusio
 - Fresh idle recovery verified exact `origin/main` `7896761b6f0b93f69ab71cbd1ed2557a0030a5ed`, no active task lock, branch or open PR owner, and no collision with RQ479's external seed/provenance gate or RQ481's product-owner filter contract.
 - RQ480 is promoted `WAITING -> READY -> IN_PROGRESS` as the highest safe P1. Scope is limited to preserving backend partial trust state in the Decision Pulse page, warning/retry behavior and focused tests; Supplier readiness schema ownership remains with RQ475.
 - Local lock: `.ai/task-locks/RQ480-codex.lock.md`.
+
+### Completion note
+
+- Completion date: 2026-09-30
+- RQ480 is DONE on implementation SHA `1d79bc143d9c91fcca0daab500818ce8cb38eb38`, delivered directly to `main`; fresh fetch verified `HEAD == origin/main`.
+- Decision Pulse now renders a distinct partial/degraded warning for empty and populated partial responses, preserves visible items, shows the backend-safe warning and suppressed count, and provides a retry action. A retry clears the warning only after a non-partial response.
+- Focused page proof is 6/6; typecheck, client build, queue governance (613 tasks) and diff checks pass. Existing backend metadata already carried the partial contract, so no Supplier readiness schema or backend decision semantics were duplicated.
+- Local lock removed after delivery. RQ479 remains live/seed-owner gated, RQ481 remains product-owner gated, Q83 remains PARTIAL and RQ491 remains WAITING.
 
 ---
 
