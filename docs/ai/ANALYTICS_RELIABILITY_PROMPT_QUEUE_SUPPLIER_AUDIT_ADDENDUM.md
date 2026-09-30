@@ -3,9 +3,9 @@
 Date: 2026-09-30
 Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
-Current READY prompt: RQ525
+Current READY prompt: none; RQ525 is PARTIAL pending Testcontainers-backed execution
 Additional READY prompts: none
-Queue reconciliation 2026-09-30: RQ518 is DONE after shared PostgreSQL catalog-based materialized-view capability detection was delivered on main with explicit MISSING_OBJECT/MISSING_COLUMNS/NOT_POPULATED states and regression coverage. RQ519 was the primary dependency-complete lane and is now PARTIAL after the canonical lifecycle repair and PostgreSQL fixture proof; the real DatabaseInitializer test harness remains blocked by an unrelated pre-existing compile failure. RQ525 is now the primary independent P1 READY lane. RQ524 independently delivered the initial read-only pack and remains PARTIAL after deterministic PostgreSQL fixture execution because the broader reconciliation checks are still incomplete. RQ524 is repository-local/fixture-only; production execution remains exclusively RQ454/STAB16. RQ519-RQ532 otherwise remain sequenced/owner-gated as declared below.
+Queue reconciliation 2026-09-30: RQ518 is DONE after shared PostgreSQL catalog-based materialized-view capability detection was delivered on main with explicit MISSING_OBJECT/MISSING_COLUMNS/NOT_POPULATED states and regression coverage. RQ519 was the primary dependency-complete lane and is now PARTIAL after the canonical lifecycle repair and PostgreSQL fixture proof; the real DatabaseInitializer test harness remains blocked by an unrelated pre-existing compile failure. RQ525 is now PARTIAL after the readiness harness, isolated 015 proof and deterministic local PostgreSQL sequence were delivered; Testcontainers-backed execution remains pending because Docker is unavailable in this VM. RQ524 independently delivered the initial read-only pack and remains PARTIAL after deterministic PostgreSQL fixture execution because the broader reconciliation checks are still incomplete. RQ524 is repository-local/fixture-only; production execution remains exclusively RQ454/STAB16. RQ519-RQ532 otherwise remain sequenced/owner-gated as declared below.
 
 This addendum registers only non-duplicate Supplier follow-ups after second-pass source verification. Existing RQ474, RQ475 and RQ487 remain authoritative for overview error/readiness/query-cost work. RQ517 is already DONE for Daily Sales and is not reused.
 
@@ -347,7 +347,7 @@ None for repository-local fixture work. RQ454/STAB16 exclusively own production/
 
 ## RQ525 - Add real-PostgreSQL Supplier schema readiness harness
 
-Status: READY
+Status: PARTIAL
 Priority: P1
 Type: tests/infrastructure
 Feature family: supplier-schema-readiness-tests
@@ -385,6 +385,24 @@ Reproduces pre-fix MV issue, protects lifecycle after fixes and makes optional-0
 ### Dependencies
 
 None; coordinate with RQ518/RQ519 paths.
+
+### Completion note
+
+- Date: 2026-09-30
+- Status: PARTIAL
+- Completion: Supplier schema readiness harness and isolated Analytics 015 transaction-safety proof delivered; deterministic local PostgreSQL sequence and repeat/refresh checks passed.
+- Changed files: `Api.Tests/SupplierDecisionSchemaReadinessIntegrationTests.cs`, `Database/Analytics/013_AddSupplierDecisionCompatibilitySchema.sql`
+- Checks run: governance validators passed; focused Supplier SQL contract tests passed (43); local PostgreSQL 013→014→016→018→029 sequence, repeat lifecycle and five-MV refresh passed.
+- Checks not run: Testcontainers-backed integration execution, because Docker is unavailable in this VM; full backend suite skipped due unrelated baseline compiler overload conflicts.
+- Run log: `.ai/runs/2026-09-30-RQ525-evidence.md`
+- Evidence state: pending
+- Delivery mode: pull-request
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: actual `PostgresContainerFixture` execution remains unobserved.
+- Follow-up: run `SupplierDecisionSchemaReadinessIntegrationTests` in a Docker-enabled environment; promote RQ525 to DONE if green.
+- Residual risk: the raw 013 script still depends on startup history to avoid rerunning its dependent MV drop path.
+- Prompt defect / scope repair: added nullable `supplier_id_at_sale` to the analytics compatibility view so missing sale-time attribution stays explicit NULL and 018 can be validated without inventing supplier ownership.
 
 ---
 
