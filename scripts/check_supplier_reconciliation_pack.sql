@@ -25,24 +25,24 @@ params AS (
 ),
 sales AS (
     SELECT
-        pz."Id" AS sale_id,
-        pz."BrojRacuna" AS receipt_no,
-        pz."DatumProdaje" AS sold_at,
-        pz."IDObjekat" AS store_id,
-        ps."IdArtikal" AS article_id,
-        ps."Kolicina" AS quantity,
-        ps."Cena" AS unit_price,
-        ps."NabavnaCena" AS line_cost,
+        pz.id AS sale_id,
+        pz.broj_racuna AS receipt_no,
+        pz.datum_prodaje AS sold_at,
+        pz.id_objekat AS store_id,
+        ps.id_artikal AS article_id,
+        ps.kolicina AS quantity,
+        ps.cena AS unit_price,
+        ps.nabavna_cena AS line_cost,
         a."IDDobavljac" AS supplier_id,
         a."NabavnaCenaDin" AS product_cost_rsd,
         a."NabavnaCena" AS product_cost_legacy
-    FROM "ProdajaStavke" ps
-    JOIN "ProdajaZaglavlja" pz ON pz."Id" = ps."IdProdaja"
-    JOIN "Artikli" a ON a."Id" = ps."IdArtikal"
+    FROM prodaja_stavke ps
+    JOIN prodaja_zaglavlje pz ON pz.id = ps.id_prodaja
+    JOIN "Artikli" a ON a."Id" = ps.id_artikal
     CROSS JOIN params p
-    WHERE pz."DatumProdaje" >= p.from_utc
-      AND pz."DatumProdaje" <= p.to_utc
-      AND (p.store_id IS NULL OR pz."IDObjekat" = p.store_id)
+    WHERE pz.datum_prodaje >= p.from_utc
+      AND pz.datum_prodaje <= p.to_utc
+      AND (p.store_id IS NULL OR pz.id_objekat = p.store_id)
 ),
 classified AS (
     SELECT
@@ -136,7 +136,13 @@ checks AS (
             WHEN BOOL_AND(relkind = 'm' AND is_populated) THEN 'PASS'
             ELSE 'FAIL'
         END,
-        COALESCE(string_agg(object_name || ':' || relkind || ':populated=' || is_populated, ', '), 'missing'),
+        COALESCE(
+            string_agg(
+                object_name || ':' || relkind::text || ':populated=' || is_populated::text,
+                ', '
+            ),
+            'missing'
+        ),
         'required score cache exists as populated materialized view',
         'RQ518',
         'Catalog-level MV health/capability proof; never use information_schema for MV identity.'
