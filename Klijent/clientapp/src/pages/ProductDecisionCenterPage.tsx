@@ -1009,27 +1009,22 @@ export default function ProductDecisionCenterPage() {
   const hideKpiChrome = hasBlockingError || showInsufficientState || showNoDataState || showFilteredOutState;
 
   const kpis = useMemo(() => ({
-    replenishCount: rows.filter((x) => x["recommendationStatus"] === "REPLENISH").length,
-    boostCount: rows.filter((x) => x["recommendationStatus"] === "BOOST").length,
-    markdownCount: rows.filter((x) => x["recommendationStatus"] === "MARKDOWN").length,
-    doNotOrderCount: rows.filter((x) => x["recommendationStatus"] === "DO_NOT_ORDER").length,
-    fixDataCount: rows.filter((x) => x["recommendationStatus"] === "FIX_DATA").length,
+    replenishCount: payload?.summary.replenishCount ?? 0,
+    boostCount: payload?.summary.highPotentialCount ?? 0,
+    markdownCount: payload?.summary.markdownCount ?? 0,
+    doNotOrderCount: payload?.summary.doNotOrderCount ?? 0,
+    fixDataCount: payload?.summary.badDataCount ?? 0,
+    actionableCount: payload?.summary.actionableCount ?? 0,
+    blockedCount: payload?.summary.blockedCount ?? 0,
+    insufficientEvidenceCount: payload?.summary.insufficientEvidenceCount ?? 0,
     lostSalesEstimate: payload ? payload.summary.lostSalesEstimate ?? null : null,
     slowStockCapital: payload ? payload.summary.slowStockCapital ?? null : null,
-    stockCoverRiskCount: rows.filter((x) => {
-      const status = (x.stockCoverStatus ?? "").toLowerCase();
-      return status === "low_cover" || status === "low" || status === "out_of_stock_risk" || status === "insufficient_data";
-    }).length,
-    lowCoverSkus: rows.filter((x) => {
-      const status = (x.stockCoverStatus ?? "").toLowerCase();
-      return status === "low_cover" || status === "low" || status === "out_of_stock_risk";
-    }).length,
-    slowStockSkus: rows.filter((x) => {
-      const status = (x.stockCoverStatus ?? "").toLowerCase();
-      return status === "slow_stock" || status === "slow" || status === "no_velocity";
-    }).length,
-    goodSellThroughSkus: rows.filter((x) => (x.sellThroughStatus ?? "").toLowerCase() === "good").length,
-  }), [payload?.summary.lostSalesEstimate, payload?.summary.slowStockCapital, rows]);
+    stockCoverRiskCount: payload?.summary.stockCoverRiskCount ?? 0,
+    insufficientStockCoverageCount: payload?.summary.insufficientStockCoverageCount ?? 0,
+    lowCoverSkus: payload?.summary.lowCoverCount ?? 0,
+    slowStockSkus: payload?.summary.slowStockCount ?? 0,
+    goodSellThroughSkus: payload?.summary.goodSellThroughCount ?? 0,
+  }), [payload]);
 
   const trustQualitySummary = useMemo(() => {
     if (!rows.length) return undefined;
@@ -1069,8 +1064,12 @@ export default function ProductDecisionCenterPage() {
 
   const populationSummary = payload
     ? payload.analyzedRows != null
-      ? `Vraćeno ${payload.totalRows} redova; analizirano ${payload.analyzedRows}; ${payload.ignoredRowsCount != null ? `skriveno zbog limita ${payload.ignoredRowsCount}.` : "skriveni redovi nisu prijavljeni."}`
+      ? `Vraćeno ${payload.totalRows} redova; analizirano ${payload.analyzedRows}; ${payload.ignoredRowsCount != null ? `skriveno zbog limita ${payload.ignoredRowsCount}.` : "skriveni redovi nisu prijavljeni."} KPI brojači koriste vraćene redove, novčani KPI analiziranu populaciju, a dozvola za akciju dolazi iz backend-a.`
       : `Vraćeno ${payload.totalRows} redova; analizirana populacija nije prijavljena u ovom odgovoru.`
+    : null;
+
+  const actionabilitySummary = payload && typeof payload.summary.actionableCount === "number"
+    ? `Akcione preporuke dozvoljene backend-om: ${payload.summary.actionableCount}; blokirano ili nedostupno: ${payload.summary.blockedCount ?? 0}; nedovoljno dokaza: ${payload.summary.insufficientEvidenceCount ?? 0}.`
     : null;
 
   const handlePeriodPresetChange = (value: PeriodPreset) => {
@@ -1340,6 +1339,11 @@ export default function ProductDecisionCenterPage() {
           {populationSummary}
         </div>
       ) : null}
+      {actionabilitySummary ? (
+        <div className="product-decision-message product-decision-message-info" role="status">
+          {actionabilitySummary}
+        </div>
+      ) : null}
 
       <header className="product-decision-header">
         <div>
@@ -1397,6 +1401,11 @@ export default function ProductDecisionCenterPage() {
           <span>Rizik pokrivenosti</span>
           <strong>{fmtNumber(kpis.stockCoverRiskCount, 0, "0")}</strong>
           <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj artikala sa rizičnom pokrivenošću zalihe" />
+        </article>
+        <article className="kpi-card">
+          <span>Nedovoljno podataka za pokrivenost</span>
+          <strong>{fmtNumber(kpis.insufficientStockCoverageCount, 0, "0")}</strong>
+          <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj artikala bez dovoljno podataka za pokrivenost zalihe" />
         </article>
         <article className="kpi-card">
           <span>SKU sa niskom pokrivenošću</span>
@@ -1595,6 +1604,11 @@ export default function ProductDecisionCenterPage() {
           <span>Rizik pokrivenosti</span>
           <strong>{fmtNumber(kpis.stockCoverRiskCount, 0, "0")}</strong>
           <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj artikala sa rizičnom pokrivenošću zalihe" />
+        </article>
+        <article className="kpi-card">
+          <span>Nedovoljno podataka za pokrivenost</span>
+          <strong>{fmtNumber(kpis.insufficientStockCoverageCount, 0, "0")}</strong>
+          <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj artikala bez dovoljno podataka za pokrivenost zalihe" />
         </article>
         <article className="kpi-card">
           <span>SKU sa niskom pokrivenošću</span>

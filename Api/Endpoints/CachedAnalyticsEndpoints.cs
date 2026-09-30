@@ -6723,11 +6723,26 @@ public static class CachedAnalyticsEndpoints
             MarkdownCount = returnedRows.Count(x => x.RecommendationStatus == "MARKDOWN"),
             HighPotentialCount = returnedRows.Count(x => x.RecommendationStatus == "BOOST"),
             BadDataCount = returnedRows.Count(x => x.RecommendationStatus == "FIX_DATA"),
+            ActionableCount = returnedRows.Count(x => x.RecommendationAllowed),
+            BlockedCount = returnedRows.Count(x => !x.RecommendationAllowed),
+            InsufficientEvidenceCount = returnedRows.Count(x => string.Equals(x.DataQualityStatus, "insufficient_data", StringComparison.OrdinalIgnoreCase)),
+            DoNotOrderCount = returnedRows.Count(x => x.RecommendationStatus == "DO_NOT_ORDER"),
+            StockCoverRiskCount = returnedRows.Count(x => IsOperationalStockCoverRisk(x.StockCoverStatus)),
+            InsufficientStockCoverageCount = returnedRows.Count(x => string.Equals(x.StockCoverStatus, "insufficient_data", StringComparison.OrdinalIgnoreCase)),
+            LowCoverCount = returnedRows.Count(x => x.StockCoverStatus is "low_cover" or "low" or "out_of_stock_risk"),
+            SlowStockCount = returnedRows.Count(x => x.StockCoverStatus is "slow_stock" or "slow" or "no_velocity"),
+            GoodSellThroughCount = returnedRows.Count(x => string.Equals(x.SellThroughStatus, "good", StringComparison.OrdinalIgnoreCase)),
             LostSalesEstimate = Math.Round(analyzedLostSalesEstimate, 2),
             SlowStockCapital = Math.Round(analyzedSlowStockCapital, 2),
             CountDenominatorScope = ProductDecisionDenominatorScope.ReturnedRows,
             MoneyDenominatorScope = ProductDecisionDenominatorScope.AnalyzedRows
         };
+
+    private static bool IsOperationalStockCoverRisk(string? status)
+        => status is not null
+            && (status.Equals("low_cover", StringComparison.OrdinalIgnoreCase)
+                || status.Equals("low", StringComparison.OrdinalIgnoreCase)
+                || status.Equals("out_of_stock_risk", StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
     /// <c>IgnoredRowsCount</c> means rows hidden by the top limit, not invalid/bad-data rows.
@@ -9039,6 +9054,18 @@ public class ProductDecisionCenterSummaryDto
     public int MarkdownCount { get; set; }
     public int HighPotentialCount { get; set; }
     public int BadDataCount { get; set; }
+    /// <summary>Rows with a backend-approved actionable recommendation.</summary>
+    public int ActionableCount { get; set; }
+    /// <summary>Rows whose backend recommendation is blocked or unavailable.</summary>
+    public int BlockedCount { get; set; }
+    /// <summary>Rows with insufficient evidence; this is not an operational coverage-risk count.</summary>
+    public int InsufficientEvidenceCount { get; set; }
+    public int DoNotOrderCount { get; set; }
+    public int StockCoverRiskCount { get; set; }
+    public int InsufficientStockCoverageCount { get; set; }
+    public int LowCoverCount { get; set; }
+    public int SlowStockCount { get; set; }
+    public int GoodSellThroughCount { get; set; }
     /// <summary>Projected RSD demand over the 14-day PDC impact window, weighted by calendar-day velocity and stock shortfall ratio; not booked sales.</summary>
     public decimal LostSalesEstimate { get; set; }
     public decimal SlowStockCapital { get; set; }

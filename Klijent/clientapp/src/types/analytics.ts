@@ -753,6 +753,15 @@ export interface ProductDecisionCenterSummary {
   markdownCount: number;
   highPotentialCount: number;
   badDataCount: number;
+  actionableCount?: number;
+  blockedCount?: number;
+  insufficientEvidenceCount?: number;
+  doNotOrderCount?: number;
+  stockCoverRiskCount?: number;
+  insufficientStockCoverageCount?: number;
+  lowCoverCount?: number;
+  slowStockCount?: number;
+  goodSellThroughCount?: number;
   lostSalesEstimate: number;
   slowStockCapital: number;
   /** Denominator for count KPIs. Current contract: returned_rows. */
