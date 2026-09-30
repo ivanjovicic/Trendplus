@@ -1,53 +1,36 @@
 # Analytics Production Readiness Status
 
-Date/time: 2026-06-19 19:20 +02:00
-Repo: `ivanjovicic/Trendplus`
-Review HEAD: `817964c63560eb7f442b8c57b0099544d8667a97`
-Canonical checklist: `docs/Analytics/ANALYTICS_PRODUCTION_READINESS_CHECKLIST.md`
+> This document is generated from the machine-readable snapshot. It is not a hand-maintained global release verdict.
+> A missing, expired, SHA-mismatched or externally blocked proof is intentionally not rendered as PASS.
 
-## Verdict
+- Snapshot generated: 2026-09-30T07:52:28.039Z
+- Repository SHA: `d393c63695f7f28a1d77c32b71c1de1c6b8d36ad`
+- Deployed SHA: `unknown / not supplied`
+- Overall state: **blocked**
+- Schema/contract/context generations: `{"schema":"operations-analytics-integrity-schema-v1","contract":"analytics-readiness-contract-v1","context":"analytics-context-fingerprint-policy-v1"}`
+- Expiry policy: Code evidence: 7 days. Browser/provider/runtime evidence: 24 hours unless a source-specific expiry is shorter.
 
-Ready with warnings.
+## Evidence by family
 
-The current evidence set says the production analytics pilot is usable, the live frontend is on the pushed main commit, and the remaining risks are documented rather than hidden.
+| Family | State | Evidence | Checked SHA | Checked at | Expires | Limitation |
+| --- | --- | --- | --- | --- | --- | --- |
+| readiness-tooling | **code-ready** | .ai/runs/2026-09-30-RQ514-readiness-validation.json | `d393c63695f7f28a1d77c32b71c1de1c6b8d36ad` | 2026-09-30T07:52:06.607Z | 2026-10-07T07:52:06.607Z | Code-level tooling proof does not imply deployed or browser proof. |
+| frontend-runtime | **stale-evidence** | docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS.md (historical evidence reference) | `817964c63560eb7f442b8c57b0099544d8667a97` | 2026-06-19T17:20:00.000Z | 2026-06-20T17:20:00.000Z | Retained historical live evidence; it is not current release proof. |
+| provider-runtime | **blocked** | Current run environment | `unknown` | unknown | unknown | No connected browser/provider session is available for current runtime proof. |
+| operations-integrity | **blocked** | RQ513 enrolled-family evidence | `unknown` | unknown | unknown | Inventory, Data Quality and Decision Board probes are explicitly unverified until executed. |
+| prepost-runtime | **blocked** | Q83 live-schema gate | `unknown` | unknown | unknown | Q83 is PARTIAL; this readiness snapshot does not promote RQ491 or bypass the gate. |
 
-## Required Evidence Matrix
+## Limitations
 
-| Required area | Status | Evidence | Notes |
-| --- | --- | --- | --- |
-| Deploy proof | PASS | [`VERCEL_FRONTEND_REDEPLOY_PROOF.md`](VERCEL_FRONTEND_REDEPLOY_PROOF.md), [`ANALYTICS_LIVE_SMOKE_RESULT.md`](ANALYTICS_LIVE_SMOKE_RESULT.md) | Vercel now serves the current pushed `main` bundle and the required analytics routes render real content. |
-| Backend health and readiness | PASS | [`ANALYTICS_LIVE_SMOKE_RESULT.md`](ANALYTICS_LIVE_SMOKE_RESULT.md) | Health, readiness, runtime version, refresh status, action list, and decision-center checks all returned successfully. |
-| Frontend route smoke | PASS | [`VERCEL_FRONTEND_REDEPLOY_PROOF.md`](VERCEL_FRONTEND_REDEPLOY_PROOF.md), [`ANALYTICS_LIVE_SMOKE_RESULT.md`](ANALYTICS_LIVE_SMOKE_RESULT.md) | Required analytics routes no longer render only the generic SPA shell. |
-| No fake zero / no fake green | PASS | [`ANALYTICS_REGRESSION_RISK_AUDIT.md`](ANALYTICS_REGRESSION_RISK_AUDIT.md), [`ANALYTICS_LIVE_SMOKE_RESULT.md`](ANALYTICS_LIVE_SMOKE_RESULT.md) | Audited fallback paths keep missing data visible instead of inventing healthy zero states. |
-| Protected action writes | PASS | `Klijent/clientapp/src/pages/__tests__/AnalyticsActionsPage.spec.tsx`, `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.queueStatus.spec.tsx`, `Klijent/clientapp/src/components/analytics/__tests__/SupplierDecisionReportActions.spec.tsx`, `docs/Analytics/ANALYTICS_DECISION_OS_ROADMAP.md` | 401/403 flows fail safely and keep the read-only recommendations visible. |
-| Supplier negotiation pack | PASS | [`SUPPLIER_NEGOTIATION_PACK_REVIEW.md`](SUPPLIER_NEGOTIATION_PACK_REVIEW.md) | Fallback rows, blocked advice, and copy UX are explicit; no fake actionable advice is shown. |
-| Replenishment / OOS workflow | PASS | [`REPLENISHMENT_OOS_WORKFLOW_AUDIT.md`](REPLENISHMENT_OOS_WORKFLOW_AUDIT.md) | The workflow stays conservative when the baseline row is missing and keeps estimated states labeled. |
-| Markdown optimizer MVP | WARN | [`MARKDOWN_OPTIMIZER_MVP_AUDIT.md`](MARKDOWN_OPTIMIZER_MVP_AUDIT.md), [`ANALYTICS_REGRESSION_RISK_AUDIT.md`](ANALYTICS_REGRESSION_RISK_AUDIT.md) | There is still no dedicated optimizer screen or stable optimizer contract; the related pre-nivelacija surface is safe, but the future optimizer remains a roadmap item. |
-| Observability / correlation IDs | PASS | [`ANALYTICS_OBSERVABILITY_REVIEW.md`](ANALYTICS_OBSERVABILITY_REVIEW.md) | Correlation IDs are preserved and shown where the backend exposes them. |
-| Demo reset safety | WARN | [`DEMO_VERIFICATION_SMOKE_RESULT.md`](DEMO_VERIFICATION_SMOKE_RESULT.md), [`ANALYTICS_LIVE_SMOKE_RESULT.md`](ANALYTICS_LIVE_SMOKE_RESULT.md) | The admin verification endpoint is auth-gated and does not expose secrets, but the public surface does not prove `demoSafe=true` for production. |
+- No deployed SHA or connected provider/browser session was supplied for this repository-local run.
+- Q83 remains PARTIAL and its live-schema gate is not bypassed; Pre/Post production verification is blocked.
+- RQ513 integrity families without an executed probe remain unverified rather than green.
 
-## Checklist Mapping
+## State semantics
 
-| Checklist section | Status | Evidence | Notes |
-| --- | --- | --- | --- |
-| Build/Test Gates | PASS | [`KPI_METHODOLOGY_CONSISTENCY_REVIEW.md`](KPI_METHODOLOGY_CONSISTENCY_REVIEW.md), [`ANALYTICS_REGRESSION_RISK_AUDIT.md`](ANALYTICS_REGRESSION_RISK_AUDIT.md) | Current documentation and targeted tests show the shared analytics contracts still build and guardrails stay green. |
-| Trust/Data Contract | PASS | [`ANALYTICS_LIVE_SMOKE_RESULT.md`](ANALYTICS_LIVE_SMOKE_RESULT.md), [`ANALYTICS_REGRESSION_RISK_AUDIT.md`](ANALYTICS_REGRESSION_RISK_AUDIT.md) | Empty, error, warning, and insufficient-data states stay distinct. |
-| Durable Reports | PASS | [`ANALYTICS_LIVE_SMOKE_RESULT.md`](ANALYTICS_LIVE_SMOKE_RESULT.md), [`VERCEL_FRONTEND_REDEPLOY_PROOF.md`](VERCEL_FRONTEND_REDEPLOY_PROOF.md) | Report routes render directly and survive refresh. |
-| Cache | WARN | [`ANALYTICS_LIVE_SMOKE_RESULT.md`](ANALYTICS_LIVE_SMOKE_RESULT.md) | Live freshness metadata still reports unknown / warning-like cache behavior, which is honest but not fully clean. |
-| KPI Methodology | PASS | [`KPI_METHODOLOGY_CONSISTENCY_REVIEW.md`](KPI_METHODOLOGY_CONSISTENCY_REVIEW.md) | Shared formatter and metric-definition guardrails keep denominator-sensitive metrics from falling back to fake zero. |
-| UX | PASS | [`ANALYTICS_LIVE_SMOKE_RESULT.md`](ANALYTICS_LIVE_SMOKE_RESULT.md), [`ANALYTICS_REGRESSION_RISK_AUDIT.md`](ANALYTICS_REGRESSION_RISK_AUDIT.md) | Copy and warning states remain business-readable; no raw technical dumps are exposed on the audited surfaces. |
-| Manual Smoke Rute | PASS | [`VERCEL_FRONTEND_REDEPLOY_PROOF.md`](VERCEL_FRONTEND_REDEPLOY_PROOF.md), [`ANALYTICS_LIVE_SMOKE_RESULT.md`](ANALYTICS_LIVE_SMOKE_RESULT.md) | Required analytics routes were checked live and rendered intended content. |
-| Production Blockers | PASS | [`ANALYTICS_LIVE_SMOKE_RESULT.md`](ANALYTICS_LIVE_SMOKE_RESULT.md), [`VERCEL_FRONTEND_REDEPLOY_PROOF.md`](VERCEL_FRONTEND_REDEPLOY_PROOF.md) | No blocking deploy drift remains on the verified pilot surfaces. |
-| PR Checklist | PASS | This status doc plus the linked evidence docs | The evidence set now exists and is explicit enough for a review or PR summary. |
-
-## Remaining Warnings
-
-- Cache/freshness metadata is still warning-like in live smoke evidence.
-- Markdown optimizer is still a roadmap item and not a dedicated stable surface yet.
-- Demo reset safety is intentionally not turned into a public green light.
-
-## Final Recommendation
-
-Ready with warnings.
-
-The production analytics surfaces are currently usable for the pilot, but the remaining warnings should stay visible in docs and queue items until the cache/freshness story and the future optimizer contract are fully stabilized.
+- `code-ready`: current repository evidence is fresh and SHA-bound.
+- `runtime-unproven`: code evidence is current, but matching deployed/runtime proof is absent.
+- `verified-current`: required runtime proof is fresh and matches repository, deployment and generations.
+- `stale-evidence`: evidence expired or no longer matches SHA/generation/deployment.
+- `blocked`: proof was skipped, unavailable, integrity-unverified or externally gated.
+- `failed`: executed evidence failed.

@@ -11,6 +11,11 @@ Smoke reference izvori:
 
 Evidence-based readiness status:
 - `docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS.md`
+- Machine-readable snapshot: `docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS.json`
+- Evidence manifest: `docs/qa/ANALYTICS_PRODUCTION_READINESS_EVIDENCE.json`
+- Regenerate with: `npm run generate:analytics-readiness`
+
+The readiness Markdown is generated from the JSON snapshot. Review the exact repository/deployed SHA, schema/contract/context generations, evidence timestamps and expiry before treating any family as current. `runtime-unproven`, `stale-evidence`, `blocked` and `failed` are not PASS states; missing browser/provider proof must remain explicit.
 
 Ako makar jedna stavka iz odeljka Production blockers padne, promena nije spremna za merge.
 

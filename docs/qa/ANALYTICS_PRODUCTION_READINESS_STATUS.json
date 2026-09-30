@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 1,
+  "kind": "analytics-production-readiness-snapshot",
+  "generatedAtUtc": "2026-09-30T07:52:28.039Z",
+  "repoSha": "d393c63695f7f28a1d77c32b71c1de1c6b8d36ad",
+  "deployedSha": null,
+  "currentGenerations": {
+    "schema": "operations-analytics-integrity-schema-v1",
+    "contract": "analytics-readiness-contract-v1",
+    "context": "analytics-context-fingerprint-policy-v1"
+  },
+  "expiryPolicy": "Code evidence: 7 days. Browser/provider/runtime evidence: 24 hours unless a source-specific expiry is shorter.",
+  "overallState": "blocked",
+  "families": [
+    {
+      "family": "readiness-tooling",
+      "state": "code-ready",
+      "evidence": [
+        {
+          "id": "rq514-readiness-tooling",
+          "family": "readiness-tooling",
+          "scope": "code",
+          "state": "code-ready",
+          "source": ".ai/runs/2026-09-30-RQ514-readiness-validation.json",
+          "status": "pass",
+          "checkedSha": "d393c63695f7f28a1d77c32b71c1de1c6b8d36ad",
+          "deployedSha": null,
+          "checkedAtUtc": "2026-09-30T07:52:06.607Z",
+          "expiresAtUtc": "2026-10-07T07:52:06.607Z",
+          "generationRefs": {
+            "schema": "operations-analytics-integrity-schema-v1",
+            "contract": "analytics-readiness-contract-v1",
+            "context": "analytics-context-fingerprint-policy-v1"
+          },
+          "limitation": "Code-level tooling proof does not imply deployed or browser proof.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "family": "frontend-runtime",
+      "state": "stale-evidence",
+      "evidence": [
+        {
+          "id": "legacy-live-analytics-smoke",
+          "family": "frontend-runtime",
+          "scope": "runtime",
+          "state": "stale-evidence",
+          "source": "docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS.md (historical evidence reference)",
+          "status": "pass",
+          "checkedSha": "817964c63560eb7f442b8c57b0099544d8667a97",
+          "deployedSha": "817964c63560eb7f442b8c57b0099544d8667a97",
+          "checkedAtUtc": "2026-06-19T17:20:00.000Z",
+          "expiresAtUtc": "2026-06-20T17:20:00.000Z",
+          "generationRefs": {
+            "schema": "operations-analytics-integrity-schema-v1",
+            "contract": "analytics-readiness-contract-v1",
+            "context": "analytics-context-fingerprint-policy-v1"
+          },
+          "limitation": "Retained historical live evidence; it is not current release proof.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "family": "provider-runtime",
+      "state": "blocked",
+      "evidence": [
+        {
+          "id": "provider-browser-proof",
+          "family": "provider-runtime",
+          "scope": "runtime",
+          "state": "blocked",
+          "source": "Current run environment",
+          "status": "blocked",
+          "checkedSha": null,
+          "deployedSha": null,
+          "checkedAtUtc": null,
+          "expiresAtUtc": null,
+          "generationRefs": {},
+          "limitation": "No connected browser/provider session is available for current runtime proof.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "family": "operations-integrity",
+      "state": "blocked",
+      "evidence": [
+        {
+          "id": "operations-integrity-probes",
+          "family": "operations-integrity",
+          "scope": "runtime",
+          "state": "blocked",
+          "source": "RQ513 enrolled-family evidence",
+          "status": "blocked",
+          "checkedSha": null,
+          "deployedSha": null,
+          "checkedAtUtc": null,
+          "expiresAtUtc": null,
+          "generationRefs": {},
+          "limitation": "Inventory, Data Quality and Decision Board probes are explicitly unverified until executed.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "family": "prepost-runtime",
+      "state": "blocked",
+      "evidence": [
+        {
+          "id": "q83-prepost-live-schema",
+          "family": "prepost-runtime",
+          "scope": "runtime",
+          "state": "blocked",
+          "source": "Q83 live-schema gate",
+          "status": "blocked",
+          "checkedSha": null,
+          "deployedSha": null,
+          "checkedAtUtc": null,
+          "expiresAtUtc": null,
+          "generationRefs": {},
+          "limitation": "Q83 is PARTIAL; this readiness snapshot does not promote RQ491 or bypass the gate.",
+          "required": true
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "No deployed SHA or connected provider/browser session was supplied for this repository-local run.",
+    "Q83 remains PARTIAL and its live-schema gate is not bypassed; Pre/Post production verification is blocked.",
+    "RQ513 integrity families without an executed probe remain unverified rather than green."
+  ],
+  "sourceManifest": "docs/qa/ANALYTICS_PRODUCTION_READINESS_EVIDENCE.json"
+}

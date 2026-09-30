@@ -1,0 +1,10 @@
+{
+  "taskId": "RQ514",
+  "commands": [
+    {
+      "name": "analytics readiness evaluator tests",
+      "category": "tests",
+      "command": "node --test scripts/generate-analytics-readiness.test.mjs"
+    }
+  ]
+}

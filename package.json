@@ -1,6 +1,8 @@
 {
   "scripts": {
-    "test:validation-evidence": "node --test scripts/run-task-validation.test.mjs"
+    "test:validation-evidence": "node --test scripts/run-task-validation.test.mjs",
+    "test:analytics-readiness": "node --test scripts/generate-analytics-readiness.test.mjs",
+    "generate:analytics-readiness": "node scripts/generate-analytics-readiness.mjs --input docs/qa/ANALYTICS_PRODUCTION_READINESS_EVIDENCE.json --json docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS.json --markdown docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS.md"
   },
   "dependencies": {
     "glob": "^13.0.6"

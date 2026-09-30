@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "taskId": "RQ514",
+  "commit": "d393c63695f7f28a1d77c32b71c1de1c6b8d36ad",
+  "timestamp": "2026-09-30T07:52:06.607Z",
+  "environment": {
+    "cwd": "C:\\Users\\Ivan\\source\\repos\\Trendplus2",
+    "node": "v24.14.1",
+    "platform": "win32",
+    "arch": "x64",
+    "hostname": "DESKTOP-V877DAD"
+  },
+  "tests": {
+    "status": "pass",
+    "results": [
+      {
+        "name": "analytics readiness evaluator tests",
+        "category": "tests",
+        "command": "node --test scripts/generate-analytics-readiness.test.mjs",
+        "status": "pass",
+        "exitCode": 0,
+        "signal": null,
+        "startedAt": "2026-09-30T07:52:06.236Z",
+        "finishedAt": "2026-09-30T07:52:06.545Z",
+        "durationMs": 310,
+        "summary": "✔ fresh exact-SHA runtime evidence is verified-current (2.4807ms)\n✔ a new repository SHA downgrades old evidence to stale-evidence (1.2255ms)\n✔ expired browser or schema evidence is stale (0.2922ms)\n✔ skipped or environment-blocked proof is blocked (0.3008ms)\n✔ integrity drift blocks a verified claim and renderer matches JSON state (0.6569ms)\n✔ current code evidence is code-ready while runtime remains unproven (0.3141ms)\nℹ tests 6\nℹ suites 0\nℹ pass 6\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 179.5872",
+        "output": "✔ fresh exact-SHA runtime evidence is verified-current (2.4807ms)\n✔ a new repository SHA downgrades old evidence to stale-evidence (1.2255ms)\n✔ expired browser or schema evidence is stale (0.2922ms)\n✔ skipped or environment-blocked proof is blocked (0.3008ms)\n✔ integrity drift blocks a verified claim and renderer matches JSON state (0.6569ms)\n✔ current code evidence is code-ready while runtime remains unproven (0.3141ms)\nℹ tests 6\nℹ suites 0\nℹ pass 6\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 179.5872\n"
+      }
+    ]
+  },
+  "guardrails": {
+    "status": "not-run",
+    "results": []
+  },
+  "build": {
+    "status": "not-run",
+    "results": []
+  },
+  "results": [
+    {
+      "name": "analytics readiness evaluator tests",
+      "category": "tests",
+      "command": "node --test scripts/generate-analytics-readiness.test.mjs",
+      "status": "pass",
+      "exitCode": 0,
+      "signal": null,
+      "startedAt": "2026-09-30T07:52:06.236Z",
+      "finishedAt": "2026-09-30T07:52:06.545Z",
+      "durationMs": 310,
+      "summary": "✔ fresh exact-SHA runtime evidence is verified-current (2.4807ms)\n✔ a new repository SHA downgrades old evidence to stale-evidence (1.2255ms)\n✔ expired browser or schema evidence is stale (0.2922ms)\n✔ skipped or environment-blocked proof is blocked (0.3008ms)\n✔ integrity drift blocks a verified claim and renderer matches JSON state (0.6569ms)\n✔ current code evidence is code-ready while runtime remains unproven (0.3141ms)\nℹ tests 6\nℹ suites 0\nℹ pass 6\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 179.5872",
+      "output": "✔ fresh exact-SHA runtime evidence is verified-current (2.4807ms)\n✔ a new repository SHA downgrades old evidence to stale-evidence (1.2255ms)\n✔ expired browser or schema evidence is stale (0.2922ms)\n✔ skipped or environment-blocked proof is blocked (0.3008ms)\n✔ integrity drift blocks a verified claim and renderer matches JSON state (0.6569ms)\n✔ current code evidence is code-ready while runtime remains unproven (0.3141ms)\nℹ tests 6\nℹ suites 0\nℹ pass 6\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 179.5872\n"
+    }
+  ],
+  "exitCodes": {
+    "analytics readiness evaluator tests": 0
+  },
+  "skipped": [],
+  "mainVerification": {
+    "status": "exact-tip",
+    "commit": "d393c63695f7f28a1d77c32b71c1de1c6b8d36ad",
+    "mainRef": "origin/main",
+    "mainSha": "d393c63695f7f28a1d77c32b71c1de1c6b8d36ad",
+    "containsCommit": true,
+    "exactTip": true
+  }
+}

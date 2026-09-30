@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ514 (IN_PROGRESS in this workspace)
 Systemic reliability audit registration 2026-09-29: `RQ509`-`RQ515` are registered as WAITING follow-ups from `docs/qa/ANALYTICS_RELIABILITY_NEXT_WAVE_AUDIT_2026-09-29.md`. They extend, rather than replace, RQ359-RQ367/RQ141/RQ145-RQ149 and the RQ413/RQ449/RQ450 integrity stack. No RQ509-RQ515 prompt is promoted or claimed by this audit; RQ501 completed separately and current routing is defined only by this header plus fresh dependency/collision checks.
 Owner promotion/claim 2026-09-29: idle recovery refreshed `origin/main` to `67e310027c7684d4c468665db760308bb6acad4c`, verified no active RQ509 lock/branch/PR owner and no collision with the PARTIAL/non-runnable RQ137/RQ139/RQ140 contracts. RQ509 moved `WAITING -> READY -> IN_PROGRESS` as the first P0 context-identity prompt; local lock: `.ai/task-locks/RQ509-codex.lock.md`. Q83 remains the exclusive PARTIAL Pre/Post SQL/view owner and RQ491 is not promoted.
 Owner completion 2026-09-29: RQ509 moved `IN_PROGRESS -> DONE` and was delivered directly to `main` in implementation `d71afbb67864c7990c08f754c6234127f45a33bf`. The additive context descriptor/fingerprint now covers Dashboard, Product Decision Center, Supplier, Shoe Type, Color, Data Quality and Supplier Decision Hub, with deterministic read-only reconciliation classifications and fail-closed unavailable identity. Focused backend proof is 46/46; frontend schema proof is 16/16; typecheck, analytics guardrails, production build, API build, governance validators and diff check pass. Run log: `.ai/runs/2026-09-29-RQ509-evidence.md`. Evidence state: synchronized. Current RQ READY returned to `none`; RQ510 is the next P0 dependency-complete candidate after fresh recovery. Q83 remains PARTIAL and RQ491 remains WAITING.
@@ -14,6 +14,7 @@ Owner promotion/claim 2026-09-29: fresh recovery verified RQ511 DONE on exact `o
 Owner completion 2026-09-29: RQ512 moved `IN_PROGRESS -> DONE` and was delivered directly to `main` in implementation `fa1b8acc34fc1d4aa2779bce9ba79172c88efeaf`; fresh fetch verified exact `HEAD == origin/main` and the implementation SHA is an ancestor. The shared reliability contract now registers all 13 Tier-1 surfaces and covers context identity, last-good refetch preservation, blocked recommendation/export preservation, signed/unknown/empty semantics and page-vs-global counts. Focused proof is 224/224; analytics guardrails, typecheck, production build, governance validators and diff check pass. Run log: `.ai/runs/2026-09-29-RQ512-evidence.md`. Evidence state: synchronized. Current RQ READY returned to `none`; RQ513 is the next P0 candidate after fresh recovery. Q83 remains PARTIAL and RQ491 remains WAITING.
 Owner promotion/claim 2026-09-29: fresh recovery verified `HEAD == origin/main == d3dd2cb88d065a82e5cd28027a4581a17f898a4d`, found no active task lock, branch or open PR owner for the shared runtime-integrity framework, and confirmed RQ509/RQ510/RQ512 are DONE. RQ513 moved `WAITING -> READY -> IN_PROGRESS` as the next P0 prompt. Existing Supplier/Shoe Type certified-oracle ownership remains intact; Q83 remains PARTIAL and RQ491 is not promoted. Local lock: `.ai/task-locks/RQ513-codex.lock.md`.
 Owner completion 2026-09-30: RQ513 moved `IN_PROGRESS -> DONE` and was delivered directly to `main` in implementation `f3b5234ef3a04f39b860133d8689d9a69251ec88`; fresh fetch verified exact `HEAD == origin/main` and the implementation SHA is an ancestor. The integrity guard now has five enrolled family contracts with explicit owners/bounds, generation-bound context fingerprints and family evidence visibility; Supplier/Shoe Type certification remains the existing oracle, Dashboard totals use an independent raw-fact reconciliation lane, and missing Inventory/Data Quality/Decision Board probes remain explicitly unverified. Focused proof is 16/16; API build, migration listing, prompt governance and diff checks pass. Run log: `.ai/runs/2026-09-29-RQ513-evidence.md`. Evidence state: synchronized. Current RQ READY returned to `none`; RQ514 is the next P1 candidate after fresh recovery. Q83 remains PARTIAL and RQ491 remains WAITING.
+Owner promotion/claim 2026-09-30: fresh recovery verified `HEAD == origin/main == d393c63695f7f28a1d77c32b71c1de1c6b8d36ad`, found no active task lock, branch or open PR owner for the release-readiness evidence family, and confirmed RQ513 is DONE. RQ514 moved `WAITING -> READY -> IN_PROGRESS` as the next P1 prompt. It is documentation/tooling/evidence-only and does not bypass Q83/RQ491 or invent live/provider proof. Local lock: `.ai/task-locks/RQ514-codex.lock.md`.
 Owner decisions 2026-09-29 (Ivan): RQ501 aligns Color with the RQ496 Shoe Type signed net-sales contract (`net_sales_signed`, explicit numerator/denominator/state, mathematically valid negative and >100% values, unavailable never coerced to recommendation zero; quality/coverage ratios remain bounded 0–100). RQ505 frames Color as a supporting signal/analysis surface with signal trust framing; backend status/reason stays authoritative and `decisionScore` remains detail/transparency evidence, not a competing final CTA. RQ507 approves removing Supplier compatibility aliases from the primary Operations sidebar while preserving legacy URLs/redirects and keeping Shoe Type, Color, Daily and Pre/Post available. RQ476 uses positive net revenue of the declared visible/decision population for concentration/share; negative/returns-only rows remain visible without ambiguous positive share, and unknown-supplier inclusion is explicit and consistent across API/UI/recommendation/export.
 Routing reconciliation 2026-09-29: any workspace still showing `RQ466` as `Current READY` is stale. `RQ466` was `DONE` on current main; `RQ502` was the primary READY prompt and is now `DONE`. Registration evidence: `.ai/runs/2026-09-29-RQ502-registration-evidence.md`.
 Owner claim 2026-09-29: after fresh `origin/main` sync to `2d85df0f13dac4e8dcb463656515d61ea32e0021`, RQ502 remained READY, RQ494 was verified DONE, and no conflicting lock/branch/PR owner was found for the Operations store-filter scope. RQ502 moved `READY -> IN_PROGRESS` in this workspace. Local lock: `.ai/task-locks/RQ502-codex.lock.md`.
@@ -27799,7 +27800,7 @@ Reuse the existing registry/evidence/history/worker conventions where possible.
 
 ## RQ514 - Make analytics production-readiness evidence exact-SHA-bound and self-expiring
 
-Status: WAITING  
+Status: IN_PROGRESS
 Ready after: RQ513 integrity evidence contract is stable  
 Priority: P1  
 Type: tooling/evidence/docs/release-gate/tests  
@@ -27807,6 +27808,14 @@ Feature family: analytics-production-readiness-truth
 Parallel-safe: yes, evidence synthesis only unless a separate runtime fix is discovered  
 Owner: Analytics Reliability / Release Evidence  
 Commit suggestion: `feat(analytics): generate current readiness status`
+
+### Claim note
+
+- Claim date: 2026-09-30
+- RQ513 is DONE on current `origin/main`; no active lock, branch or PR owns the release-readiness evidence surface.
+- Scope is limited to machine-readable, exact-SHA/age-aware readiness evidence and its renderer; missing live/browser/provider evidence remains explicit and cannot become PASS.
+- Q83 remains the exclusive PARTIAL Pre/Post SQL/view owner; RQ491 is not promoted.
+- Local lock: `.ai/task-locks/RQ514-codex.lock.md`.
 
 ### Problem
 
