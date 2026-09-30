@@ -28221,12 +28221,12 @@ Do not change Daily Sales backend aggregation, response schema, data-scope meani
 - Completion: Daily Sales now persists the active `dataScope` when global scope changes, including after a late store-load success or failure update that uses a stale router snapshot. Repeated events for the current scope still short-circuit without reloading either period.
 - Changed files: `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-30-RQ517-evidence.md`.
 - Checks run: Daily Sales focused suite 22/22; `npm run test:analytics` 136/136 files and 983/983 tests; `npm run check:analytics-guardrails`; `npm run typecheck`; `npm run build`; `node scripts/check-prompt-queues.mjs`; `node scripts/check-agent-instructions.mjs`; `node scripts/check-planning-architecture.mjs`; `git diff --check`.
-- Checks not run: live browser/provider/database proof; not required for this bounded frontend URL/state repair. Post-push remote gate inspection remains pending until delivery.
+- Checks not run: live browser/provider/database proof; not required for this bounded frontend URL/state repair. Post-push Analytics Quality Gates run `36736559194` is currently `in_progress`.
 - Run log: `.ai/runs/2026-09-30-RQ517-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `9d78d3417b3a34e33f72f15dc4f96aaefbfd80cd`
+- Main verification: passed - fresh fetch confirmed `HEAD == origin/main`; `git merge-base --is-ancestor` passed.
 - Missed: none known in owned scope.
 - Follow-up: inspect the post-push Analytics Quality Gates run, then re-enter canonical recovery.
 - Residual risk: existing Vite large-chunk warning; no known correctness residual in the owned scope.
