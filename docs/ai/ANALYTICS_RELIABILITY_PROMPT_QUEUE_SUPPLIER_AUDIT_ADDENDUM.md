@@ -3,9 +3,9 @@
 Date: 2026-09-30
 Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
-Current READY prompt: RQ518
+Current READY prompt: RQ519
 Additional READY prompts: RQ525
-Queue reconciliation 2026-09-30: RQ518 is the primary deterministic P1 lane and is currently IN_PROGRESS. RQ524 was independently claimable, delivered the initial read-only pack, and is now PARTIAL pending deterministic PostgreSQL fixture completion. RQ525 remains the independent dependency-free P1 READY lane. RQ524 is repository-local/fixture-only; production execution remains exclusively RQ454/STAB16. RQ519-RQ532 otherwise remain sequenced/owner-gated as declared below.
+Queue reconciliation 2026-09-30: RQ518 is DONE after the shared PostgreSQL materialized-view capability contract and focused proof were delivered on current main. RQ524 was independently claimable, delivered the initial read-only pack, and is now PARTIAL pending deterministic PostgreSQL fixture completion. RQ519 is the next dependency-complete Supplier schema-lifecycle lane; RQ525 remains an independent parallel-safe P1 READY lane. RQ524 is repository-local/fixture-only; production execution remains exclusively RQ454/STAB16. RQ520-RQ532 otherwise remain sequenced/owner-gated as declared below.
 
 This addendum registers only non-duplicate Supplier follow-ups after second-pass source verification. Existing RQ474, RQ475 and RQ487 remain authoritative for overview error/readiness/query-cost work. RQ517 is already DONE for Daily Sales and is not reused.
 
@@ -35,7 +35,7 @@ This addendum registers only non-duplicate Supplier follow-ups after second-pass
 
 ## RQ518 - Fix Supplier scorecard materialized-view capability detection
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/sql/tests
 Feature family: supplier-scorecard-mv-capability
@@ -74,6 +74,24 @@ Required populated MVs are never rejected as MISSING_SCHEMA; absent/incomplete/u
 ### Dependencies
 
 None; RQ475 consumes the corrected readiness states.
+
+### Completion note
+
+- Date: 2026-09-30
+- Status: DONE
+- Completion: Shared catalog-based materialized-view capability detection is delivered and synchronized. Endpoint and startup use the same `pg_class`/`pg_namespace`/`pg_attribute` plus `pg_matviews.ispopulated` contract; ML score capability uses the shared reader; missing object, missing columns and unpopulated states remain fail-closed and explicit.
+- Changed files: `Infrastructure/Analytics/SupplierDecisionMaterializedViewCapability.cs`, `Api/Endpoints/SupplierDecisionHubEndpoints.cs`, `Infrastructure/Seed/DatabaseInitializer.cs`, `Api.Tests/SupplierDecisionMaterializedViewCapabilityTests.cs`, `Api.Tests/SupplierDecisionSchemaSqlTests.cs`, queue/evidence files listed below.
+- Checks run: static RQ518 capability proof (8/8); `node scripts/check-prompt-queues.mjs --self-test`; `node scripts/check-prompt-queues.mjs`; `git diff --check`.
+- Checks not run: focused `dotnet test Api.Tests/Api.Tests.csproj --filter 'FullyQualifiedName~SupplierDecisionSchemaSqlTests|FullyQualifiedName~SupplierDecisionMaterializedViewCapabilityTests' --no-restore` - not run because `dotnet` is unavailable in the environment.
+- Run log: `.ai/runs/2026-09-30-RQ518-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending until the documentation/evidence closure commit is pushed
+- Missed: Real PostgreSQL execution of the integration fixture could not run without the .NET SDK.
+- Follow-up: RQ519 is the current primary READY prompt; RQ525 remains an independent parallel-safe P1 lane.
+- Residual risk: Runtime integration behavior is covered by committed tests but was not executable in this environment.
+- Prompt defect / scope repair: RQ518 was already implemented on current main by prior commits; this run completed the claimed prompt through focused proof and synchronized closure evidence without changing score/model/schema semantics.
 
 ---
 
