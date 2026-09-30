@@ -27242,6 +27242,8 @@ Source: `PS10` and the Product Decision part of `PS16` in `docs/ai/PRODUCTS_SUPP
 
 Owner completion 2026-09-30: RQ485 moved `IN_PROGRESS -> DONE` and was delivered directly to `main` in implementation `a6511b252c00d536cb9ed4699031ba54d26058f3`; Product Decision now renders one header/toolbar/KPI block, persists validated period/filter/sort/search state in the `/analytics/products` URL, uses Europe/Belgrade-local date defaults/display, sorts nulls last and clears stale queue feedback on state changes. Dedicated hygiene proof is 2/2; existing Product Decision focused regressions are 39/40 with one pre-existing unrelated `actionStatusFallback` title expectation; typecheck, analytics guardrails, production build, prompt governance and diff checks pass. Fresh fetch verified exact `HEAD == origin/main` at the implementation SHA before closure synchronization. Run log: `.ai/runs/2026-09-30-RQ485-evidence.md`. Q83 remains PARTIAL and RQ491 remains WAITING.
 
+Owner promotion/claim 2026-09-30: fresh recovery verified `HEAD == origin/main == ba2829cb4bd4b157ad3849ae51ce1b05d3a3a83a`, RQ485 is DONE, and no active Product Decision page, decision-engine label or export owner/lock/branch/PR collision remains. P1/P2 candidates remain blocked by their named owner/live/schema gates; RQ488's `RQ485` dependency is satisfied and its engine-label sub-scope is independently runnable. RQ488 moved `WAITING -> READY -> IN_PROGRESS` as the next safe repository-local fallback. Local lock: `.ai/task-locks/RQ488-codex.lock.md`.
+
 ---
 
 ## RQ486 - Supplier page shell and overview hygiene: trust header, date validation, stores, layout, sorting and badges
@@ -27374,14 +27376,14 @@ Source: `PS14` in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-25.md` (de-du
 
 ## RQ488 - Serbian copy and export values on Product Decision and decision-engine summaries
 
-Status: WAITING
+Status: DONE
 Ready after: `RQ485` DONE (same Product Decision page); the engine-label part may run earlier if no active prompt owns `AnalyticsDecisionRecommendationEngine.cs`
 Priority: P3
 Type: frontend/backend-copy/tests
 Feature family: pdc-decision-engine-copy-export
 Parallel-safe: no (`ProductDecisionCenterPage.tsx`, `Application/Analytics/AnalyticsDecisionRecommendationEngine.cs`, `Api/Endpoints/InventorySignalCalculator.cs`)
 Owner: Analytics UI / Copy
-Local lock: `.ai/task-locks/RQ488-<agent>.lock.md`
+Local lock: removed before direct-main delivery
 Commit suggestion: `fix(analytics): Serbian decision copy and export values`
 Source: residual of `PS17` in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-25.md` (de-dup 2026-09-28). The Product Decision ASCII labels and the Supplier shell ASCII copy listed in `PS17` are already fixed on current code, and the Supplier overview copy went through `RQ325`.
 
@@ -27416,6 +27418,8 @@ Source: residual of `PS17` in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-2
 
 - After `RQ485`; coordinate with `RQ484` if the engine gate summary text changes.
 - Reliability contract: copy only; codes, numbers and gating unchanged.
+
+Owner completion 2026-09-30: RQ488 moved `IN_PROGRESS -> DONE` and was delivered directly to `main` in implementation commits `afc85975a6bdf578a2bb9fd770e16952d3dc60cb` and `1884561b98fbb7199e5189ae7332804148a55d1f`. Product Decision and decision-engine user-facing copy is Serbian, sell-through is named `Prodajnost`, the 0–1 export ratio is declared as `ratio`/numeric rather than percent, data-quality headers agree, and `Ne naručivati` is unified across the Product Decision path. Focused frontend proof is 43/43; typecheck, analytics guardrails, production build, prompt governance and diff check pass. The focused API test command remains blocked before execution by pre-existing unrelated `DecisionBoardEndpoints.cs` compile errors. Fresh fetch verified exact `HEAD == origin/main == 1884561b98fbb7199e5189ae7332804148a55d1f`; Q83 remains PARTIAL and RQ491 remains WAITING. Run log: `.ai/runs/2026-09-30-RQ488-evidence.md`. Evidence state: synchronized.
 
 ## RQ509 - Give every comparable analytics result a canonical context fingerprint
 
