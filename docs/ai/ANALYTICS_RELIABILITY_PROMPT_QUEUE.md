@@ -26526,7 +26526,7 @@ An operator can identify why scorecard/assortment are unavailable and what read-
 
 ## RQ476 - Unify Supplier raw API, display, recommendation and export share semantics
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: backend/frontend/contract/tests
 Feature family: supplier-share-denominator-contract
@@ -26573,7 +26573,16 @@ Users can tell exactly which population and denominator each share uses; negativ
 
 ### Dependencies
 
-- Owner decision on negative revenue and unknown-supplier policy is required before promotion.
+- Owner decision recorded in the queue header on 2026-09-29: positive net revenue of the declared visible/decision population is canonical; negative/returns-only rows remain visible without ambiguous positive share; unknown-supplier inclusion is explicit across API/UI/recommendation/export.
+
+Owner completion 2026-09-30: RQ476 moved `IN_PROGRESS -> DONE` and was delivered directly to `main` in implementation `2d30d2bc9c66ae5384164d32147d146034c65831`; Supplier overview, Decision Hub, recommendation projections and export metadata now share the positive-net-revenue policy, while negative/returns-only rows remain visible and non-positive shares are unavailable. Focused frontend proof is 54/54; typecheck, client build, analytics guardrails, prompt governance and diff checks pass. The focused API tests were blocked before execution by the pre-existing unrelated `DecisionBoardEndpoints.cs` compile errors (`CS8323`, `CS8130`, `CS8183`). Fresh fetch verified exact `HEAD == origin/main` at the implementation SHA before closure synchronization. Run log: `.ai/runs/2026-09-30-RQ476-evidence.md`. Q83 remains PARTIAL and RQ491 remains WAITING.
+
+### Claim note
+
+- Claim date: 2026-09-30
+- Fresh idle recovery verified exact `origin/main` `0e4c5a3c97c0b2e213fa1ed29f5683a0b83578c9`, no active task lock, branch or open PR collision, and the owner decision for positive net-revenue denominator, negative/returns-only rows and explicit unknown-supplier inclusion is recorded at the queue header.
+- RQ476 is promoted `WAITING -> READY -> IN_PROGRESS` as the highest safe remaining P2 after all P1 candidates were checked. Scope is limited to Supplier share denominator/metadata parity across raw API, UI, recommendation and export; no production mutation or schema readiness bypass.
+- Local lock: `.ai/task-locks/RQ476-codex.lock.md`.
 - Existing RQ233/RQ373/RQ443/RQ459 deliveries remain intact.
 
 ---
