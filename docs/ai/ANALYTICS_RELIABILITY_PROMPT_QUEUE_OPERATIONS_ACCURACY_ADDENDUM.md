@@ -3455,7 +3455,7 @@ Do not change recommendation engine formulas under this prompt.
 - Completion: Supporting-signal authority model delivered for Color and Shoe Type; no recommendation formulas changed.
 - Changed files: `Klijent/clientapp/src/pages/ColorSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx`, focused Color/Shoe Type specs, `docs/ANALYTICS_EXECUTION_PLAN.md`, `docs/ANALYTICS_TRUST_HEADER_COVERAGE.md`
 - Checks run: focused frontend proof `4 files / 79 tests`; `npm run check:analytics-guardrails`; `npm run build`; prompt-queue validator and self-test; `git diff --check`.
-- Checks not run: backend test/build suites and live database/browser/provider proof are outside this frontend/docs scope. Current-main CI is residual: Analytics Quality Gates `36729029926` queued; Planning Governance `36729029956` in progress.
+- Checks not run: backend test/build suites and live database/browser/provider proof are outside this frontend/docs scope. Current-main CI is residual: Analytics Quality Gates `36729029926` in progress on the implementation SHA; Planning Governance `36729029956` and evidence-sync run `36729169452` are green.
 - Run log: `.ai/runs/2026-09-30-RQ505-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
@@ -3463,7 +3463,7 @@ Do not change recommendation engine formulas under this prompt.
 - Main verification: passed - fresh fetch confirmed `HEAD == origin/main == 278d37b93356aa7f2011ae5d02bf7e7cf1f801ed` and the implementation SHA is an ancestor of `origin/main`.
 - Missed: none known in RQ505 scope.
 - Follow-up: RQ507 is the next READY prompt; RQ508 remains behind RQ507.
-- Residual risk: current-main remote CI is queued/in progress and has not yet produced a result; local focused/build/guardrail proof is green.
+- Residual risk: Analytics Quality Gates `36729029926` remains in progress; local focused/build/guardrail proof and Planning Governance are green.
 - Prompt defect / scope repair: stale `Current READY` pointer was corrected from RQ516 during recovery; no product scope expansion was needed.
 
 Owner promotion 2026-09-30: fresh recovery after RQ505 delivery verified no active lock/branch/open-PR collision for `operations-analytics-information-architecture`; `RQ507` moved `WAITING -> READY` and became the current READY prompt. No claim was started in this RQ505 delivery turn.
