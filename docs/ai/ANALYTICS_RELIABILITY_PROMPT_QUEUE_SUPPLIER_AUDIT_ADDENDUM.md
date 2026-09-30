@@ -3,9 +3,9 @@
 Date: 2026-09-30
 Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
-Current READY prompt: none
-Additional READY prompts: none
-Queue reconciliation 2026-09-30: RQ518 is DONE after shared PostgreSQL catalog-based materialized-view capability detection was delivered on main with explicit MISSING_OBJECT/MISSING_COLUMNS/NOT_POPULATED states and regression coverage. RQ519 remains PARTIAL after the canonical lifecycle repair, PostgreSQL fixture proof and focused test-assembly pass; its Docker-backed DatabaseInitializer runtime assertions remain pending because Docker is unavailable in this VM. RQ525 is PARTIAL after the readiness harness, isolated 015 proof and deterministic local PostgreSQL sequence were delivered; Testcontainers-backed execution remains pending because Docker is unavailable in this VM. RQ524 remains PARTIAL after extending the read-only pack to fifteen fixture-backed checks with stable PASS/EXPLAINED evidence and no FAIL on PostgreSQL 16.15; production execution remains exclusively RQ454/STAB16. RQ519-RQ532 otherwise remain sequenced/owner-gated as declared below.
+Current READY prompt: RQ520
+Additional READY prompts: RQ526
+Queue reconciliation 2026-09-30: RQ518, RQ519 and RQ525 are DONE. RQ519 closure combines the earlier nivelacija lifecycle repair and SQL changed-history fixture with Testcontainers-backed `DatabaseMigrationBootstrapLifecycleSmokeTests` repeated-start proof. RQ525 closure adds observed `SupplierDecisionSchemaReadinessIntegrationTests` execution on Docker/Testcontainers. RQ524 remains PARTIAL after fifteen-check fixture-backed reconciliation evidence; production execution remains RQ454/STAB16. Dependency-complete successors `RQ520` and `RQ526` are READY. RQ519-RQ532 otherwise remain sequenced/owner-gated as declared below.
 
 This addendum registers only non-duplicate Supplier follow-ups after second-pass source verification. Existing RQ474, RQ475 and RQ487 remain authoritative for overview error/readiness/query-cost work. RQ517 is already DONE for Daily Sales and is not reused.
 
@@ -80,10 +80,10 @@ None; RQ475 consumes the corrected readiness states.
 
 ## RQ519 - Make Supplier nivelacija schema lifecycle idempotent and preserve scorecard dependencies
 
-Status: PARTIAL
+Status: DONE
 Ready after: RQ518 DONE (satisfied 2026-09-30)
-Claimed: 2026-09-30 by ChatGPT on `cursor/rq519-reentry-78b0`; delivered as PARTIAL after the focused test assembly/filter passed, with Docker-backed lifecycle execution still pending.
-Progress: startup now uses data-only nivelacija normalization, keeps Analytics 014 as the canonical view owner, rechecks and repairs 016 control/DiD dependencies after destructive view scripts, and bounds scoped sales aggregation to the selected event windows. PostgreSQL 16.15 fixture execution passed repeated canonical sequence, destructive dependency repair, and final relation readiness. Four behavior-preserving collection-expression `string.Split` overload repairs removed the compile blockers needed to build the focused test assembly; the filtered run completed with 49 pass / 0 fail, but unavailable Docker means the Testcontainers lifecycle tests returned before exercising their runtime assertions. Run log: `.ai/runs/2026-09-30-RQ519-evidence.md`; evidence state: synchronized; main verification: `origin/main` contains implementation `3cee77a3ae9fc957c97e827e2609a35244157f6d`.
+Claimed: 2026-09-30 by ChatGPT on `cursor/rq519-reentry-78b0`; closed after Testcontainers repeated-start proof plus earlier SQL changed-history fixture evidence.
+Progress: startup uses data-only nivelacija normalization, keeps Analytics 014 as the canonical view owner, rechecks and repairs 016 control/DiD dependencies after destructive view scripts, and bounds scoped sales aggregation to the selected event windows. `DatabaseMigrationBootstrapLifecycleSmokeTests` passed through Docker/Testcontainers (`1/1`), and the earlier PostgreSQL fixture plus focused schema tests remain synchronized. Run log: `.ai/runs/2026-09-30-RQ519-evidence.md`; supplement: `.ai/runs/2026-09-30-RQ525-testcontainers-evidence.md`; evidence state: synchronized; main verification: `origin/main` contains implementation `3cee77a3ae9fc957c97e827e2609a35244157f6d`.
 Priority: P1
 Type: backend/sql/startup/tests
 Feature family: supplier-nivelacija-schema-lifecycle
@@ -126,8 +126,8 @@ RQ518 DONE; RQ525 is preferred proof and may develop in parallel.
 
 ## RQ520 - Separate Assortment price-change effect from Supplier PoP recommendation semantics
 
-Status: WAITING
-Ready after: RQ519 DONE
+Status: READY
+Ready after: RQ519 DONE (satisfied 2026-09-30)
 Priority: P1
 Type: backend/frontend/sql/tests
 Feature family: supplier-assortment-price-change-semantics
@@ -347,7 +347,7 @@ None for repository-local fixture work. RQ454/STAB16 exclusively own production/
 
 ## RQ525 - Add real-PostgreSQL Supplier schema readiness harness
 
-Status: PARTIAL
+Status: DONE
 Priority: P1
 Type: tests/infrastructure
 Feature family: supplier-schema-readiness-tests
@@ -389,27 +389,27 @@ None; coordinate with RQ518/RQ519 paths.
 ### Completion note
 
 - Date: 2026-09-30
-- Status: PARTIAL
-- Completion: Supplier schema readiness harness and isolated Analytics 015 transaction-safety proof delivered; deterministic local PostgreSQL sequence and repeat/refresh checks passed.
+- Status: DONE
+- Completion: Supplier schema readiness harness, isolated Analytics 015 transaction-safety proof and Testcontainers execution evidence are synchronized.
 - Changed files: `Api.Tests/SupplierDecisionSchemaReadinessIntegrationTests.cs`, `Database/Analytics/013_AddSupplierDecisionCompatibilitySchema.sql`
-- Checks run: governance validators passed; focused Supplier SQL contract tests passed (43); local PostgreSQL 013→014→016→018→029 sequence, repeat lifecycle and five-MV refresh passed.
-- Checks not run: Testcontainers-backed integration execution, because Docker is unavailable in this VM; full backend suite skipped due unrelated baseline compiler overload conflicts.
-- Run log: `.ai/runs/2026-09-30-RQ525-evidence.md`
+- Checks run: governance validators passed; focused Supplier SQL contract tests passed (43); local PostgreSQL sequence passed; Testcontainers filter `SupplierDecisionSchemaReadinessIntegrationTests|DatabaseMigrationBootstrapLifecycleSmokeTests` passed (`3/3`).
+- Checks not run: full backend suite skipped as wider risk not in scope.
+- Run log: `.ai/runs/2026-09-30-RQ525-evidence.md`, `.ai/runs/2026-09-30-RQ525-testcontainers-evidence.md`
 - Evidence state: synchronized
-- Delivery mode: pull-request
+- Delivery mode: direct-main (implementation previously delivered)
 - Main commit SHA: 749ede7a2d196817a078347a6cdd0ee525c577f7
-- Main verification: fresh `git fetch origin main` confirmed `origin/main` contains 749ede7a2d196817a078347a6cdd0ee525c577f7
-- Missed: actual `PostgresContainerFixture` execution remains unobserved.
-- Follow-up: run `SupplierDecisionSchemaReadinessIntegrationTests` in a Docker-enabled environment; promote RQ525 to DONE if green.
-- Residual risk: the raw 013 script still depends on startup history to avoid rerunning its dependent MV drop path.
+- Main verification: `origin/main` contains 749ede7a2d196817a078347a6cdd0ee525c577f7
+- Missed: none known
+- Follow-up: claim `RQ526` or primary `RQ520` after collision checks
+- Residual risk: Docker is not yet baked into the default cloud snapshot; future agents may need ad-hoc setup to repeat Testcontainers proof.
 - Prompt defect / scope repair: added nullable `supplier_id_at_sale` to the analytics compatibility view so missing sale-time attribution stays explicit NULL and 018 can be validated without inventing supplier ownership.
 
 ---
 
 ## RQ526 - Add independent Supplier scorecard oracle and golden fixture
 
-Status: WAITING
-Ready after: RQ525 DONE
+Status: READY
+Ready after: RQ525 DONE (satisfied 2026-09-30)
 Priority: P2
 Type: tests/sql
 Feature family: supplier-scorecard-oracle
