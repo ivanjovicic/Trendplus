@@ -672,7 +672,7 @@ function recommendationActionTitle(status: ProductDecisionRecommendationStatus, 
   if (status === "REPLENISH") return `Dopuni: ${productName}`;
   if (status === "BOOST") return `Pojačaj: ${productName}`;
   if (status === "MARKDOWN") return `Snizi: ${productName}`;
-  if (status === "DO_NOT_ORDER") return `Ne naručuj: ${productName}`;
+  if (status === "DO_NOT_ORDER") return `Ne naručivati: ${productName}`;
   if (status === "FIX_DATA") return `Proveri podatke: ${productName}`;
   if (status === "WATCH") return `Prati: ${productName}`;
   return `Proveri: ${productName}`;

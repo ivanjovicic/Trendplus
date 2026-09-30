@@ -258,7 +258,7 @@ public static class ProductDecisionReasoningHelper
             "REPLENISH" => "Dopuni",
             "WATCH" => "Prati",
             "MARKDOWN" => "Snizi cenu",
-            "DO_NOT_ORDER" => "Ne naručuj",
+            "DO_NOT_ORDER" => "Ne naručivati",
             "FIX_DATA" => "Proveri podatke",
             "INSUFFICIENT_DATA" => "Nedovoljno podataka",
             "" => "sve porodice",
