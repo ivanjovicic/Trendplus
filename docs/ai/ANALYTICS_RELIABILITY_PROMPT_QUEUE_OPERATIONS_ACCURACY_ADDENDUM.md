@@ -2795,7 +2795,7 @@ Supplier cross-tab audit registration 2026-09-28: current-main review after RQ48
 ## RQ498 - Supplier tabs: make cohort, metric basis and percentage-point units explicit
 
 Status: WAITING  
-Ready after: `RQ474`, `RQ475`, `RQ476`, `RQ494` and `RQ495` are DONE or their final metric/population contracts are stable  
+Ready after: `RQ474`, `RQ475`, `RQ476`, `RQ494` and `RQ495` are DONE or their final metric/population contracts are stable, and `RQ522` is DONE with machine-readable cross-tab basis metadata  
 Priority: P1  
 Type: frontend-contract/report-export/tests  
 Feature family: supplier-cross-tab-metric-semantics  
@@ -2831,7 +2831,7 @@ The calculations may be internally correct, but the shared vocabulary can make u
 - shared Supplier trust/table/export/report labels and formatters only where they expose these metrics;
 - optional explicit metric-basis/population metadata/chips if the current trust payload is insufficient.
 
-Do not change sales population, share denominator, recommendation scoring, cost resolution or pre/post event-window formulas. Those belong to `RQ476`, `RQ494`, `RQ495` and existing scorecard owners.
+Do not change sales population, share denominator, recommendation scoring, cost resolution or pre/post event-window formulas. Those belong to `RQ476`, `RQ494`, `RQ495` and existing scorecard owners. Machine-readable/backend basis metadata, unknown-bucket alignment, timezone/store-grain checks and broad attribution decisions belong to `RQ522`; this prompt owns visible metric names, units, chips and report/export wording that consume that basis.
 
 ### Read first
 
@@ -2875,6 +2875,7 @@ Do not change sales population, share denominator, recommendation scoring, cost 
 
 - Wait for `RQ474`/`RQ475` readiness/error contracts and `RQ476` share semantics.
 - Wait for P0 `RQ494` sales-population and `RQ495` margin-input semantics before freezing cross-tab labels.
+- Wait for `RQ522` to publish the machine-readable cross-tab basis; do not reimplement its backend/provenance contract here.
 - `RQ459` is DONE and remains the aggregate/formula owner; do not reopen it.
 
 ## RQ499 - Supplier shell: make critical, pending and tab-specific provenance states truthful
@@ -2909,7 +2910,7 @@ The consolidated Supplier shell can misstate trust while the active child tab is
 - `SupplierConsolidatedPage.tsx` and its focused specs;
 - shared `AnalyticsTrustHeader` only if a reusable pending/supporting-signal state is required.
 
-Do not change child API calls, recommendation decisions, scorecard eligibility, metric values or readiness backend contracts.
+Do not change child API calls, recommendation decisions, scorecard eligibility, metric values or readiness backend contracts. This prompt is the owner for shared Supplier pending/critical/gated trust-state wording and severity; later RQ523/RQ529 must not duplicate that copy/state contract.
 
 ### Read first
 
@@ -3046,6 +3047,7 @@ Do not remove API fields, alter backend formulas, change recommendation logic or
 - Run after `RQ498` establishes truthful cohort/unit labels and `RQ499` establishes trust-role semantics.
 - Also wait for `RQ474`/`RQ475`/`RQ476` because unavailable/error/share states must be final before visual reprioritization.
 - P0 `RQ494`/`RQ495` remain higher priority whenever their affected Supplier numbers are not yet stable.
+- `RQ530` and `RQ532` are later enhancement owners that must consume this information hierarchy rather than reprioritizing the same first-screen evidence in parallel.
 
 
 ---
