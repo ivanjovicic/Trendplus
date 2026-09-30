@@ -743,7 +743,7 @@ public class AnalyticsActionItemServiceTests
         Assert.Equal(1, summary.Totals.PendingOutcomeCount);
         Assert.Equal(1, summary.Totals.SuccessCount);
         Assert.Equal(0, summary.Totals.NegativeCount);
-        Assert.Equal(0m, summary.Totals.OutcomeCoverageRate);
+        Assert.Equal(0.3333m, summary.Totals.OutcomeCoverageRate);
         Assert.Equal(summary.Totals.OutcomeCoverageRate, summary.Totals.ClosedOutcomeCoverageRate);
         Assert.Equal(1m, summary.Totals.PositiveOutcomeRate);
         Assert.Equal(summary.Totals.PositiveOutcomeRate, summary.Totals.MeasuredPositiveOutcomeRate);

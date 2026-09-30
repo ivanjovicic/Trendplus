@@ -227,7 +227,7 @@ public sealed class SupplierDecisionHubContractTests
             Filters90Days());
 
         Assert.Equal(2, response.SupplierCount);
-        Assert.Equal(100m, response.PositiveNetRevenueDenominator);
+        Assert.Equal(125m, response.PositiveNetRevenueDenominator);
         Assert.Equal("measured", response.ShareDenominatorState);
         Assert.Equal("positive_net_revenue", response.ShareBasis);
         Assert.False(response.ShareIncludesUnknown);

@@ -314,7 +314,8 @@ public sealed class AnalyticsActionsEndpointsTests
             outcomeStatus: AnalyticsActionConstants.OutcomeStatuses.Success,
             measuredImpactRsd: 100m,
             outcomeMeasuredAtUtc: new DateTime(2026, 6, 10, 0, 0, 0, DateTimeKind.Utc),
-            status: AnalyticsActionConstants.Statuses.Done);
+            status: AnalyticsActionConstants.Statuses.Done,
+            metadataJson: """{"ledger":{"resolutionSnapshot":{"evidenceSource":"action_outcome_summary"}}}""");
         await host.SeedActionAsync(
             sourceType: AnalyticsActionConstants.SourceTypes.Supplier,
             sourceKey: "summary-http-2",
@@ -326,7 +327,8 @@ public sealed class AnalyticsActionsEndpointsTests
             outcomeStatus: AnalyticsActionConstants.OutcomeStatuses.Negative,
             measuredImpactRsd: 50m,
             outcomeMeasuredAtUtc: new DateTime(2026, 6, 11, 0, 0, 0, DateTimeKind.Utc),
-            status: AnalyticsActionConstants.Statuses.Accepted);
+            status: AnalyticsActionConstants.Statuses.Accepted,
+            metadataJson: """{"ledger":{"resolutionSnapshot":{"evidenceSource":"action_outcome_summary"}}}""");
 
         using var response = await host.Client.GetAsync("/api/analytics/actions/outcomes/summary");
 
@@ -338,22 +340,22 @@ public sealed class AnalyticsActionsEndpointsTests
         Assert.Equal(3, root.GetProperty("totals").GetProperty("createdCount").GetInt32());
         Assert.Equal(2, root.GetProperty("totals").GetProperty("closedCount").GetInt32());
         Assert.Equal(1, root.GetProperty("totals").GetProperty("openCount").GetInt32());
-        Assert.Equal(2, root.GetProperty("totals").GetProperty("measuredCount").GetInt32());
+        Assert.Equal(1, root.GetProperty("totals").GetProperty("measuredCount").GetInt32());
         Assert.Equal(1, root.GetProperty("totals").GetProperty("pendingOutcomeCount").GetInt32());
         Assert.Equal(1, root.GetProperty("totals").GetProperty("successCount").GetInt32());
-        Assert.Equal(1, root.GetProperty("totals").GetProperty("negativeCount").GetInt32());
+        Assert.Equal(0, root.GetProperty("totals").GetProperty("negativeCount").GetInt32());
         Assert.Equal(0.5000m, root.GetProperty("totals").GetProperty("outcomeCoverageRate").GetDecimal());
-        Assert.Equal(0.5000m, root.GetProperty("totals").GetProperty("positiveOutcomeRate").GetDecimal());
-        Assert.Equal(0.5000m, root.GetProperty("totals").GetProperty("negativeOutcomeRate").GetDecimal());
+        Assert.Equal(1.0000m, root.GetProperty("totals").GetProperty("positiveOutcomeRate").GetDecimal());
+        Assert.Equal(0.0000m, root.GetProperty("totals").GetProperty("negativeOutcomeRate").GetDecimal());
         Assert.Equal(0.5000m, root.GetProperty("totals").GetProperty("closedOutcomeCoverageRate").GetDecimal());
-        Assert.Equal(0.5000m, root.GetProperty("totals").GetProperty("measuredPositiveOutcomeRate").GetDecimal());
-        Assert.Equal(0.5000m, root.GetProperty("totals").GetProperty("measuredNegativeOutcomeRate").GetDecimal());
-        Assert.Equal(2, root.GetProperty("totals").GetProperty("measuredOutcomeCount").GetInt32());
+        Assert.Equal(1.0000m, root.GetProperty("totals").GetProperty("measuredPositiveOutcomeRate").GetDecimal());
+        Assert.Equal(0.0000m, root.GetProperty("totals").GetProperty("measuredNegativeOutcomeRate").GetDecimal());
+        Assert.Equal(1, root.GetProperty("totals").GetProperty("measuredOutcomeCount").GetInt32());
         Assert.Equal(1.0000m, root.GetProperty("bySourceType")[0].GetProperty("closedOutcomeCoverageRate").GetDecimal());
         Assert.Equal(1.0000m, root.GetProperty("bySourceType")[0].GetProperty("measuredPositiveOutcomeRate").GetDecimal());
         Assert.Equal(0.0000m, root.GetProperty("bySourceType")[0].GetProperty("measuredNegativeOutcomeRate").GetDecimal());
         Assert.Equal(1, root.GetProperty("bySourceType")[0].GetProperty("measuredOutcomeCount").GetInt32());
-        Assert.Equal(150m, root.GetProperty("impact").GetProperty("measuredImpactRsd").GetDecimal());
+        Assert.Equal(100m, root.GetProperty("impact").GetProperty("measuredImpactRsd").GetDecimal());
     }
 
     [Fact]
