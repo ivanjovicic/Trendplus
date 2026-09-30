@@ -5,7 +5,7 @@ Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
 Current READY prompt: RQ518
 Additional READY prompts: RQ524, RQ525
-Queue reconciliation 2026-09-30: RQ518 remains the primary deterministic P1 fix. RQ524 and RQ525 are independent, dependency-free P1 proof lanes and are READY in parallel; production reads under RQ524 still require explicit owner approval. RQ519-RQ532 otherwise remain sequenced/owner-gated as declared below.
+Queue reconciliation 2026-09-30: RQ518 remains the primary deterministic P1 fix. RQ524 and RQ525 are independent, dependency-free P1 proof lanes and are READY in parallel. RQ524 builds/runs only the repository-local reconciliation pack and fixture evidence; production execution remains exclusively RQ454/STAB16. RQ519-RQ532 otherwise remain sequenced/owner-gated as declared below.
 
 This addendum registers only non-duplicate Supplier follow-ups after second-pass source verification. Existing RQ474, RQ475 and RQ487 remain authoritative for overview error/readiness/query-cost work. RQ517 is already DONE for Daily Sales and is not reused.
 
@@ -316,11 +316,11 @@ Overview has strong fixtures, but scorecard/assortment lack equivalent live/read
 
 ### Scope
 
-Read-only scripts/evidence only; production reads need explicit owner approval; no writes.
+Read-only scripts/evidence only. Repository-local fixture execution is in scope; production/replica execution is explicitly out of scope and remains RQ454/STAB16. No writes.
 
 ### Read first
 
-Existing check_supplier_sales_stats.sql; RQ518-RQ523; context/receipt/cost policies.
+Existing check_supplier_sales_stats.sql; RQ407/RQ447/RQ454; RQ518-RQ523; context/receipt/cost policies.
 
 ### Do
 
@@ -328,7 +328,7 @@ Add parameterized checks for Supplier sum, unknown split, previous-only supplier
 
 ### Tests
 
-Run against deterministic fixture; production only with approved read-only evidence and tolerances.
+Run against deterministic fixture and prove the pack is read-only. Do not run it against production here; RQ454 consumes the reusable pack when STAB16 grants the approved production gate.
 
 ### Acceptance
 
@@ -336,7 +336,7 @@ Every check has pass/fail/explained result and failures map to an owner; hypothe
 
 ### Dependencies
 
-None for fixture; owner approval for production reads.
+None for repository-local fixture work. RQ454/STAB16 exclusively own production/replica reconciliation execution.
 
 ---
 
