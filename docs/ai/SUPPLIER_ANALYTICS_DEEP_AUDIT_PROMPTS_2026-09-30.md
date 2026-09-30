@@ -22,7 +22,7 @@ Ova sekcija je autoritativna korekcija prvog prolaza. Supplier runtime fajlovi i
 - **N36 nije automatski aritmetički bug:** signed maržni doprinos može matematički dati udeo >100% uz negativne doprinose drugih dobavljača. Denominator mora biti eksplicitan ili owner mora odobriti novu semantiku.
 - **N38 je enhancement gap**, ne dokaz postojećeg numeričkog baga.
 
-Queue de-dup: SA-F5 nije dobio novi RQ (safe-error/readiness ide u RQ474/RQ475, Analytics 015 u RQ525, security handoff samo ako se N27 dokaže); SA-I1 je takođe de-duplikovan u RQ474/RQ475. Preostalih 15 promptova su RQ518-RQ532. Završna queue provera je dodatno razdvojila RQ522/RQ498 (machine-readable basis naspram visible labels/units) i RQ499/RQ523/RQ529 (trust-state semantika naspram lokalnih frontend/a11y residuala). RQ518 je primarni READY; nezavisni P1 proof lane-ovi RQ524 i RQ525 su takođe READY. RQ517 ostaje postojeći DONE Daily Sales prompt.
+Queue de-dup: SA-F5 nije dobio novi RQ (safe-error/readiness ide u RQ474/RQ475, Analytics 015 u RQ525, security handoff samo ako se N27 dokaže); SA-I1 je takođe de-duplikovan u RQ474/RQ475. Preostalih 15 promptova su RQ518-RQ532. Završna queue provera je dodatno razdvojila RQ522/RQ498 (machine-readable basis naspram visible labels/units) i RQ499/RQ523/RQ529 (trust-state semantika naspram lokalnih frontend/a11y residuala). RQ518 je primarni lane i trenutno je IN_PROGRESS; RQ524 je PARTIAL posle isporuke početnog read-only pack-a i čeka deterministic PostgreSQL fixture dokaz; RQ525 ostaje nezavisni P1 READY lane. RQ517 ostaje postojeći DONE Daily Sales prompt.
 
 ## Sažetak
 
@@ -64,7 +64,7 @@ Pored dostupnosti, najvažniji semantički nalazi su:
 
 Pošto live nijedan broj nije mogao da se proveri, PROVE sekcija ima P1 prioritet.
 
-Prvi prolaz je definisao 17 audit prompt-koncepta (`SA-F1`–`SA-F7`, `SA-P1`–`SA-P5`, `SA-I1`–`SA-I2`, `SA-E1`–`SA-E3`): 6 × P1, 9 × P2, 2 × P3. Posle second-pass de-dup provere, SA-F5 i SA-I1 ostaju kod postojećih ownera, a 15 novih canonical promptova je registrovano kao `RQ518`–`RQ532`. Završna queue provera promoviše `RQ518` kao primarni READY i nezavisne proof lane-ove `RQ524`/`RQ525` kao dodatne READY; ostali ostaju WAITING iza eksplicitnih zavisnosti/owner odluka. Hipoteze ostaju označene kao **Hipoteza**.
+Prvi prolaz je definisao 17 audit prompt-koncepta (`SA-F1`–`SA-F7`, `SA-P1`–`SA-P5`, `SA-I1`–`SA-I2`, `SA-E1`–`SA-E3`): 6 × P1, 9 × P2, 2 × P3. Posle second-pass de-dup provere, SA-F5 i SA-I1 ostaju kod postojećih ownera, a 15 novih canonical promptova je registrovano kao `RQ518`–`RQ532`. Završna queue provera je inicijalno učinila `RQ518`, `RQ524` i `RQ525` claimable; tokom iste provere concurrent owner je već preuzeo `RQ518` (sada IN_PROGRESS) i `RQ524` (sada PARTIAL posle početnog pack-a, pending fixture proof). `RQ525` ostaje READY; ostali ostaju WAITING iza eksplicitnih zavisnosti/owner odluka. Hipoteze ostaju označene kao **Hipoteza**.
 
 ## Git stanje (Faza A)
 
@@ -1021,14 +1021,14 @@ Commit suggestion: `feat(analytics): supplier footwear size curve and controlled
 
 | Audit prompt | Canonical owner | Prioritet | Status |
 |---|---|---:|---|
-| SA-F1 | RQ518 | P1 | READY |
+| SA-F1 | RQ518 | P1 | IN_PROGRESS |
 | SA-F2 | RQ519 | P1 | WAITING |
 | SA-F3 | RQ520 | P1 | WAITING |
 | SA-F4 (corrected) | RQ521 | P2 | WAITING |
 | SA-F5 | RQ474/RQ475 + RQ525; security handoff only if N27 proven | — | DE-DUP |
 | SA-F6 | RQ522 | P2 | WAITING |
 | SA-F7 (corrected) | RQ523 | P3 | WAITING |
-| SA-P1 | RQ524 | P1 | READY (parallel proof lane) |
+| SA-P1 | RQ524 | P1 | PARTIAL (initial pack delivered; fixture proof pending) |
 | SA-P2 | RQ525 | P1 | READY (parallel proof lane) |
 | SA-P3 | RQ526 | P2 | WAITING |
 | SA-P4 | RQ527 | P2 | WAITING |
