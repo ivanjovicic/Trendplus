@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ478 (IN_PROGRESS in this workspace)
+Current READY prompt: none
 Systemic reliability audit registration 2026-09-29: `RQ509`-`RQ515` are registered as WAITING follow-ups from `docs/qa/ANALYTICS_RELIABILITY_NEXT_WAVE_AUDIT_2026-09-29.md`. They extend, rather than replace, RQ359-RQ367/RQ141/RQ145-RQ149 and the RQ413/RQ449/RQ450 integrity stack. No RQ509-RQ515 prompt is promoted or claimed by this audit; RQ501 completed separately and current routing is defined only by this header plus fresh dependency/collision checks.
 Owner promotion/claim 2026-09-29: idle recovery refreshed `origin/main` to `67e310027c7684d4c468665db760308bb6acad4c`, verified no active RQ509 lock/branch/PR owner and no collision with the PARTIAL/non-runnable RQ137/RQ139/RQ140 contracts. RQ509 moved `WAITING -> READY -> IN_PROGRESS` as the first P0 context-identity prompt; local lock: `.ai/task-locks/RQ509-codex.lock.md`. Q83 remains the exclusive PARTIAL Pre/Post SQL/view owner and RQ491 is not promoted.
 Owner completion 2026-09-29: RQ509 moved `IN_PROGRESS -> DONE` and was delivered directly to `main` in implementation `d71afbb67864c7990c08f754c6234127f45a33bf`. The additive context descriptor/fingerprint now covers Dashboard, Product Decision Center, Supplier, Shoe Type, Color, Data Quality and Supplier Decision Hub, with deterministic read-only reconciliation classifications and fail-closed unavailable identity. Focused backend proof is 46/46; frontend schema proof is 16/16; typecheck, analytics guardrails, production build, API build, governance validators and diff check pass. Run log: `.ai/runs/2026-09-29-RQ509-evidence.md`. Evidence state: synchronized. Current RQ READY returned to `none`; RQ510 is the next P0 dependency-complete candidate after fresh recovery. Q83 remains PARTIAL and RQ491 remains WAITING.
@@ -26644,7 +26644,7 @@ Every Actions KPI and panel identifies the population and period it describes; t
 
 ## RQ478 - Exclude not-measured actions from measured outcome denominators
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/contract/tests
 Feature family: analytics-actions-measurement-denominator
@@ -26705,6 +26705,14 @@ An action is counted as measured only when the backend has a valid measurement o
 - RQ478 is the direct dependency-complete P1 follow-up from RQ477 and is bounded to the backend measurement denominator/projection plus focused frontend/backend proof. RQ479 remains separate and owner-gated on live/seed provenance; RQ480 remains a distinct Decision Pulse owner.
 - RQ478 is promoted `WAITING -> READY -> IN_PROGRESS` in this workspace.
 - Local lock: `.ai/task-locks/RQ478-codex.lock.md`.
+
+### Completion note
+
+- Completion date: 2026-09-30
+- RQ478 is DONE on implementation SHA `8fe50925b5506c59459adebd9f30702c9d3a3ec6`, delivered directly to `main`; fresh fetch verified `HEAD == origin/main`.
+- Legacy Actions outcome totals now use `RecommendationLifecycleSemantics.Project(item)` for measured, success/neutral/negative, impact and closed-measured denominators. Pending and not-measured remain distinct, and the UI exposes the separate not-measured count beside the pending/open context.
+- Focused frontend proof is 34/34; typecheck, client build, Infrastructure build, queue governance (613 tasks) and diff checks pass. The focused API test remains not runnable because the unrelated pre-existing `DecisionBoardEndpoints.cs` compile errors `CS8323`, `CS8130`, `CS8183` stop the test project before execution.
+- Local lock removed after delivery. RQ479 remains live/seed-owner gated, RQ480 remains a separate Decision Pulse owner, Q83 remains PARTIAL and RQ491 remains WAITING.
 
 ---
 
