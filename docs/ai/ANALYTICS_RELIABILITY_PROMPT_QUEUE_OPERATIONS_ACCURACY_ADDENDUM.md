@@ -2,9 +2,10 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ505
-Routing repair 2026-09-30: `RQ516` is DONE on current `origin/main`; the stale addendum pointer was corrected to the next dependency-complete prompt `RQ505`. `RQ507` remains sequenced behind this category-screen authority owner and `RQ508` remains behind RQ505/RQ507.
+Current READY prompt: RQ507
+Routing repair 2026-09-30: `RQ516` is DONE on current `origin/main`; the stale addendum pointer was corrected to the next dependency-complete prompt `RQ505`. After RQ505 delivery, `RQ507` was promoted as the next READY prompt and `RQ508` remains behind RQ505/RQ507.
 Owner promotion/claim 2026-09-30: fresh recovery verified `HEAD == origin/main == 0145e947d8b942ed874640216993b2d7bc7616cd`, confirmed RQ516 is DONE, RQ501 is DONE, the 2026-09-29 owner decision is recorded, and no active lock/branch/open-PR owner collides with `category-screen-authority`. `RQ505` moved `WAITING -> READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ505-codex.lock.md`.
+Owner completion 2026-09-30: `RQ505` moved `IN_PROGRESS -> DONE` on implementation SHA `278d37b93356aa7f2011ae5d02bf7e7cf1f801ed`; fresh fetch verified `origin/main` contains the SHA. Color and Shoe Type now share supporting-signal framing, backend status/reason authority, fail-closed actionability and detail/transparency-only score semantics. Run log: `.ai/runs/2026-09-30-RQ505-evidence.md`; evidence state is synchronized. Fresh recovery found no active lock/branch/open-PR collision for `operations-analytics-information-architecture`; `RQ507` moved `WAITING -> READY` and is now the current READY prompt.
 Owner decisions 2026-09-29 (Ivan): RQ501 aligns Color with the RQ496 Shoe Type signed net-sales contract (`net_sales_signed`, explicit numerator/denominator/state, mathematically valid negative and >100% values, unavailable never coerced to recommendation zero; quality/coverage ratios remain bounded 0–100). RQ505 frames Color as a supporting signal/analysis surface with signal trust framing; backend status/reason stays authoritative and `decisionScore` remains detail/transparency evidence, not a competing final CTA. RQ507 approves removing Supplier compatibility aliases from the primary Operations sidebar while preserving legacy URLs/redirects and keeping Shoe Type, Color, Daily and Pre/Post available. RQ476 uses positive net revenue of the declared visible/decision population for concentration/share; negative/returns-only rows remain visible without ambiguous positive share, and unknown-supplier inclusion is explicit and consistent across API/UI/recommendation/export.
 Routing repair 2026-09-29: RQ448's live section was stale at `IN_PROGRESS`; synchronized queue/roadmap truth and prior evidence show it remains `WAITING` behind the authenticated browser/API/deployment gate. No implementation claim is reopened.
 Routing reconciliation 2026-09-29: any workspace still showing `RQ466` as `Current READY` is stale. `RQ466` and `RQ502` are `DONE` on current main; no RQ prompt is currently READY. Registration evidence: `.ai/runs/2026-09-29-RQ502-registration-evidence.md`.
@@ -3379,7 +3380,7 @@ No backend formula, cost priority, share rule or recommendation change.
 
 ## RQ505 - Decide one product-authority model for Shoe Type and Color supporting analytics
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: RQ516 DONE; then promote after fresh collision check
 Priority: P2  
 Type: product-contract/frontend/docs/tests  
@@ -3446,6 +3447,26 @@ Do not change recommendation engine formulas under this prompt.
 - Product-owner decision is resolved by the 2026-09-29 queue-level owner decision.
 - RQ501 is DONE; preserve its signed-share semantics and backend recommendation authority.
 - RQ508 documents the final chosen model after RQ505/RQ507 implementation.
+
+### Completion note
+
+- Date: 2026-09-30
+- Status: DONE
+- Completion: Supporting-signal authority model delivered for Color and Shoe Type; no recommendation formulas changed.
+- Changed files: `Klijent/clientapp/src/pages/ColorSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx`, focused Color/Shoe Type specs, `docs/ANALYTICS_EXECUTION_PLAN.md`, `docs/ANALYTICS_TRUST_HEADER_COVERAGE.md`
+- Checks run: focused frontend proof `4 files / 79 tests`; `npm run check:analytics-guardrails`; `npm run build`; prompt-queue validator and self-test; `git diff --check`.
+- Checks not run: backend test/build suites and live database/browser/provider proof are outside this frontend/docs scope. Current-main CI is residual: Analytics Quality Gates `36729029926` queued; Planning Governance `36729029956` in progress.
+- Run log: `.ai/runs/2026-09-30-RQ505-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `278d37b93356aa7f2011ae5d02bf7e7cf1f801ed`
+- Main verification: passed - fresh fetch confirmed `HEAD == origin/main == 278d37b93356aa7f2011ae5d02bf7e7cf1f801ed` and the implementation SHA is an ancestor of `origin/main`.
+- Missed: none known in RQ505 scope.
+- Follow-up: RQ507 is the next READY prompt; RQ508 remains behind RQ507.
+- Residual risk: current-main remote CI is queued/in progress and has not yet produced a result; local focused/build/guardrail proof is green.
+- Prompt defect / scope repair: stale `Current READY` pointer was corrected from RQ516 during recovery; no product scope expansion was needed.
+
+Owner promotion 2026-09-30: fresh recovery after RQ505 delivery verified no active lock/branch/open-PR collision for `operations-analytics-information-architecture`; `RQ507` moved `WAITING -> READY` and became the current READY prompt. No claim was started in this RQ505 delivery turn.
 
 ## RQ506 - Guard cross-dimension margin parity before snapshot cost is enabled beyond Supplier/Shoe Type
 
@@ -3518,8 +3539,8 @@ That would make cross-dimensional margin comparison unsafe unless the difference
 
 ## RQ507 - Simplify Operations navigation: keep Supplier compatibility routes but remove duplicate sidebar ownership
 
-Status: WAITING  
-Ready after: RQ516 DONE; prefer RQ505 first, then promote after fresh collision check
+Status: READY
+Ready after: RQ516 DONE and RQ505 DONE; fresh collision check passed
 Priority: P2  
 Type: product-navigation/frontend/tests  
 Feature family: operations-analytics-information-architecture  
