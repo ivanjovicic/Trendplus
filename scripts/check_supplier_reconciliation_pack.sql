@@ -2,9 +2,13 @@
 -- Purpose: turn Supplier hypotheses into explicit PASS / FAIL / EXPLAINED evidence.
 -- Safety: SELECT-only. RQ524 is repository-local/fixture-only; any production/replica execution is owned by RQ454/STAB16.
 -- psql usage:
---   \set from_utc '2026-01-01T00:00:00Z'
---   \set to_utc   '2026-03-31T23:59:59Z'
+--   \set from_utc '2026-09-01T00:00:00Z'
+--   \set to_utc   '2026-09-30T23:59:59.999999Z'
 --   \set store_id 'NULL'
+--
+-- Fixture bootstrap (repository-local only):
+--   psql ... -f Api.Tests/Fixtures/operations-analytics-all-routes-seed.sql
+--   plus the Supplier schema objects required by SUP-005/SUP-006 (see RQ525 local sequence or app startup).
 --
 -- Result columns are intentionally stable:
 -- check_id, verdict, observed, expected, owner, detail
@@ -33,6 +37,7 @@ sales AS (
         ps.kolicina AS quantity,
         ps.cena AS unit_price,
         ps.nabavna_cena AS line_cost,
+        ps.supplier_id_at_sale,
         a."IDDobavljac" AS supplier_id,
         a."NabavnaCenaDin" AS product_cost_rsd,
         a."NabavnaCena" AS product_cost_legacy
@@ -57,6 +62,78 @@ classified AS (
 ),
 retail AS (
     SELECT * FROM classified WHERE NOT excluded_receipt
+),
+previous_retail AS (
+    SELECT r.*
+    FROM retail r
+    CROSS JOIN params p
+    WHERE r.sold_at < p.from_utc
+),
+current_suppliers AS (
+    SELECT DISTINCT supplier_id
+    FROM retail
+    WHERE supplier_id IS NOT NULL
+),
+previous_only_suppliers AS (
+    SELECT DISTINCT p.supplier_id
+    FROM previous_retail p
+    WHERE p.supplier_id IS NOT NULL
+      AND NOT EXISTS (
+          SELECT 1
+          FROM current_suppliers c
+          WHERE c.supplier_id = p.supplier_id
+      )
+),
+attribution_drift AS (
+    SELECT COUNT(*) AS drift_rows
+    FROM retail r
+    WHERE r.supplier_id_at_sale IS NOT NULL
+      AND r.supplier_id IS NOT NULL
+      AND r.supplier_id_at_sale <> r.supplier_id
+),
+overview_revenue AS (
+    SELECT
+        COALESCE(SUM(r.quantity * r.unit_price), 0) AS retail_revenue
+    FROM retail r
+),
+scorecard_rows AS (
+    SELECT COUNT(*) AS row_count
+    FROM mv_supplier_decision_score_cache
+),
+vendor_assortment AS (
+    SELECT
+        COUNT(*) AS row_count,
+        COUNT(*) FILTER (
+            WHERE ABS(change_revenue - (post_revenue - pre_revenue)) <= 0.01
+        ) AS comparable_rows,
+        COUNT(*) FILTER (
+            WHERE COALESCE(has_revenue_baseline, false) = false
+               OR COALESCE(revenue_baseline_reason, '') <> ''
+        ) AS baseline_flagged_rows
+    FROM vw_vendor_sales_nivelacija
+),
+nivelacija_store_grain AS (
+    SELECT
+        COUNT(*) AS event_rows,
+        COUNT(*) FILTER (WHERE "IDObjekat" IS NULL) AS missing_store_rows
+    FROM "DnevnikPromena"
+    WHERE COALESCE("TipPromene", '') ILIKE '%nivelacija%'
+),
+startup_history AS (
+    SELECT
+        EXISTS (
+            SELECT 1
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+              AND table_name = '__StartupSqlScriptHistory'
+        ) AS history_table_exists,
+        COUNT(*) FILTER (
+            WHERE "ScriptPath" ILIKE '%014_CreateVendorSalesNivelacijaViews.sql%'
+        ) AS canonical_view_scripts,
+        COUNT(*) FILTER (
+            WHERE "ScriptPath" ILIKE '%018_AddSupplierDecisionHubViews.sql%full-build%'
+        ) AS scorecard_refresh_scripts
+    FROM "__StartupSqlScriptHistory"
 ),
 mv AS (
     SELECT
@@ -167,6 +244,110 @@ checks AS (
         'RQ521',
         'Negative retail lines are evidence, not rows to silently drop.'
     FROM retail
+
+    UNION ALL
+    SELECT
+        'SUP-008',
+        CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'EXPLAINED' END,
+        COUNT(*)::text,
+        '0 previous-only suppliers in selected current window',
+        'RQ522',
+        'Suppliers with retail evidence before the window but none inside it remain explicit, not silently dropped.'
+    FROM previous_only_suppliers
+
+    UNION ALL
+    SELECT
+        'SUP-009',
+        CASE WHEN drift_rows = 0 THEN 'PASS' ELSE 'EXPLAINED' END,
+        drift_rows::text,
+        '0 sale-time/current-master supplier mismatches',
+        'RQ521',
+        'Sale-time attribution drift versus current master supplier must stay visible.'
+    FROM attribution_drift
+
+    UNION ALL
+    SELECT
+        'SUP-010',
+        CASE
+            WHEN NOT history_table_exists THEN 'EXPLAINED'
+            WHEN canonical_view_scripts > 0 THEN 'PASS'
+            ELSE 'EXPLAINED'
+        END,
+        canonical_view_scripts::text,
+        '>=1 canonical vendor-sales startup history row when history table exists',
+        'RQ519',
+        'Startup SQL history for canonical nivelacija view ownership.'
+    FROM startup_history
+
+    UNION ALL
+    SELECT
+        'SUP-011',
+        CASE
+            WHEN event_rows = 0 THEN 'EXPLAINED'
+            WHEN missing_store_rows = 0 THEN 'PASS'
+            ELSE 'FAIL'
+        END,
+        missing_store_rows::text || ' missing of ' || event_rows::text,
+        '0 missing store ids on nivelacija journal rows',
+        'RQ522',
+        'Nivelacija events must declare store grain when journal rows exist.'
+    FROM nivelacija_store_grain
+
+    UNION ALL
+    SELECT
+        'SUP-012',
+        CASE
+            WHEN row_count = 0 THEN 'EXPLAINED'
+            WHEN comparable_rows = row_count THEN 'PASS'
+            ELSE 'FAIL'
+        END,
+        comparable_rows::text || ' of ' || row_count::text,
+        'Change equals Post minus Pre for every comparable assortment row',
+        'RQ527',
+        'Assortment comparable totals on vw_vendor_sales_nivelacija.'
+    FROM vendor_assortment
+
+    UNION ALL
+    SELECT
+        'SUP-013',
+        CASE
+            WHEN row_count = 0 THEN 'EXPLAINED'
+            WHEN retail_revenue = 0 THEN 'EXPLAINED'
+            ELSE 'EXPLAINED'
+        END,
+        'overview_revenue=' || retail_revenue::text || '; scorecard_rows=' || row_count::text,
+        'explained delta required when overview and scorecard bases differ',
+        'RQ528',
+        'Overview retail turnover and scorecard cache rows use different bases until RQ528 parity contract exists.'
+    FROM overview_revenue, scorecard_rows
+
+    UNION ALL
+    SELECT
+        'SUP-014',
+        CASE
+            WHEN row_count = 0 THEN 'EXPLAINED'
+            WHEN baseline_flagged_rows = 0 THEN 'PASS'
+            ELSE 'EXPLAINED'
+        END,
+        baseline_flagged_rows::text || ' of ' || row_count::text,
+        '0 immature/no-post/baseline-flagged assortment rows unless fixture intentionally seeds them',
+        'RQ520',
+        'Assortment maturity and no-post/zero-baseline states stay explicit.'
+    FROM vendor_assortment
+
+    UNION ALL
+    SELECT
+        'SUP-015',
+        CASE
+            WHEN NOT history_table_exists THEN 'EXPLAINED'
+            WHEN scorecard_refresh_scripts > 0 THEN 'PASS'
+            ELSE 'EXPLAINED'
+        END,
+        scorecard_refresh_scripts::text,
+        '>=1 recorded scorecard refresh script when startup history exists',
+        'RQ518',
+        'Scorecard MV refresh/history evidence from startup SQL history.'
+    FROM startup_history
 )
 SELECT check_id, verdict, observed, expected, owner, detail
 FROM checks
