@@ -708,6 +708,7 @@ export default function ProductDecisionCenterPage() {
   const [recommendationFilter, setRecommendationFilter] = useState<RecommendationFilter>("all");
   const [dataQualityFilter, setDataQualityFilter] = useState<DataQualityFilter>("all");
   const [search, setSearch] = useState("");
+  const [serverSearch, setServerSearch] = useState("");
   const [sortField, setSortField] = useState<SortField>("recommendationStatus");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expandedProductId, setExpandedProductId] = useState<number | null>(null);
@@ -742,6 +743,14 @@ export default function ProductDecisionCenterPage() {
   const queuedActionKeysRef = useRef<Set<string> | null>(null);
   const queueBusyKeyRef = useRef<string | null>(null);
   queuedActionKeysRef.current = queuedActionKeys;
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setServerSearch(search.trim());
+    }, 300);
+
+    return () => window.clearTimeout(timer);
+  }, [search]);
 
   useEffect(() => {
     const handleScopeChange = () => {
@@ -821,7 +830,7 @@ export default function ProductDecisionCenterPage() {
         supplierId,
         top: 1200,
         dataScope,
-        ...(search.trim() ? { search: search.trim() } : {}),
+        search: serverSearch || null,
       });
       if (dataRequestSeqRef.current !== requestSeq) {
         return;
@@ -853,7 +862,7 @@ export default function ProductDecisionCenterPage() {
         setLoading(false);
       }
     }
-  }, [dataScope, fromDate, search, supplierId, storeId, toDate]);
+  }, [dataScope, fromDate, serverSearch, supplierId, storeId, toDate]);
 
   useEffect(() => {
     loadData();
@@ -1052,9 +1061,17 @@ export default function ProductDecisionCenterPage() {
 
   const tableMetadata = useMemo<AnalyticsNamedValue[]>(() => [
     { key: "generatedAtUtc", label: "Generisano", value: payload?.generatedAtUtc ?? "N/A" },
-    { key: "totalRows", label: "Ukupno redova", value: payload?.totalRows ?? null },
+    { key: "returnedRows", label: "Vraćeno redova", value: payload?.totalRows ?? null },
+    { key: "analyzedRows", label: "Analizirano redova", value: payload?.analyzedRows ?? null },
+    { key: "hiddenRows", label: "Skriveno zbog limita", value: payload?.ignoredRowsCount ?? null },
     { key: "filteredRows", label: "Prikazano redova", value: sortedRows.length },
-  ], [payload?.generatedAtUtc, payload?.totalRows, sortedRows.length]);
+  ], [payload?.analyzedRows, payload?.generatedAtUtc, payload?.ignoredRowsCount, payload?.totalRows, sortedRows.length]);
+
+  const populationSummary = payload
+    ? payload.analyzedRows != null
+      ? `Vraćeno ${payload.totalRows} redova; analizirano ${payload.analyzedRows}; ${payload.ignoredRowsCount != null ? `skriveno zbog limita ${payload.ignoredRowsCount}.` : "skriveni redovi nisu prijavljeni."}`
+      : `Vraćeno ${payload.totalRows} redova; analizirana populacija nije prijavljena u ovom odgovoru.`
+    : null;
 
   const handlePeriodPresetChange = (value: PeriodPreset) => {
     setPeriodPreset(value);
@@ -1315,6 +1332,12 @@ export default function ProductDecisionCenterPage() {
       {showMetaWarning ? (
         <div className="product-decision-message product-decision-message-info" role="status">
           Prikazani podaci su delimični ili fallback. {responseMetaMessage ?? "Proverite status osvežavanja analitike."}
+        </div>
+      ) : null}
+
+      {populationSummary ? (
+        <div className="product-decision-message product-decision-message-info" role="status">
+          {populationSummary}
         </div>
       ) : null}
 

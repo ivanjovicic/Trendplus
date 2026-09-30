@@ -8,6 +8,7 @@ import {
   getDataQualityTopOffenders,
   getDecisionBoardAggregate,
   getDashboardBootstrap,
+  getProductDecisionCenter,
   getSizeCurve,
   getStores,
   invalidateAnalyticsCache,
@@ -183,6 +184,36 @@ describe("analytics API contract requests", () => {
     expect(receivedUrl?.searchParams.get("onlyHighConfidence")).toBe("true");
     expect(receivedUrl?.searchParams.get("excludeOosBeforeMarkdown")).toBe("false");
     expect(receivedUrl?.searchParams.get("search")).toBe("crna");
+    expect(receivedUrl?.searchParams.get("dataScope")).toBe("all");
+  });
+
+  it("forwards Product Decision search to the backend-supported query contract", async () => {
+    let receivedUrl: URL | null = null;
+
+    server.use(
+      rest.get("/api/analytics/cached/products/decision-center", (req, res, ctx) => {
+        receivedUrl = req.url;
+        return res(ctx.status(200), ctx.json({
+          generatedAtUtc: "2026-07-01T08:00:00Z",
+          periodFromUtc: "2026-06-01T00:00:00Z",
+          periodToUtc: "2026-07-01T00:00:00Z",
+          totalRows: 0,
+          rows: [],
+          meta: { success: true, dataQualityStatus: "insufficient_data" },
+        }));
+      }),
+    );
+
+    await getProductDecisionCenter({
+      fromDate: "2026-06-01T00:00:00Z",
+      toDate: "2026-07-01T00:00:00Z",
+      top: 1200,
+      search: "  TAIL-SKU  ",
+      dataScope: "all",
+    });
+
+    expect(receivedUrl?.searchParams.get("search")).toBe("TAIL-SKU");
+    expect(receivedUrl?.searchParams.get("top")).toBe("1200");
     expect(receivedUrl?.searchParams.get("dataScope")).toBe("all");
   });
 

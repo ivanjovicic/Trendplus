@@ -141,6 +141,7 @@ describe("ProductDecisionCenterPage queue status sync", () => {
     const { unmount } = render(<ProductDecisionCenterPage />);
 
     const input = await screen.findByPlaceholderText("npr. Air, 45123...");
+    fireEvent.change(input, { target: { value: "T" } });
     fireEvent.change(input, { target: { value: "TAIL-SKU" } });
 
     await waitFor(() => {
@@ -148,6 +149,9 @@ describe("ProductDecisionCenterPage queue status sync", () => {
         expect.objectContaining({ search: "TAIL-SKU", top: 1200 }),
       );
     });
+
+    expect(getProductDecisionCenterMock.mock.calls.filter(([options]) => options?.search === "T")).toHaveLength(0);
+    expect(getProductDecisionCenterMock.mock.calls.filter(([options]) => options?.search === "TAIL-SKU")).toHaveLength(1);
 
     unmount();
   });
