@@ -299,8 +299,9 @@ RQ520, RQ522 and RQ498 DONE.
 
 ## RQ524 - Add read-only Supplier analytics reconciliation pack
 
-Status: IN_PROGRESS
-Claimed: 2026-09-30 by ChatGPT connector workspace after exact-main refresh; no rq524 branch/search collision found. Connector-only execution cannot create a filesystem lock, so this canonical IN_PROGRESS state is the exclusive remote claim.
+Status: PARTIAL
+Claimed: 2026-09-30 by ChatGPT connector workspace after exact-main refresh; no rq524 branch/search collision found.
+Progress: read-only reconciliation script and run evidence delivered on main. Deterministic PostgreSQL fixture execution remains required; production reads were not attempted because this prompt requires explicit owner approval.
 Priority: P1
 Type: sql/qa/evidence
 Feature family: supplier-reconciliation-evidence
