@@ -302,7 +302,7 @@ RQ520, RQ522 and RQ498 DONE.
 
 Status: PARTIAL
 Claimed: 2026-09-30 by ChatGPT connector workspace after exact-main refresh; no rq524 branch/search collision found.
-Progress: read-only reconciliation script and run evidence delivered on main; the corrected pack now executes against the shared deterministic seed on local PostgreSQL 16 and returns stable PASS/EXPLAINED evidence with no FAIL. The broader requested reconciliation set remains incomplete. Production/replica execution was not attempted and is outside RQ524; it remains exclusively RQ454/STAB16. Run log: `.ai/runs/2026-09-30-RQ524-evidence.md`; evidence state: pending until delivery verification.
+Progress: read-only reconciliation script and run evidence delivered on main; the corrected pack now executes against the shared deterministic seed on local PostgreSQL 16 and returns stable PASS/EXPLAINED evidence with no FAIL. The broader requested reconciliation set remains incomplete. Production/replica execution was not attempted and is outside RQ524; it remains exclusively RQ454/STAB16. Run log: `.ai/runs/2026-09-30-RQ524-evidence.md`; evidence state: synchronized; main verification: `12eea85eaa49e10add6f7b82e0bbd5e0b2ff9c5a`.
 Priority: P1
 Type: sql/qa/evidence
 Feature family: supplier-reconciliation-evidence
