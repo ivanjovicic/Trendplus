@@ -1109,8 +1109,9 @@ export default function ProductDecisionCenterPage() {
           }
         }
 
-        if (successfulStatuses.length === 0 && hasFailedChunk && queuedActionKeysRef.current == null) {
+        if (successfulStatuses.length === 0 && hasFailedChunk) {
           setQueuedActionKeys(null);
+          setEvidenceSnapshotByProductId({});
         } else {
           setQueuedActionKeys(keys);
         }
@@ -1120,6 +1121,8 @@ export default function ProductDecisionCenterPage() {
         setActionStatusWarning(hasFailedChunk ? buildActionStatusWarning(null) : null);
       } catch (reason) {
         if (!cancelled) {
+          setQueuedActionKeys(null);
+          setEvidenceSnapshotByProductId({});
           setActionStatusWarning(buildActionStatusWarning(reason));
         }
       }

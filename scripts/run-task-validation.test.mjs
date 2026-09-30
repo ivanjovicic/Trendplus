@@ -8,12 +8,15 @@ import { renderEvidence } from "./render-task-validation-evidence.mjs";
 import { runValidationPlan, verifyMain } from "./run-task-validation.mjs";
 
 const node = process.execPath;
+const nodeCommand = process.platform === "win32"
+  ? `"${node.replaceAll('"', '\\"')}"`
+  : node;
 
 test("validation plan preserves pass, fail, timeout, skipped and environment-blocked outcomes", async () => {
   const evidence = await runValidationPlan([
-    { name: "pass", category: "tests", command: `${node} -e "process.exit(0)"` },
-    { name: "fail", category: "tests", command: `${node} -e "process.exit(3)"` },
-    { name: "timeout", category: "build", command: "sleep 1", timeoutMs: 25 },
+    { name: "pass", category: "tests", command: `${nodeCommand} -e "process.exit(0)"` },
+    { name: "fail", category: "tests", command: `${nodeCommand} -e "process.exit(3)"` },
+    { name: "timeout", category: "build", command: `${nodeCommand} -e "setTimeout(() => process.exit(0), 1000)"`, timeoutMs: 25 },
     { name: "skipped", category: "guardrails", skipReason: "not required in this fixture" },
     { name: "blocked", category: "build", environmentBlockedReason: "dotnet unavailable" },
   ], { cwd: process.cwd(), taskId: "fixture" });
@@ -91,7 +94,7 @@ test("CLI writes JSON evidence and exits non-zero for a failed command", async (
     const outputPath = path.join(cwd, "evidence.json");
     await writeFile(planPath, JSON.stringify({
       taskId: "cli-fixture",
-      commands: [{ name: "failure", category: "tests", command: `${node} -e "process.exit(4)"` }],
+      commands: [{ name: "failure", category: "tests", command: `${nodeCommand} -e "process.exit(4)"` }],
     }));
     const result = spawnSync(node, [
       "scripts/run-task-validation.mjs",

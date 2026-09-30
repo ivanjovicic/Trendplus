@@ -111,7 +111,7 @@ public class AnalyticsDecisionRecommendationEngineTests
         Assert.Equal("insufficient_data", res.Status);
         Assert.False(res.RecommendationAllowed);
         Assert.Contains("missing_known_margin_baseline", res.ReasonCodes);
-        Assert.Contains("baseline is missing", res.Summary, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("uporediva osnova poznate marže", res.Summary, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact(DisplayName = "Strong growth + good margin + reliability -> increase_focus")]
