@@ -1642,6 +1642,10 @@ public static class AllEndpoints
                 var comparablePostQuantity = suppliers.Sum(r => r.comparablePostNivelacijeKolicina);
                 var comparableArticleCount = suppliers.Sum(r => r.prePostComparableArticleCount);
                 var totalRevenue = suppliers.Sum(r => r.ukupanPromet);
+                var positiveNetRevenueDenominator = SupplierSharePolicy.ResolveDenominator(suppliers.Select(r => r.ukupanPromet));
+                var positiveNetRevenueDenominatorState = positiveNetRevenueDenominator > 0m
+                    ? SupplierSharePolicy.MeasuredState
+                    : SupplierSharePolicy.NonPositiveDenominatorState;
                 var comparableSignal = AnalyticsNivelacijaSplitPolicy.EvaluateComparableSignal(
                     comparablePreRevenue,
                     comparablePostRevenue,
@@ -1695,9 +1699,12 @@ public static class AllEndpoints
                         : (double?)null,
                     costSourceBasis = "historical_sale_line_then_snapshot_then_product_fallback_then_unavailable",
                     unknownSupplierRevenue = Math.Round(unknownSupplierRevenue, 2),
-                    unknownSupplierRevenueSharePct = totalRevenue > 0m
-                        ? Math.Round((double)(unknownSupplierRevenue / totalRevenue * 100m), 2)
-                        : (double?)null,
+                    unknownSupplierRevenueSharePct = SupplierSharePolicy.Resolve(unknownSupplierRevenue, positiveNetRevenueDenominator).SharePct,
+                    unknownSupplierRevenueShareState = SupplierSharePolicy.Resolve(unknownSupplierRevenue, positiveNetRevenueDenominator).State,
+                    positiveNetRevenueDenominator = positiveNetRevenueDenominator > 0m
+                        ? Math.Round(positiveNetRevenueDenominator, 2)
+                        : (decimal?)null,
+                    positiveNetRevenueDenominatorState,
                     revenueWithNivelacijaSplit = Math.Round(comparableRevenueWithNivelacijaSplit, 2),
                     revenueWithNivelacijaSplitSharePct = totalRevenue > 0m
                         ? Math.Round((double)(comparableRevenueWithNivelacijaSplit / totalRevenue * 100m), 2)
@@ -1744,10 +1751,9 @@ public static class AllEndpoints
                 var suppliersWithRecommendation = suppliers
                     .Select(supplier =>
                     {
-                        var sharePctForDecision = totalRevenue > 0m
-                            ? Math.Round((double)(supplier.ukupanPromet / totalRevenue * 100m), 2)
-                            : 0d;
-                        double? sharePct = totalRevenue > 0m ? sharePctForDecision : null;
+                        var shareEvidence = SupplierSharePolicy.Resolve(supplier.ukupanPromet, positiveNetRevenueDenominator);
+                        var sharePctForDecision = shareEvidence.SharePct ?? 0d;
+                        double? sharePct = shareEvidence.SharePct;
                         double? shareOfMarginContribution = totalMarginContribution > 0m
                             ? Math.Round((double)(supplier.marginContribution / totalMarginContribution * 100m), 2)
                             : null;
@@ -1774,7 +1780,8 @@ public static class AllEndpoints
                             PreviousPeriodUnits: supplier.previousPeriodUnits,
                             HasPreviousPeriodWindow: hasPreviousPeriodWindow,
                             IsNewEntity: isNewSupplier,
-                            UnknownBucketSharePct: unknownSupplierSharePct),
+                            UnknownBucketSharePct: unknownSupplierSharePct,
+                            SharePctAvailable: shareEvidence.IsAvailable),
                             weightedMarginPct,
                             requireComparableSignal: false,
                             applyUnknownShareCriticalGate: false);
@@ -1838,6 +1845,13 @@ public static class AllEndpoints
                             supplier.footwearTypeCount,
                             supplier.footwearBreakdown,
                             sharePct,
+                            sharePctNumerator = shareEvidence.Numerator,
+                            sharePctDenominator = shareEvidence.Denominator > 0m ? shareEvidence.Denominator : (decimal?)null,
+                            sharePctState = shareEvidence.State,
+                            sharePctBasis = SupplierSharePolicy.Basis,
+                            sharePctNumeratorBasis = SupplierSharePolicy.NumeratorBasis,
+                            sharePctDenominatorBasis = SupplierSharePolicy.DenominatorBasis,
+                            sharePctIncludesUnknown = true,
                             shareOfMarginContribution,
                             shareOfProfit = shareOfMarginContribution,
                             shareOfUnits,
@@ -1890,6 +1904,10 @@ public static class AllEndpoints
                 var totals = new
                 {
                     ukupanPromet = totalRevenue,
+                    positiveNetRevenueDenominator = positiveNetRevenueDenominator > 0m
+                        ? Math.Round(positiveNetRevenueDenominator, 2)
+                        : (decimal?)null,
+                    positiveNetRevenueDenominatorState,
                     ukupanMarzniDoprinos = suppliers.Sum(r => r.marginContribution),
                     ukupanTrosak = suppliers.Sum(r => r.totalCost),
                     prosecnaMarza = weightedMarginPct,
@@ -2030,6 +2048,9 @@ public static class AllEndpoints
                         includesUnknown = false,
                         unknownSupplierRevenueSharePct = unknownSupplierSharePct,
                         unknownSupplierRevenueDenominator = "supplier_trust_contract_revenue",
+                        sharePctBasis = SupplierSharePolicy.Basis,
+                        sharePctDenominator = SupplierSharePolicy.DenominatorBasis,
+                        sharePctIncludesUnknown = false,
                         basis = OperationsRecommendationGatePolicy.SupplierTrustProvenance
                     },
                     sezone

@@ -139,7 +139,7 @@ export function calculateSupplierRevenueSharePct(
   revenue: number | null | undefined,
   totalRevenue: number | null | undefined,
 ): number | null {
-  if (!isFiniteMetricNumber(revenue) || !isFiniteMetricNumber(totalRevenue) || totalRevenue <= 0) return null;
+  if (!isFiniteMetricNumber(revenue) || !isFiniteMetricNumber(totalRevenue) || totalRevenue <= 0 || revenue < 0) return null;
   const sharePct = (revenue / totalRevenue) * 100;
   return Number.isFinite(sharePct) ? sharePct : null;
 }
@@ -553,13 +553,21 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     }
     return rankingTotalRevenue;
   }, [rankingTotalRevenue, summary?.totalRevenue]);
+  const positiveNetRevenueDenominator = useMemo(() => {
+    if (isFiniteMetricNumber(summary?.positiveNetRevenueDenominator) && summary!.positiveNetRevenueDenominator > 0) {
+      return summary!.positiveNetRevenueDenominator;
+    }
+    return (ranking?.items ?? []).reduce((sum, item) => sum + (Number.isFinite(item.revenue) && item.revenue > 0 ? item.revenue : 0), 0) || null;
+  }, [ranking?.items, summary?.positiveNetRevenueDenominator]);
 
   const decisionRows = useMemo<DecisionRow[]>(() => {
     const rows = ranking?.items ?? [];
     if (rows.length === 0) return [];
 
     return rows.map((item) => {
-      const sharePct = calculateSupplierRevenueSharePct(item.revenue, totalRevenue);
+      const sharePct = isFiniteMetricNumber(item.sharePct)
+        ? item.sharePct
+        : calculateSupplierRevenueSharePct(item.revenue, positiveNetRevenueDenominator);
       const marginContribution = calculateSupplierMarginContribution(item);
       const qualityTrendPct = calculateSupplierQualityTrendPct(item.fullPriceRevenueShare, item.markdownRevenueShare);
       const confidencePctValue = normalizeRecommendationPct(item.confidenceScore);
@@ -593,7 +601,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
         reasonCodes,
       };
     });
-  }, [ranking?.items, recommendationAllowed, totalRevenue, trustMetadata?.usedFallback]);
+  }, [positiveNetRevenueDenominator, ranking?.items, recommendationAllowed, totalRevenue, trustMetadata?.usedFallback]);
 
   const sortedRows = useMemo(() => {
     const rows = [...decisionRows];
@@ -611,10 +619,14 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
   }, [decisionRows, sortDir, sortField]);
 
   const projectedTop5SharePct = useMemo(() => {
-    if (sortedRows.length === 0 || totalRevenue <= 0) return null;
-    const top5 = [...sortedRows].sort((a, b) => compareFiniteMetrics(b.revenue, a.revenue)).slice(0, 5).reduce((sum, row) => Number.isFinite(row.revenue) ? sum + row.revenue : sum, 0);
-    return (top5 / totalRevenue) * 100;
-  }, [sortedRows, totalRevenue]);
+    if (sortedRows.length === 0 || positiveNetRevenueDenominator == null) return null;
+    const top5 = [...sortedRows]
+      .filter((row) => Number.isFinite(row.revenue) && row.revenue > 0)
+      .sort((a, b) => compareFiniteMetrics(b.revenue, a.revenue))
+      .slice(0, 5)
+      .reduce((sum, row) => sum + row.revenue, 0);
+    return (top5 / positiveNetRevenueDenominator) * 100;
+  }, [positiveNetRevenueDenominator, sortedRows]);
   const top5SharePct = useMemo(() => {
     if (isFiniteMetricNumber(summary?.topFiveRevenueShare) && summary!.topFiveRevenueShare >= 0) {
       return summary!.topFiveRevenueShare * 100;
@@ -857,7 +869,11 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     { key: "observedPeriodTo", label: "Posmatrani period do", value: observedPeriodTo ?? "" },
     { key: "supplierCount", label: "Dobavljača", value: summary?.supplierCount ?? null },
     { key: "capitalAtRisk", label: "Kapital u riziku", value: summary?.capitalAtRisk ?? null },
-  ], [effectivePeriodFrom, effectivePeriodTo, observedPeriodFrom, observedPeriodTo, requestedPeriodFrom, requestedPeriodTo, summary?.capitalAtRisk, summary?.from, summary?.supplierCount, summary?.to]);
+    { key: "shareBasis", label: "Udeo — osnova", value: summary?.shareBasis ?? "positive_net_revenue" },
+    { key: "shareDenominator", label: "Udeo — imenilac", value: summary?.positiveNetRevenueDenominator ?? null },
+    { key: "shareDenominatorState", label: "Stanje share imenioca", value: summary?.shareDenominatorState ?? "unavailable_non_positive_net_revenue" },
+    { key: "shareIncludesUnknown", label: "Nepoznati u share imenicu", value: summary?.shareIncludesUnknown === false ? "ne" : "da" },
+  ], [effectivePeriodFrom, effectivePeriodTo, observedPeriodFrom, observedPeriodTo, requestedPeriodFrom, requestedPeriodTo, summary?.capitalAtRisk, summary?.from, summary?.positiveNetRevenueDenominator, summary?.shareBasis, summary?.shareDenominatorState, summary?.shareIncludesUnknown, summary?.supplierCount, summary?.to]);
 
   const resolvedDecisionColumns = useMemo<AnalyticsTableColumn<DecisionRow>[]>(() => (
     decisionColumns.map((column) => (
@@ -901,6 +917,10 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       totalRevenue,
       totalMarginContribution,
       top5SharePct,
+      shareBasis: summary.shareBasis,
+      shareDenominator: summary.positiveNetRevenueDenominator,
+      shareDenominatorState: summary.shareDenominatorState,
+      shareIncludesUnknown: summary.shareIncludesUnknown,
       fullPriceShareDeltaPctPoints: fullPriceDeltaPctPoints,
       supplierCounts,
       rows: sortedRows,
@@ -925,6 +945,11 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     supplierCounts,
     supplierLabel,
     top5SharePct,
+    positiveNetRevenueDenominator,
+    summary?.positiveNetRevenueDenominator,
+    summary?.shareBasis,
+    summary?.shareDenominatorState,
+    summary?.shareIncludesUnknown,
     totalMarginContribution,
     totalRevenue,
     trustMetadata,

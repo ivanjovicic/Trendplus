@@ -585,14 +585,15 @@ export function buildDecisionSuppliers(data: SupplierSalesStatsResponse | null |
   const suppliers = data?.suppliers ?? [];
   if (suppliers.length === 0) return [];
 
-  const totalRevenue = data?.totals.ukupanPromet ?? suppliers.reduce((sum, item) => sum + item.ukupanPromet, 0);
+  const positiveNetRevenueDenominator = finiteOrNull(data?.totals.positiveNetRevenueDenominator)
+    ?? sumPositiveRevenue(suppliers);
   const totalMarginContribution = data?.totals.ukupanMarzniDoprinos ?? suppliers.reduce((sum, item) => sum + item.marginContribution, 0);
   const totalUnits = data?.totals.ukupnaKolicina ?? suppliers.reduce((sum, item) => sum + item.ukupnaKolicina, 0);
 
   return suppliers.map((supplier) => {
     const sharePct = finiteOrNull(supplier.sharePct)
-      ?? (Number.isFinite(totalRevenue) && totalRevenue > 0 && Number.isFinite(supplier.ukupanPromet)
-        ? finiteOrNull((supplier.ukupanPromet / totalRevenue) * 100)
+      ?? (positiveNetRevenueDenominator != null && Number.isFinite(supplier.ukupanPromet) && supplier.ukupanPromet > 0
+        ? finiteOrNull((supplier.ukupanPromet / positiveNetRevenueDenominator) * 100)
         : null);
     const totalCost = finiteOrNull(supplier.totalCost)
       ?? finiteOrNull(Math.max(0, supplier.revenueWithCost - supplier.marginContribution));
@@ -741,7 +742,7 @@ export function buildSupplierSalesDisplayProjection(
 
   const displayRows = rows.map((row) => ({
     ...row,
-    sharePct: totalRevenueDenominator != null && Number.isFinite(row.ukupanPromet) && row.ukupanPromet >= 0
+    sharePct: totalRevenueDenominator != null && Number.isFinite(row.ukupanPromet) && row.ukupanPromet > 0
       ? finiteOrNull((row.ukupanPromet / totalRevenueDenominator) * 100)
       : null,
     shareOfMarginContribution: totalMarginDenominator != null && Number.isFinite(row.marginContribution)
@@ -1140,9 +1141,9 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     includesUnknown: true,
     basis: "backend_supplier_response",
   };
-  const recommendationReferenceLabel = recommendationReferenceCohort.scope === "all_response_suppliers"
-    ? `Ceo odgovor (${recommendationReferenceCohort.supplierCount} dobavljača; ${recommendationReferenceCohort.includesUnknown ? "uključuje" : "ne uključuje"} nepoznate)`
-    : "Backend referentni skup";
+  const recommendationReferenceLabel = recommendationReferenceCohort.scope === "known_supplier_rows"
+    ? `Poznati dobavljači (${recommendationReferenceCohort.supplierCount}; nepoznati nisu u preporuci)`
+    : `Ceo odgovor (${recommendationReferenceCohort.supplierCount} dobavljača; ${recommendationReferenceCohort.includesUnknown ? "uključuje" : "ne uključuje"} nepoznate)`;
 
   const concentrationData = useMemo(
     () => buildSupplierConcentrationData(concentrationRows),
@@ -1344,6 +1345,10 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
       { key: "displayPopulation", label: "Prikazani skup", value: `${displayPopulationLabel} (${displayProjection.displaySupplierCount})` },
       { key: "referenceCohort", label: "Referentni skup preporuke", value: recommendationReferenceLabel },
+      { key: "shareBasis", label: "Udeo prometa — osnova", value: data?.suppliers?.[0]?.sharePctBasis ?? "positive_net_revenue" },
+      { key: "shareDenominator", label: "Udeo prometa — imenilac", value: data?.suppliers?.[0]?.sharePctDenominatorBasis ?? "positive_net_revenue_declared_population" },
+      { key: "shareIncludesUnknown", label: "Nepoznati u share imenicu", value: data?.suppliers?.[0]?.sharePctIncludesUnknown === false ? "ne" : "da" },
+      { key: "shareDenominatorState", label: "Stanje share imenioca", value: data?.dataQuality.positiveNetRevenueDenominatorState ?? "unavailable_non_positive_net_revenue" },
       { key: "suppliers", label: `Dobavljača (${displayPopulationLabel})`, value: formatMetricDisplayValue({ value: displayProjection.displaySupplierCount, kind: "number", fallback: "Nije dostupno" }) },
       { key: "unknownSuppliers", label: `Nepoznato/N-A (${displayPopulationLabel})`, value: displayProjection.unknownSupplierCount },
       { key: "marginCoverage", label: `${displayPopulationIsFiltered ? "Pokriće istorijskog troška % (ceo odgovor)" : "Pokriće istorijskog troška %"}`, value: fmtPct(data?.dataQuality.historicalCostRevenueSharePct, 1) },
@@ -1366,8 +1371,10 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     ],
     [
       data?.dataQuality,
+      data?.dataQuality.positiveNetRevenueDenominatorState,
       data?.dataQuality.revenueWithNivelacijaSplitSharePct,
       data?.generatedAt,
+      data?.suppliers,
       data?.totals.prePostNivelacijaRevenueImpactPct,
       data?.totals.snapshotCostCoveragePct,
       data?.totals.isSnapshotActive,

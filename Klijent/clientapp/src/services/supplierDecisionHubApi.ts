@@ -109,6 +109,10 @@ export type SummaryResponse = {
   totalRevenue?: number;
   marginContribution?: number | null;
   topFiveRevenueShare?: number | null;
+  positiveNetRevenueDenominator?: number | null;
+  shareDenominatorState?: string | null;
+  shareBasis?: string | null;
+  shareIncludesUnknown?: boolean;
   fullPriceRevenueShare: number;
   fullPriceSellthrough: number;
   markdownRevenueShare: number;
@@ -163,6 +167,11 @@ export type RankingItem = {
   dataQualityStatus?: string | null;
   statusReason?: string | null;
   reasonCodes?: string[] | null;
+  sharePct?: number | null;
+  sharePctState?: string | null;
+  sharePctDenominator?: number | null;
+  sharePctBasis?: string | null;
+  sharePctIncludesUnknown?: boolean;
 };
 
 export type RankingResponse = {

@@ -3,63 +3,27 @@
   "maxEntries": 52,
   "entries": [
     {
-      "file": "src/pages/ExecutiveDecisionBoardPage.tsx",
-      "rule": "recommendationStatus_assign",
-      "line": 436,
-      "reason": "Existing backend status mapping requires a reviewed authority exception."
-    },
-    {
       "file": "src/pages/PreNivelacijaPriorityPage.tsx",
       "rule": "decisionScore_assign",
       "line": 723,
       "reason": "Backend decisionScore is only normalized for display and is exposed only when backend recommendationAllowed === true; gating and non-finite handling are covered by PreNivelacijaPriorityPage.spec."
     },
     {
-      "file": "src/pages/ProductDecisionCenterPage.tsx",
-      "rule": "recommendationStatus_assign",
-      "line": 1800,
-      "reason": "Existing backend status mapping requires a reviewed authority exception."
-    },
-    {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "confidencePct_assign",
-      "line": 1239,
+      "line": 1264,
       "reason": "Existing backend confidence projection requires a reviewed authority exception."
     },
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "reliabilityPct_assign",
-      "line": 1240,
+      "line": 1265,
       "reason": "Existing backend reliability projection requires a reviewed authority exception."
-    },
-    {
-      "file": "src/components/analytics/SupplierDecisionReport.tsx",
-      "rule": "confidencePct_assign",
-      "line": 210,
-      "reason": "Existing report confidence projection requires a reviewed authority exception."
-    },
-    {
-      "file": "src/components/analytics/SupplierDecisionReport.tsx",
-      "rule": "reliabilityPct_assign",
-      "line": 211,
-      "reason": "Existing report reliability projection requires a reviewed authority exception."
-    },
-    {
-      "file": "src/components/supplierDecisionHub/SupplierExplainabilitySnapshot.tsx",
-      "rule": "confidencePct_assign",
-      "line": 146,
-      "reason": "Existing explainability confidence projection requires a reviewed authority exception."
-    },
-    {
-      "file": "src/components/supplierDecisionHub/SupplierExplainabilitySnapshot.tsx",
-      "rule": "reliabilityPct_assign",
-      "line": 151,
-      "reason": "Existing explainability reliability projection requires a reviewed authority exception."
     },
     {
       "file": "src/pages/AnalyticsActionsPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 276,
+      "line": 301,
       "reason": "Existing action metadata fallback requires a reviewed trust-contract exception."
     },
     {
@@ -137,7 +101,7 @@
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 633,
+      "line": 645,
       "reason": "Existing supplier decision fallback requires a reviewed backend-authority exception."
     },
     {
@@ -149,7 +113,7 @@
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "sorted_rows_kpi_reduce",
-      "line": 633,
+      "line": 645,
       "reason": "Existing sorted supplier aggregation requires a reviewed KPI ownership exception."
     },
     {
@@ -173,19 +137,19 @@
     {
       "file": "src/pages/SupplierSalesStatsPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 1864,
+      "line": 1871,
       "reason": "Existing supplier KPI fallback requires a reviewed unavailable-value exception."
     },
     {
       "file": "src/pages/SupplierSalesStatsPage.tsx",
       "rule": "refetch_setData_null",
-      "line": 890,
+      "line": 891,
       "reason": "Supplier scope changes must clear stale rows and trust metadata before the next scope-bound request completes."
     },
     {
       "file": "src/pages/SupplierSalesStatsPage.tsx",
       "rule": "page_reduce_kpi",
-      "line": 588,
+      "line": 590,
       "reason": "Existing supplier aggregation predates the backend KPI ownership contract."
     },
     {
@@ -239,7 +203,7 @@
     {
       "file": "src/services/analyticsApi.ts",
       "rule": "swallowed_fetch_failure",
-      "line": 454,
+      "line": 455,
       "reason": "Existing API fallback wrapper requires a reviewed compatibility exception."
     },
     {

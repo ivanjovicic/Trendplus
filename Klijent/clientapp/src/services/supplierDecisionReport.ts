@@ -86,6 +86,10 @@ export type SupplierDecisionReportBuildInput = {
   totalRevenue: number;
   totalMarginContribution: number | null;
   top5SharePct: number | null;
+  shareBasis?: string | null;
+  shareDenominator?: number | null;
+  shareDenominatorState?: string | null;
+  shareIncludesUnknown?: boolean;
   fullPriceShareDeltaPctPoints?: number | null;
   supplierCounts: {
     boost: number;
@@ -256,6 +260,13 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     buildSectionRow("KPI", "Sigurnost signala", formatMetricDisplayValue({ value: avgConfidencePct, kind: "percent" }), "", numericStateLimitation("sigurnost signala", confidenceEvidenceState)),
     buildSectionRow("KPI", "Pouzdanost signala", formatMetricDisplayValue({ value: avgReliabilityPct, kind: "percent" }), "", numericStateLimitation("pouzdanost signala", reliabilityEvidenceState)),
     buildSectionRow("KPI", "Top 5 udeo", formatMetricDisplayValue({ value: input.top5SharePct, kind: "percent" }), "", ""),
+    buildSectionRow(
+      "KPI",
+      "Udeo — osnova",
+      input.shareBasis ?? "positive_net_revenue",
+      input.shareDenominator == null ? "Nije dostupno" : fmtRsd(input.shareDenominator),
+      `Imenilac: ${input.shareDenominatorState ?? "unavailable_non_positive_net_revenue"}; nepoznati dobavljači: ${input.shareIncludesUnknown === false ? "isključeni" : "uključeni"}.`,
+    ),
     buildSectionRow(
       "KPI",
       "Promena udela pune cene",

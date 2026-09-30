@@ -218,6 +218,23 @@ public sealed class SupplierDecisionHubContractTests
     }
 
     [Fact]
+    public void BuildSummaryResponse_KeepsNegativeRowsVisibleButUsesPositiveShareDenominator()
+    {
+        var response = SupplierDecisionHubEndpoints.BuildSummaryResponse(
+            Dataset(
+                Row(1, "Positive", revenue: 125m),
+                Row(2, "Returns", revenue: -25m)),
+            Filters90Days());
+
+        Assert.Equal(2, response.SupplierCount);
+        Assert.Equal(100m, response.PositiveNetRevenueDenominator);
+        Assert.Equal("measured", response.ShareDenominatorState);
+        Assert.Equal("positive_net_revenue", response.ShareBasis);
+        Assert.False(response.ShareIncludesUnknown);
+        Assert.Equal(1m, response.TopFiveRevenueShare);
+    }
+
+    [Fact]
     public void SupplierHeaderDto_ExposesRecommendationTrustPayload()
     {
         var header = new SupplierHeaderDto(

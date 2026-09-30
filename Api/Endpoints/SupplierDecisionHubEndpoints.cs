@@ -295,6 +295,7 @@ public static class SupplierDecisionHubEndpoints
                         var ordered = ApplyRankingSort(dataset.Rows, normalizedSortBy, normalizedSortDir).ToList();
                         var orderedDataset = dataset with { Rows = ordered };
                         var trustMetadata = BuildScorecardTrustMetadata(orderedDataset, activeFilters);
+                        var positiveNetRevenueDenominator = SupplierSharePolicy.ResolveDenominator(ordered.Select(x => x.Revenue));
                         var paged = ordered
                             .Skip((page - 1) * pageSize)
                             .Take(pageSize)
@@ -317,7 +318,16 @@ public static class SupplierDecisionHubEndpoints
                                 x.ReliabilityPct,
                                 x.DataQualityStatus,
                                 x.StatusReason,
-                                x.ReasonCodes))
+                                x.ReasonCodes)
+                            {
+                                SharePct = SupplierSharePolicy.Resolve(x.Revenue, positiveNetRevenueDenominator).SharePct is { } sharePct
+                                    ? (decimal?)sharePct
+                                    : null,
+                                SharePctState = SupplierSharePolicy.Resolve(x.Revenue, positiveNetRevenueDenominator).State,
+                                SharePctDenominator = positiveNetRevenueDenominator > 0m ? positiveNetRevenueDenominator : null,
+                                SharePctBasis = SupplierSharePolicy.Basis,
+                                SharePctIncludesUnknown = false
+                            })
                             .ToList();
 
                         return new RankingResponse(
@@ -911,12 +921,14 @@ public static class SupplierDecisionHubEndpoints
         var totalUnits = rows.Sum(x => x.Units);
         var fullPriceBase = rows.Sum(x => x.Revenue * x.FullPriceRevenueShare);
         var marginContribution = rows.Sum(x => x.Revenue * x.PreMarkdownMarginPct * x.FullPriceRevenueShare);
-        var topFiveRevenueShare = totalRevenue <= 0
-            ? 0m
+        var positiveNetRevenueDenominator = SupplierSharePolicy.ResolveDenominator(rows.Select(x => x.Revenue));
+        decimal? topFiveRevenueShare = positiveNetRevenueDenominator <= 0
+            ? null
             : rows
+                .Where(x => x.Revenue > 0m)
                 .OrderByDescending(x => x.Revenue)
                 .Take(5)
-                .Sum(x => x.Revenue) / totalRevenue;
+                .Sum(x => x.Revenue) / positiveNetRevenueDenominator;
 
         var topGrow = rows
             .Where(x => x.RecommendationCode is "EXPAND" or "EXPAND_SELECTIVELY")
@@ -983,7 +995,13 @@ public static class SupplierDecisionHubEndpoints
         {
             TotalRevenue = Round2(totalRevenue),
             MarginContribution = Round2(marginContribution),
-            TopFiveRevenueShare = Round4(topFiveRevenueShare),
+            TopFiveRevenueShare = topFiveRevenueShare.HasValue ? Round4(topFiveRevenueShare.Value) : null,
+            PositiveNetRevenueDenominator = positiveNetRevenueDenominator > 0m ? Round2(positiveNetRevenueDenominator) : null,
+            ShareDenominatorState = positiveNetRevenueDenominator > 0m
+                ? SupplierSharePolicy.MeasuredState
+                : SupplierSharePolicy.NonPositiveDenominatorState,
+            ShareBasis = SupplierSharePolicy.Basis,
+            ShareIncludesUnknown = false,
         };
     }
 
@@ -2533,13 +2551,9 @@ public static class SupplierDecisionHubEndpoints
             return (rows, 0);
         }
 
-        var excluded = rows.Count(x => x.Revenue <= 0);
-        if (excluded == 0)
-        {
-            return (rows, 0);
-        }
-
-        return (rows.Where(x => x.Revenue > 0).ToList(), excluded);
+        // Negative and returns-only supplier rows remain visible. Their positive
+        // concentration share is explicitly unavailable through SupplierSharePolicy.
+        return (rows, 0);
     }
 
     private static string ResolveCorrelationId(HttpContext httpContext)
@@ -4379,6 +4393,10 @@ public sealed record SummaryResponse(
     public decimal? TotalRevenue { get; init; }
     public decimal? MarginContribution { get; init; }
     public decimal? TopFiveRevenueShare { get; init; }
+    public decimal? PositiveNetRevenueDenominator { get; init; }
+    public string? ShareDenominatorState { get; init; }
+    public string? ShareBasis { get; init; }
+    public bool ShareIncludesUnknown { get; init; }
 }
 
 public sealed record ScorecardTrustMetadata(
@@ -4483,7 +4501,14 @@ public sealed record RankingItem(
     decimal ReliabilityPct,
     string DataQualityStatus,
     string StatusReason,
-    IReadOnlyList<string> ReasonCodes);
+    IReadOnlyList<string> ReasonCodes)
+{
+    public decimal? SharePct { get; init; }
+    public string? SharePctState { get; init; }
+    public decimal? SharePctDenominator { get; init; }
+    public string? SharePctBasis { get; init; }
+    public bool SharePctIncludesUnknown { get; init; }
+}
 
 public sealed record SupplierDecisionDetailsResponse(
     SupplierHeaderDto SupplierHeader,

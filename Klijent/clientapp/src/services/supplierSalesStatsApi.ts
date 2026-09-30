@@ -91,7 +91,14 @@ export interface SupplierSalesStat {
   primaryFootwearTypeSharePct?: number;
   footwearTypeCount?: number;
   footwearBreakdown?: SupplierFootwearBreakdown[];
-  sharePct?: number;
+  sharePct?: number | null;
+  sharePctNumerator?: number | null;
+  sharePctDenominator?: number | null;
+  sharePctState?: string | null;
+  sharePctBasis?: string | null;
+  sharePctNumeratorBasis?: string | null;
+  sharePctDenominatorBasis?: string | null;
+  sharePctIncludesUnknown?: boolean;
   shareOfMarginContribution?: number | null;
   /** @deprecated Use shareOfMarginContribution. */
   shareOfProfit?: number;
@@ -105,6 +112,8 @@ export interface SupplierSalesStat {
 
 export interface SupplierSalesTotals {
   ukupanPromet: number;
+  positiveNetRevenueDenominator?: number | null;
+  positiveNetRevenueDenominatorState?: string | null;
   ukupanMarzniDoprinos: number;
   ukupanTrosak?: number;
   prosecnaMarza: number | null;
@@ -175,14 +184,20 @@ export interface SupplierSalesDataQuality {
   costSourceBasis?: string | null;
   unknownSupplierRevenue: number;
   unknownSupplierRevenueSharePct: number | null;
+  unknownSupplierRevenueShareState?: string | null;
+  positiveNetRevenueDenominator?: number | null;
+  positiveNetRevenueDenominatorState?: string | null;
   revenueWithNivelacijaSplit: number;
   revenueWithNivelacijaSplitSharePct: number | null;
 }
 
 export interface SupplierSalesRecommendationReferenceCohort {
-  scope: "all_response_suppliers";
+  scope: "all_response_suppliers" | "known_supplier_rows";
   supplierCount: number;
   includesUnknown: boolean;
+  sharePctBasis?: string;
+  sharePctDenominator?: string;
+  sharePctIncludesUnknown?: boolean;
   basis: string;
 }
 
