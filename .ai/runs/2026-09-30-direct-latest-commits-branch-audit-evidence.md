@@ -4,9 +4,9 @@ Date: 2026-09-30
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main; no PR
-Main commit SHA: 13a01ebdf9f7c74acac5b4e32ef7e8a0444ca2bd
-Main verification: pending push; local main contains the fix commit and the latest merged origin/main supplier audit work
-Evidence state: synchronized
+Main commit SHA: 17a685070a7a0fd68d5c58f5406d4f74fd87ec3b
+Main verification: pushed and verified; `origin/main` matched `17a685070a7a0fd68d5c58f5406d4f74fd87ec3b` after push and contains the RQ520 fix commit, the superseded RQ518 branch merge and `origin/cursor/rq518-mv-capability-51d0` ancestry
+Evidence state: post-push verification synchronized
 
 ## What was done
 - Audited commits after the previous delivered RQ517 state, including RQ518, RQ519, RQ520, RQ524 and RQ525 Supplier analytics work that landed on `origin/main`.
@@ -29,6 +29,11 @@ Evidence state: synchronized
 - `git merge --ff-only origin/main` -> pass before local audit work
 - `git merge --no-ff origin/main` -> pass after remote advanced with RQ520/RQ525 work
 - `git merge-base --is-ancestor origin/cursor/rq518-mv-capability-51d0 HEAD` -> pass after the ours merge
+- `git push origin main` -> pass, `f187d59e..17a68507 main -> main`
+- `git rev-parse HEAD` and `git rev-parse origin/main` after push -> both `17a685070a7a0fd68d5c58f5406d4f74fd87ec3b`
+- `git merge-base --is-ancestor 13a01ebdf9f7c74acac5b4e32ef7e8a0444ca2bd origin/main` -> pass
+- `git merge-base --is-ancestor 58c9c6817d90a09ef8599164daac46bf5925c106 origin/main` -> pass
+- `git merge-base --is-ancestor origin/cursor/rq518-mv-capability-51d0 origin/main` -> pass
 - `dotnet test Api.Tests/Api.Tests.csproj --filter "FullyQualifiedName~SupplierDecisionMaterializedViewCapabilityTests|FullyQualifiedName~SupplierDecisionSchemaSqlTests|FullyQualifiedName~SupplierDecisionSchemaReadinessIntegrationTests|FullyQualifiedName~DatabaseMigrationBootstrapLifecycleSmokeTests" --no-restore` -> pass, 47 passed / 0 failed / 0 skipped
 - `dotnet test Api.Tests/Api.Tests.csproj --filter "FullyQualifiedName~VendorSalesNivelacijaPriceChangeEffectPolicyTests|FullyQualifiedName~SupplierDecisionSchemaSqlTests|FullyQualifiedName~SupplierDecisionSchemaReadinessIntegrationTests|FullyQualifiedName~DatabaseMigrationBootstrapLifecycleSmokeTests" --no-restore` -> pass, 56 passed / 0 failed / 0 skipped
 - `dotnet build Trendplus2.Backend.slnf --no-restore` -> pass, 0 warnings / 0 errors
@@ -44,7 +49,7 @@ Evidence state: synchronized
 - `node scripts/check-planning-architecture.mjs --self-test` -> pass
 - `node scripts/check-planning-architecture.mjs` -> pass, 78 planning tasks
 - `git diff --check` -> pass; CRLF warnings only
-- `gh run list --branch main --limit 10 --json ...` -> inspected before local push; latest pre-audit Planning Governance runs for RQ524 were green, and earlier RQ519/RQ525 Analytics/Planning runs were green or superseded/cancelled by newer pushes.
+- `gh run list --branch main --limit 10 --json ...` -> inspected after push; current `Analytics Quality Gates` run `36765810848` for `17a685070a7a0fd68d5c58f5406d4f74fd87ec3b` was `in_progress`, while the previous red `f187d59e` runs are superseded by the pushed RQ520 fix.
 
 ## Validation not run
 - Docker-backed manual RQ524 PostgreSQL container execution -> not run locally because Docker CLI is installed but the Docker Desktop Linux engine pipe is unavailable.
@@ -64,4 +69,4 @@ Evidence state: synchronized
 - Future local repetition of Docker-backed proof needs a running Docker daemon, not just Docker CLI availability.
 
 ## Next
-- Push local `main` and verify `origin/main` contains the fix commit and superseded-branch merge ancestry.
+- No repository-local follow-up remains after the final evidence synchronization push; final response records the latest `origin/main` SHA.
