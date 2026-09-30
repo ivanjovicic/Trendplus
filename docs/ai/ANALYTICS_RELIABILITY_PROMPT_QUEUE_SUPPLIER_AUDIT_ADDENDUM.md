@@ -83,7 +83,7 @@ None; RQ475 consumes the corrected readiness states.
 Status: PARTIAL
 Ready after: RQ518 DONE (satisfied 2026-09-30)
 Claimed: 2026-09-30 by ChatGPT on `cursor/rq519-nivelacija-lifecycle-78b0`; delivered as PARTIAL pending focused test execution after the unrelated baseline compile failure is repaired.
-Progress: startup now uses data-only nivelacija normalization, keeps Analytics 014 as the canonical view owner, rechecks and repairs 016 control/DiD dependencies after destructive view scripts, and bounds scoped sales aggregation to the selected event windows. PostgreSQL 16.15 fixture execution passed repeated canonical sequence, destructive dependency repair, and final relation readiness. Run log: `.ai/runs/2026-09-30-RQ519-evidence.md`; evidence state: pending until delivery verification.
+Progress: startup now uses data-only nivelacija normalization, keeps Analytics 014 as the canonical view owner, rechecks and repairs 016 control/DiD dependencies after destructive view scripts, and bounds scoped sales aggregation to the selected event windows. PostgreSQL 16.15 fixture execution passed repeated canonical sequence, destructive dependency repair, and final relation readiness. Run log: `.ai/runs/2026-09-30-RQ519-evidence.md`; evidence state: synchronized; main verification: `c8a7e1fe602f6ad8f4ae2a6ab9b557611ddf0153`.
 Priority: P1
 Type: backend/sql/startup/tests
 Feature family: supplier-nivelacija-schema-lifecycle
