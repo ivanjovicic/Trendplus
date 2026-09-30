@@ -9,6 +9,7 @@ export default function DecisionPulsePage() {
   const [feed, setFeed] = useState<DecisionPulseResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -38,9 +39,12 @@ export default function DecisionPulsePage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadToken]);
 
   const metaFailed = feed?.meta?.success === false;
+  const metaPartial = !metaFailed && (
+    feed?.meta?.isPartial === true || Boolean(feed?.meta?.warningCode)
+  );
   const items = feed?.items ?? [];
   const metaMessage = getAnalyticsMetaMessage(feed?.meta);
 
@@ -59,6 +63,28 @@ export default function DecisionPulsePage() {
           </div>
         </div>
       </header>
+
+      {!error && !metaFailed && metaPartial ? (
+        <div
+          className="rounded-2xl border border-amber-500/50 bg-amber-50/60 px-4 py-5 text-sm text-amber-950 dark:bg-amber-950/20 dark:text-amber-100"
+          role="alert"
+          data-testid="decision-pulse-partial-warning"
+        >
+          <div className="font-semibold">Decision Pulse je delimično dostupan</div>
+          <div className="mt-1">{metaMessage ?? "Jedan ili više Pulse izvora trenutno nisu dostupni."}</div>
+          <div className="mt-1 text-xs">
+            Potisnuto kandidata: {feed?.suppressedCount ?? 0}. Prikazani podaci mogu biti nepotpuni.
+          </div>
+          <button
+            type="button"
+            className="mt-3 rounded-lg border border-current px-3 py-1.5 text-xs font-semibold"
+            onClick={() => setReloadToken((current) => current + 1)}
+            disabled={loading}
+          >
+            Ponovo učitaj Decision Pulse
+          </button>
+        </div>
+      ) : null}
 
       {error || metaFailed ? (
         <div
@@ -104,6 +130,7 @@ export default function DecisionPulsePage() {
           ))}
         </div>
       )}
+
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import * as decisionPulseApi from "../../services/decisionPulseApi";
@@ -103,5 +103,92 @@ describe("DecisionPulsePage", () => {
 
     expect(await screen.findByText(/Prazan rezultat nije greška/i)).toBeInTheDocument();
     expect(screen.queryByText("[object Object]")).not.toBeInTheDocument();
+  });
+
+  it("shows a partial warning and retry for an empty partial feed", async () => {
+    const getDecisionPulse = vi.spyOn(decisionPulseApi, "getDecisionPulse")
+      .mockResolvedValueOnce({
+        generatedAtUtc: "2026-08-20T12:00:00Z",
+        periodFromUtc: null,
+        periodToUtc: null,
+        tenantScope: "n/a_dedicated",
+        suppressedCount: 124,
+        items: [],
+        meta: {
+          success: true,
+          isPartial: true,
+          warningCode: "PULSE_PARTIAL",
+          warningMessage: "Supplier decision hub nije dostupan.",
+        },
+      })
+      .mockResolvedValueOnce({
+        generatedAtUtc: "2026-08-20T12:00:00Z",
+        periodFromUtc: null,
+        periodToUtc: null,
+        tenantScope: "n/a_dedicated",
+        suppressedCount: 0,
+        items: [],
+        meta: {
+          success: true,
+          emptyReason: "no_pulse_items",
+          message: "Nema Decision Pulse izuzetaka za period.",
+        },
+      });
+
+    render(
+      <MemoryRouter>
+        <DecisionPulsePage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId("decision-pulse-partial-warning")).toHaveTextContent("Supplier decision hub nije dostupan.");
+    expect(screen.getByTestId("decision-pulse-partial-warning")).toHaveTextContent("Potisnuto kandidata: 124");
+
+    fireEvent.click(screen.getByRole("button", { name: "Ponovo učitaj Decision Pulse" }));
+
+    await waitFor(() => expect(getDecisionPulse).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.queryByTestId("decision-pulse-partial-warning")).not.toBeInTheDocument());
+    expect(screen.getByText(/Prazan rezultat nije greška/i)).toBeInTheDocument();
+  });
+
+  it("keeps populated items visible while showing the partial warning", async () => {
+    vi.spyOn(decisionPulseApi, "getDecisionPulse").mockResolvedValue({
+      generatedAtUtc: "2026-08-20T12:00:00Z",
+      periodFromUtc: null,
+      periodToUtc: null,
+      tenantScope: "n/a_dedicated",
+      suppressedCount: 3,
+      items: [{
+        id: "supplier-1",
+        sourceType: "supplier",
+        sourceKey: "supplier:1",
+        title: "Dobavljač zahteva proveru",
+        whySummary: "Izvor je delimično dostupan.",
+        reasonCodes: ["supplier_partial"],
+        recommendationStatus: "review",
+        recommendationLabel: "Proveri",
+        dataQualityStatus: "warning",
+        inputFreshnessStatus: "stale",
+        deepLink: "/analytics/supplier",
+        generatedAtUtc: "2026-08-20T12:00:00Z",
+        tenantScope: "n/a_dedicated",
+      }],
+      meta: {
+        success: true,
+        isPartial: true,
+        warningCode: "PULSE_PARTIAL",
+        warningMessage: "Supplier decision hub nije dostupan.",
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <DecisionPulsePage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId("decision-pulse-partial-warning")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Dobavljač zahteva proveru" })).toBeInTheDocument();
+    expect(screen.getByText("Izvor je delimično dostupan.")).toBeInTheDocument();
   });
 });
