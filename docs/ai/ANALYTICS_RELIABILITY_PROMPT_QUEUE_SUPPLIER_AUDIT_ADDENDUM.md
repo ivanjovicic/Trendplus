@@ -3,9 +3,9 @@
 Date: 2026-09-30
 Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
-Current READY prompt: RQ520
-Additional READY prompts: RQ526
-Queue reconciliation 2026-09-30: RQ518, RQ519 and RQ525 are DONE. RQ519 closure combines the earlier nivelacija lifecycle repair and SQL changed-history fixture with Testcontainers-backed `DatabaseMigrationBootstrapLifecycleSmokeTests` repeated-start proof. RQ525 closure adds observed `SupplierDecisionSchemaReadinessIntegrationTests` execution on Docker/Testcontainers. RQ524 remains PARTIAL after fifteen-check fixture-backed reconciliation evidence; production execution remains RQ454/STAB16. Dependency-complete successors `RQ520` and `RQ526` are READY. RQ519-RQ532 otherwise remain sequenced/owner-gated as declared below.
+Current READY prompt: RQ526
+Additional READY prompts: none (RQ526 primary)
+Queue reconciliation 2026-09-30: RQ520 DONE — assortment vendor-sales-nivelacija uses dedicated price-change effect policy (non-actionable), mature-post zero semantics, aligned vendor change totals, and Supplier Footwear labels decoupled from Supplier PoP. RQ518, RQ519 and RQ525 are DONE.
 
 This addendum registers only non-duplicate Supplier follow-ups after second-pass source verification. Existing RQ474, RQ475 and RQ487 remain authoritative for overview error/readiness/query-cost work. RQ517 is already DONE for Daily Sales and is not reused.
 
@@ -126,8 +126,9 @@ RQ518 DONE; RQ525 is preferred proof and may develop in parallel.
 
 ## RQ520 - Separate Assortment price-change effect from Supplier PoP recommendation semantics
 
-Status: READY
+Status: DONE
 Ready after: RQ519 DONE (satisfied 2026-09-30)
+Delivered: 2026-09-30 — dedicated `VendorSalesNivelacijaPriceChangeEffectPolicy`; endpoint aggregates mature comparable cohort; response `recommendationAllowed=false`; Supplier Footwear effect labels.
 Priority: P1
 Type: backend/frontend/sql/tests
 Feature family: supplier-assortment-price-change-semantics

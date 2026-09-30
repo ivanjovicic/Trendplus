@@ -40,6 +40,8 @@ public sealed class VendorSalesNivelacijaArticleStatDto
     public string? RevenueBaselineReason { get; set; }
     public decimal? SemanticChangePercentRevenue { get; set; }
     public decimal? SemanticChangePercentQty { get; set; }
+    public bool IsPostWindowMature { get; set; }
+    public int PostWindowDaysElapsed { get; set; }
 
     // --- Advanced metrics ---
     public decimal? Rolling7dPreRevenue { get; set; }
@@ -88,6 +90,8 @@ public sealed class VendorSalesNivelacijaVendorStatDto
     public double? ReliabilityPct { get; set; }
     public bool HasComparableSalesWindow { get; set; }
     public int ComparableArticleCount { get; set; }
+    public decimal? SemanticChangePercentRevenue { get; set; }
+    public decimal? SemanticChangePercentQty { get; set; }
     public string? PrimaryFootwearType { get; set; }
     public decimal? PrimaryFootwearTypeSharePercent { get; set; }
     public decimal? PrimaryFootwearTypeAvgElasticity { get; set; }

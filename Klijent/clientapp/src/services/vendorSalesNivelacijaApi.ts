@@ -8,7 +8,7 @@ import {
 const REQUEST_TIMEOUT_MS = 60_000;
 
 export interface VendorSalesNivelacijaRecommendation {
-    status: "increase_focus" | "maintain" | "review" | "do_not_trust" | "insufficient_data";
+    status: "effective" | "neutral" | "ineffective" | "immature" | "insufficient_data";
     label: string;
     summary: string;
     confidencePct: number | null;

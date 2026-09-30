@@ -57,15 +57,16 @@ type DecisionVendor = VendorSalesNivelacijaVendorStat & {
   confidencePct: number | null;
   recommendationAllowed: boolean;
   status: DecisionStatus;
+  statusLabel: string;
   statusReason: string;
 };
 
 const STATUS_PRIORITY: Record<DecisionStatus, number> = {
-  increase_focus: 5,
-  maintain: 4,
-  review: 3,
-  insufficient_data: 2,
-  do_not_trust: 1,
+  effective: 5,
+  neutral: 4,
+  ineffective: 3,
+  immature: 2,
+  insufficient_data: 1,
 };
 
 function comparableMetric(value: number | null | undefined, comparable: boolean): number | null {
@@ -84,7 +85,7 @@ export const decisionColumns: AnalyticsTableColumn<DecisionVendor>[] = [
   { key: "topFootwearType", header: "Glavni tip", dataType: "text" },
   { key: "topFootwearTypeSharePct", header: "Udeo tipa %", dataType: "percent" },
   { key: "trendPct", header: "Trend %", dataType: "percent" },
-  { key: "status", header: "Preporuka", dataType: "text" },
+  { key: "status", header: "Efekat promene cene", dataType: "text" },
   { key: "confidencePct", header: "Poverenje %", dataType: "percent", getValue: (row) => row.recommendationAllowed ? row.confidencePct : null },
 ];
 
@@ -108,16 +109,17 @@ function fmtElasticity(value: number | null | undefined): string {
 }
 function sortMarker(field: SortField, activeField: SortField, dir: SortDir): string { if (field !== activeField) return ""; return dir === "asc" ? " ^" : " v"; }
 function statusClass(status: DecisionStatus): string {
-  if (status === "increase_focus") return "sf-decision-status status-boost";
-  if (status === "review" || status === "insufficient_data") return "sf-decision-status status-review";
-  if (status === "do_not_trust") return "sf-decision-status status-reduce";
+  if (status === "effective") return "sf-decision-status status-boost";
+  if (status === "ineffective" || status === "insufficient_data") return "sf-decision-status status-reduce";
+  if (status === "immature") return "sf-decision-status status-review";
   return "sf-decision-status status-keep";
 }
-function statusDisplayLabel(status: DecisionStatus): string {
-  if (status === "increase_focus") return "Pojačaj fokus";
-  if (status === "maintain") return "Zadrži";
-  if (status === "review") return "Proveri";
-  if (status === "do_not_trust") return "Ne veruj";
+function statusDisplayLabel(status: DecisionStatus, backendLabel?: string | null): string {
+  if (backendLabel?.trim()) return backendLabel.trim();
+  if (status === "effective") return "Efekat pozitivan";
+  if (status === "neutral") return "Efekat neutralan";
+  if (status === "ineffective") return "Efekat slab";
+  if (status === "immature") return "Prozor u toku";
   return "Nedovoljno podataka";
 }
 function trendClass(value: number | null | undefined): string {
@@ -129,6 +131,7 @@ function trendClass(value: number | null | undefined): string {
 
 type StatusTooltipData = {
   status: DecisionStatus;
+  statusLabel: string;
   statusReason: string;
   sharePct: number | null;
   trendPct: number | null;
@@ -143,7 +146,7 @@ function buildStatusTooltip(data: StatusTooltipData): string {
   const trust = data.recommendationAllowed
     ? ` | Pouzdanost ${formatMetricDisplayValue({ value: data.reliabilityPct, kind: "percent", digits: 0 })} | Poverenje ${formatMetricDisplayValue({ value: data.confidencePct, kind: "percent", digits: 0 })}`
     : " | Pouzdanost Nije dostupno | Poverenje Nije dostupno";
-  return `${statusDisplayLabel(data.status)}: ${data.statusReason} | Udeo ${formatMetricDisplayValue({ value: data.sharePct, kind: "percent" })} | Trend ${fmtSignedPct(data.trendPct, 1)} | Tip ${data.topFootwearType} (${formatMetricDisplayValue({ value: data.topFootwearTypeSharePct, kind: "percent" })})${trust}`;
+  return `${statusDisplayLabel(data.status, data.statusLabel)}: ${data.statusReason} | Udeo ${formatMetricDisplayValue({ value: data.sharePct, kind: "percent" })} | Trend ${fmtSignedPct(data.trendPct, 1)} | Tip ${data.topFootwearType} (${formatMetricDisplayValue({ value: data.topFootwearTypeSharePct, kind: "percent" })})${trust}`;
 }
 const TYPE_INSIGHT_VISIBLE_CATEGORY_LIMIT = 8;
 
@@ -514,6 +517,7 @@ export default function SupplierFootwearAnalyticsPage({
         confidencePct: recommendationAllowed ? normalizeMetricNumber(recommendation.confidencePct) : null,
         recommendationAllowed,
         status: recommendation.status,
+        statusLabel: recommendation.label,
         statusReason: recommendation.summary,
       }];
     });
@@ -572,10 +576,10 @@ export default function SupplierFootwearAnalyticsPage({
     return `${topType.name} (${fmtPct(topType.sharePct, 1)})`;
   }, [typeInsights.globalTypeShare]);
   const vendorCounts = useMemo(() => ({
-    increaseFocus: sortedRows.filter((row) => row.status === "increase_focus").length,
-    maintain: sortedRows.filter((row) => row.status === "maintain").length,
-    review: sortedRows.filter((row) => row.status === "review").length,
-    doNotTrust: sortedRows.filter((row) => row.status === "do_not_trust").length,
+    effective: sortedRows.filter((row) => row.status === "effective").length,
+    neutral: sortedRows.filter((row) => row.status === "neutral").length,
+    ineffective: sortedRows.filter((row) => row.status === "ineffective").length,
+    immature: sortedRows.filter((row) => row.status === "immature").length,
     insufficientData: sortedRows.filter((row) => row.status === "insufficient_data").length,
   }), [sortedRows]);
   const selectedRow = useMemo(() => (!expandedVendorKey ? null : sortedRows.find((row) => row.vendorRowKey === expandedVendorKey) ?? null), [expandedVendorKey, sortedRows]);
@@ -933,7 +937,7 @@ export default function SupplierFootwearAnalyticsPage({
                 truncationLabel={showMetaWarning ? "Delimičan signal" : "Pregled prioriteta"}
               >
               <div className="sf-decision-table-head">
-                <div><h2>Prioritetna lista dobavljača</h2><p>Pojačaj: {vendorCounts.increaseFocus} | Zadrži: {vendorCounts.maintain} | Proveri: {vendorCounts.review} | Ne veruj: {vendorCounts.doNotTrust} | Nedovoljno: {vendorCounts.insufficientData}</p></div>
+                <div><h2>Prioritetna lista dobavljača</h2><p>Pozitivan efekat: {vendorCounts.effective} | Neutralan: {vendorCounts.neutral} | Slab: {vendorCounts.ineffective} | U toku: {vendorCounts.immature} | Nedovoljno: {vendorCounts.insufficientData}</p></div>
                 <AnalyticsTableToolbar tableKey="dobavljaci-tipovi-obuce" tableTitle="Dobavljači i tipovi obuće" columns={decisionColumns} rows={sortedRows} filters={toolbarFilters} metadata={toolbarMetadata} defaultOrientation="landscape" />
               </div>
               <div className="sf-decision-table-wrap">
@@ -945,7 +949,7 @@ export default function SupplierFootwearAnalyticsPage({
                       <th className="align-right"><button type="button" onClick={() => handleSort("sharePct")}>Udeo{sortMarker("sharePct", sortField, sortDir)}</button></th>
                       <th><button type="button" onClick={() => handleSort("topFootwearType")}>Glavni tip{sortMarker("topFootwearType", sortField, sortDir)}</button></th>
                       <th className="align-right"><button type="button" onClick={() => handleSort("trendPct")}>Trend{sortMarker("trendPct", sortField, sortDir)}</button></th>
-                      <th><button type="button" onClick={() => handleSort("status")}>Preporuka{sortMarker("status", sortField, sortDir)}</button></th>
+                      <th><button type="button" onClick={() => handleSort("status")}>Efekat promene cene{sortMarker("status", sortField, sortDir)}</button></th>
                       <th className="align-center">Detalj</th>
                     </tr>
                   </thead>
@@ -964,7 +968,7 @@ export default function SupplierFootwearAnalyticsPage({
                             <td className={`align-right ${trendClass(row.trendPct)}`}>{fmtSignedPct(row.trendPct, 2)}</td>
                             <td>
                               <div className="sf-status-stack">
-                                <span className={statusClass(row.status)} title={buildStatusTooltip(row)} aria-label={buildStatusTooltip(row)}>{statusDisplayLabel(row.status)}</span>
+                                <span className={statusClass(row.status)} title={buildStatusTooltip(row)} aria-label={buildStatusTooltip(row)}>{statusDisplayLabel(row.status, row.statusLabel)}</span>
                                 {row.statusReason ? (
                                   <span className="sf-status-reason" title={row.statusReason}>
                                     <strong>Razlog:</strong> {row.statusReason}
