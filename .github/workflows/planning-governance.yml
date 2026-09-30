@@ -7,6 +7,7 @@ on:
       - 'AGENTS.md'
       - '.github/copilot-instructions.md'
       - 'MASTER_ROADMAP.md'
+      - 'docs/ANALYTICS_EXECUTION_PLAN.md'
       - 'docs/ai/**'
       - 'docs/planning/**'
       - 'docs/product/**'
@@ -19,6 +20,7 @@ on:
       - 'docs/Analytics/ANALYTICS_PRODUCTION_READINESS_STATUS.md'
       - 'scripts/check-prompt-queues.mjs'
       - 'scripts/check-planning-architecture.mjs'
+      - 'scripts/check-analytics-execution-plan.mjs'
       - 'scripts/check-agent-instructions.mjs'
       - '.github/workflows/planning-governance.yml'
   push:
@@ -27,6 +29,7 @@ on:
       - 'AGENTS.md'
       - '.github/copilot-instructions.md'
       - 'MASTER_ROADMAP.md'
+      - 'docs/ANALYTICS_EXECUTION_PLAN.md'
       - 'docs/ai/**'
       - 'docs/planning/**'
       - 'docs/product/**'
@@ -39,6 +42,7 @@ on:
       - 'docs/Analytics/ANALYTICS_PRODUCTION_READINESS_STATUS.md'
       - 'scripts/check-prompt-queues.mjs'
       - 'scripts/check-planning-architecture.mjs'
+      - 'scripts/check-analytics-execution-plan.mjs'
       - 'scripts/check-agent-instructions.mjs'
       - '.github/workflows/planning-governance.yml'
 
@@ -80,3 +84,9 @@ jobs:
 
       - name: Validate planning architecture
         run: node scripts/check-planning-architecture.mjs
+
+      - name: Self-test analytics execution plan validator
+        run: node scripts/check-analytics-execution-plan.mjs --self-test
+
+      - name: Validate analytics execution plan current truth
+        run: node scripts/check-analytics-execution-plan.mjs

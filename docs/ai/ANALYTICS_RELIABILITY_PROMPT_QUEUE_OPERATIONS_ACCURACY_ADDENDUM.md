@@ -3,6 +3,7 @@
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: RQ508
+Owner promotion/claim 2026-09-30: fresh recovery verified `HEAD == origin/main == ce690bbf6df25cc14361299fc70fed6d6f80fc9a`, confirmed RQ501/RQ505/RQ507 are DONE, no active `analytics-plan-current-truth` lock/branch/open-PR owner exists, and moved `RQ508` `READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ508-codex.lock.md`.
 Owner completion 2026-09-30: `RQ507` moved `IN_PROGRESS -> DONE` on implementation SHA `8b4e1fc1c2ed89cff450f2be640ca98fecbfd342`; fresh fetch verified `HEAD == origin/main` at that SHA. Supplier compatibility aliases were removed from the primary Operations sidebar, legacy redirect/query/history semantics were preserved, and canonical Supplier/Shoe Type/Color/Daily/Pre/Post navigation remains reachable. Run log: `.ai/runs/2026-09-30-RQ507-evidence.md`; evidence state is synchronized. Fresh recovery found no active `analytics-plan-current-truth` lock/branch/open-PR collision and promoted `RQ508` `WAITING -> READY`; no RQ508 claim started in this delivery turn.
 Owner promotion/claim 2026-09-30: fresh recovery verified `HEAD == origin/main == 9f954e0cf4439346330ec5617a6bffbd9252a61a`, confirmed RQ505 is DONE, no active lock/branch/open-PR owner collides with `operations-analytics-information-architecture`, and promoted/claimed `RQ507` `READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ507-codex.lock.md`.
 Routing repair 2026-09-30: `RQ516` is DONE on current `origin/main`; the stale addendum pointer was corrected to the next dependency-complete prompt `RQ505`. After RQ505 delivery, `RQ507` was promoted as the next READY prompt and `RQ508` remains behind RQ505/RQ507.
@@ -3625,7 +3626,7 @@ Owner promotion 2026-09-30: fresh recovery verified no active `analytics-plan-cu
 
 ## RQ508 - Reconcile analytics execution-plan metric dictionary with current delivered contracts
 
-Status: READY
+Status: IN_PROGRESS
 Ready after: `RQ501`, `RQ505` and `RQ507` DONE; fresh collision check passed
 Priority: P2  
 Type: docs/architecture/guard-tests  

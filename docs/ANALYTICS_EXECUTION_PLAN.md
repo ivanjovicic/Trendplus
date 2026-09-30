@@ -1,13 +1,39 @@
 # Trendplus Analytics — Master Execution Plan
 
-> **Verzija:** 1.0 — Maj 2026  
-> **Autor:** Staff-level product/engineering review  
-> **Osnova:** Forensički audit analitike + verifikacija koda (AllEndpoints.cs, DailySalesStatsEndpoints.cs, InventoryEndpoints.cs, svih 9 frontend pages)  
+> **Verzija:** 2.0 — current-truth rebaseline 2026-09-30
+> **Autor:** Staff-level product/engineering review
+> **Osnova:** Forensički audit analitike + verifikacija koda (AllEndpoints.cs, DailySalesStatsEndpoints.cs, InventoryEndpoints.cs, svih 9 frontend pages)
 > **Cilj:** Konsolidacija analytics sistema iz "više dobrih ekrana" u koherentan decision-support proizvod
 
 ---
 
-## 1. Executive Summary
+## 0. Current Contract — Verified Against Main
+
+> **Verified against main:** `ce690bbf6df25cc14361299fc70fed6d6f80fc9a` on 2026-09-30. This section is the current architecture contract. Sections 1–9 retain the May 2026 audit/proposal for traceability and are historical unless a live RQ prompt explicitly reopens the same scope.
+
+### Current surface ownership
+
+- `/analytics/supplier` is the canonical Supplier surface. Its `Pregled` tab owns the final supplier recommendation; `Skorkarta` and `Asortiman` are supporting explanation/analysis tabs.
+- `/analytics/supplier-sales-stats`, `/analytics/supplier-decision-hub` and `/analytics/supplier-footwear-analytics` are compatibility/deep-link surfaces, not separate primary products. Operations navigation advertises one Supplier owner; legacy URLs and redirects remain supported under RQ507.
+- Shoe Type and Color are supporting category-analysis surfaces. Daily Sales remains operational monitoring; Pre/Post remains seasonal impact analysis; Inventory and Pre-Nivelacija remain their own decision workflows.
+
+### Current authority and metric rules
+
+- Backend recommendation `status`, `statusReason`, `recommendationAllowed`, `confidencePct`, `reliabilityPct`, reason codes and data-quality state are authoritative. Frontend code maps and explains them; it must not recreate scoring or fallback recommendations.
+- `decisionScore` is an optional backend projection. It may appear as detail/transparency evidence when actionability allows it; it is not a replacement for status/reason and is not a blanket-deprecated field. Color's backend-owned score remains part of the delivered contract.
+- Certified sales `dataScope` follows `ProdajaZaglavlje.DataOrigin` through `SalesDataScopePolicy`: `all`, `imported = access`, and `existing = existing/null/blank`. `Artikli.DataOrigin` is separate article/master membership or quality evidence and must not be used as the certified sales population predicate.
+- Cost evidence is line-bound and ordered: sale-line historical cost, exact snapshot by `BatchId + ProdajaStavkaId`, product fallback, then unavailable. Article-level minimum/average snapshot cost is not a valid substitute.
+- Signed net-sales/share values may be negative or exceed 100%; unavailable denominators stay unavailable. Coverage/quality ratios remain separate bounded evidence.
+
+### Delivered and live planning boundary
+
+- RQ400, RQ484, RQ494, RQ495, RQ496, RQ501, RQ505 and RQ507 are delivered current-main contracts reflected above. RQ502–RQ504 are also delivered store-option/information-hierarchy follow-ups.
+- The T1–T10 bullets below are historical proposal identifiers, not live queue claims. Do not implement them from this document alone. Any remaining runtime change must be represented by a live RQ prompt with current owner, dependencies and acceptance; RQ508 owns this documentation rebaseline.
+- No runtime code or endpoint contract is changed by this rebaseline.
+
+## 1. Historical Audit Baseline And Proposal (May 2026)
+
+The following sections preserve the original audit, rationale and proposed waves. Their statements about current drift, missing cache, local formulas, thresholds, routes or future work describe the May 2026 snapshot and must not override Section 0 or current queue evidence. Historical task identifiers are retained for traceability, not as an execution backlog.
 
 ### Najvažniji zaključak
 
@@ -156,7 +182,7 @@ Inventory ekran već ima:
 | Preporuka (status semantics) | 3 različita status seta | Tasks T2–T4: Sve lokalne formule → backend; sve surface-e prikazuju isti status set |
 | Tooltip tekst | Varira po ekranu | Task T5: `analyticsMetricDescriptions.ts` sa kanonskim tooltip objektima |
 | Pouzdanost % (računanje) | 3 različite metode | Tasks T2–T4: Sve lokalne `reliabilityPct` kalkulacije → RecommendationEngine |
-| decisionScore kao metrika | 5 formula, deprecated | Tasks T2–T4 + T9: Ukloniti lokalne compute; "Skor odluke" nije user-visible metric |
+| decisionScore kao metrika | Istorijska drift beleška | Istorijski T2–T4/T9 predlog je superseded: current backend score is optional detail/transparency evidence; Color's delivered backend-owned score remains valid under Section 0 |
 
 ---
 
@@ -649,7 +675,7 @@ Sledeći razvojni ciklus treba da počne sa Wave 1 (1–2 sprinta, nulti rizik, 
 ## 9. Final Self-Check
 
 - [x] **Canonical surface je jasno definisan** — SupplierSalesStats = canonical supplier; Inventory = canonical inventory; PreNivelacijaPriority = canonical za nivelacija workflow; ShoeTypeSalesStats + ColorSalesStats = supporting; SupplierDecisionHub + SupplierFootwearAnalytics = tab/drilldown u canonical
-- [x] **Canonical metric semantics su definisane** — Metric dictionary (Sekcija 3) pokriva 14 metrika sa source of truth, caveat, i drift analizom; `decisionScore` je označen kao deprecated user-visible metric
+- [x] **Canonical metric semantics su definisane** — Metric dictionary (Sekcija 3) pokriva 14 metrika sa source of truth, caveat, i drift analizom; current `decisionScore` authority and actionability are defined in Section 0
 - [x] **Server-side authority plan postoji** — Sekcija 4 navodi tačno koji frontend lokalni compute mora izaći, kojim redom, sa minimalnim rizik strategijom
 - [x] **Roadmap je sekvenciran** — 3 talasa sa jasnim dependency lancima; Wave 1 → Wave 2 → Wave 3; svaki talas ima defined "done before next" kriterijume
 - [x] **Top taskovi su konkretni** — Svaki task referencuje tačne fajlove i linije koda (npr. "SupplierFootwearAnalyticsPage.tsx linija 305"); acceptance criteria su testabilni
