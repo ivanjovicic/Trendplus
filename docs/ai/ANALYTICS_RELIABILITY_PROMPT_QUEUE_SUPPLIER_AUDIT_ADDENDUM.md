@@ -586,7 +586,7 @@ RQ519 DONE and RQ525 DONE.
 
 ## RQ528 - Add Supplier cross-tab parity contract
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: RQ522 DONE (satisfied 2026-10-01)
 Priority: P2
 Type: tests/contract
