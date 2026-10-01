@@ -28,6 +28,8 @@ Evidence state: synchronized
 - `dotnet build Api/Api.csproj --configuration Release --no-restore` -> pass (0 warnings, 0 errors) before the test-only follow-up; the subsequent test command compiled the updated test project.
 - `node scripts/check-prompt-queues.mjs` -> pass (671 tasks).
 - `git diff --check` -> pass.
+- GitHub Actions Planning Governance run `36887731789` -> success on implementation/evidence SHA `3b95b0f6a7199c10ad6da50009fce00d697a13c7`.
+- GitHub Actions Analytics Tests & Data Integrity run `36887731794` -> in progress on SHA `3b95b0f6a7199c10ad6da50009fce00d697a13c7` at final inspection; no final result is claimed.
 
 ## Validation not run
 - Full backend/frontend suites, live provider logs/database schema queries, and real iOS/iPad Safari proof -> not run; outside this repository-local audit's assigned access and already recorded under their owning prompts.
