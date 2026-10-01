@@ -3,7 +3,7 @@
 Date: 2026-09-30
 Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
-Current READY prompt: none
+Current READY prompt: none (RQ524 IN_PROGRESS via idle recovery)
 Additional READY prompts: none; RQ527 and RQ528 are DONE
 Queue reconciliation 2026-10-01: RQ527 DONE — independent Assortment oracle and golden fixture match startup view 014 and the bounded scoped source on real PostgreSQL; the oracle exposed and the run fixed a scoped-SQL `42803` failure (store/dataScope-filtered Assortment) and the unreachable `immature` vendor state. No Supplier-audit prompt is runnable: RQ523 waits on RQ498, RQ529 on RQ523/RQ499, RQ530 on RQ500/RQ524/RQ474/RQ487, RQ531 on owner approval, RQ532 on RQ500; RQ524 is PARTIAL.
 Queue reconciliation 2026-10-01: RQ522 DONE — every Supplier tab publishes backend `meta.basis` rendered as "Kako se broji"; nivelacija sales exclude DUG/KOREKCIJA; Overview/Assortment use one `Nepoznato` supplier bucket. RQ527 promoted to primary READY; RQ528 is dependency-complete and promoted to additional READY; RQ523 stays WAITING on RQ498, RQ530 on RQ500/RQ524/RQ474/RQ487.
@@ -349,8 +349,8 @@ RQ520, RQ522 and RQ498 DONE.
 
 ## RQ524 - Add read-only Supplier analytics reconciliation pack
 
-Status: PARTIAL
-Claimed: 2026-09-30 by ChatGPT on `cursor/rq524-pack-extend-78b0`; extended the repository-local reconciliation pack and reran deterministic PostgreSQL fixture evidence.
+Status: IN_PROGRESS
+Claimed: 2026-10-01 by Cursor agent on `main` (direct) through idle recovery. The PARTIAL blocker was repository-local: Docker was missing in the earlier VM, and the run log's explicit Next asked for immature/no-post and startup-history fixture rows. Testcontainers is available here. Previous claim: 2026-09-30 by ChatGPT on `cursor/rq524-pack-extend-78b0`; that branch is fully contained in `main`, and no open PR or lock exists.
 Progress: the read-only pack now exposes fifteen checks (`SUP-001`..`SUP-015`) for previous-only suppliers, attribution drift, startup-history presence, nivelacija store grain, assortment comparable totals, overview-vs-scorecard explained delta, assortment baseline flags and scorecard refresh history. Local execution against the shared operations seed returned no FAIL (`6` PASS, `9` EXPLAINED). Production/replica execution was not attempted and remains exclusively RQ454/STAB16. Run log: `.ai/runs/2026-09-30-RQ524-evidence.md`; evidence state: synchronized; main verification: `origin/main` contains `a93ae60ae3eb011f1995b40efd4fa94246faf827`.
 Priority: P1
 Type: sql/qa/evidence
