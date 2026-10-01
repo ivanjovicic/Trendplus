@@ -5,7 +5,7 @@ Repo: ivanjovicic/Trendplus
 Source audit: `docs/ai/NIVELACIJA_ANALYTICS_AUDIT_PROMPTS_2026-10-01.md`
 Registration code base: `f2c047b45f405d7dcbebbc19fb1cf4a0a199a9f5`
 
-Current READY routing: unchanged — RQ536 remains the Supplier-audit READY lane; canonical RQ474 remains separately READY. This addendum promotes **no** new prompt during registration.
+Current READY routing: unchanged — RQ536 remains the Supplier-audit READY lane; canonical RQ474 remains separately READY; Q83 remains separately READY in the SQL queue. This addendum promotes **no** new prompt during registration.
 Registered range: RQ537–RQ559.
 Direct integration fixes: core NV-F9 relation capability and core NV-F10 preload suppression only. Business-model and data-semantic changes remain queued until their proof/owner gates are satisfied.
 
@@ -39,7 +39,7 @@ Direct integration fixes: core NV-F9 relation capability and core NV-F10 preload
 
 ## Reconciliation rules
 
-- Do not reopen DONE RQ518–RQ535 or Q83 work merely because an older audit line references their former state.
+- Do not reopen DONE RQ518–RQ535 merely because an older audit line references their former state, and do not duplicate the separately active Q83 SQL residual.
 - RQ545 (NV-F9) is residual after the direct catalog/search-path hotfix: repair-preflight parity, privilege/search-path diagnostics, PostgreSQL proof and deployed verification.
 - RQ546 (NV-F10) is residual after the direct event-suppression hotfix: route-level retry/error-boundary UX and config hardening.
 - RQ537 (NV-F1) must establish intended highlight semantics before changing recommendation arithmetic; current git history does not prove the intended multiplier.
@@ -501,6 +501,8 @@ Owner: Analytics Reliability / Runtime
 Findings: NV-N16
 Commit suggestion: `fix(analytics): resolve nivelacija contract columns through pg_catalog on the search path`
 
+Integration delta: core endpoint capability landed in `c9b0ccf4` with contract proof in `18bf77af`; this RQ retains repair-preflight parity, privilege/search-path diagnostics, real-PostgreSQL proof and deployed verification.
+
 #### Problem
 
 On deployed SHA `3a6a6886`, Pre/Post and Assortiman still return `vendor_sales_nivelacija_contract_missing` in every scope, after the lifecycle fixes from RQ519.
@@ -552,6 +554,8 @@ Parallel-safe: yes (`chunkLoadRecovery.ts`, `ErrorBoundary.tsx`)
 Owner: Frontend Platform
 Findings: NV-N35 (L10, L11)
 Commit suggestion: `fix(ui): only suppress vite preload errors when a reload actually happens`
+
+Integration delta: the proven preload cooldown defect landed in `e1da86fa` with regression proof in `87e1982c`; this RQ retains route-level retry/error-boundary UX and Vercel/config hardening.
 
 #### Problem
 
