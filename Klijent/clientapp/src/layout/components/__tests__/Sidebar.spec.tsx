@@ -1,6 +1,6 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import Sidebar from "../Sidebar";
 
@@ -36,6 +36,22 @@ describe("Sidebar", () => {
     expect(activeLinks).toHaveLength(1);
     expect(activeLinks[0]).toHaveAttribute("href", "/analytics/supplier");
     expect(activeLinks[0]).toHaveTextContent("Pregled dobavljača");
+  });
+
+  it("exposes mobile navigation as an accessible dialog with scroll lock", () => {
+    const onCloseMobile = vi.fn();
+    render(
+      <MemoryRouter initialEntries={["/analytics/products"]}>
+        <Sidebar mobileOpen={true} onCloseMobile={onCloseMobile} collapsed={false} onToggleCollapse={() => {}} />
+      </MemoryRouter>,
+    );
+
+    const dialog = screen.getByRole("dialog", { name: /Backoffice/i });
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+    expect(document.body.style.overflow).toBe("hidden");
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onCloseMobile).toHaveBeenCalledTimes(1);
   });
 
   it("keeps supplier aliases hidden while exposing canonical category analyses", () => {

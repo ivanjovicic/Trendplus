@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import AutoReloadOnBackendOnline from "../components/AutoReloadOnBackendOnline";
 import BackendWakeupNotice from "../components/BackendWakeupNotice";
 import GlobalRequestSpinner from "../components/GlobalRequestSpinner";
@@ -11,6 +11,7 @@ import HeaderStatus from "./components/HeaderStatus";
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const mobileNavButtonRef = useRef<HTMLButtonElement | null>(null);
 
   return (
     <div className="min-h-screen surface text-contrast">
@@ -25,10 +26,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           onCloseMobile={() => setMobileOpen(false)}
           collapsed={sidebarCollapsed}
           onToggleCollapse={() => setSidebarCollapsed((c) => !c)}
+          returnFocusRef={mobileNavButtonRef}
         />
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <HeaderStatus onOpenMobileNav={() => setMobileOpen(true)} />
+          <HeaderStatus
+            onOpenMobileNav={() => setMobileOpen(true)}
+            mobileNavButtonRef={mobileNavButtonRef}
+          />
 
           <main className="mx-auto w-full max-w-[1320px] flex-1 px-4 py-5">
             <div className="space-y-5">{children}</div>

@@ -1,6 +1,6 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import HeaderStatus from "../HeaderStatus";
 import { BackendStatusContext } from "../../../context/BackendStatusContext";
@@ -60,8 +60,8 @@ describe("HeaderStatus", () => {
   it("keeps system controls in header without duplicating theme links", () => {
     renderHeader();
 
-    expect(screen.getAllByText(/Workeri:/i)).toHaveLength(2);
-    expect(screen.getAllByText(/API/i).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText(/Workeri:/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/API/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByRole("link", { name: /^Teme$/i })).toHaveLength(1);
   });
 
@@ -74,6 +74,24 @@ describe("HeaderStatus", () => {
     expect(screen.getByRole("heading", { level: 3, name: /Brze veze i akcije/i })).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/Pretraži stranice i akcije/i)).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /Pilot spremnost/i }).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("keeps compact header actions reachable through the mobile tools surface", () => {
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query.includes("max-width"),
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    renderHeader();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Više$/i }));
+    const toolsDialog = screen.getByRole("dialog", { name: /Dodatne kontrole zaglavlja/i });
+    fireEvent.click(within(toolsDialog).getByRole("button", { name: /^Komande$/i }));
+    expect(screen.getByRole("heading", { level: 2, name: /^Komande$/i })).toBeInTheDocument();
   });
 
   it("opens the notification inbox with backend and analytics signals", () => {

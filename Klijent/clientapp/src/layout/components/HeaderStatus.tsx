@@ -1,4 +1,5 @@
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useDialogA11y } from "../../hooks/useDialogA11y";
 import { Link, useLocation } from "react-router-dom";
 import {
   Activity,
@@ -27,6 +28,7 @@ import type { LucideIcon } from "lucide-react";
 
 type HeaderStatusProps = {
   onOpenMobileNav: () => void;
+  mobileNavButtonRef?: RefObject<HTMLButtonElement | null>;
 };
 
 type HeaderPanelMode = "commands" | "inbox" | "context";
@@ -97,14 +99,17 @@ function trailToNodes(trail: HeaderTrailEntry[]) {
   });
 }
 
-export default function HeaderStatus({ onOpenMobileNav }: HeaderStatusProps) {
+export default function HeaderStatus({ onOpenMobileNav, mobileNavButtonRef }: HeaderStatusProps) {
   const { online, checking, lastCheckedAt } = useContext(BackendStatusContext);
   const location = useLocation();
   const [refreshing, setRefreshing] = useState(false);
   const [dataScopeValue, setDataScopeValue] = useState<DataScope>(getDataScope());
   const [panelMode, setPanelMode] = useState<HeaderPanelMode | null>(null);
+  const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
   const commandInputRef = useRef<HTMLInputElement | null>(null);
+  const mobileToolsRef = useRef<HTMLDivElement | null>(null);
+  const panelContainerRef = useRef<HTMLDivElement | null>(null);
 
   const { group, item, trail } = useMemo(
     () => resolveHeaderNavigation(location.pathname),
@@ -356,6 +361,35 @@ export default function HeaderStatus({ onOpenMobileNav }: HeaderStatusProps) {
     setPanelMode(null);
   };
 
+  useDialogA11y({
+    isOpen: mobileToolsOpen,
+    onClose: () => setMobileToolsOpen(false),
+    containerRef: mobileToolsRef,
+  });
+
+  const [isNarrowViewport, setIsNarrowViewport] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(max-width: 1023px)").matches : false,
+  );
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 1023px)");
+    const update = () => setIsNarrowViewport(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  useDialogA11y({
+    isOpen: panelMode !== null && isNarrowViewport,
+    onClose: closePanel,
+    containerRef: panelContainerRef,
+  });
+
+  const openPanelFromMobile = (mode: HeaderPanelMode) => {
+    setMobileToolsOpen(false);
+    openPanel(mode);
+  };
+
   const alertBadgeTone = inboxEntries.some((entry) => entry.tone === "critical")
     ? "border-[var(--error)]/50 bg-error-soft text-[var(--error)]"
     : inboxEntries.some((entry) => entry.tone === "warning")
@@ -363,9 +397,10 @@ export default function HeaderStatus({ onOpenMobileNav }: HeaderStatusProps) {
     : "border-[var(--info)]/40 bg-[var(--info)]/10 text-[var(--info)]";
 
   return (
-    <header className="sticky top-0 relative z-30 border-b border-muted bg-[var(--surface-default)]/95 px-4 py-3 shadow-[0_18px_42px_-38px_rgba(0,0,0,0.85)] backdrop-blur-xl">
-      <div className="flex flex-wrap items-center gap-3">
+    <header className="sticky top-0 relative z-30 border-b border-muted bg-[var(--surface-default)]/95 px-4 py-2.5 shadow-[0_18px_42px_-38px_rgba(0,0,0,0.85)] backdrop-blur-xl lg:py-3">
+      <div className="flex flex-nowrap items-center gap-2 lg:flex-wrap lg:gap-3">
         <button
+          ref={mobileNavButtonRef}
           type="button"
           onClick={onOpenMobileNav}
           className="rounded-xl border border-muted bg-[var(--surface-elevated)] p-2 text-secondary transition hover:border-[var(--info)] hover:text-contrast lg:hidden"
@@ -393,7 +428,15 @@ export default function HeaderStatus({ onOpenMobileNav }: HeaderStatusProps) {
           </div>
         </div>
 
-        <div className="flex max-w-full flex-wrap items-center gap-2 rounded-2xl border border-muted bg-[var(--surface-elevated)]/80 px-2 py-1.5 shadow-[0_14px_32px_-28px_rgba(0,0,0,0.9)]">
+        <div
+          className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl border px-2 py-1 text-[11px] font-semibold lg:hidden ${backendTone}`}
+          title={lastCheckedAt ? `Poslednja provera: ${new Date(lastCheckedAt).toLocaleTimeString("sr-RS")}` : "Backend status"}
+        >
+          <span className={`h-2 w-2 rounded-full ${backendDot}`} />
+          <span>{backendLabel}</span>
+        </div>
+
+        <div className="hidden max-w-full flex-wrap items-center gap-2 rounded-2xl border border-muted bg-[var(--surface-elevated)]/80 px-2 py-1.5 shadow-[0_14px_32px_-28px_rgba(0,0,0,0.9)] lg:flex">
           <div
             className={`inline-flex items-center gap-2 rounded-xl border px-2.5 py-1.5 text-xs font-semibold ${backendTone}`}
             title={lastCheckedAt ? `Poslednja provera: ${new Date(lastCheckedAt).toLocaleTimeString("sr-RS")}` : "Backend status"}
@@ -411,7 +454,7 @@ export default function HeaderStatus({ onOpenMobileNav }: HeaderStatusProps) {
           </div>
         </div>
 
-        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+        <div className="ml-auto hidden flex-wrap items-center justify-end gap-2 lg:flex">
           <button
             type="button"
             onClick={() => openPanel("commands")}
@@ -494,21 +537,141 @@ export default function HeaderStatus({ onOpenMobileNav }: HeaderStatusProps) {
             <span>Osveži</span>
           </button>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setMobileToolsOpen((open) => !open)}
+          className="ml-auto inline-flex items-center gap-1.5 rounded-2xl border border-muted bg-[var(--surface-elevated)] px-3 py-2 text-xs font-semibold text-secondary transition hover:border-[var(--info)] hover:text-contrast lg:hidden"
+          aria-expanded={mobileToolsOpen}
+          aria-haspopup="dialog"
+        >
+          <LayoutGrid size={14} />
+          Više
+        </button>
       </div>
 
-      <div className="mt-2 flex items-center gap-2 overflow-x-auto pb-0.5 xl:hidden">
-        <span className="inline-flex items-center gap-1 rounded-full border border-muted bg-[var(--surface-elevated)] px-2.5 py-1 text-[11px] font-semibold text-muted">
-          <Activity size={12} />
-          Sistemske kontrole
-        </span>
-        <ApiPingFlag />
-        <WorkerControlFlag />
-        <RedisToggleFlag />
-      </div>
+      {mobileToolsOpen ? (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-[1px]"
+            onClick={() => setMobileToolsOpen(false)}
+            aria-hidden="true"
+          />
+          <div
+            ref={mobileToolsRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Dodatne kontrole zaglavlja"
+            tabIndex={-1}
+            className="absolute inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] top-[max(4.5rem,env(safe-area-inset-top))] overflow-y-auto rounded-[24px] border border-muted bg-[var(--surface-default)] p-4 shadow-[0_24px_68px_-34px_rgba(0,0,0,0.9)]"
+          >
+            <div className="flex items-center justify-between gap-3 border-b border-muted pb-3">
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">Zaglavlje</div>
+                <h2 className="text-sm font-semibold text-contrast">Akcije i sistemske kontrole</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileToolsOpen(false)}
+                className="inline-flex items-center gap-1.5 rounded-2xl border border-muted bg-[var(--surface-elevated)] px-3 py-2 text-xs font-semibold text-secondary"
+              >
+                <X size={14} />
+                Zatvori
+              </button>
+            </div>
+
+            <div className="mt-4 grid gap-2">
+              <button
+                type="button"
+                onClick={() => openPanelFromMobile("commands")}
+                className="inline-flex items-center justify-center gap-1.5 rounded-2xl border border-muted bg-[var(--surface-elevated)] px-3 py-2.5 text-xs font-semibold text-secondary"
+              >
+                <Command size={14} />
+                Komande
+              </button>
+              <button
+                type="button"
+                onClick={() => openPanelFromMobile("inbox")}
+                className="inline-flex items-center justify-center gap-1.5 rounded-2xl border border-muted bg-[var(--surface-elevated)] px-3 py-2.5 text-xs font-semibold text-secondary"
+              >
+                <Bell size={14} />
+                Obaveštenja
+              </button>
+              <button
+                type="button"
+                onClick={() => openPanelFromMobile("context")}
+                className="inline-flex items-center justify-center gap-1.5 rounded-2xl border border-muted bg-[var(--surface-elevated)] px-3 py-2.5 text-xs font-semibold text-secondary"
+              >
+                <Sparkles size={14} />
+                Kontekst
+              </button>
+
+              <label className="flex items-center gap-2 rounded-2xl border border-muted bg-[var(--surface-elevated)] px-3 py-2.5 text-xs font-semibold text-secondary">
+                <Database size={14} className="text-[var(--info)]" />
+                <span>Prikaz</span>
+                <select
+                  value={dataScopeValue}
+                  onChange={(e) => onScopeChange(e.target.value as DataScope)}
+                  className="min-w-0 flex-1 rounded-xl border border-muted bg-[var(--surface-light)] px-2.5 py-1.5 text-xs font-semibold text-contrast"
+                >
+                  <option value="all">Sve</option>
+                  <option value="existing">Postojeći</option>
+                  <option value="imported">Importovani</option>
+                </select>
+              </label>
+
+              <Link
+                to="/settings/themes"
+                onClick={() => setMobileToolsOpen(false)}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-muted bg-[var(--surface-elevated)] px-3 py-2.5 text-xs font-semibold text-contrast"
+              >
+                <Settings size={14} />
+                Teme
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileToolsOpen(false);
+                  refreshAll();
+                }}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[var(--info)]/50 bg-[var(--info)]/10 px-3 py-2.5 text-xs font-semibold text-contrast"
+              >
+                <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
+                Osveži
+              </button>
+            </div>
+
+            <div className="mt-5 border-t border-muted pt-4">
+              <div className="mb-2 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
+                <Activity size={12} />
+                Sistemske kontrole
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <ApiPingFlag />
+                <WorkerControlFlag />
+                <RedisToggleFlag />
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {panelMode !== null ? (
-        <div className="absolute inset-x-4 top-full z-40 mt-3">
-          <div className="mx-auto w-full max-w-[1320px] overflow-hidden rounded-[28px] border border-muted bg-[var(--surface-default)]/98 shadow-[0_24px_68px_-34px_rgba(0,0,0,0.9)] backdrop-blur-xl">
+        <div className="max-lg:fixed max-lg:inset-0 max-lg:z-50 max-lg:flex max-lg:items-end max-lg:justify-center max-lg:p-3 max-lg:pt-[max(3.5rem,env(safe-area-inset-top))] max-lg:pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:absolute lg:inset-x-4 lg:top-full lg:z-40 lg:mt-3 lg:block lg:p-0">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-[1px] lg:hidden"
+            onClick={closePanel}
+            aria-hidden="true"
+          />
+          <div
+            ref={panelContainerRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={panelTitle}
+            tabIndex={-1}
+            className="relative z-10 mx-auto flex max-h-[min(90dvh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem))] w-full max-w-[1320px] flex-col overflow-hidden rounded-[28px] border border-muted bg-[var(--surface-default)]/98 shadow-[0_24px_68px_-34px_rgba(0,0,0,0.9)] backdrop-blur-xl"
+          >
             <div className="flex flex-wrap items-start justify-between gap-3 border-b border-muted px-4 py-4">
               <div className="min-w-0">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Command center</div>
@@ -525,7 +688,7 @@ export default function HeaderStatus({ onOpenMobileNav }: HeaderStatusProps) {
               </button>
             </div>
 
-            <div className="grid gap-4 p-4 xl:grid-cols-[1.35fr_0.95fr_0.8fr]">
+            <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 xl:grid-cols-[1.35fr_0.95fr_0.8fr]">
               <section className={`rounded-[24px] border p-4 ${panelMode === "commands" ? "border-[var(--info)]/50 bg-[var(--info)]/8" : "border-muted bg-[var(--surface-elevated)]/80"}`}>
                 <div className="flex items-center gap-2">
                   <Command size={16} className="text-[var(--info)]" />

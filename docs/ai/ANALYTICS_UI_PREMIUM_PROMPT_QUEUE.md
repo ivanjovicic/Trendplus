@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (P-UI-25 DONE; P-UI-26/P-UI-27 require fresh collision checks before promotion)
+Current READY prompt: none (P-UI-26 DONE; P-UI-27 requires fresh collision check before promotion)
 Purpose: make shared backoffice and analytics navigation, controls, tables, responsive workflows and dashboard UX premium without mixing presentation work with analytics correctness fixes.
 
 Use with:
@@ -1416,7 +1416,7 @@ Current tokens and shared forms are desktop-dense: body/small tokens are below t
 
 ## P-UI-26 - Compact the mobile header and make the mobile drawer an accessible dialog
 
-Status: WAITING
+Status: DONE
 Ready after: P-UI-24 and P-UI-25
 Priority: P1
 Type: frontend/layout/a11y/tests
@@ -1481,6 +1481,25 @@ The sticky header currently wraps many actions plus a second system-control stri
 
 - P-UI-24 and P-UI-25 DONE.
 - Do not overlap another active owner in header/sidebar paths.
+
+### Completion note
+
+- Date: 2026-10-01
+- Status: DONE
+- Completion: 100%
+- Changed files: `Klijent/clientapp/src/hooks/useDialogA11y.ts`; `Klijent/clientapp/src/layout/AppLayout.tsx`; `Klijent/clientapp/src/layout/components/HeaderStatus.tsx`; `Klijent/clientapp/src/layout/components/Sidebar.tsx`; layout tests; `Klijent/clientapp/scripts/responsive_baseline.mjs`; queue/roadmap/evidence docs
+- Contract/runtime behavior changed: mobile navigation is an accessible dialog with focus trap/scroll lock; compact mobile header keeps all actions via **Više** overflow; narrow command panels are viewport-bounded sheets; desktop shell unchanged; no analytics/API semantics changed
+- Checks run: HeaderStatus/Sidebar tests 9/9; `npm run typecheck`; `npm run build`; app-shell root-overflow geometry 5/5 viewports; `git diff --check`
+- Checks not run: full 70-shot PNG responsive matrix (screenshot protocol timeouts); real iOS/iPad Safari
+- Run log: `.ai/runs/2026-10-01-P-UI-26-evidence.md`
+- Delivery mode: direct-main
+- Main commit SHA: pending delivery synchronization
+- Main verification: pending delivery synchronization
+- Evidence state: pending
+- Missed: P-UI-27 primitives and later page-family migrations remain queued
+- Follow-up: promote P-UI-27 after fresh collision check
+- Residual risk: full-page Puppeteer captures remain environment-sensitive
+- Next: idle recovery for P-UI-27
 
 ---
 

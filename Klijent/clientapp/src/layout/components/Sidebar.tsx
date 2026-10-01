@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { ChevronDown, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { useDialogA11y } from "../../hooks/useDialogA11y";
 import { NAV_GROUPS } from "../navConfig";
 
 type SidebarProps = {
@@ -8,6 +9,7 @@ type SidebarProps = {
   onCloseMobile: () => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
+  returnFocusRef?: RefObject<HTMLElement | null>;
 };
 
 function isRouteMatch(pathname: string, route: string): boolean {
@@ -44,8 +46,18 @@ function findBestMatchForGroup(pathname: string, group: { id: string; items: { t
   return best;
 }
 
-export default function Sidebar({ mobileOpen, onCloseMobile, collapsed, onToggleCollapse }: SidebarProps) {
+export default function Sidebar({ mobileOpen, onCloseMobile, collapsed, onToggleCollapse, returnFocusRef }: SidebarProps) {
   const location = useLocation();
+  const mobileDialogRef = useRef<HTMLDivElement | null>(null);
+  const mobileCloseButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  useDialogA11y({
+    isOpen: mobileOpen,
+    onClose: onCloseMobile,
+    containerRef: mobileDialogRef,
+    initialFocusRef: mobileCloseButtonRef,
+    returnFocusRef,
+  });
   const defaultOpenGroups = useMemo(() => {
     return new Set<string>([findCurrentGroupId(location.pathname)]);
   }, [location.pathname]);
@@ -82,7 +94,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile, collapsed, onToggle
             <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border-default)] bg-[var(--surface-light)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
               Trendplus
             </div>
-            <div className="mt-3 text-xl font-semibold leading-tight text-contrast">Backoffice</div>
+            <div id="mobile-nav-title" className="mt-3 text-xl font-semibold leading-tight text-contrast">Backoffice</div>
             <p className="mt-1 text-xs leading-relaxed text-secondary">Prodaja, lager, odluke i kontrola podataka.</p>
           </div>
           <div className="flex items-center gap-1">
@@ -96,6 +108,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile, collapsed, onToggle
               <ChevronLeft size={16} />
             </button>
             <button
+              ref={mobileCloseButtonRef}
               type="button"
               className="rounded-xl border border-muted bg-[var(--surface-light)] p-1.5 text-secondary transition hover:border-[var(--info)] hover:text-contrast lg:hidden"
               onClick={onCloseMobile}
@@ -219,8 +232,21 @@ export default function Sidebar({ mobileOpen, onCloseMobile, collapsed, onToggle
       )}
       {mobileOpen ? (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onCloseMobile} />
-          <div className="absolute left-0 top-0 h-full">{sidebarContent}</div>
+          <div
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={onCloseMobile}
+            aria-hidden="true"
+          />
+          <div
+            ref={mobileDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mobile-nav-title"
+            tabIndex={-1}
+            className="absolute left-0 top-0 h-[100dvh] max-h-[100dvh] w-[min(20rem,calc(100vw-env(safe-area-inset-left)-env(safe-area-inset-right)))] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+          >
+            {sidebarContent}
+          </div>
         </div>
       ) : null}
     </>

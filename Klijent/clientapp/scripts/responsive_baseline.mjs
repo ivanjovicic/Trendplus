@@ -238,6 +238,7 @@ async function run(options) {
   await fs.mkdir(options.outputDir, { recursive: true });
   const browser = await puppeteer.launch({
     headless: true,
+    protocolTimeout: 120_000,
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
   });
   const results = [];
@@ -296,7 +297,7 @@ async function run(options) {
           const geometry = await collectGeometry(page, viewportWidth);
           const slug = `${safeFilePart(route.id)}__${theme}__${viewportWidth}`;
           const screenshotPath = path.join(options.outputDir, `${slug}.png`);
-          await page.screenshot({ path: screenshotPath, fullPage: true });
+          await page.screenshot({ path: screenshotPath, fullPage: true, timeout: options.timeoutMs });
           results.push({
             routeId: route.id,
             route: route.path,
