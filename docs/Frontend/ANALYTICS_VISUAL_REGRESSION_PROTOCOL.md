@@ -9,11 +9,14 @@ Audience: agents and humans doing premium UI / layout work on analytics surfaces
 
 Premium UI changes must be verified as **rendered pixels**, not only by route smoke or unit tests. This protocol is the repeatable gate before broad visual refactors (`P-UI-06` onward).
 
-There is **no** Playwright / Storybook screenshot harness in `Klijent/clientapp` today (`vitest` only). Until an automated harness is added, validation is:
+There is still **no dedicated responsive screenshot regression suite**, but the workspace is no longer "Vitest only": `puppeteer` / `puppeteer-core` are installed and `Klijent/clientapp/scripts/perf08_frontend_render.mjs` already drives a headless browser. Prefer extending that existing browser toolchain before adding Playwright/Storybook solely for responsive coverage.
+
+Until `P-UI-24` lands the dedicated responsive runner, validation is:
 
 1. automated route smoke (non-visual)
-2. **manual screenshot checklist** (this document)
-3. optional evidence file filled per PR / session
+2. existing Puppeteer browser evidence where applicable
+3. **manual screenshot checklist** (this document)
+4. optional evidence file filled per PR / session
 
 ## When this protocol is required
 
@@ -48,8 +51,10 @@ Capture each required surface at these widths (height flexible; use full-page or
 
 | Name | Width | Notes |
 |---|---:|---|
+| reflow | `320` | no document-level horizontal overflow; contained table/chart scrolling may be allowed when semantically necessary |
 | mobile | `375` | sidebar collapsed / drawer; no horizontal scroll on primary content |
-| tablet | `768` | header + filters usable; tables may scroll horizontally with sticky first column if designed that way |
+| tablet | `768` | header + filters usable; tables may use contained horizontal scroll/sticky key column when designed that way |
+| small laptop / landscape tablet | `1024` | shell transition point; verify sidebar/header/table behavior without assuming pointer type |
 | desktop | `1280` | sidebar expanded; tables readable without crushing trust header |
 
 Record actual device pixel ratio if not 1x (e.g. Retina). Prefer Chromium (Chrome/Edge) as the reference browser.
@@ -169,3 +174,8 @@ When adding Playwright later:
 - `docs/Frontend/ROUTING_AND_SMOKE_TEST_STANDARDS.md`
 - `docs/qa/ANALYTICS_UI_VISUAL_REVIEW_EVIDENCE_TEMPLATE.md`
 - `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`
+
+
+## 2026-10-01 responsive audit integration
+
+`P-UI-24` is the canonical follow-up for turning this manual protocol into measured 320/375/768/1024/1280 browser evidence. It must reuse Puppeteer unless a concrete tool gap is proven. Chromium emulation does not count as real iOS Safari proof; real-device zoom/virtual-keyboard claims remain separate evidence.
