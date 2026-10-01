@@ -293,7 +293,7 @@ RQ519 and RQ521 DONE; RQ445/RQ473 prior authority.
 - Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: c338e46fd847944bb81f0fbd48cac3b6fa981626
-- Main verification: recorded in the run log after push
+- Main verification: `origin/main` `87809b56d38f8b4a224a614531f20b790ee15ad9` contains c338e46fd847944bb81f0fbd48cac3b6fa981626; post-push CI `36833795890`/`36833795889`/`36833795939` queued at close
 - Missed: broad attribution change N22 (Scorecard/Assortment to sale-time supplier), N10 Assortment current cost, N17 cohort and N23 period semantics are declared, not changed (owner decision); visible cross-tab naming/units remain RQ498.
 - Follow-up: product owner decides N22/N10 attribution/cost alignment; RQ527 can pin the DUG/KOREKCIJA exclusion executably; RQ528 consumes `meta.basis`.
 - Residual risk: v6 cache cold start; Assortment vendor count drops where unresolved vendors merge; Scorecard unknown suppliers intentionally not collapsed, so cross-tab supplier counts may differ (declared).
