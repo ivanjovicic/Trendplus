@@ -9,6 +9,9 @@
 -- Fixture bootstrap (repository-local only):
 --   psql ... -f Api.Tests/Fixtures/operations-analytics-all-routes-seed.sql
 --   plus the Supplier schema objects required by SUP-005/SUP-006 (see RQ525 local sequence or app startup).
+--   Missing optional objects (score cache MV, vendor view, startup history) produce their owned
+--   FAIL/EXPLAINED verdicts instead of aborting the pack.
+-- Executable proof: Api.Tests/SupplierReconciliationPackTests.cs (Testcontainers PostgreSQL).
 --
 -- Result columns are intentionally stable:
 -- check_id, verdict, observed, expected, owner, detail
@@ -64,10 +67,16 @@ retail AS (
     SELECT * FROM classified WHERE NOT excluded_receipt
 ),
 previous_retail AS (
-    SELECT r.*
-    FROM retail r
+    -- Equally long window immediately before from_utc; `retail` is already limited to the selected window.
+    SELECT a."IDDobavljac" AS supplier_id
+    FROM prodaja_stavke ps
+    JOIN prodaja_zaglavlje pz ON pz.id = ps.id_prodaja
+    JOIN "Artikli" a ON a."Id" = ps.id_artikal
     CROSS JOIN params p
-    WHERE r.sold_at < p.from_utc
+    WHERE pz.datum_prodaje >= p.from_utc - (p.to_utc - p.from_utc)
+      AND pz.datum_prodaje < p.from_utc
+      AND (p.store_id IS NULL OR pz.id_objekat = p.store_id)
+      AND UPPER(BTRIM(COALESCE(pz.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')
 ),
 current_suppliers AS (
     SELECT DISTINCT supplier_id
@@ -96,21 +105,57 @@ overview_revenue AS (
         COALESCE(SUM(r.quantity * r.unit_price), 0) AS retail_revenue
     FROM retail r
 ),
+-- Optional objects are read through to_regclass + query_to_xml so a missing object yields
+-- its owned FAIL/EXPLAINED verdict instead of aborting the whole pack with 42P01.
 scorecard_rows AS (
-    SELECT COUNT(*) AS row_count
-    FROM mv_supplier_decision_score_cache
+    SELECT CASE
+        WHEN to_regclass('public.mv_supplier_decision_score_cache') IS NULL THEN 0
+        ELSE (xpath('/row/n/text()', query_to_xml(
+            'SELECT COUNT(*) AS n FROM public.mv_supplier_decision_score_cache',
+            false, true, '')))[1]::text::bigint
+    END AS row_count
+),
+vendor_assortment_xml AS (
+    SELECT CASE
+        WHEN to_regclass('public.vw_vendor_sales_nivelacija') IS NULL THEN NULL
+        ELSE query_to_xml(
+            'SELECT
+                 COUNT(*) AS row_count,
+                 COUNT(*) FILTER (WHERE pre_revenue IS NOT NULL AND post_revenue IS NOT NULL) AS comparable_total,
+                 COUNT(*) FILTER (
+                     WHERE pre_revenue IS NOT NULL AND post_revenue IS NOT NULL
+                       AND (change_revenue IS NULL
+                            OR ABS(change_revenue - (post_revenue - pre_revenue)) > 0.01)
+                 ) AS comparable_violations,
+                 COUNT(*) FILTER (
+                     WHERE COALESCE(has_revenue_baseline, false) = false
+                        OR COALESCE(revenue_baseline_reason, '''') <> ''''
+                 ) AS baseline_flagged_rows,
+                 COUNT(*) FILTER (
+                     WHERE coverage_post30 IS NULL AND event_date + 30 > CURRENT_DATE
+                 ) AS immature_no_post,
+                 COUNT(*) FILTER (
+                     WHERE coverage_post30 IS NULL AND event_date + 30 <= CURRENT_DATE
+                 ) AS mature_no_post,
+                 COUNT(*) FILTER (
+                     WHERE coverage_post30 IS NULL
+                       AND ((event_date + 30 > CURRENT_DATE AND post_revenue IS NOT NULL)
+                            OR (event_date + 30 <= CURRENT_DATE AND post_revenue IS DISTINCT FROM 0))
+                 ) AS no_post_violations
+             FROM public.vw_vendor_sales_nivelacija',
+            false, true, '')
+    END AS x
 ),
 vendor_assortment AS (
     SELECT
-        COUNT(*) AS row_count,
-        COUNT(*) FILTER (
-            WHERE ABS(change_revenue - (post_revenue - pre_revenue)) <= 0.01
-        ) AS comparable_rows,
-        COUNT(*) FILTER (
-            WHERE COALESCE(has_revenue_baseline, false) = false
-               OR COALESCE(revenue_baseline_reason, '') <> ''
-        ) AS baseline_flagged_rows
-    FROM vw_vendor_sales_nivelacija
+        COALESCE((xpath('/row/row_count/text()', x))[1]::text::bigint, 0) AS row_count,
+        COALESCE((xpath('/row/comparable_total/text()', x))[1]::text::bigint, 0) AS comparable_total,
+        COALESCE((xpath('/row/comparable_violations/text()', x))[1]::text::bigint, 0) AS comparable_violations,
+        COALESCE((xpath('/row/baseline_flagged_rows/text()', x))[1]::text::bigint, 0) AS baseline_flagged_rows,
+        COALESCE((xpath('/row/immature_no_post/text()', x))[1]::text::bigint, 0) AS immature_no_post,
+        COALESCE((xpath('/row/mature_no_post/text()', x))[1]::text::bigint, 0) AS mature_no_post,
+        COALESCE((xpath('/row/no_post_violations/text()', x))[1]::text::bigint, 0) AS no_post_violations
+    FROM vendor_assortment_xml
 ),
 nivelacija_store_grain AS (
     SELECT
@@ -119,21 +164,28 @@ nivelacija_store_grain AS (
     FROM "DnevnikPromena"
     WHERE COALESCE("TipPromene", '') ILIKE '%nivelacija%'
 ),
+startup_history_xml AS (
+    -- ScriptPath identifiers must match DatabaseInitializer history ids exactly.
+    SELECT CASE
+        WHEN to_regclass('public."__StartupSqlScriptHistory"') IS NULL THEN NULL
+        ELSE query_to_xml(
+            'SELECT
+                 COUNT(*) FILTER (
+                     WHERE "ScriptPath" = ''Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql''
+                 ) AS canonical_view_scripts,
+                 COUNT(*) FILTER (
+                     WHERE "ScriptPath" = ''Database/Migrations/018_AddSupplierDecisionHubViews.sql#full-build''
+                 ) AS scorecard_refresh_scripts
+             FROM public."__StartupSqlScriptHistory"',
+            false, true, '')
+    END AS x
+),
 startup_history AS (
     SELECT
-        EXISTS (
-            SELECT 1
-            FROM information_schema.tables
-            WHERE table_schema = 'public'
-              AND table_name = '__StartupSqlScriptHistory'
-        ) AS history_table_exists,
-        COUNT(*) FILTER (
-            WHERE "ScriptPath" ILIKE '%014_CreateVendorSalesNivelacijaViews.sql%'
-        ) AS canonical_view_scripts,
-        COUNT(*) FILTER (
-            WHERE "ScriptPath" ILIKE '%018_AddSupplierDecisionHubViews.sql%full-build%'
-        ) AS scorecard_refresh_scripts
-    FROM "__StartupSqlScriptHistory"
+        x IS NOT NULL AS history_table_exists,
+        COALESCE((xpath('/row/canonical_view_scripts/text()', x))[1]::text::bigint, 0) AS canonical_view_scripts,
+        COALESCE((xpath('/row/scorecard_refresh_scripts/text()', x))[1]::text::bigint, 0) AS scorecard_refresh_scripts
+    FROM startup_history_xml
 ),
 mv AS (
     SELECT
@@ -180,10 +232,17 @@ checks AS (
     UNION ALL
     SELECT
         'SUP-003',
-        CASE WHEN COUNT(*) FILTER (WHERE resolved_cost IS NULL) = 0 THEN 'PASS' ELSE 'EXPLAINED' END,
-        ROUND(
-            100.0 * COUNT(*) FILTER (WHERE resolved_cost IS NOT NULL) / NULLIF(COUNT(*),0), 2
-        )::text || '%',
+        CASE
+            WHEN COUNT(*) = 0 THEN 'EXPLAINED'
+            WHEN COUNT(*) FILTER (WHERE resolved_cost IS NULL) = 0 THEN 'PASS'
+            ELSE 'EXPLAINED'
+        END,
+        COALESCE(
+            ROUND(
+                100.0 * COUNT(*) FILTER (WHERE resolved_cost IS NOT NULL) / NULLIF(COUNT(*),0), 2
+            )::text || '%',
+            'n/a (0 retail lines)'
+        ),
         '100% preferred; missing cost must reduce coverage, never become zero cost',
         'RQ521',
         'Cost coverage using line -> NabavnaCenaDin -> legacy fallback.'
@@ -252,7 +311,7 @@ checks AS (
         COUNT(*)::text,
         '0 previous-only suppliers in selected current window',
         'RQ522',
-        'Suppliers with retail evidence before the window but none inside it remain explicit, not silently dropped.'
+        'Suppliers with retail evidence in the equally long previous window but none inside the selected window remain explicit, not silently dropped.'
     FROM previous_only_suppliers
 
     UNION ALL
@@ -297,14 +356,15 @@ checks AS (
     SELECT
         'SUP-012',
         CASE
-            WHEN row_count = 0 THEN 'EXPLAINED'
-            WHEN comparable_rows = row_count THEN 'PASS'
+            WHEN comparable_total = 0 THEN 'EXPLAINED'
+            WHEN comparable_violations = 0 THEN 'PASS'
             ELSE 'FAIL'
         END,
-        comparable_rows::text || ' of ' || row_count::text,
-        'Change equals Post minus Pre for every comparable assortment row',
+        (comparable_total - comparable_violations)::text || ' of ' || comparable_total::text
+            || ' comparable; ' || (row_count - comparable_total)::text || ' not comparable',
+        'Change equals Post minus Pre for every row with known pre and post revenue',
         'RQ527',
-        'Assortment comparable totals on vw_vendor_sales_nivelacija.'
+        'Assortment comparable totals on vw_vendor_sales_nivelacija; rows with unknown pre or post revenue (missing pre window, immature without post sales) are not comparable and are counted separately.'
     FROM vendor_assortment
 
     UNION ALL
@@ -348,6 +408,22 @@ checks AS (
         'RQ518',
         'Scorecard MV refresh/history evidence from startup SQL history.'
     FROM startup_history
+
+    UNION ALL
+    SELECT
+        'SUP-016',
+        CASE
+            WHEN no_post_violations > 0 THEN 'FAIL'
+            WHEN immature_no_post + mature_no_post = 0 THEN 'EXPLAINED'
+            ELSE 'PASS'
+        END,
+        'immature_no_post=' || immature_no_post::text
+            || '; mature_no_post=' || mature_no_post::text
+            || '; violations=' || no_post_violations::text,
+        'immature rows without post sales keep post revenue unknown (NULL); mature rows without post sales show explicit 0',
+        'RQ520',
+        'Post-window maturity on vw_vendor_sales_nivelacija: an open window must never read as a fake zero.'
+    FROM vendor_assortment
 )
 SELECT check_id, verdict, observed, expected, owner, detail
 FROM checks
