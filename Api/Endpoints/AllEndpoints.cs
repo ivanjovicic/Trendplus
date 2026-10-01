@@ -2110,30 +2110,31 @@ public static class AllEndpoints
                     fromUtc,
                     toUtc);
 
-                return Results.Problem(
-                    title: "Zahtjev otkazan",
-                    detail: "Zahtjev je otkazan zbog prekida ili isteka vremena. Pokušajte ponovo.",
-                    statusCode: 503);
+                return BuildSupplierOverviewError(httpContext, new OperationCanceledException());
             }
             catch (TaskCanceledException ex)
             {
                 requestStopwatch.Stop();
                 logger.LogWarning(ex, "Supplier-sales-stats cancelled (TaskCanceled) after {ElapsedMs}ms. StoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}", requestStopwatch.ElapsedMilliseconds, storeId, sezonaId, fromUtc, toUtc);
 
-                return Results.Problem(
-                    title: "Zahtjev otkazan",
-                    detail: "Zahtjev je otkazan zbog prekoračenja vremena ili prekida veze prema bazi. Pokušajte ponovo.",
-                    statusCode: 503);
+                return BuildSupplierOverviewError(httpContext, ex);
             }
             catch (NpgsqlException ex)
             {
                 requestStopwatch.Stop();
-                logger.LogError(ex, "Supplier-sales-stats DB error after {ElapsedMs}ms. StoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}", requestStopwatch.ElapsedMilliseconds, storeId, sezonaId, fromUtc, toUtc);
+                var classification = SupplierOverviewErrorContract.Classify(ex);
+                logger.LogError(
+                    ex,
+                    "Supplier-sales-stats DB error after {ElapsedMs}ms. ErrorCode={ErrorCode} SqlState={SqlState} StoreId={StoreId} SezonaId={SezonaId} From={FromDate} To={ToDate}",
+                    requestStopwatch.ElapsedMilliseconds,
+                    classification.ErrorCode,
+                    (ex as PostgresException)?.SqlState,
+                    storeId,
+                    sezonaId,
+                    fromUtc,
+                    toUtc);
 
-                return Results.Problem(
-                    title: "Greška pri učitavanju statistike prodaje po dobavljačima",
-                    detail: "Problem pri povezivanju sa bazom podataka. Molimo pokušajte ponovo kasnije.",
-                    statusCode: 503);
+                return BuildSupplierOverviewError(httpContext, ex);
             }
             catch (Exception ex)
             {
@@ -2147,10 +2148,7 @@ public static class AllEndpoints
                     fromUtc,
                     toUtc);
 
-                return Results.Problem(
-                    title: "Greška pri učitavanju statistike prodaje po dobavljačima",
-                    detail: ex.Message,
-                    statusCode: 500);
+                return BuildSupplierOverviewError(httpContext, ex);
             }
         })
         .WithName("GetSupplierSalesStats")
@@ -7579,6 +7577,22 @@ public static class AllEndpoints
         }
 
         return meta;
+    }
+
+    private static IResult BuildSupplierOverviewError(HttpContext httpContext, Exception exception)
+    {
+        var correlationId = ResolveAnalyticsCorrelationId(httpContext);
+        var classification = SupplierOverviewErrorContract.Classify(exception);
+
+        return Results.Problem(
+            title: classification.Title,
+            detail: classification.Detail,
+            statusCode: classification.StatusCode,
+            extensions: new Dictionary<string, object?>
+            {
+                ["errorCode"] = classification.ErrorCode,
+                ["correlationId"] = correlationId
+            });
     }
 
     internal static string ResolveAnalyticsCorrelationId(HttpContext httpContext)

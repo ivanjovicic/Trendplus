@@ -17,6 +17,7 @@ import {
   type SupplierSalesStat,
   type SupplierSalesStatsResponse,
 } from "../services/supplierSalesStatsApi";
+import { ApiHttpError } from "../services/analyticsHttp";
 import type { StoreOption } from "../types/analytics";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
@@ -39,6 +40,7 @@ import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange, formatDate } from
 import { toCalendarDate, toInclusiveCalendarDate, toUtcDateOnlyExclusive } from "../utils/analyticsDateRanges";
 import { formatMetricDisplayValue } from "../utils/analyticsMetricValue";
 import { buildSupplierSalesStatsTrustProjection } from "../utils/supplierSalesStatsTrust";
+import { AnalyticsMetaError } from "../utils/analyticsResponseMeta";
 import { recommendationReasonLabel } from "../utils/canonicalRecommendationSemantics";
 import {
   analyticsMetricDescriptions,
@@ -58,6 +60,38 @@ import {
 import { qualityTierIcon, qualityTierClass, tierNeedsWarning, buildCoverageTooltip, buildRecommendationCaveat, buildMarginDetailNote, buildSnapshotBadgeLabel, buildSnapshotTooltip } from "../utils/marginQuality";
 import type { SupplierEmbeddedPageProps } from "./supplierSharedState";
 import "./SupplierSalesStatsPage.css";
+
+type SupplierSalesStatsError = {
+  message: string;
+  errorCode: string | null;
+  correlationId: string | null;
+};
+
+function toSupplierSalesStatsError(reason: unknown): SupplierSalesStatsError {
+  if (reason instanceof ApiHttpError) {
+    return {
+      message: reason.message,
+      errorCode: reason.errorCode,
+      correlationId: reason.correlationId,
+    };
+  }
+
+  if (reason instanceof AnalyticsMetaError) {
+    return {
+      message: reason.message,
+      errorCode: reason.errorCode ?? null,
+      correlationId: reason.correlationId ?? null,
+    };
+  }
+
+  return {
+    message: reason instanceof Error
+      ? reason.message
+      : "Greška pri učitavanju podataka o dobavljačima.",
+    errorCode: null,
+    correlationId: null,
+  };
+}
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
 type SortDir = "asc" | "desc";
@@ -862,7 +896,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
   }, [stores]);
   const [data, setData] = useState<SupplierSalesStatsResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<SupplierSalesStatsError | null>(null);
   const [sortField, setSortField] = useState<SortField>("status");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expandedSupplierKey, setExpandedSupplierKey] = useState<string | null>(null);
@@ -981,7 +1015,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       if (requestId !== requestIdRef.current) return;
       setData(null);
       setLoading(false);
-      setError(reason instanceof Error ? reason.message : "Greška pri učitavanju podataka o dobavljačima.");
+      setError(toSupplierSalesStatsError(reason));
     }
   }, [activeDataScope, invalidRange]);
 
@@ -1779,7 +1813,9 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       {showBlockingError ? (
         <AnalyticsErrorState
           title="Podaci trenutno nisu dostupni"
-          message="Ne prikazujemo nule jer nije potvrđeno da je period stvarno prazan."
+          message={error?.message ?? "Ne prikazujemo nule jer nije potvrđeno da je period stvarno prazan."}
+          errorCode={error?.errorCode}
+          correlationId={error?.correlationId}
           onRetry={() => {
             void load(activeFilters);
           }}
@@ -1788,7 +1824,9 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       ) : null}
       {showStaleError ? (
         <div className="supplier-decision-message info" role="status" aria-live="polite">
-          Prikazujemo prethodno učitane podatke. Novi upit nije uspeo.
+          <span>Prikazujemo prethodno učitane podatke. Novi upit nije uspeo.</span>
+          {error?.correlationId ? <span> Referentni ID: {error.correlationId}.</span> : null}
+          <button type="button" onClick={() => void load(activeFilters)}>Pokušaj ponovo</button>
         </div>
       ) : null}
       {loading && !data ? (

@@ -10,6 +10,8 @@ Updated: 2026-09-28
 Repository: `ivanjovicic/Trendplus`
 Status: canonical planning entry point
 
+Owner claim 2026-10-01: fresh `origin/main` review found no RQ474 lock, branch or open-PR collision. RQ474 moved `READY -> IN_PROGRESS` for the Supplier overview SQL-state/error-code contract and frontend error/empty/retry presentation on `cursor/rq474-supplier-overview-error-51d0`; local lock `.ai/task-locks/RQ474-chatgpt.lock.md`. RQ536 and Q83 remain independent READY lanes.
+
 Owner promotion/claim 2026-09-30: current Supplier Audit owner queue declares `RQ518` as P1 READY with no dependencies. Fresh exact-main refresh after Cursor environment repair found no open PR or `rq518` branch collision. `RQ518` moved `READY -> IN_PROGRESS` for `supplier-scorecard-mv-capability`; connector-only execution cannot create the protocol's local uncommitted filesystem lock, so the canonical IN_PROGRESS row is the exclusive remote claim. Scope is limited to shared materialized-view capability/readiness detection and focused tests; no score/model/schema semantics change.
 Owner completion 2026-09-30: `RQ518` is DONE after delivering shared PostgreSQL catalog-based materialized-view capability truth for Supplier Decision score caches. Endpoint and startup now agree on object existence, required columns and `pg_matviews.ispopulated`, with explicit `MISSING_OBJECT`, `MISSING_COLUMNS` and `NOT_POPULATED` states plus PostgreSQL regression coverage. Implementation closes on `306076b4`; evidence: `.ai/runs/2026-09-30-RQ518-evidence.md`. The direct dependency successor `RQ519` is now primary READY, while independent `RQ525` remains READY. Post-push Analytics CI is residual evidence and is not claimed green yet.
 

@@ -10,6 +10,7 @@ import { getStores } from "../../services/analyticsApi";
 import { getDailySalesStats } from "../../services/dailySalesStatsApi";
 import { getShoeTypeSalesStats } from "../../services/shoeTypeSalesStatsApi";
 import { getSupplierSalesStats } from "../../services/supplierSalesStatsApi";
+import { ApiHttpError } from "../../services/analyticsHttp";
 
 vi.mock("recharts", () => ({
   Bar: () => null,
@@ -113,6 +114,31 @@ describe("analytics trust-state header proof", () => {
     expect(screen.getByText("Preporuka sistema")).toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(await screen.findByRole("alert")).toBeInTheDocument();
+  });
+
+  it("Supplier sales preserves backend error identity and retry state", async () => {
+    vi.mocked(getSupplierSalesStats).mockRejectedValue(
+      new ApiHttpError(
+        503,
+        "Analitička šema za pregled dobavljača nije kompatibilna sa aktivnim ugovorom.",
+        "SUPPLIER_OVERVIEW_SCHEMA_INVALID",
+        "supplier-correlation-1",
+      ),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <Routes>
+          <Route path="/analytics/supplier-sales-stats" element={<SupplierSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Analitička šema za pregled dobavljača");
+    expect(alert).toHaveTextContent("supplier-correlation-1");
+    expect(screen.getByRole("button", { name: "Pokušaj ponovo" })).toBeInTheDocument();
+    expect(screen.queryByText("Nema dovoljno podataka za izabrani period")).not.toBeInTheDocument();
   });
 
   it("Supplier sales exposes provenance basis when data loads successfully", async () => {
