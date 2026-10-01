@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `P-UI-24` (responsive browser baseline; supplemental/path-safe and must not displace higher-priority RQ correctness work)
+Current READY prompt: `P-UI-24` (IN_PROGRESS; responsive browser baseline; supplemental/path-safe and must not displace higher-priority RQ correctness work)
 Purpose: make shared backoffice and analytics navigation, controls, tables, responsive workflows and dashboard UX premium without mixing presentation work with analytics correctness fixes.
 
 Use with:
@@ -29,7 +29,7 @@ Use with:
 | P-UI-21 | DONE | analytics-ui-empty-kpi-honesty | Hide KPI totals on empty success; use shared ErrorState on Actions list failure |
 | P-UI-22 | DONE | analytics-ui-remaining-trust-chrome | Remaining decision pages empty/error chrome after P-UI-21 |
 | P-UI-23 | WAITING | frontend-lint-baseline | Reduce lint errors in bounded, trust-sensitive slices without broad rewrites |
-| P-UI-24 | READY | responsive-ui-browser-baseline | Establish measured 320/375/768/1024/1280 browser evidence using existing Puppeteer |
+| P-UI-24 | IN_PROGRESS | responsive-ui-browser-baseline | Establish measured 320/375/768/1024/1280 browser evidence using existing Puppeteer |
 | P-UI-25 | WAITING | responsive-ui-foundation | Responsive type/control/input/focus foundation |
 | P-UI-26 | WAITING | responsive-ui-shell | Compact mobile header and accessible drawer |
 | P-UI-27 | WAITING | responsive-ui-primitives | Modal, InfoTip, tabs and touch-safe shared primitives |
@@ -1229,7 +1229,8 @@ These prompts are presentation/browser-proof work only. They must not change ana
 
 ## P-UI-24 - Establish a measured responsive browser baseline with the existing toolchain
 
-Status: READY
+Status: IN_PROGRESS
+Claimed: 2026-10-01 by ChatGPT on `cursor/p-ui-24-responsive-baseline-51d0`; local lock `.ai/task-locks/P-UI-24-chatgpt.lock.md`.
 Priority: P1
 Type: frontend/tests/evidence
 Feature family: responsive-ui-browser-baseline
