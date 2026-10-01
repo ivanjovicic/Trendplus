@@ -4,9 +4,9 @@ Date: 2026-10-01
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: direct-main
-Main commit SHA: pending
-Main verification: pending - current main contains the proven implementation SHA; routing sync commit is awaiting delivery
-Evidence state: pending
+Main commit SHA: ff54899b262df9de3df6fbea3bc1bc23442be63d
+Main verification: pass - fresh origin/main and HEAD equal ff54899b262df9de3df6fbea3bc1bc23442be63d; it contains the exact backend implementation SHA 8ca3d49a2b0184bd9ce18a55b368e8bdf1b6b1af
+Evidence state: synchronized
 
 ## What was done
 - Reconciled the stale BCI10 PARTIAL / BCI11 READY router state to the exact-main successful backend workflow evidence.
