@@ -3,8 +3,9 @@
 Date: 2026-09-30
 Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
-Current READY prompt: none (RQ524 IN_PROGRESS via idle recovery)
-Additional READY prompts: none; RQ527 and RQ528 are DONE
+Current READY prompt: none
+Additional READY prompts: none; RQ524, RQ527 and RQ528 are DONE
+Queue reconciliation 2026-10-01: RQ524 DONE through idle recovery. The Supplier reconciliation pack now runs on Testcontainers fixtures with all sixteen verdicts pinned, read-only proof, and owned FAIL verdicts for missing objects. It fixes the previous-only window, the `42P01` aborts and the false SUP-012 FAIL on non-comparable rows, and adds the SUP-016 maturity check. No Supplier-audit prompt is runnable: RQ523 waits on RQ498; RQ529 on RQ523/RQ499; RQ530 on RQ500/RQ474/RQ487; RQ531 on owner approval; RQ532 on RQ500. RQ498, RQ499 and RQ500 wait on RQ474/RQ475, which need read-only live/provider access.
 Queue reconciliation 2026-10-01: RQ527 DONE — independent Assortment oracle and golden fixture match startup view 014 and the bounded scoped source on real PostgreSQL; the oracle exposed and the run fixed a scoped-SQL `42803` failure (store/dataScope-filtered Assortment) and the unreachable `immature` vendor state. No Supplier-audit prompt is runnable: RQ523 waits on RQ498, RQ529 on RQ523/RQ499, RQ530 on RQ500/RQ524/RQ474/RQ487, RQ531 on owner approval, RQ532 on RQ500; RQ524 is PARTIAL.
 Queue reconciliation 2026-10-01: RQ522 DONE — every Supplier tab publishes backend `meta.basis` rendered as "Kako se broji"; nivelacija sales exclude DUG/KOREKCIJA; Overview/Assortment use one `Nepoznato` supplier bucket. RQ527 promoted to primary READY; RQ528 is dependency-complete and promoted to additional READY; RQ523 stays WAITING on RQ498, RQ530 on RQ500/RQ524/RQ474/RQ487.
 Queue reconciliation 2026-10-01: RQ521 DONE — Supplier scorecard return rate uses gross sold units with neutral missing-return rank, sale-time supplier attribution bounded to the published window, and canonical DUG/KOREKCIJA exclusion from full-price turnover evidence; existing databases pick it up through outdated-definition readiness and one-time stale windowed cache recreation. RQ522 is dependency-complete (RQ519/RQ521 DONE) and promoted to primary READY; RQ527 stays additional READY.
@@ -349,7 +350,7 @@ RQ520, RQ522 and RQ498 DONE.
 
 ## RQ524 - Add read-only Supplier analytics reconciliation pack
 
-Status: IN_PROGRESS
+Status: DONE
 Claimed: 2026-10-01 by Cursor agent on `main` (direct) through idle recovery. The PARTIAL blocker was repository-local: Docker was missing in the earlier VM, and the run log's explicit Next asked for immature/no-post and startup-history fixture rows. Testcontainers is available here. Previous claim: 2026-09-30 by ChatGPT on `cursor/rq524-pack-extend-78b0`; that branch is fully contained in `main`, and no open PR or lock exists.
 Progress: the read-only pack now exposes fifteen checks (`SUP-001`..`SUP-015`) for previous-only suppliers, attribution drift, startup-history presence, nivelacija store grain, assortment comparable totals, overview-vs-scorecard explained delta, assortment baseline flags and scorecard refresh history. Local execution against the shared operations seed returned no FAIL (`6` PASS, `9` EXPLAINED). Production/replica execution was not attempted and remains exclusively RQ454/STAB16. Run log: `.ai/runs/2026-09-30-RQ524-evidence.md`; evidence state: synchronized; main verification: `origin/main` contains `a93ae60ae3eb011f1995b40efd4fa94246faf827`.
 Priority: P1
@@ -389,6 +390,36 @@ Every check has pass/fail/explained result and failures map to an owner; hypothe
 ### Dependencies
 
 None for repository-local fixture work. RQ454/STAB16 exclusively own production/replica reconciliation execution.
+
+### Completion note
+
+- Date: 2026-10-01
+- Status: DONE
+- Completion: `Api.Tests/SupplierReconciliationPackTests.cs` executes the real pack on Testcontainers PostgreSQL across three fixtures:
+  - an adversarial fixture with real view 014, startup-history rows and seeded immature, no-post, previous-only, drift, DUG, missing-cost and unknown-supplier cases, where all sixteen verdicts are pinned;
+  - a fixture with missing schema objects, which returns owned FAIL/EXPLAINED verdicts instead of aborting;
+  - a tampered assortment view, where SUP-012 and SUP-016 FAIL.
+  A content snapshot proves the pack is read-only, and a static guard pins the read-only transaction and the exact startup-history ids.
+- Changed files: `scripts/check_supplier_reconciliation_pack.sql`, `Api.Tests/SupplierReconciliationPackTests.cs`
+- Contract/runtime behavior changed: pack only; no product runtime change. Six fixes:
+  - SUP-008 now compares against the equally long previous window; before, it could never fire.
+  - A missing score-cache MV, vendor view or startup-history table now yields its owned verdict instead of `42P01`.
+  - SUP-012 ignores rows with unknown pre or post revenue instead of failing them.
+  - SUP-003 is EXPLAINED on an empty population.
+  - New SUP-016 (RQ520) checks that an immature row without post sales keeps post revenue NULL and a mature one shows an explicit 0.
+  - History ids match DatabaseInitializer exactly.
+- Checks run: `SupplierReconciliationPackTests` 4/4 with Testcontainers executed. Counterexample: the same tests fail 4/4 on the previous pack, including `42P01` on missing objects. `git diff --check` clean; governance validators pass.
+- Checks not run: psql CLI run (Npgsql executes the identical SQL with variables substituted); production/replica (RQ454/STAB16); full DatabaseInitializer sequence (RQ525 owns it).
+- Run log: `.ai/runs/2026-10-01-RQ524-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: ebc5925caeb9d80690433545c9614eb05e15f4c0
+- Main verification: `origin/main` contains ebc5925c (ancestor check after push)
+- Missed: old SUP-008/SUP-012 adversarial outcomes are inferred from the SQL, because the counterexample failed earlier on the check set. Supplier-sum parity stays with RQ528, and vendor-view column readiness stays with RQ519/RQ525.
+- Follow-up: none for RQ524. Production read-only execution belongs to RQ454/STAB16.
+- Residual risk: XML-based optional-object reads depend on PostgreSQL XML support; fixtures anchor on session `CURRENT_DATE`.
+- Next: RQ454/STAB16 may consume the pack for approved read-only production reconciliation. The RQ524 dependency of RQ530 is now satisfied; RQ530 still waits on RQ500/RQ474/RQ487.
+- Prompt defect / scope repair: the prompt's immature/no-post check was missing and is added as SUP-016 (same owner script). The other five pack fixes were required for "every check has pass/fail/explained result".
 
 ---
 
