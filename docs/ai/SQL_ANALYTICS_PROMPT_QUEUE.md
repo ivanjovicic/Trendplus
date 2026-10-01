@@ -2,7 +2,7 @@
 
 Date: 2026-09-05
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: none (Q83 is PARTIAL pending backend/PostgreSQL proof)
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -43,7 +43,7 @@ Purpose: isolate SQL analytics work so Codex, Cursor and manual edits do not imp
 
 ## Q69 - Analytics SQL trust semantic audit and tests
 
-Status: DONE
+Status: PARTIAL
 Priority: P0
 Type: docs/tests
 Feature family: analytics-sql-trust
@@ -1160,8 +1160,8 @@ live analytics database.
 ### Completion note
 
 - Date: 2026-10-01
-- Status: DONE
-- Completion: Removed the remaining Pre/Post aggregate fake-zero behavior. Category and price-direction `ChangePercent` values now remain `null` without a revenue baseline; valid baselines retain measured `0%` and negative changes, and the frontend API contract accepts the nullable values.
+- Status: PARTIAL
+- Completion: Removed the remaining Pre/Post aggregate fake-zero behavior and delivered it to `main`. Category and price-direction `ChangePercent` values now remain `null` without a revenue baseline; valid baselines retain measured `0%` and negative changes, and the frontend API contract accepts the nullable values. Backend/PostgreSQL proof remains pending.
 - Changed files: `Api/Endpoints/AllEndpoints.cs`, `Api/Models/VendorSalesNivelacijaModels.cs`, `Api/Services/VendorSalesNivelacijaTypeInsightPolicy.cs`, `Api.Tests/AssortmentNivelacijaOracleTests.cs`, `Api.Tests/VendorSalesNivelacijaTypeInsightPolicyTests.cs`, `Api.Tests/VendorSalesNivelacijaNullabilityContractTests.cs`, `Klijent/clientapp/src/services/vendorSalesNivelacijaApi.ts`, `Klijent/clientapp/src/validation/analyticsResponseSchemas.ts`, `Klijent/clientapp/src/validation/__tests__/analyticsResponseSchemas.spec.ts`, `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-10-01-Q83-evidence.md`
 - Checks run: focused frontend schema tests 17/17; analytics guardrails and typecheck pass; production frontend build pass; prompt, planning and instruction governance validators pass; `git diff --check` pass; static nullable/schema-gate checks pass; fresh `origin/main` contains `3e929bcb55ddca90de756791da6624bca5479c84`.
 - Checks not run: focused .NET backend tests, API build, EF migration listing and PostgreSQL/Testcontainers execution — `dotnet` and Docker are unavailable in this workspace.
@@ -1171,6 +1171,6 @@ live analytics database.
 - Main commit SHA: `3e929bcb55ddca90de756791da6624bca5479c84`
 - Main verification: fresh fetch and `git merge-base --is-ancestor 3e929bcb origin/main` passed; `origin/main` resolves to `3e929bcb55ddca90de756791da6624bca5479c84`.
 - Missed: local backend/Testcontainers execution and live production schema verification remain unavailable; no production proof is claimed.
-- Follow-up: RQ491 may be re-evaluated after Q83; live Pre/Post view application/verification remains with RQ535/STAB16.
-- Residual risk: backend compilation/runtime and live view/migration application need CI or an environment with .NET, Docker and authorized PostgreSQL access.
+- Follow-up: Re-run the focused .NET/Testcontainers matrix in an environment with .NET and Docker, then reclassify Q83; RQ491 remains WAITING. Live Pre/Post view application/verification remains with RQ535/STAB16.
+- Residual risk: backend compilation/runtime, PostgreSQL/Testcontainers proof and live view/migration application need CI or an environment with .NET, Docker and authorized PostgreSQL access.
 - Prompt defect / scope repair: the bounded frontend API schema/type update was required to keep the end-to-end nullable contract valid; no frontend page/UX behavior was changed.
