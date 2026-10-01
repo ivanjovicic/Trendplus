@@ -3,8 +3,9 @@
 Date: 2026-09-30
 Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
-Current READY prompt: none
+Current READY prompt: RQ533 (IN_PROGRESS)
 Additional READY prompts: none; RQ524, RQ527 and RQ528 are DONE
+Queue registration 2026-10-01: RQ533 was registered from the RQ527 follow-up (Assortment fake 0% change percent without comparable evidence), deduplicated against the existing queues, and promoted and claimed in the same idle-recovery run.
 Queue reconciliation 2026-10-01: RQ524 DONE through idle recovery. The Supplier reconciliation pack now runs on Testcontainers fixtures with all sixteen verdicts pinned, read-only proof, and owned FAIL verdicts for missing objects. It fixes the previous-only window, the `42P01` aborts and the false SUP-012 FAIL on non-comparable rows, and adds the SUP-016 maturity check. No Supplier-audit prompt is runnable: RQ523 waits on RQ498; RQ529 on RQ523/RQ499; RQ530 on RQ500/RQ474/RQ487; RQ531 on owner approval; RQ532 on RQ500. RQ498, RQ499 and RQ500 wait on RQ474/RQ475, which need read-only live/provider access.
 Queue reconciliation 2026-10-01: RQ527 DONE — independent Assortment oracle and golden fixture match startup view 014 and the bounded scoped source on real PostgreSQL; the oracle exposed and the run fixed a scoped-SQL `42803` failure (store/dataScope-filtered Assortment) and the unreachable `immature` vendor state. No Supplier-audit prompt is runnable: RQ523 waits on RQ498, RQ529 on RQ523/RQ499, RQ530 on RQ500/RQ524/RQ474/RQ487, RQ531 on owner approval, RQ532 on RQ500; RQ524 is PARTIAL.
 Queue reconciliation 2026-10-01: RQ522 DONE — every Supplier tab publishes backend `meta.basis` rendered as "Kako se broji"; nivelacija sales exclude DUG/KOREKCIJA; Overview/Assortment use one `Nepoznato` supplier bucket. RQ527 promoted to primary READY; RQ528 is dependency-complete and promoted to additional READY; RQ523 stays WAITING on RQ498, RQ530 on RQ500/RQ524/RQ474/RQ487.
@@ -35,6 +36,7 @@ This addendum registers only non-duplicate Supplier follow-ups after second-pass
 | SA-E1 | RQ530 |
 | SA-E2 | RQ531 |
 | SA-E3 | RQ532 |
+| RQ527 follow-up (fake 0% change) | RQ533 |
 
 ---
 
@@ -836,3 +838,61 @@ Every insight states population, maturity/control basis; raw pre/post is never p
 ### Dependencies
 
 RQ520, RQ527 and RQ500 DONE.
+
+---
+
+## RQ533 - Return unknown instead of 0% for Assortment change percent without comparable evidence
+
+Status: IN_PROGRESS
+Claimed: 2026-10-01 by Cursor agent on `main` (direct). Registered and promoted WAITING -> READY -> IN_PROGRESS in the same idle-recovery run (user authorized promotion). Dependencies RQ520 and RQ527 are DONE; no other active owner, lock or PR touches the vendor-sales-nivelacija change-percent contract.
+Priority: P1
+Type: backend/frontend-contract/tests
+Feature family: supplier-assortment-change-percent-truth
+Parallel-safe: no
+Owner: Analytics Reliability / Supplier
+
+### Problem
+
+`/api/analytics/vendor-sales-nivelacija` reports a fake 0% change in two cases:
+
+- **Vendor without mature comparable rows** (only immature, or none). Pre and post sums are 0, so `ComputeSemanticChangePercent(0, 0)` returns 0 and `SemanticChangePercentRevenue = 0`.
+- **Mature vendor or totals without a revenue baseline** (pre 0, post > 0). The semantic percent is correctly null, but the legacy `ChangePercent` is filled with `semantic ?? 0m`.
+
+The Supplier Asortiman page reads `semanticChangePercentRevenue ?? changePercent`, and Prodaja pre/posle nivelacije reads `changePercent`. Both therefore render 0% where no baseline exists, which violates the no-fake-zero invariant. The error fallback also returns `ChangePercent = 0` in its empty totals.
+
+### Evidence
+
+- `AllEndpoints.cs`: vendor `ChangePercent = semanticChangePercent ?? 0m`; totals `ChangePercent = SemanticChangePercent(totalPre, totalPost) ?? 0m`.
+- `VendorSalesNivelacijaPriceChangeEffectPolicy.ComputeSemanticChangePercent(0, 0)` returns 0.
+- RQ527 golden snapshot pins vendor Gama (immature only) with semantic 0; RQ527 run log "What was missed".
+- `SupplierFootwearAnalyticsPage.tsx` trend fallback; `ProdajaPrePostNivelacijePage.tsx` `trustedMetric(item.changePercent, item)`.
+
+### Scope
+
+Change-percent semantics of the vendor-sales-nivelacija vendor and totals contract, the frontend type/schema that validates them, and the oracle/golden that pins them. Do not change effect statuses, thresholds, windows, cohort, totals population or page layouts.
+
+### Read first
+
+RQ520, RQ527; `VendorSalesNivelacijaPriceChangeEffectPolicy`; the endpoint vendor/totals block; `vendorSalesNivelacijaApi.ts`; `analyticsResponseSchemas.ts`.
+
+### Do
+
+1. Add one policy helper: a cohort change percent is null when the cohort has no mature comparable rows, otherwise it is the existing semantic percent.
+2. Use the helper for vendor and totals semantic percent. `ChangePercent` carries the same nullable value; drop the `?? 0m` fallback.
+3. Make vendor and totals `ChangePercent` nullable in the DTO and in the frontend type and schema. The error fallback then reports null, not 0.
+4. Update the RQ527 oracle and golden snapshot to the same rule.
+
+### Tests
+
+- Policy unit tests: no mature rows gives null; no baseline gives null; a valid baseline keeps the existing value; flat 0/0 with mature evidence stays 0.
+- Golden snapshot: the immature-only vendor has null semantic and change percent.
+- Static guard: the endpoint uses the helper and no `?? 0m` change-percent fallback remains.
+- Frontend: a mature vendor with null change percent renders unavailable, not 0%; the schema accepts null.
+
+### Acceptance
+
+No Assortment vendor or total shows a 0% change without mature comparable evidence and a revenue baseline. A real flat 0/0 mature cohort still shows 0%. Response shape is unchanged apart from nullability.
+
+### Dependencies
+
+RQ520 and RQ527 DONE.
