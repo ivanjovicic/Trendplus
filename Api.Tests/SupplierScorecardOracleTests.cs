@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using Npgsql;
 using Xunit;
+using Api.Services;
 
 namespace Api.Tests;
 
@@ -124,6 +125,48 @@ public sealed class SupplierScorecardOracleTests : IClassFixture<PostgresContain
     // ------------------------------------------------------------------
     // Property / counterexample tests on the scoring layer.
     // ------------------------------------------------------------------
+
+    [Fact]
+    public void FormulaVersionAndExplainabilityMetadata_AreStableAndCoverCurrentPolicy()
+    {
+        Assert.Equal(SupplierScorecardModelContract.FormulaVersion, SupplierScorecardOracle.FormulaVersion);
+        Assert.Equal("supplier-scorecard-explainability-v1", SupplierScorecardModelContract.Current.ExplainabilityVersion);
+        Assert.Contains(SupplierScorecardModelContract.Current.Components, item => item.Key == "demand.fullprice_sellthrough");
+        Assert.Contains(SupplierScorecardModelContract.Current.Components, item => item.Key == "penalty.inventory");
+        Assert.Contains(SupplierScorecardModelContract.Current.Components, item => item.Key == "score.final");
+        Assert.Contains(SupplierScorecardModelContract.Current.Gates, item => item.Key == "margin_p80_clamp");
+        Assert.Contains(
+            SupplierScorecardModelContract.Current.OwnerDecisionPending,
+            item => item.StartsWith("owner_decision_pending:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void OracleContributions_ReproduceScore_ForAllTimeAndWindowedFixtures()
+    {
+        var fixture = GoldenFixture.Build(PureAnchor).Fixture;
+
+        foreach (var options in new[]
+        {
+            SupplierScorecardOracleOptions.AllTime(PureAnchor),
+            SupplierScorecardOracleOptions.Window(PureAnchor, 90),
+            SupplierScorecardOracleOptions.Window(PureAnchor, 180)
+        })
+        {
+            foreach (var score in SupplierScorecardOracle.Score(fixture, options))
+            {
+                var contributionSum = score.DemandScore
+                    + score.MarginScore
+                    - score.MarkdownPenalty
+                    - score.InventoryPenalty
+                    + score.SupplierQualityComponent;
+
+                Assert.Equal(score.ScoreRaw, contributionSum);
+                Assert.Equal(
+                    Math.Min(100m, Math.Max(0m, score.ScoreRaw)),
+                    score.SupplierQualityIndex);
+            }
+        }
+    }
 
     [Fact]
     public void Score_IsMonotonicInFullpriceSellthrough_WithEverythingElseFixed()

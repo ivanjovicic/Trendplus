@@ -15,6 +15,57 @@ export type RecommendationCode =
   | "OOS_FALSE_NEGATIVE"
   | "REVIEW_QUALITY";
 
+export type SupplierScorecardComponentMetadata = {
+  key: string;
+  label: string;
+  role?: string | null;
+  weight?: number | null;
+  transform: string;
+  sourceField: string;
+  rangeMin?: number | null;
+  rangeMax?: number | null;
+};
+
+export type SupplierScorecardModelMetadata = {
+  formulaVersion: string;
+  explainabilityVersion: string;
+  scoreScale: string;
+  rankPopulation: string;
+  signedMarginContributionDenominator: string;
+  stockInputBasis: string;
+  components: SupplierScorecardComponentMetadata[];
+  gates: { key: string; label: string; rule: string }[];
+  ownerDecisionPending: string[];
+  limitations: string[];
+};
+
+export type SupplierScorecardContribution = {
+  key: string;
+  label: string;
+  value: number;
+  rank?: number | null;
+  weight?: number | null;
+  sign: string;
+  sourceField: string;
+};
+
+export type SupplierScorecardRowExplanation = {
+  formulaVersion: string;
+  sourceBasis: string;
+  rankPopulation: string;
+  rankPopulationCount: number;
+  marginP80?: number | null;
+  signedMarginContributionDenominator: number;
+  marginContributionDenominatorBasis: string;
+  stockInputBasis: string;
+  scoreRaw: number;
+  displayedScore: number;
+  scoreClamped: boolean;
+  contributions: SupplierScorecardContribution[];
+  gateCodes: string[];
+  limitations: string[];
+};
+
 export type SupplierDecisionHubFilters = {
   fromDate?: string;
   toDate?: string;
@@ -63,6 +114,7 @@ export type SummarySupplierItem = {
   dataQualityStatus: string;
   statusReason: string;
   reasonCodes: string[];
+  scorecardExplanation?: SupplierScorecardRowExplanation | null;
 };
 
 export type KeyInsightItem = {
@@ -100,6 +152,7 @@ export type ScorecardTrustMetadata = {
   windowDays?: number;
   dataNote?: string | null;
   lastRefreshAtUtc?: string | null;
+  model?: SupplierScorecardModelMetadata | null;
 };
 
 export type SummaryResponse = {
@@ -140,6 +193,7 @@ export type QuadrantItem = {
   dataQualityStatus: string;
   statusReason: string;
   reasonCodes: string[];
+  scorecardExplanation?: SupplierScorecardRowExplanation | null;
 };
 
 export type QuadrantResponse = {
@@ -172,6 +226,7 @@ export type RankingItem = {
   sharePctDenominator?: number | null;
   sharePctBasis?: string | null;
   sharePctIncludesUnknown?: boolean;
+  scorecardExplanation?: SupplierScorecardRowExplanation | null;
 };
 
 export type RankingResponse = {
@@ -201,6 +256,7 @@ export type SupplierHeaderDto = {
   dataQualityStatus: string;
   statusReason: string;
   reasonCodes: string[];
+  scorecardExplanation?: SupplierScorecardRowExplanation | null;
 };
 
 export type SupplierKpisDto = {

@@ -198,11 +198,17 @@ public static class SupplierDecisionHubEndpoints
                                     x.PreMarkdownMarginPct,
                                     x.SupplierQualityIndex,
                                     x.RecommendationCode,
-                                        x.ConfidenceScore,
-                                        x.ReliabilityPct,
-                                        x.DataQualityStatus,
-                                        x.StatusReason,
-                                        x.ReasonCodes))
+                                    x.ConfidenceScore,
+                                    x.ReliabilityPct,
+                                    x.DataQualityStatus,
+                                    x.StatusReason,
+                                    x.ReasonCodes)
+                                {
+                                    ScorecardExplanation = BuildScorecardExplanation(
+                                        x,
+                                        rows,
+                                        trustMetadata.ProvenanceBasis)
+                                })
                                 .ToList(),
                                     trustMetadata,
                                     BuildResponseMeta(rows, trustMetadata));
@@ -327,7 +333,11 @@ public static class SupplierDecisionHubEndpoints
                                 SharePctState = SupplierSharePolicy.Resolve(x.Revenue, positiveNetRevenueDenominator).State,
                                 SharePctDenominator = positiveNetRevenueDenominator > 0m ? positiveNetRevenueDenominator : null,
                                 SharePctBasis = SupplierSharePolicy.Basis,
-                                SharePctIncludesUnknown = false
+                                SharePctIncludesUnknown = false,
+                                ScorecardExplanation = BuildScorecardExplanation(
+                                    x,
+                                    ordered,
+                                    trustMetadata.ProvenanceBasis)
                             })
                             .ToList();
 
@@ -677,7 +687,8 @@ public static class SupplierDecisionHubEndpoints
         string DataQualityStatus,
         string StatusReason,
         IReadOnlyList<string> ReasonCodes,
-        decimal PostSignalCoverage = 1m);
+        decimal PostSignalCoverage = 1m,
+        bool ReturnRateKnown = true);
 
     internal sealed record SupplierReportSalesLine(
         int? SupplierId,
@@ -930,13 +941,16 @@ public static class SupplierDecisionHubEndpoints
                 .OrderByDescending(x => x.Revenue)
                 .Take(5)
                 .Sum(x => x.Revenue) / positiveNetRevenueDenominator;
+        var sourceBasis = CanUsePrecomputedSupplierRows(filters)
+            ? SelectDecisionScoreMv(GetDecisionScoreWindowDays(filters))
+            : "supplier_decision_live_sql";
 
         var topGrow = rows
             .Where(x => x.RecommendationCode is "EXPAND" or "EXPAND_SELECTIVELY")
             .OrderByDescending(x => x.SupplierQualityIndex)
             .ThenByDescending(x => x.Revenue)
             .Take(5)
-            .Select(MapSummarySupplier)
+            .Select(row => MapSummarySupplier(row, rows, sourceBasis))
             .ToList();
 
         var topRisk = rows
@@ -944,7 +958,7 @@ public static class SupplierDecisionHubEndpoints
             .OrderByDescending(x => x.StockRiskScore)
             .ThenByDescending(x => x.MarkdownDependencyScore)
             .Take(5)
-            .Select(MapSummarySupplier)
+            .Select(row => MapSummarySupplier(row, rows, sourceBasis))
             .ToList();
 
         var bestGrow = topGrow.FirstOrDefault();
@@ -2337,7 +2351,93 @@ public static class SupplierDecisionHubEndpoints
         return resolved;
     }
 
-    private static SummarySupplierItem MapSummarySupplier(SupplierScoreRow row) =>
+    internal static SupplierScorecardRowExplanation BuildScorecardExplanation(
+        SupplierScoreRow row,
+        IReadOnlyCollection<SupplierScoreRow> population,
+        string? sourceBasis = null)
+    {
+        var rows = population.Count == 0 ? [row] : population.ToList();
+        var rowCount = rows.Count;
+        decimal Rank(Func<SupplierScoreRow, decimal> selector)
+        {
+            if (rowCount == 1)
+            {
+                return 1m;
+            }
+
+            var value = selector(row);
+            return decimal.Divide(rows.Count(other => selector(other) < value), rowCount - 1);
+        }
+
+        var marginP80 = PercentileCont(rows.Select(item => Math.Max(item.PreMarkdownMarginPct, 0m)).ToList(), 0.80);
+        var marginRank = Rank(item => Math.Min(Math.Max(item.PreMarkdownMarginPct, 0m), marginP80));
+        var sellthroughRank = Rank(item => item.FullPriceSellthrough);
+        var revenueShareRank = Rank(item => item.FullPriceRevenueShare);
+        var repeatWinnerRank = Rank(item => item.RepeatWinnerRate);
+        var categoryFocusRank = Rank(item => item.CategoryFocusScore);
+        var knownReturnRates = rows.Where(item => item.ReturnRateKnown).Select(item => item.ReturnRate).ToList();
+        var returnRank = rowCount == 1 || !row.ReturnRateKnown || knownReturnRates.Count <= 1
+            ? (rowCount == 1 ? 1m : 0.5m)
+            : decimal.Divide(knownReturnRates.Count(value => value < row.ReturnRate), knownReturnRates.Count - 1);
+
+        var demand = Round2((0.60m * sellthroughRank + 0.40m * revenueShareRank) * 100m);
+        var margin = Round2(marginRank * 100m);
+        var markdown = Round2(row.MarkdownDependencyScore);
+        var inventory = Round2(row.StockRiskScore);
+        var qualityRaw = (0.50m * repeatWinnerRank - 0.30m * returnRank + 0.20m * categoryFocusRank) * 100m;
+        var quality = Round2(Math.Min(20m, Math.Max(-20m, qualityRaw)));
+        var scoreRaw = Round2(demand + margin - markdown - inventory + quality);
+        var displayedScore = Round2(row.SupplierQualityIndex);
+        var gateCodes = new List<string>();
+        if (row.PostSignalCoverage < 1m) gateCodes.Add("coverage_gate");
+        if (row.ReturnRateKnown && row.ReturnRate > 0.12m) gateCodes.Add("return_rate_gate");
+        if (row.RecommendationCode == "OOS_FALSE_NEGATIVE") gateCodes.Add("stockout_gate");
+        if (row.RecommendationCode is "EXPAND" or "EXPAND_SELECTIVELY") gateCodes.Add("score_expand");
+        else if (row.RecommendationCode == "HOLD") gateCodes.Add("score_hold");
+        else if (row.RecommendationCode == "PRICE_NEGOTIATE") gateCodes.Add("score_price_negotiate");
+        else if (row.RecommendationCode == "ASSORTMENT_REDUCE") gateCodes.Add("score_assortment_reduce");
+        if (!row.ReturnRateKnown) gateCodes.Add("missing_return_rank");
+
+        return new SupplierScorecardRowExplanation(
+            SupplierScorecardModelContract.FormulaVersion,
+            sourceBasis ?? "unknown",
+            "active_supplier_scorecard_population",
+            rowCount,
+            marginP80,
+            Round2(row.Revenue * row.FullPriceRevenueShare),
+            "signed_pre_markdown_revenue",
+            SupplierScorecardModelContract.Current.StockInputBasis,
+            scoreRaw,
+            displayedScore,
+            scoreRaw is < 0m or > 100m,
+            [
+                new("demand", "Demand contribution", demand, null, null, "positive", "fullprice_sellthrough + fullprice_revenue_share"),
+                new("margin", "Margin contribution", margin, marginRank, 1.00m, "positive", "pre_markdown_margin_pct"),
+                new("penalty.markdown_dependency", "Markdown dependency penalty", -markdown, null, -1.00m, "negative", "markdown_dependency_score"),
+                new("penalty.inventory", "Inventory penalty", -inventory, null, -1.00m, "negative", "stock_risk_score"),
+                new("quality", "Supplier quality contribution", quality, null, null, quality >= 0m ? "positive" : "negative", "repeat_winner_rate + return_rate + category_focus_score")
+            ],
+            gateCodes,
+            SupplierScorecardModelContract.Current.Limitations);
+    }
+
+    private static decimal PercentileCont(IReadOnlyList<decimal> values, double fraction)
+    {
+        if (values.Count == 0) return 0m;
+        var sorted = values.Select(value => (double)value).OrderBy(value => value).ToArray();
+        var position = fraction * (sorted.Length - 1);
+        var lower = (int)Math.Floor(position);
+        var upper = (int)Math.Ceiling(position);
+        var result = lower == upper
+            ? sorted[lower]
+            : sorted[lower] + (sorted[upper] - sorted[lower]) * (position - lower);
+        return decimal.Parse(result.ToString("G15", CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
+    }
+
+    private static SummarySupplierItem MapSummarySupplier(
+        SupplierScoreRow row,
+        IReadOnlyCollection<SupplierScoreRow> population,
+        string? sourceBasis = null) =>
         new(
             row.SupplierId,
             row.SupplierName,
@@ -2349,7 +2449,10 @@ public static class SupplierDecisionHubEndpoints
             row.ReliabilityPct,
             row.DataQualityStatus,
             row.StatusReason,
-            row.ReasonCodes);
+            row.ReasonCodes)
+        {
+            ScorecardExplanation = BuildScorecardExplanation(row, population, sourceBasis)
+        };
 
     private static IOrderedEnumerable<SupplierScoreRow> ApplyRankingSort(
         IEnumerable<SupplierScoreRow> rows,
@@ -2638,7 +2741,8 @@ public static class SupplierDecisionHubEndpoints
                         recommendationSignal.DataQualityStatus,
                         recommendationSignal.StatusReason,
                         recommendationSignal.ReasonCodes,
-                        postSignalCoverage));
+                        postSignalCoverage,
+                        !reader.IsDBNull(reader.GetOrdinal("return_rate"))));
             }
 
             sw.Stop();
@@ -3937,7 +4041,13 @@ FROM final_suppliers;
                 supplier.ReliabilityPct,
                 supplier.DataQualityStatus,
                 supplier.StatusReason,
-                supplier.ReasonCodes),
+                supplier.ReasonCodes)
+            {
+                ScorecardExplanation = BuildScorecardExplanation(
+                    supplier,
+                    dataset.Rows,
+                    trustMetadata.ProvenanceBasis)
+            },
             new SupplierKpisDto(
                 supplier.Revenue,
                 supplier.Units,
@@ -4434,6 +4544,8 @@ public sealed record ScorecardTrustMetadata(
 
     [JsonPropertyName("requestedPeriodTo")]
     public DateTime RequestedPeriodTo => RequestedTo;
+
+    public SupplierScorecardModelMetadata Model { get; init; } = SupplierScorecardModelContract.Current;
 }
 
 // TODO(backend-dto): extend Supplier Decision Hub recommendation DTOs with
@@ -4448,7 +4560,10 @@ public sealed record SummarySupplierItem(
     decimal ReliabilityPct,
     string DataQualityStatus,
     string StatusReason,
-    IReadOnlyList<string> ReasonCodes);
+    IReadOnlyList<string> ReasonCodes)
+{
+    public SupplierScorecardRowExplanation? ScorecardExplanation { get; init; }
+}
 
 public sealed record KeyInsightItem(
     string Title,
@@ -4474,7 +4589,10 @@ public sealed record QuadrantItem(
     decimal ReliabilityPct,
     string DataQualityStatus,
     string StatusReason,
-    IReadOnlyList<string> ReasonCodes);
+    IReadOnlyList<string> ReasonCodes)
+{
+    public SupplierScorecardRowExplanation? ScorecardExplanation { get; init; }
+}
 
 public sealed record RankingResponse(
     int Page,
@@ -4511,6 +4629,7 @@ public sealed record RankingItem(
     public decimal? SharePctDenominator { get; init; }
     public string? SharePctBasis { get; init; }
     public bool SharePctIncludesUnknown { get; init; }
+    public SupplierScorecardRowExplanation? ScorecardExplanation { get; init; }
 }
 
 public sealed record SupplierDecisionDetailsResponse(
@@ -4598,7 +4717,10 @@ public sealed record SupplierHeaderDto(
     decimal ReliabilityPct,
     string DataQualityStatus,
     string StatusReason,
-    IReadOnlyList<string> ReasonCodes);
+    IReadOnlyList<string> ReasonCodes)
+{
+    public SupplierScorecardRowExplanation? ScorecardExplanation { get; init; }
+}
 
 public sealed record SupplierKpisDto(
     decimal Revenue,

@@ -1292,6 +1292,42 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
         </div>
       </section>
 
+      {trustMetadata?.model ? (
+        <details className="sdh-decision-help" aria-label="Verzija i formula skorkarte">
+          <summary>Verzija i objašnjenje modela skorkarte</summary>
+          <div className="sdh-decision-help-content">
+            <p>
+              <strong>{trustMetadata.model.formulaVersion}</strong> — rezultat je signal od 0 do 100.
+              Rangovi su relativni prema aktivnoj populaciji dobavljača, a ne uzročna procena kvaliteta dobavljača.
+            </p>
+            <p>
+              Zaliha je trenutni presek i ne dokazuje da je dobavljač uzrok mrtve zalihe ili prodaje.
+              Potpisani imenilac maržnog doprinosa je {trustMetadata.model.signedMarginContributionDenominator}.
+            </p>
+            <ul>
+              {trustMetadata.model.limitations.map((limitation) => <li key={limitation}>{limitation}</li>)}
+            </ul>
+            {snapshotRow?.scorecardExplanation ? (
+              <>
+                <p>
+                  <strong>Objašnjenje reda {snapshotRow.supplierName}:</strong>{" "}
+                  sirovi skor {fmtNumber(snapshotRow.scorecardExplanation.scoreRaw, 2, "nije dostupno")},
+                  prikazani skor {fmtNumber(snapshotRow.scorecardExplanation.displayedScore, 2, "nije dostupno")},
+                  populacija ranga {snapshotRow.scorecardExplanation.rankPopulationCount}.
+                </p>
+                <ul>
+                  {snapshotRow.scorecardExplanation.contributions.map((contribution) => (
+                    <li key={contribution.key}>
+                      {contribution.label}: {fmtNumber(contribution.value, 2, "nije dostupno")}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+          </div>
+        </details>
+      ) : null}
+
       {!embedded ? (
       <section className="sdh-decision-filters">
         <label className="sdh-decision-field">

@@ -1,4 +1,5 @@
 using System.Globalization;
+using Api.Services;
 
 namespace Api.Tests;
 
@@ -160,6 +161,8 @@ internal sealed record OracleSupplierScore(
 
 internal static class SupplierScorecardOracle
 {
+    internal const string FormulaVersion = SupplierScorecardModelContract.FormulaVersion;
+
     private static readonly string[] SeasonalCategoryTokens =
         ["sand", "papuc", "cizm", "gleznj", "boot", "slipper", "season"];
 
