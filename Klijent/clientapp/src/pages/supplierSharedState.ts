@@ -24,10 +24,12 @@ export type SupplierCanonicalFilters = {
 export type SupplierEmbeddedPageProps = {
   embedded?: boolean;
   sharedFilters?: SupplierCanonicalFilters;
+  trustRequestKey?: string;
   onTrustMetadataChange?: (payload: SupplierTrustHeaderPayload | null) => void;
 };
 
 export type SupplierTrustHeaderPayload = {
+  requestKey?: string;
   periodFrom?: string | null;
   periodTo?: string | null;
   requestedPeriodFrom?: string | null;

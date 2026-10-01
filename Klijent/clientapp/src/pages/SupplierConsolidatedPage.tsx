@@ -111,20 +111,29 @@ export default function SupplierConsolidatedPage() {
   } = useSupplierCanonicalState();
 
   const trustRequestKey = useMemo(
-    () => [
-      currentTab,
-      canonicalFilters.fromDate,
-      canonicalFilters.toDate,
-      canonicalFilters.dataScope,
-      canonicalFilters.storeId ?? "",
-      canonicalFilters.supplierId ?? "",
-      canonicalFilters.category ?? "",
-      canonicalFilters.gender ?? "",
-      canonicalFilters.seasonId ?? "",
-      canonicalFilters.minRevenue ?? "",
-      canonicalFilters.onlyHighConfidence ? "1" : "0",
-      canonicalFilters.excludeOosBeforeMarkdown ? "1" : "0",
-    ].join("|"),
+    () => {
+      const key = [
+        currentTab,
+        canonicalFilters.fromDate,
+        canonicalFilters.toDate,
+        canonicalFilters.dataScope,
+        canonicalFilters.storeId ?? "",
+      ];
+      if (currentTab === "scorecard") {
+        key.push(
+          canonicalFilters.supplierId ?? "",
+          canonicalFilters.category ?? "",
+          canonicalFilters.gender ?? "",
+          canonicalFilters.seasonId ?? "",
+          canonicalFilters.minRevenue ?? "",
+          canonicalFilters.onlyHighConfidence ? "1" : "0",
+          canonicalFilters.excludeOosBeforeMarkdown ? "1" : "0",
+        );
+      } else if (currentTab === "assortment") {
+        key.push(canonicalFilters.supplierId ?? "");
+      }
+      return key.join("|");
+    },
     [canonicalFilters, currentTab],
   );
   const trustRequestKeyRef = useRef("");
@@ -135,7 +144,10 @@ export default function SupplierConsolidatedPage() {
     [trustPayload?.basis],
   );
   const handleTrustMetadataChange = useCallback(
-    (payload: SupplierTrustHeaderPayload | null) => setTrustState({ key: trustRequestKeyRef.current, payload }),
+    (payload: SupplierTrustHeaderPayload | null) => {
+      if (payload && payload.requestKey !== trustRequestKeyRef.current) return;
+      setTrustState({ key: trustRequestKeyRef.current, payload });
+    },
     [],
   );
   const duplicateStoreNames = useMemo(() => {
@@ -543,17 +555,17 @@ export default function SupplierConsolidatedPage() {
       <div className="supplier-consolidated-content">
         {currentTab === "overview" && (
           <div className="supplier-embedded-container supplier-embedded-overview">
-            <SupplierSalesStatsPage embedded sharedFilters={canonicalFilters} onTrustMetadataChange={handleTrustMetadataChange} />
+            <SupplierSalesStatsPage embedded sharedFilters={canonicalFilters} trustRequestKey={trustRequestKey} onTrustMetadataChange={handleTrustMetadataChange} />
           </div>
         )}
         {currentTab === "scorecard" && (
           <div className="supplier-embedded-container supplier-embedded-scorecard">
-            <SupplierDecisionHubPage embedded sharedFilters={canonicalFilters} onTrustMetadataChange={handleTrustMetadataChange} />
+            <SupplierDecisionHubPage embedded sharedFilters={canonicalFilters} trustRequestKey={trustRequestKey} onTrustMetadataChange={handleTrustMetadataChange} />
           </div>
         )}
         {currentTab === "assortment" && (
           <div className="supplier-embedded-container supplier-embedded-assortment">
-            <SupplierFootwearAnalyticsPage embedded sharedFilters={canonicalFilters} onTrustMetadataChange={handleTrustMetadataChange} />
+            <SupplierFootwearAnalyticsPage embedded sharedFilters={canonicalFilters} trustRequestKey={trustRequestKey} onTrustMetadataChange={handleTrustMetadataChange} />
           </div>
         )}
       </div>

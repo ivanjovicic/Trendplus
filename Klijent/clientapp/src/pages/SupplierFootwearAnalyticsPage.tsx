@@ -256,6 +256,7 @@ export function resolveSupplierFootwearFreshnessStatus(data: VendorSalesNivelaci
 export default function SupplierFootwearAnalyticsPage({
   embedded = false,
   sharedFilters,
+  trustRequestKey,
   onTrustMetadataChange,
 }: SupplierEmbeddedPageProps = {}) {
   const navigate = useNavigate();
@@ -291,6 +292,7 @@ export default function SupplierFootwearAnalyticsPage({
 
   const [vendors, setVendors] = useState<Dobavljac[]>([]);
   const [data, setData] = useState<VendorSalesNivelacijaResponse | null>(null);
+  const [dataTrustRequestKey, setDataTrustRequestKey] = useState<string | null>(null);
   const [previousRevenue, setPreviousRevenue] = useState<number | null>(null);
   const [previousPeriodState, setPreviousPeriodState] = useState<PreviousPeriodComparisonState>("empty");
   const [previousPeriodWarning, setPreviousPeriodWarning] = useState<string | null>(null);
@@ -332,6 +334,7 @@ export default function SupplierFootwearAnalyticsPage({
 
   useEffect(() => {
     setData(null);
+    setDataTrustRequestKey(null);
     setError(null);
     setExpandedVendorKey(null);
     setPreviousRevenue(null);
@@ -377,6 +380,18 @@ export default function SupplierFootwearAnalyticsPage({
   }, []);
 
   const load = useCallback(async (filters: ActiveFilters) => {
+    if (sharedFilters && (
+      filters.fromDate !== sharedFilters.fromDate
+      || filters.toDate !== sharedFilters.toDate
+      || filters.vendorId !== sharedFilters.supplierId
+      || filters.storeId !== sharedFilters.storeId
+      || filters.dataScope !== normalizeDataScope(sharedFilters.dataScope)
+    )) {
+      requestIdRef.current += 1;
+      setLoading(false);
+      return;
+    }
+
     const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
@@ -459,10 +474,12 @@ export default function SupplierFootwearAnalyticsPage({
       }
 
       setData(currentData);
+      setDataTrustRequestKey(trustRequestKey ?? null);
       setExpandedVendorKey(null);
     } catch (reason) {
       if (requestId !== requestIdRef.current) return;
       setData(null);
+      setDataTrustRequestKey(null);
       setPreviousRevenue(null);
       setPreviousPeriodState("empty");
       setPreviousPeriodWarning(null);
@@ -474,7 +491,7 @@ export default function SupplierFootwearAnalyticsPage({
     } finally {
       if (requestId === requestIdRef.current) setLoading(false);
     }
-  }, []);
+  }, [sharedFilters, trustRequestKey]);
 
   useEffect(() => { void load(activeFilters); }, [activeFilters, load]);
 
@@ -719,12 +736,13 @@ export default function SupplierFootwearAnalyticsPage({
   useEffect(() => {
     if (!embedded || !onTrustMetadataChange) return;
 
-    if (!data) {
+    if (!data || (trustRequestKey && dataTrustRequestKey !== trustRequestKey)) {
       onTrustMetadataChange(null);
       return;
     }
 
     onTrustMetadataChange({
+      requestKey: dataTrustRequestKey ?? undefined,
       periodFrom: activeFilters.fromDate,
       periodTo: activeFilters.toDate,
       lastRefreshAt: data.meta?.lastRefreshAtUtc ?? null,
@@ -742,6 +760,7 @@ export default function SupplierFootwearAnalyticsPage({
     activeFilters.fromDate,
     activeFilters.toDate,
     data,
+    dataTrustRequestKey,
     dataHint,
     dataMetaMessage,
     dataQualityStatus,
@@ -751,6 +770,7 @@ export default function SupplierFootwearAnalyticsPage({
     recommendationAllowed,
     showEmptyState,
     showMetaWarning,
+    trustRequestKey,
   ]);
 
   const handleSort = (field: SortField) => {

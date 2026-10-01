@@ -850,7 +850,7 @@ function supplierKey(supplier: { dobavljacId: number | null; dobavljacNaziv: str
   return `name:${normalizeName(supplier.dobavljacNaziv)}`;
 }
 
-export default function SupplierSalesStatsPage({ embedded = false, sharedFilters, onTrustMetadataChange }: SupplierEmbeddedPageProps = {}) {
+export default function SupplierSalesStatsPage({ embedded = false, sharedFilters, trustRequestKey, onTrustMetadataChange }: SupplierEmbeddedPageProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -895,6 +895,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     return new Set([...counts.entries()].filter(([, count]) => count > 1).map(([name]) => name));
   }, [stores]);
   const [data, setData] = useState<SupplierSalesStatsResponse | null>(null);
+  const [dataTrustRequestKey, setDataTrustRequestKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<SupplierSalesStatsError | null>(null);
   const [sortField, setSortField] = useState<SortField>("status");
@@ -923,6 +924,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
   useEffect(() => {
     setExpandedSupplierKey(null);
     setData(null);
+    setDataTrustRequestKey(null);
     setError(null);
   }, [activeDataScope]);
   const includeUnknown = useMemo(
@@ -989,6 +991,17 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
 
   const load = useCallback(async (filters: ActiveFilters, signal?: AbortSignal) => {
     if (invalidRange) return;
+    if (sharedFilters && (
+      filters.fromDate !== sharedFilters.fromDate
+      || filters.toDate !== sharedFilters.toDate
+      || filters.storeId !== sharedFilters.storeId
+      || activeDataScope !== normalizeDataScope(sharedFilters.dataScope)
+    )) {
+      requestIdRef.current += 1;
+      setLoading(false);
+      return;
+    }
+
     const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
@@ -1006,6 +1019,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
 
       if (requestId !== requestIdRef.current) return;
       setData(currentResult);
+      setDataTrustRequestKey(trustRequestKey ?? null);
       setLoading(false);
 
     } catch (reason) {
@@ -1014,10 +1028,11 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       }
       if (requestId !== requestIdRef.current) return;
       setData(null);
+      setDataTrustRequestKey(null);
       setLoading(false);
       setError(toSupplierSalesStatsError(reason));
     }
-  }, [activeDataScope, invalidRange]);
+  }, [activeDataScope, invalidRange, sharedFilters, trustRequestKey]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -1316,7 +1331,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
 
   useEffect(() => {
     if (!embedded || !onTrustMetadataChange) return;
-    if (!data || loading) {
+    if (!data || loading || (trustRequestKey && dataTrustRequestKey !== trustRequestKey)) {
       onTrustMetadataChange(null);
       return;
     }
@@ -1331,6 +1346,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     });
 
     onTrustMetadataChange({
+      requestKey: dataTrustRequestKey ?? undefined,
       periodFrom: embeddedPeriod.periodFrom,
       periodTo: embeddedPeriod.periodTo,
       lastRefreshAt: trustLastRefreshAt,
@@ -1351,9 +1367,11 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     activeFilters.fromDate,
     activeFilters.toDate,
     data,
+    dataTrustRequestKey,
     embedded,
     loading,
     onTrustMetadataChange,
+    trustRequestKey,
     responseMeta?.basis,
     trustDataFreshnessStatus,
     trustDataQualityStatus,

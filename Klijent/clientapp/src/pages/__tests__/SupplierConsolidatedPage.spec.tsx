@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import SupplierConsolidatedPage from "../SupplierConsolidatedPage";
 import { getStores, getSupplierFilters } from "../../services/analyticsApi";
@@ -23,8 +23,10 @@ function LocationProbe() {
 
 vi.mock("../SupplierSalesStatsPage", () => ({
   default: function MockSupplierSalesStatsPage(props: any) {
+    const requestKeyAtFirstRender = useRef(props.trustRequestKey);
     useEffect(() => {
       props.onTrustMetadataChange?.({
+        requestKey: requestKeyAtFirstRender.current,
         lastRefreshAt: "2026-07-01T07:55:00Z",
         dataFreshnessStatus: "fresh",
         requestedDataset: "30d",
@@ -51,7 +53,7 @@ vi.mock("../SupplierSalesStatsPage", () => ({
           timezone: "UTC",
         },
       });
-    }, [props.onTrustMetadataChange]);
+    }, [props.onTrustMetadataChange, props.trustRequestKey]);
 
     return <div data-testid="mock-overview">Overview</div>;
   },
@@ -110,6 +112,26 @@ describe("SupplierConsolidatedPage", () => {
     });
     expect(basis).not.toHaveTextContent("future_store_rule_code");
     expect(basis).not.toHaveTextContent("sale_time_supplier");
+  });
+
+  it("does not attach a previous filter response to the active counting basis", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier"]}>
+        <SupplierConsolidatedPage />
+      </MemoryRouter>,
+    );
+
+    const basis = await screen.findByTestId("supplier-counting-basis");
+    await waitFor(() => {
+      expect(basis).toHaveTextContent("Dobavljač u trenutku prodaje.");
+    });
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Period" }), { target: { value: "90d" } });
+
+    await waitFor(() => {
+      expect(basis).toHaveTextContent("Način brojanja za ovaj prikaz još nije dostupan.");
+    });
+    expect(basis).not.toHaveTextContent("Dobavljač u trenutku prodaje.");
   });
 
   it("shows a safe counting-basis fallback when the active tab reports no basis", async () => {

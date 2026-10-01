@@ -284,7 +284,7 @@ function formatSupplierPeriodRange(from: string | null | undefined, to: string |
   return `${formatDate(from)} - ${formatDate(to)}`;
 }
 
-export default function SupplierDecisionHubPage({ embedded = false, sharedFilters, onTrustMetadataChange }: SupplierEmbeddedPageProps = {}) {
+export default function SupplierDecisionHubPage({ embedded = false, sharedFilters, trustRequestKey, onTrustMetadataChange }: SupplierEmbeddedPageProps = {}) {
   const requestIdRef = useRef(0);
   const detailRequestIdRef = useRef(0);
   const detailAbortRef = useRef<AbortController | null>(null);
@@ -319,6 +319,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
   const [summary, setSummary] = useState<SummaryResponse | null>(null);
   const [previousSummary, setPreviousSummary] = useState<SummaryResponse | null>(null);
   const [ranking, setRanking] = useState<RankingResponse | null>(null);
+  const [trustDataRequestKey, setTrustDataRequestKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<{
     message: string;
@@ -407,6 +408,24 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
   useEffect(() => () => closeSupplierDetail(), [closeSupplierDetail]);
 
   const load = useCallback(async (filters: ActiveFilters) => {
+    if (sharedFilters && (
+      filters.fromDate !== sharedFilters.fromDate
+      || filters.toDate !== sharedFilters.toDate
+      || filters.category !== (sharedFilters.category ?? null)
+      || filters.gender !== (sharedFilters.gender ?? null)
+      || filters.seasonId !== (sharedFilters.seasonId ?? null)
+      || filters.minRevenue !== (sharedFilters.minRevenue ?? null)
+      || filters.onlyHighConfidence !== (sharedFilters.onlyHighConfidence === true)
+      || filters.excludeOosBeforeMarkdown !== (sharedFilters.excludeOosBeforeMarkdown === true)
+      || filters.supplierId !== sharedFilters.supplierId
+      || filters.storeId !== sharedFilters.storeId
+      || filters.dataScope !== sharedFilters.dataScope
+    )) {
+      requestIdRef.current += 1;
+      setLoading(false);
+      return;
+    }
+
     const requestId = ++requestIdRef.current;
     closeSupplierDetail();
     setLoading(true);
@@ -451,6 +470,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       hasSummaryRef.current = true;
       setRanking(rankingResult.value);
       hasRankingRef.current = true;
+      setTrustDataRequestKey(trustRequestKey ?? null);
       setPreviousSummary(previousResult.status === "fulfilled" ? previousResult.value : null);
       setRefreshStatus(refreshStatusResult.status === "fulfilled" ? refreshStatusResult.value : null);
       setExpandedSupplierId(null);
@@ -461,6 +481,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
         setSummary(null);
         setPreviousSummary(null);
         setRanking(null);
+        setTrustDataRequestKey(null);
       } else {
         setStaleWarning("Prikazujemo prethodno učitane podatke. Novi upit nije uspeo i podaci mogu biti zastareli.");
       }
@@ -479,7 +500,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     } finally {
       if (requestId === requestIdRef.current) setLoading(false);
     }
-  }, [closeSupplierDetail]);
+  }, [closeSupplierDetail, sharedFilters, trustRequestKey]);
 
   useEffect(() => { void load(activeFilters); }, [activeFilters, load]);
 
@@ -733,6 +754,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
 
     if (showBlockingError) {
       onTrustMetadataChange({
+        requestKey: trustRequestKey,
         periodFrom: activeFilters.fromDate,
         periodTo: activeFilters.toDate,
         requestedPeriodFrom: activeFilters.fromDate,
@@ -753,12 +775,18 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       return;
     }
 
+    if (trustRequestKey && trustDataRequestKey !== trustRequestKey) {
+      onTrustMetadataChange(null);
+      return;
+    }
+
     if (!trustMetadata) {
       onTrustMetadataChange(null);
       return;
     }
 
     onTrustMetadataChange({
+      requestKey: trustDataRequestKey ?? undefined,
       periodFrom: requestedPeriodFrom,
       periodTo: requestedPeriodTo,
       requestedPeriodFrom,
@@ -793,6 +821,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     });
   }, [
     scorecardMeta?.basis,
+    trustDataRequestKey,
     activeFilters.category,
     activeFilters.dataScope,
     activeFilters.excludeOosBeforeMarkdown,
@@ -818,6 +847,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     requestedPeriodTo,
     showBlockingError,
     sortedRows.length,
+    trustRequestKey,
     summary?.from,
     summary?.to,
     trustMetadata?.coverage,

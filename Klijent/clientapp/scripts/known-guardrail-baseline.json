@@ -11,13 +11,13 @@
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "confidencePct_assign",
-      "line": 1273,
+      "line": 1303,
       "reason": "Existing backend confidence projection requires a reviewed authority exception."
     },
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "reliabilityPct_assign",
-      "line": 1274,
+      "line": 1304,
       "reason": "Existing backend reliability projection requires a reviewed authority exception."
     },
     {
@@ -101,7 +101,7 @@
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 652,
+      "line": 673,
       "reason": "Existing supplier decision fallback requires a reviewed backend-authority exception."
     },
     {
@@ -113,37 +113,37 @@
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "sorted_rows_kpi_reduce",
-      "line": 652,
+      "line": 673,
       "reason": "Existing sorted supplier aggregation requires a reviewed KPI ownership exception."
     },
     {
       "file": "src/pages/SupplierFootwearAnalyticsPage.tsx",
       "rule": "refetch_setData_null",
-      "line": 334,
+      "line": 336,
       "reason": "Supplier Footwear must clear stale scope-bound rows and trust metadata before the next scope-bound request completes."
     },
     {
       "file": "src/pages/SupplierFootwearAnalyticsPage.tsx",
       "rule": "page_percentage_formula",
-      "line": 504,
+      "line": 521,
       "reason": "Existing supplier-footwear percentage projection requires a reviewed authority exception."
     },
     {
       "file": "src/pages/SupplierFootwearAnalyticsPage.tsx",
       "rule": "page_reduce_kpi",
-      "line": 495,
+      "line": 512,
       "reason": "Existing supplier-footwear aggregation predates the backend KPI ownership contract."
     },
     {
       "file": "src/pages/SupplierSalesStatsPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 1911,
+      "line": 1929,
       "reason": "Existing supplier KPI fallback requires a reviewed unavailable-value exception."
     },
     {
       "file": "src/pages/SupplierSalesStatsPage.tsx",
       "rule": "refetch_setData_null",
-      "line": 925,
+      "line": 926,
       "reason": "Supplier scope changes must clear stale rows and trust metadata before the next scope-bound request completes."
     },
     {
