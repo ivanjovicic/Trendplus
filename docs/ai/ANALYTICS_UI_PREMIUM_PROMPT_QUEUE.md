@@ -1404,8 +1404,8 @@ Current tokens and shared forms are desktop-dense: body/small tokens are below t
 - Checks not run: real iOS/iPad Safari and physical coarse-pointer device proof
 - Run log: `.ai/runs/2026-10-01-P-UI-25-evidence.md`
 - Delivery mode: direct-main
-- Main commit SHA: `61ec1eb2`
-- Main verification: `origin/main` resolves to `61ec1eb2`; implementation and evidence commits are ancestors
+- Main commit SHA: `063d40877e3cc3ddfd650d151d14412fc812349c`
+- Main verification: `origin/main` resolves to `063d40877e3cc3ddfd650d151d14412fc812349c`; implementation and evidence commits are ancestors
 - Evidence state: synchronized
 - Missed: page-family migrations, mobile drawer behavior and shared primitive migrations remain later P-UI prompts; the existing four Products-page overflow observations remain unfixed baseline findings
 - Follow-up: promote P-UI-26 or P-UI-27 only after a fresh collision check
