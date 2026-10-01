@@ -3,8 +3,9 @@
 Date: 2026-09-30
 Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
-Current READY prompt: RQ522
-Additional READY prompts: RQ527 (parallel-safe `supplier-assortment-oracle`; tests/fixtures only, RQ522 reads nivelacija store grain read-only)
+Current READY prompt: RQ527
+Additional READY prompts: RQ528 (parallel-safe `supplier-cross-tab-parity`; tests/contract only, consumes RQ522 `meta.basis`)
+Queue reconciliation 2026-10-01: RQ522 DONE — every Supplier tab publishes backend `meta.basis` rendered as "Kako se broji"; nivelacija sales exclude DUG/KOREKCIJA; Overview/Assortment use one `Nepoznato` supplier bucket. RQ527 promoted to primary READY; RQ528 is dependency-complete and promoted to additional READY; RQ523 stays WAITING on RQ498, RQ530 on RQ500/RQ524/RQ474/RQ487.
 Queue reconciliation 2026-10-01: RQ521 DONE — Supplier scorecard return rate uses gross sold units with neutral missing-return rank, sale-time supplier attribution bounded to the published window, and canonical DUG/KOREKCIJA exclusion from full-price turnover evidence; existing databases pick it up through outdated-definition readiness and one-time stale windowed cache recreation. RQ522 is dependency-complete (RQ519/RQ521 DONE) and promoted to primary READY; RQ527 stays additional READY.
 Queue reconciliation 2026-10-01: RQ526 DONE — independent Supplier scorecard oracle and golden fixture match real PostgreSQL article signals and all-time/90d/180d score caches; known input defects are pinned for RQ521 to flip. RQ521 is dependency-complete and primary READY; RQ527 was dependency-complete and is promoted as additional READY.
 Queue reconciliation 2026-09-30: RQ520 DONE — assortment vendor-sales-nivelacija uses dedicated price-change effect policy (non-actionable), mature-post zero semantics, aligned vendor change totals, and Supplier Footwear labels decoupled from Supplier PoP. RQ518, RQ519 and RQ525 are DONE.
@@ -238,9 +239,9 @@ RQ518 DONE and RQ526 DONE; RQ445/RQ473 remain authority.
 
 ## RQ522 - Declare Supplier cross-tab basis and align cheap canonical mismatches
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: RQ519 and RQ521 DONE (satisfied 2026-10-01)
-Claimed: 2026-10-01 by Cursor workspace after exact-main refresh (`HEAD == origin/main == 04bd151e`); no open PR, `rq522` branch or task lock collision found; BCI/STAB routers report no READY. Local lock `.ai/task-locks/RQ522-cursor.lock.md`.
+Claimed: 2026-10-01 by Cursor workspace after exact-main refresh (`HEAD == origin/main == 04bd151e`); no open PR, `rq522` branch or task lock collision found; BCI/STAB routers report no READY.
 Priority: P2
 Type: backend/frontend/contract/tests
 Feature family: supplier-cross-tab-basis
@@ -278,6 +279,26 @@ Every tab states its basis; remaining differences are explicit and explainable.
 ### Dependencies
 
 RQ519 and RQ521 DONE; RQ445/RQ473 prior authority.
+
+### Completion note
+
+- Date: 2026-10-01
+- Status: DONE
+- Completion: every Supplier tab publishes backend-owned `meta.basis` (`SupplierTabBasisPolicy`, `supplier_tab_basis_v1`: supplier attribution, cost basis, receipt population, cohort, period semantics, store scope, unknown-supplier policy, as-of date, timezone) and the shell renders it as "Kako se broji" with Serbian labels and a safe fallback (no raw codes). Cheap alignment applied: nivelacija `sales_daily` (startup 014 views and store-scoped SQL) excludes DUG/KOREKCIJA like `SalesReceiptPopulationPolicy`; Overview and Assortment collapse missing/unmapped/"Nepoznato" suppliers into one `Nepoznato` bucket with a diagnostic source-id count. Timezone documented as UTC (no business-timezone owner exists). Store grain checked read-only: local data inconclusive, `IDObjekat` can be NULL by import code, so the Assortment store filter is unchanged and declared as `store_filter_applies_to_events_and_sales`.
+- Changed files: `Api/Dtos/AnalyticsResponseMetaDto.cs`, `Api/Dtos/SupplierTabBasisDto.cs`, `Api/Services/SupplierTabBasisPolicy.cs`, `Api/Services/SupplierUnknownBucketPolicy.cs`, `Api/Endpoints/AllEndpoints.cs`, `Api/Endpoints/SupplierDecisionHubEndpoints.cs`, `Api/Models/VendorSalesNivelacijaModels.cs`, `Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql`, `Infrastructure/Services/Caching/IAnalyticsCacheService.cs`, `Api.Tests/SupplierTabBasisPolicyTests.cs`, `Klijent/clientapp/src/{types/analytics.ts,pages/supplierSharedState.ts,pages/SupplierConsolidatedPage.tsx,pages/SupplierConsolidatedPage.css,pages/SupplierSalesStatsPage.tsx,pages/SupplierDecisionHubPage.tsx,pages/SupplierFootwearAnalyticsPage.tsx,pages/__tests__/SupplierConsolidatedPage.spec.tsx,utils/supplierTabBasisLabels.ts}`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`
+- Contract/runtime behavior changed: yes — optional `meta.basis` added (backward compatible); Overview/Assortment unknown suppliers merge into one row with `unknownSupplierSourceIdCount` / `unknownVendorSourceIdCount`; Assortment pre/post sales exclude DUG/KOREKCIJA; cache keys `supplier-sales-stats:v6`, `vendor-sales-nivelacija:v6:vendor`. Scorecard values unchanged.
+- Checks run: `dotnet build Api.Tests` pass; `dotnet test --filter SupplierTabBasisPolicyTests` 13/13; `dotnet test --filter Supplier|VendorSales|CacheKey|SalesReceiptPopulation` 275 pass / 27 pre-existing skips / 0 fail; vitest Supplier consolidated/overview/scorecard/assortment specs 109/109; `npm run check:analytics-guardrails` pass (three baseline line numbers shifted, no new debt); `npm run build` pass; `git diff --check` clean; governance validators pass.
+- Checks not run: full backend suite (bounded change); live PostgreSQL execution of the changed nivelacija SQL with DUG/KOREKCIJA fixtures (static guards; RQ527 oracle is the executable owner); real-data store-grain fixture (production not queried).
+- Run log: `.ai/runs/2026-10-01-RQ522-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: c338e46fd847944bb81f0fbd48cac3b6fa981626
+- Main verification: recorded in the run log after push
+- Missed: broad attribution change N22 (Scorecard/Assortment to sale-time supplier), N10 Assortment current cost, N17 cohort and N23 period semantics are declared, not changed (owner decision); visible cross-tab naming/units remain RQ498.
+- Follow-up: product owner decides N22/N10 attribution/cost alignment; RQ527 can pin the DUG/KOREKCIJA exclusion executably; RQ528 consumes `meta.basis`.
+- Residual risk: v6 cache cold start; Assortment vendor count drops where unresolved vendors merge; Scorecard unknown suppliers intentionally not collapsed, so cross-tab supplier counts may differ (declared).
+- Next: RQ527 (primary READY), RQ528 (additional READY).
+- Prompt defect / scope repair: three existing analytics guardrail baseline entries shifted by +2 lines because of the added `basis` lines (same entries, no new debt).
 
 ---
 
@@ -543,8 +564,8 @@ RQ519 DONE and RQ525 DONE.
 
 ## RQ528 - Add Supplier cross-tab parity contract
 
-Status: WAITING
-Ready after: RQ522 DONE
+Status: READY
+Ready after: RQ522 DONE (satisfied 2026-10-01)
 Priority: P2
 Type: tests/contract
 Feature family: supplier-cross-tab-parity
