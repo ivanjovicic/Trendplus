@@ -1584,6 +1584,7 @@ Several shared primitives have viewport/touch problems: `Modal` has fixed minimu
 - Evidence state: synchronized
 - Missed: shared tabs primitive and page-level tab migrations deferred
 - Follow-up: promote P-UI-28 after collision check
+- Residual risk: full modal/help screenshot matrix was not rerun, and real iOS/iPad Safari behavior remains unverified; see the run log.
 - Next: idle recovery for P-UI-28
 
 ---
