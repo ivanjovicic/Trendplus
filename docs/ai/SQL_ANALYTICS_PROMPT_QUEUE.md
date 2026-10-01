@@ -2,7 +2,7 @@
 
 Date: 2026-09-05
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (Q83 is PARTIAL pending backend/PostgreSQL proof)
+Current READY prompt: none (Q83 DONE after focused backend/PostgreSQL proof)
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -37,7 +37,7 @@ Purpose: isolate SQL analytics work so Codex, Cursor and manual edits do not imp
 | Q80 | DONE | lost-sales-source-confidence | Make lost-sales validation source/confidence explicit |
 | Q81 | DONE | analytics-datascope-sql-consistency | Audit dataScope/store/supplier filtering across raw SQL helpers |
 | Q82 | DONE | analytics-sql-observability | Standardize SQL timeout/cancellation/logging expectations |
-| Q83 | READY | nivelacija-sql-nullability-and-baseline | Resume raw nivelacija nullability/baseline contract with Docker-backed proof and remove remaining fake-zero aggregates |
+| Q83 | DONE | nivelacija-sql-nullability-and-baseline | Resume raw nivelacija nullability/baseline contract with Docker-backed proof and remove remaining fake-zero aggregates |
 
 ---
 
@@ -1041,8 +1041,9 @@ Type: SQL/backend/tests
 Feature family: nivelacija-sql-nullability-and-baseline
 Parallel-safe: no, this is the SQL owner for pre/post change semantics
 Owner: Codex
-Claimed: 2026-10-01 by ChatGPT on `cursor/q83-nivelacija-nullability-51d0`; no conflicting branch, lock or open PR found
-Claim lock: `.ai/task-locks/Q83-chatgpt.lock.md` (removed before commit)
+Initial claim: 2026-10-01 by ChatGPT on `cursor/q83-nivelacija-nullability-51d0`; implementation and branch commits are now contained in `origin/main`.
+Re-entry claim: 2026-10-01 by Codex on `main` after refreshed `origin/main` `fe49830765ddd009c50e6416d15a8ff65f1deeb6`; Q83 re-entered from PARTIAL for the explicit backend/Testcontainers proof in its latest run log. .NET SDK and Docker are available. Stale PR #89 was closed because all PR commits are ancestors of `origin/main`.
+Claim lock: `.ai/task-locks/Q83-codex.lock.md` (removed before commit)
 Commit suggestion: `fix(sql): preserve nivelacija evidence states`
 
 Re-entry 2026-10-01: operator reports Docker Desktop available. RQ533 left a bounded backend residual in this owner family: price-direction and category aggregates still coerce an unavailable change percent to numeric zero, while RQ534 already repaired the unrelated stale frontend spec statuses. Re-promoted PARTIAL -> READY for repository-local PostgreSQL/backend proof. A successful Render deploy was also reported, but production/runtime verification is not claimed here and is handled by RQ535/STAB16.
@@ -1174,3 +1175,21 @@ live analytics database.
 - Follow-up: Re-run the focused .NET/Testcontainers matrix in an environment with .NET and Docker, then reclassify Q83; RQ491 remains WAITING. Live Pre/Post view application/verification remains with RQ535/STAB16.
 - Residual risk: backend compilation/runtime, PostgreSQL/Testcontainers proof and live view/migration application need CI or an environment with .NET, Docker and authorized PostgreSQL access.
 - Prompt defect / scope repair: the bounded frontend API schema/type update was required to keep the end-to-end nullable contract valid; no frontend page/UX behavior was changed.
+
+### Completion note
+
+- Date: 2026-10-01
+- Status: DONE
+- Completion: Same-owner re-entry closed the remaining repository-local backend/PostgreSQL proof. Release build completed with 0 errors, and all 24 focused nullability, policy and Testcontainers oracle cases passed. No runtime code changed during re-entry; implementation SHA `3e929bcb55ddca90de756791da6624bca5479c84` remains on `main`.
+- Changed files: `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-10-01-Q83-reentry-evidence.md`
+- Checks run: `dotnet build Api.Tests/Api.Tests.csproj --configuration Release` (0 errors); focused `dotnet test` filter covering `VendorSalesNivelacijaNullabilityContractTests`, `AssortmentNivelacijaOracleTests` and `VendorSalesNivelacijaTypeInsightPolicyTests` (24/24); `dotnet ef migrations list --project .\Infrastructure\Infrastructure.csproj --startup-project .\Api\Api.csproj --context AnalyticsDbContext` (build succeeded and migrations enumerated; database applied-status lookup returned Neon `28P01`); governance validators and `git diff --check` pass.
+- Checks not run: Full `Api.Tests` suite; live/production view or migration verification (no authorized read-only DB access; separately owned by RQ535/STAB16).
+- Run log: `.ai/runs/2026-10-01-Q83-reentry-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `32f36939b5367f5c67ebafcd495fd769e7fa5488`
+- Main verification: fresh fetch verified `origin/main == 9cb2bf7ad9d7f23eeceb1bcd21958e17adfaec0c`; it contains closure SHA `32f36939b5367f5c67ebafcd495fd769e7fa5488` and implementation SHA `3e929bcb55ddca90de756791da6624bca5479c84`.
+- Missed: Live applied-migration and deployed-view state remains unverified; local EF tooling could not query applied status after Neon returned `28P01`.
+- Follow-up: RQ475 is dependency-complete after RQ536; select it through fresh collision checks. Keep RQ491 on its own live/runtime gate until re-evaluated.
+- Residual risk: Production view availability and migration application remain separate operational evidence; no production success is inferred.
+- Prompt defect / scope repair: stale SQL queue header/table/section disagreed with latest PARTIAL evidence; reconciled all three to the proven DONE state after the explicit re-entry matrix passed. Stale PR #89 was closed after confirming every commit was already in `origin/main`.
