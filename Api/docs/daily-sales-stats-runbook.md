@@ -20,13 +20,14 @@ Daily table for analytics decision support:
 
 ## Query Parameters
 
-- `fromDate` (optional, `YYYY-MM-DD`, UTC date only)
-- `toDate` (optional, `YYYY-MM-DD`, UTC date only)
+- `fromDate` (optional, `YYYY-MM-DD`, UTC date only); `from` is an alias
+- `toDate` (optional, `YYYY-MM-DD`, UTC date only); `to` is an alias
 - `storeId` (optional, integer)
 - `topN` (optional, default `15`, clamped to `1..25`)
 - `dataScope` (optional, one of `all | existing | imported`, default `all`)
 
 If no date range is provided, default window is last 30 days (inclusive).
+When both spellings for one boundary are supplied, `fromDate` / `toDate` take precedence over `from` / `to` respectively.
 
 ## Validation Rules
 

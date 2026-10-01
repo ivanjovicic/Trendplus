@@ -21,13 +21,13 @@
     },
     {
       "supplierId": null,
-      "supplierName": "Nepoznato",
+      "supplierName": "Nepoznat dobavljač",
       "isUnknown": true,
       "totalQty": 5,
       "totalRevenue": 750
     }
   ],
-  "topSuppliersOrder": ["Dobavljac A", "Dobavljac C", "Nepoznato"],
+  "topSuppliersOrder": ["Dobavljac A", "Dobavljac C", "Nepoznat dobavljač"],
   "dateRows": [
     {
       "date": "2026-01-03",

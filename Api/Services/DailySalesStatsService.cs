@@ -506,9 +506,9 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                     SupplierId = resolved.SupplierId,
                     SupplierName = resolved.SupplierName,
                     IsUnknown = resolved.IsUnknown,
-                    UnknownReason = resolved.UnknownReason,
-                    AttributionBasis = NormalizeAttributionBasis(row.AttributionBasis)
+                    UnknownReason = resolved.UnknownReason
                 };
+                supplierAccumulator.MergeAttributionBasis(NormalizeAttributionBasis(row.AttributionBasis));
                 supplierTotals[supplierKey] = supplierAccumulator;
             }
             else

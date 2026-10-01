@@ -67,6 +67,42 @@ public sealed class DailySalesStatsIntegrationTests
         AssertInvalidRangeIsNotEmptySuccess(await response.Content.ReadAsStringAsync());
     }
 
+    [Fact(DisplayName = "Daily sales accepts from/to aliases and preserves canonical query precedence")]
+    public async Task DailySalesStats_FromToAliasesResolveRequestedPeriod()
+    {
+        await using var factory = CreateFactory();
+
+        var aliasRoot = await GetJsonRootAsync(
+            factory,
+            "/api/analytics/daily-sales?from=2026-01-01&to=2026-01-03&topN=3&dataScope=all");
+        var canonicalRoot = await GetJsonRootAsync(
+            factory,
+            "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03&topN=3&dataScope=all");
+        var mixedRoot = await GetJsonRootAsync(
+            factory,
+            "/api/analytics/daily-sales?from=2026-01-02&to=2026-01-02&fromDate=2026-01-01&toDate=2026-01-03&topN=3&dataScope=all");
+        var defaultDateBeforeRequest = DateTime.UtcNow.Date;
+        var defaultRoot = await GetJsonRootAsync(factory, "/api/analytics/daily-sales");
+        var defaultDateAfterRequest = DateTime.UtcNow.Date;
+
+        Assert.Equal(canonicalRoot.GetProperty("requestedFrom").GetDateTime(), aliasRoot.GetProperty("requestedFrom").GetDateTime());
+        Assert.Equal(canonicalRoot.GetProperty("requestedTo").GetDateTime(), aliasRoot.GetProperty("requestedTo").GetDateTime());
+        Assert.Equal(3, aliasRoot.GetProperty("metadata").GetProperty("totalDays").GetInt32());
+        Assert.Equal(3, aliasRoot.GetProperty("dateRows").GetArrayLength());
+        Assert.Equal(CanonicalizeJson(canonicalRoot.GetRawText()), CanonicalizeJson(aliasRoot.GetRawText()));
+
+        // The established names stay authoritative if both spellings are supplied.
+        Assert.Equal(canonicalRoot.GetProperty("requestedFrom").GetDateTime(), mixedRoot.GetProperty("requestedFrom").GetDateTime());
+        Assert.Equal(canonicalRoot.GetProperty("requestedTo").GetDateTime(), mixedRoot.GetProperty("requestedTo").GetDateTime());
+
+        // Requests without either spelling keep the last-30-days inclusive default.
+        var defaultTo = defaultRoot.GetProperty("requestedTo").GetDateTime().Date;
+        var defaultFrom = defaultRoot.GetProperty("requestedFrom").GetDateTime().Date;
+        Assert.Contains(defaultTo, new[] { defaultDateBeforeRequest, defaultDateAfterRequest });
+        Assert.Equal(29, (defaultTo - defaultFrom).TotalDays);
+        Assert.Equal(30, defaultRoot.GetProperty("dateRows").GetArrayLength());
+    }
+
     [Fact(DisplayName = "Daily sales dataScope filters imported rows")]
     public async Task DailySalesStats_DataScopeFiltersRows()
     {

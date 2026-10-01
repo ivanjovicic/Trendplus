@@ -26,8 +26,10 @@ public static class DailySalesStatsEndpoints
             try
             {
                 var safeTopN = Math.Clamp(request.TopN ?? DefaultTopN, 1, 25);
-                var toUtc = NormalizeUtcDate(request.ToDate) ?? DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
-                var fromUtc = NormalizeUtcDate(request.FromDate) ?? toUtc.AddDays(-(DefaultWindowDays - 1));
+                // Keep the established fromDate/toDate names authoritative while also
+                // accepting the shorter aliases used by direct API links.
+                var toUtc = NormalizeUtcDate(request.ToDate ?? request.To) ?? DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
+                var fromUtc = NormalizeUtcDate(request.FromDate ?? request.From) ?? toUtc.AddDays(-(DefaultWindowDays - 1));
 
                 if (fromUtc > toUtc)
                 {
@@ -187,5 +189,7 @@ public static class DailySalesStatsEndpoints
         DateTime? ToDate = null,
         int? StoreId = null,
         int? TopN = null,
-        string? DataScope = null);
+        string? DataScope = null,
+        DateTime? From = null,
+        DateTime? To = null);
 }
