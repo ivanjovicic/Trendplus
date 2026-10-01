@@ -3,8 +3,9 @@
 Date: 2026-09-30
 Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
-Current READY prompt: RQ533 (IN_PROGRESS)
-Additional READY prompts: none; RQ524, RQ527 and RQ528 are DONE
+Current READY prompt: none
+Additional READY prompts: none; RQ524, RQ527, RQ528 and RQ533 are DONE
+Queue reconciliation 2026-10-01: RQ533 DONE. Assortment vendor and totals change percent are null without mature comparable evidence or a revenue baseline; the error fallback reports null instead of 0; cache key v7. No Supplier-audit prompt is runnable: RQ523, RQ529, RQ530 and RQ532 wait on RQ498, RQ499 and RQ500 (RQ474/RQ475 live access), and RQ531 waits on owner approval. Follow-up for the Q83 Pre/Post owner: price-direction and category change percent `?? 0m`.
 Queue registration 2026-10-01: RQ533 was registered from the RQ527 follow-up (Assortment fake 0% change percent without comparable evidence), deduplicated against the existing queues, and promoted and claimed in the same idle-recovery run.
 Queue reconciliation 2026-10-01: RQ524 DONE through idle recovery. The Supplier reconciliation pack now runs on Testcontainers fixtures with all sixteen verdicts pinned, read-only proof, and owned FAIL verdicts for missing objects. It fixes the previous-only window, the `42P01` aborts and the false SUP-012 FAIL on non-comparable rows, and adds the SUP-016 maturity check. No Supplier-audit prompt is runnable: RQ523 waits on RQ498; RQ529 on RQ523/RQ499; RQ530 on RQ500/RQ474/RQ487; RQ531 on owner approval; RQ532 on RQ500. RQ498, RQ499 and RQ500 wait on RQ474/RQ475, which need read-only live/provider access.
 Queue reconciliation 2026-10-01: RQ527 DONE — independent Assortment oracle and golden fixture match startup view 014 and the bounded scoped source on real PostgreSQL; the oracle exposed and the run fixed a scoped-SQL `42803` failure (store/dataScope-filtered Assortment) and the unreachable `immature` vendor state. No Supplier-audit prompt is runnable: RQ523 waits on RQ498, RQ529 on RQ523/RQ499, RQ530 on RQ500/RQ524/RQ474/RQ487, RQ531 on owner approval, RQ532 on RQ500; RQ524 is PARTIAL.
@@ -843,7 +844,7 @@ RQ520, RQ527 and RQ500 DONE.
 
 ## RQ533 - Return unknown instead of 0% for Assortment change percent without comparable evidence
 
-Status: IN_PROGRESS
+Status: DONE
 Claimed: 2026-10-01 by Cursor agent on `main` (direct). Registered and promoted WAITING -> READY -> IN_PROGRESS in the same idle-recovery run (user authorized promotion). Dependencies RQ520 and RQ527 are DONE; no other active owner, lock or PR touches the vendor-sales-nivelacija change-percent contract.
 Priority: P1
 Type: backend/frontend-contract/tests
@@ -896,3 +897,39 @@ No Assortment vendor or total shows a 0% change without mature comparable eviden
 ### Dependencies
 
 RQ520 and RQ527 DONE.
+
+### Completion note
+
+- Date: 2026-10-01
+- Status: DONE
+- Completion: vendor and totals change percent are now null without mature comparable evidence or without a revenue baseline. A real flat 0/0 mature cohort still reports 0%.
+- Changed files:
+  - `Application/Analytics/VendorSalesNivelacijaPriceChangeEffectPolicy.cs`
+  - `Api/Endpoints/AllEndpoints.cs`, `Api/Models/VendorSalesNivelacijaModels.cs`
+  - `Infrastructure/Services/Caching/IAnalyticsCacheService.cs`
+  - `Api.Tests/AssortmentNivelacijaOracle.cs`, `Api.Tests/AssortmentNivelacijaOracleTests.cs`, `Api.Tests/Golden/assortment-nivelacija-oracle.json`, `Api.Tests/VendorSalesNivelacijaPriceChangeEffectPolicyTests.cs`
+  - `Klijent/clientapp/src/services/vendorSalesNivelacijaApi.ts`, `Klijent/clientapp/src/validation/analyticsResponseSchemas.ts` and their specs
+  - `SupplierFootwearAnalyticsPage.spec.tsx`
+- Contract/runtime behavior changed:
+  - new helper `ComputeCohortChangePercent`;
+  - `?? 0m` vendor and totals fallbacks removed;
+  - vendor and totals `ChangePercent` is nullable, including the error-fallback totals;
+  - best/worst insights explain an unavailable percent instead of printing 0%;
+  - cache key v6 changed to v7;
+  - the frontend type and schema accept null, and the Asortiman trend cell renders N/A.
+- Checks run:
+  - golden counterexample: Gama 0 vs null failed before regeneration;
+  - `AssortmentNivelacijaOracleTests` pass on Testcontainers;
+  - backend slice `Supplier|VendorSales|Nivelacija|Assortment|CacheKey|AnalyticsResponseMeta`: 360 passed, 28 skipped, 0 failed;
+  - frontend focused specs: 38/38;
+  - `check:analytics-guardrails` and `npm run build` pass;
+  - `git diff --check` clean; governance validators pass.
+- Checks not run: full `dotnet test` and full vitest suites. `ProdajaPrePostNivelacijePage.spec.tsx` has 8 failures that reproduce with the RQ533 frontend changes stashed, so they are pre-existing and unrelated.
+- Run log: `.ai/runs/2026-10-01-RQ533-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: 4aadc2cd706e41b512f5f21a78fe9e22c98ed878
+- Main verification: `origin/main` contains 4aadc2cd (ancestor check after push)
+- Missed: price-direction and category `ChangePercent ?? 0m` in the same endpoint feeds Prodaja pre/posle nivelacije (Q83 owner) and was kept out of scope.
+- Follow-up: the Q83 Pre/Post owner should make price-direction and category change percent null without a baseline and repair the pre-existing `ProdajaPrePostNivelacijePage.spec.tsx` failures.
+- Residual risk: external consumers that assumed vendor or totals `changePercent` was non-null now receive null.
