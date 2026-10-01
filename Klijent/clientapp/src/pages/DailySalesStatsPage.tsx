@@ -476,6 +476,19 @@ export function formatDailySalesError(
   );
 }
 
+export function describeUnknownSupplierReason(reason: string | null | undefined): string | null {
+  if (reason === "missing_attribution") {
+    return "Dobavljač nije sačuvan na stavci prodaje (supplier_id_at_sale je prazan).";
+  }
+  if (reason === "dangling_supplier_reference") {
+    return "ID dobavljača postoji na prodaji, ali nema odgovarajući red u tabeli Dobavljači.";
+  }
+  if (reason === "archived_placeholder") {
+    return "Arhivirani placeholder dobavljač.";
+  }
+  return reason ? "Dobavljač je označen kao nepoznat." : null;
+}
+
 export function resolveDailySalesPageError(
   reason: unknown,
   fallback = DAILY_SALES_ERROR_FALLBACK,
@@ -2116,10 +2129,21 @@ export default function DailySalesStatsPage() {
                     </th>
                     {supplierHeaders.map((name, index) => {
                       const displayName = tableRows.length === 0 ? "" : name;
+                      const supplierMeta = data?.topSuppliers?.find((supplier) => supplier.supplierName === name);
+                      const unknownTip = describeUnknownSupplierReason(supplierMeta?.unknownReason);
                       return (
                         <th key={`supplier-header-${index}`} className="analytics-data-table__numeric" aria-sort={sortAriaValue(`supplier:${index}`, sortKey, sortDir)}>
-                          <button type="button" onClick={() => handleSort(`supplier:${index}`)}>
-                            {displayName}{sortMarker(`supplier:${index}`, sortKey, sortDir)}
+                          <button type="button" onClick={() => handleSort(`supplier:${index}`)} className="inline-flex items-center justify-end gap-1">
+                            <span>{displayName}{sortMarker(`supplier:${index}`, sortKey, sortDir)}</span>
+                            {supplierMeta?.isUnknown ? (
+                              <span
+                                className="inline-flex items-center gap-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--warning)]"
+                                title={unknownTip ?? undefined}
+                              >
+                                Nepoznat
+                                {unknownTip ? <InfoTip text={unknownTip} /> : null}
+                              </span>
+                            ) : null}
                           </button>
                         </th>
                       );

@@ -3,15 +3,23 @@ import { z } from "zod";
 const finiteNumber = z.number().finite();
 const nonNegativeNumber = finiteNumber.min(0);
 const nonNegativeInteger = finiteNumber.int().min(0);
+/** Access Random AutoNumber and archived placeholders may be negative; treat as identifiers. */
+const supplierIdentifier = finiteNumber.int();
 const percentage = finiteNumber.min(-100).max(100);
 const nonNegativePercentage = finiteNumber.min(0).max(100);
 const validDate = z.string().min(1).refine((value) => Number.isFinite(Date.parse(value)), "Must be a valid date.");
 const nullableNumber = finiteNumber.nullable();
 const nullableSignedInteger = finiteNumber.int().nullable();
+const nullableSupplierIdentifier = supplierIdentifier.nullable();
 const nullableNonNegativeNumber = nonNegativeNumber.nullable();
 const nullableNonNegativeInteger = nonNegativeInteger.nullable();
 const nullablePercentage = percentage.nullable();
 const nullableNonNegativePercentage = nonNegativePercentage.nullable();
+const dailySalesUnknownReasonSchema = z.enum([
+  "missing_attribution",
+  "dangling_supplier_reference",
+  "archived_placeholder",
+]);
 
 const provenanceSchema = z.object({
   kind: z.enum([
@@ -863,9 +871,11 @@ export const dailySalesTableResponseSchema = z.object({
   topN: nonNegativeInteger,
   dataScope: z.string(),
   topSuppliers: z.array(z.object({
-    supplierId: nonNegativeInteger.nullable(),
+    supplierId: nullableSupplierIdentifier,
     supplierName: z.string(),
     isUnknown: z.boolean(),
+    unknownReason: dailySalesUnknownReasonSchema.nullable().optional(),
+    attributionBasis: z.string().nullable().optional(),
     totalQty: nullableNumber,
     totalRevenue: nullableNumber,
   }).passthrough()),
@@ -925,7 +935,7 @@ const preNivelacijaCandidateSchema = z.object({
   sku: z.string().trim().min(1),
   storeId: nonNegativeInteger.nullable(),
   storeName: z.string().trim().min(1),
-  supplierId: nonNegativeInteger.nullable(),
+  supplierId: nullableSupplierIdentifier,
   seasonId: nonNegativeInteger.nullable(),
   footwearTypeId: nonNegativeInteger.nullable(),
   supplierName: z.string().trim().min(1),
@@ -968,7 +978,7 @@ const preNivelacijaCandidateSchema = z.object({
 }).passthrough();
 
 const preNivelacijaSupplierSchema = z.object({
-  supplierId: nonNegativeInteger.nullable(),
+  supplierId: nullableSupplierIdentifier,
   supplierName: z.string().trim().min(1),
   highPrioritySkuCount: nonNegativeInteger,
   candidateSkuCount: nonNegativeInteger,
@@ -1117,7 +1127,7 @@ export const inventoryPagedResponseSchema = z.object({
 const inventoryInsightItemSchema = z.object({
   id: nonNegativeInteger,
   storeId: z.number().int().nonnegative().nullable(),
-  supplierId: z.number().int().nonnegative().nullable(),
+  supplierId: nullableSupplierIdentifier,
   quantity: nonNegativeNumber,
   minimum: nonNegativeNumber,
   reorderGap: finiteNumber,

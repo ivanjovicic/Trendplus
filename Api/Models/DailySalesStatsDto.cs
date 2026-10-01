@@ -19,8 +19,16 @@ public sealed class DailySalesTableResponse
 public sealed class DailySalesSupplierHeaderDto
 {
     public int? SupplierId { get; set; }
-    public string SupplierName { get; set; } = "Nepoznato";
+    public string SupplierName { get; set; } = "Nepoznat dobavljač";
     public bool IsUnknown { get; set; }
+    /// <summary>
+    /// missing_attribution | dangling_supplier_reference | archived_placeholder | null when known.
+    /// </summary>
+    public string? UnknownReason { get; set; }
+    /// <summary>
+    /// Single sale-line attribution basis, or "mixed" when a top supplier aggregates more than one.
+    /// </summary>
+    public string? AttributionBasis { get; set; }
     public int TotalQty { get; set; }
     public decimal TotalRevenue { get; set; }
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   colorSalesStatsResponseSchema,
   dailySalesTableResponseSchema,
+  inventoryInsightsResponseSchema,
   preNivelacijaPriorityResponseSchema,
   shoeTypeSalesStatsResponseSchema,
   supplierSalesStatsResponseSchema,
@@ -468,6 +469,102 @@ describe("analytics response schemas", () => {
       expect(colorSalesStatsResponseSchema.safeParse({
         ...validColorResponse,
         totals: { ...validColorResponse.totals, decisionScore: invalidScore },
+      }).success).toBe(false);
+    }
+  });
+
+  it("accepts negative Access supplier identifiers for Daily Sales, PreNivelacija and inventory insights", () => {
+    const daily = dailySalesTableResponseSchema.safeParse({
+      requestedFrom: "2026-07-06",
+      requestedTo: "2026-08-05",
+      storeId: null,
+      topN: 15,
+      dataScope: "all",
+      topSuppliers: [
+        {
+          supplierId: -2122024036,
+          supplierName: "BIS",
+          isUnknown: false,
+          unknownReason: null,
+          attributionBasis: "frozen_current_master_backfill",
+          totalQty: 10,
+          totalRevenue: 1000,
+        },
+        {
+          supplierId: 0,
+          supplierName: "Zero",
+          isUnknown: false,
+          totalQty: 1,
+          totalRevenue: 100,
+        },
+        {
+          supplierId: null,
+          supplierName: "Nepoznat dobavljač",
+          isUnknown: true,
+          unknownReason: "missing_attribution",
+          totalQty: 2,
+          totalRevenue: 200,
+        },
+      ],
+      topSuppliersOrder: ["BIS", "Zero", "Nepoznat dobavljač"],
+      dateRows: [],
+      metadata: {
+        totalDays: 1,
+        uniqueSuppliersInRange: 3,
+        unknownSupplierPct: 10,
+        unknownSupplierItems: 2,
+        offShiftItems: 0,
+        offShiftRevenue: 0,
+        totalItemsInRange: 13,
+        duplicateReceiptGroupCount: 0,
+        duplicateReceiptHeaderCount: 0,
+        receiptAmountMismatchCount: 0,
+        receiptAmountMismatchRevenue: 0,
+        nonStandardReceiptCount: 0,
+        nonStandardReceiptRevenue: 0,
+        debtReceiptCount: 0,
+        debtReceiptRevenue: 0,
+        minAvailableDate: null,
+        maxAvailableDate: null,
+      },
+    });
+    expect(daily.success).toBe(true);
+
+    for (const invalid of [1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(dailySalesTableResponseSchema.safeParse({
+        requestedFrom: "2026-07-06",
+        requestedTo: "2026-08-05",
+        storeId: null,
+        topN: 1,
+        dataScope: "all",
+        topSuppliers: [{
+          supplierId: invalid,
+          supplierName: "X",
+          isUnknown: false,
+          totalQty: 1,
+          totalRevenue: 1,
+        }],
+        topSuppliersOrder: ["X"],
+        dateRows: [],
+        metadata: {
+          totalDays: 1,
+          uniqueSuppliersInRange: 1,
+          unknownSupplierPct: 0,
+          unknownSupplierItems: 0,
+          offShiftItems: 0,
+          offShiftRevenue: 0,
+          totalItemsInRange: 1,
+          duplicateReceiptGroupCount: 0,
+          duplicateReceiptHeaderCount: 0,
+          receiptAmountMismatchCount: 0,
+          receiptAmountMismatchRevenue: 0,
+          nonStandardReceiptCount: 0,
+          nonStandardReceiptRevenue: 0,
+          debtReceiptCount: 0,
+          debtReceiptRevenue: 0,
+          minAvailableDate: null,
+          maxAvailableDate: null,
+        },
       }).success).toBe(false);
     }
   });

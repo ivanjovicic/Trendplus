@@ -4,10 +4,17 @@ import { dailySalesTableResponseSchema } from "../validation/analyticsResponseSc
 
 export type DailySalesNumeric = number | null | undefined;
 
+export type DailySalesUnknownReason =
+  | "missing_attribution"
+  | "dangling_supplier_reference"
+  | "archived_placeholder";
+
 export interface DailySalesSupplierHeader {
   supplierId: number | null;
   supplierName: string;
   isUnknown: boolean;
+  unknownReason?: DailySalesUnknownReason | null;
+  attributionBasis?: string | null;
   totalQty: DailySalesNumeric;
   totalRevenue: DailySalesNumeric;
 }

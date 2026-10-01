@@ -107,7 +107,8 @@ public sealed class AnalyticsDataQualityHealthService
     public static bool IsMissingCost(decimal? value) => !value.HasValue || value.Value <= 0m;
 
     public static bool IsMissingSupplier(int? supplierId, bool supplierExists)
-        => !supplierId.HasValue || supplierId.Value <= 0 || !supplierExists;
+        // Negative Access AutoNumber IDs and Id=0 are known when a Dobavljaci row exists.
+        => !supplierId.HasValue || !supplierExists;
 
     public async Task<AnalyticsDataQualityHealthSnapshot> CaptureAsync(int lookbackDays, string? dataScope, CancellationToken ct)
     {
@@ -147,9 +148,10 @@ public sealed class AnalyticsDataQualityHealthService
             from a in _db.Artikli.AsNoTracking()
             join d in _db.Dobavljaci.AsNoTracking() on a.IDDobavljac equals d.Id into dj
             from d in dj.DefaultIfEmpty()
-            // OrphanArticleCount is the broken-reference count. Articles without a
-            // supplier are reported separately as missing supplier data below.
-            where a.IDDobavljac.HasValue && a.IDDobavljac > 0 && d == null
+            // OrphanArticleCount is the broken-reference count for any non-null ID
+            // (including Access Random AutoNumber negatives) without a Dobavljaci row.
+            // Articles without a supplier are reported separately as missing supplier data below.
+            where a.IDDobavljac.HasValue && d == null
                && (!importedOnly || a.DataOrigin == "access")
                && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
             select a.Id)
@@ -180,9 +182,10 @@ public sealed class AnalyticsDataQualityHealthService
                                 : null) == null
                         ? x.ps.Kolicina * x.ps.Cena
                         : 0m),
+                // Negative Access AutoNumber IDs with a Dobavljaci row are known suppliers.
+                // Zero is unknown only when no Dobavljaci row matches Id=0.
                 UnknownSupplierRevenue = g.Sum(x =>
                     !x.a.IDDobavljac.HasValue ||
-                    x.a.IDDobavljac <= 0 ||
                     x.d == null
                         ? x.ps.Kolicina * x.ps.Cena
                         : 0m)

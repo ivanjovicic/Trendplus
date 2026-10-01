@@ -688,6 +688,43 @@ describe("DailySalesStatsPage premium controls", () => {
     expect(within(dayRow as HTMLElement).getByText("0")).toBeInTheDocument();
   });
 
+  it("renders Daily Sales table when top suppliers use negative Access supplier IDs", async () => {
+    vi.mocked(getDailySalesStats).mockResolvedValue(
+      response({
+        topSuppliers: [{
+          supplierId: -2122024036,
+          supplierName: "BIS",
+          isUnknown: false,
+          totalQty: 12,
+          totalRevenue: 6000,
+        }],
+        topSuppliersOrder: ["BIS"],
+        dateRows: [
+          {
+            ...response().dateRows[0],
+            topSupplierCounts: [12],
+            othersCount: 0,
+            totalItemsSold: 12,
+            totalRevenue: 6000,
+          },
+        ],
+        metadata: { ...response().metadata, totalItemsInRange: 12, uniqueSuppliersInRange: 1 },
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/daily-sales"]}>
+        <Routes>
+          <Route path="/analytics/daily-sales" element={<DailySalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("columnheader", { name: /BIS/i })).toBeInTheDocument();
+    expect(screen.queryByText(/nije dostupna/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Neispravna polja/i)).not.toBeInTheDocument();
+  });
+
   it("does not reconcile contradictory supplier totals into trusted concentration shares", async () => {
     vi.mocked(getDailySalesStats).mockResolvedValue(
       response({

@@ -199,6 +199,52 @@ public sealed class AnalyticsDataQualityHealthServiceTests
     }
 
     [Fact]
+    public async Task CaptureAsync_DoesNotCountNegativeAccessSupplierRevenueAsUnknown()
+    {
+        await using var db = CreateContext();
+        db.Dobavljaci.Add(new Dobavljac
+        {
+            Id = -2122024036,
+            Naziv = "BIS",
+            DataOrigin = "access"
+        });
+        db.Artikli.Add(new Artikli
+        {
+            Id = 1,
+            Naziv = "Negativni Access dobavljač",
+            IDDobavljac = -2122024036,
+            Kolicina = 2,
+            NabavnaCena = 20m,
+            DataOrigin = "access",
+            UpdatedAt = DateTime.UtcNow
+        });
+        db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+        {
+            Id = 1,
+            DatumProdaje = DateTime.UtcNow.Date.AddHours(9),
+            DataOrigin = "access"
+        });
+        db.ProdajaStavke.Add(new ProdajaStavka
+        {
+            Id = 1,
+            IdProdaja = 1,
+            IdArtikal = 1,
+            Kolicina = 2,
+            Cena = 250m,
+            NabavnaCena = 20m
+        });
+        await db.SaveChangesAsync();
+
+        var snapshot = await new AnalyticsDataQualityHealthService(db)
+            .CaptureAsync(30, "all", CancellationToken.None);
+
+        Assert.Equal(500m, snapshot.TotalRevenue);
+        Assert.Equal(0m, snapshot.UnknownSupplierRevenue);
+        Assert.Equal(0d, snapshot.UnknownSupplierRevenueSharePct);
+        Assert.Equal(0, snapshot.OrphanArticleCount);
+    }
+
+    [Fact]
     public async Task CaptureAsync_ExcludesFutureDatedSalesFromWindow()
     {
         await using var db = CreateContext();

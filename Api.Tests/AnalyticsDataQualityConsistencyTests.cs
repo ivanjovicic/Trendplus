@@ -58,10 +58,13 @@ public sealed class AnalyticsDataQualityConsistencyTests
 
     [Theory]
     [InlineData(null, false, true)]
-    [InlineData(0, true, true)]
+    [InlineData(0, true, false)]
+    [InlineData(0, false, true)]
+    [InlineData(-2122024036, true, false)]
+    [InlineData(-2122024036, false, true)]
     [InlineData(42, false, true)]
     [InlineData(42, true, false)]
-    public void MissingSupplierRule_TreatsNullZeroAndBrokenReferencesAsMissing(int? supplierId, bool supplierExists, bool expected)
+    public void MissingSupplierRule_TreatsNullAndBrokenReferencesAsMissing(int? supplierId, bool supplierExists, bool expected)
     {
         Assert.Equal(expected, AnalyticsDataQualityHealthService.IsMissingSupplier(supplierId, supplierExists));
     }

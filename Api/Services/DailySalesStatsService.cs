@@ -500,13 +500,20 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             var supplierKey = BuildSupplierKey(row.SupplierId);
             if (!supplierTotals.TryGetValue(supplierKey, out var supplierAccumulator))
             {
+                var resolved = ResolveSupplierIdentity(row.SupplierId, row.SupplierName);
                 supplierAccumulator = new SupplierAccumulator
                 {
-                    SupplierId = row.SupplierId,
-                    SupplierName = ResolveSupplierName(row.SupplierId, row.SupplierName),
-                    IsUnknown = !row.SupplierId.HasValue
+                    SupplierId = resolved.SupplierId,
+                    SupplierName = resolved.SupplierName,
+                    IsUnknown = resolved.IsUnknown,
+                    UnknownReason = resolved.UnknownReason,
+                    AttributionBasis = NormalizeAttributionBasis(row.AttributionBasis)
                 };
                 supplierTotals[supplierKey] = supplierAccumulator;
+            }
+            else
+            {
+                supplierAccumulator.MergeAttributionBasis(NormalizeAttributionBasis(row.AttributionBasis));
             }
 
             // Daily totals and supplier buckets always include the row. Shift columns only
@@ -603,6 +610,8 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                 SupplierId = supplier.Supplier.SupplierId,
                 SupplierName = headerName,
                 IsUnknown = supplier.Supplier.IsUnknown,
+                UnknownReason = supplier.Supplier.UnknownReason,
+                AttributionBasis = supplier.Supplier.AttributionBasis,
                 TotalQty = supplier.Supplier.TotalQty,
                 TotalRevenue = decimal.Round(supplier.Supplier.TotalRevenue, 2, MidpointRounding.AwayFromZero)
             });
@@ -916,21 +925,47 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
         return supplierId.HasValue ? $"id:{supplierId.Value}" : "unknown";
     }
 
-    private static string ResolveSupplierName(int? supplierId, string? supplierName)
+    private static ResolvedSupplierIdentity ResolveSupplierIdentity(int? supplierId, string? supplierName)
     {
         if (!supplierId.HasValue)
         {
-            return "Nepoznato";
+            return new ResolvedSupplierIdentity(
+                SupplierId: null,
+                SupplierName: "Nepoznat dobavljač",
+                IsUnknown: true,
+                UnknownReason: "missing_attribution");
         }
 
         if (string.IsNullOrWhiteSpace(supplierName))
         {
-            // If supplier name is missing, return empty string so UI can render a blank header
-            return string.Empty;
+            return new ResolvedSupplierIdentity(
+                SupplierId: supplierId,
+                SupplierName: $"Nepoznat dobavljač #{supplierId.Value}",
+                IsUnknown: true,
+                UnknownReason: "dangling_supplier_reference");
         }
 
-        return supplierName.Trim();
+        // Negative Access AutoNumber IDs and the archived placeholder (-999999999)
+        // stay known whenever a Dobavljaci row exists.
+        return new ResolvedSupplierIdentity(
+            SupplierId: supplierId,
+            SupplierName: supplierName.Trim(),
+            IsUnknown: false,
+            UnknownReason: null);
     }
+
+    private static string NormalizeAttributionBasis(string? attributionBasis)
+    {
+        return string.IsNullOrWhiteSpace(attributionBasis)
+            ? SaleDimensionAttribution.Unknown
+            : attributionBasis.Trim();
+    }
+
+    private readonly record struct ResolvedSupplierIdentity(
+        int? SupplierId,
+        string SupplierName,
+        bool IsUnknown,
+        string? UnknownReason);
 
     private static string NormalizeNameForLookup(string value)
     {
@@ -1069,10 +1104,26 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
     private sealed class SupplierAccumulator
     {
         public int? SupplierId { get; init; }
-        public string SupplierName { get; init; } = "Nepoznato";
+        public string SupplierName { get; init; } = "Nepoznat dobavljač";
         public bool IsUnknown { get; init; }
+        public string? UnknownReason { get; init; }
+        public string? AttributionBasis { get; private set; }
         public int TotalQty { get; set; }
         public decimal TotalRevenue { get; set; }
+
+        public void MergeAttributionBasis(string nextBasis)
+        {
+            if (string.IsNullOrWhiteSpace(AttributionBasis))
+            {
+                AttributionBasis = nextBasis;
+                return;
+            }
+
+            if (!string.Equals(AttributionBasis, nextBasis, StringComparison.Ordinal))
+            {
+                AttributionBasis = "mixed";
+            }
+        }
     }
 
     private sealed class DayAccumulator

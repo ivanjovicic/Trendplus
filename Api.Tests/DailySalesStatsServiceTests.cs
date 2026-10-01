@@ -763,6 +763,118 @@ public sealed class DailySalesStatsServiceTests
     }
 
     [Fact]
+    public async Task GetDailySalesAsync_KeepsNegativeAccessSupplierIdsKnownWhenDobavljaciRowExists()
+    {
+        await using var db = CreateDbContext();
+        SeedSuppliersAndArticles(db);
+        db.Dobavljaci.Add(new Dobavljac { Id = -2122024036, Naziv = "BIS", DataOrigin = "access" });
+        db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+        {
+            Id = 910,
+            BrojRacuna = "910",
+            DatumProdaje = new DateTime(2026, 7, 6, 9, 0, 0, DateTimeKind.Utc),
+            IDObjekat = 1,
+            DataOrigin = "access"
+        });
+        db.ProdajaStavke.Add(new ProdajaStavka
+        {
+            Id = 910,
+            IdProdaja = 910,
+            IdArtikal = 101,
+            Kolicina = 7,
+            Cena = 100m,
+            SupplierIdAtSale = -2122024036,
+            AttributionBasis = SaleDimensionAttribution.FrozenCurrentMasterBackfill
+        });
+        await db.SaveChangesAsync();
+
+        var result = await new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance)
+            .GetDailySalesAsync(
+                new DateTime(2026, 7, 6, 0, 0, 0, DateTimeKind.Utc),
+                new DateTime(2026, 8, 5, 0, 0, 0, DateTimeKind.Utc),
+                storeId: 1,
+                topN: 15,
+                dataScope: "all",
+                ct: CancellationToken.None);
+
+        var supplier = Assert.Single(result.TopSuppliers, x => x.SupplierId == -2122024036);
+        Assert.Equal("BIS", supplier.SupplierName);
+        Assert.False(supplier.IsUnknown);
+        Assert.Null(supplier.UnknownReason);
+        Assert.Equal(SaleDimensionAttribution.FrozenCurrentMasterBackfill, supplier.AttributionBasis);
+        Assert.Equal(7, result.Metadata.TotalItemsInRange);
+        Assert.Equal(result.Metadata.TotalItemsInRange, result.DateRows.Sum(x => x.TotalItemsSold));
+    }
+
+    [Fact]
+    public async Task GetDailySalesAsync_MarksDanglingAndMissingSupplierAttributionExplicitly()
+    {
+        await using var db = CreateDbContext();
+        SeedSuppliersAndArticles(db);
+        db.ProdajaZaglavlja.AddRange(
+            new ProdajaZaglavlje
+            {
+                Id = 920,
+                BrojRacuna = "920",
+                DatumProdaje = new DateTime(2026, 7, 7, 9, 0, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "access"
+            },
+            new ProdajaZaglavlje
+            {
+                Id = 921,
+                BrojRacuna = "921",
+                DatumProdaje = new DateTime(2026, 7, 7, 10, 0, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "access"
+            });
+        db.ProdajaStavke.AddRange(
+            new ProdajaStavka
+            {
+                Id = 920,
+                IdProdaja = 920,
+                IdArtikal = 101,
+                Kolicina = 3,
+                Cena = 100m,
+                SupplierIdAtSale = -404404404,
+                AttributionBasis = SaleDimensionAttribution.SaleSnapshot
+            },
+            new ProdajaStavka
+            {
+                Id = 921,
+                IdProdaja = 921,
+                IdArtikal = 102,
+                Kolicina = 2,
+                Cena = 100m,
+                SupplierIdAtSale = null,
+                AttributionBasis = SaleDimensionAttribution.Unknown
+            });
+        await db.SaveChangesAsync();
+
+        var result = await new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance)
+            .GetDailySalesAsync(
+                new DateTime(2026, 7, 7, 0, 0, 0, DateTimeKind.Utc),
+                new DateTime(2026, 7, 7, 0, 0, 0, DateTimeKind.Utc),
+                storeId: 1,
+                topN: 15,
+                dataScope: "all",
+                ct: CancellationToken.None);
+
+        var dangling = Assert.Single(result.TopSuppliers, x => x.SupplierId == -404404404);
+        Assert.True(dangling.IsUnknown);
+        Assert.Equal("dangling_supplier_reference", dangling.UnknownReason);
+        Assert.Equal("Nepoznat dobavljač #-404404404", dangling.SupplierName);
+        Assert.False(string.IsNullOrWhiteSpace(dangling.SupplierName));
+
+        var missing = Assert.Single(result.TopSuppliers, x => x.SupplierId is null);
+        Assert.True(missing.IsUnknown);
+        Assert.Equal("missing_attribution", missing.UnknownReason);
+        Assert.Equal("Nepoznat dobavljač", missing.SupplierName);
+        Assert.Equal(5, result.Metadata.TotalItemsInRange);
+        Assert.Equal(result.Metadata.TotalItemsInRange, result.DateRows.Sum(x => x.TotalItemsSold));
+    }
+
+    [Fact]
     public async Task GetDailySalesAsync_ConvertsUtcInstantToConfiguredBusinessTimeZoneAcrossDst()
     {
         await using var db = CreateDbContext();

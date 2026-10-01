@@ -83,7 +83,8 @@ public static class AnalyticsCacheKeys
     public const string ObservabilityLogsPrefix = $"{Prefix}observability:logs:";
     public const string ObservabilityPerformancePrefix = $"{Prefix}observability:performance:";
     public const string SalesSummaryPrefix = $"{Prefix}summary:";
-    public const string DailySalesPrefix = $"{Prefix}daily:";
+    // v2: negative Access supplier IDs are valid identifiers; unknown states are explicit.
+    public const string DailySalesPrefix = $"{Prefix}daily:v2:";
     public const string CategoryDataPrefix = $"{Prefix}category:";
     public const string GenderDataPrefix = $"{Prefix}gender:";
     public const string SupplierDataPrefix = $"{Prefix}supplier:";
