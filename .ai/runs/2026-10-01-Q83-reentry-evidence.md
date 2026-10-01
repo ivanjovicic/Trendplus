@@ -5,7 +5,7 @@ Agent/tool: Codex Desktop (local)
 Delivery target: main
 Working branch / PR: `main` / no active PR; stale PR #89 closed
 Main commit SHA: 32f36939b5367f5c67ebafcd495fd769e7fa5488
-Main verification: fresh fetch verified `HEAD == origin/main == 32f36939b5367f5c67ebafcd495fd769e7fa5488`; it contains implementation SHA `3e929bcb55ddca90de756791da6624bca5479c84`.
+Main verification: fresh fetch verified `origin/main == 9cb2bf7ad9d7f23eeceb1bcd21958e17adfaec0c`; it contains Q83 closure SHA `32f36939b5367f5c67ebafcd495fd769e7fa5488` and implementation SHA `3e929bcb55ddca90de756791da6624bca5479c84`.
 Evidence state: synchronized
 
 ## What was done
@@ -27,6 +27,7 @@ Evidence state: synchronized
 - Queue/planning/instruction validators and `git diff --check` -> pass.
 - Fresh post-push fetch and ancestry check -> pass; current `origin/main` contains Q83 implementation SHA `3e929bcb55ddca90de756791da6624bca5479c84`.
 - GitHub Actions Planning Governance run `36866350531` -> success on Q83 closure SHA `32f36939b5367f5c67ebafcd495fd769e7fa5488`.
+- GitHub Actions Planning Governance run `36866494739` -> success on evidence-sync SHA `9cb2bf7ad9d7f23eeceb1bcd21958e17adfaec0c`.
 
 ## Validation not run
 - Full `Api.Tests` suite -> not run; the focused matrix covered Q83 acceptance and no wider risk was identified.
