@@ -923,6 +923,44 @@ describe("SupplierFootwearAnalyticsPage", () => {
     expect(screen.getByText(/Identitet dobavljača nije potvrđen/)).toBeInTheDocument();
   });
 
+  it("renders an unknown change percent as unavailable, not 0%, for a mature vendor without baseline", async () => {
+    const baseResponse = await getVendorSalesNivelacija({});
+    const [baseVendor] = baseResponse.vendorStats;
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValueOnce({
+      ...baseResponse,
+      vendorStats: [{
+        ...baseVendor,
+        preQty: 0,
+        preRevenue: 0,
+        changeQty: 12,
+        changeRevenue: 1_200,
+        changePercent: null,
+        semanticChangePercentRevenue: null,
+        hasComparableSalesWindow: true,
+        recommendation: {
+          ...baseVendor.recommendation!,
+          status: "insufficient_data",
+          label: "Nedovoljno podataka",
+          summary: "Nema validne prethodne baze prometa za procenu efekta posle promene cene.",
+          reasonCodes: ["no_revenue_baseline"],
+        },
+      }],
+    });
+
+    render(
+      <MemoryRouter>
+        <SupplierFootwearAnalyticsPage />
+      </MemoryRouter>,
+    );
+
+    const tableSurface = await screen.findByTestId("supplier-footwear-analytics-data-table");
+    const vendorRow = within(tableSurface).getByText("Dobavljač 1").closest("tr");
+    expect(vendorRow).not.toBeNull();
+    const trendCell = within(vendorRow!).getAllByRole("cell")[4];
+    expect(trendCell).toHaveTextContent("N/A");
+    expect(trendCell.textContent).not.toMatch(/0[,.]00\s*%/);
+  });
+
   it("renders assortment price-change effect labels instead of Supplier overview PoP copy", async () => {
     render(
       <MemoryRouter>

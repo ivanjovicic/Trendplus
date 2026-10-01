@@ -5,6 +5,7 @@ import {
   preNivelacijaPriorityResponseSchema,
   shoeTypeSalesStatsResponseSchema,
   supplierSalesStatsResponseSchema,
+  vendorSalesNivelacijaResponseSchema,
 } from "../analyticsResponseSchemas";
 import { AnalyticsResponseValidationError, validateAnalyticsResponse } from "../analyticsResponseValidation";
 
@@ -921,5 +922,78 @@ describe("analytics response schemas", () => {
         },
       },
     }).success).toBe(true);
+  });
+
+  it("accepts unknown vendor-sales-nivelacija change percent instead of requiring a fake zero", () => {
+    const vendor = {
+      vendorId: 203,
+      vendorName: "Gama",
+      preQty: 0,
+      preRevenue: 0,
+      postQty: 0,
+      postRevenue: 0,
+      changeQty: 0,
+      changeRevenue: 0,
+      changePercent: null,
+      absoluteChangeRevenue: 0,
+      changeSharePercent: 0,
+      postRevenueSharePercent: 0,
+      avgCoveragePre30: null,
+      avgCoveragePost30: null,
+      hasComparableSalesWindow: false,
+      semanticChangePercentRevenue: null,
+      articleCount: 0,
+      activeArticlesCount: 0,
+      increasedPriceArticlesCount: 0,
+      decreasedPriceArticlesCount: 0,
+      reliabilityPct: 35,
+    };
+    const response = {
+      generatedAt: "2026-10-01T08:00:00Z",
+      windowDays: 30,
+      vendorId: null,
+      eventDate: null,
+      from: null,
+      to: null,
+      category: null,
+      includeInactive: false,
+      storeId: null,
+      dataScope: "all",
+      scopeApplied: true,
+      categories: [],
+      vendorStats: [vendor],
+      articleStats: [],
+      totals: {
+        preQty: 0,
+        preRevenue: 0,
+        postQty: 0,
+        postRevenue: 0,
+        changeQty: 0,
+        changeRevenue: 0,
+        changePercent: null,
+        vendorsCount: 0,
+        articlesCount: 0,
+        activeArticlesCount: 0,
+        avgRevenuePerArticlePre: 0,
+        avgRevenuePerArticlePost: 0,
+        avgPriceChangePercent: 0,
+        absoluteChangeRevenue: 0,
+        avgCoveragePre30: null,
+        avgCoveragePost30: null,
+        hasComparableSalesWindow: false,
+        comparableRows: 0,
+        comparableArticlesCount: 0,
+        comparableVendorsCount: 0,
+      },
+      categoryStats: [],
+      priceDirectionStats: [],
+      insights: [],
+    };
+
+    expect(vendorSalesNivelacijaResponseSchema.safeParse(response).success).toBe(true);
+    expect(vendorSalesNivelacijaResponseSchema.safeParse({
+      ...response,
+      vendorStats: [{ ...vendor, changePercent: Number.NaN }],
+    }).success).toBe(false);
   });
 });

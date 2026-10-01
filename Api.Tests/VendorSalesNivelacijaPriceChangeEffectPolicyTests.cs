@@ -21,6 +21,21 @@ public sealed class VendorSalesNivelacijaPriceChangeEffectPolicyTests
     }
 
     [Fact]
+    public void ComputeCohortChangePercent_IsUnknownWithoutMatureComparableRows()
+    {
+        Assert.Null(VendorSalesNivelacijaPriceChangeEffectPolicy.ComputeCohortChangePercent(0, 0m, 0m));
+        Assert.Null(VendorSalesNivelacijaPriceChangeEffectPolicy.ComputeCohortChangePercent(0, 100m, 120m));
+    }
+
+    [Fact]
+    public void ComputeCohortChangePercent_KeepsSemanticRulesForMatureCohorts()
+    {
+        Assert.Equal(20m, VendorSalesNivelacijaPriceChangeEffectPolicy.ComputeCohortChangePercent(3, 100m, 120m));
+        Assert.Null(VendorSalesNivelacijaPriceChangeEffectPolicy.ComputeCohortChangePercent(2, 0m, 120m));
+        Assert.Equal(0m, VendorSalesNivelacijaPriceChangeEffectPolicy.ComputeCohortChangePercent(1, 0m, 0m));
+    }
+
+    [Fact]
     public void IsPostWindowMature_RequiresFullThirtyDayWindow()
     {
         var eventDate = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc);

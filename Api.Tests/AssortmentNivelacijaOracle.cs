@@ -246,7 +246,7 @@ internal static class AssortmentNivelacijaOracle
             PostRevenue: postRevenue,
             ChangeQty: postQty - preQty,
             ChangeRevenue: postRevenue - preRevenue,
-            SemanticChangePercentRevenue: VendorSalesNivelacijaPriceChangeEffectPolicy.ComputeSemanticChangePercent(preRevenue, postRevenue),
+            SemanticChangePercentRevenue: VendorSalesNivelacijaPriceChangeEffectPolicy.ComputeCohortChangePercent(matureComparable.Count, preRevenue, postRevenue),
             ComparableRows: matureComparable.Count,
             VendorsCount: matureComparable.Select(x => SupplierUnknownBucketPolicy.Resolve(x.VendorId, x.VendorName).SupplierId).Distinct().Count(),
             ArticlesCount: matureComparable.Select(x => x.Sku).Distinct(StringComparer.Ordinal).Count());
@@ -261,7 +261,7 @@ internal static class AssortmentNivelacijaOracle
                 var vPost = mature.Sum(x => x.PostRevenue);
                 var vPreQty = (decimal)mature.Sum(x => x.PreQty);
                 var vPostQty = (decimal)mature.Sum(x => x.PostQty);
-                var semantic = VendorSalesNivelacijaPriceChangeEffectPolicy.ComputeSemanticChangePercent(vPre, vPost);
+                var semantic = VendorSalesNivelacijaPriceChangeEffectPolicy.ComputeCohortChangePercent(mature.Count, vPre, vPost);
                 var comparableArticles = comparable.Select(x => x.Sku).Distinct(StringComparer.Ordinal).Count();
 
                 var effect = VendorSalesNivelacijaPriceChangeEffectPolicy.Evaluate(

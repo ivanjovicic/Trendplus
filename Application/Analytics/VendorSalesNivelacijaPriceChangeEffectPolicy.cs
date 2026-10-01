@@ -45,6 +45,15 @@ public static class VendorSalesNivelacijaPriceChangeEffectPolicy
         return Math.Round(((postRevenue - preRevenue) / preRevenue) * 100m, 2);
     }
 
+    /// <summary>
+    /// Change percent for an aggregated cohort (vendor or totals). Without mature comparable
+    /// rows the pre/post sums are not evidence, so the result is unknown rather than 0%.
+    /// </summary>
+    public static decimal? ComputeCohortChangePercent(int matureComparableRowCount, decimal preRevenue, decimal postRevenue)
+        => matureComparableRowCount > 0
+            ? ComputeSemanticChangePercent(preRevenue, postRevenue)
+            : null;
+
     public static bool IsPostWindowMature(DateTime eventDateUtc, DateTime asOfDateUtc)
         => eventDateUtc.Date.AddDays(PostWindowDays) <= asOfDateUtc.Date;
 

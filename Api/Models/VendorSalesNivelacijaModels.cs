@@ -77,7 +77,7 @@ public sealed class VendorSalesNivelacijaVendorStatDto
     public decimal PostRevenue { get; set; }
     public int ChangeQty { get; set; }
     public decimal ChangeRevenue { get; set; }
-    public decimal ChangePercent { get; set; }
+    public decimal? ChangePercent { get; set; }
     public decimal AbsoluteChangeRevenue { get; set; }
     public decimal ChangeSharePercent { get; set; }
     public decimal PostRevenueSharePercent { get; set; }
@@ -107,7 +107,7 @@ public sealed class VendorSalesNivelacijaTotalsDto
     public decimal PostRevenue { get; set; }
     public int ChangeQty { get; set; }
     public decimal ChangeRevenue { get; set; }
-    public decimal ChangePercent { get; set; }
+    public decimal? ChangePercent { get; set; }
     public int VendorsCount { get; set; }
     public int ArticlesCount { get; set; }
     public int ActiveArticlesCount { get; set; }

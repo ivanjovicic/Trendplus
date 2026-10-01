@@ -117,6 +117,7 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
         Assert.Equal(0, vendors[203].MatureComparableRows);
         Assert.Equal(1, vendors[203].ImmatureComparableRows);
         Assert.Equal("immature", vendors[203].EffectStatus);
+        Assert.Null(vendors[203].SemanticChangePercentRevenue);
 
         // Unresolved vendor 999 and a missing vendor share one unknown bucket.
         var unknown = vendors[-1];
@@ -328,6 +329,18 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
         Assert.DoesNotContain("ComparableArticleCount: row.Vendor.ComparableArticleCount,", source);
         Assert.Contains("var totalChangeRevenue = totalPostRevenue - totalPreRevenue;", source);
         Assert.Contains("var changeRevenue = postRev - preRev;", source);
+    }
+
+    [Fact]
+    public void EndpointChangePercentIsUnknownWithoutMatureComparableEvidence()
+    {
+        var source = ReadRepoFile("Api/Endpoints/AllEndpoints.cs");
+
+        Assert.Contains("ComputeCohortChangePercent(\n                        matureComparableRows.Count, totalPreRevenue, totalPostRevenue)", source);
+        Assert.Contains("ComputeCohortChangePercent(\n                            matureComparable.Count, preRev, postRev)", source);
+        Assert.Contains("ChangePercent = semanticChangePercent,", source);
+        Assert.DoesNotContain("ChangePercent = semanticChangePercent ?? 0m", source);
+        Assert.DoesNotContain("SemanticChangePercent(totalPreRevenue, totalPostRevenue) ?? 0m", source);
     }
 
     // ------------------------------------------------------------------

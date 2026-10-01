@@ -4608,7 +4608,8 @@ public static class AllEndpoints
                     PostRevenue = totalPostRevenue,
                     ChangeQty = totalChangeQty,
                     ChangeRevenue = totalChangeRevenue,
-                    ChangePercent = SemanticChangePercent(totalPreRevenue, totalPostRevenue) ?? 0m,
+                    ChangePercent = VendorSalesNivelacijaPriceChangeEffectPolicy.ComputeCohortChangePercent(
+                        matureComparableRows.Count, totalPreRevenue, totalPostRevenue),
                     VendorsCount = vendorsCount,
                     ArticlesCount = articlesCount,
                     ActiveArticlesCount = activeArticlesCount,
@@ -4679,7 +4680,8 @@ public static class AllEndpoints
                         var decreased = matureComparable.Count(x => x.PriceChangePercent.HasValue && x.PriceChangePercent.Value < 0m);
                         var changeQty = postQty - preQty;
                         var changeRevenue = postRev - preRev;
-                        var semanticChangePercent = SemanticChangePercent(preRev, postRev);
+                        var semanticChangePercent = VendorSalesNivelacijaPriceChangeEffectPolicy.ComputeCohortChangePercent(
+                            matureComparable.Count, preRev, postRev);
 
                         var margin = new MarginAccumulator();
                         foreach (var row in matureComparable)
@@ -4718,7 +4720,7 @@ public static class AllEndpoints
                                 PostRevenue = postRev,
                                 ChangeQty = changeQty,
                                 ChangeRevenue = changeRevenue,
-                                ChangePercent = semanticChangePercent ?? 0m,
+                                ChangePercent = semanticChangePercent,
                                 SemanticChangePercentRevenue = semanticChangePercent,
                                 AbsoluteChangeRevenue = Math.Abs(changeRevenue),
                                 ChangeSharePercent = 0m,
@@ -4898,7 +4900,9 @@ public static class AllEndpoints
                         {
                             Title = "Najveci rast (dobavljac)",
                             Value = $"{bestVendor.VendorName}",
-                            Details = $"{bestVendor.ChangeRevenue:N2} RSD ({bestVendor.ChangePercent:N2}%)",
+                            Details = bestVendor.ChangePercent.HasValue
+                                ? $"{bestVendor.ChangeRevenue:N2} RSD ({bestVendor.ChangePercent.Value:N2}%)"
+                                : $"{bestVendor.ChangeRevenue:N2} RSD (procenat nije dostupan bez uporedive baze)",
                             Tone = bestVendor.ChangeRevenue >= 0 ? "positive" : "warning"
                         });
                     }
@@ -4910,7 +4914,9 @@ public static class AllEndpoints
                         {
                             Title = "Najveci pad (dobavljac)",
                             Value = $"{worstVendor.VendorName}",
-                            Details = $"{worstVendor.ChangeRevenue:N2} RSD ({worstVendor.ChangePercent:N2}%)",
+                            Details = worstVendor.ChangePercent.HasValue
+                                ? $"{worstVendor.ChangeRevenue:N2} RSD ({worstVendor.ChangePercent.Value:N2}%)"
+                                : $"{worstVendor.ChangeRevenue:N2} RSD (procenat nije dostupan bez uporedive baze)",
                             Tone = "negative"
                         });
                     }

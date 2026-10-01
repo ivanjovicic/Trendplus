@@ -27,7 +27,7 @@ export interface VendorSalesNivelacijaVendorStat {
     postRevenue: number;
     changeQty: number;
     changeRevenue: number;
-    changePercent: number;
+    changePercent: number | null;
     absoluteChangeRevenue: number;
     changeSharePercent: number;
     postRevenueSharePercent: number;
@@ -97,7 +97,7 @@ export interface VendorSalesNivelacijaTotals {
     postRevenue: number;
     changeQty: number;
     changeRevenue: number;
-    changePercent: number;
+    changePercent: number | null;
     vendorsCount: number;
     articlesCount: number;
     activeArticlesCount: number;
