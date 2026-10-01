@@ -1096,7 +1096,8 @@ None beyond the operator-reported successful deploy; step 1 must independently v
 
 ## RQ536 - Version and explain the current Supplier scorecard model without changing policy
 
-Status: READY
+Status: IN_PROGRESS
+Claimed: 2026-10-01 by ChatGPT on `cursor/rq536-scorecard-explainability-51d0`; local lock `.ai/task-locks/RQ536-chatgpt.lock.md`.
 Priority: P2
 Type: backend/frontend/docs/tests
 Feature family: supplier-scorecard-model-explainability-baseline
