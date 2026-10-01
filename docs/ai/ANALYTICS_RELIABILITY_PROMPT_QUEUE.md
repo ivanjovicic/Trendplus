@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ474 (IN_PROGRESS in this workspace)
+Current READY prompt: none (RQ474 DONE; RQ536 remains the Supplier Audit addendum READY lane)
 Post-deploy reclassification 2026-10-01 (RQ535): read-only GETs on exact deployed SHA `3a6a6886` show the Supplier overview 503 persists and is a catch-all `NpgsqlException` mapping. RQ474 moved WAITING -> READY for its repository-local error-contract scope; the live root cause stays a provider-log evidence gap. RQ475 stays WAITING behind RQ536 (shared Decision Hub surface), with the live-evidence gate satisfied and the store-filtered scorecard HTTP 500 added to its scope. RQ487 stays WAITING on the 503 root cause.
 Owner claim 2026-10-01: fresh `origin/main` review found no RQ474 lock, branch or open-PR collision. RQ474 moved READY -> IN_PROGRESS for the Supplier overview SQL-state/error-code contract and frontend error/empty/retry presentation; local lock `.ai/task-locks/RQ474-chatgpt.lock.md`. RQ536 and Q83 remain independent READY lanes.
 Recovery routing 2026-09-30: direct current-main review repaired the repository-local `DecisionBoardEndpoints.cs` -> `AnalyticsActionItemService.ListAsync` signature drift in `0aba65a74748f98115d263261ce4de6eb009ed61`. The previously recorded owner decisions for RQ505/RQ507 were present but their section-level gates were stale; the Operations Accuracy addendum now reflects those decisions. `RQ516` in that addendum is the sole READY prompt for exact-main backend re-certification; this canonical file keeps its own READY pointer at `none` because queue governance requires a pointer to name a prompt defined in the same queue of the API tests that were blocked by the compile defect. After RQ516 closes, prefer RQ505, then RQ507, then RQ508 after fresh collision checks. Q83 remains PARTIAL and RQ491 remains WAITING.
@@ -26424,7 +26424,7 @@ Equivalent data has equivalent margin semantics across both screens, and intenti
 
 ## RQ474 - Separate Supplier overview failure, empty and retry states
 
-Status: IN_PROGRESS
+Status: DONE
 Claimed: 2026-10-01 by ChatGPT on `cursor/rq474-supplier-overview-error-51d0`; local lock `.ai/task-locks/RQ474-chatgpt.lock.md`
 Reclassified 2026-10-01 by RQ535 (WAITING -> READY): the 503 persists on the exact deployed SHA `3a6a6886`. GET `/api/analytics/supplier-sales-stats` returns 503 for dataScope `all`, `imported` and store `2082886995`, while `/ready`, `/health/dependencies` and `/api/analytics/health` report both databases reachable. Code inspection shows the handler maps every `NpgsqlException`, including SQL-state errors such as `42P01`/`42703`, to the same "Problem pri povezivanju sa bazom" 503 without a correlation id. Repository-local work no longer waits on provider logs:
 - classify the exception by SQL state (missing object, missing column, timeout or cancel, true connection failure) into stable safe error codes with a correlation id;
@@ -26477,6 +26477,24 @@ Unavailable Supplier overview cannot be mistaken for “no data”, while a succ
 - Repository-local: none (RQ535 supplied exact-SHA evidence; the SQL-state mapping and frontend states are testable on Testcontainers fixtures).
 - Read-only current API/provider logs are still needed to name the live 503 cause; record it as missing evidence rather than guessing.
 - No production schema/data change is in scope.
+
+### Completion note
+
+- Date: 2026-10-01
+- Status: DONE
+- Completion: Supplier overview failures now preserve safe SQL-state classification, error codes and correlation IDs; frontend failure, stale-data, retry and successful-empty states remain distinct.
+- Changed files: `Api/Services/SupplierOverviewErrorContract.cs`, `Api/Endpoints/AllEndpoints.cs`, `Api.Tests/SupplierOverviewErrorContractTests.cs`, `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/analyticsTrustStateProof.spec.tsx`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, queue/roadmap metadata.
+- Checks run: Supplier frontend/API tests 51/51; typecheck; production build; encoding; analytics guardrails; queue and instruction validators; backend classifier static checks 8/8; `git diff --check`.
+- Checks not run: .NET API build/unit tests because the SDK is unavailable; live provider logs/database and remote CI were not required for this repository-local scope.
+- Run log: `.ai/runs/2026-10-01-RQ474-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `a59394602593da3488b1269ccfc76b5e07c56988`
+- Main verification: `origin/main` contains the implementation SHA after direct push.
+- Missed: exact live SQL root cause remains an explicit provider-log evidence gap; no production data/schema change was made.
+- Follow-up: RQ536 remains the Supplier Audit addendum READY lane; Q83 remains independently READY; RQ475 remains behind RQ536.
+- Residual risk: backend runtime proof requires a .NET-capable runner; frontend/static proofs are green.
+- Prompt defect / scope repair: guardrail baseline line numbers were updated only for three pre-existing reviewed findings shifted by the page error-state helper.
 
 ---
 
