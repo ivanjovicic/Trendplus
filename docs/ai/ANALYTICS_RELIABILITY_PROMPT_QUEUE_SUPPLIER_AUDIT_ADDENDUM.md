@@ -3,8 +3,9 @@
 Date: 2026-09-30
 Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
-Current READY prompt: none
+Current READY prompt: RQ534 (IN_PROGRESS)
 Additional READY prompts: none; RQ524, RQ527, RQ528 and RQ533 are DONE
+Queue registration 2026-10-01: RQ534 was registered from a red current-main CI classification. Analytics Quality Gates has failed since `13a01ebd` because `ProdajaPrePostNivelacijePage.spec.tsx` still uses the pre-RQ520 recommendation statuses and focus-chip labels. It was deduplicated against the existing queues, then promoted and claimed in the same idle-recovery run.
 Queue reconciliation 2026-10-01: RQ533 DONE. Assortment vendor and totals change percent are null without mature comparable evidence or a revenue baseline; the error fallback reports null instead of 0; cache key v7. No Supplier-audit prompt is runnable: RQ523, RQ529, RQ530 and RQ532 wait on RQ498, RQ499 and RQ500 (RQ474/RQ475 live access), and RQ531 waits on owner approval. Follow-up for the Q83 Pre/Post owner: price-direction and category change percent `?? 0m`.
 Queue registration 2026-10-01: RQ533 was registered from the RQ527 follow-up (Assortment fake 0% change percent without comparable evidence), deduplicated against the existing queues, and promoted and claimed in the same idle-recovery run.
 Queue reconciliation 2026-10-01: RQ524 DONE through idle recovery. The Supplier reconciliation pack now runs on Testcontainers fixtures with all sixteen verdicts pinned, read-only proof, and owned FAIL verdicts for missing objects. It fixes the previous-only window, the `42P01` aborts and the false SUP-012 FAIL on non-comparable rows, and adds the SUP-016 maturity check. No Supplier-audit prompt is runnable: RQ523 waits on RQ498; RQ529 on RQ523/RQ499; RQ530 on RQ500/RQ474/RQ487; RQ531 on owner approval; RQ532 on RQ500. RQ498, RQ499 and RQ500 wait on RQ474/RQ475, which need read-only live/provider access.
@@ -38,6 +39,7 @@ This addendum registers only non-duplicate Supplier follow-ups after second-pass
 | SA-E2 | RQ531 |
 | SA-E3 | RQ532 |
 | RQ527 follow-up (fake 0% change) | RQ533 |
+| RQ520 follow-up (Pre/Post spec on stale recommendation statuses; red main CI) | RQ534 |
 
 ---
 
@@ -933,3 +935,48 @@ RQ520 and RQ527 DONE.
 - Missed: price-direction and category `ChangePercent ?? 0m` in the same endpoint feeds Prodaja pre/posle nivelacije (Q83 owner) and was kept out of scope.
 - Follow-up: the Q83 Pre/Post owner should make price-direction and category change percent null without a baseline and repair the pre-existing `ProdajaPrePostNivelacijePage.spec.tsx` failures.
 - Residual risk: external consumers that assumed vendor or totals `changePercent` was non-null now receive null.
+
+---
+
+## RQ534 - Align the Pre/Post page spec with the RQ520 price-change effect statuses
+
+Status: IN_PROGRESS
+Claimed: 2026-10-01 by Cursor agent on `main` (direct). Registered and promoted WAITING -> READY -> IN_PROGRESS in the same idle-recovery run (user authorized promotion). Dependencies RQ520 and RQ533 are DONE. The frontend spec is outside Q83's SQL-only scope, and no lock, open PR or branch touches it.
+Priority: P1
+Type: frontend-tests/ci
+Feature family: supplier-prepost-effect-status-tests
+Parallel-safe: yes
+Owner: Analytics Reliability / Supplier
+
+### Problem
+
+Analytics Quality Gates on `main` has been red since `13a01ebd` ("align prepost price effect status UI"). Eight tests in `ProdajaPrePostNivelacijePage.spec.tsx` fail. The page now uses the RQ520 effect statuses (`effective`, `neutral`, `ineffective`, `immature`, `insufficient_data`) and their labels ("Pozitivan efekat", "Prozor u toku", ...), but the spec still seeds the old recommendation statuses (`increase_focus`, `review`) and looks for the old chip names "Pojacaj" and "Pregledaj". Focus filters therefore match nothing: the data table is replaced by the filtered-empty state and the chip queries fail.
+
+### Evidence
+
+- Run 36754474801 (`f187d59e`): no Pre/Post failures. Run 36765810848 (`17a68507`, which includes `13a01ebd`) and every main run since: the same 8 Pre/Post failures.
+- `vendorSalesNivelacijaApi.ts` types `recommendation.status` as the five effect statuses. `VendorSalesNivelacijaPriceChangeEffectPolicy` emits only those.
+- Local reproduction: 8 failed, 37 passed; the RQ533 changes stashed or applied make no difference.
+
+### Scope
+
+`Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.spec.tsx` only: fixture statuses and labels, chip-name queries and the expected focus-context text. Do not change page behavior, focus URL keys (`increaseFocus`, `review`, ...), backend policy or other specs.
+
+### Do
+
+1. Replace the stale fixture statuses with the matching effect statuses (`increase_focus` becomes `effective`, `review` becomes `immature`) and use backend-style labels.
+2. Query the focus chips by their current effect labels and update the expected focus-context text.
+3. Keep the URL focus-key assertions unchanged; they are a compatibility contract.
+
+### Tests
+
+- `npx vitest run src/pages/ProdajaPrePostNivelacijePage.spec.tsx`: all tests pass.
+- Counterexample: the unchanged spec fails 8 tests on the current page.
+
+### Acceptance
+
+The Pre/Post spec passes on current `main` with fixtures that are valid for the typed effect-status contract, and Analytics Quality Gates no longer fails on this spec.
+
+### Dependencies
+
+RQ520 and RQ533 DONE.
