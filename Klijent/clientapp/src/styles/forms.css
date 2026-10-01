@@ -175,7 +175,8 @@
   border: 1px solid var(--color-border);
   border-radius: 10px;
   color: var(--color-text);
-  min-height: 40px;
+  font-size: var(--font-size-control, 0.8125rem);
+  min-height: var(--size-control, 2.5rem);
   padding: 9px 11px;
   transition: border-color 140ms ease, box-shadow 140ms ease;
   width: 100%;
@@ -185,10 +186,15 @@
   border-color: var(--color-primary);
 }
 
-.form-control:focus {
+.form-control:focus:not(:focus-visible) {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 24%, transparent);
   outline: none;
+}
+
+.form-control:focus-visible {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 24%, transparent);
 }
 
 .form-control:disabled,
@@ -203,7 +209,7 @@
 }
 
 .form-control--compact {
-  min-height: 34px;
+  min-height: var(--size-control-compact, 2.125rem);
   padding: 6px 8px;
 }
 
@@ -439,13 +445,18 @@ textarea.form-control {
   border-radius: 10px;
   cursor: pointer;
   display: inline-flex;
-  font-size: 13px;
+  font-size: var(--font-size-control, 0.8125rem);
   font-weight: 750;
   gap: 8px;
   justify-content: center;
-  min-height: 38px;
+  min-height: var(--size-control, 2.5rem);
   padding: 8px 14px;
   transition: border-color 140ms ease, opacity 140ms ease;
+}
+
+.btn:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .btn:disabled {
@@ -528,4 +539,25 @@ textarea.form-control {
   font-size: 13px;
   line-height: 1.4;
   padding: 12px;
+}
+
+@media (max-width: 759px) {
+  /*
+    Phone contract: 16px text avoids iOS Safari's auto-zoom risk, while 44px
+    is the Trendplus coarse-pointer target rather than a universal WCAG rule.
+  */
+  .form-control,
+  .form-control--compact {
+    font-size: var(--font-size-control-phone, 1rem);
+    min-height: var(--size-control-phone, 2.75rem);
+  }
+
+  textarea.form-control {
+    min-height: 7rem;
+  }
+
+  .btn {
+    font-size: var(--font-size-control-phone, 1rem);
+    min-height: var(--size-touch-target, 2.75rem);
+  }
 }

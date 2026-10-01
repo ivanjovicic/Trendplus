@@ -85,10 +85,17 @@
   --radius-xl: 1rem;
   --radius-pill: 999rem;
   --border-width-sm: 1px;
+  /* Responsive foundation: desktop density stays explicit; phone controls use the
+     separate 16px/44px product contract in the shared form layer. */
+  --font-size-body: 0.9rem;
+  --font-size-label: 0.75rem;
+  --font-size-meta: 0.6875rem;
+  --font-size-control: 0.8125rem;
+  --font-size-control-phone: 1rem;
   --font-size-xs: 0.72rem;
   --font-size-sm: 0.78rem;
   --font-size-md: 0.86rem;
-  --font-size-base: 0.9rem;
+  --font-size-base: var(--font-size-body);
   --font-size-lg: 0.95rem;
   --font-size-xl: 1.35rem;
   --font-size-2xl: 1.55rem;
@@ -100,6 +107,9 @@
   --font-weight-heavy: 780;
   --letter-spacing-label: 0;
   --size-control: 2.5rem;
+  --size-control-compact: 2.125rem;
+  --size-control-phone: 2.75rem;
+  --size-touch-target: 2.75rem;
   --size-icon-button: 2.5rem;
   --size-status-dot: 0.5rem;
   --size-table-max-height: 40rem;

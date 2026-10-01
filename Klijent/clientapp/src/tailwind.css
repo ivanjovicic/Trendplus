@@ -45,7 +45,7 @@ body {
   display: block;
 }
 
-.input-big:focus {
+.input-big:focus:not(:focus-visible) {
   outline: none;
   border-color: var(--info);
   box-shadow: 0 0 0 4px var(--theme-color-rgba-68-208-255-0p15, rgba(68, 208, 255, 0.15));
@@ -328,7 +328,7 @@ select {
   -moz-appearance: menulist;
 }
 
-select:focus {
+select:focus:not(:focus-visible) {
   outline: none;
   box-shadow: 0 0 0 6px var(--theme-rgba-68-208-255-0p08, var(--theme-color-rgba-68-208-255-0p08, rgba(68, 208, 255, 0.08)));
   border-color: var(--focus-ring);
@@ -376,6 +376,15 @@ select:focus {
   --border-default: var(--c-283042, var(--theme-color-283042, #283042));
   --border-hover: var(--c-344a66, var(--theme-color-344a66, #344a66));
   --focus-ring: var(--c-44d0ff, var(--theme-color-44d0ff, #44d0ff));
+  /* Responsive foundation: phone controls are promoted in the shared layer. */
+  --font-size-body: 0.9rem;
+  --font-size-label: 0.75rem;
+  --font-size-meta: 0.6875rem;
+  --font-size-control: 0.8125rem;
+  --font-size-control-phone: 1rem;
+  --size-control-compact: 2.125rem;
+  --size-control-phone: 2.75rem;
+  --size-touch-target: 2.75rem;
 }
 
 /* Additional semantic tokens for components */
@@ -541,5 +550,39 @@ body {
 
 .control-muted::placeholder {
   color: var(--text-muted);
+}
+
+/*
+  Shared keyboard-focus baseline. The :is() selector intentionally has enough
+  specificity to win over legacy focus:outline-none utilities without a
+  repository-wide call-site rewrite.
+*/
+:is(
+  button,
+  a,
+  input,
+  select,
+  textarea,
+  [tabindex]:not([tabindex="-1"])
+):focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (max-width: 759px) {
+  /*
+    Keep native text controls readable on phones. Checkboxes, radios and ranges
+    retain their native sizing; page semantics and values are unchanged.
+  */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: var(--font-size-control-phone, 1rem);
+  }
+
+  .btn,
+  .button-big {
+    min-height: var(--size-touch-target, 2.75rem);
+  }
 }
 
