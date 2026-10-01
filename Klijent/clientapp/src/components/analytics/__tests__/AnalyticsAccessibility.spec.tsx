@@ -84,6 +84,25 @@ describe("analytics modal accessibility", () => {
     expect(document.body.style.overflow).toBe("unset");
   });
 
+  it("keeps the dialog within the viewport width on narrow screens", async () => {
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: 320,
+      writable: true,
+    });
+
+    render(<ModalHarness />);
+    fireEvent.click(screen.getByRole("button", { name: "Otvori modal" }));
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Analytics pode\u0161avanja",
+    });
+
+    expect(dialog).toHaveClass("modal-content--md");
+    expect(dialog.className).toContain("modal-content");
+    expect(getComputedStyle(dialog).maxWidth).not.toBe("");
+  });
+
   it("closes from the backdrop without exposing the backdrop as interactive content", async () => {
     const { container } = render(<ModalHarness />);
     fireEvent.click(screen.getByRole("button", { name: "Otvori modal" }));

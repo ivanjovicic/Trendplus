@@ -18,6 +18,8 @@
   justify-content: center;
   width: calc(var(--space-4) + var(--space-px) + var(--space-px));
   height: calc(var(--space-4) + var(--space-px) + var(--space-px));
+  min-width: var(--touch-target-min, 44px);
+  min-height: var(--touch-target-min, 44px);
   border-radius: 50%;
   flex-shrink: 0;
   vertical-align: middle;
@@ -67,7 +69,7 @@
   line-height: 1.55;
   padding: var(--space-2) var(--space-3);
   white-space: normal;
-  /* Don't intercept mouse events — tooltip is read-only */
+  /* Fine pointer: tooltip is read-only; coarse pointer enables outside-tap dismissal */
   pointer-events: none;
   /* Entry animation (opacity + scale) */
   opacity: 0;
@@ -89,4 +91,15 @@
 
 .info-tip-portal--below.info-tip-portal--visible {
   transform: translateX(-50%) translateY(var(--space-2)) scale(1);
+}
+
+.info-tip-portal--interactive {
+  pointer-events: auto;
+}
+
+@media (pointer: fine) {
+  .info-tip {
+    min-width: calc(var(--space-4) + var(--space-px) + var(--space-px));
+    min-height: calc(var(--space-4) + var(--space-px) + var(--space-px));
+  }
 }

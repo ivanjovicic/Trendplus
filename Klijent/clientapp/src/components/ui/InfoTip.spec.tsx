@@ -62,6 +62,38 @@ describe("InfoTip accessibility", () => {
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
 
+  it("uses a native button trigger with an enlarged coarse-pointer target", () => {
+    render(<InfoTip text="Objašnjenje." />);
+
+    const trigger = screen.getByRole("button", { name: "Više informacija" });
+    expect(trigger.tagName).toBe("BUTTON");
+    expect(trigger).toHaveAttribute("type", "button");
+  });
+
+  it("does not dismiss on scroll for coarse pointers", () => {
+    vi.stubGlobal("matchMedia", vi.fn().mockImplementation((query: string) => ({
+      matches: query.includes("pointer: coarse"),
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })));
+
+    render(<InfoTip text="Objašnjenje na touch uređaju." />);
+
+    const trigger = screen.getByRole("button", { name: "Više informacija" });
+    fireEvent.click(trigger);
+
+    act(() => {
+      vi.advanceTimersByTime(150);
+    });
+
+    expect(screen.getByRole("tooltip")).toBeInTheDocument();
+    fireEvent.scroll(window);
+    expect(screen.getByRole("tooltip")).toBeInTheDocument();
+  });
+
   it("opens with Space and hides when focus leaves the trigger", () => {
     render(<InfoTip text="Kvalitet podataka." />);
 

@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (P-UI-26 DONE; P-UI-27 requires fresh collision check before promotion)
+Current READY prompt: none (P-UI-27 DONE; P-UI-28 requires fresh collision check)
 Purpose: make shared backoffice and analytics navigation, controls, tables, responsive workflows and dashboard UX premium without mixing presentation work with analytics correctness fixes.
 
 Use with:
@@ -1505,7 +1505,7 @@ The sticky header currently wraps many actions plus a second system-control stri
 
 ## P-UI-27 - Make Modal, InfoTip, tabs and shared compact controls touch-safe
 
-Status: WAITING
+Status: DONE
 Ready after: P-UI-25
 Priority: P1
 Type: frontend/component/a11y/tests
@@ -1567,6 +1567,24 @@ Several shared primitives have viewport/touch problems: `Modal` has fixed minimu
 
 - P-UI-25 DONE.
 - Page-specific migrations may follow separately.
+
+### Completion note
+
+- Date: 2026-10-01
+- Status: DONE
+- Completion: 100%
+- Changed files: `Modal.tsx`; `tailwind.css` modal/toast helpers; `InfoTip.tsx`/`.css`/tests; `AnalyticsAccessibility.spec.tsx`; queue/roadmap/evidence
+- Contract/runtime behavior changed: modal/toast respect viewport width; InfoTip is a native button with coarse-pointer touch semantics; no analytics/API semantics changed
+- Checks run: InfoTip + Modal accessibility tests 11/11; `npm run typecheck`; `npm run build`; `git diff --check`
+- Checks not run: full P-UI-24 PNG matrix; real device Safari
+- Run log: `.ai/runs/2026-10-01-P-UI-27-evidence.md`
+- Delivery mode: direct-main
+- Main commit SHA: pending delivery synchronization
+- Main verification: pending delivery synchronization
+- Evidence state: pending
+- Missed: shared tabs primitive and page-level tab migrations deferred
+- Follow-up: promote P-UI-28 after collision check
+- Next: idle recovery for P-UI-28
 
 ---
 

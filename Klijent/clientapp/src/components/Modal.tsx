@@ -65,11 +65,11 @@ export default function Modal({ isOpen, onClose, title, children, footer, size =
 
     if (!isOpen) return null;
 
-    const sizeStyles = {
-        sm: { minWidth: 320, maxWidth: 400 },
-        md: { minWidth: 400, maxWidth: 600 },
-        lg: { minWidth: 600, maxWidth: 800 },
-    };
+    const sizeClassName = {
+        sm: "modal-content--sm",
+        md: "modal-content--md",
+        lg: "modal-content--lg",
+    }[size];
 
     return (
         <div className="modal-root">
@@ -81,8 +81,7 @@ export default function Modal({ isOpen, onClose, title, children, footer, size =
                 aria-modal="true"
                 aria-labelledby={titleId}
                 tabIndex={-1}
-                className="modal-content"
-                style={{ ...sizeStyles[size], maxHeight: "90vh" }}
+                className={`modal-content ${sizeClassName}`}
             >
                 <div className="modal-header">
                     <h3 id={titleId} style={{ fontSize: "1.25rem", fontWeight: 600, margin: 0 }}>{title}</h3>

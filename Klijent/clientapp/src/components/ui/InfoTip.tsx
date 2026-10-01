@@ -20,11 +20,29 @@ function computePos(rect: DOMRect): Pos {
   return { top, left, below };
 }
 
+function useCoarsePointer() {
+  const [isCoarsePointer, setIsCoarsePointer] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(pointer: coarse)").matches : false,
+  );
+
+  useEffect(() => {
+    const media = window.matchMedia("(pointer: coarse)");
+    const update = () => setIsCoarsePointer(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  return isCoarsePointer;
+}
+
 export default function InfoTip({ text }: { text: string }) {
   const tooltipId = useId();
-  const triggerRef = useRef<HTMLSpanElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const tooltipRef = useRef<HTMLSpanElement>(null);
   const showTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isCoarsePointer = useCoarsePointer();
 
   const [pos, setPos] = useState<Pos | null>(null);
   const [entering, setEntering] = useState(false);
@@ -69,7 +87,7 @@ export default function InfoTip({ text }: { text: string }) {
     show();
   }, [entering, show, hide]);
 
-  const onTriggerKeyDown = useCallback((event: KeyboardEvent<HTMLSpanElement>) => {
+  const onTriggerKeyDown = useCallback((event: KeyboardEvent<HTMLButtonElement>) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       toggle();
@@ -93,7 +111,7 @@ export default function InfoTip({ text }: { text: string }) {
   }, [entering, hide]);
 
   useEffect(() => {
-    if (!pos) {
+    if (!pos || isCoarsePointer) {
       return;
     }
 
@@ -104,23 +122,41 @@ export default function InfoTip({ text }: { text: string }) {
       window.removeEventListener("scroll", hide, { capture: true });
       window.removeEventListener("resize", hide);
     };
-  }, [pos, hide]);
+  }, [pos, hide, isCoarsePointer]);
+
+  useEffect(() => {
+    if (!entering || !isCoarsePointer) {
+      return;
+    }
+
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (triggerRef.current?.contains(target) || tooltipRef.current?.contains(target)) {
+        return;
+      }
+
+      hide();
+    };
+
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [entering, hide, isCoarsePointer]);
 
   useEffect(() => () => clearTimers(), [clearTimers]);
 
   return (
     <>
-      <span
+      <button
         ref={triggerRef}
+        type="button"
         className="info-tip"
-        role="button"
-        tabIndex={0}
         aria-describedby={entering ? tooltipId : undefined}
         aria-label="Više informacija"
-        onMouseEnter={show}
-        onMouseLeave={hide}
+        aria-expanded={entering}
+        onMouseEnter={isCoarsePointer ? undefined : show}
+        onMouseLeave={isCoarsePointer ? undefined : hide}
         onFocus={show}
-        onBlur={hide}
+        onBlur={isCoarsePointer ? undefined : hide}
         onClick={toggle}
         onKeyDown={onTriggerKeyDown}
       >
@@ -134,15 +170,17 @@ export default function InfoTip({ text }: { text: string }) {
         >
           <path d="M8 1a7 7 0 100 14A7 7 0 008 1zM7.25 4.5a.75.75 0 111.5 0 .75.75 0 01-1.5 0zM7.25 7h1.5v4.5h-1.5V7z" />
         </svg>
-      </span>
+      </button>
 
       {pos &&
         createPortal(
           <span
+            ref={tooltipRef}
             id={tooltipId}
             role="tooltip"
             className={[
               "info-tip-portal",
+              isCoarsePointer ? "info-tip-portal--interactive" : "",
               pos.below ? "info-tip-portal--below" : "",
               entering ? "info-tip-portal--visible" : "",
             ]
