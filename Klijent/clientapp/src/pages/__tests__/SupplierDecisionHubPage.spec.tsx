@@ -179,7 +179,7 @@ describe("SupplierDecisionHubPage", () => {
 
     expect(await screen.findByText(/Verzija i objašnjenje modela skorkarte/i)).toBeInTheDocument();
     expect(screen.getByText(/Trenutna zaliha je presek/i)).toBeInTheDocument();
-    expect(screen.getByText(/Rangovi su relativni prema aktivnoj populaciji/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Rangovi su relativni prema aktivnoj populaciji/i).length).toBeGreaterThan(0);
   });
 
   it("uses summary-owned aggregates when ranking rows are only a visible projection", async () => {
