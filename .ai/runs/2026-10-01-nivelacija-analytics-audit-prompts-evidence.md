@@ -1,11 +1,11 @@
 Task ID: nivelacija-analytics-audit-prompts-2026-10-01
 Queue: direct-user-request
 Date: 2026-10-01
-Agent/tool: Grok Bot (executor subagent; read-only box clone of `origin/main`; push from a temporary worktree on the user's machine)
+Agent/tool: Grok Bot source audit + ChatGPT/GitHub connector integration
 Delivery target: main (direct-main docs commit)
-Working branch / PR: detached temporary worktree on `origin/main`, pushed as `HEAD:main` on explicit user instruction; no branch or PR; the user's main checkout was not touched.
-Main implementation SHA: f2c047b45f405d7dcbebbc19fb1cf4a0a199a9f5
-Main registration SHA: 44d0aa617a9aad5a3e52488fde8cb7c0e74dbc66
+Working branch / PR: `main` direct through GitHub Contents API; no PR
+Main commit SHA: f2c047b45f405d7dcbebbc19fb1cf4a0a199a9f5
+Registration/roadmap SHA: 44d0aa617a9aad5a3e52488fde8cb7c0e74dbc66
 Main verification: GitHub main contains the implementation stack through `f2c047b45f405d7dcbebbc19fb1cf4a0a199a9f5` and registration/roadmap SHA `44d0aa617a9aad5a3e52488fde8cb7c0e74dbc66`; audit base `cb3eb7e`, rechecked on current main during integration
 Evidence state: synchronized
 
