@@ -227,7 +227,7 @@ RQ518 DONE and RQ526 DONE; RQ445/RQ473 remain authority.
 - Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: fe0ee347b5233b36140147559eeb71aca149a13d
-- Main verification: recorded in run log after push
+- Main verification: `origin/main` `291647a8af160e17cab6955110f24c406d0bb480` contains fe0ee347b5233b36140147559eeb71aca149a13d; post-push CI `36832537665`/`36832537756` in progress at close
 - Missed: N20 (customer return possibly subtracted twice from the stock proxy) left unchanged — the oracle proves only the conditional arithmetic, not that real data records a return in both places; the nivelacija `sales_daily` DUG/KOREKCIJA alignment is RQ522 (SA-F6) scope.
 - Follow-up: RQ531 owns coverage gates (N13), confidence weights (N16), inventory penalty (N15) and first-markdown cohort (N17) policy; N20 needs a read-only real-data check before any fix.
 - Residual risk: windowed cache recreation runs synchronously in the 029 startup transaction (same cost class as the existing missing-cache path) and the all-time cache shows pre-RQ521 values until its next refresh.
