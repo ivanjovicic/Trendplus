@@ -1,6 +1,6 @@
 # Trendplus Analytics UI Premium Roadmap
 
-Updated: 2026-08-15
+Updated: 2026-10-01
 Status: existing UI program routing companion; implementation remains owned by the existing queue
 Owner queue: `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`
 Evidence/audit: `docs/qa/ANALYTICS_UI_PREMIUM_AUDIT.md`
@@ -42,9 +42,12 @@ Current queue truth on 2026-08-14:
 - `P-UI-20` is DONE: grouped ErrorState/EmptyState/TrustHeader proof on Daily/Color/ShoeType/Supplier/Actions pages.
 - `P-UI-21` is DONE: empty success without KPI totals and shared Actions ErrorState.
 - `P-UI-22` is DONE: remaining decision-page empty/error chrome.
-- No remaining P-UI READY prompts.
+- `P-UI-24` is READY as the path-safe responsive browser-baseline task registered from the 2026-10-01 verified responsive audit.
+- `P-UI-25`..`P-UI-38` are WAITING behind measured baseline/shared-primitives/page-family dependencies.
+- `P-UI-23` remains a separate WAITING lint-hygiene task.
+- Recharts initial-preload/bundle graph is not P-UI-owned; it is routed to `PERF18`.
 
-The queue remains authoritative for exact task status and acceptance.
+The queue remains authoritative for exact task status and acceptance. P-UI remains supplemental and must not displace higher-priority RQ/SQL correctness work.
 
 ## Roadmap sequence
 
@@ -54,7 +57,10 @@ The queue remains authoritative for exact task status and acceptance.
 4. Improve dashboard/command-center hierarchy after correctness/trust states are stable.
 5. When an owner contract exists, make product/SKU-to-variant/store/evidence/action navigation consistent across product, inventory and supplier surfaces.
 6. Keep dark/light/mobile/tablet/desktop visual evidence for broad UI changes.
-7. Re-evaluate remaining page-specific UI debt before creating more premium prompts.
+7. Use the responsive execution sequence from `P-UI-24` onward: measure first, establish shared type/control/shell/primitives, then migrate bounded page families.
+8. Prefer existing Puppeteer/browser and Node-guard tooling before adding new UI test frameworks.
+9. Keep performance/loading-graph ownership in PERF; P-UI may consume its evidence but does not redefine bundle budgets.
+10. Re-evaluate remaining page-specific UI debt before creating more premium prompts.
 
 ## Dependencies
 
@@ -65,8 +71,19 @@ The queue remains authoritative for exact task status and acceptance.
 
 ## Milestone
 
-**Premium analytics consistency:** important analytics pages share trustworthy controls/tables/navigation and preserve the same units, filters, trust metadata and empty/error semantics across the product.
+**Premium analytics consistency and responsive operation:** important backoffice/analytics pages share trustworthy controls/tables/navigation, remain usable across 320/375/768/1024/1280 layouts, and preserve the same units, filters, trust metadata and empty/error semantics across the product.
 
 ## Non-goals
 
 No broad visual rewrite, design-system replacement, business-logic migration to frontend, parallel analytics formula work, generic self-service dashboard builder, or client-side product-hierarchy reconstruction is authorized by this roadmap.
+
+
+## Responsive audit integration — 2026-10-01
+
+Canonical source: `docs/ai/RESPONSIVE_UI_AUDIT_PROMPTS_2026-10-01.md`.
+
+The audit deliberately does **not** authorize a repository-wide visual rewrite. Its execution model is:
+
+`P-UI-24 measured browser baseline -> P-UI-25 foundation -> P-UI-26/27 shell+primitives -> P-UI-28/29 filter+table pilots -> P-UI-30..37 bounded page families -> P-UI-38 stable regression gates`.
+
+Any page-family prompt that collides with an active RQ correctness owner waits. Responsive work never invents client-side analytics truth to make a layout easier.
