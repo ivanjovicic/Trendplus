@@ -6,7 +6,8 @@ Source audit: `docs/ai/NIVELACIJA_ANALYTICS_AUDIT_PROMPTS_2026-10-01.md`
 Registration code base: `f2c047b45f405d7dcbebbc19fb1cf4a0a199a9f5`
 
 Owner promotion/claim 2026-10-01: fresh idle recovery found no current READY prompt, no active lock/branch/open-PR collision for `RQ540`, and no dependency gate. `RQ540` moved `WAITING -> READY -> IN_PROGRESS` as the bounded P1 cache-truth repair for transient Pre-Nivelacija query failures and cancellations. Local lock: `.ai/task-locks/RQ540-codex.lock.md`. RQ537 remains WAITING because its scenario intent still needs semantic proof before arithmetic changes.
-Current READY routing: `RQ540` (IN_PROGRESS). RQ545 (NV-F9) is PARTIAL on `main`: the code-side diagnosis and PostgreSQL proof are delivered, while deployed endpoint acceptance remains with RQ535/STAB16. RQ475 remains WAITING pending its own fresh selection/collision pass.
+Owner completion 2026-10-01: `RQ540` moved `IN_PROGRESS -> DONE` and was delivered directly to `main` on `e8d5ef08fc1e16507a689c1d14c3e9b37f7a7b9a`; fresh fetch verified exact `origin/main`. Sales and markdown query failures now log and throw a typed exception that escapes the cache factory, so transient error payloads are mapped outside caching; request cancellation is rethrown without data-failure logging. Focused API proof is 12/12 and Release API build passes. Run log: `.ai/runs/2026-10-01-RQ540-evidence.md`; evidence state: synchronized.
+Current READY routing: none. RQ545 (NV-F9) is PARTIAL on `main`: the code-side diagnosis and PostgreSQL proof are delivered, while deployed endpoint acceptance remains with RQ535/STAB16. RQ475 remains WAITING pending its own fresh selection/collision pass.
 Registered range: RQ537–RQ559.
 Direct integration fixes: core NV-F9 relation capability and core NV-F10 preload suppression only. Business-model and data-semantic changes remain queued until their proof/owner gates are satisfied.
 
@@ -231,7 +232,7 @@ NV-F1 (same files; land it first, or in one PR).
 
 ## RQ540 - NV-F4 - Never cache transient Pre-Nivelacija failures or client cancellations
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/tests
 Feature family: pre-nivelacija-cache-truth
@@ -239,6 +240,7 @@ Parallel-safe: yes (cache factory only)
 Owner: Analytics Reliability
 Findings: NV-N06
 Commit suggestion: `fix(analytics): do not cache pre-nivelacija query failures`
+Completion: delivered on main through `e8d5ef08fc1e16507a689c1d14c3e9b37f7a7b9a`; focused API proof 12/12 and Release API build pass. Run log: `.ai/runs/2026-10-01-RQ540-evidence.md`; evidence state: synchronized.
 
 #### Problem
 
